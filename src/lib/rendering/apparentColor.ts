@@ -10,8 +10,11 @@
 import type { CelestialBody, RulePack, ApparentColor, ApparentColorStop } from '$lib/types';
 import { makeupFractions, rendersAsGiant } from '$lib/physics/makeup';
 import { phaseAtP, liquidDef } from '$lib/physics/liquids';
-import { decksFromTags, condensateTint, oxidationStrength } from '$lib/physics/cloudDecks';
+import { decksFromTags, condensateTint, oxidationStrength, spaceWeathering } from '$lib/physics/cloudDecks';
+import { vegetationTint } from '$lib/physics/vegetation';
 import { EARTH_MASS_KG, LIQUIDS } from '$lib/constants';
+import { blackbodySpectrum, gridShare, materialUnderLight, reflectanceFromHex,
+  reflectedHexUnderIlluminant, type Spectrum } from '$lib/physics/spectrum';
 
 type RGB = [number, number, number];
 
@@ -39,9 +42,43 @@ const SURF = {
   ice: hexToRgb('#d8ecff'), gas: hexToRgb('#c9b89a')
 };
 
-// Star colour from photosphere temperature (compact blackbody-ish bands; G≈white-yellow, M≈red).
+export function bdGlowColour(teff: number): string {
+	const stops: [number, string][] = [
+		[250, '#3a0f06'], [600, '#6e1808'], [1000, '#a3320c'], [1400, '#c85614'],
+		[1800, '#e07d22'], [2300, '#f2a03e'], [2800, '#ffbf6e']
+	];
+	if (teff <= stops[0][0]) return stops[0][1];
+	for (let i = 1; i < stops.length; i++) {
+		if (teff <= stops[i][0]) {
+			const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
+			const f = (teff - t0) / (t1 - t0);
+			const a = hexToRgb(c0), b = hexToRgb(c1);
+			return rgbToHex([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f] as RGB);
+		}
+	}
+	return stops[stops.length - 1][1];
+}
+
+/**
+ * Star colour from photosphere temperature (compact blackbody-ish bands; G≈white-yellow, M≈red).
+ *
+ * BELOW ~2400 K THERE ARE NO STARS. Sustained hydrogen fusion gives out around 1800-2000 K, so
+ * everything colder is an L, T or Y dwarf — and this table used to bottom out at #ff8a4a, an orange
+ * handed identically to a 2399 K M dwarf and a 500 K T dwarf. It made Epsilon Indi Bb, a methane T6
+ * about as warm as an oven, render as a small sun.
+ *
+ * The cold end now falls through to `bdGlowColour`, the substellar ramp, which had the right answer
+ * sitting one branch away all along. The curves nearly meet at the crossover (#ffbf6e against
+ * #ffb56c) so nothing warm moves, and the sequence becomes continuous through mass instead of
+ * cliff-edged at a role boundary — which matters because giants radiate too, just far colder: at
+ * Jupiter's 124 K this returns near-black, so a giant correctly shows no visible glow.
+ */
 export function starColorFromTempK(tempK?: number): RGB {
-  const t = tempK ?? 5778;
+  // UNKNOWN IS NOT COLD. `?? ` catches null and undefined but NOT zero, and now that the cold end
+  // goes to near-black rather than to orange, a body carrying 0 K would render invisible instead of
+  // merely wrong. Sol itself stores no temperature, so this default is load-bearing.
+  const t = tempK && tempK > 0 ? tempK : 5778;
+  if (t < 2400) return hexToRgb(bdGlowColour(t));
   if (t >= 30000) return hexToRgb('#9bb0ff');
   if (t >= 10000) return hexToRgb('#aabfff');
   if (t >= 7500) return hexToRgb('#cad7ff');
@@ -52,23 +89,27 @@ export function starColorFromTempK(tempK?: number): RGB {
   return hexToRgb('#ff8a4a');
 }
 
-// #8 — a liquid's APPARENT colour is starlight filtered by its intrinsic absorption (colorHex),
-// plus a specular share of raw starlight set by the refractive index (Fresnel R = ((n−1)/(n+1))²,
-// amplified for glancing geometry). Water under a red dwarf is murky amber-grey, not postcard blue;
-// molten iron is mostly a starlight mirror. One data point (n) covers every liquid.
-export function liquidApparentColor(liquidName: string, star: RGB): RGB {
-  const def = LIQUIDS.find((l) => l.name === liquidName);
-  const intrinsic = hexToRgb(def?.colorHex ?? '#8aa0b8');
-  // Diffuse: per-channel filter of the starlight through the liquid's absorption tint.
-  const diffuse: RGB = [
-    (star[0] / 255) * intrinsic[0],
-    (star[1] / 255) * intrinsic[1],
-    (star[2] / 255) * intrinsic[2]
-  ];
+// #8 — a liquid's APPARENT colour is the light that reaches it, filtered by its own absorption, plus
+// a specular share of that same light reflected straight back off the surface. The specular share
+// comes from the refractive index (Fresnel R = ((n−1)/(n+1))², amplified for glancing geometry), so
+// water under a red dwarf is murky amber-grey rather than postcard blue and molten iron is mostly a
+// mirror. One data point (n) covers every liquid.
+//
+// IT IS DONE SPECTRALLY NOW, and that is the point. The old version multiplied the star's RGB by the
+// liquid's RGB — three human primaries filtering three human primaries, which gets the answer
+// approximately right for a Sun-like star and increasingly wrong for anything else, and could not
+// see an atmosphere at all. Filtering the ACTUAL arriving spectrum through a reflectance curve and
+// converting once at the end is both better physics and less code, and it means a sea under a hazy
+// sky is coloured by what got through the haze (inbox B54).
+export function liquidApparentColor(liquidName: string, light: Spectrum, pack?: RulePack | null): RGB {
+  const def = liquidDef(liquidName, pack) ?? LIQUIDS.find((l) => l.name === liquidName);
+  const refl = reflectanceFromHex(def?.colorHex ?? '#8aa0b8');
   const n = def?.refractiveIndex ?? 1.33;
   const fresnel = Math.pow((n - 1) / (n + 1), 2);          // ~0.02 for water … ~0.24 molten iron
   const spec = Math.min(0.65, fresnel * 6);                 // glancing-angle boost, capped
-  return mix(diffuse, star, spec);
+  // Diffuse (filtered) plus specular (unfiltered) — both in spectral space, converted once.
+  const out = light.map((v, i) => v * (refl[i] * (1 - spec) + spec));
+  return hexToRgb(reflectedHexUnderIlluminant(out, light));
 }
 
 // (The old CLOUD_VEIL table is gone: how heavily a deck veils the surface is the LIQUID's own
@@ -110,13 +151,45 @@ function bandCount(body: CelestialBody, gasFrac: number, iceGiant = false): numb
 
 // Full derivation: flattened hex + un-mixed palette + banding. opts.starTempK lets the host star's
 // light drive liquid colour (#8); omitted → Sun-like.
-export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePack, opts?: { starTempK?: number }): ApparentColor {
+export function deriveApparentColorParts(
+  body: CelestialBody,
+  rulePack?: RulePack,
+  opts?: { starTempK?: number; surfaceLight?: Spectrum; topLight?: Spectrum; transmission?: number }
+): ApparentColor {
   const mk = makeupFractions(body);
   const palette: ApparentColorStop[] = [];
+  // Lit hex -> the authored MATERIAL colour it came from, so the palette can carry both. The surface
+  // view paints a scene from the MATERIAL and lights it itself; handed the appearance it would light
+  // everything twice, and the "at home" side of that comparison would show the world under its own
+  // sun instead of ours. Recorded here rather than threaded through twenty push() calls.
+  const rawOf = new Map<string, string>();
   const push = (hex: string, role: ApparentColorStop['role'], weight: number, label?: string) => {
-    if (weight > 0.02) palette.push({ hex, role, weight: Math.min(1, weight), label });
+    if (weight > 0.02) {
+      palette.push({ hex, role, weight: Math.min(1, weight), label, rawHex: rawOf.get(hex) ?? hex });
+    }
   };
   const star = starColorFromTempK(opts?.starTempK);
+  // THE LIGHT THIS WORLD IS ACTUALLY LIT BY. Handed in by the processor, which has already filtered
+  // the star through this world's own sky. When it is absent — a standalone caller, a gallery
+  // fixture — fall back to the star's unfiltered spectrum rather than to a different code path: a
+  // world with no atmosphere is simply one whose transmission is 1 everywhere, so there is ONE
+  // model and the fallback is a case of it rather than a rival to it.
+  const starSpectrum = blackbodySpectrum(opts?.starTempK ?? 5778, 1000 * gridShare(opts?.starTempK ?? 5778));
+  const light: Spectrum = opts?.surfaceLight ?? starSpectrum;
+  // A CLOUD IS NOT LIT BY THE SURFACE SPECTRUM, and this is not a nicety — on Venus it is the whole
+  // picture. The light that reaches the ground has already been through the entire atmosphere; the
+  // light falling on the cloud TOPS has not, because the cloud is most of what did the filtering.
+  // Lighting a deck with the surface spectrum means lighting it with light that only exists BELOW
+  // it, and the deck ends up carrying the colour of its own shadow.
+  //
+  // Venus is where that showed: a cream sulphuric deck kept its daylight colour while the rock under
+  // it turned deep red, and mixing the two made the planet PINK. Cloud tops take the unfiltered
+  // starlight; the ground takes what got through.
+  const topLight: Spectrum = opts?.topLight ?? starSpectrum;
+  /** What a material of this authored colour looks like on the GROUND. */
+  const under = (hex: string) => { const lit = materialUnderLight(hex, light); rawOf.set(lit, hex); return lit; };
+  /** …and what it looks like ABOVE the weather, where a cloud top or a haze layer sits. */
+  const underTop = (hex: string) => { const lit = materialUnderLight(hex, topLight); rawOf.set(lit, hex); return lit; };
 
   // 1. Surface base ("land") from makeup fractions.
   let col = mixWeighted([
@@ -137,11 +210,44 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
   // is grey. Bulk makeup alone made every rocky world the same brown; rust is surface chemistry, so
   // it arrives as a tag (see deriveOxidation) and tints the surface here.
   const rust = oxidationStrength(body.tags);
-  if (rust > 0) {
-    col = mix(col, [168, 74, 38], rust);   // hematite red-ochre
-    push(rgbToHex(col), 'surface', 1, `oxidised ${surfDom} surface`);
-  } else {
-    push(rgbToHex(col), 'surface', 1, `${surfDom} surface`);
+  if (rust > 0) col = mix(col, [168, 74, 38], rust);   // hematite red-ochre
+  // SPACE WEATHERING — the other half of that sentence, and until now the unimplemented half. An
+  // airless surface accumulates nanophase iron, which mutes the mineral colour and darkens it; that
+  // is why the Moon is a dark warm grey rather than the plant-pot brown its bulk makeup alone gives.
+  // Muting first, then darkening: they are two separate optical effects of the same coating, and
+  // doing it the other way round loses the mute in the dark.
+  // The nanophase iron a vacuum-exposed surface accumulates MUTES its mineral bands, which is why a
+  // mature regolith reads as grey however warm the rock under it started. This is the same maturity
+  // the renderers used to apply themselves at paint time; it now happens once, here, so the colour
+  // chip beside a render agrees with it.
+  //
+  // DESATURATION ONLY, deliberately. Weathering does also lower the albedo — the Moon's is 0.12,
+  // darker than asphalt — but how BRIGHT a body looks is the lighting's job and the renderers already
+  // do it. Darkening the material colour as well would double-count it and hand back a charcoal
+  // swatch for a world that plainly reads pale grey.
+  const mature = rendersAsGiant(body) ? 0 : spaceWeathering(body);
+  if (mature > 0) {
+    const lum = 0.2126 * col[0] + 0.7152 * col[1] + 0.0722 * col[2];
+    col = mix(col, [lum, lum, lum], mature);
+  }
+  // THE GROUND IS LIT BY THE SAME LIGHT AS EVERYTHING ELSE. The makeup mix above is the material's
+  // own colour — what it would look like under daylight — so it goes through the spectral path too,
+  // and a rocky world under a red dwarf reddens because of what its sky and star left rather than
+  // because two hex values were multiplied.
+  col = hexToRgb(under(rgbToHex(col)));
+  push(rgbToHex(col), 'surface', 1, rust > 0 ? `oxidised ${surfDom} surface` : `${surfDom} surface`);
+
+  // 1b. LIFE ON THE LAND. It goes here, between the bare ground and the ocean, because that is
+  //     physically where it is: vegetation covers LAND, and the sea then covers its own fraction of
+  //     the result. Nothing is derived in this file — `body.vegetation` was resolved from pack data
+  //     in physics (see physics/vegetation.ts), the same move `auroraEmitters` already makes, so a
+  //     renderer never needs the rule pack to draw it. That is the deliberate answer to C2's missing
+  //     thread rather than a second one alongside it.
+  const veg = vegetationTint(body.vegetation);
+  if (veg && !rendersAsGiant(body)) {
+    col = mix(col, hexToRgb(veg.hex), Math.min(0.92, veg.cover));
+    push(veg.hex, 'vegetation', veg.cover,
+      body.vegetation?.pigmentLabel ? `${body.vegetation.pigmentLabel} vegetation` : 'surface life');
   }
 
   // 2. Surface liquid — ANY liquid, proportional to coverage (#9): the disc is land×(1−cover) +
@@ -163,7 +269,7 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
   const hydro = surfaceLayer?.coverage ?? body.hydrosphere?.coverage ?? 0;
   const liquidFamily = LIQUIDS.find((l) => l.name === surfaceLiquid)?.family;
   if (isLiquidSurface && surfaceLiquid && hydro > 0.05 && liquidFamily !== 'molten') {
-    const lc = liquidApparentColor(surfaceLiquid, star);
+    const lc = liquidApparentColor(surfaceLiquid, light, rulePack);
     const cover = Math.min(0.85, hydro);
     col = mix(col, lc, cover);
     push(rgbToHex(lc), 'ocean', hydro, `${surfaceLiquid} ocean`);
@@ -174,8 +280,8 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     // toward frost (water → near-white; methane/nitrogen ices keep a faint cast).
     const cover = body.hydrosphere?.coverage ?? 0;
     if (cover > 0.05) {
-      const intrinsic = hexToRgb(LIQUIDS.find((l) => l.name === rawComp)?.colorHex ?? '#8aa0b8');
-      const frost = mix(intrinsic, [236, 243, 250], 0.78);
+      const intrinsic = hexToRgb(liquidDef(rawComp, rulePack)?.colorHex ?? '#8aa0b8');
+      const frost = hexToRgb(under(rgbToHex(mix(intrinsic, [236, 243, 250], 0.78))));
       col = mix(col, frost, Math.min(0.9, cover));
       push(rgbToHex(frost), 'surface', cover, `${rawComp} ice sheet`);
     }
@@ -190,8 +296,9 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
     if (hex) {
       const thickness = Math.min(1, (atm.pressure_bar ?? 0) / 2);
       const opacity = mk.gas > 0.5 ? Math.max(0.6, thickness) : 0.2 + 0.6 * thickness;
-      col = mix(col, hexToRgb(hex), opacity);
-      push(hex, 'atmosphere', opacity, `${g} haze`);
+      const lit = underTop(hex);
+      col = mix(col, hexToRgb(lit), opacity);
+      push(lit, 'atmosphere', opacity, `${g} haze`);
     }
   }
 
@@ -210,8 +317,14 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
       .sort((a, b) => b.veil - a.veil)[0];
     if (top && top.veil > 0.02) {
       // Droplets, not bulk liquid — condensateTint owns that rule (see cloudDecks).
-      const condensate = hexToRgb(condensateTint(top.def?.colorHex ?? '#c8d2dc'));
-      col = mix(col, condensate, Math.min(0.85, top.veil));
+      const condensate = hexToRgb(underTop(condensateTint(top.def?.colorHex ?? '#c8d2dc', top.def?.cloudTintDistance)));
+      // The cap used to be 0.85, which left a sixth of the ground showing through ANY deck however
+      // thick. That is the same fault the giants already had fixed a few lines below (their comment
+      // records that 0.85 "dragged every giant darker than it should"), and on Venus it is glaring:
+      // a 92-bar sulphuric overcast that you can see the rock through. Nobody has ever seen Venus's
+      // surface from orbit. The veil itself still decides — a thin water deck stays thin — this only
+      // stops an arbitrary ceiling overriding it.
+      col = mix(col, condensate, Math.min(0.985, top.veil));
       push(rgbToHex(condensate), 'cloud', top.veil, `${top.d.species} clouds`);
     }
   }
@@ -251,7 +364,7 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
         // substance's own colour — but it is also a brightly sunlit high-albedo cloud top, not a
         // dark pool of the stuff. The liquid colours are ocean colours; used raw they made every
         // giant too dark, and fully paled they washed Jupiter's tan away entirely.
-        stops.push([mix(hexToRgb(hex), [255, 255, 255], 0.32), Math.max(0.04, d.coverage * Math.pow(0.35, i))]);
+        stops.push([mix(hexToRgb(underTop(hex)), [255, 255, 255], 0.32), Math.max(0.04, d.coverage * Math.pow(0.35, i))]);
       });
       if (stops.length) cloud = mixWeighted(stops);
     }
@@ -300,8 +413,40 @@ export function deriveApparentColorParts(body: CelestialBody, rulePack?: RulePac
       // if a world has no coloured condensate, it has no chromophore.
       for (const d of giantDecks.slice(0, -1)) {
         const hex = liquidDef(d.species, rulePack)?.colorHex;
-        if (hex) push(hex, 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), `${d.species} band`);
+        if (hex) push(underTop(hex), 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), `${d.species} band`);
       }
+    }
+  }
+
+  // 3d. HOW MUCH OF THE GROUND YOU CAN SEE AT ALL.
+  //
+  // The cloud and haze steps above each veil by their own share, and between them they still let a
+  // quarter of Venus's rock show — which is how a 92-bar sulphuric overcast came out PINK: crimson
+  // ground bleeding through cream cloud. But we already derive the number that settles it. If the
+  // sky passes 2% of the light on the way down, it is no more transparent on the way back up, so
+  // essentially nothing you see from orbit is the ground.
+  //
+  // So the whole surface stack fades toward what is ABOVE it as transmission falls. It needs no new
+  // quantity, no per-liquid tuning and no cap: a thin sky changes nothing, and an opaque one hides
+  // its world without anybody having to say that Venus is a special case.
+  // ONLY FOR A GENUINELY OPAQUE SKY, and the threshold is doing real work rather than being timid.
+  // The transmission figure INCLUDES the cloud deck, and the deck has already veiled the ground a
+  // few lines above — so applying it everywhere counts the same cloud twice and Earth loses its blue
+  // to a second helping of its own weather. Below about a tenth getting down, no plausible share of
+  // that is the deck alone, and the double-count is swamped by the fact that you can see nothing.
+  const transmission = opts?.transmission;
+  if (transmission !== undefined && transmission < 0.12 && !rendersAsGiant(body)) {
+    const veilTop = palette.filter((p) => p.role === 'cloud' || p.role === 'atmosphere').slice(-1)[0];
+    if (veilTop) {
+      // Down and back up: what returns from the ground has crossed the sky twice.
+      const seen = Math.max(0, Math.min(1, transmission * transmission));
+      col = mix(hexToRgb(veilTop.hex), col, seen);
+      // AND TELL THE PALETTE, not just the flattened swatch. The texture renderers paint the ground
+      // from the `surface` STOP and then veil it with the deck — they never see the number above, so
+      // fixing only `col` fixed the one-swatch view and left the drawn disc showing crimson rock
+      // through an opaque sky. The stop's WEIGHT is how visible that ground is; the renderers read it.
+      const surf = palette.find((p) => p.role === 'surface');
+      if (surf) surf.weight = seen;
     }
   }
 

@@ -19,14 +19,17 @@
     'bottom-left': 'flex-end', 'bottom-center': 'flex-end', 'bottom-right': 'flex-end'
   };
   $: asset = placement ? assets.find((a) => a.id === placement.assetId) : undefined;
+  // A CSS filter, so it composites with whatever look filter the surface already carries rather than
+  // needing a second copy of the image.
+  $: invertCss = placement?.invert ? 'filter:invert(1); ' : '';
 </script>
 
 {#if asset}
   <div class="glayer" style="justify-content:{PIN_JUSTIFY[placement.pin] ?? 'center'}; align-items:{PIN_ALIGN[placement.pin] ?? 'center'}">
     {#if placement.stretch}
-      <img src={asset.dataUrl} alt="" style="width:100%; height:100%; object-fit:fill; opacity:{placement.opacity}" />
+      <img src={asset.dataUrl} alt="" style="{invertCss}width:100%; height:100%; object-fit:fill; opacity:{placement.opacity}" />
     {:else}
-      <img src={asset.dataUrl} alt="" style="width:{placement.sizePct}%; height:auto; max-height:100%; object-fit:contain; opacity:{placement.opacity}" />
+      <img src={asset.dataUrl} alt="" style="{invertCss}width:{placement.sizePct}%; height:auto; max-height:100%; object-fit:contain; opacity:{placement.opacity}" />
     {/if}
   </div>
 {/if}

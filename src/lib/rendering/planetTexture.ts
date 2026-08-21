@@ -10,8 +10,14 @@
 // seeded from the body id (stable frame-to-frame) and cached on an offscreen canvas.
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
 import { deriveAppearance } from './planetAppearance';
+import {
+  landFieldFor, elevationAt, elevationAtDisc, vegetationBand, networkAt, edgeWobble, seedFrom,
+  type LandField
+} from './landmass';
 
-const SIZE = 96; // offscreen texture resolution (diameter in px)
+// Offscreen texture resolution (diameter in px). Raised from 96 when the continent field landed:
+// a warped fractal coastline has detail worth resolving, and 96 threw most of it away.
+const SIZE = 256;
 const cache = new Map<string, HTMLCanvasElement>();
 
 // Deterministic PRNG seeded from the body id.
@@ -70,6 +76,270 @@ function drawPatches(ctx: CanvasRenderingContext2D, rnd: () => number, color: st
 
 const clampVeil = (x: number) => Math.max(0, Math.min(1, x));
 
+/**
+ * Paint sea, land and life from the SHARED elevation field.
+ *
+ * `at(px, py)` hands back the field value under a pixel, or null where there is no world (off the
+ * edge of the disc). Both projections supply their own; everything else about how a rocky world's
+ * surface is coloured lives here exactly once, so the 2D disc and the 3D sphere cannot drift apart.
+ *
+ * Vegetation is a BAND of the field just inside the shoreline, not a scatter — life reaches the land
+ * at the water's edge and spreads inland, so raising the coverage widens the band toward the
+ * interior. Past 100% of the land it spills into the shallows, which is why the slider goes further
+ * on a world with very little dry ground.
+ */
+function paintSurfaceField(
+  ctx: CanvasRenderingContext2D,
+  w: number, h: number,
+  at: (px: number, py: number) => { e: number; lat: number; lon: number } | null,
+  field: LandField,
+  colours: { land: string; sea: string; deep: string; shallow: string },
+  bands: SurfaceBand[],
+  ice: IcePaint | null,
+  seed: number
+) {
+  const img = ctx.createImageData(w, h);
+  const px = img.data;
+  const LAND = rgbOf(colours.land), DEEP = rgbOf(colours.deep), SHALLOW = rgbOf(colours.shallow);
+  const painted = bands.map((b) => ({ ...b, rgb: rgbOf(b.hex) }));
+  const LANDICE = rgbOf('#f4f9ff');   // thick, bright, opaque — snow over ground
+  const SEAICE = rgbOf('#cfe2f2');    // thinner, bluer, and it lets the water below show through
+  const sea = field.seaLevel;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const hit = at(x, y);
+      const i = (y * w + x) * 4;
+      if (hit === null) { px[i + 3] = 0; continue; }
+      const e = hit.e;
+      let r: number, g: number, b: number;
+      if (e > sea) {
+        // Land. Higher ground reads a touch paler and drier — the cheapest possible relief cue, and
+        // what stops a continent looking like flat paint.
+        const rel = Math.min(1, (e - sea) / Math.max(0.02, 1 - sea));
+        r = LAND[0] + (255 - LAND[0]) * rel * 0.22;
+        g = LAND[1] + (255 - LAND[1]) * rel * 0.22;
+        b = LAND[2] + (255 - LAND[2]) * rel * 0.22;
+      } else {
+        // Sea, shading from a shelf tone at the coast to deep water offshore.
+        const d = Math.min(1, (sea - e) / Math.max(0.02, sea * 0.55));
+        r = SHALLOW[0] + (DEEP[0] - SHALLOW[0]) * d;
+        g = SHALLOW[1] + (DEEP[1] - SHALLOW[1]) * d;
+        b = SHALLOW[2] + (DEEP[2] - SHALLOW[2]) * d;
+      }
+      // EVERY contributing layer, in painter order — microbial first, then fungal over it, then
+      // flora over that. Painting only the topmost was a shortcut that made the hierarchy invisible:
+      // a world with three morphologies showed one colour, and reordering the rows did nothing.
+      //
+      // `holdsIce` accumulates as we go: it is how much of what is here can keep its own surface out
+      // from under an ice cap. Same number that lets a morphology take the ocean, because it is the
+      // same claim — whatever roofs a sea is not stopped by a glacier.
+      let holdsIce = 0;
+      for (const band of painted) {
+        if (!(e > band.low && e <= band.high)) continue;
+        // Fade toward the inland edge so a band does not end on a hard contour line.
+        const span = Math.max(1e-4, band.high - band.low);
+        const k = band.opacity * (0.55 + 0.45 * Math.min(1, ((band.high - e) / span) * 3));
+        r += (band.rgb[0] - r) * k; g += (band.rgb[1] - g) * k; b += (band.rgb[2] - b) * k;
+        holdsIce = Math.max(holdsIce, band.waterReach);
+      }
+      // ICE, last, because it covers what it covers. FOUR things stop it being the flat ellipse it
+      // replaced, and all four are things you can see on a real world from orbit:
+      //   - the two caps are DIFFERENT SIZES, because the hemispheres are not in the same season;
+      //   - the edge is ragged, wobbled by its own noise field so it is not a ruled line;
+      //   - it reaches further down HIGH GROUND, because highland is colder — mountain glaciers
+      //     hanging below the cap proper;
+      //   - sea ice is thinner, bluer and partly transparent, while land ice is thick and bright.
+      if (ice) {
+        const latDeg = (hit.lat * 180) / Math.PI;
+        const capEdge = latDeg >= 0 ? ice.north : ice.south;
+        if (capEdge < 89) {
+          const wob = (edgeWobble(seed, hit.lon, hit.lat) - 0.5) * ice.ragged;
+          const highland = e > sea ? Math.min(1, (e - sea) / Math.max(0.02, 1 - sea)) : 0;
+          // Sea ice runs further from the pole than land ice does, and that is not decoration: open
+          // water freezes at its own surface and the sheet spreads across it, while a coast has to
+          // wait for snow to lie. Earth's Arctic is sea ice reaching well below its shores.
+          const seaSpread = e > sea ? 0 : ice.seaSpread;
+          const edge = capEdge + wob - highland * ice.highlandReach - seaSpread;
+          const t = Math.min(1, Math.max(0, (Math.abs(latDeg) - edge) / ice.feather));
+          if (t > 0) {
+            const onLand = e > sea;
+            const ICE = onLand ? LANDICE : SEAICE;
+            const k = t * t * (3 - 2 * t) * (onLand ? 0.95 : 0.72) * (1 - holdsIce);
+            r += (ICE[0] - r) * k; g += (ICE[1] - g) * k; b += (ICE[2] - b) * k;
+          }
+        }
+      }
+      px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function rgbOf(hex: string): [number, number, number] {
+  const n = hex.replace('#', '');
+  const t = n.length === 3 ? n.split('').map((q) => q + q).join('') : n;
+  const v = parseInt(t, 16);
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+
+/** Shade a hex toward white (f>0) or black (f<0), returning a hex. */
+/** '#rrggbb' -> [r,g,b]. Falls back to mid-grey rather than NaN, which would paint nothing at all. */
+function hexToTriple(hex: string): number[] {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return [128, 128, 128];
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function toneHex(hex: string, f: number): string {
+  const [r, g, b] = rgbOf(hex);
+  const ch = (x: number) => Math.max(0, Math.min(255, Math.round(f >= 0 ? x + (255 - x) * f : x * (1 + f))));
+  const h2 = (x: number) => ch(x).toString(16).padStart(2, '0');
+  return `#${h2(r)}${h2(g)}${h2(b)}`;
+}
+
+/**
+ * The land / sea / life inputs a rocky world's surface needs, gathered once for BOTH projections.
+ *
+ * The life colour taken is the TOP contributing layer of the painter stack — the most sophisticated
+ * morphology present is the one you see from orbit, which is the whole point of the hierarchy — and
+ * its coverage is what sets how far inland the band reaches.
+ */
+
+/** Pixel → surface point for the 2D disc: an ORTHOGRAPHIC view of the facing hemisphere. */
+function discSampler(field: LandField, size: number) {
+  return (x: number, y: number) => {
+    const u = (x + 0.5) / size, v = (y + 0.5) / size;
+    const e = elevationAtDisc(field, u, v);
+    if (e === null) return null;
+    const px = (u - 0.5) * 2, py = (0.5 - v) * 2;
+    const pz = Math.sqrt(Math.max(0, 1 - px * px - py * py));
+    return { e, lat: Math.asin(Math.max(-1, Math.min(1, py))), lon: Math.atan2(px, pz) };
+  };
+}
+
+/** Pixel → surface point for the 3D sphere's equirect map. */
+function equirectSampler(field: LandField, w: number, h: number) {
+  return (x: number, y: number) => {
+    const lat = Math.PI / 2 - ((y + 0.5) / h) * Math.PI;
+    const lon = ((x + 0.5) / w) * 2 * Math.PI;
+    return { e: elevationAt(field, lon, lat), lat, lon };
+  };
+}
+
+/**
+ * CITY LIGHTS — what a technological biosphere looks like on the night side.
+ *
+ * Drawn from the SAME band of the elevation field as that morphology's daylight colour, because a
+ * city is lit exactly where it is built: the lights spread from the coast inland as the coverage
+ * rises, and at full coverage the whole land glows. That is a planet-wide city, and the tag for it
+ * is `biodiversity/ecumenopolis`.
+ *
+ * The structure matters more than the brightness. An even glow reads as fog; what makes it read as a
+ * CITY is the arterial network between the dark blocks, so the lit set is ridged noise — thin
+ * connected filaments — with a dim wash underneath for the built-up ground between them.
+ */
+function paintLights(
+  ctx: CanvasRenderingContext2D,
+  w: number, h: number,
+  at: (px: number, py: number) => { e: number; lat: number; lon: number } | null,
+  bands: SurfaceBand[],
+  seed: number
+) {
+  const img = ctx.createImageData(w, h);
+  const px = img.data;
+  // Warm amber: sodium- and filament-lit cities read orange from orbit, which is what every night
+  // photograph of Earth and every artist's ecumenopolis has in common. THAT IS A DEFAULT, NOT A LAW —
+  // a morphology may author `lightHex` and glow however it likes (bioluminescence, arc-light, a
+  // methane flare). Absent, these exact numbers still run, so nothing already drawn moves.
+  const DEFAULT_CORE = [255, 214, 150], DEFAULT_ARTERY = [255, 176, 74];
+  // The arterial tone is DERIVED from the core rather than authored: one swatch is a colour a GM can
+  // pick, two are a palette they have to get right, and the depth cue is the same either way.
+  const lit0 = bands.find((b) => b.lightHex)?.lightHex;
+  const CORE = lit0 ? hexToTriple(lit0) : DEFAULT_CORE;
+  const ARTERY = lit0 ? hexToTriple(toneHex(lit0, -0.28)) : DEFAULT_ARTERY;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const hit = at(x, y);
+      const i = (y * w + x) * 4;
+      if (hit === null) { px[i + 3] = 0; continue; }
+      let lit = 0;
+      for (const band of bands) {
+        if (!(hit.e > band.low && hit.e <= band.high)) continue;
+        lit = Math.max(lit, band.light);
+      }
+      if (lit <= 0) { px[i + 3] = 0; continue; }
+      // THE NETWORK IS THRESHOLDED BY HOW LIT THE PLACE IS, which is what separates a world that is
+      // merely inhabited from a world that is one city. Earth is not dark because people are absent —
+      // most of its land carries us — it is dark because only a few per cent of that land is built
+      // and lit. So a low light value keeps only the brightest crests of the web and the night side
+      // reads as scattered points along the coasts; a high one lets the whole grid through.
+      const net = networkAt(seed, hit.lon, hit.lat);
+      const cut = 1 - lit;
+      if (net <= cut) { px[i + 3] = 0; continue; }
+      const t = (net - cut) / Math.max(1e-4, 1 - cut);
+      const glow = 0.25 + 0.75 * t;
+      const a = Math.min(1, glow * (0.55 + 0.45 * lit));
+      if (a < 0.02) { px[i + 3] = 0; continue; }
+      px[i] = CORE[0] + (ARTERY[0] - CORE[0]) * (1 - t);
+      px[i + 1] = CORE[1] + (ARTERY[1] - CORE[1]) * (1 - t);
+      px[i + 2] = CORE[2] + (ARTERY[2] - CORE[2]) * (1 - t);
+      px[i + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/** One painted band of the elevation field: a morphology's colour between two thresholds. */
+interface SurfaceBand {
+  low: number; high: number; hex: string; opacity: number; light: number; morphology: string;
+  /** What this band's night lights GLOW. Absent = the default amber. */
+  lightHex?: string;
+  /** How much of the world's water — and, by the same claim, its ice — this one can hold. */
+  waterReach: number;
+}
+
+/** Everything the ice pass needs. `ragged` and `feather` are in DEGREES of latitude. */
+interface IcePaint { north: number; south: number; ragged: number; feather: number; highlandReach: number; seaSpread: number; }
+
+/** Fade a ground colour toward whatever is ABOVE it, by how much of the ground can be seen at all.
+ *  The `surface` stop's weight carries that (see apparentColor): 1 on an ordinary world, and near
+ *  zero under a sky nothing gets through — which is why nobody has photographed Venus's rock. */
+function throughTheSky(hex: string, body: CelestialBody): string {
+  const pal = body.apparentColor?.palette ?? [];
+  const surf = pal.find((p) => p.role === 'surface');
+  const seen = surf?.weight ?? 1;
+  if (seen >= 0.995) return hex;
+  const above = pal.filter((p) => p.role === 'cloud' || p.role === 'atmosphere').slice(-1)[0];
+  if (!above) return hex;
+  const a = rgbOf(hex), b = rgbOf(above.hex);
+  const h2 = (v: number) => Math.round(v).toString(16).padStart(2, '0');
+  return `#${h2(b[0] + (a[0] - b[0]) * seen)}${h2(b[1] + (a[1] - b[1]) * seen)}${h2(b[2] + (a[2] - b[2]) * seen)}`;
+}
+
+function surfacePaint(body: CelestialBody, landHex: string, seaHex: string, seaCover: number) {
+  // Read the APPEARANCE MODEL, not the body. It has already dropped the layers that paint nothing,
+  // gated out stars, belts and giants, and defaulted the land fraction — so a renderer that reached
+  // round it would be re-deciding all three, badly and separately. That is what the model is for.
+  const a = deriveAppearance(body);
+  const field = landFieldFor(body.id || 'x', Math.max(0, Math.min(1, 1 - seaCover)));
+  const land = throughTheSky(landHex, body);
+  const sea = throughTheSky(seaHex, body);
+  const colours = { land, sea, deep: toneHex(sea, -0.35), shallow: toneHex(sea, 0.3) };
+  const bands: SurfaceBand[] = (a.vegetation?.layers ?? []).map((l) => {
+    const band = vegetationBand(field, l.coverage, l.waterReach);
+    return { low: band.low, high: band.high, hex: l.colorHex, opacity: l.opacity, light: l.light,
+             lightHex: l.lightHex, morphology: l.morphology, waterReach: l.waterReach };
+  }).filter((b) => b.high > b.low);
+  const ice: IcePaint | null = a.polarIce && Math.min(a.polarIceLatDeg.north, a.polarIceLatDeg.south) < 89
+    ? { north: a.polarIceLatDeg.north, south: a.polarIceLatDeg.south, ragged: 10, feather: 4, highlandReach: 16, seaSpread: 7 }
+    : null;
+  // Bands that EMIT — a technological morphology's night lights. Same band as its daylight colour,
+  // because a city is lit exactly where it is built.
+  const lights = bands.filter((b) => b.light > 0.001);
+  return { field, colours, bands, ice, lights, seed: seedFrom(body.id || 'x') };
+}
+
+
 function render(body: CelestialBody): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = SIZE; c.height = SIZE;
@@ -122,17 +392,15 @@ function render(body: CelestialBody): HTMLCanvasElement {
       ctx.fill();
     }
   } else {
-    // --- Rocky world: land vs liquid at the true coverage fraction. If the world is mostly
-    //     ocean, paint ocean as the base and draw LAND patches instead, so the % reads right.
+    // --- Rocky world: sea, land and life thresholded out of the SHARED elevation field, so the
+    //     coastline the 3D globe draws is the same coastline, and plant life lands on the ground
+    //     rather than in the sea. The scatter of circles this replaces rolled its own answer to
+    //     "where is the land" three separate times.
     const land = surface?.hex ?? '#9c7a5a';
     const cover = ocean ? Math.min(0.98, ocean.weight) : 0;
-    if (ocean && cover >= 0.5) {
-      ctx.fillStyle = ocean.hex; ctx.fillRect(0, 0, SIZE, SIZE);
-      drawPatches(ctx, rnd, land, 1 - cover);
-    } else {
-      ctx.fillStyle = land; ctx.fillRect(0, 0, SIZE, SIZE);
-      if (ocean && cover > 0.02) drawPatches(ctx, rnd, ocean.hex, cover);
-    }
+    const paint = surfacePaint(body, land, ocean?.hex ?? '#2b6cb0', cover);
+    paintSurfaceField(ctx, SIZE, SIZE, discSampler(paint.field, SIZE),
+      paint.field, paint.colours, paint.bands, paint.ice, paint.seed);
     // Cloud deck on top. Its palette weight is the deck's VEIL — how much of the ground it hides —
     // so it must drive how much of the disc is covered, not just the alpha of a fixed handful of
     // streaks. A total veil (Venus: 0.2% sulphuric acid, but 0.18 bar of it) was drawing as a few
@@ -176,13 +444,9 @@ function render(body: CelestialBody): HTMLCanvasElement {
   // (craters/cracks/tholins/frost/rifts) are NOT baked here: this disc texture is the base layer for
   // PlanetDisc, which draws those crisply as SVG on top; baking them too would double them. (The 3D
   // equirect sibling has no such overlay, so it DOES bake the full set.)
-  {
-    if (appear.regolith > 0) {
-      ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = appear.regolith;
-      ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, SIZE, SIZE);
-      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-    }
-  }
+  // (Space-weathered greying used to be re-applied here as a saturation wash. It now arrives in the
+  // palette this texture is painted from — see apparentColor's space-weathering step — so doing it
+  // again would count the same nanophase iron twice.)
 
   // --- Haze: a wash plus a stronger limb tint (atmosphere reads thickest at the edge).
   if (haze) {
@@ -253,12 +517,7 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
   const wrap = (draw: (dx: number) => void) => { for (const dx of [-EQ_W, 0, EQ_W]) draw(dx); };
   const S = EQ_W / 512; // absolute-px sizes scale with the sheet resolution (relative ones auto-scale)
 
-  // Space-weathered regolith: desaturate an airless silicate surface toward grey (Moon/Mercury).
-  if (a.regolith > 0) {
-    ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = a.regolith;
-    ctx.fillStyle = 'hsl(0,0%,55%)'; ctx.fillRect(0, 0, EQ_W, EQ_H);
-    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-  }
+  // (Space-weathered greying arrives in the palette now — see the disc renderer's note above.)
 
   // EYEBALL — a tidally-locked world's permanent day/night split: a hot (baked or molten-glowing)
   // substellar hemisphere fading through a terminator ring to a frozen antistellar one. The substellar
@@ -293,17 +552,10 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     ctx.beginPath(); ctx.ellipse(EQ_W / 2, baseLat * 0.35, EQ_W * 0.12, baseLat * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
   }
 
-  if (a.polarIce) {
-    // Bright frozen caps. The equirect pinches at the poles, so keep the cap SOLID across most of its
-    // latitude band (only fading near the equator edge) — otherwise it collapses into an invisible speck.
-    const capH = EQ_H * 0.26;
-    for (const top of [true, false]) {
-      const y0 = top ? 0 : EQ_H, y1 = top ? capH : EQ_H - capH;
-      const cg = ctx.createLinearGradient(0, y0, 0, y1);
-      cg.addColorStop(0, 'rgba(242,248,255,0.95)'); cg.addColorStop(0.7, 'rgba(242,248,255,0.9)'); cg.addColorStop(1, 'rgba(242,248,255,0)');
-      ctx.fillStyle = cg; ctx.fillRect(0, Math.min(y0, y1), EQ_W, capH);
-    }
-  }
+  // (The flat cap wash that used to live here is gone. Ice is painted with the surface now, ragged
+  //  along the same elevation field the coastline comes from, and reaching the latitude at which
+  //  this world's own liquid freezes rather than a fixed 26% of the map. Two ice models would have
+  //  disagreed about where the cap ends the moment either changed.)
 
   // SURFACE tholin staining only (Pluto's dark-red patches). An ATMOSPHERIC tholin haze (Titan) is
   // not part of the surface: it is a high photochemical layer that sits ABOVE the cloud decks, so
@@ -465,18 +717,13 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
       }
     }
   } else {
-    // Rocky world: land vs liquid at the true coverage fraction, wrapped.
+    // Rocky world: the SAME elevation field the 2D disc thresholds, read through the equirect
+    // mapping instead of an orthographic one. One geography, two projections.
     const land = surface?.hex ?? '#9c7a5a';
     const cover = ocean ? Math.min(0.98, ocean.weight) : 0;
-    if (ocean && cover >= 0.5) {
-      ctx.fillStyle = ocean.hex;
-      ctx.fillRect(0, 0, EQ_W, EQ_H);
-      drawPatchesEquirect(ctx, rnd, land, 1 - cover);
-    } else {
-      ctx.fillStyle = land;
-      ctx.fillRect(0, 0, EQ_W, EQ_H);
-      if (ocean && cover > 0.02) drawPatchesEquirect(ctx, rnd, ocean.hex, cover);
-    }
+    const paint = surfacePaint(body, land, ocean?.hex ?? '#2b6cb0', cover);
+    paintSurfaceField(ctx, EQ_W, EQ_H, equirectSampler(paint.field, EQ_W, EQ_H),
+      paint.field, paint.colours, paint.bands, paint.ice, paint.seed);
     // NB: clouds are NOT baked into the 3D surface — the holo draws them as separate drifting shells
     // (buildCloudDeck). The 2D disc still paints its own cloud streaks (it has no shell layer).
   }
@@ -507,7 +754,7 @@ export function getPlanetTextureEquirect(body: CelestialBody): HTMLCanvasElement
   const ap = body.apparentColor;
   const g = (body as any).geoActivity;
   const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}:${(body as any).starTidallyLocked ? 1 : 0}:${(body as any).makeup?.ice ?? ''}:${(body.tags ?? []).some((t) => t.key === 'climate/polar-ice') ? 'pi' : ''}:${(body as any).temperatureRangeK?.max ?? ''}:${(body.tags ?? []).find((t) => t.key === 'feature/polar-vortex')?.value ?? ''}`;
-  const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|` +
+  const key = `eq|${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|${((body as any).vegetation?.layers ?? []).map((l: any) => `${l.morphology}:${l.colorHex ?? '-'}:${l.coverage.toFixed(2)}`).join('+')}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = eqCache.get(key);
   if (!tex) {
@@ -525,10 +772,21 @@ const emCache = new Map<string, HTMLCanvasElement | null>();
 function renderEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
   const a = deriveAppearance(body);
   const molten = !!a.eyeball?.molten;
-  if (!a.thermalGlow && !molten) return null;
+  // CITY LIGHTS share this map with the molten glow, because they are the same thing to a renderer:
+  // places the surface emits rather than reflects. A world that is merely inhabited is not hot, so
+  // the old "no glow unless molten" gate would have thrown its cities away.
+  const litBands = (a.vegetation?.layers ?? []).some((l) => l.light > 0.001);
+  if (!a.thermalGlow && !molten && !litBands) return null;
   const c = document.createElement('canvas'); c.width = EQ_W; c.height = EQ_H;
   const ctx = c.getContext('2d')!;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, EQ_W, EQ_H);
+  if (litBands) {
+    const ocean = (body.apparentColor?.palette ?? []).find((q) => q.role === 'ocean');
+    const paint = surfacePaint(body, '#9c7a5a', ocean?.hex ?? '#2b6cb0', ocean ? Math.min(0.98, ocean.weight) : 0);
+    const lc = document.createElement('canvas'); lc.width = EQ_W; lc.height = EQ_H;
+    paintLights(lc.getContext('2d')!, EQ_W, EQ_H, equirectSampler(paint.field, EQ_W, EQ_H), paint.lights, paint.seed);
+    ctx.drawImage(lc, 0, 0);
+  }
   if (molten && a.eyeball) {
     // Glow confined to the molten substellar hemisphere; falls to black by the terminator.
     const g = ctx.createRadialGradient(EQ_W / 2, EQ_H / 2, 0, EQ_W / 2, EQ_H / 2, EQ_W * 0.34);
@@ -540,10 +798,38 @@ function renderEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
   }
   return c;
 }
+
+// City lights for the 2D disc, in the SAME orthographic frame as its surface texture — so the
+// glow lines up with the continents it belongs to. The disc overlays this masked to the night side;
+// the 3D sphere uses the equirect version as an emissive map and gets the terminator for free.
+const lightsCache = new Map<string, HTMLCanvasElement | null>();
+export function getPlanetLights(body: CelestialBody): HTMLCanvasElement | null {
+  if (typeof document === 'undefined' || !body.apparentColor) return null;
+  const layers = ((body as any).vegetation?.layers ?? []).filter((l: any) => (l.light ?? 0) > 0.001);
+  if (!layers.length) return null;
+  const key = `lt|${body.id}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|` +
+    layers.map((l: any) => `${l.morphology}:${l.light.toFixed(2)}:${l.coverage.toFixed(2)}`).join('+');
+  if (lightsCache.has(key)) return lightsCache.get(key)!;
+  if (lightsCache.size > 200) lightsCache.clear();
+  const ocean = body.apparentColor.palette.find((q) => q.role === 'ocean');
+  const paint = surfacePaint(body, '#9c7a5a', ocean?.hex ?? '#2b6cb0', ocean ? Math.min(0.98, ocean.weight) : 0);
+  let tex: HTMLCanvasElement | null = null;
+  if (paint.lights.length) {
+    tex = document.createElement('canvas');
+    tex.width = SIZE; tex.height = SIZE;
+    paintLights(tex.getContext('2d')!, SIZE, SIZE, discSampler(paint.field, SIZE), paint.lights, paint.seed);
+  }
+  lightsCache.set(key, tex);
+  return tex;
+}
+
 export function getEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
   if (typeof document === 'undefined' || !body.apparentColor) return null;
   const surfLiq = body.hydrosphere?.layers?.find((l) => l.location === 'surface')?.liquid ?? body.hydrosphere?.composition ?? '';
-  const key = `em|${body.id}|${(body as any).temperatureRangeK?.max ?? ''}|${(body as any).temperatureRangeK?.min ?? ''}|${(body as any).tidallyLocked ? 1 : 0}|${surfLiq}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}`;
+  const lightKey = ((body as any).vegetation?.layers ?? [])
+    .filter((l: any) => (l.light ?? 0) > 0)
+    .map((l: any) => `${l.morphology}:${l.light.toFixed(2)}:${l.coverage.toFixed(2)}`).join('+');
+  const key = `em|${body.id}|${(body as any).temperatureRangeK?.max ?? ''}|${(body as any).temperatureRangeK?.min ?? ''}|${(body as any).tidallyLocked ? 1 : 0}|${surfLiq}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${lightKey}`;
   if (emCache.has(key)) return emCache.get(key)!;
   if (emCache.size > 80) emCache.clear();
   const tex = renderEmissiveEquirect(body);
@@ -557,7 +843,7 @@ export function getPlanetTexture(body: CelestialBody): HTMLCanvasElement | null 
   const ap = body.apparentColor;
   const g = (body as any).geoActivity;
   const feat = `${g?.regime ?? ''}:${(g?.surfaceAgeGyr ?? 0).toFixed(2)}:${(body as any).irradiationDose ?? ''}:${((body as any).volatiles?.retained ?? []).join('+')}:${(body as any).tidallyLocked ? 1 : 0}`;
-  const key = `${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|` +
+  const key = `${body.id}|${ap.hex}|${ap.banding || 0}|${(body.hydrosphere?.coverage ?? 0).toFixed(2)}|${feat}|${((body as any).vegetation?.layers ?? []).map((l: any) => `${l.morphology}:${l.colorHex ?? '-'}:${l.coverage.toFixed(2)}`).join('+')}|` +
     ap.palette.map((p) => `${p.role}:${p.hex}:${p.weight.toFixed(2)}`).join(',');
   let tex = cache.get(key);
   if (!tex) {

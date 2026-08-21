@@ -67,11 +67,25 @@ export function createGalleryScene(
 
 	// Lighting: a key light from the upper-front (so each body shows a soft terminator) + fill so the
 	// far side isn't black in a review context.
-	scene.add(new THREE.HemisphereLight(0xbfd0e6, 0x2a2f3c, 1.25));
+	// LAYER 0 is the ordinary gallery lighting. LAYER 1 is the night-side rig, used by rows whose
+	// whole point is what a world EMITS: a hard raking key, no fill and almost no ambient, so there
+	// is a real terminator to see a city glow across. Three.js layers are how one scene carries two
+	// lighting setups without either row having to move.
+	const NIGHT_LAYER = 1;
+	const hemi = new THREE.HemisphereLight(0xbfd0e6, 0x2a2f3c, 1.25);
+	hemi.layers.set(0); scene.add(hemi);
 	const key = new THREE.DirectionalLight(0xffffff, 2.1);
-	key.position.set(0.4, 0.7, 1); scene.add(key);
+	key.position.set(0.4, 0.7, 1); key.layers.set(0); scene.add(key);
 	const fill = new THREE.DirectionalLight(0xdfe8f4, 0.55); // soft front fill so textures don't read dark
-	fill.position.set(-0.3, 0.1, 0.8); scene.add(fill);
+	fill.position.set(-0.3, 0.1, 0.8); fill.layers.set(0); scene.add(fill);
+
+	const nightHemi = new THREE.HemisphereLight(0x243044, 0x0a0c12, 0.22);
+	nightHemi.layers.set(NIGHT_LAYER); scene.add(nightHemi);
+	const nightKey = new THREE.DirectionalLight(0xfff2e0, 2.6);
+	nightKey.position.set(-1.15, 0.35, 0.45);   // well round to the side: about a third of the disc is night
+	nightKey.layers.set(NIGHT_LAYER); scene.add(nightKey);
+	// The camera has to be told to render the second layer at all — by default it sees only layer 0.
+	camera.layers.enable(NIGHT_LAYER);
 
 	const glowTexture = makeGlowTexture();
 	const hotspotTexture = makeHotspotTexture();
@@ -92,7 +106,7 @@ export function createGalleryScene(
 	const lensBHs: { pos: THREE.Vector3; r: number; disc?: { obj: THREE.Object3D; inner: number; outer: number } }[] = [];
 
 	// Build a single planet/moon/star/brown-dwarf tile at (x,y). Returns the group.
-	function buildBody(node: any, x: number, y: number): void {
+	function buildBody(node: any, x: number, y: number, nightSide = false): void {
 		const g = new THREE.Group();
 		g.position.set(x, y, 0);
 		const isStar = node.roleHint === 'star';
@@ -257,6 +271,10 @@ export function createGalleryScene(
 	// --- Layout: rows top→down, centred horizontally. ---
 	let row = 0;
 	const rowLabels: THREE.Sprite[] = [];
+	/** Move an object and everything under it onto a lighting layer. Applied after the body is built,
+	 *  because half of a body's parts are added by helpers that know nothing about layers. */
+	const setLayerDeep = (obj: THREE.Object3D, layer: number) => obj.traverse((o) => o.layers.set(layer));
+
 	const placeRow = (title: string, n: number, place: (i: number, x: number, y: number) => void) => {
 		const y = -row * ROW_GAP;
 		const rl = makeLabel(title, '#8fb4e0', 30); rl.position.set(-(n / 2) * COL_GAP - 0.2, y + R + 0.55, 0);
@@ -265,14 +283,14 @@ export function createGalleryScene(
 		row++;
 	};
 
-	for (const r of GALLERY_ROWS) placeRow(r.title, r.bodies.length, (i, x, y) => buildBody(r.bodies[i], x, y));
+	for (const r of GALLERY_ROWS) placeRow(r.title, r.bodies.length, (i, x, y) => buildBody(r.bodies[i], x, y, r.nightSide));
 	const bhRowY = -row * ROW_GAP;
 	placeRow('Black holes — by accretion level', GALLERY_BLACK_HOLES.length, (i, x, y) => buildBlackHole(GALLERY_BLACK_HOLES[i], x, y));
 	// Backdrop stars behind the black-hole row so the lensing has something to bend.
 	addStarBackdrop(bhRowY, (GALLERY_BLACK_HOLES.length / 2) * COL_GAP + COL_GAP, ROW_GAP * 0.75);
 
 	// Live-data rows last (the real solar system) — see the extraRows note above.
-	for (const r of extraRows) placeRow(r.title, r.bodies.length, (i, x, y) => buildBody(r.bodies[i], x, y));
+	for (const r of extraRows) placeRow(r.title, r.bodies.length, (i, x, y) => buildBody(r.bodies[i], x, y, r.nightSide));
 
 	// Post-processing: the black-hole lensing pass (same shader as the live holo). The front-of-hole
 	// disc is handled ANALYTICALLY in the shader (the projected disc-ellipse band passes through

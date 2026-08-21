@@ -69,7 +69,16 @@ vi.mock('$lib/api', async (importOriginal) => ({
 }));
 
 // jsdom has no IndexedDB; mock the storage layer so onMount resolves deterministically.
-vi.mock('$lib/starmapStorage', () => ({
+//
+// E3: KEEP THE REAL EXPORTS AND OVERRIDE ONLY WHAT THE TESTS DRIVE. This used to be a bare object
+// listing four exports, and when `loadPreUpgradeStarmap` was added to the module at v2.1.274-beta the
+// mock did not grow with it — so `refreshPreUpgradeSnapshot` threw on mount and all four tests failed
+// for the next ~118 versions. Nobody noticed, because the suite was never green and so said nothing.
+// `importOriginal` makes that class of failure impossible: a new export arrives already present, and
+// the pre-upgrade helpers degrade to null/false without IndexedDB by their own design. Same shape as
+// the `$lib/api` mock above, for the same reason.
+vi.mock('$lib/starmapStorage', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   hasSavedStarmap: vi.fn(() => Promise.resolve(false)),
   loadSavedStarmap: vi.fn(() => Promise.resolve(null)),
   migrateLegacyStarmapToIndexedDb: vi.fn(() => Promise.resolve()),
@@ -90,14 +99,19 @@ describe('+page.svelte', () => {
     vi.mocked(loadSavedStarmap).mockResolvedValue(null);
   });
 
+  // E3: these two used to look for a 'Create a New Starmap' heading. It has not existed since the
+  // New Starmap screen was reorganised into three ways in (v2.1.403) — so anchor on the section
+  // headings, which ARE the screen's meaning, rather than on a title that was only ever decoration.
   it('shows the new-starmap modal when no starmap is saved', async () => {
-    const { findByText } = renderPage();
-    expect(await findByText('Create a New Starmap')).toBeInTheDocument();
+    const { findByText, getByText } = renderPage();
+    expect(await findByText('Start from an example')).toBeInTheDocument();
+    expect(getByText('Bring in a map')).toBeInTheDocument();
+    expect(getByText('Start empty')).toBeInTheDocument();
   });
 
   it('creates a new starmap when the form is submitted', async () => {
     const { findByText, getByText } = renderPage();
-    await findByText('Create a New Starmap');
+    await findByText('Start empty');
     await fireEvent.click(getByText('Create Vast Nothingness'));
     // The new starmap (default name "My Starmap") renders its title.
     expect(await findByText('My Starmap')).toBeInTheDocument();
@@ -123,7 +137,16 @@ describe('+page.svelte', () => {
     vi.mocked(hasSavedStarmap).mockResolvedValue(true);
     vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
     const { container, findByText, queryByText } = renderPage();
-    await findByText('Test Starmap');
+    // WAIT FOR THE APP TO FINISH LOADING, not for one second. This test is about NAVIGATION — does
+    // clicking a star enter that system — and the default 1s findByText timeout made the SETUP the
+    // thing that failed: observed timing out with the physics overlay still in the DOM, while passing
+    // every time in isolation. The assertions below are unchanged.
+    // HONEST SCOPE: this removes ONE source of noise, not the only one. This suite goes intermittently
+    // red under machine contention (several long-lived dev servers in the shared worktrees), and when
+    // it does the casualties are scattered across unrelated files — broadcastContract, axialTilt,
+    // generateFromConfig, systemUndo — none of which a timeout here can help. Do not read a red run
+    // as a regression without checking WHICH tests failed and whether they repeat.
+    await findByText('Test Starmap', {}, { timeout: 8000 });
 
     // The clickable star is the <g role="button">, not the sibling name label.
     const star = container.querySelector('g[role="button"]') as SVGGElement;

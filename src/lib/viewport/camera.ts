@@ -7,7 +7,7 @@ import type { System } from '../types';
 import type { PanState } from './stores';
 import { AU_KM } from '../constants';
 import { scaleBoxCox } from '../physics/scaling';
-import { contextPeerIds, isBarycentre } from '../system/barycentres';
+import { contextPeerIds, pairContextIds, isBarycentre } from '../system/barycentres';
 
 type WorldPositions = Map<string, { x: number; y: number }>;
 
@@ -21,17 +21,21 @@ export const AUTO_ZOOM_MAX_STEP_RATIO = 1.2;
 export const AUTO_FRAME_MIN_UPDATE_MS = 180; // rate-limit: don't re-frame every frame
 export const AUTO_FRAME_DEADBAND = 0.02;     // ignore sub-2% corrections (stops hunting)
 
-export function clampZoom(value: number): number {
-	if (!Number.isFinite(value)) return MIN_CAMERA_ZOOM;
-	return Math.max(MIN_CAMERA_ZOOM, Math.min(MAX_CAMERA_ZOOM, value));
+// The bounds default to the orrery's zoom-scalar range, but they are the CALLER'S to set: the holo runs
+// its camera DISTANCE through this same policy, and there 0.05 is not "maximum zoom-out" but a floor of
+// ~4500 Earth radii — it silently forbade ever framing a true-scale world (the ease dived in, then the
+// follow step clamped the distance back out and the planet collapsed to a marker).
+export function clampZoom(value: number, min = MIN_CAMERA_ZOOM, max = MAX_CAMERA_ZOOM): number {
+	if (!Number.isFinite(value)) return min;
+	return Math.max(min, Math.min(max, value));
 }
 
-export function dampedZoomStep(current: number, target: number): number {
-	const safeCurrent = Math.max(current, MIN_CAMERA_ZOOM);
-	const safeTarget = clampZoom(target);
+export function dampedZoomStep(current: number, target: number, min = MIN_CAMERA_ZOOM, max = MAX_CAMERA_ZOOM): number {
+	const safeCurrent = Math.max(current, min);
+	const safeTarget = clampZoom(target, min, max);
 	const ratio = safeTarget / safeCurrent;
 	const clampedRatio = Math.max(1 / AUTO_ZOOM_MAX_STEP_RATIO, Math.min(AUTO_ZOOM_MAX_STEP_RATIO, ratio));
-	return clampZoom(safeCurrent * clampedRatio);
+	return clampZoom(safeCurrent * clampedRatio, min, max);
 }
 
 /**
@@ -53,12 +57,16 @@ export function autoFrameStep(args: {
 	sinceLastMs: number;
 	minUpdateMs?: number;
 	deadband?: number;
+	minValue?: number;       // caller's own lower bound (the holo: its camera min-distance)
+	maxValue?: number;       // caller's own upper bound
 }): number | null {
 	const { current, ideal, userOverride, suppress = false, sinceLastMs } = args;
 	if (userOverride || suppress) return null;
 	if (sinceLastMs < (args.minUpdateMs ?? AUTO_FRAME_MIN_UPDATE_MS)) return null;
-	const next = dampedZoomStep(current, ideal);
-	const delta = Math.abs(next - current) / Math.max(current, MIN_CAMERA_ZOOM);
+	const mn = args.minValue ?? MIN_CAMERA_ZOOM;
+	const mx = args.maxValue ?? MAX_CAMERA_ZOOM;
+	const next = dampedZoomStep(current, ideal, mn, mx);
+	const delta = Math.abs(next - current) / Math.max(current, mn);
 	return delta > (args.deadband ?? AUTO_FRAME_DEADBAND) ? next : null;
 }
 
@@ -66,6 +74,9 @@ export function autoFrameStep(args: {
 // A consistent zoom ladder applied to ANY focusable object (star/planet/moon/construct/barycentre).
 // Selecting frames level 1; each further click on the focused object steps DOWN to the next level
 // that exists; missing levels are skipped. Levels:
+//   0 "pair context" — BARYCENTRE MEMBERS ONLY: the object centred with the body the PAIR orbits at the
+//                    edge. A member's level 1 reaches its partner, not the thing they go round together,
+//                    so without this rung the ladder ran out at pair scale and wrapped back in.
 //   1 "context"    — object centred, its PARENT sits `parentBorderFrac` in from the screen edge
 //                    (a large parent may bleed off-screen — you'll see ~the inner 1-2·border of it).
 //   2 "satellites" — object centred, its FURTHEST satellite `satelliteBorderFrac` from the edge.
@@ -110,6 +121,7 @@ export type FrameLevelConfig = typeof FRAME_LEVELS;
  */
 export function frameLevelsFrom(has: {
 	hasParent: boolean; hasSatellites: boolean; hasRadius?: boolean; isPoint?: boolean;
+	hasPairContext?: boolean;
 }): number[] {
 	const isRootBody = !has.hasParent && has.hasSatellites && (has.hasRadius ?? true);
 	if (isRootBody) return [3, 2]; // close-up first, whole system on the next click (then it cycles)
@@ -117,6 +129,9 @@ export function frameLevelsFrom(has: {
 	if (has.hasSatellites) levels.push(2); // 1st click: the object and everything orbiting it
 	if (!has.isPoint) levels.push(3);      // then close in on the object itself — a barycentre has none
 	if (has.hasParent) levels.push(1);     // the wider context comes last, before the wrap
+	// ...unless the context WAS only the partner. A barycentre member then gets one further rung out to
+	// the orbit the pair shares, which is the shot every other object's level 1 already gives it.
+	if (has.hasPairContext) levels.push(0);
 	return levels.length ? levels : [3];
 }
 /** A NEW selection starts at the object's first existing level. */
@@ -153,10 +168,15 @@ export function frameHalfExtent(args: {
 	radius: number;
 	parentDist?: number;
 	maxSatelliteDist?: number;
+	pairContextDist?: number;
 	config?: FrameLevelConfig;
 }): number {
 	const cfg = args.config ?? FRAME_LEVELS;
 	const { level, radius } = args;
+	// Level 0 before level 1: it is the WIDER of the two, and only a barycentre member ever asks for it.
+	if (level <= 0 && (args.pairContextDist ?? 0) > 0) {
+		return Math.max(args.pairContextDist!, radius * 2, 1e-9) / Math.max(0.05, 1 - cfg.parentBorderFrac);
+	}
 	if (level <= 1 && (args.parentDist ?? 0) > 0) {
 		return Math.max(args.parentDist!, radius * 2, 1e-9) / Math.max(0.05, 1 - cfg.parentBorderFrac);
 	}
@@ -198,7 +218,8 @@ export function availableFrameLevels(args: {
 		hasParent: contextPeerIds(system, nodeId, parentId).some((id) => !!positions.get(id)),
 		hasSatellites: system.nodes.some((n) => n.parentId === nodeId && positions.get(n.id)),
 		hasRadius: node.kind === 'body' && !!node.radiusKm, // a radius-less root (barycentre) keeps whole-system-first
-		isPoint: isBarycentre(node)
+		isPoint: isBarycentre(node),
+		hasPairContext: pairContextIds(system, nodeId, parentId).some((id) => !!positions.get(id))
 	});
 }
 
@@ -389,7 +410,13 @@ export function frameForLevel(args: {
 		const cp = positions.get(c.id);
 		if (cp) maxSatelliteDist = Math.max(maxSatelliteDist, Math.hypot(cp.x - pos.x, cp.y - pos.y));
 	}
+	// Level 0: past the partner, out to whatever the pair as a whole orbits (barycentre members only).
+	let pairContextDist = 0;
+	for (const gpId of pairContextIds(system, nodeId, parentId)) {
+		const gp = positions.get(gpId);
+		if (gp) pairContextDist = Math.max(pairContextDist, Math.hypot(pos.x - gp.x, pos.y - gp.y));
+	}
 	// Radius-less nodes (constructs) get a small fixed patch — their glyph is screen-fixed anyway.
-	const half = frameHalfExtent({ level, radius: radiusAU, parentDist, maxSatelliteDist, config: cfg }) || 0.005;
+	const half = frameHalfExtent({ level, radius: radiusAU, parentDist, maxSatelliteDist, pairContextDist, config: cfg }) || 0.005;
 	return { pan: pos, zoom: clampZoom((minDimension / 2) / Math.max(half, 1e-9)) };
 }

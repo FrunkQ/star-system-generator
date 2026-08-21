@@ -5,6 +5,7 @@ import type { VolatileRetention } from './physics/volatileRetention';
 import type { ClassExplanation } from './system/classification';
 import type { TravellerWorldData } from './traveller/types';
 import type { ScheduledJourneyLog } from './transit/types';
+import type { PackListDelta } from './rulepackDelta';
 
 export type ID = string;
 
@@ -14,7 +15,16 @@ export interface Visibility {
   fields?: Record<string, boolean>;
 }
 
-export interface Tag { key: string; value?: string; ns?: string; manual?: boolean; coi?: boolean; inherited?: boolean; source?: string; }
+// `origin` states where a tag came from and therefore what may delete it — see tags/tagLifecycle.ts,
+// which is the only place that interprets it. It is OPTIONAL and inferred from the flags below when
+// absent, so the existing writers did not have to change; set it explicitly on new ones.
+export interface Tag {
+  key: string; value?: string; ns?: string;
+  origin?: 'physics' | 'rule' | 'authored' | 'manual' | 'inherited' | 'derived';
+  override?: true;   // manual, inside a namespace the engine derives — it wins that key
+  secret?: true;     // never reaches a player surface (see tags/tagLifecycle redactTagsForPlayers)
+  manual?: boolean; coi?: boolean; inherited?: boolean; source?: string;
+}
 
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;
@@ -43,12 +53,52 @@ export interface Hydrosphere { coverage?: number; depth_m?: number; composition?
 // Derived apparent colour, kept BOTH as a flattened single swatch (hex — what the flat orrery
 // shows) AND as the un-mixed palette of contributions, so a future sphere/shader renderer can
 // draw Earth's ocean/land/cloud mix or Jupiter's bands from the same derivation (§2e).
-export type ApparentColorRole = 'surface' | 'ocean' | 'cloud' | 'ice-cap' | 'atmosphere' | 'incandescent';
-export interface ApparentColorStop { hex: string; role: ApparentColorRole; weight: number; label?: string; }
+export type ApparentColorRole = 'surface' | 'vegetation' | 'ocean' | 'cloud' | 'ice-cap' | 'atmosphere' | 'incandescent';
+// `hex` is APPEARANCE — the material as this world's own light leaves it. `rawHex` is the MATERIAL,
+// the authored reflectance before any star touched it. The surface view needs the second: painting a
+// scene from `hex` and then re-lighting it lights everything twice, and the "at home" half of the
+// comparison would show the world under its own sun rather than under ours.
+export interface ApparentColorStop { hex: string; role: ApparentColorRole; weight: number; label?: string; rawHex?: string; }
 export interface ApparentColor { hex: string; palette: ApparentColorStop[]; banding?: number; }
 // Bulk interior makeup (mass fractions, normalised). Density + radius derive from it (§2a).
 export interface Makeup { metal?: number; rock?: number; carbon?: number; ice?: number; gas?: number; }
 export interface ImageRef { url: string; title?: string; credit?: string; license?: string; sourceUrl?: string; custom?: boolean; }
+// A construct's 3D model (G3). The binary is a normalised GLB in the hash-addressed model store
+// (src/lib/constructs/modelStore.ts) — never inline here, because the whole node JSON rides every
+// broadcast snapshot resend. Attribution fields mirror ImageRef: CC-BY models are allowed
+// (owner decision 5), so credit/license/sourceUrl must survive export and share with the ref.
+export interface ModelRef {
+  // A BUNDLED model — an app-relative path such as `/models/nasa/iss.glb`. The file ships with
+  // the app, so every browser already has it: nothing goes in the model store, nothing is
+  // embedded in a save, and nothing crosses the broadcast. A bundled ref needs no `hash`.
+  url?: string;
+  hash?: string;           // content hash (SHA-256 hex) of a GM-UPLOADED GLB — the store key
+  name?: string;           // display name (source filename or model title)
+  sourceFormat?: 'glb' | 'stl' | 'obj'; // what the GM uploaded, before conversion
+  triangles?: number;      // triangle count of the stored (post-simplify) mesh
+  bytes?: number;          // stored GLB size in bytes
+  hadMaterials?: boolean;  // false = source carried no materials (every STL): tint applies by default
+  // Hull finish (design §5's procedural menu): how the model is dressed when the map style is
+  // 'filled'. Absent = flat-shaded tint + panel lines for material-less sources, authored
+  // materials untouched for GLBs. A wireframe map style overrides every finish (F6 parity).
+  finish?: 'flat' | 'cel' | 'matcap' | 'blueprint' | 'plated' | 'patina' | 'iridescent';
+  // Orientation fix from the import preview (unit quaternion x,y,z,w), applied at VIEW time rather
+  // than baked into the binary — so a compliant GLB stores byte-identical and keeps its compression.
+  // CONVENTION (aligned by the modal's drive marker): after orient, the NOSE points +Z and the MAIN
+  // DRIVE points -Z — so a scene can lookAt(velocity) and the engines honestly point aft.
+  orient?: [number, number, number, number];
+  // Drive nozzles, in the model's OWN normalised space (the space `orient` then rotates), so a
+  // later re-orientation never strands them. Empty/absent = one plume at the stern-face centre,
+  // which is right for most hulls; the editor's placer exists for the ones it is not (offset or
+  // multiple drives). `nozzleScale` sizes them all, 1 = the default width.
+  nozzles?: [number, number, number][];
+  nozzleScale?: number;
+  // Livery accent. Absent = DERIVED from the ship's colour (a seeded complementary hue), which is
+  // the default and needs no authoring; set it to pin the contrast instead of taking the roll.
+  accentHex?: string;
+  title?: string; credit?: string; license?: string; sourceUrl?: string;
+  custom?: boolean;        // GM-uploaded — the processor must never overwrite
+}
 
 export interface Area {
   id: ID; name: string;
@@ -65,6 +115,12 @@ export interface Orbit {
   isRetrogradeOrbit?: boolean;
   resonance?: { numerator: number; denominator: number } | null;
   lastEditedT0?: number; // Timestamp of last manual edit
+  // C3: the plane this orbit's inclination is quoted in. Absent = the parent's EQUATOR for a
+  // satellite (the usual convention for a regular moon) and the system plane for anything else;
+  // 'ecliptic' = the system plane, for a satellite far enough out that the Laplace plane has handed
+  // over from the bulge to the star's tide (Luna, Phoebe). The field already ships in the bundled
+  // maps and holo/scene.ts already reads it — through `as any`, which is why it drifted untyped.
+  frame?: 'ecliptic';
 }
 
 export interface DeltaVCapability {
@@ -101,12 +157,199 @@ export interface Magnetism {
   notes: string[];
 }
 
+/** One morphology present on a world, with how much of the LAND it paints.
+ *
+ *  COVERAGE IS OF THE LAND, NOT A SHARE OF IT. The layers stack painter-style in list order, so
+ *  microbial at 80%, fungal at 50% and flora at 60% are independent statements and may sum well past
+ *  100% without being wrong — fungal paints its 50% over whatever microbial already covered. Two
+ *  people will otherwise implement this two ways (inbox G19). */
+export interface BiosphereLayer {
+  morphology: string;   // a key into the rule pack's morphology definitions — NOT a closed union
+  coverage: number;     // 0..1 of the land, painted OVER the layers before it
+  /** An AUTHORED colour for this layer, replacing whatever the model would have chosen.
+   *
+   *  It exists because a biosphere that does not photosynthesise has no pigment and therefore takes
+   *  no colour from its star — the derivation correctly has nothing to say, and somebody has to. A
+   *  chemosynthetic mat is whatever its chemistry makes it, and that is a GM's call.
+   *
+   *  Offered on EVERY layer rather than only the ones that need it, because "microbial gets a colour
+   *  picker" would be a rule about microbial. It is an INPUT — nothing re-derives it — which is why
+   *  it is stored here with the rest of the authored biosphere rather than arriving as a tag. */
+  colorHex?: string;
+}
+
 export interface Biosphere {
   complexity: 'simple' | 'complex';
   coverage: number;
   biochemistry: 'water-carbon' | 'ammonia-silicon' | 'methane-carbon';
   energy_source: 'photosynthesis' | 'chemosynthesis' | 'thermosynthesis';
-  morphologies: ('microbial' | 'fungal' | 'flora' | 'fauna')[];
+  /** Ordered, deepest FIRST — THE ORDER IS THE HIERARCHY, and it is what makes the render a
+   *  painter's algorithm (plant life covers fungal, fungal colours microbial).
+   *
+   *  Widened from the closed union `('microbial'|'fungal'|'flora'|'fauna')[]` deliberately (G19):
+   *  a user-extensible list cannot be a closed union, so a morphology is now a KEY into pack data,
+   *  the same move gases and liquids already made. Saved campaigns carry bare strings and still
+   *  load — `biosphereLayers()` in physics/vegetation.ts is the ONE reader that normalises both
+   *  forms, so there is no second store of this fact and nothing to keep in sync. */
+  morphologies: (string | BiosphereLayer)[];
+}
+
+/** One absorption feature of a pigment: a Gaussian in wavelength. */
+export interface PigmentBand { centreNm: number; widthNm: number; strength: number; }
+
+/** A photosynthetic pigment as RULE-PACK DATA. Its colour is NOT authored — it is whatever the
+ *  pigment fails to absorb out of the light that actually reaches the ground, which is why the same
+ *  pigment presents green under one star and near-black under another. */
+export interface PigmentDef {
+  key: string;
+  label: string;
+  bands: PigmentBand[];
+  baselineAbsorptance?: number;   // flat absorption across the whole grid (melanin ≈ 0.8)
+  note?: string;
+}
+
+/** How the competing selection pressures are weighed. All of it is pack data because none of it is
+ *  settled science — see the three competing explanations on /physics#biosphere. */
+export interface PigmentModelConfig {
+  // The three weights are EXPONENTS — the pressures multiply rather than adding, so each one
+  // switches itself off in the regime where it stops meaning anything. See scorePigments.
+  captureWeight: number;        // photons absorbed, saturating
+  protectionWeight: number;     // damage avoided at high flux and at the high-energy end
+  steadinessWeight: number;     // steadiness of supply — absorbing on the flanks, not at the peak
+  /** Flat absorption of the ORGANISM the pigment sits in — water and structure, neither of them a
+   *  mirror. It is what makes a leaf dark green rather than a bright paint chip. */
+  tissueAbsorptance: number;
+  /** The photon flux at which a photosystem stops keeping up, photons·m⁻²·s⁻¹. Real vegetation
+   *  light-saturates at a fraction of full sunlight; this is the number that says at what fraction,
+   *  and it is what makes selectivity scale with available energy rather than being thresholded. */
+  saturationFlux: number;
+  /** The red limit of the reaction centre, nm. Everything a pigment absorbs shorter than this is
+   *  converted at the same fixed yield, so the excess energy is dumped as heat — the term that tells
+   *  a blue absorber apart from a red one. */
+  reactionCentreNm: number;
+  damageThresholdNm: number;    // photons shorter than this start doing harm as well as work
+  damageScale: number;          // how hard overload is punished
+  viabilityFraction: number;    // a pigment is viable at this fraction of the best score
+  drawSharpness: number;        // how sharply the weighted draw favours the leaders
+}
+
+/** One life morphology as RULE-PACK DATA. ONE uniform record; there are no special rules and no
+ *  render modes. A morphology that contributes no colour has an EMPTY tint list and zero pigment
+ *  drive; one that contributes no light has an EMPTY light range. Adding a sixth morphology is
+ *  another entry in this list and no code at all. */
+export interface MorphologyDef {
+  key: string;
+  label: string;
+  order: number;                    // painter order — lower paints first, deeper
+  defaultCoverage: number;          // 0..1 of the land, when a GM switches it on
+  tints: string[];                  // candidate surface colours; EMPTY = contributes no colour of its own
+  pigmentDriven: number;            // 0..1 how far the derived pigment colour replaces the tint
+  opacity: number;                  // how completely this layer hides what is beneath it
+  light: { min: number; max: number }; // night-side emission, 0..1; an EMPTY range means no lights
+  /** What the night side GLOWS, as a hex. Absent = the sodium-amber a human city reads as from
+   *  orbit, which is the honest default for `techno` and what this always drew.
+   *
+   *  IT IS DATA BECAUSE THE ALTERNATIVES ARE NOT VARIANTS OF A CITY: a bioluminescent forest, a
+   *  methane-flare industry and somebody's purple arc-light are the same MODEL with a different
+   *  number, and the moment the colour lives in the painter they need branches instead. The painter
+   *  derives its dimmer arterial tone from this one colour, so a GM picks one swatch, not two. */
+  lightHex?: string;
+  /** How far past ORDINARY DRY GROUND this morphology can hold, as a fraction of the world's water.
+   *
+   *  0 = strictly dry land. Plants get a little, because a shallow shelf is lit to the bottom and
+   *  green. Technological life gets ALL of it — a civilisation that has covered its continents roofs
+   *  its seas next, and the ocean becomes the floor it stands on rather than a boundary.
+   *
+   *  ONE number, TWO consequences, because they are the same claim: it also says how far the
+   *  morphology holds ground that is under ICE. Something that can roof an ocean is not stopped by a
+   *  glacier, and a planet-wide city has poles like everywhere else. A shelf-bound plant has neither.
+   *
+   *  This is the field that makes "only technology takes the seas and the caps" true WITHOUT a rule
+   *  saying so. Nothing in the code knows what `techno` is; it simply has a 1 here. */
+  waterReach: number;
+  note?: string;
+}
+
+/** The spectrum that actually reaches the reference level, and the filter it came through.
+ *  PHY-2 — WHAT: spectral irradiance. WHERE: named by `level`. UNITS: W·m⁻²·nm⁻¹ on GRID_NM. */
+export interface SurfaceSpectrum {
+  level: 'surface' | '1 bar';   // NAME THE LEVEL. A giant has a level, not a surface (B18/B22).
+  starTempK: number;
+  distanceAU: number;
+  totalTopWm2: number;
+  totalSurfaceWm2: number;
+  photonFlux: number;           // photons·m⁻²·s⁻¹ reaching the level over the whole grid
+  peakTopNm: number;            // per-unit-WAVELENGTH peak (B53 — the two definitions differ)
+  peakSurfaceNm: number;
+  surfaceLightHex: string;      // what that light looks like TO HUMAN EYES
+  attenuators: { label: string; strength: number }[];   // strongest first; strength = 1 − transmission at its band
+}
+
+/** The full sampled curves behind a `SurfaceSpectrum`, on `GRID_NM`.
+ *
+ *  DELIBERATELY NOT STORED ON THE BODY. Three 113-element arrays per body is ten thousand lines on
+ *  the Sol fixture alone, and that fixture is a DIFF-REVIEW surface — burying every future physics
+ *  change in spectra makes it useless. It would also ride every save and every broadcast snapshot
+ *  for a value any consumer can rebuild in microseconds. The summary is what a body carries; a chart
+ *  that wants the shape calls `deriveSurfaceSpectrum` again, which is the SAME derivation and
+ *  therefore not a second authority on it. */
+export interface SurfaceSpectrumCurves {
+  nm: number[];
+  topOfAtmosphere: number[];    // W·m⁻²·nm⁻¹ above the atmosphere
+  surface: number[];            // W·m⁻²·nm⁻¹ at the reference level
+  transmission: number[];       // 0..1, what the sky let through
+}
+
+/** One pigment scored against a world's surface spectrum. A RANKED SET, never a single winner —
+ *  seven pigments are all viable around a G star and the honest claim is only which dominates. */
+export interface PigmentRank {
+  key: string;
+  label: string;
+  captured: number;      // fraction of available photons absorbed
+  sufficiency: number;   // 0..1, how far what it absorbs reaches the SATURATING flux — capture, capped
+  protection: number;    // 0..1, higher = less overload and less high-energy damage taken
+  steadiness: number;    // 0..1, 0.5 = neutral; above = absorbing on the flanks rather than at the peak
+  score: number;
+  viable: boolean;
+  drawWeight: number;    // share of the weighted draw among the viable set
+  /** What it reflects, ADAPTED to this star — the pigment's own identity, right for a legend. */
+  reflectedHex: string;
+  /** What it reflects with the star's cast and brightness LEFT IN — what you would see arriving
+   *  from orbit. This is the one a renderer uses; see reflectedHexUnderIlluminant for why. */
+  reflectedUnderStarHex: string;
+}
+
+/** The derived look of a world's life. Resolved from pack data onto the body — every renderer reads
+ *  this and none of them needs the rule pack, the same move `auroraEmitters` already makes. */
+export interface VegetationLayerSpec {
+  morphology: string;
+  label: string;
+  /** The pigment THIS morphology settled on. Each pigment-driven layer draws its own from the same
+   *  scored viable set, so a world's mats and its plants need not have made the same choice — which
+   *  is what shipping a ranked set rather than a single winner was for. */
+  pigment: string | null;
+  pigmentLabel: string | null;
+  coverage: number;      // 0..1 of the land
+  opacity: number;
+  colorHex: string | null;   // null = this morphology contributes no colour (empty tints, no pigment drive)
+  light: number;             // 0..1 night-side emission
+  lightHex?: string;         // what it glows; absent = the default amber (see MorphologyDef)
+  waterReach: number;        // how much of the world's WATER this morphology can take (see MorphologyDef)
+}
+export interface Vegetation {
+  pigment: string | null;        // the drawn dominant; null when nothing photosynthesises here
+  pigmentLabel: string | null;
+  ranked: PigmentRank[];
+  layers: VegetationLayerSpec[]; // painter order, deepest first
+  visibleCover: number;          // 0..1 of the LAND showing any life colour (the union, not the sum)
+  /** 0..1 of the globe that IS land. Every coverage above is of the land, so a renderer scattering
+   *  patches over a whole disc must multiply by this or it paints the ocean green. Derived here,
+   *  where the hydrosphere is in hand, rather than re-derived per renderer. */
+  landFraction: number;
+  /** Where life clusters, as |latitude| in [centre - width, centre + width]. ONE convention: the
+   *  whole globe is centre 45 / width 45, never centre 0 / width 90. */
+  bandCentreDeg: number;
+  bandWidthDeg: number;
 }
 
 export interface Engine {
@@ -196,10 +439,50 @@ export interface SensorInstance {
   description?: string;
 }
 
+/** A star's MK classification, carried NATIVELY rather than as a string re-read at each use.
+ *
+ *  `M1.5Iab` is three separate facts and they do different work: the LETTER gives the temperature
+ *  and the colour, the SUBCLASS refines the temperature within the letter, and the LUMINOSITY CLASS
+ *  gives the size — which is the axis that separates a red dwarf from a red supergiant at the same
+ *  temperature, and is the HR diagram's own vertical. Reading only the letter is what made Antares
+ *  import at a fiftieth of its mass (inbox D19).
+ *
+ *  PARSED ONCE, AT IMPORT OR AT PICK. The point of the structured form is that no consumer re-parses
+ *  an MK string — that is how a fourth site learns to parse them badly — and that the INVERSE
+ *  direction exists: `formatStellarType` turns this back into the designation it came from, which is
+ *  the invariant `docs/dev/type-vocabulary-prev4.md` exists to protect ("a body created AS T must
+ *  classify back AS T").
+ */
+export interface StellarType {
+  /** Spectral letter, or a remnant/sub-stellar key: O B A F G K M L T Y, WD, NS, BH, magnetar. */
+  spectral: string;
+  /** The numeric subclass — 1.5 in M1.5Iab. Absent when the catalogue does not state one. */
+  subclass?: number;
+  /** White dwarfs only: the letters after the D naming which absorption lines dominate — the `A` of
+   *  `DA2.9`, the `QZ` of `DQZ`. A composition fact, not a luminosity class. */
+  variant?: string;
+  /** The MK luminosity class AS WRITTEN: 'Ia', 'Iab', 'Ib', 'II', 'III', 'IV', 'V', 'VI'. Absent
+   *  when the catalogue does not state one, which is the common case and must stay distinguishable
+   *  from "stated as V". */
+  luminosity?: string;
+  /** The luminosity class NORMALISED to the three bands the rule pack carries: 'I' (supergiant),
+   *  'III' (giant), 'V' (main sequence). `II` folds up to I and `IV`/`VI` fold to V. This is the
+   *  half of the class the pack key `star/<LETTER>-<BAND>` is built from; `luminosity` above is the
+   *  half a reader should be shown. */
+  band?: 'I' | 'III' | 'V';
+  /** A companion encoded in the same catalogue string — the `+B2Vn` of `M1.5Iab+B2Vn`. RECORDED,
+   *  NOT ACTED ON: a binary imported as one star needs node creation, not a parameter lookup, and
+   *  that is deliberately a separate job. Kept so the designation can be rebuilt exactly and so the
+   *  information is not silently thrown away a second time. */
+  companion?: string;
+}
+
 export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
   roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
   classes?: string[];
+  /** A star's MK classification as structured data. See `StellarType`. */
+  stellarType?: StellarType;
   auroraEmitters?: AuroraEmitter[];  // resolved at process time from atmosphere × gas AuroraBand data
   orbit?: Orbit;
 
@@ -215,7 +498,19 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   tidallyLocked?: boolean;      // one face permanently toward its primary (planet or star)
   starTidallyLocked?: boolean;  // locked specifically to its STAR → a permanent substellar face (eyeball)
   oblateness?: number;          // DERIVED equatorial flattening f=(a−c)/a from spin vs the breakup limit; renderers draw the squashed shape
-  obliquity_deg?: number;       // axial tilt — drives seasonal variation
+  /** Axial tilt in degrees — the angle between the spin axis and the orbit normal. Drives the
+   *  seasonal temperature swing, the moon-orbit reference plane (`satelliteFrame`) and how the
+   *  renderers tip the body. THIS IS THE ONLY NAME FOR IT.
+   *
+   *  It was untyped for a long time and that is what let a second name grow beside it: every read and
+   *  write went through an untyped access, so nothing steered anyone to the right field, while the
+   *  vestigial `obliquity_deg` WAS declared here and looked authoritative. The seasonal term read the
+   *  declared one, the bundled data set the undeclared one, and neither side had a reason to notice
+   *  (see `spinProvenance.ts`, which recorded the gap and left it). */
+  axial_tilt_deg?: number;
+  /** @deprecated A second name for `axial_tilt_deg`, kept only so `importFixup` can recover it from
+   *  older saves and delete it. Nothing reads it. Write `axial_tilt_deg`. */
+  obliquity_deg?: number;
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
   // F-OVR: GM overrides for otherwise-derived scalars. A key being PRESENT means the GM pinned that
   // value — it is saved and fed into the derivation instead of the computed default, with a reset that
@@ -224,6 +519,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
     albedo?: number;              // Bond albedo 0..1 (else derived from makeup + cloud decks)
     gasThermalInflation?: number; // gas-giant radius inflation factor (else derived from insolation)
     radiogenicHeatK?: number;     // GM radiogenic-heat override (+K): adds surface heat AND geological vigor
+    // MAGNETIC ACTIVITY 0..1 — the ionising half of a star's output, and DELIBERATELY NOT ITS
+    // BRIGHTNESS. Luminosity is fixed by radius and temperature (exact); ionising output is driven by
+    // the magnetic dynamo, and the two decouple exactly where it matters: a flare moves a star's
+    // bolometric output by a hundredth of a percent while its X-ray output jumps a thousandfold.
+    // Derived from class and age by default; this pins it so a GM can make a quiet giant flare
+    // without pretending it got brighter.
+    flareActivity?: number;
   };
   calculatedGravity_ms2?: number;
   distanceToHost_km?: number;
@@ -245,6 +547,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
   volatiles?: VolatileRetention; // derived surface-ice retention per species (see deriveVolatileRetention)
   irradiationDose?: number;    // derived cumulative space-weathering dose (relative) — drives tholins
+  // Radiation is reported as TWO named figures because one number cannot answer both questions
+  // (inbox B22): `surfaceRadiation` is the ground, or for a surfaceless body the 1-bar reference
+  // level; `orbitalRadiation` is the environment above the atmosphere, which for a magnetised body
+  // means inside its own trapped belt. `beltInnerEdgeRadii` is where that belt begins, in body radii.
+  orbitalRadiation?: number;
+  beltInnerEdgeRadii?: number;
   habitabilityBreakdown?: {    // the AUTHORITATIVE habitability breakdown the Bio tab renders
     factors: {
       label: string; points: number; max: number; value: string; ideal: string;
@@ -264,6 +572,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   systems?: Systems;
   crew?: { current?: number; max?: number };
   IsTemplate?: boolean;
+  model?: ModelRef; // construct 3D model (G3) — sibling of `image`; photo wins in the info block, model next, glyph last
 
   engines?: Engine[]; // Array of engines attached to the construct
   fuel_tanks?: FuelTank[]; // Array of fuel tanks attached to the construct
@@ -296,7 +605,17 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
 
   // Surface Stats
   surfaceRadiation?: number;
-  stellarRadiation?: number; // Raw incoming flux
+  // TOTAL incident flux at the reference level (Earth = 1): starlight, stellar wind AND the trapped
+  // particles of any belt this body sits inside. It stopped being "stellar" at B17, when the belt
+  // term landed in it — Io reads 26,279 here against 0.037 of actual sunlight, because Jupiter's
+  // magnetosphere is its environment. Named for what it measures (B34); `starlightFlux` below is the
+  // one that is only the star.
+  totalIncidentFlux?: number;
+  totalIncidentFluxMin?: number;
+  totalIncidentFluxMax?: number;
+  // The star's own output at this distance, Earth = 1 — photons and wind, no belt. This is what a
+  // rule about IRRADIATION means: how hard the star itself is shining on this world.
+  starlightFlux?: number;
   photonRadiation?: number;
   particleRadiation?: number;
   radiationShieldingAtmo?: number; // 0-1 effectiveness
@@ -305,6 +624,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
   apparentColor?: ApparentColor;  // un-mixed palette behind apparentColorHex (for richer rendering)
+  /** The star's spectrum after the sky took its cut. ONE quantity, TWO consumers — the pigment
+   *  branch reads its photon counts, the presentation branch reads its colour — and it is derived
+   *  here in physics rather than in a renderer (inbox B54). */
+  surfaceSpectrum?: SurfaceSpectrum;
+  /** The derived look of this world's life: the ranked pigments, the drawn dominant, and one
+   *  painter-ordered layer per morphology with its colour already resolved from pack data. */
+  vegetation?: Vegetation;
   image?: ImageRef;           // type/artwork image; ImageRef.custom = a GM-uploaded picture the processor won't overwrite
   
   // Traveller Data
@@ -356,6 +682,13 @@ export interface Barycenter extends NodeBase {
 
 export interface System {
   id: ID; name: string; seed: string; epochT0: number; age_Gyr: number;
+  // WHERE THE AGE CAME FROM. `ageEstimated` was set by the real-sky importer for years without being
+  // declared here (via `as any`); it now has a home, and every importer sets it through
+  // `guessSystemAge`. An estimated age is a GUESS from the primary's stellar type, not a measurement,
+  // and the UI says so; `ageBandGyr` is the range the star's own life makes reasonable, shown under the
+  // age control so the GM can move it knowingly. Neither is written by generation, which chose its age.
+  ageEstimated?: boolean;
+  ageBandGyr?: [number, number];
   nodes: Array<CelestialBody | Barycenter>;
   rulePackId: string; rulePackVersion: string;
   tags: Tag[]; notes?: string; gmNotes?: string;
@@ -368,14 +701,6 @@ export interface System {
 }
 
 // Rule Pack interfaces (subset for M0–M1)
-export interface ClassifierRule { when: Expr; addClass: string; score: number; }
-export type Feature =
-  | "mass_Me" | "radius_Re" | "density" | "Teq_K" | "a_AU" | "stellarType"
-  | "atm.main" | "atm.pressure_bar" | "hydrosphere.coverage" | "tidalHeating" | "tidallyLocked" | "ringSystem"
-  | "age_Gyr" | "orbital_period_days" | "rotation_period_hours" | "has_ring_child" | "radiation_flux";
-export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
-  | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
-  | { eq: [Feature, string] } | { hasTag: string };
 // --- Fingerprint classifier (Phase 04 rewrite) ---
 // Each planet type is described by a fingerprint: the parameter bands that define it.
 // A numeric band is [min, max]; a categorical band is a string or list of accepted strings.
@@ -384,14 +709,35 @@ export interface Fingerprint {
   class: string;                         // e.g. "planet/ocean"
   kind: 'base' | 'modifier';             // base archetypes are mutually exclusive; modifiers stack
   match: Record<string, FingerprintBand>;// feature → defining band
+  // PRECONDITIONS. Every gate band must hold or the type scores 0, but a gate contributes
+  // NOTHING to the score — no fit, no band count. Use it for "is this body eligible to be this
+  // kind of thing at all" (a gas giant has no surface, so it cannot be an eyeball), as opposed to
+  // `match`, which is for traits that DEFINE the type and should make it more specific.
+  // The distinction is not cosmetic: a gate expressed as a match band is always-true for every
+  // body that survives it, and averaging an always-1 band in DILUTES a poor defining band —
+  // lifting a 0.11-fit match by 37% while lifting a perfect one by only 8%. It rewards the worst
+  // matches most, which is how a 289 K world briefly classified as a cold eyeball (B25).
+  gate?: Record<string, FingerprintBand>;
+  // WHERE THE TYPE CAN BE BORN — read ONLY by the viability model (the "add here" picker and the
+  // generator), NEVER by the classifier. The classifier works on what it sees: a hand-authored
+  // chthonian in a million-year-old system still classifies as a chthonian, however implausible its
+  // presence, and the tags say so. `formation` is the one-way half of that bargain — it decides
+  // what a slot may be GIVEN, not what a body IS. Bands: age_Gyr (early / late formers).
+  formation?: Record<string, FingerprintBand>;
   weight?: number;                       // optional score multiplier (default 1)
   note?: string;                         // human note on the type's defining traits
 }
 export interface ClassifierSpec {
-  rules: ClassifierRule[];               // legacy additive rules (fallback when no fingerprints)
-  fingerprints?: Fingerprint[];          // new per-type fingerprints (preferred when present)
+  // REMOVED (inbox B67 / D12). The additive `rules[]` seam was never reached by any shipped pack —
+  // starter-sf has always carried fingerprints, and the early return took them — while quietly
+  // holding a copy of the classifier that predated B6 (eyeballs moved onto surface temperature) and
+  // B25 (the surface gate), plus a rule that called any small hot world a stripped gas-giant core.
+  // Measured before removal: 43 of the 50 fired through a fingerprint-less pack and the output was
+  // materially worse on every body compared. Kept in the type only so an old pack still PARSES;
+  // `warnIfLegacyRules` tells its author the rules are not read.
+  rules?: unknown[];
+  fingerprints?: Fingerprint[];          // per-type fingerprints — the only classifier
   maxClasses: number;
-  minScore: number;
   planetImages?: Record<string, string>;
   starImages?: Record<string, string>;
 }
@@ -401,6 +747,39 @@ export interface ViewPresetSpec { defaultPlayerVisibility: { discoveredBasics: b
 
 export interface TableSpec { name: string; entries: Array<{ weight: number; value: unknown }>; }
 export interface MetricDef { key: string; label: string; min: number; max: number; default?: number; }
+
+/**
+ * Planet spacing rules (`generation_parameters.orbital_spacing`), read by
+ * `generation/placement-strategy.ts`. Every value is in units of the STAR or of a zone the engine
+ * derives from it — never in absolute AU, which is the fault this block replaced (inbox B58).
+ */
+export interface OrbitalSpacingRules {
+  name?: string;
+  /**
+   * RATIO of successive orbits, drawn ONCE PER SYSTEM. This is the spacing rule, because it is what
+   * is actually near-constant within real systems: Sol's successive ratios average about 1.7 and
+   * TRAPPIST-1's about 1.32, while their separations in mutual Hill radii vary by a factor of eight.
+   * Scale-free, so it carries nothing about Sol into other stars.
+   */
+  spacing_ratio: [number, number];
+  /** Per-gap multiplicative variation around the system's ratio, e.g. 0.15 for +/-15%. */
+  separation_gap_spread?: number;
+  /**
+   * MINIMUM separation in mutual Hill radii. Not the spacing rule — the floor under it. Where the
+   * drawn ratio would put a pair closer than this, the gap widens. This is what keeps the slots
+   * either side of a massive body clear, since the Hill term contains that body's mass.
+   */
+  stability_floor_hill_radii: number;
+  /** The innermost planet is drawn between the dust edge and this fraction of the FORMATION frost line. */
+  inner_edge_frost_fraction: [number, number];
+  /** Proxy masses (Earth masses) used ONLY to size gaps, inside and outside the formation frost line. */
+  spacing_mass_earth_inside_frost: [number, number];
+  spacing_mass_earth_outside_frost: [number, number];
+  /** Ceiling on a proxy mass as a fraction of the star's mass — an M dwarf cannot build a Jupiter. */
+  max_planet_mass_stellar_fraction: number;
+  /** "Peas in a pod": 0 = adjacent masses independent, 1 = every planet the mass of its neighbour. */
+  peas_in_a_pod: number;
+}
 
 export type LiquidFamily = 'water' | 'hydrocarbon' | 'cryo' | 'acid' | 'molten' | 'exotic' | 'internal';
 export interface LiquidDef {
@@ -423,6 +802,14 @@ export interface LiquidDef {
                               // scaled thermal-glow emissive layer, so the ocean glows even under a dim star
     cloudOpacity?: number;    // 0..1 veil strength when this substance condenses as a CLOUD DECK
                               // (how opaquely it hides what is beneath). Absent → a moderate default.
+    cloudTintDistance?: number; // 0..255: how far from WHITE a deck of this condensate sits. Droplets
+                              // that only scatter go white however dark the liquid (water, ~60); a
+                              // suspension whose particles absorb keeps its colour (Jupiter's brown
+                              // hydrosulphide, martian dust). Absent → the scattering default.
+    cloudAlbedo?: number;     // 0..1 REFLECTIVITY of a deck of this condensate — the share of starlight
+                              // a fully-covered sky of it sends back out. Distinct from cloudOpacity:
+                              // opacity is what it hides, this is what it returns. Feeds Bond albedo,
+                              // and through it equilibrium temperature. Absent → a moderate default.
 }
 
 export interface FuelDefinition {
@@ -449,6 +836,10 @@ export interface EngineDefinition {
   atmo_efficiency?: number; // Optional: Thrust multiplier in atmosphere (0-1)
   description: string;
   drive_tags?: string[]; // FTL drive/* tag(s) this engine confers; empty/absent = sublight. See docs/tag-inheritance.md.
+  // G15(4): the drive plume's colour is pack DATA per the architecture rule (a GM-editable look
+  // lever). Absent = the renderer's hot blue-white default. The host passes it to the scene as
+  // look-data; the scene never reads the pack.
+  exhaust_color_hex?: string;
 }
 
 export interface GasTag {
@@ -490,6 +881,16 @@ export interface GasReaction { from: string[]; yield?: number; }
 export interface GasPhysics {
   molarMass: number;
   shielding: number;
+  /** Rayleigh scattering cross-section RELATIVE TO N2 — the visible-light analogue of `shielding`,
+   *  which is the ionising one. Absent = 1 (treat it like nitrogen). CO2 scatters about 2.4× as
+   *  hard, H2 about 0.2× — that ratio is why a thick CO2 sky is not simply a thicker blue one. */
+  rayleigh?: number;
+  /** Where this gas EATS the incoming spectrum, as Gaussian bands. Absent = it takes only its
+   *  Rayleigh share, which is the honest answer for N2, argon and the noble gases. NOT for O2:
+   *  the pack gives it the 762 nm A-band, so this comment named it wrongly for as long as it
+   *  existed — 16 of the 33 shipped gases carry bands. Authoring, not architecture: the shape was
+   *  always here, the numbers were not (inbox B54). */
+  absorptionBands?: PigmentBand[];
   greenhouse: number;
   specificHeat: number;
   radiativeCooling: number;
@@ -512,6 +913,9 @@ export interface ClimateModelGreenhouseConfig {
   denseCo2BoostStartBar?: number;
   denseCo2BoostDenominator?: number;
   denseCo2BoostMax?: number;
+  // Derived water vapour over an ocean (see physics/atmosphere.ts waterVapourFraction).
+  vapourColumnMeanHumidity?: number;   // column mean as a fraction of saturation; Earth-calibrated
+  vapourColumnMaxFraction?: number;    // where "trace vapour on an atmosphere" stops being true
 }
 
 export interface ClimateModelInternalHeatConfig {
@@ -530,10 +934,20 @@ export interface RulePack {
   id: string; version: string; name: string;
   distributions: Record<string, TableSpec>;
   gasPhysics?: Record<string, GasPhysics>;
+  /**
+   * Player-facing chrome the GM can re-word in character (A63). Flavour, never a system message —
+   * a pack that omits it falls back to the same wording in code.
+   */
+  playerStrings?: { incoming?: string };
   climateModel?: ClimateModelConfig;
   gasMolarMassesKg?: Record<string, number>; // Legacy support (optional)
   gasShielding?: Record<string, number>; // Legacy support (optional)
   liquids?: LiquidDef[];
+  // Biosphere look levers — all OPTIONAL overrides of the built-in defaults in src/lib/data/.
+  // A pack ships them together in one `biospheres.json`; see rulepack-loader.
+  pigments?: PigmentDef[];
+  pigmentModel?: PigmentModelConfig;
+  morphologies?: MorphologyDef[];
   orbitalConstants?: Record<string, number>;
   constructTemplates?: Record<string, CelestialBody[]>; // Templates are CelestialBody objects
   engineDefinitions?: {
@@ -556,6 +970,16 @@ export interface RulePack {
   viewPresets?: ViewPresetSpec;
   metrics?: Record<string, MetricDef>;
   classifier?: ClassifierSpec;
+  /**
+   * Loose grab-bag of pack scalars and rule blocks. It was already read in several places
+   * (`zones.ts`, `generation/planet.ts`) while being absent from this interface entirely, so those
+   * reads were untyped; `orbital_spacing` is named because placement depends on its shape.
+   */
+  generation_parameters?: {
+    orbital_spacing?: OrbitalSpacingRules;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
+  };
 }
 
 export type ViableOrbitResult = {
@@ -573,7 +997,10 @@ export interface StarSystemNode {
   // defaults to (and tracks) the primary star's name; once the GM sets a custom system name this
   // pins it, so renaming the star no longer overwrites it.
   isNameUserDefined?: boolean;
-  position: { x: number; y: number };
+  // WS7: optional DEPTH. Absent is treated as the reference plane (0), so every existing campaign
+  // loads byte-identical. Whether z counts toward DISTANCE is the campaign's choice — see
+  // Starmap.ignoreZForDistances and lib/map/systemDistance.ts.
+  position: { x: number; y: number; z?: number };
   system: System;
   viewport?: { pan: { x: number; y: number }; zoom: number; }; // Fixed panX/panY to pan object
   time?: {
@@ -656,6 +1083,14 @@ export interface RulePackOverrides {
   gasPhysics?: Record<string, GasPhysics>;
   atmosphereCompositions?: any[];
   liquids?: LiquidDef[];
+  // DELTAS, not copies — only the keys and fields a GM actually changed. See lib/rulepackDelta.ts
+  // for why: a whole-list override freezes the shipped defaults at the moment of the edit, and
+  // every later improvement to the pack silently stops reaching that campaign. Both fields still
+  // accept a whole list, because campaigns saved before this carry one.
+  morphologies?: PackListDelta<MorphologyDef> | MorphologyDef[];
+  pigments?: PackListDelta<PigmentDef> | PigmentDef[];
+  /** A handful of scalars — stored whole, but only the ones that differ from the pack. */
+  pigmentModel?: Partial<PigmentModelConfig>;
 }
 
 export interface TemporalHierarchyUnit {
@@ -715,17 +1150,66 @@ export interface TemporalState {
   playbackRateSecPerSec?: number;
 }
 
+/**
+ * G16 - "your own map behind the stars": the image a GM puts BEHIND the starmap.
+ *
+ * IT IS CAMPAIGN CONTENT, NOT CHROME, and that is the whole reason it lives on the Starmap rather
+ * than in a UI store. In map-fixed mode the picture is GEOREFERENCED - a sector map whose borders
+ * must line up with the systems - so its anchor has to travel with the campaign into the save
+ * bundle and out to every player window, or a player is looking at a WRONG map rather than a
+ * slightly different one. One anchor, one place, every surface reads it: GM 2D map, player 2D map,
+ * the 3D map's plane, and the starmap document. See $lib/map/mapBackground.ts for the geometry.
+ *
+ * The GM's old local "show background image" toggle became `source`: no image / the shipped Milky
+ * Way / an uploaded image. Absent = the shipped Milky Way, screen-fixed, opaque - exactly what
+ * every existing campaign already showed.
+ */
+export interface MapBackground {
+  /** none = plain space; default = the shipped ESO Milky Way; asset = one of `playerAssets`. */
+  source: 'none' | 'default' | 'asset';
+  assetId?: string;
+  /** screen = decoration fixed to the viewport (today's behaviour); map = georeferenced. */
+  attach: 'screen' | 'map';
+  opacity: number;      // fade, 0..1
+  sizePct: number;      // SCREEN-fixed only: width as a % of the viewport (100 = cover)
+  widthUnits: number;   // MAP-fixed: image width in the campaign's OWN unit (never ly by assumption)
+  offsetX: number;      // MAP-fixed: image CENTRE, in campaign units
+  offsetY: number;
+  rotationDeg: number;  // MAP-fixed: clockwise, about the centre
+}
+
 export interface Starmap {
   id: string;
   name: string;
   description?: string;
   gmNotes?: string;
+  // Persistent broadcast session identity (docs/dev/vtt-integration-design.md 9.1/1A): minted once
+  // by ensure-on-load in the GM route, saved with the map, FROZEN across renames so player links/QRs
+  // and VTT configs survive GM restarts and PC moves. Human-readable: name slug + 2 words + 3 digits.
+  // Regeneration is a deliberate revocation action, never automatic.
+  broadcastId?: string;
   systems: StarSystemNode[];
   routes: Route[];
   activeJourneys?: ActiveJourney[];
   adriftConstructs?: AdriftConstruct[];   // ships stranded in interstellar space (ended a journey mid-flight)
   mapMode?: 'diagrammatic' | 'scaled';
-  generationEngine?: 'standard' | 'evolutionary';
+  // PROVENANCE (M1). Two independent stamps, both optional so every existing file still loads:
+  //  - `appVersion`: the build that last SAVED this map. Written on every save. Its ABSENCE is itself
+  //    information — it means the file predates 2.1.271-beta, which is what the base-map upgrade offer
+  //    keys on (see docs/dev/v2.2-player-view-visual-overhaul.md, WS8).
+  //  - `baseMapVersion`: which edition of a BUNDLED starter map this descends from. Set by the shipped
+  //    maps (static/example-starmaps/manifest.json), carried through saves untouched, and never invented
+  //    for a map the GM built themselves — a map with no base has no base version.
+  appVersion?: string;
+  baseMapVersion?: number;
+  /**
+   * DEAD (G35). The experimental "evolutionary" (accrete) generator was removed; it lives on as its
+   * own project at https://system-lab.starsystemx.com/. Kept in the type ONLY so a starmap saved by
+   * an older build still parses — the load path drops the value and nothing reads it. Do not write
+   * it, and do not revive it as a selector: see engine map GEN-1 for why the preservation order it
+   * was under was superseded.
+   */
+  generationEngine?: string;
   invertDisplay?: boolean;
   scale?: StarmapScaleConfig;
   // The GM's live snap-grid, injected into the player broadcast (not persisted) so the player-view
@@ -733,14 +1217,27 @@ export interface Starmap {
   mapGrid?: { type: 'grid' | 'hex' | 'traveller-hex' | 'none'; size: number };
   distanceUnit: string;                        // INTERSTELLAR map unit (ly / pc / diagrammatic) — see mapMode
   unitIsPrefix: boolean;
+  // WS7: when true, system DEPTH is presentational only and distances stay planar as they always were.
+  // Default (absent/false) = depth COUNTS, which is the honest answer. The 3D view's z-exaggeration is
+  // a separate display-only control and never affects distance.
+  ignoreZForDistances?: boolean;
   measurementUnits?: 'metric' | 'imperial';    // IN-SYSTEM distance/speed display: km/km·s (default) vs miles/mph
   temperatureUnit?: 'C' | 'F' | 'K';            // temperature display: °C (default) / °F / Kelvin — its own switch
+  // G34: per-quantity × body-type display-unit choices (`${quantity}:${bodyType}` → unit id; the
+  // vocabulary and defaults live in units.ts). Sparse — absent keys mean the defaults. CAMPAIGN
+  // DATA: rides save, bundle and the player snapshot so players inherit the GM's units. Presence
+  // of the record (even empty) marks the two legacy fields above as migrated; they are display
+  // prefs superseded by this and retire with the Settings selector (G34 phase 5).
+  unitPrefs?: Record<string, string>;
   systemEdgeAu?: number;                        // "leaves the system" boundary in AU; unset = the star's Hill limit
 
   // Unified player-view presets + their uploaded graphics are campaign data — saved with the map.
   // See $lib/player and docs/dev/unified-player-view-design.md. Optional: absent on old maps.
   playerPresets?: import('./player/presetTypes').PlayerPreset[];
   playerAssets?: import('./player/presetTypes').PlayerAsset[];
+
+  // G16: the picture behind the stars. CAMPAIGN CONTENT, not chrome - see MapBackground.
+  mapBackground?: MapBackground;
 
   temporal?: TemporalState;
   rulePackOverrides?: RulePackOverrides;

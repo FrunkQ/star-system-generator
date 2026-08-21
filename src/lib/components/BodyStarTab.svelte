@@ -1,21 +1,59 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody } from '$lib/types';
-  import { fmt } from '$lib/stores';
+  import { luminositySolarFromRT } from '$lib/physics/luminosity';
+  import type { CelestialBody, StellarType } from '$lib/types';
+  import UnitValue from './UnitValue.svelte';
+  import UnitInput from './UnitInput.svelte';
+  import { undoEpoch } from '$lib/undo/systemUndo';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
+  import CustomImageBlock from './CustomImageBlock.svelte';
+  import { resolveStarImage } from '$lib/system/starImage';
+  import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
+  import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
+  import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
+  import { starStatsFromPack } from '$lib/generation/star';
+  import { stellarTypeForBand, spectralSubclass, starClassParts, starClassKeyFor, isBandKey, bandKeyOf } from '$lib/physics/starDesignation';
+
+  // A key a BODY holds rather than a range it was drawn from — used to drop the previous designation
+  // when a new one is written, so a star cannot accumulate two.
+  const isDesignationKey = (c: string) => c.startsWith('star/') && !isBandKey(c);
+  import { SeededRNG } from '$lib/rng';
 
   let { body, rulePack } = $props();
 
   const dispatch = createEventDispatcher();
+
+  // Plain-English explanation of the current designation, rebuilt whenever the class changes.
+  // The star's own activity bucket, so a flare star is DESCRIBED as one. Read off the tag the
+  // processor derives (class AND age) rather than re-deriving it here — an old M dwarf is not a
+  // flare star, and only the processor knows the system's age.
+  const activityBucket = $derived(
+      (body?.tags ?? []).find((t: any) => t.key === STELLAR_ACTIVITY_TAG)?.value as string | undefined
+  );
+  const classExplanation = $derived(
+      explainStarClass(rulePack, currentClass, activityBucket)
+  );
+  // The designation the body actually holds, shown so a GM can see it follow the sliders. Remnants
+  // and anything with no letter show nothing rather than a made-up string.
+  const designationNow = $derived.by(() => {
+      const held = body?.classes?.[0] ?? '';
+      const p = starClassParts(held);
+      // `star/K-III` is the pack's KEY spelling; the MK form a reader knows is "K III". The hyphen is
+      // there to keep one spelling in the data, not to be read out.
+      return p.letter && !p.bare ? held.replace(/^star\//, '').replace('-', ' ') : '';
+  });
 
   // --- State ---
   let massSuns = $state(0);
   let radiusSuns = $state(0);
   let tempK = $state(0);
   let radiation = $state(0);
-  let rotationHours = $state(0);
-  let axialTilt = $state(0);
+  // Rotation and tilt are UNDEFINED when nothing has set them, not 0 (inbox B9a). A star has no
+  // rotation model yet, so a freshly-made one genuinely does not have a spin — and "0 h" reads as a
+  // measurement rather than the gap it is. The boxes stay empty until something fills them in.
+  let rotationHours: number | undefined = $state(undefined);
+  let axialTilt: number | undefined = $state(undefined);
   let magGauss = $state(0);
 
   // --- Mass Slider Config ---
@@ -28,6 +66,7 @@
   // (the body proxy re-resolves as the clock ticks), so we only pull values FROM the body when a different
   // body is selected — otherwise it clobbers a half-typed value (the "can't type a precise mass" bug).
   let lastSyncedBodyId: string | null = null;
+  let lastSyncedUndoEpoch = -1;
 
   // --- Radius Slider Config ---
   const radiusMin = 0.01;
@@ -79,29 +118,92 @@
       { name: 'O', start: 30000, end: 50000, color: '#9bb0ff' }
   ];
 
-  const SPECTRAL_DATA: Record<string, { label: string, ranges: { mass: [number, number], radius: [number, number], temp: [number, number], rad: [number, number], mag: [number, number], rot: [number, number] } }> = {
-      'star/O': { label: 'O-Type (Blue Supergiant)', ranges: { mass: [16, 100], radius: [6.6, 20], temp: [30000, 50000], rad: [10000, 100000], mag: [10, 1000], rot: [10, 100] } },
-      'star/B': { label: 'B-Type (Blue Giant)', ranges: { mass: [2.1, 16], radius: [1.8, 6.6], temp: [10000, 30000], rad: [100, 10000], mag: [1, 20], rot: [10, 150] } },
-      'star/A': { label: 'A-Type (White)', ranges: { mass: [1.4, 2.1], radius: [1.4, 1.8], temp: [7500, 10000], rad: [10, 100], mag: [1, 10], rot: [10, 200] } },
-      'star/F': { label: 'F-Type (Yellow-White)', ranges: { mass: [1.04, 1.4], radius: [1.15, 1.4], temp: [6000, 7500], rad: [2, 10], mag: [1, 50], rot: [20, 300] } },
-      'star/G': { label: 'G-Type (Yellow Dwarf)', ranges: { mass: [0.8, 1.04], radius: [0.96, 1.15], temp: [5200, 6000], rad: [0.6, 2], mag: [0.1, 10], rot: [24, 1000] } },
-      'star/K': { label: 'K-Type (Orange Dwarf)', ranges: { mass: [0.45, 0.8], radius: [0.7, 0.96], temp: [3700, 5200], rad: [0.1, 0.6], mag: [0.1, 10], rot: [50, 1500] } },
-      'star/M': { label: 'M-Type (Red Dwarf)', ranges: { mass: [0.08, 0.45], radius: [0.1, 0.7], temp: [2000, 3700], rad: [0.01, 0.1], mag: [0.1, 50], rot: [100, 2000] } },
-      'star/L': { label: 'L-Type (Brown Dwarf)', ranges: { mass: [0.06, 0.08], radius: [0.08, 0.15], temp: [1300, 2000], rad: [0.001, 0.01], mag: [0.1, 100], rot: [5, 50] } },
-      'star/T': { label: 'T-Type (Methane Dwarf)', ranges: { mass: [0.03, 0.06], radius: [0.08, 0.15], temp: [700, 1300], rad: [0.0001, 0.001], mag: [0.1, 100], rot: [5, 50] } },
-      'star/Y': { label: 'Y-Type (Sub-Brown Dwarf)', ranges: { mass: [0.01, 0.03], radius: [0.08, 0.15], temp: [300, 700], rad: [0.00001, 0.0001], mag: [0.1, 100], rot: [5, 50] } },
-      'star/red-giant': { label: 'Red Giant', ranges: { mass: [0.3, 8], radius: [20, 100], temp: [3000, 5000], rad: [100, 5000], mag: [0.1, 100], rot: [1000, 10000] } },
-      'star/WD': { label: 'White Dwarf (WD)', ranges: { mass: [0.1, 1.4], radius: [0.008, 0.02], temp: [4000, 100000], rad: [0.01, 1], mag: [1e5, 1e9], rot: [0.1, 10] } },
-      'star/NS': { label: 'Neutron Star (NS)', ranges: { mass: [1.4, 3], radius: [0.00001, 0.00002], temp: [100000, 1000000], rad: [100, 100000], mag: [1e8, 1e12], rot: [0.001, 1] } },
-      'star/magnetar': { label: 'Magnetar', ranges: { mass: [1.4, 3], radius: [0.00001, 0.00002], temp: [100000, 1000000], rad: [10000, 1000000], mag: [1e13, 1e15], rot: [0.001, 1] } },
-      // BH radius band = Schwarzschild radii for the 3–300 M☉ mass band (8.9 km → 886 km). Mass cap
-      // 300 M☉ comfortably covers reality: heaviest known stellar-merger remnant ≈ 142 M☉ (GW190521);
-      // beyond that you're into galactic-core intermediate/supermassive territory, not a system anchor.
-      'star/BH': { label: 'Black Hole (BH)', ranges: { mass: [3, 300], radius: [1.27e-5, 1.27e-3], temp: [0, 100], rad: [0, 0.001], mag: [0, 0], rot: [0.001, 1] } },
-      'star/BH_active': { label: 'Active Black Hole (Accretion)', ranges: { mass: [3, 300], radius: [1.27e-5, 1.27e-3], temp: [10000, 1000000], rad: [1000, 1000000], mag: [1e3, 1e9], rot: [0.001, 1] } }
+  // ONE TABLE, NOT TWO (inbox D22). The per-class parameter ranges used to be hard-coded here as
+  // well as living in the rule pack's `statTemplates`, and the two copies DISAGREED for 8 of 16
+  // classes — so a GM editing a white dwarf saw 0.1-1.4 Msun / 4,000-100,000 K while a GENERATED or
+  // IMPORTED white dwarf drew from 0.6-1.4 / 8,000-40,000. Both copies are consumed by taking the
+  // MIDPOINT, so that is not a cosmetic difference: it is two different answers to one question
+  // (52,000 K against 24,000 K for the same pick).
+  //
+  // The PACK is authoritative, on three grounds:
+  //   1. It has three consumers (the generator's `starStatTemplate` and `starFieldFromPack`, and the
+  //      real-sky importer's `starParamsFromType`); this had one. A pack is also retunable per
+  //      starmap, which a record compiled into a component can never be.
+  //   2. The engine's own rule puts numbers in DATA, not code (DATA-R4). `import/realsky/stars.mjs`
+  //      states the intent outright: "NOTHING IS INVENTED HERE. The bands are statTemplates from the
+  //      RULE PACK - the same data the generator draws its own stars from."
+  //   3. Where they differ, the pack's bands are TYPICAL and this copy's were PERMISSIVE — and since
+  //      a band is consumed by its midpoint, a permissive band yields an ATYPICAL member. 4,000 to
+  //      100,000 K centres a white dwarf on 52,000 K, which is a very young and very hot one; the
+  //      neutron-star and magnetar bands ran to 3 Msun, above the observed maximum; and the red-giant
+  //      floor of 0.3 Msun is unreachable, because nothing that light has had time to leave the main
+  //      sequence in the age of the universe.
+  //
+  // WHAT STAYS HERE IS PRESENTATION AND NOTHING ELSE: the label a GM reads, and the rotation band,
+  // which has no pack counterpart because the engine has no stellar rotation model yet (inbox B9b,
+  // B43). The new giant and supergiant bands deliberately have no `rot` — the range bar simply
+  // doesn't draw, which is honest, rather than inventing a figure to fill it.
+  //
+  // The two labels that changed are the ones D19 was about: `star/O` was captioned "Blue Supergiant"
+  // and `star/B` "Blue Giant" while both are MAIN-SEQUENCE bands. That is the letter being read as
+  // though it implied a luminosity class — the exact confusion — and it cannot stand next to a real
+  // `star/O-I` in the same list.
+  const STAR_PRESENTATION: Record<string, { label: string, rot?: [number, number] }> = {
+      'star/O': { label: 'O-Type (Blue)', rot: [10, 100] },
+      'star/B': { label: 'B-Type (Blue-White)', rot: [10, 150] },
+      'star/A': { label: 'A-Type (White)', rot: [10, 200] },
+      'star/F': { label: 'F-Type (Yellow-White)', rot: [20, 300] },
+      'star/G': { label: 'G-Type (Yellow Dwarf)', rot: [24, 1000] },
+      'star/K': { label: 'K-Type (Orange Dwarf)', rot: [50, 1500] },
+      'star/M': { label: 'M-Type (Red Dwarf)', rot: [100, 2000] },
+      'star/O-III': { label: 'O-Type Giant' },
+      'star/B-III': { label: 'B-Type Giant' },
+      'star/A-III': { label: 'A-Type Giant' },
+      'star/F-III': { label: 'F-Type Giant' },
+      'star/G-III': { label: 'G-Type Giant (Capella)' },
+      'star/K-III': { label: 'K-Type Giant (Arcturus)' },
+      'star/M-III': { label: 'M-Type Giant (red)' },
+      'star/O-I': { label: 'O-Type Supergiant' },
+      'star/B-I': { label: 'B-Type Supergiant (Rigel)' },
+      'star/A-I': { label: 'A-Type Supergiant (Deneb)' },
+      'star/F-I': { label: 'F-Type Supergiant (Polaris)' },
+      'star/G-I': { label: 'G-Type Supergiant' },
+      'star/K-I': { label: 'K-Type Supergiant' },
+      'star/M-I': { label: 'M-Type Supergiant (Betelgeuse)' },
+      'star/L': { label: 'L-Type (Brown Dwarf)', rot: [5, 50] },
+      'star/T': { label: 'T-Type (Methane Dwarf)', rot: [5, 50] },
+      'star/Y': { label: 'Y-Type (Sub-Brown Dwarf)', rot: [5, 50] },
+      'star/WD': { label: 'White Dwarf (WD)', rot: [0.1, 10] },
+      'star/NS': { label: 'Neutron Star (NS)', rot: [0.001, 1] },
+      'star/magnetar': { label: 'Magnetar', rot: [0.001, 1] },
+      'star/BH': { label: 'Black Hole (BH)', rot: [0.001, 1] },
+      'star/BH_active': { label: 'Active Black Hole (Accretion)', rot: [0.001, 1] }
   };
 
-  const spectralTypes = Object.keys(SPECTRAL_DATA);
+  type SpectralEntry = { label: string, ranges: { mass: [number, number], radius: [number, number], temp: [number, number], rad: [number, number], mag: [number, number], rot?: [number, number] } };
+
+  // Pack band -> the shape this tab draws with. A pack whose bands are named differently still
+  // appears: anything `star/*` the presentation map has not captioned falls back to its own key.
+  const SPECTRAL_DATA: Record<string, SpectralEntry> = $derived.by(() => {
+      const templates = (rulePack?.statTemplates ?? {}) as Record<string, any>;
+      const keys = Object.keys(STAR_PRESENTATION).filter((k) => templates[k])
+          .concat(Object.keys(templates).filter((k) => k.startsWith('star/') && k !== 'star/default' && !STAR_PRESENTATION[k]));
+      const out: Record<string, SpectralEntry> = {};
+      for (const key of keys) {
+          const t = templates[key];
+          out[key] = {
+              label: STAR_PRESENTATION[key]?.label ?? key.split('/')[1],
+              ranges: {
+                  mass: t.mass_solar, radius: t.radius_solar, temp: t.temp_k,
+                  rad: t.radiation_output ?? [0, 0], mag: t.mag_gauss ?? [0, 0],
+                  rot: STAR_PRESENTATION[key]?.rot
+              }
+          };
+      }
+      return out;
+  });
+
+  const spectralTypes = $derived(Object.keys(SPECTRAL_DATA));
 
   // --- Helper Functions (Moved up for scope) ---
   function getStarColorFromTemp(k: number) {
@@ -128,16 +230,21 @@
   // --- Derived Ranges ---
   let currentClass = $state('star/G');
 
+  // THE DROPDOWN'S VALUE IS A BAND, AND A BODY NOW HOLDS A DESIGNATION, so the held key is mapped
+  // back to the range it came from: `star/G2V` selects "G-Type (Yellow Dwarf)". That mapping is the
+  // designation's own letter and luminosity class — no table, and it inverts `starClassKeyFor`.
   $effect(() => {
       if (body?.classes?.[0]) {
-          currentClass = body.classes[0];
+          currentClass = bandKeyOf(body.classes[0]);
       }
   });
 
   function getRangePct(prop: 'mass' | 'radius' | 'temp' | 'rad' | 'mag' | 'rot', type: 'start' | 'width') {
       const data = SPECTRAL_DATA[currentClass] || SPECTRAL_DATA['star/G'];
-      const range = data.ranges[prop];
-      if (!range) return 0;
+      const range = data?.ranges[prop];
+      // A band the pack states as zero is a real statement, not a gap — a quiescent black hole has
+      // no temperature and no field — and log(0) would poison the bar's geometry. Draw nothing.
+      if (!range || !(range[0] > 0) || !(range[1] > 0)) return 0;
 
       let minL = 0, maxL = 0, startL = 0, endL = 0;
       if (prop === 'mass') { minL = massLogMin; maxL = massLogMax; startL = Math.log(Math.max(massMin, range[0])); endL = Math.log(Math.min(massMax, range[1])); }
@@ -179,6 +286,58 @@
   // Bolometric luminosity from Stefan-Boltzmann: L/L☉ = (R/R☉)²·(T/T☉)⁴.
   let luminosity = $derived((radiusSuns ** 2) * ((tempK / 5778) ** 4));
 
+  // The four classes whose output is NOT their own surface: an accretion disc or a magnetosphere.
+  // Same list `syncRadiationFromSB` returns early on — one spelling, checked in one place.
+
+  let isNonThermal = $derived(['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass));
+
+  // IONISING OUTPUT, AND THE GAUGE THAT SHOWS IT. All derived — there is no control here, only the
+  // magnetic-field slider below, which is what actually moves any of it.
+  let ionisingSolar = $derived(ionisingFromField({
+      fieldGauss: magGauss, radiusSolar: radiusSuns, massSolar: massSuns,
+      tempK, luminositySolar: radiation || 0
+  }));
+  // At the ceiling? Then the field slider's remaining travel does nothing, and saying so is the
+  // difference between "physically capped" and "apparently broken".
+  let satField = $derived(saturationFieldGauss({
+      radiusSolar: radiusSuns, massSolar: massSuns, tempK, luminositySolar: radiation || 0
+  }));
+  let isSaturated = $derived(!!satField && magGauss >= satField);
+  /** The saturation field as a position on the magnetic slider's own log axis. */
+  let satFieldPct = $derived.by(() => {
+      if (!(satField! > 0)) return null;
+      const p = (Math.log(Math.max(magMin, Math.min(magMax, satField!))) - magLogMin) / (magLogMax - magLogMin);
+      return p > 0.02 && p < 0.98 ? p * 100 : null;
+  });
+  function fmtField(g: number | undefined): string {
+      if (!(g! > 0)) return '';
+      return g! > 10000 ? `${g!.toExponential(1)} G` : `${Math.round(g!).toLocaleString()} G`;
+  }
+  let pastCoronalLine = $derived(!isNonThermal && !hasHotCorona(massSuns, radiusSuns, tempK));
+
+  /** Solar multiples, readable at any magnitude: a Sun-like 1.6, a wound-up giant 4.9e+5. */
+  function fmtIonising(x: number): string {
+      if (!(x > 0)) return '0';
+      if (x < 10) return x.toPrecision(2);
+      if (x < 1e4) return Math.round(x).toLocaleString();
+      return x.toExponential(1);
+  }
+
+  // WHERE THE MARKER SITS, and the two bands behind it. Both follow the star's own state, so the
+  // gauge tracks the field slider without being one: there is nothing here a GM can grab.
+  let derivedActivity = $derived((body as any)?.flareActivity ?? undefined);
+  let ionisingPos = $derived(
+      100 * activityForFraction(((ionisingSolar || 0) * IONISING_FRACTION_QUIET) / (radiation || 1))
+  );
+  let ionisingRanges = $derived.by(() => {
+      const bands = ionisingBands(radiation || 0, derivedActivity);
+      if (!bands) return null;
+      const pos = (out: number) => 100 * activityForFraction((out * IONISING_FRACTION_QUIET) / (radiation || 1));
+      const tx = pos(bands.typical[0]), tw = Math.max(1.5, pos(bands.typical[1]) - tx);
+      const fx = pos(bands.flaring[0]), fw = Math.max(1.5, pos(bands.flaring[1]) - fx);
+      return { typicalX: tx, typicalW: tw, flaringX: fx, flaringW: fw };
+  });
+
   // For a THERMAL emitter (any real star — incl. white dwarfs / red giants, but NOT accretion- or
   // non-thermal remnants), the radiated output IS that bolometric luminosity. So when the user edits
   // temperature or radius we recompute radiationOutput from Stefan-Boltzmann instead of leaving it
@@ -186,7 +345,10 @@
   // independent (accretion/magnetospheric) radiation slider.
   function syncRadiationFromSB() {
       if (['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass)) return;
-      const L = (radiusSuns ** 2) * ((tempK / 5778) ** 4);
+      // The SHARED Stefan-Boltzmann, not a second copy of it. This and the brown-dwarf cooling track
+      // hand over to each other at the fusion limit, so if they disagreed about how bright a given
+      // radius and temperature are, igniting a body would change its brightness for no reason.
+      const L = luminositySolarFromRT(radiusSuns * SOLAR_RADIUS_KM, tempK);
       radiation = parseFloat(L.toPrecision(3));
       body.radiationOutput = radiation;
       radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, L))) - radLogMin) / (radLogMax - radLogMin);
@@ -205,8 +367,12 @@
       // sync each time would overwrite a value you're mid-way through typing — type or paste a precise mass
       // and it snaps back to the stored one. Same-body edits (sliders, number inputs, spectral type) set
       // these locals in their own handlers, so this is purely the on-load seed.
-      if (body.id === lastSyncedBodyId) return;
+      // ...and after an UNDO, which is the other time the model legitimately changes underneath the
+      // panel rather than because of it (G28). Without this the fields keep the pre-undo numbers
+      // until you select another body and come back.
+      if (body.id === lastSyncedBodyId && $undoEpoch === lastSyncedUndoEpoch) return;
       lastSyncedBodyId = body.id;
+      lastSyncedUndoEpoch = $undoEpoch;
 
       if (body.massKg) {
           const m = body.massKg / SOLAR_MASS_KG;
@@ -226,14 +392,17 @@
           radiation = body.radiationOutput;
           radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
       }
-      rotationHours = body.rotation_period_hours || 0;
-      axialTilt = body.axial_tilt_deg || 0;
+      rotationHours = body.rotation_period_hours ?? undefined;
+      axialTilt = body.axial_tilt_deg ?? undefined;
       if (body.magneticField?.strengthGauss !== undefined) {
           magGauss = body.magneticField.strengthGauss;
           magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
       }
       // Black-hole accretion slider — seed from the stored Eddington fraction (active class ⇒ a default).
       accF = (body as any).accretionEddington ?? ((body.classes?.[0] === 'star/BH_active') ? 0.5 : 0);
+      // Seed the activity lever from what the star ACTUALLY has — the GM's pin if there is one, else
+      // the value the processor derived. Starting it at zero would make the slider lie about a quiet
+      // star and make its first nudge look like a huge change.
       accSliderPos = posFromF(accF);
   });
 
@@ -295,8 +464,19 @@
   }
 
   function updateClassFromTemp(k: number) {
+      // Temperature re-derives the class ONLY for a star that is on the main sequence, because that
+      // is the only place where temperature alone determines the band. Anything that states more
+      // than a letter — a giant, a supergiant, a red giant, a remnant — keeps what it was given: an
+      // M supergiant and an M dwarf sit at the same temperature and differ in everything else, so
+      // re-deriving would silently demote a supergiant the moment a GM nudged the slider (D19,
+      // reappearing inside the editor). Previously a fixed list of six; now anything that is not a
+      // bare letter band, so a pack's own extra classes are covered too.
+      // Anything that states MORE than a main-sequence position keeps what it was given. Reads the
+      // class key rather than testing for a bare letter, so `star/G2V` — what a pick now writes —
+      // counts as main sequence exactly as `star/G` did.
       const currentClassInBody = body.classes?.[0] || '';
-      if (['star/red-giant', 'star/WD', 'star/NS', 'star/magnetar', 'star/BH', 'star/BH_active'].includes(currentClassInBody)) return;
+      const heldParts = starClassParts(currentClassInBody);
+      if (currentClassInBody && (!heldParts.letter || (heldParts.band && heldParts.band !== 'V'))) return;
 
       let newClass = 'star/Y';
       if (k >= 30000) newClass = 'star/O';
@@ -310,11 +490,25 @@
       else if (k >= 700) newClass = 'star/T';
       else newClass = 'star/Y';
       
-      if (body.classes[0] !== newClass) {
+      const newKey = starClassKeyFor({ letter: newClass.split('/')[1], tempK: k, band: 'V' }, rulePack);
+      if (body.classes[0] !== newKey) {
           const prefixes = Object.keys(SPECTRAL_DATA);
-          const others = body.classes.filter((c: string) => !prefixes.includes(c));
-          body.classes = [newClass, ...others];
-          currentClass = newClass;
+          const others = body.classes.filter((c: string) => !prefixes.includes(c) && !isDesignationKey(c));
+          body.classes = [newKey, ...others];
+          // Keep the structured classification in step, or the body says one thing in its class and
+          // another in its type. The SUBCLASS is RE-DERIVED rather than dropped: it is relative to the
+          // letter, so the 5.5 of M5.5V means nothing once the star is a K — but the new temperature
+          // states a new digit, and dropping it published less than the engine knows (inbox B60). The
+          // luminosity class is kept, since the GM moved the temperature and not the size class.
+          const { luminosity, band } = body.stellarType ?? {};
+          const letter = newClass.split('/')[1];
+          const sub = spectralSubclass(letter, k, rulePack, band);
+          body.stellarType = {
+              spectral: letter,
+              ...(sub != null ? { subclass: Math.round(sub) } : {}),
+              ...(luminosity ? { luminosity, band } : {})
+          };
+          currentClass = newClass;   // the BAND, for the dropdown; the body holds the designation
           updateImage(newClass);
       }
   }
@@ -332,13 +526,17 @@
       dispatch('update');
   }
 
+  // Clearing the box removes the field rather than writing 0 — an empty box means "we do not know",
+  // and that has to survive the round trip or the honest state is unreachable once you leave it.
   function updateRotation() {
-      body.rotation_period_hours = rotationHours;
+      if (typeof rotationHours === 'number' && Number.isFinite(rotationHours)) body.rotation_period_hours = rotationHours;
+      else delete body.rotation_period_hours;
       dispatch('update');
   }
 
   function updateTilt() {
-      body.axial_tilt_deg = axialTilt;
+      if (typeof axialTilt === 'number' && Number.isFinite(axialTilt)) body.axial_tilt_deg = axialTilt;
+      else delete body.axial_tilt_deg;
       dispatch('update');
   }
 
@@ -431,7 +629,7 @@
       body.radiationOutput = R;
       currentClass = cls;
       if (!body.classes) body.classes = [];
-      const others = body.classes.filter((c: string) => !Object.keys(SPECTRAL_DATA).includes(c));
+      const others = body.classes.filter((c: string) => !Object.keys(SPECTRAL_DATA).includes(c) && !isDesignationKey(c));
       body.classes = [cls, ...others];
       updateImage(cls);
       accSliderPos = posFromF(f);
@@ -446,14 +644,39 @@
       applyAccretion(seed);
   }
 
+  // (`stellarTypeForBand` lived here and now lives in `physics/starDesignation`, because generation
+  //  needs the same answer: a star built by the wizard used to carry no structured classification at
+  //  all, so only an IMPORTED star had one. Two doors, one map — inbox B60.)
+
   function updateImage(starClass: string) {
-      let lookupClass = starClass;
-      if (starClass === 'star/red-giant') lookupClass = 'star/M';
-      const images = rulePack?.classifier?.starImages || rulePack?.starImages;
-      if (images?.[lookupClass]) {
+      // G20 - A GM-UPLOADED PICTURE OUTRANKS THE CLASS PORTRAIT, AND THIS IS THE ONE WRITER THAT
+      // REPEATS. Called from the sync $effect above, which re-runs on EVERY pass by design; without
+      // this line a custom star image would be overwritten before the GM let go of the mouse. The
+      // other three writers of `starImages` (generation/star.ts, generateFromConfig.ts, the realsky
+      // importer) all write at CREATION, so they cannot stomp an image that does not exist yet.
+      // SystemProcessor already exempts stars from type images and already honours `custom`.
+      if ((body.image as any)?.custom) return;
+      // G21 - the lookup itself lives in `system/starImage.ts` and is shared with both generators.
+      // This copy only fell back to the letter for a HYPHENATED band, so a subtype like `star/G5V`
+      // matched nothing and the editor set no portrait at all, while the generator resolved the same
+      // key to `star/G`: two doors, two answers. Leaving an existing image alone on a miss is this
+      // caller's own rule and stays here - the generators clear it instead.
+      const url = resolveStarImage(rulePack, starClass);
+      if (url) {
           if (!body.image) body.image = { url: '' };
-          body.image.url = images[lookupClass];
+          body.image.url = url;
       }
+  }
+
+  // G20 - REMOVE MUST HAND THE PICTURE BACK IMMEDIATELY, not at the next render. The guard above makes
+  // `updateImage` a no-op while a custom picture is set, so calling it here is idempotent on upload and
+  // is exactly what repopulates the class portrait on remove. Leaving it to the sync $effect looked
+  // right in a unit test and was WRONG in the app: the effect re-runs on a render, and with the clock
+  // paused nothing re-renders - the GM pressed Remove and got a blank where the portrait should be.
+  function onPictureChange() {
+      const currentClassStr = body.classes?.[0];
+      if (currentClassStr) updateImage(currentClassStr);
+      dispatch('update');
   }
 
   function updateSpectralType(e: Event) {
@@ -461,16 +684,26 @@
       currentClass = val;
       if (!body.classes) body.classes = [];
       const prefixes = Object.keys(SPECTRAL_DATA);
-      const others = body.classes.filter((c: string) => !prefixes.includes(c));
-      body.classes = [val, ...others];
+      const others = body.classes.filter((c: string) => !prefixes.includes(c) && !isDesignationKey(c));
       updateImage(val);
 
-      const data = SPECTRAL_DATA[val];
-      if (data) {
-          const newMass = (data.ranges.mass[0] + data.ranges.mass[1]) / 2;
-          const newRadius = (data.ranges.radius[0] + data.ranges.radius[1]) / 2;
-          const newTemp = (data.ranges.temp[0] + data.ranges.temp[1]) / 2;
-          
+      // A SEEDED DRAW ACROSS THE BAND, NOT ITS MIDPOINT (owner, 2026-08-16: "always seeded draw").
+      // The midpoint made every G dwarf a GM placed numerically identical to every other one — the
+      // artefact, not the variety — and it disagreed with generation, which has always drawn.
+      // `starStatsFromPack` is that one draw, so the two paths cannot answer differently (inbox B61).
+      //
+      // THE SEED IS THE BODY ID PLUS THE CHOSEN CLASS, and both halves matter. The body id makes the
+      // draw stable: this is an EDITOR, and a positional or time-based seed would reroll the star
+      // every time the panel re-rendered, under the GM's hands. The class makes the draws
+      // INDEPENDENT between classes — seeding on the id alone would land every band at the same
+      // fraction of its width, so a star switched from G to K would land at the same relative point
+      // each time rather than being a fresh K. Its own stream, never the system's (DATA-G1).
+      const drawn = starStatsFromPack(rulePack, val, new SeededRNG(`${body.id}|starpick|${val}`));
+      if (drawn) {
+          const newMass = drawn.massSolar;
+          const newRadius = drawn.radiusSolar;
+          const newTemp = drawn.tempK;
+
           massSuns = newMass;
           massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, newMass))) - massLogMin) / (massLogMax - massLogMin);
           body.massKg = massSuns * SOLAR_MASS_KG;
@@ -483,9 +716,34 @@
           tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
           body.temperatureK = tempK;
       }
+      // PICKING IS THE FORWARD DIRECTION and it must leave the same structured classification an
+      // IMPORT would (owner, 2026-08-14). Without this, a GM-built supergiant is a supergiant only by
+      // its class string, and the inverse — parameters back to a designation — has nothing to read.
+      // IT NOW STATES A SUBCLASS TOO, and it can only do so because the pick DRAWS a temperature: a
+      // midpoint stood for the whole band and implied no particular digit, but a drawn 5,772 K G star
+      // is a G2 and saying so is stating what the draw already decided (inbox B60). Runs AFTER the
+      // draw for exactly that reason.
+      body.stellarType = stellarTypeForBand(val, body.temperatureK, rulePack);
+      // A PICK IS A BAND; WHAT THE STAR ENDS UP BEING IS A DESIGNATION (owner, 2026-08-16: "O is
+      // dead, O1a is valid"). The dropdown offers the pack's ranges — "make this a G dwarf" — and the
+      // body records what the draw produced, `star/G2V`. A giant keeps its band key, because the
+      // subclass ladder is main-sequence and `star/K-III` already states everything we can say.
+      const bandParts = starClassParts(val);
+      const designation = bandParts.letter
+          ? starClassKeyFor({ letter: bandParts.letter, tempK: body.temperatureK ?? 0, band: bandParts.band }, rulePack)
+          : val;   // remnants keep their own key
+      body.classes = [designation, ...others];
       // Picking a black hole from the dropdown applies the per-state presets too (event horizon
       // from mass, no-hair zero field for quiescent / disc values for feeding).
       if (val === 'star/BH' || val === 'star/BH_active') applyBHPresets(val);
+      // RE-ROLL THE LUMINOSITY FOR THE NEW CLASS (owner, 2026-08-15: it "SHOULD reroll on selection
+      // of a star class to show accurate data on a new selection"). Picking a band applies its mass,
+      // radius and temperature and used to leave `radiationOutput` at the PREVIOUS class's value —
+      // so a Sun switched to B kept 1 Lsun beside a 4.2 Rsun / 20,000 K body, which the physics
+      // plausibility pass then correctly reported as `luminosity-mismatch`. `syncRadiationFromSB`
+      // already computes it and returns early for the non-thermal remnants; it simply was not called
+      // from here.
+      syncRadiationFromSB();
       dispatch('update');
   }
 
@@ -496,13 +754,42 @@
     <div class="form-group">
         <label>Spectral Type</label>
         <div style="display: flex; gap: 10px;">
-            <select value={body.classes?.[0] || 'star/G'} on:change={updateSpectralType}>
+            <!-- BOUND TO `currentClass`, NOT `body.classes[0]`. Dragging the temperature slider DOES
+                 re-derive the class - temperature to spectral letter is a direct lookup - but it does
+                 so by MUTATING `body.classes`, which nothing in this template tracks, so the dropdown
+                 never moved and the change looked like it had not happened. `currentClass` is $state
+                 and is already kept in step by every path that changes the class. -->
+            <!-- BIND, not `value=`. A plain `value={...}` on a <select> whose options come from an
+                 {#each} is NOT kept in step by Svelte - measured: dragging the temperature set
+                 body.classes to star/Y and the dropdown still read star/G. Temperature to spectral
+                 letter is a direct lookup and the class was being re-derived correctly all along;
+                 only the control failed to show it. `bind:value` makes the select track the state. -->
+            <select bind:value={currentClass} on:change={updateSpectralType}
+                    title={classExplanation?.text ?? ''}>
                 {#each spectralTypes as type}
-                    <option value={type}>{SPECTRAL_DATA[type].label}</option>
+                    <option value={type} title={explainStarClass(rulePack, type)?.text ?? ''}>{pickerLabel(rulePack, type) ?? SPECTRAL_DATA[type].label}</option>
                 {/each}
             </select>
             <div class="color-preview" style="{starStyle}"></div>
         </div>
+        <!-- Owner, 2026-08-15: explain the designation in simple terms. Derived from the pack's own
+             radius band rather than authored prose, so it cannot drift from the physics. -->
+        {#if classExplanation}
+            <div class="class-explain">
+                <strong>{classExplanation.kind}</strong>{#if classExplanation.colour}, {classExplanation.colour} to human eyes{/if}{#if classExplanation.size}, {classExplanation.size}{/if}
+            </div>
+        {/if}
+        <!-- WHY A STAR HAS NO "auto-classify" CHECKBOX WHERE A PLANET DOES, said out loud (owner,
+             2026-08-16). The opposite default on two body kinds is deliberate and reads as a bug
+             unless the UI explains it: a planet's type is a judgement about parameters the GM
+             authored, so it stays pinned; a star's designation is a READOUT of where it sits on the
+             HR diagram, so it follows the numbers. Moving the temperature slider re-letters it in
+             front of you, which is the same statement made by the control rather than in prose. -->
+        {#if designationNow}
+            <div class="designation-line" title="A star's designation is a readout of its physics, not a label attached to it — change the temperature or the radius and it changes. That is the opposite of a planet, whose type you pin and the engine leaves alone.">
+                Currently <strong>{designationNow}</strong> — read from its temperature and radius, and it follows them.
+            </div>
+        {/if}
         {#if currentClass === 'star/BH' || currentClass === 'star/BH_active'}
             <div class="bh-accretion" style="margin-top:10px;">
                 <label style="font-size:0.85em; display:flex; justify-content:space-between;">
@@ -527,13 +814,30 @@
         {/if}
     </div>
 
+    <!-- PICTURE (G20). Sits directly under the spectral picker because the class is what supplies the
+         default portrait, so "replace it" reads next to the thing being replaced - the same place the
+         planet's block sits, under Type / Image. Removing the upload lets updateImage() resume and the
+         class portrait comes back. -->
+    <div class="form-group">
+        <label>Picture</label>
+        <CustomImageBlock
+            target={body}
+            onUpdate={onPictureChange}
+            addLabel="Upload custom image…"
+            replaceLabel="Replace image…"
+            removeLabel="Remove (use class image)"
+            alt="Custom image for {body.name}" />
+        <span class="sub-label">Overrides the spectral-class portrait until you remove it.</span>
+    </div>
+
     <hr/>
 
     <!-- MASS -->
     <div class="form-group">
         <div class="label-row">
-            <label>Mass (Solar Masses)</label>
-            <input type="number" step="any" bind:value={massSuns} on:change={handleMassNumberInput} />
+            <label>Mass</label>
+            <UnitInput quantity="mass" bodyType="star" value={massSuns * SOLAR_MASS_KG}
+                on:commit={(e) => { massSuns = e.detail / SOLAR_MASS_KG; handleMassNumberInput(); }} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -559,7 +863,7 @@
             <input type="range" min="0" max="1" step="0.001" bind:value={radiusSliderPos} disabled={isBH} on:input={updateRadius} class="full-width-slider overlay" />
         </div>
         <div class="sub-label">
-            {Math.round((body.radiusKm || 0) * 100) / 100 > 1000 ? $fmt.km(body.radiusKm || 0) : $fmt.km(body.radiusKm || 0, 1)}
+            <UnitValue quantity="radius" bodyType="star" value={body.radiusKm || 0} decimals={(body.radiusKm || 0) > 1000 ? undefined : 1} />
             {#if isBH}— Schwarzschild radius, driven by mass (r = 2GM/c²){/if}
         </div>
     </div>
@@ -569,8 +873,9 @@
     <!-- TEMPERATURE -->
     <div class="form-group">
         <div class="label-row">
-            <label for="temp">Effective Temperature ({tempK} K)</label>
-            <input type="number" step="any" bind:value={tempK} on:change={handleTempInput} />
+            <label for="temp">Effective Temperature</label>
+            <UnitInput quantity="temperature" bodyType="star" id="temp" value={tempK}
+                on:commit={(e) => { tempK = e.detail; handleTempInput(); }} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -585,27 +890,92 @@
         </div>
     </div>
 
-    <!-- RADIATION -->
-    <div class="form-group">
+    <!-- ONE BLOCK, THREE ROWS, READ TOP-DOWN AS CAUSE AND EFFECT (owner, 2026-08-16): "the mag field
+         should be UP under the Ionising output - and tied into a threesome in the UI to infer their
+         relationship. I guess we don't need an actual lock and slider on Ionising Output as Magnetic
+         field directly drives it now?"
+         Correct, and the lock and the ionising slider are GONE. They were a second control for a
+         quantity the field already determines - two ways to say one thing, which is the duplication
+         this codebase keeps paying for. What is left is honest: two DERIVED readouts and the one
+         INPUT that moves them.
+             Luminosity      <- radius and temperature
+             Ionising output <- magnetic flux (field x area), capped at saturation
+             Magnetic field  <- the slider; the only thing here a GM sets -->
+    <div class="form-group triad">
         <div class="label-row">
-            <label>Ionising Radiation Level ({radiation.toFixed(2)})</label>
-            <input type="number" step="any" bind:value={radiation} on:change={handleRadiationInput} />
+            <label>Luminosity</label>
+            {#if isNonThermal}
+                <input type="number" step="any" bind:value={radiation} on:change={handleRadiationInput} />
+            {:else}
+                <span class="derived-readout" title="Computed from radius and temperature — edit those to change it.">{radiation.toPrecision(3)} L&#9737;</span>
+            {/if}
+        </div>
+        <div class="sub-label">
+            {#if isNonThermal}
+                Accretion- or magnetosphere-driven, so it is yours to set.
+            {:else}
+                Derived from radius and temperature.
+            {/if}
+        </div>
+
+        <div class="label-row triad-row">
+            <label>Ionising output</label>
+            <span class="derived-readout">{fmtIonising(ionisingSolar)}&times; Sun</span>
+        </div>
+        <!-- A GAUGE, NEVER A CONTROL (owner, 2026-08-16): "seeing the slider move from typical to
+             flaring is great - keep the visual - just never interactive." So the bands and the marker
+             stay and the input does not: drag the FIELD below and the marker walks from the typical
+             band into the flaring one, which is the relationship made visible rather than described. -->
+        <div class="slider-container gauge">
+            <svg class="slider-svg" width="100%" height="30">
+                {#if ionisingRanges}
+                    <rect x="{ionisingRanges.typicalX}%" y="0" width="{ionisingRanges.typicalW}%" height="8" fill="#22aa44" />
+                    <rect x="{ionisingRanges.flaringX}%" y="0" width="{ionisingRanges.flaringW}%" height="8" fill="#e0a24a" />
+                    <text x="{ionisingRanges.typicalX}%" y="26" class="rad-label">typical</text>
+                    <text x="{ionisingRanges.flaringX}%" y="26" class="rad-label">flaring</text>
+                {/if}
+                <line x1="{ionisingPos}%" y1="-2" x2="{ionisingPos}%" y2="12" stroke="var(--text)" stroke-width="2" />
+            </svg>
+        </div>
+        <div class="sub-label">
+            {#if isSaturated}
+                <strong>Saturated.</strong> Past about {fmtField(satField)} the dynamo stops responding
+                and output stops climbing &mdash; more field buys nothing. A real ceiling, at a thousandth
+                of the star's own brightness.
+            {:else if pastCoronalLine}
+                Cool and swollen &mdash; past the coronal dividing line, so it holds no hot corona and
+                irradiates far less than its size suggests.
+            {:else}
+                Derived from the magnetic field below &mdash; field strength across the star's surface.
+            {/if}
+        </div>
+
+        <div class="label-row triad-row">
+            <label>Magnetic field (Gauss)</label>
+            <input type="number" step="any" bind:value={magGauss} disabled={currentClass === 'star/BH'} on:input={handleMagInput} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
-                {#each radZones as zone}
-                    {@const x = getLogPos(zone.start)}
-                    <line x1="{x}%" y1="5" x2="{x}%" y2="18" stroke="var(--text-faint)" stroke-width="1" />
-                    <text x="{x + 1}%" y="28" class="rad-label">{zone.name}</text>
-                {/each}
-                <rect x="{getRangePct('rad', 'start')}%" y="0" width="{getRangePct('rad', 'width')}%" height="8" fill="#22aa44" />
+                <rect x="{getRangePct('mag', 'start')}%" y="0" width="{getRangePct('mag', 'width')}%" height="8" fill="#22aa44" />
+                <!-- Where more field stops doing anything. Everything to its right is real field and
+                     no extra radiation, which is worth SHOWING rather than leaving to be discovered. -->
+                {#if satFieldPct != null}
+                    <line x1="{satFieldPct}%" y1="0" x2="{satFieldPct}%" y2="12" stroke="#e0a24a" stroke-width="2" />
+                    <text x="{Math.min(88, satFieldPct + 1)}%" y="26" class="rad-label">saturated</text>
+                {/if}
             </svg>
-            <input type="range" min="0" max="1" step="0.001" bind:value={radSliderPos} on:input={updateRadiation} class="full-width-slider overlay" />
+            <input type="range" min="0" max="1" step="0.001" bind:value={magSliderPos} disabled={currentClass === 'star/BH'} on:input={updateMagSlider} class="full-width-slider overlay" />
         </div>
-        <div class="sub-label">Est. Luminosity: {luminosity.toExponential(2)} L☉</div>
+        <div class="sub-label">
+            {#if currentClass === 'star/BH'}
+                0 G &mdash; an isolated black hole keeps no magnetic field (no-hair theorem); feed it to anchor a disc field
+            {:else if magGauss > 10000}
+                {magGauss.toExponential(2)} G &mdash; drives the ionising output above
+            {:else}
+                {Math.round(magGauss).toLocaleString()} G &mdash; drives the ionising output above
+            {/if}
+        </div>
     </div>
-
-    <hr/>
 
     <!-- ROTATION -->
     <div class="form-group">
@@ -619,6 +989,9 @@
             </svg>
             <input type="range" min="0.1" max="10000" step="0.1" bind:value={rotationHours} on:input={updateRotation} class="full-width-slider overlay" />
         </div>
+        {#if rotationHours === undefined}
+            <div class="sub-label">Not set &mdash; nothing derives a star's spin yet, so this is a gap rather than a still star. Set it if you need one.</div>
+        {/if}
     </div>
 
     <!-- AXIAL TILT. A star's spin axis is not automatically square to the orbits around it: the two
@@ -634,7 +1007,9 @@
             <input type="range" min="0" max="180" step="0.5" bind:value={axialTilt} on:input={updateTilt} class="full-width-slider" />
         </div>
         <div class="sub-label">
-            {#if axialTilt < 12}
+            {#if axialTilt === undefined}
+                Not set &mdash; unknown, rather than square to its planets
+            {:else if axialTilt < 12}
                 Aligned with its planets, as a star formed from the same disc should be (the Sun: 7&deg;)
             {:else if axialTilt < 45}
                 Noticeably tilted &mdash; something stirred this system
@@ -646,28 +1021,6 @@
         </div>
     </div>
 
-    <!-- MAGNETIC FIELD (quiescent BHs have none — no-hair theorem; feeding BHs carry a disc field) -->
-    <div class="form-group">
-        <div class="label-row">
-            <label>Magnetic Field (Gauss)</label>
-            <input type="number" step="any" bind:value={magGauss} disabled={currentClass === 'star/BH'} on:input={handleMagInput} />
-        </div>
-        <div class="slider-container">
-            <svg class="slider-svg" width="100%" height="30">
-                <rect x="{getRangePct('mag', 'start')}%" y="0" width="{getRangePct('mag', 'width')}%" height="8" fill="#22aa44" />
-            </svg>
-            <input type="range" min="0" max="1" step="0.001" bind:value={magSliderPos} disabled={currentClass === 'star/BH'} on:input={updateMagSlider} class="full-width-slider overlay" />
-        </div>
-        <div class="sub-label">
-            {#if currentClass === 'star/BH'}
-                0 G — an isolated black hole keeps no magnetic field (no-hair theorem); feed it to anchor a disc field
-            {:else if magGauss > 10000}
-                {magGauss.toExponential(2)} G
-            {:else}
-                {Math.round(magGauss).toLocaleString()} G
-            {/if}
-        </div>
-    </div>
 
 </div>
 
@@ -684,6 +1037,14 @@
   .full-width-slider { width: 100%; margin: 0; cursor: pointer; }
   hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
   .sub-label { font-size: 0.75em; color: var(--text-faint); text-align: right; }
+  .designation-line { font-size: 0.78em; color: var(--text-faint); margin-top: 4px; }
+  /* One bordered group, so the three read as related rather than as three separate settings. */
+  .triad { border-left: 2px solid var(--border); padding-left: 8px; }
+  .triad-row { margin-top: 6px; }
+  /* Read-only: no pointer affordance, because there is nothing to grab. */
+  .gauge { pointer-events: none; }
+  .derived-readout { width: 100px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.95em; }
+  .class-explain { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
   
   .color-preview {
       width: 30px; height: 30px;

@@ -8,7 +8,9 @@
   import { AU_KM } from '$lib/constants';
   import type { RulePack } from '$lib/types';
   import { get } from 'svelte/store';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatPref } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
   import { getNodeColor } from '$lib/rendering/colors';
   import { getAbsoluteOrbitalDistanceAU } from '$lib/system/utils';
   import { calculateFlightTelemetry, type TelemetryPoint } from '$lib/transit/telemetry';
@@ -17,6 +19,7 @@
   import DualRangeSlider from './DualRangeSlider.svelte';
   import TransitStressGraph from './TransitStressGraph.svelte';
   import BodyPicker from './BodyPicker.svelte';
+  import { foreground } from '$lib/ui/foreground';
 
   function getTcmClass(g: number): string {
       if (g > 10.0) return 'tcm-critical';
@@ -118,14 +121,14 @@
       if (isImpossible && plan) {
           return {
               title: 'Journey Cannot Be Executed',
-              detail: `Required delta-V is ${$fmt.speedMs(plan.totalDeltaV_ms, 1)}, but ship capability is ${$fmt.speedMs(maxPotentialDeltaV_ms, 1)} (fully fueled).`
+              detail: `Required delta-V is ${formatPref($unitPrefs, 'speed', 'construct', plan.totalDeltaV_ms / 1000)}, but ship capability is ${formatPref($unitPrefs, 'speed', 'construct', maxPotentialDeltaV_ms / 1000)} (fully fueled).`
           };
       }
 
       if (isInsufficientFuel && plan && currentConstructSpecs) {
           return {
               title: 'Journey Cannot Be Executed',
-              detail: `Required delta-V is ${$fmt.speedMs(plan.totalDeltaV_ms, 1)}, but current fuel supports ${$fmt.speedMs(currentConstructSpecs.totalVacuumDeltaV_ms, 1)}.`
+              detail: `Required delta-V is ${formatPref($unitPrefs, 'speed', 'construct', plan.totalDeltaV_ms / 1000)}, but current fuel supports ${formatPref($unitPrefs, 'speed', 'construct', currentConstructSpecs.totalVacuumDeltaV_ms / 1000)}.`
           };
       }
 
@@ -876,7 +879,7 @@
     <h3>Transit Planner</h3>
 
     {#if showExecuteBlockedDialog}
-        <div class="dialog-backdrop" on:click={() => showExecuteBlockedDialog = false}>
+        <div class="dialog-backdrop" on:click={() => showExecuteBlockedDialog = false} use:foreground>
             <div class="dialog-card" on:click|stopPropagation>
                 <h4>{blockedExecuteReasonTitle}</h4>
                 <p>{blockedExecuteReasonDetail}</p>
@@ -976,15 +979,15 @@
     {#if isImpossible && currentConstructSpecs && plan}
         <div class="warning-box impossible" style="background-color: #330000; border-color: #660000; color: #ff6666; text-align: left; padding: 0.8em; margin-bottom: 1em;">
              <strong>🚫 Engine Capability Exceeded (Insufficient Isp)</strong><br/>
-             Plan requires <span style="color: white;">{$fmt.speedMs(plan.totalDeltaV_ms, 1)}</span>.
-             Ship max (fully fueled) is <span style="color: white;">{$fmt.speedMs(maxPotentialDeltaV_ms, 1)}</span>.
+             Plan requires <span style="color: white;"><UnitValue quantity="speed" bodyType="construct" value={plan.totalDeltaV_ms / 1000} /></span>.
+             Ship max (fully fueled) is <span style="color: white;"><UnitValue quantity="speed" bodyType="construct" value={maxPotentialDeltaV_ms / 1000} /></span>.
              <div style="font-size: 0.9em; color: #aaa; margin-top: 0.3em;">To achieve this range, you need higher efficiency engines (e.g. Nuclear/Fusion), not just more fuel.</div>
         </div>
     {:else if isInsufficientFuel && currentConstructSpecs && plan}
         <div class="warning-box insufficient-fuel" style="background-color: #332b00; border-color: #665500; color: #ffcc00; text-align: left; padding: 0.8em; margin-bottom: 1em;">
              <strong>⛽ Insufficient Fuel</strong><br/>
-             Plan requires <span style="color: white;">{$fmt.speedMs(plan.totalDeltaV_ms, 1)}</span>.
-             Current fuel provides <span style="color: white;">{$fmt.speedMs(currentConstructSpecs.totalVacuumDeltaV_ms, 1)}</span>.
+             Plan requires <span style="color: white;"><UnitValue quantity="speed" bodyType="construct" value={plan.totalDeltaV_ms / 1000} /></span>.
+             Current fuel provides <span style="color: white;"><UnitValue quantity="speed" bodyType="construct" value={currentConstructSpecs.totalVacuumDeltaV_ms / 1000} /></span>.
              <div style="font-size: 0.9em; color: #aaa; margin-top: 0.3em;">Refuel your ship to reach the required range.</div>
         </div>
     {/if}
@@ -1112,11 +1115,11 @@
             </div>
             <div class="result-item">
                 <span>Delta-V:</span>
-                <strong>{$fmt.speedMs(plan.totalDeltaV_ms, 2)}</strong>
+                <strong><UnitValue quantity="speed" bodyType="construct" value={plan.totalDeltaV_ms / 1000} decimals={2} /></strong>
             </div>
             <div class="result-item">
                 <span>Arrival Rel. Speed:</span>
-                <strong>{$fmt.speedMs(plan.arrivalVelocity_ms, 2)}</strong>
+                <strong><UnitValue quantity="speed" bodyType="construct" value={plan.arrivalVelocity_ms / 1000} decimals={2} /></strong>
             </div>
             <div class="result-item">
                 <span>Fuel:</span>

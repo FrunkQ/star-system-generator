@@ -35,7 +35,12 @@ function makeWaterWorld(coverage: number): System {
       { id: 'p', name: 'P', kind: 'body', parentId: 'star', roleHint: 'planet', massKg: 1.0 * EARTH, radiusKm: 1.0 * R_E,
         axial_tilt_deg: 23, rotation_period_hours: 24, makeup: { metal: 0.3, rock: 0.7 }, classes: [], tags: [],
         hydrosphere: { composition: 'water', coverage },
-        atmosphere: { main: 'N2', pressure_bar: 1, composition: { N2: 0.77, O2: 0.21, CO2: 0.02 } }, // enough greenhouse to keep water liquid
+        // Earth-like CO2. This used to carry 2% CO2 "to keep water liquid", which put the world a
+        // single kelvin under boiling and made this coverage test hostage to the greenhouse model —
+        // D6's vapour term moved it 2 K and both worlds stopped having liquid water at all. An ocean
+        // world no longer needs the crutch: its own evaporation is now what warms it (0.7 coverage
+        // settles at 293 K, 0.02 coverage at 305 K), which is what this test wanted all along.
+        atmosphere: { main: 'N2', pressure_bar: 1, composition: { N2: 0.77, O2: 0.21, CO2: 0.0004 } },
         orbit: { hostId: 'star', elements: { a_AU: 0.95, e: 0.02, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } }
     ]
   } as any;

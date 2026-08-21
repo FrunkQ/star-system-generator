@@ -8,6 +8,9 @@
   // its orbit-simulation clock + alignment animation around this component.
   import { createEventDispatcher, onDestroy } from 'svelte';
   import type { Starmap } from '$lib/types';
+  import { createFloatingControl } from '$lib/ui/floatingControl';
+  import FloatGrip from './FloatGrip.svelte';
+  import FloatPin from './FloatPin.svelte';
   import { updateDisplayBySeconds } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay } from '$lib/temporal/utre';
 
@@ -29,51 +32,13 @@
   // --- Transport UI state ---
   let expanded = false; // the "⋯" secondary panel (actual time / reset / set-actual)
 
-  // --- Drag + minimise (desktop & mobile). The pill can be dragged anywhere by its grip (or the
-  //     minimised clock itself) and collapsed to just the display clock; both persist. ---
-  let dragDx = 0, dragDy = 0;
-  let minimized = false;
-  if (typeof localStorage !== 'undefined') {
-    try {
-      const v = JSON.parse(localStorage.getItem('time-pill-offset') || 'null');
-      if (v) { dragDx = v.dx || 0; dragDy = v.dy || 0; }
-    } catch { /* corrupt — ignore */ }
-    minimized = localStorage.getItem('time-pill-min') === '1';
-  }
-  let rootEl: HTMLDivElement;
-  let dragging = false, dragMoved = false;
-  let dragStartX = 0, dragStartY = 0, dragBaseX = 0, dragBaseY = 0;
-
-  function onGripDown(e: PointerEvent) {
-    dragging = true; dragMoved = false;
-    dragStartX = e.clientX; dragStartY = e.clientY;
-    dragBaseX = dragDx; dragBaseY = dragDy;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-  function onGripMove(e: PointerEvent) {
-    if (!dragging) return;
-    const mx = e.clientX - dragStartX, my = e.clientY - dragStartY;
-    if (Math.abs(mx) + Math.abs(my) > 4) dragMoved = true;
-    dragDx = dragBaseX + mx; dragDy = dragBaseY + my;
-    // keep the pill on screen
-    if (rootEl && typeof window !== 'undefined') {
-      const r = rootEl.getBoundingClientRect();
-      if (r.left < 4) dragDx += 4 - r.left;
-      if (r.top < 4) dragDy += 4 - r.top;
-      if (r.right > window.innerWidth - 4) dragDx -= r.right - (window.innerWidth - 4);
-      if (r.bottom > window.innerHeight - 4) dragDy -= r.bottom - (window.innerHeight - 4);
-    }
-  }
-  function onGripUp() {
-    if (!dragging) return;
-    dragging = false;
-    try { localStorage.setItem('time-pill-offset', JSON.stringify({ dx: dragDx, dy: dragDy })); } catch { /* private mode */ }
-  }
-  function setMinimized(v: boolean) {
-    minimized = v;
-    try { localStorage.setItem('time-pill-min', v ? '1' : '0'); } catch { /* private mode */ }
-  }
-  function onClockTap() { if (!dragMoved) setMinimized(false); }
+  // --- Drag / put-away / lock-open (desktop & mobile) — the SHARED floating-control behaviour, so
+  //     the transport and the body picker work identically. Grip on the left, lock on the right,
+  //     closes itself when something else is touched unless it is locked open.
+  //     Defaults to locked open: that is exactly the pill's previous always-on behaviour, so the
+  //     auto-hiding is there to opt into rather than something that happens to a GM unasked. ---
+  const float = createFloatingControl('sse-time-pill-float', { open: true, pinned: true });
+  function onClockTap() { if (!float.didDrag()) float.setOpen(true); }
 
   // Playback-speed ladder (sim seconds per real second). The +/- stepper walks this and
   // Play runs at the selected rate, so time can keep advancing faster than 1s/s without
@@ -232,11 +197,38 @@
     scrubCarrySeconds = 0;
   }
 
+  // SCRUBBING WHILE PLAYING SEEKS; IT DOES NOT STOP THE CLOCK (A60). The jog used to call
+  // `setPlaying(false)`, which not only stopped playback for good — nothing resumed it on release —
+  // but also PERSISTED `playbackRunning: false` into the campaign, so the pause outlived the drag
+  // and the tab. A GM jogging forward while time runs wants to arrive somewhere and keep running.
+  //
+  // So playback KEEPS ITS STATE and only yields its LOOP: `isPlaying` is untouched (no persist, and
+  // nothing for the `temporal.playbackRunning` reactive to fight over), while the playback rAF is
+  // suspended for the duration so the two loops cannot both advance the same clock.
+  let playbackYieldedToScrub = false;
+
+  function suspendPlaybackForScrub() {
+    if (!isPlaying || playbackRafId === null) return;
+    stopPlayback();
+    playbackYieldedToScrub = true;
+  }
+
+  function resumePlaybackAfterScrub() {
+    if (!playbackYieldedToScrub) return;
+    playbackYieldedToScrub = false;
+    // Resumes from wherever the jog left the clock - the point of the whole thing.
+    if (isPlaying) ensurePlaybackRunning();
+  }
+
   function handleScrubInput(event: Event) {
-    if (isPlaying) setPlaying(false);
     scrubControlValue = Number((event.target as HTMLInputElement).value);
     if (Math.abs(scrubControlValue) > 0.0001) {
+      suspendPlaybackForScrub();
       ensureScrubLoopRunning();
+    } else {
+      // Dragged back to the centre: the same thing as letting go, and the only signal we get if the
+      // pointer is released outside the control.
+      handleScrubRelease();
     }
   }
 
@@ -244,6 +236,7 @@
   function handleScrubRelease() {
     scrubControlValue = 0;
     stopScrubLoop();
+    resumePlaybackAfterScrub();
   }
 
   function tickPlayback(timestamp: number) {
@@ -318,10 +311,10 @@
   });
 </script>
 
-<div class="tt-root" bind:this={rootEl} style="transform: translate({dragDx}px, {dragDy}px);">
-{#if minimized}
+<div class="tt-root" use:float.root style="transform: translate({$float.dx}px, {$float.dy}px);">
+{#if !$float.open}
   <button class="tt-clock" class:compact
-    on:pointerdown={onGripDown} on:pointermove={onGripMove} on:pointerup={onGripUp}
+    use:float.grip
     on:click={onClockTap}
     title={`${displayClockLabel} — tap to expand the transport, drag to move`}
     aria-label="Time ({displayClockLabel}) — tap to expand">
@@ -329,8 +322,7 @@
   </button>
 {:else}
 <div class="time-transport" class:expanded class:compact>
-  <span class="tt-grip" role="presentation" title="Drag to move"
-    on:pointerdown={onGripDown} on:pointermove={onGripMove} on:pointerup={onGripUp}>⠿</span>
+  <FloatGrip ctl={float} />
   <button
     class="tt-btn tt-jump"
     class:at-now={atNow}
@@ -363,9 +355,7 @@
   </div>
 
   <button class="tt-btn tt-more tt-warn" class:on={expanded} on:click={() => (expanded = !expanded)} title="Danger: rewrite the campaign's current time" aria-label="Set current time (danger)">⚠</button>
-  <button class="tt-min-strip" on:click={() => setMinimized(true)} title="Minimise to a clock" aria-label="Minimise time controls">
-    <svg viewBox="0 0 6 24" width="6" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="4" x2="3" y2="20"/></svg>
-  </button>
+  <FloatPin ctl={float} what="the time controls" />
 
   {#if expanded}
     <div class="tt-panel">
@@ -380,19 +370,7 @@
 <style>
   /* Draggable root: the parent overlay anchors it; the persisted translate moves it anywhere. */
   .tt-root { display: inline-block; }
-  .tt-grip {
-    flex: 0 0 auto;
-    cursor: grab;
-    touch-action: none;
-    user-select: none;
-    color: var(--text-faint, #6b7280);
-    font-size: 0.95rem;
-    padding: 0 2px;
-    display: flex;
-    align-items: center;
-  }
-  .tt-grip:active { cursor: grabbing; }
-  /* Minimised: just a clock ICON — tap to expand, drag to move. */
+  /* Put away: just a clock ICON — tap to expand, drag to move. */
   .tt-clock {
     display: inline-flex;
     align-items: center;
@@ -413,23 +391,6 @@
   .tt-clock:hover { color: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
   .tt-clock.compact { width: 28px; height: 28px; }
   .tt-clock svg { flex: 0 0 auto; opacity: 0.85; }
-
-  /* Far-right minimise: a slim vertical strip, not a full button. */
-  .tt-min-strip {
-    flex: 0 0 auto;
-    width: 12px;
-    align-self: stretch;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 1px solid var(--border, #2a2d36);
-    border-radius: 6px;
-    background: var(--bg-control, #1b1e26);
-    color: var(--text-faint, #8a8f9a);
-    cursor: pointer;
-  }
-  .tt-min-strip:hover { color: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
 
   /* Transport pill — a clean overlay over the orrery: jump-to-now, play/pause,
      a spring-back shuttle scrub (the main interaction), the live date, and a

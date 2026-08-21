@@ -2,10 +2,16 @@
   import type { CelestialBody, RulePack, System, Tag } from '$lib/types';
   import { createEventDispatcher, onMount } from 'svelte';
   import { systemProcessor } from '$lib/core/SystemProcessor';
-  import { systemStore, fmt } from '$lib/stores';
+  import { systemStore } from '$lib/stores';
+  import { unitBodyTypeFor } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
   import { checkGasRetention, isCryoImpactedGreenhouseGas } from '$lib/physics/atmosphere';
   import { evaluateTagTriggers as evalTrigger } from '$lib/utils';
   import { formatGauss } from '$lib/physics/magnetism';
+  import { starmapStore } from '$lib/starmapStore';
+  import { parseGiantRecipe, recipeToPreset, uniquePresetName } from '$lib/catalogue/giantRecipe';
+  import { calculateDistanceToStar } from '$lib/physics/temperature';
+  import { isLuminousSource } from '$lib/physics/substellar';
 
   const dispatch = createEventDispatcher();
 
@@ -17,6 +23,109 @@
   let availableGases: string[] = [];
   let selectedAtmosphereName: string = '';
   let showAdvanced = false;
+
+  // G7 — IMPORT A GAS-GIANT RECIPE. Always mints a campaign preset and selects it (owner's call: it
+  // will be rare, and a durable named entry is worth more than a tidy dropdown).
+  //
+  // WHAT IT CANNOT DO, AND WHY IT SAYS SO: a recipe's `requires.temperatureK` is DERIVED on every
+  // pass from the star, the orbit, the albedo and the air — there is no override for it. So the
+  // import sets the composition and pressure, then REPORTS the temperature the colour needs against
+  // the one this world actually has. A giant is that colour BECAUSE it is that cold; silently
+  // dropping the condition would leave a GM staring at the wrong planet wondering what broke.
+  const RECIPE_PLACEHOLDER = "Paste the JSON from a gallery giant's Copy recipe button";
+  let showRecipe = false;
+  let recipeText = '';
+  let recipeError: string | null = null;
+  let recipeNote: string | null = null;
+  // A mismatch is the one thing the import cannot fix for you, so it must not look like the
+  // confirmation. Reported live: a 700 K recipe went onto a 112 K world and the warning was there
+  // but read as a footnote — quiet grey text in the edit panel, while the GM was looking at the
+  // render. Correct message, invisible placement.
+  let recipeWarn = false;
+  let recipeMsgEl: HTMLElement | null = null;
+
+  function importRecipe() {
+    recipeError = null; recipeNote = null; recipeWarn = false;
+    const parsed = parseGiantRecipe(recipeText);
+    if (!parsed.ok) { recipeError = parsed.error; return; }
+    const recipe = parsed.recipe;
+
+    // The override REPLACES the whole entries list (see +page.svelte's effectiveRulePack), so mint
+    // from the EFFECTIVE list rather than from the pack's defaults — otherwise this would silently
+    // drop every preset the GM had already edited.
+    const current: any[] = (rulePack.distributions?.['atmosphere_composition']?.entries ?? []) as any[];
+    const taken = current.map((e) => e?.value?.name).filter(Boolean) as string[];
+    // NAME IT AFTER THE MIX, not the planet it landed on: what is being saved is a gas mixture, and
+    // 'sodium overcast · potassium veil' says what it does where 'Sol XVII recipe' only says where it
+    // went. Older recipes carry no label, so the body's name stays as the fallback.
+    const name = uniquePresetName(recipe.label?.trim() || `${body.name} recipe`, taken);
+    const entry = recipeToPreset(recipe, name);
+    starmapStore.update((m) => m ? ({
+      ...m,
+      rulePackOverrides: { ...(m.rulePackOverrides ?? {}), atmosphereCompositions: [...current, entry] }
+    }) : m);
+
+    // Apply to THIS body directly — the dropdown repopulates from the pack a tick later, and waiting
+    // for that would make the button look like it had done nothing.
+    const comp = { ...recipe.atmosphere.composition };
+    body.atmosphere = {
+      name,
+      composition: comp,
+      pressure_bar: recipe.atmosphere.pressure_bar,
+      main: Object.keys(comp).reduce((a, b) => (comp[a] > comp[b] ? a : b))
+    } as any;
+    selectedAtmosphereName = name;
+    applyChanges();
+
+    // WHERE THE COLOURS ARE BRIGHTEST — advice, never a guard. The import always succeeds; a giant
+    // simply shows the decks its temperature allows, which is the model working rather than failing.
+    // The owner moved a 700 K recipe from 22.7 AU in to 0.12 AU and it 'became super intense', which
+    // is the whole point: say where that happens instead of telling them what will not work.
+    //
+    // THE SUGGESTED DISTANCE IS A RATIO ON THE ENGINE'S OWN NUMBER, not a second formula. Equilibrium
+    // temperature follows the inverse square, so d_target = d_now x (T_now / T_target)^2 anchored on
+    // whatever `equilibriumTempK` the processor committed. Nothing here can drift from the physics
+    // because nothing here recomputes it. Surface temperature is deliberately NOT used: greenhouse and
+    // internal heat sit on top of it and do not scale with distance.
+    // TWO DIFFERENT NUMBERS, and conflating them showed the wrong one. `temperatureK` is what the
+    // gallery card LABELS the giant ('165 K - Jupiter-like'), so it is what a GM recognises and what
+    // this quotes. `equilibriumTempK` is what DISTANCE actually sets, so it is what the ratio uses.
+    // They are equal on the hot-Jupiter rows and far apart on the cool ones.
+    const want = recipe.requires.temperatureK || recipe.requires.equilibriumTempK;
+    const wantEq = recipe.requires.equilibriumTempK || recipe.requires.temperatureK;
+    const haveEq = (body as any).equilibriumTempK as number | undefined;
+    const haveSurface = body.temperatureK;
+    let suggestAU: number | null = null;
+    try {
+      const nodes = (system?.nodes ?? []) as any[];
+      const star = nodes.find((n) => isLuminousSource(n));
+      const dNow = star ? calculateDistanceToStar(body as any, star, nodes as any) : 0;
+      // Fall back to the orbit's own semi-major axis when the walk finds nothing (a body under a
+      // barycentre, a half-built system). Advice that silently loses its most useful half is worse
+      // than advice with a stated assumption — and for a planet orbiting its star these agree.
+      const dAU = dNow > 0 ? dNow : ((body as any).orbit?.elements?.a_AU ?? 0);
+      if (dAU > 0 && haveEq && haveEq > 0 && wantEq > 0) suggestAU = dAU * Math.pow(haveEq / wantEq, 2);
+    } catch { /* advice is optional; never let it break an import that worked */ }
+
+    const fmtAU = (au: number) => au >= 10 ? au.toFixed(0) : au >= 1 ? au.toFixed(1) : au.toFixed(3).replace(/0+$/, '');
+    const saved = `Saved as "${name}" and applied.`;
+    if (!(want > 0)) {
+      recipeNote = saved;
+    } else if (!(haveSurface && haveSurface > 0) && !haveEq) {
+      recipeNote = `${saved} These colours are strongest near ${Math.round(want)} K — give ${body.name} a star and an orbit to see where that falls.`;
+    } else if (haveEq && Math.abs(haveEq - wantEq) <= Math.max(5, wantEq * 0.08)) {
+      recipeNote = `${saved} ${body.name} is already about where these colours are brightest (near ${Math.round(want)} K).`;
+    } else if (suggestAU) {
+      recipeNote = `${saved} These colours are brightest near ${Math.round(want)} K. ${body.name} runs about ${Math.round(haveEq!)} K where it is — bring it to roughly ${fmtAU(suggestAU)} AU and they come alive. It will still work where it is; different decks condense, so you get a paler version.`;
+    } else {
+      recipeNote = `${saved} These colours are brightest near ${Math.round(want)} K${haveEq ? `, and ${body.name} runs about ${Math.round(haveEq)} K where it is` : ''}.`;
+    }
+    recipeWarn = false; // advice, not a warning — the import worked
+    recipeText = '';
+    showRecipe = false;
+    // Bring it to the eye rather than hoping. Cheap, and it is the only moment this matters.
+    setTimeout(() => recipeMsgEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 0);
+  }
 
   // Reactive Gas Physics Data
   $: gasPhysics = rulePack.gasPhysics || {};
@@ -400,6 +509,23 @@
       {/each}
       <option value="Custom Mix">Custom Mix</option>
     </select>
+    <div class="recipe-row">
+      <button type="button" class="recipe-btn" on:click={() => { showRecipe = !showRecipe; recipeError = null; }}>
+        {showRecipe ? "Cancel" : "Import recipe…"}
+      </button>
+      <a class="recipe-link" href="/discgallery#giant-lab" target="_blank" rel="noopener"
+         title="The gas-giant gallery — every giant there carries a Copy recipe button">gas-giant gallery</a>
+    </div>
+    {#if showRecipe}
+      <div class="recipe-panel">
+        <p class="recipe-help">Paste a recipe copied from the gas-giant gallery. It becomes a named preset on this
+          campaign and is applied here.</p>
+        <textarea bind:value={recipeText} rows="6" placeholder={RECIPE_PLACEHOLDER}></textarea>
+        <button type="button" class="recipe-btn primary" on:click={importRecipe}>Import</button>
+      </div>
+    {/if}
+    {#if recipeError}<p class="recipe-msg bad">{recipeError}</p>{/if}
+    {#if recipeNote}<p class="recipe-msg" class:warn={recipeWarn} bind:this={recipeMsgEl}>{recipeNote}</p>{/if}
   </div>
 
   {#if body.atmosphere}
@@ -450,7 +576,7 @@
         </div>
         <div class="stat">
             <span class="label">Scale Height:</span>
-            <span class="value">{body.atmosphere.scaleHeightKm ? $fmt.km(body.atmosphere.scaleHeightKm, 1) : '-'}</span>
+            <span class="value">{#if body.atmosphere.scaleHeightKm}<UnitValue quantity="radius" bodyType={unitBodyTypeFor(body)} value={body.atmosphere.scaleHeightKm} decimals={1} />{:else}-{/if}</span>
         </div>
         <div class="stat">
             <span class="label" title="Percent of incoming stellar radiation blocked by atmospheric composition and pressure.">Radiation Block:</span>
@@ -818,4 +944,29 @@
       color: var(--text);
   }
   .stat .value.hot { color: #ffaa88; }
+  /* G7 recipe import */
+  .recipe-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .recipe-btn {
+    font-size: 0.75em; padding: 3px 9px; border-radius: 4px; cursor: pointer;
+    background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36); color: var(--text-muted, #cfcfcf);
+  }
+  .recipe-btn:hover { border-color: var(--link, #6cb6ff); color: var(--text, #eee); }
+  .recipe-btn.primary { border-color: var(--link, #6cb6ff); color: var(--link, #6cb6ff); margin-top: 6px; }
+  .recipe-link { font-size: 0.75em; color: var(--link, #6cb6ff); }
+  .recipe-panel { margin-top: 8px; }
+  .recipe-panel textarea {
+    width: 100%; font-family: ui-monospace, monospace; font-size: 0.75em;
+    background: var(--bg-control, #1b1e26); border: 1px solid var(--border, #2a2d36);
+    color: var(--text, #eee); border-radius: 4px; padding: 6px;
+  }
+  .recipe-help { font-size: 0.75em; color: var(--text-faint, #8a8f9a); margin: 0 0 4px; line-height: 1.4; }
+  .recipe-msg { font-size: 0.75em; color: var(--text-muted, #cfcfcf); margin: 6px 0 0; line-height: 1.45; }
+  .recipe-msg.bad { color: #e08a7a; }
+  /* The mismatch case. Not an error — the import worked — but the GM must not walk away thinking
+     the world will look like the gallery, so it is a callout rather than a footnote. */
+  .recipe-msg.warn {
+    color: #f0c674; background: rgba(240, 198, 116, 0.08);
+    border: 1px solid rgba(240, 198, 116, 0.35); border-left-width: 3px;
+    border-radius: 4px; padding: 7px 9px; font-size: 0.78em;
+  }
 </style>

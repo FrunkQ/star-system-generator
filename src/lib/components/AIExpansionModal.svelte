@@ -2,6 +2,7 @@
   import { get } from 'svelte/store';
   import { aiSettings } from '../stores';
   import { createEventDispatcher, onMount } from 'svelte';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   export let promptTemplate: string;
@@ -167,7 +168,7 @@
   }
 </script>
 
-<div class="modal-backdrop" on:click={handleClose}>
+<div class="modal-backdrop" on:click={handleClose} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <h2 id="dialog-title">Expand Description with AI</h2>
     <div class="columns">

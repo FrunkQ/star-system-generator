@@ -7,6 +7,7 @@
   import HRDiagram from './HRDiagram.svelte';
   import { ageStar, isEngulfedAt, getStarLifespanGyr, deriveStarFromHR, classifyStar, determineSpectralClass, type StarSeed } from '$lib/physics/stellar-evolution';
   import { generateSystemFromConfig, planStarHierarchy, type GenerationKnobs, type StarPlanNode } from '$lib/generation/generateFromConfig';
+  import GenerationDials, { DEFAULT_KNOBS } from './GenerationDials.svelte';
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { SOLAR_MASS_KG } from '$lib/constants';
@@ -15,6 +16,9 @@
 
   export let rulePack: RulePack;
   export let exampleSystems: string[] = [];
+  import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
+  import { explainStarClass, fullDesignation } from '$lib/system/starClassExplain';
+  import { foreground } from '$lib/ui/foreground';
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -27,7 +31,8 @@
   let step: 1 | 2 = 1;
   let selectedStars: StarSeed[] = [];
   let ageGyr = 4.6;
-  let knobs: GenerationKnobs = { metallicity: 0.5, diskMass: 0.5, dynamicalHistory: 0.5, rarity:0.5 };
+  // ONE set of dials, shared with every importer's infill step (GenerationDials.svelte).
+  let knobs: GenerationKnobs = { ...DEFAULT_KNOBS };
   let naming: 'catalogue' | 'scientific' | 'named' = 'scientific';  // lead with a plausible Bayer style
   let busy = false;
   let chosenExample = '';
@@ -50,6 +55,24 @@
   // --- Star helpers for the hierarchy preview + age feedback ---
   const SOL = SOLAR_MASS_KG;
   const SPECTRAL_COLOR: Record<string, string> = { O: '#9bb0ff', B: '#aabfff', A: '#cad7ff', F: '#f8f7ff', G: '#fff4ea', K: '#ffd2a1', M: '#ffb56b' };
+
+  // THE DESIGNATION FOR A POINT ON THE DIAGRAM. Temperature gives the letter; the luminosity class
+  // comes from POSITION against the pack's own bands (radius at a given temperature), which is what
+  // takes the hot end from wrong to right — an O5V is bright AND a dwarf, and brightness alone cannot
+  // tell you that. Radius from the pair the wizard already holds: R = sqrt(L) / (T/Tsun)^2.
+  function designationOf(seed: { temperatureK: number; luminositySolar: number; spectralClass?: string }) {
+    const t = seed.temperatureK, l = seed.luminositySolar;
+    if (!(t > 0) || !(l > 0)) return undefined;
+    const radiusSolar = Math.sqrt(l) / Math.pow(t / 5778, 2);
+    const band = luminosityClassFromPosition(rulePack, { temperatureK: t, radiusSolar });
+    const letter = seed.spectralClass || determineSpectralClass(t);
+    const key = band && band !== 'V' ? `star/${letter}-${band}` : `star/${letter}`;
+    const ex = explainStarClass(rulePack, key);
+    // The FULL designation now - G3V rather than G V - computed from the same position. Subclass is
+    // main-sequence only; a giant honestly gets its letter and class without one.
+    return { designation: fullDesignation(letter, t, band ?? undefined, rulePack), text: ex?.text ?? '' };
+  }
+
   const starColor = (s: { spectralClass: string }) => SPECTRAL_COLOR[s.spectralClass] ?? '#ffd2a1';
   const massSolar = (s: { massKg: number }) => s.massKg / SOL;
   let hovered: StarSeed | null = null;  // live readout of the point under the cursor on the HR diagram
@@ -119,7 +142,9 @@
   }
   function planString(node: StarPlanNode | null): string {
     if (!node) return '';
-    return node.kind === 'star' ? (LETTERS[node.index] ?? '?') : `(${planString(node.a)} · ${planString(node.b)})`;
+    // Lowercase, like the row labels: the pairing diagram describes STRUCTURE, and a bold capital
+    // reads as a star's type rather than as its name (owner, 2026-08-16).
+    return node.kind === 'star' ? (LETTERS[node.index] ?? '?').toLowerCase() : `(${planString(node.a)} · ${planString(node.b)})`;
   }
   const sepLabel = (au: number) =>
     au < 0.3 ? `very close · ${fmt(au, 2)} AU` : au < 2 ? `close · ${fmt(au, 1)} AU`
@@ -219,7 +244,7 @@
 </script>
 
 <!-- Hide the wizard while the importer is open, so it doesn't sit on top and block it. -->
-<div class="overlay" class:hidden={!!importBytes} on:click|self={close} role="presentation">
+<div class="overlay" class:hidden={!!importBytes} on:click|self={close} role="presentation" use:foreground>
   <div class="modal" role="dialog" aria-label="Generate a new system">
     <header>
       <div>
@@ -272,13 +297,17 @@
               {#each planRows as row}
                 {#if row.type === 'pair'}
                   <div class="pair-row" style="padding-left:{row.depth * 16}px">
-                    <span class="pair-bracket">⌐</span><span class="pair-label">binary — {sepLabel(row.sepAU)}</span>
+                    <span class="pair-bracket">⌐</span><span class="pair-label">binary — {sepLabel(row.sepAU)}</span><!-- lowercase via CSS: pairing is structure, not identity -->
                   </div>
                 {:else}
                   {@const st = statuses.get(row.seed.id)}
                   <div class="hier-row" style="padding-left:{row.depth * 16}px">
                     <span class="star-dot" style="background:{starColor(row.seed)}"></span>
-                    <span class="role">{LETTERS[row.index] ?? '?'}</span>
+                    <!-- Owner, 2026-08-16: the A/B/C label was bold and accent-coloured, so it read
+                         as the star's TYPE. It is only a name for "which star in this system" — the
+                         quietest thing in the row — so it is lowercase and neutral, and the emphasis
+                         moves to the designation, which is what a GM is actually choosing. -->
+                    <span class="role">{(LETTERS[row.index] ?? '?').toLowerCase()}</span>
                     <span class="star-edit">
                       <input class="se-num" class:bad={st?.tBad} type="number" min="0" title="Temperature (K)"
                              value={Math.round(row.seed.temperatureK)} on:change={(e) => setStarField(row.seed, 't', e.currentTarget.value)} /><span class="se-u">K</span>
@@ -286,7 +315,14 @@
                              value={+row.seed.luminositySolar.toPrecision(3)} on:change={(e) => setStarField(row.seed, 'l', e.currentTarget.value)} /><span class="se-u">L☉</span>
                       <input class="se-num" class:bad={st?.mBad} type="number" min="0" step="any" title="Mass (Sol = 1)"
                              value={+massSolar(row.seed).toPrecision(3)} on:change={(e) => setStarField(row.seed, 'm', e.currentTarget.value)} /><span class="se-u">M☉</span>
-                      <span class="se-cls" class:bad={st?.impossible}>{st?.impossible ? 'Exotic' : `${row.seed.spectralClass}-type`}</span>
+                      <!-- THE CIRCLE CLOSED. Clicking the HR diagram gives a POSITION; this reads the
+                           designation back out of it, so the row says "G V" rather than "G-type" and
+                           the luminosity class is visible where the GM is choosing. Hover for the
+                           plain-English reading, matching the diagram's own hover affordance. -->
+                      <span class="se-cls" class:bad={st?.impossible}
+                            title={st?.impossible ? 'No star can sit here.' : (designationOf(row.seed)?.text ?? '')}>
+                        {st?.impossible ? 'Exotic' : (designationOf(row.seed)?.designation ?? `${row.seed.spectralClass}-type`)}
+                      </span>
                       {#if st?.anyBad}<button class="se-fix" title="Recompute the other figures (and type) to be physically consistent" on:click={() => fixStar(row.seed)}>Fix</button>{/if}
                     </span>
                     <button class="x" title="Remove" on:click={() => (selectedStars = selectedStars.filter((x) => x.id !== row.seed.id))}>×</button>
@@ -345,14 +381,7 @@
 
         <section class="block">
           <h3>Physical character</h3>
-          {#each [['metallicity','Metallicity','metal-poor (icy/gassy)','metal-rich (rocky/iron)'],['diskMass','Disk mass','sparse','crowded'],['dynamicalHistory','Dynamical history','calm, circular','violent, eccentric'],['rarity','Rarity','common worlds','legendary exotica']] as [key, label, lo, hi]}
-            <div class="knob">
-              <div class="knob-head"><span>{label}</span><span class="knob-val">{Math.round((knobs[key] ?? 0.5) * 100)}%</span></div>
-              <input type="range" min="0" max="1" step="0.01" bind:value={knobs[key]} class="slider" />
-              <div class="knob-ends"><span>{lo}</span><span>{hi}</span></div>
-            </div>
-          {/each}
-          <p class="note">Rarity picks how eccentric the worlds are (the loot-box tiers in the add-type picker); metallicity, disk mass &amp; dynamical history shape standard worlds. All stay physically plausible.</p>
+          <GenerationDials bind:knobs {rulePack} />
         </section>
       {/if}
     </div>
@@ -392,7 +421,11 @@
   .stepchip { font-size: 0.7rem; background: var(--bg-control, #232733); color: var(--text-muted, #cfcfcf); border-radius: 999px; padding: 2px 8px; margin-left: 8px; }
   .sub { margin: 3px 0 0; font-size: 0.82rem; color: var(--text-muted, #cfcfcf); }
   .close { background: none; border: none; color: var(--text-muted, #cfcfcf); font-size: 1.6rem; line-height: 1; cursor: pointer; }
-  .content { overflow-y: auto; padding: 14px 18px; }
+  /* `scrollbar-gutter: stable` kills a resize feedback loop at its source. The HR diagram sizes itself to
+     this panel's width and is tall, so without a reserved gutter: canvas grows -> content overflows ->
+     scrollbar appears -> panel narrows -> canvas shrinks -> overflow gone -> scrollbar disappears -> panel
+     widens, once per frame, forever. Reserving the gutter means the width never depends on the content. */
+  .content { overflow-y: auto; scrollbar-gutter: stable; padding: 14px 18px; }
   .block { margin-bottom: 18px; }
   .block h3 { margin: 0 0 8px; font-size: 0.9rem; color: var(--text, #fff); }
   .row { display: flex; gap: 8px; }
@@ -420,17 +453,18 @@
   .hierarchy { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-panel, #14161c); }
   .hier-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted, #cfcfcf); margin-bottom: 6px; }
   .hier-empty { font-size: 0.82em; color: var(--text-faint, #8a8a8a); font-style: italic; }
-  .diagram { font-family: ui-monospace, monospace; font-size: 0.86em; color: var(--accent, #ff5a1f); margin-bottom: 6px; letter-spacing: 0.02em; }
-  .pair-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 0.74em; color: var(--text-faint, #8a8a8a); text-transform: uppercase; letter-spacing: 0.04em; }
-  .pair-bracket { color: var(--link); font-weight: 700; }
+  .diagram { font-family: ui-monospace, monospace; font-size: 0.86em; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.02em; }
+  /* Pairing is STRUCTURE, not identity — it should not shout either (owner, 2026-08-16). */
+  .pair-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 0.74em; color: var(--text-faint, #8a8a8a); text-transform: lowercase; letter-spacing: 0.02em; }
+  .pair-bracket { color: var(--text-faint, #8a8a8a); font-weight: 400; }
   .hier-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
   .star-dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 6px rgba(255,255,255,0.25); }
-  .role { font-size: 0.78em; font-weight: 700; color: var(--link); min-width: 84px; }
+  .role { font-size: 0.78em; font-weight: 400; color: var(--text-faint, #8a8a8a); min-width: 84px; }
   .star-edit { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; flex: 1; font-size: 0.82em; }
   .se-num { width: 62px; background: var(--bg-control); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 2px 5px; font-size: 0.95em; }
   .se-num.bad { border-color: #cc5555; background: rgba(204, 85, 85, 0.12); color: #ff9a9a; }
   .se-u { color: var(--text-faint); margin-right: 4px; }
-  .se-cls { color: var(--text-muted); margin-left: 2px; }
+  .se-cls { color: var(--text); font-weight: 600; margin-left: 4px; }
   .se-cls.bad { color: #cc5555; font-weight: 600; }
   .se-fix { background: var(--accent, #ff5a1f); border: none; color: #fff; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 0.95em; }
   .hier-row .x { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1em; line-height: 0.5; }
@@ -453,10 +487,6 @@
   .sa-flag.flare { color: #ffd24d; font-weight: 600; }
   .sa-life { color: var(--text-faint, #8a8a8a); }
   .warn { color: var(--warning, #e08a4a); }
-  .knob { margin-bottom: 10px; }
-  .knob-head { display: flex; justify-content: space-between; font-size: 0.85em; }
-  .knob-val { color: var(--link); font-variant-numeric: tabular-nums; }
-  .knob-ends { display: flex; justify-content: space-between; font-size: 0.72em; color: var(--text-faint); }
   .note { font-size: 0.76em; color: var(--text-faint); }
   footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--border, #2a2d36); }
   .hint { font-size: 0.8em; color: var(--text-faint); }

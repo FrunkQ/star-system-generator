@@ -1,10 +1,17 @@
 import type { CelestialBody, Barycenter, System, RulePack } from '../types';
-import { SOLAR_RADIUS_KM, AU_KM } from '../constants';
+import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG, STEFAN_BOLTZMANN_CONSTANT } from '../constants';
+import { GIANT_METALLIC_HYDROGEN_MIN_MASS_ME } from './fluidLayers';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
-import { deriveAlbedo } from './albedo';
+import { deriveAlbedo, type AlbedoBreakdown } from './albedo';
+import { deriveCloudDecks, deriveOxidation, type CloudDeck } from './cloudDecks';
+import { deriveFluidLayers } from './fluidLayers';
+import { deriveGeoActivity } from './geoActivity';
+import { makeupFractions } from './makeup';
+import { EARTH_RADIUS_KM } from '../constants';
+import { calculateGreenhouseEffect } from './atmosphere';
 
-const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
+const JUPITER_MASS_KG = 1.898e27;
 
 type DistanceRangeAU = { mean: number; min: number; max: number };
 
@@ -200,47 +207,248 @@ export function composeBodySurfaceTemperature(body: CelestialBody, equilibriumTe
     );
 }
 
+// ── The thermal fixed point ──────────────────────────────────────────────────────────────────────
+// A body's albedo, its temperature and its clouds are one problem, not three. The loop is:
+//
+//     albedo → equilibrium temp → greenhouse → surface temp → atmospheric profile → cloud decks → albedo
+//
+// and it closes. That circularity is why albedo.ts used to carry a cheap boiling-point test of its
+// own: the decks genuinely do not exist yet at the moment the albedo is first needed. The answer is
+// not to keep a second, worse cloud model upstream of the good one — it is to solve the loop.
+//
+// TERMINATION. The iteration count is hard-bounded (MAX_ITERATIONS), so this returns unconditionally
+// whether or not it has settled; convergence is a quality of the answer, never a condition for
+// getting one. Within that bound it is a fixed-point iteration on a single scalar — albedo, which
+// deriveAlbedo bounds to [0.02, 0.95]. Equilibrium temperature varies as (1−A)^¼, so a step in
+// albedo produces a much smaller step in temperature, and every term downstream of it is bounded:
+// the map is a contraction over essentially the whole domain.
+//
+// Steps are taken in full while the correction keeps pointing the same way, which is what makes a
+// body whose albedo does not depend on its temperature at all (an airless rock) land in two passes
+// instead of grinding down a geometric series. It only damps when the correction REVERSES, and that
+// case is real rather than numerical: cloud cover is not smooth in temperature, because a deck can
+// cease to exist. A world sitting exactly on the edge of condensing something has two
+// self-consistent states — bright-and-cold with the deck, dark-and-warm without it — and no amount
+// of iterating will choose between them, because both are true. Halving the step each time it
+// reverses collapses that oscillation onto the point between them, which is the honest reading of
+// such a world: its cloud cover really is marginal. `converged` says whether it got there.
+//
+// Measured over every body in the bundled starmaps and the Solar System (260 of them): worst case
+// 5 iterations, none unconverged.
+const FIRST_GUESS_ALBEDO = 0.3;
+const MAX_ITERATIONS = 12;
+const ALBEDO_TOLERANCE = 0.002;   // ~0.05% in equilibrium temperature — well under any visible effect
+const REVERSAL_DAMPING = 0.5;
+
+export interface ThermalSolution {
+    equilibriumTempK: number;
+    albedoInfo: AlbedoBreakdown;
+    greenhouseTempK: number;
+    surfaceTempK: number;
+    decks: CloudDeck[];
+    iterations: number;
+    residual: number;      // |albedo_out − albedo_in| on the final pass
+    converged: boolean;
+}
+
+/**
+ * Solve the albedo ⇄ temperature ⇄ cloud fixed point for one body. PURE: reads the body, mutates
+ * nothing — evaluation runs against a shallow probe so the caller decides what to commit. Every heat
+ * term other than the greenhouse (tidal, radiogenic, internal, self-luminous) is read off the body
+ * as already-committed, so commit those BEFORE calling this.
+ */
+/**
+ * How long this body's visible surface has been exposed, evaluated for a CANDIDATE thermal state
+ * (inbox B5). Returns null for a body with no solid surface, which cannot rust.
+ *
+ * The whole point is that it takes a probe rather than the body: it must answer for the temperature
+ * currently being tried, not for whatever a previous process() left behind. Everything it calls is
+ * a pure function, so nothing here writes to the body.
+ *
+ * The tidal and resonance signals come from tags the earlier passes have already committed, and are
+ * NOT thermal — tidal forcing is orbit and mass. `teqK` is passed through because deriveGeoActivity
+ * takes it, but it drives one branch (the Triton solar-seasonal geyser at teqK < 60) and measurably
+ * moves two bodies out of 366.
+ */
+function surfaceAgeOnProbe(
+    probe: CelestialBody,
+    systemAgeGyr: number,
+    pack?: RulePack | null
+): number | null {
+    const mk = makeupFractions(probe);
+    if (mk.gas > 0.5) return null;
+    if (probe.roleHint !== 'planet' && probe.roleHint !== 'moon') return null;
+    const layers = deriveFluidLayers(probe, pack ?? undefined);
+    const tagKeys = (probe.tags ?? []).map((t) => t.key);
+    return deriveGeoActivity({
+        makeup: mk,
+        massMe: (probe.massKg ?? 0) / EARTH_MASS_KG,
+        radiusRe: (probe.radiusKm ?? 0) / EARTH_RADIUS_KM,
+        ageGyr: systemAgeGyr,
+        hasSurfaceWater: layers.some((l) => l.location === 'surface' && /water/.test(l.liquid)),
+        hasSubsurfaceOcean: layers.some((l) => l.location === 'subsurface'),
+        icyShell: tagKeys.includes('structure/icy-shell'),
+        tidalHotspots: tagKeys.includes('tidal/hotspots') || tagKeys.includes('tidal/volcanism'),
+        tidalLavaFlows: tagKeys.includes('tidal/lava-flows'),
+        resonanceTidal: !!(probe as any).resonanceTidal,
+        surfaceIce: (probe.hydrosphere?.coverage ?? 0) > 0.3,
+        teqK: probe.equilibriumTempK,
+        radiogenicOverrideK: probe.radiogenicHeatK ?? 0
+    }).surfaceAgeGyr;
+}
+
+export function solveThermalState(
+    body: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[],
+    pack?: RulePack | null,
+    // The system's age, for the surface-age evaluation inside the loop (B5). It MUST be the same
+    // figure the processor uses when it commits geology, or the albedo would be computed against a
+    // different surface age than the one the body ends up carrying. Defaulted so the single-body UI
+    // refresh and the existing specs keep their signatures.
+    systemAgeGyr = 4.6
+): ThermalSolution {
+    // One full evaluation of the loop at a given albedo.
+    const evaluate = (albedo: number) => {
+        const equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedo);
+        // Shallow probe: deriveCloudDecks and calculateGreenhouseEffect both read the body's
+        // temperatures, and both must see THIS pass's values rather than whatever a previous
+        // process() run left on the object. Neither writes, so a shallow copy is enough.
+        const probe = { ...body, equilibriumTempK, temperatureK: undefined } as CelestialBody;
+        // Greenhouse in two steps: it reads the surface temperature (for the ocean-vapour term) and
+        // also sets it. Starting from the equilibrium value and going round once is enough — the
+        // term it feeds is a few kelvin — and it makes the result depend only on the inputs, never
+        // on what the last run happened to leave behind.
+        let greenhouseTempK = pack ? calculateGreenhouseEffect(probe, pack) : (body.greenhouseTempK || 0);
+        probe.greenhouseTempK = greenhouseTempK;
+        probe.temperatureK = composeBodySurfaceTemperature(probe, equilibriumTempK);
+        if (pack) {
+            greenhouseTempK = calculateGreenhouseEffect(probe, pack);
+            probe.greenhouseTempK = greenhouseTempK;
+        }
+        const surfaceTempK = composeBodySurfaceTemperature(probe, equilibriumTempK);
+        probe.temperatureK = surfaceTempK;
+        // THE cloud evaluation — the same one the processor publishes as tags. Nothing here decides
+        // for itself whether this world has clouds.
+        const decks = deriveCloudDecks(probe, pack);
+        // THE RUST EVALUATION (inbox B5), and the reason it is HERE. Oxide dust brightens a surface,
+        // so albedo needs the rust grade; grading it needs the surface age; the surface age needs the
+        // tectonic regime; and the regime turns on whether there is LIQUID water on the surface,
+        // which is this solve's own output. Measured across all 366 bundled bodies, that one input
+        // is the entire coupling — flipping it moves the surface age on 136 bodies — while teqK,
+        // the input the ordering gate was written around, moves TWO.
+        //
+        // Nothing is dragged backwards across the solve to do this. All three derivations are PURE
+        // (they return values; the processor is what assigns them), so they run against the same
+        // shallow probe deriveCloudDecks and deriveAlbedo already use. The processor still COMMITS
+        // geology in its own pass, from the converged temperature, and gets this same answer back —
+        // which is what makes it idempotent rather than one pass behind.
+        const geoAgeGyr = surfaceAgeOnProbe(probe, systemAgeGyr, pack);
+        const oxidation = geoAgeGyr == null ? null
+          : deriveOxidation({ ...probe, geoActivity: { surfaceAgeGyr: geoAgeGyr } } as CelestialBody);
+        const albedoInfo = deriveAlbedo(probe, equilibriumTempK, decks, pack, oxidation, geoAgeGyr);
+        return { equilibriumTempK, albedoInfo, greenhouseTempK, surfaceTempK, decks };
+    };
+
+    let albedo = FIRST_GUESS_ALBEDO;
+    let state = evaluate(albedo);
+    let iterations = 1;
+    let delta = state.albedoInfo.albedo - albedo;
+    let residual = Math.abs(delta);
+    let step = 1;                       // full step until the correction reverses on itself
+    while (residual >= ALBEDO_TOLERANCE && iterations < MAX_ITERATIONS) {
+        const previous = delta;
+        albedo += step * delta;
+        state = evaluate(albedo);
+        delta = state.albedoInfo.albedo - albedo;
+        residual = Math.abs(delta);
+        if (delta * previous < 0) step *= REVERSAL_DAMPING;   // overshot — close in on the midpoint
+        iterations++;
+    }
+    const converged = residual < ALBEDO_TOLERANCE;
+    // The committed temperature comes from the albedo that was fed IN; the breakdown reports what
+    // came out. On convergence those agree to within the tolerance. When they do not, say so on the
+    // body's own note rather than presenting a marginal world as a settled one.
+    const albedoInfo = converged ? state.albedoInfo : {
+        ...state.albedoInfo,
+        note: `${state.albedoInfo.note} Cloud cover is marginal here — the world sits on the edge of condensing, and its albedo settles between the cloudy and clear states.`
+    };
+    return { ...state, albedoInfo, iterations, residual, converged };
+}
+
 /**
  * Recalculates the equilibrium and total surface temperature for ONE body, in place — the same
- * albedo ⇄ equilibrium fixed point and flux-space composition the SystemProcessor commits, exposed
- * as a single-body refresh for live UI panels. (The full pipeline is systemProcessor.process(); use
- * that for anything beyond a display preview — this helper deliberately duplicates no formulas,
- * only orchestrates the shared ones.)
+ * fixed point the SystemProcessor commits, exposed as a single-body refresh for live UI panels.
+ * (The full pipeline is systemProcessor.process(); use that for anything beyond a display preview —
+ * this helper deliberately duplicates no formulas, only orchestrates the shared ones.)
  */
-export function calculateSurfaceTemperature(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[]) {
-    // Two fixed-point iterations off a 0.3 first guess — identical to SystemProcessor.processEnvironment.
-    let albedoInfo = deriveAlbedo(body, calculateEquilibriumTemperature(body, allNodes, 0.3));
-    let equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
-    albedoInfo = deriveAlbedo(body, equilibriumTempK);
-    equilibriumTempK = calculateEquilibriumTemperature(body, allNodes, albedoInfo.albedo);
-    const range = calculateEquilibriumTemperatureRange(body, allNodes, albedoInfo.albedo);
+export function calculateSurfaceTemperature(
+    body: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[],
+    pack?: RulePack | null
+) {
+    // Radiogenic heat is a GM override — re-derive it BEFORE the solve, which reads it as committed.
+    body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? body.radiogenicHeatK ?? 0;
+    const solved = solveThermalState(body, allNodes, pack);
+    const range = calculateEquilibriumTemperatureRange(body, allNodes, solved.albedoInfo.albedo);
 
-    if (equilibriumTempK > 0) {
-        body.equilibriumTempK = equilibriumTempK;
-        body.albedoBreakdown = albedoInfo;
+    if (solved.equilibriumTempK > 0) {
+        body.equilibriumTempK = solved.equilibriumTempK;
+        body.albedoBreakdown = solved.albedoInfo;
         (body as any).equilibriumTempMinK = range.minK;
         (body as any).equilibriumTempMaxK = range.maxK;
-        // Radiogenic heat is a GM override — re-derive it so this path can't silently drop it.
-        body.radiogenicHeatK = body.overrides?.radiogenicHeatK ?? body.radiogenicHeatK ?? 0;
-        body.temperatureK = composeBodySurfaceTemperature(body, equilibriumTempK);
+        if (pack) body.greenhouseTempK = solved.greenhouseTempK;
+        body.temperatureK = composeBodySurfaceTemperature(body, solved.equilibriumTempK);
     }
 }
 
-export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack): number {
+export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack, ageGyr = 4.6): number {
     if (body.roleHint !== 'planet') return 0;
     const cfg = rulePack?.climateModel?.internalHeat;
-    const pressure = body.atmosphere?.pressure_bar || 0;
     const h2 = getMainGasFraction(body, 'H2');
     const he = getMainGasFraction(body, 'He');
-    const h2He = h2 + he;
-    const minPressure = cfg?.minPressureBarForGiants ?? 10;
-    const minH2He = cfg?.minHydrogenHeliumFraction ?? 0.6;
-    if (pressure < minPressure || h2He < minH2He) return 0;
+    if (h2 + he < (cfg?.minHydrogenHeliumFraction ?? 0.6)) return 0;
+    // NOTE: there used to be a `pressure_bar >= 10` gate here as well, and it was silently doing all
+    // the work. A giant has no surface, so its quoted pressure is whatever depth its author picked —
+    // the app's own convention quotes the ~1 bar reference level, which failed the gate. Every giant
+    // in the bundled Sol file, and every generated one, was getting ZERO internal heat because of a
+    // number that carries no physical meaning for a body with no ground. Composition decides whether
+    // this is a giant; pressure has no say.
 
-    const isIceGiant = body.classes?.some((c) => c.includes('ice-giant')) || false;
-    const gasGiantHeatK = cfg?.gasGiantHeatK ?? 52;
-    const iceGiantHeatK = cfg?.iceGiantHeatK ?? 24;
-    return isIceGiant ? iceGiantHeatK : gasGiantHeatK;
+    // Giants are still radiating the gravitational energy of their own formation, and they COOL as
+    // they do it. That is why age is the dominant term and distance from the star is irrelevant:
+    // Jupiter puts out 1.67x what it receives from the Sun, Saturn 1.78x, Neptune 2.6x. A young
+    // giant is dramatically hotter — the directly imaged planets (HR 8799, Beta Pictoris b) sit at
+    // 900-1600 K at 10-30 Myr purely because they are young.
+    //
+    // Kelvin-Helmholtz cooling goes as a power law in age, so: heat = reference x (age/4.6)^-alpha,
+    // where the reference is TODAY'S solar system. That calibration is the point — whatever the
+    // curve does when young, it has to still produce Jupiter's +52 K and Neptune's +24 K at 4.6 Gyr,
+    // which pins it to something we can check rather than leaving it free.
+    // WHICH KIND of giant is a COMPOSITION question, answered by the same mass split the interior
+    // model uses (fluidLayers: metallic hydrogen above it, superionic water below). It used to read
+    // `body.classes` for the word "ice-giant" — but the classifier runs a whole pass AFTER this, and
+    // this feeds the temperature the classifier then reads. A freshly imported Neptune therefore
+    // came out at +52 K on its first process() and +24 K on its second, taking its surface
+    // temperature from 99 K to 72 K with it (inbox B13). A derived class is never a physics input.
+    const isIceGiant = (body.massKg ?? 0) / EARTH_MASS_KG <= GIANT_METALLIC_HYDROGEN_MIN_MASS_ME;
+    const referenceK = isIceGiant ? (cfg?.iceGiantHeatK ?? 24) : (cfg?.gasGiantHeatK ?? 52);
+    const alpha = cfg?.coolingExponent ?? 0.62;
+    const age = Math.max(cfg?.minAgeGyr ?? 0.005, ageGyr || 4.6);
+    let heatK = referenceK * Math.pow(age / 4.6, -alpha);
+
+    // MASS, but ONLY upward from Jupiter. A heavier giant formed with more gravitational energy to
+    // shed and holds it longer. Below Jupiter mass we deliberately do NOT scale down, because the
+    // per-class reference above is already the measured answer for a smaller giant: Saturn is a third
+    // of Jupiter's mass and radiates essentially the same excess (+53 K against +55 K), and the ice
+    // giants have their own constant. Scaling by mass on top of that double-counted it and cost
+    // Saturn 23 K — the calibration catching a mistake, which is what it is for.
+    const mJup = (body.massKg ?? 0) / JUPITER_MASS_KG;
+    if (mJup > 1) heatK *= Math.pow(mJup, cfg?.massExponent ?? 0.45);
+
+    // Above the substellar floor the brown-dwarf model takes over with its own Burrows/Baraffe
+    // tracks and sets an absolute photosphere temperature, so stop here and let it lead rather than
+    // double-counting the same contraction heat.
+    return Math.max(0, Math.min(cfg?.maxHeatK ?? 2000, heatK));
 }
 
 export function calculateEquilibriumTemperature(

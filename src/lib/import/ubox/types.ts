@@ -30,7 +30,13 @@ export interface UsEntity {
   $type?: string;         // 'Body'
   Name?: string;
   Id?: number;
-  Category?: string;      // 'star' | 'planet' | 'moon' | 'sso' | 'blackhole' | undefined (particles)
+  /**
+   * 'star' | 'planet' | 'moon' | 'sso' | 'blackhole' | '' | undefined. NOT AUTHORITATIVE ON ITS OWN:
+   * Universe Sandbox stores category twice, and the top-level string can be BLANK on a real body
+   * — the Hystrine file's 1.68-solar-mass A star carries Category '' here and Category 2 on its
+   * Celestial component. Read it through `resolveCategory`, never directly (design note §1).
+   */
+  Category?: string;
   Mass?: number;          // kg
   Radius?: number;        // m
   Density?: number;       // kg/m^3
@@ -54,7 +60,8 @@ export interface UsComponent {
   AtmosphereMass?: number;      // kg
   MeanMolecularWeightDryAir?: number;
   Luminosity?: number;          // W
-  StarType?: number;
+  StarType?: number;            // >0 on a star (1 seen on an A star); 0 on planets/moons
+  Category?: number;            // the SECOND category: 2 = star, 3 = planet/moon (observed); absent on particles
   MagneticField?: number;       // gauss
   MagPoleAngle?: number;
   SurfaceTemperatureOverride?: number;

@@ -1,5 +1,5 @@
 // src/lib/system/classification.ts
-import type { CelestialBody, Barycenter, RulePack, Expr, Feature, Fingerprint, FingerprintBand } from "../types";
+import type { CelestialBody, Barycenter, RulePack, Fingerprint, FingerprintBand } from "../types";
 
 // --- Fingerprint classifier (Phase 04) ---------------------------------------------------
 // Each planet type is a fingerprint: the parameter bands that define it. A body's fit to a
@@ -35,6 +35,15 @@ export function bandFit(value: number | string | undefined, band: FingerprintBan
 }
 
 function fingerprintScore(features: Record<string, number | string>, fp: Fingerprint): number {
+  // GATES first, and they are scored differently on purpose (see Fingerprint.gate). A gate is a
+  // precondition — "does this body have a surface at all" — not a defining trait, so failing one
+  // rules the type out entirely while passing one earns nothing. Expressing a gate as a match band
+  // instead would make it always-true for every survivor, and an always-true band pulls a poor
+  // defining band UP by averaging: fit 0.11 gains 37%, fit 1.0 gains 8%. That inverts the whole
+  // point of the scoring redesign in the header, which was to stop weak bands padding a score.
+  for (const [feat, band] of Object.entries(fp.gate ?? {})) {
+    if (bandFit(features[feat], band) <= 0) return 0;
+  }
   let sum = 0;
   let n = 0;
   for (const [feat, band] of Object.entries(fp.match)) {
@@ -74,8 +83,62 @@ export interface ClassExplanation {
 // How close the runner-up must be (fraction of the winner's score) to call a classification borderline.
 export const BORDERLINE_RATIO = 0.9;
 
+// Does this body fall INSIDE every band the type defines, with nothing on a soft edge?
+function isCleanMatch(features: Record<string, number | string>, fp: Fingerprint): boolean {
+  for (const [feat, band] of Object.entries(fp.match)) {
+    if (bandFit(features[feat], band) < 1) return false;
+  }
+  return true;
+}
+
+// B16 — A PERFECT MATCH BEATS A PARTIAL ONE, whatever the arithmetic says.
+//
+// The score is `mean fit x (1 + 0.1 x bands) x weight`, reshaped so that "partial fits drag the
+// score down instead of padding it up". That holds only while WEIGHTS ARE EQUAL. Give one type a
+// heavy enough weight and a single band on a soft edge can still beat a type the body sits cleanly
+// inside: at weight 1.5, earth-analogue with one band at fit 0.689 (Testion's jungle body, 314 K
+// against a 255-300 K band) scored 2.11 against a PERFECT jungle at 2.10. B15 worked around that by
+// picking 1.45 instead — a weight chosen so it could not happen, which means every future weight
+// change has to re-derive the same inequality by hand or quietly reintroduce the bug.
+//
+// So the rule is stated once, as an ordering rather than a number: a type the body matches
+// COMPLETELY outranks a type it matches partially, and score only decides within a tier. Weights
+// keep doing what they are for — ranking types that all fit — and can no longer buy a type past a
+// better-fitting rival.
+function compareBases(
+  features: Record<string, number | string>,
+  a: { fp: Fingerprint; score: number },
+  b: { fp: Fingerprint; score: number }
+): number {
+  const ca = isCleanMatch(features, a.fp), cb = isCleanMatch(features, b.fp);
+  if (ca !== cb) return ca ? -1 : 1;
+  return b.score - a.score;
+}
+
 // Explain WHY a body classified as it did: the winning base type, the defining bands it matched
 // (with the body's value + fit), the runner-up it beat, and any stacked modifiers.
+/**
+ * THE LAST RESORT, and it has to be honest about being one.
+ *
+ * `(features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial'` looks like a
+ * threshold and behaves like a default: in JavaScript `undefined > 10` is FALSE, so a body whose mass
+ * is missing or NaN fell to the TERRESTRIAL branch and came back a confident rocky planet however
+ * massive it actually was. A brown dwarf entered by hand with no mass became Earth's cousin.
+ *
+ * A fallback is not wrong to exist — a classifier needs one — it is wrong to express it as a class
+ * the numbers never supported. So an unknown mass now says UNCLASSIFIED, which is the true answer,
+ * and only a KNOWN mass earns a guess. ("Absent is not typical" — the fourth instance of this shape,
+ * after an unknown star defaulting to M, a borrowed age, and unweathered-is-not-unmeasured.)
+ *
+ * Shared by both call sites deliberately: the explanation path must name the same winner the body
+ * actually carries, and two copies of a fallback is how they stop agreeing.
+ */
+export function fallbackBaseClass(features: Record<string, unknown>): string {
+  const m = features['mass_Me'];
+  if (typeof m !== 'number' || !Number.isFinite(m)) return 'planet/unclassified';
+  return m > 10 ? 'planet/gas-giant' : 'planet/terrestrial';
+}
+
 export function explainClassification(
   features: Record<string, number | string>,
   fingerprints: Fingerprint[]
@@ -84,12 +147,14 @@ export function explainClassification(
     .map((fp) => ({ fp, score: fingerprintScore(features, fp) }))
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score);
-  const bases = scored.filter((s) => s.fp.kind === 'base');
+  // Same ordering classifyByFingerprint uses, or the explanation would name a different winner
+  // than the class the body actually carries.
+  const bases = scored.filter((s) => s.fp.kind === 'base').sort((a, b) => compareBases(features, a, b));
   const base = bases[0];
 
   if (!base) {
     return {
-      base: (features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial',
+      base: fallbackBaseClass(features),
       baseScore: 0, bands: [], candidates: [], borderline: false, modifiers: [], fallback: true
     };
   }
@@ -133,8 +198,10 @@ export function classifyByFingerprint(
     .sort((a, b) => b.score - a.score);
 
   const out: string[] = [];
-  // Best base archetype first (mutually exclusive).
-  const base = scored.find((s) => s.fp.kind === 'base');
+  // Best base archetype first (mutually exclusive) — a complete match outranks a partial one (B16),
+  // and score decides only within a tier. Modifiers below are chosen by threshold, not by rank, so
+  // they keep the plain score ordering.
+  const base = [...scored].filter((s) => s.fp.kind === 'base').sort((a, b) => compareBases(features, a, b))[0];
   if (base) out.push(base.fp.class);
   // Then stack modifiers that are a real match (not a margin sliver).
   for (const s of scored) {
@@ -143,25 +210,9 @@ export function classifyByFingerprint(
   }
 
   if (out.length === 0) {
-    out.push((features['mass_Me'] as number) > 10 ? 'planet/gas-giant' : 'planet/terrestrial');
+    out.push(fallbackBaseClass(features));
   }
   return out;
-}
-
-// Helper function to recursively evaluate classifier expressions
-function evaluateExpr(features: Record<string, number | string>, expr: Expr, tags: {key: string, value?: any}[]): boolean {
-    if (expr.all) return expr.all.every((e: Expr) => evaluateExpr(features, e, tags));
-    if (expr.any) return expr.any.some((e: Expr) => evaluateExpr(features, e, tags));
-    if (expr.not) return !evaluateExpr(features, expr.not, tags);
-    if (expr.gt) return (features[expr.gt[0]] ?? -Infinity) > expr.gt[1];
-    if (expr.lt) return (features[expr.lt[0]] ?? Infinity) < expr.lt[1];
-    if (expr.between) {
-        const val = features[expr.between[0]];
-        return val !== undefined && val >= expr.between[1] && val <= expr.between[2];
-    }
-    if (expr.eq) return features[expr.eq[0]] === expr.eq[1];
-    if (expr.hasTag) return tags.some(t => t.key === expr.hasTag);
-    return false;
 }
 
 export function classifyBody(planet: CelestialBody, features: Record<string, number | string>, pack: RulePack, allNodes: (CelestialBody | Barycenter)[]): string[] {
@@ -171,59 +222,27 @@ export function classifyBody(planet: CelestialBody, features: Record<string, num
     const hasRing = allNodes.some(n => n.parentId === planetId && n.kind === 'body' && (n as CelestialBody).roleHint === 'ring');
     features['has_ring_child'] = hasRing ? 1 : 0;
 
-    // Phase 04: prefer the per-type fingerprint engine when the rulepack provides one.
-    if (pack.classifier.fingerprints && pack.classifier.fingerprints.length > 0) {
-        return classifyByFingerprint(features, pack.classifier.fingerprints, pack.classifier.maxClasses || 4);
-    }
-
-    const scores: Record<string, number> = {};
-
-    for (const rule of pack.classifier.rules) {
-        if (evaluateExpr(features, rule.when, planet.tags)) {
-            scores[rule.addClass] = (scores[rule.addClass] || 0) + rule.score;
-        }
-    }
-
-    const sortedClasses = Object.entries(scores)
-        .filter(([, score]) => score >= (pack.classifier?.minScore || 10))
-        .sort((a, b) => b[1] - a[1]);
-
-    // Mutually exclusive base archetypes
-    // We prioritize the highest scoring one and discard the rest.
-    const baseArchetypes = new Set([
-        'planet/terrestrial', 'planet/gas-giant', 'planet/ice-giant', 
-        'planet/dwarf-planet', 'planet/super-earth', 'planet/mini-neptune',
-        'planet/hot-jupiter', 'planet/cold-jupiter', 'planet/warm-jupiter',
-        'planet/cloudless-gas-giant', 'planet/ammonia-clouds-gas-giant', 'planet/water-clouds-gas-giant',
-        'planet/silicate-clouds-gas-giant', 'planet/alkali-metal-clouds-gas-giant',
-        'planet/protoplanet', 'planet/brown-dwarf', 'planet/rogue'
-    ]);
-
-    const finalClasses: string[] = [];
-    let hasBase = false;
-
-    for (const [cls, score] of sortedClasses) {
-        if (baseArchetypes.has(cls)) {
-            if (!hasBase) {
-                finalClasses.push(cls);
-                hasBase = true;
-            }
-            // Else: Skip other base types (e.g. if we are Ice Giant, skip Gas Giant)
-        } else {
-            // Always include modifiers (ringed, eyeball, etc.)
-            finalClasses.push(cls);
-        }
-        
-        if (finalClasses.length >= (pack.classifier?.maxClasses || 3)) break;
-    }
-
-    // Start with the most likely class, but also add generic fallbacks.
-    if (finalClasses.length === 0) {
-        if ((features['mass_Me'] as number) > 10) {
-            finalClasses.push('planet/gas-giant');
-        } else {
-            finalClasses.push('planet/terrestrial');
-        }
-    }
-    return finalClasses;
+    // ONE classification engine. The additive `classifier.rules[]` seam that used to sit below this
+    // is GONE (inbox B67 / D12) — see `warnIfLegacyRules` for what a pack author is told.
+    return classifyByFingerprint(features, pack.classifier.fingerprints ?? [], pack.classifier.maxClasses || 4);
 }
+
+// A pack that still ships `classifier.rules` gets told, once, that they are not read. Silence here
+// was the whole problem: the rules looked live, and a pack without fingerprints would have been
+// quietly classified by a copy of the engine that predates two corrections (B6's move onto surface
+// temperature, B25's surface gate) and carried a rule that called any small hot world a stripped
+// gas-giant core.
+const warnedPacks = new Set<string>();
+export function warnIfLegacyRules(pack: RulePack): void {
+    const legacy = (pack.classifier as unknown as { rules?: unknown[] })?.rules;
+    if (!legacy?.length) return;
+    const id = pack.id ?? 'unnamed pack';
+    if (warnedPacks.has(id)) return;
+    warnedPacks.add(id);
+    console.warn(
+      `[classifier] "${id}" ships ${legacy.length} legacy classifier.rules. They are NOT read — ` +
+      'the fingerprint engine is the only classifier. Express each rule as a fingerprint ' +
+      '(class + kind + match bands); a pack with no fingerprints falls back to one base class by mass.'
+    );
+}
+

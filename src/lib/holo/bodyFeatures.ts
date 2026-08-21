@@ -382,6 +382,186 @@ export function updateStellarFlares(flares: FlareVisual[], nowSec: number): void
 	}
 }
 
+// ── THE STAR LOOK, shared (inbox G26) ─────────────────────────────────────────────────────────────
+// Everything a star wears OUTSIDE its photosphere — the additive corona, the timed limb flares and
+// the two tag-driven outflow decorations — built ONCE here and sized by a radius argument, so the
+// system holo (world-sized, radius = the photosphere's scene radius) and the 3D starmap (unit radius,
+// the group rescaled per frame to a screen size) draw the same thing. The photosphere itself is the
+// caller's: a textured sphere in the holo, a sharp disc sprite on the map, because the two surfaces
+// legitimately differ there and nowhere else.
+//
+// Decorations are TAGS. `activity` comes from `stellar/activity` via `activityStrength`, `flares`
+// from `flaresVisibly`, `jets`/`shedding` from `stellar/jets` / `stellar/shedding` via the readers in
+// physics/stellarOutflows. No caller may decide for itself which star gets one.
+export interface StarLookVisual {
+	group: THREE.Group;
+	corona: THREE.Sprite;
+	coronaScale: number;
+	activity: number;
+	flares: FlareVisual[];
+	/** The jet sprite, when the star jets — flickers in `updateStarLook`. */
+	jet?: { sprite: THREE.Sprite; mat: THREE.SpriteMaterial; base: number; seed: number };
+	/** The shed shell, when the star sheds — breathes slowly. */
+	shell?: { sprite: THREE.Sprite; mat: THREE.SpriteMaterial; base: number; scale: number; seed: number };
+}
+
+export interface StarLookOptions {
+	/** Timed limb flares (an active star). Default off — the caller has read `flaresVisibly`. */
+	flares?: boolean;
+	/** `stellar/jets` strength: 0 none, 1 moderate, 2 strong. */
+	jets?: 0 | 1 | 2;
+	/** `stellar/shedding` strength: 0 none, 1 wind, 2 shell. */
+	shedding?: 0 | 1 | 2;
+}
+
+// The jet texture: two opposed beams along the sprite's vertical — a hard white CORE inside a soft
+// blue SHEATH, held bright for the inner half and fading to the tips, transparent through the middle
+// so the photosphere (or the hole's glyph) shows between them. One cached instance; the beam's length
+// and brightness come from the sprite's scale and opacity. The first version was a single soft
+// profile and read as a faint hairline (owner, 2026-08-19: "very subtle... you can make them
+// prettier"); a core-plus-sheath is how a synchrotron jet actually looks in a radio map.
+let jetTex: THREE.Texture | null = null;
+export function makeJetTexture(): THREE.Texture {
+	if (jetTex) return jetTex;
+	const W = 64, H = 256;
+	const c = document.createElement('canvas');
+	c.width = W; c.height = H;
+	const ctx = c.getContext('2d')!;
+	const img = ctx.createImageData(W, H);
+	const smooth = (x: number) => { const t = Math.max(0, Math.min(1, x)); return t * t * (3 - 2 * t); };
+	for (let y = 0; y < H; y++) {
+		// Along the beam, from the centre (d = 0) to the tip (d = 1): a small gap for the star, a fast
+		// rise, full strength to 0.45, then a QUICK fade — gone by 0.85, so the beam ends about three
+		// quarters of the way up the sprite rather than reaching its very tip (owner, 2026-08-19).
+		const d = Math.abs((y + 0.5) / H - 0.5) * 2;
+		const along = d < 0.03 ? 0 : d < 0.08 ? (d - 0.03) / 0.05 : d < 0.45 ? 1 : Math.max(0, 1 - smooth((d - 0.45) / 0.4));
+		// The beam NARROWS TO THE STAR and widens as it goes — the width of both profiles grows with
+		// distance, so it launches as a point and opens into the fading cone the owner described.
+		const coreW = 0.09 + 0.24 * d;
+		const sheathW = 0.28 + 0.6 * d;
+		for (let x = 0; x < W; x++) {
+			const u = (x + 0.5) / W * 2 - 1;                  // -1..1 across the beam
+			const core = Math.exp(-((u / coreW) ** 2));       // the hard cyan-white spine
+			const sheath = 0.7 * Math.exp(-((u / sheathW) ** 2)); // the soft cyan glow about it
+			const a = Math.min(1, core + sheath) * along;
+			const t = core / (core + sheath + 1e-6);           // cyan-white spine, cyan sheath
+			const i = (y * W + x) * 4;
+			img.data[i] = Math.round(110 + (235 - 110) * t);
+			img.data[i + 1] = Math.round(210 + (253 - 210) * t);
+			img.data[i + 2] = 255;
+			img.data[i + 3] = Math.round(255 * a);
+		}
+	}
+	ctx.putImageData(img, 0, 0);
+	jetTex = new THREE.Texture(c);
+	jetTex.needsUpdate = true;
+	return jetTex;
+}
+
+/**
+ * Build the star's look around a photosphere of `radius`. `colorHex` is the star's derived colour,
+ * `activity` the 0..1 strength from the activity tag, `seed` the per-star seed the flares and the
+ * decorations' timing come from, `glowTexture` the caller's shared corona halo (`makeGlowTexture`).
+ *
+ * The corona is `radius * (5 + activity * 4)` across, as the holo has always drawn it; that number
+ * lives here now and nowhere else.
+ */
+export function buildStarLook(
+	radius: number,
+	colorHex: number,
+	activity: number,
+	seed: number,
+	glowTexture: THREE.Texture,
+	opts: StarLookOptions = {}
+): StarLookVisual {
+	const group = new THREE.Group();
+	const hex = `#${colorHex.toString(16).padStart(6, '0')}`;
+	// Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
+	// pulsing (flaring) over time in updateStarLook. A billboard, so it ignores the photosphere's spin.
+	const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+	const corona = new THREE.Sprite(coronaMat);
+	const coronaScale = radius * (5 + activity * 4);
+	corona.scale.setScalar(coronaScale);
+	group.add(corona);
+	const look: StarLookVisual = { group, corona, coronaScale, activity, flares: [] };
+
+	// Flares — only for stars whose magnetic activity actually earns them, so a quiet sun adds
+	// nothing to the frame.
+	if (opts.flares) {
+		const fl = buildStellarFlares(radius, hex, activity, seed || 1, glowTexture);
+		group.add(fl.group);
+		look.flares = fl.flares;
+	}
+
+	let s = (seed || 1) >>> 0;
+	const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+
+	// JETS — two opposed beams along the sprite's vertical. Pale, hotter than the star (a jet is
+	// synchrotron, not photosphere), longer and brighter at the strong bucket. A billboard: the
+	// physical axis is not carried, and a beam that always reads as a beam is the honest picture of
+	// "this object jets" at map scale.
+	if (opts.jets) {
+		const strong = opts.jets >= 2;
+		// The texture carries its own white-core / blue-sheath colour; the material tint is a whisper
+		// of the star's colour so a red dwarf's jet and a blue giant's are not identical.
+		const mat = new THREE.SpriteMaterial({
+			map: makeJetTexture(), color: new THREE.Color(0xffffff).lerp(new THREE.Color(colorHex), 0.15),
+			blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
+			opacity: strong ? 1 : 0.85
+		});
+		const sprite = new THREE.Sprite(mat);
+		const len = radius * (strong ? 15 : 10.5);   // 3/4 of the first pass — "just not so long"
+		sprite.scale.set(radius * (strong ? 4.2 : 3.2), len, 1);
+		sprite.renderOrder = 2;
+		group.add(sprite);
+		look.jet = { sprite, mat, base: mat.opacity, seed: rnd() };
+	}
+
+	// SHEDDING — a broad, faint shell of the star's own colour well outside the corona: the shed wind.
+	// The shell bucket is wider and denser than the wind bucket. Breathes slowly in updateStarLook.
+	if (opts.shedding) {
+		const shell = opts.shedding >= 2;
+		const mat = new THREE.SpriteMaterial({
+			map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false,
+			transparent: true, opacity: shell ? 0.42 : 0.26
+		});
+		const sprite = new THREE.Sprite(mat);
+		const scale = radius * (shell ? 16 : 11);
+		sprite.scale.setScalar(scale);
+		sprite.renderOrder = 1;
+		group.add(sprite);
+		look.shell = { sprite, mat, base: mat.opacity, scale, seed: rnd() };
+	}
+	return look;
+}
+
+/**
+ * Per-frame animation for everything `buildStarLook` made: the corona's activity pulse, the timed
+ * flares, the jet flicker and the shell's breath. The holo's `updateStarFx` and the starmap's loop
+ * both call this, so the two surfaces cannot drift in how a star moves.
+ */
+export function updateStarLook(look: StarLookVisual, nowSec: number): void {
+	// Flaring: an active star's corona pulses (and flickers brighter) over time; a quiet star is steady.
+	// The holo's numbers, moved here unchanged — if this pulse moves, the system view's star moved.
+	if (look.activity > 0.01) {
+		const pulse = 1 + look.activity * (0.1 * Math.sin(nowSec * 2.3) + 0.06 * Math.sin(nowSec * 6.1));
+		look.corona.scale.setScalar(look.coronaScale * pulse);
+		(look.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.85 + look.activity * 0.15 * (0.5 + 0.5 * Math.sin(nowSec * 9.3)));
+	}
+	if (look.flares.length) updateStellarFlares(look.flares, nowSec);
+	if (look.jet) {
+		// A jet is not steady: knots move down it, so it flickers a little about its base.
+		const j = look.jet;
+		j.mat.opacity = j.base * (0.8 + 0.2 * Math.sin(nowSec * 5.7 + j.seed * 6.283) * Math.sin(nowSec * 1.9 + j.seed * 2));
+	}
+	if (look.shell) {
+		const sh = look.shell;
+		const b = 0.5 + 0.5 * Math.sin(nowSec * 0.6 + sh.seed * 6.283);
+		sh.mat.opacity = sh.base * (0.8 + 0.2 * b);
+		sh.sprite.scale.setScalar(sh.scale * (0.97 + 0.06 * b));
+	}
+}
+
 // ATMOSPHERIC THOLIN HAZE — Titan's orange smog. Unlike surface tholin staining (Pluto), this is a
 // high photochemical layer ABOVE the cloud decks, so it gets its own outermost shell rather than
 // being baked into the surface texture: baked below the clouds, Titan's pale methane deck hid it

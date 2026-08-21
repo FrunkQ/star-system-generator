@@ -4,7 +4,7 @@
   // a Saturn-style ring, a distinct belt glyph (grey field of rocks by density), and the obligatory
   // [Mostly Harmless] stamp for any world called Earth.
   import type { CelestialBody } from '$lib/types';
-  import { getPlanetTexture } from '$lib/rendering/planetTexture';
+  import { getPlanetTexture, getPlanetLights } from '$lib/rendering/planetTexture';
   import { debrisDensityFrac } from '$lib/rendering/debris';
   import { smallBodyOutline } from './smallBodyShape';
   // THE shared appearance model — resolves every tag/property-driven surface feature (see WS1).
@@ -87,6 +87,14 @@
   $: textureUrl = (() => {
     if (isStar(body) || isBelt(body) || !body.apparentColor) return null;
     try { return getPlanetTexture(body)?.toDataURL() ?? null; } catch { return null; }
+  })();
+
+  // CITY LIGHTS: the same band of the same elevation field as the technological layer's daylight
+  // colour, drawn in the same orthographic frame, so the glow sits exactly on the ground that
+  // carries it. Masked to the NIGHT side below — a lit city is invisible against its own daylight.
+  $: lightsUrl = (() => {
+    if (isStar(body) || isBelt(body) || !body.apparentColor) return null;
+    try { return getPlanetLights(body)?.toDataURL() ?? null; } catch { return null; }
   })();
 
   // Bands only as a FALLBACK (the texture already bands giants); the model already zeroes stars/belts.
@@ -263,6 +271,11 @@
     });
   })();
 
+  // LIFE ON THE LAND is painted into the TEXTURE, not overlaid here — see planetTexture's
+  // paintSurfaceField. It has to be, because vegetation is a band of the same elevation field the
+  // coastline is thresholded from, and an SVG overlay scattered on top could only guess where the
+  // land was. Guessing is exactly what it used to do, which is how plants ended up in the sea.
+
   // Cloud deck (2D): east-west streaks organised into a few latitude BANDS with a clear equatorial lane —
   // the same physics the 3D deck uses (winds run E-W; an even band count leaves the equator visible). Each
   // patch is a flattened ellipse; x is placed within the disc's width at that latitude. Seeded, static.
@@ -416,6 +429,20 @@
       <clipPath id="clip-{uid}">{#if isSmallBody}<path d={smallBodyPath} />{:else}<circle cx="50" cy="50" r="30" />{/if}</clipPath>
       <clipPath id="front-{uid}"><rect x="0" y="50" width="100" height="50" /></clipPath>
       <clipPath id="belt-{uid}"><ellipse cx="50" cy="50" rx="46" ry="15" /></clipPath>
+      <!-- Night mask for the city lights: the terminator's mirror, white where the surface is dark.
+           USER-SPACE coordinates, deliberately. In the default objectBoundingBox units a gradient's
+           100% lands on the CORNER of the bounding square, which is off the disc entirely — so the
+           bright end of the ramp fell outside the world and the lights never showed at all. The
+           stops are also pulled well inside, because the terminator itself sits near the middle. -->
+      <linearGradient id="night-{uid}" gradientUnits="userSpaceOnUse"
+                      x1={termC.x1} y1={termC.y1} x2={termC.x2} y2={termC.y2}>
+        <stop offset="0%" stop-color="#000" />
+        <stop offset="{locked ? 50 : 44}%" stop-color="#000" />
+        <stop offset="{locked ? 58 : 62}%" stop-color="#aaa" />
+        <stop offset="{locked ? 66 : 78}%" stop-color="#fff" />
+        <stop offset="100%" stop-color="#fff" />
+      </linearGradient>
+      <mask id="nightmask-{uid}"><circle cx="50" cy="50" r="30" fill="url(#night-{uid})" /></mask>
       <!-- Day/night terminator, lit from the upper-left → dark lower-right. Locked = sharp. -->
       <linearGradient id="term-{uid}" x1="{termC.x1}%" y1="{termC.y1}%" x2="{termC.x2}%" y2="{termC.y2}%">
         {#if locked}
@@ -696,6 +723,14 @@
         {:else}
           <circle cx="50" cy="50" r="30" fill="url(#term-{uid})" />
         {/if}
+      {/if}
+
+      <!-- City lights, AFTER the terminator so the night side does not dim what is meant to glow
+           through it, and masked so the day side does not show a city lit against its own noon. -->
+      {#if lightsUrl}
+        <g clip-path="url(#clip-{uid})" mask={showShade ? `url(#nightmask-${uid})` : undefined}>
+          <image href={lightsUrl} x="20" y="20" width="60" height="60" preserveAspectRatio="none" />
+        </g>
       {/if}
       {#if magma.length}
         <g clip-path="url(#clip-{uid})">

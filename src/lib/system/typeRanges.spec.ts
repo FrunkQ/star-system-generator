@@ -21,8 +21,11 @@ describe('typeRanges — range metadata over the classifier', () => {
   it('rangeOf prefers the authored range, falls back to match bands', () => {
     const terr = realFps.find((f) => f.class === 'planet/terrestrial')!;
     expect(rangeOf(terr, 'mass_Me')).toEqual([0.1, 2]);           // authored (match has none)
-    const eyeball = realFps.find((f) => f.class === 'planet/cold-eyeball')!;
-    expect(rangeOf(eyeball, 'Teq_K')).not.toBeNull();             // falls back to match
+    // A hot Jupiter is an IRRADIATION class, so its band is genuinely on equilibrium temperature
+    // and stays there. (The eyeball family used to be the example here, but those three describe
+    // the ground and now match SurfaceTemp_K instead.)
+    const hotJupiter = realFps.find((f) => f.class === 'planet/hot-jupiter')!;
+    expect(rangeOf(hotJupiter, 'Teq_K')).not.toBeNull();          // falls back to match
   });
 
   it('Earth context offers the terrestrial family, not giants or hot classes', () => {

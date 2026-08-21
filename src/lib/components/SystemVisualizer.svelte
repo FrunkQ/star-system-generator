@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { niceStepBelow, formatNice } from '$lib/map/niceInterval';
+  import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
@@ -10,7 +12,8 @@
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatDistanceKm, distanceFlavour } from '$lib/units';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
   import { clampZoom, dampedZoomStep, autoFrameStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, firstFrameLevel, nextFrameLevel, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
@@ -35,7 +38,19 @@
   export let showTravellerZones: boolean = false;
   export let showSensors: boolean = false;
   export let showVectors: boolean = false;
+  // G5: orbit-line strength on the GM's own map, 0..1 (1 = the look it has always had). A LOCAL
+  // preference, passed in by the host from `systemUiStore` - the player side has its own value on
+  // the preset, and the two are deliberately not one store (A10/A3).
+  export let orbitOpacity: number = 1;
   export let showHillSpheres: boolean = false;
+  // WS3 — the shared overlay vocabulary. The 2D system view had no grid of any kind; it now offers the
+  // same set as every other spatial view (lattices in AU, or polar rings about the primary).
+  import { isHexFamily } from '$lib/map/mapOverlay';
+  export let overlay: import('$lib/map/mapOverlay').MapOverlay = 'off';
+  // Lattice cell in AU; 0 = the automatic 1/2/5 ladder below.
+  export let gridScaleAu: number = 0;
+  // Every lattice this codebase draws is available at system scale; the cell is measured in AU.
+  $: effOverlay = overlay;
   export let toytownFactor: number = 0;
   export let fullScreen: boolean = false;
   // Canvas backdrop — overridable so the projector can switch to a chroma-key green.
@@ -79,6 +94,25 @@
 
   // --- Canvas and Rendering State ---
   let canvas: HTMLCanvasElement;
+  // MAP HIGHLIGHTS (phase D). The GM's own map badges whatever the live selection names, in the
+  // tag's own colour, so what you are about to push to the players is what you are already looking at.
+  //
+  // The PLAYER window runs its own copy of this component in a separate document, so it has its own
+  // (empty) liveOverrides store — the GM's selection reaches it over the broadcast instead and is
+  // passed in. Prop wins when given; otherwise the local store, which is the GM's own map.
+  // Either way the tags being matched are whatever this view was handed, and a player view is handed
+  // the redacted snapshot — so a secret tag cannot badge here regardless of what is selected.
+  import { markersFor, capMarkers, type HighlightMarker, type MapHighlights } from '$lib/tags/mapHighlights';
+  // A marker IS the panel's tag chip, drawn small — see tags/tagPill.ts. Nothing here re-invents its
+  // padding, radius or font; only the size at which the shared shape is drawn belongs to this view.
+  import { tagPillMetrics, drawTagPill, tagPillText, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG } from '$lib/tags/tagPill';
+  const MARKER_PILL_FONT_PX = 9;
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
+  export let highlights: MapHighlights | null = null;
+  // The mute is part of the selection's meaning, not a separate render flag: muted means "none".
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights);
+
   // Foreground overlay canvas: sits above the PlanetDisc HTML layer; constructs + labels draw here
   // so they're never hidden behind a big planet disc. Sized to match `canvas` each frame.
   let fgCanvas: HTMLCanvasElement;
@@ -421,6 +455,78 @@
 
   onDestroy(() => { cancelAnimationFrame(animationFrameId); stopInertia(); });
 
+  // WS3 — the spatial overlay for the 2D system view. Drawn INSIDE the world transform (context coords
+  // are world-AU minus renderPan), so it pans and zooms with the orrery; line widths are divided by the
+  // zoom to stay hairline on screen. Lattice spacing is a 1/2/5-decade "nice" number of AU picked so the
+  // cells stay a sensible size on screen at any zoom, and the polar modes ring the primary at the origin.
+  function drawSystemOverlay(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    if (effOverlay === 'off' || !zoom) return;
+    // Visible world rect (context coords).
+    const hw = width / 2 / zoom, hh = height / 2 / zoom;
+    const cx = renderPan.x, cy = renderPan.y;               // world point at screen centre
+    const x0 = -hw, x1 = hw, y0 = -hh, y1 = hh;             // context-coord bounds
+    // A cell of roughly 90 screen px, snapped to the shared 1/2/5 × 10^n ladder (map/niceInterval).
+    // This view had the right idea first and kept it to itself — the ladder was inlined here and
+    // nowhere else, so when G10 needed the same answer for the 3D system grid and both starmaps'
+    // scale rings it would have become a second copy. It is the same arithmetic; only the home moved.
+    // A PINNED cell wins over the ladder here exactly as it does on the 3D view — the whole point of
+    // choosing "1 AU hexes" is that both renderings of the same system agree about what a cell is.
+    // This map is linear (no radial compression at 2D), so the AU cell is the cell.
+    const step = gridScaleAu > 0 ? gridScaleAu : niceStepBelow(90 / zoom);
+    const line = 1 / zoom;
+    ctx.save();
+    ctx.lineWidth = line;
+    ctx.strokeStyle = 'rgba(140,170,210,0.20)';
+    ctx.fillStyle = 'rgba(160,185,220,0.55)';
+    if (effOverlay === 'square') {
+      ctx.beginPath();
+      for (let x = Math.ceil((cx + x0) / step) * step; x <= cx + x1; x += step) { const c = x - cx; ctx.moveTo(c, y0); ctx.lineTo(c, y1); }
+      for (let y = Math.ceil((cy + y0) / step) * step; y <= cy + y1; y += step) { const c = y - cy; ctx.moveTo(x0, c); ctx.lineTo(x1, c); }
+      ctx.stroke();
+    } else if (isHexFamily(effOverlay)) {
+      // Flat-topped hex lattice with circumradius = step; CCRR numbering is a starmap-scale idea, so the
+      // system view draws the Traveller choice as the plain lattice.
+      const s = step, dx = s * Math.sqrt(3), dy = s * 1.5;
+      const q0 = Math.floor((cx + x0) / dx) - 1, q1 = Math.ceil((cx + x1) / dx) + 1;
+      const r0 = Math.floor((cy + y0) / dy) - 1, r1 = Math.ceil((cy + y1) / dy) + 1;
+      ctx.beginPath();
+      for (let r = r0; r <= r1; r++) {
+        for (let q = q0; q <= q1; q++) {
+          const hx = dx * (q + (r & 1 ? 0.5 : 0)) - cx, hy = dy * r - cy;
+          for (let k = 0; k < 6; k++) {
+            const a0 = (Math.PI / 180) * (60 * k - 30), a1 = (Math.PI / 180) * (60 * (k + 1) - 30);
+            ctx.moveTo(hx + s * Math.cos(a0), hy + s * Math.sin(a0));
+            ctx.lineTo(hx + s * Math.cos(a1), hy + s * Math.sin(a1));
+          }
+        }
+      }
+      ctx.stroke();
+    } else {
+      // Polar: rings about the primary (world origin) + spokes. 'scaled' labels each ring in AU.
+      const ox = -cx, oy = -cy;                                    // the origin in context coords
+      const maxR = Math.hypot(Math.max(Math.abs(x0 - ox), Math.abs(x1 - ox)), Math.max(Math.abs(y0 - oy), Math.abs(y1 - oy)));
+      ctx.beginPath();
+      for (let r = step; r <= maxR; r += step) { ctx.moveTo(ox + r, oy); ctx.arc(ox, oy, r, 0, Math.PI * 2); }
+      ctx.stroke();
+      ctx.beginPath();
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; ctx.moveTo(ox, oy); ctx.lineTo(ox + Math.cos(a) * maxR, oy + Math.sin(a) * maxR); }
+      ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1;
+      if (effOverlay === 'scaled') {
+        ctx.save();
+        ctx.scale(1 / zoom, 1 / zoom);          // labels in screen px, unscaled by the zoom
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        for (let r = step; r <= maxR; r += step) {
+          const lbl = `${formatNice(r)} AU`;   // one formatter, shared with every other scale label
+          ctx.fillText(lbl, (ox + r) * zoom, oy * zoom - 2);
+        }
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
+
   function screenToWorld(screenX: number, screenY: number): { x: number, y: number } {
       if (!canvas || !zoom) return { x: 0, y: 0 };
       const { width, height } = canvas;
@@ -571,25 +677,11 @@
   // world-space pass (sizePx = 8 / zoom) and the screen-space overlay (sizePx = 8),
   // which had drifted apart. Screen-space sizing (8px) is the canonical default.
   function drawConstructGlyph(ctx: CanvasRenderingContext2D, node: CelestialBody, x: number, y: number, sizePx: number): void {
-      const size = sizePx;
+      // The ONE glyph vocabulary (inbox A34) — this was a private copy of the same five shapes.
       const c = node as any;
       ctx.fillStyle = c.icon_color || '#ffd24d';
-      if (c.icon_type === 'circle') {
-          ctx.beginPath(); ctx.arc(x, y, size / 2, 0, 2 * Math.PI); ctx.fill();
-      } else if (c.icon_type === 'diamond') {
-          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y);
-          ctx.lineTo(x, y + size / 2); ctx.lineTo(x - size / 2, y); ctx.closePath(); ctx.fill();
-      } else if (c.icon_type === 'cross') {
-          const thickness = size / 3;
-          ctx.fillRect(x - thickness / 2, y - size / 2, thickness, size);
-          ctx.fillRect(x - size / 2, y - thickness / 2, size, thickness);
-      } else if (c.icon_type === 'square') {
-          ctx.fillRect(x - size / 2, y - size / 2, size, size);
-      } else {
-          // Default: triangle (bodies are circles/spheres, so constructs read as triangles)
-          ctx.beginPath(); ctx.moveTo(x, y - size / 2); ctx.lineTo(x + size / 2, y + size / 2);
-          ctx.lineTo(x - size / 2, y + size / 2); ctx.closePath(); ctx.fill();
-      }
+      traceConstructIcon(ctx, constructIconShape(c.icon_type), x, y, sizePx);
+      ctx.fill();
   }
 
   // Hit-test the canvas at screen coords (relative to the canvas element) and
@@ -784,6 +876,7 @@
       ctx.fillRect(0, 0, width, height);
       ctx.translate(width / 2, height / 2);
       ctx.scale(zoom, zoom);
+      drawSystemOverlay(ctx, width, height); // WS3 grid/overlay — under everything else
       // Zones are drawn in screen-space overlay after world-space pass for better dash/LOD performance.
       if (showTravellerZones) drawTravellerZones(ctx);
       drawSensorOverlay(ctx);   // gates internally on the global view toggle OR the ship's sensors flag
@@ -798,7 +891,9 @@
           // and freeze the canvas — skip this orbit line instead.
           if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(b) || b <= 0) continue;
           const omega_rad = (node.orbit.elements.omega_deg || 0) * (Math.PI / 180);
-          ctx.strokeStyle = "#333"; ctx.lineWidth = 1 / zoom;
+          // The designed grey, scaled by the dial. Drawn as rgba rather than via globalAlpha so it
+          // cannot leak into the fills that follow in this pass.
+          ctx.strokeStyle = `rgba(51,51,51,${Math.max(0, Math.min(1, orbitOpacity))})`; ctx.lineWidth = 1 / zoom;
           ctx.save();
           ctx.translate(parentPos.x - renderPan.x, parentPos.y - renderPan.y);
           ctx.rotate(omega_rad);
@@ -1034,7 +1129,10 @@
               const dx = primaryStarPos.x - pos.x, dy = primaryStarPos.y - pos.y;
               const len = Math.hypot(dx, dy) || 1;
               const ux = dx / len, uy = dy / len; // unit vector toward the star (screen Y not flipped)
-              const locked = !!(node as CelestialBody).tidallyLocked;
+              // A SHARP TERMINATOR NEEDS A PERMANENT FACE, which is `starTidallyLocked` and not the
+              // despin boolean (inbox B69): a moon locked to its PLANET and a planet in a spin-orbit
+              // RESONANCE both turn relative to the star, so both even their day/night out.
+              const locked = !!(node as CelestialBody).starTidallyLocked;
               ctx.save();
               ctx.setTransform(1, 0, 0, 1, 0, 0);
               ctx.beginPath(); ctx.arc(sx, sy, sR, 0, 2 * Math.PI); ctx.clip();
@@ -1269,6 +1367,52 @@
           ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
           ctx.lineJoin = 'round';
 
+
+          // One painter for both marker shapes. Canvas rather than DOM because it draws on the same overlay
+          // as every other label and must not fight the pan/zoom transform.
+          function drawMarkers(
+              ctx: CanvasRenderingContext2D,
+              markers: HighlightMarker[],
+              x: number, y: number, discRadiusPx: number
+          ) {
+              if (!markers.length) return;
+              const { shown, overflow } = capMarkers(markers);
+
+              // RINGS first, nested outward, so a label drawn after sits on top of them.
+              let ringR = Math.max(discRadiusPx, 3) + 3;
+              for (const m of shown) {
+                  if (m.style !== 'ring' && m.style !== 'both') continue;
+                  ctx.beginPath();
+                  ctx.arc(x, y, ringR, 0, Math.PI * 2);
+                  ctx.strokeStyle = m.color;
+                  ctx.lineWidth = 2;
+                  ctx.stroke();
+                  ringR += 4;                       // 2px stroke + 2px gap
+              }
+
+              // PILLS fan to the right of the body, stacked downward — a stable order, so a body's badges
+              // do not reshuffle between frames. Shape comes from tagPill: this is the SAME object as
+              // the chip in the Tags panel, drawn at map size, not a canvas lookalike of it.
+              const pills = shown.filter((m) => m.style !== 'ring');
+              if (!pills.length && !overflow) return;
+              const prevFont = ctx.font;
+              const prevAlign = ctx.textAlign;
+              const prevBaseline = ctx.textBaseline;
+              const pm = tagPillMetrics(MARKER_PILL_FONT_PX);
+              let py = y + pm.height / 2 + 2;
+              const px = x + Math.max(discRadiusPx, 3) + 5;
+              for (const m of pills) {
+                  drawTagPill(ctx, tagPillText(m), px, py, pm, m.color, m.textColor);
+                  py += pm.rowStep;
+              }
+              if (overflow) {
+                  drawTagPill(ctx, `+${overflow}`, px, py, pm, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG);
+              }
+              ctx.font = prevFont;
+              ctx.textAlign = prevAlign;
+              ctx.textBaseline = prevBaseline;
+          }
+
           // Draw labels child → parent (deepest hierarchy depth first) so a parent's label paints LAST
           // and sits on TOP of its satellites' labels in a crowded cluster — the parent is the most
           // important / most likely to be clicked.
@@ -1323,6 +1467,8 @@
                       ctx.fillStyle = getNodeColor(node);
                   }
                   ctx.fillText(node.name, tx, ty);
+                  drawMarkers(ctx, markersFor(node.tags, activeHighlights, $tagCategories),
+                              screenPos.x, screenPos.y, radiusPx);
               }
           }
           for (const node of system.nodes) {
@@ -1339,6 +1485,8 @@
               ctx.strokeText(node.name, tx, ty);
               ctx.fillStyle = node.icon_color || '#f0f0f0'; 
               ctx.fillText(node.name, tx, ty);
+              drawMarkers(ctx, markersFor((node as any).tags, activeHighlights, $tagCategories),
+                          screenPos.x, screenPos.y, size / 2);
           }
       }
       if (showZones && stellarZones.size > 0) {
@@ -1592,8 +1740,8 @@
       if (rulerDistanceAU != null) {
           const au = rulerDistanceAU;
           const label = au < 0.01
-              ? get(fmt).km(au * AU_KM)
-              : `${au.toFixed(au < 10 ? 3 : 2)} AU` + (au < 0.2 ? `  (${get(fmt).km(au * AU_KM)})` : '');
+              ? formatDistanceKm(au * AU_KM, distanceFlavour(get(unitPrefs), 'planet'))
+              : `${au.toFixed(au < 10 ? 3 : 2)} AU` + (au < 0.2 ? `  (${formatDistanceKm(au * AU_KM, distanceFlavour(get(unitPrefs), 'planet'))})` : '');
           const mx = (sa.x + sb.x) / 2, my = (sa.y + sb.y) / 2;
           ctx.font = '600 12px "IBM Plex Mono", ui-monospace, monospace';
           const tw = ctx.measureText(label).width;

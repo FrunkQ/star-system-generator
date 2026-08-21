@@ -101,3 +101,53 @@ describe('reasons-to-visit tagger', () => {
     expect(reasonTags(p).some((k) => k.startsWith('resource/'))).toBe(true);          // default still ran
   });
 });
+
+// B33 — a rule that means "land, dig it up and lift it" has to check there is ground. These rules
+// all test BULK COMPOSITION, and a giant satisfies bulk tests trivially: a planet-sized envelope
+// holds a great deal of water and metal by mass. A 751 C helium giant was offering life-support
+// resupply, water/ice refuelling and water ice.
+describe('surface resources need a surface (B33)', () => {
+  // A cold hydrogen/helium giant with the ice fraction that used to trigger the water hooks.
+  const giant = (): System => ({
+    seed: 'b33-seed', age_Gyr: 4.6,
+    nodes: [
+      { id: 'star', kind: 'body', roleHint: 'star', name: 'S', parentId: null, classes: ['star/G'] },
+      { id: 'g1', kind: 'body', roleHint: 'planet', name: 'Grolith', parentId: 'star',
+        massKg: 6.7e26, makeup: { gas: 0.8, ice: 0.2 }, equilibriumTempK: 140,
+        atmosphere: { name: 'H2/He', composition: { H2: 0.75, He: 0.25 }, pressure_bar: 86.6 },
+        classes: ['planet/helium'], tags: [] }
+    ]
+  } as unknown as System);
+
+  const tagsOf = (s: System) => {
+    annotateReasonsToVisit(s, cfg());
+    const b = s.nodes.find((n) => n.id === 'g1') as CelestialBody;
+    return (b.tags || []).map((t) => t.key);
+  };
+
+  it('offers a giant nothing that has to be lifted off the ground', () => {
+    const keys = tagsOf(giant());
+    for (const k of ['resource/water-ice', 'frontier/fuel-depot', 'frontier/life-support',
+                     'resource/heavy-metals', 'resource/platinum-group', 'resource/rare-earths',
+                     'resource/fissiles', 'resource/diamonds', 'resource/organics', 'resource/exotic-crystals']) {
+      expect(keys, `a giant should not offer ${k}`).not.toContain(k);
+    }
+  });
+
+  it('still offers what you can take from orbit or the envelope', () => {
+    // The gate must not be a blanket ban — helium-3 and gas skimming are the RIGHT answer for a
+    // giant and are deterministic (chance 1.0 / 0.92), so their absence would mean over-reach.
+    expect(tagsOf(giant())).toContain('resource/helium-3');
+  });
+
+  it('leaves a rocky body with the same ice fraction alone', () => {
+    // The control: identical ice, no envelope. If this lost its water ice the gate would be
+    // testing the wrong thing, and the first assertion above would pass for the wrong reason.
+    const s = giant();
+    const b = s.nodes.find((n) => n.id === 'g1') as CelestialBody;
+    (b as any).makeup = { rock: 0.5, ice: 0.5 };
+    (b as any).classes = ['planet/ice'];
+    (b as any).atmosphere = undefined;
+    expect(tagsOf(s)).toContain('resource/water-ice');
+  });
+});

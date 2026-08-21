@@ -6,6 +6,7 @@
 // comparable, tightly-packed bodies → ejection). Resonant eccentricity pumping is also what feeds
 // the tidal heating that drives Europa/Io activity — we flag that so the geology read-out can say so.
 import type { CelestialBody, Barycenter, System } from '../types';
+import { stripForReprocess } from '../tags/tagLifecycle';
 
 export type ResonanceKind = 'protective' | 'neutral' | 'chaotic';
 
@@ -65,7 +66,7 @@ export function annotateResonances(system: System): Map<string, ResonanceLink[]>
     if (n.kind !== 'body') continue;
     const b = n as CelestialBody;
     if (b.orbit) b.orbit.resonance = null;
-    if (b.tags) b.tags = b.tags.filter((t) => !t.key.startsWith('resonance/'));
+    if (b.tags) b.tags = stripForReprocess(b.tags, ['resonance/']);
     delete (b as any).resonanceNote;
     delete (b as any).resonanceProtective;
     delete (b as any).resonanceTidal;

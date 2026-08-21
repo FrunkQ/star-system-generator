@@ -35,8 +35,7 @@
       "atmosphere": {
         "name": "None",
         "composition": {},
-        "pressure_bar": 0,
-        "molarMassKg": 0.028
+        "pressure_bar": 0
       },
       "hydrosphere": {
         "coverage": 0,
@@ -67,31 +66,7 @@
       "image": {
         "url": "/images/star_types/K.ebp.webp"
       },
-      "calculatedGravity_ms2": 770.6571775760383,
-      "orbital_period_days": 13193116.923539262,
-      "loDeltaVBudget_ms": -1,
-      "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1,
-      "stellarRadiation": 0.0000525931569433425,
-      "stellarRadiationMin": 0.0000525931569433425,
-      "stellarRadiationMax": 0.0000525931569433425,
-      "radiationShieldingAtmo": 0,
-      "radiationShieldingMag": 0.99,
-      "photonRadiation": 0.023666920624504123,
-      "particleRadiation": 0.000026296578471671274,
-      "surfaceRadiation": 0.023693217202975795,
-      "surfaceRadiationMin": 0.023693217202975795,
-      "surfaceRadiationMax": 0.023693217202975795,
-      "isNameUserDefined": true,
-      "calculatedRotationPeriod_s": 2059200,
-      "orbitalBoundaries": {
-        "minLeoKm": 30,
-        "leoMoeBoundaryKm": 2000,
-        "meoHeoBoundaryKm": 22761883.439132728,
-        "heoUpperBoundaryKm": 108209520234.60707,
-        "geoStationaryKm": 22761883.439132728,
-        "isGeoFallback": false
-      }
+      "isNameUserDefined": true
     },
     {
       "id": "seed-1771178687558-star-b",
@@ -110,8 +85,7 @@
       "atmosphere": {
         "name": "None",
         "composition": {},
-        "pressure_bar": 0,
-        "molarMassKg": 0.028
+        "pressure_bar": 0
       },
       "hydrosphere": {
         "coverage": 0,
@@ -142,31 +116,7 @@
       "image": {
         "url": "/images/star_types/K.ebp.webp"
       },
-      "calculatedGravity_ms2": 334.3341388578832,
-      "orbital_period_days": 13193116.923539262,
-      "loDeltaVBudget_ms": -1,
-      "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1,
-      "stellarRadiation": 1.6347010979998198e-7,
-      "stellarRadiationMin": 1.6347010979998198e-7,
-      "stellarRadiationMax": 1.6347010979998198e-7,
-      "radiationShieldingAtmo": 0,
-      "radiationShieldingMag": 0.99,
-      "photonRadiation": 0.0000735615494099919,
-      "particleRadiation": 8.173505489999106e-8,
-      "surfaceRadiation": 0.0000736432844648919,
-      "surfaceRadiationMin": 0.0000736432844648919,
-      "surfaceRadiationMax": 0.0000736432844648919,
-      "isNameUserDefined": true,
-      "calculatedRotationPeriod_s": 1634400,
-      "orbitalBoundaries": {
-        "minLeoKm": 30,
-        "leoMoeBoundaryKm": 2000,
-        "meoHeoBoundaryKm": 19256697.061983697,
-        "heoUpperBoundaryKm": 108209319612.08968,
-        "geoStationaryKm": 19256697.061983697,
-        "isGeoFallback": false
-      }
+      "isNameUserDefined": true
     }
   ],
   "rulePackId": "starter-sf-pack",

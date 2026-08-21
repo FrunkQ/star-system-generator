@@ -23,18 +23,31 @@ export type ListStyle =
   | 'numbered-dossier'     // report: 1. 2. 3. numbered
   | 'terminal-log'         // terminal: '>' prefixed, monospace feel, tight
   | 'ledger'               // ruled table rows
-  | 'manifest';            // ticker / cargo-manifest columns
+  | 'manifest'             // ticker / cargo-manifest columns
+  | 'cards';               // pickable bordered boxes, several across the page — width picks how many
 
 // The overall document skin — one renderer, many looks. Each maps to a full base theme in
 // documentStyles.ts (font + colour set + list glyphs); a preset's explicit fields override it.
 export type DocumentStyle =
+  | 'greyscale'  // NO colour at all — the base a tinting filter (CRT / night vision / thermal) wants
   | 'guide'      // dark, illustrated field guide (serif, gold-on-dark, rainbow schematic)
   | 'report'     // monocolour company report (white paper, black ink, bold sans, numbered)
   | 'brochure'   // pretty travel brochure (warm cream, coral/teal, illustrated)
-  | 'terminal';  // green-screen terminal (phosphor mono, '>' log lines) — shines under CRT
+  | 'terminal'   // white-on-black readout (mono, '>' log lines) — shines under a phosphor filter
+  | 'amber'      // amber phosphor on black — the salvaged-freighter terminal
+  | 'blueprint'  // cyan on deep blue drafting paper — schematics and survey plots
+  | 'holotable'  // teal/cyan glow on near-black — a projected table readout
+  | 'hazard'     // industrial black and safety-yellow — a corporate operations manual
+  | 'alert'      // red on black — condition one, and deliberately tiring to read for long
+  | 'cleanroom'  // white and ice-blue — medical, scientific, expensively sterile
+  | 'neon';      // magenta and cyan on black — neon-noir, rain, bad decisions
 
 // How navigator rows + key elements render: plain hanging text, or boxed "buttons".
-export type NavStyle = 'plain' | 'boxed';
+// 'plain'  hanging-bullet rows, one per line (the book look)
+// 'boxed'  one full-width rounded button per line
+// 'chips'  buttons flowing SIDE BY SIDE across the page and wrapping — a thirteen-planet list is two
+//          rows instead of thirteen, which is why it is the default
+export type NavStyle = 'plain' | 'boxed' | 'chips';
 
 // The full colour set threaded through EVERY text draw (not just an accent). Light-on-dark by default
 // so a luminance-tinting filter (CRT/NV) colours it; a `mono` theme collapses everything to grey/white
@@ -70,13 +83,22 @@ export interface DocTheme {
 export interface DocBlockBase {
   id?: string;       // hit-map id (a body id for the navigator; omit for non-interactive content)
   selected?: boolean; // draw the "current" highlight for this block/row
+  // ZEBRA. Set by the BUILDER on a block that is one entry of a long repeating run, as its index: the
+  // renderer washes the odd ones very faintly so the eye can hold its line down the column. Only the
+  // blocks that ARE a row set it — a list draws its own stripes from its item index instead.
+  band?: number;
 }
 
 export interface HeadingBlock extends DocBlockBase {
   kind: 'heading';
   text: string;
-  level?: 1 | 2 | 3; // 1 = title, 2 = section, 3 = minor; default 1
+  level?: 1 | 2 | 3; // 1 = level 1 = title, 2 = section, 3 = minor; default 1
   sub?: string;      // small uppercase strap under the heading (e.g. the body's role)
+  // Set by the BUILDER, like ListItem.color: a specific hue for THIS heading, which wins over the
+  // theme's heading colour and over the rainbow gradient. It exists so a repeated heading — one per
+  // system in the starmap dossier — can walk the spectrum an entry at a time instead of every heading
+  // carrying the whole sweep. A mono theme still bleaches it, as it bleaches everything.
+  color?: string;
 }
 export interface TextBlock extends DocBlockBase {
   kind: 'text';
@@ -98,11 +120,18 @@ export interface TagsBlock extends DocBlockBase {
   style?: TagStyle; // overrides the theme/preset default
 }
 
-export interface ListItem { id?: string; text: string; selected?: boolean; sub?: string; }
+// `color` is set by the BUILDER, not chosen by the renderer: in the Guide's rainbow mode each drill-in
+// button takes the same hue as that body's marker on the chart above, so a chip and its dot match.
+export interface ListItem { id?: string; text: string; selected?: boolean; sub?: string; color?: string; }
 export interface ListBlock extends DocBlockBase {
   kind: 'list';
   items: ListItem[];
   style?: ListStyle; // overrides the theme's listStyle for this block
+  // Overrides the theme's navStyle for this block, the same way `style` overrides its listStyle. It
+  // exists for a list that is a single ACTION rather than a navigator: the starmap dossier's "System
+  // data" button is one item, and a full-width bar is the wrong shape for it however the reader's
+  // multi-item lists are set. A navigator list should NOT set this — those compose with the preset.
+  nav?: NavStyle;
 }
 export type PhotoFrame = 'letterbox' | 'full' | 'sliver';
 // Auto-centre box of the SUBJECT within a photo (see imageFocus.ts): frame to the body's edge, not the pic's.
@@ -124,6 +153,55 @@ export interface BodyDiscBlock extends DocBlockBase {
   mode?: 'sphere' | 'disc' | 'flat';
   heightFrac?: number; // fraction of the view height to reserve (default 0.2)
 }
+// A CONSTRUCT's picture (inbox A30). Not a body disc: a ship is not a small planet, and illustrating
+// one with a world's sphere was the fault A28 removed. This draws the construct's OWN authored
+// `icon_type` in its `icon_color` — the same glyph the 2D orrery, the starmap and the holo scene all
+// draw it with — so the panel agrees with the marker the reader is looking at, and no new look is
+// invented in code. It is the permanent bottom tier of the ladder in docs/dev/ship-appearance-design.md
+// (photo > 3D model > glyph > nothing), so it is not thrown away when models arrive.
+// Drawn straight into the document canvas, unlike `bodyDisc` — a flat vector shape needs no live
+// renderer overlaid, so both consumers get it with no plumbing of their own.
+export interface ConstructGlyphBlock extends DocBlockBase {
+  kind: 'constructGlyph';
+  shape: import('$lib/constructs/constructIcon').ConstructIconShape;
+  color: string;       // the construct's authored icon_color (ignored under a mono theme)
+  heightFrac?: number; // fraction of the view height to reserve (default 0.24 — the body-disc slot)
+}
+// A FORM of labelled fields laid out in a dynamic number of COLUMNS (G1). It exists because a stack of
+// `keyValue` rows right-aligns each value to the far edge of the content column: on a full-width page
+// the label sits at one side and its value at the other, a foot and a half away, and the pair stops
+// reading as a pair. Here the renderer divides the width into cells of a readable size and puts each
+// label and value inside one, so they stay together whatever the page is doing.
+// The COLUMN COUNT is derived from the available width, not authored — the same block is a single
+// column in a narrow side panel and three or four across a desktop document.
+// Not to be confused with columnStart/columnEnd, which is the image-and-text-beside-it layout and is
+// not a general grid.
+export interface FieldGridBlock extends DocBlockBase {
+  kind: 'fieldGrid';
+  // `icon` is an optional single glyph drawn before the label, in the accent colour. Chosen by the
+  // BUILDER (it knows what the field means); the renderer only places it. Absent = no icon column.
+  fields: { label: string; value: string; icon?: string }[];
+  minColPx?: number; // narrowest a column may get before dropping one, at scale 1 (default 300)
+  maxCols?: number;  // beyond four a form stops being scannable (default 4)
+  rules?: boolean;   // faint fill-in line under each value — the printed-form cue (default true)
+}
+// A ROW of small body discs drawn inline (G1). Deliberately general — N bodies at a given row height,
+// each with its own relative size — so the system document can use it later for a moon run or a
+// companion pair, not only the starmap's star-glyph catalogue.
+//
+// The colours are NOT chosen here and there is no class-to-colour table anywhere near it: each disc is
+// the body's own `getPlanetTexture` canvas, the same procedural 2D image the orrery and PlanetDisc
+// draw, which is generated from the derived `apparentColor` palette. A body with no palette (or no
+// canvas, as in tests) falls back to `deriveAppearance().baseColorHex`, which is derived too — from
+// the composition for a world and from the temperature for a star.
+export interface GlyphRowBlock extends DocBlockBase {
+  kind: 'glyphRow';
+  items: { body: unknown; scale: number }[]; // scale 0..1 of the row height
+  height?: number;      // row height in px at fontScale 1 (default 26)
+  label?: string;       // optional caption in a fixed column to the LEFT of the discs
+  labelColor?: string;  // builder-set (the rainbow walks the labels here — see starmapDocument)
+  sub?: string;         // small trailing caption after the discs
+}
 export interface SpacerBlock extends DocBlockBase { kind: 'spacer'; h?: number; } // gap in px (× scale)
 export interface RuleBlock extends DocBlockBase { kind: 'rule'; }                  // a full-width divider
 
@@ -131,10 +209,16 @@ export interface RuleBlock extends DocBlockBase { kind: 'rule'; }               
 // image drawn as a tall strip down the LEFT (used by the photo 'sliver' frame — image left, text right).
 export interface ColumnStartBlock extends DocBlockBase {
   kind: 'columnStart';
-  img: CanvasImageSource;
+  // A PHOTO strip, drawn into the filtered canvas...
+  img?: CanvasImageSource;
   aspect: number;
   stripWFrac?: number; // left strip width as a fraction of the column (default 0.34)
   focus?: ImageFocus | null; // subject box to centre the strip crop on (null = picture-centred)
+  // ...OR a RESERVED strip, left transparent for the caller to overlay the live renderer into, exactly
+  // as `bodyDisc` does — the body graphic is a real globe, not a bitmap this canvas could draw. Same
+  // id vocabulary ('__bodygfx'), so a consumer finds the rect the same way whether the picture ended
+  // up above the facts or beside them, and neither needs to know which layout it got.
+  reserveId?: string;
 }
 export interface ColumnEndBlock extends DocBlockBase { kind: 'columnEnd'; }
 
@@ -146,11 +230,20 @@ export interface SchematicBlock extends DocBlockBase {
   selectedId?: string | null;
   colorful?: boolean;
   heightFrac?: number; // fraction of the view height to reserve (default 0.42)
+  // A FIXED height in px (at fontScale 1), which wins over heightFrac. A fraction of the view is right
+  // for the one diagram at the top of a system page; it is hopeless when the block repeats — 42 systems
+  // at 0.42 of the view is seventeen screens of diagram. The drawer already fits its virtual box into
+  // whatever rect it is given, fonts and all, so a compact strip costs nothing extra (G1).
+  height?: number;
+  // Push ONE region for the whole diagram (using the block's own id) instead of a region per body.
+  // At starmap level the per-body hits would dispatch a PLANET id where the caller expects a SYSTEM.
+  wholeHit?: boolean;
+  labels?: boolean;    // draw the body NAMES (default true) — off gives the shape of the system alone
 }
 
 export type DocBlock =
   | HeadingBlock | TextBlock | KeyValueBlock | ListBlock | TagsBlock
-  | ImageBlock | BodyDiscBlock | SpacerBlock | RuleBlock | SchematicBlock
+  | ImageBlock | BodyDiscBlock | ConstructGlyphBlock | FieldGridBlock | GlyphRowBlock | SpacerBlock | RuleBlock | SchematicBlock
   | ColumnStartBlock | ColumnEndBlock;
 
 // --- Resolved colours -------------------------------------------------------------------------------

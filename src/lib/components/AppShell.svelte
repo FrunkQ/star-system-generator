@@ -11,6 +11,7 @@
   import { browser } from '$app/environment';
   import BottomSheet from './BottomSheet.svelte';
   import { railCollapsed } from '$lib/railStore';
+  import { chrome } from '$lib/ui/foreground';
 
   export let forceMode: 'auto' | 'desktop' | 'phone' = 'auto';
   export let mode: 'desktop' | 'phone' = 'desktop';
@@ -65,6 +66,12 @@
 
   $: mode = override() === 'auto' ? (autoDesktop ? 'desktop' : 'phone') : (override() as 'desktop' | 'phone');
 
+  // A52: mirror the shell's OWN decision onto <html> so plain CSS can use it. This deliberately
+  // replaces a second media query: `mode` already folds width, pointer type AND the ?mode= override
+  // together, and a CSS breakpoint beside it would be a 26th value that disagrees the moment someone
+  // forces phone on a wide screen. One decision, one place, read from both languages.
+  $: if (browser) document.documentElement.setAttribute('data-app-mode', mode);
+
   onMount(() => {
     const mql = window.matchMedia('(min-width: 900px) and (pointer: fine)');
     // Re-check on both the media-query change AND window resize. matchMedia 'change'
@@ -104,7 +111,7 @@
     <main class="canvas-full"><slot name="canvas" /></main>
 
     {#if $$slots.strip}
-      <div class="phone-strip">
+      <div class="phone-strip" use:chrome>
         <div class="phone-strip-inner"><slot name="strip" /></div>
       </div>
     {/if}
@@ -122,7 +129,7 @@
     {/if}
 
     {#if $$slots.bar}
-      <div class="phone-bar"><slot name="bar" /></div>
+      <div class="phone-bar" use:chrome><slot name="bar" /></div>
     {/if}
 
     {#if $$slots.detail}
@@ -134,11 +141,11 @@
     <!-- The + IS the mobile menu: opens the slide-in rail (nav, view, create, system,
          editors, settings). Replaces the old two hamburgers. -->
     {#if $$slots.rail && !railOpen}
-      <button class="menu-fab" aria-label="Open menu" style={$$slots.detail ? 'bottom: 98px;' : ''} on:click={() => (railOpen = true)}>+</button>
+      <button class="menu-fab" aria-label="Open menu" style={$$slots.detail ? 'bottom: 98px;' : ''} on:click={() => (railOpen = true)} use:chrome>+</button>
     {/if}
 
     {#if $$slots.fab}
-      <div class="fab-layer" style={$$slots.detail ? '--fab-bottom: 98px;' : ($$slots.bar ? `--fab-bottom: ${phoneBarH + 16}px;` : '')}><slot name="fab" /></div>
+      <div class="fab-layer" style={$$slots.detail ? '--fab-bottom: 98px;' : ($$slots.bar ? `--fab-bottom: ${phoneBarH + 16}px;` : '')} use:chrome><slot name="fab" /></div>
     {/if}
   {/if}
 </div>
@@ -147,8 +154,8 @@
   .app-shell {
     height: 100vh;
     width: 100%;
-    background: #08090d;
-    color: #e8e8e8;
+    background: var(--bg-app, #08090d);
+    color: var(--text, #e8e8e8);
     overflow: hidden;
   }
 
@@ -165,7 +172,8 @@
   .area.rail {
     grid-area: rail;
     max-width: 200px;
-    border-right: 1px solid #1c1f27;
+    background: var(--bg-rail, transparent);
+    border-right: 1px solid var(--border-soft, #1c1f27);
     overflow-y: auto;
     /* overflow-y:auto alone promotes overflow-x to auto too, so a label a hair wider than the 200px cap
        left a permanent horizontal scrollbar along the bottom. Clip it; labels truncate (see RailNav). */
@@ -194,7 +202,8 @@
        Empty (gated) detail collapses the auto track to 0. */
     width: clamp(340px, 34vw, 560px);
     position: relative;
-    border-left: 1px solid #1c1f27;
+    background: var(--bg-side, transparent);
+    border-left: 1px solid var(--border-soft, #1c1f27);
     overflow-y: auto;
     /* As with .area.rail above: overflow-y:auto promotes overflow-x to auto too, so content a hair wider
        than the panel (the scrollbar's width, a 100%-wide input) spawns a phantom horizontal scrollbar. */
@@ -278,8 +287,8 @@
     left: 0;
     bottom: 0;
     width: min(80vw, 320px);
-    background: #14161c;
-    border-right: 1px solid #2a2d36;
+    background: var(--bg-panel, #14161c);
+    border-right: 1px solid var(--border, #2a2d36);
     overflow-y: auto;
     padding: 12px;
   }

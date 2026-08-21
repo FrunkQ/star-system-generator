@@ -7,6 +7,8 @@ import { SeededRNG } from '../rng';
 import { bodyFactory } from '../core/BodyFactory';
 import { systemProcessor } from '../core/SystemProcessor';
 import { _generatePlanetaryBody } from './planet';
+import { starFieldFromPack, starTiltFromPack, starFamilyOf, planetCountTableKey } from './star';
+import { resolveStarImage } from '../system/starImage';
 import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
 import { drawTypeForSlot, rarityOf, rarityTier } from './typeDraw';
 import { calculateOrbitalSlots } from './placement-strategy';
@@ -14,7 +16,9 @@ import { randomFromRange, weightedChoice } from '../utils';
 import { calculateEquilibriumTemperature } from '../physics/temperature';
 import { makeSystemName, makeWorldName, namesWorlds, planetNameChance, type NamingStrategy } from './naming';
 import { ageStar, determineSpectralClass, type StarSeed, type StarPhase } from '../physics/stellar-evolution';
-import { G, AU_KM } from '../constants';
+import { stellarRotationHours } from '../physics/stellarRotation';
+import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM } from '../constants';
+import { predictTidalLock } from '../physics/tidalLock';
 
 // Physical "starting condition" knobs, each 0..1 (0.5 = neutral). Presets are just saved knob sets.
 export interface GenerationKnobs {
@@ -26,6 +30,13 @@ export interface GenerationKnobs {
 export interface GenerationConfig {
   seeds?: StarSeed[];          // explicit stars (HR / preset); omit for legacy random
   ageGyr?: number;             // system age — evolves the stars + drives planet physics
+  /**
+   * The seeds describe stars AS THEY ARE NOW, not at birth — do not run them through ageStar. Set by
+   * infill on an imported system: the imported star is already at its current state, and ageing it
+   * again to `ageGyr` would shift every zone the new worlds are placed against. `ageGyr` still dates
+   * the PLANETS (birth windows, escape, cratering, tidal lock), which is what it is for there.
+   */
+  starsAreCurrentState?: boolean;
   emptyPlanets?: boolean;      // create the star(s) only (GM adds planets via §4c)
   name?: string;
   knobs?: GenerationKnobs;
@@ -46,18 +57,23 @@ function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, kn
     // square and only a violent one tips over, which keeps the tilt meaning something when you see it.
     if (n.kind === 'body' && n.roleHint === 'star') {
       const b = n as CelestialBody;
-      // Falsy, not undefined: BodyFactory stamps every body with axial_tilt_deg 0, so testing for
-      // undefined here never fired and the whole branch was dead. This runs once at generation, on
-      // freshly-made nodes, so there is no authored value to tread on.
-      if (!b.axial_tilt_deg) {
-        const spread = 4 + dyn * dyn * 60;          // calm ~4 degrees; violent, up to ~64
-        b.axial_tilt_deg = Math.round(rng.nextFloat() * spread * 10) / 10;
-      }
+      // UNCONDITIONAL, and it has to be. This used to be guarded on `!b.axial_tilt_deg`, which was
+      // right when nothing else set one; starSeedToBody now gives every star a baseline tilt (inbox
+      // B10), so the guard would never fire again and the dynamical-history knob would quietly stop
+      // doing anything. The knob is the more specific statement — a system the GM has declared
+      // violent — so it OVERRIDES the baseline rather than deferring to it. Still safe to overwrite:
+      // this runs once at generation on freshly-made nodes, so there is no authored value to tread on.
+      const spread = 4 + dyn * dyn * 60;          // calm ~4 degrees; violent, up to ~64
+      b.axial_tilt_deg = Math.round(rng.nextFloat() * spread * 10) / 10;
       continue;
     }
     if (n.kind !== 'body' || (n.roleHint !== 'planet' && n.roleHint !== 'moon')) continue;
     const b = n as CelestialBody;
-    // Metallicity → makeup: high metallicity favours metal+rock, low favours ice+gas. Skip giants.
+    // Metallicity → makeup nudge: high favours metal+rock, low favours ice+gas. THIS IS THE MINOR
+    // HALF. It only reaches a body that has a makeup AND is compositionally mixed, which measured as
+    // one body in seventy-four (G24) — the dial's REAL effect is now in the type draw
+    // (typeDraw.ts metallicityFactor), where it decides how likely a giant or an iron world is drawn
+    // at all. This stays as a small second-order shading of the worlds that do get drawn.
     if ((met < 0.45 || met > 0.55) && b.makeup) {
       const shift = (met - 0.5) * 0.6; // ±0.3
       const mk: any = { ...b.makeup };
@@ -88,46 +104,81 @@ function applyKnobBias(nodes: (CelestialBody | Barycenter)[], rng: SeededRNG, kn
 }
 
 // Spectral classes for a (possibly evolved) star seed → the engine's class array.
-function classesForPhase(seed: StarSeed, phase: StarPhase | undefined): string[] {
+function classesForPhase(seed: StarSeed, phase: StarPhase | undefined, pack?: RulePack): string[] {
   if (phase === 'white-dwarf') return ['star/WD'];
   if (phase === 'neutron-star') return ['star/NS'];
   if (phase === 'black-hole') return ['star/BH'];
-  if (phase === 'giant' || phase === 'subgiant') return ['star/red-giant'];
-  const sp = determineSpectralClass(seed.temperatureK);
+  // An AGED giant takes the band for the letter it has actually cooled to, rather than the retired
+  // one-size `star/red-giant` (inbox B46a). `determineSpectralClass` is already the ladder used two
+  // lines down, so the evolved temperature decides the letter and the luminosity class says III.
+  if (phase === 'giant' || phase === 'subgiant') {
+    const sp = determineSpectralClass(seed.temperatureK, pack);
+    return [`star/${sp}-III`, `star/${sp}`];
+  }
+  const sp = determineSpectralClass(seed.temperatureK, pack);
   return [`star/${sp}`];
 }
 function categoryForClass(cls: string): CelestialBody['starCategory'] {
   const sp = cls.split('/')[1];
   if (['O', 'B'].includes(sp)) return 'massive_star';
   if (['WD', 'NS', 'BH', 'magnetar'].includes(sp)) return 'star_remnant';
-  if (sp === 'M') return 'low_mass_star';
+  if (sp === 'M' || sp === 'L' || sp === 'T' || sp === 'Y') return 'low_mass_star';
   return 'main_sequence_star';
 }
 
-function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: string | null): CelestialBody {
+function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: string | null, ageGyr?: number): CelestialBody {
   const star = bodyFactory.createBody({ name: '', roleHint: 'star', parentId, seed: id, massKg: seed.massKg, radiusKm: seed.radiusKm });
   star.id = id;
-  const classes = classesForPhase(seed, (seed as any).phase);
+  const classes = classesForPhase(seed, (seed as any).phase, pack);
   star.classes = classes;
   star.starCategory = categoryForClass(classes[0]);
   star.temperatureK = seed.temperatureK;
+  // The field comes from the pack's mag_gauss band for the EVOLVED class, exactly as the legacy
+  // random generator does (inbox B9a). This path used to set nothing at all, so every star the
+  // wizard built kept BodyFactory's placeholder zero and reported "no magnetosphere" — which is a
+  // real claim about a star, and the wrong one. Age matters here: a 13 Gyr G-star has already been
+  // reclassified to star/WD above, so it draws the white-dwarf band rather than the G band.
+  // Its own stream, seeded from the star's id: drawing from the system rng here would shift every
+  // subsequent draw and silently re-roll every planet in every existing seed.
+  star.magneticField = starFieldFromPack(pack, classes[0], new SeededRNG(`${id}-mag`));
+  // Same story as the field, and the same fix: this path set no spin axis, so a wizard run without
+  // knobs produced stars with none at all (inbox B10) — applyKnobBias is the ONLY other site and it
+  // runs only when knobs are supplied. Its own stream for the reason above.
+  star.axial_tilt_deg = starTiltFromPack(pack, new SeededRNG(`${id}-tilt`));
+  // ...and the third thing this path never set: a ROTATION (inbox B43, B9b). Without one the shape
+  // code was handed nothing, so no generated star was ever drawn oblate however fast it should have
+  // been turning. Derived from mass and age below the Kraft break, drawn above it; own stream, for
+  // the reason above. Absent when there is nothing to derive from, which reads as no spin, not as
+  // an unknown (B39).
+  const spin = stellarRotationHours({
+    massKg: star.massKg, radiusKm: star.radiusKm, ageGyr,
+    roll: new SeededRNG(`${id}-spin`).nextFloat(),
+    isRemnant: /star\/(WD|NS|BH|BH_active|magnetar)/.test(classes[0]),
+        isEvolved: /star\/([OBAFGKM]-(I|III)|red-giant)/.test(classes[0])
+  });
+  if (spin != null) star.rotation_period_hours = Math.round(spin * 100) / 100;
   star.radiationOutput = Math.max(0.0001, seed.luminositySolar); // luminosity drives zones + flux
-  const img = pack.classifier?.starImages?.[classes[0]] ?? pack.classifier?.starImages?.[`star/${classes[0].split('/')[1][0]}`];
+  // G21 - one lookup, shared with the editor and generation/star.ts. This copy indexed
+  // `split('/')[1][0]` with no optional chaining and no length guard, so ANY class with no slash in
+  // it threw a TypeError and took the whole generator down with it.
+  const img = resolveStarImage(pack, classes[0]);
   star.image = img ? { url: img } : undefined;
+  // No `hazard/flaring` here either - same reason as `generation/star.ts`: it was gated on
+  // LUMINOSITY, and `SystemProcessor` strips and re-derives this tag from flare ACTIVITY (class and
+  // age) on every pass. TAG-6: one owning pass per namespace, and this is not it.
   const tags: Tag[] = [];
-  if (seed.luminositySolar > 100 && (seed as any).phase === 'main-sequence') tags.push({ key: 'hazard/flaring' });
   star.tags = tags;
   return star;
 }
 
 // A leaf star that can host its own little (S-type) system, bounded by its tightest pairing.
-interface StarHost { star: CelestialBody; outerAU: number; }
+export interface StarHost { star: CelestialBody; outerAU: number; }
 // A barycentre that can host circumbinary (P-type) planets in a stable annulus.
-interface BaryHost { bary: Barycenter; innerAU: number; outerAU: number; }
+export interface BaryHost { bary: Barycenter; innerAU: number; outerAU: number; }
 
 const SOLAR = 1.989e30;
 const HIER_STEP = 7;       // each level's separation ≥ ~7× the one below → hierarchical stability
-const S_TYPE_FRAC = 0.37;  // a star's planets are stable out to ~0.37× the distance to its companion
+export const S_TYPE_FRAC = 0.37;  // a star's planets are stable out to ~0.37× the distance to its companion
 const P_TYPE_FRAC = 2.3;   // circumbinary planets are stable beyond ~2.3× the pair separation
 
 // A tight-pair base separation (AU), scaled by combined mass; multiplied by HIER_STEP^level above.
@@ -194,13 +245,14 @@ export function planStarHierarchy(seeds: StarSeed[]): StarPlanNode | null {
 
 // Walk a planned hierarchy into actual star bodies + nested barycentres, collecting the S-type and
 // P-type host bounds for the planet placer. (The processor reconciles barycentre dynamics afterwards.)
-function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number | undefined, baseName: string) {
+function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number | undefined, baseName: string, starsAreCurrentState = false) {
+  const evolve = (seed: StarSeed) => (ageGyr && !starsAreCurrentState) ? ageStar(seed, ageGyr * 1e9) : seed;
   const nodes: (CelestialBody | Barycenter)[] = [];
   const LETTERS = 'ABCDEFGHIJKLMNOP';
   const massOf = (n: CelestialBody | Barycenter) => n.kind === 'barycenter' ? (n.effectiveMassKg || 0) : ((n as CelestialBody).massKg || 0);
 
   if (seeds.length === 1) {
-    const star = starSeedToBody(ageGyr ? ageStar(seeds[0], ageGyr * 1e9) : seeds[0], pack, `${baseName}-star-a`, null);
+    const star = starSeedToBody(evolve(seeds[0]), pack, `${baseName}-star-a`, null, ageGyr);
     star.name = baseName;
     nodes.push(star);
     return { nodes, systemRoot: star, systemName: star.name, isBinary: false, hierarchical: false,
@@ -208,48 +260,77 @@ function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number |
   }
 
   const plan = planStarHierarchy(seeds)!;
+  const built = buildStarHierarchy(plan, baseName, (node, parentId) =>
+    starSeedToBody(evolve(node.seed), pack, `${baseName}-star-${node.index}`, parentId, ageGyr));
+  nodes.push(...built.nodes);
+  return { nodes, systemRoot: built.systemRoot, systemName: baseName, isBinary: true, hierarchical: true,
+    starA: built.starHosts[0].star, starB: built.starHosts[1]?.star,
+    starHosts: built.starHosts, baryHosts: built.baryHosts };
+}
+
+/**
+ * Walk a PLANNED hierarchy into real bodies and nested barycentres — the half of star setup that has
+ * nothing to do with where the stars came from.
+ *
+ * Split out because the Traveller importer needs exactly this and was doing it itself (inbox D27):
+ * one barycentre for the first pair with its own separation law, further stars appended around that
+ * same centre at 1000 x 1.5^k AU with e 0.1-0.6 and **i_deg drawn uniformly from 0 to 180**. On the
+ * owner's Caladbolg that produced B and C orbiting one centre at 1,024 and 1,342 AU with e ~0.5-0.6 —
+ * crossing orbits, not a hierarchy — and inclinations of 96.8 and 79 degrees, near-polar to the
+ * planets and a ~33,000-year period, which reads as "the stars hang in space".
+ *
+ * The two callers differ ONLY in how a leaf becomes a star body: the generator evolves a StarSeed,
+ * the importer resolves Traveller's stated class ("F7 V") through the shared class resolver. That is
+ * the `makeStar` factory, and it is the whole of the difference.
+ */
+export function buildStarHierarchy(
+  plan: StarPlanNode,
+  baseName: string,
+  makeStar: (leaf: { seed: StarSeed; index: number }, parentId: string | null) => CelestialBody
+): { nodes: (CelestialBody | Barycenter)[]; systemRoot: CelestialBody | Barycenter; starHosts: StarHost[]; baryHosts: BaryHost[] } {
+  const nodes: (CelestialBody | Barycenter)[] = [];
+  const LETTERS = 'ABCDEFGHIJKLMNOP';
+  const massOf = (n: CelestialBody | Barycenter) => n.kind === 'barycenter' ? (n.effectiveMassKg || 0) : ((n as CelestialBody).massKg || 0);
   const starHosts: StarHost[] = [];
   const baryHosts: BaryHost[] = [];
   let baryN = 0;
 
-  // Build a plan node; parentSepAU is the separation of the pair this node sits inside (∞ at the root),
-  // which sets the node's OUTER stability bound (~0.37× the parent separation).
+  // parentSepAU is the separation of the pair this node sits inside (∞ at the root), which sets the
+  // node's OUTER stability bound (~0.37× the parent separation).
   const build = (node: StarPlanNode, parentIdForStar: string | null, parentSepAU: number): CelestialBody | Barycenter => {
     if (node.kind === 'star') {
-      const body = starSeedToBody(ageGyr ? ageStar(node.seed, ageGyr * 1e9) : node.seed, pack, `${baseName}-star-${node.index}`, parentIdForStar);
+      const body = makeStar({ seed: node.seed, index: node.index }, parentIdForStar);
       body.name = `${baseName} ${LETTERS[node.index] ?? node.index + 1}`;
       nodes.push(body);
       starHosts.push({ star: body, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });
       return body;
     }
-    const baryId = `${baseName}-bary-${baryN++}`;
+    const baryN_own = baryN++;                 // read BEFORE recursing: the children increment it too,
+    const baryId = `${baseName}-bary-${baryN_own}`;   // and two barycentres both came out "Barycentre 2"
     const childA = build(node.a, baryId, node.sepAU);
     const childB = build(node.b, baryId, node.sepAU);
     const mA = massOf(childA), mB = massOf(childB), total = mA + mB;
     orbitAround(childA, baryId, total, node.sepAU * (mB / total), 0);
     orbitAround(childB, baryId, total, node.sepAU * (mA / total), Math.PI);
-    const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre ${baryN}`,
+    const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre ${baryN_own + 1}`,
       kind: 'barycenter', memberIds: [childA.id, childB.id], effectiveMassKg: total, tags: [] };
     nodes.push(bary);
     baryHosts.push({ bary, innerAU: P_TYPE_FRAC * node.sepAU, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });
     return bary;
   };
 
-  const root = build(plan, null, Infinity);
-  return { nodes, systemRoot: root, systemName: baseName, isBinary: true, hierarchical: true,
-    starA: starHosts[0].star, starB: starHosts[1]?.star, starHosts, baryHosts };
+  const systemRoot = build(plan, null, Infinity);
+  return { nodes, systemRoot, starHosts, baryHosts };
 }
 
 // Honour star TYPE for planet richness: massive O/B/A stars blow their disks away (few worlds),
 // main-sequence F/G/K/M keep rich disks, remnants rarely retain anything. Same tables the single-
 // star path uses, so a multi-star system's per-star counts track each star's class.
 function planetCountForStar(star: CelestialBody, pack: RulePack, rng: SeededRNG): number {
-  const cls = star.classes?.[0]?.split('/')[1] ?? '';
-  const sp = cls[0];
-  let table;
-  if (['O', 'B', 'A'].includes(sp)) table = pack.distributions?.['planet_count_massive'];
-  else if (cls === 'red-giant' || ['F', 'G', 'K', 'M'].includes(sp)) table = pack.distributions?.['planet_count_main_sequence'];
-  else table = pack.distributions?.['planet_count_remnant'];
+  // Family from the LETTER (star.ts starFamilyOf), so `G-III` is a G and `L`/`T`/`Y` are brown
+  // dwarfs with their own table rather than falling to the remnants' 95%-empty one.
+  const table = pack.distributions?.[planetCountTableKey(starFamilyOf(star.classes?.[0]))]
+    ?? pack.distributions?.['planet_count_main_sequence'];
   return table ? weightedChoice<number>(rng, table) : rng.nextInt(0, 5);
 }
 
@@ -285,12 +366,18 @@ function teqAtSlot(host: CelestialBody | Barycenter, hostMassKg: number, aAU: nu
 function spawnTypedSlot(opts: {
   host: CelestialBody | Barycenter; hostMassKg: number; aAU: number; name: string; idx: number;
   nodes: (CelestialBody | Barycenter)[]; pack: RulePack; rng: SeededRNG; ageGyr: number;
-  rarity: number; starClass: string; role: 'planet' | 'moon';
+  rarity: number; starClass: string; role: 'planet' | 'moon'; metallicity?: number;
 }) {
-  const { host, hostMassKg, aAU, name, idx, nodes, pack, rng, ageGyr, rarity, starClass, role } = opts;
+  const { host, hostMassKg, aAU, name, idx, nodes, pack, rng, ageGyr, rarity, starClass, role, metallicity } = opts;
   const teq = teqAtSlot(host, hostMassKg, aAU, nodes);
   const fps = pack.classifier?.fingerprints ?? [];
-  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps, hostMassKg), rarity, starClass, rng, pack);
+  // Can this orbit actually despin a planet in the time available? Asked with an Earth-sized probe
+  // because the planet does not exist yet; the lock timescale's a^6 term dwarfs its dependence on the
+  // planet's own size. Without this the draw invents tidal locking and the classifier confirms it.
+  const canLock = role === 'planet'
+    ? predictTidalLock(aAU, EARTH_RADIUS_KM, EARTH_MASS_KG, hostMassKg, ageGyr)
+    : undefined;
+  const fp = drawTypeForSlot(viableTypesAt(teq, role, fps, hostMassKg, { canTidallyLock: canLock, ageGyr, planetMassBandMe: pack.generation_parameters?.planet_mass_band_me }), rarity, starClass, rng, pack, metallicity);
   const orbit = { hostId: host.id, hostMu: G * hostMassKg, t0: Date.now(),
     elements: { a_AU: aAU, e: randomFromRange(rng, 0.01, 0.12), i_deg: Math.pow(rng.nextFloat(), 3) * 12,
       omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) } };
@@ -306,19 +393,19 @@ function spawnTypedSlot(opts: {
 // Single star: an orbit-slot system around it, each slot a TYPED draw (rarity/star-weighted).
 function placePlanetsSingleTyped(
   star: CelestialBody, nodes: (CelestialBody | Barycenter)[], pack: RulePack, rng: SeededRNG,
-  ageGyr: number, countMultiplier: number, rarity: number
+  ageGyr: number, countMultiplier: number, rarity: number, metallicity?: number
 ) {
   const count = Math.max(0, Math.min(12, Math.round(planetCountForStar(star, pack, rng) * countMultiplier)));
   const starClass = star.classes?.[0] ?? 'star/G';
   calculateOrbitalSlots(star, pack, rng, count).forEach((a, i) =>
-    spawnTypedSlot({ host: star, hostMassKg: star.massKg || SOLAR, aAU: a, name: `${star.name} ${String.fromCharCode(98 + i)}`, idx: i, nodes, pack, rng, ageGyr, rarity, starClass, role: 'planet' }));
+    spawnTypedSlot({ host: star, hostMassKg: star.massKg || SOLAR, aAU: a, name: `${star.name} ${String.fromCharCode(98 + i)}`, idx: i, nodes, pack, rng, ageGyr, rarity, starClass, role: 'planet', metallicity }));
 }
 
 // Multi-star: an S-type typed system around each leaf star (richness set by the star's TYPE), plus
 // P-type circumbinary typed planets around each tight barycentre.
 function placePlanetsHierarchical(
   starHosts: StarHost[], baryHosts: BaryHost[], nodes: (CelestialBody | Barycenter)[],
-  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number, rarity: number, systemName: string
+  pack: RulePack, rng: SeededRNG, ageGyr: number, countMultiplier: number, rarity: number, systemName: string, metallicity?: number
 ) {
   const primaryClass = starHosts[0]?.star.classes?.[0] ?? 'star/G';
   let idx = 0;
@@ -328,14 +415,14 @@ function placePlanetsHierarchical(
     const maxCount = Math.max(0, Math.min(8, Math.round(planetCountForStar(h.star, pack, rng) * countMultiplier)));
     const starClass = h.star.classes?.[0] ?? 'star/G';
     geomSlots(inner, outer, maxCount, rng).forEach((a, n) =>
-      spawnTypedSlot({ host: h.star, hostMassKg: h.star.massKg || SOLAR, aAU: a, name: `${h.star.name} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass, role: 'planet' }));
+      spawnTypedSlot({ host: h.star, hostMassKg: h.star.massKg || SOLAR, aAU: a, name: `${h.star.name} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass, role: 'planet', metallicity }));
   }
   for (const h of baryHosts) {
     if (h.innerAU > 50) continue; // a very wide pair has no close circumbinary disk
     const outer = Math.min(h.outerAU, h.innerAU * 3.5);
     const maxCount = Math.max(0, Math.min(4, Math.round(2 * countMultiplier)));
     geomSlots(h.innerAU, outer, maxCount, rng).forEach((a, n) =>
-      spawnTypedSlot({ host: h.bary, hostMassKg: h.bary.effectiveMassKg || SOLAR, aAU: a, name: `${systemName} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass: primaryClass, role: 'planet' }));
+      spawnTypedSlot({ host: h.bary, hostMassKg: h.bary.effectiveMassKg || SOLAR, aAU: a, name: `${systemName} ${String.fromCharCode(98 + n)}`, idx: idx++, nodes, pack, rng, ageGyr, rarity, starClass: primaryClass, role: 'planet', metallicity }));
   }
 }
 
@@ -346,7 +433,7 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
   if (!config.seeds || config.seeds.length === 0) {
     throw new Error('generateSystemFromConfig requires at least one star seed (use generateSystem for fully random).');
   }
-  const setup = setupStarsFromSeeds(config.seeds, pack, config.ageGyr, baseName);
+  const setup = setupStarsFromSeeds(config.seeds, pack, config.ageGyr, baseName, config.starsAreCurrentState);
   const { nodes, systemRoot, systemName, isBinary, starA, starB, hierarchical, starHosts, baryHosts } = setup;
 
   // Planets — unless the GM chose stars-only. Disk-mass knob scales the count.
@@ -358,10 +445,10 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
     const age = config.ageGyr ?? 4.6;
     if (hierarchical) {
       // 2+ stars: a typed S-type system around each star + P-type circumbinary typed planets.
-      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, age, countMultiplier, rarity, systemName);
+      placePlanetsHierarchical(starHosts, baryHosts, nodes, pack, rng, age, countMultiplier, rarity, systemName, config.knobs?.metallicity);
     } else {
       // Single star: typed slot-based placement.
-      placePlanetsSingleTyped(starA, nodes, pack, rng, age, countMultiplier, rarity);
+      placePlanetsSingleTyped(starA, nodes, pack, rng, age, countMultiplier, rarity, config.knobs?.metallicity);
     }
   }
 

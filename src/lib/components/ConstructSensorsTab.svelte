@@ -2,7 +2,8 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, SensorInstance, SensorDefinition } from '$lib/types';
   import { AU_KM } from '$lib/constants';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatPref } from '$lib/units';
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
@@ -50,13 +51,13 @@
       if (km >= 1000000) {
           return `${(km / 1000000).toFixed(1)}M km`;
       }
-      return $fmt.km(km);
+      return formatPref($unitPrefs, 'distance', 'construct', km);
   };
 
   $: formatDefinitionRange = (def: SensorDefinition): string => {
       const unit = def.preferred_unit || (def.range_km >= AU_KM ? 'AU' : 'km');
       if (unit === 'AU') return `${(def.range_km / AU_KM).toFixed(2)} AU`;
-      return $fmt.km(def.range_km);
+      return formatPref($unitPrefs, 'distance', 'construct', def.range_km);
   };
 
   // Range Editing State

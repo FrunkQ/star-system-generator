@@ -1,0 +1,91 @@
+[
+  {
+    "key": "microbial",
+    "label": "Microbial",
+    "order": 10,
+    "defaultCoverage": 0.7,
+    "tints": [
+      "#5d6b4a",
+      "#7a6b4e",
+      "#4a5d63",
+      "#6d5f45"
+    ],
+    "pigmentDriven": 0.5,
+    "opacity": 0.55,
+    "light": {
+      "min": 0,
+      "max": 0
+    },
+    "note": "Mats and films. Half its colour is the pigment it uses, half is the ground it grows on.",
+    "waterReach": 0.25
+  },
+  {
+    "key": "fungal",
+    "label": "Fungal",
+    "order": 20,
+    "defaultCoverage": 0.35,
+    "tints": [
+      "#cbbfa4",
+      "#8a7663",
+      "#b5603a",
+      "#2e2a28",
+      "#d0a13c"
+    ],
+    "pigmentDriven": 0.15,
+    "opacity": 0.75,
+    "light": {
+      "min": 0,
+      "max": 0
+    },
+    "note": "Mostly not photosynthetic, so mostly not the colour of its star. The tint list is deliberately wide \u2014 Earth's own surface-colouring fungal-ish organism is lichen, and lichen runs from near-black to bright orange.",
+    "waterReach": 0.0
+  },
+  {
+    "key": "flora",
+    "label": "Flora",
+    "order": 30,
+    "defaultCoverage": 0.5,
+    "tints": [],
+    "pigmentDriven": 1,
+    "opacity": 0.9,
+    "light": {
+      "min": 0,
+      "max": 0
+    },
+    "note": "An empty tint list and full pigment drive: flora is the colour of what its pigment reflects, and nothing else. Its lack of lights is an EMPTY LIGHT RANGE here, not a rule in the code.",
+    "waterReach": 0.12
+  },
+  {
+    "key": "fauna",
+    "label": "Fauna",
+    "order": 40,
+    "defaultCoverage": 0.2,
+    "tints": [],
+    "pigmentDriven": 0,
+    "opacity": 0,
+    "light": {
+      "min": 0,
+      "max": 0
+    },
+    "note": "Animals do not tint a world seen from orbit. That is TWO EMPTY RANGES in this record \u2014 no tints, no pigment drive \u2014 not a special case anywhere in the code.",
+    "waterReach": 0.0
+  },
+  {
+    "key": "techno",
+    "label": "Technological",
+    "order": 50,
+    "defaultCoverage": 0.05,
+    "tints": [
+      "#4a463f",
+      "#565049"
+    ],
+    "pigmentDriven": 0,
+    "opacity": 0.78,
+    "light": {
+      "min": 0.08,
+      "max": 1
+    },
+    "note": "A built surface by day and a network of lights by night. It is the ONLY morphology that spreads past the land: waterReach 1 roofs the seas and holds the ice caps, so its cover can reach the WHOLE planet — which is what the cover slider is for, from a few settled percent up to an ecumenopolis. Opacity is high because a roofed sea has to stop reading as sea; what keeps a lightly settled world subtle is a small cover figure, not a translucent wash.",
+    "waterReach": 1.0
+  }
+]

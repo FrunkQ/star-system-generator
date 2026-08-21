@@ -6,6 +6,7 @@
   import { coiCategories } from '$lib/constructs/coi';
   import { poiPacks } from '$lib/physics/reasonsToVisit';
   import { describeTag } from '$lib/tags/tagPresentation';
+  import { foreground } from '$lib/ui/foreground';
 
   // Tag options, sourced entirely from the data (CoI Resources + drive categories, PoI frontier rules) —
   // nothing hard-coded. Fuels source from resources OR frontier-refuelling; engines confer an FTL drive.
@@ -162,7 +163,7 @@
 </script>
 
 {#if showModal}
-<div class="modal-backdrop" on:click={() => dispatch('close')}>
+<div class="modal-backdrop" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <div class="header">
         <h2>Edit Fuel & Drives</h2>

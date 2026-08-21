@@ -1,146 +1,515 @@
 {
-    "generation_parameters": {
-        "terrestrial_min_mass_for_atmosphere_earth": 0.1,
-        "terrestrial_magnetic_field_chance": 0.8,
-        "frost_line_base_au": 2.7,
-        "planet_migration_chance": 0.18,
-        "danger_zone_multiplier": 5,
-        "atmosphere_retention_factor": 100,
-        "binary_placement_rules": [
-            { "max_sep_au": 0.5, "weights": { "circumbinary": 75, "around_primary": 17, "around_secondary": 8 } },
-            { "max_sep_au": 10,  "weights": { "circumbinary": 50, "around_primary": 35, "around_secondary": 15 } },
-            { "max_sep_au": 50,  "weights": { "none": 100 } },
-            { "max_sep_au": 99999, "weights": { "around_primary": 70, "around_secondary": 30 } }
-        ]
-    },
-    "distributions": {
-        "star_types": {
-            "name": "Stellar Spectral Types",
-            "entries": [
-                { "weight": 1, "value": "star/O" },
-                { "weight": 5, "value": "star/B" },
-                { "weight": 10, "value": "star/A" },
-                { "weight": 20, "value": "star/F" },
-                { "weight": 40, "value": "star/G" },
-                { "weight": 80, "value": "star/K" },
-                { "weight": 700, "value": "star/M" },
-                { "weight": 15, "value": "star/WD" },
-                { "weight": 5, "value": "star/red-giant" },
-                { "weight": 4, "value": "star/NS" },
-                { "weight": 1, "value": "star/magnetar" },
-                { "weight": 1, "value": "star/BH" },
-                { "weight": 1, "value": "star/BH_active" }
-            ]
+  "generation_parameters": {
+    "planet_mass_band_me": [0.03, 4130],
+    "infill_anchor_exclusion_hill_radii": 3.5,
+    "realism_bands": {
+      "name": "WHICH SIDE OF THE PHYSICS A CONTROL IS ON, as a coloured band under its track. Green is the range reality supports; amber is possible but unlikely; red is unlikely enough that no measured system looks like it. NOTHING IS EVER FORBIDDEN at any setting - hand authoring is hand authoring, and a GM running a deliberately fantastical setting moves these edges rather than fighting them, which is the whole reason they are pack data and not constants in the code. Each entry gives green as [lo, hi] and amber as the WIDER [lo, hi] that contains it; outside amber is red. The wording is here too, because 'few real systems look like this' and 'invalid' are different claims and only the first one is true.",
+      "wording": {
+        "green": "about where real systems sit",
+        "amber": "few real systems look like this",
+        "red": "no measured system looks like this - still allowed, still physical"
+      },
+      "controls": {
+        "metallicity": {
+          "why": "Derived from this pack's own numbers rather than judged: the dial spans decades_across_dial = 2 dex of [Fe/H] centred on realistic_dial = 0.65. Solar-neighbourhood stars sit mostly within about 0.35 dex of solar, which is 0.175 of the travel either side; the thin-disc tail reaches roughly 0.7 dex, which is 0.35.",
+          "green": [0.475, 0.825],
+          "amber": [0.3, 1.0]
         },
-        "is_binary_chance_massive": {
-            "name": "Chance of Massive Star (O, B) being binary",
-            "entries": [
-                { "weight": 95, "value": true },
-                { "weight": 5, "value": false }
-            ]
+        "diskMass": {
+          "why": "Measured across the dial (G24 part 1): planets per system runs 1.25 to 5.80 and the median outermost orbit 0.33 to 4.64 AU. Real systems are found across most of that, so the green band is wide; the extremes - a single hugged-in world, or a system with more giants than Sol has planets - are the unlikely ends.",
+          "green": [0.3, 0.8],
+          "amber": [0.12, 0.92]
         },
-        "is_binary_chance_sunlike": {
-            "name": "Chance of Sun-like Star (A, F, G, K) being binary",
-            "entries": [
-                { "weight": 50, "value": true },
-                { "weight": 50, "value": false }
-            ]
+        "dynamicalHistory": {
+          "why": "Measured across the dial (G24 part 1): maximum eccentricity runs 0.029 to 0.467 and star tilt 3.9 to 62.2 degrees. Sol sits low (Mercury at e = 0.21, the Sun tilted 7.25 degrees) but eccentric and tilted systems are genuinely common, so green covers most of the lower two thirds; only the violent end is rare.",
+          "green": [0.15, 0.65],
+          "amber": [0.0, 0.85]
         },
-        "is_binary_chance_lowmass": {
-            "name": "Chance of Low-mass Star (M) being binary",
-            "entries": [
-                { "weight": 25, "value": true },
-                { "weight": 75, "value": false }
-            ]
-        },
-        "binary_star_separation_au": {
-            "name": "Separation of binary stars in AU",
-            "entries": [
-                { "weight": 10, "value": [0.05, 0.5] },
-                { "weight": 20, "value": [1, 10] },
-                { "weight": 10, "value": [10, 50] },
-                { "weight": 40, "value": [50, 1000] },
-                { "weight": 20, "value": [1000, 5000] }
-            ]
-        },
-        "binary_planet_placement": {
-            "name": "Initial placement of planets in a binary system",
-            "entries": [
-                { "weight": 50, "value": "circumbinary" },
-                { "weight": 35, "value": "around_primary" },
-                { "weight": 15, "value": "around_secondary" }
-            ]
-        },
-        "planet_count_main_sequence": {
-            "name": "Number of Planets (Main Sequence G, K, M, F)",
-            "entries": [
-                { "weight": 5, "value": 0 },
-                { "weight": 10, "value": 1 },
-                { "weight": 15, "value": 2 },
-                { "weight": 20, "value": 3 },
-                { "weight": 20, "value": 4 },
-                { "weight": 15, "value": 5 },
-                { "weight": 10, "value": 6 },
-                { "weight": 5, "value": 7 },
-                { "weight": 2, "value": 8 }
-            ]
-        },
-        "planet_count_massive": {
-            "name": "Number of Planets (Massive O, B, A)",
-            "entries": [
-                { "weight": 40, "value": 0 },
-                { "weight": 30, "value": 1 },
-                { "weight": 20, "value": 2 },
-                { "weight": 10, "value": 3 }
-            ]
-        },
-        "planet_count_remnant": {
-            "name": "Number of Planets (Remnant WD, NS, BH, Magnetar)",
-            "entries": [
-                { "weight": 95, "value": 0 },
-                { "weight": 4, "value": 1 },
-                { "weight": 1, "value": 2 }
-            ]
-        },
-        "star_name_prefix": {
-            "name": "Star Catalogue Prefix",
-            "entries": [
-                { "weight": 30, "value": "HD" },
-                { "weight": 30, "value": "HIP" },
-                { "weight": 20, "value": "GJ" },
-                { "weight": 10, "value": "LHS" },
-                { "weight": 5, "value": "AC" }
-            ]
-        },
-        "star_name_number_digits": {
-            "name": "Number of digits in star catalogue number",
-            "entries": [
-                { "weight": 10, "value": 3 },
-                { "weight": 30, "value": 4 },
-                { "weight": 40, "value": 5 },
-                { "weight": 20, "value": 6 }
-            ]
-        },
-        "belt_chance": {
-            "name": "Chance of an asteroid belt",
-            "entries": [
-                { "weight": 85, "value": false },
-                { "weight": 15, "value": true }
-            ]
-        },
-        "belt_width_au_range": {
-            "name": "Range for asteroid belt width in AU",
-            "entries": [
-                { "weight": 100, "value": [0.5, 1.5] }
-            ]
-        },
-        "titius_bode_law": {
-            "name": "Titius-Bode Law parameters for planet spacing",
-            "a": 0.4,
-            "b": 0.3,
-            "c": 2.0,
-            "sequence": [-999, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-            "jitter": 0.1
+        "rarity": {
+          "why": "The realistic mix is anchored at realistic_dial = 0.25, not the midpoint, and part 1 measured the effect SATURATING above the middle (distinct types 19 to 34, almost all of it in the bottom half). So green runs from the bottom to just past the anchor; everything above is the deliberately strange end, which is what the dial is FOR.",
+          "green": [0.0, 0.45],
+          "amber": [0.0, 0.75]
         }
+      }
+    },
+    "type_metallicity_sensitivity": {
+      "name": "How the Metallicity dial reweights the type draw. Fischer & Valenti 2005: giant occurrence rises roughly as 10^(2 [Fe/H]) because core accretion needs solids to build a core before the disc dissipates - so LOW metallicity means FEWER giants, and a metal-poor system is small rocky worlds, few of them. giant_floor is the metallicity-blind share from gravitational instability, which is why the bottom of the dial is not zero giants. Iron and silicate worlds ride the same curve up, gently; ice-dominated worlds move the other way, weakly. The Sun is somewhat metal-rich against the local median, so realistic_dial sits above the middle. Factor = floor + (1-floor) * 10^(sensitivity * (dial - realistic_dial) * decades_across_dial); sensitivity keys are regexes on the class, first match wins.",
+      "realistic_dial": 0.65,
+      "decades_across_dial": 2.0,
+      "giant_floor": 0.05,
+      "sensitivity": {
+        "giant|jupiter|neptune|puff|helium": 1.0,
+        "iron|silicate|carbon|supermassive-terrestrial|mega-earth": 0.5,
+        "super-earth|terrestrial|desert|barren|crater|lava|earth": 0.25,
+        "ice|ocean|hycean|methane|ammonia|subsurface|cold": -0.35
+      }
+    },
+    "type_rarity_weighting": {
+      "name": "How the Rarity dial reweights the type draw. w(r) = ratio^r, where r is a type rarity 0..1 and ratio is how likely the RAREST type is compared with the MOST COMMON one. ln(ratio) moves linearly with the dial, so every step of the slider is the same multiplicative change. THE REALISTIC MIX SITS AT realistic_dial, NOT at the midpoint - below it a system only gets duller, so the default starts there and three quarters of the travel is left for the interesting end. Nothing is ever excluded at any setting: a legendary world stays possible at rarity 0, just very unlikely.",
+      "realistic_dial": 0.25,
+      "exotic_ratio_at_min": 0.0005,
+      "exotic_ratio_at_realistic": 0.02,
+      "exotic_ratio_at_max": 5
+    },
+    "orbital_spacing": {
+      "name": "Planet spacing. The RATIO of successive orbits is the rule, drawn once per system and varied slightly per gap: that is what is near-constant in real systems (Sol averages about 1.7, TRAPPIST-1 about 1.32), while their separations in mutual Hill radii vary eightfold because the planet masses do. Scale-free, so it carries nothing about Sol to another star - unlike the Titius-Bode block this replaced, which was Sol's own orbits in absolute AU. Mutual Hill radii are kept as the STABILITY FLOOR under the ratio (Pu & Wu 2015: roughly 10 for gigayear survival), which is also what keeps the slots either side of a massive body clear.",
+      "spacing_ratio": [1.35, 2.0],
+      "separation_gap_spread": 0.15,
+      "stability_floor_hill_radii": 9,
+      "inner_edge_frost_fraction": [0.02, 0.6],
+      "spacing_mass_earth_inside_frost": [0.05, 5],
+      "spacing_mass_earth_outside_frost": [1, 300],
+      "max_planet_mass_stellar_fraction": 0.001,
+      "peas_in_a_pod": 0.6
+    },
+    "terrestrial_min_mass_for_atmosphere_earth": 0.1,
+    "terrestrial_magnetic_field_chance": 0.8,
+    "frost_line_base_au": 2.7,
+    "planet_migration_chance": 0.18,
+    "axial_tilt_disc_sigma_deg": 15,
+    "axial_tilt_catastrophe_chance": 0.1,
+    "star_axial_tilt_baseline_deg": 8,
+    "j2_over_q_giant": 0.15,
+    "j2_over_q_solid": 0.3,
+    "uv_damage_edge_nm": 280,
+    "kill_zone_sol_au": 0.1,
+    "danger_zone_multiplier": 5,
+    "atmosphere_retention_factor": 100,
+    "radiation_ld50_sv": 5,
+    "binary_placement_rules": [
+      {
+        "max_sep_au": 0.5,
+        "weights": {
+          "circumbinary": 75,
+          "around_primary": 17,
+          "around_secondary": 8
+        }
+      },
+      {
+        "max_sep_au": 10,
+        "weights": {
+          "circumbinary": 50,
+          "around_primary": 35,
+          "around_secondary": 15
+        }
+      },
+      {
+        "max_sep_au": 50,
+        "weights": {
+          "none": 100
+        }
+      },
+      {
+        "max_sep_au": 99999,
+        "weights": {
+          "around_primary": 70,
+          "around_secondary": 30
+        }
+      }
+    ],
+    "belt_ref_field_gauss": 4.32,
+    "belt_ref_rotation_hours": 9.925,
+    "belt_peak_dose_sv_per_day": 1451.1,
+    "belt_scale_length_host_radii": 1.6324,
+    "belt_min_host_field_gauss": 0.01,
+    "belt_inner_edge_scale_heights": 150
+  },
+  "distributions": {
+    "star_types": {
+      "name": "Stellar Spectral Types",
+      "entries": [
+        {
+          "weight": 1,
+          "value": "star/O"
+        },
+        {
+          "weight": 5,
+          "value": "star/B"
+        },
+        {
+          "weight": 10,
+          "value": "star/A"
+        },
+        {
+          "weight": 20,
+          "value": "star/F"
+        },
+        {
+          "weight": 40,
+          "value": "star/G"
+        },
+        {
+          "weight": 80,
+          "value": "star/K"
+        },
+        {
+          "weight": 700,
+          "value": "star/M"
+        },
+        {
+          "weight": 15,
+          "value": "star/WD"
+        },
+        {
+          "weight": 2.2,
+          "value": "star/K-III"
+        },
+        {
+          "weight": 1,
+          "value": "star/M-III"
+        },
+        {
+          "weight": 0.6,
+          "value": "star/G-III"
+        },
+        {
+          "weight": 0.15,
+          "value": "star/F-III"
+        },
+        {
+          "weight": 0.08,
+          "value": "star/A-III"
+        },
+        {
+          "weight": 0.02,
+          "value": "star/B-III"
+        },
+        {
+          "weight": 0.002,
+          "value": "star/O-III"
+        },
+        {
+          "weight": 0.004,
+          "value": "star/M-I"
+        },
+        {
+          "weight": 0.002,
+          "value": "star/K-I"
+        },
+        {
+          "weight": 0.002,
+          "value": "star/B-I"
+        },
+        {
+          "weight": 0.001,
+          "value": "star/A-I"
+        },
+        {
+          "weight": 0.001,
+          "value": "star/F-I"
+        },
+        {
+          "weight": 0.0006,
+          "value": "star/G-I"
+        },
+        {
+          "weight": 0.0002,
+          "value": "star/O-I"
+        },
+        {
+          "weight": 5,
+          "value": "star/NS"
+        },
+        {
+          "weight": 1,
+          "value": "star/BH"
+        },
+        {
+          "weight": 1,
+          "value": "star/BH_active"
+        }
+      ]
+    },
+    "is_binary_chance_massive": {
+      "name": "Chance of Massive Star (O, B) being binary",
+      "entries": [
+        {
+          "weight": 95,
+          "value": true
+        },
+        {
+          "weight": 5,
+          "value": false
+        }
+      ]
+    },
+    "is_binary_chance_sunlike": {
+      "name": "Chance of Sun-like Star (A, F, G, K) being binary",
+      "entries": [
+        {
+          "weight": 50,
+          "value": true
+        },
+        {
+          "weight": 50,
+          "value": false
+        }
+      ]
+    },
+    "is_binary_chance_lowmass": {
+      "name": "Chance of Low-mass Star (M) being binary",
+      "entries": [
+        {
+          "weight": 25,
+          "value": true
+        },
+        {
+          "weight": 75,
+          "value": false
+        }
+      ]
+    },
+    "binary_star_separation_au": {
+      "name": "Separation of binary stars in AU",
+      "entries": [
+        {
+          "weight": 10,
+          "value": [
+            0.05,
+            0.5
+          ]
+        },
+        {
+          "weight": 20,
+          "value": [
+            1,
+            10
+          ]
+        },
+        {
+          "weight": 10,
+          "value": [
+            10,
+            50
+          ]
+        },
+        {
+          "weight": 40,
+          "value": [
+            50,
+            1000
+          ]
+        },
+        {
+          "weight": 20,
+          "value": [
+            1000,
+            5000
+          ]
+        }
+      ]
+    },
+    "binary_planet_placement": {
+      "name": "Initial placement of planets in a binary system",
+      "entries": [
+        {
+          "weight": 50,
+          "value": "circumbinary"
+        },
+        {
+          "weight": 35,
+          "value": "around_primary"
+        },
+        {
+          "weight": 15,
+          "value": "around_secondary"
+        }
+      ]
+    },
+    "planet_count_main_sequence": {
+      "name": "Number of Planets (Main Sequence G, K, M, F)",
+      "entries": [
+        {
+          "weight": 1,
+          "value": 1
+        },
+        {
+          "weight": 2,
+          "value": 2
+        },
+        {
+          "weight": 4,
+          "value": 3
+        },
+        {
+          "weight": 7,
+          "value": 4
+        },
+        {
+          "weight": 11,
+          "value": 5
+        },
+        {
+          "weight": 15,
+          "value": 6
+        },
+        {
+          "weight": 17,
+          "value": 7
+        },
+        {
+          "weight": 16,
+          "value": 8
+        },
+        {
+          "weight": 13,
+          "value": 9
+        },
+        {
+          "weight": 9,
+          "value": 10
+        },
+        {
+          "weight": 5,
+          "value": 11
+        },
+        {
+          "weight": 2,
+          "value": 12
+        }
+      ]
+    },
+    "planet_count_massive": {
+      "name": "Number of Planets (Massive O, B, A)",
+      "entries": [
+        {
+          "weight": 40,
+          "value": 0
+        },
+        {
+          "weight": 30,
+          "value": 1
+        },
+        {
+          "weight": 20,
+          "value": 2
+        },
+        {
+          "weight": 10,
+          "value": 3
+        }
+      ]
+    },
+    "planet_count_brown_dwarf": {
+      "name": "Number of Planets (Brown dwarfs L, T, Y). Discs around brown dwarfs are observed and form rocky worlds - Earth-mass and below, close in - but a disc a few percent of a stellar one is not building ten of them. Not a remnant table (which is 95% empty) and not a main-sequence one.",
+      "entries": [
+        {
+          "weight": 15,
+          "value": 0
+        },
+        {
+          "weight": 25,
+          "value": 1
+        },
+        {
+          "weight": 25,
+          "value": 2
+        },
+        {
+          "weight": 18,
+          "value": 3
+        },
+        {
+          "weight": 10,
+          "value": 4
+        },
+        {
+          "weight": 5,
+          "value": 5
+        },
+        {
+          "weight": 2,
+          "value": 6
+        }
+      ]
+    },
+    "planet_count_remnant": {
+      "name": "Number of Planets (Remnant WD, NS, BH, Magnetar)",
+      "entries": [
+        {
+          "weight": 95,
+          "value": 0
+        },
+        {
+          "weight": 4,
+          "value": 1
+        },
+        {
+          "weight": 1,
+          "value": 2
+        }
+      ]
+    },
+    "star_name_prefix": {
+      "name": "Star Catalogue Prefix",
+      "entries": [
+        {
+          "weight": 30,
+          "value": "HD"
+        },
+        {
+          "weight": 30,
+          "value": "HIP"
+        },
+        {
+          "weight": 20,
+          "value": "GJ"
+        },
+        {
+          "weight": 10,
+          "value": "LHS"
+        },
+        {
+          "weight": 5,
+          "value": "AC"
+        }
+      ]
+    },
+    "star_name_number_digits": {
+      "name": "Number of digits in star catalogue number",
+      "entries": [
+        {
+          "weight": 10,
+          "value": 3
+        },
+        {
+          "weight": 30,
+          "value": 4
+        },
+        {
+          "weight": 40,
+          "value": 5
+        },
+        {
+          "weight": 20,
+          "value": 6
+        }
+      ]
+    },
+    "belt_chance": {
+      "name": "Chance of an asteroid belt",
+      "entries": [
+        {
+          "weight": 85,
+          "value": false
+        },
+        {
+          "weight": 15,
+          "value": true
+        }
+      ]
+    },
+    "belt_width_au_range": {
+      "name": "Range for asteroid belt width in AU",
+      "entries": [
+        {
+          "weight": 100,
+          "value": [
+            0.5,
+            1.5
+          ]
+        }
+      ]
     }
+  }
 }

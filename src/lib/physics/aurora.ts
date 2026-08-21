@@ -26,11 +26,14 @@ export type AuroraTier = 'faint' | 'moderate' | 'strong' | 'brilliant';
 export interface Aurora { strength: number; tier: AuroraTier | null; }
 
 // Dimensionless 0..~1.3. Uses radiationShieldingMag (0..0.99, derived from the field strength) as the
-// channelling factor and stellarRadiation (incident flux, Earth ≈ 1) as the ionising driver.
+// channelling factor and totalIncidentFlux (Earth ≈ 1) as the ionising driver. The TOTAL is right
+// here and the starlight alone would not be: an aurora is lit by whatever charged particles arrive,
+// and for a moon inside a giant's magnetosphere that is overwhelmingly the trapped plasma, which is
+// why Jupiter's and Io's are the brightest in the solar system rather than the faintest (B34).
 export function auroraStrength(body: CelestialBody): number {
   const P = body.atmosphere?.pressure_bar ?? 0;
   const magChannel = body.radiationShieldingMag ?? 0;         // ∝ field strength; 0 → no polar ovals
-  const flux = body.stellarRadiation ?? 0;                    // incident stellar flux (Earth ≈ 1)
+  const flux = body.totalIncidentFlux ?? 0;                   // ALL ionising flux arriving (Earth ≈ 1)
   if (P <= 0.02 || magChannel <= 0.02) return 0;              // needs both air AND a field
   const atmoFactor = Math.max(0, Math.min(1, (Math.log10(P) + 2) / 2.5));  // 0.01 bar→0, 1→0.8, ≥3→1
   // Ionising-flux modulation: a gentle boost so a close or active star brightens the display, floored

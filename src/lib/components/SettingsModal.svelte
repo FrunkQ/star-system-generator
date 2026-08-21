@@ -4,13 +4,48 @@
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import { reasonsConfig, poiPacks, activeCategories } from '$lib/physics/reasonsToVisit';
-  import { coiCategories, setCoIEnabled } from '$lib/constructs/coi';
+  import { skin, SKINS, customSkins } from '$lib/styles/skinStore';
+  import SkinEditorModal from './SkinEditorModal.svelte';
+  let showSkinEditor = false;
+  // A45: the one list, filtered to what the 2D snap grid can draw — never a hand-written copy.
+  import { SNAP_GRID_OPTIONS } from '$lib/map/mapOverlay';
+  import { unitKind, campaignUnit, unitChangeOutcomes, UNIT_SHORT, type UnitChangeMode } from '$lib/map/distanceUnits';
+  import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
+  import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
+  import { browser } from '$app/environment';
+  import { APP_VERSION } from '$lib/constants';
+  import { broadcastService, type PeerLink } from '$lib/broadcast';
+  import { transferReportText, linkSummary } from '$lib/transferReport';
+  import { loadStoredIce, saveStoredIce, parseIceText, iceToText } from '$lib/iceConfig';
+  import { foreground } from '$lib/ui/foreground';
+  // G16: the picture behind the stars. Campaign content, so it saves with the rest of this dialog.
+  import MapBackgroundControls from './MapBackgroundControls.svelte';
+  import type { MapBackground } from '../types';
+  import { normaliseMapBackground } from '$lib/map/mapBackground';
+  import { BUILTIN_ASSETS } from '$lib/player/presets';
+
+  // BYO STUN/TURN for remote players (docs/dev/vtt-integration-design.md 11).
+  let iceText = '';
+  let iceStatus = '';
+  onMount(() => { iceText = iceToText(loadStoredIce()); iceStatus = summariseIce(); });
+  function saveIce() {
+    const servers = parseIceText(iceText);
+    saveStoredIce(servers.length ? servers : null);
+    iceText = iceToText(servers);
+    iceStatus = summariseIce();
+  }
+  function summariseIce(): string {
+    const s = loadStoredIce();
+    if (!s || s.length === 0) return 'Using the built-in relay only. New player links will not carry a custom relay.';
+    const n = s.length;
+    const tls = s.some((e) => (Array.isArray(e.urls) ? e.urls : [e.urls]).some((u) => /^turns:/i.test(u)));
+    return `${n} custom server${n === 1 ? '' : 's'} saved${tls ? ' (includes a TLS relay - good for locked-down networks)' : ' (no turns: entry - a UDP-blocking network may still fail)'}. Re-share player links so they carry it.`;
+  }
 
   let clearing = false;
   async function clearEverything() {
-    if (!confirm('Clear ALL data?\n\nThis permanently deletes your saved starmap, PoI/CoI packs, settings, palette and everything else this app has stored in this browser — reproducing a brand-new install. This cannot be undone.')) return;
+    if (!confirm('Clear ALL data?\n\nThis permanently deletes your saved starmap, tag categories, settings, palette and everything else this app has stored in this browser — reproducing a brand-new install. This cannot be undone.')) return;
     if (!confirm('Are you absolutely sure? Everything will be wiped and the app will reload as a new user.')) return;
     clearing = true;
     try { await clearAllData(); } finally { window.location.reload(); }
@@ -18,11 +53,14 @@
 
   export let showModal: boolean;
   export let starmap: Starmap;
+  // WS8: the name of the campaign kept from before a base-map upgrade, or null when there is none. The page
+  // owns the snapshot; this is only the offer to go back to it.
+  export let preUpgradeName: string | null = null;
 
   const dispatch = createEventDispatcher();
 
   // Sectioned settings (Starmap / Time / Tech / Planets / System). Orrery View was dropped (Q2).
-  type Section = 'starmap' | 'generation' | 'coi' | 'time' | 'technology' | 'planets' | 'system';
+  type Section = 'starmap' | 'tagging' | 'time' | 'technology' | 'planets' | 'system';
   // Sub-editors (Time & Calendars, Fuel & Drives…) reopen Settings at their section on close.
   export let initialSection: Section | null = null;
   let activeSection: Section = initialSection ?? 'starmap';
@@ -30,7 +68,7 @@
   // On narrow / touch the modal is a drill-in: a list of sections (drilled=false) →
   // a section's content (drilled=true). "Back" goes UP a level rather than closing.
   const SECTION_LABELS: Record<Section, string> = {
-    starmap: 'Starmap', generation: 'PoI', coi: 'CoIs', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
+    starmap: 'Starmap', tagging: 'Tagging', time: 'Time', technology: 'Tech', planets: 'Planets', system: 'System'
   };
   let isNarrow = false;
   let drilled = !!initialSection;
@@ -42,6 +80,7 @@
     if (initialSection) { activeSection = initialSection; drilled = true; }
     else drilled = false;
     invertDisplay = starmap.invertDisplay ?? false;   // sync ONCE per open (see note below)
+    mapBackground = normaliseMapBackground(starmap.mapBackground); // ...and for the same reason (G16)
   }
   $: if (!showModal && wasOpen) { wasOpen = false; }
 
@@ -63,6 +102,10 @@
   // dependency changed (e.g. toggling the background image), resetting the user's unsaved invert choice
   // and making the two checkboxes appear to fight / self-uncheck.
   let invertDisplay = starmap.invertDisplay ?? false;
+  // G16: the map background, on the same local-until-Save footing as invertDisplay above — it is
+  // campaign content and rides the same 'save' payload as the name, the unit and the scale.
+  let mapBackground: MapBackground = normaliseMapBackground(starmap.mapBackground);
+  $: backgroundAssets = [...BUILTIN_ASSETS, ...(starmap.playerAssets ?? [])];
 
 
   // Starmap settings. The unit choice doubles as the scaling mode (matches the New Starmap
@@ -77,16 +120,39 @@
   // Traveller mode INFERS the unit: maps are parsec-scaled (1 hex = 1 pc), so the picker is
   // disabled and the choice coerced — including when the mode is ticked with the modal open.
   $: if ($starmapUiStore.travellerMode && unitChoice !== 'pc') unitChoice = 'pc';
-  let generationEngine = starmap.generationEngine ?? 'standard';   // preserved on save; no longer surfaced in the UI
-  // Enabled-rule count per category across the enabled packs (shown beside each PoI category).
-  $: ruleCounts = (() => {
-    const m: Record<string, number> = {};
-    for (const p of $poiPacks) { if (p.enabled === false) continue; for (const r of p.rules) { if (r.enabled === false) continue; m[r.category] = (m[r.category] ?? 0) + 1; } }
-    return m;
-  })();
+
+  // ── Keep-my-data (browser storage persistence) ───────────────────────────────
+  // Campaigns live in IndexedDB, which browsers may EVICT under storage pressure. We can only ASK for
+  // persistence; the browser decides (Chrome grants on heuristics and may refuse silently, Firefox
+  // prompts, Safari evicts long-unused sites regardless). So this reports exactly what was granted and
+  // never claims the data is safe — file export stays the real guarantee.
+  let storeState: import('$lib/storagePersistence').PersistenceState | null = null;
+  let storeUsage = '—';
+  let storeQuota = '—';
+  let storeAsking = false;
+  async function refreshStorage() {
+    const { storageReport, formatBytes } = await import('$lib/storagePersistence');
+    const r = await storageReport();
+    storeState = r.state;
+    storeUsage = formatBytes(r.usageBytes);
+    storeQuota = formatBytes(r.quotaBytes);
+  }
+  async function askPersistence() {
+    storeAsking = true;
+    try {
+      const { requestPersistence } = await import('$lib/storagePersistence');
+      storeState = await requestPersistence();   // the ACTUAL outcome, re-read from the browser
+      await refreshStorage();
+    } finally {
+      storeAsking = false;
+    }
+  }
+  // Only look when the System section is actually open — no need to poke storage APIs otherwise.
+  $: if (showModal && activeSection === 'system' && storeState === null) refreshStorage();
+
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
-  let measurementUnits: 'metric' | 'imperial' = starmap.measurementUnits ?? 'metric';
-  let temperatureUnit: 'C' | 'F' | 'K' = starmap.temperatureUnit ?? 'C';
+  // WS7: depth counts toward distance by default; a GM can opt into visual-only height.
+  let ignoreZForDistances = starmap.ignoreZForDistances ?? false;
   // System edge — the "left the local system" boundary. Unset = each star's Hill limit; a number = a fixed AU.
   let systemEdgeMode: 'hill' | 'custom' = (starmap.systemEdgeAu ?? 0) > 0 ? 'custom' : 'hill';
   let systemEdgeAu: number = starmap.systemEdgeAu && starmap.systemEdgeAu > 0 ? starmap.systemEdgeAu : 10000;
@@ -96,24 +162,26 @@
   let epochYear = 1;
   let currentDisplayLabel = '';
   let epochFieldsDirty = false;
-  let showAlphaDisclaimer = false;
-  let alphaAcknowledged = false;
 
-  $: if (generationEngine === 'evolutionary' && !alphaAcknowledged && !showAlphaDisclaimer && starmap.generationEngine !== 'evolutionary') {
-    showAlphaDisclaimer = true;
+  // Transfer figures. Polled while this panel is open only — nothing accumulates a cost when nobody
+  // is looking, and the meters themselves run regardless because they measure what was already
+  // being computed.
+  let transferLinks: PeerLink[] = [];
+  let transferCopied = false;
+  let transferTimer: ReturnType<typeof setInterval> | null = null;
+  $: if (showModal && browser && !transferTimer) {
+    const tick = () => { transferLinks = broadcastService.peerLinks(); };
+    tick();
+    transferTimer = setInterval(tick, 2000);
   }
-
-  function cancelAlpha() {
-    generationEngine = starmap.generationEngine ?? 'standard';
-    showAlphaDisclaimer = false;
-    alphaAcknowledged = false;
+  $: if (!showModal && transferTimer) { clearInterval(transferTimer); transferTimer = null; }
+  async function copyTransferReport() {
+    const text = transferReportText({
+      role: 'GM', own: broadcastService.transferStats(), links: broadcastService.peerLinks(), appVersion: APP_VERSION
+    });
+    try { await navigator.clipboard.writeText(text); transferCopied = true; setTimeout(() => (transferCopied = false), 2000); }
+    catch { /* clipboard refused — the panel still shows the figures */ }
   }
-
-  function proceedAlpha() {
-    showAlphaDisclaimer = false;
-    alphaAcknowledged = true;
-  }
-
   $: if (showModal) {
     const normalized = ensureTemporalState(starmap);
     normalizedTemporal = normalized.temporal!;
@@ -124,7 +192,51 @@
     syncEpochEditorFromCurrentMaster();
   }
 
+  // ── A43: changing the interstellar unit means one of two things, and the app must not guess ──────
+  // The GM either had the numbers right and the label wrong (relabel), or has the map right and wants
+  // it read the other way (convert). Both are legitimate; picking one silently is how Alpha Centauri
+  // came to read 14.33 ly against a true 4.37. So when — and ONLY when — the change is a real ly<->pc
+  // switch on a scaled map, ask, worded as the two OUTCOMES on a system actually on this map.
+  let pendingUnit: 'ly' | 'pc' | null = null;
+  $: currentKind = unitKind(campaignUnit(starmap));
+  // The example the prompt quotes: the system furthest from the first one, which is the distance a GM
+  // is most likely to recognise as right or wrong. Falls back to a bare 1-unit example on a map too
+  // small to have a pair.
+  $: unitExample = (() => {
+    const sys = starmap.systems ?? [];
+    const ppu = starmap.scale?.pixelsPerUnit && starmap.scale.pixelsPerUnit > 0 ? starmap.scale.pixelsPerUnit : 25;
+    if (sys.length < 2) return { name: null as string | null, reading: 1 };
+    const a = sys[0];
+    let best = sys[1], bestD = -1;
+    for (const s of sys.slice(1)) {
+      const dx = (s.position?.x ?? 0) - (a.position?.x ?? 0);
+      const dy = (s.position?.y ?? 0) - (a.position?.y ?? 0);
+      const dz = (s.position?.z ?? 0) - (a.position?.z ?? 0);
+      const d = Math.hypot(dx, dy, dz);
+      if (d > bestD) { bestD = d; best = s; }
+    }
+    return { name: best?.name ?? null, from: a?.name ?? null, reading: bestD / ppu };
+  })();
+  $: outcomes = pendingUnit ? unitChangeOutcomes(unitExample.reading, campaignUnit(starmap), pendingUnit) : null;
+  const fmtUnitVal = (v: number) => v >= 100 ? Math.round(v).toLocaleString('en-GB') : v.toFixed(2);
+
   function handleSave() {
+    // A real ly<->pc switch on a scaled map is the only case that needs the question. Going to or from
+    // a diagrammatic unit has no conversion factor at all, and re-picking the same unit is not a change.
+    const nextKind = unitChoice === 'diagrammatic' ? null : unitChoice;
+    if (nextKind && currentKind && nextKind !== currentKind && (starmap.mapMode ?? 'diagrammatic') === 'scaled' && !pendingUnit) {
+      pendingUnit = nextKind;
+      return; // the confirm step calls commitSave with the GM's answer
+    }
+    commitSave('convert'); // unreachable for a unit change; the mode is ignored when the unit is unchanged
+  }
+
+  function commitSave(unitMode: UnitChangeMode) {
+    pendingUnit = null;
+    doSave(unitMode);
+  }
+
+  function doSave(unitMode: UnitChangeMode) {
     const nextTemporal = JSON.parse(JSON.stringify(normalizedTemporal));
     nextTemporal.activeCalendarKey = activeCalendarKey;
 
@@ -138,15 +250,17 @@
     const diagrammatic = unitChoice === 'diagrammatic';
     const distanceUnit = diagrammatic ? (abstractUnit.trim() || 'J') : unitChoice;
     dispatch('save', {
+      // A43: the GM's answer travels with the payload. The receiver owns the arithmetic (one module,
+      // `applyUnitChange`); this modal owns only the question.
+      unitMode,
       starmap: {
         name: starmapName,
         distanceUnit,
         unitIsPrefix: diagrammatic ? abstractOrder === 'prefix' : false,
         mapMode: diagrammatic ? 'diagrammatic' : 'scaled',
-        generationEngine,
         invertDisplay,
-        measurementUnits,
-        temperatureUnit,
+        mapBackground,
+        ignoreZForDistances,
         systemEdgeAu: systemEdgeMode === 'custom' && systemEdgeAu > 0 ? systemEdgeAu : undefined,
         scale: {
           unit: distanceUnit,
@@ -156,6 +270,15 @@
         temporal: nextTemporal
       }
     });
+    showModal = false;
+  }
+
+  // G16: hand over to align mode. The DRAFT goes with the request rather than the saved value, so a
+  // GM who has just picked an image and switched to map-fixed aligns THAT, not what was there before.
+  // Same shape as the edittags / edittemporal hand-offs above: this dialog closes, the caller reopens
+  // it at the Map section when the other surface is finished with.
+  function startAlign(draft: MapBackground) {
+    dispatch('alignbackground', { mapBackground: draft });
     showModal = false;
   }
 
@@ -215,7 +338,7 @@
 
 {#if showModal}
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-<div class="modal-backdrop" on:click={handleClose} role="button" tabindex="0" on:keydown={(e) => {if (e.key === 'Enter' || e.key === 'Space') handleClose()}}>
+<div class="modal-backdrop" on:click={handleClose} role="button" tabindex="0" on:keydown={(e) => {if (e.key === 'Enter' || e.key === 'Space') handleClose()}} use:foreground>
   <div class="modal settings-modal" class:drilled on:click|stopPropagation role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
     <div class="settings-head">
       <button class="settings-back" on:click={handleBack} aria-label="Back" title="Back">
@@ -227,8 +350,7 @@
     <div class="settings-layout">
       <nav class="settings-nav">
         <button class:active={activeSection === 'starmap'} on:click={() => pickSection('starmap')}>Starmap</button>
-        <button class:active={activeSection === 'generation'} on:click={() => pickSection('generation')}>PoI</button>
-        <button class:active={activeSection === 'coi'} on:click={() => pickSection('coi')}>CoIs</button>
+        <button class:active={activeSection === 'tagging'} on:click={() => pickSection('tagging')}>Tagging</button>
         <button class:active={activeSection === 'time'} on:click={() => pickSection('time')}>Time</button>
         <button class:active={activeSection === 'technology'} on:click={() => pickSection('technology')}>Tech</button>
         <button class:active={activeSection === 'planets'} on:click={() => pickSection('planets')}>Planets</button>
@@ -268,20 +390,13 @@
           <div class="form-group">
             <label><input type="checkbox" bind:checked={showScaleBar} /> Show scale bar (scaled mode)</label>
           </div>
+          <!-- G34 phase 5: the map-wide units selectors retire. Units live on the FIELDS now — the
+               unit label beside any value is a button that cycles it, remembered per kind of
+               reading × body type, saved with the campaign, inherited by player views. The legacy
+               fields stay on old saves for the load-time migration; nothing writes them any more. -->
           <div class="form-group">
-            <label for="measurementUnits" title="How in-system distances and speeds are shown (radii, orbits, sensor ranges, Δv). Values are stored in SI either way — this is display only. The interstellar map unit above is separate.">Measurement units (in-system)</label>
-            <select id="measurementUnits" bind:value={measurementUnits}>
-              <option value="metric">Metric (km, km/s)</option>
-              <option value="imperial">Imperial (miles, mph)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="temperatureUnit" title="Temperature display — independent of the distance units above. Values are stored in Kelvin either way.">Temperature</label>
-            <select id="temperatureUnit" bind:value={temperatureUnit}>
-              <option value="C">Celsius (°C)</option>
-              <option value="F">Fahrenheit (°F)</option>
-              <option value="K">Kelvin (K)</option>
-            </select>
+            <label title="Click the unit label beside any value — a temperature, a mass, a distance — to cycle it. The choice applies to every reading of that kind on that body type, saves with the campaign, and player views inherit it. Mixing is fine: °C with miles is legal.">Units (in-system)</label>
+            <p class="section-hint">Units now live on the fields themselves — click the unit beside any value to change it everywhere. Players inherit your choices.</p>
           </div>
           <div class="form-group">
             <label for="systemEdge" title="Where a coasting ship counts as having LEFT the local system (handed over to the starmap as an interstellar adrift ship). The Hill limit is the star's true gravitational reach (~2 ly) — set a tighter custom distance for quicker, gameplay-friendly departures.">System edge</label>
@@ -298,18 +413,27 @@
           {/if}
 
           <h3>Map display</h3>
-          <div class="form-group">
-            <label><input type="checkbox" bind:checked={$starmapUiStore.showBackgroundImage} disabled={invertDisplay} /> Show background image</label>
-          </div>
+          <!-- G16 "Background &amp; Overlay": ONE group, serving the GM 2D map, the player 2D map, the
+               3D map's plane and the starmap document. It replaced a bare "Show background image"
+               checkbox, which is now the first choice in its picker. -->
+          <MapBackgroundControls {starmap} background={mapBackground} assets={backgroundAssets}
+            disabledReason={invertDisplay ? 'The print (inverted) display hides the background image.' : ''}
+            on:change={(e) => (mapBackground = e.detail)}
+            on:align={(e) => startAlign(e.detail)} />
           <div class="form-group">
             <label title="Print-friendly white background + dark labels (disables the background image)."><input type="checkbox" bind:checked={invertDisplay} /> Invert Starmap display (print)</label>
           </div>
           <div class="form-group">
+            <label title="Systems can sit above or below the map plane. By default that depth counts toward real distances (and so travel times). Turn this on to treat depth as purely visual and keep distances flat, as they were before.">
+              <input type="checkbox" bind:checked={ignoreZForDistances} /> Ignore depth when measuring distances
+            </label>
+            <p class="section-hint">Off (recommended): a system's depth counts toward distance, so journeys are
+              measured honestly in three dimensions. On: depth is decorative only and distances stay flat.</p>
+          </div>
+          <div class="form-group">
             <label for="gridType">Snap grid</label>
             <select id="gridType" bind:value={$starmapUiStore.gridType}>
-              <option value="none">No Grid</option>
-              <option value="grid">Grid</option>
-              <option value="hex">Hex</option>
+              {#each SNAP_GRID_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
             </select>
           </div>
           <div class="form-group">
@@ -317,44 +441,60 @@
               <input type="checkbox" bind:checked={$starmapUiStore.travellerMode} /> Traveller mode
             </label>
           </div>
-
-        {:else if activeSection === 'generation'}
-          <h3>Points of Interest</h3>
-          <p class="section-hint">RPG hooks tagged onto worlds — mineable resources, scientific draws, frontier logistics and mysteries — from the loaded PoI packs (physics + a seeded roll).</p>
+          <!-- G26: the GM's OWN star-glyph dials for this map (local, like the snap grid). The player
+               views carry theirs in each preset, under Player Views. Size is LOG across the slider —
+               half to double, the centre exactly 1x — so one notch left shrinks by as much as one notch
+               right grows (owner, 2026-08-19). -->
           <div class="form-group">
-            <label><input type="checkbox" bind:checked={$reasonsConfig.enabled} /> Show Point-of-Interest tags</label>
+            <label for="starSize" title="How big every star glyph draws — half to double the size the map shipped with. Your screen only; player views have their own under Player Views.">
+              Star size <span class="section-hint" style="display:inline">&times;{($starmapUiStore.starSize ?? 1).toFixed(2)}</span>
+            </label>
+            <input id="starSize" type="range" min="-1" max="1" step="0.05" value={Math.log2($starmapUiStore.starSize ?? 1)} on:input={(e) => ($starmapUiStore.starSize = Math.pow(2, +e.currentTarget.value))} />
           </div>
-          {#if $reasonsConfig.enabled}
-            <p class="section-hint">Categories currently loaded — tick to show in this view:</p>
-            <div class="form-group reason-cats">
-              {#each activeCategories($poiPacks) as cat}
-                <label class="cat-line" title={cat.desc}>
-                  <input type="checkbox" checked={$reasonsConfig.categories[cat.id] !== false}
-                    on:change={(e) => reasonsConfig.update((c) => ({ ...c, categories: { ...c.categories, [cat.id]: e.currentTarget.checked } }))} />
-                  <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
-                  <span class="cat-name">{cat.label}</span>
-                  <span class="cat-count">{ruleCounts[cat.id] ?? 0} {(ruleCounts[cat.id] ?? 0) === 1 ? 'rule' : 'rules'}</span>
-                </label>
-              {/each}
-            </div>
-            <button class="section-btn" on:click={() => { dispatch('editpoi'); showModal = false; }}>Edit PoI rule packs…</button>
-          {/if}
+          <div class="form-group">
+            <label for="starScale" title="Spread the star glyphs by luminosity class: remnants and sub-dwarfs smallest, then dwarfs, giants, supergiants. 0% = all the same size; black holes keep their own glyph. Your screen only — player views have their own under Player Views.">
+              Star size by class <span class="section-hint" style="display:inline">{$starmapUiStore.starScale <= 0 ? 'All equal' : `${Math.round($starmapUiStore.starScale * 100)}%`}</span>
+            </label>
+            <input id="starScale" type="range" min="0" max="2" step="0.05" bind:value={$starmapUiStore.starScale} />
+          </div>
 
-        {:else if activeSection === 'coi'}
-          <h3>Constructs of Interest</h3>
-          <p class="section-hint">Hand-applied tags for ships &amp; stations — set on a construct's Tags tab. Unlike PoIs these are never auto-derived; you choose them. Owner sets the ship's tardiness, Purpose says what it does. They travel inside the starmap.</p>
-          <p class="section-hint">Categories — tick the ones you want available on constructs:</p>
+        {:else if activeSection === 'tagging'}
+          <h3>Tagging</h3>
+          <p class="section-hint">
+            Tags are how a world or a ship says what it is like beyond its physics. They come from three places:
+            the <strong>physics</strong>, which derives its own and can't be edited here (open the Newton panel — the
+            apple — on any body, or the <a href="/physics" target="_blank" rel="noreferrer">physics page</a>, to see
+            exactly which rule produced one); <strong>automated rules</strong> you can edit below; and
+            <strong>you</strong>, on any body or construct's Tags tab.
+          </p>
+          <div class="form-group">
+            <label title="Turns off every automated tagging rule at once. Physics tags and your own hand-added tags are unaffected.">
+              <input type="checkbox" bind:checked={$tagRulesEnabled} /> Run automated tagging rules
+            </label>
+          </div>
+
+          <p class="section-hint">
+            Categories — tick to make one available. <strong>System</strong> categories can't be deleted because the
+            engine matches their tags by name (refuelling, mining, drives, readiness), but you can switch them off
+            and edit their tags freely.
+          </p>
           <div class="form-group reason-cats">
-            {#each $coiCategories as cat (cat.id)}
-              <label class="cat-line" title={cat.required ? 'Core category — always on (autopilot needs it)' : ''}>
-                <input type="checkbox" checked={cat.enabled === true || cat.required} disabled={cat.required} on:change={(e) => setCoIEnabled(cat.id, e.currentTarget.checked)} />
+            {#each $tagCategories as cat (cat.id)}
+              <label class="cat-line" title={cat.description || ''}>
+                <input type="checkbox" checked={cat.enabled} on:change={(e) => setCategoryEnabled(cat.id, e.currentTarget.checked)} />
                 <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
-                <span class="cat-name">{cat.label}{#if cat.required} <span class="cat-req">core</span>{/if}</span>
-                <span class="cat-count">{cat.tags.length} {cat.tags.length === 1 ? 'tag' : 'tags'}</span>
+                <span class="cat-name">
+                  {cat.longName}
+                  {#if cat.system}<span class="cat-req" title="Needed by the engine — can be switched off, but not deleted">system</span>{/if}
+                  {#if cat.playerHidden}<span class="cat-hidden" title="Hidden from players">hidden</span>{/if}
+                </span>
+                <span class="cat-count">
+                  {cat.tags.length} {cat.tags.length === 1 ? 'tag' : 'tags'}{#if cat.rules.length}, {cat.rules.length} {cat.rules.length === 1 ? 'rule' : 'rules'}{/if}
+                </span>
               </label>
             {/each}
           </div>
-          <button class="section-btn" on:click={() => { dispatch('editcoi'); showModal = false; }}>Edit Constructs of Interest…</button>
+          <button class="section-btn" on:click={() => { dispatch('edittags'); showModal = false; }}>Edit tag categories…</button>
 
         {:else if activeSection === 'time'}
           <h3>Date &amp; time</h3>
@@ -388,27 +528,150 @@
           <p class="section-hint">Planet rulepack overrides.</p>
           <button class="section-btn" on:click={() => { dispatch('editatmospheres'); showModal = false; }}>Atmospheres…</button>
           <button class="section-btn" on:click={() => { dispatch('editliquids'); showModal = false; }}>Liquids…</button>
+          <button class="section-btn" on:click={() => { dispatch('editbiospheres'); showModal = false; }}>Biospheres…</button>
+          <p class="section-hint">What each life morphology looks like, how much ground it covers by default, and
+            the order it paints in — plus the pigments a world's light can favour.</p>
 
         {:else}
-          <p class="section-hint">App-wide preferences.</p>
+          <!-- G34: appearance leads the System section — it is the first thing a new user wants to
+               set, and it is APP-WIDE rather than campaign data. A skin is CHROME, per viewer,
+               persisted on this device only (units, by contrast, are campaign data players inherit).
+               Applies instantly; no Save needed. Colour-as-information (body types, zones, hazards)
+               never moves with a skin; single tokens are tuned on the palette page below. -->
+          <h4 class="advanced-head first">Appearance</h4>
+          <div class="form-group">
+            <label for="skinChoice" title="How THIS device draws the interface. Every viewer picks their own — it is not saved with the campaign. Applies immediately.">Interface skin (this device)</label>
+            <select id="skinChoice" bind:value={$skin}>
+              {#each SKINS as s}
+                <option value={s.id}>{s.name} — {s.blurb}</option>
+              {/each}
+              {#each $customSkins as c (c.id)}
+                <option value={`custom:${c.id}`}>{c.name} — your skin, on {SKINS.find((b) => b.id === c.base)?.name}</option>
+              {/each}
+            </select>
+          </div>
+          <button class="section-btn" on:click={() => (showSkinEditor = true)}>Skin editor — make your own…</button>
+          <a class="section-btn" href="/palette" on:click={() => showModal = false}>Colour palette — tune single colours…</a>
+          <p class="section-hint">A skin repaints the interface. The palette page goes finer, one colour at a
+            time — including the ones that carry meaning, like body types and zone bands — and its changes sit
+            on top of whichever skin you are wearing.</p>
+
+          <h4 class="advanced-head">App-wide preferences</h4>
           <button class="section-btn" on:click={() => { dispatch('llm'); showModal = false; }}>LLM Settings…</button>
-          <a class="section-btn" href="/palette" on:click={() => showModal = false}>Appearance…</a>
           <a class="section-btn" href="/discgallery" target="_blank" rel="noopener" on:click={() => showModal = false}>Rendered world gallery…</a>
           <p class="section-hint">A reference for how worlds are drawn from their physics and tags — polar ice, gas-giant banding, rotational shape and more.</p>
 
-          <h4 class="advanced-head">Advanced</h4>
+          <h4 class="advanced-head">Remote players — network relay</h4>
           <div class="form-group">
-            <label for="generationEngine">Generation engine</label>
-            <select id="generationEngine" bind:value={generationEngine}>
-              <option value="standard">Standard (Stable)</option>
-              <option value="evolutionary">Evolutionary (Alpha Physics)</option>
-            </select>
-            <p class="section-hint">Experimental — the procedural generation pipeline used when creating new systems.</p>
+            <p class="section-hint">Player views on other devices connect peer-to-peer. That works on home and
+              mobile networks by itself (a public relay is built in). A workplace network that blocks UDP can
+              stop it — then a relay that speaks TLS on port 443 is needed. Paste your own STUN/TURN servers
+              here, one per line as <code>turns:host:443|username|credential</code>; they are added ahead of
+              the built-in ones and ride in every player link and QR you share from now on.</p>
+            <textarea class="ice-input" rows="3" bind:value={iceText} on:change={saveIce}
+              placeholder="turns:relay.example.com:443|user|secret"></textarea>
+            <p class="section-hint">{iceStatus}</p>
           </div>
+
+          <h4 class="advanced-head">Your data</h4>
+          <div class="form-group">
+            <p class="section-hint">Your campaigns are stored in this browser. Browsers may clear that storage
+              when space runs low. You can ask this browser to keep it — but the browser decides, so this
+              lowers the risk rather than removing it. Saving to a file is still the only real backup.</p>
+            <p class="store-line">
+              Status:
+              {#if storeState === 'granted'}<strong class="ok">Browser has agreed to keep your data</strong>
+              {:else if storeState === 'not-granted'}<strong class="warn">Not guaranteed — may be cleared if space runs low</strong>
+              {:else if storeState === 'unsupported'}<strong class="warn">This browser doesn't support the setting</strong>
+              {:else}checking…{/if}
+            </p>
+            <p class="store-line">Used: <strong>{storeUsage}</strong> of <strong>{storeQuota}</strong> available</p>
+            {#if storeState !== 'granted' && storeState !== 'unsupported'}
+              <button class="section-btn" on:click={askPersistence} disabled={storeAsking}>
+                {storeAsking ? 'Asking the browser…' : 'Ask the browser to keep my data'}
+              </button>
+              <p class="section-hint">Some browsers grant this silently based on how often you use the app, and
+                may refuse the first time. If it stays off, keep saving your campaign to a file.</p>
+            {/if}
+          </div>
+
+          <h4 class="advanced-head">Memory</h4>
+          <div class="form-group">
+            {#if $memoryReading.supported}
+              <p class="store-line">
+                Using <strong>{formatMB($memoryReading.usedMB)}</strong> of
+                <strong>{formatMB($memoryReading.limitMB)}</strong> the browser will allow
+                (<strong class={$memoryReading.frac >= MEMORY_WARN_FRAC ? 'warn' : 'ok'}>{Math.round($memoryReading.frac * 100)}%</strong>)
+              </p>
+              <div class="mem-bar" role="img" aria-label="Memory usage {Math.round($memoryReading.frac * 100)} percent">
+                <div class="mem-fill" class:warn={$memoryReading.frac >= MEMORY_WARN_FRAC} style="width:{Math.min(100, Math.round($memoryReading.frac * 100))}%"></div>
+              </div>
+              <p class="section-hint">Live memory used by this tab. If it climbs towards the limit the app will warn
+                you; saving your campaign to a file and reloading the tab is the reliable way to bring it down.</p>
+            {:else}
+              <p class="store-line">This browser doesn't report memory usage.</p>
+              <p class="section-hint">Chrome and Edge show a live figure here; other browsers offer no way to read it.</p>
+            {/if}
+          </div>
+
+          <!-- Owner, 2026-08-21: the transfer figures sit next to "Reporting a problem" because that is
+               what they are FOR — telling over-transmission (a lot of bytes) from slowness (few bytes,
+               taking a long time), and pasting the answer to someone. -->
+          <h4 class="advanced-head">Player connections</h4>
+          <div class="form-group">
+            {#if transferLinks.length}
+              <p class="store-line">
+                <strong>{[
+                  transferLinks.filter((l) => !l.remote).length ? `${transferLinks.filter((l) => !l.remote).length} local` : '',
+                  transferLinks.filter((l) => l.remote).length ? `${transferLinks.filter((l) => l.remote).length} remote` : ''
+                ].filter(Boolean).join(', ')}</strong> player window(s) watching.
+              </p>
+              <ul class="conn-list">
+                {#each transferLinks as l (l.id)}
+                  <li><code>{l.id}</code> — {linkSummary(l)}</li>
+                {/each}
+              </ul>
+            {:else}
+              <p class="store-line">No player windows connected.</p>
+            {/if}
+            <p class="section-hint">A remote window is counted the moment it connects. A LOCAL one is another tab
+              on this machine with no connection to count, so it announces itself instead — it appears within a
+              few seconds of opening and drops off a few seconds after closing. Bytes are only shown for remote
+              links: a local one hands the data straight over without serialising it, so there is no transfer to
+              measure and nothing to blame.</p>
+            <button class="section-btn" on:click={copyTransferReport}>
+              {transferCopied ? 'Copied' : 'Copy the transfer report'}
+            </button>
+            <p class="section-hint">Plain text: totals both ways, the largest single message, peak and average
+              speed, and which message types are costing the most.</p>
+          </div>
+
+          <h4 class="advanced-head">Reporting a problem</h4>
+          <div class="form-group">
+            <p class="section-hint">Saves a file describing what the app is doing right now — how much memory it is
+              using, what your device is, how long things took, and a copy of your starmap so the problem can be
+              reproduced. It saves to this device; nothing is sent anywhere, and the file explains what is inside it.</p>
+            <button class="section-btn" on:click={() => dispatch('diagnostics')}>Save a diagnostic file (.zip)…</button>
+            <p class="section-hint">Post it to FrunkQ on the Discord with a note about what went wrong. It doubles as a
+              backup of your campaign, so it is worth keeping either way.</p>
+          </div>
+
+          <!-- WS8: only shown while a pre-upgrade snapshot exists. This is the "go straight back" the upgrade
+               screen promises, and it lives here because Your data is where copies of a campaign belong. -->
+          {#if preUpgradeName}
+            <div class="form-group">
+              <p class="section-hint">You upgraded a campaign onto the updated bundled map. The version from
+                before that upgrade is still here, and you can go back to it. Doing so replaces what is
+                currently loaded, so save it to a file first if you want to keep it.</p>
+              <button class="section-btn" on:click={() => dispatch('restorepreupgrade')}>
+                Go back to "{preUpgradeName}" (before the upgrade)
+              </button>
+            </div>
+          {/if}
 
           <h4 class="advanced-head danger-head">Danger zone</h4>
           <div class="form-group">
-            <p class="section-hint">Wipe everything this app has stored in this browser — saved starmap, PoI/CoI packs, settings, palette, session — and reload as a brand-new user. Useful for testing the first-run experience. Cannot be undone.</p>
+            <p class="section-hint">Wipe everything this app has stored in this browser — saved starmap, tag categories, settings, palette, session — and reload as a brand-new user. Useful for testing the first-run experience. Cannot be undone.</p>
             <button class="section-btn danger-btn" on:click={clearEverything} disabled={clearing}>{clearing ? 'Clearing…' : 'Clear all data…'}</button>
           </div>
         {/if}
@@ -427,31 +690,79 @@
     </div>
   </div>
 
-  {#if showAlphaDisclaimer}
+  {#if pendingUnit && outcomes}
+    <!-- A43. Deliberately worded as OUTCOMES on a real system, never as "convert": the GM knows which
+         number is right and does not have to work out which mechanism produces it. -->
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
-    <div class="alpha-disclaimer-overlay" on:click|stopPropagation>
-      <div class="alpha-modal">
-        <h2>DANGER --- DANGER</h2>
-        <h3>You are entering the Alphas Zone</h3>
-        
-        <p>Over the next few months, I want to mess around with Generation V2 functionality.</p>
-        <p>You are very welcome to jump in, have a play, and share feedback on the Discord forum.</p>
-        <p><strong>Just bear in mind: this is not complete.</strong> For example, it does not generate full star systems yet.</p>
-        <p>Right now, it is basically a proof of concept — a place to try out a bunch of ideas, see what works, and figure out what people actually like.</p>
-        <p>The goal is to move away from the current simple procedural generation and head more toward physical simulation.</p>
-        <p>Have a poke around, break things, see what you find, and let me know what feels good, what feels weird, and what feels rubbish.</p>
-
-        <div class="alpha-buttons">
-          <button class="cancel-alpha" on:click={cancelAlpha}>Get me out of here...</button>
-          <button class="proceed-alpha" on:click={proceedAlpha}>Lemme see...</button>
-        </div>
+    <div class="unit-confirm-backdrop" on:click|stopPropagation>
+      <div class="unit-confirm" role="dialog" aria-modal="true" aria-labelledby="unit-confirm-title">
+        <h3 id="unit-confirm-title">Changing to {UNIT_SHORT[pendingUnit]}</h3>
+        {#if unitExample.name}
+          <p class="lede">
+            {unitExample.name} is currently <strong>{fmtUnitVal(unitExample.reading)} {UNIT_SHORT[currentKind ?? 'ly']}</strong>
+            from {unitExample.from}. Which should it be?
+          </p>
+        {:else}
+          <p class="lede">This map has no pair of systems to measure. Which did you mean?</p>
+        {/if}
+        <button class="unit-opt" on:click={() => commitSave('relabel')}>
+          <span class="val">{fmtUnitVal(outcomes.relabel)} {UNIT_SHORT[pendingUnit]}</span>
+          <span class="why">The distances were already right &mdash; only the unit was wrong.</span>
+        </button>
+        <button class="unit-opt" on:click={() => commitSave('convert')}>
+          <span class="val">{fmtUnitVal(outcomes.convert)} {UNIT_SHORT[pendingUnit]}</span>
+          <span class="why">The map is right &mdash; show the same distances in {UNIT_SHORT[pendingUnit]}.</span>
+        </button>
+        <button class="unit-cancel" on:click={() => (pendingUnit = null)}>Cancel</button>
       </div>
     </div>
   {/if}
+
+  {#if showSkinEditor}
+    <SkinEditorModal on:close={() => (showSkinEditor = false)} />
+  {/if}
+
 </div>
 {/if}
 
 <style>
+  .conn-list { margin: 4px 0 6px; padding-left: 18px; font-size: 0.78rem; line-height: 1.5; }
+  .conn-list code { font-family: ui-monospace, Consolas, monospace; opacity: 0.8; }
+
+  /* G34: the "make your own skin" affordance under the skin picker. */
+  .link-ish {
+    background: none; border: none; padding: 2px 0; cursor: pointer;
+    color: var(--link, #88ccff); font-size: 0.85em; text-align: left;
+  }
+  .link-ish:hover { color: var(--accent, #ff5a1f); text-decoration: underline; }
+
+  /* A43 unit-change confirmation. Compact modal over the settings dialog, per the house popup style. */
+  .unit-confirm-backdrop {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5100; padding: 1rem;
+  }
+  .unit-confirm {
+    background: var(--panel-bg, #161b22); border: 1px solid var(--border, #30363d);
+    border-radius: 8px; padding: 1.1rem; max-width: 27rem; width: 100%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  }
+  .unit-confirm h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+  .unit-confirm .lede { margin: 0 0 0.9rem; font-size: 0.85rem; line-height: 1.45; opacity: 0.85; }
+  .unit-opt {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--input-bg, #0d1117); border: 1px solid var(--border, #30363d);
+    border-radius: 6px; padding: 0.6rem 0.75rem; margin-bottom: 0.5rem; color: inherit;
+  }
+  .unit-opt:hover { border-color: var(--accent, #58a6ff); }
+  .unit-opt .val { display: block; font-size: 1.05rem; font-weight: 600; }
+  .unit-opt .why { display: block; font-size: 0.78rem; opacity: 0.75; margin-top: 0.15rem; }
+  .unit-cancel {
+    display: block; width: 100%; margin-top: 0.25rem; padding: 0.45rem;
+    background: none; border: none; color: inherit; opacity: 0.7; cursor: pointer; font-size: 0.85rem;
+  }
+  .unit-cancel:hover { opacity: 1; }
+
   .modal-backdrop {
     position: fixed;
     top: 0;
@@ -504,7 +815,17 @@
     max-height: 56vh;
     overflow-y: auto;
     overflow-x: hidden;
+    /* Breathing room against the scrollbar - controls were pressed against the drag edge and the
+       default bar wrecked the look (owner, 2026-08-21). The gutter stays reserved so nothing jumps
+       when a short tab needs no bar; the bar itself goes slim and theme-dark. */
+    padding-right: 16px;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border, #2c3140) transparent;
   }
+  .settings-content::-webkit-scrollbar { width: 8px; }
+  .settings-content::-webkit-scrollbar-thumb { background: var(--border, #2c3140); border-radius: 4px; }
+  .settings-content::-webkit-scrollbar-track { background: transparent; }
   .settings-content h3 {
     margin: 1.2em 0 0.6em;
     font-size: 0.8rem;
@@ -520,11 +841,27 @@
   .cat-name { flex: 1; }
   .cat-count { color: var(--text-faint, #8a8f9a); font-size: 0.85em; }
   .cat-req { font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #5b8def); border: 1px solid currentColor; border-radius: 4px; padding: 0 3px; vertical-align: middle; }
+  .store-line { font-size: 0.82rem; margin: 2px 0; color: var(--text-muted); }
+  .store-line .ok { color: #6ad48b; }
+  .store-line .warn { color: #ffb061; }
+  .mem-bar {
+    height: 8px;
+    margin: 6px 0 4px;
+    background: var(--bg-control, #1c1f27);
+    border: 1px solid var(--border, #2a2d36);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .mem-fill { height: 100%; background: #6ad48b; transition: width 0.4s ease; }
+  .mem-fill.warn { background: #ffb061; }
   .advanced-head { margin: 22px 0 8px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8a8f9a); border-top: 1px solid var(--border); padding-top: 14px; }
+  /* The section's first heading needs no rule above it — it IS the top of the panel. */
+  .advanced-head.first { margin-top: 2px; border-top: none; padding-top: 0; }
   .danger-head { color: var(--status-bad, #d04545); border-top-color: color-mix(in srgb, var(--status-bad, #d04545) 40%, var(--border)); }
   .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
   .danger-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--status-bad, #d04545) 16%, transparent) !important; }
   .danger-btn:disabled { opacity: 0.6; cursor: default; }
+  .ice-input { width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace; background: rgba(255,255,255,0.05); color: inherit; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; resize: vertical; }
   .section-btn {
     display: block;
     width: 100%;
@@ -697,85 +1034,4 @@
     color: var(--text-muted);
   }
 
-  /* Alpha Disclaimer Styles */
-  .alpha-disclaimer-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1100;
-    backdrop-filter: blur(4px);
-  }
-
-  .alpha-modal {
-    background: var(--bg-panel);
-    border: 2px solid var(--status-bad);
-    padding: 2.5rem;
-    border-radius: 12px;
-    max-width: 600px;
-    width: 90%;
-    box-shadow: 0 0 50px rgba(229, 62, 62, 0.3);
-    text-align: left;
-  }
-
-  .alpha-modal h2 {
-    color: var(--status-bad);
-    margin-top: 0;
-    text-align: center;
-    letter-spacing: 2px;
-    font-family: monospace;
-  }
-
-  .alpha-modal h3 {
-    color: #f6ad55;
-    text-align: center;
-    margin-bottom: 1.5rem;
-  }
-
-  .alpha-modal p {
-    line-height: 1.6;
-    margin-bottom: 1rem;
-    color: #e2e8f0;
-  }
-
-  .alpha-buttons {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
-  }
-
-  .alpha-buttons button {
-    flex: 1;
-    padding: 12px;
-    border-radius: 6px;
-    font-weight: bold;
-    cursor: pointer !important;
-    border: none;
-    transition: all 0.2s;
-    pointer-events: auto;
-  }
-
-  .cancel-alpha {
-    background: #4a5568;
-    color: white;
-  }
-
-  .cancel-alpha:hover {
-    background: #2d3748 !important;
-  }
-
-  .proceed-alpha {
-    background: var(--status-bad);
-    color: white;
-  }
-
-  .proceed-alpha:hover {
-    background: #c53030 !important;
-    box-shadow: 0 0 15px rgba(229, 62, 62, 0.5);
-  }
 </style>

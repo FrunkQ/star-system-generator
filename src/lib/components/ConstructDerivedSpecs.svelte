@@ -3,10 +3,11 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { AU_KM } from '$lib/constants';
-  import { fmt } from '$lib/stores';
+  import UnitValue from './UnitValue.svelte';
   import { describeTag } from '$lib/tags/tagPresentation';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
+  import ConstructPortrait from './ConstructPortrait.svelte';
 
   // The resources/contexts this ship can refuel from = the union of its fuels' refuel_tags. Surfacing
   // it next to Fuel Mass makes the link obvious: a body carrying one of these is a valid top-up (and
@@ -22,6 +23,9 @@
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
+  // The GM system view now leads with the portrait itself, so it turns this copy off; every
+  // other mount (specs modal, side panel, planner, ship panel) keeps the picture it always had.
+  export let showPortrait = true;
   export let hostBody: CelestialBody | null;
   export let isEditingConstruct: boolean = false; 
   export let hideActions: boolean = false; // New prop
@@ -83,15 +87,14 @@
     }
   }
 
-  // Accel range: maxVacuumG is at CURRENT fuel; scale by mass to show empty (lightest) ↔ full (heaviest),
-  // so it's obvious why a high-thrust hull crawls with full tanks.
-  $: accelRange = (() => {
-    if (!specs || !specs.maxVacuumG || !specs.totalMass_tonnes || !specs.fuelCapacity_tonnes) return null;
-    const massEmpty = specs.totalMass_tonnes - specs.fuelMass_tonnes;       // tanks dry
-    const massFull = massEmpty + specs.fuelCapacity_tonnes;                 // tanks full
-    const k = specs.maxVacuumG * specs.totalMass_tonnes;                    // ∝ thrust (g·t)
-    return { empty: massEmpty > 0 ? k / massEmpty : 0, full: massFull > 0 ? k / massFull : 0 };
-  })();
+  // Accel range: maxVacuumG is at CURRENT fuel; the band shows full (heaviest, slowest) ↔ empty
+  // (lightest, fastest), so it's obvious why a high-thrust hull crawls with full tanks.
+  // READ, not recomputed: this used to do the mass scaling inline, which made it a second derivation of
+  // a quantity `calculateFullConstructSpecs` now publishes as ratedAccelFullG/EmptyG (inbox A31). Note
+  // the band is the ship's RATED envelope — empty hold — so it no longer shifts with the current cargo.
+  $: accelRange = specs && specs.ratedAccelFullG > 0 && specs.ratedAccelEmptyG > 0
+    ? { full: specs.ratedAccelFullG, empty: specs.ratedAccelEmptyG }
+    : null;
   const fmtG = (g: number) => (g < 1 ? g.toFixed(2) : g.toFixed(1));
 
   function formatOrbitalPeriod(seconds: number): string {
@@ -223,6 +226,12 @@
 
 {#if specs}
   <div class="derived-specs">
+    <!-- G3: the ship's picture, same chain as the player document (model > image > glyph). The GM
+         system view leads with its own copy and passes showPortrait={false} - two pictures of one
+         ship in one panel was the owner's 2026-08-19 report. -->
+    {#if showPortrait}
+      <ConstructPortrait {construct} {rulePack} nowMs={Number.isFinite(displayTimeMs) ? displayTimeMs : null} />
+    {/if}
     <div class="specs-grid">
       <div class="spec-item fixed" title="Current crew / Maximum crew">
         <span class="label">Crew</span>
@@ -267,14 +276,21 @@
         <span class="value">{typeof specs.endurance_days === 'number' ? specs.endurance_days.toLocaleString() + ' days' : specs.endurance_days}</span>
       </div>
 
-      <div class="spec-item derived" title="Acceleration in vacuum at current fuel. Range shows fully fuelled (heavy, slow) to empty (light, fast).">
+      <div class="spec-item derived" title="Acceleration in vacuum at current fuel and cargo. The range is the ship's RATED envelope with an empty hold: fully fuelled (heavy, slow) to tanks dry (light, fast).">
         <span class="label">Max Vacuum Accel.</span>
-        <span class="value">{specs.maxVacuumG.toFixed(2)} g{#if accelRange} <span class="accel-range">({fmtG(accelRange.full)}–{fmtG(accelRange.empty)} g full→empty)</span>{/if}</span>
+        <span class="value">{specs.maxVacuumG.toFixed(2)} g{#if accelRange} <span class="accel-range">(rated {fmtG(accelRange.full)}–{fmtG(accelRange.empty)} g full→empty)</span>{/if}</span>
       </div>
-      <div class="spec-item derived" title="Total delta-V available in vacuum">
+      <div class="spec-item derived" title="Delta-V available at the CURRENT fuel load, with the current cargo aboard">
         <span class="label">Total Vacuum Δv</span>
-        <span class="value">{$fmt.speedMs(specs.totalVacuumDeltaV_ms, 1)}</span>
+        <span class="value"><UnitValue quantity="speed" bodyType="construct" value={specs.totalVacuumDeltaV_ms / 1000} /></span>
       </div>
+      {#if specs.ratedVacuumDeltaV_ms > 0}
+        <!-- A31: what the ship is RATED for — full tanks, empty hold — beside what it has left today. -->
+        <div class="spec-item derived" title="Delta-V at full tanks with an empty hold: the ship's rated figure, independent of how it is loaded now">
+          <span class="label">Rated Δv (full tanks)</span>
+          <span class="value"><UnitValue quantity="speed" bodyType="construct" value={specs.ratedVacuumDeltaV_ms / 1000} /></span>
+        </div>
+      {/if}
       {#if effectiveState === 'Transit'}
         <div class="spec-item derived" title="The ship is currently under way on a planned course">
           <span class="label">Status</span>

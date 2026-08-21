@@ -3,22 +3,57 @@
   import { describeTag } from "$lib/tags/tagPresentation";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets } from '$lib/physics/orbits';
+  import { calculateDeltaVBudgets, ascentBudgetApplies } from '$lib/physics/orbits';
+  import { biosphereLayers, morphologyDef } from '$lib/physics/vegetation';
   import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
-  import { calculateSurfaceTemperature, composeBodySurfaceTemperature } from '$lib/physics/temperature';
-  import { systemStore, fmt } from '$lib/stores';
+  import { calculateSurfaceTemperature } from '$lib/physics/temperature';
+  import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
+  import { systemStore } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatPref, unitBodyTypeFor } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
   import { get } from 'svelte/store';
+  import { onMount } from 'svelte';
+  import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
   import { calculateSurfaceRadiation } from '$lib/physics/radiation';
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
   import { phaseAtP } from '$lib/physics/liquids';
   import { formatGauss } from '$lib/physics/magnetism';
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
+  import { radiationPlace } from '$lib/catalogue/bodyFacts';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
   export let parentBody: CelestialBody | null = null;
   export let rootStar: CelestialBody | null = null;
+  // G8: the campaign clock, so the orbital rows can carry "Next eclipse" — the same row the player
+  // views show, from the same builder. Null (no clock handed over) means no row, rather than a guess.
+  export let nowMs: number | null = null;
+
+  // The prediction is a forward search over the propagator, so it is computed when a READER asks and
+  // never in a derivation pass. `nextEclipseCached` then holds the answer until the date it predicted
+  // has gone by. What it cannot absorb is the GM scrubbing time BACKWARDS — that misses the cache on
+  // every frame and each miss is a real search — so the clock this row reads is sampled once a second
+  // of WALL time, which is the rule the player views already use: a date only needs to be right to
+  // the second, whatever the time scale.
+  let eclipseNowMs: number | null = null;
+  $: if (nowMs === null) eclipseNowMs = null;
+  onMount(() => {
+      eclipseNowMs = nowMs;
+      const id = setInterval(() => { eclipseNowMs = nowMs; }, 1000);
+      return () => clearInterval(id);
+  });
+  // A new body must not wait up to a second for its row, so re-sample immediately when the selection
+  // changes — cheap, because a cache hit is a map lookup.
+  $: if (body) eclipseNowMs = nowMs;
+  $: eclipseText = (() => {
+      const sys = $systemStore;
+      const id = (body as any)?.id;
+      if (!sys || !id || eclipseNowMs === null) return null;
+      const outlook = nextEclipseCached(sys as any, id, eclipseNowMs);
+      return outlook?.next ? describeEclipse(outlook.next, eclipseNowMs, undefined) : null;
+  })();
 
   // The "Orbit (from …)" label: keep the host TYPE but name the actual host too (on a multi-star system
   // a bare "Barycentre" / "star" is ambiguous). A barycentre names the bodies it holds, since a body can
@@ -48,51 +83,67 @@
   let constructSpecs: ConstructSpecs | null = null;
 
   // Derived Reactive Properties
-  let surfaceTempC: number | null = null;
-  let minTempC: number | null = null;
-  let maxTempC: number | null = null;
-  let dayMinTempC: number | null = null;
-  let dayMaxTempC: number | null = null;
-  let nightMinTempC: number | null = null;
-  let nightMaxTempC: number | null = null;
-  let massDisplay: string | null = null;
+  // NO SECOND DAY/NIGHT MODEL HERE, DELIBERATELY, AND THIS COMMENT IS THE POINT.
+  // Forty-five lines here recomputed the surface range and then split it into lit and dark
+  // hemispheres with its own constants (tEq x 0.70/1.35 airless, x 0.33/0.72 locked, a pressure mix,
+  // a latitudinal span), and NOTHING RENDERED THE RESULT — the four variables it produced were never
+  // read. It was a rival to `physics/surfaceTemperature`, which now derives the two sides from the
+  // energy balance and publishes them as components this panel already displays below. Deleted
+  // rather than resynced: syncing preserves the fault. Same shape as the dead `retainsAtmosphere`
+  // block in SystemProcessor, and the same fix.
+  let surfaceTempMeanK: number | null = null;
+  let massKgShown: number | null = null;
   let radiationLevel: string | null = null;
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
-  let orbitalDistanceDisplay: string | null = null;
+  let orbitalDistanceKm: number | null = null;
   let orbitalDistanceTooltip: string | null = null;
   let circumferenceKm: number | null = null;
   let tempTooltip: string = '';
+  // Internal heat, broken out by SOURCE. A giant's is leftover formation heat still leaking away
+  // (Kelvin-Helmholtz), which is why it depends on age and mass and not at all on the star. A rocky
+  // world's is radioactive decay plus whatever tides are kneading it. A brown dwarf sets its own
+  // photosphere temperature outright, so it is reported as an absolute rather than a rise.
+  let internalHeatSources: { label: string; k: number }[] = [];
+  let internalHeatTotalK = 0;
+  let internalHeatNote = '';
   let surfaceRadiationText: string | null = null;
   let surfaceRadiationTooltip: string | null = null;
   let displayedSurfaceRadiation: number | null = null;
   let minSurfaceRadiation: number | null = null;
   let maxSurfaceRadiation: number | null = null;
-  let stellarRadiationTooltip: string | null = null;
+  let radiationTooltip: string | null = null;
   let calculatedPeriodDays: number | null = null;
   let luminosity: number | null = null;
   let orbitalStabilityLabel: string | null = null;
   let orbitalStabilityDetails: string | null = null;
   
   $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
+  // B37. NOTE this deliberately does NOT use isGasGiant: that is a CLASS regex, so an ICE giant fell
+  // through it and printed a surface-to-LO figure for a world with no surface. The predicate asks the
+  // makeup, which is the same question the ascent tag asks.
+  $: ascentApplicability = body.kind === 'body'
+    ? ascentBudgetApplies(body as CelestialBody)
+    : ({ applies: false, reason: 'not a natural body' } as const);
   $: isBeltOrRing = body && body.kind === 'body' && (body.roleHint === 'belt' || body.roleHint === 'ring');
   $: isStar = body && body.kind === 'body' && body.roleHint === 'star';
+  // G34: which unit-pref bucket this subject reads (star / planet / moon / construct).
+  $: ubt = unitBodyTypeFor(body);
   
   // Perform all other display calculations when the body changes
   $: {
-    surfaceGravityG = null;    
+    surfaceGravityG = null;
     densityRelative = null;
-    surfaceTempC = null;
-    dayMinTempC = null;
-    dayMaxTempC = null;
-    nightMinTempC = null;
-    nightMaxTempC = null;
-    massDisplay = null;
+    surfaceTempMeanK = null;
+    massKgShown = null;
     radiationLevel = null;
-    orbitalDistanceDisplay = null;
+    orbitalDistanceKm = null;
     orbitalDistanceTooltip = null;
     circumferenceKm = null;
     tempTooltip = '';
+    internalHeatSources = [];
+    internalHeatTotalK = 0;
+    internalHeatNote = '';
     surfaceRadiationText = null;
     surfaceRadiationTooltip = null;
     displayedSurfaceRadiation = null;
@@ -148,12 +199,13 @@
              };
              body.orbitalBoundaries = calculateOrbitalBoundaries(planetData, rulePack);
              calculateDeltaVBudgets(body);
-             calculateGreenhouseEffect(body, rulePack);
-             
-             // Dynamic Surface Temperature Recalculation
+
+             // Dynamic Surface Temperature Recalculation — the shared albedo ⇄ temperature ⇄ cloud
+             // solve, which commits the greenhouse itself (there used to be a bare
+             // calculateGreenhouseEffect call here whose return value was thrown away).
              const sys = get(systemStore);
              if (sys) {
-                 calculateSurfaceTemperature(body, sys.nodes);
+                 calculateSurfaceTemperature(body, sys.nodes, rulePack);
              }
 
         }
@@ -181,8 +233,11 @@
                 const particlePct = totalFlux > 0 ? (body.particleRadiation! / totalFlux * 100).toFixed(0) : 0;
                 
                 shieldingInfo = `\n\n🛡️ Shielding Breakdown:\n`;
-                shieldingInfo += `• Incoming Star Flux: ${body.stellarRadiation?.toFixed(2)} Sol-Flux\n`;
-                shieldingInfo += `• Unshielded Potential: ${(body.stellarRadiation! * RADIATION_UNSHIELDED_DOSE_MSV_YR).toFixed(0)} mSv/y\n`;
+                // "Star flux" was a lie on any moon inside a giant's magnetosphere: this figure is
+                // the TOTAL arriving, and since B17 that is mostly trapped particles (inbox B34).
+                shieldingInfo += `• Starlight: ${(body.starlightFlux ?? 0).toFixed(2)} Sol-Flux\n`;
+                shieldingInfo += `• Total Incoming Flux: ${(body.totalIncidentFlux ?? 0).toFixed(2)} Sol-Flux\n`;
+                shieldingInfo += `• Unshielded Potential: ${((body.totalIncidentFlux ?? 0) * RADIATION_UNSHIELDED_DOSE_MSV_YR).toFixed(0)} mSv/y\n`;
                 if (body.atmosphere) shieldingInfo += `• Atmosphere: ${((body.radiationShieldingAtmo || 0) * 100).toFixed(1)}% Photon Block\n`;
                 if (body.magneticField) shieldingInfo += `• Magnetosphere: ${((body.radiationShieldingMag || 0) * 100).toFixed(1)}% Particle Block\n`;
                 
@@ -199,17 +254,18 @@
         }
 
         if (body.orbit) {
-            if (body.roleHint === 'moon') {
-                orbitalDistanceDisplay = $fmt.km(body.orbit.elements.a_AU * AU_KM);
-                const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
-                const aph = body.orbit.elements.a_AU * (1 + body.orbit.elements.e);
-                orbitalDistanceTooltip = `Periapsis: ${$fmt.km(peri * AU_KM)}\nApoapsis: ${$fmt.km(aph * AU_KM)}`;
-            } else {
-                orbitalDistanceDisplay = `${body.orbit.elements.a_AU.toFixed(3)} AU`;
-                const peri = body.orbit.elements.a_AU * (1 - body.orbit.elements.e);
-                const aph = body.orbit.elements.a_AU * (1 + body.orbit.elements.e);
-                orbitalDistanceTooltip = `Perihelion: ${peri.toFixed(3)} AU\nAphelion: ${aph.toFixed(3)} AU`;
-            }
+            // The unit follows the DISTANCE, not the body's role. It used to follow the role — km for a
+            // `roleHint: 'moon'`, AU for everything else — which read "0.000 AU" for Pluto, a PLANET
+            // orbiting the Pluto–Charon barycentre 2,100 km out, and for every other barycentre member.
+            // The two words stay role-aware because they are ASTRONOMY, not formatting: a body about a
+            // star has a perihelion, a body about anything else a periapsis.
+            const a = body.orbit.elements.a_AU;
+            const peri = a * (1 - body.orbit.elements.e);
+            const aph = a * (1 + body.orbit.elements.e);
+            const [nearWord, farWord] = parentBody?.roleHint === 'star'
+                ? ['Perihelion', 'Aphelion'] : ['Periapsis', 'Apoapsis'];
+            orbitalDistanceKm = a * AU_KM;
+            orbitalDistanceTooltip = `${nearWord}: ${formatPref($unitPrefs, 'orbit', ubt, peri * AU_KM)}\n${farWord}: ${formatPref($unitPrefs, 'orbit', ubt, aph * AU_KM)}`;
 
             // Calculate Orbital Period
             if (parentBody) {
@@ -237,14 +293,11 @@
         }
 
         if (body.roleHint === 'star') {
-            const massInSuns = body.massKg / SOLAR_MASS_KG;
-            massDisplay = massInSuns < 1000000 
-                ? `${massInSuns.toLocaleString(undefined, {maximumFractionDigits: 3})} Solar Masses` 
-                : `${massInSuns.toExponential(2)} Solar Masses`;
+            massKgShown = body.massKg ?? null;
 
             const desc = getStellarRadiationDescription(body.radiationOutput || 0);
             radiationLevel = `${desc.text} (${body.radiationOutput?.toFixed(2)})`;
-            stellarRadiationTooltip = desc.tooltip;
+            radiationTooltip = desc.tooltip;
             
             if (body.radiusKm && body.temperatureK) {
                 const r_sol = body.radiusKm / SOLAR_RADIUS_KM;
@@ -253,96 +306,33 @@
             }
 
         } else if (body.massKg) {
-            const massInEarths = body.massKg / EARTH_MASS_KG;
-            // Use toLocaleString for larger values, toExponential for very small for precision
-            if (massInEarths === 0) {
-                massDisplay = `0 Earth Masses`;
-            } else if (Math.abs(massInEarths) < 0.000001) { // Threshold for scientific notation
-                massDisplay = `${massInEarths.toExponential(3)} Earth Masses`;
-            } else {
-                massDisplay = `${massInEarths.toLocaleString(undefined, {maximumFractionDigits: 6})} Earth Masses`;
-            }
+            massKgShown = body.massKg;
         }
 
         if (body.temperatureK) {
-            surfaceTempC = body.temperatureK - 273.15;
-            
-            // Prefer post-processed multi-star/barycenter-aware range when available.
-            const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
-            const eqMaxK = typeof (body as any).equilibriumTempMaxK === 'number' ? (body as any).equilibriumTempMaxK : null;
-            const pressureBar = body.atmosphere?.pressure_bar || 0;
+            // The MEAN a reader wants is the average of the day and night sides, which the physics
+            // publishes on the profile; `temperatureK` is the RADIATING temperature and they part
+            // company exactly when the swing is large (inbox B63).
+            surfaceTempMeanK = meanSurfaceTempK(body);
 
-            // Range variants recompose the body's OWN heat terms (greenhouse/tidal/radiogenic/internal/
-            // self-luminous) over a varied equilibrium via the shared helper — no per-term duplication,
-            // and the self-luminous term can't get dropped (the old 5-arg calls omitted it).
-            if (pressureBar < 0.01 && body.roleHint !== 'star') {
-                // Airless/near-airless worlds should expose large day/night surface swings.
-                const tEq = body.equilibriumTempK || 0;
-                const eqMinAirless = Math.max(3, tEq * 0.5);
-                const eqMaxAirless = tEq * 1.45;
-                minTempC = composeBodySurfaceTemperature(body, eqMinAirless) - 273.15;
-                maxTempC = composeBodySurfaceTemperature(body, eqMaxAirless) - 273.15;
-            } else if (eqMinK !== null && eqMaxK !== null) {
-                minTempC = composeBodySurfaceTemperature(body, eqMinK) - 273.15;
-                maxTempC = composeBodySurfaceTemperature(body, eqMaxK) - 273.15;
-            } else if (body.orbit && body.equilibriumTempK) {
-                // Fallback for legacy bodies that do not have precomputed ranges.
-                const e = body.orbit.elements.e;
-                const pressure = body.atmosphere?.pressure_bar || 0;
-                const orbitMax = Math.sqrt(1 / (1 - e));
-                const orbitMin = Math.sqrt(1 / (1 + e));
-                const variability = 0.4 / (1 + pressure);
-                const tEq = body.equilibriumTempK;
-                const tEqMaxK = tEq * orbitMax * (1 + variability);
-                const tEqMinK = tEq * orbitMin * (1 - variability);
-                const tMaxK = composeBodySurfaceTemperature(body, tEqMaxK);
-                const tMinK = composeBodySurfaceTemperature(body, tEqMinK);
-                maxTempC = tMaxK - 273.15;
-                minTempC = tMinK - 273.15;
+            // The +N contributions are DIFFERENCES, so they stay in kelvin whatever the display unit.
+            tempTooltip = `Equilibrium: ${formatPref($unitPrefs, 'temperature', ubt, body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K | Radiates at: ${formatPref($unitPrefs, 'temperature', ubt, body.temperatureK || 0)} (power balance — above the average whenever day and night differ)`;
+            // Break the same numbers out by SOURCE for the Internal Heat block. Kept beside the
+            // tooltip that already lists them so the two can never disagree.
+            const selfLumK = (body as any).selfLuminousTeffK || 0;
+            const srcs: { label: string; k: number }[] = [];
+            if ((body.internalHeatK || 0) > 0.5) srcs.push({ label: 'Formation heat (still cooling)', k: body.internalHeatK! });
+            if ((body.radiogenicHeatK || 0) > 0.5) srcs.push({ label: 'Radioactive decay', k: body.radiogenicHeatK! });
+            if ((body.tidalHeatK || 0) > 0.5) srcs.push({ label: 'Tidal flexing', k: body.tidalHeatK! });
+            internalHeatSources = srcs;
+            internalHeatTotalK = srcs.reduce((t, x) => t + x.k, 0);
+            if (selfLumK > 0) {
+                internalHeatNote = `Self-luminous: radiates at ${Math.round(selfLumK)} K on its own account`;
+            } else if (srcs.length && (body.internalHeatK || 0) > 0.5) {
+                internalHeatNote = 'Left over from forming — falls away as the world ages';
+            } else if (srcs.length) {
+                internalHeatNote = 'Drives the geology; barely touches the surface temperature';
             }
-
-            if (surfaceTempC !== null) {
-                const cMin = minTempC ?? surfaceTempC;
-                const cMax = maxTempC ?? surfaceTempC;
-                const orbitalHalfRange = Math.max(0, (cMax - cMin) * 0.5);
-                const pressureMix = Math.max(0, Math.min(1, pressureBar / (pressureBar + 0.5)));
-
-                if (pressureBar < 0.01 && body.roleHint !== 'star') {
-                    // Airless bodies: compute lit/dark hemispheres directly from equilibrium,
-                    // then layer greenhouse/tidal/internal components consistently.
-                    const tEq = body.equilibriumTempK || 0;
-                    const dayMinEq = Math.max(3, tEq * (body.tidallyLocked ? 0.78 : 0.70));
-                    const dayMaxEq = tEq * (body.tidallyLocked ? 1.45 : 1.35);
-                    const nightMinEq = Math.max(3, tEq * (body.tidallyLocked ? 0.33 : 0.40));
-                    const nightMaxEq = tEq * (body.tidallyLocked ? 0.72 : 0.85);
-
-                    dayMinTempC = composeBodySurfaceTemperature(body, dayMinEq) - 273.15;
-                    dayMaxTempC = composeBodySurfaceTemperature(body, dayMaxEq) - 273.15;
-                    nightMinTempC = composeBodySurfaceTemperature(body, nightMinEq) - 273.15;
-                    nightMaxTempC = composeBodySurfaceTemperature(body, nightMaxEq) - 273.15;
-                } else {
-                    // Atmosphere damps day/night swings.
-                    let dayNightSpanC = (1 - pressureMix) * 70 + 8;
-                    if (body.tidallyLocked) {
-                        dayNightSpanC *= 1.15;
-                    }
-                    const latitudinalSpanC = (1 - pressureMix) * 35 + 20;
-
-                    const dayCenter = surfaceTempC + dayNightSpanC * 0.35;
-                    const nightCenter = surfaceTempC - dayNightSpanC * 0.65;
-
-                    dayMinTempC = dayCenter - (orbitalHalfRange + latitudinalSpanC * 0.7);
-                    dayMaxTempC = dayCenter + (orbitalHalfRange + latitudinalSpanC * 0.5);
-                    nightMinTempC = nightCenter - (orbitalHalfRange + latitudinalSpanC * 0.8);
-                    nightMaxTempC = nightCenter + (orbitalHalfRange + latitudinalSpanC * 0.3);
-                }
-
-                dayMinTempC = Math.max(-273, dayMinTempC);
-                dayMaxTempC = Math.max(dayMinTempC, dayMaxTempC);
-                nightMinTempC = Math.max(-273, nightMinTempC);
-                nightMaxTempC = Math.max(nightMinTempC, nightMaxTempC);
-            }
-            tempTooltip = `Equilibrium: ${$fmt.tempK(body.equilibriumTempK || 0)} | Greenhouse: +${Math.round(body.greenhouseTempK || 0)} K | Internal: +${Math.round(body.internalHeatK || 0)} K | Tidal: +${Math.round(body.tidalHeatK || 0)} K | Radiogenic: +${Math.round(body.radiogenicHeatK || 0)} K`;
         }
     }
 
@@ -410,17 +400,50 @@
       'star/L': 'L-type Brown Dwarf. A dark red or magenta sub-stellar object. Hotter than other brown dwarfs, with clouds of dust grains in its atmosphere.',
       'star/T': 'T-type Brown Dwarf. A cool, magenta or brown sub-stellar object. Dominated by strong Methane absorption bands, similar to Jupiter.',
       'star/Y': 'Y-type Brown Dwarf. The coolest known star-like objects. Barely warm enough to emit infrared light, appearing black to the human eye. Often has water clouds.',
+      'star/unknown': 'Unclassified star. The catalogue records this object as a star but gives it no spectral type, so its mass, radius and temperature here are placeholders rather than measurements. Treat every figure on this panel as provisional.',
       'star/brown-dwarf': 'Brown Dwarf. A sub-stellar object massive enough to fuse deuterium but not hydrogen. They glow dimly in the infrared and bridge the gap between gas giants and stars.',
+      // Giants and supergiants (inbox D19). The letter gives the temperature and the colour; the
+      // luminosity class gives the size, and it is the difference between a red dwarf and Antares.
+      'star/O-I': 'O-Type Supergiant. Enormously massive, blue-white and desperately short-lived. Extreme radiation and a fierce stellar wind.',
+      'star/B-I': 'B-Type Supergiant. Blue-white and tens of thousands of times the Sun\'s brightness, like Rigel. Very high radiation.',
+      'star/A-I': 'A-Type Supergiant. White, hugely luminous and rare, like Deneb — among the most distant stars still visible to the naked eye.',
+      'star/F-I': 'F-Type Supergiant. Yellow-white and swollen. Many are Cepheid variables, pulsing on a clock so regular it is used to measure distance; Polaris is one.',
+      'star/G-I': 'G-Type Supergiant. A yellow supergiant, the Sun\'s colour at a hundred times its width. A brief stage between the blue and red supergiants.',
+      'star/K-I': 'K-Type Supergiant. Orange, cool and vast, well on the way to the red supergiants.',
+      'star/M-I': 'M-Type Supergiant. A red supergiant: cool, colossal and among the largest stars there are. Betelgeuse and Antares would swallow the inner planets of this system. Destined to end as a supernova.',
+      'star/O-III': 'O-Type Giant. A blue giant, massive and blazing. Vanishingly rare, and burning out fast.',
+      'star/B-III': 'B-Type Giant. Blue-white and luminous, having already left the main sequence.',
+      'star/A-III': 'A-Type Giant. White, bright, and expanded well beyond its main-sequence size.',
+      'star/F-III': 'F-Type Giant. Yellow-white and swollen, a star of a little over the Sun\'s mass in late middle age.',
+      'star/G-III': 'G-Type Giant. A yellow giant, like Capella — the Sun\'s colour, roughly a dozen times its width.',
+      'star/K-III': 'K-Type Giant. An orange giant, the commonest kind of giant and the brightest stars in many skies. Arcturus and Aldebaran are both this.',
+      'star/M-III': 'M-Type Giant. A red giant: cool, deep orange-red and very large. Often variable, shedding mass from a loosely held outer envelope.',
       'star/WD': 'White Dwarf. The dense, hot remnant of a dead star. High radiation.',
       'star/NS': 'Neutron Star. An extremely dense, rapidly spinning stellar remnant. Extreme radiation.',
       'star/BH': 'Quiescent Black Hole. A region of spacetime where gravity is so strong nothing can escape. Low radiation unless matter is actively falling in.',
       'star/BH_active': 'Active Black Hole. A black hole actively feeding on surrounding matter, which forms a super-heated accretion disk, emitting extreme levels of radiation.'
   }
+
+  // A star's class array carries only the BAND it resolved to (`star/M`), which is a letter — so on
+  // its own it described Antares, a red supergiant, as a red dwarf. That is the half of D19 a reader
+  // actually sees. The luminosity class now lives on the body as structured data, parsed once at
+  // import, so this READS it rather than re-parsing a designation (owner, 2026-08-14: never a string
+  // re-parsed at each use). `classes[0]` still wins when it already names a band directly, which is
+  // what a GM picking "M-Type Supergiant" in the editor produces.
+  function starTypeDescription(body: CelestialBody): string | undefined {
+      const primary = body.classes?.[0] ?? '';
+      if (STAR_TYPE_DESC[primary]) return STAR_TYPE_DESC[primary];
+      const t = body.stellarType;
+      if (t?.band && t.band !== 'V' && STAR_TYPE_DESC[`star/${t.spectral}-${t.band}`]) {
+          return STAR_TYPE_DESC[`star/${t.spectral}-${t.band}`];
+      }
+      return undefined;
+  }
 </script>
 
 {#if body}
 <div class="details-grid">
-    <div class="detail-item">
+    <div class="detail-item g-bulk">
         <span class="label">Kind</span>
         <span class="value">{body.kind}{#if body.kind === 'body'} ({body.roleHint}){/if}</span>
     </div>
@@ -459,43 +482,43 @@
     {/if}
     
     {#if body.kind === 'construct'}
-      <div class="detail-item">
+      <div class="detail-item g-bulk">
           <span class="label">Class</span>
           <span class="value">{body.class}</span>
       </div>
       {#if body.physical_parameters?.massKg}
-        <div class="detail-item">
+        <div class="detail-item g-bulk">
             <span class="label">Mass</span>
             <span class="value">{(body.physical_parameters.massKg / 1000).toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes</span>
         </div>
       {/if}
       {#if body.physical_parameters?.dimensionsM}
-        <div class="detail-item">
+        <div class="detail-item g-bulk">
             <span class="label">Dimensions</span>
             <span class="value">{body.physical_parameters.dimensionsM.join(' x ')} m</span>
         </div>
       {/if}
 
       {#if constructSpecs?.orbit_string}
-        <div class="detail-item">
+        <div class="detail-item g-orbit">
             <span class="label">Orbital Profile</span>
             <span class="value">{constructSpecs.orbit_string}</span>
         </div>
       {/if}
 
       {#if constructSpecs}
-        <div class="detail-item">
+        <div class="detail-item g-bulk">
           <span class="label">Total Mass</span>
           <span class="value">{constructSpecs.totalMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes</span>
         </div>
-        <div class="detail-item">
+        <div class="detail-item g-infra">
           <span class="label">Max Vacuum Accel.</span>
           <span class="value">{constructSpecs.maxVacuumG.toFixed(2)} g</span>        </div>
-        <div class="detail-item">
+        <div class="detail-item g-infra">
           <span class="label">Total Vacuum Δv</span>
-          <span class="value">{$fmt.speedMs(constructSpecs.totalVacuumDeltaV_ms, 1)}</span>
+          <span class="value"><UnitValue quantity="speed" bodyType={ubt} value={constructSpecs.totalVacuumDeltaV_ms / 1000} /></span>
         </div>
-        <div class="detail-item">
+        <div class="detail-item g-infra">
           <span class="label">Power Surplus</span>
           <span class="value">{constructSpecs.powerSurplus_MW.toLocaleString(undefined, {maximumFractionDigits: 1})} MW</span>
         </div>
@@ -503,14 +526,14 @@
     {/if}
 
     {#if body.kind === 'body'}
-        <div class="detail-item">
+        <div class="detail-item g-bulk">
             <span class="label">Classification</span>
             <span class="value">{body.classes.join(', ')}</span>
         </div>
         {#if !isBeltOrRing}
-            {#if STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0]?.split('/')[1]?.[0]]}
+            {#if starTypeDescription(body as CelestialBody)}
                 <div class="detail-item description">
-                    <span class="value">{STAR_TYPE_DESC[body.classes[0]] || STAR_TYPE_DESC[body.classes[0].split('/')[1][0]]}</span>
+                    <span class="value">{starTypeDescription(body as CelestialBody)}</span>
                 </div>
             {/if}
         {/if}
@@ -518,18 +541,18 @@
 
     {#if isBeltOrRing}
         {#if body.radiusInnerKm && body.radiusOuterKm}
-            <div class="detail-item">
-                <span class="label">Dimensions (AU)</span>
+            <div class="detail-item g-bulk">
+                <span class="label">Dimensions</span>
                 <div style="display: flex; flex-direction: column; gap: 2px;">
-                    <span><strong>Inner:</strong> {(body.radiusInnerKm / AU_KM).toFixed(2)} AU</span>
-                    <span><strong>Outer:</strong> {(body.radiusOuterKm / AU_KM).toFixed(2)} AU</span>
-                    <span><strong>Width:</strong> {((body.radiusOuterKm - body.radiusInnerKm) / AU_KM).toFixed(3)} AU</span>
+                    <span><strong>Inner:</strong> <UnitValue quantity="orbit" bodyType={ubt} value={body.radiusInnerKm} decimals={2} /></span>
+                    <span><strong>Outer:</strong> <UnitValue quantity="orbit" bodyType={ubt} value={body.radiusOuterKm} decimals={2} /></span>
+                    <span><strong>Width:</strong> <UnitValue quantity="orbit" bodyType={ubt} value={body.radiusOuterKm - body.radiusInnerKm} /></span>
                 </div>
             </div>
         {/if}
         {#if body.massKg}
             {@const densityInfo = getBeltDensityDescription(body.massKg)}
-            <div class="detail-item">
+            <div class="detail-item g-hazard">
                 <span class="label">Density / Hazard</span>
                 <span class="value" style="color: {densityInfo.color}; font-weight: bold;">{densityInfo.text}</span>
             </div>
@@ -537,138 +560,166 @@
     {/if}
 
     {#if !isBeltOrRing}
-        {#if massDisplay}
-                        <div class="detail-item">
+        {#if massKgShown !== null}
+                        <div class="detail-item g-bulk">
                             <span class="label">Mass</span>
-                            <span class="value">{massDisplay}</span>
+                            <span class="value"><UnitValue quantity="mass" bodyType={ubt} value={massKgShown} /></span>
                         </div>
                     {/if}
                     
                     {#if luminosity !== null}
-                        <div class="detail-item">
+                        <div class="detail-item g-bulk">
                             <span class="label">Luminosity</span>
                             <span class="value">{luminosity.toExponential(2)} L☉</span>
                         </div>
                     {/if}
               
-                    {#if body.kind === 'body' && body.radiusKm}              <div class="detail-item">
+                    {#if body.kind === 'body' && body.radiusKm}              <div class="detail-item g-bulk">
                   <span class="label">Radius</span>
-                  <span class="value">{$fmt.km(body.radiusKm)}</span>
+                  <span class="value"><UnitValue quantity="radius" bodyType={ubt} value={body.radiusKm} /></span>
               </div>
           {/if}
 
                 {#if circumferenceKm && !isStar}
-                    <div class="detail-item">
+                    <div class="detail-item g-bulk">
                         <span class="label">Circumference</span>
-                        <span class="value">{$fmt.km(circumferenceKm)}</span>
+                        <span class="value"><UnitValue quantity="radius" bodyType={ubt} value={circumferenceKm} /></span>
                     </div>
                 {/if}
                 {#if surfaceGravityG !== null && !isStar}
-                    <div class="detail-item">
+                    <div class="detail-item g-bulk">
                         <span class="label">Surface Gravity</span>
                         <span class="value">{surfaceGravityG.toFixed(2)} g</span>                    </div>
                 {/if}
                 {#if densityRelative !== null && !isStar}
-                    <div class="detail-item">
+                    <div class="detail-item g-bulk">
                         <span class="label">Density (rel. to Earth)</span>
                         <span class="value">{densityRelative.toFixed(2)}</span>
                     </div>
                 {/if}
                 {#if bodyGasDominated && !isStar}
-                    <div class="detail-item" title="Insolation puffs a gas giant's envelope: higher inflation → larger radius, lower density. Derived from the equilibrium temperature unless the GM overrides it.">
+                    <div class="detail-item g-bulk" title="Insolation puffs a gas giant's envelope: higher inflation → larger radius, lower density. Derived from the equilibrium temperature unless the GM overrides it.">
                         <span class="label">Thermal inflation</span>
                         <span class="value">×{bodyInflation.toFixed(2)}{#if bodyInflation > 1.05} · puffy{/if}{#if cbody?.overrides?.gasThermalInflation !== undefined} <span class="ovr-badge">override</span>{/if}</span>
                     </div>
                 {/if}
           {#if body.kind === 'body' && body.axial_tilt_deg}
-              <div class="detail-item">
+              <div class="detail-item g-bulk">
                   <span class="label">Axial Tilt</span>
                   <span class="value">{body.axial_tilt_deg.toFixed(1)}°</span>
               </div>
           {/if}
 
           {#if body.kind === 'body' && body.rotation_period_hours}
-              <div class="detail-item">
+              <div class="detail-item g-bulk">
                   <span class="label">Day Length</span>
                   <span class="value">{body.rotation_period_hours.toFixed(1)} hours</span>
               </div>
           {/if}
     {/if}
 
-      {#if orbitalDistanceDisplay}
-          <div class="detail-item" title={orbitalDistanceTooltip}>
+      {#if orbitalDistanceKm !== null}
+          <div class="detail-item g-orbit" title={orbitalDistanceTooltip}>
               <span class="label">Orbit (from {orbitHostLabel})</span>
-              <span class="value">{orbitalDistanceDisplay}</span>
+              <span class="value"><UnitValue quantity="orbit" bodyType={ubt} value={orbitalDistanceKm} /></span>
           </div>
       {/if}
 
       {#if body.kind === 'body' && (calculatedPeriodDays || body.orbital_period_days) && !isBeltOrRing}
-          <div class="detail-item">
+          <div class="detail-item g-orbit">
               <span class="label">Orbital Period</span>
               <span class="value">{(calculatedPeriodDays || body.orbital_period_days).toFixed(1)} days</span>
           </div>
       {/if}
 
       {#if body.kind === 'body' && body.orbit?.elements.e}
-          <div class="detail-item">
+          <div class="detail-item g-orbit">
               <span class="label">Orbital Eccentricity</span>
               <span class="value">{body.orbit.elements.e.toFixed(3)}</span>
           </div>
       {/if}
 
       {#if body.kind === 'body' && body.orbit && orbitalStabilityLabel}
-          <div class="detail-item" title={orbitalStabilityDetails || ''}>
+          <div class="detail-item g-orbit" title={orbitalStabilityDetails || ''}>
               <span class="label">Orbital Stability</span>
               <span class="value">{orbitalStabilityLabel}</span>
           </div>
       {/if}
 
       {#if body.kind === 'body' && (body as any).resonanceNote}
-          <div class="detail-item" title={(body as any).resonanceNote}>
+          <div class="detail-item g-orbit" title={(body as any).resonanceNote}>
               <span class="label">Resonance</span>
               <span class="value">{(body.orbit?.resonance ? `${body.orbit.resonance.numerator}:${body.orbit.resonance.denominator}` : (body.tags?.some((t) => t.key === 'resonance/laplace') ? 'Laplace chain' : 'Mean-motion'))}</span>
           </div>
       {/if}
 
-      {#if isStar && body.temperatureK}
-          <div class="detail-item" title="{Math.round(body.temperatureK).toLocaleString()} K">
-              <span class="label">Surface Temperature</span>
-              <span class="value">{Math.round(body.temperatureK).toLocaleString()} K</span>
+      {#if eclipseText}
+          <div class="detail-item g-orbit" title="When this world's star is next hidden from it, and by how much — seen from where the shadow falls. Elements are held fixed (no nodal precession), so this is when they next line up rather than an ephemeris.">
+              <span class="label">Next Eclipse</span>
+              <span class="value">{eclipseText}</span>
           </div>
-      {:else if surfaceTempC !== null}
-          <div class="detail-item" title={tempTooltip}>
+      {/if}
+
+      {#if isStar && body.temperatureK}
+          <div class="detail-item g-climate" title="{Math.round(body.temperatureK).toLocaleString()} K">
+              <span class="label">Surface Temperature</span>
+              <span class="value"><UnitValue quantity="temperature" bodyType={ubt} value={body.temperatureK} /></span>
+          </div>
+      {:else if surfaceTempMeanK !== null}
+          <div class="detail-item g-climate" title={tempTooltip}>
               <span class="label">Avg. Surface Temp.</span>
-              <span class="value">{$fmt.tempC(surfaceTempC)}</span>
+              <span class="value"><UnitValue quantity="temperature" bodyType={ubt} value={surfaceTempMeanK} /></span>
               {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
                   {@const p = body.temperatureProfile}
-                  <div class="temp-total">Total: {$fmt.tempK(p.totalMinK)} to {$fmt.tempK(p.totalMaxK)}</div>
+                  <div class="temp-total">Total: <UnitValue quantity="temperature" bodyType={ubt} value={p.totalMinK} /> to <UnitValue quantity="temperature" bodyType={ubt} value={p.totalMaxK} /></div>
                   {#each p.components as c}
                       <div class="temp-comp" class:volcanic={c.source === 'tidal-hotspot'}>
                           <span class="tc-label">{c.label}</span>
-                          <span class="tc-range">{$fmt.tempK(c.lowK)} to {$fmt.tempK(c.highK)}</span>
+                          <span class="tc-range"><UnitValue quantity="temperature" bodyType={ubt} value={c.lowK} /> to <UnitValue quantity="temperature" bodyType={ubt} value={c.highK} /></span>
                       </div>
                   {/each}
               {/if}
           </div>
       {/if}
 
+      <!-- INTERNAL HEAT — the heat a world makes for ITSELF, listed apart from the starlight falling
+           on it. Worth its own block because for a giant it is the dominant term and has nothing to do
+           with the star (Jupiter puts out 1.67x what it receives), while for a rocky world it drives
+           the geology and contributes essentially nothing to the surface temperature — two different
+           stories that the old single tooltip flattened together. -->
+      {#if internalHeatSources.length}
+          <div class="detail-item g-climate" title="Heat the body generates itself, as opposed to the starlight it receives. Each figure is how much it raises the surface temperature.">
+              <span class="label">Internal Heat</span>
+              <span class="value">+{Math.round(internalHeatTotalK)} K</span>
+              {#each internalHeatSources as src}
+                  <div class="temp-comp">
+                      <span class="tc-label">{src.label}</span>
+                      <span class="tc-range">+{Math.round(src.k)} K</span>
+                  </div>
+              {/each}
+              {#if internalHeatNote}
+                  <div class="temp-comp"><span class="tc-label">{internalHeatNote}</span></div>
+              {/if}
+          </div>
+      {/if}
+
       {#if body.roleHint === 'star' && radiationLevel}
-          <div class="detail-item" title={stellarRadiationTooltip}>
+          <div class="detail-item g-hazard" title={radiationTooltip}>
               <span class="label">Radiation Level</span>
               <span class="value">{radiationLevel}</span>
           </div>
       {/if}
 
       {#if body.magneticField}
-          <div class="detail-item" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
+          <div class="detail-item g-hazard" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
               <span class="label">Magnetic Field</span>
               <span class="value">{formatGauss(body.magneticField.strengthGauss)} G</span>
           </div>
       {/if}
 
       {#if surfaceRadiationText && body.roleHint !== 'star'}
-          <div class="detail-item" title={surfaceRadiationTooltip}>
-              <span class="label">Surface Radiation</span>
+          <div class="detail-item g-hazard" title={surfaceRadiationTooltip}>
+              <span class="label">Radiation ({radiationPlace(body)})</span>
               <span class="value">{surfaceRadiationText} ({displayedSurfaceRadiation?.toFixed(2)})</span>
               {#if minSurfaceRadiation !== null && maxSurfaceRadiation !== null}
                   <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 2px;">
@@ -710,7 +761,7 @@
       {#if body.kind === 'body' && body.hydrosphere && body.hydrosphere.coverage > 0}
           {@const _hp = phaseAtP(body.hydrosphere.composition, (body.temperatureK ?? body.equilibriumTempK ?? 0), body.atmosphere?.pressure_bar, rulePack)}
           {@const _hphrase = _hp === 'liquid' ? '' : _hp === 'solid' ? ' (frozen)' : _hp === 'supercritical' ? ' (supercritical)' : ' (boiled off)'}
-          <div class="detail-item">
+          <div class="detail-item g-climate">
               <span class="label">Hydrosphere</span>
               <span class="value">{Math.round(body.hydrosphere.coverage * 100)}% {body.hydrosphere.composition}{_hphrase}</span>
           </div>
@@ -733,7 +784,10 @@
                   {#if body.biosphere.complexity}<span><strong>Complexity:</strong> {body.biosphere.complexity}</span>{/if}
                   {#if body.biosphere.biochemistry}<span><strong>Biochemistry:</strong> {body.biosphere.biochemistry}</span>{/if}
                   {#if body.biosphere.energy_source}<span><strong>Energy Source:</strong> {body.biosphere.energy_source}</span>{/if}
-                  {#if body.biosphere.morphologies?.length}<span><strong>Morphologies:</strong> {body.biosphere.morphologies.join(', ')}</span>{/if}
+                  <!-- Read through biosphereLayers, never the raw field. `morphologies` carries RECORDS
+                       now (a morphology plus its own land cover) and only carries bare strings on a
+                       campaign saved before that; joining it directly printed "[object Object]". -->
+                  {#if biosphereLayers(body.biosphere, rulePack).length}<span><strong>Morphologies:</strong> {biosphereLayers(body.biosphere, rulePack).map((l) => `${morphologyDef(l.morphology, rulePack)?.label ?? l.morphology} ${Math.round(l.coverage * 100)}%`).join(', ')}</span>{/if}
                   {#if body.biosphere.coverage != null}<span><strong>Coverage:</strong> {(body.biosphere.coverage * 100).toFixed(0)}%</span>{/if}
               </div>
           </div>
@@ -743,21 +797,21 @@
           <div class="detail-item orbital-zones">
               <span class="label">Orbital Zones</span>
               <div class="zone-details">
-                  <span><strong>Low Orbit:</strong> {$fmt.km(body.orbitalBoundaries.minLeoKm)} - {$fmt.km(body.orbitalBoundaries.leoMoeBoundaryKm)}</span>
+                  <span><strong>Low Orbit:</strong> <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.minLeoKm} /> - <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.leoMoeBoundaryKm} /></span>
 
                   {#if body.orbitalBoundaries.leoMoeBoundaryKm < body.orbitalBoundaries.meoHeoBoundaryKm}
-                    <span><strong>Mid Orbit:</strong> {$fmt.km(body.orbitalBoundaries.leoMoeBoundaryKm)} - {$fmt.km(body.orbitalBoundaries.meoHeoBoundaryKm)} {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
+                    <span><strong>Mid Orbit:</strong> <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.leoMoeBoundaryKm} /> - <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.meoHeoBoundaryKm} /> {#if body.orbitalBoundaries.isGeoFallback}(Galactic Standard){/if}</span>
                   {/if}
 
                   {#if body.orbitalBoundaries.geoStationaryKm && !body.orbitalBoundaries.isGeoFallback}
-                      <span><strong>Geostationary:</strong> {$fmt.km(body.orbitalBoundaries.geoStationaryKm)}</span>
+                      <span><strong>Geostationary:</strong> <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.geoStationaryKm} /></span>
                   {:else if !body.orbitalBoundaries.isGeoFallback && body.orbitalBoundaries.heoUpperBoundaryKm >= 1000}
                        <!-- Only show "Unstable" if it's not a micro-system (SOI >= 1000km) -->
                       <span><strong>Geostationary:</strong> Unstable</span>
                   {/if}
 
                   {#if body.orbitalBoundaries.meoHeoBoundaryKm < body.orbitalBoundaries.heoUpperBoundaryKm}
-                    <span><strong>High Orbit:</strong> {$fmt.km(body.orbitalBoundaries.meoHeoBoundaryKm)} - {$fmt.km(body.orbitalBoundaries.heoUpperBoundaryKm)}</span>
+                    <span><strong>High Orbit:</strong> <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.meoHeoBoundaryKm} /> - <UnitValue quantity="radius" bodyType={ubt} value={body.orbitalBoundaries.heoUpperBoundaryKm} /></span>
                   {/if}
               </div>
           </div>
@@ -767,23 +821,26 @@
           <div class="detail-item orbital-zones">
               <span class="label">Delta-V Budgets</span>
               <div class="budget-details">
+                  <!-- B37: `isGasGiant` alone left belts and rings printing the -1 sentinel as
+                       "-1.0 m/s". One predicate (orbits.ts ascentBudgetApplies) now answers whether a
+                       surface budget means anything here, and carries the reason when it does not. -->
                   {#if body.loDeltaVBudget_ms !== undefined}
-                      {#if isGasGiant}
-                          <div><span><strong>Surface to LO:</strong> N/A - No surface</span></div>
+                      {#if !ascentApplicability.applies}
+                          <div><span><strong>Surface to LO:</strong> N/A - {ascentApplicability.reason}</span></div>
                       {:else}
-                          <div><span><strong>Surface to LO:</strong> {$fmt.speedMs(body.loDeltaVBudget_ms, 1)}</span></div>
+                          <div><span><strong>Surface to LO:</strong> <UnitValue quantity="speed" bodyType={ubt} value={body.loDeltaVBudget_ms / 1000} /></span></div>
                       {/if}
                   {/if}
                   {#if body.propulsiveLandBudget_ms !== undefined}
-                       {#if isGasGiant}
-                          <div><span><strong>LO to Surface (Propulsive):</strong> N/A - No surface</span></div>
+                       {#if !ascentApplicability.applies}
+                          <div><span><strong>LO to Surface (Propulsive):</strong> N/A - {ascentApplicability.reason}</span></div>
                       {:else}
-                          <div><span><strong>LO to Surface (Propulsive):</strong> {$fmt.speedMs(body.propulsiveLandBudget_ms, 1)}</span></div>
+                          <div><span><strong>LO to Surface (Propulsive):</strong> <UnitValue quantity="speed" bodyType={ubt} value={body.propulsiveLandBudget_ms / 1000} /></span></div>
                       {/if}
                   {/if}
                   {#if body.aerobrakeLandBudget_ms !== undefined}
                       {#if body.aerobrakeLandBudget_ms !== -1}
-                          <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> {$fmt.speedMs(body.aerobrakeLandBudget_ms, 1)}</span></div>
+                          <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> <UnitValue quantity="speed" bodyType={ubt} value={body.aerobrakeLandBudget_ms / 1000} /></span></div>
                       {:else}
                           <div><span><strong>{isGasGiant ? 'Aerobrake / Fuel Scoop' : 'LO to Surface (Aerobrake)'}:</strong> N/A (No Atmosphere)</span></div>
                       {/if}
@@ -823,12 +880,19 @@
   .detail-item {
       display: flex;
       flex-direction: column;
-      background-color: #252525;
+      background-color: var(--bg-card, #252525);
       padding: 0.6em;
       border-radius: 4px;
       border-left: 3px solid var(--accent);
       cursor: default; /* So title attribute tooltips show up consistently */
   }
+  /* G34 phase 4: the left edge names the card's data FAMILY — related readings share a
+     colour (tokens.css --group-*), so the eye can gather them across the grid. */
+  .detail-item.g-bulk { border-left-color: var(--group-bulk); }
+  .detail-item.g-orbit { border-left-color: var(--group-orbit); }
+  .detail-item.g-climate { border-left-color: var(--group-climate); }
+  .detail-item.g-hazard { border-left-color: var(--group-hazard); }
+  .detail-item.g-infra { border-left-color: var(--group-infra); }
   .detail-item.overrides-callout {
       grid-column: 1 / -1;
       border-left-color: var(--accent, #ff5a1f);
@@ -848,7 +912,7 @@
   }
   .detail-item.traveller-data {
       grid-column: 1 / -1;
-      border-left-color: #ffa500;
+      border-left-color: var(--group-infra);
   }
   .traveller-sub {
       display: flex;
@@ -885,7 +949,7 @@
   }
   .detail-item.atmosphere {
     grid-column: 1 / -1;
-    border-left-color: #3b82f6;
+    border-left-color: var(--group-air);
   }
   .composition {
     margin-top: 0.5em;
@@ -919,7 +983,7 @@
 
   .detail-item.habitability, .detail-item.biosphere {
     grid-column: 1 / -1;
-    border-left-color: #10b981;
+    border-left-color: var(--group-life);
   }
   .habitability-tier {
     font-size: 0.9em;
@@ -936,7 +1000,7 @@
 
   .detail-item.orbital-zones {
     grid-column: 1 / -1;
-    border-left-color: #a855f7;
+    border-left-color: var(--group-infra);
   }
   .zone-details {
     display: flex;
@@ -947,7 +1011,7 @@
 
   .tags-list {
     grid-column: 1 / -1;
-    border-left-color: #888;
+    border-left-color: var(--text-faint); /* neutral: tags are their own colour system */
   }
 
   .tags-container {

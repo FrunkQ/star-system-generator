@@ -3,7 +3,7 @@
 //   const processed = systemProcessor.process(fixUpImportedSystem(result.system, pack), pack);
 //   const review = buildImportReview(processed, result);
 import { listSimulations, parseUbox } from './parse';
-import { convertUbox } from './convert';
+import { convertUbox, resolveCategory } from './convert';
 import { UboxError } from './types';
 import type { UboxImportOptions, UboxImportResult, UboxListing } from './types';
 
@@ -33,9 +33,10 @@ export function previewUbox(bytes: Uint8Array, selection?: number | string): Ubo
   for (const e of parsed.sim.Entities) {
     const name = (e.Name ?? '').trim();
     if (name === 'dummy') continue;
-    if (!e.Category) { particleCount++; continue; }
+    const category = resolveCategory(e);
+    if (!category) { particleCount++; continue; }
     if (typeof e.Mass !== 'number' || !(e.Mass > 0)) continue;
-    bodies.push({ name, mass: e.Mass, category: e.Category });
+    bodies.push({ name, mass: e.Mass, category });
   }
   bodies.sort((a, b) => b.mass - a.mass);
   return { simName: parsed.sim.Name ?? '', bodies, particleCount };

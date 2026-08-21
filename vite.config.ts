@@ -23,7 +23,9 @@ export default defineConfig({
 	// SvelteKit's Vite plugin doesn't add this condition for Vitest by default.
 	resolve: process.env.VITEST ? { conditions: ['browser'] } : undefined,
 	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}'],
+		// scripts/ is included for the starmap build kit's reproducibility test,
+		// which has to live next to the generator it guards (D4d).
+		include: ['src/**/*.{test,spec}.{js,ts}', 'scripts/**/*.{test,spec}.{js,mjs,ts}'],
 		globals: true,
 		environment: 'jsdom',
 		setupFiles: ['src/setup.ts'],

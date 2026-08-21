@@ -1,11 +1,29 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import { G } from '../constants';
 
+// DISSOLVING AN AUTO-BARYCENTRE MUST NOT ORPHAN WHAT POINTED AT IT.
+//
+// This used to re-parent a barycentre's two MEMBERS and then delete every auto-barycentre — which is
+// right until an auto-barycentre is somebody's PARENT. Then the child kept a `parentId` pointing at a
+// node that no longer existed, `pathToRoot` died there, and nothing downstream of it (distance to
+// star, temperature range, eclipses) could be answered at all. Nothing repairs it afterwards either:
+// `rebuildSystemHierarchy` only reverses links along one path from the heaviest body.
+//
+// Found shipped in `Uggi_(Traveller_Example)-System.json` (D9's guard, first run): its
+// "Hades-Cerebus Alpha Barycenter" points at another auto-barycentre that is not in the file, so
+// Cerebus Alpha is cut off from its star. Two distinct routes produced that shape and both are
+// closed below — the nested case, and the SKIPPED-BUT-DELETED case, where a malformed barycentre
+// took an early `continue` and was then deleted by the unconditional filter anyway, orphaning the
+// members it had just declined to re-parent.
 export function stripAutoBarycenters(system: System) {
   const nodesById = new Map(system.nodes.map(n => [n.id, n]));
   const autoBarys = system.nodes.filter(n => n.kind === 'barycenter' && n.tags?.some(t => t.key === 'barycenter/auto')) as Barycenter[];
-  
+  // Where each dissolved barycentre's children should land: its own parent. Resolved transitively
+  // below, so a chain of nested auto-barycentres collapses to the first surviving ancestor.
+  const dissolvedTo = new Map<string, string | null>();
+
   for (const bary of autoBarys) {
+    dissolvedTo.set(bary.id, bary.parentId ?? null);
     if (!bary.memberIds || bary.memberIds.length !== 2) continue;
     const m0 = nodesById.get(bary.memberIds[0]) as CelestialBody;
     const m1 = nodesById.get(bary.memberIds[1]) as CelestialBody;
@@ -33,6 +51,29 @@ export function stripAutoBarycenters(system: System) {
   }
 
   system.nodes = system.nodes.filter(n => !(n.kind === 'barycenter' && n.tags?.some(t => t.key === 'barycenter/auto')));
+
+  // Re-point anything still aimed at a dissolved barycentre — members whose re-parenting was skipped
+  // above, and nested barycentres, which were never members of anything. Resolved transitively with a
+  // guard, so a cycle cannot hang the load; an unresolvable chain lands at the root rather than at a
+  // node that is not there.
+  const survivor = (id: string | null | undefined): string | null => {
+    let cur = id ?? null, hops = 0;
+    while (cur != null && dissolvedTo.has(cur) && hops++ < 64) cur = dissolvedTo.get(cur) ?? null;
+    return cur != null && nodesById.has(cur) && !dissolvedTo.has(cur) ? cur : null;
+  };
+  for (const n of system.nodes) {
+    if (n.parentId != null && dissolvedTo.has(n.parentId)) {
+      n.parentId = survivor(n.parentId);
+      if ((n as CelestialBody).orbit) {
+        if (n.parentId == null) delete (n as CelestialBody).orbit;
+        else (n as CelestialBody).orbit!.hostId = n.parentId;
+      }
+    }
+    // A surviving barycentre must not keep a deleted member either.
+    if (n.kind === 'barycenter' && (n as Barycenter).memberIds) {
+      (n as Barycenter).memberIds = (n as Barycenter).memberIds.filter((m) => nodesById.has(m) && !dissolvedTo.has(m));
+    }
+  }
 }
 
 export function rebuildSystemHierarchy(system: System): System {

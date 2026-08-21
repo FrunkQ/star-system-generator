@@ -6,6 +6,11 @@
   import type { CelestialBody, RulePack, StarSystem } from '$lib/types';
   import { buildPhysicsTrace } from '$lib/physics/physicsTrace';
 
+  import SpectrumChart from '$lib/charts/SpectrumChart.svelte';
+  import ColourSwatch from '$lib/charts/ColourSwatch.svelte';
+  import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
+  import { absorptance, pigmentDef } from '$lib/physics/pigments';
+  import { foreground } from '$lib/ui/foreground';
   export let body: CelestialBody;
   export let system: StarSystem | null = null;
   // The cloud layer needs the gas data to show its working (which gases can condense, and where).
@@ -47,9 +52,40 @@
   $: inspectBands = cls?.candidates.find((c) => c.class === inspectClass)?.bands ?? cls?.bands ?? [];
   // Closeness → colour: green = solid fit, amber = marginal, red = barely inside the band.
   const fitColor = (f: number) => (f >= 0.85 ? '#7fd1a8' : f >= 0.5 ? '#d8c06a' : '#cc7777');
+
+  // THE PICTURES ON THE NEWTON PANEL. This surface claims to SHOW THE WORKING, and for a spectrum
+  // that claim is only met by a picture: "its sun is red AND its sky eats what is left" is a
+  // statement about the SHAPE of a curve, and no amount of prose carries a notch.
+  //
+  // The curves are REBUILT here rather than read off the body, and that is not a second authority —
+  // it is the same `deriveSurfaceSpectrum` the processor calls, on the same inputs, because only the
+  // scalars ride on the body (three 113-element arrays per body would bloat every save). Same
+  // function, same answer, computed on demand.
+  $: spectrumCurves = (() => {
+    const s0 = body?.surfaceSpectrum;
+    if (!s0) return null;
+    const r = deriveSurfaceSpectrum(body, {
+      starTempK: s0.starTempK, luminositySolar: 1, distanceAU: s0.distanceAU
+    }, rulePack);
+    if (!r) return null;
+    // The luminosity is not carried on the summary, so rescale to the total it recorded — the SHAPE
+    // is what a reader is here for, and the shape does not depend on the scale.
+    const k = r.summary.totalTopWm2 > 0 ? s0.totalTopWm2 / r.summary.totalTopWm2 : 1;
+    return { top: r.curves.topOfAtmosphere.map((v) => v * k), surface: r.curves.surface.map((v) => v * k) };
+  })();
+
+  // What the world's own pigment takes out of that light, on the same axis as the light — so the
+  // gap where the spectrum is strongest is visible rather than described.
+  $: pigmentAbsorbed = (() => {
+    const key = body?.vegetation?.pigment;
+    const def = key ? pigmentDef(key, rulePack) : undefined;
+    if (!def || !spectrumCurves) return null;
+    const abs = absorptance(def, 0);
+    return spectrumCurves.surface.map((v, i) => v * abs[i]);
+  })();
 </script>
 
-<div class="overlay" on:click|self={close} role="presentation">
+<div class="overlay" on:click|self={close} role="presentation" use:foreground>
   <div class="modal" role="dialog" aria-label="Physics working">
     <header>
       <div class="title">
@@ -138,6 +174,43 @@
             </div>
           </div>
           {#each layer.notes as note}<p class="note">{note}</p>{/each}
+
+          <!-- A picture where a picture is the only thing that carries the point. -->
+          {#if layer.id === 'surface-light' && spectrumCurves}
+            <SpectrumChart
+              surface={spectrumCurves.surface}
+              topOfAtmosphere={spectrumCurves.top}
+              peakNm={body.surfaceSpectrum?.peakSurfaceNm}
+              peakLabel="ground peak"
+              surfaceLabel={`reaching the ${body.surfaceSpectrum?.level}`}
+              yLabel="W&#183;m&#8315;&#178;&#183;nm&#8315;&#185;" />
+            <p class="note">The gap between the two lines IS the sky. The notches in the lower one are the
+              bands this world's gases ate.</p>
+          {/if}
+
+          {#if layer.id === 'biosphere' && body.vegetation}
+            {#if spectrumCurves && pigmentAbsorbed}
+              <SpectrumChart
+                surface={spectrumCurves.surface}
+                absorbed={pigmentAbsorbed}
+                absorbedLabel={`what ${body.vegetation.pigmentLabel} takes`}
+                surfaceLabel="light at the ground"
+                topOfAtmosphere={null}
+                yLabel="W&#183;m&#8315;&#178;&#183;nm&#8315;&#185;" />
+            {/if}
+            <div class="pig-row">
+              {#each body.vegetation.ranked.filter((r) => r.viable) as r}
+                <ColourSwatch hex={r.reflectedUnderStarHex} label={r.label}
+                  sub={`${Math.round(r.drawWeight * 100)}% of the draw`} size={20} />
+              {/each}
+            </div>
+            <div class="pig-row layers">
+              {#each body.vegetation.layers.filter((l) => l.colorHex) as l}
+                <ColourSwatch hex={l.colorHex} label={l.label}
+                  sub={l.pigmentLabel ?? 'its own colour'} size={20} />
+              {/each}
+            </div>
+          {/if}
         </section>
       {/each}
 
@@ -183,6 +256,8 @@
   .f-label { color: var(--text-muted, #cfcfcf); }
   .f-value { color: var(--text, #e8e8e8); font-variant-numeric: tabular-nums; text-align: right; }
   .f-value.out { color: #7fd1a8; }
+  .pig-row { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 4px; }
+  .pig-row.layers { border-top: 1px solid var(--border, #2a2d36); padding-top: 8px; }
   .note { margin: 8px 0 0; font-size: 0.78rem; color: var(--text-faint, #8a8a8a); line-height: 1.4; }
   .borderline { font-size: 0.72rem; font-weight: 700; color: #fff; background: #d8922f; border-radius: 4px; padding: 1px 7px; margin-left: 8px; }
   .cls-now { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }

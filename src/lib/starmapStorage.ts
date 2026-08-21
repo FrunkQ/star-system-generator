@@ -1,4 +1,5 @@
 import type { Starmap } from './types';
+import { stripUndoHistory } from './undo/historyKey';
 
 const LEGACY_STARMAP_KEY = 'stargen_saved_starmap';
 const DB_NAME = 'stargen_storage';
@@ -110,13 +111,58 @@ export async function saveStarmap(starmap: Starmap): Promise<void> {
     await idbSet(IDB_STARMAP_KEY, starmap);
   } catch (error) {
     console.warn('IndexedDB starmap save failed, using localStorage fallback.', error);
-    window.localStorage.setItem(LEGACY_STARMAP_KEY, JSON.stringify(starmap));
+    // THE FALLBACK HAS A ~5 MB CEILING AND THE UNDO HISTORY IS THE MOST EXPENDABLE THING IN THE
+    // CAMPAIGN, so it does not travel this road (G28). This path only runs when IndexedDB is
+    // unavailable - the emergency save must not be the thing that fails because a GM has twenty
+    // undo steps banked, and up to 4 MB of them would leave almost nothing for the campaign itself.
+    const lean = { ...starmap };
+    stripUndoHistory(lean);
+    window.localStorage.setItem(LEGACY_STARMAP_KEY, JSON.stringify(lean));
   }
 }
 
 export async function hasSavedStarmap(): Promise<boolean> {
   const saved = await loadSavedStarmap();
   return saved !== null;
+}
+
+// --- WS8: the pre-upgrade snapshot ---
+// Browser storage holds exactly ONE campaign, under one key. So accepting a base-map upgrade would
+// overwrite the only in-browser copy of the campaign it replaced — and the upgrade screen promises the GM
+// can go straight back to it. This keeps that promise: the original is copied to its own key first, and
+// stays there until the GM restores it or upgrades again. Exporting a file is still the only real backup;
+// this is a single, specific undo for a single, specific action.
+const IDB_PRE_UPGRADE_KEY = 'pre_upgrade_starmap';
+
+export async function savePreUpgradeStarmap(starmap: Starmap): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    await idbSet(IDB_PRE_UPGRADE_KEY, starmap);
+    return true;
+  } catch (error) {
+    // NOT silent: the caller must be able to tell the GM the undo is unavailable rather than promise it.
+    console.warn('Could not store the pre-upgrade snapshot.', error);
+    return false;
+  }
+}
+
+export async function loadPreUpgradeStarmap(): Promise<Starmap | null> {
+  if (typeof window === 'undefined') return null;
+  try { return await idbGet<Starmap>(IDB_PRE_UPGRADE_KEY); } catch { return null; }
+}
+
+export async function clearPreUpgradeStarmap(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(IDB_PRE_UPGRADE_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } catch { /* nothing to clear, or storage is gone — either way there is no snapshot now */ }
 }
 
 // Wipe EVERYTHING this app has stored in the browser — the IndexedDB starmap DB, all localStorage

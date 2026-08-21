@@ -16,17 +16,20 @@ describe('unified player presets', () => {
     }
   });
 
-  it('Projection is a normal card: GM-driven, non-interactive, overhead — not a separate category', () => {
+  // The two properties that make Projection a projection are DRIVER properties, not camera ones. It
+  // was also asserted `lockOverhead` here, and that stopped being true when the owner rebuilt the
+  // preset on the tilted 3D table (2026-08-17) — overhead was one way to make a table plate, never
+  // the definition. The camera behaviour it was really guarding is tested below, on its own fixture.
+  it('Projection is a normal card: GM-driven and non-interactive — not a separate category', () => {
     const proj = BUILTIN_PRESETS.find((p) => p.id === 'projection')!;
     expect(proj.followGM).toBe(true);
     expect(proj.interactive).toBe(false);
-    expect(proj.lockOverhead).toBe(true);
   });
 
   it('The Guide reproduces DON\'T PANIC on its cover', () => {
     const guide = BUILTIN_PRESETS.find((p) => p.id === 'guide')!;
     expect(guide.cover.enabled).toBe(true);
-    expect(guide.cover.title).toBe("DON'T PANIC");
+    expect(guide.cover.title).toMatch(/^DON'T PANIC/);
   });
 
   it('CRT built-in uses the single crt filter with a phosphor colour param', () => {
@@ -35,11 +38,14 @@ describe('unified player presets', () => {
     expect(crt.filterParams.phosphor).toBe(CRT_GREEN);
   });
 
+  // Tested on its OWN fixture rather than by borrowing whichever shipped preset happens to set the
+  // flag. It used to read `projection`, which tied a rule about holoStyleOf to a preset the owner is
+  // free to retune — and did, at which point a true statement about the code failed.
   it('lockOverhead forces the holo tilt to top-down', () => {
-    const proj = BUILTIN_PRESETS.find((p) => p.id === 'projection')!;
-    expect(holoStyleOf(proj).angleDeg).toBe(0);
-    const holo = BUILTIN_PRESETS.find((p) => p.id === 'holo')!;
-    expect(holoStyleOf(holo).angleDeg).toBe(holo.angleDeg);
+    const tilted = { ...DEFAULT_PRESET, angleDeg: 64, lockOverhead: false };
+    const pinned = { ...DEFAULT_PRESET, angleDeg: 64, lockOverhead: true };
+    expect(holoStyleOf(pinned).angleDeg).toBe(0);
+    expect(holoStyleOf(tilted).angleDeg).toBe(64);
   });
 
   it('migrates old green/amber holo presets onto the consolidated crt+phosphor', () => {

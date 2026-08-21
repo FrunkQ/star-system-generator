@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack, LiquidDef, LiquidFamily } from '$lib/types';
   import { LIQUIDS } from '$lib/constants';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -67,7 +68,7 @@
 </script>
 
 {#if showModal}
-<div class="modal-backdrop" on:click={() => dispatch('close')}>
+<div class="modal-backdrop" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <div class="header">
         <h2>Edit Liquids</h2>
@@ -132,6 +133,18 @@
                             <input type="number" step="0.05" min="0" max="1"
                                    value={liq.cloudOpacity ?? 0.5}
                                    on:input={(e) => { liq.cloudOpacity = Math.max(0, Math.min(1, +e.currentTarget.value)); liquids = [...liquids]; }} />
+                        </div>
+                        <div class="field">
+                            <label title="How much starlight a CLOUD DECK of this substance sends back out — its reflectivity, which is not the same thing as its opacity. This is what makes a cloudy world COLD: it feeds the body's Bond albedo and through that its equilibrium temperature. Venus's sulphuric acid returns three quarters of the light that reaches it; a methane haze returns barely a quarter.">Cloud Albedo</label>
+                            <input type="number" step="0.05" min="0" max="1"
+                                   value={liq.cloudAlbedo ?? 0.45}
+                                   on:input={(e) => { liq.cloudAlbedo = Math.max(0, Math.min(1, +e.currentTarget.value)); liquids = [...liquids]; }} />
+                        </div>
+                        <div class="field">
+                            <label title="How far from WHITE a cloud deck of this substance stays, in 0-255 colour terms. Droplets that only scatter light go white however dark the bulk liquid is -- that is water, and 60 is its number. A suspension whose particles absorb keeps its colour however finely divided it is: Jupiter's belts are genuinely brown and a martian dust storm genuinely ochre. Raise it for a pigmented condensate; leave it for a clean one.">Cloud Tint Distance</label>
+                            <input type="number" step="10" min="0" max="255"
+                                   value={liq.cloudTintDistance ?? 60}
+                                   on:input={(e) => { liq.cloudTintDistance = Math.max(0, Math.min(255, +e.currentTarget.value)); liquids = [...liquids]; }} />
                         </div>
                         <div class="field">
                             <label title={biosolventHelp}>Biosolvent</label>

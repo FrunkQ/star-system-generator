@@ -1,4 +1,5 @@
 import type { CelestialBody, Barycenter, System } from '../types';
+import { stripForReprocess } from '../tags/tagLifecycle';
 
 type OrbitalNode = CelestialBody;
 
@@ -7,6 +8,19 @@ interface StabilityAssessment {
   severity: 0 | 1 | 2 | 3;
   reasons: string[];
   fate?: Fate;
+  // Which node the FATE belongs to, when it belongs to only one of a pair (inbox B19). An
+  // ejection is asymmetric: the light body is scattered and the heavy one is what scatters it, so
+  // "Mars is flung out by a 16 km asteroid" is the wrong half of a correct verdict. A COLLISION
+  // between comparable masses is symmetric and leaves this unset, so both members keep it.
+  // Severity and reasons are never directional -- both bodies really are in a risky pair.
+  fateNodeId?: string;
+  // WHICH DRIVER PRODUCED THE FATE (inbox B24). `reasons` is a flat list collected from every test
+  // that looked at this body, and the most severe one owns the fate — so a body could read "...a
+  // locked mean-motion resonance keeps their conjunctions away from the crossing point" and then
+  // "Predicted outcome: flung out", with nothing saying those came from different mechanisms. The
+  // orbit-crossing test had spared the pair; the host-binding test had failed it. Both were right.
+  // Carrying the fate's own reason lets the verdict be printed next to its cause.
+  fateReason?: string;
 }
 
 const FATE_TEXT: Record<Fate, string> = {
@@ -57,13 +71,18 @@ function severityDescription(severity: number): string | null {
   return null;
 }
 
-function mergeAssessment(target: StabilityAssessment, incoming: StabilityAssessment) {
+function mergeAssessment(target: StabilityAssessment, incoming: StabilityAssessment, targetId?: string) {
+  // A directional fate only lands on the node it names (B19).
+  const fateApplies = incoming.fate && (!incoming.fateNodeId || !targetId || incoming.fateNodeId === targetId);
   // The dominant (most-severe) driver owns the predicted fate.
+  // The fate travels with the reason that produced it (B24), so the verdict can be printed beside
+  // its own cause instead of beside whichever other test happened to speak last.
   if (incoming.severity > target.severity) {
     target.severity = incoming.severity as 0 | 1 | 2 | 3;
-    if (incoming.fate) target.fate = incoming.fate;
-  } else if (!target.fate && incoming.fate) {
+    if (fateApplies) { target.fate = incoming.fate; target.fateReason = incoming.reasons[0]; }
+  } else if (!target.fate && fateApplies) {
     target.fate = incoming.fate;
+    target.fateReason = incoming.reasons[0];
   }
   for (const reason of incoming.reasons) {
     if (!target.reasons.includes(reason)) target.reasons.push(reason);
@@ -115,15 +134,17 @@ function assessPairStability(
     const protectedPair = isResonanceProtected(inner) || isResonanceProtected(outer);
     if (protectedPair) {
       adjustedSeverity = 1;
-      out.reasons.push(`${inner.name} and ${outer.name} cross orbits — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable`);
+      out.reasons.push(`${inner.name} and ${outer.name} cross orbits — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so this crossing on its own is survivable`);
     } else {
       if (massRatio < 1e-3) {
         out.reasons.push(`Minor-body crossing in pair ${inner.name}/${outer.name}`);
       } else {
         out.reasons.push(`Orbit overlap in pair ${inner.name}/${outer.name}`);
       }
-      // Comparable masses collide; a lightweight crosser is scattered out.
+      // Comparable masses collide; a lightweight crosser is scattered out. A collision is mutual,
+      // an ejection is not -- name the body that actually gets thrown (B19).
       out.fate = massRatio >= 1e-2 ? 'collision' : 'eject';
+      if (out.fate === 'eject') out.fateNodeId = (m1 <= m2 ? inner : outer).id;
     }
     if (adjustedSeverity > out.severity) out.severity = adjustedSeverity;
   }
@@ -143,7 +164,12 @@ function assessPairStability(
       const delta = (a2 - a1) / mutualHill;
       // Packed systems shed their lighter member by scattering it out (Hill-spacing instability →
       // ejection), unless a resonance is holding the pair.
-      if (delta < 5.5 && !isResonanceProtected(inner) && !isResonanceProtected(outer)) out.fate = out.fate ?? 'eject';
+      if (delta < 5.5 && !isResonanceProtected(inner) && !isResonanceProtected(outer)) {
+        if (!out.fate) {
+          out.fate = 'eject';
+          out.fateNodeId = (m1 <= m2 ? inner : outer).id; // it is the lighter member that is shed
+        }
+      }
       if (delta < 3.5) {
         if (out.severity < 3) out.severity = 3;
         out.reasons.push(`Critical Hill spacing (Delta=${delta.toFixed(2)})`);
@@ -250,7 +276,7 @@ function assessBinaryPairStability(
           // crossing is metastable (marginal), not a collision/ejection sentence.
           if (binaryProtected || isResonanceProtected(sib)) {
             out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
-            out.reasons.push(`its orbit crosses ${sib.name}'s — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so it stays stable`);
+            out.reasons.push(`its orbit crosses ${sib.name}'s — which on its own would be unstable — but a locked mean-motion resonance keeps their conjunctions away from the crossing point, so this crossing on its own is survivable`);
             continue;
           }
           if (massRatio >= 0.1) {
@@ -378,7 +404,7 @@ export function annotateGravitationalStability(system: System): System {
   // Clear existing stability tags/fields each pass.
   for (const node of system.nodes) {
     if (!('tags' in node)) continue;
-    node.tags = (node.tags || []).filter((t) => !t.key.startsWith('stability/') && !t.key.startsWith('fate/'));
+    node.tags = stripForReprocess(node.tags, ['stability/', 'fate/']);
     delete (node as any).orbitalStability;
     delete (node as any).orbitalStabilityDetails;
   }
@@ -442,8 +468,8 @@ export function annotateGravitationalStability(system: System): System {
         }
         if (pairAssessment.severity === 0) continue;
 
-        mergeAssessment(assessments.get(inner.id)!, pairAssessment);
-        mergeAssessment(assessments.get(outer.id)!, pairAssessment);
+        mergeAssessment(assessments.get(inner.id)!, pairAssessment, inner.id);
+        mergeAssessment(assessments.get(outer.id)!, pairAssessment, outer.id);
       }
     }
 
@@ -453,7 +479,17 @@ export function annotateGravitationalStability(system: System): System {
       const label = severityLabel(assessment.severity);
       const base = severityDescription(assessment.severity);
       if (!label || !base) continue;
-      const fateText = assessment.fate ? ` ${FATE_TEXT[assessment.fate]}` : '';
+      // B24: name the driver that produced the outcome. `reasons` is everything every test found,
+      // and the most severe test owns the fate — so without this the verdict could sit next to a
+      // reason from a DIFFERENT mechanism and read as a contradiction ("...a locked resonance keeps
+      // their conjunctions away from the crossing point" followed by "flung out", where the crossing
+      // test had spared the pair and the host-binding test had failed it). Only attributed when
+      // there is more than one driver; with a single reason the cause is already unambiguous.
+      // Some reasons already end in a full stop and some do not, so trim before adding one.
+      const cause = assessment.fateReason && assessment.reasons.length > 1
+        ? ` Driven by: ${assessment.fateReason.replace(/\.\s*$/, '')}.`
+        : '';
+      const fateText = assessment.fate ? ` ${FATE_TEXT[assessment.fate]}${cause}` : '';
       (node as any).orbitalStability = label;
       (node as any).orbitalStabilityDetails =
         (assessment.reasons.length > 0

@@ -8,7 +8,10 @@
       "name": "Hydrazine/Hypergolics",
       "density_kg_per_m3": 1021,
       "description": "Toxic, shelf-stable monopropellants. Standard for RCS and legacy maneuvering.",
-      "refuel_tags": ["resource/volatiles", "frontier/fuel-depot"],
+      "refuel_tags": [
+        "resource/volatiles",
+        "frontier/fuel-depot"
+      ],
       "availability": "common"
     },
     {
@@ -16,7 +19,11 @@
       "name": "Methalox (CH4/LOX)",
       "density_kg_per_m3": 830,
       "description": "Liquid Methane/Oxygen. High-performance standard for surface-to-orbit rocketry.",
-      "refuel_tags": ["resource/hydrocarbons", "resource/oxidizer", "frontier/fuel-depot"],
+      "refuel_tags": [
+        "resource/hydrocarbons",
+        "resource/oxidizer",
+        "frontier/fuel-depot"
+      ],
       "availability": "common"
     },
     {
@@ -24,7 +31,12 @@
       "name": "Liquid Hydrogen (LH2)",
       "density_kg_per_m3": 71,
       "description": "Pure cryogenic hydrogen. Used as reaction mass for NTR and some Fusion drives.",
-      "refuel_tags": ["resource/water-ice", "frontier/ice-mining", "frontier/gas-skimming", "frontier/fuel-depot"],
+      "refuel_tags": [
+        "resource/water-ice",
+        "frontier/ice-mining",
+        "frontier/gas-skimming",
+        "frontier/fuel-depot"
+      ],
       "availability": "common"
     },
     {
@@ -32,7 +44,11 @@
       "name": "Water (Remass)",
       "density_kg_per_m3": 1000,
       "description": "Dense, abundant reaction mass for high-efficiency fusion torches.",
-      "refuel_tags": ["resource/water-ice", "frontier/ice-mining", "frontier/fuel-depot"],
+      "refuel_tags": [
+        "resource/water-ice",
+        "frontier/ice-mining",
+        "frontier/fuel-depot"
+      ],
       "availability": "common"
     },
     {
@@ -40,7 +56,10 @@
       "name": "Xenon Gas",
       "density_kg_per_m3": 3000,
       "description": "Noble gas for Gridded Ion and Hall Effect thrusters.",
-      "refuel_tags": ["resource/noble-gases", "frontier/gas-skimming"],
+      "refuel_tags": [
+        "resource/noble-gases",
+        "frontier/gas-skimming"
+      ],
       "availability": "common"
     },
     {
@@ -48,7 +67,10 @@
       "name": "Liquid Argon",
       "density_kg_per_m3": 1400,
       "description": "Inexpensive noble gas for electric propulsion.",
-      "refuel_tags": ["resource/noble-gases", "frontier/gas-skimming"],
+      "refuel_tags": [
+        "resource/noble-gases",
+        "frontier/gas-skimming"
+      ],
       "availability": "common"
     },
     {
@@ -56,7 +78,9 @@
       "name": "Enriched Uranium",
       "density_kg_per_m3": 19000,
       "description": "Dense fissile material for reactor cores and solid-core rockets.",
-      "refuel_tags": ["resource/fissiles"],
+      "refuel_tags": [
+        "resource/fissiles"
+      ],
       "availability": "common"
     },
     {
@@ -64,7 +88,9 @@
       "name": "Nuclear Pulse Units",
       "density_kg_per_m3": 1800,
       "description": "Shaped nuclear charges for Orion-style pulse propulsion.",
-      "refuel_tags": ["resource/fissiles"],
+      "refuel_tags": [
+        "resource/fissiles"
+      ],
       "availability": "manufactured"
     },
     {
@@ -72,7 +98,10 @@
       "name": "Deuterium-Tritium Ice",
       "density_kg_per_m3": 225,
       "description": "Cryogenic fusion fuel. High energy density.",
-      "refuel_tags": ["resource/deuterium", "frontier/gas-skimming"],
+      "refuel_tags": [
+        "resource/deuterium",
+        "frontier/gas-skimming"
+      ],
       "availability": "common"
     },
     {
@@ -80,7 +109,10 @@
       "name": "Helium-3",
       "density_kg_per_m3": 59,
       "description": "Rare isotope for clean aneutronic fusion.",
-      "refuel_tags": ["resource/helium-3", "frontier/gas-skimming"],
+      "refuel_tags": [
+        "resource/helium-3",
+        "frontier/gas-skimming"
+      ],
       "availability": "common"
     },
     {
@@ -88,7 +120,9 @@
       "name": "Metallic Hydrogen",
       "density_kg_per_m3": 700,
       "description": "Metastable hydrogen with incredible energy density.",
-      "refuel_tags": ["resource/water-ice"],
+      "refuel_tags": [
+        "resource/water-ice"
+      ],
       "availability": "manufactured"
     },
     {
@@ -96,7 +130,9 @@
       "name": "Antihydrogen (Trap)",
       "density_kg_per_m3": 100,
       "description": "Antimatter suspended in magnetic traps.",
-      "refuel_tags": ["resource/antimatter"],
+      "refuel_tags": [
+        "resource/antimatter"
+      ],
       "availability": "exotic"
     },
     {
@@ -104,7 +140,20 @@
       "name": "Exotic Matter",
       "density_kg_per_m3": 1000,
       "description": "Matter with negative energy density, required to stabilize warp bubbles.",
-      "refuel_tags": ["resource/exotic-matter"],
+      "refuel_tags": [
+        "resource/exotic-matter"
+      ],
+      "availability": "exotic"
+    },
+    {
+      "id": "fuel-astrophage",
+      "name": "Astrophage",
+      "density_kg_per_m3": 1000,
+      "description": "A living microbe that stores energy as mass and releases it as light. Energy density is c-squared, 9.0e16 J/kg -- a million times a fusion fuel and about the same as antimatter, but it breeds, it is stable at room temperature, and it migrates to a star of its own accord. One cubic metre is a tonne of fuel and roughly ten days of thrust.",
+      "refuel_tags": [
+        "resource/astrophage",
+        "frontier/petrova-line"
+      ],
       "availability": "exotic"
     }
   ]

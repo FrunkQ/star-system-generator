@@ -18,6 +18,8 @@
   export let system: System;
   export let parentBody: CelestialBody | null = null;
   export let rootStar: CelestialBody | null = null;
+  // G8: forwarded to the live stats block below so its orbital rows can carry "Next eclipse".
+  export let nowMs: number | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -93,7 +95,7 @@
     {:else if selectedTab === 'Orbit'}
       <BodyOrbitTab {body} {parentBody} {system} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Temp'}
-      <BodyTemperatureTab {body} {rulePack} {rootStar} {parentBody} nodes={system.nodes} on:update={handleUpdate} />
+      <BodyTemperatureTab {body} {rulePack} {rootStar} {parentBody} nodes={system.nodes} systemAgeGyr={(system as any).age_Gyr ?? 4.6} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}
       <BodyAtmosphereTab {body} {rulePack} {system} on:update={handleUpdate} />
     {:else if selectedTab === 'Hydro'}
@@ -120,7 +122,7 @@
   </div>
 
   <div class="live-stats">
-      <BodyTechnicalDetails {body} {rulePack} {parentBody} {rootStar} />
+      <BodyTechnicalDetails {body} {rulePack} {parentBody} {rootStar} {nowMs} />
   </div>
 </div>
 

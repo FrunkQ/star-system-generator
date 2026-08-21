@@ -1003,3 +1003,226 @@ griefing by sid-holders (F6, accepted trust model), and platform-cost abuse
 (F3). The two pre-existing items (F3, F4) are worth fixing on the SSE2 beta
 regardless of the VTT programme; everything else is already folded into the
 build specs above.
+
+## 14. Build status and the reuse boundary (2026-08-17)
+
+**Shipped.** SSE Phases 1-2 (v2.1.722-beta: stable readable `broadcastId`,
+REQUEST_HELLO/ANNOUNCE/REQUEST_REMOTE/SYNC_HEARTBEAT, guest re-dial,
+`?embed=1` + setPreset/ping, `/bridge`, origin allowlist) and the Mappadux
+StarMap map kind (Mappadux v2.18.0 — spec + verified build status in
+`dynamic-map-renderer-v2/docs/starmap-map-kind-design.md` section 11).
+Verified together in one browser, cross-origin (Mappadux :5180 framing SSE
+:5199): discovery, mint, live GM preview, live PiP player view, warm
+StarMap→handout→StarMap on the SAME iframe, filter precedence to SSE, both
+failure banners, and cold reconnect on page load.
+
+**The one shared piece of viewer code is SSE's own `/catalogue`, loaded at
+runtime.** No host copies it. A Mappadux/Foundry/Owlbear player window frames
+the live SSE app from the SSE origin the moment it is needed, so a change to
+SSE's player view reaches every host on next load and there is exactly one
+viewer codebase to maintain. Hosts own the WINDOW; SSE owns the CONTENT and
+its data channel. (Owner's requirement, restated because it is the load-
+bearing decision: players never hop windows — the host's normal player
+surface shows the SSE view, hides it for a handout, and shows the still-
+connected frame again.)
+
+**Reuse boundary — what each future host copies vs writes:**
+
+| Piece | Where it lives | Foundry / Owlbear |
+|---|---|---|
+| Discovery frame + protocol, ANNOUNCE shape, embed URL + setPreset/ping, heartbeat, allowlist | SSE origin | reuse as-is (add the host origin to `embedOrigins.ts`) |
+| `Sse2Bridge` client (hello / announce / ensureRemote / playerViewUrl / version gate) | `dynamic-map-renderer-v2/src/gm/Sse2Bridge.ts`, no Mappadux imports | copy verbatim |
+| Connection-aware dialog states (searching / found / not found / needs update) | `StarMapDialog.ts` | port the STATES; UI is host-native |
+| Warm full-bleed iframe + preset switch + fullscreen rebuild | `StarMapLayer.ts` | Foundry: AppV2 window; Owlbear: fullscreen modal — one line each |
+| starmap_show / full_state wire, Renderer pause, filter and tool gates | Mappadux only | not applicable |
+| Open the SSE tab for the GM, ensure-remote, auto-resume on announce | Mappadux only (we own the browser) | becomes an INSTRUCTION to the user |
+
+**Rule adopted (owner, 2026-08-17): automate when we own the surface,
+instruct the user when we do not.** Never rely on loading a starmap by URL
+(no such path — SSE stores one map; foreign files cannot be summoned). "Load
+starmap X in SSE" is a named instruction in every host; in Mappadux it is a
+banner that resolves itself when SSE announces the right map. A future
+`REQUEST_LOAD` (SSE loads X only if X is its saved slot or a bundled example)
+is the one automation still open — owner call whether it is worth it.
+
+**Filter precedence (owner's gotcha, settled): SSE wins.** Both apps carry
+the identical filter package; over a StarMap the host forces its own filter
+to `none` at the single broadcast seam and disables the controls, so the
+preset's GLSL is the only filter. Saved host filter state is untouched.
+
+**Network hardening (section 11) — status:** SHIPPED today: heartbeat
+liveness (LIVE→OFFLINE within ~15 s), guest re-dial on host loss and on
+"nobody hosting yet". STILL OPEN, in priority order: Phase 0 real WAN test
+(cellular vs broadband, both apps); explicit `iceServers` override delivered
+pre-connection (share URL param, StarMapConfig, module settings); connection-
+failed in-fiction error state; banked self-host escape hatch. These stay in
+section 11 as the single list.
+
+## 15. Network layer: ONE system across both apps (2026-08-17)
+
+**Two messages were added on 2026-08-19 and are listed in the table below; both are network-layer
+and therefore both belong in Mappadux too.**
+
+`SYNC_GM_LEVEL` exists because **`SYNC_FOCUS` carries a BODY id and so can only ever point INTO a
+system.** There was no message meaning *I have gone back to the map*, so a following player stayed
+in whichever system the GM last opened — the GM would drop back to the starmap and the player would
+not (A59, owner-reported). Selecting a different system still flipped correctly, which is exactly
+why it read as "just misses the starmap level". `level` is the payload rather than a nullable
+focus, and `systemId` rides with `'system'`, because a system the GM has SELECTED but not focused
+on any body is a third state that a nullable focus cannot express either.
+
+**It is obeyed only where the player has a starmap to be returned to.** A preset whose starmap
+layer is disabled has deliberately locked its players into one system (WS5); following the GM out
+of it would break that lock-down rather than honour the GM. Same condition the player's own back
+gesture already uses.
+
+The size-aware floor is the P3 crash guard: a playing clock re-broadcast the whole campaign every
+tick (517 sends, 989 MB, 33 s of stringify, a 3.8 GB heap and a dead tab). A throttled update is
+DELAYED, never dropped — the trailing timer keeps the latest state — so the failure mode is a
+few seconds of staleness rather than a crash. See RENDER-S22 for the two source-side guards that
+sit in front of it, and why a send-side gate alone could never have been enough.
+
+Owner's rule, same as filters and transitions: the network transport is one
+system that happens to live in two repositories. Every improvement lands in
+BOTH, kept as closely aligned as possible; the only permitted difference is
+naming (localStorage keys, the room-code word cloud). Shipped in lockstep
+today — SSE v2.1.725-beta and Mappadux v2.18.1-beta:
+
+| Piece | SSE | Mappadux | Must stay identical |
+|---|---|---|---|
+| **`SYNC_GM_LEVEL { level: 'starmap' \| 'system', systemId? }`** (A59) — WHICH LEVEL the GM is on | `broadcast.ts` (sender: `routes/+page.svelte`, receiver: `routes/catalogue/+page.svelte`) | not yet built | CONCEPT, yes |
+| **Size-aware send floor** (P3): a type whose last payload exceeded 256 KB gets a 5 s minimum interval instead of 500 ms, trailing-send, counted as `bc.<TYPE>.throttled` | `broadcast.ts sendIfChanged` | not yet built | YES — same thresholds |
+| ICE config module (parse/encode `?ice=`, textarea format, prepend-to-defaults, `DEFAULT_ICE` mirror of peerjs 1.5) | `src/lib/iceConfig.ts` | `src/p2p/iceConfig.ts` | YES — byte-identical except `STORAGE_KEY` |
+| Its unit tests | `src/lib/iceConfig.spec.ts` | `test/unit/iceConfig.test.ts` | YES |
+| Peer construction takes `{config:{iceServers}}` when custom, else library defaults | `broadcast.ts` host+guest | `Host.ts`, `Guest.ts` | YES |
+| Custom servers PREPENDED to defaults, never replacing | both | both | YES |
+| `?ice=` on every join link/QR the GM shares | share URL (PlayerViewModal) | `_buildPlayerUrl` (+ projector) | YES |
+| ICE-failed verdict from `RTCPeerConnection.connectionState` -> honest "blocked" state, redial continues | catalogue `linkBlocked` | Guest `onIceState` -> Player/Projector status | YES (wording may differ) |
+| Settings surface: textarea "one per line `turns:host:443|user|credential`" + summary line | Settings > Advanced | Settings > Connections | YES (same copy) |
+| Heartbeat liveness + guest re-dial | shipped 1D | Mappadux already had reconnect (`onReconnecting`) | align cadence when next touched |
+| STILL OPEN, both: Phase 0 real WAN test; connection-failed copy tuned after that test | — | — | do together |
+
+Verified facts behind the design (read from `node_modules/peerjs/dist`, both
+repos, 1.5.5): defaults = `stun:stun.l.google.com:19302` + TURN
+`turn:eu-0/us-0.turn.peerjs.com:3478` (UDP, user `peerjs`); broker
+`0.peerjs.com:443` WSS. So home/mobile/most firewalls work out of the box;
+the one real gap is UDP-blocking work networks, which need a `turns:443`
+relay — now a GM setting in both apps rather than a code change.
+
+When the third copy would appear (Foundry/Owlbear shims), the SAME module is
+copied again — or, better, the pair is extracted to a tiny shared package;
+that extraction is the trigger point, not before.
+
+## 16. Cross-site discovery: BroadcastChannel is partitioned (found 2026-08-17 on the deployed pair)
+
+**The fault.** The first real test on the deployed pair (beta.mappadux.com framing
+beta.starsystemx.com) failed discovery: the bridge answered `gone` even with an
+SSE GM tab open and announcing. Cause: **Chrome partitions BroadcastChannel (and
+all storage) inside a third-party iframe** — a starsystemx.com frame embedded by
+another SITE gets a channel keyed on the top-level site and cannot hear the
+top-level starsystemx.com tab. The design's discovery hop assumed origin-scoped
+channels; that is only true when host and SSE are the SAME SITE. It passed
+testing because localhost:5180 and localhost:5199 are one site. Verified
+empirically: same-origin bridge frame -> `announce`; cross-site frame -> its
+REQUEST_HELLO never reaches the GM tab's channel (watched from the tab).
+
+**The fix (SSE v2.1.749/753 + Mappadux v2.18.2):**
+- `/bridge?sid=<id>`: when the host knows the sid, the frame discovers over
+  **PeerJS** (`probeViaPeer` — dial the GM, ask REQUEST_HELLO on the data
+  channel; not partitioned). Same-site hosts keep the instant local path.
+- The SSE GM tab **hosts on the broker as soon as a starmap has its persistent
+  id** (reactive `enableRemote()`), because a saved sid is only worth anything
+  if it can be dialled. Verified with a broker probe (ID-TAKEN = hosting).
+- Mappadux `Sse2Bridge.hello(origin, sid)`: sid-keyed frames, longer timeout for
+  the peer path; every StarMap map / activation passes its sid.
+- **First pairing** (no sid yet, cross-site): the Add StarMap dialog offers
+  "paste a player link from SSE (Player Views… > Copy link)"; the sid comes from
+  the URL, PeerJS discovery then confirms the campaign and lists ALL its views.
+  After that, StarMaps reconnect on their own. Address field became a dropdown
+  (production / beta / other).
+
+**Consequence for Foundry / Owlbear (they are always cross-site):** discovery
+there is PeerJS-with-a-known-sid ONLY, and first pairing is always the pasted
+link (or typed sid) — which is the "instruct the user" rule from section 14
+landing exactly where predicted. Nothing else in the contract changes.
+
+**VERIFIED on the deployed pair (2026-08-17, beta.mappadux.com v2.18.2 framing
+beta.starsystemx.com v2.1.758):** Add StarMap -> Beta origin -> "not found" +
+paste row -> pasted `.../catalogue?sid=local_neighbourhood-deuterium-naos-949&preset=holo`
+-> PeerJS discovery through the sid-keyed bridge frame -> "Connected: Local
+Neighbourhood", all six Player Views listed, Holo Table pre-ticked from the link
+-> Add -> `✦ Local Neighbourhood — Holo Table` minted -> activation discovered
+the session again over PeerJS, no banner, filters handed to SSE, GM preview
+frame = the deployed catalogue in embed mode. Broker probe (WSS to
+0.peerjs.com, ID-TAKEN = hosting) confirmed the deployed GM tab auto-hosts under
+its persistent id on load. Reminder for testers: both apps are PWAs — a tab
+open across a deploy keeps the OLD service-worker build until reloaded, which
+produced two false "not shipped" readings during this test.
+
+**Session-hygiene note (own fault, recorded):** the auto-host hunk in
+`+page.svelte` was left in the working copy by an autostash during a shared-tree
+version collision and did not ship in v2.1.749; caught by the broker probe on
+the deployed tab (explicit Player Views hosting worked, load-time did not).
+Shipped in v2.1.753. Lesson for the shared tree: after any `--autostash`, diff
+the working copy against origin before declaring a push complete.
+
+### 16b. Broker id self-collision — A57 (2026-08-19)
+
+The persistent id + auto-host-on-load (sections 9.1/1A and 16) met a broker fact the design
+had not priced in: the PeerJS broker HOLDS a just-dropped id for a timeout, so a reload of the
+same map inside that window collides with the tab's OWN previous registration and the
+"another session is hosting" prompt fires with nothing else running. Two users hit it inside a
+day. Fix (SSE v2.1.814-beta), all in `broadcast.ts` unless noted:
+- release the registration on `pagehide` (`peer.destroy()`) so the hold rarely starts;
+- on `unavailable-id`, RETRY the same id (1.5 s, 3 s, 5 s) before believing it is taken;
+- prompt ONCE per id; after that the id is blocked from AUTO re-hosting until it changes (OK)
+  or the GM re-enables sharing EXPLICITLY (`enableRemote(true)` from the Player Views launcher
+  or `REQUEST_REMOTE`) — which is what the Cancel text always promised;
+- OK shows a transient notice ("New session id minted — existing player links and QR codes have
+  stopped working");
+- no AUTO-host from a dev/localhost origin (`+page.svelte`); explicit enable still works, so
+  cross-site testing from a dev tab is unaffected; the wire and the stored id are unchanged
+  (a namespace would have changed both);
+- every host attempt/outcome is recorded via `perfEvent('peer', …)`; `__ssePerf.events(60,'peer')`
+  answers the next occurrence.
+Engine-map entry TRANSPORT-1. The id scheme (section 9.1) is unchanged.
+**v2.1.817 - the actual root cause** (found from the owner's network tab: one socket per FRESH
+id, 101, then rejected): `initPeerHost` is async and re-entrant across its `await import('peerjs')`,
+so the same-tick callers on every load each registered the same id and the broker refused the
+later ones - the tab collided with ITSELF, consistently, ghost or no ghost. Fixed with a
+one-in-flight guard per id; the 814 defences stay for the genuine reload-ghost and second-GM cases.
+Owner confirmed it stopped on 817.
+
+## 17. Deployment requirement: embeds must pass the firewall (found 2026-08-18)
+
+The second beta test failed with `bridge → 403`. Cause: **beta.starsystemx.com is behind
+Vercel's Security Checkpoint (Attack Challenge Mode)** — every route answers
+`X-Vercel-Mitigated: challenge` to a request without a solved-challenge cookie. A real
+browser tab solves it invisibly; a **third-party iframe cannot** (it cannot show the
+challenge and its cookies are partitioned), so Mappadux's hidden `/bridge` frame AND every
+player's `/catalogue` frame get 403 wherever Mappadux itself runs (beta, prod, localhost).
+Moving Mappadux to prod does not help — the block is on the SSE side. Deployment
+protection (password/SSO) is off; this is the firewall challenge, likely auto-armed after a
+burst of deploys and probes.
+
+**Requirement (Vercel project star-system-generator → Firewall):** either turn Attack
+Challenge Mode off for the beta domain, or keep it and add a **bypass rule for paths
+`/bridge` and `/catalogue`** — the two routes third-party embeds must reach; neither has a
+writable surface. This applies to ANY deployment that hosts the integration (prod later,
+too). Mappadux v2.18.3 now reports this state as "cannot be reached for integration
+(older than the integration, or a firewall/security challenge)" rather than "no session".
+
+Owner call: keep both apps on beta and add the bypass (recommended — a prod push of SSE
+would carry ~50 unrelated versions), test there, ship prod when the release is otherwise
+ready.
+
+**Refined 2026-08-18 from the Firewall log:** it is NOT a project-wide Attack Challenge
+Mode. The events are Vercel's automatic **System Rule → Challenge**, all against ONE IP
+(the tester's), in bursts of exactly 111 requests about every 20 minutes — the bot-mitigation
+heuristic reacting to the evening's probing (curls, broker probes, dozens of dialog retries)
+and the SSE tab's own re-dials from that IP. So: it clears on its own when the pattern
+stops, and normal tables (a handful of requests) will not trip it. But whenever an IP IS in
+the challenged state, third-party frames from it fail — so testing looks broken at random.
+The durable answer stays the same and is now the recommendation: a Firewall custom rule
+**path starts with `/bridge` OR `/catalogue` → Bypass**, which takes precedence over the
+system challenge for those two routes only. Do NOT loosen the challenge globally.

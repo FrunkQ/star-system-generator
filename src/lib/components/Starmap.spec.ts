@@ -84,3 +84,49 @@ describe('Starmap.svelte', () => {
     expect(deletesystem).toHaveBeenCalledWith(expect.objectContaining({ detail: 'sys1' }));
   });
 });
+
+// A17. The measure tool lost DEPTH at the pick, not in the maths: `measurePick` took only x and y, so
+// `posZ` read both ends as the reference plane and the 3D branch returned the planar answer however the
+// campaign was configured. That is invisible to a unit test of `systemSeparation` — the module was always
+// right — so this drives the REAL path: turn the ruler on, tap two stars, read the label.
+//
+// Geometry chosen so both answers are exact: 40 apart in plan, 9 apart in depth, hence 41 in 3D.
+describe('Starmap.svelte — measure tool depth (A17)', () => {
+  const depthMap = (ignoreZ: boolean): StarmapType => ({
+    id: 'depth-map',
+    name: 'Depth Map',
+    distanceUnit: 'ly',
+    unitIsPrefix: false,
+    mapMode: 'scaled',
+    scale: { unit: 'ly', pixelsPerUnit: 1, showScaleBar: true },
+    ignoreZForDistances: ignoreZ,
+    systems: [
+      { id: 'a', name: 'Above', position: { x: 0, y: 0, z: 4.5 }, system: { id: 'a', name: 'Above', nodes: [{ id: 'sa', parentId: null, kind: 'body', roleHint: 'star', classes: ['star/G2V'] }] } as any },
+      { id: 'b', name: 'Below', position: { x: 40, y: 0, z: -4.5 }, system: { id: 'b', name: 'Below', nodes: [{ id: 'sb', parentId: null, kind: 'body', roleHint: 'star', classes: ['star/M5V'] }] } as any },
+    ],
+    routes: [],
+  } as unknown as StarmapType);
+
+  const measureBoth = async (ignoreZ: boolean) => {
+    const { container } = render(Starmap, { props: { starmap: depthMap(ignoreZ), rulePack: emptyRulePack } });
+    // jsdom reports no container size, so AppShell settles into its compact layout and the rail starts
+    // behind the menu button. Open it to reach the ruler.
+    const openMenu = [...container.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Open menu') as HTMLButtonElement | undefined;
+    if (openMenu) await fireEvent.click(openMenu);
+    const ruler = container.querySelector('button[title^="Measure"]') as HTMLButtonElement;
+    expect(ruler).toBeTruthy(); // the ruler is only offered on a SCALED map
+    await fireEvent.click(ruler);
+    await fireEvent.click(starGroup(container, 0));
+    await fireEvent.click(starGroup(container, 1));
+    return container.querySelector('.measure-label')?.textContent?.trim();
+  };
+
+  it('reports the 3D separation when the campaign counts depth', async () => {
+    // 40 in plan + 9 of depth = 41. Before the fix this read 40: the depth never reached the endpoint.
+    expect(await measureBoth(false)).toBe('41 ly');
+  });
+
+  it('reports the planar separation when the campaign ignores depth', async () => {
+    expect(await measureBoth(true)).toBe('40 ly');
+  });
+});

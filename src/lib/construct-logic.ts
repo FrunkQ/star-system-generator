@@ -54,6 +54,17 @@ export interface ConstructSpecs {
   maxTakeoffG: number; // Max acceleration in atmosphere
   maxVacuumG: number; // Max acceleration in vacuum
   totalVacuumDeltaV_ms: number;
+  // --- RATED performance (inbox A31): what the ship CAN do, not what it can do right now. ---
+  // maxVacuumG and totalVacuumDeltaV_ms are both readings of the current state — the first divides
+  // thrust by the current wet mass, the second is the log of the current wet/dry ratio, i.e. how much
+  // fuel is left. A catalogue entry wants the specification instead: full tanks, EMPTY HOLD.
+  // The empty hold is deliberate and load-bearing. Cargo is a live reading that A29 withheld from the
+  // capacity view, and dry mass and fuel capacity are both printed there — so a rated figure computed
+  // with the current cargo aboard would let a reader solve straight back to it. It is also simply what
+  // "rated" means: a property of the ship, not of today's manifest.
+  ratedVacuumDeltaV_ms: number; // Δv at fuelCapacity with nothing in the hold
+  ratedAccelFullG: number;      // acceleration at full tanks (the heavy, slow end)
+  ratedAccelEmptyG: number;     // acceleration with tanks dry (the light, fast end)
   totalAtmoDeltaV_ms: number;
   avgVacIsp: number; // Weighted average Vacuum ISP
   avgAtmoIsp: number; // Weighted average Atmosphere ISP
@@ -272,6 +283,18 @@ export function calculateFullConstructSpecs(
     specs.totalVacuumDeltaV_ms = 0;
   }
   
+  // RATED performance — the same arithmetic as the two rows above, but at the ship's own limits
+  // rather than its current state (A31). One derivation, here, so the document layer and the GM panel
+  // read a figure rather than each computing their own: two sums of one quantity is how B8 happened.
+  const mass_rated_full = dryMass_kg + fuelCapacity_kg; // full tanks, empty hold
+  if (avgVacISP > 0 && dryMass_kg > 0 && fuelCapacity_kg > 0) {
+    specs.ratedVacuumDeltaV_ms = avgVacISP * g0 * Math.log(mass_rated_full / dryMass_kg);
+  } else {
+    specs.ratedVacuumDeltaV_ms = 0;
+  }
+  specs.ratedAccelFullG = totalVacThrust_N > 0 && mass_rated_full > 0 ? (totalVacThrust_N / mass_rated_full) / g0 : 0;
+  specs.ratedAccelEmptyG = totalVacThrust_N > 0 && dryMass_kg > 0 ? (totalVacThrust_N / dryMass_kg) / g0 : 0;
+
   // Total Delta-V (Atmosphere - for takeoff calcs)
   let avgAtmoISP = 0;
   if (totalAtmoThrust_N > 0 && mass_wet > 0 && mass_dry_of_fuel > 0) {

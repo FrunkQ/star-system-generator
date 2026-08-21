@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Unified Player View — preset PICKER (replaces the Field Guide modal once parity lands). Left: the
+  import { encodeIceParam, loadStoredIce } from '$lib/iceConfig';
+  // Unified Player View — preset PICKER (it replaced the Field Guide modal outright at A42). Left: the
   // preset card grid. Right: the SELECTED preset's summary with Edit/Duplicate/Delete, plus the
   // quick live-session overrides (Follow GM / disable filter / disable view orbit) — momentary, never
   // saved into the preset. All design work happens in the wizard editor (PlayerPresetEditor).
@@ -8,13 +9,14 @@
   import { get } from 'svelte/store';
   import QRCode from 'qrcode';
   import { broadcastService } from '$lib/broadcast';
-  import { measurementUnit, temperatureUnit } from '$lib/stores';
+  import { brandingStore } from '$lib/catalogue/branding';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { DEFAULT_PRESET, makePresetId, accentSolid, isRainbow, RAINBOW_GRADIENT, normalizePreset } from '$lib/player/presets';
   import {
     playerPresetList, addPreset, deletePreset, duplicateIntoStarmap, runPresetMigration
   } from '$lib/player/presetStore';
   import { liveOverrides, runningPresetId } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
   import PlayerPresetEditor from './PlayerPresetEditor.svelte';
 
   export let sessionId: string | null = null;
@@ -25,8 +27,11 @@
   let origin = '';
   let qrDataUrl = '';
   let copied = false;
+  // BYO ICE relay rides the share URL/QR so remote players on locked-down networks can connect
+  // (docs/dev/vtt-integration-design.md 11). Absent when the GM has not configured one.
+  $: iceParam = browser ? encodeIceParam(loadStoredIce()) : null;
   $: shareUrl = selected
-    ? `${origin}/catalogue?sid=${sessionId ?? ''}&preset=${selected.id}&units=${$measurementUnit}&temp=${$temperatureUnit}`
+    ? `${origin}/catalogue?sid=${sessionId ?? ''}&preset=${selected.id}${iceParam ? `&ice=${iceParam}` : ''}`
     : '';
   $: if (browser && shareUrl) {
     QRCode.toDataURL(shareUrl, { margin: 1, width: 220, color: { dark: '#0a0d14', light: '#ffffff' } })
@@ -62,6 +67,58 @@
     if (get(runningPresetId)) broadcastThrottled();
   }
 
+  // --- Map highlights (live selection of what gets badged on the maps) ---
+  const isHighlighted = (ref: string) => $liveOverrides.mapHighlights.some((h) => h.ref === ref);
+
+  function addHighlight(ref: string) {
+    if (!ref || isHighlighted(ref)) return;
+    setOverride({ mapHighlights: [...$liveOverrides.mapHighlights, { ref }] });
+  }
+  function removeHighlight(ref: string) {
+    setOverride({ mapHighlights: $liveOverrides.mapHighlights.filter((h) => h.ref !== ref) });
+  }
+  /** A chip renders in the colour the marker will actually be, so the picker previews the map. */
+  function hlStyle(ref: string): { label: string; color: string; textColor: string } {
+    const cats = $tagCategories;
+    if (!ref.includes('/')) {
+      const c = cats.find((x) => x.id === ref);
+      return { label: c?.longName || ref, color: c?.color || '#888', textColor: c?.textColor || '#fff' };
+    }
+    const c = cats.find((x) => ref.startsWith(`${x.id}/`));
+    const t = c?.tags.find((x) => x.key === ref);
+    return {
+      label: t?.label || ref.split('/').slice(1).join(' '),
+      color: t?.color || c?.color || '#888',
+      textColor: t?.textColor || c?.textColor || '#fff'
+    };
+  }
+
+  // --- Branding: the in-universe letterhead every player view wears -------------------------------
+  // A42: this moved here from the Field Guide launcher when that was removed. It is NOT part of a
+  // preset and deliberately so — it is the CAMPAIGN's letterhead, one name and one logo across every
+  // view a GM deploys, and it rides SYNC_BRANDING to whatever window is open. The player view's
+  // status bar and its waiting screen both read it.
+  let logoInput: HTMLInputElement;
+  // Downscale any uploaded logo to a small PNG data URL (max 160px) so it's tiny enough to broadcast
+  // every time and store locally. Keeps the "letterhead" feature cheap.
+  function onLogoPick(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file || !browser) return;
+    const img = new Image();
+    img.onload = () => {
+      const max = 160;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = c.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      brandingStore.update((b) => ({ ...b, logo: c.toDataURL('image/png') }));
+    };
+    img.src = URL.createObjectURL(file);
+  }
+
   let selectedId: string | null = null;
   let editing: PlayerPreset | null = null;
   $: presets = $playerPresetList;
@@ -74,7 +131,7 @@
     // Highlight/select whatever is currently live; else the first preset.
     selectedId = get(runningPresetId) ?? presets[0]?.id ?? null;
     if (browser) origin = window.location.origin;
-    broadcastService.enableRemote(); // sharing intent: allow cross-device players to connect
+    broadcastService.enableRemote(true); // sharing intent (explicit): allow cross-device players to connect; lifts an A57 collision block
   });
 
   const VIEW_LABELS: Record<ViewModule, string> = { list: 'Text list', document: 'Document', diagram2d: '2D map', holo3d: '3D holo' };
@@ -224,6 +281,22 @@
             </div>
           </div>
 
+          <!-- Campaign letterhead — applies to EVERY preset, not this one. -->
+          <div class="branding">
+            <span class="ov-head">Branding <span class="ov-sub">every view, not just this preset</span></span>
+            <input type="text" class="org-name" placeholder="Company / faction name (e.g. a megacorp or survey authority)" bind:value={$brandingStore.name} />
+            <div class="logo-row">
+              {#if $brandingStore.logo}
+                <img class="logo-preview" src={$brandingStore.logo} alt="Logo preview" />
+                <button on:click={() => brandingStore.update((b) => ({ ...b, logo: null }))}>Remove logo</button>
+              {:else}
+                <button on:click={() => logoInput?.click()}>Upload logo…</button>
+                <span class="logo-hint">PNG/JPG; auto-shrunk. Use your own art (no trademarked logos).</span>
+              {/if}
+              <input type="file" accept="image/*" bind:this={logoInput} on:change={onLogoPick} style="display:none" />
+            </div>
+          </div>
+
           <div class="overrides">
             <span class="ov-head">Quick overrides <span class="ov-sub">live · never saved{$runningPresetId ? '' : ' · start a view first'}</span></span>
             <label class="chk">
@@ -236,6 +309,14 @@
                 on:change={(e) => setOverride({ labelsHidden: (e.currentTarget as HTMLInputElement).checked })} />
               Hide labels
             </label>
+            <!-- G5: beside Hide labels because it is the same kind of thing - a momentary "let me see
+                 the map for thirty seconds", not a saved look. A dense import (45 planets, 25 moons)
+                 hides its own bodies under their orbit lines. -->
+            <label class="chk">
+              <input type="checkbox" checked={$liveOverrides.orbitLinesHidden} disabled={!$runningPresetId}
+                on:change={(e) => setOverride({ orbitLinesHidden: (e.currentTarget as HTMLInputElement).checked })} />
+              Hide orbit lines
+            </label>
             <label class="chk">
               <input type="checkbox" checked={$liveOverrides.filterBypass} disabled={!$runningPresetId}
                 on:change={(e) => setOverride({ filterBypass: (e.currentTarget as HTMLInputElement).checked })} />
@@ -246,6 +327,35 @@
                 on:change={(e) => setOverride({ orbitPaused: (e.currentTarget as HTMLInputElement).checked })} />
               Pause auto view-orbit
             </label>
+            <label class="chk">
+              <input type="checkbox" checked={$liveOverrides.constructsHidden} disabled={!$runningPresetId}
+                on:change={(e) => setOverride({ constructsHidden: (e.currentTarget as HTMLInputElement).checked })} />
+              Hide all artificial constructs (stations, ships)
+            </label>
+
+            <!-- Highlights. Not gated on a running view: it badges the GM's own maps too, and seeing
+                 it before pushing it is the point. -->
+            <div class="hl-block">
+              <span class="ov-head hl-head">Highlight markers</span>
+              <label class="chk">
+                <input type="checkbox" checked={!$liveOverrides.highlightsMuted}
+                  on:change={(e) => setOverride({ highlightsMuted: !(e.currentTarget as HTMLInputElement).checked })} />
+                Show them
+              </label>
+              {#if $liveOverrides.mapHighlights.length}
+                <div class="hl-chips">
+                  {#each $liveOverrides.mapHighlights as h (h.ref)}
+                    {@const style = hlStyle(h.ref)}
+                    <button class="hl-chip" style="background:{style.color}; color:{style.textColor}"
+                      title="Stop highlighting {style.label}" on:click={() => removeHighlight(h.ref)}>
+                      {style.label} <span class="x">×</span>
+                    </button>
+                  {/each}
+                  <button class="hl-clear" on:click={() => setOverride({ mapHighlights: [] })}>clear</button>
+                </div>
+              {/if}
+              <p class="hl-hint">Badged on your own maps as well as the players'. Choose them in <strong>Find by tag</strong> on the rail — it knows what is actually on the map. This is the mute, and it hides them on both.</p>
+            </div>
           </div>
         </aside>
       {/if}
@@ -306,6 +416,12 @@
   .share-col { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
   .share-hint { margin: 0; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
   .share-col button { align-self: flex-start; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 11px; cursor: pointer; font: inherit; }
+  .branding { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+  .org-name { width: 100%; box-sizing: border-box; padding: 0.45em 0.5em; background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font: inherit; font-size: 0.8rem; }
+  .logo-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .logo-row button { background: var(--bg-control); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px; cursor: pointer; font: inherit; font-size: 0.78rem; }
+  .logo-preview { height: 36px; width: auto; max-width: 110px; border-radius: 4px; background: #fff; padding: 3px; }
+  .logo-hint { font-size: 0.68rem; color: var(--text-faint); line-height: 1.35; }
   .overrides { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-top: 0.2rem; }
   .ov-head { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
   .ov-sub { text-transform: none; letter-spacing: 0; font-style: italic; opacity: 0.8; }
@@ -332,4 +448,14 @@
   @media (max-width: 400px) {
     .grid { grid-template-columns: 1fr; }
   }
+
+  .hl-block { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .hl-head { margin: 0; }
+  .hl-hint { margin: 0; font-size: 0.66rem; color: var(--text-faint); line-height: 1.35; }
+  .hl-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .hl-chip { border: none; border-radius: 4px; padding: 2px 7px; font-size: 0.7rem; cursor: pointer; display: inline-flex; gap: 5px; align-items: center; }
+  .hl-chip:hover { filter: brightness(1.12); }
+  .hl-chip .x { font-weight: bold; }
+  .hl-clear { background: none; border: none; color: var(--text-faint); font-size: 0.66rem; cursor: pointer; text-decoration: underline; }
+  .hl-add { width: 100%; padding: 4px; font-size: 0.72rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
 </style>

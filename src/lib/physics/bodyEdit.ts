@@ -8,7 +8,7 @@
 import type { Makeup } from '$lib/types';
 import {
   normalizeMakeup, compressionFactor, compressedDensityFromMakeup, maxPorosity,
-  radiusReFromMassMakeup, massMeFromRadiusMakeup, inferMakeupFromDensity
+  radiusReFromMassMakeup, massMeFromRadiusMakeup, inferMakeupFromDensity, makeupHasSolidSurface
 } from './makeup';
 
 export type EditLock = 'mass' | 'radius' | 'density' | null;
@@ -206,7 +206,9 @@ export function presetValidAt(p: CompositionPreset, density: number, massMe?: nu
 export function applyPresetAnchored(s: BodyEditState, p: CompositionPreset, inflation = 1): BodyEditState {
   const makeup = normalizeMakeup(p.makeup);
   const out = editMakeup(s, makeup, null, inflation);
-  if (p.defaultPorosity && makeup.gas <= 0.5) {
+  // A preset carries a composition rather than a body, so this asks the has-ground question of the
+  // MAKEUP directly (B36) — there is no node here to infer a makeup from, and nothing to be a star.
+  if (p.defaultPorosity && makeupHasSolidSurface(makeup)) {
     const porosity = Math.min(p.defaultPorosity, maxPorosity(out.massMe));
     const r0 = radiusReFromMassMakeup(out.massMe, makeup, 1);
     return { ...out, radiusRe: clamp(r0 * Math.pow(1 - porosity, -1 / 3), MIN_R, MAX_R) };

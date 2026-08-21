@@ -14,6 +14,25 @@
    ============================================================================= */
 
 :root {
+  /* ---------- STACKING ORDER: five named tiers (A52) ----------
+     MEASURED before naming: the components were using 1, 1400, 1500, 2000 (nineteen of them), 2100,
+     2200, 2300, 3000, 5000 ... up to 99999 — an ad-hoc ladder where a number was picked to beat
+     whatever it happened to collide with that day. That is exactly how a floating control ends up on
+     top of a dialog, and every such overlap then reads as its own bug.
+
+     THE ORDER IS THE POINT, not the values: map < chrome < panel < modal < toast. Reach for the tier
+     whose NAME describes what you are placing. If two things in one tier fight, they are the same kind
+     of thing and the fix is ordering them within it (+1/+2), never inventing a bigger number.
+
+     Gaps of 1000 are deliberate: a tier has room for a scrim, its panel and a popover above it without
+     borrowing from the tier above. NOTE existing components still carry raw values; these are the
+     target, adopted as each surface is touched (A52 does the chrome and the modals it hides). */
+  --z-map: 0;        /* the canvas and anything drawn in world space */
+  --z-chrome: 1000;  /* persistent app furniture: bars, rails, FABs, floating controls */
+  --z-panel: 2000;   /* docked panels and sheets that sit over the chrome */
+  --z-modal: 3000;   /* foreground UI: dialogs, editors, their backdrops (see ui/foreground.ts) */
+  --z-toast: 4000;   /* transient notices, and the memory warning that must survive any screen */
+
   /* ---------- CHROME: surfaces (from the Phase-03 shell) ---------- */
   --bg-app: #08090d;
   --bg-panel: #14161c;
@@ -21,6 +40,10 @@
   --bg-control-hover: #232733;
   --border: #2a2d36;
   --border-soft: #1c1f27;
+  /* The two big shell columns, individually skinnable (G34: "the background bars to the left and
+     info on the right"). They default to the app ground, so classic is pixel-identical. */
+  --bg-rail: var(--bg-app);
+  --bg-side: var(--bg-app);
 
   /* ---------- CHROME: text ---------- */
   --text: #e8e8e8;
@@ -57,6 +80,35 @@
   /* ---------- CHROME: type ---------- */
   --font-ui: system-ui, 'Segoe UI', Arial, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+
+  /* ---------- CHROME: related-data GROUP EDGES (G34 phase 4) ----------
+     Colour that shows which info cards belong to the same data FAMILY (bulk / orbit /
+     climate / air / life / hazard / infrastructure) — relatedness, not meaning about the
+     world, so a skin may restyle these. The DOMAIN palette below never moves with a skin.
+     Seeds: the hexes the technical panel had already reached for (#3b82f6 atmosphere,
+     #10b981 habitability, #a855f7 zones), completed into one deliberate set. */
+  --group-bulk: var(--accent);   /* what it IS: mass, radius, gravity, class */
+  --group-orbit: #e0b341;        /* where it goes: orbit, period, resonance, eclipses */
+  --group-climate: #d97757;      /* what it is like: temperature, internal heat, water */
+  --group-air: #3b82f6;          /* what it breathes: atmosphere and gases */
+  --group-life: #10b981;         /* who lives there: habitability, biosphere */
+  --group-hazard: #f43f5e;       /* what hurts: radiation, magnetics, belt hazard */
+  --group-infra: #a855f7;        /* getting about: orbital zones, delta-v, ship specs */
+
+  /* The info-card ground. Was a hardcoded #252525 in the technical panel; the classic
+     skin keeps that exact hex, other skins may lift it. */
+  --bg-card: #252525;
+
+  /* ---------- CHROME: the TAG PILL ----------
+     One shape wherever a tag appears — a panel chip and a map marker are the same object.
+     CSS consumers use these; canvas and SVG consumers cannot read CSS and go through
+     src/lib/tags/tagPill.ts, whose spec asserts it still agrees with these four values.
+     Values unchanged from the chips that have always shipped. */
+  --tag-pill-radius: var(--radius-sm);   /* 4px  */
+  --tag-pill-pad-y: var(--space-1);      /* 4px  */
+  --tag-pill-pad-x: var(--space-2);      /* 8px  */
+  --tag-pill-font-size: 0.8rem;          /* 12.8px at a 16px root — the ratio base */
+  --tag-pill-gap: 6px;
 
   /* =========================================================================
      DOMAIN — colour as information. PRESERVED. Source: src/lib/rendering/colors.ts,
@@ -131,4 +183,28 @@
   /* Data provenance legend (ConstructDerivedSpecs) */
   --data-fixed: #ff3e00; /* you typed this */
   --data-derived: #007bff; /* computed */
+}
+
+/* =============================================================================
+   A52 — ON A SMALL SCREEN, AN OPEN DIALOG GETS THE SCREEN TO ITSELF.
+
+   THE WHOLE RULE IS THESE FOUR LINES, and it is the only place either half is joined:
+     - a dialog marks itself with `use:foreground` (src/lib/ui/foreground.ts), which sets
+       `data-foreground` on <html>;
+     - persistent chrome marks itself with `use:chrome`, which adds `.sse-chrome`.
+   Neither side keeps a LIST. A dialog added next month is covered because it registers; a floating
+   control added next month is covered because it marks itself. Nothing has a condition to get right.
+
+   THERE IS NO BREAKPOINT HERE, DELIBERATELY. `data-app-mode` is the shell's OWN decision mirrored
+   onto <html> (AppShell.svelte), and it already folds width, pointer type and the ?mode= override
+   together. A media query beside it would be a 26th breakpoint value that disagrees the moment
+   someone forces phone on a wide screen. On a desktop nothing happens: there is room for both, and
+   the modal's own tier (--z-modal) orders it.
+
+   HIDDEN, NOT UNMOUNTED — deliberately. The bar carries the starmap description and the GM notes;
+   destroying it would throw away whatever it was holding, and "take over the screen" only ever meant
+   stop drawing it. It comes back untouched.
+   ============================================================================= */
+:root[data-foreground][data-app-mode='phone'] .sse-chrome {
+  display: none !important;
 }

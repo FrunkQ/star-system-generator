@@ -1,0 +1,11 @@
+{
+  "comment": "G3 Phase 4 starter hulls - REAL public-domain spacecraft only (owner decision 4). Every model is from NASA's own 3D Resources collection (github.com/nasa/NASA-3D-Resources); NASA media policy places models, textures and polygon data in the public domain in the US. The NASA insignia is separately protected - none of these trade on it. Textured models were resampled to 512 px at build; all arrive Draco-compressed and the app's loader decodes them. lengthM is the craft's real longest dimension, offered as a dimensions hint only - the authored dimensionsM always wins.",
+  "models": [
+    { "id": "iss", "file": "iss.glb", "name": "International Space Station", "lengthM": 109, "credit": "NASA", "license": "Public domain", "sourceUrl": "https://github.com/nasa/NASA-3D-Resources" },
+    { "id": "hubble", "file": "hubble.glb", "name": "Hubble Space Telescope", "lengthM": 13.2, "credit": "NASA", "license": "Public domain", "sourceUrl": "https://github.com/nasa/NASA-3D-Resources" },
+    { "id": "cassini", "file": "cassini.glb", "name": "Cassini-Huygens", "lengthM": 6.8, "credit": "NASA", "license": "Public domain", "sourceUrl": "https://github.com/nasa/NASA-3D-Resources" },
+    { "id": "juno", "file": "juno.glb", "name": "Juno", "lengthM": 20, "credit": "NASA", "license": "Public domain", "sourceUrl": "https://github.com/nasa/NASA-3D-Resources" },
+    { "id": "voyager", "file": "voyager.glb", "name": "Voyager Probe", "lengthM": 13, "credit": "NASA", "license": "Public domain", "sourceUrl": "https://github.com/nasa/NASA-3D-Resources" },
+    { "id": "mro", "file": "mro.glb", "name": "Mars Reconnaissance Orbiter", "lengthM": 6.5, "credit": "NASA", "license": "Public domain", "sourceUrl": "https://github.com/nasa/NASA-3D-Resources" }
+  ]
+}

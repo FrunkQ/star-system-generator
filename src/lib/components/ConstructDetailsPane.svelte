@@ -63,6 +63,7 @@
         />
     {:else}
         <ConstructDerivedSpecs
+            showPortrait={false}
             construct={focusedBody}
             hostBody={hostBody}
             {rulePack}

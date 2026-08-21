@@ -1,14 +1,25 @@
 // src/lib/generation/placement.ts
 import type { CelestialBody, Barycenter, RulePack, Orbit } from '../types';
-import { SOLAR_MASS_KG } from '../constants';
-import { calculateRocheLimit, calculateKillZone, calculateGoldilocksZone, equivalentFluxDistanceAU } from '../physics/zones';
+import { calculateRocheLimit, calculateKillZone, calculateGoldilocksZone, equivalentFluxDistanceAU,
+    stellarContextFor, calculateAllStellarZones } from '../physics/zones';
 
-export function getValidClassifications(orbit: Orbit, host: CelestialBody | Barycenter, pack: RulePack): string[] {
+export function getValidClassifications(
+    orbit: Orbit,
+    host: CelestialBody | Barycenter,
+    pack: RulePack,
+    allNodes?: (CelestialBody | Barycenter)[]
+): string[] {
     const validClasses: string[] = [];
 
-    const frostLineAU = (pack.generation_parameters?.frost_line_base_au || 2.7) * Math.sqrt((host.massKg || SOLAR_MASS_KG) / SOLAR_MASS_KG);
+    // Where a giant could have FORMED is a question about the star's disc, not about the immediate
+    // host's mass — see GEN-4 for the two faults in the mass-based form this replaced.
+    const stellar = stellarContextFor(host, orbit.elements.a_AU, allNodes);
+    const frostLineAU = stellar.star
+        ? calculateAllStellarZones(stellar.star, pack, allNodes).formationFrostLine
+        : (pack.generation_parameters?.frost_line_base_au || 2.7);
+    const distFromStarAU = stellar.distanceAU;
     const rocheLimitAU = host.kind === 'body' ? calculateRocheLimit(host) : 0;
-    const killZoneAU = host.kind === 'body' ? calculateKillZone(host) : 0;
+    const killZoneAU = host.kind === 'body' ? calculateKillZone(host, pack) : 0;
     const habitableZone = host.kind === 'body' ? calculateGoldilocksZone(host) : { inner: 0, outer: 0 };
     const effectiveDistanceAU = equivalentFluxDistanceAU(orbit.elements.a_AU, orbit.elements.e);
 
@@ -22,7 +33,7 @@ export function getValidClassifications(orbit: Orbit, host: CelestialBody | Bary
     } else if (effectiveDistanceAU >= habitableZone.inner && effectiveDistanceAU <= habitableZone.outer) {
         validClasses.push('planet/terrestrial-habitable');
         validClasses.push('planet/terrestrial');
-    } else if (orbit.elements.a_AU > frostLineAU) {
+    } else if (distFromStarAU > frostLineAU) {
         validClasses.push('planet/gas-giant');
         validClasses.push('planet/ice-giant');
         validClasses.push('planet/terrestrial');

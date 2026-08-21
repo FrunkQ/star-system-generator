@@ -33,3 +33,6 @@ build.log
 test.log
 .claude/launch.json
 .claude/watch_session.py
+
+# Windows folder metadata, created by Explorer inside asset directories
+desktop.ini

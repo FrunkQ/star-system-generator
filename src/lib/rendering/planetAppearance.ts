@@ -16,9 +16,10 @@
 
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
 import { LIQUIDS } from '$lib/constants';
-import { starColorFromTempK } from './apparentColor';
+import { starColorFromTempK, bdGlowColour } from './apparentColor';
 import { oblatePolarFactor } from './bodyShape';
 import { auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
+import { spaceWeathering } from '$lib/physics/cloudDecks';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { isSmallBodyShape } from '$lib/catalogue/smallBodyShape';
 import { decksFromTags, condensateTint } from '$lib/physics/cloudDecks';
@@ -48,22 +49,10 @@ export function shade(hex: string, f: number): string {
 }
 /** Emission colour for a self-luminous brown dwarf by effective temperature (K): cool→deep red,
  *  hot young L-dwarf→amber. Never blue (brown dwarfs are cool). */
-export function bdGlowColour(teff: number): string {
-	const stops: [number, string][] = [
-		[250, '#3a0f06'], [600, '#6e1808'], [1000, '#a3320c'], [1400, '#c85614'],
-		[1800, '#e07d22'], [2300, '#f2a03e'], [2800, '#ffbf6e']
-	];
-	if (teff <= stops[0][0]) return stops[0][1];
-	for (let i = 1; i < stops.length; i++) {
-		if (teff <= stops[i][0]) {
-			const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
-			const f = (teff - t0) / (t1 - t0);
-			const a = hexToRgb(c0), b = hexToRgb(c1);
-			return rgbHex([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
-		}
-	}
-	return stops[stops.length - 1][1];
-}
+// bdGlowColour now lives in apparentColor.ts, the colour authority, and is re-exported here so
+// existing importers are unaffected. It had to move: `starColorFromTempK` needs it, and
+// planetAppearance already imports FROM apparentColor.
+export { bdGlowColour } from './apparentColor';
 
 // ── feature parameter shapes ────────────────────────────────────────────────────────────────────
 export interface MagmaSpec {
@@ -138,6 +127,27 @@ export interface FrostSpec {
 export interface PolarVortexSpec {
 	sides: number;     // a polar jet-stream polygon (Saturn's hexagon=6; Jupiter's poles run 5–9)
 }
+/** One painted layer of a world's life — read straight off the DERIVED `body.vegetation`, whose
+ *  colours were already resolved from pack data in physics/vegetation.ts. A renderer never needs the
+ *  rule pack for this, which is the same move `auroraEmitters` makes and the deliberate answer to
+ *  C2's missing thread rather than a second one alongside it. */
+export interface VegetationLayerDraw {
+	morphology: string;
+	pigmentLabel: string | null;   // the pigment THIS morphology settled on — each draws its own
+	coverage: number;   // 0..1 OF THE LAND (not of the disc, and not a share of the other layers)
+	opacity: number;
+	colorHex: string;
+	light: number;      // 0..1 night-side emission; zero for everything whose light range is empty
+	waterReach: number; // how much of the world's WATER it can take — 0 for everything but technology
+}
+export interface VegetationSpec {
+	layers: VegetationLayerDraw[];  // painter order, deepest first — draw in array order
+	visibleCover: number;           // 0..1 of the land showing any life colour (the union)
+	landFraction: number;           // 0..1 of the globe that IS land — multiply patch cover by this
+	bandCentreDeg: number;          // life clusters at |lat| in [centre - width, centre + width]…
+	bandWidthDeg: number;           // …DERIVED from where the solvent is liquid, not from a rule
+	pigmentLabel: string | null;
+}
 
 /** Everything about a body's appearance that follows from its data + tags, renderer-agnostic. */
 export interface AppearanceModel {
@@ -158,6 +168,16 @@ export interface AppearanceModel {
 	tidallyLocked: boolean;
 	// surface features (flags + params; renderers seed any positions themselves)
 	polarIce: boolean;
+	/** Where each ice cap REACHES, as |latitude| in degrees — the latitude at which this world's
+	 *  surface liquid stops being liquid, read off the same temperature decomposition the panel
+	 *  shows. 90 means no cap. Derived rather than a fixed fraction of the disc, so a cold world's
+	 *  caps genuinely march toward the equator and a warm one's do not.
+	 *
+	 *  TWO figures because the two hemispheres are not in the same season. The swing comes from the
+	 *  profile's SEASONAL component, so a high-obliquity world shows a summer cap and a winter one
+	 *  and an untilted world shows a matched pair. It is a snapshot, not an animation: the texture is
+	 *  cached on the body's look, and re-rendering it as the clock runs would thrash that cache. */
+	polarIceLatDeg: { north: number; south: number };
 	regolith: number;             // 0..1 space-weathering desaturation of an airless silicate surface (Moon/Mercury grey)
 	craters: CraterSpec | null;   // rocky impact record (icy worlds fracture instead — see iceCracks)
 	rough: RoughSpec | null;      // knobbly regolith of a small strengthless rubble pile (instead of craters)
@@ -175,6 +195,7 @@ export interface AppearanceModel {
 	clouds: CloudSpec | null;   // back-compat single-deck view (top deck); giants' legacy deck
 	cloudDecks: CloudDeckSpec[]; // the FULL stack, deepest→top — multi-layer renderers use this
 	selfLumGlow: SelfLumSpec | null;
+	vegetation: VegetationSpec | null;  // life on the land, painter-ordered
 }
 
 // One rendered cloud layer, resolved from a cloud-deck tag + its liquid's look-data.
@@ -217,7 +238,13 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		: (body.apparentColorHex ?? body.apparentColor?.hex ?? '#8a8f99');
 
 	const palette = (body.apparentColor?.palette ?? []) as ApparentColorStop[];
-	const bandingRaw = (isStar || isBelt) ? 0 : (body.apparentColor?.banding ?? 0);
+	// A SUBSTELLAR OBJECT IS BANDED, NOT SPOTTED. Spots need a field tangled by rotation in a fusing
+	// photosphere; below about 2400 K the atmosphere is largely neutral, the field decouples, and what
+	// actually varies is CLOUD. That is why an L/T dwarf's variability is weather and why the artist's
+	// impression for one shows bands. Suppressing banding for anything star-role denied it to exactly
+	// those objects.
+	const substellar = !!(body as any).isSelfLuminous;
+	const bandingRaw = ((isStar && !substellar) || isBelt) ? 0 : (body.apparentColor?.banding ?? 0);
 
 	const atmPressureBar =
 		(body.atmosphere?.pressure_bar ?? (body.atmosphere as any)?.pressure_atm ?? 0) as number;
@@ -271,7 +298,10 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	const orb = (body as any).orbit;
 	let vKms = 0;
 	if (orb?.hostMu > 0 && orb?.elements?.a_AU > 0) vKms = Math.sqrt(orb.hostMu / (orb.elements.a_AU * 1.495978707e11)) / 1000;
-	const farSideBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked)
+	// A LEADING-FACE CRATER SKEW NEEDS A FACE TO LEAD WITH — synchronous rotation. A resonant body
+	// turns its whole surface through the stream, so it weathers evenly (B69).
+	const farSideBias = (craterDensity > 0.15 && !!(body as any).tidallyLocked
+		&& !((body as any).tags ?? []).some((t: any) => t.key === 'orbit/spin-orbit-resonance'))
 		? (vKms > 0 ? clamp01(0.25 + vKms / (vKms + 10)) : 0.7) : 0;
 	// A few FRESH craters (bright ejecta rays) punched into an otherwise old, airless surface.
 	const craters: CraterSpec | null = craterDensity > 0.05
@@ -282,8 +312,14 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// toward neutral (the Moon and Mercury are grey, not the tan of fresh rock); maturity tracks the
 	// irradiation dose. Gated on true vacuum, so thin-air, OXIDISED Mars keeps its red — its colour is
 	// rust, not space weathering.
-	const regolith = (solid && !icyShell && atmPressureBar < 0.001)
-		? clamp01(Math.min(1, dose) * 0.95) : 0;
+	// ONE DERIVATION, and it is no longer here. The greying is a physical property of the SURFACE, so
+	// it belongs on the apparent colour where everything can see it — the body swatch, the data panel,
+	// the Surface view — rather than being applied at paint time only. Luna was the proof: its 2D and
+	// 3D renders were correctly grey while the colour chip beside them stayed plant-pot brown, because
+	// the greying happened downstream of the value that chip reads.
+	// Kept as a scalar because `physicsTrace` reports it; the COLOUR change now happens once, in
+	// `apparentColor`, from this same function.
+	const regolith = solid && !icyShell ? spaceWeathering(body) : 0;
 
 	// ICE CRACKS / RIDGES — an icy crust flexed by tidal/freezing stress splits into a lineae network
 	// (Europa). Stronger on tidally-worked / cryovolcanic crusts.
@@ -354,8 +390,16 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// Star-locked = a permanent substellar face → eyeball. Robustly: a body locked AND orbiting a star
 	// rather than a planet. roleHint 'moon' orbits a PLANET (locked to it, whole surface still sun-cycles
 	// → no eyeball); a planet/dwarf orbits the star. (Prefers the explicit flag/tag when present.)
-	const starLocked = (body as any).starTidallyLocked ?? (has('orbit/locked-star')
-		|| (!!(body as any).tidallyLocked && (body as any).roleHint !== 'moon'));
+	// THE FALLBACK MUST MEAN SYNCHRONOUS, NOT MERELY DESPUN (inbox B69). Despinning has two end
+	// states and only one of them is a permanent face: Mercury is despun, orbits a star and is not a
+	// moon, so every clause of the old fallback said "eyeball" about a body whose sun rises every 176
+	// days. Where the body states both periods, they decide; where it states neither — a gallery
+	// example, an editor preview — there is nothing to contradict the flag and it stands.
+	const rotH = Math.abs((body as any).rotation_period_hours ?? 0);
+	const orbH = ((body as any).orbital_period_days ?? 0) * 24;
+	const notSynchronous = rotH > 0 && orbH > 0 && Math.abs(rotH / orbH - 1) >= 0.01;
+	const starLocked = (body as any).starTidallyLocked ?? (!notSynchronous && (has('orbit/locked-star')
+		|| (!!(body as any).tidallyLocked && (body as any).roleHint !== 'moon')));
 	const eyeball: EyeballSpec | null = (solid && starLocked && hotK - coldK > 120)
 		? {
 			substellarK: hotK, antistellarK: coldK, molten: hotK > ROCK_MELT,
@@ -446,7 +490,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 				species: d.species,
 				coverage: d.coverage,
 				// Scattering droplets, not bulk liquid — condensateTint owns that rule.
-				colorHex: condensateTint(base),
+				colorHex: condensateTint(base, def?.cloudTintDistance),
 				opacity: def?.cloudOpacity ?? 0.5,
 				ice: (def?.meltK ?? 273) > (body.temperatureK ?? body.equilibriumTempK ?? 288)
 			};
@@ -464,9 +508,69 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 				colorHex2: underDeck ? underDeck.colorHex : shade(topDeck.colorHex, 0.18), giant: false }
 			: null;
 
+	// WHERE THE ICE REACHES. The cap edge is the latitude at which this world's own surface liquid
+	// stops being liquid, walked off the temperature profile's LATITUDE component — the same
+	// decomposition the temperature panel shows, not a second model of it. A fixed fraction of the
+	// disc (which is what this replaced) drew Earth and a snowball world the same caps.
+	const polarIceLatDeg = (() => {
+		if (!polarIce) return { north: 90, south: 90 };
+		const lat = body.temperatureProfile?.components?.find((c) => c.source === 'latitude');
+		const seasonal = body.temperatureProfile?.components?.find((c) => c.source === 'seasonal');
+		const melt = liquidDef(body.hydrosphere?.composition)?.meltK;
+		if (!lat || !melt || !(Math.abs(lat.highK - lat.lowK) > 0.5)) return { north: 65, south: 65 };
+		// First-order T(lat) = T_pole + (T_equator - T_pole)*cos(lat), the same form the biosphere
+		// band uses. Walk equatorward until it drops below the melting point.
+		const edge = (offsetK: number) => {
+			for (let d = 90; d >= 0; d -= 1) {
+				const t = lat.lowK + offsetK + (lat.highK - lat.lowK) * Math.cos((d * Math.PI) / 180);
+				if (t >= melt) return Math.min(90, d + 1);
+			}
+			return 0;   // frozen everywhere — a snowball
+		};
+		// THE TWO CAPS ARE DIFFERENT QUANTITIES, and conflating them is what made a summer hemisphere
+		// lose its cap entirely.
+		//
+		// The latitude profile is an ANNUAL MEAN. Adding the summer swing on top of it and testing
+		// that against the melting point asks "is the warmest moment above freezing?", and for Earth
+		// the answer at the pole is yes — so the model deleted the Arctic. What a summer hemisphere
+		// actually shows is its PERMANENT cap: the ground that stays frozen through the year, which is
+		// where the annual mean is below melting, with no swing added at all. What a winter hemisphere
+		// shows is the SEASONAL extent, which reaches much further: where the mean MINUS the swing
+		// drops below melting.
+		//
+		// Two honest quantities, one per hemisphere, and the asymmetry between them is the season.
+		const swing = seasonal ? (seasonal.highK - seasonal.lowK) / 2 : 0;
+		return { north: edge(0), south: edge(-swing) };
+	})();
+
+	// LIFE ON THE LAND. Nothing is derived here — `body.vegetation` already carries resolved colours
+	// (physics/vegetation.ts), so this is a straight read plus the surface gate. A giant has no land
+	// to paint, so it takes none of this whatever its tags say (PHY-4's rule in a renderer's clothes:
+	// having a 1-bar level is not having a surface).
+	const vegSource = (!isStar && !isBelt && !rendersAsGiant(body)) ? (body as any).vegetation : undefined;
+	const vegLayers: VegetationLayerDraw[] = (vegSource?.layers ?? [])
+		.filter((l: any) => l.colorHex && l.coverage > 0.005 && l.opacity > 0)
+		.map((l: any) => ({
+			morphology: l.morphology, pigmentLabel: l.pigmentLabel ?? null, coverage: l.coverage, opacity: l.opacity,
+			colorHex: l.colorHex, light: l.light ?? 0, waterReach: l.waterReach ?? 0.1
+		}));
+	const vegetation: VegetationSpec | null = vegLayers.length
+		? {
+				layers: vegLayers,
+				visibleCover: vegSource.visibleCover ?? 0,
+				landFraction: vegSource.landFraction ?? 1,
+				bandCentreDeg: vegSource.bandCentreDeg ?? 45,
+				bandWidthDeg: vegSource.bandWidthDeg ?? 45,
+				pigmentLabel: vegSource.pigmentLabel ?? null
+			}
+		: null;
+
 	// Self-luminous brown dwarf (thermal/self-luminous, value = effective temperature).
 	const selfLumTag = (body.tags ?? []).find((t) => t.key === 'thermal/self-luminous');
-	const selfLumGlow: SelfLumSpec | null = (selfLumTag && !isStar && !isBelt)
+	// NOT gated on !isStar. A brown dwarf is filed as a star as often as not, and excluding those was
+	// excluding the very objects this glow describes — see the processor's substellar pass, which had
+	// the same backwards test. A belt still cannot glow: it is a population, not a body.
+	const selfLumGlow: SelfLumSpec | null = (selfLumTag && !isBelt)
 		? (() => { const teff = Number(selfLumTag.value) || 0; return { teff, colorHex: bdGlowColour(teff) }; })()
 		: null;
 
@@ -484,6 +588,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		atmPressureBar,
 		tidallyLocked: !!(body as any).tidallyLocked,
 		polarIce,
+		polarIceLatDeg,
 		regolith,
 		craters,
 		rough,
@@ -500,6 +605,7 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 		atmGlow,
 		clouds,
 		cloudDecks: deckList,
-		selfLumGlow
+		selfLumGlow,
+		vegetation
 	};
 }

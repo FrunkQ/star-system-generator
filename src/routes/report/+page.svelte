@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import ReportDocument from '$lib/reports/ReportDocument.svelte';
   import { computePlayerSnapshot } from '$lib/system/utils';
+  import { migrateUnitPrefs } from '$lib/units';
   import type { System } from '$lib/types';
 
   // Thin loader: reads the one-shot report payload the System View stashes in sessionStorage,
@@ -11,8 +12,7 @@
   let mode: 'GM' | 'Player' = 'GM';
   let theme = 'retro';
   let includeConstructs = true;
-  let units: 'metric' | 'imperial' = 'metric';
-  let tempUnit: 'C' | 'F' | 'K' = 'C';
+  let prefs: import('$lib/units').UnitPrefs = {};
   let loading = true;
   let error = '';
 
@@ -28,8 +28,12 @@
       mode = data.mode;
       theme = data.theme;
       includeConstructs = data.includeConstructs ?? true;
-      units = data.units === 'imperial' ? 'imperial' : 'metric';
-      tempUnit = data.tempUnit === 'F' || data.tempUnit === 'K' ? data.tempUnit : 'C';
+      // G34: the stash carries the campaign's unitPrefs; a stale stash from an older build still
+      // reads through the same legacy-field migration the GM map uses.
+      prefs = data.unitPrefs ?? migrateUnitPrefs({
+        measurementUnits: data.units === 'imperial' ? 'imperial' : 'metric',
+        temperatureUnit: data.tempUnit === 'F' || data.tempUnit === 'K' ? data.tempUnit : 'C'
+      });
       system = mode === 'Player' ? computePlayerSnapshot(data.system) : data.system;
       loading = false;
     } catch (e) {
@@ -49,7 +53,7 @@
 {:else if error}
   <div class="error">{error}</div>
 {:else}
-  <ReportDocument {system} {mode} {theme} {includeConstructs} {units} {tempUnit} chrome="report" />
+  <ReportDocument {system} {mode} {theme} {includeConstructs} {prefs} chrome="report" />
 {/if}
 
 <style>

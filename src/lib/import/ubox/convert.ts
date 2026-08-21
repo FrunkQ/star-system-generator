@@ -1,6 +1,7 @@
 // Universe Sandbox (.ubox) import — entities → SSG System (authored inputs only). Design §7.
 import { G, AU_KM } from '$lib/constants';
-import { getStarLifespanGyr } from '$lib/physics/stellar-evolution';
+import { guessSystemAge } from '$lib/physics/systemAge';
+import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
 import type { System, CelestialBody } from '$lib/types';
 import { parseVec3, parseQuat, cleanHorizonId } from './parse';
 import { obliquityDeg, rotationHoursFromAngularVelocity, type V3 } from './kepler';
@@ -37,15 +38,36 @@ function hash8(text: string): string {
   return h.toString(16).padStart(8, '0');
 }
 
-function starClassFromTemp(tempK: number): string {
-  if (tempK >= 30000) return 'star/O';
-  if (tempK >= 10000) return 'star/B';
-  if (tempK >= 7500) return 'star/A';
-  if (tempK >= 6000) return 'star/F';
-  if (tempK >= 5200) return 'star/G';
-  if (tempK >= 3700) return 'star/K';
-  return 'star/M';
+/**
+ * WHAT KIND OF THING IS THIS ENTITY — and the top-level `Category` string is not the whole answer.
+ *
+ * Universe Sandbox writes category TWICE: a top-level string, and a numeric `Category` on the
+ * Celestial component (observed: 2 = star, 3 = planet or moon; absent on ring/fragment particles,
+ * which have no Celestial component at all). The top-level string can be BLANK on a real body. The
+ * Hystrine file (inbox G32) carries a 1.68-solar-mass, 7.8-solar-luminosity A star with `Category: ""`
+ * at the top and `Category: 2`, `StarType: 1`, `Luminosity: 2.97e27` underneath — and this importer
+ * read only the string, took blank to mean particle, and DROPPED THE STAR before hierarchy inference
+ * ran. The largest gas giant then became root, its moons became planets, thirty of thirty-four
+ * bodies unbound against it, and the age fell to the no-star 4.6. The user diagnosed it as an age
+ * bug; it was this line.
+ *
+ * Order of evidence, most explicit first: the top-level string if non-blank; the Celestial numeric
+ * category; StarType; a stated luminosity; a stellar mass. A body with NO Celestial component and no
+ * mass is a particle. Everything else with mass but no label is a body of unknown category, kept and
+ * classified by mass so it is at least not thrown away.
+ */
+const STELLAR_MASS_KG = 0.075 * 1.989e30;   // the hydrogen-burning limit; a brown dwarf below it is still not a "particle"
+export function resolveCategory(e: UsEntity): 'star' | 'planet' | 'moon' | 'sso' | 'blackhole' | null {
+  const top = (e.Category ?? '').trim().toLowerCase();
+  if (top === 'star' || top === 'planet' || top === 'moon' || top === 'sso' || top === 'blackhole') return top;
+  const cel = e.Components?.find((c) => c.$type === 'Celestial');
+  if (!cel) return null;                                        // no Celestial component: a particle
+  if (cel.Category === 2 || (cel.StarType ?? 0) > 0 || (cel.Luminosity ?? 0) > 0) return 'star';
+  if (typeof e.Mass === 'number' && e.Mass >= STELLAR_MASS_KG) return 'star';   // luminous or not, that mass is a star
+  if (typeof e.Mass === 'number' && e.Mass > 0) return 'planet';                 // labelled or not, it is a body; hierarchy decides planet vs moon
+  return null;
 }
+
 
 function percentile(sorted: number[], p: number): number {
   if (!sorted.length) return 0;
@@ -71,7 +93,8 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
   for (const e of entities) {
     const name = (e.Name ?? '').trim();
     if (name === 'dummy') { skipped.push({ name: name || '(dummy)', reason: 'dummy' }); continue; }
-    if (!e.Category) { particles.push(e); continue; }               // ring/fragment particles
+    const category = resolveCategory(e);
+    if (!category) { particles.push(e); continue; }                 // ring/fragment particles (no Celestial component)
     if (typeof e.Mass !== 'number' || !(e.Mass > 0)) { skipped.push({ name, reason: 'unparseable-entity' }); continue; }
     if (e.Mass < minMass) { belowThreshold++; continue; }
     let pos: V3, vel: V3;
@@ -79,7 +102,7 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     catch { skipped.push({ name, reason: 'unparseable-entity' }); continue; }
     const id = String(e.Id);
     entityById.set(id, e);
-    bodyInputs.push({ id, name, category: e.Category, mass: e.Mass, pos, vel });
+    bodyInputs.push({ id, name, category, mass: e.Mass, pos, vel });
   }
   if (belowThreshold > 0) skipped.push({ name: `${belowThreshold} small bodies below ${minMass.toExponential(1)} kg`, reason: 'below-mass-threshold' });
 
@@ -102,7 +125,7 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     if (p.roleHint === 'star') counts.stars++;
     else if (p.roleHint === 'planet') counts.planets++;
     else counts.moons++;
-    if (p.isRoot && e.Category === 'star') rootStarEntity = e;
+    if (p.isRoot && resolveCategory(e) === 'star') rootStarEntity = e;
   }
 
   if (!nodes.length) {
@@ -115,13 +138,14 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     for (const p of placements) {
       if (p.unbound) continue;
       const e = entityById.get(p.id)!;
-      if (e.Category === 'star' && (!best || (e.Mass ?? 0) > (best.Mass ?? 0))) best = e;
+      if (resolveCategory(e) === 'star' && (!best || (e.Mass ?? 0) > (best.Mass ?? 0))) best = e;
     }
     rootStarEntity = best;
   }
 
   // --- System age (design §7.4) ---
-  const age_Gyr = resolveAge(rootStarEntity, assumptions);
+  const age = resolveAge(rootStarEntity, assumptions);
+  const age_Gyr = age.ageGyr;
 
   // --- Ring aggregation (design §7.6) ---
   aggregateRings(particles, entityById, placementById, nodeId, nodes, counts, skipped, assumptions);
@@ -134,8 +158,10 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
     seed: `us-${simHash}`,
     epochT0: nowMs,
     age_Gyr,
+    ageEstimated: age.estimated,
+    ageBandGyr: age.band,
     nodes,
-    rulePackId: '',           // filled by fixUpImportedSystem / processor defaults
+    rulePackId: '',           // NOT filled by fixUpImportedSystem (it never reads it) - the LOAD path stamps the current pack when this is blank; see SystemView.isLoadableSystem
     rulePackVersion: '',
     tags: []
   };
@@ -184,7 +210,6 @@ function buildNode(
       const tilt = obliquityDeg(parseQuat(e.Orientation), parseVec3(e.RotationAxis), parseVec3(e.Position), parseVec3(e.Velocity));
       // measured against the body's heliocentric orbit normal; good enough for planets/moons
       (node as CelestialBody & { axial_tilt_deg?: number }).axial_tilt_deg = +tilt.toFixed(2);
-      node.obliquity_deg = +tilt.toFixed(2);
     }
   } catch { /* leave rotation/tilt unset on a malformed vector */ }
 
@@ -196,10 +221,19 @@ function buildNode(
     } else {
       const tempK = heat?.SurfaceTemperature ?? 5778;
       node.temperatureK = tempK;
-      node.classes = [starClassFromTemp(tempK)];
       if (typeof cel?.Luminosity === 'number' && cel.Luminosity > 0) {
         (node as CelestialBody & { radiationOutput?: number }).radiationOutput = cel.Luminosity / L_SUN;
       }
+      // ONE classifier for every importer (physics/importedStarClass.ts). Universe Sandbox states no
+      // spectral type, so this is the pure inference path. The converter has no rule pack, so it
+      // emits the honest BAND KEY (letter from temperature, L/T/Y aware; luminosity class from
+      // temperature+radius where the fallback ladder can say, else main sequence) and leaves
+      // `autoClassify` on; `importFixup.resolveLegacyStarClass`, which has the pack, then resolves the
+      // full designation against the pack's own bands. Replaces a private ladder that stopped at M.
+      const cls = resolveImportedStarClass({ temperatureK: tempK, radiusKm: node.radiusKm, massKg,
+        luminositySolar: (node as any).radiationOutput });
+      node.classes = [cls.bandKey];
+      (node as any).autoClassify = true;
     }
   } else {
     // Planets/moons: makeup, atmosphere, hydrosphere from depots
@@ -298,24 +332,23 @@ function hydrosphereFromWater(waterMass: number, radiusM: number): import('$lib/
   return { composition: 'water', coverage: +coverage.toFixed(3) };
 }
 
-function resolveAge(rootStar: UsEntity | null, assumptions: string[]): number {
+function resolveAge(rootStar: UsEntity | null, assumptions: string[]): { ageGyr: number; estimated: boolean; band: [number, number] } {
+  // ONE age model for every importer (physics/systemAge guessSystemAge). Universe Sandbox stores an
+  // age on the star, so a stated age wins when the star can be that old; else the guess is from the
+  // primary's own life with the band it makes reasonable. Both are surfaced to the GM.
   if (!rootStar || !(rootStar.Mass ?? 0 > 0)) {
-    assumptions.push('System age assumed 4.6 Gyr (no star found to date the system) — set it in System Settings.');
-    return 4.6;
+    assumptions.push('NO STAR FOUND in this simulation, so nothing dates the system and nothing anchors the planets. If your scene has a star, check its Category in Universe Sandbox; otherwise add one in the infill step. The galactic-median age is used meanwhile.');
+    const g = guessSystemAge(null);
+    return { ageGyr: g.ageGyr, estimated: true, band: g.bandGyr };
   }
-  const lifespan = getStarLifespanGyr(rootStar.Mass!);
   const storedAge = typeof rootStar.Age === 'number' && rootStar.Age > 0 ? rootStar.Age / GYR_S : null;
-  if (storedAge !== null) {
-    if (storedAge > lifespan) {
-      const capped = Math.min(4.6, 0.5 * lifespan);
-      assumptions.push(`System age ${storedAge.toFixed(2)} Gyr exceeds the primary star's ~${lifespan.toFixed(2)} Gyr lifespan; clamped to ${capped.toFixed(3)} Gyr. Set it in System Settings.`);
-      return capped;
-    }
-    return +storedAge.toFixed(3);
-  }
-  const fallback = Math.min(4.6, 0.5 * lifespan);
-  assumptions.push(`System age assumed ${fallback.toFixed(3)} Gyr from the primary's stellar type — set it in System Settings.`);
-  return fallback;
+  const heat = component(rootStar, 'HeatComponent');
+  const g = guessSystemAge({
+    massKg: rootStar.Mass!, temperatureK: heat?.SurfaceTemperature,
+    classes: [], statedAgeGyr: storedAge,
+  });
+  if (g.source === 'stated-clamped' || g.estimated) assumptions.push(`System age: ${g.note} Set it in System Settings.`);
+  return { ageGyr: g.ageGyr, estimated: g.estimated, band: g.bandGyr };
 }
 
 function aggregateRings(

@@ -1,0 +1,86 @@
+{
+  "model": {
+    "captureWeight": 1,
+    "protectionWeight": 0.5,
+    "steadinessWeight": 0.5,
+    "tissueAbsorptance": 0.25,
+    "saturationFlux": 3.0e20,
+    "reactionCentreNm": 700,
+    "damageThresholdNm": 400,
+    "damageScale": 1,
+    "viabilityFraction": 0.6,
+    "drawSharpness": 6
+  },
+  "pigments": [
+    {
+      "key": "chlorophyll",
+      "label": "Chlorophyll",
+      "baselineAbsorptance": 0.06,
+      "bands": [
+        { "centreNm": 432, "widthNm": 30, "strength": 0.92 },
+        { "centreNm": 662, "widthNm": 34, "strength": 0.88 }
+      ],
+      "note": "Two bands BRACKETING the green. Leaves are green because chlorophyll reflects the band the Sun is strongest in rather than absorbing it — the single fact every reader brings to this page, and the one a naive energy-maximiser gets wrong."
+    },
+    {
+      "key": "bacteriorhodopsin",
+      "label": "Bacteriorhodopsin",
+      "baselineAbsorptance": 0.08,
+      "bands": [
+        { "centreNm": 568, "widthNm": 55, "strength": 0.86 }
+      ],
+      "note": "A retinal pigment absorbing straight through the green-yellow, so it presents purple. The purple-Earth hypothesis argues organisms like this took that band first and left chlorophyll what remained."
+    },
+    {
+      "key": "carotenes",
+      "label": "Carotenes",
+      "baselineAbsorptance": 0.05,
+      "bands": [
+        { "centreNm": 450, "widthNm": 26, "strength": 0.9 },
+        { "centreNm": 478, "widthNm": 24, "strength": 0.82 }
+      ],
+      "note": "Blue absorbers reflecting orange. On Earth they are accessory pigments doing photoprotection as much as capture."
+    },
+    {
+      "key": "phycoerythrin",
+      "label": "Phycoerythrin",
+      "baselineAbsorptance": 0.06,
+      "bands": [
+        { "centreNm": 498, "widthNm": 22, "strength": 0.7 },
+        { "centreNm": 545, "widthNm": 22, "strength": 0.86 },
+        { "centreNm": 566, "widthNm": 18, "strength": 0.8 }
+      ],
+      "note": "Harvests the blue-green that penetrates deep water; presents pink-red."
+    },
+    {
+      "key": "phycocyanin",
+      "label": "Phycocyanin",
+      "baselineAbsorptance": 0.06,
+      "bands": [
+        { "centreNm": 620, "widthNm": 40, "strength": 0.9 }
+      ],
+      "note": "An orange-red absorber presenting blue-cyan — the pigment favoured where a star throws its light short of the red."
+    },
+    {
+      "key": "pheophytin",
+      "label": "Pheophytin",
+      "baselineAbsorptance": 0.07,
+      "bands": [
+        { "centreNm": 408, "widthNm": 24, "strength": 0.9 },
+        { "centreNm": 505, "widthNm": 20, "strength": 0.32 },
+        { "centreNm": 535, "widthNm": 20, "strength": 0.28 },
+        { "centreNm": 667, "widthNm": 26, "strength": 0.68 }
+      ],
+      "note": "Chlorophyll with the magnesium gone: the same bracketing shape, shifted and weaker, presenting olive-brown."
+    },
+    {
+      "key": "melanin",
+      "label": "Melanin",
+      "baselineAbsorptance": 0.8,
+      "bands": [
+        { "centreNm": 300, "widthNm": 170, "strength": 0.18 }
+      ],
+      "note": "Broadband absorption rising into the ultraviolet. It works under any star, which is why it must never be selected OUT by a threshold — it presents black, and under a starved sky it wins."
+    }
+  ]
+}

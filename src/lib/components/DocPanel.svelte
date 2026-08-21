@@ -6,6 +6,11 @@
   // (renderDocument) across every info block, so appearance changes stay aligned by construction.
   // The canvas sizes itself to its CONTENT height; the host provides the frame and scrolling.
   import { onMount, onDestroy } from 'svelte';
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
+  // The GM's tag vocabulary, off the broadcast — see HoloView for why the local store is the wrong
+  // answer on a player's device (TAG-15). Null on the GM's own screens, where the store IS the answer.
+  export let tagStyles: import('$lib/tags/tagCategories').TagCategory[] | null = null;
   import type { System } from '$lib/types';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { renderDocument } from '$lib/catalogue/document/renderDocument';
@@ -13,8 +18,9 @@
   import { resolveDocColors, type TagStyle, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
   import { loadBodyImage, type LoadedBodyImage } from '$lib/catalogue/document/bodyImage';
   import { starsOf, isRinged, isBary, dominantOf } from '$lib/catalogue/document/systemTopology';
+  import { buildPortraitSystem } from '$lib/catalogue/document/portraitSystem';
   import BodyGraphic from './BodyGraphic.svelte';
-  import type { MeasurementUnits, TemperatureUnit } from '$lib/stores';
+  import ConstructModelGraphic from './ConstructModelGraphic.svelte';
 
   export let system: System | null = null;
   export let selectedId: string | null = null;
@@ -35,8 +41,20 @@
   export let interactive = false; // hand-spin the 3D globe
   export let transparentBg = false; // let the host's backdrop show through (docked panel over the scene)
   export let showHeading = true;    // false when the host aside already shows the title bar
-  export let units: MeasurementUnits = 'metric';
-  export let tempUnit: TemperatureUnit = 'C';
+  // G8: the campaign clock, so the body block can carry its "Next eclipse" row. Omitted -> no row.
+  export let nowMs: number | null = null;
+  export let formatDate: ((ms: number) => string) | undefined = undefined;
+  export let prefs: import('$lib/units').UnitPrefs = {};
+  // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
+  // Optional: without it the construct block simply omits those rows.
+  export let rulePack: import('$lib/types').RulePack | null = null;
+  // MAP HIGHLIGHTS -> the chip row under the body's name (design 9.3), so the panel and the map name the
+  // same things in the same colours. Prop first, store second: a player window runs in its own document
+  // where every store is a fresh empty instance (TAG-15), so the value only reaches it as a prop.
+  export let highlights: import('$lib/tags/mapHighlights').MapHighlights | null = null;
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
+  // A29: show a construct's current fuel/cargo/crew, not just its capacity. Preset-driven.
+  export let liveReadings = false;
 
   let wrap: HTMLDivElement;
   let canvas: HTMLCanvasElement;
@@ -56,33 +74,33 @@
   $: subjectRinged = subjectBody && system ? isRinged(system, subjectBody.id) : false;
   $: starHex = system ? ((starsOf(system)[0] as any)?.apparentColorHex ?? null) : null;
   $: gfxOn = imagery === 'sphere' || imagery === 'disc' || imagery === 'flat';
+  // G3: a construct with a model takes the turntable in the reserved gap instead of BodyGraphic.
+  $: subjectModel = subjectBody?.kind === 'construct' ? ((subjectBody as any).model ?? null) : null;
 
-  // Single-body scene for the 3D graphic — same shape the document view builds (root barycentre so a
-  // planet isn't misread as the system's star; rings ride along).
-  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? (() => {
-    const root = { id: '__root', name: '', kind: 'barycenter', parentId: null, orbit: undefined };
-    const bodyNode = { ...subjectBody, parentId: '__root', orbit: undefined };
-    const rings = (system?.nodes ?? []).filter((n: any) => (n.parentId === subjectBody.id || n.orbit?.hostId === subjectBody.id) && n.roleHint === 'ring')
-      .map((r: any) => ({ ...r, parentId: subjectBody.id }));
-    return {
-      id: 'bg', name: '', seed: 'bg', epochT0: 0, age_Gyr: (system as any)?.age_Gyr ?? 4.5,
-      nodes: [root, bodyNode, ...rings], rulePackId: '', rulePackVersion: '', tags: []
-    };
-  })() as any : null;
+  // A46: the ONE portrait-system builder - see catalogue/document/portraitSystem.ts for why the
+  // synthetic root exists. FilteredDocumentView consumes the same builder, so the two cannot drift.
+  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? buildPortraitSystem(subjectBody, system) : null;
 
   // Body photo via the shared loader (same-origin rule + auto-centre focus in one place).
   let loaded: LoadedBodyImage | null = null;
   let imgForId: string | null = null;
-  $: if (imagery === 'photo' && selectedId && selectedId !== imgForId) {
-    imgForId = selectedId; loaded = null;
-    loadBodyImage(system, selectedId, (l) => { if (imgForId === selectedId) { loaded = l; render(); } });
+  // Reload whenever the SUBJECT or the imagery MODE changes. Keying on the id alone meant that
+  // switching Body graphics to 'photo' with the same body already selected never fired the loader --
+  // the non-photo branch had stamped imgForId with that id -- so nothing appeared until you left the
+  // tab and came back, which remounts the panel and clears it. The key IS the subject-when-in-photo.
+  $: photoKey = imagery === 'photo' && selectedId ? selectedId : null;
+  $: if (photoKey !== imgForId) {
+    imgForId = photoKey;
+    loaded = null;
+    if (photoKey) loadBodyImage(system, photoKey, (l) => { if (imgForId === photoKey) { loaded = l; render(); } });
   }
-  $: if (imagery !== 'photo' || !selectedId) { loaded = null; imgForId = selectedId; }
 
   function render() {
     if (!canvas || w <= 0 || !system) return;
     const blocks = buildGuideDocument(system, selectedId, {
-      panel: true, noHeading: !showHeading, units, tempUnit, imagery, tagStyle, photoFrame,
+      panel: true, noHeading: !showHeading, prefs, imagery, tagStyle, photoFrame, rulePack, liveReadings,
+      highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
+      nowMs: nowMs ?? undefined, formatDate,
       image: loaded?.img ?? null, imageAspect: loaded?.aspect, imageFocus: loaded?.focus ?? null
     });
     const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
@@ -115,18 +133,23 @@
   onDestroy(() => ro?.disconnect());
 
   // Redraw on any data/appearance change.
-  $: if (canvas) { system; selectedId; theme; imagery; photoFrame; tagStyle; units; tempUnit; loaded; render(); }
+  $: if (canvas) { system; selectedId; theme; imagery; photoFrame; tagStyle; prefs; loaded; nowMs; render(); }
 </script>
 
 <div class="doc-panel" bind:this={wrap} style="height:{contentH}px">
   <canvas bind:this={canvas} style="width:{w}px; height:{contentH}px"></canvas>
   {#if gfxOn && gfxRect && subjectBody}
-    <div class="dp-gfx" class:interactive={interactive && imagery === 'sphere'}
+    <div class="dp-gfx" class:interactive={interactive && (imagery === 'sphere' || !!subjectModel)}
          style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
-      <BodyGraphic body={subjectBody} system={bodyGfxSystem}
-        mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
-        ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle}
-        bg={resolveDocColors(theme).bg} {starHex} interactive={interactive && imagery === 'sphere'} />
+      {#if subjectModel}
+        <ConstructModelGraphic model={subjectModel} tint={(subjectBody as any).icon_color || '#ffd24d'}
+          iconType={(subjectBody as any).icon_type} seed={subjectBody.id} {mono} {interactive} />
+      {:else}
+        <BodyGraphic body={subjectBody} system={bodyGfxSystem}
+          mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
+          ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle}
+          bg={resolveDocColors(theme).bg} {starHex} interactive={interactive && imagery === 'sphere'} />
+      {/if}
     </div>
   {/if}
 </div>

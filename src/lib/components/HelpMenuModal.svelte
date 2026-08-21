@@ -7,6 +7,7 @@
   // The in-app guides are bundled from their single source in docs/ (same as their tab buttons).
   import tagsGuide from '../../../docs/tags-guide.md?raw';
   import autopilotGuide from '../../../docs/autopilot-guide.md?raw';
+  import { foreground } from '$lib/ui/foreground';
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -16,7 +17,7 @@
   let inlineDoc: string | null = null;
 </script>
 
-<div class="modal-overlay" role="presentation" on:click={close}>
+<div class="modal-overlay" role="presentation" on:click={close} use:foreground>
   <div class="modal-card help-card" role="dialog" aria-label="Help" on:click|stopPropagation>
     <header class="help-head">
       <span>Help &amp; guides</span>
@@ -32,10 +33,16 @@
           <span class="hi-title">Getting Started ↗</span>
           <span class="hi-desc">A guided walkthrough — the starmap, building worlds, tags, autopilot, playing at the table.</span>
         </a>
+        <!-- The Discord invitation is a SIBLING, not nested: `.help-item` is itself an anchor, and
+             an anchor inside an anchor is invalid and swallows the inner click. -->
         <a class="help-item" href="https://youtu.be/LrgNh2PVOlg" target="_blank" rel="noopener noreferrer">
           <span class="hi-title">Tutorial video ↗</span>
-          <span class="hi-desc">See it in action.</span>
+          <span class="hi-desc"><strong class="hi-warn">Well out of date.</strong> The ideas still hold, but almost every screen in it has changed since — useful for the shape of things, misleading on the detail.</span>
         </a>
+        <p class="help-aside">
+          Fancy making a newer one? We would happily point everyone at it —
+          <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">say hello on Discord</a>.
+        </p>
       </div>
 
       <div class="help-group">
@@ -45,8 +52,8 @@
           <span class="hi-desc">Every constant, derivation and honest fudge — and how a world's type &amp; tags are decided. The apple (Newton) icon links in here.</span>
         </a>
         <button class="help-item" on:click={() => (inlineDoc = tagsGuide)}>
-          <span class="hi-title">Tags, Points &amp; Constructs of Interest</span>
-          <span class="hi-desc">Physics vs hand-added tags, PoI/CoI, manual tagging, packs, and Find-by-tag.</span>
+          <span class="hi-title">Tags</span>
+          <span class="hi-desc">Where tags come from, categories, overriding the physics, secret tags, highlighting them on the maps, and Find-by-tag.</span>
         </button>
         <button class="help-item" on:click={() => (inlineDoc = autopilotGuide)}>
           <span class="hi-title">Autopilot</span>
@@ -64,6 +71,14 @@
           <span class="hi-title">Discord — questions &amp; feedback ↗</span>
           <span class="hi-desc">Ask, report bugs, share systems.</span>
         </a>
+        <!-- Findable without being told about it: a user reporting a problem looks in Help, not in
+             Settings. The button itself stays in Settings > System, where the data tools live. -->
+        <div class="help-item help-note">
+          <span class="hi-title">Reporting a problem</span>
+          <span class="hi-desc">Settings &gt; System &gt; <em>Reporting a problem</em> saves a diagnostic file describing
+            what the app was doing, with a copy of your starmap so the problem can be reproduced. Post it on the
+            Discord — it also works as a backup.</span>
+        </div>
       </div>
     </div>
   </div>
@@ -115,6 +130,19 @@
     padding: 10px 12px; cursor: pointer; text-decoration: none; color: var(--text, #e8e8e8); font: inherit;
   }
   .help-item:hover { background: var(--bg-control-hover); border-color: var(--accent); }
+  /* An instruction, not a destination — it must not offer a click it cannot honour. */
+  .help-note { cursor: default; }
+  .help-note:hover { background: var(--bg-control); border-color: var(--border); }
   .hi-title { font-weight: 600; color: var(--accent); font-size: 0.92rem; }
   .hi-desc { color: var(--text-muted, #cfcfcf); font-size: 0.82rem; line-height: 1.4; }
+  .hi-warn { color: var(--status-warn, #e0a24d); }
+  .help-aside {
+    margin: 2px 0 0;
+    padding: 0 4px;
+    color: var(--text-muted, #cfcfcf);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    font-style: italic;
+  }
+  .help-aside a { color: var(--link); }
 </style>

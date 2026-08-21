@@ -8,9 +8,10 @@
 // condense, and what the condensate looks like, is rule-pack DATA: a gas's `cloud` block says it
 // condenses and into what; the liquid it condenses to carries colour, opacity and melt point.
 import type { CelestialBody, RulePack, Tag, GasCloud, LiquidDef } from '$lib/types';
-import { liquidDef, phaseAtP, saturationPressureBar } from './liquids';
+import { liquidDef, phaseAtP, saturationPressureBar, surfaceVapourSource } from './liquids';
 import { atmosphereProfile, MIN_ATM_BAR, type AtmosphereProfile } from './atmosphereProfile';
-import { makeupFractions } from './makeup';
+import { makeupFractions, hasSolidSurface } from './makeup';
+import { stripForReprocess } from '../tags/tagLifecycle';
 
 // ── The published vocabulary ─────────────────────────────────────────────────────────────────────
 export const CLOUD_DECK_TAG = 'structure/cloud-deck';
@@ -134,6 +135,10 @@ export function effectiveComposition(
 // the total pressure, discounted by a relative humidity that a bigger sea pushes closer to 1. Earth
 // lands on ~1% water vapour at ~75% RH, which is what Earth has. Titan's methane sea and its
 // atmospheric CH4 then DEDUPE to one deck (by species, larger coverage wins) below.
+// The saturation curve and the liquid-to-gas lookup are `surfaceVapourSource` in liquids.ts — ONE
+// answer, shared with the greenhouse's column-mean term (D6). Everything below it is this caller's
+// own policy and is deliberately NOT shared: the gates and the near-surface humidity law belong to
+// cloud formation, not to infrared absorption.
 function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas: string; frac: number } | null {
   const solvent = body.hydrosphere?.composition;
   const coverage = body.hydrosphere?.coverage ?? 0;
@@ -142,17 +147,16 @@ function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas
   const pBar = body.atmosphere?.pressure_bar ?? 0;
   if (pBar < MIN_ATM_BAR) return null;                          // no air to hold the vapour
   if (phaseAtP(solvent, surfT, pBar, pack) !== 'liquid') return null;  // frozen/boiled → not a sea
-  const def = liquidDef(solvent, pack);
-  if (!def) return null;
-  // Which GAS is this liquid's vapour? The gas whose cloud block condenses to it.
-  const gasDefs = pack?.gasPhysics ?? {};
-  const gas = Object.entries(gasDefs).find(([, d]) => d.cloud?.condensesTo === solvent)?.[0];
-  if (!gas) return null;
-  // Relative humidity: a world under a global ocean sits near saturation, a small sea leaves the
-  // air dry. Bounded well short of 1 — a saturated surface is fog, not weather.
+  const source = surfaceVapourSource(body, pack);
+  if (!source) return null;
+  // Relative humidity AT THE SURFACE: a world under a global ocean sits near saturation, a small sea
+  // leaves the air dry. Bounded well short of 1 — a saturated surface is fog, not weather. Note this
+  // is NOT the greenhouse's column mean and must not be unified with it: the air directly over any
+  // sea is humid (hence the 0.35 floor), while the globally averaged column scales with how much of
+  // the globe is sea at all.
   const humidity = 0.35 + 0.5 * Math.min(1, coverage);
-  const satFrac = saturationPressureBar(def, surfT) / pBar;
-  return { gas, frac: Math.max(0, Math.min(0.95, humidity * satFrac)) };
+  const satFrac = source.saturationBar / pBar;
+  return { gas: source.gas, frac: Math.max(0, Math.min(0.95, humidity * satFrac)) };
 }
 
 // ── Condensate colour ────────────────────────────────────────────────────────────────────────────
@@ -160,17 +164,25 @@ function evaporationFraction(body: CelestialBody, pack?: RulePack | null): { gas
 // metres of path) yet white as cloud; sulphuric acid is genuinely yellow-tinted and its cloud stays
 // creamy. So the rule is not "mix toward white by a fixed amount" — that whitens out substances that
 // are already pale, which cost Venus its yellow haze. Instead normalise the colour's DISTANCE from
-// white to a fixed small amount: a dark liquid lightens a lot, an already-pale one barely moves, and
-// the hue survives either way.
-const CONDENSATE_DISTANCE = 60;   // how far from white a deck sits, in 0..255 channel terms
-export function condensateTint(hex: string): string {
+// white: a dark liquid lightens a lot, an already-pale one barely moves, and the hue survives either
+// way.
+//
+// HOW FAR from white is per-substance, because the physics differs. A cloud of transparent droplets
+// scatters every wavelength alike and goes white however dark the bulk liquid is — that is water,
+// and 60 is its number. A suspension whose particles ABSORB keeps its colour no matter how finely
+// divided it is: Jupiter's belts are genuinely brown, a martian dust storm genuinely ochre, and no
+// amount of scattering turns either pastel. One constant for both cases made every deck in the game
+// pastel; it is `LiquidDef.cloudTintDistance` now, and it is rule-pack data like every other optical
+// property of a liquid.
+export const DEFAULT_CONDENSATE_DISTANCE = 60;   // how far from white, in 0..255 channel terms
+export function condensateTint(hex: string, distance?: number): string {
   const h = hex.replace('#', '');
   if (h.length !== 6) return '#eef2f8';
   const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
   const d = c.map((v) => 255 - v);
   const max = Math.max(...d);
   if (max <= 0) return hex;
-  const f = Math.min(1, CONDENSATE_DISTANCE / max);
+  const f = Math.min(1, Math.max(0, distance ?? DEFAULT_CONDENSATE_DISTANCE) / max);
   const out = d.map((v) => Math.round(255 - v * f));
   return '#' + out.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
 }
@@ -197,7 +209,15 @@ export function bucketCoverage(bucket: string): number {
 }
 
 // ── The evaluation ───────────────────────────────────────────────────────────────────────────────
-export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): CloudDeck[] {
+/**
+ * `profileOverride` lets a caller scan a profile it built itself — the balloon view hands in one that
+ * continues below a giant's 1 bar anchor, so the scan can find the water deck that lives down there.
+ * The PUBLISHED decks are always built from the default profile: a renderer looking down from space
+ * cannot see a deck under another deck, and the tags must stay what the processor emits.
+ */
+export function deriveCloudDecks(
+  body: CelestialBody, pack?: RulePack | null, profileOverride?: AtmosphereProfile | null
+): CloudDeck[] {
   const pBar = body.atmosphere?.pressure_bar ?? 0;
   if (pBar < MIN_ATM_BAR) return [];
   const surfT = body.temperatureK ?? body.equilibriumTempK ?? 0;
@@ -207,14 +227,14 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
   const evap = evaporationFraction(body, pack);
   if (evap) comp[evap.gas] = Math.max(comp[evap.gas] ?? 0, evap.frac);
 
-  const profile = atmosphereProfile(body, comp, pack);
+  const profile = profileOverride ?? atmosphereProfile(body, comp, pack);
   if (!profile) return [];
   // A body with a SURFACE cannot hold more of a substance in its air than the ground-level
   // temperature allows: the excess frosts out and stays there. So a well-mixed fraction is capped by
   // saturation at the surface. Without this, a hundred parts per million of hydrogen cyanide — which
   // on Titan is solid everywhere, ground included — read as an overcast sky rather than the trace
   // frost it is. A giant has no such floor; its reservoir is the hot interior, so it is exempt.
-  const hasSurface = makeupFractions(body).gas <= 0.5;
+  const hasSurface = hasSolidSurface(body);
 
   const decks = new Map<string, CloudDeck>();
   for (const [gas, fracRaw] of Object.entries(comp)) {
@@ -224,7 +244,7 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
     const def = liquidDef(species, pack);
     if (!def) continue;
     const frac = hasSurface
-      ? Math.min(fracRaw ?? 0, saturationPressureBar(def, surfT) / profile.pSurfBar)
+      ? Math.min(fracRaw ?? 0, saturationPressureBar(def, surfT) / profile.pAnchorBar)
       : (fracRaw ?? 0);
     if (frac < (cloud.minFraction ?? DEFAULT_MIN_FRACTION)) continue;
     // Does this species saturate anywhere in the column, and how much condensate does that put up
@@ -241,8 +261,12 @@ export function deriveCloudDecks(body: CelestialBody, pack?: RulePack | null): C
     // straight back into the deck, so the cover never breaks. That is the whole reason Venus is
     // total overcast on a few parts per million of vapour, and it is no longer a special case: it
     // falls out of the same saturation test used to place the deck.
+    // At the ANCHOR — the pressure surfT was actually read at — never at the deepest level. On a
+    // profile continued below a giant's reference those differ by a hundredfold, and asking whether
+    // 165 K air is saturated at 100 bar says everything rains out, drains every deck, and loses the
+    // water deck the deep scan existed to find.
     const satSurf = saturationPressureBar(def, surfT);
-    const surfaceRatio = satSurf > 0 ? (frac * profile.pSurfBar) / satSurf : 1;
+    const surfaceRatio = satSurf > 0 ? (frac * profile.pAnchorBar) / satSurf : 1;
     const landsIntact = surfaceRatio >= 0.5;
     const precip: PrecipKind = !landsIntact ? 'virga' : surfT < def.meltK ? 'snow' : 'rain';
     const rainOut = Math.min(1, Math.sqrt(Math.max(0, Math.min(1, surfaceRatio))));
@@ -314,6 +338,63 @@ export function lightningStrength(tags: Tag[] | undefined): number {
 export function oxidationStrength(tags: Tag[] | undefined): number {
   const v = (tags ?? []).find((t) => t.key === OXIDISED_TAG)?.value;
   return v === 'heavy' ? 0.62 : v === 'moderate' ? 0.4 : v === 'light' ? 0.2 : 0;
+}
+
+/**
+ * SPACE WEATHERING — how far an exposed surface has been worked over, 0..1.
+ *
+ * The sibling of oxidation, and the other half of a claim this codebase has made in a comment for a
+ * long time without implementing: Mars is red because it rusted, and the Moon, with the same iron
+ * and the same age but no oxidiser, is grey. The rust was wired. The greying was not, so every
+ * airless rock kept the raw brown of its bulk makeup and Luna came out the colour of a plant pot.
+ *
+ * The mechanism is real and specific. Micrometeorites and the solar wind sputter grain surfaces and
+ * deposit nanophase metallic iron on them; that coating DARKENS the regolith, MUTES its mineral
+ * absorption bands, and reddens the continuum slope a little. Muted bands are why maturity reads as
+ * greyness even though the slope reddens — the surface keeps a warm cast but loses the saturation
+ * that says what mineral it is. It is also why fresh crater rays are bright: they are unweathered.
+ *
+ * Two tags already carry what it needs. `surface/irradiation` is the dose and `surface/age` is the
+ * exposure time, and the product of those is maturity. An ATMOSPHERE stops it outright, which is why
+ * this is an airless-body effect and why Mars — shielded, but rusting — gets the other one.
+ */
+export function spaceWeathering(body: CelestialBody): number {
+  // TRUE VACUUM ONLY. Even a wisp of air stops micrometeorites and deflects the wind, which is why
+  // thin-aired Mars is red from RUST rather than grey from weathering — different process, and the
+  // tags say which one a world got.
+  if ((body.atmosphere?.pressure_bar ?? 0) >= 0.001) return 0;
+  // A belt or a ring is a population, not a surface. Nothing here applies to it.
+  if (body.roleHint === 'belt' || body.roleHint === 'ring') return 0;
+  // makeupFractions, NOT body.makeup — the fractions are DERIVED from mass and density and are not
+  // stored on the body. Reading the raw field returned undefined for every world in the catalogue,
+  // so the guard below silently switched the whole effect off.
+  const mk = makeupFractions(body);
+  // An icy crust does not mature this way: it sputters and anneals rather than accumulating iron.
+  if (mk.ice > 0.3 || mk.gas > 0.5) return 0;
+  if (!(mk.rock > 0 || mk.metal > 0 || mk.carbon > 0)) return 0;
+  // FLUENCE, NOT FLUX (inbox B65). `irradiationDose` is a RATE — how hard the surface is being hit —
+  // and maturity is what has accumulated, which is rate x time. Taking the rate alone said a freshly
+  // resurfaced world at Mercury's distance was as weathered as one that had sat there for four
+  // billion years, which is exactly backwards from why fresh crater rays are bright.
+  //
+  // It saturates, because the coating stops changing once the grains are covered: 1 - exp(-k*D*t).
+  // k is set so a Luna-like surface — dose 1.44, four billion years — lands at 0.94, since that is
+  // the one case anyone can eyeball.
+  const dose = (body as any).irradiationDose;
+  const ageGyr = (body as any).geoActivity?.surfaceAgeGyr;
+  if (typeof dose === 'number') {
+    const t = typeof ageGyr === 'number' && ageGyr > 0 ? ageGyr : 4;
+    return Math.max(0, Math.min(0.95, 1 - Math.exp(-0.5 * Math.max(0, dose) * t)));
+  }
+  // Fall back to the tags when the raw dose is not on the body (a hand-authored world, a fixture).
+  // BOTH must be present. Defaulting the missing one turned every belt and ring in the catalogue —
+  // which carry neither, and are not surfaces at all — into something a third space-weathered.
+  // A world we know nothing about is not weathered; it is unmeasured.
+  const tag = (k: string) => body.tags?.find((t) => t.key === k)?.value;
+  const d = { high: 1, moderate: 0.62, low: 0.3 }[tag('surface/irradiation') ?? ''];
+  const t = { ancient: 1, moderate: 0.5, young: 0.15 }[tag('surface/age') ?? ''];
+  if (d === undefined || t === undefined) return 0;
+  return Math.max(0, Math.min(0.95, d * t * 0.95));
 }
 
 // ── Weather (derived from the decks + the body's own physics) ────────────────────────────────────
@@ -412,7 +493,7 @@ const WEATHER_KEYS = [CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG, DUST_STO
 // Processor hook: strip the previous pass's AUTO deck/weather tags, keep manual ones, and emit
 // fresh auto tags for species the manual set doesn't already cover (manual wins a collision).
 export function applyCloudDeckTags(tags: Tag[], decks: CloudDeck[], weather: WeatherTags = {}): Tag[] {
-  const kept = tags.filter((t) => !WEATHER_KEYS.includes(t.key) || t.manual);
+  const kept = stripForReprocess(tags, WEATHER_KEYS);
   const manualKeys = new Set(kept.map((t) => t.key));
   const manualSpecies = new Set(
     kept.filter((t) => t.key === CLOUD_DECK_TAG).map((t) => parseCloudDeckValue(t.value).species));

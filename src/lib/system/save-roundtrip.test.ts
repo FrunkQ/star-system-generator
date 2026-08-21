@@ -89,7 +89,7 @@ describe('save → load round-trip is lossless and lean', () => {
 
     // --- Derived data MUST be gone from the saved file ---
     const a = get(savedSys, 'a') as any;
-    for (const f of ['temperatureK', 'apparentColor', 'classification', 'magnetism', 'stellarRadiation',
+    for (const f of ['temperatureK', 'apparentColor', 'classification', 'magnetism', 'totalIncidentFlux',
       'surfaceRadiation', 'habitabilityBreakdown', 'orbitalBoundaries', 'internalHeatK']) {
       expect(a[f], `derived field ${f} should be stripped`).toBeUndefined();
     }
@@ -103,9 +103,13 @@ describe('save → load round-trip is lossless and lean', () => {
       const bt = get(base, id), rt = get(reloaded, id);
       expect(Math.round(rt.temperatureK ?? 0)).toBe(Math.round(bt.temperatureK ?? 0));
       expect(rt.classes?.[0]).toBe(bt.classes?.[0]);
-      // No tag DUPLICATION on the round-trip (same tag key never appears twice).
-      const keys = (rt.tags ?? []).map((t) => t.key);
-      expect(new Set(keys).size).toBe(keys.length);
+      // No tag DUPLICATION on the round-trip. Keyed on (key, value), NOT on key alone: a body
+      // legitimately carries a key more than once where it has several of a thing — one
+      // structure/cloud-deck per deck, one volatiles/ices per retained species — which the
+      // architecture doc sanctions explicitly ("dedupe by (key, species)"). Asserting bare key
+      // uniqueness passed only for as long as no test body had two of anything.
+      const pairs = (rt.tags ?? []).map((t) => `${t.key}=${(t as any).value ?? ''}`);
+      expect(new Set(pairs).size, `duplicated tags: ${pairs.filter((p, i) => pairs.indexOf(p) !== i).join(', ')}`).toBe(pairs.length);
     }
     expect((get(reloaded, 'moon') as any).tidallyLocked).toBe(true);    // manual lock survived reload
     expect(get(reloaded, 'b').classes).toEqual(['planet/lava']);        // pin survived reload

@@ -5,6 +5,12 @@
   import { fixUpImportedSystem } from '$lib/system/importFixup';
   import { reviewToText, type ImportReview } from '$lib/import/shared/review';
   import type { ImportAdapter, ImportResultLike } from '$lib/import/adapters';
+  import { foreground } from '$lib/ui/foreground';
+  import GenerationDials, { DEFAULT_KNOBS } from './GenerationDials.svelte';
+  import { infillSystem, type InfillResult } from '$lib/generation/infill';
+  import { guessSystemAge, type AgeGuess } from '$lib/physics/systemAge';
+  import type { GenerationKnobs } from '$lib/generation/generateFromConfig';
+  import type { CelestialBody } from '$lib/types';
 
   export let bytes: Uint8Array;
   export let fileName = '';
@@ -40,6 +46,55 @@
   let systemName = '';
   let copied = false;
 
+  // ---- INFILL: always offered after an import (owner, G32), same dials as the wizard ----
+  // The raw imported system BEFORE processing is kept so infill can add to it and re-process; the
+  // processed one is what the review and the Load button use.
+  let rawSystem: System | null = null;
+  let infillOn = false;
+  let infillKnobs: GenerationKnobs = { ...DEFAULT_KNOBS };
+  let ageGuess: AgeGuess | undefined;
+  let chosenAgeGyr: number | undefined;
+  let infillResult: InfillResult | null = null;
+  let infillBusy = false;
+  $: importedPlanets = processedSystem ? processedSystem.nodes.filter((n: any) => n.roleHint === 'planet' && !(n.tags ?? []).some((t: any) => t.key === 'origin/generated')).length : 0;
+  $: hasStar = !!processedSystem?.nodes.some((n: any) => n.roleHint === 'star' && (n.massKg ?? 0) > 0);
+
+  function primeInfill(sys: System) {
+    const stars = sys.nodes.filter((n: any) => n.roleHint === 'star' && (n.massKg ?? 0) > 0) as CelestialBody[];
+    const primary = stars.sort((a, b) => (b.massKg ?? 0) - (a.massKg ?? 0))[0];
+    ageGuess = guessSystemAge(primary ? { massKg: primary.massKg, temperatureK: primary.temperatureK, classes: primary.classes, statedAgeGyr: sys.ageEstimated ? null : sys.age_Gyr } : null);
+    chosenAgeGyr = sys.age_Gyr;
+    // Default ON when the import is sparse (fewer than three planets round the primary), OFF when it
+    // already carries a system — a 34-body Universe Sandbox scene does not want three more worlds.
+    const planets = sys.nodes.filter((n: any) => n.roleHint === 'planet').length;
+    infillOn = planets < 3;
+    infillResult = null;
+  }
+
+  async function applyInfill() {
+    if (!rawSystem) return;
+    infillBusy = true;
+    await new Promise((r) => setTimeout(r, 20));
+    try {
+      // Start from a fresh copy of the raw import each time so re-running with new dials does not
+      // stack generated worlds on top of the last run's.
+      const base = JSON.parse(JSON.stringify(rawSystem)) as System;
+      base.age_Gyr = chosenAgeGyr ?? base.age_Gyr;
+      base.ageEstimated = ageGuess?.estimated && chosenAgeGyr === ageGuess.ageGyr;
+      const fixed = fixUpImportedSystem(base, rulePack);
+      infillResult = infillOn ? infillSystem(fixed, rulePack, { knobs: infillKnobs, ageGyr: base.age_Gyr }) : null;
+      let sys = systemProcessor.process(fixed, rulePack) as System;
+      for (let i = 0; i < 6; i++) sys = systemProcessor.process(sys, rulePack) as System;
+      // Stamp the pack that actually processed this import, so a SAVED file carries it - the
+      // converters write '' and the load-side gate should be the backstop, not the source of
+      // truth (inbox D26; the owner: 'we are managing to export bad files').
+      if (!sys.rulePackId) { sys.rulePackId = (rulePack as any)?.id ?? ''; (sys as any).rulePackVersion = (sys as any).rulePackVersion || (rulePack as any)?.version || ''; }
+      processedSystem = sys;
+      review = source.buildReview(sys, { assumptions: (rawSystem as any).__assumptions ?? [], skipped: (rawSystem as any).__skipped ?? [] } as any);
+    } catch (e) { fail(e); }
+    finally { infillBusy = false; }
+  }
+
   onMount(() => {
     try {
       sims = source.systems(bytes);
@@ -73,6 +128,9 @@
     await new Promise((r) => setTimeout(r, 20)); // let the "importing" state paint
     try {
       const result: ImportResultLike = source.convert(bytes, selectedSim, effectiveThreshold);
+      // Keep the RAW import so the infill step can add to it and re-process; stash the review inputs on it.
+      rawSystem = JSON.parse(JSON.stringify(result.system));
+      (rawSystem as any).__assumptions = result.assumptions; (rawSystem as any).__skipped = result.skipped;
       // Process to convergence: a fresh ocean world settles its greenhouse over a few passes.
       let sys = systemProcessor.process(fixUpImportedSystem(result.system, rulePack), rulePack) as System;
       const maxT = (s: System) => Math.max(0, ...s.nodes.map((n: any) => n.temperatureK ?? 0));
@@ -84,11 +142,13 @@
         prev = now;
       }
       // Stamp the pack that actually processed this import, so a SAVED file carries it - the
-      // converters write '' and a bad file was being minted at the source (inbox D26).
-      if (!sys.rulePackId) { sys.rulePackId = rulePack?.id ?? ''; (sys as any).rulePackVersion = (sys as any).rulePackVersion || (rulePack as any)?.version || ''; }
+      // converters write '' and the load-side gate should be the backstop, not the source of
+      // truth (inbox D26; the owner: 'we are managing to export bad files').
+      if (!sys.rulePackId) { sys.rulePackId = (rulePack as any)?.id ?? ''; (sys as any).rulePackVersion = (sys as any).rulePackVersion || (rulePack as any)?.version || ''; }
       processedSystem = sys;
       systemName = result.system.name;
       review = source.buildReview(sys, result);
+      primeInfill(sys);
       phase = 'review';
     } catch (e) { fail(e); }
   }
@@ -119,7 +179,7 @@
   const bucketLabel = { aligned: 'aligned', explained: 'explained', unexplained: 'needs a look' } as const;
 </script>
 
-<div class="overlay" on:click|self={close} role="presentation">
+<div class="overlay" on:click|self={close} role="presentation" use:foreground>
   <div class="modal" role="dialog" aria-label="Import a system">
     <header>
       <div>
@@ -192,6 +252,26 @@
             {#if review.counts.rings}<span>{review.counts.rings} ring(s)</span>{/if}
             {#if processedSystem}<span class="muted">age {processedSystem.age_Gyr} Gyr</span>{/if}
           </div>
+        </section>
+
+        <section class="block infill">
+          <div class="audit-head">
+            <h3>Fill out the system</h3>
+            <label class="toggle"><input type="checkbox" bind:checked={infillOn} disabled={!hasStar} /> {infillOn ? 'On' : 'Off'}</label>
+          </div>
+          {#if !hasStar}
+            <p class="muted">No star was found in this import, so there is nothing to generate around. Load it as-is and add a star, or check the source file.</p>
+          {:else}
+            <p class="muted">Add plausible worlds around the star{processedSystem && processedSystem.nodes.filter((n) => (n as any).roleHint === 'star').length > 1 ? 's' : ''} where the import left gaps. Imported worlds are never moved or changed — a generated world that would crowd one is dropped, not the import. {importedPlanets >= 3 ? 'This import already carries a system, so this starts off.' : 'This import is sparse, so this starts on.'} Same dials as creating from a star.</p>
+            <GenerationDials bind:knobs={infillKnobs} bind:ageGyr={chosenAgeGyr} age={ageGuess} {rulePack} showPhysicsLink={false} />
+            <div class="infill-actions">
+              <button class="ghost small" disabled={infillBusy} on:click={applyInfill}>{infillBusy ? 'Working…' : infillResult ? 'Re-run with these settings' : (infillOn ? 'Fill out' : 'Apply age only')}</button>
+              {#if infillResult}
+                <span class="muted">{infillResult.noStar ? 'No star to seed from.' : `Added ${infillResult.addedPlanets} planet(s), ${infillResult.addedMoons} moon(s); ${infillResult.droppedNearAnchors} dropped for crowding an imported world.`}</span>
+              {/if}
+            </div>
+            <p class="note">The age is a guess from the star unless the file stated one — the slider runs over what this star's own life allows. Imported worlds keep their current state; only generated worlds are born into the chosen era. Skip this and Load to bring the import in exactly as it is.</p>
+          {/if}
         </section>
 
         {#if review.assumptions.length}
@@ -287,4 +367,7 @@
   .busy { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 30px; }
   .spinner { width: 28px; height: 28px; border: 3px solid var(--border, #333); border-top-color: var(--accent, #ff5a1f); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .infill .toggle { font-size: 0.85em; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .infill-actions { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; font-size: 0.8em; }
+  .infill .note { font-size: 0.74em; color: var(--text-faint); margin: 4px 0 0; }
 </style>

@@ -4,21 +4,33 @@
   // icon-only (minimal) ⇄ icon+text, toggled by the control at the top and remembered.
   import { createEventDispatcher } from 'svelte';
   import { railCollapsed } from '$lib/railStore';
-  import { PLAYER_VIEWS_ENABLED } from '$lib/config/releaseFlags';
   const dispatch = createEventDispatcher();
 
   // Which top-level view is showing. The Starmap entry is a live indicator when 'starmap'
   // (highlighted, non-navigating) and a one-click "back to the map" button when 'system'.
-  // Projector/Report are system-only actions, so they only appear in the system view.
   export let activeView: 'starmap' | 'system' = 'starmap';
 
-  // When the projector window is open, the Projector entry becomes a greenscreen
-  // (chroma-key) toggle; greenscreenOn highlights it.
-  export let projectorOpen = false;
   export let rulerOn = false;
   export let rulerAvailable = false;   // starmap: only when scaled (system view always has it)
-  export let crtOn = false; // projector "Greenscreen CRT" toggle is on
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → Routes notification dot
+  // Owner, 2026-08-21: how many player windows are watching, at a glance, so the GM can see whether
+  // anyone has joined without opening anything. Local first in green, remote second in orange —
+  // the two are known by different means and a GM debugging a connection needs to know which is
+  // which (a local window costs no network at all; a remote one is the only kind that can be slow).
+  export let playerConns: { local: number; remote: number } = { local: 0, remote: 0 };
+  /** The one-line transfer summary, shown on hover. Empty when nobody is connected. */
+  export let playerConnSummary = '';
+  $: playerConnCount = playerConns.local + playerConns.remote;
+  // Same rule in the tooltip as on the badge: name only what is actually connected. "1 local" reads
+  // as news; "1 local, 0 remote" reads as a form with a field left blank.
+  $: playerConnWho = [
+    playerConns.local ? `${playerConns.local} local` : '',
+    playerConns.remote ? `${playerConns.remote} remote` : ''
+  ].filter(Boolean).join(', ');
+  $: playerConnTitle = playerConnCount
+    ? `Player Views — ${playerConnWho} watching
+${playerConnSummary}`
+    : "Design, open and manage the players' views (guides, tables, projections)";
 
   let fileOpen = false; // File group (New / Open / Save) inline accordion
   $: collapsed = $railCollapsed;
@@ -33,7 +45,6 @@
     file: '<path d="M20 7h-7L9.5 4.5A1 1 0 0 0 8.8 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>',
     trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
     starmap: '<line x1="5" y1="5" x2="19" y2="7"/><line x1="5" y1="5" x2="6.5" y2="19"/><line x1="19" y1="7" x2="18" y2="18"/><line x1="6.5" y1="19" x2="18" y2="18"/><line x1="5" y1="5" x2="18" y2="18"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="7" r="2"/><circle cx="6.5" cy="19" r="2"/><circle cx="18" cy="18" r="2"/>',
-    projector: '<path d="M10 7.75a.75.75 0 0 1 1.142-.638l3.664 2.249a.75.75 0 0 1 0 1.278l-3.664 2.25a.75.75 0 0 1-1.142-.64z"/><path d="M12 17v4"/><path d="M8 21h8"/><rect x="2" y="3" width="20" height="14" rx="2"/>',
     report: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="10" y2="9"/>',
     new: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>',
     open: '<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>',
@@ -45,8 +56,6 @@
     settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
     about: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
     help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/>',
-    greenscreen: '<path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.4 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
-    catalogue: '<rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="10" r="3"/><line x1="10.5" y1="18" x2="13.5" y2="18"/>',
     playerviews: '<rect x="2" y="4" width="13" height="10" rx="1.5"/><rect x="9" y="10" width="13" height="10" rx="1.5"/><line x1="5" y1="7.5" x2="12" y2="7.5"/><circle cx="15.5" cy="15" r="2"/>',
     ruler: '<rect x="2.5" y="7" width="19" height="10" rx="1" transform="rotate(0 12 12)"/><line x1="6.5" y1="7" x2="6.5" y2="10.5"/><line x1="10.5" y1="7" x2="10.5" y2="11.5"/><line x1="14.5" y1="7" x2="14.5" y2="10.5"/><line x1="18.5" y1="7" x2="18.5" y2="11.5"/>',
     interstellar: '<circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M6.6 16.4 17.4 7.6" stroke-dasharray="3 2.5"/>'
@@ -55,7 +64,7 @@
 
 <nav class="rail-nav" class:collapsed aria-label="App navigation">
   <div class="rail-header">
-    <span class="brand rail-label">SSE2</span>
+    <span class="brand rail-label">SSE3</span>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
       {#if collapsed}
         <!-- panel-left-open: expand the rail -->
@@ -89,29 +98,27 @@
   <button class="rail-btn" title={routesAttention ? `Routes & journeys — a ship needs attention (${routesAttention})` : 'Routes & journeys'} on:click={() => go('routes')}>
     <span class="ic">{@html svg(I.routes)}{#if routesAttention}<span class="rail-dot {routesAttention}"></span>{/if}</span><span class="rail-label">Routes…{#if routesAttention}<span class="rail-dot inline {routesAttention}"></span>{/if}</span>
   </button>
-  <!-- Field Guide: the players' companion launcher. -->
-  <button class="rail-btn" title="Field Guide — open and share the players' companion views" on:click={() => go('catalogue')}>
-    <span class="ic">{@html svg(I.catalogue)}</span><span class="rail-label">Field Guide…</span>
+  <!-- ONE way to put something in front of the players. Player Views absorbed BOTH older launchers:
+       the Field Guide (its skins are presets now) and the Projector (the shipped "Projection" preset
+       is the overhead table view, following the GM). Three doors to one room became one door, and
+       A42 removed the other two rather than leaving them behind a flag. -->
+  <button class="rail-btn" title={playerConnTitle} on:click={() => go('playerviews')}>
+    <span class="ic">
+      {@html svg(I.playerviews)}
+      <!-- ON THE ICON ONLY, and never a zero. A badge that says "0" is a badge that is always there,
+           which makes it furniture rather than news — the whole point is that it CATCHES the eye when
+           somebody joins. Same reason a lone local count reads "1" and not "1-0". -->
+      {#if playerConnCount}
+        <span class="conn-badge">
+          {#if playerConns.local}<span class="local">{playerConns.local}</span>{/if}
+          {#if playerConns.local && playerConns.remote}<span class="sep">-</span>{/if}
+          {#if playerConns.remote}<span class="remote">{playerConns.remote}</span>{/if}
+        </span>
+      {/if}
+    </span>
+    <span class="rail-label">Player Views…</span>
   </button>
-  <!-- Player Views: the unified players' presentation system that will replace the Field Guide.
-       Masked by ONE flag while the V2.2 line is in flight — see $lib/config/releaseFlags. -->
-  {#if PLAYER_VIEWS_ENABLED}
-    <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
-      <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
-    </button>
-  {/if}
 
-  <!-- Projector + Report act on the loaded system. Shown in BOTH views for beta (they target the
-       last-loaded system when invoked from the starmap). Greenscreen toggle only when a projector is live. -->
-  {#if projectorOpen}
-    <button class="rail-btn" class:gs-on={crtOn} title="Toggle the projector's green-CRT look" on:click={() => dispatch('projectorcrt')}>
-      <span class="ic">{@html svg(I.greenscreen)}</span><span class="rail-label">Greenscreen CRT</span>
-    </button>
-  {:else}
-    <button class="rail-btn" title="Open the projector window" on:click={() => go('projector')}>
-      <span class="ic">{@html svg(I.projector)}</span><span class="rail-label">Projector</span>
-    </button>
-  {/if}
   <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
     <span class="ic">{@html svg(I.report)}</span><span class="rail-label">Report…</span>
   </button>
@@ -240,12 +247,6 @@
     cursor: default;
   }
   .rail-btn.active .ic { color: var(--accent); }
-  /* Greenscreen toggle is ON — tint green to signal the chroma key is live. */
-  .rail-btn.gs-on,
-  .rail-btn.gs-on .ic {
-    color: #22c55e;
-  }
-  .rail-btn.gs-on { border-color: #22c55e; background: color-mix(in srgb, #22c55e 12%, transparent); }
   /* Let labels shrink + ellipsis within the rail rather than overflow its width (the bottom scrollbar). */
   .rail-btn { min-width: 0; }
   .rail-label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -274,4 +275,17 @@
   /* In icon-only mode, hide the verbose view-specific sections (System actions, Clear,
      etc.) — they return when the rail is expanded. Keeps the minimal view clean. */
   :global(.rail-nav.collapsed .rail-view-options) { display: none; }
+
+  /* Counter on the Player Views icon: "1-2", local then remote. Deliberately NOT the routes dot's
+     shape — that one means "something needs you", this one means "someone is watching". */
+  .conn-badge {
+    position: absolute; top: -3px; right: -7px;
+    padding: 0 3px; border-radius: 7px;
+    background: rgba(8, 12, 20, 0.92); border: 1px solid rgba(255, 255, 255, 0.18);
+    font: 600 0.58rem/1.5 ui-monospace, Consolas, monospace; letter-spacing: 0.02em;
+    color: var(--text-faint); pointer-events: none; white-space: nowrap;
+  }
+  .conn-badge .sep { color: var(--text-faint); opacity: 0.6; }
+  .conn-badge .local { color: #6fce96; }
+  .conn-badge .remote { color: #f0aa46; }
 </style>

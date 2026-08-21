@@ -7,6 +7,7 @@
   // (e.g. to 'half' when a body is selected) or demote it (tap on empty canvas).
   import { createEventDispatcher } from 'svelte';
   import { gestures } from '$lib/input/gestures';
+  import { chrome } from '$lib/ui/foreground';
 
   export let snap: 'peek' | 'half' | 'full' = 'peek';
   export let title = '';
@@ -74,6 +75,7 @@
   class:dragging
   style="height: {liveHeight}px; bottom: {bottomInset}px;"
   aria-label={title || 'Detail panel'}
+  use:chrome
 >
   <header class="sheet-header" use:gestures={grabberGestures}>
     <div class="grabber" aria-hidden="true"></div>

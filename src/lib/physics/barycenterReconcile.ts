@@ -36,8 +36,23 @@ function promoteMassiveCompanion(system: System): boolean {
     // Belts/rings carry massKg only as a debris-density proxy — never a gravitational companion.
     if (secondary.roleHint === 'belt' || secondary.roleHint === 'ring') continue;
 
+    // A HIERARCHICAL TRIPLE NEEDS AN OUTER BARYCENTRE, so the parent may be a BARYCENTRE and not
+    // only a body. This used to require `kind === 'body'`, which meant a distant companion orbiting
+    // an already-promoted pair could never be promoted itself however massive it was — the promotion
+    // simply never looked at it.
+    //
+    // Alpha Centauri is the case, and it is the commonest shape a real triple takes: A and B pair up
+    // at ~23 AU, then Proxima orbits THAT pair 400 times further out. Once AB became a barycentre,
+    // Proxima was parented to it and stopped being a candidate, so A and B never wobbled in response
+    // to the third star. The mass ratio is 17% here, well over the 8% threshold.
+    //
+    // Nesting terminates by construction: each promotion replaces two siblings with one parent, so
+    // the candidate count strictly falls, and the reconciler's own 8-pass ceiling bounds it anyway.
     const primary = nodesById.get(secondary.parentId as string);
-    if (!primary || primary.kind !== 'body') continue;
+    if (!primary || (primary.kind !== 'body' && primary.kind !== 'barycenter')) continue;
+    // A barycentre only pairs with something OUTSIDE it. Its own members orbit it by definition and
+    // promoting one against its parent would be promoting the pair against half of itself.
+    if (primary.kind === 'barycenter' && (primary as Barycenter).memberIds?.includes(secondary.id)) continue;
 
     const primaryBody = primary as CelestialBody;
     if (primaryBody.parentId === secondary.id) continue;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { classifyByFingerprint } from './classification';
+import { classifyByFingerprint, explainClassification } from './classification';
 import type { Fingerprint } from '$lib/types';
 
 // Phase 04 — fingerprint classifier. Each type is parameter bands; best base wins, modifiers
@@ -121,8 +121,11 @@ describe('ocean classification is phase-gated (liquids L2)', () => {
     fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')
   ).classifier.fingerprints as Fingerprint[];
 
+  // Both temperatures, because a real body always has both — the ocean family keys on the SURFACE
+  // one (inbox B6: its note is about the ground), and a feature that is simply absent scores 0 and
+  // disqualifies the fingerprint outright. 290 K either way: this world has no greenhouse to speak of.
   const oceanState = (liquidCov: number, rawCov: number) => ({
-    mass_Me: 1.2, radius_Re: 1.05, density: 3.2, Teq_K: 290, orbitsStar: 1,
+    mass_Me: 1.2, radius_Re: 1.05, density: 3.2, Teq_K: 290, SurfaceTemp_K: 290, orbitsStar: 1,
     'hydrosphere.composition': 'water',
     'hydrosphere.coverage': rawCov, 'hydrosphere.liquidCoverage': liquidCov,
     'makeup.rock': 0.5, 'makeup.ice': 0.5
@@ -145,10 +148,15 @@ describe('eyeball classes require star-lock, not planet-lock (E2)', () => {
     fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')
   ).classifier.fingerprints as Fingerprint[];
 
-  // A cold, tidally-locked terrestrial: icy except the substellar point.
+  // A cold, tidally-locked terrestrial: icy except the substellar point. Airless, so its surface
+  // sits at its equilibrium temperature.
+  // `makeup.gas` is stated, not incidental: the eyeball fingerprints GATE on having a solid
+  // surface (B25), and a gate treats a missing feature as a failure exactly as a match band does.
+  // A rocky eyeball has no envelope, so 0 is the honest value — and saying it here is the point,
+  // because the fixture now has to declare that this body has ground to have a dayside on.
   const coldEyeball = {
-    tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1,
-    Teq_K: 200, radius_Re: 0.9, density: 4, mass_Me: 0.8
+    tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1, 'makeup.gas': 0,
+    Teq_K: 200, SurfaceTemp_K: 200, radius_Re: 0.9, density: 4, mass_Me: 0.8
   };
 
   it('a STAR-locked world in the cold band classifies as a cold-eyeball', () => {
@@ -162,5 +170,123 @@ describe('eyeball classes require star-lock, not planet-lock (E2)', () => {
     expect(cls).not.toContain('planet/cold-eyeball');
     expect(cls).not.toContain('planet/eyeball');
     expect(cls).not.toContain('planet/hot-eyeball');
+  });
+
+  // The eyeball bands describe the GROUND — "icy except the substellar point", "molten/dry
+  // dayside", "temperate oasis". They were matched against EQUILIBRIUM temperature, which is the
+  // temperature the world would have with no atmosphere, so a thick greenhouse could be labelled
+  // an icy world while its surface ran at 300 °C.
+  it('a greenhouse-baked locked world is a HOT eyeball, not a cold one', () => {
+    const runaway = {
+      ...coldEyeball,
+      Teq_K: 240,           // it looks cold from orbit…
+      SurfaceTemp_K: 580    // …and the ground is at 307 °C
+    };
+    const cls = classifyByFingerprint(runaway, realFps, 4);
+    expect(cls).toContain('planet/hot-eyeball');
+    expect(cls).not.toContain('planet/cold-eyeball');
+  });
+
+  it('an airless locked world is unaffected: with no atmosphere the two temperatures agree', () => {
+    expect(classifyByFingerprint(coldEyeball, realFps, 4)[0]).toBe('planet/cold-eyeball');
+    const hot = { ...coldEyeball, Teq_K: 700, SurfaceTemp_K: 700 };
+    expect(classifyByFingerprint(hot, realFps, 4)[0]).toBe('planet/hot-eyeball');
+  });
+});
+
+// B25 — an eyeball is a statement about GROUND: "molten/dry dayside", "icy except the substellar
+// point", "temperate oasis". A tidally locked gas giant has no ground, and used to match anyway
+// because the fingerprints keyed on lock plus a temperature band and nothing else. Fifteen bundled
+// bodies were affected, including three in the Testion example whose own names are "hot neptune",
+// "puffy" and "alkali metal clouds gas giant".
+describe('an eyeball needs a surface to have a dayside on (B25)', () => {
+  const realFps = JSON.parse(
+    fs.readFileSync(path.resolve('static/rulepacks/starter-sf/classification.json'), 'utf-8')
+  ).classifier.fingerprints as Fingerprint[];
+
+  // GJ 876 b's real numbers: star-locked, cold, and 85% gas by mass.
+  const lockedGiant = {
+    tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1, 'makeup.gas': 0.85,
+    Teq_K: 174, SurfaceTemp_K: 174, radius_Re: 12, density: 1.2, mass_Me: 700
+  };
+
+  it('a star-locked GAS GIANT is not a cold eyeball', () => {
+    const cls = classifyByFingerprint(lockedGiant, realFps, 4);
+    expect(cls).not.toContain('planet/cold-eyeball');
+    expect(cls).not.toContain('planet/eyeball');
+    expect(cls).not.toContain('planet/hot-eyeball');
+  });
+
+  it('nor a hot one, however hot it gets', () => {
+    const cls = classifyByFingerprint({ ...lockedGiant, Teq_K: 1000, SurfaceTemp_K: 1000 }, realFps, 4);
+    expect(cls).not.toContain('planet/hot-eyeball');
+  });
+
+  it('the same body under the gas threshold still classifies as an eyeball', () => {
+    // The gate must be the thing doing the work — if a rocky body at the same temperature also
+    // failed, this test would pass for the wrong reason and the gate could be excluding everything.
+    const rocky = { ...lockedGiant, 'makeup.gas': 0.2, radius_Re: 0.9, density: 4, mass_Me: 0.8 };
+    expect(classifyByFingerprint(rocky, realFps, 4)[0]).toBe('planet/cold-eyeball');
+  });
+
+  // The reason the surface test is a `gate` and not another `match` band. An always-true band is
+  // averaged in with the defining ones, which drags a POOR fit upward — fit 0.11 gains 37%, a
+  // perfect fit only 8% — so it rewards the worst matches most. As a match band this turned six
+  // temperate rocky worlds at 278-303 K into "cold eyeballs" ("icy except the substellar point").
+  it('does not inflate a body whose temperature barely misses the band', () => {
+    // 289 K against cold-eyeball's 120-255: a 34 K miss, fit ~0.11. It must not win.
+    const temperate = {
+      tidallyLocked: 1, starTidallyLocked: 1, orbitsStar: 1, 'makeup.gas': 0,
+      Teq_K: 289, SurfaceTemp_K: 289, radius_Re: 1.1, density: 5.5, mass_Me: 1.4
+    };
+    const cls = classifyByFingerprint(temperate, realFps, 4);
+    expect(cls).not.toContain('planet/cold-eyeball');
+  });
+});
+
+// B16 — a PARTIAL match of a more-specific type could still out-score a PERFECT match of a
+// less-specific one. The score is `mean fit x (1 + 0.1 x bands) x weight`, reshaped so partial fits
+// drag a score down — but that only holds while weights are equal. B15 hit it for real: at weight
+// 1.5, earth-analogue with ONE band at fit 0.689 scored 2.11 against a perfect jungle at 2.10, and
+// the workaround was to pick 1.45 instead. A weight chosen so the bug cannot happen means every
+// future weight change has to re-derive the same inequality by hand.
+describe('a complete match outranks a partial one whatever the weight says (B16)', () => {
+  // Deliberately rigged: the specific type is heavily weighted AND has more bands, so on score
+  // alone it wins comfortably. The body sits outside one of its bands.
+  const RIGGED: Fingerprint[] = [
+    { class: 'planet/generic', kind: 'base', match: { mass_Me: [0.5, 2], density: [3, 8] } },
+    { class: 'planet/fancy', kind: 'base', weight: 3,
+      match: { mass_Me: [0.5, 2], density: [3, 8], Teq_K: [250, 300] } }
+  ];
+
+  it('the perfect generic beats the near-miss specific', () => {
+    // 310 K against a 250-300 band: outside, but close enough to keep a high partial fit.
+    const body = { mass_Me: 1, density: 5.5, Teq_K: 310 };
+    expect(classifyByFingerprint(body, RIGGED, 4)[0]).toBe('planet/generic');
+  });
+
+  it('and the weight still decides when BOTH fit completely', () => {
+    // The rule must not neuter weights — they are how a specific type outranks a generic one when
+    // the body genuinely is both. Same body, now inside every band.
+    const body = { mass_Me: 1, density: 5.5, Teq_K: 275 };
+    expect(classifyByFingerprint(body, RIGGED, 4)[0]).toBe('planet/fancy');
+  });
+
+  it('scores alone would have gone the other way — the fixture really is rigged', () => {
+    // Guard the guard: if the specific type stopped out-scoring the generic, the first test would
+    // pass without the tier rule doing anything.
+    const body = { mass_Me: 1, density: 5.5, Teq_K: 310 };
+    const partialFit = 1 - ((310 - 300) / 300) / 0.15;          // bandFit's relative soft edge
+    const fancy = ((1 + 1 + partialFit) / 3) * (1 + 0.1 * 3) * 3;
+    const generic = ((1 + 1) / 2) * (1 + 0.1 * 2);
+    expect(fancy).toBeGreaterThan(generic);
+  });
+
+  it('the explanation names the same winner the body is classified as', () => {
+    // The two used to sort independently; if they disagreed the "why this type" block would
+    // explain a type the body does not carry.
+    const body = { mass_Me: 1, density: 5.5, Teq_K: 310 };
+    const cls = classifyByFingerprint(body, RIGGED, 4)[0];
+    expect(explainClassification(body, RIGGED).base).toBe(cls);
   });
 });

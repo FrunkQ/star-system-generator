@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   deriveCloudDecks, effectiveComposition, applyCloudDeckTags, decksFromTags, deriveWeather,
-  parseCloudDeckValue, CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG
+  parseCloudDeckValue, condensateTint, DEFAULT_CONDENSATE_DISTANCE, cloudDeckTags, CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG
 } from './cloudDecks';
 import type { CelestialBody, RulePack, Tag } from '$lib/types';
 
@@ -345,5 +345,103 @@ describe('the temperature profile places decks at real pressure levels', () => {
       .toBeLessThan(0.8);
     expect(deriveCloudDecks(venus(), pack).find((d) => d.species === 'sulfuric-acid')!.bucket)
       .toBe('veil');
+  });
+});
+
+// ── Condensate colour ────────────────────────────────────────────────────────────────────────────
+// A deck is scattering droplets, not bulk liquid, so it reads far lighter than the sea would. HOW
+// MUCH lighter is per-substance: a clean scatterer goes white, an absorbing suspension keeps its
+// colour. That used to be one constant for every substance, which put a pastel ceiling on all of
+// them however pigmented the data said they were.
+describe('condensateTint — per-substance distance from white', () => {
+  const dist = (hex: string) => {
+    const h = hex.replace('#', '');
+    const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    return Math.max(...c.map((v) => 255 - v));
+  };
+
+  it('lightens a dark liquid a lot and an already-pale one barely at all', () => {
+    // Water is deep blue as a sea and white as cloud; sulphuric acid is pale either way.
+    expect(dist(condensateTint('#2b6cb0'))).toBeCloseTo(60, 0);
+    const acid = '#efe6c0';
+    expect(dist(condensateTint(acid))).toBeLessThanOrEqual(dist(acid) + 1);   // barely moves
+  });
+
+  it('the hue survives whitening — a yellow deck stays yellow', () => {
+    const out = condensateTint('#c9a227');
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(out.replace('#', '').slice(i, i + 2), 16));
+    expect(r).toBeGreaterThan(b);
+    expect(g).toBeGreaterThan(b);
+  });
+
+  it('an ABSORBING condensate keeps more of its colour, when the data says so', () => {
+    // Jupiter's hydrosulphide is genuinely brown; no amount of scattering makes it pastel.
+    const scattering = condensateTint('#b8845a');
+    const absorbing = condensateTint('#b8845a', 110);
+    expect(dist(absorbing)).toBeGreaterThan(dist(scattering));
+    expect(dist(absorbing)).toBeCloseTo(110, 0);
+  });
+
+  it('omitting the distance reproduces the scattering default exactly', () => {
+    expect(condensateTint('#6FBF3A')).toBe(condensateTint('#6FBF3A', DEFAULT_CONDENSATE_DISTANCE));
+  });
+
+  it('a white condensate is left alone, and junk input still returns a colour', () => {
+    expect(condensateTint('#ffffff', 200)).toBe('#ffffff');
+    expect(condensateTint('nonsense')).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+// Adrian (Tau Ceti, bundled science-fiction map) carries TWO living decks, and the pair is the
+// point of the planet: astrophage migrates there for the CO2, taumoeba lives there and eats it.
+// Neither is water, however much their placeholder phase data used to look like it — they do not
+// sublime away at low pressure, and being pigmented they absorb far more than they reflect.
+describe('ADRIAN: two living blooms, layered', () => {
+  const adrian = () => world({
+    massKg: 2.347e25, radiusKm: 9219, equilibriumTempK: 305.6, temperatureK: 642.4,
+    atmosphere: { main: 'CO2', pressure_bar: 8,
+      composition: { CO2: 0.9077, N2: 0.0798, Ar: 0.01, Taumoeba: 0.0005, Astrophage: 0.002 } } as any
+  });
+
+  it('both blooms condense, and nothing else does', () => {
+    expect(species(deriveCloudDecks(adrian(), pack)).sort())
+      .toEqual(['astrophage-bloom', 'taumoeba-bloom']);
+  });
+
+  it('the green is the BASE and the red sits above it', () => {
+    const decks = deriveCloudDecks(adrian(), pack);   // deepest first
+    const tau = decks.find((d) => d.species === 'taumoeba-bloom')!;
+    const ast = decks.find((d) => d.species === 'astrophage-bloom')!;
+    expect(tau.baseBar!).toBeGreaterThan(ast.baseBar!);   // taumoeba condenses deeper
+    expect(decks[0].species).toBe('taumoeba-bloom');      // …so it is painted first
+    // The RENDERER re-derives the same order from boilK alone (it only has the tags), so the two
+    // must agree or the picture contradicts the physics.
+    const rendered = decksFromTags(cloudDeckTags(decks), pack).map((d) => d.species);
+    expect(rendered).toEqual(['taumoeba-bloom', 'astrophage-bloom']);
+  });
+
+  it('lots of green, a little red — you can still see the ground', () => {
+    const decks = deriveCloudDecks(adrian(), pack);
+    const tau = decks.find((d) => d.species === 'taumoeba-bloom')!;
+    const ast = decks.find((d) => d.species === 'astrophage-bloom')!;
+    expect(tau.bucket).toBe('overcast');            // substantial, but not a veil
+    expect(tau.coverage).toBeLessThan(0.85);        // gaps remain
+    expect(ast.bucket).toBe('scattered');           // patches
+    expect(ast.coverage).toBeLessThan(tau.coverage);
+  });
+
+  it('neither reaches the ground — both are virga over a supercritical surface', () => {
+    for (const d of deriveCloudDecks(adrian(), pack)) {
+      expect(d.precip).toBe('virga');
+      expect(d.baseBar!).toBeLessThan(1);           // high above the 8 bar surface
+    }
+  });
+
+  it('the CO2 itself still condenses nowhere — that was never the deck', () => {
+    const bare = world({
+      massKg: 2.347e25, radiusKm: 9219, equilibriumTempK: 304.4, temperatureK: 641.2,
+      atmosphere: { main: 'CO2', pressure_bar: 8, composition: { CO2: 0.91, N2: 0.08, Ar: 0.01 } } as any
+    });
+    expect(deriveCloudDecks(bare, pack)).toEqual([]);
   });
 });

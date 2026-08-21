@@ -53,6 +53,19 @@
     'scheduled_journeys', 'flight_state', 'vector_position_au',
     'vector_velocity_ms', 'vector_epoch_ms', 'autopilot', 'flight_log'
   ];
+  // APPEARANCE is neither situation nor spec, and it needs its own rule: a GM's uploaded picture
+  // or 3D model belongs to THIS SHIP, not to the spec being loaded over it. Loading a template
+  // used to wipe both (the template's blank fields won the spread), which is how a model gets
+  // "lost" without anything looking broken. Kept UNLESS the incoming spec carries its own - a
+  // template that ships with artwork is making a deliberate choice and should win.
+  const APPEARANCE_FIELDS = ['image', 'model', 'icon_type', 'icon_color'];
+  function preserveAppearance(incoming: any, current: any): Record<string, any> {
+    const out: Record<string, any> = {};
+    for (const f of APPEARANCE_FIELDS) {
+      if (incoming?.[f] === undefined && current?.[f] !== undefined) out[f] = current[f];
+    }
+    return out;
+  }
 
   function preserveSituation(target: any) {
     const preserved: any = {};
@@ -68,7 +81,7 @@
     const newConstructData = JSON.parse(JSON.stringify(template));
     delete newConstructData.orbit;
 
-    construct = { ...newConstructData, ...preservedData };
+    construct = { ...newConstructData, ...preserveAppearance(newConstructData, construct), ...preservedData };
     handleUpdate();
   }
 
@@ -82,9 +95,18 @@
     handleUpdate(); 
   }
 
-  function handleExport() {
+  async function handleExport() {
     const exportConstruct = JSON.parse(JSON.stringify(construct));
     for (const f of SITUATION_FIELDS) delete exportConstruct[f];
+
+    // Carry the 3D model's BINARY, not just its hash - otherwise the file opens on another
+    // machine as a ref pointing at nothing and silently falls back to the icon glyph. Same
+    // embedding the campaign export uses (base64 by hash, verified on the way back in).
+    const modelHash = exportConstruct.model?.hash;
+    if (modelHash) {
+      const embedded = await collectModelsForExport({ systems: [{ system: { nodes: [exportConstruct] } }] }).catch(() => undefined);
+      if (embedded) exportConstruct.models = embedded;
+    }
 
     const json = JSON.stringify(exportConstruct, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -117,7 +139,13 @@
         // carry the source ship's journeys/vectors).
         const preservedData = preserveSituation(construct);
 
-        construct = { ...importedConstruct, ...preservedData };
+        // A construct file may carry its 3D model's binary (see handleExport). Put it in the
+        // local store BEFORE the ref lands, so the model is there the moment the panel redraws.
+        if (importedConstruct.models) {
+          await importEmbeddedModels(importedConstruct.models).catch(() => 0);
+          delete importedConstruct.models;
+        }
+        construct = { ...importedConstruct, ...preserveAppearance(importedConstruct, construct), ...preservedData };
         handleUpdate();
         alert(`Successfully imported '${importedConstruct.name}'.`);
 
@@ -159,7 +187,7 @@
 
   <div class="tab-content">
     {#if selectedTab === 'Basics'}
-      <ConstructBasicsTab {construct} on:update={handleUpdate} />
+      <ConstructBasicsTab {construct} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
       <ConstructGeneralTab {system} {construct} on:update={handleUpdate} />
     {:else if selectedTab === 'Engines'}
@@ -203,7 +231,7 @@
   </div>
 
   <div class="specs-section">
-      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} isEditingConstruct={true} {hideActions} />
+      <ConstructDerivedSpecs {construct} {rulePack} {hostBody} isEditingConstruct={true} {hideActions} showPortrait={false} />
   </div>
 </div>
 

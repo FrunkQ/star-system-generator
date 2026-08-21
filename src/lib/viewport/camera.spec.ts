@@ -109,6 +109,37 @@ describe('shared click ladder', () => {
     expect([1, prevFrameLevel(planet, 1), prevFrameLevel(planet, 3)]).toEqual([1, 3, 2]);
   });
 
+  it('gives a barycentre MEMBER one rung past the pair', () => {
+    // A member's context is its PARTNER, not the thing they orbit together, so the ladder used to run out
+    // at pair scale: clicking on from a framed Pluto/Charon wrapped straight back in. Level 0 is the shot
+    // every other object's level 1 already gives it — the orbit the pair shares.
+    const member = frameLevelsFrom({ hasParent: true, hasSatellites: true, hasPairContext: true });
+    const lonelyMember = frameLevelsFrom({ hasParent: true, hasSatellites: false, hasPairContext: true });
+    expect(member).toEqual([2, 3, 1, 0]);
+    expect(lonelyMember).toEqual([3, 1, 0]);
+    // Unchanged for everything else: only a member ever asks for the rung.
+    expect(frameLevelsFrom({ hasParent: true, hasSatellites: true })).toEqual([2, 3, 1]);
+
+    // It walks all four and then wraps, and steps back out again as the exact inverse.
+    let l = firstFrameLevel(member);
+    const walk = [l];
+    for (let i = 0; i < 4; i++) walk.push((l = nextFrameLevel(member, l)));
+    expect(walk).toEqual([2, 3, 1, 0, 2]);
+    expect(prevFrameLevel(member, 0)).toBe(1);
+  });
+
+  it('sizes the pair-context rung to what the pair orbits, wider than the partner', () => {
+    const radius = 0.14;
+    // Pluto: its partner is 4e-5 away, the Sun is 12 scene units away. Level 0 has to reach the Sun.
+    const pair = frameHalfExtent({ level: 1, radius: 0, parentDist: 4e-5, pairContextDist: 12 });
+    const wide = frameHalfExtent({ level: 0, radius: 0, parentDist: 4e-5, pairContextDist: 12 });
+    expect(pair).toBeCloseTo(4e-5 / 0.9, 12);
+    expect(wide).toBeCloseTo(12 / 0.9, 6);
+    expect(wide).toBeGreaterThan(pair * 1000);
+    // With no pair context the rung is never offered, but asking for it falls through to level 1.
+    expect(frameHalfExtent({ level: 0, radius, parentDist: 10 })).toBeCloseTo(10 / 0.9, 6);
+  });
+
   it('sizes each level in the CALLER units (so the orrery and holo agree)', () => {
     const radius = 0.14;
     expect(frameHalfExtent({ level: 1, radius, parentDist: 10 })).toBeCloseTo(10 / 0.9, 6);

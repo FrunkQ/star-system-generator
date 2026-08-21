@@ -36,7 +36,13 @@ export interface AtmosphereLevel {
 }
 
 export interface AtmosphereProfile {
+  /** The DEEPEST level the profile describes. Usually the anchor; deeper only when a caller asked a
+   *  giant to continue below its reference (see `giantDepthBar`). */
   pSurfBar: number;
+  /** WHERE `tSurfK` BELONGS — the pressure the stored temperature was read at. For a giant that is
+   *  the 1 bar reference whatever `pSurfBar` is; for a rocky world it is the ground. Anything that
+   *  asks "is the air saturated at the reading" must use this, not `pSurfBar`. */
+  pAnchorBar: number;
   tSurfK: number;
   tSkinK: number;         // the isothermal upper atmosphere
   kappa: number;          // adiabatic exponent R/c_p
@@ -104,7 +110,22 @@ const LEVELS = 48;
 export function atmosphereProfile(
   body: CelestialBody,
   comp: Record<string, number>,
-  pack?: RulePack | null
+  pack?: RulePack | null,
+  opts?: {
+    /**
+     * For a GIANT, how far below the 1 bar reference to carry the profile, in bar. The temperature
+     * ANCHOR stays at 1 bar regardless — only the range of levels grows — so nothing the processor
+     * publishes moves. Default is no deeper than the reference, which is all the renderers see.
+     *
+     * Why it is safe to ask for more: the dry adiabat extrapolates cleanly, and against the one
+     * measurement that exists — Galileo's descent into Jupiter — it lands within a few percent all
+     * the way down (we say 319 K at 10 bar; the probe read ~330 K; it died near 22 bar at ~425 K and
+     * we say ~400 K). What it does NOT carry is the wet adiabat, opacity that grows with pressure, or
+     * thermal emission, which by ~600 K is still nothing visible. So it is honest to ~100 bar and
+     * should not be asked past that.
+     */
+    giantDepthBar?: number;
+  }
 ): AtmosphereProfile | null {
   const quotedBar = body.atmosphere?.pressure_bar ?? 0;
   if (!(quotedBar >= MIN_ATM_BAR)) return null;
@@ -118,22 +139,33 @@ export function atmosphereProfile(
   // rather than a literal anchor: pinning a 165 K reading at 200000 bar puts the entire visible
   // atmosphere at its coldest-sky temperature and grows Jupiter a methane deck it has never had.
   // Nothing below the reference level is modelled anyway — it is not visible.
-  const pSurfBar = makeupFractions(body).gas > 0.5 ? Math.min(quotedBar, GIANT_REFERENCE_BAR) : quotedBar;
+  const isGiant = makeupFractions(body).gas > 0.5;
+  // THE ANCHOR — where the stored temperature belongs. For a giant that is always the reference
+  // level, whatever pressure was quoted.
+  const pAnchorBar = isGiant ? Math.min(quotedBar, GIANT_REFERENCE_BAR) : quotedBar;
+  // THE DEEPEST LEVEL — the same as the anchor unless a caller asks a giant to go further. The
+  // adiabat is then continued past the anchor, T = T_anchor (P/P_anchor)^kappa, which is exactly the
+  // law the cloud scan already applies above it. The water deck lives down here on Jupiter (~5 bar
+  // base), which is why the balloon view wanted it.
+  const pSurfBar = isGiant && opts?.giantDepthBar && opts.giantDepthBar > pAnchorBar
+    ? opts.giantDepthBar : pAnchorBar;
 
   const kappa = adiabaticIndex(comp, pack);
   // The skin sits on the EQUILIBRIUM temperature. A giant radiating its own internal heat has no
   // meaningful equilibrium value stored, so fall back to the surface reading rather than invent one.
   const tSkinK = Math.min(tSurfK, skinTemperatureK(body.equilibriumTempK ?? tSurfK));
 
+  // The adiabat is pinned at the ANCHOR, not at the deepest level: a giant asked to go to 100 bar
+  // must still read its stored temperature at 1 bar, or descending would rewrite the reference.
   const tempAt = (pBar: number): number => {
     const p = Math.max(1e-12, Math.min(pSurfBar, pBar));
-    return Math.max(tSkinK, tSurfK * Math.pow(p / pSurfBar, kappa));
+    return Math.max(tSkinK, tSurfK * Math.pow(p / pAnchorBar, kappa));
   };
 
-  // Where the adiabat meets the floor: T_surf (P/P_s)^K = T_skin.
+  // Where the adiabat meets the floor: T_surf (P/P_a)^K = T_skin.
   const tropopauseBar = tSkinK >= tSurfK
-    ? pSurfBar
-    : pSurfBar * Math.pow(tSkinK / tSurfK, 1 / kappa);
+    ? pAnchorBar
+    : pAnchorBar * Math.pow(tSkinK / tSurfK, 1 / kappa);
 
   const top = Math.min(pSurfBar, MIN_ATM_BAR);
   const levels: AtmosphereLevel[] = [];
@@ -145,7 +177,7 @@ export function atmosphereProfile(
   }
 
   return {
-    pSurfBar, tSurfK, tSkinK, kappa,
+    pSurfBar, pAnchorBar, tSurfK, tSkinK, kappa,
     gravity: surfaceGravity(body),
     molarMass: mixtureMolarMass(comp, pack),
     tropopauseBar, tempAt, levels

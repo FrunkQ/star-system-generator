@@ -22,12 +22,24 @@ export const SOLAR_MASS_KG = 1.989e30;
 export const SOLAR_RADIUS_KM = 696340;
 export const EARTH_MASS_KG = 5.972e24;
 export const EARTH_RADIUS_KM = 6371;
+// Matches the bundled Sol data (Jupiter stores massKg 1.898e27), so Jupiter reads exactly 1.000
+// at the M-Jup ladder stop rather than 0.9996.
+export const JUPITER_MASS_KG = 1.898e27;
 // The icy hydrostatic-equilibrium ("round") limit, ~Mimas-sized. Below this a body lacks the self-
 // gravity to differentiate a shell-over-interior, sustain a subsurface ocean, or cryovolcano — a small
 // tidally-stressed lump (Phobos/Deimos) is shredded, not warmed to melt. Keeps Enceladus (~252 km).
 export const HYDROSTATIC_MIN_RADIUS_KM = 200;
 export const EARTH_GRAVITY = 9.80665; // m/s^2
 export const EARTH_DENSITY = 5514; // kg/m^3
+
+// Radiometry — the surface-spectrum model (physics/spectrum.ts). Planck's law needs h and k; the
+// solar constant is the SCALE that turns a star's luminosity into an irradiance at a distance, and
+// it is the one calibration anchor in the spectral chain (Sol at 1 AU).
+export const PLANCK_H = 6.62607015e-34;         // J·s (exact, SI 2019)
+export const BOLTZMANN_K = 1.380649e-23;        // J/K (exact, SI 2019)
+export const AVOGADRO = 6.02214076e23;          // mol⁻¹ (exact, SI 2019) — atmospheric column density
+export const SOLAR_CONSTANT_WM2 = 1361;         // W/m² — total solar irradiance at 1 AU
+export const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8; // W m⁻² K⁻⁴ (exact, SI 2019)
 
 // Unshielded radiation dose at 1 AU from a Sun-like star (mSv/year)
 // Approx baseline for GCR + Solar Particle Events in free space.

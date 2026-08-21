@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Reference for hand-building PoI rule conditions in raw JSON. Generated from POI_FIELDS so the
+  // Reference for hand-building tagging-rule conditions in raw JSON. Generated from the field list so the
   // field list / ranges always match what the engine actually reads (one common data set).
   import { POI_FIELDS, POI_ROLES } from '$lib/physics/reasonsToVisit';
 
@@ -28,13 +28,13 @@
   ];
 </script>
 
-<svelte:head><title>PoI rule reference</title></svelte:head>
+<svelte:head><title>Tagging rule reference</title></svelte:head>
 
 <main>
   <p class="back"><a href="/">← Back to the app</a></p>
-  <h1>Point-of-Interest rule reference</h1>
+  <h1>Tagging rule reference</h1>
   <p class="lede">
-    A PoI rule tags a body with a "reason to visit" when its <code>when</code> condition holds and a
+    A tagging rule applies one of its category's tags to a body when its <code>when</code> condition holds and a
     seeded roll comes in under its <code>chance</code>. The visual builder covers most conditions; for
     nested all/any or tag-prefix logic you edit the <code>when</code> as raw JSON. This page lists
     every operator and field available — the field list is generated straight from the engine, so the

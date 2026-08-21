@@ -2,7 +2,9 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack, SensorDefinition } from '$lib/types';
   import { AU_KM } from '$lib/constants';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatPref } from '$lib/units';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -92,7 +94,7 @@
   $: formatRange = (km: number): string => {
       if (km >= AU_KM * 0.1) return `${(km / AU_KM).toFixed(2)} AU`;
       if (km >= 1000000) return `${(km / 1000000).toFixed(1)}M km`;
-      return $fmt.km(km);
+      return formatPref($unitPrefs, 'distance', 'construct', km);
   };
 
   function handleSave() {
@@ -110,7 +112,7 @@
 </script>
 
 {#if showModal}
-<div class="modal-backdrop" on:click={() => dispatch('close')}>
+<div class="modal-backdrop" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <div class="header">
         <h2>Edit Sensor Definitions</h2>

@@ -4,6 +4,7 @@
   // content only — mdToHtml escapes HTML but this is for our own docs, not user input.
   import { createEventDispatcher } from 'svelte';
   import { mdToHtml } from '$lib/markdownLite';
+  import { foreground } from '$lib/ui/foreground';
 
   export let markdown: string;
   export let title: string | null = null;
@@ -23,7 +24,7 @@
 
 <svelte:window on:keydown={onKey} />
 
-<div class="modal-overlay" role="presentation" on:click={close}>
+<div class="modal-overlay" role="presentation" on:click={close} use:foreground>
   <div class="modal-card help-card" role="dialog" aria-label={heading} on:click|stopPropagation>
     <header class="help-head">
       <span>{heading}</span>

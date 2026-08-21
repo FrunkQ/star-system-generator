@@ -174,3 +174,59 @@ contradicted three of the labels it had been given, which is the entire point of
   floats in values (user-facing).
 - `Tag.data` (structured payload) was CONSIDERED AND DEFERRED — clouds are the motivating case
   if per-body numeric overrides are ever demanded. Value stays `"<species> <bucket>"` until then.
+
+## Albedo joined up (v2.1.282-beta)
+
+`albedo.ts` used to be a SECOND cloud model. It carried its own `CONDENSE_BOIL` table and decided a
+deck existed if `teqK < boil * 1.6` with the gas over 2% — no column, no saturation, no profile.
+Two models therefore described the same sky two different ways on the same body, and the GM's panel
+showed both at once: Adrian (Tau Ceti, 8 bar of 91% CO₂) read "CO₂ cloud deck, albedo 0.649" from
+one and "no decks" from the other. Venus's deck read CO₂ there and sulphuric acid here.
+
+The crude model was also UPSTREAM: albedo sets equilibrium temperature, which sets the greenhouse,
+the surface temperature, the classification bands and the profile that this file's decks come out
+of. Everything downstream was being judged against it, including the better model.
+
+**Why it had grown its own test.** The problem is circular:
+
+    albedo → equilibrium temp → greenhouse → surface temp → profile → cloud decks → albedo
+
+The decks genuinely do not exist yet at the moment albedo is first needed. The fix is not a second
+cheaper model; it is to solve the loop. `solveThermalState()` in `physics/temperature.ts` does that
+— a bounded, damped fixed-point iteration on one scalar, evaluated against a non-mutating probe so
+the answer never depends on what a previous `process()` left on the body. Over all 260 bodies in the
+bundled starmaps and the Solar System it settles in at most 5 passes, none unconverged.
+
+**What albedo keeps.** Optics only: how bright each layer is and how they stack. Decks arrive
+deepest-first and are composited bottom-up (`A = a·cov + A·(1−cov)` per layer), so the top deck has
+the last and largest say. Per-condensate reflectivity is rule-pack DATA — `LiquidDef.cloudAlbedo`,
+beside the `cloudOpacity` that was already there. Opacity is what a deck HIDES; albedo is what it
+RETURNS; they are not the same number and Venus needs both.
+
+**Calibration.** The reflectivities are fitted to measured Bond albedos using this model's own
+coverages, which is why they moved: at Earth's real 66% cloud cover, water clouds reflect ~0.42, not
+the 0.50 the old table used against a 50% cover invented from the pressure.
+
+| Body | measured Bond | before | after |
+|---|---|---|---|
+| Venus | 0.76 | 0.689 (as CO₂) | 0.757 (as sulphuric acid) |
+| Earth | 0.306 | 0.293 | 0.308 |
+| Jupiter | 0.503 | 0.34 | 0.490 |
+| Saturn | 0.342 | 0.34 | 0.343 |
+| Uranus | 0.300 | 0.30 | 0.285 |
+| Neptune | 0.290 | 0.30 | 0.288 |
+| Titan | 0.265 | 0.30 | 0.285 |
+
+Giants lost their hardcoded temperature bands with everything else: a giant is now its deck stack
+over a deep atmosphere, which is bright while the air is clear (Rayleigh) and dark once it is hot
+enough for alkali metals and metal oxides to absorb. Jupiter going 0.34 → 0.49 is that change.
+
+**Known consequence — Mars.** Mars's real 210 ppm water-ice wisp is gone from the bundled Sol file.
+It is not a cloud-model regression: the wisp survives up to Teq ≈ 214.5 K and Mars now sits at 216.7
+(it was 211.3). Mars got warmer because it lost a CO₂ deck it never had, and that fake deck had been
+carrying its albedo at 0.236 — close to the measured 0.25 for entirely the wrong reason. The real
+gap is the SURFACE model: rock + metal makeup alone gives 0.154, and Mars is bright because of
+ferric dust and polar caps. `deriveOxidation()` already grades exactly that rust, but it reads
+`geoActivity.surfaceAgeGyr`, derived after the thermal solve — so wiring it into surface albedo
+means moving the geology derivation too, and reintroduces the one-pass lag this change removed.
+Left as its own piece of work.

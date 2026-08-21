@@ -67,6 +67,9 @@ function stripDerivedData(system: System): System {
         'tidalHeatK',
         'radiogenicHeatK',
         'surfaceRadiation',
+        // Renamed at B34; the authored example still carries the old keys, and leaving them in the
+        // fixture republishes a fossil nothing writes any more (DATA-R8).
+        'stellarRadiation', 'stellarRadiationMin', 'stellarRadiationMax',
         'habitabilityScore',
         'orbitalBoundaries',
         'loDeltaVBudget_ms',
@@ -226,15 +229,70 @@ describe('Solar System Physics Baseline', () => {
         //     locks to its PLANET (whole surface still sun-cycles → no eyeball). Surfaced as tags +
         //     a field so the renderer can tell them apart. (Also guards the processor against the
         //     scope bug where a per-pass helper went undefined and process() threw, leaving stale data.)
+        // MERCURY IS THE BODY THAT PROVES "LOCKED" DOES NOT MEAN SYNCHRONOUS, AND THIS TEST USED TO
+        // ASSERT BOTH SIDES OF THE CONTRADICTION TWO LINES APART (inbox B69): `orbit/locked-star`,
+        // meaning a permanent substellar face, beside `orbit/spin-orbit-resonance 3:2`, meaning the
+        // whole surface sees the star. Despinning has two end states and the flag followed the
+        // despin VERDICT rather than the resolved SPIN, so the classifier's own record called Mercury
+        // a hot eyeball — score 1.56, beating terrestrial at 1.2, and shown in the Newton panel.
+        // The flag now follows the spin, so a resonant body gets the resonance tag and neither face
+        // tag; a synchronous one is unaffected.
         const mercury = processedSystem.nodes.find(n => n.name === 'Mercury') as CelestialBody;
-        expect(mercury.starTidallyLocked).toBe(true);
-        expect(mercury.tags?.some(t => t.key === 'orbit/locked-star')).toBe(true);
+        expect(mercury.tidallyLocked).toBe(true);                 // despun: still true, and still useful
+        expect(mercury.starTidallyLocked).toBe(false);            // but NOT a permanent face
+        expect(mercury.tags?.some(t => t.key === 'orbit/locked-star')).toBe(false);
+        expect(mercury.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(false);  // nor is it a moon
+        expect(mercury.tags?.some(t => t.key === 'orbit/tidally-locked')).toBe(false); // that tag states synchrony
+        expect(mercury.classification?.base).not.toBe('planet/hot-eyeball');
+        // A SYNCHRONOUS lock is untouched by any of it — Luna keeps its face tag and its flag.
+        expect(moon.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(true);
+        expect(moon.starTidallyLocked).toBeFalsy();
+        // Its 1407.6 h day is MEASURED and must survive the lock-reconciliation that gives every
+        // other locked body its orbital period. A test of a value that must NOT move.
+        expect(mercury.rotation_period_hours).toBeCloseTo(1407.6, 3);
+        expect(mercury.tags?.find(t => t.key === 'orbit/spin-orbit-resonance')?.value).toBe('3:2');
+        // Every other locked body's sidereal day IS its orbital period, to the last decimal.
+        expect(moon.rotation_period_hours).toBeCloseTo(moon.orbital_period_days! * 24, 9);
+        expect(io.rotation_period_hours).toBeCloseTo(io.orbital_period_days! * 24, 9);
+        expect(io.tags?.some(t => t.key === 'orbit/spin-orbit-resonance')).toBeFalsy();
         expect(moon.starTidallyLocked).toBeFalsy();
         expect(moon.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(true);
         expect(io.tags?.some(t => t.key === 'orbit/locked-planet')).toBe(true);
         // A moon locked to its planet must NOT read a permanent frozen far side (Luna day/night is a
         // cycle, not a 3 K / 796 K face split).
         expect(moon.temperatureRangeK!.max).toBeLessThan(600);
+
+        // Day and night against MEASUREMENT, on the two bodies where the swing is the whole story
+        // (inbox B63). Luna: noon about 120 C, night about -173 C, and an equatorial average near
+        // 215 K — which is 55 K BELOW the temperature it radiates at, because power goes as T^4.
+        const ganymede = processedSystem.nodes.find(n => n.name === 'Ganymede') as CelestialBody;
+        const callisto = processedSystem.nodes.find(n => n.name === 'Callisto') as CelestialBody;
+        const lunaDayNight = moon.temperatureProfile!.components.find((c) => c.source === 'diurnal')!;
+        expect(lunaDayNight.highK).toBeGreaterThan(360);   // ~110 C — the bond-albedo bound reads low
+        expect(lunaDayNight.highK).toBeLessThan(400);      // and 209 C (482 K) was the bug
+        expect(lunaDayNight.lowK).toBeGreaterThan(85);     // ~100 K measured; -214 C (59 K) was the bug
+        expect(lunaDayNight.lowK).toBeLessThan(125);
+        expect(moon.temperatureProfile!.meanK).toBeLessThan(moon.temperatureK! - 40);
+        // Mercury: a captured 3:2 resonance is NOT a permanent face, so it gets a (very slow) cycle,
+        // and its noon at perihelion is the hottest surface in the system at about 427 C.
+        expect(mercury.temperatureProfile!.components.some((c) => c.source === 'locked-day')).toBe(false);
+        expect(mercury.temperatureRangeK!.max).toBeGreaterThan(650);
+        expect(mercury.temperatureRangeK!.max).toBeLessThan(750);
+        // THE CLASSIFIER IS FED THE SURFACE MEAN, NOT THE RADIATING FIGURE (inbox B71). Seventeen
+        // fingerprints key on `SurfaceTemp_K` and every one asks a surface question, so the value it
+        // records must be the profile's mean. Ganymede is the check because its two figures differ
+        // (118 K radiating, 113 K mean) and its winning type states a temperature band.
+        const gTemp = ganymede.classification?.bands?.find((b) => b.feature === 'SurfaceTemp_K');
+        expect(gTemp, 'Ganymede should classify on a temperature band').toBeTruthy();
+        expect(gTemp!.value).toBeCloseTo(ganymede.temperatureProfile!.meanK, 0);
+        expect(Math.abs(gTemp!.value - ganymede.temperatureK!)).toBeGreaterThan(2);
+
+        // Venus proves the damping term: 92 bar evens the swing out completely, so its mean must NOT
+        // move off the radiating temperature at all.
+        expect(Math.abs(venus.temperatureProfile!.meanK - venus.temperatureK!)).toBeLessThan(1);
+        expect(venus.temperatureProfile!.components.some((c) => c.source === 'diurnal')).toBe(false);
+        // Two slow rotators that the old clamped rotation factor made identical to the kelvin.
+        expect(ganymede.temperatureRangeK!.min).not.toBe(callisto.temperatureRangeK!.min);
 
         // --- Authored end-state preservation (the "double-aging" fix) ---
         // Hand-authored bodies carry no evolveAtmosphere/autoClassify flags, so processing must

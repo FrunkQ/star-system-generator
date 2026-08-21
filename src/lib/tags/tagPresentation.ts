@@ -25,10 +25,14 @@ export function registerPoiCategories(cats: { id: string; label: string; color?:
 // Per-tag friendly name + hover description, supplied by PoI rules (the editor's "player name" and
 // "hover text"). Rebuilt wholesale on each registration so deletions/edits take effect. Overrides
 // the built-in TAG_INFO / title-cased fallback for that exact tag key.
-const POI_TAG_META: Record<string, { label?: string; description?: string }> = {};
-export function registerPoiTags(tags: { key: string; label?: string; description?: string }[]): void {
+const POI_TAG_META: Record<string, { label?: string; description?: string; color?: string; textColor?: string }> = {};
+export function registerPoiTags(tags: { key: string; label?: string; description?: string; color?: string; textColor?: string }[]): void {
   for (const k of Object.keys(POI_TAG_META)) delete POI_TAG_META[k];
-  for (const t of tags) { if (t?.key && (t.label || t.description)) POI_TAG_META[t.key] = { label: t.label, description: t.description }; }
+  for (const t of tags) {
+    if (t?.key && (t.label || t.description || t.color)) {
+      POI_TAG_META[t.key] = { label: t.label, description: t.description, color: t.color, textColor: t.textColor };
+    }
+  }
 }
 
 // Per-namespace grouping + chip colour.
@@ -47,11 +51,18 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   thermal:      { group: 'Thermal',      color: '#e0955a' },
   aurora:       { group: 'Aurora',       color: '#57d69a' },
   shape:        { group: 'Shape',        color: '#c9a0e0' },
+  spin:         { group: 'Spin',         color: '#c9a0e0' },
   atmosphere:   { group: 'Atmosphere',   color: '#8aa0b0' },
   climate:      { group: 'Climate',      color: '#6fae8f' },
   weather:      { group: 'Weather',      color: '#7fb6cc' },
   surface:      { group: 'Surface',      color: '#a98a63' },
   hazard:       { group: 'Hazard',       color: '#cc5555' },
+  // RED, and deliberately so: this namespace only ever carries "your numbers break a law of physics".
+  // It must NOT be `star/` — `isLegacyTag` strips that prefix as a V1 classification-stored-as-a-tag,
+  // and an unregistered namespace makes `tagSource` call a derived tag "manual" (user free-text, and
+  // removable by hand when the engine re-emits it every pass).
+  physics:      { group: 'Physics check', color: '#d04a44' },
+  flight:       { group: 'Flight',       color: '#5a9fd4' },
   habitability: { group: 'Habitability', color: '#5bbf6a' },
   biodiversity: { group: 'Biosphere',    color: '#4fa86a' },
   // RPG "reasons to visit" categories (poi: re-derived by a PoI RULE the user can change).
@@ -82,10 +93,12 @@ const NAMESPACE_DESC: Record<string, string> = {
   weather:      'Weather derived from the body\'s cloud decks and the energy driving them.',
   surface:      'A property of the surface itself — its age, what the sky and the star have done to it.',
   hazard:       'An environmental or stellar hazard to visitors or the atmosphere.',
+  flight:       'What it costs to get to or from this world.',
   aurora:       'A polar auroral glow from ionising particles funnelled into the atmosphere by the magnetic field.',
   habitability: 'The body\'s habitability tier under the current model.',
   biodiversity: 'A property of the body\'s biosphere.',
-  shape:        'The body\'s rotational shape — how far its spin has deformed it from a sphere.'
+  shape:        'The body\'s rotational shape — how far its spin has deformed it from a sphere.',
+  spin:         'The body\'s spin AXIS — which way it leans, and where that lean came from.'
 };
 
 // Friendly label + physics description, keyed by exact tag.
@@ -169,7 +182,11 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   // --- Orbit ---
   'orbit/tidally-locked': {
     label: 'Tidally locked',
-    description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, Mercury, most close-in worlds). Pin it by hand in the body editor to override.'
+    description: 'Derived: the despinning timescale (∝ a⁶) is shorter than the system age, so the body has settled into synchronous rotation — one face permanently toward its host (the Moon, and most close-in worlds). Its day length is therefore its orbital period, and is set from it. Pin it by hand in the body editor to override.'
+  },
+  'orbit/spin-orbit-resonance': {
+    label: 'Spin–orbit resonance',
+    description: 'Despun by tides, but NOT to a permanent face: an eccentric orbit captured the spin into a whole-number ratio with the year instead. Mercury is the real example — it turns 3 times for every 2 orbits, so its day is its own number rather than its year, and the whole surface still sees the star.'
   },
   'orbit/locked-star': {
     label: 'Locked to its star',
@@ -197,6 +214,20 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Migrated',
     description: 'Formed at a different distance and migrated to its present orbit — the classic history of a hot Jupiter that spiralled inward through the disc.'
   },
+  'origin/generated': {
+    label: 'Generated',
+    description: 'INVENTED, NOT OBSERVED. A real-sky import filled this world in around a confirmed star to make the system playable; no telescope has seen it. Seeded from the star\'s catalogue id, so the same import always produces the same worlds. The confirmed detections in the same system carry no such tag — that is how you tell them apart.'
+  },
+
+  // --- Spin (the axis, as opposed to shape/ which is what the spin does to the body) ---
+  'spin/axis-inferred': {
+    label: 'Spin axis inferred',
+    description: 'This world\'s axial tilt is a plausible value from the formation model, not a measurement. A body condenses aligned with its disc and is tipped from there, so the figure shown is typical rather than known — unlike Earth\'s 23.4 degrees or Uranus\'s 97.8, which have been observed.'
+  },
+  'spin/tipped': {
+    label: 'Tipped over',
+    description: 'Hit hard enough to re-point its axis. A late giant impact does not nudge a spin axis, it replaces it, leaving an obliquity unrelated to the disc the world formed in — Uranus lies on its side at 97.8 degrees and Venus turns backwards at 177.4.'
+  },
 
   // --- Barycentre ---
   'barycenter/auto': {
@@ -205,9 +236,27 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   },
 
   // --- Hazard ---
+  'physics/implausible': {
+    label: 'Physically implausible',
+    description: 'A star whose own numbers contradict a law of stellar physics — it is below a fusion limit, far outside the mass band of the class it claims, brighter than its size and temperature allow, past the Eddington limit, or too heavy to hold itself up. The engine will never GENERATE such a star, but a GM may author one and keep it: the tag names which law it breaks so the choice is informed rather than silently wrong. The value is the law: no-fusion, brown-dwarf-mass, mass-outside-class, luminosity-mismatch, above-tov, above-eddington.'
+  },
   'hazard/flaring': {
     label: 'Flare hazard',
     description: 'The host star flares — episodic flares and coronal mass ejections spike radiation and can erode an unshielded atmosphere (common on active M-dwarfs).'
+  },
+  'hazard/radiation': {
+    label: 'Radiation hazard',
+    description: 'HOW LONG a character standing on this surface survives it, which is what sieverts per year will not tell you: hours, days, weeks, months or years to a median lethal dose. Past fifty years the acute model stops meaning anything, so it says chronic instead (a real long-term cancer risk, above the 20 mSv/yr occupational limit) or background (Earth sits here). The exact figure is beside the dose in the data block. Not the same reading as "Space weathering", which is a cumulative total and reads low on the fiercest surface in a system.'
+  },
+  'hazard/orbital-radiation': {
+    label: 'Radiation belts',
+    description: 'The same survival-time reading for the space above the atmosphere, at the INNER EDGE OF THE TRAPPED-PARTICLE BELTS — 1,263 km up in Earth\'s case — shown only when it differs materially from the surface. It is not the dose at any altitude a ship chooses: low orbit sits BENEATH the belts, which is why the ISS at 400 km takes about 150 mSv a year while this figure reads days-to-lethal. Read it as "there is a hazardous shell around this world", not as "orbit is lethal".'
+  },
+
+  // --- Flight ---
+  'flight/ascent': {
+    label: 'Ascent cost',
+    description: 'What it takes to get off this world and into a low orbit - trivial (under 2 km/s, a small craft hops off, like Luna), moderate (under 5, Mars), hard (under 15, Earth), extreme (Venus at 29 km/s). The figure itself is the Ascent Delta-v row in the data block.'
   },
 
   // --- Rings (derived from ring-child geometry) ---
@@ -282,9 +331,26 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'structure/cloud-deck':       { label: 'Cloud deck',       description: 'A condensed cloud layer in the atmosphere. The value names what it is made of and how completely it covers the sky — wisps, scattered, broken, overcast or a total veil. A world can carry several decks at once, stacked by the temperature each substance condenses at.' },
   'weather/precipitation':      { label: 'Precipitation',    description: 'What falls out of a cloud deck, and whether it survives the trip down: rain where the drops reach the ground, snow where they freeze, and virga where they evaporate on the way (Venus\'s sulphuric-acid rain never lands).' },
   'surface/age':                { label: 'Surface age',       description: 'How long the visible surface has been sitting there exposed — young, moderate, old or ancient. A world that resurfaces itself keeps wiping the slate clean, so this is not the body\'s age: it is how much time the craters, weathering and irradiation have had to accumulate on what you can actually see.' },
-  'surface/irradiation':        { label: 'Irradiation',       description: 'How much starlight and cosmic radiation the unshielded surface has taken over its exposed lifetime — low, moderate or high. This is what darkens and reddens icy worlds, turning retained organics into tholins.' },
+  // NOT a dose rate, and the old label said otherwise. This is `irradiationDose` bucketed: a CUMULATIVE
+  // exposure relative to Earth-unshielded-young, i.e. how weathered the visible surface is, and it sat
+  // in the same block as annual dose figures under the word "Irradiation" (inbox A33). Io's surface is
+  // the proof it is a different quantity: constantly resurfaced, so it reads LOW here while its
+  // radiation rows read among the highest in the solar system. The name now says which one it is.
+  'surface/irradiation':        { label: 'Space weathering',  description: 'How much starlight and cosmic radiation the unshielded surface has accumulated over its exposed lifetime — low, moderate or high. This is a total relative to a young unshielded Earth, NOT a dose per year, so it does not compare with the radiation figures above: a constantly resurfaced world reads low here however fierce its radiation environment. It is what darkens and reddens icy worlds, turning retained organics into tholins.' },
+  // --- Rulepack ATMOSPHERE tags that had no entry (inbox B29). They are emitted from gasPhysics
+  // triggers and were reaching a reader as bare title-cased words with no explanation at all —
+  // "Biosignature" beside "Exotic Biology" on the same world, with nothing to say they are the same
+  // gas seen twice. Registered here, where every other built-in pack tag is described.
+  'high-humidity':              { label: 'High humidity',   description: 'Water vapour is a substantial fraction of the air (partial pressure above 0.05 bar) — muggy, and enough airborne water to matter for weather, corrosion and life support.' },
+  'biosignature':               { label: 'Biosignature',    description: 'A gas present that is hard to produce without life, at a concentration no known geology accounts for. Evidence worth investigating, not proof.' },
+  'exotic-biology':             { label: 'Exotic biology',  description: 'The biosignature gas here is one that points AWAY from water-carbon life as we know it — chemistry that would need a different biochemistry to explain.' },
+  'volatiles/ices':             { label: 'Retained ice',      description: 'A volatile that survives ON THE SURFACE as frost or bright ice, rather than being lost to space. It needs both traps: cold enough for the species to stay solid, and gravity enough to hold the vapour it sublimates (the Jeans parameter above the retention floor). A body emits one of these per species it keeps.' },
   'surface/oxidised':           { label: 'Oxidised surface', description: 'Iron at the surface has RUSTED — this is why Mars is red. It takes iron, an oxidiser to react with (free oxygen, or the carbon dioxide and water that did the job on early Mars) and long exposure: the Moon has the iron and the age but no atmosphere, so it stays grey.' },
   'stellar/activity':           { label: 'Magnetic activity', description: 'How tangled this star\'s magnetic field is — the one thing behind its starspots, its bright faculae and its flares. Young, fast-spinning and low-mass stars run active or flare constantly; an old sun-like star shows a handful of small spots.' },
+  // G26: the two outflow decorations, derived in physics/stellarOutflows and DRAWN by both starmaps
+  // and the system view. Remove the tag and the mark goes — there is no renderer-side switch.
+  'stellar/jets':               { label: 'Jets',             description: 'Collimated beams launched along the magnetic axis. A jet needs a relativistic well to launch from (compactness — Schwarzschild radius over the body\'s own radius), an ordered field to collimate along, and energy to tap: infall (the Eddington fraction of a fed black hole) or the magnetosphere of a neutron star or magnetar. A quiescent hole, a white dwarf and every ordinary star fall below the gate. The value is the beam strength: moderate or strong.' },
+  'stellar/shedding':           { label: 'Shedding',         description: 'A wind heavy enough to read as a shell around the star. Reimers\' relation — mass loss proportional to luminosity x radius / mass — from the star\'s own numbers: an evolved giant or supergiant sheds visibly, a hot O star\'s wind falls out of the same law, and a dwarf loses next to nothing (the Sun sits a few thousand times below the gate). The value is the rate: wind (above a billionth of a solar mass a year) or shell (above a ten-millionth).' },
   'weather/lightning':          { label: 'Lightning',        description: 'Charge separation in a deep convecting cloud deck — driven by a warm, thick atmosphere, or by ash where the world is volcanically active. The value is how often it fires.' },
   'weather/dust-storms':        { label: 'Dust storms',      description: 'A dry, loose, wind-scoured surface with air enough to lift it and no ocean to pin it down (Mars). The value is how far they spread — seasonal, frequent, or planet-wide.' },
   'weather/monsoon':            { label: 'Monsoon',          description: 'A seasonal swing in rainfall: rain that reaches the ground, an ocean to supply it, and an axial tilt big enough to give the year real seasons. The value names the rain.' },
@@ -334,7 +400,22 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'habitability/human':      { label: 'Human-habitable',  description: 'Liveable for unprotected humans with little or no life support.' },
   'habitability/alien':      { label: 'Alien-habitable',  description: 'Hostile to humans but viable for some biochemistry.' },
   'habitability/subsurface': { label: 'Subsurface niche',  description: 'No surface biosphere, but a liquid subsurface ocean with an energy source could host sub-ice life (Europa/Enceladus).' },
-  'habitability/none':       { label: 'Uninhabitable',    description: 'No plausible biosphere under the current model.' }
+  'habitability/none':       { label: 'Uninhabitable',    description: 'No plausible biosphere under the current model.' },
+
+  // --- Biosphere: what its life uses to catch the light, and how much of the ground it covers ---
+  'biodiversity/pigment':        { label: 'Dominant pigment',  description: 'The pigment most of this world\'s photosynthetic life uses, drawn from the set that scores as viable under the light reaching its ground. Several usually are, so which one dominates is contingent — the same world always gives the same answer, a similar world next door may not.' },
+  'biodiversity/settled':        { label: 'Settled',           description: 'How much of the LAND carries a morphology that lights up at night. From orbit a settlement reads as what it emits rather than as a colour, so this is the figure behind the night-side glow: it spreads from the coasts inland exactly as plant cover does, because people settle the same ground first.' },
+  'biodiversity/ecumenopolis':   { label: 'Ecumenopolis',      description: 'A planet-wide city: the lit morphology has taken essentially all of this world\'s land. The night side is a continuous network of light from coast to coast.' },
+  'biodiversity/land-cover':     { label: 'Life on the land',  description: 'How much of the LAND shows any colour of life, as a percentage. It is the union of the layers painted over one another, not the sum of their coverages — each layer covers that share of the land, so the sliders may total well past 100%.' },
+
+  // --- Visibility: how far you can see, which is where the plot is ---
+  // Only ever present when the AIR gets in the way. A clear sky and an airless rock both leave
+  // nothing between you and the view, and a tag on every world saying so would be noise. The value
+  // is the range at which a dark object is lost against the sky.
+  'visibility/hazy':             { label: 'Hazy',              description: 'The air is thick enough to soften the distance: a dark object is lost against the sky somewhere between ten and fifty kilometres out. Far enough that only long sight lines notice.' },
+  'visibility/murky':            { label: 'Murky',             description: 'Sight lines close to between one and ten kilometres — the far side of a valley is gone. Venus is here, from sheer weight of air rather than from any cloud: its decks sit ninety bar over your head.' },
+  'visibility/thick':            { label: 'Thick',             description: 'You can see a few hundred metres at most. A lamp is eaten twice over — out to the target and back to the eye — so it buys far less than the same lamp would at home.' },
+  'visibility/blind':            { label: 'Blind',             description: 'Under a hundred metres. Anything further away than a shout is simply not there, and everything arrives without warning.' }
 };
 
 // --- Legacy tag cleanup -----------------------------------------------------------------------
@@ -408,13 +489,45 @@ export function describeTag(key: string): TagPresentation {
   const label = tagMeta?.label || info?.label || titleCase(key.includes('/') ? key.split('/').slice(1).join(' ') : key);
   // Never leave a tag unexplained: specific write-up → namespace-level fallback → (last resort) blank.
   const description = tagMeta?.description ?? info?.description ?? (key.includes('/') ? NAMESPACE_DESC[ns] : undefined) ?? '';
-  return { key, label, description, group: meta.group, color: meta.color, textColor };
+  // A PER-TAG colour wins over its category's. That is what lets one `faction` category give every
+  // faction its own flag colour without a second mechanism to configure.
+  return {
+    key, label, description, group: meta.group,
+    color: tagMeta?.color || meta.color,
+    textColor: tagMeta?.textColor || textColor
+  };
 }
 
 // A CONTEXTUAL label for compact lists (reports, the field guide) where a bare "Oblate" or "Dynamo"
 // loses its category. Prepends the group when it adds meaning — "Shape · Oblate", "Magnetism · Intrinsic
 // dynamo" — but skips it when the label already conveys the category (e.g. "Brilliant aurora", "Inert
 // atmosphere") to avoid "Aurora · Brilliant aurora". Appends the tag value when present ("… : 0.62").
+// HOW A TAG'S VALUE IS SHOWN TO A READER (inbox B29 / A35).
+//
+// Most values are already words — `hours`, `moderate`, `water rain` — and pass straight through.
+// A few are raw NUMBERS, and a bare number in a chip is a float on a scale nothing states: "Brilliant
+// aurora: 0.78" tells a player nothing, and sat beside "Surface age: moderate" it is not even
+// obviously a number rather than a grade. Every numeric value therefore needs one of two answers
+// here — a unit, or suppression — and `tagConsistency.spec.ts` fails if a new one appears with
+// neither.
+//
+// Returns null to show the label ALONE. That is the right answer whenever the number is a renderer
+// input rather than a reading: the aurora tier is already in the key (`aurora/brilliant` → "Brilliant
+// aurora"), so the strength adds precision the curtain needs and nothing a reader can use.
+export function formatTagValue(key: string, value?: string): string | null {
+  if (value == null || value === '') return null;
+  if (key.startsWith('aurora/')) return null;                          // tier is in the key; strength is for the renderer
+  if (key === 'thermal/self-luminous') {
+    const k = Number(value);
+    return Number.isFinite(k) ? `${k.toLocaleString()} K` : value;     // it is an effective temperature
+  }
+  if (key === 'feature/polar-vortex') {
+    const n = Number(value);
+    return Number.isFinite(n) ? `${n}-sided` : value;                  // it is a side count
+  }
+  return value;
+}
+
 export function tagContextLabel(key: string, value?: string): string {
   const { label, group } = describeTag(key);
   const gl = group.toLowerCase();
@@ -422,5 +535,6 @@ export function tagContextLabel(key: string, value?: string): string {
   const known = !!group && group !== 'Other';
   const redundant = known && (label.toLowerCase().includes(gl) || label.toLowerCase().includes(glSingular));
   const base = known && !redundant ? `${group} · ${label}` : label;
-  return value ? `${base}: ${value}` : base;
+  const shown = formatTagValue(key, value);
+  return shown ? `${base}: ${shown}` : base;
 }

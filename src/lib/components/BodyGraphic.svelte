@@ -24,6 +24,14 @@
   export let starHex: string | null = null;              // 3D: colour of the system's star (lights the portrait)
   export let interactive = false;                        // 3D: let the player drag to spin the body by hand
 
+  // The pixels, for a caller that needs to draw this graphic INTO its own canvas rather than layer it
+  // over one — the document's filter can only wreck what is in the texture it reads (inbox A38).
+  // Works for both routes because both end in a canvas: HoloView's WebGL one and PlanetDisc's 2D one.
+  let root: HTMLDivElement | undefined;
+  export function getCanvas(): HTMLCanvasElement | null {
+    return root?.querySelector('canvas') ?? null;
+  }
+
   $: is3D = mode === 'sphere';
   // Simple disc = a plain coloured circle BY TYPE (the schematic's flat class colour — brown/red/blue),
   // as opposed to 'flat' which reuses the full 2D-gallery render (PlanetDisc). Kept stable regardless of
@@ -55,14 +63,22 @@
   $: holoStyle = {
     ...DEFAULT_STYLE,
     whole: false, orbitSpeed: interactive ? 0 : 0.24, angleDeg: isBH ? 82 : 70, skybox: false, grid: 'off',
-    lockOverhead: false, lockRotation: false, bodyGfx: 'sphere', render, bodyStyle,
+    lockOverhead: false, lockRotation: false, render, bodyStyle,
     // auroras OFF for the isolated thumbnail — zoomed to fill the frame their additive shell blooms into a
     // "massive glow"; the full 3D view keeps them. Portrait key light gives the day/night terminator instead.
-    unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, portrait, portraitFixed: tidal,
-    background: bg, beltStyle: 'rocks', labelSize: 0, filter: 'none', filterParams: undefined
+    // fillFrac 0.92: the shared click-ladder frames a close-up at HALF the viewport, which is right on a
+    // map (a framed world wants its surroundings) and wrong here — there are no surroundings, so the
+    // body sat small in the middle of whatever space the info block gave it.
+    unlit: false, lensing: true, auroras: false, bodySize: 1, compression: 0, fillFrac: 0.92, portrait, portraitFixed: tidal,
+    // BAND, not rocks. A ring drawn as individually tumbling rocks is a few thousand animated objects
+    // in a thumbnail the size of a postage stamp, and it showed: the portrait juddered while the rocks
+    // ate the frame budget to render detail nobody can see at this scale. The orrery's flat band reads
+    // the same at 220px and costs nothing.
+    background: bg, beltStyle: 'band', labelSize: 0, filter: 'none', filterParams: undefined
   };
 </script>
 
+<div class="bg-root" bind:this={root}>
 {#if is3D && system}
   <div class="bg-3d" class:mono><HoloView {system} style={holoStyle} focusedBodyId={body?.id ?? null} labelsVisible={false} userSpin={interactive} /></div>
 {:else if mode === 'flat' && body}
@@ -91,11 +107,18 @@
     </svg>
   </div>
 {/if}
+</div>
 
 <style>
+  /* Pure wrapper — a handle for getCanvas(), never a layout box. */
+  .bg-root { width: 100%; height: 100%; display: contents; }
   .bg-3d { width: 100%; height: 100%; }
   .bg-2d { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-  .bg-2d :global(svg) { max-width: 100%; max-height: 100%; height: auto; width: auto; }
+  /* FILL the space the info block gives it. The svg carries a 220px width/height attribute as its
+     intrinsic size; `width:auto` honoured that as a ceiling, so a 400px-tall panel still showed a
+     220px disc adrift in the middle of it. Both discs have a square viewBox and the default
+     xMidYMid meet, so stretching the box to 100% scales the drawing without distorting it. */
+  .bg-2d :global(svg) { width: 100%; height: 100%; max-width: 100%; max-height: 100%; }
   /* Monochrome safety net for the 2D disc (the 3D holo greys itself via bodyStyle='white'). */
   .mono { filter: grayscale(1) brightness(1.06) contrast(1.02); }
 </style>

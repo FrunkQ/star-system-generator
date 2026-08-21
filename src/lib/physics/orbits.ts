@@ -1,6 +1,8 @@
 // ======== FILE: orbits.ts ========
 import { G, AU_KM } from '../constants';
 import { getNodeColor } from '../rendering/colors';
+import { hasSolidSurface } from './makeup';
+import type { CelestialBody } from '../types';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -617,6 +619,43 @@ export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?
         if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
         return a.radiusKm - b.radiusKm;
     }).map(o => ({ id: o.id, name: o.name, radiusKm: o.radiusKm, color: o.color }));
+}
+
+/**
+ * WHETHER A SURFACE FLIGHT BUDGET MEANS ANYTHING ON THIS BODY, and if not, what to say instead
+ * (inbox B37, and B18's category error reaching a surface B18 did not).
+ *
+ * THE ONE ANSWER. `calculateDeltaVBudgets` writes -1 as a "not applicable" sentinel and four
+ * consumers each decided for themselves what -1 meant: two published it through a truthiness test,
+ * so every belt and ring in the app read **"Ascent Dv -0.0 km/s"**; one printed it as -1.0 m/s; and
+ * the ascent TAG alone got it right, gating on planet-or-moon AND a solid surface. So the tag said
+ * nothing about Jupiter while the info block beside it said 50.3 km/s.
+ *
+ * WHY A BELT IS WITHHELD RATHER THAN GIVEN A FRAGMENT'S FIGURE — B26 asks which reading applies and
+ * the answer is the first. A belt's `massKg` is a DEBRIS-DENSITY PROXY, not a gravitational mass
+ * (PHY-13), so an escape velocity computed from it is arithmetic on a number that was never a mass.
+ * The alternative reading, "ascent from a typical fragment", is a different body's question: the
+ * fragment has no radius, no mass and no gravity anywhere in the data, so answering it would mean
+ * INVENTING a body and then reporting its figure as the belt's. A GM who wants that number can add
+ * the asteroid — the app models it properly — and get a real one. What a belt actually costs to
+ * work is station-keeping and rendezvous, which is a different quantity and not this field.
+ *
+ * The reasons are prose because they are PUBLISHED: the row stays visible and says why it is empty,
+ * rather than vanishing and leaving a GM to wonder whether the engine forgot.
+ */
+export type AscentApplicability = { applies: true } | { applies: false; reason: string };
+
+export function ascentBudgetApplies(body: CelestialBody): AscentApplicability {
+  const role = body.roleHint;
+  if (role === 'belt' || role === 'ring')
+    return { applies: false, reason: 'debris spread round an orbit, with no surface to leave' };
+  if (role === 'star')
+    return { applies: false, reason: 'no surface' };
+  if (role !== 'planet' && role !== 'moon')
+    return { applies: false, reason: 'not a natural body' };
+  if (!hasSolidSurface(body))
+    return { applies: false, reason: 'no solid surface to lift from' };
+  return { applies: true };
 }
 
 /**

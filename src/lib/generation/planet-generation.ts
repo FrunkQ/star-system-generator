@@ -4,6 +4,7 @@ import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { _generatePlanetaryBody } from './planet';
 import { G, AU_KM, SOLAR_MASS_KG } from '../constants';
 import { calculateOrbitalSlots } from './placement-strategy';
+import { starFamilyOf, planetCountTableKey } from './star';
 
 export function generatePlanets(
     systemRoot: CelestialBody | Barycenter,
@@ -20,16 +21,10 @@ export function generatePlanets(
     if (empty) return;
 
     // 1. Determine Planet Count
-    const starClass = starA.classes[0].split('/')[1];
-    const spectralType = starClass[0];
-    let bodyCountTable;
-    if (['O', 'B', 'A'].includes(spectralType)) {
-        bodyCountTable = pack.distributions['planet_count_massive'];
-    } else if (['G', 'K', 'M', 'F'].includes(spectralType) || starClass === 'red-giant') {
-        bodyCountTable = pack.distributions['planet_count_main_sequence'];
-    } else {
-        bodyCountTable = pack.distributions['planet_count_remnant'];
-    }
+    // Family from the LETTER (star.ts starFamilyOf): `G-III` is a G, and L/T/Y are brown dwarfs
+    // with their own table rather than the remnants' 95%-empty one.
+    const bodyCountTable = pack.distributions[planetCountTableKey(starFamilyOf(starA.classes[0]))]
+        ?? pack.distributions['planet_count_main_sequence'];
     let numBodies = bodyCountTable ? weightedChoice<number>(rng, bodyCountTable) : rng.nextInt(0, 8);
     // Disk-mass knob: scale the body count (sparse ↔ massive disk).
     if (bias?.countMultiplier && bias.countMultiplier !== 1) {

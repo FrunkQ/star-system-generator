@@ -1,5 +1,6 @@
 // WS2 `schematic` block — the reinstated "simple system line-drawing." A faithful CANVAS port of the
-// legacy Field Guide's SVG log-scale orbital diagram (`CatalogueBrowser.svelte:194-222`), so it now
+// legacy Field Guide's SVG log-scale orbital diagram (`CatalogueBrowser.svelte`, removed by A42 at
+// v2.1.702 — this is now the only copy), so it
 // goes through the GPU filter with the rest of the document instead of being a separate SVG that the
 // new preset path dropped. Each star gets a horizontal distance-line; planets sit on it by log10(a),
 // belts render as blobs, moons as a small pip. Drawn in the SVG's virtual coordinate space then scaled
@@ -17,13 +18,33 @@ export interface SchematicOpts {
   theme: DocTheme;
   selectedId?: string | null;
   colorful?: boolean; // The Guide's friendly rainbow (a stable hue per body)
+  // Draw the NAMES. Off leaves the orbital line and its markers alone — which is what a compact
+  // repeated strip wants: at a fraction of full size the labels are unreadable anyway, and dropping
+  // them turns the diagram into the shape of the system rather than a squashed page of type.
+  labels?: boolean; // default true
 }
 
 // SVG virtual space (matches the legacy diagram exactly so the look ports 1:1).
 const VB_W = 600, ROW_H = 88, INNER = 86, OUTER = VB_W - 26;
 
 // The Guide's rainbow: a stable bright hue per body, index-driven.
-const hue = (i: number) => `hsl(${(i * 47 + 8) % 360}, 95%, 66%)`;
+export const rainbowHue = (i: number) => `hsl(${(i * 47 + 8) % 360}, 95%, 66%)`;
+const hue = rainbowHue;
+
+// The hue INDEX (star, then its bodies, then rogues). Exported so the drill-in navigator can colour a
+// body's button with the same hue as its marker on the chart above — one source, so a planet's chip and
+// its dot cannot drift apart. Moons and constructs are not in the schematic and so are not in this map;
+// callers fall back for them.
+export function rainbowHueIndex(system: System): Map<string, number> {
+  const idx = new Map<string, number>();
+  let i = 0;
+  for (const s of starsOf(system)) {
+    idx.set(s.id, i++);
+    for (const b of listBodiesOf(system, s.id)) idx.set(b.id, i++);
+  }
+  for (const r of roguesOf(system)) idx.set(r.id, i++);
+  return idx;
+}
 
 interface Row {
   planets: { id: string; x: number; label: string; hasMoons: boolean; color?: string }[];
@@ -62,6 +83,7 @@ function diagramRow(system: System, hostId: string): Row {
 
 export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: SchematicOpts): SchematicHit[] {
   const { system, x, y, w, h, theme, selectedId, colorful } = opts;
+  const labels = opts.labels !== false;
   const stars = starsOf(system);
   const hits: SchematicHit[] = [];
   if (!stars.length) return hits;
@@ -70,8 +92,7 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
   const font = theme.font;
 
   // Stable hue index (star, then its bodies, then rogues) — only used in `colorful`.
-  const hueIndex = new Map<string, number>();
-  { let i = 0; for (const s of stars) { hueIndex.set(s.id, i++); for (const b of listBodiesOf(system, s.id)) hueIndex.set(b.id, i++); } for (const r of roguesOf(system)) hueIndex.set(r.id, i++); }
+  const hueIndex = rainbowHueIndex(system);
   // Monochrome bleaches everything: the schematic drops its rainbow and uses the grey ramp too.
   const colorfulEff = colorful && !theme.mono;
   // Marker fill: rainbow hue (colorful), a bleached grey (mono), else the body's TRUE colour (its
@@ -116,8 +137,10 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
     ctx.fillStyle = starCol; ctx.globalAlpha = starSel ? 1 : 0.9; ctx.fill(); ctx.globalAlpha = 1;
     if (starSel) { ctx.strokeStyle = c.value; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1.5; }
     ctx.fillStyle = colorfulEff ? starCol : c.body;
-    ctx.font = `600 13px ${font}`; ctx.textAlign = 'center';
-    ctx.fillText(star.name, 42, cy + 27);
+    if (labels) {
+      ctx.font = `600 13px ${font}`; ctx.textAlign = 'center';
+      ctx.fillText(star.name, 42, cy + 27);
+    }
     pushHit(star.id, 42 - 15, cy - 15, 42 + 15, cy + 30);
 
     // Belts (wide blobs, drawn UNDER the planets). Hit box deferred so planets win overlapping taps.
@@ -125,8 +148,10 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
       const beltCol = markerCol(e.id, e.color, c.rule);
       ctx.fillStyle = beltCol; ctx.globalAlpha = 0.5;
       roundRect(ctx, e.x1, cy - 7, e.x2 - e.x1, 14, 7); ctx.fill(); ctx.globalAlpha = 1;
-      ctx.fillStyle = colorfulEff ? beltCol : c.label; ctx.font = `10px ${font}`; ctx.textAlign = 'center';
-      ctx.fillText(e.label, (e.x1 + e.x2) / 2, cy + 25);
+      if (labels) {
+        ctx.fillStyle = colorfulEff ? beltCol : c.label; ctx.font = `10px ${font}`; ctx.textAlign = 'center';
+        ctx.fillText(e.label, (e.x1 + e.x2) / 2, cy + 25);
+      }
       const [bx0, by0] = toView(e.x1, cy - 9); const [bx1, by1] = toView(e.x2, cy + 9);
       beltHits.push({ id: e.id, x0: bx0, y0: by0, x1: bx1, y1: by1 });
     }
@@ -142,14 +167,16 @@ export function drawSystemSchematic(ctx: CanvasRenderingContext2D, opts: Schemat
       if (sel) { ctx.strokeStyle = c.value; ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1.5; }
       if (e.hasMoons) { ctx.beginPath(); ctx.arc(e.x + 10, cy - 9, 2.4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
       ctx.font = `${sel ? '600 ' : ''}10px ${font}`;
-      const lw = ctx.measureText(e.label).width;
-      ctx.save();
-      ctx.translate(e.x, cy - 9);
-      ctx.rotate(-Math.PI / 4); // up to the right
-      ctx.textAlign = 'left';
-      ctx.fillStyle = colorfulEff ? col : (sel ? c.value : c.body);
-      ctx.fillText(e.label, 5, 3);
-      ctx.restore();
+      const lw = labels ? ctx.measureText(e.label).width : 0;
+      if (labels) {
+        ctx.save();
+        ctx.translate(e.x, cy - 9);
+        ctx.rotate(-Math.PI / 4); // up to the right
+        ctx.textAlign = 'left';
+        ctx.fillStyle = colorfulEff ? col : (sel ? c.value : c.body);
+        ctx.fillText(e.label, 5, 3);
+        ctx.restore();
+      }
       // Axis-aligned box over the marker + the diagonal label (extends up-right by (5+lw)/√2 each axis).
       const diag = (5 + lw) * Math.SQRT1_2;
       pushHit(e.id, e.x - 9, cy - 12 - diag, e.x + 12 + diag, cy + 9);

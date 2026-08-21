@@ -1,5 +1,8 @@
 // SpaceEngine (.sc) import — map parsed blocks to an SSG System (authored inputs only). Design §3/§6a.
 import { G, AU_KM, EARTH_MASS_KG, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
+import { guessSystemAge } from '$lib/physics/systemAge';
+import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
+import { UNKNOWN_STAR_CLASS } from '$lib/import/realsky/stars.mjs';
 import type { System, CelestialBody, Barycenter, Kepler, Makeup } from '$lib/types';
 import { parseSc, readScSources, type ScBlock } from './parse';
 import type { ReferenceSnapshot, SkippedEntity, ImportCounts } from '../shared/review';
@@ -31,10 +34,6 @@ const MAKEUP_MAP: Record<string, keyof Makeup> = {
   Ice: 'ice', Ices: 'ice', Water: 'ice', WaterIce: 'ice', Hydrogen: 'gas', Helium: 'gas', Gas: 'gas'
 };
 
-function starClassFromSpectral(cls: string | undefined): string {
-  const letter = (cls ?? '').trim().charAt(0).toUpperCase();
-  return 'OBAFGKM'.includes(letter) ? `star/${letter}` : 'star/G';
-}
 
 function massKgOf(b: ScBlock): number {
   const k = b.keys;
@@ -247,13 +246,21 @@ export function convertSc(sources: string[], options: ScImportOptions = {}): ScI
     }
 
     const rot = rotationHours(b); if (rot != null) node.rotation_period_hours = rot;
-    const obl = num(b.keys.Obliquity); if (obl != null) { (node as any).axial_tilt_deg = +obl.toFixed(2); node.obliquity_deg = +obl.toFixed(2); }
+    const obl = num(b.keys.Obliquity); if (obl != null) { (node as any).axial_tilt_deg = +obl.toFixed(2); }
 
     if (role === 'star') {
       node.temperatureK = num(b.keys.Temperature) ?? 5778;
-      node.classes = [starClassFromSpectral(b.keys.Class)];
       const lum = num(b.keys.Luminosity) ?? num(b.keys.LumBol);
       if (lum != null) (node as any).radiationOutput = lum;
+      // ONE classifier for every importer (physics/importedStarClass.ts). SpaceEngine STATES a full MK
+      // class ("G2V", "K3III", "M1.5Iab") and the old ladder kept only its first letter — so a K giant
+      // imported as a K dwarf, exactly the "G I and G V were the same" fault — and defaulted anything
+      // it did not recognise to G. The stated designation now wins as written; a bare letter falls to
+      // physics inference in the fixup (autoClassify) and to main sequence; nothing defaults to G.
+      const cls = resolveImportedStarClass({ stated: b.keys.Class, temperatureK: node.temperatureK, radiusKm: node.radiusKm, massKg: node.massKg, luminositySolar: lum ?? undefined });
+      node.classes = cls.classKey === cls.bandKey ? [cls.classKey] : [cls.classKey, cls.bandKey];
+      if (cls.bandSource !== 'stated' && cls.bandSource !== 'remnant') (node as any).autoClassify = true;
+      if (cls.classKey === UNKNOWN_STAR_CLASS) assumptions.push(`${node.name}: SpaceEngine class "${b.keys.Class ?? ''}" not recognised and no temperature to infer from; left unclassified rather than guessed.`);
       counts.stars++;
     } else {
       // Import the real interior composition, including for giants. SpaceEngine calls a giant's fluid mantle
@@ -284,15 +291,21 @@ export function convertSc(sources: string[], options: ScImportOptions = {}): ScI
   }
 
   // system age from a star's Age (Gyr)
-  let ageGyr = 4.6;
+  // ONE age model for every importer (physics/systemAge guessSystemAge). SpaceEngine may state a
+  // star age; when it does that wins if the star can be that old, else the guess is from the primary's
+  // own life with the band it makes reasonable - never a flat 4.6.
+  const primary = nodes.find((n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'star' && !n.parentId) as CelestialBody | undefined
+    ?? nodes.find((n) => n.kind === 'body' && (n as CelestialBody).roleHint === 'star') as CelestialBody | undefined;
   const starAges = bodies.filter((b) => b.type === 'Star').map((b) => num(b.keys.Age)).filter((a): a is number => a != null && a > 0);
-  if (starAges.length) ageGyr = +Math.max(...starAges).toFixed(3);
-  else assumptions.push('System age assumed 4.6 Gyr (no star age in the source) — set it in System Settings.');
+  const statedAge = starAges.length ? Math.max(...starAges) : null;
+  const ageGuess = guessSystemAge(primary ? { massKg: primary.massKg, temperatureK: primary.temperatureK, classes: primary.classes, statedAgeGyr: statedAge } : null);
+  const ageGyr = ageGuess.ageGyr;
+  if (ageGuess.estimated) assumptions.push(`System age: ${ageGuess.note} Set it in System Settings.`);
 
   const rootBody = bodies.find((b) => parentIdOf.get(idOf.get(b)!) === null);
   const system: System = {
     id: `se-${simHash}`, name: (rootBody?.name ?? 'SpaceEngine import').split('/')[0].trim(),
-    seed: `se-${simHash}`, epochT0: Date.now(), age_Gyr: ageGyr, nodes, rulePackId: '', rulePackVersion: '', tags: []
+    seed: `se-${simHash}`, epochT0: Date.now(), age_Gyr: ageGyr, ageEstimated: ageGuess.estimated, ageBandGyr: ageGuess.bandGyr, nodes, rulePackId: '', rulePackVersion: '', tags: []
   };
   return { system, snapshot, skipped, assumptions, counts };
 }

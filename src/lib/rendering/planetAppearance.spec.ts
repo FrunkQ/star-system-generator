@@ -188,3 +188,81 @@ describe('shade', () => {
 		expect(shade('#ffffff', -1)).toBe('#000000');
 	});
 });
+
+describe('vegetation — READ, never derived', () => {
+	// The appearance model consumes `body.vegetation`, which physics/vegetation.ts already resolved
+	// from pack data. Nothing here needs the rule pack, which is the deliberate answer to C2's
+	// missing thread rather than a second one alongside it.
+	const veg = (over: any = {}) => ({
+		pigment: 'chlorophyll', pigmentLabel: 'Chlorophyll', ranked: [],
+		layers: [
+			{ morphology: 'microbial', label: 'Microbial', coverage: 0.7, opacity: 0.55, colorHex: '#5d6b4a', light: 0 },
+			{ morphology: 'flora', label: 'Flora', coverage: 0.5, opacity: 0.9, colorHex: '#4f8f2a', light: 0 },
+			{ morphology: 'fauna', label: 'Fauna', coverage: 0.9, opacity: 0, colorHex: null, light: 0 }
+		],
+		visibleCover: 0.8, landFraction: 0.3, bandCentreDeg: 30, bandWidthDeg: 25, ...over
+	});
+
+	it('carries the painter-ordered layers through and drops the ones that paint nothing', () => {
+		const a = deriveAppearance(mk({ vegetation: veg() } as any));
+		expect(a.vegetation).not.toBeNull();
+		// fauna has a colourless layer and zero opacity — it is dropped, and nothing in the renderer
+		// knows what fauna is.
+		expect(a.vegetation!.layers.map((l) => l.morphology)).toEqual(['microbial', 'flora']);
+		expect(a.vegetation!.visibleCover).toBe(0.8);
+		expect(a.vegetation!.bandCentreDeg).toBe(30);
+		// Carried through, because coverage is OF THE LAND and a renderer scattering patches over a
+		// whole disc must scale by this or it paints the ocean.
+		expect(a.vegetation!.landFraction).toBe(0.3);
+	});
+
+	it('gives a GIANT no vegetation whatever it carries — a 1-bar level is not a surface', () => {
+		const giant = deriveAppearance(mk({ makeup: { gas: 0.9, ice: 0.1 }, vegetation: veg() } as any));
+		expect(giant.vegetation).toBeNull();
+	});
+
+	it('is null on a star, a belt, and a world with no life', () => {
+		expect(deriveAppearance(mk({ roleHint: 'star', vegetation: veg() } as any)).vegetation).toBeNull();
+		expect(deriveAppearance(mk({ roleHint: 'belt', vegetation: veg() } as any)).vegetation).toBeNull();
+		expect(deriveAppearance(mk({})).vegetation).toBeNull();
+	});
+
+	it('drops a layer whose coverage rounds to nothing rather than drawing an invisible field', () => {
+		const a = deriveAppearance(mk({ vegetation: veg({
+			layers: [{ morphology: 'flora', label: 'Flora', coverage: 0.001, opacity: 0.9, colorHex: '#4f8f2a', light: 0 }]
+		}) } as any));
+		expect(a.vegetation).toBeNull();
+	});
+});
+
+// B69: an eyeball needs a permanent FACE, and despinning has two end states. Mercury is despun,
+// orbits a star and is not a moon — every clause of the old fallback said "eyeball" about a body
+// whose sun rises every 176 days.
+describe('deriveAppearance — a spin-orbit resonance is not an eyeball', () => {
+	const mercuryish = (over: any = {}) => mk({
+		roleHint: 'planet', tidallyLocked: true, rotation_period_hours: 1407.6, orbital_period_days: 87.97,
+		temperatureRangeK: { min: 70, max: 710 }, ...over
+	} as any);
+
+	it('refuses the eyeball when the periods say the spin is not synchronous', () => {
+		expect(deriveAppearance(mercuryish()).eyeball).toBeNull();
+	});
+
+	it('still draws one when the body states no periods to contradict the lock', () => {
+		// A gallery example or an editor preview: nothing to check the flag against, so it stands.
+		expect(deriveAppearance(mk({ roleHint: 'planet', tidallyLocked: true,
+			temperatureRangeK: { min: 110, max: 900 } } as any)).eyeball).toBeTruthy();
+	});
+
+	it('the explicit flag still wins over any of it', () => {
+		expect(deriveAppearance(mercuryish({ starTidallyLocked: true })).eyeball).toBeTruthy();
+		expect(deriveAppearance(mk({ roleHint: 'planet', tidallyLocked: true, starTidallyLocked: false,
+			temperatureRangeK: { min: 110, max: 900 } } as any)).eyeball).toBeNull();
+	});
+
+	it('a resonant body weathers evenly — no leading-face crater skew', () => {
+		const resonant = deriveAppearance(mercuryish({ tags: [{ key: 'orbit/spin-orbit-resonance', value: '3:2' }] } as any));
+		const synchronous = deriveAppearance(mercuryish({ rotation_period_hours: 87.97 * 24 }));
+		expect(resonant.farSideBias ?? 0).toBeLessThanOrEqual(synchronous.farSideBias ?? 0);
+	});
+});

@@ -65,3 +65,25 @@ introduced deliberately, damped, and with an idempotence test (two passes ⇒ id
 
 Related: `docs/dev/cloud-decks-design.md` (first full application of this rule),
 `docs/dev/unified-tagging-design.md` (tag lifecycle unification workstream).
+
+## What a body RADIATES — three mechanisms, one source each
+
+Added 2026-08-16 after an audit prompted by the owner: *"are we using one uniform source of radiation
+in all calcs from stars - we got mixed up before."* One source field each, and they are not
+interchangeable. The full rule and its history are in `engine-map.md` under **PHY-15**.
+
+| Mechanism | Source quantity | Derived from |
+|---|---|---|
+| Bolometric luminosity | `radiationOutput` (L☉) | radius and temperature, exactly |
+| Ionising output | `L_bol x (L_X/L_bol)` | the magnetic dynamo (`flareActivity`), NOT size |
+| Trapped-particle belts | host field strength x spin | magnetism and rotation, NOT luminosity |
+
+**The one that catches people:** brightness and ionising output are different numbers. A flare moves a
+star's bolometric output by about a hundredth of a percent and its X-ray output by a thousandfold, so
+"make this star dangerous" and "make this star brighter" are different actions and have separate
+controls. And a **gas giant is a radiation source with no luminosity at all** — a moon inside its belt
+is bombarded, not lit.
+
+**Physics still decides, tags still record.** Each mechanism ends in tags a reader can see —
+`hazard/flaring` and `stellar/activity` from the dynamo, `hazard/radiation` and the belt tags from the
+dose — and nothing reads a tag back to compute a physical value.

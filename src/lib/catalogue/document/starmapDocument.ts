@@ -3,23 +3,73 @@
 // nav style, headers/footers, filter) and stays aligned with every other info surface by construction.
 // Content mirrors the old StarmapListView: the map's name, its description, and one navigator row per
 // system (tap → enter) with a stars/planets/moons contents summary.
+//
+// G1 — ARRANGEMENTS. `layout` chooses the SHAPE the same content takes; it composes WITH the preset's
+// documentStyle, listStyle and colouration rather than replacing them, so the looks multiply
+// (layout × style) instead of forking into bespoke views. That is what keeps the one-builder /
+// one-renderer property F8 verified, and it is that property that caught F7 and F9.
 import type { Starmap } from '$lib/types';
 import type { DocBlock, ListItem } from './blocks';
 import { systemVisualStars } from '$lib/starmap/systemStars';
+import { posZ, zCounts, systemSeparation } from '$lib/map/systemDistance';
+import { classLabel } from '../bodyFacts';
+import { rainbowHue } from './systemSchematic';
+
+// 'list'    — one navigator row per system with a contents sub-line (the original, still the default)
+// 'dossier' — a form: a heading per system over a stack of labelled fields, then a rule
+// 'glyphs'  — a catalogue: the system's name beside a row of its real bodies, drawn in their own
+//             derived colours (primary large, companions smaller, planets a trailing run)
+// 'diagram'     — the SYSTEM-MAP line-diagram per system, compact and UNLABELLED: the shape of the
+//                 system, nothing else. Reuses drawSystemSchematic exactly as the system page does.
+// 'diagram-full'— the same diagram at full size WITH its names, one system after another.
+export type StarmapLayout = 'list' | 'dossier' | 'glyphs' | 'diagram' | 'diagram-full';
 
 export interface StarmapDocOpts {
   selectedId?: string | null;
+  layout?: StarmapLayout;
+  // The preset's accent is 'rainbow'. Resolved to concrete hues HERE, in the builder, never in the
+  // renderer (blocks.ts:105) — and note this is a separate flag from the theme's `accent`, which must
+  // keep carrying the 'rainbow' sentinel all the way into renderDocument (documentStyles.ts:85-86).
+  colorful?: boolean;
+  // Dossier: a glyph before each field label. Same vocabulary as the rest of the guide (bodyGlyph) —
+  // a star is a star and a moon is a moon wherever the reader meets one.
+  fieldIcons?: boolean;
+  // G16 — THE CAMPAIGN'S OWN MAP PICTURE, at the foot of the page. Owner, 2026-08-17: "On text maps
+  // have it as an included graphic at the bottom of the starmap — a way for users to still include
+  // their diagram." A document has no pan, no zoom and no map coordinates, so there is nothing to
+  // georeference against and the two attachment modes collapse into one: the picture is simply
+  // PRINTED, once, under the index. Loaded by the caller (the block engine takes a decoded bitmap),
+  // and absent when the campaign has no background or the reader's preset has turned it off.
+  background?: CanvasImageSource | null;
+  backgroundAspect?: number;
+  backgroundCaption?: string; // credit line, when the image records one
 }
 
-function summary(node: any): string {
+// One glyph per dossier field. Text glyphs, not artwork: they inherit the font, the colouration and
+// the filter like every other mark on the page, and they match what the same things are drawn as in
+// the navigator lists (see bodyFacts.bodyGlyph).
+const FIELD_ICONS: Record<string, string> = {
+  Primary: '★', Companion: '✧', Planets: '●', Moons: '○', Depth: '↕'
+};
+const fieldIcon = (label: string): string | undefined =>
+  FIELD_ICONS[label]
+  ?? (label.startsWith('Companion') ? '✧' : undefined)
+  ?? (label.startsWith('Distance') ? '↔' : undefined);
+
+interface Counts { stars: number; planets: number; moons: number }
+function counts(node: any): Counts {
   const ns = node.system?.nodes ?? [];
-  const stars = systemVisualStars(node.system).length;
   let planets = 0, moons = 0;
   for (const n of ns) {
     if (n.kind !== 'body') continue;
     if (n.roleHint === 'planet' || n.roleHint === 'dwarf-planet') planets++;
     else if (n.roleHint === 'moon') moons++;
   }
+  return { stars: systemVisualStars(node.system).length, planets, moons };
+}
+
+function summary(node: any): string {
+  const { stars, planets, moons } = counts(node);
   const parts: string[] = [];
   if (stars) parts.push(stars > 1 ? `${stars} stars` : '1 star');
   if (planets) parts.push(`${planets} planet${planets > 1 ? 's' : ''}`);
@@ -42,15 +92,232 @@ export function buildStarmapDocument(starmap: Starmap | null, opts: StarmapDocOp
   blocks.push({ kind: 'rule' });
   if (!systems.length) {
     blocks.push({ kind: 'text', text: 'No systems charted.', italic: true, align: 'center' });
+    blocks.push(...backgroundFigure(opts)); // an uncharted map may still carry the GM's own diagram
     return blocks;
   }
-  const items: ListItem[] = systems.map((node) => ({
-    id: node.id,
-    text: node.name,
-    sub: summary(node),
-    selected: node.id === opts.selectedId
-  }));
-  blocks.push({ kind: 'list', items });
+
+  if (opts.layout === 'dossier') {
+    blocks.push(...dossier(starmap, systems, opts));
+  } else if (opts.layout === 'glyphs') {
+    blocks.push(...glyphCatalogue(systems, opts));
+  } else if (opts.layout === 'diagram' || opts.layout === 'diagram-full') {
+    blocks.push(...diagramCatalogue(systems, opts, opts.layout === 'diagram-full'));
+  } else {
+    // RAINBOW in the index: one part of the spectrum per SYSTEM, walking the list. It reads as an
+    // identity — this entry's colour — rather than as decoration, which is why it suits a bounded
+    // object (a chip, a card) where a dense form's field labels would have been confetti. The colour
+    // is resolved here, in the builder, and every list style honours it.
+    const items: ListItem[] = systems.map((node, i) => ({
+      id: node.id,
+      text: node.name,
+      sub: summary(node),
+      selected: node.id === opts.selectedId,
+      ...(opts.colorful ? { color: rainbowHue(i) } : {})
+    }));
+    blocks.push({ kind: 'list', items });
+  }
+  blocks.push(...backgroundFigure(opts));
   blocks.push({ kind: 'spacer', h: 12 });
   return blocks;
+}
+
+// G16: the map picture as a figure at the FOOT of the index, after every system and before the tail
+// spacer. Foot rather than head deliberately — the systems are what the reader came for, and a
+// full-width picture at the top of a scrolling document pushes the whole index off the first screen.
+function backgroundFigure(opts: StarmapDocOpts): DocBlock[] {
+  if (!opts.background) return [];
+  const out: DocBlock[] = [];
+  out.push({ kind: 'spacer', h: 10 });
+  out.push({ kind: 'rule' });
+  out.push({ kind: 'spacer', h: 6 });
+  out.push({
+    kind: 'image',
+    img: opts.background,
+    aspect: opts.backgroundAspect && opts.backgroundAspect > 0 ? opts.backgroundAspect : 1.6,
+    // 'full' rather than the default letterbox band: a sector map cropped to a central strip is not
+    // a sector map. Half the view height is as much as a figure can take without becoming the page.
+    frame: 'full',
+    maxHFrac: 0.5
+  });
+  if (opts.backgroundCaption) {
+    out.push({ kind: 'spacer', h: 4 });
+    out.push({ kind: 'text', text: opts.backgroundCaption, italic: true, align: 'center' });
+  }
+  return out;
+}
+
+// The DOSSIER: a level-2 heading per system over a stack of labelled fields, closed by a rule. Zero new
+// block kinds — the starmap document simply had never used `keyValue`, which is why this reads so
+// differently from the navigator list for so little code.
+//
+// RAINBOW, decided here: in a dossier the spectrum walks the SYSTEM HEADINGS, one hue per entry, and
+// the field labels stay in the document's own colours. A form is dense — six labelled rows per system —
+// and hueing every label turns it into confetti that is harder to read than the plain style, which is
+// the opposite of what an arrangement is for. Colouring the headings gives the same "each entry is its
+// own thing" cue the system document gives its drill-in chips, on the one line per system that can
+// carry it. The stacked-card arrangement is a different case and takes its own answer.
+function dossier(starmap: Starmap | null, systems: any[], opts: StarmapDocOpts): DocBlock[] {
+  const out: DocBlock[] = [];
+  const sm: any = starmap;
+  const unit: string = sm?.distanceUnit || '';
+  const ppu: number = sm?.scale?.pixelsPerUnit ?? 0;
+  // Depth and distance are only meaningful on a SCALED map with a usable scale. On a diagrammatic map
+  // the positions are a picture, not a measurement, and quoting light years off them would be inventing
+  // a number — an honest short list beats a confident wrong one.
+  const measurable = ppu > 0 && sm?.mapMode !== 'diagrammatic' && (sm?.distanceUnit || '') !== 'diagrammatic';
+  const depthCounts = zCounts(sm);
+  const selected = opts.selectedId ? systems.find((s) => s.id === opts.selectedId) : null;
+  const fmt = (n: number) => `${n.toLocaleString(undefined, { maximumFractionDigits: n < 10 ? 1 : 0 })} ${unit}`.trim();
+
+  systems.forEach((node, i) => {
+    const stars = systemVisualStars(node.system);
+    const { planets, moons } = counts(node);
+    // ONE fieldGrid per system rather than a stack of full-width keyValue rows: the renderer then puts
+    // each label beside its own value in a cell, instead of pinning the value to the far edge of the
+    // page where, on a desktop, it ends up a hand's width from the label it belongs to.
+    const fields: { label: string; value: string; icon?: string }[] = [];
+    const add = (label: string, value: string) => {
+      if (value) fields.push({ label, value, ...(opts.fieldIcons ? { icon: fieldIcon(label) } : {}) });
+    };
+
+    out.push({
+      kind: 'heading', level: 2, text: node.name, id: node.id,
+      selected: node.id === opts.selectedId,
+      ...(opts.colorful ? { color: rainbowHue(i) } : {})
+    });
+    // Every star gets its OWN field, primary then companions, each with its class where the classifier
+    // has one. A joined "Companions" list was one long value in one cell, so a trinary's third star was
+    // simply ellipsised away — a field per star is what a form does and it cannot lose one.
+    const starField = (s: { id: string; name: string }) => {
+      const n = (node.system?.nodes ?? []).find((x: any) => x.id === s.id);
+      const cls = n ? classLabel(n) : '';
+      return cls ? `${s.name} · ${cls}` : s.name;
+    };
+    if (stars[0]) add('Primary', starField(stars[0]));
+    stars.slice(1).forEach((s, ci) => {
+      add(stars.length > 2 ? `Companion ${ci + 1}` : 'Companion', starField(s));
+    });
+    add('Planets', planets ? String(planets) : '—');
+    add('Moons', moons ? String(moons) : '—');
+    // Depth is presentational when the campaign has opted out of counting it, so it is left out rather
+    // than shown as a figure that reaches none of the distances the same map quotes elsewhere (A12).
+    if (measurable && depthCounts) {
+      const z = posZ(node.position) / ppu;
+      if (Math.abs(z) >= 0.05) add('Depth', `${z > 0 ? '+' : '−'}${fmt(Math.abs(z))}`);
+    }
+    // Measured from where the reader IS, which is the only reference point the document actually has.
+    // With nothing selected there is no origin to measure from, so the row is simply absent.
+    if (measurable && selected && selected.id !== node.id) {
+      add(`Distance from ${selected.name}`,
+        fmt(systemSeparation(selected.position, node.position, ppu, !depthCounts)));
+    }
+    // The WHOLE entry is the tap target, not just its heading. A dossier entry is seven lines tall and
+    // only the title line carried an id, so tapping a system almost always missed and nothing happened —
+    // the index arrangement has no such problem because its row IS its title.
+    if (fields.length) out.push({ kind: 'fieldGrid', id: node.id, fields });
+    // …and it SAYS so. A form is not obviously clickable the way a list of rows is: a reader looking at
+    // a page of fields has nothing telling them the entry is a door. An explicit button is the old-school
+    // answer and the right one here. It is a one-item `list`, so it takes the preset's own navigation
+    // style — a chip, a full-width box or plain text — rather than being a shape of its own.
+    out.push({ kind: 'spacer', h: 4 }); // the button needs air, or it crowds the last row of fields
+    out.push({
+      kind: 'list',
+      // A single ACTION, so it is a chip whatever the preset's navigator style is: a full-width bar
+      // under every one of forty-two entries is the wrong shape for one button. Multi-item navigator
+      // lists elsewhere still compose with the preset — this override is deliberately narrow.
+      nav: 'chips',
+      items: [{ id: node.id, text: 'System data ›', ...(opts.colorful ? { color: rainbowHue(i) } : {}) }]
+    });
+    out.push({ kind: 'rule' });
+  });
+  return out;
+}
+
+// The STAR-GLYPH CATALOGUE: one row per system — its name, then its actual bodies as small discs,
+// primary largest, companions smaller, planets a trailing run. It reads as a catalogue plate rather
+// than a list, and it is the only arrangement whose CONTENT is the physics rather than a description
+// of it: every disc is that body drawn in its own derived colour.
+//
+// RAINBOW, decided here and different from both other arrangements: the spectrum walks the system
+// NAMES only, and never the discs. The discs already carry meaning — a red dwarf is red because the
+// model says so, a Neptune is blue because its composition is — and repainting them across a spectrum
+// would replace real information with decoration, which is the one thing this arrangement must not do.
+// (The dossier hues its headings for the same "one entry, one identity" cue; cards hue the whole box
+// because a card has no derived colour of its own to lose.)
+function glyphCatalogue(systems: any[], opts: StarmapDocOpts): DocBlock[] {
+  const out: DocBlock[] = [];
+  systems.forEach((node, i) => {
+    const ns: any[] = node.system?.nodes ?? [];
+    const stars = systemVisualStars(node.system);
+    const starIds = new Set(stars.map((s) => s.id));
+    const byId = new Map(ns.map((n) => [n.id, n]));
+    const items: { body: unknown; scale: number }[] = [];
+    // Primary large, companions stepped down — mass order comes from systemVisualStars.
+    stars.forEach((s, si) => {
+      const b = byId.get(s.id);
+      if (b) items.push({ body: b, scale: si === 0 ? 1 : 0.66 });
+    });
+    // Then the planets, in orbital order, as a run of dots. Moons and belts are left out on purpose:
+    // at this size they would be indistinguishable specks and the row would stop being readable.
+    const planets = ns
+      .filter((n) => n.kind === 'body' && !starIds.has(n.id)
+        && (n.roleHint === 'planet' || n.roleHint === 'dwarf-planet'))
+      .sort((a, b) => (a.orbit?.elements?.a_AU || 0) - (b.orbit?.elements?.a_AU || 0));
+    for (const p of planets) items.push({ body: p, scale: 0.34 });
+
+    out.push({
+      kind: 'glyphRow',
+      id: node.id,
+      selected: node.id === opts.selectedId,
+      items,
+      label: node.name,
+      sub: summary(node),
+      band: i,
+      ...(opts.colorful ? { labelColor: rainbowHue(i) } : {})
+    });
+  });
+  return out;
+}
+
+// The DIAGRAM arrangements: the same horizontal orbital line-drawing the system page uses, one per
+// system. Pure reuse — `drawSystemSchematic` already fits its virtual box into whatever rect it is
+// handed, fonts and markers together, so drawing it small needed no change to that file at all.
+//
+// COMPACT drops the names. At a third of full size the labels are unreadable anyway, and without them
+// the block stops being a squashed page of type and becomes what it should be: the SHAPE of the system,
+// read at a glance and compared down the column. FULL is the same diagram at the size the system page
+// gives it, names and all, for a reader who wants the detail rather than the comparison.
+//
+// RAINBOW: the schematic already owns this decision and has since D9 — `colorful` gives every body a
+// stable hue from `rainbowHueIndex`, so a planet's dot here is the same colour as its chip on the
+// system page. Nothing is re-decided here; the arrangement passes the flag through. The system NAME
+// above each diagram takes the walking spectrum, as it does in the dossier.
+function diagramCatalogue(systems: any[], opts: StarmapDocOpts, full: boolean): DocBlock[] {
+  const out: DocBlock[] = [];
+  systems.forEach((node, i) => {
+    out.push({
+      // The contents line rides as the heading's strap: a diagram shows you the SHAPE of a system but
+      // not how much is in it, and the compact strip drops the names too, so without this an entry
+      // says nothing countable at all.
+      kind: 'heading', level: 3, text: node.name, sub: summary(node), id: node.id,
+      selected: node.id === opts.selectedId,
+      ...(opts.colorful ? { color: rainbowHue(i) } : {})
+    });
+    out.push({
+      kind: 'schematic',
+      id: node.id,
+      system: node.system,
+      colorful: !!opts.colorful,
+      labels: full,
+      band: i,
+      // A fixed height, never a fraction of the view: this block REPEATS, and 42 systems at the system
+      // page's 0.42 of the viewport is seventeen screens of diagram.
+      height: full ? 132 : 54,
+      // One region for the whole strip, carrying the SYSTEM id — the per-body hits would hand a planet
+      // id to a caller that is expecting a system.
+      wholeHit: true
+    });
+    out.push({ kind: 'rule' });
+  });
+  return out;
 }

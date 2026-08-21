@@ -1,6 +1,8 @@
 import type { Atmosphere, RulePack, CelestialBody, Barycenter, Tag } from '../types';
 import { evaluateTagTriggers } from '../utils';
+import { stripForReprocess, emit } from '../tags/tagLifecycle';
 import { G, UNIVERSAL_GAS_CONSTANT, EARTH_MASS_KG } from '../constants';
+import { surfaceVapourSource } from './liquids';
 
 const BOLTZMANN = 1.380649e-23;     // J/K
 const AVOGADRO = 6.02214076e23;     // /mol
@@ -84,6 +86,8 @@ type GreenhouseModelConfig = {
     denseCo2BoostStartBar: number;
     denseCo2BoostDenominator: number;
     denseCo2BoostMax: number;
+    vapourColumnMeanHumidity: number;
+    vapourColumnMaxFraction: number;
 };
 
 function getGreenhouseModelConfig(rulePack: RulePack): GreenhouseModelConfig {
@@ -97,7 +101,9 @@ function getGreenhouseModelConfig(rulePack: RulePack): GreenhouseModelConfig {
         responseK: cfg.responseK ?? 0.03,
         denseCo2BoostStartBar: cfg.denseCo2BoostStartBar ?? 1,
         denseCo2BoostDenominator: cfg.denseCo2BoostDenominator ?? 40,
-        denseCo2BoostMax: cfg.denseCo2BoostMax ?? 1.0
+        denseCo2BoostMax: cfg.denseCo2BoostMax ?? 1.0,
+        vapourColumnMeanHumidity: cfg.vapourColumnMeanHumidity ?? 0.434,
+        vapourColumnMaxFraction: cfg.vapourColumnMaxFraction ?? 0.05
     };
 }
 
@@ -186,8 +192,11 @@ export function recalculateAtmosphereDerivedProperties(body: CelestialBody, allN
         Object.values(pack.gasPhysics).forEach(g => g.tags?.forEach(t => gasPhysicsTags.add(t.name)));
     }
 
-    const otherTags = body.tags.filter(t => !gasPhysicsTags.has(t.key));
-    body.tags = [...otherTags, ...dynamicTags.map(name => ({ key: name } as Tag))];
+    // The gas-role tags are flat (unnamespaced) keys the pack owns, cleared and re-derived here. A
+    // hand-added one survives via stripForReprocess and then suppresses its derived twin via emit().
+    const out = stripForReprocess(body.tags, [...gasPhysicsTags]);
+    for (const name of dynamicTags) emit(out, { key: name } as Tag);
+    body.tags = out;
 }
 
 export function calculateScaleHeight(body: CelestialBody): number {
@@ -201,6 +210,55 @@ export function calculateScaleHeight(body: CelestialBody): number {
                      (body.calculatedGravity_ms2 * body.atmosphere.molarMassKg);
     
     return H_meters / 1000; // Return in km
+}
+
+/**
+ * The vapour a body's own surface liquid contributes to its air, as a mole fraction, DERIVED rather
+ * than authored. Vapour over standing liquid is not a free parameter: its abundance is set by the
+ * saturation pressure at that temperature and by how much of the surface is sea at all. A pack may
+ * still declare the gas; that is treated as a FLOOR, because a pack author knows things a coverage
+ * figure does not, but it can never hold the number DOWN.
+ *
+ * NOT WATER-SPECIFIC. The solvent is whatever the body's hydrosphere says it is and the gas is
+ * whichever one condenses to it (`surfaceVapourSource`), so a methane sea feeds methane into its own
+ * greenhouse. Hardcoding H2O here would be the Earth-baseline trap in its purest form.
+ *
+ * THE SATURATION CURVE IS THE PACK'S, shared with the cloud model — see `surfaceVapourSource`. It
+ * replaces a hard 273 K gate that used to switch this term on and off, which put a STEP of roughly
+ * ten kelvin into the thermal fixed point: a world a hair below freezing lost its entire vapour
+ * greenhouse, which is what kept it below freezing. Measured on a Traveller "Standard - Earth-like"
+ * world swept outwards, 0.05 AU took it from +11 C to -0.2 C and killed its clouds outright (inbox
+ * D6). Saturation falls smoothly to nothing instead — including by SUBLIMATION from a frozen sea, so
+ * there is no liquid-only gate to fall off — and a cold world is now cold because it is cold.
+ *
+ * TWO PACK CONSTANTS, both in `climateModel.greenhouse`. `vapourColumnMeanHumidity` is the fraction
+ * of the saturation mixing ratio a whole air COLUMN carries — the troposphere dries with altitude,
+ * so the column mean is well under the surface value the cloud model uses — and is calibrated on
+ * Earth alone: 288 K, 1 bar and 71% ocean give the 0.4% H2O Earth's own composition declares.
+ * `vapourColumnMaxFraction` is where this model stops being true: it treats vapour as a TRACE
+ * constituent riding on an existing atmosphere, and past a few percent of the column the vapour IS
+ * the atmosphere and wants the pack's own steam composition instead. The limit is applied as
+ * `max * tanh(raw / max)`, which is the raw value to third order and approaches the ceiling without
+ * reaching it — so the fixed point keeps a continuous derivative AND a temperate world pays nothing
+ * for the ceiling's existence. A hard clamp would put a kink back where the step used to be.
+ */
+export function evaporatedVapourFraction(
+    body: CelestialBody,
+    atm: Atmosphere,
+    effectivePressureBar: number,
+    model: GreenhouseModelConfig,
+    pack?: RulePack | null
+): { gas: string; fraction: number } | null {
+    const source = surfaceVapourSource(body, pack);
+    if (!source) return null;
+    const authored = atm.composition?.[source.gas] ?? 0;
+    if (source.coverage <= 0 || effectivePressureBar <= 0) {
+        return authored > 0 ? { gas: source.gas, fraction: authored } : null;
+    }
+    const raw = model.vapourColumnMeanHumidity * source.coverage * (source.saturationBar / effectivePressureBar);
+    const ceiling = model.vapourColumnMaxFraction;
+    const evaporated = ceiling > 0 ? ceiling * Math.tanh(raw / ceiling) : raw;
+    return { gas: source.gas, fraction: clamp(Math.max(authored, evaporated), 0, 1) };
 }
 
 /**
@@ -231,7 +289,14 @@ export function calculateGreenhouseEffect(body: CelestialBody, rulePack: RulePac
     // in very dense atmospheres (e.g., Venus-like CO2 envelopes).
     const broadening = Math.min(1.0, Math.sqrt(effectivePressure));
 
-    for (const [gas, fraction] of Object.entries(atm.composition)) {
+    // ONE fraction for the body's own condensable, whichever way it got there. An authored value is
+    // a FLOOR, not an off-switch: what the surface can evaporate is compared with what the pack
+    // declares and the larger wins. Everything else is the composition exactly as listed.
+    const vapour = evaporatedVapourFraction(body, atm, effectivePressure, model, rulePack);
+    const gasFractions = new Map<string, number>(Object.entries(atm.composition));
+    if (vapour && vapour.fraction > 0) gasFractions.set(vapour.gas, vapour.fraction);
+
+    for (const [gas, fraction] of gasFractions) {
         const physics = rulePack.gasPhysics[gas];
         if (physics && physics.greenhouse > 0) {
             const pp = effectivePressure * fraction;
@@ -241,24 +306,6 @@ export function calculateGreenhouseEffect(body: CelestialBody, rulePack: RulePac
                 : (1 + (0.5 * ciaStrength));
             const gasContribution = baseContribution * cryoOverlap * ciaFactor;
             totalDeltaT += gasContribution;
-        }
-    }
-
-    // Cloud / ocean coupling: a liquid water ocean evaporates, adding water-vapour greenhouse the
-    // listed composition may omit. This is the warming counterpart to the cloud ALBEDO (cooling)
-    // now derived elsewhere. Gated OFF when H2O is already in the atmosphere, so calibrated worlds
-    // (Earth lists 0.4% H2O) are untouched — no double-count.
-    const h2oFrac = atm.composition['H2O'] || 0;
-    const hasWaterOcean = body.hydrosphere?.composition === 'water' && (body.hydrosphere?.coverage || 0) > 0.1;
-    const surfTForVapour = body.temperatureK || body.equilibriumTempK || 0;
-    if (hasWaterOcean && h2oFrac < 0.001 && surfTForVapour > 273 && surfTForVapour < 373) {
-        // Near-surface water-vapour fraction is small even over a warm ocean (Earth ≈ 0.4%); it rises
-        // gently with temperature. Kept Earth-realistic so it adds a few K, not a runaway.
-        const impliedH2O = clamp(0.004 + (surfTForVapour - 273) / 2500, 0, 0.025);
-        const pp = effectivePressure * impliedH2O;
-        const h2oPhysics = rulePack.gasPhysics['H2O'];
-        if (h2oPhysics && h2oPhysics.greenhouse > 0) {
-            totalDeltaT += h2oPhysics.greenhouse * Math.log(1 + Math.sqrt(100 * pp)) * cryoOverlap;
         }
     }
 

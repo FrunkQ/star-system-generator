@@ -1,0 +1,157 @@
+// G3: buildDisplayModel is the ONE builder behind the modal preview, the info-block turntable and
+// the holo scene's focused ship - this pins its contract: unit long axis, centred, tint finish
+// with crease edges for material-less sources, and the orient bake honouring nose+Z/drive-Z.
+import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
+import { buildDisplayModel, createModelViewer } from './modelViewer';
+import { readFileSync } from 'node:fs';
+
+function stlLikeMesh(): THREE.Group {
+  // An elongated box along X, off-centre - like a real hull parsed from an STL (no materials flag
+  // is the caller's business; geometry is what matters here).
+  const g = new THREE.Group();
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(8, 2, 1), new THREE.MeshStandardMaterial());
+  mesh.position.set(10, 5, -3);
+  g.add(mesh);
+  return g;
+}
+
+describe('buildDisplayModel', () => {
+  it('normalises to a unit long axis, centred at the origin', () => {
+    const built = buildDisplayModel(stlLikeMesh(), { hadMaterials: false, tintHex: '#ff0000' });
+    built.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(built);
+    const size = box.getSize(new THREE.Vector3());
+    expect(Math.max(size.x, size.y, size.z)).toBeCloseTo(1, 3);
+    const centre = box.getCenter(new THREE.Vector3());
+    expect(centre.length()).toBeLessThan(1e-3);
+  });
+
+  // THE CONTRACT THE SCENE ACTUALLY RELIES ON, and the one the test above does NOT cover: the
+  // caller owns the returned object's transform. `scene.ts` does `g.scale.setScalar(sceneLen)` to
+  // draw a hull at a known scene length, which is only correct if the normalisation lives on a
+  // CHILD. It used to live on the returned group itself whenever there was no orient, so that
+  // setScalar overwrote it and the hull drew at native * sceneLen - 25.6x oversize for the
+  // bundled ISS. "Normalises to a unit long axis" stayed green throughout, because it measures
+  // the object without ever setting a scale on it, which is the one thing every caller does.
+  it('leaves its own transform free for the caller: setting scale on the result gives that length', () => {
+    for (const orient of [null, [0, 0, 0, 1] as [number, number, number, number]]) {
+      const built = buildDisplayModel(stlLikeMesh(), { hadMaterials: false, orient });
+      expect(built.scale.x).toBe(1); // nothing of ours is parked on the returned object
+      built.scale.setScalar(0.25);
+      built.updateMatrixWorld(true);
+      const size = new THREE.Box3().setFromObject(built).getSize(new THREE.Vector3());
+      expect(Math.max(size.x, size.y, size.z)).toBeCloseTo(0.25, 4);
+    }
+  });
+
+  it('applies the tint finish to a material-less source: flat shading + crease-edge lines', () => {
+    const built = buildDisplayModel(stlLikeMesh(), { hadMaterials: false, tintHex: '#ff0000' });
+    let flat = 0, edges = 0;
+    built.traverse((c) => {
+      const m = c as THREE.Mesh;
+      if (m.isMesh && (m.material as THREE.MeshStandardMaterial).flatShading) flat++;
+      if ((c as THREE.LineSegments).isLineSegments) edges++;
+    });
+    expect(flat).toBe(1);
+    expect(edges).toBe(1);
+    // A GLB keeps its authored materials untouched: no edges added, shading left alone.
+    const authored = buildDisplayModel(stlLikeMesh(), { hadMaterials: true });
+    let edges2 = 0;
+    authored.traverse((c) => { if ((c as THREE.LineSegments).isLineSegments) edges2++; });
+    expect(edges2).toBe(0);
+  });
+
+  it('applies the finish menu: cel quantises, blueprint is bright edges over a ghost fill, and a chosen finish dresses even an authored GLB', () => {
+    const cel = buildDisplayModel(stlLikeMesh(), { hadMaterials: false, tintHex: '#ff0000', finish: 'cel' });
+    let toon = 0;
+    cel.traverse((c) => { if ((c as THREE.Mesh).isMesh && ((c as THREE.Mesh).material as any).isMeshToonMaterial) toon++; });
+    expect(toon).toBe(1);
+
+    const bp = buildDisplayModel(stlLikeMesh(), { hadMaterials: true, tintHex: '#ff0000', finish: 'blueprint' });
+    let ghost = 0, edges = 0;
+    bp.traverse((c) => {
+      const m = c as THREE.Mesh;
+      if (m.isMesh && (m.material as THREE.MeshBasicMaterial).transparent) ghost++;
+      if ((c as THREE.LineSegments).isLineSegments) edges++;
+    });
+    expect(ghost).toBe(1); // the finish overrode the authored material (hadMaterials true)
+    expect(edges).toBe(1);
+  });
+
+  it('bakes orient so the long axis lands where the GM put it (nose +Z convention)', () => {
+    // The hull is long in X; a -90-degree yaw about Y maps +X onto +Z (nose forward).
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
+    const built = buildDisplayModel(stlLikeMesh(), {
+      hadMaterials: false, orient: [q.x, q.y, q.z, q.w]
+    });
+    built.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(built).getSize(new THREE.Vector3());
+    expect(size.z).toBeCloseTo(1, 3);     // the long axis now runs along Z (the nose direction)
+    expect(size.x).toBeCloseTo(1 / 8, 3); // the old depth swings onto X
+    expect(size.y).toBeCloseTo(2 / 8, 3); // height untouched by a yaw
+  });
+});
+
+// The viewer's API surface, pinned. This exists because a refactor DID silently drop `setOrient`
+// (the interface still declared it, so TypeScript stayed quiet and only the Svelte call site blew
+// up at runtime: "setOrient is not a function"). A structural check costs nothing and catches the
+// whole class - any method the interface promises must actually be on the object.
+describe('createModelViewer surface', () => {
+  it('returns every method the ModelViewer contract declares', () => {
+    // jsdom has no WebGL, so constructing the real viewer is not possible here; assert against the
+    // module's own contract instead by checking the factory's returned object shape via a stub
+    // canvas guarded by a try - if WebGL is unavailable the test still enforces the method list.
+    const required = ['setObject', 'setOrient', 'setBurn', 'setNozzles', 'pickOnHull', 'setSize', 'dispose'];
+    let viewer: any = null;
+    try {
+      const canvas = document.createElement('canvas');
+      viewer = createModelViewer(canvas, {});
+    } catch {
+      viewer = null; // no WebGL in this environment
+    }
+    if (!viewer) {
+      // Fall back to the source contract: every name must appear as a method on the returned
+      // object literal. Cheap, but it is exactly the check that was missing.
+      const src = readFileSync('src/lib/constructs/modelViewer.ts', 'utf8');
+      const ret = src.slice(src.lastIndexOf('\n  return {'));
+      for (const name of required) {
+        expect(ret.includes(`\n    ${name}(`), `${name} missing from the returned object`).toBe(true);
+      }
+      return;
+    }
+    for (const name of required) expect(typeof viewer[name], name).toBe('function');
+    viewer.dispose();
+  });
+});
+
+// The viewer frames the HULL, never the flame. This has broken TWICE: the plume group hangs off
+// the same node a live bounding-box measurement would include, so a ship shrank to a speck the
+// moment it started burning. The rule is that frameCamera reuses `frameRadius` - measured once in
+// setObject from `frame`, before any plume exists - and never re-measures.
+describe('viewer framing measures the hull only', () => {
+  const src = readFileSync('src/lib/constructs/modelViewer.ts', 'utf8');
+  const fn = src.slice(src.indexOf('function frameCamera()'), src.indexOf('function render('));
+
+  it('frameCamera reuses frameRadius and measures nothing live', () => {
+    expect(fn).toContain('frameRadius');
+    expect(fn).not.toContain('setFromObject'); // a live box would re-include the plume
+  });
+
+  it('frameRadius is taken from the hull group in setObject', () => {
+    const setObj = src.slice(src.indexOf('setObject(object,'), src.indexOf('setOrient(q)'));
+    expect(setObj).toContain('setFromObject(frame)');
+    expect(setObj).toContain('frameRadius =');
+  });
+
+  it('keeps the plumes in SPIN space, so a re-aligned hull fires the right way (C18)', () => {
+    // THIS ASSERTION USED TO SAY `orientGroup.add(plumes)` AND IT WAS ASSERTING THE SUPERSEDED
+    // STRUCTURE. C18 deliberately moved the plumes out of the orient fix and into spin space, with
+    // the reason written above `spinGroup.add(plumes)` in modelViewer.ts: parenting them under the
+    // orient fix rotated the plume DIRECTION with the hull, so a model needing a facing fix fired
+    // its exhaust along its OLD axis — straight up, in the report. The test's PURPOSE is unchanged
+    // (a re-aligned hull must keep its flame, correctly aimed); only the structure it names moved.
+    expect(src).toContain('spinGroup.add(plumes)');
+    expect(src).not.toContain('orientGroup.add(plumes)');
+  });
+});

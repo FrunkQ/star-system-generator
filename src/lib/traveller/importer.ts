@@ -1,14 +1,18 @@
 import { TravellerDecoder } from './decoder';
+import { infillSystem } from '$lib/generation/infill';
+import { guessSystemAge, type AgeGuess } from '$lib/physics/systemAge';
+import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
 import { SeededRNG } from './rng';
 import { bodyFactory } from '$lib/core/BodyFactory';
-import { _generateStar } from '$lib/generation/star';
+import { _generateStar, starStatTemplate } from '$lib/generation/star';
+import { planStarHierarchy, buildStarHierarchy, S_TYPE_FRAC, type GenerationKnobs } from '$lib/generation/generateFromConfig';
+import type { StarSeed } from '$lib/physics/stellar-evolution';
 import { _generatePlanetaryBody } from '$lib/generation/planet';
 import { SystemProcessor } from '$lib/core/SystemProcessor';
-import { G, AU_KM, EARTH_MASS_KG } from '$lib/constants';
+import { G, AU_KM, EARTH_MASS_KG, SOLAR_MASS_KG } from '$lib/constants';
 import { calculateOrbitalBoundaries, type PlanetData } from '$lib/physics/orbits';
 import type { System, StarSystemNode, RulePack, CelestialBody, Barycenter, Orbit, TableSpec } from '$lib/types';
 import { generateId, weightedChoice, randomFromRange, toRoman } from '$lib/utils';
-import { calculateOrbitalSlots } from '$lib/generation/placement-strategy';
 
 export class TravellerImporter {
     private decoder = new TravellerDecoder();
@@ -104,7 +108,12 @@ export class TravellerImporter {
         };
     }
 
-    public generateTravellerSystem(data: any, rulePack: RulePack): System {
+    /**
+     * `opts` carries what the GM set on the shared `GenerationDials` panel (inbox G33). Optional, so
+     * the batch importer and the specs keep the defaults they always had — but the comment below that
+     * once promised "the panel lets them adjust" is now true on this path as well.
+     */
+    public generateTravellerSystem(data: any, rulePack: RulePack, opts: { knobs?: GenerationKnobs; ageGyr?: number } = {}): System {
         const seed = `${data.uwp}-${data.name}`;
         this.rng = new SeededRNG(seed);
         const systemId = generateId();
@@ -134,154 +143,76 @@ export class TravellerImporter {
         const description = "";
 
         // 1. Stars Generation
-        // Robust Token Parser for Variable-Length Definitions
-        const rawStars = (data.stars || "G2 V").replace(/\s+/g, ' ').trim();
-        const tokens = rawStars.split(' ');
-        const starEntries: string[] = [];
-        
-        let i = 0;
-        const luminosityRegex = /^(I|II|III|IV|V|VI|VII|D|Ia|Ib)$/;
+        const starEntries = parseTravellerStarList(data.stars, rulePack);
 
-        while (i < tokens.length) {
-            const token = tokens[i];
-            
-            // 1. Standalone Types
-            if (token === 'BD') { starEntries.push('star/L'); i++; continue; }
-            if (token === 'D') { starEntries.push('star/WD'); i++; continue; } // Generic White Dwarf
-            if (token === 'NS' || token === 'PSR') { starEntries.push('star/NS'); i++; continue; }
-            if (token === 'BH') { starEntries.push('star/BH'); i++; continue; }
-            
-            // 2. Standard Spectral Type (e.g. F7, M0, G2)
-            const nextToken = tokens[i+1];
-            
-            if (nextToken && luminosityRegex.test(nextToken)) {
-                // Explicit Luminosity Class found (e.g. "F7" + "V")
-                // Handle special case where 'D' is luminosity class for White Dwarf (e.g. "A0 D")
-                if (nextToken === 'D') {
-                    starEntries.push('star/WD'); // Map to generic WD or keep spectral? 
-                    // Traveller often uses just "D" for the star, or "A0 D".
-                    // Our system uses 'star/WD'. Let's stick to that for simplicity.
-                } else {
-                    starEntries.push(`star/${token}${nextToken}`);
-                }
-                i += 2;
-            } else {
-                // No luminosity class found. 
-                // Implicit "V" (Main Sequence) or just a single token type?
-                // If it looks like a spectral type (Letter + Number), assume V.
-                if (/^[OBAFGKMLT][0-9]?$/.test(token)) {
-                    starEntries.push(`star/${token}V`);
-                } else {
-                    // Unknown token? Just push it as is, maybe it's a custom type.
-                    starEntries.push(`star/${token}`);
-                }
-                i++;
-            }
-        }
+        // --- STAR HIERARCHY: the GENERATOR'S planner, not a second one (inbox D27) ---
+        //
+        // Traveller gives only a star LIST ("F7 V M0 V M4 V") — this sector format carries no
+        // companion orbits — so the hierarchy is ours to build, and it must be the SAME hierarchy the
+        // wizard builds. This used to lay the stars out here: one barycentre for the first pair with
+        // its own separation law, then further stars appended around that same centre at
+        // 1000 x 1.5^k AU with e 0.1-0.6 and **i_deg drawn uniformly from 0 to 180**. On the owner's
+        // Caladbolg (F7 V + M0 V + M4 V) that gave B and C orbiting one centre at 1,024 and 1,342 AU
+        // with e ~0.5-0.6 — crossing orbits rather than a hierarchy — at 96.8 and 79 degrees to the
+        // planets, with ~33,000-year periods, which is why the owner read them as stationary.
+        //
+        // planStarHierarchy pairs by mass, nests bottom-up with each level ~7x the one below
+        // (hierarchical stability), and buildStarHierarchy gives every orbit e = 0 and i = 0 — in the
+        // plane, as the planets are. The Main World still goes on the PRIMARY, exactly as before.
+        //
+        // The stars themselves are still built by _generateStar from Traveller's stated class through
+        // the shared resolver, which is the whole reason this calls the planner with its own factory
+        // rather than calling setupStarsFromSeeds: the generator evolves a seed, we honour a class.
+        const starBodies = starEntries.map((classKey, idx) => {
+            const star = _generateStar(generateId(), null, rulePack, this.rng, classKey);
+            star.name = `${data.name} ${String.fromCharCode(65 + idx)}`;
+            return star;
+        });
 
         const nodes: (CelestialBody | Barycenter)[] = [];
         let systemRootId: string;
         let primaryStar: CelestialBody;
+        let primaryOuterAU = Infinity;      // how far out the primary can hold a planet
 
-        const isCloseBinary = (data.tradeCodes.includes('Close Binary') || (data.raw && data.raw.includes('Close Binary'))) && starEntries.length >= 2;
-
-        let nextStarIndex = 0;
-
-        if (isCloseBinary) {
-            // P-Type Root
-            const barycenter: Barycenter = {
-                id: generateId(),
-                parentId: null,
-                name: `${data.name} Barycentre`,
-                kind: "barycenter",
-                memberIds: [],
-                tags: []
-            };
-            systemRootId = barycenter.id;
-
-            const starA = _generateStar(generateId(), barycenter.id, rulePack, this.rng, starEntries[0]);
-            starA.name = `${data.name} A`;
-            const starB = _generateStar(generateId(), barycenter.id, rulePack, this.rng, starEntries[1]);
-            starB.name = `${data.name} B`;
-
-            barycenter.memberIds = [starA.id, starB.id];
-            const totalMassKg = (starA.massKg || 0) + (starB.massKg || 0);
-            barycenter.effectiveMassKg = totalMassKg;
-
-            const totalSeparationAU = randomFromRange(this.rng as any, 0.1, 5.0);
-            const m1 = starA.massKg || 0;
-            const m2 = starB.massKg || 0;
-            const hostMu = G * totalMassKg;
-            const n_rad_per_s = Math.sqrt(hostMu / Math.pow(totalSeparationAU * AU_KM * 1000, 3));
-
-            starA.orbit = { hostId: barycenter.id, hostMu, t0: Date.now(), n_rad_per_s, elements: { a_AU: totalSeparationAU * (m2 / (totalMassKg || 1)), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } };
-            starB.orbit = { hostId: barycenter.id, hostMu, t0: Date.now(), n_rad_per_s, elements: { a_AU: totalSeparationAU * (m1 / (totalMassKg || 1)), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: Math.PI } };
-
-            nodes.push(barycenter, starA, starB);
-            primaryStar = starA;
-            nextStarIndex = 2;
-        } else {
-            // Single Star Root
-            primaryStar = _generateStar(generateId(), null, rulePack, this.rng, starEntries[0]);
-            primaryStar.name = starEntries.length > 1 ? `${data.name} A` : `Star ${data.name}`;
+        if (starBodies.length === 1) {
+            primaryStar = starBodies[0];
+            primaryStar.name = `Star ${data.name}`;
+            primaryStar.parentId = null;
             systemRootId = primaryStar.id;
             nodes.push(primaryStar);
-            nextStarIndex = 1;
-        }
+        } else {
+            // Seeds carry only what the planner reads — mass for pairing and ordering, temperature
+            // for its deterministic seed. The BODIES are the ones above; the factory hands each leaf
+            // back by index, so no star is built twice.
+            const seeds = starBodies.map((b, idx) => ({
+                id: b.id,
+                massKg: b.massKg ?? SOLAR_MASS_KG,
+                temperatureK: b.temperatureK ?? 5778,
+                luminositySolar: b.radiationOutput ?? 1,
+                radiusKm: b.radiusKm ?? 0,
+                spectralClass: b.classes?.[0] ?? 'star/G2V',
+                category: 'star', luminosityClass: 'V', isRemnant: false,
+                pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }
+            })) as unknown as StarSeed[];
 
-        // Handle Companions (C, D, E...)
-        // Track the previous star for potential hierarchy chaining
-        let previousStar: CelestialBody | null = null;
-        if (isCloseBinary) previousStar = nodes[2] as CelestialBody; // Star B
-        else previousStar = primaryStar;
-
-        for (let i = nextStarIndex; i < starEntries.length; i++) {
-            const letter = String.fromCharCode(65 + i); // C, D, E...
-            
-            // Hierarchy Logic:
-            // If we have at least 3 stars (e.g. A, B, C), and we are adding D (index 3),
-            // give it a chance to orbit C instead of the Root.
-            // "Pairs of Pairs" logic.
-            
-            let parentId = systemRootId;
-            let parentMass = 0;
-            let distAU = 0;
-            let isNested = false;
-
-            // 30% chance to nest if i >= 3 (Star D+)
-            if (i >= 3 && previousStar && this.rng.nextFloat() < 0.3) {
-                isNested = true;
-                parentId = previousStar.id;
-                parentMass = previousStar.massKg || 0;
-                // Close-ish orbit for nested binary (e.g., 20 - 100 AU)
-                distAU = randomFromRange(this.rng as any, 20, 100);
-            } else {
-                // Orbit System Root (Far Companion)
-                // Use index to push them further out: 1000, 2000, 4000...
-                const rootNode = nodes.find(n => n.id === systemRootId);
-                parentMass = (rootNode?.kind === 'barycenter' ? (rootNode as Barycenter).effectiveMassKg : (rootNode as CelestialBody).massKg) || 0;
-                distAU = 1000 * Math.pow(1.5, i - nextStarIndex) * randomFromRange(this.rng as any, 0.8, 1.2);
-            }
-
-            const newStar = _generateStar(generateId(), parentId, rulePack, this.rng, starEntries[i]);
-            newStar.name = `${data.name} ${letter}`;
-            
-            newStar.orbit = {
-                hostId: parentId,
-                hostMu: G * parentMass,
-                t0: Date.now(),
-                elements: { 
-                    a_AU: distAU, 
-                    e: randomFromRange(this.rng as any, 0.1, 0.6), 
-                    i_deg: randomFromRange(this.rng as any, 0, 180), 
-                    omega_deg: 0, 
-                    Omega_deg: 0, 
-                    M0_rad: this.rng.next() * Math.PI * 2 
-                }
-            };
-
-            nodes.push(newStar);
-            previousStar = newStar;
+            const plan = planStarHierarchy(seeds)!;
+            // Look the body up by SEED ID, never by leaf.index: the planner SORTS seeds by mass
+            // before numbering them, so a plan index is a mass rank and matches Traveller's listing
+            // order only by luck. Caladbolg happens to be listed heaviest-first; "M4 V G2 V" is not.
+            const byId = new Map(starBodies.map((b) => [b.id, b]));
+            const built = buildStarHierarchy(plan, data.name, (leaf, parentId) => {
+                const body = byId.get(leaf.seed.id)!;
+                body.parentId = parentId;
+                return body;
+            });
+            // ...and for the same reason, restore Traveller's own lettering afterwards. The planner
+            // names by mass rank; Traveller's A is the star it LISTS first, which is the star its
+            // UWP describes and the one the Main World belongs to.
+            starBodies.forEach((b, idx) => { b.name = `${data.name} ${String.fromCharCode(65 + idx)}`; });
+            nodes.push(...built.nodes);
+            systemRootId = built.systemRoot.id;
+            primaryStar = starBodies[0];
+            primaryOuterAU = built.starHosts.find((h) => h.star.id === primaryStar.id)?.outerAU ?? Infinity;
         }
 
         primaryStar.description = description; 
@@ -313,6 +244,32 @@ export class TravellerImporter {
         else orbitAU = 0.4 + (0.3 * Math.pow(2, orbitIndex - 2));
         
         orbitAU *= (1.0 + this.rng.range(-0.1, 0.1));
+
+        // THE COMPANIONS MOVE, NOT THE MAIN WORLD (inbox D27).
+        //
+        // Traveller's data is the authority twice over here: the UWP puts a Main World in the
+        // primary's habitable zone, and the star list says there are companions. Both are given, so
+        // the only free variable left is how far apart the stars are — and the planner's default is a
+        // TIGHT pair, because the generator's own multi-star systems put their planets circumbinary.
+        // On Caladbolg that paired F7 V and M0 V at 1.34 AU with the Main World at 2.23 AU round the
+        // primary: dynamically impossible, and a worse answer than the crossing orbits this replaced.
+        //
+        // Scaling every separation by ONE factor keeps the hierarchy exactly as planned — all the
+        // level ratios, and so the ~7x stability margin, are preserved — and simply moves the whole
+        // companion structure outward until the primary has room. Alpha Centauri is the anchor for
+        // this being the realistic shape rather than a fudge: A and B sit 23 AU apart precisely
+        // because each carries its own space.
+        if (Number.isFinite(primaryOuterAU) && primaryOuterAU < orbitAU) {
+            // The Main World needs a_AU <= S_TYPE_FRAC x separation, so the separation containing the
+            // primary must grow by at least this much. A little headroom so the outermost infilled
+            // planet is not sitting exactly on the boundary.
+            const widen = (orbitAU / primaryOuterAU) * 1.6;
+            for (const n of nodes) {
+                const el = (n as any).orbit?.elements;
+                if (el && typeof el.a_AU === 'number') el.a_AU *= widen;
+            }
+            primaryOuterAU *= widen;
+        }
 
         const mainOrbit: Orbit = {
             hostId: systemRootId,
@@ -397,265 +354,50 @@ export class TravellerImporter {
 
         nodes.push(...generatedNodes);
 
-        // --- FULL SYSTEM GENERATION (Deck Building Method) ---
-        // 1. Calculate Required Extra Bodies
+        // --- FULL SYSTEM: the shared infill, with Traveller's numbers as hard targets ---
+        //
+        // This used to be 250 lines of private generation: its own slot list from calculateOrbitalSlots,
+        // an "emergency fill" that forced random orbits when the culls ran short, and a deck of types
+        // dealt onto slots with a Sol-shaped rule ("gas giants prefer > 1.5 AU"). It shared nothing with
+        // the wizard, so a Traveller system and a generated one could look nothing alike round the
+        // same star. Now: build the Main World and the stars here (they are Traveller's own data), then
+        // hand the system to generation/infill.ts infillSystem - the same routine every importer and the
+        // wizard use - with W as the HARD planet count and PBG's belts and giants as the composition.
+        //
+        // W IS A HARD COUNT AND IT NEVER INCLUDES MOONS (owner, G32). A "home world is a moon"
+        // designation (trade code Sa) is a planet-sized body round a giant; applySatelliteTradeCodeIfNeeded
+        // places it as an anchor BEFORE infill runs, so infill sees the giant it orbits as one of W and
+        // the moon as a moon.
+        //
+        // The dials come from the profile where it says something (a high-population, high-tech world
+        // suggests a settled, metal-rich system - but that is a taste call the GM makes in the infill
+        // step). THE PANEL NOW EXISTS ON THIS PATH: `opts.knobs` is what the GM set on the shared
+        // GenerationDials in AddTravellerSystemModal, and the defaults apply only when nothing is
+        // passed. Age is the shared guess unless the GM moved that slider too (inbox G33).
         const numBelts = parseInt(data.pbg[1] || '0');
         const numGasGiants = parseInt(data.pbg[2] || '0');
         const totalWorldsCount = parseInt(data.w || '0');
-        
-        // W includes Main World (1) + Belts + Gas Giants + Others.
-        // So Others = W - 1 - Belts - Gas Giants.
-        let numOtherWorlds = totalWorldsCount - 1 - numBelts - numGasGiants;
-        if (numOtherWorlds < 0) numOtherWorlds = 0; // Safety floor
-        
-        const totalExtraBodies = numBelts + numGasGiants + numOtherWorlds;
-        
-        let minStableAU = 0;
-        let maxStableAU = 99999;
 
-        // Determine stability limits
-        if (starEntries.length >= 2) {
-            if (isCloseBinary) {
-                const stars = nodes.filter(n => n.roleHint === 'star');
-                if (stars.length === 2) {
-                    const sep = (stars[0].orbit?.elements.a_AU || 0) + (stars[1].orbit?.elements.a_AU || 0);
-                    minStableAU = 1.6 * sep;
-                }
-            } else {
-                const starB = nodes.find(n => n.roleHint === 'star' && n.id !== primaryStar.id);
-                if (starB && starB.orbit) {
-                    maxStableAU = 0.4 * starB.orbit.elements.a_AU;
-                }
-            }
-        }
-
-        if (totalExtraBodies > 0) {
-            // 2. Generate Natural Slots (Standard Logic)
-            // Request ample buffer to account for Main World collisions and Binary Instability zones
-            let candidateSlots = calculateOrbitalSlots(primaryStar, rulePack, this.rng, (totalExtraBodies * 3) + 5);
-            
-            // 3. Filter Conflicts & Instability
-            // Maintain a list of reserved slots to prevent collisions (initially just Main World)
-            const reservedSlots: number[] = [orbitAU];
-
-            candidateSlots = candidateSlots.filter(au => {
-                // Main World Proximity Check (15% exclusion)
-                const diff = Math.abs(au - orbitAU);
-                const ratio = diff / orbitAU;
-                if (ratio <= 0.15) return false;
-
-                // Binary Stability Check
-                if (au < minStableAU) return false;
-                if (au > maxStableAU) return false;
-
-                return true;
-            });
-            
-            // Add surviving candidate slots to reserved list so Emergency Fill respects them
-            reservedSlots.push(...candidateSlots);
-            
-            // 3b. Emergency Fill: If stability/proximity culled too many, force random slots in the stable zone
-            // to ensure we meet the Traveller 'W' count.
-            let emergencyAttempts = 0;
-            const MAX_EMERGENCY_ATTEMPTS = 100;
-
-            while (candidateSlots.length < totalExtraBodies && emergencyAttempts < MAX_EMERGENCY_ATTEMPTS) {
-                emergencyAttempts++;
-                // Pick a random spot in the stable zone
-                // If minStable is 0 (single star), use 0.2 as floor.
-                // If maxStable is 99999, use 50 as ceiling.
-                const lower = Math.max(minStableAU, 0.2);
-                const upper = Math.min(maxStableAU, 80.0);
-                
-                if (upper > lower) {
-                    const randomAU = this.rng.range(lower, upper);
-                    
-                    // Check Collision with ALL reserved slots (Main World + Natural Slots + Previous Emergency Fills)
-                    let collision = false;
-                    for (const reserved of reservedSlots) {
-                        const diff = Math.abs(randomAU - reserved);
-                        if (diff / reserved <= 0.15) { // 15% clearance
-                            collision = true;
-                            break;
-                        }
-                    }
-
-                    if (!collision) {
-                        candidateSlots.push(randomAU);
-                        reservedSlots.push(randomAU);
-                    }
-                } else {
-                    // Extremely unlikely case: No stable zone exists?
-                    // Just push a "best effort" slot and let physics deal with it later
-                    // (Use ample offset from orbitAU)
-                    const fallback = orbitAU * (this.rng.nextFloat() > 0.5 ? 1.5 : 0.7);
-                    candidateSlots.push(fallback);
-                    reservedSlots.push(fallback);
-                }
-            }
-            
-            if (candidateSlots.length < totalExtraBodies) {
-                console.warn(`TravellerImporter: Could not find enough stable slots for ${data.name}. Wanted ${totalExtraBodies}, got ${candidateSlots.length}.`);
-            }
-
-            // Cap to needed amount
-            const finalSlots = candidateSlots.slice(0, totalExtraBodies);
-            
-            // 4. Create "Deck" of Body Types
-            const deck: Array<{ type: string, priority: number }> = [];
-            
-            for(let i=0; i<numGasGiants; i++) deck.push({ type: 'Gas Giant', priority: 10 });
-            for(let i=0; i<numBelts; i++) deck.push({ type: 'Belt', priority: 5 });
-            for(let i=0; i<numOtherWorlds; i++) deck.push({ type: 'Terrestrial', priority: 1 });
-            
-            // 5. Assign Bodies to Slots
-            // Strategy: 
-            // - Gas Giants prefer outer system (> 2.0 AU approx Frost Line)
-            // - Belts and Terrestrials fill the rest
-            
-            // Sort slots by distance
-            finalSlots.sort((a, b) => a - b);
-            
-            const assignments: Array<{ au: number, type: string }> = [];
-            const occupiedIndices = new Set<number>();
-            
-            // A. Place Gas Giants
-            const gasGiants = deck.filter(d => d.type === 'Gas Giant');
-            for (const gg of gasGiants) {
-                // Find first available slot > 2.0 AU, or just the furthest available
-                let bestIdx = -1;
-                
-                // Try to find furthest slot
-                for (let i = finalSlots.length - 1; i >= 0; i--) {
-                    if (!occupiedIndices.has(i)) {
-                        bestIdx = i;
-                        // If we found one > 1.5 AU, take it immediately (outer system preference)
-                        if (finalSlots[i] > 1.5) break; 
-                    }
-                }
-                
-                if (bestIdx !== -1) {
-                    occupiedIndices.add(bestIdx);
-                    assignments.push({ au: finalSlots[bestIdx], type: 'Gas Giant' });
-                }
-            }
-            
-            // B. Place Remaining
-            const others = deck.filter(d => d.type !== 'Gas Giant');
-            for (const item of others) {
-                // Find any available slot
-                let bestIdx = -1;
-                for (let i = 0; i < finalSlots.length; i++) {
-                    if (!occupiedIndices.has(i)) {
-                        bestIdx = i;
-                        break;
-                    }
-                }
-                
-                if (bestIdx !== -1) {
-                    occupiedIndices.add(bestIdx);
-                    assignments.push({ au: finalSlots[bestIdx], type: item.type });
-                }
-            }
-            
-            // 6. Generate Bodies
-            for (let i = 0; i < assignments.length; i++) {
-                const assign = assignments[i];
-                const slotOrbit: Orbit = {
-                    hostId: systemRootId,
-                    elements: {
-                        a_AU: assign.au,
-                        e: this.rng.range(0, 0.1),
-                        i_deg: this.rng.range(0, 5),
-                        Omega_deg: 0,
-                        omega_deg: 0,
-                        M0_rad: this.rng.next() * Math.PI * 2
-                    },
-                    t0: 0,
-                    hostMu: G * (primaryStar.massKg || 1.989e30)
-                };
-
-                const typeOverride = assign.type === 'Gas Giant' ? 'planet/gas-giant' : (assign.type === 'Belt' ? 'belt/asteroid' : 'planet/terrestrial');
-                const allowBelt = assign.type === 'Belt'; 
-                
-                const overrides: Partial<CelestialBody> = {};
-                if (assign.type === 'Belt') {
-                    // Restrict belt width to 15% of orbit to ensure it fits in the 15% collision buffer
-                    const widthAU = slotOrbit.elements.a_AU * 0.15;
-                    overrides.radiusInnerKm = (slotOrbit.elements.a_AU - widthAU/2) * AU_KM;
-                    overrides.radiusOuterKm = (slotOrbit.elements.a_AU + widthAU/2) * AU_KM;
-                }
-                
-                // Naming: e.g. "Sol I", "Sol II"... but skip Main World's index if possible?
-                // Actually, just append Roman numerals sequentially based on distance is standard,
-                // but Traveller Main World already has a name.
-                // Let's just use "Name [Outer I]" or similar to distinguish?
-                // Or just standard Roman numerals based on sort order?
-                // The Main World is already named "Name (Main World)".
-                // Let's just use sequential Roman numerals for the *extras* relative to star.
-                // To do this properly we'd need to sort ALL bodies (Main + Extras) and rename them.
-                // But for now, let's just name them "Name Companion I", etc?
-                // User said: "standard planet placement logic... looks teh same as everyone elses".
-                // Standard logic uses Roman numerals.
-                // Let's just use Roman numerals for these extras, skipping the Main World's likely slot?
-                // Actually, duplicate names like "Regina I" (Main) and "Regina I" (Inner) is confusing.
-                // Let's name them "Name [Distance]"? No, that's ugly.
-                // Let's stick to the Roman Numeral generator but maybe append 'b', 'c' etc?
-                // Standard naming in this app seems to be Roman Numerals.
-                
-                const newNodes = _generatePlanetaryBody(
-                    this.rng,
-                    rulePack,
-                    systemId,
-                    i + 10, // Offset index to avoid collision with Main World internals if any
-                    primaryStar,
-                    slotOrbit,
-                    `${data.name} ${toRoman(i + 1)}`, // Temporary naming
-                    nodes,
-                    2.0,
-                    typeOverride,
-                    true,
-                    overrides,
-                    allowBelt
-                );
-                
-                if (assign.type === 'Belt' && newNodes.length > 0) {
-                    newNodes[0].classes = ['belt/asteroid'];
-                    newNodes[0].roleHint = 'belt';
-                    newNodes[0].name = `${data.name} Belt ${toRoman(i + 1)}`;
-                }
-                
-                nodes.push(...newNodes);
-            }
-            
-            // Optional: Re-sort and rename all planets by distance?
-            // This is a nice-to-have for "Standard Look"
-            // Filter only direct children of the star
-            const planets = nodes.filter(n => n.parentId === systemRootId && (n.roleHint === 'planet' || n.roleHint === 'belt'));
-            planets.sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
-            
-            for(let i=0; i<planets.length; i++) {
-                const p = planets[i];
-                // Don't rename Main World completely, keep its identity
-                if (p.id === mainWorld.id) continue;
-                
-                if (p.roleHint === 'belt') {
-                    p.name = `${data.name} Belt ${toRoman(i+1)}`;
-                } else {
-                    p.name = `${data.name} ${toRoman(i+1)}`;
-                }
-            }
-        }
-
-        // Traveller trade code `Sa` = main world is a satellite of a larger world.
+        // Traveller trade code `Sa` = main world is a satellite of a larger world. Runs BEFORE infill so
+        // the giant it creates is an anchor and counts toward W.
         this.applySatelliteTradeCodeIfNeeded(nodes, mainWorld, data, systemRootId);
 
+        // THE AGE WAS A RANDOM ROLL between 1 and 10 Gyr, whatever the star. An O star does not live 10
+        // Gyr; an M dwarf is not typically 1. One age model for every importer now (physics/systemAge):
+        // guessed from the PRIMARY star's own life, with the band it makes reasonable, and marked
+        // estimated so the GM knows it is a guess. Traveller states no age, so it is always a guess.
+        const ageGuess = guessSystemAge(primaryStar ? { massKg: primaryStar.massKg, temperatureK: primaryStar.temperatureK, classes: primaryStar.classes } : null);
         const system: System = {
             id: systemId,
             name: data.name,
             seed: seed,
             epochT0: 0,
-            age_Gyr: this.rng.range(1, 10),
+            // The GM's own choice wins over the guess, exactly as on the file-import path (G33):
+            // the dials panel's age slider is bound to the SYSTEM's age, not only to the age the
+            // generated worlds are born into, or the card would disagree with the slider that set it.
+            age_Gyr: opts.ageGyr ?? ageGuess.ageGyr,
+            ageEstimated: opts.ageGyr === undefined ? ageGuess.estimated : (opts.ageGyr === ageGuess.ageGyr && ageGuess.estimated),
+            ageBandGyr: ageGuess.bandGyr,
             nodes: nodes,
             rulePackId: rulePack.id,
             rulePackVersion: rulePack.version,
@@ -667,6 +409,29 @@ export class TravellerImporter {
 
         const processor = new SystemProcessor();
         processor.process(system, rulePack);
+
+        // Fill out to W with PBG's composition. Imported (Traveller-authored) bodies are anchors and are
+        // never moved; generated worlds take the free orbits the star's own zones allow.
+        if (totalWorldsCount > 0) {
+            const infill = infillSystem(system, rulePack, {
+                targetPlanetCount: totalWorldsCount,
+                composition: { giants: numGasGiants, belts: numBelts },
+                seed: `traveller-${seed}`,
+                knobs: opts.knobs,
+                ageGyr: system.age_Gyr,
+            });
+            if (infill.underTarget) {
+                console.warn(`TravellerImporter: ${data.name} asked for W=${totalWorldsCount} (PBG giants ${numGasGiants}, belts ${numBelts}); the star's zones and the count table gave ${infill.addedPlanets} extra planet(s)` +
+                    (infill.composition ? ` (giants ${infill.composition.giantsGot}/${infill.composition.giantsWanted}, belts ${infill.composition.beltsGot}/${infill.composition.beltsWanted})` : '') + '.');
+            }
+            // Traveller's own naming: Roman numerals outward from the star, Main World keeps its identity.
+            const bodies = system.nodes.filter((n) => n.parentId === systemRootId && ((n as CelestialBody).roleHint === 'planet' || (n as CelestialBody).roleHint === 'belt')) as CelestialBody[];
+            bodies.sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
+            bodies.forEach((p, i) => {
+                if (p.id === mainWorld.id) return;
+                p.name = p.roleHint === 'belt' ? `${data.name} Belt ${toRoman(i + 1)}` : `${data.name} ${toRoman(i + 1)}`;
+            });
+        }
 
         // M-Star Hazard Check
         if (specClass === 'M' && (mainWorld.surfaceRadiation || 0) > 100) { 
@@ -940,4 +705,48 @@ export class TravellerImporter {
             default: return "";
         }
     }
+}
+
+/**
+ * Traveller's star LIST ("F7 V M0 V M4 V") to class keys. Exported because the Add-System modal needs
+ * the primary's class to guess an age for its dials panel, and a second parser would be a second
+ * answer (inbox G33).
+ *
+ * ONE classifier for every importer (physics/importedStarClass.ts). Traveller states its stars fully
+ * — "F7 V", "K2 III", "M1 Ib", "D", "BD", "NS" — and this parser always kept the luminosity class;
+ * what it lacked was the shared normalisation (a bare "G" defaults to MAIN SEQUENCE, never a guessed
+ * giant; Ia/Ib/II fold to the supergiant band, IV to the dwarf band; an unrecognised token is
+ * star/unknown, never pushed through as-is).
+ */
+export function parseTravellerStarList(stars: string | undefined, rulePack: RulePack): string[] {
+    const rawStars = (stars || 'G2 V').replace(/\s+/g, ' ').trim();
+    const tokens = rawStars.split(' ');
+    const out: string[] = [];
+    const luminosityRegex = /^(I|II|III|IV|V|VI|VII|D|Ia|Ib)$/;
+    let i = 0;
+    while (i < tokens.length) {
+        const token = tokens[i];
+        const nextToken = tokens[i + 1];
+        const stated = (nextToken && luminosityRegex.test(nextToken)) ? `${token} ${nextToken}` : token;
+        out.push(resolveImportedStarClass({ stated }, rulePack).classKey);
+        i += (stated === token) ? 1 : 2;
+    }
+    return out;
+}
+
+/**
+ * The age band this system's PRIMARY star allows — what the dials panel needs to draw its age slider
+ * before the system exists (G33). Same guess the importer itself uses once the star is built, taken
+ * from the pack's stat template rather than a generated body so a form can call it on every keystroke.
+ */
+export function travellerAgeGuess(stars: string | undefined, rulePack: RulePack): AgeGuess {
+    const primary = parseTravellerStarList(stars, rulePack)[0];
+    const t = starStatTemplate(rulePack, primary);
+    if (!t) return guessSystemAge(null);
+    // Template values are RANGES ([lo, hi]) — take the midpoint; the age band only needs the star's
+    // scale, and a range endpoint would bias every guess the same way.
+    const mid = (v: unknown, fallback: number) =>
+        Array.isArray(v) ? ((v[0] as number) + (v[1] as number)) / 2 : (typeof v === 'number' ? v : fallback);
+    const massKg = mid(t.mass_solar, 1) * SOLAR_MASS_KG;
+    return guessSystemAge({ massKg, temperatureK: mid(t.temp_k, 5778), classes: [primary] });
 }

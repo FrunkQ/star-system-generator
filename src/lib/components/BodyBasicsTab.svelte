@@ -1,12 +1,15 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
-  import { fmt } from '$lib/stores';
-  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, G } from '$lib/constants';
+  import { unitPrefs, cycleUnitPref } from '$lib/unitPrefsStore';
+  import { resolveUnitPref, unitFromSI, unitToSI, unitIdLabel, unitBodyTypeFor } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
+  import { endUndoAction } from '$lib/undo/systemUndo';
+  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, JUPITER_MASS_KG, G } from '$lib/constants';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
   import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
   import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
-  import { fileToDownscaledDataUrl } from '$lib/util/imageUpload';
+  import CustomImageBlock from './CustomImageBlock.svelte';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
     trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored,
@@ -183,27 +186,32 @@
   $: pRadPos = logPos(pRadiusRe, radSpan[0], radSpan[1]);
   $: pDenPos = logPos(pDensity, denSpan[0], denSpan[1]);
 
-  // Unit selectors for the Mass & Radius number fields — a 3-way click cycler shown in the label gap, so
-  // a tiny moon (awkward as 1e-8 M⊕) can be edited in tonnes or km instead. The SLIDER stays in canonical
-  // Earth units; only the number field's display unit changes. Radius' third option follows the starmap's
-  // km/mi choice.
-  const M_JUP_ME = 317.8;    // Jupiter mass in Earth masses
+  // Unit cycler for the Mass & Radius number fields — the SLIDER stays anchored in canonical Earth
+  // units and only the number field's display unit changes (G28's two edit-finished boundaries are
+  // untouched). G34: the MASS cycle is the campaign-wide mass pref for this body type (units.ts owns
+  // the ladder), so this field, the technical panel and the catalogue flip together. RADIUS keeps its
+  // local R⊕/R♃ stops (ratio units, deliberately not on the global ladder); its third stop follows
+  // the campaign's radius pref (km or mi).
+  const M_JUP_ME = JUPITER_MASS_KG / EARTH_MASS_KG;  // Jupiter mass in Earth masses — one source
+  const M_SOL_ME = SOLAR_MASS_KG / EARTH_MASS_KG;    // Sun mass in Earth masses
   const R_JUP_RE = 11.209;   // Jupiter radius in Earth radii
-  let massUnit: 'earth' | 'jupiter' | 'tonnes' = 'earth';
+  $: ubt = unitBodyTypeFor(body);
+  $: massUnit = ({ 'M-Earth': 'earth', 'M-Jup': 'jupiter', 't': 'tonnes', 'M-Sol': 'sol' } as Record<string, 'earth' | 'jupiter' | 'tonnes' | 'sol'>)[resolveUnitPref($unitPrefs, 'mass', ubt)] ?? 'earth';
   let radUnit: 'earth' | 'jupiter' | 'dist' = 'earth';
-  const cycleMassUnit = () => { massUnit = massUnit === 'earth' ? 'jupiter' : massUnit === 'jupiter' ? 'tonnes' : 'earth'; };
+  const cycleMassUnit = () => cycleUnitPref('mass', ubt);
   const cycleRadUnit = () => { radUnit = radUnit === 'earth' ? 'jupiter' : radUnit === 'jupiter' ? 'dist' : 'earth'; };
-  $: massUnitSym = massUnit === 'earth' ? 'M⊕' : massUnit === 'jupiter' ? 'M♃' : 't';
-  $: radUnitSym = radUnit === 'earth' ? 'R⊕' : radUnit === 'jupiter' ? 'R♃' : $fmt.distUnit;
+  $: distRadUnit = resolveUnitPref($unitPrefs, 'radius', ubt); // 'km' | 'mi'
+  $: massUnitSym = massUnit === 'earth' ? 'M⊕' : massUnit === 'jupiter' ? 'M♃' : massUnit === 'sol' ? 'M☉' : 't';
+  $: radUnitSym = radUnit === 'earth' ? 'R⊕' : radUnit === 'jupiter' ? 'R♃' : unitIdLabel(distRadUnit);
   // Tooltip: what the CURRENT unit means, then a "click to change" line below it.
-  $: massUnitName = massUnit === 'earth' ? 'Earth masses' : massUnit === 'jupiter' ? 'Jupiter masses' : 'tonnes';
-  $: radUnitName = radUnit === 'earth' ? 'Earth radii' : radUnit === 'jupiter' ? 'Jupiter radii' : ($fmt.distUnit === 'mi' ? 'miles' : 'kilometres');
+  $: massUnitName = massUnit === 'earth' ? 'Earth masses' : massUnit === 'jupiter' ? 'Jupiter masses' : massUnit === 'sol' ? 'solar masses' : 'tonnes';
+  $: radUnitName = radUnit === 'earth' ? 'Earth radii' : radUnit === 'jupiter' ? 'Jupiter radii' : (distRadUnit === 'mi' ? 'miles' : 'kilometres');
   $: massUnitTitle = `${massUnitName} (${massUnitSym})\nClick to change units`;
   $: radUnitTitle = `${radUnitName} (${radUnitSym})\nClick to change units`;
-  $: massDisp = massUnit === 'earth' ? pMassMe : massUnit === 'jupiter' ? pMassMe / M_JUP_ME : (body.massKg ?? 0) / 1000;
-  $: radDisp = radUnit === 'earth' ? pRadiusRe : radUnit === 'jupiter' ? pRadiusRe / R_JUP_RE : $fmt.toDist(body.radiusKm ?? 0);
-  const massMeFromDisp = (v: number) => massUnit === 'earth' ? v : massUnit === 'jupiter' ? v * M_JUP_ME : (v * 1000) / EARTH_MASS_KG;
-  const radReFromDisp = (v: number) => radUnit === 'earth' ? v : radUnit === 'jupiter' ? v * R_JUP_RE : $fmt.fromDist(v) / EARTH_RADIUS_KM;
+  $: massDisp = massUnit === 'earth' ? pMassMe : massUnit === 'jupiter' ? pMassMe / M_JUP_ME : massUnit === 'sol' ? pMassMe / M_SOL_ME : (body.massKg ?? 0) / 1000;
+  $: radDisp = radUnit === 'earth' ? pRadiusRe : radUnit === 'jupiter' ? pRadiusRe / R_JUP_RE : unitFromSI(distRadUnit, body.radiusKm ?? 0);
+  const massMeFromDisp = (v: number) => massUnit === 'earth' ? v : massUnit === 'jupiter' ? v * M_JUP_ME : massUnit === 'sol' ? v * M_SOL_ME : (v * 1000) / EARTH_MASS_KG;
+  const radReFromDisp = (v: number) => radUnit === 'earth' ? v : radUnit === 'jupiter' ? v * R_JUP_RE : unitToSI(distRadUnit, v) / EARTH_RADIUS_KM;
 
   // Read the live state straight from the body (NOT the reactive pMassMe/pMakeup vars, which are
   // stale within a synchronous edit batch — so consecutive edits chain off fresh values).
@@ -231,6 +239,12 @@
   // cleared when the edit is finalised. finalizeEdit() runs on slider release / number-input edits.
   let pendingFlowThrough = false;
   function finalizeEdit() {
+      // G28: THE SAME BOUNDARY ANSWERS BOTH QUESTIONS. "When is the edit finished?" was already
+      // answered here for autoClassify; the undo recorder reuses that answer rather than inventing
+      // a second one, so an undo step always lines up with the type change a GM just watched
+      // commit. Called BEFORE the early return - the drag is over either way. (It defers itself by
+      // a microtask, so the dispatch below still belongs to the action that is ending.)
+      endUndoAction();
       if (!pendingFlowThrough) return;
       pendingFlowThrough = false;
       body.autoClassify = true; // hand the type to the physics ONCE — the announced morph commits
@@ -311,6 +325,10 @@
   // Live classification the physics has assigned (updated after each commit -> process()).
   function prettyClass(c: string | undefined): string {
       if (!c) return '—';
+      // A star's luminosity band reads as a roman numeral in the class (`star/M-I`, `star/K-III`),
+      // which the generic dash-to-space rule would render as "M I" and "K Iii". Say what it means.
+      const band = /^star\/([OBAFGKMLTY])-(I|III)$/.exec(c);
+      if (band) return `${band[1]}-Type ${band[2] === 'I' ? 'Supergiant' : 'Giant'}`;
       return c.replace(/^(planet|star|asteroid)\//, '').replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
   }
   $: liveType = prettyClass(body.classes?.[0]);
@@ -492,6 +510,19 @@
 
   function handleUpdate() { dispatch('update'); }
 
+  // A44 / B10. `spin/axis-inferred` and `spin/period-inferred` say "this number was invented, not
+  // measured" — a promise to the reader that an inferred value is distinguishable from a real one.
+  // The moment the GM types a real one in, that claim stops being true, and a tag asserting it is
+  // simply wrong. Nothing re-derives these (they are `authored`), so nothing would ever clear them:
+  // retiring the claim is the edit's job.
+  function clearSpinProvenance(which: 'axis' | 'period') {
+    const key = which === 'axis' ? 'spin/axis-inferred' : 'spin/period-inferred';
+    if (!body.tags?.some((t) => t.key === key)) return;
+    body.tags = body.tags.filter((t) => t.key !== key);
+    body = body;
+  }
+  function onTiltInput() { clearSpinProvenance('axis'); handleUpdate(); }
+
   // Rotational deformation (E4): the bulk density sets a hard BREAK-UP spin — spin any faster and the
   // equator sheds mass into a ring. Derived live from density + the day length, so it tracks composition
   // edits too. We surface the shape and hard-clamp the day length at the break-up period.
@@ -536,6 +567,7 @@
     body.rotation_period_hours = +(isRetrograde ? -mag : mag).toFixed(2);
     body.tidallyLocked = opts.locked;
     (body as any).tidalLockManual = true; // any hand-set rate/lock is a manual pin
+    clearSpinProvenance('period');          // a typed period is no longer an inferred one (A44)
     body = body;
     dispatch('update');
   }
@@ -558,22 +590,10 @@
   function toggleAutoClassify(e: Event) { body.autoClassify = (e.currentTarget as HTMLInputElement).checked; dispatch('update'); }
 
   // F2 — custom body image. Upload a picture that replaces the derived type image; the processor leaves
-  // a custom image alone (image.custom). Removing it hands the image back to the type.
-  let imgInput: HTMLInputElement;
-  async function onImageUpload(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    try {
-      const url = await fileToDownscaledDataUrl(file, 512);
-      body.image = { url, custom: true };
-      body = body;
-      dispatch('update');
-    } catch { alert('Could not read that image file.'); }
-    finally { input.value = ''; }
-  }
-  function removeCustomImage() {
-    body.image = undefined; // processor re-derives the type image next pass
+  // a custom image alone (image.custom). Removing it hands the image back to the type. The control
+  // itself is CustomImageBlock (G20) — one block shared with the star and construct tabs; this handler
+  // is only the reassignment that tells legacy reactivity the node changed.
+  function handleImageChange() {
     body = body;
     dispatch('update');
   }
@@ -644,7 +664,7 @@
                 </svg>
             {/if}
         </div>
-        <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
+        <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / M_JUP_ME).toFixed(2)} M♃{/if}</div>
     </div>
 
     <!-- RADIUS -->
@@ -680,7 +700,7 @@
                 </svg>
             {/if}
         </div>
-        <div class="sub-label">{$fmt.km(body.radiusKm || 0)}{#if lock === null && isPlanetMoon} · mass follows the composition{/if}</div>
+        <div class="sub-label"><UnitValue quantity="radius" bodyType={ubt} value={body.radiusKm || 0} />{#if lock === null && isPlanetMoon} · mass follows the composition{/if}</div>
     </div>
 
     <!-- DENSITY (lock = hold composition) -->
@@ -834,7 +854,7 @@
             <option value="1" label="{Math.round(currentRadiusMax)}"></option>
         </datalist>
         <div class="sub-label row-spaced">
-            <span>{$fmt.km(body.radiusKm || 0)}</span>
+            <span><UnitValue quantity="radius" bodyType={ubt} value={body.radiusKm || 0} /></span>
             <span class="category-badge">{sizeCategory}</span>
         </div>
     </div>
@@ -895,9 +915,9 @@
         <label for="tilt">Axial Tilt: {(body.axial_tilt_deg ?? 0).toFixed(0)}°</label>
         <div class="tilt-row">
             <input class="tilt-slider" type="range" id="tilt" min="0" max="180" step="1"
-                   bind:value={body.axial_tilt_deg} on:input={handleUpdate} />
+                   bind:value={body.axial_tilt_deg} on:input={onTiltInput} />
             <input class="tilt-num" type="number" step="0.1" min="0" max="180"
-                   bind:value={body.axial_tilt_deg} on:input={handleUpdate} />
+                   bind:value={body.axial_tilt_deg} on:input={onTiltInput} />
         </div>
     </div>
 
@@ -918,12 +938,13 @@
             Auto-classify (physics decides the type)
         </label>
         <span class="sub-label">Sets the body's type and image. Picking one switches auto-classify off.</span>
-        <div class="custom-image">
-            {#if body.image?.custom}<img class="custom-thumb" src={body.image.url} alt="Custom image for {body.name}" />{/if}
-            <button type="button" class="link-btn" on:click={() => imgInput?.click()}>{body.image?.custom ? 'Replace image…' : 'Upload custom image…'}</button>
-            {#if body.image?.custom}<button type="button" class="link-btn" on:click={removeCustomImage}>Remove (use type image)</button>{/if}
-            <input type="file" accept="image/*" bind:this={imgInput} on:change={onImageUpload} style="display:none" />
-        </div>
+        <CustomImageBlock
+            target={body}
+            onUpdate={handleImageChange}
+            addLabel="Upload custom image…"
+            replaceLabel="Replace image…"
+            removeLabel="Remove (use type image)"
+            alt="Custom image for {body.name}" />
     </div>
 </div>
 
@@ -1115,8 +1136,6 @@
   .mk-num { width: 52px; padding: 2px 4px; font-size: 0.85em; }
   .mk-pct { font-size: 0.8em; color: var(--text-faint); }
   .compress-note { margin: 2px 0 0; font-size: 0.72em; color: var(--text-faint); line-height: 1.4; }
-  .custom-image { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-  .custom-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
   .sc-derived-val { min-width: 90px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
   .sc-derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
   .sc-ovr-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }

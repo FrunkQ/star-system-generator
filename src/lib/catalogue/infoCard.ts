@@ -121,13 +121,20 @@ export function drawTipBanner(
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left';
   let ty = y0 + pad + Math.round(fontPx * 0.92);
+  // CENTRED text in a full-width band: each line starts at (band - line width)/2, like any centred
+  // paragraph. The first line is prefix + note (two fonts), so its width is the pair together.
+  ctx.font = noteFont;
+  const noteW = (t: string) => ctx.measureText(t).width;
+  const w0 = stampW + (lines.length ? noteW(lines[0]) : 0);
+  let lx = x0 + Math.max(pad, (barW - w0) / 2);
   ctx.font = stampFont;
   ctx.fillStyle = accent;
-  ctx.fillText(prefix, x0 + pad, ty);
+  ctx.fillText(prefix, lx, ty);
   ctx.font = noteFont;
   ctx.fillStyle = 'rgba(226,234,246,0.92)';
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], x0 + pad + (i === 0 ? stampW : 0), ty);
+    if (i > 0) lx = x0 + Math.max(pad, (barW - noteW(lines[i])) / 2);
+    ctx.fillText(lines[i], lx + (i === 0 ? stampW : 0), ty);
     ty += lineH;
   }
   ctx.restore();

@@ -1,34 +1,237 @@
 <script lang="ts">
-  import type { CelestialBody } from "$lib/types";
+  // The GM's picture of a world — and the several different pictures a GM actually wants of it.
+  //
+  // The artist's impression says what KIND of thing it is. The 2D disc and the 3D globe say what
+  // THIS one looks like, derived from its own physics. And the last two say what it is like to be
+  // THERE: familiar colours and a landscape under that world's own daylight, which is the pair that
+  // answers questions at the table rather than in the panel.
+  //
+  // The 2D/3D switching is not reinvented here: `BodyGraphic` already does it for the player
+  // document (see DocPanel), and this passes it the same modes.
+  import type { CelestialBody, System, RulePack } from "$lib/types";
   import { planetTypeInfoUrl } from "$lib/util/planetTypeInfo";
+  import BodyGraphic from "./BodyGraphic.svelte";
+  import UnderThisLight from "$lib/charts/UnderThisLight.svelte";
 
   export let body: CelestialBody | null;
+  export let system: System | null = null;
+  export let rulePack: RulePack | null = null;
+
+  import { pictureBoxH, pictureFit, PICTURE_MIN_H, PICTURE_MAX_H } from '$lib/pictureBoxStore';
+
+  // Grab-and-scale, same idiom as the inspector sidebar's separator: pointer capture on the grip,
+  // height follows the drag, the store persists it per viewer. 48px is an effective minimise.
+  function startPicResize(e: PointerEvent) {
+    const startY = e.clientY;
+    let h0 = 0; const un = pictureBoxH.subscribe((v) => (h0 = v)); un();
+    const el = e.currentTarget as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      pictureBoxH.set(Math.min(PICTURE_MAX_H, Math.max(PICTURE_MIN_H, h0 + (ev.clientY - startY))));
+    };
+    const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+  }
+
+  type View = 'photo' | 'disc' | 'sphere' | 'swatch' | 'horizon';
+  let view: View = 'photo';
+
+  // ICONS, not words. Five labels in a row ate most of the top of a 4:3 box; five glyphs read at a
+  // glance and leave the picture to be the picture. Each one still carries its title and aria-label,
+  // so nothing is lost to anyone who needs the words — they are just not printed over the art.
+  // Flat, 24-box, 2px stroke, currentColor: the house icon idiom.
+  const ICON: Record<View, string> = {
+    photo: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-6 6-2-2-5 5"/>',
+    disc: '<circle cx="12" cy="12" r="8.5"/><path d="M4.6 9.2c3 1.6 5.6 1.2 7.4 0s4.4-1.6 7.4 0M4.6 15.2c3 1.6 5.6 1.2 7.4 0s4.4-1.6 7.4 0"/>',
+    sphere: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><ellipse cx="12" cy="12" rx="4" ry="8.5"/>',
+    swatch: '<rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.2"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.2"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.2"/>',
+    horizon: '<path d="M2 18h20"/><path d="M6.5 18a5.5 5.5 0 0 1 11 0"/><path d="M12 5.5v2M5.2 8.2l1.4 1.4M18.8 8.2l-1.4 1.4"/>'
+  };
 
   $: infoUrl = planetTypeInfoUrl(body?.classes);
+  // A BELT OR A RING HAS NO SURFACE, so most of these views ask questions it cannot answer: there is
+  // no ground to draw, no daylight to stand in and no horizon to see to. It gets the artist's
+  // impression and nothing else — a hoop or a scattered swarm portrayed alone is the one picture
+  // nobody needs, and it is exactly the case that made the 3D window judder.
+  $: isPopulation = body?.roleHint === 'belt' || body?.roleHint === 'ring';
+  $: hasLight = !!body?.surfaceSpectrum && !isPopulation;
+  // A world with no derived colour has nothing to show in the last three views, so they are not
+  // offered rather than offered empty.
+  $: views = ([
+    body?.image?.url ? { id: 'photo', label: 'Type', title: "The artist's impression for this world's type" } : null,
+    isPopulation ? null : { id: 'disc', label: '2D', title: 'This world as the orrery draws it, from its own physics' },
+    system && !isPopulation ? { id: 'sphere', label: '3D', title: 'This world as a globe — drag to spin it' } : null,
+    hasLight ? { id: 'swatch', label: 'Colours', title: 'Familiar colours as they look under this world\'s own daylight' } : null,
+    hasLight ? { id: 'horizon', label: 'Surface view', title: 'Standing on it: this world\'s own ground, sky and light, and how far you can see' } : null
+  ].filter(Boolean) as { id: View; label: string; title: string }[]);
+
+  // Never leave the panel on a view this world cannot show.
+  $: if (views.length && !views.some((v) => v.id === view)) view = views[0].id;
+
+  $: ringed = (body?.tags ?? []).some((t) => t.key === 'ring/system');
+  // This body for the 3D portrait, as the player document builds it — PLUS ITS RINGS. Rings are
+  // separate nodes, so filtering to "this body and a star" quietly dropped them and Saturn was
+  // portrayed bare, which is the one thing everybody knows about it.
+  $: soloSystem = system && body
+    ? ({ ...system, nodes: system.nodes.filter((n: any) =>
+        n.id === body!.id || n.roleHint === 'star'
+        || (n.roleHint === 'ring' && n.parentId === body!.id)) } as System)
+    : null;
+
 </script>
 
-{#if body && body.image}
-  <div class="planet-image-container">
-    <img src={body.image.url} alt="Artist's impression of {body.name}" class="planet-image" />
-    {#if infoUrl}
+{#if body && (body.image || views.length)}
+  <div class="planet-image-container" style="height: {$pictureBoxH}px; --pic-fit: {$pictureFit === 'slice' ? 'cover' : 'contain'}">
+    {#if view === 'photo' && body.image}
+      <img src={body.image.url} alt="Artist's impression of {body.name}" class="planet-image" />
+      <button type="button" class="fit-toggle"
+              title={$pictureFit === 'slice' ? 'Showing the centred slice - click to fit the whole image, smaller' : 'Showing the whole image - click for the centred slice'}
+              aria-label="Toggle whole image / centred slice"
+              on:click={() => pictureFit.set($pictureFit === 'slice' ? 'whole' : 'slice')}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          {#if $pictureFit === 'slice'}<rect x="3" y="3.5" width="18" height="17" rx="1.5" stroke-dasharray="2.5 2.5"/><rect x="3" y="8.5" width="18" height="7" rx="1"/>{:else}<rect x="3" y="3.5" width="18" height="17" rx="1.5"/><rect x="7.5" y="7" width="9" height="10" rx="1"/>{/if}
+        </svg>
+      </button>
+    {:else if view === 'swatch'}
+      <!-- The old Colours view listed the swatches this world is MADE of, which turned out to answer a
+           question nobody was asking. What a GM wants is the other direction: familiar colours, as they
+           look down there. That is the chart, and the pill IS the scene picker so the viewer hides its own. -->
+      <div class="pane chart-pane">
+        <UnderThisLight {body} pack={rulePack} fixedScene="chart" height={150} />
+      </div>
+    {:else if view === 'horizon'}
+      <div class="pane horizon-pane">
+        <UnderThisLight {body} pack={rulePack} fixedScene="landscape" height={150} />
+      </div>
+    {:else}
+      <div class="pane gfx-pane" class:spin={view === 'sphere'}>
+        <!-- 'flat' is BodyGraphic's name for the FULL 2D-gallery render — texture, surface features,
+             terminator, the thing the disc gallery shows. Its 'disc' mode is the lightweight plain
+             circle coloured by TYPE, which is not what anyone means by "the 2D view". -->
+        <BodyGraphic {body} system={soloSystem} mode={view === 'sphere' ? 'sphere' : 'flat'}
+                     {ringed} interactive={view === 'sphere'} />
+      </div>
+    {/if}
+
+    {#if views.length > 1}
+      <div class="view-pills" role="group" aria-label="How to show this world">
+        {#each views as v}
+          <button type="button" class:on={view === v.id} title="{v.label} — {v.title}"
+                  aria-label={v.title} aria-pressed={view === v.id} on:click={() => (view = v.id)}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              {@html ICON[v.id]}
+            </svg>
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    {#if infoUrl && view === 'photo'}
       <a class="info-pill" href={infoUrl} target="_blank" rel="noopener noreferrer" title="Open the planet-type classification entry in a new tab">
         More information
         <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
       </a>
     {/if}
+    <div class="pic-grip" role="separator" aria-orientation="horizontal" aria-label="Drag to resize the picture"
+         title="Drag to resize - drag right up to minimise the picture" on:pointerdown={startPicResize}></div>
   </div>
 {/if}
 
 <style>
+  /* A FIXED LETTERBOX, so the panel does not jump as you switch between a tall artist's impression,
+     a square render and a wide chart. Overzooming the picture to fill it is the right trade: a
+     cropped planet reads better than a panel that resizes under the cursor. 2:1 rather than the
+     old 4:3 (owner, 2026-08-21: smaller, more letterbox, truncated top/bottom) - object-fit: cover
+     does the vertical crop. */
   .planet-image-container {
     position: relative;
     width: 100%;
+    /* height comes inline from pictureBoxStore (grab the grip below to resize; 48px = minimised) */
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .fit-toggle {
+    position: absolute; top: 6px; right: 6px; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 5px; border: 1px solid #ffffff33;
+    background: #0009; color: #dfe7f2; cursor: pointer;
+    opacity: 0; transition: opacity 120ms ease;
+  }
+  .planet-image-container:hover .fit-toggle, .fit-toggle:focus-visible { opacity: 1; }
+  .pic-grip {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 8px; z-index: 2;
+    cursor: ns-resize; touch-action: none;
+    background: linear-gradient(#0000, #0006);
+  }
+  .pic-grip::after {
+    content: ''; position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
+    width: 34px; height: 3px; border-radius: 2px; background: #ffffff42;
   }
   .planet-image {
-    max-width: 100%;
+    width: 100%;
+    height: 100%;
+    object-fit: var(--pic-fit, cover);
+    background: #05070c; /* letterbox bars when the whole image shows smaller */
     border-radius: 5px;
     display: block;
   }
+  .pane {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    border-radius: 5px;
+    background: #05070c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Top padding clears the pill group, which is an overlay: without it the pane's own controls
+       sit underneath the buttons and the panel looks broken. */
+    padding: 40px 10px 10px;
+    box-sizing: border-box;
+  }
+  .gfx-pane { padding: 38px 6px 6px; }
+  .gfx-pane.spin { cursor: grab; }
+  .horizon-pane { align-items: stretch; flex-direction: column; padding: 38px 10px 10px; }
+  .chart-pane { align-items: stretch; flex-direction: column; padding: 34px 10px 10px; }
+  .swatch-pane .chip {
+    width: 18px; height: 18px; border-radius: 4px; flex: none;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .swatch-pane .empty { color: var(--text-faint, #8a8f9a); font-size: 0.75rem; }
+
+  /* Top-left, opposite the More-information pill so the two never fight for the same corner. */
+  /* TOP RIGHT. At top-left these sat directly on the viewer's own scene picker and wipe slider,
+     which is how the first version hid its own controls behind its buttons. */
+  .view-pills {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(2px);
+  }
+  .view-pills button {
+    border: none;
+    background: transparent;
+    color: var(--text, #e8e8e8);
+    padding: 4px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.72;
+  }
+  .view-pills button:hover { color: var(--accent, #ff5a1f); opacity: 1; }
+  .view-pills button.on { background: rgba(255, 255, 255, 0.18); opacity: 1; }
+  .view-pills button:focus-visible { outline: 2px solid var(--accent, #ff5a1f); outline-offset: 1px; }
+
   .info-pill {
     position: absolute;
     right: 8px;

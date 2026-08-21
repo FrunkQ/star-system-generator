@@ -8,6 +8,7 @@ import type { Starmap, ActiveJourney, CelestialBody, AdriftConstruct, ID } from 
 import { G, SOLAR_MASS_KG, AU_KM } from '$lib/constants';
 import { hyperbolicFlyby } from '$lib/physics/flyby';
 import { distanceToMeters } from '$lib/interstellar/transit';
+import { mapSeparation, posZ, zCounts } from '$lib/map/systemDistance';
 
 const AU_M = AU_KM * 1000;
 const isStarNode = (n: any) =>
@@ -38,8 +39,9 @@ export function flybyTurn(
     a_AU = body?.orbit?.elements?.a_AU || 0;
   }
   const rp_m = Math.max(a_AU, GRAZE_AU) * AU_M;
-  const dx = to.x - from.x, dy = to.y - from.y;
-  const coordDist = Math.hypot(dx, dy);
+  // WS7: separation counts DEPTH (unless the campaign opted out) — this feeds the scalar cruise speed,
+  // so the 3D magnitude is the right input. Shared module keeps it consistent with route/measure.
+  const coordDist = mapSeparation(to, from, !zCounts(starmap));
   const dur = j.durationSec || 0;
   if (!(coordDist > 0) || !(dur > 0)) return 0;
   const vinf = distanceToMeters(coordDist, starmap.distanceUnit) / dur; // m/s, outside-observer cruise speed
@@ -53,10 +55,19 @@ export function flybyTurn(
 // Where a construct *appears* at a given game time, derived purely from its interstellar journey
 // record + the clock (no mutation). The same evaluator backs rendering, the routes panel, and (later)
 // autopilot. Persistent node moves are a separate reconcile step, keyed to ACTUAL time.
+// WS7 depth: a placement carries `z` wherever it is EXACTLY derivable — the endpoints of an
+// interstellar hop are systems with a known depth, and the path between them is a straight line, so the
+// depth at fraction f is the same lerp as x and y. It is optional because a POINT origin/destination
+// (`fromX/fromY`, `toX/toY` — a course replotted from where an adrift ship sits) records no depth at
+// all: the journey schema has no fromZ/toZ, so there is nothing honest to report and `posZ` reads the
+// absent value as the reference plane. Note what is deliberately NOT here: a coasting drift keeps the
+// depth it had when it was stranded and does not gain more. Giving the drift a vz would mean deciding
+// how the slingshot deflection (a planar rotation of vx/vy, below) behaves out of the plane, which is a
+// transit-physics question and not a display one.
 export type ConstructPlacement =
   | { kind: 'system'; systemId: ID }
-  | { kind: 'transit'; fromSystemId: ID; toSystemId: ID; x: number; y: number; frac: number }
-  | { kind: 'adrift'; x: number; y: number; vx?: number; vy?: number; fromSystemId?: ID; toSystemId?: ID };
+  | { kind: 'transit'; fromSystemId: ID; toSystemId: ID; x: number; y: number; z?: number; frac: number }
+  | { kind: 'adrift'; x: number; y: number; z?: number; vx?: number; vy?: number; fromSystemId?: ID; toSystemId?: ID };
 
 // Whether a journey's drive coasts (keeps momentum) when interrupted, vs stops dead. A jump/gate/field
 // drive just stops; anything with real momentum (relativistic, torch, sublight…) keeps drifting.
@@ -92,30 +103,35 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
     const start = Number(j.startTimeSec || 0);
     const endSec = journeyEffectiveEndSec(j);
     if (from && to) {
+      // Depth of the two ends. `posZ` is the one reader of an absent z (= the reference plane), so a
+      // point override with no recorded depth behaves the same here as it does in every distance.
+      const fz = posZ(from), tz = posZ(to);
       // Before departure: in the origin system, or adrift at the point it's being replotted from.
       if (displaySec < start) return pointOrigin
-        ? { kind: 'adrift', x: from.x, y: from.y, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId }
+        ? { kind: 'adrift', x: from.x, y: from.y, z: fz, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId }
         : { kind: 'system', systemId: j.fromSystemId };
       if (displaySec < endSec) {
         const f = fracAt(j, displaySec);
-        return { kind: 'transit', fromSystemId: j.fromSystemId, toSystemId: j.toSystemId, x: from.x + (to.x - from.x) * f, y: from.y + (to.y - from.y) * f, frac: f };
+        return { kind: 'transit', fromSystemId: j.fromSystemId, toSystemId: j.toSystemId, x: from.x + (to.x - from.x) * f, y: from.y + (to.y - from.y) * f, z: fz + (tz - fz) * f, frac: f };
       }
       // Ended: outcome decides the resting place.
       const outcome = j.outcome ?? 'arrive';
       if (outcome === 'return') return pointOrigin
-        ? { kind: 'adrift', x: from.x, y: from.y, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId }
+        ? { kind: 'adrift', x: from.x, y: from.y, z: fz, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId }
         : { kind: 'system', systemId: j.fromSystemId };
       if (outcome === 'strand') {
         const f = fracAt(j, endSec);
         const sx = from.x + (to.x - from.x) * f, sy = from.y + (to.y - from.y) * f;
+        const sz = fz + (tz - fz) * f;
         // Coast on in a straight line, or stop dead. The GM's explicit choice (strandCoast) wins; otherwise
         // the drive mode decides (momentum drives coast, jump/field drives stop).
         if ((j.strandCoast ?? coasts(j.mode)) && (j.durationSec || 0) > 0) {
           const vx = (to.x - from.x) / j.durationSec, vy = (to.y - from.y) / j.durationSec;
           const dt = displaySec - endSec;
-          return { kind: 'adrift', x: sx + vx * dt, y: sy + vy * dt, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
+          // Depth is held at the strand point, not extrapolated — see the note on ConstructPlacement.
+          return { kind: 'adrift', x: sx + vx * dt, y: sy + vy * dt, z: sz, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
         }
-        return { kind: 'adrift', x: sx, y: sy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
+        return { kind: 'adrift', x: sx, y: sy, z: sz, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
       }
       // Natural end (no explicit GM resolution): a "realistic" plan that couldn't brake reaches the
       // destination but coasts ON past it — a fly-by that becomes adrift with velocity. (A GM who forces
@@ -129,11 +145,11 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
           [vx, vy] = [vx * c - vy * s, vx * s + vy * c];
         }
         const dt = displaySec - endSec;
-        return { kind: 'adrift', x: to.x + vx * dt, y: to.y + vy * dt, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
+        return { kind: 'adrift', x: to.x + vx * dt, y: to.y + vy * dt, z: tz, vx, vy, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
       }
       // Arrived: at a point destination it rendezvouses there (sits adrift at the spot — e.g. reaching a
       // stranded ship); at a system it's in that system.
-      if (pointTarget) return { kind: 'adrift', x: to.x, y: to.y, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
+      if (pointTarget) return { kind: 'adrift', x: to.x, y: to.y, z: tz, fromSystemId: j.fromSystemId, toSystemId: j.toSystemId };
       return { kind: 'system', systemId: j.toSystemId };   // arrive
     }
   }
@@ -142,6 +158,8 @@ export function constructDisplayPlacement(starmap: Starmap, constructId: ID, dis
     const vx = adrift.vx ?? 0, vy = adrift.vy ?? 0;
     const t0 = Number(adrift.t0Sec ?? adrift.strandedAtSec ?? displaySec);
     const dt = (vx || vy) ? displaySec - t0 : 0;   // stationary unless it has a drift velocity
+    // No z: `AdriftConstruct` stores only x/y, so a ship stranded in interstellar space has no recorded
+    // depth to report. Reads as the reference plane, like any absent z.
     return { kind: 'adrift', x: adrift.x + vx * dt, y: adrift.y + vy * dt, vx, vy, fromSystemId: adrift.fromSystemId, toSystemId: adrift.toSystemId };
   }
   const holding = starmap.systems.find((s) => (s.system?.nodes ?? []).some((n) => n.id === constructId));

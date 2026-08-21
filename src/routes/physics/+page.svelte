@@ -2,30 +2,60 @@
   // /physics — the honesty appendix. Documents the constants, the derivations, the
   // deliberate fudges, and how classification + tags are produced. Stable section IDs
   // (#temperature, #radiation-split, #classification, …) so tooltips can deep-link.
-  import { G, UNIVERSAL_GAS_CONSTANT, AU_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
+  import { G, UNIVERSAL_GAS_CONSTANT, AU_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR, PLANCK_H, BOLTZMANN_K, SOLAR_CONSTANT_WM2 } from '$lib/constants';
+  import { GRID_MIN_NM, GRID_MAX_NM, GRID_STEP_NM } from '$lib/physics/spectrum';
+  import SurfaceLightExplorer from '$lib/charts/SurfaceLightExplorer.svelte';
+  import MorphologyStackExplorer from '$lib/charts/MorphologyStackExplorer.svelte';
+  import UnderThisLight from '$lib/charts/UnderThisLight.svelte';
+  import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
+  import { onMount } from 'svelte';
+  import type { RulePack } from '$lib/types';
+
+  // The live diagrams below run the ENGINE's own functions, which need the rule pack's gas optics
+  // and pigment data. Fetched here rather than reimplemented: a page that carried its own copy of
+  // the numbers would be a second authority on them the day the pack changed.
+  let pack = $state<RulePack | null>(null);
+  onMount(async () => {
+    try { pack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json'); } catch { /* defaults */ }
+  });
 
   const toc = [
     ['layering', 'How the model layers'],
     ['constants', 'Constants'],
     ['gravity', 'Gravity, size & density'],
     ['makeup', 'Interior makeup'],
+    ['albedo', 'Albedo — bare ground & its deposits'],
     ['temperature', 'Equilibrium temperature'],
     ['eccentric-flux', 'Eccentric flux distance'],
     ['greenhouse', 'Greenhouse & surface temp'],
     ['temp-range', 'Temperature range & tidal heat'],
     ['radiation', 'Surface radiation'],
     ['radiation-split', 'Spectral photon/particle split'],
+    ['ionising-output', 'Ionising output & the corona'],
+    ['stellar-outflows', 'Jets and shed winds'],
+    ['star-designations', 'Reading a star designation'],
+    ['belts', 'Trapped belts & the giants'],
     ['fluids', 'Fluid layers'],
     ['clouds', 'Clouds & weather'],
     ['magnetism', 'Magnetism'],
     ['aurora', 'Auroras'],
+    ['spin', 'Spin axis, seasons & satellite planes'],
     ['geology', 'Geological activity'],
+    ['surface', 'Resurfacing & surface features'],
     ['resonance', 'Resonances & stability'],
+    ['eclipses', 'Eclipses'],
+    ['ejection', 'Who gets ejected'],
+    ['surface-light', 'Surface light & the spectrum'],
+    ['standing-on-it', 'Standing on it: brightness & visibility'],
+    ['biosphere', 'Biospheres: pigment & cover'],
     ['colour', 'Apparent colour & visualisation'],
+    ['views', 'Spatial views: grids & routes'],
     ['habitability', 'Habitability score'],
     ['classification', 'Classification (fingerprints)'],
     ['tags', 'Tags'],
+    ['overrides', 'GM overrides'],
     ['reasons', 'Reasons to visit'],
+    ['zones', 'Stellar zones'],
     ['generation', 'Auto-generation'],
     ['baseline', 'Test fixtures (Sol & Testion)'],
     ['fudges', 'Known fudges']
@@ -41,7 +71,10 @@
     ['R⊕', EARTH_RADIUS_KM, 'km', 'Earth radius — the radius_Re feature unit.'],
     ['g⊕', EARTH_GRAVITY, 'm·s⁻²', 'Standard surface gravity.'],
     ['ρ⊕', EARTH_DENSITY, 'kg·m⁻³', 'Earth bulk density (≈5.51 g/cc).'],
-    ['Dose₀', RADIATION_UNSHIELDED_DOSE_MSV_YR, 'mSv·yr⁻¹', 'Unshielded GCR+SPE dose at 1 AU from a Sun-like star.']
+    ['Dose₀', RADIATION_UNSHIELDED_DOSE_MSV_YR, 'mSv·yr⁻¹', 'Unshielded GCR+SPE dose at 1 AU from a Sun-like star.'],
+    ['h', PLANCK_H, 'J·s', 'Planck constant — the spectrum model (Planck\'s law, photon energy).'],
+    ['k', BOLTZMANN_K, 'J·K⁻¹', 'Boltzmann constant — Planck\'s law.'],
+    ['S☉', SOLAR_CONSTANT_WM2, 'W·m⁻²', 'Solar constant at 1 AU — the scale anchor for every surface spectrum.']
   ];
 </script>
 
@@ -70,10 +103,13 @@
         habitability are all <em>downstream</em> of its interior makeup and temperature.</p>
       <ol class="layering">
         <li><strong>Interior makeup</strong> (metal / rock / carbon / ice / gas fractions) → <strong>density</strong> and, with mass, <strong>radius</strong>.</li>
-        <li><strong>Orbit &amp; stars</strong> → equilibrium temperature → greenhouse, tidal, radiogenic &amp; internal heat → <strong>mean surface temperature</strong> and its <strong>range</strong> (cold night side ↔ tidal-volcanic hotspots).</li>
+        <li><strong>Orbit &amp; stars</strong> → equilibrium temperature → greenhouse, tidal, radiogenic &amp; internal heat → the <strong>radiating temperature</strong> → its <strong>day and night sides</strong>, whose average is the <strong>mean surface temperature</strong> and whose spread opens into the full <strong>range</strong> (cold night side ↔ tidal-volcanic hotspots).</li>
         <li><strong>Fluid layers</strong> — surface ocean, subsurface (under-ice) ocean, cloud decks, deep conductive interior — derived from makeup + temperature + atmosphere.</li>
-        <li><strong>Magnetism</strong> — the dynamo implied by the conductive interior layers + rotation (intrinsic vs induced; dipolar vs tilted/off-centre).</li>
+        <li><strong>Magnetism</strong> — the dynamo implied by the conductive interior layers + rotation (intrinsic vs induced; dipolar vs tilted/off-centre), iterated <strong>parent before child</strong> because a moon's induced field asks whether it sits inside its host's magnetosphere.</li>
+        <li><strong>Radiation</strong> — its own pass, and it runs <em>after</em> magnetism rather than beside the rest of the environment, because the dose depends on the field, the spin and the scale height that the pass above derives. This split is not tidiness: while radiation ran first, a freshly imported Earth reported a hundred times its real surface dose, and how wrong the figure was depended on how many times the system had been processed.</li>
         <li><strong>Geological activity</strong> — tectonic regime + volcanism by <em>mechanism</em>, using makeup, mass/radius, system <em>age</em>, surface water and tidal heat.</li>
+        <li><strong>Surface light</strong> — the star's spectrum filtered by the air and the cloud decks above the ground, which is what a plant would have to live on and what the sky looks like from below.</li>
+        <li><strong>Biosphere</strong> — which pigments that light makes viable, which one this world's life settled on, and how much of the land shows it.</li>
         <li><strong>Apparent colour</strong> — composed from makeup, ocean, cloud decks and temperature.</li>
         <li><strong>Classification</strong> reads the raw physics features (never the tags) to pick a type.</li>
         <li><strong>Tags</strong> &amp; <strong>habitability</strong> summarise the above; habitability folds geology + magnetism into the score (see below).</li>
@@ -120,13 +156,77 @@
         star and its nearby brown-dwarf host</strong>, the near source usually dominating. The distance to each
         source is the hierarchical path (a moon's distance to a star = its orbit around its planet + the planet's
         orbit around the star).</p>
-      <p><code>A</code>, the Bond albedo, is now <strong>derived</strong>, not dialled in: a surface reflectivity
-        from the makeup (dark ocean ~0.06, rock ~0.15, bright ice ~0.62) plus the <strong>cloud decks</strong> that
-        condense at the world's temperature (water ~0.5, CO₂ ~0.7, sulfuric ~0.75, methane haze ~0.3). A liquid
-        ocean makes its own water clouds — that's where Earth's 0.30 comes from. Because clouds depend on
-        temperature and temperature depends on albedo, it's solved as a quick fixed point. A manually-pinned
-        albedo still wins, but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
+      <p><code>A</code>, the Bond albedo, is <strong>derived</strong>, not dialled in: a surface reflectivity from
+        the makeup (dark ocean ~0.06, bare rock ~0.11, metal darker still at ~0.075, bright frost ~0.62) seen through the world's
+        <a href="#clouds">cloud decks</a>, each reflecting what its own condensate reflects — water 0.42,
+        sulphuric acid 0.76, ammonia 0.51, methane haze 0.28, all rule-pack data you can edit. The decks are
+        composited bottom-up, so the top one has the largest say: Jupiter's bright ammonia veil, not the brown
+        hydrosulphide beneath it, is what makes Jupiter bright. A liquid ocean makes its own water clouds, which
+        is where Earth's 0.31 comes from.</p>
+      <p>Crucially, <strong>albedo does not decide for itself what clouds a world has</strong> — it asks the one
+        cloud model, the same one that publishes the deck tags. That used to be two models: albedo carried its
+        own boiling-point table and could declare a CO₂ deck on a world where the column physics found nothing
+        condensing at all, and being upstream it set the temperature everything else was judged by.</p>
+      <p>It is a <strong>circular</strong> problem — albedo sets the temperature, the temperature sets which
+        clouds condense, and the clouds set the albedo — so the whole loop is solved as one fixed point rather
+        than broken with a shortcut. It settles in two to five passes; a world sitting exactly on the edge of
+        condensing something has two self-consistent answers, and lands between them with its albedo note saying
+        the cover is marginal. Against measured Bond albedos: Venus 0.76 (model 0.757), Earth 0.306 (0.308),
+        Saturn 0.342 (0.343), Neptune 0.290 (0.288), Jupiter 0.503 (0.490). A manually-pinned albedo still wins,
+        but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
     </section>
+
+    <section id="albedo">
+      <h2>Albedo — bare ground and its deposits <span class="phase">B5</span></h2>
+      <p><strong>Bare rock is DARK, and what makes a world bright is what has settled on it.</strong> The three
+        measurements that pin this point in different directions: Mercury reflects 0.088 and Luna 0.11 — darker
+        than a single flat "rock" value used to allow — while Mars reflects 0.25 and Io 0.63, far brighter than
+        their rock could ever be. So the ground is dark (metal darker than rock: a space-weathered iron regolith
+        is about the darkest natural surface there is, which is why Mercury, at 62% metal, is the darkest rocky
+        body in the Solar System), and brightness is added by two <em>deposits</em> the engine already works out
+        for other reasons:</p>
+      <ul>
+        <li><strong>Oxide dust</strong> — the ferric fines that make Mars orange. Graded from the iron fraction,
+          how oxidising the air is, and how long the surface has sat there without being repaved; the same
+          <code>surface/oxidised</code> the world already carries. It is why Mars is bright without any frost:
+          at about 210&nbsp;K its CO₂ is still well above its own 195&nbsp;K freezing point.</li>
+        <li><strong>Volatile frost</strong> — if the atmosphere's dominant gas is below <em>its own</em> freezing
+          point at the surface, it is not really an atmosphere any more, it is lying on the ground. Io's sulphur
+          dioxide freezes at 198&nbsp;K and Io's surface is at about 100, which is the whole of its 0.63; Pluto's
+          and Triton's nitrogen is the same story. Earth's nitrogen never comes close.</li>
+      </ul>
+      <p>Model against measurement, from one set of constants with no per-world special cases: Mercury
+        <strong>0.088</strong> (measured 0.088), Luna <strong>0.110</strong> (0.11), Mars <strong>0.256</strong>
+        (0.25), Io <strong>0.569</strong> (0.63). And because Mars is now correctly darker in equilibrium
+        — 209.8&nbsp;K rather than 216.7 — <strong>its thin water-ice wisps condense again</strong>, which is a
+        cloud deck returning from an albedo change with no cloud code touched at all.</p>
+      <p>The rust term is worked out <em>inside</em> the fixed point, not before it, because it has to be: a
+        surface is repaved quickly where there is liquid water and slowly where there is not, so how rusty a
+        world is depends on its temperature, which depends on how rusty it is. That closes a genuine feedback —
+        colder, water freezes, the lid stops moving, the surface ages, more rust, brighter, colder again, which
+        is the same loop that gives Earth its snowball states — so the solve reports any world where it fails to
+        settle rather than presenting a marginal answer as a firm one.</p>
+    
+      <h3>Ice ages, and that is most of what makes an icy moon bright or dark</h3>
+      <p>A frozen surface is not one thing. <strong>Fresh ice is brilliant and old ice is filthy</strong> — what
+        darkens it is a lag of material that cannot evaporate away: micrometeoritic infall, and the carbon-rich
+        residue radiation leaves behind as it processes the ice. Nothing removes that lag; only resurfacing
+        buries it. So the brightness of an icy world is a clock, and the two ends of it are in our own system:
+        <strong>Enceladus reflects 0.81</strong>, the brightest surface anywhere near us, because its plumes are
+        laying down new ice faster than the lag can build — while <strong>Callisto reflects 0.11</strong>, one of
+        the darkest, having sat untouched for four and a half billion years. They are the same process at
+        opposite ends, and a single "ice is bright" constant made them the same number.</p>
+      <p>The engine already works out how long a surface has gone unrepaved — the same figure the oxide-dust
+        grade above is read from — so the ice model asks it the same question the rock model does: not
+        <em>what is this made of</em> but <em>what has settled on it, and how long has it had</em>. Clean ice and
+        the dark lag are both rule-pack numbers, and the curve between them saturates, because the lag buries
+        the brightest ice first and then has less and less left to cover.</p>
+      <p class="aside"><strong>Where it does not reach:</strong> Ganymede. About sixty per cent of it was
+        resurfaced roughly two billion years ago and the rest is ancient, so its true answer is a mixture of two
+        ages — and the engine carries one age per world, which puts it alongside Callisto. It comes out darker
+        than it should. Fitting the curve to split them would need a terrain-mix figure that does not exist,
+        and would drag every other icy world off to do it.</p>
+</section>
 
     <section id="eccentric-flux">
       <h2>Eccentric flux distance <span class="phase">04.1</span></h2>
@@ -145,8 +245,43 @@
         not stacked as naive +K, so a body already warm doesn't gain a full extra degree per degree of forcing.
         The greenhouse model and its cryo/CIA parameters live in the rulepack (<code>climateModel.greenhouse</code>)
         so they're tunable, not hard-coded.</p>
-      <p>The result is <strong>one</strong> mean surface temperature, and everything downstream reads that same
-        number: the <a href="#habitability">habitability</a> temperature score, the classifier, and the display.
+      <h3>A giant makes its own heat</h3>
+      <p>A gas giant is still radiating the gravitational energy of its own formation, and cooling as it does.
+        This is not a small correction: Jupiter puts out about 1.67 times the energy it receives from the Sun,
+        Saturn 1.78, Neptune 2.6. So the dominant term for a giant has <em>nothing to do with its star</em> —
+        and the lever is <strong>age</strong>. A young giant is genuinely hot. The planets we have photographed
+        directly, like the HR 8799 family, sit at roughly 1000&ndash;1200 K at 30 million years old, glowing in
+        the infrared entirely on their own account.</p>
+      <p>We model that as a cooling curve in age, scaled up (never down) for giants heavier than Jupiter, and
+        anchored on today's solar system: whatever the curve does when young, it must still reproduce Jupiter's
+        real excess at 4.6 billion years. That anchoring is the guard rather than a decoration — it caught a
+        mass term that had quietly cost Saturn 23 K. Above 8 Jupiter masses the
+        <a href="#temp-range">brown-dwarf model</a> takes over with its own cooling tracks, and the two are
+        matched at the boundary so a giant never gets colder by gaining mass.</p>
+      <p><strong>Gas giant or ice giant is a COMPOSITION question, and it is asked of the mass — never of the
+        type name.</strong> The two get different reference figures (about 52&nbsp;K of excess for a gas giant
+        against 24&nbsp;K for an ice giant at 4.6&nbsp;Gyr), and the split is the same one the interior model
+        already uses to decide whether hydrogen is compressed into its metallic phase: above roughly 50 Earth
+        masses it is, below it the conductive layer is superionic water instead. That matters because the
+        obvious alternative is a trap — asking whether the body's <em>class</em> contains the words "ice giant"
+        reads a name the classifier assigns a whole pass LATER, from a temperature this very figure produces.
+        A freshly imported Neptune came out at +52&nbsp;K on its first pass and +24&nbsp;K on its second because
+        of exactly that. It also mislabelled a whole family: a mini-Neptune or a hycean world was being handed
+        Jupiter's formation heat purely because its type name did not happen to contain the characters
+        "ice-giant".</p>
+      <p><strong>Rocky worlds work differently and deliberately get none of this.</strong> A planet is not
+        contracting, so its internal heat is radioactive decay plus whatever tides are kneading it — and on
+        Earth that reaches the surface as about 0.09 W/m² against roughly 340 W/m² of sunlight, moving the
+        surface temperature by around a fiftieth of a degree. It matters enormously for geology and not at all
+        for climate, and the model says so rather than inventing a term.</p>
+
+      <p>The result is <strong>one</strong> radiating temperature, and everything downstream reads that same
+        number: the <a href="#habitability">habitability</a> temperature score and the classifier. It balances
+        <em>power</em>, so it is what the world gives off — and because radiated power goes as T⁴, a world that
+        bakes by day and freezes by night radiates as much as a uniformly warm one while <em>averaging</em> far
+        below it. The <a href="#temp-range">mean surface temperature</a> a GM reads is therefore derived one step
+        later, from the day and night sides; the two agree on any world with enough air to even the swing out,
+        and part company on an airless one (the Moon radiates at 270&nbsp;K and averages about 214).
         <strong>Radiogenic heat</strong> is a GM override (0 by default — negligible against sunlight for most
         worlds); when set it both warms the surface <em>and</em> drives the world's
         <a href="#geology">geological vigour</a>, so a young or exotic world can run hot and tectonically alive
@@ -154,9 +289,21 @@
       <p><strong>Clouds are coupled to temperature in BOTH directions</strong>, but not by a single term that
         would double-count: their <em>cooling</em> (reflectivity) is the derived <a href="#temperature">albedo</a>
         above, while their <em>warming</em> is the greenhouse of the gas they condensed from (Venus's clouds are
-        its CO₂; Earth's water vapour is in its air at 0.4%). The one gap we fill explicitly: a liquid-water ocean
-        whose atmosphere <em>omits</em> water vapour gets an Earth-realistic implied vapour greenhouse — gated off
-        when H₂O is already listed, so calibrated worlds are untouched.</p>
+        its CO₂; Earth's water vapour is in its air at 0.4%).</p>
+      <p><strong>A sea puts its own vapour into its own air, and we derive that rather than take it on trust.</strong>
+        How much is not a free choice: it is the <em>saturation pressure</em> of that solvent at that surface
+        temperature — the same curve the cloud decks use — scaled by how much of the surface is sea and by the
+        fraction of saturation a whole air column carries (the troposphere dries with altitude, so the column
+        mean is well under the value at the ground). Calibrated on Earth and nothing else: 288&nbsp;K, 1&nbsp;bar
+        and 71% ocean give the 0.4% water vapour Earth actually has. The solvent is whatever the world's
+        hydrosphere is made of, so a methane sea warms its world with methane. If a composition already
+        <em>lists</em> the gas, that figure is a floor — an author can add vapour we would not have derived, but
+        cannot hold it below what the sea must be evaporating.</p>
+      <p>The point of deriving it is that saturation goes to nothing <em>smoothly</em>, including by sublimation
+        from a frozen sea. Before, this term switched on at exactly 273&nbsp;K, which put a ten-kelvin step in a
+        loop that feeds itself: a world a hair below freezing lost its whole vapour greenhouse, and that loss was
+        what kept it below freezing. Worlds fell into snowballs because a branch closed, not because the physics
+        said so.</p>
     </section>
 
     <section id="temp-range">
@@ -175,9 +322,41 @@
       </ul>
       <p>An <strong>atmosphere</strong> (and oceans) redistribute heat — the single biggest control — so a thick-air
         world is far more uniform than an airless one. The <em>total</em> range is the combined extreme (pole +
-        winter + night ↔ equator + summer + day, or a tidal hotspot). So Io reads a cold −210 °C night surface
-        <em>and</em> ~970 °C lava vents in the same readout. Calibrated loosely to Earth / Mars / the Moon /
+        winter + night ↔ equator + summer + day, or a tidal hotspot). So Io reads a cold −194 °C night surface
+        <em>and</em> ~960 °C lava vents in the same readout. Calibrated loosely to Earth / Mars / the Moon /
         Mercury — heuristic, and axial tilt defaults to 25° when a body doesn't specify one.</p>
+
+      <h3>Day and night are an energy balance, and the mean falls out of them</h3>
+      <p>The equilibrium temperature is a <strong>power</strong> balance — the one temperature at which a sphere
+        radiates away exactly what it absorbs — and it is <em>not</em> a mean surface temperature. Treating it as
+        one and hanging a symmetric swing off it gets three things wrong at once, and no value of the swing
+        constant fixes any of them, because the fault is the shape: the sunlit side has no ceiling, the night side
+        falls straight through its floor, and the mean sits too high. So the two sides are derived first and the
+        mean is what they average to. Writing <em>f</em> for the fraction of the absorbed energy that reaches the
+        night side (0 = none reaches it, 1 = the world is isothermal):</p>
+      <ul>
+        <li><strong>Day side</strong> radiates (2−<em>f</em>)·σT<sub>eq</sub>⁴, so it sits at T<sub>eq</sub>·(2−<em>f</em>)<sup>¼</sup>.</li>
+        <li><strong>Night side</strong> radiates <em>f</em>·σT<sub>eq</sub>⁴, at T<sub>eq</sub>·<em>f</em><sup>¼</sup>
+          — the two average back to σT<sub>eq</sub>⁴, so nothing is created or lost.</li>
+        <li><strong>The hottest point</strong> is where the star is straight overhead, and it cannot exceed the
+          temperature at which the ground alone re-radiates that light: √2·T<sub>eq</sub> when nothing is carried
+          away. That is 110&nbsp;°C for the Moon, against a measured noon of about 120&nbsp;°C — the bound reads
+          slightly low on purpose, because it uses the <em>bond</em> albedo where the real sub-solar point
+          reflects less. Before this, the Moon's noon read 209&nbsp;°C, because nothing bounded it at all.</li>
+        <li><strong>The mean</strong> is the average of the two sides. It equals the radiating temperature for a
+          well-mixed world and drops below it as the swing grows — the Moon radiates at 270&nbsp;K and averages
+          214, which is what Diviner measures at its equator.</li>
+      </ul>
+      <p><em>f</em> has two channels and they compose, because whatever the air does not carry the ground still
+        can. <strong>Bulk transport</strong> by atmosphere and ocean is the one that makes Venus a 460&nbsp;°C
+        world with no day/night difference at all. <strong>Heat stored in the ground</strong> is the standard
+        <em>thermal parameter</em> — the surface's rate of storing heat against its rate of radiating it away —
+        which is where rotation belongs: a slow rotator radiates its store away before dawn and freezes hard, and
+        a cold world barely cools at all, because radiating goes as T⁴ and at 70&nbsp;K that is feeble. Hence
+        Mercury's −176&nbsp;°C night out of a 421&nbsp;°C noon, and Pluto and Triton coming out very nearly
+        uniform. The one surface property this needs is thermal inertia, taken as bare regolith's measured value
+        and raised where an atmosphere puts gas in the pore spaces to conduct through — a whisper of air buys
+        almost all of that, which is why Mars holds its night far better than the airless Moon does.</p>
 
       <h3>Self-luminous brown dwarfs</h3>
       <p>A <strong>brown-dwarf-mass</strong> body (~8–80 M♃, i.e. the sub-brown-dwarf, brown-dwarf and
@@ -209,6 +388,164 @@
         convection + fast rotation), declining as the star spins down with age. It rides the particle channel, so a
         magnetosphere + atmosphere shield against it; an unshielded close-in world around a flare star bears the
         brunt. (The old "flaring" tag keyed on luminosity is retired — it now tracks real activity.)</p>
+      <p><strong>Every body reports TWO figures, and the difference is the point.</strong> One number cannot answer
+        both "what does the ground take" and "what does a ship take". The first is quoted at the surface — or, for a
+        world that has no surface, at its <strong>1&nbsp;bar reference level</strong>; for a <strong>ring</strong>,
+        in the <strong>ring plane</strong>, which is simultaneously what a fragment takes and what a ship crossing
+        takes. The second is the environment <strong>above the atmosphere</strong>, where there is no air to absorb
+        anything and a body's own field does not shield it from its own trapped belt — you are inside both. Jupiter
+        is the extreme case: about <strong>11&nbsp;mSv/yr</strong> at 1&nbsp;bar and roughly
+        <strong>764&nbsp;Sv/day</strong> just above the cloud tops.</p>
+      <p><strong>That second figure is quoted at the INNER EDGE OF THE BELTS, and it now says so.</strong> It used
+        to be labelled simply "in orbit", which reads as "the dose where a ship parks" — and for Earth that would
+        have been wrong by four thousand times. Earth's figure is about <strong>653&nbsp;Sv/yr</strong>, which is
+        honest for the inner proton belt and useless as a station-planning number: the ISS at 400&nbsp;km takes
+        roughly <strong>150&nbsp;mSv/yr</strong>, because low orbit sits <em>beneath</em> the belts except over the
+        South Atlantic Anomaly. So the row names its own altitude, derived per body from where that world's
+        atmosphere stops absorbing: Earth reads <em>in the belts, from ~1,262&nbsp;km</em>. Read it as "there is a
+        hazardous shell around this world", not as "orbit is lethal here".</p>
+      <p>The wording follows the body. An <strong>airless</strong> world has no absorbing layer, so its belt edge
+        IS its surface and the two figures are the same number — the second row is simply not shown (Io, Luna,
+        Mercury). A <strong>giant</strong> keeps "above the cloud tops", which is the figure that was asked for. A
+        <strong>ring</strong> reports the ring plane and, again, only once. Nothing here re-derives a dose: the
+        numbers are unchanged and only the place they name is new.</p>
+      <p><strong>Belts and rings carry the hazard word too, and one of them is the loudest reading in the Solar
+        System.</strong> They used to get no radiation tag at all — not because anyone decided a debris field was
+        safe, but because the tag was emitted inside the classification pass, which skips anything that is not a
+        planet or a moon. So Jupiter's Rings sat at <strong>360&nbsp;Sv/day</strong>, above Io, with nothing to
+        filter or warn on. They are tagged now, on the same test that names the row: somewhere you could actually
+        be gets a hazard word, and a giant's notional 1-bar level does not. The Main Belt reads a chronic risk, the
+        Kuiper Belt background, Saturn's rings weeks and Jupiter's <em>hours</em>.</p>
+      <p>The rest of the classification pass stays switched off for them, and deliberately: a diffuse debris field
+        has no dynamo, no tectonic regime, no cratering-sense surface age and no single surface for a habitability
+        score, so deriving those would be inventing answers rather than withholding them.</p>
+      <p><strong>The hazard is reported as TIME TO HARM, not as a number of sieverts.</strong> A median lethal acute
+        dose is about 5&nbsp;Sv (rule-pack data — <code>radiation_ld50_sv</code>), so the survival time is simply
+        <code>LD50 ÷ dose rate</code>: <em>hours</em> (Io ≈ 3), <em>days</em> (Europa ≈ 1.3), <em>weeks</em>,
+        <em>months</em> (Ganymede ≈ 40 days), <em>years</em> (Mars ≈ 23). Past <strong>50 years</strong> the acute
+        model stops meaning anything — chronic low-level exposure kills by cancer risk, not by radiation sickness —
+        so the vocabulary changes rather than quoting a figure nobody lives to test: <em>chronic</em> above the
+        20&nbsp;mSv/yr occupational limit, <em>background</em> at or below it (Earth sits here, at 2.3&nbsp;mSv/yr
+        against a real background of about 2.4).</p>
+    </section>
+
+    <!-- Owner, 2026-08-15: explain a designation in simple terms. The SIZE clauses here are the same
+         ones the editor shows, from `starClassExplain`, which derives them from the pack's own radius
+         band - so this page cannot drift from the physics or from the panel. -->
+    <section id="star-designations">
+      <h2>Reading a star designation <span class="phase">04.5</span></h2>
+      <p>A star's designation is two facts joined together, and it is worth reading them separately.
+        The <strong>letter and number</strong> say how hot it is, running O B A F G K M from hottest to
+        coolest with the number subdividing each letter. The <strong>roman numeral</strong> says how big
+        it has grown, which is a statement about where the star is in its life rather than how hot it
+        burns. Two stars can share a letter and have almost nothing else in common:</p>
+      <table class="mini">
+        <thead><tr><th>Designation</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><code>G2V</code></td><td>Main-sequence dwarf, yellow to human eyes, about the size of the Sun &mdash; our own star</td></tr>
+          <tr><td><code>G2III</code></td><td>Giant star, yellow to human eyes, roughly ten times wider than the Sun</td></tr>
+          <tr><td><code>G2Ia</code></td><td>Luminous supergiant, yellow to human eyes, hundreds of times wider than the Sun</td></tr>
+          <tr><td><code>M5V</code></td><td>Main-sequence dwarf, red to human eyes, several times narrower than the Sun</td></tr>
+          <tr><td><code>M2Ia</code></td><td>Luminous supergiant, red to human eyes, hundreds of times wider &mdash; Betelgeuse</td></tr>
+        </tbody>
+      </table>
+      <p><strong>The same letter, three different objects.</strong> A <code>G2V</code> and a
+        <code>G2Ia</code> have the same surface temperature and therefore the same colour, but the
+        supergiant is hundreds of times wider and tens of thousands of times brighter. That is why the
+        engine treats the letter alone as saying almost nothing: it fixes the colour and very little
+        else.</p>
+      <p>Some objects sit outside the sequence entirely, because they are not burning hydrogen in a
+        core at all. A <strong>white dwarf</strong> is a dead core about the size of the Earth; a
+        <strong>neutron star</strong> is a ball the size of a city; a <strong>magnetar</strong> is a
+        neutron star with an extraordinarily strong magnetic field, above 10<sup>14</sup> gauss against
+        an ordinary pulsar's 10<sup>12</sup>. The engine does not generate magnetars as a separate kind
+        of thing &mdash; it generates neutron stars, draws a field, and reads the label back off it,
+        which is what they are in reality.</p>
+      <p class="note">Brightness is never stored: it is computed from radius and temperature by
+        <code>L = 4&pi;R&sup2;&sigma;T&#8308;</code>, which is exact. A figure that is derived cannot
+        drift away from the numbers it came from.</p>
+    </section>
+
+    <!-- Placed HERE, beside the other radiation sections, rather than in the star-designation
+         section: this is about what a star DOES to its planets, which is what a reader is thinking
+         about at this point in the page. -->
+    <section id="ionising-output">
+      <h2>Ionising output &amp; the corona <span class="phase">04.6</span></h2>
+      <p><strong>Brightness and ionising output are two different numbers.</strong> A star's visible
+        brightness is fixed by its size and temperature. Its X-ray and extreme-ultraviolet output &mdash;
+        the part that strips atmospheres and matters to anything living there &mdash; comes from its
+        <em>magnetic field</em> instead. The two usually rise together, because a bigger star has more
+        of everything, but they come apart exactly where it counts: a flare changes a star's total
+        brightness by about a hundredth of a percent and its X-ray output by a factor of a thousand.</p>
+      <p>The engine follows the real relation, in which X-ray output tracks a star's <em>total
+        magnetic flux</em> &mdash; field strength across its whole surface, so field times area. That
+        relation holds over roughly twelve orders of magnitude, from a single sunspot group to the most
+        violently active stars. It is capped at a ceiling that real stars do not cross: past a certain
+        point the dynamo stops responding and X-ray output stops climbing, however fast the star spins.</p>
+      <p><strong>The exception is the one worth knowing, because it is counter-intuitive: a red giant
+        is not a fierce X-ray source.</strong> Past what astronomers call the <em>coronal dividing
+        line</em>, a star that is both cool and enormously swollen stops holding a hot corona at all.
+        The closed magnetic loops that make X-rays give way to a slow, massive wind. Betelgeuse has no
+        detected X-ray corona whatsoever &mdash; so an active red dwarf, ten thousand times dimmer,
+        genuinely irradiates its planets far harder than a red giant does. The engine tests this by a
+        star's own surface gravity and temperature rather than by its type, so it applies wherever it
+        is true and nowhere else.</p>
+      <h3>A flare has four possible sources, and only one of them is a star</h3>
+      <p>Flare activity is a single 0&ndash;1 figure, and what drives it depends on what the body is.
+        Treating them all alike got a quiescent black hole a B star's flare rate, and treating remnants
+        as uniformly silent was the over-correction that followed.</p>
+      <table class="mini">
+        <thead><tr><th>Body</th><th>Mechanism</th><th>Driver</th></tr></thead>
+        <tbody>
+          <tr><td>Main-sequence star</td><td>Rotation-driven convective dynamo</td><td>Spectral class times an age
+            factor. M&nbsp;0.85, K&nbsp;0.55, G&nbsp;0.35, F&nbsp;0.22, A&nbsp;0.16, B/O&nbsp;0.12, because deep
+            convection is what flares and low-mass dwarfs are convective throughout. Age spins the star down: a
+            young M dwarf runs to 0.85 and an old one to 0.07, which is the whole of the
+            quiescent-versus-active distinction for a star.</td></tr>
+          <tr><td>Giant or supergiant</td><td>None worth the name &mdash; <strong>0.05</strong></td><td>An evolved star
+            is the opposite of a flare star on all three counts: its angular momentum is spread over a radius
+            hundreds of times larger, so it turns slowly, and its surface field is weak and disorganised. The rule
+            pack says so already &mdash; 100&ndash;1000&nbsp;G for an M dwarf against 0.1&ndash;10&nbsp;G for every giant
+            band &mdash; and this reads it rather than inventing a second number.</td></tr>
+          <tr><td>Feeding compact object</td><td>Magnetic reconnection in the <em>accretion disc</em></td><td>The
+            Eddington fraction, not the surface: a hole fed harder flares harder. At full Eddington it exceeds the
+            most active M dwarf, which is the right ordering &mdash; an X-ray binary is among the most violently
+            variable things in the sky, and a flare star, however furious, is still a star. Sgr&nbsp;A* does it
+            several times a day.</td></tr>
+          <tr><td>Magnetar</td><td>Decay of an extreme field &mdash; starquakes</td><td>High and flat at
+            <strong>0.9</strong>. Neither age nor accretion enters it; the field is the whole story and is enormous
+            by definition. SGR&nbsp;1806&minus;20's giant flares are among the most energetic events recorded in the
+            galaxy.</td></tr>
+          <tr><td>Quiescent hole, isolated neutron star, isolated white dwarf</td><td>None</td><td>Genuinely
+            <strong>zero</strong>: no photosphere, no dynamo, nothing falling in. Set one feeding and it moves to the
+            accretion row, whatever its class string says. (An accreting white dwarf is a nova, which is a far
+            larger event than a flare and is not modelled here at all.)</td></tr>
+        </tbody>
+      </table>
+      <p class="note">A gas giant is a radiation source too, by a fifth mechanism again: trapped
+        particles in its magnetic field, with no light involved. See <a href="#belts">trapped belts</a>.</p>
+    </section>
+
+    <section id="stellar-outflows">
+      <h2>Jets and shed winds <span class="phase">04.7</span></h2>
+      <p><strong>Two things a star throws off are drawn on the maps, and both are derived rather than
+        decided.</strong> A <em>jet</em> needs three things at once: a relativistic well to launch from,
+        measured as the body's Schwarzschild radius over its own radius (one at a horizon, about a
+        third for a neutron star, a ten-thousandth for a white dwarf, a millionth for the Sun); an
+        ordered magnetic field to collimate along, from a megagauss up to a pulsar's teragauss; and
+        energy to tap &mdash; matter falling in, as the Eddington fraction of a fed black hole, or the
+        magnetosphere of a neutron star or magnetar. The well gates everything: a magnetic white dwarf
+        has the field and no well, a quiescent black hole has the well and neither power source, and
+        neither jets. A star's <strong>stellar/jets</strong> tag carries the result as <em>moderate</em> or
+        <em>strong</em>; a known spin multiplies it up and an unknown one is left out rather than guessed.</p>
+      <p>The <em>shed wind</em> is Reimers' relation: mass loss proportional to luminosity times radius
+        over mass, from the star's own three numbers. The Sun comes out at a few times 10<sup>-13</sup>
+        solar masses a year and shows nothing; an Arcturus-like K giant reaches a billionth and earns
+        <em>wind</em>; a red supergiant reaches a millionth and earns <em>shell</em>. An O star's
+        line-driven wind falls out of the same law because it is bright and large for its mass. The
+        <strong>stellar/shedding</strong> tag carries the bucket, and the maps draw the shell from it.</p>
+      <p class="note">Nothing in either derivation asks what class a star is. Remove the tag and the
+        mark is gone; change the numbers and it comes back on its own.</p>
     </section>
 
     <section id="radiation-split">
@@ -224,8 +561,79 @@
           <tr><td>G (Sun)</td><td>90%</td><td>10%</td></tr>
           <tr><td>K</td><td>86%</td><td>14%</td></tr>
           <tr><td>M</td><td>78%</td><td>22%</td></tr>
+          <tr><td>Self-luminous brown dwarf</td><td>75%</td><td>25%</td></tr>
         </tbody>
       </table>
+      <p class="note">A brown dwarf is treated as a late-M source rather than by its letter: cool,
+        wind-dominated and flare-dominated while it is young, so a moon of one needs a magnetosphere
+        to be shielded from it. A star the engine cannot classify falls back to the G row.</p>
+    </section>
+
+    <section id="belts">
+      <h2>Trapped belts &amp; the giants</h2>
+      <p><strong>Every step of a giant's radiation story is counter-intuitive, so read this before assuming any of it
+        works like the stellar model above.</strong> A close-in moon of a strong-field giant is not <em>lit</em> by
+        its host — it is <strong>bombarded</strong> by charged particles the host's magnetic field has trapped and
+        its rotation has accelerated. For Io that is not a correction to the sunlight figure, it is the entire
+        answer: the stellar model alone gave Io 21&nbsp;mSv/<em>year</em> where the real surface takes about
+        36&nbsp;Sv/<strong>day</strong>. The giveaway was Io and Europa agreeing to four significant figures,
+        because distance from the Sun was the only term either of them had.</p>
+
+      <h3>A belt is not a light source, and it does not obey inverse square</h3>
+      <p>This is the part most likely to be got wrong. An emitter at a distance falls off as <code>1/r²</code>. The
+        Galilean moons flatly refuse that: Io to Europa is <strong>1.6× the distance for 6.7× less dose</strong>
+        (<code>r⁻⁴</code>), and Io to Callisto is <strong>4.4× the distance for 360,000× less</strong>
+        (<code>r⁻⁸·⁶</code>). No single power law fits both. A belt is not a point source — it is a
+        <em>population confined by a field</em> — so it falls off <strong>exponentially in HOST RADII</strong>, and
+        that one change fits the whole family:</p>
+      <p class="formula"><code>dose(r) = D₀ · (B/B_ref)² · (Ω/Ω_ref) · exp(−r / λ)</code>, &nbsp;
+        <code>λ = λ_ref · (B/B_ref)<sup>1/3</sup></code>, &nbsp; r in <strong>host radii</strong></p>
+      <p>The exponents are <strong>reasoned, not fitted</strong> — there is only one calibrated system, so fitting
+        them would be overfitting. <code>B²</code> is the magnetic energy density available to trap; <code>Ω</code>
+        is the corotation drive that energises the particles; and a dipole's magnetopause standoff goes as
+        <code>B<sup>1/3</sup></code>, so a weaker host holds a <em>tighter</em> belt as well as a fainter one. That
+        compounding is why <strong>Saturn is not merely 18× below Jupiter</strong>: Enceladus takes about
+        0.0034&nbsp;Sv/day against Io's 36, roughly ten thousand times less. Only <strong>Io and Callisto</strong>
+        were used to calibrate it — the two Galileans with no field of their own, so no self-shielding is baked into
+        the law. Europa and Ganymede were held out as <strong>predictions</strong>: Europa lands at 0.71× its
+        measured dose, and Ganymede comes out <strong>1.54× HIGH</strong>, which is the right direction, because
+        Ganymede is the only moon in the Solar System with its own dynamo and the law does not model that shield.</p>
+
+      <h3>The belt has an INNER EDGE, and without it Earth reads lethal</h3>
+      <p>A bare <code>exp(−r/λ)</code> has no lower boundary, so asked about a body's <em>own</em> belt it reports
+        the belt peak at the centre of the planet. Run on Earth that gives 2.31&nbsp;Sv/day at the ground — about
+        three hundred times the real background, on the best-calibrated body in the model. Real belts stop well
+        above the surface because the <strong>atmosphere absorbs trapped particles into the loss cone</strong>: a
+        particle whose mirror point lies in dense air is gone within one bounce, not merely attenuated. So the
+        boundary is a property of the <em>air</em>, and it sits a fixed number of <strong>scale heights</strong>
+        above the reference level — which makes it scale with the atmosphere rather than with the planet. A puffy
+        hot atmosphere pushes its belt further out; a thin one lets it come closer; and an <strong>airless body has
+        no absorber at all</strong>, so its belt reaches the ground (which is why Ganymede's poles are scoured by
+        precipitating particles). Calibrated on the one inner edge that is well measured — Earth's inner belt
+        begins near 1.2&nbsp;R⊕ — and the scale-height count is rule-pack data.</p>
+      <p><strong>A giant is inside its own belt.</strong> That is new, and it is why a giant needs the two figures
+        described above: at Jupiter's 1&nbsp;bar level the belt is absorbed and the dose is a few mSv/yr, while just
+        above the cloud tops — past the inner edge — it is hundreds of Sv/day. Both are honest answers to different
+        questions, and quoting either alone is misleading.</p>
+
+      <h3>The brown-dwarf boundary — and why Jupiter is correctly excluded</h3>
+      <p>Three things are easily conflated here and only one of them is a belt. <strong>Self-luminous bodies really
+        do irradiate their moons</strong>, and they always have: from about <strong>13&nbsp;M<sub>jup</sub></strong>
+        — the deuterium-burning limit — a substellar object joins the same <code>L/d²</code> sum as the stars, so a
+        moon of a brown dwarf takes a genuine dose from its host. Measured on a synthetic system: at
+        1&nbsp;M<sub>jup</sub> a moon sees 2&nbsp;mSv/yr; at 13 it sees <strong>104</strong>, and at 40 it sees
+        2,626.</p>
+      <p><strong>Jupiter is an order of magnitude under that floor and does not qualify, and this is not an
+        oversight.</strong> Jupiter's real excess output — about 1.67× the sunlight it absorbs, from
+        Kelvin–Helmholtz contraction — is <strong>infrared and non-ionising</strong>. It is a heat source, not a
+        dose source. So a GM should expect the opposite of the intuitive answer: Jupiter's moons are savaged not
+        because Jupiter <em>shines</em> on them but because it <em>spins a magnetic field</em>, while a brown
+        dwarf's moons are irradiated because it genuinely shines. The belt is a separate term from the luminous sum
+        and sits beside it; a host with no meaningful field contributes nothing, which is almost every host.</p>
+      <p>The belt is a <strong>pure particle-channel</strong> source with no photon component, so it lands in the
+        machinery the receiver's magnetosphere and atmosphere already attenuate. It returns zero when the host's
+        <strong>spin is unknown</strong> as well as when its field is — an absent rotation is not a claim of a
+        stationary host, and inventing a hazard out of a missing input is worse than omitting one.</p>
     </section>
 
     <section id="fluids">
@@ -292,6 +700,11 @@
         you could see into it. A gas giant has no surface and goes down for thousands of kilometres, getting hotter
         and stranger the whole way; none of that is simulated, because none of it is visible. A giant's quoted
         temperature and pressure are its readings at the 1 bar level, and that's where our sky starts.</p>
+      <p><strong>A gas saturated at the ground makes frost, not cloud, and that is why Pluto has no methane
+        deck.</strong> A deck needs a level where the air becomes saturated as it rises and cools. If the air is
+        already saturated at the surface, the condensate is lying on the ground rather than floating above it, and
+        the model reports the frost. Pluto's real haze is photochemical, which is the next thing this model does not
+        do.</p>
       <p>Some real things are therefore missing. <strong>Photochemical hazes</strong> — the pale veil over Uranus,
         the orange smog above Titan's methane — are made <em>up there</em> by sunlight breaking gases apart, rather
         than rising from below, so this model can't produce them. Titan's haze is drawn, but from a separate rule.
@@ -347,6 +760,66 @@
         further toward the equator, glow slightly past the limb, and follow the body's <strong>axial tilt</strong>
         along with everything else in its frame (see the visualisation notes below). The Newton panel's
         <em>Aurora</em> layer names the gas and the colour for any world that has one.</p>
+    </section>
+
+    <section id="spin">
+      <h2>Spin axis, seasons and satellite planes <span class="phase">B10 · C3(c)</span></h2>
+      <p><strong>Stars turn too, and some of them are visibly squashed by it.</strong> Until recently no star in the
+        engine had a rotation at all, so every star was drawn as a perfect sphere however fast it should have been
+        spinning. <strong>Vega</strong> is the case that gives the lie away: it turns at about 236 km/s, close to the
+        speed at which it would start throwing material off its own equator, and it is genuinely about a fifth wider
+        across the equator than pole to pole. It is now drawn that way, in both the map view and the 3D view.</p>
+      <p><strong>Where a star's spin comes from depends on one dividing line — the Kraft break, at roughly 1.3 solar
+        masses, or spectral type F5.</strong> It is a real physical boundary rather than a modelling convenience, and
+        which side a star falls on decides whether its rotation is <em>calculated</em> or <em>drawn</em>.</p>
+      <ul>
+        <li><strong>Cooler and lighter than the break</strong> — the star has a churning, convective outer layer. That
+          generates a magnetic field, the field grips the star's own outflowing wind, and the wind carries away
+          angular momentum as it leaves. So the star <strong>slows down as it ages</strong>, and predictably enough
+          that its period can be calculated from its mass and the system's age: period rises with the square root of
+          age, and at any given age a redder star turns more slowly. The Sun takes 25 days at 4.6 billion years;
+          Barnard's Star, far lighter and much older, takes about 130.</li>
+        <li><strong>Hotter and heavier than the break</strong> — no convective layer, so no field, so nothing for the
+          wind to grip. These stars <strong>never slow down at all</strong> and keep roughly the spin they were born
+          with for their whole lives. That is why Vega is fast: not because it is young, but because nothing has ever
+          braked it. Birth spin cannot be recovered after the fact, so this half is drawn from the observed spread —
+          as a <em>fraction of the break-up speed</em> rather than a speed in km/s, because break-up depends on mass
+          and radius, and a fixed velocity would mean something quite different for one star than another.</li>
+      </ul>
+      <p>The flattening itself needs no extra assumption: it is the same relation that squashes Jupiter and Saturn,
+        applied to a star's own density and spin. A remnant &mdash; a white dwarf, neutron star or black hole &mdash;
+        is left out of this entirely, because its spin comes from the collapse that made it rather than from any
+        main-sequence history. <strong>A star with no rotation recorded is treated as not spinning, not as unknown</strong>,
+        so it stays round rather than being handed an invented spin.</p>
+      <p>A world's <strong>axial tilt</strong> is what gives it seasons: the engine's temperature range carries a
+        seasonal component driven by it, and below about 12° there is nothing worth calling a season. Until
+        recently no generated world had a tilt at all — not zero, but absent — so every generated world reported a
+        flat year. They all lean now, and so do their moons.</p>
+      <p><strong>Two things set an obliquity, and they do not blend.</strong> A planet condenses from the same
+        disc as its star, so it starts near the disc's normal and is nudged from there — most worlds sit modestly
+        tilted for the same reason Earth, Mars, Saturn and Neptune all sit between 23° and 29°. A late
+        <strong>giant impact</strong> does not nudge an axis, it re-points it, and the result is a direction with
+        no memory of the disc at all. That second population is drawn isotropically rather than from a wider
+        spread, which is why it lands where Uranus (on its side, 97.8°) and Venus (turning backwards, 177.4°)
+        actually are instead of smearing every tipped world toward 90°. A world in that group is tagged
+        <code>spin/tipped</code>.</p>
+      <p><strong>An inferred figure says so, and that is a promise rather than a disclaimer.</strong> A generated
+        world's tilt and rotation period are plausible values from the formation model, not measurements, so they
+        carry <code>spin/axis-inferred</code> and <code>spin/period-inferred</code>. The point of the mark is what
+        its <em>absence</em> means: Earth's 23.4° and Uranus's 97.8° are observed, and a generated neighbour
+        sitting beside them in the same starmap must not read as though somebody had been there. A body whose
+        rotation is set by a tidal lock is not marked either — that period is derived from the orbit, not guessed.</p>
+      <p><strong>Which plane does a moon orbit in?</strong> Close in, a host's equatorial bulge governs and the
+        moon rides its host's tilt — which is why Saturn's inner moons sit in the ring plane, the rings being in
+        that same equator. Far out, the star's tide wins and the orbit follows the system plane instead. The
+        changeover is the <strong>Laplace radius</strong>, and it is computed per host rather than assumed:
+        <code>r_L⁵ = 2·J₂·R²·a_p³·(M_p/M_star)</code>. Our own Moon is the case that shows why it matters — at 60
+        Earth radii it is well outside, so its 5.1° is quoted to the ecliptic, and to Earth's equator it wanders
+        between 18.3° and 28.6° with no single number to give. Generated moons past their host's Laplace radius
+        are declared in the system plane; the ones inside it keep their host's equator.</p>
+      <p>J₂ is not something an invented planet has, so it is estimated from the rotation the generator already
+        rolled. That is coarser than it sounds and still good enough: the handover radius goes as the fifth root
+        of J₂, so being wrong about it by a factor of three moves the boundary by a quarter.</p>
     </section>
 
     <section id="geology">
@@ -444,8 +917,381 @@
         tags plus the Orbital Stability and Resonance rows in the body panel.</p>
     </section>
 
+    <section id="ejection">
+      <h2>Who gets ejected — the asymmetry</h2>
+      <p>When two orbits genuinely cross, or sit too close in mutual Hill radii to be stable, the outcome is
+        <strong>not symmetric</strong>: a packed system sheds its <em>lighter</em> member, and a lightweight
+        crosser is scattered out by the heavier body rather than the other way round. The model always meant
+        that — the code's own comments said so — but for a long time it recorded the verdict against
+        <strong>both</strong> members of the pair, so a 16&nbsp;km asteroid on a Mars-crossing orbit put
+        "fated: flung out" on <strong>Mars</strong>.</p>
+      <p>Two things are worth taking from that, because both were assumed and both were wrong. The
+        <strong>threshold was innocent</strong>: the mutual-Hill test fires below 5.5, and the pair in question
+        sat at 9.28, so it never ran. And <strong>debris was already excluded</strong> — belts and rings are
+        filtered out before any pairing, because their mass is a density proxy rather than a point mass. The
+        fault was one branch below where anyone was looking: the crossing test fired correctly, and the fate was
+        then copied onto the wrong body. The assessment now names <em>which</em> body it means.</p>
+      <p><strong>A verdict also says which of its reasons produced it</strong>, because several tests look at each
+        body and the most severe one owns the outcome. That could read as a contradiction: a world could be told
+        "a locked mean-motion resonance keeps their conjunctions away from the crossing point" and then
+        "predicted outcome: flung out", with nothing to say those came from different mechanisms. Both halves were
+        true — the crossing test really had spared the pair, and a <em>different</em> test had found the body
+        outside its host's Hill sphere. So the resonance note now scopes its claim to the crossing it is about,
+        and the outcome is printed beside its own cause ("driven by: orbit exceeds host's stable Hill sphere").
+        Only when there is more than one driver; with a single reason the cause is already unambiguous.</p>
+      <p>The practical reading for a GM: a "fated" tag on a large planet is a claim about its <em>neighbourhood</em>
+        only if that planet is the lighter of the pair. Check what it is paired with before rewriting a campaign
+        around it.</p>
+    </section>
+
+    <section id="eclipses">
+      <h2>Eclipses <span class="phase">G8</span></h2>
+      <p><strong>When does something next cover this world's star, and how dark does it get?</strong> An eclipse
+        happens <em>somewhere</em>, and the answer is meaningless without saying where — so the observer is
+        standing <strong>on the body whose data is open, at the point directly under the occulter</strong>. From
+        there exactly three things can pass in front of your star: one of your own satellites, the world you orbit
+        if you are a moon, or the partner you share a barycentre with. That third case is not an afterthought:
+        Pluto and Charon eclipsed each other every few days through the late eighties, and that is how Charon's
+        radius was measured.</p>
+      <p>Standing on the <em>surface</em> rather than at the centre is not a detail. It shortens the distance to a
+        close occulter by a whole body radius, and for our Moon that 1.7% is the difference between an eclipse
+        that just covers the Sun and one that just fails to — which is the entire reason totality exists at all.</p>
+      <p><strong>The kind comes from the geometry, not from a threshold.</strong> Comparing the two discs'
+        angular radii against their separation gives <strong>total</strong> (the star vanishes behind the
+        occulter), <strong>annular</strong> (the occulter sits entirely inside the star's disc and leaves a ring),
+        or <strong>partial</strong>. The depth quoted alongside is the fraction of the star's disc <em>area</em>
+        covered, from the circle-circle overlap.</p>
+      <p>Below a quarter of the disc the sky does not noticeably darken and nobody at the table would look up, so
+        those are filtered out rather than reported — that line is also the natural one between an eclipse and a
+        mere <strong>transit</strong>, a dot crossing a disc. Deimos from Mars manages about 1% and never appears;
+        Phobos manages about 38% and does. And when a shadow simply cannot miss, there is no date to give: the
+        answer becomes a recurrence ("every 18 hours"), because that is a day/night cycle rather than an event.</p>
+      <p><strong>What is predicted, and what is not.</strong> Real eclipse seasons drift because an orbit's nodes
+        precess. The engine holds orbital elements fixed, so the honest description is "when these elements next
+        line up", not an ephemeris — every prediction is flagged approximate for that reason. It is exactly right
+        for a game and it should say so rather than implying observatory precision.</p>
+      <p>None of this runs during a derivation pass. A forward search over the propagator is not free, so it is
+        computed on demand for a reader and cached against the clock — the whole reason being that a per-pass cost
+        which also broke repeatability has bitten this engine before. The cheap half is the pre-filter: how dark
+        an occulter could <em>ever</em> manage is pure arithmetic on orbital radii, so one that could never reach
+        the floor is dismissed without a single propagation.</p>
+    </section>
+
+    <section id="surface-light">
+      <h2>Surface light — the spectrum that reaches the ground <span class="phase">B45 · B54</span></h2>
+      <p>Every reference chart of alien plant colour keys on one number: the star's temperature. That is the
+        wrong input, and it is wrong in a way that matters. <strong>Plants see the light that reaches the
+        ground</strong>, and between the star and the ground sits a sky. So this engine derives a
+        <strong>surface spectrum</strong> — the star's own output, filtered — and everything downstream reads
+        that instead. The sentence the model can now justify is <em>"its sun is red <strong>and</strong> its sky
+        eats what is left"</em>, which is a statement about the SHAPE of a curve rather than about a peak.</p>
+      <p>The chain is four steps and each is a real quantity:</p>
+      <ul>
+        <li><strong>The star.</strong> A Planck curve at the star's photosphere temperature, scaled by the same
+          luminosity the radiation model reads, over the same inverse square. There is no second sum.</li>
+        <li><strong>Rayleigh scattering.</strong> The λ<sup>−4</sup> that makes a sky blue takes the blue end
+          away from the ground. Its depth comes from the atmosphere's own <em>column density</em> —
+          pressure over gravity and molar mass, all quantities already present — times a per-gas
+          cross-section carried in the rule pack. CO₂ scatters about two and a half times as hard as
+          nitrogen; hydrogen about a fifth as hard.</li>
+        <li><strong>Absorption bands.</strong> Each gas eats specific bands, authored per species in the pack.
+          Water's near-infrared bands, methane's ladder through the red, sulphur dioxide's ultraviolet wall.
+          A gas with no authored band simply takes its Rayleigh share, which is the honest answer for
+          nitrogen and argon.</li>
+        <li><strong>Cloud decks.</strong> A deck is <em>grey</em>: droplets far larger than the wavelength
+          scatter every colour alike, which is why an overcast day is dim rather than tinted. It scatters
+          rather than absorbs, so there is a floor — an overcast world is not pitch dark underneath.</li>
+      </ul>
+      <p><strong>A gas giant gets a spectrum too, at the 1-bar level, and the level is named.</strong> Having a
+        level is not the same as having a surface, and nothing here re-enables a surface claim on a world
+        that has none.</p>
+      <h3>Two consumers, one spectrum — and the human eye comes LAST</h3>
+      <p>The same curve answers two different questions and they must not be answered the same way. For
+        <em>how much light is available to an organism</em>, the measure is the <strong>photon count</strong>:
+        photosynthesis is quantum-driven, one photon driving one charge separation whatever its energy, so
+        counting joules would over-rank the blue end for a reason biology does not care about. For
+        <em>what does it look like</em>, the curve is projected through the human eye's colour-matching
+        functions — and that step happens <strong>once, at the very end, on the presentation branch only</strong>.
+        The pigment model never reads a colour. Deriving red-green-blue first and choosing a pigment from it
+        would smuggle a fact about our retinas (they are green-sensitive) into a claim about alien biology.</p>
+      <p>The grid runs {GRID_MIN_NM}–{GRID_MAX_NM} nm in {GRID_STEP_NM} nm steps, and that is deliberately
+        <em>not</em> "the visible band" — visible is <strong>our</strong> band. Below about 280 nm a photon
+        carries enough energy to break the bonds it would otherwise power; above about 1400 nm it carries too
+        little to drive a biological charge separation at all. Both ends are set by molecular physics.</p>
+      <p><strong>Reading the plots.</strong> The coloured ribbon under a spectrum's axis is what each wavelength
+        looks like to a human eye, and it <em>fades to black at both ends</em> — that is not decoration, it is
+        the honest edge of your own vision. Most of the axis carries light you cannot see: a world can be
+        drenched in near-infrared and look dim. Where a pigment's absorption is drawn over a spectrum, it is
+        plotted as the POWER it takes out of the arriving light, on the same axis and in the same units, rather
+        than as a 0&ndash;1 fraction — a fraction drawn against an irradiance axis fills the frame and reads as
+        "it absorbs nearly everything" no matter what the light is doing.</p>
+      <p><strong>"Peak" is ambiguous and we mean one of them.</strong> A blackbody's peak per unit
+        <em>wavelength</em> and per unit <em>frequency</em> sit at different wavelengths, about 1.76× apart.
+        Everything here is the per-wavelength peak — 2.898 × 10<sup>6</sup> nm·K / T, so about 500 nm for the
+        Sun, which is the figure the charts quote.</p>
+
+      <h3>Try it</h3>
+      <p>Everything below is computed live by the same two functions the engine calls on every body in every
+        system. Move a slider and you are re-running the physics, not a mock-up of it.</p>
+      <SurfaceLightExplorer {pack} />
+
+      <h3>What it looks like from inside</h3>
+      <p>All of the above is a curve. This is the same thing at eye level: a familiar reference with a
+        world's daylight on one half of it, and a slider to wipe between home and there. It is the answer
+        to a question that comes up at a table more often than it should — <em>can they tell which wire is
+        the red one?</em></p>
+      <p>Two controls, because two things decide a colour. The star's own colour is one. The <strong>sky is
+        the other, and it is usually the bigger of the two</strong>: a star shifts everything together and
+        your eyes largely follow it, whereas an atmosphere takes specific bands away and nothing gives them
+        back. A thick carbon-dioxide sky drags red toward orange; a Venus-like one, passing two per cent of
+        what arrives, leaves so little to work with that reds come back pink. How BRIGHT a world is barely
+        matters here — it matters enormously to a pigment deciding whether it can afford to be choosy,
+        which is what the explorer above is for.</p>
+      <UnderThisLight standalone {pack} height={230} />
+
+      <h3>Where this model stops</h3>
+      <ul>
+        <li>Scattering is treated as extinction, so the sky's own glow is not added back to the ground. Real
+          diffuse skylight returns some of that scattered blue.</li>
+        <li>Bands are Gaussians at authored centres, not line-by-line radiative transfer.</li>
+        <li>One column, straight up. No air mass, no zenith angle, no seasons.</li>
+        <li>There is no ozone in the bundled gas set, so Earth's ultraviolet cut is not modelled.</li>
+      </ul>
+    </section>
+
+    <section id="standing-on-it">
+      <h2>Standing on it — brightness, colour and how far you can see <span class="phase">B45 · B78 · B79</span></h2>
+      <p>The surface spectrum answers what light arrives. Three things follow from it that a GM can actually
+        use at a table, and all three are the same derivation read differently.</p>
+
+      <h3>How bright, which is not the same question as what colour</h3>
+      <p>A star's cast is something eyes adjust to within the hour. How much light there is, they do not.
+        The <strong>midday brightness</strong> figure is the illuminant's own <em>Y</em> — its photopic
+        luminance — against Earth's own ground-level noon, so Earth reads exactly 1.</p>
+      <p>Venus is the case that makes the distinction earn its keep. About a <strong>fifth of the star's
+        energy</strong> reaches its ground, which sounds bright; but the surviving light peaks at
+        <strong>920 nm</strong>, out in the infrared, so only about <strong>1.6% of the visible light</strong>
+        gets down. Quoting the energy would say "dim". Quoting the luminance says "you would want the lights
+        on", which is the true answer. Below about a thousandth of an Earth noon colour drains toward grey,
+        because rods carry none — a moonlit world is grey however long you look at it.</p>
+
+      <h3>Why a bounded eye is the honest one</h3>
+      <p>Adaptation is modelled per cone, and it is <strong>never complete</strong>. The textbook von Kries
+        correction divides by the illuminant's own cone response, which quietly assumes your eyes can discount
+        any light however little of it there is. Venus's sky leaves the blue cones half a percent of the light
+        they get at home, and that maths answered by amplifying them <strong>134-fold</strong> — which does not
+        recover the colour, it recovers the noise. A white card came back pink and a blue wire came back
+        violet.</p>
+      <p>So the degree of adaptation in each channel is scaled by how much light that channel actually has,
+        shot-noise limited, so the trustworthy fraction goes as the square root. The everyday proof of the
+        bound is a low-pressure sodium street lamp: under one the world looks orange-grey, not colour-corrected.
+        Venus now reads as Venera photographed it — a deep orange world where blues go dark rust.</p>
+
+      <h3>How far you can see, and how far a lamp reaches</h3>
+      <p>A sky is dim overhead and a horizon is lost for one reason: light scattered out of the path. So
+        visibility is the <a href="#surface-light">same optical depth</a> turned on its side —
+        <code>&tau;<sub>550</sub> / H</code>, the column's depth spread over the scale height it occupies —
+        and nothing about it is derived twice. Range is Koschmieder's 2% contrast threshold,
+        <code>3.912 / &beta;</code>.</p>
+      <p>The check that it has not drifted: <strong>Earth comes out at 343 km</strong>, the textbook clean-air
+        Rayleigh limit and the reason distant mountains go blue rather than vanishing. <strong>Venus is 4 km</strong>
+        of murk from sheer weight of air — its cloud decks condense at 1.5 bar under a 92 bar surface, which is
+        ninety bar over your head, so it is not fog. You still cannot see past the horizon, which for a standing
+        person is 4.7 km on Earth and 2.4 km on the Moon.</p>
+      <p>Lamp reach is Allard's law, out <em>and back</em>:
+        <code>&rho;&middot;I&middot;e<sup>&minus;2&beta;d</sup> / (&pi;d&sup2;)</code> against a detection
+        threshold. The 2 in that exponent is the whole point — murk eats a lamp twice, on the way to the
+        target and on the way back to your eye, which is why lights are so much less use in it than people
+        expect. Headlights that throw 720 m on Earth manage 580 m on Venus and about 30 m in fog.</p>
+
+      <h3>What this does not model</h3>
+      <ul>
+        <li><strong>Photochemical haze</strong> — Titan's tholins, Venus's upper sulphuric aerosol. Not
+          modelled at all, because nothing in the rule pack describes it: a haze is not a condensate deck,
+          and no gas carries a haze yield. Titan therefore reads far clearer than its orange smog really is.
+          This is a genuine <em>data</em> gap rather than a modelling shortcut.</li>
+        <li><strong>Water and smoke aerosol</strong> — so Earth reads as its clean-air limit rather than the
+          twenty or thirty kilometres a damp day gives you. Its figure is a <em>ceiling</em>.</li>
+        <li><strong>Dust is modelled, but crudely.</strong> The dust-storm tag carries a <em>frequency</em>
+          and this reads a suspended <em>load</em> off it, which are not the same quantity; and it is mixed
+          evenly over a scale height where real dust sits low down, so a storm reads clearer than it is.</li>
+        <li><strong>Fog.</strong> Not possible yet at all: telling fog from cloud needs the deck's base
+          pressure, and that is computed and then dropped before any consumer sees it.</li>
+        <li>Beam shape — a lamp is its on-axis intensity, so these are reaches down the beam, not radii.</li>
+        <li>The sky's own glow, which in daylight is what a dark object is lost <em>against</em>. On a world
+          with almost no scattering the contrast holds further out than this says.</li>
+      </ul>
+
+      <p>The <strong>Surface view</strong> on a body panel draws all of it: that world's own ground and sky,
+        its life in the pigments its morphologies settled on, terrain shaped by the tags it already carries,
+        markers standing out to where its air gives up, and a spectrum band up each edge — home on the left,
+        that world on the right.</p>
+
+      <h3>A world with no ground</h3>
+      <p>A gas giant has nothing to stand on, so its Surface view is <strong>the view from a balloon</strong> —
+        a soft cloud deck below, darker air above, no hard horizon, because there is no edge to stand at. The
+        distance markers become balloons, which is not a joke: an aerostat is the one thing a person could
+        genuinely float at depth in such an atmosphere. And the depth is yours to choose, on a slider.</p>
+      <p>Everything the slider shows is a read of what the engine already derives. The
+        <a href="#clouds">adiabatic profile</a> gives the temperature at any pressure; each cloud deck has a
+        base pressure and an optical depth; the light at your level is the starlight dimmed by every deck
+        above you — a grey extinction, since droplets scatter every colour alike. So as you descend through
+        Jupiter's ammonia deck at about 550&nbsp;mbar the light goes to near nothing, which is not a fault: you
+        are under a hundred optical depths of cloud, and what you see is the deck's own faint glow and your
+        own lamps. The balloons are re-lit by the light at <em>that</em> depth, not by the 1&nbsp;bar reference.</p>
+      <p><strong>How deep it goes, and why it stops at 100&nbsp;bar.</strong> The temperature law is the dry
+        adiabat continued down from the 1&nbsp;bar anchor — the same law the cloud model already applies above
+        it — and it can be checked against the one descent anyone has made: Galileo's probe into Jupiter. We
+        say 319&nbsp;K at 10&nbsp;bar; the probe read about 330. We say about 400&nbsp;K at 22&nbsp;bar; the probe read
+        about 425 and died there. A few percent, all the way down. So the slider runs to 100&nbsp;bar, where
+        Jupiter is near 640&nbsp;K — and the air's own thermal glow is still nothing a human eye would see, so a
+        balloon down there sees by its lamps and otherwise sees black. Past 100&nbsp;bar the things the law
+        leaves out — the wet adiabat, opacity growing with density beyond simple scattering, and eventually
+        the air's own emission — start to matter, and none of them has been checked, so it stops.</p>
+      <p>Two things happen as you descend that the picture shows. The <strong>air thickens</strong>, so the
+        same scattering that sets surface visibility scales with density and your sight closes — hundreds of
+        kilometres near the top, tens at the bottom, metres inside a deck — and the same haze veils your lamps.
+        And the <strong>water deck</strong> appears, a few bar down, on any giant that carries water: it lives
+        below the reference level, which is why a renderer looking down from space never sees it and why the
+        published cloud tags do not carry it. The bundled Jupiter carries no water at all in its composition,
+        so its deep view finds none; that is a catalogue fact, not a limit of the model.</p>
+      <p>The "midday brightness" switch means the same here as on the ground: unticked, you see the
+        <em>colour</em> of whatever light reaches you, however faint — under the ammonia deck it is a trillionth
+        of the light above and it is still ochre. Ticked, you see how dark it is, which under an opaque deck
+        is black, because it is.</p>
+    </section>
+
+    <section id="biosphere">
+      <h2>Biospheres — which pigment, and how much of the ground <span class="phase">G19 · B53</span></h2>
+      <p>A world's life is described by four things it already carried — how complex it is, what its chemistry
+        is built on, where it gets its energy, and which <em>morphologies</em> are present — plus, now, how
+        much of the land each of those covers.</p>
+
+      <h3>Energy source is the gate</h3>
+      <p>Only <strong>photosynthetic</strong> life has any reason to be the colour of its star. A chemosynthetic
+        vent biosphere does not care what the sky looks like, and a thermosynthetic one still less. So the
+        whole pigment derivation is gated on that one field: no photosynthesis, no pigment, and any morphology
+        whose definition says it is entirely pigment-coloured then paints nothing at all. That is the right
+        answer for life that lives at a vent, and no code anywhere tests for it.</p>
+
+      <h3>The pigment is chosen under competing pressures, not by maximising energy</h3>
+      <p>The obvious model — pick whatever absorbs the most light — is <strong>falsified by the one case every
+        reader knows</strong>. The Sun's light peaks in the green. Chlorophyll <em>reflects</em> green and
+        absorbs either side of it. That is why leaves are green, and a naive maximiser instead predicts black
+        vegetation under a Sun-like star.</p>
+      <p><strong>Three explanations for that compete and this engine does not pick between them.</strong>
+        <em>Path dependence</em>: earlier retinal-based organisms may have occupied the green band first, so
+        chlorophyll took what was left — the "purple Earth" hypothesis. <em>Photoprotection</em>: absorbing
+        right at the peak overloads the photosystem, so sitting off-peak is a safety margin.
+        <em>Steadiness</em>: photosystems may optimise for a steady supply rather than a maximum one, which
+        favours the steep flanks of a spectrum over its summit (Arp and colleagues, <em>Science</em>, 2020).
+        All three are live; the model scores all three at once and the weights are rule-pack data.</p>
+      <p>The three pressures <strong>multiply</strong> rather than adding, which is what lets each one switch
+        itself off where it stops meaning anything. Under a dim sky nothing reaches saturation, capture still
+        discriminates, and the pigment that takes everything wins — <strong>black vegetation, arrived at
+        rather than asserted</strong>. Under a generous sky everything worth considering has enough, capture
+        stops separating them, and the decision falls to overload and steadiness. Selectivity scales with
+        available energy, and nothing in the code says so.</p>
+
+      <h3>The answer is a ranked set, and the winner is drawn</h3>
+      <p>Around a Sun-like star every common pigment is viable; the strongest honest claim is which is most
+        <em>widespread</em>. So the engine keeps the whole scored set and <strong>draws</strong> the dominant
+        from it, weighted by score and seeded on the body's own id. <strong>That randomness is the model, not
+        a placeholder.</strong> Without an evolutionary history a real biosphere's outcome genuinely is
+        contingent — nature tries many things and the second best can dominate — so two similar worlds around
+        similar stars can legitimately grow different colours. The same world always gives the same answer.</p>
+
+      <h3>Why a world offers the colours it offers</h3>
+      <p>The Bio tab lets you <strong>choose</strong> which pigment a world's life settled on, from a list. That
+        list is not a palette — it is this world's <em>scored viable set</em>, everything that comes within the
+        viability fraction of the leader under the light reaching its ground. A world whose sky eats the red
+        will not offer you a red-absorbing pigment near the top, and a starved world will offer you very little
+        that is not black.</p>
+      <p>So picking a different one is <strong>not correcting the engine</strong>. The model's own claim is that
+        several of these would work and history decided between them; changing the answer is choosing a different
+        history, not a different physics. That is why it is an ordinary dropdown with no warning attached — and
+        why the choice is remembered, as a hand-added <code>biodiversity/pigment</code> tag that the derivation
+        reads on every pass. Leave it alone and the weighted draw stands.</p>
+      <p>Every pigment in that list is <strong>rule-pack data</strong>, editable under
+        <em>Settings &rarr; Planets &rarr; Biospheres</em>: its absorption bands, how broadly it absorbs, and the
+        weights that decide between them. Add one of your own and it joins the scoring immediately — there is no
+        list of pigments anywhere in the code.</p>
+      <p><strong>What your campaign stores is the difference, not the list.</strong> Retint one morphology and
+        that is what gets saved — one field of one entry — while everything you did not touch keeps following
+        the shipped pack. It matters for more than file size: a campaign that stored its own copy of all five
+        would silently stop receiving every later improvement to the defaults, and nobody would be told.</p>
+
+      <h3>The same light colours the ground and the sea</h3>
+      <p>The surface spectrum is not only the pigment model's input. A world's <strong>bare ground</strong> and
+        its <strong>oceans</strong> are coloured by it too: each material's authored colour is treated as a
+        reflectance <em>spectrum</em>, the arriving light is filtered through it, and the result is converted to
+        something you can see once, at the end. That is why the same Earth reddens under a red dwarf — not
+        because two colour values were multiplied, but because of what its star emitted and what its sky let
+        through.</p>
+      <p>Said plainly: turning an authored colour back into a spectrum is an <em>upsample</em>, not a
+        measurement. Endless different spectra look identical under daylight, and this picks one plausible
+        member of that family, flat past the red end because a colour swatch carries no infrared information.
+        Authoring real reflectance curves would beat it, and the pack's shape already allows for that.</p>
+      <p class="fudge-note"><strong>Not yet through the same path:</strong> the atmospheric haze tint, the cloud
+        decks, the giant cloud chemistry and the incandescent glow of a very hot world are still combined as
+        plain colours rather than spectra. They are next.</p>
+
+      <h3>The colour is what is left over — and it says whose</h3>
+      <p>Vegetation colour is not looked up. It is the surface spectrum minus what the pigment absorbs, minus
+        what the surrounding tissue absorbs, projected through the human eye at the last step. Two versions
+        are derived and they answer different questions: one <em>adapted</em> to the local star, which shows
+        the pigment's own identity the way your eyes would settle after an hour outdoors; and one with the
+        star's cast and brightness <strong>left in</strong>, which is what you would see arriving from orbit
+        and is what the renderers use. Neither is "the" colour, and both are labelled.</p>
+
+      <h3>Morphologies stack, and the order is the hierarchy</h3>
+      <p>Each morphology present carries <strong>its own coverage of the land</strong>, and they are painted in
+        list order — microbial first, then fungal over it, then flora over that. Plant life covers fungal;
+        fungal colours microbial. <strong>Coverage is of the LAND, not a share of it</strong>: three layers at
+        80%, 50% and 60% are independent statements and may total well past 100% without being wrong.</p>
+      <p><strong>There are no special rules.</strong> Every morphology is one uniform record and one code path
+        reads all of them. Flora having no lights is an <em>empty light range</em> in flora's definition.
+        Fauna contributing nothing you can see from orbit is <em>two empty ranges</em> in fauna's — no tints,
+        no pigment drive — not a case in the code. Technological life, dark by day and lit by night, is a dark
+        tint range and a strong light range, and it needed no code at all. Adding a sixth kind is another
+        entry in the pack.</p>
+      <p><strong>Where life sits is derived, not decreed.</strong> There is no rule saying "skip the poles".
+        The band is wherever the surface temperature keeps the biosphere's <em>own solvent</em> liquid, read
+        off the same latitude decomposition the temperature panel shows. On an Earth-like world that empties
+        the poles; on a hotter one it empties the equator instead; on a methane world it lands somewhere else
+        entirely and nothing in the code knew that was coming.</p>
+      <MorphologyStackExplorer {pack} />
+      <p><strong>Each morphology draws its own pigment</strong> from that same viable set, on its own seeded
+        stream — a world's microbial mats and its plants are separate lineages that made the choice
+        separately, and forcing them to agree would throw away the whole point of scoring a set. What the
+        engine records on a world is <code>biodiversity/pigment</code> (the one its most extensive
+        pigment-driven layer settled on) and <code>biodiversity/land-cover</code>. The rest of the viable set
+        is derived and kept, but not tagged — the Bio tab's picker lists it, and six tags per living world
+        saying "this would also have worked" is clutter.</p>
+      <p>A biosphere that does <em>not</em> photosynthesise has no pigment at all, so there is no star colour
+        to take and the model correctly has nothing to say about what it looks like. There, and anywhere else
+        you want it, a colour can simply be set by hand on the Bio tab; an authored colour wins outright
+        rather than being blended with a guess.</p>
+      <p class="fudge-note"><strong>What is not here yet.</strong> Competing populations, which morphology takes
+        <em>which</em> pigment, biospheres ageing, and a world's colour changing as its life evolves. Coverage
+        per layer plus an order is already the shape those need, so the time-scrubbing falls out of what is
+        built rather than replacing it.</p>
+    </section>
+
     <section id="colour">
       <h2>Apparent colour &amp; visualisation <span class="phase">§2e</span></h2>
+      <p><strong>A surface is weathered as well as made of something.</strong> Bulk makeup alone gives every
+        rocky world the same brown, and two processes pull it apart. <strong>Oxidation</strong> is why Mars is
+        red: iron plus an oxidiser gives hematite, and it arrives as a tag. <strong>Space weathering</strong> is
+        why the Moon, with the same iron and the same age but no oxidiser, is grey — micrometeorites and the
+        solar wind deposit nanophase metallic iron on every grain, which mutes the mineral absorption bands
+        until the surface keeps only a faint warm cast. It needs true vacuum, so a world with even a wisp of
+        air gets the other one, and an icy crust is exempt because it anneals rather than accumulating iron.
+        Maturity is the irradiation dose; fresh crater rays are bright because they are unweathered.</p>
+      <p>Both happen <em>here</em>, on the apparent colour, rather than at paint time — they are properties of
+        the surface, not of one picture of it. That was a real bug: the greying used to be applied by the
+        texture renderers only, so Luna's 2D and 3D views were correctly grey while the colour chip beside
+        them stayed brown. One derivation, read by everything.</p>
       <p>Instead of one swatch per class, a body's <strong>true colour</strong> is composed: a surface base from
         makeup fractions, a blue ocean overlay, a tint from the dominant coloured atmospheric gas, condensed cloud
         decks veiling the surface (sulfuric/sulfur/alkali opaque; water patchy, so Earth stays blue), a giant's colour
@@ -490,13 +1336,43 @@
         <code>/discgallery</code>.</p>
     </section>
 
+    <section id="views">
+      <h2>Spatial views: grids and routes <span class="phase">G4 · A37 · A41</span></h2>
+      <p><strong>One grid vocabulary, and one generator behind it.</strong> The 3D starmap, the flat starmap and
+        the system view's ground plate all draw their lattice from the same code, so a system snapped to your hex
+        in one view lands dead-centre in it in the others. The hex convention is <strong>flat-topped</strong>
+        everywhere — the system view used to carry a pointy-topped copy of its own, which was both unreachable and
+        already wrong by the time it was found. Square and hex are the two lattices; the caller supplies the cell
+        size, the origin and how far to fill, and applies its own pan, zoom or 3D fit on top. Nothing in the
+        generator knows which view is asking.</p>
+      <p>Grids <strong>fade with distance</strong> rather than being drawn to the horizon at full strength, which
+        is what stops a large map turning into a wall of lines and lets the eye keep the bodies rather than the
+        graticule. The style is chosen in the preset editor and travels with a player view, so what you set up is
+        what your table sees.</p>
+      <p><strong>Routes run to the stars, not to their shadows.</strong> Systems in this engine carry a real
+        depth — the bundled maps use true 3D positions from astrometry, not a flattened chart — so a route drawn
+        on the ground plane ends at a system's <em>projection</em> rather than at the star. Routes are direct
+        lines between the systems themselves, through the air. In the flat plan view every system is on the plane
+        by definition, so the same code draws the same flat lines and there is no second implementation for the
+        2D case.</p>
+    </section>
+
     <section id="habitability">
       <h2>Habitability score</h2>
       <p>A 0–100 weighted score, rebalanced toward current astrobiology thinking — a liquid <strong>solvent</strong>
-        is the master variable: solvent (20, +5 for water = 25), temperature vs that solvent's liquid range (25),
+        is the master variable: solvent (20, +5 for water = 25), temperature against that solvent's band (25),
         atmospheric pressure (18), radiation (17), and surface gravity (15, a weak constraint with a wide 0.5–1.5 g
         tolerance) — the instantaneous <em>surface</em> conditions. The solvent must be genuinely <em>liquid</em>
         (a frozen ice cap scores 0 — its life potential is the subsurface ocean below).</p>
+      <p><strong>Which temperature, and it matters more than it sounds.</strong> The score reads the
+        <em>mean surface</em> temperature — the average of the day and night sides worked out under
+        <a href="#temp-range">temperature range</a> — and never the radiating temperature. The two diverge by 56 K
+        on Luna and 130 K on Mercury, and a score keyed on the wrong one is scoring a world nobody could stand on.
+        <strong>Be clear about what the band is, too:</strong> it is not the solvent's full liquid range but a
+        narrower plateau inside it — 283–298 K for water, falling to zero 40 K either side, with methane and ammonia
+        anchored at single points (111 K and 218 K) with a 30 K falloff. So a 340 K ocean world scores poorly on
+        temperature although its water is unambiguously liquid. That plateau is a judgement about <em>comfortable</em>
+        rather than about <em>liquid</em>, and it is worth knowing which of the two you are reading.</p>
       <p>The solvent factor is weighted <strong>presence-first</strong>: a standing surface liquid is high-value the
         moment it exists, and — for a world with only <em>one</em> known example to calibrate against — the <em>amount</em>
         is a weak signal next to whether it stays liquid at all (which the temperature and pressure factors already
@@ -532,8 +1408,21 @@
         atmosphere, hydrosphere, tidal, rotation, orbit, star class, eccentricity).</p>
       <ul>
         <li>A body's fit to a band is <code>1</code> inside, decaying over a <em>relative</em> 15% soft edge, <code>0</code> beyond — so a tiny moon can't half-match a giant.</li>
-        <li>A type's score is the <strong>mean of its band fits × a mild specificity bonus</strong> for band count. Among clean matches more matched bands still wins (specific beats generic), but a band-rich catch-all whose extra bands are barely-true edge slivers can't out-score a perfect match on fewer bands (summing fits used to let <em>barren</em>/<em>desert</em> steal Venus-class and dwarf-planet-class worlds). Falling fully outside any defining band disqualifies the type.</li>
-        <li>The best <strong>base</strong> archetype wins (mutually exclusive); <strong>modifiers</strong> (ringed, eyeball, ultra-short-period, toroidal, ellipsoid, disrupted) stack on top.</li>
+        <li><strong>A type the world matches completely beats one it only nearly matches</strong>, whatever the scores say. If the world sits inside every band a type defines, no type it falls outside of can win — score decides only between types that all fit. Without that rule a heavily-weighted type could buy its way past a better-fitting rival on a single band that was merely close: Pandora, at 45&nbsp;°C mean surface, was reading as <em>earth-like</em> against a band that stops at 42&nbsp;°C, purely because earth-like matched more bands than the types it genuinely fits.</li>
+        <li>Within a tier, a type's score is the <strong>mean of its band fits × a mild specificity bonus</strong> for band count. Among clean matches more matched bands still wins (specific beats generic), but a band-rich catch-all whose extra bands are barely-true edge slivers can't out-score a perfect match on fewer bands (summing fits used to let <em>barren</em>/<em>desert</em> steal Venus-class and dwarf-planet-class worlds). Falling fully outside any defining band disqualifies the type.</li>
+        <li>The best <strong>base</strong> archetype wins (mutually exclusive); <strong>modifiers</strong> (ringed, ultra-short-period, toroidal, ellipsoid, disrupted) stack on top. The eyeballs are <em>base</em> types, not modifiers — a world is an eyeball instead of being a desert, not as well as.</li>
+        <li><strong>A type can also carry GATES, which are preconditions rather than traits.</strong> A gate must hold or the type is ruled out entirely, but passing one earns no score and adds no specificity. The eyeballs are gated on having a solid surface at all (bulk gas under 50%): a permanently-lit dayside is a statement about ground, so a tidally locked gas giant is not an eyeball however hot it is. Fifteen bundled bodies used to be — including three in the Testion example whose own names are "hot neptune", "puffy" and "alkali metal clouds gas giant". <em>Why a gate and not just another band:</em> a band that is true of every body which survives it drags a poor defining band <em>upward</em> by averaging — lifting a 0.11 fit by 37% while lifting a perfect one by 8% — so it rewards the worst matches most. Expressed as a band, the surface test turned six temperate rocky worlds at 278–303&nbsp;K into "cold eyeballs".</li>
+        <li><strong>Which TEMPERATURE a fingerprint keys on is a deliberate split, and it moved.</strong> Fourteen
+          types whose definition describes a <em>surface</em> — desert, ice, lava, ocean, methane, ammonia, hycean,
+          subsurface-ocean, earth-analogue, earth-like, superhabitable, forest, jungle, swamp — key on the
+          <strong>surface temperature</strong>. Twelve that describe a <em>radiation environment</em> or a giant's
+          cloud-top chemistry — the hot and ultra-hot Jupiters and Neptunes, chthonian, ice-giant, ultra-cool-dwarf
+          and the five gas-giant cloud classes — correctly still key on <strong>equilibrium temperature</strong>.
+          The giveaway that the bands were authored as surface temperatures all along: <em>earth-analogue</em> asks
+          for 255–300&nbsp;K, and Earth's equilibrium temperature is 254.1&nbsp;— just outside its own band, while
+          its surface at 287&nbsp;K sits mid-band. This matters beyond tidiness: the stat block prints Type and
+          Surface temp two rows apart, so a type keyed on the wrong temperature puts a visible contradiction on the
+          page.</li>
         <li><code>gas-giant</code> is a weighted-down fallback, so the specific giant types (hot-jupiter, the cloud-types, …) win when they apply.</li>
         <li>Classification reads raw physics features, <em>not</em> tags — so there's no circularity.</li>
       </ul>
@@ -568,6 +1457,41 @@
         planet/ocean, etc.). The full layering is documented in <code>docs/classification-and-tags.md</code>.</p>
     </section>
 
+    <section id="overrides">
+      <h2>When you disagree with the physics — GM overrides</h2>
+      <p>Everything above describes what the engine <em>works out</em>. None of it is binding on you. A tag you add
+        by hand <strong>wins</strong>, and it keeps winning: re-processing the system, editing the world, importing
+        it again — the override survives all of them, and the engine's own answer for that tag is suppressed rather
+        than left sitting alongside it. This is the one place in the model where the answer is not derived, so it is
+        worth knowing exactly how far it reaches.</p>
+
+      <p><strong>What an override does and does not change.</strong> It replaces the <em>tag</em>, not the physics
+        behind it. Tagging a world <code>habitability/marginal</code> does not alter its temperature, its
+        atmosphere, or anything computed from them — the number a later pass reads is still the derived one. So an
+        override is a statement about how the world should <em>read</em>, not a way to edit the model. If you want
+        the physics itself to move, change an input (composition, orbit, mass) and let the engine re-derive.</p>
+
+      <p><strong>How to tell them apart.</strong> Every tag records where it came from, and the Tags tab groups them
+        by exactly that:</p>
+      <ul class="tags">
+        <li><strong>Derived from the physics</strong> — recomputed on every run. Locked: change the inputs, not the tag.</li>
+        <li><strong>Your override</strong> — a physics-namespace tag you added by hand. Shown outlined, and it
+          suppresses the engine's twin. Delete it and the derived answer comes straight back.</li>
+        <li><strong>Recorded at generation</strong> — written once when the world was made and never re-derived
+          (<code>origin/*</code>, <code>spin/*</code>). You may delete one permanently; nothing will restore it.</li>
+        <li><strong>Your tag</strong> — anything of your own that the engine has no opinion about at all.</li>
+      </ul>
+
+      <p><strong>One honesty rule worth calling out.</strong> Some generated tags are a claim that a value was
+        <em>inferred</em> rather than measured — <code>spin/axis-inferred</code> is the standard case. Type a real
+        obliquity in and that claim is retired automatically, because leaving it would mean the world carried a note
+        saying "we guessed this" about a figure you supplied.</p>
+
+      <p>The Newton trace (the "show the working" panel on a body) labels an overridden line as an override rather
+        than quietly printing your value as though the engine had derived it — the trace is a record of how an
+        answer was reached, so a hand-set answer has to say so.</p>
+    </section>
+
     <section id="reasons">
       <h2>Reasons to visit (RPG hooks)</h2>
       <p>On top of the physics, every world gets <em>game</em> hooks — why a crew would actually go there — so a
@@ -590,15 +1514,146 @@
         (helium-3 on giants and old airless regolith; diamonds on carbon-rich high-pressure worlds; fissiles on
         radiogenic crusts; refuelling on hydrogen giants and ice), but deliberately a hook generator, not a
         first-principles resource model.</p>
+      <p><strong>A rule that means "you can get this off the ground" now checks that there IS ground.</strong>
+        Mining, refuelling and resupply hooks test bulk composition — and a giant satisfies bulk tests trivially,
+        because a planet-sized envelope contains a great deal of water and metal by mass. A 751&nbsp;°C helium
+        giant was offering life-support resupply, water/ice refuelling and water ice; the water is supercritical
+        vapour spread through an atmosphere with no surface under it. Those rules are gated on the same
+        <code>makeup.gas &lt; 0.5</code> test the classifier and the habitability score use, so all three agree
+        about what a surface is. <em>What a giant keeps</em> is everything you can do from orbit or the upper
+        envelope: helium-3, gas skimming, deuterium, aerobraking and gravity assists. Across the bundled maps this
+        removed 34 false claims from 59 surfaceless bodies and left all 159 legitimate water-ice tags alone.</p>
+    </section>
+
+    <section id="zones">
+      <h2>Stellar zones &mdash; the lines drawn on the map <span class="phase">B80 &middot; B81 &middot; B84</span></h2>
+      <p>Turn <strong>Zones</strong> on in the system view and a set of rings appears. They are not decoration
+        and they are not a table of astronomical-unit constants: <strong>every one of them is derived from the
+        star's own luminosity, asked at a distance from THAT STAR.</strong> Two consequences follow, and both
+        have been got wrong here before.</p>
+      <p><strong>Luminosity, never mass.</strong> A frost line goes as &radic;L. For main-sequence stars
+        <code>L &prop; M<sup>3.5</sup></code>, so a &radic;M form is not a rough approximation of it &mdash; it is a
+        different curve (<code>M<sup>0.5</sup></code> against <code>M<sup>1.75</sup></code>) and it is wrong in
+        <em>opposite directions</em> at the two ends. Measured against the luminosity-derived line, the old mass
+        form put the frost line <strong>12.9&times; too far out</strong> for an M8 dwarf, 42.6&times; for an L dwarf,
+        2.3&times; for a K5 &mdash; and <strong>10&times; too close</strong> for a hot B star. Sol came out at 2.700
+        against a true 2.261, near enough to look right, which is exactly why it survived: the one star anybody
+        checks is the one star the bug does not show on. Ice worlds formed far too far out around red dwarfs and
+        far too close around hot stars, and moons of cold giants were almost never icy.</p>
+      <p><strong>Ask the question of the STAR, not of the parent.</strong> For a moon the immediate host is a
+        planet, which has no frost line, so the engine walks the parent chain up to the star and uses the body's
+        distance from <em>it</em>.</p>
+
+      <h3>There are TWO frost lines, and they answer different questions</h3>
+      <p>The map labels them <em>Frost Line (Form.)</em> and <em>Frost Line (Curr.)</em>, and a GM who reads them
+        as one line duplicated will misread every icy world in the system.</p>
+      <table class="mini">
+        <thead><tr><th>Line</th><th>Where</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Formation frost line</strong></td><td>~170&nbsp;K, at the star's luminosity when the
+            system was <em>born</em> &mdash; back-calculated from the star's present luminosity and its age</td>
+            <td>What a body could have <em>formed</em> as. Beyond it the disc's solid surface density jumps and
+            giants become likely, which is why the placement chain starts inside it and giants are drawn outside
+            it.</td></tr>
+          <tr><td><strong>Current frost line</strong></td><td>~125&nbsp;K, at the star's luminosity <em>now</em></td>
+            <td>Where exposed ice is stable <em>today</em>. A world can sit between the two and have formed icy
+            without staying icy.</td></tr>
+        </tbody>
+      </table>
+      <p>The same treatment gives the silicate (rock) line, the soot line, the CO<sub>2</sub> ice line, and the CO
+        ice line &mdash; and the system's outer limit, which is simply <strong>twice the CO ice line</strong>, so a K
+        dwarf's system ends near 4&nbsp;AU, a G star's near 11 and an F star's near 16.</p>
+
+      <h3>The habitable zone, and the caveat it needs</h3>
+      <p>The green band is where liquid water is possible <strong>on a world with enough atmosphere</strong>. Its
+        outer half assumes a thick carbon-dioxide greenhouse &mdash; Kopparapu's maximum-greenhouse edge &mdash; so a
+        thin-aired world out there is genuinely frozen, and that is physics rather than a fault.
+        <strong>Mars sits inside the Sun's habitable zone and is a desert of ice.</strong> Earth without its own
+        greenhouse would be &minus;18&nbsp;&deg;C at Earth's distance. The band is a statement about where a
+        <em>sufficiently thick</em> atmosphere could hold water, not a promise about any particular world.</p>
+
+      <h3>The kill zone has two sources, and that is why an M dwarf is unpredictable</h3>
+      <p>The red band close to the star is not a brightness threshold. It is the mean of <strong>two independent
+        hazards, each measured relative to Sol</strong>, so that Sol lands on the anchor by construction:</p>
+      <ul>
+        <li><strong>Surface ultraviolet</strong> &mdash; the fraction of the star's own blackbody output below the
+          damage edge, times its luminosity. A hot star pours out a share of hard photons that a cool one does not
+          have at all, whatever their brightnesses.</li>
+        <li><strong>Coronal ionising output</strong> &mdash; the X-ray and extreme-ultraviolet emission derived in
+          <a href="#ionising-output">Ionising output</a>, which follows the magnetic field rather than the
+          brightness.</li>
+      </ul>
+      <p>A star lethal by <em>either</em> route is lethal, and the zone scales as the square root of the combined
+        hazard. That is the whole reason <strong>an active M dwarf is dangerous and a quiet one of the same size is
+        not</strong>: the first term barely separates them and the second separates them by orders of magnitude.
+        Hot stars accordingly show much wider kill and danger zones than their old brightness-driven ones, and quiet
+        cool dwarfs much narrower. The <strong>danger zone</strong> outside it is a rule-pack multiple of the kill
+        zone (5&times; by default), and both the edge wavelength and the Sol anchor distance are pack data.</p>
+      <p class="note">Every constant named here is in the rule pack, under
+        <code>generation_parameters</code>: <code>frost_line_base_au</code>, <code>kill_zone_sol_au</code>,
+        <code>uv_damage_edge_nm</code>, <code>danger_zone_multiplier</code>. The single implementation is
+        <code>physics/zones.ts</code>; nothing else is allowed to derive a second one.</p>
     </section>
 
     <section id="generation">
       <h2>Auto-generation</h2>
       <p>When you generate a system, the stars come from the HR diagram (aged to the chosen age), and the
-        planets are placed <strong>physics-first</strong>: every orbit slot is offered only the types that are
-        actually <em>viable</em> there (the fingerprint's T_eq band fits the orbit), and the chosen type is then
-        <em>built to match</em> (makeup, atmosphere, hydrosphere, iron core…) so the classifier confirms it.
-        Nothing the generator produces is physically impossible for its orbit and star.</p>
+        planets are placed <strong>physics-first</strong> in three steps: <em>where</em> the orbits go is set by
+        the star; <em>what could be born</em> at each orbit is answered by the same viability model the
+        &ldquo;Add planet here&rdquo; picker uses; and <em>which</em> of those viable types is drawn is where the four
+        dials act. The chosen type is then <em>built to match</em> (makeup, atmosphere, hydrosphere, iron core&hellip;)
+        so the classifier confirms it. Nothing the generator produces is physically impossible for its orbit and
+        star; the dials only change how likely each kind of world is, never whether it could exist where it sits.</p>
+      <p><em>A note on what these dials are for.</em> They are broad inputs, set by hand to give a system its
+        flavour. A wider generator will one day set them automatically &mdash; a star cluster shares its metallicity,
+        an association its age &mdash; and the same four numbers will flow in from there.</p>
+
+      <h3>Where the orbits go &mdash; spacing that scales with the star</h3>
+      <p>Planet spacing used to be the Solar System&rsquo;s Titius&ndash;Bode sequence in <em>absolute AU</em>, so
+        every star &mdash; a red dwarf, a brown dwarf, a supergiant &mdash; was handed the Sun&rsquo;s own orbits
+        (0.4, 0.7, 1.0, 1.6, 2.8&nbsp;AU&hellip;) and had the ones outside its zones filtered off. That is why planets
+        never generated closer than about half an AU whatever the star, and why brown-dwarf systems sprawled far
+        outside anything the star could warm. TRAPPIST-1&rsquo;s seven real planets all sit between 0.011 and
+        0.062&nbsp;AU.</p>
+      <p>Spacing is now the <strong>ratio between successive orbits</strong>, drawn once per system and varied
+        slightly per gap. That is what is genuinely steady in real systems: the Sun&rsquo;s successive ratios average
+        about 1.7 (Venus/Mercury 1.85, Earth/Venus 1.39, Mars/Earth 1.52 &hellip; Neptune/Uranus 1.57), TRAPPIST-1&rsquo;s
+        about 1.32. A ratio is scale-free, so nothing about the Sun is carried to another star: the chain starts at a
+        zone derived from the star&rsquo;s own luminosity (between the dust-condensation edge and the
+        <a href="#zones">formation frost line</a>, drawn log-uniformly because real innermost planets span more than
+        a decade of orbits) and 1.7 means the
+        same thing around a brown dwarf as around a supergiant. It runs out at twice the star&rsquo;s CO ice line &mdash;
+        also derived, never a constant &mdash; so a K dwarf&rsquo;s system ends near 4&nbsp;AU, a G star&rsquo;s near
+        11, an F star&rsquo;s near 16, and their tails reach to 80&ndash;110. Every zone the placement chain refers to
+        is in <a href="#zones">Stellar zones</a>, including the reason there are two frost lines.</p>
+      <p><strong>Mutual Hill radii are the floor under the ratio, not the rule.</strong> Two neighbours closer than a
+        few mutual Hill radii, <code>R<sub>H</sub> = ((m&#8321;+m&#8322;)/3M<sub>&#9737;</sub>)<sup>1/3</sup> &middot; (a&#8321;+a&#8322;)/2</code>,
+        do not survive a gigayear (Pu &amp; Wu 2015: roughly 10 or more). Where the drawn ratio would put a pair
+        closer than that, the gap widens to the floor. Because the planet masses are in the expression, the orbits
+        either side of a massive body stay clear without that being a special case &mdash; which is the physical reason
+        Jupiter&rsquo;s neighbourhood is empty. Every one of these numbers is in the rule pack
+        (<code>generation_parameters.orbital_spacing</code>).</p>
+
+      <h3>What could be born here &mdash; one viability model, shared with the picker</h3>
+      <p>&ldquo;Which types could exist at this orbit?&rdquo; is asked twice in the engine &mdash; by the generator
+        choosing a type for a slot, and by the &ldquo;Add planet/moon here&hellip;&rdquo; picker &mdash; and two places
+        answering one question will drift. So it is one function, judging every type&rsquo;s own declared bands against
+        the slot, gate by gate: <strong>temperature</strong> (the orbit&rsquo;s equilibrium temperature against the
+        type&rsquo;s band, with cold-edge slack for greenhouse types); <strong>mass</strong> (a primary orbit gets a
+        <em>planet</em> &mdash; not a pebble, and not a star: asteroids, comets and planetesimals sit below a
+        Mercury-ish floor, and brown dwarfs sit above the 13-Jupiter-mass deuterium line that every giant class
+        stops at; both edges are pack data); <strong>age</strong> (early formers and late formers &mdash; a
+        protoplanet is young, a stripped chthonian core or a helium remnant needs time; the window lives on the
+        type as a <em>formation</em> band); <strong>tidal lock</strong> (a type that requires a star-locked world is
+        only offered where the orbit can actually despin a planet in the time available &mdash; the eyeball classes
+        used to be drawn wherever the temperature fitted, and drawing one <em>made</em> the world locked); and for
+        moons, <strong>host fit</strong>.</p>
+      <p>The picker shows those gates at the top as switches, and you can turn any of them off to see the wider
+        menu <em>despite</em> the physics &mdash; hand authoring is hand authoring, and the tags will say what is
+        implausible about the result. The generator keeps every gate on. So the two can never disagree about what
+        is viable, only about whether you chose to override it. <strong>And the formation band is one-way:</strong>
+        it decides what a slot may be <em>given</em>, never what a body <em>is</em>. A hand-placed chthonian in a
+        million-year-old system still classifies as a chthonian.</p>
 
       <h3>Star hierarchy</h3>
       <p>Two or more stars are nested into a hierarchy of barycentres — paired bottom-up with each level's
@@ -609,28 +1664,105 @@
         ~2.3× the separation). Tight pairs push their planets circumbinary; well-separated stars each keep their
         own little system.</p>
 
-      <h3>The four knobs</h3>
-      <p>Three of the four sliders shape <strong>standard</strong> worlds (the makeup/orbits the engine then derives
-        from); only <strong>Rarity</strong> reaches for the strange. They apply to planets/moons before the
-        processor re-derives everything.</p>
+      <h3>Which one is drawn &mdash; the four dials</h3>
+      <p>Among the types that survive the gates, the draw is a product of independent weights, each answering a
+        different question. Position has already decided <em>where</em> a giant is viable (beyond the frost line);
+        these decide how <em>likely</em> one is drawn there.</p>
       <table class="mini">
-        <thead><tr><th>Slider</th><th>Controls</th><th>How it acts</th></tr></thead>
+        <thead><tr><th>Dial</th><th>Question it answers</th><th>How it acts</th></tr></thead>
         <tbody>
-          <tr><td><strong>Rarity</strong></td><td>which type (eccentricity)</td><td>A gate on each type's rarity (0 mundane … 1 exotic): at 0 only basic rock survives; sliding up unlocks standard habitable, then uncommon, then the legendary exotica. These are the loot-box tiers (grey→gold) shown in the add-type picker. A mild boost favours the rare at the top. Star type nudges it (eyeballs around M dwarfs, life worlds around G/K).</td></tr>
-          <tr><td><strong>Disk mass</strong></td><td>how many worlds</td><td>Scales the per-star count drawn from the star-type tables by <code>0.4 + diskMass×1.6</code> — sparse (0.4×) to crowded (2×).</td></tr>
-          <tr><td><strong>Metallicity</strong></td><td>what they're made of</td><td>Biases interior makeup by ±0.3: high scales metal+rock up &amp; ice+gas down (low does the reverse). Because composition drives the classifier, a metal-rich slot tends to read iron/silicate/terrestrial, a metal-poor one ice/ocean/sub-neptune — always within the standard family.</td></tr>
-          <tr><td><strong>Dynamical history</strong></td><td>orbit shapes</td><td>Draws eccentricity up to <code>0.02 + dyn²×0.45</code> (calm near-circular → violent ~0.46), and past 0.7 starts flipping some worlds to retrograde — a quiet clockwork system vs an eccentric, migrated brawl.</td></tr>
+          <tr><td><strong>Metallicity</strong></td><td>did the disc have the material?</td><td>How much rock and metal
+            there was to build with. The physics is Fischer &amp; Valenti (2005): giant occurrence rises roughly as
+            <code>10<sup>2[Fe/H]</sup></code>, because core accretion must build a solid core fast enough to grab gas
+            before the disc dissipates, and a metal-poor disc starves it. So <em>low</em> metallicity means <em>fewer</em>
+            giants, not more &mdash; the gas is in every disc; what is missing is the solids to seed a core &mdash; and a
+            metal-poor system is a few small rocky worlds and little else. High metallicity gives dense iron and carbon
+            worlds and far more gas giants. There is a floor on giants even so: gravitational instability &mdash; the disc
+            collapsing directly, no core needed &mdash; is metallicity-blind, so the bottom of the dial is not
+            &ldquo;never a giant&rdquo;. Ice-dominated worlds move the other way, weakly. The Sun is somewhat metal-rich
+            against the local median, which is why the default sits above the middle. Measured across the dial around
+            a Sun-like star: giants per system 0.7 &rarr; 4.2, gassy worlds 9% &rarr; 57%, icy 26% &rarr; 6%, and the median
+            planet density falls from 5.5 to 2.4&nbsp;g/cc as the mix turns gassy.</td></tr>
+          <tr><td><strong>Disk mass</strong></td><td>how much was there in total?</td><td>Scales the planet count drawn
+            from the star-family table by <code>0.4 + diskMass&times;1.6</code> &mdash; sparse (0.4&times;) to massive
+            (2&times;). Because the spacing chain packs outward, more planets means the system <em>reaches further</em>:
+            a Sun-like star&rsquo;s outermost world moves from a median 0.7&nbsp;AU at the bottom of the dial to 38 at
+            the top. This dial changes the system&rsquo;s size, not what its worlds are made of.</td></tr>
+          <tr><td><strong>Dynamical history</strong></td><td>how rough was the past?</td><td>Three effects, all
+            quadratic in the dial so the top end bites hard. Eccentricity is drawn up to
+            <code>0.02 + dyn&sup2;&times;0.45</code> (calm near-circular, violent up to ~0.47). The star&rsquo;s spin
+            axis tilts by up to <code>4 + dyn&sup2;&times;60</code> degrees &mdash; a star and its planets condense from
+            one disc and stay aligned unless something moved them, so a tilt is evidence of a violent past, not
+            decoration. And with probability <code>dyn&sup2;&times;0.4</code> a world is captured spinning backwards
+            and tagged <em>origin/captured</em>. A quiet clockwork system against an eccentric, migrated brawl.</td></tr>
+          <tr><td><strong>Rarity</strong></td><td>how strange should this be?</td><td>A ladder over each type&rsquo;s
+            rarity (0 mundane &hellip; 1 exotic): <code>w(r) = ratio<sup>r</sup></code>, where <em>ratio</em> is simply
+            how likely the rarest type is against the most common one, and <code>ln(ratio)</code> moves linearly with
+            the dial so every step is the same multiplicative change. It used to be a step &mdash; everything at or
+            below the dial equally likely, everything above cut off &mdash; which made an airless rock and an eyeball
+            world equally probable at the default and put one exotic class on a third of every population. <strong>The
+            default sits at the realistic mix, a quarter of the way along, not in the middle:</strong> below it a
+            system only gets duller and few will go there, so three quarters of the travel is left for the strange,
+            and the realistic anchor can be as steep as reality is. Nothing is ever excluded at any setting &mdash;
+            a legendary world stays possible at the bottom, just very unlikely. Star type nudges it as a separate,
+            physical term (eyeballs really are commoner around M dwarfs).</td></tr>
         </tbody>
       </table>
+      <p>All three of the pack blocks behind this &mdash; <code>type_rarity_weighting</code>,
+        <code>type_metallicity_sensitivity</code>, <code>planet_mass_band_me</code> &mdash; are yours to retune without
+        touching code, and each records where its <em>realistic</em> point sits so a banded slider can colour it.</p>
+      <p><strong>That colouring is what the strip under each dial is.</strong> Green is where real systems sit,
+        amber is possible but unlikely, red is where nothing measured looks like it &mdash; with a one-line verdict
+        beneath. It marks how <em>unusual</em> a setting is and never what is allowed: <strong>nothing is forbidden
+        at any position on any dial</strong>, and the band edges are rule-pack data
+        (<code>generation_parameters.realism_bands</code>, including the wording), so a table running a
+        deliberately fantastical setting moves the goalposts rather than fighting them. Note that the green band is
+        not centred: rarity's realistic point sits a quarter of the way along, because below it a system only gets
+        duller.</p>
+
+      <h3>Importing, and filling out what you imported</h3>
+      <p>Every importer &mdash; Universe Sandbox, SpaceEngine, Traveller, the real-sky catalogue &mdash; now
+        comes through the same three doors, so a system you bring in and a system you generate cannot drift apart.
+        <strong>The star&rsquo;s class</strong>: a stated designation is kept as written, luminosity class included
+        (a K giant stays a giant; it used to import as a K dwarf when only the letter was read); a bare letter has
+        its class <em>inferred</em> from temperature and radius when the file carries them, because that is what a
+        luminosity class physically is; and defaults to main sequence when it cannot &mdash; never a guessed G, and
+        nothing usable is left honestly unclassified. <strong>The system&rsquo;s age</strong>: guessed from the
+        primary star&rsquo;s own life &mdash; middle-aged for a dwarf, near the end for a giant, cooling age for a
+        white dwarf, honestly undated for a brown dwarf &mdash; unless the file states one the star can have; shown
+        with the range that star allows and marked <em>estimated</em>. <strong>Infill</strong>: after any import
+        the same four dials as above are offered, with an age control bound to the star&rsquo;s life (a flaring
+        marker at the young end, because a young flaring system is a real option). Imported worlds are truth
+        &mdash; never moved, re-typed or aged; a generated world that would crowd one is dropped, not the import.
+        The imported star is truth too &mdash; it is fed to the generator as it is now, not re-aged. Only the
+        worlds generated into the system are born into the chosen era. Traveller&rsquo;s <code>W</code> is a hard
+        count of primary planets that never includes moons, and its PBG belts and giants are honoured where the
+        star&rsquo;s zones allow.</p>
 
       <h3>Star type &amp; age</h3>
       <p>Planet richness <strong>honours the star</strong>: massive O/B/A stars blow their disks away (few worlds),
-        F/G/K/M keep rich disks, remnants rarely retain anything. <strong>Age</strong> threads through the whole
+        F/G/K/M keep rich disks, brown dwarfs (L/T/Y) get their own table &mdash; discs around them are observed and
+        form a few close-in rocky worlds, but a disc a few percent of a stellar one is not building ten &mdash; and
+        remnants rarely retain anything. The lookup reads the star&rsquo;s <em>letter</em>, so a G giant is a G and a
+        red supergiant is an M. <strong>Age</strong> threads through the whole
         model — it evolves the stars (a newborn is briefly large, cool and over-luminous on the <em>pre-main-sequence</em>,
         contracting onto the main sequence over a time that's longer for lower mass, so a young M dwarf's habitable zone
         starts far out and migrates inward; then the slow main-sequence brightening; eventually red giant → white dwarf),
         decays radiogenic heat (cooling → the tectonic regime), grinds belts down (young = wide, old = narrow), sets
         flare activity, and drives atmospheric escape.</p>
+      <p><strong>A red giant cannot cool without limit &mdash; the Hayashi limit says where it stops.</strong> A star
+        held up by its own pressure and stirred all the way through by convection has a <em>coldest possible surface
+        temperature</em>, somewhere around 3,000&ndash;4,000&nbsp;K depending weakly on its mass. Below that there is
+        no stable arrangement of the star at all. It is why the red giant branch runs almost vertically on a
+        Hertzsprung&ndash;Russell diagram: a giant swells to enormous size and brightens by a factor of thousands
+        while its surface temperature barely shifts, and why real giants of very different origins all end up looking
+        much the same colour.</p>
+      <p>The engine used to cool an ageing star by a <em>proportion</em> of the temperature it started with, which is
+        a reasonable approximation for a Sun-like star and nonsense for anything else &mdash; a small red dwarf was
+        driven down to 1,500&nbsp;K, which is not a star. It now cools toward a floor set by the star's own mass, so
+        every giant converges on a believable colour whatever it grew from. <em>One thing this deliberately does not
+        model:</em> a pulsating star late in its life can dip a little below its own limit, and the limit shifts with
+        chemical composition. Both are finer distinctions than the single smooth swelling used here.</p>
       <p><strong>Atmospheric escape</strong> (over the age, planets assumed to form a few Myr in): two age-integrated
         losses thin or strip an atmosphere <em>before</em> greenhouse &amp; radiation read it. <em>Thermal (Jeans)</em>
         — light gases (H₂/He) leave any non-giant; heavier gases need a high escape parameter
@@ -643,9 +1775,18 @@
       <p>Whether a world keeps one face toward its host is <strong>derived</strong>, not authored: the
         tidal despinning timescale <code>t ∝ ω·a⁶·m·Q / (M_host²·k₂·R³)</code> (Gladman/Peale) is compared
         to the system age — if it's shorter, the body has had time to lock. The steep <code>a⁶</code>
-        dependence means every regular moon, Mercury and close-in (hot-Jupiter-style) worlds lock, while
-        the AU-distance planets and the gas giants spin free. It's surfaced as <code>orbit/tidally-locked</code>
-        and re-derived every run; the body editor's checkbox pins it by hand and skips the assessment.</p>
+        dependence means every regular moon, Mercury and close-in (hot-Jupiter-style) worlds despin, while
+        the AU-distance planets and the gas giants spin free. It's re-derived every run; the body editor's
+        checkbox pins it by hand and skips the assessment.</p>
+      <p><strong>Despinning has TWO end states, and only one of them is a permanent face.</strong> The
+        usual one is synchronous rotation — one face toward the primary, tagged
+        <code>orbit/tidally-locked</code> with <code>orbit/locked-star</code> (a permanent sunward face,
+        so an eyeball world) or <code>orbit/locked-planet</code> (a moon, whose whole surface still
+        cycles through stellar day and night) saying which. The other is a <strong>captured spin-orbit
+        resonance</strong>, which an eccentric orbit can hold instead: Mercury turns three times for
+        every two orbits, so its day is its own number — 176 days — and its whole surface sees the Sun.
+        A resonant world is tagged <code>orbit/spin-orbit-resonance</code> and carries neither face tag,
+        because it has no face to keep. Getting this wrong made Mercury classify as a hot eyeball.</p>
 
       <h3>End-state vs evolving worlds</h3>
       <p>Aging is <strong>opt-in per body</strong>. A hand-authored, imported or hand-picked world carries the
@@ -672,6 +1813,10 @@
       <h2>Known fudges</h2>
       <ul>
         <li>Greenhouse forcing is capped to prevent runaway blow-ups on thick atmospheres (it's a forcing model, not a full radiative-convective solve).</li>
+        <li>A giant's cooling curve is a calibrated power law in age, not a structural model — pinned to the
+          real solar system at one end and matched to the brown-dwarf tracks at the other, but a fit either
+          way. Below Jupiter mass it deliberately does not scale with mass at all, because the per-class
+          figure already accounts for a smaller giant.</li>
         <li>Gas-giant "surface" temperature and pressure are both reported at a ~1 bar reference level — and this
           is now load-bearing rather than cosmetic, since it is where the <a href="#clouds">atmosphere model</a>
           starts climbing from. Nothing below that level is simulated.</li>
@@ -705,6 +1850,20 @@
         <li>The resonant-pumping thresholds (e ≥ 0.004, planet-mass host) are calibrated cutoffs — tuned so Enceladus fires and Ganymede/Dione don't. A resonance-maintained eccentricity now feeds the numeric tidal-heat model (it dissipates from zero forcing, where a transient eccentricity must clear an onset first), with the global-mean contribution still capped at a calibrated few kelvin.</li>
         <li>The solar-seasonal geyser branch is a trigger condition (cold + surface ice), not a sublimation-energy model.</li>
         <li>Predicted fates (infall/ejection/collision) are heuristic outcomes read off the dominant instability driver, not N-body integrations.</li>
+        <li>A drawn transit route is a <strong>re-estimate, not the flown path</strong>. Planning a journey produces
+          several hundred to several thousand path points; what travels to a player view is about a dozen corner
+          points, chosen so that a smooth curve drawn through them tracks the real path to within roughly a fifth
+          of a percent of the journey's own length. The 3D view then rebuilds that curve and subdivides it as you
+          zoom in, so it stays smooth rather than turning into straight facets. The reason is data rather than
+          physics: a ship under way rewrites what players receive about twice a second, and the whole snapshot is
+          re-sent each time, so the full path would be thousands of numbers on the busiest channel in the app.
+          The same estimate is used on the GM's own 3D view, so both see the identical line; the GM's flat map
+          still draws the full path point for point. The line is also pinned to the ship itself, so it passes
+          through the vessel exactly even where the estimate and the true path differ. While a player view is
+          <strong>following the GM's clock</strong>, ships in transit are also <em>positioned</em> along this
+          same re-estimated course, so a moving ship sits exactly on its drawn line; a player scrubbing their
+          own clock sees orbits move but transit traffic hold its last GM-reported position, because live
+          traffic is the GM's clock to run, not the viewer's.</li>
         <li>Coasting/adrift transit trajectories drop moons <em>while the clock is moving</em>: the gravity field used to integrate a drifting ship live (and its forecast line) includes only stars and planets, because re-integrating the full satellite census on every clock-slider frame is impractical in a browser. A moon's pull on a heliocentric coast is negligible anyway, and the star and any planet the ship passes still bend the path. Once the clock settles, the forecast upgrades to a one-shot, moon-inclusive plot — fast estimates while you scrub, the accurate path when you stop.</li>
       </ul>
     </section>
@@ -752,6 +1911,9 @@
   code { background: var(--bg-panel, #14161c); border: 1px solid var(--border, #2a2d36); border-radius: 4px; padding: 1px 5px; font-size: 0.9em; }
   table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.9rem; }
   table.mini { width: auto; }
+  /* A displayed formula: set apart from the prose so the law is readable as a law. */
+  p.formula { text-align: center; margin: 1.1rem 0; padding: 0.6rem 0.4rem;
+    background: rgba(255,255,255,0.04); border-radius: 6px; line-height: 1.9; }
   th, td { text-align: left; padding: 6px 12px; border-bottom: 1px solid var(--border, #2a2d36); }
   th { color: var(--text-faint, #8a8f9a); font-weight: 600; }
   td.sym { color: var(--accent, #ff5a1f); font-weight: 600; }

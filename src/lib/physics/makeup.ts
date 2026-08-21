@@ -137,6 +137,10 @@ export function inferMakeupFromDensity(density_gcc: number): Makeup {
 // The normalised makeup fractions for a body: explicit if present, else inferred from its bulk
 // density. The measured density is gravity-COMPRESSED, so we decompress by mass first — a small,
 // dense body is iron (Mercury), not compressed rock. Used by the classifier + the body panel.
+// DATA-R8: THIS is the composition, not `body.makeup`. The stored field is empty on 107 of the 226
+// non-star bundled bodies — Jupiter among them — and it does not matter, because every consumer
+// calls this. If you are about to conclude that a body "has no composition" or that some test
+// keyed on gas fraction is dead, measure through HERE and not through the field.
 export function makeupFractions(body: CelestialBody): Required<Makeup> {
   if (body.makeup) return normalizeMakeup(body.makeup);
   const massKg = body.massKg || 0;
@@ -170,6 +174,42 @@ export function isFluidGiant(body: CelestialBody): boolean {
 // apparent-colour derivation and the disc renderer so they can't disagree.
 export function rendersAsGiant(body: CelestialBody): boolean {
   return makeupFractions(body).gas > 0.5 || isFluidGiant(body);
+}
+
+// THE GAS FRACTION ABOVE WHICH THERE IS NOWHERE TO STAND. One number, named once, because it is the
+// boundary of a PHYSICAL question and not a tuning knob — see `hasSolidSurface` below.
+export const SOLID_SURFACE_MAX_GAS = 0.5;
+
+/**
+ * IS THERE GROUND HERE? (inbox B36 — the has-ground question, and ONLY that one.)
+ *
+ * Lives beside `rendersAsGiant` on purpose: engine-map M1 records that those two overlap and could
+ * disagree about an ice giant, and a reader comparing them needs both in front of them. It used to
+ * live in `physics/radiation.ts`, which meant the cloud model and the body editor had to import the
+ * RADIATION module to ask a question about composition.
+ *
+ * READ engine-map M2 BEFORE ADDING A CALLER. `makeup.gas` against 0.5 answers at least four different
+ * questions in this codebase — *has ground*, *is a giant*, *draws as a giant*, *has a surface to rust*
+ * — and they share a boundary rather than being one question in four spellings. This is the first one.
+ * Do not route the others here on the strength of the shared constant.
+ *
+ * A STAR is excluded outright: a photosphere is not somewhere you stand, and the radiation model does
+ * not compute a star's own dose at all, so without this Sol would carry a "background" hazard tag
+ * derived from an undefined figure.
+ */
+export function hasSolidSurface(n: any): boolean {
+  if (n?.roleHint === 'star') return false;
+  return makeupHasSolidSurface(makeupFractions(n));
+}
+
+/**
+ * The same question asked of a COMPOSITION rather than a body — for callers that hold a `Makeup` and
+ * have no node to infer from (the body editor applying a preset). Kept as a separate entry point
+ * rather than a second threshold: `hasSolidSurface` is defined in terms of this one, so there is
+ * still exactly one comparison in the codebase.
+ */
+export function makeupHasSolidSurface(m: Makeup): boolean {
+  return (m.gas ?? 0) <= SOLID_SURFACE_MAX_GAS;
 }
 
 // PHYSICS CORRECTS THE MAKEUP (composition round 2, seam fix). A body whose mass + density land in the

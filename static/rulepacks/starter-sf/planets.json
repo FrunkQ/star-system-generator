@@ -80,5 +80,21 @@
                 { "weight": 20, "value": true }
             ]
         }
+    },
+    "surface_albedo": {
+        "_note": "Bond-albedo surface model (inbox B5, B68). Bare ground from the makeup, then brightened by the deposits the engine already derives: wind-laid oxide dust, and any surface volatile frozen out of the atmosphere. A FROZEN SOLVENT SHELL is different from either and ages: `ice_clean` is a fresh slab, `ice_lag` is the dark non-ice residue that builds on it, and `ice_lag_half_age_Gyr` is the surface age at which the lag covers half of it. `frost` is a coating condensing out of the air NOW (calibrated on Io) and does not age - two states of one material.",
+        "metal": 0.075,
+        "rock": 0.11,
+        "carbon": 0.05,
+        "ice": 0.62,
+        "gas": 0.30,
+        "ocean": 0.06,
+        "frost": 0.62,
+    "ice_clean": 0.9,
+    "ice_lag": 0.09,
+    "ice_lag_half_age_Gyr": 0.22,
+        "dust": 0.35,
+        "oxidised_coverage": { "light": 0.3, "moderate": 0.6, "heavy": 0.85 },
+        "volatile_frost_ramp_K": 30
     }
 }

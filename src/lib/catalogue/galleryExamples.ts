@@ -7,11 +7,17 @@ import type { CelestialBody, RulePack } from '$lib/types';
 import { deriveCloudDecks, applyCloudDeckTags, deriveWeather } from '$lib/physics/cloudDecks';
 import { deriveApparentColorParts, starColorFromTempK } from '$lib/rendering/apparentColor';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '$lib/physics/stellarActivity';
+import { deriveSurfaceSpectrum } from '$lib/physics/surfaceSpectrum';
+import { deriveVegetation } from '$lib/physics/vegetation';
 
 export interface GalleryRow {
 	title: string;
 	blurb?: string;
 	bodies: CelestialBody[];
+	/** Light this row for its NIGHT SIDE: a raking key and no fill, so the terminator is real and
+	 *  anything that GLOWS can be seen glowing. The rest of the gallery is deliberately front-lit so
+	 *  surface detail reads, which is the opposite of what a row about city lights needs. */
+	nightSide?: boolean;
 }
 
 const mk = (over: Partial<CelestialBody> & { name: string }) => {
@@ -264,10 +270,93 @@ const blackHoles = [
 	bh('Feeding · 100%', 1.0, true),
 ];
 
+
+// ── Life on the land ────────────────────────────────────────────────────────────────────────────
+// These run the ENGINE — deriveSurfaceSpectrum then deriveVegetation, the same two calls the
+// processor makes — rather than being hand-tinted. If the pigment model or the coverage arithmetic
+// changes, this row changes with it, which is the only kind of reference gallery worth having.
+const bioBase = {
+	id: 'bio-base', roleHint: 'planet', kind: 'body',
+	makeup: { rock: 0.68, metal: 0.32 }, calculatedGravity_ms2: 9.81,
+	hydrosphere: { coverage: 0.65, composition: 'water', layers: [{ location: 'surface', liquid: 'water', coverage: 0.65 }] },
+	atmosphere: { pressure_bar: 1, molarMassKg: 0.02896, composition: { N2: 0.78, O2: 0.21, H2O: 0.004 } },
+	equilibriumTempK: 288, temperatureK: 288,
+	temperatureProfile: { meanK: 288, totalMinK: 220, totalMaxK: 315,
+		components: [
+			{ source: 'latitude', label: 'Latitude', lowK: 248, highK: 302 },
+			{ source: 'seasonal', label: 'Seasonal', lowK: 279, highK: 297 }] },
+	tags: [{ key: 'climate/polar-ice', value: 'water' }],
+};
+
+function bioWorld(id: string, name: string, morphs: { morphology: string; coverage: number }[], pigment?: string): CelestialBody {
+	const body: any = JSON.parse(JSON.stringify(bioBase));
+	body.id = id; body.name = name;
+	body.biosphere = { complexity: 'complex', coverage: 1, biochemistry: 'water-carbon',
+		energy_source: 'photosynthesis', morphologies: morphs };
+	const roll = (purpose: string) => {
+		let h = 2166136261;
+		const str = `${id}|veg|${purpose}`;
+		for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+		return ((h >>> 0) % 100000) / 100000;
+	};
+	const spec = deriveSurfaceSpectrum(body, { starTempK: 5800, luminositySolar: 1, distanceAU: 1 });
+	body.surfaceSpectrum = spec?.summary;
+	body.vegetation = deriveVegetation(body, spec?.curves, { roll, pinnedPigment: pigment });
+	const ap = deriveApparentColorParts(body, undefined, { starTempK: 5800 });
+	body.apparentColor = ap; body.apparentColorHex = ap.hex;
+	return body as CelestialBody;
+}
+
+export const GALLERY_COVERAGE = [
+	bioWorld('bio-bare', 'Bare rock — no life', []),
+	bioWorld('bio-25', 'Flora · 25% of the land', [{ morphology: 'flora', coverage: 0.25 }], 'chlorophyll'),
+	bioWorld('bio-60', 'Flora · 60%', [{ morphology: 'flora', coverage: 0.6 }], 'chlorophyll'),
+	bioWorld('bio-100', 'Flora · 100% — all the land', [{ morphology: 'flora', coverage: 1 }], 'chlorophyll'),
+	bioWorld('bio-shallows', 'Flora · past the shore, into the shelf', [{ morphology: 'flora', coverage: 1.2 }], 'chlorophyll'),
+];
+
+export const GALLERY_PIGMENTS = ['chlorophyll', 'bacteriorhodopsin', 'carotenes', 'phycocyanin', 'melanin'].map((k, i) =>
+	bioWorld(`bio-pig-${k}`, k.charAt(0).toUpperCase() + k.slice(1), [{ morphology: 'flora', coverage: 0.7 }], k));
+
+export const GALLERY_STACK = [
+	bioWorld('bio-mic', 'Microbial only', [{ morphology: 'microbial', coverage: 0.9 }], 'chlorophyll'),
+	bioWorld('bio-mf', '+ fungal over it', [
+		{ morphology: 'microbial', coverage: 0.9 }, { morphology: 'fungal', coverage: 0.5 }], 'chlorophyll'),
+	bioWorld('bio-mff', '+ flora over that', [
+		{ morphology: 'microbial', coverage: 0.9 }, { morphology: 'fungal', coverage: 0.5 },
+		{ morphology: 'flora', coverage: 0.55 }], 'chlorophyll'),
+	bioWorld('bio-fauna', '+ fauna (paints nothing)', [
+		{ morphology: 'microbial', coverage: 0.9 }, { morphology: 'fungal', coverage: 0.5 },
+		{ morphology: 'flora', coverage: 0.55 }, { morphology: 'fauna', coverage: 1 }], 'chlorophyll'),
+];
+
+export const GALLERY_TECHNO = [
+	// 25% OF THE GLOBE is roughly what humans occupy or work today, and with 35% land here that is
+	// about 70% of the land — widely present, barely lit. That gap is the whole point: a world is not
+	// dark because nobody is there, it is dark because only a few per cent of what people hold is
+	// built and burning.
+	// The id is chosen, not fudged: how BRIGHTLY a settlement burns is a seeded roll from the pack's
+	// own light range, and this world rolled a dim one — which is what makes it the Earth-like case.
+	bioWorld('bio-tech-us-6', 'About us — 25% of the globe, barely lit', [
+		{ morphology: 'flora', coverage: 0.65 }, { morphology: 'techno', coverage: 0.7 }], 'chlorophyll'),
+	bioWorld('bio-tech-all-land', 'Every continent built over', [
+		{ morphology: 'flora', coverage: 0.2 }, { morphology: 'techno', coverage: 1 }], 'chlorophyll'),
+	bioWorld('bio-tech-sea', 'And out over the sea', [{ morphology: 'techno', coverage: 1.8 }], 'chlorophyll'),
+	bioWorld('bio-tech-100', 'Ecumenopolis — the whole world', [{ morphology: 'techno', coverage: 3.2 }], 'chlorophyll'),
+];
+
 export const GALLERY_ROWS: GalleryRow[] = [
 	{ title: 'Surface features', bodies: surface },
 	{ title: 'Atmosphere limb-glow — by pressure', bodies: atmospheres },
 	{ title: 'Same Earth under different stars', bodies: earthUnderStars },
+	{ title: 'Life on the land — coverage grows from the coast inwards', bodies: GALLERY_COVERAGE,
+	  blurb: 'One world, one geography, one slider. Life reaches the land at the water\u2019s edge and spreads inland, so raising the coverage widens the band toward the interior — and past 100% it goes the other way, into the shallows.' },
+	{ title: 'The pigment decides the colour', bodies: GALLERY_PIGMENTS,
+	  blurb: 'The same world under the same star, with each of the viable pigments pinned in turn. Nothing is hand-tinted: each colour is what that pigment fails to absorb out of the light reaching this ground.' },
+	{ title: 'The hierarchy is a painter\u2019s algorithm', bodies: GALLERY_STACK,
+	  blurb: 'Plant life covers fungal, fungal colours microbial — layers painted in order. Fauna is present on the last one and paints nothing, because animals do not tint a world seen from orbit.' },
+	{ title: 'Technological life — lights, not paint (see the night side)', bodies: GALLERY_TECHNO, nightSide: true,
+	  blurb: 'A settlement spreads exactly as plant cover does, from the coasts inland. It reads as what it EMITS: a grey-brown urban haze by day and a network of light by night. At full coverage the world is one city.' },
 	{ title: 'Oceans of different liquids', bodies: oceanWorlds },
 	{ title: 'Rotational shape — flattening to break-up', bodies: shapes },
 	{ title: 'Gas & ice giants (+ ring, tilt)', bodies: giants },
@@ -333,6 +422,11 @@ function giantBody(
 	return body;
 }
 
+// G7: the recipe reader lives in `./giantRecipe` so the body editor can import it without
+// dragging the gallery's processor/appearance dependencies in with it. Re-exported here
+// because the gallery is where a reader looks for it first.
+export { giantRecipe, giantRecipeJson, type GiantRecipe } from './giantRecipe';
+
 export function buildGiantLab(pack: RulePack | null): GalleryRow[] {
 	// A Jupiter's trace chemistry, held FIXED and simply cooled. Ammonium hydrosulphide condenses
 	// warmest and so appears first and deepest; ammonia follows it down as the planet cools; and by
@@ -387,6 +481,18 @@ export function buildGiantLab(pack: RulePack | null): GalleryRow[] {
 	const pressures = [0.1, 0.5, 1, 5, 20].map((p) =>
 		giantBody(`${p} bar anchor · 150 K`, 150, 105, p, HYDROGEN(jovianTrace), pack));
 
+	// AGE. A giant is still radiating the gravitational energy of its own formation, and cooling as it
+	// does — so the same planet, at the same distance from the same star, is a different object at 10
+	// million years and at four and a half billion. This row is the one that answers "how do I make a
+	// really hot gas giant?": you do not move it closer to its star, you make it young. Temperatures
+	// here are what estimateInternalHeatK derives for a Jupiter-mass world at each age, on top of the
+	// same faint 110 K equilibrium throughout.
+	const ageSweep: [string, number][] = [
+		['10 Myr', 987], ['50 Myr', 456], ['100 Myr', 327], ['500 Myr', 151], ['1 Gyr', 108], ['4.6 Gyr', 165]
+	];
+	const ages = ageSweep.map(([label, tK]) =>
+		giantBody(`${label} old`, tK, 110, 1, HYDROGEN(jovianTrace), pack));
+
 	return [
 		{ title: 'Giant lab — one Jovian chemistry, cooled', blurb: 'The same trace gases throughout — only the temperature changes. Every deck below is the model’s answer, not a label.',
 			bodies: cooling.map(([label, t, eq]) => giantBody(label, t, eq, 1, HYDROGEN(jovianTrace), pack)) },
@@ -396,6 +502,7 @@ export function buildGiantLab(pack: RulePack | null): GalleryRow[] {
 			bodies: methaneAbundance },
 		{ title: 'Giant lab — other chemistries', blurb: 'Sulphur, steam, ammonia and acid skies — all derived, none authored.', bodies: exotic },
 		{ title: 'Giant lab — hot Jupiters (rock as a condensate)', blurb: 'Sodium, potassium, silicate and iron vapour. Which of them is a cloud at each temperature is derived, not assigned.', bodies: hotJupiters },
-		{ title: 'Giant lab — the same air at different depths', blurb: 'One composition, anchored from 0.1 to 20 bar.', bodies: pressures }
+		{ title: 'Giant lab — the same air at different depths', blurb: 'One composition, anchored from 0.1 to 20 bar.', bodies: pressures },
+		{ title: 'Giant lab — the same giant, growing old', blurb: 'One Jupiter, one orbit, one chemistry — only its AGE changes. A giant makes its own heat from the gravitational energy of forming, and spends the rest of its life losing it. This is why a young giant glows and distance from the star has nothing to do with it.', bodies: ages }
 	];
 }

@@ -22,8 +22,7 @@
       "atmosphere": {
         "name": "None",
         "composition": {},
-        "pressure_bar": 0,
-        "molarMassKg": 0.028
+        "pressure_bar": 0
       },
       "hydrosphere": {
         "coverage": 0,
@@ -40,35 +39,14 @@
       "image": {
         "url": "/images/star_types/F.webp"
       },
-      "calculatedGravity_ms2": 287.3066854423801,
-      "loDeltaVBudget_ms": -1,
-      "propulsiveLandBudget_ms": -1,
-      "aerobrakeLandBudget_ms": -1,
-      "stellarRadiation": 0,
-      "radiationShieldingAtmo": 0,
-      "radiationShieldingMag": 0.8265630055635476,
-      "photonRadiation": 0,
-      "particleRadiation": 0,
-      "surfaceRadiation": 0,
-      "isNameUserDefined": true,
-      "calculatedRotationPeriod_s": 1194825.6
+      "isNameUserDefined": true
     },
     {
       "id": "id-1771086014491-1x97wh5mg",
       "name": "Iota Horologii / HR 810 b",
       "kind": "body",
       "parentId": "seed-1771085836100-star-a",
-      "tags": [
-        {
-          "key": "lifting-gas"
-        },
-        {
-          "key": "reducing"
-        },
-        {
-          "key": "habitability/none"
-        }
-      ],
+      "tags": [],
       "atmosphere": {
         "name": "Custom Mix",
         "composition": {
@@ -76,27 +54,19 @@
           "He": 0.065,
           "CH4": 0.001963303669633037
         },
-        "pressure_bar": 8.61,
-        "molarMassKg": 0.0021574862513748625,
-        "scaleHeightKm": 13.50195599436892
+        "pressure_bar": 8.61
       },
       "hydrosphere": {
         "coverage": 0,
         "composition": "water"
       },
       "biosphere": null,
-      "classes": [
-        "planet/sub-brown-dwarf",
-        "planet/desert"
-      ],
+      "classes": [],
       "roleHint": "planet",
       "massKg": 1.1767826e+28,
       "radiusKm": 77840,
       "rotation_period_hours": 8.99,
       "axial_tilt_deg": 55,
-      "magneticField": {
-        "strengthGauss": 5.225071997548119
-      },
       "orbit": {
         "hostId": "seed-1771085836100-star-a",
         "hostMu": 177887448180000000000,
@@ -110,46 +80,8 @@
           "M0_rad": 5.3930673886624785
         }
       },
-      "equilibriumTempK": 303.2494010317831,
-      "temperatureK": 454.15801614076224,
-      "tidallyLocked": false,
-      "calculatedGravity_ms2": 129.62724990434168,
-      "calculatedRotationPeriod_s": 32364,
-      "orbitalBoundaries": {
-        "minLeoKm": 308.85622428791663,
-        "leoMoeBoundaryKm": 2000,
-        "meoHeoBoundaryKm": 197343.38173099305,
-        "heoUpperBoundaryKm": 15407185.981821602,
-        "geoStationaryKm": 197343.38173099305,
-        "isGeoFallback": false
-      },
-      "loDeltaVBudget_ms": 129640.4152254418,
-      "propulsiveLandBudget_ms": 124909.49915792528,
-      "aerobrakeLandBudget_ms": 213.50088554180226,
-      "habitabilityScore": 7.941355424313437,
-      "stellarRadiation": 2.886124864146842,
-      "radiationShieldingAtmo": 0.9905419892738604,
-      "radiationShieldingMag": 0.9063075529583343,
-      "photonRadiation": 12.28364996493563,
-      "particleRadiation": 0.12787613597978778,
-      "surfaceRadiation": 14.411526100915417,
-      "orbital_period_days": 273.86950690104123,
-      "tidalHeatK": 0,
-      "radiogenicHeatK": 0,
-      "greenhouseTempK": 150.90861510897915,
       "color": "#e74c3c",
-      "image": {
-        "url": "/images/planet_types/web20gas20giant.jpg"
-      },
-      "albedo": 0.3,
-      "isNameUserDefined": true,
-      "stellarRadiationMin": 2.0727699397779675,
-      "stellarRadiationMax": 4.29227374203873,
-      "surfaceRadiationMin": 10.913764795256691,
-      "surfaceRadiationMax": 20.458545658708232,
-      "equilibriumTempMinK": 279.1637014827292,
-      "equilibriumTempMaxK": 334.8829413722296,
-      "internalHeatK": 0
+      "isNameUserDefined": true
     },
     {
       "name": "Angels Crest",

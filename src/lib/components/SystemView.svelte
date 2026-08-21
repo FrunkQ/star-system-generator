@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
+  import { playerConnections } from '$lib/playerConnections';
   import { browser } from '$app/environment';
   import { pushState, replaceState, beforeNavigate } from '$app/navigation';
   import { page } from '$app/stores';
@@ -11,6 +12,7 @@
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
   import BodyDetailsPane from './BodyDetailsPane.svelte';
   import BodyImage from './BodyImage.svelte';
+  import ConstructPortrait from './ConstructPortrait.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
   import BodyPicker from './BodyPicker.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
@@ -18,6 +20,8 @@
   import { railCollapsed } from '$lib/railStore';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
+  import UndoPill from './UndoPill.svelte';
+  import { attachSystemUndo, detachSystemUndo, silentSystemWrite, setUndoFocus, undoStatus, undo as undoSystem, redo as redoSystem } from '$lib/undo/systemUndo';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
@@ -29,33 +33,42 @@
   import type { TransitPlan } from '$lib/transit/types';
   import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast } from '$lib/transit/scheduler';
 
-  import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
+  import { systemStore, viewportStore } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
   import { starmapStore } from '$lib/starmapStore';
   import { interstellarConstructIds, adriftFromSystemExit } from '$lib/transit/interstellar';
   import { rootStarHillAu } from '$lib/physics/twoBodyCoast';
   import { generateAutopilotChain } from '$lib/transit/autopilotAdapter';
   import AutopilotDisengageDialog from './AutopilotDisengageDialog.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import { systemUiStore } from '$lib/systemUiStore';
+  import { SYSTEM_OVERLAY_OPTIONS, isLattice, type MapOverlay } from '$lib/map/mapOverlay';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { packBundle, unpackBundle, sniffBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
   import ImportModal from './ImportModal.svelte';
   import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
   import { generateId, toRoman } from '$lib/utils';
-  import { AU_KM, EARTH_MASS_KG, G } from '$lib/constants';
+  import { AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
+  import { predictTidalLock } from '$lib/physics/tidalLock';
   import { propagate } from '$lib/api';
   import { broadcastService } from '$lib/broadcast';
   import FocusHeader from './FocusHeader.svelte';
   import PhysicsTraceModal from './PhysicsTraceModal.svelte';
   import AddBodyTypeModal from './AddBodyTypeModal.svelte';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
+  import { laplaceRadiusAU } from '$lib/generation/planet';
+  import { spinProvenanceTags } from '$lib/generation/spinProvenance';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
   import { calculateAllStellarZones } from '$lib/physics/zones';
   import { calculateEquilibriumTemperature, composeSurfaceTemperatureFromDeltaComponents, estimateBondAlbedo, estimateInternalHeatK } from '$lib/physics/temperature';
   import { ensureTemporalState, setMasterToDisplay, updateDisplayBySeconds } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay, BIG_BANG_TO_UNIX_EPOCH_T, unixMsToMasterSeconds } from '$lib/temporal/utre';
+  import { chrome } from '$lib/ui/foreground';
 
   export let system: System;
   export let rulePack: RulePack;
@@ -221,6 +234,12 @@
   let showNames = true;
   let showZones = false;
   let showHillSpheres = false;
+  // WS3: the 2D system view's spatial overlay (shared vocabulary — see lib/map/mapOverlay.ts).
+  let systemOverlay: MapOverlay = 'off';
+  // The lattice cell in AU. 0 = the automatic 1/2/5 ladder that sizes cells by zoom. Pinning it is what
+  // makes the grid a measure a table can rely on — the same choice the player preset offers, because a
+  // GM and their players looking at the same system should not disagree about what one cell is.
+  let systemGridScaleAu = 0;
   let showZoneKeyPanel = false; // Controls display of ZoneKey in the right panel
   let showLPoints = false;
   let showTravellerZones = false;
@@ -234,13 +253,6 @@
   // The visualizer's wheel-zoom flag: FOLLOW keeps panning with the body but the ZOOM is the user's —
   // followers must treat that viewport as manual too (zoom-out over a focused body was never mirrored).
   let userZoomOverride = false;
-  let isCrtMode = false;
-  // Projector window tracking: when it's open the rail's Projector entry becomes a
-  // greenscreen (chroma-key) toggle; we poll for the window closing to revert.
-  let projectorWindow: Window | null = null;
-  let projectorOpen = false;
-  let isGreenscreen = false;
-  let projectorPoll: ReturnType<typeof setInterval> | null = null;
   let isEditing = false;
   let isPlanning = false;
   let plannerOriginId: ID = '';
@@ -260,11 +272,6 @@
   let isShipLogOpen: boolean = false;
   
   export let broadcastSessionId: string; // owned by +page so the guide works from the starmap too
-
-  function handleToggleCrt() {
-      isCrtMode = !isCrtMode;
-      broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
-  }
 
   // Context Menu State
   let showSummaryContextMenu = false;
@@ -330,7 +337,7 @@
 
   // §4c add-by-viable-type picker
   let showAddTypeModal = false;
-  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number } | null = null;
+  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number; ageGyr?: number; canTidallyLock?: boolean } | null = null;
 
   // Create Construct (Background) Modal State
   let showCreateConstructModal = false;
@@ -421,7 +428,14 @@
           const probe = { id: 'probe', kind: 'body', roleHint: 'planet', parentId: host.id,
               orbit: { hostId: host.id, elements: { a_AU: Math.max(distAU, 1e-6), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as unknown as CelestialBody;
           const teqK = calculateEquilibriumTemperature(probe, $systemStore.nodes, 0.3);
-          pendingAdd = { distAU, startAngle, hostId: host.id, hostMassKg, role, teqK };
+          // The picker's physics filters want the system's age and whether this orbit can lock a
+          // planet in that time; both are answered here so the picker and the generator judge
+          // viability from the same context.
+          const ageGyr: number | undefined = ($systemStore as any)?.age_Gyr;
+          const canTidallyLock = role === 'planet' && hostMassKg > 0
+              ? predictTidalLock(distAU, EARTH_RADIUS_KM, EARTH_MASS_KG, hostMassKg, ageGyr ?? 4.6)
+              : undefined;
+          pendingAdd = { distAU, startAngle, hostId: host.id, hostMassKg, role, teqK, ageGyr, canTidallyLock };
           showAddTypeModal = true;
           return;
       }
@@ -532,6 +546,24 @@
           }
       };
 
+      // 4.2 PROVENANCE — the same invariant the two generators carry (inbox B10, D2a). This route
+      // builds its body inline and touches neither BodyFactory nor _generatePlanetaryBody, so
+      // nothing it invented was ever marked: a hand-added world stated its tilt exactly as firmly
+      // as Earth does. The rule EXISTED and simply did not reach here, which is how B9a happened.
+      // Which values qualify — and why the die-rolled magnetic field does not, since the processor
+      // always replaces it — lives in spinProvenance.ts. One rule, three routes.
+      newPlanet.tags.push(...spinProvenanceTags(newPlanet));
+
+      // 4.3 C3(c): a moon far enough out follows the SYSTEM plane rather than its host's equator.
+      // Same helper the generators call, imported rather than copied — this block having its own
+      // private copy of everything is the fault, not the pattern to follow.
+      if (newPlanet.roleHint === 'moon' && (host as CelestialBody).orbit) {
+          const hostOrbit = (host as CelestialBody).orbit!;
+          const isGiantHost = ((host as CelestialBody).classes || []).some((c) => c.includes('gas-giant') || c.includes('ice-giant'));
+          const rL = laplaceRadiusAU(host as CelestialBody, hostOrbit.elements.a_AU, hostOrbit.hostMu / G, isGiantHost, rulePack);
+          if (rL != null && newPlanet.orbit.elements.a_AU > rL) newPlanet.orbit.frame = 'ecliptic';
+      }
+
       // 4.5 Calculate Temperature (Fix for 0K issue)
       // We need to pass the new planet as if it were in the system to check relationships
       // But the function takes 'body' and 'allNodes'.
@@ -542,7 +574,7 @@
       // So as long as the parent is in allNodes, we are good.
       const tempK = calculateEquilibriumTemperature(newPlanet, $systemStore.nodes, estimateBondAlbedo(newPlanet));
       newPlanet.equilibriumTempK = tempK;
-      newPlanet.internalHeatK = estimateInternalHeatK(newPlanet, rulePack);
+      newPlanet.internalHeatK = estimateInternalHeatK(newPlanet, rulePack, ($systemStore as any)?.age_Gyr ?? 4.6);
       newPlanet.temperatureK = composeSurfaceTemperatureFromDeltaComponents(
           tempK,
           newPlanet.greenhouseTempK || 0,
@@ -942,8 +974,7 @@
           mode: event.detail.mode,
           theme: event.detail.theme,
           includeConstructs: event.detail.includeConstructs,
-          units: get(measurementUnit),  // carry the GM's km/miles choice into the (separate-route) report
-          tempUnit: get(temperatureUnit) // and the °C/°F/K choice
+          unitPrefs: get(unitPrefs) // carry the campaign's unit choices into the (separate-route) report
       };
       sessionStorage.setItem('reportData', JSON.stringify(reportData));
       window.open('/report', '_blank');
@@ -1236,6 +1267,9 @@
   // Reactive Focus Handling via SvelteKit Router State
   $: focusedBodyId = primaryMemberOf($page.state.focusId ?? ($systemStore?.nodes.find(n => !n.parentId)?.id || null));
   $: focusedBody = $systemStore?.nodes.find(n => n.id === focusedBodyId) as CelestialBody || null;
+  // G28: the selection NAMES an undo step when one edit moves several bodies (give Earth mass and
+  // tidally-locked Luna's rotation period follows). Naming only - it never decides what is recorded.
+  $: setUndoFocus(focusedBodyId);
   // For a construct, its *current* host is where its journeys have taken it (e.g. a
   // planet it's parked at), not its authored parentId (often the star it was first
   // placed around). Resolving this at the display time keeps land/takeoff + the specs
@@ -1257,7 +1291,10 @@
       : null;
   $: if (!focusedBody || focusedBody.kind !== 'construct') isShipLogOpen = false;
   // Keep autopilot routes extended ahead of the display clock as the GM scrubs/plays.
-  $: maybeTopUpAutopilot(currentTime);
+  // G28: the CLOCK writes here, not the GM. Wrapped so the undo recorder adopts the result
+  // silently instead of filling its stack while a system sits idle with time running (this fires
+  // several times a second). Time is out of undo's V1 scope; this is where that is enforced.
+  $: silentSystemWrite(() => maybeTopUpAutopilot(currentTime));
 
   // Handle Back to Starmap if systemId is lost from state
   $: if (browser && !$page.state.systemId) {
@@ -1304,11 +1341,12 @@
 
 
 
-  // ONE gate for both load paths (hotfix, ported from beta - inbox D26). `rulePackId` is NOT a
-  // load requirement: the loader processes with the app's CURRENT pack whatever the file says, and
-  // this app's own ubox/SpaceEngine imports write it blank - so demanding it refused real files
-  // with a message calling a present-but-empty field 'missing'. A blank id is stamped with the
-  // current pack on load, so the file records what actually processed it.
+  // ONE gate for both load paths (a file and a bundled example). `rulePackId` is deliberately NOT part of
+  // it: the loader processes with the app's CURRENT pack whatever the file says, so the field is a
+  // record, not a requirement - and a blank one is common. V2 exported systems without it, and this
+  // app still writes '' on SpaceEngine and ubox imports and portrait systems, so demanding it here
+  // refused real files with the message 'missing' for a field that was present and empty. A blank
+  // id is stamped with the current pack on load, so the file records what actually processed it.
   function isLoadableSystem(doc: any): boolean {
     if (!doc || typeof doc !== 'object' || !doc.id || !doc.name || !Array.isArray(doc.nodes)) return false;
     if (!doc.rulePackId) { doc.rulePackId = rulePack?.id ?? ''; doc.rulePackVersion = doc.rulePackVersion || rulePack?.version || ''; }
@@ -1349,7 +1387,7 @@
     showSaveModal = true;
   }
 
-  function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
+  async function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
     if (!$systemStore) return;
     
     let systemToSave = $systemStore;
@@ -1369,13 +1407,18 @@
         systemToSave.nodes = systemToSave.nodes.filter(n => n.kind !== 'construct');
     }
 
-    // 3. Download
-    const json = JSON.stringify(systemToSave, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    // 3. Download. A system carrying assets (body photos, ship models) saves as a BUNDLE - a zip
+    // with a readable system.json beside the assets as real files; without them it stays plain
+    // JSON. Same container the campaign save uses, so one reader opens either.
+    const models = await collectModelsForExport({ systems: [{ system: systemToSave }] }).catch(() => undefined);
+    const bundle = packBundle('system', systemToSave, { models });
+    const blob = bundle
+      ? new Blob([bundle], { type: 'application/zip' })
+      : new Blob([JSON.stringify(systemToSave, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${systemToSave.name.replace(/\s+/g, '_') || 'system'}-System${mode === 'Player' ? '-Player' : ''}.json`;
+    a.download = `${systemToSave.name.replace(/\s+/g, '_') || 'system'}-System${mode === 'Player' ? '-Player' : ''}${bundle ? BUNDLE_EXT : '.json'}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1398,8 +1441,20 @@
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const json = e.target?.result as string;
-        let newSystem = JSON.parse(json);
+        // Bundle (zip) or plain JSON, decided by the magic number rather than the file name.
+        const raw = new Uint8Array(e.target?.result as ArrayBuffer);
+        let newSystem: any;
+        if (sniffBundle(raw)) {
+          const unpacked = unpackBundle(raw);
+          if (unpacked.kind !== 'system') {
+            alert('That bundle holds a whole campaign, not a single system. Load it from the starmap instead.');
+            return;
+          }
+          await importEmbeddedModels(unpacked.models).catch(() => 0);
+          newSystem = unpacked.doc;
+        } else {
+          newSystem = JSON.parse(new TextDecoder().decode(raw));
+        }
         if (isLoadableSystem(newSystem)) {
           // Keep the old ID to preserve starmap link
           const oldId = $systemStore?.id;
@@ -1421,30 +1476,7 @@
         console.error(err);
       }
     };
-    reader.readAsText(file);
-  }
-
-  async function handleShare() {
-      projectorWindow = window.open(`/projector?sid=${broadcastSessionId}`, 'StarSystemProjector', 'width=1280,height=720,menubar=no,toolbar=no,location=no');
-      projectorOpen = !!projectorWindow;
-      if ($systemStore) {
-          broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: computePlayerSnapshot($systemStore) });
-      }
-      // Watch for the user closing the projector window → revert the rail entry.
-      if (projectorPoll) clearInterval(projectorPoll);
-      projectorPoll = setInterval(() => {
-          if (!projectorWindow || projectorWindow.closed) {
-              projectorOpen = false;
-              isGreenscreen = false;
-              projectorWindow = null;
-              if (projectorPoll) { clearInterval(projectorPoll); projectorPoll = null; }
-          }
-      }, 800);
-  }
-
-  function toggleGreenscreen() {
-      isGreenscreen = !isGreenscreen;
-      broadcastService.sendMessage({ type: 'SYNC_GREENSCREEN', payload: isGreenscreen });
+    reader.readAsArrayBuffer(file);
   }
 
   let unsubscribePanStore: () => void;
@@ -1491,8 +1523,6 @@
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
                 broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
-                broadcastService.sendMessage({ type: 'SYNC_CRT_MODE', payload: isCrtMode });
-                broadcastService.sendMessage({ type: 'SYNC_GREENSCREEN', payload: isGreenscreen });
             }
         };
 
@@ -1514,6 +1544,12 @@
     });
 
     document.addEventListener('click', handleClickOutside);
+
+    // G28: start recording the GM's authored edits. Attached LAST, after the initial
+    // `systemStore.set` above, so the state the view opens on is the baseline rather than the first
+    // undo entry. `rulePack` is passed as a GETTER because `process()` - which IS the redo function
+    // - has to run against whichever pack is live when the undo happens.
+    attachSystemUndo(() => rulePack);
   });
 
   // Reactive Broadcasts for View Settings
@@ -1541,7 +1577,6 @@
   onDestroy(() => {
     if (browser) {
       if (timeSyncInterval) clearInterval(timeSyncInterval);
-      if (projectorPoll) clearInterval(projectorPoll);
     }
     stopAlignAnimation();
     if (unsubscribePanStore) {
@@ -1551,6 +1586,7 @@
         unsubscribeZoomStore();
     }
     document.removeEventListener('click', handleClickOutside);
+    detachSystemUndo();
   });
 
   $: if ($starmapStore) {
@@ -1765,13 +1801,14 @@
     if (now - lastSyncWallMs >= SYNC_THROTTLE_MS) {
       lastSyncWallMs = now;
       if (settleTimer) { clearTimeout(settleTimer); settleTimer = null; }
-      syncScheduledJourneysAtDisplayTime(timeMs);
+      // G28: clock-driven, like the autopilot top-up above - never an undo entry.
+      silentSystemWrite(() => syncScheduledJourneysAtDisplayTime(timeMs));
     } else {
       if (settleTimer) clearTimeout(settleTimer);
       settleTimer = setTimeout(() => {
         settleTimer = null;
         lastSyncWallMs = (typeof performance !== 'undefined' ? performance.now() : 0);
-        syncScheduledJourneysAtDisplayTime(settleTime);   // exact at the resting time
+        silentSystemWrite(() => syncScheduledJourneysAtDisplayTime(settleTime));   // exact at the resting time
       }, SYNC_THROTTLE_MS);
     }
   }
@@ -2148,15 +2185,12 @@
     <svelte:fragment slot="rail">
       <RailNav
         activeView="system"
-        {projectorOpen}
         rulerOn={rulerActive}
-        crtOn={isCrtMode}
         {routesAttention}
+        playerConns={{ local: $playerConnections.local, remote: $playerConnections.remote }}
+        playerConnSummary={$playerConnections.summary}
         on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
-        on:projector={() => { railOpen = false; handleShare(); }}
-        on:projectorcrt={handleToggleCrt}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
-        on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
         on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
         on:ruler={() => { railOpen = false; rulerActive = !rulerActive; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
@@ -2176,10 +2210,10 @@
       >
       <!-- System actions (formerly the SystemSummary hamburger) — shown on desktop AND
            phone now that the summary strip is retired in favour of the BodyPicker. The
-           Starmap nav, Projector and Report moved up into the icon rail proper. -->
+           Starmap nav and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
-      <input type="file" accept="application/json,.json,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+      <input type="file" accept="application/json,.json,.zip,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">
@@ -2199,11 +2233,16 @@
               </div>
             {/if}
             <BodyPicker
+                floating
                 nodes={displaySystem?.nodes ?? $systemStore.nodes}
                 focusedId={focusedBodyId}
                 top={mode === 'phone' ? 64 : 56}
                 on:select={(e) => updateFocus(e.detail)}
             />
+
+            <!-- G28: the floating undo/redo. Shows itself once there is something to wind back;
+                 marks itself `use:chrome` so a dialog on a phone hides it (UI-C6). -->
+            <UndoPill {mode} status={undoStatus} undo={undoSystem} redo={redoSystem} />
 
             <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
                  frequently-used display toggles (per the wireframe). -->
@@ -2220,10 +2259,30 @@
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
                     <label title="Each planet-mass body's gravitational bubble — where an adrift ship gets grabbed"><input type="checkbox" bind:checked={showHillSpheres} /> Hill spheres</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
+                    <label class="ov-select" title="Spatial overlay — the same set every map view offers">Overlay
+                      <select bind:value={systemOverlay}>
+                        {#each SYSTEM_OVERLAY_OPTIONS as o}<option value={o.value}>{o.label}</option>{/each}
+                      </select>
+                    </label>
+                    {#if isLattice(systemOverlay)}
+                      <label class="ov-select" title="How much space one cell covers. Automatic sizes cells by zoom; a fixed cell keeps its meaning while you scroll.">Cell
+                        <select bind:value={systemGridScaleAu}>
+                          <option value={0}>Automatic</option>
+                          {#each [0.25, 0.5, 1, 2, 5, 10] as au}<option value={au}>{au} AU</option>{/each}
+                        </select>
+                      </label>
+                    {/if}
                     {#if $starmapUiStore.travellerMode}
                       <label><input type="checkbox" bind:checked={showTravellerZones} /> Traveller zones</label>
                     {/if}
                     <label><input type="checkbox" bind:checked={showVectors} /> Vectors</label>
+                    <!-- G5: the GM's OWN orbit-line strength. Local to this browser (systemUiStore),
+                         NOT campaign data and NOT the player's - a player view takes its value from
+                         the preset, and joining the two is the A10/A3 fault. 100% is unchanged. -->
+                    <label class="ov-slider" title="How strongly orbit lines are drawn on your map. A dense import can bury its own bodies under them.">
+                      <span>Orbit lines</span>
+                      <input type="range" min="0" max="1" step="0.05" bind:value={$systemUiStore.orbitOpacity} />
+                    </label>
                     <label title="Show each body's derived true colour vs broad per-class colours"><input type="checkbox" bind:checked={$trueColorMode} /> True colour</label>
                     <div class="ov-seg" role="group" aria-label="Orbit scale">
                       <button class:active={toytownOn} on:click={() => setScaleMode(true)} title="Compressed spacing so the whole system fits one screen">Toytown</button>
@@ -2245,6 +2304,7 @@
             </div>
 
             <SystemVisualizer
+                orbitOpacity={$systemUiStore.orbitOpacity}
                 bind:this={visualizer}
                 bind:cameraMode
                 bind:userZoomOverride
@@ -2256,6 +2316,8 @@
                 {showNames}
                 {showZones}
                 {showHillSpheres}
+                overlay={systemOverlay}
+                gridScaleAu={systemGridScaleAu}
                 {showLPoints}
                 {showTravellerZones}
                 {showSensors}
@@ -2275,7 +2337,7 @@
             />
 
             {#if ensuredTemporal}
-              <div class="time-overlay" class:phone={mode === 'phone'}>
+              <div class="time-overlay" class:phone={mode === 'phone'} use:chrome>
                 <TimeControls
                   compact={mode === 'phone'}
                   temporal={ensuredTemporal}
@@ -2303,6 +2365,20 @@
                 on:toggleedit={() => { isEditing = !isEditing; if (isEditing) { showZoneKeyPanel = false; visualizer?.resetView(); } }}
                 on:showphysics={() => showPhysicsModal = true}
             />
+            {/if}
+
+            <!-- The picture leads now, the way a construct's does. It stopped being decoration when it
+                 gained the derived views: the 2D and 3D renders, the colours and the horizon are all
+                 answers a GM wants BEFORE the prose, not after the delta-v table. -->
+            {#if focusedBody && !isPlanning}
+                {#if focusedBody.kind === 'construct'}
+                    <!-- A construct's own chain (model > uploaded image > icon glyph) leads, not the
+                         planet picture block - BodyImage has no construct views, so it showed a bare
+                         fallback sphere above a SECOND picture in the specs below (owner, 2026-08-19). -->
+                    <ConstructPortrait construct={focusedBody} {rulePack} nowMs={currentTime} />
+                {:else}
+                    <BodyImage body={focusedBody} {system} {rulePack} />
+                {/if}
             {/if}
 
             {#if focusedBody && !isPlanning}
@@ -2347,6 +2423,7 @@
                         system={$systemStore || system}
                         {rulePack}
                         {isEditing}
+                        nowMs={currentTime}
                         on:update={handleBodyUpdate}
                         on:delete={handleDeleteNode}
                         on:close={() => isEditing = false}
@@ -2387,7 +2464,6 @@
                 {/if}
             {/if}
             
-            <BodyImage body={focusedBody} />
             {#if focusedBody?.roleHint === 'star' && $systemStore?.credits?.author}
                 {@const c = $systemStore.credits}
                 <div class="system-credit">
@@ -2469,6 +2545,7 @@
 
     {#if showAddTypeModal && pendingAdd}
         <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role} hostMassKg={pendingAdd.hostMassKg}
+            ageGyr={pendingAdd.ageGyr} canTidallyLock={pendingAdd.canTidallyLock}
             on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
     {/if}
 

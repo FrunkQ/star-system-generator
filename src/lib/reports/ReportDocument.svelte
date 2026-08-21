@@ -5,7 +5,8 @@
   import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
   import { oblatePolarFactor } from '$lib/rendering/bodyShape';
   import { tagContextLabel } from '$lib/tags/tagPresentation';
-  import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempC, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
+  import { formatPref, unitBodyTypeFor, type UnitPrefs } from '$lib/units';
+  import { ascentBudgetApplies } from '$lib/physics/orbits';
 
   // Extracted from /report so the printable report and the live /catalogue (Companion App)
   // can render the same player-safe document. Data arrives already redacted — both the report
@@ -16,8 +17,12 @@
   export let theme: string = 'retro';
   export let includeConstructs = true;
   export let chrome: 'report' | 'catalogue' = 'report';
-  export let units: MeasurementUnits = 'metric';   // in-system distance/speed display (km vs miles)
-  export let tempUnit: TemperatureUnit = 'C';      // temperature display (°C / °F / K)
+  // G34: the campaign's per-quantity × body-type unit prefs. A printed report renders in them but
+  // never cycles them; the helpers below pick the bucket from each body's own roleHint.
+  export let prefs: UnitPrefs = {};
+  const tf = (b: CelestialBody | Barycenter, k: number) => formatPref(prefs, 'temperature', unitBodyTypeFor(b as any), k);
+  const rf = (b: CelestialBody | Barycenter, km: number) => formatPref(prefs, 'radius', unitBodyTypeFor(b as any), km);
+  const sf = (b: CelestialBody | Barycenter, kms: number) => formatPref(prefs, 'speed', unitBodyTypeFor(b as any), kms);
   let overviewMainHostId: string | null = null;
   let overviewBodies: Array<CelestialBody | Barycenter> = [];
   let rootStars: CelestialBody[] = [];
@@ -151,8 +156,8 @@
 
   function getTemp(body: CelestialBody | Barycenter) {
       if (body.kind === 'barycenter' || body.temperatureK === undefined) return '-';
-      // Stars are always Kelvin (a ~5,778 K star reads oddly as °C); the switch governs planet/moon temps.
-      return formatTempK(body.temperatureK, (body as any).roleHint === 'star' ? 'K' : tempUnit);
+      // Stars default to kelvin through defaultUnitFor — no per-caller ternary any more.
+      return tf(body, body.temperatureK);
   }
 
   function getTempDetails(body: CelestialBody | Barycenter) {
@@ -201,12 +206,14 @@
       const min = (body as any).equilibriumTempMinK;
       const max = (body as any).equilibriumTempMaxK;
       if (typeof min !== 'number' || typeof max !== 'number') return '-';
-      return `${formatTempK(min, tempUnit)} to ${formatTempK(max, tempUnit)}`;
+      return `${tf(body, min)} to ${tf(body, max)}`;
   }
 
   function getTempProfile(body: CelestialBody | Barycenter) {
       if (body.kind === 'barycenter' || body.temperatureK === undefined) return '-';
-      const surfaceC = body.temperatureK - 273.15;
+      // The whole derivation runs in KELVIN and only the final tf() renders a unit — the spans and
+      // centres below are DIFFERENCES, identical in K and °C, so nothing here changes value.
+      const surfaceK = body.temperatureK;
 
       const eqMinK = typeof (body as any).equilibriumTempMinK === 'number' ? (body as any).equilibriumTempMinK : null;
       const eqMaxK = typeof (body as any).equilibriumTempMaxK === 'number' ? (body as any).equilibriumTempMaxK : null;
@@ -216,49 +223,49 @@
       const internalK = body.internalHeatK || 0;
       const pressureBar = body.atmosphere?.pressure_bar || 0;
 
-      let minTempC = surfaceC;
-      let maxTempC = surfaceC;
+      let minTempK = surfaceK;
+      let maxTempK = surfaceK;
       if (pressureBar < 0.01 && (body as CelestialBody).roleHint !== 'star') {
           const tEq = body.equilibriumTempK || 0;
-          minTempC = composeSurfaceTemperatureFromDeltaComponents(Math.max(3, tEq * 0.5), greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-          maxTempC = composeSurfaceTemperatureFromDeltaComponents(tEq * 1.45, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+          minTempK = composeSurfaceTemperatureFromDeltaComponents(Math.max(3, tEq * 0.5), greenhouseK, tidalK, radiogenicK, internalK);
+          maxTempK = composeSurfaceTemperatureFromDeltaComponents(tEq * 1.45, greenhouseK, tidalK, radiogenicK, internalK);
       } else if (eqMinK !== null && eqMaxK !== null) {
-          minTempC = composeSurfaceTemperatureFromDeltaComponents(eqMinK, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-          maxTempC = composeSurfaceTemperatureFromDeltaComponents(eqMaxK, greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+          minTempK = composeSurfaceTemperatureFromDeltaComponents(eqMinK, greenhouseK, tidalK, radiogenicK, internalK);
+          maxTempK = composeSurfaceTemperatureFromDeltaComponents(eqMaxK, greenhouseK, tidalK, radiogenicK, internalK);
       }
 
-      let dayMinTempC: number;
-      let dayMaxTempC: number;
-      let nightMinTempC: number;
-      let nightMaxTempC: number;
+      let dayMinTempK: number;
+      let dayMaxTempK: number;
+      let nightMinTempK: number;
+      let nightMaxTempK: number;
 
       if (pressureBar < 0.01 && (body as CelestialBody).roleHint !== 'star') {
           const tEq = body.equilibriumTempK || 0;
-          dayMinTempC = composeSurfaceTemperatureFromDeltaComponents(Math.max(3, tEq * (body.tidallyLocked ? 0.78 : 0.70)), greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-          dayMaxTempC = composeSurfaceTemperatureFromDeltaComponents(tEq * (body.tidallyLocked ? 1.45 : 1.35), greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-          nightMinTempC = composeSurfaceTemperatureFromDeltaComponents(Math.max(3, tEq * (body.tidallyLocked ? 0.33 : 0.40)), greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
-          nightMaxTempC = composeSurfaceTemperatureFromDeltaComponents(tEq * (body.tidallyLocked ? 0.72 : 0.85), greenhouseK, tidalK, radiogenicK, internalK) - 273.15;
+          dayMinTempK = composeSurfaceTemperatureFromDeltaComponents(Math.max(3, tEq * (body.tidallyLocked ? 0.78 : 0.70)), greenhouseK, tidalK, radiogenicK, internalK);
+          dayMaxTempK = composeSurfaceTemperatureFromDeltaComponents(tEq * (body.tidallyLocked ? 1.45 : 1.35), greenhouseK, tidalK, radiogenicK, internalK);
+          nightMinTempK = composeSurfaceTemperatureFromDeltaComponents(Math.max(3, tEq * (body.tidallyLocked ? 0.33 : 0.40)), greenhouseK, tidalK, radiogenicK, internalK);
+          nightMaxTempK = composeSurfaceTemperatureFromDeltaComponents(tEq * (body.tidallyLocked ? 0.72 : 0.85), greenhouseK, tidalK, radiogenicK, internalK);
       } else {
-          const cMin = minTempC;
-          const cMax = maxTempC;
-          const orbitalHalfRange = Math.max(0, (cMax - cMin) * 0.5);
+          const kMin = minTempK;
+          const kMax = maxTempK;
+          const orbitalHalfRange = Math.max(0, (kMax - kMin) * 0.5);
           const pressureMix = Math.max(0, Math.min(1, pressureBar / (pressureBar + 0.5)));
-          let dayNightSpanC = (1 - pressureMix) * 70 + 8;
-          if (body.tidallyLocked) dayNightSpanC *= 1.15;
-          const latitudinalSpanC = (1 - pressureMix) * 35 + 20;
+          let dayNightSpanK = (1 - pressureMix) * 70 + 8;
+          if (body.tidallyLocked) dayNightSpanK *= 1.15;
+          const latitudinalSpanK = (1 - pressureMix) * 35 + 20;
 
-          const dayCenter = surfaceC + dayNightSpanC * 0.35;
-          const nightCenter = surfaceC - dayNightSpanC * 0.65;
+          const dayCenter = surfaceK + dayNightSpanK * 0.35;
+          const nightCenter = surfaceK - dayNightSpanK * 0.65;
 
-          dayMinTempC = dayCenter - (orbitalHalfRange + latitudinalSpanC * 0.7);
-          dayMaxTempC = dayCenter + (orbitalHalfRange + latitudinalSpanC * 0.5);
-          nightMinTempC = nightCenter - (orbitalHalfRange + latitudinalSpanC * 0.8);
-          nightMaxTempC = nightCenter + (orbitalHalfRange + latitudinalSpanC * 0.3);
+          dayMinTempK = dayCenter - (orbitalHalfRange + latitudinalSpanK * 0.7);
+          dayMaxTempK = dayCenter + (orbitalHalfRange + latitudinalSpanK * 0.5);
+          nightMinTempK = nightCenter - (orbitalHalfRange + latitudinalSpanK * 0.8);
+          nightMaxTempK = nightCenter + (orbitalHalfRange + latitudinalSpanK * 0.3);
       }
 
-      const range = `${formatTempC(minTempC, tempUnit)} to ${formatTempC(maxTempC, tempUnit)}`;
-      const day = `${formatTempC(dayMinTempC, tempUnit)} to ${formatTempC(dayMaxTempC, tempUnit)}`;
-      const night = `${formatTempC(nightMinTempC, tempUnit)} to ${formatTempC(nightMaxTempC, tempUnit)}`;
+      const range = `${tf(body, minTempK)} to ${tf(body, maxTempK)}`;
+      const day = `${tf(body, dayMinTempK)} to ${tf(body, dayMaxTempK)}`;
+      const night = `${tf(body, nightMinTempK)} to ${tf(body, nightMaxTempK)}`;
       const hotspotNote = body.tags?.some((t) => t.key === 'tidal/hotspots') ? ' | Tidal hotspots' : '';
       return `Range: ${range} | Day: ${day} | Night: ${night}${hotspotNote}`;
   }
@@ -294,14 +301,13 @@
   function getOrbitDistanceAuLabel(body: CelestialBody | Barycenter) {
       const a = body.orbit?.elements?.a_AU;
       if (typeof a !== 'number' || !Number.isFinite(a) || a <= 0) return '';
-      return formatOrbitDist(a);
+      return formatOrbitDist(body, a);
   }
 
-  function formatOrbitDist(a_au: number | undefined | null) {
+  function formatOrbitDist(body: CelestialBody | Barycenter, a_au: number | undefined | null) {
       if (a_au === undefined || a_au === null) return '-';
-      // Close-in / local orbits render in km (or miles); wider star orbits keep AU.
-      if (a_au < 0.05) return formatDistanceAu(a_au, units);
-      return a_au.toFixed(3) + ' AU';
+      // The orbit pref's default 'auto' stop keeps the close-in-orbits-in-km magnitude rule.
+      return formatPref(prefs, 'orbit', unitBodyTypeFor(body as any), a_au * AU_KM);
   }
 
   function isPlanetaryBarycenterBody(body: CelestialBody | Barycenter) {
@@ -363,11 +369,15 @@
   function getOrbitalMechanics(body: CelestialBody | Barycenter) {
       if (body.kind === 'barycenter') return '-';
       const anyBody = body as any;
-      if (anyBody.loDeltaVBudget_ms) {
-          const ascent = formatSpeedKmS(anyBody.loDeltaVBudget_ms / 1000, units, 1);
+      // B37: the -1 "not applicable" sentinel is truthy, so this used to print "Ascent: -0.0 km/s"
+      // for every belt and ring. One predicate decides, in orbits.ts.
+      const applicable = ascentBudgetApplies(body as CelestialBody);
+      if (!applicable.applies) return `Ascent: n/a (${applicable.reason})`;
+      if (anyBody.loDeltaVBudget_ms > 0) {
+          const ascent = sf(body, anyBody.loDeltaVBudget_ms / 1000);
           const land = anyBody.aerobrakeLandBudget_ms > 0
-              ? formatSpeedKmS(anyBody.aerobrakeLandBudget_ms / 1000, units, 1) + ' (Aero)'
-              : formatSpeedKmS(anyBody.propulsiveLandBudget_ms / 1000, units, 1);
+              ? sf(body, anyBody.aerobrakeLandBudget_ms / 1000) + ' (Aero)'
+              : sf(body, anyBody.propulsiveLandBudget_ms / 1000);
           return `Ascent: ${ascent} | Land: ${land}`;
       }
       return '-';
@@ -956,9 +966,9 @@
                         <tbody>
                             <tr>
                                 <th>Mass</th><td>{(primary.massKg / 1.989e30).toFixed(3)} Solar Masses</td>
-                                <th>Radius</th><td>{formatDistanceKm(primary.radiusKm, units)}</td>
+                                <th>Radius</th><td>{rf(primary, primary.radiusKm)}</td>
                                 {#if primary.temperatureK}
-                                <th>Temp</th><td>{formatTempK(primary.temperatureK, 'K')}</td>
+                                <th>Temp</th><td>{tf(primary, primary.temperatureK)}</td>
                                 {/if}
                                 <th>Lum</th><td>{getLuminosity(primary)}</td>
                             </tr>
@@ -1002,7 +1012,7 @@
                                                     <tr><th>Day Length</th><td>{child.rotation_period_hours ? child.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                     <tr><th>Axial Tilt</th><td>{(child as any).axial_tilt_deg ? (child as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                     <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                                    <tr><th>Radius</th><td>{formatDistanceKm(child.radiusKm, units)}</td></tr>
+                                                    <tr><th>Radius</th><td>{rf(child, child.radiusKm)}</td></tr>
                                                     <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                                     <tr><th>Density</th><td>{phys.density}</td></tr>
                                                     <tr><th>Delta-V</th><td>{getOrbitalMechanics(child)}</td></tr>
@@ -1072,7 +1082,7 @@
                                                             <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                             <tr><th>Axial Tilt</th><td>{(grandchild as any).axial_tilt_deg ? (grandchild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                             <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                            <tr><th>Radius</th><td>{formatDistanceKm(grandchild.radiusKm, units)}</td></tr>
+                                                            <tr><th>Radius</th><td>{rf(grandchild, grandchild.radiusKm)}</td></tr>
                                                             <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                             <tr><th>Density</th><td>{gPhys.density}</td></tr>
                                                             <tr><th>Delta-V</th><td>{getOrbitalMechanics(grandchild)}</td></tr>
@@ -1145,7 +1155,7 @@
                                             <tr><th>Day Length</th><td>{(topChild as CelestialBody).rotation_period_hours ? (topChild as CelestialBody).rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                             <tr><th>Axial Tilt</th><td>{(topChild as any).axial_tilt_deg ? (topChild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                             <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                            <tr><th>Radius</th><td>{formatDistanceKm((topChild as CelestialBody).radiusKm, units)}</td></tr>
+                                            <tr><th>Radius</th><td>{rf(topChild, (topChild as CelestialBody).radiusKm)}</td></tr>
                                             <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                             <tr><th>Density</th><td>{phys.density}</td></tr>
                                             <tr><th>Delta-V</th><td>{getOrbitalMechanics(topChild as CelestialBody)}</td></tr>
@@ -1215,7 +1225,7 @@
                                                     <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                     <tr><th>Axial Tilt</th><td>{(grandchild as any).axial_tilt_deg ? (grandchild as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                     <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                    <tr><th>Radius</th><td>{formatDistanceKm(grandchild.radiusKm, units)}</td></tr>
+                                                    <tr><th>Radius</th><td>{rf(grandchild, grandchild.radiusKm)}</td></tr>
                                                     <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                     <tr><th>Density</th><td>{gPhys.density}</td></tr>
                                                     <tr><th>Delta-V</th><td>{getOrbitalMechanics(grandchild)}</td></tr>
@@ -1319,7 +1329,7 @@
                                                     <tr><th>Eccentricity</th><td>{child.orbit?.elements.e.toFixed(3)}</td></tr>
                                                     <tr><th>Day Length</th><td>{child.rotation_period_hours ? child.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                     <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                                    <tr><th>Radius</th><td>{formatDistanceKm(child.radiusKm, units)}</td></tr>
+                                                    <tr><th>Radius</th><td>{rf(child, child.radiusKm)}</td></tr>
                                                     <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                                 </tbody>
                                             </table>
@@ -1359,7 +1369,7 @@
                                                             <tr><th>Eccentricity</th><td>{grandchild.orbit?.elements.e.toFixed(3)}</td></tr>
                                                             <tr><th>Day Length</th><td>{grandchild.rotation_period_hours ? grandchild.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                             <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                            <tr><th>Radius</th><td>{formatDistanceKm(grandchild.radiusKm, units)}</td></tr>
+                                                            <tr><th>Radius</th><td>{rf(grandchild, grandchild.radiusKm)}</td></tr>
                                                             <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                         </tbody>
                                                      </table>
@@ -1402,7 +1412,7 @@
                                             <tr><th>Day Length</th><td>{(topBody as CelestialBody).rotation_period_hours ? (topBody as CelestialBody).rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                             <tr><th>Axial Tilt</th><td>{(topBody as any).axial_tilt_deg ? (topBody as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                             <tr><th>Mass</th><td>{phys.massRel}</td></tr>
-                                            <tr><th>Radius</th><td>{formatDistanceKm((topBody as CelestialBody).radiusKm, units)}</td></tr>
+                                            <tr><th>Radius</th><td>{rf(topBody, (topBody as CelestialBody).radiusKm)}</td></tr>
                                             <tr><th>Gravity</th><td>{phys.gravity}</td></tr>
                                             <tr><th>Density</th><td>{phys.density}</td></tr>
                                             <tr><th>Delta-V</th><td>{getOrbitalMechanics(topBody as CelestialBody)}</td></tr>
@@ -1472,7 +1482,7 @@
                                                     <tr><th>Day Length</th><td>{moon.rotation_period_hours ? moon.rotation_period_hours.toFixed(1) + ' h' : '-'}</td></tr>
                                                     <tr><th>Axial Tilt</th><td>{(moon as any).axial_tilt_deg ? (moon as any).axial_tilt_deg.toFixed(1) + '°' : '-'}</td></tr>
                                                     <tr><th>Mass</th><td>{gPhys.massRel}</td></tr>
-                                                    <tr><th>Radius</th><td>{formatDistanceKm(moon.radiusKm, units)}</td></tr>
+                                                    <tr><th>Radius</th><td>{rf(moon, moon.radiusKm)}</td></tr>
                                                     <tr><th>Gravity</th><td>{gPhys.gravity}</td></tr>
                                                     <tr><th>Density</th><td>{gPhys.density}</td></tr>
                                                     <tr><th>Delta-V</th><td>{getOrbitalMechanics(moon)}</td></tr>

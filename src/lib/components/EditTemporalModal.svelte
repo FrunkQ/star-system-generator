@@ -7,6 +7,7 @@
     TemporalCalendarDefinition
   } from '$lib/types';
   import { ensureTemporalState } from '$lib/temporal/defaults';
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   export let starmap: Starmap;
@@ -202,7 +203,7 @@
 </script>
 
 {#if showModal}
-  <div class="modal-backdrop" on:click={() => dispatch('close')}>
+  <div class="modal-backdrop" on:click={() => dispatch('close')} use:foreground>
     <div class="modal" on:click|stopPropagation>
       <div class="header">
         <h2>Edit Time & Calendars</h2>

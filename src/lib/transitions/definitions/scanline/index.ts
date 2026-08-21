@@ -47,7 +47,7 @@ export default {
     const cellH = h / rows;
     const total = cols * rows;
 
-    // Width of the green flash band (cells ahead of the clear front)
+    // Width of the green flash band (cells BEHIND the clear front — see the flash zone below)
     const flashBand = Math.max(2, Math.ceil(cols * 0.12));
 
     // Helper: pixel rect for cell (col, row) — rounded to avoid sub-pixel gaps
@@ -60,26 +60,9 @@ export default {
 
     await animate(duration, (t) => {
       const clearCount = Math.floor(t * total);
-      const flashFront = Math.min(total, clearCount + flashBand);
 
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(snapshot, 0, 0, w, h);
-
-      // ── Flash zone ─────────────────────────────────────────────────────────
-      // Cells [clearCount, flashFront) glow phosphor green ahead of the clear.
-      // Intensity falls off toward the front; leading cell is near-white.
-      for (let i = clearCount; i < flashFront; i++) {
-        const { x, y, cw, ch } = cellRect(i % cols, Math.floor(i / cols));
-        const fade = 1 - (i - clearCount) / flashBand;
-
-        if (i === clearCount) {
-          // Leading cell: bright white-green flash (the "cursor")
-          ctx.fillStyle = 'rgba(220,255,220,0.95)';
-        } else {
-          ctx.fillStyle = `rgba(60,255,100,${(fade * 0.8).toFixed(2)})`;
-        }
-        ctx.fillRect(x, y, cw, ch);
-      }
 
       // ── Clear zone ─────────────────────────────────────────────────────────
       // Use two rectangles (O(1)) rather than per-cell fills (O(n)).
@@ -106,6 +89,29 @@ export default {
         }
 
         ctx.restore();
+      }
+
+      // ── Flash zone ─────────────────────────────────────────────────────────
+      // BEHIND the front, not ahead of it (C16). A cell flashes as the front REACHES it and then
+      // dims: the cursor is the last cell cleared and the glow trails back over the cleared region.
+      // The old band ran [clearCount, flashFront) — ahead of the front, over cells not yet cleared —
+      // so the brightness ran the wrong way and the effect read as travelling backwards.
+      //
+      // It is drawn AFTER the clear, and that ordering is load-bearing: the clear is a
+      // `destination-out` wipe, so a band painted before it over the same cells would be erased by
+      // it. Painting after lays the glow onto the already-transparent region, which is what makes
+      // the trail visible at all.
+      for (let i = Math.max(0, clearCount - flashBand); i < clearCount; i++) {
+        const { x, y, cw, ch } = cellRect(i % cols, Math.floor(i / cols));
+        if (i === clearCount - 1) {
+          // The cursor: the cell the front has just reached.
+          ctx.fillStyle = 'rgba(220,255,220,0.95)';
+        } else {
+          // Dimming with distance BEHIND the cursor.
+          const fade = 1 - (clearCount - 1 - i) / flashBand;
+          ctx.fillStyle = `rgba(60,255,100,${(fade * 0.8).toFixed(2)})`;
+        }
+        ctx.fillRect(x, y, cw, ch);
       }
     }, linear, signal);
   },

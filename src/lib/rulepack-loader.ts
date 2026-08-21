@@ -1,4 +1,5 @@
 import type { RulePack } from './types';
+import { warnIfLegacyRules } from './system/classification';
 
 // Helper function for deep merging objects. This is a simple implementation.
 function deepMerge(target: any, source: any): any {
@@ -29,6 +30,8 @@ export function loadRulePack(data: unknown): RulePack {
   if (!data || typeof (data as RulePack).id !== 'string' || typeof (data as RulePack).version !== 'string') {
     throw new Error('Invalid RulePack data: missing essential properties.');
   }
+  // Say it where a pack author can see it (inbox B67): the additive classifier.rules seam is gone.
+  warnIfLegacyRules(data as RulePack);
   return data as RulePack;
 }
 
@@ -77,6 +80,20 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
         const liquidsResponse = await fetch(new URL('liquids.json', baseUrl).href);
         if (liquidsResponse.ok) mainPack.liquids = await liquidsResponse.json();
     } catch { /* no pack override — use the built-in default */ }
+
+    // Fetch biosphere look data (OPTIONAL override) — pigments, how they are chosen, and the
+    // morphology definitions. The built-in defaults live in src/lib/data/pigments.json and
+    // morphologies.json; a pack only needs this file if it wants its own. Missing is normal and
+    // must stay quiet, exactly as for liquids.json above.
+    try {
+        const bioResponse = await fetch(new URL('biospheres.json', baseUrl).href);
+        if (bioResponse.ok) {
+            const bio = await bioResponse.json();
+            if (bio.pigments) mainPack.pigments = bio.pigments;
+            if (bio.pigmentModel) mainPack.pigmentModel = bio.pigmentModel;
+            if (bio.morphologies) mainPack.morphologies = bio.morphologies;
+        }
+    } catch { /* no pack override — use the built-in defaults */ }
 
     // Fetch classification definitions (including tagVocab, planetImages etc.)
     const classificationResponse = await fetch(new URL('classification.json', baseUrl).href);

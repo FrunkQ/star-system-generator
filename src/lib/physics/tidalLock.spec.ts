@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { predictTidalLock, tidalLockTimescaleGyr } from './tidalLock';
+import { predictTidalLock, tidalLockTimescaleGyr, lockedSpin } from './tidalLock';
 
 const AU = 149597870.7; // km
 const EM = 5.972e24, ER = 6371; // Earth mass kg, radius km
@@ -34,5 +34,56 @@ describe('tidal locking timescale', () => {
     // Iapetus locks over 4.6 Gyr but not in the first megayear.
     expect(predictTidalLock(3560820 / AU, 735, 1.8e21, 5.683e26, 0.001)).toBe(false);
     expect(tidalLockTimescaleGyr(3560820 / AU, 735, 1.8e21, 5.683e26)).toBeGreaterThan(0.001);
+  });
+});
+
+// A locked body cannot be shown as locked AND given a contradictory day length (inbox B7). The
+// answer is its orbital period — EXCEPT where an eccentric orbit has captured the spin into a
+// higher-order resonance, which is not a hypothetical: it is Mercury.
+describe('locked spin reconciliation', () => {
+  const LUNA_ORBIT = 655.7, MERCURY_ORBIT = 2110.94, MERCURY_SPIN = 1407.6;
+
+  it('a locked body with no spin at all takes its orbital period', () => {
+    expect(lockedSpin(LUNA_ORBIT, undefined, 0.055)).toEqual({ kind: 'synchronous', rotationHours: LUNA_ORBIT });
+  });
+
+  it('an authored spin that already agrees is left where it is', () => {
+    const s = lockedSpin(LUNA_ORBIT, 655.7, 0.055);
+    expect(s.kind).toBe('synchronous');
+    expect(s.rotationHours).toBeCloseTo(655.7, 6);
+  });
+
+  it('an authored spin that contradicts the lock loses to it', () => {
+    // Pandora: 41.8 h authored against a ~3-day orbit around a gas giant, on a near-circular orbit.
+    const s = lockedSpin(74.76, 41.8, 0.0096);
+    expect(s.kind).toBe('synchronous');
+    expect(s.rotationHours).toBeCloseTo(74.76, 6);
+  });
+
+  it('MERCURY keeps its measured 3:2 — the day that is not the year', () => {
+    const s = lockedSpin(MERCURY_ORBIT, MERCURY_SPIN, 0.2056);
+    expect(s.kind).toBe('resonant');
+    expect(s.ratio).toBe('3:2');
+    expect(s.rotationHours).toBe(MERCURY_SPIN); // untouched, because it is measured
+  });
+
+  it('the same 3:2 ratio on a CIRCULAR orbit is not a resonance — tides would have finished the job', () => {
+    expect(lockedSpin(MERCURY_ORBIT, MERCURY_SPIN, 0.01).kind).toBe('synchronous');
+  });
+
+  it('a spin SLOWER than the orbit is never called a resonance (not a tidal end state)', () => {
+    // Conquestor: 879 h against a 446 h orbit, e = 0.126 — eccentric enough, but sub-synchronous.
+    expect(lockedSpin(446.31, 879, 0.126).kind).toBe('synchronous');
+  });
+
+  it('a day that merely happens to be eccentric is not promoted to a resonance', () => {
+    // Fames: 25 h against a 3581 h orbit at e = 0.29. Nowhere near a half-integer ratio.
+    expect(lockedSpin(3581.03, 25.03, 0.29).kind).toBe('synchronous');
+  });
+
+  it('a retrograde spin stays retrograde when its period is reconciled', () => {
+    // Pluto/Charon: Pluto's spin is stored negative, and reconciling must not flip it.
+    const s = lockedSpin(151.58, -153.3, 0.0);
+    expect(s.rotationHours).toBeCloseTo(-151.58, 6);
   });
 });

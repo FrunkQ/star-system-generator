@@ -2,7 +2,9 @@
   import { untrack, createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
   import { AU_KM, EARTH_MASS_KG } from '$lib/constants';
-  import { fmt } from '$lib/stores';
+  import { unitBodyTypeFor } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
+  import UnitInput from './UnitInput.svelte';
 
   import { calculateAllStellarZones } from '$lib/physics/zones';
 
@@ -230,16 +232,18 @@
         <!-- BELT (AU) -->
         <div class="form-group">
             <div class="label-row">
-                <label>Inner Radius (AU)</label>
-                <input type="number" step="0.01" bind:value={beltInnerAu} on:input={updateBeltDimensions} />
+                <label>Inner Radius</label>
+                <UnitInput quantity="orbit" bodyType={unitBodyTypeFor(body)} value={beltInnerAu * AU_KM}
+                    on:commit={(e) => { beltInnerAu = e.detail / AU_KM; updateBeltDimensions(); }} />
             </div>
             <input type="range" min="0" max="1" step="0.001" bind:value={innerSliderPos} on:input={handleBeltSlider} class="full-width-slider" />
         </div>
         
         <div class="form-group">
             <div class="label-row">
-                <label>Outer Radius (AU)</label>
-                <input type="number" step="0.01" bind:value={beltOuterAu} on:input={updateBeltDimensions} />
+                <label>Outer Radius</label>
+                <UnitInput quantity="orbit" bodyType={unitBodyTypeFor(body)} value={beltOuterAu * AU_KM}
+                    on:commit={(e) => { beltOuterAu = e.detail / AU_KM; updateBeltDimensions(); }} />
             </div>
             <input type="range" min="0" max="1" step="0.001" bind:value={outerSliderPos} on:input={handleBeltSlider} class="full-width-slider" />
         </div>
@@ -247,19 +251,21 @@
         <!-- RING (KM) -->
         <div class="form-group">
             <div class="label-row">
-                <label>Inner Radius ({$fmt.distUnit})</label>
-                <input type="number" step="any" value={Math.round($fmt.toDist(ringInnerKm))} on:input={(e) => { ringInnerKm = $fmt.fromDist(parseFloat(e.currentTarget.value) || 0); updateRingDimensions(); }} />
+                <label>Inner Radius</label>
+                <UnitInput quantity="radius" bodyType={unitBodyTypeFor(body)} value={ringInnerKm}
+                    on:commit={(e) => { ringInnerKm = e.detail; updateRingDimensions(); }} />
             </div>
             <input type="range" min="0" max="1" step="0.001" bind:value={innerSliderPos} on:input={handleRingSlider} class="full-width-slider" />
         </div>
         
         <div class="form-group">
             <div class="label-row">
-                <label>Outer Radius ({$fmt.distUnit})</label>
-                <input type="number" step="any" value={Math.round($fmt.toDist(ringOuterKm))} on:input={(e) => { ringOuterKm = $fmt.fromDist(parseFloat(e.currentTarget.value) || 0); updateRingDimensions(); }} />
+                <label>Outer Radius</label>
+                <UnitInput quantity="radius" bodyType={unitBodyTypeFor(body)} value={ringOuterKm}
+                    on:commit={(e) => { ringOuterKm = e.detail; updateRingDimensions(); }} />
             </div>
             <input type="range" min="0" max="1" step="0.001" bind:value={outerSliderPos} on:input={handleRingSlider} class="full-width-slider" />
-            <div class="sub-label">Parent Hill Sphere: {$fmt.km(parentSoiKm)}</div>
+            <div class="sub-label">Parent Hill Sphere: <UnitValue quantity="radius" bodyType={unitBodyTypeFor(parentBody)} value={parentSoiKm} /></div>
         </div>
     {/if}
 

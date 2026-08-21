@@ -1,13 +1,27 @@
-import type { CelestialBody, Barycenter } from '../types';
-import { SOLAR_RADIUS_KM } from '../constants';
+import type { CelestialBody, Barycenter, RulePack } from '../types';
+import { SOLAR_RADIUS_KM, STEFAN_BOLTZMANN_CONSTANT } from '../constants';
+import { blackbodyFractionBelowNm } from './spectrum';
+import { ionisingOutputSolar } from './ionisingOutput';
 
 const SOLAR_TEMP_K = 5778;
-const STEFAN_BOLTZMANN_CONSTANT = 5.670374419e-8;
 
 /**
- * Calculates the luminosity of a star relative to the Sun.
- * @param star The star to calculate the luminosity for.
- * @returns The star's luminosity relative to the Sun.
+ * The biological UV damage edge, nm. Shortward of roughly this, photons break the bonds that hold
+ * a genome together whatever it is made of — it is a photon-ENERGY threshold, not a claim about
+ * DNA. Pack-overridable as `generation_parameters.uv_damage_edge_nm`.
+ */
+export const UV_DAMAGE_EDGE_NM = 280;
+
+/** Sol's own kill-zone radius, the anchor everything else is expressed against. */
+export const KILL_ZONE_SOL_AU = 0.1;
+
+/** The quiet Sun's dynamo strength, for normalising the ionising half against it. */
+const SOLAR_FLARE_ACTIVITY = 0.052;
+
+/**
+ * The star's luminosity relative to the Sun, COMPUTED from R^2 T^4 — never the stored
+ * `radiationOutput`, which B57 records as drifted by up to 60,000x. This is the pattern every zone
+ * in this file follows, and as of B81 that finally includes the kill zone.
  */
 function getLuminosity(star: CelestialBody): number {
     if (!star.radiusKm || !star.temperatureK) return 1;
@@ -23,40 +37,64 @@ function getLuminosity(star: CelestialBody): number {
 }
 
 /**
- * Calculates the radius of the "Kill Zone" (UV Habitable Zone) around a star.
- * This is a simplified model based on stellar temperature and luminosity.
- * @param star The star to calculate the kill zone for.
- * @returns The radius of the kill zone in AU.
+ * THE KILL ZONE — how close a world can sit before the star's IONISING output sterilises it.
+ *
+ * DERIVED, not multiplied out of a stored dial (inbox B81, decided by the owner: "those zones need
+ * to correlate to reality"). It used to be `0.1 * sqrt(uvFactor * star.radiationOutput * L)`, and
+ * every part of that had a fault:
+ *
+ *  1. `star.radiationOutput` is a STORED luminosity, and B57 records it as drifted by up to
+ *     60,000x. Measured: handing Sol `radiationOutput: 1000` moved its kill zone from 0.10 AU to
+ *     3.16 AU. Worse, it multiplied the COMPUTED luminosity by the STORED one — the same quantity
+ *     twice. Everything here now comes from `getLuminosity`, which is R^2 T^4 and cannot drift.
+ *  2. The `uvFactor` switch tested `classes[0].split('/')[1]` against 'O', 'B', 'A'... — but a
+ *     modern designation splits to "G2V", not "G", so it matched NOTHING and fell to 1.0 for every
+ *     properly classified star. It fired only for a bare BAND key (DATA-R18). Measured: `star/M`
+ *     got 0.0035 AU and `star/M4V` 0.0111 AU — the same star, 3.2x apart, on spelling alone.
+ *  3. Its default of 1.0 gave L, T and Y dwarfs, white dwarfs, neutron stars and black holes a
+ *     Sun-like UV factor, which is absurd in both directions at once.
+ *
+ * TWO HAZARDS, AND A STAR CAN BE DANGEROUS BY EITHER — which is the whole reason the old single
+ * letter could not express it:
+ *
+ *  * PHOTOSPHERIC UV, from the star's own temperature. The share of a blackbody's output shortward
+ *    of the biological damage edge, straight out of Planck's law. This is what makes hot stars
+ *    lethal: an O5 V emits a million times the Sun's damaging UV and sterilises its own habitable
+ *    zone. A cool dwarf's photosphere emits essentially none.
+ *  * CORONAL / FLARE IONISING OUTPUT, from the star's dynamo — `ionisingOutputSolar`, the module
+ *    written for exactly this. This is what makes cool ACTIVE dwarfs dangerous despite emitting no
+ *    photospheric UV worth the name, and it is the well-known argument about M-dwarf habitability.
+ *    It responds to the star's own age and class through `flareActivity`, so an old, quiet M dwarf
+ *    is correctly safer than a young one.
+ *
+ * NOTE it reads `flareActivity` but NOT `bodyIonisingOutputSolar`, which would take the stored
+ * luminosity back in through the side door. Computed beats stored, all the way down.
+ *
+ * Both halves are expressed RELATIVE TO SOL and averaged, so Sol lands on the anchor by
+ * construction and the constant keeps meaning what it says.
  */
-export function calculateKillZone(star: CelestialBody): number {
-    if (!star.classes || star.classes.length === 0) return 0;
-
-    const spectralType = star.classes[0].split('/')[1];
-    let uvFactor = 1.0;
-
-    // Simplified UV factor based on spectral type
-    switch (spectralType) {
-        case 'O': uvFactor = 100; break;
-        case 'B': uvFactor = 50; break;
-        case 'A': uvFactor = 10; break;
-        case 'F': uvFactor = 5; break;
-        case 'G': uvFactor = 1; break;
-        case 'K': uvFactor = 0.5; break;
-        case 'M': uvFactor = 0.1; break;
-        default: uvFactor = 1; break;
-    }
-
+export function calculateKillZone(star: CelestialBody, pack?: RulePack | null): number {
     const luminosity = getLuminosity(star);
-    const radiation = star.radiationOutput || 1.0;
+    if (!(luminosity > 0)) return 0;
 
-    // Combine uvFactor and radiationOutput
-    const totalUVFactor = uvFactor * radiation;
+    const cfg = pack?.generation_parameters ?? {};
+    const edgeNm = (cfg as any).uv_damage_edge_nm ?? UV_DAMAGE_EDGE_NM;
+    const solAU = (cfg as any).kill_zone_sol_au ?? KILL_ZONE_SOL_AU;
 
-    // Base the kill zone on a factor of the star's luminosity, adjusted by the UV factor.
-    // The 0.1 is a tunable constant to set a baseline distance.
-    const killZoneRadius = 0.1 * Math.sqrt(totalUVFactor * luminosity);
+    const tempK = star.temperatureK ?? 0;
+    const solarUvShare = blackbodyFractionBelowNm(edgeNm, SOLAR_TEMP_K);
+    const uvRelative = solarUvShare > 0
+        ? (luminosity * blackbodyFractionBelowNm(edgeNm, tempK)) / solarUvShare
+        : 0;
 
-    return killZoneRadius;
+    const solarIonising = ionisingOutputSolar(1, SOLAR_FLARE_ACTIVITY);
+    const ionisingRelative = solarIonising > 0
+        ? ionisingOutputSolar(luminosity, (star as any).flareActivity) / solarIonising
+        : 0;
+
+    // Mean of the two, so a star that is lethal by EITHER route is lethal, and Sol is exactly 1.
+    const hazardRelative = (uvRelative + ionisingRelative) / 2;
+    return solAU * Math.sqrt(Math.max(0, hazardRelative));
 }
 
 /**
@@ -75,7 +113,12 @@ const AU_KM = 149597870.7;
  * @param tempK The equilibrium temperature in Kelvin.
  * @returns The distance in AU.
  */
-function getDistanceForTemperature(star: CelestialBody, tempK: number): number {
+/**
+ * The distance at which a given equilibrium temperature is found — the inverse of the equilibrium
+ * relation, `a = R_star (T_star / T_eq)^2 / 2`. Exported for `system/modifiers.ts`, which needs to
+ * turn a TYPE's declared temperature band into an orbital band when it places a new body (B84).
+ */
+export function getDistanceForTemperature(star: CelestialBody, tempK: number): number {
     if (!star.temperatureK || !star.radiusKm) return 0;
 
     // Using the simplified equilibrium temperature formula: a = R_star * (T_star / T_eq)^2 / 2
@@ -282,13 +325,56 @@ function getSpectralAlpha(star: CelestialBody): number {
     }
 }
 
+/**
+ * THE STAR A BODY ULTIMATELY ORBITS, AND HOW FAR FROM IT THE BODY SITS.
+ *
+ * A frost line is a property of the STAR's radiation field, so "is this body beyond the frost line"
+ * has to be asked about the star and about the body's HELIOCENTRIC distance. For a moon both of
+ * those come from its PLANET: the moon's frost line is its star's, evaluated at the planet's orbit,
+ * because a moon sits essentially the same distance from the star as the world it circles.
+ *
+ * The generators used to get this wrong twice over (see GEN-4): they derived a frost line from
+ * whatever the immediate host happened to be — which for a moon is the PLANET, giving a "frost line"
+ * computed from Jupiter's mass — and then compared it against the moon's distance from that planet.
+ */
+export function stellarContextFor(
+    host: CelestialBody | Barycenter,
+    aAU: number,
+    allNodes?: (CelestialBody | Barycenter)[],
+    depth = 0
+): { star: CelestialBody | null; distanceAU: number } {
+    const nodes = allNodes ?? [];
+    // A corrupt parent chain can be cyclic; a hierarchy this deep is not real either way.
+    if (depth > 8) return { star: null, distanceAU: aAU };
+
+    if (host.kind === 'body' && (host as CelestialBody).roleHint === 'star') {
+        return { star: host as CelestialBody, distanceAU: aAU };
+    }
+    if (host.kind === 'barycenter') {
+        // Circumbinary: the pair's brightest member is the one that sets the zones.
+        const stars = nodes.filter(
+            (n): n is CelestialBody => n.kind === 'body' && (n as CelestialBody).roleHint === 'star' && n.parentId === host.id
+        );
+        const primary = stars.sort((a, b) => (b.massKg || 0) - (a.massKg || 0))[0] ?? null;
+        return { star: primary, distanceAU: aAU };
+    }
+
+    // The host is a planet or a moon, so the body being asked about is a satellite: step UP to the
+    // host's own orbit and ask again. Guard against a malformed parent chain rather than recursing
+    // forever on it.
+    const parent = nodes.find((n) => n.id === host.parentId);
+    const hostA = (host as CelestialBody).orbit?.elements?.a_AU;
+    if (!parent || typeof hostA !== 'number') return { star: null, distanceAU: aAU };
+    return stellarContextFor(parent, hostA, nodes, depth + 1);
+}
+
 export function calculateAllStellarZones(
     star: CelestialBody,
     pack?: RulePack,
     allNodes?: (CelestialBody | Barycenter)[],
     age_Gyr: number = 4.6
 ): Record<string, any> {
-    const killZone = calculateKillZone(star);
+    const killZone = calculateKillZone(star, pack);
     const dangerZoneMultiplier = pack?.generation_parameters?.danger_zone_multiplier || 5;
     const dangerZone = killZone * dangerZoneMultiplier;
     

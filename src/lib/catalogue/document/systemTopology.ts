@@ -1,6 +1,7 @@
 // System topology queries for the WS2 Guide document — the star/planet/belt/moon hierarchy the
 // schematic draws and (Phase 3) the navigator walks. Ported verbatim from the legacy Field Guide
-// (`CatalogueBrowser.svelte:38-183`) so the new canvas document reads the system EXACTLY as the old
+// (`CatalogueBrowser.svelte`, removed by A42 at v2.1.702 — this is now the only copy) so the canvas
+// document reads the system EXACTLY as the old
 // Guide did: stars biggest-first, orbiters by semi-major axis, belts as blobs, barycentres shown AS
 // their dominant member. Pure functions over `System.nodes` — no Svelte, so both the schematic drawer
 // and the interactive navigator share one source of truth.

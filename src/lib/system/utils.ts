@@ -1,8 +1,14 @@
 // src/lib/system/utils.ts
 import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode, Starmap } from '../types';
+import { compactBurns } from '$lib/constructs/shipBurn';
+import { compactRoute } from '$lib/constructs/shipRoute';
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
 import { systemProcessor } from '../core/SystemProcessor';
+import { get } from 'svelte/store';
+import { redactTagsForPlayers } from '../tags/tagLifecycle';
+import { tagCategories } from '../tags/tagCategories';
+import { stripUndoHistory } from '$lib/undo/historyKey';
 
 /**
  * Recursively calculates a node's average orbital distance (semi-major axis) from the root star in AU.
@@ -70,9 +76,25 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
   }
 
   // 2. Filter and Sanitize
+  const categories = get(tagCategories);
   playerSystem.nodes = playerSystem.nodes.filter((node: any) => !hiddenIds.has(node.id)).map((node: CelestialBody | Barycenter) => {
       // Remove GM-only fields
       delete (node as any).gmNotes;
+
+      // Secret tags, and every tag of a player-hidden category, never leave the GM's screen. Done
+      // HERE because every player surface reads this snapshot — doing it per-surface is how one of
+      // them ends up leaking.
+      if (Array.isArray((node as any).tags)) {
+        (node as any).tags = redactTagsForPlayers((node as any).tags, categories);
+      }
+      // A construct's cargo MANIFEST used to be deleted here (A27). REVERSED by decision, 2026-08-01:
+      // it now travels and the "Live readings" toggle governs whether a reader sees it, exactly as it
+      // governs the cargo tonnage the manifest describes. A27's reasoning — "a star catalogue would
+      // not know what is in the hold" — turned out to be the same statement the toggle makes, so the
+      // question was a display one after all rather than a leak.
+      // KNOW THE CONSEQUENCE, which is A29's and was accepted on the same terms: the prose crosses the
+      // wire whatever the preset says, so anyone reading the raw broadcast has it. If that ever needs
+      // to stop being true, the strip belongs back here — but do not reinstate it without being asked.
 
       // Handle Description Hiding
       if ((node as any).description_playerhidden) {
@@ -84,6 +106,7 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
 
   // Also filter from the top-level system object
   delete (playerSystem as any).gmNotes;
+  stripUndoHistory(playerSystem);   // an undo log records what the GM deleted (G28)
 
   return playerSystem;
 }
@@ -97,6 +120,7 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
 export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
   const clone: any = JSON.parse(JSON.stringify(map));
   delete clone.gmNotes;
+  stripUndoHistory(clone);   // an undo log records what the GM deleted (G28)
 
   // A system is hidden when its ROOT node is player-hidden: the top barycenter for a multi-star
   // system, or the lone star for a single. Hiding an underlying star just hides that star (handled
@@ -110,6 +134,22 @@ export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
   // Drop bulky fields the guide never shows — transit logs (with huge pathPoint arrays), classifier
   // debug, drafts, AI context. Keeps the broadcast small enough to cross a WebRTC data channel.
   const slimNode = (n: any) => {
+    // A ship's DRIVE PLUME is observable - anyone looking at it sees the torch - but the journeys
+    // that say so are stripped below (huge pathPoint arrays, and a forward plan that must not
+    // cross). So publish the burns in a compact form first: when, how hard, which way, and
+    // nothing else. The player evaluates them against their own clock, so the plume stays live
+    // between snapshots. No destination, no route, no path.
+    if (n?.kind === 'construct') {
+      const burns = compactBurns(n);
+      if (burns.length) n.driveBurns = burns;
+      // ...and the ROUTE, for the same reason and by the same rule (owner, 2026-08-06: the current
+      // flight plan DOES cross to players). Its segment BOUNDARIES only - a handful of points, not
+      // the pathPoint arrays that are half the reason the journeys are stripped at all. The GM's
+      // uncommitted `draft_transit_plan` still never crosses; "current flight plan" is the one the
+      // ship is actually flying.
+      const route = compactRoute(n);
+      if (route) n.route = route;
+    }
     delete n.scheduled_journeys;
     delete n.draft_transit_plan;
     delete n.classification;

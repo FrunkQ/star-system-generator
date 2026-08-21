@@ -56,3 +56,55 @@ describe('buildPhysicsTrace', () => {
     expect(t.tags).toEqual([]);
   });
 });
+
+// The trace claims to SHOW THE WORKING, so a term that now feeds a figure it explains must be
+// present — omitting one does not under-explain the number, it explains it wrongly. These pin the
+// layers added when the documentation debt was swept.
+describe('the trace shows the working for what the engine now derives', () => {
+  it('breaks the albedo into bare ground, deposit and cloud (B5)', () => {
+    const mars = {
+      ...earthLike(), name: 'Ares', hydrosphere: undefined,
+      albedoBreakdown: { albedo: 0.256, surfaceAlbedo: 0.252, bareAlbedo: 0.105, deposit: 'moderate oxide dust', cloudAlbedo: 0.42, cloudCover: 0.02, note: 'x' }
+    } as unknown as CelestialBody;
+    const alb = buildPhysicsTrace(mars, {}).layers.find((l) => l.id === 'albedo');
+    expect(alb, 'no albedo layer').toBeTruthy();
+    // The whole point: bare ground and the finished surface are BOTH shown, so the deposit's
+    // contribution is visible rather than folded into one number.
+    expect(JSON.stringify(alb)).toContain('0.105');
+    expect(JSON.stringify(alb)).toContain('moderate oxide dust');
+    expect(alb!.outputs.some((o) => o.value.includes('0.256'))).toBe(true);
+  });
+
+  it('shows the spin axis and says when it was inferred rather than measured (B10)', () => {
+    const gen = { ...earthLike(), axial_tilt_deg: 21.4, tags: [{ key: 'spin/axis-inferred' }] } as unknown as CelestialBody;
+    const spin = buildPhysicsTrace(gen, {}).layers.find((l) => l.id === 'spin');
+    expect(spin, 'no spin layer').toBeTruthy();
+    expect(JSON.stringify(spin)).toContain('inferred, not measured');
+    // A measured world must NOT carry the caveat — the mark is only worth anything if its absence
+    // means something.
+    const measured = { ...earthLike(), axial_tilt_deg: 23.44, tags: [] } as unknown as CelestialBody;
+    const spin2 = buildPhysicsTrace(measured, {}).layers.find((l) => l.id === 'spin');
+    expect(JSON.stringify(spin2)).not.toContain('inferred, not measured');
+  });
+
+  it('says which plane a moon\'s orbit is quoted in (C3c)', () => {
+    const moon = {
+      ...earthLike(), roleHint: 'moon', axial_tilt_deg: 5,
+      orbit: { hostId: 'p', hostMu: 1, t0: 0, frame: 'ecliptic', elements: { a_AU: 0.0026, e: 0.05, i_deg: 5.1, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } }
+    } as unknown as CelestialBody;
+    const spin = buildPhysicsTrace(moon, {}).layers.find((l) => l.id === 'spin');
+    expect(JSON.stringify(spin)).toContain('SYSTEM plane');
+  });
+
+  it('names where each radiation figure is quoted (B27)', () => {
+    const earth = {
+      ...earthLike(), surfaceRadiation: 2.3, orbitalRadiation: 652965, photonRadiation: 1, particleRadiation: 1,
+      totalIncidentFlux: 1, starlightFlux: 1, beltInnerEdgeRadii: 1.1982
+    } as unknown as CelestialBody;
+    const rad = buildPhysicsTrace(earth, {}).layers.find((l) => l.id === 'radiation');
+    expect(rad, 'no radiation layer').toBeTruthy();
+    // Not "Above the atmosphere" — that read as "where a ship parks", and this figure is the belt.
+    expect(JSON.stringify(rad)).toContain('belts');
+    expect(JSON.stringify(rad)).not.toContain('Above the atmosphere');
+  });
+});

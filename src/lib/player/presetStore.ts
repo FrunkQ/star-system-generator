@@ -49,13 +49,31 @@ export const playerAssetList = derived(starmapStore, ($sm): PlayerAsset[] => {
   return [...BUILTIN_ASSETS, ...($sm?.playerAssets ?? [])];
 });
 
-// Store an uploaded image on the starmap, downscaled to a PNG data URL (max 512px on the long edge —
-// big enough for a cover splash, small enough to ride the starmap file + broadcast). Returns the new
-// asset via callback once the image decodes.
-export function addAssetFromFile(file: File, name: string, done: (a: PlayerAsset | null) => void): void {
+// The two resolutions an uploaded image can be kept at, and WHY there are two.
+//
+// 512px is right for what this store was built for: a cover splash, a corner logo, a watermark. It is
+// small enough that a campaign carrying several of them still crosses a WebRTC data channel without
+// thinking about it.
+//
+// A MAP BACKGROUND IS A DIFFERENT ANIMAL (G16). A GM zooms into a sector map to read the place names
+// on it, and 512px on the long edge is a blur the moment they do — the picture would be there and
+// useless, which is worse than absent. So a background is kept at 2048px, and the cost is stated
+// rather than hidden: it is roughly sixteen times the pixels, it rides SYNC_STARMAP on every campaign
+// change, and the save bundle stores it as a real file rather than base64 (DATA-M3).
+export const ASSET_MAX_PX = 512;
+export const BACKGROUND_MAX_PX = 2048;
+
+// Store an uploaded image on the starmap as a PNG data URL, downscaled to `maxPx` on the long edge.
+// Returns the new asset via callback once the image decodes.
+export function addAssetFromFile(
+  file: File,
+  name: string,
+  done: (a: PlayerAsset | null) => void,
+  maxPx: number = ASSET_MAX_PX
+): void {
   const img = new Image();
   img.onload = () => {
-    const max = 512;
+    const max = maxPx > 0 ? maxPx : ASSET_MAX_PX;
     const scale = Math.min(1, max / Math.max(img.width, img.height));
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(img.width * scale));
@@ -66,13 +84,39 @@ export function addAssetFromFile(file: File, name: string, done: (a: PlayerAsset
     const asset: PlayerAsset = {
       id: 'asset-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + c.width,
       name: name || file.name,
-      dataUrl: c.toDataURL('image/png')
+      dataUrl: c.toDataURL('image/png'),
+      // G16: recorded at upload so a map-fixed background never flashes at the wrong aspect ratio
+      // while its bitmap decodes. Every surface still measures the image when this is absent.
+      w: c.width,
+      h: c.height
     };
     starmapStore.update((sm) => (sm ? { ...sm, playerAssets: [...(sm.playerAssets ?? []).filter((x) => x.id !== asset.id), asset] } : sm));
     done(asset);
   };
   img.onerror = () => done(null);
   img.src = URL.createObjectURL(file);
+}
+
+/**
+ * Edit the provenance recorded against one uploaded image (DATA-M4).
+ *
+ * It is not decoration: the save bundle writes ATTRIBUTIONS.md from these fields, and a CC-BY image
+ * with no credit is called out there as a breach rather than a gap. A GM's own sector map needs
+ * nothing filled in; one they downloaded does.
+ */
+export function updateAssetProvenance(id: string, fields: Pick<PlayerAsset, 'credit' | 'license' | 'sourceUrl'>): void {
+  starmapStore.update((sm) =>
+    sm
+      ? {
+          ...sm,
+          playerAssets: (sm.playerAssets ?? []).map((a) =>
+            a.id === id
+              ? { ...a, credit: fields.credit || undefined, license: fields.license || undefined, sourceUrl: fields.sourceUrl || undefined }
+              : a
+          )
+        }
+      : sm
+  );
 }
 
 export function deleteAsset(id: string): void {

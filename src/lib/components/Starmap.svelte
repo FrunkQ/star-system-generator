@@ -1,12 +1,18 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { playerConnections } from '$lib/playerConnections';
+  import { constructIconPath, constructIconShape } from '$lib/constructs/constructIcon';
   import { gestures } from '$lib/input/gestures';
-  import { getPlanetColor as getStarColor } from '$lib/rendering/colors';
+  // G26/C17: the glyph is a SCREEN quantity — its size, its members' spread and its band scale come
+  // from the shared glyph law, and WHAT it draws (band, activity, jets, shedding) from the shared
+  // systemVisualStars — one reader for this map and the 3D starmap, so they cannot disagree.
+  import { systemVisualStars } from '$lib/starmap/systemStars';
+  import { clusterLayout, clusterHalfExtent, type GlyphMember } from '$lib/starmap/starGlyphLaw';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
   import BodyPicker from './BodyPicker.svelte';
   import FullscreenButton from './FullscreenButton.svelte';
-  import type { Starmap, System, CelestialBody, RulePack, Barycenter } from '$lib/types';
+  import type { Starmap, System, RulePack, Barycenter } from '$lib/types';
   import { constructDisplayPlacement, flybyTurn, interstellarConstructIds } from '$lib/transit/interstellar';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   import BottomSheet from './BottomSheet.svelte';
@@ -14,10 +20,19 @@
   import { railCollapsed } from '$lib/railStore';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
+  import type { SnapGridType } from '$lib/map/mapOverlay';
+  import { systemSeparation, zCounts } from '$lib/map/systemDistance';
+  import { stampForSave } from '$lib/map/provenance';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
+  import RealSkyImportModal from './RealSkyImportModal.svelte';
+  import { completeImportedStars } from '$lib/import/realsky/stardefaults';
+  import { fillOutAll } from '$lib/import/realsky/fillout';
+  import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { fixUpImportedSystem } from '$lib/system/importFixup';
   import AddTravellerSystemModal from './AddTravellerSystemModal.svelte';
   import StarmapScaleBar from './StarmapScaleBar.svelte';
+  import SystemPlacementDialog from './SystemPlacementDialog.svelte';
   import { TravellerImporter } from '$lib/traveller/importer';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { packsForStarmap, reasonsConfig } from '$lib/physics/reasonsToVisit';
@@ -26,6 +41,56 @@
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { ensureTemporalState, setMasterToDisplay } from '$lib/temporal/defaults';
   import TimeControls from './TimeControls.svelte';
+
+
+  // MAP HIGHLIGHTS — a system badges the union of what everything INSIDE it carries, not just its
+  // star. The interesting cases are never on the star: a faction holding one moon, a refuelling stop
+  // at a gas giant. Several factions in one system is a real answer, so they all show.
+  import { rollUpMarkers, capMarkers, type MapHighlights } from '$lib/tags/mapHighlights';
+  import type { TagCategory } from '$lib/tags/tagCategories';
+  // A system's badge IS the panel's tag chip, drawn small — see tags/tagPill.ts. The pill's width is
+  // now MEASURED; it used to be guessed from the character count, so a wide label overflowed its own
+  // rect and a narrow one sat in a rect too big for it.
+  import { tagPillMetrics, tagPillSvg, tagPillText, TAG_PILL_OVERFLOW_BG, TAG_PILL_OVERFLOW_FG } from '$lib/tags/tagPill';
+  const markerPill = tagPillMetrics(6);
+  import { liveOverrides } from '$lib/player/liveOverrides';
+  import { tagCategories } from '$lib/tags/tagCategories';
+  import { campaignUnit } from '$lib/map/distanceUnits';
+  // G16 — the picture behind the stars. The geometry lives in ONE module because four surfaces draw
+  // it and a map-fixed image drawn even slightly differently on one of them is a WRONG map, not a
+  // different look. This surface supplies only its own world transform.
+  import { resolveMapBackground, backgroundRectMap, backgroundPixelsPerUnit } from '$lib/map/mapBackground';
+  import { BUILTIN_ASSETS } from '$lib/player/presets';
+  import { chrome } from '$lib/ui/foreground';
+  import UndoPill from './UndoPill.svelte';
+  import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
+  $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
+  // THE SELECTION IS PASSED IN, NEVER CLOSED OVER. `{@const hl = systemMarkers(systemNode)}` inside the
+  // each-block only re-evaluates when a value it MENTIONS changes; a helper that reads `activeHighlights`
+  // out of scope hides that dependency from the compiler, so the badges were computed once — against an
+  // empty selection — and never again. The fade worked throughout, because its expression names
+  // `highlightsActive` directly, which is why the map looked half-alive: systems dimmed, nothing badged.
+  const systemMarkers = (sysNode: any, highlights: MapHighlights, cats: TagCategory[]) =>
+    capMarkers(rollUpMarkers(sysNode?.system?.nodes ?? [], highlights, cats));
+  // A HIGHLIGHT IS A FILTER on the starmap, by default and with no extra control: once something is
+  // highlighted, the systems carrying none of it fade back. "Show me where the refuelling is" then
+  // reads as a map answer instead of a hunt for small badges. Clearing the selection restores
+  // everything — it is a visual emphasis, never a hide.
+  $: highlightsActive = activeHighlights.length > 0;
+  // Same rule as systemMarkers above: the caller names the reactive values, so the dependency is visible.
+  const systemMatches = (sysNode: any, highlights: MapHighlights, cats: TagCategory[]) =>
+    rollUpMarkers(sysNode?.system?.nodes ?? [], highlights, cats).length > 0;
+  // The KEY. Badges alone do not explain themselves at starmap zoom, so the selection is listed with
+  // its colours. Built from the same resolution the markers use, so it cannot disagree with them.
+  $: highlightKey = (() => {
+    const seen = new Map<string, { label: string; color: string; textColor: string }>();
+    for (const sys of starmap?.systems ?? []) {
+      for (const m of rollUpMarkers((sys as any)?.system?.nodes ?? [], activeHighlights, $tagCategories)) {
+        if (!seen.has(m.key)) seen.set(m.key, { label: m.label, color: m.color, textColor: m.textColor });
+      }
+    }
+    return [...seen.values()];
+  })();
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
@@ -63,7 +128,14 @@
   let showAddTravellerModal = false;
   
   let travellerImportCoords = { x: 0, y: 0 };
-  
+
+  // WS7b relative placement: the system being measured FROM, the live ghost position, and which side of the
+  // map the dialogue is docked to. Non-null `placeOrigin` is what opens the dialogue.
+  let placeOrigin: Starmap['systems'][number] | null = null;
+  let placeGhost: { x: number; y: number; z?: number } | null = null;
+  let placeSide: 'left' | 'right' = 'right';
+  let placeInset = 16;
+
   const aboutContent = `
 <h1>Star System Explorer</h1>
 
@@ -82,6 +154,17 @@
   let panX = 0;
   let panY = 0;
   let zoom = 1;
+  // Map text must not grow with the map. Everything below lives INSIDE the world transform, so it tracks
+  // its system as you pan and zoom — which is right — but it also inherits the scale, so zooming in blew
+  // the names up to headlines and zooming out made them illegible. Dividing each text's font size and
+  // its offset from the marker by the zoom cancels exactly that one inherited factor, leaving a constant
+  // SCREEN size. (The 3D starmap gets the same result a different way: its labels are sprites with an
+  // explicit size, which never inherit scene scale in the first place.)
+  $: labelK = 1 / Math.max(0.05, zoom);
+  // Whether the depth cue is shown AT ALL for this campaign. Named here rather than computed inside a
+  // helper for the same reason as labelColumn's `k`: the badge stack sits below the cue, so its offset
+  // has to depend on this, and a dependency hidden in a function body is not a dependency (TAG-17).
+  $: zDepthOn = zCounts(starmap) && activeScale.pixelsPerUnit > 0;
 
   let lastMouseX = 0;
   let lastMouseY = 0;
@@ -147,11 +230,57 @@
   $: mapMode = starmap.mapMode ?? 'diagrammatic';
   $: isScaled = mapMode === 'scaled';
   $: invertDisplay = starmap.invertDisplay ?? false;
-  $: activeScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
+  $: activeScale = starmap.scale ?? { unit: campaignUnit(starmap), pixelsPerUnit: 25, showScaleBar: true }; // A43
   $: scaleBarVisible = isScaled && (activeScale.showScaleBar ?? true);
-  $: if (invertDisplay && $starmapUiStore.showBackgroundImage) {
-    starmapUiStore.update((ui) => ({ ...ui, showBackgroundImage: false }));
+  // --- G16: the picture behind the stars -----------------------------------------------------
+  //
+  // TWO ATTACHMENTS, TWO MECHANISMS ON THIS SURFACE, and which is which is the whole feature:
+  //   screen-fixed — a CSS background on the <svg> ELEMENT, i.e. outside the world transform. That
+  //     is why it holds still while the stars move, and it is exactly what the shipped Milky Way
+  //     has always done.
+  //   map-fixed — an <image> INSIDE the `translate(pan) scale(zoom)` group at the foot of this
+  //     file, drawn before the grid, the routes and the systems. Registration with the stars is
+  //     then automatic and free: they share one transform, so nothing has to be kept in step.
+  //
+  // This is [[A4]] running in reverse. A4 had to DIVIDE zoom out of the label fonts because they
+  // sat inside the world transform; here we deliberately want to be inside it, so the picture
+  // scales with the map. Same trap family, opposite sign.
+  //
+  // INVERT (print) SUPPRESSES THE BACKGROUND RATHER THAN CLEARING IT. It used to write the toggle
+  // off, which was tolerable when the background was local chrome and is not now that it is
+  // campaign content: a print switch must not edit the GM's map.
+  $: bgAssets = [...BUILTIN_ASSETS, ...(starmap.playerAssets ?? [])];
+  $: resolvedBg = invertDisplay ? null : resolveMapBackground(starmap, bgAssets);
+  // Natural bitmap size. An uploaded asset records it, so the picture never flashes at the wrong
+  // aspect while it decodes; the shipped Milky Way and older uploads are measured once here.
+  let bgNatural: { url: string; w: number; h: number } | null = null;
+  function measureBackground(url: string) {
+    if (bgNatural?.url === url) return;
+    const im = new Image();
+    im.onload = () => { bgNatural = { url, w: im.naturalWidth, h: im.naturalHeight }; };
+    im.src = url;
   }
+  $: if (typeof window !== 'undefined' && resolvedBg?.attach === 'map' && !(resolvedBg.naturalW && resolvedBg.naturalH)) {
+    measureBackground(resolvedBg.url);
+  }
+  $: bgAspect = !resolvedBg ? 0
+    : resolvedBg.naturalW && resolvedBg.naturalH ? resolvedBg.naturalW / resolvedBg.naturalH
+    : bgNatural && bgNatural.url === resolvedBg.url && bgNatural.h > 0 ? bgNatural.w / bgNatural.h
+    : 0;
+  // MAP COORDINATES, straight from the shared module — the same rectangle the player 2D/3D scene and
+  // the starmap document ask for. This surface adds nothing but its own pan/zoom.
+  $: bgRect = resolvedBg && resolvedBg.attach === 'map' && bgAspect > 0
+    ? backgroundRectMap(resolvedBg.bg, bgAspect, backgroundPixelsPerUnit(starmap))
+    : null;
+  $: bgScreen = resolvedBg && resolvedBg.attach === 'screen' ? resolvedBg : null;
+  // Fade on a CSS background needs a scrim rather than `opacity`, which would fade the whole <svg>
+  // and take the stars with it. A black scrim over a black map IS the fade.
+  $: bgScreenStyle = bgScreen
+    ? `--sm-bg-layers: linear-gradient(rgba(0,0,0,${(1 - bgScreen.opacity).toFixed(3)}), rgba(0,0,0,${(1 - bgScreen.opacity).toFixed(3)})), url("${cssUrl(bgScreen.url)}"); ` +
+      `--sm-bg-size: 100% 100%, ${bgScreen.sizePct >= 100 ? 'cover' : `${bgScreen.sizePct}% auto`};`
+    : '';
+  /** A url() value is a string in a stylesheet: a quote or a backslash in it would break out of it. */
+  function cssUrl(u: string): string { return u.replace(/\\/g, '\\\\').replace(/"/g, '\\"'); }
 
 
   function roundDistance(value: number): number {
@@ -165,12 +294,10 @@
     svgScale = svgElement.clientWidth / viewBox.width;
   }
 
-  function getRouteDistance(sourceX: number, sourceY: number, targetX: number, targetY: number, pixelsPerUnit: number): number {
-    const dx = targetX - sourceX;
-    const dy = targetY - sourceY;
-    const pixelDistance = Math.sqrt(dx * dx + dy * dy);
-    if (pixelsPerUnit <= 0) return 0;
-    return roundDistance(pixelDistance / pixelsPerUnit);
+  // WS7: distances come from the ONE shared module so routes, the measure tool and journey duration
+  // can never disagree about whether depth counts. Depth counts unless the campaign opts out.
+  function getRouteDistance(source: { x: number; y: number; z?: number }, target: { x: number; y: number; z?: number }, pixelsPerUnit: number): number {
+    return roundDistance(systemSeparation(source, target, pixelsPerUnit, !zCounts(starmap)));
   }
 
   function formatRouteDistance(distance: number): string {
@@ -186,7 +313,7 @@
       if (!source || !target) return route;
       return {
         ...route,
-        distance: getRouteDistance(source.position.x, source.position.y, target.position.x, target.position.y, activeScale.pixelsPerUnit),
+        distance: getRouteDistance(source.position, target.position, activeScale.pixelsPerUnit),
         unit: starmap.distanceUnit
       };
     });
@@ -265,7 +392,9 @@
       const nextX = dragRawPosition ? dragRawPosition.x : systemNode.position.x + worldDeltaX;
       const nextY = dragRawPosition ? dragRawPosition.y : systemNode.position.y + worldDeltaY;
       const snapped = snapPointToCurrentGrid(nextX, nextY);
-      return { ...systemNode, position: { x: snapped.x, y: snapped.y } };
+      // Spread the old position first: dragging moves a system ACROSS the map plane, it does not reset its
+      // depth. Naming x/y explicitly here would silently drop z on every drag.
+      return { ...systemNode, position: { ...systemNode.position, x: snapped.x, y: snapped.y } };
     });
     const updatedStarmap = {
       ...starmap,
@@ -289,9 +418,14 @@
   // …but the VISIBLE grid obeys the snap-grid switch in Settings: Traveller mode no longer FORCES
   // the numbered hex overlay. Choose "Hex" to see it; "None"/"Grid" hides it while Traveller data,
   // parsec scale and snapping keep working underneath.
-  $: displayGridType = $starmapUiStore.travellerMode
-    ? ($starmapUiStore.gridType === 'hex' ? 'traveller-hex' : $starmapUiStore.gridType)
-    : $starmapUiStore.gridType;
+  // WS3: picking "Traveller hex" explicitly shows the numbered overlay for ANY user, mode or not.
+  // A45: typed as the shared subset now, so a value the SVG grid cannot draw is a compile error here
+  // rather than a silent blank. Traveller MODE still promotes a plain hex to the numbered one.
+  $: displayGridType = ($starmapUiStore.gridType === 'traveller-hex'
+    ? 'traveller-hex'
+    : $starmapUiStore.travellerMode
+      ? ($starmapUiStore.gridType === 'hex' ? 'traveller-hex' : $starmapUiStore.gridType)
+      : $starmapUiStore.gridType) as SnapGridType;
 
   // --- Active interstellar journeys: ships in flight along the starmap, driven by the game clock. ---
   $: journeyNowSec = Number(ensuredTemporal?.displayTimeSec ?? 0);
@@ -302,32 +436,30 @@
     for (const s of starmap.systems) { const n = (s.system?.nodes ?? []).find((x: any) => x.id === j.shipId); if (n) return n; }
     return null;
   };
-  // SVG path for a construct's icon_type (circle is rendered as a <circle> separately).
-  const iconPath = (type?: string): string => {
-    switch (type) {
-      case 'square': return 'M-4,-4 H4 V4 H-4 Z';
-      case 'triangle': return 'M0,-5 L5,4.5 L-5,4.5 Z';
-      case 'cross': return 'M-5,-1.6 H-1.6 V-5 H1.6 V-1.6 H5 V1.6 H1.6 V5 H-1.6 V1.6 H-5 Z';
-      default: return 'M0,-5 L5,0 L0,5 L-5,0 Z';   // diamond (and fallback)
-    }
-  };
+  // SVG path for a construct's icon_type, from the ONE glyph vocabulary (inbox A34). The private copy
+  // this replaces had already drifted: it fell back to a DIAMOND where every other surface falls back
+  // to a triangle, so a construct with no authored icon_type drew as a different shape here than on
+  // the orrery, in the holo scene and in its own info block. Circle still renders as a <circle>.
+  const iconPath = (type?: string): string => constructIconPath(constructIconShape(type), 0, 0, 10);
   // Edge colour by journey state: black under way, red stranded, green arrived.
   const EDGE_TRANSIT = '#111', EDGE_STRANDED = '#d04545', EDGE_ARRIVED = '#2f9e57';
 
   // Clicking a ship opens the starmap-level ship panel (+page owns it: full construct editor + the
   // in-flight controls). All journey resolution + construct edits are handled there against the store.
   function requestCancelJourney(j: any, mx?: number, my?: number) {
-    if (measureMode && mx !== undefined && my !== undefined) { measurePick(mx, my, j.shipName, j.shipId); return; }
+    // A construct endpoint needs no z here: `resolveMeasure` re-derives its whole position (depth
+    // included) from the clock on every frame, so the ship stays tracked as time advances.
+    if (measureMode && mx !== undefined && my !== undefined) { measurePick(mx, my, undefined, j.shipName, j.shipId); return; }
     dispatch('openship', { journeyId: j.id });
   }
 
   function snapPointToCurrentGrid(x: number, y: number): { x: number; y: number } {
-    if (effectiveGridType === 'none') return { x, y };
+    if (effectiveGridType === 'off') return { x, y };
 
     const originX = 0;
     const originY = 0;
 
-    if (effectiveGridType === 'grid') {
+    if (effectiveGridType === 'square') {
       const cellIndexX = Math.floor((x - originX) / gridSize);
       const cellIndexY = Math.floor((y - originY) / gridSize);
       return {
@@ -374,6 +506,15 @@
 
   $: if (effectiveGridType === 'traveller-hex') {
     // Traveller convention: 1 hex center-to-center equals 1 parsec.
+    //
+    // A43 — THIS IS A THIRD KIND OF UNIT CHANGE AND IT IS NOT A BUG, but it was silent, which is why the
+    // fault was hard to see. Settings offers RELABEL or CONVERT (`distanceUnits.applyUnitChange`); this
+    // path does NEITHER. It ADOPTS A RULER DEFINED BY THE GRID: the hex spacing IS the parsec, so both
+    // the unit and `pixelsPerUnit` are redefined together from geometry. That is correct for Traveller —
+    // a hex map's scale is a property of its hexes — but it means a map can arrive stamped 'pc' with
+    // figures that were never parsecs, and a later CONVERT in Settings then multiplies them by 3.26.
+    // That relabel-then-convert pair is the whole of "Alpha Centauri reads 14.33 ly".
+    // Do not "unify" this with applyUnitChange: it answers a different question. Keep it stated.
     const hexSize = gridSize / 2;
     const hexCenterToCenterPx = Math.sqrt(3) * hexSize;
     const currentScale = starmap.scale ?? { unit: starmap.distanceUnit || 'LY', pixelsPerUnit: 25, showScaleBar: true };
@@ -430,8 +571,9 @@
           (starmapToSave as any).coiCategories = coiForStarmap();
       }
 
-      // Download
-      const json = JSON.stringify(starmapToSave, null, 2);
+      // Download. M1: stamp the build that wrote the file — see lib/map/provenance.ts. A Player handout is
+      // stamped too: it is still a file this build produced, and knowing which build made it is the point.
+      const json = JSON.stringify(stampForSave(starmapToSave), null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -548,8 +690,8 @@
     }
   }
 
-      // getStarColor is now the canonical getPlanetColor (aliased on import) so a star is
-      // the SAME colour here, in the orrery, and on summary cards — all token-driven.
+  // Star colour comes through systemVisualStars -> getPlanetColor, so a star is the SAME colour
+  // here, in the orrery, on summary cards and on the 3D starmap — all token-driven.
   // A system is hidden from the players' field guide when its ROOT node is player-hidden — for a
   // multi-star system that's the top barycenter, for a single star it's the star itself. Hiding an
   // underlying star only hides that star (not the whole system). Flagged on the GM map with a
@@ -560,16 +702,50 @@
       return !!root && !!(root as any).object_playerhidden;
   }
 
-  function getVisualNodes(system: System): CelestialBody[] {
-      const stars = system.nodes.filter(n => n.kind === 'body' && n.roleHint === 'star') as CelestialBody[];
-      if (stars.length > 0) {
-          // Sort by mass descending so primary is first
-          return stars.sort((a, b) => (b.massKg || 0) - (a.massKg || 0));
-      }
-      // No stars? Return root node if it's a body
-      const root = system.nodes.find(n => n.parentId === null);
-      if (root && root.kind === 'body') return [root as CelestialBody];
-      return [];
+  // The system's visible stars — the SHARED reader (starmap/systemStars), which this map used to
+  // duplicate as `getVisualNodes` + `getBlackHoleType`. Same mass order, same root-body fallback.
+  const getVisualStars = (system: System) => systemVisualStars(system);
+
+  // ── WHERE A SYSTEM'S WRITING GOES, and why it is measured off the GLYPH rather than the position ──
+  //
+  // The star glyphs are a SCREEN size now (G26/C17): `STAR_R` viewBox units at zoom 1, divided by the
+  // zoom like the labels (A4), so a star is the same size on screen at every zoom and a triple stays
+  // the same compact cluster. They used to be r = 5 in WORLD units inside the map transform, growing
+  // with the zoom — which put the name on top of the glyph zoomed in and left it floating zoomed out.
+  //
+  // Clear the object's own drawn extent, then add a constant gap. Everything here is in screen px
+  // times labelK: the glyph half-extent from the shared law, the gap, the member offsets.
+  const STAR_R_BASE = 5;   // the glyph's layout radius in viewBox units at zoom 1 and base size 1 — the r = 5 the map shipped with
+  // The base size multiplier (GM-local, 0.5..2) scales the unit everything below is stated in.
+  $: STAR_R = STAR_R_BASE * ($starmapUiStore.starSize ?? 1);
+  const membersOf = (vs: { band: any; letter?: string; bh?: string }[]): GlyphMember[] => vs.map((v) => ({ band: v.band, letter: v.letter, fixed: !!v.bh }));
+  // `starScale` and the unit `r` are passed in, not closed over — TAG-17 (see labelColumn).
+  function glyphHalf(systemNode: any, k: number, starScale: number, r: number): { w: number; h: number } {
+    const vs = getVisualStars(systemNode.system);
+    const half = clusterHalfExtent(clusterLayout(membersOf(vs), starScale));
+    return { w: half.w * r * k, h: half.h * r * k };
+  }
+  /**
+   * The RIGHT-HAND COLUMN a system's writing occupies: name at the top, then the depth cue, then the
+   * tag badges, all sharing one left edge clear of the glyph. Keeping them in one column is what stops
+   * the name and the badges colliding — they used to be independently placed and both to the right.
+   */
+  // `k` IS PASSED IN, NOT CLOSED OVER — TAG-17, and it bit again while this was being written.
+  // A `{@const}` re-evaluates only when a value its OWN expression mentions changes. The first version
+  // of this read `labelK` from the component scope, so every column was computed once at mount, when
+  // labelK was 1, and frozen: the gap came out as 6 WORLD units instead of 6 screen px, which is the
+  // zoom-dependent offset this whole change exists to remove. Measured, not guessed — 6.00 against an
+  // expected 15.11 at zoom 0.397. Name the reactive value at the call site and the compiler tracks it.
+  const LABEL_GAP_PX = 6;
+  function labelColumn(systemNode: any, k: number, starScale: number, r: number): { x: number; topY: number } {
+    // `starScale` and `r` are PASSED IN for the same TAG-17 reason as `k`: the {@const} that calls
+    // this must name every reactive value it depends on, or the column freezes at the mount values.
+    const vs = getVisualStars(systemNode.system);
+    const half = clusterHalfExtent(clusterLayout(membersOf(vs), starScale));
+    return {
+      x: systemNode.position.x + (half.w * r + LABEL_GAP_PX) * k,
+      topY: systemNode.position.y - half.h * r * k
+    };
   }
 
   // --- BodyPicker (starmap-scoped: pick a system by name, OR an interstellar ship) ---
@@ -594,8 +770,8 @@
   const systemPickerCategorize = (n: any) => n?.kind === 'construct' ? ['Constructs'] : ['Systems'];
   function systemPickerColor(sysNode: any): string {
       if (sysNode?.kind === 'construct') return sysNode.icon_color || '#ffd23f';
-      const vis = getVisualNodes(sysNode.system);
-      return vis.length ? getStarColor(vis[0]) : '#888';
+      const vis = getVisualStars(sysNode.system);
+      return vis.length ? vis[0].color : '#888';
   }
   function countNodes(n: any[]) {
       let stars = 0, planets = 0, moons = 0, constructs = 0;
@@ -634,25 +810,25 @@
       dispatch('systemclick', e.detail);
   }
 
-  function getBlackHoleType(body: CelestialBody): 'none' | 'BH' | 'BH_active' {
-      if (body.classes.includes('star/BH_active') || body.classes.includes('BH_active')) return 'BH_active';
-      if (body.classes.includes('star/BH') || body.classes.includes('BH')) return 'BH';
-      return 'none';
-  }
-
   // --- Measure tool (scaled maps only): tap two targets — any stars or interstellar ships — to read the
   //     distance between them, in the map's scale units. ---
   let measureMode = false;
   // An endpoint is a fixed point (star) or — when constructId is set — a moving construct, in which case
   // its position is re-derived from the clock so the ruler TRACKS the ship as time advances.
-  type MeasureEnd = { x: number; y: number; label: string; constructId?: string };
+  // WS7: an endpoint carries DEPTH. Without it `posZ` reads both ends as the reference plane and the
+  // 3D branch of `systemSeparation` returns the planar answer however the campaign is configured — the
+  // flag looks wired and does nothing. A construct's z is not picked up here (it is re-derived from the
+  // clock in `resolveMeasure` every frame, so anything stored at pick time is immediately overwritten).
+  type MeasureEnd = { x: number; y: number; z?: number; label: string; constructId?: string };
   let measureA: MeasureEnd | null = null;
   let measureB: MeasureEnd | null = null;
   function toggleMeasure() { measureMode = !measureMode; if (!measureMode) { measureA = null; measureB = null; } }
-  function measurePick(x: number, y: number, label: string, constructId?: string) {
-    const same = (e: MeasureEnd) => constructId ? e.constructId === constructId : (!e.constructId && x === e.x && y === e.y);
-    if (!measureA || (measureA && measureB)) { measureA = { x, y, label, constructId }; measureB = null; }
-    else if (!same(measureA)) { measureB = { x, y, label, constructId }; }
+  function measurePick(x: number, y: number, z: number | undefined, label: string, constructId?: string) {
+    // Depth is part of identity: two systems CAN share an x/y and differ only in z, which is exactly
+    // what WS7 made possible, and picking one then the other must read as two distinct ends.
+    const same = (e: MeasureEnd) => constructId ? e.constructId === constructId : (!e.constructId && x === e.x && y === e.y && (z ?? 0) === (e.z ?? 0));
+    if (!measureA || (measureA && measureB)) { measureA = { x, y, z, label, constructId }; measureB = null; }
+    else if (!same(measureA)) { measureB = { x, y, z, label, constructId }; }
   }
   // Resolve an endpoint to a live position: a construct endpoint follows its clock-derived placement
   // (transit/adrift point, or the system it's resting in); a plain point stays put. Takes nowSec + sm as
@@ -661,15 +837,16 @@
     if (!ep) return null;
     if (ep.constructId) {
       const pl = constructDisplayPlacement(sm, ep.constructId, nowSec);
-      if (pl.kind === 'transit' || pl.kind === 'adrift') return { ...ep, x: pl.x, y: pl.y };
-      if (pl.kind === 'system') { const s = systemById(pl.systemId); if (s) return { ...ep, x: s.position.x, y: s.position.y }; }
+      if (pl.kind === 'transit' || pl.kind === 'adrift') return { ...ep, x: pl.x, y: pl.y, z: pl.z };
+      // Resting in a system: the ship's depth IS that system's depth, known exactly.
+      if (pl.kind === 'system') { const s = systemById(pl.systemId); if (s) return { ...ep, x: s.position.x, y: s.position.y, z: s.position.z }; }
     }
     return ep;
   }
   $: mA = resolveMeasure(measureA, journeyNowSec, starmap);
   $: mB = resolveMeasure(measureB, journeyNowSec, starmap);
   $: measureDist = (mA && mB && activeScale.pixelsPerUnit > 0)
-    ? roundDistance(Math.hypot(mB.x - mA.x, mB.y - mA.y) / activeScale.pixelsPerUnit)
+    ? roundDistance(systemSeparation(mA, mB, activeScale.pixelsPerUnit, !zCounts(starmap)))
     : null;
 
   function handleStarClick(event: MouseEvent, systemId: string) {
@@ -680,7 +857,7 @@
     if (event.button === 0) { // Left click
       if (measureMode) {
         const s = systemById(systemId);
-        if (s) measurePick(s.position.x, s.position.y, s.name);
+        if (s) measurePick(s.position.x, s.position.y, s.position.z, s.name);
       } else if (linkingMode) {
         dispatch('selectsystemforlink', systemId);
       } else {
@@ -780,6 +957,110 @@
 
   function handleContextMenuAddSystem() {
     dispatch('addsystemat', contextMenuClickCoords);
+    closeContextMenu();
+  }
+
+  // Real-sky import at a clicked point: the region lands centred here,
+  // co-located with whatever the map already holds. Same shape as the
+  // Traveller subsector import above, but from the astronomy catalogues.
+  let showRealSkyModal = false;
+  let realSkyAnchor = { x: 0, y: 0 };
+  let realSkyPreviewR = 0; // live footprint ring radius, in map px
+
+  function handleContextMenuRealSky() {
+    realSkyAnchor = { ...contextMenuClickCoords };
+    realSkyPreviewR = 0;
+    showRealSkyModal = true;
+    closeContextMenu();
+  }
+
+  function handleRealSkyAppend(event: CustomEvent<any>) {
+    const { systems, fillOut, infillKnobs } = event.detail;
+    // Same completion + processing every imported system gets on load:
+    // pack-band star field/tilt, then the full physics pass (the Traveller
+    // importer processes before dispatching for the same reason).
+    completeImportedStars(systems, rulePack);
+    // G33: the dials the GM set in the modal, not the defaults.
+    if (fillOut) fillOutAll(systems.map((s: any) => ({ id: s.id, system: s.system })), rulePack, { knobs: infillKnobs });
+    for (const entry of systems) {
+      entry.system = systemProcessor.process(fixUpImportedSystem(entry.system, rulePack), rulePack);
+    }
+    const existingIds = new Set(starmap.systems.map((s) => s.id));
+    const added = systems.filter((s: any) => !existingIds.has(s.id));
+    dispatch('updatestarmap', { ...starmap, systems: [...starmap.systems, ...added] });
+    showRealSkyModal = false;
+    realSkyPreviewR = 0;
+  }
+
+  // WS7b — place a new system RELATIVE to this one, by bearing / elevation / distance. The dialogue docks
+  // to whichever side of the map the origin ISN'T on, so the live ghost stays visible while you drag.
+  function handleContextMenuAddNear() {
+    if (contextMenuSystemId) {
+      const sys = starmap.systems.find((s) => s.id === contextMenuSystemId);
+      if (sys) {
+        placeOrigin = sys;
+        placeGhost = null;
+        // Dock the panel to whichever side of the MAP CANVAS the origin is not on, so the ghost stays in
+        // sight. Both measurements have to be in the container's frame (which is what contextMenuX is in)
+        // and the inset has to clear the rail and the detail sidebar — the container spans those too.
+        const cont = starmapContainer?.getBoundingClientRect();
+        const svg = svgElement?.getBoundingClientRect();
+        if (cont && svg) {
+          const svgLeft = svg.left - cont.left;
+          placeSide = contextMenuX > svgLeft + svg.width / 2 ? 'left' : 'right';
+          placeInset = Math.round((placeSide === 'left' ? svgLeft : cont.right - svg.right) + 16);
+        } else {
+          placeSide = 'right';
+          placeInset = 16;
+        }
+      }
+    }
+    closeContextMenu();
+  }
+  // The distance slider's top end: a tenth of the map's own diagonal, rounded to something friendly, so the
+  // range suits a 12 ly neighbourhood and a 4000 ly sector alike without the GM configuring anything.
+  $: placeMaxDistance = (() => {
+    const perUnit = activeScale.pixelsPerUnit > 0 ? activeScale.pixelsPerUnit : 25;
+    const xs = starmap.systems.map((s) => s.position.x), ys = starmap.systems.map((s) => s.position.y);
+    if (!xs.length) return 50;
+    const span = Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / perUnit;
+    const raw = Math.max(5, span / 2);
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    return Math.ceil(raw / mag) * mag;
+  })();
+  function handlePlaceSystem(pos: { x: number; y: number; z?: number }) {
+    placeOrigin = null;
+    placeGhost = null;
+    dispatch('addsystemat', pos);
+  }
+
+  // WS7 — the SIMPLE depth path, for GMs who think in 2D: type how far above or below the map plane the
+  // system sits, in the campaign's own distance unit. (Spherical RA/Dec entry is the power tool; this is
+  // the plain door.) Stored in MAP units, so it converts through the scale like every other coordinate.
+  function handleContextMenuDepth() {
+    if (contextMenuSystemId) {
+      const sys = starmap.systems.find((s) => s.id === contextMenuSystemId);
+      if (sys) {
+        const perUnit = activeScale.pixelsPerUnit > 0 ? activeScale.pixelsPerUnit : 1;
+        const unit = starmap.distanceUnit || 'ly';
+        const currentUnits = (sys.position.z ?? 0) / perUnit;
+        const reply = prompt(
+          `Depth of ${sys.name} in ${unit}\n\nPositive is above the map plane, negative below. 0 puts it back on the plane.`,
+          String(Number(currentUnits.toFixed(3)))
+        );
+        if (reply !== null) {
+          const v = Number(reply.trim());
+          if (Number.isFinite(v)) {
+            const nextSystems = starmap.systems.map((s) =>
+              s.id === contextMenuSystemId ? { ...s, position: { ...s.position, z: v * perUnit } } : s
+            );
+            // Depth counts toward distance unless the campaign opted out, so any route touching this
+            // system needs its stored distance recomputed — force it even on a diagrammatic map.
+            dispatch('updatestarmap', { ...starmap, systems: nextSystems, routes: recomputeScaledRoutes(nextSystems, true) });
+          }
+        }
+      }
+    }
     closeContextMenu();
   }
 
@@ -908,11 +1189,12 @@
   }
 
   function handleAddTravellerSystem(event: CustomEvent<any>) {
-      const data = event.detail;
+      const { infillKnobs, infillAgeGyr, ...data } = event.detail;
       const importer = new TravellerImporter();
-      
-      // Generate System using the new public method
-      const system = importer.generateTravellerSystem(data, rulePack);
+
+      // G33: the dials the GM set in the modal reach the infill step, which is what
+      // importer.ts's own comment always promised.
+      const system = importer.generateTravellerSystem(data, rulePack, { knobs: infillKnobs, ageGyr: infillAgeGyr });
       
       const newSystemNode = {
           id: system.id,
@@ -940,6 +1222,8 @@
         rulerOn={measureMode}
         rulerAvailable={isScaled}
         {routesAttention}
+        playerConns={{ local: $playerConnections.local, remote: $playerConnections.remote }}
+        playerConnSummary={$playerConnections.summary}
         on:ruler={() => { railOpen = false; toggleMeasure(); }}
         on:starmap={() => { railOpen = false; }}
         on:new={() => dispatch('new')}
@@ -954,9 +1238,7 @@
         on:findtag={() => { railOpen = false; dispatch('findtag'); }}
         on:allships={() => { railOpen = false; dispatch('allships'); }}
         on:routes={() => { railOpen = false; dispatch('routes'); }}
-        on:catalogue={() => { railOpen = false; dispatch('catalogue'); }}
         on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
-        on:projector={() => { railOpen = false; dispatch('projector'); }}
         on:report={() => { railOpen = false; dispatch('report'); }}
         on:clear={() => { railOpen = false; dispatch('clear'); }}
       />
@@ -967,6 +1249,7 @@
       <div class="time-display-overlay"><TimeDisplay temporal={ensuredTemporal} /></div>
     {/if}
     <BodyPicker
+      floating
       nodes={pickerNodes}
       focusedId={null}
       emptyLabel="Starmap"
@@ -992,15 +1275,47 @@
     <svg
       bind:this={svgElement}
       class="starmap"
-      class:with-background={$starmapUiStore.showBackgroundImage && !invertDisplay}
+      class:with-background={!!bgScreen}
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 800 600"
       use:gestures={starmapGestures}
       role="button"
       tabindex="0"
-      style="touch-action: none;"
+      style="touch-action: none; {bgScreenStyle}"
     >
+      <defs>
+        <!-- The jet fade, along the beam: bright at the star (the gradient's middle), dimming
+             outward, GONE well before the tip — the quick fade the owner asked for. bbox units, so
+             one definition serves every jet at every size. -->
+        <linearGradient id="sm-jet-fade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#7fd4ff" stop-opacity="0" />
+          <stop offset="0.14" stop-color="#8fdcff" stop-opacity="0.45" />
+          <stop offset="0.32" stop-color="#c8f2ff" stop-opacity="0.9" />
+          <stop offset="0.5" stop-color="#eafeff" stop-opacity="1" />
+          <stop offset="0.68" stop-color="#c8f2ff" stop-opacity="0.9" />
+          <stop offset="0.86" stop-color="#8fdcff" stop-opacity="0.45" />
+          <stop offset="1" stop-color="#7fd4ff" stop-opacity="0" />
+        </linearGradient>
+      </defs>
       <g bind:this={groupElement} transform={`translate(${panX}, ${panY}) scale(${zoom})`}>
+      <!-- G16 MAP-FIXED BACKGROUND. First child of the world transform, so it is BEHIND the grid,
+           the routes and every system, and holds registration with them at any pan or zoom for
+           free. `preserveAspectRatio="none"` is exact rather than lax: the height was derived from
+           the bitmap's own aspect ratio, so there is nothing left to fit. -->
+      {#if bgRect && resolvedBg}
+        <image
+          href={resolvedBg.url}
+          x={bgRect.cx - bgRect.w / 2}
+          y={bgRect.cy - bgRect.h / 2}
+          width={bgRect.w}
+          height={bgRect.h}
+          opacity={resolvedBg.opacity}
+          preserveAspectRatio="none"
+          transform={bgRect.rotationDeg ? `rotate(${bgRect.rotationDeg} ${bgRect.cx} ${bgRect.cy})` : undefined}
+          style="pointer-events: none;"
+          aria-hidden="true"
+        />
+      {/if}
       <Grid
         gridType={displayGridType}
         {gridSize} 
@@ -1038,10 +1353,14 @@
             class:jump-route={route.lineStyle === 'dashed'}
             style="stroke-width: {strokeWidth}px;"
           />
+          <!-- A8: constant SCREEN size under zoom, like the system names (A4). Both the font and the
+               offset from the line divide by the zoom, cancelling the one factor inherited from the
+               world transform. -->
           <text
             x={midX}
-            y={midY - 5}
+            y={midY - 5 * labelK}
             class="route-label"
+            style="font-size:{10 * labelK}px; stroke-width:{2 * labelK}px"
             on:pointerdown={handleRoutePointerDown}
             on:contextmenu={(e) => handleRouteContextMenu(e, route)}
           >
@@ -1051,10 +1370,13 @@
             <!-- Name runs along the line: rotated about the midpoint, flipped to stay readable. -->
             {@const rawAngle = Math.atan2(targetSystem.position.y - sourceSystem.position.y, targetSystem.position.x - sourceSystem.position.x) * 180 / Math.PI}
             {@const nameAngle = rawAngle > 90 ? rawAngle - 180 : rawAngle < -90 ? rawAngle + 180 : rawAngle}
+            <!-- The rotation is about the midpoint, so scaling the offset keeps the name the same
+                 distance off the line at every zoom; the transform itself needs no change. -->
             <text
               x={midX}
-              y={midY + 10}
+              y={midY + 10 * labelK}
               class="route-name"
+              style="font-size:{7 * labelK}px; stroke-width:{1.5 * labelK}px"
               transform={`rotate(${nameAngle}, ${midX}, ${midY})`}
               on:pointerdown={handleRoutePointerDown}
               on:contextmenu={(e) => handleRouteContextMenu(e, route)}
@@ -1131,11 +1453,44 @@
         {/if}
       {/each}
 
-      {#each starmap.systems as systemNode}
-        {@const visualNodes = getVisualNodes(systemNode.system)}
+          {#each starmap.systems as systemNode}
+        {@const hl = systemMarkers(systemNode, activeHighlights, $tagCategories)}
+        {#if hl.shown.length}
+          <!-- Same column as the name, starting below it — and below the depth cue when that is shown,
+               which is why this needs the same predicate rather than a guess. The group is SCALED by
+               labelK, so everything inside is in screen px: `off` is a pixel figure. -->
+          {@const col = labelColumn(systemNode, labelK, $starmapUiStore.starScale, STAR_R)}
+          {@const off = zDepthOn && (systemNode.position.z ?? 0) !== 0 ? 20 : 9}
+          <g class="hl-markers" transform="translate({col.x}, {col.topY + off * labelK}) scale({labelK})" pointer-events="none" style="font-size:{markerPill.fontPx}px; font-family:{markerPill.fontFamily}">
+            {#each hl.shown as m, i (m.key)}
+              {#if m.style === 'ring' || m.style === 'both'}
+                <!-- A ring encircles the STAR, so it has to undo the column offset. Inside this group
+                     one unit is one screen px, and the glyph's half-extent is a screen figure too now
+                     (glyphHalf returns world = px * labelK, so times zoom is px again). Derived rather
+                     than the old hardcoded (-8, 10), which was tuned to the origin this transform used
+                     to have. -->
+                {@const half = glyphHalf(systemNode, labelK, $starmapUiStore.starScale, STAR_R)}
+                <circle cx={-(half.w * zoom + LABEL_GAP_PX)} cy={half.h * zoom - off} r={9 + i * 2.5} fill="none" stroke={m.color} stroke-width="1.4" />
+              {/if}
+              {#if m.style !== 'ring'}
+                {@const p = tagPillSvg(tagPillText(m), 0, i * markerPill.rowStep, markerPill)}
+                <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={p.rx} fill={m.color} />
+                <text x={p.textX} y={p.textY} class="hl-text" fill={m.textColor}>{tagPillText(m)}</text>
+              {/if}
+            {/each}
+            {#if hl.overflow}
+              {@const p = tagPillSvg(`+${hl.overflow}`, 0, hl.shown.length * markerPill.rowStep, markerPill)}
+              <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={p.rx} fill={TAG_PILL_OVERFLOW_BG} />
+              <text x={p.textX} y={p.textY} class="hl-text" fill={TAG_PILL_OVERFLOW_FG}>+{hl.overflow}</text>
+            {/if}
+          </g>
+        {/if}
+        {@const visualStars = getVisualStars(systemNode.system)}
+        {@const slots = clusterLayout(membersOf(visualStars), $starmapUiStore.starScale)}
         <g
           role="button"
           tabindex="0"
+          class:hl-dim={highlightsActive && !systemMatches(systemNode, activeHighlights, $tagCategories)}
           on:pointerdown={(e) => handleSystemPointerDown(e, systemNode.id)}
           on:click={(e) => handleStarClick(e, systemNode.id)}
           on:dblclick={() => handleStarDblClick(systemNode.id)}
@@ -1152,140 +1507,114 @@
               <line x1="-6" y1="4.5" x2="6" y2="-4.5" stroke="#ff6b6b" stroke-width="1.2" />
             </g>
           {/if}
-          {#if visualNodes.length === 0}
+          {#if visualStars.length === 0}
               <!-- Fallback for empty/invalid system -->
-              <circle cx={systemNode.position.x} cy={systemNode.position.y} r={3} fill="#555" />
-          {:else if visualNodes.length === 1}
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-          {:else if visualNodes.length === 2}
-              <circle
-                cx={systemNode.position.x - 5}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-              <circle
-                cx={systemNode.position.x + 5}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[1])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
-              />
-          {:else if visualNodes.length === 3}
-              <!-- 3 Stars: Pyramid layout (Primary Top, others below) -->
-              <!-- Primary (Top Center) -->
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y - 6}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-              <!-- Second (Bottom Left) -->
-              <circle
-                cx={systemNode.position.x - 6}
-                cy={systemNode.position.y + 5}
-                r={5}
-                style="fill: {getStarColor(visualNodes[1])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
-              />
-              <!-- Third (Bottom Right) -->
-              <circle
-                cx={systemNode.position.x + 6}
-                cy={systemNode.position.y + 5}
-                r={5}
-                style="fill: {getStarColor(visualNodes[2])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
-              />
+              <circle cx={systemNode.position.x} cy={systemNode.position.y} r={3 * labelK} fill="#555" />
           {:else}
-              <!-- 4+ Stars: Diamond Layout -->
-              <!-- Primary (Top) -->
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y - 6}
-                r={5}
-                style="fill: {getStarColor(visualNodes[0])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[0]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[0]) === 'BH'}
-              />
-              <!-- Second (Bottom) -->
-              <circle
-                cx={systemNode.position.x}
-                cy={systemNode.position.y + 6}
-                r={5}
-                style="fill: {getStarColor(visualNodes[1])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[1]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[1]) === 'BH'}
-              />
-              <!-- Third (Left) -->
-              <circle
-                cx={systemNode.position.x - 7}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[2])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[2]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[2]) === 'BH'}
-              />
-              <!-- Fourth (Right) -->
-              <circle
-                cx={systemNode.position.x + 7}
-                cy={systemNode.position.y}
-                r={5}
-                style="fill: {getStarColor(visualNodes[3])};"
-                class="star"
-                class:selected={systemNode.id === selectedSystemForLink}
-                class:bh-active={getBlackHoleType(visualNodes[3]) === 'BH_active'}
-                class:bh-quiescent={getBlackHoleType(visualNodes[3]) === 'BH'}
-              />
-              {#if visualNodes.length > 4}
+              <!-- G26/C17: ONE loop over the shared layout — the old hand-written 1/2/3/4+ branches
+                   drew the same arrangement with r = 5 WORLD units. Every figure here is screen px
+                   times labelK: the member offset, the radius (its band at the GM scaler) and the
+                   decorations, which are the star's TAGS drawn as marks — the shed shell under the
+                   disc, the jet through it, the flare sparks on its limb. Same tags the 3D map reads. -->
+              {#each visualStars as s, i (s.id)}
+                {@const slot = slots[i] ?? { dx: 0, dy: 0, scale: 1 }}
+                {@const r = STAR_R * slot.scale * labelK}
+                {@const sx = systemNode.position.x + slot.dx * STAR_R * labelK}
+                {@const sy = systemNode.position.y + slot.dy * STAR_R * labelK}
+                {#if s.shedding}
+                  <circle class="star-shell" cx={sx} cy={sy} r={r * (s.shedding >= 2 ? 2.6 : 2)} style="stroke:{s.color}; stroke-width:{r * (s.shedding >= 2 ? 0.5 : 0.32)}px; opacity:{s.shedding >= 2 ? 0.42 : 0.28}" />
+                {/if}
+                {#if s.jets}
+                  <!-- A jet NARROWS TO THE STAR and widens as it goes, the cyan-white core inside a
+                       soft sheath, fading out along the beam (the gradient) and gone by the tip —
+                       the 3D map's look, at three-quarters the old length with a quick fade (owner,
+                       2026-08-19). Two cones per layer, drawn as one bowtie polygon each. -->
+                  {@const jl = r * (s.jets >= 2 ? 4 : 3)}
+                  {@const w0 = r * 0.14}
+                  {@const wt = r * (s.jets >= 2 ? 0.8 : 0.62)}
+                  {@const wc = r * (s.jets >= 2 ? 0.32 : 0.25)}
+                  <polygon class="star-jet-sheath" points="{sx - w0},{sy} {sx - wt},{sy - jl} {sx + wt},{sy - jl} {sx + w0},{sy} {sx + wt},{sy + jl} {sx - wt},{sy + jl}" />
+                  <polygon class="star-jet" points="{sx - w0 * 0.5},{sy} {sx - wc},{sy - jl * 0.95} {sx + wc},{sy - jl * 0.95} {sx + w0 * 0.5},{sy} {sx + wc},{sy + jl * 0.95} {sx - wc},{sy + jl * 0.95}" />
+                {/if}
+                <circle
+                  cx={sx}
+                  cy={sy}
+                  r={r}
+                  style="fill: {s.color};"
+                  class="star"
+                  class:selected={systemNode.id === selectedSystemForLink}
+                  class:bh-active={s.bh === 'active'}
+                  class:bh-quiescent={s.bh === 'quiescent'}
+                />
+                {#if s.flares && !s.bh}
+                  <g class="star-flares" style="stroke:{s.color}; stroke-width:{r * 0.26}px">
+                    {#each [0.785, 2.356, 3.927, 5.498] as a}
+                      <line x1={sx + Math.cos(a) * r * 1.2} y1={sy + Math.sin(a) * r * 1.2} x2={sx + Math.cos(a) * r * 1.75} y2={sy + Math.sin(a) * r * 1.75} />
+                    {/each}
+                  </g>
+                {/if}
+              {/each}
+              {#if visualStars.length > 4}
                   <text
                     x={systemNode.position.x}
-                    y={systemNode.position.y + 15}
+                    y={systemNode.position.y + 15 * labelK}
                     class="plus-indicator"
+                    style="font-size:{14 * labelK}px; stroke-width:{2 * labelK}px"
                     text-anchor="middle"
                   >+</text>
               {/if}
           {/if}
         </g>
+        <!-- The name takes the TOP of the label column (owner, 2026-08-17), with the badges below it
+             rather than beside it, so the two can no longer collide. 11px rather than 12: at the old
+             size a long name dominated a crowded sector. -->
+        {@const col = labelColumn(systemNode, labelK, $starmapUiStore.starScale, STAR_R)}
         <text
-          x={systemNode.position.x + 15}
-          y={systemNode.position.y + 5}
+          x={col.x}
+          y={col.topY}
           class="star-label"
+          style="font-size:{11 * labelK}px; stroke-width:{2 * labelK}px"
         >
           {systemNode.name}
         </text>
+        <!-- WS7 DEPTH CUE: the GM map is 2D and cannot show height, so a system that sits off the plane
+             says so in words. Without this, editing depth here is editing blind — you would only see the
+             result by switching to the 3D view. Signed, in the campaign's own unit.
+             A12: hidden when the campaign has opted out of counting depth — an annotation of a number
+             that no longer affects any distance is noise. Gated on `zCounts`, the one predicate for
+             that flag, so this can never disagree with what the measure tool is actually doing. -->
+        {#if zDepthOn && (systemNode.position.z ?? 0) !== 0}
+          {@const dz = (systemNode.position.z ?? 0) / activeScale.pixelsPerUnit}
+          <text
+            x={col.x}
+            y={col.topY + 11 * labelK}
+            class="depth-label"
+            style="font-size:{9 * labelK}px"
+          >{dz > 0 ? '+' : ''}{Math.abs(dz) < 10 ? dz.toFixed(1) : Math.round(dz)} {activeScale.unit}</text>
+        {/if}
       {/each}
+
+      <!-- Real-sky import footprint: the live ring showing where an imported region will land and
+           which existing systems it will surround, updating as the dialogue's radius slides. -->
+      {#if showRealSkyModal && realSkyPreviewR > 0}
+        <circle class="realsky-ring" cx={realSkyAnchor.x} cy={realSkyAnchor.y} r={realSkyPreviewR} />
+        <circle class="realsky-anchor" cx={realSkyAnchor.x} cy={realSkyAnchor.y} r="3" />
+      {/if}
+
+      <!-- WS7b GHOST: where the system being placed would land. A tether back to the origin so the bearing
+           is unmistakable, a dashed ring for the system itself, and — when it has depth — the same signed
+           label the real systems carry, since a flat map cannot show height any other way. -->
+      {#if placeOrigin && placeGhost}
+        {@const gz = (placeGhost.z ?? 0) / (activeScale.pixelsPerUnit > 0 ? activeScale.pixelsPerUnit : 1)}
+        <line class="ghost-tether" x1={placeOrigin.position.x} y1={placeOrigin.position.y} x2={placeGhost.x} y2={placeGhost.y} />
+        <circle class="ghost-ring" cx={placeGhost.x} cy={placeGhost.y} r="9" />
+        <circle class="ghost-core" cx={placeGhost.x} cy={placeGhost.y} r="3" />
+        <text class="ghost-label" x={placeGhost.x + 14 * labelK} y={placeGhost.y + 5 * labelK} style="font-size:{10 * labelK}px">New system</text>
+        {#if zCounts(starmap) && Math.abs(gz) > 1e-6 && activeScale.pixelsPerUnit > 0}
+          <text class="depth-label" x={placeGhost.x + 14 * labelK} y={placeGhost.y + 16 * labelK} style="font-size:{9 * labelK}px"
+          >{gz > 0 ? '+' : ''}{Math.abs(gz) < 10 ? gz.toFixed(1) : Math.round(gz)} {activeScale.unit}</text>
+        {/if}
+      {/if}
 
       <!-- Measure tool overlay: line + distance between the two picked targets (stars or ships). -->
       {#if measureMode && mA}
@@ -1293,11 +1622,26 @@
         {#if mB}
           <line class="measure-line" x1={mA.x} y1={mA.y} x2={mB.x} y2={mB.y} />
           <circle class="measure-pt" cx={mB.x} cy={mB.y} r="4" />
-          <text class="measure-label" x={(mA.x + mB.x) / 2} y={(mA.y + mB.y) / 2 - 6} text-anchor="middle">{measureDist} {activeScale.unit}</text>
+          <text
+            class="measure-label"
+            x={(mA.x + mB.x) / 2}
+            y={(mA.y + mB.y) / 2 - 6 * labelK}
+            text-anchor="middle"
+            style="font-size:{11 * labelK}px; stroke-width:{3 * labelK}px"
+          >{measureDist} {activeScale.unit}</text>
         {/if}
       {/if}
       </g>
     </svg>
+    {#if highlightKey.length}
+      <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. -->
+      <div class="hl-key">
+        <span class="hl-key-head">Highlighted</span>
+        {#each highlightKey as k (k.label)}
+          <span class="hl-key-row"><span class="hl-key-dot" style="background:{k.color}"></span>{k.label}</span>
+        {/each}
+      </div>
+    {/if}
     <StarmapScaleBar
       {zoom}
       {svgScale}
@@ -1306,8 +1650,13 @@
       unitIsPrefix={starmap.unitIsPrefix}
       isScaled={scaleBarVisible}
     />
+    <!-- G28: the campaign's undo/redo. Same component as the system view's, handed the STARMAP
+         history instead - moving, renaming, adding and deleting systems, the routes, and the map's
+         own description and notes. The two views are never on screen together, so one pill each. -->
+    <UndoPill {mode} status={starmapUndoStatus} undo={undoStarmap} redo={redoStarmap} />
+
     {#if ensuredTemporal}
-      <div class="time-overlay" class:phone={mode === 'phone'}>
+      <div class="time-overlay" class:phone={mode === 'phone'} use:chrome>
         <TimeControls
           compact={mode === 'phone'}
           temporal={ensuredTemporal}
@@ -1323,7 +1672,11 @@
 
   <!-- Phone only: starmap Description + GM Notes in a bottom sheet (the draggable floating
        panel is desktop-only). Rendered directly (not via the AppShell detail slot) so the
-       desktop right panel stays collapsed. -->
+       desktop right panel stays collapsed.
+       A52 — THIS IS THE BAR THE USER REPORTED. There is deliberately NO condition here: BottomSheet
+       marks itself `use:chrome`, so an open dialog on a small screen hides it through the one rule in
+       styles/tokens.css. It carries the only phone route to the starmap description and the GM notes,
+       so it is hidden rather than unmounted and comes back holding exactly what it held. -->
   {#if mode === 'phone'}
     <BottomSheet title={starmap.name}>
       <div class="starmap-detail-mobile">
@@ -1346,6 +1699,8 @@
             <li on:click={handleContextMenuEditRoute}>Edit Link…</li>
         {:else if contextMenuSystemId}
             <li on:click={handleContextMenuRename}>Rename System…</li>
+            <li on:click={handleContextMenuDepth}>Set Depth…</li>
+            <li on:click={handleContextMenuAddNear}>Add System near here…</li>
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
                 Start Link
@@ -1358,6 +1713,7 @@
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
+                    <li on:click={handleContextMenuRealSky}>Import Real Stars Here…</li>
                     {#if $starmapUiStore.travellerMode}
                         <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP Here</li>
                         <li on:click={handleContextMenuTravellerImport}>Add Traveller Map SubSector Here</li>
@@ -1372,21 +1728,50 @@
               </div>
           {/if}
 
+  {#if placeOrigin}
+    <SystemPlacementDialog
+      originName={placeOrigin.name}
+      originPos={placeOrigin.position}
+      unit={activeScale.unit}
+      pixelsPerUnit={activeScale.pixelsPerUnit}
+      maxDistance={placeMaxDistance}
+      side={placeSide}
+      inset={placeInset}
+      on:change={(e) => (placeGhost = e.detail)}
+      on:place={(e) => handlePlaceSystem(e.detail)}
+      on:cancel={() => { placeOrigin = null; placeGhost = null; }}
+    />
+  {/if}
+
   {#if showSaveModal}
       <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
   {/if}
   
   {#if showImportModal}
-      <ImportTravellerModal 
-          showModal={showImportModal} 
-          on:import={handleTravellerImport} 
-          on:close={() => showImportModal = false} 
+      <ImportTravellerModal
+          showModal={showImportModal}
+          on:import={handleTravellerImport}
+          on:close={() => showImportModal = false}
+      />
+  {/if}
+
+  {#if showRealSkyModal}
+      <RealSkyImportModal
+          {rulePack}
+          mode="append"
+          anchorPx={realSkyAnchor}
+          existingSystems={starmap.systems}
+          pixelsPerUnit={activeScale.pixelsPerUnit > 0 ? activeScale.pixelsPerUnit : 43.30127018922193}
+          on:previewRadius={(e) => (realSkyPreviewR = e.detail)}
+          on:import={handleRealSkyAppend}
+          on:close={() => { showRealSkyModal = false; realSkyPreviewR = 0; }}
       />
   {/if}
 
   {#if showAddTravellerModal}
       <AddTravellerSystemModal 
           showModal={showAddTravellerModal} 
+          {rulePack}
           on:generate={handleAddTravellerSystem} 
           on:close={() => showAddTravellerModal = false} 
       />
@@ -1715,15 +2100,26 @@
     height: 100%;
     border: 1px solid #ccc;
     background-color: #000; /* Default background */
+    /* A drag is a PAN here, never a text selection. Without this the browser treats a
+       left-drag across the map as selecting the system labels it passes over, and a
+       cluster of names lights up highlighted (A49). Scoped to the svg deliberately —
+       the description box outside it is prose a GM may want to select and copy.
+       Same guard the map's own hex numbering already carries (Grid.svelte). */
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .starmap.with-background {
-    /* 
-      Image Credit: ESO/S. Brunier 
-      https://www.eso.org/public/images/eso0932a/
-    */
-    background-image: url('/images/ui/MilkyWay.jpg');
-    background-size: cover;
+    /* G16 SCREEN-FIXED BACKGROUND: a CSS background on the ELEMENT, outside the world transform —
+       which is precisely why it holds still while the stars move. The layers and the size are set
+       from the campaign's MapBackground (see bgScreenStyle above); the shipped default resolves to
+       the ESO Milky Way it has always been:
+         Image Credit: ESO/S. Brunier — https://www.eso.org/public/images/eso0932a/
+       The first layer is a black scrim carrying the fade, because `opacity` here would fade the
+       whole svg and take the stars with it. The MAP-FIXED case is an <image> inside the transform
+       group instead, and shares none of this. */
+    background-image: var(--sm-bg-layers, url('/images/ui/MilkyWay.jpg'));
+    background-size: var(--sm-bg-size, cover);
     background-position: center center;
     background-repeat: no-repeat;
   }
@@ -1767,6 +2163,13 @@
     stroke: #444444;
     stroke-width: 1px;
   }
+  /* G26: tag-driven glyph marks. Stroke colour and width are inline (the star's own colour, sized
+     to its radius); these hold what does not change. */
+  .star-shell { fill: none; pointer-events: none; }
+  /* Both layers take the along-beam fade gradient; the sheath is simply fainter overall. */
+  .star-jet-sheath { fill: url(#sm-jet-fade); opacity: 0.3; pointer-events: none; }
+  .star-jet { fill: url(#sm-jet-fade); opacity: 0.95; pointer-events: none; }
+  .star-flares line { stroke-linecap: round; opacity: 0.85; pointer-events: none; }
 
   .star-label {
     fill: #fff;
@@ -1775,6 +2178,16 @@
     stroke: #000;
     stroke-width: 2px;
   }
+  /* WS7 depth cue — quieter than the name, so it reads as an annotation not a second label. */
+  .depth-label { font-size: 9px; fill: #8fb4e0; opacity: 0.85; pointer-events: none; }
+
+  /* WS7b: the not-yet-real system. Dashed and warm so it reads as a proposal, never as map content. */
+  .ghost-tether { stroke: #ff7a45; stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.6; pointer-events: none; }
+  .ghost-ring { fill: none; stroke: #ff7a45; stroke-width: 1.5; stroke-dasharray: 4 3; opacity: 0.9; pointer-events: none; }
+  .realsky-ring { fill: rgba(120, 180, 255, 0.06); stroke: #7ab8ff; stroke-width: 1.5; stroke-dasharray: 6 4; opacity: 0.9; pointer-events: none; }
+  .realsky-anchor { fill: #7ab8ff; opacity: 0.9; pointer-events: none; }
+  .ghost-core { fill: #ff7a45; opacity: 0.9; pointer-events: none; }
+  .ghost-label { font-size: 10px; fill: #ff9a6b; pointer-events: none; }
 
   .plus-indicator {
     fill: #fff;
@@ -1852,4 +2265,18 @@
   .jc-buttons button { padding: 8px 14px; border: none; border-radius: 4px; cursor: pointer; background: var(--bg-control); color: var(--text); font: inherit; }
   .jc-buttons button.danger { background: var(--status-bad, #e0484d); color: #fff; }
   .jc-buttons button.primary { background: var(--accent, #ff5a1f); color: var(--on-accent, #fff); }
+
+  /* Size and family are set on the .hl-markers group from the shared pill metrics — never restated here. */
+  .hl-text { dominant-baseline: middle; }
+  .hl-markers { pointer-events: none; }
+
+  /* A highlight filters by emphasis: unmatched systems fade, they never vanish. */
+  .hl-dim { opacity: 0.22; transition: opacity 120ms ease; }
+
+  .hl-key { position: absolute; top: 10px; right: 10px; z-index: 6; display: flex; flex-direction: column; gap: 3px;
+            background: rgba(12,15,22,0.82); border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px;
+            font-size: 0.68rem; color: var(--text); pointer-events: none; max-width: 190px; }
+  .hl-key-head { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
+  .hl-key-row { display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hl-key-dot { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
 </style>

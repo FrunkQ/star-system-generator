@@ -25,6 +25,23 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 	} as unknown as typeof ResizeObserver;
 }
 
+// jsdom sets no origin for Node's fetch, so a ROOT-RELATIVE url — the only kind app code uses for a
+// static asset — throws `TypeError: Invalid URL` instead of rejecting. E1 blamed the four page.spec
+// failures on this; it was not the cause (see E3), but it is real, and it filled the suite's stderr
+// with a stack for every mount. There is no server under test, so answer a plain 404: that is the
+// truth, it is what callers already handle, and it never opens a socket. A test that wants a body
+// back mocks the module or fetch itself, as several already do.
+if (typeof globalThis.fetch === 'function') {
+	const realFetch = globalThis.fetch;
+	globalThis.fetch = ((input: any, init?: any) => {
+		const url = typeof input === 'string' ? input : input?.url;
+		if (typeof url === 'string' && url.startsWith('/')) {
+			return Promise.resolve(new Response(null, { status: 404, statusText: 'Not Found (no server under test)' }));
+		}
+		return realFetch(input, init);
+	}) as typeof globalThis.fetch;
+}
+
 // jsdom's canvas has no 2D context (no native backend). Provide a no-op,
 // chainable stub so canvas-drawing components (SystemVisualizer) can mount.
 if (typeof HTMLCanvasElement !== 'undefined') {

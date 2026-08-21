@@ -36,6 +36,9 @@ function parsedFixture(file: string): ParsedUbox {
 // moons.json        = whole-system save (moon hierarchy, rings, far-field guard)
 const solRealistic = () => parsedFixture('sol-realistic.json');
 const moonsFixture = () => parsedFixture('moons.json');
+// hystrine-blank-category-star.json = a user's whole-system save (inbox G32) whose 1.68-solar-mass A
+// star carries top-level Category '' and Celestial.Category 2. Trimmed to the fields the importer reads.
+const hystrineFixture = () => parsedFixture('hystrine-blank-category-star.json');
 const MU_SUN = G * SOLAR_MASS_KG;
 const node = (s: System, name: string) => s.nodes.find((n) => n.name === name) as CelestialBody;
 
@@ -255,9 +258,18 @@ describe('ubox end-to-end — convert → fixUp → process', () => {
     }
 
     // A freshly IMPORTED ocean world settles its greenhouse⇄temperature fixed point over a few process
-    // passes (Earth climbs 277→289 K as the implied ocean-vapour greenhouse converges). This is SSG's
-    // convergence, not a converter bug — so the import flow processes to convergence (below). After that
-    // it is stable: the last pass must not move the temperature. Earth lands Earth-like (~285–295 K).
+    // passes as the ocean-vapour greenhouse converges. This is SSG's convergence, not a converter bug —
+    // so the import flow processes to convergence (below). After that it is stable: the last pass must
+    // not move the temperature.
+    //
+    // THE BAND IS 282–295 AND THE LOW END IS UNIVERSE SANDBOX'S OWN CO2, NOT A MODEL FAULT (D6).
+    // This fixture's Earth carries 300 ppm CO2 — a pre-industrial figure — where the pack's own Earth
+    // carries 448. Measured by substitution: swap in the pack's CO2 and nothing else and this same
+    // Earth lands at 288.8 K; leave it at 300 ppm and it lands at 283.9 K. The band used to start at
+    // 285 because the vapour law it was written against was roughly twice too wet (a flat 0.4%-plus-a-
+    // ramp, against Earth's measured column mean), and that extra water was silently paying for the
+    // missing CO2. Two Earths in this codebase disagree about CO2; that is the finding, and widening
+    // this band is what stops the vapour term being tuned to hide it.
     let prev = node(sys, 'Earth').temperatureK!;
     let lastDelta = Infinity;
     for (let i = 0; i < 8; i++) {
@@ -268,7 +280,7 @@ describe('ubox end-to-end — convert → fixUp → process', () => {
       if (lastDelta < 0.1) break;
     }
     expect(lastDelta).toBeLessThan(0.5);          // converged + stable
-    expect(prev).toBeGreaterThan(285);
+    expect(prev).toBeGreaterThan(282);
     expect(prev).toBeLessThan(295);
   });
 });
@@ -290,5 +302,51 @@ describe('ubox review — audit', () => {
     const densities = review.comparisons.filter((c) => c.metric === 'density');
     expect(densities.length).toBeGreaterThan(0);
     expect(densities.every((c) => c.bucket === 'aligned')).toBe(true);
+  });
+});
+
+// ===========================================================================
+describe('ubox category — the top-level string is not the whole answer (inbox G32)', () => {
+  // A USER'S REPORT, and it was right: "30 of 34 objects unbound including the main star; the system
+  // is set around one of the gas giants as a red dwarf; the age is 4.6". The star was in the file. It
+  // carried Category '' at the top level and Category 2 / StarType 1 / Luminosity 2.97e27 on its
+  // Celestial component, and the importer read only the string, took blank to mean particle, and
+  // dropped a 1.68-solar-mass A star before hierarchy inference ran. Everything the user saw followed.
+  it('a star with a BLANK top-level Category is still a star, from its Celestial component', () => {
+    const result = convertUbox(hystrineFixture());
+    const sys = result.system as System;
+    const stars = sys.nodes.filter((n) => (n as CelestialBody).roleHint === 'star') as CelestialBody[];
+    expect(stars.length).toBe(1);
+    expect(stars[0].name).toBe('Hystrix');
+    expect(stars[0].massKg! / SOLAR_MASS_KG).toBeCloseTo(1.68, 2);
+    expect(stars[0].classes?.[0]).toBe('star/A');
+    expect(sys.nodes.filter((n) => !n.parentId).map((n) => n.name)).toEqual(['Hystrix']);   // it is the root
+  });
+
+  it('with the star found, the system binds: dozens of bodies, not four', () => {
+    // Before the fix: 4 nodes survived, 31 skipped as unbound, Gallabi (a 254 Me giant) was root.
+    const result = convertUbox(hystrineFixture());
+    const sys = result.system as System;
+    expect(sys.nodes.length).toBeGreaterThan(25);
+    const unbound = result.skipped.filter((s) => s.reason === 'unbound');
+    expect(unbound.length).toBeLessThan(5);
+    const gallabi = node(sys, 'Gallabi');
+    expect(gallabi.roleHint).toBe('planet');           // a planet again, not a star
+    expect(gallabi.parentId).toBe(node(sys, 'Hystrix').id);
+  });
+
+  it('and the age is the one the user SET on the star, not the no-star 4.6', () => {
+    // Hystrix.Age = 1.1676e16 s = 0.37 Gyr. The user gave their A star a young age, correctly; the
+    // importer had thrown the star away and reported 4.6 with "no star found to date the system".
+    const result = convertUbox(hystrineFixture());
+    expect(result.system.age_Gyr).toBeCloseTo(0.37, 2);
+    expect(result.assumptions.some((a) => /no star found/i.test(a))).toBe(false);
+  });
+
+  it('true particles — no Celestial component — are still particles', () => {
+    const result = convertUbox(hystrineFixture());
+    const particleLine = result.skipped.find((s) => s.reason === 'particle');
+    expect(particleLine).toBeDefined();
+    expect(particleLine!.name).toMatch(/^2 simulation particles/);
   });
 });

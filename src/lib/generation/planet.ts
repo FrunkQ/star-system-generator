@@ -1,12 +1,15 @@
 // src/lib/generation/planet.ts
 import type { CelestialBody, Barycenter, RulePack, Orbit } from '../types';
 import { SeededRNG } from '../rng';
-import { weightedChoice, randomFromRange, toRoman } from '../utils';
+import { inferAxialTilt } from '../physics/axialTilt';
+import { weightedChoice, randomFromRange, drawFromBand, toRoman } from '../utils';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import { bodyFactory } from '../core/BodyFactory';
 import { calculateEquilibriumTemperature, calculateDistanceToStar } from '../physics/temperature';
+import { stellarContextFor, calculateAllStellarZones } from '../physics/zones';
 import { gasThermalInflationFactor } from '../physics/makeup';
 import { giantComposition, GIANT_ANCHOR_BAR } from '../physics/giantTraces';
+import { spinProvenanceTags } from './spinProvenance';
 
 // Debris-density proxy for belts/rings: a massKg drawn so its log maps to a density fraction in
 // [fracLo, fracHi] on the 1e-5..1.0 Earth-mass scale the orrery/telemetry read (see
@@ -15,6 +18,40 @@ function densityProxyMassKg(rng: SeededRNG, fracLo: number, fracHi: number): num
     const frac = fracLo + rng.nextFloat() * (fracHi - fracLo);
     const lo = Math.log(1e-5), hi = Math.log(1.0);
     return EARTH_MASS_KG * Math.exp(lo + frac * (hi - lo));
+}
+
+// C3(c) / C5: the LAPLACE RADIUS — the distance at which a satellite's orbital reference plane
+// hands over from its host's EQUATOR (held there by the host's oblateness) to the SYSTEM plane
+// (held there by the star's tide). Close in, a moon follows the bulge; far out, it follows the
+// ecliptic, which is why Luna's 5.145 degrees is quoted to the ecliptic and Io's 0.05 to Jupiter's
+// equator. A catalogue records which; a GENERATOR has to decide, and this is that decision.
+//
+//   r_L^5 = 2 * J2 * R_p^2 * a_p^3 * (M_p / M_star)
+//
+// J2 is not in the data model and never will be for an invented planet, so it is estimated from
+// the rotation the generator already rolled: the flattening parameter q = w^2 R^3 / GM, times a
+// structure factor. Measured against the Solar System, J2/q is 0.10 for Saturn, 0.12 Uranus,
+// 0.13 Neptune, 0.17 Jupiter, 0.31 Earth, 0.43 Mars — centrally-condensed giants low, rocky
+// bodies high — so two constants cover the range. THE ERROR TOLERANCE IS WHY THIS IS WORTH DOING
+// AT ALL: r_L goes as J2^(1/5), so being wrong about J2 by a factor of three moves the handover
+// radius by 25%. A crude J2 is entirely good enough to place a switch.
+//
+// Returns AU, or null when an input is missing — in which case the caller leaves the frame alone
+// rather than guessing, since equatorial is the safe default for the close-in majority.
+export function laplaceRadiusAU(planet: CelestialBody, aPlanetAU: number, perturberMassKg: number, isGiant: boolean, pack: RulePack): number | null {
+    const R = (planet.radiusKm ?? 0) * 1000;
+    const M = planet.massKg ?? 0;
+    const rotHours = Math.abs(planet.rotation_period_hours ?? 0);
+    if (!(R > 0 && M > 0 && rotHours > 0 && aPlanetAU > 0 && perturberMassKg > 0)) return null;
+    const omega = (2 * Math.PI) / (rotHours * 3600);
+    const q = (omega * omega * R * R * R) / (G * M);
+    const k = isGiant
+        ? (pack.generation_parameters?.j2_over_q_giant ?? 0.15)
+        : (pack.generation_parameters?.j2_over_q_solid ?? 0.30);
+    const J2 = k * q;
+    const aP = aPlanetAU * AU_KM * 1000;
+    const rL = Math.pow(2 * J2 * R * R * aP * aP * aP * (M / perturberMassKg), 1 / 5);
+    return rL / (AU_KM * 1000);
 }
 
 export function _generatePlanetaryBody(
@@ -94,7 +131,20 @@ export function _generatePlanetaryBody(
     planet.id = planetId;
     planet.orbit = orbit;
 
-    const frostLineAU = (pack.generation_parameters?.frost_line_base_au || 2.7) * Math.sqrt((host.massKg || SOLAR_MASS_KG) / SOLAR_MASS_KG);
+    // FROST LINES COME FROM THE STAR'S LUMINOSITY, AND FROM THE HELIOCENTRIC DISTANCE — see GEN-4.
+    // This used to be `frost_line_base_au * sqrt(M_host / M_sun)`, which was wrong twice: it swapped
+    // MASS for LUMINOSITY (the real relation is d ∝ sqrt(L), and L ∝ M^3.5, so the mass form flattens
+    // the curve — 7x too far out for an M dwarf, an order of magnitude too close for a hot star), and
+    // for a MOON the "host" is the PLANET, so it derived a frost line from Jupiter's mass and then
+    // compared it against the moon's distance from Jupiter. `stellarContextFor` walks up to the star
+    // and returns the body's distance from IT, which is the planet's orbit in the moon case.
+    const stellar = stellarContextFor(host, orbit.elements.a_AU, allNodes);
+    const zonesForHost = stellar.star ? calculateAllStellarZones(stellar.star, pack, allNodes, age_Gyr) : null;
+    // FORMATION frost line (the ~170 K disc ice line) is the one that decides what a body could form
+    // AS; the current 125 K line is where ice is stable TODAY and is used for present-day iciness.
+    const formationFrostAU = zonesForHost ? zonesForHost.formationFrostLine : (pack.generation_parameters?.frost_line_base_au || 2.7);
+    const currentFrostAU = zonesForHost ? zonesForHost.currentFrostLine : (pack.generation_parameters?.frost_line_base_au || 2.7);
+    const distFromStarAU = stellar.distanceAU;
     const migrationChance = pack.generation_parameters?.planet_migration_chance || 0.1;
 
     let planetType = planetTypeOverride;
@@ -107,7 +157,7 @@ export function _generatePlanetaryBody(
                 planetType = 'planet/terrestrial';
             } else {
                 // Giant Parent: Standard moons are rocky or icy
-                if (orbit.elements.a_AU > frostLineAU) {
+                if (distFromStarAU > formationFrostAU) {
                     planetType = weightedChoice<string>(rng, { entries: [{ weight: 60, value: 'planet/ice-giant' }, { weight: 40, value: 'planet/terrestrial' }] });
                 } else {
                     planetType = 'planet/terrestrial';
@@ -122,7 +172,7 @@ export function _generatePlanetaryBody(
             }
         } else {
             // Planet Logic
-            if (orbit.elements.a_AU > frostLineAU) {
+            if (distFromStarAU > formationFrostAU) {
                 planetType = weightedChoice<string>(rng, { entries: [{ weight: 40, value: 'planet/gas-giant' }, { weight: 30, value: 'planet/ice-giant' }, { weight: 30, value: 'planet/terrestrial' }] });
             } else {
                 planetType = weightedChoice<string>(rng, { entries: [{ weight: 80, value: 'planet/terrestrial' }, { weight: 10, value: 'planet/gas-giant' }, { weight: 10, value: 'planet/ice-giant' }] });
@@ -140,21 +190,15 @@ export function _generatePlanetaryBody(
                 // Weighted distribution for Gas Giants: 99% Standard, 1% Brown Dwarf
                 if (rng.nextFloat() < 0.99) {
                     // Logarithmic distribution for standard giants (10 - 4000 Earths)
-                    // This favors Jupiter-sized (300) over Super-Jupiters (3000)
-                    const minMass = 10;
-                    const maxMass = 4000;
-                    const logMin = Math.log(minMass);
-                    const logMax = Math.log(maxMass);
-                    const scale = randomFromRange(rng, logMin, logMax);
-                    planet.massKg = Math.exp(scale) * EARTH_MASS_KG;
+                    // This favors Jupiter-sized (300) over Super-Jupiters (3000).
+                    // B56: this is `drawFromBand`'s log branch, which was hand-rolled here twice
+                    // before it had a name. Same maths, one spelling.
+                    planet.massKg = drawFromBand(rng, [10, 4000], 'log') * EARTH_MASS_KG;
                 } else {
-                    // Logarithmic distribution for Brown Dwarfs (4000 - 26000 Earths)
-                    const minMass = 4000;
-                    const maxMass = 26000;
-                    const logMin = Math.log(minMass);
-                    const logMax = Math.log(maxMass);
-                    const scale = randomFromRange(rng, logMin, logMax);
-                    planet.massKg = Math.exp(scale) * EARTH_MASS_KG;
+                    // Logarithmic distribution for Brown Dwarfs (4000 - 26000 Earths).
+                    // Explicit 'log' because 6.5x is under the inference threshold - the scale here
+                    // is an authored choice about the distribution, not a consequence of the span.
+                    planet.massKg = drawFromBand(rng, [4000, 26000], 'log') * EARTH_MASS_KG;
                 }
             } else {
                 planet.massKg = randomFromRange(rng, planetTemplate.mass_earth[0], planetTemplate.mass_earth[1]) * EARTH_MASS_KG;
@@ -208,6 +252,45 @@ export function _generatePlanetaryBody(
         } else {
             planet.rotation_period_hours = randomFromRange(rng, 10, 30);
         }
+    }
+
+    // --- Spin Axis (inbox B10) ---
+    // Every generated planet and moon used to arrive with axial_tilt_deg undefined — 0 of 40 bodies
+    // across three seeds — so no generated world had seasons at all. This is the ONE site that fixes
+    // both generators: _generatePlanetaryBody is called by planet-generation.ts (the legacy Generate
+    // button) and by generateFromConfig.ts (the wizard), and it recurses into itself for moons.
+    //
+    // Two populations, because obliquity has two causes and they do not blend:
+    //  - the DISC population. A planet condenses from the same disc as its star, so it starts near
+    //    the disc normal and is nudged from there. Drawn Rayleigh, which is what a random walk of the
+    //    spin vector in a plane gives: peak at sigma, a tail, and no bodies at exactly zero. At the
+    //    default 15 deg that puts Earth (23.4), Mars (25.2), Saturn (26.7) and Neptune (28.3) in the
+    //    meat of the distribution.
+    //  - the CATASTROPHE population. A late giant impact does not nudge an axis, it re-points it, so
+    //    the outcome is an ISOTROPIC direction — uniform in cos(obliquity), not uniform in the angle
+    //    — which is why it produces Uranus (97.8) and Venus (177.4) at the right rate rather than a
+    //    smear of 90 deg worlds. Rolled per body: it is an accident, not a system-wide property, so
+    //    it deliberately does NOT reuse the star's dynamical-history spread.
+    //
+    // Its own rng stream, keyed on the body id: drawing from the shared stream would shift every
+    // subsequent draw and silently re-roll every planet in every saved seed (the B9a precedent).
+    if (planet.axial_tilt_deg == null) {
+        // The model itself now lives in `physics/axialTilt.ts`, unchanged — same seed string, same
+        // two populations, same knobs. It moved because B10 fixed this for GENERATED worlds only,
+        // and the identical hole was still open on the import and hand-authored routes (D8): 45
+        // real-sky exoplanets and ~50 fiction worlds with no tilt at all. One model, three routes.
+        const spin = inferAxialTilt(planet.id, pack);
+        planet.axial_tilt_deg = spin.tiltDeg;
+        const tipped = spin.tipped;
+        // D2a's constraint: an INVENTED number must be distinguishable from a MEASURED one, or a
+        // generated world sitting in the same starmap as Earth asserts its obliquity just as firmly.
+        // Shared with SystemView's manual route — spinProvenance.ts holds which values qualify and
+        // why the die-rolled magnetic field does not. It also covers the rotation period rolled
+        // earlier, which is in the same category and which B10 missed.
+        planet.tags.push(...spinProvenanceTags(planet));
+        // The interesting half, as a tag rather than a float the reader has to interpret: this world
+        // was hit hard enough to re-point its axis. Uranus and Venus are the Solar System's two.
+        if (tipped) planet.tags.push({ key: 'spin/tipped' });
     }
 
     if (planet.orbit?.isRetrogradeOrbit) {
@@ -356,6 +439,9 @@ export function _generatePlanetaryBody(
         
         // Calculate Hill Sphere (SOI) - Stable region is roughly 1/2 Hill Sphere
         let stableLimitAU = 0;
+        // C3(c): the handover distance for this host, computed once for all its moons. Shares the
+        // star mass the Hill-sphere calculation below already needs, so the two agree by construction.
+        let laplaceAU: number | null = null;
         if (orbit && (orbit.hostMu > 0 || host.kind === 'barycenter')) {
             let starMass = orbit.hostMu / G;
             if (starMass <= 0 && host.kind === 'barycenter') {
@@ -366,14 +452,15 @@ export function _generatePlanetaryBody(
             const a_planet = orbit.elements.a_AU;
             const e_planet = orbit.elements.e;
             const perihelion = a_planet * (1 - e_planet);
-            
+
             if (starMass > 0) {
                 const rHill = perihelion * Math.pow(planetMass / (3 * starMass), 1/3);
                 stableLimitAU = rHill * 0.5; // Conservative stability limit
+                laplaceAU = laplaceRadiusAU(planet, a_planet, starMass, isGiant, pack);
             }
         }
 
-        let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5; 
+        let lastMoonApoapsisAU = rocheLimit_km / AU_KM * 1.5;
 
         for (let j = 0; j < numMoons; j++) {
             const moonMass = moonMasses[j];
@@ -381,7 +468,7 @@ export function _generatePlanetaryBody(
 
             // --- DERIVED RADIUS FROM DENSITY ---
             // If beyond frost line, use Icy density (~1800), else Rocky (~3500)
-            const isIcy = orbit.elements.a_AU > frostLineAU;
+            const isIcy = distFromStarAU > currentFrostAU;
             const density = isIcy ? 1800 : 3500;
             const volumeM3 = moonMass / density;
             const radiusM = Math.pow((3 * volumeM3) / (4 * Math.PI), 1/3);
@@ -407,6 +494,14 @@ export function _generatePlanetaryBody(
                 t0: Date.now(),
                 elements: { a_AU: newMoonA_AU, e: newMoonEccentricity, i_deg: Math.pow(rng.nextFloat(), 2) * 10, omega_deg: 0, Omega_deg: 0, M0_rad: randomFromRange(rng, 0, 2 * Math.PI) }
             };
+
+            // C3(c): beyond the Laplace radius the star's tide beats the host's bulge, so this
+            // moon's inclination is quoted in the SYSTEM plane and the renderer must not rotate it
+            // into the host's equator. Inside it, no flag: equatorial is both the default and the
+            // right answer for the close-in majority. The inclination DISTRIBUTION is unchanged --
+            // the drawn 0-10 degrees is plausible in either frame (Luna is 5.1 to the ecliptic,
+            // Io 0.05 to Jupiter's equator); it is the reference plane that was wrong, not the angle.
+            if (laplaceAU != null && newMoonA_AU > laplaceAU) moonOrbit.frame = 'ecliptic';
 
             if (weightedChoice<boolean>(rng, pack.distributions['retrograde_orbit_chance_moon'])) {
                 moonOrbit.isRetrogradeOrbit = true;
