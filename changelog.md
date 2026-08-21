@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.887-beta - 21st Aug 2026
+
+- Docs only. Click-to-cycle units everywhere, remembered per body type, assessed and captured: half the machinery already exists, the edit fields are the risky half, and the de-chunking rides the same sweep.
+
 ## 2.1.886-beta - 21st Aug 2026
 
 - FIXED: the engine decided what TYPE a world is from the temperature it RADIATES at rather than the temperature on its ground. On anything with air the two are the same number, but an airless world that bakes by day and freezes by night radiates like a warm one while averaging far colder - the Moon radiates at 270 K and averages 214, Mercury 440 and 310 - so seventeen type tests, every one of them asking a question about the surface, were reading the wrong figure. Nothing in the solar system changes type as a result; what it fixes is a world sitting near the edge of a band, where it could be called an ocean world on a temperature its ground never reaches.
