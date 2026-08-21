@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.16 - 21st Aug 2026
+
+- Docs only. The A63 cheap-half assignment is marked on its inbox row (the rc.14 line described this routing; the row edit lands here).
+
 ## v3.0.0-rc.15 - 21st Aug 2026
 
 - Docs only. The session-discipline playbook is extracted into docs/process-templates/ - the playbook, the board template with the standing rules, and the session-start prompts - portable to every parallel project, so the core grows by interface rather than by accretion.
