@@ -40,6 +40,10 @@
   --bg-control-hover: #232733;
   --border: #2a2d36;
   --border-soft: #1c1f27;
+  /* The two big shell columns, individually skinnable (G34: "the background bars to the left and
+     info on the right"). They default to the app ground, so classic is pixel-identical. */
+  --bg-rail: var(--bg-app);
+  --bg-side: var(--bg-app);
 
   /* ---------- CHROME: text ---------- */
   --text: #e8e8e8;

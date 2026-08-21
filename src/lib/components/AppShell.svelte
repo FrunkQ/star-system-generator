@@ -154,8 +154,8 @@
   .app-shell {
     height: 100vh;
     width: 100%;
-    background: #08090d;
-    color: #e8e8e8;
+    background: var(--bg-app, #08090d);
+    color: var(--text, #e8e8e8);
     overflow: hidden;
   }
 
@@ -172,7 +172,8 @@
   .area.rail {
     grid-area: rail;
     max-width: 200px;
-    border-right: 1px solid #1c1f27;
+    background: var(--bg-rail, transparent);
+    border-right: 1px solid var(--border-soft, #1c1f27);
     overflow-y: auto;
     /* overflow-y:auto alone promotes overflow-x to auto too, so a label a hair wider than the 200px cap
        left a permanent horizontal scrollbar along the bottom. Clip it; labels truncate (see RailNav). */
@@ -201,7 +202,8 @@
        Empty (gated) detail collapses the auto track to 0. */
     width: clamp(340px, 34vw, 560px);
     position: relative;
-    border-left: 1px solid #1c1f27;
+    background: var(--bg-side, transparent);
+    border-left: 1px solid var(--border-soft, #1c1f27);
     overflow-y: auto;
     /* As with .area.rail above: overflow-y:auto promotes overflow-x to auto too, so content a hair wider
        than the panel (the scrollbar's width, a 100%-wide input) spawns a phantom horizontal scrollbar. */
@@ -285,8 +287,8 @@
     left: 0;
     bottom: 0;
     width: min(80vw, 320px);
-    background: #14161c;
-    border-right: 1px solid #2a2d36;
+    background: var(--bg-panel, #14161c);
+    border-right: 1px solid var(--border, #2a2d36);
     overflow-y: auto;
     padding: 12px;
   }

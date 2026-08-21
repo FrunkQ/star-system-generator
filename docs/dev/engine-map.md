@@ -2375,11 +2375,18 @@ WHY: G34 phase 4, owner direction 2026-08-21: modern (compact, light-blue, light
 DEFAULT; classic (the shipped orange-on-black) is the tokens.css defaults themselves, so absence
 of overrides IS that skin and it stays pixel-familiar. The owner's hard rule in the same message:
 "when colour is used to indicate something (rather than decoration) it cant be swept".
-BLAST: a new skin = a new `:root[data-skin=...]` block in skins.css + a SKINS entry in
+BLAST: a new BUILT-IN skin = a new `:root[data-skin=...]` block in skins.css + a SKINS entry in
 skinStore.ts, nothing per-component. Density rules use `html[data-skin] body ...` to outrank
 scoped styles WITHOUT !important, and control shrink-rules sit behind (pointer: fine) so the
 coarse-pointer 44px floors (touch-overrides.css, UI-C6) stay honoured. Canvas/SVG reading tokens
-goes stale on skin change unless it hangs off the two subscriptions in colors.ts.
+goes stale on skin change unless it hangs off the THREE subscriptions in colors.ts (palette,
+skin, customSkins). CUSTOM skins (skinStore createCustomSkin/updateCustomSkin, edited in
+SkinEditorModal from Settings > Appearance) are name + BASE built-in + a token override map,
+localStorage per device; applied as data-skin=<base> plus an injected `:root[data-skin]` style
+element that TIES the base's specificity and wins by source order - /palette inline overrides
+still beat both. Token names and values are regex-validated before injection. The two shell
+columns are individually skinnable via --bg-rail / --bg-side (default: var(--bg-app), so classic
+is untouched).
 ### UI-C9 A fragment link into ASYNC content silently does nothing, and a refresh hides it
 WHERE: `routes/discgallery/+page.svelte` (`scrollToHash`, called after `buildGiantLab`); the link that
 needs it is the atmosphere tab's `/discgallery#giant-lab`.

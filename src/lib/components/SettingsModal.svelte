@@ -4,7 +4,9 @@
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import { skin, SKINS } from '$lib/styles/skinStore';
+  import { skin, SKINS, customSkins } from '$lib/styles/skinStore';
+  import SkinEditorModal from './SkinEditorModal.svelte';
+  let showSkinEditor = false;
   // A45: the one list, filtered to what the 2D snap grid can draw — never a hand-written copy.
   import { SNAP_GRID_OPTIONS } from '$lib/map/mapOverlay';
   import { unitKind, campaignUnit, unitChangeOutcomes, UNIT_SHORT, type UnitChangeMode } from '$lib/map/distanceUnits';
@@ -397,7 +399,11 @@
               {#each SKINS as s}
                 <option value={s.id}>{s.name} — {s.blurb}</option>
               {/each}
+              {#each $customSkins as c (c.id)}
+                <option value={`custom:${c.id}`}>{c.name} — your skin, on {SKINS.find((b) => b.id === c.base)?.name}</option>
+              {/each}
             </select>
+            <button type="button" class="link-ish" on:click={() => (showSkinEditor = true)}>Skin editor — make your own…</button>
           </div>
 
           <h3>Map display</h3>
@@ -652,10 +658,21 @@
     </div>
   {/if}
 
+  {#if showSkinEditor}
+    <SkinEditorModal on:close={() => (showSkinEditor = false)} />
+  {/if}
+
 </div>
 {/if}
 
 <style>
+  /* G34: the "make your own skin" affordance under the skin picker. */
+  .link-ish {
+    background: none; border: none; padding: 2px 0; cursor: pointer;
+    color: var(--link, #88ccff); font-size: 0.85em; text-align: left;
+  }
+  .link-ish:hover { color: var(--accent, #ff5a1f); text-decoration: underline; }
+
   /* A43 unit-change confirmation. Compact modal over the settings dialog, per the house popup style. */
   .unit-confirm-backdrop {
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);

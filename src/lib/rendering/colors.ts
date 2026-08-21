@@ -2,7 +2,7 @@ import type { CelestialBody, SystemNode } from "../types";
 import { browser } from "$app/environment";
 import { get } from "svelte/store";
 import { paletteOverrides, resolveToken } from "$lib/styles/paletteStore";
-import { skin } from "$lib/styles/skinStore";
+import { skin, customSkins } from "$lib/styles/skinStore";
 import { trueColorMode } from "$lib/rendering/colorModeStore";
 
 // Canonical body/star colours. Each entry is [css-token, default-hex]. The default hexes
@@ -107,6 +107,7 @@ export function tokenRgba(name: string, fallback: string, alpha: number): string
 // these caches would not.
 if (browser) paletteOverrides.subscribe(() => { _cache = null; _tokenCache.clear(); });
 if (browser) skin.subscribe(() => { _cache = null; _tokenCache.clear(); });
+if (browser) customSkins.subscribe(() => { _cache = null; _tokenCache.clear(); });
 
 /**
  * Returns the primary visual color for a celestial body based on its type and tags.

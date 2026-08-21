@@ -22,6 +22,8 @@
   --bg-card: #20242c;
   --border: #333a46;
   --border-soft: #242a34;
+  --bg-rail: #131720;
+  --bg-side: #12161e;
 
   /* accent — light blue; interactive text on it must be dark to stay readable */
   --accent: #5aa7e8;
@@ -31,24 +33,87 @@
   --link: #8fc7ff;
 }
 
-/* ---------- modern: density ----------
-   The compact layer. `html[data-skin] body …` outranks Svelte's scoped selectors
-   without !important. Text tightens everywhere; control hit-areas only tighten for a
-   mouse — the coarse-pointer 44px floors (touch-overrides.css, UI-C6) stay honoured. */
-html[data-skin='modern'] body .detail-item { padding: 0.45em 0.55em; }
-html[data-skin='modern'] body .detail-item .label { font-size: 0.74em; }
-html[data-skin='modern'] body .detail-item .value { font-size: 1em; }
-html[data-skin='modern'] body .tab-panel { font-size: 0.94em; }
-html[data-skin='modern'] body .form-group label { font-size: 0.88em; }
-html[data-skin='modern'] body .sub-label { font-size: 0.78em; }
-html[data-skin='modern'] body .spec-item { font-size: 0.94em; }
-html[data-skin='modern'] body .read-only-row { font-size: 0.94em; }
+/* ---------- clarity: colour-blind-friendly chrome ----------
+   Okabe–Ito palette throughout the CHROME: every colour-vs-colour distinction the chrome makes
+   (ok/bad, the seven family edges, accent vs link) sits on axes that survive deuteranopia and
+   protanopia — blue/orange/yellow/vermillion, never red-vs-green. Contrast is bumped a step.
+   The DOMAIN palette (body types, zones, hazards) is out of a skin's reach by rule (UI-C10);
+   the full domain colour-blind pass, with its icon/label channel, remains its own project. */
+:root[data-skin='colourblind'] {
+  --bg-app: #0e1014;
+  --bg-panel: #171a20;
+  --bg-control: #20242c;
+  --bg-control-hover: #2b303a;
+  --bg-card: #21252d;
+  --bg-rail: #12151b;
+  --bg-side: #11141a;
+  --border: #3d4450;
+  --border-soft: #2a303a;
+  --text: #f2f2f2;
+  --text-muted: #a8aeb9;
+  --text-faint: #707684;
+
+  --accent: #e69f00;        /* Okabe–Ito orange */
+  --accent-hover: #f5b83d;
+  --accent-soft: #f8d489;
+  --on-accent: #16110a;
+  --link: #56b4e9;          /* Okabe–Ito sky blue */
+  --status-ok: #0072b2;     /* blue = fine, vermillion = not — a red/blue axis, not red/green */
+  --status-bad: #d55e00;
+  --warning: #f0e442;
+
+  --group-bulk: var(--accent);
+  --group-orbit: #f0e442;   /* yellow */
+  --group-climate: #d55e00; /* vermillion */
+  --group-air: #56b4e9;     /* sky blue */
+  --group-life: #009e73;    /* bluish green — chosen for colour-blind palettes */
+  --group-hazard: #cc79a7;  /* reddish purple */
+  --group-infra: #0072b2;   /* blue */
+}
+
+/* ---------- nebula: the colourful one ----------
+   Coloured SURFACES, not just accents: the rail goes indigo, the detail panel deep blue, cards
+   violet — the starmap's black stays the deepest thing on screen. */
+:root[data-skin='nebula'] {
+  --bg-app: #0d0b1c;
+  --bg-panel: #191338;
+  --bg-control: #241b4d;
+  --bg-control-hover: #2f2461;
+  --bg-card: #211a47;
+  --bg-rail: #171040;
+  --bg-side: #131b3c;
+  --border: #453a7a;
+  --border-soft: #2c2458;
+  --text: #efeaff;
+  --text-muted: #a89fc9;
+  --text-faint: #6f6795;
+
+  --accent: #d96bff;        /* orchid */
+  --accent-hover: #e795ff;
+  --accent-soft: #f0c1ff;
+  --on-accent: #180a20;
+  --link: #7fd4ff;
+}
+
+/* ---------- density: the compact layer (modern + nebula) ----------
+   `html[data-skin] body …` outranks Svelte's scoped selectors without !important. Text
+   tightens everywhere; control hit-areas only tighten for a mouse — the coarse-pointer
+   44px floors (touch-overrides.css, UI-C6) stay honoured. The colourblind skin keeps the
+   classic (larger) type on purpose. */
+html:is([data-skin='modern'], [data-skin='nebula']) body .detail-item { padding: 0.45em 0.55em; }
+html:is([data-skin='modern'], [data-skin='nebula']) body .detail-item .label { font-size: 0.74em; }
+html:is([data-skin='modern'], [data-skin='nebula']) body .detail-item .value { font-size: 1em; }
+html:is([data-skin='modern'], [data-skin='nebula']) body .tab-panel { font-size: 0.94em; }
+html:is([data-skin='modern'], [data-skin='nebula']) body .form-group label { font-size: 0.88em; }
+html:is([data-skin='modern'], [data-skin='nebula']) body .sub-label { font-size: 0.78em; }
+html:is([data-skin='modern'], [data-skin='nebula']) body .spec-item { font-size: 0.94em; }
+html:is([data-skin='modern'], [data-skin='nebula']) body .read-only-row { font-size: 0.94em; }
 
 @media (pointer: fine) {
-  html[data-skin='modern'] body .tab-panel input[type='number'],
-  html[data-skin='modern'] body .tab-panel select,
-  html[data-skin='modern'] body .form-group input[type='number'],
-  html[data-skin='modern'] body .form-group select {
+  html:is([data-skin='modern'], [data-skin='nebula']) body .tab-panel input[type='number'],
+  html:is([data-skin='modern'], [data-skin='nebula']) body .tab-panel select,
+  html:is([data-skin='modern'], [data-skin='nebula']) body .form-group input[type='number'],
+  html:is([data-skin='modern'], [data-skin='nebula']) body .form-group select {
     padding: 3px 6px;
     font-size: 0.92em;
   }
