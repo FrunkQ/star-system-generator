@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.903-beta - 21st Aug 2026
+
+- Interface skins. The app now opens in a new Modern look - compact type, light-blue highlights, panel greys a step lighter so the starmap's black reads as the deepest thing on screen - and the original warm-orange look lives on as Classic, selectable per device under Settings > Appearance (it never saves into the campaign; every viewer picks their own). Colour that means something - body types, zone bands, hazard ramps - does not move with a skin. The technical panel's cards now carry family-coloured edges so related readings gather visually: what it is, where it goes, what it is like, what it breathes, who lives there, what hurts, and how to get about.
+
 ## v2.1.902-beta - 21st Aug 2026
 
 - Units are clickable on the edit side too. A star's temperature and mass, belt and ring dimensions, a construct's orbit altitude and aerobrake entry speed are typed in whatever unit the field shows and stored in SI exactly once, on commit - type 100 into a temperature field showing Fahrenheit and 310.9 kelvin is what lands. The composition tab's own mass cycler now drives the same campaign-wide choice as every other panel (and gains a solar-masses stop); its sliders and undo behave exactly as before.
