@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.5 - 21st Aug 2026
+
+- Housekeeping: the changelog's own order is fixed. Six release blocks sat above a higher version number - one of them since early August - which is how a scripted insert once anchored on a version heading, matched nothing, reported success and shipped a release with no note. Nothing else changed; the entries are the same words in the right places.
+
 ## v3.0.0-rc.4 - 21st Aug 2026
 
 - FIXED: a placed drive's plume ignored the model's facing fix and fired along the model's original axis - straight up, on a hull authored nose-up - in both the editor preview and on the map. The exhaust now always fires astern of the ORIENTED hull, the nozzle markers sit on the rotated hull, and the nose-detection reads the oriented geometry too, so the facing code no longer fights the alignment on rotated models.
