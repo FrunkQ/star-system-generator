@@ -422,9 +422,14 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
   // purpose - the ship stays centred and a long plume is free to run off the edge.
   interface PlumeRig { holder: THREE.Group; cone: THREE.Mesh; glow: THREE.Sprite; halo: THREE.Sprite }
   const plumes = new THREE.Group();
-  orientGroup.add(plumes); // rides the GM's orientation fix, like the hull it hangs off
+  // C18: plumes and markers live in SPIN space (beside the arrows), not inside orientGroup.
+  // Parenting them under the orient fix rotated the plume DIRECTION with the hull, so a model
+  // that needed a facing fix fired its exhaust along its OLD axis (straight up, in the report).
+  // The POSITION must follow the rotated hull - rebuildRigs applies the orient quaternion to
+  // each stored point - but aft is always spin-space -Z, the orange arrow, by the convention.
+  spinGroup.add(plumes);
   const markers = new THREE.Group();
-  orientGroup.add(markers);
+  spinGroup.add(markers);
   let rigs: PlumeRig[] = [];
   let nozzlePoints: [number, number, number][] = [];
   let nozzleScale = 1;
@@ -460,10 +465,15 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
     rigs = [];
     // No authored nozzles: one plume at the stern-face centre - the default that reads right on
     // most hulls, and exactly what shipped before the placer existed.
-    const pts: [number, number, number][] = nozzlePoints.length ? nozzlePoints : [[0, 0, sternZ]];
+    // Placed points are stored in the model's own (orient-independent) space; carry each through
+    // the GM's facing fix so it sits on the rotated hull. The no-nozzle stern default is already
+    // in convention space and stays untransformed.
+    const pts: THREE.Vector3[] = nozzlePoints.length
+      ? nozzlePoints.map((pt) => new THREE.Vector3(pt[0], pt[1], pt[2]).applyQuaternion(orientGroup.quaternion))
+      : [new THREE.Vector3(0, 0, sternZ)];
     for (const pt of pts) {
       const rig = makeRig();
-      rig.holder.position.set(pt[0], pt[1], pt[2]);
+      rig.holder.position.copy(pt);
       rigs.push(rig);
     }
     for (const m of [...markers.children]) {
@@ -478,7 +488,7 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
           new THREE.SphereGeometry(Math.max(1e-4, frameRadius * 0.05), 10, 8),
           new THREE.MeshBasicMaterial({ color: 0xff8c3a, depthTest: false, transparent: true, opacity: 0.95 })
         );
-        pip.position.set(pt[0], pt[1], pt[2]);
+        pip.position.copy(new THREE.Vector3(pt[0], pt[1], pt[2]).applyQuaternion(orientGroup.quaternion));
         pip.renderOrder = 999;
         markers.add(pip);
       }
@@ -668,10 +678,11 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
       frameCamera();
     },
     // The GM's 90-degree alignment fix. Lives on a group of its own so it can be re-applied
-    // without rebuilding the hull - and so the plumes and nozzle markers, which hang off the
-    // same group, turn with the ship rather than being left behind.
+    // without rebuilding the hull. Plume and marker POSITIONS depend on this quaternion (C18:
+    // they sit in spin space so the exhaust always fires astern), so a facing change re-places them.
     setOrient(q) {
       orientGroup.quaternion.set(...(q ?? [0, 0, 0, 1]));
+      rebuildRigs();
       frameCamera();
     },
     setBurn(burn) {

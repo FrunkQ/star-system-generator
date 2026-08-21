@@ -2738,7 +2738,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // and the facing code aims the OTHER end at the motion. Derived, not guessed - and only the
       // mean matters, so a mid-hull RCS thruster cannot flip a ship whose main drives are aft.
       const nz = (ref.nozzles ?? []) as [number, number, number][];
-      v.nozzleMeanZ = nz.length ? nz.reduce((s, p) => s + p[2], 0) / nz.length : null;
+      // C18: the z that decides the nose must be the ORIENTED one - a rotated model's raw z-sign
+      // is not its convention z-sign, and reading it raw made the facing code fight the orient.
+      const orientQ2 = (g.children[0] as THREE.Object3D | undefined)?.quaternion ?? new THREE.Quaternion();
+      v.nozzleMeanZ = nz.length
+        ? nz.reduce((s, p) => s + new THREE.Vector3(p[0], p[1], p[2]).applyQuaternion(orientQ2).z, 0) / nz.length
+        : null;
       v.noseSign = v.nozzleMeanZ !== null && v.nozzleMeanZ > 0 ? -1 : 1;
       applyExhaustColour(v, shipCapability?.[v.id]?.exhaustHex);
       g.scale.setScalar(sceneLen);
@@ -2897,11 +2902,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const sternZ = box.isEmpty() ? -0.5 : box.min.z;
     // The GM's placed drives, in the model's own space; with none placed, one plume at the stern
     // face centre - right for most hulls and what shipped before the placer existed.
-    const points: [number, number, number][] = nozzles.length ? nozzles : [[0, 0, sternZ]];
+    // C18: a stored nozzle point is in the model's own (pre-orient) space, but the holder lives in
+    // the OUTER group where the hull sits ORIENTED - so carry each point through the wrap's
+    // quaternion or a rotated model fires its plume along its old axis (straight up, in the
+    // report). Aft stays outer -Z, the convention (modelViewer.ts:30). The stern default is
+    // measured on the oriented box and stays as it is.
+    const orientQ = (model.children[0] as THREE.Object3D | undefined)?.quaternion ?? new THREE.Quaternion();
+    const points: THREE.Vector3[] = nozzles.length
+      ? nozzles.map((pt) => new THREE.Vector3(pt[0], pt[1], pt[2]).applyQuaternion(orientQ))
+      : [new THREE.Vector3(0, 0, sternZ)];
     const rigs: PlumeRig[] = [];
     for (const pt of points) {
       const holder = new THREE.Group();
-      holder.position.set(pt[0], pt[1], pt[2]);
+      holder.position.copy(pt);
       // Cone flaring aft: apex at the nozzle, widening along -Z. ConeGeometry points +Y; the
       // rotation maps local +Y onto -Z, so scaling cone.scale.y lengthens the plume astern.
       // F6 parity extends to the FLAME: in a wireframe scene the exhaust is drawn as vector

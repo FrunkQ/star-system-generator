@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.4 - 21st Aug 2026
+
+- FIXED: a placed drive's plume ignored the model's facing fix and fired along the model's original axis - straight up, on a hull authored nose-up - in both the editor preview and on the map. The exhaust now always fires astern of the ORIENTED hull, the nozzle markers sit on the rotated hull, and the nose-detection reads the oriented geometry too, so the facing code no longer fights the alignment on rotated models.
+
 ## v3.0.0-rc.3 - 21st Aug 2026
 
 - Docs only. A placed drive's plume ignoring the model's rotation is diagnosed to its root (the stored nozzle points never pass through the orientation transform) and handed over with the fix shape - including the second bug possibly hiding behind it in the nose-detection.
