@@ -267,6 +267,12 @@ export function formatPref(prefs: UnitPrefs | undefined, q: UnitQuantity, b: Uni
   return formatSIInUnit(si, resolveUnitPref(prefs, q, b), decimals);
 }
 
+// The magnitude-aware formatSpeedAuto (m/s ↔ km/s by size — B37's Phobos lesson) still wants a
+// metric/imperial flavour; ONE derivation of it from the speed pref, used by every caller.
+export function speedFlavour(prefs: UnitPrefs | undefined, b: UnitBodyType): MeasurementUnits {
+  return resolveUnitPref(prefs, 'speed', b) === 'mi/s' ? 'imperial' : 'metric';
+}
+
 // ——— prefs: which stop each quantity × body type sits on ———
 
 // Sparse: an absent key means the default below. Values are validated on read, so an unknown or

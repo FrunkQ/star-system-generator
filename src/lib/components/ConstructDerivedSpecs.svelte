@@ -3,7 +3,7 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { AU_KM } from '$lib/constants';
-  import { fmt } from '$lib/stores';
+  import UnitValue from './UnitValue.svelte';
   import { describeTag } from '$lib/tags/tagPresentation';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import AutopilotShipIcon from './AutopilotShipIcon.svelte';
@@ -282,13 +282,13 @@
       </div>
       <div class="spec-item derived" title="Delta-V available at the CURRENT fuel load, with the current cargo aboard">
         <span class="label">Total Vacuum Δv</span>
-        <span class="value">{$fmt.speedMs(specs.totalVacuumDeltaV_ms, 1)}</span>
+        <span class="value"><UnitValue quantity="speed" bodyType="construct" value={specs.totalVacuumDeltaV_ms / 1000} /></span>
       </div>
       {#if specs.ratedVacuumDeltaV_ms > 0}
         <!-- A31: what the ship is RATED for — full tanks, empty hold — beside what it has left today. -->
         <div class="spec-item derived" title="Delta-V at full tanks with an empty hold: the ship's rated figure, independent of how it is loaded now">
           <span class="label">Rated Δv (full tanks)</span>
-          <span class="value">{$fmt.speedMs(specs.ratedVacuumDeltaV_ms, 1)}</span>
+          <span class="value"><UnitValue quantity="speed" bodyType="construct" value={specs.ratedVacuumDeltaV_ms / 1000} /></span>
         </div>
       {/if}
       {#if effectiveState === 'Transit'}

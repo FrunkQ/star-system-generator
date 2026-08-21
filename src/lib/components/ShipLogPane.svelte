@@ -6,7 +6,9 @@
   import { createEventDispatcher } from 'svelte';
   import { get } from 'svelte/store';
   import type { CelestialBody } from '$lib/types';
-  import { systemStore, fmt } from '$lib/stores';
+  import { systemStore } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatSpeedAuto, speedFlavour } from '$lib/units';
   import { starmapStore } from '$lib/starmapStore';
   import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
@@ -83,7 +85,7 @@
       const isFlyby = (leg.interceptSpeed_ms || 0) > 0 || (leg.segments || []).some((s: any) => (s.warnings || []).includes('Flyby'));
       if (isFlyby) {
           const v = leg.arrivalVelocity_ms || leg.interceptSpeed_ms || 0;
-          return `Fly-past${target ? ` of ${target}` : ''} — carries ${$fmt.speedAuto(v)} Δv`;
+          return `Fly-past${target ? ` of ${target}` : ''} — carries ${formatSpeedAuto(v, speedFlavour($unitPrefs, 'construct'))} Δv`;
       }
       if (leg.arrivalPlacement && PLACEMENT[leg.arrivalPlacement]) return `In ${PLACEMENT[leg.arrivalPlacement]}${target ? ` of ${target}` : ''}`;
       return target ? `Docked at ${target}` : 'Docked';
@@ -247,7 +249,7 @@
             {/if}
             <div class="ship-log-meta">Depart: {formatLogTime(leg.startTime)} {@render seekClock(leg.startTime)}</div>
             <div class="ship-log-meta">Arrive: {formatLogTime(arriveMs)} {@render seekClock(arriveMs)}</div>
-            <div class="ship-log-meta">Arrival speed: {$fmt.speedAuto(leg.arrivalVelocity_ms || 0)}</div>
+            <div class="ship-log-meta">Arrival speed: {formatSpeedAuto(leg.arrivalVelocity_ms || 0, speedFlavour($unitPrefs, 'construct'))}</div>
             <div class="ship-log-meta ship-log-exit">Ends: {exitState(leg)}</div>
           </div>
         {/each}

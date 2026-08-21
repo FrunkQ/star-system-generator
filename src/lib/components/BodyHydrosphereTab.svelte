@@ -3,7 +3,8 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { LIQUIDS as FALLBACK_LIQUIDS } from '$lib/constants';
   import { liquidsLiquidInRange, phaseAtP, phaseReason } from '$lib/physics/liquids';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatPref, unitBodyTypeFor } from '$lib/units';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -98,7 +99,7 @@
         <div class="label-row">
             <label>Primary Liquid Composition</label>
             {#if body.hydrosphere}
-                <span class="phase-chip {currentPhase}" title="Phase of the recorded solvent at {$fmt.tempK(currentTemp)}{surfPbar !== undefined ? ` / ${surfPbar} bar` : ''}">{PHASE_LABEL[currentPhase] ?? currentPhase}</span>
+                <span class="phase-chip {currentPhase}" title="Phase of the recorded solvent at {formatPref($unitPrefs, 'temperature', unitBodyTypeFor(body), currentTemp)}{surfPbar !== undefined ? ` / ${surfPbar} bar` : ''}">{PHASE_LABEL[currentPhase] ?? currentPhase}</span>
             {/if}
         </div>
         <select value={body.hydrosphere ? body.hydrosphere.composition : 'none'} on:change={handleCompositionChange} class:warning={!isCurrentValid}>

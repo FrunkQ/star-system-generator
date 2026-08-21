@@ -3,7 +3,8 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { AU_KM } from '$lib/constants';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatPref, unitBodyTypeFor } from '$lib/units';
   import OrbitalSlider from './OrbitalSlider.svelte';
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
 
@@ -290,7 +291,7 @@ function updateOrbit() {
   $: minSafePeriapsisAU = calculateMinSafePeriapsisAU();
   $: safeMaxE = a_AU > 0 ? Math.max(0, Math.min(0.999, 1 - (minSafePeriapsisAU / a_AU))) : 0.999;
   $: rangeText = body.roleHint === 'moon'
-      ? `Range: ${$fmt.km(peri * AU_KM)} - ${$fmt.km(aph * AU_KM)}`
+      ? `Range: ${formatPref($unitPrefs, 'orbit', unitBodyTypeFor(body), peri * AU_KM)} - ${formatPref($unitPrefs, 'orbit', unitBodyTypeFor(body), aph * AU_KM)}`
       : `Range: ${peri.toFixed(3)} - ${aph.toFixed(3)} AU`;
 </script>
 

@@ -7,7 +7,8 @@
   import { judgeTypesAt, ALL_GATES, type ViabilityGates } from '$lib/generation/generateBodyOfType';
   import { rarityOf, rarityTier } from '$lib/generation/typeDraw';
   import { thumbUrl } from '$lib/util/thumbs';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatPref } from '$lib/units';
   import { EARTH_MASS_KG } from '$lib/constants';
   import { foreground } from '$lib/ui/foreground';
 
@@ -65,9 +66,9 @@
       <div>
         <h2>Add {role === 'moon' ? 'moon' : 'planet'} — pick a type</h2>
         {#if massGated}
-          <p class="sub">Viable at this orbit (~{$fmt.tempK(teqK)}) <strong>and</strong> this host's mass ({hostMassLabel} — {hostIsGiant ? 'a giant, so larger, icy &amp; atmosphered moons are on the menu' : 'terrestrial, so only small airless / icy moons'}). {viable.length} types.</p>
+          <p class="sub">Viable at this orbit (~{formatPref($unitPrefs, 'temperature', role, teqK)}) <strong>and</strong> this host's mass ({hostMassLabel} — {hostIsGiant ? 'a giant, so larger, icy &amp; atmosphered moons are on the menu' : 'terrestrial, so only small airless / icy moons'}). {viable.length} types.</p>
         {:else}
-          <p class="sub">All viable at this orbit (~{$fmt.tempK(teqK)}) — rarity just signals how eccentric. {viable.length} types.</p>
+          <p class="sub">All viable at this orbit (~{formatPref($unitPrefs, 'temperature', role, teqK)}) — rarity just signals how eccentric. {viable.length} types.</p>
         {/if}
         <div class="legend">
           {#each LEGEND as l}<span class="leg"><span class="dot" style="background:{l.color}"></span>{l.label}</span>{/each}

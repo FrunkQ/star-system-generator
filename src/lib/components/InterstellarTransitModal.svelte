@@ -16,7 +16,9 @@
   } from '$lib/interstellar/transit';
   import { constructDisplayPlacement, interstellarConstructIds } from '$lib/transit/interstellar';
   import { redirectDeltaV, headingOffsetDeg } from '$lib/physics/redirect';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatSpeedAuto, speedFlavour, formatPref } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
   import { campaignUnit } from '$lib/map/distanceUnits';
 
   export let starmap: Starmap;
@@ -307,7 +309,7 @@
         <p class="distance">Distance: <strong>{distanceInfo.value.toFixed(2)} {distanceInfo.unit}</strong>{#if destKind === 'vessel' && selectedVessel} → rendezvous with <strong>{selectedVessel.name}</strong>{:else if destBody} → final approach to <strong>{destBody.name}</strong>{/if}</p>
         {#if originVel.vx || originVel.vy}
           <p class="redirect">
-            Redirect Δv: <strong>{$fmt.speedAuto(redirectDvMs)}</strong>{#if mode === 'realistic' && redirectFuelKg > 0} — burns <strong>{fmtMass(redirectFuelKg)}</strong> of propellant{/if}
+            Redirect Δv: <strong>{formatSpeedAuto(redirectDvMs, speedFlavour($unitPrefs, 'construct'))}</strong>{#if mode === 'realistic' && redirectFuelKg > 0} — burns <strong>{fmtMass(redirectFuelKg)}</strong> of propellant{/if}
             <span class="muted">— current drift is {headingOffset.toFixed(0)}° off the new heading{#if headingOffset < 5} (almost free — you're already going this way){:else if headingOffset > 150} (nearly a full reversal — costs your whole speed){/if}</span>
           </p>
         {/if}
@@ -335,7 +337,7 @@
           <label class="slider">
             <span>Fuel committed to the outbound burn: <strong>{Math.round(fuelFraction * 100)}%</strong></span>
             <input type="range" min="0" max="1" step="0.01" bind:value={fuelFraction} />
-            <span class="hint">More fuel out = faster, but leaves less to brake. Ship Δv (full tank): {$fmt.speedMs(shipDv, 1)}</span>
+            <span class="hint">More fuel out = faster, but leaves less to brake. Ship Δv (full tank): <UnitValue quantity="speed" bodyType="construct" value={shipDv / 1000} /></span>
           </label>
           <label class="slider">
             <span>Burn acceleration: <strong style="color:{crewColor}">{gForce.toFixed(1)} g</strong></span>
@@ -352,7 +354,7 @@
           <label class="slider">
             <span>Cruise speed: <strong>{fmtPctC(speedFrac)}</strong></span>
             <input type="range" min="0" max="1" step="0.001" bind:value={speedSv} />
-            <span class="hint">{$fmt.speedMs(speedFrac * C_MS, 0)} · slider is log near 0 and near c (reaches 99.999%).</span>
+            <span class="hint"><UnitValue quantity="speed" bodyType="construct" value={speedFrac * C_MS / 1000} decimals={0} /> · slider is log near 0 and near c (reaches 99.999%).</span>
           </label>
           {#if relEnergyJ > 0}
             <p class="energy">Kinetic energy to reach {fmtPctC(speedFrac)} for this ship ({(shipMassKg / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} t): <strong>{relEnergyJ.toExponential(2)} J</strong> — equivalent to converting <strong>{massEnergyEquivalent(relEnergyJ)}</strong> entirely to energy.</p>
@@ -375,7 +377,7 @@
           <div class="times">
             <div><span class="k">Crew time</span><span class="v">{formatDuration(result.shipSeconds)}</span></div>
             <div><span class="k">Observer time</span><span class="v">{formatDuration(result.observerSeconds)}</span></div>
-            <div><span class="k">{mode === 'massless' ? 'Peak speed' : 'Cruise'}</span><span class="v">{result.cruise_ms > 0 ? (result.fractionC >= 0.01 ? fmtFractionC(result.fractionC) : $fmt.speedMs(result.cruise_ms, 0)) : '—'}</span></div>
+            <div><span class="k">{mode === 'massless' ? 'Peak speed' : 'Cruise'}</span><span class="v">{result.cruise_ms > 0 ? (result.fractionC >= 0.01 ? fmtFractionC(result.fractionC) : formatPref($unitPrefs, 'speed', 'construct', result.cruise_ms / 1000, 0)) : '—'}</span></div>
             {#if result.gamma > 1.01 && Number.isFinite(result.gamma)}<div><span class="k">Dilation</span><span class="v">×{result.gamma.toFixed(2)}</span></div>{/if}
           </div>
           <p class="detail">{result.detail}</p>

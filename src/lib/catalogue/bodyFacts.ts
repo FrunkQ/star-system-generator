@@ -4,7 +4,7 @@ import type { CelestialBody, RulePack } from '$lib/types';
 import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
 import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
-import { formatSpeedAuto, formatPref, resolveUnitPref, unitBodyTypeFor, type UnitPrefs, type MeasurementUnits } from '$lib/units';
+import { formatSpeedAuto, formatPref, speedFlavour as speedFlavourFor, unitBodyTypeFor, type UnitPrefs } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
 import { radiationHazardBucket, lethalDoseTime, LETHAL_MARK } from '$lib/physics/radiation';
 import { ascentBudgetApplies } from '$lib/physics/orbits';
@@ -29,10 +29,9 @@ export function orbitDist(b: CelestialBody, prefs: UnitPrefs = {}): string {
   // originated (close-in orbits in km, wider star orbits in AU).
   return formatPref(prefs, 'orbit', unitBodyTypeFor(b), a * AU_KM);
 }
-// The magnitude-aware speed formatter still wants a metric/imperial flavour; derive it from the
-// body's speed pref so one choice governs both forms.
-function speedFlavour(prefs: UnitPrefs, b: CelestialBody): MeasurementUnits {
-  return resolveUnitPref(prefs, 'speed', unitBodyTypeFor(b)) === 'mi/s' ? 'imperial' : 'metric';
+// The magnitude-aware speed formatter's metric/imperial flavour, from the body's own bucket.
+function speedFlavour(prefs: UnitPrefs, b: CelestialBody) {
+  return speedFlavourFor(prefs, unitBodyTypeFor(b));
 }
 export function gravityG(b: CelestialBody): string {
   if (!b.massKg || !b.radiusKm) return '';
