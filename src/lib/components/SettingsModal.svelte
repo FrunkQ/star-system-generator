@@ -756,7 +756,17 @@
     max-height: 56vh;
     overflow-y: auto;
     overflow-x: hidden;
+    /* Breathing room against the scrollbar - controls were pressed against the drag edge and the
+       default bar wrecked the look (owner, 2026-08-21). The gutter stays reserved so nothing jumps
+       when a short tab needs no bar; the bar itself goes slim and theme-dark. */
+    padding-right: 16px;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border, #2c3140) transparent;
   }
+  .settings-content::-webkit-scrollbar { width: 8px; }
+  .settings-content::-webkit-scrollbar-thumb { background: var(--border, #2c3140); border-radius: 4px; }
+  .settings-content::-webkit-scrollbar-track { background: transparent; }
   .settings-content h3 {
     margin: 1.2em 0 0.6em;
     font-size: 0.8rem;

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.1 - 21st Aug 2026
+
+**Release candidate 1 for V3.** The 2.1.x beta line ends here; RC pushes bump the rc number. This build carries everything the welcome list claims, with the GM interface overhaul landing last: skinnable panels (classic or compact), clickable units on every figure remembered per body type and inherited by player windows, a what's-new line saying so, and the settings panels given breathing room against a slimmer scrollbar.
+
 ## v2.1.906-beta - 21st Aug 2026
 
 - Appearance moves to the top of Settings > System, where it belongs: the skin picker, the skin editor and the colour palette page now sit together as the first thing in the section, rather than being buried in the Starmap tab. The palette link explains what it adds over a skin - single colours, including the ones that carry meaning.
