@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.23 - 21st Aug 2026
+
+- Board only. The owner signed off the entire eyeball list in one pass (C18 plume, A55 boosted sky, C14 falloff, C15 true-scale lo-poly, C16 Terminal Clear, A51(b) binary entry, A62 cover-page resize) - every row marked closed. All V3 release gates are now met; release waits on the owner's word.
+
 ## v3.0.0-rc.22 - 21st Aug 2026
 
 - **NEW: you can see who is watching, and what it is costing.** A small counter appears on the Player Views icon the moment somebody joins - green for windows on this machine, orange for ones connecting from elsewhere, and nothing at all when nobody is there. Hovering gives a line per window. Settings > System lists them with the data each has moved, and copies the whole thing as text you can paste to someone. On the player's own screen, clicking the LIVE lamp shows the same figures for their connection and clicking again copies them. It is honest about one thing that matters: a player window on the same machine transfers nothing at all - the data is handed straight over - so it reports messages and says plainly that there are no bytes to blame.
