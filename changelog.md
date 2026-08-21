@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.9 - 21st Aug 2026
+
+- The physics page gains the section its own map has needed all along: Stellar zones. Every zone is derived from the star's LUMINOSITY asked at a distance from that star, there are TWO frost lines rather than one (formation at ~170 K and current at ~125 K, which is what the two labels on the system map mean), the habitable zone's outer half assumes a thick CO2 greenhouse - Mars is inside the Sun's band and frozen - and the kill zone is the mean of surface ultraviolet and coronal output, which is why an active M dwarf is dangerous and a quiet one of the same size is not. Also: the pipeline list now includes radiation as its own pass, surface light and the biosphere; the ionising-output section gains all four flare mechanisms, where before it taught the convective dynamo alone and a fed black hole out-flares any star; the photon/particle table gains its brown-dwarf row; and the generation dials' realism bands are explained.
+
 ## v3.0.0-rc.8 - 21st Aug 2026
 
 - The two tag documents verified against the engine and four gaps filled. docs/tags-guide.md gains the rule condition for solid ground and the marker size, pin-text and flag-staff options. docs/classification-and-tags.md gains: who reads a fingerprint's formation, range and note keys (none of them the classifier); the fact that classifier.rules[] and minScore are dead and the format is fingerprints only; a section on the stellar zones, which no reader-facing surface described - all of them derived from luminosity, TWO frost lines rather than one, and a kill zone that is the mean of surface ultraviolet and coronal output; and a section on what an imported catalogue number is worth, since three quarters of the quoted densities are the mass in disguise.
