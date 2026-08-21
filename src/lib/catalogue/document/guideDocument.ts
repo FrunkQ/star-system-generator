@@ -6,7 +6,7 @@
 // it; this file just decides WHAT appears, so the same content can be re-themed (book ↔ terminal) and
 // re-filtered without touching the layout code.
 import type { System, CelestialBody } from '$lib/types';
-import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
+import type { UnitPrefs } from '$lib/units';
 import { bodyFacts, bodyGlyph } from '../bodyFacts';
 import { describeTag, tagContextLabel } from '$lib/tags/tagPresentation';
 import { markersFor } from '$lib/tags/mapHighlights';
@@ -20,8 +20,8 @@ import { constructIconShape } from '$lib/constructs/constructIcon';
 import { docSideBySide, docGraphicStripFrac } from './docLayout';
 
 export interface GuideDocOpts {
-  units?: MeasurementUnits;
-  tempUnit?: TemperatureUnit;
+  // G34: the campaign's per-quantity × body-type unit prefs (rides SYNC_STARMAP to player windows).
+  prefs?: UnitPrefs;
   colorful?: boolean;                    // The Guide's rainbow schematic
   imagery?: 'sphere' | 'disc' | 'flat' | 'photo' | 'none'; // how the body picture is shown
   image?: CanvasImageSource | null;      // a loaded picture for the selected body (photo mode)
@@ -199,7 +199,7 @@ export function buildGuideDocument(system: System, selectedId: string | null, op
     // same way the parent-nav row above does, so the two cannot name different parents.
     const hostId = (subject as any).parentId || (subject as any).orbit?.hostId;
     const host = hostId ? (nodeById(system, hostId) as CelestialBody | null) : null;
-    const facts = bodyFacts(subject, opts.units ?? 'metric', opts.tempUnit ?? 'C',
+    const facts = bodyFacts(subject, opts.prefs ?? {},
       { rulePack: opts.rulePack, host, liveReadings: opts.liveReadings, system, nowMs: opts.nowMs, formatDate: opts.formatDate });
     const rows = facts.filter((f) => f.value && f.label !== 'Tags');
     if (rows.length) blocks.push({ kind: 'spacer', h: 4 });

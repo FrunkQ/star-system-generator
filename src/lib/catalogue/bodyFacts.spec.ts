@@ -114,7 +114,7 @@ describe('bodyFacts — a construct quotes rated performance in capacity mode', 
     current_cargo_tonnes: 40,
     crew: { current: 4, max: 6 }
   };
-  const facts = (live: boolean) => bodyFacts(ship, 'metric', 'C', { rulePack: pack, liveReadings: live });
+  const facts = (live: boolean) => bodyFacts(ship, {}, { rulePack: pack, liveReadings: live });
   const get = (live: boolean, label: string) => facts(live).find((f) => f.label === label)?.value;
 
   it('shows rated figures with live readings OFF and current ones with it ON', () => {
@@ -133,7 +133,7 @@ describe('bodyFacts — a construct quotes rated performance in capacity mode', 
   it('does not move with the cargo, so it cannot leak the load A29 withheld', () => {
     const laden = { ...ship, current_cargo_tonnes: 200 };
     const before = get(false, 'Δv (rated, full tanks)');
-    const after = bodyFacts(laden as any, 'metric', 'C', { rulePack: pack, liveReadings: false })
+    const after = bodyFacts(laden as any, {}, { rulePack: pack, liveReadings: false })
       .find((f) => f.label === 'Δv (rated, full tanks)')?.value;
     expect(after).toBe(before);
   });
@@ -160,7 +160,7 @@ describe('bodyFacts — a construct block gates by what changes, not by what is 
     }
   };
   const get = (live: boolean, label: string) =>
-    bodyFacts(ship, 'metric', 'C', { rulePack: pack, liveReadings: live, system })
+    bodyFacts(ship, {}, { rulePack: pack, liveReadings: live, system })
       .find((f) => f.label === label)?.value;
 
   it('keeps both capacities in capacity mode, as capacities', () => {
@@ -185,7 +185,7 @@ describe('bodyFacts — a construct block gates by what changes, not by what is 
 
   it('keeps the berth of a construct that is not under way', () => {
     const docked = { ...ship, flight_state: 'Docked', placement: 'Docked at Tycho' };
-    const at = (live: boolean) => bodyFacts(docked as any, 'metric', 'C', { rulePack: pack, liveReadings: live, system })
+    const at = (live: boolean) => bodyFacts(docked as any, {}, { rulePack: pack, liveReadings: live, system })
       .find((f) => f.label === 'Location')?.value;
     expect(at(false)).toBeTruthy();
     expect(at(true)).toBeTruthy();

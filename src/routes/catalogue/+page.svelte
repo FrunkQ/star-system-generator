@@ -34,7 +34,7 @@
   import HoloView from '$lib/holo/HoloView.svelte';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
   import { AU_KM } from '$lib/constants';
-  import { formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
+  import { migrateUnitPrefs, type UnitPrefs } from '$lib/units';
   import { randomGuideNote } from '$lib/catalogue/guideNotes';
   import type { System, RulePack, CelestialBody, Starmap } from '$lib/types';
 
@@ -703,7 +703,7 @@
           panelW: inspectorWidth,
           title: selectedBody.name,
           sub: selectedBody.roleHint || 'body',
-          facts: bodyFacts(selectedBody, units, tempUnit, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem, nowMs: currentTime }),
+          facts: bodyFacts(selectedBody, prefs, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem, nowMs: currentTime }),
           description: selectedBody.description || '',
           accent: presetAccent, font: presetFont, fontScale: infoFontScale,
           mono: activePreset?.bodyStyle === 'white',
@@ -712,7 +712,7 @@
           // filter-composited quad; the unfiltered aside shows it.
           blocks: displaySystem ? buildGuideDocument(displaySystem, docSelectedId ?? selectedBody.id, {
             nowMs: docNowMs,
-            panel: true, units, tempUnit, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack, liveReadings: !!activePreset?.liveReadings,
+            panel: true, prefs, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack, liveReadings: !!activePreset?.liveReadings,
             highlights: mapHighlights, tagCategories: hostTagCategories ?? $tagCategories
           }) : undefined,
           theme: activePreset ? makeDocTheme({
@@ -846,8 +846,10 @@
   //  hazard, uncalled since the legacy skins' <dl> went: a private second formatter for gravity, mass,
   //  orbit distance and atmosphere, where `bodyFacts` is the one that reaches every surface.)
 
-  let units: MeasurementUnits = 'metric';   // in-system km/miles, from the launcher URL (?units=)
-  let tempUnit: TemperatureUnit = 'C';       // temperature °C/°F/K, from the launcher URL (?temp=)
+  // G34: per-quantity × body-type unit prefs. They ride the redacted starmap (SYNC_STARMAP), so a
+  // GM cycling a unit reaches this window on the next snapshot. The legacy ?units=/?temp= launcher
+  // params still seed the first paint for old links, through the same migration the GM map uses.
+  let prefs: UnitPrefs = {};
 
   onMount(async () => {
     const params = new URLSearchParams(window.location.search);
@@ -858,8 +860,11 @@
     // a player who cannot connect cannot be told anything over the channel.
     broadcastService.setIceServers(parseIceParam(params.get('ice')));
     broadcastService.onPeerFailed = (reason) => { linkBlocked = reason === 'ice-failed'; };
-    units = params.get('units') === 'imperial' ? 'imperial' : 'metric';
-    { const tp = params.get('temp'); tempUnit = tp === 'F' || tp === 'K' ? tp : 'C'; }
+    { const tp = params.get('temp');
+      prefs = migrateUnitPrefs({
+        measurementUnits: params.get('units') === 'imperial' ? 'imperial' : 'metric',
+        temperatureUnit: tp === 'F' || tp === 'K' ? tp : 'C'
+      }); }
     try {
       rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
     } catch (e) {
@@ -883,6 +888,9 @@
     broadcastService.onStarmapUpdate = (map) => {
       perfCount('sync.starmap'); // each one re-clones the campaign + rebuilds the scene — track it
       starmap = map;
+      // G34: inherit the GM's unit choices, non-interactively. Absent on a pre-G34 GM build →
+      // keep whatever the launch params seeded.
+      if ((map as any)?.unitPrefs) prefs = (map as any).unitPrefs;
       lastUpdate = Date.now();
       lastHeardAt = Date.now();
       connected = true;
@@ -1001,7 +1009,7 @@
             tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
             imagery={activePreset.bodyGfx} photoFrame={activePreset.photoFrame}
             bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}
-            interactive={presetInteractive} {units} {tempUnit} tagStyles={hostTagCategories} />
+            interactive={presetInteractive} {prefs} tagStyles={hostTagCategories} />
         {/if}
       </div>
     </aside>
@@ -1183,7 +1191,7 @@
           listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle} tagStyle={activePreset.tagStyle} navStyle={activePreset.navStyle} themeColors={activePreset.themeColors}
           fontScale={infoFontScale}
           filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
-          units={units} tempUnit={tempUnit}
+          prefs={prefs}
           tips={tipsOn ? { top: tipTop, bottom: tipBottom } : null} overlay={systemOverlayHud}
           companyName={activePreset.companyName} footerText={activePreset.footerText}
           transition={activePreset.transition} transitionParams={activePreset.transitionParams ?? {}}

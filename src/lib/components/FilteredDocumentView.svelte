@@ -15,7 +15,7 @@
   import type { FilteredCanvasController } from '$lib/holo/filteredCanvas';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
   import type { System } from '$lib/types';
-  import type { MeasurementUnits, TemperatureUnit } from '$lib/units';
+  import type { UnitPrefs } from '$lib/units';
   import { renderDocument, type DocRegion } from '$lib/catalogue/document/renderDocument';
   import { resolveDocColors, type DocTheme, type ListStyle, type DocumentStyle, type DocColors } from '$lib/catalogue/document/blocks';
   import { makeDocTheme } from '$lib/catalogue/document/documentStyles';
@@ -61,8 +61,7 @@
   export let filterId = 'none';
   export let filterParams: FilterParamValues = {};
   export let selectable = false;
-  export let units: MeasurementUnits = 'metric';
-  export let tempUnit: TemperatureUnit = 'C';
+  export let prefs: UnitPrefs = {};
   // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
   // Optional: without it the construct block simply omits those rows.
   export let rulePack: import('$lib/types').RulePack | null = null;
@@ -218,7 +217,7 @@
           background: mapBgImg, backgroundAspect: mapBgAspect, backgroundCaption: mapBgCaption
         })
       : (system ? buildGuideDocument(system, selectedId, {
-          units, tempUnit, colorful, imagery, rulePack, liveReadings, nowMs: nowMs ?? undefined, formatDate,
+          prefs, colorful, imagery, rulePack, liveReadings, nowMs: nowMs ?? undefined, formatDate,
           highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
           image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame,
           // The COLUMN's width, not the surface's — margins are not measure the facts can use, and

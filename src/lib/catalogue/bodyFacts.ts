@@ -4,7 +4,7 @@ import type { CelestialBody, RulePack } from '$lib/types';
 import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
 import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
-import { formatDistanceKm, formatDistanceAu, formatOrbitRadiusAu, formatSpeedKmS, formatSpeedAuto, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
+import { formatSpeedAuto, formatPref, resolveUnitPref, unitBodyTypeFor, type UnitPrefs, type MeasurementUnits } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
 import { radiationHazardBucket, lethalDoseTime, LETHAL_MARK } from '$lib/physics/radiation';
 import { ascentBudgetApplies } from '$lib/physics/orbits';
@@ -19,32 +19,39 @@ export function fmtNum(n: number | undefined | null, d = 0): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: d });
 }
 
-export function orbitDist(b: CelestialBody, units: MeasurementUnits = 'metric'): string {
+// G34: these formatters take the campaign's unit PREFS and pick the bucket from the body's own
+// roleHint, so the catalogue, documents and info panels follow the same per-quantity × body-type
+// choices as the GM panels. Storage stays SI; player surfaces render, never cycle.
+export function orbitDist(b: CelestialBody, prefs: UnitPrefs = {}): string {
   const a = b.orbit?.elements?.a_AU;
   if (typeof a !== 'number' || a <= 0) return '';
-  // Close-in / local orbits render in km (or miles); wider star orbits keep AU. The threshold and
-  // the switch live in `units.ts` — this file's copy WAS the original, and the info panel's
-  // role-based version disagreed with it (see ORBIT_KM_BELOW_AU).
-  return formatOrbitRadiusAu(a, units);
+  // The default 'auto' stop keeps the ORBIT_KM_BELOW_AU magnitude rule this file's copy
+  // originated (close-in orbits in km, wider star orbits in AU).
+  return formatPref(prefs, 'orbit', unitBodyTypeFor(b), a * AU_KM);
+}
+// The magnitude-aware speed formatter still wants a metric/imperial flavour; derive it from the
+// body's speed pref so one choice governs both forms.
+function speedFlavour(prefs: UnitPrefs, b: CelestialBody): MeasurementUnits {
+  return resolveUnitPref(prefs, 'speed', unitBodyTypeFor(b)) === 'mi/s' ? 'imperial' : 'metric';
 }
 export function gravityG(b: CelestialBody): string {
   if (!b.massKg || !b.radiusKm) return '';
   const rm = b.radiusKm * 1000;
   return `${(G * b.massKg / (rm * rm) / EARTH_G).toFixed(2)} g`;
 }
-export function massRel(b: CelestialBody): string {
+export function massRel(b: CelestialBody, prefs: UnitPrefs = {}): string {
   if (!b.massKg) return '';
-  const m = b.massKg / EARTH_MASS_KG;
-  return `${m < 1000 ? m.toFixed(2) : m.toExponential(2)} M⊕`;
+  return formatPref(prefs, 'mass', unitBodyTypeFor(b), b.massKg);
 }
 // The MEAN surface temperature — the average of this world's day and night sides, which the physics
 // derives from the energy balance and publishes on the profile. NOT `temperatureK`: that balances
 // POWER (it is what the body radiates), and because power goes as T⁴ it sits above the average on
 // anything with a real day/night swing — the Moon radiates at 270 K and averages 214 (inbox B63).
 // A star has no profile and reads its photosphere directly.
-export function tempC(b: CelestialBody, tempUnit: TemperatureUnit = 'C'): string {
+export function tempC(b: CelestialBody, prefs: UnitPrefs = {}): string {
   if (b.temperatureProfile?.meanK === undefined && b.temperatureK === undefined) return '';
-  return formatTempK(meanSurfaceTempK(b), tempUnit);
+  // Stars default to kelvin through defaultUnitFor — no per-caller ternary any more.
+  return formatPref(prefs, 'temperature', unitBodyTypeFor(b), meanSurfaceTempK(b));
 }
 export function atmosphere(b: CelestialBody): string {
   if (!b.atmosphere) return 'None';
@@ -115,7 +122,7 @@ export interface FactContext {
 // and the GM panel cannot print different numbers for one ship. Nothing is recomputed here.
 // Rows that cannot be determined return '' and are dropped by `add`, so a construct with no rule pack
 // shows a shorter honest list rather than a full one padded with zeroes.
-function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactContext): Fact[] {
+function constructFacts(b: CelestialBody, prefs: UnitPrefs, ctx: FactContext): Fact[] {
   const out: Fact[] = [];
   const any = b as any;
   const add = (label: string, value: string) => { if (value) out.push({ label, value }); };
@@ -222,7 +229,7 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
     ref >= 1 ? { maximumFractionDigits: 1 } : { maximumSignificantDigits: 2 });
   if (live) {
     if (specs.maxVacuumG > 0) add('Max acceleration', `${gFmt(specs.maxVacuumG)(specs.maxVacuumG)} g`);
-    if (specs.totalVacuumDeltaV_ms > 0) add('Δv (vacuum)', formatSpeedKmS(specs.totalVacuumDeltaV_ms / 1000, units, 1));
+    if (specs.totalVacuumDeltaV_ms > 0) add('Δv (vacuum)', formatPref(prefs, 'speed', 'construct', specs.totalVacuumDeltaV_ms / 1000));
   } else {
     if (specs.ratedAccelFullG > 0 && specs.ratedAccelEmptyG > 0) {
       // Keyed on the SMALLER end (full tanks) so the low figure keeps its digits.
@@ -232,7 +239,7 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
         : `${g(specs.ratedAccelFullG)} g`);
     }
     if (specs.ratedVacuumDeltaV_ms > 0) {
-      add('Δv (rated, full tanks)', formatSpeedKmS(specs.ratedVacuumDeltaV_ms / 1000, units, 1));
+      add('Δv (rated, full tanks)', formatPref(prefs, 'speed', 'construct', specs.ratedVacuumDeltaV_ms / 1000));
     }
   }
   if (specs.canAerobrake) add('Aerobraking', `up to ${specs.aerobrakeLimit_kms.toFixed(1)} km/s`);
@@ -282,10 +289,10 @@ function constructFacts(b: CelestialBody, units: MeasurementUnits, ctx: FactCont
 // Full report-parity facts for a body, enriched with the Phase-04 derived data (temperature range,
 // radiation, geology, magnetism, fluids, ascent Δv). Both guide tiers (diagrammatic browser +
 // hi-tech console inspector) render this, so they match the printed report's depth.
-export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', tempUnit: TemperatureUnit = 'C', ctx: FactContext = {}): Fact[] {
+export function bodyFacts(b: CelestialBody, prefs: UnitPrefs = {}, ctx: FactContext = {}): Fact[] {
   // A construct is a different KIND of thing and gets its own facts, not a body block with the
   // temperature rows missing. It used to fall through here and borrow a world's fields.
-  if (b.kind === 'construct') return constructFacts(b, units, ctx);
+  if (b.kind === 'construct') return constructFacts(b, prefs, ctx);
 
   const out: Fact[] = [];
   const any = b as any;
@@ -295,7 +302,7 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   add('Type', classLabel(b) || titleCase(b.roleHint || 'body'));
 
   // --- Orbit & rotation ---
-  add('Orbit distance', orbitDist(b, units));
+  add('Orbit distance', orbitDist(b, prefs));
   const e = b.orbit?.elements?.e;
   if (typeof e === 'number' && e >= 0.05) add('Eccentricity', e.toFixed(3));
   add('Orbital period', b.orbital_period_days ? `${b.orbital_period_days < 2 ? b.orbital_period_days.toFixed(2) : Math.round(b.orbital_period_days).toLocaleString()} days` : '');
@@ -319,8 +326,8 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   }
 
   // --- Bulk ---
-  add('Mass', massRel(b));
-  add('Radius', b.radiusKm ? formatDistanceKm(b.radiusKm, units) : '');
+  add('Mass', massRel(b, prefs));
+  add('Radius', b.radiusKm ? formatPref(prefs, 'radius', unitBodyTypeFor(b), b.radiusKm) : '');
   add('Gravity', gravityG(b));
   if (b.massKg && b.radiusKm) {
     const vol = (4 / 3) * Math.PI * Math.pow(b.radiusKm * 1000, 3);
@@ -328,8 +335,9 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   }
 
   // --- Climate ---
-  // Stars are always Kelvin (a ~5,778 K star reads oddly as °C); the switch governs planet/moon temps.
-  add('Surface temp', tempC(b, b.roleHint === 'star' ? 'K' : tempUnit));
+  // Stars read kelvin by DEFAULT (a ~5,778 K star reads oddly as °C) — that now lives in
+  // defaultUnitFor rather than a ternary here, and the GM can still cycle it.
+  add('Surface temp', tempC(b, prefs));
   // The range must be the SURFACE range, to match the row above it. `temperatureRangeK` is the
   // SurfaceTempProfile's total (`totalMinK`/`totalMaxK`), built as the profile's own mean ± the swings
   // combined in quadrature — so it brackets the row above by construction, which is why that row now
@@ -341,7 +349,8 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   // exists without the other and nothing to fall back to: the row simply drops.
   const range = any.temperatureRangeK;
   if (typeof range?.min === 'number' && typeof range?.max === 'number') {
-    add('Temp range', `${formatTempK(range.min, tempUnit)} to ${formatTempK(range.max, tempUnit)}`);
+    const tb = unitBodyTypeFor(b);
+    add('Temp range', `${formatPref(prefs, 'temperature', tb, range.min)} to ${formatPref(prefs, 'temperature', tb, range.max)}`);
   }
   add('Atmosphere', atmosphere(b));
   if (b.atmosphere?.composition) {
@@ -421,9 +430,10 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   {
     const ascent = ascentBudgetApplies(b);
     if (!ascent.applies) add('Ascent Δv', `not applicable — ${ascent.reason}`);
-    // formatSpeedAuto, not formatSpeedKmS: Phobos costs 9 m/s to leave and Deimos 5 — remarkable,
-    // actionable figures that a fixed km/s field rounded to "0.0 km/s", which reads as free.
-    else if (any.loDeltaVBudget_ms > 0) add('Ascent Δv', formatSpeedAuto(any.loDeltaVBudget_ms, units));
+    // formatSpeedAuto, not the fixed km/s ladder stop: Phobos costs 9 m/s to leave and Deimos 5 —
+    // remarkable, actionable figures that a fixed km/s field rounded to "0.0 km/s", which reads as
+    // free. The metric/imperial flavour follows the body's speed pref.
+    else if (any.loDeltaVBudget_ms > 0) add('Ascent Δv', formatSpeedAuto(any.loDeltaVBudget_ms, speedFlavour(prefs, b)));
   }
 
   // --- Life ---

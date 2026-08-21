@@ -21,7 +21,6 @@
   import { buildPortraitSystem } from '$lib/catalogue/document/portraitSystem';
   import BodyGraphic from './BodyGraphic.svelte';
   import ConstructModelGraphic from './ConstructModelGraphic.svelte';
-  import type { MeasurementUnits, TemperatureUnit } from '$lib/stores';
 
   export let system: System | null = null;
   export let selectedId: string | null = null;
@@ -45,8 +44,7 @@
   // G8: the campaign clock, so the body block can carry its "Next eclipse" row. Omitted -> no row.
   export let nowMs: number | null = null;
   export let formatDate: ((ms: number) => string) | undefined = undefined;
-  export let units: MeasurementUnits = 'metric';
-  export let tempUnit: TemperatureUnit = 'C';
+  export let prefs: import('$lib/units').UnitPrefs = {};
   // Names a construct's engines and fuels so its mass, Δv and acceleration can be derived (A2).
   // Optional: without it the construct block simply omits those rows.
   export let rulePack: import('$lib/types').RulePack | null = null;
@@ -100,7 +98,7 @@
   function render() {
     if (!canvas || w <= 0 || !system) return;
     const blocks = buildGuideDocument(system, selectedId, {
-      panel: true, noHeading: !showHeading, units, tempUnit, imagery, tagStyle, photoFrame, rulePack, liveReadings,
+      panel: true, noHeading: !showHeading, prefs, imagery, tagStyle, photoFrame, rulePack, liveReadings,
       highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
       nowMs: nowMs ?? undefined, formatDate,
       image: loaded?.img ?? null, imageAspect: loaded?.aspect, imageFocus: loaded?.focus ?? null
@@ -135,7 +133,7 @@
   onDestroy(() => ro?.disconnect());
 
   // Redraw on any data/appearance change.
-  $: if (canvas) { system; selectedId; theme; imagery; photoFrame; tagStyle; units; tempUnit; loaded; nowMs; render(); }
+  $: if (canvas) { system; selectedId; theme; imagery; photoFrame; tagStyle; prefs; loaded; nowMs; render(); }
 </script>
 
 <div class="doc-panel" bind:this={wrap} style="height:{contentH}px">
