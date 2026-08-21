@@ -1435,15 +1435,15 @@ All notable changes are listed here:
 
 * Notes for the next person working on stars: what changed, what was measured, and the several things found along the way that were deliberately left alone.
 
+## v2.1.574-beta - 13th Aug 2026
+
+* Biospheres split across two releases. The part that describes life — the kinds of it, how much of a world it covers, and what colours it should take — becomes ordinary tags now, alongside the wider tagging work, so you can author and search for it straight away. Actually drawing it on the planet comes later, with the new generation engine.
+
 ## v2.1.572-beta - 14th Aug 2026
 
 * Imported stars are called what people call them. The catalogue files Antares as "alf Sco", and that is what appeared on your map; now it says Antares. Where a star has no popular name the abbreviation is spelled out instead — "eps Ind" becomes "Epsilon Indi" — and survey designations like "2MASS J09205549+4539058" are left exactly as they are, because they have no friendly name and inventing one would be worse. Systems are named as systems: Alpha Centauri, containing Rigil Kentaurus, Toliman and Proxima Centauri.
 * Searching for a star now accepts the name it just showed you. Greek letters are translated before the search is sent, because the catalogue service rejects them outright — so "α Scorpii" works where it previously failed — and the box tells you what it searched for and what it found, rather than expecting you to know the catalogue's shorthand.
 * Failed searches say something useful. A search that found nothing, or that the service refused, used to print either a bare "Failed to fetch" or several hundred characters of raw XML. Both are now a sentence.
-
-## v2.1.574-beta - 13th Aug 2026
-
-* Biospheres split across two releases. The part that describes life — the kinds of it, how much of a world it covers, and what colours it should take — becomes ordinary tags now, alongside the wider tagging work, so you can author and search for it straight away. Actually drawing it on the planet comes later, with the new generation engine.
 
 ## v2.1.571-beta - 13th Aug 2026
 
@@ -1804,15 +1804,6 @@ All notable changes are listed here:
 
 * Housekeeping, no product change: the observations inbox records the owner's sign-off pass. The satellite reference frame (moons and rings sitting in their parent's equator), the orbit-line sweep on a followed ship, the 3D body picture inside the view filter, the distance grids and the charted-star sky are all confirmed on screen rather than only in numbers; the ship-appearance follow-ups are closed. Two new observations captured: the Traveller importer producing over-flattened gas giants, and a fault to be detailed on Epsilon Indi A b in the real-sky importer.
 
-## v2.1.451-beta - 4th Aug 2026
-
-* **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
-* Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
-
-## v2.1.482-beta - 3rd Aug 2026
-
-* **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
-
 ## v2.1.490-beta - 8th Aug 2026
 
 * **Fixed: a starmap with two systems very far apart could not be loaded at all, and eventually crashed the tab.** This is the reported fault, and it was the snap-grid overlay rather than the physics or the amount of data. The grid is drawn by walking across the map one cell at a time, and the map zooms out to fit whatever you have placed -- so on a map spanning 85,103 light years the hex grid was asked for **4.4 billion** hexes. Measured on a fast desktop that is about **1.8 hours** of solid work while building a **670 GB** block of text, so it ran out of memory and took the tab with it every single time; the square grid asked for 108,000 lines and a 5 MB one. It happens *after* the physics has finished, which is why the loading bar sat at 100% while the app was already gone. The grid now simply stops drawing once a cell is smaller than three screen pixels -- at that zoom it was a grey haze rather than a grid, and the 3D starmap has always worked this way. **Nothing changes at any zoom you would actually work at**: on the bundled map the grid draws exactly as before. Verified by reproducing the reported map: it used to be unloadable, and now loads in about a seventh of a second.
@@ -1853,6 +1844,10 @@ All notable changes are listed here:
 
 * **Fixed (properly this time): orbit lines vibrating while the view rides a moving body.** The previous fix steadied the line's detail level but not its centre -- the high-detail stretch of the line snapped from point to point as the camera moved, redistributing the whole line in visible steps. The centre now moves continuously and the high-detail stretch re-draws every frame, so it slides with the motion instead of stepping. (The earlier fix also only applied to sun-circling orbits; this covers the case actually reported, a station orbiting a planet with the camera following.)
 * **Fixed: a ship shown mid-burn by the GM had no plume on the player view -- the ship and its torch were on two different clocks.** A player's free-running clock races hours past the GM's within minutes (the default rate is 1 s = 1 h), and while the ship itself is drawn where the GM's last report put it, its engine state was being judged at the local clock -- long past the burn. Everything time-judged about a ship (plume, burn colour flip, route-line visibility, journey framing) is now evaluated at the same instant its drawn position describes: the display clock when following the GM, else the time of the GM's report.
+
+## v2.1.482-beta - 3rd Aug 2026
+
+* **Charted stars no longer shine through the planet in front of them.** A star behind a world -- and the cross flare that marks it -- was being drawn over the top of it. It is now occluded properly, cut off cleanly at the limb, and it behaves the same way with a CRT or night-vision filter running.
 
 ## v2.1.481-beta - 8th Aug 2026
 
@@ -1992,6 +1987,11 @@ All notable changes are listed here:
 
 * Internal, no visible change: the rule deciding how big anything draws in the 3D view is now one tested module instead of four copies hidden inside the scene. Pinned by a test that runs the old arithmetic beside the new one at every dial setting, so an accidental change in look fails a test rather than reaching a screen. First step of the camera and scale redesign.
 
+## v2.1.451-beta - 4th Aug 2026
+
+* **Fixed: importing the real sky into a NEW starmap produced an empty map.** "Local Neighbourhood" imported zero systems, and widening the radius to 18 light years imported exactly one — because every host inside it is curated on the BUNDLED map, and the importer was treating that as a reason to withhold the star. It now skips a star only when the map you are importing INTO already holds it, so a new map gets all 21 systems and appending onto the bundled map still skips the ones already there. The map description also says which star it is centred on rather than repeating the preset's name.
+* Fixed: the bundled starmaps had been re-saved by a script that writes numbers differently from the generator ({2e-05} where the generator writes {0.00002}), so the build kit could no longer reproduce them. Regenerated from the kit -- no values changed, and the pin test that guards the two against drifting apart is green again.
+
 ## v2.1.450-beta - 5th Aug 2026
 
 * Framing a ship that is UNDER WAY now works. Every incoming snapshot rebuilt the scene and threw the camera's focus away with it - and a construct in transit rewrites the snapshot about twice a second, so on a player's screen the shot was abandoned and restarted continuously and never got near the ship. A ship in a stable orbit does not move the snapshot, which is why that case looked fine and this one did not. A refresh of the system already on screen now keeps the focus; only moving to a different system clears it.
@@ -2028,12 +2028,6 @@ All notable changes are listed here:
 ## v2.1.443-beta - 5th Aug 2026
 
 * Internal only: developer notes. The engine map gains the position and eclipse rules — where a moon gets rotated into its planet's equator, and why a panel showing a predicted date reads the clock once a second rather than every frame. No change to the app.
-
-## v2.1.430-beta - 5th Aug 2026
-
-* **Choosing what to highlight now happens in Find by tag**, which already knows what is on the map, with colours and counts. Drag a tag chip or a category bubble into the tray at the bottom — "Show highlight markers on player views" — or press the + on a tag. Player Views → Quick overrides is now just the mute for it, so you can drop the badges mid-scene without losing the selection you built.
-* Two tag pickers, deliberately: **Find by tag** offers only what something actually carries (right for highlighting — badging a tag nothing has shows nothing), while the full-vocabulary picker offers everything the app knows including the engine's own namespaces (right for adding a tag by hand, where the first one has to come from somewhere).
-* On the starmap a highlight now behaves as a filter by default: systems carrying none of it fade back, and a key names what the colours mean. Marker size follows the label scale rather than adding another control.
 
 ## v2.1.440-beta - 5th Aug 2026
 
@@ -2079,6 +2073,12 @@ All notable changes are listed here:
 
 * The 3D model dialog is much bigger and you can fly around the ship in it. The preview now fills its column (up to 62% of the window height) on a dialog half again as wide, and the camera FREE-ORBITS: drag to swing over, under and behind the hull, wheel or pinch to close right in on a nacelle, "Reset view" to get back. It used to be a yaw-only turntable, which could not reach the stern or the belly - exactly where you need to look when placing drives. Near and far planes follow the working distance, so a close-up does not clip through the hull.
 * Placing drives survives all that: a drag that ends over the ship is treated as navigation, not as a click that drops a drive. The wheel is only captured in the editor, never in the info-block portrait, so scrolling a panel with a ship in it still scrolls the panel.
+
+## v2.1.430-beta - 5th Aug 2026
+
+* **Choosing what to highlight now happens in Find by tag**, which already knows what is on the map, with colours and counts. Drag a tag chip or a category bubble into the tray at the bottom — "Show highlight markers on player views" — or press the + on a tag. Player Views → Quick overrides is now just the mute for it, so you can drop the badges mid-scene without losing the selection you built.
+* Two tag pickers, deliberately: **Find by tag** offers only what something actually carries (right for highlighting — badging a tag nothing has shows nothing), while the full-vocabulary picker offers everything the app knows including the engine's own namespaces (right for adding a tag by hand, where the first one has to come from somewhere).
+* On the starmap a highlight now behaves as a filter by default: systems carrying none of it fade back, and a key names what the colours mean. Marker size follows the label scale rather than adding another control.
 
 ## v2.1.430-beta - 4th Aug 2026
 
@@ -2900,15 +2900,15 @@ All notable changes are listed here:
 * Your own systems move with the bundled system nearest to each of them, so what sits next to what survives: a colony 0.6 light years off Sirius is still 0.6 light years off Sirius afterwards, even though Sirius itself moves from a decorative 4.4 to its true 8.6 light years from Sol.
 * You are asked to save a copy before upgrading, and a copy of the pre-upgrade campaign is kept in the browser besides -- Settings > System offers to go straight back to it, for as long as you have not used it.
 
-## v2.1.272-beta - 30th Jul 2026
-
-* Saved starmap files now record which build wrote them, and which edition of a bundled starter map they descend from. Until now a starmap file carried no version of any kind, which made it impossible to tell reliably what produced it -- this is groundwork for offering campaigns a clean upgrade when the bundled maps change. Nothing changes about how your maps load; older files without a stamp keep working exactly as before.
-
 ## v2.1.273-beta - 30th Jul 2026
 
 * The bundled Local Neighbourhood starmap has been rebuilt from real astronomy. Every system now sits at its TRUE 3D position (x, y and the new z depth) from Gaia/Hipparcos/SIMBAD astrometry, and the planet roster is exactly the NASA Exoplanet Archive's confirmed set -- Barnard's Star gains its four 2024-25 sub-Earths, Lacaille 9352 its four, tau Ceti drops the retracted e, and the fictional content that had crept in is gone. The map grows from 20 to 42 systems: the complete known census to ~13 light years (brown dwarfs included), every confirmed planet host to ~16.5, plus Altair, Vega, Zeta Reticuli and TRAPPIST-1. Same stable system ids throughout, plus new appVersion/baseMapVersion stamps and a manifest for the coming campaign-upgrade feature.
 * New second example map: "Local Neighbourhood (Science Fiction)" -- the same real stars at the same true positions, populated with the famous fiction set among them: The Expanse across Sol, Pandora at Alpha Centauri, Reach at Epsilon Eridani, the Wolf 359 graveyard, LV-426 at Zeta Reticuli, Project Hail Mary at Tau Ceti and 40 Eridani (where Vulcan also lives), Rocheworld at Barnard's Star, Mesklin at 61 Cygni, and more. Deliberately fictional and it says so; stars without a famous tenant keep their real planets.
 * New reusable build kit at scripts/starmap-build/ (TAP fetchers for the NASA Exoplanet Archive and SIMBAD + a deterministic generator), and a design doc for a full in-app "import the real sky" feature at docs/dev/starmap-data-import-design.md.
+
+## v2.1.272-beta - 30th Jul 2026
+
+* Saved starmap files now record which build wrote them, and which edition of a bundled starter map they descend from. Until now a starmap file carried no version of any kind, which made it impossible to tell reliably what produced it -- this is groundwork for offering campaigns a clean upgrade when the bundled maps change. Nothing changes about how your maps load; older files without a stamp keep working exactly as before.
 
 ## v2.1.271-beta - 30th Jul 2026
 
@@ -4953,10 +4953,6 @@ Field Guide look controls + panel polish (the look panel's full home will be the
 
 * Autopilot wizard tweaks: a resource location now takes several resources at once (go to the nearest source of any of them), the mine/load "fill" defaults to the ship's free cargo space, and Logistics is simplified — the auto-refuel/restock toggles (Planning already schedules those) are now "Ignore fuel" / "Ignore life support" switches for ships you don't want to model fuel or supplies on.
 
-## v2.0.169-beta - 17th Jun 2026
-
-* Fixed: a rescued ship lingered under Routes → "Stranded ships" even after a new journey had taken it home and parked it (e.g. the Rocinante safely in Uranus low orbit still showed "adrift, coasting · was bound Uranus"). The stranded list flagged any ship carrying a cancelled-drift journey without checking whether a later journey had since superseded it — the same supersession blind spot fixed earlier in the orrery position and drift-line. It now only lists a ship as stranded if no later journey has started since the drift began.
-
 ## v2.0.170-beta - 18th Jun 2026
 
 * A ship under autopilot can't be flown by hand. While autopilot is engaged, the manual Plan Transit / Cancel controls are replaced by a greyed-out "Under autopilot" button — turn autopilot off (Autopilot tab) to take manual control back.
@@ -4964,6 +4960,10 @@ Field Guide look controls + panel polish (the look panel's full home will be the
 ## v2.0.169-beta - 18th Jun 2026
 
 * Autopilot — first cut (the wizard). A construct now has an Autopilot tab (after Tags) that builds a plan in three parts: Route (visit all in order / all best order / any as needed, with locations that are a specific place OR "the nearest source of resource X", a per-location action suggested from the ship's own capabilities — Mine/Scan/Load/Unload/Dock/Patrol — and a deliver-to for mined/loaded cargo, with the fill rate shown); Behaviour (Discipline, Planning, Drive and Max-journey-time sliders — Planning is the look-ahead that also schedules refuelling and waits for alignments when it pays off, Max-journey-time stops absurd zero-fuel crawls); and Logistics (auto-refuel with a fuel margin, auto-restock — uncheck to manage by hand). It's capture-only for now — it saves the plan and lists the ship under a new "Under autopilot" group in Routes (with a "!" when it needs attention); the planner that actually flies it is the next step.
+
+## v2.0.169-beta - 17th Jun 2026
+
+* Fixed: a rescued ship lingered under Routes → "Stranded ships" even after a new journey had taken it home and parked it (e.g. the Rocinante safely in Uranus low orbit still showed "adrift, coasting · was bound Uranus"). The stranded list flagged any ship carrying a cancelled-drift journey without checking whether a later journey had since superseded it — the same supersession blind spot fixed earlier in the orrery position and drift-line. It now only lists a ship as stranded if no later journey has started since the drift began.
 
 ## v2.0.168-beta - 17th Jun 2026
 
