@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.13 - 21st Aug 2026
+
+- Docs only. The receiving-notice fix is approved and fully specified on its row (three wiring points located), with the owner's transition-themed progress design recorded for 3.1; the coordinator hands over at the owner's context call.
+
 ## v3.0.0-rc.12 - 21st Aug 2026
 
 - What's new, trimmed on the owner's read: the surface-view line was a duplicate, the importer and starmap-stars lines go, undo is back to one word, and the GM-view line now leads with the new star types. The remote-play freeze on big maps is captured with its two-part fix (a receiving notice now, true chunked progress later).
