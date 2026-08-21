@@ -2732,6 +2732,23 @@ anchors and `vapourColumnMeanHumidity` must be re-derived or every wet world shi
 Earth is pinned only because its authored 0.00398 sits just ABOVE what the derivation returns at its
 own converged 287.4 K — a ~5% margin, not a wide one.
 
+### PHY-22 -1 IS A SENTINEL ON THE FLIGHT BUDGETS, AND `ascentBudgetApplies` IS THE ONLY READER OF IT
+WHERE: `physics/orbits.ts` `calculateDeltaVBudgets` (writes -1) and `ascentBudgetApplies` (decides).
+Consumers: `catalogue/bodyFacts.ts`, `reports/ReportDocument.svelte`,
+`components/BodyTechnicalDetails.svelte`, `core/SystemProcessor.ts` (the `flight/ascent` tag).
+RULE: never test `loDeltaVBudget_ms` for truthiness and never compare it to -1 by hand. Ask the
+predicate whether a surface budget MEANS anything on this body; publish the figure if it does and the
+predicate's `reason` if it does not. The row stays visible either way - a vanished row reads as a bug.
+WHY: -1 is truthy. Two of the four consumers tested it that way, so every belt and ring in the app
+published "Ascent Dv -0.0 km/s"; a third printed "-1.0 m/s"; and only the tag gated properly, so the
+tag said nothing about Jupiter while the info block beside it read 50.3 km/s. Four consumers, four
+different ideas of what -1 meant (inbox B37).
+BLAST: the predicate asks `hasSolidSurface`, NOT a `classes` regex on "gas-giant". The technical panel
+used the regex, so ICE giants fell through it and published a surface-to-LO figure for a world with no
+surface - the B11 class-regex fault, alive in a copy. If you add a fifth consumer, the danger is that
+`calculateDeltaVBudgets` returns EARLY without writing anything when `calculatedGravity_ms2` or
+`radiusKm` is missing, so the field can also be `undefined` rather than -1.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s

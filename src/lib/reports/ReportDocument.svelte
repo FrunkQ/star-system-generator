@@ -6,6 +6,7 @@
   import { oblatePolarFactor } from '$lib/rendering/bodyShape';
   import { tagContextLabel } from '$lib/tags/tagPresentation';
   import { formatDistanceKm, formatDistanceAu, formatSpeedKmS, formatTempC, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
+  import { ascentBudgetApplies } from '$lib/physics/orbits';
 
   // Extracted from /report so the printable report and the live /catalogue (Companion App)
   // can render the same player-safe document. Data arrives already redacted — both the report
@@ -363,7 +364,11 @@
   function getOrbitalMechanics(body: CelestialBody | Barycenter) {
       if (body.kind === 'barycenter') return '-';
       const anyBody = body as any;
-      if (anyBody.loDeltaVBudget_ms) {
+      // B37: the -1 "not applicable" sentinel is truthy, so this used to print "Ascent: -0.0 km/s"
+      // for every belt and ring. One predicate decides, in orbits.ts.
+      const applicable = ascentBudgetApplies(body as CelestialBody);
+      if (!applicable.applies) return `Ascent: n/a (${applicable.reason})`;
+      if (anyBody.loDeltaVBudget_ms > 0) {
           const ascent = formatSpeedKmS(anyBody.loDeltaVBudget_ms / 1000, units, 1);
           const land = anyBody.aerobrakeLandBudget_ms > 0
               ? formatSpeedKmS(anyBody.aerobrakeLandBudget_ms / 1000, units, 1) + ' (Aero)'

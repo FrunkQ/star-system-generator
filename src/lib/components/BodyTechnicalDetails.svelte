@@ -3,7 +3,7 @@
   import { describeTag } from "$lib/tags/tagPresentation";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets } from '$lib/physics/orbits';
+  import { calculateDeltaVBudgets, ascentBudgetApplies } from '$lib/physics/orbits';
   import { biosphereLayers, morphologyDef } from '$lib/physics/vegetation';
   import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
   import { calculateSurfaceTemperature } from '$lib/physics/temperature';
@@ -116,6 +116,12 @@
   let orbitalStabilityDetails: string | null = null;
   
   $: isGasGiant = body.classes?.some(c => c.includes('gas-giant')) ?? false;
+  // B37. NOTE this deliberately does NOT use isGasGiant: that is a CLASS regex, so an ICE giant fell
+  // through it and printed a surface-to-LO figure for a world with no surface. The predicate asks the
+  // makeup, which is the same question the ascent tag asks.
+  $: ascentApplicability = body.kind === 'body'
+    ? ascentBudgetApplies(body as CelestialBody)
+    : ({ applies: false, reason: 'not a natural body' } as const);
   $: isBeltOrRing = body && body.kind === 'body' && (body.roleHint === 'belt' || body.roleHint === 'ring');
   $: isStar = body && body.kind === 'body' && body.roleHint === 'star';
   
@@ -820,16 +826,19 @@
           <div class="detail-item orbital-zones">
               <span class="label">Delta-V Budgets</span>
               <div class="budget-details">
+                  <!-- B37: `isGasGiant` alone left belts and rings printing the -1 sentinel as
+                       "-1.0 m/s". One predicate (orbits.ts ascentBudgetApplies) now answers whether a
+                       surface budget means anything here, and carries the reason when it does not. -->
                   {#if body.loDeltaVBudget_ms !== undefined}
-                      {#if isGasGiant}
-                          <div><span><strong>Surface to LO:</strong> N/A - No surface</span></div>
+                      {#if !ascentApplicability.applies}
+                          <div><span><strong>Surface to LO:</strong> N/A - {ascentApplicability.reason}</span></div>
                       {:else}
                           <div><span><strong>Surface to LO:</strong> {$fmt.speedMs(body.loDeltaVBudget_ms, 1)}</span></div>
                       {/if}
                   {/if}
                   {#if body.propulsiveLandBudget_ms !== undefined}
-                       {#if isGasGiant}
-                          <div><span><strong>LO to Surface (Propulsive):</strong> N/A - No surface</span></div>
+                       {#if !ascentApplicability.applies}
+                          <div><span><strong>LO to Surface (Propulsive):</strong> N/A - {ascentApplicability.reason}</span></div>
                       {:else}
                           <div><span><strong>LO to Surface (Propulsive):</strong> {$fmt.speedMs(body.propulsiveLandBudget_ms, 1)}</span></div>
                       {/if}

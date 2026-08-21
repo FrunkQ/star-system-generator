@@ -4,9 +4,10 @@ import type { CelestialBody, RulePack } from '$lib/types';
 import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
 import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
-import { formatDistanceKm, formatDistanceAu, formatOrbitRadiusAu, formatSpeedKmS, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
+import { formatDistanceKm, formatDistanceAu, formatOrbitRadiusAu, formatSpeedKmS, formatSpeedAuto, formatTempK, type MeasurementUnits, type TemperatureUnit } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
 import { radiationHazardBucket, lethalDoseTime, LETHAL_MARK } from '$lib/physics/radiation';
+import { ascentBudgetApplies } from '$lib/physics/orbits';
 import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
 
 const EARTH_G = 9.80665;
@@ -413,7 +414,17 @@ export function bodyFacts(b: CelestialBody, units: MeasurementUnits = 'metric', 
   }
   if (any.magneticField?.strengthGauss) add('Magnetosphere', `${any.magneticField.strengthGauss.toFixed(2)} G`);
   if (any.geoActivity?.regime) add('Geology', titleCase(String(any.geoActivity.regime)));
-  if (any.loDeltaVBudget_ms) add('Ascent Δv', formatSpeedKmS(any.loDeltaVBudget_ms / 1000, units, 1));
+  // Ascent: shown as a figure only where a figure means something, and as its REASON otherwise
+  // (B37). A truthiness test here read the -1 "not applicable" sentinel as a value and printed
+  // "-0.0 km/s" on every belt and ring; it also published 50.3 km/s for Jupiter, which has no
+  // surface to leave — the same category error B18 settled for habitability.
+  {
+    const ascent = ascentBudgetApplies(b);
+    if (!ascent.applies) add('Ascent Δv', `not applicable — ${ascent.reason}`);
+    // formatSpeedAuto, not formatSpeedKmS: Phobos costs 9 m/s to leave and Deimos 5 — remarkable,
+    // actionable figures that a fixed km/s field rounded to "0.0 km/s", which reads as free.
+    else if (any.loDeltaVBudget_ms > 0) add('Ascent Δv', formatSpeedAuto(any.loDeltaVBudget_ms, units));
+  }
 
   // --- Life ---
   // The A33 sweep's second find: an INDEX printed as a percentage, one row above a real coverage

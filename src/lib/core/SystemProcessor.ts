@@ -41,7 +41,7 @@ import { deriveApparentColorParts } from '../rendering/apparentColor';
 import { deriveSurfaceSpectrum } from '../physics/surfaceSpectrum';
 import { deriveVisibility, distanceWords } from '../physics/visibility';
 import { deriveVegetation } from '../physics/vegetation';
-import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets } from '../physics/orbits';
+import { calculateOrbitalBoundaries, type PlanetData, calculateDeltaVBudgets, ascentBudgetApplies } from '../physics/orbits';
 import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosphericEscape } from '../physics/atmosphere';
 import { flareActivity, photosphereTempK } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
@@ -1559,7 +1559,10 @@ export class SystemProcessor implements ISystemProcessor {
         // Solid surfaces only, for B18's reason: there is nothing to ascend FROM on a giant, and its
         // figure is measured from a notional 1-bar level.
         // Anchors: Luna 1.9 km/s trivial, Mars 4.1 moderate, Earth 10.4 hard, Venus 29.5 extreme.
-        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && hasSolidSurface(body)) {
+        // The SAME predicate the info block, the report and the technical panel use (B37) -
+        // this gate was the only one of the four that was already right, so it is now the one they
+        // all share rather than the one that happens to agree.
+        if (ascentBudgetApplies(body).applies) {
             body.tags = stripForReprocess(body.tags, [ASCENT_TAG]);
             const dv = body.loDeltaVBudget_ms ?? 0;
             if (dv > 0 && !body.tags.some((t) => t.key === ASCENT_TAG)) {

@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v2.1.888-beta - 21st Aug 2026
+
+- A belt no longer claims an ascent cost. Every belt and ring in the app was publishing "Ascent Dv: -0.0 km/s" - a not-applicable marker being read as a number - and every gas AND ice giant was publishing a real-looking figure for a world with no surface to leave. All four places that ask now ask the same question, and where the answer is no the row says so and why, instead of showing a figure or quietly disappearing. Tiny moons gain a readable one: Phobos costs 9 m/s to leave, where the row used to round it to "0.0 km/s".
 ## v2.1.887-beta - 21st Aug 2026
 
 - Docs only. Click-to-cycle units everywhere, remembered per body type, assessed and captured: half the machinery already exists, the edit fields are the risky half, and the de-chunking rides the same sweep.
