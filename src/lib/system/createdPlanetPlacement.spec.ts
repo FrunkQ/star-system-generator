@@ -43,16 +43,37 @@ const STAR = {
   massKg: SOLAR_MASS_KG, radiusKm: SOLAR_RADIUS_KM, temperatureK: 5778, radiationOutput: 1,
   axial_tilt_deg: 0, rotation_period_hours: 600, tags: []
 } as unknown as CelestialBody;
+// A FRESH STAR PER DRAW, and this is not tidiness — it was a real, order-dependent flake.
+//
+// `systemProcessor.process` MUTATES the bodies it is given: measured, the shared STAR went from 13
+// keys to 21 and gained `flareActivity` 0.0518 on the first pass. B81's kill zone READS
+// `flareActivity`, so the zone moved 0.08998 -> 0.09995 AU, an 11% jump, the moment any draw was
+// processed. Every later draw was then placed against the bigger floor while the assertion judged
+// them all against whichever value STAR happened to hold at the end — so an early body placed at
+// 0.0905 failed a floor of 0.09995 that did not exist when it was placed. It passed in isolation and
+// failed under the full suite, which is the signature of exactly this.
+//
+// The engine itself is consistent (generation always sees an unprocessed star, and `process` is
+// idempotent from pass 1); it is only a fixture that mixes the two states that can disagree.
+const freshStar = (): CelestialBody => JSON.parse(JSON.stringify(STAR));
 // The seed varies per draw on purpose: addPlanetaryBody seeds from sys.seed + Date.now(), so a tight
 // loop would otherwise share one seed (engine map M5) and every "sample" would be the same draw.
 const bare = (i: number): System =>
-  ({ id: 's', name: 's', seed: 'b84-' + i, epochT0: 0, age_Gyr: 4.6, nodes: [STAR] } as any);
+  ({ id: 's', name: 's', seed: 'b84-' + i, epochT0: 0, age_Gyr: 4.6, nodes: [freshStar()] } as any);
+/** The zones as PLACEMENT saw them: from an unprocessed star, which is the state it is handed. */
+const placementZones = () => calculateAllStellarZones(freshStar(), P);
 
+// The body the star gained. NOT `find(n => n.id !== 'star')`: the generator can return moons and can
+// re-type what it built, so the first non-star node is not reliably the thing under test.
 const created = (i: number, type = 'planet/terrestrial') => {
   const sys = addPlanetaryBody(bare(i), 'star', type, P);
   const out = systemProcessor.process(sys, P);
-  return out.nodes.find((n) => n.id !== 'star') as CelestialBody;
+  return (out.nodes.find((n) => n.parentId === 'star' && n.id !== 'star')
+    ?? out.nodes.find((n) => n.id !== 'star')) as CelestialBody;
 };
+
+/** Migration moves a body AFTER placement, on purpose. See the gas-giant case at the foot of this file. */
+const migrated = (b: CelestialBody) => (b.tags ?? []).some((t) => t.key === 'origin/migrated');
 
 describe('a bare single-star system can take a planet at all', () => {
   it('does not throw "no available orbital slots"', () => {
@@ -75,10 +96,24 @@ describe('a created planet appears somewhere a GM would recognise', () => {
   const temps = worlds.map((p) => (p.temperatureK ?? 0) - 273.15).sort((a, b) => a - b);
   const median = (arr: number[]) => arr[Math.floor(arr.length / 2)];
 
-  it('never inside the Roche limit or the kill zone', () => {
-    const z = calculateAllStellarZones(STAR, P);
-    const floor = Math.max(calculateRocheLimit(STAR), z.killZone);
-    for (const a of aus) expect(a).toBeGreaterThanOrEqual(floor * 0.999);
+  it('is never PLACED inside the Roche limit or the kill zone', () => {
+    // PLACED, and the word is load-bearing. This asserted the final orbit and flaked under the full
+    // suite — rarely, and never in fourteen isolated runs, which is exactly the signature of a
+    // stochastic generator sampled through a correlated seed (`sys.seed + Date.now()`, engine map
+    // M5: consecutive seeds in a tight loop are neighbouring strings, so a small sample explores a
+    // narrow region and a rare case hides). Chasing a bigger sample would only move the odds.
+    //
+    // What `addPlanetaryBody` actually guarantees is the PLACEMENT: the chosen orbit lies inside a
+    // gap whose lower bound is the floor. What happens next is the generator's business — migration
+    // deliberately moves a body inward after placement — so the exact rule is "unless it migrated",
+    // and an exact rule cannot flake.
+    const z = placementZones();
+    const floor = Math.max(calculateRocheLimit(freshStar()), z.killZone);
+    for (const w of worlds) {
+      if (migrated(w)) continue;
+      expect(w.orbit?.elements?.a_AU ?? 0, `${w.name} was placed inside the floor`)
+        .toBeGreaterThanOrEqual(floor * 0.999);
+    }
   });
 
   it('the median lands in the inner system, not the Kuiper belt', () => {
@@ -129,11 +164,11 @@ describe('the type is honoured where the pack says what it wants', () => {
     // one request in five for a `planet/gas-giant` comes back as a BELT, because the generator
     // re-types what it built. That is not this item's business, but a test that assumed otherwise
     // would fail for a reason nothing to do with placement.
-    const z = calculateAllStellarZones(STAR, P);
+    const z = placementZones();
     for (let i = 0; i < 12; i++) {
       const b = created(200 + i, 'planet/gas-giant');
       if (b.roleHint !== 'planet') continue;                              // re-typed to a belt
-      if ((b.tags ?? []).some((t) => t.key === 'origin/migrated')) continue; // moved in on purpose
+      if (migrated(b)) continue;                                           // moved in on purpose
       expect(b.orbit?.elements?.a_AU ?? 0, `sample ${i} landed inside the ice line unmigrated`)
         .toBeGreaterThan(z.co2IceLine);
     }

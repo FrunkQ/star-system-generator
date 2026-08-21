@@ -2894,7 +2894,15 @@ switch tested `classes[0].split('/')[1]` against single letters, so "G2V" matche
 properly classified star fell to 1.0; only a bare BAND key matched, and `star/M` and `star/M4V` came
 out 3.2x apart on spelling alone (DATA-R18). Its default handed brown dwarfs, white dwarfs and
 neutron stars a Sun-like UV factor.
-BLAST: TWO HAZARDS IS THE POINT, not a flourish. Photospheric UV alone makes every cool dwarf safe,
+BLAST: THE KILL ZONE IS NOT STABLE ACROSS A PROCESSING PASS, because `flareActivity` is a field the
+PROCESSOR writes. Measured on a Sun-like star: unprocessed it has no activity and the zone is
+0.08998 AU; after one `process()` it carries 0.0518 and the zone is 0.09995 — an 11% jump for the
+same star. That is not a fault (generation always sees an unprocessed star, and `process` settles
+from pass 1), but anything that compares a zone computed BEFORE a pass with one computed AFTER is
+comparing two different questions. It cost a real, order-dependent test flake that passed in
+isolation and failed under the full suite: a shared star fixture, mutated by the first draw, moved
+the floor under every later assertion. Clone the star, or ask at one point in the lifecycle only.
+Also TWO HAZARDS IS THE POINT, not a flourish. Photospheric UV alone makes every cool dwarf safe,
 which contradicts the whole M-dwarf habitability argument; coronal output alone makes every hot star
 safe, which is worse. Measured after: O5V 63 -> 301 AU, neutron star 0.018 -> 0.090, Sol 0.100 ->
 0.090, every cool dwarf about 0.56x. **No body stores a kill zone** - it is computed on demand for
