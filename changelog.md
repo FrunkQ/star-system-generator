@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.901-beta - 21st Aug 2026
+
+- Units are now clickable across the read side of the app. The unit on a value - a temperature, a mass, a radius, an orbit, a delta-V - is a button: click it and every field of that kind on that body type follows, everywhere, and the choice saves with the campaign. Stars default to kelvin, worlds to Celsius, star masses to solar masses, world masses to Earth masses, and Jupiter reads exactly 1.000 M-Jup at that stop. Player views and the printed report inherit the GM's choices (players cannot change them); an open player window picks up a change on the next snapshot. The corner brand reads SSE3.
+
 ## v2.1.900-beta - 21st Aug 2026
 
 - Docs only. The V3 mop-up session closes: ten items shipped, five of which turned out to have the wrong cause recorded, and the board now says which was which. One item (the stretched player window) is shipped but unverified and stays open with the check it needs written down.
