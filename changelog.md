@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.902-beta - 21st Aug 2026
+
+- Units are clickable on the edit side too. A star's temperature and mass, belt and ring dimensions, a construct's orbit altitude and aerobrake entry speed are typed in whatever unit the field shows and stored in SI exactly once, on commit - type 100 into a temperature field showing Fahrenheit and 310.9 kelvin is what lands. The composition tab's own mass cycler now drives the same campaign-wide choice as every other panel (and gains a solar-masses stop); its sliders and undo behave exactly as before.
+
 ## v2.1.901-beta - 21st Aug 2026
 
 - Units are now clickable across the read side of the app. The unit on a value - a temperature, a mass, a radius, an orbit, a delta-V - is a button: click it and every field of that kind on that body type follows, everywhere, and the choice saves with the campaign. Stars default to kelvin, worlds to Celsius, star masses to solar masses, world masses to Earth masses, and Jupiter reads exactly 1.000 M-Jup at that stop. Player views and the printed report inherit the GM's choices (players cannot change them); an open player window picks up a change on the next snapshot. The corner brand reads SSE3.
