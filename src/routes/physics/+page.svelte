@@ -55,6 +55,7 @@
     ['tags', 'Tags'],
     ['overrides', 'GM overrides'],
     ['reasons', 'Reasons to visit'],
+    ['zones', 'Stellar zones'],
     ['generation', 'Auto-generation'],
     ['baseline', 'Test fixtures (Sol & Testion)'],
     ['fudges', 'Known fudges']
@@ -104,8 +105,11 @@
         <li><strong>Interior makeup</strong> (metal / rock / carbon / ice / gas fractions) → <strong>density</strong> and, with mass, <strong>radius</strong>.</li>
         <li><strong>Orbit &amp; stars</strong> → equilibrium temperature → greenhouse, tidal, radiogenic &amp; internal heat → the <strong>radiating temperature</strong> → its <strong>day and night sides</strong>, whose average is the <strong>mean surface temperature</strong> and whose spread opens into the full <strong>range</strong> (cold night side ↔ tidal-volcanic hotspots).</li>
         <li><strong>Fluid layers</strong> — surface ocean, subsurface (under-ice) ocean, cloud decks, deep conductive interior — derived from makeup + temperature + atmosphere.</li>
-        <li><strong>Magnetism</strong> — the dynamo implied by the conductive interior layers + rotation (intrinsic vs induced; dipolar vs tilted/off-centre).</li>
+        <li><strong>Magnetism</strong> — the dynamo implied by the conductive interior layers + rotation (intrinsic vs induced; dipolar vs tilted/off-centre), iterated <strong>parent before child</strong> because a moon's induced field asks whether it sits inside its host's magnetosphere.</li>
+        <li><strong>Radiation</strong> — its own pass, and it runs <em>after</em> magnetism rather than beside the rest of the environment, because the dose depends on the field, the spin and the scale height that the pass above derives. This split is not tidiness: while radiation ran first, a freshly imported Earth reported a hundred times its real surface dose, and how wrong the figure was depended on how many times the system had been processed.</li>
         <li><strong>Geological activity</strong> — tectonic regime + volcanism by <em>mechanism</em>, using makeup, mass/radius, system <em>age</em>, surface water and tidal heat.</li>
+        <li><strong>Surface light</strong> — the star's spectrum filtered by the air and the cloud decks above the ground, which is what a plant would have to live on and what the sky looks like from below.</li>
+        <li><strong>Biosphere</strong> — which pigments that light makes viable, which one this world's life settled on, and how much of the land shows it.</li>
         <li><strong>Apparent colour</strong> — composed from makeup, ocean, cloud decks and temperature.</li>
         <li><strong>Classification</strong> reads the raw physics features (never the tags) to pick a type.</li>
         <li><strong>Tags</strong> &amp; <strong>habitability</strong> summarise the above; habitability folds geology + magnetism into the score (see below).</li>
@@ -486,7 +490,39 @@
         genuinely irradiates its planets far harder than a red giant does. The engine tests this by a
         star's own surface gravity and temperature rather than by its type, so it applies wherever it
         is true and nowhere else.</p>
-      <p class="note">A gas giant is a radiation source too, by a third mechanism again: trapped
+      <h3>A flare has four possible sources, and only one of them is a star</h3>
+      <p>Flare activity is a single 0&ndash;1 figure, and what drives it depends on what the body is.
+        Treating them all alike got a quiescent black hole a B star's flare rate, and treating remnants
+        as uniformly silent was the over-correction that followed.</p>
+      <table class="mini">
+        <thead><tr><th>Body</th><th>Mechanism</th><th>Driver</th></tr></thead>
+        <tbody>
+          <tr><td>Main-sequence star</td><td>Rotation-driven convective dynamo</td><td>Spectral class times an age
+            factor. M&nbsp;0.85, K&nbsp;0.55, G&nbsp;0.35, F&nbsp;0.22, A&nbsp;0.16, B/O&nbsp;0.12, because deep
+            convection is what flares and low-mass dwarfs are convective throughout. Age spins the star down: a
+            young M dwarf runs to 0.85 and an old one to 0.07, which is the whole of the
+            quiescent-versus-active distinction for a star.</td></tr>
+          <tr><td>Giant or supergiant</td><td>None worth the name &mdash; <strong>0.05</strong></td><td>An evolved star
+            is the opposite of a flare star on all three counts: its angular momentum is spread over a radius
+            hundreds of times larger, so it turns slowly, and its surface field is weak and disorganised. The rule
+            pack says so already &mdash; 100&ndash;1000&nbsp;G for an M dwarf against 0.1&ndash;10&nbsp;G for every giant
+            band &mdash; and this reads it rather than inventing a second number.</td></tr>
+          <tr><td>Feeding compact object</td><td>Magnetic reconnection in the <em>accretion disc</em></td><td>The
+            Eddington fraction, not the surface: a hole fed harder flares harder. At full Eddington it exceeds the
+            most active M dwarf, which is the right ordering &mdash; an X-ray binary is among the most violently
+            variable things in the sky, and a flare star, however furious, is still a star. Sgr&nbsp;A* does it
+            several times a day.</td></tr>
+          <tr><td>Magnetar</td><td>Decay of an extreme field &mdash; starquakes</td><td>High and flat at
+            <strong>0.9</strong>. Neither age nor accretion enters it; the field is the whole story and is enormous
+            by definition. SGR&nbsp;1806&minus;20's giant flares are among the most energetic events recorded in the
+            galaxy.</td></tr>
+          <tr><td>Quiescent hole, isolated neutron star, isolated white dwarf</td><td>None</td><td>Genuinely
+            <strong>zero</strong>: no photosphere, no dynamo, nothing falling in. Set one feeding and it moves to the
+            accretion row, whatever its class string says. (An accreting white dwarf is a nova, which is a far
+            larger event than a flare and is not modelled here at all.)</td></tr>
+        </tbody>
+      </table>
+      <p class="note">A gas giant is a radiation source too, by a fifth mechanism again: trapped
         particles in its magnetic field, with no light involved. See <a href="#belts">trapped belts</a>.</p>
     </section>
 
@@ -525,8 +561,12 @@
           <tr><td>G (Sun)</td><td>90%</td><td>10%</td></tr>
           <tr><td>K</td><td>86%</td><td>14%</td></tr>
           <tr><td>M</td><td>78%</td><td>22%</td></tr>
+          <tr><td>Self-luminous brown dwarf</td><td>75%</td><td>25%</td></tr>
         </tbody>
       </table>
+      <p class="note">A brown dwarf is treated as a late-M source rather than by its letter: cool,
+        wind-dominated and flare-dominated while it is young, so a moon of one needs a magnetosphere
+        to be shielded from it. A star the engine cannot classify falls back to the G row.</p>
     </section>
 
     <section id="belts">
@@ -1471,6 +1511,76 @@
         removed 34 false claims from 59 surfaceless bodies and left all 159 legitimate water-ice tags alone.</p>
     </section>
 
+    <section id="zones">
+      <h2>Stellar zones &mdash; the lines drawn on the map <span class="phase">B80 &middot; B81 &middot; B84</span></h2>
+      <p>Turn <strong>Zones</strong> on in the system view and a set of rings appears. They are not decoration
+        and they are not a table of astronomical-unit constants: <strong>every one of them is derived from the
+        star's own luminosity, asked at a distance from THAT STAR.</strong> Two consequences follow, and both
+        have been got wrong here before.</p>
+      <p><strong>Luminosity, never mass.</strong> A frost line goes as &radic;L. For main-sequence stars
+        <code>L &prop; M<sup>3.5</sup></code>, so a &radic;M form is not a rough approximation of it &mdash; it is a
+        different curve (<code>M<sup>0.5</sup></code> against <code>M<sup>1.75</sup></code>) and it is wrong in
+        <em>opposite directions</em> at the two ends. Measured against the luminosity-derived line, the old mass
+        form put the frost line <strong>12.9&times; too far out</strong> for an M8 dwarf, 42.6&times; for an L dwarf,
+        2.3&times; for a K5 &mdash; and <strong>10&times; too close</strong> for a hot B star. Sol came out at 2.700
+        against a true 2.261, near enough to look right, which is exactly why it survived: the one star anybody
+        checks is the one star the bug does not show on. Ice worlds formed far too far out around red dwarfs and
+        far too close around hot stars, and moons of cold giants were almost never icy.</p>
+      <p><strong>Ask the question of the STAR, not of the parent.</strong> For a moon the immediate host is a
+        planet, which has no frost line, so the engine walks the parent chain up to the star and uses the body's
+        distance from <em>it</em>.</p>
+
+      <h3>There are TWO frost lines, and they answer different questions</h3>
+      <p>The map labels them <em>Frost Line (Form.)</em> and <em>Frost Line (Curr.)</em>, and a GM who reads them
+        as one line duplicated will misread every icy world in the system.</p>
+      <table class="mini">
+        <thead><tr><th>Line</th><th>Where</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Formation frost line</strong></td><td>~170&nbsp;K, at the star's luminosity when the
+            system was <em>born</em> &mdash; back-calculated from the star's present luminosity and its age</td>
+            <td>What a body could have <em>formed</em> as. Beyond it the disc's solid surface density jumps and
+            giants become likely, which is why the placement chain starts inside it and giants are drawn outside
+            it.</td></tr>
+          <tr><td><strong>Current frost line</strong></td><td>~125&nbsp;K, at the star's luminosity <em>now</em></td>
+            <td>Where exposed ice is stable <em>today</em>. A world can sit between the two and have formed icy
+            without staying icy.</td></tr>
+        </tbody>
+      </table>
+      <p>The same treatment gives the silicate (rock) line, the soot line, the CO<sub>2</sub> ice line, and the CO
+        ice line &mdash; and the system's outer limit, which is simply <strong>twice the CO ice line</strong>, so a K
+        dwarf's system ends near 4&nbsp;AU, a G star's near 11 and an F star's near 16.</p>
+
+      <h3>The habitable zone, and the caveat it needs</h3>
+      <p>The green band is where liquid water is possible <strong>on a world with enough atmosphere</strong>. Its
+        outer half assumes a thick carbon-dioxide greenhouse &mdash; Kopparapu's maximum-greenhouse edge &mdash; so a
+        thin-aired world out there is genuinely frozen, and that is physics rather than a fault.
+        <strong>Mars sits inside the Sun's habitable zone and is a desert of ice.</strong> Earth without its own
+        greenhouse would be &minus;18&nbsp;&deg;C at Earth's distance. The band is a statement about where a
+        <em>sufficiently thick</em> atmosphere could hold water, not a promise about any particular world.</p>
+
+      <h3>The kill zone has two sources, and that is why an M dwarf is unpredictable</h3>
+      <p>The red band close to the star is not a brightness threshold. It is the mean of <strong>two independent
+        hazards, each measured relative to Sol</strong>, so that Sol lands on the anchor by construction:</p>
+      <ul>
+        <li><strong>Surface ultraviolet</strong> &mdash; the fraction of the star's own blackbody output below the
+          damage edge, times its luminosity. A hot star pours out a share of hard photons that a cool one does not
+          have at all, whatever their brightnesses.</li>
+        <li><strong>Coronal ionising output</strong> &mdash; the X-ray and extreme-ultraviolet emission derived in
+          <a href="#ionising-output">Ionising output</a>, which follows the magnetic field rather than the
+          brightness.</li>
+      </ul>
+      <p>A star lethal by <em>either</em> route is lethal, and the zone scales as the square root of the combined
+        hazard. That is the whole reason <strong>an active M dwarf is dangerous and a quiet one of the same size is
+        not</strong>: the first term barely separates them and the second separates them by orders of magnitude.
+        Hot stars accordingly show much wider kill and danger zones than their old brightness-driven ones, and quiet
+        cool dwarfs much narrower. The <strong>danger zone</strong> outside it is a rule-pack multiple of the kill
+        zone (5&times; by default), and both the edge wavelength and the Sol anchor distance are pack data.</p>
+      <p class="note">Every constant named here is in the rule pack, under
+        <code>generation_parameters</code>: <code>frost_line_base_au</code>, <code>kill_zone_sol_au</code>,
+        <code>uv_damage_edge_nm</code>, <code>danger_zone_multiplier</code>. The single implementation is
+        <code>physics/zones.ts</code>; nothing else is allowed to derive a second one.</p>
+    </section>
+
     <section id="generation">
       <h2>Auto-generation</h2>
       <p>When you generate a system, the stars come from the HR diagram (aged to the chosen age), and the
@@ -1495,11 +1605,13 @@
         slightly per gap. That is what is genuinely steady in real systems: the Sun&rsquo;s successive ratios average
         about 1.7 (Venus/Mercury 1.85, Earth/Venus 1.39, Mars/Earth 1.52 &hellip; Neptune/Uranus 1.57), TRAPPIST-1&rsquo;s
         about 1.32. A ratio is scale-free, so nothing about the Sun is carried to another star: the chain starts at a
-        zone derived from the star&rsquo;s own luminosity (between the dust-condensation edge and the formation frost
-        line, drawn log-uniformly because real innermost planets span more than a decade of orbits) and 1.7 means the
+        zone derived from the star&rsquo;s own luminosity (between the dust-condensation edge and the
+        <a href="#zones">formation frost line</a>, drawn log-uniformly because real innermost planets span more than
+        a decade of orbits) and 1.7 means the
         same thing around a brown dwarf as around a supergiant. It runs out at twice the star&rsquo;s CO ice line &mdash;
         also derived, never a constant &mdash; so a K dwarf&rsquo;s system ends near 4&nbsp;AU, a G star&rsquo;s near
-        11, an F star&rsquo;s near 16, and their tails reach to 80&ndash;110.</p>
+        11, an F star&rsquo;s near 16, and their tails reach to 80&ndash;110. Every zone the placement chain refers to
+        is in <a href="#zones">Stellar zones</a>, including the reason there are two frost lines.</p>
       <p><strong>Mutual Hill radii are the floor under the ratio, not the rule.</strong> Two neighbours closer than a
         few mutual Hill radii, <code>R<sub>H</sub> = ((m&#8321;+m&#8322;)/3M<sub>&#9737;</sub>)<sup>1/3</sup> &middot; (a&#8321;+a&#8322;)/2</code>,
         do not survive a gigayear (Pu &amp; Wu 2015: roughly 10 or more). Where the drawn ratio would put a pair
@@ -1585,6 +1697,14 @@
       <p>All three of the pack blocks behind this &mdash; <code>type_rarity_weighting</code>,
         <code>type_metallicity_sensitivity</code>, <code>planet_mass_band_me</code> &mdash; are yours to retune without
         touching code, and each records where its <em>realistic</em> point sits so a banded slider can colour it.</p>
+      <p><strong>That colouring is what the strip under each dial is.</strong> Green is where real systems sit,
+        amber is possible but unlikely, red is where nothing measured looks like it &mdash; with a one-line verdict
+        beneath. It marks how <em>unusual</em> a setting is and never what is allowed: <strong>nothing is forbidden
+        at any position on any dial</strong>, and the band edges are rule-pack data
+        (<code>generation_parameters.realism_bands</code>, including the wording), so a table running a
+        deliberately fantastical setting moves the goalposts rather than fighting them. Note that the green band is
+        not centred: rarity's realistic point sits a quarter of the way along, because below it a system only gets
+        duller.</p>
 
       <h3>Importing, and filling out what you imported</h3>
       <p>Every importer &mdash; Universe Sandbox, SpaceEngine, Traveller, the real-sky catalogue &mdash; now
