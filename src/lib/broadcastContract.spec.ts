@@ -298,6 +298,79 @@ describe('A57 — broker id collision: retry first, prompt once, no silent re-ho
  * the wire. The player-side GATING (obeyed only while following, and never when the preset has locked
  * its players into one system) lives in the catalogue route with the state it guards.
  */
+describe('A63 - SYNC_INCOMING announces a big payload before it lands', () => {
+  beforeEach(() => {
+    // Real timers first, for the reason spelled out in the A59 block below.
+    vi.useRealTimers();
+    FakeChannel.byName.clear();
+    FakePeer.taken.clear();
+    (globalThis as any).window = globalThis;
+    (globalThis as any).BroadcastChannel = FakeChannel;
+    (globalThis as any).addEventListener ??= () => {};
+    (globalThis as any).performance ??= { now: () => Date.now() };
+  });
+
+  it('routes to onIncoming with the count and the size', async () => {
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    const seen: any[] = [];
+    (player as any).onIncoming = (i: any) => seen.push(i);
+    host.sendMessage({ type: 'SYNC_INCOMING', payload: { what: 'starmap', systems: 27, approxBytes: 5_242_880 } } as any);
+    await waitFor(() => seen.length > 0);
+    expect(seen[0]).toEqual({ what: 'starmap', systems: 27, approxBytes: 5_242_880 });
+  });
+
+  it('carries no size when the sender has never sent a starmap — the FIRST joiner', async () => {
+    // approxBytes comes from the last SYNC_STARMAP actually sent, so it is legitimately absent on a
+    // cold session. The receiver has to read fine without it, and this is the case that proves it.
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    const seen: any[] = [];
+    (player as any).onIncoming = (i: any) => seen.push(i);
+    expect(host.approxBytesOf('SYNC_STARMAP')).toBeUndefined();
+    host.sendMessage({ type: 'SYNC_INCOMING', payload: { what: 'starmap', systems: 3 } } as any);
+    await waitFor(() => seen.length > 0);
+    expect(seen[0].approxBytes).toBeUndefined();
+    expect(seen[0].systems).toBe(3);
+  });
+
+  it('is RECEIVER-ONLY: a sender never announces to itself', async () => {
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    const hostSaw: any[] = [];
+    const playerSaw: any[] = [];
+    (host as any).onIncoming = (i: any) => hostSaw.push(i);
+    (player as any).onIncoming = (i: any) => playerSaw.push(i);
+    host.sendMessage({ type: 'SYNC_INCOMING', payload: { what: 'starmap', systems: 1 } } as any);
+    await waitFor(() => playerSaw.length > 0);
+    await settle();
+    expect(hostSaw).toHaveLength(0);
+  });
+
+  it('ARRIVES BEFORE the payload it announces — the whole trick, and it needs no handshake', async () => {
+    // The channel is ORDERED, so a one-line message queued ahead of a multi-megabyte one always
+    // lands first. If that ever stopped being true the pill would appear after the map it announces,
+    // which is worse than not showing it at all.
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    const order: string[] = [];
+    (player as any).onIncoming = () => order.push('incoming');
+    (player as any).onStarmapUpdate = () => order.push('starmap');
+    host.sendMessage({ type: 'SYNC_INCOMING', payload: { what: 'starmap', systems: 2 } } as any);
+    host.sendMessage({ type: 'SYNC_STARMAP', payload: { id: 'm', name: 'M', systems: [], routes: [] } } as any);
+    await waitFor(() => order.length === 2);
+    expect(order).toEqual(['incoming', 'starmap']);
+  });
+});
+
 describe('A59 - SYNC_GM_LEVEL reaches a player window', () => {
   beforeEach(() => {
     // REAL TIMERS FIRST. The A57 describe above runs the retry ladder under vi.useFakeTimers(), and

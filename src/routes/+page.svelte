@@ -874,7 +874,29 @@
     broadcastService.onRequestStarmap = (requestingId) => {
       if (requestingId && requestingId !== broadcastSessionId) return;
       const map = get(starmapStore);
-      if (map) broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: starmapSnapshotForPlayers(map) });
+      if (map) {
+        // A63: ANNOUNCE FIRST, then send. The DataChannel is ordered, so a one-line message queued
+        // ahead of a multi-megabyte one always lands first — which is the whole trick, and why this
+        // needs no acknowledgement or handshake. The player gets something to look at while the
+        // payload crosses and then parses; it is not progress, because the parse blocks the main
+        // thread in one go and nothing can animate through that (real progress is V3.1's chunking).
+        //
+        // The count comes from the SNAPSHOT, not from the campaign: redaction can drop systems, and
+        // promising more than is on the way would be a worse lie than saying nothing.
+        const snapshot = starmapSnapshotForPlayers(map);
+        broadcastService.sendMessage({
+          type: 'SYNC_INCOMING',
+          payload: {
+            what: 'starmap',
+            systems: snapshot.systems?.length ?? 0,
+            // Absent for the first joiner — nothing has been sent yet to measure. Deliberately not
+            // measured fresh: that would cost a stringify of the very payload whose stringify cost
+            // is the thing being apologised for.
+            approxBytes: broadcastService.approxBytesOf('SYNC_STARMAP')
+          }
+        });
+        broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: snapshot });
+      }
       broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
       // A player joining (or reloading) AFTER the GM set the live overrides never used to hear about
       // them — Follow GM et al. only rode the modal's own broadcasts, so late windows silently ignored

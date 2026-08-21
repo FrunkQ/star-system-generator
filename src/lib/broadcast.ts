@@ -44,6 +44,16 @@ export type BroadcastMessage =
   // so both can be served from the one session.
   | { type: 'SYNC_STARMAP'; payload: Starmap }
   | { type: 'REQUEST_STARMAP'; payload: string | null }
+  // A63 (cheap half). A one-line PRE-ANNOUNCE sent immediately before the big SYNC_STARMAP, so a
+  // player has something to look at while a multi-megabyte payload crosses and then parses. It is
+  // not progress and does not pretend to be: the parse happens in one blocking go on the main
+  // thread, so nothing can animate DURING it. What this kills is the "is it broken? I'll reload"
+  // temptation, which is the actual reported harm. Real progress needs the payload chunked with
+  // sequence numbers, and that is V3.1.
+  //
+  // `approxBytes` is the size of the LAST starmap this session sent, so it is absent for the first
+  // joiner and present after that. The receiver must read fine without it.
+  | { type: 'SYNC_INCOMING'; payload: { what: 'starmap'; systems: number; approxBytes?: number } }
   | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } }
   // THE GM'S TAG VOCABULARY — labels and colours, not the tags themselves.
   // A player window resolves a marker's colour and name against its OWN `tagCategories`, which is a
@@ -505,6 +515,16 @@ class BroadcastService {
 
   // sendIfChanged state: last fingerprint + send time per type, and a trailing-send timer.
   private lastSentByType = new Map<string, string>();
+
+  /**
+   * The serialised size of the last message of this type that actually went out, or undefined if
+   * none has. A63 uses it to tell a joining player roughly how much is coming; it is deliberately
+   * the LAST send rather than a fresh measurement, because measuring costs a stringify of the very
+   * payload whose stringify cost is the problem.
+   */
+  public approxBytesOf(type: BroadcastMessage['type']): number | undefined {
+    return this.lastSentByType.get(type)?.length;
+  }
   private lastSentAtByType = new Map<string, number>();
   private pendingByType = new Map<string, { timer: ReturnType<typeof setTimeout>; msg: BroadcastMessage }>();
   // The GM clock is EMBEDDED in the snapshots (temporal.masterTimeSec/displayTimeSec), so with time
@@ -600,6 +620,8 @@ class BroadcastService {
   public onStarmapUpdate: ((map: Starmap) => void) | null = null;
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
+  /** A63: something large is on its way. Receiver-only, like the other on*Update callbacks. */
+  public onIncoming: ((info: { what: 'starmap'; systems: number; approxBytes?: number }) => void) | null = null;
   public onTagStylesUpdate: ((t: TagStyleSnapshot) => void) | null = null;
   public onPresetUpdate: ((p: PresetBroadcast | null) => void) | null = null;
   public onGmLevelUpdate: ((l: GmLevel) => void) | null = null;
@@ -690,6 +712,9 @@ class BroadcastService {
               break;
           case 'SYNC_BRANDING':
               if (!this.isSender && this.onBrandingUpdate) this.onBrandingUpdate(msg.payload);
+              break;
+          case 'SYNC_INCOMING':
+              if (!this.isSender && this.onIncoming) this.onIncoming(msg.payload);
               break;
           case 'SYNC_TAGSTYLES':
               if (!this.isSender && this.onTagStylesUpdate) this.onTagStylesUpdate(msg.payload);

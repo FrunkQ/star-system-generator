@@ -102,6 +102,27 @@
   // no direct or relayed path (usually a network that blocks UDP with no turns:443 relay).
   let linkBlocked = false;
 
+  // A63: something big is on its way. The GM announces immediately before sending a starmap, and the
+  // channel is ordered, so this always lands first. It is a HOLDING state, not progress — the parse
+  // that follows blocks the main thread in one go, so nothing can animate through it. What it kills
+  // is the reload temptation, which is the reported harm.
+  let receiving: { systems: number; approxBytes?: number } | null = null;
+  let receivingTimer: ReturnType<typeof setTimeout> | null = null;
+  function clearReceiving() {
+    if (receivingTimer) { clearTimeout(receivingTimer); receivingTimer = null; }
+    receiving = null;
+  }
+  // "27 systems, ~5 MB" reads better than either alone, and the size is often absent (the first
+  // joiner announces before the GM has ever sent one, so there is nothing measured to quote).
+  $: receivingLabel = receiving
+    ? `Receiving the starmap — ${receiving.systems} ${receiving.systems === 1 ? 'system' : 'systems'}`
+      + (receiving.approxBytes ? `, ~${formatApproxBytes(receiving.approxBytes)}` : '')
+      + '…'
+    : '';
+  function formatApproxBytes(n: number): string {
+    return n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+  }
+
   $: selectedSystemNode = starmap?.systems.find((s) => s.id === selectedSystemId) || null;
 
   // ANCHOR THE LOCAL CLOCK TO GAME TIME (RENDER-S18). This surface opens at `Date.now()`, but
@@ -890,8 +911,18 @@
     window.addEventListener('popstate', onPopState);
     broadcastService.onFocusLevelUpdate = (p) => followFocusLevel(p.id, p.level);
     broadcastService.onGmLevelUpdate = (l) => followGmLevel(l); // A59
+    broadcastService.onIncoming = (info) => {
+      if (info?.what !== 'starmap') return;
+      if (receivingTimer) clearTimeout(receivingTimer);
+      receiving = { systems: info.systems ?? 0, approxBytes: info.approxBytes };
+      // A LOST PAYLOAD MUST NOT PIN THE PILL. The announce is a separate message from the thing it
+      // announces, so a dropped or failed SYNC_STARMAP would otherwise leave this up forever — which
+      // is a worse lie than showing nothing, because it says "still working" when nothing is.
+      receivingTimer = setTimeout(() => { receiving = null; receivingTimer = null; }, 30_000);
+    };
     broadcastService.onStarmapUpdate = (map) => {
       perfCount('sync.starmap'); // each one re-clones the campaign + rebuilds the scene — track it
+      clearReceiving();
       starmap = map;
       // G34: inherit the GM's unit choices, non-interactively. Absent on a pre-G34 GM build →
       // keep whatever the launch params seeded.
@@ -959,6 +990,7 @@
 
   onDestroy(() => {
     setModelFetcher(null); // stop routing model requests into a closed transport
+    if (receivingTimer) clearTimeout(receivingTimer);
     if (livenessTimer) clearInterval(livenessTimer);
     if (browser) window.removeEventListener('message', onParentMessage);
     broadcastService.close();
@@ -1031,6 +1063,16 @@
     <div class="preset-missing" role="status">
       <span class="pm-text">This view's preset (<code>{activePresetId}</code>) is not in this campaign — showing <strong>{FALLBACK_PRESET.name}</strong> instead. Re-open it from Player Views to fix the link.</span>
       <button class="pm-close" aria-label="Dismiss" on:click={() => (missingNoticeDismissedFor = activePresetId)}>×</button>
+    </div>
+  {/if}
+  <!-- A63: the holding pill. Sits with the other connection chrome and OVER the cover, because the
+       cover is exactly when a joining player is waiting and has nothing else to look at. Indeterminate
+       by design — see the note on `receiving`: the parse blocks the main thread, so there is no
+       honest progress to show. -->
+  {#if receiving}
+    <div class="receiving-pill" role="status" aria-live="polite">
+      <span class="rp-spin" aria-hidden="true"></span>
+      <span>{receivingLabel}</span>
     </div>
   {/if}
   {#if presetHold}
@@ -1243,6 +1285,28 @@
   /* A47 broken-link notice. Above the entry-transition overlay (450) and the preset cover (60) — it has
      to be readable whatever stage is showing, and it is deliberately NOT themed by the preset: this is
      the app talking, not the fiction. */
+  /* A63. Above the cover (60) and the entry transition (450), below the broken-link notice (500) —
+     that one is the app talking and must win. */
+  .receiving-pill {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 470;
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(8, 12, 20, 0.86); color: #cfe0f5;
+    border: 1px solid rgba(120, 160, 210, 0.35);
+    font: 400 0.78rem/1.2 system-ui, sans-serif;
+    pointer-events: none; max-width: calc(100% - 24px);
+  }
+  .rp-spin {
+    width: 11px; height: 11px; flex: 0 0 auto; border-radius: 50%;
+    border: 2px solid rgba(140, 180, 230, 0.3); border-top-color: #8ab4e8;
+    animation: rp-spin 0.8s linear infinite;
+  }
+  @keyframes rp-spin { to { transform: rotate(360deg); } }
+  /* The spinner is the one thing here that MUST keep moving to mean anything, but it stops dead the
+     moment the payload starts parsing — that is honest, and it is why the pill says "receiving"
+     rather than showing a percentage it could not keep. */
+  @media (prefers-reduced-motion: reduce) { .rp-spin { animation: none; } }
+
   .preset-missing {
     position: absolute; top: 0; left: 0; right: 0; z-index: 500;
     display: flex; align-items: flex-start; gap: 10px;
