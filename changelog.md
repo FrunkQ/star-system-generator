@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0 - 22nd Aug 2026
+
+- V3 RELEASE. Production moves from v2.1.5 to V3: player views and presets, the 3D holo system view, undo/redo, the units and skins overhaul, starmap stars as stars, the physics and classification passes, VTT integration, and the full documentation rewrite. The welcome screen sheds its beta voice: this project is community driven, some features ship a little raw on purpose, and reports decide what gets attention first. The rc.1-rc.23 entries below are the release candidate record.
+
 ## v3.0.0-rc.23 - 21st Aug 2026
 
 - Board only. The owner signed off the entire eyeball list in one pass (C18 plume, A55 boosted sky, C14 falloff, C15 true-scale lo-poly, C16 Terminal Clear, A51(b) binary entry, A62 cover-page resize) - every row marked closed. All V3 release gates are now met; release waits on the owner's word.

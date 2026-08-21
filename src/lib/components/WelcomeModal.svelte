@@ -1,11 +1,10 @@
 <script lang="ts">
   // First-run welcome — shown once (localStorage flag set by the parent on close).
   //
-  // V3 welcome — FIRST PASS. The headlines below are the owner's list and are real, but the
-  // blurbs are placeholders to be sharpened once each feature is bottomed out. Two things to
-  // check before release: that every line still matches what shipped, and that anything still
-  // in testing (VTT integration) is still labelled as such. An inaccurate welcome is worse
-  // than a plain one, so nothing here claims more than the feature currently does.
+  // V3 welcome — RELEASE VOICE since v3.0.0. Every line was verified against the shipped build
+  // for the release and the wording is owner-trimmed; do not add lines without his word. An
+  // inaccurate welcome is worse than a plain one, so nothing here claims more than the feature
+  // currently does.
   import { createEventDispatcher } from 'svelte';
   import { APP_VERSION } from '$lib/constants';
   import { foreground } from '$lib/ui/foreground';
@@ -92,14 +91,14 @@
     <header class="w-head">
       <div>
         <h2>Welcome to Star System Explorer&nbsp;3</h2>
-        <p class="ver">Beta · {APP_VERSION}</p>
+        <p class="ver">{APP_VERSION}</p>
       </div>
       <button class="w-close" aria-label="Close" on:click={close}>×</button>
     </header>
 
     <div class="w-body">
-      <p class="lede">V3 is being built in the open on this beta. Everything you already do still works
-        and your saved starmaps still load — but a great deal is new. The short version:</p>
+      <p class="lede">V3 has arrived. Everything you already do still works and your saved starmaps
+        still load — but a great deal is new. The short version:</p>
 
       {#if features.length}
         <ul class="feat">
@@ -117,8 +116,6 @@
         <p class="placeholder">Highlights land here as V3 takes shape.</p>
       {/if}
 
-      <p class="placeholder">Fuller notes for each of these follow as V3 firms up.</p>
-
       <p class="guides-line">
         New here, or want the detail? Read the
         <a href="{GH}/GettingStarted.md" target="_blank" rel="noopener noreferrer">Getting Started guide</a>
@@ -127,12 +124,13 @@
       </p>
 
       <div class="heads-up">
-        <p><strong>Expect the odd bug.</strong> This is a live beta with a lot changing under the hood, so
-        some things will slip through. If you hit one, please report it on
+        <p><strong>This project is community driven.</strong> V3 ships some features while they are
+        still a little raw rather than holding them back for another year — we would rather you had
+        them now, and told us what needs work. If something misbehaves, say so on
         <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">our Discord</a> —
-        it's the fastest way to get it fixed. Thank you for helping shape V3!</p>
-        <p><strong>Keep a backup.</strong> Beta builds move fast; export anything precious before you
-        re-save it.</p>
+        anything serious gets fixed quickly, and your reports decide what gets attention first.
+        Thank you for the enthusiasm and support that carried V3 here.</p>
+        <p><strong>Keep a backup.</strong> Export anything precious before you re-save it.</p>
       </div>
     </div>
 
