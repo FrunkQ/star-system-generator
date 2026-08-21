@@ -125,6 +125,9 @@
   let canvas: HTMLCanvasElement;
   let controller: HoloController | null = null;
   let ro: ResizeObserver | null = null;
+  // A62: re-read the container and re-size the renderer. Set once the scene exists; a no-op before.
+  let revalidate: () => void = () => {};
+  let onReveal: (() => void) | null = null;
 
   export function resetView() {
     controller?.resetView();
@@ -162,17 +165,26 @@
       applyStyle(style);
       const r = container.getBoundingClientRect();
       controller.resize(r.width, r.height);
+      // A62, same two guards as Starmap3DView and for the same reasons: a 0x0 content rect from a
+      // momentarily unlaid-out container would poison the backing store, and nothing re-read the
+      // container when a covered view was revealed. See the note there.
+      const push = (w: number, h: number) => { if (w > 1 && h > 1) controller?.resize(w, h); };
+      revalidate = () => { const b = container?.getBoundingClientRect(); if (b) push(b.width, b.height); };
       ro = new ResizeObserver((entries) => {
         const cr = entries[0]?.contentRect;
-        if (cr) controller?.resize(cr.width, cr.height);
+        if (cr) push(cr.width, cr.height);
       });
       ro.observe(container);
+      onReveal = () => requestAnimationFrame(() => revalidate());
+      window.addEventListener('resize', onReveal);
+      document.addEventListener('visibilitychange', onReveal);
     })();
     return () => { cancelled = true; };
   });
 
   onDestroy(() => {
     ro?.disconnect();
+    if (onReveal) { window.removeEventListener('resize', onReveal); document.removeEventListener('visibilitychange', onReveal); }
     controller?.dispose();
     controller = null;
   });

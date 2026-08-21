@@ -2895,6 +2895,24 @@ the ice line used to be dropped by both buckets, so a bare single-star system co
 planet at all; it is split at the line now. Measured after: median orbit 72.5 -> 1.53 AU, worlds
 with an atmosphere 15% -> 43%.
 
+### RENDER-S22 A COVERED VIEW IS NOT AN UNMOUNTED ONE, AND A 0x0 MEASUREMENT IS NOT A SIZE
+WHERE: `starmap/Starmap3DView.svelte` and `holo/HoloView.svelte` (`push`, `revalidate`, `onReveal`);
+`routes/catalogue/+page.svelte` `dismissCover`.
+RULE: never hand a renderer a content rect below 1 px — a container that is momentarily unlaid-out
+reports 0x0, and taking that as a size sets a 2x2 backing store that the next real frame draws
+stretched across the viewport. And re-read the container on REVEAL: a ResizeObserver is the only
+thing watching, and a view that was covered rather than unmounted is exactly where "the observer
+ought to have fired" stops being reliable.
+WHY: inbox A62 — resize while the player's COVER PAGE is up and the starmap revealed afterwards is
+stretched, intermittently. The stage is `position: absolute` UNDER the cover, so it stays laid out
+and the observer ought to fire; the fault is that nothing re-measures when it comes back.
+BLAST: `dismissCover` fires a WINDOW RESIZE EVENT rather than calling into each view. That is
+deliberate — the page must not need to know which renderers exist, and a view that does not listen
+is simply unaffected. If you add a renderer with its own observer, add the listener too or it will
+not be revalidated. NOT REPRODUCED on the live surface: reaching the player catalogue view needs a
+broadcast session between two windows, so the guards are unit-tested (`starmap/revealResize.spec.ts`)
+and the live check is still owed.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s

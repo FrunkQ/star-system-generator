@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.899-beta - 21st Aug 2026
+
+- Resizing a player window while the cover page is showing should no longer leave the starmap stretched when it appears. The view underneath is re-measured the moment the cover is tapped away, and a renderer can no longer be handed a zero-sized measurement and stretch a tiny image over the whole screen. Reported as intermittent, so this needs a look in real use before it is called closed.
+
 ## v2.1.898-beta - 21st Aug 2026
 
 - The experimental "evolutionary" system generator has left the app. It has a home of its own now, at System Lab (system-lab.starsystemx.com), where it can grow without being an alpha corner of something else - so the engine selector, its warning dialogue and 4.3 MB of vendored code are gone from here. Starmaps saved while it existed still open exactly as before. The thanks to Mitch Anderson for the Accrete.js code it was built on stays where it is, pointing at where that work now lives.

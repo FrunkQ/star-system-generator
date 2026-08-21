@@ -767,6 +767,19 @@
     : null;
 
   // Cover: show once per preset until the player taps through.
+  //
+  // A62: DISMISSING THE COVER IS A REVEAL, and a reveal has to re-size the surface underneath. The
+  // reported symptom is a resize performed WHILE the cover is up, after which the starmap comes back
+  // stretched — the stage is only covered rather than unmounted, so its ResizeObserver ought to have
+  // fired, and "ought to" is what makes the fault intermittent. Rather than reach into each view,
+  // fire a window resize on the next frame: every renderer that listens (Starmap3DView, HoloView)
+  // re-reads its own container, and one that does not is unaffected. The frame's delay is so the
+  // reveal has laid out before anything measures it.
+  function dismissCover() {
+    coverDismissed = true;
+    if (browser) requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+  }
+
   let coverDismissed = false;
   let coverForId: string | null = null;
   $: if (activePreset?.cover?.enabled && coverForId !== activePreset.id) { coverForId = activePreset.id; coverDismissed = false; }
@@ -1015,7 +1028,7 @@
   {#if showPresetCover && activePreset}
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
     <div class="preset-cover" role="button" tabindex="0" bind:clientWidth={coverW} bind:clientHeight={coverH}
-      on:click={() => (coverDismissed = true)} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') coverDismissed = true; }}>
+      on:click={dismissCover} on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') dismissCover(); }}>
       {#if coverCanvas}
         <!-- Filtered: the cover is drawn to a canvas and run through the REAL GPU shader (warp/roll/tint). -->
         <FilteredCanvas source={coverCanvas} filterId={presetFilterId} filterParams={presetFilterParams ?? {}} />

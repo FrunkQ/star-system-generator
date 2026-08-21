@@ -85,6 +85,9 @@
   let canvas: HTMLCanvasElement;
   let controller: StarmapController | null = null;
   let ro: ResizeObserver | null = null;
+  // A62: re-read the container and re-size the renderer. Set once the scene exists; a no-op before.
+  let revalidate: () => void = () => {};
+  let onReveal: (() => void) | null = null;
   let vw = 0, vh = 0;
 
   // Build (or clear) the HUD — guide-tip banners + a per-screen image overlay, composited into the filter.
@@ -185,12 +188,35 @@
       vw = r.width; vh = r.height;
       controller.resize(r.width, r.height);
       applyTips();
-      ro = new ResizeObserver((e) => { const cr = e[0]?.contentRect; if (cr) { controller?.resize(cr.width, cr.height); vw = cr.width; vh = cr.height; applyTips(); } });
+      // A62. TWO GUARDS, and neither is belt-and-braces for its own sake.
+      //
+      // (1) IGNORE A 0x0 CONTENT RECT. A container that is momentarily unlaid-out reports zero, and
+      //     taking that as a size poisons the canvas backing store — the next real frame then draws a
+      //     2x2 buffer stretched over the viewport, which is the reported symptom exactly.
+      // (2) RE-READ ON REVEAL. The reported repro is a resize performed while the COVER PAGE is up;
+      //     the starmap shown afterwards is stretched. The stage is only COVERED, not unmounted, so
+      //     the observer ought to fire — but "ought to" is what makes this intermittent, and nothing
+      //     re-reads the container when the view becomes visible again. `revalidate` does, and the
+      //     page calls it on cover dismissal (via a window resize event, so any view that adopts
+      //     this listener is covered without the page knowing which views exist).
+      const push = (w: number, h: number) => {
+        if (!(w > 1) || !(h > 1)) return;
+        controller?.resize(w, h); vw = w; vh = h; applyTips();
+      };
+      revalidate = () => { const b = container?.getBoundingClientRect(); if (b) push(b.width, b.height); };
+      ro = new ResizeObserver((e) => { const cr = e[0]?.contentRect; if (cr) push(cr.width, cr.height); });
       ro.observe(container);
+      onReveal = () => requestAnimationFrame(() => revalidate());
+      window.addEventListener('resize', onReveal);
+      document.addEventListener('visibilitychange', onReveal);
     })();
     return () => { cancelled = true; };
   });
-  onDestroy(() => { ro?.disconnect(); controller?.dispose(); controller = null; });
+  onDestroy(() => {
+    ro?.disconnect();
+    if (onReveal) { window.removeEventListener('resize', onReveal); document.removeEventListener('visibilitychange', onReveal); }
+    controller?.dispose(); controller = null;
+  });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
   $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; starScale; starSize; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
