@@ -1446,6 +1446,7 @@ them would have been misled rather than merely under-informed:
 | G35 accrete removed | `README` attribution corrected to match `AboutModal`; no engine selector survives anywhere to describe |
 | Brown dwarfs have real pack figures | `GettingStarted` §5 |
 | D19 spec | superseded — the patch shipped at v2.1.564+ and its honesty contract is in `GettingStarted` §2 |
+| Already written up in their own batch, recorded here so the sweep could see they were not forgotten | Tagging A-D and the player-view markers, the biosphere and continents batches, B63, [[D6]] (checked: `/physics#greenhouse` carries the FLOOR wording, not the old off-switch), and the v2.1.646 star overhaul, whose line already said CLEARED |
 | Everything marked "no reader-facing change" | struck as written: C9, E3/E1, E2/E4, D11, C7, G21's silent half, the engine-map entries, the real-sky library, A46, D23, A62 |
 
 ### Struck rather than written
