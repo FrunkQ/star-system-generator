@@ -18,6 +18,8 @@
   import { transitionRegistry } from '$lib/transitions/TransitionRegistry';
   import { browser } from '$app/environment';
   import { broadcastService } from '$lib/broadcast';
+  import { transferReportText } from '$lib/transferReport';
+  import { APP_VERSION } from '$lib/constants';
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
   import { parseIceParam } from '$lib/iceConfig';
   import { setModelFetcher, modelArrived } from '$lib/constructs/modelFetch';
@@ -118,6 +120,24 @@
   // timer wins, we are in a genuine wait, the pill paints while the transport is still in flight and
   // the main thread is idle, and that painted frame is what stays on screen through the parse freeze
   // that follows. No size threshold is needed to decide any of this: the clock already knows.
+  // The player's own half of the link. It sees ONE connection — its own — so there is no per-peer
+  // breakdown here; that asymmetry is real and the report says which side it was taken from.
+  let showTransfer = false;
+  let transferText = '';
+  let transferCopied = false;
+  async function toggleTransfer() {
+    if (!showTransfer) {
+      transferText = transferReportText({ role: 'player', own: broadcastService.transferStats(), appVersion: APP_VERSION });
+      transferCopied = false;
+      showTransfer = true;
+      return;
+    }
+    // Second click copies, which is what the owner asked for — read it, then hand it over.
+    try { await navigator.clipboard.writeText(transferText); transferCopied = true; }
+    catch { transferCopied = false; }
+    setTimeout(() => (showTransfer = false), 900);
+  }
+
   const RECEIVING_GRACE_MS = 400;
   let receiving: { systems: number; approxBytes?: number } | null = null;
   let receivingPending: { systems: number; approxBytes?: number } | null = null;
@@ -1131,9 +1151,20 @@
       {#if branding.logo}<img class="brand-logo" src={branding.logo} alt="" />{/if}
       {#if branding.name}<span class="brand-name">{branding.name}</span>{/if}
       <span class="sys-name">{selectedSystemNode ? selectedSystemNode.name.toUpperCase() : (starmap ? (starmap.name || 'STARMAP').toUpperCase() : 'NO SIGNAL')}</span>
-      <span class="status" class:live={connected} class:offline={!connected}>
+      <!-- Owner, 2026-08-21: the LIVE lamp is the natural place for "how is my connection doing" —
+           it is the only bit of chrome on this screen that is about the link rather than the fiction.
+           Click copies the report; the panel stays up so the player can read it to someone. -->
+      <button class="status as-btn" class:live={connected} class:offline={!connected}
+        title="Connection details — click to copy" on:click={toggleTransfer}>
         {#if connected}● LIVE{:else}○ GM OFFLINE — last {nowLabel}{/if}
-      </span>
+      </button>
+      {#if showTransfer}
+        <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+        <div class="xfer" role="status" on:click|stopPropagation>
+          <pre>{transferText}</pre>
+          <p class="xfer-foot">{transferCopied ? 'Copied to the clipboard.' : 'Click the lamp again to copy.'}</p>
+        </div>
+      {/if}
     {/if}
   </header>
 
@@ -1343,6 +1374,20 @@
   @media (prefers-reduced-motion: reduce) { .rcv-spin { animation: none; } }
   .rcv-detail { opacity: 0.75; font-size: 0.92em; }
 
+  /* The LIVE lamp is a button now; it must still look exactly like the text it replaced. */
+  .status.as-btn { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+  .xfer {
+    position: absolute; top: 100%; right: 8px; z-index: 520; max-width: min(92vw, 560px);
+    padding: 10px 12px; border-radius: 6px;
+    background: rgba(6, 9, 15, 0.96); border: 1px solid rgba(120, 160, 210, 0.35);
+    color: #cfe0f5; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  }
+  .xfer pre {
+    margin: 0; max-height: 46vh; overflow: auto;
+    font: 400 0.68rem/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word;
+  }
+  .xfer-foot { margin: 8px 0 0; font-size: 0.7rem; opacity: 0.7; }
+
   .preset-missing {
     position: absolute; top: 0; left: 0; right: 0; z-index: 500;
     display: flex; align-items: flex-start; gap: 10px;
@@ -1361,6 +1406,7 @@
   /* --- status bar (device chrome) --- */
   .statusbar {
     flex: 0 0 auto;
+    position: relative;   /* the transfer panel hangs off this bar */
     display: flex;
     align-items: center;
     gap: 12px;

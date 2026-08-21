@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+  import { playerConnections } from '$lib/playerConnections';
   import { constructIconPath, constructIconShape } from '$lib/constructs/constructIcon';
   import { gestures } from '$lib/input/gestures';
   // G26/C17: the glyph is a SCREEN quantity — its size, its members' spread and its band scale come
@@ -1221,6 +1222,8 @@
         rulerOn={measureMode}
         rulerAvailable={isScaled}
         {routesAttention}
+        playerConns={{ local: $playerConnections.local, remote: $playerConnections.remote }}
+        playerConnSummary={$playerConnections.summary}
         on:ruler={() => { railOpen = false; toggleMeasure(); }}
         on:starmap={() => { railOpen = false; }}
         on:new={() => dispatch('new')}

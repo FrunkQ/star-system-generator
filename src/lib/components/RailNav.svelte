@@ -13,6 +13,24 @@
   export let rulerOn = false;
   export let rulerAvailable = false;   // starmap: only when scaled (system view always has it)
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → Routes notification dot
+  // Owner, 2026-08-21: how many player windows are watching, at a glance, so the GM can see whether
+  // anyone has joined without opening anything. Local first in green, remote second in orange —
+  // the two are known by different means and a GM debugging a connection needs to know which is
+  // which (a local window costs no network at all; a remote one is the only kind that can be slow).
+  export let playerConns: { local: number; remote: number } = { local: 0, remote: 0 };
+  /** The one-line transfer summary, shown on hover. Empty when nobody is connected. */
+  export let playerConnSummary = '';
+  $: playerConnCount = playerConns.local + playerConns.remote;
+  // Same rule in the tooltip as on the badge: name only what is actually connected. "1 local" reads
+  // as news; "1 local, 0 remote" reads as a form with a field left blank.
+  $: playerConnWho = [
+    playerConns.local ? `${playerConns.local} local` : '',
+    playerConns.remote ? `${playerConns.remote} remote` : ''
+  ].filter(Boolean).join(', ');
+  $: playerConnTitle = playerConnCount
+    ? `Player Views — ${playerConnWho} watching
+${playerConnSummary}`
+    : "Design, open and manage the players' views (guides, tables, projections)";
 
   let fileOpen = false; // File group (New / Open / Save) inline accordion
   $: collapsed = $railCollapsed;
@@ -84,8 +102,21 @@
        the Field Guide (its skins are presets now) and the Projector (the shipped "Projection" preset
        is the overhead table view, following the GM). Three doors to one room became one door, and
        A42 removed the other two rather than leaving them behind a flag. -->
-  <button class="rail-btn" title="Design, open and manage the players' views (guides, tables, projections)" on:click={() => go('playerviews')}>
-    <span class="ic">{@html svg(I.playerviews)}</span><span class="rail-label">Player Views…</span>
+  <button class="rail-btn" title={playerConnTitle} on:click={() => go('playerviews')}>
+    <span class="ic">
+      {@html svg(I.playerviews)}
+      <!-- ON THE ICON ONLY, and never a zero. A badge that says "0" is a badge that is always there,
+           which makes it furniture rather than news — the whole point is that it CATCHES the eye when
+           somebody joins. Same reason a lone local count reads "1" and not "1-0". -->
+      {#if playerConnCount}
+        <span class="conn-badge">
+          {#if playerConns.local}<span class="local">{playerConns.local}</span>{/if}
+          {#if playerConns.local && playerConns.remote}<span class="sep">-</span>{/if}
+          {#if playerConns.remote}<span class="remote">{playerConns.remote}</span>{/if}
+        </span>
+      {/if}
+    </span>
+    <span class="rail-label">Player Views…</span>
   </button>
 
   <button class="rail-btn" title="Generate a report" on:click={() => go('report')}>
@@ -244,4 +275,17 @@
   /* In icon-only mode, hide the verbose view-specific sections (System actions, Clear,
      etc.) — they return when the rail is expanded. Keeps the minimal view clean. */
   :global(.rail-nav.collapsed .rail-view-options) { display: none; }
+
+  /* Counter on the Player Views icon: "1-2", local then remote. Deliberately NOT the routes dot's
+     shape — that one means "something needs you", this one means "someone is watching". */
+  .conn-badge {
+    position: absolute; top: -3px; right: -7px;
+    padding: 0 3px; border-radius: 7px;
+    background: rgba(8, 12, 20, 0.92); border: 1px solid rgba(255, 255, 255, 0.18);
+    font: 600 0.58rem/1.5 ui-monospace, Consolas, monospace; letter-spacing: 0.02em;
+    color: var(--text-faint); pointer-events: none; white-space: nowrap;
+  }
+  .conn-badge .sep { color: var(--text-faint); opacity: 0.6; }
+  .conn-badge .local { color: #6fce96; }
+  .conn-badge .remote { color: #f0aa46; }
 </style>

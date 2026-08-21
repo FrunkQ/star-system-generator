@@ -54,6 +54,11 @@ export type BroadcastMessage =
   // `approxBytes` is the size of the LAST starmap this session sent, so it is absent for the first
   // joiner and present after that. The receiver must read fine without it.
   | { type: 'SYNC_INCOMING'; payload: { what: 'starmap'; systems: number; approxBytes?: number } }
+  // A player window saying it is still here, and what it has seen. The GM knows its REMOTE guests
+  // directly (they hold an open connection); a LOCAL window has no connection object to count, so
+  // presence is the only way to know it exists. Sent on join and once per GM heartbeat, so it costs
+  // a few bytes every five seconds per player and nothing when nobody is watching.
+  | { type: 'PLAYER_PRESENT'; payload: { id: string; remote: boolean; stats?: TransferStats } }
   | { type: 'SYNC_BRANDING'; payload: { name: string; logo: string | null } }
   // THE GM'S TAG VOCABULARY — labels and colours, not the tags themselves.
   // A player window resolves a marker's colour and name against its OWN `tagCategories`, which is a
@@ -137,6 +142,102 @@ type BroadcastEnvelope = {
   message: BroadcastMessage;
 };
 
+/**
+ * TRANSFER METERS — what actually crossed, per link, so a GM can tell over-transmission from
+ * slowness without guessing. Owner, 2026-08-21.
+ *
+ * WHAT IS MEASURED AND WHAT IS NOT, because the difference is the honest part:
+ *
+ *  * SEND bytes are free. `sendIfChanged` already stringifies every payload for its dedupe, and
+ *    `sendPeer` stringifies again for the frame limit — so nothing is measured that was not already
+ *    being computed.
+ *  * RECEIVE bytes are free ON THE PEER PATH. A large payload is chunked, and a chunk carries its
+ *    own string, so its length is there for the taking. Anything NOT chunked is under CHUNK_BYTES by
+ *    construction, so measuring it costs a stringify of at most 16 KB.
+ *  * RECEIVE bytes over the LOCAL channel are NOT measured, and that is a statement rather than a
+ *    gap: a same-machine BroadcastChannel hands over a structured clone. Nothing is serialised, so
+ *    there are no bytes on a wire to report — measuring would mean stringifying a multi-megabyte
+ *    payload purely to print a number, which is the very cost this feature exists to expose. Local
+ *    links report messages and say plainly that bytes do not apply.
+ *
+ * SPEED is measured in one-second buckets: `peakBytesPerSec` is the fullest second seen, and the
+ * average is total bytes over elapsed time. A peak far above the average is bursty traffic (a
+ * snapshot); a low peak with a long wait is a slow link.
+ */
+export interface TransferStats {
+  sentMsgs: number;
+  sentBytes: number;
+  largestSentBytes: number;
+  recvMsgs: number;
+  recvBytes: number;
+  largestRecvBytes: number;
+  /** False when this link is a same-machine channel, where bytes are not a meaningful quantity. */
+  bytesMeaningful: boolean;
+  peakBytesPerSec: number;
+  startedAt: number;
+  byType: Record<string, { sent: number; sentBytes: number; recv: number; recvBytes: number }>;
+}
+
+class TransferMeter {
+  sentMsgs = 0; sentBytes = 0; largestSentBytes = 0;
+  recvMsgs = 0; recvBytes = 0; largestRecvBytes = 0;
+  bytesMeaningful = false;
+  peakBytesPerSec = 0;
+  startedAt = Date.now();
+  byType: Record<string, { sent: number; sentBytes: number; recv: number; recvBytes: number }> = {};
+  private bucketStart = Date.now();
+  private bucketBytes = 0;
+
+  private row(type: string) {
+    return (this.byType[type] ??= { sent: 0, sentBytes: 0, recv: 0, recvBytes: 0 });
+  }
+  /** One-second buckets. Rolling on every record keeps the peak honest without a timer. */
+  private roll(bytes: number) {
+    const now = Date.now();
+    if (now - this.bucketStart >= 1000) {
+      if (this.bucketBytes > this.peakBytesPerSec) this.peakBytesPerSec = this.bucketBytes;
+      this.bucketStart = now; this.bucketBytes = 0;
+    }
+    this.bucketBytes += bytes;
+    if (this.bucketBytes > this.peakBytesPerSec) this.peakBytesPerSec = this.bucketBytes;
+  }
+  recordSend(type: string, bytes?: number) {
+    this.sentMsgs++; this.row(type).sent++;
+    if (bytes === undefined) return;
+    this.bytesMeaningful = true;
+    this.sentBytes += bytes; this.row(type).sentBytes += bytes;
+    if (bytes > this.largestSentBytes) this.largestSentBytes = bytes;
+    this.roll(bytes);
+  }
+  recordRecv(type: string, bytes?: number) {
+    this.recvMsgs++; this.row(type).recv++;
+    if (bytes === undefined) return;
+    this.bytesMeaningful = true;
+    this.recvBytes += bytes; this.row(type).recvBytes += bytes;
+    if (bytes > this.largestRecvBytes) this.largestRecvBytes = bytes;
+    this.roll(bytes);
+  }
+  snapshot(): TransferStats {
+    return {
+      sentMsgs: this.sentMsgs, sentBytes: this.sentBytes, largestSentBytes: this.largestSentBytes,
+      recvMsgs: this.recvMsgs, recvBytes: this.recvBytes, largestRecvBytes: this.largestRecvBytes,
+      bytesMeaningful: this.bytesMeaningful, peakBytesPerSec: this.peakBytesPerSec,
+      startedAt: this.startedAt, byType: JSON.parse(JSON.stringify(this.byType))
+    };
+  }
+}
+
+/** One connected player window as the GM sees it. */
+export interface PeerLink {
+  id: string;
+  remote: boolean;
+  /** Last time anything was heard from this window. Local windows announce; remote ones are known. */
+  lastSeen: number;
+  stats: TransferStats;
+  /** What the PLAYER says it has seen, when it has told us — the other half of the same link. */
+  reported?: TransferStats;
+}
+
 const CHANNEL_NAME = 'star_system_generator_channel';
 
 class BroadcastService {
@@ -151,7 +252,25 @@ class BroadcastService {
   //     PeerJS never bloats the main bundle and only connects when sharing/viewing. All failures
   //     are non-fatal: if the broker is unreachable the local channel still works. ---
   private peer: any = null;
+  /** A local window is counted while it has spoken within this long. Three GM heartbeats. */
+  private static readonly PRESENCE_TTL_MS = 16_000;
   private peerConns: any[] = [];   // host: open guest connections
+  /** Everything this window has sent and received, whatever the transport. */
+  /**
+   * This window's own identity, for presence. Generated once and never persisted: two tabs are two
+   * windows and must count as two, and a reload IS a new window as far as "who is watching" goes.
+   * `Math.random` is safe here for the reason M5 gives — nothing replays a window id.
+   */
+  private readonly windowId = 'w-' + Math.random().toString(36).slice(2, 10);
+  private meter = new TransferMeter();
+  /** Bytes measured on the peer path, handed to the meter once the message type is known. */
+  private pendingRecvBytes = 0;
+  /** Set by sendIfChanged, which already has the serialised size; undefined for a raw send. */
+  private pendingSendBytes: number | undefined = undefined;
+  /** GM: one meter per remote guest, keyed by its peer id. Local windows appear via `presence`. */
+  private meterByPeer = new Map<string, TransferMeter>();
+  /** GM: player windows heard from recently, keyed by the id they announce. */
+  private presence = new Map<string, { at: number; remote: boolean; reported?: TransferStats }>();
   private peerOut: any = null;     // guest: connection to the host
   // WebRTC data channels drop/garble messages over ~16KB, so large payloads (the whole starmap)
   // must be chunked — small ones (branding, focus) go in one frame. This is the Mappadux gotcha.
@@ -331,6 +450,16 @@ class BroadcastService {
     const targets = this.peerTargets();
     if (targets.length === 0) return;
     const json = JSON.stringify(envelope);
+    // Per-link accounting, free: `json` is computed here anyway for the frame limit. Attributed to
+    // each target because "which player is this costing" is the question the GM actually has.
+    const type = envelope.message?.type ?? 'unknown';
+    for (const c of targets) {
+      const id = c?.peer;
+      if (!id) continue;
+      let m = this.meterByPeer.get(id);
+      if (!m) { m = new TransferMeter(); this.meterByPeer.set(id, m); }
+      m.recordSend(type, json.length);
+    }
     const safeSend = (c: any, payload: any) => { try { if (c.open) c.send(payload); } catch { /* drop */ } };
 
     if (json.length <= BroadcastService.CHUNK_BYTES) {
@@ -350,6 +479,9 @@ class BroadcastService {
   private handlePeerData(data: any) {
     if (data && data.__chunk) {
       const { id, i, n, data: part } = data.__chunk;
+      // FREE: the chunk carries its own string. This is the path every large payload takes, which is
+      // why inbound sizing costs nothing exactly where it matters most.
+      this.pendingRecvBytes += typeof part === 'string' ? part.length : 0;
       let entry = this.chunkBuf.get(id);
       if (!entry) { entry = { n, parts: new Array(n) }; this.chunkBuf.set(id, entry); }
       entry.parts[i] = part;
@@ -359,6 +491,8 @@ class BroadcastService {
       }
       return;
     }
+    // Not chunked, so under CHUNK_BYTES by construction — a stringify of at most 16 KB.
+    try { this.pendingRecvBytes += JSON.stringify(data).length; } catch { /* unmeasurable */ }
     this.handleMessage(data);
   }
 
@@ -505,6 +639,12 @@ class BroadcastService {
   }
 
   public sendMessage(msg: BroadcastMessage) {
+    // EVERY send is counted here, because this is the one door they all go through — the join burst
+    // and the player's own requests use it raw, and metering only the throttled path made a player
+    // window report that it had sent nothing at all.
+    const known = this.pendingSendBytes;
+    this.pendingSendBytes = undefined;
+    this.meter.recordSend(msg.type, known);
     const envelope: BroadcastEnvelope = {
         sessionId: this.sessionId, // Will be null for Receiver (which is fine for REQUEST_SYNC)
         message: msg
@@ -522,6 +662,72 @@ class BroadcastService {
    * the LAST send rather than a fresh measurement, because measuring costs a stringify of the very
    * payload whose stringify cost is the problem.
    */
+  /** How long a link has been counted, and whether this window is remote. */
+  private get amRemote(): boolean { return !!this.peerOut; }
+
+  /**
+   * Tell the GM this window is here, and what it has seen. Cheap: a few bytes, at most every 5 s.
+   *
+   * IT IDENTIFIES THE WINDOW, NOT THE SESSION, and that distinction is why the first cut announced
+   * nothing at all. On a receiver `this.sessionId` is null by design — it is the id of the session
+   * being LISTENED TO, and a player that opened a bare /catalogue link has none — so keying presence
+   * on it silently disabled the whole feature for exactly the case it exists to count. What the GM
+   * is counting is windows, so windows are what carry the id.
+   */
+  public announcePresence() {
+    if (this.isSender) return;
+    this.sendMessage({
+      type: 'PLAYER_PRESENT',
+      payload: { id: this.windowId, remote: this.amRemote, stats: this.meter.snapshot() }
+    });
+  }
+
+  /**
+   * HOW MANY PLAYER WINDOWS ARE WATCHING, split by transport — the count the GM wants at a glance.
+   *
+   * The two halves are known differently and neither can stand in for the other. A REMOTE window
+   * holds an open connection, so the GM can see it directly and immediately, even before it has said
+   * anything. A LOCAL window is just another tab on a shared channel with no connection to count, so
+   * it has to announce itself — which means a local window appears within one heartbeat rather than
+   * instantly, and disappears within `PRESENCE_TTL_MS` of going quiet rather than the moment it
+   * closes. Saying that plainly is better than a number that pretends to be exact.
+   */
+  public connectionCounts(): { local: number; remote: number } {
+    const now = Date.now();
+    let local = 0;
+    const remoteIds = new Set<string>(this.peerConns.map((c) => c?.peer).filter(Boolean));
+    for (const [id, p] of this.presence) {
+      if (now - p.at > BroadcastService.PRESENCE_TTL_MS) { this.presence.delete(id); continue; }
+      if (p.remote) remoteIds.add(id); else local++;
+    }
+    return { local, remote: remoteIds.size };
+  }
+
+  /** Everything this window has sent and received, whatever the transport. */
+  public transferStats(): TransferStats { return this.meter.snapshot(); }
+
+  /**
+   * GM view: one row per player window. Remote links carry real byte figures; local ones carry the
+   * message counts and say bytes do not apply, because on a shared channel there is no wire.
+   */
+  public peerLinks(): PeerLink[] {
+    const now = Date.now();
+    const out: PeerLink[] = [];
+    for (const c of this.peerConns) {
+      const id = c?.peer;
+      if (!id) continue;
+      const m = this.meterByPeer.get(id);
+      out.push({ id, remote: true, lastSeen: this.presence.get(id)?.at ?? now,
+        stats: (m ?? new TransferMeter()).snapshot(), reported: this.presence.get(id)?.reported });
+    }
+    for (const [id, p] of this.presence) {
+      if (p.remote || out.some((x) => x.id === id)) continue;
+      if (now - p.at > BroadcastService.PRESENCE_TTL_MS) continue;
+      out.push({ id, remote: false, lastSeen: p.at, stats: new TransferMeter().snapshot(), reported: p.reported });
+    }
+    return out.sort((a, b) => Number(b.remote) - Number(a.remote) || a.id.localeCompare(b.id));
+  }
+
   public approxBytesOf(type: BroadcastMessage['type']): number | undefined {
     return this.lastSentByType.get(type)?.length;
   }
@@ -601,6 +807,10 @@ class BroadcastService {
     this.lastSentAtByType.set(msg.type, now);
     perfCount(`bc.${msg.type}.sent`);
     perfCount(`bc.${msg.type}.bytes`, json.length);
+    // Hand the size to sendMessage rather than recording here: sendIfChanged CALLS sendMessage, so
+    // recording in both would count every throttled-path message twice. `json` is free either way —
+    // it was computed for the dedupe above.
+    this.pendingSendBytes = json.length;
     this.lastBytesByType.set(msg.type, json.length); // what the next call's floor is judged on
     this.sendMessage(msg);
   }
@@ -667,6 +877,17 @@ class BroadcastService {
       // Counting is free. SIZING IS NOT: stringifying a several-hundred-KB starmap on the receive
       // path is the very cost class this item chases, so it stays behind an explicit opt-in
       // (`__ssePerf.rxBytes = true`) rather than riding ?perf=1.
+      // Transfer meter, both directions and both roles. `pendingRecvBytes` is non-zero only when the
+      // message came over the PEER path, where the size was free; a local channel delivery leaves it
+      // at zero and the meter records a message with no byte figure, which is the truth.
+      const recvBytes = this.pendingRecvBytes || undefined;
+      this.pendingRecvBytes = 0;
+      this.meter.recordRecv(msg.type, recvBytes);
+      if (senderId && this.isSender) {
+          const m = this.meterByPeer.get(senderId);
+          if (m) m.recordRecv(msg.type, recvBytes);
+      }
+
       if (!this.isSender) {
           perfCount(`rx.${msg.type}`);
           let bytes: number | undefined;
@@ -716,6 +937,15 @@ class BroadcastService {
           case 'SYNC_INCOMING':
               if (!this.isSender && this.onIncoming) this.onIncoming(msg.payload);
               break;
+          case 'PLAYER_PRESENT':
+              // GM only. A local window has no connection object to count, so this is the only way
+              // it can be known to exist at all.
+              if (this.isSender && msg.payload?.id) {
+                  this.presence.set(msg.payload.id, {
+                      at: Date.now(), remote: !!msg.payload.remote, reported: msg.payload.stats
+                  });
+              }
+              break;
           case 'SYNC_TAGSTYLES':
               if (!this.isSender && this.onTagStylesUpdate) this.onTagStylesUpdate(msg.payload);
               break;
@@ -760,6 +990,10 @@ class BroadcastService {
               }
               break;
           case 'SYNC_HEARTBEAT':
+              // Answer once per heartbeat rather than on a timer of our own: the GM's cadence is
+              // already the liveness clock both sides use, so presence cannot drift out of step with
+              // it, and a GM that stops beating stops being told about players it can no longer see.
+              if (!this.isSender) this.announcePresence();
               if (!this.isSender && this.onHeartbeat) this.onHeartbeat(msg.payload);
               break;
       }

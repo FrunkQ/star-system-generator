@@ -2949,6 +2949,28 @@ not be revalidated. NOT REPRODUCED on the live surface: reaching the player cata
 broadcast session between two windows, so the guards are unit-tested (`starmap/revealResize.spec.ts`)
 and the live check is still owed.
 
+### NET-1 A LOCAL LINK HAS NO BYTES, AND PRESENCE IS THE ONLY WAY TO COUNT ONE
+WHERE: `broadcast.ts` (`TransferMeter`, `announcePresence`, `connectionCounts`, `peerLinks`);
+`transferReport.ts` (the one formatter); `playerConnections.ts` (the store the rail reads).
+RULE: measure bytes only where they are ALREADY being computed — `sendIfChanged` serialises for its
+dedupe, `sendPeer` for the frame limit, and a large inbound payload arrives in chunks that carry
+their own strings. Never stringify a payload to print a number about it: that is the cost this
+feature exists to expose. A same-machine BroadcastChannel hands over a structured clone, so it has
+NO bytes and must say so rather than report 0.
+WHY: a GM needs to tell over-transmission (many bytes) from slowness (few bytes, long wait), and a
+zero that means "not measured" reads identically to a zero that means "nothing sent".
+BLAST: three traps, each of which silently produced a plausible wrong answer.
+(1) **Presence is keyed on a WINDOW id, not `sessionId`.** On a receiver `sessionId` is the id being
+LISTENED TO, and a player opening a bare `/catalogue` link has none — so keying on it disabled the
+whole count for exactly the case it exists to serve, with no error anywhere.
+(2) **Meter at `sendMessage`, never at both it and `sendIfChanged`** — the latter CALLS the former,
+so recording in both double-counts every throttled message, and recording only in the latter makes a
+player window report that it has sent nothing (the join burst and every player request go out raw).
+(3) **A GM has no meter for a LOCAL window** — there is no connection object to attribute to — so
+its per-link figures come from what the player REPORTS about itself. That is the only source, not a
+fallback. Remote links are the other way round: known directly, and countable the instant they
+connect, whereas a local one appears within a heartbeat and drops after `PRESENCE_TTL_MS`.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s

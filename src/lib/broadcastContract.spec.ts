@@ -371,6 +371,104 @@ describe('A63 - SYNC_INCOMING announces a big payload before it lands', () => {
   });
 });
 
+describe('PLAYER_PRESENT — how the GM counts windows it has no connection to', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+    FakeChannel.byName.clear();
+    FakePeer.taken.clear();
+    (globalThis as any).window = globalThis;
+    (globalThis as any).BroadcastChannel = FakeChannel;
+    (globalThis as any).addEventListener ??= () => {};
+    (globalThis as any).performance ??= { now: () => Date.now() };
+  });
+
+  it('a LOCAL player window is counted only because it announces itself', async () => {
+    // A remote guest holds an open connection the GM can see. A local one is another tab on a shared
+    // channel with nothing to count, so presence is the ONLY route — which is why this is a message
+    // and not a lookup.
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    expect(host.connectionCounts()).toEqual({ local: 0, remote: 0 });
+    player.announcePresence();
+    await waitFor(() => host.connectionCounts().local === 1);
+    expect(host.connectionCounts()).toEqual({ local: 1, remote: 0 });
+  });
+
+  it('keys on the WINDOW, not the session — the bug that made this silently do nothing', async () => {
+    // On a receiver `sessionId` is the id being LISTENED TO, and a player opening a bare /catalogue
+    // link has none. Keying presence on it disabled the feature for exactly the case it counts.
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});          // no session id of its own
+    player.announcePresence();
+    await waitFor(() => host.peerLinks().length === 1);
+    expect(host.peerLinks()[0].id).toMatch(/^w-/);
+    expect(host.peerLinks()[0].remote).toBe(false);
+  });
+
+  it('carries the player’s own counts, which for a local link are the only ones that exist', async () => {
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    player.sendMessage({ type: 'REQUEST_STARMAP', payload: null } as any);
+    player.announcePresence();
+    await waitFor(() => host.peerLinks().length === 1);
+    expect(host.peerLinks()[0].reported?.sentMsgs).toBeGreaterThan(0);
+  });
+
+  it('a SENDER never counts itself', async () => {
+    const host = await makeService();
+    host.initSender('sid-a');
+    host.announcePresence();
+    await settle();
+    expect(host.connectionCounts()).toEqual({ local: 0, remote: 0 });
+  });
+});
+
+describe('the transfer meter counts every send, through the one door they all use', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+    FakeChannel.byName.clear();
+    FakePeer.taken.clear();
+    (globalThis as any).window = globalThis;
+    (globalThis as any).BroadcastChannel = FakeChannel;
+    (globalThis as any).addEventListener ??= () => {};
+    (globalThis as any).performance ??= { now: () => Date.now() };
+  });
+
+  it('a raw sendMessage is counted — metering only the throttled path reported nothing at all', async () => {
+    const player = await makeService();
+    player.initProbe(() => {});
+    const before = player.transferStats().sentMsgs;
+    player.sendMessage({ type: 'REQUEST_STARMAP', payload: null } as any);
+    expect(player.transferStats().sentMsgs).toBe(before + 1);
+  });
+
+  it('counts a message once, not twice, when it goes through the dedupe path', async () => {
+    // sendIfChanged CALLS sendMessage, so recording in both would double every throttled message.
+    const host = await makeService();
+    host.initSender('sid-a');
+    const before = host.transferStats().sentMsgs;
+    host.sendIfChanged({ type: 'SYNC_TIME', payload: { t: 1 } } as any);
+    expect(host.transferStats().sentMsgs).toBe(before + 1);
+  });
+
+  it('a local link reports messages but no bytes, because nothing was serialised', async () => {
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    host.sendMessage({ type: 'SYNC_BRANDING', payload: { name: 'x', logo: null } } as any);
+    await waitFor(() => player.transferStats().recvMsgs > 0);
+    expect(player.transferStats().bytesMeaningful).toBe(false);
+    expect(player.transferStats().recvBytes).toBe(0);
+  });
+});
+
 describe('A59 - SYNC_GM_LEVEL reaches a player window', () => {
   beforeEach(() => {
     // REAL TIMERS FIRST. The A57 describe above runs the retry ladder under vi.useFakeTimers(), and

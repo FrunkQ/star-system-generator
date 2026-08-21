@@ -13,6 +13,10 @@
   import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
+  import { browser } from '$app/environment';
+  import { APP_VERSION } from '$lib/constants';
+  import { broadcastService, type PeerLink } from '$lib/broadcast';
+  import { transferReportText, linkSummary } from '$lib/transferReport';
   import { loadStoredIce, saveStoredIce, parseIceText, iceToText } from '$lib/iceConfig';
   import { foreground } from '$lib/ui/foreground';
   // G16: the picture behind the stars. Campaign content, so it saves with the rest of this dialog.
@@ -158,6 +162,26 @@
   let epochYear = 1;
   let currentDisplayLabel = '';
   let epochFieldsDirty = false;
+
+  // Transfer figures. Polled while this panel is open only — nothing accumulates a cost when nobody
+  // is looking, and the meters themselves run regardless because they measure what was already
+  // being computed.
+  let transferLinks: PeerLink[] = [];
+  let transferCopied = false;
+  let transferTimer: ReturnType<typeof setInterval> | null = null;
+  $: if (showModal && browser && !transferTimer) {
+    const tick = () => { transferLinks = broadcastService.peerLinks(); };
+    tick();
+    transferTimer = setInterval(tick, 2000);
+  }
+  $: if (!showModal && transferTimer) { clearInterval(transferTimer); transferTimer = null; }
+  async function copyTransferReport() {
+    const text = transferReportText({
+      role: 'GM', own: broadcastService.transferStats(), links: broadcastService.peerLinks(), appVersion: APP_VERSION
+    });
+    try { await navigator.clipboard.writeText(text); transferCopied = true; setTimeout(() => (transferCopied = false), 2000); }
+    catch { /* clipboard refused — the panel still shows the figures */ }
+  }
   $: if (showModal) {
     const normalized = ensureTemporalState(starmap);
     normalizedTemporal = normalized.temporal!;
@@ -590,6 +614,38 @@
             {/if}
           </div>
 
+          <!-- Owner, 2026-08-21: the transfer figures sit next to "Reporting a problem" because that is
+               what they are FOR — telling over-transmission (a lot of bytes) from slowness (few bytes,
+               taking a long time), and pasting the answer to someone. -->
+          <h4 class="advanced-head">Player connections</h4>
+          <div class="form-group">
+            {#if transferLinks.length}
+              <p class="store-line">
+                <strong>{[
+                  transferLinks.filter((l) => !l.remote).length ? `${transferLinks.filter((l) => !l.remote).length} local` : '',
+                  transferLinks.filter((l) => l.remote).length ? `${transferLinks.filter((l) => l.remote).length} remote` : ''
+                ].filter(Boolean).join(', ')}</strong> player window(s) watching.
+              </p>
+              <ul class="conn-list">
+                {#each transferLinks as l (l.id)}
+                  <li><code>{l.id}</code> — {linkSummary(l)}</li>
+                {/each}
+              </ul>
+            {:else}
+              <p class="store-line">No player windows connected.</p>
+            {/if}
+            <p class="section-hint">A remote window is counted the moment it connects. A LOCAL one is another tab
+              on this machine with no connection to count, so it announces itself instead — it appears within a
+              few seconds of opening and drops off a few seconds after closing. Bytes are only shown for remote
+              links: a local one hands the data straight over without serialising it, so there is no transfer to
+              measure and nothing to blame.</p>
+            <button class="section-btn" on:click={copyTransferReport}>
+              {transferCopied ? 'Copied' : 'Copy the transfer report'}
+            </button>
+            <p class="section-hint">Plain text: totals both ways, the largest single message, peak and average
+              speed, and which message types are costing the most.</p>
+          </div>
+
           <h4 class="advanced-head">Reporting a problem</h4>
           <div class="form-group">
             <p class="section-hint">Saves a file describing what the app is doing right now — how much memory it is
@@ -670,6 +726,9 @@
 {/if}
 
 <style>
+  .conn-list { margin: 4px 0 6px; padding-left: 18px; font-size: 0.78rem; line-height: 1.5; }
+  .conn-list code { font-family: ui-monospace, Consolas, monospace; opacity: 0.8; }
+
   /* G34: the "make your own skin" affordance under the skin picker. */
   .link-ish {
     background: none; border: none; padding: 2px 0; cursor: pointer;

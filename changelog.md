@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.22 - 21st Aug 2026
+
+- **NEW: you can see who is watching, and what it is costing.** A small counter appears on the Player Views icon the moment somebody joins - green for windows on this machine, orange for ones connecting from elsewhere, and nothing at all when nobody is there. Hovering gives a line per window. Settings > System lists them with the data each has moved, and copies the whole thing as text you can paste to someone. On the player's own screen, clicking the LIVE lamp shows the same figures for their connection and clicking again copies them. It is honest about one thing that matters: a player window on the same machine transfers nothing at all - the data is handed straight over - so it reports messages and says plainly that there are no bytes to blame.
+
 ## v3.0.0-rc.21 - 21st Aug 2026
 
 - The holding screen a joining player sees is now the interstitial itself, with the GM's own words on it. While a large map is on its way it reads "Incoming Transmission…" - the wording is rule-pack data, so a GM can put it in character - with a spinner and a plain line underneath saying what is coming ("27 systems, ~5.0 MB"). It only appears when there is genuinely something to wait for: if the map arrives quickly, or from cache, there is no holding screen and no second transition at all, exactly as before. Measured on a local join, the map lands one millisecond after the announcement, which is why nothing showed - there was nothing to wait for.

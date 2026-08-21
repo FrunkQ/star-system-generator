@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
+  import { playerConnections } from '$lib/playerConnections';
   import { browser } from '$app/environment';
   import { pushState, replaceState, beforeNavigate } from '$app/navigation';
   import { page } from '$app/stores';
@@ -2186,6 +2187,8 @@
         activeView="system"
         rulerOn={rulerActive}
         {routesAttention}
+        playerConns={{ local: $playerConnections.local, remote: $playerConnections.remote }}
+        playerConnSummary={$playerConnections.summary}
         on:starmap={() => { railOpen = false; dispatch('back', { force: true }); }}
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
