@@ -144,7 +144,14 @@ describe('viewer framing measures the hull only', () => {
     expect(setObj).toContain('frameRadius =');
   });
 
-  it('keeps the plumes on the orientation fix, so a re-aligned hull keeps its flame', () => {
-    expect(src).toContain('orientGroup.add(plumes)');
+  it('keeps the plumes in SPIN space, so a re-aligned hull fires the right way (C18)', () => {
+    // THIS ASSERTION USED TO SAY `orientGroup.add(plumes)` AND IT WAS ASSERTING THE SUPERSEDED
+    // STRUCTURE. C18 deliberately moved the plumes out of the orient fix and into spin space, with
+    // the reason written above `spinGroup.add(plumes)` in modelViewer.ts: parenting them under the
+    // orient fix rotated the plume DIRECTION with the hull, so a model needing a facing fix fired
+    // its exhaust along its OLD axis — straight up, in the report. The test's PURPOSE is unchanged
+    // (a re-aligned hull must keep its flame, correctly aimed); only the structure it names moved.
+    expect(src).toContain('spinGroup.add(plumes)');
+    expect(src).not.toContain('orientGroup.add(plumes)');
   });
 });
