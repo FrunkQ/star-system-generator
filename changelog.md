@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.6 - 21st Aug 2026
+
+- GettingStarted.md rewritten top to bottom against this build, with eleven screenshots taken from the running app. It now walks the app as it is: the start screen, the real-sky import (every star in the region, not only planet hosts - and filling out is a separate choice), your own map behind the stars, the four interface skins, the system view's zones and display options, the five ways to look at a world, clickable units, the generation wizard's realism bands, undo and redo, player views and the relay, and what to do when something goes wrong. Four things it used to say were wrong: Toytown compresses spacing rather than body size, the autopilot section still routed on the retired PoI/CoI tags, saves were described as JSON only, and 'nothing leaves your machine' did not account for the anonymous daily visit count, the SIMBAD star-name lookup or the Traveller import - all three now stated plainly.
+
 ## v3.0.0-rc.5 - 21st Aug 2026
 
 - Housekeeping: the changelog's own order is fixed. Six release blocks sat above a higher version number - one of them since early August - which is how a scripted insert once anchored on a version heading, matched nothing, reported success and shipped a release with no note. Nothing else changed; the entries are the same words in the right places.
