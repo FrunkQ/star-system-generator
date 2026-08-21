@@ -29,7 +29,7 @@
   import { APP_VERSION } from '$lib/constants';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
   import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
-  import { syncUnitPrefsFromStarmap } from '$lib/unitPrefsStore';
+  import { syncUnitPrefsFromStarmap, unitPrefs } from '$lib/unitPrefsStore';
   import { migrateUnitPrefs } from '$lib/units';
   import { attachStarmapUndo } from '$lib/undo/starmapUndo';
   import { setUndoPersist } from '$lib/undo/campaignHistory';
@@ -106,7 +106,7 @@
     sessionStorage.setItem('reportData', JSON.stringify({
       system: sys, mode: event.detail.mode, theme: event.detail.theme,
       includeConstructs: event.detail.includeConstructs,
-      units: get(measurementUnit), tempUnit: get(temperatureUnit)
+      unitPrefs: get(unitPrefs)
     }));
     window.open('/report', '_blank');
   }

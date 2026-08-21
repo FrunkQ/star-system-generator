@@ -32,7 +32,8 @@
   import type { TransitPlan } from '$lib/transit/types';
   import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast } from '$lib/transit/scheduler';
 
-  import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
+  import { systemStore, viewportStore } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
   import { starmapStore } from '$lib/starmapStore';
   import { interstellarConstructIds, adriftFromSystemExit } from '$lib/transit/interstellar';
   import { rootStarHillAu } from '$lib/physics/twoBodyCoast';
@@ -972,8 +973,7 @@
           mode: event.detail.mode,
           theme: event.detail.theme,
           includeConstructs: event.detail.includeConstructs,
-          units: get(measurementUnit),  // carry the GM's km/miles choice into the (separate-route) report
-          tempUnit: get(temperatureUnit) // and the °C/°F/K choice
+          unitPrefs: get(unitPrefs) // carry the campaign's unit choices into the (separate-route) report
       };
       sessionStorage.setItem('reportData', JSON.stringify(reportData));
       window.open('/report', '_blank');
