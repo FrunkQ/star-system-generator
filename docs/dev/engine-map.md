@@ -2767,6 +2767,26 @@ BLAST: `minScore` went with it — nothing reads it. If you ever need a fingerpr
 classify richly, the answer is to GENERATE fingerprints, not to restore scoring: the two engines
 disagreed on essentially every body and there was no test that could have told you which was right.
 
+### GEN-6 ONE STAR-HIERARCHY PLANNER, AND THE TRAVELLER PATH WIDENS IT RATHER THAN REPLACING IT
+WHERE: `generation/generateFromConfig.ts` `planStarHierarchy` (the plan) + `buildStarHierarchy` (the
+walk, exported for this); `traveller/importer.ts` calls both with its own star factory.
+RULE: never lay stars out by hand. Plan, then walk. The two callers differ ONLY in how a plan LEAF
+becomes a body - the generator evolves a `StarSeed`, the importer resolves Traveller's stated class
+("F7 V") through the shared resolver - and that difference is the `makeStar` factory argument.
+**LOOK A LEAF UP BY `seed.id`, NEVER BY `leaf.index`:** the planner SORTS seeds by mass before
+numbering them, so an index is a mass RANK and matches an input listing only by luck.
+WHY: the importer had its own layout - one barycentre for the first pair, further stars appended
+round that same centre at `1000 * 1.5^k` AU with `e` 0.1-0.6 and **`i_deg` uniform on 0-180**. On the
+owner's Caladbolg that put B and C round one centre at 1,024 and 1,342 AU with e ~0.5-0.6 (crossing
+orbits, not a hierarchy) at 96.8 and 79 degrees, period ~33,000 years (inbox D27).
+BLAST: the planner's default pair is TIGHT (`closeSepAU` ~1.4 AU at 1.7 solar) because the generator
+puts its own planets CIRCUMBINARY. Traveller cannot: its UWP mandates a Main World in the primary's
+habitable zone, so a tight pair is a WORSE answer than the crossing orbits it replaced - Caladbolg's
+Main World at 2.23 AU inside a 1.34 AU pair. The importer therefore scales every separation by ONE
+factor until the primary's S-type bound (`S_TYPE_FRAC * sep`) clears the Main World. One factor is
+what keeps it honest: all level ratios, and so the ~7x margin, survive untouched. If you add a third
+caller with planets on a star rather than on a barycentre, it needs the same step.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s

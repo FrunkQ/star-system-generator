@@ -172,13 +172,13 @@ function starSeedToBody(seed: StarSeed, pack: RulePack, id: string, parentId: st
 }
 
 // A leaf star that can host its own little (S-type) system, bounded by its tightest pairing.
-interface StarHost { star: CelestialBody; outerAU: number; }
+export interface StarHost { star: CelestialBody; outerAU: number; }
 // A barycentre that can host circumbinary (P-type) planets in a stable annulus.
-interface BaryHost { bary: Barycenter; innerAU: number; outerAU: number; }
+export interface BaryHost { bary: Barycenter; innerAU: number; outerAU: number; }
 
 const SOLAR = 1.989e30;
 const HIER_STEP = 7;       // each level's separation ≥ ~7× the one below → hierarchical stability
-const S_TYPE_FRAC = 0.37;  // a star's planets are stable out to ~0.37× the distance to its companion
+export const S_TYPE_FRAC = 0.37;  // a star's planets are stable out to ~0.37× the distance to its companion
 const P_TYPE_FRAC = 2.3;   // circumbinary planets are stable beyond ~2.3× the pair separation
 
 // A tight-pair base separation (AU), scaled by combined mass; multiplied by HIER_STEP^level above.
@@ -260,36 +260,67 @@ function setupStarsFromSeeds(seeds: StarSeed[], pack: RulePack, ageGyr: number |
   }
 
   const plan = planStarHierarchy(seeds)!;
+  const built = buildStarHierarchy(plan, baseName, (node, parentId) =>
+    starSeedToBody(evolve(node.seed), pack, `${baseName}-star-${node.index}`, parentId, ageGyr));
+  nodes.push(...built.nodes);
+  return { nodes, systemRoot: built.systemRoot, systemName: baseName, isBinary: true, hierarchical: true,
+    starA: built.starHosts[0].star, starB: built.starHosts[1]?.star,
+    starHosts: built.starHosts, baryHosts: built.baryHosts };
+}
+
+/**
+ * Walk a PLANNED hierarchy into real bodies and nested barycentres — the half of star setup that has
+ * nothing to do with where the stars came from.
+ *
+ * Split out because the Traveller importer needs exactly this and was doing it itself (inbox D27):
+ * one barycentre for the first pair with its own separation law, further stars appended around that
+ * same centre at 1000 x 1.5^k AU with e 0.1-0.6 and **i_deg drawn uniformly from 0 to 180**. On the
+ * owner's Caladbolg that produced B and C orbiting one centre at 1,024 and 1,342 AU with e ~0.5-0.6 —
+ * crossing orbits, not a hierarchy — and inclinations of 96.8 and 79 degrees, near-polar to the
+ * planets and a ~33,000-year period, which reads as "the stars hang in space".
+ *
+ * The two callers differ ONLY in how a leaf becomes a star body: the generator evolves a StarSeed,
+ * the importer resolves Traveller's stated class ("F7 V") through the shared class resolver. That is
+ * the `makeStar` factory, and it is the whole of the difference.
+ */
+export function buildStarHierarchy(
+  plan: StarPlanNode,
+  baseName: string,
+  makeStar: (leaf: { seed: StarSeed; index: number }, parentId: string | null) => CelestialBody
+): { nodes: (CelestialBody | Barycenter)[]; systemRoot: CelestialBody | Barycenter; starHosts: StarHost[]; baryHosts: BaryHost[] } {
+  const nodes: (CelestialBody | Barycenter)[] = [];
+  const LETTERS = 'ABCDEFGHIJKLMNOP';
+  const massOf = (n: CelestialBody | Barycenter) => n.kind === 'barycenter' ? (n.effectiveMassKg || 0) : ((n as CelestialBody).massKg || 0);
   const starHosts: StarHost[] = [];
   const baryHosts: BaryHost[] = [];
   let baryN = 0;
 
-  // Build a plan node; parentSepAU is the separation of the pair this node sits inside (∞ at the root),
-  // which sets the node's OUTER stability bound (~0.37× the parent separation).
+  // parentSepAU is the separation of the pair this node sits inside (∞ at the root), which sets the
+  // node's OUTER stability bound (~0.37× the parent separation).
   const build = (node: StarPlanNode, parentIdForStar: string | null, parentSepAU: number): CelestialBody | Barycenter => {
     if (node.kind === 'star') {
-      const body = starSeedToBody(evolve(node.seed), pack, `${baseName}-star-${node.index}`, parentIdForStar, ageGyr);
+      const body = makeStar({ seed: node.seed, index: node.index }, parentIdForStar);
       body.name = `${baseName} ${LETTERS[node.index] ?? node.index + 1}`;
       nodes.push(body);
       starHosts.push({ star: body, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });
       return body;
     }
-    const baryId = `${baseName}-bary-${baryN++}`;
+    const baryN_own = baryN++;                 // read BEFORE recursing: the children increment it too,
+    const baryId = `${baseName}-bary-${baryN_own}`;   // and two barycentres both came out "Barycentre 2"
     const childA = build(node.a, baryId, node.sepAU);
     const childB = build(node.b, baryId, node.sepAU);
     const mA = massOf(childA), mB = massOf(childB), total = mA + mB;
     orbitAround(childA, baryId, total, node.sepAU * (mB / total), 0);
     orbitAround(childB, baryId, total, node.sepAU * (mA / total), Math.PI);
-    const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre ${baryN}`,
+    const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre ${baryN_own + 1}`,
       kind: 'barycenter', memberIds: [childA.id, childB.id], effectiveMassKg: total, tags: [] };
     nodes.push(bary);
     baryHosts.push({ bary, innerAU: P_TYPE_FRAC * node.sepAU, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });
     return bary;
   };
 
-  const root = build(plan, null, Infinity);
-  return { nodes, systemRoot: root, systemName: baseName, isBinary: true, hierarchical: true,
-    starA: starHosts[0].star, starB: starHosts[1]?.star, starHosts, baryHosts };
+  const systemRoot = build(plan, null, Infinity);
+  return { nodes, systemRoot, starHosts, baryHosts };
 }
 
 // Honour star TYPE for planet richness: massive O/B/A stars blow their disks away (few worlds),

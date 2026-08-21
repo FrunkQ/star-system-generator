@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.892-beta - 21st Aug 2026
+
+- A Traveller system with more than one star now has a real hierarchy. The stars used to be laid out by the importer's own code: companions flung out to a thousand AU and beyond, on crossing, half-eccentric orbits tilted almost at right angles to the planets, taking thirty thousand years to go round - which is why they looked like they were just hanging there. They now go through the same planner the generator uses, nested and in the plane, and the whole structure is pushed out far enough that the Main World still has room around its own star.
+
 ## v2.1.891-beta - 21st Aug 2026
 
 - Docs only. Units-everywhere plus interface skins is promoted into V3 and its brief is written: click a unit to cycle it, remembered per body type, players inherit; skins ride the same sweep as shared components and tokens.

@@ -5,9 +5,11 @@ import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
 import { SeededRNG } from './rng';
 import { bodyFactory } from '$lib/core/BodyFactory';
 import { _generateStar } from '$lib/generation/star';
+import { planStarHierarchy, buildStarHierarchy, S_TYPE_FRAC } from '$lib/generation/generateFromConfig';
+import type { StarSeed } from '$lib/physics/stellar-evolution';
 import { _generatePlanetaryBody } from '$lib/generation/planet';
 import { SystemProcessor } from '$lib/core/SystemProcessor';
-import { G, AU_KM, EARTH_MASS_KG } from '$lib/constants';
+import { G, AU_KM, EARTH_MASS_KG, SOLAR_MASS_KG } from '$lib/constants';
 import { calculateOrbitalBoundaries, type PlanetData } from '$lib/physics/orbits';
 import type { System, StarSystemNode, RulePack, CelestialBody, Barycenter, Orbit, TableSpec } from '$lib/types';
 import { generateId, weightedChoice, randomFromRange, toRoman } from '$lib/utils';
@@ -159,109 +161,74 @@ export class TravellerImporter {
             i += (stated === token) ? 1 : 2;
         }
 
+        // --- STAR HIERARCHY: the GENERATOR'S planner, not a second one (inbox D27) ---
+        //
+        // Traveller gives only a star LIST ("F7 V M0 V M4 V") — this sector format carries no
+        // companion orbits — so the hierarchy is ours to build, and it must be the SAME hierarchy the
+        // wizard builds. This used to lay the stars out here: one barycentre for the first pair with
+        // its own separation law, then further stars appended around that same centre at
+        // 1000 x 1.5^k AU with e 0.1-0.6 and **i_deg drawn uniformly from 0 to 180**. On the owner's
+        // Caladbolg (F7 V + M0 V + M4 V) that gave B and C orbiting one centre at 1,024 and 1,342 AU
+        // with e ~0.5-0.6 — crossing orbits rather than a hierarchy — at 96.8 and 79 degrees to the
+        // planets, with ~33,000-year periods, which is why the owner read them as stationary.
+        //
+        // planStarHierarchy pairs by mass, nests bottom-up with each level ~7x the one below
+        // (hierarchical stability), and buildStarHierarchy gives every orbit e = 0 and i = 0 — in the
+        // plane, as the planets are. The Main World still goes on the PRIMARY, exactly as before.
+        //
+        // The stars themselves are still built by _generateStar from Traveller's stated class through
+        // the shared resolver, which is the whole reason this calls the planner with its own factory
+        // rather than calling setupStarsFromSeeds: the generator evolves a seed, we honour a class.
+        const starBodies = starEntries.map((classKey, idx) => {
+            const star = _generateStar(generateId(), null, rulePack, this.rng, classKey);
+            star.name = `${data.name} ${String.fromCharCode(65 + idx)}`;
+            return star;
+        });
+
         const nodes: (CelestialBody | Barycenter)[] = [];
         let systemRootId: string;
         let primaryStar: CelestialBody;
+        let primaryOuterAU = Infinity;      // how far out the primary can hold a planet
 
-        const isCloseBinary = (data.tradeCodes.includes('Close Binary') || (data.raw && data.raw.includes('Close Binary'))) && starEntries.length >= 2;
-
-        let nextStarIndex = 0;
-
-        if (isCloseBinary) {
-            // P-Type Root
-            const barycenter: Barycenter = {
-                id: generateId(),
-                parentId: null,
-                name: `${data.name} Barycentre`,
-                kind: "barycenter",
-                memberIds: [],
-                tags: []
-            };
-            systemRootId = barycenter.id;
-
-            const starA = _generateStar(generateId(), barycenter.id, rulePack, this.rng, starEntries[0]);
-            starA.name = `${data.name} A`;
-            const starB = _generateStar(generateId(), barycenter.id, rulePack, this.rng, starEntries[1]);
-            starB.name = `${data.name} B`;
-
-            barycenter.memberIds = [starA.id, starB.id];
-            const totalMassKg = (starA.massKg || 0) + (starB.massKg || 0);
-            barycenter.effectiveMassKg = totalMassKg;
-
-            const totalSeparationAU = randomFromRange(this.rng as any, 0.1, 5.0);
-            const m1 = starA.massKg || 0;
-            const m2 = starB.massKg || 0;
-            const hostMu = G * totalMassKg;
-            const n_rad_per_s = Math.sqrt(hostMu / Math.pow(totalSeparationAU * AU_KM * 1000, 3));
-
-            starA.orbit = { hostId: barycenter.id, hostMu, t0: Date.now(), n_rad_per_s, elements: { a_AU: totalSeparationAU * (m2 / (totalMassKg || 1)), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } };
-            starB.orbit = { hostId: barycenter.id, hostMu, t0: Date.now(), n_rad_per_s, elements: { a_AU: totalSeparationAU * (m1 / (totalMassKg || 1)), e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: Math.PI } };
-
-            nodes.push(barycenter, starA, starB);
-            primaryStar = starA;
-            nextStarIndex = 2;
-        } else {
-            // Single Star Root
-            primaryStar = _generateStar(generateId(), null, rulePack, this.rng, starEntries[0]);
-            primaryStar.name = starEntries.length > 1 ? `${data.name} A` : `Star ${data.name}`;
+        if (starBodies.length === 1) {
+            primaryStar = starBodies[0];
+            primaryStar.name = `Star ${data.name}`;
+            primaryStar.parentId = null;
             systemRootId = primaryStar.id;
             nodes.push(primaryStar);
-            nextStarIndex = 1;
-        }
+        } else {
+            // Seeds carry only what the planner reads — mass for pairing and ordering, temperature
+            // for its deterministic seed. The BODIES are the ones above; the factory hands each leaf
+            // back by index, so no star is built twice.
+            const seeds = starBodies.map((b, idx) => ({
+                id: b.id,
+                massKg: b.massKg ?? SOLAR_MASS_KG,
+                temperatureK: b.temperatureK ?? 5778,
+                luminositySolar: b.radiationOutput ?? 1,
+                radiusKm: b.radiusKm ?? 0,
+                spectralClass: b.classes?.[0] ?? 'star/G2V',
+                category: 'star', luminosityClass: 'V', isRemnant: false,
+                pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }
+            })) as unknown as StarSeed[];
 
-        // Handle Companions (C, D, E...)
-        // Track the previous star for potential hierarchy chaining
-        let previousStar: CelestialBody | null = null;
-        if (isCloseBinary) previousStar = nodes[2] as CelestialBody; // Star B
-        else previousStar = primaryStar;
-
-        for (let i = nextStarIndex; i < starEntries.length; i++) {
-            const letter = String.fromCharCode(65 + i); // C, D, E...
-            
-            // Hierarchy Logic:
-            // If we have at least 3 stars (e.g. A, B, C), and we are adding D (index 3),
-            // give it a chance to orbit C instead of the Root.
-            // "Pairs of Pairs" logic.
-            
-            let parentId = systemRootId;
-            let parentMass = 0;
-            let distAU = 0;
-            let isNested = false;
-
-            // 30% chance to nest if i >= 3 (Star D+)
-            if (i >= 3 && previousStar && this.rng.nextFloat() < 0.3) {
-                isNested = true;
-                parentId = previousStar.id;
-                parentMass = previousStar.massKg || 0;
-                // Close-ish orbit for nested binary (e.g., 20 - 100 AU)
-                distAU = randomFromRange(this.rng as any, 20, 100);
-            } else {
-                // Orbit System Root (Far Companion)
-                // Use index to push them further out: 1000, 2000, 4000...
-                const rootNode = nodes.find(n => n.id === systemRootId);
-                parentMass = (rootNode?.kind === 'barycenter' ? (rootNode as Barycenter).effectiveMassKg : (rootNode as CelestialBody).massKg) || 0;
-                distAU = 1000 * Math.pow(1.5, i - nextStarIndex) * randomFromRange(this.rng as any, 0.8, 1.2);
-            }
-
-            const newStar = _generateStar(generateId(), parentId, rulePack, this.rng, starEntries[i]);
-            newStar.name = `${data.name} ${letter}`;
-            
-            newStar.orbit = {
-                hostId: parentId,
-                hostMu: G * parentMass,
-                t0: Date.now(),
-                elements: { 
-                    a_AU: distAU, 
-                    e: randomFromRange(this.rng as any, 0.1, 0.6), 
-                    i_deg: randomFromRange(this.rng as any, 0, 180), 
-                    omega_deg: 0, 
-                    Omega_deg: 0, 
-                    M0_rad: this.rng.next() * Math.PI * 2 
-                }
-            };
-
-            nodes.push(newStar);
-            previousStar = newStar;
+            const plan = planStarHierarchy(seeds)!;
+            // Look the body up by SEED ID, never by leaf.index: the planner SORTS seeds by mass
+            // before numbering them, so a plan index is a mass rank and matches Traveller's listing
+            // order only by luck. Caladbolg happens to be listed heaviest-first; "M4 V G2 V" is not.
+            const byId = new Map(starBodies.map((b) => [b.id, b]));
+            const built = buildStarHierarchy(plan, data.name, (leaf, parentId) => {
+                const body = byId.get(leaf.seed.id)!;
+                body.parentId = parentId;
+                return body;
+            });
+            // ...and for the same reason, restore Traveller's own lettering afterwards. The planner
+            // names by mass rank; Traveller's A is the star it LISTS first, which is the star its
+            // UWP describes and the one the Main World belongs to.
+            starBodies.forEach((b, idx) => { b.name = `${data.name} ${String.fromCharCode(65 + idx)}`; });
+            nodes.push(...built.nodes);
+            systemRootId = built.systemRoot.id;
+            primaryStar = starBodies[0];
+            primaryOuterAU = built.starHosts.find((h) => h.star.id === primaryStar.id)?.outerAU ?? Infinity;
         }
 
         primaryStar.description = description; 
@@ -293,6 +260,32 @@ export class TravellerImporter {
         else orbitAU = 0.4 + (0.3 * Math.pow(2, orbitIndex - 2));
         
         orbitAU *= (1.0 + this.rng.range(-0.1, 0.1));
+
+        // THE COMPANIONS MOVE, NOT THE MAIN WORLD (inbox D27).
+        //
+        // Traveller's data is the authority twice over here: the UWP puts a Main World in the
+        // primary's habitable zone, and the star list says there are companions. Both are given, so
+        // the only free variable left is how far apart the stars are — and the planner's default is a
+        // TIGHT pair, because the generator's own multi-star systems put their planets circumbinary.
+        // On Caladbolg that paired F7 V and M0 V at 1.34 AU with the Main World at 2.23 AU round the
+        // primary: dynamically impossible, and a worse answer than the crossing orbits this replaced.
+        //
+        // Scaling every separation by ONE factor keeps the hierarchy exactly as planned — all the
+        // level ratios, and so the ~7x stability margin, are preserved — and simply moves the whole
+        // companion structure outward until the primary has room. Alpha Centauri is the anchor for
+        // this being the realistic shape rather than a fudge: A and B sit 23 AU apart precisely
+        // because each carries its own space.
+        if (Number.isFinite(primaryOuterAU) && primaryOuterAU < orbitAU) {
+            // The Main World needs a_AU <= S_TYPE_FRAC x separation, so the separation containing the
+            // primary must grow by at least this much. A little headroom so the outermost infilled
+            // planet is not sitting exactly on the boundary.
+            const widen = (orbitAU / primaryOuterAU) * 1.6;
+            for (const n of nodes) {
+                const el = (n as any).orbit?.elements;
+                if (el && typeof el.a_AU === 'number') el.a_AU *= widen;
+            }
+            primaryOuterAU *= widen;
+        }
 
         const mainOrbit: Orbit = {
             hostId: systemRootId,
