@@ -387,7 +387,7 @@ _(new observations go here — rough is fine)_
 | (closed) | **The `physics-baseline` fixtures are committed STALE - `tests/fixtures/solar-system-input.json` and `tests/output/solar-system-derived.json` both differ from what the code at `beta` generates.** Noticed by the [[C9]] session, which needed a clean before/after diff and so regenerated both at HEAD before touching anything. They came out different from the committed copies, and identical again after the change - so the drift is somebody else's uncommitted churn, not C9's. Harmless in itself (the standing rule says expect churn, last runner wins) and left alone on purpose: committing them would have been committing another session's work. **But it is worth knowing that the committed baseline is not the current one**, because anyone diffing it against a fresh run will see noise and attribute it to themselves. A worktree per session removes the cause - each tree regenerates its own. |
 | (closed) | **`scripts/starmap-build/buildKit.spec.mjs` fails on BOTH bundled maps — the kit no longer reproduces what ships.** Observed 2026-08-05 by the tagging stream, which did not cause it and does not own it. Both cases fail identically ("reproduces Local_Neighbourhood-Starmap.json", and the SciFi map). **Cause looks like `9815daf` — "Bundled models are referenced, not copied … ISS pre-modelled in the shipped maps".** The shipped maps gained `model` blocks on constructs; the kit that generates those maps knows nothing about model refs, so its output and the shipped file have diverged. **That test is the whole guarantee that the bundled maps are REPRODUCIBLE rather than hand-maintained**, so a red one is not cosmetic: it is the difference between data that can be rebuilt and data that can only be edited. Two honest ways out and it is the kit owner's call — teach the kit to emit model refs, or narrow the test's contract to "reproduces everything except authored model attachments" and say so in the spec. **Do not delete the assertion to get green.** The same change also flows into `tests/output/solar-system-derived.json` as an eight-line `model` block on the ISS construct; that half is harmless and has been regenerated and committed (v2.1.441) so the baseline stops reading as dirty for every session — the entry above about stale fixtures should now be clear for those two files. |
 | (closed) | **THE SUITE HAS GONE RED AGAIN, ONE DAY AFTER IT WENT GREEN [[E3]] — and this one is a REAL regression, bisected, with a commit.** `scripts/starmap-build/buildKit.spec.mjs` fails 2 of 3: "the two parse to the same values but the FILES differ — key order or indentation has drifted". So the CONTENT is right and the serialisation is not, which means the shipped starmap JSON was edited directly rather than through the kit's generator. **Bisected over the 43 commits that landed on 2026-08-04/05: clean at `ff76e34`, broken at `9815daf`** ("Bundled models are referenced, not copied: ModelRef.url + one shared resolver; ISS pre-modelled in the shipped maps"). **This is exactly what [[D4d]] decided must not happen and what the new `DATA-R1` engine-map entry now forbids in as many words** — "a correction to a bundled map belongs in the KIT, never in the JSON" — written by the importer stream on the same day, which suggests the two streams passed each other. The ISS ModelRef needs to move into `scripts/starmap-build/`'s generator so a rebuild reproduces it. **NOT FIXED HERE ON PURPOSE:** `scripts/starmap-build/**` is the real-sky importer session's territory and was explicitly off limits to this one. **Worth saying plainly: this is E3 paying for itself inside a day.** For four months a real regression here would have sat among four permanent `page.spec.ts` failures and nobody would have separated them; it was visible within minutes because `vitest run` had started meaning something.
-| E6 | **`changelog.md` is out of ORDER at its head, and it silently ate a release note before anyone noticed.** As of v2.1.444-beta the file runs `v2.1.430-beta` ABOVE `v2.1.440-beta`, and there is no 442 entry at all. Found because a scripted insert anchored on the 442 heading, matched nothing, and wrote nothing — `str.replace` does not fail on a miss, so the script reported success and the commit went out with a version bump and no changelog line. Caught by reading `git show --stat` instead of trusting the script, which is the standing rule about checking what you actually committed, generalised from the `CHANGELOG.md`-vs-`changelog.md` case that cost four commits on 2026-07-31. **Two things worth doing:** re-sort the head of the file (someone inserted an entry above a higher version), and stop anchoring changelog inserts on a version heading — insert after the "All notable changes are listed here:" line, which is the one stable landmark. Left unsorted here rather than reorganising another session's entries. | **measured 2026-08-17: SEVEN inversions across the file now (headings near lines 705, 1073, 1077, 1300, 2169, 2464, 4224 at v2.1.739), not one — no longer a one-liner, and moving blocks in the file every session appends to invites conflicts. Do at the FINAL DOC PASS. The insert-after-the-preamble rule is adopted** |
+| E6 | **`changelog.md` is out of ORDER at its head, and it silently ate a release note before anyone noticed.** As of v2.1.444-beta the file runs `v2.1.430-beta` ABOVE `v2.1.440-beta`, and there is no 442 entry at all. Found because a scripted insert anchored on the 442 heading, matched nothing, and wrote nothing — `str.replace` does not fail on a miss, so the script reported success and the commit went out with a version bump and no changelog line. Caught by reading `git show --stat` instead of trusting the script, which is the standing rule about checking what you actually committed, generalised from the `CHANGELOG.md`-vs-`changelog.md` case that cost four commits on 2026-07-31. **Two things worth doing:** re-sort the head of the file (someone inserted an entry above a higher version), and stop anchoring changelog inserts on a version heading — insert after the "All notable changes are listed here:" line, which is the one stable landmark. Left unsorted here rather than reorganising another session's entries. | **DONE v3.0.0-rc.5, 2026-08-21 (docs pass).** Re-measured first: SIX displaced blocks, not seven - the seventh was a duplicate version number rather than an inversion (see the row in the capture section). All six moved in ONE commit touching nothing else, asserted line-for-line against the original content so the diff is provably a permutation. `python` detector is in that commit message. The insert-after-the-preamble rule was already adopted and every push this session used it. |
 | (closed) | **`docs/dev/engine-map.md` REQUIRES contributors to allocate ids, and the coordination rules forbid exactly that — the two documents disagree.** The inbox rule is "do not allocate item numbers; the coordinator numbers them", written after three collisions. The engine map's entry format is `### <ID> <claim>` and its instruction is "owners, add your domain here", so a contributor has no choice but to pick the next free number in their own section. This session took `PHY-5`/`PHY-6` and `UI-E1`/`UI-E2` on 2026-08-04 with nothing to stop another physics session taking `PHY-5` the same hour. **The per-topic letter convention already in the file is the answer and should be made the rule:** the ship-appearance stream used `RENDER-S*`, `DATA-M*`, `UI-C*` and the importer used `DATA-R*`, each letter naming the STREAM or topic, which makes a collision essentially impossible without a coordinator in the loop. Plain `PHY-5` (this session) and `TAG-16` are the two that do not follow it. Suggest: every new entry takes a topic letter, and the bare-number ids stay as they are rather than being renumbered.
 | (closed) | **The bundled starmaps were re-serialised by a PYTHON script, which the JS generator can never reproduce byte-for-byte — the D4d pin test went red and the cause is invisible in a diff.** Found 2026-08-04 while fixing the importer. `9815daf` (bundled models referenced not copied) rewrote both maps: 15,560 + 20,802 lines, with the real change — the ISS `model` ref — buried inside. The VALUES were correct and the kit already produced them (the ref arrives through `static/examples/Sol_2030-System.json`, which the kit reads wholesale), but the bytes could not match, because Python's `json.dump` writes `2e-05` and `4.32e-09` where JavaScript writes `0.00002` and `4.32e-9`, and the maps had moved to 2-space indent while the manifest beside them stayed at 1. **Fixed by regenerating from the kit** — 18,189 lines out, 18,189 back, values identical, ISS model intact, pin test green. **The lesson is not 'use two spaces':** these files can only ever be written by `build-starmaps.mjs`, because number formatting is language-specific and no amount of indent-matching fixes that. A helper script that loads, edits and dumps a bundled map is the same fault D4 recorded, wearing different clothes — it succeeds, it looks right, and it quietly detaches the map from its generator. `/static/` is prettier-ignored, so no tooling catches it; the pin test is the only guard and it did its job. Worth considering: a pre-commit check, or a note at the top of the generated files themselves. Related: [[D4]], [[D4d]], DATA-R1 in `engine-map.md`. | captured |
 | D16 | **The Traveller importer makes "silly flat giants".** Owner, 2026-08-07, in his words. **THIS IS THE MISSING EVIDENCE FOR [[B39]] AND [[G11]](6), AND IT NARROWS THE SEARCH SHARPLY — read B39 before starting.** B39 measured the obvious mechanism and REFUTED it: `physics/rotation.ts:20-24` returns spin fraction 0 when the rotation period is absent, zero or non-finite, so an omitted `rotation_period_hours` cannot flatten anything, and `src/lib/import/realsky/processed.spec.js` pins every converter-produced world at oblateness < 0.3 with a spherical/oblate shape tag. So the cause is a value the Traveller route **WRITES**, not one it omits — a small non-zero placeholder period, a unit slip (hours vs days vs seconds), or deformation computed BEFORE [[B7]]'s tidal-lock reconciliation writes the period. **What this observation adds that B39 did not have: it is specifically GIANTS**, which is a strong hint, because a giant is where a placeholder period does the most damage (low density, large radius, so `rotationalDeform` has the most room to run) and because the Traveller UWP has no giant classification at all — a gas giant in Traveller data is a count, not a body, so whatever the importer invents for one is invented wholesale. **FIRST MEASUREMENT, before any hypothesis:** import a Traveller system with giants, then read `rotation_period_hours` and the derived oblateness off the giants as authored and as processed. If the period is non-zero and small, it is the placeholder; if it is sane and oblateness is still high, the deformation is running on the wrong input. **NOT YET DONE:** nobody has reproduced this, and the owner has not named a specific system. **This is a symptom, and [[G11]] is the design investigation that should own the answer** — do not patch the giant case alone without asking G11's question (2): are the declared constraints enforced at all? Related: [[B39]], [[G11]], [[D6]], [[B7]]. | **PROBABLY FIXED by the 2026-08-18 import unification — re-checked 2026-08-19:** the Traveller route no longer WRITES its giants; `traveller/importer.ts:380-441` hands W and PBG's giants/belts to the shared `infillSystem`, so the placeholder value B39 was hunting has no author. Needs ONE import with PBG giants eyeballed for oblateness to close; owner's call |
@@ -515,6 +515,11 @@ canvas.addEventListener('wheel', (e) => {
 | E14 | **The repo's shared `node_modules` was BROKEN for tests while several sessions ran against it, and nothing said so.** Found 2026-08-17 doing C14-C16: `node_modules/.bin` was EMPTY and every test run died with `Failed to start forks worker`; under `--pool=threads` the real cause showed as `MODULE_NOT_FOUND` for jsdom's transitive deps (`cssstyle`'s parser dep, then `@adobe/css-tools` via `@testing-library/jest-dom`). **The BUILD was unaffected** - vite/rollup never load jsdom - so `npm run build` goes green while the whole suite is unrunnable. That is the part worth recording: the two gates fail INDEPENDENTLY and only one of them is loud, so a session that treats a green build as the gate will not notice. **NOT repaired here, deliberately: three long-running `node` processes (dev servers, started 13:05/13:37/19:23) were live against that tree, and an `npm install` under a running server can pull packages out from under it.** Worked around by pointing a worktree's `node_modules` junction at a SIBLING worktree's healthy copy (`sse2-tag-pills`: 232 packages, 63 binaries) - the full suite then ran green at 199 files / 2161 tests. Whoever owns the main tree should re-run `npm install` there once no dev server is live. | captured | **Numbered E14 by the coordinator 2026-08-18: this row and [[E13]] were committed on opposite sides of a conflict block; both kept. Routed to the VTT session (E13) and recorded as process (E14).**
 | (new) | **THE BUILD KIT DOES NOT STRIP DERIVED DATA, so both bundled STARMAPS still carry the [[B82]] fossils and cannot be repaired in place.** Measured after the B82 strip landed: `Local_Neighbourhood-Starmap.json` and `Local_Neighbourhood_SciFi-Starmap.json` each carry 24 fossil fields (9 `magneticField` on non-stars, 7 `tidallyLocked`, 4 `orbitalStability`, 4 `orbitalStabilityDetails`), and `static/examples/Sol_2030-System.json` carries 24 more. **They were left alone on purpose and that is [[DATA-R1]]'s rule, not caution:** the two starmaps are kit OUTPUT and byte-compared by `buildKit.spec.mjs`, and Sol_2030 is a kit INPUT, so editing any of them directly is exactly the regression bisected to `9815daf`. **The fix belongs in `scripts/starmap-build/build-starmaps.mjs`:** run the emitted system through the same strip before `JSON.stringify(obj, null, 1)` at line 407. The obstacle is that the kit is plain `.mjs` and the strip is TypeScript in `src/lib/system/importFixup.ts`, so it needs either a build step or a small shared ESM core — the same shape as `DATA-R5`'s dependency-free real-sky core, which is the precedent worth copying. Eleven standalone examples were re-exported and are clean. Importer/kit territory.
 | (new) | **RETRACTED, AND IT WAS WRONG THE SAME WAY [[DATA-R8]] IS ABOUT — a GM-set body image survives a reload perfectly well.** The claim was: "the engine overwrites an authored `image.url` on every process, so a GM-set body image cannot survive a reload". **There is a guard and I did not look for it.** `SystemProcessor.ts:1485` reads `!(body.image as any)?.custom`, and a GM upload sets `image.custom` — the comment above it says so in as many words, and `BodyBasicsTab` preserves it through an edit with `keepImage`. What I measured was `image.url` changing on bodies carrying a DERIVED TYPE image, and I concluded authored data was being lost without asking who reads it. That is precisely the mistake DATA-R8 exists to stop, made while working on the item that amends DATA-R8. Owner caught it. **The underlying observation was still worth something, and it is FIXED v2.1.853-beta:** a non-custom type image IS derived — the processor re-derives it from the class on every run, which is what keeps the picture matching a world whose type has changed — so a stored one was a fossil surviving the strip. It is stripped now, unless `custom`; same shape as the magnetic field, derived for most and authored for some. Pinned in `derivedFieldDrift.spec.ts`, including that the derived image comes straight back on the next load. Another 7.4 KB off the bundled examples. |
+| (new) | **THE WELCOME SCREEN PRINTS A LITERAL `&rsquo;` — the first paragraph block a new user reads.** `WelcomeModal.svelte:53`, the *Stand on the surface* blurb, contains the HTML entity inside a JS string; Svelte escapes it, so the screen shows *"A red dwarf&rsquo;s noon does not look like ours"*. Seen rendered, 2026-08-21, on `v3.0.0-rc.4` at 1400x900 — it is not a capture artefact. **One character.** Not fixed here on purpose: this session is the docs pass and its instruction is capture-never-fix, so it is written up rather than quietly patched. Nothing else in the list carries an entity — grepped. | open — one-liner |
+| (new) | **`hazard`-FREE, BUT THE HABITABILITY TEMPERATURE BAND IS A HUMAN-COMFORT PLATEAU WEARING THE WORDS "the solvent's liquid range".** `SystemProcessor.ts` ~1692 scores temperature against 283-298 K for water with a 40 K falloff, i.e. 10-25 °C — **not** water's liquid range (273-373 K at 1 bar), so a 340 K ocean world scores poorly on temperature while its water is unambiguously liquid. Methane and ammonia are single points (111 K, 218 K) with a 30 K falloff. **This is the standing rule's own named failure — an anthropocentric constant inside a DERIVATION, on the surface that claims to show the working** — and it is worth saying that [[G19]] already fixed the neighbouring half (the band is at least keyed on the SOLVENT rather than hardcoded to water). The `/physics` page said "the solvent's liquid range" and now states the plateau honestly instead, because leaving a false sentence up was not an option; **whether the plateau should BE a comfort band is the owner's call and is deliberately not changed.** Two readings are defensible: it is a *habitability* score, so scoring an optimum is arguable — but then it should be called an optimum. | open — a decision, not a bug |
+| (new) | **`changelog.md` HAS SIX VERSION NUMBERS USED TWICE, each by two genuinely different releases on different dates.** Measured 2026-08-21 at v3.0.0-rc.4 while doing [[E6]]: v2.1.798, v2.1.749, v2.1.482, v2.1.451, v2.1.430, v2.1.416 and v2.0.169. **Left alone deliberately** — a duplicate heading is the record of two pushes, not a sort fault, and renumbering one would invent a release that never existed. Worth knowing because it means **a version number is not a unique key into that file**, which is exactly the assumption the anchored-insert script made. The detector is in the E6 commit. | open — record only |
+| (new) | **BUNDLED STARMAP: STAR NAMES COLLIDE AT THE DEFAULT ZOOM, and the bundled Local Neighbourhood is where a new user meets it.** Seen 2026-08-21 on `v3.0.0-rc.4` at 1400x900, fitted view: *Barnard's Star* / *GJ 687* / *SCR 1845-6357* overprint each other, as do *Luyten 726-8* / *YZ Ceti* and *Lalande 21185* / *Wolf 359*. It is the first screen of the app and it is also the screenshot in the guide. No de-collision pass exists that I could find. Not a regression — the depth annotations under each name doubled the label height. | open |
+| (new) | **THE STARTER LOGO IS STILL CALLED "SSE2" WHILE THE APP BRANDS ITSELF SSE3.** `player/presets.ts:21`, `builtin-sse-logo`, `name: 'SSE2 (starter logo)'` — a GM picking a letterhead for a player view reads the old name. The rail says SSE3 and the welcome modal says *Star System Explorer 3*. Cosmetic, one string, and the asset itself is fine. | open — one-liner |
 ---
 
 ## V3 workstreams, territories, and how to coordinate (2026-08-03)
@@ -820,6 +825,72 @@ human-habitability becomes the DEFAULT rather than the whole model.
 **OWNER'S OWN WORK 2026-08-18: generation rebalancing and UNIFYING ALL THE IMPORTERS (the import-refresh design note, v2.1.787, `docs/dev/import-refresh-design.md`) — in the generation session; do not route generation or importer items elsewhere without asking.** 
 
 **Sessions to RETIRE with notes when their bug-fixing ends:** Player-view close (94), surface temperature (83), Ship-model 2 (80), VTT (73) once OR/Foundry testers exist. Sessions with ROOM: perf & memory (48), positions/eclipses (52), generation (50, busy).
+
+
+**RETIRED 2026-08-21 — the V3 DOCUMENTATION PASS (worktree `sse2-docs-v3`, off `origin/beta`).** Shipped v3.0.0-rc.5 to rc.10, one push per surface: the [[E6]] changelog re-sort, `GettingStarted.md` rewritten top to bottom against the running app with eleven fresh screenshots, `README.md` brought to V3 with a new Integration section, both tag docs verified against the engine, and the physics page given the `#zones` section its own map had needed all along. **The Documentation-debt section is at ZERO** and carries the full record of where every line landed. Five reader-facing claims were found FALSE rather than merely stale (Toytown, the PoI/CoI autopilot routing, "nothing is sent to a server", the Accrete credit, and the habitability temperature band) — the list is in that section. Five findings captured, all small, none fixed here: a literal `&rsquo;` on the welcome screen, the habitability comfort-plateau question, six duplicate changelog version numbers, colliding star labels on the bundled map, and the `SSE2 (starter logo)` name. **What needs a human eye is the handover note dated the same day, not this line.**
+## HANDOVER — V3 documentation pass, 2026-08-21 (worktree `sse2-docs-v3`), and the UNVERIFIED list
+
+Shipped v3.0.0-rc.5 to rc.10. The record of what landed where is in **Documentation debt**, which is
+now at zero. This block is only the part that needs somebody else: **every claim I put in front of a
+reader that I could not verify myself, and the one question I deliberately did not answer.**
+
+### The rule I worked to
+
+A claim I could not check in the tree did not go in. Where a debt line asserted something I could not
+reproduce, I wrote what the code does and recorded the discrepancy rather than repeating the line —
+two of those are in the "contradictions" part of the debt record. Everything below is what survived
+that filter but still rests on something I could not exercise.
+
+### UNVERIFIED — needs a human, and each is a thirty-second check
+
+1. **`Align & scale on the map` hands the starmap back with live sliders.** `GettingStarted` §2 says
+   so. I verified the BUTTON exists (`MapBackgroundControls.svelte:146`) but never drove it, because
+   it needs an uploaded image. **Check:** Settings > Starmap > Map display > Your own image, upload
+   anything, press Align & scale. Does it return you to the map with sliders on it?
+2. **A background travels inside a `.sse.zip` bundle with its credit, and appears in
+   `ATTRIBUTIONS.md`.** Same paragraph. I read the bundle writer but did not round-trip a campaign
+   carrying a background. **Check:** save a map with a custom background, open the zip, look for the
+   image under `assets/` and for its line in `ATTRIBUTIONS.md`.
+3. **Players join by scanning the QR code or opening the link, and Quick overrides are live and never
+   saved.** `GettingStarted` §12. I saw the QR, the Copy link button and the three overrides on the
+   panel; I never connected a second device. **Check:** open a player view on a phone, then toggle
+   Follow GM and Hide labels and confirm both move on the phone and neither survives a reload.
+4. **The load-guard and Stop-load screens read as §14 describes them.** I read every string in
+   `routes/+page.svelte` and quoted them faithfully, but I could not make a load stall or fail, so I
+   have never SEEN either screen. **Check:** load a large map and press Stop load; confirm the four
+   buttons on the recovery screen are the four the guide names.
+
+Nothing else in the six surfaces rests on an unexercised path. The starmap, the system view, the
+display options, the body views, the units, the generation wizard, the Player Views panel, the
+construct editor, the Settings tabs and the physics page were all walked in a real browser at
+1400x900 on `v3.0.0-rc.4`, and the eleven screenshots are captures of that walk rather than
+illustrations of it.
+
+### THE ONE THING I DID NOT DECIDE
+
+**The habitability temperature band is a human-comfort plateau, and I left the question open on
+purpose.** `SystemProcessor.ts` scores temperature against 283-298 K for water — 10-25 °C — not
+water's liquid range, so a 340 K ocean world scores poorly although its water is plainly liquid. The
+`/physics` page previously called it "the solvent's liquid range", which was false, and I corrected
+it to state the plateau; I did **not** change the plateau, because that is a modelling call and this
+was a writing job. It is captured as a row. Both readings are defensible — a *habitability* score
+arguably should score an optimum rather than a possibility — but then it wants a different name, and
+either way the standing rule about anthropocentric constants inside a derivation is pointed straight
+at it.
+
+### Two things I would do next, given room
+
+- **`docs/autopilot-guide.md` was not in scope and was not read.** It is the fourth in-app guide and
+  the only reader-facing document this pass did not touch. If the autopilot has changed at all since
+  it was written, it has the same exposure `GettingStarted` had.
+- **Four screenshots in `static/screenshots/` are now unreferenced and pre-V3**
+  (`Expanse-Toytown.PNG`, `LocalNeighbourhood.PNG`, `DetailedConstructEditing-FlightDynamics.png`,
+  `V2Gen-alpha1.png`). They are left in the tree rather than deleted, because deleting an asset is
+  not a docs decision — but the construct-editor one in particular is measurably wrong now (it shows
+  eight editor tabs; there are eleven), so it should not be reused.
+
+---
+
 
 ## SESSION ROSTER + ALLOCATION — 2026-08-17 (coordinator 4), context figures ARE THE OWNER'S
 **RETIRED 2026-08-19 — "SSE2 integration with VTTs" (VTT F88).** Final state: Mappadux StarMap shipped (Mappadux beta v2.18.4) against the SSE embed contract (v2.1.722+); A57 closed on v2.1.817 (re-entrant `initPeerHost`, owner confirms stopped); E12 fixed at the root; E13 exact config written; design docs 14-17 + 16b current. Territory notes: `docs/dev/vtt-integration-notes.md` (12 sections, ends with "Known open, in these files"). Engine-map: TRANSPORT-1. Not started: GM channel (`REQUEST_FOCUS`/`gmToken`, needs a directed reply first), Foundry/Owlbear shims (how-to-test paragraph is notes section 11).
@@ -1281,156 +1352,135 @@ a topic letter, which is the rule going forward, so `(closed)` finding 311's com
 One line per shipped change that a reader needs to know, appended as you go. Sweep periodically into
 `src/routes/physics/+page.svelte`, `src/lib/physics/physicsTrace.ts` (the Newton explainer — the one
 that claims to SHOW THE WORKING, so the worst to leave wrong), `docs/tags-guide.md` and
-`docs/classification-and-tags.md`. Delete a line when it has been written up.
+`docs/classification-and-tags.md` — and, for anything a GM meets rather than a pack author,
+`GettingStarted.md` and `README.md`. Delete a line when it has been written up.
 
-**Swept to zero at v2.1.385-beta.** All nine lines below have been written up across the four
-surfaces and deleted. Verified against the CODE rather than the changelog, and that caught three
-things the debt lines had wrong — see the note in [[D5]].
+**SWEPT TO ZERO at v3.0.0-rc.10, 2026-08-21 — the V3 documentation pass.** Every line that stood
+here has been written up or struck with a reason. The record of that sweep is below; the list itself
+is empty, and the next line appended goes straight under this paragraph.
 
-- **G34 (v2.1.904-beta): WRITTEN UP - `GettingStarted.md` gained the 'Click a unit to change it' bullet (cycle behaviour, per-body-type memory, campaign save, player inheritance) and its Settings bullet now names the interface skin instead of the retired metric/imperial picker. No physics surface affected. Nothing further owed for G34.**
-- **G26(a) + C17 (v2.1.853-beta): the STARMAP doc owes two things — the 'Star size by class' slider (GM map: Settings > Starmap, local; player maps: Player Views > Look & feel, per preset; 0 = all equal, 1 = four luminosity-class bands, black holes keep their glyph) and the three tag-drawn decorations (jets, shed shell, limb flares) on both maps. `docs/tags-guide.md` and `docs/classification-and-tags.md` already carry the tags; the physics page has #stellar-outflows. Surface owed: whichever doc describes the starmap views (GettingStarted / the player-views guide).**
-- **A56 (v2.1.791-beta): the atmosphere editor now shows ABSORPTION BANDS and RAYLEIGH per gas, and the Biospheres editor gained a LIGHT COLOUR. The atmosphere-editor doc owes one sentence on what a band IS: three numbers &mdash; centre, width and strength in nm &mdash; describing where that gas eats the incoming spectrum, which is what decides the light reaching the ground, what a plant has to live on, and the colour of the sky from below. Worth adding that the Gas Physics card is now split into DERIVATION (bands, Rayleigh, greenhouse, shielding, cloud) and PRESENTATION (colour, aurora), and that nothing under Presentation feeds the physics &mdash; the surface-light chain deliberately never reads a gas colour. Also one line for the night-side light colour: a morphology may now choose what it glows (bioluminescence, city amber, purple arc-light); left unset it is the sodium amber it always was. NO PHYSICS CHANGED &mdash; every number was already being read; the editor was simply not showing it.**
+---
 
-- **A60, v2.1.863-beta: reader-facing change = SCRUBBING NO LONGER STOPS THE CLOCK.** Dragging the time shuttle while time is playing now seeks and keeps playing, where it used to pause playback for good (and write that pause into the campaign). One line wherever the time transport is described - `GettingStarted.md` is the only surface that walks a GM through the clock - saying the shuttle is a momentary jog: push it to go faster or backwards, let go and it springs back, and if time was running it carries on from wherever you landed. No physics surface is affected.
-- **UNDO/REDO EXISTS NOW (G28, v2.1.774-775-beta), and it is a new GM capability that nothing tells a reader about. Surfaces owed: `GettingStarted.md` FIRST — it walks a new GM through editing a body, and "you can take that back" belongs there rather than in a physics page; say what is covered (anything you change inside a system: bodies, constructs, tags, GM notes, descriptions — AND, since v2.1.780, the starmap itself: moving, renaming, adding and deleting systems, the routes, the map description and notes), what is NOT (player-view presets, settings, the camera, the clock), that ONE drag of a slider is ONE step, and that the keys are Ctrl/Cmd+Z and Ctrl+Shift+Z or Ctrl+Y except inside a text box, where they still edit the text. Also worth one line in the welcome modal's release notes when the owner un-`coming`s it. Two truths a GM will otherwise discover the hard way and should be told plainly: the last twenty steps SURVIVE A RELOAD (they are saved with the campaign in this browser, v2.1.781) but are DROPPED when you switch to another system, and they are stripped out of every file you export and everything the players receive — because a save is a file you hand to other people and an undo log records what you deleted; and an undo restores the values you AUTHORED and lets the engine re-derive the rest, so a class or a tag can come back as what the physics now implies rather than exactly what was on screen before the edit. NO PHYSICS SURFACE IS AFFECTED — nothing about a derivation changed.**
+### What the sweep did, and what it found
 
-- **Generation dials + spacing + viability (v2.1.751-786): the physics page `#generation` section is REWRITTEN in v2.1.786 and now describes spacing (ratio + Hill floor), the shared viability model and its gates, and all four dials with the physics behind each — so THAT surface is current. Still owed: `docs/classification-and-tags.md` says nothing about the new `formation` fingerprint key (one-way birth window, classifier never reads it) or `planet_mass_band_me`; and `physicsTrace.ts` claims to show the working and should say WHY a slot got the type it did (the three multiplicative weights) if it explains generation at all — check whether it does.**
-- **Frost line corrected (B80, v2.1.760-beta): reader-facing change = WHICH WORLDS COME OUT ICY. The frost line was computed from stellar MASS, not luminosity, so ice worlds formed far too far out around red dwarfs and far too close around hot stars, and moons of cold giants were almost never icy. The physics page (`src/routes/physics/+page.svelte`) and `docs/classification-and-tags.md` both describe the frost line to readers and should state that it follows luminosity, and that there are TWO of them — formation (~170 K, what a body could form as) and current (~125 K, where ice is stable today). `physicsTrace.ts` claims to show the working, so check whether it quotes a frost line anywhere.**
-- **Planet spacing rewritten (B58, v2.1.751-beta): reader-facing change = WHERE PLANETS ARE PUT. Generated systems around dim stars are now an order of magnitude tighter (a 0.09-solar-mass star puts its innermost world near 0.01 AU, not 0.4 AU), brown dwarfs no longer sprawl, and a Y dwarf now gets planets at all instead of silently getting none. Spacing is mutual Hill radii scaled by the star, not the Solar System's Titius-Bode sequence in absolute AU. Docs to write: the physics page (`src/routes/physics/+page.svelte`) describes the zones but says nothing about how planets are PLACED between them, and `docs/classification-and-tags.md` is the other surface a GM reads when asking why a system looks the way it does. Neither mentions Titius-Bode today, so nothing is now WRONG — but the new rule is worth a short paragraph, and the pack block `generation_parameters.orbital_spacing` is GM-editable, which no reader doc records.**
-- **B68 + B69: ONE LINE OWED, and the B68 half is player-facing (v2.1.755-756).** (a) **Icy moons are no longer all the same brightness** — Callisto is now dark and Enceladus bright, and their temperatures moved with it (Ganymede and Callisto were 15-40 K too cold). A GM comparing an old save will see the outer system change colour and temperature, so it belongs in the welcome modal's release note as well as wherever albedo is documented. WRITTEN UP ALREADY on `/physics` ("Ice ages, and that is most of what makes an icy moon bright or dark", under `#albedo`) and in the Newton trace's albedo note, both naming the Ganymede residual honestly. (b) **Mercury is no longer an eyeball world** — the Newton panel called it one. The `/physics` generation section now states that despinning has TWO end states rather than one, which is the reader-facing half. `docs/tags-guide.md` and `docs/classification-and-tags.md` need nothing: neither describes what the lock tags MEAN, only that they are derived.
-- **VTT integration 1B-1D + /bridge (v2.1.722-beta): reader-facing surface = a NEW hosted route `/bridge` and a NEW `?embed=1` player-view mode, both for host apps; players see one change — the LIVE/OFFLINE pill now goes OFFLINE when the GM stops (it used to stick). Docs to write: a short 'Integration' page or README section describing the discovery contract (REQUEST_HELLO/ANNOUNCE/REQUEST_REMOTE/SYNC_HEARTBEAT, the bridge postMessage protocol, embed mode + setPreset) — the design doc has it in full; the reader version does not exist yet. No physics surface touched.**
-- **A42: two USER-FACING TOOLS were removed, and the reader-facing sweep is DONE IN THE SAME BATCH rather than owed (v2.1.702-703).** Removing the Field Guide and the Projector is as reader-facing as adding a feature, and four surfaces named them. **All four are updated:** `README.md` (its two Field Guide paragraphs now describe Player Views and its six shipped presets), `GettingStarted.md` (its "being retired — still works for now" note now says removed, and warns that old `/projector` and `?theme=` links are dead), the new-campaign blurb in `NewStarmapModal` (offered to "serve a live, redacted Field Guide"), and two module headers that described themselves in terms of the retired skin. **The welcome modal needed nothing and that is the point of checking: its claim that V3 "replaces the old Field Guide and Projector outright" was true of the BUILD and is now true of the CODE.** **What is still owed: nothing for this item** — but note for a future sweep that `GettingStarted.md`'s player-view section describes the looks by their old skin NAMES ("a monochrome terminal, a survey datapad, a starship console, a CRT with scan lines"), which is now the preset list and reads fine, so it was left alone deliberately rather than missed. **A48 is presentation-only and owes nothing:** no setting changed meaning, name or visibility, so no surface describes anything differently.
+**Six surfaces changed, one push each, rc.5 to rc.10.**
 
-- **Continents, per-morphology pigments, authored layer colours and spectral land/sea colour (v2.1.653-657).** WRITTEN UP ALREADY, not owed — `docs/dev/biosphere-and-surface-light.md` (a new section on what the owner changed after the first cut, and one on the elevation field), `docs/dev/engine-map.md` ([[RENDER-B3]]), `docs/tags-guide.md` and `docs/classification-and-tags.md` (the removed `pigment-viable`, the per-morphology draw), `/physics#biosphere` (why a world offers the colours it offers; each morphology draws its own; authored colours) and the Newton panel, which now DRAWS the spectrum rather than describing it. **What is still owed: nothing for these.**
-- **Biospheres: pigment, land cover and the surface spectrum (v2.1.642).** WRITTEN UP ALREADY, not owed — `docs/tags-guide.md` (the `biodiversity/*` draw and why a physics tag is deliberately non-deterministic), `docs/classification-and-tags.md` (the namespace, its one owning pass, and union-not-sum), `src/routes/physics/+page.svelte` (two new sections, `#surface-light` and `#biosphere`, both with live diagrams), and `physicsTrace.ts` (two new layers). Recording it here anyway so the sweep can see it was done rather than forgotten. **What is still owed: nothing for this item.**
-- **Imported giants and supergiants are now giants and supergiants (v2.1.564+).** The importer reads a star's LUMINOSITY CLASS, not only its spectral letter, so Antares arrives as a red supergiant rather than a red dwarf. Worth saying to a reader because it changes what a bright imported star IS, by orders of magnitude, and because the pack now carries giant and supergiant bands a GM can retune and pick from. Surfaces: `docs/classification-and-tags.md` (the star-class list is letter-only) and the physics page's stellar section.
-- **A supergiant is now DESCRIBED as a supergiant, and a pulsar as a neutron star (v2.1.585).** The classifier emits the luminosity class as a CLASS (`star/M-I`, `star/K-III`) and reads SIMBAD's object type for compact objects, so flavour text, images and any class-keyed rule can finally tell a giant from a dwarf of the same colour. Reader-facing because the panel used to state a supergiant's numbers and a red dwarf's prose in the same breath. Surfaces: `docs/classification-and-tags.md` (its star-class list is letter-only and has no compact objects) and the physics page's stellar section.
-- **Stars spin, and the fast ones are visibly squashed (v2.1.590).** Stars had no rotation at all, so none was ever drawn oblate; they now derive one below the Kraft break and draw one above it, and Vega comes out flattened in both views. Aged giants also stop cooling below the Hayashi limit. Reader-facing twice over - the shape is visible, and BOTH physics surfaces gained the explanation (`/physics#spin` and the aging section; `physicsTrace` shows the derivation per star).
-- **Generated and imported red giants finally agree, and a fed black hole flares (v2.1.593).** The engine carried two red-giant definitions whose brightness differed about ninetyfold, and which one you got depended only on whether the star was generated or imported. Reader-facing because the figure a GM reads off a giant changes. The flare model also now distinguishes a QUIESCENT compact object (silent) from a FEEDING one (the most violently variable thing in the sky) — the physics page's flare paragraph says only that flares come from convection and rotation, which is now half the story.
-- **A STAR can now be given a custom picture, like a planet or a construct already could (v2.1.601).** It is on the star's Details tab, directly under the spectral picker, and Remove hands the picture back to the class portrait. Reader-facing because it is a new GM capability on a surface that had none, and because the answer to "can I use my own art for this?" was previously "for worlds and ships, but not for suns" with nothing saying so. Surface: `GettingStarted.md` — its picture/artwork guidance should now name all three subjects rather than implying worlds and ships. No physics surface is affected.
-- **Star designations are now explained in plain English, in TWO places (v2.1.629).** The star editor shows a line under the spectral picker ("Main-sequence dwarf, yellow to human eyes, about the size of the Sun") and the physics page gains a "Reading a star designation" section contrasting G2V / G2III / G2Ia. Reader-facing because a roman numeral is opaque to anyone who has not met MK classification, and it is now the thing that changes when a GM drags a slider. **The size clause is DERIVED from the pack's radius band, so neither surface can drift from the physics or from each other** — one builder, `starClassExplain`. Surfaces still owed: `GettingStarted.md` says nothing about star types.
-- **THE STAR OVERHAUL IS READER-FACING AND IS NOW ON THE WELCOME MODAL (v2.1.646).** One entry, "Stars rebuilt from the physics up", covering the four things a GM actually meets: type read from position rather than brightness, luminosity derived so it cannot drift, magnetism driving ionising output with a visible saturation ceiling, and implausible stars kept-and-labelled rather than refused. **Surfaces now DONE:** the physics page (two new sections — "Reading a star designation" and "Ionising output & the corona"), the star editor (plain-English designation line, contextual corona note), the welcome modal. **ALL SURFACES NOW DONE (v2.1.646):** `GettingStarted.md` gains a "Stars" subsection under Classification — the designation read from physics, the type following what you edit, implausible stars kept-and-tagged, and luminosity vs ionising output kept apart — and its custom-images bullet now names all three subjects with the remove-falls-back-to-derived behaviour. **This debt line is CLEARED.**
-- **B48: no reader-facing change yet (v2.1.610) — design only.** SUPERSEDED by the line above; kept because the measurements it points at are still the record of why the rewrite happened. Nothing shipped that a GM sees. Recorded because the measurements taken for it WILL become reader-facing the moment the rewrite lands: the star classifier disagrees with the rule pack's own bands on 9 of 29 keys, so whatever a GM is told a star IS today may change when the two are reconciled. Surface when it ships: whichever of the four explanation surfaces describes stellar classification, plus the physics page's flare paragraph, which teaches young stars and M/K dwarfs and sits beside a model where a fed black hole out-flares all of them by a different mechanism.
-- **B60 part 2 + B71: TWO LINES OWED, and one of them is player-facing (v2.1.693-695).** (a) **Stars are now labelled with what they ARE** — G2V, M6V, K1V — where they used to carry the whole band's letter, and every star in a saved campaign is upgraded on load: a star you PICKED keeps its letter and gains its digit, a star the ENGINE made is read off its HR position. Belongs on the star editor's documentation and in the welcome modal's release note, because a GM will see every star in their campaign renamed. (b) **Habitability is scored on the ground's mean temperature rather than the one the world radiates at**, which moves Mercury up and Luna down — worth a line wherever habitability scoring is explained, since a GM comparing two saves will see the number move. **The physics page needs nothing for either:** the temperature half was written up in the [[B63]] batch, and a designation is a naming step rather than a physical claim.
-- **B61 + B60 part 1: ONE LINE OWED, on the star editor rather than a physics surface (v2.1.686-687).** Two things a reader meets: picking a spectral type now DRAWS a star from that class's range instead of handing back its exact middle, so two G dwarfs differ — and it is seeded from the star, so it never rerolls under them; and a star built or rolled in-app now states a full designation (the 2 in G2V), where only an IMPORTED star could before. **Belongs wherever the star editor is documented, and the pack half is DATA-R14's territory: `stellarClassification.subclass_anchors` is a new pack block, and a pack that omits it gets letters with no digit rather than a wrong one.** The physics page needs nothing — a subclass is a naming step, not a physical claim, and saying otherwise on a page about physics would overstate it.
-- **B63: WRITTEN UP IN THE SAME BATCH, on all four surfaces (v2.1.685).** `/physics` gains "Day and night are an energy balance, and the mean falls out of them" under `#temp-range` with the four formulas and the anchors; the `#greenhouse` section's claim that ONE mean surface temperature feeds everything downstream was FALSE after this change and is corrected in place rather than left; the Newton trace labels the composed figure "Radiating temp (power balance)" and prints the day/night mean beside it; the body panel and the info block both read the profile's mean and name the other figure. **The one thing a reader most needs is the distinction itself** — an equilibrium temperature is a POWER balance and is never a mean — and it is now stated in all four places in the same words. `docs/tags-guide.md` and `docs/classification-and-tags.md` needed nothing: no tag's DEFINITION moved, though `activity/sublimating` now fires on four fewer bodies because it buckets off the peak (see the entry).
-- **B34: no player-facing change (v2.1.685), but pack-author-facing and worth one line.** The classifier feature `stellarIrradiation` now means STARLIGHT and not total incident flux, so any pack rule keyed on it changes meaning — a rule that was seeing 26,279 on Io now sees 0.037. Belongs wherever rule-pack features are documented (DATA-R14's territory). The Newton trace shows both figures side by side, which is the clearest place in the app to see that a moon of a gas giant lives in a radiation environment its distance from the sun does not predict.
-- **G21: no reader-facing change (v2.1.604).** One star-image lookup replacing three. Nothing a GM sees moves — no fixture churn at all, because every remnant already had its own pack key so the exact hit always won. Recorded because silence is indistinguishable from forgetting, and because the NEXT reader of a rule pack needs one thing: a star class now resolves exact-then-letter, so **a pack that drops a remnant's own key gets NO portrait for it rather than a wrong one** (`star/BH` will not borrow `star/B`). That is pack-author-facing, not player-facing, and belongs wherever pack editing is documented (DATA-R14's territory) rather than on a physics surface.
+- **`changelog.md`** ([[E6]], rc.5) — six displaced version headings re-sorted in one commit that
+  touched nothing else.
+- **`GettingStarted.md`** (rc.6) — rewritten top to bottom against the running app, 214 lines to
+  ~590, with eleven screenshots captured from the build and cropped to the control being described.
+- **`README.md`** (rc.7) — "What's new in V2" replaced with V3; the tagging section stopped teaching
+  the retired PoI/CoI; a new Integration section for host apps.
+- **`docs/tags-guide.md`** + **`docs/classification-and-tags.md`** (rc.8) — verified against the
+  engine rather than rewritten; four gaps filled.
+- **`src/routes/physics/+page.svelte`** (rc.9, rc.10) — a new `#zones` section, the four flare
+  mechanisms, the two passes the pipeline list omitted, and the habitability temperature.
+- **The tail** (rc.10) — the debt lines whose owed surface did not exist.
 
-**HUMAN-DOC SWEEP, 2026-08-13 (coordinator) — `GettingStarted.md`, 123 to 184 lines. AND THE
-HEADLINE IS NOT WHAT WAS MISSING BUT WHAT WAS WRONG: three sections described features that NO
-LONGER EXIST, which a new reader meets before anything else.** (a) **§6 taught Points of Interest
-and Constructs of Interest**, which the tagging rewrite removed outright — so a reader was sent
-looking for two things that are gone and never met overrides, secret tags, per-tag colour or the
-starmap roll-up. Rewritten around the unified model, matching `docs/tags-guide.md`. (b) **§10 led on
-the Field Guide and Projector Mode as THE player-facing surfaces**, when Player Views replaced both
-and [[A42]] deletes them — so V3's headline player feature was absent from the guide while two
-retiring ones were showcased. Rewritten with Player Views first and a short note that the old pair
-are being retired. (c) **§11 said saves are JSON**, from before `.sse.zip` bundles shipped at
-v2.1.429. **LESSON WORTH KEEPING: a stale doc is not merely incomplete — these three actively sent
-readers after features that do not exist, which is worse than silence, and none of them was on this
-debt list.** The list catches what SHIPPED; nothing catches what was REMOVED. **Written up and now
-clear:** real-sky import (both entry points), `.sse.zip` bundles, `ATTRIBUTIONS.md` and per-asset
-credit, 3D ship models end to end, and a NEW §12 "When something goes wrong" covering the load
-guard, Stop load, the Memory panel and the diagnostic bundle — none of which any user document
-mentioned, despite being exactly what a user needs when the app misbehaves. **STILL OUTSTANDING
-below and NOT done in this pass:** G9's sky controls, G10's real-distance grid and scale rings, G8's
-eclipse row, the analytics line (needs `AboutModal`/`README` checked, not `GettingStarted`), and the
-four PHYSICS surfaces — `physics/+page.svelte`, `physicsTrace.ts` and the two tag docs — which this
-sweep did not touch at all.
+**THE HEADLINE IS THE SAME AS THE 2026-08-13 SWEEP'S, AND THAT IS THE POINT: WHAT WAS WRONG MATTERED
+MORE THAN WHAT WAS MISSING.** Five reader-facing claims were FALSE, and a reader acting on any of
+them would have been misled rather than merely under-informed:
 
-- **G9 tweaks (v2.1.401)** — two new preset controls (Star boost, Name size) on the charted-star
-  sky. Worth a sentence wherever it is written up: at high boost the brightness is deliberately
-  oversaturated and no longer reads as apparent magnitude.
-- **Welcome screen (v2.1.415)** — `WelcomeModal.svelte` now carries the owner's V3 headline list (12 items).
-  The HEADLINES are real; the BLURBS are a first pass to be sharpened as each feature is bottomed out, and
-  two lines need re-checking before release: that VTT integration is still accurately 'in testing', and that
-  the third-party VTT names are spelled as those products spell them.
-- **Real-sky import (v2.1.403)** — READER-FACING: the New Starmap screen is reorganised and gains
-  "Import from the Real Sky…" (presets, fill-out mode, Sgr A* cluster demo), and the map's right-click
-  gains "Import Real Stars Here…". `Help.md` / `GettingStarted.md` should introduce both, including
-  what `origin/generated` means on a filled-out world.
-- **G10 (v2.1.386)** — the 3D system view's ground grid is a real distance now (decade steps with a
-  crossfade) and every scale ring on every map lands on a round number. Reader-facing twice over:
-  the grid can be READ as a scale, and **the 3D starmap's "Polar + scale" rings were wrong by the
-  pixels-per-unit factor — 43x on the bundled map, reading 1091 ly across a 25 ly neighbourhood —
-  so anyone who trusted those numbers was misled.** The correction is worth saying out loud rather
-  than quietly fixing.
-- **Real-sky import library (`src/lib/import/realsky/`, 2026-08-03)** — no reader-facing change yet:
-  no UI is wired; the design doc and build-kit README were updated in the same batch.
-- **G3 Phase 1 (v2.1.387-394)** — constructs can carry a 3D model: upload GLB/STL/OBJ in the
-  construct editor (converted to GLB, simplified when high-poly, capped at 2 MB), shown as a
-  live turntable in the info block with the model's credit/licence beneath. Needs a user-facing
-  write-up (Help.md or wherever construct editing is documented) — including that STL/OBJ arrive
-  colourless and take the ship's icon colour.
-- **G3 owner rounds (v2.1.396-397)** — the write-up above should also cover: the MODEL leads the
-  picture chain (model > photo > glyph) on player and GM surfaces alike; the import modal aligns
-  by the MAIN DRIVE (orange arrow, engines aft — the map flies the ship nose-first and flips it
-  for a braking burn); a saved .json now DOES carry the model binaries; remote players fetch
-  missing models over the broadcast automatically; and focusing a modelled ship in the player 3D
-  view shows the hull itself with a thrust plume scaled to the fraction of its drive in use.
-  (v2.1.398) Ship size follows the body-size dial exactly as planets do: readable marker length
-  derived from the authored dimensions at one end, TRUE 1:1 at the other, with the icon standing
-  in below ~10 px at any dial position. (v2.1.400-405) The dial is LOG-SPACED for everything now
-  (mid-dial looks changed); hulls follow the map render style including OCCLUDING -occ wireframe;
-  the Shading dropdown offers seven finishes (three seeded per-ship liveries among them); and six
-  public-domain NASA craft ship as starter hulls in the model dialog. About + README credits
-  updated (NASA models, three.js, meshoptimizer, Draco).
-- **G3 closing set (v2.1.431-445)** - reader-facing: ships render on the player's 3D map (with
-  drive plumes, which now survive to player views); a bigger model dialog you can orbit and zoom;
-  click-to-place drives; seven hull finishes; bundled NASA models referenced rather than copied,
-  so the shipped maps come with a modelled ISS. Needs a Help write-up alongside the earlier G3
-  lines. Diagnostic worth documenting for support: `window.__shipDebug = true` prints a ship's
-  real drawn size.
-- **Attributions (v2.1.430)** - a bundle now carries `ATTRIBUTIONS.md`: every uploaded model and
-  picture, what uses it, its credit/licence/source, with unrecorded ones named and CC-BY-without-
-  credit called out. Construct pictures can now record credit/licence/source (the ImageRef fields
-  existed and nothing filled them). **Body photos too as of v2.1.433** - the same three controls
-  in `BodyBasicsTab`, so an uploaded planet picture is credited like any other asset.
-- **Save bundles (v2.1.429)** - READER-FACING AND FORMAT-LEVEL: a campaign or system with assets
-  now saves as `.sse.zip` (readable json + assets/ as real files) instead of one JSON with base64
-  inside; asset-free saves are unchanged. Both load, decided by the zip magic number not the name.
-  Needs a line wherever saving/loading is documented, including that a bundle can be opened and
-  hand-edited with any zip tool, and that a construct .json now carries its model binary too.
-- **G13/A46/G15 coordinator round (v2.1.406)** - reader-facing: an exported .json carries ship
-  model binaries and restores them on load (was already live since v2.1.396, now pinned by spec);
-  engine definitions may carry `exhaust_color_hex` (pack data) to colour a ship's drive plume.
-  A46 is internal-only (no reader-facing change).
+1. **`GettingStarted` described Toytown as scaling BODIES UP.** It compresses SPACING; the app's own
+   tooltip says so and a Compression dial appears beside it. A GM looking for a body-size control was
+   being sent to the wrong one.
+2. **Its autopilot section still routed ships on "your PoI/CoI tags"** — two features the tagging
+   rewrite deleted, and which §6 of the same document already said were gone. A document
+   contradicting itself two sections apart.
+3. **`README` said "nothing is sent to a server".** Campaigns still never leave the browser, but the
+   hosted site records one anonymous visit event per browser per day, star-name search queries SIMBAD
+   live, and a Traveller import fetches travellermap.com. A data-collection claim is the one kind
+   that has to be exactly right.
+4. **`README` credited Accrete.js for a generator that left the app at v2.1.898.** The `AboutModal`
+   had already been corrected; the README had not, which is the two-copies fault applied to prose.
+5. **`/physics#habitability` said it scored "temperature vs that solvent's liquid range".** It scores
+   against a 283-298 K plateau — a comfort band, not a liquid range. Corrected to state what the code
+   does, and the underlying question captured rather than decided (see the capture section).
 
+**AND THE PROMOTION OF A STALE ASSET IS THE SAME FAULT AS A STALE SENTENCE.** Both `README` and
+`GettingStarted` opened by recommending the tutorial video, while the app's own Help hub labels it
+"Well out of date." Both now carry the same caveat the app gives it.
 
-- **C9 (v2.1.410-beta)** - NO reader-facing change to the picture, by design and by measurement, but a REAL change to every number derived from a moon's position: `computeWorldPositions3D` now returns satellites in their parent's equatorial frame. Nothing user-facing describes the propagator, so no surface needs new prose; the changelog entry carries it. If `docs/dev/architecture-physics-tags-visuals.md` or the 3D design doc ever describe where the satellite frame is applied, they now name the propagator, not `holo/scene.ts`.
-- **E3/E1 (v2.1.411-beta)** - no reader-facing change. Developer-facing only: `vitest run` exits 0 again, and `src/setup.ts` answers root-relative fetches with a 404 rather than throwing.
-- **E2/E4 (v2.1.411-beta)** - no reader-facing change. The worktree-per-session recipe is in this file's standing rules; if a contributor-facing document ever describes how to work on this repo, it belongs there too.
-- **G8 GM panel (v2.1.413-beta)** - READER-FACING: the GM's read-only body block now shows a "Next Eclipse" row with the orbital rows, the same one the player views already had. Anywhere that lists what the GM inspector shows needs it; the row's own tooltip carries the honesty caveat (elements held fixed, no nodal precession, so it is when they next line up rather than an ephemeris).
-- **Vercel analytics throttle (v2.1.530-beta)** - READER-FACING, and it is a DATA-COLLECTION change, so it
-  should be said out loud rather than left in the changelog. The app now records ONE anonymous analytics
-  event per browser per 24h instead of one per route change, and to do so it keeps a single timestamp in
-  `localStorage` under `sse-analytics-last-sent`. Nothing new is collected and strictly less is sent.
-  **Check whether `AboutModal`, `README.md` or any privacy/about text describes what is tracked** - if it
-  does, it needs this, including the new local timestamp. Rationale for the 24h window (it matches
-  Vercel's own unique-visitor re-hash) is in the code comment at `src/routes/+layout.svelte`.
-- **Engine map PHY-5/PHY-6, UI-E1/UI-E2 (v2.1.443-beta)** - no reader-facing change. Developer-facing only: `docs/dev/engine-map.md` now carries the satellite-frame invariant, the eclipse cache's directionality, and the two UI rules that follow from them.
+### The lines that were owed, and where each landed
 
-- **Pinch-zoom on touch devices (v2.1.549-beta)** — READER-FACING: pinch to zoom now works on the
-  3D system view on phones and tablets, where it previously did nothing (rotate always worked, which
-  is why it read as "can't zoom"). Worth a line wherever mobile/tablet use is described, and worth
-  telling the reporting user directly. No behaviour change on desktop.
-- **B36 (v2.1.758-beta)** - no reader-facing change: the answer to "does this world have ground" is unchanged for every planet, moon and belt, and the derived baseline is byte-identical. ONE reader-facing addition: the tag-rule editor's field picker gains a **Has solid ground** condition, so anywhere that documents the rule DSL's fields needs it - `docs/classification-and-tags.md` if it lists them.
-- **D23 (v2.1.758-beta)** - READER-FACING in the Uggi example only: Cerebus Alpha now orbits Hades at 43,739 km instead of being unreachable, so it finally shows a temperature and a place in the hierarchy. Anything describing the bundled examples as having a known-broken body should drop that caveat.
+| Owed | Landed |
+|---|---|
+| G26(a)+C17 star-size-by-class slider and the three drawn decorations | `GettingStarted` §2 (both the GM dial and the per-preset one; a new "Stars that show what they are") |
+| A56 absorption bands, Rayleigh, the Derivation/Presentation split, biosphere light colour | `GettingStarted` §4, new "Editing the rules everything is built from" — **there was no atmosphere-editor doc to put it in, which is why this line survived so long** |
+| A60 scrubbing no longer stops the clock | `GettingStarted` §3 |
+| G28 undo/redo | `GettingStarted` §11, new section — all six behaviours the line asked for, verified against `undoHistory.ts` and `campaignHistory.ts` |
+| Generation dials + spacing + viability | `/physics#generation` was already current; the `formation` key and `planet_mass_band_me` went to `classification-and-tags`; `physicsTrace` checked and owes nothing |
+| B80 frost line from luminosity, and there are two | new `/physics#zones` and a new zones section in `classification-and-tags` |
+| B58 planet spacing | `/physics#generation` had it; `classification-and-tags` now points there rather than duplicating |
+| B68/B69 icy-moon albedo, Mercury not an eyeball | already written up; the welcome list covers it under the physics rebuild |
+| VTT 1B-1D + `/bridge` | new `README` Integration section |
+| Imported giants, supergiants, pulsars (v2.1.564-585) | `classification-and-tags` "Stars are classified differently" plus the new imported-numbers section; `/physics#star-designations` |
+| v2.1.590 spin, v2.1.593 red giants + fed black hole | both physics surfaces had the first two; **the fed-black-hole half was the missing one** and is now the flare-mechanism table |
+| v2.1.601 star custom picture | `GettingStarted` §8 names all three subjects |
+| B61/B60 part 1 spectral pick draws from a range | `GettingStarted` §5 |
+| B60 part 2 habitability on the ground temperature | `/physics#habitability` |
+| B34 `stellarIrradiation` means starlight | `classification-and-tags` "Feature inputs" |
+| G21 star portrait resolves exact-then-letter | `classification-and-tags` |
+| G9 star boost and name size | `GettingStarted` §12, with the honesty note about oversaturation |
+| Real-sky import + D18 (every star, fill-out separate) | `GettingStarted` §2, and the two are stated as independent, which is the correction D18 itself needed |
+| G10 grid as a real distance, rings on round numbers | `GettingStarted` §3. **The 43x scale-ring error is left in the changelog rather than restated to readers** — the numbers are right now and the correction is dated there |
+| G3 phases 1, owner rounds, closing set | `GettingStarted` §8, plus `__shipDebug` in §14 |
+| Attributions, save bundles, G13 exported binaries | `GettingStarted` §13; `exhaust_color_hex` went to the new pack-editor subsection |
+| G8 eclipse row | `GettingStarted` §3, with the honesty caveat |
+| Vercel analytics | `GettingStarted` §13 and `README`. **`AboutModal` was checked and makes no data claim, so it needs nothing** |
+| Pinch-zoom on touch | `GettingStarted` §2 and §3 |
+| B36 "Has solid ground" rule condition | `tags-guide` |
+| Grid falloff, vertex-dot scaling, terminal-clear direction | `GettingStarted` §12 |
+| Orbit-line opacity, three controls | `GettingStarted` §3, all three distinguished |
+| G16 your own map behind the stars | `GettingStarted` §2 |
+| B82 saves carry authored, not derived | `GettingStarted` §13 |
+| D17 imported giant density | `classification-and-tags`, new "What an IMPORTED number is worth" |
+| D14 Pluto-Charon, D13 Pluto's methane | barycentre section of `classification-and-tags`; `/physics#clouds` |
+| B37 ascent applicability | `GettingStarted` §3 |
+| B67 one classifier | `classification-and-tags` |
+| D27 Traveller star hierarchy is built by us | `README` Traveller bullet |
+| G33 infill dials on every path | `GettingStarted` §4 |
+| G24 part 2 realism bands | `GettingStarted` §4 and `/physics#generation` |
+| B81 kill zone derives | new `/physics#zones` |
+| B84 created-planet placement and the HZ caveat | `GettingStarted` §4 and `/physics#zones` |
+| G35 accrete removed | `README` attribution corrected to match `AboutModal`; no engine selector survives anywhere to describe |
+| Brown dwarfs have real pack figures | `GettingStarted` §5 |
+| D19 spec | superseded — the patch shipped at v2.1.564+ and its honesty contract is in `GettingStarted` §2 |
+| Everything marked "no reader-facing change" | struck as written: C9, E3/E1, E2/E4, D11, C7, G21's silent half, the engine-map entries, the real-sky library, A46, D23, A62 |
 
-- **Grid falloff, vertex-dot scaling and the terminal-clear direction (v2.1.770-beta)** - READER-FACING
-  on all three: the system map's grid-falloff dial now fades the grid toward its edge instead of
-  removing it, the glowing-wireframe styles no longer swell into a blob as the size dial moves toward
-  true scale, and "Terminal Clear" now sweeps the right way round. Worth a line wherever the map
-  style and grid options are described.
+### Struck rather than written
 
-- **Orbit-line opacity (v2.1.798-beta)** - READER-FACING: orbit lines can now be dimmed or switched
-- **G16 (v2.1.811-812-beta): the GM guide needs "your own map behind the stars" explained.** A GM can put their own image behind the starmap — Settings > Map display — and the thing to teach is the CHOICE, not the sliders: screen-fixed is decoration that holds still while the stars move (the shipped Milky Way), map-fixed is a sector map pinned to map coordinates so a system stays on the same point of the picture at every zoom, on the GM map, the player 2D and 3D maps and in a text map's figure at the foot. Worth saying explicitly: the width is in the CAMPAIGN'S OWN unit, not light years; placement is done by eye through **Align & scale on the map**, which hands the map back to you with live sliders; uploads for a background want the "Full resolution" tick in Player Views > Graphics library, because 512px is a blur once you zoom in; a background travels in a `.sse.zip` bundle with its credit and appears in ATTRIBUTIONS.md, so record a credit for anything you did not draw yourself; and the About box now credits whichever image is actually on screen. Surface: the GM guide, plus whatever documents the save bundle.
-  off. Three controls, and the difference between them is worth stating for a reader: a GM's own dial
-  on the system map (their screen only), a per-preset dial on the System step (travels to player
-  windows), and a momentary "Hide orbit lines" in Quick overrides that is gone on reload. Worth a line
-  wherever the system map's display options are described.
-- **B82 (v2.1.851-beta)** - no reader-facing change to any figure: the derived output is byte-identical and no body's classes moved. Reader-facing only in that SAVED and BUNDLED files are a third to a half smaller and no longer publish stale physics. Anything that documents what a `.json` save contains, or that invites a reader to audit a bundled example by eye, should now point at `derivedFieldDrift.spec.ts` and DATA-R8 rather than at `DERIVED_FIELDS`.
+- **Accrete / the evolutionary generator ([[G35]]).** The feature was REMOVED, so there is nothing to
+  teach. What was owed was the opposite job: finding the places that still claimed it. `README` was
+  one and is fixed. `AboutModal` was already right. `types.ts` carries a DEAD marker. No user-facing
+  surface offers a choice of engine any more.
+- **The Field Guide and Projector ([[A42]]).** Same shape, already done in its own batch. The one
+  loose end that line flagged — `GettingStarted` naming the six looks by their old skin names — is
+  now closed: they are named as the presets they are (The Guide, Datapad, Console, CRT Terminal, Holo
+  Table, Projection).
+- **[[A62]]** — shipped but unverified on the live player surface, so nothing is written up as fixed.
+  Unchanged by this pass.
+
+### Two contradictions in this file, for the coordinator
+
+- **[[D9]] and [[D23]] disagree about Cerebus Alpha.** D9 (v2.1.510) says the Traveller example's
+  Cerebus Alpha is "knowingly broken (cut off from its star, so no temperature or eclipse answer) and
+  is left that way"; D23 (v2.1.758) says it "now orbits Hades at 43,739 km instead of being
+  unreachable, so it finally shows a temperature". D23 is the later and presumably wins, but the
+  older line still reads as current and nothing points between them.
+- **The debt line for B80 said `docs/classification-and-tags.md` "describes the frost line to
+  readers".** It did not mention a frost line at all. The line was right that the doc SHOULD, which
+  is why the section now exists — but a debt line naming a surface is not evidence the surface
+  covers the topic, and this one was written from memory.
+
+### What still needs a human eye
+
+Nothing in this sweep is blocked, but four claims went in that a reader could check faster than I
+could and one thing was deliberately not decided. They are listed in the handover note below rather
+than kept as debt, because they are verification tasks and not writing tasks.
+
+---
+
 
 ## docs/dev/engine-map.md — the traps file (started 2026-08-04)
 
@@ -1449,87 +1499,7 @@ Why it should help the duplication problem specifically: the entries name what a
 authority FOR, so a second implementation is visible as a contradiction rather than having to be
 noticed.
 
-- **Tagging A-D (v2.1.392-424)** — WRITTEN UP, debt cleared. `docs/tags-guide.md` fully rewritten
-  around the unified model (no PoI/CoI; category is the unit; provenance, per-tag colour, GM
-  overrides, secret tags, map highlights) and opening with what tags are FOR — the natural-language
-  layer between the physics and everything that reads it, so the physics never has to know about the
-  UI. `docs/classification-and-tags.md` gained the provenance table (origin x survives-what) and the
-  override/authored rules. **CLEARED v2.1.493-beta:** the last outstanding surface,
-  `src/routes/physics/+page.svelte`, now has an `#overrides` section (listed in the contents) covering
-  what an override does and does not change, the four provenance groups, the `*-inferred` retirement
-  rule, and the trace labelling a hand-set line as an override rather than as derived.
-- **Tagging: player-view markers (v2.1.492-493)** — WRITTEN UP, debt clear. `docs/tags-guide.md`
-  "Showing them on the maps" rewritten: it still said the selection lived in Quick overrides, which
-  the 2026-08-05 design change superseded (it is the Find by tag tray; Quick overrides keeps the mute
-  only). Added the starmap fade + key, the info-block chip row, and a "Choosing how they look"
-  subsection for the new `markerStyle` preset field. Colour is still never part of that choice.
-- **D17 / composition of imported giants (v2.1.504)** — READER-FACING, one body and one sentence.
-  Epsilon Indi A b's composition in both bundled starmaps changed from 62% rock / 33% metal to 85%
-  gas, so any screenshot, hand-out or worked example quoting its makeup is now wrong. The general
-  statement worth writing up wherever the importer is explained: a catalogue density above 4 g/cc
-  does NOT mean rocky for a giant — a super-Jupiter is dense because it is squeezed by its own
-  gravity — and for three quarters of the catalogue the quoted density is calculated from the mass
-  rather than measured (DATA-R7), so it should not be read as an independent measurement. Nothing in
-  `docs/tags-guide.md` or `docs/classification-and-tags.md` claimed otherwise, so this is an
-  addition, not a correction.
-- **D14 / Pluto-Charon (v2.1.506)** — READER-FACING: the mutual eclipse row changes from "every 6 d"
-  to a dated, rare event, and any material quoting the old behaviour is wrong. Also worth a line
-  wherever barycentres are explained: a barycentre member's orbital elements describe its orbit
-  about the BARYCENTRE, in the system plane, and are not the pair's orbit about the star — which is
-  the mistake the data itself made. The eclipse epoch is not anchored (`Omega_deg` is 0) and any
-  write-up should say the seasons are in the right rhythm rather than on the right dates.
-- **D13 / Pluto's methane (v2.1.507)** — NO reader-facing change, but one sentence is worth having
-  ready because it will be asked: Pluto has no methane cloud deck because its air is saturated in
-  methane at the ground, so the methane is frost rather than cloud, and the app reports the frost.
-  The haze real Pluto has is photochemical and is not modelled.
-- **D11 (v2.1.505)** — no reader-facing change; the contradiction was never visible in the app.
-- **C7 (v2.1.509)** — no reader-facing change; it was already fixed on 2026-08-02 and the entry was
-  stale. The developer-facing point worth keeping is Iapetus: a catalogue inclination already
-  referenced to a host's equator must NOT be re-framed by the Laplace rule, which exists for
-  inventing a plane rather than reinterpreting someone else's number.
-- **D9 (v2.1.510)** — READER-FACING in one place only: the Expanse Solar System example had the same
-  Pluto/Charon orbit fault as the bundled maps and is now corrected, so its eclipse row changes the
-  same way D14's did. The Traveller example's Cerebus Alpha is knowingly broken (cut off from its
-  star, so no temperature or eclipse answer) and is left that way with the fault recorded — worth a
-  note if anyone documents the examples list.
-
-- **D18 / real-sky import (v2.1.543)** — READER-FACING, and it changes what the feature RETURNS.
-  An import now brings back every STAR in the region, not only stars with confirmed planets: 21
-  systems becomes 56 at 16.5 ly, Sol is included (from the shipped Solar System preset, never
-  generated) when the region reaches it, and Alpha Centauri arrives with A, B and Proxima. A star
-  with no planets is now a normal result. `Help.md` / `GettingStarted.md` should say so, and should
-  be explicit that fill-out is still a separate, opt-in choice — the two are independent, and
-  conflating them is the mistake the entry itself had to be corrected for.
-- **Brown dwarfs (v2.1.542)** — no reader-facing change in itself, but worth knowing when the star
-  editor is documented: L, T and Y now have real figures in the rule pack instead of falling back
-  to a Sun-like default.
-
-- **D19 spec (2026-08-13)** — no reader-facing change YET; the patch it specifies will be, and
-  visibly: every giant and supergiant currently imports as a dwarf, so Antares, Betelgeuse, Rigel,
-  Deneb, Polaris, Arcturus and Aldebaran are all wrong by orders of magnitude today. When the patch
-  lands, whatever describes the real-sky import should say that a star's luminosity class is read,
-  and that figures for a star with no measured parameters are typical for its class rather than
-  observed — the honesty contract already in the code, now with a class worth stating.
-
-- **D6 / derived sea vapour (v2.1.880)** - READER-FACING and already written into BOTH the physics page and the Newton explainer in the same batch, so this line is the record, not a debt. What changed for a reader: a world's greenhouse now includes the vapour its own sea evaporates, derived from saturation at its surface temperature rather than switched on above freezing; the trace shows the figure and says so. Marginal wet worlds that used to read as snowballs now read temperate. `docs/tags-guide.md` needs nothing - no tag changed - but anything describing the greenhouse should stop saying "implied vapour, gated off when H2O is listed": an authored value is now a FLOOR, not an off-switch.
-
-- **B37 / ascent applicability (v2.1.886)** - READER-FACING in three places at once (info block, printed report, technical panel). A belt or ring now says *"not applicable - debris spread round an orbit, with no surface to leave"* where it used to show -0.0 km/s, and a GAS OR ICE GIANT says *"no solid surface to lift from"* where it used to show a figure. Small moons now read in m/s. Anything documenting the info block's Ascent row should say the row is deliberately kept and answered rather than hidden. No tag changed - `flight/ascent` was already correct and is now the shared gate.
-
-- **B67 + D12 / one classifier (v2.1.889)** - NOT reader-facing for a GM: every shipped pack already used the fingerprint engine, so no bundled body changes class. It IS pack-author-facing, and the surface is the console: `classifier.rules[]` and `minScore` are no longer read, a pack without fingerprints gets one base class by mass, and anything documenting the rule-pack classification format should describe fingerprints only.
-
-- **D27 / Traveller star hierarchy (v2.1.891)** - READER-FACING for anyone importing a multi-star Traveller world: companion stars now sit in a nested, in-plane hierarchy at tens of AU instead of crossing near-polar orbits at a thousand-plus AU, and the whole structure widens so the Main World keeps its room. Anything describing the Traveller import should say the star hierarchy is BUILT by us (the sector format carries no companion orbits) using the same planner as the generator.
-
-- **G33 / infill dials on every path (v2.1.893)** - READER-FACING: a GM importing from the real-sky catalogue or typing a Traveller UWP now gets the same flavour dials the file importer offers. Anything describing the import paths should say the dials appear wherever fill-out runs, that the catalogue path deliberately has no age slider (a region holds stars of every age), and that the Traveller panel appears once W asks for more than the Main World.
-
-- **G24 part 2 / realism bands (v2.1.894)** - READER-FACING on every generation-dials panel: a green/amber/red strip under each slider and a one-line verdict. Anything documenting generation should say the bands mark how UNUSUAL a setting is and never what is allowed, and that their edges are rule-pack data a GM can move. The physics page's generation section is the natural home for one sentence on it.
-
-- **B81 / kill zone derives (v2.1.896)** - READER-FACING wherever the danger zones are drawn (the orbital slider, the system visualiser): hot stars now show much wider kill/danger zones and quiet cool dwarfs narrower ones. Anything describing the zones should stop saying the kill zone comes from a brightness dial, and should say it has TWO sources - surface ultraviolet and coronal flare output - because that is why an active M dwarf is dangerous and a quiet one is not.
-
-- **B84 / created-planet placement (v2.1.897)** - READER-FACING in the most direct way: "Add planet" now puts the world in the inner system with an atmosphere instead of far out and airless, and it works at all on a system with no planets yet. The habitable-zone band on the orbital slider gained a tooltip saying its outer half assumes a thick CO2 greenhouse. Anything describing the habitable zone should carry that caveat - Mars is inside the Sun's band and frozen.
-
-- **G35 / accrete removed (v2.1.898)** - READER-FACING: the Settings "Generation engine" selector and its alpha warning are gone, and so is the evolutionary wizard. Anything describing generation should stop offering a choice of engine; anything describing the experimental generator should point at https://system-lab.starsystemx.com/. Old starmaps still open. [[G17]]'s "builds WITH the accrete engine" now means that external project.
-
-- **A62 / cover-reveal resize (v2.1.899)** - possibly reader-facing, possibly a no-op: the fix is shipped but UNVERIFIED on the live player surface, so nothing should be written up as fixed until someone confirms it. No documentation change needed either way; the behaviour it restores is the behaviour that was always intended.
+**NOTE FOR WHOEVER APPENDS HERE NEXT: twenty debt lines had been appended BELOW this heading rather than under "Documentation debt"** — an insert that anchored on the end of the file rather than on the section. They were part of the same list, they were all swept in the V3 pass, and they are removed with the rest. Append to the section that names itself, not to the bottom of the file.
 
 ## Standing rules any worker session must follow
 
