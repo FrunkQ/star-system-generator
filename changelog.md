@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.10 - 21st Aug 2026
+
+- The tail of the documentation debt, which was mostly items owed to a surface nobody had picked up. GettingStarted gains: the three things a star DRAWS rather than badges and how to remove one; that picking a spectral type draws from that class's range rather than its middle; a subsection on the rule-pack editors that no user document has ever covered, including what an absorption band is and the one thing the split Gas Physics card exists to say (nothing under Presentation feeds the physics); the player-view preset controls that were owed a line, star boost included, with the honest note that a high boost stops reading as apparent magnitude; the model dialogue and click-to-place drives; and what a save actually contains. The physics page's habitability section now says WHICH temperature it scores - the mean surface one, which differs from the radiating figure by 130 K on Mercury - and admits that the water band is a comfort plateau rather than water's liquid range. Its cloud section gains the frost-not-cloud rule that is why Pluto has no methane deck.
+
 ## v3.0.0-rc.9 - 21st Aug 2026
 
 - The physics page gains the section its own map has needed all along: Stellar zones. Every zone is derived from the star's LUMINOSITY asked at a distance from that star, there are TWO frost lines rather than one (formation at ~170 K and current at ~125 K, which is what the two labels on the system map mean), the habitable zone's outer half assumes a thick CO2 greenhouse - Mars is inside the Sun's band and frozen - and the kill zone is the mean of surface ultraviolet and coronal output, which is why an active M dwarf is dangerous and a quiet one of the same size is not. Also: the pipeline list now includes radiation as its own pass, surface light and the biosphere; the ionising-output section gains all four flare mechanisms, where before it taught the convective dynamo alone and a fed black hole out-flares any star; the photon/particle table gains its brown-dwarf row; and the generation dials' realism bands are explained.
