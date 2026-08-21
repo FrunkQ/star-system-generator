@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
   import { THERMAL_LIMITS, DEFAULT_AEROBRAKE_LIMIT_KM_S } from '$lib/constants';
-  import { fmt } from '$lib/stores';
+  import UnitInput from './UnitInput.svelte';
   import CustomImageBlock from './CustomImageBlock.svelte';
 
   export let construct: CelestialBody;
@@ -271,8 +271,10 @@
                 </select>
             </div>
             <div class="form-group" style="flex: 1;">
-                <label for="aerobrake-limit" class:disabled={!_canAerobrake}>Max Entry Speed ({$fmt.speedUnit}):</label>
-                <input type="number" id="aerobrake-limit" value={$fmt.toKmS(_aerobrakeLimitKms)} disabled={!_canAerobrake} on:input={(e) => { _aerobrakeLimitKms = $fmt.fromKmS(parseFloat(e.currentTarget.value) || 0); handleUpdate(); }} />
+                <label for="aerobrake-limit" class:disabled={!_canAerobrake}>Max Entry Speed:</label>
+                <UnitInput quantity="speed" bodyType="construct" id="aerobrake-limit" disabled={!_canAerobrake}
+                    value={_aerobrakeLimitKms}
+                    on:commit={(e) => { _aerobrakeLimitKms = e.detail; handleUpdate(); }} />
             </div>
         </div>
 

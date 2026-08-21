@@ -12,7 +12,8 @@
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import { formatDistanceKm, distanceFlavour } from '$lib/units';
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import type { PanState } from '$lib/viewport/stores';
   import { clampZoom, dampedZoomStep, autoFrameStep, MIN_CAMERA_ZOOM, MAX_CAMERA_ZOOM, frameForLevel, availableFrameLevels, firstFrameLevel, nextFrameLevel, suppressAutoZoomNearPeriapsis } from '$lib/viewport/camera';
@@ -1739,8 +1740,8 @@
       if (rulerDistanceAU != null) {
           const au = rulerDistanceAU;
           const label = au < 0.01
-              ? get(fmt).km(au * AU_KM)
-              : `${au.toFixed(au < 10 ? 3 : 2)} AU` + (au < 0.2 ? `  (${get(fmt).km(au * AU_KM)})` : '');
+              ? formatDistanceKm(au * AU_KM, distanceFlavour(get(unitPrefs), 'planet'))
+              : `${au.toFixed(au < 10 ? 3 : 2)} AU` + (au < 0.2 ? `  (${formatDistanceKm(au * AU_KM, distanceFlavour(get(unitPrefs), 'planet'))})` : '');
           const mx = (sa.x + sb.x) / 2, my = (sa.y + sb.y) / 2;
           ctx.font = '600 12px "IBM Plex Mono", ui-monospace, monospace';
           const tw = ctx.measureText(label).width;

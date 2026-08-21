@@ -2,7 +2,8 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { CelestialBody, System } from '$lib/types';
   import { AU_KM } from '$lib/constants';
-  import { fmt } from '$lib/stores';
+  import UnitValue from './UnitValue.svelte';
+  import UnitInput from './UnitInput.svelte';
   import { getPlanetColor } from '$lib/rendering/colors';
 
   export let system: System;
@@ -390,18 +391,17 @@
   {#if showOrbitalSlider}
     <div class="form-group slider-group">
         <div class="label-row">
-            <label>Altitude ({$fmt.distUnit})</label>
-            <input type="number" step="any" min="0" value={Math.round($fmt.toDist(((construct.orbit?.elements.a_AU || 0) * AU_KM) - parentRadiusKm))} on:input={(e) => {
-                const disp = parseFloat(e.currentTarget.value);
-                if (isNaN(disp)) return;
-                const altKm = $fmt.fromDist(disp);
-                if (construct.orbit) construct.orbit.elements.a_AU = (altKm + parentRadiusKm) / AU_KM;
-                updateSliderState();
-                dispatch('update');
-            }} />
+            <label>Altitude</label>
+            <UnitInput quantity="radius" bodyType="construct" min={0}
+                value={((construct.orbit?.elements.a_AU || 0) * AU_KM) - parentRadiusKm}
+                on:commit={(e) => {
+                    if (construct.orbit) construct.orbit.elements.a_AU = (e.detail + parentRadiusKm) / AU_KM;
+                    updateSliderState();
+                    dispatch('update');
+                }} />
         </div>
         <div class="altitude-display">
-            <span class="radius-info">Radius: {$fmt.km(parentRadiusKm)}</span>
+            <span class="radius-info">Radius: <UnitValue quantity="radius" bodyType="construct" value={parentRadiusKm} /></span>
         </div>
         <svg bind:this={sliderEl} class="slider-svg" 
              on:mousedown={() => isDragging = true} on:mouseup={() => isDragging = false} on:mouseleave={() => isDragging = false}

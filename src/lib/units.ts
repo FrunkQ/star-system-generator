@@ -272,6 +272,11 @@ export function formatPref(prefs: UnitPrefs | undefined, q: UnitQuantity, b: Uni
 export function speedFlavour(prefs: UnitPrefs | undefined, b: UnitBodyType): MeasurementUnits {
   return resolveUnitPref(prefs, 'speed', b) === 'mi/s' ? 'imperial' : 'metric';
 }
+// Same idea for the km/mi axis (canvas rulers and other bespoke magnitude formatters that keep
+// their own structure and only take the flavour from the prefs).
+export function distanceFlavour(prefs: UnitPrefs | undefined, b: UnitBodyType): MeasurementUnits {
+  return resolveUnitPref(prefs, 'radius', b) === 'mi' ? 'imperial' : 'metric';
+}
 
 // ——— prefs: which stop each quantity × body type sits on ———
 

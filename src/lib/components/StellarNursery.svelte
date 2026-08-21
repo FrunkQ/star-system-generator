@@ -1,7 +1,8 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from 'svelte';
     import { get } from 'svelte/store';
-    import { fmt } from '$lib/stores';
+    import { unitPrefs } from '$lib/unitPrefsStore';
+    import { formatSpeedKmS, speedFlavour } from '$lib/units';
     import type { StarSeed } from '$lib/physics/stellar-evolution';
 
     const dispatch = createEventDispatcher();
@@ -98,7 +99,7 @@
             // Speed Label
             ctx.fillStyle = '#00ff00';
             ctx.font = 'bold 10px monospace';
-            ctx.fillText(get(fmt).speedKmS(speedKmS, 1), vEndX + 10, vEndY + 4);
+            ctx.fillText(formatSpeedKmS(speedKmS, speedFlavour(get(unitPrefs), 'star'), 1), vEndX + 10, vEndY + 4);
         });
     }
 

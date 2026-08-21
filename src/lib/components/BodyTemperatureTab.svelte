@@ -3,7 +3,9 @@
   import type { CelestialBody, Barycenter, RulePack } from '$lib/types';
   import { calculateEquilibriumTemperature, estimateBondAlbedo, estimateInternalHeatK, composeBodySurfaceTemperature } from '$lib/physics/temperature';
   import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
-  import { fmt } from '$lib/stores';
+  import { unitBodyTypeFor, unitFromSI } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
+  import UnitInput from './UnitInput.svelte';
 
   export let body: CelestialBody;
   export let rulePack: RulePack;
@@ -106,7 +108,7 @@
   }
   
   function getTempColor(kelvin: number) {
-      const celsius = kelvin - 273.15;
+      const celsius = unitFromSI('C', kelvin); // colour thresholds are defined in celsius
       if (celsius >= -10 && celsius <= 40) return 'var(--temp-habitable)';
       if (celsius >= -30 && celsius < -10) return 'var(--temp-cold)';
       if (celsius > 40 && celsius <= 89) return 'var(--temp-warm)';
@@ -134,14 +136,14 @@
 <div class="tab-panel">
     {#if body.roleHint === 'star'}
         <div class="form-group">
-            <label>Surface Temperature (Kelvin)</label>
-            <input type="number" bind:value={body.temperatureK} on:input={() => dispatch('update')} />
-            <span class="sub-label">{$fmt.tempK(body.temperatureK || 0)}</span>
+            <label>Surface Temperature</label>
+            <UnitInput quantity="temperature" bodyType="star" value={body.temperatureK || 0}
+                on:commit={(e) => { body.temperatureK = e.detail; dispatch('update'); }} />
         </div>
     {:else}
         <div class="read-only-row">
             <label>Equilibrium Temp (Solar Heating)</label>
-            <span class="value">{$fmt.tempK(body.equilibriumTempK || 0)}</span>
+            <span class="value"><UnitValue quantity="temperature" bodyType={unitBodyTypeFor(body)} value={body.equilibriumTempK || 0} /></span>
         </div>
         
         {#if albedoOverridden}
@@ -216,14 +218,14 @@
         <div class="read-only-row highlight">
             <label>Mean Surface Temperature</label>
             <span class="value large" style="color: {getTempColor(meanSurfaceK)}">
-                {$fmt.tempK(meanSurfaceK)}
+                <UnitValue quantity="temperature" bodyType={unitBodyTypeFor(body)} value={meanSurfaceK} />
             </span>
         </div>
 
         {#if Math.abs(meanSurfaceK - (body.temperatureK || 0)) >= 2}
             <div class="read-only-row">
                 <label>Radiating Temperature <span class="derived-pill" title="The temperature this world RADIATES at, balancing the heat it takes in. Radiated power goes as T⁴, so a world that bakes by day and freezes by night gives off as much as a uniformly warm one while averaging much colder — the mean above is what a thermometer on the ground would average.">balance</span></label>
-                <span class="value" style="color: {getTempColor(body.temperatureK || 0)}">{$fmt.tempK(body.temperatureK || 0)}</span>
+                <span class="value" style="color: {getTempColor(body.temperatureK || 0)}"><UnitValue quantity="temperature" bodyType={unitBodyTypeFor(body)} value={body.temperatureK || 0} /></span>
             </div>
         {/if}
 

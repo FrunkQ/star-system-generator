@@ -1,9 +1,11 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
-  import { fmt } from '$lib/stores';
+  import { unitPrefs, cycleUnitPref } from '$lib/unitPrefsStore';
+  import { resolveUnitPref, unitFromSI, unitToSI, unitIdLabel, unitBodyTypeFor } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
   import { endUndoAction } from '$lib/undo/systemUndo';
-  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, G } from '$lib/constants';
+  import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, JUPITER_MASS_KG, G } from '$lib/constants';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
   import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
   import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
@@ -184,27 +186,32 @@
   $: pRadPos = logPos(pRadiusRe, radSpan[0], radSpan[1]);
   $: pDenPos = logPos(pDensity, denSpan[0], denSpan[1]);
 
-  // Unit selectors for the Mass & Radius number fields — a 3-way click cycler shown in the label gap, so
-  // a tiny moon (awkward as 1e-8 M⊕) can be edited in tonnes or km instead. The SLIDER stays in canonical
-  // Earth units; only the number field's display unit changes. Radius' third option follows the starmap's
-  // km/mi choice.
-  const M_JUP_ME = 317.8;    // Jupiter mass in Earth masses
+  // Unit cycler for the Mass & Radius number fields — the SLIDER stays anchored in canonical Earth
+  // units and only the number field's display unit changes (G28's two edit-finished boundaries are
+  // untouched). G34: the MASS cycle is the campaign-wide mass pref for this body type (units.ts owns
+  // the ladder), so this field, the technical panel and the catalogue flip together. RADIUS keeps its
+  // local R⊕/R♃ stops (ratio units, deliberately not on the global ladder); its third stop follows
+  // the campaign's radius pref (km or mi).
+  const M_JUP_ME = JUPITER_MASS_KG / EARTH_MASS_KG;  // Jupiter mass in Earth masses — one source
+  const M_SOL_ME = SOLAR_MASS_KG / EARTH_MASS_KG;    // Sun mass in Earth masses
   const R_JUP_RE = 11.209;   // Jupiter radius in Earth radii
-  let massUnit: 'earth' | 'jupiter' | 'tonnes' = 'earth';
+  $: ubt = unitBodyTypeFor(body);
+  $: massUnit = ({ 'M-Earth': 'earth', 'M-Jup': 'jupiter', 't': 'tonnes', 'M-Sol': 'sol' } as Record<string, 'earth' | 'jupiter' | 'tonnes' | 'sol'>)[resolveUnitPref($unitPrefs, 'mass', ubt)] ?? 'earth';
   let radUnit: 'earth' | 'jupiter' | 'dist' = 'earth';
-  const cycleMassUnit = () => { massUnit = massUnit === 'earth' ? 'jupiter' : massUnit === 'jupiter' ? 'tonnes' : 'earth'; };
+  const cycleMassUnit = () => cycleUnitPref('mass', ubt);
   const cycleRadUnit = () => { radUnit = radUnit === 'earth' ? 'jupiter' : radUnit === 'jupiter' ? 'dist' : 'earth'; };
-  $: massUnitSym = massUnit === 'earth' ? 'M⊕' : massUnit === 'jupiter' ? 'M♃' : 't';
-  $: radUnitSym = radUnit === 'earth' ? 'R⊕' : radUnit === 'jupiter' ? 'R♃' : $fmt.distUnit;
+  $: distRadUnit = resolveUnitPref($unitPrefs, 'radius', ubt); // 'km' | 'mi'
+  $: massUnitSym = massUnit === 'earth' ? 'M⊕' : massUnit === 'jupiter' ? 'M♃' : massUnit === 'sol' ? 'M☉' : 't';
+  $: radUnitSym = radUnit === 'earth' ? 'R⊕' : radUnit === 'jupiter' ? 'R♃' : unitIdLabel(distRadUnit);
   // Tooltip: what the CURRENT unit means, then a "click to change" line below it.
-  $: massUnitName = massUnit === 'earth' ? 'Earth masses' : massUnit === 'jupiter' ? 'Jupiter masses' : 'tonnes';
-  $: radUnitName = radUnit === 'earth' ? 'Earth radii' : radUnit === 'jupiter' ? 'Jupiter radii' : ($fmt.distUnit === 'mi' ? 'miles' : 'kilometres');
+  $: massUnitName = massUnit === 'earth' ? 'Earth masses' : massUnit === 'jupiter' ? 'Jupiter masses' : massUnit === 'sol' ? 'solar masses' : 'tonnes';
+  $: radUnitName = radUnit === 'earth' ? 'Earth radii' : radUnit === 'jupiter' ? 'Jupiter radii' : (distRadUnit === 'mi' ? 'miles' : 'kilometres');
   $: massUnitTitle = `${massUnitName} (${massUnitSym})\nClick to change units`;
   $: radUnitTitle = `${radUnitName} (${radUnitSym})\nClick to change units`;
-  $: massDisp = massUnit === 'earth' ? pMassMe : massUnit === 'jupiter' ? pMassMe / M_JUP_ME : (body.massKg ?? 0) / 1000;
-  $: radDisp = radUnit === 'earth' ? pRadiusRe : radUnit === 'jupiter' ? pRadiusRe / R_JUP_RE : $fmt.toDist(body.radiusKm ?? 0);
-  const massMeFromDisp = (v: number) => massUnit === 'earth' ? v : massUnit === 'jupiter' ? v * M_JUP_ME : (v * 1000) / EARTH_MASS_KG;
-  const radReFromDisp = (v: number) => radUnit === 'earth' ? v : radUnit === 'jupiter' ? v * R_JUP_RE : $fmt.fromDist(v) / EARTH_RADIUS_KM;
+  $: massDisp = massUnit === 'earth' ? pMassMe : massUnit === 'jupiter' ? pMassMe / M_JUP_ME : massUnit === 'sol' ? pMassMe / M_SOL_ME : (body.massKg ?? 0) / 1000;
+  $: radDisp = radUnit === 'earth' ? pRadiusRe : radUnit === 'jupiter' ? pRadiusRe / R_JUP_RE : unitFromSI(distRadUnit, body.radiusKm ?? 0);
+  const massMeFromDisp = (v: number) => massUnit === 'earth' ? v : massUnit === 'jupiter' ? v * M_JUP_ME : massUnit === 'sol' ? v * M_SOL_ME : (v * 1000) / EARTH_MASS_KG;
+  const radReFromDisp = (v: number) => radUnit === 'earth' ? v : radUnit === 'jupiter' ? v * R_JUP_RE : unitToSI(distRadUnit, v) / EARTH_RADIUS_KM;
 
   // Read the live state straight from the body (NOT the reactive pMassMe/pMakeup vars, which are
   // stale within a synchronous edit batch — so consecutive edits chain off fresh values).
@@ -657,7 +664,7 @@
                 </svg>
             {/if}
         </div>
-        <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / 317.8).toFixed(2)} M♃{/if}</div>
+        <div class="sub-label">{(body.massKg || 0).toExponential(2)} kg{#if pMassMe >= 318} · {(pMassMe / M_JUP_ME).toFixed(2)} M♃{/if}</div>
     </div>
 
     <!-- RADIUS -->
@@ -693,7 +700,7 @@
                 </svg>
             {/if}
         </div>
-        <div class="sub-label">{$fmt.km(body.radiusKm || 0)}{#if lock === null && isPlanetMoon} · mass follows the composition{/if}</div>
+        <div class="sub-label"><UnitValue quantity="radius" bodyType={ubt} value={body.radiusKm || 0} />{#if lock === null && isPlanetMoon} · mass follows the composition{/if}</div>
     </div>
 
     <!-- DENSITY (lock = hold composition) -->
@@ -847,7 +854,7 @@
             <option value="1" label="{Math.round(currentRadiusMax)}"></option>
         </datalist>
         <div class="sub-label row-spaced">
-            <span>{$fmt.km(body.radiusKm || 0)}</span>
+            <span><UnitValue quantity="radius" bodyType={ubt} value={body.radiusKm || 0} /></span>
             <span class="category-badge">{sizeCategory}</span>
         </div>
     </div>

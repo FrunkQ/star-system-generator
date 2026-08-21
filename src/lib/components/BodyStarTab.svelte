@@ -2,7 +2,8 @@
   import { createEventDispatcher } from 'svelte';
   import { luminositySolarFromRT } from '$lib/physics/luminosity';
   import type { CelestialBody, StellarType } from '$lib/types';
-  import { fmt } from '$lib/stores';
+  import UnitValue from './UnitValue.svelte';
+  import UnitInput from './UnitInput.svelte';
   import { undoEpoch } from '$lib/undo/systemUndo';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
@@ -834,8 +835,9 @@
     <!-- MASS -->
     <div class="form-group">
         <div class="label-row">
-            <label>Mass (Solar Masses)</label>
-            <input type="number" step="any" bind:value={massSuns} on:change={handleMassNumberInput} />
+            <label>Mass</label>
+            <UnitInput quantity="mass" bodyType="star" value={massSuns * SOLAR_MASS_KG}
+                on:commit={(e) => { massSuns = e.detail / SOLAR_MASS_KG; handleMassNumberInput(); }} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
@@ -861,7 +863,7 @@
             <input type="range" min="0" max="1" step="0.001" bind:value={radiusSliderPos} disabled={isBH} on:input={updateRadius} class="full-width-slider overlay" />
         </div>
         <div class="sub-label">
-            {Math.round((body.radiusKm || 0) * 100) / 100 > 1000 ? $fmt.km(body.radiusKm || 0) : $fmt.km(body.radiusKm || 0, 1)}
+            <UnitValue quantity="radius" bodyType="star" value={body.radiusKm || 0} decimals={(body.radiusKm || 0) > 1000 ? undefined : 1} />
             {#if isBH}— Schwarzschild radius, driven by mass (r = 2GM/c²){/if}
         </div>
     </div>
@@ -871,8 +873,9 @@
     <!-- TEMPERATURE -->
     <div class="form-group">
         <div class="label-row">
-            <label for="temp">Effective Temperature ({tempK} K)</label>
-            <input type="number" step="any" bind:value={tempK} on:change={handleTempInput} />
+            <label for="temp">Effective Temperature</label>
+            <UnitInput quantity="temperature" bodyType="star" id="temp" value={tempK}
+                on:commit={(e) => { tempK = e.detail; handleTempInput(); }} />
         </div>
         <div class="slider-container">
             <svg class="slider-svg" width="100%" height="30">
