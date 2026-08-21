@@ -2,6 +2,36 @@
   "generation_parameters": {
     "planet_mass_band_me": [0.03, 4130],
     "infill_anchor_exclusion_hill_radii": 3.5,
+    "realism_bands": {
+      "name": "WHICH SIDE OF THE PHYSICS A CONTROL IS ON, as a coloured band under its track. Green is the range reality supports; amber is possible but unlikely; red is unlikely enough that no measured system looks like it. NOTHING IS EVER FORBIDDEN at any setting - hand authoring is hand authoring, and a GM running a deliberately fantastical setting moves these edges rather than fighting them, which is the whole reason they are pack data and not constants in the code. Each entry gives green as [lo, hi] and amber as the WIDER [lo, hi] that contains it; outside amber is red. The wording is here too, because 'few real systems look like this' and 'invalid' are different claims and only the first one is true.",
+      "wording": {
+        "green": "about where real systems sit",
+        "amber": "few real systems look like this",
+        "red": "no measured system looks like this - still allowed, still physical"
+      },
+      "controls": {
+        "metallicity": {
+          "why": "Derived from this pack's own numbers rather than judged: the dial spans decades_across_dial = 2 dex of [Fe/H] centred on realistic_dial = 0.65. Solar-neighbourhood stars sit mostly within about 0.35 dex of solar, which is 0.175 of the travel either side; the thin-disc tail reaches roughly 0.7 dex, which is 0.35.",
+          "green": [0.475, 0.825],
+          "amber": [0.3, 1.0]
+        },
+        "diskMass": {
+          "why": "Measured across the dial (G24 part 1): planets per system runs 1.25 to 5.80 and the median outermost orbit 0.33 to 4.64 AU. Real systems are found across most of that, so the green band is wide; the extremes - a single hugged-in world, or a system with more giants than Sol has planets - are the unlikely ends.",
+          "green": [0.3, 0.8],
+          "amber": [0.12, 0.92]
+        },
+        "dynamicalHistory": {
+          "why": "Measured across the dial (G24 part 1): maximum eccentricity runs 0.029 to 0.467 and star tilt 3.9 to 62.2 degrees. Sol sits low (Mercury at e = 0.21, the Sun tilted 7.25 degrees) but eccentric and tilted systems are genuinely common, so green covers most of the lower two thirds; only the violent end is rare.",
+          "green": [0.15, 0.65],
+          "amber": [0.0, 0.85]
+        },
+        "rarity": {
+          "why": "The realistic mix is anchored at realistic_dial = 0.25, not the midpoint, and part 1 measured the effect SATURATING above the middle (distinct types 19 to 34, almost all of it in the bottom half). So green runs from the bottom to just past the anchor; everything above is the deliberately strange end, which is what the dial is FOR.",
+          "green": [0.0, 0.45],
+          "amber": [0.0, 0.75]
+        }
+      }
+    },
     "type_metallicity_sensitivity": {
       "name": "How the Metallicity dial reweights the type draw. Fischer & Valenti 2005: giant occurrence rises roughly as 10^(2 [Fe/H]) because core accretion needs solids to build a core before the disc dissipates - so LOW metallicity means FEWER giants, and a metal-poor system is small rocky worlds, few of them. giant_floor is the metallicity-blind share from gravitational instability, which is why the bottom of the dial is not zero giants. Iron and silicate worlds ride the same curve up, gently; ice-dominated worlds move the other way, weakly. The Sun is somewhat metal-rich against the local median, so realistic_dial sits above the middle. Factor = floor + (1-floor) * 10^(sensitivity * (dial - realistic_dial) * decades_across_dial); sensitivity keys are regexes on the class, first match wins.",
       "realistic_dial": 0.65,

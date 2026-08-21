@@ -2832,6 +2832,23 @@ the chosen age, because narrowing the band under a slider the GM already moved (
 "G2 V" drops the ceiling from 12.3 Gyr to 2.47) otherwise hands the generator an age past that
 star's whole life, and the panel clamps its DISPLAY so the fault would not show on screen.
 
+### UI-B1 A REALISM BAND SAYS UNLIKELY, NEVER INVALID, AND ITS EDGES ARE PACK DATA
+WHERE: `components/BandedSlider.svelte` (`realismBandFor`, `realismWording`, `bandOf`);
+`generation_parameters.realism_bands` in the pack; mounted through `GenerationDials`.
+RULE: the component takes a band and NEVER computes one - no default band, no code constant, no
+"sensible middle" if a pack omits it. A pack with no entry renders a plain slider. Amber reads
+"few real systems look like this" and RED still says "still allowed, still physical", because
+nothing is forbidden at any setting: this is the slider form of "hand authoring is hand authoring -
+show the problems in tags and allow it". Green lies INSIDE amber; an edge value reads as the KINDER
+band, so nudging onto a boundary never scolds.
+WHY: it is a VOCABULARY, not a feature of one control (inbox G24). Writing it for the material
+slider alone was the named point-solution trap, and hardcoding the edges would make a GM running a
+deliberately fantastical setting fight the UI instead of moving the goalposts.
+BLAST: **the strip must be drawn BENEATH the track, not behind it.** Absolutely positioned behind a
+native range input it has correct geometry and is invisible - the input's own runnable track paints
+over it, which measures fine in the DOM and shows nothing on screen. Found by eye, after the geometry
+checked out. Anything reusing this for a physics control inherits that.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s

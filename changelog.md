@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.895-beta - 21st Aug 2026
+
+- The system-generation dials now show you which side of the physics you are on. A green, amber and red strip under each slider marks where real systems sit, where few of them do, and where none measured do - and the wording is careful about the difference: red says "no measured system looks like this - still allowed, still physical", because nothing is ever ruled out at any setting. The edges live in the rule pack, so a GM running a deliberately fantastical setting can move the goalposts rather than fight them.
+
 ## v2.1.894-beta - 21st Aug 2026
 
 - G34 phase 1, not yet visible on any panel: the unit ladders (temperature K/C/F, mass t/M-Earth/M-Jup/M-Sol, distance km/mi/AU/ly/pc), per-quantity-by-body-type prefs stored on the starmap with a one-time migration from the two legacy unit settings, the UnitValue and UnitInput components whose unit label click-cycles, and specs for every ladder round-trip. The panel sweep that makes it visible is phase 2.

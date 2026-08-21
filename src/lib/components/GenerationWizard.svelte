@@ -381,7 +381,7 @@
 
         <section class="block">
           <h3>Physical character</h3>
-          <GenerationDials bind:knobs />
+          <GenerationDials bind:knobs {rulePack} />
         </section>
       {/if}
     </div>

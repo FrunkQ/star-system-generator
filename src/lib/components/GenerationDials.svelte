@@ -23,8 +23,17 @@
 
 <script lang="ts">
   import type { AgeGuess } from '$lib/physics/systemAge';
+  import type { RulePack } from '$lib/types';
+  import BandedSlider, { realismBandFor, realismWording } from './BandedSlider.svelte';
 
   export let knobs: GenerationKnobs;
+  /**
+   * The pack, for the REALISM BANDS under each dial (G24). Optional: without it the dials render
+   * exactly as they always did. The band edges are pack data and are never computed here — that is
+   * what lets a GM running a deliberately fantastical setting move the goalposts rather than fight
+   * them.
+   */
+  export let rulePack: RulePack | null = null;
   /**
    * When given, an AGE control is shown above the dials, BOUND to the star's own life: the slider runs
    * from the youngest the star could plausibly be to just before it swells, explodes or collapses.
@@ -65,12 +74,15 @@
 {/if}
 
 {#each KNOB_ROWS as k}
-  <div class="knob">
-    <div class="knob-head"><span>{k.label}</span><span class="knob-val">{Math.round((knobs[k.key] ?? 0.5) * 100)}%</span></div>
-    <input type="range" min="0" max="1" step="0.01" bind:value={knobs[k.key]} class="slider" />
-    <div class="knob-ends"><span>{k.lo}</span><span>{k.hi}</span></div>
-    <p class="knob-why">{k.why}</p>
-  </div>
+  <BandedSlider
+    label={k.label}
+    bind:value={knobs[k.key]}
+    loLabel={k.lo}
+    hiLabel={k.hi}
+    why={k.why}
+    band={realismBandFor(rulePack, k.key)}
+    wording={realismWording(rulePack)}
+  />
 {/each}
 {#if showPhysicsLink}
   <p class="note">All four stay inside the physics: they change how likely each kind of world is, never whether it could exist where it sits.

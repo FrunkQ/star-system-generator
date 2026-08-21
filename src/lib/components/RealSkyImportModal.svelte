@@ -519,7 +519,7 @@
               These apply to every system in the region. Confirmed planets are anchors either way — the
               dials only shape what gets added around them.
             </p>
-            <GenerationDials bind:knobs={infillKnobs} showPhysicsLink={false} />
+            <GenerationDials bind:knobs={infillKnobs} {rulePack} showPhysicsLink={false} />
           </div>
         {/if}
 

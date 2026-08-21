@@ -263,7 +263,7 @@
             <p class="muted">No star was found in this import, so there is nothing to generate around. Load it as-is and add a star, or check the source file.</p>
           {:else}
             <p class="muted">Add plausible worlds around the star{processedSystem && processedSystem.nodes.filter((n) => (n as any).roleHint === 'star').length > 1 ? 's' : ''} where the import left gaps. Imported worlds are never moved or changed — a generated world that would crowd one is dropped, not the import. {importedPlanets >= 3 ? 'This import already carries a system, so this starts off.' : 'This import is sparse, so this starts on.'} Same dials as creating from a star.</p>
-            <GenerationDials bind:knobs={infillKnobs} bind:ageGyr={chosenAgeGyr} age={ageGuess} showPhysicsLink={false} />
+            <GenerationDials bind:knobs={infillKnobs} bind:ageGyr={chosenAgeGyr} age={ageGuess} {rulePack} showPhysicsLink={false} />
             <div class="infill-actions">
               <button class="ghost small" disabled={infillBusy} on:click={applyInfill}>{infillBusy ? 'Working…' : infillResult ? 'Re-run with these settings' : (infillOn ? 'Fill out' : 'Apply age only')}</button>
               {#if infillResult}

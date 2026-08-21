@@ -175,7 +175,7 @@
             with PBG's belts and giants. These are the same dials as creating a system from a star, and
             the Main World is never moved or changed by them.
           </p>
-          <GenerationDials bind:knobs={infillKnobs} bind:ageGyr={infillAgeGyr} age={ageGuess} showPhysicsLink={false} />
+          <GenerationDials bind:knobs={infillKnobs} bind:ageGyr={infillAgeGyr} age={ageGuess} {rulePack} showPhysicsLink={false} />
         </div>
       {/if}
 
