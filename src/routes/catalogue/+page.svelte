@@ -35,6 +35,7 @@
   import BodyPicker from '$lib/components/BodyPicker.svelte';
   import { AU_KM } from '$lib/constants';
   import { migrateUnitPrefs, type UnitPrefs } from '$lib/units';
+  import { unitPrefs as unitPrefsStore, unitPrefsLocked } from '$lib/unitPrefsStore';
   import { randomGuideNote } from '$lib/catalogue/guideNotes';
   import type { System, RulePack, CelestialBody, Starmap } from '$lib/types';
 
@@ -864,7 +865,11 @@
       prefs = migrateUnitPrefs({
         measurementUnits: params.get('units') === 'imperial' ? 'imperial' : 'metric',
         temperatureUnit: tp === 'F' || tp === 'K' ? tp : 'C'
-      }); }
+      });
+      // The runtime store feeds store-reading components (HoloView's grid legend); this window
+      // never cycles a pref - players inherit, non-interactively.
+      unitPrefsStore.set(prefs);
+      unitPrefsLocked.set(true); }
     try {
       rulePack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
     } catch (e) {
@@ -890,7 +895,7 @@
       starmap = map;
       // G34: inherit the GM's unit choices, non-interactively. Absent on a pre-G34 GM build →
       // keep whatever the launch params seeded.
-      if ((map as any)?.unitPrefs) prefs = (map as any).unitPrefs;
+      if ((map as any)?.unitPrefs) { prefs = (map as any).unitPrefs; unitPrefsStore.set(prefs); }
       lastUpdate = Date.now();
       lastHeardAt = Date.now();
       connected = true;

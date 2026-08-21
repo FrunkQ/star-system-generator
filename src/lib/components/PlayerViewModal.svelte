@@ -10,7 +10,6 @@
   import QRCode from 'qrcode';
   import { broadcastService } from '$lib/broadcast';
   import { brandingStore } from '$lib/catalogue/branding';
-  import { measurementUnit, temperatureUnit } from '$lib/stores';
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { DEFAULT_PRESET, makePresetId, accentSolid, isRainbow, RAINBOW_GRADIENT, normalizePreset } from '$lib/player/presets';
   import {
@@ -32,7 +31,7 @@
   // (docs/dev/vtt-integration-design.md 11). Absent when the GM has not configured one.
   $: iceParam = browser ? encodeIceParam(loadStoredIce()) : null;
   $: shareUrl = selected
-    ? `${origin}/catalogue?sid=${sessionId ?? ''}&preset=${selected.id}&units=${$measurementUnit}&temp=${$temperatureUnit}${iceParam ? `&ice=${iceParam}` : ''}`
+    ? `${origin}/catalogue?sid=${sessionId ?? ''}&preset=${selected.id}${iceParam ? `&ice=${iceParam}` : ''}`
     : '';
   $: if (browser && shareUrl) {
     QRCode.toDataURL(shareUrl, { margin: 1, width: 220, color: { dark: '#0a0d14', light: '#ffffff' } })

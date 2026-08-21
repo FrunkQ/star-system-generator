@@ -24,7 +24,8 @@ You start at the **Starmap** — a pan-and-zoom map tracking many star systems a
 * **Find by tag…**: from the rail, hunt across every system for what you need — the nearest gas giant to refuel at, a world with a breathable atmosphere, or anything you've tagged.
 * **Find a system**: the **picker** — the puck at the top of the map — opens a searchable list of every system and ship. Tap it, pick, and it folds away again.
 * **Describe the map**: the floating panel holds the map's **Description** and your **GM Notes**, both editable in place. Drag its header to move it, or the corner grip to make it bigger when you have more to say than fits.
-* **Settings**: toggle the Milky Way backdrop, switch grid style (Square / Hex / None), pick metric or imperial units, enable **Traveller mode** for hex alignment, and choose whether **depth** counts toward distances — when it doesn't, the map stops annotating it.
+* **Settings**: toggle the Milky Way backdrop, switch grid style (Square / Hex / None), enable **Traveller mode** for hex alignment, choose whether **depth** counts toward distances — when it doesn't, the map stops annotating it — and pick an **interface skin** for this device (Modern is the default; Classic is the original orange look).
+* **Click a unit to change it**: the unit label beside any value — a temperature, a mass, a radius, an orbit, a delta-v — is a button. Click it and every reading of that kind on that body type follows, everywhere: flip one planet's temperature to Fahrenheit and every planet and moon shows Fahrenheit, while stars stay in kelvin until you flip one of those. Mixing is fine (°C with miles is legal), the choices save with the campaign, and player views inherit them — players see your units and cannot change them.
 
 ## 2. The System View: orbital mechanics
 

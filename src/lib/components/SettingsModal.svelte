@@ -147,8 +147,6 @@
   let showScaleBar = starmap.scale?.showScaleBar ?? true;
   // WS7: depth counts toward distance by default; a GM can opt into visual-only height.
   let ignoreZForDistances = starmap.ignoreZForDistances ?? false;
-  let measurementUnits: 'metric' | 'imperial' = starmap.measurementUnits ?? 'metric';
-  let temperatureUnit: 'C' | 'F' | 'K' = starmap.temperatureUnit ?? 'C';
   // System edge — the "left the local system" boundary. Unset = each star's Hill limit; a number = a fixed AU.
   let systemEdgeMode: 'hill' | 'custom' = (starmap.systemEdgeAu ?? 0) > 0 ? 'custom' : 'hill';
   let systemEdgeAu: number = starmap.systemEdgeAu && starmap.systemEdgeAu > 0 ? starmap.systemEdgeAu : 10000;
@@ -237,8 +235,6 @@
         invertDisplay,
         mapBackground,
         ignoreZForDistances,
-        measurementUnits,
-        temperatureUnit,
         systemEdgeAu: systemEdgeMode === 'custom' && systemEdgeAu > 0 ? systemEdgeAu : undefined,
         scale: {
           unit: distanceUnit,
@@ -368,20 +364,13 @@
           <div class="form-group">
             <label><input type="checkbox" bind:checked={showScaleBar} /> Show scale bar (scaled mode)</label>
           </div>
+          <!-- G34 phase 5: the map-wide units selectors retire. Units live on the FIELDS now — the
+               unit label beside any value is a button that cycles it, remembered per kind of
+               reading × body type, saved with the campaign, inherited by player views. The legacy
+               fields stay on old saves for the load-time migration; nothing writes them any more. -->
           <div class="form-group">
-            <label for="measurementUnits" title="How in-system distances and speeds are shown (radii, orbits, sensor ranges, Δv). Values are stored in SI either way — this is display only. The interstellar map unit above is separate.">Measurement units (in-system)</label>
-            <select id="measurementUnits" bind:value={measurementUnits}>
-              <option value="metric">Metric (km, km/s)</option>
-              <option value="imperial">Imperial (miles, mph)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="temperatureUnit" title="Temperature display — independent of the distance units above. Values are stored in Kelvin either way.">Temperature</label>
-            <select id="temperatureUnit" bind:value={temperatureUnit}>
-              <option value="C">Celsius (°C)</option>
-              <option value="F">Fahrenheit (°F)</option>
-              <option value="K">Kelvin (K)</option>
-            </select>
+            <label title="Click the unit label beside any value — a temperature, a mass, a distance — to cycle it. The choice applies to every reading of that kind on that body type, saves with the campaign, and player views inherit it. Mixing is fine: °C with miles is legal.">Units (in-system)</label>
+            <p class="section-hint">Units now live on the fields themselves — click the unit beside any value to change it everywhere. Players inherit your choices.</p>
           </div>
           <div class="form-group">
             <label for="systemEdge" title="Where a coasting ship counts as having LEFT the local system (handed over to the starmap as an interstellar adrift ship). The Hill limit is the star's true gravitational reach (~2 ly) — set a tighter custom distance for quicker, gameplay-friendly departures.">System edge</label>

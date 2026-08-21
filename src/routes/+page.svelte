@@ -28,7 +28,7 @@
   import { perfStage, perfEnabled } from '$lib/perfTrace';
   import { APP_VERSION } from '$lib/constants';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
-  import { systemStore, viewportStore, measurementUnit, temperatureUnit } from '$lib/stores';
+  import { systemStore, viewportStore } from '$lib/stores';
   import { syncUnitPrefsFromStarmap, unitPrefs } from '$lib/unitPrefsStore';
   import { migrateUnitPrefs } from '$lib/units';
   import { attachStarmapUndo } from '$lib/undo/starmapUndo';
@@ -967,11 +967,9 @@
     broadcastService.sendIfChanged({ type: 'SYNC_PRESET', payload: { presetId: $runningPresetId, overrides: $liveOverrides } });
   }
 
-  // Keep the runtime display units in sync with the loaded starmap (source of truth).
-  $: measurementUnit.set($starmapStore?.measurementUnits ?? 'metric');
-  $: temperatureUnit.set($starmapStore?.temperatureUnit ?? 'C');
-  // G34: the per-quantity × body-type unit prefs ride the starmap the same way (reference-guarded
-  // inside — the starmap store fires far more often than a pref changes).
+  // G34: the per-quantity × body-type unit prefs ride the starmap (reference-guarded inside —
+  // the starmap store fires far more often than a pref changes). The old map-wide unit stores
+  // retired with the Settings selector (phase 5).
   $: syncUnitPrefsFromStarmap($starmapStore);
 
   // Subscribe to systemStore and update starmapStore
