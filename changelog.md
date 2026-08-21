@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.881-beta - 21st Aug 2026
+
+- Docs only. The moon rebuild is unblocked (build on the design note's defaults and let play decide); the kill/danger zones will derive from the star's computed output; the too-cold-in-the-goldilocks-zone observation is captured with the measurement that decides whether it is a fault or honest physics; and the player-window stretch is pinned to resizing on the cover page.
+
 ## v2.1.880-beta - 21st Aug 2026
 
 - The info panel's picture is now yours to shape: grab the strip under it to drag it taller, shorter or minimised - the choice is remembered on this device - and a hover icon on the picture flips between the centred slice and the whole image letterboxed smaller. Player windows keep their own choice.
