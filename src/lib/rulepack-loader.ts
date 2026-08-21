@@ -1,4 +1,5 @@
 import type { RulePack } from './types';
+import { warnIfLegacyRules } from './system/classification';
 
 // Helper function for deep merging objects. This is a simple implementation.
 function deepMerge(target: any, source: any): any {
@@ -29,6 +30,8 @@ export function loadRulePack(data: unknown): RulePack {
   if (!data || typeof (data as RulePack).id !== 'string' || typeof (data as RulePack).version !== 'string') {
     throw new Error('Invalid RulePack data: missing essential properties.');
   }
+  // Say it where a pack author can see it (inbox B67): the additive classifier.rules seam is gone.
+  warnIfLegacyRules(data as RulePack);
   return data as RulePack;
 }
 

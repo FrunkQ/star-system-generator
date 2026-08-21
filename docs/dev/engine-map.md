@@ -1760,10 +1760,9 @@ bundled bodies including Jupiter — and it does not matter, because every consu
 the field is missing and returns gas 0.80 for all four Sol giants. An audit of `n.makeup?.gas ?? 0`
 concluded the giant test was dead for Jupiter; through the accessor it is true for every giant. Before
 concluding a field is unset, check whether anything reads it directly at all.
-BLAST: any audit of `classes` or `image`; and note the legacy rules path in `classifyBody` carries a
-hand-maintained `baseArchetypes` Set that lists ~17 of the rulepack's 64 `kind: 'base'` fingerprints —
-a second answer to "which classes are mutually exclusive", dormant only because the starter pack
-ships fingerprints. It is the shape that produced those fossils.
+BLAST: any audit of `classes` or `image`. (The second answer to "which classes are mutually
+exclusive" — a hand-maintained `baseArchetypes` Set in the legacy rules path listing ~17 of the
+rulepack's 64 `kind: 'base'` fingerprints — is GONE with that path, v2.1.889-beta / B67.)
 
 ### DATA-R18 A BAND is a range to draw from; a DESIGNATION is what a star IS. Bodies hold designations
 WHERE: `physics/starDesignation` (`starClassKeyFor`, `isBandKey`, `bandKeyOf`); the pack's
@@ -2748,6 +2747,25 @@ used the regex, so ICE giants fell through it and published a surface-to-LO figu
 surface - the B11 class-regex fault, alive in a copy. If you add a fifth consumer, the danger is that
 `calculateDeltaVBudgets` returns EARLY without writing anything when `calculatedGravity_ms2` or
 `radiusKm` is missing, so the field can also be `undefined` rather than -1.
+
+### CLASS-1 THERE IS ONE CLASSIFIER, AND A PACK WITHOUT FINGERPRINTS GETS ONE BASE CLASS BY MASS
+WHERE: `system/classification.ts` `classifyBody` / `fallbackBaseClass` / `warnIfLegacyRules`;
+`rulepack-loader.ts` calls the warning. `ClassifierSpec.rules` survives in the type as `unknown[]`
+so an old pack still PARSES, and is read by nothing.
+RULE: do not reintroduce an additive-score seam beside the fingerprint engine, and do not treat
+`classifier.rules` as a fallback. A pack with no fingerprints classifies to `fallbackBaseClass` —
+terrestrial or gas-giant by mass, `planet/unclassified` when even the mass is missing — and its
+author gets a console warning naming the pack.
+WHY: the seam was never REACHED (every shipped pack carries fingerprints and the early return took
+them) but it was not inert: measured over the 167 planets and moons in the bundled examples through a
+fingerprint-stripped pack, 43 of its 50 rules fired and the output was worse on every body compared.
+`planet/silicate` (density > 1.5) hit 136 of 167; Io lost its sulfur, Europa its subsurface ocean,
+`hot-eyeball` landed on a gas giant. It also held a copy of the classifier predating B6 (eyeballs
+moved onto surface temperature) and B25 (the surface gate), and a rule calling any body under 10
+Earth masses with irradiation over 1000 a stripped gas-giant core (inbox B67, D12).
+BLAST: `minScore` went with it — nothing reads it. If you ever need a fingerprint-less pack to
+classify richly, the answer is to GENERATE fingerprints, not to restore scoring: the two engines
+disagreed on essentially every body and there was no test that could have told you which was right.
 
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict

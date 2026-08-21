@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.890-beta - 21st Aug 2026
+
+- One classifier, not two. A second, older classification engine sat behind the live one, reachable only by a rule pack that shipped no fingerprints - and it still held the version of the rules from before two corrections landed, so it would have put eyeball worlds on gas giants and called any small hot world a stripped giant's core. Measured against the live engine on 167 bundled worlds it was worse on every one of them. It is gone; a pack with no fingerprints now gets one honest class from the body's mass, and its author is told why.
+
 ## v2.1.889-beta - 21st Aug 2026
 
 - Docs only. Two owner decisions: the interface de-chunk becomes selectable SKINS on shared components (the drift cure and the density question become one job), and accrete leaves the program for its own project - the experimental engine selector and everything under it is to be removed, reversing the old preservation order.
@@ -9,6 +13,7 @@ All notable changes are listed here:
 ## v2.1.888-beta - 21st Aug 2026
 
 - A belt no longer claims an ascent cost. Every belt and ring in the app was publishing "Ascent Dv: -0.0 km/s" - a not-applicable marker being read as a number - and every gas AND ice giant was publishing a real-looking figure for a world with no surface to leave. All four places that ask now ask the same question, and where the answer is no the row says so and why, instead of showing a figure or quietly disappearing. Tiny moons gain a readable one: Phobos costs 9 m/s to leave, where the row used to round it to "0.0 km/s".
+
 ## v2.1.887-beta - 21st Aug 2026
 
 - Docs only. Click-to-cycle units everywhere, remembered per body type, assessed and captured: half the machinery already exists, the edit fields are the risky half, and the de-chunking rides the same sweep.

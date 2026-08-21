@@ -1,5 +1,5 @@
 // src/lib/system/classification.ts
-import type { CelestialBody, Barycenter, RulePack, Expr, Feature, Fingerprint, FingerprintBand } from "../types";
+import type { CelestialBody, Barycenter, RulePack, Fingerprint, FingerprintBand } from "../types";
 
 // --- Fingerprint classifier (Phase 04) ---------------------------------------------------
 // Each planet type is a fingerprint: the parameter bands that define it. A body's fit to a
@@ -215,22 +215,6 @@ export function classifyByFingerprint(
   return out;
 }
 
-// Helper function to recursively evaluate classifier expressions
-function evaluateExpr(features: Record<string, number | string>, expr: Expr, tags: {key: string, value?: any}[]): boolean {
-    if (expr.all) return expr.all.every((e: Expr) => evaluateExpr(features, e, tags));
-    if (expr.any) return expr.any.some((e: Expr) => evaluateExpr(features, e, tags));
-    if (expr.not) return !evaluateExpr(features, expr.not, tags);
-    if (expr.gt) return (features[expr.gt[0]] ?? -Infinity) > expr.gt[1];
-    if (expr.lt) return (features[expr.lt[0]] ?? Infinity) < expr.lt[1];
-    if (expr.between) {
-        const val = features[expr.between[0]];
-        return val !== undefined && val >= expr.between[1] && val <= expr.between[2];
-    }
-    if (expr.eq) return features[expr.eq[0]] === expr.eq[1];
-    if (expr.hasTag) return tags.some(t => t.key === expr.hasTag);
-    return false;
-}
-
 export function classifyBody(planet: CelestialBody, features: Record<string, number | string>, pack: RulePack, allNodes: (CelestialBody | Barycenter)[]): string[] {
   if (!pack.classifier) return [];
 
@@ -238,59 +222,27 @@ export function classifyBody(planet: CelestialBody, features: Record<string, num
     const hasRing = allNodes.some(n => n.parentId === planetId && n.kind === 'body' && (n as CelestialBody).roleHint === 'ring');
     features['has_ring_child'] = hasRing ? 1 : 0;
 
-    // Phase 04: prefer the per-type fingerprint engine when the rulepack provides one.
-    if (pack.classifier.fingerprints && pack.classifier.fingerprints.length > 0) {
-        return classifyByFingerprint(features, pack.classifier.fingerprints, pack.classifier.maxClasses || 4);
-    }
-
-    const scores: Record<string, number> = {};
-
-    for (const rule of pack.classifier.rules) {
-        if (evaluateExpr(features, rule.when, planet.tags)) {
-            scores[rule.addClass] = (scores[rule.addClass] || 0) + rule.score;
-        }
-    }
-
-    const sortedClasses = Object.entries(scores)
-        .filter(([, score]) => score >= (pack.classifier?.minScore || 10))
-        .sort((a, b) => b[1] - a[1]);
-
-    // Mutually exclusive base archetypes
-    // We prioritize the highest scoring one and discard the rest.
-    const baseArchetypes = new Set([
-        'planet/terrestrial', 'planet/gas-giant', 'planet/ice-giant', 
-        'planet/dwarf-planet', 'planet/super-earth', 'planet/mini-neptune',
-        'planet/hot-jupiter', 'planet/cold-jupiter', 'planet/warm-jupiter',
-        'planet/cloudless-gas-giant', 'planet/ammonia-clouds-gas-giant', 'planet/water-clouds-gas-giant',
-        'planet/silicate-clouds-gas-giant', 'planet/alkali-metal-clouds-gas-giant',
-        'planet/protoplanet', 'planet/brown-dwarf', 'planet/rogue'
-    ]);
-
-    const finalClasses: string[] = [];
-    let hasBase = false;
-
-    for (const [cls, score] of sortedClasses) {
-        if (baseArchetypes.has(cls)) {
-            if (!hasBase) {
-                finalClasses.push(cls);
-                hasBase = true;
-            }
-            // Else: Skip other base types (e.g. if we are Ice Giant, skip Gas Giant)
-        } else {
-            // Always include modifiers (ringed, eyeball, etc.)
-            finalClasses.push(cls);
-        }
-        
-        if (finalClasses.length >= (pack.classifier?.maxClasses || 3)) break;
-    }
-
-    // Start with the most likely class, but also add generic fallbacks.
-    if (finalClasses.length === 0) {
-        if ((features['mass_Me'] as number) > 10) {
-            finalClasses.push('planet/gas-giant');
-        } else {
-            finalClasses.push('planet/terrestrial');
-        }
-    }
-    return finalClasses;
+    // ONE classification engine. The additive `classifier.rules[]` seam that used to sit below this
+    // is GONE (inbox B67 / D12) — see `warnIfLegacyRules` for what a pack author is told.
+    return classifyByFingerprint(features, pack.classifier.fingerprints ?? [], pack.classifier.maxClasses || 4);
 }
+
+// A pack that still ships `classifier.rules` gets told, once, that they are not read. Silence here
+// was the whole problem: the rules looked live, and a pack without fingerprints would have been
+// quietly classified by a copy of the engine that predates two corrections (B6's move onto surface
+// temperature, B25's surface gate) and carried a rule that called any small hot world a stripped
+// gas-giant core.
+const warnedPacks = new Set<string>();
+export function warnIfLegacyRules(pack: RulePack): void {
+    const legacy = (pack.classifier as unknown as { rules?: unknown[] })?.rules;
+    if (!legacy?.length) return;
+    const id = pack.id ?? 'unnamed pack';
+    if (warnedPacks.has(id)) return;
+    warnedPacks.add(id);
+    console.warn(
+      `[classifier] "${id}" ships ${legacy.length} legacy classifier.rules. They are NOT read — ` +
+      'the fingerprint engine is the only classifier. Express each rule as a fingerprint ' +
+      '(class + kind + match bands); a pack with no fingerprints falls back to one base class by mass.'
+    );
+}
+

@@ -701,14 +701,6 @@ export interface System {
 }
 
 // Rule Pack interfaces (subset for M0–M1)
-export interface ClassifierRule { when: Expr; addClass: string; score: number; }
-export type Feature =
-  | "mass_Me" | "radius_Re" | "density" | "Teq_K" | "a_AU" | "stellarType"
-  | "atm.main" | "atm.pressure_bar" | "hydrosphere.coverage" | "tidalHeating" | "tidallyLocked" | "ringSystem"
-  | "age_Gyr" | "orbital_period_days" | "rotation_period_hours" | "has_ring_child" | "radiation_flux";
-export type Expr = { all?: Expr[]; any?: Expr[]; not?: Expr }
-  | { gt: [Feature, number] } | { lt: [Feature, number] } | { between: [Feature, number, number] }
-  | { eq: [Feature, string] } | { hasTag: string };
 // --- Fingerprint classifier (Phase 04 rewrite) ---
 // Each planet type is described by a fingerprint: the parameter bands that define it.
 // A numeric band is [min, max]; a categorical band is a string or list of accepted strings.
@@ -736,10 +728,16 @@ export interface Fingerprint {
   note?: string;                         // human note on the type's defining traits
 }
 export interface ClassifierSpec {
-  rules: ClassifierRule[];               // legacy additive rules (fallback when no fingerprints)
-  fingerprints?: Fingerprint[];          // new per-type fingerprints (preferred when present)
+  // REMOVED (inbox B67 / D12). The additive `rules[]` seam was never reached by any shipped pack —
+  // starter-sf has always carried fingerprints, and the early return took them — while quietly
+  // holding a copy of the classifier that predated B6 (eyeballs moved onto surface temperature) and
+  // B25 (the surface gate), plus a rule that called any small hot world a stripped gas-giant core.
+  // Measured before removal: 43 of the 50 fired through a fingerprint-less pack and the output was
+  // materially worse on every body compared. Kept in the type only so an old pack still PARSES;
+  // `warnIfLegacyRules` tells its author the rules are not read.
+  rules?: unknown[];
+  fingerprints?: Fingerprint[];          // per-type fingerprints — the only classifier
   maxClasses: number;
-  minScore: number;
   planetImages?: Record<string, string>;
   starImages?: Record<string, string>;
 }

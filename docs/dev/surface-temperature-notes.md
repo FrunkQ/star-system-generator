@@ -192,9 +192,10 @@ refusals.**
   a measured 0.96) and Iapetus (0.53 against 0.20) are the two largest albedo errors left in the
   Solar System, and neither is age-driven: Mimas is E-ring plating, Iapetus is leading-hemisphere
   dust. Iapetus is an AREA case and the natural first customer for `surface-areas-design.md`.
-- **`system/classification.ts:221`** — `classifyBody` returns early when the pack supplies
-  fingerprints, so all 50 `classifier.rules[]` are unreachable for starter-sf. Recorded as B67, not
-  mine to settle. *Check: does the early return still precede the `rules` loop?*
+- **`system/classification.ts`** — SETTLED at v2.1.889-beta: the `classifier.rules[]` seam is
+  deleted, not merely unreachable, and there is no early return left to check because there is only
+  one path. A pack without fingerprints now gets one base class by mass and its author gets a
+  warning. See engine map CLASS-1 and inbox B67 / D12 for the measurement that decided it.
 - **`physics/magnetism.ts:114`** — the dynamo sizes the core with `Math.cbrt(massMe)` and needs a
   `metal > 0.5` escape hatch for Mercury. A proxy plus a special case; the fix is a real core radius
   (`surface-areas-design.md` section 5.3). *Check: is `sizeF` still `cbrt(massMe)`?*
