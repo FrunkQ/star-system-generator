@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.0-rc.20 - 21st Aug 2026
+
+- Board only. The A63 row is marked fixed for its cheap half (the shipped build is rc.18 — the commit subjects ran one behind the changelog, and the row and debt line said rc.17; both corrected), a dangling spec fragment that split the table cell is removed, and the row stays open for the V3.1 chunked-progress half.
+
 ## v3.0.0-rc.19 - 21st Aug 2026
 
 - Tests only, no behaviour change. Two flaky or stale assertions fixed: one of mine from the new-planet placement work that counted a majority over too few samples, and one on the model turntable that still named a structure a later fix had deliberately moved.
