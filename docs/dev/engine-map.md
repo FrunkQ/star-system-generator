@@ -2871,6 +2871,28 @@ safe, which is worse. Measured after: O5V 63 -> 301 AU, neutron star 0.018 -> 0.
 the UI and for `generation/placement.ts`, so the derived fixture does NOT move and an empty diff
 there is the correct result, not a sign the change did nothing.
 
+### GEN-8 A BODY'S AIR IS CHOSEN FOR THE ORBIT IT IS BORN AT, SO WHERE IT IS BORN IS A PHYSICS DECISION
+WHERE: `system/modifiers.ts` `addPlanetaryBody` (`logUniform`, `preferredOrbitBandAU`, the inner
+limit); `generation/planet.ts` selects the atmosphere by filtering the pack's entries on the body's
+`Teq_K`, which comes from the orbit it was handed.
+RULE: never treat "which orbit" as cosmetic. The atmosphere draw is downstream of it, and MOVING a
+body afterwards does NOT re-roll its air — correctly, because authored data stands. So a body born
+in the wrong place is permanently wrong in a way no amount of dragging repairs.
+WHY: inbox B84, reported as "a freshly created planet is too cold until well inside the goldilocks
+zone". Everything downstream was honest; the orbit was drawn UNIFORMLY from a gap running 0.009 to
+172 AU on a bare Sun-like system. Measured, same seed and same final orbit of 1.2 AU: born there,
++28 C with 4.2 bar; born at 40 AU and dragged in, -28 C with no atmosphere. 56 K, decided by nothing
+but where it appeared.
+BLAST: three separate corrections, and each is derived rather than preferred. (1) LOG-UNIFORM, not
+uniform: orbital distance is a ratio quantity and every spacing law in this engine is geometric, so
+a linear draw over four decades buries 99% of results at the far end. (2) The non-giant branch now
+prefers INSIDE the ice line, which is the exact mirror of the giant branch that already preferred
+outside it, for the same reason. (3) The inner limit is the ROCHE LIMIT and the KILL ZONE, not the
+stellar surface — `placement.ts` already refuses one and warns about the other. A gap that STRADDLES
+the ice line used to be dropped by both buckets, so a bare single-star system could not take a
+planet at all; it is split at the line now. Measured after: median orbit 72.5 -> 1.53 AU, worlds
+with an atmosphere 15% -> 43%.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s

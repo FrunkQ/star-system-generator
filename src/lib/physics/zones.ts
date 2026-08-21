@@ -113,7 +113,12 @@ const AU_KM = 149597870.7;
  * @param tempK The equilibrium temperature in Kelvin.
  * @returns The distance in AU.
  */
-function getDistanceForTemperature(star: CelestialBody, tempK: number): number {
+/**
+ * The distance at which a given equilibrium temperature is found — the inverse of the equilibrium
+ * relation, `a = R_star (T_star / T_eq)^2 / 2`. Exported for `system/modifiers.ts`, which needs to
+ * turn a TYPE's declared temperature band into an orbital band when it places a new body (B84).
+ */
+export function getDistanceForTemperature(star: CelestialBody, tempK: number): number {
     if (!star.temperatureK || !star.radiusKm) return 0;
 
     // Using the simplified equilibrium temperature formula: a = R_star * (T_star / T_eq)^2 / 2

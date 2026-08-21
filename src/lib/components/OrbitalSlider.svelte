@@ -86,7 +86,13 @@
                     width="{getPercent(zones.goldilocks.outer) - getPercent(zones.goldilocks.inner)}%" 
                     height="10" 
                     fill="rgba(0, 255, 0, 0.4)" 
-                />
+                >
+                    <!-- B84: the band's outer half ASSUMES a thick CO2 greenhouse (Kopparapu's
+                         maximum-greenhouse edge), so a thin-aired world sitting in it is genuinely
+                         frozen and that is physics, not a bug. Mars is in the Sun's habitable zone.
+                         Saying so here is cheaper than being asked. -->
+                    <title>Habitable zone: where liquid water is possible ON A WORLD WITH ENOUGH ATMOSPHERE. The outer edge assumes a thick carbon-dioxide greenhouse — a thin-aired world out there is frozen, which is why Mars sits inside this band and is a desert of ice. Earth without its greenhouse would be -18 C at its own distance.</title>
+                </rect>
             {/if}
 
             <!-- Kill Zone (0 to killZone) -->
