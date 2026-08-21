@@ -388,24 +388,6 @@
             </div>
           {/if}
 
-          <h3>Appearance</h3>
-          <!-- G34 phase 4: a skin is CHROME, per viewer, persisted on this device only — units are
-               campaign data (players inherit them), a skin is each viewer's own glasses. Applies
-               instantly; no Save needed. Colour-as-information (body types, zones, hazards) never
-               moves with a skin. Individual tokens can still be tuned at /palette. -->
-          <div class="form-group">
-            <label for="skinChoice" title="How THIS device draws the interface. Every viewer picks their own — it is not saved with the campaign. Applies immediately. Fine-tune single colours at /palette.">Interface skin (this device)</label>
-            <select id="skinChoice" bind:value={$skin}>
-              {#each SKINS as s}
-                <option value={s.id}>{s.name} — {s.blurb}</option>
-              {/each}
-              {#each $customSkins as c (c.id)}
-                <option value={`custom:${c.id}`}>{c.name} — your skin, on {SKINS.find((b) => b.id === c.base)?.name}</option>
-              {/each}
-            </select>
-            <button type="button" class="link-ish" on:click={() => (showSkinEditor = true)}>Skin editor — make your own…</button>
-          </div>
-
           <h3>Map display</h3>
           <!-- G16 "Background &amp; Overlay": ONE group, serving the GM 2D map, the player 2D map, the
                3D map's plane and the starmap document. It replaced a bare "Show background image"
@@ -527,9 +509,31 @@
             the order it paints in — plus the pigments a world's light can favour.</p>
 
         {:else}
-          <p class="section-hint">App-wide preferences.</p>
+          <!-- G34: appearance leads the System section — it is the first thing a new user wants to
+               set, and it is APP-WIDE rather than campaign data. A skin is CHROME, per viewer,
+               persisted on this device only (units, by contrast, are campaign data players inherit).
+               Applies instantly; no Save needed. Colour-as-information (body types, zones, hazards)
+               never moves with a skin; single tokens are tuned on the palette page below. -->
+          <h4 class="advanced-head first">Appearance</h4>
+          <div class="form-group">
+            <label for="skinChoice" title="How THIS device draws the interface. Every viewer picks their own — it is not saved with the campaign. Applies immediately.">Interface skin (this device)</label>
+            <select id="skinChoice" bind:value={$skin}>
+              {#each SKINS as s}
+                <option value={s.id}>{s.name} — {s.blurb}</option>
+              {/each}
+              {#each $customSkins as c (c.id)}
+                <option value={`custom:${c.id}`}>{c.name} — your skin, on {SKINS.find((b) => b.id === c.base)?.name}</option>
+              {/each}
+            </select>
+          </div>
+          <button class="section-btn" on:click={() => (showSkinEditor = true)}>Skin editor — make your own…</button>
+          <a class="section-btn" href="/palette" on:click={() => showModal = false}>Colour palette — tune single colours…</a>
+          <p class="section-hint">A skin repaints the interface. The palette page goes finer, one colour at a
+            time — including the ones that carry meaning, like body types and zone bands — and its changes sit
+            on top of whichever skin you are wearing.</p>
+
+          <h4 class="advanced-head">App-wide preferences</h4>
           <button class="section-btn" on:click={() => { dispatch('llm'); showModal = false; }}>LLM Settings…</button>
-          <a class="section-btn" href="/palette" on:click={() => showModal = false}>Appearance…</a>
           <a class="section-btn" href="/discgallery" target="_blank" rel="noopener" on:click={() => showModal = false}>Rendered world gallery…</a>
           <p class="section-hint">A reference for how worlds are drawn from their physics and tags — polar ice, gas-giant banding, rotational shape and more.</p>
 
@@ -782,6 +786,8 @@
   .mem-fill { height: 100%; background: #6ad48b; transition: width 0.4s ease; }
   .mem-fill.warn { background: #ffb061; }
   .advanced-head { margin: 22px 0 8px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-faint, #8a8f9a); border-top: 1px solid var(--border); padding-top: 14px; }
+  /* The section's first heading needs no rule above it — it IS the top of the panel. */
+  .advanced-head.first { margin-top: 2px; border-top: none; padding-top: 0; }
   .danger-head { color: var(--status-bad, #d04545); border-top-color: color-mix(in srgb, var(--status-bad, #d04545) 40%, var(--border)); }
   .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
   .danger-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--status-bad, #d04545) 16%, transparent) !important; }

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.906-beta - 21st Aug 2026
+
+- Appearance moves to the top of Settings > System, where it belongs: the skin picker, the skin editor and the colour palette page now sit together as the first thing in the section, rather than being buried in the Starmap tab. The palette link explains what it adds over a skin - single colours, including the ones that carry meaning.
+
 ## v2.1.905-beta - 21st Aug 2026
 
 - Two more skins and a skin editor. Clarity is colour-blind friendly - everything the interface distinguishes by colour moves onto axes that survive the common colour vision deficiencies, with contrast turned up. Nebula is the colourful one: an indigo rail, deep-blue panels and an orchid accent, made possible by the left rail and the right detail panel gaining their own colours. And under Settings > Appearance, 'make your own' opens a skin editor: pick a base, name it, and repaint twelve chrome colours with the app itself as the live preview - your skins live on your device and sit in the same picker.
