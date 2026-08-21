@@ -278,6 +278,15 @@ describe('Solar System Physics Baseline', () => {
         expect(mercury.temperatureProfile!.components.some((c) => c.source === 'locked-day')).toBe(false);
         expect(mercury.temperatureRangeK!.max).toBeGreaterThan(650);
         expect(mercury.temperatureRangeK!.max).toBeLessThan(750);
+        // THE CLASSIFIER IS FED THE SURFACE MEAN, NOT THE RADIATING FIGURE (inbox B71). Seventeen
+        // fingerprints key on `SurfaceTemp_K` and every one asks a surface question, so the value it
+        // records must be the profile's mean. Ganymede is the check because its two figures differ
+        // (118 K radiating, 113 K mean) and its winning type states a temperature band.
+        const gTemp = ganymede.classification?.bands?.find((b) => b.feature === 'SurfaceTemp_K');
+        expect(gTemp, 'Ganymede should classify on a temperature band').toBeTruthy();
+        expect(gTemp!.value).toBeCloseTo(ganymede.temperatureProfile!.meanK, 0);
+        expect(Math.abs(gTemp!.value - ganymede.temperatureK!)).toBeGreaterThan(2);
+
         // Venus proves the damping term: 92 bar evens the swing out completely, so its mean must NOT
         // move off the radiating temperature at all.
         expect(Math.abs(venus.temperatureProfile!.meanK - venus.temperatureK!)).toBeLessThan(1);

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## 2.1.886-beta - 21st Aug 2026
+
+- FIXED: the engine decided what TYPE a world is from the temperature it RADIATES at rather than the temperature on its ground. On anything with air the two are the same number, but an airless world that bakes by day and freezes by night radiates like a warm one while averaging far colder - the Moon radiates at 270 K and averages 214, Mercury 440 and 310 - so seventeen type tests, every one of them asking a question about the surface, were reading the wrong figure. Nothing in the solar system changes type as a result; what it fixes is a world sitting near the edge of a band, where it could be called an ocean world on a temperature its ground never reaches.
+
+
 ## v2.1.885-beta - 21st Aug 2026
 
 - A wet world no longer freezes because a branch closed. The vapour a sea puts into its own air is now DERIVED from the saturation pressure at its surface temperature and how much of the surface is sea, sharing one curve with the cloud decks, instead of switching on at exactly 273 K - a step that cost a world a hair below freezing its entire vapour greenhouse, which is what kept it below freezing. The reported Traveller "Earth-like" world reads +26.7 C where it read a snowball. Not water-specific: a methane sea warms its world with methane. Sol does not move by a kelvin.

@@ -365,6 +365,30 @@
                 "fit": 1
               }
             ]
+          },
+          {
+            "class": "planet/desert",
+            "score": 1.18,
+            "bands": [
+              {
+                "feature": "SurfaceTemp_K",
+                "value": 310,
+                "band": "260 – 360",
+                "fit": 1
+              },
+              {
+                "feature": "hydrosphere.coverage",
+                "value": 0,
+                "band": "0 – 0.15",
+                "fit": 1
+              },
+              {
+                "feature": "radius_Re",
+                "value": 0.3829383142363836,
+                "band": "0.4 – 1.8",
+                "fit": 0.72
+              }
+            ]
           }
         ],
         "borderline": true,
@@ -1446,7 +1470,7 @@
           },
           {
             "feature": "SurfaceTemp_K",
-            "value": 287.3869503817906,
+            "value": 287,
             "band": "255 – 300",
             "fit": 1
           },
@@ -1486,7 +1510,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 287.3869503817906,
+                "value": 287,
                 "band": "255 – 300",
                 "fit": 1
               },
@@ -1510,7 +1534,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 287.3869503817906,
+                "value": 287,
                 "band": "278 – 300",
                 "fit": 1
               },
@@ -1546,7 +1570,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 287.3869503817906,
+                "value": 287,
                 "band": "250 – 315",
                 "fit": 1
               },
@@ -4777,7 +4801,7 @@
           },
           {
             "feature": "SurfaceTemp_K",
-            "value": 89.93966685899696,
+            "value": 89,
             "band": "0 – 273",
             "fit": 1
           }
@@ -4799,7 +4823,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 89.93966685899696,
+                "value": 89,
                 "band": "0 – 273",
                 "fit": 1
               }
@@ -5231,7 +5255,7 @@
         "bands": [
           {
             "feature": "SurfaceTemp_K",
-            "value": 118.00775848286789,
+            "value": 113,
             "band": "0 – 190",
             "fit": 1
           },
@@ -5259,7 +5283,7 @@
             "bands": [
               {
                 "feature": "SurfaceTemp_K",
-                "value": 118.00775848286789,
+                "value": 113,
                 "band": "0 – 190",
                 "fit": 1
               },
@@ -5662,7 +5686,7 @@
         "bands": [
           {
             "feature": "SurfaceTemp_K",
-            "value": 117.94627920146698,
+            "value": 111,
             "band": "0 – 190",
             "fit": 1
           },
@@ -5690,7 +5714,7 @@
             "bands": [
               {
                 "feature": "SurfaceTemp_K",
-                "value": 117.94627920146698,
+                "value": 111,
                 "band": "0 – 190",
                 "fit": 1
               },
@@ -7087,7 +7111,7 @@
           },
           {
             "feature": "SurfaceTemp_K",
-            "value": 66.69590563909745,
+            "value": 67,
             "band": "0 – 273",
             "fit": 1
           }
@@ -7109,7 +7133,7 @@
               },
               {
                 "feature": "SurfaceTemp_K",
-                "value": 66.69590563909745,
+                "value": 67,
                 "band": "0 – 273",
                 "fit": 1
               }

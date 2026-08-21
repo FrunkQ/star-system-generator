@@ -29,9 +29,13 @@ redistributes the heat — so asking for the mean there is circular, and reading
 break PHY-1. It is also the case where the two agree, because a world with a standing ocean has the
 damping that makes them agree. The comment says so in place; do not "fix" it.
 
-## 2. THE OPEN QUESTION FOR THE OWNER — which temperature should the CLASSIFIER read
+## 2. Which temperature the CLASSIFIER reads — ASKED, ANSWERED, AND DONE
 
-**State of play.** `SystemProcessor.ts:1034` feeds the classifier `SurfaceTemp_K: body.temperatureK`
+**SETTLED.** Owner, 2026-08-21: *"this is a proper physical fix for a 'not properly defined temp' — locking onto
+the wrong value. If that corrects things reliably just do it."* Done at v2.1.886-beta; what follows is
+why, and what it moved.
+
+**What it was.** `SystemProcessor.ts:1034` fed the classifier `SurfaceTemp_K: body.temperatureK`
 — the RADIATING figure. **Seventeen fingerprints key on it**, including every band a reader would
 call a surface claim: `planet/ocean` 255-370, `planet/ice` 0-190, `planet/desert` 260-360,
 `planet/earth-analogue` 255-300, `planet/eyeball` 255-320, `planet/lava` 1200-6000.
@@ -41,18 +45,22 @@ other reasons, so nothing visible moves. The failure mode that bites is a body N
 airless slow rotator radiating at 280 K with a surface mean of 220 K matches `planet/ocean` and
 should not. That world is generatable today.
 
-**RECOMMENDATION: switch the FEATURE, not the field.**
+**WHAT WAS DONE — the FEATURE moved, the field did not.**
 
-- Point `SurfaceTemp_K` at `meanSurfaceTempK(body)`. Every fingerprint keyed on it asks a surface
-  question, and the name already says surface — leaving it is PHY-2 with seventeen consumers.
+- `SurfaceTemp_K` now reads `meanSurfaceTempK(body)`. Every fingerprint keyed on it asks a surface
+  question, and the name already said surface — leaving it was PHY-2 with seventeen consumers.
 - **Leave `body.temperatureK` exactly as it is.** It is the radiating figure; the thermal fixed point
   and every emitter depend on it, and turning it into an arithmetic mean would break energy
   conservation downstream. This is not a change of model.
-- Do it as **its own commit with its own fixture read**, because it moves the input to seventeen
-  matchers at once — Mercury's feature goes 440 to 310 and Luna's 270 to 214, and both cross bands.
-  Expect classification churn on airless bodies and read it body by body.
-- The band EDGES were calibrated against the radiating figure. If a body lands wrong after the
-  switch, suspect the band before the model.
+- **MEASURED, and the churn was smaller than the warning below expected: six bodies moved and NO
+  CLASS AND NO WINNER CHANGED ON ANY OF THEM.** Only the recorded band VALUES moved — what the
+  Newton trace shows as the feature's reading — plus one honest runner-up: Mercury gains
+  `planet/desert` as a CANDIDATE at 1.18, because a mean of 37 C really is desert-range, and it
+  still loses to terrestrial at 1.20. Pinned in `physics-baseline.test.ts` on Ganymede, whose two
+  figures differ (118 K radiating, 113 K mean).
+- **The band EDGES were calibrated against the radiating figure and were NOT adjusted.** Nothing in
+  Sol needed it, but Sol is 40 bodies with mostly small swings. If a generated world lands wrong,
+  suspect the band before the model — the caution stands even though the switch itself was clean.
 
 ## 3. The fixture diff is the review tool, and there is a right way to read it
 
@@ -171,9 +179,12 @@ refusals.**
 
 ## Known open, in these files
 
-- **`SystemProcessor.ts:1034`** — `SurfaceTemp_K` feeds the classifier the RADIATING temperature, and
-  17 fingerprints key on it. Section 2 has the recommendation. *Check: does that line read
-  `body.temperatureK` or `meanSurfaceTempK(body)`?*
+- ~~`SystemProcessor.ts:1034` — the classifier fed the RADIATING temperature~~ **CLOSED v2.1.886-beta**
+  on the owner's ruling; section 2 records what it moved. *Check: that line should read
+  `meanSurfaceTempK(body)`.* **What is still open behind it: the seventeen band EDGES were calibrated
+  against the radiating figure and were not adjusted.** Nothing in Sol needed it. *Thirty-second
+  check: generate a system with an airless slow rotator and compare its type against its
+  `temperatureProfile.meanK` — a body near a band edge is where a stale edge would show.*
 - **`physics/albedo.ts`** — Ganymede reads 0.13 against a measured 0.35 and cannot move until surface
   age has resolution. *Check: `frozenSurfaceAlbedo`'s doc comment lists the five anchors with their
   measured values; compare the fixture's `albedoBreakdown.albedo` for Ganymede against 0.35.*

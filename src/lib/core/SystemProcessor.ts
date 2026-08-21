@@ -1031,7 +1031,17 @@ export class SystemProcessor implements ISystemProcessor {
             radiation_flux: body.surfaceRadiation || 0,
             tidalHeating: body.tidalHeatK || 0,
             Teq_K: body.equilibriumTempK || 0,
-            SurfaceTemp_K: body.temperatureK || 0,
+            // THE SURFACE MEAN, NOT THE RADIATING FIGURE (inbox B71, the fourth consumer). Seventeen
+            // fingerprints key on this and every one of them asks a SURFACE question — `planet/ocean`
+            // 255-370, `planet/ice` 0-190, `planet/desert` 260-360, `planet/eyeball` 255-320 — so a
+            // field named SurfaceTemp_K carrying the temperature the body RADIATES at was PHY-2 with
+            // seventeen consumers. The two diverge only with the day/night swing (Venus and Earth are
+            // identical; Luna is 270 against 214 and Mercury 440 against 310), and the failure mode is
+            // a body NEAR a band edge: an airless slow rotator radiating at 280 K with a surface mean
+            // of 220 K matched `planet/ocean` and should not.
+            // `body.temperatureK` is UNCHANGED and still feeds the thermal fixed point and every
+            // emitter — this moves the FEATURE, not the field (PHY-19).
+            SurfaceTemp_K: meanSurfaceTempK(body),
             orbital_period_days: body.orbital_period_days || 0,
             rotation_period_hours: Math.abs(body.rotation_period_hours || 0),
             tidallyLocked: body.tidallyLocked ? 1 : 0,
