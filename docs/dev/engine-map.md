@@ -2174,25 +2174,27 @@ hand-curated bundled groupings and puts Proxima in Alpha Centauri at 0.977 Myr.
 
 ### GEN-*  (generation engines, seeds, system creation)
 
-### GEN-1 The evolutionary / Accrete generation path is LIVE and deliberately preserved — never "clean it up"
-WHERE: `physics/accrete-adapter.ts` + `vendor/accrete-js`, `components/EvolutionTimeline.svelte`,
-`components/EvolutionaryWizard.svelte`, reached from `SettingsModal.svelte:506`
-(`<option value="evolutionary">Evolutionary (Alpha Physics)</option>`, disclaimer-gated at `:131`)
-via `routes/+page.svelte:896` -> `:1788`.
-RULE: The whole chain is user-reachable and the OWNER HAS RULED THAT ALL OF IT IS KEPT (2026-08-07).
-It reads as abandoned alpha experiment — an "Alpha Physics" label, a disclaimer, a vendored engine,
-a component nothing else imports — and it is not. Do not delete, prune, tree-shake or fold it into
-another generator, and do not treat its alpha labelling as permission.
-WHY: two people in one conversation independently believed it had already been removed, and
-`accrete-adapter.ts`'s own header still said its caller "is being removed" long after that plan
-lapsed — a stale in-code instruction to delete something the owner wants kept is the most expensive
-kind of wrong comment, because it reads as authority. See [[G17]].
-BLAST: `accrete-adapter` is ALSO the intended harvest for V3/V4 generation, so anything that changes
-`StarSeed`, `CelestialBody` or the rule-pack disk config must keep it compiling even while it has few
-callers. Note its data model is Accrete's own (`Planetismal`: axis / eccentricity / earthMass), NOT
-`CelestialBody` — which is why [[G17]]'s ageing work cannot simply reuse
-`recalculatePlanetAgedState` on a hand-authored body. Related: `generation-duplication-map.md`
-(two live system generators — this is the second one).
+### GEN-1 The evolutionary / Accrete generator is GONE, and the preservation order that kept it is SUPERSEDED
+WHERE: nowhere in this repo any more. It lives on as its own project, https://system-lab.starsystemx.com/.
+Removed at v2.1.898-beta: `physics/accrete-adapter.ts`, `vendor/accrete-js` (4.3 MB),
+`components/EvolutionaryWizard.svelte`, `components/EvolutionTimeline.svelte`, the
+`SettingsModal` option and its alpha disclaimer, and the `routes/+page.svelte` branch.
+RULE: **THIS ENTRY USED TO SAY THE OPPOSITE, AND THE REVERSAL IS DELIBERATE.** It carried the owner's
+2026-08-07 order that the whole chain be KEPT — "do not delete, prune, tree-shake or fold it into
+another generator". The same owner superseded that on 2026-08-21 (inbox G35): *"ditch accrete, shrink
+our program"*, because the work now has a home of its own where it can grow. Do not restore it here,
+and do not read the old order in a git history as still standing.
+WHY: the entry is kept rather than deleted precisely BECAUSE it once said the opposite. Two people in
+one conversation had already believed the path was gone when it was not; an entry that simply vanished
+would leave the next reader to rediscover the same question from an old comment or an old commit. The
+lesson that produced it still holds — a stale in-code instruction to delete something is the most
+expensive kind of wrong comment — and so does its inverse, which is this.
+BLAST: `Starmap.generationEngine` survives in `types.ts` as a DEAD, untyped key so a starmap saved by
+an older build still parses; `routes/+page.svelte` drops it on load, and marks the map changed when it
+does so, or a map needing no other normalisation would take the early return and keep it forever.
+Nothing reads it. `physics/tidalLock.ts` mentions "freshly-accreted" in a comment and is not a hit.
+The Accrete.js attribution stays in `AboutModal.svelte`, reworded to point at the external project —
+the code left, the credit did not. [[G17]]'s "builds WITH the accrete engine" now means that project.
 
 ### GEN-2 THE MASSES THAT SET PLANET SPACING ARE A PROXY, AND NOTHING RECONCILES THEM WITH THE MASSES ACTUALLY ASSIGNED
 WHERE: `generation/placement-strategy.ts` (`drawSpacingMassEarth`, and the packing loop that uses it)

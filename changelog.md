@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v2.1.898-beta - 21st Aug 2026
+
+- The experimental "evolutionary" system generator has left the app. It has a home of its own now, at System Lab (system-lab.starsystemx.com), where it can grow without being an alpha corner of something else - so the engine selector, its warning dialogue and 4.3 MB of vendored code are gone from here. Starmaps saved while it existed still open exactly as before. The thanks to Mitch Anderson for the Accrete.js code it was built on stays where it is, pointing at where that work now lives.
+
 ## v2.1.897-beta - 21st Aug 2026
 
 - A planet you add now appears somewhere you would actually put one. It used to land anywhere between the star's surface and the edge of the system - almost always far out - and because a world's atmosphere is chosen for the orbit it is BORN at, dragging it back into the habitable zone left it airless and frozen there. That is why a new planet seemed too cold until well inside the goldilocks band. New worlds now appear in the inner system, outside the tearing-apart and sterilising limits, and mostly with air. Adding a planet to a system that has none also works again - it used to fail outright.

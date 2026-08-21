@@ -7,7 +7,7 @@ conditions/history; neither derives from the other.**
 
 ## The three layers (in processing order)
 
-1. **Generation** (`lib/generation/*`, `lib/physics/accrete-adapter.ts`)
+1. **Generation** (`lib/generation/*`)
    Produces raw physical bodies (mass, radius, orbit, atmosphere, hydrosphere) plus a few
    **provenance tags** the physics can't re‑derive later: `origin/migrated`, `origin/captured`,
    `orbit/retrograde`, `orbit/double`.
@@ -170,7 +170,7 @@ every consumer — renderers, rules, the finder — reads the override exactly a
 | `origin/*` | provenance (`migrated`, `captured`) | generation |
 | `orbit/*` | orbital traits (`retrograde`, `double`) | generation |
 | `atmosphere/*` | atmosphere conditions (`reducing`, `breathable`) | generation |
-| `climate/*` | climate states (`runaway-greenhouse`) | accrete adapter |
+| `climate/*` | climate states (`runaway-greenhouse`) | (was the accrete adapter, removed v2.1.898-beta) |
 | `hazard/*` | `hazard/flaring` (an active star) and `hazard/radiation` / `hazard/orbital-radiation` (the dose, as a survival time) | star generation **and** processor (classification) |
 | `stellar/*` | `stellar/activity` (the magnetic-activity bucket every star surface reads: quiet / moderate / active / flare-star), `stellar/jets` (moderate / strong — a relativistic well, an ordered field and a power source: a fed black hole, a neutron star, a magnetar), `stellar/shedding` (wind / shell — Reimers mass loss, L·R/M: giants and supergiants, hot O stars) | processor (the star pass, before pass 0) — **both starmaps and the system view draw exactly what these say**; remove the tag and the mark goes |
 | `flight/*` | `flight/ascent` — what it costs to leave | processor (**flight dynamics, pass 4**) |

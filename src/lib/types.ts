@@ -1197,7 +1197,14 @@ export interface Starmap {
   //    for a map the GM built themselves — a map with no base has no base version.
   appVersion?: string;
   baseMapVersion?: number;
-  generationEngine?: 'standard' | 'evolutionary';
+  /**
+   * DEAD (G35). The experimental "evolutionary" (accrete) generator was removed; it lives on as its
+   * own project at https://system-lab.starsystemx.com/. Kept in the type ONLY so a starmap saved by
+   * an older build still parses — the load path drops the value and nothing reads it. Do not write
+   * it, and do not revive it as a selector: see engine map GEN-1 for why the preservation order it
+   * was under was superseded.
+   */
+  generationEngine?: string;
   invertDisplay?: boolean;
   scale?: StarmapScaleConfig;
   // The GM's live snap-grid, injected into the player broadcast (not persisted) so the player-view

@@ -41,7 +41,7 @@ both — the *only* piece of this that has been unified so far.
 | `generateBodyOfType` | `generation/generateBodyOfType.ts` | returns a `Partial<CelestialBody>` merged onto a factory body |
 
 Plus the importers (`import/ubox/convert.ts`, `import/spaceengine/convert.ts`) and
-`physics/accrete-adapter.ts`, which build their own field sets.
+`physics/accrete-adapter.ts` (REMOVED at v2.1.898-beta, G35 — see engine map GEN-1), which built their own field sets.
 
 **Consequence, and it is not hypothetical:** the B9a change to `BodyFactory` — removing the
 placeholder zeros — does not reach bodies added through `SystemView`, because that route never
@@ -73,7 +73,7 @@ change first-pass behaviour. B13 has to be fixed first, or with it.
 ## 4. The same shape elsewhere
 
 - **Rotation period** is invented in `planet.ts:205-210`, `generateBodyOfType.ts:270`,
-  `SystemView.svelte:477-506` and `accrete-adapter.ts:145`, with different distributions.
+  `SystemView.svelte:477-506` and `accrete-adapter.ts:145` (the latter REMOVED at v2.1.898-beta, G35), with different distributions.
 - **Axial tilt** is set by `generateFromConfig`'s `applyKnobBias` (stars only, and only when knobs
   are supplied) and by `SystemView`'s manual route (planets, by die-roll). The legacy generator
   sets none at all — inbox **B10**.

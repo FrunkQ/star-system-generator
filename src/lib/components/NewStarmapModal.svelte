@@ -51,7 +51,6 @@
       distanceUnit: diagrammatic ? (abstractUnit.trim() || 'J') : unitChoice,
       unitIsPrefix: diagrammatic ? abstractOrder === 'prefix' : false,
       mapMode: diagrammatic ? 'diagrammatic' : 'scaled',
-      generationEngine: 'standard',
     });
   }
 </script>
