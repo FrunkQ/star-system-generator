@@ -172,7 +172,7 @@ describe('and it all comes back identically — process(load(save(process(x)))) 
   it('re-emits the anomaly tags with their values and their secrecy', () => {
     const tags = (bodyOf(second, 'p').tags ?? []).filter((t) => t.key.startsWith('anomaly/'));
     expect(tags.map((t) => t.key).sort()).toEqual(['anomaly/exotic-matter', 'anomaly/precursor-engineering']);
-    expect(tags.find((t) => t.key === 'anomaly/exotic-matter')!.value).toBe('Bond albedo, Bulk density');
+    expect(tags.find((t) => t.key === 'anomaly/exotic-matter')!.value).toBe('Anomalous bond albedo, bulk density');
     expect(tags.find((t) => t.key === 'anomaly/precursor-engineering')!.secret).toBe(true);
   });
 

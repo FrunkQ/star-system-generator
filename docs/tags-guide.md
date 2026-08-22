@@ -93,8 +93,8 @@ one reason. Reset the override and the reason goes with it; the tag itself stays
 ready for the next world.
 
 **The tag names what it is accounting for**, which is the point of it. A player does not read
-"Alien Technology" and learn nothing; they read *Alien Technology: Magnetosphere, Surface
-temperature*, and know exactly which readings on that world do not add up. A pin with **no** reason
+"Alien Technology" and learn nothing; they read *Alien Technology: Anomalous magnetosphere,
+surface temperature*, and know exactly which readings on that world do not add up. A pin with **no** reason
 assigned shows players nothing at all — if you would rather present a strange world as though it
 were ordinary, that is your business and the program does not interfere.
 

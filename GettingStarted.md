@@ -340,7 +340,7 @@ star editor has always followed. **Reset to calculated** hands the quantity stra
 
 Every pin can be given a **reason** from the Anomaly tag category — Precursor Engineering, Exotic
 Matter, Nanite Ecology, Magic, or one you write on the spot. The tag your players see names what it
-is accounting for (*Alien Technology: Magnetosphere, Surface temperature*), so a reading that looks
+is accounting for (*Alien Technology: Anomalous magnetosphere, surface temperature*), so a reading that looks
 wrong points at the thing that is wrong with it. Keep a reason secret if you would rather they
 worked it out, or give none at all and the world simply looks the way you made it.
 

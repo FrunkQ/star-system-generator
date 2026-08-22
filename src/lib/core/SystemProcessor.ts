@@ -322,7 +322,17 @@ export class SystemProcessor implements ISystemProcessor {
             // SECRET IS PER ASSIGNMENT and any secret assignment makes the whole tag secret: the tag
             // is one object on the body, and half-redacting it would tell the player the reason while
             // hiding which pin it covers, which is the wrong half to keep.
-            body.tags.push({ key, value: labels.join(', '), ...(secret ? { secret: true } : {}) } as Tag);
+            // "Anomalous bond albedo", not "Bond albedo" (owner, 2026-08-22). The pill is read
+            // BESIDE its reason — "Experimental Terraforming: Anomalous bond albedo" — and the bare
+            // label there reads as a heading for the quantity rather than a claim about it. One
+            // "Anomalous" leads the whole list, so two pinned figures read "Anomalous magnetosphere,
+            // surface temperature" rather than repeating the word.
+            const listed = labels.map((l) => l.charAt(0).toLowerCase() + l.slice(1));
+            body.tags.push({
+                key,
+                value: `Anomalous ${listed.join(', ')}`,
+                ...(secret ? { secret: true } : {})
+            } as Tag);
         }
     }
 

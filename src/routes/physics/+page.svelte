@@ -1494,7 +1494,7 @@
       <p><strong>Saying why: the Anomaly tag.</strong> Each pin can be given a reason from the Anomaly category —
         Precursor Engineering, Exotic Matter, Nanite Ecology, Magic and the rest, or one you write yourself. The
         tag that reaches the world names the quantities it is accounting for, so a player reading
-        <em>Alien Technology: Magnetosphere, Surface temperature</em> learns what is odd about the place rather
+        <em>Alien Technology: Anomalous magnetosphere, surface temperature</em> learns what is odd about the place rather
         than only that something is. A reason can be kept secret, and a pin with no reason given shows players
         nothing at all. Reset the override and its reason goes with it.</p>
       <p>The Newton trace (the “show the working” panel on a body) puts every pinned figure at the head of the

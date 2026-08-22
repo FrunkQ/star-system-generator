@@ -110,7 +110,7 @@ describe('a reason is bound to its override, and says what it is accounting for'
     const tags = anomalyTags(out);
     expect(tags).toHaveLength(1);
     expect(tags[0].key).toBe('anomaly/magic');
-    expect(tags[0].value).toBe('Radiogenic heat');
+    expect(tags[0].value).toBe('Anomalous radiogenic heat');
   });
 
   it('one reason serving several pins produces ONE tag listing all of them', () => {
@@ -124,7 +124,7 @@ describe('a reason is bound to its override, and says what it is accounting for'
     const tags = anomalyTags(subject(new SystemProcessor().process(systemWith(b), pack)));
     expect(tags).toHaveLength(1);
     // Roster order, so the list is stable rather than dependent on how the GM happened to click.
-    expect(tags[0].value).toBe('Bond albedo, Radiogenic heat');
+    expect(tags[0].value).toBe('Anomalous bond albedo, radiogenic heat');
   });
 
   it('two reasons produce two tags', () => {
@@ -185,7 +185,7 @@ describe('a reason is bound to its override, and says what it is accounting for'
     b.overrides!.anomalies = { albedo: { tag: 'anomaly/magic' } };
     const tags = anomalyTags(subject(new SystemProcessor().process(systemWith(b), pack)));
     expect(tags).toHaveLength(1);
-    expect(tags[0].value).toBe('Bond albedo');
+    expect(tags[0].value).toBe('Anomalous bond albedo');
   });
 });
 
@@ -232,7 +232,7 @@ describe('a secret reason does not reach a player, by either route', () => {
     const processed = new SystemProcessor().process(systemWith(b), pack);
     const player = subject(computePlayerSnapshot(processed));
     const t = player.tags.find((x) => x.key === 'anomaly/alien-technology');
-    expect(t?.value).toBe('Bond albedo');
+    expect(t?.value).toBe('Anomalous bond albedo');
   });
 });
 
