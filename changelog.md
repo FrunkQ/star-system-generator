@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.13 - 22nd Aug 2026
+
+- The slice/whole toggle on the body picture gets its icon back - it had always been an empty square, because its glyph was built inside the svg by a branch that lands in the wrong namespace. It draws now, and swaps between a dashed frame (slice) and a framed inset (whole).
+
 ## v3.0.12 - 22nd Aug 2026
 
 - The body picture keeps out of its own way: the slice/whole toggle moves to the top-left corner (it sat on the view pills), and every control on the picture - toggle, view pills, More information, the resize grip - now appears only while the mouse is over it. Touch screens keep them visible, since there is no hover to reveal them.

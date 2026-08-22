@@ -89,9 +89,15 @@
               title={$pictureFit === 'slice' ? 'Showing the centred slice - click to fit the whole image, smaller' : 'Showing the whole image - click for the centred slice'}
               aria-label="Toggle whole image / centred slice"
               on:click={() => pictureFit.set($pictureFit === 'slice' ? 'whole' : 'slice')}>
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-          {#if $pictureFit === 'slice'}<rect x="3" y="3.5" width="18" height="17" rx="1.5" stroke-dasharray="2.5 2.5"/><rect x="3" y="8.5" width="18" height="7" rx="1"/>{:else}<rect x="3" y="3.5" width="18" height="17" rx="1.5"/><rect x="7.5" y="7" width="9" height="10" rx="1"/>{/if}
-        </svg>
+        <!-- The {#if} stays OUTSIDE the <svg>: an if-block INSIDE one mounts its rects as a
+             fragment whose namespace is not the svg's, and they render as nothing — the button
+             shipped as an empty square (A67). A complete literal <svg> per branch is namespace-safe
+             by construction, which is also why the view pills' icons never had the problem. -->
+        {#if $pictureFit === 'slice'}
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3.5" width="18" height="17" rx="1.5" stroke-dasharray="2.5 2.5"/><rect x="3" y="8.5" width="18" height="7" rx="1"/></svg>
+        {:else}
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3.5" width="18" height="17" rx="1.5"/><rect x="7.5" y="7" width="9" height="10" rx="1"/></svg>
+        {/if}
       </button>
     {:else if view === 'swatch'}
       <!-- The old Colours view listed the swatches this world is MADE of, which turned out to answer a
