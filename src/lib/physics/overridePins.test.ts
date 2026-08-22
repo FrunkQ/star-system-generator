@@ -8,7 +8,8 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { SystemProcessor } from '$lib/core/SystemProcessor';
-import { setOverride, clearOverride, overrideStatus, overrideDef } from './overrides';
+import { setOverride, clearOverride, overrideStatus, overrideDef, OVERRIDE_DEFS } from './overrides';
+import { buildPhysicsTrace } from './physicsTrace';
 import { trimEnvelope, densityGcc } from './bodyEdit';
 import { makeupFractions, normalizeMakeup, massMeFromRadiusMakeup } from './makeup';
 import { meanSurfaceTempK } from './surfaceTemperature';
@@ -323,5 +324,76 @@ describe('density — pin any TWO of mass, radius and density (owner Q1)', () =>
     const twice = run(once);
     expect(twice.massKg).toBeCloseTo(once.massKg!, 6);
     expect(twice.radiusKm).toBeCloseTo(once.radiusKm!, 6);
+  });
+});
+
+describe('the Newton trace names every pin — rule 4, "the explainers must not lie"', () => {
+  const traced = (b: CelestialBody) => {
+    const sys = new SystemProcessor().process(systemWith(b), pack);
+    const out = sys.nodes.find((n) => n.id === 'p') as CelestialBody;
+    return buildPhysicsTrace(out, { ageGyr: 4.6, pack });
+  };
+
+  it('says nothing at all when nothing is pinned', () => {
+    expect(traced(coldMoon()).layers.some((l) => l.id === 'overrides')).toBe(false);
+  });
+
+  it('puts a summary layer FIRST, so an odd world reads as odd on purpose', () => {
+    const b = coldMoon();
+    setOverride(b, 'surfaceTempK', 1100);
+    const t = traced(b);
+    expect(t.layers[0].id).toBe('overrides');
+    expect(t.layers[0].inputs.map((f) => f.label)).toContain('Surface temperature');
+    expect(t.layers[0].inputs[0].value).toBe('1100 K');
+  });
+
+  it('and marks it again INSIDE every layer whose number it sets', () => {
+    const b = coldMoon();
+    setOverride(b, 'surfaceTempK', 1100);
+    const temp = traced(b).layers.find((l) => l.id === 'temperature')!;
+    expect(temp.inputs[0].label).toBe('Surface temperature — GM OVERRIDE');
+    expect(temp.notes.join(' ')).toMatch(/PINNED at 1100 K/);
+  });
+
+  it('carries the warning through, so the panel does not present an absurd figure as ordinary', () => {
+    const b = coldMoon();
+    setOverride(b, 'albedo', -2);
+    const t = traced(b);
+    expect(t.layers[0].notes.join(' ')).toMatch(/below the plausible range/);
+  });
+
+  it('names the stated reason where there is one', () => {
+    const b = coldMoon();
+    setOverride(b, 'radiogenicHeatK', 1100);
+    b.overrides!.anomalies = { radiogenicHeatK: { tag: 'anomaly/precursor-engineering' } };
+    const t = traced(b);
+    expect(t.layers[0].outputs.map((f) => f.value)).toContain('Precursor Engineering');
+    expect(t.layers.find((l) => l.id === 'temperature')!.notes.join(' '))
+      .toMatch(/stated reason is Precursor Engineering/);
+  });
+
+  it('and says so plainly when none was given', () => {
+    const b = coldMoon();
+    setOverride(b, 'radiogenicHeatK', 1100);
+    expect(traced(b).layers[0].outputs.map((f) => f.value)).toContain('none given');
+  });
+
+  it('every roster record points at layers that exist somewhere in a trace', () => {
+    // A typo in `traceLayers` would fail SILENTLY — the mark simply never appears — which is the
+    // exact shape of drift this file has suffered before.
+    const b = coldMoon({
+      roleHint: 'planet', massKg: EARTH_MASS_KG, radiusKm: EARTH_RADIUS_KM,
+      rotation_period_hours: 24, atmosphere: { pressure_bar: 1, composition: { N2: 0.8, O2: 0.2 } },
+      makeup: { metal: 0.32, rock: 0.68, carbon: 0, ice: 0, gas: 0 },
+      orbit: { hostId: 'star', elements: { a_AU: 1, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } }
+    });
+    const ids = new Set(traced(b).layers.map((l) => l.id));
+    const named = new Set(OVERRIDE_DEFS.flatMap((d) => d.traceLayers ?? []));
+    // `radiation` and `aurora` are conditional on this world having either; everything else must be
+    // present on a plain terrestrial with air.
+    for (const id of named) {
+      if (id === 'aurora' || id === 'radiation') continue;
+      expect(ids, `traceLayers names "${id}"`).toContain(id);
+    }
   });
 });

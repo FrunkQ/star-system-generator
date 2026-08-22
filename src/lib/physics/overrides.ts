@@ -81,6 +81,16 @@ export interface OverrideDef {
   /** What being outside that band MEANS — the second half of every warning sentence. */
   absurd: string;
   /**
+   * The Newton trace LAYERS whose number this pin sets, by layer id.
+   *
+   * `physicsTrace.ts` claims to SHOW THE WORKING, which makes it the worst surface in the product to
+   * leave wrong: a hand-set figure printed as though the engine had derived it is a lie told by the
+   * one panel that promises not to. So the trace walks this roster and marks every layer named here,
+   * rather than each layer remembering to check for its own override — a scheme that would go stale
+   * the moment a ninth pin was added, silently, which is exactly how this class of drift happens.
+   */
+  traceLayers?: readonly string[];
+  /**
    * A CHOICE that belongs to this pin, rendered generically beside it and stored in `overrides`
    * under `key`. Density has the only one: the mass/radius/density relation has two degrees of
    * freedom, so pinning density pins the SECOND of them and the GM says which (owner Q1, "pin any
@@ -142,6 +152,7 @@ function densityOnCompositionCurve(b: CelestialBody): number | undefined {
 export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   {
     key: 'albedo',
+    traceLayers: ['albedo'],
     label: 'Bond albedo',
     unit: '',
     hint: 'The share of arriving starlight the world throws straight back. Pinning it replaces the whole '
@@ -164,6 +175,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   },
   {
     key: 'gasThermalInflation',
+    traceLayers: ['makeup', 'gravity'],
     label: 'Thermal inflation',
     unit: '×',
     hint: 'How far insolation puffs a gas envelope beyond its cold radius. Pinning it fixes the radius '
@@ -192,6 +204,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   },
   {
     key: 'radiogenicHeatK',
+    traceLayers: ['temperature', 'geology'],
     label: 'Radiogenic heat',
     unit: 'K',
     hint: 'Heat from decay in the interior, added to the surface temperature in flux space. It also '
@@ -209,6 +222,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   },
   {
     key: 'flareActivity',
+    traceLayers: ['radiation'],
     label: 'Magnetic activity',
     unit: '',
     hint: 'The ionising half of a star’s output — flares and X-rays — which is set by the dynamo, not by '
@@ -224,6 +238,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   },
   {
     key: 'magneticFieldGauss',
+    traceLayers: ['magnetism', 'radiation', 'aurora'],
     label: 'Magnetosphere',
     unit: 'G',
     hint: 'Surface field strength. Pinning it governs the magnetic shielding tags — and the radiation '
@@ -247,6 +262,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   },
   {
     key: 'surfaceTempK',
+    traceLayers: ['temperature', 'clouds', 'habitability'],
     label: 'Surface temperature',
     unit: 'K',
     hint: 'Pins the MEAN surface temperature outright. The day and night sides keep their swing about '
@@ -279,6 +295,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   },
   {
     key: 'pressureBar',
+    traceLayers: ['clouds', 'temperature'],
     label: 'Atmospheric pressure',
     unit: 'bar',
     hint: 'Pins the surface pressure. Atmospheric escape stops eroding it, so a world can hold air '
@@ -305,6 +322,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   },
   {
     key: 'densityGcm3',
+    traceLayers: ['makeup', 'gravity'],
     label: 'Bulk density',
     unit: 'g/cm³',
     hint: 'Mass, radius and density are one relation with two degrees of freedom, so pinning density '

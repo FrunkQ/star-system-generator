@@ -311,8 +311,38 @@ generated into the system are born into the era you chose.
    sliders — rotation snaps to tidal locking — and a world spun fast enough visibly flattens.
 
 Everything recomputes live: temperature, fluids, magnetosphere, geology, habitability and tags all
-update as you edit. Derived values you disagree with (albedo, radiogenic heating, magnetosphere) can
-be overridden, and those overrides drive the tags in turn.
+update as you edit.
+
+### Breaking the physics on purpose — the Overrides tab
+
+The last tab in the body editor, after Tags. Everything on it is a number the engine normally works
+out for itself, and pinning one **changes the physics rather than the label**: your figure is fed
+*into* the derivation, so everything downstream of it follows honestly. Pin a moon out past the ice
+line at 1100 K and its ice does not survive, its clouds change, its type and habitability move, and
+its picture changes with them.
+
+* **Bond albedo**, including *negative* — a surface that returns more energy than its star sends it.
+* **Surface temperature** — the mean. The day and night sides keep their swing about it.
+* **Bulk density** — mass, radius and density are one relation with two free numbers, so pinning
+  density pins the second and you say which of mass and radius gives way. Hold the radius and a
+  hollow world looks exactly the same size and weighs a fraction of what it should. The composition
+  is left alone deliberately, and gravity and escape velocity follow the new mass.
+* **Atmospheric pressure** — erosion stops eating it, so a small world can hold air it could never
+  have kept.
+* **Magnetosphere** — a field far beyond what the interior could generate is kept and drives the
+  shielding, and is called anomalous rather than reported as an ordinary dynamo.
+* **Radiogenic heat**, **thermal inflation**, and on a star its **magnetic activity** — the flare
+  and X-ray output, which is set by the dynamo rather than by brightness.
+
+**Nothing is refused.** Each row shows the range it expects, lets you type well past either end, and
+says in plain words what is wrong with the figure once you do — the same "kept and labelled" rule the
+star editor has always followed. **Reset to calculated** hands the quantity straight back.
+
+Every pin can be given a **reason** from the Anomaly tag category — Precursor Engineering, Exotic
+Matter, Nanite Ecology, Magic, or one you write on the spot. The tag your players see names what it
+is accounting for (*Alien Technology: Magnetosphere, Surface temperature*), so a reading that looks
+wrong points at the thing that is wrong with it. Keep a reason secret if you would rather they
+worked it out, or give none at all and the world simply looks the way you made it.
 
 ### Editing the rules everything is built from
 
@@ -416,7 +446,10 @@ There is **one** tagging system throughout. (Earlier versions had separate "Poin
 * **Your own tags** sit alongside them. Invent any you like, on any object.
 * **Overrides.** Disagree with the engine? Add a tag by hand in one of the engine's own namespaces
   and your answer wins: it survives every re-derive, suppresses the derived tag it replaces, and
-  drives everything the real one drives, including the visuals and the rules.
+  drives everything the real one drives, including the visuals and the rules. That changes the *tag*;
+  to change the *number* behind it, pin the value on the body editor's Overrides tab instead.
+* **Anomaly** is the one category that works differently: its tags are assigned to a pinned value as
+  its stated reason, not added to a world by hand, and the tag names the readings it accounts for.
 * **Secret tags** are yours alone and never reach a player view, a shared catalogue or a printed
   report.
 * **Colour and highlights.** Give a tag its own colour and light up every body carrying it, right up

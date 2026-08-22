@@ -11,6 +11,7 @@ import { evaporatedVapourFraction } from './atmosphere';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, G } from '$lib/constants';
 import { makeupFractions, bulkDensityFromMakeup } from './makeup';
 import { describeTag } from '$lib/tags/tagPresentation';
+import { activeOverrides, formatOverrideValue } from './overrides';
 import { tagOrigin } from '$lib/tags/tagLifecycle';
 import { auroraEmitter } from './aurora';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
@@ -717,6 +718,55 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       notes: [
         ...(bary ? [`Orbits the ${bary.name || 'barycentre'} — a member of a binary/multiple, so stability is judged on the pair's shared orbit around the star, not the small orbit within the pair.`] : []),
         stabDetails ?? 'No orbit-crossing neighbour or loose binding found — a well-spaced, stable orbit.'
+      ]
+    });
+  }
+
+  // --- GM OVERRIDES (G37), and this block is the whole of rule 4: THE EXPLAINERS MUST NOT LIE. ---
+  //
+  // This panel's one claim is that it shows the working, which makes it the worst surface in the
+  // product to leave wrong: a hand-set figure printed as though the engine had derived it is a lie
+  // told by the page that promises not to. The albedo layer has said "Manually set (GM override)"
+  // since the F-OVR pattern existed; this generalises that promise to every pin, present and future.
+  //
+  // TWO PLACES, DELIBERATELY. A row is pushed into every layer whose number the pin sets (rule 4's
+  // "named at the POINT OF USE"), and a summary layer goes to the FRONT so a reader landing on an
+  // odd world sees at once that it is odd on purpose. Both walk the roster rather than each layer
+  // remembering to check for its own override - a scheme that goes stale the moment a ninth pin is
+  // added, silently, which is the exact drift this file has already suffered.
+  const pinnedOverrides = activeOverrides(body);
+  if (pinnedOverrides.length) {
+    const layerById = new Map(layers.map((l) => [l.id, l]));
+    for (const p of pinnedOverrides) {
+      const reason = body.overrides?.anomalies?.[p.def.key];
+      const shown = formatOverrideValue(p.def, p.value);
+      for (const id of p.def.traceLayers ?? []) {
+        const layer = layerById.get(id);
+        if (!layer) continue;   // that layer is not built for this kind of body
+        layer.inputs.unshift({ label: `${p.def.label} — GM OVERRIDE`, value: shown });
+        layer.notes.push(
+          `${p.def.label} is PINNED at ${shown}: the engine read the GM's figure here instead of `
+          + 'deriving one, and everything below this line follows from it.'
+          + (p.warning ? ` It is outside the plausible range — ${p.warning}` : '')
+          + (reason ? ` The stated reason is ${describeTag(reason.tag).label}.` : '')
+        );
+      }
+    }
+    layers.unshift({
+      id: 'overrides', title: 'GM overrides — figures the physics did not choose', link: '/physics#overrides',
+      inputs: pinnedOverrides.map((p) => ({ label: p.def.label, value: formatOverrideValue(p.def, p.value) })),
+      outputs: pinnedOverrides.map((p) => ({
+        label: `${p.def.label} — stated reason`,
+        value: body.overrides?.anomalies?.[p.def.key]
+          ? describeTag(body.overrides.anomalies[p.def.key].tag).label
+          : 'none given'
+      })),
+      notes: [
+        'These are values a GM pinned by hand. Each one is fed INTO the derivation in place of the '
+        + 'figure the engine would have worked out, so everything downstream of it - the tags, the '
+        + 'classification, the habitability, the picture - follows from the pinned number honestly. '
+        + 'Nothing here is a label pasted over a result.',
+        ...pinnedOverrides.filter((p) => p.warning).map((p) => `${p.def.label}: ${p.warning}`)
       ]
     });
   }

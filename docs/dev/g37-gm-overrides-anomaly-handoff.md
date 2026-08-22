@@ -1,5 +1,16 @@
 # G37 — Break-physics overrides, the Overrides tab, and the Anomaly tag category
 
+> **BUILT, ALL FIVE PHASES, 2026-08-22 (v3.0.4 to v3.0.8-beta, worktree `sse2-g37`).** The owner
+> answered Q1-Q8 and the build followed this order. Read the G37 row in
+> `docs/dev/observations-inbox.md` for what each phase shipped, and engine-map **OVR-1 to OVR-5**
+> for the rules that were expensive to work out. **Two things in this brief were already stale when
+> it was written and a successor should not chase them:** the Q5 collision with
+> `surface-temperature-notes.md` section 2 does not exist (that decision was settled at v2.1.886 —
+> the classifier already reads the mean, so the pin and the classifier agree by construction; see
+> section 2b there), and the line references drift (`BodyTemperatureTab.svelte:33-42` was 32-53,
+> `types.ts:156` for the magnetosphere flag was 137). Nothing here has been seen in a browser; the
+> eyeball list is the acceptance section below.
+
 Coordinator design brief, 2026-08-22. Owner-requested, prompted by a real user request (a moon past
 the habitable zone internally heated to 1100 K — not tidal, beyond any greenhouse — plus "negative
 albedo" curiosity and 70 T terrestrial magnetospheres). Read this whole file before touching code.

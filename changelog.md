@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.8 - 22nd Aug 2026
+
+- **The "show the working" panel now shows the overriding too.** Open the Newton panel on a world you have pinned anything on and the first thing you see is what you pinned, what you pinned it to, and the reason you gave. Each figure is marked again inside every layer it actually feeds, with a line saying that the engine read your number instead of working one out, and repeating the warning if it is outside what the physics allows.
+- The physics page's section on overrides has been rewritten. It used to say an override changes the tag and not the physics behind it - true when only tags could be overridden, and no longer true at all. It now covers both kinds and lists what can be pinned.
+- The Getting Started guide gains "Breaking the physics on purpose", and the Tags Guide explains the Anomaly category and why it does not work like the others.
+
 ## v3.0.7 - 22nd Aug 2026
 
 - **NEW: pin a world's density, and choose what gives way.** Mass, radius and density are one relation with two free numbers, so pinning the density pins the second of them and you say which: hold the radius and the mass follows, so a hollow world looks exactly the same size and weighs a fraction of what it should; or hold the mass and it swells instead. The composition is left alone on purpose - a rocky world that weighs a tenth of what rock weighs stays a contradiction rather than being quietly turned into a gas ball, and that is what the Anomaly tag is there to explain.

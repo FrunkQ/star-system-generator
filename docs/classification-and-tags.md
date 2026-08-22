@@ -275,7 +275,8 @@ every consumer — renderers, rules, the finder — reads the override exactly a
 | `stellar/*` | `stellar/activity` (the magnetic-activity bucket every star surface reads: quiet / moderate / active / flare-star), `stellar/jets` (moderate / strong — a relativistic well, an ordered field and a power source: a fed black hole, a neutron star, a magnetar), `stellar/shedding` (wind / shell — Reimers mass loss, L·R/M: giants and supergiants, hot O stars) | processor (the star pass, before pass 0) — **both starmaps and the system view draw exactly what these say**; remove the tag and the mark goes |
 | `flight/*` | `flight/ascent` — what it costs to leave | processor (**flight dynamics, pass 4**) |
 | `tidal/*` | `tidal/hotspots` | processor (environment) |
-| `magnetic/*` | dynamo / induced / tenuous / unshielded | processor (**interior, pass 2b**) |
+| `magnetic/*` | dynamo / induced / tenuous / **anomalous** / unshielded | processor (**interior, pass 2b**) |
+| `anomaly/*` | the GM's stated REASON for a pinned value | processor (**anomaly, pass 7**), from `overrides.anomalies` |
 | `geology/*` | tectonic + volcanic regime | processor (classification) |
 | `surface/*` | `surface/age`, `surface/irradiation` (space weathering), `surface/oxidised` | processor (classification) |
 | `spin/*` | `spin/axis-inferred`, `spin/period-inferred`, `spin/tipped` | **generation** (all three body-creation routes) |
