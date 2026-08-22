@@ -1,0 +1,282 @@
+// THE OVERRIDE ROSTER — one record per quantity a GM may pin, and the ONLY place any of them is
+// described. (G37.)
+//
+// THE MANTRA THIS FILE SERVES: a GM may author what they like, the program does not STOP them, it
+// WARNS them it is not right. That is already the house rule for stars — "a star whose numbers break
+// physics is kept and labelled rather than refused" — and this extends it to derived planetary
+// physics. Nothing here clamps a value to a plausible band; `plausible()` exists to produce a
+// SENTENCE, never a limit.
+//
+// WHY A REGISTRY RATHER THAN A ROW PER QUANTITY IN THE EDITOR. The overrides were four scattered
+// implementations before this: albedo and radiogenic heat in BodyTemperatureTab, thermal inflation
+// in BodyBasicsTab, the magnetosphere in BodyAtmosphereTab under a DIFFERENT convention of its own,
+// and flareActivity with no editor at all. Each had its own seed, its own clamp, its own reset and
+// its own wording, and the info panel listed a hand-written subset of them that had already drifted
+// (radiogenic and flare were both missing). One record per quantity means the tab, the info-panel
+// strip, the Newton trace and the warnings all read the SAME description, and a ninth override is a
+// new record rather than a new copy of the pattern.
+//
+// F-OVR, restated: a key PRESENT in `body.overrides` means the GM pinned that value. It is authored
+// INPUT — saved, and fed into the derivation INSTEAD of the computed default, BEFORE the solve runs.
+// It is never a poke into derived output; `src/lib/system/idempotence.test.ts` is what enforces that.
+// Reset DELETES the key (and its anomaly assignment with it), handing the quantity back to the physics.
+//
+// BOUNDS ARE DATA AND ARE MEANT TO BE WIDENED. `soft` is how far the slider travels — the range a GM
+// will normally want. `hard` is how far a TYPED number may go, and it is deliberately absurd at both
+// ends: a negative albedo (a surface that emits more than it receives) and a 70 tesla terrestrial
+// magnetosphere are features, not mistakes. Owner, 2026-08-22: "Bounds should be reasonably numeric —
+// within SOME bounds — maybe have them easily extended later if necessary." Widening one is a two-
+// number edit here and nothing else changes.
+import type { CelestialBody } from '$lib/types';
+import { estimateBondAlbedo } from './temperature';
+import { gasThermalInflationFactor, makeupFractions, normalizeMakeup } from './makeup';
+import { editMass } from './bodyEdit';
+import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
+
+export type OverrideKey =
+  | 'albedo'
+  | 'gasThermalInflation'
+  | 'radiogenicHeatK'
+  | 'flareActivity'
+  | 'magneticFieldGauss';
+
+export interface OverrideDef {
+  key: OverrideKey;
+  /** What the row, the badge and the trace call it. UK English. */
+  label: string;
+  /** Appended to the number everywhere it is shown. Empty for a dimensionless ratio. */
+  unit: string;
+  /** One line under the row: what pinning this actually does to the world. */
+  hint: string;
+  /** Roles this override is offered on. A star's magnetic field is authored input, not an override. */
+  appliesTo: readonly CelestialBody['roleHint'][];
+  /** Slider travel — the range a GM normally wants. */
+  soft: readonly [number, number];
+  /** How far a TYPED number may go. Absurd on purpose at both ends; nothing clamps below this. */
+  hard: readonly [number, number];
+  step: number;
+  decimals: number;
+  /** Log-scaled slider — for quantities that span decades (field strength, pressure). */
+  log?: boolean;
+  /** The value the engine derives when nothing is pinned; the seed, and what "reset" returns to. */
+  derived(body: CelestialBody): number | undefined;
+  /** The band this quantity plausibly occupies FOR THIS BODY. Outside it the row warns. */
+  plausible(body: CelestialBody): readonly [number, number] | null;
+  /** What being outside that band MEANS — the second half of every warning sentence. */
+  absurd: string;
+  /**
+   * THE CONSEQUENCE THE PROCESSOR CANNOT APPLY, run whenever the pin is set, dragged or reset.
+   *
+   * Most pins are read by the engine on the next pass and need nothing here. A few move a quantity
+   * that is AUTHORED INPUT rather than a derived field — thermal inflation sets the RADIUS, which
+   * `process()` never recomputes — so the consequence has to be applied where the edit happens. It
+   * lives on the record rather than in the editor so the tab stays free of per-quantity branches,
+   * and it is handed the EFFECTIVE value (the pin when pinned, the derived figure after a reset), so
+   * pinning and resetting take the same path.
+   */
+  commit?(body: CelestialBody, effective: number): void;
+}
+
+const clampToHard = (def: OverrideDef, v: number): number =>
+  Math.max(def.hard[0], Math.min(def.hard[1], v));
+
+// ── THE ROSTER ───────────────────────────────────────────────────────────────────────────────────
+export const OVERRIDE_DEFS: readonly OverrideDef[] = [
+  {
+    key: 'albedo',
+    label: 'Bond albedo',
+    unit: '',
+    hint: 'The share of arriving starlight the world throws straight back. Pinning it replaces the whole '
+      + 'surface-and-cloud model and feeds the temperature solve directly.',
+    appliesTo: ['planet', 'moon'],
+    // NEGATIVE ALBEDO IS THE POINT AT THE BOTTOM END. A ≥ 1 reflects everything; A < 0 means the world
+    // returns MORE energy than the star delivers, i.e. something is amplifying it. The equilibrium
+    // temperature goes as (1 − A)^¼, so −5 is a factor of 6 in flux and about 1.57× in temperature —
+    // absurd, allowed, and warned about.
+    soft: [0, 1],
+    hard: [-5, 1.5],
+    step: 0.01,
+    decimals: 3,
+    derived: (b) => b.albedoBreakdown?.albedo ?? estimateBondAlbedo(b),
+    plausible: () => [0, 1],
+    absurd: 'below zero the world returns more energy than its star delivers, and above one it returns '
+      + 'more light than falls on it — either way something unmodelled is supplying the difference.'
+  },
+  {
+    key: 'gasThermalInflation',
+    label: 'Thermal inflation',
+    unit: '×',
+    hint: 'How far insolation puffs a gas envelope beyond its cold radius. Pinning it fixes the radius '
+      + 'the composition would otherwise set.',
+    appliesTo: ['planet', 'moon'],
+    soft: [0.5, 3],
+    hard: [0.1, 10],
+    step: 0.01,
+    decimals: 2,
+    derived: (b) => gasThermalInflationFactor(b.equilibriumTempK ?? 0),
+    plausible: () => [0.9, 2.5],
+    absurd: 'an envelope this far from its equilibrium size is not being held there by starlight.',
+    // Inflation is the one pin the PROCESSOR never reads: it sizes a body at generation and then the
+    // radius is authored. So the pin has to move the radius itself, through the SAME mass/radius
+    // chain the composition editor uses (hold mass and composition, let radius follow) rather than a
+    // second copy of the relation.
+    commit: (b, inflation) => {
+      const massMe = (b.massKg ?? 0) / EARTH_MASS_KG;
+      if (!(massMe > 0)) return;
+      const next = editMass(
+        { massMe, radiusRe: (b.radiusKm ?? 0) / EARTH_RADIUS_KM, makeup: normalizeMakeup(makeupFractions(b)) },
+        massMe, null, undefined, inflation
+      );
+      b.radiusKm = next.radiusRe * EARTH_RADIUS_KM;
+    }
+  },
+  {
+    key: 'radiogenicHeatK',
+    label: 'Radiogenic heat',
+    unit: 'K',
+    hint: 'Heat from decay in the interior, added to the surface temperature in flux space. It also '
+      + 'drives the world’s geological vigour independently of sunlight.',
+    appliesTo: ['planet', 'moon'],
+    // The 1100 K moon that prompted G37 lives at the top of this range: past the habitable zone,
+    // not tidal, and beyond any greenhouse. The slider must reach it without a typed number.
+    soft: [0, 200],
+    hard: [0, 5000],
+    step: 1,
+    decimals: 1,
+    derived: () => 0,
+    plausible: () => [0, 40],
+    absurd: 'no ordinary decay inventory sustains this much heat over a system’s lifetime.'
+  },
+  {
+    key: 'flareActivity',
+    label: 'Magnetic activity',
+    unit: '',
+    hint: 'The ionising half of a star’s output — flares and X-rays — which is set by the dynamo, not by '
+      + 'brightness. Pinning it makes a quiet giant flare without pretending it got brighter.',
+    appliesTo: ['star'],
+    soft: [0, 1],
+    hard: [0, 5],
+    step: 0.01,
+    decimals: 2,
+    derived: (b) => (b as { flareActivity?: number }).flareActivity,
+    plausible: () => [0, 1],
+    absurd: 'past one the star is more magnetically active than any class-and-age model allows for.'
+  },
+  {
+    key: 'magneticFieldGauss',
+    label: 'Magnetosphere',
+    unit: 'G',
+    hint: 'Surface field strength. Pinning it governs the magnetic shielding tags — and the radiation '
+      + 'that reaches the ground — instead of the interior dynamo read.',
+    appliesTo: ['planet', 'moon'],
+    // 70 T = 700 000 G on a terrestrial is an owner-stated FEATURE, so the hard ceiling clears it.
+    soft: [0, 100],
+    hard: [0, 1e7],
+    step: 0.001,
+    decimals: 4,
+    log: true,
+    derived: (b) => b.magnetism?.nominalGauss,
+    // The band the interior model itself says this body could produce. Outside it the pin gets
+    // GM-override STATUS: still allowed, still saved, but labelled as something the dynamo cannot do.
+    plausible: (b) => {
+      const r = b.magnetism?.estimatedRangeGauss;
+      return r && Number.isFinite(r.min) && Number.isFinite(r.max) ? [r.min, r.max] : null;
+    },
+    absurd: 'this world’s interior cannot generate a field of that strength — nothing in its rotation, '
+      + 'composition or core size supports it.'
+  },
+] as const;
+
+const BY_KEY = new Map<OverrideKey, OverrideDef>(OVERRIDE_DEFS.map((d) => [d.key, d]));
+export const overrideDef = (key: OverrideKey): OverrideDef | undefined => BY_KEY.get(key);
+
+/** The overrides offered for a body, in roster order. */
+export function overrideDefsFor(body: CelestialBody | null | undefined): OverrideDef[] {
+  if (!body) return [];
+  return OVERRIDE_DEFS.filter((d) => d.appliesTo.includes(body.roleHint)) as OverrideDef[];
+}
+
+export interface OverrideStatus {
+  def: OverrideDef;
+  pinned: boolean;
+  /** The pinned figure when pinned, else the engine's own. */
+  value: number | undefined;
+  /** The engine's own figure, always — so a row can show what reset would return to. */
+  derived: number | undefined;
+  /** Set when the pinned figure is outside the plausible band: the warn-not-stop sentence. */
+  warning: string | null;
+}
+
+/** Format a figure the way its row, badge and trace line all agree to. */
+export function formatOverrideValue(def: OverrideDef, v: number | undefined): string {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const abs = Math.abs(v);
+  const text = abs !== 0 && (abs >= 1e5 || abs < 1e-3)
+    ? v.toExponential(2)
+    : v.toFixed(def.decimals).replace(/\.?0+$/, '') || '0';
+  return def.unit ? `${text} ${def.unit}`.trim() : text;
+}
+
+/** The one warning generator. A band is a band, never a limit — this returns prose, not a clamp. */
+export function overrideWarning(def: OverrideDef, body: CelestialBody, value: number): string | null {
+  if (!Number.isFinite(value)) return null;
+  const band = def.plausible(body);
+  if (!band) return null;
+  if (value >= band[0] && value <= band[1]) return null;
+  const side = value < band[0] ? 'below' : 'above';
+  return `${formatOverrideValue(def, value)} is ${side} the plausible range `
+    + `(${formatOverrideValue(def, band[0])} to ${formatOverrideValue(def, band[1])}) — ${def.absurd}`;
+}
+
+export function overrideStatus(body: CelestialBody, def: OverrideDef): OverrideStatus {
+  const pinnedRaw = (body.overrides as Record<string, unknown> | undefined)?.[def.key];
+  const pinned = typeof pinnedRaw === 'number' && Number.isFinite(pinnedRaw);
+  const derived = def.derived(body);
+  const value = pinned ? (pinnedRaw as number) : derived;
+  return {
+    def,
+    pinned,
+    value,
+    derived,
+    warning: pinned ? overrideWarning(def, body, pinnedRaw as number) : null
+  };
+}
+
+/** Every override actually pinned on a body, in roster order. Reads nothing but authored data. */
+export function activeOverrides(body: CelestialBody | null | undefined): OverrideStatus[] {
+  if (!body?.overrides) return [];
+  return overrideDefsFor(body).map((d) => overrideStatus(body, d)).filter((s) => s.pinned);
+}
+
+// ── WRITES ───────────────────────────────────────────────────────────────────────────────────────
+// Two functions, so no editor has to remember that an empty `overrides` object must be deleted or
+// that an anomaly assignment is bound to its override's lifetime.
+
+export function setOverride(body: CelestialBody, key: OverrideKey, value: number): void {
+  const def = BY_KEY.get(key);
+  if (!def || !Number.isFinite(value)) return;
+  body.overrides = body.overrides || {};
+  const v = clampToHard(def, value);
+  (body.overrides as Record<string, unknown>)[key] = v;
+  def.commit?.(body, v);
+}
+
+/**
+ * Hand the quantity back to the physics. The anomaly assignment goes WITH the override — the tag was
+ * that override's stated reason, and a reason with nothing to explain is clutter that would outlive
+ * the thing it referred to.
+ */
+export function clearOverride(body: CelestialBody, key: OverrideKey): void {
+  if (!body.overrides) return;
+  const def = BY_KEY.get(key);
+  delete (body.overrides as Record<string, unknown>)[key];
+  const anomalies = body.overrides.anomalies;
+  if (anomalies) {
+    delete anomalies[key];
+    if (Object.keys(anomalies).length === 0) delete body.overrides.anomalies;
+  }
+  if (Object.keys(body.overrides).length === 0) delete body.overrides;
+  // Hand the consequence back too: whatever the pin was moving returns to the derived figure.
+  const back = def?.derived(body);
+  if (def?.commit && typeof back === 'number' && Number.isFinite(back)) def.commit(body, back);
+}

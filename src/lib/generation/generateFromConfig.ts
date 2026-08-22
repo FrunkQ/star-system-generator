@@ -469,7 +469,7 @@ export function generateSystemFromConfig(seed: string, pack: RulePack, config: G
   const system: System = {
     id: seed, name: systemName, seed, epochT0: Date.now(),
     age_Gyr: config.ageGyr ?? 4.6, nodes, rulePackId: pack.id, rulePackVersion: pack.version,
-    tags: [], toytownFactor: 0, visualScalingMultiplier: 0.5, isManuallyEdited: false
+    tags: [], toytownFactor: 0, visualScalingMultiplier: 0.5
   };
   const processed = systemProcessor.process(system, pack);
 

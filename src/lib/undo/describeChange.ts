@@ -124,7 +124,7 @@ export function describeSystemChange(before: System | null, after: System | null
   const systemFields = changedKeys(
     { ...before, nodes: undefined },
     { ...after, nodes: undefined }
-  ).filter((k) => k !== 'nodes' && k !== 'isManuallyEdited');
+  ).filter((k) => k !== 'nodes');
   if (systemFields.length === 1) return sentenceCase(`${humanise(systemFields[0])} of the system`);
   if (systemFields.length > 1) return `${systemFields.length} changes to the system`;
   return '';

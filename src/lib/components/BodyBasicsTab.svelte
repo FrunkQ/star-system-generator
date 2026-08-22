@@ -294,24 +294,10 @@
       pendingFlowThrough = true; // a deliberate recompose hands the type to the physics on release
   }
 
-  // Thermal-inflation override controls (gas giants). Changing it re-derives the radius from the mass.
-  function ensureOverrides() { if (!body.overrides) body.overrides = {}; }
-  function setInflation(v: number) {
-      if (!Number.isFinite(v)) return;
-      ensureOverrides();
-      body.overrides!.gasThermalInflation = clamp(v, 0.5, 3);
-      commit(editMass(pState(), pState().massMe, lock, heldDensity(), body.overrides!.gasThermalInflation));
-  }
-  function startInflationOverride() { setInflation(pInflationDerived); }
-  function resetInflationAuto() {
-      if (body.overrides) {
-          delete body.overrides.gasThermalInflation;
-          if (Object.keys(body.overrides).length === 0) delete body.overrides;
-      }
-      commit(editMass(pState(), pState().massMe, lock, heldDensity(), gasThermalInflationFactor(body.equilibriumTempK ?? 0)));
-  }
-  const onInflSlider = (e: Event) => setInflation(+(e.target as HTMLInputElement).value);
-  const onInflNum = (e: Event)    => setInflation(parseFloat((e.target as HTMLInputElement).value));
+  // G37: THERMAL INFLATION IS PINNED ON THE OVERRIDES TAB, NOT HERE. This tab still READS the pin —
+  // `effInflation()` above feeds it into every mass/radius edit — but the pin, its range, its warning
+  // and its reset belong with every other override. The consequence a pin has for the radius travels
+  // with its roster record (`OverrideDef.commit`), so it is the same chain either way.
 
   const onMassSlider = (e: Event)  => { const p = +(e.target as HTMLInputElement).value; applyMass(logVal(p, massSpan[0], massSpan[1])); checkEdge(p, 'mass'); };
   const onRadSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyRadius(logVal(p, radSpan[0], radSpan[1])); checkEdge(p, 'radius'); };
@@ -799,22 +785,19 @@
         <div class="sc-field">
             <div class="sc-row">
                 <label>Thermal inflation
-                    {#if inflationOverridden}<span class="sc-ovr-pill" title="Manually overridden — this puffiness is used instead of the value implied by the equilibrium temperature.">overridden</span>
+                    {#if inflationOverridden}<span class="sc-ovr-pill" title="Pinned on the Overrides tab — this puffiness is used instead of the value implied by the equilibrium temperature.">pinned</span>
                     {:else}<span class="sc-derived-pill" title="Derived from the equilibrium temperature: a hotter giant puffs up (bigger radius, lower density); a cold one sits near 1 R Jupiter.">derived</span>{/if}
                 </label>
-                {#if inflationOverridden}
-                    <input class="sc-num" type="number" min="0.5" max="3" step="0.01" value={pInflation.toFixed(2)} on:input={onInflNum} />
-                {:else}
-                    <span class="sc-derived-val">×{pInflation.toFixed(2)}</span>
-                {/if}
+                <span class="sc-derived-val">×{pInflation.toFixed(2)}</span>
                 <span class="sc-unit">×R</span>
             </div>
-            {#if inflationOverridden}
-                <input class="sc-slider" type="range" min="0.8" max="2.2" step="0.01" value={pInflation} on:input={onInflSlider} />
-                <div class="sub-label"><button type="button" class="link-btn" on:click={resetInflationAuto}>Reset to calculated ↺</button></div>
-            {:else}
-                <div class="sub-label">Insolation puffs the envelope (Teq {Math.round(body.equilibriumTempK ?? 0)} K → ×{pInflationDerived.toFixed(2)}). <button type="button" class="link-btn inline" on:click={startInflationOverride}>override</button></div>
-            {/if}
+            <div class="sub-label">
+                {#if inflationOverridden}
+                    Pinned on the <strong>Overrides</strong> tab.
+                {:else}
+                    Insolation puffs the envelope (Teq {Math.round(body.equilibriumTempK ?? 0)} K → ×{pInflationDerived.toFixed(2)}). Pin it on the <strong>Overrides</strong> tab.
+                {/if}
+            </div>
         </div>
     {/if}
 

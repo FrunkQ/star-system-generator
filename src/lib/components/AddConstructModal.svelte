@@ -154,7 +154,6 @@
     systemStore.update((system) => {
       if (system) {
         system.nodes.push(newConstruct);
-        system.isManuallyEdited = true; // Mark as edited
       }
       // A FRESH REFERENCE, as every other write to this store returns (G28): a subscriber cannot
       // tell an in-place change from a no-op if the object it is handed is the same one it saw

@@ -10,6 +10,7 @@
   import BodyHydrosphereTab from './BodyHydrosphereTab.svelte';
   import BodyBiosphereTab from './BodyBiosphereTab.svelte';
   import BodyTagsTab from './BodyTagsTab.svelte';
+  import BodyOverridesTab from './BodyOverridesTab.svelte';
   import SystemInfoTab from './SystemInfoTab.svelte';
   import BodyTechnicalDetails from './BodyTechnicalDetails.svelte';
 
@@ -81,6 +82,10 @@
     {/if}
     
     <button class:active={selectedTab === 'Tags'} on:click={() => setTab('Tags')}>Tags</button>
+    <!-- G37: AFTER Tags, and on stars too — a star's magnetic activity is an override like any other. -->
+    {#if !isBarycenter}
+        <button class:active={selectedTab === 'Overrides'} on:click={() => setTab('Overrides')}>Overrides</button>
+    {/if}
   </div>
 
   <div class="tab-content">
@@ -106,6 +111,8 @@
       <SystemInfoTab {system} on:update={handleUpdate} />
     {:else if selectedTab === 'Tags'}
       <BodyTagsTab {body} {rulePack} on:update={handleUpdate} />
+    {:else if selectedTab === 'Overrides'}
+      <BodyOverridesTab {body} on:update={handleUpdate} />
     {/if}
   </div>
 

@@ -157,20 +157,58 @@ describe('B82 — no derived field escapes the export strip', () => {
   });
 
   it('a GM-pinned field and a GM-pinned lock both survive a save', () => {
-    // The manual flags are what separate an override from a fossil. Nothing in the bundled Sol sets
-    // either, so this builds the case rather than hoping to find one.
+    // What separates an override from a fossil. Nothing in the bundled Sol pins either, so this
+    // builds the case rather than hoping to find one.
+    //
+    // G37 MOVED THE FIELD'S HALF OF THIS. The pin used to live ON the field as `manual: true`, which
+    // made `magneticField` conditionally-authored and kept it out of the strip. It now lives in
+    // `overrides.magneticFieldGauss` with every other pin, so on a planet the field is PURELY derived
+    // and is stripped — and the pin survives because `overrides` is authored data.
     const sys = clone();
     const mars = (sys.nodes as any[]).find((n: any) => n.name === 'Mars');
-    mars.magneticField = { strengthGauss: 4.2, manual: true };
+    mars.overrides = { ...(mars.overrides ?? {}), magneticFieldGauss: 4.2 };
     mars.tidalLockManual = true;
     mars.tidallyLocked = true;
     mars.rotation_period_hours = 99;
     const processed = new SystemProcessor().process(fixUpImportedSystem(sys, pack), pack);
+    const processedMars = (processed.nodes as any[]).find((n) => n.name === 'Mars');
+    // The pin is what the engine commits, not the dynamo's own figure.
+    expect(processedMars.magneticField.strengthGauss).toBe(4.2);
     const saved = stripSystemForExport(JSON.parse(JSON.stringify(processed)), pack);
     const savedMars = (saved.nodes as any[]).find((n) => n.name === 'Mars');
-    expect(savedMars.magneticField).toEqual({ strengthGauss: 4.2, manual: true });
+    expect(savedMars.magneticField).toBeUndefined();          // derived on a planet — a fossil if kept
+    expect(savedMars.overrides.magneticFieldGauss).toBe(4.2); // the pin is the authored half
     expect(savedMars.tidallyLocked).toBe(true);
     // The rotation period survives too — see the Mercury case above for why it is never stripped.
     expect(savedMars.rotation_period_hours).toBeGreaterThan(0);
+    // ...and a reload puts the same field back, from the pin rather than from the saved figure.
+    const reloaded = new SystemProcessor().process(fixUpImportedSystem(JSON.parse(JSON.stringify(saved)), pack), pack);
+    expect((reloaded.nodes as any[]).find((n) => n.name === 'Mars').magneticField.strengthGauss).toBe(4.2);
+  });
+
+  it('a STAR keeps its authored field, which nothing re-derives', () => {
+    // The other half of the conditional, and the reason the strip is not simply unconditional: the
+    // processor writes `magneticField` for planets and moons only, so stripping a star's would zero
+    // it exactly as stripping `temperatureK` once did.
+    const sys = clone();
+    const sun = (sys.nodes as any[]).find((n: any) => n.roleHint === 'star');
+    sun.magneticField = { strengthGauss: 1.75 };
+    const processed = new SystemProcessor().process(fixUpImportedSystem(sys, pack), pack);
+    const saved = stripSystemForExport(JSON.parse(JSON.stringify(processed)), pack);
+    expect((saved.nodes as any[]).find((n) => n.roleHint === 'star').magneticField).toEqual({ strengthGauss: 1.75 });
+  });
+
+  it("MIGRATION: an older save's `magneticField.manual` becomes the override, and the flag goes", () => {
+    // Saves written before G37 carry the pin on the field itself. Recovering it is the only thing
+    // standing between an existing campaign and a silently un-pinned magnetosphere.
+    const sys = clone();
+    const mars = (sys.nodes as any[]).find((n: any) => n.name === 'Mars');
+    mars.magneticField = { strengthGauss: 7.5, manual: true };
+    const fixed = fixUpImportedSystem(sys, pack);
+    const fixedMars = (fixed.nodes as any[]).find((n) => n.name === 'Mars');
+    expect(fixedMars.overrides.magneticFieldGauss).toBe(7.5);
+    const processed = new SystemProcessor().process(fixed, pack);
+    expect((processed.nodes as any[]).find((n) => n.name === 'Mars').magneticField)
+      .toEqual({ strengthGauss: 7.5 });   // committed from the override; no `manual` anywhere
   });
 });

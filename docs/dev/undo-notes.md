@@ -210,8 +210,11 @@ Two details that are deliberate:
   it for a locked body. Each field needs the question answered on its own. Fixing it also makes the
   undo labels precise for free: one mass drag currently moves nine fields on Earth, so the tooltip
   says "Edit to Earth" where it could say "Mass of Earth".
-- **`isManuallyEdited` is written in ~10 places and read nowhere.** Either something should key off
-  it or it is dead weight in every save.
+- ~~**`isManuallyEdited` is written in ~10 places and read nowhere.**~~ **CLOSED by [[G37]] phase 1,
+  v3.0.4-beta: RETIRED.** It was 32 write sites, not ten, and the only thing that ever read it was
+  `describeChange`, which had to FILTER IT BACK OUT of every edit label. Deleted from the type, from
+  every write, and from older saves on load. Each write site kept its fresh-object spread (`{ ...s }`)
+  because that convention, not the flag, is what the recorder depends on — see section 3.
 - **The undo labels have only been seen for mass, GM notes, delete, move and rename.** A composition
   recompose, an orbit change or a tag edit may read oddly; the phrasing is a diff heuristic and only
   a human eye can judge it.

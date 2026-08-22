@@ -586,7 +586,7 @@
       // 5. Commit & Focus
       systemStore.update(s => {
           if (!s) return s;
-          return { ...s, nodes: [...s.nodes, newPlanet], isManuallyEdited: true };
+          return { ...s, nodes: [...s.nodes, newPlanet] };
       });
       updateFocus(newPlanet.id);
       isEditing = true;
@@ -630,7 +630,7 @@
               }
           }
       } as CelestialBody;
-      systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, newBody] }, rulePack), isManuallyEdited: true });
+      systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, newBody] }, rulePack) });
       updateFocus(newBody.id);
       isEditing = true;
   }
@@ -762,8 +762,7 @@
           if (!s) return s;
           return {
               ...s,
-              nodes: [...s.nodes, newConstruct],
-              isManuallyEdited: true
+              nodes: [...s.nodes, newConstruct]
           };
       });
 
@@ -855,7 +854,7 @@
       if (nodeIndex !== -1) {
         system.nodes[nodeIndex] = updatedConstruct;
       }
-      return { ...system, isManuallyEdited: true };
+      return { ...system };
     });
   }
 
@@ -961,7 +960,7 @@
 
       // Always recalculate physics (Radiation, Temp, Period) when any body is updated
       const processed = systemProcessor.process({ ...system, nodes: system.nodes }, rulePack);
-      return { ...processed, isManuallyEdited: true };
+      return { ...processed };
     });
   }
 
@@ -1099,7 +1098,7 @@
             ? { ...n, object_playerhidden: !n.object_playerhidden }
             : n
         );
-        return { ...sys, nodes: updatedNodes, isManuallyEdited: true };
+        return { ...sys, nodes: updatedNodes };
       });
     }
   }
@@ -1332,7 +1331,7 @@
         }
     }
 
-    systemStore.set({ ...systemProcessor.process(deleteNode($systemStore, nodeId), rulePack), isManuallyEdited: true });
+    systemStore.set({ ...systemProcessor.process(deleteNode($systemStore, nodeId), rulePack) });
 
     if (nextFocusId) {
         handleFocus({ detail: nextFocusId } as CustomEvent<string | null>);
@@ -1906,7 +1905,7 @@
               if (n.id !== id || !Array.isArray((n as any).fuel_tanks)) return n;
               return { ...n, fuel_tanks: (n as any).fuel_tanks.map((t: any) => ({ ...t, current_units: t.capacity_units })) };
           });
-          return { ...sys, nodes, isManuallyEdited: true };
+          return { ...sys, nodes };
       });
   }
 
@@ -1948,7 +1947,7 @@
                   draft_transit_plan: undefined
               };
           });
-          return { ...sys, nodes: newNodes, isManuallyEdited: true };
+          return { ...sys, nodes: newNodes };
       });
 
       // The execute animation simulated the trip; now REWIND Display Time to the journey's start so no
@@ -2032,7 +2031,7 @@
               if (n.id !== focusedBody.id || n.kind !== 'construct') return n;
               return pruneFlightLog(clearFutureJourneys(n as CelestialBody, nowMs), nowMs);
           });
-          return { ...sys, nodes, isManuallyEdited: true };
+          return { ...sys, nodes };
       });
   }
 
@@ -2053,7 +2052,7 @@
               logs[bestIdx] = { ...rest, status: 'scheduled' };
               return { ...n, scheduled_journeys: logs };
           });
-          return { ...sys, nodes, isManuallyEdited: true };
+          return { ...sys, nodes };
       });
   }
 
@@ -2070,7 +2069,7 @@
         n.id === id && n.kind === 'construct'
           ? { ...n, autopilot: { ...(n as any).autopilot, enabled: false } }
           : n);
-      return { ...sys, nodes, isManuallyEdited: true };
+      return { ...sys, nodes };
     });
     if (mode === 'graceful') handleClearFuturePlans();
     else handleCancelActivePlan({ detail: { coast: mode === 'drift' } } as CustomEvent);
@@ -2091,7 +2090,7 @@
               // Cascading policy: cancelling active also clears all future plans (+ their flight-log events).
               return pruneFlightLog(clearFutureJourneys(cancelled, nowMs), nowMs);
           });
-          return { ...sys, nodes, isManuallyEdited: true };
+          return { ...sys, nodes };
       });
   }
 
@@ -2134,7 +2133,7 @@
               }
               return n;
           });
-          return { ...sys, nodes: newNodes, isManuallyEdited: true };
+          return { ...sys, nodes: newNodes };
       });
   }
 
@@ -2174,7 +2173,7 @@
               }
               return n;
           });
-          return { ...sys, nodes: newNodes, isManuallyEdited: true };
+          return { ...sys, nodes: newNodes };
       });
   }
 
@@ -2361,7 +2360,7 @@
                 bind:showSensors
                 {isEditing} {isPlanning} {isShipLogOpen}
                 on:togglevisibility={handleToggleVisibility}
-                on:rename={(e) => { dispatch('renameNode', e.detail); systemStore.update(s => s ? { ...s, isManuallyEdited: true } : s); }}
+                on:rename={(e) => { dispatch('renameNode', e.detail); systemStore.update(s => s ? { ...s } : s); }}
                 on:toggleedit={() => { isEditing = !isEditing; if (isEditing) { showZoneKeyPanel = false; visualizer?.resetView(); } }}
                 on:showphysics={() => showPhysicsModal = true}
             />

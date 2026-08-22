@@ -19,6 +19,7 @@
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
   import { phaseAtP } from '$lib/physics/liquids';
   import { formatGauss } from '$lib/physics/magnetism';
+  import { activeOverrides as listActiveOverrides, formatOverrideValue } from '$lib/physics/overrides';
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
   import { radiationPlace } from '$lib/catalogue/bodyFacts';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
@@ -72,12 +73,29 @@
   $: cbody = (body && (body as any).kind === 'body') ? (body as CelestialBody) : null;
   $: bodyGasDominated = cbody ? makeupFractions(cbody).gas > 0.5 : false;
   $: bodyInflation = cbody ? ((cbody.overrides?.gasThermalInflation) ?? gasThermalInflationFactor(cbody.equilibriumTempK ?? 0)) : 1;
-  $: activeOverrides = cbody ? ([
-      cbody.overrides?.albedo !== undefined ? 'Albedo' : null,
-      cbody.magneticField?.manual ? 'Magnetic field' : null,
-      cbody.overrides?.gasThermalInflation !== undefined ? 'Thermal inflation' : null,
-      cbody.autoClassify === false ? 'Type (pinned)' : null
-  ].filter(Boolean) as string[]) : [];
+  // G37 — THE LIST IS NO LONGER HAND-WRITTEN, AND THAT IS THE WHOLE FIX. It used to name four
+  // overrides by hand and had already fallen behind the engine: radiogenic heat and a star's magnetic
+  // activity were both pinnable and neither appeared, so a GM could pin a value and be told, on the
+  // panel whose job is to say what the physics owns, that nothing had been pinned. It now enumerates
+  // the roster, so an override that exists cannot fail to be listed.
+  //
+  // KEPT rather than retired (owner, 2026-08-22: "keep it separate and keep it — it is useful and not
+  // much screen space"). Each badge says on hover what was changed, by how much, and which anomaly it
+  // is filed under, so the strip answers "what is odd about this world" without leaving the panel.
+  $: overrideBadges = cbody ? [
+      ...listActiveOverrides(cbody).map((o) => ({
+          label: o.def.label,
+          title: `${o.def.label}: pinned at ${formatOverrideValue(o.def, o.value)}`
+              + ` (the physics says ${formatOverrideValue(o.def, o.derived)}).`
+              + (o.warning ? `
+WARNING — ${o.warning}` : '')
+              + `
+${o.def.hint}`
+      })),
+      ...(cbody.autoClassify === false
+          ? [{ label: 'Type (pinned)', title: 'Auto-classification is off: this world keeps the type you chose rather than the one its physics implies.' }]
+          : [])
+  ] : [];
 
   // Derived Reactive Properties for Constructs
   let constructSpecs: ConstructSpecs | null = null;
@@ -861,10 +879,10 @@
           </div>
       {/if}
 
-      {#if activeOverrides.length}
-          <div class="detail-item overrides-callout" title="Values the GM has pinned by hand. Everything else is derived by the physics engine; a pinned value is saved and fed into the derivation instead.">
+      {#if overrideBadges.length}
+          <div class="detail-item overrides-callout" title="Values the GM has pinned by hand, on the body editor's Overrides tab. Everything else is derived by the physics engine; a pinned value is saved and fed into the derivation instead. Hover a badge for what changed and by how much.">
               <span class="label">GM overrides</span>
-              <span class="value">{#each activeOverrides as o}<span class="ovr-badge">{o}</span>{/each}</span>
+              <span class="value">{#each overrideBadges as o (o.label)}<span class="ovr-badge" title={o.title}>{o.label}</span>{/each}</span>
           </div>
       {/if}
 </div>

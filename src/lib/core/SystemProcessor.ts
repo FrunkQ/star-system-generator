@@ -881,17 +881,26 @@ export class SystemProcessor implements ISystemProcessor {
         }
         body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
         // The field STRENGTH derives from the model (rotation + composition + core size) unless the GM
-        // has set it manually (F-OVR). So spinning a world up or making it metal-rich changes its field,
-        // and a small iron-cored world like Mercury gets a tenuous field instead of nothing. A manual
-        // value is left untouched and still overrides the tag below.
-        if (!body.magneticField?.manual) {
-            body.magneticField = { strengthGauss: +body.magnetism.nominalGauss.toFixed(4) };
-        }
+        // has pinned one (F-OVR: `overrides.magneticFieldGauss`). So spinning a world up or making it
+        // metal-rich changes its field, and a small iron-cored world like Mercury gets a tenuous field
+        // instead of nothing. A pinned value is committed verbatim and overrides the tag below.
+        //
+        // G37: this used to test `magneticField.manual`, a flag that said the same thing as an
+        // `overrides` key in a second vocabulary — so the one pinned value in the engine that did not
+        // live in `body.overrides` was invisible to everything that enumerates what a GM has pinned.
+        // The pin is now re-read from the override on every pass, which also makes the committed field
+        // a purely DERIVED value that the save strip can drop.
+        const pinnedGauss = body.overrides?.magneticFieldGauss;
+        body.magneticField = {
+            strengthGauss: typeof pinnedGauss === 'number' && Number.isFinite(pinnedGauss)
+                ? pinnedGauss
+                : +body.magnetism.nominalGauss.toFixed(4)
+        };
         body.tags = stripForReprocess(body.tags, ['magnetic/']);
         // The shielding tag reconciles with the field the GM sees: 0 → unshielded, a whisker → tenuous
         // (Mercury), induced ocean → induced, a manual field with no interior source → anomalous, else a
         // dynamo. A manual value overrides the derived one.
-        emit(body.tags, { key: magneticShieldingTag(body.magnetism, body.magneticField) });
+        emit(body.tags, { key: magneticShieldingTag(body.magnetism, body.magneticField, typeof pinnedGauss === 'number') });
     }
 
     // THE RADIATION HAZARD TAGS, for every body whose dose describes a place you could actually be

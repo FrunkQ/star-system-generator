@@ -63,10 +63,6 @@ describe('describeSystemChange', () => {
     expect(describeSystemChange(sys([earth()]), sys([earth()], { name: 'Sol II' }))).toBe('Name of the system');
   });
 
-  it('ignores `isManuallyEdited`, which every edit sets and no GM asked for', () => {
-    expect(describeSystemChange(sys([earth()]), sys([earth()], { isManuallyEdited: true }))).toBe('');
-  });
-
   it('returns nothing rather than guessing', () => {
     expect(describeSystemChange(sys([earth()]), sys([earth()]))).toBe('');
     expect(describeSystemChange(null, sys([earth()]))).toBe('');

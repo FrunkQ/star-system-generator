@@ -9,13 +9,17 @@ import type { CelestialBody, Magnetism, MagneticField, DynamoSource, MagnetGeome
 import { EARTH_MASS_KG } from '$lib/constants';
 import { makeupFractions } from './makeup';
 
-// Which magnetic/* shielding tag a body carries. F-OVR (E3): a MANUALLY-set field overrides the
-// derived interior dynamo — its strength alone decides shielding (0 → unshielded, >0 → a field), so
-// zeroing the field strips the tag and raising it adds one, regardless of what the interior implies.
-// When a manual field is present but the interior model finds NO natural source for it (not a dynamo,
+// Which magnetic/* shielding tag a body carries. F-OVR (E3): a PINNED field overrides the derived
+// interior dynamo — its strength alone decides shielding (0 → unshielded, >0 → a field), so zeroing
+// the field strips the tag and raising it adds one, regardless of what the interior implies.
+// When a pinned field is present but the interior model finds NO natural source for it (not a dynamo,
 // not induced), the field is ANOMALOUS — the GM put it there (artificial / exotic / unknown origin),
-// so it gets its own tag rather than masquerading as an intrinsic dynamo. Without a manual override the
-// tag follows the derived magnetism model (intrinsic dynamo / induced / none).
+// so it gets its own tag rather than masquerading as an intrinsic dynamo. Without a pin the tag
+// follows the derived magnetism model (intrinsic dynamo / induced / none).
+//
+// G37: whether the field is pinned is passed IN rather than read off the field, because the pin now
+// lives where every other override lives (`body.overrides.magneticFieldGauss`) and `MagneticField`
+// carries only the committed strength.
 // A field this weak (< ~10% of Earth's ~0.5 G) exists but is negligible for shielding — a TENUOUS
 // magnetosphere (Mercury ≈ 0.003 G, ~1% of Earth's).
 export const TENUOUS_GAUSS = 0.05;
@@ -30,13 +34,13 @@ export function formatGauss(g: number): string {
   return '0';
 }
 
-export function magneticShieldingTag(magnetism: Magnetism, field?: MagneticField): string {
-  const s = field?.strengthGauss ?? 0; // the effective field (GM-set if manual, else derived from the model)
+export function magneticShieldingTag(magnetism: Magnetism, field?: MagneticField, pinned = false): string {
+  const s = field?.strengthGauss ?? 0; // the effective field (the GM's pin if there is one, else the model's)
   const inducedSource = magnetism.source === 'salty-ocean-induced';
   if (s <= 0) return 'magnetic/unshielded';
   if (inducedSource) return 'magnetic/induced';            // induced fields are inherently weak — keep the label
   if (s < TENUOUS_GAUSS) return 'magnetic/tenuous';        // present but negligible (Mercury-like)
-  if (field?.manual && magnetism.source === 'none') return 'magnetic/anomalous'; // GM field with no interior source
+  if (pinned && magnetism.source === 'none') return 'magnetic/anomalous'; // GM field with no interior source
   return 'magnetic/dynamo';
 }
 

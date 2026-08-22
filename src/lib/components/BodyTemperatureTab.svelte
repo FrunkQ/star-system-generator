@@ -29,56 +29,14 @@
       return calculateEquilibriumTemperature(body, nodes, albedo);
   }
 
-  // --- Albedo F-OVR: derived by default; the GM can pin a value that feeds temperature + classification.
+  // G37: ALBEDO AND RADIOGENIC HEAT ARE PINNED ON THE OVERRIDES TAB, NOT HERE. This tab reads them;
+  // the pin, its range, its warning and its reset all live in one place with every other override.
+  // Four editors used to hold one override each and no two agreed on the wording.
   $: albedoOverridden = typeof body.overrides?.albedo === 'number';
-  function ensureOverrides() { if (!body.overrides) body.overrides = {}; }
-  function startAlbedoOverride() {
-      ensureOverrides();
-      body.overrides!.albedo = body.albedoBreakdown?.albedo ?? estimateBondAlbedo(body); // seed from the current derived value
-      updateTotal();
-      dispatch('update');
-  }
-  function onAlbedoInput() {
-      if (body.overrides && typeof body.overrides.albedo === 'number') {
-          body.overrides.albedo = Math.max(0, Math.min(1, body.overrides.albedo));
-      }
-      updateTotal();
-  }
-  function resetAlbedoAuto() {
-      if (body.overrides) {
-          delete body.overrides.albedo;
-          if (Object.keys(body.overrides).length === 0) delete body.overrides;
-      }
-      updateTotal();
-      dispatch('update');
-  }
-
-  // --- Radiogenic F-OVR: derived default is ~0 (radiogenic surface heat is negligible vs sunlight); the
-  // GM can override it to add surface heat AND drive the geological vigor/tag. Saved in body.overrides.
   $: radiogenicOverridden = typeof body.overrides?.radiogenicHeatK === 'number';
-  function startRadiogenicOverride() {
-      ensureOverrides();
-      body.overrides!.radiogenicHeatK = body.radiogenicHeatK ?? 0;
-      updateTotal();
-      dispatch('update');
-  }
-  function onRadiogenicInput() {
-      if (body.overrides && typeof body.overrides.radiogenicHeatK === 'number') {
-          body.overrides.radiogenicHeatK = Math.max(0, Math.min(40, body.overrides.radiogenicHeatK));
-          body.radiogenicHeatK = body.overrides.radiogenicHeatK; // immediate preview; processor confirms on update
-      }
-      updateTotal();
-  }
-  function resetRadiogenicAuto() {
-      if (body.overrides) {
-          delete body.overrides.radiogenicHeatK;
-          if (Object.keys(body.overrides).length === 0) delete body.overrides;
-      }
-      body.radiogenicHeatK = 0;
-      updateTotal();
-      dispatch('update');
-  }
 
+  // The live preview the tab shows while a GM edits elsewhere in the panel. It re-derives the same
+  // way the processor does, so the figures here and the ones on the card cannot disagree.
   function updateTotal() {
       if (body.roleHint === 'star') {
           dispatch('update');
@@ -147,19 +105,15 @@
         </div>
         
         {#if albedoOverridden}
-            <div class="form-group">
-                <label>Bond Albedo <span class="override-pill" title="Manually overridden — this reflectivity feeds the temperature and classification instead of the derived value.">overridden</span></label>
-                <div class="input-row">
-                    <input type="range" min="0" max="1" step="0.01" bind:value={body.overrides.albedo} on:input={onAlbedoInput} on:change={() => dispatch('update')} />
-                    <input type="number" min="0" max="1" step="0.01" bind:value={body.overrides.albedo} on:input={onAlbedoInput} on:change={() => dispatch('update')} style="width: 60px;" />
-                </div>
-                <button type="button" class="link-btn" on:click={resetAlbedoAuto}>Reset to calculated ↺</button>
+            <div class="read-only-row">
+                <label>Bond Albedo <span class="override-pill" title="Pinned on the Overrides tab — this reflectivity feeds the temperature and classification instead of the derived value.">pinned</span></label>
+                <span class="value">{body.overrides?.albedo} <span class="where">Overrides tab</span></span>
             </div>
         {:else if body.albedoBreakdown}
             {@const ab = body.albedoBreakdown}
             <div class="read-only-row">
                 <label>Bond Albedo <span class="derived-pill" title="Reflectivity is derived from the surface makeup and the cloud decks that condense at this temperature — tweak the makeup / atmosphere / water and it follows.">derived</span></label>
-                <span class="value">{ab.albedo} <button type="button" class="link-btn inline" on:click={startAlbedoOverride}>override</button></span>
+                <span class="value">{ab.albedo}</span>
             </div>
             <div class="albedo-note">
                 {#if ab.cloudCover > 0}
@@ -171,7 +125,7 @@
         {:else}
             <div class="read-only-row">
                 <label>Bond Albedo</label>
-                <span class="value">{(body.albedo ?? 0).toFixed(2)} <button type="button" class="link-btn inline" on:click={startAlbedoOverride}>override</button></span>
+                <span class="value">{(body.albedo ?? 0).toFixed(2)}</span>
             </div>
         {/if}
 
@@ -193,21 +147,16 @@
             <span class="value">{Math.round(body.internalHeatK || 0)} K</span>
         </div>
 
-        {#if radiogenicOverridden}
-            <div class="form-group">
-                <label>Radiogenic Heating (+K) <span class="override-pill" title="Manually overridden — adds this much surface heat and boosts the world's geological vigor (tectonics/volcanism tag).">overridden</span></label>
-                <div class="input-row">
-                    <input type="range" min="0" max="40" step="1" bind:value={body.overrides.radiogenicHeatK} on:input={onRadiogenicInput} on:change={() => dispatch('update')} />
-                    <input type="number" min="0" max="40" step="1" bind:value={body.overrides.radiogenicHeatK} on:input={onRadiogenicInput} on:change={() => dispatch('update')} style="width: 60px;" />
-                </div>
-                <button type="button" class="link-btn" on:click={resetRadiogenicAuto}>Reset to derived ↺</button>
-            </div>
-        {:else}
-            <div class="read-only-row">
-                <label>Radiogenic Heating (+K) <span class="derived-pill" title="Radiogenic surface heat is negligible vs sunlight for most worlds, so it's ~0 by default. Override it to add heat and drive geology on exotic/young worlds.">derived</span></label>
-                <span class="value">{Math.round(body.radiogenicHeatK || 0)} K <button type="button" class="link-btn inline" on:click={startRadiogenicOverride}>override</button></span>
-            </div>
-        {/if}
+        <div class="read-only-row">
+            <label>Radiogenic Heating (+K)
+                {#if radiogenicOverridden}
+                    <span class="override-pill" title="Pinned on the Overrides tab — adds this much surface heat and boosts the world's geological vigour (tectonics/volcanism tag).">pinned</span>
+                {:else}
+                    <span class="derived-pill" title="Radiogenic surface heat is negligible against sunlight for most worlds, so it is ~0 by default. Pin it on the Overrides tab to add heat and drive geology on exotic or young worlds.">derived</span>
+                {/if}
+            </label>
+            <span class="value">{Math.round(body.radiogenicHeatK || 0)} K{#if radiogenicOverridden} <span class="where">Overrides tab</span>{/if}</span>
+        </div>
         
         <hr />
         
@@ -284,8 +233,8 @@
   .comp-range { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .albedo-note { font-size: 0.78em; color: var(--text-faint); line-height: 1.4; margin-top: -4px; }
   .derived-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
+  .where { font-size: 0.68em; font-weight: normal; color: var(--text-faint); margin-left: 6px; }
   .override-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
   .link-btn { background: none; border: none; padding: 2px 0; color: var(--link, #6aa0d8); font-size: 0.78em; cursor: pointer; }
-  .link-btn.inline { margin-left: 6px; font-size: 0.72em; }
   .link-btn:hover { text-decoration: underline; }
 </style>

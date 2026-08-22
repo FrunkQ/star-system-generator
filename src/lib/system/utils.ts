@@ -270,6 +270,6 @@ export function sanitizeSystem(system: System, rulePack: RulePack): System {
     // 2. Physics Recalculation — the ONE pipeline (same pass as load/generation), run unconditionally
     // so repaired saves are consistent with the latest physics. process() mutates nodes in place and
     // returns the system.
-    const systemWithStructure = changed ? { ...system, nodes: newNodes, isManuallyEdited: true } : system;
+    const systemWithStructure = changed ? { ...system, nodes: newNodes } : system;
     return systemProcessor.process(systemWithStructure, rulePack);
 }

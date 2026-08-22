@@ -309,6 +309,37 @@ state you are in rather than assuming the pane is broken — and it is worth ask
 
 ---
 
+## OVERRIDES — what a GM pins, and where it is described
+
+### OVR-1 An override is authored INPUT, and it is described in exactly ONE place
+WHERE: `src/lib/physics/overrides.ts` `OVERRIDE_DEFS`; the shape on `types.ts` `body.overrides`.
+RULE: a key PRESENT in `body.overrides` means the GM pinned that value — it is fed into the derivation
+BEFORE the solve, never poked into derived output (PHY-1 is the guard). Every label, unit, slider
+range, absurd-but-allowed range, derived default and warning sentence comes from the roster record;
+no editor, panel or trace may restate any of them. Reset DELETES the key and its anomaly assignment.
+WHY: G37. There were four editors holding one override each — albedo and radiogenic heat in
+`BodyTemperatureTab`, thermal inflation in `BodyBasicsTab`, the magnetosphere in `BodyAtmosphereTab`
+under a convention of its OWN (`magneticField.manual`) — with four seeds, four clamps and four
+spellings of "overridden", plus a fifth key (`flareActivity`) that had no editor at all. The info
+panel's list of what the GM had pinned was hand-written and had already dropped two of them, so the
+one surface whose job is to say what the physics does not own answered "nothing" for a pinned world.
+BLAST: a new override is a RECORD, never a new row of UI. A new surface reads the roster, never a
+literal. NEVER CLAMP TO `plausible()` — it produces a sentence, not a limit; the house rule is that a
+figure which breaks physics is kept and labelled, and only the finite `hard` pair applies.
+
+### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
+WHERE: `overrides.ts` — the `commit` on the `gasThermalInflation` record; `BodyBasicsTab.effInflation`.
+RULE: inflation sizes a body at GENERATION and `radiusKm` is authored thereafter, so pinning it has
+to move the radius AT EDIT TIME, through `bodyEdit.editMass` — the same chain the composition editor
+uses. `OverrideDef.commit` is where that consequence lives, so the tab stays free of per-quantity
+branches and pin and reset take the same path.
+WHY: every other override is read by the processor on the next pass. Moving this one onto a generic
+tab without the hook would have produced a slider that saved a number and changed nothing visible
+until the next mass drag happened to read it.
+BLAST: a pin whose target is AUTHORED input (radius, pressure, mass) needs a `commit`; a pin on a
+DERIVED field must NOT have one — that would be an edit to derived output, which is exactly what
+PHY-1 and `idempotence.test.ts` exist to catch.
+
 ## PHYSICS — ordering and honesty
 
 ### PHY-20 A surface property that VARIES BY AN ORDER OF MAGNITUDE is a process, not a constant

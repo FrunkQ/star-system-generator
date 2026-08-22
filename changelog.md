@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.4 - 22nd Aug 2026
+
+- **NEW: an Overrides tab on every body and star.** Everything you can pin by hand now sits in one place, after Tags: the albedo, the radiogenic heat, a gas giant's puffiness, a planet's magnetosphere, and - for the first time with a control at all - a star's magnetic activity. Each row shows what you pinned, what the physics would have said, a slider for the ordinary range, a box for figures well outside it, and Reset to calculated. Nothing is refused: a value the physics cannot account for is kept, saved and labelled with a plain sentence saying what is wrong with it. The magnetosphere is now a reading on the Atmo/Mag tab and inflation a reading on Composition; both are pinned on the new tab.
+- The body card's GM overrides line no longer misses any. It listed four by hand and two pinnable values were not among them, so a world could be overridden and the card would say it was not. Hovering a badge now says what was pinned, to what, and what the engine's own answer was.
+
 ## v3.0.3 - 22nd Aug 2026
 
 - Docs only. The break-physics design is captured: G37 (the Overrides tab, new pins including a direct temperature slider and negative albedo, and the Anomaly tag category for the excuses) with a full handoff brief at docs/dev/g37-gm-overrides-anomaly-handoff.md.
