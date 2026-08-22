@@ -1,7 +1,7 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter, SurfaceSpectrumCurves, Tag } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, composeModelledSurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket, radiationPlace } from '../physics/radiation';
 // The annual-dose hazard tag. Its key is serialised, so it lives beside the other tag constants.
 const RADIATION_HAZARD_TAG = 'hazard/radiation';
@@ -750,6 +750,20 @@ export class SystemProcessor implements ISystemProcessor {
             emit(body.tags, { key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
         }
 
+        // F-OVR (G37): a PINNED surface pressure, applied BEFORE anything reads the air. One helper,
+        // called twice — here and again after atmospheric escape — because escape is the model the
+        // pin exists to overrule, and a pin that only survived until the erosion pass would be a pin
+        // in name only. It is not a poke into derived output: `atmosphere.pressure_bar` is authored
+        // input (the GM types it on the Atmo tab), and this restates the GM's own answer over the
+        // top of a model that would otherwise take it away.
+        const applyPressurePin = () => {
+            const pin = body.overrides?.pressureBar;
+            if (typeof pin !== 'number' || !Number.isFinite(pin) || pin < 0) return;
+            if (!body.atmosphere) return;   // nothing to pressurise; the GM must give it air first
+            body.atmosphere.pressure_bar = pin;
+        };
+        applyPressurePin();
+
         // --- THE thermal fixed point: albedo ⇄ equilibrium temp ⇄ greenhouse ⇄ surface temp ⇄
         //     cloud decks ⇄ albedo (physics/temperature.ts solveThermalState, which explains why it
         //     terminates). The clouds it reads are deriveCloudDecks' — the same single evaluation
@@ -795,6 +809,9 @@ export class SystemProcessor implements ISystemProcessor {
             // Escape changed the air the clouds condense out of, so the fixed point has to be solved
             // again against what is actually left. Only these opted-in bodies pay for it, and only
             // when something was really lost.
+            // THE PIN OUTRANKS THE EROSION. Escape has just decided how much air this world should
+            // have lost over its lifetime; a GM who pinned the pressure has said that it did not.
+            applyPressurePin();
             if (allStars.length > 0 && (body.atmosphere?.pressure_bar ?? 0) !== pressureBefore) commitThermal();
         }
 
@@ -824,7 +841,16 @@ export class SystemProcessor implements ISystemProcessor {
         // damping that makes them agree. Reading last pass's mean instead would break PHY-1.
         const surfaceLiquidWater = (body.hydrosphere?.composition === 'water')
             && (body.hydrosphere?.coverage ?? 0) > 0.2 && (body.temperatureK ?? 0) >= 273;
-        const { profile, tags: tempTags } = surfaceTempProfile({
+        // THE PROFILE IS BUILT THROUGH THE *MODELLED* COMPOSER, NOT THE PINNED ONE (G37), and the
+        // reason is PHY-19: this function derives the day and night sides from the energy balance and
+        // lets the MEAN FALL OUT OF THEM. A composer that answered with the GM's pin at every
+        // equilibrium temperature would hand it two identical hemispheres and flatten an eyeball
+        // world into an isothermal one. So the profile is composed from the model, its mean is
+        // measured, and — when a pin is present — the whole thing is rebuilt with the composer scaled
+        // by `pin / thatMean`. ONE CLOSED-FORM FACTOR, NOT AN ITERATION: the mean is linear in the
+        // scale, so the mean of the two scaled hemispheres is exactly the pin while their RATIO, and
+        // every swing derived from it, is untouched. Only a pinned body pays for the second pass.
+        const buildProfile = (compose: (teqK: number) => number) => surfaceTempProfile({
             meanK: body.temperatureK ?? equilibriumTempK,
             equilibriumK: equilibriumTempK,
             // The sunlit ceiling is (S(1−A)/σ)^¼ and a body reaches it at CLOSEST approach, so the
@@ -835,7 +861,7 @@ export class SystemProcessor implements ISystemProcessor {
             // Day, night and peak are derived in EQUILIBRIUM space and mapped to the surface here, so
             // the greenhouse, tidal, radiogenic, internal and self-luminous terms are added by the one
             // function that owns them instead of being re-implemented against a scaled amplitude.
-            composeSurfaceAt: (teqK: number) => composeBodySurfaceTemperature(body, teqK),
+            composeSurfaceAt: compose,
             pressureBar: body.atmosphere?.pressure_bar ?? 0,
             rotationHours: body.rotation_period_hours,
             tidallyLocked: body.tidallyLocked,
@@ -870,6 +896,13 @@ export class SystemProcessor implements ISystemProcessor {
             tidalRawIndex,
             iceFrac: makeupFractions(body).ice
         });
+        const modelledCompose = (teqK: number) => composeModelledSurfaceTemperature(body, teqK);
+        let { profile, tags: tempTags, meanExactK } = buildProfile(modelledCompose);
+        const surfacePin = body.overrides?.surfaceTempK;
+        if (typeof surfacePin === 'number' && Number.isFinite(surfacePin) && surfacePin >= 0 && meanExactK > 0) {
+            const scale = surfacePin / meanExactK;
+            ({ profile, tags: tempTags } = buildProfile((teqK: number) => modelledCompose(teqK) * scale));
+        }
         for (const key of tempTags) emit(body.tags, { key });
         body.temperatureProfile = profile;
         body.temperatureRangeK = { min: profile.totalMinK, max: profile.totalMaxK };
@@ -962,7 +995,20 @@ export class SystemProcessor implements ISystemProcessor {
         // The shielding tag reconciles with the field the GM sees: 0 → unshielded, a whisker → tenuous
         // (Mercury), induced ocean → induced, a manual field with no interior source → anomalous, else a
         // dynamo. A manual value overrides the derived one.
-        emit(body.tags, { key: magneticShieldingTag(body.magnetism, body.magneticField, typeof pinnedGauss === 'number') });
+        // OUT OF CLASS IS A STATUS, NOT A REFUSAL (G37). A pinned field the interior model could
+        // never produce — the owner's 70 tesla terrestrial — is kept, saved and drives the shielding
+        // exactly as a real one would, and it says so: `magnetic/anomalous` rather than
+        // `magnetic/dynamo`, which would be the engine claiming an interior source it has not found.
+        // The band is the dynamo's own `estimatedRangeGauss`, so this asks the model rather than a
+        // constant, and a body whose interior genuinely could make that field keeps its dynamo tag.
+        const magBand = body.magnetism.estimatedRangeGauss;
+        const outOfClass = typeof pinnedGauss === 'number' && !!magBand
+            && Number.isFinite(magBand.min) && Number.isFinite(magBand.max)
+            && (pinnedGauss < magBand.min || pinnedGauss > magBand.max);
+        const shieldTag = magneticShieldingTag(body.magnetism, body.magneticField, typeof pinnedGauss === 'number');
+        emit(body.tags, {
+            key: outOfClass && shieldTag === 'magnetic/dynamo' ? 'magnetic/anomalous' : shieldTag
+        });
     }
 
     // THE RADIATION HAZARD TAGS, for every body whose dose describes a place you could actually be

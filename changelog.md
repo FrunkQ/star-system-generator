@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.6 - 22nd Aug 2026
+
+- **NEW: pin a world's surface temperature outright.** The magic slider. Put a moon out past the ice line at 1100 K and everything downstream believes it - the ice goes, the clouds change, the classification and the habitability follow, and the day and night sides keep their swing about the figure you typed rather than the world going flat. Pin it low and it is a cold spot instead; the engine does not ask why.
+- **NEW: negative albedo.** It was there in the field all along and was quietly ignored; now it works. Below zero the surface returns more energy than its star sends it, which is absurd, allowed and clearly labelled. Above one it reflects everything and reads absolute zero rather than a broken number.
+- **NEW: pin the atmospheric pressure.** Erosion no longer eats it, so a small world can hold an air column it could never have kept.
+- A magnetosphere pinned beyond what the world's interior could ever generate is now called what it is - anomalous - instead of being reported as an ordinary dynamo. The 70 tesla terrestrial works, and it says so.
+- Each of those rows tells you the range the slider covers and lets you type past either end, and says in plain words what is wrong with the figure once you do.
+
 ## v3.0.5 - 22nd Aug 2026
 
 - **NEW: say WHY a world breaks the physics.** A new tag category, Anomaly, holds the excuses: Unknown Origin, Alien Technology, Alien Biosphere, Subsurface Structure, Unobtanium, Magic, Precursor Engineering, Exotic Matter, Divine Will, Nanite Ecology, Reality Fault, Experimental Terraforming - and any you invent, added right there on the row. Each override you pin can be given one as its reason, and several overrides can share one.

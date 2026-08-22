@@ -539,6 +539,15 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
     // radiation that reaches the ground, INSTEAD of the interior dynamo read — so a value the
     // interior could never generate (a 70 T terrestrial) is allowed, labelled and kept.
     magneticFieldGauss?: number;
+    // THE MEAN surface temperature, pinned outright (owner Q5). It is carried as a constant
+    // anomalous flux through `composeBodySurfaceTemperature`, which is what makes the mean land
+    // exactly on the pin while day, night and peak keep their swing about it — and what
+    // SHORT-CIRCUITS the thermal solve, since the surface no longer moves across the iteration.
+    // Everything downstream (clouds, phases, classification, habitability, biosphere) reads the pin.
+    surfaceTempK?: number;
+    // Surface pressure in bar, pinned. Atmospheric escape is applied and then overridden, so a world
+    // keeps a column its gravity could never have retained.
+    pressureBar?: number;
     // THE STATED REASON for each pin, keyed by the override it explains — an `anomaly/*` tag from
     // the Anomaly category. Several overrides may share one reason. LIFECYCLE-BOUND: resetting an
     // override deletes its entry here too (see `clearOverride`), because a reason with nothing left

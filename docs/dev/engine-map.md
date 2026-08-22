@@ -343,6 +343,29 @@ BLAST: a hand-added `anomaly/*` with no override behind it is a legitimate GM ta
 assignment map is GM bookkeeping and is deleted wholesale in `computePlayerSnapshot` — a secret
 reason is redacted out of `tags` but would still be named in plain text there.
 
+### OVR-4 A pinned surface temperature needs TWO composers, because the mean falls out of the hemispheres
+WHERE: `temperature.composeBodySurfaceTemperature` (returns the pin outright) vs
+`temperature.composeModelledSurfaceTemperature` (ignores it); the two-pass `buildProfile` in
+`SystemProcessor.processEnvironment`.
+RULE: the pinned composer is what SHORT-CIRCUITS the thermal solve — the surface is invariant across
+the iteration, so the bright-condensate feedback (B5's bistable trap) is cut at its temperature link
+and the clouds, greenhouse and geology read the GM's figure. But the PROFILE must not use it: PHY-19
+says the mean falls out of the day and night sides, so a composer answering with the pin at every
+equilibrium temperature hands it two identical hemispheres and flattens the world. The profile is
+built through the MODELLED composer, its (unrounded) mean measured, and rebuilt with the composer
+scaled by `pin / thatMean`. One closed-form factor, linear in temperature — the mean of the two
+scaled hemispheres is exactly the pin, their ratio is untouched. Never an iteration toward the pin.
+WHY: three implementations were tried. Returning the pin from every compose flattened an eyeball
+world. Carrying the difference as a constant anomalous FLUX kept the swing but did NOT land on the
+pin — the mean is an arithmetic average of two fourth-roots, so a flux offset does not survive it,
+and a pin BELOW the modelled figure floored the night side at zero and came out 106 K high. Only a
+multiplicative scale is linear in the quantity being averaged.
+BLAST: `surfaceTempProfile` returns `meanExactK` beside the profile for this ONE caller —
+`profile.meanK` is rounded to a whole kelvin, which is a 4 K error on a 1100 K pin. Anything else
+reads `profile.meanK`. And an override whose pin is fed into a committed field (albedo, flare
+activity, pressure, this) cannot report its own derived default while pinned; those `derived()`
+readers return `undefined` rather than handing the pin back as the physics' answer.
+
 ### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
 WHERE: `overrides.ts` — the `commit` on the `gasThermalInflation` record; `BodyBasicsTab.effInflation`.
 RULE: inflation sizes a body at GENERATION and `radiusKm` is authored thereafter, so pinning it has

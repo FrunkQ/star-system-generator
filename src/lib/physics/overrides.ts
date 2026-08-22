@@ -30,6 +30,7 @@
 import type { CelestialBody } from '$lib/types';
 import { estimateBondAlbedo } from './temperature';
 import { gasThermalInflationFactor, makeupFractions, normalizeMakeup } from './makeup';
+import { meanSurfaceTempK } from './surfaceTemperature';
 import { editMass } from './bodyEdit';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 
@@ -38,7 +39,9 @@ export type OverrideKey =
   | 'gasThermalInflation'
   | 'radiogenicHeatK'
   | 'flareActivity'
-  | 'magneticFieldGauss';
+  | 'magneticFieldGauss'
+  | 'surfaceTempK'
+  | 'pressureBar';
 
 export interface OverrideDef {
   key: OverrideKey;
@@ -58,7 +61,19 @@ export interface OverrideDef {
   decimals: number;
   /** Log-scaled slider — for quantities that span decades (field strength, pressure). */
   log?: boolean;
-  /** The value the engine derives when nothing is pinned; the seed, and what "reset" returns to. */
+  /**
+   * The value the engine derives when nothing is pinned: the seed for a new pin, and what "reset"
+   * would return to.
+   *
+   * IT MAY HONESTLY RETURN `undefined` WHILE THE KEY IS PINNED, and four of the eight do. A pin is
+   * fed INTO the derivation, so for those the committed field a reader would consult (the albedo
+   * breakdown, the star's flare activity, the surface profile, the atmosphere's pressure) now holds
+   * the GM's own figure — asking it "what does the physics say" returns the pin back and the row
+   * would print `The physics says 1100 K` beside a pin of 1100 K. The others answer from a model the
+   * pin does not touch (the dynamo's nominal field, the inflation curve, radiogenic zero) and are
+   * trustworthy either way. Recovering the suppressed figure would mean a second full solve per pin;
+   * saying nothing is cheaper and true.
+   */
   derived(body: CelestialBody): number | undefined;
   /** The band this quantity plausibly occupies FOR THIS BODY. Outside it the row warns. */
   plausible(body: CelestialBody): readonly [number, number] | null;
@@ -97,7 +112,9 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     hard: [-5, 1.5],
     step: 0.01,
     decimals: 3,
-    derived: (b) => b.albedoBreakdown?.albedo ?? estimateBondAlbedo(b),
+    // `albedoBreakdown` holds the PIN once one is set (that is what `deriveAlbedo` returns), so
+    // there is no derived answer to quote while pinned. See `OverrideDef.derived`.
+    derived: (b) => (b.overrides?.albedo != null ? undefined : (b.albedoBreakdown?.albedo ?? estimateBondAlbedo(b))),
     plausible: () => [0, 1],
     absurd: 'below zero the world returns more energy than its star delivers, and above one it returns '
       + 'more light than falls on it — either way something unmodelled is supplying the difference.'
@@ -158,7 +175,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     hard: [0, 5],
     step: 0.01,
     decimals: 2,
-    derived: (b) => (b as { flareActivity?: number }).flareActivity,
+    derived: (b) => (b.overrides?.flareActivity != null ? undefined : (b as { flareActivity?: number }).flareActivity),
     plausible: () => [0, 1],
     absurd: 'past one the star is more magnetically active than any class-and-age model allows for.'
   },
@@ -185,6 +202,64 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     absurd: 'this world’s interior cannot generate a field of that strength — nothing in its rotation, '
       + 'composition or core size supports it.'
   },
+  {
+    key: 'surfaceTempK',
+    label: 'Surface temperature',
+    unit: 'K',
+    hint: 'Pins the MEAN surface temperature outright. The day and night sides keep their swing about '
+      + 'it, and the clouds, phases, classification, habitability and biosphere all follow the pin.',
+    appliesTo: ['planet', 'moon'],
+    // The 1100 K moon that prompted G37 sits comfortably inside the slider. The ceiling clears a
+    // lava world; the typed range clears a stellar photosphere, for a GM who wants one on a moon.
+    soft: [0, 1500],
+    hard: [0, 100000],
+    step: 1,
+    decimals: 1,
+    // The MEAN, not the radiating figure — the two diverge by 56 K on Luna and 130 K on Mercury, and
+    // `meanSurfaceTempK` is the one authority on which is which (surface-temperature-notes section 1).
+    derived: (b) => (b.overrides?.surfaceTempK != null ? undefined : meanSurfaceTempK(b)),
+    // There is no universal band for a surface temperature — the plausible one is whatever this
+    // world's star, air and interior give it, which is precisely the figure being replaced. So the
+    // warning fires on the DISTANCE from the engine's own answer rather than on an absolute range.
+    // MEASURED AGAINST THE EQUILIBRIUM TEMPERATURE, NOT THE SURFACE ONE, because the surface figure
+    // IS the pin once a pin exists and a band drawn round it could never be left. The equilibrium
+    // temperature is what the star delivers and the pin does not touch it, so it stays an honest
+    // reference. The window is generous — a real greenhouse can double it (Venus: 232 K equilibrium,
+    // 737 K surface) — so the warning fires on genuinely unaccountable figures rather than on a
+    // thick atmosphere.
+    plausible: (b) => {
+      const teq = b.equilibriumTempK ?? 0;
+      return teq > 0 ? [teq * 0.4, teq * 3.5] : null;
+    },
+    absurd: 'the star, the greenhouse, the tides and the interior together do not account for this — '
+      + 'the difference is being supplied by something the model knows nothing about.'
+  },
+  {
+    key: 'pressureBar',
+    label: 'Atmospheric pressure',
+    unit: 'bar',
+    hint: 'Pins the surface pressure. Atmospheric escape stops eroding it, so a world can hold air '
+      + 'its gravity could never have retained.',
+    appliesTo: ['planet', 'moon'],
+    soft: [0, 100],
+    hard: [0, 1000000],
+    step: 0.001,
+    decimals: 4,
+    log: true,
+    derived: (b) => (b.overrides?.pressureBar != null ? undefined : (b.atmosphere?.pressure_bar ?? 0)),
+    // What this world could hold on to, from the ratio of its escape velocity to the thermal speed
+    // of the gas it carries — the same physics `applyAtmosphericEscape` uses, read as a yes/no here
+    // rather than re-derived: a body that retains nothing has no plausible column at all.
+    plausible: (b) => {
+      const g = b.calculatedGravity_ms2 ?? 0;
+      if (!(g > 0)) return null;
+      // Earth holds ~1 bar at 9.81 m/s^2; the ceiling scales with gravity and is generous, because
+      // this is a WARNING threshold and Venus already sits at 92 bar on 8.87.
+      return [0, Math.max(1, 200 * (g / 9.81))];
+    },
+    absurd: 'a column this heavy is not held down by this world’s gravity — it should have escaped '
+      + 'long ago, and nothing in the model is keeping it here.'
+  }
 ] as const;
 
 const BY_KEY = new Map<OverrideKey, OverrideDef>(OVERRIDE_DEFS.map((d) => [d.key, d]));

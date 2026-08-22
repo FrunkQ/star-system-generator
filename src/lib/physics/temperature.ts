@@ -197,6 +197,36 @@ export function composeSurfaceTemperatureFromDeltaComponents(
  * variant (min/max, day/night) or a value not yet written back; otherwise it defaults to the body's.
  */
 export function composeBodySurfaceTemperature(body: CelestialBody, equilibriumTempK?: number): number {
+    // F-OVR (G37) AND THIS IS THE SOLVE'S SHORT-CIRCUIT. A pinned surface temperature is returned
+    // outright, whatever equilibrium temperature it is handed, which is what makes the surface
+    // INVARIANT across `solveThermalState`'s iteration: the bright-condensate feedback loop (colder,
+    // so more frost, so brighter, so colder — B5's bistable trap) is cut at its temperature link,
+    // and the cloud decks, the greenhouse and the geology all read the GM's figure instead of one
+    // the model is still arguing with. What remains in the solve is the plain albedo/equilibrium
+    // contraction, which is not bistable. The pin is never iterated TOWARD.
+    //
+    // The DAY, NIGHT and PEAK variants do NOT come through here when a pin is present — see
+    // `composeModelledSurfaceTemperature` and the scaled composer the processor hands the profile,
+    // which is what keeps a pinned world from going isothermal.
+    const pin = body.overrides?.surfaceTempK;
+    if (typeof pin === 'number' && Number.isFinite(pin) && pin >= 0) return pin;
+    return composeModelledSurfaceTemperature(body, equilibriumTempK);
+}
+
+/**
+ * The surface temperature the MODEL gives, ignoring any pin — the composition the pinned world is
+ * scaled away from.
+ *
+ * It exists because the profile cannot use the short-circuit above. `surfaceTempProfile` derives the
+ * day and night sides from the energy balance and lets THE MEAN FALL OUT OF THEM (PHY-19; the
+ * profile's own comment says so in place), so a composer that answered with the pin at every
+ * equilibrium temperature would hand it two identical hemispheres and flatten the world. The
+ * processor therefore composes the profile through THIS, measures the mean it produces, and re-runs
+ * with the composer scaled by `pin / thatMean` — one closed-form factor, not an iteration, and
+ * linear in temperature, so the mean of the two scaled hemispheres is exactly the pin while their
+ * ratio, and every swing derived from it, is untouched.
+ */
+export function composeModelledSurfaceTemperature(body: CelestialBody, equilibriumTempK?: number): number {
     return composeSurfaceTemperatureFromDeltaComponents(
         equilibriumTempK ?? body.equilibriumTempK ?? 0,
         body.greenhouseTempK || 0,
@@ -474,7 +504,14 @@ export function calculateEquilibriumTemperature(
     }
 
     if (totalLuminosityTimesArea > 0) {
-        return Math.pow(totalLuminosityTimesArea * (1 - albedo) / (4 * STEFAN_BOLTZMANN_CONSTANT), 0.25);
+        // ABSORBED FRACTION, FLOORED AT ZERO. G37 lets a GM pin an albedo outside [0, 1] on purpose:
+        // below zero the world returns more than it receives (`1 − A` > 1, a real amplification, and
+        // the formula handles it), and at or above one it absorbs nothing at all. Without the floor
+        // the second case is `Math.pow(negative, 0.25)` — NaN, which would spread silently through
+        // every downstream figure instead of saying the honest thing, which is that a perfect mirror
+        // sits at the temperature its own internal heat gives it and no more.
+        const absorbed = Math.max(0, 1 - albedo);
+        return Math.pow(totalLuminosityTimesArea * absorbed / (4 * STEFAN_BOLTZMANN_CONSTANT), 0.25);
     }
 
     return 0;
@@ -507,9 +544,10 @@ export function calculateEquilibriumTemperatureRange(
 
     if (fluxMax <= 0) return { minK: 0, maxK: 0 };
 
+    const absorbed = Math.max(0, 1 - albedo);   // see calculateEquilibriumTemperature: A >= 1 is 0 K, not NaN
     const minK = fluxMin > 0
-        ? Math.pow(fluxMin * (1 - albedo) / (4 * STEFAN_BOLTZMANN_CONSTANT), 0.25)
+        ? Math.pow(fluxMin * absorbed / (4 * STEFAN_BOLTZMANN_CONSTANT), 0.25)
         : 0;
-    const maxK = Math.pow(fluxMax * (1 - albedo) / (4 * STEFAN_BOLTZMANN_CONSTANT), 0.25);
+    const maxK = Math.pow(fluxMax * absorbed / (4 * STEFAN_BOLTZMANN_CONSTANT), 0.25);
     return { minK, maxK };
 }

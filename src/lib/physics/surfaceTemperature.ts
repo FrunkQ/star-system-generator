@@ -134,7 +134,13 @@ function solarDayHours(i: SurfaceTempInputs): number {
   return relative > 0 ? 1 / relative : Infinity;
 }
 
-export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTempProfile; tags: string[] } {
+/**
+ * `meanExactK` is the UNROUNDED mean, returned beside the profile for one caller: the G37 surface
+ * temperature pin, which calibrates its scale factor as `pin / mean` and would carry the rounding
+ * error straight into the answer (`meanK` is rounded to a whole kelvin, which on a 120 K world is
+ * a 0.4% error and 4 K on a 1100 K pin). Nothing else needs it; read `profile.meanK`.
+ */
+export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTempProfile; tags: string[]; meanExactK: number } {
   const Teq = i.equilibriumK || i.meanK;
   const TeqMax = Math.max(Teq, i.equilibriumMaxK ?? 0);
   const P = Math.max(0, i.pressureBar);
@@ -241,6 +247,7 @@ export function surfaceTempProfile(i: SurfaceTempInputs): { profile: SurfaceTemp
       totalMaxK: Math.round(totalMax),
       components: components.map((c) => ({ ...c, lowK: Math.round(c.lowK), highK: Math.round(c.highK) }))
     },
-    tags
+    tags,
+    meanExactK: mean
   };
 }

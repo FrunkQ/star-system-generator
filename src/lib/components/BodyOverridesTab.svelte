@@ -151,9 +151,15 @@
           {#if r.def.unit}<span class="unit">{r.def.unit}</span>{/if}
         </div>
         <div class="derived-note">
-          The physics says <strong>{formatOverrideValue(r.def, r.derived)}</strong>. The slider covers
-          {formatOverrideValue(r.def, r.def.soft[0])} to {formatOverrideValue(r.def, r.def.soft[1])};
-          type a figure beyond either end if you want one.
+          {#if r.derived != null}
+            The physics says <strong>{formatOverrideValue(r.def, r.derived)}</strong>.
+          {:else}
+            <!-- The engine's own answer is suppressed by the pin itself, so quoting it here would
+                 quote the pin straight back. Reset restores it; see OverrideDef.derived. -->
+            The engine's own answer returns when you reset this.
+          {/if}
+          The slider covers {formatOverrideValue(r.def, r.def.soft[0])} to
+          {formatOverrideValue(r.def, r.def.soft[1])}; type a figure beyond either end if you want one.
         </div>
         {#if r.warning}
           <p class="warn" role="status">{r.warning}</p>
