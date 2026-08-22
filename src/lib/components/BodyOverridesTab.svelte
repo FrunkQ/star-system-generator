@@ -50,6 +50,21 @@
   }
   const commit = () => dispatch('update');
 
+  // A pin's own CHOICE, rendered generically. Density has the only one today: which of mass and
+  // radius is the second quantity being held, with the third following from the relation (owner Q1).
+  // Changing it re-runs the pin's consequence, so the world rearranges to match immediately.
+  const choiceValue = (b: CelestialBody, def: OverrideDef): string =>
+    (def.choice && (b.overrides as Record<string, unknown> | undefined)?.[def.choice.key] as string)
+      || def.choice?.fallback || '';
+  function setChoice(def: OverrideDef, value: string) {
+    if (!def.choice || !body.overrides) return;
+    (body.overrides as Record<string, unknown>)[def.choice.key] = value;
+    const current = (body.overrides as Record<string, number>)[def.key];
+    if (typeof current === 'number') setOverride(body, def.key, current);
+    body = body;
+    dispatch('update');
+  }
+
   // ── The ANOMALY binding: the GM's stated REASON for a pin. ──────────────────────────────────────
   // A tag DEFINITION lives in the Anomaly category and survives everything; an ASSIGNMENT lives on
   // the override and dies with it (`clearOverride`). The picker is here rather than on the Tags tab
@@ -150,6 +165,15 @@
                  on:input={(e) => edit(r.def, e.currentTarget.value)} on:change={commit} />
           {#if r.def.unit}<span class="unit">{r.def.unit}</span>{/if}
         </div>
+        {#if r.def.choice}
+          <div class="anomaly-row">
+            <label class="anom-lbl" for="hold-{r.def.key}">{r.def.choice.label}</label>
+            <select id="hold-{r.def.key}" value={choiceValue(body, r.def)}
+                    on:change={(e) => setChoice(r.def, e.currentTarget.value)}>
+              {#each r.def.choice.options as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
+            </select>
+          </div>
+        {/if}
         <div class="derived-note">
           {#if r.derived != null}
             The physics says <strong>{formatOverrideValue(r.def, r.derived)}</strong>.

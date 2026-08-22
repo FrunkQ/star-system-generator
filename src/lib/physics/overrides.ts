@@ -29,9 +29,9 @@
 // number edit here and nothing else changes.
 import type { CelestialBody } from '$lib/types';
 import { estimateBondAlbedo } from './temperature';
-import { gasThermalInflationFactor, makeupFractions, normalizeMakeup } from './makeup';
+import { gasThermalInflationFactor, makeupFractions, normalizeMakeup, massMeFromRadiusMakeup, radiusReFromMassMakeup } from './makeup';
 import { meanSurfaceTempK } from './surfaceTemperature';
-import { editMass } from './bodyEdit';
+import { editMass, densityGcc, radiusFromMassDensity, massFromRadiusDensity, trimEnvelope } from './bodyEdit';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 
 export type OverrideKey =
@@ -41,7 +41,8 @@ export type OverrideKey =
   | 'flareActivity'
   | 'magneticFieldGauss'
   | 'surfaceTempK'
-  | 'pressureBar';
+  | 'pressureBar'
+  | 'densityGcm3';
 
 export interface OverrideDef {
   key: OverrideKey;
@@ -80,6 +81,24 @@ export interface OverrideDef {
   /** What being outside that band MEANS — the second half of every warning sentence. */
   absurd: string;
   /**
+   * A CHOICE that belongs to this pin, rendered generically beside it and stored in `overrides`
+   * under `key`. Density has the only one: the mass/radius/density relation has two degrees of
+   * freedom, so pinning density pins the SECOND of them and the GM says which (owner Q1, "pin any
+   * two"). Listed here rather than branched on in the tab, for the same reason everything else is.
+   */
+  choice?: {
+    key: string;
+    label: string;
+    options: readonly { value: string; label: string }[];
+    fallback: string;
+  };
+  /**
+   * Other keys inside `overrides` that belong to this pin and are deleted with it. A choice's key
+   * goes here; without it, resetting density would leave `densityHold` behind for ever and the
+   * `overrides` object would never become empty enough to be dropped.
+   */
+  companionKeys?: readonly string[];
+  /**
    * THE CONSEQUENCE THE PROCESSOR CANNOT APPLY, run whenever the pin is set, dragged or reset.
    *
    * Most pins are read by the engine on the next pass and need nothing here. A few move a quantity
@@ -94,6 +113,30 @@ export interface OverrideDef {
 
 const clampToHard = (def: OverrideDef, v: number): number =>
   Math.max(def.hard[0], Math.min(def.hard[1], v));
+
+/** The inflation a giant's radius is sized with — the pin when there is one, else the curve's. */
+const effectiveInflation = (b: CelestialBody): number =>
+  b.overrides?.gasThermalInflation ?? gasThermalInflationFactor(b.equilibriumTempK ?? 0);
+
+/** The mass this world's COMPOSITION wants, given whichever of mass and radius the GM is holding. */
+function curveMassMe(b: CelestialBody): number {
+  const massMe = (b.massKg ?? 0) / EARTH_MASS_KG;
+  const radiusRe = (b.radiusKm ?? 0) / EARTH_RADIUS_KM;
+  const hold = (b.overrides as Record<string, unknown> | undefined)?.densityHold ?? 'radius';
+  if (hold === 'mass' || !(radiusRe > 0)) return massMe;
+  return massMeFromRadiusMakeup(radiusRe, normalizeMakeup(makeupFractions(b)), effectiveInflation(b));
+}
+
+/** The density that mass-and-composition pair sits at, with nothing pinned. */
+function densityOnCompositionCurve(b: CelestialBody): number | undefined {
+  const massMe = curveMassMe(b);
+  if (!(massMe > 0)) return undefined;
+  const hold = (b.overrides as Record<string, unknown> | undefined)?.densityHold ?? 'radius';
+  const radiusRe = hold === 'mass'
+    ? radiusReFromMassMakeup(massMe, normalizeMakeup(makeupFractions(b)), effectiveInflation(b))
+    : (b.radiusKm ?? 0) / EARTH_RADIUS_KM;
+  return radiusRe > 0 ? densityGcc(massMe, radiusRe) : undefined;
+}
 
 // ── THE ROSTER ───────────────────────────────────────────────────────────────────────────────────
 export const OVERRIDE_DEFS: readonly OverrideDef[] = [
@@ -259,6 +302,74 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     },
     absurd: 'a column this heavy is not held down by this world’s gravity — it should have escaped '
       + 'long ago, and nothing in the model is keeping it here.'
+  },
+  {
+    key: 'densityGcm3',
+    label: 'Bulk density',
+    unit: 'g/cm³',
+    hint: 'Mass, radius and density are one relation with two degrees of freedom, so pinning density '
+      + 'pins the SECOND of them: hold the radius and the mass follows (a hollow world looks the same '
+      + 'size and weighs less), or hold the mass and the radius follows. Gravity, escape velocity and '
+      + 'every barycentre then follow honestly. The COMPOSITION is never re-inferred — that is what '
+      + 'makes the contradiction visible instead of explaining it away.',
+    appliesTo: ['planet', 'moon'],
+    soft: [0.05, 30],
+    hard: [0.000001, 1000000],
+    step: 0.01,
+    decimals: 3,
+    choice: {
+      key: 'densityHold',
+      label: 'Hold',
+      // The brief's recommendation is the fallback: a hollow planet looks the same size, so the
+      // radius is the thing a GM most often means to keep.
+      options: [
+        { value: 'radius', label: 'radius (mass follows)' },
+        { value: 'mass', label: 'mass (radius follows)' }
+      ],
+      fallback: 'radius'
+    },
+    companionKeys: ['densityHold'],
+    // THE DENSITY THIS COMPOSITION IMPLIES, MEASURED FROM THE QUANTITY THE GM IS HOLDING — which is
+    // the only reading that makes "reset to calculated" land in one step. Held radius: invert the
+    // mix's mass-radius curve for the mass that radius wants, and take the density of that pair.
+    // Held mass: take the curve's own zero-trim radius. Both use the SAME curve the composition
+    // editor draws its range bars from, not a second model.
+    //
+    // Measuring it from the CURRENT mass instead is wrong and was caught by a test: with the radius
+    // held, resetting a hollow world set its mass from a density computed at the hollow mass, whose
+    // compression is lower — so it landed at 4.35 g/cm3 against the 5.76 its composition implies, one
+    // step short of the fixed point. Reading from the held quantity closes it exactly.
+    derived: (b) => densityOnCompositionCurve(b),
+    // The envelope's own bounds: macroporosity for a solid (voids), thermal inflation for a giant.
+    // Inside it a density is a real world; outside it, something is holding the matter apart or
+    // squeezing it together, which is exactly what the anomaly tag is for.
+    plausible: (b) => {
+      const massMe = curveMassMe(b);
+      if (!(massMe > 0)) return null;
+      const env = trimEnvelope(massMe, normalizeMakeup(makeupFractions(b)));
+      return env.denLo > 0 && env.denHi > env.denLo ? [env.denLo, env.denHi] : null;
+    },
+    absurd: 'no arrangement of this world’s own composition reaches that density — it is either far '
+      + 'more hollow than voids allow, or made of something denser than the matter it is said to be.',
+    // The relation, and NOTHING ELSE. `bodyEdit.editDensity` would also RE-INFER the makeup to match,
+    // which is right for the composition editor and wrong here: re-inferring turns "a rocky world
+    // that weighs a tenth of what rock weighs" into "a world made of gas", explaining away the very
+    // contradiction the GM asked for. The composition holds; one of mass and radius holds; the third
+    // follows from ρ = M/(4/3·π·R³). Gravity and escape velocity are DERIVED from the result and stay
+    // derived (owner Q8) — a hollow world's low gravity falls out of its mass, honestly.
+    commit: (b, density) => {
+      const massMe = (b.massKg ?? 0) / EARTH_MASS_KG;
+      const radiusRe = (b.radiusKm ?? 0) / EARTH_RADIUS_KM;
+      if (!(density > 0)) return;
+      const hold = (b.overrides as Record<string, unknown> | undefined)?.densityHold ?? 'radius';
+      if (hold === 'mass') {
+        if (!(massMe > 0)) return;
+        b.radiusKm = radiusFromMassDensity(massMe, density) * EARTH_RADIUS_KM;
+      } else {
+        if (!(radiusRe > 0)) return;
+        b.massKg = massFromRadiusDensity(radiusRe, density) * EARTH_MASS_KG;
+      }
+    }
   }
 ] as const;
 
@@ -345,6 +456,7 @@ export function clearOverride(body: CelestialBody, key: OverrideKey): void {
   if (!body.overrides) return;
   const def = BY_KEY.get(key);
   delete (body.overrides as Record<string, unknown>)[key];
+  for (const companion of def?.companionKeys ?? []) delete (body.overrides as Record<string, unknown>)[companion];
   const anomalies = body.overrides.anomalies;
   if (anomalies) {
     delete anomalies[key];

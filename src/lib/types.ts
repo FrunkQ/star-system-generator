@@ -548,6 +548,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
     // Surface pressure in bar, pinned. Atmospheric escape is applied and then overridden, so a world
     // keeps a column its gravity could never have retained.
     pressureBar?: number;
+    // Bulk density in g/cm3, pinned. Mass, radius and density are ONE relation with two degrees of
+    // freedom, so this pins the second of them and `densityHold` says which of mass and radius is
+    // the other — the third follows (owner Q1, "pin any two"). The COMPOSITION is deliberately not
+    // re-inferred, so a rocky world that weighs a tenth of what rock weighs stays a contradiction
+    // instead of being quietly turned into a gas ball. Gravity and escape velocity stay derived.
+    densityGcm3?: number;
+    densityHold?: 'radius' | 'mass';
     // THE STATED REASON for each pin, keyed by the override it explains — an `anomaly/*` tag from
     // the Anomaly category. Several overrides may share one reason. LIFECYCLE-BOUND: resetting an
     // override deletes its entry here too (see `clearOverride`), because a reason with nothing left

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.7 - 22nd Aug 2026
+
+- **NEW: pin a world's density, and choose what gives way.** Mass, radius and density are one relation with two free numbers, so pinning the density pins the second of them and you say which: hold the radius and the mass follows, so a hollow world looks exactly the same size and weighs a fraction of what it should; or hold the mass and it swells instead. The composition is left alone on purpose - a rocky world that weighs a tenth of what rock weighs stays a contradiction rather than being quietly turned into a gas ball, and that is what the Anomaly tag is there to explain.
+- Gravity, escape velocity and every barycentre follow the new mass honestly. Nothing is pinned to make them agree.
+- The warning for a density is drawn from that world's OWN composition - how much void a solid of that size could hold, or how far a giant's envelope could puff - rather than a one-size range.
+
 ## v3.0.6 - 22nd Aug 2026
 
 - **NEW: pin a world's surface temperature outright.** The magic slider. Put a moon out past the ice line at 1100 K and everything downstream believes it - the ice goes, the clouds change, the classification and the habitability follow, and the day and night sides keep their swing about the figure you typed rather than the world going flat. Pin it low and it is a cold spot instead; the engine does not ask why.

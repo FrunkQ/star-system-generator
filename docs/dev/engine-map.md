@@ -366,6 +366,24 @@ reads `profile.meanK`. And an override whose pin is fed into a committed field (
 activity, pressure, this) cannot report its own derived default while pinned; those `derived()`
 readers return `undefined` rather than handing the pin back as the physics' answer.
 
+### OVR-5 A pinned density must NOT re-infer the composition, and must read from the HELD quantity
+WHERE: the `densityGcm3` record in `physics/overrides.ts` — its `commit`, and
+`densityOnCompositionCurve` / `curveMassMe` beside it.
+RULE: mass, radius and density are one relation with two degrees of freedom, so a density pin pins
+the SECOND and `overrides.densityHold` says which of mass and radius is the other (owner Q1, "pin
+any two"). The COMPOSITION is held, never re-inferred — the plain relation from `bodyEdit`, NOT
+`editDensity`, which also calls `makeupForGeomDensity`. And the derived default is measured from
+the HELD quantity, through the mix's own mass-radius curve.
+WHY, twice over. (1) `editDensity` re-infers the makeup, which is right for the composition editor
+and wrong here: it turns "a rocky world that weighs a tenth of what rock weighs" into "a world made
+of gas", explaining away the exact contradiction the GM asked for and the anomaly tag exists to
+name. (2) Reading the derived default from the CURRENT mass instead of the held quantity left reset
+one step short of the fixed point — a hollow Earth reset to 4.35 g/cm3 against the 5.76 its
+composition implies, because the hollow mass compresses less. Caught by a test.
+BLAST: gravity and escape velocity stay DERIVED (owner Q8) — a hollow world's low gravity falls out
+of its mass, and a direct `g` pin would fight mass and radius. Barycentres follow the mass too, so a
+density pin on a binary member moves the pair's centre; that is honest and intended.
+
 ### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
 WHERE: `overrides.ts` — the `commit` on the `gasThermalInflation` record; `BodyBasicsTab.effInflation`.
 RULE: inflation sizes a body at GENERATION and `radiusKm` is authored thereafter, so pinning it has

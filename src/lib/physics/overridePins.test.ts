@@ -8,7 +8,9 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { SystemProcessor } from '$lib/core/SystemProcessor';
-import { setOverride, clearOverride } from './overrides';
+import { setOverride, clearOverride, overrideStatus, overrideDef } from './overrides';
+import { trimEnvelope, densityGcc } from './bodyEdit';
+import { makeupFractions, normalizeMakeup, massMeFromRadiusMakeup } from './makeup';
 import { meanSurfaceTempK } from './surfaceTemperature';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 import type { System, CelestialBody, RulePack } from '$lib/types';
@@ -235,5 +237,91 @@ describe('a pinned pressure survives the escape model', () => {
     const b = coldMoon();
     setOverride(b, 'pressureBar', 4);
     expect(run(b).atmosphere).toBeUndefined();
+  });
+});
+
+describe('density — pin any TWO of mass, radius and density (owner Q1)', () => {
+  const rocky = () => coldMoon({
+    roleHint: 'planet', massKg: EARTH_MASS_KG, radiusKm: EARTH_RADIUS_KM,
+    rotation_period_hours: 24, makeup: { metal: 0.32, rock: 0.68, carbon: 0, ice: 0, gas: 0 },
+    orbit: { hostId: 'star', elements: { a_AU: 1, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } }
+  });
+  const densityOf = (b: CelestialBody) =>
+    (b.massKg! / ((4 / 3) * Math.PI * Math.pow(b.radiusKm! * 1000, 3))) / 1000;
+
+  it('holding the RADIUS derives the mass — a hollow world looks the same size and weighs less', () => {
+    const b = rocky();
+    const radiusBefore = b.radiusKm!;
+    setOverride(b, 'densityGcm3', 0.5);   // an Earth-sized world a twelfth of Earth's density
+    expect(b.radiusKm).toBe(radiusBefore);
+    expect(b.massKg!).toBeLessThan(EARTH_MASS_KG / 10);
+    expect(densityOf(b)).toBeCloseTo(0.5, 3);
+  });
+
+  it('holding the MASS derives the radius instead', () => {
+    const b = rocky();
+    b.overrides = { densityHold: 'mass' };
+    setOverride(b, 'densityGcm3', 0.5);
+    expect(b.massKg).toBe(EARTH_MASS_KG);
+    expect(b.radiusKm!).toBeGreaterThan(EARTH_RADIUS_KM * 2);
+    expect(densityOf(b)).toBeCloseTo(0.5, 3);
+  });
+
+  it('the COMPOSITION is not re-inferred — the contradiction is the point', () => {
+    // `bodyEdit.editDensity` would turn this world into gas to explain its weight away. Pinning must
+    // not: a rocky world that weighs a tenth of what rock weighs is exactly what a GM asked for, and
+    // it is the anomaly tag's job to say why, not the makeup's.
+    const b = rocky();
+    const before = JSON.stringify(b.makeup);
+    setOverride(b, 'densityGcm3', 0.5);
+    expect(JSON.stringify(b.makeup)).toBe(before);
+  });
+
+  it('gravity and escape velocity follow HONESTLY, and stay derived (owner Q8)', () => {
+    const plain = run(rocky());
+    const b = rocky();
+    setOverride(b, 'densityGcm3', 0.5);
+    const hollow = run(b);
+    // Same radius, a twelfth of the mass: g falls with the mass and nothing was pinned to make it.
+    expect(hollow.calculatedGravity_ms2!).toBeLessThan(plain.calculatedGravity_ms2! / 10);
+    expect(hollow.radiusKm).toBeCloseTo(plain.radiusKm!, 6);
+  });
+
+  it('warns against the COMPOSITION’s own envelope, not a flat range', () => {
+    const b = rocky();
+    setOverride(b, 'densityGcm3', 0.5);
+    const s = overrideStatus(b, overrideDef('densityGcm3')!);
+    expect(s.warning).toMatch(/below the plausible range/);
+    // ...and a density the mix really could reach says nothing at all.
+    const ok = rocky();
+    setOverride(ok, 'densityGcm3', overrideDef('densityGcm3')!.derived(ok)!);
+    expect(overrideStatus(ok, overrideDef('densityGcm3')!).warning).toBeNull();
+  });
+
+  it('reset puts the world back on its own composition’s curve', () => {
+    const b = rocky();
+    setOverride(b, 'densityGcm3', 0.5);
+    clearOverride(b, 'densityGcm3');
+    // The mix's own mass-radius curve, at the radius the reset held.
+    const onCurve = massMeFromRadiusMakeup(b.radiusKm! / EARTH_RADIUS_KM, normalizeMakeup(makeupFractions(b)), 1);
+    expect(b.massKg! / EARTH_MASS_KG).toBeCloseTo(onCurve, 3);
+    expect(densityOf(b)).toBeCloseTo(densityGcc(onCurve, b.radiusKm! / EARTH_RADIUS_KM), 3);
+  });
+
+  it('reset takes the hold selector with it, so nothing is left behind', () => {
+    const b = rocky();
+    b.overrides = { densityHold: 'mass' };
+    setOverride(b, 'densityGcm3', 0.5);
+    clearOverride(b, 'densityGcm3');
+    expect(b.overrides).toBeUndefined();
+  });
+
+  it('survives a re-process untouched — mass and radius are authored once the pin has moved them', () => {
+    const b = rocky();
+    setOverride(b, 'densityGcm3', 0.5);
+    const once = run(b);
+    const twice = run(once);
+    expect(twice.massKg).toBeCloseTo(once.massKg!, 6);
+    expect(twice.radiusKm).toBeCloseTo(once.radiusKm!, 6);
   });
 });
