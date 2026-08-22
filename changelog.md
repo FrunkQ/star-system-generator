@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.21 - 22nd Aug 2026
+
+- Board only. The production patch push is recorded: starsystemx.com moves v3.0.0 -> v3.0.20 with the three field fixes, the whole break-physics feature and the star-panel radiation correction.
+
 ## v3.0.20 - 22nd Aug 2026
 
 - Docs: the Getting Started walkthrough for building a world by hand now points at the Overrides tab, and the section on it explains what the slider colours mean and where the OVERRIDDEN flag shows up.
