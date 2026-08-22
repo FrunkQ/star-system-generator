@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.3 - 22nd Aug 2026
+
+- Docs only. The break-physics design is captured: G37 (the Overrides tab, new pins including a direct temperature slider and negative albedo, and the Anomaly tag category for the excuses) with a full handoff brief at docs/dev/g37-gm-overrides-anomaly-handoff.md.
+
 ## v3.0.2 - 22nd Aug 2026
 
 - The Hide labels quick override now reaches the starmap level of a player view (3D and 2D), not just the system view. The starmap scene had honoured it since it was built; nothing had ever passed it in. The document starmap is deliberately untouched - there the names are the content.
