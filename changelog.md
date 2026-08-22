@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.17 - 22nd Aug 2026
+
+- The version no longer sits beside the SSE3 mark - hovering it still gives the full build, which was the useful half.
+
 ## v3.0.16 - 22nd Aug 2026
 
 - **Fixed: clicking a star threw an error and left its panel blank.** Introduced in the previous release by a bad edit to the star's magnetic field card. The panel now has its own render tests - a star, a planet and an unbuilt body - so a fault of that shape cannot reach a release again.

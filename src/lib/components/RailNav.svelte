@@ -4,7 +4,7 @@
   // icon-only (minimal) ⇄ icon+text, toggled by the control at the top and remembered.
   import { createEventDispatcher } from 'svelte';
   import { railCollapsed } from '$lib/railStore';
-  import { APP_VERSION, APP_BUILD_STAMP } from '$lib/constants';
+  import { APP_BUILD_STAMP } from '$lib/constants';
   const dispatch = createEventDispatcher();
 
   // Which top-level view is showing. The Starmap entry is a live indicator when 'starmap'
@@ -67,7 +67,7 @@ ${playerConnSummary}`
   <div class="rail-header">
     <!-- The brand mark doubles as the version read-out: hovering it names the build, so a version
          can be checked from any screen without opening About. Same stamp the footer prints. -->
-    <span class="brand rail-label" title={APP_BUILD_STAMP}>SSE3 <span class="brand-ver">v{APP_VERSION}</span></span>
+    <span class="brand rail-label" title={APP_BUILD_STAMP}>SSE3</span>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
       {#if collapsed}
         <!-- panel-left-open: expand the rail -->
@@ -222,14 +222,6 @@ ${playerConnSummary}`
     letter-spacing: 0.08em;
     font-size: 1.05rem;
     cursor: help;
-  }
-  /* Quiet enough not to compete with the mark, legible enough to read at a glance. */
-  .brand-ver {
-    font-weight: 400;
-    font-size: 0.62em;
-    letter-spacing: 0.02em;
-    color: var(--text-faint);
-    vertical-align: 0.1em;
   }
   /* Lighter "wireframe" feel: rows are transparent (no per-button box) with a thin
      hover highlight, and the labels use a light weight. */
