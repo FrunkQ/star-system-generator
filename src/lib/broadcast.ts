@@ -676,9 +676,15 @@ class BroadcastService {
    */
   public announcePresence() {
     if (this.isSender) return;
+    // A REMOTE window must announce under its PeerJS broker id — the id the GM's connection list
+    // already knows it by. Announcing the windowId gave one window two identities in two id spaces:
+    // connectionCounts unioned both and counted every remote guest TWICE, and peerLinks looked up
+    // the reported stats by broker id against a map keyed 'w-…' and never found them. A local
+    // window has no broker id and keeps the windowId. (NET-1 trap 4.)
+    const id = this.amRemote && this.peer?.id ? this.peer.id : this.windowId;
     this.sendMessage({
       type: 'PLAYER_PRESENT',
-      payload: { id: this.windowId, remote: this.amRemote, stats: this.meter.snapshot() }
+      payload: { id, remote: this.amRemote, stats: this.meter.snapshot() }
     });
   }
 

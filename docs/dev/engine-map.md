@@ -3058,6 +3058,13 @@ player window report that it has sent nothing (the join burst and every player r
 its per-link figures come from what the player REPORTS about itself. That is the only source, not a
 fallback. Remote links are the other way round: known directly, and countable the instant they
 connect, whereas a local one appears within a heartbeat and drops after `PRESENCE_TTL_MS`.
+(4) **A REMOTE window must announce under its BROKER id, a local one under its window id** — the id
+in the announce must live in the SAME space the GM already knows that window by. The first cut
+announced the windowId for both, so one remote guest existed twice (once as its connection's
+`conn.peer`, once as `w-…` in presence): `connectionCounts` unioned the two and the rail icon
+counted every remote guest twice while the list — which skips remote presence entries — stayed
+right, and `peerLinks` could never find the reported stats it looked up by broker id. Owner-caught
+(list 2, icon 3). Fixed v3.0.10.
 
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict

@@ -420,6 +420,25 @@ describe('PLAYER_PRESENT — how the GM counts windows it has no connection to',
     expect(host.peerLinks()[0].reported?.sentMsgs).toBeGreaterThan(0);
   });
 
+  it('a REMOTE window announces under its BROKER id, so the icon and the list agree', async () => {
+    // One remote guest is known to the GM twice over: as its connection's `conn.peer`, and as
+    // whatever id it announces. If those differ, connectionCounts unions two identities and the
+    // rail icon overcounts every remote guest by one while the list stays right — the owner caught
+    // it as "list shows 2, counter shows 3". The guarantee: a remote announce carries the broker
+    // id, so the union collapses to one window.
+    const host = await makeService();
+    const player = await makeService();
+    host.initSender('sid-a');
+    player.initProbe(() => {});
+    (player as any).peer = { id: 'peer-guest-1' };        // what the broker assigned this guest
+    (player as any).peerOut = {};                         // connected outward, i.e. remote
+    (host as any).peerConns = [{ peer: 'peer-guest-1' }]; // the GM's side of the same link
+    player.announcePresence();
+    await waitFor(() => host.connectionCounts().remote >= 1);
+    expect(host.connectionCounts()).toEqual({ local: 0, remote: 1 });
+    expect(host.peerLinks().length).toBe(1);
+  });
+
   it('a SENDER never counts itself', async () => {
     const host = await makeService();
     host.initSender('sid-a');
