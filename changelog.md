@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.18 - 22nd Aug 2026
+
+- **The override sliders now look and behave like the rest of the app.** The coloured zones ARE the slider's track, the way Day Length and the composition controls already worked - green where the physics would put it, amber where a figure is implausible, red where it is impossible - with the engine's own answer marked on the track and the range printed at each end. The zones previously sat in a separate bar above the slider, which spanned the whole row while the slider shared it with the number box, so the two were never at the same scale. The number box moves up beside the label, as it is on every other control of this shape.
+
 ## v3.0.17 - 22nd Aug 2026
 
 - The version no longer sits beside the SSE3 mark - hovering it still gives the full build, which was the useful half.

@@ -14,7 +14,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
   import {
-    overrideDefsFor, overrideStatus, formatOverrideValue, setOverride, clearOverride,
+    overrideDefsFor, overrideStatus, formatOverrideValue, setOverride, clearOverride, overrideSeverity,
     type OverrideDef, type OverrideKey
   } from '$lib/physics/overrides';
   import { tagCategories, addTagToCategory } from '$lib/tags/tagCategories';
@@ -123,7 +123,7 @@
     return Math.exp(lo + (pct / 100) * (hi - lo));
   };
 
-  // ── THE TRACK BEHIND THE SLIDER ────────────────────────────────────────────────────────────────
+  // ── THE SLIDER'S OWN TRACK ─────────────────────────────────────────────────────────────────────
   // OWNER, 2026-08-22: "a green zone of the sliders to show the actual CORRECT/calculated value.
   // Also highlight red what is TOTALLY IMPOSSIBLE (negative albedo) rather than impossible (too high
   // magnetic field)."
@@ -142,14 +142,39 @@
       ? toSlider(def, v)
       : ((v - def.soft[0]) / Math.max(1e-12, def.soft[1] - def.soft[0])) * 100));
 
-  /** The stretches of the track that are outside a band, as [leftPct, widthPct] pairs. */
-  function outside(def: OverrideDef, band: readonly [number, number] | null): [number, number][] {
-    if (!band) return [];
-    const out: [number, number][] = [];
-    const lo = pctOf(def, band[0]), hi = pctOf(def, band[1]);
-    if (band[0] > def.soft[0] && lo > 0) out.push([0, lo]);
-    if (band[1] < def.soft[1] && hi < 100) out.push([hi, 100 - hi]);
-    return out;
+  /** The value a point along the track stands for — the inverse of `pctOf`. */
+  const valueAtPct = (def: OverrideDef, pct: number): number =>
+    def.log ? fromSlider(def, pct) : def.soft[0] + (pct / 100) * (def.soft[1] - def.soft[0]);
+
+  /**
+   * The zone gradient, coloured by asking `overrideSeverity` — the SAME function that writes the
+   * warning. One authority for "how wrong is this figure", so the colour under the thumb and the
+   * sentence under the slider can never disagree.
+   *
+   * The stops are the band EDGES projected onto the track, so the bands land exactly where the thumb
+   * does at the same value. Each sub-interval is coloured by the severity at its midpoint, which is
+   * safe because severity is piecewise-constant between edges.
+   */
+  function trackGradient(def: OverrideDef, b: CelestialBody): string {
+    const band = def.plausible(b);
+    const hard = def.possible?.(b) ?? null;
+    const edges = [0, 100];
+    for (const pair of [band, hard]) {
+      if (!pair) continue;
+      for (const v of pair) {
+        const x = pctOf(def, v);
+        if (x > 0.01 && x < 99.99) edges.push(x);
+      }
+    }
+    const cuts = [...new Set(edges.map((x) => +x.toFixed(3)))].sort((x, y) => x - y);
+    const colour = { ok: 'var(--ovr-ok)', implausible: 'var(--ovr-warn)', impossible: 'var(--ovr-bad)' };
+    const parts: string[] = [];
+    for (let i = 0; i < cuts.length - 1; i++) {
+      const mid = (cuts[i] + cuts[i + 1]) / 2;
+      const c = colour[overrideSeverity(def, b, valueAtPct(def, mid))];
+      parts.push(`${c} ${cuts[i]}%`, `${c} ${cuts[i + 1]}%`);
+    }
+    return `linear-gradient(to right, ${parts.join(', ')})`;
   }
 </script>
 
@@ -175,37 +200,43 @@
         {:else}
           <span class="pill derived-pill" title="Derived by the engine every run.">derived</span>
         {/if}
-        <span class="reading" class:is-pinned={r.pinned}>{formatOverrideValue(r.def, r.value)}</span>
         {#if r.pinned}
+          <span class="num-wrap">
+            <input type="number" step={r.def.step} value={r.value}
+                   on:input={(e) => edit(r.def, e.currentTarget.value)} on:change={commit} />
+            {#if r.def.unit}<span class="unit">{r.def.unit}</span>{/if}
+          </span>
           <button type="button" class="link-btn" on:click={() => unpin(r.def)}
                   title="Delete the pin and hand the quantity back to the physics. Its anomaly tag goes with it.">Reset to calculated ↺</button>
         {:else}
+          <span class="reading">{formatOverrideValue(r.def, r.value)}</span>
           <button type="button" class="link-btn" on:click={() => pin(r.def)}>Pin…</button>
         {/if}
       </div>
 
       {#if r.pinned}
-        <div class="track" aria-hidden="true">
-          {#each outside(r.def, r.band) as [left, width]}
-            <span class="seg amber" style="left:{left}%; width:{width}%"></span>
-          {/each}
-          {#each outside(r.def, r.def.possible?.(body) ?? null) as [left, width]}
-            <span class="seg red" style="left:{left}%; width:{width}%"></span>
-          {/each}
+        <!-- THE ZONES ARE THE SLIDER'S OWN TRACK, which is the only way they can be guaranteed to
+             line up with the thumb — a separate bar above it spans its container while the range
+             input spans whatever is left beside the number box, and the two drift apart. Same
+             pattern as the Day Length and orbit controls: gradient into the runnable track, markers
+             absolutely positioned over the wrap. -->
+        <div class="slider-wrap">
+          <input class="ovr-slider" type="range"
+                 min={r.def.log ? 0 : r.def.soft[0]} max={r.def.log ? 100 : r.def.soft[1]}
+                 step={r.def.log ? 0.1 : r.def.step}
+                 value={toSlider(r.def, r.value ?? 0)}
+                 style="--ovr-track: {trackGradient(r.def, body)};"
+                 on:input={(e) => edit(r.def, fromSlider(r.def, parseFloat(e.currentTarget.value)))}
+                 on:change={commit}
+                 aria-label="{r.def.label} — {formatOverrideValue(r.def, r.def.soft[0])} to {formatOverrideValue(r.def, r.def.soft[1])}" />
           {#if r.derived != null && Number.isFinite(r.derived)}
-            <span class="calc" style="left:{pctOf(r.def, r.derived)}%"
+            <span class="calc-notch" style="left: {pctOf(r.def, r.derived).toFixed(1)}%"
                   title="The physics' own answer: {formatOverrideValue(r.def, r.derived)}"></span>
           {/if}
         </div>
-        <div class="input-row">
-          <input type="range" min={r.def.log ? 0 : r.def.soft[0]} max={r.def.log ? 100 : r.def.soft[1]}
-                 step={r.def.log ? 0.1 : r.def.step}
-                 value={toSlider(r.def, r.value ?? 0)}
-                 on:input={(e) => edit(r.def, fromSlider(r.def, parseFloat(e.currentTarget.value)))}
-                 on:change={commit} />
-          <input type="number" step={r.def.step} value={r.value}
-                 on:input={(e) => edit(r.def, e.currentTarget.value)} on:change={commit} />
-          {#if r.def.unit}<span class="unit">{r.def.unit}</span>{/if}
+        <div class="scale">
+          <span>{formatOverrideValue(r.def, r.def.soft[0])}</span>
+          <span>{formatOverrideValue(r.def, r.def.soft[1])}</span>
         </div>
         {#if r.def.choice}
           <div class="anomaly-row">
@@ -290,12 +321,11 @@
   }
   .pinned-pill { color: #d08a4a; }
   .derived-pill { color: var(--text-faint); }
-  .input-row { display: flex; align-items: center; gap: 7px; }
-  .input-row input[type='range'] { flex: 1; min-width: 0; }
-  .input-row input[type='number'] {
+  .num-wrap { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .num-wrap input {
     width: 92px; padding: 4px 6px; border-radius: 4px;
     border: 1px solid var(--border); background: var(--bg-control); color: var(--text);
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: tabular-nums; text-align: right;
   }
   .unit { font-size: 0.72em; color: var(--text-faint); }
   .derived-note { font-size: 0.68em; color: var(--text-faint); line-height: 1.35; }
@@ -306,22 +336,38 @@
   /* Impossible reads louder than implausible, because it is a different claim. */
   .warn.breaks { color: #e05252; border-left-color: #e05252; }
 
-  /* The track sits directly above the slider and lines up with it: same 100% span, so a segment at
-     40% is under the thumb at 40%. Purely informational — pointer-events off, so it can never eat a
-     drag meant for the control below it. */
-  .track {
-    position: relative; height: 6px; margin: 2px 0 -2px;
-    border-radius: 3px; background: rgba(120, 200, 130, 0.18);
-    pointer-events: none; overflow: hidden;
+  /* THE HOUSE SLIDER, same shape as Day Length and the composition controls: the zone gradient IS
+     the runnable track, so it cannot drift out of scale with the thumb. */
+  .ovr-row { --ovr-ok: #3c9a5f; --ovr-warn: #e07b39; --ovr-bad: #c0392b; }
+  .slider-wrap { position: relative; padding: 2px 0; }
+  .ovr-slider {
+    width: 100%; margin: 0; -webkit-appearance: none; appearance: none;
+    background: transparent; cursor: pointer;
   }
-  .track .seg { position: absolute; top: 0; bottom: 0; }
-  .track .seg.amber { background: rgba(208, 138, 74, 0.38); }
-  .track .seg.red { background: rgba(224, 82, 82, 0.55); }
-  /* The engine's own answer. Drawn last so it sits over any band. */
-  .track .calc {
-    position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px;
-    background: #5fd07a; box-shadow: 0 0 3px rgba(95, 208, 122, 0.9);
+  .ovr-slider::-webkit-slider-runnable-track {
+    height: 10px; border-radius: 5px; background: var(--ovr-track);
+    border: 1px solid rgba(0, 0, 0, 0.25);
   }
+  .ovr-slider::-moz-range-track {
+    height: 10px; border-radius: 5px; background: var(--ovr-track);
+    border: 1px solid rgba(0, 0, 0, 0.25);
+  }
+  .ovr-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -4px;
+    border-radius: 50%; background: #fff; border: 2px solid #222; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .ovr-slider::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #222;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  /* Where the engine's own answer sits — the figure Reset returns to. Same idea as the tidal-lock
+     notch on Day Length: a mark ON the track, at the value it stands for. */
+  .calc-notch {
+    position: absolute; top: 0; bottom: 0; width: 3px; transform: translateX(-50%);
+    border-radius: 2px; background: #eaf7ee; box-shadow: 0 0 0 1px rgba(0,0,0,0.45);
+    pointer-events: none;
+  }
+  .scale { display: flex; justify-content: space-between; font-size: 0.66em; color: var(--text-faint); }
   .hint { margin: 0; font-size: 0.68em; color: var(--text-faint); line-height: 1.35; }
   .anomaly-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .anom-lbl { font-size: 0.68em; color: var(--text-faint); }
