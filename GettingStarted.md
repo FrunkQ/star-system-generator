@@ -309,6 +309,8 @@ generated into the system are born into the era you chose.
    interior-makeup slider. Density emerges from the composition, and dialling density toward
    ~1 g/cc turns a terrestrial into a gas giant. Rotation period and axial tilt have their own
    sliders — rotation snaps to tidal locking — and a world spun fast enough visibly flattens.
+4. If the physics will not give you the world you want, the **Overrides** tab (the last one) lets you
+   pin the figure by hand and keep everything downstream honest. See below.
 
 Everything recomputes live: temperature, fluids, magnetosphere, geology, habitability and tags all
 update as you edit.
@@ -337,6 +339,12 @@ its picture changes with them.
 **Nothing is refused.** Each row shows the range it expects, lets you type well past either end, and
 says in plain words what is wrong with the figure once you do — the same "kept and labelled" rule the
 star editor has always followed. **Reset to calculated** hands the quantity straight back.
+
+The slider tells you where you are: **green** is where the physics would have put it, **amber** is
+implausible for that world, **red** is impossible for anything — a negative albedo is energy from
+nowhere, while a 70-tesla terrestrial merely has no known mechanism. A mark on the track shows the
+engine's own answer, which is what Reset returns to. Anything you have pinned is flagged
+**OVERRIDDEN** on the body's card, so a glance tells you which worlds you have leaned on.
 
 Every pin can be given a **reason** from the Anomaly tag category — Precursor Engineering, Exotic
 Matter, Nanite Ecology, Magic, or one you write on the spot. The tag your players see names what it

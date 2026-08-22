@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.20 - 22nd Aug 2026
+
+- Docs: the Getting Started walkthrough for building a world by hand now points at the Overrides tab, and the section on it explains what the slider colours mean and where the OVERRIDDEN flag shows up.
+
 ## v3.0.19 - 22nd Aug 2026
 
 - An anomaly pill now reads "Experimental Terraforming: Anomalous bond albedo" rather than "...: Bond albedo" - the bare quantity read as a heading for it rather than a claim about it. Two pinned figures under one reason read "Anomalous magnetosphere, surface temperature"; the word leads the list rather than repeating.
