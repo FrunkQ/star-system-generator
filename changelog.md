@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.9 - 22nd Aug 2026
+
+- Hovering a GM overrides badge on a body card now also names the reason you gave it, and says plainly when you gave none - which is the same as saying your players see nothing.
+
 ## v3.0.8 - 22nd Aug 2026
 
 - **The "show the working" panel now shows the overriding too.** Open the Newton panel on a world you have pinned anything on and the first thing you see is what you pinned, what you pinned it to, and the reason you gave. Each figure is marked again inside every layer it actually feeds, with a line saying that the engine read your number instead of working one out, and repeating the warning if it is outside what the physics allows.

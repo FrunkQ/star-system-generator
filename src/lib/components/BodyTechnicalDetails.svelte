@@ -83,15 +83,22 @@
   // much screen space"). Each badge says on hover what was changed, by how much, and which anomaly it
   // is filed under, so the strip answers "what is odd about this world" without leaving the panel.
   $: overrideBadges = cbody ? [
-      ...listActiveOverrides(cbody).map((o) => ({
-          label: o.def.label,
-          title: `${o.def.label}: pinned at ${formatOverrideValue(o.def, o.value)}`
-              + ` (the physics says ${formatOverrideValue(o.def, o.derived)}).`
-              + (o.warning ? `
-WARNING — ${o.warning}` : '')
-              + `
-${o.def.hint}`
-      })),
+      ...listActiveOverrides(cbody).map((o) => {
+          // The owner's ask, in so many words: on hover it should detail what was changed, by how
+          // much, AND what tag is associated with it — the reason is half of what makes the strip
+          // worth keeping, because it is the half a player might also be seeing.
+          const reason = cbody.overrides?.anomalies?.[o.def.key];
+          return {
+            label: o.def.label,
+            title: `${o.def.label}: pinned at ${formatOverrideValue(o.def, o.value)}`
+              + (o.derived != null ? ` (the physics says ${formatOverrideValue(o.def, o.derived)}).` : '.')
+              + (reason
+                  ? `\nReason given: ${describeTag(reason.tag).label}${reason.secret ? ' (SECRET - players never see it)' : ''}`
+                  : '\nNo reason given - players see nothing.')
+              + (o.warning ? `\nWARNING - ${o.warning}` : '')
+              + `\n${o.def.hint}`
+          };
+      }),
       ...(cbody.autoClassify === false
           ? [{ label: 'Type (pinned)', title: 'Auto-classification is off: this world keeps the type you chose rather than the one its physics implies.' }]
           : [])
