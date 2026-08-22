@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import type { CelestialBody } from '$lib/types';
 import {
   OVERRIDE_DEFS, overrideDefsFor, overrideStatus, overrideWarning, setOverride, clearOverride,
-  formatOverrideValue, overrideDef
+  formatOverrideValue, overrideDef, overrideSeverity
 } from './overrides';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 
@@ -49,14 +49,38 @@ describe('the roster is the single description of every override', () => {
 });
 
 describe('WARN, NEVER STOP', () => {
-  it('keeps a negative albedo and labels it rather than clamping it', () => {
+  it('keeps a negative albedo and calls it IMPOSSIBLE, not merely unlikely', () => {
+    // Owner: "highlight red what is TOTALLY IMPOSSIBLE (negative albedo) rather than impossible
+    // (too high magnetic field)". A reflectivity outside 0..1 is energy from nowhere, so it gets
+    // the harder word and the harder colour — and is still kept, saved and fed into the solve.
     const b = planet();
     setOverride(b, 'albedo', -2);
     expect(b.overrides?.albedo).toBe(-2);                     // NOT clamped to 0
     const s = overrideStatus(b, overrideDef('albedo')!);
     expect(s.pinned).toBe(true);
-    expect(s.warning).toMatch(/below the plausible range/);
-    expect(s.warning).toMatch(/returns more energy than its star delivers/);
+    expect(s.severity).toBe('impossible');
+    expect(s.warning).toMatch(/IMPOSSIBLE, not merely unlikely/);
+    expect(s.warning).toMatch(/CREATES the light it returns/);
+  });
+
+  it('the slider itself reaches negative, because that is what it is for', () => {
+    // Owner: "Bond albedo goes from 0-1... I thought we were going to have a negative one".
+    expect(overrideDef('albedo')!.soft[0]).toBeLessThan(0);
+  });
+
+  it('but an out-of-class MAGNETOSPHERE is only implausible — no law forbids it', () => {
+    const b = planet({ magnetism: { source: 'iron-core', geometry: 'dipolar', intrinsic: true, estimatedRangeGauss: { min: 0.1, max: 0.7 }, nominalGauss: 0.5, notes: [] } } as Partial<CelestialBody>);
+    setOverride(b, 'magneticFieldGauss', 700000);
+    const s = overrideStatus(b, overrideDef('magneticFieldGauss')!);
+    expect(s.severity).toBe('implausible');
+    expect(s.warning).toMatch(/above the plausible range/);
+    expect(s.warning).not.toMatch(/IMPOSSIBLE/);
+  });
+
+  it('and a figure inside every band is neither', () => {
+    const b = planet();
+    setOverride(b, 'albedo', 0.3);
+    expect(overrideStatus(b, overrideDef('albedo')!).severity).toBe('ok');
   });
 
   it('keeps a 70 tesla terrestrial magnetosphere — the owner asked for it by name', () => {
@@ -65,6 +89,12 @@ describe('WARN, NEVER STOP', () => {
     expect(b.overrides?.magneticFieldGauss).toBe(700000);
     expect(overrideStatus(b, overrideDef('magneticFieldGauss')!).warning)
       .toMatch(/above the plausible range/);
+  });
+
+  it('every record that declares an IMPOSSIBLE band also says what it breaks', () => {
+    for (const d of OVERRIDE_DEFS) {
+      if (d.possible) expect(d.breaks, d.key).toBeTruthy();
+    }
   });
 
   it('says nothing at all while a figure sits inside its band', () => {
@@ -147,11 +177,18 @@ describe('one formatter, so a figure reads the same on the tab, the badge and th
 });
 
 describe('a band is a band, never a limit', () => {
-  it('produces prose on both sides and nothing inside', () => {
+  it('produces prose outside and nothing inside', () => {
     const def = overrideDef('albedo')!;
     const b = planet();
     expect(overrideWarning(def, b, 0.5)).toBeNull();
-    expect(overrideWarning(def, b, -0.1)).toContain('below');
-    expect(overrideWarning(def, b, 1.4)).toContain('above');
+    expect(overrideWarning(def, b, -0.1)).toContain('IMPOSSIBLE');
+    expect(overrideWarning(def, b, 1.4)).toContain('IMPOSSIBLE');
+  });
+
+  it('the amber side says "below"/"above", so a reader knows which way they went', () => {
+    const def = overrideDef('radiogenicHeatK')!;
+    const b = planet();
+    expect(overrideSeverity(def, b, 1100)).toBe('implausible');
+    expect(overrideWarning(def, b, 1100)).toContain('above');
   });
 });

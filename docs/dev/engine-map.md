@@ -405,6 +405,23 @@ asserts `process(load(save(process(x)))) === process(x)` on every leaf field. An
 moves an authored field (mass, radius, pressure, composition) must be added to its fixture, and any
 future model that reconciles two quantities must ask whether either is pinned.
 
+### OVR-7 A star's HAZARD card is its ionising output; its brightness is a different quantity
+WHERE: `BodyTechnicalDetails` star branch; `physics/ionisingOutput.bodyIonisingOutputSolar`;
+`physics/stellarActivity.stellarActivityBucket`; the `flareActivity` term in `radiation.ts`.
+RULE: `radiationOutput` is a star's LUMINOSITY. It must never be published as a radiation hazard.
+The hazard quantity is `flareActivity` and the ionising output derived from it — that is what the
+field feeds, what the map's zones follow, and what reaches a planet as a particle dose.
+WHY: the star card read `radiationOutput` under the label "Radiation Level", in the hazard
+colour, next to the magnetic field. Sol therefore read "Low (1.00)" — and it was the one figure
+on the panel that COULD NOT MOVE when a GM wound the star's field up, because the engine
+deliberately separates the two levers ("the lever for 'make this one dangerous' must not be the
+lever for 'make this one brighter'"). It was also a second printing of the Luminosity card a few
+rows below. Reported by the owner as "none of this seems to reflect on the info panel", which is
+exactly what a mislabelled card looks like from the outside. PHY-2; same shape as B28.
+BLAST: `ionisingOutputSolar` returns MULTIPLES OF THE QUIET SUN'S ionising output, not L(sol) —
+the first version of the replacement card got that wrong too and printed "1.61e+0 L(sol)" for the
+Sun. State what a figure measures and in what units before you put a suffix on it.
+
 ### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
 WHERE: `overrides.ts` — the `commit` on the `gasThermalInflation` record; `BodyBasicsTab.effInflation`.
 RULE: inflation sizes a body at GENERATION and `radiusKm` is authored thereafter, so pinning it has

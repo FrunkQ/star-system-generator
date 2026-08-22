@@ -76,10 +76,26 @@ export interface OverrideDef {
    * saying nothing is cheaper and true.
    */
   derived(body: CelestialBody): number | undefined;
-  /** The band this quantity plausibly occupies FOR THIS BODY. Outside it the row warns. */
+  /** The band this quantity plausibly occupies FOR THIS BODY. Outside it the row warns (amber). */
   plausible(body: CelestialBody): readonly [number, number] | null;
   /** What being outside that band MEANS — the second half of every warning sentence. */
   absurd: string;
+  /**
+   * THE HARDER BAND: what is possible for ANY body, ever. Outside it the row goes RED, because the
+   * figure does not merely lack a mechanism — it breaks conservation or contradicts the definition
+   * of the quantity itself.
+   *
+   * OWNER, 2026-08-22: "highlight red what is TOTALLY IMPOSSIBLE (negative albedo) rather than
+   * impossible (too high magnetic field)". The distinction is real and worth drawing: a 70 tesla
+   * terrestrial has no known MECHANISM but breaks no law — magnetars reach far more — whereas a
+   * surface returning more energy than arrives is inventing it. Both are still ALLOWED; the
+   * difference is only what the row SAYS about them, never whether it accepts them.
+   *
+   * `null` (or omitted) means nothing about this quantity is impossible in principle.
+   */
+  possible?(body: CelestialBody): readonly [number, number] | null;
+  /** What being outside the POSSIBLE band means. Give it whenever `possible` is given. */
+  breaks?: string;
   /**
    * The Newton trace LAYERS whose number this pin sets, by layer id.
    *
@@ -162,16 +178,26 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     // returns MORE energy than the star delivers, i.e. something is amplifying it. The equilibrium
     // temperature goes as (1 − A)^¼, so −5 is a factor of 6 in flux and about 1.57× in temperature —
     // absurd, allowed, and warned about.
-    soft: [0, 1],
+    // OWNER, 2026-08-22: "Bond albedo goes from 0-1... I thought we were going to have a negative
+    // one for playing with -1 0 1". The SLIDER now reaches -1; a typed figure still goes to -5.
+    soft: [-1, 1],
     hard: [-5, 1.5],
     step: 0.01,
     decimals: 3,
-    // `albedoBreakdown` holds the PIN once one is set (that is what `deriveAlbedo` returns), so
-    // there is no derived answer to quote while pinned. See `OverrideDef.derived`.
-    derived: (b) => (b.overrides?.albedo != null ? undefined : (b.albedoBreakdown?.albedo ?? estimateBondAlbedo(b))),
+    // `albedoBreakdown` holds the PIN once one is set (that is what `deriveAlbedo` returns), so the
+    // committed figure cannot answer "what would the physics say" while pinned. `estimateBondAlbedo`
+    // CAN: it is the coarse pre-cloud heuristic and it never reads the override. Coarser than the
+    // cloud model, but a real answer from the model rather than the pin handed back — which is what
+    // keeps the green mark on the slider meaningful while a GM is dragging it about.
+    derived: (b) => (b.overrides?.albedo != null ? estimateBondAlbedo(b) : (b.albedoBreakdown?.albedo ?? estimateBondAlbedo(b))),
     plausible: () => [0, 1],
     absurd: 'below zero the world returns more energy than its star delivers, and above one it returns '
-      + 'more light than falls on it — either way something unmodelled is supplying the difference.'
+      + 'more light than falls on it — either way something unmodelled is supplying the difference.',
+    // THE ONE RECORD WHERE THE TWO BANDS COINCIDE. An albedo outside [0, 1] is not a world nobody
+    // has found yet; it is energy from nowhere.
+    possible: () => [0, 1],
+    breaks: 'a reflectivity outside 0 to 1 does not describe reflection at all — below zero the '
+      + 'surface CREATES the light it returns, and above one it returns light that never arrived.'
   },
   {
     key: 'gasThermalInflation',
@@ -188,6 +214,8 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     derived: (b) => gasThermalInflationFactor(b.equilibriumTempK ?? 0),
     plausible: () => [0.9, 2.5],
     absurd: 'an envelope this far from its equilibrium size is not being held there by starlight.',
+    possible: () => [0, Number.MAX_VALUE],
+    breaks: 'a negative inflation would turn the envelope inside out.',
     // Inflation is the one pin the PROCESSOR never reads: it sizes a body at generation and then the
     // radius is authored. So the pin has to move the radius itself, through the SAME mass/radius
     // chain the composition editor uses (hold mass and composition, let radius follow) rather than a
@@ -218,7 +246,9 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     decimals: 1,
     derived: () => 0,
     plausible: () => [0, 40],
-    absurd: 'no ordinary decay inventory sustains this much heat over a system’s lifetime.'
+    absurd: 'no ordinary decay inventory sustains this much heat over a system’s lifetime.',
+    possible: () => [0, Number.MAX_VALUE],
+    breaks: 'a negative heat source cools a world by decaying, which is not a thing decay does.'
   },
   {
     key: 'flareActivity',
@@ -234,7 +264,14 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     decimals: 2,
     derived: (b) => (b.overrides?.flareActivity != null ? undefined : (b as { flareActivity?: number }).flareActivity),
     plausible: () => [0, 1],
-    absurd: 'past one the star is more magnetically active than any class-and-age model allows for.'
+    absurd: 'past one the star is more magnetically active than any class-and-age model allows for.',
+    // SATURATION IS A LAW HERE, not a preference: past a certain rotation rate a stellar dynamo
+    // stops responding and X-ray output stops climbing (ionisingOutput.IONISING_FRACTION_SATURATED),
+    // and `ionisingFraction` clamps accordingly. A figure above 1 would therefore change NOTHING —
+    // the slider would be lying about having an effect — so 1 is the honest ceiling.
+    possible: () => [0, 1],
+    breaks: 'the dynamo saturates at 1: a star cannot be more active than fully saturated, and '
+      + 'asking for more changes nothing at all.'
   },
   {
     key: 'magneticFieldGauss',
@@ -258,7 +295,12 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
       return r && Number.isFinite(r.min) && Number.isFinite(r.max) ? [r.min, r.max] : null;
     },
     absurd: 'this world’s interior cannot generate a field of that strength — nothing in its rotation, '
-      + 'composition or core size supports it.'
+      + 'composition or core size supports it.',
+    // NO UPPER IMPOSSIBILITY, deliberately, and this is the owner's own example of the distinction:
+    // a 70 tesla terrestrial has no known mechanism but breaks no law — magnetars reach far more.
+    // Implausible is not impossible and the row must not pretend otherwise.
+    possible: () => [0, Number.MAX_VALUE],
+    breaks: 'a negative field strength is not a weaker field, it is a meaningless one — use zero.'
   },
   {
     key: 'surfaceTempK',
@@ -291,7 +333,9 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
       return teq > 0 ? [teq * 0.4, teq * 3.5] : null;
     },
     absurd: 'the star, the greenhouse, the tides and the interior together do not account for this — '
-      + 'the difference is being supplied by something the model knows nothing about.'
+      + 'the difference is being supplied by something the model knows nothing about.',
+    possible: () => [0, Number.MAX_VALUE],
+    breaks: 'nothing is colder than absolute zero.'
   },
   {
     key: 'pressureBar',
@@ -306,7 +350,12 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     step: 0.001,
     decimals: 4,
     log: true,
-    derived: (b) => (b.overrides?.pressureBar != null ? undefined : (b.atmosphere?.pressure_bar ?? 0)),
+    // While pinned, `atmosphere.pressure_bar` IS the pin — but an opted-in world keeps its
+    // pre-erosion baseline in `atmosphere0`, which the pin never touches (see the ordering note in
+    // SystemProcessor), and that is a genuine un-pinned answer to quote.
+    derived: (b) => (b.overrides?.pressureBar != null
+      ? b.atmosphere0?.pressure_bar
+      : (b.atmosphere?.pressure_bar ?? 0)),
     // What this world could hold on to, from the ratio of its escape velocity to the thermal speed
     // of the gas it carries — the same physics `applyAtmosphericEscape` uses, read as a yes/no here
     // rather than re-derived: a body that retains nothing has no plausible column at all.
@@ -318,7 +367,9 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
       return [0, Math.max(1, 200 * (g / 9.81))];
     },
     absurd: 'a column this heavy is not held down by this world’s gravity — it should have escaped '
-      + 'long ago, and nothing in the model is keeping it here.'
+      + 'long ago, and nothing in the model is keeping it here.',
+    possible: () => [0, Number.MAX_VALUE],
+    breaks: 'a negative pressure is a vacuum pulling inwards, which is not what an atmosphere does.'
   },
   {
     key: 'densityGcm3',
@@ -369,6 +420,8 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     },
     absurd: 'no arrangement of this world’s own composition reaches that density — it is either far '
       + 'more hollow than voids allow, or made of something denser than the matter it is said to be.',
+    possible: () => [0, Number.MAX_VALUE],
+    breaks: 'a negative density is negative mass in a positive volume.',
     // The relation, and NOTHING ELSE. `bodyEdit.editDensity` would also RE-INFER the makeup to match,
     // which is right for the composition editor and wrong here: re-inferring turns "a rocky world
     // that weighs a tenth of what rock weighs" into "a world made of gas", explaining away the very
@@ -400,6 +453,28 @@ export function overrideDefsFor(body: CelestialBody | null | undefined): Overrid
   return OVERRIDE_DEFS.filter((d) => d.appliesTo.includes(body.roleHint)) as OverrideDef[];
 }
 
+/**
+ * How far outside the physics a figure sits. Three states, because two were not enough (owner):
+ *
+ *   ok           inside every band — the engine would not blink at it.
+ *   implausible  outside what THIS body could manage, but not outside what nature can do. Amber.
+ *   impossible   outside what ANYTHING can do — it breaks conservation or the definition of the
+ *                quantity. Red.
+ *
+ * NONE OF THE THREE IS A REFUSAL. The severity changes the colour and the sentence, never whether
+ * the value is accepted, saved or fed into the derivation.
+ */
+export type OverrideSeverity = 'ok' | 'implausible' | 'impossible';
+
+export function overrideSeverity(def: OverrideDef, body: CelestialBody, value: number): OverrideSeverity {
+  if (!Number.isFinite(value)) return 'ok';
+  const hard = def.possible?.(body);
+  if (hard && (value < hard[0] || value > hard[1])) return 'impossible';
+  const band = def.plausible(body);
+  if (band && (value < band[0] || value > band[1])) return 'implausible';
+  return 'ok';
+}
+
 export interface OverrideStatus {
   def: OverrideDef;
   pinned: boolean;
@@ -409,6 +484,10 @@ export interface OverrideStatus {
   derived: number | undefined;
   /** Set when the pinned figure is outside the plausible band: the warn-not-stop sentence. */
   warning: string | null;
+  /** How far outside the physics it sits — drives the colour, never the acceptance. */
+  severity: OverrideSeverity;
+  /** The plausible band for this body, for a row that wants to draw it. */
+  band: readonly [number, number] | null;
 }
 
 /** Format a figure the way its row, badge and trace line all agree to. */
@@ -424,9 +503,16 @@ export function formatOverrideValue(def: OverrideDef, v: number | undefined): st
 /** The one warning generator. A band is a band, never a limit — this returns prose, not a clamp. */
 export function overrideWarning(def: OverrideDef, body: CelestialBody, value: number): string | null {
   if (!Number.isFinite(value)) return null;
-  const band = def.plausible(body);
-  if (!band) return null;
-  if (value >= band[0] && value <= band[1]) return null;
+  const severity = overrideSeverity(def, body, value);
+  if (severity === 'ok') return null;
+  // IMPOSSIBLE gets its own sentence, because "outside the plausible range" understates it: the
+  // reader should be able to tell "nobody has found one" from "this cannot exist".
+  if (severity === 'impossible') {
+    const hard = def.possible!(body)!;
+    return `${formatOverrideValue(def, value)} is IMPOSSIBLE, not merely unlikely — outside `
+      + `${formatOverrideValue(def, hard[0])} to ${formatOverrideValue(def, hard[1])}, ${def.breaks ?? def.absurd}`;
+  }
+  const band = def.plausible(body)!;
   const side = value < band[0] ? 'below' : 'above';
   return `${formatOverrideValue(def, value)} is ${side} the plausible range `
     + `(${formatOverrideValue(def, band[0])} to ${formatOverrideValue(def, band[1])}) — ${def.absurd}`;
@@ -442,7 +528,9 @@ export function overrideStatus(body: CelestialBody, def: OverrideDef): OverrideS
     pinned,
     value,
     derived,
-    warning: pinned ? overrideWarning(def, body, pinnedRaw as number) : null
+    warning: pinned ? overrideWarning(def, body, pinnedRaw as number) : null,
+    severity: pinned ? overrideSeverity(def, body, pinnedRaw as number) : 'ok',
+    band: def.plausible(body)
   };
 }
 

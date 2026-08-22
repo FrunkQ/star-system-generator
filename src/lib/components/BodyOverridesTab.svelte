@@ -122,6 +122,35 @@
     const hi = Math.log(Math.max(lo + 1e-9, def.soft[1]));
     return Math.exp(lo + (pct / 100) * (hi - lo));
   };
+
+  // ── THE TRACK BEHIND THE SLIDER ────────────────────────────────────────────────────────────────
+  // OWNER, 2026-08-22: "a green zone of the sliders to show the actual CORRECT/calculated value.
+  // Also highlight red what is TOTALLY IMPOSSIBLE (negative albedo) rather than impossible (too high
+  // magnetic field)."
+  //
+  // So the track carries three things and each is a different claim:
+  //   GREEN  where the physics' own answer sits — the figure Reset would return to.
+  //   AMBER  the stretch that is implausible for THIS body but breaks no law.
+  //   RED    the stretch that is impossible for anything, ever.
+  // All three come from the roster (`plausible`, `possible`, `derived`), so a ninth override draws
+  // its own track without a line of code here.
+  //
+  // Percentages are along the SOFT range, which is what the slider spans; a figure typed beyond
+  // either end simply pins the marker to that end rather than drawing outside the track.
+  const pctOf = (def: OverrideDef, v: number): number =>
+    Math.max(0, Math.min(100, def.log
+      ? toSlider(def, v)
+      : ((v - def.soft[0]) / Math.max(1e-12, def.soft[1] - def.soft[0])) * 100));
+
+  /** The stretches of the track that are outside a band, as [leftPct, widthPct] pairs. */
+  function outside(def: OverrideDef, band: readonly [number, number] | null): [number, number][] {
+    if (!band) return [];
+    const out: [number, number][] = [];
+    const lo = pctOf(def, band[0]), hi = pctOf(def, band[1]);
+    if (band[0] > def.soft[0] && lo > 0) out.push([0, lo]);
+    if (band[1] < def.soft[1] && hi < 100) out.push([hi, 100 - hi]);
+    return out;
+  }
 </script>
 
 <div class="tab-panel">
@@ -137,7 +166,8 @@
   {/if}
 
   {#each rows as r (r.def.key)}
-    <div class="ovr-row" class:pinned={r.pinned}>
+    <div class="ovr-row" class:pinned={r.pinned} class:implausible={r.severity === 'implausible'}
+         class:impossible={r.severity === 'impossible'}>
       <div class="row-head">
         <span class="name">{r.def.label}</span>
         {#if r.pinned}
@@ -155,6 +185,18 @@
       </div>
 
       {#if r.pinned}
+        <div class="track" aria-hidden="true">
+          {#each outside(r.def, r.band) as [left, width]}
+            <span class="seg amber" style="left:{left}%; width:{width}%"></span>
+          {/each}
+          {#each outside(r.def, r.def.possible?.(body) ?? null) as [left, width]}
+            <span class="seg red" style="left:{left}%; width:{width}%"></span>
+          {/each}
+          {#if r.derived != null && Number.isFinite(r.derived)}
+            <span class="calc" style="left:{pctOf(r.def, r.derived)}%"
+                  title="The physics' own answer: {formatOverrideValue(r.def, r.derived)}"></span>
+          {/if}
+        </div>
         <div class="input-row">
           <input type="range" min={r.def.log ? 0 : r.def.soft[0]} max={r.def.log ? 100 : r.def.soft[1]}
                  step={r.def.log ? 0.1 : r.def.step}
@@ -186,7 +228,7 @@
           {formatOverrideValue(r.def, r.def.soft[1])}; type a figure beyond either end if you want one.
         </div>
         {#if r.warning}
-          <p class="warn" role="status">{r.warning}</p>
+          <p class="warn" class:breaks={r.severity === 'impossible'} role="status">{r.warning}</p>
         {/if}
 
         {#key r.def.key}
@@ -236,6 +278,8 @@
     border-left: 3px solid var(--border);
   }
   .ovr-row.pinned { border-left-color: #d08a4a; }
+  .ovr-row.pinned.implausible { border-left-color: #d08a4a; }
+  .ovr-row.pinned.impossible { border-left-color: #e05252; }
   .row-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
   .name { font-size: 0.82em; color: var(--text); }
   .reading { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 0.82em; color: var(--text-muted); }
@@ -258,6 +302,25 @@
   .warn {
     margin: 0; font-size: 0.7em; line-height: 1.35; color: #d08a4a;
     border-left: 2px solid #d08a4a; padding-left: 6px;
+  }
+  /* Impossible reads louder than implausible, because it is a different claim. */
+  .warn.breaks { color: #e05252; border-left-color: #e05252; }
+
+  /* The track sits directly above the slider and lines up with it: same 100% span, so a segment at
+     40% is under the thumb at 40%. Purely informational — pointer-events off, so it can never eat a
+     drag meant for the control below it. */
+  .track {
+    position: relative; height: 6px; margin: 2px 0 -2px;
+    border-radius: 3px; background: rgba(120, 200, 130, 0.18);
+    pointer-events: none; overflow: hidden;
+  }
+  .track .seg { position: absolute; top: 0; bottom: 0; }
+  .track .seg.amber { background: rgba(208, 138, 74, 0.38); }
+  .track .seg.red { background: rgba(224, 82, 82, 0.55); }
+  /* The engine's own answer. Drawn last so it sits over any band. */
+  .track .calc {
+    position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px;
+    background: #5fd07a; box-shadow: 0 0 3px rgba(95, 208, 122, 0.9);
   }
   .hint { margin: 0; font-size: 0.68em; color: var(--text-faint); line-height: 1.35; }
   .anomaly-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

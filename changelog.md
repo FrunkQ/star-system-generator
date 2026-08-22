@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.14 - 22nd Aug 2026
+
+- **A star's panel was reporting its brightness as its radiation, and that is fixed.** "Radiation Level" read the star's luminosity - so Sol said "Low (1.00)", it repeated the Luminosity card below it, and it was the one number that could never move when you wound the star's magnetic field up. It now shows MAGNETIC ACTIVITY: the ionising half of the output - flares, X-rays, the particle wind - which is what the field actually drives and what reaches a planet as a dose.
+- **A star's panel was bare; it now carries what a GM reaches for.** Ionising output (in multiples of the quiet Sun), the habitable zone, the frost line and the UV kill zone - all read from the same model the orrery draws its rings from, so the number and the ring cannot disagree.
+- **Anything you have pinned now says OVERRIDDEN on the card itself**, not just in the summary line at the bottom.
+- **The albedo slider reaches -1**, so you can play with a negative one without typing it.
+- **Every override slider now shows you three things at a glance**: a green mark where the physics' own answer sits, an amber stretch where a value is implausible for that world, and a red stretch where it is outright impossible. The difference is real and worth drawing - a 70 tesla terrestrial has no known mechanism but breaks no law, while a negative albedo is energy from nowhere. Both are still allowed; only the wording and the colour change.
+
 ## v3.0.13 - 22nd Aug 2026
 
 - The slice/whole toggle on the body picture gets its icon back - it had always been an empty square, because its glyph was built inside the svg by a branch that lands in the wrong namespace. It draws now, and swaps between a dashed frame (slice) and a framed inset (whole).

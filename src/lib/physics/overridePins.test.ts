@@ -10,6 +10,7 @@ import path from 'path';
 import { SystemProcessor } from '$lib/core/SystemProcessor';
 import { setOverride, clearOverride, overrideStatus, overrideDef, OVERRIDE_DEFS } from './overrides';
 import { buildPhysicsTrace } from './physicsTrace';
+import { bodyIonisingOutputSolar } from './ionisingOutput';
 import { trimEnvelope, densityGcc } from './bodyEdit';
 import { makeupFractions, normalizeMakeup, massMeFromRadiusMakeup } from './makeup';
 import { meanSurfaceTempK } from './surfaceTemperature';
@@ -359,7 +360,7 @@ describe('the Newton trace names every pin — rule 4, "the explainers must not 
     const b = coldMoon();
     setOverride(b, 'albedo', -2);
     const t = traced(b);
-    expect(t.layers[0].notes.join(' ')).toMatch(/below the plausible range/);
+    expect(t.layers[0].notes.join(' ')).toMatch(/IMPOSSIBLE, not merely unlikely/);
   });
 
   it('names the stated reason where there is one', () => {
@@ -395,5 +396,56 @@ describe('the Newton trace names every pin — rule 4, "the explainers must not 
       if (id === 'aurora' || id === 'radiation') continue;
       expect(ids, `traceLayers names "${id}"`).toContain(id);
     }
+  });
+});
+
+describe('a star’s magnetic activity — the ionising lever, and what it protects', () => {
+  // The owner's case: "alien tech damping radiation for habitability". The pin has to reach a
+  // PLANET, not merely relabel the star, or the feature is decoration.
+  const withStarActivity = (pin?: number, fieldGauss?: number) => {
+    const b = coldMoon({
+      id: 'p', roleHint: 'planet', massKg: EARTH_MASS_KG, radiusKm: EARTH_RADIUS_KM,
+      rotation_period_hours: 24, makeup: { metal: 0.32, rock: 0.68, carbon: 0, ice: 0, gas: 0 },
+      orbit: { hostId: 'star', elements: { a_AU: 1, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } }
+    });
+    const sys = systemWith(b);
+    const star = sys.nodes.find((n) => n.id === 'star') as CelestialBody;
+    if (fieldGauss !== undefined) star.magneticField = { strengthGauss: fieldGauss };
+    if (pin !== undefined) setOverride(star, 'flareActivity', pin);
+    const out = new SystemProcessor().process(sys, pack);
+    return {
+      star: out.nodes.find((n) => n.id === 'star') as CelestialBody,
+      planet: out.nodes.find((n) => n.id === 'p') as CelestialBody
+    };
+  };
+
+  it('winding the star’s FIELD up raises its activity — the effect seen on the map', () => {
+    const quiet = withStarActivity(undefined, 1).star as unknown as { flareActivity: number };
+    const wound = withStarActivity(undefined, 400).star as unknown as { flareActivity: number };
+    expect(wound.flareActivity).toBeGreaterThan(quiet.flareActivity);
+  });
+
+  it('and that reaches the PLANET as a particle dose, which is why the zones moved', () => {
+    const quiet = withStarActivity(undefined, 1).planet;
+    const wound = withStarActivity(undefined, 400).planet;
+    expect(wound.surfaceRadiation!).toBeGreaterThan(quiet.surfaceRadiation!);
+  });
+
+  it('PINNING the activity low damps it back, even with the field left wound up', () => {
+    // The pin WINS outright (`overrides.flareActivity ?? max(...)`), so it overrules both the
+    // class-and-age model and the field-driven rise. This is the "alien tech damping the star"
+    // case, and it has to survive a field a GM has already raised.
+    const wound = withStarActivity(undefined, 400);
+    const damped = withStarActivity(0.01, 400);
+    expect((damped.star as unknown as { flareActivity: number }).flareActivity).toBe(0.01);
+    expect(damped.planet.surfaceRadiation!).toBeLessThan(wound.planet.surfaceRadiation!);
+  });
+
+  it('and the ionising output the star card prints follows the pin, not the brightness', () => {
+    const quiet = withStarActivity(0.01, 400).star;
+    const loud = withStarActivity(0.9, 400).star;
+    expect(bodyIonisingOutputSolar(loud)!).toBeGreaterThan(bodyIonisingOutputSolar(quiet)!);
+    // Brightness is untouched by either — the whole reason the two are separate levers.
+    expect(loud.radiationOutput).toBe(quiet.radiationOutput);
   });
 });

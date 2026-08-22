@@ -19,6 +19,9 @@
   import { makeupFractions, gasThermalInflationFactor } from '$lib/physics/makeup';
   import { phaseAtP } from '$lib/physics/liquids';
   import { formatGauss } from '$lib/physics/magnetism';
+  import { stellarActivityBucket } from '$lib/physics/stellarActivity';
+  import { bodyIonisingOutputSolar } from '$lib/physics/ionisingOutput';
+  import { calculateGoldilocksZone, calculateFrostLine, calculateKillZone } from '$lib/physics/zones';
   import { activeOverrides as listActiveOverrides, formatOverrideValue } from '$lib/physics/overrides';
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
   import { radiationPlace } from '$lib/catalogue/bodyFacts';
@@ -82,6 +85,14 @@
   // KEPT rather than retired (owner, 2026-08-22: "keep it separate and keep it — it is useful and not
   // much screen space"). Each badge says on hover what was changed, by how much, and which anomaly it
   // is filed under, so the strip answers "what is odd about this world" without leaving the panel.
+  // OWNER, 2026-08-22: "you can write OVERRIDDEN under it - the GM gets that oversight clearly if it
+  // happens". So a card whose figure the GM has pinned says so ON THE CARD, not only in the strip at
+  // the bottom and not only on hover. One predicate, read by every card that has a pin behind it —
+  // a card cannot decide for itself what counts as overridden, and a ninth pin needs no new wiring
+  // beyond naming its key.
+  $: isPinned = (key: string): boolean =>
+      typeof (cbody?.overrides as Record<string, unknown> | undefined)?.[key] === 'number';
+
   $: overrideBadges = cbody ? [
       ...listActiveOverrides(cbody).map((o) => {
           // The owner's ask, in so many words: on hover it should detail what was changed, by how
@@ -119,6 +130,10 @@
   let surfaceTempMeanK: number | null = null;
   let massKgShown: number | null = null;
   let radiationLevel: string | null = null;
+  let starHabitableZone: { inner: number; outer: number } | null = null;
+  let starFrostLineAU: number | null = null;
+  let starKillZoneAU: number | null = null;
+  let starIonisingSolar: number | null = null;
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
   let orbitalDistanceKm: number | null = null;
@@ -162,6 +177,7 @@
     surfaceTempMeanK = null;
     massKgShown = null;
     radiationLevel = null;
+    starHabitableZone = null; starFrostLineAU = null; starKillZoneAU = null; starIonisingSolar = null;
     orbitalDistanceKm = null;
     orbitalDistanceTooltip = null;
     circumferenceKm = null;
@@ -320,9 +336,49 @@
         if (body.roleHint === 'star') {
             massKgShown = body.massKg ?? null;
 
-            const desc = getStellarRadiationDescription(body.radiationOutput || 0);
-            radiationLevel = `${desc.text} (${body.radiationOutput?.toFixed(2)})`;
-            radiationTooltip = desc.tooltip;
+            // A STAR'S HAZARD CARD IS ITS IONISING OUTPUT, NOT ITS BRIGHTNESS, and that is the whole
+            // of the fault it replaces. This card used to read `radiationOutput` - the star's
+            // LUMINOSITY in solar units - under the label "Radiation Level", in the hazard colour,
+            // beside the magnetic field. Sol therefore read "Low (1.00)": a brightness published as a
+            // danger, and a SECOND printing of the Luminosity card a few rows below it. Worse, it was
+            // the one figure on the panel that COULD NOT MOVE when a GM raised the star's field,
+            // because the engine deliberately separates the two - "stars flare with almost no change
+            // in luminosity and a great deal of ionising radiation, so the lever for 'make this one
+            // dangerous' must not be the lever for 'make this one brighter'" (SystemProcessor).
+            //
+            // The quantity that DOES move is `flareActivity`: the field feeds it through
+            // `activityFromFieldExcess`, it drives the zones on the map, it reaches a planet as a
+            // particle dose (`radiation.ts`), and a GM can pin it outright on the Overrides tab.
+            // (PHY-2 - a quantity correct for its purpose can still be published as a lie. Same
+            // shape as B28, where an appearance driver was published as a hazard reading.)
+            // THE ZONES THIS STAR SETS. A star's own card was down to mass, radius, luminosity and
+            // temperature, which says what the star IS and nothing about what it DOES to the system
+            // around it — the figures a GM actually reaches for when placing a world. These are the
+            // SAME helpers the orrery draws its rings from (`physics/zones.ts`), called rather than
+            // re-derived, so the number on the card and the ring on the map cannot disagree.
+            const nodesForZones = $systemStore?.nodes;
+            const hz = calculateGoldilocksZone(body, nodesForZones);
+            starHabitableZone = hz && hz.outer > 0 ? hz : null;
+            const frost = calculateFrostLine(body, nodesForZones);
+            starFrostLineAU = frost > 0 ? frost : null;
+            const kill = calculateKillZone(body, rulePack);
+            starKillZoneAU = kill > 0 ? kill : null;
+
+            const starActivity = (body as any).flareActivity as number | undefined;
+            const ionisingSolar = bodyIonisingOutputSolar(body);
+            starIonisingSolar = ionisingSolar ?? null;
+            const activityPinned = typeof body.overrides?.flareActivity === 'number';
+            radiationLevel = `${stellarActivityBucket(starActivity).replace('-', ' ')} (${(starActivity ?? 0).toFixed(2)})`;
+            radiationTooltip =
+                "MAGNETIC ACTIVITY - the ionising half of this star's output: flares, X-rays and the"
+                + ' particle wind. It is set by the dynamo, NOT by brightness, and the two genuinely'
+                + " decouple - a flare moves a star's total output by a hundredth of a percent while its"
+                + ' X-ray output jumps a thousandfold. This is what reaches a planet as a particle dose.'
+                + (ionisingSolar ? `\nIonising output: ${ionisingSolar.toExponential(2)} times the quiet Sun's.` : '')
+                + (activityPinned
+                    ? '\nPINNED by the GM on the Overrides tab - the class-and-age model is overruled.'
+                    : "\nDerived from spectral class and age, and raised by a field wound above this class's typical strength.")
+                + '\nLuminosity, below, is how BRIGHT the star is. That is a different quantity.';
             
             if (body.radiusKm && body.temperatureK) {
                 const r_sol = body.radiusKm / SOLAR_RADIUS_KM;
@@ -384,14 +440,6 @@
       return { text: 'Fatal (>5,000 mSv/year)', tooltip: 'Surface survival is impossible without exotic technology. Lethal dose received in a short time.' };
   }
 
-  function getStellarRadiationDescription(radiation: number): { text: string, tooltip: string } {
-      if (radiation < 0.1) return { text: 'Negligible', tooltip: 'Very low stellar radiation output.' };
-      if (radiation < 2) return { text: 'Low', tooltip: 'Low stellar radiation output. Comparable to a dim red dwarf.' };
-      if (radiation < 10) return { text: 'Moderate', tooltip: 'Moderate stellar radiation output. Comparable to our Sun.' };
-      if (radiation < 100) return { text: 'High', tooltip: 'High stellar radiation output. Comparable to a bright F-type star.' };
-      if (radiation < 1000) return { text: 'Very High', tooltip: 'Very high stellar radiation output. Comparable to a hot B-type star.' };
-      return { text: 'Extreme', tooltip: 'Extreme stellar radiation output. Comparable to a massive O-type star or active stellar remnant.' };
-  }
 
   function getBeltDensityDescription(massKg: number): { text: string, color: string } {
       const massEarths = massKg / EARTH_MASS_KG;
@@ -618,7 +666,7 @@
                 {/if}
                 {#if densityRelative !== null && !isStar}
                     <div class="detail-item g-bulk">
-                        <span class="label">Density (rel. to Earth)</span>
+                        <span class="label">Density (rel. to Earth){#if isPinned('densityGcm3')} <span class="ovr-flag inline">OVERRIDDEN</span>{/if}</span>
                         <span class="value">{densityRelative.toFixed(2)}</span>
                     </div>
                 {/if}
@@ -692,7 +740,7 @@
           </div>
       {:else if surfaceTempMeanK !== null}
           <div class="detail-item g-climate" title={tempTooltip}>
-              <span class="label">Avg. Surface Temp.</span>
+              <span class="label">Avg. Surface Temp.{#if isPinned('surfaceTempK')} <span class="ovr-flag inline">OVERRIDDEN</span>{/if}</span>
               <span class="value"><UnitValue quantity="temperature" bodyType={ubt} value={surfaceTempMeanK} /></span>
               {#if body.temperatureProfile && (body.temperatureProfile.totalMaxK - body.temperatureProfile.totalMinK) > 5}
                   {@const p = body.temperatureProfile}
@@ -730,8 +778,38 @@
 
       {#if body.roleHint === 'star' && radiationLevel}
           <div class="detail-item g-hazard" title={radiationTooltip}>
-              <span class="label">Radiation Level</span>
+              <span class="label">Magnetic activity (ionising)</span>
               <span class="value">{radiationLevel}</span>
+              {#if isPinned('flareActivity')}<span class="ovr-flag">OVERRIDDEN</span>{/if}
+          </div>
+      {/if}
+
+      {#if starIonisingSolar !== null}
+          <div class="detail-item g-hazard" title="The star's output in ionising light — extreme ultraviolet and X-rays — in MULTIPLES OF THE QUIET SUN'S, which is the frame a GM can reason in (‘forty times the Sun’s’ rather than a number in watts). Derived from its luminosity and its magnetic activity. This is the part that strips atmospheres and sterilises surfaces; it is NOT what makes the star bright.">
+              <span class="label">Ionising output</span>
+              <span class="value">{starIonisingSolar.toExponential(2)} × Sun</span>
+              {#if isPinned('flareActivity')}<span class="ovr-flag">FROM AN OVERRIDE</span>{/if}
+          </div>
+      {/if}
+
+      {#if starHabitableZone}
+          <div class="detail-item g-climate" title="The conservative habitable zone: from the runaway-greenhouse edge to the maximum-greenhouse edge (Kopparapu-style), for THIS star's temperature and luminosity. A world inside it can hold liquid water given a reasonable atmosphere — it is a statement about the starlight arriving, not a promise about the world.">
+              <span class="label">Habitable zone</span>
+              <span class="value">{starHabitableZone.inner.toFixed(2)} – {starHabitableZone.outer.toFixed(2)} AU</span>
+          </div>
+      {/if}
+
+      {#if starFrostLineAU !== null}
+          <div class="detail-item g-climate" title="Where water ice survives on an airless surface today (the 125 K line). Inside it, ice sublimates away; outside, a body can keep it — which is why the outer system is icy and the inner system is not.">
+              <span class="label">Frost line</span>
+              <span class="value">{starFrostLineAU.toFixed(2)} AU</span>
+          </div>
+      {/if}
+
+      {#if starKillZoneAU !== null}
+          <div class="detail-item g-hazard" title="Inside this radius the star's damaging ultraviolet is strong enough to sterilise an unshielded surface. A hot, bright star can sterilise its own habitable zone — which is exactly the kind of world worth pointing players at.">
+              <span class="label">UV kill zone</span>
+              <span class="value">within {starKillZoneAU.toFixed(2)} AU</span>
           </div>
       {/if}
 
@@ -739,6 +817,7 @@
           <div class="detail-item g-hazard" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
               <span class="label">Magnetic Field</span>
               <span class="value">{formatGauss(body.magneticField.strengthGauss)} G</span>
+              {#if isPinned('magneticFieldGauss')}<span class="ovr-flag">OVERRIDDEN</span>{/if}
           </div>
       {/if}
 
@@ -922,6 +1001,16 @@
       grid-column: 1 / -1;
       border-left-color: var(--accent, #ff5a1f);
   }
+  /* Deliberately loud and deliberately small: a GM scanning the card should see at a glance that a
+     figure is theirs rather than the engine's, without it shouting over the number itself. */
+  .ovr-flag {
+      font-size: 0.6em;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+      color: #d08a4a;
+      margin-top: 2px;
+  }
+  .ovr-flag.inline { margin-top: 0; margin-left: 4px; }
   .ovr-badge {
       display: inline-block; font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.03em;
       color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px;
