@@ -96,6 +96,17 @@ export function computePlayerSnapshot(sys: System, _scopeRootId?: ID): System {
       // wire whatever the preset says, so anyone reading the raw broadcast has it. If that ever needs
       // to stop being true, the strip belongs back here — but do not reinstate it without being asked.
 
+      // THE ANOMALY ASSIGNMENTS ARE GM BOOKKEEPING AND NEVER TRAVEL (G37). The pinned VALUES do —
+      // a world really is 1100 K and the players are looking at the consequences — but the map from
+      // override to stated reason is the GM's own note, and a SECRET reason is redacted out of
+      // `tags` a few lines above while still being named here. Stripping the whole map rather than
+      // the secret entries keeps this one statement instead of two rules that could disagree.
+      const ovr = (node as any).overrides;
+      if (ovr && ovr.anomalies) {
+        delete ovr.anomalies;
+        if (Object.keys(ovr).length === 0) delete (node as any).overrides;
+      }
+
       // Handle Description Hiding
       if ((node as any).description_playerhidden) {
           delete (node as any).description;

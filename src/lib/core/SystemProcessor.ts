@@ -1,5 +1,5 @@
 import type { ISystemProcessor } from './interfaces';
-import type { System, RulePack, CelestialBody, Barycenter, SurfaceSpectrumCurves } from '../types';
+import type { System, RulePack, CelestialBody, Barycenter, SurfaceSpectrumCurves, Tag } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
 import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket, radiationPlace } from '../physics/radiation';
@@ -77,7 +77,8 @@ const LEGACY_DUPLICATE_TAGS = new Set<string>([
 import { SeededRNG } from '../rng';
 // The one authority on which tags a re-derive pass may delete. Every strip below goes through it, so
 // a hand-added tag survives the pass that would otherwise have silently deleted it.
-import { stripForReprocess, survivesRederive, emit } from '../tags/tagLifecycle';
+import { stripForReprocess, survivesRederive, emit, canonicalTagKey } from '../tags/tagLifecycle';
+import { OVERRIDE_DEFS } from '../physics/overrides';
 import { annotateGravitationalStability } from '../physics/stability';
 import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
@@ -261,7 +262,68 @@ export class SystemProcessor implements ISystemProcessor {
         //    science/frontier/intrigue hooks (config-gated; reads the reasonsConfig store).
         annotateReasonsToVisit(processedSystem);
 
+        // 7. ANOMALY pass (G37) — the GM's stated REASON for each value they have pinned, published
+        //    as a tag so a player can see WHAT is odd about a world rather than only that something
+        //    is. Last, because the tag's value names the overrides it accounts for and nothing else
+        //    reads it; and per body rather than per system, because an anomaly belongs to a place.
+        for (const node of allNodes) {
+            if (node.kind === 'body') this.applyAnomalyTags(node as CelestialBody);
+        }
+
         return processedSystem;
+    }
+
+    /**
+     * Publish `anomaly/*` from `body.overrides.anomalies` — the GM's stated reason for each pin.
+     *
+     * DERIVED EVERY PASS FROM AUTHORED DATA, which is what keeps it idempotent: the assignment map is
+     * saved, the tag is not, and re-running the processor rebuilds exactly the same tags.
+     *
+     * THE VALUE IS THE FEATURE, and it is the owner's ask in so many words: "the tag really needs to
+     * be informative as to what it is impacting so players can see WHAT is anomalous". So one reason
+     * used for several pins produces ONE tag naming all of them — `Alien Technology: Magnetosphere,
+     * Surface temperature` — rather than a bare label that says only that something is wrong.
+     *
+     * THE CLEAR IS IN TWO PARTS, and both are needed (TAG-6: one clear, at the top of the pass that
+     * owns the namespace).
+     *
+     *   1. `stripForReprocess` over the whole `anomaly/` namespace removes what THIS pass emitted
+     *      last time and spares a hand-added `anomaly/legend` the GM put on the Tags tab with no
+     *      override behind it — a legitimate thing to want, which the program does not stop. Without
+     *      this half, resetting the last override on a body leaves its reason tag stranded, because
+     *      there would be no bound key left to strip it by. A test caught exactly that.
+     *   2. A manual TWIN of a bound key is removed as well, or the guard that spares hand-added tags
+     *      would keep the bare `anomaly/magic` and this pass's informative one would never be added.
+     *      The binding is the more specific statement and it came from the same GM.
+     */
+    private applyAnomalyTags(body: CelestialBody) {
+        const assignments = body.overrides?.anomalies;
+        // Which quantities each reason is accounting for, in roster order so the list is stable.
+        const quantities = new Map<string, string[]>();
+        for (const def of OVERRIDE_DEFS) {
+            const a = assignments?.[def.key];
+            // A reason only counts while the override it explains is still pinned. Reset deletes the
+            // assignment (`clearOverride`), so this is a belt-and-braces guard against a hand-edited
+            // save, not a second lifecycle.
+            if (!a?.tag || (body.overrides as Record<string, unknown> | undefined)?.[def.key] === undefined) continue;
+            const key = canonicalTagKey(a.tag);
+            if (!quantities.has(key)) quantities.set(key, []);
+            quantities.get(key)!.push(def.label);
+        }
+        const bound = new Set(quantities.keys());
+        body.tags = stripForReprocess(body.tags, ['anomaly/'])
+            .filter((t) => !bound.has(canonicalTagKey(t.key)));
+        if (!bound.size) return;
+        for (const [key, labels] of quantities) {
+            const secret = OVERRIDE_DEFS.some((d) => {
+                const a = assignments?.[d.key];
+                return a && canonicalTagKey(a.tag) === key && a.secret;
+            });
+            // SECRET IS PER ASSIGNMENT and any secret assignment makes the whole tag secret: the tag
+            // is one object on the body, and half-redacting it would tell the player the reason while
+            // hiding which pin it covers, which is the wrong half to keep.
+            body.tags.push({ key, value: labels.join(', '), ...(secret ? { secret: true } : {}) } as Tag);
+        }
     }
 
     private processBarycenters(system: System) {

@@ -327,6 +327,22 @@ BLAST: a new override is a RECORD, never a new row of UI. A new surface reads th
 literal. NEVER CLAMP TO `plausible()` — it produces a sentence, not a limit; the house rule is that a
 figure which breaks physics is kept and labelled, and only the finite `hard` pair applies.
 
+### OVR-3 An anomaly tag is DERIVED from an authored assignment, and its clear has two parts
+WHERE: `SystemProcessor.applyAnomalyTags` (pass 7); `body.overrides.anomalies`; the category seed in
+`tags/tagDefaults.ANOMALY_CATEGORY_SEED`.
+RULE: the ASSIGNMENT (override key -> anomaly tag) is authored and saved; the `anomaly/*` TAG is
+re-emitted from it every pass and is stripped on load like any derived tag. The tag's VALUE is the
+list of overrides it accounts for, in roster order — that list is the feature, not decoration. The
+clear is BOTH `stripForReprocess(['anomaly/'])` AND a removal of any manual twin of a bound key:
+the first is what lets a reset leave no orphan behind, the second is what stops `emit`'s duplicate
+guard from keeping a bare hand-added twin and dropping the informative one.
+WHY: with only the bound-key removal, resetting the LAST override on a body left its reason tag
+stranded for ever — there was no bound key left to strip it by. Caught by a test, not by reading.
+BLAST: a hand-added `anomaly/*` with no override behind it is a legitimate GM tag and must survive
+(it is `manual`, so `survivesRederive` spares it in both the pass and the load-path strip). The
+assignment map is GM bookkeeping and is deleted wholesale in `computePlayerSnapshot` — a secret
+reason is redacted out of `tags` but would still be named in plain text there.
+
 ### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
 WHERE: `overrides.ts` — the `commit` on the `gasThermalInflation` record; `BodyBasicsTab.effInflation`.
 RULE: inflation sizes a body at GENERATION and `radiusKm` is authored thereafter, so pinning it has

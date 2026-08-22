@@ -13,6 +13,7 @@
 
 import type { CelestialBody, System } from '$lib/types';
 import type { StarmapShell } from './starmapUndo';
+import { overrideDef, type OverrideKey } from '$lib/physics/overrides';
 
 /** Only where the honest word differs from the field name. Everything else is humanised below. */
 const PHRASE: Record<string, string> = {
@@ -46,6 +47,28 @@ function humanise(key: string): string {
 
 function nameOf(node: { name?: string; id: string }): string {
   return node.name || 'a body';
+}
+
+/**
+ * "Overrides of Callisto" is true and useless — a GM who pinned one figure among eight wants to know
+ * WHICH. `body.overrides` is a bag of unrelated quantities under one field name, so the humanised
+ * field name stops short of the thing that changed; this looks one level in (G37).
+ *
+ * The labels come from the roster, so the word on the undo tooltip is the word on the tab and on the
+ * info-panel badge. Returns '' when it cannot tell, which the caller already handles.
+ */
+function describeOverrideChange(before: unknown, after: unknown): string {
+  const a = (before ?? {}) as Record<string, unknown>;
+  const b = (after ?? {}) as Record<string, unknown>;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const moved: string[] = [];
+  for (const k of keys) {
+    if (JSON.stringify(a[k]) === JSON.stringify(b[k])) continue;
+    // The stated REASON is its own kind of edit, and it reads better than "anomalies".
+    if (k === 'anomalies') { moved.push('anomaly'); continue; }
+    moved.push((overrideDef(k as OverrideKey)?.label ?? humanise(k)).toLowerCase());
+  }
+  return moved.length && moved.length <= 3 ? join(moved) : '';
 }
 
 /** A list a person would say out loud: "a, b and c". */
@@ -116,6 +139,14 @@ export function describeSystemChange(before: System | null, after: System | null
     // values that only look authored. Counting them would put "9 changes to Earth" on a tooltip for
     // a single slider drag - alarming, and false. "Edit to Earth" is exactly true either way.
     if (fields.length > 3) return `Edit to ${name}`;
+    // A pin, a drag or a reset on the Overrides tab. Named one level deeper than the field, because
+    // `overrides` is a bag of unrelated quantities and the field name alone says nothing.
+    if (fields.length === 1 && fields[0] === 'overrides') {
+      const beforeNode = beforeNodes.get(named.id) as CelestialBody | undefined;
+      const afterNode = afterNodes.get(named.id) as CelestialBody | undefined;
+      const what = describeOverrideChange(beforeNode?.overrides, afterNode?.overrides);
+      if (what) return `Override: ${what} of ${name}`;
+    }
     return sentenceCase(`${join(fields.map(humanise))} of ${name}`);
   }
   if (touched.length > 1) return `Edits to ${touched.length} bodies`;

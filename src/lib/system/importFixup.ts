@@ -76,7 +76,12 @@ const DERIVED_TAG_PREFIXES = [
   'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/', 'shape/', 'aurora/', 'thermal/',
   'resonance/', 'fate/', 'volatiles/', 'surface/',  // re-derived every run (resonance/stability/volatile/surface-age passes)
   'hazard/',  // B82: hazard/radiation, hazard/orbital-radiation and hazard/flaring are all written by the processor
-  'stellar/'  // G26: stellar/activity, stellar/jets and stellar/shedding — the star pass writes all three every run
+  'stellar/',  // G26: stellar/activity, stellar/jets and stellar/shedding — the star pass writes all three every run
+  // G37: `anomaly/*` is re-emitted every pass from `overrides.anomalies`, which IS authored and IS
+  // saved — so the tag itself is a fossil in a file. The filter at the call site runs
+  // `survivesRederive` first, which is what keeps a hand-added `anomaly/legend` with no override
+  // behind it: that one is manual, and nothing re-creates it.
+  'anomaly/'
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([

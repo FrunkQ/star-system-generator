@@ -19,7 +19,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { registerPoiCategories, registerPoiTags } from './tagPresentation';
 import { canonicalTagKey, tagSlugSegment, registerCategoryProvenance, registerOverridableNamespaces, type TagOrigin } from './tagLifecycle';
-import { ENGINE_NAMESPACES, DEFAULT_COI_CATEGORIES, DEFAULT_POI_PACK, REASONS_DEFAULTS } from './tagDefaults';
+import { ENGINE_NAMESPACES, DEFAULT_COI_CATEGORIES, DEFAULT_POI_PACK, REASONS_DEFAULTS, ANOMALY_CATEGORY_SEED } from './tagDefaults';
 import type { PoIExpr, PoIRole } from '../physics/reasonsToVisit';
 
 export type TagRole = PoIRole;
@@ -87,7 +87,7 @@ export interface TagCategory {
 // The categories the engine matches by slug. Deleting one breaks something that reports no error:
 // resource/frontier feed mining and refuelling, purpose drives leg inference, drive confers FTL,
 // status gates movement, owner sets tardiness, class is read by the template picker.
-export const SYSTEM_CATEGORY_IDS = ['status', 'owner', 'purpose', 'resource', 'class', 'drive', 'frontier'] as const;
+export const SYSTEM_CATEGORY_IDS = ['status', 'owner', 'purpose', 'resource', 'class', 'drive', 'frontier', 'anomaly'] as const;
 export const isSystemCategory = (id: string): boolean => (SYSTEM_CATEGORY_IDS as readonly string[]).includes(id);
 
 const STORE_KEY = 'tag-categories';
@@ -195,6 +195,11 @@ export function migrateLegacyCategories(
   return normalizeTagCategories([...out.values()]);
 }
 
+/** Full definitions for system categories the legacy migration cannot produce. See the loop below. */
+const SYSTEM_CATEGORY_SEEDS: Record<string, TagCategory> = {
+  anomaly: { ...ANOMALY_CATEGORY_SEED, appliesTo: [...ANOMALY_CATEGORY_SEED.appliesTo], rules: [] } as TagCategory
+};
+
 /**
  * Enforce what the engine needs: every system category exists and is undeletable, system categories
  * sort first, and every tag key is canonical. Does NOT force `enabled` — see the header.
@@ -206,7 +211,16 @@ export function normalizeTagCategories(cats: TagCategory[]): TagCategory[] {
   for (const id of SYSTEM_CATEGORY_IDS) {
     let c = byId.get(id);
     if (!c) {
-      c = { id, shortName: id, longName: id, color: '#888888', appliesTo: ['construct'], enabled: true, tags: [], rules: [] };
+      // A SEED, when there is one to use. `anomaly` (G37) is the first system category the legacy
+      // migration cannot produce - nothing in the CoI or PoI stores ever held it - so it is created
+      // here, on the load path, which is also how an EXISTING user's saved set gains it. ONLY on
+      // creation: a GM who deletes a seed tag they do not want must not get it back on the next
+      // load. `enabled` is set here for the same reason it is nowhere else - a brand new category
+      // has no saved preference to override (TAG-12).
+      const seed = SYSTEM_CATEGORY_SEEDS[id];
+      c = seed
+        ? { ...seed, tags: seed.tags.map((t) => ({ ...t })), rules: [] }
+        : { id, shortName: id, longName: id, color: '#888888', appliesTo: ['construct'], enabled: true, tags: [], rules: [] };
       out.push(c); byId.set(id, c);
     }
     c.system = true;
@@ -285,7 +299,7 @@ tagCategories.subscribe((cats) => {
     ...ENGINE_NAMESPACES.map((n) => ({ id: n.id, provenance: n.provenance as TagOrigin })),
     ...cats.filter((c) => c.provenance).map((c) => ({ id: c.id, provenance: c.provenance }))
   ]);
-  registerOverridableNamespaces(ENGINE_NAMESPACES.filter((n) => n.provenance === 'physics'));
+  registerOverridableNamespaces(ENGINE_NAMESPACES.filter((n) => n.provenance === 'physics' && n.overridable !== false));
 });
 
 tagCategories.subscribe((cats) => {

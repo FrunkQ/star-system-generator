@@ -15,8 +15,10 @@
   import type { CelestialBody } from '$lib/types';
   import {
     overrideDefsFor, overrideStatus, formatOverrideValue, setOverride, clearOverride,
-    type OverrideDef
+    type OverrideDef, type OverrideKey
   } from '$lib/physics/overrides';
+  import { tagCategories, addTagToCategory } from '$lib/tags/tagCategories';
+  import { describeTag } from '$lib/tags/tagPresentation';
 
   export let body: CelestialBody;
 
@@ -47,6 +49,47 @@
     body = body;
   }
   const commit = () => dispatch('update');
+
+  // ── The ANOMALY binding: the GM's stated REASON for a pin. ──────────────────────────────────────
+  // A tag DEFINITION lives in the Anomaly category and survives everything; an ASSIGNMENT lives on
+  // the override and dies with it (`clearOverride`). The picker is here rather than on the Tags tab
+  // because the reason only means anything beside the thing it is explaining.
+  $: anomalyCat = $tagCategories.find((c) => c.id === 'anomaly');
+  $: anomalyTags = (anomalyCat?.tags ?? []).slice().sort((a, b) => a.label.localeCompare(b.label));
+  const assignmentFor = (b: CelestialBody, key: OverrideKey) => b.overrides?.anomalies?.[key];
+
+  function setAnomaly(key: OverrideKey, tag: string) {
+    if (!body.overrides) return;
+    if (!tag) {
+      const map = body.overrides.anomalies;
+      if (map) { delete map[key]; if (!Object.keys(map).length) delete body.overrides.anomalies; }
+    } else {
+      body.overrides.anomalies = body.overrides.anomalies || {};
+      const was = body.overrides.anomalies[key];
+      body.overrides.anomalies[key] = { tag, ...(was?.secret ? { secret: true } : {}) };
+    }
+    body = body;
+    dispatch('update');
+  }
+  function toggleAnomalySecret(key: OverrideKey) {
+    const a = body.overrides?.anomalies?.[key];
+    if (!a) return;
+    if (a.secret) delete a.secret; else a.secret = true;
+    body = body;
+    dispatch('update');
+  }
+
+  // Add-your-own, in place. The Anomaly category is a category like any other, so this is the same
+  // mutator the tagging settings use — not a second way to define a tag.
+  let newAnomalyFor: OverrideKey | null = null;
+  let newAnomalyName = '';
+  function addAnomaly(key: OverrideKey) {
+    const label = newAnomalyName.trim();
+    if (!label) return;
+    const added = addTagToCategory('anomaly', label);
+    if (added) setAnomaly(key, added);
+    newAnomalyName = ''; newAnomalyFor = null;
+  }
 
   // A log slider maps its travel onto the DECADES between the soft bounds, so a field strength or a
   // pressure is draggable across the range where it actually varies. The zero end is the floor of the
@@ -115,6 +158,32 @@
         {#if r.warning}
           <p class="warn" role="status">{r.warning}</p>
         {/if}
+
+        {#key r.def.key}
+          {@const a = assignmentFor(body, r.def.key)}
+          <div class="anomaly-row">
+            <label class="anom-lbl" for="anom-{r.def.key}">Because…</label>
+            <select id="anom-{r.def.key}" value={a?.tag ?? ''} on:change={(e) => setAnomaly(r.def.key, e.currentTarget.value)}>
+              <option value="">(no reason given — players see nothing)</option>
+              {#each anomalyTags as t (t.key)}<option value={t.key}>{t.label}</option>{/each}
+            </select>
+            {#if a?.tag}
+              {@const info = describeTag(a.tag)}
+              <span class="anom-chip" style="background:{info.color}; color:{info.textColor || '#fff'}" title={info.description}>{info.label}</span>
+              <button type="button" class="link-btn" on:click={() => toggleAnomalySecret(r.def.key)}
+                      title={a.secret ? 'Players never see this reason. Click to reveal it.' : 'Players can see this reason. Click to keep it to yourself.'}>{a.secret ? 'hidden' : 'hide'}</button>
+            {:else}
+              <button type="button" class="link-btn" on:click={() => { newAnomalyFor = newAnomalyFor === r.def.key ? null : r.def.key; newAnomalyName = ''; }}>new…</button>
+            {/if}
+          </div>
+          {#if newAnomalyFor === r.def.key}
+            <div class="anomaly-new">
+              <input type="text" bind:value={newAnomalyName} placeholder="e.g. Tomb of the First Engineers"
+                     on:keydown={(e) => { if (e.key === 'Enter') addAnomaly(r.def.key); }} />
+              <button type="button" class="link-btn" on:click={() => addAnomaly(r.def.key)} disabled={!newAnomalyName.trim()}>Add to Anomaly</button>
+            </div>
+          {/if}
+        {/key}
       {/if}
 
       <p class="hint">{r.def.hint}</p>
@@ -161,6 +230,21 @@
     border-left: 2px solid #d08a4a; padding-left: 6px;
   }
   .hint { margin: 0; font-size: 0.68em; color: var(--text-faint); line-height: 1.35; }
+  .anomaly-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .anom-lbl { font-size: 0.68em; color: var(--text-faint); }
+  .anomaly-row select {
+    flex: 1; min-width: 120px; padding: 4px 6px; border-radius: 4px; font-size: 0.75em;
+    border: 1px solid var(--border); background: var(--bg-control); color: var(--text);
+  }
+  .anom-chip {
+    border-radius: var(--tag-pill-radius); padding: var(--tag-pill-pad-y) var(--tag-pill-pad-x);
+    font-size: var(--tag-pill-font-size);
+  }
+  .anomaly-new { display: flex; align-items: center; gap: 6px; }
+  .anomaly-new input {
+    flex: 1; min-width: 0; padding: 4px 6px; border-radius: 4px; font-size: 0.75em;
+    border: 1px solid var(--border); background: var(--bg-control); color: var(--text);
+  }
   .link-btn {
     background: none; border: none; padding: 0; cursor: pointer;
     color: var(--link, #6aa0d8); font-size: 0.7em;

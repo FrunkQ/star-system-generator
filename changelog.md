@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.5 - 22nd Aug 2026
+
+- **NEW: say WHY a world breaks the physics.** A new tag category, Anomaly, holds the excuses: Unknown Origin, Alien Technology, Alien Biosphere, Subsurface Structure, Unobtanium, Magic, Precursor Engineering, Exotic Matter, Divine Will, Nanite Ecology, Reality Fault, Experimental Terraforming - and any you invent, added right there on the row. Each override you pin can be given one as its reason, and several overrides can share one.
+- The tag your players see says what is actually odd. Not a bare "Alien Technology" but "Alien Technology: Magnetosphere, Surface temperature" - so a reading that looks wrong points at the thing that is wrong with it. A reason can be kept secret on its own, or the whole category hidden from players; an override with no reason given shows players nothing at all.
+- Reset an override and its reason goes with it. The tag itself stays in the category for next time.
+- Undo now names which override it is about to take back rather than saying "overrides".
+
 ## v3.0.4 - 22nd Aug 2026
 
 - **NEW: an Overrides tab on every body and star.** Everything you can pin by hand now sits in one place, after Tags: the albedo, the radiogenic heat, a gas giant's puffiness, a planet's magnetosphere, and - for the first time with a control at all - a star's magnetic activity. Each row shows what you pinned, what the physics would have said, a slider for the ordinary range, a box for figures well outside it, and Reset to calculated. Nothing is refused: a value the physics cannot account for is kept, saved and labelled with a plain sentence saying what is wrong with it. The magnetosphere is now a reading on the Atmo/Mag tab and inflation a reading on Composition; both are pinned on the new tab.
