@@ -152,14 +152,25 @@
     border-radius: 5px;
     overflow: hidden;
   }
+  /* TOP-LEFT, away from the view pills: at top-right it sat directly on them (owner, 2026-08-22).
+     Safe here because the toggle only exists in photo view, which has no scene picker of its own —
+     the collision that once chased the PILLS out of this corner cannot reach it. */
   .fit-toggle {
-    position: absolute; top: 6px; right: 6px; z-index: 2;
+    position: absolute; top: 6px; left: 6px; z-index: 2;
     display: flex; align-items: center; justify-content: center;
     width: 26px; height: 26px; border-radius: 5px; border: 1px solid #ffffff33;
     background: #0009; color: #dfe7f2; cursor: pointer;
-    opacity: 0; transition: opacity 120ms ease;
   }
-  .planet-image-container:hover .fit-toggle, .fit-toggle:focus-visible { opacity: 1; }
+  /* EVERY control is an overlay on the art, so none of them shows until the pointer is over the
+     picture (or focus is inside it) — an uninterrupted view is the resting state. Opacity only:
+     the panes' top padding still clears the pills, and nothing moves on reveal. A coarse pointer
+     has no hover, so there the controls stay visible — hidden would mean unreachable. */
+  .fit-toggle, .view-pills, .info-pill, .pic-grip { opacity: 0; transition: opacity 120ms ease; }
+  .planet-image-container:hover :is(.fit-toggle, .view-pills, .info-pill, .pic-grip),
+  .planet-image-container:focus-within :is(.fit-toggle, .view-pills, .info-pill, .pic-grip) { opacity: 1; }
+  @media (pointer: coarse) {
+    .fit-toggle, .view-pills, .info-pill, .pic-grip { opacity: 1; }
+  }
   .pic-grip {
     position: absolute; left: 0; right: 0; bottom: 0; height: 8px; z-index: 2;
     cursor: ns-resize; touch-action: none;

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.12 - 22nd Aug 2026
+
+- The body picture keeps out of its own way: the slice/whole toggle moves to the top-left corner (it sat on the view pills), and every control on the picture - toggle, view pills, More information, the resize grip - now appears only while the mouse is over it. Touch screens keep them visible, since there is no hover to reveal them.
+
 ## v3.0.11 - 22nd Aug 2026
 
 - **Two ways a pinned value could quietly undo itself, found and fixed.** Hollow out a heavy rocky world and the engine used to "correct" its composition to gas on the next pass - reading the low density back into the rock and throwing your composition away for good. It no longer argues: a pinned density means you meant it. And pinning an atmospheric pressure on a world that erodes its air recorded your pinned figure as that world's ORIGINAL atmosphere, so the real one was lost from every save. The baseline is now captured before the pin can touch it.
