@@ -22,6 +22,8 @@
   import { stellarActivityBucket } from '$lib/physics/stellarActivity';
   import { bodyIonisingOutputSolar } from '$lib/physics/ionisingOutput';
   import { calculateGoldilocksZone, calculateFrostLine, calculateKillZone } from '$lib/physics/zones';
+  import { activityFromFieldExcess, saturationFieldGauss } from '$lib/physics/ionisingOutput';
+  import { starStatTemplate } from '$lib/generation/star';
   import { activeOverrides as listActiveOverrides, formatOverrideValue } from '$lib/physics/overrides';
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
   import { radiationPlace } from '$lib/catalogue/bodyFacts';
@@ -134,6 +136,8 @@
   let starFrostLineAU: number | null = null;
   let starKillZoneAU: number | null = null;
   let starIonisingSolar: number | null = null;
+  let starFieldRole: string | null = null;
+  let starFieldTooltip = '';
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
   let orbitalDistanceKm: number | null = null;
@@ -178,6 +182,7 @@
     massKgShown = null;
     radiationLevel = null;
     starHabitableZone = null; starFrostLineAU = null; starKillZoneAU = null; starIonisingSolar = null;
+    starFieldRole = null; starFieldTooltip = '';
     orbitalDistanceKm = null;
     orbitalDistanceTooltip = null;
     circumferenceKm = null;
@@ -364,11 +369,59 @@
             const kill = calculateKillZone(body, rulePack);
             starKillZoneAU = kill > 0 ? kill : null;
 
+            // WHAT THE FIELD IS CURRENTLY DOING, which is not the same question as what it is.
+            //
+            // A star's field is AUTHORED (the star editor writes it; the processor never re-derives
+            // it, unlike a planet's) and it has two live consumers: it can RAISE the magnetic
+            // activity, and it sets the jets and the shed wind (`stellarOutflows.starJetBucket`).
+            // But it raises the activity only through `activityFromFieldExcess`, which is a LOG
+            // EXCESS over the class's typical strength — a star sitting in its own band contributes
+            // exactly zero, and it takes two decades above the norm to reach the ceiling.
+            //
+            // So on an ordinary star the card looks inert, and on a star whose activity has been
+            // PINNED it is inert for a second reason: the pin overrules the field-driven figure
+            // outright. Neither is a stale panel and neither makes the field redundant — but a card
+            // that shows a live input without saying whether it is currently driving anything
+            // invites exactly the question "is this a throwback?". So it answers it.
+            const typicalPair = (starStatTemplate(rulePack, body.classes?.[0] ?? '')?.mag_gauss ?? []) as number[];
+            const typicalGauss = typicalPair.length === 2 ? (typicalPair[0] + typicalPair[1]) / 2 : undefined;
+            const fieldGauss = body.magneticField?.strengthGauss;
+            const fieldDriven = activityFromFieldExcess(fieldGauss, typicalGauss);
+            const satGauss = saturationFieldGauss({
+                radiusSolar: body.radiusKm ? body.radiusKm / SOLAR_RADIUS_KM : undefined,
+                massSolar: body.massKg ? body.massKg / SOLAR_MASS_KG : undefined,
+                tempK: body.temperatureK,
+                luminositySolar: body.radiationOutput
+            });
+            const typicalWords = typicalGauss ? `${formatGauss(typicalGauss)} G` : 'its class norm';
+
             const starActivity = (body as any).flareActivity as number | undefined;
             const ionisingSolar = bodyIonisingOutputSolar(body);
             starIonisingSolar = ionisingSolar ?? null;
             const activityPinned = typeof body.overrides?.flareActivity === 'number';
             radiationLevel = `${stellarActivityBucket(starActivity).replace('-', ' ')} (${(starActivity ?? 0).toFixed(2)})`;
+
+            starFieldRole = activityPinned
+                ? 'not driving the activity — that is pinned'
+                : fieldDriven > 0
+                    ? 'raising the activity above'
+                    : 'at this class’s typical strength';
+            starFieldTooltip =
+                'A star\'s surface field. AUTHORED, not derived: you set it on the star editor and the'
+                + ' engine never recomputes it (a planet\'s is the other way round, which is why the same'
+                + ' card means different things on the two).'
+                + NL + NL + `This class typically runs about ${typicalWords}.`
+                + (activityPinned
+                    ? NL + 'It is NOT feeding the magnetic activity at the moment, because that is pinned'
+                      + ' on the Overrides tab and a pin overrules the field. It still sets the jets and'
+                      + ' the shed wind.'
+                    : fieldDriven > 0
+                        ? NL + `It is wound above that, which is what is raising the activity (+${fieldDriven.toFixed(2)}).`
+                          + ' Two decades above the norm reaches the ceiling.'
+                        : NL + 'Sitting in its own band, so it adds NOTHING to the activity — that comes from'
+                          + ' class and age. Wind it up and it starts to; two decades above the norm reaches'
+                          + ' the ceiling. It sets the jets and the shed wind either way.')
+                + (satGauss ? NL + `Past about ${formatGauss(satGauss)} G the dynamo saturates and more field buys nothing.` : '');
             radiationTooltip =
                 "MAGNETIC ACTIVITY - the ionising half of this star's output: flares, X-rays and the"
                 + ' particle wind. It is set by the dynamo, NOT by brightness, and the two genuinely'
@@ -814,10 +867,12 @@
       {/if}
 
       {#if body.magneticField}
-          <div class="detail-item g-hazard" title="Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.">
+          <div class="detail-item g-hazard"
+               title={isStar ? starFieldTooltip : 'Magnetic field strength in Gauss. A value > 1 is strong enough to offer significant protection from stellar radiation.'}>
               <span class="label">Magnetic Field</span>
               <span class="value">{formatGauss(body.magneticField.strengthGauss)} G</span>
               {#if isPinned('magneticFieldGauss')}<span class="ovr-flag">OVERRIDDEN</span>{/if}
+              {#if isStar && starFieldRole}<span class="role-note">{starFieldRole}</span>{/if}
           </div>
       {/if}
 
@@ -1011,6 +1066,8 @@
       margin-top: 2px;
   }
   .ovr-flag.inline { margin-top: 0; margin-left: 4px; }
+  /* What a live input is currently DOING, when that is not obvious from the number. */
+  .role-note { font-size: 0.66em; color: var(--text-faint); margin-top: 2px; line-height: 1.25; }
   .ovr-badge {
       display: inline-block; font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.03em;
       color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px;

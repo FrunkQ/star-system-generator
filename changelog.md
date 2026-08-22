@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.15 - 22nd Aug 2026
+
+- **A star's magnetic field card now says what it is actually doing.** It looked inert, and for two different reasons: a star sitting at its class's typical field strength adds nothing to its magnetic activity (it takes about two decades above the norm to reach the ceiling), and a GM-pinned activity overrules the field entirely. Neither means the field is doing nothing - it still sets the jets and the shed wind. The card says which of those three states it is in, and the tooltip gives the class-typical strength and the field beyond which the dynamo saturates and more buys nothing.
+
 ## v3.0.14 - 22nd Aug 2026
 
 - **A star's panel was reporting its brightness as its radiation, and that is fixed.** "Radiation Level" read the star's luminosity - so Sol said "Low (1.00)", it repeated the Luminosity card below it, and it was the one number that could never move when you wound the star's magnetic field up. It now shows MAGNETIC ACTIVITY: the ionising half of the output - flares, X-rays, the particle wind - which is what the field actually drives and what reaches a planet as a dose.
