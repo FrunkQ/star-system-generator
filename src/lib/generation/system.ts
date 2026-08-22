@@ -39,7 +39,6 @@ export function generateSystem(seed: string, pack: RulePack, __opts: Partial<Gen
       tags: [],
       toytownFactor: initialToytownFactor,
       visualScalingMultiplier: 0.5,
-      isManuallyEdited: false,
   };
   
   // 3. Process Physics (The "Breath of Life" phase)

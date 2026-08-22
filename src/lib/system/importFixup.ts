@@ -66,7 +66,7 @@ export const NOT_STRIPPED: Record<string, string> = {
   image: 'CONDITIONAL below: a GM upload sets image.custom and is authored; a type image is derived.',
   classes: 'HANDLED SEPARATELY below: cleared, except a star spectral class or a GM-pinned type.',
   tags: 'HANDLED SEPARATELY below by namespace. On a CONSTRUCT the processor only writes an empty [].',
-  magneticField: 'CONDITIONAL below: authored for a star and for a GM manual field; derived otherwise.',
+  magneticField: 'CONDITIONAL below: AUTHORED for a star (never re-derived on load); derived and stripped for a planet or moon, whose GM pin lives in overrides.magneticFieldGauss (G37).',
   tidallyLocked: 'CONDITIONAL below: derived unless the GM pinned it with tidalLockManual.',
   rotation_period_hours: 'AUTHORED: the engine rewrites it for a LOCKED body, but it is input for a spin-orbit resonance and stripping it made Mercury an eyeball world (B82).'
 };
@@ -76,7 +76,12 @@ const DERIVED_TAG_PREFIXES = [
   'geology/', 'magnetic/', 'structure/', 'tidal/', 'habitability/', 'climate/', 'stability/', 'barycenter/', 'shape/', 'aurora/', 'thermal/',
   'resonance/', 'fate/', 'volatiles/', 'surface/',  // re-derived every run (resonance/stability/volatile/surface-age passes)
   'hazard/',  // B82: hazard/radiation, hazard/orbital-radiation and hazard/flaring are all written by the processor
-  'stellar/'  // G26: stellar/activity, stellar/jets and stellar/shedding — the star pass writes all three every run
+  'stellar/',  // G26: stellar/activity, stellar/jets and stellar/shedding — the star pass writes all three every run
+  // G37: `anomaly/*` is re-emitted every pass from `overrides.anomalies`, which IS authored and IS
+  // saved — so the tag itself is a fossil in a file. The filter at the call site runs
+  // `survivesRederive` first, which is what keeps a hand-added `anomaly/legend` with no override
+  // behind it: that one is manual, and nothing re-creates it.
+  'anomaly/'
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([
@@ -135,6 +140,17 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
     body.overrides = body.overrides || {};
     body.overrides.radiogenicHeatK = legacyRadiogenic;
   }
+  // MIGRATION (G37): the magnetosphere used to carry its OWN `manual` flag rather than sitting in
+  // `body.overrides` with every other pin — two conventions for one concept, and the reason a
+  // hand-set field never appeared in the info panel's list of what the GM had overridden. Recover the
+  // flagged strength into the override; the flag itself is gone from the type.
+  const legacyMagManual = (body as { magneticField?: { manual?: boolean; strengthGauss?: number } }).magneticField;
+  if (legacyMagManual?.manual && typeof legacyMagManual.strengthGauss === 'number'
+      && body.overrides?.magneticFieldGauss == null) {
+    body.overrides = body.overrides || {};
+    body.overrides.magneticFieldGauss = legacyMagManual.strengthGauss;
+  }
+  if (legacyMagManual) delete legacyMagManual.manual;
   // MIGRATION: axial tilt had TWO field names for one quantity. `axial_tilt_deg` is the one the
   // editor, the renderers and the moon-plane rule all use; `obliquity_deg` was read only by the
   // seasonal-temperature term, and the two importers disagreed about which to write (ubox wrote only
@@ -184,12 +200,16 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
   // B82 — THE THREE THAT A FLAT LIST CANNOT EXPRESS, because each is derived for most bodies and
   // AUTHORED for some. This is why the item could not be closed by adding eight names to the list.
   //
-  // (1) A MAGNETIC FIELD is derived for a planet or moon, but it is authored twice over: a STAR's is
+  // (1) A MAGNETIC FIELD is derived for a planet or moon but AUTHORED for a STAR, whose field is
   // never re-derived on load (measured: the processor writes `magneticField` for moons and planets
-  // only), so stripping it would zero every star exactly as stripping `temperatureK` once did; and a
-  // GM can set one by hand, which `magnetism.ts` reads through `field.manual` to tell an anomalous
-  // field from a dynamo. Both of those are input; the rest is a fossil.
-  if (!isStar && !(body as any).magneticField?.manual) delete (body as any).magneticField;
+  // only) — stripping it would zero every star exactly as stripping `temperatureK` once did.
+  //
+  // G37 SIMPLIFIED THE OTHER HALF OF THIS. A GM's hand-set field used to be the second exception,
+  // carried on the field itself as `manual: true`; it now lives in `overrides.magneticFieldGauss`
+  // with every other pin, and the processor re-reads it on every pass. So on a planet or moon
+  // `magneticField` is now PURELY derived and always strippable — one fewer conditional, and the
+  // pin survives the strip because it is where the rest of the authored data already was.
+  if (!isStar) delete (body as { magneticField?: unknown }).magneticField;
 
   // (2) TIDAL LOCK is decided by the engine unless the GM pinned it (`tidalLockManual`, set by any
   // hand-set rate or lock in BodyBasicsTab).
@@ -331,6 +351,10 @@ function resolveLegacyStarClass(body: CelestialBody, pack?: RulePack): void {
 
 export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
+  // RETIRED (G37): `isManuallyEdited` was written by ~20 sites and read by NONE — the G28 undo session
+  // found it dead and `describeChange` had to filter it back out of every edit label. It is deleted on
+  // load so it stops riding every save; nothing anywhere consumed it, so nothing can miss it.
+  delete (system as { isManuallyEdited?: boolean }).isManuallyEdited;
   for (const node of system.nodes) {
     if (node.kind !== 'body') continue;
     stripBody(node as CelestialBody, classNames);

@@ -309,6 +309,132 @@ state you are in rather than assuming the pane is broken — and it is worth ask
 
 ---
 
+## OVERRIDES — what a GM pins, and where it is described
+
+### OVR-1 An override is authored INPUT, and it is described in exactly ONE place
+WHERE: `src/lib/physics/overrides.ts` `OVERRIDE_DEFS`; the shape on `types.ts` `body.overrides`.
+RULE: a key PRESENT in `body.overrides` means the GM pinned that value — it is fed into the derivation
+BEFORE the solve, never poked into derived output (PHY-1 is the guard). Every label, unit, slider
+range, absurd-but-allowed range, derived default and warning sentence comes from the roster record;
+no editor, panel or trace may restate any of them. Reset DELETES the key and its anomaly assignment.
+WHY: G37. There were four editors holding one override each — albedo and radiogenic heat in
+`BodyTemperatureTab`, thermal inflation in `BodyBasicsTab`, the magnetosphere in `BodyAtmosphereTab`
+under a convention of its OWN (`magneticField.manual`) — with four seeds, four clamps and four
+spellings of "overridden", plus a fifth key (`flareActivity`) that had no editor at all. The info
+panel's list of what the GM had pinned was hand-written and had already dropped two of them, so the
+one surface whose job is to say what the physics does not own answered "nothing" for a pinned world.
+BLAST: a new override is a RECORD, never a new row of UI. A new surface reads the roster, never a
+literal. NEVER CLAMP TO `plausible()` — it produces a sentence, not a limit; the house rule is that a
+figure which breaks physics is kept and labelled, and only the finite `hard` pair applies.
+
+### OVR-3 An anomaly tag is DERIVED from an authored assignment, and its clear has two parts
+WHERE: `SystemProcessor.applyAnomalyTags` (pass 7); `body.overrides.anomalies`; the category seed in
+`tags/tagDefaults.ANOMALY_CATEGORY_SEED`.
+RULE: the ASSIGNMENT (override key -> anomaly tag) is authored and saved; the `anomaly/*` TAG is
+re-emitted from it every pass and is stripped on load like any derived tag. The tag's VALUE is the
+list of overrides it accounts for, in roster order — that list is the feature, not decoration. The
+clear is BOTH `stripForReprocess(['anomaly/'])` AND a removal of any manual twin of a bound key:
+the first is what lets a reset leave no orphan behind, the second is what stops `emit`'s duplicate
+guard from keeping a bare hand-added twin and dropping the informative one.
+WHY: with only the bound-key removal, resetting the LAST override on a body left its reason tag
+stranded for ever — there was no bound key left to strip it by. Caught by a test, not by reading.
+BLAST: a hand-added `anomaly/*` with no override behind it is a legitimate GM tag and must survive
+(it is `manual`, so `survivesRederive` spares it in both the pass and the load-path strip). The
+assignment map is GM bookkeeping and is deleted wholesale in `computePlayerSnapshot` — a secret
+reason is redacted out of `tags` but would still be named in plain text there.
+
+### OVR-4 A pinned surface temperature needs TWO composers, because the mean falls out of the hemispheres
+WHERE: `temperature.composeBodySurfaceTemperature` (returns the pin outright) vs
+`temperature.composeModelledSurfaceTemperature` (ignores it); the two-pass `buildProfile` in
+`SystemProcessor.processEnvironment`.
+RULE: the pinned composer is what SHORT-CIRCUITS the thermal solve — the surface is invariant across
+the iteration, so the bright-condensate feedback (B5's bistable trap) is cut at its temperature link
+and the clouds, greenhouse and geology read the GM's figure. But the PROFILE must not use it: PHY-19
+says the mean falls out of the day and night sides, so a composer answering with the pin at every
+equilibrium temperature hands it two identical hemispheres and flattens the world. The profile is
+built through the MODELLED composer, its (unrounded) mean measured, and rebuilt with the composer
+scaled by `pin / thatMean`. One closed-form factor, linear in temperature — the mean of the two
+scaled hemispheres is exactly the pin, their ratio is untouched. Never an iteration toward the pin.
+WHY: three implementations were tried. Returning the pin from every compose flattened an eyeball
+world. Carrying the difference as a constant anomalous FLUX kept the swing but did NOT land on the
+pin — the mean is an arithmetic average of two fourth-roots, so a flux offset does not survive it,
+and a pin BELOW the modelled figure floored the night side at zero and came out 106 K high. Only a
+multiplicative scale is linear in the quantity being averaged.
+BLAST: `surfaceTempProfile` returns `meanExactK` beside the profile for this ONE caller —
+`profile.meanK` is rounded to a whole kelvin, which is a 4 K error on a 1100 K pin. Anything else
+reads `profile.meanK`. And an override whose pin is fed into a committed field (albedo, flare
+activity, pressure, this) cannot report its own derived default while pinned; those `derived()`
+readers return `undefined` rather than handing the pin back as the physics' answer.
+
+### OVR-5 A pinned density must NOT re-infer the composition, and must read from the HELD quantity
+WHERE: the `densityGcm3` record in `physics/overrides.ts` — its `commit`, and
+`densityOnCompositionCurve` / `curveMassMe` beside it.
+RULE: mass, radius and density are one relation with two degrees of freedom, so a density pin pins
+the SECOND and `overrides.densityHold` says which of mass and radius is the other (owner Q1, "pin
+any two"). The COMPOSITION is held, never re-inferred — the plain relation from `bodyEdit`, NOT
+`editDensity`, which also calls `makeupForGeomDensity`. And the derived default is measured from
+the HELD quantity, through the mix's own mass-radius curve.
+WHY, twice over. (1) `editDensity` re-infers the makeup, which is right for the composition editor
+and wrong here: it turns "a rocky world that weighs a tenth of what rock weighs" into "a world made
+of gas", explaining away the exact contradiction the GM asked for and the anomaly tag exists to
+name. (2) Reading the derived default from the CURRENT mass instead of the held quantity left reset
+one step short of the fixed point — a hollow Earth reset to 4.35 g/cm3 against the 5.76 its
+composition implies, because the hollow mass compresses less. Caught by a test.
+BLAST: gravity and escape velocity stay DERIVED (owner Q8) — a hollow world's low gravity falls out
+of its mass, and a direct `g` pin would fight mass and radius. Barycentres follow the mass too, so a
+density pin on a binary member moves the pair's centre; that is honest and intended.
+
+### OVR-6 A pin SUPPRESSES the model that would reconcile the thing it pinned
+WHERE: `makeup.reconcileGiantMakeup` (guarded on `overrides.densityGcm3`); the `atmosphere0`
+snapshot hoisted above `applyPressurePin` in `SystemProcessor.processEnvironment`.
+RULE: any model whose job is to make two quantities AGREE must stand down when a GM has pinned one
+of them — the pin is a statement that they deliberately disagree. And a pin that writes into an
+authored field must not run before anything that SNAPSHOTS that field.
+WHY: both were found by a save/load test, not by reading, and both DESTROYED AUTHORED DATA
+PERMANENTLY because the correction was written to the body and therefore saved.
+(1) `reconcileGiantMakeup` fires on mass > 8 M⊕ AND density < 2.5 g/cc and rewrites `body.makeup` to
+a gas envelope. A GM hollowing a heavy rocky world hits both conditions by construction, so their
+rock became 88% gas on the next pass — the exact contradiction the pin exists to state, explained
+away, silently, and gone from every save thereafter.
+(2) `atmosphere0` is the primordial baseline atmospheric escape erodes FROM, snapshotted the first
+time an opted-in world is processed. The pressure pin wrote into `atmosphere.pressure_bar` BEFORE
+that snapshot, so pinning 40 bar on a world whose authored baseline was 1 bar recorded 40 bar as
+that world's own history.
+BLAST: `src/lib/system/override-persistence.test.ts` is the guard — it pins all eight at once and
+asserts `process(load(save(process(x)))) === process(x)` on every leaf field. Any future pin that
+moves an authored field (mass, radius, pressure, composition) must be added to its fixture, and any
+future model that reconciles two quantities must ask whether either is pinned.
+
+### OVR-7 A star's HAZARD card is its ionising output; its brightness is a different quantity
+WHERE: `BodyTechnicalDetails` star branch; `physics/ionisingOutput.bodyIonisingOutputSolar`;
+`physics/stellarActivity.stellarActivityBucket`; the `flareActivity` term in `radiation.ts`.
+RULE: `radiationOutput` is a star's LUMINOSITY. It must never be published as a radiation hazard.
+The hazard quantity is `flareActivity` and the ionising output derived from it — that is what the
+field feeds, what the map's zones follow, and what reaches a planet as a particle dose.
+WHY: the star card read `radiationOutput` under the label "Radiation Level", in the hazard
+colour, next to the magnetic field. Sol therefore read "Low (1.00)" — and it was the one figure
+on the panel that COULD NOT MOVE when a GM wound the star's field up, because the engine
+deliberately separates the two levers ("the lever for 'make this one dangerous' must not be the
+lever for 'make this one brighter'"). It was also a second printing of the Luminosity card a few
+rows below. Reported by the owner as "none of this seems to reflect on the info panel", which is
+exactly what a mislabelled card looks like from the outside. PHY-2; same shape as B28.
+BLAST: `ionisingOutputSolar` returns MULTIPLES OF THE QUIET SUN'S ionising output, not L(sol) —
+the first version of the replacement card got that wrong too and printed "1.61e+0 L(sol)" for the
+Sun. State what a figure measures and in what units before you put a suffix on it.
+
+### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
+WHERE: `overrides.ts` — the `commit` on the `gasThermalInflation` record; `BodyBasicsTab.effInflation`.
+RULE: inflation sizes a body at GENERATION and `radiusKm` is authored thereafter, so pinning it has
+to move the radius AT EDIT TIME, through `bodyEdit.editMass` — the same chain the composition editor
+uses. `OverrideDef.commit` is where that consequence lives, so the tab stays free of per-quantity
+branches and pin and reset take the same path.
+WHY: every other override is read by the processor on the next pass. Moving this one onto a generic
+tab without the hook would have produced a slider that saved a number and changed nothing visible
+until the next mass drag happened to read it.
+BLAST: a pin whose target is AUTHORED input (radius, pressure, mass) needs a `commit`; a pin on a
+DERIVED field must NOT have one — that would be an edit to derived output, which is exactly what
+PHY-1 and `idempotence.test.ts` exist to catch.
+
 ## PHYSICS — ordering and honesty
 
 ### PHY-20 A surface property that VARIES BY AN ORDER OF MAGNITUDE is a process, not a constant
@@ -2570,6 +2696,23 @@ triangle fallback explicitly for that reason.
 
 #### Body facts (G8) — added 2026-08-04 by the frame/suite-hygiene session
 
+### UI-E3 A bad identifier in a Svelte SCRIPT block survives the build and the whole unit suite
+WHERE: any component script; the guard is `components/BodyTechnicalDetails.spec.ts`.
+RULE: `npm run build` compiles an undefined identifier happily — it is a RUNTIME ReferenceError,
+not a compile error — and a unit suite that never MOUNTS the component cannot see it either. A
+component with branching render paths therefore needs a test that renders each path, however
+shallow. Assert that it does not throw and that its cards exist; do not assert wording or layout,
+which churn.
+WHY: `ReferenceError: NL is not defined` shipped to beta in this panel's STAR branch and reached
+the owner, who found it by clicking a star. The build was green, 2840 tests were green, and
+nothing anywhere mounted `BodyTechnicalDetails` — the product's densest read-only surface, forty
+cards, several branching on role, with no render test at all. The identifier got there because a
+scripted edit wrote a helper's NAME into the source instead of the value it stood for.
+BLAST: the same hole exists for every component with no `.spec`. When you add a branch to one
+(a new role, a new card, a new tooltip built by string concatenation), render it once in a test.
+AND: a browser check skipped is not a browser check deferred — this was reported as "verified by
+build and suite but not seen in the browser" one release before it was reported as broken.
+
 ### UI-E1 The GM technical block is NOT built from `bodyFacts`, so a shared row must share its BUILDER
 WHERE: `components/BodyTechnicalDetails.svelte` vs `catalogue/bodyFacts.ts`
 RULE: the player surfaces (document, panels, printed report) render rows from `bodyFacts`; the GM's
@@ -2970,6 +3113,13 @@ player window report that it has sent nothing (the join burst and every player r
 its per-link figures come from what the player REPORTS about itself. That is the only source, not a
 fallback. Remote links are the other way round: known directly, and countable the instant they
 connect, whereas a local one appears within a heartbeat and drops after `PRESENCE_TTL_MS`.
+(4) **A REMOTE window must announce under its BROKER id, a local one under its window id** — the id
+in the announce must live in the SAME space the GM already knows that window by. The first cut
+announced the windowId for both, so one remote guest existed twice (once as its connection's
+`conn.peer`, once as `w-…` in presence): `connectionCounts` unioned the two and the rail icon
+counted every remote guest twice while the list — which skips remote presence entries — stayed
+right, and `peerLinks` could never find the reported stats it looked up by broker id. Owner-caught
+(list 2, icon 3). Fixed v3.0.10.
 
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict

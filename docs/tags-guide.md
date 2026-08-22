@@ -78,6 +78,30 @@ off, rename its tags, recolour it and rewrite its rules; you simply cannot delet
 Everything else is yours to create and remove. Deleting a category does not delete tags already
 applied to your worlds and ships: it stops describing them, and its rules stop running.
 
+### Anomaly — the category that explains a broken world
+
+There is one category that does not work like the others, and it is worth knowing why.
+
+**Anomaly** holds *reasons*: Unknown Origin, Alien Technology, Alien Biosphere, Subsurface
+Structure, Unobtanium, Magic, Precursor Engineering, Exotic Matter, Divine Will, Nanite Ecology,
+Reality Fault, Experimental Terraforming — plus anything you add, which you can do on the row
+itself without going near the settings.
+
+You do not put an anomaly on a *world*. You put it on an **override** — a value you pinned by hand
+on the body editor's Overrides tab — as that override's stated reason. Several overrides can share
+one reason. Reset the override and the reason goes with it; the tag itself stays in the category,
+ready for the next world.
+
+**The tag names what it is accounting for**, which is the point of it. A player does not read
+"Alien Technology" and learn nothing; they read *Alien Technology: Anomalous magnetosphere,
+surface temperature*, and know exactly which readings on that world do not add up. A pin with **no** reason
+assigned shows players nothing at all — if you would rather present a strange world as though it
+were ordinary, that is your business and the program does not interfere.
+
+It is a **system** category, so it cannot be deleted, and it obeys every normal control: mark a
+single reason secret, or hide the whole category from players, and neither the tag nor the fact that
+anything was pinned reaches them.
+
 ### Colour
 
 A tag takes its category's colour unless you give it one of its own. That is the whole mechanism
@@ -96,6 +120,12 @@ suppresses the tag the engine would otherwise have written, and it drives everyt
 drives, including the visuals and the rules. If you want a volcanic moon the physics does not think
 is volcanic, you can simply say so. The tab groups these as **GM overrides** and says plainly that
 they may contradict the physics, because they may.
+
+That is a *tag* override, and it changes the tag rather than the number behind it. There is a second
+kind that changes the number — the body editor's **Overrides** tab, where you pin an albedo, a
+surface temperature, a density, a pressure or a magnetosphere and the engine derives everything
+downstream from your figure. The two are described together on the [physics page](/physics#overrides).
+The Anomaly category below is what ties them: it is how a value override says *why*.
 
 **Secrets.** Any hand-added tag can be marked secret, and a whole category can be hidden from
 players. Neither ever reaches them: not the shared catalogue, not a player view, not the holo table,

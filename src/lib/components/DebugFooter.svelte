@@ -19,7 +19,7 @@
         if ($systemStore) {
             const rebuilt = rebuildSystemHierarchy($systemStore);
             const fullyReprocessed = systemProcessor.process({ ...rebuilt, nodes: rebuilt.nodes }, rulePack);
-            systemStore.set({ ...fullyReprocessed, isManuallyEdited: true });
+            systemStore.set({ ...fullyReprocessed });
             alert('Hierarchy rebuilt: The most massive body is now the system root, and stability has been recalculated.');
         }
     }}>Rebuild Hierarchy</button>
@@ -27,7 +27,7 @@
         if ($systemStore) {
             const repaired = sanitizeSystem($systemStore, rulePack);
             const fullyReprocessed = systemProcessor.process({ ...repaired, nodes: repaired.nodes }, rulePack);
-            systemStore.set({ ...fullyReprocessed, isManuallyEdited: true });
+            systemStore.set({ ...fullyReprocessed });
             alert('System updated: Fixed legacy constructs/rings and fully reprocessed system physics/classification.');
         }
     }}>Update & Repair System</button>

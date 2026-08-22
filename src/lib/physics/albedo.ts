@@ -179,9 +179,22 @@ export function deriveAlbedo(
 ): AlbedoBreakdown {
   // F-OVR: a GM-pinned albedo (body.overrides.albedo) wins and is fed straight into the temperature
   // solve; the legacy body.albedo is honoured too. Otherwise the albedo is derived below.
+  //
+  // G37 REMOVED THE [0, 1] GATE, and that gate was the whole of what blocked a negative albedo. A
+  // figure outside the physical range is now honoured rather than silently ignored — below zero the
+  // world returns MORE energy than its star delivers (energy amplification: `1 − A` exceeds one, and
+  // the equilibrium formula carries it straight through), at or above one it absorbs nothing at all.
+  // Neither is refused and neither is clamped; the roster bounds what a GM can type, the row says
+  // what is wrong with it, and the physics does what the number tells it. The one guard that stays
+  // is finiteness, because NaN is not a claim about a world.
   const pinned = body.overrides?.albedo ?? (typeof body.albedo === 'number' ? body.albedo : undefined);
-  if (typeof pinned === 'number' && pinned >= 0 && pinned <= 1) {
-    return { albedo: pinned, surfaceAlbedo: pinned, bareAlbedo: pinned, cloudAlbedo: 0, cloudCover: 0, note: 'Manually set (GM override).' };
+  if (typeof pinned === 'number' && Number.isFinite(pinned)) {
+    const note = pinned < 0
+      ? 'Manually set (GM override) — NEGATIVE: this surface returns more energy than the star delivers to it.'
+      : pinned >= 1
+        ? 'Manually set (GM override) — a perfect mirror: no starlight is absorbed at all.'
+        : 'Manually set (GM override).';
+    return { albedo: pinned, surfaceAlbedo: pinned, bareAlbedo: pinned, cloudAlbedo: 0, cloudCover: 0, note };
   }
   const K = surfaceConstants(pack);
   const mk = makeupFractions(body);

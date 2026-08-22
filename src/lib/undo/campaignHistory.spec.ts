@@ -33,7 +33,7 @@ function campaign(sol: System): Starmap {
 function editEarth(mass: number) {
   const sys = get(systemStore)!;
   (sys.nodes.find((n) => n.name === 'Earth') as any).massKg = mass;
-  systemStore.set({ ...systemProcessor.process({ ...sys, nodes: sys.nodes }, pack), isManuallyEdited: true });
+  systemStore.set({ ...systemProcessor.process({ ...sys, nodes: sys.nodes }, pack) });
 }
 
 let saves = 0;

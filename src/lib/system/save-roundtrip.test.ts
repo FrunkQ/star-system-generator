@@ -27,7 +27,8 @@ const M_JUP_KG = 1.898e27, EARTH = 5.972e24, R_E = 6371;
 //  - a non-Sun star (temperatureK + radiationOutput are authored inputs)
 //  - a GM-PINNED class (autoClassify:false) placed where physics would NOT derive it
 //  - a MANUAL tidal lock (tidalLockManual)
-//  - a GM albedo OVERRIDE (body.overrides.albedo)
+//  - a GM albedo OVERRIDE (body.overrides.albedo), with an ANOMALY assigned as its stated reason
+//    and a magnetosphere pinned past what the interior could ever generate (G37)
 //  - hand-authored TAGS (faction/…, plot/…)
 //  - a brown dwarf (self-luminous fields are derived and must re-derive, not persist)
 function buildStarmap(): { starmap: any; system: System } {
@@ -40,7 +41,8 @@ function buildStarmap(): { starmap: any; system: System } {
         axial_tilt_deg: 23, rotation_period_hours: 24, makeup: { metal: 0.32, rock: 0.68 },
         atmosphere: { name: 'N2', main: 'N2', composition: { N2: 0.78, O2: 0.21, CO2: 0.01 }, pressure_bar: 1 } as any,
         hydrosphere: { composition: 'water', coverage: 0.6 },
-        overrides: { albedo: 0.85 } as any, classes: [],
+        overrides: { albedo: 0.85, magneticFieldGauss: 700000,
+                     anomalies: { albedo: { tag: 'anomaly/magic' }, magneticFieldGauss: { tag: 'anomaly/magic', secret: true } } } as any, classes: [],
         tags: [{ key: 'faction/red-syndicate' }, { key: 'plot/the-lost-fleet' }],
         orbit: { hostId: 'star', elements: { a_AU: 0.18, e: 0.02, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as any,
       { id: 'moon', name: 'Moon', kind: 'body', parentId: 'a', roleHint: 'moon', massKg: 0.01 * EARTH, radiusKm: 0.3 * R_E,
@@ -83,9 +85,19 @@ describe('save → load round-trip is lossless and lean', () => {
     expect(get(savedSys, 'moon').tidallyLocked).toBe(true);         // MANUAL tidal lock kept
     expect((get(savedSys, 'moon') as any).tidalLockManual).toBe(true);
     expect((get(savedSys, 'a') as any).overrides?.albedo).toBe(0.85); // GM override kept
+    // G37: the pins and their stated reasons are AUTHORED and ride the save. The 70 T field is the
+    // owner's own example of a value the physics cannot account for; nothing clamps it on the way
+    // through. The `anomaly/*` TAG is derived from the assignment and is stripped like any other
+    // derived tag — it comes back on load, which the re-derive check below covers.
+    expect((get(savedSys, 'a') as any).overrides?.magneticFieldGauss).toBe(700000);
+    expect((get(savedSys, 'a') as any).overrides?.anomalies).toEqual({
+      albedo: { tag: 'anomaly/magic' },
+      magneticFieldGauss: { tag: 'anomaly/magic', secret: true }
+    });
     const aTags = (get(savedSys, 'a').tags ?? []).map((t) => t.key);
     expect(aTags).toContain('faction/red-syndicate');              // hand-authored tags kept
     expect(aTags).toContain('plot/the-lost-fleet');
+    expect(aTags.some((k) => k.startsWith('anomaly/'))).toBe(false);
 
     // --- Derived data MUST be gone from the saved file ---
     const a = get(savedSys, 'a') as any;

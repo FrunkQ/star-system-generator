@@ -1203,7 +1203,7 @@
         <Starmap3DView {starmap} accentColor={presetAccent} font={presetFont} grid={activePreset.starmapGrid ?? activePreset.grid}
           gridDepth={typeof activePreset.starmapGridDepth === 'number' ? activePreset.starmapGridDepth : (activePreset.starmapGridDepth ? 1 : 0)} gridFalloff={activePreset.starmapGridFalloff ?? 0.5}
           background={activePreset.background} angleDeg={activePreset.starmapView === 'diagram2d' ? 0 : activePreset.angleDeg}
-          labelSize={activePreset.labelSize}
+          labelSize={activePreset.labelSize} labelsVisible={holoLabelsOn}
           highlights={mapHighlights} markerStyle={activePreset.markerStyle ?? 'label'}
           markerSize={activePreset.markerSize} flagStaff={activePreset.flagStaff} pinText={activePreset.pinText} tagStyles={hostTagCategories}
           filter={presetFilterActive ? activePreset.filter : 'none'} filterParams={activePreset.filterParams}

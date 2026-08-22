@@ -1,7 +1,7 @@
 import type { ISystemProcessor } from './interfaces';
-import type { System, RulePack, CelestialBody, Barycenter, SurfaceSpectrumCurves } from '../types';
+import type { System, RulePack, CelestialBody, Barycenter, SurfaceSpectrumCurves, Tag } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, composeModelledSurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket, radiationPlace } from '../physics/radiation';
 // The annual-dose hazard tag. Its key is serialised, so it lives beside the other tag constants.
 const RADIATION_HAZARD_TAG = 'hazard/radiation';
@@ -77,7 +77,8 @@ const LEGACY_DUPLICATE_TAGS = new Set<string>([
 import { SeededRNG } from '../rng';
 // The one authority on which tags a re-derive pass may delete. Every strip below goes through it, so
 // a hand-added tag survives the pass that would otherwise have silently deleted it.
-import { stripForReprocess, survivesRederive, emit } from '../tags/tagLifecycle';
+import { stripForReprocess, survivesRederive, emit, canonicalTagKey } from '../tags/tagLifecycle';
+import { OVERRIDE_DEFS } from '../physics/overrides';
 import { annotateGravitationalStability } from '../physics/stability';
 import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
@@ -261,7 +262,78 @@ export class SystemProcessor implements ISystemProcessor {
         //    science/frontier/intrigue hooks (config-gated; reads the reasonsConfig store).
         annotateReasonsToVisit(processedSystem);
 
+        // 7. ANOMALY pass (G37) — the GM's stated REASON for each value they have pinned, published
+        //    as a tag so a player can see WHAT is odd about a world rather than only that something
+        //    is. Last, because the tag's value names the overrides it accounts for and nothing else
+        //    reads it; and per body rather than per system, because an anomaly belongs to a place.
+        for (const node of allNodes) {
+            if (node.kind === 'body') this.applyAnomalyTags(node as CelestialBody);
+        }
+
         return processedSystem;
+    }
+
+    /**
+     * Publish `anomaly/*` from `body.overrides.anomalies` — the GM's stated reason for each pin.
+     *
+     * DERIVED EVERY PASS FROM AUTHORED DATA, which is what keeps it idempotent: the assignment map is
+     * saved, the tag is not, and re-running the processor rebuilds exactly the same tags.
+     *
+     * THE VALUE IS THE FEATURE, and it is the owner's ask in so many words: "the tag really needs to
+     * be informative as to what it is impacting so players can see WHAT is anomalous". So one reason
+     * used for several pins produces ONE tag naming all of them — `Alien Technology: Magnetosphere,
+     * Surface temperature` — rather than a bare label that says only that something is wrong.
+     *
+     * THE CLEAR IS IN TWO PARTS, and both are needed (TAG-6: one clear, at the top of the pass that
+     * owns the namespace).
+     *
+     *   1. `stripForReprocess` over the whole `anomaly/` namespace removes what THIS pass emitted
+     *      last time and spares a hand-added `anomaly/legend` the GM put on the Tags tab with no
+     *      override behind it — a legitimate thing to want, which the program does not stop. Without
+     *      this half, resetting the last override on a body leaves its reason tag stranded, because
+     *      there would be no bound key left to strip it by. A test caught exactly that.
+     *   2. A manual TWIN of a bound key is removed as well, or the guard that spares hand-added tags
+     *      would keep the bare `anomaly/magic` and this pass's informative one would never be added.
+     *      The binding is the more specific statement and it came from the same GM.
+     */
+    private applyAnomalyTags(body: CelestialBody) {
+        const assignments = body.overrides?.anomalies;
+        // Which quantities each reason is accounting for, in roster order so the list is stable.
+        const quantities = new Map<string, string[]>();
+        for (const def of OVERRIDE_DEFS) {
+            const a = assignments?.[def.key];
+            // A reason only counts while the override it explains is still pinned. Reset deletes the
+            // assignment (`clearOverride`), so this is a belt-and-braces guard against a hand-edited
+            // save, not a second lifecycle.
+            if (!a?.tag || (body.overrides as Record<string, unknown> | undefined)?.[def.key] === undefined) continue;
+            const key = canonicalTagKey(a.tag);
+            if (!quantities.has(key)) quantities.set(key, []);
+            quantities.get(key)!.push(def.label);
+        }
+        const bound = new Set(quantities.keys());
+        body.tags = stripForReprocess(body.tags, ['anomaly/'])
+            .filter((t) => !bound.has(canonicalTagKey(t.key)));
+        if (!bound.size) return;
+        for (const [key, labels] of quantities) {
+            const secret = OVERRIDE_DEFS.some((d) => {
+                const a = assignments?.[d.key];
+                return a && canonicalTagKey(a.tag) === key && a.secret;
+            });
+            // SECRET IS PER ASSIGNMENT and any secret assignment makes the whole tag secret: the tag
+            // is one object on the body, and half-redacting it would tell the player the reason while
+            // hiding which pin it covers, which is the wrong half to keep.
+            // "Anomalous bond albedo", not "Bond albedo" (owner, 2026-08-22). The pill is read
+            // BESIDE its reason — "Experimental Terraforming: Anomalous bond albedo" — and the bare
+            // label there reads as a heading for the quantity rather than a claim about it. One
+            // "Anomalous" leads the whole list, so two pinned figures read "Anomalous magnetosphere,
+            // surface temperature" rather than repeating the word.
+            const listed = labels.map((l) => l.charAt(0).toLowerCase() + l.slice(1));
+            body.tags.push({
+                key,
+                value: `Anomalous ${listed.join(', ')}`,
+                ...(secret ? { secret: true } : {})
+            } as Tag);
+        }
     }
 
     private processBarycenters(system: System) {
@@ -688,6 +760,33 @@ export class SystemProcessor implements ISystemProcessor {
             emit(body.tags, { key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
         }
 
+        // THE PRIMORDIAL BASELINE IS CAPTURED BEFORE THE PIN CAN TOUCH THE AIR, and the ordering is
+        // the whole of it (G37). `atmosphere0` is what atmospheric escape erodes FROM, snapshotted
+        // the first time an opted-in world is processed — and the pressure pin below writes into
+        // `atmosphere.pressure_bar`. Left in the escape block where it used to live, the snapshot
+        // ran AFTER the pin, so pinning 40 bar on a world whose authored baseline was 1 bar recorded
+        // 40 bar as that world's own history: the baseline was gone from every save from then on,
+        // and resetting the pin eroded from the pinned figure for ever. Moved, not duplicated — the
+        // escape block still reads it.
+        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && body.evolveAtmosphere
+            && !body.atmosphere0 && body.atmosphere) {
+            body.atmosphere0 = JSON.parse(JSON.stringify(body.atmosphere));
+        }
+
+        // F-OVR (G37): a PINNED surface pressure, applied BEFORE anything reads the air. One helper,
+        // called twice — here and again after atmospheric escape — because escape is the model the
+        // pin exists to overrule, and a pin that only survived until the erosion pass would be a pin
+        // in name only. It is not a poke into derived output: `atmosphere.pressure_bar` is authored
+        // input (the GM types it on the Atmo tab), and this restates the GM's own answer over the
+        // top of a model that would otherwise take it away.
+        const applyPressurePin = () => {
+            const pin = body.overrides?.pressureBar;
+            if (typeof pin !== 'number' || !Number.isFinite(pin) || pin < 0) return;
+            if (!body.atmosphere) return;   // nothing to pressurise; the GM must give it air first
+            body.atmosphere.pressure_bar = pin;
+        };
+        applyPressurePin();
+
         // --- THE thermal fixed point: albedo ⇄ equilibrium temp ⇄ greenhouse ⇄ surface temp ⇄
         //     cloud decks ⇄ albedo (physics/temperature.ts solveThermalState, which explains why it
         //     terminates). The clouds it reads are deriveCloudDecks' — the same single evaluation
@@ -722,7 +821,8 @@ export class SystemProcessor implements ISystemProcessor {
         // Opted-in bodies erode a COPY of their primordial baseline (atmosphere0, snapshotted on first
         // run) so re-processing — which happens on every load and edit — never compounds the loss.
         if ((body.roleHint === 'planet' || body.roleHint === 'moon') && body.evolveAtmosphere) {
-            if (!body.atmosphere0 && body.atmosphere) body.atmosphere0 = JSON.parse(JSON.stringify(body.atmosphere));
+            // (The snapshot itself now happens further up, before the pressure pin can reach the
+            //  air — see the note there. This still restores from it before eroding.)
             if (body.atmosphere0) body.atmosphere = JSON.parse(JSON.stringify(body.atmosphere0));
             const magG = body.magneticField?.strengthGauss || 0;
             const magShield = magG > 0 ? Math.min(0.99, (Math.log10(magG + 0.01) + 2) / 3) : 0;
@@ -733,6 +833,9 @@ export class SystemProcessor implements ISystemProcessor {
             // Escape changed the air the clouds condense out of, so the fixed point has to be solved
             // again against what is actually left. Only these opted-in bodies pay for it, and only
             // when something was really lost.
+            // THE PIN OUTRANKS THE EROSION. Escape has just decided how much air this world should
+            // have lost over its lifetime; a GM who pinned the pressure has said that it did not.
+            applyPressurePin();
             if (allStars.length > 0 && (body.atmosphere?.pressure_bar ?? 0) !== pressureBefore) commitThermal();
         }
 
@@ -762,7 +865,16 @@ export class SystemProcessor implements ISystemProcessor {
         // damping that makes them agree. Reading last pass's mean instead would break PHY-1.
         const surfaceLiquidWater = (body.hydrosphere?.composition === 'water')
             && (body.hydrosphere?.coverage ?? 0) > 0.2 && (body.temperatureK ?? 0) >= 273;
-        const { profile, tags: tempTags } = surfaceTempProfile({
+        // THE PROFILE IS BUILT THROUGH THE *MODELLED* COMPOSER, NOT THE PINNED ONE (G37), and the
+        // reason is PHY-19: this function derives the day and night sides from the energy balance and
+        // lets the MEAN FALL OUT OF THEM. A composer that answered with the GM's pin at every
+        // equilibrium temperature would hand it two identical hemispheres and flatten an eyeball
+        // world into an isothermal one. So the profile is composed from the model, its mean is
+        // measured, and — when a pin is present — the whole thing is rebuilt with the composer scaled
+        // by `pin / thatMean`. ONE CLOSED-FORM FACTOR, NOT AN ITERATION: the mean is linear in the
+        // scale, so the mean of the two scaled hemispheres is exactly the pin while their RATIO, and
+        // every swing derived from it, is untouched. Only a pinned body pays for the second pass.
+        const buildProfile = (compose: (teqK: number) => number) => surfaceTempProfile({
             meanK: body.temperatureK ?? equilibriumTempK,
             equilibriumK: equilibriumTempK,
             // The sunlit ceiling is (S(1−A)/σ)^¼ and a body reaches it at CLOSEST approach, so the
@@ -773,7 +885,7 @@ export class SystemProcessor implements ISystemProcessor {
             // Day, night and peak are derived in EQUILIBRIUM space and mapped to the surface here, so
             // the greenhouse, tidal, radiogenic, internal and self-luminous terms are added by the one
             // function that owns them instead of being re-implemented against a scaled amplitude.
-            composeSurfaceAt: (teqK: number) => composeBodySurfaceTemperature(body, teqK),
+            composeSurfaceAt: compose,
             pressureBar: body.atmosphere?.pressure_bar ?? 0,
             rotationHours: body.rotation_period_hours,
             tidallyLocked: body.tidallyLocked,
@@ -808,6 +920,13 @@ export class SystemProcessor implements ISystemProcessor {
             tidalRawIndex,
             iceFrac: makeupFractions(body).ice
         });
+        const modelledCompose = (teqK: number) => composeModelledSurfaceTemperature(body, teqK);
+        let { profile, tags: tempTags, meanExactK } = buildProfile(modelledCompose);
+        const surfacePin = body.overrides?.surfaceTempK;
+        if (typeof surfacePin === 'number' && Number.isFinite(surfacePin) && surfacePin >= 0 && meanExactK > 0) {
+            const scale = surfacePin / meanExactK;
+            ({ profile, tags: tempTags } = buildProfile((teqK: number) => modelledCompose(teqK) * scale));
+        }
         for (const key of tempTags) emit(body.tags, { key });
         body.temperatureProfile = profile;
         body.temperatureRangeK = { min: profile.totalMinK, max: profile.totalMaxK };
@@ -881,17 +1000,39 @@ export class SystemProcessor implements ISystemProcessor {
         }
         body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
         // The field STRENGTH derives from the model (rotation + composition + core size) unless the GM
-        // has set it manually (F-OVR). So spinning a world up or making it metal-rich changes its field,
-        // and a small iron-cored world like Mercury gets a tenuous field instead of nothing. A manual
-        // value is left untouched and still overrides the tag below.
-        if (!body.magneticField?.manual) {
-            body.magneticField = { strengthGauss: +body.magnetism.nominalGauss.toFixed(4) };
-        }
+        // has pinned one (F-OVR: `overrides.magneticFieldGauss`). So spinning a world up or making it
+        // metal-rich changes its field, and a small iron-cored world like Mercury gets a tenuous field
+        // instead of nothing. A pinned value is committed verbatim and overrides the tag below.
+        //
+        // G37: this used to test `magneticField.manual`, a flag that said the same thing as an
+        // `overrides` key in a second vocabulary — so the one pinned value in the engine that did not
+        // live in `body.overrides` was invisible to everything that enumerates what a GM has pinned.
+        // The pin is now re-read from the override on every pass, which also makes the committed field
+        // a purely DERIVED value that the save strip can drop.
+        const pinnedGauss = body.overrides?.magneticFieldGauss;
+        body.magneticField = {
+            strengthGauss: typeof pinnedGauss === 'number' && Number.isFinite(pinnedGauss)
+                ? pinnedGauss
+                : +body.magnetism.nominalGauss.toFixed(4)
+        };
         body.tags = stripForReprocess(body.tags, ['magnetic/']);
         // The shielding tag reconciles with the field the GM sees: 0 → unshielded, a whisker → tenuous
         // (Mercury), induced ocean → induced, a manual field with no interior source → anomalous, else a
         // dynamo. A manual value overrides the derived one.
-        emit(body.tags, { key: magneticShieldingTag(body.magnetism, body.magneticField) });
+        // OUT OF CLASS IS A STATUS, NOT A REFUSAL (G37). A pinned field the interior model could
+        // never produce — the owner's 70 tesla terrestrial — is kept, saved and drives the shielding
+        // exactly as a real one would, and it says so: `magnetic/anomalous` rather than
+        // `magnetic/dynamo`, which would be the engine claiming an interior source it has not found.
+        // The band is the dynamo's own `estimatedRangeGauss`, so this asks the model rather than a
+        // constant, and a body whose interior genuinely could make that field keeps its dynamo tag.
+        const magBand = body.magnetism.estimatedRangeGauss;
+        const outOfClass = typeof pinnedGauss === 'number' && !!magBand
+            && Number.isFinite(magBand.min) && Number.isFinite(magBand.max)
+            && (pinnedGauss < magBand.min || pinnedGauss > magBand.max);
+        const shieldTag = magneticShieldingTag(body.magnetism, body.magneticField, typeof pinnedGauss === 'number');
+        emit(body.tags, {
+            key: outOfClass && shieldTag === 'magnetic/dynamo' ? 'magnetic/anomalous' : shieldTag
+        });
     }
 
     // THE RADIATION HAZARD TAGS, for every body whose dose describes a place you could actually be

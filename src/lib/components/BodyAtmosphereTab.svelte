@@ -130,10 +130,10 @@
   // Reactive Gas Physics Data
   $: gasPhysics = rulePack.gasPhysics || {};
 
-  // Ensure magnetic field object exists for binding
-  $: if (body && !body.magneticField) {
-      body.magneticField = { strengthGauss: 0 };
-  }
+  // G37: the FIELD IS NO LONGER EDITED HERE. It is a derived reading on this tab (against the
+  // class zones below) and the GM's pin lives on the Overrides tab with every other pin. So there is
+  // no binding to keep an object alive for, and no second place that can set the field.
+  $: magPinned = typeof body?.overrides?.magneticFieldGauss === 'number';
 
   // Only sync the dropdown when we switch to a different body
   let currentBodyId = '';
@@ -320,7 +320,7 @@
           if (index !== -1) {
               s.nodes[index] = { ...body };
           }
-          return { ...s, isManuallyEdited: true };
+          return { ...s };
       });
 
       // 3. Trigger local UI refresh
@@ -352,8 +352,6 @@
   // --- SVG Slider Logic ---
   let svgPressureSlider: SVGSVGElement;
   let isPressureDragging = false;
-  let svgMagSlider: SVGSVGElement;
-  let isMagDragging = false;
 
   const minP = 0.0001;
   const maxP = 1000;
@@ -394,10 +392,6 @@
       isPressureDragging = true;
       updatePressureValue(e);
   }
-  function handleMagMouseDown(e: MouseEvent) {
-      isMagDragging = true;
-      updateMagValue(e);
-  }
 
   function updatePressureValue(e: MouseEvent) {
       if (!svgPressureSlider || !body.atmosphere) return;
@@ -410,42 +404,12 @@
       applyChanges();
   }
 
-  function updateMagValue(e: MouseEvent) {
-      if (!svgMagSlider) return;
-      const rect = svgMagSlider.getBoundingClientRect();
-      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const minLog = Math.log(minMag);
-      const maxLog = Math.log(maxMag);
-      
-      // Initialize if missing
-      if (!body.magneticField) {
-          body.magneticField = { strengthGauss: 0 };
-      }
-
-      body.magneticField.strengthGauss = Math.exp(minLog + (maxLog - minLog) * pct);
-      body.magneticField.manual = true; // F-OVR: a hand-set field overrides the derived model
-      applyChanges();
-  }
-
-  // Typing/dragging the field is a manual override (governs the magnetic/* shielding tags).
-  function setMagManual() {
-      if (!body.magneticField) body.magneticField = { strengthGauss: 0 };
-      body.magneticField.manual = true;
-      applyChanges();
-  }
-  // Hand the field back to the physics: drop the override so the processor re-derives the strength from
-  // the model (rotation + composition + core size) on the next pass.
-  function resetMagAuto() {
-      body.magneticField = { strengthGauss: +(body.magnetism?.nominalGauss ?? 0).toFixed(4) };
-      applyChanges();
-  }
 </script>
 
 <svelte:window 
-    on:mouseup={() => { isPressureDragging = false; isMagDragging = false; }} 
+    on:mouseup={() => { isPressureDragging = false; }} 
     on:mousemove={(e) => { 
         if (isPressureDragging) updatePressureValue(e);
-        if (isMagDragging) updateMagValue(e);
     }} 
 />
 
@@ -453,19 +417,12 @@
   <!-- MAGNETOSPHERE -->
   <div class="form-group">
       <div class="label-row">
-           <label>Magnetosphere (Gauss) {#if body.magneticField?.manual}<span class="mag-override" title="Manually overridden — this field governs the shielding tags instead of the interior model.">overridden</span>{/if}</label>
-           <input type="number" step="0.001" bind:value={body.magneticField.strengthGauss} on:input={setMagManual} />
+           <label>Magnetosphere (Gauss) {#if magPinned}<span class="mag-override" title="Pinned by the GM on the Overrides tab — this field governs the shielding tags instead of the interior model.">pinned</span>{/if}</label>
+           <span class="mag-reading">{formatGauss(body.magneticField?.strengthGauss ?? 0)} G</span>
       </div>
-      {#if body.magneticField?.manual}
-          <button type="button" class="mag-reset-btn" on:click={resetMagAuto}>Reset to calculated ↺</button>
-      {/if}
+      <p class="mag-where">{magPinned ? 'Pinned' : 'Set'} on the <strong>Overrides</strong> tab.</p>
       <div class="orbital-slider-container" style="height: 80px;">
-          <svg 
-              bind:this={svgMagSlider}
-              class="orbital-slider" 
-              on:mousedown={handleMagMouseDown}
-              preserveAspectRatio="none"
-          >
+          <svg class="orbital-slider" preserveAspectRatio="none">
               <rect x="0" y="20" width="100%" height="10" fill="var(--bg-panel)" rx="5" />
               <!-- Zone Indicators -->
               <rect x="0" y="35" width="{getMagPercent(2)}%" height="4" fill="orange" rx="1" />
@@ -482,7 +439,7 @@
                   <line x1="{pct}%" y1="15" x2="{pct}%" y2="35" stroke="var(--text-faint)" stroke-width="1" />
                   <text x="{pct}%" y="65" fill="var(--text-faint)" font-size="9" text-anchor="middle">{mark.label}</text>
               {/each}
-              <circle cx="{getMagPercent(body.magneticField?.strengthGauss || minMag)}%" cy="25" r="6" fill="#fff" stroke="#000" stroke-width="2" />
+              <circle cx="{getMagPercent(body.magneticField?.strengthGauss || minMag)}%" cy="25" r="6" fill={magPinned ? '#d08a4a' : '#fff'} stroke="#000" stroke-width="2" />
           </svg>
       </div>
       {#if body.magnetism}
@@ -714,6 +671,8 @@
     font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f);
     border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 6px; cursor: help;
   }
+  .mag-reading { font-variant-numeric: tabular-nums; color: var(--text); font-size: 0.85em; }
+  .mag-where { margin: 2px 0 0; font-size: 0.7em; color: var(--text-faint); }
   .mag-reset-btn {
     align-self: flex-start; background: none; border: none; padding: 2px 0; margin-top: 2px;
     color: var(--link, #6aa0d8); font-size: 0.78em; cursor: pointer;

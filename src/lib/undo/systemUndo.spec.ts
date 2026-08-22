@@ -45,11 +45,11 @@ function bodyNamed(name: string): CelestialBody {
 }
 
 /** Exactly what `SystemView.handleBodyUpdate` does: splice the (already mutated) body in, process,
- *  set with `isManuallyEdited`. The mutation happens on the object the store already holds. */
+ *  and set a FRESH object. The mutation happens on the object the store already holds. */
 function commitEdit(mutate: (sys: System) => void) {
   const sys = get(systemStore)!;
   mutate(sys);
-  systemStore.set({ ...systemProcessor.process({ ...sys, nodes: sys.nodes }, pack), isManuallyEdited: true });
+  systemStore.set({ ...systemProcessor.process({ ...sys, nodes: sys.nodes }, pack) });
 }
 
 let detach: () => void;
@@ -125,7 +125,7 @@ describe('systemUndo - recording', () => {
   it('records an ADD and a DELETE, not just a field edit', () => {
     const sys = get(systemStore)!;
     const moon = { ...(bodyNamed('Luna') as any), id: 'luna-2', name: 'Luna II' };
-    systemStore.set({ ...systemProcessor.process({ ...sys, nodes: [...sys.nodes, moon] }, pack), isManuallyEdited: true });
+    systemStore.set({ ...systemProcessor.process({ ...sys, nodes: [...sys.nodes, moon] }, pack) });
     vi.advanceTimersByTime(300);
     expect(status().undoDepth).toBe(1);
 
@@ -179,7 +179,7 @@ describe('systemUndo - naming the step', () => {
 
   it('names a deletion', () => {
     const sys = get(systemStore)!;
-    systemStore.set({ ...systemProcessor.process({ ...sys, nodes: sys.nodes.filter((n) => n.name !== 'Luna') }, pack), isManuallyEdited: true });
+    systemStore.set({ ...systemProcessor.process({ ...sys, nodes: sys.nodes.filter((n) => n.name !== 'Luna') }, pack) });
     vi.advanceTimersByTime(300);
     expect(status().undoLabel).toBe('Deleted Luna');
   });

@@ -4,6 +4,14 @@
 // date is the build date. The typeof guard keeps it safe if the define is absent.
 const _buildInfo = typeof __BUILD_INFO__ !== 'undefined' ? __BUILD_INFO__ : null;
 export const APP_VERSION = _buildInfo?.version ?? '2.0.0-alpha';
+// The commit this build came from, and a one-line stamp for a tooltip. Same source as the About
+// box and the build footer, so a version read off the brand mark and one read off the footer can
+// never disagree.
+export const APP_COMMIT = _buildInfo?.commit ?? 'dev';
+export const APP_BUILD_STAMP = `Star System Explorer v${_buildInfo?.version ?? '2.0.0-alpha'}`
+  + (_buildInfo?.commit ? ` · ${_buildInfo.commit}` : '')
+  + (_buildInfo?.time ? ` · built ${new Date(_buildInfo.time).toLocaleString('en-GB')}` : '');
+
 export const APP_DATE = _buildInfo?.time
 	? new Date(_buildInfo.time)
 			.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })

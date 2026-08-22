@@ -31,7 +31,7 @@ export const REASONS_DEFAULTS: { enabled: boolean; categories: Record<string, bo
 // `orbit/` is listed BY KEY rather than as a namespace because it is genuinely mixed: retrograde and
 // double are the generator's claims about how a body came to be, while tidally-locked and
 // spin-orbit-resonance are re-derived from the lock model on every pass.
-export const ENGINE_NAMESPACES: { id: string; provenance: 'physics' | 'authored'; label: string }[] = [
+export const ENGINE_NAMESPACES: { id: string; provenance: 'physics' | 'authored'; label: string; overridable?: boolean }[] = [
   // Generation and import provenance — the promises that an inferred value is distinguishable from
   // a measured one (inbox B10, C3c) and that an invented world is distinguishable from a detected
   // one (the real-sky importer's origin/generated).
@@ -67,9 +67,55 @@ export const ENGINE_NAMESPACES: { id: string; provenance: 'physics' | 'authored'
   { id: 'biodiversity', provenance: 'physics', label: 'Biosphere' },
   { id: 'atmosphere', provenance: 'physics', label: 'Atmosphere' },
   { id: 'feature', provenance: 'physics', label: 'Features' },
-  { id: 'visibility', provenance: 'physics', label: 'Visibility' }
+  { id: 'visibility', provenance: 'physics', label: 'Visibility' },
+  // G37. Re-emitted every pass from `body.overrides.anomalies`, so it is engine-owned like any
+  // physics namespace — but it is NOT offered in the Tags tab's "Physics (GM override)" list,
+  // because an anomaly is assigned to an OVERRIDE on the Overrides tab, not forced onto a body.
+  { id: 'anomaly', provenance: 'physics', label: 'Anomaly', overridable: false }
 ];
 
+
+// THE ANOMALY CATEGORY (G37) — the GM's stated REASON for a value that breaks the physics.
+//
+// An override says WHAT is wrong with a world; an anomaly says WHY, and it is the half the players
+// are allowed to see. Assignment is PER OVERRIDE, on the body editor's Overrides tab: pin a
+// magnetosphere no interior could generate, then say it is Precursor Engineering. Several overrides
+// may share one reason, and the tag that reaches the body names the quantities it is accounting for,
+// so a player reading `Alien Technology: Magnetosphere, Surface temperature` learns exactly what is
+// odd about the place rather than that something unspecified is.
+//
+// A SYSTEM CATEGORY, because the engine matches `anomaly/` by hand when it emits and strips these
+// tags — a dangling reference there is silent breakage rather than an error (TAG-12). Like every
+// system category it can still be switched OFF, and like every category it can be marked
+// player-hidden; an individual assignment can also be marked secret on its own row.
+//
+// The twelve seeds are the owner's list plus the coordinator's proposals, accepted whole. Users add
+// their own to the category exactly as they would to any other — these are a starting vocabulary,
+// not a closed one.
+export const ANOMALY_CATEGORY_SEED = {
+  id: 'anomaly',
+  shortName: 'Anomaly',
+  longName: 'Anomaly',
+  description: 'Why a world breaks the physics. Assigned to a GM override as its stated reason, on the body editor’s Overrides tab.',
+  color: '#a05fd0',
+  textColor: '#ffffff',
+  appliesTo: ['star', 'planet', 'moon', 'belt', 'ring'] as const,
+  enabled: true,
+  tags: [
+    { key: 'anomaly/unknown-origin', label: 'Unknown Origin', description: 'Something is holding this figure where it is and nobody knows what.' },
+    { key: 'anomaly/alien-technology', label: 'Alien Technology', description: 'Machinery not of human make, still running.' },
+    { key: 'anomaly/alien-biosphere', label: 'Alien Biosphere', description: 'A living system large enough to move a planetary figure.' },
+    { key: 'anomaly/subsurface-structure', label: 'Subsurface Structure', description: 'Something built into or under the crust, at a scale that shows from orbit.' },
+    { key: 'anomaly/unobtanium', label: 'Unobtanium', description: 'Material with properties the periodic table does not offer.' },
+    { key: 'anomaly/magic', label: 'Magic', description: 'It works because the setting says it works. No further explanation is owed.' },
+    { key: 'anomaly/precursor-engineering', label: 'Precursor Engineering', description: 'Deliberate work by someone long gone, on a scale nobody now could repeat.' },
+    { key: 'anomaly/exotic-matter', label: 'Exotic Matter', description: 'Mass, charge or density outside what ordinary matter can do.' },
+    { key: 'anomaly/divine-will', label: 'Divine Will', description: 'A god decided. The physics is not in charge here.' },
+    { key: 'anomaly/nanite-ecology', label: 'Nanite Ecology', description: 'Self-replicating machinery that has become part of the world’s workings.' },
+    { key: 'anomaly/reality-fault', label: 'Reality Fault', description: 'The laws themselves are wrong in this volume of space.' },
+    { key: 'anomaly/experimental-terraforming', label: 'Experimental Terraforming', description: 'Somebody is doing this on purpose, and it is not finished.' }
+  ]
+};
 
 function prettify(slug: string): string {
   if (slug === 'HQ') return 'HQ';

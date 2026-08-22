@@ -98,12 +98,13 @@ describe('deriveMagnetism', () => {
 });
 
 // E3/E4 — the magnetic/* shielding tag reads the EFFECTIVE field strength (derived from the model, or
-// the GM's manual value). The processor sets strengthGauss from the model's nominalGauss unless manual.
+// the GM's pinned value). The processor sets strengthGauss from the model's nominalGauss unless
+// `overrides.magneticFieldGauss` is present (G37), and passes that presence in as `pinned`.
 describe('magneticShieldingTag — reads the effective field strength', () => {
   const dynamoModel: Magnetism = { source: 'iron-core', geometry: 'dipolar', intrinsic: true, estimatedRangeGauss: { min: 0.1, max: 0.7 }, nominalGauss: 0.5, notes: [] };
   const noneModel: Magnetism = { source: 'none', geometry: 'none', intrinsic: false, estimatedRangeGauss: { min: 0, max: 0 }, nominalGauss: 0, notes: [] };
   const inducedModel: Magnetism = { source: 'salty-ocean-induced', geometry: 'induced', intrinsic: false, estimatedRangeGauss: { min: 0.0005, max: 0.01 }, nominalGauss: 0.005, notes: [] };
-  const manual = (strengthGauss: number): MagneticField => ({ strengthGauss, manual: true });
+  const pin = (strengthGauss: number): [MagneticField, boolean] => [{ strengthGauss }, true];
 
   it('a healthy field is a dynamo; nothing is unshielded', () => {
     expect(magneticShieldingTag(dynamoModel, { strengthGauss: 0.5 })).toBe('magnetic/dynamo');
@@ -121,9 +122,9 @@ describe('magneticShieldingTag — reads the effective field strength', () => {
     expect(magneticShieldingTag(inducedModel, { strengthGauss: 0 })).toBe('magnetic/unshielded');
   });
 
-  it('a MANUAL field of 0 strips the field; above 0 with no interior source is ANOMALOUS', () => {
-    expect(magneticShieldingTag(dynamoModel, manual(0))).toBe('magnetic/unshielded');
-    expect(magneticShieldingTag(noneModel, manual(2.5))).toBe('magnetic/anomalous');   // GM-imposed, no source
-    expect(magneticShieldingTag(dynamoModel, manual(3))).toBe('magnetic/dynamo');       // model has a source
+  it('a PINNED field of 0 strips the field; above 0 with no interior source is ANOMALOUS', () => {
+    expect(magneticShieldingTag(dynamoModel, ...pin(0))).toBe('magnetic/unshielded');
+    expect(magneticShieldingTag(noneModel, ...pin(2.5))).toBe('magnetic/anomalous');   // GM-imposed, no source
+    expect(magneticShieldingTag(dynamoModel, ...pin(3))).toBe('magnetic/dynamo');       // model has a source
   });
 });

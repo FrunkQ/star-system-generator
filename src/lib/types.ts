@@ -130,11 +130,15 @@ export interface DeltaVCapability {
 export interface BurnPlan { atTimeMs: number; frame: "perifocal"; dv_mps: [number,number,number]; description?: string; publishToPlayer?: boolean; }
 
 export interface MagneticField {
+  // The COMMITTED surface field. On a planet or moon it is DERIVED every pass from the interior
+  // dynamo (`magnetism.nominalGauss`), or from `overrides.magneticFieldGauss` when the GM has pinned
+  // one. On a STAR it is authored input, written by the star editor and never re-derived.
+  //
+  // G37: it used to carry a `manual?: boolean` of its own — a second convention for the one concept
+  // `body.overrides` already expresses, so a GM-pinned field was invisible to everything that asked
+  // "what has been overridden here". The flag is gone; `importFixup` recovers it from older saves
+  // into `overrides.magneticFieldGauss`.
   strengthGauss: number;
-  // F-OVR: true once the GM has manually set the field. A manual value OVERRIDES the derived
-  // magnetism model — it governs the magnetic/* shielding tags (0 → unshielded, >0 → dynamo/
-  // induced) instead of the interior dynamo read. Absent/false → the field follows the model.
-  manual?: boolean;
 }
 
 // Derived magnetism profile (§2d) — a DESCRIPTIVE, baseline-safe read of the dynamo from the
@@ -514,7 +518,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   albedoBreakdown?: { albedo: number; surfaceAlbedo: number; cloudAlbedo: number; cloudCover: number; cloudSpecies?: string; note: string };
   // F-OVR: GM overrides for otherwise-derived scalars. A key being PRESENT means the GM pinned that
   // value — it is saved and fed into the derivation instead of the computed default, with a reset that
-  // deletes the key and hands control back to the physics. (magneticField uses its own `manual` flag.)
+  // deletes the key and hands control back to the physics.
+  //
+  // EVERY ONE OF THESE IS DESCRIBED IN `src/lib/physics/overrides.ts` (G37) — the label, the slider
+  // range, the absurd-but-allowed range a typed number may reach, the derived default, and the
+  // sentence shown when a pinned figure leaves the plausible band. Do NOT restate any of that in an
+  // editor; add a record to the roster and every surface picks it up.
   overrides?: {
     albedo?: number;              // Bond albedo 0..1 (else derived from makeup + cloud decks)
     gasThermalInflation?: number; // gas-giant radius inflation factor (else derived from insolation)
@@ -526,6 +535,31 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
     // Derived from class and age by default; this pins it so a GM can make a quiet giant flare
     // without pretending it got brighter.
     flareActivity?: number;
+    // Surface field strength in gauss, pinned. Governs the magnetic/* shielding tags and the
+    // radiation that reaches the ground, INSTEAD of the interior dynamo read — so a value the
+    // interior could never generate (a 70 T terrestrial) is allowed, labelled and kept.
+    magneticFieldGauss?: number;
+    // THE MEAN surface temperature, pinned outright (owner Q5). It is carried as a constant
+    // anomalous flux through `composeBodySurfaceTemperature`, which is what makes the mean land
+    // exactly on the pin while day, night and peak keep their swing about it — and what
+    // SHORT-CIRCUITS the thermal solve, since the surface no longer moves across the iteration.
+    // Everything downstream (clouds, phases, classification, habitability, biosphere) reads the pin.
+    surfaceTempK?: number;
+    // Surface pressure in bar, pinned. Atmospheric escape is applied and then overridden, so a world
+    // keeps a column its gravity could never have retained.
+    pressureBar?: number;
+    // Bulk density in g/cm3, pinned. Mass, radius and density are ONE relation with two degrees of
+    // freedom, so this pins the second of them and `densityHold` says which of mass and radius is
+    // the other — the third follows (owner Q1, "pin any two"). The COMPOSITION is deliberately not
+    // re-inferred, so a rocky world that weighs a tenth of what rock weighs stays a contradiction
+    // instead of being quietly turned into a gas ball. Gravity and escape velocity stay derived.
+    densityGcm3?: number;
+    densityHold?: 'radius' | 'mass';
+    // THE STATED REASON for each pin, keyed by the override it explains — an `anomaly/*` tag from
+    // the Anomaly category. Several overrides may share one reason. LIFECYCLE-BOUND: resetting an
+    // override deletes its entry here too (see `clearOverride`), because a reason with nothing left
+    // to explain would outlive the thing it referred to. The tag DEFINITION survives in the category.
+    anomalies?: Record<string, { tag: string; secret?: boolean }>;
   };
   calculatedGravity_ms2?: number;
   distanceToHost_km?: number;
@@ -694,7 +728,6 @@ export interface System {
   tags: Tag[]; notes?: string; gmNotes?: string;
   visualScalingMultiplier?: number;
   toytownFactor?: number;
-  isManuallyEdited?: boolean;
   // Authorship credit — shown under the main star and editable on its "System Info" tab. Authored data,
   // saved with the system; never stripped by the import fix-up.
   credits?: { author?: string; contact?: string; created?: string; version?: string };

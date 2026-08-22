@@ -2,6 +2,103 @@
 
 All notable changes are listed here:
 
+## v3.0.20 - 22nd Aug 2026
+
+- Docs: the Getting Started walkthrough for building a world by hand now points at the Overrides tab, and the section on it explains what the slider colours mean and where the OVERRIDDEN flag shows up.
+
+## v3.0.19 - 22nd Aug 2026
+
+- An anomaly pill now reads "Experimental Terraforming: Anomalous bond albedo" rather than "...: Bond albedo" - the bare quantity read as a heading for it rather than a claim about it. Two pinned figures under one reason read "Anomalous magnetosphere, surface temperature"; the word leads the list rather than repeating.
+
+## v3.0.18 - 22nd Aug 2026
+
+- **The override sliders now look and behave like the rest of the app.** The coloured zones ARE the slider's track, the way Day Length and the composition controls already worked - green where the physics would put it, amber where a figure is implausible, red where it is impossible - with the engine's own answer marked on the track and the range printed at each end. The zones previously sat in a separate bar above the slider, which spanned the whole row while the slider shared it with the number box, so the two were never at the same scale. The number box moves up beside the label, as it is on every other control of this shape.
+
+## v3.0.17 - 22nd Aug 2026
+
+- The version no longer sits beside the SSE3 mark - hovering it still gives the full build, which was the useful half.
+
+## v3.0.16 - 22nd Aug 2026
+
+- **Fixed: clicking a star threw an error and left its panel blank.** Introduced in the previous release by a bad edit to the star's magnetic field card. The panel now has its own render tests - a star, a planet and an unbuilt body - so a fault of that shape cannot reach a release again.
+
+## v3.0.15 - 22nd Aug 2026
+
+- **A star's magnetic field card now says what it is actually doing.** It looked inert, and for two different reasons: a star sitting at its class's typical field strength adds nothing to its magnetic activity (it takes about two decades above the norm to reach the ceiling), and a GM-pinned activity overrules the field entirely. Neither means the field is doing nothing - it still sets the jets and the shed wind. The card says which of those three states it is in, and the tooltip gives the class-typical strength and the field beyond which the dynamo saturates and more buys nothing.
+
+## v3.0.14 - 22nd Aug 2026
+
+- **A star's panel was reporting its brightness as its radiation, and that is fixed.** "Radiation Level" read the star's luminosity - so Sol said "Low (1.00)", it repeated the Luminosity card below it, and it was the one number that could never move when you wound the star's magnetic field up. It now shows MAGNETIC ACTIVITY: the ionising half of the output - flares, X-rays, the particle wind - which is what the field actually drives and what reaches a planet as a dose.
+- **A star's panel was bare; it now carries what a GM reaches for.** Ionising output (in multiples of the quiet Sun), the habitable zone, the frost line and the UV kill zone - all read from the same model the orrery draws its rings from, so the number and the ring cannot disagree.
+- **Anything you have pinned now says OVERRIDDEN on the card itself**, not just in the summary line at the bottom.
+- **The albedo slider reaches -1**, so you can play with a negative one without typing it.
+- **Every override slider now shows you three things at a glance**: a green mark where the physics' own answer sits, an amber stretch where a value is implausible for that world, and a red stretch where it is outright impossible. The difference is real and worth drawing - a 70 tesla terrestrial has no known mechanism but breaks no law, while a negative albedo is energy from nowhere. Both are still allowed; only the wording and the colour change.
+
+## v3.0.13 - 22nd Aug 2026
+
+- The slice/whole toggle on the body picture gets its icon back - it had always been an empty square, because its glyph was built inside the svg by a branch that lands in the wrong namespace. It draws now, and swaps between a dashed frame (slice) and a framed inset (whole).
+
+## v3.0.12 - 22nd Aug 2026
+
+- The body picture keeps out of its own way: the slice/whole toggle moves to the top-left corner (it sat on the view pills), and every control on the picture - toggle, view pills, More information, the resize grip - now appears only while the mouse is over it. Touch screens keep them visible, since there is no hover to reveal them.
+
+## v3.0.11 - 22nd Aug 2026
+
+- **Two ways a pinned value could quietly undo itself, found and fixed.** Hollow out a heavy rocky world and the engine used to "correct" its composition to gas on the next pass - reading the low density back into the rock and throwing your composition away for good. It no longer argues: a pinned density means you meant it. And pinning an atmospheric pressure on a world that erodes its air recorded your pinned figure as that world's ORIGINAL atmosphere, so the real one was lost from every save. The baseline is now captured before the pin can touch it.
+- **The version is on screen at all times.** The SSE3 mark at the top left carries the version beside it, and hovering it gives the full build - version, commit and when it was built.
+
+## v3.0.10 - 22nd Aug 2026
+
+- The player-connection counter on the rail icon no longer double-counts remote guests (one window was known under two ids), and a remote row in the Settings list now shows the figures the player reports about itself. List and icon agree.
+
+## v3.0.9 - 22nd Aug 2026
+
+- Hovering a GM overrides badge on a body card now also names the reason you gave it, and says plainly when you gave none - which is the same as saying your players see nothing.
+
+## v3.0.8 - 22nd Aug 2026
+
+- **The "show the working" panel now shows the overriding too.** Open the Newton panel on a world you have pinned anything on and the first thing you see is what you pinned, what you pinned it to, and the reason you gave. Each figure is marked again inside every layer it actually feeds, with a line saying that the engine read your number instead of working one out, and repeating the warning if it is outside what the physics allows.
+- The physics page's section on overrides has been rewritten. It used to say an override changes the tag and not the physics behind it - true when only tags could be overridden, and no longer true at all. It now covers both kinds and lists what can be pinned.
+- The Getting Started guide gains "Breaking the physics on purpose", and the Tags Guide explains the Anomaly category and why it does not work like the others.
+
+## v3.0.7 - 22nd Aug 2026
+
+- **NEW: pin a world's density, and choose what gives way.** Mass, radius and density are one relation with two free numbers, so pinning the density pins the second of them and you say which: hold the radius and the mass follows, so a hollow world looks exactly the same size and weighs a fraction of what it should; or hold the mass and it swells instead. The composition is left alone on purpose - a rocky world that weighs a tenth of what rock weighs stays a contradiction rather than being quietly turned into a gas ball, and that is what the Anomaly tag is there to explain.
+- Gravity, escape velocity and every barycentre follow the new mass honestly. Nothing is pinned to make them agree.
+- The warning for a density is drawn from that world's OWN composition - how much void a solid of that size could hold, or how far a giant's envelope could puff - rather than a one-size range.
+
+## v3.0.6 - 22nd Aug 2026
+
+- **NEW: pin a world's surface temperature outright.** The magic slider. Put a moon out past the ice line at 1100 K and everything downstream believes it - the ice goes, the clouds change, the classification and the habitability follow, and the day and night sides keep their swing about the figure you typed rather than the world going flat. Pin it low and it is a cold spot instead; the engine does not ask why.
+- **NEW: negative albedo.** It was there in the field all along and was quietly ignored; now it works. Below zero the surface returns more energy than its star sends it, which is absurd, allowed and clearly labelled. Above one it reflects everything and reads absolute zero rather than a broken number.
+- **NEW: pin the atmospheric pressure.** Erosion no longer eats it, so a small world can hold an air column it could never have kept.
+- A magnetosphere pinned beyond what the world's interior could ever generate is now called what it is - anomalous - instead of being reported as an ordinary dynamo. The 70 tesla terrestrial works, and it says so.
+- Each of those rows tells you the range the slider covers and lets you type past either end, and says in plain words what is wrong with the figure once you do.
+
+## v3.0.5 - 22nd Aug 2026
+
+- **NEW: say WHY a world breaks the physics.** A new tag category, Anomaly, holds the excuses: Unknown Origin, Alien Technology, Alien Biosphere, Subsurface Structure, Unobtanium, Magic, Precursor Engineering, Exotic Matter, Divine Will, Nanite Ecology, Reality Fault, Experimental Terraforming - and any you invent, added right there on the row. Each override you pin can be given one as its reason, and several overrides can share one.
+- The tag your players see says what is actually odd. Not a bare "Alien Technology" but "Alien Technology: Magnetosphere, Surface temperature" - so a reading that looks wrong points at the thing that is wrong with it. A reason can be kept secret on its own, or the whole category hidden from players; an override with no reason given shows players nothing at all.
+- Reset an override and its reason goes with it. The tag itself stays in the category for next time.
+- Undo now names which override it is about to take back rather than saying "overrides".
+
+## v3.0.4 - 22nd Aug 2026
+
+- **NEW: an Overrides tab on every body and star.** Everything you can pin by hand now sits in one place, after Tags: the albedo, the radiogenic heat, a gas giant's puffiness, a planet's magnetosphere, and - for the first time with a control at all - a star's magnetic activity. Each row shows what you pinned, what the physics would have said, a slider for the ordinary range, a box for figures well outside it, and Reset to calculated. Nothing is refused: a value the physics cannot account for is kept, saved and labelled with a plain sentence saying what is wrong with it. The magnetosphere is now a reading on the Atmo/Mag tab and inflation a reading on Composition; both are pinned on the new tab.
+- The body card's GM overrides line no longer misses any. It listed four by hand and two pinnable values were not among them, so a world could be overridden and the card would say it was not. Hovering a badge now says what was pinned, to what, and what the engine's own answer was.
+
+## v3.0.3 - 22nd Aug 2026
+
+- Docs only. The break-physics design is captured: G37 (the Overrides tab, new pins including a direct temperature slider and negative albedo, and the Anomaly tag category for the excuses) with a full handoff brief at docs/dev/g37-gm-overrides-anomaly-handoff.md.
+
+## v3.0.2 - 22nd Aug 2026
+
+- The Hide labels quick override now reaches the starmap level of a player view (3D and 2D), not just the system view. The starmap scene had honoured it since it was built; nothing had ever passed it in. The document starmap is deliberately untouched - there the names are the content.
+
+## v3.0.1 - 22nd Aug 2026
+
+- Board only. The release is recorded and the RC versioning convention is closed: patch bumps are back.
+
 ## v3.0.0 - 22nd Aug 2026
 
 - V3 RELEASE. Production moves from v2.1.5 to V3: player views and presets, the 3D holo system view, undo/redo, the units and skins overhaul, starmap stars as stars, the physics and classification passes, VTT integration, and the full documentation rewrite. The welcome screen sheds its beta voice: this project is community driven, some features ship a little raw on purpose, and reports decide what gets attention first. The rc.1-rc.23 entries below are the release candidate record.

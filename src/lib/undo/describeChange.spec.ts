@@ -63,8 +63,23 @@ describe('describeSystemChange', () => {
     expect(describeSystemChange(sys([earth()]), sys([earth()], { name: 'Sol II' }))).toBe('Name of the system');
   });
 
-  it('ignores `isManuallyEdited`, which every edit sets and no GM asked for', () => {
-    expect(describeSystemChange(sys([earth()]), sys([earth()], { isManuallyEdited: true }))).toBe('');
+  // G37 - `overrides` is a BAG of unrelated quantities under one field name, so the humanised field
+  // name ("Overrides of Earth") stops one level short of what the GM actually did.
+  it('names WHICH override a step takes back, using the roster own word', () => {
+    const pinned = earth();
+    (pinned as any).overrides = { albedo: 0.85 };
+    expect(describeSystemChange(sys([earth()]), sys([pinned]), 'earth')).toBe('Override: bond albedo of Earth');
+  });
+
+  it('calls the stated reason an anomaly rather than an "anomalies"', () => {
+    const before = earth(); (before as any).overrides = { albedo: 0.85 };
+    const after = earth(); (after as any).overrides = { albedo: 0.85, anomalies: { albedo: { tag: 'anomaly/magic' } } };
+    expect(describeSystemChange(sys([before]), sys([after]), 'earth')).toBe('Override: anomaly of Earth');
+  });
+
+  it('a reset reads the same way as a pin - it is the same quantity moving', () => {
+    const before = earth(); (before as any).overrides = { radiogenicHeatK: 1100 };
+    expect(describeSystemChange(sys([before]), sys([earth()]), 'earth')).toBe('Override: radiogenic heat of Earth');
   });
 
   it('returns nothing rather than guessing', () => {

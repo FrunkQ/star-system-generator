@@ -1459,24 +1459,64 @@
 
     <section id="overrides">
       <h2>When you disagree with the physics — GM overrides</h2>
-      <p>Everything above describes what the engine <em>works out</em>. None of it is binding on you. A tag you add
-        by hand <strong>wins</strong>, and it keeps winning: re-processing the system, editing the world, importing
-        it again — the override survives all of them, and the engine's own answer for that tag is suppressed rather
-        than left sitting alongside it. This is the one place in the model where the answer is not derived, so it is
-        worth knowing exactly how far it reaches.</p>
+      <p>Everything above describes what the engine <em>works out</em>. None of it is binding on you. There are
+        <strong>two</strong> kinds of override and they reach different distances, so it is worth knowing which
+        one you are using.</p>
 
-      <p><strong>What an override does and does not change.</strong> It replaces the <em>tag</em>, not the physics
-        behind it. Tagging a world <code>habitability/marginal</code> does not alter its temperature, its
-        atmosphere, or anything computed from them — the number a later pass reads is still the derived one. So an
-        override is a statement about how the world should <em>read</em>, not a way to edit the model. If you want
-        the physics itself to move, change an input (composition, orbit, mass) and let the engine re-derive.</p>
+      <h3>Overriding a value — the Overrides tab</h3>
+      <p>A body editor has an <strong>Overrides</strong> tab, after Tags. Everything listed there is a number the
+        engine normally derives, and pinning one <strong>changes the physics</strong>: the pinned figure is fed
+        <em>into</em> the derivation in place of the computed one, before anything downstream runs. Pin a moon’s
+        surface temperature at 1100 K and its ice does not survive, its clouds change, its type and its
+        habitability follow, and its picture changes with them. Nothing is pasted over a result.</p>
+      <ul class="tags">
+        <li><strong>Bond albedo</strong> — including <em>negative</em>, which means the surface returns more
+          energy than its star delivers. At or above one it reflects everything and reads absolute zero.</li>
+        <li><strong>Surface temperature</strong> — the mean. The day and night sides keep their swing about it.</li>
+        <li><strong>Bulk density</strong> — mass, radius and density are one relation with two free numbers, so
+          pinning density pins the second and you choose whether the mass or the radius gives way. The
+          composition is left alone, which is what keeps the contradiction visible. Gravity and escape velocity
+          follow the new mass and stay derived.</li>
+        <li><strong>Atmospheric pressure</strong> — erosion stops eating it, so a world can hold air it could
+          never have retained.</li>
+        <li><strong>Magnetosphere</strong> — a field beyond what the interior could generate is kept, drives the
+          shielding as a real one would, and is labelled <code>magnetic/anomalous</code> rather than reported as
+          an ordinary dynamo.</li>
+        <li><strong>Radiogenic heat</strong>, <strong>thermal inflation</strong>, and a star’s
+          <strong>magnetic activity</strong> — the flare and X-ray output, which is set by the dynamo rather
+          than by brightness.</li>
+      </ul>
+      <p><strong>Nothing is refused, and nothing is quietly corrected.</strong> This is the same rule the star
+        editor has always followed: a set of numbers that breaks physics is kept and labelled rather than
+        rejected. Each row shows the range it expects, lets you type well past either end, and says in plain
+        words what is wrong with the figure once you do. The consequences <em>are</em> the feature — pin one
+        input, let everything downstream derive honestly, and see what falls out.</p>
+      <p><strong>Saying why: the Anomaly tag.</strong> Each pin can be given a reason from the Anomaly category —
+        Precursor Engineering, Exotic Matter, Nanite Ecology, Magic and the rest, or one you write yourself. The
+        tag that reaches the world names the quantities it is accounting for, so a player reading
+        <em>Alien Technology: Anomalous magnetosphere, surface temperature</em> learns what is odd about the place rather
+        than only that something is. A reason can be kept secret, and a pin with no reason given shows players
+        nothing at all. Reset the override and its reason goes with it.</p>
+      <p>The Newton trace (the “show the working” panel on a body) puts every pinned figure at the head of the
+        panel and marks it again inside each layer whose number it sets — the trace is a record of how an answer
+        was reached, so a hand-set answer has to say so.</p>
+
+      <h3>Overriding a tag</h3>
+      <p>The other kind. A tag you add by hand <strong>wins</strong>, and it keeps winning: re-processing the
+        system, editing the world, importing it again — the override survives all of them, and the engine’s own
+        answer for that tag is suppressed rather than left sitting alongside it.</p>
+      <p><strong>What a tag override does and does not change.</strong> It replaces the <em>tag</em>, not the
+        number behind it. Tagging a world <code>habitability/marginal</code> does not alter its temperature or
+        anything computed from them — the figure a later pass reads is still the derived one. So a tag override
+        is a statement about how the world should <em>read</em>. If you want the model itself to move, pin the
+        value on the Overrides tab, or change an input (composition, orbit, mass) and let the engine re-derive.</p>
 
       <p><strong>How to tell them apart.</strong> Every tag records where it came from, and the Tags tab groups them
         by exactly that:</p>
       <ul class="tags">
         <li><strong>Derived from the physics</strong> — recomputed on every run. Locked: change the inputs, not the tag.</li>
         <li><strong>Your override</strong> — a physics-namespace tag you added by hand. Shown outlined, and it
-          suppresses the engine's twin. Delete it and the derived answer comes straight back.</li>
+          suppresses the engine’s twin. Delete it and the derived answer comes straight back.</li>
         <li><strong>Recorded at generation</strong> — written once when the world was made and never re-derived
           (<code>origin/*</code>, <code>spin/*</code>). You may delete one permanently; nothing will restore it.</li>
         <li><strong>Your tag</strong> — anything of your own that the engine has no opinion about at all.</li>
@@ -1486,10 +1526,6 @@
         <em>inferred</em> rather than measured — <code>spin/axis-inferred</code> is the standard case. Type a real
         obliquity in and that claim is retired automatically, because leaving it would mean the world carried a note
         saying "we guessed this" about a figure you supplied.</p>
-
-      <p>The Newton trace (the "show the working" panel on a body) labels an overridden line as an override rather
-        than quietly printing your value as though the engine had derived it — the trace is a record of how an
-        answer was reached, so a hand-set answer has to say so.</p>
     </section>
 
     <section id="reasons">
