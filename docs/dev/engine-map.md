@@ -2696,6 +2696,23 @@ triangle fallback explicitly for that reason.
 
 #### Body facts (G8) — added 2026-08-04 by the frame/suite-hygiene session
 
+### UI-E3 A bad identifier in a Svelte SCRIPT block survives the build and the whole unit suite
+WHERE: any component script; the guard is `components/BodyTechnicalDetails.spec.ts`.
+RULE: `npm run build` compiles an undefined identifier happily — it is a RUNTIME ReferenceError,
+not a compile error — and a unit suite that never MOUNTS the component cannot see it either. A
+component with branching render paths therefore needs a test that renders each path, however
+shallow. Assert that it does not throw and that its cards exist; do not assert wording or layout,
+which churn.
+WHY: `ReferenceError: NL is not defined` shipped to beta in this panel's STAR branch and reached
+the owner, who found it by clicking a star. The build was green, 2840 tests were green, and
+nothing anywhere mounted `BodyTechnicalDetails` — the product's densest read-only surface, forty
+cards, several branching on role, with no render test at all. The identifier got there because a
+scripted edit wrote a helper's NAME into the source instead of the value it stood for.
+BLAST: the same hole exists for every component with no `.spec`. When you add a branch to one
+(a new role, a new card, a new tooltip built by string concatenation), render it once in a test.
+AND: a browser check skipped is not a browser check deferred — this was reported as "verified by
+build and suite but not seen in the browser" one release before it was reported as broken.
+
 ### UI-E1 The GM technical block is NOT built from `bodyFacts`, so a shared row must share its BUILDER
 WHERE: `components/BodyTechnicalDetails.svelte` vs `catalogue/bodyFacts.ts`
 RULE: the player surfaces (document, panels, printed report) render rows from `bodyFacts`; the GM's

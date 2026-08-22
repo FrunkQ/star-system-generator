@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.16 - 22nd Aug 2026
+
+- **Fixed: clicking a star threw an error and left its panel blank.** Introduced in the previous release by a bad edit to the star's magnetic field card. The panel now has its own render tests - a star, a planet and an unbuilt body - so a fault of that shape cannot reach a release again.
+
 ## v3.0.15 - 22nd Aug 2026
 
 - **A star's magnetic field card now says what it is actually doing.** It looked inert, and for two different reasons: a star sitting at its class's typical field strength adds nothing to its magnetic activity (it takes about two decades above the norm to reach the ceiling), and a GM-pinned activity overrules the field entirely. Neither means the field is doing nothing - it still sets the jets and the shed wind. The card says which of those three states it is in, and the tooltip gives the class-typical strength and the field beyond which the dynamo saturates and more buys nothing.

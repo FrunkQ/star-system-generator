@@ -410,18 +410,18 @@
                 'A star\'s surface field. AUTHORED, not derived: you set it on the star editor and the'
                 + ' engine never recomputes it (a planet\'s is the other way round, which is why the same'
                 + ' card means different things on the two).'
-                + NL + NL + `This class typically runs about ${typicalWords}.`
+                + '\n\n' + `This class typically runs about ${typicalWords}.`
                 + (activityPinned
-                    ? NL + 'It is NOT feeding the magnetic activity at the moment, because that is pinned'
+                    ? '\n' + 'It is NOT feeding the magnetic activity at the moment, because that is pinned'
                       + ' on the Overrides tab and a pin overrules the field. It still sets the jets and'
                       + ' the shed wind.'
                     : fieldDriven > 0
-                        ? NL + `It is wound above that, which is what is raising the activity (+${fieldDriven.toFixed(2)}).`
+                        ? '\n' + `It is wound above that, which is what is raising the activity (+${fieldDriven.toFixed(2)}).`
                           + ' Two decades above the norm reaches the ceiling.'
-                        : NL + 'Sitting in its own band, so it adds NOTHING to the activity — that comes from'
+                        : '\n' + 'Sitting in its own band, so it adds NOTHING to the activity — that comes from'
                           + ' class and age. Wind it up and it starts to; two decades above the norm reaches'
                           + ' the ceiling. It sets the jets and the shed wind either way.')
-                + (satGauss ? NL + `Past about ${formatGauss(satGauss)} G the dynamo saturates and more field buys nothing.` : '');
+                + (satGauss ? '\n' + `Past about ${formatGauss(satGauss)} G the dynamo saturates and more field buys nothing.` : '');
             radiationTooltip =
                 "MAGNETIC ACTIVITY - the ionising half of this star's output: flares, X-rays and the"
                 + ' particle wind. It is set by the dynamo, NOT by brightness, and the two genuinely'
