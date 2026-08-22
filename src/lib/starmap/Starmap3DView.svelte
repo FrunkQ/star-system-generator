@@ -59,6 +59,10 @@
   export let background: 'space' | 'green' | 'blue' | 'black' = 'space';
   export let angleDeg = 58;
   export let labelSize = 12;
+  // The Hide-labels Quick override. The scene has honoured setLabelsVisible per-frame since it was
+  // built (markers ride the same pipeline), but nothing passed it in — so the override reached the
+  // system view and never this one.
+  export let labelsVisible = true;
   // ROLL-UP BADGES (design 9.4). Resolved HERE rather than in the scene, because this is the layer that
   // knows whose tags these are: `starmap` is already the audience's snapshot, so a secret tag has been
   // removed before it could ever become a badge (TAG-9/TAG-13). Prop first, store second — a player
@@ -168,6 +172,7 @@
     controller.setFlatOverhead(flat); // after setFraming: pins the tilt overhead
     controller.setLockRotation(lockRotation);
     controller.setLabelSize(labelSize);
+    controller.setLabelsVisible(labelsVisible);
     controller.setMarkerOptions({ size: markerSize, staff: flagStaff, pinText });
     controller.setLabelFont(font);
     // Labels are in-scene sprites: theme accent, or grey in mono so a tint filter colours them.
@@ -219,7 +224,7 @@
   });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; starScale; starSize; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; starScale; starSize; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; labelsVisible; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
   // G16: re-place the plane on any anchor change. Named rather than closed over, per the note above.
