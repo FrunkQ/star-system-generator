@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.10 - 22nd Aug 2026
+
+- The player-connection counter on the rail icon no longer double-counts remote guests (one window was known under two ids), and a remote row in the Settings list now shows the figures the player reports about itself. List and icon agree.
+
 ## v3.0.9 - 22nd Aug 2026
 
 - Hovering a GM overrides badge on a body card now also names the reason you gave it, and says plainly when you gave none - which is the same as saying your players see nothing.
