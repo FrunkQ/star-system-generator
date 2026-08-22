@@ -384,6 +384,27 @@ BLAST: gravity and escape velocity stay DERIVED (owner Q8) — a hollow world's 
 of its mass, and a direct `g` pin would fight mass and radius. Barycentres follow the mass too, so a
 density pin on a binary member moves the pair's centre; that is honest and intended.
 
+### OVR-6 A pin SUPPRESSES the model that would reconcile the thing it pinned
+WHERE: `makeup.reconcileGiantMakeup` (guarded on `overrides.densityGcm3`); the `atmosphere0`
+snapshot hoisted above `applyPressurePin` in `SystemProcessor.processEnvironment`.
+RULE: any model whose job is to make two quantities AGREE must stand down when a GM has pinned one
+of them — the pin is a statement that they deliberately disagree. And a pin that writes into an
+authored field must not run before anything that SNAPSHOTS that field.
+WHY: both were found by a save/load test, not by reading, and both DESTROYED AUTHORED DATA
+PERMANENTLY because the correction was written to the body and therefore saved.
+(1) `reconcileGiantMakeup` fires on mass > 8 M⊕ AND density < 2.5 g/cc and rewrites `body.makeup` to
+a gas envelope. A GM hollowing a heavy rocky world hits both conditions by construction, so their
+rock became 88% gas on the next pass — the exact contradiction the pin exists to state, explained
+away, silently, and gone from every save thereafter.
+(2) `atmosphere0` is the primordial baseline atmospheric escape erodes FROM, snapshotted the first
+time an opted-in world is processed. The pressure pin wrote into `atmosphere.pressure_bar` BEFORE
+that snapshot, so pinning 40 bar on a world whose authored baseline was 1 bar recorded 40 bar as
+that world's own history.
+BLAST: `src/lib/system/override-persistence.test.ts` is the guard — it pins all eight at once and
+asserts `process(load(save(process(x)))) === process(x)` on every leaf field. Any future pin that
+moves an authored field (mass, radius, pressure, composition) must be added to its fixture, and any
+future model that reconciles two quantities must ask whether either is pinned.
+
 ### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
 WHERE: `overrides.ts` — the `commit` on the `gasThermalInflation` record; `BodyBasicsTab.effInflation`.
 RULE: inflation sizes a body at GENERATION and `radiusKm` is authored thereafter, so pinning it has

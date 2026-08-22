@@ -222,6 +222,14 @@ export function reconcileGiantMakeup(body: CelestialBody): Required<Makeup> | nu
   if (!body.makeup) return null;                   // no explicit makeup → makeupFractions already infers
   const m = normalizeMakeup(body.makeup);
   if (m.gas > 0.5) return null;                    // already gas-dominated → consistent
+  // A PINNED DENSITY IS THE GM SAYING THE TWO DELIBERATELY DISAGREE, so there is nothing to
+  // reconcile (G37). This function exists to correct a makeup that CANNOT be right — an ice world at
+  // twelve Earth masses and half a gram per cc — by reading the density back into the composition.
+  // That inference is exactly wrong once the density is authored: a hollowed-out rocky world is
+  // heavy and light on purpose, and turning its rock into gas would explain away the contradiction
+  // the GM asked for, silently, on the next pass. Worse, the correction is WRITTEN to `body.makeup`,
+  // so it would reach the save and the original composition would be gone for good.
+  if (typeof body.overrides?.densityGcm3 === 'number') return null;
   if (!isFluidGiant(body)) return null;            // not in giant territory → the makeup stands
   const massKg = body.massKg || 0;
   const radiusM = (body.radiusKm || 0) * 1000;

@@ -750,6 +750,19 @@ export class SystemProcessor implements ISystemProcessor {
             emit(body.tags, { key: body.starTidallyLocked ? 'orbit/locked-star' : 'orbit/locked-planet' });
         }
 
+        // THE PRIMORDIAL BASELINE IS CAPTURED BEFORE THE PIN CAN TOUCH THE AIR, and the ordering is
+        // the whole of it (G37). `atmosphere0` is what atmospheric escape erodes FROM, snapshotted
+        // the first time an opted-in world is processed — and the pressure pin below writes into
+        // `atmosphere.pressure_bar`. Left in the escape block where it used to live, the snapshot
+        // ran AFTER the pin, so pinning 40 bar on a world whose authored baseline was 1 bar recorded
+        // 40 bar as that world's own history: the baseline was gone from every save from then on,
+        // and resetting the pin eroded from the pinned figure for ever. Moved, not duplicated — the
+        // escape block still reads it.
+        if ((body.roleHint === 'planet' || body.roleHint === 'moon') && body.evolveAtmosphere
+            && !body.atmosphere0 && body.atmosphere) {
+            body.atmosphere0 = JSON.parse(JSON.stringify(body.atmosphere));
+        }
+
         // F-OVR (G37): a PINNED surface pressure, applied BEFORE anything reads the air. One helper,
         // called twice — here and again after atmospheric escape — because escape is the model the
         // pin exists to overrule, and a pin that only survived until the erosion pass would be a pin
@@ -798,7 +811,8 @@ export class SystemProcessor implements ISystemProcessor {
         // Opted-in bodies erode a COPY of their primordial baseline (atmosphere0, snapshotted on first
         // run) so re-processing — which happens on every load and edit — never compounds the loss.
         if ((body.roleHint === 'planet' || body.roleHint === 'moon') && body.evolveAtmosphere) {
-            if (!body.atmosphere0 && body.atmosphere) body.atmosphere0 = JSON.parse(JSON.stringify(body.atmosphere));
+            // (The snapshot itself now happens further up, before the pressure pin can reach the
+            //  air — see the note there. This still restores from it before eroding.)
             if (body.atmosphere0) body.atmosphere = JSON.parse(JSON.stringify(body.atmosphere0));
             const magG = body.magneticField?.strengthGauss || 0;
             const magShield = magG > 0 ? Math.min(0.99, (Math.log10(magG + 0.01) + 2) / 3) : 0;

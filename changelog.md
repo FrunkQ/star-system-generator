@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.11 - 22nd Aug 2026
+
+- **Two ways a pinned value could quietly undo itself, found and fixed.** Hollow out a heavy rocky world and the engine used to "correct" its composition to gas on the next pass - reading the low density back into the rock and throwing your composition away for good. It no longer argues: a pinned density means you meant it. And pinning an atmospheric pressure on a world that erodes its air recorded your pinned figure as that world's ORIGINAL atmosphere, so the real one was lost from every save. The baseline is now captured before the pin can touch it.
+- **The version is on screen at all times.** The SSE3 mark at the top left carries the version beside it, and hovering it gives the full build - version, commit and when it was built.
+
 ## v3.0.10 - 22nd Aug 2026
 
 - The player-connection counter on the rail icon no longer double-counts remote guests (one window was known under two ids), and a remote row in the Settings list now shows the figures the player reports about itself. List and icon agree.
