@@ -4450,14 +4450,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function faceParent(b: BodyVisual) {
     const pv = bodyById.get(b.parentId!);
     if (!pv) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
-    _pole.set(0, 1, 0).applyQuaternion(b.tiltQuat!).normalize();          // world spin axis
     _toParent.copy(pv.mesh.position).sub(b.mesh.position);                 // moon → parent
-    _toParent.addScaledVector(_pole, -_toParent.dot(_pole));               // project into the equatorial plane
-    if (_toParent.lengthSq() < 1e-12) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
-    _toParent.normalize();
-    _refX.set(1, 0, 0).applyQuaternion(b.tiltQuat!);                       // where +X points at spin angle 0
-    _refX.addScaledVector(_pole, -_refX.dot(_pole)).normalize();
-    const angle = Math.atan2(_cross.crossVectors(_refX, _toParent).dot(_pole), _refX.dot(_toParent));
+    // A70. Yaw about the body's own (tilted) pole by the parent's WORLD azimuth, not by aiming at
+    // the parent's projection into the equatorial plane. The two agree exactly at zero tilt (both
+    // reduce to atan2(-dz, dx)) and near enough at every ordinary tilt — but the old projection
+    // DEGENERATES as the tilt nears 90°: with the pole lying in the orbit plane, the projected
+    // parent direction is a constant that only FLIPS SIGN, so a locked world with an 88.7° tilt sat
+    // motionless and did an in-place 180° snap every half orbit (owner-observed, and analytically
+    // exact). The world azimuth advances uniformly with the orbit whatever the tilt, so a high-tilt
+    // locked body now ROLLS along its orbit — which is what synchronous rotation about an in-plane
+    // pole physically looks like — and the sub-parent MERIDIAN (texture centre) still tracks the
+    // parent's longitude, so the crater far-side bias still faces away at ordinary tilts.
+    if (_toParent.x * _toParent.x + _toParent.z * _toParent.z < 1e-12) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
+    const angle = Math.atan2(-_toParent.z, _toParent.x);
     spinQuat.setFromAxisAngle(spinAxis, angle);
     b.mesh.quaternion.copy(b.tiltQuat!).multiply(spinQuat);
   }

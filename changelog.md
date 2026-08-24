@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.24 - 22nd Aug 2026
+
+- A tidally locked world with a near-90-degree axial tilt no longer sits motionless and snaps 180 degrees every half orbit: it now rolls along its orbit, which is what synchronous rotation about a pole lying in the orbit plane really looks like. Locked worlds with ordinary tilts are unchanged.
+
 ## v3.0.23 - 22nd Aug 2026
 
 - The surface-radiation band on the body card now matches its own number: the thresholds bucketed on a different scale from the ranges the labels print, so a world at ISS-comparable dose (the Moderate band's own anchor) was published as "Very High (1,000-5,000 mSv/year)" - up to four bands too hot, on every body above 1 mSv/y. The zones were never wrong; the label was.
