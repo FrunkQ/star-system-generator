@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.35 - 24th Aug 2026
+
+- Docs: the VTT notes and design doc now name all three ways a host app can find a session (the opener handshake, a known session id over the broker, a pasted player link) - the notes still said the first pairing had to be a paste.
+
 ## v3.0.34 - 24th Aug 2026
 
 * A VTT host that OPENS this app can now pair with it without the GM copying anything. Star System Explorer answers the window that opened it (Mappadux's "Open Star System Explorer" button) with the same discovery announce the /bridge frame gets - session id, starmap name and Player View names, nothing from the campaign - and only ever to an allowlisted address. This is the one channel a browser's site isolation does not block, so it is the zero-paste first pairing; pasting a player link still works and is still the fallback.

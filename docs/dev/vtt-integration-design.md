@@ -1193,6 +1193,20 @@ later ones - the tab collided with ITSELF, consistently, ghost or no ghost. Fixe
 one-in-flight guard per id; the 814 defences stay for the genuine reload-ghost and second-GM cases.
 Owner confirmed it stopped on 817.
 
+### 16c. Zero-paste pairing via the opener (2026-08-24, SSE v3.0.34 + Mappadux v2.18.5)
+
+Production showed the predicted gap: paste-a-link worked, "just find it" never could, because a
+first pairing has no sid and the bridge frame's channel is partitioned (16). The cheap route that
+partitioning does not block is the OPENER: when the host's "Open Star System Explorer" button opens
+the tab, SSE posts the same `AnnouncePayload` back through `window.opener`, origin-checked against
+`embedOrigins`, and the dialog fills itself in. Mappadux drops `noopener` for that one call (named
+window, so a second click reuses the tab), pokes the new tab with a `hello` for ~24 s in case the GM
+has yet to pick a starmap, and treats an announce from an opened window exactly like one from a
+frame. Accepted cost: the opened page holds a handle on the host window; it is our own origin, and
+a GM who types a hostile "Other address" is trusting it anyway. Nothing is ever accepted FROM the
+opener except a hello asking for the announce. Bonus: this path needs no firewall bypass, since the
+tab is a top-level navigation a human can pass.
+
 ## 17. Deployment requirement: embeds must pass the firewall (found 2026-08-18)
 
 The second beta test failed with `bridge → 403`. Cause: **beta.starsystemx.com is behind
