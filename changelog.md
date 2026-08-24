@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.29 - 22nd Aug 2026
+
+- Tidal locking settled properly, all the way down. A world the engine despins can no longer keep a formation tilt - the same tides erode its axis toward the orbit normal, so generated and imported locked worlds now derive a tilt of a few degrees instead of the occasional 88 (existing saves heal on load; nothing re-rolls for unlocked worlds, and authored tilts stand). A locked body now keeps ONE fixed surface point toward its star at every tilt - and at an authored 90 degrees that point is the pole, which is a real equilibrium: a pole can be tidally locked, and it now both renders and paints that way, with the eyeball eye and the molten glow drawn at the locked point rather than assuming it sits on the equator.
+
 ## v3.0.28 - 22nd Aug 2026
 
 - The follow-camera bounce is actually gone this time, and it was measured before it was fixed: parking the view while following stored your adjustment in a form that could not ride the camera's once-per-orbit swing around the planet, so a parked 30-degree pitch became a sixty-degree see-saw. The adjustment is now stored as bearings relative to the shot itself, so a parked view keeps exactly the elevation you left it at, at every point of the orbit, on any orbit.

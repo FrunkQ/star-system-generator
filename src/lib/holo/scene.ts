@@ -4458,20 +4458,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const pv = bodyById.get(b.parentId!);
     if (!pv) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
     _toParent.copy(pv.mesh.position).sub(b.mesh.position);                 // moon → parent
-    // A70. Yaw about the body's own (tilted) pole by the parent's WORLD azimuth, not by aiming at
-    // the parent's projection into the equatorial plane. The two agree exactly at zero tilt (both
-    // reduce to atan2(-dz, dx)) and near enough at every ordinary tilt — but the old projection
-    // DEGENERATES as the tilt nears 90°: with the pole lying in the orbit plane, the projected
-    // parent direction is a constant that only FLIPS SIGN, so a locked world with an 88.7° tilt sat
-    // motionless and did an in-place 180° snap every half orbit (owner-observed, and analytically
-    // exact). The world azimuth advances uniformly with the orbit whatever the tilt, so a high-tilt
-    // locked body now ROLLS along its orbit — which is what synchronous rotation about an in-plane
-    // pole physically looks like — and the sub-parent MERIDIAN (texture centre) still tracks the
-    // parent's longitude, so the crater far-side bias still faces away at ordinary tilts.
+    // A70, settled with the owner: a lock means ONE FIXED SURFACE POINT faces the star, and the
+    // tilt decides WHICH point — at tilt ε the locked point sits at latitude ε off the texture's
+    // equator-centre meridian, and at ε≈90° the locked point IS the pole (a pole can be tidally
+    // locked; the bulge is fixed, so it is a true equilibrium). The orientation is a yaw about the
+    // ORBIT NORMAL tracking the star's azimuth, COMPOSED ONTO the tilt — spin∘tilt, world axis —
+    // which is smooth and flip-free at every tilt. The rejected alternatives, so nobody rebuilds
+    // them: aiming the meridian by projecting the star into the equatorial plane DEGENERATES near
+    // 90° (the projection is a constant that only flips sign — the body sat motionless and snapped
+    // 180° every half orbit); spinning about the TILTED pole (tilt∘spin) rolls the painted cold
+    // side through the sunrise, because no static texture survives a migrating substellar point.
+    // With A70's tidal erosion the derived tilts of locked worlds are ~0-5°, so the locked point
+    // sits within a few degrees of the painted eye; an AUTHORED high tilt pins its pole at the
+    // star, honestly — repainting the eye at the locked latitude is the banked follow-up.
     if (_toParent.x * _toParent.x + _toParent.z * _toParent.z < 1e-12) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
     const angle = Math.atan2(-_toParent.z, _toParent.x);
     spinQuat.setFromAxisAngle(spinAxis, angle);
-    b.mesh.quaternion.copy(b.tiltQuat!).multiply(spinQuat);
+    b.mesh.quaternion.copy(spinQuat).multiply(b.tiltQuat!);
   }
 
   // Surface-locked constructs (see BodyVisual.surfaceLock): re-glue each to its fixed surface point,

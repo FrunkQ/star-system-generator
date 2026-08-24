@@ -512,6 +512,55 @@ function drawPatchesEquirect(ctx: CanvasRenderingContext2D, rnd: () => number, c
 // appearance model so the 3D holo sphere shows the SAME features the 2D disc draws: age-graded craters
 // (leading-hemisphere biased when tidally locked) + fresh rayed craters, icy lineae, crustal rifts,
 // tholin staining and bright volatile frost. Longitude = x, latitude = y; strokes wrap at the seam.
+// A70: paint a colour ramp by ANGULAR distance from the LOCKED POINT of a tidally-locked body —
+// the sheet-centre meridian at latitude −tilt, which is the fixed surface point the scene's lock
+// orientation (spin(world-up) ∘ tilt) holds toward the star. At the ordinary tidally-eroded 0-5°
+// that is a hair below the sheet centre, where the old radial gradient painted; at an AUTHORED
+// ~90° the locked point IS the south pole and the eye paints there — a pole can be tidally locked,
+// and now it looks like it. Angular distance rather than sheet distance because near a pole the
+// equirect stretches a disc into a band, and a sheet-space radial gradient reads as a smear.
+// `stops` are [t, hex] with t = angular distance / rampDeg, piecewise-linear — the old gradients'
+// stops carry over unchanged. Shared by the eyeball surface and the molten emissive glow.
+function paintLockedPointRamp(
+  ctx: CanvasRenderingContext2D, tiltDeg: number, rampDeg: number,
+  stops: [number, string][], alpha: number
+) {
+  const lat0 = -(tiltDeg * Math.PI) / 180;
+  const rgbStops: [number, [number, number, number]][] = stops.map(([t, hex]) => [t, rgbOf(hex)]);
+  const at = (t: number): [number, number, number] => {
+    if (t <= rgbStops[0][0]) return rgbStops[0][1];
+    for (let i = 1; i < rgbStops.length; i++) {
+      if (t <= rgbStops[i][0]) {
+        const [t0, c0] = rgbStops[i - 1], [t1, c1] = rgbStops[i];
+        const k = t1 > t0 ? (t - t0) / (t1 - t0) : 1;
+        return [c0[0] + (c1[0] - c0[0]) * k, c0[1] + (c1[1] - c0[1]) * k, c0[2] + (c1[2] - c0[2]) * k];
+      }
+    }
+    return rgbStops[rgbStops.length - 1][1];
+  };
+  const off = document.createElement('canvas'); off.width = EQ_W; off.height = EQ_H;
+  const octx = off.getContext('2d')!;
+  const img = octx.createImageData(EQ_W, EQ_H);
+  const ramp = (rampDeg * Math.PI) / 180;
+  const sLat0 = Math.sin(lat0), cLat0 = Math.cos(lat0);
+  for (let y = 0; y < EQ_H; y++) {
+    const lat = (0.5 - y / EQ_H) * Math.PI; // top row = north pole
+    const sL = Math.sin(lat), cL = Math.cos(lat) * cLat0;
+    for (let x = 0; x < EQ_W; x++) {
+      const lon = (x / EQ_W - 0.5) * 2 * Math.PI; // sheet centre = the locked meridian
+      const cosD = sL * sLat0 + cL * Math.cos(lon);
+      const d = Math.acos(Math.max(-1, Math.min(1, cosD)));
+      const [r, g, b] = at(Math.min(1, d / ramp));
+      const i = (y * EQ_W + x) * 4;
+      img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
+    }
+  }
+  octx.putImageData(img, 0, 0);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(off, 0, 0);
+  ctx.globalAlpha = 1;
+}
+
 function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBody, rnd: () => number) {
   const a = deriveAppearance(body);
   const wrap = (draw: (dx: number) => void) => { for (const dx of [-EQ_W, 0, EQ_W]) draw(dx); };
@@ -520,17 +569,24 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
   // (Space-weathered greying arrives in the palette now — see the disc renderer's note above.)
 
   // EYEBALL — a tidally-locked world's permanent day/night split: a hot (baked or molten-glowing)
-  // substellar hemisphere fading through a terminator ring to a frozen antistellar one. The substellar
-  // point sits at the sheet centre (the 3D scene turns that face toward the star); the radial gradient
-  // reads as concentric climate zones out to the frozen far side.
+  // substellar hemisphere fading through a terminator ring to a frozen antistellar one.
+  //
+  // A70: THE EYE IS PAINTED AT THE LOCKED POINT, WHICH THE TILT CHOOSES. The scene's lock
+  // orientation is spin(world-up) ∘ tilt, whose star-facing surface point is the fixed local
+  // direction tilt⁻¹(+X) = (cos ε, −sin ε, 0) — the sheet-centre meridian at latitude −ε. At the
+  // ordinary (tidally eroded) 0-5° that is a hair below the sheet centre, exactly where the old
+  // radial gradient painted; at an AUTHORED ε≈90° the locked point IS the south pole and the eye
+  // paints there — a pole can be tidally locked, and now it looks like it. Painted by ANGULAR
+  // distance from the locked point rather than by sheet distance, because near a pole the equirect
+  // stretches a disc into a band and a sheet-space radial gradient reads as a smear; the ramp and
+  // its stops are the old gradient's (day to 0.32, terminator at 0.62, night at 1, over ~162°).
   if (a.eyeball) {
-    const g = ctx.createRadialGradient(EQ_W / 2, EQ_H / 2, 0, EQ_W / 2, EQ_H / 2, EQ_W * 0.45);
-    g.addColorStop(0, a.eyeball.dayHex);
-    g.addColorStop(0.32, a.eyeball.dayHex);
-    g.addColorStop(0.62, a.eyeball.kind === 'cold' ? '#5a6b82' : shade(a.eyeball.dayHex, -0.5)); // terminator
-    g.addColorStop(1, a.eyeball.nightHex);
-    ctx.globalAlpha = a.eyeball.molten ? 0.9 : 0.8; ctx.fillStyle = g;
-    ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;
+    paintLockedPointRamp(ctx, body.axial_tilt_deg ?? 0, 162, [
+      [0, a.eyeball.dayHex],
+      [0.32, a.eyeball.dayHex],
+      [0.62, a.eyeball.kind === 'cold' ? '#5a6b82' : shade(a.eyeball.dayHex, -0.5)],
+      [1, a.eyeball.nightHex]
+    ], a.eyeball.molten ? 0.9 : 0.8);
   }
 
   // POLAR ICE CAPS — bright frozen caps at the two poles (the equirect's top and bottom rows ARE the
@@ -788,10 +844,11 @@ function renderEmissiveEquirect(body: CelestialBody): HTMLCanvasElement | null {
     ctx.drawImage(lc, 0, 0);
   }
   if (molten && a.eyeball) {
-    // Glow confined to the molten substellar hemisphere; falls to black by the terminator.
-    const g = ctx.createRadialGradient(EQ_W / 2, EQ_H / 2, 0, EQ_W / 2, EQ_H / 2, EQ_W * 0.34);
-    g.addColorStop(0, a.eyeball.dayHex); g.addColorStop(0.55, shade(a.eyeball.dayHex, -0.35)); g.addColorStop(1, '#000');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, EQ_W, EQ_H);
+    // Glow confined to the molten substellar hemisphere; falls to black by the terminator. Follows
+    // the LOCKED POINT like the surface eye does (A70) — same helper, same latitude.
+    paintLockedPointRamp(ctx, body.axial_tilt_deg ?? 0, 122, [
+      [0, a.eyeball.dayHex], [0.55, shade(a.eyeball.dayHex, -0.35)], [1, '#000000']
+    ], 1);
   } else if (a.thermalGlow) {
     ctx.globalAlpha = 0.45 + a.thermalGlow.strength * 0.55; ctx.fillStyle = a.thermalGlow.colorHex;
     ctx.fillRect(0, 0, EQ_W, EQ_H); ctx.globalAlpha = 1;

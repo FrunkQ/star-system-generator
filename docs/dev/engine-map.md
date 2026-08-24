@@ -986,6 +986,27 @@ does not fossilise them. The gallery (`holo/galleryScene.ts`) still holds its OW
 `R * (3.2 + 3a)` with its own breath — a deliberate tuning, recorded as a duplication finding in the
 G26 row, not unified here.
 
+### RENDER-S29 A LOCK OWNS THE ORIENTATION, AND THE TILT ONLY CHOOSES THE LOCKED POINT
+WHERE: `holo/scene.ts:faceParent` (spin(world-up) COMPOSED ONTO tilt — spin*tilt, never
+tilt*spin); `physics/axialTilt.ts:inferAxialTilt` (`despun` collapses the draw to a <=5 deg
+Cassini residual); `rendering/planetTexture.ts:paintLockedPointRamp` (the eye and the molten
+glow paint at the locked point, latitude = MINUS the tilt, by ANGULAR distance).
+RULE: "tidally locked" means ONE FIXED SURFACE POINT faces the host forever; at tilt e that
+point sits at latitude -e off the sheet-centre meridian, and at e~90 it IS the pole (a pole can
+be locked — the bulge is fixed, a true equilibrium). Orientation = yaw about the ORBIT NORMAL
+tracking the host azimuth, composed onto the tilt: smooth and flip-free at every tilt. And a
+body the engine DESPUN cannot keep a formation tilt: the same tides erode obliquity (Io 0.002,
+Mercury 0.03 deg), so the derived draw is a small Rayleigh, never the two-population roll, and
+never `spin/tipped`. Authored tilts stand (the mantra) and render as an honest pole-lock.
+WHY: three coherent readings existed and two shipped wrong: aiming the meridian by projecting
+the host into the equatorial plane DEGENERATES near 90 (the projection is a constant that flips
+sign — the owner watched an eyeball sit motionless and snap 180 every half orbit), and spinning
+about the TILTED pole rolls the painted ice through the sunrise (no static texture survives a
+migrating substellar point).
+BLAST: every tidally locked body's orientation, the derived tilt (and its seasonal temperature
+terms) of every despun tilt-less body on every route (generation, import fixup), the eyeball and
+molten emissive textures. Sol fixture unmoved — every Solar body carries a measured tilt.
+
 ### RENDER-S26 A RING DRAWN AS A `LineLoop` CAN CARRY NOTHING PER-EDGE
 WHERE: `map/gridGeometry.ts:ringEdges`, bound by both scenes' polar grids.
 RULE: build a ring as EDGES unless you are certain nothing will ever hang off its segments. A

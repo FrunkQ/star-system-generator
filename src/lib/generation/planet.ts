@@ -274,12 +274,18 @@ export function _generatePlanetaryBody(
     //
     // Its own rng stream, keyed on the body id: drawing from the shared stream would shift every
     // subsequent draw and silently re-roll every planet in every saved seed (the B9a precedent).
+    // The generator's own lock predicate, computed ONCE and reused by the atmosphere features
+    // below — the tilt draw needs it first (A70): a world born despun draws its obliquity from the
+    // tidally-eroded distribution, so generation cannot hand out an 88.7°-tilted locked eyeball.
+    const hostMassForLock = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
+    const isTidallyLocked = (planet.orbit.elements.a_AU) < 0.1 * Math.pow(hostMassForLock / SOLAR_MASS_KG, 1 / 3);
+
     if (planet.axial_tilt_deg == null) {
         // The model itself now lives in `physics/axialTilt.ts`, unchanged — same seed string, same
         // two populations, same knobs. It moved because B10 fixed this for GENERATED worlds only,
         // and the identical hole was still open on the import and hand-authored routes (D8): 45
         // real-sky exoplanets and ~50 fiction worlds with no tilt at all. One model, three routes.
-        const spin = inferAxialTilt(planet.id, pack);
+        const spin = inferAxialTilt(planet.id, pack, isTidallyLocked);
         planet.axial_tilt_deg = spin.tiltDeg;
         const tipped = spin.tipped;
         // D2a's constraint: an INVENTED number must be distinguishable from a MEASURED one, or a
@@ -312,10 +318,8 @@ export function _generatePlanetaryBody(
         planet.radiusKm *= gasThermalInflationFactor(equilibriumTempK);
     }
 
-    const hostMass = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) || 0;
-    const isTidallyLocked = (planet.orbit.elements.a_AU) < 0.1 * Math.pow(hostMass / SOLAR_MASS_KG, 1/3);
-
-    const features: Record<string, number | string> = { 
+    // (lock predicate hoisted above the tilt draw — one predicate, computed once)
+    const features: Record<string, number | string> = {
         id: planetId,
         mass_Me: planet.massKg / EARTH_MASS_KG,
         radius_Re: planet.radiusKm / EARTH_RADIUS_KM,
