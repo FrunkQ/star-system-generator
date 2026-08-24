@@ -651,6 +651,20 @@
     const bboxHeight = maxY - minY + paddingVertical * 2;
 
     const viewBox = svgElement.viewBox.baseVal;
+
+    // G40: a chosen map centre wins — Reset View centres on THAT star, zoomed so every star still
+    // fits. The fit must be the largest half-extent FROM THE CENTRE STAR, not the bounding box: a
+    // bbox fit recentred on an off-centre star would push the far stars out of frame.
+    const centreSys = starmap.gridCenterId ? starmap.systems.find((sy) => sy.id === starmap.gridCenterId) : null;
+    if (centreSys) {
+      const halfX = Math.max(centreSys.position.x - minX + paddingLeft, maxX - centreSys.position.x + paddingRight, 1e-6);
+      const halfY = Math.max(centreSys.position.y - minY + paddingVertical, maxY - centreSys.position.y + paddingVertical, 1e-6);
+      zoom = Math.min(Math.min(viewBox.width / (2 * halfX), viewBox.height / (2 * halfY)), 1);
+      panX = viewBox.width / 2 - centreSys.position.x * zoom;
+      panY = viewBox.height / 2 - centreSys.position.y * zoom;
+      return;
+    }
+
     const zoomX = viewBox.width / bboxWidth;
     const zoomY = viewBox.height / bboxHeight;
     const newZoom = Math.min(zoomX, zoomY) * 1.2; // Zoom in 20% more than the tightest fit
@@ -1037,6 +1051,21 @@
   // WS7 — the SIMPLE depth path, for GMs who think in 2D: type how far above or below the map plane the
   // system sits, in the campaign's own distance unit. (Spherical RA/Dec entry is the power tool; this is
   // the plain door.) Stored in MAP units, so it converts through the scale like every other coordinate.
+  // G40: the chosen star becomes the map's display centre — the 3D map's polar rings radiate from
+  // it and measure distance from it, and Reset View centres on it (zoomed so every star still fits).
+  // Campaign data on the starmap, so it rides saves and reaches every player snapshot. Display and
+  // navigation only: snap lattices, hex addresses and stored distances never move.
+  function handleContextMenuCentre() {
+    if (contextMenuSystemId) dispatch('updatestarmap', { ...starmap, gridCenterId: contextMenuSystemId });
+    showContextMenu = false;
+  }
+  function handleContextMenuClearCentre() {
+    const next = { ...starmap };
+    delete (next as any).gridCenterId;
+    dispatch('updatestarmap', next);
+    showContextMenu = false;
+  }
+
   function handleContextMenuDepth() {
     if (contextMenuSystemId) {
       const sys = starmap.systems.find((s) => s.id === contextMenuSystemId);
@@ -1700,6 +1729,11 @@
         {:else if contextMenuSystemId}
             <li on:click={handleContextMenuRename}>Rename System…</li>
             <li on:click={handleContextMenuDepth}>Set Depth…</li>
+            {#if starmap.gridCenterId === contextMenuSystemId}
+              <li on:click={handleContextMenuClearCentre}>Clear Map Centre</li>
+            {:else}
+              <li on:click={handleContextMenuCentre}>Centre Map Here</li>
+            {/if}
             <li on:click={handleContextMenuAddNear}>Add System near here…</li>
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}

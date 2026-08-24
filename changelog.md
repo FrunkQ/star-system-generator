@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.36 - 25th Aug 2026
+
+- Centre the map on a star: right-click any star on the GM map for Centre Map Here (and Clear). The 3D starmap's distance rings then radiate from that star and measure from it, and Reset View centres it on screen, zoomed so every star still fits. Snap grids and hex addresses never move - this is display and navigation only.
+- The floating grid sighting (a hex sheet hovering above a star) did not reproduce on a fresh session and every code path checks out; a diagnostic probe now ships in the holo scene so a recurrence is measured in one console call. Bookkeeping: the commit labelled v3.0.34 was a version-number race with a parallel session - its change (the G40 capture) is recorded here.
+
 ## v3.0.35 - 24th Aug 2026
 
 - Docs: the VTT notes and design doc now name all three ways a host app can find a session (the opener handshake, a known session id over the broker, a pasted player link) - the notes still said the first pairing had to be a paste.

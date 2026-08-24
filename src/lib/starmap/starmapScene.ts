@@ -87,6 +87,8 @@ export interface StarmapSceneOptions {
 export interface StarmapController {
   setData(systems: SmSystem[], routes: SmRoute[]): void;
   setGrid(mode: MapOverlay): void;
+  /** G40: map-coordinate point the polar/scaled grid radiates from (null = map origin). */
+  setGridCenter(p: { x: number; y: number } | null): void;
   // G10: map units per campaign distance unit, so the SCALED polar rings can report a real distance.
   // Without it the rings label their own map coordinates — see the note in rebuildGrid.
   setDistanceScale(pixelsPerUnit: number): void;
@@ -288,6 +290,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const gridGroup = new THREE.Group();
   scene.add(gridGroup);
   let extent = 1; // world half-extent of the map (map units), for LY labels
+  // G40: the map-coordinate point the polar/scaled grid radiates from (null = map origin). The
+  // rings then MEASURE from this star, which is the useful reading ("10 pc FROM SOL"). The fade
+  // window stays origin-centred in v1 — a display comfort, noted rather than perfected.
+  let gridCenterMap: { x: number; y: number } | null = null;
   // G10: map units per distance unit. 0 = unknown, in which case the rings fall back to labelling map
   // units, which is at least self-consistent.
   let pixelsPerUnit = 0;
@@ -517,6 +523,10 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // which is why it could not take either — "every grid type the same treatment" is only true if
     // they share the code that gives the treatment.
     const pf = fadeWindow();
+    // G40: the polar family (plain + scaled) centres on the chosen star's fitted position; the
+    // lattice overlays above stay MAP-ALIGNED on purpose (they are snapping/authoring surfaces).
+    const gc = gridCenterMap ? { x: (gridCenterMap.x - mapCx) * mapK, z: (gridCenterMap.y - mapCy) * mapK } : { x: 0, z: 0 };
+    const offset = (segs: GridEdge[]): GridEdge[] => (gc.x || gc.z) ? segs.map(([a, b, c, d]) => [a + gc.x, b + gc.z, c + gc.x, d + gc.z] as GridEdge) : segs;
     const ringSegs: GridEdge[] = [];
     const spokeSegs: GridEdge[] = [];
     // G10 — SCALED rings sit at ROUND distances, and they are real distances now.
@@ -540,14 +550,14 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       ringSegs.push(...ringEdges(ring.radius, 72));
       if (scaled) {
         const label = makeGridLabel(`${formatNice(ring.value)}${unit ? ' ' + unit : ''}`);
-        if (label) { label.position.set(ring.radius, 0.02, 0); gridGroup.add(label); }
+        if (label) { label.position.set(gc.x + ring.radius, 0.02, gc.z); gridGroup.add(label); }
       }
     }
     // Spokes, segmented for the same reason the squares are: a fade evaluated per vertex judges a
     // full-length spoke by its far end and drops the whole thing (inbox A37).
     spokeSegs.push(...spokeEdges(24, GRID_RADIUS, 24));
-    addLattice(ringSegs, base.clone().multiplyScalar(0.45), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.55, skirt: gridSkirt });
-    addLattice(spokeSegs, base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: 0 });
+    addLattice(offset(ringSegs), base.clone().multiplyScalar(0.45), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.55, skirt: gridSkirt });
+    addLattice(offset(spokeSegs), base.clone().multiplyScalar(0.22), GRID_RADIUS / 6, pf.from, pf.to, { alpha: 0.5, skirt: 0 });
   }
   // Both halves of the tether go together: the ring exists to say where the stem lands, so a ring on
   // its own would be marking the foot of a line nobody can see.
@@ -558,6 +568,12 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     if (lastData) setData(lastData.systems, lastData.routes);
   }
   function setGrid(mode: MapOverlay) { if (mode === gridMode) return; gridMode = mode; rebuildGrid(); }
+  function setGridCenter(p: { x: number; y: number } | null) {
+    const same = (!p && !gridCenterMap) || (!!p && !!gridCenterMap && p.x === gridCenterMap.x && p.y === gridCenterMap.y);
+    if (same) return;
+    gridCenterMap = p ? { x: p.x, y: p.y } : null;
+    rebuildGrid();
+  }
 
   // --- G16: the map background, as a PLANE IN THE MAP PLANE -------------------------------------
   //
@@ -1282,7 +1298,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   }
 
   rebuildGrid();
-  return { setData, setGrid, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setStarScale, setStarSize, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setMarkerOptions, setFilter, setHud, setMapBackground, resize, dispose };
+  return { setData, setGrid, setGridCenter, setDistanceScale, setDropLines, setGridSkirt, setGridFalloff, setZExaggeration, setStarScale, setStarSize, setRouteGlow, setMono, setMapGrid, setFlatOverhead, setLockRotation, setBackground, setFraming, setLabelsVisible, setLabelColor, setLabelSize, setLabelFont, setMarkerOptions, setFilter, setHud, setMapBackground, resize, dispose };
 }
 
 function buildStarfield(count = 1400, radius = 900): THREE.Points {
