@@ -244,6 +244,11 @@ export const DEFAULT_COI_CATEGORIES: CoICategory[] = [
 
 // --- The built-in default pack (the original rules, as data). Order preserved so the seeded roll
 //     sequence — and therefore which tags appear — is identical to the hardcoded version. ---
+// G38: the tags of the rules appended in v3.0.33, merged ONCE into existing saved stores by
+// tagCategories (marker-guarded, so a deletion afterwards sticks). Tag + category identifies the
+// rule; ids are positional and mean nothing across stores.
+export const POI_SEED_V2_TAGS = ['science/double-planet', 'science/doomed-orbit', 'science/kill-zone-survivor', 'frontier/prime-claim'];
+
 let _rid = 0; const R = (tag: string, category: string, chance: number, when: PoIExpr, appliesTo?: PoIRole[]): PoIRule => ({ id: `d${_rid++}`, tag, category, chance, when, appliesTo });
 
 // SURFACE-ACCESS rules: the same rule, plus "and there is a surface to get it off".
@@ -328,6 +333,17 @@ export const DEFAULT_POI_PACK: PoIPack = {
     // orbital excitation (a stirred belt is likely a disrupted differentiated body — a shattered core).
     R('frontier/ice-mining', 'frontier', 0.7, { all: [{ gt: ['teqK', 0] }, { lt: ['teqK', 150] }] }, ['belt']),
     R('resource/rare-metals', 'resource', 0.4, { gte: ['teqK', 150] }, ['belt']),
-    R('science/shattered-core', 'science', 0.5, { gt: ['ecc', 0.12] }, ['belt'])
+    R('science/shattered-core', 'science', 0.5, { gt: ['ecc', 0.12] }, ['belt']),
+
+    // G38 (v3.0.33) — STRUCTURAL & ORBITAL rules over the Orbit-and-zones feature family.
+    // APPEND ONLY, and the constraint is load-bearing twice over: rule ids are POSITIONAL
+    // (`d${_rid++}`), so inserting above this line renumbers every later rule and orphans the
+    // `rule:dN` provenance on every saved map — and the seeded roll advances per rule in seq
+    // order, so a mid-list insertion re-rolls every chance-based tag in every saved seed.
+    // These four also ride the one-time POI_SEED_V2 merge into EXISTING stores (tagCategories).
+    R('science/double-planet', 'science', 1.0, { all: [{ eq: ['inBarycenter', true] }, { eq: ['roleHint', 'planet'] }] }, ['planet']),  // a true double planet — deterministic, structural
+    R('science/doomed-orbit', 'science', 1.0, { eq: ['withinRocheLimit', true] }, ['planet', 'moon', 'belt']),  // inside the star's Roche limit: living on borrowed time
+    R('science/kill-zone-survivor', 'science', 1.0, { all: [{ eq: ['inKillZone', true] }, { eq: ['hasBio', true] }] }, ['planet', 'moon']),  // life where nothing should live — always remarkable
+    R('frontier/prime-claim', 'frontier', 0.35, { all: [{ eq: ['inHabitableZone', true] }, { eq: ['hasSolidSurface', true] }, { eq: ['hasBio', false] }, { not: { eq: ['inDangerZone', true] } }] }, ['planet', 'moon'])  // unclaimed garden real estate — a prospector's hook, rolled
   ]
 };

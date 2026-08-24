@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.33 - 24th Aug 2026
+
+- Tagging rules learn where a world SITS. Sixteen new rule fields in two families - Orbit & zones (distance, period, inclination, retrograde, and membership of the habitable, kill and danger zones, the Roche limit, and the soot, frost, CO2 and CO lines, all judged against the same zones the map paints, with moons answering by their host's orbit) and Structure (part of a barycentre, moon count, rings, moon-of-a-giant). The /poi-reference page now groups its field list by family. Four new automated rules ride along: a true double planet is tagged as one, a world inside its star's Roche limit is on a doomed orbit, life inside the kill zone is remarkable, and an empty garden world is a prospector's claim - existing maps pick these up once, and nothing already rolled changes.
+
 ## v3.0.32 - 24th Aug 2026
 
 - A tag added under a category now actually joins it: it appears in Settings > Tagging (colour-editable, deletable, and reachable by tagging rules), and is offered as a one-click chip on every other body - with its proper name. It still lists under Yours on the body that carries it, because that grouping says who put it there, not where it belongs.

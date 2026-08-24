@@ -260,7 +260,7 @@ export class SystemProcessor implements ISystemProcessor {
 
         // 6. RPG "reasons to visit" pass — reads the now-complete physics/tags and adds resource/
         //    science/frontier/intrigue hooks (config-gated; reads the reasonsConfig store).
-        annotateReasonsToVisit(processedSystem);
+        annotateReasonsToVisit(processedSystem, undefined, undefined, rulePack);
 
         // 7. ANOMALY pass (G37) — the GM's stated REASON for each value they have pinned, published
         //    as a tag so a player can see WHAT is odd about a world rather than only that something
