@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.30 - 24th Aug 2026
+
+- The side panel can no longer end up 'slightly chopped off at the side'. The GM-notes box was a few pixels wider than the panel, and typing in it could scroll the whole panel sideways and leave it stuck there with no scrollbar to bring it back - the left edge of every tile quietly clipped until a reload. The box now fits exactly, and the panel refuses to pan sideways at all, whatever a future control does.
+
 ## v3.0.29 - 22nd Aug 2026
 
 - Tidal locking settled properly, all the way down. A world the engine despins can no longer keep a formation tilt - the same tides erode its axis toward the orbit normal, so generated and imported locked worlds now derive a tilt of a few degrees instead of the occasional 88 (existing saves heal on load; nothing re-rolls for unlocked worlds, and authored tilts stand). A locked body now keeps ONE fixed surface point toward its star at every tilt - and at an authored 90 degrees that point is the pole, which is a real equilibrium: a pole can be tidally locked, and it now both renders and paints that way, with the eyeball eye and the molten glow drawn at the locked point rather than assuming it sits on the equator.

@@ -157,6 +157,8 @@
       color: var(--accent);
   }
   textarea {
+    /* A72: border-box — see GmNotesEditor's note; same fault, same fix. */
+    box-sizing: border-box;
     width: 100%;
     min-height: 150px;
     background: var(--bg-panel);
