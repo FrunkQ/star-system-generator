@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.25 - 22nd Aug 2026
+
+- The Zone Key now says what the Goldilocks band actually claims: liquid water is possible there on a world with enough atmosphere - the band assumes greenhouse warming, so a thin-aired world inside it is still frozen, exactly as Mars is in the Sun's own band.
+
 ## v3.0.24 - 22nd Aug 2026
 
 - A tidally locked world with a near-90-degree axial tilt no longer sits motionless and snaps 180 degrees every half orbit: it now rolls along its orbit, which is what synchronous rotation about a pole lying in the orbit plane really looks like. Locked worlds with ordinary tilts are unchanged.
