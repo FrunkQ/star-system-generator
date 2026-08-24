@@ -3294,7 +3294,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // A locked view cannot be rotated - that is the meaning of the lock. Keeping their ZOOM while
       // discarding their rotation is the honest expression of it; the old code achieved the same by
       // overwriting the camera every frame, which is why it read as "the view fights me".
-      if (lockRotate) viewOffset = { rot: { x: 0, y: 0, z: 0, w: 1 }, zoom: viewOffset.zoom };
+      if (lockRotate) viewOffset = { dAz: 0, dEl: 0, zoom: viewOffset.zoom };
 
       // A DRAG IS A ROTATION. It must never change the distance, so the zoom is taken from the
       // camera ONLY when the wheel is what moved it. Anything else keeps the zoom it already had.
@@ -3312,7 +3312,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // reverted every PINCH on every touch device: the gesture dollied the camera, the rig was not
       // told a zoom had happened, and the distance was politely put back the next frame (C10).
       if (!ownsDistance(lastInput.kind) || nowMs > userInputUntil) {
-        viewOffset = { rot: viewOffset.rot, zoom: zoomBeforeDerive };
+        viewOffset = { dAz: viewOffset.dAz, dEl: viewOffset.dEl, zoom: zoomBeforeDerive };
       }
     }
     if (reframePending) {

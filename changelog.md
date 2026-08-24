@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.28 - 22nd Aug 2026
+
+- The follow-camera bounce is actually gone this time, and it was measured before it was fixed: parking the view while following stored your adjustment in a form that could not ride the camera's once-per-orbit swing around the planet, so a parked 30-degree pitch became a sixty-degree see-saw. The adjustment is now stored as bearings relative to the shot itself, so a parked view keeps exactly the elevation you left it at, at every point of the orbit, on any orbit.
+
 ## v3.0.27 - 22nd Aug 2026
 
 - The rest of the camera fix: at wide zoom the follow shot switches to its fallback approach, which had not learnt to keep its elevation - so an inclined planet could still carry the camera under the plane, and each switch between the two approaches nudged the view once per orbit. Both approaches now hold their elevation and agree exactly where they meet, so the switch cannot move the camera.
