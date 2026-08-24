@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.32 - 24th Aug 2026
+
+- A tag added under a category now actually joins it: it appears in Settings > Tagging (colour-editable, deletable, and reachable by tagging rules), and is offered as a one-click chip on every other body - with its proper name. It still lists under Yours on the body that carries it, because that grouping says who put it there, not where it belongs.
+
 ## v3.0.31 - 24th Aug 2026
 
 - Board only. The v3.0.30 production push is recorded: starsystemx.com takes the deploy-skew recovery, the radiation band fix, the full tidal-lock settlement, the follow camera, and the side-panel clip fix.
