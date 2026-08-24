@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.34 - 24th Aug 2026
+
+* A VTT host that OPENS this app can now pair with it without the GM copying anything. Star System Explorer answers the window that opened it (Mappadux's "Open Star System Explorer" button) with the same discovery announce the /bridge frame gets - session id, starmap name and Player View names, nothing from the campaign - and only ever to an allowlisted address. This is the one channel a browser's site isolation does not block, so it is the zero-paste first pairing; pasting a player link still works and is still the fallback.
+
 ## v3.0.33 - 24th Aug 2026
 
 - Tagging rules learn where a world SITS. Sixteen new rule fields in two families - Orbit & zones (distance, period, inclination, retrograde, and membership of the habitable, kill and danger zones, the Roche limit, and the soot, frost, CO2 and CO lines, all judged against the same zones the map paints, with moons answering by their host's orbit) and Structure (part of a barycentre, moon count, rings, moon-of-a-giant). The /poi-reference page now groups its field list by family. Four new automated rules ride along: a true double planet is tagged as one, a world inside its star's Roche limit is on a doomed orbit, life inside the kill zone is remarkable, and an empty garden world is a prospector's claim - existing maps pick these up once, and nothing already rolled changes.

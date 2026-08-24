@@ -14,6 +14,7 @@
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { mintBroadcastId } from '$lib/broadcastId';
+  import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { toLegacyMapGridType } from '$lib/map/mapOverlay';
@@ -804,18 +805,61 @@
       appVersion: APP_VERSION,
     };
   }
+  // VTT OPENER HANDSHAKE. A host app on ANOTHER SITE (Mappadux, and later a Foundry/Owlbear shim)
+  // cannot discover this session through the same-machine channel: Chrome partitions
+  // BroadcastChannel inside a third-party iframe, so the /bridge frame it embeds cannot hear this
+  // tab (docs/dev/vtt-integration-notes.md section 2). Until now the only way in was the GM pasting
+  // a player link. But when the HOST OPENED this tab, `window.opener` is a channel partitioning does
+  // not touch — so post the same ANNOUNCE straight back to it and the pairing needs no paste.
+  //
+  // Narrow by construction: only ever to an ALLOWLISTED origin (the same list /bridge uses), only
+  // the discovery metadata (`AnnouncePayload`) that a sid-holder could read anyway, and nothing is
+  // ever ACCEPTED from the opener except a hello asking for that same announce.
+  let openerWin: Window | null = null;
+  let openerOrigin: string | null = null;
+  function initOpenerHandshake() {
+    if (!browser || !window.opener || window.opener === window) return;
+    openerWin = window.opener;
+    // The referrer of a window.open() is the opener's page; cross-origin it is just the origin,
+    // which is all we need. Absent (a strict referrer policy) we still answer an explicit hello.
+    try {
+      const ref = document.referrer ? new URL(document.referrer).origin : null;
+      if (ref && ref !== window.location.origin && isAllowedEmbedOrigin(ref)) openerOrigin = ref;
+    } catch { /* unparseable referrer: wait for the hello instead */ }
+    window.addEventListener('message', onOpenerMessage);
+    announceToOpener();
+  }
+  function onOpenerMessage(e: MessageEvent) {
+    if (!openerWin || e.source !== openerWin) return;
+    if (e.origin === window.location.origin || !isAllowedEmbedOrigin(e.origin)) return;
+    const d = e.data;
+    if (!d || d.ns !== 'sse2-bridge' || d.v !== 1 || d.cmd !== 'hello') return;
+    openerOrigin = e.origin; // learned without a referrer
+    announceToOpener();
+  }
+  function announceToOpener() {
+    if (!openerWin || !openerOrigin) return;
+    const a = announceNow();
+    if (!a) return; // no map loaded yet — the reactive below re-posts when one is
+    try {
+      openerWin.postMessage({ ns: 'sse2-bridge', v: 1, event: 'announce', payload: a }, openerOrigin);
+    } catch { /* opener closed */ }
+  }
+
   let remoteNotice: string | null = null;
   let remoteNoticeTimer: ReturnType<typeof setTimeout> | null = null;
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   onDestroy(() => {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+    if (browser) window.removeEventListener('message', onOpenerMessage);
   });
   // Proactive re-announce on identity/preset-list change, so an open bridge hears a rename, a
   // different map loading, or a new Player View without polling. Fingerprint-gated like the rest.
   $: if (browser && $starmapStore?.broadcastId && $playerPresetList) {
     const a = announceNow();
     if (a) broadcastService.sendIfChanged({ type: 'ANNOUNCE', payload: a });
+    announceToOpener(); // a host that opened this tab hears the map load, not just the first paint
   }
   // Mint the persistent broadcast id on first load of any map that lacks one; the autosave
   // reactive persists it with the map. Minted ONCE — never re-derived on rename (that would
@@ -910,6 +954,7 @@
       // whatever level it happened to open on, exactly as the overrides above must be re-stated.
       broadcastService.sendMessage({ type: 'SYNC_GM_LEVEL', payload: gmLevelNow() });
     };
+    initOpenerHandshake();
     // VTT integration (design 9.1/1B): discovery + remote-request answers. ANNOUNCE is identity
     // metadata only — never campaign content — so it is safe to answer any same-machine prober.
     broadcastService.onRequestHello = () => {
