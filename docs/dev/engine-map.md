@@ -47,6 +47,31 @@ speculatively — record, and resolve when the area is open anyway.
 
 ---
 
+## ARCHITECTURE — ownership across SSE and the Labs
+
+### ARCH-1 SSE orchestrates; System Lab resolves physical state; Evolution Lab owns every evolving mechanism
+WHERE: the versioned contracts/adapters between SSE, System Lab and Evolution Lab. This is an
+ownership boundary, not a runtime migration already implemented in this repository.
+RULE: **Evolution Lab is domain-neutral and is the sole home of evolutionary mechanisms.** It owns
+generic evolving-network primitives, classifiers and milestones, lineage/provenance/history,
+recursive abstraction/wrapping, and domain presentation/scenario packs. Biology, first-life,
+galaxy and social views are presentation modes over that engine, not separate engines. **System Lab
+owns authoritative star, planet, accretion, orbital, geological and atmospheric physical state and
+resolution**; it provides to, consumes from and receives results from Evolution Lab through
+versioned contracts. **SSE owns product orchestration**: the master seed, global clock,
+deterministic event ordering, persistence and the combined UI. SSE consumes versioned Lab outputs
+and adapters; it does not duplicate either engine.
+WHY: without this boundary, a host-specific UI or an evolutionary rule already present in SSE can
+be mistaken for a new SSE-owned engine and expanded here, creating a third implementation instead
+of a contract between the two Labs and the product shell.
+BLAST: evolutionary logic currently in SSE is future migration scope, **not work authorised by this
+entry**. Do not delete, move or refactor it merely because ownership is now settled. Any migration
+needs its own scoped decision, compatibility/versioning plan and contract tests. Changes involving
+generation, ageing, biospheres, first life, galaxy-scale evolution, societies, lineage, milestones
+or recursive evolving structures must check this entry before assigning ownership.
+
+---
+
 ## TAGS — lifecycle and provenance
 
 ### TAG-1 One module decides what may delete a tag
