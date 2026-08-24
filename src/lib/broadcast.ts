@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { importOrReload } from '$lib/util/importOrReload';
 import { peerConfigFor, loadStoredIce, type IceServerEntry } from '$lib/iceConfig';
 import { perfCount, perfEvent } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
@@ -279,7 +280,7 @@ class BroadcastService {
   private chunkBuf = new Map<string, { n: number; parts: string[] }>();
 
   private async loadPeer(): Promise<any> {
-    const mod: any = await import('peerjs');
+    const mod: any = await importOrReload(() => import('peerjs'));
     return mod.default ?? mod.Peer ?? mod;
   }
 

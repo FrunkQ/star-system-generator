@@ -37,6 +37,12 @@
       color: var(--accent);
   }
   textarea {
+    /* A72: border-box, or width:100% PLUS padding and border overflows the side panel by ~18px.
+       The panel clips x-overflow, but a clipped box was still a SCROLL CONTAINER — focusing this
+       textarea auto-scrolled the caret into view, shifted the whole panel left and STUCK there
+       (no scrollbar exists to come back). The panel now uses overflow-x: clip as well, but the
+       honest fix is that nothing overflows in the first place. */
+    box-sizing: border-box;
     width: 100%;
     min-height: 140px;
     background: var(--bg-panel);

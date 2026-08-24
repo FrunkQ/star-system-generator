@@ -38,18 +38,29 @@ export interface Shot {
 	dist: number;
 }
 
-/** What the user has done to it. */
+/** What the user has done to it.
+ *
+ * A71: azimuth/elevation DELTAS, not a rotation quaternion — and the difference is load-bearing,
+ * not cosmetic. The follow shot's base heading YAWS a full circle per orbit, and a parked offset
+ * must ride that yaw without changing what the user chose. A single quaternion cannot: a "pitch
+ * down by d" offset derived at one azimuth is a rotation about a HORIZONTAL axis, and applying
+ * that fixed axis to the far side of the base's sweep pitches the view UP instead — measured, a
+ * parked -30° pitch swung the camera elevation through 60° over one orbit (22°..82°), identically
+ * on flat and inclined orbits. Scalars measured in the base's own frame are equivariant under the
+ * yaw by construction: parked means constant elevation, at every orbit phase. */
 export interface ViewOffset {
-	/** Rotation taking the base heading to the user's chosen heading. */
-	rot: Quat;
+	/** Azimuth delta from the base heading, radians, about world UP. */
+	dAz: number;
+	/** Elevation delta from the base heading, radians. */
+	dEl: number;
 	/** Distance MULTIPLIER (R3: zoom is a ratio, never an absolute). 1 = the framed distance. */
 	zoom: number;
 }
 
-export const IDENTITY_OFFSET: ViewOffset = { rot: { x: 0, y: 0, z: 0, w: 1 }, zoom: 1 };
+export const IDENTITY_OFFSET: ViewOffset = { dAz: 0, dEl: 0, zoom: 1 };
 
 export function isIdentity(o: ViewOffset, eps = 1e-6): boolean {
-	return Math.abs(o.zoom - 1) < eps && Math.abs(o.rot.w) > 1 - eps;
+	return Math.abs(o.zoom - 1) < eps && Math.abs(o.dAz) < eps && Math.abs(o.dEl) < eps;
 }
 
 // --- small vector/quaternion helpers (kept local so this file has no dependencies) --------------
@@ -99,10 +110,23 @@ export function applyQuat(v: Vec3, q: Quat): Vec3 {
 
 // --- the model itself ---------------------------------------------------------------------------
 
+// Elevation is bounded at EXACTLY the poles: an overhead-locked base heading IS (0,1,0) and must
+// round-trip untouched. A user pitch cannot push past a pole — the clamp holds it there, and the
+// spherical reconstruction at ±90° is vertical whatever the azimuth says, so nothing flips.
+const azOf = (v: Vec3) => Math.atan2(v.x, v.z);
+const elOf = (v: Vec3) => Math.asin(Math.max(-1, Math.min(1, v.y)));
+const wrapPi = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+
 /** Where the camera actually goes: the base shot with the user's offset applied. */
 export function composeShot(base: Shot, offset: ViewOffset): { target: Vec3; camera: Vec3; dist: number } {
-	const heading = applyQuat(base.heading, offset.rot);
 	const dist = base.dist * offset.zoom;
+	// Untouched rotation reproduces the base heading EXACTLY — a re-frame or a locked view must
+	// land on the shot to the last bit, not to within reconstruction dust.
+	const heading: Vec3 = offset.dAz === 0 && offset.dEl === 0 ? base.heading : (() => {
+		const az = azOf(base.heading) + offset.dAz;
+		const el = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, elOf(base.heading) + offset.dEl));
+		return { x: Math.cos(el) * Math.sin(az), y: Math.sin(el), z: Math.cos(el) * Math.cos(az) };
+	})();
 	return { target: base.target, camera: add(base.target, scale(heading, dist)), dist };
 }
 
@@ -120,7 +144,8 @@ export function deriveOffset(base: Shot, actualCamera: Vec3, actualTarget?: Vec3
 	const v = sub(actualCamera, from);
 	const d = len(v);
 	if (!(d > 1e-12) || !(base.dist > 1e-12)) return { ...IDENTITY_OFFSET };
-	return { rot: quatFromUnitVectors(base.heading, scale(v, 1 / d)), zoom: d / base.dist };
+	const vh = scale(v, 1 / d);
+	return { dAz: wrapPi(azOf(vh) - azOf(base.heading)), dEl: elOf(vh) - elOf(base.heading), zoom: d / base.dist };
 }
 
 /**
@@ -150,7 +175,7 @@ export function clampZoom(offset: ViewOffset, baseDist: number, minDistance: num
 	if (!(baseDist > 0)) return offset;
 	const lo = minDistance / baseDist;
 	const hi = maxDistance / baseDist;
-	return { rot: offset.rot, zoom: Math.min(hi, Math.max(lo, offset.zoom)) };
+	return { dAz: offset.dAz, dEl: offset.dEl, zoom: Math.min(hi, Math.max(lo, offset.zoom)) };
 }
 
 /**

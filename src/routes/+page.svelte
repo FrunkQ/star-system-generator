@@ -2,6 +2,7 @@
   export let data;
   const { exampleSystems } = data;
   import { onMount, onDestroy, tick } from 'svelte';
+  import { importOrReload } from '$lib/util/importOrReload';
   import { browser } from '$app/environment';
   import { pushState, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
@@ -1265,7 +1266,7 @@
   async function buildDiagnosticsOnDemand() {
     let storage: { usageBytes: number; quotaBytes: number } | null = null;
     try {
-      const { storageReport } = await import('$lib/storagePersistence');
+      const { storageReport } = await importOrReload(() => import('$lib/storagePersistence'));
       const r = await storageReport();
       storage = { usageBytes: r.usageBytes, quotaBytes: r.quotaBytes };
     } catch { /* storage API unavailable; the rest of the report is still worth having */ }
@@ -1289,7 +1290,7 @@
     if (!src) return;
     diagnosticBuilding = true;
     try {
-      const { buildDiagnosticBundle } = await import('$lib/io/diagnosticBundle');
+      const { buildDiagnosticBundle } = await importOrReload(() => import('$lib/io/diagnosticBundle'));
       // ALWAYS PREFER A FRESH READ FROM STORAGE, and this is not a detail: `recalcAllSystems`
       // rewrites `node.system` IN PLACE as it goes, so the in-memory map at the moment of a stop is
       // half re-derived — a mixture that never existed on disk and that nobody can load to reproduce

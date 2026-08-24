@@ -65,8 +65,10 @@
 			<p>
 				<span class="color-box green"></span>
 				<strong>Goldilocks Zone (Green):</strong> The "just right" region around a star where
-				it's not too hot and not too cold. A planet with a good atmosphere here can have
-				liquid water.
+				liquid water is possible on a world with enough atmosphere. The band assumes greenhouse
+				warming — its outer half a thick carbon-dioxide blanket — so a thin-aired world here is
+				still frozen. Mars sits inside the Sun's band and is a desert of ice; Earth without its
+				greenhouse would be -18 &deg;C at its own distance.
 			</p>
 			<p class="in-game-note">
 				<strong>In-Game: 'Prime Real Estate.'</strong> This is where you'll find Earth-like

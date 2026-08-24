@@ -4,6 +4,7 @@
   // scroll, and a tap is warp-mapped through the shader so it selects the row the eye sees even under
   // barrel warp or picture-roll. Lazy-imports three (via filteredCanvas) so it code-splits.
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { importOrReload } from '$lib/util/importOrReload';
   import type { FilteredCanvasController } from '$lib/holo/filteredCanvas';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
   import { drawList, type ListModel, type ListTips, type RowHit } from '$lib/catalogue/listCanvas';
@@ -44,7 +45,7 @@
   onMount(() => {
     let cancelled = false;
     (async () => {
-      const { createFilteredCanvas } = await import('$lib/holo/filteredCanvas');
+      const { createFilteredCanvas } = await importOrReload(() => import('$lib/holo/filteredCanvas'));
       if (cancelled || !canvas) return;
       ctrl = createFilteredCanvas(canvas);
       ctrl.setFilter(filterId, filterParams);

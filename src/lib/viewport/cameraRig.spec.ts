@@ -130,14 +130,14 @@ describe('the cosmetic blend converges at ANY scale (faults 2 and 4)', () => {
 describe('zoom is a ratio, clamped only by the controls (fault 5)', () => {
 	it('lets the camera reach a true-scale hull', () => {
 		const baseDist = 1e-9;
-		const clamped = clampZoom({ rot: IDENTITY_OFFSET.rot, zoom: 0.5 }, baseDist, 1e-10, 100);
+		const clamped = clampZoom({ dAz: 0, dEl: 0, zoom: 0.5 }, baseDist, 1e-10, 100);
 		expect(clamped.zoom).toBe(0.5); // 5e-10 is above the 1e-10 floor: allowed
 		expect(baseDist * clamped.zoom).toBeGreaterThan(1e-10);
 	});
 
 	it('still refuses to go inside the controls\' minimum', () => {
 		const baseDist = 1e-9;
-		const clamped = clampZoom({ rot: IDENTITY_OFFSET.rot, zoom: 1e-6 }, baseDist, 1e-10, 100);
+		const clamped = clampZoom({ dAz: 0, dEl: 0, zoom: 1e-6 }, baseDist, 1e-10, 100);
 		expect(baseDist * clamped.zoom).toBeCloseTo(1e-10, 20);
 	});
 });
@@ -284,7 +284,7 @@ describe('a drag rotates and must never zoom', () => {
 			const rotated = { x: cam.z * 0.05 + cam.x * 0.999, y: cam.y, z: cam.z * 0.999 - cam.x * 0.05 };
 			cam = { x: rotated.x * 0.9928, y: rotated.y * 0.9928, z: rotated.z * 0.9928 };
 			const derived = deriveOffset(base, cam, base.target);
-			offset = { rot: derived.rot, zoom: offset.zoom }; // drag: take rotation, keep zoom
+			offset = { dAz: derived.dAz, dEl: derived.dEl, zoom: offset.zoom }; // drag: take rotation, keep zoom
 			cam = composeShot(base, offset).camera;
 		}
 		// The shot distance is untouched after 200 frames of creep...
@@ -378,5 +378,48 @@ describe('ownsDistance - which inputs may move the camera in and out (C10)', () 
 		for (const kind of ['turntable', 'other', '', 'zoom', 'Wheel', 'PINCH']) {
 			expect(ownsDistance(kind)).toBe(false);
 		}
+	});
+});
+
+// A71 (the follow bob). The base heading of a followed planet YAWS a full circle per orbit. The
+// offset must ride that yaw without changing what the user chose — which is exactly what the old
+// quaternion representation could not do: a parked -30° pitch, derived once and re-applied around
+// the sweep, swung the camera elevation through 60° (22°..82°), identically on flat and inclined
+// orbits (measured before the fix; this suite asserts the cure and pins the mechanism).
+describe('a parked offset rides a yawing base at constant elevation (A71)', () => {
+	const baseAt = (th: number, incl: number): Shot => {
+		const s = { x: 2 * Math.cos(th), y: 2 * Math.sin(th) * Math.sin(incl), z: 2 * Math.sin(th) };
+		// levelled follow heading at a 38-degree framing tilt, exactly as the scene builds it
+		const tilt = 0.66, ca = Math.cos(tilt), sa = Math.sin(tilt);
+		const h = Math.hypot(s.x, s.z);
+		return { target: s, heading: { x: (s.x / h) * sa, y: ca, z: (s.z / h) * sa }, dist: 0.8 };
+	};
+	const elevOf = (shot: { camera: Vec3; target: Vec3 }) => {
+		const d = { x: shot.camera.x - shot.target.x, y: shot.camera.y - shot.target.y, z: shot.camera.z - shot.target.z };
+		return Math.asin(d.y / Math.hypot(d.x, d.y, d.z));
+	};
+
+	it('elevation is constant around the whole orbit, flat and inclined, park it anywhere', () => {
+		for (const incl of [0, (3 * Math.PI) / 180]) {
+			const b0 = baseAt(0, incl);
+			// park: pitch the view down 30 degrees at azimuth 0
+			const parked = composeShot(b0, { dAz: 0, dEl: (-30 * Math.PI) / 180, zoom: 1 });
+			const off = deriveOffset(b0, parked.camera, b0.target);
+			const e0 = elevOf(composeShot(baseAt(0, incl), off));
+			for (let k = 1; k <= 48; k++) {
+				const e = elevOf(composeShot(baseAt((k / 48) * 2 * Math.PI, incl), off));
+				expect(Math.abs(e - e0)).toBeLessThan(1e-9);
+			}
+		}
+	});
+
+	it('the ride-along still happens: the azimuth advances with the base', () => {
+		const off = { dAz: 0.4, dEl: -0.3, zoom: 1 };
+		const a = composeShot(baseAt(0, 0), off);
+		const b = composeShot(baseAt(Math.PI / 2, 0), off);
+		const az = (s: { camera: Vec3; target: Vec3 }) => Math.atan2(s.camera.x - s.target.x, s.camera.z - s.target.z);
+		// this orbit parametrisation (x=cos, z=sin) sweeps the azimuth BACKWARD: a quarter orbit
+		// advances the base heading by -PI/2, and the offset must ride it exactly
+		expect(Math.abs(Math.atan2(Math.sin(az(b) - az(a) + Math.PI / 2), Math.cos(az(b) - az(a) + Math.PI / 2)))).toBeLessThan(1e-9);
 	});
 });

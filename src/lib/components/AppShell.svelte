@@ -92,11 +92,17 @@
 
 <div class="app-shell" data-mode={mode}>
   {#if mode === 'desktop'}
-    {#if $$slots.rail}<aside class="area rail"><slot name="rail" /></aside>{/if}
+    {#if $$slots.rail}<aside class="area rail" on:scroll={(e) => { if (e.currentTarget.scrollLeft !== 0) e.currentTarget.scrollLeft = 0; }}><slot name="rail" /></aside>{/if}
     {#if $$slots.strip}<div class="area strip"><slot name="strip" /></div>{/if}
     <main class="area canvas"><slot name="canvas" /></main>
     {#if $$slots.bar}<div class="area bar"><slot name="bar" /></div>{/if}
-    {#if $$slots.detail}<aside class="area detail" class:resizing style={detailWidth ? `width:${detailWidth}px` : ''}>
+    <!-- A72 on:scroll — the panel must NEVER pan horizontally, but overflow-x:hidden only hides the
+         scrollbar: the box is still a scroll container (overflow-y is auto), and focusing a child
+         that overflows sideways auto-scrolls the caret into view and STICKS the whole panel shifted
+         left, with no scrollbar to come back. The reset makes the invariant self-enforcing whatever
+         a future child does. Same guard on the rail above. -->
+    {#if $$slots.detail}<aside class="area detail" class:resizing style={detailWidth ? `width:${detailWidth}px` : ''}
+      on:scroll={(e) => { if (e.currentTarget.scrollLeft !== 0) e.currentTarget.scrollLeft = 0; }}>
       <div
         class="detail-resize"
         role="separator"
@@ -176,7 +182,11 @@
     border-right: 1px solid var(--border-soft, #1c1f27);
     overflow-y: auto;
     /* overflow-y:auto alone promotes overflow-x to auto too, so a label a hair wider than the 200px cap
-       left a permanent horizontal scrollbar along the bottom. Clip it; labels truncate (see RailNav). */
+       left a permanent horizontal scrollbar along the bottom. Clip it; labels truncate (see RailNav).
+       A72: `hidden` is deliberate and `clip` CANNOT replace it — with overflow-y:auto on the same box,
+       `clip` computes back to `hidden` per spec (any scrolling axis makes the box a scroll container).
+       So a hidden box can still be SCROLLED horizontally by focus/caret/selection if a child overflows
+       — the guard is the on:scroll reset on the element, plus nothing inside being allowed to overflow. */
     overflow-x: hidden;
   }
   .area.strip {
@@ -206,7 +216,12 @@
     border-left: 1px solid var(--border-soft, #1c1f27);
     overflow-y: auto;
     /* As with .area.rail above: overflow-y:auto promotes overflow-x to auto too, so content a hair wider
-       than the panel (the scrollbar's width, a 100%-wide input) spawns a phantom horizontal scrollbar. */
+       than the panel (the scrollbar's width, a 100%-wide input) spawns a phantom horizontal scrollbar.
+       A72: a hidden-overflow box is still a SCROLL CONTAINER — focusing a child that overflowed (a
+       content-box textarea, 18px wide of the panel) auto-scrolled the caret into view, shifted the
+       whole panel left and STUCK there: tiles lost their accent bars and first letters, and no
+       scrollbar existed to come back. `clip` cannot fix it (with overflow-y:auto it computes back to
+       `hidden` per spec), so the on:scroll reset on this element enforces the invariant instead. */
     overflow-x: hidden;
   }
   .area.detail.resizing {

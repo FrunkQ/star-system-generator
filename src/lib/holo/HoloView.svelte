@@ -4,6 +4,7 @@
   // code-split into its own chunk and the 2D app never pays for it. Mirrors the prop surface of
   // SystemVisualizer, the 2D orrery it stands in for.
   import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { importOrReload } from '$lib/util/importOrReload';
   import type { System } from '$lib/types';
   import type { HoloController } from '$lib/holo/scene';
   import { gridLegend } from '$lib/map/gridLegend';
@@ -157,7 +158,7 @@
   onMount(() => {
     let cancelled = false;
     (async () => {
-      const { createHoloScene } = await import('$lib/holo/scene');
+      const { createHoloScene } = await importOrReload(() => import('$lib/holo/scene'));
       if (cancelled || !canvas) return;
       controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id) });
       controller.setSystem(system, 'mount');

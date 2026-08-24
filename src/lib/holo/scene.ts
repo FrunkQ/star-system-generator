@@ -3189,7 +3189,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // is already implemented and tested in shotSolver.
     const policy = lockRotate
       ? ({ kind: 'fixed-azimuth', azimuth: lockedHeading } as const)
-      : ({ kind: 'radial' } as const);
+      // A71: levelled, like the host-relative follow shot — and the two MUST both level, because
+      // the follow shot falls back to this policy when the host would occlude (wide zoom), and a
+      // levelled/unlevelled mismatch snapped the elevation by the subject's inclination at every
+      // crossing — the once-per-orbit "view reset" on inclined orbits.
+      : ({ kind: 'radial', level: true } as const);
     const tilt = flatOverhead && lockRotate ? LOCK_POLAR : framingAngleRad;
 
     if (b) {
@@ -3233,7 +3237,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       return {
         target,
         heading: useHost
-          ? headingDirection({ policy: { kind: 'host-relative' }, tiltRad: tilt, subject: target, host: hostPos })
+          // A71 `level`: the follow shot's elevation belongs to the tilt, not to the subject's
+          // orbital inclination — an inclined close-in planet on a fast clock was bouncing the
+          // camera once per orbit. The surface-construct shot above deliberately does NOT level.
+          ? headingDirection({ policy: { kind: 'host-relative', level: true }, tiltRad: tilt, subject: target, host: hostPos })
           : headingDirection({ policy, tiltRad: tilt, subject: target, origin: v3(originShift) }),
         dist
       };
@@ -3287,7 +3294,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // A locked view cannot be rotated - that is the meaning of the lock. Keeping their ZOOM while
       // discarding their rotation is the honest expression of it; the old code achieved the same by
       // overwriting the camera every frame, which is why it read as "the view fights me".
-      if (lockRotate) viewOffset = { rot: { x: 0, y: 0, z: 0, w: 1 }, zoom: viewOffset.zoom };
+      if (lockRotate) viewOffset = { dAz: 0, dEl: 0, zoom: viewOffset.zoom };
 
       // A DRAG IS A ROTATION. It must never change the distance, so the zoom is taken from the
       // camera ONLY when the wheel is what moved it. Anything else keeps the zoom it already had.
@@ -3305,7 +3312,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // reverted every PINCH on every touch device: the gesture dollied the camera, the rig was not
       // told a zoom had happened, and the distance was politely put back the next frame (C10).
       if (!ownsDistance(lastInput.kind) || nowMs > userInputUntil) {
-        viewOffset = { rot: viewOffset.rot, zoom: zoomBeforeDerive };
+        viewOffset = { dAz: viewOffset.dAz, dEl: viewOffset.dEl, zoom: zoomBeforeDerive };
       }
     }
     if (reframePending) {
@@ -4450,16 +4457,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function faceParent(b: BodyVisual) {
     const pv = bodyById.get(b.parentId!);
     if (!pv) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
-    _pole.set(0, 1, 0).applyQuaternion(b.tiltQuat!).normalize();          // world spin axis
     _toParent.copy(pv.mesh.position).sub(b.mesh.position);                 // moon → parent
-    _toParent.addScaledVector(_pole, -_toParent.dot(_pole));               // project into the equatorial plane
-    if (_toParent.lengthSq() < 1e-12) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
-    _toParent.normalize();
-    _refX.set(1, 0, 0).applyQuaternion(b.tiltQuat!);                       // where +X points at spin angle 0
-    _refX.addScaledVector(_pole, -_refX.dot(_pole)).normalize();
-    const angle = Math.atan2(_cross.crossVectors(_refX, _toParent).dot(_pole), _refX.dot(_toParent));
+    // A70, settled with the owner: a lock means ONE FIXED SURFACE POINT faces the star, and the
+    // tilt decides WHICH point — at tilt ε the locked point sits at latitude ε off the texture's
+    // equator-centre meridian, and at ε≈90° the locked point IS the pole (a pole can be tidally
+    // locked; the bulge is fixed, so it is a true equilibrium). The orientation is a yaw about the
+    // ORBIT NORMAL tracking the star's azimuth, COMPOSED ONTO the tilt — spin∘tilt, world axis —
+    // which is smooth and flip-free at every tilt. The rejected alternatives, so nobody rebuilds
+    // them: aiming the meridian by projecting the star into the equatorial plane DEGENERATES near
+    // 90° (the projection is a constant that only flips sign — the body sat motionless and snapped
+    // 180° every half orbit); spinning about the TILTED pole (tilt∘spin) rolls the painted cold
+    // side through the sunrise, because no static texture survives a migrating substellar point.
+    // With A70's tidal erosion the derived tilts of locked worlds are ~0-5°, so the locked point
+    // sits within a few degrees of the painted eye; an AUTHORED high tilt pins its pole at the
+    // star, honestly — repainting the eye at the locked latitude is the banked follow-up.
+    if (_toParent.x * _toParent.x + _toParent.z * _toParent.z < 1e-12) { b.mesh.quaternion.copy(b.tiltQuat!); return; }
+    const angle = Math.atan2(-_toParent.z, _toParent.x);
     spinQuat.setFromAxisAngle(spinAxis, angle);
-    b.mesh.quaternion.copy(b.tiltQuat!).multiply(spinQuat);
+    b.mesh.quaternion.copy(spinQuat).multiply(b.tiltQuat!);
   }
 
   // Surface-locked constructs (see BodyVisual.surfaceLock): re-glue each to its fixed surface point,

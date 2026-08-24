@@ -6,6 +6,7 @@
   // the eye sees — either a planet/star on the schematic (2D hit box) or a navigator row. Mirrors
   // FilteredListView's filter + warp plumbing; lazy-imports the shader so it code-splits.
   import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
+  import { importOrReload } from '$lib/util/importOrReload';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   // The GM's tag vocabulary, off the broadcast — see HoloView for why the local store is the wrong
@@ -325,11 +326,11 @@
   onMount(() => {
     let cancelled = false;
     (async () => {
-      const { createFilteredCanvas } = await import('$lib/holo/filteredCanvas');
+      const { createFilteredCanvas } = await importOrReload(() => import('$lib/holo/filteredCanvas'));
       if (cancelled || !canvas) return;
       ctrl = createFilteredCanvas(canvas);
       ctrl.setFilter(filterId, filterParams);
-      const { TransitionEngine } = await import('$lib/transitions/TransitionEngine');
+      const { TransitionEngine } = await importOrReload(() => import('$lib/transitions/TransitionEngine'));
       if (!cancelled && overlayCanvas) engine = new TransitionEngine(overlayCanvas);
       const r = container.getBoundingClientRect();
       vw = r.width; vh = r.height;

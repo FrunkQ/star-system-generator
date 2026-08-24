@@ -2,6 +2,46 @@
 
 All notable changes are listed here:
 
+## v3.0.30 - 24th Aug 2026
+
+- The side panel can no longer end up 'slightly chopped off at the side'. The GM-notes box was a few pixels wider than the panel, and typing in it could scroll the whole panel sideways and leave it stuck there with no scrollbar to bring it back - the left edge of every tile quietly clipped until a reload. The box now fits exactly, and the panel refuses to pan sideways at all, whatever a future control does.
+
+## v3.0.29 - 22nd Aug 2026
+
+- Tidal locking settled properly, all the way down. A world the engine despins can no longer keep a formation tilt - the same tides erode its axis toward the orbit normal, so generated and imported locked worlds now derive a tilt of a few degrees instead of the occasional 88 (existing saves heal on load; nothing re-rolls for unlocked worlds, and authored tilts stand). A locked body now keeps ONE fixed surface point toward its star at every tilt - and at an authored 90 degrees that point is the pole, which is a real equilibrium: a pole can be tidally locked, and it now both renders and paints that way, with the eyeball eye and the molten glow drawn at the locked point rather than assuming it sits on the equator.
+
+## v3.0.28 - 22nd Aug 2026
+
+- The follow-camera bounce is actually gone this time, and it was measured before it was fixed: parking the view while following stored your adjustment in a form that could not ride the camera's once-per-orbit swing around the planet, so a parked 30-degree pitch became a sixty-degree see-saw. The adjustment is now stored as bearings relative to the shot itself, so a parked view keeps exactly the elevation you left it at, at every point of the orbit, on any orbit.
+
+## v3.0.27 - 22nd Aug 2026
+
+- The rest of the camera fix: at wide zoom the follow shot switches to its fallback approach, which had not learnt to keep its elevation - so an inclined planet could still carry the camera under the plane, and each switch between the two approaches nudged the view once per orbit. Both approaches now hold their elevation and agree exactly where they meet, so the switch cannot move the camera.
+
+## v3.0.26 - 22nd Aug 2026
+
+- Following a planet on an inclined orbit no longer bounces the camera: the follow shot keeps its elevation while the direction of approach tracks the planet, so a close-in world on a fast clock holds a steady horizon. Surface-construct shots are unchanged on purpose - they aim along the true radial.
+
+## v3.0.25 - 22nd Aug 2026
+
+- The Zone Key now says what the Goldilocks band actually claims: liquid water is possible there on a world with enough atmosphere - the band assumes greenhouse warming, so a thin-aired world inside it is still frozen, exactly as Mars is in the Sun's own band.
+
+## v3.0.24 - 22nd Aug 2026
+
+- A tidally locked world with a near-90-degree axial tilt no longer sits motionless and snaps 180 degrees every half orbit: it now rolls along its orbit, which is what synchronous rotation about a pole lying in the orbit plane really looks like. Locked worlds with ordinary tilts are unchanged.
+
+## v3.0.23 - 22nd Aug 2026
+
+- The surface-radiation band on the body card now matches its own number: the thresholds bucketed on a different scale from the ranges the labels print, so a world at ISS-comparable dose (the Moderate band's own anchor) was published as "Very High (1,000-5,000 mSv/year)" - up to four bands too hot, on every body above 1 mSv/y. The zones were never wrong; the label was.
+
+## v3.0.22 - 22nd Aug 2026
+
+- An open tab no longer breaks when a new version deploys under it: if a lazy-loaded view (the 3D view, the player-view canvases, the transitions) fails to fetch its code because the files changed on the server, the page reloads itself once and carries on - which is exactly the hard refresh you would have done by hand, done for you. A genuine network outage still errors rather than looping. Found on the way: the service worker version tag had not moved since v2.0.148, which had silently killed the "new version available" prompt - bumped, so that prompt works again.
+
+## v3.0.21 - 22nd Aug 2026
+
+- Board only. The production patch push is recorded: starsystemx.com moves v3.0.0 -> v3.0.20 with the three field fixes, the whole break-physics feature and the star-panel radiation correction.
+
 ## v3.0.20 - 22nd Aug 2026
 
 - Docs: the Getting Started walkthrough for building a world by hand now points at the Overrides tab, and the section on it explains what the slider colours mean and where the OVERRIDDEN flag shows up.

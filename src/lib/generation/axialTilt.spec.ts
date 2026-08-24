@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { generateSystem } from './system';
+import { inferAxialTilt } from '../physics/axialTilt';
 import { generateSystemFromConfig } from './generateFromConfig';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
 import type { RulePack } from '$lib/types';
@@ -164,5 +165,33 @@ describe('B10/D2a — the provenance rule reaches every body-creation route', ()
 			// And it must not have grown a private copy of the rule alongside the shared one.
 			expect(src.includes("{ key: 'spin/axis-inferred' }"), `${rel} pushes the tag directly instead of using the helper`).toBe(false);
 		}
+	});
+});
+
+// A70: tides erode the roll. A body the caller knows has DESPUN — locked or in a spin-orbit
+// resonance — draws a small Cassini-state obliquity, never the two-population formation roll, and
+// never carries the tipped flag (the impact history is erased with the spin). The un-despun draw
+// must be bit-identical to what it always was, or every saved seed re-rolls (the B9a rule).
+describe('a despun body cannot keep a formation tilt (A70)', () => {
+	it('despun draws are small, never tipped, and deterministic', () => {
+		for (let i = 0; i < 200; i++) {
+			const r = inferAxialTilt(`body-${i}`, null, true);
+			expect(r.tiltDeg).toBeLessThanOrEqual(5);
+			expect(r.tipped).toBe(false);
+			expect(r).toEqual(inferAxialTilt(`body-${i}`, null, true));
+		}
+	});
+
+	it('the un-despun draw is unchanged by the flag existing (saved seeds do not re-roll)', () => {
+		// The catastrophe population must still appear (Uranus and Venus are real), and the same id
+		// must give the same answer whether the third argument is omitted or explicitly false.
+		let tipped = 0;
+		for (let i = 0; i < 500; i++) {
+			const a = inferAxialTilt(`seed-${i}`, null);
+			const b = inferAxialTilt(`seed-${i}`, null, false);
+			expect(a).toEqual(b);
+			if (a.tipped) tipped++;
+		}
+		expect(tipped).toBeGreaterThan(20); // ~10% of 500
 	});
 });

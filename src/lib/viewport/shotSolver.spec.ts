@@ -130,6 +130,50 @@ describe('heading policies', () => {
 		expect(Math.hypot(h.x, h.y, h.z)).toBeCloseTo(1, 9);
 	});
 
+	// A71. A followed body on an INCLINED orbit used to rock the camera: the raw host->subject
+	// direction carries the subject's vertical excursion into the heading's elevation, once per
+	// orbit (visible as a bounce on a fast clock — owner-observed on an 8.8-day, 3°-inclined
+	// orbit). `level: true` hands the elevation to the tilt alone; the azimuth still tracks.
+	it('level host-relative: an inclined orbit cannot move the elevation (frame-loop sweep)', () => {
+		const tilt = 1.0;
+		let maxDev = 0, maxDevRaw = 0;
+		for (let k = 0; k <= 96; k++) {
+			const th = (k / 96) * 2 * Math.PI;
+			// a 3-degree-inclined circular orbit of radius 2 about a host at the origin
+			const s: Vec3 = { x: 2 * Math.cos(th), y: 2 * Math.sin(th) * Math.sin(3 * Math.PI / 180), z: 2 * Math.sin(th) };
+			const lv = headingDirection({ policy: { kind: 'host-relative', level: true }, tiltRad: tilt, subject: s, host: { x: 0, y: 0, z: 0 } });
+			const raw = headingDirection({ policy: { kind: 'host-relative' }, tiltRad: tilt, subject: s, host: { x: 0, y: 0, z: 0 } });
+			maxDev = Math.max(maxDev, Math.abs(lv.y - Math.cos(tilt)));
+			maxDevRaw = Math.max(maxDevRaw, Math.abs(raw.y - Math.cos(tilt)));
+			// the azimuth still tracks the horizontal host->subject direction
+			const az = Math.atan2(lv.x, lv.z), azWant = Math.atan2(s.x, s.z);
+			expect(Math.abs(Math.atan2(Math.sin(az - azWant), Math.cos(az - azWant)))).toBeLessThan(1e-9);
+		}
+		expect(maxDev).toBeLessThan(1e-9);       // levelled: elevation is the tilt's, everywhere
+		expect(maxDevRaw).toBeGreaterThan(0.01); // unlevelled: the old behaviour genuinely rocked
+	});
+
+	it('level radial: same guarantee, and the POLICIES AGREE AT THE FALLBACK BOUNDARY (host at origin)', () => {
+		// The follow shot falls back host-relative -> radial when the host would occlude. For a
+		// planet the host IS the system centre, so the two levelled policies must give the SAME
+		// heading at every orbit phase — otherwise every boundary crossing snaps the view.
+		const tilt = 1.0;
+		for (let k = 0; k <= 48; k++) {
+			const th = (k / 48) * 2 * Math.PI;
+			const s: Vec3 = { x: 2 * Math.cos(th), y: 2 * Math.sin(th) * Math.sin(12 * Math.PI / 180), z: 2 * Math.sin(th) };
+			const hostRel = headingDirection({ policy: { kind: 'host-relative', level: true }, tiltRad: tilt, subject: s, host: { x: 0, y: 0, z: 0 } });
+			const radial = headingDirection({ policy: { kind: 'radial', level: true }, tiltRad: tilt, subject: s, origin: { x: 0, y: 0, z: 0 } });
+			expect(radial.y).toBeCloseTo(Math.cos(tilt), 9);
+			expect(Math.hypot(hostRel.x - radial.x, hostRel.y - radial.y, hostRel.z - radial.z)).toBeLessThan(1e-9);
+		}
+	});
+
+	it('level host-relative: a (near-)vertical geometry falls back rather than emitting noise', () => {
+		const h = headingDirection({ policy: { kind: 'host-relative', level: true }, tiltRad: 1, subject: { x: 0, y: 5, z: 0 }, host: { x: 0, y: 0, z: 0 } });
+		expect(Number.isFinite(h.x) && Number.isFinite(h.y) && Number.isFinite(h.z)).toBe(true);
+		expect(Math.hypot(h.x, h.y, h.z)).toBeCloseTo(1, 9);
+	});
+
 	it('fixed-azimuth ignores the subject entirely - the shot cannot rotate', () => {
 		const a = headingDirection({ policy: { kind: 'fixed-azimuth', azimuth: 0.7 }, tiltRad: 1, subject });
 		const b = headingDirection({ policy: { kind: 'fixed-azimuth', azimuth: 0.7 }, tiltRad: 1, subject: { x: -9, y: 2, z: 4 } });

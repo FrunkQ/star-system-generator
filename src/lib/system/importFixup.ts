@@ -290,7 +290,16 @@ function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack): void {
   if (!bodyCanHaveTilt(body.roleHint)) return;      // belts, rings, stars, constructs have no spin axis
   if (body.axial_tilt_deg != null) return;          // authored or measured — never overwritten
   if (!body.id) return;
-  const { tiltDeg, tipped } = inferAxialTilt(body.id, pack);
+  // A70: a body the save already knows has DESPUN — locked to its host, or caught in a spin-orbit
+  // resonance — draws from the tidally-eroded distribution, not the formation roll. The evidence is
+  // what the save carries: the derived flag, or the lock/resonance tags a processed save always
+  // holds. (A body first locked by a LATER process() keeps its formation roll — that residual case
+  // is noted on the A70 row rather than solved by letting the processor rewrite authored fields.)
+  const tags = body.tags ?? [];
+  const despun = body.tidallyLocked === true
+    || (body.tidallyLocked !== false && tags.some((t) =>
+         t.key === 'orbit/tidally-locked' || t.key === 'orbit/spin-orbit-resonance'));
+  const { tiltDeg, tipped } = inferAxialTilt(body.id, pack, despun);
   body.axial_tilt_deg = tiltDeg;
   body.tags = body.tags ?? [];
   for (const t of spinProvenanceTags(body)) {

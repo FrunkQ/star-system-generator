@@ -31,6 +31,7 @@ import type { RulePack } from '$lib/types';
 
 export const DEFAULT_TILT_DISC_SIGMA_DEG = 15;
 export const DEFAULT_TILT_CATASTROPHE_CHANCE = 0.1;
+export const DEFAULT_TILT_LOCKED_SIGMA_DEG = 1.5;
 
 /**
  * A plausible obliquity for a body nobody measured, from its id. Stable across reloads and re-imports.
@@ -38,15 +39,30 @@ export const DEFAULT_TILT_CATASTROPHE_CHANCE = 0.1;
  * `tipped` reports which population it came from — the interesting half, and a tag rather than a
  * float the reader has to interpret: this world was hit hard enough to re-point its axis. Uranus and
  * Venus are the Solar System's two.
+ *
+ * A70 `despun`: TIDES ERODE THE ROLL. The same dissipation that despins a body into a lock (or a
+ * spin-orbit resonance) damps its obliquity toward the Cassini state, so a despun world's axis is
+ * NEAR the orbit normal whatever its formation history — Io holds 0.002°, Mercury 0.03°. Callers
+ * that know the body has despun say so, and the draw collapses to a small Rayleigh (capped at 5°)
+ * instead of the two-population roll: an "88.7° tilt, tidally locked" world is a contradiction, and
+ * it shipped one — the eyeball that rolled its painted ice cap into its own sunrise. The impact
+ * history is erased with it: a despun body is never `tipped`, however the dice fell. Both RNG draws
+ * still happen, so a body keeps its identity across lock/unlock edits and no other draw shifts.
  */
-export function inferAxialTilt(bodyId: string, pack?: RulePack | null): { tiltDeg: number; tipped: boolean } {
+export function inferAxialTilt(bodyId: string, pack?: RulePack | null, despun = false): { tiltDeg: number; tipped: boolean } {
 	const rng = new SeededRNG(`${bodyId}-tilt`);
 	const sigma = pack?.generation_parameters?.axial_tilt_disc_sigma_deg ?? DEFAULT_TILT_DISC_SIGMA_DEG;
 	const catastropheChance = pack?.generation_parameters?.axial_tilt_catastrophe_chance ?? DEFAULT_TILT_CATASTROPHE_CHANCE;
 	const tipped = rng.nextFloat() < catastropheChance;
+	const u = rng.nextFloat();
+	if (despun) {
+		const lockedSigma = pack?.generation_parameters?.axial_tilt_locked_sigma_deg ?? DEFAULT_TILT_LOCKED_SIGMA_DEG;
+		const tilt = Math.min(5, lockedSigma * Math.sqrt(-2 * Math.log(1 - u)));
+		return { tiltDeg: Math.round(tilt * 10) / 10, tipped: false };
+	}
 	const tilt = tipped
-		? Math.acos(2 * rng.nextFloat() - 1) * (180 / Math.PI)          // isotropic — a giant impact
-		: Math.min(89.9, sigma * Math.sqrt(-2 * Math.log(1 - rng.nextFloat())));  // Rayleigh — the disc
+		? Math.acos(2 * u - 1) * (180 / Math.PI)                        // isotropic — a giant impact
+		: Math.min(89.9, sigma * Math.sqrt(-2 * Math.log(1 - u)));      // Rayleigh — the disc
 	return { tiltDeg: Math.round(tilt * 10) / 10, tipped };
 }
 
