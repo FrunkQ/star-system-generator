@@ -1221,6 +1221,10 @@ export interface Starmap {
   // and VTT configs survive GM restarts and PC moves. Human-readable: name slug + 2 words + 3 digits.
   // Regeneration is a deliberate revocation action, never automatic.
   broadcastId?: string;
+  // G40: the star the DISPLAY grids centre on — the 3D map's polar/scaled rings radiate from it and
+  // measure distance FROM it, and the GM map's Reset View centres on it (zoomed so every star still
+  // fits). Display and navigation only: snap lattices, hex addresses and stored distances never move.
+  gridCenterId?: string;
   systems: StarSystemNode[];
   routes: Route[];
   activeJourneys?: ActiveJourney[];

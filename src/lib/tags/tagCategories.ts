@@ -19,7 +19,7 @@
 import { writable, derived, get } from 'svelte/store';
 import { registerPoiCategories, registerPoiTags } from './tagPresentation';
 import { canonicalTagKey, tagSlugSegment, registerCategoryProvenance, registerOverridableNamespaces, type TagOrigin } from './tagLifecycle';
-import { ENGINE_NAMESPACES, DEFAULT_COI_CATEGORIES, DEFAULT_POI_PACK, REASONS_DEFAULTS, ANOMALY_CATEGORY_SEED } from './tagDefaults';
+import { ENGINE_NAMESPACES, DEFAULT_COI_CATEGORIES, DEFAULT_POI_PACK, REASONS_DEFAULTS, ANOMALY_CATEGORY_SEED, POI_SEED_V2_TAGS } from './tagDefaults';
 import type { PoIExpr, PoIRole } from '../physics/reasonsToVisit';
 
 export type TagRole = PoIRole;
@@ -250,6 +250,33 @@ export function normalizeTagCategories(cats: TagCategory[]): TagCategory[] {
   return out.map((c, i) => ({ c, i })).sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).map((x) => x.c);
 }
 
+// G38 one-time seed: merge the v3.0.33 structural/orbital rules into an EXISTING saved store.
+// Marker-guarded, so it runs once per browser — a user deleting one of these rules afterwards
+// stays deleted, unlike the status-tag re-seed above which is meant to be permanent. New rules
+// take seq numbers AFTER every existing rule, so no saved world's chance-based rolls move (the
+// seeded roll advances per rule in seq order — TagRule.seq). Tag + category identifies the rule;
+// a category the user deleted, or a rule they already authored for the same tag, is skipped.
+const POI_SEED_V2_KEY = 'poi-seed-v2-done';
+function seedV2Rules(cats: TagCategory[]): TagCategory[] {
+  if (typeof localStorage === 'undefined') return cats;
+  try {
+    if (localStorage.getItem(POI_SEED_V2_KEY)) return cats;
+    let maxSeq = 0;
+    for (const c of cats) for (const r of c.rules ?? []) if (typeof r.seq === 'number' && r.seq > maxSeq) maxSeq = r.seq;
+    let next = maxSeq + 1;
+    const out = cats.map((c) => ({ ...c, rules: [...(c.rules ?? [])] }));
+    for (const tagKey of POI_SEED_V2_TAGS) {
+      const def = DEFAULT_POI_PACK.rules.find((r) => r.tag === tagKey);
+      if (!def) continue;
+      const cat = out.find((c) => c.id === def.category);
+      if (!cat || cat.rules.some((r) => r.tag === tagKey)) continue;
+      cat.rules.push({ ...def, tag: canonicalTagKey(def.tag), seq: next++ });
+    }
+    localStorage.setItem(POI_SEED_V2_KEY, '1');
+    return out;
+  } catch { return cats; }
+}
+
 function loadCategories(defaults: { coi: any[]; poi: any }): TagCategory[] {
   const saved = readJson(STORE_KEY);
   if (Array.isArray(saved) && saved.length && saved.every((c) => c && c.id && Array.isArray(c.tags))) {
@@ -263,7 +290,7 @@ function loadCategories(defaults: { coi: any[]; poi: any }): TagCategory[] {
 // therefore ran against an empty store: no rules, no tags, and the B33 surface-resource assertions
 // failed for a reason that had nothing to do with B33.
 export const tagCategories = writable<TagCategory[]>(
-  loadCategories({ coi: DEFAULT_COI_CATEGORIES, poi: DEFAULT_POI_PACK })
+  seedV2Rules(loadCategories({ coi: DEFAULT_COI_CATEGORIES, poi: DEFAULT_POI_PACK }))
 );
 
 /** Kept as a no-op so callers that seeded explicitly still compile; the store seeds itself now. */

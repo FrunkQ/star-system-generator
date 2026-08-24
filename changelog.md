@@ -2,6 +2,31 @@
 
 All notable changes are listed here:
 
+## v3.0.36 - 25th Aug 2026
+
+- Centre the map on a star: right-click any star on the GM map for Centre Map Here (and Clear). The 3D starmap's distance rings then radiate from that star and measure from it, and Reset View centres it on screen, zoomed so every star still fits. Snap grids and hex addresses never move - this is display and navigation only.
+- The floating grid sighting (a hex sheet hovering above a star) did not reproduce on a fresh session and every code path checks out; a diagnostic probe now ships in the holo scene so a recurrence is measured in one console call. Bookkeeping: the commit labelled v3.0.34 was a version-number race with a parallel session - its change (the G40 capture) is recorded here.
+
+## v3.0.35 - 24th Aug 2026
+
+- Docs: the VTT notes and design doc now name all three ways a host app can find a session (the opener handshake, a known session id over the broker, a pasted player link) - the notes still said the first pairing had to be a paste.
+
+## v3.0.34 - 24th Aug 2026
+
+* A VTT host that OPENS this app can now pair with it without the GM copying anything. Star System Explorer answers the window that opened it (Mappadux's "Open Star System Explorer" button) with the same discovery announce the /bridge frame gets - session id, starmap name and Player View names, nothing from the campaign - and only ever to an allowlisted address. This is the one channel a browser's site isolation does not block, so it is the zero-paste first pairing; pasting a player link still works and is still the fallback.
+
+## v3.0.33 - 24th Aug 2026
+
+- Tagging rules learn where a world SITS. Sixteen new rule fields in two families - Orbit & zones (distance, period, inclination, retrograde, and membership of the habitable, kill and danger zones, the Roche limit, and the soot, frost, CO2 and CO lines, all judged against the same zones the map paints, with moons answering by their host's orbit) and Structure (part of a barycentre, moon count, rings, moon-of-a-giant). The /poi-reference page now groups its field list by family. Four new automated rules ride along: a true double planet is tagged as one, a world inside its star's Roche limit is on a doomed orbit, life inside the kill zone is remarkable, and an empty garden world is a prospector's claim - existing maps pick these up once, and nothing already rolled changes.
+
+## v3.0.32 - 24th Aug 2026
+
+- A tag added under a category now actually joins it: it appears in Settings > Tagging (colour-editable, deletable, and reachable by tagging rules), and is offered as a one-click chip on every other body - with its proper name. It still lists under Yours on the body that carries it, because that grouping says who put it there, not where it belongs.
+
+## v3.0.31 - 24th Aug 2026
+
+- Board only. The v3.0.30 production push is recorded: starsystemx.com takes the deploy-skew recovery, the radiation band fix, the full tidal-lock settlement, the follow camera, and the side-panel clip fix.
+
 ## v3.0.30 - 24th Aug 2026
 
 - The side panel can no longer end up 'slightly chopped off at the side'. The GM-notes box was a few pixels wider than the panel, and typing in it could scroll the whole panel sideways and leave it stuck there with no scrollbar to bring it back - the left edge of every tile quietly clipped until a reload. The box now fits exactly, and the panel refuses to pan sideways at all, whatever a future control does.

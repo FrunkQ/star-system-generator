@@ -4,10 +4,11 @@
 // over a flat, documented FEATURE VECTOR (makeup, mass, temperature, derived flags, other tags).
 // Tags are emitted with a per-body SEEDED roll (deterministic from body id + system seed). Multiple
 // packs STACK — their categories merge and their rules all run.
-import type { System, CelestialBody } from '../types';
+import type { System, CelestialBody, Barycenter, RulePack } from '../types';
 import { derived, get } from 'svelte/store';
 import { makeupFractions, hasSolidSurface } from './makeup';
-import { EARTH_MASS_KG } from '../constants';
+import { stellarContextFor, calculateAllStellarZones, calculateRocheLimit } from './zones';
+import { EARTH_MASS_KG, AU_KM } from '../constants';
 import { stripRuleTags } from '../tags/tagLifecycle';
 import { tagCategories, tagRulesEnabled, normalizeTagCategories } from '../tags/tagCategories';
 
@@ -38,37 +39,58 @@ export interface PoIRule { id: string; tag: string; category: string; chance: nu
 export interface PoIPack { id: string; name: string; description: string; enabled: boolean; categories: ReasonCategory[]; rules: PoIRule[]; }
 
 // Feature fields exposed to rule conditions — the wizard reads this for its field picker + ranges.
-export interface PoIField { field: string; label: string; type: 'number' | 'bool' | 'string'; min?: number; max?: number; values?: string[]; note: string; }
+export interface PoIField { field: string; label: string; type: 'number' | 'bool' | 'string'; min?: number; max?: number; values?: string[]; note: string; group?: string; }
 export const POI_FIELDS: PoIField[] = [
-  { field: 'makeup.metal', label: 'Metal fraction', type: 'number', min: 0, max: 1, note: 'Bulk metal (iron/nickel) mass fraction.' },
-  { field: 'makeup.rock', label: 'Rock fraction', type: 'number', min: 0, max: 1, note: 'Silicate rock mass fraction.' },
-  { field: 'makeup.carbon', label: 'Carbon fraction', type: 'number', min: 0, max: 1, note: 'Carbon/graphite mass fraction.' },
-  { field: 'makeup.ice', label: 'Ice fraction', type: 'number', min: 0, max: 1, note: 'Water/volatile ice mass fraction.' },
-  { field: 'makeup.gas', label: 'Gas fraction', type: 'number', min: 0, max: 1, note: 'H/He envelope mass fraction (high = a giant).' },
-  { field: 'makeup.rockMetal', label: 'Rock+metal', type: 'number', min: 0, max: 1, note: 'Rock plus metal — a "how rocky" sum.' },
-  { field: 'makeup.rockIce', label: 'Rock+ice', type: 'number', min: 0, max: 1, note: 'Rock plus ice — typical icy-moon makeup.' },
-  { field: 'massMe', label: 'Mass (Earths)', type: 'number', min: 0, max: 4000, note: 'Mass in Earth masses (giants ~50–4000).' },
-  { field: 'teqK', label: 'Equilibrium temp (K)', type: 'number', min: 0, max: 4000, note: 'Black-body equilibrium temperature.' },
-  { field: 'ecc', label: 'Eccentricity', type: 'number', min: 0, max: 1, note: 'Orbital eccentricity (0 circular).' },
-  { field: 'pressure', label: 'Atmos. pressure (bar)', type: 'number', min: 0, max: 1000, note: 'Surface atmospheric pressure.' },
-  { field: 'hydroCover', label: 'Liquid coverage', type: 'number', min: 0, max: 1, note: 'Fraction of surface under liquid.' },
-  { field: 'ageGyr', label: 'System age (Gyr)', type: 'number', min: 0, max: 13, note: 'Age of the whole system.' },
-  { field: 'isGiant', label: 'Is a giant', type: 'bool', note: 'Gas/ice giant (or gas fraction ≥ 0.4).' },
+  { field: 'makeup.metal', label: 'Metal fraction', type: 'number', min: 0, max: 1, note: 'Bulk metal (iron/nickel) mass fraction.', group: 'Makeup' },
+  { field: 'makeup.rock', label: 'Rock fraction', type: 'number', min: 0, max: 1, note: 'Silicate rock mass fraction.', group: 'Makeup' },
+  { field: 'makeup.carbon', label: 'Carbon fraction', type: 'number', min: 0, max: 1, note: 'Carbon/graphite mass fraction.', group: 'Makeup' },
+  { field: 'makeup.ice', label: 'Ice fraction', type: 'number', min: 0, max: 1, note: 'Water/volatile ice mass fraction.', group: 'Makeup' },
+  { field: 'makeup.gas', label: 'Gas fraction', type: 'number', min: 0, max: 1, note: 'H/He envelope mass fraction (high = a giant).', group: 'Makeup' },
+  { field: 'makeup.rockMetal', label: 'Rock+metal', type: 'number', min: 0, max: 1, note: 'Rock plus metal — a "how rocky" sum.', group: 'Makeup' },
+  { field: 'makeup.rockIce', label: 'Rock+ice', type: 'number', min: 0, max: 1, note: 'Rock plus ice — typical icy-moon makeup.', group: 'Makeup' },
+  { field: 'massMe', label: 'Mass (Earths)', type: 'number', min: 0, max: 4000, note: 'Mass in Earth masses (giants ~50–4000).', group: 'Body & surface' },
+  { field: 'teqK', label: 'Equilibrium temp (K)', type: 'number', min: 0, max: 4000, note: 'Black-body equilibrium temperature.', group: 'Body & surface' },
+  { field: 'ecc', label: 'Eccentricity', type: 'number', min: 0, max: 1, note: 'Orbital eccentricity (0 circular).', group: 'Orbit & zones' },
+  { field: 'pressure', label: 'Atmos. pressure (bar)', type: 'number', min: 0, max: 1000, note: 'Surface atmospheric pressure.', group: 'Atmosphere' },
+  { field: 'hydroCover', label: 'Liquid coverage', type: 'number', min: 0, max: 1, note: 'Fraction of surface under liquid.', group: 'Body & surface' },
+  { field: 'ageGyr', label: 'System age (Gyr)', type: 'number', min: 0, max: 13, note: 'Age of the whole system.', group: 'System' },
+  { field: 'isGiant', label: 'Is a giant', type: 'bool', note: 'Gas/ice giant (or gas fraction ≥ 0.4).', group: 'Body & surface' },
   // NOT the negation of `isGiant`, and the two must not be swapped for one another: that one is
   // classes-or-gas≥0.4, this is the physics helper `hasSolidSurface` (inbox B36, engine-map M2).
-  { field: 'hasSolidSurface', label: 'Has solid ground', type: 'bool', note: 'Somewhere to stand — not a giant envelope or a star.' },
-  { field: 'hasAtmo', label: 'Has atmosphere', type: 'bool', note: 'Any atmosphere present.' },
-  { field: 'hasO2', label: 'Free oxygen', type: 'bool', note: 'Oxidizing / breathable atmosphere (O₂ > 5%).' },
-  { field: 'hasBio', label: 'Has biosphere', type: 'bool', note: 'Life or a habitability tier present.' },
-  { field: 'hasRemnant', label: 'Stellar remnant in system', type: 'bool', note: 'A BH/NS/WD/magnetar anchors the system.' },
-  { field: 'hasConstructs', label: 'Constructs in system', type: 'bool', note: 'Stations/ships exist in the system.' },
-  { field: 'isRareType', label: 'Rare world type', type: 'bool', note: 'Classed ocean/carbon/iron/eyeball/lava/etc.' },
-  { field: 'isLegendClass', label: 'Paradise type', type: 'bool', note: 'Ocean or eyeball world (legend bait).' },
-  { field: 'roleHint', label: 'Body kind', type: 'string', values: ['planet', 'moon', 'belt'], note: 'planet / moon / belt.' },
-  { field: 'hydro', label: 'Surface liquid', type: 'string', values: ['water', 'methane', 'ammonia'], note: 'Dominant surface liquid.' },
-  { field: 'regime', label: 'Geology regime', type: 'string', values: ['plate-tectonics', 'stagnant-lid', 'episodic', 'plutonic', 'tidal-volcanic', 'cryovolcanic', 'crater', 'inactive'], note: 'Tectonic/volcanic regime.' },
-  { field: 'atmMain', label: 'Main atmos. gas', type: 'string', values: ['CO2', 'N2', 'O2', 'CH4', 'H2', 'He'], note: 'Dominant atmospheric gas.' },
-  { field: 'hasNobleGas', label: 'Noble gas in air', type: 'bool', note: 'Atmosphere contains Ar/Kr/Xe/Ne (>0.1%).' }
+  { field: 'hasSolidSurface', label: 'Has solid ground', type: 'bool', note: 'Somewhere to stand — not a giant envelope or a star.', group: 'Body & surface' },
+  { field: 'hasAtmo', label: 'Has atmosphere', type: 'bool', note: 'Any atmosphere present.', group: 'Atmosphere' },
+  { field: 'hasO2', label: 'Free oxygen', type: 'bool', note: 'Oxidizing / breathable atmosphere (O₂ > 5%).', group: 'Atmosphere' },
+  { field: 'hasBio', label: 'Has biosphere', type: 'bool', note: 'Life or a habitability tier present.', group: 'Body & surface' },
+  { field: 'hasRemnant', label: 'Stellar remnant in system', type: 'bool', note: 'A BH/NS/WD/magnetar anchors the system.', group: 'System' },
+  { field: 'hasConstructs', label: 'Constructs in system', type: 'bool', note: 'Stations/ships exist in the system.', group: 'System' },
+  { field: 'isRareType', label: 'Rare world type', type: 'bool', note: 'Classed ocean/carbon/iron/eyeball/lava/etc.', group: 'Body & surface' },
+  { field: 'isLegendClass', label: 'Paradise type', type: 'bool', note: 'Ocean or eyeball world (legend bait).', group: 'Body & surface' },
+  { field: 'roleHint', label: 'Body kind', type: 'string', values: ['planet', 'moon', 'belt'], note: 'planet / moon / belt.', group: 'Body & surface' },
+  { field: 'hydro', label: 'Surface liquid', type: 'string', values: ['water', 'methane', 'ammonia'], note: 'Dominant surface liquid.', group: 'Body & surface' },
+  { field: 'regime', label: 'Geology regime', type: 'string', values: ['plate-tectonics', 'stagnant-lid', 'episodic', 'plutonic', 'tidal-volcanic', 'cryovolcanic', 'crater', 'inactive'], note: 'Tectonic/volcanic regime.', group: 'Body & surface' },
+  { field: 'atmMain', label: 'Main atmos. gas', type: 'string', values: ['CO2', 'N2', 'O2', 'CH4', 'H2', 'He'], note: 'Dominant atmospheric gas.', group: 'Atmosphere' },
+  { field: 'hasNobleGas', label: 'Noble gas in air', type: 'bool', note: 'Atmosphere contains Ar/Kr/Xe/Ne (>0.1%).', group: 'Atmosphere' },
+
+  // G38 — the ORBIT & ZONES family ("various parameters in human terms"), and STRUCTURE. Zone
+  // membership is judged against the SAME derived zones the map paints (computed luminosity,
+  // B80/B81), at the body's distance from its STAR — a moon uses its host planet's orbit
+  // (stellarContextFor walks the chain, barycentres included).
+  { field: 'orbitAU', label: 'Orbit (AU)', type: 'number', min: 0, max: 200, note: "Distance from its star in AU (a moon answers with its host's orbit).", group: 'Orbit & zones' },
+  { field: 'periodDays', label: 'Orbital period (days)', type: 'number', min: 0, max: 100000, note: 'Period about its immediate host, in days.', group: 'Orbit & zones' },
+  { field: 'inclinationDeg', label: 'Inclination (deg)', type: 'number', min: 0, max: 180, note: 'Orbital inclination to the reference plane.', group: 'Orbit & zones' },
+  { field: 'isRetrograde', label: 'Retrograde orbit', type: 'bool', note: 'Orbits against the system spin (flag, or inclination past 90).', group: 'Orbit & zones' },
+  { field: 'inHabitableZone', label: 'In the habitable zone', type: 'bool', note: "Inside the star's Goldilocks band. The band assumes greenhouse warming - a thin-aired world here is still frozen.", group: 'Orbit & zones' },
+  { field: 'inKillZone', label: 'In the kill zone', type: 'bool', note: "Inside the sterilising radiation zone (derived from the star's real hazards).", group: 'Orbit & zones' },
+  { field: 'inDangerZone', label: 'In the danger zone', type: 'bool', note: 'Inside the complex-life hazard zone.', group: 'Orbit & zones' },
+  { field: 'withinRocheLimit', label: 'Within the Roche limit', type: 'bool', note: "Closer to its star than the Roche limit - tidal break-up territory.", group: 'Orbit & zones' },
+  { field: 'beyondSootLine', label: 'Beyond the soot line', type: 'bool', note: 'Cool enough for carbon-rich condensates.', group: 'Orbit & zones' },
+  { field: 'beyondFrostLine', label: 'Beyond the frost line', type: 'bool', note: 'Beyond the CURRENT frost line - water ice survives on an airless surface today.', group: 'Orbit & zones' },
+  { field: 'beyondCO2IceLine', label: 'Beyond the CO2 ice line', type: 'bool', note: 'Cold enough for CO2 ice.', group: 'Orbit & zones' },
+  { field: 'beyondCOIceLine', label: 'Beyond the CO ice line', type: 'bool', note: "Cold enough for CO ice - the system's outer deep-freeze.", group: 'Orbit & zones' },
+  { field: 'inBarycenter', label: 'Part of a barycentre', type: 'bool', note: 'Orbits a shared barycentre - a double planet, or a moon of such a pair.', group: 'Structure' },
+  { field: 'moonCount', label: 'Moon count', type: 'number', min: 0, max: 100, note: 'How many moons this body has.', group: 'Structure' },
+  { field: 'hasRings', label: 'Has rings', type: 'bool', note: 'Carries a ring system.', group: 'Structure' },
+  { field: 'isMoonOfGiant', label: 'Moon of a giant', type: 'bool', note: 'A moon whose host is a gas or ice giant.', group: 'Structure' }
 ];
 
 export interface ReasonsConfig { enabled: boolean; categories: Record<string, boolean>; }
@@ -206,7 +228,34 @@ function mulberry32(seed: number) {
 const RARE_CLASSES = ['ocean', 'carbon', 'iron', 'eyeball', 'super-earth', 'helium', 'chthonian', 'coreless', 'lava', 'puffy', 'silicate'];
 
 type Features = Record<string, number | string | boolean> & { __tags: Set<string> };
-function buildFeatures(b: CelestialBody, ageGyr: number, hasRemnant: boolean, hasConstructs: boolean): Features {
+// Per-system context for the orbit / zone / structure features (G38): node lookups, and the
+// star's zone set computed ONCE per star per pass — the SAME derived zones the map paints.
+interface FeatureCtx {
+  ageGyr: number; hasRemnant: boolean; hasConstructs: boolean;
+  nodes: (CelestialBody | Barycenter)[];
+  byId: Map<string, CelestialBody | Barycenter>;
+  childrenByParent: Map<string, (CelestialBody | Barycenter)[]>;
+  zonesFor: (star: CelestialBody) => Record<string, any>;
+}
+
+function buildFeatures(b: CelestialBody, ctx: FeatureCtx): Features {
+  const { ageGyr, hasRemnant, hasConstructs } = ctx;
+  // G38 orbit/zone/structure context. The distance judged is the body's distance from its STAR —
+  // stellarContextFor walks the parent chain (a moon answers with its host planet's orbit, a
+  // barycentre member with the pair's), which is the B80 rule: heliocentric questions get
+  // heliocentric answers.
+  const parentNode = b.parentId ? ctx.byId.get(b.parentId) : undefined;
+  const aAU = b.orbit?.elements?.a_AU ?? 0;
+  const sc = parentNode && aAU > 0 ? stellarContextFor(parentNode, aAU, ctx.nodes) : { star: null as CelestialBody | null, distanceAU: aAU };
+  const zones = sc.star ? ctx.zonesFor(sc.star) : null;
+  const dAU = sc.distanceAU;
+  const kids = ctx.childrenByParent.get(b.id) ?? [];
+  const parentBody = parentNode && parentNode.kind === 'body' ? (parentNode as CelestialBody) : undefined;
+  const parentIsGiant = !!parentBody && ((parentBody.classes || []).some((c) => c.includes('gas-giant') || c.includes('ice-giant')) || makeupFractions(parentBody).gas >= 0.4);
+  const mu = b.orbit?.hostMu;
+  const aM = aAU * AU_KM * 1000;
+  const periodDays = mu && aAU > 0 ? (2 * Math.PI * Math.sqrt((aM ** 3) / mu)) / 86400 : 0;
+  const rocheAU = sc.star ? calculateRocheLimit(sc.star) : 0;
   const mk = makeupFractions(b);
   const classes = b.classes || [];
   const bodyTags = b.tags || [];
@@ -233,7 +282,25 @@ function buildFeatures(b: CelestialBody, ageGyr: number, hasRemnant: boolean, ha
     roleHint: b.roleHint || '',
     hydro: b.hydrosphere?.composition || '',
     regime: b.geoActivity?.regime || '',
-    atmMain: b.atmosphere?.main || ''
+    atmMain: b.atmosphere?.main || '',
+    // G38 — Orbit & zones (all judged against the star's derived zones at dAU)
+    orbitAU: dAU,
+    periodDays,
+    inclinationDeg: b.orbit?.elements?.i_deg ?? 0,
+    isRetrograde: !!b.orbit?.isRetrogradeOrbit || (b.orbit?.elements?.i_deg ?? 0) > 90,
+    inHabitableZone: !!zones && dAU >= zones.goldilocks.inner && dAU <= zones.goldilocks.outer,
+    inKillZone: !!zones && dAU > 0 && dAU < zones.killZone,
+    inDangerZone: !!zones && dAU > 0 && dAU < zones.dangerZone,
+    withinRocheLimit: rocheAU > 0 && dAU > 0 && dAU < rocheAU,
+    beyondSootLine: !!zones && dAU > zones.sootLine,
+    beyondFrostLine: !!zones && dAU > zones.currentFrostLine,
+    beyondCO2IceLine: !!zones && dAU > zones.co2IceLine,
+    beyondCOIceLine: !!zones && dAU > zones.coIceLine,
+    // G38 — Structure
+    inBarycenter: parentNode?.kind === 'barycenter',
+    moonCount: kids.filter((k) => k.kind === 'body' && (k as CelestialBody).roleHint === 'moon').length,
+    hasRings: kids.some((k) => k.kind === 'body' && (k as CelestialBody).roleHint === 'ring'),
+    isMoonOfGiant: b.roleHint === 'moon' && parentIsGiant
   };
   // Expose the player's own custom tag VALUES as `tag:<key>` fields, so PoI rules can trigger on
   // them (e.g. a hand-added tag faction/control = "Empire" → eq tag:faction/control "Empire", or a
@@ -262,7 +329,7 @@ function evalPoI(expr: PoIExpr, f: Features): boolean {
 
 const CAT_PREFIX_OF = (catId: string) => catId + '/';
 
-export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, packs?: PoIPack[]): void {
+export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, packs?: PoIPack[], enginePack?: RulePack | null): void {
   const conf = cfg ?? get(reasonsConfig);
   const allPacks = packs ?? get(poiPacks);
   const enabledPacks = allPacks.filter((p) => p.enabled !== false);
@@ -277,6 +344,20 @@ export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, pack
   const hasRemnant = stars.some((s) => (s.classes || []).some((c) => /BH|NS|WD|magnetar|neutron|white-dwarf|black-hole/i.test(c)));
   const hasConstructs = system.nodes.some((n) => n.kind === 'construct');
 
+  // G38 context: node lookups plus per-star zones, computed once per pass with the ENGINE rule
+  // pack (so the danger multiplier and kill config match the map's own zones exactly).
+  const zoneNodes = system.nodes.filter((n) => n.kind === 'body' || n.kind === 'barycenter') as (CelestialBody | Barycenter)[];
+  const byId = new Map(zoneNodes.map((n) => [n.id, n]));
+  const childrenByParent = new Map<string, (CelestialBody | Barycenter)[]>();
+  for (const n of zoneNodes) if (n.parentId) { const arr = childrenByParent.get(n.parentId) ?? []; arr.push(n); childrenByParent.set(n.parentId, arr); }
+  const zonesCache = new Map<string, Record<string, any>>();
+  const zonesFor = (star: CelestialBody) => {
+    let z = zonesCache.get(star.id);
+    if (!z) { z = calculateAllStellarZones(star, enginePack ?? undefined, zoneNodes, ageGyr); zonesCache.set(star.id, z); }
+    return z;
+  };
+  const ctx: FeatureCtx = { ageGyr, hasRemnant, hasConstructs, nodes: zoneNodes, byId, childrenByParent, zonesFor };
+
   for (const node of system.nodes) {
     const isConstruct = node.kind === 'construct';
     if (node.kind !== 'body' && !isConstruct) continue;   // skip barycentres
@@ -289,7 +370,7 @@ export function annotateReasonsToVisit(system: System, cfg?: ReasonsConfig, pack
     b.tags = stripRuleTags(b.tags, catPrefixes);
     if (!conf.enabled) continue;
 
-    const f = buildFeatures(b, ageGyr, hasRemnant, hasConstructs);
+    const f = buildFeatures(b, ctx);
     if (isConstruct) f.roleHint = 'construct';
     const rng = mulberry32(hashStr(`${b.id}|${system.seed || ''}`));
     const added = new Set<string>();

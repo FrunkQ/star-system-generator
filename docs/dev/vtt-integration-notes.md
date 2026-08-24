@@ -32,8 +32,13 @@ starsystemx.com tab. Local dev never shows this: localhost:5180 and localhost:51
 first deployed test failed on it; design section 16 has the evidence and the fix (`/bridge?sid=`
 discovers over PeerJS, which is not partitioned). **Any same-browser assumption in this territory
 must be re-tested on two real domains before it is believed.** Foundry/Owlbear are cross-site by
-definition: discovery there is PeerJS-with-a-known-sid ONLY, and first pairing is always a pasted
-player link.
+definition. THREE discovery routes exist, in this order of preference: (a) the host OPENS SSE and
+SSE announces itself back through `window.opener` — partitioning does not touch the opener
+relationship, so this is the zero-paste first pairing (v3.0.34 / Mappadux 2.18.5, origin-allowlisted
+both ways, and it sidesteps a firewall challenge too because the tab is a top-level navigation the
+GM can solve); (b) PeerJS with a known sid, which is every reconnect once a StarMap map exists;
+(c) the GM pastes a player link, still the fallback for a tab the host did not open. The
+same-machine channel is route zero and works only same-site (localhost dev).
 
 ## 3. The broker is a registry with a hold, and `initPeerHost` was re-entrant
 

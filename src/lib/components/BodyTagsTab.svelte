@@ -5,7 +5,7 @@
   import { poiPacks } from '$lib/physics/reasonsToVisit';
   import { customTagVocabulary } from '$lib/tags/customTags';
   import { canonicalTagKey, tagSlugSegment, tagOrigin, overridableNamespaces, isPhysicsNamespace } from '$lib/tags/tagLifecycle';
-  import { tagCategories, categoriesFor } from '$lib/tags/tagCategories';
+  import { tagCategories, categoriesFor, addTagToCategory } from '$lib/tags/tagCategories';
 
   export let body: CelestialBody;
   export let rulePack: RulePack | null = null;
@@ -40,14 +40,19 @@
     const have = new Set((body.tags ?? []).map((t) => t.key));
     const seen = new Set<string>();
     const out: { key: string; label: string; color: string; textColor: string }[] = [];
+    const offer = (key: string) => {
+      if (!key || have.has(key) || seen.has(key)) return;
+      seen.add(key);
+      const info = describeTag(key);
+      out.push({ key, label: info.label, color: info.color, textColor: info.textColor || '#fff' });
+    };
+    // The category's DECLARED tags first (A73): a custom tag added under a category registers into
+    // its vocabulary, and must then be a one-click reuse on the next body — reading only the rule
+    // tags left a declared-but-ruleless tag invisible here.
+    for (const c of $tagCategories) if (c.id === newCat) for (const td of c.tags) offer(td.key);
     for (const p of $poiPacks) {
       if (p.enabled === false) continue;
-      for (const r of p.rules ?? []) {
-        if (r.category !== newCat || !r.tag || have.has(r.tag) || seen.has(r.tag)) continue;
-        seen.add(r.tag);
-        const info = describeTag(r.tag);
-        out.push({ key: r.tag, label: info.label, color: info.color, textColor: info.textColor || '#fff' });
-      }
+      for (const r of p.rules ?? []) if (r.category === newCat && r.tag) offer(r.tag);
     }
     return out;
   })();
@@ -72,6 +77,12 @@
           // not produce it and may disagree with it.
           const override = isPhysicsNs(key) || undefined;
           body.tags = [...body.tags, { key, value: newValue || undefined, manual: true, override } as any];
+          // A73: the dialog PROMISED the category — the dropdown chose it and the preview shows the
+          // namespaced key — so the tag registers into that category's vocabulary too. It then
+          // appears in Settings > Tagging (colour-editable, deletable, rule-able) and as an
+          // Available chip on every other body. Idempotent; a physics namespace has no category
+          // entry and is skipped. The tag on THIS body stays yours either way.
+          if (newCat !== 'custom' && !isPhysicsNs(key)) addTagToCategory(newCat, newName);
           dispatch('update');
       }
       newName = ''; newValue = '';

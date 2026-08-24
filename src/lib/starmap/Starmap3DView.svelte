@@ -84,6 +84,15 @@
   // campaign content and arrives on `starmap`, never as a second copy per preset.
   export let mapBackground = true;
 
+  // G40: resolve the campaign's chosen grid-centre star to its MAP position. Campaign data on the
+  // starmap itself, so a player snapshot carries it and every audience sees the same centre.
+  $: gridCentrePt = (() => {
+    const id = (starmap as any)?.gridCenterId;
+    if (!id) return null;
+    const s = starmap?.systems?.find((x: any) => x.id === id);
+    return s ? { x: s.position.x, y: s.position.y } : null;
+  })();
+
   const dispatch = createEventDispatcher<{ select: string }>();
 
   let container: HTMLDivElement;
@@ -165,6 +174,7 @@
     controller.setGrid(grid);
     controller.setGridSkirt(flat ? 0 : gridDepth);
     controller.setGridFalloff(gridFalloff);
+    controller.setGridCenter(gridCentrePt);
     controller.setZExaggeration(zExaggeration); // display-only depth stretch
     controller.setStarScale(starScale);          // G26: glyph size bands, a screen quantity
     controller.setStarSize(starSize);            // ...and the base size they are all stated in
@@ -225,7 +235,7 @@
   });
 
   // Re-apply on any prop change (setData/setFilter short-circuit cheaply).
-  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; zExaggeration; starScale; starSize; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; labelsVisible; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
+  $: if (controller) { smSystems; smRoutes; grid; gridDepth; gridFalloff; gridCentrePt; zExaggeration; starScale; starSize; routeGlow; dropLines; mono; mapGrid; flat; lockRotation; background; angleDeg; labelSize; labelsVisible; font; filter; filterParams; accentColor; starmap?.scale?.pixelsPerUnit; apply(); }
   // Rebuild the tip HUD when the notes (or their theme) change.
   $: if (controller) { tipTop; tipBottom; tipMono; overlay; accentColor; font; applyTips(); }
   // G16: re-place the plane on any anchor change. Named rather than closed over, per the note above.

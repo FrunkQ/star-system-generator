@@ -62,15 +62,20 @@
   </table>
 
   <h2>Fields ({POI_FIELDS.length})</h2>
-  <p class="muted">Use these programmatic names in <code>gt/lt/gte/lte/between/eq</code>.</p>
-  <table>
-    <thead><tr><th>Field</th><th>Type</th><th>Range / values</th><th>What it means</th></tr></thead>
-    <tbody>
-      {#each POI_FIELDS as f}
-        <tr><td><code>{f.field}</code></td><td>{f.type}</td><td>{range(f)}</td><td>{f.note}</td></tr>
-      {/each}
-    </tbody>
-  </table>
+  <p class="muted">Use these programmatic names in <code>gt/lt/gte/lte/between/eq</code>. Grouped by
+    what they describe; the Orbit &amp; zones family is judged against the same derived zones the
+    system map paints, at the body's distance from its star — a moon answers with its host's orbit.</p>
+  {#each [...new Set(POI_FIELDS.map((f) => f.group ?? 'Body & surface'))] as g}
+    <h3>{g}</h3>
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Range / values</th><th>What it means</th></tr></thead>
+      <tbody>
+        {#each POI_FIELDS.filter((f) => (f.group ?? 'Body & surface') === g) as f}
+          <tr><td><code>{f.field}</code></td><td>{f.type}</td><td>{range(f)}</td><td>{f.note}</td></tr>
+        {/each}
+      </tbody>
+    </table>
+  {/each}
   <p class="muted">You can also test a body's own custom tags with <code>hasTag</code> / <code>hasTagPrefix</code>.</p>
 
   <h2>Examples</h2>

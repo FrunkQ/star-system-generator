@@ -4819,6 +4819,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     pointer.abort();
   }
 
+  // A74 diagnostic (same family as __camDebug / __ssePerf): `window.__holoProbe()` reports the
+  // vertical alignment of the three things that must share the reference plane — the floating
+  // origin's y, the first grid vertex's world y, and the root star's world y. A misalignment here
+  // IS the "grid floats above the star" class of fault, and this is the only way to see it
+  // numerically in a pane that does not composite.
+  if (typeof window !== 'undefined') (window as any).__holoProbe = () => {
+    const star = bodies.find((b) => b.isStar);
+    const g = gridGroup.children.find((c: any) => c.geometry?.getAttribute?.('position')) as any;
+    const gy = g ? (() => { const v = new THREE.Vector3(); v.fromBufferAttribute(g.geometry.getAttribute('position'), 0); return g.localToWorld(v).y; })() : null;
+    return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
+  };
+
   return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
 }
 
