@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Starmap } from '../types';
+  import { importOrReload } from '$lib/util/importOrReload';
   import { createEventDispatcher, onMount } from 'svelte';
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
@@ -131,7 +132,7 @@
   let storeQuota = '—';
   let storeAsking = false;
   async function refreshStorage() {
-    const { storageReport, formatBytes } = await import('$lib/storagePersistence');
+    const { storageReport, formatBytes } = await importOrReload(() => import('$lib/storagePersistence'));
     const r = await storageReport();
     storeState = r.state;
     storeUsage = formatBytes(r.usageBytes);
@@ -140,7 +141,7 @@
   async function askPersistence() {
     storeAsking = true;
     try {
-      const { requestPersistence } = await import('$lib/storagePersistence');
+      const { requestPersistence } = await importOrReload(() => import('$lib/storagePersistence'));
       storeState = await requestPersistence();   // the ACTUAL outcome, re-read from the browser
       await refreshStorage();
     } finally {

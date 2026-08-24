@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.22 - 22nd Aug 2026
+
+- An open tab no longer breaks when a new version deploys under it: if a lazy-loaded view (the 3D view, the player-view canvases, the transitions) fails to fetch its code because the files changed on the server, the page reloads itself once and carries on - which is exactly the hard refresh you would have done by hand, done for you. A genuine network outage still errors rather than looping. Found on the way: the service worker version tag had not moved since v2.0.148, which had silently killed the "new version available" prompt - bumped, so that prompt works again.
+
 ## v3.0.21 - 22nd Aug 2026
 
 - Board only. The production patch push is recorded: starsystemx.com moves v3.0.0 -> v3.0.20 with the three field fixes, the whole break-physics feature and the star-panel radiation correction.

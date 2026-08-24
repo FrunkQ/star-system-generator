@@ -11,6 +11,7 @@
   // `holo` and `projection` are the same six looks rebuilt from one code path. There is no
   // preset-less path through this page any more: with no ?preset= the shipped Guide is used.
   import { onMount, onDestroy, beforeUpdate, afterUpdate } from 'svelte';
+  import { importOrReload } from '$lib/util/importOrReload';
   // The category list resolves a highlighted tag's colour and label. `mapHighlights` here comes off the
   // BROADCAST (see the SYNC_PRESET handler), not off a local store — this window may be the player's.
   import { tagCategories } from '$lib/tags/tagCategories';
@@ -649,7 +650,7 @@
     const def = transitionRegistry.getOrFallback(activePreset.transition ?? 'none');
     if (def.id === 'none') return;
     if (!entryEngine) {
-      const { TransitionEngine } = await import('$lib/transitions/TransitionEngine');
+      const { TransitionEngine } = await importOrReload(() => import('$lib/transitions/TransitionEngine'));
       entryEngine = new TransitionEngine(entryOverlay);
     }
     try {

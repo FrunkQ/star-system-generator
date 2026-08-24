@@ -1,8 +1,12 @@
 // Bump this on release so the activate handler purges stale precached assets (e.g. an old app
 // shell that pinned outdated CSS on a device). Runtime fetches are network-first, but the precached
 // "/" shell needs a version change to refresh.
-const STATIC_CACHE = 'sse-static-v2.0.148';
-const RUNTIME_CACHE = 'sse-runtime-v2.0.148';
+// A68 note: this had said v2.0.148 for ~750 versions — the precached "/" shell was never purged,
+// and the layout's "new version available" prompt only fires when THIS FILE's bytes change, so it
+// had been dead since then. Until the bump rides the release recipe automatically, bump it on any
+// push that changes what the offline shell needs.
+const STATIC_CACHE = 'sse-static-v3.0.22';
+const RUNTIME_CACHE = 'sse-runtime-v3.0.22';
 
 const PRECACHE_URLS = [
   '/',
