@@ -3233,7 +3233,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       return {
         target,
         heading: useHost
-          ? headingDirection({ policy: { kind: 'host-relative' }, tiltRad: tilt, subject: target, host: hostPos })
+          // A71 `level`: the follow shot's elevation belongs to the tilt, not to the subject's
+          // orbital inclination — an inclined close-in planet on a fast clock was bouncing the
+          // camera once per orbit. The surface-construct shot above deliberately does NOT level.
+          ? headingDirection({ policy: { kind: 'host-relative', level: true }, tiltRad: tilt, subject: target, host: hostPos })
           : headingDirection({ policy, tiltRad: tilt, subject: target, origin: v3(originShift) }),
         dist
       };

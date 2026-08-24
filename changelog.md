@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.26 - 22nd Aug 2026
+
+- Following a planet on an inclined orbit no longer bounces the camera: the follow shot keeps its elevation while the direction of approach tracks the planet, so a close-in world on a fast clock holds a steady horizon. Surface-construct shots are unchanged on purpose - they aim along the true radial.
+
 ## v3.0.25 - 22nd Aug 2026
 
 - The Zone Key now says what the Goldilocks band actually claims: liquid water is possible there on a world with enough atmosphere - the band assumes greenhouse warming, so a thin-aired world inside it is still frozen, exactly as Mars is in the Sun's own band.
