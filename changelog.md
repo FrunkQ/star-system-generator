@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.27 - 22nd Aug 2026
+
+- The rest of the camera fix: at wide zoom the follow shot switches to its fallback approach, which had not learnt to keep its elevation - so an inclined planet could still carry the camera under the plane, and each switch between the two approaches nudged the view once per orbit. Both approaches now hold their elevation and agree exactly where they meet, so the switch cannot move the camera.
+
 ## v3.0.26 - 22nd Aug 2026
 
 - Following a planet on an inclined orbit no longer bounces the camera: the follow shot keeps its elevation while the direction of approach tracks the planet, so a close-in world on a fast clock holds a steady horizon. Surface-construct shots are unchanged on purpose - they aim along the true radial.

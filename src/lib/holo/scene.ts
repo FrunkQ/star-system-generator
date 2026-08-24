@@ -3189,7 +3189,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // is already implemented and tested in shotSolver.
     const policy = lockRotate
       ? ({ kind: 'fixed-azimuth', azimuth: lockedHeading } as const)
-      : ({ kind: 'radial' } as const);
+      // A71: levelled, like the host-relative follow shot — and the two MUST both level, because
+      // the follow shot falls back to this policy when the host would occlude (wide zoom), and a
+      // levelled/unlevelled mismatch snapped the elevation by the subject's inclination at every
+      // crossing — the once-per-orbit "view reset" on inclined orbits.
+      : ({ kind: 'radial', level: true } as const);
     const tilt = flatOverhead && lockRotate ? LOCK_POLAR : framingAngleRad;
 
     if (b) {

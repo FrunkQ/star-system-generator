@@ -123,8 +123,13 @@ export function beltDistance(outerScene: number, gridRadius: number): number {
 // --- Heading ------------------------------------------------------------------------------------
 
 export type HeadingPolicy =
-	/** Today's default: approach radially outward from the system centre, raised to the tilt. */
-	| { kind: 'radial' }
+	/** Today's default: approach radially outward from the system centre, raised to the tilt.
+	 *  A71 `level`: horizontal part only, exactly as on host-relative — and load-bearing for
+	 *  CONTINUITY, not just comfort: the follow shot FALLS BACK from host-relative to radial when
+	 *  the host would occlude (a wide zoom trips it), and if only one of the two levels, every
+	 *  crossing of that boundary snaps the elevation by the subject's inclination — a once-per-orbit
+	 *  "view reset" on an inclined orbit. Level both and the policies agree at the boundary. */
+	| { kind: 'radial'; level?: boolean }
 	/**
 	 * P3 (R2): approach along host -> subject, so the subject sits in FRONT of its host and the host
 	 * can never occlude it. The occlusion guarantee is structural, not a heuristic - see
@@ -190,6 +195,8 @@ export function headingDirection(args: {
 	} else {
 		const o = args.origin ?? { x: 0, y: 0, z: 0 };
 		const radial = args.subject ? sub(args.subject, o) : { x: 0, y: 0, z: 1 };
+		// A71: same levelling as host-relative, same near-vertical fallback.
+		if (policy.kind === 'radial' && policy.level && Math.hypot(radial.x, radial.z) > 1e-9) radial.y = 0;
 		// The scene's own guard: a subject sitting ON the origin has no radial direction, so fall
 		// back to a fixed azimuth rather than dividing by ~0.
 		outward = Math.hypot(radial.x, radial.y, radial.z) > 1e-4 ? norm(radial) : { x: 0, y: 0, z: 1 };

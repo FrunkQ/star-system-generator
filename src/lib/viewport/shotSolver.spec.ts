@@ -153,6 +153,21 @@ describe('heading policies', () => {
 		expect(maxDevRaw).toBeGreaterThan(0.01); // unlevelled: the old behaviour genuinely rocked
 	});
 
+	it('level radial: same guarantee, and the POLICIES AGREE AT THE FALLBACK BOUNDARY (host at origin)', () => {
+		// The follow shot falls back host-relative -> radial when the host would occlude. For a
+		// planet the host IS the system centre, so the two levelled policies must give the SAME
+		// heading at every orbit phase — otherwise every boundary crossing snaps the view.
+		const tilt = 1.0;
+		for (let k = 0; k <= 48; k++) {
+			const th = (k / 48) * 2 * Math.PI;
+			const s: Vec3 = { x: 2 * Math.cos(th), y: 2 * Math.sin(th) * Math.sin(12 * Math.PI / 180), z: 2 * Math.sin(th) };
+			const hostRel = headingDirection({ policy: { kind: 'host-relative', level: true }, tiltRad: tilt, subject: s, host: { x: 0, y: 0, z: 0 } });
+			const radial = headingDirection({ policy: { kind: 'radial', level: true }, tiltRad: tilt, subject: s, origin: { x: 0, y: 0, z: 0 } });
+			expect(radial.y).toBeCloseTo(Math.cos(tilt), 9);
+			expect(Math.hypot(hostRel.x - radial.x, hostRel.y - radial.y, hostRel.z - radial.z)).toBeLessThan(1e-9);
+		}
+	});
+
 	it('level host-relative: a (near-)vertical geometry falls back rather than emitting noise', () => {
 		const h = headingDirection({ policy: { kind: 'host-relative', level: true }, tiltRad: 1, subject: { x: 0, y: 5, z: 0 }, host: { x: 0, y: 0, z: 0 } });
 		expect(Number.isFinite(h.x) && Number.isFinite(h.y) && Number.isFinite(h.z)).toBe(true);
