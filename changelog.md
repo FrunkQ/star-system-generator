@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.31 - 24th Aug 2026
+
+- Board only. The v3.0.30 production push is recorded: starsystemx.com takes the deploy-skew recovery, the radiation band fix, the full tidal-lock settlement, the follow camera, and the side-panel clip fix.
+
 ## v3.0.30 - 24th Aug 2026
 
 - The side panel can no longer end up 'slightly chopped off at the side'. The GM-notes box was a few pixels wider than the panel, and typing in it could scroll the whole panel sideways and leave it stuck there with no scrollbar to bring it back - the left edge of every tile quietly clipped until a reload. The box now fits exactly, and the panel refuses to pan sideways at all, whatever a future control does.
