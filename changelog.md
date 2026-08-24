@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.23 - 22nd Aug 2026
+
+- The surface-radiation band on the body card now matches its own number: the thresholds bucketed on a different scale from the ranges the labels print, so a world at ISS-comparable dose (the Moderate band's own anchor) was published as "Very High (1,000-5,000 mSv/year)" - up to four bands too hot, on every body above 1 mSv/y. The zones were never wrong; the label was.
+
 ## v3.0.22 - 22nd Aug 2026
 
 - An open tab no longer breaks when a new version deploys under it: if a lazy-loaded view (the 3D view, the player-view canvases, the transitions) fails to fetch its code because the files changed on the server, the page reloads itself once and carries on - which is exactly the hard refresh you would have done by hand, done for you. A genuine network outage still errors rather than looping. Found on the way: the service worker version tag had not moved since v2.0.148, which had silently killed the "new version available" prompt - bumped, so that prompt works again.

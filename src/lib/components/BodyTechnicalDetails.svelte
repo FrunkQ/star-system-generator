@@ -484,12 +484,16 @@
   }
 
   // --- Helper Functions ---
+  // A69: the thresholds MUST match the ranges the labels print. They used to bucket on
+  // 1/10/50/100/500 while the labels claimed 1/50/500/1000/5000 — so a 168 mSv/y world (ISS-level,
+  // which the Moderate tooltip itself names as its anchor) was published as "Very High
+  // (1,000-5,000)", four bands adrift of its own printed number.
   function getSurfaceRadiationDescription(radiation: number): { text: string, tooltip: string } {
       if (radiation < 1) return { text: 'Negligible (<1 mSv/year)', tooltip: 'No special shielding required for long-term survival. Less than typical Earth background radiation.' };
-      if (radiation < 10) return { text: 'Low (1-50 mSv/year)', tooltip: 'Standard habitat shielding is sufficient for long-term survival. Comparable to airline crew or high-altitude cities.' };
-      if (radiation < 50) return { text: 'Moderate (50-500 mSv/year)', tooltip: 'Requires moderate habitat shielding (e.g., several cm of lead or equivalent) for long-term survival. Comparable to astronauts on ISS.' };
-      if (radiation < 100) return { text: 'High (500-1,000 mSv/year)', tooltip: 'Requires heavy habitat shielding (e.g., dense alloys, significant depth underground) for long-term survival. Serious health risks over long periods.' };
-      if (radiation < 500) return { text: 'Very High (1,000-5,000 mSv/year)', tooltip: 'Long-term survival is difficult. Requires extreme shielding, such as deep subterranean or underwater habitats. Mission-critical operations only.' };
+      if (radiation < 50) return { text: 'Low (1-50 mSv/year)', tooltip: 'Standard habitat shielding is sufficient for long-term survival. Comparable to airline crew or high-altitude cities.' };
+      if (radiation < 500) return { text: 'Moderate (50-500 mSv/year)', tooltip: 'Requires moderate habitat shielding (e.g., several cm of lead or equivalent) for long-term survival. Comparable to astronauts on ISS.' };
+      if (radiation < 1000) return { text: 'High (500-1,000 mSv/year)', tooltip: 'Requires heavy habitat shielding (e.g., dense alloys, significant depth underground) for long-term survival. Serious health risks over long periods.' };
+      if (radiation < 5000) return { text: 'Very High (1,000-5,000 mSv/year)', tooltip: 'Long-term survival is difficult. Requires extreme shielding, such as deep subterranean or underwater habitats. Mission-critical operations only.' };
       return { text: 'Fatal (>5,000 mSv/year)', tooltip: 'Surface survival is impossible without exotic technology. Lethal dose received in a short time.' };
   }
 
