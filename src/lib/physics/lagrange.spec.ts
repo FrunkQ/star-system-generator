@@ -146,7 +146,11 @@ describe('mass criteria (reference anchors)', () => {
         const r = tadpoleRegion(PLANET_KG, SUN_KG);
         const mu = PLANET_KG / (SUN_KG + PLANET_KG);
         expect(r.radialHalfWidthFrac).toBeCloseTo(Math.sqrt(8 * mu / 3), 12);
-        expect(r.longitudeSpanDeg).toEqual([24, 180]);
+        // The DRAWN lobe is the occupied swarm (Jupiter's real trojans librate about 21 deg),
+        // not the separatrix — the wider bounds are recorded but deliberately not drawn.
+        expect(r.swarmHalfAngleDeg).toBe(21);
+        expect(r.stableHalfAngleDeg).toBe(80);
+        expect(r.separatrixDeg).toBe(180);
     });
 });
 

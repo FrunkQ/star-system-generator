@@ -603,17 +603,22 @@
   let drawErrorLogged = false;
 
   let lagrangePoints: Map<string, {x: number, y: number}> | null = null;
-  // G43: the L4/L5 tadpole AREAS — one lobe per triangular point per pair, in the render frame.
-  // Geometry is display-grade but reference-anchored (physics/lagrange.tadpoleRegion): radial
-  // half-width (8*mu/3)^(1/2)*R, longitude span 24..180 deg from the secondary at the separatrix.
-  // The same entries drive the right-click placement hit-test, so what you see is what you can click.
+  // G43: the L4/L5 tadpole AREAS — one lobe per triangular point, in the render frame.
+  //
+  // ONLY FOR THE SELECTED OBJECT'S OWN PAIR (owner, 2026-08-26, on seeing every planet's lobes at
+  // once: "maybe ONLY show the ones of the currently selected object — points for the others are
+  // fine"). Every body still gets its five CROSSES; the shaded region is a focus affordance.
+  //
+  // The lobe is centred ON the point and spans the observed swarm amplitude, not the separatrix —
+  // see physics/lagrange.tadpoleRegion for why those are very different pictures. The same entries
+  // drive the right-click placement hit-test, so what you see is exactly what you can click.
   interface LagrangeArea {
       secondaryId: string; point: 'l4' | 'l5';
       cx: number; cy: number;          // primary position (render frame)
       R: number;                        // orbit radius at this instant (render frame)
-      thetaSec: number;                 // secondary's current angle about the primary
-      dir: number;                      // +1 prograde, -1 retrograde (L4 leads in this direction)
-      halfWidth: number;                // radial half-width (render frame, before the px floor)
+      centreAngle: number;             // the L-point's own angle about the primary
+      halfAngle: number;               // lobe half-extent in longitude (radians)
+      halfWidth: number;               // radial half-width (render frame, before the px floor)
   }
   let lagrangeAreas: LagrangeArea[] = [];
   function calculateLagrangePointPositions() {
@@ -623,6 +628,15 @@
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const focusedNode = nodesById.get(idToUse);
       if (!focusedNode || (focusedNode.kind !== 'body' && focusedNode.kind !== 'construct')) { lagrangePoints = null; return; }
+      // WHOSE zones get shaded. The selected body's own, normally — and if the selection is
+      // something already SITTING at a point (a trojan, or a station parked there), the zones of
+      // the body it rides, which is the pair the user is looking at either way. Selecting a star
+      // shades nothing: it is the primary of every pair below it, so "its" zones are all of them,
+      // which is the noise this rule exists to remove.
+      const focusedCoOrbital = (focusedNode as CelestialBody).coOrbital;
+      const areaSecondaryId = focusedCoOrbital
+          ? focusedCoOrbital.hostId
+          : ((focusedNode as CelestialBody).roleHint === 'star' ? null : focusedNode.id);
       const allPoints = new Map<string, {x: number, y: number}>();
       const calculateAndStorePoints = (primary: CelestialBody, secondaries: CelestialBody[]) => {
           const primaryPos = worldPositions.get(primary.id);
@@ -650,17 +664,22 @@
                   }
                   allPoints.set(`${p.name}-${secondary.id}`, { x: x + scaledPrimaryPos.x, y: y + scaledPrimaryPos.y });
               });
-              // G43: tadpole lobes for the two triangular points of this pair, in the render frame.
-              if (primary.massKg && secondary.massKg) {
+              // G43: tadpole lobes, but ONLY for the pair the user has actually selected.
+              if (primary.massKg && secondary.massKg && secondary.id === areaSecondaryId) {
                   const region = tadpoleRegion(secondary.massKg, primary.massKg);
                   const R = Math.sqrt(scaledRelativeSecondaryPos.x ** 2 + scaledRelativeSecondaryPos.y ** 2);
                   const thetaSec = Math.atan2(scaledRelativeSecondaryPos.y, scaledRelativeSecondaryPos.x);
                   const dir = secondary.orbit?.isRetrogradeOrbit ? -1 : 1;
+                  const halfAngle = (region.swarmHalfAngleDeg * Math.PI) / 180;
                   for (const point of ['l4', 'l5'] as const) {
+                      // L4 leads the secondary by 60 deg, L5 trails — in its direction of motion.
+                      const lead = point === 'l4' ? 1 : -1;
                       lagrangeAreas.push({
                           secondaryId: secondary.id, point,
                           cx: scaledPrimaryPos.x, cy: scaledPrimaryPos.y,
-                          R, thetaSec, dir,
+                          R,
+                          centreAngle: thetaSec + dir * lead * (Math.PI / 3),
+                          halfAngle,
                           halfWidth: region.radialHalfWidthFrac * R
                       });
                   }
@@ -815,11 +834,10 @@
           const r = Math.hypot(dx, dy);
           const w = Math.max(area.halfWidth, 6 / zoom);
           if (Math.abs(r - area.R) > w) continue;
-          const sign = area.point === 'l4' ? area.dir : -area.dir;
-          // angle from the secondary, unwound in this lobe's own direction
-          let delta = (Math.atan2(dy, dx) - area.thetaSec) * sign;
-          delta = ((delta % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-          if (delta >= (24 * Math.PI) / 180 && delta <= Math.PI) return { secondaryId: area.secondaryId, point: area.point };
+          // Angular distance from the lobe's centre (the L-point itself), wrapped to [-pi, pi].
+          let delta = Math.atan2(dy, dx) - area.centreAngle;
+          delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+          if (Math.abs(delta) <= area.halfAngle) return { secondaryId: area.secondaryId, point: area.point };
       }
       return null;
   }
@@ -1035,14 +1053,11 @@
           // exactly the visible one.
           for (const area of lagrangeAreas) {
               const w = Math.max(area.halfWidth, 6 / zoom);
-              const spanIn = (24 * Math.PI) / 180, spanOut = Math.PI * 0.995; // stop short of L3 so the two lobes read apart
-              const sign = area.point === 'l4' ? area.dir : -area.dir;
-              const a0 = area.thetaSec + sign * spanIn;
-              const a1 = area.thetaSec + sign * spanOut;
               ctx.beginPath();
-              ctx.arc(area.cx - renderPan.x, area.cy - renderPan.y, area.R, a0, a1, sign < 0);
+              ctx.arc(area.cx - renderPan.x, area.cy - renderPan.y, area.R,
+                      area.centreAngle - area.halfAngle, area.centreAngle + area.halfAngle);
               ctx.lineWidth = 2 * w;
-              ctx.strokeStyle = 'rgba(0, 200, 100, 0.13)';
+              ctx.strokeStyle = 'rgba(0, 200, 100, 0.16)';
               ctx.stroke();
           }
       }

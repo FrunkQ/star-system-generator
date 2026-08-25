@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.49 - 26th Aug 2026
+
+- The Lagrange zones are readable now. They were drawn for every planet at once and each lobe swept from near the planet round to the far side of the orbit, so the map filled with green smears. Two fixes, both from the owner's eye on it: only the SELECTED object's zones are shaded (every body still shows its five crosses, and selecting something already parked at a point shades the zones of the body it rides), and each lobe is now centred on its point spanning the amplitude real trojans actually keep — 42 degrees wide instead of 156. Selecting a star shades nothing, since it is the primary of every pair beneath it.
+
 ## v3.0.48 - 26th Aug 2026
 
 - G43 phase 4: flying to a Lagrange point now actually arrives there, matching its motion. The solver and the post-arrival parking used to build the point two different ways, so a ship braked to a dead stop against one place and was then teleported to another the instant the journey completed — up to 71 million km and a 13 km/s jolt for an eccentric target like Jupiter's L4. Worse, an L1 or L2 plan sent the planner's planet-centric distance to the solver as a distance from the STAR: a flight to Mars L1 finished inside the solar corona, 1.4 AU from Mars. Both sides now read the same geometry, so every efficiency and direct-burn plan to all five points arrives exactly on the point with its velocity cancelled to zero. Gravity-assist plans still arrive fast and are logged as a separate known issue.

@@ -201,17 +201,32 @@ export function maxTrojanMassKg(hostMassKg: number, secondaryMassKg: number): nu
 }
 
 /** Display geometry of the tadpole (libration) region around L4/L5, for the areas overlay and the
- *  placement guide. Radial half-width (8·mu/3)^(1/2)·a and the widest tadpole's longitude span
- *  (~24 deg from the secondary out to L3 at 180 deg) are the reference-anchored numbers
- *  (Murray & Dermott 1999); the lobe drawn between them is display-grade. */
+ *  placement guide.
+ *
+ *  THE DRAWN LOBE IS THE OCCUPIED SWARM, NOT THE SEPARATRIX, and the difference is the whole
+ *  reason this returns what it does. The mathematical tadpole family reaches from ~24 deg off the
+ *  secondary all the way round to L3 at 180 deg (Murray & Dermott 1999) — but that is the OUTER
+ *  BOUND of the family, and drawing it says "half this orbit is the L4 zone", which is true of no
+ *  real system. Jupiter's actual swarms librate about the point with a mean amplitude near 21 deg
+ *  (20.85 deg at L5, 21.75 deg at L4), and stable libration runs out to roughly 80 deg. So the
+ *  default lobe is the swarm: the point, plus the amplitude a trojan actually keeps.
+ *
+ *  `radialHalfWidthFrac` is the well-founded half-width of the co-orbital region,
+ *  (8·mu/3)^(1/2)·a (Murray & Dermott 1999) — real physics, scaling with the mass ratio.
+ *  `swarmHalfAngleDeg` is a DISPLAY choice anchored on the observed amplitude, and
+ *  `stableHalfAngleDeg` / `separatrixDeg` record the wider bounds so nothing has to re-derive them. */
 export function tadpoleRegion(secondaryMassKg: number, hostMassKg: number): {
-    radialHalfWidthFrac: number;      // fraction of the secondary's a
-    longitudeSpanDeg: [number, number]; // from the secondary, along the orbit, at the separatrix
+    radialHalfWidthFrac: number;   // fraction of the secondary's a — the co-orbital region's width
+    swarmHalfAngleDeg: number;     // drawn lobe: mean observed libration amplitude about the point
+    stableHalfAngleDeg: number;    // the amplitude beyond which libration stops being stable
+    separatrixDeg: number;         // where the tadpole family ends: L3, on the far side
 } {
     const mu = hostMassKg > 0 ? secondaryMassKg / (hostMassKg + secondaryMassKg) : 0;
     return {
         radialHalfWidthFrac: Math.sqrt((8 * Math.max(0, mu)) / 3),
-        longitudeSpanDeg: [24, 180]
+        swarmHalfAngleDeg: 21,
+        stableHalfAngleDeg: 80,
+        separatrixDeg: 180
     };
 }
 
