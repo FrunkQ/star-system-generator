@@ -2,6 +2,8 @@ import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, BurnPoint } from './types';
 import { solveLambert, distanceAU, subtract, magnitude, integrateBallisticPath, add } from './math';
 import { getGlobalState, getLocalState, calculateFuelMass } from './physics';
+import { deriveCoOrbitalOrbit, LAGRANGE_POINT_IDS } from '../physics/lagrange';
+import type { LagrangePointId } from '../types';
 import { calculateAssistPlan } from './assist';
 import { sampleJourneyKinematicsAtTime } from './scheduler';
 import { AU_KM, G } from '../constants';
@@ -187,7 +189,8 @@ export function calculateTransitPlan(
       initialState?: StateVector; 
       initialStateFrame?: 'auto' | 'global' | 'local';
       parkingOrbitRadius_au?: number; 
-      targetOffsetAnomaly?: number; 
+      // targetOffsetAnomaly RETIRED (G43 P4): the L-point geometry lives in physics/lagrange.ts,
+      // so callers no longer pass an anomaly offset for it.
       arrivalPlacement?: string;
       aerobrake?: { allowed: boolean; limit_kms: number; }; // NEW
       initialDelay_days?: number;
@@ -298,7 +301,7 @@ export function calculateTransitPlan(
   
   if (params.arrivalPlacement) {
       const placementNode = sys.nodes.find(n => n.id === params.arrivalPlacement);
-      const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(params.arrivalPlacement);
+      const isLagrange = LAGRANGE_POINT_IDS.includes(params.arrivalPlacement as LagrangePointId);
 
       if (placementNode || isLagrange) {
           // For explicit nodes (Moons/Stations)
@@ -318,30 +321,35 @@ export function calculateTransitPlan(
               }
           } 
           
-          // For Virtual Lagrange Points
+          // For Virtual Lagrange Points (G43 P4).
+          //
+          // THE PHANTOM IS NOW THE REAL POINT. This block used to build its own geometry — a
+          // MEAN-ANOMALY shift for l3/l4/l5, and the panel's planet-centric parking distance
+          // dropped in as a HELIOCENTRIC a_AU for l1/l2 — while the post-arrival sampler in
+          // scheduler.ts used a rigid omega rotation. Two conventions for one point, so the solver
+          // braked to zero relative velocity against a place the ship was then teleported away
+          // from: measured at up to 0.48 AU and a 13 km/s step for an eccentric Jupiter L4, and a
+          // Mars L1 plan terminated 0.007 AU from the SUN. Both sides now call the one convention,
+          // so "rendezvous with the phantom" IS arriving at the point with its velocity matched —
+          // the cancelling falls out of the shared geometry instead of being a second calculation
+          // that has to agree with the first.
           if (isLagrange && target.orbit) {
-              const lagrangeId = params.arrivalPlacement;
-              
-              // Lagrange points are co-orbital with the 'target' (host planet) 
-              // around its parent (usually the Star).
-              effectiveTarget = {
-                  ...target,
-                  orbit: {
-                      ...target.orbit,
-                      elements: {
-                          ...target.orbit.elements,
-                          // L3-L5 use Anomaly offsets (180, +60, -60)
-                          M0_rad: target.orbit.elements.M0_rad + (params.targetOffsetAnomaly || 0),
-                          // L1-L2 use Radius offsets (Radial inner/outer)
-                          a_AU: params.parkingOrbitRadius_au || target.orbit.elements.a_AU
-                      }
-                  },
-                  // Since L-points have no mass, we force the solver into "Rendezvous" mode
-                  kind: 'construct' as any, 
-                  massKg: 0
-              };
-              // Clear parking radius from params so solver doesn't try to "orbit" the mass-less L-point.
-              forcedParkingRadiusAu = undefined; 
+              const lagrangePoint = params.arrivalPlacement as LagrangePointId;
+              const lagrangeHost = sys.nodes.find(n => n.id === target.parentId);
+              const lagrangeHostMassKg = lagrangeHost ? getNodeMass(sys, lagrangeHost) : 0;
+              const pointOrbit = deriveCoOrbitalOrbit(target, lagrangeHostMassKg, lagrangePoint);
+              if (pointOrbit) {
+                  effectiveTarget = {
+                      ...target,
+                      orbit: pointOrbit,
+                      // An L-point has no mass, so the solver runs in "Rendezvous" mode: it matches
+                      // the point's velocity rather than trying to enter an orbit around it.
+                      kind: 'construct' as any,
+                      massKg: 0
+                  };
+              }
+              // Never "orbit" a mass-less point — and never let a parking radius reach the elements.
+              forcedParkingRadiusAu = undefined;
           }
       }
   }
@@ -469,9 +477,12 @@ export function calculateTransitPlan(
   const r1 = magnitude(startPos);
   let r2 = r1;
   
-  const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(params.arrivalPlacement || '');
+  const isLagrange = LAGRANGE_POINT_IDS.includes((params.arrivalPlacement || '') as LagrangePointId);
   if (isLagrange && effectiveTarget.orbit) {
-      r2 = params.parkingOrbitRadius_au || effectiveTarget.orbit.elements.a_AU;
+      // The derived point orbit ALREADY carries the right radius (scaled by (1∓k) for the
+      // collinear points). Reading a parking radius here is what sent a Mars L1 plan to 0.007 AU
+      // from the Sun: the panel's figure is planet-centric and this baseline is heliocentric.
+      r2 = effectiveTarget.orbit.elements.a_AU;
   } else if (effectiveTarget.orbit && effectiveTarget.orbit.elements) {
       r2 = effectiveTarget.orbit.elements.a_AU;
   } else {

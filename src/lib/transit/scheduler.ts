@@ -2,6 +2,8 @@ import type { CelestialBody, System } from '$lib/types';
 import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM, G } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
+import { deriveCoOrbitalOrbit, LAGRANGE_POINT_IDS } from '$lib/physics/lagrange';
+import type { LagrangePointId } from '$lib/types';
 import { driftAt } from '$lib/physics/driftIntegrator';
 import { coastConicAt } from '$lib/physics/twoBodyCoast';
 import { systemGravityField, G_AU } from '$lib/physics/systemGravity';
@@ -571,39 +573,38 @@ function samplePostJourneyState(
     }
 
     if (lastPlan.arrivalPlacement) {
-      const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(lastPlan.arrivalPlacement);
+      const isLagrange = LAGRANGE_POINT_IDS.includes(lastPlan.arrivalPlacement as LagrangePointId);
       if (isLagrange && (targetNode as any).orbit && targetNode.parentId) {
-        // Lagrange points: mathematically rotate the planet's orbit around the sun.
-        let rotAngleDeg = 0;
-        let scale = 1;
-        
-        if (lastPlan.arrivalPlacement === 'l1') scale = 0.99;
-        if (lastPlan.arrivalPlacement === 'l2') scale = 1.01;
-        if (lastPlan.arrivalPlacement === 'l3') rotAngleDeg = 180;
-        if (lastPlan.arrivalPlacement === 'l4') rotAngleDeg = 60;
-        if (lastPlan.arrivalPlacement === 'l5') rotAngleDeg = -60;
-
-        // Create a synthetic node mathematically identical to the target planet, 
-        // but rotated around the sun to preserve perfectly eccentric Keplarian motion
-        const synthOrbit = JSON.parse(JSON.stringify((targetNode as any).orbit));
-        synthOrbit.elements.a_AU *= scale;
-        synthOrbit.elements.omega_deg = (synthOrbit.elements.omega_deg || 0) + rotAngleDeg;
-        
-        const synthNode = {
-          id: 'synth-lpoint',
-          kind: 'body',
-          parentId: targetNode.parentId,
-          orbit: synthOrbit
-        };
-
-        const lPointGlobal = getGlobalState(system, synthNode as any, timeMs);
-
-        return {
-          journeyId: log.id,
-          state: 'Orbiting',
-          position_au: lPointGlobal.r,
-          velocity_ms: { x: lPointGlobal.v.x * AU_M, y: lPointGlobal.v.y * AU_M }
-        };
+        // G43 P4: the point the ship is parked at is the SAME point the solver flew to — both come
+        // from deriveCoOrbitalOrbit. Before this, the sampler rotated the target's ellipse rigidly
+        // while the solver shifted its mean anomaly, so an eccentric arrival jumped up to ~0.5 AU
+        // (and gained a several-km/s velocity step) at the instant the journey completed.
+        const lagrangeHost = system.nodes.find((n) => n.id === targetNode.parentId);
+        const lagrangeHostMassKg = lagrangeHost
+          ? (((lagrangeHost as any).kind === 'barycenter'
+              ? (lagrangeHost as any).effectiveMassKg
+              : (lagrangeHost as any).massKg) || 0)
+          : 0;
+        const pointOrbit = deriveCoOrbitalOrbit(
+          targetNode as any,
+          lagrangeHostMassKg,
+          lastPlan.arrivalPlacement as LagrangePointId
+        );
+        if (pointOrbit) {
+          const synthNode = {
+            id: 'synth-lpoint',
+            kind: 'body',
+            parentId: targetNode.parentId,
+            orbit: pointOrbit
+          };
+          const lPointGlobal = getGlobalState(system, synthNode as any, timeMs);
+          return {
+            journeyId: log.id,
+            state: 'Orbiting',
+            position_au: lPointGlobal.r,
+            velocity_ms: { x: lPointGlobal.v.x * AU_M, y: lPointGlobal.v.y * AU_M }
+          };
+        }
       }
     }
 

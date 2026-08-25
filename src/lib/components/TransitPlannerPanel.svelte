@@ -5,6 +5,8 @@
   import { calculateTransitPlan } from '$lib/transit/calculator';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { getOrbitOptions } from '$lib/physics/orbits';
+  import { lagrangePlacementId } from '$lib/physics/lagrange';
+  const isLagrangeOption = (id: string) => !!lagrangePlacementId(id);
   import { AU_KM } from '$lib/constants';
   import type { RulePack } from '$lib/types';
   import { get } from 'svelte/store';
@@ -488,21 +490,16 @@
 
       // Resolve Orbit Option
       let targetOrbitRadiusKm = 0;
-      let targetOffsetAnomaly = 0;
-      let forcedParkingRadiusAu: number | undefined = undefined;
-      
+
       const selectedOpt = orbitOptions.find(o => o.id === selectedOrbitId);
       if (selectedOpt) {
           targetOrbitRadiusKm = selectedOpt.radiusKm;
-          // Lagrange offsets (relative to host planet in parent frame)
-          if (selectedOrbitId === 'l3') targetOffsetAnomaly = Math.PI; // 180 deg
-          if (selectedOrbitId === 'l4') targetOffsetAnomaly = Math.PI / 3; // +60 deg
-          if (selectedOrbitId === 'l5') targetOffsetAnomaly = -Math.PI / 3; // -60 deg
-          
-          // L1 and L2 are collinear, handled via radial offsets in the solver
-          if (selectedOrbitId === 'l1' || selectedOrbitId === 'l2') {
-              forcedParkingRadiusAu = targetOrbitRadiusKm / AU_KM;
-          }
+          // G43 P4: the L-point geometry is NOT the panel's business any more — physics/lagrange.ts
+          // owns it and the solver reads it from there. This block used to send an anomaly offset
+          // for l3/l4/l5 and, worse, the dropdown's PLANET-CENTRIC l1/l2 distance as a parking
+          // radius, which the solver then used as a HELIOCENTRIC semi-major axis: a Mars L1 plan
+          // terminated 0.007 AU from the Sun. The dropdown radius stays a display figure only.
+          if (isLagrangeOption(selectedOrbitId)) targetOrbitRadiusKm = 0;
       }
       const targetNode = system.nodes.find(n => n.id === targetId);
       const isConstructTarget = !!(targetNode && targetNode.kind === 'construct');
@@ -536,8 +533,7 @@
           shipIsp: undefined as number | undefined,
           brakeAtArrival: brakeAtArrival,
           initialState: safeInitialState,
-          parkingOrbitRadius_au: forcedParkingRadiusAu || (targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined),
-          targetOffsetAnomaly: targetOffsetAnomaly,
+          parkingOrbitRadius_au: targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined,
           // Construct rendezvous must explicitly target that construct id.
           arrivalPlacement: (isConstructTarget && arrivalMode === 'Rendezvous') ? targetId : selectedOrbitId,
           aerobrake: {

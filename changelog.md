@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.48 - 26th Aug 2026
+
+- G43 phase 4: flying to a Lagrange point now actually arrives there, matching its motion. The solver and the post-arrival parking used to build the point two different ways, so a ship braked to a dead stop against one place and was then teleported to another the instant the journey completed — up to 71 million km and a 13 km/s jolt for an eccentric target like Jupiter's L4. Worse, an L1 or L2 plan sent the planner's planet-centric distance to the solver as a distance from the STAR: a flight to Mars L1 finished inside the solar corona, 1.4 AU from Mars. Both sides now read the same geometry, so every efficiency and direct-burn plan to all five points arrives exactly on the point with its velocity cancelled to zero. Gravity-assist plans still arrive fast and are logged as a separate known issue.
+
 ## v3.0.47 - 26th Aug 2026
 
 - G43 phase 3: constructs can be parked at ALL FIVE Lagrange points, not just L4 and L5 — the transit planner could always fly to all five, but the editors only ever offered the trojan pair. Each parked craft now carries what staying there costs it: coasting at a sound L4/L5 (a free-fall orbit holds it for nothing), station-keeping at L1/L2/L3 (the periodic trim burns real missions budget for), and holding when the trojan regime is breached and there is no equilibrium left to keep. The nine scattered "is this L4 or L5" checks that had let L1-L3 fall out of the editors are now one shared test.

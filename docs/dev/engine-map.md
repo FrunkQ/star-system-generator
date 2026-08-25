@@ -3257,3 +3257,23 @@ ships fifteen constructs that had this fault latent.
 BLAST: a dangling marker (secondary deleted) is self-healed by DELETING the marker and keeping the
 last derived orbit as authored. `importFixup.migrateLagrangePlacements` upgrades legacy placement
 strings (L4/L5 + ui_parentId) to markers on load, marker-guarded.
+
+### LGR-3 Flying to an L-point: the solver phantom and the parked point must be ONE object
+WHERE: `transit/calculator.ts` (the `isLagrange` arrival block, and the `r2` baseline below it);
+`transit/scheduler.ts samplePostJourneyState`. Both call `deriveCoOrbitalOrbit`.
+RULE: the target a plan brakes against and the point the ship is parked on afterwards are the same
+derived orbit. Velocity cancelling is not a step — it is what "rendezvous with a massless phantom"
+ALREADY means, so it is correct exactly while both sides share one geometry. Never reintroduce a
+local L-point construction on either side, and never feed `parkingOrbitRadius_au` into an L-point:
+the derived orbit already carries the radius, scaled by (1-/+k) for the collinear points.
+WHY: they used to differ — a MEAN-ANOMALY shift in the solver against a rigid OMEGA rotation in the
+sampler — so a plan braked to 0 m/s relative to a place the ship was then teleported away from.
+Measured before the fix on the Sol fixture: Jupiter L4 0.31-0.48 AU of jump with a 0.6-13.3 km/s
+velocity step; a Mars L1 plan terminated 0.0066-0.0075 AU from the SUN and 1.4 AU from Mars,
+because the planner passed the dropdown's PLANET-CENTRIC L1 distance and the solver read it as a
+HELIOCENTRIC a_AU. After: 0 km and 0.0 m/s on every Efficiency/Speed plan to l1..l5.
+BLAST: `lagrangeArrival.spec.ts` is the gate and carries the before-numbers. `targetOffsetAnomaly`
+is RETIRED from the solver params — the geometry is not a caller's business. The `Complex`
+gravity-assist family is EXCLUDED from those assertions and is a separate known fault ([[B86]]):
+it publishes `arrivalVelocity_ms = 0` with no Flyby warning while arriving km/s fast, on ordinary
+destinations too.
