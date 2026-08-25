@@ -10,7 +10,7 @@
   import { AU_KM, EARTH_MASS_KG } from '../constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
   import * as zones from "$lib/physics/zones";
-  import { calculateLagrangePoints, tadpoleRegion } from "$lib/physics/lagrange";
+  import { calculateLagrangePoints, tadpoleRegion, isTriangularPoint } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatDistanceKm, distanceFlavour } from '$lib/units';
@@ -1049,7 +1049,7 @@
       if (showLPoints && lagrangePoints) {
           const crossSize = 5 / zoom; ctx.lineWidth = 1.5 / zoom;
           for (const [key, pos] of lagrangePoints.entries()) {
-              const name = key.split('-')[0]; const isStable = name === 'L4' || name === 'L5';
+              const name = key.split('-')[0]; const isStable = isTriangularPoint(name);
               if (toytownFactor > 0 && !isStable) continue;
               ctx.strokeStyle = isStable ? 'green' : '#888';
               ctx.beginPath();
@@ -1609,7 +1609,7 @@
       if (showLPoints && lagrangePoints) {
           const crossSize = 5 / zoom; ctx.lineWidth = 1.5 / zoom;
           for (const [key, pos] of lagrangePoints.entries()) {
-              const name = key.split('-')[0]; const isStable = name === 'L4' || name === 'L5';
+              const name = key.split('-')[0]; const isStable = isTriangularPoint(name);
               if (toytownFactor > 0 && !isStable) continue;
               ctx.fillStyle = isStable ? 'green' : '#888';
               const screenPos = worldToScreen(pos.x, pos.y);

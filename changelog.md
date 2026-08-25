@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.47 - 26th Aug 2026
+
+- G43 phase 3: constructs can be parked at ALL FIVE Lagrange points, not just L4 and L5 — the transit planner could always fly to all five, but the editors only ever offered the trojan pair. Each parked craft now carries what staying there costs it: coasting at a sound L4/L5 (a free-fall orbit holds it for nothing), station-keeping at L1/L2/L3 (the periodic trim burns real missions budget for), and holding when the trojan regime is breached and there is no equilibrium left to keep. The nine scattered "is this L4 or L5" checks that had let L1-L3 fall out of the editors are now one shared test.
+
 ## v3.0.46 - 26th Aug 2026
 
 - G43 phase 2: the engine now judges a Lagrange placement instead of quietly exempting it. A trojan at L4/L5 is tested against Gascheau's 1843 bound (for a small trojan, Routh's limit: the secondary must stay under about a twenty-fifth of the total mass); breach it and the body reads Very Unstable with the margin quoted, and the LIGHTER of trojan and secondary wears the "flung out" fate. A body authored at L1 or L2 is told the honest truth — those are saddle points where a deviation e-folds in about a sixteenth of an orbit, so station-keeping holds a craft but nothing holds a moon — while L3 reads Unstable and drifts into a horseshoe rather than being thrown out. The relationship itself is published as an `orbit/lagrange` tag, and the physics trace shows the working: the derived orbit, the Gascheau margin, and why a stable trojan coasts for free. The physics page, the tag registry, tags-guide.md and classification-and-tags.md all move in the same batch.

@@ -273,7 +273,7 @@ every consumer — renderers, rules, the finder — reads the override exactly a
 | `climate/*` | climate states (`runaway-greenhouse`) | (was the accrete adapter, removed v2.1.898-beta) |
 | `hazard/*` | `hazard/flaring` (an active star) and `hazard/radiation` / `hazard/orbital-radiation` (the dose, as a survival time) | star generation **and** processor (classification) |
 | `stellar/*` | `stellar/activity` (the magnetic-activity bucket every star surface reads: quiet / moderate / active / flare-star), `stellar/jets` (moderate / strong — a relativistic well, an ordered field and a power source: a fed black hole, a neutron star, a magnetar), `stellar/shedding` (wind / shell — Reimers mass loss, L·R/M: giants and supergiants, hot O stars) | processor (the star pass, before pass 0) — **both starmaps and the system view draw exactly what these say**; remove the tag and the mark goes |
-| `flight/*` | `flight/ascent` — what it costs to leave | processor (**flight dynamics, pass 4**) |
+| `flight/*` | `flight/ascent` — what it costs to leave; `flight/fuel-use` — what it costs a construct to STAY at a Lagrange point (`coasting` / `station-keeping` / `holding`) | processor (**flight dynamics, pass 4**; fuel-use in **co-orbital, pass 0c**) |
 | `tidal/*` | `tidal/hotspots` | processor (environment) |
 | `magnetic/*` | dynamo / induced / tenuous / **anomalous** / unshielded | processor (**interior, pass 2b**) |
 | `anomaly/*` | the GM's stated REASON for a pinned value | processor (**anomaly, pass 7**), from `overrides.anomalies` |

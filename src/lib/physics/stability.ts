@@ -1,6 +1,6 @@
 import type { CelestialBody, Barycenter, System } from '../types';
 import { stripForReprocess } from '../tags/tagLifecycle';
-import { gascheauMargin } from './lagrange';
+import { coOrbitalHold, lagrangePlacementId } from './lagrange';
 
 type OrbitalNode = CelestialBody;
 
@@ -109,7 +109,7 @@ function assessPairStability(
   // (Routh/Gascheau + regime), which judge rather than exempt.
   const coOrbitalExempt =
     !!inner.coOrbital || !!outer.coOrbital ||
-    (inner.placement === 'L4' || inner.placement === 'L5' || outer.placement === 'L4' || outer.placement === 'L5');
+    !!lagrangePlacementId(inner.placement) || !!lagrangePlacementId(outer.placement);
 
   // 1) Orbit overlap / crossing check.
   // We attenuate by mutual inclination and mass ratio so giant planets are not
@@ -218,7 +218,9 @@ function assessCoOrbitalStability(
   const secondaryName = (secondary as CelestialBody).name ?? 'its secondary';
 
   if (point === 'l4' || point === 'l5') {
-    const margin = gascheauMargin(hostMassKg, m2, m3);
+    // ONE judgement of the trojan regime: `coOrbitalHold` also decides the construct fuel-use
+    // bucket, so a verdict here and the tag a ship wears can never disagree.
+    const margin = coOrbitalHold(point, hostMassKg, m2, m3).margin ?? Infinity;
     if (margin < 1) {
       out.severity = 3;
       out.fate = 'eject';

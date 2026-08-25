@@ -1,6 +1,7 @@
 import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameters, RulePack, Systems } from './types';
 import { AU_KM, THERMAL_LIMITS } from './constants';
 import { calculateFuelMass } from './transit/physics';
+import { lagrangePlacementId } from './physics/lagrange';
 
 // Define constants
 const g0 = 9.81; // Standard gravity for ISP and g-force calcs
@@ -150,7 +151,7 @@ export function calculateFullConstructSpecs(
             placementDescription = construct.placement;
         } else if (construct.placement === 'Surface') {
             placementDescription = 'Surface';  
-        } else if (construct.placement === 'L4' || construct.placement === 'L5') {
+        } else if (lagrangePlacementId(construct.placement)) {
           placementDescription = construct.placement;
         } else if (hostBody && construct.orbit) {
           // Fallback logic to determine zone from altitude if placement is generic 'Orbit'

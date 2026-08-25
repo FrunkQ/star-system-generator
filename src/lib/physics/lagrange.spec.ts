@@ -9,7 +9,8 @@ import fs from 'fs';
 import path from 'path';
 import {
     deriveCoOrbitalOrbit, deriveCoOrbitalOrbits, coOrbitalRelState, hillFactor,
-    maxTrojanMassKg, gascheauMargin, ROUTH_CRITICAL_MU, tadpoleRegion, calculateLagrangePoints
+    maxTrojanMassKg, gascheauMargin, ROUTH_CRITICAL_MU, tadpoleRegion, calculateLagrangePoints,
+    lagrangePlacementId, isTriangularPoint
 } from './lagrange';
 import { propagateState } from './orbits';
 import { migrateLagrangePlacements } from '../system/importFixup';
@@ -288,6 +289,69 @@ describe('P2: the co-orbital stability judgement', () => {
         expect((t1 as any).orbitalStability).toBeUndefined();
         expect(JSON.stringify((t2.tags ?? []).map(t => t.key).sort()))
             .toBe(JSON.stringify((t1.tags ?? []).map(t => t.key).sort()));
+    });
+});
+
+describe('P3: constructs at all five points, and what each costs them', () => {
+    const pack = loadPack();
+
+    function withStation(point: 'l1' | 'l2' | 'l3' | 'l4' | 'l5', massKg = 1e6): System {
+        const sys = makeSystem();
+        sys.nodes = sys.nodes.filter(n => n.id !== 'trojan');
+        (sys.nodes as any[]).push({
+            id: 'station', name: 'Station', kind: 'construct', roleHint: 'construct',
+            parentId: 'star', tags: [], massKg,
+            coOrbital: { hostId: 'planet', point }
+        });
+        return sys;
+    }
+    const fuelTag = (sys: System) =>
+        ((sys.nodes.find(n => n.id === 'station') as CelestialBody).tags ?? [])
+            .find(t => t.key === 'flight/fuel-use')?.value;
+
+    it('all five points are placeable, and each gets a derived orbit', () => {
+        for (const point of ['l1', 'l2', 'l3', 'l4', 'l5'] as const) {
+            const out = systemProcessor.process(JSON.parse(JSON.stringify(withStation(point))), pack);
+            const station = out.nodes.find(n => n.id === 'station') as CelestialBody;
+            expect(station.orbit, `${point} should have a derived orbit`).toBeTruthy();
+            expect(station.coOrbital!.point).toBe(point);
+        }
+    });
+
+    it('L5 coasts, L1/L2/L3 station-keep (the owner\'s acceptance case)', () => {
+        expect(fuelTag(systemProcessor.process(withStation('l5'), pack))).toBe('coasting');
+        expect(fuelTag(systemProcessor.process(withStation('l4'), pack))).toBe('coasting');
+        for (const point of ['l1', 'l2', 'l3'] as const) {
+            expect(fuelTag(systemProcessor.process(withStation(point), pack))).toBe('station-keeping');
+        }
+    });
+
+    it('a breached trojan regime escalates the ship from coasting to holding', () => {
+        const sys = withStation('l4');
+        (sys.nodes.find(n => n.id === 'planet') as CelestialBody).massKg = SUN_KG * 0.3; // past Gascheau
+        expect(fuelTag(systemProcessor.process(sys, pack))).toBe('holding');
+    });
+
+    it('a body wears no fuel tag (a trojan moon burns nothing) and a released ship loses it', () => {
+        const bodySys = systemProcessor.process(makeSystem({ trojanPoint: 'l4' }), pack);
+        const trojan = bodySys.nodes.find(n => n.id === 'trojan') as CelestialBody;
+        expect((trojan.tags ?? []).some(t => t.key === 'flight/fuel-use')).toBe(false);
+
+        const once = systemProcessor.process(withStation('l1'), pack);
+        const station = once.nodes.find(n => n.id === 'station') as CelestialBody;
+        delete station.coOrbital;
+        const again = systemProcessor.process(JSON.parse(JSON.stringify(once)), pack);
+        expect(fuelTag(again)).toBeUndefined();
+    });
+
+    it('the placement predicate accepts both forms and rejects everything else', () => {
+        expect(lagrangePlacementId('L4')).toBe('l4');
+        expect(lagrangePlacementId('l1')).toBe('l1');
+        expect(lagrangePlacementId('Surface')).toBeNull();
+        expect(lagrangePlacementId('Low Orbit')).toBeNull();
+        expect(lagrangePlacementId(undefined)).toBeNull();
+        expect(isTriangularPoint('L5')).toBe(true);
+        expect(isTriangularPoint('l2')).toBe(false);
     });
 });
 

@@ -80,7 +80,7 @@ import { SeededRNG } from '../rng';
 import { stripForReprocess, survivesRederive, emit, canonicalTagKey } from '../tags/tagLifecycle';
 import { OVERRIDE_DEFS } from '../physics/overrides';
 import { annotateGravitationalStability } from '../physics/stability';
-import { deriveCoOrbitalOrbits } from '../physics/lagrange';
+import { deriveCoOrbitalOrbits, coOrbitalHold } from '../physics/lagrange';
 import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
@@ -192,12 +192,25 @@ export class SystemProcessor implements ISystemProcessor {
         //    `orbit/lagrange` per pinned node, value = the point. This pass OWNS the key and
         //    clears it first (TAG-6), so a released trojan loses its mark. Bodies AND constructs —
         //    a station at L1 carries the same record a trojan moon does.
+        //    A CONSTRUCT also gets what the point COSTS it (`flight/fuel-use`) — coasting at a
+        //    sound triangular point, station-keeping at a collinear one, and holding when the
+        //    trojan regime is breached and there is no equilibrium left to keep. A trojan MOON
+        //    burns nothing, so the cost tag is constructs-only. Both keys are owned and cleared
+        //    here (TAG-6). Masses are inputs at this point, so this is order-safe and idempotent.
         for (const node of allNodes) {
             if (node.kind !== 'body' && node.kind !== 'construct') continue;
             const b = node as CelestialBody;
             if (!b.tags && !b.coOrbital) continue;
-            b.tags = stripForReprocess(b.tags ?? [], ['orbit/lagrange']);
-            if (b.coOrbital) emit(b.tags, { key: 'orbit/lagrange', value: b.coOrbital.point });
+            b.tags = stripForReprocess(b.tags ?? [], ['orbit/lagrange', 'flight/fuel-use']);
+            if (!b.coOrbital) continue;
+            emit(b.tags, { key: 'orbit/lagrange', value: b.coOrbital.point });
+            if (b.kind !== 'construct') continue;
+            const secondary = allNodes.find((n) => n.id === b.coOrbital!.hostId);
+            const primary = secondary?.parentId ? allNodes.find((n) => n.id === secondary.parentId) : undefined;
+            const massOf = (n: any) => (n?.kind === 'barycenter' ? n?.effectiveMassKg : n?.massKg) || 0;
+            if (!secondary || !primary) continue;
+            const hold = coOrbitalHold(b.coOrbital.point, massOf(primary), massOf(secondary), b.massKg || 0);
+            emit(b.tags, { key: 'flight/fuel-use', value: hold.fuelUse });
         }
 
         // 1. First Pass: Physical Basics (Orbital Period, Gravity, etc.)

@@ -18,6 +18,7 @@ import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
 import { determineSpectralClass } from '$lib/physics/stellar-evolution';
 import { SOLAR_RADIUS_KM } from '$lib/constants';
 import { stripUndoHistory } from '$lib/undo/historyKey';
+import { lagrangePlacementId } from '$lib/physics/lagrange';
 
 // Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
 // so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
@@ -371,10 +372,10 @@ export function migrateLagrangePlacements(system: System): void {
     if (node.kind !== 'body' && node.kind !== 'construct') continue;
     const b = node as CelestialBody;
     if (b.coOrbital) continue;
-    const placement = (b.placement || '').toUpperCase();
-    if (placement !== 'L4' && placement !== 'L5') continue;
+    const point = lagrangePlacementId(b.placement);
+    if (!point) continue;
     if (!b.ui_parentId) continue;   // no recorded secondary — nothing to anchor the marker to
-    b.coOrbital = { hostId: b.ui_parentId, point: placement.toLowerCase() as 'l4' | 'l5' };
+    b.coOrbital = { hostId: b.ui_parentId, point };
   }
 }
 

@@ -73,6 +73,12 @@ and a body authored at the collinear points L1/L2 is told honestly that only sta
 anything there. The full working appears on the body's physics trace, and the physics page's
 "Lagrange points & trojans" section explains the criteria.
 
+A **construct** parked at one also gets `flight/fuel-use`, which says what staying there costs it:
+*coasting* at a sound L4/L5 (a free-fall orbit holds it for nothing), *station-keeping* at L1/L2/L3
+(periodic trim burns, which is what real missions at those points budget for), or *holding* when the
+trojan regime is breached and there is no equilibrium left — the ship is thrusting continuously to
+stay somewhere the physics does not hold it.
+
 ## Categories
 
 A category is a group of related tags sharing a namespace and a colour: `faction/*`, `resource/*`,

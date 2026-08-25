@@ -934,6 +934,11 @@
         holds a craft there; nothing holds a moon, so a body authored at L1/L2 reads Very Unstable and says
         why. <strong>L3</strong> is the antipode — weakly unstable, drifting into a horseshoe passage over
         years to centuries rather than being thrown out.</p>
+      <p>A <strong>construct</strong> may be parked at any of the five, and carries what that costs it as
+        <code>flight/fuel-use</code>: <em>coasting</em> at a sound L4/L5, where a free-fall orbit holds it
+        for nothing; <em>station-keeping</em> at L1/L2/L3, the periodic trim burns real halo-orbit missions
+        budget for; and <em>holding</em> when the trojan regime is breached, because then there is no
+        equilibrium left to keep and the ship is simply thrusting to stay put.</p>
     </section>
 
     <section id="ejection">

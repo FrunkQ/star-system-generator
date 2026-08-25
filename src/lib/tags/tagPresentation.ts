@@ -258,6 +258,10 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   },
 
   // --- Flight ---
+  'flight/fuel-use': {
+    label: 'Station-holding cost',
+    description: 'What it costs this craft to STAY where it is parked. Coasting — a sound L4/L5 point is a genuine free-fall orbit, so nothing is spent holding it. Station-keeping — a collinear point (L1/L2/L3) is a saddle: real missions there budget periodic trim burns, indefinitely. Holding — the trojan regime is breached, so there is no equilibrium left to keep and the craft is thrusting continuously to stay somewhere the physics does not hold it.'
+  },
   'flight/ascent': {
     label: 'Ascent cost',
     description: 'What it takes to get off this world and into a low orbit - trivial (under 2 km/s, a small craft hops off, like Luna), moderate (under 5, Mars), hard (under 15, Earth), extreme (Venus at 29 km/s). The figure itself is the Ascent Delta-v row in the data block.'

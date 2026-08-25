@@ -29,6 +29,57 @@ import { G } from '../constants';
 
 export const LAGRANGE_POINT_IDS: LagrangePointId[] = ['l1', 'l2', 'l3', 'l4', 'l5'];
 
+/** The five points as PLACEMENT strings, in the order the editors offer them. The placement string
+ *  is display-legacy (the `coOrbital` marker is the record), but it is what the construct editors
+ *  bind their dropdowns to, so the vocabulary lives here with everything else about L-points. */
+export const LAGRANGE_PLACEMENTS = ['L1', 'L2', 'L3', 'L4', 'L5'] as const;
+
+/** Is this placement string one of the five points, and which? Returns null for 'Surface',
+ *  'Low Orbit', an AU-distance band, or anything else. ONE predicate — before G43 P3 this question
+ *  was asked as `p === 'L4' || p === 'L5'` in nine places, which is how L1-L3 came to be authorable
+ *  by the transit planner and not by the editors. */
+export function lagrangePlacementId(placement?: string | null): LagrangePointId | null {
+    if (!placement) return null;
+    const key = placement.trim().toLowerCase();
+    return (LAGRANGE_POINT_IDS as string[]).includes(key) ? (key as LagrangePointId) : null;
+}
+
+/** The TRIANGULAR points are the two that can hold something for free (subject to Gascheau);
+ *  L1/L2/L3 are unstable equilibria. Accepts either form ('L4' or 'l4'), because the renderers
+ *  carry display names and the data model carries ids. */
+export function isTriangularPoint(pointOrPlacement?: string | null): boolean {
+    const id = lagrangePlacementId(pointOrPlacement);
+    return id === 'l4' || id === 'l5';
+}
+
+/** What it COSTS to sit at a point — physics, published as a tag, never decided in the UI.
+ *
+ *  `coasting`        a triangular point whose trio passes Gascheau: a genuine free-fall orbit, so
+ *                    holding station there costs nothing at all.
+ *  `station-keeping` a collinear point (L1/L2/L3): a real equilibrium, but a saddle — periodic trim
+ *                    burns hold a craft there indefinitely, which is exactly what real halo-orbit
+ *                    missions do.
+ *  `holding`         the triangular regime is BREACHED (Gascheau margin below 1): the point is no
+ *                    longer an equilibrium at all, so a ship there is not station-keeping, it is
+ *                    thrusting continuously to stay somewhere the physics does not hold it.
+ *
+ *  `margin` is the Gascheau margin for a triangular point and null for a collinear one (the bound
+ *  does not speak about those). Stability reads the margin and this reads the bucket, so the trojan
+ *  regime is judged in exactly ONE place. */
+export type LagrangeFuelUse = 'coasting' | 'station-keeping' | 'holding';
+export function coOrbitalHold(
+    point: LagrangePointId,
+    hostMassKg: number,
+    secondaryMassKg: number,
+    nodeMassKg: number
+): { margin: number | null; fuelUse: LagrangeFuelUse } {
+    if (point === 'l4' || point === 'l5') {
+        const margin = gascheauMargin(hostMassKg, secondaryMassKg, nodeMassKg);
+        return { margin, fuelUse: margin >= 1 ? 'coasting' : 'holding' };
+    }
+    return { margin: null, fuelUse: 'station-keeping' };
+}
+
 export interface LagrangePoint {
     name: string;
     x: number;
