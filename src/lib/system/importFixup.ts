@@ -358,12 +358,33 @@ function resolveLegacyStarClass(body: CelestialBody, pack?: RulePack): void {
   body.classes = [key, ...(body.classes ?? []).slice(1).filter((c) => c !== key)];
 }
 
+// MIGRATION (G43): a node parked at L4/L5 used to be recorded as a loose `placement` string plus a
+// `ui_parentId` and a one-off COPY of the secondary's orbit — a snapshot that silently drifted off
+// the point whenever the secondary's orbit was later edited. The structured `coOrbital` marker is
+// now the load-bearing record, and the processor re-derives the orbit from the secondary on every
+// pass (which HEALS any accumulated drift on first load). Marker-guarded and idempotent: a node
+// already carrying `coOrbital` is left alone, and the legacy `placement` string stays for display.
+// Both kinds — the bundled Uggi map ships fifteen such constructs; bodies could only reach this
+// state by hand-editing JSON, but the same record applies.
+export function migrateLagrangePlacements(system: System): void {
+  for (const node of system.nodes) {
+    if (node.kind !== 'body' && node.kind !== 'construct') continue;
+    const b = node as CelestialBody;
+    if (b.coOrbital) continue;
+    const placement = (b.placement || '').toUpperCase();
+    if (placement !== 'L4' && placement !== 'L5') continue;
+    if (!b.ui_parentId) continue;   // no recorded secondary — nothing to anchor the marker to
+    b.coOrbital = { hostId: b.ui_parentId, point: placement.toLowerCase() as 'l4' | 'l5' };
+  }
+}
+
 export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
   // RETIRED (G37): `isManuallyEdited` was written by ~20 sites and read by NONE — the G28 undo session
   // found it dead and `describeChange` had to filter it back out of every edit label. It is deleted on
   // load so it stops riding every save; nothing anywhere consumed it, so nothing can miss it.
   delete (system as { isManuallyEdited?: boolean }).isManuallyEdited;
+  migrateLagrangePlacements(system);
   for (const node of system.nodes) {
     if (node.kind !== 'body') continue;
     stripBody(node as CelestialBody, classNames);

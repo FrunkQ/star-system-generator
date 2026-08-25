@@ -102,7 +102,12 @@ function assessPairStability(
   const outerBand = getOrbitSafetyBandAU(outer);
   if (!innerBand || !outerBand) return out;
 
+  // G43: a co-orbital pair "crosses" by construction — the crossing/spacing heuristics below do
+  // not apply to it. The structured marker is authoritative; the placement strings are the legacy
+  // form older saves still carry. P2 replaces this blanket escape with the real trojan criteria
+  // (Routh/Gascheau + regime), which judge rather than exempt.
   const coOrbitalExempt =
+    !!inner.coOrbital || !!outer.coOrbital ||
     (inner.placement === 'L4' || inner.placement === 'L5' || outer.placement === 'L4' || outer.placement === 'L5');
 
   // 1) Orbit overlap / crossing check.

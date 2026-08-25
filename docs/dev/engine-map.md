@@ -3225,3 +3225,35 @@ right, and `peerLinks` could never find the reported stats it looked up by broke
   same `shipLenScene(node)`. Two writers, no overlap.
 - `hasSolidSurface` on an ICE giant: the B11 class-regex bug is genuinely gone. Uranus and Neptune
   infer gas-dominated from density and correctly take no surface hazard tag.
+
+### LGR-1 One Lagrange convention, one module — and the l1/l2 hostMu is scaled ON PURPOSE
+WHERE: `physics/lagrange.ts` (the whole module); every consumer of "where is an L-point".
+RULE: all five points derive from the secondary via `coOrbitalRelState`/`deriveCoOrbitalOrbit`:
+l3/l4/l5 = the secondary's ellipse rigidly rotated in omega (+180/+60/-60, sign flipped for a
+retrograde secondary) with the SAME mean anomaly and epoch; l1/l2 = a_AU scaled by (1-/+k) AND
+hostMu scaled by (1-/+k)^3, k the Hill cube-root factor. Never restate either transform anywhere,
+and never "fix" an l1/l2 orbit's hostMu back to G*M — the scaling is what gives the standard
+propagator the secondary's period AND the co-rotating velocity (1-/+k)*v, both exact.
+WHY: five independent conventions shipped before G43 (overlay ellipse-at-f+-60, authoring M0-shift,
+transit-phantom M0-shift, scheduler omega-rotation, planner-dropdown SOI radii) and eccentric L4
+arrivals teleported up to ~0.5 AU between two of them; a panel Mars L1 plan flew to 0.007 AU from
+the SUN because a planet-centric distance was read as a heliocentric a_AU. An M0-shift is NOT a
+rotation for e>0 (the gap is order 2*e*a).
+BLAST: transit calculator + scheduler still hold their local copies until G43 P4 deletes them;
+`lagrange.spec.ts` pins the exactness claims. If a test asserts hostMu == parent mass * G for a
+co-orbital node, the test is wrong.
+
+### LGR-2 A co-orbital orbit is DERIVED from a SIBLING, which parent-before-child does not order
+WHERE: `physics/lagrange.ts deriveCoOrbitalOrbits` (Pass 0c), called from `SystemProcessor.process`
+after the barycentre passes and before physical basics.
+RULE: a node with `coOrbital` gets its `orbit`, `parentId` and `ui_parentId` REWRITTEN from its
+secondary every pass. The dependency is on a sibling (both orbit the same host), so the usual
+parent-before-child iteration says nothing about it — ordering lives inside the pass (recursive,
+cycle-guarded). Do not read a co-orbital node's orbit in any pass that can run before 0c, and do
+not hand-edit its elements (the next process() reverts them; the marker is the authored record).
+WHY: the pre-G43 authoring model copied the secondary's orbit ONCE at placement, so every later
+edit of the secondary silently stranded its L4/L5 riders off the point — the bundled Uggi map
+ships fifteen constructs that had this fault latent.
+BLAST: a dangling marker (secondary deleted) is self-healed by DELETING the marker and keeping the
+last derived orbit as authored. `importFixup.migrateLagrangePlacements` upgrades legacy placement
+strings (L4/L5 + ui_parentId) to markers on load, marker-guarded.

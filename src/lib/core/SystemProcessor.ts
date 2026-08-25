@@ -80,6 +80,7 @@ import { SeededRNG } from '../rng';
 import { stripForReprocess, survivesRederive, emit, canonicalTagKey } from '../tags/tagLifecycle';
 import { OVERRIDE_DEFS } from '../physics/overrides';
 import { annotateGravitationalStability } from '../physics/stability';
+import { deriveCoOrbitalOrbits } from '../physics/lagrange';
 import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
@@ -179,6 +180,13 @@ export class SystemProcessor implements ISystemProcessor {
 
         // 0. Pass 0b: Orbital Dynamics & existing barycenters (Ensure mass/orbits are correct first)
         this.processBarycenters(processedSystem);
+
+        // 0. Pass 0c (G43): co-orbital (Lagrange) orbits — a node pinned to a secondary's L-point
+        //    gets its orbit DERIVED from that secondary's, every pass. After the barycentre passes
+        //    (which may rewrite member orbits), before physical basics (which reads orbits). This
+        //    is a SIBLING dependency the parent-before-child rule does not order; the pass resolves
+        //    chains itself (see physics/lagrange.ts).
+        deriveCoOrbitalOrbits(processedSystem);
 
         // 1. First Pass: Physical Basics (Orbital Period, Gravity, etc.)
         for (const node of allNodes) {

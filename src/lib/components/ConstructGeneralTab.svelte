@@ -5,6 +5,7 @@
   import UnitValue from './UnitValue.svelte';
   import UnitInput from './UnitInput.svelte';
   import { getPlanetColor } from '$lib/rendering/colors';
+  import { deriveCoOrbitalOrbit } from '$lib/physics/lagrange';
 
   export let system: System;
   export let construct: CelestialBody;
@@ -272,16 +273,21 @@
     }
 
     if (selectedPlacement === 'L4' || selectedPlacement === 'L5') {
+      // G43: the structured marker is the load-bearing record — the processor re-derives the orbit
+      // from the secondary every pass. The derivation here (same shared convention) is only the
+      // instant feedback before the next process().
       construct.parentId = parentBody.parentId;
       construct.ui_parentId = parentBody.id;
-      if (parentBody.orbit) {
-        construct.orbit = JSON.parse(JSON.stringify(parentBody.orbit));
-        const baseAnomaly = parentBody.orbit.elements.M0_rad;
-        const adjustment = selectedPlacement === 'L4' ? Math.PI / 3 : -Math.PI / 3;
-        construct.orbit.elements.M0_rad = (baseAnomaly + adjustment + 2 * Math.PI) % (2 * Math.PI);
-      }
-      construct.orbit.elements.e = parentBody.orbit?.elements.e || 0; // Inherit eccentricity for L-points
+      construct.coOrbital = { hostId: parentBody.id, point: selectedPlacement.toLowerCase() as 'l4' | 'l5' };
+      const grandparent = parentBody.parentId ? system.nodes.find(n => n.id === parentBody.parentId) : null;
+      const grandparentMassKg = grandparent
+        ? ((grandparent as any).kind === 'barycenter' ? (grandparent as any).effectiveMassKg : (grandparent as any).massKg) || 0
+        : 0;
+      const derived = deriveCoOrbitalOrbit(parentBody, grandparentMassKg, construct.coOrbital.point);
+      if (derived) construct.orbit = derived;
+      else if (parentBody.orbit) construct.orbit = JSON.parse(JSON.stringify(parentBody.orbit));
     } else {
+      delete construct.coOrbital;
       construct.parentId = parentBody.id;
       construct.ui_parentId = null;
       

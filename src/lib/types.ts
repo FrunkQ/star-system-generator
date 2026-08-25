@@ -109,6 +109,17 @@ export interface Area {
 
 export interface Kepler { a_AU: number; e: number; i_deg: number; Omega_deg: number; omega_deg: number; M0_rad: number; }
 
+// G43: the AUTHORED co-orbital relationship — "this node rides a Lagrange point of that body".
+// The node stays a child of the SECONDARY'S OWN HOST (the star/barycentre) — a trojan orbits the
+// star, and sits outside the secondary's Hill sphere by construction — and the ENGINE derives its
+// `orbit` from the secondary's every pass (physics/lagrange.ts owns the one convention). The loose
+// `placement` string ('L4'/'L5') is display-legacy; this is the load-bearing record.
+export type LagrangePointId = 'l1' | 'l2' | 'l3' | 'l4' | 'l5';
+export interface CoOrbital {
+  hostId: ID;             // the SECONDARY whose point this is (a planet, moon, or barycentre)
+  point: LagrangePointId; // l4 leads, l5 trails (in the secondary's direction of motion)
+}
+
 export interface Orbit {
   hostId: ID; elements: Kepler; t0: number; hostMu: number; seed?: string;
   n_rad_per_s?: number; // Optional pre-calculated mean motion (rad/s)
@@ -489,6 +500,9 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   stellarType?: StellarType;
   auroraEmitters?: AuroraEmitter[];  // resolved at process time from atmosphere × gas AuroraBand data
   orbit?: Orbit;
+  /** G43: authored Lagrange-point relationship. When present, `orbit` is DERIVED from the
+   *  secondary's orbit every pass (see physics/lagrange.ts) — do not hand-edit the elements. */
+  coOrbital?: CoOrbital;
 
   // Physical parameters
   radiusKm?: number;
