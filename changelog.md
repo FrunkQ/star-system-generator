@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.43 - 25th Aug 2026
+
+- Board only. G43 phase 0: the Lagrange design note is posted (docs/dev/lagrange-full-citizens-design.md) with the owner questions Q1-Q7. The phase-0 probe measured today's L-point arrivals: the solver velocity-cancels against a mean-anomaly-shifted phantom while the parked track is the omega-rotated orbit, so eccentric arrivals teleport (Jupiter L4: 0.31-0.48 AU, 0.6-13 km/s step), and a panel-driven L1/L2 plan flies to the parking DISTANCE as a heliocentric radius (Mars L1 terminates 0.007 AU from the Sun). No engine changes yet.
+
 ## v3.0.42 - 25th Aug 2026
 
 - The wrong-loader message becomes an offer. Drop a campaign (starmap) file on Load System and a compact panel names it, states plainly that opening it replaces your whole current campaign, and offers to open it - or cancel, which changes nothing. Drop a single system on Load Starmap and the same panel names it and points at the right door. Bundles (.sse.zip) go through the same panel, so the two old one-line warnings are gone.
