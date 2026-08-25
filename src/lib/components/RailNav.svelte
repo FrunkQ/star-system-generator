@@ -143,17 +143,20 @@ ${playerConnSummary}`
     <button class="rail-btn sub" title="New starmap" on:click={() => go('new')}>
       <span class="ic">{@html svg(I.new)}</span><span class="rail-label">New Starmap</span>
     </button>
-    <button class="rail-btn sub" title="Load a starmap from a file" on:click={() => go('open')}>
+    <!-- G42: the tooltips say WHICH WORLD each entry acts on. A GM reading only the labels cannot
+         tell that Save System leaves the rest of the campaign out of the file - which is exactly
+         the confusion reported ("they may save a system map thinking they are saving everything"). -->
+    <button class="rail-btn sub" title="Load a whole campaign from a file — replaces the campaign you have open now" on:click={() => go('open')}>
       <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Load Starmap</span>
     </button>
-    <button class="rail-btn sub" title="Save this starmap to a file" on:click={() => go('save')}>
+    <button class="rail-btn sub" title="Save the WHOLE campaign to a file — every system and the routes between them" on:click={() => go('save')}>
       <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save Starmap</span>
     </button>
     {#if activeView === 'system'}
-      <button class="rail-btn sub" title="Load a system from a file" on:click={() => go('uploadsystem')}>
+      <button class="rail-btn sub" title="Load one system from a file — replaces the system you are viewing, not the campaign" on:click={() => go('uploadsystem')}>
         <span class="ic">{@html svg(I.open)}</span><span class="rail-label">Load System</span>
       </button>
-      <button class="rail-btn sub" title="Save this system to a file" on:click={() => go('downloadsystem')}>
+      <button class="rail-btn sub" title="Save ONLY the system you are viewing — not the whole campaign" on:click={() => go('downloadsystem')}>
         <span class="ic">{@html svg(I.save)}</span><span class="rail-label">Save System</span>
       </button>
     {:else}

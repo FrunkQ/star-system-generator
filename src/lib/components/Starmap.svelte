@@ -22,8 +22,6 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import type { SnapGridType } from '$lib/map/mapOverlay';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
-  import { stampForSave } from '$lib/map/provenance';
-  import SaveSystemModal from './SaveSystemModal.svelte';
   import ImportTravellerModal from './ImportTravellerModal.svelte';
   import RealSkyImportModal from './RealSkyImportModal.svelte';
   import { completeImportedStars } from '$lib/import/realsky/stardefaults';
@@ -34,9 +32,6 @@
   import StarmapScaleBar from './StarmapScaleBar.svelte';
   import SystemPlacementDialog from './SystemPlacementDialog.svelte';
   import { TravellerImporter } from '$lib/traveller/importer';
-  import { computePlayerSnapshot } from '$lib/system/utils';
-  import { packsForStarmap, reasonsConfig } from '$lib/physics/reasonsToVisit';
-  import { coiForStarmap } from '$lib/constructs/coi';
   import { get } from 'svelte/store';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { ensureTemporalState, setMasterToDisplay } from '$lib/temporal/defaults';
@@ -123,7 +118,6 @@
 
   // Header State
   let showDropdown = false;
-  let showSaveModal = false;
   let showImportModal = false;
   let showAddTravellerModal = false;
   
@@ -542,48 +536,11 @@
     }
   }
 
-  function handleSaveStarmap(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
-      const { mode, includeConstructs } = event.detail;
-      
-      // Deep copy first
-      const starmapToSave = JSON.parse(JSON.stringify(starmap));
-
-      // Process each system
-      starmapToSave.systems = starmapToSave.systems.map((node: any) => {
-          // If the system data is loaded in the node
-          if (node.system) {
-              if (mode === 'Player') {
-                  node.system = computePlayerSnapshot(node.system);
-              }
-              if (!includeConstructs) {
-                  node.system.nodes = node.system.nodes.filter((n: any) => n.kind !== 'construct');
-              }
-          }
-          return node;
-      });
-
-      // A GM "Full Backup" must be self-contained: embed the user's PoI packs + reasons config so they
-      // travel inside the file (matching the rail's Download). The Player handout deliberately omits them
-      // (the computed tags are already baked into the redacted bodies; the rule definitions stay GM-side).
-      if (mode === 'GM') {
-          (starmapToSave as any).poiPacks = packsForStarmap();
-          (starmapToSave as any).reasonsConfig = get(reasonsConfig);
-          (starmapToSave as any).coiCategories = coiForStarmap();
-      }
-
-      // Download. M1: stamp the build that wrote the file — see lib/map/provenance.ts. A Player handout is
-      // stamped too: it is still a file this build produced, and knowing which build made it is the point.
-      const json = JSON.stringify(stampForSave(starmapToSave), null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${starmap.name.replace(/\s+/g, '_') || 'starmap'}-Starmap${mode === 'Player' ? '-Player' : ''}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-  }
+  // G42: the campaign save that used to live here (handleSaveStarmap + its own SaveSystemModal) was
+  // DEAD - `showSaveModal` was declared here and never set true by anything, in this file or outside
+  // it - and it had drifted from the live one: no stripStarmapForExport, no asset bundling, no model
+  // embedding. The live campaign save is `handleDownloadStarmap` in routes/+page.svelte, reached from
+  // the rail's Save Starmap. Removed rather than synced, per the duplicate-code rule.
 
   // Zoom about a canvas-relative point (old handleWheel logic, generalised to a factor so
   // wheel and pinch share it). Respects the "disable mouse zoom" setting for both.
@@ -1777,10 +1734,6 @@
     />
   {/if}
 
-  {#if showSaveModal}
-      <SaveSystemModal on:save={handleSaveStarmap} on:close={() => showSaveModal = false} />
-  {/if}
-  
   {#if showImportModal}
       <ImportTravellerModal
           showModal={showImportModal}

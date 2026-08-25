@@ -39,6 +39,7 @@
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
+  import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
   import RealSkyImportModal from '$lib/components/RealSkyImportModal.svelte';
   import { fillOutAll } from '$lib/import/realsky/fillout';
   import { completeImportedStars } from '$lib/import/realsky/stardefaults';
@@ -1757,6 +1758,13 @@
     if (open) { annotateReasonsToVisit(open); systemStore.set({ ...open }); }
   }
 
+  // G42 phase 3: the rail's Save Starmap now goes through the save screen, which states in plain
+  // words that this file is the WHOLE campaign - the counterpart to the system save saying it is
+  // not. The BASE-MAP BACKUP path deliberately keeps calling handleDownloadStarmap directly: it is
+  // already inside a modal that marks "Saved ✓" the moment it fires, and stacking a second modal
+  // on it would break that flow.
+  let showStarmapSaveModal = false;
+
   async function handleDownloadStarmap() {
     if (!$starmapStore) return;
 
@@ -2048,7 +2056,7 @@
         routesAttention={routesData.worstAttention}
         on:new={handleRequestNewStarmap}
         on:open={handleUploadStarmap}
-        on:save={handleDownloadStarmap}
+        on:save={() => (showStarmapSaveModal = true)}
         on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
         on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
         on:allbodies={() => showAllBodies = true}
@@ -2084,7 +2092,7 @@
       on:editroute={handleEditRoute}
       on:deletesystem={handleDeleteSystem}
       on:renamesystem={handleRenameSystem}
-      on:download={handleDownloadStarmap}
+      on:download={() => (showStarmapSaveModal = true)}
       on:upload={handleUploadStarmap}
       on:clear={handleClearStarmap}
       on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
@@ -2176,6 +2184,12 @@
   {#if sisterSystemFileName !== null}
     <SisterFileModal fileKind="system" context="starmap" fileName={sisterSystemFileName}
       on:close={() => (sisterSystemFileName = null)} />
+  {/if}
+  <!-- G42: the campaign save says, on screen, that this file is EVERYTHING. No GM/Player choice is
+       offered because this path has only ever written the full GM file. -->
+  {#if showStarmapSaveModal && $starmapStore}
+    <SaveSystemModal scope="starmap" subjectName={$starmapStore.name} showOptions={false}
+      on:save={handleDownloadStarmap} on:close={() => (showStarmapSaveModal = false)} />
   {/if}
   {#if showHelpMenu}
     <HelpMenuModal on:close={() => showHelpMenu = false} />

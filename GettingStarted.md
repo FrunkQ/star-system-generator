@@ -252,7 +252,7 @@ applicable — debris spread round an orbit, with no surface to leave*, and a ga
 **Add System Here** on the starmap opens a two-step wizard.
 
 **Step 1 — pick your star or stars.** Load one of the bundled example systems, load a system you
-saved earlier (an SSE `.json`, a Universe Sandbox `.ubox`, or a SpaceEngine `.sc`), or click a
+saved earlier (an SSE `.json` or `.sse.zip`, a Universe Sandbox `.ubox`, or a SpaceEngine `.sc`), or click a
 calibrated **Hertzsprung–Russell diagram** to place stars yourself. Add more than one and they nest
 into a proper **binary hierarchy** — the only arrangement that is really stable — shown as you build
 it: a binary, an Alpha-Centauri-like triple, an Epsilon-Lyrae double-double.
@@ -627,6 +627,16 @@ and descriptions, which makes it a safe "sensor scan" handout.
   when space runs low; **Settings > System > Your data** shows how much you are using and can ask the
   browser to keep it — but the browser decides, so that lowers the risk rather than removing it.
   **Saving to a file is the only real backup.**
+* **Two different things to save, and the screen says which.** Saving from the starmap writes your
+  **whole campaign** — every system and the routes between them. Saving from inside a system writes
+  **that one system only**, and says so: your other systems and the map they sit on are not in that
+  file. Both screens show the filename they will write (`-Starmap` or `-System`), so the two are
+  told apart at a glance later.
+* **Give a loader the wrong file and it says what the file is.** Drop a campaign on **Load System**
+  and it is named as a campaign, with an offer to open it as one — stating plainly that doing so
+  replaces the campaign you have open. Drop a single system on **Load Starmap** and it is named as a
+  system, pointing you at the door that takes it. This works by looking inside the file, so a
+  renamed one is still recognised.
 * **Download and upload.** Export your whole sector, or an individual system. A plain map saves as
   **JSON**, exactly as it always did. A map carrying **assets** — ship models, uploaded pictures, a
   map background — saves as a **`.sse.zip` bundle** instead: readable JSON with the assets beside it

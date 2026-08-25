@@ -1759,6 +1759,24 @@ BLAST: any new loader or save shape. A fourth shape-sniff written inline in a co
 rule being broken; extend `classify.ts` instead. If a new top-level save kind is added, teach
 `classifyJsonDoc` its shape and every wrong-loader message names it for free.
 
+### DATA-M7 A save screen names the world it saves, and there is ONE campaign save
+WHERE: `src/lib/components/SaveSystemModal.svelte` (`scope` / `subjectName` / `showOptions`);
+callers in `SystemView.svelte` (scope 'system') and `routes/+page.svelte` (scope 'starmap')
+RULE: every save screen states in plain words what IS and IS NOT in the file — a system save is
+that one system, explicitly not the campaign; a campaign save is everything — and shows the
+filename stem it will write. `showOptions` is false for the campaign save because that path has
+only ever written the full GM file: offering GM/Player there would promise a handout it does not
+make. The LIVE campaign save is `handleDownloadStarmap` in `routes/+page.svelte` and nothing else;
+`BaseMapUpgradeModal`'s backup calls it DIRECTLY, deliberately skipping the screen, because it is
+already inside a modal that marks "Saved" the moment it fires.
+WHY: G42, the owner's report — users "may save a system map thinking they are saving everything".
+Nothing on either screen said which world it acted on. A second, unreachable campaign save had
+also grown in `Starmap.svelte` and drifted (no `stripStarmapForExport`, no bundling, no models);
+it was removed rather than synced.
+BLAST: a new save surface must pass a scope, not default into 'system'. If the campaign save ever
+gains a Player handout, `showOptions` becomes true there and the redaction must be implemented in
+`handleDownloadStarmap` — the removed dead copy is NOT a working reference.
+
 ### DATA-M5 A map-fixed image lives INSIDE the world transform, and its anchor is campaign content
 WHERE: `src/lib/map/mapBackground.ts` (the only place the rectangle is worked out), `Starmap.svelte`
 (the `<image>` inside the `translate(pan) scale(zoom)` group), `starmapScene.ts` (`setMapBackground`,

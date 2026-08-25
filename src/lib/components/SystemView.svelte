@@ -2547,7 +2547,7 @@
             on:confirm={() => { const p = sisterStarmap; sisterStarmap = null; if (p) dispatch('openstarmap', { doc: p.doc, models: p.models }); }} />
     {/if}
     {#if showSaveModal}
-        <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
+        <SaveSystemModal scope="system" subjectName={$systemStore?.name ?? ''} on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
     {/if}
 
     {#if showDisengageDialog && focusedBody && focusedBody.kind === 'construct'}

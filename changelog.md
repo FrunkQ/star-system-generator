@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.44 - 25th Aug 2026
+
+- Saving now says which world you are saving. The system save screen states that the file holds that one system only - naming it - and that your other systems, the map and the routes are not in it, with the way to save all of that. Saving the campaign gets the matching screen saying the file holds everything. Both show the filename they will write, and the File menu entries say in their tooltips which of the two they act on.
+- Housekeeping: the campaign-save code that used to sit in the starmap component was unreachable (nothing could open it) and had drifted behind the real one - it never stripped derived physics or carried assets. Removed; the working save is untouched.
+
 ## v3.0.43 - 25th Aug 2026
 
 - Board only. G43 phase 0: the Lagrange design note is posted (docs/dev/lagrange-full-citizens-design.md) with the owner questions Q1-Q7. The phase-0 probe measured today's L-point arrivals: the solver velocity-cancels against a mean-anomaly-shifted phantom while the parked track is the omega-rotated orbit, so eccentric arrivals teleport (Jupiter L4: 0.31-0.48 AU, 0.6-13 km/s step), and a panel-driven L1/L2 plan flies to the parking DISTANCE as a heliocentric radius (Mars L1 terminates 0.007 AU from the Sun). No engine changes yet.
