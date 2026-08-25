@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.37 - 25th Aug 2026
+
+- Board only. A user question ("can I add a custom interior liquid?") is answered and captured: custom liquids work fully as surface oceans today, but the subsurface and interior layers are hardcoded - the gap and its fix shape are on the board. Coordinator 5 retires with its handover recorded.
+
 ## v3.0.36 - 25th Aug 2026
 
 - Centre the map on a star: right-click any star on the GM map for Centre Map Here (and Clear). The 3D starmap's distance rings then radiate from that star and measure from it, and Reset View centres it on screen, zoomed so every star still fits. Snap grids and hex addresses never move - this is display and navigation only.
