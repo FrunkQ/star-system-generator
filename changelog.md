@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.51 - 25th Aug 2026
+
+- Board only. G44 corrected: trojan placement already uses the right-click background menu, so a submoon rides the same path.
+
 ## v3.0.50 - 25th Aug 2026
 
 - Board only. Captured G44 (Hill spheres on moons, so a submoon can be placed where one could actually hold) and G45 (the circumbinary annulus — a combined Hill sphere outside, and the inner stability limit that the engine does not yet compute at all).
