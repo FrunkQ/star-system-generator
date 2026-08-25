@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.52 - 26th Aug 2026
+
+- A gravity-assist plan now arrives the way it says it does. It had always charged for its arrival brake — the Delta-v and the fuel both included it, and it reported an arrival velocity of zero — but the trajectory it published ended at the speed the ship was doing BEFORE that burn, several km/s fast (4.8 km/s on a Jupiter low orbit, up to 21.8 on a Lagrange point). Anything chaining a second leg onto an assist was therefore planning from a velocity the ship would never have. The brake now also appears as an arrival burn you can see, at exactly the cost it was always quoting.
+- Lagrange points dim when they are not the selected body's, so the selection's own five read at a glance instead of being lost among every other planet's.
+- Engine map: seven ids had been claimed twice by parallel sessions (and one three times). The first claim keeps its number, the later entries moved, and a translation table at the top of the file maps the old numbers to the new so older notes stay readable.
+
 ## v3.0.51 - 25th Aug 2026
 
 - Board only. G44 corrected: trojan placement already uses the right-click background menu, so a submoon rides the same path.
