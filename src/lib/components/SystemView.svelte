@@ -46,7 +46,8 @@
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
-  import { packBundle, unpackBundle, sniffBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { packBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { classifySaveFile } from '$lib/io/classify';
   import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
   import ImportModal from './ImportModal.svelte';
@@ -1440,20 +1441,22 @@
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        // Bundle (zip) or plain JSON, decided by the magic number rather than the file name.
+        // G42: classify FIRST (bundle kind from the zip, JSON kind from shape — classify.ts), so a
+        // campaign dropped here is named in plain words instead of failing isLoadableSystem with a
+        // message about missing fields. A real system still goes through isLoadableSystem below.
         const raw = new Uint8Array(e.target?.result as ArrayBuffer);
-        let newSystem: any;
-        if (sniffBundle(raw)) {
-          const unpacked = unpackBundle(raw);
-          if (unpacked.kind !== 'system') {
-            alert('That bundle holds a whole campaign, not a single system. Load it from the starmap instead.');
-            return;
-          }
-          await importEmbeddedModels(unpacked.models).catch(() => 0);
-          newSystem = unpacked.doc;
-        } else {
-          newSystem = JSON.parse(new TextDecoder().decode(raw));
+        const classified = classifySaveFile(raw);
+        if (classified.kind === 'starmap') {
+          alert('This file is a whole CAMPAIGN (starmap) — every system on the map, not just one.\n\n'
+            + 'To open it, use File > Load Starmap. Loading it there replaces the whole campaign, not just this system.');
+          return;
         }
+        if (classified.kind === 'unknown') {
+          alert('This file is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
+          return;
+        }
+        if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
+        let newSystem: any = classified.doc;
         if (isLoadableSystem(newSystem)) {
           // Keep the old ID to preserve starmap link
           const oldId = $systemStore?.id;
@@ -1468,10 +1471,13 @@
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;
         } else {
-          alert('Invalid system file: it needs an id, a name and a nodes array.');
+          // classify said 'system' (it has a nodes array), so what is missing is the id or name.
+          alert('This system file is missing its "id" or "name", so it cannot be loaded.');
         }
       } catch (err) {
-        alert('Failed to parse JSON file.');
+        // Unreadable files never reach here (classifySaveFile answers 'unknown' for them and the
+        // guard above already spoke) - this catch is the load pipeline itself failing.
+        alert(`The file loaded but could not be opened: ${(err as Error)?.message ?? err}`);
         console.error(err);
       }
     };

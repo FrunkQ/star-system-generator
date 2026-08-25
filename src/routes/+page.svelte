@@ -73,7 +73,8 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { collectModelsForExport, importEmbeddedModels, bytesToBase64 } from '$lib/constructs/modelTransfer';
-  import { packBundle, unpackBundle, sniffBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { packBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { classifySaveFile } from '$lib/io/classify';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave } from '$lib/map/provenance';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
@@ -1796,22 +1797,23 @@
 
     reader.onload = async () => {
       try {
-        // A save is either a bundle (zip) or plain JSON. Decided by the MAGIC NUMBER, so a
-        // renamed file still opens; the bundle's assets are unpacked before anything reads them.
+        // G42: classify FIRST — bundle kind from the zip, JSON kind from shape (classify.ts) — so a
+        // file dropped on the wrong loader is named as its sister type in plain words instead of
+        // dying in validateStarmap with "Missing..." lines. Classification decides which validator
+        // speaks; a real starmap still goes through the full validateStarmap below, unchanged.
         const raw = new Uint8Array(reader.result as ArrayBuffer);
-        let data: any;
-        let bundledModels: Record<string, { b64: string; meta: Record<string, unknown> }> | null = null;
-        if (sniffBundle(raw)) {
-          const unpacked = unpackBundle(raw);
-          if (unpacked.kind !== 'starmap') {
-            alert('That bundle holds a single system, not a campaign. Open it from the system view instead.');
-            return;
-          }
-          data = unpacked.doc;
-          bundledModels = unpacked.models;
-        } else {
-          data = JSON.parse(new TextDecoder().decode(raw));
+        const classified = classifySaveFile(raw);
+        if (classified.kind === 'system') {
+          alert('This file is a saved SYSTEM — one star system, not a whole campaign (starmap).\n\n'
+            + 'To view it, open any system and use File > Load System. Loading it there replaces the system you are viewing, not the campaign.');
+          return;
         }
+        if (classified.kind === 'unknown') {
+          alert('This file is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
+          return;
+        }
+        const data: any = classified.doc;
+        const bundledModels = classified.models ?? null;
 
         // Bring in any PoI packs / reasons config the starmap carries, BEFORE re-deriving systems,
         // so the embedded rules drive the re-tag below. These live app-wide once merged.
@@ -1849,12 +1851,10 @@
         starmapStore.set(sanitized);
         showNewStarmapModal = false;
       } catch (e) {
-        // Say what actually failed - this catch wraps far more than JSON.parse, and for two weeks
-        // it blamed the file for a reader bug of ours.
-        const msg = e instanceof SyntaxError
-          ? 'That file is not valid JSON. If it is a bundle (.sse.zip), it may be corrupted.'
-          : `The file loaded but could not be opened: ${(e as Error)?.message ?? e}`;
-        alert(msg);
+        // Say what actually failed - this catch wraps the whole open pipeline, and for two weeks
+        // it blamed the file for a reader bug of ours. (Unreadable files never reach here now:
+        // classifySaveFile answers 'unknown' for them and the guard above already spoke.)
+        alert(`The file loaded but could not be opened: ${(e as Error)?.message ?? e}`);
         console.error(e);
       }
     };

@@ -1742,6 +1742,23 @@ nobody honours, and CC-BY is an obligation, not a preference.
 BLAST: changing the asset paths (the collector matches on the `assets/` prefix). Adding an upload
 surface: fill the ImageRef/ModelRef provenance fields or every asset it creates reports blank.
 
+### DATA-M6 What a save file IS is decided ONCE, before any validator speaks
+WHERE: `src/lib/io/classify.ts` (`classifySaveFile` / `classifyJsonDoc`); callers in
+`routes/+page.svelte` (Load Starmap), `components/SystemView.svelte` (Load System) and
+`components/GenerationWizard.svelte` (load saved system)
+RULE: every loader classifies the bytes FIRST — bundle kind from the zip member name, plain-JSON
+kind from shape (`systems[]`+`routes[]` = starmap, `nodes[]` = system), else unknown — and only
+then hands the doc to its own validator. Classification NAMES a sister file in plain words;
+it never replaces `validateStarmap` or `isLoadableSystem`, which still gate what actually loads.
+`classifyJsonDoc` is read-only by contract: it runs on files that are then refused, so unlike
+`isLoadableSystem` it must never stamp anything on the doc.
+WHY: each loader used to sniff for itself, so a file on the wrong loader died inside that
+loader's validator — "Missing 'systems' array" for what was a perfectly good system save (G42:
+"an esoteric error rather than identifying it as a sister file").
+BLAST: any new loader or save shape. A fourth shape-sniff written inline in a component is this
+rule being broken; extend `classify.ts` instead. If a new top-level save kind is added, teach
+`classifyJsonDoc` its shape and every wrong-loader message names it for free.
+
 ### DATA-M5 A map-fixed image lives INSIDE the world transform, and its anchor is campaign content
 WHERE: `src/lib/map/mapBackground.ts` (the only place the rectangle is worked out), `Starmap.svelte`
 (the `<image>` inside the `translate(pan) scale(zoom)` group), `starmapScene.ts` (`setMapBackground`,

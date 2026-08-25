@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.41 - 25th Aug 2026
+
+- A file dropped on the wrong loader is now named for what it is. All three loaders (Load Starmap, Load System, and the generation wizard) share one classifier that reads the file's shape - never its name - so a system save dropped on Load Starmap says "this is a saved SYSTEM" and points at the right door, a campaign dropped on Load System says so in mirror, and a file that is neither gets one plain sentence instead of a validator dump. The wizard also accepts .sse.zip bundles now, which are our own saves and used to fail there as "could not load".
+
 ## v3.0.40 - 25th Aug 2026
 
 - Board only. Captured G43: Lagrange points become full citizens — authored trojan bodies at L4/L5 with stability tags, constructs at all five points with fuel-use tags, and transit arriving properly with velocity cancelling. Design note and owner questions come before any code.

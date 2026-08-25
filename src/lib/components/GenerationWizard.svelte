@@ -13,6 +13,8 @@
   import { SOLAR_MASS_KG } from '$lib/constants';
   import ImportModal from './ImportModal.svelte';
   import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
+  import { classifySaveFile } from '$lib/io/classify';
+  import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
 
   export let rulePack: RulePack;
   export let exampleSystems: string[] = [];
@@ -228,14 +230,25 @@
     }
     busy = true;
     try {
-      const raw = JSON.parse(await file.text());
-      const rawSystem = Array.isArray(raw?.nodes) ? raw : raw?.systems?.[0]?.system;
-      if (!rawSystem || !Array.isArray(rawSystem.nodes)) throw new Error('not a system file');
+      // G42: the shared sniffer (classify.ts) names the file by shape, so this loader now takes a
+      // system OR a starmap (first system, as before) in EITHER container - plain JSON or an
+      // .sse.zip bundle, which used to die here as "could not load" despite being our own save.
+      const classified = classifySaveFile(new Uint8Array(await file.arrayBuffer()));
+      if (classified.kind === 'unknown') {
+        alert('This file is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
+        return;
+      }
+      if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
+      const rawSystem = classified.kind === 'system' ? classified.doc : classified.doc?.systems?.[0]?.system;
+      if (!rawSystem || !Array.isArray(rawSystem.nodes)) {
+        alert('This campaign (starmap) file has no loadable system in it.');
+        return;
+      }
       const system = systemProcessor.process(fixUpImportedSystem(rawSystem as System, rulePack), rulePack);
       dispatch('generate', { system });
     } catch (err) {
       console.error('Failed to load system file', err);
-      alert('Could not load that file — pick a saved system (or starmap) JSON.');
+      alert(`The file loaded but could not be opened: ${(err as Error)?.message ?? err}`);
     } finally { busy = false; input.value = ''; }
   }
 
@@ -268,9 +281,9 @@
           <div class="row load-saved">
             <span class="muted">or load one you saved earlier —</span>
             <button class="ghost" disabled={busy} on:click={() => fileInput?.click()}>Load saved system…</button>
-            <input type="file" accept="application/json,.json,.ubox,.sc,.pak" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
+            <input type="file" accept="application/json,.json,.zip,.ubox,.sc,.pak" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
           </div>
-          <p class="muted accepts">Accepts an SSE v1/v2 system (.json), a Universe Sandbox save (.ubox), or a SpaceEngine export (.sc).</p>
+          <p class="muted accepts">Accepts a saved system (.json or .sse.zip), a Universe Sandbox save (.ubox), or a SpaceEngine export (.sc).</p>
         </section>
 
         <section class="block">
