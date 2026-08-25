@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.39 - 25th Aug 2026
+
+- Board only. Captured G42: load and save need to say which world they act on — a system save is not a campaign save, and a file dropped on the wrong loader should be recognised as its sister type and offered the right door with a clear warning, not an esoteric error.
+
 ## v3.0.38 - 25th Aug 2026
 
 - Board only. The custom-liquids question closes with the owner's verdict (interiors are the deliberate edge of the simulation, until V4), and the V4 regional-worlds design is captured for the first time: areas, shocks, subsurface life, tectonics, and the event driver they all need.
