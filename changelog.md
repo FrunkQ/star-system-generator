@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.50 - 25th Aug 2026
+
+- Board only. Captured G44 (Hill spheres on moons, so a submoon can be placed where one could actually hold) and G45 (the circumbinary annulus — a combined Hill sphere outside, and the inner stability limit that the engine does not yet compute at all).
+
 ## v3.0.49 - 26th Aug 2026
 
 - The Lagrange zones are readable now. They were drawn for every planet at once and each lobe swept from near the planet round to the far side of the orbit, so the map filled with green smears. Two fixes, both from the owner's eye on it: only the SELECTED object's zones are shaded (every body still shows its five crosses, and selecting something already parked at a point shades the zones of the body it rides), and each lobe is now centred on its point spanning the amplitude real trojans actually keep — 42 degrees wide instead of 156. Selecting a star shades nothing, since it is the primary of every pair beneath it.
