@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.38 - 25th Aug 2026
+
+- Board only. The custom-liquids question closes with the owner's verdict (interiors are the deliberate edge of the simulation, until V4), and the V4 regional-worlds design is captured for the first time: areas, shocks, subsurface life, tectonics, and the event driver they all need.
+
 ## v3.0.37 - 25th Aug 2026
 
 - Board only. A user question ("can I add a custom interior liquid?") is answered and captured: custom liquids work fully as surface oceans today, but the subsurface and interior layers are hardcoded - the gap and its fix shape are on the board. Coordinator 5 retires with its handover recorded.
