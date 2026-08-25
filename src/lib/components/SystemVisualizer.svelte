@@ -621,6 +621,11 @@
       halfWidth: number;               // radial half-width (render frame, before the px floor)
   }
   let lagrangeAreas: LagrangeArea[] = [];
+  // Whose L-points are the SELECTED ones. Every pair still draws its five crosses, but the ones
+  // that are not the selection's recede, so the selected body's points read at a glance instead of
+  // being lost in a field of identical markers (owner, 2026-08-26: "it's confusing just now").
+  // Null = nothing is selected that owns a set (a star), and then nothing is dimmed.
+  let lagrangeFocusSecondaryId: string | null = null;
   function calculateLagrangePointPositions() {
       const idToUse = focusedBodyId || (system ? system.nodes.find(n => n.parentId === null)?.id : undefined);
       lagrangeAreas = [];
@@ -637,6 +642,7 @@
       const areaSecondaryId = focusedCoOrbital
           ? focusedCoOrbital.hostId
           : ((focusedNode as CelestialBody).roleHint === 'star' ? null : focusedNode.id);
+      lagrangeFocusSecondaryId = areaSecondaryId;
       const allPoints = new Map<string, {x: number, y: number}>();
       const calculateAndStorePoints = (primary: CelestialBody, secondaries: CelestialBody[]) => {
           const primaryPos = worldPositions.get(primary.id);
@@ -1045,6 +1051,10 @@
               }
           }
       }
+      // A point belongs to the selection when its key names the selected secondary. Keys are
+      // `${name}-${secondaryId}`, so the id is everything after the first hyphen.
+      const lagrangeIsSelected = (key: string) =>
+          !lagrangeFocusSecondaryId || key.slice(key.indexOf('-') + 1) === lagrangeFocusSecondaryId;
       if (showLPoints && lagrangeAreas.length) {
           // G43: the tadpole AREAS — a translucent lobe along the orbit around each triangular
           // point (reference-anchored geometry from physics/lagrange.tadpoleRegion). The physics
@@ -1066,7 +1076,10 @@
           for (const [key, pos] of lagrangePoints.entries()) {
               const name = key.split('-')[0]; const isStable = isTriangularPoint(name);
               if (toytownFactor > 0 && !isStable) continue;
-              ctx.strokeStyle = isStable ? 'green' : '#888';
+              const sel = lagrangeIsSelected(key);
+              ctx.strokeStyle = sel
+                  ? (isStable ? 'green' : '#888')
+                  : (isStable ? 'rgba(0, 128, 0, 0.30)' : 'rgba(136, 136, 136, 0.25)');
               ctx.beginPath();
               const rx = pos.x - renderPan.x; const ry = pos.y - renderPan.y;
               ctx.moveTo(rx - crossSize, ry); ctx.lineTo(rx + crossSize, ry);
@@ -1626,7 +1639,10 @@
           for (const [key, pos] of lagrangePoints.entries()) {
               const name = key.split('-')[0]; const isStable = isTriangularPoint(name);
               if (toytownFactor > 0 && !isStable) continue;
-              ctx.fillStyle = isStable ? 'green' : '#888';
+              const sel = lagrangeIsSelected(key);
+              ctx.fillStyle = sel
+                  ? (isStable ? 'green' : '#888')
+                  : (isStable ? 'rgba(0, 128, 0, 0.30)' : 'rgba(136, 136, 136, 0.25)');
               const screenPos = worldToScreen(pos.x, pos.y);
               ctx.fillText(name, screenPos.x + 8, screenPos.y);
           }

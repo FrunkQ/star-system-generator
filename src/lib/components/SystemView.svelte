@@ -364,7 +364,6 @@
   // ...
 
   function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; point: 'l4' | 'l5' } | null }>) {
-      console.log('Background Context Menu Triggered:', event.detail);
       backgroundClickHost = event.detail.dominantBody;
       backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
       backgroundLagrangeHit = event.detail.lagrangeHit ?? null;

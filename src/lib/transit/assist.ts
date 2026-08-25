@@ -421,18 +421,41 @@ function buildAssistTransitPlan(
     });
     
     // LEG 2
+    //
+    // B86: THE TERMINAL STATE IS THE BRAKED ONE, because that is what this plan has already been
+    // charged for. `v_arr` (the |target.v - leg2.v2| brake) is in `totalDV` and its fuel is in the
+    // estimate, and the plan publishes `arrivalVelocity_ms: 0` — but the end state used to carry
+    // `leg2.v2`, the transfer ellipse's arrival velocity, i.e. the ship BEFORE the burn it had
+    // paid for. So a plan claiming a braked rendezvous ended several km/s fast: measured 4,788 m/s
+    // on a plain Jupiter low orbit and 13-22 km/s on Lagrange arrivals. Two things read this and
+    // were wrong because of it — leg CHAINING (SystemView takes the next leg's initial state from
+    // here, so every following leg was planned from a velocity the ship would never have) and the
+    // arrival telemetry. Same convention as the other plan families, which end their last segment
+    // on the target-matched `finalState` (calculator.ts).
+    const targetEndState = getGlobalState(sys, target, t3);
     segments.push({
         id: 'leg-2-coast',
         type: 'Coast',
         startTime: t2_start,
         endTime: t3,
         startState: { r: p2, v: leg2.v1 },
-        endState: { r: getGlobalState(sys, target, t3).r, v: leg2.v2 },
+        endState: { r: targetEndState.r, v: targetEndState.v },
         hostId: root.id,
         pathPoints: leg2Points,
         warnings: [],
         fuelUsed_kg: 0
     });
+
+    // ...and the brake is now VISIBLE where it happens, rather than only inside the Δv total.
+    if (dv3 > 0) {
+        burns.push({
+            id: `assist-arrival-brake-${t3}`,
+            time: t3,
+            position: targetEndState.r,
+            deltaV_ms: dv3,
+            type: 'Arrival'
+        });
+    }
 
     return {
         id: 'assist-' + Date.now(),

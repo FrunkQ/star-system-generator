@@ -23,6 +23,36 @@ invent a parallel instrument.
 
 **ENTRY FORMAT** (keep it):
 ```
+## Renumbering, 2026-08-26 — SEVEN IDS WERE CLAIMED TWICE
+
+Parallel sessions appended entries on the same days and collided: `PHY-14`, `PHY-15`, `PHY-16`,
+`DATA-R15`, `DATA-R16` and `RENDER-S22` were each claimed twice, and `PHY-17` three times. Where
+two entries shared an id, the FIRST claim (by commit timestamp) kept it and the later one moved.
+Older inbox rows and handover notes still cite the old numbers, so this is the translation:
+
+| was | is now | the entry that MOVED |
+|---|---|---|
+| PHY-14 | **PHY-24** | The human eye enters at the END or it poisons the derivation |
+| PHY-15 | **PHY-25** | A capture term that does not SATURATE is the naive maximiser |
+| PHY-16 | **PHY-26** | Normalise a colour-matching result against the BAND |
+| PHY-17 | **PHY-27** | Chromatic adaptation is BOUNDED |
+| PHY-17 | **PHY-28** | "Has ground" is `hasSolidSurface` |
+| DATA-R15 | **DATA-R21** | A class test anchored at the end excludes every subtype |
+| DATA-R16 | **DATA-R22** | A brown dwarf has one definition, reachable from both roles |
+| RENDER-S22 | **RENDER-S30** | A covered view is not an unmounted one |
+
+The ids that KEPT their numbers are the star-classification and instrumentation entries:
+PHY-14 (a remnant's mass and its progenitor's), PHY-15 (three things a body radiates),
+PHY-16 (an ageing profile is keyed on mass), PHY-17 (a luminosity class is radius at a
+temperature), DATA-R15 (two generators sharing an id namespace), DATA-R16 (a pack's
+`liquids.json` is an optional override) and RENDER-S22 (the scene-rebuild path is instrumented).
+Every live citation outside this file was checked and repointed where it had moved
+(`biosphere-and-light-notes.md` was the only one affected).
+
+**Before appending an entry, grep this file for the id in BOTH forms** — `### PHY-29` and
+`PHY-29` — the way the inbox rule already requires for board ids. That is how these happened.
+
+
 ### <ID> <short imperative claim>
 WHERE: file:symbol (the code that enforces it)
 RULE: the invariant, in one or two sentences.
@@ -517,7 +547,7 @@ other test runs `process()` ONCE and therefore pins pass-1 values a GM never see
 BLAST: corollaries — a derived CLASS is never a physics input (the classifier runs late); when a
 quantity depends on another body, iterate PARENT BEFORE CHILD, not in file order.
 
-### PHY-17 Chromatic adaptation is BOUNDED — never amplify a cone that has no photons in it
+### PHY-27 Chromatic adaptation is BOUNDED — never amplify a cone that has no photons in it
 WHERE: `physics/imageUnderLight.adaptationMatrix`, and any future re-lighting on the GPU.
 RULE: the degree of adaptation is PER CONE, scaled by `sqrt(this cone's share of the light, here vs
 at home)`. A starved channel is left as it arrived, not gained back up.
@@ -557,7 +587,7 @@ appearance, `rawHex` is the material.
 BLAST: `relightImage` skips fully transparent pixels, which is what lets the material layer be an
 offscreen canvas composited over the sky with no mask of its own. Do not "optimise" that skip away.
 
-### PHY-16 Normalise a colour-matching result against the BAND, never against its own peak channel
+### PHY-26 Normalise a colour-matching result against the BAND, never against its own peak channel
 WHERE: `physics/spectrum.wavelengthHex` (the chart ribbon) and, by the same argument, anything else
 that turns a narrow spectral feature into a colour.
 RULE: divide by a shared scale across the whole grid, not by that sample's own maximum channel.
@@ -568,7 +598,7 @@ scaled that noise to FULL SATURATION, so the ribbon came out bright cyan at 300 
 BLAST: any new plot that colours by wavelength. Also keep the near-black floor: without it the
 out-of-gamut repair in `xyzToHex` (which lifts negative channels) turns a rounding error into a hue.
 
-### PHY-14 The human eye enters at the END or it poisons the derivation
+### PHY-24 The human eye enters at the END or it poisons the derivation
 WHERE: `physics/spectrum.ts` (everything below the PRESENTATION BRANCH divider), `physics/pigments.ts`,
 `rendering/apparentColor.ts`.
 RULE: a selection, score or ranking reads PHOTON COUNTS (`photonFlux` / `photonSpectrum`). Colour
@@ -584,7 +614,7 @@ legend) and `reflectedUnderStarHex` leaves the cast and brightness in (what a re
 world's vegetation is white-balanced while its oceans are not). Both must SAY WHOSE in any label.
 Also: per-gas `colorHex` must never be read by the spectral filter for the same reason.
 
-### PHY-15 A capture term that does not SATURATE is the naive maximiser, and Earth falsifies it
+### PHY-25 A capture term that does not SATURATE is the naive maximiser, and Earth falsifies it
 WHERE: `physics/pigments.ts` — `sufficiency = 1 - exp(-absorbedFlux / saturationFlux)`.
 RULE: photon capture saturates, the three pressures MULTIPLY rather than adding, and the capture term
 reads the PIGMENT's own absorption while the colour reads pigment PLUS tissue.
@@ -2134,7 +2164,7 @@ BLAST: rolling ageing into classification puts the two in one room. If the loop 
 `src/lib/system/idempotence.test.ts` is the only thing that will tell you, and it will tell you late.
 Settle the direction before writing code, not after.
 
-### PHY-17 "Has ground" is `hasSolidSurface`, and it is the ONLY one of the four gas-threshold questions with a predicate
+### PHY-28 "Has ground" is `hasSolidSurface`, and it is the ONLY one of the four gas-threshold questions with a predicate
 WHERE: `physics/makeup.hasSolidSurface` / `makeupHasSolidSurface` / `SOLID_SURFACE_MAX_GAS`
 RULE: every site that asks "is there somewhere to stand" calls the helper — the habitability gate, the
 geology/volatiles/cryo/ascent branches, the classifier feature zeroing, the cloud saturation floor, the
@@ -2217,7 +2247,7 @@ have a pack DECLARE its files in the manifest so nothing speculative is fetched 
 a schema change, not a loader tweak. Same shape as PHY-9: **an absence deliberately tolerated is
 not a fault, but it must SAY it is deliberate somewhere a reader of the symptom will look.**
 
-### DATA-R15 A CLASS TEST ANCHORED AT THE END SILENTLY EXCLUDES EVERY SUBTYPE
+### DATA-R21 A CLASS TEST ANCHORED AT THE END SILENTLY EXCLUDES EVERY SUBTYPE
 WHERE: `physics/starPlausibility.starImplausibilities` (`isSubstellar`), and anything else matching a
 class name with a regex.
 RULE: anchor a class test at the START — `/^star\/[LTY]/` — never at the end. Classes carry a SUBTYPE
@@ -2231,7 +2261,7 @@ nothing: this law does not read the bands.
 BLAST: the sibling `isRemnant` on the next line is UNANCHORED and so was never affected — two tests
 one line apart, written to different rules. Check both when either changes.
 
-### DATA-R16 A BROWN DWARF HAS ONE DEFINITION, REACHABLE FROM BOTH ROLES
+### DATA-R22 A BROWN DWARF HAS ONE DEFINITION, REACHABLE FROM BOTH ROLES
 WHERE: `physics/substellar.ts`, `physics/luminosity.ts`, `cloudDecks.spaceWeathering`, the
 `star/L,T,Y` bands in `rulepacks/*/stars.json`, the `planet/*-dwarf` fingerprints in
 `classification.json`.
@@ -3155,7 +3185,7 @@ the ice line used to be dropped by both buckets, so a bare single-star system co
 planet at all; it is split at the line now. Measured after: median orbit 72.5 -> 1.53 AU, worlds
 with an atmosphere 15% -> 43%.
 
-### RENDER-S22 A COVERED VIEW IS NOT AN UNMOUNTED ONE, AND A 0x0 MEASUREMENT IS NOT A SIZE
+### RENDER-S30 A COVERED VIEW IS NOT AN UNMOUNTED ONE, AND A 0x0 MEASUREMENT IS NOT A SIZE
 WHERE: `starmap/Starmap3DView.svelte` and `holo/HoloView.svelte` (`push`, `revalidate`, `onReveal`);
 `routes/catalogue/+page.svelte` `dismissCover`.
 RULE: never hand a renderer a content rect below 1 px — a container that is momentarily unlaid-out

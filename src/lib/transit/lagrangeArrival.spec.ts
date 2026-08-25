@@ -69,10 +69,13 @@ function plansTo(system: any, targetName: string, point: LagrangePointId) {
     }).filter((p) => p.isValid);
 }
 
-// A gravity-assist plan deliberately arrives fast (it is a flyby-shaped solution), so the
-// velocity-cancelling promise is asserted on the rendezvous families the panel offers by default.
+// EVERY family that claims a braked rendezvous must deliver one — gravity assists included. They
+// were excluded here until B86 was fixed: the assist solver charged for the arrival brake and
+// declared `arrivalVelocity_ms: 0` while publishing the pre-brake velocity as its terminal state.
+// Only a genuine flyby (an intercept speed, or a Flyby warning) is exempt, because that one is not
+// claiming to stop.
 const isRendezvous = (p: any) =>
-    p.planType !== 'Complex' && !(p.segments ?? []).some((s: any) => (s.warnings || []).includes('Flyby'));
+    (p.interceptSpeed_ms || 0) === 0 && !(p.segments ?? []).some((s: any) => (s.warnings || []).includes('Flyby'));
 
 describe('G43 P4: a plan to an L-point ends AT the point, moving WITH it', () => {
     for (const [targetName, point] of [['Jupiter', 'l4'], ['Mars', 'l5'], ['Mars', 'l1']] as const) {

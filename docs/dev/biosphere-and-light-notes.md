@@ -8,7 +8,7 @@ finding B83.
 
 These are the things that are NOT visible from the code: what cost real time, what had to be
 discovered, what a successor should not re-derive. Rules that belong in the engine map are there
-(PHY-14 to PHY-18, RENDER-B3/B4, TAG-22, DATA-R15/R16) and are pointed at, not repeated. Design
+(PHY-24 to PHY-27 and PHY-18, RENDER-B3/B4, TAG-22, DATA-R21/R22) and are pointed at, not repeated. Design
 lives in `docs/dev/biosphere-and-surface-light.md`; the physics page (`/physics#surface-light`,
 `#standing-on-it`, `#biosphere`, `#colour`) is the user-facing working.
 
@@ -57,7 +57,7 @@ remit.
 
 Plain von Kries divides by the illuminant's cone response, which is unbounded: Venus leaves the S
 cones 0.5% of their home share and the maths asked for a 134× gain. Amplifying a starved channel
-recovers noise, not colour — white came back `#ffcdc8`. PHY-17. The shot-noise weight that used to
+recovers noise, not colour — white came back `#ffcdc8`. PHY-27. The shot-noise weight that used to
 live in `confusability()` is GONE from there; it is in the adaptation now and must not come back, or
 the two multiply and every dim world reads as more confusing than it is.
 
@@ -115,7 +115,7 @@ outright (they came back 0.285 from fallback defaults applied to bodies carrying
 
 ## 9. The substellar chain — role is never the test, mass is
 
-DATA-R16. A brown dwarf is filed as a star as often as not; two separate gates
+DATA-R22. A brown dwarf is filed as a star as often as not; two separate gates
 (`roleHint !== 'star'` in the processor, `!isStar` in planetAppearance) excluded exactly the objects
 they existed for. Fixed; pinned by `brownDwarfDualRole.spec.ts` (35 M_jup at 1300 K both ways). The
 stellar colour table falls through to `bdGlowColour` below 2400 K, which makes the sequence continuous
@@ -128,7 +128,7 @@ fusing photosphere and the gate is on MASS, not temperature — the idempotence 
 temperature gate reading a value a later pass overwrites.
 
 B74's false flags were NOT the mass bands first: `isSubstellar` was `/star\/(L|T|Y)$/`, anchored at
-the END, and every real brown dwarf is classed `star/L7.5`, `star/T6`. DATA-R15. The sibling
+the END, and every real brown dwarf is classed `star/L7.5`, `star/T6`. DATA-R21. The sibling
 `isRemnant` one line below is unanchored and was never affected.
 
 ## 10. Tags this territory owns
