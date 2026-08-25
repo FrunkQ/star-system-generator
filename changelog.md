@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.40 - 25th Aug 2026
+
+- Board only. Captured G43: Lagrange points become full citizens — authored trojan bodies at L4/L5 with stability tags, constructs at all five points with fuel-use tags, and transit arriving properly with velocity cancelling. Design note and owner questions come before any code.
+
 ## v3.0.39 - 25th Aug 2026
 
 - Board only. Captured G42: load and save need to say which world they act on — a system save is not a campaign save, and a file dropped on the wrong loader should be recognised as its sister type and offered the right door with a clear warning, not an esoteric error.
