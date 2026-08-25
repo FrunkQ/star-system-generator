@@ -188,6 +188,18 @@ export class SystemProcessor implements ISystemProcessor {
         //    chains itself (see physics/lagrange.ts).
         deriveCoOrbitalOrbits(processedSystem);
 
+        //    The relationship is published as a tag (physics decides, tags record): one
+        //    `orbit/lagrange` per pinned node, value = the point. This pass OWNS the key and
+        //    clears it first (TAG-6), so a released trojan loses its mark. Bodies AND constructs —
+        //    a station at L1 carries the same record a trojan moon does.
+        for (const node of allNodes) {
+            if (node.kind !== 'body' && node.kind !== 'construct') continue;
+            const b = node as CelestialBody;
+            if (!b.tags && !b.coOrbital) continue;
+            b.tags = stripForReprocess(b.tags ?? [], ['orbit/lagrange']);
+            if (b.coOrbital) emit(b.tags, { key: 'orbit/lagrange', value: b.coOrbital.point });
+        }
+
         // 1. First Pass: Physical Basics (Orbital Period, Gravity, etc.)
         for (const node of allNodes) {
             if (node.kind === 'body') {

@@ -915,6 +915,25 @@
         (comparable-mass crossing) or <em>hierarchy inversion</em>. Protective resonances cap a crossing pair at
         Marginal. Results surface as <code>stability/*</code>, <code>fate/*</code> and <code>resonance/*</code>
         tags plus the Orbital Stability and Resonance rows in the body panel.</p>
+      <h3>Lagrange points &amp; trojans</h3>
+      <p>A body or construct can be pinned to another body's <strong>Lagrange point</strong>
+        (<code>orbit/lagrange</code> tag). The triangular points L4/L5 are genuine free-fall orbits: the
+        companion rides the secondary's own ellipse rigidly rotated by ±60° with the same mean anomaly, an
+        exact Kepler orbit that keeps the Sun–secondary–trojan triangle equilateral at every instant,
+        eccentric orbits included — which is why a trojan coasts there for free. They only <em>hold</em>
+        while the masses allow it: <strong>Gascheau's bound</strong> (1843) requires
+        (M+m₂+m₃)² ≥ 27·(Mm₂ + Mm₃ + m₂m₃), which for a small trojan is Routh's 27μ(1−μ) &lt; 1 — the
+        secondary must stay below about 1/25 of the total mass (Sun–Jupiter passes at μ ≈ 0.001;
+        Pluto–Charon would fail at μ ≈ 0.11). A breach reads Very Unstable with the margin quoted, and the
+        lighter member wears the <em>flung out</em> fate. The drawn L4/L5 <strong>areas</strong> are the
+        tadpole libration regions: radial half-width (8μ/3)<sup>1/2</sup>·a, reaching from ~24° off the
+        secondary round to L3 at the widest (Murray &amp; Dermott 1999).</p>
+      <p>The collinear points are different animals: <strong>L1/L2</strong> co-rotate on the sun-line at the
+        Hill distance — saddle equilibria with no free orbit, where a deviation e-folds in about a sixteenth
+        of the orbital period (the 23-day figure every Sun–Earth halo mission plans around). Station-keeping
+        holds a craft there; nothing holds a moon, so a body authored at L1/L2 reads Very Unstable and says
+        why. <strong>L3</strong> is the antipode — weakly unstable, drifting into a horseshoe passage over
+        years to centuries rather than being thrown out.</p>
     </section>
 
     <section id="ejection">

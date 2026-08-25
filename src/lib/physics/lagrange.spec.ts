@@ -231,6 +231,66 @@ function loadPack(): RulePack {
     return pack;
 }
 
+describe('P2: the co-orbital stability judgement', () => {
+    const pack = loadPack();
+
+    function tagKeys(sys: System, id: string): string[] {
+        return ((sys.nodes.find(n => n.id === id) as CelestialBody).tags ?? []).map(t => `${t.key}${t.value ? '=' + t.value : ''}`);
+    }
+
+    it('an over-mass trojan wears the doom: very-unstable, eject on the lighter member, Gascheau named', () => {
+        const sys = makeSystem({ trojanPoint: 'l4' });
+        // Make the trio breach Gascheau: secondary and trojan each 5% of the star.
+        (sys.nodes.find(n => n.id === 'planet') as CelestialBody).massKg = SUN_KG * 0.05;
+        (sys.nodes.find(n => n.id === 'trojan') as CelestialBody).massKg = SUN_KG * 0.04;
+        const out = systemProcessor.process(JSON.parse(JSON.stringify(sys)), pack);
+        const trojan = out.nodes.find(n => n.id === 'trojan') as CelestialBody;
+        expect((trojan as any).orbitalStability).toBe('Very Unstable');
+        expect((trojan as any).orbitalStabilityDetails).toContain('Gascheau');
+        expect(tagKeys(out, 'trojan')).toContain('stability/very-unstable');
+        // the trojan is the lighter member, so the eject fate lands on IT (B19)
+        expect(tagKeys(out, 'trojan')).toContain('fate/eject');
+        // the secondary shares the severity but not the directional fate
+        const planet = out.nodes.find(n => n.id === 'planet') as CelestialBody;
+        expect((planet as any).orbitalStability).toBe('Very Unstable');
+        expect(tagKeys(out, 'planet')).not.toContain('fate/eject');
+    });
+
+    it('a body at L1 is told the saddle truth; at L3 only Unstable, no fate', () => {
+        const l1sys = systemProcessor.process(JSON.parse(JSON.stringify(makeSystem({ trojanPoint: 'l1' }))), pack);
+        const atL1 = l1sys.nodes.find(n => n.id === 'trojan') as CelestialBody;
+        expect((atL1 as any).orbitalStability).toBe('Very Unstable');
+        expect((atL1 as any).orbitalStabilityDetails).toContain('saddle');
+        expect(tagKeys(l1sys, 'trojan')).toContain('fate/eject');
+
+        const l3sys = systemProcessor.process(JSON.parse(JSON.stringify(makeSystem({ trojanPoint: 'l3' }))), pack);
+        const atL3 = l3sys.nodes.find(n => n.id === 'trojan') as CelestialBody;
+        expect((atL3 as any).orbitalStability).toBe('Unstable');
+        expect(tagKeys(l3sys, 'trojan')).not.toContain('fate/eject');
+    });
+
+    it('publishes the relationship as orbit/lagrange, and a released node loses it', () => {
+        const sys = makeSystem({ trojanPoint: 'l4' });
+        const once = systemProcessor.process(JSON.parse(JSON.stringify(sys)), pack);
+        expect(tagKeys(once, 'trojan')).toContain('orbit/lagrange=l4');
+        const trojan = once.nodes.find(n => n.id === 'trojan') as CelestialBody;
+        delete trojan.coOrbital;
+        const again = systemProcessor.process(JSON.parse(JSON.stringify(once)), pack);
+        expect(tagKeys(again, 'trojan').some(k => k.startsWith('orbit/lagrange'))).toBe(false);
+    });
+
+    it('a proper small trojan stays verdict-free and idempotent through the doom machinery', () => {
+        const sys = makeSystem({ trojanPoint: 'l4' });
+        const once = systemProcessor.process(JSON.parse(JSON.stringify(sys)), pack);
+        const twice = systemProcessor.process(JSON.parse(JSON.stringify(once)), pack);
+        const t1 = once.nodes.find(n => n.id === 'trojan') as CelestialBody;
+        const t2 = twice.nodes.find(n => n.id === 'trojan') as CelestialBody;
+        expect((t1 as any).orbitalStability).toBeUndefined();
+        expect(JSON.stringify((t2.tags ?? []).map(t => t.key).sort()))
+            .toBe(JSON.stringify((t1.tags ?? []).map(t => t.key).sort()));
+    });
+});
+
 describe('through the full processor', () => {
     const pack = loadPack();
 

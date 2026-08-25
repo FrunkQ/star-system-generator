@@ -314,6 +314,7 @@ same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Trit
 | `habitability/*` | habitability tier | processor (habitability) |
 | `biodiversity/*` | which pigment a world's life settled on, how much of the LAND shows life, and how far a settlement has spread | processor (classification, the surface-light pass) |
 | `stability/*` | n‑body instability risk | processor (stability) |
+| `orbit/lagrange` | this node rides a Lagrange point of another body (value: `l1`..`l5`); the orbit is DERIVED from that secondary every pass. Breached trojan regimes read as `stability/*` + `fate/*` with the Gascheau margin in the reason | processor (**co-orbital, pass 0c**) |
 | `barycenter/auto` | auto‑generated barycentre marker | barycentre reconcile |
 
 > **The live registry is `src/lib/tags/tagPresentation.ts`**, which carries every tag's label and a

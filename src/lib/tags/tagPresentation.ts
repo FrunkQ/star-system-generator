@@ -204,6 +204,10 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Double planet',
     description: 'Two comparable-mass bodies orbiting their common barycentre rather than one clearly orbiting the other (Pluto–Charon).'
   },
+  'orbit/lagrange': {
+    label: 'Lagrange point',
+    description: 'Rides one of another body\'s Lagrange points (the value says which). L4 leads and L5 trails by 60° — genuine free-fall orbits that cost nothing to hold while the masses pass Gascheau\'s bound (a breached trojan wears the stability tags instead, with the margin quoted). L1/L2 sit on the sun-line at the Hill distance and are saddle points: station-keeping holds a craft there, nothing holds a moon. L3 is the weakly-held antipode. The orbit is derived from the secondary on every pass, so editing the secondary moves this body with it.'
+  },
 
   // --- Origin (how the body came to be where it is) ---
   'origin/captured': {

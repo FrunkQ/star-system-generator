@@ -1,5 +1,6 @@
 import type { CelestialBody, Barycenter, System } from '../types';
 import { stripForReprocess } from '../tags/tagLifecycle';
+import { gascheauMargin } from './lagrange';
 
 type OrbitalNode = CelestialBody;
 
@@ -188,6 +189,73 @@ function assessPairStability(
     }
   }
 
+  return out;
+}
+
+// G43 P2: judge a co-orbital (Lagrange-pinned) BODY properly, instead of merely exempting the pair
+// from the crossing tests. All criteria are reference-anchored (see physics/lagrange.ts header and
+// docs/dev/lagrange-full-citizens-design.md):
+//  - Triangular points (l4/l5): Gascheau's 1843 bound — (m1+m2+m3)^2 >= 27*(m1m2+m2m3+m3m1),
+//    collapsing to Routh's 27*mu*(1-mu) < 1 as the trojan mass vanishes (critical mu ~ 0.0385;
+//    Sun-Jupiter 0.00095 passes, Pluto-Charon 0.109 fails). A breach scatters the LIGHTER of
+//    trojan/secondary (B19), and the margin is quoted in the reason (B24).
+//  - Collinear points: saddle equilibria. A deviation at l1/l2 e-folds in roughly a SIXTEENTH of
+//    the orbital period (the small-mu rate is ~2.5n: 23 days at an Earth-like orbit — the figure
+//    every halo-orbit mission plans around); station-keeping holds a craft there, nothing holds a
+//    moon. l3's hold is far weaker still, but its drift is slow (years to centuries) and ends in a
+//    horseshoe passage rather than a scattering, so it reads Unstable rather than Very Unstable
+//    and carries no fate.
+function assessCoOrbitalStability(
+  node: CelestialBody,
+  secondary: CelestialBody | Barycenter | undefined,
+  hostMassKg: number
+): StabilityAssessment {
+  const out: StabilityAssessment = { severity: 0, reasons: [] };
+  const point = node.coOrbital?.point;
+  if (!point || !secondary || !(hostMassKg > 0)) return out;
+  const m2 = getHostMassKg(secondary);
+  const m3 = getNodeMassKg(node);
+  const secondaryName = (secondary as CelestialBody).name ?? 'its secondary';
+
+  if (point === 'l4' || point === 'l5') {
+    const margin = gascheauMargin(hostMassKg, m2, m3);
+    if (margin < 1) {
+      out.severity = 3;
+      out.fate = 'eject';
+      out.fateNodeId = (m3 <= m2 ? node : (secondary as CelestialBody)).id;
+      out.reasons.push(
+        `${node.name} rides ${secondaryName}'s ${point.toUpperCase()} point, but the trio is too heavy for the triangular points to hold: ` +
+        `Gascheau's bound needs (M+m₂+m₃)² at least 27× the pairwise mass products, and this trio reaches only ${margin.toFixed(2)}× of that requirement — ` +
+        `the libration grows instead of damping, and the lighter member is scattered off the point`
+      );
+    } else if (margin < 1.2) {
+      out.severity = 1;
+      out.reasons.push(
+        `${node.name} sits at ${secondaryName}'s ${point.toUpperCase()} point right at the edge of the trojan regime ` +
+        `(Gascheau margin ${margin.toFixed(2)}×; below 1× the point stops holding) — stable on paper, but resonances at the boundary make real systems here chaos-prone`
+      );
+    }
+    return out;
+  }
+
+  if (point === 'l1' || point === 'l2') {
+    out.severity = 3;
+    out.fate = 'eject';
+    out.fateNodeId = node.id;
+    out.reasons.push(
+      `${point.toUpperCase()} is a saddle equilibrium: a deviation e-folds in about a sixteenth of the orbital period ` +
+      `(23 days at an Earth-like orbit), so station-keeping holds a craft here but nothing holds a moon — ` +
+      `${node.name} falls off the ${secondaryName} sun-line within a few orbits`
+    );
+    return out;
+  }
+
+  // l3
+  out.severity = 2;
+  out.reasons.push(
+    `L3 is also an unstable equilibrium, but a weak one: ${node.name} drifts off ${secondaryName}'s antipode over years to centuries ` +
+    `and slides into a horseshoe passage along the shared orbit rather than being thrown out`
+  );
   return out;
 }
 
@@ -449,6 +517,21 @@ export function annotateGravitationalStability(system: System): System {
         const bindingAssessment = assessHostBindingStability(node, host, grandparent, hostMassKg);
         if (bindingAssessment.severity > 0) {
           mergeAssessment(assessments.get(node.id)!, bindingAssessment);
+        }
+        // G43 P2: a Lagrange-pinned body gets the real co-orbital judgement (the pair heuristics
+        // below exempt marked pairs, so this is the only test that speaks for them). A triangular
+        // breach endangers BOTH members (the fate still lands only on the one B19 names); a
+        // collinear placement dooms only the body sitting on the saddle.
+        if (node.coOrbital) {
+          const secondary = nodesById.get(node.coOrbital.hostId) as CelestialBody | Barycenter | undefined;
+          const co = assessCoOrbitalStability(node, secondary, hostMassKg);
+          if (co.severity > 0) {
+            mergeAssessment(assessments.get(node.id)!, co, node.id);
+            const point = node.coOrbital.point;
+            if ((point === 'l4' || point === 'l5') && secondary && assessments.has(secondary.id)) {
+              mergeAssessment(assessments.get(secondary.id)!, co, secondary.id);
+            }
+          }
         }
       }
     }

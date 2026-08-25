@@ -61,6 +61,18 @@ outcome genuinely is contingent: nature tries many things and the second best ca
 similar worlds around similar stars can legitimately grow different-coloured plants, and the same
 world always gives you the same answer no matter how many times you re-process it.
 
+### A tag that pins a body to another's orbit
+
+`orbit/lagrange` (value `l1`..`l5`) records that a body or construct rides one of another body's
+Lagrange points — a trojan moon at a giant's L4, a station holding at L1. The relationship is the
+authored fact; the ORBIT is derived from the secondary on every pass, so editing the planet moves
+its trojans. The physics judges the configuration rather than refusing it: a trojan too heavy for
+the pair (Gascheau's bound — for a small trojan, the secondary must stay below about 1/25 of the
+total mass) wears `stability/very-unstable` and `fate/eject` with the margin quoted in the reason,
+and a body authored at the collinear points L1/L2 is told honestly that only station-keeping holds
+anything there. The full working appears on the body's physics trace, and the physics page's
+"Lagrange points & trojans" section explains the criteria.
+
 ## Categories
 
 A category is a group of related tags sharing a namespace and a colour: `faction/*`, `resource/*`,

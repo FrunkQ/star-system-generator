@@ -15,6 +15,13 @@ import { activeOverrides, formatOverrideValue } from './overrides';
 import { tagOrigin } from '$lib/tags/tagLifecycle';
 import { auroraEmitter } from './aurora';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
+import { gascheauMargin } from './lagrange';
+
+// Mass of a node that may be a body or a barycentre (G43 co-orbital working).
+function getMassKg(n: CelestialBody | Barycenter | null | undefined): number {
+  if (!n) return 0;
+  return n.kind === 'barycenter' ? ((n as Barycenter).effectiveMassKg || 0) : ((n as CelestialBody).massKg || 0);
+}
 import { beltInnerEdgeRadii, radiationHazardBucket, lethalDoseTime, radiationPlace, orbitalRadiationPlace } from './radiation';
 
 export interface TraceField { label: string; value: string; }
@@ -29,7 +36,10 @@ export interface TraceLayer {
 export interface TagProvenance { key: string; label: string; description: string; layer: string; color: string; }
 export interface PhysicsTrace { layers: TraceLayer[]; tags: TagProvenance[] }
 
-export interface TraceContext { ageGyr?: number; star?: CelestialBody | null; host?: CelestialBody | Barycenter | null; partner?: CelestialBody | null; pack?: RulePack | null }
+export interface TraceContext { ageGyr?: number; star?: CelestialBody | null; host?: CelestialBody | Barycenter | null; partner?: CelestialBody | null; pack?: RulePack | null;
+  // G43: the SECONDARY a co-orbital body is pinned to (the planet whose L-point it rides), so the
+  // stability layer can show the working of the trojan judgement.
+  coSecondary?: CelestialBody | Barycenter | null }
 
 const AU_KM = 1.495978707e8;
 
@@ -705,9 +715,39 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     const orbEl = heliocentricEl ?? body.orbit.elements;
     const eN = orbEl?.e ?? 0;
     const aN = orbEl?.a_AU ?? 0;
+    // G43: a Lagrange-pinned body shows the trojan working — the relationship, the Gascheau
+    // margin for a triangular point, and what the derived orbit actually IS (the secondary's
+    // ellipse rotated / Hill-scaled), so the panel that claims to show the working shows this one.
+    const co = body.coOrbital;
+    const coSec = ctx.coSecondary ?? null;
+    const coInputs: Array<{ label: string; value: string }> = [];
+    const coNotes: string[] = [];
+    if (co) {
+      const secName = (coSec as CelestialBody | null)?.name ?? 'its secondary';
+      coInputs.push({ label: 'Co-orbital of', value: `${secName} — ${co.point.toUpperCase()}` });
+      const m1 = getMassKg(ctx.host) || getMassKg(ctx.star);
+      const m2 = getMassKg(coSec);
+      const m3 = body.massKg ?? 0;
+      if (co.point === 'l4' || co.point === 'l5') {
+        if (m1 > 0 && m2 > 0) {
+          const margin = gascheauMargin(m1, m2, m3);
+          coInputs.push({ label: 'Gascheau margin', value: `${n(margin, 2, '×')} (stable ≥ 1×)` });
+          coNotes.push(
+            `A triangular point holds while (M+m₂+m₃)² stays at least 27× the pairwise mass products — Gascheau's 1843 bound, which for a tiny trojan is Routh's 27μ(1−μ) < 1 (μ below ≈ 0.0385). ` +
+            `${m3 > m2 ? `Note ${body.name} outweighs ${secName}: dynamically the roles are swapped, and the bound is judged on the trio either way. ` : ''}` +
+            `The derived orbit is ${secName}'s ellipse rigidly rotated by ${co.point === 'l4' ? '+60°' : '−60°'} with the same mean anomaly — an exact Kepler orbit that keeps the equilateral triangle at every instant, eccentricity included, which is why a stable trojan coasts for free.`
+          );
+        }
+      } else if (co.point === 'l3') {
+        coNotes.push(`L3 is the antipodal point — the same rotated-ellipse representation at 180°, but only weakly held: a body here drifts into a horseshoe passage over years to centuries.`);
+      } else {
+        coNotes.push(`${co.point.toUpperCase()} co-rotates on the ${secName} sun-line at the Hill distance — a saddle equilibrium with no free orbit: a deviation e-folds in about a sixteenth of the orbital period (23 days at an Earth-like orbit), so only station-keeping holds anything here.`);
+      }
+    }
     layers.push({
       id: 'stability', title: 'Orbital stability', link: '/physics#resonance',
       inputs: [
+        ...coInputs,
         { label: bary ? `Orbit (as the ${bary.name || 'pair'})` : 'Orbit', value: `${n(aN, 3, 'AU')} · e ${n(eN, 3)}` },
         { label: 'Perihelion → aphelion', value: `${n(aN * (1 - eN), 3)}–${n(aN * (1 + eN), 3)} AU` }
       ],
@@ -717,7 +757,10 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       ],
       notes: [
         ...(bary ? [`Orbits the ${bary.name || 'barycentre'} — a member of a binary/multiple, so stability is judged on the pair's shared orbit around the star, not the small orbit within the pair.`] : []),
-        stabDetails ?? 'No orbit-crossing neighbour or loose binding found — a well-spaced, stable orbit.'
+        ...coNotes,
+        stabDetails ?? (co
+          ? 'The co-orbital configuration passes its stability criteria — see the note above for the bound it is judged against.'
+          : 'No orbit-crossing neighbour or loose binding found — a well-spaced, stable orbit.')
       ]
     });
   }

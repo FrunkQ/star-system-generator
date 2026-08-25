@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.46 - 26th Aug 2026
+
+- G43 phase 2: the engine now judges a Lagrange placement instead of quietly exempting it. A trojan at L4/L5 is tested against Gascheau's 1843 bound (for a small trojan, Routh's limit: the secondary must stay under about a twenty-fifth of the total mass); breach it and the body reads Very Unstable with the margin quoted, and the LIGHTER of trojan and secondary wears the "flung out" fate. A body authored at L1 or L2 is told the honest truth — those are saddle points where a deviation e-folds in about a sixteenth of an orbit, so station-keeping holds a craft but nothing holds a moon — while L3 reads Unstable and drifts into a horseshoe rather than being thrown out. The relationship itself is published as an `orbit/lagrange` tag, and the physics trace shows the working: the derived orbit, the Gascheau margin, and why a stable trojan coasts for free. The physics page, the tag registry, tags-guide.md and classification-and-tags.md all move in the same batch.
+
 ## v3.0.45 - 25th Aug 2026
 
 - G43 phase 1: Lagrange points become authorable. A body or construct can be pinned to a secondary's L-point with a structured co-orbital record, and the engine derives its orbit from the secondary on every pass (editing the planet moves its trojans; the old copy-once drift is healed on load, including the Traveller example's fifteen L4/L5 stations). One shared convention module now answers "where is an L-point" for the overlay, the authoring tabs and the derivation: L3/L4/L5 as the secondary's ellipse rigidly rotated (exact, eccentric orbits included), L1/L2 as the Hill-scaled co-rotating track. The L-points overlay draws the L4/L5 tadpole regions as areas; right-clicking inside one offers "Add Trojan here", and the type picker shows the pair's Gascheau mass limit as a switchable filter (an over-mass trojan is allowed and will wear honest tags — criteria land in phase 2). A co-orbital body's orbit tab shows the relationship, with a release control.
