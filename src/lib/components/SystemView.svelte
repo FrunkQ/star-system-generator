@@ -29,6 +29,7 @@
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
+  import SisterFileModal from './SisterFileModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
   import type { TransitPlan } from '$lib/transit/types';
   import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast } from '$lib/transit/scheduler';
@@ -1387,6 +1388,11 @@
     showSaveModal = true;
   }
 
+  // G42: a whole campaign (starmap) was dropped on Load System. The classified payload waits here
+  // while the sister-file modal offers open-as-campaign; the actual load runs in the root page
+  // (the campaign pipeline lives there), so confirm just hands the payload up.
+  let sisterStarmap: { doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null; name: string } | null = null;
+
   async function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
     if (!$systemStore) return;
     
@@ -1447,8 +1453,9 @@
         const raw = new Uint8Array(e.target?.result as ArrayBuffer);
         const classified = classifySaveFile(raw);
         if (classified.kind === 'starmap') {
-          alert('This file is a whole CAMPAIGN (starmap) — every system on the map, not just one.\n\n'
-            + 'To open it, use File > Load Starmap. Loading it there replaces the whole campaign, not just this system.');
+          // Sister file: hold the already-classified payload and OFFER open-as-campaign. Nothing
+          // is loaded unless the GM confirms; closing the modal drops the payload untouched.
+          sisterStarmap = { doc: classified.doc, models: classified.models ?? null, name: file.name };
           return;
         }
         if (classified.kind === 'unknown') {
@@ -1482,6 +1489,8 @@
       }
     };
     reader.readAsArrayBuffer(file);
+    // Clear the picker so cancelling a sister-file modal and choosing the SAME file again re-fires.
+    input.value = '';
   }
 
   let unsubscribePanStore: () => void;
@@ -2532,6 +2541,11 @@
 
 
 
+    {#if sisterStarmap}
+        <SisterFileModal fileKind="starmap" context="system" fileName={sisterStarmap.name}
+            on:close={() => (sisterStarmap = null)}
+            on:confirm={() => { const p = sisterStarmap; sisterStarmap = null; if (p) dispatch('openstarmap', { doc: p.doc, models: p.models }); }} />
+    {/if}
     {#if showSaveModal}
         <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
     {/if}

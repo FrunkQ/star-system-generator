@@ -38,6 +38,7 @@
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
+  import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import RealSkyImportModal from '$lib/components/RealSkyImportModal.svelte';
   import { fillOutAll } from '$lib/import/realsky/fillout';
   import { completeImportedStars } from '$lib/import/realsky/stardefaults';
@@ -1788,6 +1789,64 @@
     fileInput.click();
   }
 
+  // G42: a system save dropped on Load Starmap - the sister-file modal names it and guides.
+  let sisterSystemFileName: string | null = null;
+
+  // G42: the ONE pipeline that turns a classified campaign document into the open campaign. Both
+  // doors call it - Load Starmap directly, and the system view's sister-file offer (a starmap
+  // dropped on Load System). Returns true only when the campaign actually loaded; validation
+  // failures speak for themselves here and leave the current campaign untouched.
+  async function openStarmapPayload(data: any, bundledModels: Record<string, { b64: string; meta: Record<string, unknown> }> | null): Promise<boolean> {
+    // Bring in any PoI packs / reasons config the starmap carries, BEFORE re-deriving systems,
+    // so the embedded rules drive the re-tag below. These live app-wide once merged.
+    mergeStarmapPacks(data.poiPacks);
+    applyStarmapReasonsConfig(data.reasonsConfig);
+    mergeStarmapCoIs(data.coiCategories);
+    // G3: put embedded model binaries into the local hash store (each verified against its own
+    // hash) so every ModelRef in the file has its model the moment the map opens.
+    await importEmbeddedModels(bundledModels ?? data.models).catch(() => 0);
+
+    const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
+    delete (sanitized as any).poiPacks;
+    delete (sanitized as any).reasonsConfig;
+    delete (sanitized as any).coiCategories;
+    delete (sanitized as any).models;
+
+    // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
+    // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
+    if (selectedRulepack && Array.isArray(sanitized.systems)) {
+      for (const node of sanitized.systems) {
+        if (node?.system?.nodes) {
+          try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack); }
+          catch (e) { console.warn('Fix-up failed for system', node.name, e); }
+        }
+      }
+    }
+
+    const errors = validateStarmap(sanitized);
+    if (errors.length > 0) {
+        alert('Starmap Validation Failed:\n\n' + errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n...and ${errors.length - 10} more errors.` : ''));
+        console.error('Validation Errors:', errors);
+        return false;
+    }
+
+    starmapStore.set(sanitized);
+    showNewStarmapModal = false;
+    return true;
+  }
+
+  // G42 phase 2: the system view classified a dropped file as a whole campaign and the GM took
+  // the offer. Same pipeline as Load Starmap, then land on the new campaign's map - staying
+  // inside a system view that the new campaign does not contain would be a lie.
+  async function handleOpenStarmapFromSystemView(event: CustomEvent<{ doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null }>) {
+    try {
+      if (await openStarmapPayload(event.detail.doc, event.detail.models)) exitToStarmap();
+    } catch (e) {
+      alert(`The file loaded but could not be opened: ${(e as Error)?.message ?? e}`);
+      console.error(e);
+    }
+  }
+
   function handleFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files || input.files.length === 0) return;
@@ -1804,52 +1863,14 @@
         const raw = new Uint8Array(reader.result as ArrayBuffer);
         const classified = classifySaveFile(raw);
         if (classified.kind === 'system') {
-          alert('This file is a saved SYSTEM — one star system, not a whole campaign (starmap).\n\n'
-            + 'To view it, open any system and use File > Load System. Loading it there replaces the system you are viewing, not the campaign.');
+          sisterSystemFileName = file.name;
           return;
         }
         if (classified.kind === 'unknown') {
           alert('This file is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
           return;
         }
-        const data: any = classified.doc;
-        const bundledModels = classified.models ?? null;
-
-        // Bring in any PoI packs / reasons config the starmap carries, BEFORE re-deriving systems,
-        // so the embedded rules drive the re-tag below. These live app-wide once merged.
-        mergeStarmapPacks(data.poiPacks);
-        applyStarmapReasonsConfig(data.reasonsConfig);
-        mergeStarmapCoIs(data.coiCategories);
-        // G3: put embedded model binaries into the local hash store (each verified against its own
-        // hash) so every ModelRef in the file has its model the moment the map opens.
-        await importEmbeddedModels(bundledModels ?? data.models).catch(() => 0);
-
-        const sanitized = sanitizeStarmapForRuntime(data as StarmapType);
-        delete (sanitized as any).poiPacks;
-        delete (sanitized as any).reasonsConfig;
-        delete (sanitized as any).coiCategories;
-        delete (sanitized as any).models;
-
-        // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
-        // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
-        if (selectedRulepack && Array.isArray(sanitized.systems)) {
-          for (const node of sanitized.systems) {
-            if (node?.system?.nodes) {
-              try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack); }
-              catch (e) { console.warn('Fix-up failed for system', node.name, e); }
-            }
-          }
-        }
-
-        const errors = validateStarmap(sanitized);
-        if (errors.length > 0) {
-            alert('Starmap Validation Failed:\n\n' + errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n...and ${errors.length - 10} more errors.` : ''));
-            console.error('Validation Errors:', errors);
-            return;
-        }
-
-        starmapStore.set(sanitized);
-        showNewStarmapModal = false;
+        await openStarmapPayload(classified.doc, classified.models ?? null);
       } catch (e) {
         // Say what actually failed - this catch wraps the whole open pipeline, and for two weeks
         // it blamed the file for a reader bug of ours. (Unreadable files never reach here now:
@@ -1863,6 +1884,8 @@
     // line still said readAsText after the bundle rework (e39f468e), and new Uint8Array(<string>)
     // coerces to an EMPTY array - so every file, JSON or bundle, failed as 'Error parsing JSON'.
     reader.readAsArrayBuffer(file);
+    // Clear the picker so cancelling a sister-file modal and choosing the SAME file again re-fires.
+    input.value = '';
   }
 
 
@@ -2039,6 +2062,7 @@
         on:back={handleBackToStarmap}
         on:deletesystem={handleDeleteSystem}
         on:renameNode={handleRenameNode}
+        on:openstarmap={handleOpenStarmapFromSystemView}
       />
     {/if}
   {:else if $starmapStore}
@@ -2145,6 +2169,13 @@
   {/if}
   {#if showWelcome}
     <WelcomeModal on:close={dismissWelcome} on:help={() => { dismissWelcome(); showHelpMenu = true; }} />
+  {/if}
+  <!-- G42: a system save was dropped on Load Starmap. Top level so it also shows over the
+       New Starmap modal's own "Upload a starmap file" path. Guide-only: whether this door may
+       instead ADD the system to the campaign is an owner decision, deliberately not built. -->
+  {#if sisterSystemFileName !== null}
+    <SisterFileModal fileKind="system" context="starmap" fileName={sisterSystemFileName}
+      on:close={() => (sisterSystemFileName = null)} />
   {/if}
   {#if showHelpMenu}
     <HelpMenuModal on:close={() => showHelpMenu = false} />

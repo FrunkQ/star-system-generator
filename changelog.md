@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.42 - 25th Aug 2026
+
+- The wrong-loader message becomes an offer. Drop a campaign (starmap) file on Load System and a compact panel names it, states plainly that opening it replaces your whole current campaign, and offers to open it - or cancel, which changes nothing. Drop a single system on Load Starmap and the same panel names it and points at the right door. Bundles (.sse.zip) go through the same panel, so the two old one-line warnings are gone.
+
 ## v3.0.41 - 25th Aug 2026
 
 - A file dropped on the wrong loader is now named for what it is. All three loaders (Load Starmap, Load System, and the generation wizard) share one classifier that reads the file's shape - never its name - so a system save dropped on Load Starmap says "this is a saved SYSTEM" and points at the right door, a campaign dropped on Load System says so in mirror, and a file that is neither gets one plain sentence instead of a validator dump. The wizard also accepts .sse.zip bundles now, which are our own saves and used to fail there as "could not load".
