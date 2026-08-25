@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.45 - 25th Aug 2026
+
+- G43 phase 1: Lagrange points become authorable. A body or construct can be pinned to a secondary's L-point with a structured co-orbital record, and the engine derives its orbit from the secondary on every pass (editing the planet moves its trojans; the old copy-once drift is healed on load, including the Traveller example's fifteen L4/L5 stations). One shared convention module now answers "where is an L-point" for the overlay, the authoring tabs and the derivation: L3/L4/L5 as the secondary's ellipse rigidly rotated (exact, eccentric orbits included), L1/L2 as the Hill-scaled co-rotating track. The L-points overlay draws the L4/L5 tadpole regions as areas; right-clicking inside one offers "Add Trojan here", and the type picker shows the pair's Gascheau mass limit as a switchable filter (an over-mass trojan is allowed and will wear honest tags — criteria land in phase 2). A co-orbital body's orbit tab shows the relationship, with a release control.
+
 ## v3.0.44 - 25th Aug 2026
 
 - Saving now says which world you are saving. The system save screen states that the file holds that one system only - naming it - and that your other systems, the map and the routes are not in it, with the way to save all of that. Saving the campaign gets the matching screen saying the file holds everything. Both show the filename they will write, and the File menu entries say in their tooltips which of the two they act on.
