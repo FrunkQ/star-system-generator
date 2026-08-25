@@ -62,6 +62,7 @@
   import PhysicsTraceModal from './PhysicsTraceModal.svelte';
   import AddBodyTypeModal from './AddBodyTypeModal.svelte';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
+  import { deriveCoOrbitalOrbit, maxTrojanMassKg } from '$lib/physics/lagrange';
   import { laplaceRadiusAU } from '$lib/generation/planet';
   import { spinProvenanceTags } from '$lib/generation/spinProvenance';
   import AppShell from './AppShell.svelte';
@@ -337,15 +338,19 @@
   // Physics "working" (Newton/Apple) panel
   let showPhysicsModal = false;
 
-  // §4c add-by-viable-type picker
+  // §4c add-by-viable-type picker. `trojan` (G43) rides along when the add came from a click
+  // inside an L4/L5 area: the body will be co-orbital with that secondary, and the picker shows
+  // the pair's trojan mass guide (guide + honest tags, never a hard block — owner Q3).
   let showAddTypeModal = false;
-  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number; ageGyr?: number; canTidallyLock?: boolean } | null = null;
+  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number; ageGyr?: number; canTidallyLock?: boolean;
+      trojan?: { secondaryId: string; secondaryName: string; point: 'l4' | 'l5'; maxTrojanMassKg: number } } | null = null;
 
   // Create Construct (Background) Modal State
   let showCreateConstructModal = false;
   let showSaveModal = false;
   let backgroundClickHost: CelestialBody | Barycenter | null = null;
   let backgroundClickPosition: { x: number, y: number } | null = null;
+  let backgroundLagrangeHit: { secondaryId: string; point: 'l4' | 'l5' } | null = null; // G43: click landed inside an L-area
   let showBackgroundContextMenu = false;
   let contextMenuActionLabel = 'Add Planet Here';
   let showAddBeltOption = false;
@@ -358,13 +363,14 @@
 
   // ...
 
-  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }>) {
+  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; point: 'l4' | 'l5' } | null }>) {
       console.log('Background Context Menu Triggered:', event.detail);
       backgroundClickHost = event.detail.dominantBody;
       backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
+      backgroundLagrangeHit = event.detail.lagrangeHit ?? null;
       contextMenuX = event.detail.screenX;
       contextMenuY = event.detail.screenY;
-      
+
       showAddBeltOption = false;
       showAddRingOption = false;
 
@@ -389,6 +395,31 @@
       
       showBackgroundContextMenu = true;
       showSummaryContextMenu = false;
+  }
+
+  // G43: the click landed inside an L4/L5 area — offer a TROJAN of that secondary. The body picker
+  // opens with the pair's trojan mass guide; the created body carries the coOrbital marker and the
+  // processor derives its orbit from the secondary every pass.
+  function handleAddTrojanFromBackground() {
+      showBackgroundContextMenu = false;
+      const hit = backgroundLagrangeHit;
+      backgroundLagrangeHit = null;
+      if (!hit || !$systemStore) return;
+      const secondary = $systemStore.nodes.find(n => n.id === hit.secondaryId) as CelestialBody | undefined;
+      const star = secondary?.parentId ? $systemStore.nodes.find(n => n.id === secondary.parentId) : null;
+      if (!secondary?.orbit || !star) return;
+      const starMassKg = ((star as any).kind === 'barycenter' ? (star as any).effectiveMassKg : (star as any).massKg) || 0;
+      const aAU = secondary.orbit.elements.a_AU || 1;
+      const probe = { id: 'probe', kind: 'body', roleHint: 'planet', parentId: star.id,
+          orbit: { hostId: star.id, elements: { a_AU: aAU, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as unknown as CelestialBody;
+      const teqK = calculateEquilibriumTemperature(probe, $systemStore.nodes, 0.3);
+      pendingAdd = {
+          distAU: aAU, startAngle: 0, hostId: star.id, hostMassKg: secondary.massKg || 0,
+          role: 'moon', teqK, ageGyr: ($systemStore as any)?.age_Gyr, canTidallyLock: undefined,
+          trojan: { secondaryId: secondary.id, secondaryName: secondary.name, point: hit.point,
+                    maxTrojanMassKg: maxTrojanMassKg(starMassKg, secondary.massKg || 0) }
+      };
+      showAddTypeModal = true;
   }
 
   function handleCreateBodyFromBackground(forceRole?: string) {
@@ -602,6 +633,37 @@
       if (!ctx || !$systemStore) return;
       const host = $systemStore.nodes.find(n => n.id === ctx.hostId);
       if (!host) return;
+
+      // G43: a trojan placement — the body is a sibling of its secondary (both orbit the star),
+      // carries the coOrbital marker, and gets its orbit from the one convention module. The
+      // process() below re-derives it every pass thereafter.
+      if (ctx.trojan) {
+          const secondary = $systemStore.nodes.find(n => n.id === ctx.trojan!.secondaryId) as CelestialBody | undefined;
+          if (!secondary) return;
+          const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
+          const starMassKg = ((host as any).kind === 'barycenter' ? (host as any).effectiveMassKg : (host as any).massKg) || 0;
+          const trojanBody: CelestialBody = {
+              id: generateId(),
+              name: `${secondary.name} ${ctx.trojan.point.toUpperCase()} Trojan`,
+              kind: 'body',
+              parentId: host.id,
+              ui_parentId: secondary.id,
+              roleHint: 'moon',
+              atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
+              hydrosphere: { coverage: 0, composition: 'water' },
+              biosphere: null,
+              classes: [],
+              ...gen,
+              tags: [...(gen.tags || [])],
+              coOrbital: { hostId: secondary.id, point: ctx.trojan.point },
+              orbit: deriveCoOrbitalOrbit(secondary, starMassKg, ctx.trojan.point) ?? undefined
+          } as CelestialBody;
+          systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, trojanBody] }, rulePack) });
+          updateFocus(trojanBody.id);
+          isEditing = true;
+          return;
+      }
+
       const siblings = $systemStore.nodes.filter(n => n.parentId === ctx.hostId);
       const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
       // Some moons are CAPTURED rogues (irregular satellites): eccentric, inclined, often retrograde —
@@ -2515,6 +2577,10 @@
     {#if showBackgroundContextMenu}
         <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;" on:click|stopPropagation>
             <ul>
+                {#if backgroundLagrangeHit}
+                    {@const lagSecondary = $systemStore?.nodes.find(n => n.id === backgroundLagrangeHit?.secondaryId)}
+                    <li on:click={handleAddTrojanFromBackground}>Add Trojan at {lagSecondary?.name ?? '?'} {backgroundLagrangeHit.point.toUpperCase()}</li>
+                {/if}
                 <li on:click={handleCreateConstructFromBackground}>Add Construct Here</li>
                 <li on:click={() => handleCreateBodyFromBackground()}>{contextMenuActionLabel}</li>
                 {#if showAddBeltOption}
@@ -2564,7 +2630,7 @@
 
     {#if showAddTypeModal && pendingAdd}
         <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role} hostMassKg={pendingAdd.hostMassKg}
-            ageGyr={pendingAdd.ageGyr} canTidallyLock={pendingAdd.canTidallyLock}
+            ageGyr={pendingAdd.ageGyr} canTidallyLock={pendingAdd.canTidallyLock} trojan={pendingAdd.trojan}
             on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
     {/if}
 

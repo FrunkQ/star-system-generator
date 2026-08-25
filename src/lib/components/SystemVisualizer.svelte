@@ -10,7 +10,7 @@
   import { AU_KM, EARTH_MASS_KG } from '../constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
   import * as zones from "$lib/physics/zones";
-  import { calculateLagrangePoints } from "$lib/physics/lagrange";
+  import { calculateLagrangePoints, tadpoleRegion } from "$lib/physics/lagrange";
   import { get } from 'svelte/store';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatDistanceKm, distanceFlavour } from '$lib/units';
@@ -83,7 +83,7 @@
     focus: string | null,
     levelchange: { id: string; level: number },
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
-    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }
+    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; point: 'l4' | 'l5' } | null }
   }>();
 
   // --- Configurable Visuals ---
@@ -603,8 +603,22 @@
   let drawErrorLogged = false;
 
   let lagrangePoints: Map<string, {x: number, y: number}> | null = null;
+  // G43: the L4/L5 tadpole AREAS — one lobe per triangular point per pair, in the render frame.
+  // Geometry is display-grade but reference-anchored (physics/lagrange.tadpoleRegion): radial
+  // half-width (8*mu/3)^(1/2)*R, longitude span 24..180 deg from the secondary at the separatrix.
+  // The same entries drive the right-click placement hit-test, so what you see is what you can click.
+  interface LagrangeArea {
+      secondaryId: string; point: 'l4' | 'l5';
+      cx: number; cy: number;          // primary position (render frame)
+      R: number;                        // orbit radius at this instant (render frame)
+      thetaSec: number;                 // secondary's current angle about the primary
+      dir: number;                      // +1 prograde, -1 retrograde (L4 leads in this direction)
+      halfWidth: number;                // radial half-width (render frame, before the px floor)
+  }
+  let lagrangeAreas: LagrangeArea[] = [];
   function calculateLagrangePointPositions() {
       const idToUse = focusedBodyId || (system ? system.nodes.find(n => n.parentId === null)?.id : undefined);
+      lagrangeAreas = [];
       if (!system || !showLPoints || !idToUse) { lagrangePoints = null; return; }
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const focusedNode = nodesById.get(idToUse);
@@ -636,6 +650,21 @@
                   }
                   allPoints.set(`${p.name}-${secondary.id}`, { x: x + scaledPrimaryPos.x, y: y + scaledPrimaryPos.y });
               });
+              // G43: tadpole lobes for the two triangular points of this pair, in the render frame.
+              if (primary.massKg && secondary.massKg) {
+                  const region = tadpoleRegion(secondary.massKg, primary.massKg);
+                  const R = Math.sqrt(scaledRelativeSecondaryPos.x ** 2 + scaledRelativeSecondaryPos.y ** 2);
+                  const thetaSec = Math.atan2(scaledRelativeSecondaryPos.y, scaledRelativeSecondaryPos.x);
+                  const dir = secondary.orbit?.isRetrogradeOrbit ? -1 : 1;
+                  for (const point of ['l4', 'l5'] as const) {
+                      lagrangeAreas.push({
+                          secondaryId: secondary.id, point,
+                          cx: scaledPrimaryPos.x, cy: scaledPrimaryPos.y,
+                          R, thetaSec, dir,
+                          halfWidth: region.radialHalfWidthFrac * R
+                      });
+                  }
+              }
           }
       };
       if (focusedNode.parentId) {
@@ -772,8 +801,27 @@
         const clickPos = screenToWorld(clickX, clickY);
         const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
         const dominantBody = findContainingHost(clickPos.x, clickPos.y, system.nodes, targetPositions);
-        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX, screenY });
+        // G43: a click inside a drawn L4/L5 lobe offers trojan placement there. Same geometry and
+        // px floor as the draw, so the clickable region is exactly the visible one.
+        const lagrangeHit = hitTestLagrangeArea(clickPos.x, clickPos.y);
+        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX, screenY, lagrangeHit });
       }
+  }
+
+  function hitTestLagrangeArea(wx: number, wy: number): { secondaryId: string; point: 'l4' | 'l5' } | null {
+      if (!showLPoints) return null;
+      for (const area of lagrangeAreas) {
+          const dx = wx - area.cx, dy = wy - area.cy;
+          const r = Math.hypot(dx, dy);
+          const w = Math.max(area.halfWidth, 6 / zoom);
+          if (Math.abs(r - area.R) > w) continue;
+          const sign = area.point === 'l4' ? area.dir : -area.dir;
+          // angle from the secondary, unwound in this lobe's own direction
+          let delta = (Math.atan2(dy, dx) - area.thetaSec) * sign;
+          delta = ((delta % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+          if (delta >= (24 * Math.PI) / 180 && delta <= Math.PI) return { secondaryId: area.secondaryId, point: area.point };
+      }
+      return null;
   }
 
   // Zoom about a canvas-relative point, keeping that point fixed (old handleWheel logic,
@@ -977,6 +1025,25 @@
                   }
                   ctx.restore();
               }
+          }
+      }
+      if (showLPoints && lagrangeAreas.length) {
+          // G43: the tadpole AREAS — a translucent lobe along the orbit around each triangular
+          // point (reference-anchored geometry from physics/lagrange.tadpoleRegion). The physics
+          // width for a small mu is subpixel at most zooms, so the drawn width has a px floor; the
+          // placement hit-test in openContextMenu uses the same floor, so the clickable region is
+          // exactly the visible one.
+          for (const area of lagrangeAreas) {
+              const w = Math.max(area.halfWidth, 6 / zoom);
+              const spanIn = (24 * Math.PI) / 180, spanOut = Math.PI * 0.995; // stop short of L3 so the two lobes read apart
+              const sign = area.point === 'l4' ? area.dir : -area.dir;
+              const a0 = area.thetaSec + sign * spanIn;
+              const a1 = area.thetaSec + sign * spanOut;
+              ctx.beginPath();
+              ctx.arc(area.cx - renderPan.x, area.cy - renderPan.y, area.R, a0, a1, sign < 0);
+              ctx.lineWidth = 2 * w;
+              ctx.strokeStyle = 'rgba(0, 200, 100, 0.13)';
+              ctx.stroke();
           }
       }
       if (showLPoints && lagrangePoints) {
