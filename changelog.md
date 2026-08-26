@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.88 - 26th Aug 2026
+
+- Fixed: adding a trojan at a Lagrange point threw an error and the type picker never opened. This was broken by yesterday's circumbinary work and it broke an existing feature, not just the new one - reported against Njord in Alpha Centauri. The picker now opens for an ordinary body, for a trojan, and for a circumbinary body, and there is a test that mounts all three so this cannot happen again unnoticed.
+
 ## v3.0.87 - 26th Aug 2026
 
 - Changing orbit is a manoeuvre now, and it looks like one. Moving a ship between two orbits of the same world is the most classical thing in spaceflight - burn once to stretch the orbit out to the height you want, coast half way round, burn again to settle there - and the app could neither draw it nor, it turned out, fly it. Asked to raise a ship from a low Jupiter orbit to a high one it offered the torch option and nothing else, at 45 km/s. The two-burn answer costs 19.6.

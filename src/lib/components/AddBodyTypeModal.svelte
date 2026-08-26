@@ -20,6 +20,9 @@
   export let canTidallyLock: boolean | undefined = undefined; // can this orbit despin a planet in the time available?
   // G43: set for a trojan placement — the guide (not a block) for what the pair's L4/L5 can hold.
   export let trojan: { secondaryName: string; point: string; maxTrojanMassKg: number } | undefined = undefined;
+  // G45: set for a circumbinary placement — the guide for how heavy a P-type body can be
+  // before it stops being the test particle the stability fit assumes.
+  export let circumbinary: { pairName: string; maxMassKg: number } | undefined = undefined;
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -35,12 +38,12 @@
     { key: 'mass', label: 'Mass', hint: role === 'moon' ? 'Only types small enough to be a satellite of this host.' : 'Only planet-mass types — asteroids, comets and planetesimals stay off a primary orbit at the bottom, and brown dwarfs (stars, by the deuterium line) at the top.' },
     { key: 'age', label: 'Age', hint: 'Only types that can have formed by this system\'s age — protoplanets are young, stripped and cratered worlds are old.', needs: () => typeof ageGyr === 'number' },
     { key: 'tidalLock', label: 'Tidal lock', hint: 'Types that need a star-locked world, only where this orbit can produce one.', needs: () => typeof canTidallyLock === 'boolean' },
-    { key: 'hostFit', label: 'Host', hint: 'A moon cannot be a giant; a substantial moon needs a giant host.', needs: () => role === 'moon' && !coPlacement },
+    { key: 'hostFit', label: 'Host', hint: 'A moon cannot be a giant; a substantial moon needs a giant host.', needs: () => role === 'moon' && !trojan && !circumbinary },
     { key: 'placementMass', label: trojan ? 'Trojan mass' : 'Test-particle mass',
       hint: trojan
         ? 'Only types light enough for the pair\'s triangular points (Gascheau\'s limit). Switch off to author an over-mass trojan — the stability tags will say what breaks.'
         : 'Only types light enough to stay a test particle of the pair. Heavier makes it a real three-body problem, which the stability fit does not model. Switch off to author one anyway — the tags will say what breaks.',
-      needs: () => coPlacement },
+      needs: () => !!trojan || !!circumbinary },
   ];
   $: shownGates = GATE_LABELS.filter((g) => !g.needs || g.needs());
 
@@ -50,9 +53,10 @@
   // rules are about sitting in a host's gravity well, which a co-orbital body does not. A trojan
   // heavier than a "moon" is honest physics while Gascheau holds.
   $: verdicts = judgeTypesAt(
-    { role, teqK, hostMassKg: coPlacement ? 0 : hostMassKg, ageGyr, canTidallyLock, placementMassLimitKg: placementLimitKg },
+    { role, teqK, hostMassKg: (trojan || circumbinary) ? 0 : hostMassKg, ageGyr, canTidallyLock,
+      placementMassLimitKg: trojan?.maxTrojanMassKg ?? circumbinary?.maxMassKg },
     fingerprints,
-    coPlacement ? { ...gates, hostFit: false } : gates);
+    (trojan || circumbinary) ? { ...gates, hostFit: false } : gates);
   $: viable = verdicts.filter((v) => v.ok).map((v) => v.fp)
     .slice()
     .sort((a, b) => a.class.localeCompare(b.class));

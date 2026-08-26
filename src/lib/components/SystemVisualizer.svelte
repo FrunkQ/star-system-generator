@@ -199,7 +199,9 @@
   // THE REGION OF INTEREST for the current selection - one shared rule ($lib/system/regionOfInterest),
   // recomputed only when the selection or the node set changes rather than per frame. null = nothing
   // selected = no narrowing.
-  $: region = regionOfInterest(system?.nodes ?? [], focusedBodyId);
+  // Named `roi`, not `region`: calculateAndStorePoints has its own local `region` (the tadpole
+  // geometry), and two things called region in one file is how the wrong one gets read.
+  $: roi = regionOfInterest(system?.nodes ?? [], focusedBodyId);
   $: if (!transitPreviewPos) {
       lastPreviewSample = null;
   }
@@ -1414,7 +1416,7 @@
       };
       if (showHillSpheres && system) {
           for (const h of hillSpheresAu(system)) {
-              if (!inRegionOfInterest(region, h.id)) continue;
+              if (!inRegionOfInterest(roi, h.id)) continue;
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : worldPositions.get(h.id);
               if (!pos) continue;
               const r = drawnRadiusAu(h.id, h.rAu);
@@ -1451,7 +1453,7 @@
               if (node.kind !== 'barycenter') continue;
               const cb = (node as any).circumbinary;
               if (!cb || !(cb.innerAU > 0)) continue;
-              if (!inRegionOfInterest(region, node.id)) continue;
+              if (!inRegionOfInterest(roi, node.id)) continue;
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
               if (!pos) continue;
               const rIn = drawnRadiusAu(node.id, cb.innerAU);
@@ -1769,7 +1771,7 @@
       if (showHillSpheres && system) {
           ctx.font = `12px sans-serif`; ctx.textAlign = 'center';
           for (const h of hillSpheresAu(system)) {
-              if (!inRegionOfInterest(region, h.id)) continue;
+              if (!inRegionOfInterest(roi, h.id)) continue;
               if (!h.isStar) continue;
               const world = worldPositions.get(h.id);
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : world;
