@@ -3327,3 +3327,18 @@ is self-scaling, needs no constant, and answers the real question ("is there roo
 in"). Planets and stars are untouched by both changes, so the coast is bit-identical — the Sol
 fixtures stay byte-unmoved, which is the gate. Radii come from the one shared formula: Luna 61,525 km
 and Titan 52,290 km against textbook ~61,500 and ~52,000.
+
+### RENDER-S31 A dash pattern is charged per SEGMENT over the whole path, not the visible part
+WHERE: any dashed canvas stroke in `SystemVisualizer.svelte` at astronomical scale. Live example:
+the L-point co-orbital track (`lagrangeTrack`), which guards itself with a circumference budget.
+RULE: before `setLineDash` on a path whose length scales with the view, work out how many segments
+the pattern implies — `pathLengthPx / dashPeriodPx` — and fall back to a SOLID stroke past a few
+thousand. Solid costs the same at any scale. Use dashes sparingly and never on many paths at once.
+WHY: owner, 2026-08-26 — dashes "mess up rendering budgets due to some of our crazy scales". The
+trap is that a shape is charged for its ENTIRE path even when nearly all of it is off-screen: a
+full circle drawn at 100x zoom implies ~45,000 dash segments and at 10,000x about 4.5 million, for
+a line the user can see perhaps a tenth of. This engine routinely draws circles whose radius is
+astronomical and whose zoom range spans many orders of magnitude, so the pathological case is
+ordinary here rather than exotic.
+BLAST: the same applies to orbit paths, zone outlines and range rings if any of them ever take a
+dash. A solid line at reduced alpha reads almost as well and has no such cliff.

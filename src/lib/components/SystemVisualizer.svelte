@@ -1090,11 +1090,21 @@
       const lagrangeIsSelected = (key: string) =>
           !lagrangeFocusSecondaryId || key.slice(key.indexOf('-') + 1) === lagrangeFocusSecondaryId;
       if (showLPoints && lagrangeTrack && lagrangeTrack.r > 0) {
+          // DASH BUDGET (owner's standing warning, and this view is exactly where it would bite).
+          // A dash pattern costs per SEGMENT over the whole path, not over the visible part, so a
+          // full circle at deep zoom is charged for its entire circumference even when almost all of
+          // it is off-screen: at 100x that is ~45,000 segments and at 10,000x about 4.5 MILLION, which
+          // is a stalled frame for a decorative line. The dashes are worth it here — they are what
+          // says 'this is the L-points' own track, not the orbit' — so keep them, but fall back to a
+          // solid stroke once the circumference stops being affordable. Solid costs the same at any
+          // scale. Anything else that wants dashes at astronomical scale should do the same check.
+          const circumferencePx = 2 * Math.PI * lagrangeTrack.r * zoom;
+          const dashesAffordable = circumferencePx < 40000;   // ~2,800 segments
           ctx.beginPath();
           ctx.arc(lagrangeTrack.cx - renderPan.x, lagrangeTrack.cy - renderPan.y, lagrangeTrack.r, 0, 2 * Math.PI);
-          ctx.setLineDash([6 / zoom, 8 / zoom]);
+          if (dashesAffordable) ctx.setLineDash([6 / zoom, 8 / zoom]);
           ctx.lineWidth = 1 / zoom;
-          ctx.strokeStyle = 'rgba(120, 220, 180, 0.22)';
+          ctx.strokeStyle = dashesAffordable ? 'rgba(120, 220, 180, 0.22)' : 'rgba(120, 220, 180, 0.13)';
           ctx.stroke();
           ctx.setLineDash([]);
       }
