@@ -624,6 +624,18 @@
       poly: { x: number; y: number }[];
   }
   let lagrangeAreas: LagrangeArea[] = [];
+
+  // THE CO-ORBITAL TRACK — where the L-points actually are RIGHT NOW, which is not the orbit line.
+  //
+  // The triangular points form an equilateral triangle with the two bodies at every instant, so L3,
+  // L4 and L5 all sit at exactly the secondary's CURRENT distance; L1/L2 sit a Hill radius inside and
+  // outside that. The drawn orbit is the secondary's path over TIME, and on an eccentric orbit its
+  // radius at some OTHER longitude is a different number — up to 5.5% different for Luna, and it
+  // swings sign as the month goes round, so a different point looks wrong each time you look. The
+  // points really do leave the orbit line, and this one faint circle is what makes that read as
+  // geometry rather than as a bug: every point lands on it. On a circular orbit it coincides with the
+  // orbit exactly (measured: 0.00% at every phase), which is the honest tell that it IS eccentricity.
+  let lagrangeTrack: { cx: number; cy: number; r: number } | null = null;
   // Whose L-points are the SELECTED ones. Every pair still draws its five crosses, but the ones
   // that are not the selection's recede, so the selected body's points read at a glance instead of
   // being lost in a field of identical markers (owner, 2026-08-26: "it's confusing just now").
@@ -632,6 +644,7 @@
   function calculateLagrangePointPositions() {
       const idToUse = focusedBodyId || (system ? system.nodes.find(n => n.parentId === null)?.id : undefined);
       lagrangeAreas = [];
+      lagrangeTrack = null;
       if (!system || !showLPoints || !idToUse) { lagrangePoints = null; return; }
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const focusedNode = nodesById.get(idToUse);
@@ -679,6 +692,7 @@
                   const R = Math.sqrt(scaledRelativeSecondaryPos.x ** 2 + scaledRelativeSecondaryPos.y ** 2);
                   const thetaSec = Math.atan2(scaledRelativeSecondaryPos.y, scaledRelativeSecondaryPos.x);
                   const retro = !!secondary.orbit?.isRetrogradeOrbit;
+                  lagrangeTrack = { cx: scaledPrimaryPos.x, cy: scaledPrimaryPos.y, r: R };
                   const mu = secondary.massKg / (primary.massKg + secondary.massKg);
                   // Normalised (secondary along +x, primary at origin) -> render frame. The scale is
                   // the CURRENT separation, not the semi-major axis, so an eccentric pair's zones
@@ -1075,6 +1089,15 @@
       // `${name}-${secondaryId}`, so the id is everything after the first hyphen.
       const lagrangeIsSelected = (key: string) =>
           !lagrangeFocusSecondaryId || key.slice(key.indexOf('-') + 1) === lagrangeFocusSecondaryId;
+      if (showLPoints && lagrangeTrack && lagrangeTrack.r > 0) {
+          ctx.beginPath();
+          ctx.arc(lagrangeTrack.cx - renderPan.x, lagrangeTrack.cy - renderPan.y, lagrangeTrack.r, 0, 2 * Math.PI);
+          ctx.setLineDash([6 / zoom, 8 / zoom]);
+          ctx.lineWidth = 1 / zoom;
+          ctx.strokeStyle = 'rgba(120, 220, 180, 0.22)';
+          ctx.stroke();
+          ctx.setLineDash([]);
+      }
       if (showLPoints && lagrangeAreas.length) {
           // The zones, drawn as the shapes the physics actually makes: a true tadpole contour at
           // L4/L5 (fat head at the point, tail narrowing toward the secondary) and a station-keeping

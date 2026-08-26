@@ -378,6 +378,37 @@ describe('through the full processor', () => {
     });
 });
 
+// The L-points sit at the secondary's CURRENT distance, NOT on its drawn orbit path — and on an
+// eccentric orbit those are different numbers. This looked like a bug twice; it is the geometry.
+describe('L-points leave the orbit LINE on an eccentric orbit, and that is correct', () => {
+    const el = (a: number, e: number, fDeg: number) =>
+        (a * (1 - e * e)) / (1 + e * Math.cos((fDeg * Math.PI) / 180));
+
+    it('a CIRCULAR orbit shows no offset at any phase — the control', () => {
+        for (const f of [0, 45, 90, 135, 180, 225, 315]) {
+            expect(el(1, 0, f) / el(1, 0, f + 60)).toBeCloseTo(1, 12);
+        }
+    });
+
+    it('an ECCENTRIC orbit offsets the point from the path, and the offset changes SIGN', () => {
+        const e = 0.0549;   // Luna
+        const offsets = [0, 45, 90, 135, 180, 225].map((f) => el(1, e, f) / el(1, e, f + 60) - 1);
+        expect(Math.min(...offsets)).toBeLessThan(-0.04);   // measured -5.1%
+        expect(Math.max(...offsets)).toBeGreaterThan(0.04); // measured +5.5%
+    });
+
+    it("but the point is ALWAYS at the secondary's own current distance (the equilateral triangle)", () => {
+        const sys = makeSystem({ trojanPoint: 'l4', e: 0.2 });
+        deriveCoOrbitalOrbits(sys);
+        const planet = sys.nodes.find(n => n.id === 'planet') as CelestialBody;
+        const trojan = sys.nodes.find(n => n.id === 'trojan') as CelestialBody;
+        for (const t of times) {
+            const p = propagateState(planet, t), q = propagateState(trojan, t);
+            expect(Math.hypot(q.r.x, q.r.y)).toBeCloseTo(Math.hypot(p.r.x, p.r.y), 10);
+        }
+    });
+});
+
 describe('the real tadpole SHAPE (CR3BP zero-velocity contour)', () => {
     const L4 = { x: 0.5, y: Math.sqrt(3) / 2 };
     const inside = (poly: {x:number;y:number}[], q: {x:number;y:number}) => {

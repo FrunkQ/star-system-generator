@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.58 - 26th Aug 2026
+
+- When Lagrange points are shown there is now a faint dashed circle through them — the co-orbital track, meaning "the distance the planet is at right now". It exists to explain something that looks wrong and is not: on an eccentric orbit the L-points drift off the drawn orbit line, and they are supposed to. The points keep an equilateral triangle with the planet and its star at every moment, so they are always at the planet's CURRENT distance, while the drawn orbit is where the planet will be at OTHER times — and on an ellipse those are different distances, by up to 5.5% for the Moon, swinging from one side to the other over a month. That is why a different point looks off each time you look. On a circular orbit the new circle sits exactly on the orbit line, which is the giveaway that it is eccentricity doing it.
+
 ## v3.0.57 - 26th Aug 2026
 
 - The L1, L2 and L3 zones are green now instead of amber. Amber belongs to the Hill spheres, and the two were being confused — especially at L1 and L2, which genuinely sit on the Hill boundary and overlap it. Green means Lagrange across all five; the triangular zones stay a stronger, filled green and the collinear ones a cooler, fainter teal, since nothing is actually held at those.
