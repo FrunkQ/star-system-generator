@@ -63,6 +63,7 @@
   import AddBodyTypeModal from './AddBodyTypeModal.svelte';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
   import { deriveCoOrbitalOrbit, maxTrojanMassKg } from '$lib/physics/lagrange';
+  import { maxCircumbinaryMassKg } from '$lib/physics/circumbinary';
   import { laplaceRadiusAU } from '$lib/generation/planet';
   import { spinProvenanceTags } from '$lib/generation/spinProvenance';
   import AppShell from './AppShell.svelte';
@@ -343,7 +344,8 @@
   // the pair's trojan mass guide (guide + honest tags, never a hard block — owner Q3).
   let showAddTypeModal = false;
   let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number; ageGyr?: number; canTidallyLock?: boolean;
-      trojan?: { secondaryId: string; secondaryName: string; point: 'l4' | 'l5'; maxTrojanMassKg: number } } | null = null;
+      trojan?: { secondaryId: string; secondaryName: string; point: 'l4' | 'l5'; maxTrojanMassKg: number };
+      circumbinary?: { pairName: string; maxMassKg: number } } | null = null;
 
   // Create Construct (Background) Modal State
   let showCreateConstructModal = false;
@@ -351,6 +353,7 @@
   let backgroundClickHost: CelestialBody | Barycenter | null = null;
   let backgroundClickPosition: { x: number, y: number } | null = null;
   let backgroundLagrangeHit: { secondaryId: string; secondaryName: string; point: string } | null = null; // G43: click landed inside an L-zone
+  let backgroundCircumbinaryHit: { baryId: string; baryName: string } | null = null; // G45: click landed inside a pair's circumbinary ring
   let constructInitialPlacement: string | undefined = undefined;   // G43: preselect an L-point in the add-construct modal
   let showBackgroundContextMenu = false;
   let contextMenuActionLabel = 'Add Planet Here';
@@ -364,10 +367,11 @@
 
   // ...
 
-  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: string } | null }>) {
+  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: string } | null, circumbinaryHit?: { baryId: string; baryName: string } | null }>) {
       backgroundClickHost = event.detail.dominantBody;
       backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
       backgroundLagrangeHit = event.detail.lagrangeHit ?? null;
+      backgroundCircumbinaryHit = event.detail.circumbinaryHit ?? null;
       contextMenuX = event.detail.screenX;
       contextMenuY = event.detail.screenY;
 
@@ -438,6 +442,55 @@
       showAddConstructModal = true;
   }
 
+  // Absolute position of any node, by walking the hierarchy and propagating each hop. Was a local
+  // closure inside handleCreateBodyFromBackground; hoisted so the circumbinary handler measures its
+  // click against the barycentre with the SAME arithmetic rather than a second copy of it.
+  function absolutePositionOf(nodeId: string): { x: number, y: number } {
+      if (!$systemStore) return { x: 0, y: 0 };
+      const node = $systemStore.nodes.find(n => n.id === nodeId);
+      if (!node || !node.parentId) return { x: 0, y: 0 };
+      const parentPos = absolutePositionOf(node.parentId);
+      let relativePos = { x: 0, y: 0 };
+      if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && (node as any).orbit) {
+          const p = propagate(node as any, currentTime);
+          if (p) relativePos = p;
+      }
+      return { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
+  }
+
+  // G45: the click landed inside a pair's drawn circumbinary ring — offer a P-type body of that
+  // pair. The host is the BARYCENTRE (which is what makes it circumbinary), the distance is measured
+  // from the barycentre, and the type picker is given a mass CEILING rather than a mass rule: the
+  // Holman & Wiegert annulus is a massless-test-particle result, so a body comparable to the pair is
+  // outside what any of this models. It is a guide the GM can switch off, like every other gate.
+  function handleAddCircumbinaryFromBackground() {
+      showBackgroundContextMenu = false;
+      const hit = backgroundCircumbinaryHit;
+      backgroundCircumbinaryHit = null;
+      if (!hit || !$systemStore) return;
+      const bary = $systemStore.nodes.find(n => n.id === hit.baryId) as Barycenter | undefined;
+      if (!bary) return;
+      const pairMassKg = bary.effectiveMassKg || 0;
+      const baryPos = absolutePositionOf(bary.id);
+      const dx = (backgroundClickPosition?.x ?? 0) - baryPos.x;
+      const dy = (backgroundClickPosition?.y ?? 0) - baryPos.y;
+      const distAU = Math.hypot(dx, dy);
+      if (!(distAU > 0)) return;
+      // A pair of STARS hosts planets; a pair of anything else hosts moons. Same question the rest of
+      // the menu asks, asked of the members rather than of a single host.
+      const members = (bary.memberIds || []).map(id => $systemStore!.nodes.find(n => n.id === id)).filter(Boolean) as CelestialBody[];
+      const role: 'planet' | 'moon' = members.some(m => m.roleHint === 'star') ? 'planet' : 'moon';
+      const probe = { id: 'probe', kind: 'body', roleHint: role, parentId: bary.id,
+          orbit: { hostId: bary.id, elements: { a_AU: distAU, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as unknown as CelestialBody;
+      const teqK = calculateEquilibriumTemperature(probe, $systemStore.nodes, 0.3);
+      pendingAdd = {
+          distAU, startAngle: Math.atan2(dy, dx), hostId: bary.id, hostMassKg: pairMassKg,
+          role, teqK, ageGyr: ($systemStore as any)?.age_Gyr, canTidallyLock: undefined,
+          circumbinary: { pairName: bary.name || 'the pair', maxMassKg: maxCircumbinaryMassKg(pairMassKg) }
+      };
+      showAddTypeModal = true;
+  }
+
   function handleCreateBodyFromBackground(forceRole?: string) {
       showBackgroundContextMenu = false;
       const host = backgroundClickHost;
@@ -448,21 +501,7 @@
       let startAngle = 0;
       
       let hostPos = { x: 0, y: 0 };
-      // ... (existing calc logic) ...
-      if (host.parentId) {
-         const getAbsolutePosition = (nodeId: string): { x: number, y: number } => {
-             const node = $systemStore.nodes.find(n => n.id === nodeId);
-             if (!node || !node.parentId) return { x: 0, y: 0 };
-             const parentPos = getAbsolutePosition(node.parentId);
-             let relativePos = { x: 0, y: 0 };
-             if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
-                 const p = propagate(node, currentTime);
-                 if (p) relativePos = p;
-             }
-             return { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
-         };
-         hostPos = getAbsolutePosition(host.id);
-      }
+      if (host.parentId) hostPos = absolutePositionOf(host.id);
 
       const dx = backgroundClickPosition!.x - hostPos.x;
       const dy = backgroundClickPosition!.y - hostPos.y;
@@ -2593,6 +2632,9 @@
     {#if showBackgroundContextMenu}
         <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;" on:click|stopPropagation>
             <ul>
+                {#if backgroundCircumbinaryHit}
+                    <li on:click={handleAddCircumbinaryFromBackground}>Add circumbinary body around {backgroundCircumbinaryHit.baryName}</li>
+                {/if}
                 {#if backgroundLagrangeHit}
                     {@const lagName = backgroundLagrangeHit.secondaryName}
                     {@const lagPt = backgroundLagrangeHit.point.toUpperCase()}
@@ -2650,7 +2692,7 @@
 
     {#if showAddTypeModal && pendingAdd}
         <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role} hostMassKg={pendingAdd.hostMassKg}
-            ageGyr={pendingAdd.ageGyr} canTidallyLock={pendingAdd.canTidallyLock} trojan={pendingAdd.trojan}
+            ageGyr={pendingAdd.ageGyr} canTidallyLock={pendingAdd.canTidallyLock} trojan={pendingAdd.trojan} circumbinary={pendingAdd.circumbinary}
             on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
     {/if}
 

@@ -118,3 +118,48 @@ describe('G45 on the bundled maps', () => {
     }
   });
 });
+
+// B90/B91 — what the DISPLAY draws, on the bundled Sol. The COAST side is left to the transit
+// specs, which exercise soiCandidates through real flights rather than a test-only export.
+import { hillSpheresAu } from './twoBodyCoast';
+
+describe('B90/B91 — the drawn Hill spheres', () => {
+  const sol = JSON.parse(readFileSync('tests/fixtures/solar-system-input.json', 'utf8'));
+  const sys = (sol.system ?? sol);
+  const byName = (n: string) => (sys.nodes as any[]).find((x) => x.name === n);
+  const drawn = hillSpheresAu(sys as any);
+  const rKm = (name: string) => {
+    const n = byName(name);
+    const d = drawn.find((x) => x.id === n?.id);
+    return d ? d.rAu * AU_KM : null;
+  };
+
+  it('B90: a dwarf planet under the coast mass bar now DRAWS', () => {
+    // Pluto is 1.303e22 kg against a 3e23 bar. It drew nothing at all before.
+    expect(byName('Pluto').massKg).toBeLessThan(3e23);
+    expect(rKm('Pluto')).not.toBeNull();
+  });
+
+  it('B91: a pair member is bounded by its COMPANION, so the heavier one gets the bigger bubble', () => {
+    const pluto = rKm('Pluto')!, charon = rKm('Charon')!;
+    expect(pluto).toBeGreaterThan(charon);
+    // The S-type figures, not the wobble-derived Hill radii (which were 1,404 and 5,730 km).
+    expect(pluto).toBeGreaterThan(7500); expect(pluto).toBeLessThan(9000);
+    expect(charon).toBeGreaterThan(2000); expect(charon).toBeLessThan(2900);
+  });
+
+  it('a body that is NOT a pair member keeps its Hill radius, unchanged', () => {
+    // PHY-29 records Luna at 61,525 km against a textbook ~61,500. If this moves, the change leaked.
+    expect(rKm('Luna')!).toBeGreaterThan(61000);
+    expect(rKm('Luna')!).toBeLessThan(62000);
+    expect(rKm('Earth')!).toBeGreaterThan(1.4e6);
+    expect(rKm('Earth')!).toBeLessThan(1.6e6);
+  });
+
+  it('a bubble that does not clear its own body is still not drawn', () => {
+    for (const d of drawn) {
+      const n = (sys.nodes as any[]).find((x) => x.id === d.id);
+      expect(d.rAu * AU_KM, n?.name).toBeGreaterThan(n?.radiusKm ?? 0);
+    }
+  });
+});

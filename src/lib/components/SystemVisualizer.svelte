@@ -22,6 +22,7 @@
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
+  import { regionOfInterest, inRegionOfInterest } from '$lib/system/regionOfInterest';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost } from '$lib/physics/orbits';
   import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
@@ -85,7 +86,7 @@
     focus: string | null,
     levelchange: { id: string; level: number },
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
-    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: LagrangePointId } | null }
+    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: LagrangePointId } | null, circumbinaryHit?: { baryId: string; baryName: string } | null }
   }>();
 
   // --- Configurable Visuals ---
@@ -121,6 +122,9 @@
   let fgCtx: CanvasRenderingContext2D | null = null;
   let animationFrameId: number;
   let worldPositions = new Map<string, { x: number, y: number }>();
+  // The circumbinary rings drawn THIS frame, in world coords, so the right-click hit test uses the
+  // same geometry the user can see (G43's rule for the L-zones, reused).
+  let circumbinaryAreas: { baryId: string; baryName: string; cx: number; cy: number; rInner: number; rOuter: number }[] = [];
   let scaledWorldPositions = new Map<string, { x: number, y: number }>();
   let stellarZones = new Map<string, any>();
   let needsReset = false;
@@ -190,6 +194,10 @@
   }
 
   $: worldPositions = calculateWorldPositions(system, currentTime);
+  // THE REGION OF INTEREST for the current selection - one shared rule ($lib/system/regionOfInterest),
+  // recomputed only when the selection or the node set changes rather than per frame. null = nothing
+  // selected = no narrowing.
+  $: region = regionOfInterest(system?.nodes ?? [], focusedBodyId);
   $: if (!transitPreviewPos) {
       lastPreviewSample = null;
   }
@@ -862,8 +870,22 @@
         // G43: a click inside a drawn L4/L5 lobe offers trojan placement there. Same geometry and
         // px floor as the draw, so the clickable region is exactly the visible one.
         const lagrangeHit = hitTestLagrangeArea(clickPos.x, clickPos.y);
-        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX, screenY, lagrangeHit });
+        // G45: a click inside a drawn circumbinary ring offers a P-type body of that pair.
+        const circumbinaryHit = hitTestCircumbinaryArea(clickPos.x, clickPos.y);
+        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX, screenY, lagrangeHit, circumbinaryHit });
       }
+  }
+
+  // Inside a drawn circumbinary ring? Same centres and radii the draw published, so the clickable
+  // region is exactly the visible one. An open ring (a root pair, no outer edge) has rOuter Infinity,
+  // which is honest: outside the inner edge there is no further wall in this system.
+  function hitTestCircumbinaryArea(wx: number, wy: number): { baryId: string; baryName: string } | null {
+      if (!showHillSpheres) return null;
+      for (const a of circumbinaryAreas) {
+          const d = Math.hypot(wx - a.cx, wy - a.cy);
+          if (d >= a.rInner && d <= a.rOuter) return { baryId: a.baryId, baryName: a.baryName };
+      }
+      return null;
   }
 
   // Point-in-polygon against the SAME outlines that were drawn, so the clickable region is exactly
@@ -1371,32 +1393,29 @@
       // therefore unchanged in practice — its siblings are the other planets, its parent the star —
       // while selecting a moon narrows to that moon's own neighbourhood instead of every bubble in
       // the system. No selection at all = draw everything, as before.
-      const hillNeighbourhood = (id: string): boolean => {
-          if (!focusedBodyId) return true;
-          if (id === focusedBodyId) return true;
-          const focused: any = system?.nodes.find((n) => n.id === focusedBodyId);
-          const cand: any = system?.nodes.find((n) => n.id === id);
-          if (!focused || !cand) return true;
-          if (id === focused.parentId) return true;                       // parent
-          if (cand.parentId === focused.parentId) return true;            // sibling
-          if (cand.parentId === focusedBodyId) return true;               // child, one level down
-          return false;
+      // The REGION OF INTEREST is hoisted to a reactive value above - one shared rule for every
+      // overlay that narrows by selection (owner, 2026-08-26: "stay consistent - we call this a
+      // 'region of interest' selection - and reuse it where possible"). It replaced a local helper
+      // here that went one level in each direction; the rule is now self + ALL ancestors + siblings
+      // + ALL descendants, and a circumbinary body falls out of the sibling clause with no case of
+      // its own.
+      // Radial Box-Cox compression for a circle drawn around a node in Toytown: span it between its
+      // scaled inner/outer radial extent and take the mean (the mode is stylised; exactness lives in
+      // Real scale). Shared by the Hill bubbles and the circumbinary annulus so the two cannot drift.
+      const drawnRadiusAu = (nodeId: string, rAu: number): number => {
+          if (!(toytownFactor > 0)) return rAu;
+          const world = worldPositions.get(nodeId);
+          const d = world ? Math.hypot(world.x, world.y) : 0;
+          const outer = scaleBoxCox(d + rAu, toytownFactor, x0_distance);
+          const inner = scaleBoxCox(Math.max(0, d - rAu), toytownFactor, x0_distance);
+          return Math.max(0, (outer - inner) / 2);
       };
       if (showHillSpheres && system) {
           for (const h of hillSpheresAu(system)) {
-              if (!hillNeighbourhood(h.id)) continue;
+              if (!inRegionOfInterest(region, h.id)) continue;
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : worldPositions.get(h.id);
               if (!pos) continue;
-              let r = h.rAu;
-              if (toytownFactor > 0) {
-                  // Radial Box-Cox compression: span the sphere between its scaled inner/outer radial extent
-                  // and draw the mean as a circle (the mode is stylised; exactness lives in Real scale).
-                  const world = worldPositions.get(h.id);
-                  const d = world ? Math.hypot(world.x, world.y) : 0;
-                  const outer = scaleBoxCox(d + h.rAu, toytownFactor, x0_distance);
-                  const inner = scaleBoxCox(Math.max(0, d - h.rAu), toytownFactor, x0_distance);
-                  r = Math.max(0, (outer - inner) / 2);
-              }
+              const r = drawnRadiusAu(h.id, h.rAu);
               if (!(r > 0)) continue;
               ctx.beginPath();
               ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
@@ -1409,6 +1428,49 @@
               ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
               ctx.lineWidth = 1 / zoom;
               ctx.stroke();
+          }
+      }
+      // THE CIRCUMBINARY ANNULUS (G45) — the ring a P-type body can live in around a pair. Its own
+      // shade, deliberately: amber is the Hill sphere's channel and teal-green is Lagrange, so a
+      // third kind of boundary gets a third colour rather than being mistaken for either.
+      //
+      // BOTH EDGES ARE READ FROM `bary.circumbinary`, NEVER RECOMPUTED HERE. The physics pass
+      // publishes them (engine-map PHY-30) and the inner edge is a Holman & Wiegert fit this file has
+      // no business restating. The outer edge is ABSENT for a root pair — nothing outside it to strip
+      // it — and that is drawn as an open ring: inner stroke only, no outer wall and no fill, because
+      // filling to an invented radius would draw a boundary the physics has not claimed.
+      if (showHillSpheres && system) {
+          circumbinaryAreas = [];
+          for (const node of system.nodes) {
+              if (node.kind !== 'barycenter') continue;
+              const cb = (node as any).circumbinary;
+              if (!cb || !(cb.innerAU > 0)) continue;
+              if (!inRegionOfInterest(region, node.id)) continue;
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
+              if (!pos) continue;
+              const rIn = drawnRadiusAu(node.id, cb.innerAU);
+              const rOut = cb.outerAU > 0 ? drawnRadiusAu(node.id, cb.outerAU) : 0;
+              if (!(rIn > 0)) continue;
+              const cx = pos.x - renderPan.x, cy = pos.y - renderPan.y;
+              // The ring itself: outer disc minus inner disc, drawn as one even-odd path so the hole
+              // is a real hole rather than a second fill over the top.
+              if (rOut > rIn) {
+                  ctx.beginPath();
+                  ctx.arc(cx, cy, rOut, 0, 2 * Math.PI);
+                  ctx.arc(cx, cy, rIn, 0, 2 * Math.PI, true);
+                  ctx.fillStyle = 'rgba(255, 150, 190, 0.055)';
+                  ctx.fill();
+              }
+              ctx.strokeStyle = 'rgba(255, 150, 190, 0.42)';
+              ctx.lineWidth = 1 / zoom;
+              ctx.beginPath(); ctx.arc(cx, cy, rIn, 0, 2 * Math.PI); ctx.stroke();
+              if (rOut > rIn) { ctx.beginPath(); ctx.arc(cx, cy, rOut, 0, 2 * Math.PI); ctx.stroke(); }
+              // Published for the right-click hit test, in the SAME frame's drawn radii, so the
+              // clickable ring is exactly the visible one (the rule G43 set for the L-zones).
+              circumbinaryAreas.push({
+                  baryId: node.id, baryName: node.name ?? 'the pair',
+                  cx: pos.x, cy: pos.y, rInner: rIn, rOuter: rOut > rIn ? rOut : Infinity
+              });
           }
       }
       // Trip lines for each ship's current + NEXT journey only — enough to show who's going where without
@@ -1701,7 +1763,7 @@
       if (showHillSpheres && system) {
           ctx.font = `12px sans-serif`; ctx.textAlign = 'center';
           for (const h of hillSpheresAu(system)) {
-              if (!hillNeighbourhood(h.id)) continue;
+              if (!inRegionOfInterest(region, h.id)) continue;
               if (!h.isStar) continue;
               const world = worldPositions.get(h.id);
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : world;

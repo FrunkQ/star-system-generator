@@ -50,6 +50,23 @@
 //  1.99, a_c = 38,900 km — and Styx, the innermost small moon, orbits at 42,700 km. The real system
 //  puts its circumbinary moons just outside the limit this fit draws.
 //
+//  THE OTHER HALF OF THE SAME PAPER LIVES HERE TOO (B91). Holman & Wiegert fitted TWO critical
+//  radii, and an engine that has one and not the other gets pair members visibly wrong: a member's
+//  drawn Hill sphere was computed from its WOBBLE about the barycentre, which made Pluto's bubble
+//  four times SMALLER than Charon's despite Pluto being 8.2x the mass. The S-type (circumstellar)
+//  fit is the right bound for "what can ONE member of a pair hold on to":
+//
+//    a_c / a_b = 0.464 - 0.380*mu - 0.631*e_b + 0.586*mu*e_b + 0.150*e_b^2 - 0.198*mu*e_b^2
+//
+//  with mu the COMPANION's mass fraction, so it is the OTHER body that shrinks your region — which
+//  is why the heavier member correctly gets the bigger one. Sampled over 0.1 <= mu <= 0.9 and
+//  0 <= e_b <= 0.8. Checked here 2026-08-26: Pluto (mu 0.108) holds satellites to ~8,200 km and
+//  Charon (mu 0.892) to ~2,400 km, against a 19,448 km separation — the right way round, and both
+//  comfortably outside either body.
+//
+//  (The file is named for the circumbinary half because that is what it was built for; it is the one
+//  binary-stability convention and BOTH fits belong in it rather than drifting apart in two files.)
+//
 //  OUTER EDGE — the pair's combined-mass Hill radius within its PARENT's gravity. That radius is
 //  NOT computed here: it is the stability pass's own quantity (`hillRadiusAU` in stability.ts, the
 //  periapsis-based form) and is passed in, so the bubble the engine JUDGES against and the ring it
@@ -144,6 +161,70 @@ function memberMassKg(node: CelestialBody | Barycenter): number {
   return node.kind === 'barycenter'
     ? (node as Barycenter).effectiveMassKg || 0
     : (node as CelestialBody).massKg || 0;
+}
+
+/** Holman & Wiegert (1999) S-type coefficients, in the order
+ *  [const, mu, e_b, mu*e_b, e_b^2, mu*e_b^2]. Verified in-session 2026-08-26, same as the P-type set. */
+export const HW99_S_TYPE_COEFFS = [0.464, -0.380, -0.631, 0.586, 0.150, -0.198] as const;
+
+/** The mass-ratio range H&W sampled for the S-type grid. Wider than the P-type one, because which
+ *  member you orbit matters here and mu is not symmetric. */
+export const HW99_S_TYPE_MU_RANGE: readonly [number, number] = [0.1, 0.9];
+
+/** a_c / a_b for an S-TYPE orbit: the OUTERMOST orbit that survives around ONE member of a pair.
+ *  `muCompanion` is the OTHER body's mass fraction, because the companion is what limits you, so a
+ *  heavier companion returns a smaller number. Floored at zero: as mu approaches 1 the polynomial
+ *  goes negative, which means "no stable region at all", and 0 says that without the sign trap. */
+export function sTypeCriticalRatio(muCompanion: number, eB: number): number {
+  const [c0, c1, c2, c3, c4, c5] = HW99_S_TYPE_COEFFS;
+  return Math.max(0,
+    c0 + c1 * muCompanion + c2 * eB + c3 * muCompanion * eB + c4 * eB * eB + c5 * muCompanion * eB * eB);
+}
+
+/** The S-type critical semi-major axis in AU: how far out ONE member of a pair holds satellites. */
+export function sTypeCriticalAU(sepAU: number, muCompanion: number, eB: number): number {
+  if (!(sepAU > 0)) return 0;
+  return sepAU * sTypeCriticalRatio(muCompanion, eB);
+}
+
+/** THE SATELLITE LIMIT FOR ONE MEMBER OF A PAIR, in AU, read straight off the two members (B91).
+ *  This is what a pair member's drawn bubble should be: not its Hill radius about the barycentre,
+ *  which is a function of its own wobble and inverts the pair, but the region its companion leaves
+ *  it. Returns null when the two are not a real pair with masses and orbits. */
+export function memberSatelliteLimitAU(
+  member: CelestialBody | Barycenter | undefined,
+  companion: CelestialBody | Barycenter | undefined
+): number | null {
+  if (!member || !companion) return null;
+  const mSelf = memberMassKg(member);
+  const mOther = memberMassKg(companion);
+  if (!(mSelf > 0) || !(mOther > 0)) return null;
+  const sepAU = (member.orbit?.elements.a_AU || 0) + (companion.orbit?.elements.a_AU || 0);
+  if (!(sepAU > 0)) return null;
+  const eB = Math.max(
+    Math.max(0, Math.min(0.999, member.orbit?.elements.e || 0)),
+    Math.max(0, Math.min(0.999, companion.orbit?.elements.e || 0)));
+  const r = sTypeCriticalAU(sepAU, mOther / (mSelf + mOther), eB);
+  return r > 0 ? r : null;
+}
+
+/** HOW HEAVY A CIRCUMBINARY BODY MAY BE BEFORE IT STOPS BEING A TEST PARTICLE, in kg.
+ *
+ *  THIS BAR IS OURS, NOT HOLMAN & WIEGERT'S, and the distinction matters: their grid is MASSLESS
+ *  test particles, so the fit does not place a limit on a heavy third body - it simply stops
+ *  applying to it. A body comparable to the pair makes this a genuine three-body problem, where the
+ *  annulus is not a meaningful boundary and nothing in this engine models what happens instead.
+ *
+ *  A thousandth of the pair's mass is the bar: small enough that the back-reaction on the binary is
+ *  negligible over the 10^4 orbits the fit was measured across, and it scales sensibly at both ends
+ *  - roughly a 200 km icy moon for Pluto-Charon, whose real moons are far smaller, and about two
+ *  Jupiters for a pair of sun-like stars, which is the right ceiling for a circumbinary planet.
+ *
+ *  IT IS A GUIDE, NOT A WALL. The GM may author straight past it and the stability pass will then
+ *  say what it thinks, which is the arrangement this engine has everywhere. */
+export const CIRCUMBINARY_TEST_PARTICLE_FRAC = 1e-3;
+export function maxCircumbinaryMassKg(pairMassKg: number): number {
+  return pairMassKg > 0 ? pairMassKg * CIRCUMBINARY_TEST_PARTICLE_FRAC : 0;
 }
 
 /** Build the annulus for a pair from its two members. Returns null when the pair is not a real

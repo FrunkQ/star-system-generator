@@ -2,9 +2,19 @@
 
 All notable changes are listed here:
 
-## v3.0.75 - 26th Aug 2026
+## v3.0.77 - 26th Aug 2026
+
+- The circumbinary ring is drawn. Where a pair of bodies can hold worlds that orbit both of them, that ring now appears with the Hill spheres, in its own pink shade so it is not mistaken for a Hill sphere (amber) or a Lagrange zone (green). Its inner edge is where the pair stops throwing things out; its outer edge is where the pair loses its own grip. A pair at the centre of its system has nothing outside it to lose that grip to, so the ring is drawn open outward rather than walled at an invented distance.
+- Right-click inside the ring to put a body there. It is offered with a mass ceiling rather than a mass rule: the stability physics assumes something light enough not to pull the pair about, so the type list is filtered to that by default - and, as everywhere, the filter is a switch you can turn off and author what you like, leaving the tags to say what breaks.
+- Small bodies get their Hill spheres back. The drawn bubble was gated on a mass bar belonging to the flight propagator, so Pluto drew nothing while Charon drew a circle - the heavier body of the pair losing out to the lighter. Which spheres appear is decided by what you have selected, so the bar was doing nothing but hiding things.
+- A body that shares a barycentre now shows the region ITS COMPANION leaves it, not a circle worked out from its own wobble about the shared centre. That wobble made Pluto's sphere four times smaller than Charon's despite Pluto being eight times the mass. Pluto now reads about 8,200 km and Charon about 2,400 km, the right way round. Anything that is not half of a pair is unchanged, and the flight propagator is untouched.
+- Selecting a body now shows a consistent region of interest: itself, everything it contains, its whole chain of parents, and its siblings - but not the contents of its siblings or of its parents. One rule, shared by the Hill spheres and the new ring, instead of each overlay having its own idea one level deep.
+
+## v3.0.76 - 26th Aug 2026
 
 - Arrival is now one setting instead of two. The Rendezvous/Flyby dropdown has gone; there is a single arrival velocity, and it says everything the dropdown said and more. Leave it at zero — the default — and the ship matches velocity and stays, exactly as before. Give it any speed and it is a flyby at that speed, labelled as one beside the control. The old pairing needed a mode AND a hidden speed that nothing exposed, and the two could disagree with each other.
+
+## v3.0.75 - 26th Aug 2026
 
 - Board only. Two faults recorded from an owner report that selecting Pluto draws a Hill sphere around Charon and none around Pluto. The drawn bubble is gated on a mass bar that belongs to the flight propagator rather than to the display, so a small planet is dropped while a moon of the same pair is kept; and a binary member bubble is worked out from its small wobble about the shared centre, which makes the heavier body bubble the smaller one. Neither is changed yet - the fix for the second needs the circumstellar half of the stability work, which does not exist in the engine.
 

@@ -116,9 +116,9 @@ export interface ViabilityGates {
   age?: boolean;           // the system's age against the type's age_Gyr band
   tidalLock?: boolean;     // a type that requires locking, only where the orbit can produce it
   hostFit?: boolean;       // moons: no giants; substantial moons need a giant host
-  trojanMass?: boolean;    // G43: a trojan placement — the type must fit under the pair's Gascheau limit
+  placementMass?: boolean; // G43/G45: a co-placement ceiling — the type must fit under the limit the PLACEMENT imposes (a pair's Gascheau limit for a trojan, the test-particle bar for a circumbinary body)
 }
-export const ALL_GATES: Required<ViabilityGates> = { temperature: true, mass: true, age: true, tidalLock: true, hostFit: true, trojanMass: true };
+export const ALL_GATES: Required<ViabilityGates> = { temperature: true, mass: true, age: true, tidalLock: true, hostFit: true, placementMass: true };
 
 /** Everything the viability question needs. Missing fields switch the gates that need them off. */
 export interface SlotContext {
@@ -131,7 +131,7 @@ export interface SlotContext {
   // G43: set for a trojan placement — the heaviest body the pair's triangular points can hold
   // (physics/lagrange.maxTrojanMassKg). A gate like the others: switchable off, and an over-mass
   // authored trojan is ACCEPTED and wears the instability tags instead of being refused.
-  trojanMassLimitKg?: number;
+  placementMassLimitKg?: number;
 }
 
 /**
@@ -218,12 +218,12 @@ export function judgeTypesAt(
       }
     }
 
-    // --- trojanMass (G43): the type must FIT the pair's triangular points ---
+    // --- placementMass (G43/G45): the type must FIT the ceiling its PLACEMENT imposes ---
     // Judged like the moon cap: the type's declared LOWER band edge against the Gascheau limit, so
     // a type that could only be authored over-mass is hidden while one whose light end fits stays.
-    if (g.trojanMass && typeof ctx.trojanMassLimitKg === 'number' && ctx.trojanMassLimitKg >= 0) {
-      const limitMe = ctx.trojanMassLimitKg / EARTH_MASS_KG;
-      if (massBand && massBand[0] > limitMe) failed.push('trojanMass');
+    if (g.placementMass && typeof ctx.placementMassLimitKg === 'number' && ctx.placementMassLimitKg >= 0) {
+      const limitMe = ctx.placementMassLimitKg / EARTH_MASS_KG;
+      if (massBand && massBand[0] > limitMe) failed.push('placementMass');
     }
 
     // --- age: late formers and early formers ---

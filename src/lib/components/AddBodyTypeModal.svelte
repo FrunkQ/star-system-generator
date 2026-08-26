@@ -35,8 +35,12 @@
     { key: 'mass', label: 'Mass', hint: role === 'moon' ? 'Only types small enough to be a satellite of this host.' : 'Only planet-mass types — asteroids, comets and planetesimals stay off a primary orbit at the bottom, and brown dwarfs (stars, by the deuterium line) at the top.' },
     { key: 'age', label: 'Age', hint: 'Only types that can have formed by this system\'s age — protoplanets are young, stripped and cratered worlds are old.', needs: () => typeof ageGyr === 'number' },
     { key: 'tidalLock', label: 'Tidal lock', hint: 'Types that need a star-locked world, only where this orbit can produce one.', needs: () => typeof canTidallyLock === 'boolean' },
-    { key: 'hostFit', label: 'Host', hint: 'A moon cannot be a giant; a substantial moon needs a giant host.', needs: () => role === 'moon' && !trojan },
-    { key: 'trojanMass', label: 'Trojan mass', hint: 'Only types light enough for the pair\'s triangular points (Gascheau\'s limit). Switch off to author an over-mass trojan — the stability tags will say what breaks.', needs: () => !!trojan },
+    { key: 'hostFit', label: 'Host', hint: 'A moon cannot be a giant; a substantial moon needs a giant host.', needs: () => role === 'moon' && !coPlacement },
+    { key: 'placementMass', label: trojan ? 'Trojan mass' : 'Test-particle mass',
+      hint: trojan
+        ? 'Only types light enough for the pair\'s triangular points (Gascheau\'s limit). Switch off to author an over-mass trojan — the stability tags will say what breaks.'
+        : 'Only types light enough to stay a test particle of the pair. Heavier makes it a real three-body problem, which the stability fit does not model. Switch off to author one anyway — the tags will say what breaks.',
+      needs: () => coPlacement },
   ];
   $: shownGates = GATE_LABELS.filter((g) => !g.needs || g.needs());
 
@@ -46,9 +50,9 @@
   // rules are about sitting in a host's gravity well, which a co-orbital body does not. A trojan
   // heavier than a "moon" is honest physics while Gascheau holds.
   $: verdicts = judgeTypesAt(
-    { role, teqK, hostMassKg: trojan ? 0 : hostMassKg, ageGyr, canTidallyLock, trojanMassLimitKg: trojan?.maxTrojanMassKg },
+    { role, teqK, hostMassKg: coPlacement ? 0 : hostMassKg, ageGyr, canTidallyLock, placementMassLimitKg: placementLimitKg },
     fingerprints,
-    trojan ? { ...gates, hostFit: false } : gates);
+    coPlacement ? { ...gates, hostFit: false } : gates);
   $: viable = verdicts.filter((v) => v.ok).map((v) => v.fp)
     .slice()
     .sort((a, b) => a.class.localeCompare(b.class));
@@ -73,8 +77,12 @@
   <div class="modal" role="dialog" aria-label="Add body by type">
     <header>
       <div>
-        <h2>{trojan ? `Add trojan at ${trojan.secondaryName} ${trojan.point.toUpperCase()} — pick a type` : `Add ${role === 'moon' ? 'moon' : 'planet'} — pick a type`}</h2>
-        {#if trojan}
+        <h2>{trojan ? `Add trojan at ${trojan.secondaryName} ${trojan.point.toUpperCase()} — pick a type` : circumbinary ? `Add circumbinary ${role} around ${circumbinary.pairName} — pick a type` : `Add ${role === 'moon' ? 'moon' : 'planet'} — pick a type`}</h2>
+        {#if circumbinary}
+          <p class="sub">Orbits BOTH members of {circumbinary.pairName} (~{formatPref($unitPrefs, 'temperature', role, teqK)}). The stable-ring physics assumes a body light enough not to pull the pair about, which here means up to
+            <strong>{(circumbinary.maxMassKg / EARTH_MASS_KG) >= 0.01 ? `${(circumbinary.maxMassKg / EARTH_MASS_KG).toFixed(2)} M⊕` : `${(circumbinary.maxMassKg / EARTH_MASS_KG).toExponential(1)} M⊕`}</strong>
+            — heavier is a genuine three-body problem the fit does not cover, and the stability tags will say so. {viable.length} types.</p>
+        {:else if trojan}
           <p class="sub">Co-orbital with {trojan.secondaryName} (~{formatPref($unitPrefs, 'temperature', role, teqK)}). This pair's triangular points hold up to
             <strong>{(trojan.maxTrojanMassKg / EARTH_MASS_KG) >= 0.01 ? `${(trojan.maxTrojanMassKg / EARTH_MASS_KG).toFixed(2)} M⊕` : `${(trojan.maxTrojanMassKg / EARTH_MASS_KG).toExponential(1)} M⊕`}</strong>
             (Gascheau's limit) — heavier breaches the trojan regime, and the stability tags will say so. {viable.length} types.</p>
