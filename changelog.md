@@ -4,6 +4,13 @@ All notable changes are listed here:
 
 ## v3.0.77 - 26th Aug 2026
 
+- Aerobraking is a real manoeuvre now instead of a flat discount. It used to subtract the ship's heatshield rating from the arrival burn wherever the destination had any air at all — which meant a ship arriving at a Lagrange point half an astronomical unit from Jupiter collected the same free braking as one skimming the cloud tops, and Mars scrubbed speed as freely as Venus.
+- What changed: the atmosphere's own capability now matters, worked out from the pressure and scale height the engine already derives. Gas giants, Venus, Earth and Titan are thick enough that the heatshield is the limit — free braking, as it should be. Thin air like Mars gives about a tenth of that per pass, which lands close to what Mars Odyssey really managed. Airless worlds give nothing.
+- Aerobraking now costs TIME rather than being free: shedding more than one pass can take means going round again, and the ship's log says how many passes, how long, how low it dips, and what climbing back out to the orbit you actually wanted costs in propellant. Arriving in a high orbit is still allowed — it is a dip and a climb — and now it is priced. A ship with fuel to burn can still switch aerobraking off and go fast.
+- Also fixed: the heatshield rating is a maximum ENTRY SPEED, not a fuel allowance. A ship closing far faster than its shield can survive must burn down to a survivable speed before the air can help at all.
+
+## v3.0.78 - 26th Aug 2026
+
 - The circumbinary ring is drawn. Where a pair of bodies can hold worlds that orbit both of them, that ring now appears with the Hill spheres, in its own pink shade so it is not mistaken for a Hill sphere (amber) or a Lagrange zone (green). Its inner edge is where the pair stops throwing things out; its outer edge is where the pair loses its own grip. A pair at the centre of its system has nothing outside it to lose that grip to, so the ring is drawn open outward rather than walled at an invented distance.
 - Right-click inside the ring to put a body there. It is offered with a mass ceiling rather than a mass rule: the stability physics assumes something light enough not to pull the pair about, so the type list is filtered to that by default - and, as everywhere, the filter is a switch you can turn off and author what you like, leaving the tags to say what breaks.
 - Small bodies get their Hill spheres back. The drawn bubble was gated on a mass bar belonging to the flight propagator, so Pluto drew nothing while Charon drew a circle - the heavier body of the pair losing out to the lighter. Which spheres appear is decided by what you have selected, so the bar was doing nothing but hiding things.

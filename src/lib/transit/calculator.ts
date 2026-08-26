@@ -3,6 +3,7 @@ import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, Bu
 import { solveLambert, distanceAU, subtract, magnitude, integrateBallisticPath, add } from './math';
 import { getGlobalState, getLocalState, calculateFuelMass } from './physics';
 import { deriveCoOrbitalOrbit, LAGRANGE_POINT_IDS } from '../physics/lagrange';
+import { aerobrakeSolution } from '../physics/aerobrake';
 import type { LagrangePointId } from '../types';
 import { calculateAssistPlan } from './assist';
 import { sampleJourneyKinematicsAtTime } from './scheduler';
@@ -168,6 +169,15 @@ function solveBestLambert(
   }
 
   return best;
+}
+
+// Is this arrival an ORBIT AROUND THE TARGET, as opposed to a co-orbital point beside it? Only an
+// orbital arrival has a periapsis that can be dropped into the air, which is what makes aerobraking
+// possible at all — and it is the check the old flat model was missing, so an L-point arrival half an
+// AU from the planet was collecting the same free braking as a low pass.
+function isOrbitalArrivalPlacement(placement?: string): boolean {
+  if (!placement) return true;                    // an unqualified arrival is an orbit by default
+  return !LAGRANGE_POINT_IDS.includes(placement as LagrangePointId);
 }
 
 export function calculateTransitPlan(
@@ -867,17 +877,27 @@ function calculateLambertPlan(
     );
     const desiredArrivalRelVec_au_s = desiredArrival.desiredRelVec_au_s;
     let dv2Req_ms = desiredArrival.dv2Required_ms;
-    if (params.brakeAtArrival && params.aerobrake && params.aerobrake.allowed) {
-        const targetBody = target as CelestialBody;
-        const hasAtmosphere = !!(targetBody.atmosphere && targetBody.atmosphere.pressure_bar && targetBody.atmosphere.pressure_bar > 0.001);
-        if (hasAtmosphere) {
-            const aeroMax = params.aerobrake.limit_kms * 1000;
-            const aeroApplied = Math.min(dv2Req_ms, aeroMax);
-            aerobraking_dv_ms = aeroApplied;
-            dv2Req_ms = Math.max(0, dv2Req_ms - aeroApplied);
-            if (aeroApplied > 0) {
-                tags.push(dv2Req_ms <= 1 ? 'AEROCAPTURE' : 'PARTIAL-AERO');
-            }
+    // AEROBRAKING — one shared judgement (physics/aerobrake.ts), not a flat subtraction. It knows
+    // whether the ship is actually entering an orbit here, what this particular sky can deliver, and
+    // what climbing back out to the wanted orbit costs. See that module for why each part exists.
+    let aeroCircularise_ms = 0;
+    let aeroTimeSec = 0;
+    let aeroNote = '';
+    if (params.brakeAtArrival && params.aerobrake?.allowed) {
+        const aero = aerobrakeSolution({
+            target: target as CelestialBody,
+            shipLimitKms: params.aerobrake.limit_kms,
+            dv2Required_ms: dv2Req_ms,
+            parkingRadiusAU: params.parkingOrbitRadius_au,
+            isOrbitalArrival: isOrbitalArrivalPlacement(params.arrivalPlacement)
+        });
+        if (aero.applied_ms > 0) {
+            aerobraking_dv_ms = aero.applied_ms;
+            dv2Req_ms = aero.remaining_ms + aero.circularise_ms;
+            aeroCircularise_ms = aero.circularise_ms;
+            aeroTimeSec = aero.timeSec;
+            aeroNote = aero.note;
+            tags.push(aero.circularise_ms <= 1 ? 'AEROCAPTURE' : 'AEROBRAKE+CIRCULARISE');
         }
     }
     dv2_req_au_s = dv2Req_ms / AU_M;
@@ -1117,6 +1137,9 @@ function calculateLambertPlan(
         arrivalPlacement: params.arrivalPlacement,
         tags: tags,
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
+        aeroCirculariseDeltaV_ms: aeroCircularise_ms,
+        aeroTimeSec: aeroTimeSec,
+        aeroNote: aeroNote,
         initialDelay_days: (params as any).initialDelay_days
     };
 }
@@ -1262,21 +1285,26 @@ function calculateFastPlan(
     let dv2 = dv2Required_mps;
     
     let aerobraking_dv_ms = 0;
+    let aeroCircularise_ms = 0;
+    let aeroTimeSec = 0;
+    let aeroNote = '';
     if (params.brakeAtArrival && params.aerobrake?.allowed) {
-        const targetBody = target as CelestialBody;
-        const hasAtmo = !!(targetBody.atmosphere && targetBody.atmosphere.pressure_bar && targetBody.atmosphere.pressure_bar > 0.001);
-        if (hasAtmo) {
-            const limit_mps = params.aerobrake.limit_kms * 1000;
-            if (dv2 <= limit_mps) {
-                aerobraking_dv_ms = dv2;
-                dv2 = 0;
-            } else {
-                aerobraking_dv_ms = limit_mps;
-                dv2 -= limit_mps;
-            }
-            if (aerobraking_dv_ms > 0) {
-                tags.push(dv2 <= 1 ? 'AEROCAPTURE' : 'PARTIAL-AERO');
-            }
+        // Same judgement the efficiency families use — see physics/aerobrake.ts. It used to be a
+        // second copy of a flat subtraction here, and the two could have drifted.
+        const aero = aerobrakeSolution({
+            target: target as CelestialBody,
+            shipLimitKms: params.aerobrake.limit_kms,
+            dv2Required_ms: dv2,
+            parkingRadiusAU: params.parkingOrbitRadius_au,
+            isOrbitalArrival: isOrbitalArrivalPlacement(params.arrivalPlacement)
+        });
+        if (aero.applied_ms > 0) {
+            aerobraking_dv_ms = aero.applied_ms;
+            dv2 = aero.remaining_ms + aero.circularise_ms;
+            aeroCircularise_ms = aero.circularise_ms;
+            aeroTimeSec = aero.timeSec;
+            aeroNote = aero.note;
+            tags.push(aero.circularise_ms <= 1 ? 'AEROCAPTURE' : 'AEROBRAKE+CIRCULARISE');
         }
     }
 
@@ -1482,6 +1510,9 @@ function calculateFastPlan(
         arrivalPlacement: params.arrivalPlacement,
         tags: [...tags],
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
+        aeroCirculariseDeltaV_ms: aeroCircularise_ms,
+        aeroTimeSec: aeroTimeSec,
+        aeroNote: aeroNote,
         initialDelay_days: params.initialDelay_days
     };
 }

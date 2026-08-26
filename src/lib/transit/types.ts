@@ -44,7 +44,12 @@ export interface TransitPlan {
   totalDeltaV_ms: number;
   totalTime_days: number;
   totalFuel_kg: number;
-  aerobrakingDeltaV_ms?: number; // Delta-V saved by aerobraking
+  aerobrakingDeltaV_ms?: number; // Delta-V the ATMOSPHERE absorbed — propellant not spent
+  // What that manoeuvre actually involved, so the ship's log and the panel can say it rather than
+  // just showing a smaller fuel figure (physics/aerobrake.ts).
+  aeroCirculariseDeltaV_ms?: number; // burn to climb out of the air and circularise where wanted
+  aeroTimeSec?: number;              // wall-clock the dip and its passes add
+  aeroNote?: string;                 // the plain-words account for the log
   arrivalVelocity_ms: number; // Relative velocity at arrival (0 if braked)
   distance_au: number;
   isValid: boolean;
