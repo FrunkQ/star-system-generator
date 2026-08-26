@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.73 - 26th Aug 2026
+
+- The bundled-map upgrade now lists the planets and moons you would lose, not just the ships. It only ever itemised constructs, so a system you had populated yourself showed an empty list under a warning that said your work would be dropped - measured on a real campaign, a Procyon holding eighteen bodies the updated map has no counterpart for reported nothing at all. Every body the new edition cannot match by name is now named and counted before you decide.
+
 ## v3.0.72 - 26th Aug 2026
 
 - Board only. Writes down the rule the physics has always been meant to follow: it steers you away from arrangements that break physics, and never stops you. A criterion tags and explains; it does not refuse an edit, clamp a value you set, or quietly fix your map. Alien tech, a reality breakdown, unobtanium or a plot device are all reasons the engine cannot see, so the verdict is information and the decision stays yours.

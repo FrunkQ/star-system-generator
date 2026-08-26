@@ -1859,6 +1859,20 @@ BLAST: anything under `src/lib/import/realsky/` that the kit imports changes gen
 shipped maps must be regenerated in the SAME commit. Adding a planet host to the roster also
 regenerates `src/lib/generated/bundledArchiveHosts.mjs` (D15) — never hand-edit that file.
 
+### DATA-R25 A DESTRUCTIVE OFFER ITEMISES WHAT IT DESTROYS, or it is not informed consent
+WHERE: `src/lib/map/rebase.ts` (`lossesOf`), shown by `BaseMapUpgradeModal.svelte`'s review stage
+RULE: a screen that warns work will be lost must NAME the work. `lossesOf` reports constructs, a
+GM-pinned name, GM notes, and — since B88 — every BODY the replacement has no counterpart for by
+name. It still refuses to diff masses or orbits on a body both sides carry, because that difference
+is indistinguishable from the data correction the rebuild exists to deliver.
+WHY: B88, measured on a real campaign. The user's Procyon held eighteen bodies he had generated and
+the bundled replacement holds one that matches; because none of them was a CONSTRUCT, the itemised
+list came back EMPTY under a warning that said his work would be dropped. A scary sentence with no
+evidence under it is worse than either half alone: it reads as boilerplate, so it gets clicked past.
+BLAST: name-based, so a rebuild that RENAMES a body over-reports it. That is the deliberate safe
+direction — over-warning costs a second look, under-warning costs the campaign. Anything that adds
+a new node kind must decide whether its absence is a loss and say so here, not silently omit it.
+
 ### DATA-R23 A GM's answer about their OWN campaign is recorded ON the campaign
 WHERE: `src/lib/map/upgradeOffer.ts` (`recordUpgradeAnswer`, the guards in `shouldOfferUpgrade`),
 `types.ts` (`baseMapUpgradeDeclined` / `baseMapUpgradeDismissed`), `BaseMapUpgradeModal.svelte`
