@@ -1,8 +1,10 @@
 # Local transfers and how a journey is drawn — design note (G46)
 
-Status: DESIGN, awaiting the owner's answers to Q1-Q5 at the end. Nothing implemented from this
-note yet. Written 2026-08-26 from measurement, not impression — every number below was taken off
-the Sol Expanse fixture through the real solver.
+Status: **PASS 1 SHIPPED at v3.0.82, 2026-08-26 — see section 6.** Q1 and Q2 are answered (both as
+recommended); Q3, Q4 and Q5 are still open and pass 2 has not started. Sections 1-5 are left exactly
+as written so the before-figures stay readable; section 1's faults (a) and (b) are FIXED, (c) and (d)
+are not. Written 2026-08-26 from measurement, not impression — every number below was taken off the
+Sol Expanse fixture through the real solver.
 
 The owner, 2026-08-26: *"this seems a good time to actually properly tidy up local transfers -
 orbit changes and transits to moons, etc. That code IS a bit broken... I think the maths kinda
@@ -127,3 +129,92 @@ consistency with the two overlays already using it.
 This is a workstream, not a patch, and it deserves its own session with the browser available —
 every fault in section 1 is a VISUAL fault, and the gates that prove it fixed are numeric but the
 verdict is an eyeball. The measurements above are the "before" numbers to beat.
+
+## 6. What pass 1 actually did, and what it found (2026-08-26, v3.0.82)
+
+PASS 1 SHIPPED: per-phase paths and time-stamped samples, in all three plan builders. Q1 answered as
+recommended — smallest honest fix first. Q2 answered as recommended — a cap of 1500 points per plan,
+distributed by phase, with each phase naming the cadence it wants (`PhaseWindow.spacingSec`) so a
+torch plan keeps its two-hour cadence and a Hohmann coast keeps its two-day one. Q3, Q4 and Q5 are
+UNANSWERED and pass 2 has not started.
+
+### Before and after, same fixture, same solver
+
+| segment | before | after |
+|---|---|---|
+| Most Efficient accel (0.68 h) | 2 points, 1,365.8 km/s | 24 points, 19.4 km/s |
+| Most Efficient brake (0.43 h) | 2 points, 1,223.1 km/s | 24 points, 10.9 km/s |
+| Efficient Now accel (1.50 h) | 2 points, 602.6 km/s | 24 points, 18.8 km/s |
+| Efficient Now brake (1.06 h) | 2 points, 496.7 km/s | 24 points, 11.0 km/s |
+| Assist arrival brake (1.24 h) | 2 points, 109.6 km/s | 24 points, 13.9 km/s |
+| Interplanetary coast | 607 points, 4,106,963 km max gap | 608 points, 4,106,807 km max gap |
+| Jupiter-local coast, max turn per point | 56.84 deg | 3.90 deg |
+
+The coast row is the one to read twice: it is the control. The fix adds points to the burns and to
+anything that bends, and leaves an ordinary interplanetary transfer alone.
+
+### Two faults that only became visible once the drawing was honest
+
+1. **The display integrator's step was set by the clock.** A flat two-day RK4 march is fine on a
+   gentle arc and falls off an eccentric one entirely, because angular rate peaks at periapsis. A
+   valid long-way-round Lambert leg with e=0.9986 was being drawn as a 53 AU excursion at 313 km/s.
+   The step is now capped by swept ANGLE (0.01 rad), which binds only where the path turns fast.
+   FIXED HERE, because it is a drawing fault.
+2. **The gravity assist drew leg 2 from a state it was never solved for** — the Bezier's end point,
+   over a shortened span, rather than the flyby centre over the solved span. FIXED HERE.
+
+### Structural notes for [[G47]] — the running list asked for
+
+These are seams, not bugs. Each is a place where the subsystem could answer one question two ways.
+
+**S1. FOUR readers each re-derived 'where is the ship at time t' from `pathPoints`.**
+`scheduler.samplePlanPathAtTime` (the flight), `constructs/shipRoute.ts` (the drawn route line),
+`transit/telemetry.ts` (the HUD) and `TransitPlannerPanel.svelte` (the preview marker) — four
+separate pieces of index arithmetic, all assuming even spacing, one of which had a comment asserting
+the assumption as a fact. They now share `samplePathAtTime`. This is the clearest instance of the
+duplication rule in the subsystem and it is worth asking what ELSE is derived four times.
+
+**S2. `pathPoints` is edited in two places after the solver has finished with it, and neither is in
+`transit/`.** `SystemView.svelte` prunes a completed journey to three points to save memory;
+`starmapSanitizer.ts` filters unreadable ones on the way in. Both had to be taught to carry
+`pathTimes` in lockstep. A parallel-array contract that anything outside the module may edit is
+fragile by construction — the honest shape is a point that carries its own time, not two arrays.
+
+**S3. The drawn gravity-assist flyby is a cosmetic cubic Bezier, not the flown hyperbola.** Its
+parameter is not time, so its stamps are an even spread rather than a truth. Its implied speed
+measures 2.9 km/s average against a 4.4 km/s peak — inside what the ship can do, so it is not lying
+loudly — but the app draws a curve there that no part of the physics computed. The flyby body's own
+frame is where that arc belongs, which is exactly the 'own frame' half of the principle this item
+was built on and the one part of it pass 1 did not need.
+
+**S4. Segment states are widely zero.** `calculateFastPlan` writes literal `{r:{x:0,y:0},
+v:{x:0,y:0}}` for accel-end, coast-start, coast-end and brake-start; `calculateLambertPlan` writes
+`v:{x:0,y:0}` on most of its segment states. `shipRoute.ts` already carries a long comment about
+having been burned by reading them. So a segment does NOT reliably know where it starts or ends, and
+every consumer has learned to route around that rather than through it. Whoever reviews this should
+decide whether a segment's states are truth or decoration, because at the moment they are both.
+
+**S5. Three plan builders, three conventions for the same job.** Lambert slices phases from one
+integration; Fast did the same with different arithmetic (`makePoints`); assist carved phases out of
+a leg with an interpolating `sliceAt`. All three have been brought onto `buildPathSchedule` +
+`slicePhase`, but they still differ in how they choose a frame, whether they run past their own end
+for a drift target, and how they handle non-finite guards (Fast sanitises; the other two do not).
+
+**S6. Drift correction is a linear lerp that hides solver error rather than reporting it.** When the
+integration misses the target, the whole path is smeared to close the gap. It is applied by time now
+rather than by index, which is correct, but it still means a badly-solved leg is drawn as a
+well-solved one and only the endpoint is honest. The 'straight transit lines' bug noted in
+`calculator.ts` was this interacting with n-body perturbers. This is the mechanism that concealed
+[[B93]] for as long as it existed.
+
+**S7. The specs measure cost, never shape.** Recorded as RENDER-S33. Worth deciding whether the
+review's deliverable should include a standing geometric gate for every plan family rather than the
+one this item shipped.
+
+### Documentation debt
+
+None of the four user-facing explainer surfaces describe path sampling — this is a rendering
+contract, not a physics term, tag or threshold — so none needed updating and none were. Recorded
+here rather than left silent. `docs/dev/transit-architecture.md` does NOT yet describe the
+per-phase contract; the engine-map entries RENDER-S32 and RENDER-S33 are the authority meanwhile,
+and folding them into the architecture doc belongs with the [[G47]] review that may reshape it.

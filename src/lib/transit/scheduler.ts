@@ -2,6 +2,7 @@ import type { CelestialBody, System } from '$lib/types';
 import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM, G } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
+import { samplePathAtTime } from '$lib/transit/pathSampling';
 import { deriveCoOrbitalOrbit, LAGRANGE_POINT_IDS } from '$lib/physics/lagrange';
 import type { LagrangePointId } from '$lib/types';
 import { driftAt } from '$lib/physics/driftIntegrator';
@@ -434,30 +435,13 @@ function samplePlanPathAtTime(
     if (timeMs < plan.startTime || timeMs > planEndMs) continue;
     for (const segment of plan.segments) {
       if (timeMs < segment.startTime || timeMs > segment.endTime) continue;
-      const durationMs = Math.max(1, segment.endTime - segment.startTime);
-      const t = (timeMs - segment.startTime) / durationMs;
-      const points = segment.pathPoints || [];
-      if (points.length === 0) continue;
-      if (points.length === 1) {
-        return { position_au: points[0], velocity_ms: { x: 0, y: 0 } };
-      }
-      const exact = t * (points.length - 1);
-      const i0 = Math.max(0, Math.min(points.length - 2, Math.floor(exact)));
-      const i1 = i0 + 1;
-      const alpha = exact - i0;
-      const p0 = points[i0];
-      const p1 = points[i1];
-      const position_au = {
-        x: p0.x + ((p1.x - p0.x) * alpha),
-        y: p0.y + ((p1.y - p0.y) * alpha)
-      };
-
-      const dtSampleSec = Math.max(1e-6, durationMs / 1000 / (points.length - 1));
-      const velocity_ms = {
-        x: ((p1.x - p0.x) * AU_M) / dtSampleSec,
-        y: ((p1.y - p0.y) * AU_M) / dtSampleSec
-      };
-      return { position_au, velocity_ms };
+      // ONE reader for 'where is the ship at t' (transit/pathSampling.ts). It brackets the query by
+      // the samples' OWN times rather than assuming they are evenly spaced — the assumption that put
+      // the ship at the wrong moment for the whole of a burn, and that three other call sites were
+      // independently making with their own arithmetic.
+      const hit = samplePathAtTime(segment, timeMs);
+      if (!hit) continue;
+      return hit;
     }
   }
   return null;

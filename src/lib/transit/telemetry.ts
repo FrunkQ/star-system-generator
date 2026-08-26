@@ -5,6 +5,7 @@ import { computeNetGravityMs2 } from '../physics/gravity';
 import { magnitude, distanceAU } from './math';
 import { getGlobalState } from './physics';
 import { AU_KM } from '../constants';
+import { samplePathAtTime } from './pathSampling';
 
 const G0 = 9.81;
 
@@ -160,22 +161,14 @@ export function calculateFlightTelemetry(system: System, plans: TransitPlan[], r
 
             // Position
             if (activeSegment) {
-                const segStart = activeSegment.startTime - activePlan.startTime;
-                const segDuration = activeSegment.endTime - activeSegment.startTime;
-                if (segDuration > 0) {
-                    const segProgress = (relTime - segStart) / segDuration;
-                    const idx = Math.min(
-                        Math.floor(segProgress * (activeSegment.pathPoints.length - 1)), 
-                        activeSegment.pathPoints.length - 1
-                    );
-                    // Clamp index
-                    const safeIdx = Math.max(0, idx);
-                    const p1 = activeSegment.pathPoints[safeIdx];
-                    const p2 = activeSegment.pathPoints[Math.min(safeIdx + 1, activeSegment.pathPoints.length - 1)];
-                    const subProgress = (segProgress * (activeSegment.pathPoints.length - 1)) % 1;
-                    
-                    shipPos.x = p1.x + (p2.x - p1.x) * subProgress;
-                    shipPos.y = p1.y + (p2.y - p1.y) * subProgress;
+                // The same reader the flight sampler and the drawn route line use, so the HUD cannot
+                // report a position the map disagrees with (G46). It used to index by
+                // fraction-of-count, which is only the same as fraction-of-time while every sample is
+                // evenly spaced — and per-phase sampling means they no longer are.
+                const hit = samplePathAtTime(activeSegment, activePlan.startTime + relTime);
+                if (hit) {
+                    shipPos.x = hit.position_au.x;
+                    shipPos.y = hit.position_au.y;
                     posFound = true;
                 }
             } 

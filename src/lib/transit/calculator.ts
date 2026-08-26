@@ -1,6 +1,8 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, BurnPoint } from './types';
-import { solveLambert, distanceAU, subtract, magnitude, integrateBallisticPath, add } from './math';
+import { solveLambert, distanceAU, subtract, magnitude, integrateBallisticPath, integrateBallisticPathAtTimes, add } from './math';
+import { buildPathSchedule, slicePhase, refineScheduleByTurn, PREFERRED_SPACING_SEC, DEFAULT_PATH_BUDGET } from './pathSampling';
+import type { PathSchedule } from './pathSampling';
 import { getGlobalState, getLocalState, calculateFuelMass } from './physics';
 import { deriveCoOrbitalOrbit, LAGRANGE_POINT_IDS } from '../physics/lagrange';
 import { aerobrakeSolution } from '../physics/aerobrake';
@@ -34,6 +36,19 @@ function getNodeMass(sys: System, node: any): number {
     }
     if (node.roleHint === 'star') return SOLAR_MASS_KG;
     return 0;
+}
+
+/** The sample nearest a given offset from the journey start. Sample times are no longer evenly
+ *  spaced, so a fraction-of-count index is not the same thing as a fraction-of-time one. */
+function indexAtTimeSec(timesSec: number[], tSec: number): number {
+    if (timesSec.length === 0) return 0;
+    let best = 0;
+    let bestGap = Infinity;
+    for (let i = 0; i < timesSec.length; i++) {
+        const gap = Math.abs(timesSec[i] - tSec);
+        if (gap < bestGap) { bestGap = gap; best = i; }
+    }
+    return best;
 }
 
 function estimateOrbitalPeriodDays(
@@ -967,7 +982,19 @@ function calculateLambertPlan(
     const displayBrakeTimeSec = brakeTime_sec;
     const accelEndTime = startTime + displayAccelTimeSec * 1000;
     const brakeStartTime = arrivalTime - displayBrakeTimeSec * 1000;
-    const totalPoints = params.costOnly ? 24 : Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
+    // G46: THE PHASES OWN THE SAMPLING, not one uniform grid sliced afterwards. A sub-hour burn
+    // inside a three-year transfer used to catch no samples at all and borrow two coast points 48
+    // hours apart, which drew it at 1,366 km/s. Each phase now asks for the points it needs over
+    // its own duration; the coast keeps the two-day cadence it always had.
+    const coastStartSec = Math.min(displayAccelTimeSec, durationSec);
+    const coastEndSec = Math.max(coastStartSec, durationSec - displayBrakeTimeSec);
+    let schedule = params.costOnly
+        ? buildPathSchedule([{ key: 'accel', startSec: 0, endSec: coastStartSec },
+                             { key: 'coast', startSec: coastStartSec, endSec: coastEndSec },
+                             { key: 'brake', startSec: coastEndSec, endSec: durationSec }], 24)
+        : buildPathSchedule([{ key: 'accel', startSec: 0, endSec: coastStartSec },
+                             { key: 'coast', startSec: coastStartSec, endSec: coastEndSec },
+                             { key: 'brake', startSec: coastEndSec, endSec: durationSec }]);
     
     // 5. N-Body & Path Integration
     // Belts/rings are DISTRIBUTED mass — their `massKg` is a debris-density proxy, not gravitational
@@ -977,8 +1004,41 @@ function calculateLambertPlan(
     // full n-body perturber set here made the integrated path drift off the Lambert target, and the linear
     // drift-correction then flattened the conic into a near-straight chord (the "straight transit lines"
     // bug). Proper fix = solve Lambert against the n-body field; banked. Until then: draw what we solved.
-    const integration = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetAimPos);
-    const localPath = integration.points;
+    // The RK4 is still capped at the old two-day march across the coast, so the coast trajectory is
+    // the one that always shipped; the burn windows simply ask for points inside it.
+    const frameParentNode = frameParentId ? sys.nodes.find(n => n.id === frameParentId) : null;
+    // Compose the local arc onto the frame parent's own motion, EACH SAMPLE AT ITS OWN TIME.
+    const toGlobal = (pts: Vector2[], timesSec: number[]): Vector2[] => {
+        if (!frameParentNode) return pts;
+        return pts.map((pt, i) => {
+            const tAbs = startTime + (timesSec[i] ?? durationSec) * 1000;
+            return add(pt, getGlobalState(sys, frameParentNode, tAbs).r);
+        });
+    };
+    const runIntegration = (sch: PathSchedule) => integrateBallisticPathAtTimes(
+        startState.r, result.v1, sch.timesSec, mu_au,
+        { targetEndPos: targetAimPos, maxStepSec: PREFERRED_SPACING_SEC }
+    );
+
+    let integration = runIntegration(schedule);
+    let localPath = integration.points;
+    let fullPath = toGlobal(localPath, schedule.timesSec);
+
+    // PUT THE POINTS WHERE THE PATH BENDS. Time-uniform sampling is right for a coast and wrong for
+    // anything that swings close to a body, because angular rate peaks at closest approach. Measured
+    // before this loop existed: an interplanetary coast turned at most 2.24 degrees per sample and
+    // needs no help, while a Jupiter-local transfer turned 56.8 degrees and drew a visible corner.
+    // Refinement is measured on the GLOBAL path, because that is the line the eye follows.
+    if (!params.costOnly) {
+        for (let round = 0; round < 4; round++) {
+            const refined = refineScheduleByTurn(schedule, fullPath);
+            if (!refined) break;
+            schedule = refined;
+            integration = runIntegration(schedule);
+            localPath = integration.points;
+            fullPath = toGlobal(localPath, schedule.timesSec);
+        }
+    }
     const totalDriftM = integration.drift_au * AU_M;
 
     const burns: BurnPoint[] = [];
@@ -996,7 +1056,8 @@ function calculateLambertPlan(
             const tOffset = durationSec * fraction;
             const burnTime = startTime + tOffset * 1000;
             
-            const idx = Math.floor(fraction * (localPath.length - 1));
+            // Index BY TIME, not by fraction-of-count: the samples are deliberately uneven now.
+            const idx = indexAtTimeSec(schedule.timesSec, tOffset);
             const localPos = localPath[idx];
             const parentNode = frameParentId ? sys.nodes.find(fn => fn.id === frameParentId) : null;
             const parentState = parentNode ? getGlobalState(sys, parentNode, burnTime) : null;
@@ -1022,48 +1083,18 @@ function calculateLambertPlan(
         }
     }
     
-    // Reconstruct Global Path if Local Frame Used
-    let fullPath = localPath;
-    if (frameParentId) {
-        const parentNode = sys.nodes.find(n => n.id === frameParentId);
-        if (parentNode) {
-            fullPath = localPath.map((pt, i) => {
-                const dt_step = localPath.length > 1 ? durationSec / (localPath.length - 1) : durationSec;
-                const tAbs = startTime + i * dt_step * 1000;
-                const parentState = getGlobalState(sys, parentNode, tAbs); 
-                return add(pt, parentState.r);
-            });
-        }
-    }
 
-    const dt_step = fullPath.length > 1 ? durationSec / (fullPath.length - 1) : durationSec;
-    let accelPoints: Vector2[] = [];
-    let coastPoints: Vector2[] = [];
-    let brakePoints: Vector2[] = [];
-
-    for(let i=0; i<fullPath.length; i++) {
-         const absTime = startTime + i * dt_step * 1000;
-         const pt = fullPath[i];
-         if (absTime < accelEndTime) accelPoints.push(pt);
-         else if (absTime < brakeStartTime) {
-             if (coastPoints.length === 0 && accelPoints.length > 0) coastPoints.push(accelPoints[accelPoints.length-1]);
-             coastPoints.push(pt);
-         } else {
-             if (brakePoints.length === 0) {
-                 if (coastPoints.length > 0) brakePoints.push(coastPoints[coastPoints.length-1]);
-                 else if (accelPoints.length > 0) brakePoints.push(accelPoints[accelPoints.length-1]);
-             }
-             brakePoints.push(pt);
-         }
-    }
-
-    // If burn windows are shorter than path sampling cadence, ensure visible phase stubs.
-    if (accelTime_sec > 0 && accelPoints.length < 2 && fullPath.length > 1) {
-        accelPoints = [fullPath[0], fullPath[Math.min(1, fullPath.length - 1)]];
-    }
-    if (brakeTime_sec > 0 && brakePoints.length < 2 && fullPath.length > 1) {
-        brakePoints = [fullPath[Math.max(0, fullPath.length - 2)], fullPath[fullPath.length - 1]];
-    }
+    // Each phase takes the points that were generated FOR IT, with the times they were generated at.
+    // The stubs that used to live here — 'if the burn caught fewer than two samples, hand it the
+    // first two of the whole path' — are gone with the cause: no phase can come up short now, because
+    // no phase is sharing anyone else's grid. Reinstating them is what the speed gate in
+    // pathGeometry.spec.ts exists to catch.
+    const accelSlice = slicePhase(schedule, fullPath, 'accel', startTime);
+    const coastSlice = slicePhase(schedule, fullPath, 'coast', startTime);
+    const brakeSlice = slicePhase(schedule, fullPath, 'brake', startTime);
+    const accelPoints = accelSlice.points;
+    const coastPoints = coastSlice.points;
+    const brakePoints = brakeSlice.points;
 
     let distance_au = 0; // Estimation
     if (fullPath.length > 1) distance_au = distanceAU(fullPath[0], fullPath[fullPath.length-1]); // Simplified
@@ -1096,19 +1127,19 @@ function calculateLambertPlan(
     if (accelPoints.length > 1) segments.push({
         id: 'seg-accel', type: 'Accel', startTime, endTime: accelEndTime,
         startState, endState: {r:accelPoints[accelPoints.length-1], v:{x:0,y:0}}, 
-        hostId: root.id, pathPoints: accelPoints, warnings: [], fuelUsed_kg: fuel1
+        hostId: root.id, pathPoints: accelPoints, pathTimes: accelSlice.timesMs, warnings: [], fuelUsed_kg: fuel1
     });
     
     if (coastPoints.length > 1) segments.push({
         id: 'seg-coast', type: 'Coast', startTime: accelEndTime, endTime: brakeStartTime,
         startState: {r:coastPoints[0], v:{x:0,y:0}}, endState: {r:coastPoints[coastPoints.length-1], v:{x:0,y:0}},
-        hostId: root.id, pathPoints: coastPoints, warnings: [], fuelUsed_kg: 0
+        hostId: root.id, pathPoints: coastPoints, pathTimes: coastSlice.timesMs, warnings: [], fuelUsed_kg: 0
     });
 
     if (brakePoints.length > 1) segments.push({
         id: 'seg-brake', type: 'Brake', startTime: brakeStartTime, endTime: arrivalTime,
         startState: {r:brakePoints[0], v:{x:0,y:0}}, endState: finalState,
-        hostId: root.id, pathPoints: brakePoints, warnings: !params.brakeAtArrival ? ['Flyby'] : [], fuelUsed_kg: fuel2
+        hostId: root.id, pathPoints: brakePoints, pathTimes: brakeSlice.timesMs, warnings: !params.brakeAtArrival ? ['Flyby'] : [], fuelUsed_kg: fuel2
     });
 
     // Ensure last segment has final state
@@ -1335,12 +1366,25 @@ function calculateFastPlan(
     const brakeStartTime = startTime + (accelTime + coastTime) * 1000;
 
     const segments: TransitSegment[] = [];
-    const sampleCount = params.costOnly ? 24 : Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
-    
+    // G46: the phases own the sampling here too. A torch plan has always drawn at a two-hour cadence,
+    // so that is the spacing each phase asks for and an ordinary Direct Burn is unchanged; what
+    // changes is that the burns get points generated FOR them, with their own times, instead of being
+    // carved out of a shared grid by `makePoints` and its two-point fallback.
+    const FAST_SPACING_SEC = 3600 * 2;
+    const fastPhases = [
+        { key: 'accel', startSec: 0, endSec: accelTime, spacingSec: FAST_SPACING_SEC },
+        { key: 'coast', startSec: accelTime, endSec: accelTime + coastTime, spacingSec: FAST_SPACING_SEC },
+        { key: 'brake', startSec: accelTime + coastTime, endSec: totalTime, spacingSec: FAST_SPACING_SEC }
+    ];
+    let schedule = buildPathSchedule(fastPhases, params.costOnly ? 24 : DEFAULT_PATH_BUDGET);
+
     // 2-body displayed path (matches the solved trajectory) — see the note in calculateLambertPlan: the
     // n-body perturbers here drove the straight-line bug via the drift-correction. Banked: n-body-aware solve.
-    const integration = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd);
-    const rawLocalPath = integration.points;
+    const runFastIntegration = (sch: PathSchedule) => integrateBallisticPathAtTimes(
+        rStart, v1, sch.timesSec, muLocalAu, { targetEndPos: rEnd, maxStepSec: FAST_SPACING_SEC }
+    );
+    let integration = runFastIntegration(schedule);
+    let rawLocalPath = integration.points;
     const totalDriftM = integration.drift_au * AU_M;
 
     const burns: BurnPoint[] = [];
@@ -1356,7 +1400,7 @@ function calculateFastPlan(
             const tOffset = totalTime * fraction;
             const burnTime = startTime + tOffset * 1000;
             
-            const idx = Math.floor(fraction * (rawLocalPath.length - 1));
+            const idx = indexAtTimeSec(schedule.timesSec, tOffset);
             const localPos = rawLocalPath[idx];
             const parentState = getGlobalState(sys, frameNode, burnTime);
             const globalPos = add(localPos, parentState.r);
@@ -1379,45 +1423,56 @@ function calculateFastPlan(
         }
     }
 
-    const localPath: Vector2[] = [];
-    let lastFinite: Vector2 = { ...rStart };
-    for (const pt of rawLocalPath) {
-        if (Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
-            lastFinite = pt;
-            localPath.push(pt);
-        } else {
-            localPath.push({ ...lastFinite });
+    // Non-finite guards, then compose onto the frame parent AT EACH SAMPLE'S OWN TIME.
+    const sanitiseLocal = (raw: Vector2[]): Vector2[] => {
+        const out: Vector2[] = [];
+        let lastFinite: Vector2 = { ...rStart };
+        for (const pt of raw) {
+            if (Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
+                lastFinite = pt;
+                out.push(pt);
+            } else {
+                out.push({ ...lastFinite });
+            }
         }
-    }
-    const dtStep = localPath.length > 1 ? totalTime / (localPath.length - 1) : totalTime;
-    const fullPath: Vector2[] = [];
-    let lastGlobalFinite = add(rStart, getGlobalState(sys, frameNode, startTime).r);
-    for (let i = 0; i < localPath.length; i++) {
-        const pt = localPath[i];
-        const tAbs = startTime + i * dtStep * 1000;
-        const parentState = getGlobalState(sys, frameNode, tAbs);
-        const g = add(pt, parentState.r);
-        if (Number.isFinite(g.x) && Number.isFinite(g.y)) {
-            lastGlobalFinite = g;
-            fullPath.push(g);
-        } else {
-            fullPath.push({ ...lastGlobalFinite });
-        }
-    }
-    const makePoints = (t0: number, t1: number): Vector2[] => {
-        const pts: Vector2[] = [];
-        for (let i = 0; i < fullPath.length; i++) {
-            const tAbs = startTime + i * dtStep * 1000;
-            if (tAbs >= t0 && tAbs <= t1) pts.push(fullPath[i]);
-        }
-        if (pts.length < 2) {
-            const p0 = fullPath[Math.max(0, Math.floor((t0 - startTime) / 1000 / Math.max(1e-9, dtStep)))];
-            const p1 = fullPath[Math.min(fullPath.length - 1, Math.ceil((t1 - startTime) / 1000 / Math.max(1e-9, dtStep)))];
-            if (p0) pts.push(p0);
-            if (p1 && p1 !== p0) pts.push(p1);
-        }
-        return pts;
+        return out;
     };
+    const toGlobalFast = (pts: Vector2[], timesSec: number[]): Vector2[] => {
+        const out: Vector2[] = [];
+        let lastGlobalFinite = add(rStart, getGlobalState(sys, frameNode, startTime).r);
+        for (let i = 0; i < pts.length; i++) {
+            const tAbs = startTime + (timesSec[i] ?? totalTime) * 1000;
+            const g = add(pts[i], getGlobalState(sys, frameNode, tAbs).r);
+            if (Number.isFinite(g.x) && Number.isFinite(g.y)) {
+                lastGlobalFinite = g;
+                out.push(g);
+            } else {
+                out.push({ ...lastGlobalFinite });
+            }
+        }
+        return out;
+    };
+
+    let localPath = sanitiseLocal(rawLocalPath);
+    let fullPath = toGlobalFast(localPath, schedule.timesSec);
+
+    // Put the points where the path bends — see calculateLambertPlan for the measurement that made
+    // this necessary. A torch plan crossing open space never triggers it; one swinging past a planet does.
+    if (!params.costOnly) {
+        for (let round = 0; round < 4; round++) {
+            const refined = refineScheduleByTurn(schedule, fullPath);
+            if (!refined) break;
+            schedule = refined;
+            integration = runFastIntegration(schedule);
+            rawLocalPath = integration.points;
+            localPath = sanitiseLocal(rawLocalPath);
+            fullPath = toGlobalFast(localPath, schedule.timesSec);
+        }
+    }
+
+    const accelSlice = slicePhase(schedule, fullPath, 'accel', startTime);
+    const coastSlice = slicePhase(schedule, fullPath, 'coast', startTime);
+    const brakeSlice = slicePhase(schedule, fullPath, 'brake', startTime);
 
     if (accelTime > 0) {
         segments.push({
@@ -1428,7 +1483,8 @@ function calculateFastPlan(
             startState,
             endState: { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } },
             hostId: frameNode.id,
-            pathPoints: makePoints(startTime, accelEndTime),
+            pathPoints: accelSlice.points,
+            pathTimes: accelSlice.timesMs,
             warnings: params.maxG > 2 ? ['High G'] : [],
             fuelUsed_kg: fuel1
         });
@@ -1442,7 +1498,8 @@ function calculateFastPlan(
             startState: { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } },
             endState: { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } },
             hostId: frameNode.id,
-            pathPoints: makePoints(accelEndTime, brakeStartTime),
+            pathPoints: coastSlice.points,
+            pathTimes: coastSlice.timesMs,
             warnings: [],
             fuelUsed_kg: 0
         });
@@ -1474,7 +1531,8 @@ function calculateFastPlan(
             startState: { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } },
             endState: { r: globalAim, v: finalVelocity },
             hostId: frameNode.id,
-            pathPoints: makePoints(brakeStartTime, endTime),
+            pathPoints: brakeSlice.points,
+            pathTimes: brakeSlice.timesMs,
             warnings: [
                 ...(params.maxG > 2 ? ['High G'] : []),
                 ...(!params.brakeAtArrival ? ['Flyby'] : [])

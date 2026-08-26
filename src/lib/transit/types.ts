@@ -29,6 +29,12 @@ export interface TransitSegment {
   endState: StateVector;
   hostId: ID; // The body this segment is relative to (usually Star, but could be Planet if inside SOI)
   pathPoints: Vector2[]; // Pre-calculated points for visualization
+  // WHEN each of those points is, in absolute ms, parallel to `pathPoints`. Optional because
+  // journeys saved before G46 do not carry it and every reader falls back to assuming even
+  // spacing — which is exactly the assumption that let a sub-hour burn be drawn with two coast
+  // samples 48 hours apart. A stamped segment is read by the two points that actually BRACKET
+  // the query time (transit/pathSampling.ts).
+  pathTimes?: number[];
   warnings: string[]; // "High G", "Radiation", "Fuel Low"
   fuelUsed_kg: number;
 }

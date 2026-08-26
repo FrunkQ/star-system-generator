@@ -1786,10 +1786,17 @@
                     ...p,
                     segments: p.segments.map(s => {
                         let pts = s.pathPoints || [];
+                        let times = s.pathTimes;
                         if (pts.length > 3) {
-                            pts = [pts[0], pts[pts.length - 2], pts[pts.length - 1]];
+                            const keep = [0, pts.length - 2, pts.length - 1];
+                            // The STAMPS have to be pruned with the points they belong to. Keeping a
+                            // full time array against three points would make them disagree in length,
+                            // and every reader would silently fall back to assuming even spacing across
+                            // a segment whose remaining samples are anything but (G46).
+                            if (times && times.length === pts.length) times = keep.map(i => times![i]);
+                            pts = keep.map(i => pts[i]);
                         }
-                        return { ...s, pathPoints: pts };
+                        return { ...s, pathPoints: pts, ...(times ? { pathTimes: times } : {}) };
                     })
                 }));
             }

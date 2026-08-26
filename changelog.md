@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v3.0.82 - 26th Aug 2026
+
+- Burns are drawn where they actually happen, and at a speed a ship could actually manage. A burn lasting under an hour inside a three-year transfer used to catch none of the path samples at all — the whole journey was drawn as one line of a point every two days, then chopped into acceleration, coast and braking after the fact — so the burn borrowed two coast points forty-eight hours apart and the ship was drawn crossing three million kilometres in forty-one minutes. That is 1,366 km/s for a freighter that manages about 10 km/s in an hour, and it happened at exactly the moment you were watching, because that is when the engine is lit. Each phase now draws its own path over its own stretch of time: the same burn draws at 19.4 km/s.
+- The ship no longer glitches when you speed the clock up. Every point along a course now carries the time it belongs to, instead of the four different parts of the app that place a ship each assuming the points were evenly spaced. They were not, and the ship, the line it flies along, the telemetry readout and the planner's preview marker could all disagree about where it was.
+- Local transfers — moon to moon, or a change of orbit around a planet — are drawn as curves rather than as polygons. Points are now placed where the path BENDS rather than at a fixed number of hours apart, because a path swings fastest exactly where it passes closest to something. A Jupiter-local transfer used to turn 57 degrees between one drawn point and the next; it now turns under 4.
+- Long, stretched transfers are drawn on the trajectory they were actually solved for. The path was stepped forward at a flat two-day interval regardless of what it was doing, which is fine on a gentle arc and hopeless on a sharp one: a gravity-assist leg that dips inside Earth's orbit was being drawn flung out to 53 AU at 313 km/s. The step now shortens automatically wherever the path turns quickly.
+- Also fixed, found by the above: a gravity-assist route was drawn starting from a point that was never on its own trajectory, so the picture and the flight were two different journeys.
+- Ordinary interplanetary transfers are unchanged. That was checked rather than assumed, and the numbers are recorded.
+
 ## v3.0.81 - 26th Aug 2026
 
 - Board only. G47 banks a full transit review with the subsystem measured up front, so whoever takes it starts from line counts and a blast radius rather than an impression.

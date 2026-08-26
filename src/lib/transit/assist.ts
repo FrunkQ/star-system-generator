@@ -1,6 +1,7 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, StateVector, Vector2 } from './types';
-import { solveLambert, magnitude, subtract, distanceAU, integrateBallisticPath, dot } from './math';
+import { solveLambert, magnitude, subtract, distanceAU, integrateBallisticPath, integrateBallisticPathAtTimes, dot } from './math';
+import { buildPathSchedule, slicePhase, DEFAULT_PATH_BUDGET } from './pathSampling';
 import { getGlobalState, calculateFuelMass } from './physics';
 import { AU_KM, G } from '../constants';
 
@@ -294,37 +295,78 @@ function buildAssistTransitPlan(
     
     // Dynamic steps for long coasts (costOnly keeps the analytic cost but skips the dense display path).
     const costOnly = params.costOnly;
-    const steps1 = costOnly ? 24 : Math.min(2000, Math.max(100, Math.ceil((t1_end - t1) / (1000 * 86400 * 2))));
-    const steps2 = costOnly ? 24 : Math.min(2000, Math.max(100, Math.ceil((t3 - t2_start) / (1000 * 86400 * 2))));
+    // G46: the burn windows are known before the paths are drawn, so each leg's integration can put
+    // points INSIDE them instead of the burn being carved afterwards out of a two-day grid. Carving
+    // was what left the arrival brake with two points spanning a whole coast sample — measured at
+    // 109.6 km/s over a 1.24 h burn for a 0.3 g ship, the same absurdity as the Lambert family's.
+    const burnAccel = Math.max(0.01, (params.maxG || 0.1) * 9.81);
+    const leg1Ms = Math.max(1, t1_end - t1);
+    const accelMs = Math.min(leg1Ms * 0.9, (dv1 / burnAccel) * 1000);
+    const leg2Ms = Math.max(1, t3 - t2_start);
+    const brakeMs = Math.min(leg2Ms * 0.9, (dv3 / burnAccel) * 1000);
+    const ASSIST_SPACING_SEC = 86400 * 2;
 
     // LEG 1 Path (Truncated) - WITH DRIFT CORRECTION
     // We generate the FULL path to T2 (Flyby Center), force it to hit the Planet, then slice it back.
     const flybyCenterState = getGlobalState(sys, flybyBody, t2);
     
-    // Integrate fully to T2 with correction
-    const integration1 = integrateBallisticPath(
-        s1.r, 
-        leg1.v1, 
-        (t2 - t1) / 1000, 
-        mu_au, 
-        steps1 + 10, // Add a few steps buffer
-        flybyCenterState.r // Force hit Jupiter center
+    // Integrate fully to T2 with correction. The run continues past the drawn leg to the flyby
+    // centre — that tail is what the drift correction aims at — but it is a separate PHASE, so it is
+    // discarded by name rather than by an index computed from a length.
+    const sched1 = buildPathSchedule([
+        { key: 'accel', startSec: 0, endSec: accelMs / 1000, spacingSec: ASSIST_SPACING_SEC },
+        { key: 'coast', startSec: accelMs / 1000, endSec: (t1_end - t1) / 1000, spacingSec: ASSIST_SPACING_SEC },
+        { key: 'tail', startSec: (t1_end - t1) / 1000, endSec: (t2 - t1) / 1000, spacingSec: ASSIST_SPACING_SEC }
+    ], costOnly ? 24 : DEFAULT_PATH_BUDGET);
+    const integration1 = integrateBallisticPathAtTimes(
+        s1.r, leg1.v1, sched1.timesSec, mu_au,
+        { targetEndPos: flybyCenterState.r, maxStepSec: ASSIST_SPACING_SEC }
     );
     const leg1FullPoints = integration1.points;
-    
-    // Find the slice point for T1_end
-    // t1_end is 'flybyDtSec' before t2
-    const sliceIndex = Math.floor(leg1FullPoints.length * ((t1_end - t1) / (t2 - t1)));
-    const leg1Points = leg1FullPoints.slice(0, sliceIndex + 1);
+    const leg1Accel = slicePhase(sched1, leg1FullPoints, 'accel', t1);
+    const leg1Coast = slicePhase(sched1, leg1FullPoints, 'coast', t1);
+    // The drawn leg is the accel plus the coast, sharing their boundary vertex exactly once.
+    const leg1Points = [...leg1Accel.points, ...leg1Coast.points.slice(1)];
+    const leg1Times = [...leg1Accel.timesMs, ...leg1Coast.timesMs.slice(1)];
     
     const p1 = leg1Points[leg1Points.length - 1];
     const v1 = leg1.v2; 
 
-    // Bezier Calculations...
-    const integrationGap = integrateBallisticPath(getGlobalState(sys, flybyBody, t2).r, leg2.v1, flybyDtSec, mu_au, 10);
-    const gapPoints = integrationGap.points;
-    const p2 = gapPoints[gapPoints.length - 1];
-    
+    // LEG 2 — DRAWN FROM THE STATE IT WAS SOLVED FROM.
+    //
+    // `leg2` is a Lambert solution from the FLYBY BODY'S POSITION AT t2 across the whole t2->t3 span.
+    // The drawing used to start somewhere else entirely: at the Bezier's end point, produced by a
+    // separate ten-step integration, and then run for a SHORTER span. A Lambert velocity applied at a
+    // position it was not solved for is simply a different conic, and the end-point drift correction
+    // then hauled the far end back onto the target while leaving the middle wherever it had gone. The
+    // coarse two-day sampling hid how far that was; sampling the arrival brake at its own resolution
+    // did not, and showed the ship drawn at 264 km/s on a plan whose entire Delta-v budget is 34 km/s.
+    //
+    // So the integration now starts at the flyby centre with the velocity that belongs there, and the
+    // lead-in across the flyby window is a PHASE that is generated and then dropped — the same device
+    // leg 1 uses to run on to the flyby centre for its own drift target.
+    const finalTargetPos = getGlobalState(sys, target, t3).r;
+    const leadSec = flybyDtSec;
+    const sched2 = buildPathSchedule([
+        { key: 'lead', startSec: 0, endSec: leadSec, spacingSec: ASSIST_SPACING_SEC },
+        { key: 'coast', startSec: leadSec, endSec: leadSec + (leg2Ms - brakeMs) / 1000, spacingSec: ASSIST_SPACING_SEC },
+        { key: 'brake', startSec: leadSec + (leg2Ms - brakeMs) / 1000, endSec: leadSec + leg2Ms / 1000, spacingSec: ASSIST_SPACING_SEC }
+    ], costOnly ? 24 : DEFAULT_PATH_BUDGET);
+    const integration2 = integrateBallisticPathAtTimes(
+        flybyCenterState.r, leg2.v1, sched2.timesSec, mu_au,
+        { targetEndPos: finalTargetPos, maxStepSec: ASSIST_SPACING_SEC }
+    );
+    const leg2FullPoints = integration2.points;
+    const leg2Coast = slicePhase(sched2, leg2FullPoints, 'coast', t2);
+    const leg2Brake = slicePhase(sched2, leg2FullPoints, 'brake', t2);
+    const leg2Points = [...leg2Coast.points, ...leg2Brake.points.slice(1)];
+    const leg2Times = [...leg2Coast.timesMs, ...leg2Brake.timesMs.slice(1)];
+
+    // The flyby arc now joins two points that are both ON the solved trajectory: leg 1's last drawn
+    // point and leg 2's first. It used to end at a point invented by an integration that nothing else
+    // read, which is why that integration is gone.
+    const p2 = leg2Coast.points[0];
+
     // ... Bezier Loop ... (Unchanged)
     const flybyPoints: Vector2[] = [];
     const stepsFlyby = 20;
@@ -338,22 +380,6 @@ function buildAssistTransitPlan(
         const y = mt*mt*mt*p1.y + 3*mt*mt*t*cp1.y + 3*mt*t*t*cp2.y + t*t*t*p2.y;
         flybyPoints.push({x, y});
     }
-
-    // LEG 2 Path (Truncated) - WITH DRIFT CORRECTION
-    // Target: The actual position of the destination body at T3
-    const finalTargetPos = getGlobalState(sys, target, t3).r;
-    
-    // Note: We integrate from P2 (Bezier End) to T3.
-    // We enforce that it ends at finalTargetPos.
-    const integration2 = integrateBallisticPath(
-        p2, 
-        leg2.v1, 
-        (t3 - t2_start) / 1000, 
-        mu_au, 
-        steps2, 
-        finalTargetPos // <--- Drift Correction Enabled
-    ); 
-    const leg2Points = integration2.points;
 
     // --- CORRECTION LOGIC & FUEL ---
     const burns: BurnPoint[] = [];
@@ -406,40 +432,27 @@ function buildAssistTransitPlan(
     // and re-solving them with finite burns is a different piece of work. This is the same
     // display-grade split the torch families already use — it makes the burn VISIBLE at the right
     // moment and for the right duration, which is what the plume and the flip read.
-    const burnAccel = Math.max(0.01, (params.maxG || 0.1) * 9.81);
-    // Split the path at an exact fraction, INTERPOLATING the boundary point so both halves are
-    // drawable. Rounding to the nearest existing point instead left the brake with a single point
-    // whenever the burn was short against its leg — and a one-point path draws NO LINE, so the red
-    // brake stroke the map uses to show a flip-and-burn simply did not appear. Both halves now carry
-    // the shared boundary point, so they meet exactly and each has at least two.
-    const sliceAt = (pts: Vector2[], frac: number) => {
-        const f = Math.max(0, Math.min(1, frac));
-        const x = f * (pts.length - 1);
-        const i = Math.max(0, Math.min(pts.length - 2, Math.floor(x)));
-        const tt = x - i;
-        const a = pts[i], b = pts[i + 1];
-        const mid = { x: a.x + (b.x - a.x) * tt, y: a.y + (b.y - a.y) * tt };
-        return { head: [...pts.slice(0, i + 1), mid], tail: [mid, ...pts.slice(i + 1)] };
-    };
-
-    // LEG 1 — a departure burn, then the coast it bought.
-    const leg1Ms = Math.max(1, t1_end - t1);
-    const accelMs = Math.min(leg1Ms * 0.9, (dv1 / burnAccel) * 1000);
-    if (accelMs > 0 && leg1Points.length > 2) {
-        const { head, tail } = sliceAt(leg1Points, accelMs / leg1Ms);
+    // The burn phases now OWN their points — generated over their own window by the leg's own
+    // integration — so nothing is carved out of anyone else's grid and nothing has to be interpolated
+    // into existence at the boundary. What used to live here was `sliceAt`, which split a two-day
+    // sampled leg at an arbitrary fraction and handed the burn whatever fell on its side: two points
+    // for any burn shorter than the sampling cadence, which every short burn is.
+    if (accelMs > 0 && leg1Accel.points.length > 1) {
         segments.push({
             id: 'leg-1-accel', type: 'Accel',
             startTime: t1, endTime: t1 + accelMs,
             startState: { r: s1.r, v: s1.v },
-            endState: { r: head[head.length - 1], v: leg1.v1 },
-            hostId: root.id, pathPoints: head, warnings: [], fuelUsed_kg: 0
+            endState: { r: leg1Accel.points[leg1Accel.points.length - 1], v: leg1.v1 },
+            hostId: root.id, pathPoints: leg1Accel.points, pathTimes: leg1Accel.timesMs,
+            warnings: [], fuelUsed_kg: 0
         });
         segments.push({
             id: 'leg-1-coast', type: 'Coast',
             startTime: t1 + accelMs, endTime: t1_end,
-            startState: { r: tail[0], v: leg1.v1 },
+            startState: { r: leg1Coast.points[0], v: leg1.v1 },
             endState: { r: p1, v: leg1.v2 },
-            hostId: root.id, pathPoints: tail, warnings: [], fuelUsed_kg: 0
+            hostId: root.id, pathPoints: leg1Coast.points, pathTimes: leg1Coast.timesMs,
+            warnings: [], fuelUsed_kg: 0
         });
     } else {
         segments.push({
@@ -447,10 +460,18 @@ function buildAssistTransitPlan(
             startTime: t1, endTime: t1_end,
             startState: { r: s1.r, v: leg1.v1 },
             endState: { r: p1, v: leg1.v2 },
-            hostId: root.id, pathPoints: leg1Points, warnings: [], fuelUsed_kg: 0
+            hostId: root.id, pathPoints: leg1Points, pathTimes: leg1Times, warnings: [], fuelUsed_kg: 0
         });
     }
     
+    // THE FLYBY ARC IS A COSMETIC BEZIER, NOT THE FLOWN HYPERBOLA. Its parameter is not time, so
+    // these stamps are an even spread rather than a truth — good enough because the curve's implied
+    // speed measures 2.9 km/s average against a 4.4 km/s peak, well inside what the ship can do, and
+    // stamping it at least keeps every reader agreeing about where the ship is. Replacing the Bezier
+    // with a real integrated pass in the flyby body's frame is a solver change, recorded for G47.
+    const evenTimes = (pts: Vector2[], startMs: number, endMs: number) =>
+        pts.map((_, i) => startMs + ((endMs - startMs) * i) / Math.max(1, pts.length - 1));
+
     // FLYBY SEGMENT
     segments.push({
         id: 'leg-flyby',
@@ -461,6 +482,7 @@ function buildAssistTransitPlan(
         endState: { r: flybyPoints[flybyPoints.length-1], v: {x:0,y:0} },
         hostId: flybyBody.id,
         pathPoints: flybyPoints,
+        pathTimes: evenTimes(flybyPoints, t1_end, t2_start),
         warnings: ['Gravity Assist'],
         fuelUsed_kg: 0
     });
@@ -482,23 +504,22 @@ function buildAssistTransitPlan(
     // makes the deceleration a real phase with a start time, so the ship flips retrograde and lights
     // its drive for exactly as long as the burn takes, instead of the whole change appearing as a
     // discontinuity in the final instant.
-    const leg2Ms = Math.max(1, t3 - t2_start);
-    const brakeMs = Math.min(leg2Ms * 0.9, (dv3 / burnAccel) * 1000);
-    if (brakeMs > 0 && leg2Points.length > 2) {
-        const { head, tail } = sliceAt(leg2Points, 1 - brakeMs / leg2Ms);
+    if (brakeMs > 0 && leg2Brake.points.length > 1) {
         segments.push({
             id: 'leg-2-coast', type: 'Coast',
             startTime: t2_start, endTime: t3 - brakeMs,
             startState: { r: p2, v: leg2.v1 },
-            endState: { r: head[head.length - 1], v: leg2.v2 },
-            hostId: root.id, pathPoints: head, warnings: [], fuelUsed_kg: 0
+            endState: { r: leg2Coast.points[leg2Coast.points.length - 1], v: leg2.v2 },
+            hostId: root.id, pathPoints: leg2Coast.points, pathTimes: leg2Coast.timesMs,
+            warnings: [], fuelUsed_kg: 0
         });
         segments.push({
             id: 'leg-2-brake', type: 'Brake',
             startTime: t3 - brakeMs, endTime: t3,
-            startState: { r: tail[0], v: leg2.v2 },
+            startState: { r: leg2Brake.points[0], v: leg2.v2 },
             endState: { r: targetEndState.r, v: targetEndState.v },
-            hostId: root.id, pathPoints: tail, warnings: [], fuelUsed_kg: 0
+            hostId: root.id, pathPoints: leg2Brake.points, pathTimes: leg2Brake.timesMs,
+            warnings: [], fuelUsed_kg: 0
         });
     } else {
         segments.push({
@@ -506,7 +527,7 @@ function buildAssistTransitPlan(
             startTime: t2_start, endTime: t3,
             startState: { r: p2, v: leg2.v1 },
             endState: { r: targetEndState.r, v: targetEndState.v },
-            hostId: root.id, pathPoints: leg2Points, warnings: [], fuelUsed_kg: 0
+            hostId: root.id, pathPoints: leg2Points, pathTimes: leg2Times, warnings: [], fuelUsed_kg: 0
         });
     }
 

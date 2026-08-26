@@ -22,6 +22,7 @@
   import TransitStressGraph from './TransitStressGraph.svelte';
   import BodyPicker from './BodyPicker.svelte';
   import { foreground } from '$lib/ui/foreground';
+  import { samplePathAtTime } from '$lib/transit/pathSampling';
 
   function getTcmClass(g: number): string {
       if (g > 10.0) return 'tcm-critical';
@@ -810,9 +811,9 @@
           for (const segment of activeLegObj.segments) {
               const segDuration = segment.endTime - segment.startTime;
               if (absTime >= segment.startTime && absTime <= segment.endTime && segDuration > 0) {
-                  const segProgress = (absTime - segment.startTime) / segDuration;
-                  const idx = Math.min(Math.floor(segProgress * (segment.pathPoints.length - 1)), segment.pathPoints.length - 1);
-                  pos = segment.pathPoints[idx];
+                  // Shared reader (G46): brackets by the samples' own times, so the preview marker
+                  // sits where the ship will actually be rather than at a fraction-of-count index.
+                  pos = samplePathAtTime(segment, absTime)?.position_au ?? null;
                   activeSegmentType = segment.type; 
                   break;
               }

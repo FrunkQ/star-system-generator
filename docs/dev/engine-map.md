@@ -3447,3 +3447,51 @@ two Hill formulas. Finally, B24's "Driven by:" restates the fate's own reason, w
 reasons were short ("Critical Hill spacing (Delta=2.31)"); the reasons here are full explanations, so
 a criterion with a long reason must set `fateShort` or the paragraph is printed twice, two lines
 apart. Criteria that set nothing behave exactly as before.
+
+### RENDER-S32 A SEGMENT OWNS ITS OWN PATH, AT ITS OWN RESOLUTION, IN ITS OWN FRAME
+WHERE: `transit/pathSampling.ts` (the schedule, the slicing, the one reader), `transit/math.ts`
+(`integrateBallisticPathAtTimes`), and the three plan builders that use them — `calculateLambertPlan`,
+`calculateFastPlan` and `assist.ts`. The contract is `TransitSegment.pathTimes`.
+RULE: a phase generates its OWN points over its OWN duration, and every point carries its OWN time.
+Never generate one path across a whole journey and slice it by comparing timestamps afterwards, and
+never assume sample i sits at fraction i/(n-1) of a segment — read the stamps through
+`pathSampleTimesMs` or `samplePathAtTime`. If points are dropped or pruned, the stamps go with them;
+two arrays of different lengths silently revert every reader to the even-spacing assumption.
+WHY: the old shape generated one uniform path (a sample per two days) and sliced it into Accel /
+Coast / Brake by time, so a sub-hour burn inside a three-year transfer caught NO samples and a
+fallback handed it the last two COAST samples instead. Measured on the Sol Expanse fixture at 0.3 g:
+the drawn accel implied 1,366 km/s and the brake 1,223 km/s, for a ship that reaches about 10 km/s in
+an hour — worst exactly where the eye is, because the engine is lit. After the change the same
+segments draw at 19.4 and 10.9 km/s. G46.
+BLAST: FOUR readers independently re-derived 'where is the ship at t' from `pathPoints` and all four
+assumed even spacing — `scheduler.samplePlanPathAtTime` (the flight), `constructs/shipRoute.ts` (the
+drawn route line, which even documented the assumption), `transit/telemetry.ts` (the HUD) and
+`TransitPlannerPanel.svelte` (the preview marker). They now all come through one function; two
+answers to that question would slide the ship off the line it is drawn beside. `SystemView.svelte`
+prunes a completed journey's points and `starmapSanitizer.ts` filters unreadable ones — both must
+carry the stamps in lockstep. Journeys saved before this carry no stamps at all and fall back to even
+spacing, which is correct for them, so the fallback is not dead code.
+
+### RENDER-S33 THE TRANSIT SPECS PIN DELTA-V AND TIMING; NOTHING PINNED THE DRAWN PATH
+WHERE: `transit/pathGeometry.spec.ts` is the gate. The gap it fills is everywhere else in
+`src/lib/transit/*.spec.ts`.
+RULE: a change to how a journey is DRAWN must ship with a geometric assertion in the same commit. A
+correct Delta-v total says nothing about whether the line beside it is possible, and a green suite is
+not evidence about geometry. The two cheap gates are: no consecutive pair of drawn points may imply a
+speed beyond the ship's own ceiling (derived per plan — escape speed at the path's closest approach
+plus the plan's whole Delta-v budget — because a torch doing 548 km/s is telling the truth and a
+Hohmann freighter doing 1,366 km/s is not), and no single drawn step may swallow a large fraction of
+its own segment.
+WHY: this is HOW the 1,366 km/s burn shipped and stayed. Every transit spec was green throughout. The
+gate has been checked against the fault rather than merely watched to pass: reinstating the
+borrowed-sample fallback makes it fail at 1,366 km/s against a ceiling of 68 — a factor of twenty —
+and eleven of its twelve assertions go red. G46.
+BLAST: two further faults were invisible for the same reason and surfaced the moment the drawing
+became honest. The assist family's arrival brake was drawn at 109.6 km/s; and the display integrator
+marched at a flat two-day step, which falls off an eccentric conic near periapsis — a valid
+long-way-round Lambert leg with e=0.9986 was being drawn as a 53 AU excursion at 313 km/s. The step
+is now capped by swept ANGLE (`MAX_STEP_RAD`), not by the clock. That correction in turn revealed
+that the assist search never checks where its heliocentric legs GO: it rejects a flyby that would
+clip the flyby body, but offers a leg whose perihelion is 0.0037 AU, inside the corona. Pinned by
+`calculator.belt.test.ts` and left for the transit review — rejecting a candidate changes which plans
+a user is offered, which is a solver decision, not a drawing one.

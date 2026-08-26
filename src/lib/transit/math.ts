@@ -9,24 +9,38 @@ export function distanceAU(v1: Vector2, v2: Vector2): number {
     return Math.sqrt(dx*dx + dy*dy);
 }
 
-export function integrateBallisticPath(
-    startPos: Vector2, 
-    startVel: Vector2, 
-    durationSec: number, 
-    mu_au: number, 
-    steps: number = 100,
-    targetEndPos?: Vector2, // OPTIONAL: Force path to end here (Drift Correction)
-    nBodyNodes?: { mu: number, pos: Vector2 }[] // OPTIONAL: Extra gravity sources
+/**
+ * INTEGRATE A BALLISTIC ARC AND EMIT POINTS AT TIMES YOU CHOOSE.
+ *
+ * The output cadence and the integration cadence are separate concerns here, and keeping them
+ * separate is the whole point (G46). `sampleTimesSec` says WHERE you want points — it may be as
+ * uneven as you like, dense through a burn and sparse across a coast — while `maxStepSec` caps how
+ * far the RK4 is allowed to march between them, so accuracy does not collapse when two requested
+ * samples happen to be years apart.
+ *
+ * Drift correction is applied by TIME fraction rather than by index, because with uneven samples
+ * those are no longer the same number; lerping by index would smear the correction toward whichever
+ * end of the path happened to be sampled densely.
+ */
+export function integrateBallisticPathAtTimes(
+    startPos: Vector2,
+    startVel: Vector2,
+    sampleTimesSec: number[],
+    mu_au: number,
+    opts?: {
+        targetEndPos?: Vector2;                        // force the path to end here (drift correction)
+        nBodyNodes?: { mu: number, pos: Vector2 }[];   // extra gravity sources
+        maxStepSec?: number;                           // ceiling on the internal RK4 step
+    }
 ): { points: Vector2[], drift_au: number } {
-    const points: Vector2[] = [startPos];
-    const dt = durationSec / steps;
-    
-    let r = startPos;
-    let v = startVel;
-    
-    // RK4 Helper
+    const times = sampleTimesSec;
+    if (times.length === 0) return { points: [], drift_au: 0 };
+
+    const nBodyNodes = opts?.nBodyNodes;
+    const targetEndPos = opts?.targetEndPos;
+
     type State = { r: Vector2, v: Vector2 };
-    
+
     const getDeriv = (s: State): State => {
         // Primary Body
         const rMag = Math.sqrt(s.r.x*s.r.x + s.r.y*s.r.y);
@@ -50,56 +64,123 @@ export function integrateBallisticPath(
         return { r: s.v, v: { x: ax, y: ay } };
     };
 
-    for (let i = 0; i < steps; i++) {
+    const step = (r: Vector2, v: Vector2, dt: number): State => {
         const k1 = getDeriv({ r, v });
-        
+
         const s2 = {
             r: { x: r.x + k1.r.x * dt * 0.5, y: r.y + k1.r.y * dt * 0.5 },
             v: { x: v.x + k1.v.x * dt * 0.5, y: v.y + k1.v.y * dt * 0.5 }
         };
         const k2 = getDeriv(s2);
-        
+
         const s3 = {
             r: { x: r.x + k2.r.x * dt * 0.5, y: r.y + k2.r.y * dt * 0.5 },
             v: { x: v.x + k2.v.x * dt * 0.5, y: v.y + k2.v.y * dt * 0.5 }
         };
         const k3 = getDeriv(s3);
-        
+
         const s4 = {
             r: { x: r.x + k3.r.x * dt, y: r.y + k3.r.y * dt },
             v: { x: v.x + k3.v.x * dt, y: v.y + k3.v.y * dt }
         };
         const k4 = getDeriv(s4);
-        
-        r = {
-            x: r.x + (dt/6) * (k1.r.x + 2*k2.r.x + 2*k3.r.x + k4.r.x),
-            y: r.y + (dt/6) * (k1.r.y + 2*k2.r.y + 2*k3.r.y + k4.r.y)
+
+        return {
+            r: {
+                x: r.x + (dt/6) * (k1.r.x + 2*k2.r.x + 2*k3.r.x + k4.r.x),
+                y: r.y + (dt/6) * (k1.r.y + 2*k2.r.y + 2*k3.r.y + k4.r.y)
+            },
+            v: {
+                x: v.x + (dt/6) * (k1.v.x + 2*k2.v.x + 2*k3.v.x + k4.v.x),
+                y: v.y + (dt/6) * (k1.v.y + 2*k2.v.y + 2*k3.v.y + k4.v.y)
+            }
         };
-        v = {
-            x: v.x + (dt/6) * (k1.v.x + 2*k2.v.x + 2*k3.v.x + k4.v.x),
-            y: v.y + (dt/6) * (k1.v.y + 2*k2.v.y + 2*k3.v.y + k4.v.y)
-        };
-        
+    };
+
+    const maxStepSec = opts?.maxStepSec && opts.maxStepSec > 0 ? opts.maxStepSec : Infinity;
+
+    // HOW FAR THE INTEGRATOR MAY MARCH, SET BY THE GEOMETRY RATHER THAN THE CLOCK.
+    //
+    // A fixed step is fine on a near-circular arc and ruinous on an eccentric one, because angular
+    // rate peaks at periapsis and a step that was modest out at aphelion is enormous coming through
+    // the bottom. Measured on the Sol Expanse fixture: a Saturn-to-Jupiter gravity-assist leg is a
+    // valid long-way-round Lambert arc with a 1.13 AU perihelion and an eccentricity near 0.96, and
+    // marching it at a flat two-day step threw the integration off its own conic — the drawn path
+    // reached 53 AU and 313 km/s on a plan whose entire Delta-v budget is 34 km/s.
+    //
+    // Capping the swept ANGLE per step fixes that and costs nothing elsewhere: out at aphelion the cap
+    // is never the binding constraint and the step stays as long as the caller allowed it to be.
+    const MAX_STEP_RAD = 0.01; // ~0.57 degrees of arc per RK4 step
+    const MAX_SUBSTEPS_PER_INTERVAL = 2000; // guard, so a pathological state cannot hang a redraw
+    const stepCap = (rr: Vector2, vv: Vector2): number => {
+        const r2 = rr.x * rr.x + rr.y * rr.y;
+        if (!(r2 > 0)) return maxStepSec;
+        const h = Math.abs(rr.x * vv.y - rr.y * vv.x); // specific angular momentum
+        const omega = h / r2;                          // rad/s about the primary
+        if (!(omega > 0)) return maxStepSec;
+        return Math.min(maxStepSec, MAX_STEP_RAD / omega);
+    };
+
+    let r = startPos;
+    let v = startVel;
+    let tNow = times[0];
+    const points: Vector2[] = [{ ...startPos }];
+
+    for (let i = 1; i < times.length; i++) {
+        let t = tNow;
+        let guard = 0;
+        while (t < times[i] && guard++ < MAX_SUBSTEPS_PER_INTERVAL) {
+            const dt = Math.min(times[i] - t, stepCap(r, v));
+            if (!(dt > 0)) break;
+            const next = step(r, v, dt);
+            r = next.r;
+            v = next.v;
+            t += dt;
+        }
+        tNow = times[i];
         points.push({ ...r });
     }
 
     let drift_au = 0;
-    const finalPointBeforeCorrection = { ...points[points.length - 1] };
 
-    // Drift Correction (Linear Lerp)
-    if (targetEndPos) {
-        const dx = targetEndPos.x - finalPointBeforeCorrection.x;
-        const dy = targetEndPos.y - finalPointBeforeCorrection.y;
+    // Drift Correction (Linear Lerp, by time)
+    if (targetEndPos && points.length > 1) {
+        const last = points[points.length - 1];
+        const dx = targetEndPos.x - last.x;
+        const dy = targetEndPos.y - last.y;
         drift_au = Math.sqrt(dx*dx + dy*dy);
-        
+
+        const span = times[times.length - 1] - times[0];
         for (let i = 1; i < points.length; i++) {
-            const progress = i / (points.length - 1);
+            const progress = span > 0 ? (times[i] - times[0]) / span : 1;
             points[i].x += dx * progress;
             points[i].y += dy * progress;
         }
     }
 
     return { points, drift_au };
+}
+
+/**
+ * The uniform-cadence form, kept because most callers want exactly that. It is a thin wrapper over
+ * `integrateBallisticPathAtTimes` rather than a second RK4: two integrators would be two answers to
+ * one question, and this codebase has been bitten by that repeatedly.
+ */
+export function integrateBallisticPath(
+    startPos: Vector2, 
+    startVel: Vector2, 
+    durationSec: number, 
+    mu_au: number, 
+    steps: number = 100,
+    targetEndPos?: Vector2, // OPTIONAL: Force path to end here (Drift Correction)
+    nBodyNodes?: { mu: number, pos: Vector2 }[] // OPTIONAL: Extra gravity sources
+): { points: Vector2[], drift_au: number } {
+    const dt = durationSec / steps;
+    const times: number[] = [];
+    for (let i = 0; i <= steps; i++) times.push(i * dt);
+    return integrateBallisticPathAtTimes(startPos, startVel, times, mu_au, {
+        targetEndPos, nBodyNodes, maxStepSec: dt
+    });
 }
 
 export function subtract(v1: Vector2, v2: Vector2): Vector2 {
