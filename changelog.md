@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.56 - 26th Aug 2026
+
+- A ship flying a gravity-assist route now lights its drive and turns around. It had always been charged for three burns — departure, the slingshot kick and the arrival brake — but the plan was made only of coasting legs, and the drive plume reads the leg type to decide whether a ship is thrusting and which way it is pointing. So a multi-year assist flight crossed the system with a dead engine and never flipped, on your map and on your players' devices. The ends of the coasts are now real acceleration and braking phases, each lasting as long as that ship's own thrust ceiling needs for the burn, so the torch fires at the right moment and for the right duration. The route, the fuel and the delta-v are unchanged.
+
 ## v3.0.55 - 26th Aug 2026
 
 - The Lagrange zones are now the shapes the physics actually makes, not stylised arcs. L4 and L5 draw their true tadpole outline — computed from the zero-velocity contour of the three-body problem, so it has the fat head around the point and the tail that narrows toward the planet, and it widens with the mass ratio exactly as it should. That is why Luna's zones look so much bigger than Earth's and it is correct: the Moon is over a hundredth of Earth's mass where Earth is three millionths of the Sun's, which makes the Earth-Moon co-orbital region about sixty times wider in proportion. Eccentric orbits are handled by scaling the region to the planet's CURRENT distance, so it breathes over the orbit.

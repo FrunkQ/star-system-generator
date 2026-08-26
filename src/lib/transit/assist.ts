@@ -392,19 +392,54 @@ function buildAssistTransitPlan(
     
     const segments: TransitSegment[] = [];
 
-    // LEG 1
-    segments.push({
-        id: 'leg-1-coast',
-        type: 'Coast',
-        startTime: t1,
-        endTime: t1_end,
-        startState: { r: s1.r, v: leg1.v1 },
-        endState: { r: p1, v: leg1.v2 },
-        hostId: root.id,
-        pathPoints: leg1Points,
-        warnings: [],
-        fuelUsed_kg: 0
-    });
+    // B87: THE BURNS ARE PHASES, NOT JUST NUMBERS.
+    //
+    // This plan has always PAID for three burns — departure, the periapsis kick, and the arrival
+    // brake — but emitted three `Coast` segments and nothing else, so `constructs/shipBurn.ts` (which
+    // reads the segment LABEL to decide whether a ship is thrusting and which way it points) saw
+    // nothing but coast and returned NONE. A multi-year gravity-assist flight therefore crossed the
+    // system with a dead drive and never turned retrograde, on the GM map and on player devices alike.
+    //
+    // So the ends of the two coasts are carved into real `Accel` and `Brake` segments, each lasting
+    // the time the ship's own thrust ceiling needs for that Delta-v (dv / (maxG*g0)). The trajectory
+    // is UNCHANGED and so are the Delta-v and fuel totals: the Lambert legs are impulsive solutions
+    // and re-solving them with finite burns is a different piece of work. This is the same
+    // display-grade split the torch families already use — it makes the burn VISIBLE at the right
+    // moment and for the right duration, which is what the plume and the flip read.
+    const burnAccel = Math.max(0.01, (params.maxG || 0.1) * 9.81);
+    const sliceAt = (pts: Vector2[], frac: number) => {
+        const cut = Math.max(1, Math.min(pts.length - 1, Math.round(pts.length * frac)));
+        return { head: pts.slice(0, cut + 1), tail: pts.slice(cut) };
+    };
+
+    // LEG 1 — a departure burn, then the coast it bought.
+    const leg1Ms = Math.max(1, t1_end - t1);
+    const accelMs = Math.min(leg1Ms * 0.9, (dv1 / burnAccel) * 1000);
+    if (accelMs > 0 && leg1Points.length > 2) {
+        const { head, tail } = sliceAt(leg1Points, accelMs / leg1Ms);
+        segments.push({
+            id: 'leg-1-accel', type: 'Accel',
+            startTime: t1, endTime: t1 + accelMs,
+            startState: { r: s1.r, v: s1.v },
+            endState: { r: head[head.length - 1], v: leg1.v1 },
+            hostId: root.id, pathPoints: head, warnings: [], fuelUsed_kg: 0
+        });
+        segments.push({
+            id: 'leg-1-coast', type: 'Coast',
+            startTime: t1 + accelMs, endTime: t1_end,
+            startState: { r: tail[0], v: leg1.v1 },
+            endState: { r: p1, v: leg1.v2 },
+            hostId: root.id, pathPoints: tail, warnings: [], fuelUsed_kg: 0
+        });
+    } else {
+        segments.push({
+            id: 'leg-1-coast', type: 'Coast',
+            startTime: t1, endTime: t1_end,
+            startState: { r: s1.r, v: leg1.v1 },
+            endState: { r: p1, v: leg1.v2 },
+            hostId: root.id, pathPoints: leg1Points, warnings: [], fuelUsed_kg: 0
+        });
+    }
     
     // FLYBY SEGMENT
     segments.push({
@@ -433,18 +468,37 @@ function buildAssistTransitPlan(
     // arrival telemetry. Same convention as the other plan families, which end their last segment
     // on the target-matched `finalState` (calculator.ts).
     const targetEndState = getGlobalState(sys, target, t3);
-    segments.push({
-        id: 'leg-2-coast',
-        type: 'Coast',
-        startTime: t2_start,
-        endTime: t3,
-        startState: { r: p2, v: leg2.v1 },
-        endState: { r: targetEndState.r, v: targetEndState.v },
-        hostId: root.id,
-        pathPoints: leg2Points,
-        warnings: [],
-        fuelUsed_kg: 0
-    });
+    // LEG 2 — the coast, then the arrival brake it has already been charged for (B86). Splitting it
+    // makes the deceleration a real phase with a start time, so the ship flips retrograde and lights
+    // its drive for exactly as long as the burn takes, instead of the whole change appearing as a
+    // discontinuity in the final instant.
+    const leg2Ms = Math.max(1, t3 - t2_start);
+    const brakeMs = Math.min(leg2Ms * 0.9, (dv3 / burnAccel) * 1000);
+    if (brakeMs > 0 && leg2Points.length > 2) {
+        const { head, tail } = sliceAt(leg2Points, 1 - brakeMs / leg2Ms);
+        segments.push({
+            id: 'leg-2-coast', type: 'Coast',
+            startTime: t2_start, endTime: t3 - brakeMs,
+            startState: { r: p2, v: leg2.v1 },
+            endState: { r: head[head.length - 1], v: leg2.v2 },
+            hostId: root.id, pathPoints: head, warnings: [], fuelUsed_kg: 0
+        });
+        segments.push({
+            id: 'leg-2-brake', type: 'Brake',
+            startTime: t3 - brakeMs, endTime: t3,
+            startState: { r: tail[0], v: leg2.v2 },
+            endState: { r: targetEndState.r, v: targetEndState.v },
+            hostId: root.id, pathPoints: tail, warnings: [], fuelUsed_kg: 0
+        });
+    } else {
+        segments.push({
+            id: 'leg-2-coast', type: 'Coast',
+            startTime: t2_start, endTime: t3,
+            startState: { r: p2, v: leg2.v1 },
+            endState: { r: targetEndState.r, v: targetEndState.v },
+            hostId: root.id, pathPoints: leg2Points, warnings: [], fuelUsed_kg: 0
+        });
+    }
 
     // ...and the brake is now VISIBLE where it happens, rather than only inside the Δv total.
     if (dv3 > 0) {
