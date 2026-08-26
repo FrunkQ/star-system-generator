@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.54 - 26th Aug 2026
+
+- Hill spheres now draw for the selected body's neighbourhood rather than for everything at once: the body itself, its parent, its siblings and its moons. Picking a planet looks the same as it always did — its siblings are the other planets — but picking a moon narrows the view to that moon's own surroundings, one level down, so a submoon still shows.
+
 ## v3.0.53 - 26th Aug 2026
 
 - Moons draw their Hill spheres now, when the Hill sphere overlay is on — the boundary inside which a moon holds on to anything of its own, which is where a submoon would go. They had been excluded because the display shared its list with the flight propagator, which deliberately does not model a handoff at a moon; those are now two separate lists and the flight side is untouched. The mass bar the propagator uses turned out to be roughly Mercury's, which excluded every major moon in the solar system, so a drawn bubble is judged on whether there is actually room outside the moon to orbit in instead.

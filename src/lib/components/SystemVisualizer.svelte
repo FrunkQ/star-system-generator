@@ -1302,8 +1302,27 @@
       // Hill spheres — each planet-mass body's gravitational bubble, and EXACTLY the boundary the adrift
       // coast physics hands over at (same helper, so the drawn circle can't disagree with the handoff).
       // Solid light yellow + faint fill — dashed strokes over AU-scale circles make the canvas grind.
+      // G44: WHOSE Hill spheres are drawn — the selected body's NEIGHBOURHOOD, one level in each
+      // direction: itself, its parent, its siblings, and its children (owner, 2026-08-26: "someone
+      // may pick earth and pop a construct around Luna - so seeing 1 down makes sense and all
+      // parents and siblings - to cover weird moon of a moon rocks"). Selecting a PLANET is
+      // therefore unchanged in practice — its siblings are the other planets, its parent the star —
+      // while selecting a moon narrows to that moon's own neighbourhood instead of every bubble in
+      // the system. No selection at all = draw everything, as before.
+      const hillNeighbourhood = (id: string): boolean => {
+          if (!focusedBodyId) return true;
+          if (id === focusedBodyId) return true;
+          const focused: any = system?.nodes.find((n) => n.id === focusedBodyId);
+          const cand: any = system?.nodes.find((n) => n.id === id);
+          if (!focused || !cand) return true;
+          if (id === focused.parentId) return true;                       // parent
+          if (cand.parentId === focused.parentId) return true;            // sibling
+          if (cand.parentId === focusedBodyId) return true;               // child, one level down
+          return false;
+      };
       if (showHillSpheres && system) {
           for (const h of hillSpheresAu(system)) {
+              if (!hillNeighbourhood(h.id)) continue;
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : worldPositions.get(h.id);
               if (!pos) continue;
               let r = h.rAu;
@@ -1620,6 +1639,7 @@
       if (showHillSpheres && system) {
           ctx.font = `12px sans-serif`; ctx.textAlign = 'center';
           for (const h of hillSpheresAu(system)) {
+              if (!hillNeighbourhood(h.id)) continue;
               if (!h.isStar) continue;
               const world = worldPositions.get(h.id);
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : world;
