@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.81 - 26th Aug 2026
+
+- Board only. G47 banks a full transit review with the subsystem measured up front, so whoever takes it starts from line counts and a blast radius rather than an impression.
+
 ## v3.0.80 - 26th Aug 2026
 
 - Board only. The duplicated B88 is resolved: the base-map upgrade item keeps the number it claimed first and has already shipped under, and the ordinary-orbit arrival step becomes B92 in its spec and in the local-transfer design note.
