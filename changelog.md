@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.75 - 26th Aug 2026
+
+- Board only. Two faults recorded from an owner report that selecting Pluto draws a Hill sphere around Charon and none around Pluto. The drawn bubble is gated on a mass bar that belongs to the flight propagator rather than to the display, so a small planet is dropped while a moon of the same pair is kept; and a binary member bubble is worked out from its small wobble about the shared centre, which makes the heavier body bubble the smaller one. Neither is changed yet - the fix for the second needs the circumstellar half of the stability work, which does not exist in the engine.
+
 ## v3.0.74 - 26th Aug 2026
 
 - Ships arriving from another star now get a sensible orbit instead of the one they left with. Aim at a named world and you park in a high orbit around it; aim at the star and you arrive at the edge of the system, which is where a starship decelerating in actually finds itself. Previously the old orbit came along for the ride, so a ship that set off from a tight moon orbit arrived the same distance from a star.
