@@ -1,10 +1,9 @@
 # Local transfers and how a journey is drawn — design note (G46)
 
-Status: **PASS 1 SHIPPED at v3.0.82, 2026-08-26 — see section 6.** Q1 and Q2 are answered (both as
-recommended); Q3, Q4 and Q5 are still open and pass 2 has not started. Sections 1-5 are left exactly
-as written so the before-figures stay readable; section 1's faults (a) and (b) are FIXED, (c) and (d)
-are not. Written 2026-08-26 from measurement, not impression — every number below was taken off the
-Sol Expanse fixture through the real solver.
+Status: **COMPLETE at v3.0.86, 2026-08-26 — see sections 6 and 7.** Q1-Q4 are answered; only Q5 (ship
+paths always visible) remains open. Sections 1-5 are left exactly as written so the before-figures
+stay readable; all four of section 1's faults are now FIXED. Written 2026-08-26 from measurement, not
+impression — every number below was taken off the Sol Expanse fixture through the real solver.
 
 The owner, 2026-08-26: *"this seems a good time to actually properly tidy up local transfers -
 orbit changes and transits to moons, etc. That code IS a bit broken... I think the maths kinda
@@ -234,6 +233,40 @@ labelled `Brake`, so the boolean was not merely coarse but wrong. Anywhere a lab
 vector is the same fault waiting; `Correction` segments still resolve their direction by projection
 rather than carrying one, which is fine while their Delta-v is a nominal 10 m/s and would not be if
 it ever became real.
+
+## 7. Pass 2, and what it cost to get there (v3.0.84-86)
+
+Q3 answered as recommended: the FULL figure — initial orbit, transfer, final orbit, both burns.
+Q4 answered as recommended in effect, by a route the note did not anticipate: the passes are drawn
+as repeated loops that COINCIDE, so a dozen of them read as one dip while the ship genuinely goes
+round a dozen times at the speed it was charged for. Both halves of the worry are met without
+choosing between them. Q5 (ship paths always visible) is still open.
+
+Pass 2 took three prerequisites that were not in the original plan, each found by the one before it.
+
+**The owner asked for 3D (v3.0.84).** Transit was entirely `Vector2` and `getGlobalState` called the
+FLAT propagator, so every journey ever planned ran between the shadows of two bodies on the reference
+plane. Doing this FIRST mattered: the Hohmann figure and the dip are new geometry, and writing them
+flat and converting after would have been waste.
+
+**[[B92]] had to close (v3.0.85).** The figure needs one authoritative final orbit, and there were
+three answers to how high an orbit is — the panel derived them from the body, and `scheduler.ts`
+carried its own multiplier table TWICE. They disagreed by up to a factor of ninety-five.
+
+**The orbit change did not exist to be drawn.** This was the surprise. The design note assumed the
+manoeuvre was flown and merely drawn badly; in fact `calculateTransitPlan` returned only the torch
+option, because its Lambert window sweep has nothing sensible to sweep between two points a few
+planetary radii apart. The fix was not a drawing change at all — it was four lines of orbital
+mechanics in a new module.
+
+### One more structural note for [[G47]]
+
+**S10. A PLAN FAMILY IS A BRANCH IN A 617-LINE FUNCTION, AND THAT IS WHY ONE WAS MISSING.** Adding
+the orbit change meant NOT touching `calculateTransitPlan` beyond a six-line call, because none of
+its machinery applied — no window, no Lambert, no assist search, no arrival-relative velocity. The
+families are not variations on one solver; they are different solvers sharing a function. Whoever
+reviews this should ask what the plan-family INTERFACE is, because at the moment there isn't one and
+a manoeuvre that does not fit the Lambert shape is simply absent rather than refused.
 
 ### Documentation debt
 

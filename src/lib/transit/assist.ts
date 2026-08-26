@@ -1,8 +1,9 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, StateVector, Vector2 } from './types';
-import { solveLambert, magnitude, subtract, distanceAU, integrateBallisticPath, integrateBallisticPathAtTimes, dot } from './math';
+import { solveLambert, magnitude, subtract, distanceAU, integrateBallisticPath, integrateBallisticPathAtTimes, dot, perihelionOf } from './math';
 import { buildPathSchedule, slicePhase, DEFAULT_PATH_BUDGET } from './pathSampling';
 import { getGlobalState, calculateFuelMass } from './physics';
+import { calculateKillZone } from '../physics/zones';
 import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
@@ -109,6 +110,11 @@ export function calculateAssistPlan(
 
     const mu = (root.kind === 'body' ? (root as CelestialBody).massKg : (root as Barycenter).effectiveMassKg || 0) * G;
     const mu_au = mu / Math.pow(AU_M, 3);
+    // How close to the star a route may pass. The engine already derives this line and the generator
+    // already refuses to place a body across it, so a ship's route reads the same number rather than a
+    // fresh one. Zero for a root with no luminosity, which disables the check rather than inventing a
+    // limit for a star we know nothing about. Sol's is 0.0899 AU.
+    const starKillZoneAU = root.kind === 'body' ? (calculateKillZone(root as CelestialBody, null) || 0) : 0;
     
     // Iterate through candidates (best first)
     for (const cand of candidates) {
@@ -218,6 +224,30 @@ export function calculateAssistPlan(
                     continue; 
                 }
 
+                // WHERE DOES THIS ROUTE ACTUALLY GO? ([[B93]])
+                //
+                // The check above asks whether the ship can survive the FLYBY. Nothing asked where the
+                // two heliocentric legs went in between — and a Lambert solution is perfectly happy to
+                // route a ship through the middle of a star. Measured on Sol 2030, Mars -> Main Belt:
+                // the offered Jupiter-assist plan's second leg was a valid solution with a = 2.670 AU
+                // and e = 0.9986, a perihelion of 0.0037 AU. That is 550,000 km from the Sun's centre,
+                // inside the corona, presented as an ordinary route. It stayed unseen for as long as it
+                // existed because the display integrator marched at a flat two-day step and fell off the
+                // conic near perihelion, drawing a different and less alarming curve (G46).
+                //
+                // The limit is the star's own KILL ZONE — the line the generator already refuses to place
+                // a body across — rather than a number invented here. Sol's is 0.0899 AU. A candidate
+                // that dives inside it is dropped exactly as an unsurvivable flyby periapsis is; the
+                // search simply goes on to the next one.
+                const legPerihelionAU = (r0: Vector2, v0: Vector2) => perihelionOf(r0, v0, mu_au);
+                const q1 = legPerihelionAU(startState.r, leg1.v1);
+                const q2 = legPerihelionAU(flybyStateAtArrival.r, leg2.v1);
+                const closest = Math.min(q1 ?? Infinity, q2 ?? Infinity);
+                if (Number.isFinite(closest) && closest < starKillZoneAU) {
+                    if (DEBUG_TRANSIT) console.log(`[AssistDebug] Reject: leg perihelion ${closest.toFixed(4)} AU inside kill zone ${starKillZoneAU.toFixed(4)} AU`);
+                    continue;
+                }
+
                 if (DEBUG_TRANSIT) console.log(`[AssistDebug] FOUND PLAN! ${origin.name} -> ${flybyBody.name} -> ${target.name}`);
                 // If we got here, this is a VALID Assist!
                 // Calculate Costs
@@ -244,7 +274,7 @@ export function calculateAssistPlan(
                     startTime, arrivalTime, targetTime,
                     startState, leg1, leg2, 
                     v_dep, dv_assist, v_arr,
-                    params
+                    params, closest, starKillZoneAU
                 );
             }
         }
@@ -262,7 +292,8 @@ function buildAssistTransitPlan(
     t1: number, t2: number, t3: number,
     s1: StateVector, leg1: {v1: Vector2, v2: Vector2}, leg2: {v1: Vector2, v2: Vector2},
     dv1: number, dv_assist: number, dv3: number,
-    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; costOnly?: boolean; }
+    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; costOnly?: boolean; },
+    closestApproachAU: number, starKillZoneAU: number
 ): TransitPlan {
     const totalTimeDays = (t3 - t1) / (1000 * 86400);
     const totalDV = dv1 + dv_assist + dv3;
@@ -386,6 +417,11 @@ function buildAssistTransitPlan(
     let correctionDV = 0;
     let correctionFuel = 0;
     const tags = ['GRAVITY-ASSIST'];
+    // Survivable but unpleasant: inside three kill-zone radii the route is legal and worth saying so
+    // out loud, which is this engine's habit with a hazard - tag and explain rather than refuse.
+    if (Number.isFinite(closestApproachAU) && closestApproachAU < starKillZoneAU * 3) {
+        tags.push(`SOLAR CLOSE PASS (${closestApproachAU.toFixed(3)} AU)`);
+    }
 
     const checkDriftAndAddBurns = (driftAu: number, path: Vector2[], startT: number, durationMs: number, prefix: string) => {
         const driftM = driftAu * AU_M;

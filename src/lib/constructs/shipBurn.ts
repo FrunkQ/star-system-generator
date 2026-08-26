@@ -81,7 +81,9 @@ export function compactBurns(construct: any): CompactBurn[] {
     const cancelledAtMs = log?.cancelledAtSec ? Number(BigInt(log.cancelledAtSec) * 1000n) : null;
     for (const plan of log?.plans ?? []) {
       for (const seg of plan?.segments ?? []) {
-        if (seg?.type === 'Coast') continue;
+        // `Aerobrake` decelerates hard and burns NOTHING - the air is doing it. A plume here would be
+        // the drive lit while the ship is deliberately coasting through an atmosphere.
+        if (seg?.type === 'Coast' || seg?.type === 'Aerobrake') continue;
         const durSec = (seg.endTime - seg.startTime) / 1000;
         if (!(durSec > 0)) continue;
         // A journey cancelled mid-flight stops thrusting THERE, whatever its segments say.
@@ -126,7 +128,7 @@ export function shipBurnAt(construct: any, timeMs: number): ShipBurn {
     for (const plan of log?.plans ?? []) {
       for (const seg of plan?.segments ?? []) {
         if (!(timeMs >= seg.startTime && timeMs <= seg.endTime)) continue;
-        if (seg.type === 'Coast') return NONE;
+        if (seg.type === 'Coast' || seg.type === 'Aerobrake') return NONE;
         const durSec = (seg.endTime - seg.startTime) / 1000;
         if (!(durSec > 0)) return NONE;
         const effort = burnEffort(seg);

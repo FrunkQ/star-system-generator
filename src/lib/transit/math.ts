@@ -200,6 +200,31 @@ export function integrateBallisticPath(
     });
 }
 
+/**
+ * CLOSEST APPROACH TO THE PRIMARY, for a conic given by one state vector.
+ *
+ * `a(1 - e)` — which holds for a hyperbola as readily as for an ellipse, since there `a` is negative
+ * and `e > 1`. Radii in whatever units `mu` is in. Returns null for a state that is not a conic
+ * (parabolic to within rounding, or a zero radius).
+ *
+ * Exists because a transfer's cost says nothing about where it GOES, and a Lambert solution is
+ * perfectly happy to route a ship through the middle of a star (see [[B93]]).
+ */
+export function perihelionOf(r: Vector2, v: Vector2, mu: number): number | null {
+    const rMag = magnitude(r);
+    if (!(rMag > 0) || !(mu > 0)) return null;
+    const v2 = magnitude(v) ** 2;
+    const inv_a = 2 / rMag - v2 / mu;
+    if (!Number.isFinite(inv_a) || Math.abs(inv_a) < 1e-30) return null; // parabolic
+    const a = 1 / inv_a;
+    const hVec = cross3(r, v);
+    const h = magnitude(hVec);
+    const eSq = 1 - (h * h) / (mu * a);
+    const e = Math.sqrt(Math.max(0, eSq));
+    const q = a * (1 - e);
+    return Number.isFinite(q) && q > 0 ? q : null;
+}
+
 export function subtract(v1: Vector2, v2: Vector2): Vector2 {
     return { x: v1.x - v2.x, y: v1.y - v2.y, z: zOf(v1) - zOf(v2) };
 }

@@ -113,6 +113,7 @@
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
   import { shipBurnAt } from '$lib/constructs/shipBurn';
+  import { orbitCirclePath, transferEllipsePath } from '$lib/transit/orbitChange';
   export let highlights: MapHighlights | null = null;
   // The mute is part of the selection's meaning, not a separate render flag: muted means "none".
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights);
@@ -2201,12 +2202,82 @@
           const a = Math.atan2(p.y, p.x);
           return { x: rn * Math.cos(a), y: rn * Math.sin(a) };
       };
+      // THE ORBIT-CHANGE PICTURE: initial orbit, transfer ellipse, final orbit, two burns.
+      //
+      // DRAWN IN THE HOST'S FRAME, which is the whole reason it reads as a manoeuvre. A ship lowering
+      // its Jupiter orbit over three days is, heliocentrically, a 3.6-million-kilometre streak trailing
+      // after Jupiter - because Jupiter travelled that far while the ship went round. Every other path
+      // in this app is drawn that way and should be; this one must not, or the figure is a smear beside
+      // two rings it never touches.
+      //
+      // So the whole figure is regenerated from the plan's radii and its plane against the host's
+      // position NOW. That is exact rather than approximate: the map draws one instant, and at that
+      // instant host-now plus host-relative IS the ship's global position, so the ship sits on the line
+      // it is flying and the two circles are the orbits it is actually between.
+      //
+      // The flown path is still global and still what the samplers read - only the PICTURE changes
+      // frame, which is the 'in its own frame' half of the principle this whole item is built on.
+      let orbitChangeDrawn = false;
+      if (plan.orbitChange && !forceGrey) {
+          const oc = plan.orbitChange;
+          const host = worldPositions.get(oc.hostId);
+          if (host) {
+              const strokeLocal = (pts: { x: number; y: number }[], dash: number[], colour: string, width: number) => {
+                  ctx.beginPath();
+                  ctx.setLineDash(dash.map((d) => d / zoom));
+                  ctx.strokeStyle = colour;
+                  ctx.lineWidth = width / zoom;
+                  for (let i = 0; i < pts.length; i++) {
+                      const q = mapPt({ x: host.x + pts[i].x, y: host.y + pts[i].y });
+                      if (i === 0) ctx.moveTo(q.x - renderPan.x, q.y - renderPan.y);
+                      else ctx.lineTo(q.x - renderPan.x, q.y - renderPan.y);
+                  }
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+              };
+              // Solid for the orbit being left, dashed for the one being joined, so which is which is
+              // readable without a legend. Two rings only, and only while a plan is selected: RENDER-S31
+              // charges a dash pattern over a shape's WHOLE path, so this stays a pair rather than a habit.
+              strokeLocal(orbitCirclePath(oc.fromRadius_au, oc.u, oc.w, 128), [], `rgba(150, 200, 255, ${alpha * 0.5})`, 1.5);
+              strokeLocal(orbitCirclePath(oc.toRadius_au, oc.u, oc.w, 128), [6, 6], `rgba(150, 200, 255, ${alpha * 0.8})`, 1.5);
+              // The transfer itself, in the coast colour the rest of the app uses for a ballistic arc.
+              const ell = transferEllipsePath(oc.fromRadius_au, oc.toRadius_au, oc.u, oc.w, 0, 1, 96);
+              strokeLocal(ell.points, [], `rgba(255, 255, 0, ${alpha})`, isCompleted ? 2 : 3);
+              // The two burns, where the reference figure puts them: at the start of the ellipse and at
+              // its far end, on the ring each belongs to.
+              const marks: [{ x: number; y: number }, string][] = [
+                  [ell.points[0], '#4ade80'],
+                  [ell.points[ell.points.length - 1], '#ff3333']
+              ];
+              for (const [ptLocal, colour] of marks) {
+                  const q = mapPt({ x: host.x + ptLocal.x, y: host.y + ptLocal.y });
+                  const x = q.x - renderPan.x;
+                  const y = q.y - renderPan.y;
+                  const size = 5 / zoom;
+                  ctx.strokeStyle = colour;
+                  ctx.lineWidth = 2 / zoom;
+                  ctx.beginPath(); ctx.arc(x, y, size, 0, 2 * Math.PI); ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(x - size * 1.9, y); ctx.lineTo(x - size * 0.7, y);
+                  ctx.moveTo(x + size * 0.7, y); ctx.lineTo(x + size * 1.9, y);
+                  ctx.moveTo(x, y - size * 1.9); ctx.lineTo(x, y - size * 0.7);
+                  ctx.moveTo(x, y + size * 0.7); ctx.lineTo(x, y + size * 1.9);
+                  ctx.stroke();
+              }
+              orbitChangeDrawn = true;
+          }
+      }
+
+      if (!orbitChangeDrawn)
       for (const segment of plan.segments) {
           ctx.beginPath();
           if (forceGrey) { ctx.setLineDash([]); ctx.strokeStyle = `rgba(100, 100, 100, ${alpha})`; }
           else if (isGhost) ctx.strokeStyle = `rgba(200, 200, 255, ${alpha})`;
           else if (segment.type === 'Coast') { ctx.setLineDash([]); ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`; }
           else if (segment.type === 'Brake') { ctx.setLineDash([]); ctx.strokeStyle = `rgba(255, 51, 51, ${alpha})`; }
+          // The aerobrake dip, in the purple it was asked for - distinct from the red of a brake
+          // BURN because nothing is burning: the atmosphere is doing the work and the drive is dark.
+          else if (segment.type === 'Aerobrake') { ctx.setLineDash([]); ctx.strokeStyle = `rgba(186, 104, 255, ${alpha})`; }
           else { ctx.setLineDash([]); ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`; }
           ctx.lineWidth = (isCompleted || isGhost || forceGrey ? 2 : 3) / zoom;
           for (let i = 0; i < segment.pathPoints.length; i++) {
@@ -2263,6 +2334,10 @@
       // Draw Burn Symbols (Corrections, etc)
       if (plan.burns && !forceGrey) {
           for (const burn of plan.burns) {
+              // An orbit change's burns are marked as part of its FIGURE, in the host's frame, so they
+              // are skipped here - `burn.position` is global at the moment of the burn and would land
+              // wherever the host had got to by then.
+              if (plan.orbitChange && (burn.type === 'Departure' || burn.type === 'Arrival')) continue;
               if (burn.type === 'Correction') {
                   const x = burn.position.x - renderPan.x;
                   const y = burn.position.y - renderPan.y;

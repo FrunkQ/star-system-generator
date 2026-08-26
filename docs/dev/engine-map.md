@@ -2679,6 +2679,32 @@ all assume it. The DRAWN path is global, which is why a local transfer looks lik
 system zoom — Jupiter moves 11.9 million km during a 10-day moon hop — and why drawing an orbit change
 in the body's own frame is a separate piece of work rather than a consequence of solving in it.
 
+### TRANSIT-7 A MANOEUVRE IS A SHAPE, AND IT IS DRAWN IN THE FRAME IT HAPPENS IN
+WHERE: `transit/orbitChange.ts` (the closed forms and the geometry), `buildOrbitChangePlan` and
+`appendAerobrakeSegments` in `calculator.ts`, and the `plan.orbitChange` branch of `drawTransitPlan`.
+The contract is `TransitPlan.orbitChange` and the `Aerobrake` segment type.
+RULE: an orbit change and an aerobrake pass are CLOSED FORM - two radii determine a Hohmann transfer
+completely, so there is nothing to search for - and both are drawn in the HOST's frame, regenerated
+from radii and a plane against the host's live position. Do not bake point arrays for the context
+orbits: the host moves, and journeys ride the player snapshot. The FLOWN path stays global, because
+that is what the samplers read; only the PICTURE changes frame.
+WHY: neither manoeuvre could be drawn, and the orbit change could not even be FLOWN. The general
+solver treats every journey as a Lambert problem and sweeps departure windows, which has nothing
+sensible to sweep between two points a few planetary radii apart - so a ship asking to raise its
+Jupiter orbit was offered the torch at 45.44 km/s and no efficient option at all. The Hohmann answer
+is 19.55. And a ship lowering its orbit over three days is, heliocentrically, a 3.6-million-km streak
+trailing after Jupiter, because Jupiter travelled that far while the ship went round: drawn globally
+the figure is a smear beside two rings it never touches. Host-frame drawing is exact rather than
+approximate, because the map draws ONE instant and at that instant host-now plus host-relative is the
+ship's global position - so the ship sits on the line it is flying.
+BLAST: `Aerobrake` is a phase in which the ATMOSPHERE brakes, so anything deciding whether a ship is
+thrusting must treat it like `Coast` and not like `Brake` (`shipBurn.ts`) - the drive is dark while
+the ship decelerates hard. The dip EXTENDS the journey: the passes were costed in `aeroTimeSec` and
+reported in the ship's log while `totalTime_days` stopped at the moment the ship reached the planet,
+so a Mars arrival was drawn parked for the 615 days it was still aerobraking. Repeated passes draw as
+one dip because the loops coincide, and the drawn count is CAPPED at 24 with the real count in the
+label rather than silently truncated.
+
 ### UI-C1 One colour drives a construct's whole look
 WHERE: `ConstructBasicsTab.svelte` (Appearance block), `constructIcon.ts`, `modelViewer.ts`
 RULE: `icon_color` is the single authored colour: the 2D marker, the hull tint for material-less
@@ -3559,8 +3585,10 @@ long-way-round Lambert leg with e=0.9986 was being drawn as a 53 AU excursion at
 is now capped by swept ANGLE (`MAX_STEP_RAD`), not by the clock. That correction in turn revealed
 that the assist search never checks where its heliocentric legs GO: it rejects a flyby that would
 clip the flyby body, but offers a leg whose perihelion is 0.0037 AU, inside the corona. Pinned by
-`calculator.belt.test.ts` and left for the transit review — rejecting a candidate changes which plans
-a user is offered, which is a solver decision, not a drawing one.
+`calculator.belt.test.ts`. FIXED at v3.0.86 on the owner's word: the search now drops a candidate whose
+legs dive inside the star's KILL ZONE — the line the generator already refuses to place a body across,
+0.0899 AU for Sol — exactly as it already dropped one whose flyby would clip the planet. It then finds
+a safe candidate instead, so the family is still offered: closest approach moved 0.0302 AU -> 1.5537 AU.
 
 ### RENDER-S34 A BURN PUBLISHES HOW HARD AND WHICH WAY IT PUSHES; NOTHING MAY INFER EITHER
 WHERE: `TransitSegment.deltaV_ms` and `TransitSegment.thrustDir`, written by all three plan builders.

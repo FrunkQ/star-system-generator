@@ -89,22 +89,22 @@ describe('Belt destination transit (#13)', () => {
     }
   });
 
-  it('the Jupiter-assist option is a SUN-GRAZER, and that is a solver fault, not a drawing one', () => {
-    // Found by G46, once the display integration stopped hiding it. The assist search rejects a flyby
-    // whose periapsis would clip the FLYBY BODY (`r_p_req < r_planet + 200 km`) but never asks where
-    // the resulting heliocentric legs go — and leg 2 here is a valid Lambert solution with a = 2.670
-    // AU and e = 0.9986, i.e. a perihelion of 0.0037 AU. That is 550,000 km from the Sun's centre,
-    // inside the corona, on a plan the planner offers as ordinary.
+  it('no route is offered that dives inside the star (inbox B93 - FIXED)', () => {
+    // B93 WAS: the assist search asks whether the ship survives the FLYBY (`r_p_req < r_planet +
+    // 200 km`) and never asked where the two heliocentric legs GO. Measured here: the offered
+    // Jupiter-assist plan's second leg was a valid Lambert solution with a = 2.670 AU and e = 0.9986
+    // - a perihelion of 0.0037 AU, which is 550,000 km from the Sun's centre, inside the corona, and
+    // the integrated path bottomed out at 0.0302 AU. Presented as an ordinary route.
     //
-    // It did not look like that before, because the display integration marched at a flat two-day step
-    // and simply fell off the conic near perihelion, drawing a different and less alarming curve. So
-    // this test USED TO PASS FOR THE WRONG REASON: the plan was always a sun-grazer, and the picture
-    // was wrong in a way that concealed it.
+    // It went unseen for as long as it existed because the display integrator marched at a flat
+    // two-day step and simply fell off the conic near perihelion, drawing a different and less
+    // alarming curve - so the assertion above USED TO PASS FOR THE WRONG REASON, checking a path that
+    // was wrong rather than a plan that was safe (G46).
     //
-    // Not fixed here. Rejecting a candidate changes which plans a user is offered, which is a solver
-    // decision and belongs to the transit review, not to a pass over how a journey is drawn. This is
-    // the tripwire in the meantime: it fails if the dive changes size, and it fails if someone fixes
-    // it without coming back here.
+    // The search now drops a candidate whose legs dive inside the star's KILL ZONE - the same line
+    // the generator already refuses to place a body across, 0.0899 AU for Sol - exactly as it already
+    // dropped one whose flyby would clip the planet. It then goes on and finds a safe candidate, so
+    // the assist option is still offered: closest approach moved from 0.0302 AU to 1.5537 AU.
     const system = loadSolSystem();
     const marsId = nodeIdByName(system, 'Mars');
     const beltId = nodeIdByName(system, 'The Main Belt');
@@ -114,7 +114,7 @@ describe('Belt destination transit (#13)', () => {
     const rOrbitAu = 4000 / AU_KM;
     const vOrbitAuS = Math.sqrt((mars.massKg * G) / (4000 * 1000)) / (AU_KM * 1000);
 
-    const assist = calculateTransitPlan(system, marsId, beltId, startTime, 'Economy', {
+    const plans = calculateTransitPlan(system, marsId, beltId, startTime, 'Economy', {
       maxG: 3.0, accelRatio: 0.6, brakeRatio: 0.3, interceptSpeed_ms: 0, brakeAtArrival: true,
       shipMass_kg: 2_000_000, shipIsp: 380, initialStateFrame: 'global',
       initialState: {
@@ -122,15 +122,24 @@ describe('Belt destination transit (#13)', () => {
         v: { x: marsGlobal.v.x, y: marsGlobal.v.y + vOrbitAuS }
       },
       aerobrake: { allowed: false, limit_kms: 0 }
-    }).find((p) => p.planType === 'Complex');
+    });
 
-    expect(assist, 'the fixture no longer produces a gravity-assist option').toBeTruthy();
-    let minR = Infinity;
-    for (const seg of assist!.segments) {
-      for (const pt of seg.pathPoints) minR = Math.min(minR, Math.hypot(pt.x, pt.y));
+    // EVERY plan, not just the direct ones: this is the assertion the first test had to exclude the
+    // assist family from, and it no longer does.
+    const SOL_KILL_ZONE_AU = 0.0899;
+    for (const p of plans) {
+      let minR = Infinity;
+      for (const seg of p.segments) {
+        for (const pt of seg.pathPoints) minR = Math.min(minR, Math.hypot(pt.x, pt.y));
+      }
+      expect(
+        minR,
+        `${p.name ?? p.planType} passes ${minR.toFixed(4)} AU from the star`
+      ).toBeGreaterThan(SOL_KILL_ZONE_AU);
     }
-    // Measured 0.0302 AU. Pinned as a band so it cannot drift unnoticed in either direction.
-    expect(minR).toBeGreaterThan(0.02);
-    expect(minR).toBeLessThan(0.05);
+
+    // And the assist is still on the menu - the guard drops unsafe candidates, it does not drop the
+    // family. If this ever goes missing the guard has become a refusal rather than a filter.
+    expect(plans.some((p) => p.planType === 'Complex'), 'the gravity-assist option disappeared entirely').toBe(true);
   });
 });

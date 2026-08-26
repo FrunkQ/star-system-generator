@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.87 - 26th Aug 2026
+
+- Changing orbit is a manoeuvre now, and it looks like one. Moving a ship between two orbits of the same world is the most classical thing in spaceflight - burn once to stretch the orbit out to the height you want, coast half way round, burn again to settle there - and the app could neither draw it nor, it turned out, fly it. Asked to raise a ship from a low Jupiter orbit to a high one it offered the torch option and nothing else, at 45 km/s. The two-burn answer costs 19.6.
+- The picture is the one everybody already knows: the orbit you are leaving, the orbit you are joining, the transfer between them, and both burns marked. It is drawn around the planet rather than across the sky - a ship lowering its Jupiter orbit over three days is, from the Sun's point of view, a three-million-kilometre streak trailing after Jupiter, which is true and useless.
+- The aerobrake dip is drawn, in purple. Since aerobraking became real the engine has known how deep the ship dips, how many passes it takes and how long they last - and drew none of it. A Mars arrival dipping to 40 km, twelve times over 615 days, is now a line you can point at. The passes trace the same loop, so a dozen of them read as one dip while the ship genuinely goes round a dozen times.
+- A journey that ends in aerobraking now lasts as long as it always said it did. The passes were costed and written into the ship's log, but the plan's duration stopped at the moment the ship reached the planet - so it was drawn parked for the 615 days it was still skimming the air.
+- Routes that fly through the sun are no longer offered. The gravity-assist search checked whether a ship survives the swing past the planet and never asked where the long legs went in between - and one of them passed 550,000 km from the centre of the Sun, inside the corona, offered as an ordinary route. It stayed hidden because the old drawing fell apart near the sun and sketched something tamer. Candidates that dive inside the star's kill zone are now dropped the same way an unsurvivable flyby already was; a safe route is found instead.
+
 ## v3.0.86 - 26th Aug 2026
 
 - The circumbinary ring is now the same colour family as the Hill spheres, one step deeper - pale yellow for a Hill sphere, deep gold for the ring. It was pink, which read as an unrelated kind of thing when it is really the same kind: both answer "where can something orbit". The Lagrange zones keep their separate green, because those answer a different question.
