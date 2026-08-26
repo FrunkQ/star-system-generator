@@ -27,6 +27,14 @@ interface StabilityAssessment {
   // orbit-crossing test had spared the pair; the host-binding test had failed it. Both were right.
   // Carrying the fate's own reason lets the verdict be printed next to its cause.
   fateReason?: string;
+  // A ONE-LINE FORM OF THAT CAUSE, for the "Driven by:" restatement (G45). B24 prints the fate's
+  // own reason after the verdict so the two cannot be read as contradicting each other, and that
+  // works while reasons are short ("Critical Hill spacing (Delta=2.31)"). The reasons in this file
+  // have since grown into full explanations — which is right, they are what a GM reads — and
+  // restating a 400-word paragraph verbatim two lines below itself is unreadable. A criterion with
+  // a long reason gives a short one here; anything that does not sets nothing and behaves exactly
+  // as before.
+  fateShort?: string;
   // EXTRA TAG KEYS this criterion wants on the body, beyond the severity and fate keys every
   // assessment already produces (G45). A severity says HOW BAD and a fate says WHICH WAY, but
   // neither says BY WHAT MECHANISM — "very unstable, flung out" reads identically whether a
@@ -93,10 +101,15 @@ function mergeAssessment(target: StabilityAssessment, incoming: StabilityAssessm
   // its own cause instead of beside whichever other test happened to speak last.
   if (incoming.severity > target.severity) {
     target.severity = incoming.severity as 0 | 1 | 2 | 3;
-    if (fateApplies) { target.fate = incoming.fate; target.fateReason = incoming.reasons[0]; }
+    if (fateApplies) {
+      target.fate = incoming.fate;
+      target.fateReason = incoming.reasons[0];
+      target.fateShort = incoming.fateShort;
+    }
   } else if (!target.fate && fateApplies) {
     target.fate = incoming.fate;
     target.fateReason = incoming.reasons[0];
+    target.fateShort = incoming.fateShort;
   }
   for (const reason of incoming.reasons) {
     if (!target.reasons.includes(reason)) target.reasons.push(reason);
@@ -507,6 +520,9 @@ function assessCircumbinaryStability(
       `standing still, and this close that forcing pumps the orbit until it crosses the stars themselves; ` +
       `the encounter that follows throws ${node.name} clear of the system${fitNote}`
     );
+    out.fateShort =
+      `${node.name} orbits inside ${pairName}'s circumbinary limit — ${aNode.toPrecision(3)} AU ` +
+      `against a ${annulus.innerAU.toPrecision(3)} AU limit`;
     out.tags = ['stability/inside-circumbinary-limit'];
     return out;
   }
@@ -753,8 +769,11 @@ export function annotateGravitationalStability(system: System): System {
       // test had spared the pair and the host-binding test had failed it). Only attributed when
       // there is more than one driver; with a single reason the cause is already unambiguous.
       // Some reasons already end in a full stop and some do not, so trim before adding one.
-      const cause = assessment.fateReason && assessment.reasons.length > 1
-        ? ` Driven by: ${assessment.fateReason.replace(/\.\s*$/, '')}.`
+      // Prefer the criterion's own one-liner; fall back to its full reason, which is what every
+      // pre-G45 criterion still produces and what the B24 tests pin.
+      const causeText = assessment.fateShort ?? assessment.fateReason;
+      const cause = causeText && assessment.reasons.length > 1
+        ? ` Driven by: ${causeText.replace(/\.\s*$/, '')}.`
         : '';
       const fateText = assessment.fate ? ` ${FATE_TEXT[assessment.fate]}${cause}` : '';
       (node as any).orbitalStability = label;

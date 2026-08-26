@@ -3389,4 +3389,7 @@ printed bare is PHY-2's lie. `outerAU` is ABSENT for a root barycentre (no paren
 in-system outer wall) and a reader that treats absent as zero inverts the annulus. Any new derived
 field on a barycentre must join `DERIVED_BARYCENTER_FIELDS` in `importFixup.ts` or it fossilises
 into every save — `derivedFieldDrift.spec.ts` is the guard and it caught this one. See M7 for the
-two Hill formulas.
+two Hill formulas. Finally, B24's "Driven by:" restates the fate's own reason, which was written when
+reasons were short ("Critical Hill spacing (Delta=2.31)"); the reasons here are full explanations, so
+a criterion with a long reason must set `fateShort` or the paragraph is printed twice, two lines
+apart. Criteria that set nothing behave exactly as before.

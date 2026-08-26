@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.66 - 26th Aug 2026
+
+- Fixed a stability note that said the same thing twice. When a world has more than one thing wrong with it, the panel prints the predicted outcome next to the specific cause that produced it, so the two cannot be read as contradicting each other. That was written when the causes were short phrases; the newer ones are full explanations, so a circumbinary planet that ALSO crossed a neighbour's orbit had its entire paragraph repeated verbatim two lines below itself. The restatement is now a single line naming the driver and the numbers.
+
 ## v3.0.65 - 26th Aug 2026
 
 - Board only. Real user files now have a home outside the repository, with a standing rule covering how they are used and why they are never committed.

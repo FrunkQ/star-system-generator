@@ -218,6 +218,20 @@ describe('the circumbinary inner limit', () => {
     expect(p.orbitalStabilityDetails).toMatch(/CIRCULAR orbits/);
   });
 
+  it('restates the driver in one line, not by repeating the whole reason (B24)', () => {
+    // Barry and Philonius in the bundled Uggi both cross AND sit inside the limit, so there are two
+    // drivers and B24 prints the fate beside its own cause. Restating a paragraph verbatim two
+    // lines below itself is unreadable, so a long reason supplies a short form.
+    const s = binaryWith([{ id: 'p', aAU: 1.5 }, { id: 'q', aAU: 1.6 }]);
+    annotateGravitationalStability(s);
+    const p = nodeOf(s, 'p');
+    const drivenBy = p.orbitalStabilityDetails.split('Driven by:')[1] ?? '';
+    expect(drivenBy).not.toBe('');
+    expect(drivenBy.length).toBeLessThan(160);
+    expect(drivenBy).toMatch(/circumbinary limit/);
+    expect(drivenBy).not.toMatch(/Holman/);   // the long form stays in Drivers, once
+  });
+
   it('does not leak onto the pair itself', () => {
     const s = binaryWith([{ id: 'p', aAU: 1.5 }]);
     annotateGravitationalStability(s);
