@@ -2652,6 +2652,10 @@
         {
           "key": "resource/water-ice",
           "source": "rule:d7"
+        },
+        {
+          "key": "frontier/prime-claim",
+          "source": "rule:d44"
         }
       ],
       "areas": [],
@@ -12174,6 +12178,10 @@
         {
           "key": "frontier/fuel-depot",
           "source": "rule:d27"
+        },
+        {
+          "key": "science/double-planet",
+          "source": "rule:d41"
         }
       ],
       "areas": [],
@@ -13297,7 +13305,17 @@
         },
         "n_rad_per_s": 8.027243170523019e-10
       },
-      "tags": []
+      "tags": [],
+      "circumbinary": {
+        "pairSeparationAU": 0.00013,
+        "massRatioMu": 0.108145106091718,
+        "eccentricity": 0.0002,
+        "criticalRatio": 1.9869559927185136,
+        "innerAU": 0.00025830427905340674,
+        "fitExtrapolated": false,
+        "hillRadiusAU": 0.03997275815152541,
+        "outerAU": 0.019986379075762704
+      }
     }
   ],
   "rulePackId": "starter-sf-pack",

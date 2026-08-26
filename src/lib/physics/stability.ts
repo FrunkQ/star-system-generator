@@ -134,11 +134,11 @@ export function hillRadiusAU(aAU: number, e: number, massKg: number, hostMassKg:
 export function barycenterHillRadiusAU(
   bary: Barycenter,
   nodesById: Map<string, CelestialBody | Barycenter>,
-  members: CelestialBody[]
+  members: Array<CelestialBody | Barycenter>
 ): number {
   if (!bary.parentId || !bary.orbit) return 0;
   const parentMassKg = getHostMassKg(nodesById.get(bary.parentId));
-  const mBin = (bary.effectiveMassKg || 0) || members.reduce((sum, m) => sum + getNodeMassKg(m), 0);
+  const mBin = (bary.effectiveMassKg || 0) || members.reduce((sum, m) => sum + getHostMassKg(m), 0);
   return hillRadiusAU(bary.orbit.elements.a_AU || 0, bary.orbit.elements.e || 0, mBin, parentMassKg);
 }
 
@@ -637,12 +637,14 @@ export function annotateGravitationalStability(system: System): System {
     delete (bary as any).circumbinary;
     const memberIds = bary.memberIds || [];
     if (memberIds.length !== 2) continue;   // the annulus is a TWO-body result; anything else abstains
+    // A member may itself be a BARYCENTRE — every hierarchical triple is built that way, and
+    // insisting on two bodies left Alpha Centauri, Polaris and Algol publishing nothing for their
+    // outer pair. circumbinary.ts documents the point-mass approximation that licenses it.
     const first = nodesById.get(memberIds[0]);
     const second = nodesById.get(memberIds[1]);
-    if (!first || first.kind !== 'body' || !second || second.kind !== 'body') continue;
-    const members = [first as CelestialBody, second as CelestialBody];
-    const hill = barycenterHillRadiusAU(bary, nodesById, members);
-    const annulus = circumbinaryAnnulus(members[0], members[1], hill > 0 ? hill : undefined);
+    if (!first || !second) continue;
+    const hill = barycenterHillRadiusAU(bary, nodesById, [first, second]);
+    const annulus = circumbinaryAnnulus(first, second, hill > 0 ? hill : undefined);
     if (!annulus) continue;
     (bary as any).circumbinary = annulus;
     annulusByBary.set(bary.id, annulus);

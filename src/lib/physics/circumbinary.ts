@@ -55,7 +55,7 @@
 //  periapsis-based form) and is passed in, so the bubble the engine JUDGES against and the ring it
 //  DRAWS can never be two different numbers.
 
-import type { CelestialBody } from '../types';
+import type { CelestialBody, Barycenter } from '../types';
 
 /** Holman & Wiegert (1999) P-type polynomial coefficients, in the order
  *  [const, e_b, e_b^2, mu, e_b*mu, mu^2, e_b^2*mu^2]. Quoted exactly as published; some
@@ -139,20 +139,36 @@ export function circumbinaryFitExtrapolated(mu: number, eB: number): boolean {
   return mu < HW99_MU_RANGE[0] || mu > HW99_MU_RANGE[1] || eB < HW99_E_RANGE[0] || eB > HW99_E_RANGE[1];
 }
 
-/** Build the annulus for a pair from its two member bodies. Returns null when the pair is not a
- *  two-body pair with real masses and orbits — a partial barycentre publishes nothing rather than
- *  a plausible-looking zero.
+/** A member's mass, whether it is a star/planet or a tighter pair standing in for one. */
+function memberMassKg(node: CelestialBody | Barycenter): number {
+  return node.kind === 'barycenter'
+    ? (node as Barycenter).effectiveMassKg || 0
+    : (node as CelestialBody).massKg || 0;
+}
+
+/** Build the annulus for a pair from its two members. Returns null when the pair is not a real
+ *  two-member pair with masses and orbits — a partial barycentre publishes nothing rather than a
+ *  plausible-looking zero.
+ *
+ *  A MEMBER MAY ITSELF BE A BARYCENTRE, which is how every hierarchical triple in the bundled maps
+ *  is built (Alpha Centauri, Polaris and Algol all pair an inner binary with an outer star). Holman
+ *  & Wiegert's fit is a two-point-mass result, so treating a tight inner pair as one point is an
+ *  APPROXIMATION — and it is the same approximation the hierarchy itself is built on, since each
+ *  level's separation widens by roughly 7x precisely so the level below acts as a point mass. It
+ *  breaks down if a "hierarchy" is not actually hierarchical, which the pair-tightness test in
+ *  stability.ts is the thing that catches. Excluding these instead was a point restriction that
+ *  left three of the bundled triples publishing nothing at all.
  *
  *  `hillRadiusAU` is the pair's combined-mass Hill radius within its parent, computed by the
  *  stability pass and passed in; omit it for a root barycentre. */
 export function circumbinaryAnnulus(
-  memberA: CelestialBody | undefined,
-  memberB: CelestialBody | undefined,
+  memberA: CelestialBody | Barycenter | undefined,
+  memberB: CelestialBody | Barycenter | undefined,
   hillRadiusAU?: number
 ): CircumbinaryAnnulus | null {
   if (!memberA || !memberB) return null;
-  const mA = memberA.massKg || 0;
-  const mB = memberB.massKg || 0;
+  const mA = memberMassKg(memberA);
+  const mB = memberMassKg(memberB);
   // BOTH masses, not their sum. A pair with one massless member is not a pair — mu comes out 0 and
   // the polynomial happily returns its mu=0 corner (1.60 x separation), which is a confident number
   // about a configuration that does not exist. Abstaining is the only honest answer.

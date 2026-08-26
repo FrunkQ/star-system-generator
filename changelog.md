@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.64 - 26th Aug 2026
+
+- Hierarchical triples now get a circumbinary ring too. Alpha Centauri, Polaris and Algol are each an inner binary with a third star further out, so the outer pairing has a pair as one of its two partners — and the new circumbinary limit was skipping exactly those, publishing nothing at all for the widest and most interesting pairing in the system. A tight inner binary stands in for a single point of mass, which is the same assumption the whole nested arrangement is built on, so those pairings now publish their ring like any other.
+- Heads-up on a bundled example: the Uggi Traveller system has two planets, Barry and Philonius, orbiting inside the zone their two suns clear, and they are now marked very unstable. Nothing has been changed in that map. The stars are 23 AU apart, which sweeps a hole out to about 44 AU, and the two planets sit at 24 and 38. Traveller's own world generation has no rule about this, so the import placed them where its rules allow; the engine simply had no opinion until now.
+
 ## v3.0.63 - 25th Aug 2026
 
 - Board only. Two user-reported faults captured and measured against the reporter own map: B88, the base-map upgrade offer misfiring on a three-id coincidence, re-asking on every refresh and threatening real work; and B89, brown dwarf imports dropping the radius, collapsing a binary, and only reading correctly after a reload.
