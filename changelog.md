@@ -4,6 +4,8 @@ All notable changes are listed here:
 
 ## v3.0.75 - 26th Aug 2026
 
+- Arrival is now one setting instead of two. The Rendezvous/Flyby dropdown has gone; there is a single arrival velocity, and it says everything the dropdown said and more. Leave it at zero — the default — and the ship matches velocity and stays, exactly as before. Give it any speed and it is a flyby at that speed, labelled as one beside the control. The old pairing needed a mode AND a hidden speed that nothing exposed, and the two could disagree with each other.
+
 - Board only. Two faults recorded from an owner report that selecting Pluto draws a Hill sphere around Charon and none around Pluto. The drawn bubble is gated on a mass bar that belongs to the flight propagator rather than to the display, so a small planet is dropped while a moon of the same pair is kept; and a binary member bubble is worked out from its small wobble about the shared centre, which makes the heavier body bubble the smaller one. Neither is changed yet - the fix for the second needs the circumstellar half of the stability work, which does not exist in the engine.
 
 ## v3.0.74 - 26th Aug 2026

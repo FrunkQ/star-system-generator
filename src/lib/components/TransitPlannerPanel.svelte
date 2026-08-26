@@ -56,7 +56,12 @@
   let directBurnBrakeStartPercent: number = 90;
   let directProfileTouched = false;
   let directProfileDragging = false;
-  let arrivalMode: 'Rendezvous' | 'Flyby' = 'Rendezvous';
+  // ARRIVAL IS ONE NUMBER, NOT A MODE. Relative arrival velocity says everything the old
+  // Rendezvous/Flyby dropdown said and more: zero means match velocity and dock, anything above it
+  // is a pass at that speed. The binary was the point solution — it needed a hidden second control
+  // for the speed, and the two could disagree. `arrivalMode` survives only as a DERIVED label, so
+  // the places that still read it keep working and there is exactly one thing to set.
+  $: arrivalMode = interceptSpeed === 0 ? 'Rendezvous' : 'Flyby';
   let brakeAtArrival: boolean = true;
   let useAerobrake: boolean = true;
   let maxG: number = 1.0;
@@ -184,7 +189,7 @@
       telemetryData = [];
   }
 
-  $: brakeAtArrival = arrivalMode === 'Rendezvous';
+  $: brakeAtArrival = interceptSpeed === 0;   // stopping IS asking for zero relative velocity
   $: targetHasAtmosphere = false;
   $: canAerobrakeConstruct = currentConstructSpecs?.canAerobrake || false;
   $: canAerobrakeEffective = brakeAtArrival && targetHasAtmosphere && canAerobrakeConstruct;
@@ -214,7 +219,7 @@
       maxG = 1.0;
       maxGByPlanType = { Efficiency: 1.0, Assist: 1.0, Speed: 1.0, Complex: 1.0 };
       selectedPlanTypePreference = 'Efficiency';
-      arrivalMode = 'Rendezvous';
+      interceptSpeed = 0;            // back to dock-and-stay
       directProfileTouched = false;
       directProfileDragging = false;
       previousOriginId = originId;
@@ -456,18 +461,8 @@
                   directBurnBrakeStartPercent = brakeStartPercent;
               }
           }
-          if (plan.planType === 'Speed') {
-              // For Speed plans, only switch to Flyby if the plan explicitly has an intercept speed or flyby warning.
-              // Otherwise, we respect the user's manual dropdown selection.
-              const planIsFlyby = plan.interceptSpeed_ms > 0 || plan.segments.some((s) => (s.warnings || []).includes('Flyby'));
-              if (planIsFlyby) arrivalMode = 'Flyby';
-          } else {
-              // For Efficiency/Assist plans, we sync to the solver's result.
-              arrivalMode = (
-                  plan.interceptSpeed_ms > 0 ||
-                  plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
-              ) ? 'Flyby' : 'Rendezvous';
-          }
+          // (The solver's answer no longer writes back into the arrival control: the requested
+          //  velocity is the INPUT now, and the panel reports what was actually achieved instead.)
           
           dispatch('planUpdate', plan);
           
@@ -604,18 +599,8 @@
           } else if (plan.planType === 'Speed' && !directProfileDragging && brakeAtArrival && plan.brakeRatio !== undefined) {
                directBurnBrakeStartPercent = 100 - (plan.brakeRatio * 100);
           }
-          if (plan.planType === 'Speed') {
-              // For Speed plans, only switch to Flyby if the plan explicitly has an intercept speed or flyby warning.
-              // Otherwise, we respect the user's manual dropdown selection.
-              const planIsFlyby = plan.interceptSpeed_ms > 0 || plan.segments.some((s) => (s.warnings || []).includes('Flyby'));
-              if (planIsFlyby) arrivalMode = 'Flyby';
-          } else {
-              // For Efficiency/Assist plans, we sync to the solver's result.
-              arrivalMode = (
-                  plan.interceptSpeed_ms > 0 ||
-                  plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
-              ) ? 'Flyby' : 'Rendezvous';
-          }
+          // (The solver's answer no longer writes back into the arrival control: the requested
+          //  velocity is the INPUT now, and the panel reports what was actually achieved instead.)
           
           dispatch('planUpdate', plan);
           
@@ -1070,13 +1055,34 @@
             </div>
         </div>
         
-        <div class="form-group checkbox-row">
-            <label for="arrival-mode">Arrival Mode</label>
-            <select id="arrival-mode" bind:value={arrivalMode} on:change={handleCalculate}>
-                <option value="Rendezvous">Brake Burn / Rendezvous</option>
-                <option value="Flyby">Flyby</option>
-            </select>
-            <label class:disabled={!canAerobrakeEffective} title={!canAerobrakeEffective ? "Requires Rendezvous to a body with atmosphere and heatshield" : "Use atmosphere to reduce braking fuel"}>
+        <div class="form-group">
+            <div class="label-row">
+                <label for="arrival-speed">Arrival velocity</label>
+                <span style="font-size: 0.85em; color: {interceptSpeed === 0 ? '#7fd6a0' : '#ff9900'};">
+                    {interceptSpeed === 0 ? 'Rendezvous — matches velocity and stays' : `Flyby — crosses at ${(interceptSpeed / 1000).toFixed(1)} km/s`}
+                </span>
+            </div>
+            <!-- ONE control, not a mode plus a hidden speed. Zero is dock; anything else is a pass,
+                 and the number is what sizes the arrival burn — to cross at v the ship shed the
+                 difference between v and its closing speed, which is where the red brake stroke
+                 begins. Defaults to zero, so the everyday case is still "go there and stop". -->
+            <div style="display:flex; align-items:center; gap:8px;">
+                <input id="arrival-speed" type="range" min="0" max="50" step="0.5"
+                    value={interceptSpeed / 1000}
+                    on:input={(e) => { interceptSpeed = Number((e.currentTarget as HTMLInputElement).value) * 1000; }}
+                    on:change={handleCalculate} style="flex:1;" />
+                <input type="number" min="0" step="0.5" style="width:5.5em;"
+                    value={interceptSpeed / 1000}
+                    on:input={(e) => { interceptSpeed = Math.max(0, Number((e.currentTarget as HTMLInputElement).value)) * 1000; }}
+                    on:change={handleCalculate} />
+                <span style="font-size: 0.85em;">km/s</span>
+            </div>
+            {#if plan && interceptSpeed > 0 && Math.abs((plan.arrivalVelocity_ms ?? 0) - interceptSpeed) > 50}
+                <div class="info-row" style="font-size: 0.78em; color: #ff9900;">
+                    Crosses at {((plan.arrivalVelocity_ms ?? 0) / 1000).toFixed(1)} km/s — the burn window is too short to shed any more.
+                </div>
+            {/if}
+            <label class:disabled={!canAerobrakeEffective} style="margin-top:6px;" title={!canAerobrakeEffective ? "Requires a zero-velocity arrival at a body with atmosphere, and a heatshield" : "Use atmosphere to reduce braking fuel"}>
                 <input type="checkbox" bind:checked={useAerobrake} disabled={!canAerobrakeEffective} on:change={handleCalculate} />
                 Aerobrake
                 {#if canAerobrakeEffective}
@@ -1084,38 +1090,6 @@
                 {/if}
             </label>
         </div>
-
-        {#if arrivalMode === 'Flyby'}
-            <!-- PASS SPEED. This is the number that decides WHEN the brake burn starts: to cross the
-                 target at v you must shed (closing speed - v), and at this ship's thrust that takes a
-                 known time, which is where the red brake stroke begins. It was never settable — the
-                 solver has always read `interceptSpeed_ms`, but nothing in the UI wrote it, so every
-                 flyby ran at 0 = "no arrival burn at all, cross at whatever you happen to be doing".
-                 Zero is still the default, so nothing changes for anyone until they ask for it. -->
-            <div class="form-group">
-                <label for="flyby-speed">Pass speed
-                    <span style="font-size: 0.8em; color: #888;">
-                        {interceptSpeed > 0 ? 'brake to this, then cross' : 'no arrival burn — cross at closing speed'}
-                    </span>
-                </label>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <input id="flyby-speed" type="range" min="0" max="50" step="0.5"
-                        value={interceptSpeed / 1000}
-                        on:input={(e) => { interceptSpeed = Number((e.currentTarget as HTMLInputElement).value) * 1000; }}
-                        on:change={handleCalculate} style="flex:1;" />
-                    <input type="number" min="0" step="0.5" style="width:5.5em;"
-                        value={interceptSpeed / 1000}
-                        on:input={(e) => { interceptSpeed = Math.max(0, Number((e.currentTarget as HTMLInputElement).value)) * 1000; }}
-                        on:change={handleCalculate} />
-                    <span style="font-size: 0.85em;">km/s</span>
-                </div>
-                {#if plan && interceptSpeed > 0 && Math.abs((plan.arrivalVelocity_ms ?? 0) - interceptSpeed) > 50}
-                    <div class="info-row" style="font-size: 0.78em; color: #ff9900;">
-                        Crosses at {((plan.arrivalVelocity_ms ?? 0) / 1000).toFixed(1)} km/s — the burn window is too short to shed any more.
-                    </div>
-                {/if}
-            </div>
-        {/if}
 
     </div>
     {/if}
