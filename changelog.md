@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.63 - 25th Aug 2026
+
+- Board only. Two user-reported faults captured and measured against the reporter own map: B88, the base-map upgrade offer misfiring on a three-id coincidence, re-asking on every refresh and threatening real work; and B89, brown dwarf imports dropping the radius, collapsing a binary, and only reading correctly after a reload.
+
 ## v3.0.62 - 26th Aug 2026
 
 - The explanations caught up with yesterday's circumbinary physics, and one of them had been wrong for longer than that. The Newton panel was showing the wrong orbit for any planet that circles a pair of stars: it substituted the PAIR's orbit around the galaxy-ward star for the planet's own, so a world 0.7 AU from its two suns was labelled as orbiting at 39 AU, "as the pair" — and described as a member of the binary, which it is not. It now tells a member from a world orbiting the pair, and shows each the orbit that actually governs it. The stability card for a circumbinary world now also names the pair, the separation, the mass ratio, the eccentricity, the limit those imply and where the orbit sits against it, and explains in plain words why a turning gravity field clears a hole that a single star does not.
