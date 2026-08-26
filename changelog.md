@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.71 - 26th Aug 2026
+
+- Board only. The circumbinary work was checked in the running app rather than only in tests: the two Uggi worlds that sit inside their pair read very unstable with the reason and the numbers, a pair member and a distant companion both still read stable, and a planet orbiting one star of the pair is untouched. Also records a duplicated finding id for the coordinator to settle.
+
 ## v3.0.70 - 26th Aug 2026
 
 - An imported star now carries the fact that its mass, radius and temperature are typical for its class rather than measured. SIMBAD gives a spectral type and no radius, so for objects like brown dwarfs every figure comes from the rule pack's band for that class - which is why two brown dwarfs of different types can share a radius to the kilometre. That was always stated in the body's description, but nothing else knew, so the numbers read as observations everywhere they appear. The figures themselves are unchanged: brown dwarf radii really are near-constant whatever the mass.
