@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.89 - 26th Aug 2026
+
+- Choosing where to go is one control now, and it is the same one everywhere. Picking a destination, picking a body in the system view, and picking a system to jump to were three different things to learn - and the interstellar one was three plain dropdowns with no search at all.
+- It shows the system as it really is. Sol, then Earth, then Luna, then the Gateway parked at Luna - indented, so you find a station by knowing where it is rather than by knowing it counts as a construct. Before, you picked a CATEGORY and drilled into it, one at a time.
+- Type filters you can switch on and off, several at once, with a count on each. Turn on Constructs and you see just the four of them - still sitting under the worlds they orbit, so you can tell the station at Earth from the one at Luna.
+- Type to search anywhere in the map, in any of them.
+- Where you already are is not offered as somewhere to go, but it still appears, greyed, so the moons and stations around it are not left dangling under nothing.
+
 ## v3.0.88 - 26th Aug 2026
 
 - Fixed: adding a trojan at a Lagrange point threw an error and the type picker never opened. This was broken by yesterday's circumbinary work and it broke an existing feature, not just the new one - reported against Njord in Alpha Centauri. The picker now opens for an ordinary body, for a trojan, and for a circumbinary body, and there is a test that mounts all three so this cannot happen again unnoticed.

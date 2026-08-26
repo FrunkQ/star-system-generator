@@ -1247,7 +1247,6 @@
       summaryText={starmapSummary}
       roleOf={(n) => n?.kind === 'construct' ? 'construct' : 'system'}
       filterItems={() => true}
-      sections={true}
       on:select={handlePickSystem}
     />
     <!-- Desktop: a draggable floating info panel. Phone uses the bottom sheet instead. -->

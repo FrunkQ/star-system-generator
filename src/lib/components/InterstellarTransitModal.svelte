@@ -19,6 +19,8 @@
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatSpeedAuto, speedFlavour, formatPref } from '$lib/units';
   import UnitValue from './UnitValue.svelte';
+  import BodyPicker from './BodyPicker.svelte';
+  import { systemVisualStars } from '$lib/starmap/systemStars';
   import { campaignUnit } from '$lib/map/distanceUnits';
 
   export let starmap: Starmap;
@@ -89,7 +91,35 @@
   let destBodyId = '';
   $: if ((!destBodyId || !destBodies.some((b) => b.id === destBodyId)) && destBodies.length) destBodyId = destBodies[0].id;
   $: destBody = destBodies.find((b) => b.id === destBodyId) || null;
-  const bodyLabel = (b: CelestialBody) => `${isStar(b) ? '★ ' : b.roleHint === 'moon' ? '   ○ ' : b.kind === 'construct' ? '   ◆ ' : '  ● '}${b.name}`;
+  // The picker wants nodes; a vessel out in interstellar space is a bare point. Give it the two
+  // fields the list needs and carry its status as the context line, which is where the old option
+  // text was putting it with an arrow glyph.
+  $: vesselNodes = vessels.map((v) => ({
+    id: v.id, name: v.name, kind: 'construct', parentId: null,
+    __ctx: v.moving ? 'in transit' : 'adrift'
+  }));
+  const systemColor = (n: any) => {
+    const vis = n?.system ? systemVisualStars(n.system) : [];
+    return vis.length ? vis[0].color : '#888';
+  };
+  const systemContext = (n: any) => {
+    const ns = n?.system?.nodes ?? [];
+    let stars = 0, planets = 0, moons = 0, constructs = 0;
+    for (const x of ns) {
+      if (x.kind === 'construct') constructs++;
+      else if (x.kind === 'body') {
+        if (x.roleHint === 'star') stars++;
+        else if (x.roleHint === 'moon') moons++;
+        else planets++;
+      }
+    }
+    const bits: string[] = [];
+    if (stars) bits.push(`${stars}★`);
+    if (planets) bits.push(`${planets} plt`);
+    if (moons) bits.push(`${moons} mn`);
+    if (constructs) bits.push(`${constructs} con`);
+    return bits.join(' · ');
+  };
 
   // Destination can instead be an INTERSTELLAR VESSEL — a point in space (e.g. fly out to rescue a
   // stranded ship). The target is a snapshot of the vessel's current position; a stranded ship sits
@@ -276,32 +306,64 @@
         </div>
       {/if}
 
+      <!-- THE SAME PICKER AS EVERYWHERE ELSE. These were three bare `<select>` dropdowns: no search,
+           no types, and a destination body list that faked a hierarchy with leading spaces in the
+           option text. Owner, 2026-08-26: "Reuse and refine, and ONE interface for the user to
+           learn." A GM who has learned to find things in the system view now knows how to find them
+           here, and a map with two hundred bodies is searchable rather than scrollable. -->
       {#if destKind === 'vessel'}
         <!-- Fly to a ship out in interstellar space (e.g. a rescue) — a point destination. -->
         <div class="row">
-          <label class="field">
+          <div class="field">
             <span>Target ship</span>
-            <select bind:value={vesselId}>
-              {#each vessels as v (v.id)}<option value={v.id}>{v.moving ? '➤ ' : '⚠ '}{v.name}{v.moving ? ' (in transit)' : ' (adrift)'}</option>{/each}
-            </select>
-          </label>
+            <BodyPicker
+              inline
+              nodes={vesselNodes}
+              focusedId={vesselId}
+              emptyLabel="Select a ship…"
+              placeholder="Search ships…"
+              filterItems={() => true}
+              categorize={() => ['Ships']}
+              showTypeToggles={false}
+              colorOf={() => '#ffd23f'}
+              contextOf={(n) => n.__ctx}
+              roleOf={() => 'construct'}
+              on:select={(e) => (vesselId = e.detail)}
+            />
+          </div>
         </div>
         {#if selectedVessel?.moving}<p class="distance hint-warn">This ship is still moving — you'll be aimed at where it is now, not where it'll be. Best for stranded targets.</p>{/if}
       {:else}
         <!-- Two-fold destination: system, then a body within it -->
         <div class="row">
-          <label class="field">
+          <div class="field">
             <span>Destination system</span>
-            <select bind:value={destId}>
-              {#each destOptions as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
-            </select>
-          </label>
-          <label class="field">
+            <BodyPicker
+              inline
+              nodes={destOptions}
+              focusedId={destId}
+              emptyLabel="Select a system…"
+              placeholder="Search systems…"
+              filterItems={() => true}
+              categorize={() => ['Systems']}
+              showTypeToggles={false}
+              colorOf={systemColor}
+              contextOf={systemContext}
+              roleOf={() => 'system'}
+              on:select={(e) => (destId = e.detail)}
+            />
+          </div>
+          <div class="field">
             <span>Destination body</span>
-            <select bind:value={destBodyId}>
-              {#each destBodies as b (b.id)}<option value={b.id}>{bodyLabel(b)}</option>{/each}
-            </select>
-          </label>
+            <BodyPicker
+              inline
+              nodes={destBodies}
+              focusedId={destBodyId}
+              emptyLabel="Select a body…"
+              placeholder="Search bodies…"
+              on:select={(e) => (destBodyId = e.detail)}
+            />
+          </div>
         </div>
       {/if}
 

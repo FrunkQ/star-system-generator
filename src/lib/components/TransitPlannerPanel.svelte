@@ -246,10 +246,11 @@
   // Filter constructs/bodies for dropdowns
   // Rule: Only show "Major" targets (Stars, Planets, Barycenters, and Independent Constructs)
   // Hide Moons and things orbiting planets (users should target the planet first)
+  // NOTE the origin is NOT dropped here any more. The picker takes it as `excludeIds`, which keeps
+  // it on screen as unselectable CONTEXT when it still holds somewhere you can go - a ship at Earth
+  // is offered Luna and the ISS, and can see that is where they are. Dropping it from the list
+  // instead left those two hanging under nothing.
   $: bodies = system.nodes.filter(n => {
-      // Exclude self
-      if (n.id === originId) return false;
-
       // Always show stars & barycenters
       if (n.roleHint === 'star' || n.kind === 'barycenter') return true;
       
@@ -928,6 +929,7 @@
             inline
             nodes={bodies}
             focusedId={targetId}
+            excludeIds={originId ? [originId] : []}
             emptyLabel="Select target…"
             placeholder="Search destinations…"
             colorOf={getOptionColor}

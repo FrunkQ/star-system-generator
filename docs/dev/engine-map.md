@@ -2705,6 +2705,31 @@ so a Mars arrival was drawn parked for the 615 days it was still aerobraking. Re
 one dip because the loops coincide, and the drawn count is CAPPED at 24 with the real count in the
 label rather than silently truncated.
 
+### UI-C11 ONE PICKER ANSWERS "WHICH BODY?", AND ITS LIST RULE IS A PURE FUNCTION
+WHERE: `ui/bodyPickerList.ts` (`buildPickerRows`, `buildCategoryChips`) and the one component that
+reads it, `components/BodyPicker.svelte`. Mounted by `SystemView`, `Starmap`, `TransitPlannerPanel`
+and `InterstellarTransitModal`.
+RULE: every "which body?" is this component. It shows the system as a HIERARCHY with type toggles
+above it, and the list rule lives OUTSIDE the component so it can be tested without a DOM. Do not
+add a bespoke `<select>` for a body, a system or a ship; pass `filterItems` / `categorize` /
+`excludeIds` instead. The origin of a journey is passed as `excludeIds`, never filtered out of the
+node array — the picker needs it to keep placing whatever still hangs off it.
+WHY: there were three answers. `BodyPicker` offered a flat list of categories you DRILLED INTO one
+at a time, so finding a station meant knowing it was a Construct rather than knowing it was at
+Earth, and only one category could be shown at once. The interstellar modal had no picker at all —
+three bare `<select>`s, no search, no types, and a body list that faked a hierarchy with leading
+spaces in the option text. Owner, 2026-08-26: "Reuse and refine, and ONE interface for the user to
+learn."
+BLAST: THE PART THAT IS EASY TO GET WRONG is what a filter does to a hierarchy. Toggling
+"Constructs" must still show Sol > Earth > ISS, not a bare ISS with nothing to say where it is — so
+an ancestor of a surviving node is kept as unselectable CONTEXT, rendered as a `div` rather than a
+`button` so it cannot be tabbed to or clicked. The same applies to an excluded origin and to a
+barycentre, which is not itself a destination but holds two bodies that are. A SEARCH is flat and
+capped, and it honours the toggles and the exclusion — filtering the browse list but not the search
+box would hand back by typing what the caller ruled out. Authored data can contain a parent LOOP;
+anything the tree walk cannot reach is emitted at the top level, because an empty picker reads as
+"nowhere to go" rather than "this map has a cycle in it".
+
 ### UI-C1 One colour drives a construct's whole look
 WHERE: `ConstructBasicsTab.svelte` (Appearance block), `constructIcon.ts`, `modelViewer.ts`
 RULE: `icon_color` is the single authored colour: the 2D marker, the hull tint for material-less
