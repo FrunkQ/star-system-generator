@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.68 - 26th Aug 2026
+
+- Fixed: a ship arriving in a NEW SYSTEM kept the old one's flight state, and was sometimes drawn where it used to be rather than where it had got to. Re-homing it onto the destination was not enough, because a cached position vector and any leftover in-system journey both outrank its new orbit when the map decides where to draw it — and both describe the system it just left. Arrival now clears them, along with a draft plan, an autopilot route and any Lagrange-point marker, all of which named places in the other system. The ship's flight log is kept, since that is history rather than position.
+- Checked the arrival seam for the "snap" at a destination: arriving at any of the five Lagrange points now lands exactly where the parking begins, to the metre. An ordinary orbital arrival still steps out to its parking orbit at the last instant (about 90,000 km at Jupiter, which is one parking radius) — that one is older and separate, is now measured and logged, and will be looked at on its own.
+
 ## v3.0.67 - 26th Aug 2026
 
 - Board only. The circumbinary work is written up on its row: what shipped, the two findings left deliberately unfixed, the bundled-example heads-up, and exactly what the drawing half must read rather than recompute.

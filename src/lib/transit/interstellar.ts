@@ -213,6 +213,30 @@ export function endJourneyAtDestination(starmap: Starmap, journeyId: string): St
     dest[0];
 
   const ship = clone(loc.node);
+
+  // LEAVE THE OLD SYSTEM'S SITUATION BEHIND, or the ship arrives and draws where it used to be.
+  //
+  // Re-parenting and rewriting hostId is not enough, because two of these fields OUTRANK `orbit` at
+  // render time: `worldPositions` places a construct that has journeys by its kinematics sampler,
+  // and `getGlobalState` prefers a stored vector while `flight_state` is Transit or Deep Space. Both
+  // still described the system it just left — a completed journey names bodies that are not here, and
+  // a cached vector is a position in another star's frame — so the ship rendered at the old
+  // coordinates however correct its new orbit was. `ConstructSidePanel`'s SITUATION_FIELDS comment
+  // records exactly this failure for the IMPORT path; interstellar arrival is the same move between
+  // systems and was missed. The flight LOG is deliberately kept: it is the ship's history, not its
+  // position. The autopilot goes because its route names places in the system it has left.
+  delete (ship as any).vector_position_au;
+  delete (ship as any).vector_velocity_ms;
+  delete (ship as any).vector_epoch_ms;
+  delete (ship as any).coOrbital;          // its secondary is in the other system
+  delete (ship as any).placement;          // 'L4' etc. described a body that is not here
+  delete (ship as any).ui_parentId;
+  delete (ship as any).autopilot;
+  delete (ship as any).autopilotStuckReason;
+  (ship as any).scheduled_journeys = [];
+  (ship as any).draft_transit_plan = [];
+  (ship as any).flight_state = 'Orbiting';
+
   if (host) {
     ship.parentId = host.id;
     ship.orbit = {
