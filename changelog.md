@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.79 - 26th Aug 2026
+
+- Board only. Captured G46: local transfers and how a journey is drawn — the burn phases, the ship's motion along its path, the missing orbit-change picture and the aerobrake dip line. Design note written with the causes measured rather than guessed; no engine changes.
+
 ## v3.0.77 - 26th Aug 2026
 
 - Aerobraking is a real manoeuvre now instead of a flat discount. It used to subtract the ship's heatshield rating from the arrival burn wherever the destination had any air at all — which meant a ship arriving at a Lagrange point half an astronomical unit from Jupiter collected the same free braking as one skimming the cloud tops, and Mars scrubbed speed as freely as Venus.
