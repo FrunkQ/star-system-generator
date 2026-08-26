@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.65 - 26th Aug 2026
+
+- Board only. Real user files now have a home outside the repository, with a standing rule covering how they are used and why they are never committed.
+
 ## v3.0.64 - 26th Aug 2026
 
 - Hierarchical triples now get a circumbinary ring too. Alpha Centauri, Polaris and Algol are each an inner binary with a third star further out, so the outer pairing has a pair as one of its two partners — and the new circumbinary limit was skipping exactly those, publishing nothing at all for the widest and most interesting pairing in the system. A tight inner binary stands in for a single point of mass, which is the same assumption the whole nested arrangement is built on, so those pairings now publish their ring like any other.
