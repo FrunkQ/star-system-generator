@@ -49,7 +49,7 @@ motion, and it is worst exactly where the eye is drawn — at the moments the en
 
 The user's request — *"having your orbit change during it"* — has no representation today. A
 transfer between two orbits of the same body is drawn as a path to the body's CENTRE, and the ship
-then appears in a parking orbit at a deterministic phase ([[B88]]: measured 90,884 km of step at
+then appears in a parking orbit at a deterministic phase ([[B92]]: measured 90,884 km of step at
 Jupiter). The classic Hohmann picture the owner sent — initial orbit, transfer ellipse, final
 orbit, burn 1, burn 2 — is the mental model users arrive with, and the app draws none of it.
 

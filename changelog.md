@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.80 - 26th Aug 2026
+
+- Board only. The duplicated B88 is resolved: the base-map upgrade item keeps the number it claimed first and has already shipped under, and the ordinary-orbit arrival step becomes B92 in its spec and in the local-transfer design note.
+
 ## v3.0.79 - 26th Aug 2026
 
 - Board only. Captured G46: local transfers and how a journey is drawn — the burn phases, the ship's motion along its path, the missing orbit-change picture and the aerobrake dip line. Design note written with the causes measured rather than guessed; no engine changes.

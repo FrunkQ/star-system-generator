@@ -56,11 +56,11 @@ describe('arriving at a Lagrange point does not snap', () => {
     }
 });
 
-describe('the ordinary orbital arrival still steps out to its parking orbit (inbox B88)', () => {
+describe('the ordinary orbital arrival still steps out to its parking orbit (inbox B92)', () => {
     it('records the size of that step so it cannot grow unnoticed', () => {
         // NOT an L-point fault and NOT introduced by G43: a plan to `lo` aims at the body's CENTRE,
         // while the post-arrival sampler puts the ship in a parking orbit one parking-radius away —
-        // Jupiter 69,911 km x 1.3 = 90,884 km. Visible when zoomed to the planet. Filed as B88 rather
+        // Jupiter 69,911 km x 1.3 = 90,884 km. Visible when zoomed to the planet. Filed as B92 rather
         // than changed here, because moving the aim point is a solver change with its own Delta-v and
         // timing consequences. This assertion is the tripwire: it fails if the step CHANGES.
         const km = seamKm('Jupiter', 'lo');
