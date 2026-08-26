@@ -3307,3 +3307,23 @@ is RETIRED from the solver params — the geometry is not a caller's business. T
 gravity-assist family is EXCLUDED from those assertions and is a separate known fault ([[B86]]):
 it publishes `arrivalVelocity_ms = 0` with no Flyby warning while arriving km/s fast, on ordinary
 destinations too.
+
+### PHY-29 Hill spheres are asked TWO questions, and the answers must stay different
+WHERE: `physics/twoBodyCoast.ts` — `hillCandidates(system, rootId, includeMoons)` with two wrappers:
+`soiCandidates` (coast, moons EXCLUDED) and `hillSpheresAu` (display, moons INCLUDED).
+RULE: "what bounds this body's gravity" and "where does the propagator switch frames" are not the
+same question. The patched-conic coast hands off at planets and companion stars only — a moon SOI
+handoff is NOT modelled — while the display wants a moon's bubble precisely because that is where a
+submoon could live. Do not re-merge them, and never widen `soiCandidates` to fix a display gap:
+that silently changes every coast in the game and no transit spec necessarily catches it.
+WHY: they were one function until G44, so the display inherited the coast's moon exclusion and the
+one class of body a GM most wants to hang something off never drew a bubble.
+BLAST: the two floors also differ, and that is deliberate and MEASURED. `MIN_SOI_MASS_KG` (3e23) is
+roughly MERCURY's mass — the "big enough to bend a heliocentric coast" bar — and it excludes every
+major moon in the solar system (Ganymede 1.48e23, Titan 1.35e23, Callisto 1.08e23, Io 8.9e22, Luna
+7.3e22). Keeping it on the display side would draw NO moon bubble on any bundled map. A displayed
+moon bubble is gated geometrically instead: the Hill radius must clear the body's own surface, which
+is self-scaling, needs no constant, and answers the real question ("is there room out there to orbit
+in"). Planets and stars are untouched by both changes, so the coast is bit-identical — the Sol
+fixtures stay byte-unmoved, which is the gate. Radii come from the one shared formula: Luna 61,525 km
+and Titan 52,290 km against textbook ~61,500 and ~52,000.

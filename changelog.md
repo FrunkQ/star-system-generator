@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.53 - 26th Aug 2026
+
+- Moons draw their Hill spheres now, when the Hill sphere overlay is on — the boundary inside which a moon holds on to anything of its own, which is where a submoon would go. They had been excluded because the display shared its list with the flight propagator, which deliberately does not model a handoff at a moon; those are now two separate lists and the flight side is untouched. The mass bar the propagator uses turned out to be roughly Mercury's, which excluded every major moon in the solar system, so a drawn bubble is judged on whether there is actually room outside the moon to orbit in instead.
+
 ## v3.0.52 - 26th Aug 2026
 
 - A gravity-assist plan now arrives the way it says it does. It had always charged for its arrival brake — the Delta-v and the fuel both included it, and it reported an arrival velocity of zero — but the trajectory it published ended at the speed the ship was doing BEFORE that burn, several km/s fast (4.8 km/s on a Jupiter low orbit, up to 21.8 on a Lagrange point). Anything chaining a second leg onto an assist was therefore planning from a velocity the ship would never have. The brake now also appears as an arrival burn you can see, at exactly the cost it was always quoting.
