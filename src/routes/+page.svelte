@@ -83,7 +83,7 @@
   import { unitKind, campaignUnit, normaliseCampaignUnit, applyUnitChange, type UnitChangeMode } from '$lib/map/distanceUnits';
   import { rescaleMapBackgroundForRuler } from '$lib/map/mapBackground';
   import { perfCount } from '$lib/perfTrace';
-  import { shouldOfferUpgrade, dismissUpgrade, type UpgradeOffer } from '$lib/map/upgradeOffer';
+  import { shouldOfferUpgrade, dismissUpgrade, recordUpgradeAnswer, type UpgradeOffer } from '$lib/map/upgradeOffer';
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
@@ -736,6 +736,13 @@
     }
   }
   $: maybeOfferBaseMapUpgrade($starmapStore);
+
+  // B88: write the GM's answer ONTO the campaign so it rides saves, bundles and other devices - the
+  // localStorage note alone left a user re-asked on every refresh. `checkedUpgradeFor` is left set, so
+  // the reactive re-run above does not re-offer within this session either.
+  function recordBaseMapAnswer(answer: 'later' | 'never') {
+    starmapStore.update((map) => (map ? recordUpgradeAnswer(map, answer) : map));
+  }
 
   // Accepting: the rebased campaign takes its systems from the bundled FILE, so they are authored inputs
   // that have not been through the physics engine yet — re-derive before it becomes current, exactly as
@@ -2202,7 +2209,8 @@
       offer={baseMapOffer}
       on:backup={handleDownloadStarmap}
       on:accept={(e) => acceptBaseMapUpgrade(e.detail)}
-      on:dismiss={() => { if ($starmapStore) dismissUpgrade($starmapStore.id); baseMapOffer = null; }}
+      on:dismiss={() => { if ($starmapStore) { dismissUpgrade($starmapStore.id); recordBaseMapAnswer('never'); } baseMapOffer = null; }}
+      on:later={() => { recordBaseMapAnswer('later'); baseMapOffer = null; }}
       on:close={() => (baseMapOffer = null)}
     />
   {/if}

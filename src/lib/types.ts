@@ -1261,8 +1261,15 @@ export interface Starmap {
   //  - `baseMapVersion`: which edition of a BUNDLED starter map this descends from. Set by the shipped
   //    maps (static/example-starmaps/manifest.json), carried through saves untouched, and never invented
   //    for a map the GM built themselves — a map with no base has no base version.
+  //  - `baseMapUpgradeDeclined`: the base-map edition the GM said 'Not now' to, recorded ON THE MAP so
+  //    the answer rides saves, bundles and other devices. B88: the decline used to live only in this
+  //    browser's localStorage, so a user was re-asked on every refresh, forever. A NEWER edition than
+  //    the one declined may still be offered - 'not now' is not 'never'.
+  //  - `baseMapUpgradeDismissed`: the GM ticked 'do not ask again for this campaign'. Never offer again.
   appVersion?: string;
   baseMapVersion?: number;
+  baseMapUpgradeDeclined?: number;
+  baseMapUpgradeDismissed?: boolean;
   /**
    * DEAD (G35). The experimental "evolutionary" (accrete) generator was removed; it lives on as its
    * own project at https://system-lab.starsystemx.com/. Kept in the type ONLY so a starmap saved by

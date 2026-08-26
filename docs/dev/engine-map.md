@@ -1859,6 +1859,23 @@ BLAST: anything under `src/lib/import/realsky/` that the kit imports changes gen
 shipped maps must be regenerated in the SAME commit. Adding a planet host to the roster also
 regenerates `src/lib/generated/bundledArchiveHosts.mjs` (D15) — never hand-edit that file.
 
+### DATA-R23 A GM's answer about their OWN campaign is recorded ON the campaign
+WHERE: `src/lib/map/upgradeOffer.ts` (`recordUpgradeAnswer`, the guards in `shouldOfferUpgrade`),
+`types.ts` (`baseMapUpgradeDeclined` / `baseMapUpgradeDismissed`), `BaseMapUpgradeModal.svelte`
+RULE: when the app asks the GM a question ABOUT THEIR CAMPAIGN, the answer is stamped on the
+campaign, not filed in this browser. A decline then rides saves, bundles and other devices, exactly
+as the campaign does. Every button that ends the conversation must record something: a control that
+closes a dialogue while storing nothing is an infinite loop with a polite face. 'Not now' records
+the edition declined (a LATER edition may ask again); the never-ask tick records a flat boolean.
+WHY: B88. The decline lived only in `localStorage` keyed by campaign id, and 'Not now' dispatched a
+bare `close` that stored nothing — so a user whose 51-system campaign matched the bundled map on
+THREE ids was re-offered a work-destroying rebase on every single refresh, forever, and the only
+control that ever silenced it was an easily-missed quiet checkbox.
+BLAST: the localStorage key is still READ, additively — never swap it out, or everyone who already
+dismissed gets re-asked once. Any new campaign-scoped question follows this rule rather than adding
+a second preference key. `stripStarmapForExport` and the persist path both deep-clone, so top-level
+fields ride for free; a future normaliser that PICKS fields instead of spreading would drop them.
+
 ### DATA-R2 Node ids are stable REFERENCES, and they feed the orbital phase hash
 WHERE: `build-starmaps.mjs` (`hash01(id + '|i')` …), `assertUniqueIds`; WS8 rebase reads `sys-*`
 RULE: `sys-sol`, `barnard-star` and friends are load-bearing: parents, barycentre members, orbits,

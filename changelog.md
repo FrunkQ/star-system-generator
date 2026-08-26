@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.69 - 26th Aug 2026
+
+- Saying "Not now" to the bundled-map upgrade is now remembered, and remembered with your campaign. It used to be stored only in the browser you happened to be using - and the "Not now" button recorded nothing at all - so a user could decline the offer and be asked again on the very next refresh, forever. The answer now travels inside the campaign file, so it survives a save, a reload, a different browser and a different machine. "Not now" silences the offer for the map edition you were asked about; a genuinely newer edition may still ask later, and the "do not ask again" tick still means never. Anyone who already dismissed the offer stays dismissed.
+
 ## v3.0.68 - 26th Aug 2026
 
 - Fixed: a ship arriving in a NEW SYSTEM kept the old one's flight state, and was sometimes drawn where it used to be rather than where it had got to. Re-homing it onto the destination was not enough, because a cached position vector and any leftover in-system journey both outrank its new orbit when the map decides where to draw it — and both describe the system it just left. Arrival now clears them, along with a draft plan, an autopilot route and any Lagrange-point marker, all of which named places in the other system. The ship's flight log is kept, since that is history rather than position.
