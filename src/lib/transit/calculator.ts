@@ -38,6 +38,13 @@ function getNodeMass(sys: System, node: any): number {
     return 0;
 }
 
+/** Unit vector, or undefined when there is no direction to speak of. */
+function unitOf(v: Vector2): Vector2 | undefined {
+    const m = Math.hypot(v.x, v.y);
+    if (!(m > 1e-18)) return undefined;
+    return { x: v.x / m, y: v.y / m };
+}
+
 /** The sample nearest a given offset from the journey start. Sample times are no longer evenly
  *  spaced, so a fraction-of-count index is not the same thing as a fraction-of-time one. */
 function indexAtTimeSec(timesSec: number[], tSec: number): number {
@@ -921,6 +928,9 @@ function calculateLambertPlan(
     const g0 = 9.81;
     const accel_mps2 = (params.maxG || 0.1) * g0;
     const dv1_applied_mps = dv1_req_au_s * AU_M;
+    // The direction the drive points during the departure burn (G46 / owner, 2026-08-26: "pointing
+    // in direction of desired vector"). Same vector the magnitude above is taken from.
+    const dv1_dir = unitOf(subtract(result.v1, startVel));
     
     let m0 = 0; 
     let useRocketEq = false;
@@ -1127,7 +1137,8 @@ function calculateLambertPlan(
     if (accelPoints.length > 1) segments.push({
         id: 'seg-accel', type: 'Accel', startTime, endTime: accelEndTime,
         startState, endState: {r:accelPoints[accelPoints.length-1], v:{x:0,y:0}}, 
-        hostId: root.id, pathPoints: accelPoints, pathTimes: accelSlice.timesMs, warnings: [], fuelUsed_kg: fuel1
+        hostId: root.id, pathPoints: accelPoints, pathTimes: accelSlice.timesMs, warnings: [], fuelUsed_kg: fuel1,
+        deltaV_ms: dv1_applied_mps, thrustDir: dv1_dir
     });
     
     if (coastPoints.length > 1) segments.push({
@@ -1139,7 +1150,8 @@ function calculateLambertPlan(
     if (brakePoints.length > 1) segments.push({
         id: 'seg-brake', type: 'Brake', startTime: brakeStartTime, endTime: arrivalTime,
         startState: {r:brakePoints[0], v:{x:0,y:0}}, endState: finalState,
-        hostId: root.id, pathPoints: brakePoints, pathTimes: brakeSlice.timesMs, warnings: !params.brakeAtArrival ? ['Flyby'] : [], fuelUsed_kg: fuel2
+        hostId: root.id, pathPoints: brakePoints, pathTimes: brakeSlice.timesMs, warnings: !params.brakeAtArrival ? ['Flyby'] : [], fuelUsed_kg: fuel2,
+        deltaV_ms: dv2_applied_mps, thrustDir: unitOf(deltaNeeded_au_s)
     });
 
     // Ensure last segment has final state
@@ -1485,6 +1497,8 @@ function calculateFastPlan(
             hostId: frameNode.id,
             pathPoints: accelSlice.points,
             pathTimes: accelSlice.timesMs,
+            deltaV_ms: dv1,
+            thrustDir: unitOf(subtract(v1, startState.v)),
             warnings: params.maxG > 2 ? ['High G'] : [],
             fuelUsed_kg: fuel1
         });
@@ -1533,6 +1547,8 @@ function calculateFastPlan(
             hostId: frameNode.id,
             pathPoints: brakeSlice.points,
             pathTimes: brakeSlice.timesMs,
+            deltaV_ms: dv2,
+            thrustDir: unitOf(needVecGlobal),
             warnings: [
                 ...(params.maxG > 2 ? ['High G'] : []),
                 ...(!params.brakeAtArrival ? ['Flyby'] : [])

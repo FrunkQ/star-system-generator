@@ -3495,3 +3495,29 @@ that the assist search never checks where its heliocentric legs GO: it rejects a
 clip the flyby body, but offers a leg whose perihelion is 0.0037 AU, inside the corona. Pinned by
 `calculator.belt.test.ts` and left for the transit review — rejecting a candidate changes which plans
 a user is offered, which is a solver decision, not a drawing one.
+
+### RENDER-S34 A BURN PUBLISHES HOW HARD AND WHICH WAY IT PUSHES; NOTHING MAY INFER EITHER
+WHERE: `TransitSegment.deltaV_ms` and `TransitSegment.thrustDir`, written by all three plan builders.
+Read through `constructs/shipBurn.ts` (`burnEffort`), which feeds the 3D hull heading and plume in
+`holo/scene.ts` and the acceleration arrow in `SystemVisualizer.svelte`.
+RULE: take the published figures. Do NOT difference `startState.v` against `endState.v` to recover a
+burn — most builders leave `endState.v` as a literal zero placeholder, so that difference is the
+ship's whole orbital velocity and not the Delta-v at all. Do NOT aim a thrusting hull down its course
+line either: a burn's Delta-v is what CHANGES the velocity, so it is not generally parallel to it.
+WHY: measured against a commanded 0.3 g, the inferred thrust came out at 2.4x on a Hohmann departure,
+2.8x on its brake, and 0.03x on a 57-hour torch burn — a drive plume that was effectively dark through
+the longest burn in the game. And measured against the drawn course, the published direction sits 61.7
+degrees off on the Most Efficient departure; aiming down the course and flipping for a brake (what the
+renderer did) would have drawn that plan's arrival burn 107.3 degrees wrong and the gravity assist's
+153.2 degrees wrong, very nearly backwards. G46, owner 2026-08-26: orientation "is ONLY important when
+the engines are firing", and then "pointing in direction of desired vector".
+BLAST: an efficient arrival burn is frequently PROGRADE despite being labelled `Brake` — arriving at
+the top of a transfer ellipse you are slower than the orbit you are joining and must speed up to stay
+there — so `braking` is a plume-and-fallback concept and must not be used to derive geometry where a
+`thrustDir` exists. A TORCH burn is the case where the old inference was fine (0.1 and 177.4 degrees,
+i.e. within 2.6 of prograde/retrograde), which is why this went unseen: nothing drew a ship's heading
+at all until the 3D models arrived. The acceleration ARROW showed net gravity alone, which during a
+burn is four orders of magnitude too small and points at the star — correct for what it measured and a
+lie about what it was labelled (see the standing rule on published quantities). Journeys committed
+before this carry neither field and fall back to the old inference, so the fallback is not dead code;
+`burnVectors.spec.ts` pins both paths.

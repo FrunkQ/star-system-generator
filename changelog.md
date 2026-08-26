@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.83 - 26th Aug 2026
+
+- A ship now points the way its engine is actually pushing. It used to aim down its course line and simply turn around for a braking burn, which is right for a torch burn and wrong for almost everything else: an efficient transfer's burn is a change of velocity, not a shove along it, so it sits at an angle. Measured on the same journey, the old rule drew the arrival burn 107 degrees off, and a gravity-assist arrival 153 degrees off - very nearly backwards. Orientation only matters while the engines are lit, and nothing drew a ship's heading at all until the 3D models arrived, so this has been wrong quietly for a long time.
+- The drive plume now burns at the thrust the ship was actually given. It was being worked out by subtracting one end of a burn from the other, but most routes leave those end values blank, so the sum was the ship's whole orbital speed rather than the burn. A 0.3 g freighter's departure flared at 2.4 times its real thrust - and a 57-hour torch burn, the longest in the game, showed 3% of its own, which is to say the drive looked switched off through the most dramatic thing a ship does.
+- The acceleration arrow includes the drive. It showed gravity only, which while a ship is burning is about ten thousand times too small and points at the star instead of where the ship is going.
+- The velocity arrow is fixed by the same change as the burn drawing: during a burn it was reading the borrowed path points, so it reported over a thousand kilometres a second for a ship doing twenty.
+
 ## v3.0.82 - 26th Aug 2026
 
 - Burns are drawn where they actually happen, and at a speed a ship could actually manage. A burn lasting under an hour inside a three-year transfer used to catch none of the path samples at all — the whole journey was drawn as one line of a point every two days, then chopped into acceleration, coast and braking after the fact — so the burn borrowed two coast points forty-eight hours apart and the ship was drawn crossing three million kilometres in forty-one minutes. That is 1,366 km/s for a freighter that manages about 10 km/s in an hour, and it happened at exactly the moment you were watching, because that is when the engine is lit. Each phase now draws its own path over its own stretch of time: the same burn draws at 19.4 km/s.

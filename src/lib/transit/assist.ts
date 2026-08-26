@@ -432,6 +432,12 @@ function buildAssistTransitPlan(
     // and re-solving them with finite burns is a different piece of work. This is the same
     // display-grade split the torch families already use — it makes the burn VISIBLE at the right
     // moment and for the right duration, which is what the plume and the flip read.
+    /** Unit vector of a burn's Delta-v — the direction the drive actually points while it fires. */
+    const unitOf = (v: Vector2): Vector2 | undefined => {
+        const m = Math.hypot(v.x, v.y);
+        return m > 1e-18 ? { x: v.x / m, y: v.y / m } : undefined;
+    };
+
     // The burn phases now OWN their points — generated over their own window by the leg's own
     // integration — so nothing is carved out of anyone else's grid and nothing has to be interpolated
     // into existence at the boundary. What used to live here was `sliceAt`, which split a two-day
@@ -444,6 +450,7 @@ function buildAssistTransitPlan(
             startState: { r: s1.r, v: s1.v },
             endState: { r: leg1Accel.points[leg1Accel.points.length - 1], v: leg1.v1 },
             hostId: root.id, pathPoints: leg1Accel.points, pathTimes: leg1Accel.timesMs,
+            deltaV_ms: dv1, thrustDir: unitOf(subtract(leg1.v1, s1.v)),
             warnings: [], fuelUsed_kg: 0
         });
         segments.push({
@@ -519,6 +526,7 @@ function buildAssistTransitPlan(
             startState: { r: leg2Brake.points[0], v: leg2.v2 },
             endState: { r: targetEndState.r, v: targetEndState.v },
             hostId: root.id, pathPoints: leg2Brake.points, pathTimes: leg2Brake.timesMs,
+            deltaV_ms: dv3, thrustDir: unitOf(subtract(targetEndState.v, leg2.v2)),
             warnings: [], fuelUsed_kg: 0
         });
     } else {

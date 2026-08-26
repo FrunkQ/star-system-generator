@@ -211,6 +211,30 @@ well-solved one and only the endpoint is honest. The 'straight transit lines' bu
 review's deliverable should include a standing geometric gate for every plan family rather than the
 one this item shipped.
 
+**S8. IN-SYSTEM TRANSIT IS ENTIRELY TWO-DIMENSIONAL, and the rest of the engine is not.** Owner,
+2026-08-26: *"I don't think transits really thought in 3D, so some distances may be a bit longer
+now - but the maths should be no different."* Confirmed by measurement: `Vector2` is the only
+vector type in `calculator.ts`, `assist.ts`, `scheduler.ts`, `math.ts` and `pathSampling.ts`, and
+`getGlobalState` returns `{x, y}` — inclination is dropped on the way in. The Sol Expanse fixture
+has **38 inclined nodes**; the out-of-plane offsets the solver never sees are 0.4689 AU for the Main
+Belt (i=10 deg), 0.1183 AU for Jupiter, 0.0492 for Mars, 0.0472 for Mercury. Moons are negligible
+against their own orbits. He is right that the method is unaffected — Lambert, the phase schedule,
+the time stamps and the turn refinement are all dimension-agnostic, so a move to `Vector3` is a type
+change and not a redesign. TWO CONSEQUENCES WORTH KNOWING FIRST. (a) `constructs/shipRoute.ts`
+already reads `z` off every path point (`z: num(pts[i]?.z)`) and always gets 0, so a route line is
+drawn flat in the ecliptic while the bodies it joins sit at their true inclinations — for a Main Belt
+target that is most of half an AU of disagreement in the 3D view. (b) `interstellar.ts` DOES carry z,
+so the engine already has one journey model that is 3D and one that is not, which is precisely the
+'could these two answer the same question differently' test.
+
+**S9. `braking` IS A PLUME CONCEPT AND WAS BEING USED AS A GEOMETRY ONE.** Fixed at v3.0.83, but the
+shape is worth recording: a boolean 'is this a brake' was standing in for a direction, and the
+renderer turned the hull around on it. An efficient arrival burn is frequently PROGRADE despite being
+labelled `Brake`, so the boolean was not merely coarse but wrong. Anywhere a label substitutes for a
+vector is the same fault waiting; `Correction` segments still resolve their direction by projection
+rather than carrying one, which is fine while their Delta-v is a nominal 10 m/s and would not be if
+it ever became real.
+
 ### Documentation debt
 
 None of the four user-facing explainer surfaces describe path sampling — this is a rendering

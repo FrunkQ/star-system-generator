@@ -2855,8 +2855,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const stamp = node?.vector_epoch_ms;
     return Number.isFinite(stamp) ? stamp : timeMs;
   }
-  let _burnCache = { id: '', atMs: -Infinity, braking: false, thrust01: 0 };
-  function shipBurnState(id: string): { braking: boolean; thrust01: number } {
+  type SceneBurn = { braking: boolean; thrust01: number; thrusting: boolean; thrustDir?: { x: number; y: number } };
+  let _burnCache: SceneBurn & { id: string; atMs: number } =
+    { id: '', atMs: -Infinity, braking: false, thrust01: 0, thrusting: false };
+  function shipBurnState(id: string): SceneBurn {
     const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (_burnCache.id === id && now - _burnCache.atMs < 250) return _burnCache;
     const node = currentSystem?.nodes.find((n) => n.id === id) as any;
@@ -2866,7 +2868,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const burn = shipBurnAt(node, shipClock(node));
     const cap = Math.max(0.01, shipCapability?.[id]?.accelMs2 ?? FULL_PLUME_MS2);
     const thrust01 = burn.thrusting && burn.accelMs2 > BRAKE_ACCEL_MS2 ? Math.min(1, burn.accelMs2 / cap) : 0;
-    _burnCache = { id, atMs: now, braking: burn.braking && thrust01 > 0, thrust01 };
+    _burnCache = {
+      id, atMs: now, braking: burn.braking && thrust01 > 0, thrust01,
+      // Aim by the published thrust vector only while the drive is actually doing something; a
+      // sub-threshold puff keeps the course heading rather than snapping the hull about.
+      thrusting: thrust01 > 0,
+      thrustDir: thrust01 > 0 ? burn.thrustDir : undefined
+    };
     return _burnCache;
   }
 
@@ -3099,7 +3107,34 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // The braking negate composes on top: a torch ship brakes engines-first either way.
           let heading = false;
           const rl = routeLines.length ? routeLines.find((x) => x.id === b.id) : undefined;
-          if (rl) {
+          // WHILE THE ENGINES ARE LIT, THE NOSE GOES ON THE THRUST - not on the course.
+          //
+          // Owner, 2026-08-26: orientation "is ONLY important when the engines are firing", and then it
+          // should be "pointing in direction of desired vector". Those are different vectors: a burn's
+          // Delta-v is what CHANGES the velocity, so it sits at an angle to it, and a departure burn can
+          // be well off the course line. The route tangent below is the right answer for a coasting ship
+          // and an approximation for a burning one; the flip for a brake is that approximation's crude
+          // half. The solver now publishes the direction it sized the burn from (`thrustDir`), so where
+          // it is present the nose goes exactly there and the brake flip is not needed - retrograde is
+          // simply what a braking Delta-v already points.
+          //
+          // Converted by finite difference THROUGH `positionToScene`, like the tangent, because the
+          // radial compression bends directions and a world-space vector is not a scene-space one.
+          let thrustAimed = false;
+          if (rl && burn.thrusting && burn.thrustDir) {
+            const sc = shipClock(rl.node);
+            const here = routeStateAt(rl.route, Math.min(rl.route.e, Math.max(rl.route.s, sc)));
+            if (here) {
+              const step = Math.max(1e-9, Math.hypot(here.x, here.y) * 1e-3);
+              positionToScene(
+                { x: here.x + burn.thrustDir.x * step, y: here.y + burn.thrustDir.y * step, z: here.z ?? 0 },
+                _shipLook
+              );
+              _shipDelta.copy(_shipLook).sub(positionToScene(here, _shipTan));
+              thrustAimed = heading = _shipDelta.lengthSq() > 0;
+            }
+          }
+          if (rl && !thrustAimed) {
             const sc = shipClock(rl.node);
             if (sc >= rl.route.s && sc <= rl.route.e) {
               // Tangent by central difference on the SAME curve the line draws, through the live
@@ -3115,7 +3150,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             }
           }
           if (heading || (!rebased && _shipDelta.lengthSq() > moveEps)) {
-            if (burn.braking) _shipDelta.negate();
+            // The published thrust direction already points the right way; the flip is only for the
+            // course-tangent fallback, which does not know a brake from a burn.
+            if (burn.braking && !thrustAimed) _shipDelta.negate();
             _shipDelta.multiplyScalar(b.noseSign ?? 1);
             b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
           }

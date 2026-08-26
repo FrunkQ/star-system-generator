@@ -35,6 +35,18 @@ export interface TransitSegment {
   // samples 48 hours apart. A stamped segment is read by the two points that actually BRACKET
   // the query time (transit/pathSampling.ts).
   pathTimes?: number[];
+  // THE DELTA-V THIS PHASE ACTUALLY SPENDS, in m/s. Published rather than inferred, because the
+  // only other source is the difference between `startState.v` and `endState.v` — and those are
+  // ZEROED on most segments, so inferring gave the drive plume 2.4x its real thrust on a Hohmann
+  // departure and effectively NOTHING on a 57-hour torch burn. Absent on Coast segments and on
+  // journeys saved before G46, where the old inference is still the fallback.
+  deltaV_ms?: number;
+  // WHICH WAY THE DRIVE IS POINTING while this phase burns: the unit vector of the phase's own
+  // Delta-v, in the same frame as `pathPoints`. A ship under thrust points along the thrust, and
+  // that is NOT the same as along its course — a departure burn's Delta-v sits at an angle to the
+  // velocity it is changing. Without this the renderer can only aim the nose down the route line
+  // and flip it for a brake, which is right to within that angle and no better. Absent on Coast.
+  thrustDir?: Vector2;
   warnings: string[]; // "High G", "Radiation", "Fuel Low"
   fuelUsed_kg: number;
 }

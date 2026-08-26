@@ -112,6 +112,7 @@
   const MARKER_PILL_FONT_PX = 9;
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  import { shipBurnAt } from '$lib/constructs/shipBurn';
   export let highlights: MapHighlights | null = null;
   // The mute is part of the selection's meaning, not a separate render flag: muted means "none".
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights);
@@ -2148,6 +2149,29 @@
 
           if (showVectors) {
               const acc = computeNetGravityAccelerationMs2(physicalPos, node.id);
+              // THE SHIP'S OWN DRIVE IS PART OF ITS ACCELERATION, and while it burns it is nearly all
+              // of it: 0.3 g is 2.94 m/s2 against roughly 2.4e-4 m/s2 of solar gravity out at Jupiter,
+              // four orders of magnitude. Showing gravity alone left the arrow pointing at the star
+              // through the one part of a journey where the ship is being pushed somewhere else - a
+              // reading that was correct for what it measured and a lie about what it was labelled
+              // (the standing rule). Thrust direction comes from the segment that sized the burn; the
+              // velocity fallback is for journeys committed before that was published.
+              const burn = shipBurnAt(node, timeMs);
+              if (burn.thrusting && burn.accelMs2 > 0) {
+                  let dx = burn.thrustDir?.x, dy = burn.thrustDir?.y;
+                  if (dx === undefined || dy === undefined) {
+                      const m = vel ? Math.hypot(vel.x, vel.y) : 0;
+                      if (m > 0) {
+                          const sgn = burn.braking ? -1 : 1;
+                          dx = (vel!.x / m) * sgn;
+                          dy = (vel!.y / m) * sgn;
+                      }
+                  }
+                  if (dx !== undefined && dy !== undefined) {
+                      acc.x += dx * burn.accelMs2;
+                      acc.y += dy * burn.accelMs2;
+                  }
+              }
               const aMs2 = Math.hypot(acc.x, acc.y);
               if (aMs2 > 1e-6 && Number.isFinite(aMs2)) {
                   const aLen = Math.max(10, Math.min(72, 8 + Math.log10(aMs2 * 100 + 1) * 18));
