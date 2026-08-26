@@ -1078,18 +1078,25 @@
       if (showLPoints && lagrangeAreas.length) {
           // The zones, drawn as the shapes the physics actually makes: a true tadpole contour at
           // L4/L5 (fat head at the point, tail narrowing toward the secondary) and a station-keeping
-          // ellipse at each collinear point. Triangular zones are green — somewhere a body can sit
-          // for free; collinear zones are amber and outlined only, because nothing is held there.
+          // ellipse at each collinear point.
+          //
+          // BOTH ARE GREEN, AND THAT IS A COLOUR-CHANNEL DECISION rather than a preference: AMBER IS
+          // THE HILL SPHERE'S (`rgba(255, 232, 130, …)` further down), and the collinear zones used to
+          // be amber too — which read as a Hill sphere, especially at L1/L2 where they genuinely sit
+          // ON the Hill boundary and overlap it. Green now means "Lagrange" across all five. The two
+          // kinds stay distinguishable within that: triangular zones are a saturated green and filled
+          // (a body can sit there for free), collinear zones a cooler teal and fainter (nothing is
+          // held there — a station-keeping envelope, not a trap).
           for (const area of lagrangeAreas) {
               const tri = isTriangularPoint(area.point);
               ctx.beginPath();
               ctx.moveTo(area.poly[0].x - renderPan.x, area.poly[0].y - renderPan.y);
               for (let i = 1; i < area.poly.length; i++) ctx.lineTo(area.poly[i].x - renderPan.x, area.poly[i].y - renderPan.y);
               ctx.closePath();
-              ctx.fillStyle = tri ? 'rgba(0, 200, 100, 0.16)' : 'rgba(255, 200, 90, 0.07)';
+              ctx.fillStyle = tri ? 'rgba(0, 200, 100, 0.16)' : 'rgba(60, 205, 165, 0.075)';
               ctx.fill();
               ctx.lineWidth = 1 / zoom;
-              ctx.strokeStyle = tri ? 'rgba(0, 200, 100, 0.35)' : 'rgba(255, 200, 90, 0.30)';
+              ctx.strokeStyle = tri ? 'rgba(0, 200, 100, 0.35)' : 'rgba(60, 205, 165, 0.32)';
               ctx.stroke();
           }
       }

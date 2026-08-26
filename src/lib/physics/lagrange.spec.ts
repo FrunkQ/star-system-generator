@@ -413,6 +413,39 @@ describe('the real tadpole SHAPE (CR3BP zero-velocity contour)', () => {
         expect(luna / earth).toBeGreaterThan(30);
     });
 
+    it('STRADDLES the co-orbital track and is centred on its own point', () => {
+        // The zone must sit ON the track, not beside it: the L4 point is at normalised radius 1 by
+        // construction (the equilateral triangle puts it at exactly the secondary's own distance),
+        // so the region has to reach both inside and outside that, and be widest there.
+        for (const mu of [3.003e-6, 9.533e-4, 1.214e-2]) {
+            const poly = tadpoleOutline(mu, 'l4', 21);
+            const rs = poly.map(p => Math.hypot(p.x, p.y));
+            expect(Math.min(...rs), `mu=${mu} should reach inside the track`).toBeLessThan(1);
+            expect(Math.max(...rs), `mu=${mu} should reach outside the track`).toBeGreaterThan(1);
+            // and roughly evenly: a lopsided region would mean the contour had been mis-centred
+            const inner = 1 - Math.min(...rs), outer = Math.max(...rs) - 1;
+            expect(Math.abs(outer - inner) / Math.max(inner, outer)).toBeLessThan(0.15);
+        }
+    });
+
+    it('is widest at the L4 longitude itself', () => {
+        const poly = tadpoleOutline(1.214e-2, 'l4', 21);
+        const buckets = new Map<number, number[]>();
+        for (const q of poly) {
+            const phi = Math.round((Math.atan2(q.y, q.x) * 180) / Math.PI);
+            if (!buckets.has(phi)) buckets.set(phi, []);
+            buckets.get(phi)!.push(Math.hypot(q.x, q.y));
+        }
+        let bestPhi = 0, bestW = 0;
+        for (const [phi, rr] of buckets) {
+            if (rr.length < 2) continue;
+            const w = Math.max(...rr) - Math.min(...rr);
+            if (w > bestW) { bestW = w; bestPhi = phi; }
+        }
+        expect(bestPhi).toBeGreaterThanOrEqual(58);
+        expect(bestPhi).toBeLessThanOrEqual(62);
+    });
+
     it('l5 is the mirror of l4', () => {
         const a = tadpoleOutline(9.533e-4, 'l4', 21);
         const b = tadpoleOutline(9.533e-4, 'l5', 21);

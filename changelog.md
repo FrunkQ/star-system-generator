@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.57 - 26th Aug 2026
+
+- The L1, L2 and L3 zones are green now instead of amber. Amber belongs to the Hill spheres, and the two were being confused — especially at L1 and L2, which genuinely sit on the Hill boundary and overlap it. Green means Lagrange across all five; the triangular zones stay a stronger, filled green and the collinear ones a cooler, fainter teal, since nothing is actually held at those.
+
 ## v3.0.56 - 26th Aug 2026
 
 - A ship flying a gravity-assist route now lights its drive and turns around. It had always been charged for three burns — departure, the slingshot kick and the arrival brake — but the plan was made only of coasting legs, and the drive plume reads the leg type to decide whether a ship is thrusting and which way it is pointing. So a multi-year assist flight crossed the system with a dead engine and never flipped, on your map and on your players' devices. The ends of the coasts are now real acceleration and braking phases, each lasting as long as that ship's own thrust ceiling needs for the burn, so the torch fires at the right moment and for the right duration. The route, the fuel and the delta-v are unchanged.
