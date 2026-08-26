@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.86 - 26th Aug 2026
+
+- The circumbinary ring is now the same colour family as the Hill spheres, one step deeper - pale yellow for a Hill sphere, deep gold for the ring. It was pink, which read as an unrelated kind of thing when it is really the same kind: both answer "where can something orbit". The Lagrange zones keep their separate green, because those answer a different question.
+
 ## v3.0.85 - 26th Aug 2026
 
 - Ships stop jumping when they arrive. A ship reached its destination and then popped sideways into orbit - 90,884 km of it at Jupiter, invisible from across the system and obvious once you zoomed in. Three things were disagreeing at once: how high a low orbit is, where round the planet the ship should appear, and which plane it should circle in. The step is now zero at every altitude tested.

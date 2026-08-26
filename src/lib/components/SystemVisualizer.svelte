@@ -1431,9 +1431,13 @@
               ctx.stroke();
           }
       }
-      // THE CIRCUMBINARY ANNULUS (G45) — the ring a P-type body can live in around a pair. Its own
-      // shade, deliberately: amber is the Hill sphere's channel and teal-green is Lagrange, so a
-      // third kind of boundary gets a third colour rather than being mistaken for either.
+      // THE CIRCUMBINARY ANNULUS (G45) — the ring a P-type body can live in around a pair.
+      // COLOUR: the SAME FAMILY as the Hill sphere, one step deeper (owner, 2026-08-26: "the
+      // circumbinary shading should be aligned - slightly different but same family of colours as
+      // hill spheres... maybe yellow and deep yellow"). Hill is pale yellow 255,232,130; this is
+      // deep gold 255,184,46. They read as two kinds of the same thing, which is what they are —
+      // both answer "where can something orbit" — while Lagrange keeps the separate green channel
+      // because it answers a different question. A third HUE said "unrelated", which was wrong.
       //
       // BOTH EDGES ARE READ FROM `bary.circumbinary`, NEVER RECOMPUTED HERE. The physics pass
       // publishes them (engine-map PHY-30) and the inner edge is a Holman & Wiegert fit this file has
@@ -1459,10 +1463,10 @@
                   ctx.beginPath();
                   ctx.arc(cx, cy, rOut, 0, 2 * Math.PI);
                   ctx.arc(cx, cy, rIn, 0, 2 * Math.PI, true);
-                  ctx.fillStyle = 'rgba(255, 150, 190, 0.055)';
+                  ctx.fillStyle = 'rgba(255, 184, 46, 0.07)';
                   ctx.fill();
               }
-              ctx.strokeStyle = 'rgba(255, 150, 190, 0.42)';
+              ctx.strokeStyle = 'rgba(255, 184, 46, 0.55)';
               ctx.lineWidth = 1 / zoom;
               ctx.beginPath(); ctx.arc(cx, cy, rIn, 0, 2 * Math.PI); ctx.stroke();
               if (rOut > rIn) { ctx.beginPath(); ctx.arc(cx, cy, rOut, 0, 2 * Math.PI); ctx.stroke(); }
