@@ -169,10 +169,10 @@ export function samplePathAtTime(
 		endTime: number;
 	},
 	timeMs: number
-): { position_au: Vector2; velocity_ms: { x: number; y: number } } | null {
+): { position_au: Vector2; velocity_ms: { x: number; y: number; z: number } } | null {
 	const points = seg.pathPoints ?? [];
 	if (points.length === 0) return null;
-	if (points.length === 1) return { position_au: points[0], velocity_ms: { x: 0, y: 0 } };
+	if (points.length === 1) return { position_au: points[0], velocity_ms: { x: 0, y: 0, z: 0 } };
 
 	const times = pathSampleTimesMs(seg);
 	const clamped = Math.max(times[0], Math.min(times[times.length - 1], timeMs));
@@ -192,16 +192,20 @@ export function samplePathAtTime(
 	const dtMs = times[hi] - times[lo];
 	const alpha = dtMs > 0 ? (clamped - times[lo]) / dtMs : 0;
 
+	const z0 = p0.z ?? 0;
+	const z1 = p1.z ?? 0;
 	const position_au = {
 		x: p0.x + (p1.x - p0.x) * alpha,
-		y: p0.y + (p1.y - p0.y) * alpha
+		y: p0.y + (p1.y - p0.y) * alpha,
+		z: z0 + (z1 - z0) * alpha
 	};
 
 	const dtSec = Math.max(1e-6, dtMs / 1000);
 	const AU_M = 1.495978707e11;
 	const velocity_ms = {
 		x: ((p1.x - p0.x) * AU_M) / dtSec,
-		y: ((p1.y - p0.y) * AU_M) / dtSec
+		y: ((p1.y - p0.y) * AU_M) / dtSec,
+		z: ((z1 - z0) * AU_M) / dtSec
 	};
 
 	return { position_au, velocity_ms };
@@ -220,12 +224,14 @@ function turnAngles(points: Vector2[]): number[] {
 	for (let i = 2; i < points.length; i++) {
 		const ax = points[i - 1].x - points[i - 2].x;
 		const ay = points[i - 1].y - points[i - 2].y;
+		const az = (points[i - 1].z ?? 0) - (points[i - 2].z ?? 0);
 		const bx = points[i].x - points[i - 1].x;
 		const by = points[i].y - points[i - 1].y;
-		const na = Math.hypot(ax, ay);
-		const nb = Math.hypot(bx, by);
+		const bz = (points[i].z ?? 0) - (points[i - 1].z ?? 0);
+		const na = Math.hypot(ax, ay, az);
+		const nb = Math.hypot(bx, by, bz);
 		if (!(na > 1e-15) || !(nb > 1e-15)) continue;
-		const c = Math.max(-1, Math.min(1, (ax * bx + ay * by) / (na * nb)));
+		const c = Math.max(-1, Math.min(1, (ax * bx + ay * by + az * bz) / (na * nb)));
 		out[i - 1] = (Math.acos(c) * 180) / Math.PI;
 	}
 	return out;

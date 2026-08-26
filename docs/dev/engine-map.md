@@ -2613,6 +2613,48 @@ A built-in id resolves with no data at all, so the ordinary no-URL case never wa
 
 #### Construct appearance (G3) — added 2026-08-04 by the ship-appearance stream
 
+### TRANSIT-4 A TRANSIT IS PLANNED IN THREE DIMENSIONS, AND `z` IS OPTIONAL BUT NEVER IGNORED
+WHERE: `transit/types.ts` (`Vector2`, which carries an optional `z`), `transit/math.ts` (`zOf` and
+every helper that goes through it), `transit/physics.ts` (`getGlobalState`), and by inheritance every
+plan builder. `physics/driftIntegrator.ts` and `physics/systemGravity.ts` follow the same convention.
+RULE: read a height as `v.z ?? 0`, never as `v.z`. Write one whenever you build a vector from
+components — an object literal with x and y and no z is how a course gets silently flattened, and it
+will not throw, it will just draw a plausible wrong picture. The type is still called `Vector2`
+because renaming it would have touched several hundred literals for no gain; the optionality is what
+makes a 2D caller and a 3D one interchangeable.
+WHY: `getGlobalState` used to call `propagateState`, which applies ONLY the argument of periapsis —
+the flat projection the 2D orrery draws — so every transit the engine ever planned was planned between
+the SHADOWS of two bodies on the reference plane. `propagateState3D`, with the full Rz(Omega)Rx(i)Rz(omega)
+rotation, had existed all along for the holo view. Owner, 2026-08-26: transit "didn't really think in
+3D, so some distances may be a bit longer now, but the maths should be no different" — right on both
+counts. MEASURED on Sol Expanse from a ship at 3 AU: Earth (i=0) unchanged at 0 km, Mars +79,242 km,
+Jupiter +122,349 km, Saturn +633,416 km, and the Main Belt (i=10 deg) **+2,390,850 km**.
+BLAST: only TWO places in the solver were ever dimensional. The transfer ANGLE in `solveLambert` was a
+difference of `atan2(y, x)` bearings — a statement about the reference plane, not about the transfer —
+and is now `atan2(|r1 x r2|, r1 . r2)` signed by that cross product's z, which is ALGEBRAICALLY
+IDENTICAL for coplanar radii, so a flat system plans exactly the journeys it always did. The other was
+the assembly of the final velocities. Everything else — Stumpff, the f and g series, the RK4, the phase
+schedule, the time stamps — never asked how many components a vector had. The 2D orrery is a PLAN VIEW
+and correctly reads x and y only; the holo view now receives real heights through `shipRoute`, which
+had been reading a `z` that was always zero. A parking orbit rides in a plane PARALLEL to the reference
+plane at its host's height — its own inclination is not modelled anywhere and must not be invented.
+`starmapSanitizer` preserves z; stripping it would flatten a course on its way through a snapshot.
+
+### TRANSIT-5 THE FRAME IS THE LOWEST COMMON ANCESTOR, AND THE PATH IS COMPOSED ONTO IT PER SAMPLE
+WHERE: `calculateTransitPlan`'s frame block (`lcaId`, `frameParentId`, `frameMu`), and the `toGlobal`
+composition in both `calculateLambertPlan` and `calculateFastPlan`.
+RULE: a transfer is SOLVED in the frame of the lowest common ancestor that is a real body or
+barycentre — the star for interplanetary, the planet for moon-to-moon — and the resulting local arc is
+composed onto that parent's own motion SAMPLE BY SAMPLE, each at its own time. Never compose with a
+uniform time step: per-phase sampling means index and time are no longer proportional, and the error
+slides the whole local path along the parent's orbit.
+WHY: a moon-to-moon transfer solved heliocentrically is a two-body problem with the wrong two bodies.
+The composition-by-index bug was live until G46 and invisible while the grid was uniform.
+BLAST: `hostId` on a segment records the frame, and `shipBurn`, the holo route and the arrival sampler
+all assume it. The DRAWN path is global, which is why a local transfer looks like a long smear at
+system zoom — Jupiter moves 11.9 million km during a 10-day moon hop — and why drawing an orbit change
+in the body's own frame is a separate piece of work rather than a consequence of solving in it.
+
 ### UI-C1 One colour drives a construct's whole look
 WHERE: `ConstructBasicsTab.svelte` (Appearance block), `constructIcon.ts`, `modelViewer.ts`
 RULE: `icon_color` is the single authored colour: the 2D marker, the hull tint for material-less

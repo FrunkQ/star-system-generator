@@ -1,6 +1,6 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, BurnPoint } from './types';
-import { solveLambert, distanceAU, subtract, magnitude, integrateBallisticPath, integrateBallisticPathAtTimes, add } from './math';
+import { solveLambert, distanceAU, subtract, magnitude, dot, zOf, integrateBallisticPath, integrateBallisticPathAtTimes, add } from './math';
 import { buildPathSchedule, slicePhase, refineScheduleByTurn, PREFERRED_SPACING_SEC, DEFAULT_PATH_BUDGET } from './pathSampling';
 import type { PathSchedule } from './pathSampling';
 import { getGlobalState, getLocalState, calculateFuelMass } from './physics';
@@ -81,21 +81,25 @@ function resolveAimPositionAtRadius(
   if (!radiusAu || radiusAu <= 0) return targetPos;
   let dx = startPos.x - targetPos.x;
   let dy = startPos.y - targetPos.y;
-  let d = Math.hypot(dx, dy);
+  let dz = zOf(startPos) - zOf(targetPos);
+  let d = Math.hypot(dx, dy, dz);
   if (!Number.isFinite(d) || d < 1e-12) {
     // Fallback: aim "behind" target velocity direction
     dx = -targetVel.x;
     dy = -targetVel.y;
-    d = Math.hypot(dx, dy);
+    dz = -zOf(targetVel);
+    d = Math.hypot(dx, dy, dz);
   }
   if (!Number.isFinite(d) || d < 1e-12) {
     dx = 1;
     dy = 0;
+    dz = 0;
     d = 1;
   }
   return {
     x: targetPos.x + (dx / d) * radiusAu,
-    y: targetPos.y + (dy / d) * radiusAu
+    y: targetPos.y + (dy / d) * radiusAu,
+    z: zOf(targetPos) + (dz / d) * radiusAu
   };
 }
 
@@ -118,17 +122,20 @@ function resolveDesiredArrivalRelative(
     // it means a free flyby (no arrival burn).
     if (desiredMs <= 0) return { desiredRelVec_au_s: arrivalRelVec_au_s, dv2Required_ms: 0 };
     
-    if (relMag <= 1e-12) return { desiredRelVec_au_s: { x: 0, y: 0 }, dv2Required_ms: desiredMs };
+    if (relMag <= 1e-12) return { desiredRelVec_au_s: { x: 0, y: 0, z: 0 }, dv2Required_ms: desiredMs };
     const desiredAuS = desiredMs / AU_M;
+    // Same closing DIRECTION, the requested closing SPEED. The z term is not decoration: scaling only
+    // x and y by a magnitude that included z left the pass 2 m/s off the 2,000 it was asked for.
     const desired = {
       x: (arrivalRelVec_au_s.x / relMag) * desiredAuS,
-      y: (arrivalRelVec_au_s.y / relMag) * desiredAuS
+      y: (arrivalRelVec_au_s.y / relMag) * desiredAuS,
+      z: (zOf(arrivalRelVec_au_s) / relMag) * desiredAuS
     };
     return { desiredRelVec_au_s: desired, dv2Required_ms: Math.abs(relMag - desiredAuS) * AU_M };
   }
 
   if (!parkingOrbitRadius_au || parkingOrbitRadius_au <= 0 || targetMassKg <= 0) {
-    return { desiredRelVec_au_s: { x: 0, y: 0 }, dv2Required_ms: relMag * AU_M };
+    return { desiredRelVec_au_s: { x: 0, y: 0, z: 0 }, dv2Required_ms: relMag * AU_M };
   }
 
   const rVec = subtract(targetAimPos, targetPos);
@@ -138,14 +145,33 @@ function resolveDesiredArrivalRelative(
   const vCirc_ms = Math.sqrt((targetMassKg * G) / rM);
   const vCirc_au_s = vCirc_ms / AU_M;
 
-  const rx = rVec.x / Math.max(1e-12, rAu);
-  const ry = rVec.y / Math.max(1e-12, rAu);
-  const tA = { x: -ry * vCirc_au_s, y: rx * vCirc_au_s };
-  const tB = { x: ry * vCirc_au_s, y: -rx * vCirc_au_s };
-
-  const dA = magnitude(subtract(arrivalRelVec_au_s, tA));
-  const dB = magnitude(subtract(arrivalRelVec_au_s, tB));
-  const desired = dA <= dB ? tA : tB;
+  // THE CHEAPEST CIRCULAR ORBIT THROUGH THE AIM POINT, which is the one whose velocity lies along the
+  // part of the arrival velocity that is already perpendicular to the radius. Nothing about that is
+  // two-dimensional, and it replaces a pair of candidate tangents built by rotating the radius a
+  // quarter turn in x and y and then comparing which was nearer: in a plane those two ARE the only
+  // perpendiculars and the nearer one is this projection, so a flat system gets the same answer it
+  // always did — but out of plane they were two arbitrary vectors and neither was perpendicular to
+  // anything the ship was actually doing.
+  const rHat = { x: rVec.x / rAu, y: rVec.y / rAu, z: zOf(rVec) / rAu };
+  const radialPart = dot(arrivalRelVec_au_s, rHat);
+  let tangential = {
+    x: arrivalRelVec_au_s.x - rHat.x * radialPart,
+    y: arrivalRelVec_au_s.y - rHat.y * radialPart,
+    z: zOf(arrivalRelVec_au_s) - rHat.z * radialPart
+  };
+  let tMag = magnitude(tangential);
+  if (!(tMag > 1e-15)) {
+    // A purely RADIAL approach has no perpendicular component to follow, so any perpendicular will
+    // do; take the one in the reference plane, which is what the old pair would have picked.
+    tangential = { x: -rHat.y, y: rHat.x, z: 0 };
+    tMag = magnitude(tangential);
+    if (!(tMag > 1e-15)) return { desiredRelVec_au_s: { x: 0, y: 0, z: 0 }, dv2Required_ms: relMag * AU_M };
+  }
+  const desired = {
+    x: (tangential.x / tMag) * vCirc_au_s,
+    y: (tangential.y / tMag) * vCirc_au_s,
+    z: (zOf(tangential) / tMag) * vCirc_au_s
+  };
   const dv2Req = magnitude(subtract(arrivalRelVec_au_s, desired)) * AU_M;
   return { desiredRelVec_au_s: desired, dv2Required_ms: dv2Req };
 }
@@ -1124,7 +1150,8 @@ function calculateLambertPlan(
     const applyFrac = deltaNeeded_ms > 1e-9 ? Math.max(0, Math.min(1, dv2_applied_mps / deltaNeeded_ms)) : 1;
     const relFinal_au_s = {
         x: relArrivalBeforeBrake_au_s.x + deltaNeeded_au_s.x * applyFrac,
-        y: relArrivalBeforeBrake_au_s.y + deltaNeeded_au_s.y * applyFrac
+        y: relArrivalBeforeBrake_au_s.y + deltaNeeded_au_s.y * applyFrac,
+        z: zOf(relArrivalBeforeBrake_au_s) + zOf(deltaNeeded_au_s) * applyFrac
     };
     const globalAimPos = frameParentId && parentGlobalState
         ? add(targetAimPos, parentGlobalState.r)
@@ -1268,20 +1295,23 @@ function calculateFastPlan(
     // when forced into a ballistic box.
     const dx = rEnd.x - rStart.x;
     const dy = rEnd.y - rStart.y;
-    const dMag = Math.hypot(dx, dy) || 1;
+    const dz = zOf(rEnd) - zOf(rStart);
+    const dMag = Math.hypot(dx, dy, dz) || 1;
     const dvGuessAuS = (accel * totalTime * ar) / AU_M;
     
     // Initial Burn (v1) adds the required velocity boost in the direction of the target.
     let v1 = {
         x: startState.v.x + (dx / dMag) * dvGuessAuS,
-        y: startState.v.y + (dy / dMag) * dvGuessAuS
+        y: startState.v.y + (dy / dMag) * dvGuessAuS,
+        z: zOf(startState.v) + (dz / dMag) * dvGuessAuS
     };
     
     // Arrival Velocity (v2) before braking. 
     // In a pure kinematic straight-line model, this is the same as v1.
     let v2 = {
         x: v1.x,
-        y: v1.y
+        y: v1.y,
+        z: zOf(v1)
     };
 
     if (!Number.isFinite(v1.x) || !Number.isFinite(v1.y)) return null;
@@ -1370,7 +1400,8 @@ function calculateFastPlan(
     const applyFrac = needMs > 1e-9 ? Math.max(0, Math.min(1, dv2 / needMs)) : 1;
     const relFinalAu = {
         x: arrivalRelBeforeBrakeAu.x + needVecAu.x * applyFrac,
-        y: arrivalRelBeforeBrakeAu.y + needVecAu.y * applyFrac
+        y: arrivalRelBeforeBrakeAu.y + needVecAu.y * applyFrac,
+        z: zOf(arrivalRelBeforeBrakeAu) + zOf(needVecAu) * applyFrac
     };
     const arrivalVelocity_ms = magnitude(relFinalAu) * AU_M;
 
@@ -1528,11 +1559,13 @@ function calculateFastPlan(
     const applyFracGlobal = needGlobalMs > 1e-9 ? Math.max(0, Math.min(1, dv2 / needGlobalMs)) : 1;
     const relFinalGlobal = {
         x: relArrivalBeforeBrake.x + needVecGlobal.x * applyFracGlobal,
-        y: relArrivalBeforeBrake.y + needVecGlobal.y * applyFracGlobal
+        y: relArrivalBeforeBrake.y + needVecGlobal.y * applyFracGlobal,
+        z: zOf(relArrivalBeforeBrake) + zOf(needVecGlobal) * applyFracGlobal
     };
     const finalVelocity = {
         x: globalTarget.v.x + relFinalGlobal.x,
-        y: globalTarget.v.y + relFinalGlobal.y
+        y: globalTarget.v.y + relFinalGlobal.y,
+        z: zOf(globalTarget.v) + zOf(relFinalGlobal)
     };
     const globalAim = add(rEnd, parentAtEnd.r);
 

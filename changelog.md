@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.84 - 26th Aug 2026
+
+- Transits are planned in three dimensions. They never were: the solver asked each body for its position and got back the FLAT one - the shadow it casts on the reference plane - so a world tilted out of that plane was planned to as though it were not. The tilted position has always been available; transit simply asked for the other one.
+- Distances are longer now, by real amounts. From a ship at 3 AU in the Sol Expanse map: Earth, which has no tilt, is unchanged to the metre; Mars is 79,000 km farther; Jupiter 122,000; Saturn 633,000; and the Main Belt, which sits ten degrees over, is **2.4 million km** farther than the engine used to think. Fuel and flight times follow.
+- Courses now climb and dip. A route to a tilted world used to be drawn flat and the world drawn where it really is, so the line and its destination disagreed - most of half an AU for the Main Belt. In the 3D view the line goes where the ship goes.
+- Flat systems are untouched, and not merely to a tolerance: for two bodies in the same plane the new expression for a transfer's geometry is algebraically the same as the old one, so an existing campaign plans exactly the journeys it always did.
+- A ship cut loose mid-flight now drifts in three dimensions too, rather than dropping to the plane.
+
 ## v3.0.83 - 26th Aug 2026
 
 - A ship now points the way its engine is actually pushing. It used to aim down its course line and simply turn around for a braking burn, which is right for a torch burn and wrong for almost everything else: an efficient transfer's burn is a change of velocity, not a shove along it, so it sits at an angle. Measured on the same journey, the old rule drew the arrival burn 107 degrees off, and a gravity-assist arrival 153 degrees off - very nearly backwards. Orientation only matters while the engines are lit, and nothing drew a ship's heading at all until the 3D models arrived, so this has been wrong quietly for a long time.

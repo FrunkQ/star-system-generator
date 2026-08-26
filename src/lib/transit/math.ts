@@ -3,10 +3,15 @@ import type { StateVector, Vector2 } from './types';
 
 const AU_M = AU_KM * 1000;
 
+/** Height above the reference plane, treating an absent z as flat. Every helper here goes through
+ *  this, which is what makes a 2D literal and a 3D one interchangeable. */
+export const zOf = (v: Vector2): number => v.z ?? 0;
+
 export function distanceAU(v1: Vector2, v2: Vector2): number {
     const dx = v1.x - v2.x;
     const dy = v1.y - v2.y;
-    return Math.sqrt(dx*dx + dy*dy);
+    const dz = zOf(v1) - zOf(v2);
+    return Math.sqrt(dx*dx + dy*dy + dz*dz);
 }
 
 /**
@@ -42,57 +47,65 @@ export function integrateBallisticPathAtTimes(
     type State = { r: Vector2, v: Vector2 };
 
     const getDeriv = (s: State): State => {
-        // Primary Body
-        const rMag = Math.sqrt(s.r.x*s.r.x + s.r.y*s.r.y);
+        // Primary Body. Gravity is a central force in whatever dimension you write it in, so this is
+        // the same expression it always was with a third term added.
+        const rz = zOf(s.r);
+        const rMag = Math.sqrt(s.r.x*s.r.x + s.r.y*s.r.y + rz*rz);
         const rMag3 = Math.max(1e-18, rMag*rMag*rMag);
         let ax = -mu_au * s.r.x / rMag3;
         let ay = -mu_au * s.r.y / rMag3;
+        let az = -mu_au * rz / rMag3;
 
         // N-Body summation
         if (nBodyNodes) {
             for (const node of nBodyNodes) {
                 const dx = s.r.x - node.pos.x;
                 const dy = s.r.y - node.pos.y;
-                const dist2 = dx*dx + dy*dy;
+                const dz = rz - zOf(node.pos);
+                const dist2 = dx*dx + dy*dy + dz*dz;
                 const dist = Math.sqrt(dist2);
                 const dist3 = Math.max(1e-18, dist*dist2);
                 ax -= node.mu * dx / dist3;
                 ay -= node.mu * dy / dist3;
+                az -= node.mu * dz / dist3;
             }
         }
 
-        return { r: s.v, v: { x: ax, y: ay } };
+        return { r: s.v, v: { x: ax, y: ay, z: az } };
     };
 
     const step = (r: Vector2, v: Vector2, dt: number): State => {
         const k1 = getDeriv({ r, v });
 
+        const rz0 = zOf(r), vz0 = zOf(v);
         const s2 = {
-            r: { x: r.x + k1.r.x * dt * 0.5, y: r.y + k1.r.y * dt * 0.5 },
-            v: { x: v.x + k1.v.x * dt * 0.5, y: v.y + k1.v.y * dt * 0.5 }
+            r: { x: r.x + k1.r.x * dt * 0.5, y: r.y + k1.r.y * dt * 0.5, z: rz0 + zOf(k1.r) * dt * 0.5 },
+            v: { x: v.x + k1.v.x * dt * 0.5, y: v.y + k1.v.y * dt * 0.5, z: vz0 + zOf(k1.v) * dt * 0.5 }
         };
         const k2 = getDeriv(s2);
 
         const s3 = {
-            r: { x: r.x + k2.r.x * dt * 0.5, y: r.y + k2.r.y * dt * 0.5 },
-            v: { x: v.x + k2.v.x * dt * 0.5, y: v.y + k2.v.y * dt * 0.5 }
+            r: { x: r.x + k2.r.x * dt * 0.5, y: r.y + k2.r.y * dt * 0.5, z: rz0 + zOf(k2.r) * dt * 0.5 },
+            v: { x: v.x + k2.v.x * dt * 0.5, y: v.y + k2.v.y * dt * 0.5, z: vz0 + zOf(k2.v) * dt * 0.5 }
         };
         const k3 = getDeriv(s3);
 
         const s4 = {
-            r: { x: r.x + k3.r.x * dt, y: r.y + k3.r.y * dt },
-            v: { x: v.x + k3.v.x * dt, y: v.y + k3.v.y * dt }
+            r: { x: r.x + k3.r.x * dt, y: r.y + k3.r.y * dt, z: rz0 + zOf(k3.r) * dt },
+            v: { x: v.x + k3.v.x * dt, y: v.y + k3.v.y * dt, z: vz0 + zOf(k3.v) * dt }
         };
         const k4 = getDeriv(s4);
 
         return {
             r: {
                 x: r.x + (dt/6) * (k1.r.x + 2*k2.r.x + 2*k3.r.x + k4.r.x),
-                y: r.y + (dt/6) * (k1.r.y + 2*k2.r.y + 2*k3.r.y + k4.r.y)
+                y: r.y + (dt/6) * (k1.r.y + 2*k2.r.y + 2*k3.r.y + k4.r.y),
+                z: rz0 + (dt/6) * (zOf(k1.r) + 2*zOf(k2.r) + 2*zOf(k3.r) + zOf(k4.r))
             },
             v: {
                 x: v.x + (dt/6) * (k1.v.x + 2*k2.v.x + 2*k3.v.x + k4.v.x),
-                y: v.y + (dt/6) * (k1.v.y + 2*k2.v.y + 2*k3.v.y + k4.v.y)
+                y: v.y + (dt/6) * (k1.v.y + 2*k2.v.y + 2*k3.v.y + k4.v.y),
+                z: vz0 + (dt/6) * (zOf(k1.v) + 2*zOf(k2.v) + 2*zOf(k3.v) + zOf(k4.v))
             }
         };
     };
@@ -113,9 +126,11 @@ export function integrateBallisticPathAtTimes(
     const MAX_STEP_RAD = 0.01; // ~0.57 degrees of arc per RK4 step
     const MAX_SUBSTEPS_PER_INTERVAL = 2000; // guard, so a pathological state cannot hang a redraw
     const stepCap = (rr: Vector2, vv: Vector2): number => {
-        const r2 = rr.x * rr.x + rr.y * rr.y;
+        const rz = zOf(rr);
+        const r2 = rr.x * rr.x + rr.y * rr.y + rz * rz;
         if (!(r2 > 0)) return maxStepSec;
-        const h = Math.abs(rr.x * vv.y - rr.y * vv.x); // specific angular momentum
+        const hv = cross3(rr, vv);
+        const h = Math.sqrt(hv.x * hv.x + hv.y * hv.y + (hv.z ?? 0) * (hv.z ?? 0)); // specific angular momentum
         const omega = h / r2;                          // rad/s about the primary
         if (!(omega > 0)) return maxStepSec;
         return Math.min(maxStepSec, MAX_STEP_RAD / omega);
@@ -148,13 +163,15 @@ export function integrateBallisticPathAtTimes(
         const last = points[points.length - 1];
         const dx = targetEndPos.x - last.x;
         const dy = targetEndPos.y - last.y;
-        drift_au = Math.sqrt(dx*dx + dy*dy);
+        const dz = zOf(targetEndPos) - zOf(last);
+        drift_au = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
         const span = times[times.length - 1] - times[0];
         for (let i = 1; i < points.length; i++) {
             const progress = span > 0 ? (times[i] - times[0]) / span : 1;
             points[i].x += dx * progress;
             points[i].y += dy * progress;
+            points[i].z = zOf(points[i]) + dz * progress;
         }
     }
 
@@ -184,23 +201,36 @@ export function integrateBallisticPath(
 }
 
 export function subtract(v1: Vector2, v2: Vector2): Vector2 {
-    return { x: v1.x - v2.x, y: v1.y - v2.y };
+    return { x: v1.x - v2.x, y: v1.y - v2.y, z: zOf(v1) - zOf(v2) };
 }
 
 export function add(v1: Vector2, v2: Vector2): Vector2 {
-    return { x: v1.x + v2.x, y: v1.y + v2.y };
+    return { x: v1.x + v2.x, y: v1.y + v2.y, z: zOf(v1) + zOf(v2) };
 }
 
 export function magnitude(v: Vector2): number {
-    return Math.sqrt(v.x*v.x + v.y*v.y);
+    const z = zOf(v);
+    return Math.sqrt(v.x*v.x + v.y*v.y + z*z);
 }
 
 export function dot(v1: Vector2, v2: Vector2): number {
-    return v1.x * v2.x + v1.y * v2.y;
+    return v1.x * v2.x + v1.y * v2.y + zOf(v1) * zOf(v2);
 }
 
+/** The z-component of the cross product — the only part a flat transfer ever needed, and still the
+ *  part that decides which way round the reference plane a transfer goes. */
 export function cross(v1: Vector2, v2: Vector2): number {
     return v1.x * v2.y - v1.y * v2.x;
+}
+
+/** The full cross product. The transfer PLANE of an inclined Lambert arc is its direction. */
+export function cross3(v1: Vector2, v2: Vector2): Vector2 {
+    const a = zOf(v1), b = zOf(v2);
+    return {
+        x: v1.y * b - a * v2.y,
+        y: a * v2.x - v1.x * b,
+        z: v1.x * v2.y - v1.y * v2.x
+    };
 }
 
 /**
@@ -217,26 +247,23 @@ export function solveLambert(
     const r1mag = magnitude(r1);
     const r2mag = magnitude(r2);
     
-    const crossVal = cross(r1, r2);
+    // THE TRANSFER ANGLE, IN THE PLANE THE TWO RADII ACTUALLY SHARE.
+    //
+    // The universal-variable machinery below is dimension-agnostic — Stumpff, y, x and the f and g
+    // series never ask how many components a vector has. This is the one place that did: it took the
+    // difference of two `atan2(y, x)` bearings, which is a statement about the reference plane rather
+    // than about the transfer.
+    //
+    // The angle now comes from the vectors themselves — `atan2(|r1 x r2|, r1 . r2)` — and its SIGN
+    // from the z-component of that cross product, which is the same prograde-relative-to-the-reference-
+    // plane convention the bearings encoded. For two coplanar radii the two expressions are identically
+    // equal, so a flat system's transfers are unchanged to the last bit; for an inclined one the arc
+    // now bends through the plane it really travels in, which is why the distances come out longer.
+    const hVec = cross3(r1, r2);
+    const crossMag = magnitude(hVec);
     const dotVal = dot(r1, r2);
-    
-    // Calculate delta theta (nu)
-    let dNu = Math.atan2(crossVal, dotVal); // This gives angle between vectors respecting direction
-    // If prograde (which we assume for now), we want dNu > 0. 
-    // But in 2D, the sign of cross tells us direction.
-    // If we assume "Short Way", dNu should be between -PI and PI.
-    // If we assume "Prograde", we might need to adjust.
-    
-    // Let's force "Short Way" (dNu < PI) for this implementation, or handle "Long Way".
-    // Simple approach: assume counter-clockwise transfer.
-    // Math.atan2(y,x) gives absolute angles.
-    let theta1 = Math.atan2(r1.y, r1.x);
-    let theta2 = Math.atan2(r2.y, r2.x);
-    let dTheta = theta2 - theta1;
-    
-    // Normalize to -PI..PI first, then optionally request the long-way branch.
-    while (dTheta > Math.PI) dTheta -= 2 * Math.PI;
-    while (dTheta <= -Math.PI) dTheta += 2 * Math.PI;
+    let dTheta = Math.atan2(crossMag, dotVal); // [0, PI] — unsigned angle between the radii
+    if (zOf(hVec) < 0) dTheta = -dTheta;       // ...signed the way the old bearing difference signed it
 
     if (options?.longWay) {
         dTheta = dTheta > 0 ? dTheta - 2 * Math.PI : dTheta + 2 * Math.PI;
@@ -359,6 +386,7 @@ export function solveLambert(
     
     const v1x = (r2.x - f * r1.x) / g;
     const v1y = (r2.y - f * r1.y) / g;
+    const v1z = (zOf(r2) - f * zOf(r1)) / g;
     
     // v2 = g_dot * r2 - r1 ?? No.
     // r2 = f r1 + g v1
@@ -368,9 +396,10 @@ export function solveLambert(
     
     const v2x = f_dot * r1.x + g_dot * v1x;
     const v2y = f_dot * r1.y + g_dot * v1y;
+    const v2z = f_dot * zOf(r1) + g_dot * v1z;
 
     return {
-        v1: { x: v1x, y: v1y },
-        v2: { x: v2x, y: v2y }
+        v1: { x: v1x, y: v1y, z: v1z },
+        v2: { x: v2x, y: v2y, z: v2z }
     };
 }

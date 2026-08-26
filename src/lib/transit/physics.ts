@@ -1,7 +1,7 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { StateVector } from './types';
 import { subtract } from './math';
-import { propagateState } from '../physics/orbits';
+import { propagateState3D } from '../physics/orbits';
 import { G } from '../constants';
 import { AU_KM } from '../constants';
 
@@ -27,13 +27,15 @@ export function getGlobalState(sys: System, node: CelestialBody | Barycenter | {
             const dtSec = (tMs - epochMs) / 1000;
             const vxAuSec = c.vector_velocity_ms.x / AU_M;
             const vyAuSec = c.vector_velocity_ms.y / AU_M;
+            const vzAuSec = (c.vector_velocity_ms.z ?? 0) / AU_M;
             
             return {
                 r: {
                     x: c.vector_position_au.x + (vxAuSec * dtSec),
-                    y: c.vector_position_au.y + (vyAuSec * dtSec)
+                    y: c.vector_position_au.y + (vyAuSec * dtSec),
+                    z: (c.vector_position_au.z ?? 0) + (vzAuSec * dtSec)
                 },
-                v: { x: vxAuSec, y: vyAuSec }
+                v: { x: vxAuSec, y: vyAuSec, z: vzAuSec }
             };
         }
 
@@ -51,7 +53,7 @@ export function getGlobalState(sys: System, node: CelestialBody | Barycenter | {
                 const radiusAu = (c as any).parking_orbit_radius_au || (c as any).altitude_km / AU_KM || 0;
                 if (radiusAu > 0) {
                     return {
-                        r: { x: parentGlobal.r.x + radiusAu, y: parentGlobal.r.y }, // Simplified offset
+                        r: { x: parentGlobal.r.x + radiusAu, y: parentGlobal.r.y, z: parentGlobal.r.z ?? 0 }, // Simplified offset
                         v: parentGlobal.v
                     };
                 }
@@ -61,19 +63,29 @@ export function getGlobalState(sys: System, node: CelestialBody | Barycenter | {
     }
 
     let current: any = node;
-    let r = { x: 0, y: 0 };
-    let v = { x: 0, y: 0 };
+    let r = { x: 0, y: 0, z: 0 };
+    let v = { x: 0, y: 0, z: 0 };
     
-    // Iterate up the hierarchy
+    // Iterate up the hierarchy.
+    //
+    // THE INCLINATION IS NO LONGER DROPPED HERE. `propagateState` applies only the argument of
+    // periapsis — the flat projection the 2D orrery draws — so every transit this subsystem has ever
+    // planned was planned between the SHADOWS of two bodies on the reference plane. Its 3D sibling
+    // applies the whole 3-1-3 rotation and has existed all along for the holo view. Owner, 2026-08-26:
+    // transit "didn't really think in 3D, so some distances may be a bit longer now". They are, and by
+    // a real amount on the inclined bodies — the Sol Expanse fixture has 38 of them, the Main Belt at
+    // 10 degrees sitting up to 0.4689 AU off the plane the solver used to flatten it onto.
     let loops = 0;
     while (current && loops < 10) {
         // Calculate local state (relative to parent)
-        const local = propagateState(current, tMs);
+        const local = propagateState3D(current, tMs);
         
         r.x += local.r.x;
         r.y += local.r.y;
+        r.z += local.r.z;
         v.x += local.v.x;
         v.y += local.v.y;
+        v.z += local.v.z;
         
         // Move to parent
         if (current.parentId) {

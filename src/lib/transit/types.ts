@@ -1,8 +1,23 @@
 type ID = string;
 
+/**
+ * A position or velocity in the transit subsystem.
+ *
+ * KEPT UNDER ITS OLD NAME ON PURPOSE. It is three-dimensional now — `z` is the height above the
+ * reference plane, in the same units as x and y — but it is OPTIONAL, and every helper in `math.ts`
+ * reads it as `z ?? 0`. That is what let the whole subsystem go 3D without rewriting the several
+ * hundred `{ x, y }` literals that build these, and what keeps a coplanar system's answers
+ * bit-identical to the flat ones it used to give.
+ *
+ * Owner, 2026-08-26: transit "didn't really think in 3D, so some distances may be a bit longer now,
+ * but the maths should be no different" — which is exactly right. Lambert's universal-variable core,
+ * the RK4, the phase schedule and the time stamps are all dimension-agnostic; what changed is that
+ * `getGlobalState` stopped flattening the orbits on the way in.
+ */
 export interface Vector2 {
   x: number;
   y: number;
+  z?: number;
 }
 
 export interface StateVector {
@@ -99,6 +114,6 @@ export interface ScheduledJourneyLog {
   cancelledAtSec?: string;
   cancelState?: {
     position_au: Vector2;
-    velocity_ms: { x: number; y: number };
+    velocity_ms: { x: number; y: number; z?: number };
   };
 }

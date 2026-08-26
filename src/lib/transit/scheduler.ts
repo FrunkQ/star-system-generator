@@ -15,7 +15,7 @@ const AU_M = AU_KM * 1000;
 // us step FORWARD from the last frame's result by a tiny delta instead of re-integrating the whole span
 // from the anchor every redraw (which was O(elapsed) → the orrery overload + clock-jumps). Scrubbing back
 // past the cached time falls back to an exact recompute from the anchor.
-type CoastState = { tEndMs: number; x: number; y: number; vx: number; vy: number };
+type CoastState = { tEndMs: number; x: number; y: number; z: number; vx: number; vy: number; vz: number };
 const coastIncrCache = new Map<string, CoastState>();
 
 // Coast a cut-loose ship under the system's REAL gravity — full N-body: every massive body pulls (the
@@ -29,10 +29,10 @@ const coastIncrCache = new Map<string, CoastState>();
 export function coastUnderGravity(
   system: System,
   startPos_au: Vector2,
-  startVel_ms: { x: number; y: number },
+  startVel_ms: { x: number; y: number; z?: number },
   t0Ms: number,
   tMs: number
-): { position_au: Vector2; velocity_ms: { x: number; y: number } } {
+): { position_au: Vector2; velocity_ms: { x: number; y: number; z?: number } } {
   const dtSecRaw = (tMs - t0Ms) / 1000;
   // Guard pathological gaps: a non-finite span, or a journey/abort timestamped in a different epoch than
   // the clock (e.g. flights at 2300 vs a 2323 calendar) yields an enormous dt. Integrating that EVERY frame
@@ -51,37 +51,46 @@ export function coastUnderGravity(
   if (!bodies.length) {
     const dt = (tEndMs - t0Ms) / 1000;
     return {
-      position_au: { x: startPos_au.x + (startVel_ms.x / AU_M) * dt, y: startPos_au.y + (startVel_ms.y / AU_M) * dt },
+      position_au: {
+        x: startPos_au.x + (startVel_ms.x / AU_M) * dt,
+        y: startPos_au.y + (startVel_ms.y / AU_M) * dt,
+        z: (startPos_au.z ?? 0) + ((startVel_ms.z ?? 0) / AU_M) * dt
+      },
       velocity_ms: { ...startVel_ms }
     };
   }
   const field = systemGravityField(bodies, (id, t) => {
     const node = system.nodes.find((n) => n.id === id);
-    if (!node) return [0, 0];
+    if (!node) return [0, 0, 0];
     const s = getGlobalState(system, node as any, t * 1000); // field time is seconds; getGlobalState wants ms
-    return [s.r.x, s.r.y];
+    return [s.r.x, s.r.y, s.r.z ?? 0];
   });
 
   // Incremental: continue from the last cached state when stepping FORWARD (cheap delta); recompute from the
   // anchor only on a cache miss or a backward scrub. This is the perf fix — no more O(elapsed) per frame.
-  const key = `${t0Ms}|${startPos_au.x},${startPos_au.y}|${startVel_ms.x},${startVel_ms.y}`;
+  const key = `${t0Ms}|${startPos_au.x},${startPos_au.y},${startPos_au.z ?? 0}|${startVel_ms.x},${startVel_ms.y},${startVel_ms.z ?? 0}`;
   const prev = coastIncrCache.get(key);
   const from = (prev && prev.tEndMs <= tEndMs && prev.tEndMs >= t0Ms)
-    ? { t0: prev.tEndMs / 1000, x: prev.x, y: prev.y, vx: prev.vx, vy: prev.vy }
-    : { t0: t0Sec, x: startPos_au.x, y: startPos_au.y, vx: startVel_ms.x / AU_M, vy: startVel_ms.y / AU_M };
+    ? { t0: prev.tEndMs / 1000, x: prev.x, y: prev.y, z: prev.z, vx: prev.vx, vy: prev.vy, vz: prev.vz }
+    : { t0: t0Sec, x: startPos_au.x, y: startPos_au.y, z: startPos_au.z ?? 0,
+        vx: startVel_ms.x / AU_M, vy: startVel_ms.y / AU_M, vz: (startVel_ms.z ?? 0) / AU_M };
   const spanSec = tEndSec - from.t0;
   const r = spanSec <= 0
-    ? { x: from.x, y: from.y, vx: from.vx, vy: from.vy }
+    ? { x: from.x, y: from.y, z: from.z, vx: from.vx, vy: from.vy, vz: from.vz }
     : driftAt(from, field, tEndSec, Math.max(600, spanSec / 2000)); // ≤~2000 steps for the (now small) span
 
   if (Number.isFinite(r.x) && Number.isFinite(r.y)) {
     if (coastIncrCache.size > 256) coastIncrCache.clear(); // cheap bound; entries are tiny
-    coastIncrCache.set(key, { tEndMs, x: r.x, y: r.y, vx: r.vx, vy: r.vy });
+    coastIncrCache.set(key, { tEndMs, x: r.x, y: r.y, z: r.z, vx: r.vx, vy: r.vy, vz: r.vz });
   }
   const safe = (v: number, fb: number) => (Number.isFinite(v) ? v : fb);
   return {
-    position_au: { x: safe(r.x, startPos_au.x), y: safe(r.y, startPos_au.y) },
-    velocity_ms: { x: safe(r.vx * AU_M, startVel_ms.x), y: safe(r.vy * AU_M, startVel_ms.y) }
+    position_au: { x: safe(r.x, startPos_au.x), y: safe(r.y, startPos_au.y), z: safe(r.z, startPos_au.z ?? 0) },
+    velocity_ms: {
+      x: safe(r.vx * AU_M, startVel_ms.x),
+      y: safe(r.vy * AU_M, startVel_ms.y),
+      z: safe(r.vz * AU_M, startVel_ms.z ?? 0)
+    }
   };
 }
 
@@ -94,7 +103,7 @@ export function coastUnderGravity(
 export function coastPathUnderGravity(
   system: System,
   startPos_au: Vector2,
-  startVel_ms: { x: number; y: number },
+  startVel_ms: { x: number; y: number; z?: number },
   t0Ms: number,
   steps = 40
 ): Vector2[] {
@@ -104,7 +113,7 @@ export function coastPathUnderGravity(
   // ahead, short enough that a near-radial plunge doesn't whip clear through the star.
   const root: any = system.nodes.find((n: any) => n.parentId == null);
   const rootMass = root?.massKg ?? root?.effectiveMassKg ?? 0;
-  const r = Math.max(1e-6, Math.hypot(startPos_au.x, startPos_au.y));
+  const r = Math.max(1e-6, Math.hypot(startPos_au.x, startPos_au.y, startPos_au.z ?? 0));
   const mu = G_AU * rootMass;
   const charSec = mu > 0 ? Math.sqrt((r * r * r) / mu) : 3.15e7; // √(r³/μ) = T/2π (≈1 rad of arc)
   const horizonSec = Math.max(86400, charSec * 2);
@@ -112,7 +121,7 @@ export function coastPathUnderGravity(
   const pts: Vector2[] = [];
   for (let k = 0; k <= steps; k++) {
     const c = coastConicAt(system, startPos_au, startVel_ms, t0Ms, t0Ms + k * stepSec * 1000);
-    pts.push(c ? c.position_au : { x: startPos_au.x, y: startPos_au.y });
+    pts.push(c ? c.position_au : { x: startPos_au.x, y: startPos_au.y, z: startPos_au.z ?? 0 });
   }
   return pts;
 }
@@ -138,7 +147,7 @@ export interface JourneyBounds {
 export interface JourneyKinematics {
   journeyId: string;
   position_au: Vector2;
-  velocity_ms: { x: number; y: number };
+  velocity_ms: { x: number; y: number; z?: number };
   state: 'Transit' | 'Deep Space' | 'Orbiting' | 'Docked' | 'Landed';
 }
 
@@ -338,7 +347,7 @@ export function sampleJourneyKinematicsAtTime(
         journeyId: log.id,
         state: 'Transit',
         position_au: s.r,
-        velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M }
+        velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M, z: (s.v.z ?? 0) * AU_M }
       };
     }
   }
@@ -404,7 +413,7 @@ export function cancelActiveJourney(
           const s = getGlobalState(system, originNode as any, timeMs);
           return {
             position_au: s.r,
-            velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M }
+            velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M, z: (s.v.z ?? 0) * AU_M }
           };
         })();
 
@@ -500,7 +509,7 @@ function samplePostJourneyState(
 
   // If arrival is a flyby/deep-space pass, continue inertial drift from final path tangent.
   if (isFlybyIntent && finalPos) {
-    let velMs = { x: 0, y: 0 };
+    let velMs = { x: 0, y: 0, z: 0 };
     if (lastPts.length >= 2) {
       const p0 = lastPts[lastPts.length - 2];
       const p1 = lastPts[lastPts.length - 1];
@@ -508,7 +517,8 @@ function samplePostJourneyState(
       const sampleDt = segDurationSec / Math.max(1, lastPts.length - 1);
       velMs = {
         x: ((p1.x - p0.x) * AU_M) / sampleDt,
-        y: ((p1.y - p0.y) * AU_M) / sampleDt
+        y: ((p1.y - p0.y) * AU_M) / sampleDt,
+        z: (((p1.z ?? 0) - (p0.z ?? 0)) * AU_M) / sampleDt
       };
     }
     const dtSec = Math.max(0, (timeMs - completedAtMs) / 1000);
@@ -517,7 +527,8 @@ function samplePostJourneyState(
       state: 'Deep Space',
       position_au: {
         x: finalPos.x + ((velMs.x / AU_M) * dtSec),
-        y: finalPos.y + ((velMs.y / AU_M) * dtSec)
+        y: finalPos.y + ((velMs.y / AU_M) * dtSec),
+        z: (finalPos.z ?? 0) + ((velMs.z / AU_M) * dtSec)
       },
       velocity_ms: velMs
     };
@@ -535,15 +546,16 @@ function samplePostJourneyState(
       // the matched state it had right then and coasts (deterministic patched conic), visibly left behind,
       // until the autopilot top-up commits a fresh chase.
       const formationStandoff = (s: { r: Vector2; v: Vector2 }) => {
-        let px = s.r.x, py = s.r.y;
+        let px = s.r.x, py = s.r.y, pz = s.r.z ?? 0;
         const standKm = (lastPlan as any).escortStandoffKm || 0;
-        const vmag = Math.hypot(s.v.x, s.v.y);
+        const vmag = Math.hypot(s.v.x, s.v.y, s.v.z ?? 0);
         if (standKm > 0 && vmag > 1e-18) {
           const offAu = standKm / AU_KM;
           px -= (s.v.x / vmag) * offAu;
           py -= (s.v.y / vmag) * offAu;
+          pz -= ((s.v.z ?? 0) / vmag) * offAu;
         }
-        return { x: px, y: py };
+        return { x: px, y: py, z: pz };
       };
       const cap = (lastPlan as any).escortMaxAccel_ms2;
       const breakMs = cap && cap > 0 ? firstThrustAboveMs(targetNode, completedAtMs, cap) : null;
@@ -551,7 +563,7 @@ function samplePostJourneyState(
         // LEFT BEHIND — freeze the formation state at the break moment and coast from there.
         const sB = getGlobalState(system, targetNode as any, breakMs);
         const posB = formationStandoff(sB);
-        const velB = { x: sB.v.x * AU_M, y: sB.v.y * AU_M };
+        const velB = { x: sB.v.x * AU_M, y: sB.v.y * AU_M, z: (sB.v.z ?? 0) * AU_M };
         const coasted = coastConicAt(system, posB, velB, breakMs, timeMs)
           ?? coastUnderGravity(system, posB, velB, breakMs, timeMs);
         return { journeyId: log.id, state: 'Deep Space', position_au: coasted.position_au, velocity_ms: coasted.velocity_ms };
@@ -561,7 +573,7 @@ function samplePostJourneyState(
         journeyId: log.id,
         state: 'Deep Space', // Matches Construct Rendezvous behavior
         position_au: formationStandoff(s),
-        velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M }
+        velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M, z: (s.v.z ?? 0) * AU_M }
       };
     }
 
@@ -595,7 +607,7 @@ function samplePostJourneyState(
             journeyId: log.id,
             state: 'Orbiting',
             position_au: lPointGlobal.r,
-            velocity_ms: { x: lPointGlobal.v.x * AU_M, y: lPointGlobal.v.y * AU_M }
+            velocity_ms: { x: lPointGlobal.v.x * AU_M, y: lPointGlobal.v.y * AU_M, z: (lPointGlobal.v.z ?? 0) * AU_M }
           };
         }
       }
@@ -632,10 +644,15 @@ function samplePostJourneyState(
       return {
         journeyId: log.id,
         state: 'Orbiting',
-        position_au: { x: s.r.x + aAU * cos, y: s.r.y + aAU * sin },
+        // The parking circle rides in a plane PARALLEL to the reference plane, at whatever height its
+        // host is at. The host's inclination is real now; a parking orbit's own is not modelled
+        // anywhere, and inventing one here would be a number with nothing behind it. What matters is
+        // that the ship stays with its planet instead of dropping to z = 0.
+        position_au: { x: s.r.x + aAU * cos, y: s.r.y + aAU * sin, z: s.r.z ?? 0 },
         velocity_ms: {
           x: (s.v.x + (-vTanAuSec * sin)) * AU_M,
-          y: (s.v.y + (vTanAuSec * cos)) * AU_M
+          y: (s.v.y + (vTanAuSec * cos)) * AU_M,
+          z: (s.v.z ?? 0) * AU_M
         }
       };
     }
@@ -645,7 +662,7 @@ function samplePostJourneyState(
       journeyId: log.id,
       state,
       position_au: s.r,
-      velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M }
+      velocity_ms: { x: s.v.x * AU_M, y: s.v.y * AU_M, z: (s.v.z ?? 0) * AU_M }
     };
   }
 
@@ -654,6 +671,6 @@ function samplePostJourneyState(
     journeyId: log.id,
     state: 'Orbiting',
     position_au: finalPos,
-    velocity_ms: { x: 0, y: 0 }
+    velocity_ms: { x: 0, y: 0, z: 0 }
   };
 }

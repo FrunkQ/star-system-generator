@@ -23,9 +23,12 @@ function isFiniteNumber(value: unknown): value is number {
 
 function sanitizeVector2(value: unknown): Vector2 | null {
   if (!value || typeof value !== 'object') return null;
-  const v = value as { x?: unknown; y?: unknown };
+  const v = value as { x?: unknown; y?: unknown; z?: unknown };
   if (!isFiniteNumber(v.x) || !isFiniteNumber(v.y)) return null;
-  return { x: v.x, y: v.y };
+  // The height is OPTIONAL and survives if it is there. Stripping it would quietly flatten every
+  // inclined course on its way through a snapshot, which is the same fault transit itself had until
+  // 2026-08-26 — and it would do it silently, since a flat path is a perfectly valid-looking path.
+  return isFiniteNumber(v.z) ? { x: v.x, y: v.y, z: v.z } : { x: v.x, y: v.y };
 }
 
 function sanitizeSegment(segment: unknown): TransitSegment | null {

@@ -12,8 +12,24 @@ describe('driftAt — deterministic drift integrator', () => {
   });
 
   it('before the anchor time → unmoved', () => {
+    // The result gained a third dimension when transit did (2026-08-26). A caller that supplies no z
+    // gets zero back, which is the same answer it always had, now said explicitly.
     const r = driftAt({ t0: 100, x: 5, y: 5, vx: 1, vy: 0 }, zero, 50, 1);
-    expect(r).toEqual({ x: 5, y: 5, vx: 1, vy: 0 });
+    expect(r).toEqual({ x: 5, y: 5, z: 0, vx: 1, vy: 0, vz: 0 });
+  });
+
+  it('carries height and vertical speed when it is given them', () => {
+    const r = driftAt({ t0: 0, x: 0, y: 0, z: 3, vx: 0, vy: 0, vz: -2 }, zero, 10, 1);
+    expect(r.z).toBeCloseTo(3 - 20, 9);
+    expect(r.vz).toBeCloseTo(-2, 9);
+  });
+
+  it('falls out of the plane toward a mass that is out of the plane', () => {
+    // A purely vertical inverse-square pull: the particle starts level with the origin and is drawn
+    // upward. Before this was 3D the z simply never moved.
+    const up: AccelField = () => [0, 0, 4];
+    const r = driftAt({ t0: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 }, up, 2, 0.1);
+    expect(r.z).toBeCloseTo(0.5 * 4 * 4, 6);
   });
 
   it('constant field → exact kinematics (x = ½at²)', () => {
