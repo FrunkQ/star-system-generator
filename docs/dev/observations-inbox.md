@@ -1602,6 +1602,30 @@ noticed.
   "the same", say why.** This matters more here than in most projects, because the product's stated
   purpose is to teach real physics: an anthropocentric constant inside a page that CLAIMS TO SHOW THE
   WORKING is the one kind of error a curious user is guaranteed to find.
+- **STEER, DO NOT STOP. A PHYSICS CRITERION TAGS AND EXPLAINS; IT NEVER REFUSES AN EDIT, CLAMPS AN
+  AUTHORED VALUE, OR QUIETLY CORRECTS SOMEBODY'S MAP.** Owner, 2026-08-26, when [[G45]] found two
+  worlds in the bundled Uggi authored inside their pair's circumbinary stability limit: *"We dont
+  mind stuff being authored wrong like Uggi. He will need to fix by hand. General approach is: the
+  idea is that I steer you away from stuff that 'breaks physics'... but I don't stop you because:
+  alien tech / reality breakdown / unobtanium / PlotDevice / IDontCare."*
+  **Why it is a rule and not a preference:** this is a worldbuilding tool, not a validator. Every
+  impossible arrangement a GM can author has a legitimate in-fiction reason, and the engine cannot
+  tell a mistake from a deliberate choice. Refusing the placement makes the tool argue with the
+  story; explaining it makes the tool useful to a GM who wants the physics and harmless to one who
+  does not.
+  **What that means in practice:** your criterion produces TAGS, REASONS and published NUMBERS, and
+  stops there. It does not write back to `orbit`, `massKg` or anything else the GM set. It does not
+  refuse a drag. It does not "repair" data on load. Say what would happen and why, in the body's own
+  voice, and let the GM decide. This is the same shape as the physics-drives-tags-drives-visuals
+  rule one level down: nothing reaches past the chain to force a result.
+  **FINDING EXISTING CONTENT THAT YOUR NEW CRITERION CONDEMNS IS NOT A REASON TO CHANGE THAT
+  CONTENT.** Report it, name the numbers, recommend — and leave the map alone. G45 is the worked
+  example: two Uggi worlds now read Very Unstable, the map was not touched, and that is the correct
+  outcome.
+  **THE GENERATOR IS THE OPPOSITE CASE, and the distinction is load-bearing:** it should place
+  bodies where the physics allows, because that is the engine choosing for ITSELF rather than the GM
+  being overruled. Sane defaults, no walls. G45 fixed the generator (it was seeding P-type planets
+  into a zone the engine now condemns) and changed not one authored body.
 - **Physics and data drive tags; tags drive the image.** Do not add rendering code to make something look a
   particular way. If a look needs a new lever, the lever is rule-pack DATA.
 - **NEVER STOP, SHORTEN OR SKIP WORK BECAUSE YOU THINK YOU ARE RUNNING OUT OF CONTEXT. YOUR ESTIMATE

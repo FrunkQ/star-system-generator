@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.72 - 26th Aug 2026
+
+- Board only. Writes down the rule the physics has always been meant to follow: it steers you away from arrangements that break physics, and never stops you. A criterion tags and explains; it does not refuse an edit, clamp a value you set, or quietly fix your map. Alien tech, a reality breakdown, unobtanium or a plot device are all reasons the engine cannot see, so the verdict is information and the decision stays yours.
+
 ## v3.0.71 - 26th Aug 2026
 
 - Board only. The circumbinary work was checked in the running app rather than only in tests: the two Uggi worlds that sit inside their pair read very unstable with the reason and the numbers, a pair member and a distant companion both still read stable, and a planet orbiting one star of the pair is untouched. Also records a duplicated finding id for the coordinator to settle.
