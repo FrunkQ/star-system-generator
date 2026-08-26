@@ -915,6 +915,44 @@
         (comparable-mass crossing) or <em>hierarchy inversion</em>. Protective resonances cap a crossing pair at
         Marginal. Results surface as <code>stability/*</code>, <code>fate/*</code> and <code>resonance/*</code>
         tags plus the Orbital Stability and Resonance rows in the body panel.</p>
+      <h3>Circumbinary worlds &mdash; the annulus, not the outside</h3>
+      <p>A planet that orbits <em>both</em> stars of a pair (a <strong>P-type</strong> or circumbinary world)
+        does not simply live &ldquo;outside the binary&rdquo;. It lives in a <strong>ring</strong> with two
+        edges, and each edge is real physics. Every barycentre publishes both, and everything &mdash; the
+        verdict, the explanation, the drawing &mdash; reads the same two numbers.</p>
+      <p>The <strong>inner edge</strong> is the <strong>critical semi-major axis</strong>. The pull of a pair
+        is not a steady tug from one place: the field <em>turns</em>, twice per binary orbit, and close in
+        that forcing pumps a planet's orbit faster than it can settle, until the orbit crosses the stars
+        themselves and the first close encounter throws the planet clear. The engine uses the standard
+        measured fit &mdash; <strong>Holman &amp; Wiegert (1999)</strong>, who integrated test particles for
+        10<sup>4</sup> binary periods and fitted the lowest orbit that survived:</p>
+      <p style="margin-left:1.5em"><code>a<sub>c</sub>/a<sub>b</sub> = 1.60 + 5.10e<sub>b</sub> &minus;
+        2.2e<sub>b</sub>&sup2; + 4.12&mu; &minus; 4.27e<sub>b</sub>&mu; &minus; 5.09&mu;&sup2; +
+        4.61e<sub>b</sub>&sup2;&mu;&sup2;</code></p>
+      <p>where <code>a<sub>b</sub></code> is the stars' separation, <code>e<sub>b</sub></code> the pair's
+        eccentricity and <code>&mu;</code> the lighter star's share of the total mass. The hole is typically
+        <strong>2&ndash;4&times; the separation</strong>, and it widens sharply with eccentricity: an
+        equal-mass circular pair clears 2.39&times;, the same pair at e&nbsp;=&nbsp;0.4 clears 3.41&times;.
+        Two checks against reality: <strong>Kepler-16b</strong> comes out at 1.09&times; its own limit, which
+        is exactly where it is observed to be &mdash; the known circumbinary planet closest to falling in
+        &mdash; and Pluto's small moons come out just <em>outside</em> the Pluto&ndash;Charon limit of about
+        38,900&nbsp;km, which is where Styx, Nix, Kerberos and Hydra actually orbit.</p>
+      <p><strong>The edge is a floor, not a wall</strong>, and the paper says so: unstable islands sit
+        <em>above</em> a<sub>c</sub> wherever a planet falls into step with the pair, so clearing the limit
+        by a little is not the same as being safe. A world inside the limit reads Very Unstable with the
+        <em>flung out</em> fate and wears <code>stability/inside-circumbinary-limit</code>; one clearing it
+        by less than 1.2&times; reads Marginal and is given no predicted fate, because &ldquo;near the
+        edge&rdquo; is not a prediction. An eccentric orbit whose <em>periapsis</em> dips inside also reads
+        Marginal &mdash; the fit was measured on circular orbits, so that case is outside what it tested.
+        The fit itself is only valid for &mu; between 0.1 and 0.5 and e<sub>b</sub> up to about 0.7; outside
+        that the engine still evaluates it but <strong>says on the panel that the number is extrapolated</strong>,
+        rather than quietly presenting an untested figure as a measurement.</p>
+      <p>The <strong>outer edge</strong> is where the pair loses its own grip: half the combined-mass
+        <em>Hill radius</em> the pair holds within whatever it orbits &mdash; the same half that counts a
+        moon as &ldquo;stolen by external tide&rdquo; elsewhere on this page. A pair that <em>is</em> the
+        root of its system has no outer edge at all, and the engine publishes none rather than inventing
+        a large number to stand for infinity.</p>
+
       <h3>Lagrange points &amp; trojans</h3>
       <p>A body or construct can be pinned to another body's <strong>Lagrange point</strong>
         (<code>orbit/lagrange</code> tag). The triangular points L4/L5 are genuine free-fall orbits: the
@@ -1470,7 +1508,8 @@
         <li><code>geology/*</code> — tectonic regime (plate-tectonics, stagnant-lid, cryovolcanic, …)</li>
         <li><code>magnetic/*</code> — dynamo (intrinsic / induced / unshielded)</li>
         <li><code>habitability/*</code> — habitability tier (incl. subsurface)</li>
-        <li><code>stability/*</code> — n-body instability risk (marginal / unstable / very-unstable)</li>
+        <li><code>stability/*</code> — n-body instability risk (marginal / unstable / very-unstable), plus
+          <code>stability/inside-circumbinary-limit</code> for a world too close to the pair it orbits</li>
         <li><code>resonance/*</code> — mean-motion resonances (2-1, 3-2, …, laplace)</li>
         <li><code>fate/*</code> — predicted end-state of an unstable orbit (infall, eject, collision)</li>
         <li><code>barycenter/auto</code> — auto-generated barycentre marker</li>

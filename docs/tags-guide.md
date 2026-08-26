@@ -73,6 +73,18 @@ and a body authored at the collinear points L1/L2 is told honestly that only sta
 anything there. The full working appears on the body's physics trace, and the physics page's
 "Lagrange points & trojans" section explains the criteria.
 
+`stability/inside-circumbinary-limit` marks a world that orbits BOTH stars of a pair but sits too
+close in. A pair does not pull steadily from one place — the field turns twice per binary orbit — and
+inside the critical radius that forcing pumps the orbit until it crosses the stars themselves, and
+the encounter throws the world out. The limit is Holman & Wiegert's 1999 fit, typically two to four
+times the gap between the stars and widening sharply with the pair's eccentricity and how evenly
+matched the two stars are; the tag comes with `stability/very-unstable` and `fate/eject`, and the
+reason quotes the limit, the mass ratio and the eccentricity it was computed from. A world that
+clears the limit by less than 1.2x reads `stability/marginal` with no fate instead — the fit gives
+the lowest surviving orbit rather than a hard wall, so "just outside" is a warning, not a sentence.
+Every barycentre publishes the ring's two edges, so the panel, the verdict and the map all quote the
+same numbers. The physics page's "Circumbinary worlds" section has the formula and the real cases.
+
 A **construct** parked at one also gets `flight/fuel-use`, which says what staying there costs it:
 *coasting* at a sound L4/L5 (a free-fall orbit holds it for nothing), *station-keeping* at L1/L2/L3
 (periodic trim burns, which is what real missions at those points budget for), or *holding* when the

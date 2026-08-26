@@ -113,6 +113,15 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   // ~0.0001 AU pair orbit. Compute it once here so both layers agree. (ctx.host is the parent node.)
   const bary = ctx.host && ctx.host.kind === 'barycenter' ? (ctx.host as Barycenter) : null;
   const heliocentricEl = bary?.orbit?.elements ?? body.orbit?.elements;
+  // G45: TWO KINDS OF BODY SIT UNDER A BARYCENTRE and only one of them is "in" the pair. A MEMBER
+  // orbits the barycentre at the pair separation, and the substitution above is right for it. A
+  // CIRCUMBINARY body orbits the pair from outside, and its own orbit is the real one — for
+  // temperature the pair's heliocentric distance is still the right answer (it is where the whole
+  // pair sits), but for STABILITY it is not: the question is the body's own orbit around the pair,
+  // and printing the pair's 39 AU heliocentric orbit for a planet 0.7 AU from its two suns is the
+  // panel claiming to show working it has not done.
+  const isPairMember = !!bary && (bary.memberIds ?? []).includes(body.id);
+  const annulus = !isPairMember ? bary?.circumbinary : undefined;
   // Co-orbit partner separation (semi-major of the relative orbit = sum of each member's orbit
   // about the barycentre). Used to explain the small self-orbit distance in the panels.
   const partnerSepKm = bary && ctx.partner
@@ -710,9 +719,9 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     const stabLabel = (body as any).orbitalStability as string | undefined;
     const stabDetails = (body as any).orbitalStabilityDetails as string | undefined;
     const fateTag = (body.tags ?? []).find((t) => t.key.startsWith('fate/'));
-    // Binary members are judged on the barycentre's HELIOCENTRIC orbit (computed once, above),
-    // not the ~0.0001 AU pair orbit.
-    const orbEl = heliocentricEl ?? body.orbit.elements;
+    // Binary MEMBERS are judged on the barycentre's HELIOCENTRIC orbit (computed once, above), not
+    // the ~0.0001 AU pair orbit. A CIRCUMBINARY body is judged on its own orbit around the pair.
+    const orbEl = isPairMember ? (heliocentricEl ?? body.orbit.elements) : body.orbit.elements;
     const eN = orbEl?.e ?? 0;
     const aN = orbEl?.a_AU ?? 0;
     // G43: a Lagrange-pinned body shows the trojan working — the relationship, the Gascheau
@@ -744,11 +753,55 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         coNotes.push(`${co.point.toUpperCase()} co-rotates on the ${secName} sun-line at the Hill distance — a saddle equilibrium with no free orbit: a deviation e-folds in about a sixteenth of the orbital period (23 days at an Earth-like orbit), so only station-keeping holds anything here.`);
       }
     }
+    // G45: a circumbinary body's stability is an ANNULUS question, so show both edges and where the
+    // body sits between them. The numbers are READ from the barycentre, never recomputed here — the
+    // panel and the verdict must be the same arithmetic or one of them is lying.
+    const cbInputs: Array<{ label: string; value: string }> = [];
+    const cbNotes: string[] = [];
+    if (annulus) {
+      const pairName = bary?.name || 'the pair';
+      cbInputs.push({ label: 'Circumbinary of', value: `${pairName} — separation ${n(annulus.pairSeparationAU, 4, 'AU')}` });
+      cbInputs.push({
+        label: 'Pair mass ratio · eccentricity',
+        value: `μ ${n(annulus.massRatioMu, 3)} · e ${n(annulus.eccentricity, 3)}`
+      });
+      cbInputs.push({
+        label: 'Inner limit (P-type critical radius)',
+        value: `${n(annulus.innerAU, 3, 'AU')} = ${n(annulus.criticalRatio, 2, '×')} the separation`
+      });
+      if (annulus.outerAU !== undefined) {
+        cbInputs.push({
+          label: 'Outer limit (half the Hill radius of the pair)',
+          value: `${n(annulus.outerAU, 3, 'AU')} of ${n(annulus.hillRadiusAU, 3, 'AU')}`
+        });
+      }
+      cbInputs.push({
+        label: 'This orbit, against the inner limit',
+        value: `${n(aN / annulus.innerAU, 2, '×')} (stable above 1×)`
+      });
+      cbNotes.push(
+        `${body.name} orbits BOTH stars, so it has to clear them by a margin: the pull of a pair does not come steadily ` +
+        `from one place — the field turns twice per binary orbit — and inside the critical radius that forcing pumps the ` +
+        `orbit faster than it can settle, until the body crosses the stars themselves and the encounter throws it out. ` +
+        `The limit is Holman & Wiegert's 1999 fit to ten thousand binary orbits of test particles: ` +
+        `${n(annulus.criticalRatio, 2, '×')} the separation here, rising steeply with the pair's eccentricity and with how ` +
+        `evenly matched the two stars are.` +
+        (annulus.fitExtrapolated
+          ? ` NOTE: this pair's mass ratio or eccentricity is outside the range that fit was measured over (μ 0.1–0.5, e 0–0.7), so the limit shown is an EXTRAPOLATION, not a measured result.`
+          : '') +
+        ` The fit gives the LOWEST surviving orbit rather than a wall — mean-motion resonances with the pair leave unstable ` +
+        `islands above it — so clearing it by a little is not the same as being safe.` +
+        (annulus.outerAU !== undefined
+          ? ` The outer edge is where the pair loses its own grip to whatever it orbits.`
+          : ` This pair is the root of the system, so nothing outside it sets an outer edge.`)
+      );
+    }
     layers.push({
       id: 'stability', title: 'Orbital stability', link: '/physics#resonance',
       inputs: [
         ...coInputs,
-        { label: bary ? `Orbit (as the ${bary.name || 'pair'})` : 'Orbit', value: `${n(aN, 3, 'AU')} · e ${n(eN, 3)}` },
+        ...cbInputs,
+        { label: isPairMember ? `Orbit (as the ${bary?.name || 'pair'})` : 'Orbit', value: `${n(aN, 3, 'AU')} · e ${n(eN, 3)}` },
         { label: 'Perihelion → aphelion', value: `${n(aN * (1 - eN), 3)}–${n(aN * (1 + eN), 3)} AU` }
       ],
       outputs: [
@@ -756,11 +809,14 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         ...(fateTag ? [{ label: 'Predicted fate', value: describeTag(fateTag.key).label }] : [])
       ],
       notes: [
-        ...(bary ? [`Orbits the ${bary.name || 'barycentre'} — a member of a binary/multiple, so stability is judged on the pair's shared orbit around the star, not the small orbit within the pair.`] : []),
+        ...(isPairMember ? [`Orbits the ${bary?.name || 'barycentre'} — a member of a binary/multiple, so stability is judged on the pair's shared orbit around the star, not the small orbit within the pair.`] : []),
+        ...cbNotes,
         ...coNotes,
-        stabDetails ?? (co
-          ? 'The co-orbital configuration passes its stability criteria — see the note above for the bound it is judged against.'
-          : 'No orbit-crossing neighbour or loose binding found — a well-spaced, stable orbit.')
+        stabDetails ?? (annulus
+          ? 'Clear of both edges of the circumbinary annulus, and no crossing neighbour — a stable P-type orbit.'
+          : co
+            ? 'The co-orbital configuration passes its stability criteria — see the note above for the bound it is judged against.'
+            : 'No orbit-crossing neighbour or loose binding found — a well-spaced, stable orbit.')
       ]
     });
   }

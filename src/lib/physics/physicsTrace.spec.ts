@@ -108,3 +108,63 @@ describe('the trace shows the working for what the engine now derives', () => {
     expect(JSON.stringify(rad)).not.toContain('Above the atmosphere');
   });
 });
+
+// G45 — the panel that claims to show the working must show the CIRCUMBINARY working, and must not
+// substitute the pair's own heliocentric orbit for a planet that orbits the pair from outside.
+describe('the stability card explains a circumbinary orbit', () => {
+  const pair = (annulus: any, parentOrbitAU?: number) => ({
+    id: 'bary', kind: 'barycenter', name: 'Test Pair', memberIds: ['a', 'b'],
+    effectiveMassKg: 3e30, circumbinary: annulus,
+    ...(parentOrbitAU
+      ? { orbit: { hostId: 'sun', elements: { a_AU: parentOrbitAU, e: 0 } } }
+      : {})
+  }) as any;
+
+  const ANNULUS = {
+    pairSeparationAU: 1, massRatioMu: 1 / 3, eccentricity: 0,
+    criticalRatio: 2.4078, innerAU: 2.4078, fitExtrapolated: false
+  };
+
+  const planet = (aAU: number) => ({
+    id: 'p', kind: 'body', roleHint: 'planet', name: 'Tatooine',
+    massKg: EARTH_MASS_KG, radiusKm: EARTH_RADIUS_KM, parentId: 'bary',
+    makeup: { rock: 0.7, metal: 0.3 },
+    orbit: { hostId: 'bary', elements: { a_AU: aAU, e: 0 } }, tags: []
+  }) as unknown as CelestialBody;
+
+  it('names the mechanism, the limit and where the orbit sits against it', () => {
+    const t = buildPhysicsTrace(planet(5), { host: pair(ANNULUS) });
+    const stab = t.layers.find((l) => l.id === 'stability')!;
+    expect(stab.inputs.some((i) => i.label === 'Circumbinary of')).toBe(true);
+    expect(stab.inputs.some((i) => i.label.includes('Inner limit'))).toBe(true);
+    expect(stab.inputs.some((i) => i.label.includes('against the inner limit'))).toBe(true);
+    expect(stab.notes.join(' ')).toMatch(/turns twice per binary orbit/);
+    expect(stab.notes.join(' ')).toMatch(/Holman & Wiegert/);
+  });
+
+  it('says out loud when the limit is extrapolated beyond the fit', () => {
+    const t = buildPhysicsTrace(planet(5), { host: pair({ ...ANNULUS, fitExtrapolated: true }) });
+    const stab = t.layers.find((l) => l.id === 'stability')!;
+    expect(stab.notes.join(' ')).toMatch(/EXTRAPOLATION/);
+  });
+
+  it("prints the planet own orbit, not the pair heliocentric one", () => {
+    // The pair orbits a third star at 39.48 AU; the planet orbits the pair at 5 AU. Before G45 the
+    // stability card showed 39.48 for the planet, labelled "as the pair".
+    const t = buildPhysicsTrace(planet(5), { host: pair(ANNULUS, 39.48) });
+    const stab = t.layers.find((l) => l.id === 'stability')!;
+    const orbit = stab.inputs.find((i) => i.label === 'Orbit')!;
+    expect(orbit.value).toMatch(/5/);
+    expect(orbit.value).not.toMatch(/39/);
+    // ...and it must not claim the planet is a member of the pair.
+    expect(stab.notes.join(' ')).not.toMatch(/a member of a binary/);
+  });
+
+  it('still treats an actual pair MEMBER as a member', () => {
+    const member = { ...planet(0.33), id: 'a', name: 'Star A' } as CelestialBody;
+    const t = buildPhysicsTrace(member, { host: pair(ANNULUS, 39.48) });
+    const stab = t.layers.find((l) => l.id === 'stability')!;
+    expect(stab.notes.join(' ')).toMatch(/a member of a binary/);
+    expect(stab.inputs.some((i) => i.label === 'Circumbinary of')).toBe(false);
+  });
+});
