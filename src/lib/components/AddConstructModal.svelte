@@ -9,12 +9,15 @@
   export let rulePack: RulePack;
   export let hostBody: CelestialBody; // The body the user right-clicked on
   export let orbitalBoundaries: OrbitalBoundaries | undefined; // For planets/moons
+  // G43: preselect a placement (an L-point, when opened from a right-click inside its zone).
+  export let initialPlacement: string | undefined = undefined;
 
   const dispatch = createEventDispatcher();
 
   let selectedRoleHint: string | undefined;
   let selectedTemplate: CelestialBody | undefined;
   let selectedPlacement: string | undefined;   // an orbit band, 'Surface', 'AU Distance', or one of LAGRANGE_PLACEMENTS
+  $: if (initialPlacement && selectedPlacement === undefined) selectedPlacement = initialPlacement;
   let auDistance: number = 1.0; // For star-focused placement
 
   $: constructRoleHints = Object.keys(rulePack.constructTemplates || {}).filter(key => key !== 'id' && key !== 'name');

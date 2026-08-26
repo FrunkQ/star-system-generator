@@ -10,7 +10,9 @@
   import { AU_KM, EARTH_MASS_KG } from '../constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
   import * as zones from "$lib/physics/zones";
-  import { calculateLagrangePoints, tadpoleRegion, isTriangularPoint } from "$lib/physics/lagrange";
+  import { calculateLagrangePoints, tadpoleRegion, isTriangularPoint, tadpoleOutline,
+           hillFactor, coOrbitalScale, COLLINEAR_ENVELOPE_HILL } from "$lib/physics/lagrange";
+  import type { LagrangePointId } from "$lib/types";
   import { get } from 'svelte/store';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatDistanceKm, distanceFlavour } from '$lib/units';
@@ -83,7 +85,7 @@
     focus: string | null,
     levelchange: { id: string; level: number },
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
-    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; point: 'l4' | 'l5' } | null }
+    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: LagrangePointId } | null }
   }>();
 
   // --- Configurable Visuals ---
@@ -612,13 +614,14 @@
   // The lobe is centred ON the point and spans the observed swarm amplitude, not the separatrix —
   // see physics/lagrange.tadpoleRegion for why those are very different pictures. The same entries
   // drive the right-click placement hit-test, so what you see is exactly what you can click.
+  // Each zone is a POLYGON in render-frame world coordinates — the true tadpole contour for L4/L5,
+  // and the station-keeping envelope for L1/L2/L3. One shape type for all five means the draw and
+  // the placement hit-test read the SAME geometry and cannot drift apart.
   interface LagrangeArea {
-      secondaryId: string; point: 'l4' | 'l5';
-      cx: number; cy: number;          // primary position (render frame)
-      R: number;                        // orbit radius at this instant (render frame)
-      centreAngle: number;             // the L-point's own angle about the primary
-      halfAngle: number;               // lobe half-extent in longitude (radians)
-      halfWidth: number;               // radial half-width (render frame, before the px floor)
+      secondaryId: string;
+      secondaryName: string;
+      point: LagrangePointId;
+      poly: { x: number; y: number }[];
   }
   let lagrangeAreas: LagrangeArea[] = [];
   // Whose L-points are the SELECTED ones. Every pair still draws its five crosses, but the ones
@@ -670,24 +673,40 @@
                   }
                   allPoints.set(`${p.name}-${secondary.id}`, { x: x + scaledPrimaryPos.x, y: y + scaledPrimaryPos.y });
               });
-              // G43: tadpole lobes, but ONLY for the pair the user has actually selected.
+              // G43: the five zones, but ONLY for the pair the user has actually selected.
               if (primary.massKg && secondary.massKg && secondary.id === areaSecondaryId) {
                   const region = tadpoleRegion(secondary.massKg, primary.massKg);
                   const R = Math.sqrt(scaledRelativeSecondaryPos.x ** 2 + scaledRelativeSecondaryPos.y ** 2);
                   const thetaSec = Math.atan2(scaledRelativeSecondaryPos.y, scaledRelativeSecondaryPos.x);
-                  const dir = secondary.orbit?.isRetrogradeOrbit ? -1 : 1;
-                  const halfAngle = (region.swarmHalfAngleDeg * Math.PI) / 180;
+                  const retro = !!secondary.orbit?.isRetrogradeOrbit;
+                  const mu = secondary.massKg / (primary.massKg + secondary.massKg);
+                  // Normalised (secondary along +x, primary at origin) -> render frame. The scale is
+                  // the CURRENT separation, not the semi-major axis, so an eccentric pair's zones
+                  // breathe over the orbit the way the real pulsating-frame geometry does.
+                  const place = (p: { x: number; y: number }) => {
+                      const y = retro ? -p.y : p.y;
+                      return {
+                          x: scaledPrimaryPos.x + R * (p.x * Math.cos(thetaSec) - y * Math.sin(thetaSec)),
+                          y: scaledPrimaryPos.y + R * (p.x * Math.sin(thetaSec) + y * Math.cos(thetaSec))
+                      };
+                  };
                   for (const point of ['l4', 'l5'] as const) {
-                      // L4 leads the secondary by 60 deg, L5 trails — in its direction of motion.
-                      const lead = point === 'l4' ? 1 : -1;
-                      lagrangeAreas.push({
-                          secondaryId: secondary.id, point,
-                          cx: scaledPrimaryPos.x, cy: scaledPrimaryPos.y,
-                          R,
-                          centreAngle: thetaSec + dir * lead * (Math.PI / 3),
-                          halfAngle,
-                          halfWidth: region.radialHalfWidthFrac * R
-                      });
+                      const poly = tadpoleOutline(mu, point, region.swarmHalfAngleDeg).map(place);
+                      if (poly.length >= 3) lagrangeAreas.push({ secondaryId: secondary.id, secondaryName: secondary.name, point, poly });
+                  }
+                  // The collinear envelopes: an ellipse about each point, sized on the Hill radius.
+                  const k = hillFactor(secondary.massKg, primary.massKg);
+                  for (const point of ['l1', 'l2', 'l3'] as const) {
+                      const scale = coOrbitalScale(point, secondary.massKg, primary.massKg);
+                      const cx = point === 'l3' ? -1 : scale;   // normalised, along the +x line
+                      const along = COLLINEAR_ENVELOPE_HILL.alongOrbit * k;
+                      const rad = COLLINEAR_ENVELOPE_HILL.radial * k;
+                      const poly: { x: number; y: number }[] = [];
+                      for (let s = 0; s < 40; s++) {
+                          const a = (s / 40) * 2 * Math.PI;
+                          poly.push(place({ x: cx + rad * Math.cos(a), y: along * Math.sin(a) }));
+                      }
+                      lagrangeAreas.push({ secondaryId: secondary.id, secondaryName: secondary.name, point, poly });
                   }
               }
           }
@@ -833,17 +852,18 @@
       }
   }
 
-  function hitTestLagrangeArea(wx: number, wy: number): { secondaryId: string; point: 'l4' | 'l5' } | null {
+  // Point-in-polygon against the SAME outlines that were drawn, so the clickable region is exactly
+  // the visible one for all five points — no second geometry to keep in step.
+  function hitTestLagrangeArea(wx: number, wy: number): { secondaryId: string; secondaryName: string; point: LagrangePointId } | null {
       if (!showLPoints) return null;
       for (const area of lagrangeAreas) {
-          const dx = wx - area.cx, dy = wy - area.cy;
-          const r = Math.hypot(dx, dy);
-          const w = Math.max(area.halfWidth, 6 / zoom);
-          if (Math.abs(r - area.R) > w) continue;
-          // Angular distance from the lobe's centre (the L-point itself), wrapped to [-pi, pi].
-          let delta = Math.atan2(dy, dx) - area.centreAngle;
-          delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-          if (Math.abs(delta) <= area.halfAngle) return { secondaryId: area.secondaryId, point: area.point };
+          const p = area.poly;
+          let inside = false;
+          for (let a = 0, b = p.length - 1; a < p.length; b = a++) {
+              const xa = p[a].x, ya = p[a].y, xb = p[b].x, yb = p[b].y;
+              if (((ya > wy) !== (yb > wy)) && (wx < ((xb - xa) * (wy - ya)) / (yb - ya) + xa)) inside = !inside;
+          }
+          if (inside) return { secondaryId: area.secondaryId, secondaryName: area.secondaryName, point: area.point };
       }
       return null;
   }
@@ -1056,18 +1076,20 @@
       const lagrangeIsSelected = (key: string) =>
           !lagrangeFocusSecondaryId || key.slice(key.indexOf('-') + 1) === lagrangeFocusSecondaryId;
       if (showLPoints && lagrangeAreas.length) {
-          // G43: the tadpole AREAS — a translucent lobe along the orbit around each triangular
-          // point (reference-anchored geometry from physics/lagrange.tadpoleRegion). The physics
-          // width for a small mu is subpixel at most zooms, so the drawn width has a px floor; the
-          // placement hit-test in openContextMenu uses the same floor, so the clickable region is
-          // exactly the visible one.
+          // The zones, drawn as the shapes the physics actually makes: a true tadpole contour at
+          // L4/L5 (fat head at the point, tail narrowing toward the secondary) and a station-keeping
+          // ellipse at each collinear point. Triangular zones are green — somewhere a body can sit
+          // for free; collinear zones are amber and outlined only, because nothing is held there.
           for (const area of lagrangeAreas) {
-              const w = Math.max(area.halfWidth, 6 / zoom);
+              const tri = isTriangularPoint(area.point);
               ctx.beginPath();
-              ctx.arc(area.cx - renderPan.x, area.cy - renderPan.y, area.R,
-                      area.centreAngle - area.halfAngle, area.centreAngle + area.halfAngle);
-              ctx.lineWidth = 2 * w;
-              ctx.strokeStyle = 'rgba(0, 200, 100, 0.16)';
+              ctx.moveTo(area.poly[0].x - renderPan.x, area.poly[0].y - renderPan.y);
+              for (let i = 1; i < area.poly.length; i++) ctx.lineTo(area.poly[i].x - renderPan.x, area.poly[i].y - renderPan.y);
+              ctx.closePath();
+              ctx.fillStyle = tri ? 'rgba(0, 200, 100, 0.16)' : 'rgba(255, 200, 90, 0.07)';
+              ctx.fill();
+              ctx.lineWidth = 1 / zoom;
+              ctx.strokeStyle = tri ? 'rgba(0, 200, 100, 0.35)' : 'rgba(255, 200, 90, 0.30)';
               ctx.stroke();
           }
       }

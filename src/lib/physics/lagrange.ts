@@ -230,6 +230,118 @@ export function tadpoleRegion(secondaryMassKg: number, hostMassKg: number): {
     };
 }
 
+// ————— THE REAL SHAPE OF A LAGRANGE REGION ———————————————————————————————————————————————————————
+//
+// A tadpole is not an arc segment. It is a zero-velocity curve of the circular restricted three-body
+// problem, and it really is tadpole-shaped: a fat head around the triangular point and a tail that
+// narrows as it reaches toward the secondary. Drawing a constant-width band was a stylisation that
+// got the WIDTH right (it came from the same mass ratio) and the SHAPE wrong.
+//
+// The maths is the Jacobi integral. In the barycentric co-rotating frame, normalised so the two
+// bodies sit unit distance apart with total mass 1:
+//     primary   (mass 1-mu) at (-mu, 0)
+//     secondary (mass   mu) at (1-mu, 0)
+//     2U(x,y) = (x^2 + y^2) + 2(1-mu)/r1 + 2mu/r2
+// L4 and L5 are LOCAL MINIMA of U — check it: stepping off L4 either radially or along the orbit
+// RAISES U, and U runs away to infinity at the secondary. (This is the easy thing to get backwards.
+// The triangular points are stable despite sitting at a potential minimum in the rotating frame
+// because the Coriolis term does the stabilising, which is also why stability depends on the mass
+// ratio at all — that is Routh's bound.) So the closed curve around L4 at Jacobi constant C is the
+// contour {2U = C} with C slightly ABOVE 2U(L4), and the region it bounds, {2U <= C}, is the
+// tadpole. Raising C grows it until the two lobes merge through the L3 neck.
+//
+// ECCENTRICITY: the CR3BP is circular by construction. The standard first-order treatment of an
+// eccentric pair is the PULSATING frame — the same normalised shape, scaled by the instantaneous
+// separation — so the renderer scales this outline by the secondary's CURRENT distance rather than
+// by its semi-major axis, and the region breathes over the orbit exactly as the geometry does.
+
+/** 2U at a point in the barycentric co-rotating frame (normalised units). */
+export function jacobiPotential2(mu: number, x: number, y: number): number {
+    const r1 = Math.hypot(x + mu, y);
+    const r2 = Math.hypot(x - 1 + mu, y);
+    if (r1 <= 0 || r2 <= 0) return Infinity;
+    return x * x + y * y + (2 * (1 - mu)) / r1 + (2 * mu) / r2;
+}
+
+/** A point on the co-orbital track: distance `r` from the PRIMARY, at longitude `phi` measured from
+ *  the primary→secondary direction. Returned in barycentric coordinates. */
+function trackPoint(mu: number, phi: number, r: number): { x: number; y: number } {
+    return { x: -mu + r * Math.cos(phi), y: r * Math.sin(phi) };
+}
+
+/**
+ * The outline of the tadpole region around L4 (or its mirror at L5), as a closed polygon in
+ * PRIMARY-CENTRED normalised coordinates with the secondary along +x. The renderer rotates it to the
+ * secondary's current bearing and scales it by the current separation.
+ *
+ * `swarmHalfAngleDeg` sets which member of the tadpole family to draw, by naming how far along the
+ * orbit from the point the region should reach — the Jacobi constant is taken from that longitude,
+ * so the shape that comes back is the true contour for it rather than a drawn approximation.
+ */
+export function tadpoleOutline(
+    mu: number,
+    point: 'l4' | 'l5',
+    swarmHalfAngleDeg: number,
+    steps = 96
+): { x: number; y: number }[] {
+    if (!(mu > 0) || mu >= 0.5) return [];
+    const L4_PHI = Math.PI / 3;
+    const half = (swarmHalfAngleDeg * Math.PI) / 180;
+    // The contour that passes through the near edge of the requested swarm.
+    const C = jacobiPotential2(mu, ...(Object.values(trackPoint(mu, L4_PHI - half, 1)) as [number, number]));
+
+    // For each longitude, find how far in and out of the track the region reaches. `inside` widens
+    // from the track itself, so a longitude the region does not reach simply yields nothing.
+    const radialAt = (phi: number): { lo: number; hi: number } | null => {
+        // Positive = INSIDE the tadpole ({2U <= C}).
+        const at = (r: number) => {
+            const p = trackPoint(mu, phi, r);
+            return C - jacobiPotential2(mu, p.x, p.y);
+        };
+        if (at(1) < 0) return null;                     // the track itself is outside this contour
+        const edge = (dir: 1 | -1): number => {
+            let good = 1, bad = 1 + dir * 0.9;           // 0.9 covers even a very fat region
+            if (at(bad) >= 0) return bad;
+            for (let i = 0; i < 40; i++) {
+                const mid = 0.5 * (good + bad);
+                if (at(mid) >= 0) good = mid; else bad = mid;
+            }
+            return good;
+        };
+        return { lo: edge(-1), hi: edge(1) };
+    };
+
+    const outer: { x: number; y: number }[] = [];
+    const inner: { x: number; y: number }[] = [];
+    // Scan the LEADING half only. U is symmetric about the primary–secondary line, so {2U <= C}
+    // always contains both lobes; sweeping the whole circle would weld L4's tadpole to L5's. Each
+    // outline owns its own side and the contour closes itself wherever the region pinches out.
+    for (let i = 1; i < steps; i++) {
+        const phi = (i / steps) * Math.PI;
+        const band = radialAt(phi);
+        if (!band) continue;
+        outer.push(trackPoint(mu, phi, band.hi));
+        inner.push(trackPoint(mu, phi, band.lo));
+    }
+    if (outer.length < 3) return [];
+    const ring = [...outer, ...inner.reverse()];
+    // Barycentric → primary-centred, and mirror for the trailing point.
+    const flip = point === 'l5' ? -1 : 1;
+    return ring.map((p) => ({ x: p.x + mu, y: p.y * flip }));
+}
+
+/** The practical STATION-KEEPING ENVELOPE around a collinear point, as semi-axes in units of the
+ *  secondary's Hill radius: along-orbit first, radial second.
+ *
+ *  This is a different KIND of region from a tadpole and the difference is the point: L1/L2/L3 are
+ *  saddles, so nothing is trapped there and there is no stability contour to draw. What there IS, and
+ *  what a GM actually wants, is the volume a station can practically hold station within — the halo
+ *  and Lissajous orbits real missions fly. The anchor is JWST: its halo about Sun–Earth L2 spans
+ *  roughly 800,000 km against Earth's ~1.5 million km Hill radius, so about half a Hill radius
+ *  along-orbit, and it is flatter than it is long. Display convention, honestly labelled — NOT a
+ *  claim that the physics confines anything here. */
+export const COLLINEAR_ENVELOPE_HILL = { alongOrbit: 0.5, radial: 0.35 };
+
 /** Resolve a co-orbital node's SECONDARY in a system, or null when the marker dangles. */
 export function coOrbitalSecondary(system: System, node: CelestialBody): CelestialBody | Barycenter | null {
     if (!node.coOrbital) return null;

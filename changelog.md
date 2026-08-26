@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.55 - 26th Aug 2026
+
+- The Lagrange zones are now the shapes the physics actually makes, not stylised arcs. L4 and L5 draw their true tadpole outline — computed from the zero-velocity contour of the three-body problem, so it has the fat head around the point and the tail that narrows toward the planet, and it widens with the mass ratio exactly as it should. That is why Luna's zones look so much bigger than Earth's and it is correct: the Moon is over a hundredth of Earth's mass where Earth is three millionths of the Sun's, which makes the Earth-Moon co-orbital region about sixty times wider in proportion. Eccentric orbits are handled by scaling the region to the planet's CURRENT distance, so it breathes over the orbit.
+- L1, L2 and L3 now have zones too — station-keeping envelopes sized on the Hill radius, drawn in amber and outlined rather than filled, because nothing is held at those points and the shape is where a station can practically hold rather than where physics traps anything.
+- Right-clicking inside any of the five zones now offers to put a construct at that point. L4 and L5 additionally offer a trojan body, as before. The clickable region is the drawn outline itself, for all five.
+
 ## v3.0.54 - 26th Aug 2026
 
 - Hill spheres now draw for the selected body's neighbourhood rather than for everything at once: the body itself, its parent, its siblings and its moons. Picking a planet looks the same as it always did — its siblings are the other planets — but picking a moon narrows the view to that moon's own surroundings, one level down, so a submoon still shows.

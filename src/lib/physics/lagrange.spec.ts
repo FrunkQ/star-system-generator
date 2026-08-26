@@ -10,7 +10,7 @@ import path from 'path';
 import {
     deriveCoOrbitalOrbit, deriveCoOrbitalOrbits, coOrbitalRelState, hillFactor,
     maxTrojanMassKg, gascheauMargin, ROUTH_CRITICAL_MU, tadpoleRegion, calculateLagrangePoints,
-    lagrangePlacementId, isTriangularPoint
+    lagrangePlacementId, isTriangularPoint, tadpoleOutline
 } from './lagrange';
 import { propagateState } from './orbits';
 import { migrateLagrangePlacements } from '../system/importFixup';
@@ -375,5 +375,59 @@ describe('through the full processor', () => {
         const trojan2 = twice.nodes.find(n => n.id === 'trojan') as CelestialBody;
         expect(JSON.stringify(trojan2.orbit)).toBe(JSON.stringify(trojan1.orbit));
         expect(trojan2.coOrbital).toEqual(trojan1.coOrbital);
+    });
+});
+
+describe('the real tadpole SHAPE (CR3BP zero-velocity contour)', () => {
+    const L4 = { x: 0.5, y: Math.sqrt(3) / 2 };
+    const inside = (poly: {x:number;y:number}[], q: {x:number;y:number}) => {
+        let hit = false;
+        for (let a = 0, b = poly.length - 1; a < poly.length; b = a++) {
+            const xa = poly[a].x, ya = poly[a].y, xb = poly[b].x, yb = poly[b].y;
+            if (((ya > q.y) !== (yb > q.y)) && (q.x < ((xb - xa) * (q.y - ya)) / (yb - ya) + xa)) hit = !hit;
+        }
+        return hit;
+    };
+
+    it('encloses its own L4 point', () => {
+        expect(inside(tadpoleOutline(9.533e-4, 'l4', 21), L4)).toBe(true);
+    });
+
+    it('is a LOBE, not a band: it spans part of the orbit and lies on the leading side', () => {
+        const poly = tadpoleOutline(9.533e-4, 'l4', 21);
+        const phis = poly.map(p => (Math.atan2(p.y, p.x) * 180) / Math.PI);
+        expect(Math.min(...phis)).toBeGreaterThan(20);      // never reaches the secondary at 0
+        expect(Math.max(...phis)).toBeLessThanOrEqual(180); // never crosses to the trailing side
+        expect(poly.every(p => p.y > 0)).toBe(true);
+    });
+
+    it("widens with the mass ratio — Luna's region really is far fatter than Earth's", () => {
+        const width = (mu: number) => {
+            const rs = tadpoleOutline(mu, 'l4', 21).map(p => Math.hypot(p.x, p.y));
+            return Math.max(...rs) - Math.min(...rs);
+        };
+        const earth = width(3.003e-6), jupiter = width(9.533e-4), luna = width(1.214e-2);
+        expect(jupiter).toBeGreaterThan(earth * 10);
+        expect(luna).toBeGreaterThan(jupiter * 3);
+        // and it tracks the (8mu/3)^(1/2) scaling the band width came from
+        expect(luna / earth).toBeGreaterThan(30);
+    });
+
+    it('l5 is the mirror of l4', () => {
+        const a = tadpoleOutline(9.533e-4, 'l4', 21);
+        const b = tadpoleOutline(9.533e-4, 'l5', 21);
+        expect(b.length).toBe(a.length);
+        for (let i = 0; i < a.length; i++) {
+            expect(b[i].x).toBeCloseTo(a[i].x, 12);
+            expect(b[i].y).toBeCloseTo(-a[i].y, 12);
+        }
+    });
+
+    it('a wider requested swarm produces a genuinely bigger region', () => {
+        const w = (deg: number) => {
+            const rs = tadpoleOutline(9.533e-4, 'l4', deg).map(p => Math.hypot(p.x, p.y));
+            return Math.max(...rs) - Math.min(...rs);
+        };
+        expect(w(30)).toBeGreaterThan(w(10));
     });
 });

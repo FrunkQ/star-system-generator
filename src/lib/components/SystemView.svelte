@@ -350,7 +350,8 @@
   let showSaveModal = false;
   let backgroundClickHost: CelestialBody | Barycenter | null = null;
   let backgroundClickPosition: { x: number, y: number } | null = null;
-  let backgroundLagrangeHit: { secondaryId: string; point: 'l4' | 'l5' } | null = null; // G43: click landed inside an L-area
+  let backgroundLagrangeHit: { secondaryId: string; secondaryName: string; point: string } | null = null; // G43: click landed inside an L-zone
+  let constructInitialPlacement: string | undefined = undefined;   // G43: preselect an L-point in the add-construct modal
   let showBackgroundContextMenu = false;
   let contextMenuActionLabel = 'Add Planet Here';
   let showAddBeltOption = false;
@@ -363,7 +364,7 @@
 
   // ...
 
-  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; point: 'l4' | 'l5' } | null }>) {
+  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: string } | null }>) {
       backgroundClickHost = event.detail.dominantBody;
       backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
       backgroundLagrangeHit = event.detail.lagrangeHit ?? null;
@@ -415,10 +416,26 @@
       pendingAdd = {
           distAU: aAU, startAngle: 0, hostId: star.id, hostMassKg: secondary.massKg || 0,
           role: 'moon', teqK, ageGyr: ($systemStore as any)?.age_Gyr, canTidallyLock: undefined,
-          trojan: { secondaryId: secondary.id, secondaryName: secondary.name, point: hit.point,
+          trojan: { secondaryId: secondary.id, secondaryName: secondary.name, point: hit.point as 'l4' | 'l5',
                     maxTrojanMassKg: maxTrojanMassKg(starMassKg, secondary.massKg || 0) }
       };
       showAddTypeModal = true;
+  }
+
+  // G43: put a CONSTRUCT at whichever of the five points was clicked. All five are offered — what
+  // each costs is physics and arrives as the flight/fuel-use tag, so the menu does not judge. The
+  // modal opens on the secondary with the point preselected, and its own placement writer stamps
+  // the coOrbital marker and derives the orbit.
+  function handleAddConstructAtLagrange() {
+      showBackgroundContextMenu = false;
+      const hit = backgroundLagrangeHit;
+      backgroundLagrangeHit = null;
+      if (!hit || !$systemStore) return;
+      const secondary = $systemStore.nodes.find(n => n.id === hit.secondaryId) as CelestialBody | undefined;
+      if (!secondary) return;
+      constructHostBody = secondary;
+      constructInitialPlacement = hit.point.toUpperCase();
+      showAddConstructModal = true;
   }
 
   function handleCreateBodyFromBackground(forceRole?: string) {
@@ -2577,8 +2594,12 @@
         <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;" on:click|stopPropagation>
             <ul>
                 {#if backgroundLagrangeHit}
-                    {@const lagSecondary = $systemStore?.nodes.find(n => n.id === backgroundLagrangeHit?.secondaryId)}
-                    <li on:click={handleAddTrojanFromBackground}>Add Trojan at {lagSecondary?.name ?? '?'} {backgroundLagrangeHit.point.toUpperCase()}</li>
+                    {@const lagName = backgroundLagrangeHit.secondaryName}
+                    {@const lagPt = backgroundLagrangeHit.point.toUpperCase()}
+                    <li on:click={handleAddConstructAtLagrange}>Put construct at {lagName} {lagPt}</li>
+                    {#if backgroundLagrangeHit.point === 'l4' || backgroundLagrangeHit.point === 'l5'}
+                        <li on:click={handleAddTrojanFromBackground}>Add Trojan at {lagName} {lagPt}</li>
+                    {/if}
                 {/if}
                 <li on:click={handleCreateConstructFromBackground}>Add Construct Here</li>
                 <li on:click={() => handleCreateBodyFromBackground()}>{contextMenuActionLabel}</li>
@@ -2593,7 +2614,7 @@
     {/if}
 
     {#if showAddConstructModal && constructHostBody}
-      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} on:create={handleAddConstructCreated} on:close={() => showAddConstructModal = false} />
+      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} initialPlacement={constructInitialPlacement} on:create={handleAddConstructCreated} on:close={() => showAddConstructModal = false} />
     {/if}
 
     {#if showCreateConstructModal}
