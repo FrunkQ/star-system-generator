@@ -489,6 +489,17 @@ function firstThrustAboveMs(construct: any, fromMs: number, accelCap_ms2: number
   return earliest;
 }
 
+/** IS THIS PLAN A PASS-THROUGH RATHER THAN AN ARRIVAL? Exported because the MAP has to ask the same
+ *  question the flight does: the sampler uses it to decide whether the ship coasts on past its
+ *  destination or parks there, and `drawTransitPlan` uses it to decide whether the path ends in a
+ *  stop marker or carries on past the target. Two answers to that would be a picture that lies about
+ *  what the ship is going to do. A flyby still BRAKES — it sheds speed to reach its intercept
+ *  velocity — so the brake segment is not the tell; the intercept speed is. */
+export function isFlybyPlan(plan: { interceptSpeed_ms?: number; segments?: Array<{ warnings?: string[] }> }): boolean {
+  return (plan.interceptSpeed_ms || 0) > 0 ||
+    (plan.segments ?? []).some((s) => (s.warnings || []).includes('Flyby'));
+}
+
 function samplePostJourneyState(
   system: System,
   log: { id: string; plans: TransitPlan[] },
@@ -501,9 +512,7 @@ function samplePostJourneyState(
   const lastPts = lastSeg?.pathPoints || [];
   const finalPos = lastPts.length > 0 ? lastPts[lastPts.length - 1] : null;
   const isExplicitDockToConstruct = !!(lastPlan.arrivalPlacement && lastPlan.arrivalPlacement === lastPlan.targetId);
-  const isFlybyIntent =
-    (lastPlan.interceptSpeed_ms || 0) > 0 ||
-    lastPlan.segments.some((s) => (s.warnings || []).includes('Flyby'));
+  const isFlybyIntent = isFlybyPlan(lastPlan);
 
   // If arrival is a flyby/deep-space pass, continue inertial drift from final path tangent.
   if (isFlybyIntent && finalPos) {

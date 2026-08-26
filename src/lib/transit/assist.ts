@@ -407,9 +407,19 @@ function buildAssistTransitPlan(
     // display-grade split the torch families already use — it makes the burn VISIBLE at the right
     // moment and for the right duration, which is what the plume and the flip read.
     const burnAccel = Math.max(0.01, (params.maxG || 0.1) * 9.81);
+    // Split the path at an exact fraction, INTERPOLATING the boundary point so both halves are
+    // drawable. Rounding to the nearest existing point instead left the brake with a single point
+    // whenever the burn was short against its leg — and a one-point path draws NO LINE, so the red
+    // brake stroke the map uses to show a flip-and-burn simply did not appear. Both halves now carry
+    // the shared boundary point, so they meet exactly and each has at least two.
     const sliceAt = (pts: Vector2[], frac: number) => {
-        const cut = Math.max(1, Math.min(pts.length - 1, Math.round(pts.length * frac)));
-        return { head: pts.slice(0, cut + 1), tail: pts.slice(cut) };
+        const f = Math.max(0, Math.min(1, frac));
+        const x = f * (pts.length - 1);
+        const i = Math.max(0, Math.min(pts.length - 2, Math.floor(x)));
+        const tt = x - i;
+        const a = pts[i], b = pts[i + 1];
+        const mid = { x: a.x + (b.x - a.x) * tt, y: a.y + (b.y - a.y) * tt };
+        return { head: [...pts.slice(0, i + 1), mid], tail: [mid, ...pts.slice(i + 1)] };
     };
 
     // LEG 1 — a departure burn, then the coast it bought.

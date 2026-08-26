@@ -98,3 +98,52 @@ describe('interstellar arrival clears the old system\'s situation', () => {
     expect(ship.orbit.elements.a_AU).toBeGreaterThan(0);
   });
 });
+
+describe('a ship gets a SENSIBLE arrival orbit, not the old system\'s elements', () => {
+  const AU_KM = 1.495978707e8;
+
+  it('a named planet destination gets a high parking orbit around it', () => {
+    const m = makeStarmap({});
+    // Give sysB a planet and aim the journey at it.
+    (m.systems.find((s) => s.id === 'sysB')!.system.nodes as any[]).push({
+      id: 'planetB', kind: 'body', roleHint: 'planet', name: 'PB', parentId: 'starB',
+      massKg: 6e24, radiusKm: 6371,
+      orbit: { hostId: 'starB', hostMu: 1e20, t0: 0, elements: { a_AU: 1, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } }
+    });
+    (m.activeJourneys as any[])[0].toBodyId = 'planetB';
+    const ship = arrivedShip(endJourneyAtDestination(m, 'j1'));
+    expect(ship.parentId).toBe('planetB');
+    // 4x the planet's radius — the same high-orbit convention an in-system arrival uses.
+    expect(ship.orbit.elements.a_AU * AU_KM).toBeCloseTo(6371 * 4, 0);
+  });
+
+  it('a star destination puts the ship at the SYSTEM EDGE, not among the planets', () => {
+    const m = makeStarmap({});
+    (m.systems.find((s) => s.id === 'sysB')!.system.nodes as any[]).push({
+      id: 'planetB', kind: 'body', roleHint: 'planet', name: 'PB', parentId: 'starB', massKg: 6e24,
+      orbit: { hostId: 'starB', hostMu: 1e20, t0: 0, elements: { a_AU: 4, e: 0.1, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } }
+    });
+    const ship = arrivedShip(endJourneyAtDestination(m, 'j1'));   // toBodyId is starB
+    // Just beyond the outermost thing: 4 * 1.1 apoapsis * 1.1 margin.
+    expect(ship.orbit.elements.a_AU).toBeGreaterThan(4 * 1.1);
+    expect(ship.orbit.elements.a_AU).toBeLessThan(4 * 1.1 * 1.2);
+  });
+
+  it('never inherits the departure orbit — the classic "arrives inside the star"', () => {
+    // Ship left a tight 0.002 AU moon orbit. Arriving at a STAR with that a_AU would be fatal.
+    const m = makeStarmap({});
+    const shipNode = (m.systems[0].system.nodes as any[]).find((n) => n.id === 'ship1');
+    shipNode.orbit.elements.a_AU = 0.002;
+    const ship = arrivedShip(endJourneyAtDestination(m, 'j1'));
+    expect(ship.orbit.elements.a_AU).toBeGreaterThan(0.05);
+    expect(ship.orbit.elements.e, 'a fresh circular arrival, not an inherited eccentricity').toBe(0);
+    expect(ship.orbit.n_rad_per_s, 'a pinned rate from the old geometry must not survive').toBeUndefined();
+  });
+
+  it('spreads arrivals deterministically instead of stacking them on one spoke', () => {
+    const a = arrivedShip(endJourneyAtDestination(makeStarmap({}), 'j1'));
+    const b = arrivedShip(endJourneyAtDestination(makeStarmap({}), 'j1'));
+    expect(a.orbit.elements.M0_rad).toBe(b.orbit.elements.M0_rad);   // same ship, same place
+    expect(Number.isFinite(a.orbit.elements.M0_rad)).toBe(true);
+  });
+});

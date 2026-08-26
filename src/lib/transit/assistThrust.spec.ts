@@ -80,3 +80,44 @@ describe('B87: an assist flight has real thrust phases', () => {
         expect(compact.some((b: any) => b.b === 1), 'a retrograde burn must reach the player').toBe(true);
     });
 });
+
+describe('B87 follow-up: the burn phases are DRAWABLE', () => {
+    it('Accel and Brake each carry at least two path points, so the line renders', () => {
+        // `drawTransitPlan` strokes Brake in red (255,51,51) and Accel in green — that is how a
+        // flip-and-burn reads on the map. A segment with ONE path point draws nothing at all, which
+        // is what a nearest-point split produced whenever the burn was short against its leg.
+        const plan = assistPlan()!;
+        for (const seg of plan.segments.filter((s: any) => s.type !== 'Coast')) {
+            expect(seg.pathPoints.length, `${seg.id} must be drawable`).toBeGreaterThanOrEqual(2);
+        }
+    });
+
+    it('the phases meet exactly — no gap in the drawn path', () => {
+        const plan = assistPlan()!;
+        for (let i = 1; i < plan.segments.length; i++) {
+            const prev = plan.segments[i - 1].pathPoints;
+            const next = plan.segments[i].pathPoints;
+            if (!prev.length || !next.length) continue;
+            const a = prev[prev.length - 1], b = next[0];
+            // Consecutive carved segments share their boundary point; the flyby bezier legitimately
+            // starts elsewhere, so only assert where the ids say the split was ours.
+            if (plan.segments[i - 1].id.startsWith('leg-1') && plan.segments[i].id.startsWith('leg-1')) {
+                expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(1e-12);
+            }
+            if (plan.segments[i - 1].id.startsWith('leg-2') && plan.segments[i].id.startsWith('leg-2')) {
+                expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeLessThan(1e-12);
+            }
+        }
+    });
+});
+
+describe('the map and the flight agree about what a flyby IS', () => {
+    it('isFlybyPlan is the one predicate both sides ask', async () => {
+        const { isFlybyPlan } = await import('./scheduler');
+        expect(isFlybyPlan({ interceptSpeed_ms: 5000, segments: [] })).toBe(true);
+        expect(isFlybyPlan({ interceptSpeed_ms: 0, segments: [{ warnings: ['Flyby'] }] })).toBe(true);
+        expect(isFlybyPlan({ interceptSpeed_ms: 0, segments: [{ warnings: [] }] })).toBe(false);
+        // A braked assist arrival is NOT a flyby, even though it has a Brake segment.
+        expect(isFlybyPlan({ interceptSpeed_ms: 0, segments: [{ warnings: [] }, { warnings: [] }] })).toBe(false);
+    });
+});

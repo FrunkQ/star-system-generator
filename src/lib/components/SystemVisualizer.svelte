@@ -3,7 +3,7 @@
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
-  import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
+  import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime, isFlybyPlan } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { computeWorldPositions } from "$lib/physics/worldPositions";
   import { getVisibleNodeIds } from "$lib/system/visibleNodes";
@@ -2102,6 +2102,15 @@
       if (!plan) return;
       const alpha = alphaOverride !== undefined ? alphaOverride : (isCompleted ? 0.6 : 1.0);
       const isGhost = alphaOverride !== undefined && !forceGrey && !colorized;
+      // The toytown radial compression, in one place — it was written out three times in this
+      // function and the terminal marker below would have made four.
+      const mapPt = (p: { x: number; y: number }) => {
+          if (!(toytownFactor > 0) || plan.isKinematic) return { x: p.x, y: p.y };
+          const r = Math.hypot(p.x, p.y);
+          const rn = scaleBoxCox(r, toytownFactor, x0_distance);
+          const a = Math.atan2(p.y, p.x);
+          return { x: rn * Math.cos(a), y: rn * Math.sin(a) };
+      };
       for (const segment of plan.segments) {
           ctx.beginPath();
           if (forceGrey) { ctx.setLineDash([]); ctx.strokeStyle = `rgba(100, 100, 100, ${alpha})`; }
@@ -2111,23 +2120,53 @@
           else { ctx.setLineDash([]); ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`; }
           ctx.lineWidth = (isCompleted || isGhost || forceGrey ? 2 : 3) / zoom;
           for (let i = 0; i < segment.pathPoints.length; i++) {
-              let p = segment.pathPoints[i];
-              if (toytownFactor > 0 && !plan.isKinematic) { 
-                 const r = Math.sqrt(p.x*p.x + p.y*p.y); const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
-                 const angle = Math.atan2(p.y, p.x); const x_new = r_new * Math.cos(angle); const y_new = r_new * Math.sin(angle);
-                 p = { x: x_new, y: y_new };
-              }
+              const p = mapPt(segment.pathPoints[i]);
               if (i === 0) ctx.moveTo(p.x - renderPan.x, p.y - renderPan.y);
               else ctx.lineTo(p.x - renderPan.x, p.y - renderPan.y);
           }
           ctx.stroke();
           if (segment.pathPoints.length > 0) {
-              const p0 = segment.pathPoints[0]; let x = p0.x; let y = p0.y;
-              if (toytownFactor > 0 && !plan.isKinematic) {
-                 const r = Math.sqrt(x*x + y*y); const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
-                 const angle = Math.atan2(y, x); x = r_new * Math.cos(angle); y = r_new * Math.sin(angle);
+              const p0 = mapPt(segment.pathPoints[0]);
+              ctx.beginPath(); ctx.arc(p0.x - renderPan.x, p0.y - renderPan.y, 4 / zoom, 0, 2 * Math.PI); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+          }
+      }
+
+      // HOW THE PATH SAYS 'I STOP HERE' VERSUS 'I AM PASSING THROUGH'.
+      //
+      // Nothing used to distinguish them: a flyby and a rendezvous both end Accel -> Coast -> Brake
+      // and the brake draws red in both, because a flyby DOES brake — it sheds closing speed down to
+      // its intercept velocity rather than to zero. So the burn colours cannot carry this; only the
+      // shape of the ending can. A rendezvous terminates in a ring at the destination. A flyby
+      // carries on past it, in the coast colour, and ends in an arrowhead: the ship does not stop, so
+      // neither does its line. The predicate is the transit layer's own `isFlybyPlan`, so the picture
+      // and the post-arrival behaviour cannot disagree about what this plan is.
+      if (!forceGrey && !isGhost) {
+          const lastSeg = plan.segments[plan.segments.length - 1];
+          const pts = lastSeg?.pathPoints ?? [];
+          if (pts.length >= 2) {
+              const tip = mapPt(pts[pts.length - 1]);
+              const prev = mapPt(pts[pts.length - 2]);
+              const hx = tip.x - prev.x, hy = tip.y - prev.y;
+              const hLen = Math.hypot(hx, hy) || 1;
+              const ux = hx / hLen, uy = hy / hLen;
+              const tx = tip.x - renderPan.x, ty = tip.y - renderPan.y;
+              ctx.lineWidth = 2 / zoom;
+              if (isFlybyPlan(plan)) {
+                  const tail = 26 / zoom, head = 8 / zoom;
+                  const ex = tx + ux * tail, ey = ty + uy * tail;
+                  ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`;   // coasting on past
+                  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ex, ey); ctx.stroke();
+                  ctx.beginPath();
+                  for (const s of [1, -1]) {
+                      const a = Math.atan2(uy, ux) + s * 2.618;      // 150 degrees back from the tip
+                      ctx.moveTo(ex, ey);
+                      ctx.lineTo(ex + Math.cos(a) * head, ey + Math.sin(a) * head);
+                  }
+                  ctx.stroke();
+              } else {
+                  ctx.strokeStyle = `rgba(255, 51, 51, ${alpha})`;   // stops here
+                  ctx.beginPath(); ctx.arc(tx, ty, 5 / zoom, 0, 2 * Math.PI); ctx.stroke();
               }
-              ctx.beginPath(); ctx.arc(x - renderPan.x, y - renderPan.y, 4 / zoom, 0, 2 * Math.PI); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
           }
       }
 

@@ -1085,6 +1085,38 @@
             </label>
         </div>
 
+        {#if arrivalMode === 'Flyby'}
+            <!-- PASS SPEED. This is the number that decides WHEN the brake burn starts: to cross the
+                 target at v you must shed (closing speed - v), and at this ship's thrust that takes a
+                 known time, which is where the red brake stroke begins. It was never settable — the
+                 solver has always read `interceptSpeed_ms`, but nothing in the UI wrote it, so every
+                 flyby ran at 0 = "no arrival burn at all, cross at whatever you happen to be doing".
+                 Zero is still the default, so nothing changes for anyone until they ask for it. -->
+            <div class="form-group">
+                <label for="flyby-speed">Pass speed
+                    <span style="font-size: 0.8em; color: #888;">
+                        {interceptSpeed > 0 ? 'brake to this, then cross' : 'no arrival burn — cross at closing speed'}
+                    </span>
+                </label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input id="flyby-speed" type="range" min="0" max="50" step="0.5"
+                        value={interceptSpeed / 1000}
+                        on:input={(e) => { interceptSpeed = Number((e.currentTarget as HTMLInputElement).value) * 1000; }}
+                        on:change={handleCalculate} style="flex:1;" />
+                    <input type="number" min="0" step="0.5" style="width:5.5em;"
+                        value={interceptSpeed / 1000}
+                        on:input={(e) => { interceptSpeed = Math.max(0, Number((e.currentTarget as HTMLInputElement).value)) * 1000; }}
+                        on:change={handleCalculate} />
+                    <span style="font-size: 0.85em;">km/s</span>
+                </div>
+                {#if plan && interceptSpeed > 0 && Math.abs((plan.arrivalVelocity_ms ?? 0) - interceptSpeed) > 50}
+                    <div class="info-row" style="font-size: 0.78em; color: #ff9900;">
+                        Crosses at {((plan.arrivalVelocity_ms ?? 0) / 1000).toFixed(1)} km/s — the burn window is too short to shed any more.
+                    </div>
+                {/if}
+            </div>
+        {/if}
+
     </div>
     {/if}
 

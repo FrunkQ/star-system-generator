@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.74 - 26th Aug 2026
+
+- Ships arriving from another star now get a sensible orbit instead of the one they left with. Aim at a named world and you park in a high orbit around it; aim at the star and you arrive at the edge of the system, which is where a starship decelerating in actually finds itself. Previously the old orbit came along for the ride, so a ship that set off from a tight moon orbit arrived the same distance from a star.
+- Flyby pass speed is now something you set. The planner always had the parameter and never exposed it, so every flyby ran as "cross at whatever speed you happen to be doing" — often extremely fast. Choose a pass speed and the ship brakes to it, and the size of that burn follows how much speed has to change, so asking to creep past costs a long burn and asking to scream past costs little.  
+- A flyby and a rendezvous no longer look identical on the map. Both brake, so the burn colours could never tell them apart; now a rendezvous ends in a ring at the destination and a flyby carries straight on past it and ends in an arrowhead, because the ship does not stop and neither should its line.
+- Fixed: a gravity assist's braking burn was drawn with a single point, so the red brake stroke never actually appeared.
+
 ## v3.0.73 - 26th Aug 2026
 
 - The bundled-map upgrade now lists the planets and moons you would lose, not just the ships. It only ever itemised constructs, so a system you had populated yourself showed an empty list under a warning that said your work would be dropped - measured on a real campaign, a Procyon holding eighteen bodies the updated map has no counterpart for reported nothing at all. Every body the new edition cannot match by name is now named and counted before you decide.
