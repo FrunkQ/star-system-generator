@@ -3232,6 +3232,22 @@ counted every remote guest twice while the list — which skips remote presence 
 right, and `peerLinks` could never find the reported stats it looked up by broker id. Owner-caught
 (list 2, icon 3). Fixed v3.0.10.
 
+### M7 The Hill radius has TWO formulas, and they disagree by (1-e)
+`physics/stability.ts:hillRadiusAU` uses `a*(1-e)*cbrt(m/3M)` — PERIAPSIS, the host's weakest grip,
+which is what a "is this orbit safely inside" verdict should be judged at. `physics/twoBodyCoast.ts`
+(`hillCandidates`, both wrappers) uses `a*cbrt(mu/3hostMu)` — SEMI-MAJOR AXIS, no eccentricity term.
+Three further copies exist (`orbits.ts:425` SOI, `import/ubox/hierarchy.ts:79`, and the mutual-Hill
+pair form in `infill.ts:70` / `placement-strategy.ts:151`, which is a different quantity).
+HOLDS because the two never had to agree: the periapsis form only ever produced verdicts and the
+semi-major form only ever produced drawings, and on the circular orbits most bundled pairs have they
+are the same number. Pluto-Charon at e=0.249 is where they part — 4.0e-2 AU judged, 5.3e-2 AU drawn.
+BREAKS IF: someone draws a boundary the physics also judges against, which is exactly what G45's
+display half is for. That is why `Barycenter.circumbinary.outerAU` is PUBLISHED (PHY-30) instead of
+the overlay computing its own: a ring drawn from the a-based formula around a verdict made with the
+periapsis one puts a condemned planet visibly inside the safe zone. Also breaks if anyone "unifies"
+them without deciding WHICH question each caller is asking — PHY-29 is the precedent for keeping two
+answers on purpose.
+
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s
@@ -3245,6 +3261,8 @@ right, and `peerLinks` could never find the reported stats it looked up by broke
   it feeds atmospheric escape, and it must not be promoted into a dose.
 - **PHY-13 BLAST**: eight hand-written belt exclusions with no shared predicate, plus three MORE
   `roleHint === 'belt'` tests that answer unrelated questions.
+- **PHY-29 CAVEAT**: "the one shared formula" is scoped to `twoBodyCoast`; `stability.ts` has a
+  second Hill radius that differs by (1-e). Recorded as M7, not resolved.
 - **ID COLLISION, not a concept duplication**: `PHY-17` is used TWICE — "A luminosity class is radius
   at a temperature" and "Has ground is hasSolidSurface". Different claims, same id; whoever next
   edits either should renumber the second.
@@ -3342,3 +3360,33 @@ astronomical and whose zoom range spans many orders of magnitude, so the patholo
 ordinary here rather than exotic.
 BLAST: the same applies to orbit paths, zone outlines and range rings if any of them ever take a
 dash. A solid line at reduced alpha reads almost as well and has no such cliff.
+CAVEAT (G45, 2026-08-26): "the one shared formula" is true INSIDE this file and false across the
+engine. `twoBodyCoast` computes the Hill radius from the SEMI-MAJOR AXIS; `physics/stability.ts`
+computes it from PERIAPSIS (`hillRadiusAU`, see PHY-30). On a circular orbit they agree exactly; on
+Pluto's e=0.249 the drawn bubble is 33% larger than the judged one. Both are defensible — see M7 —
+but they are two numbers, and anything that draws a boundary the physics also JUDGES must take the
+published field rather than recompute.
+
+### PHY-30 A barycentre PUBLISHES its circumbinary annulus; nothing may re-derive either edge
+WHERE: `physics/circumbinary.ts` (the fit, the bands, the validity range) and
+`physics/stability.ts` — `hillRadiusAU`, `barycenterHillRadiusAU`, and the publish loop at the head
+of `annotateGravitationalStability`. The contract is `Barycenter.circumbinary`.
+RULE: a P-type body lives in an ANNULUS with two edges, and both are DERIVED FIELDS on the pair.
+`innerAU` is the Holman & Wiegert (1999) critical semi-major axis; `outerAU` is half the pair's
+combined-mass Hill radius, the same 0.5 that `assessHostBindingStability` already calls "stolen by
+external tide". Read those fields. Do not restate the polynomial, do not re-multiply the Hill
+fraction, and do not compute an inner edge from a bare coefficient — that is what the two generator
+constants were. Publication runs over EVERY barycentre, not just ones with children, and before any
+child is judged: the pair is the parent half of parent-before-child (PHY-1).
+WHY: the fit existed nowhere in the physics, so a circumbinary planet authored a hair outside its
+two suns — the most obviously doomed placement a GM can make — collected no verdict at all, while
+the generator held TWO disagreeing corners of the same polynomial (`1.60 * separation` at
+`planet-generation.ts`, `P_TYPE_FRAC = 2.3` at `generateFromConfig.ts`: the mu=0 and mu=0.5 ends).
+The engine was seeding planets into a zone its own physics now condemns. G45.
+BLAST: the fit is valid only for 0.1 <= mu <= 0.5 and 0 <= e_b <= 0.7 — outside that
+`fitExtrapolated` is set and every explainer must keep saying so, because an extrapolated limit
+printed bare is PHY-2's lie. `outerAU` is ABSENT for a root barycentre (no parent, no tide, no
+in-system outer wall) and a reader that treats absent as zero inverts the annulus. Any new derived
+field on a barycentre must join `DERIVED_BARYCENTER_FIELDS` in `importFixup.ts` or it fossilises
+into every save — `derivedFieldDrift.spec.ts` is the guard and it caught this one. See M7 for the
+two Hill formulas.

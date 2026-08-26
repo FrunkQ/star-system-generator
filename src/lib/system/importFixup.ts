@@ -7,7 +7,7 @@
 // So on import we STRIP everything the processor will re-derive, keeping only the authored INPUTS
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
-import type { System, CelestialBody, Tag, RulePack } from '$lib/types';
+import type { System, CelestialBody, Barycenter, Tag, RulePack } from '$lib/types';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
 import { makeupFractions } from '$lib/physics/makeup';
 import { survivesRederive } from '$lib/tags/tagLifecycle';
@@ -126,6 +126,17 @@ function classNamesFromPack(pack?: RulePack): Set<string> {
   for (const k of Object.keys((pack?.classifier as any)?.starImages ?? {})) add(k);
   for (const fp of pack?.classifier?.fingerprints ?? []) add(fp.class);
   return out;
+}
+
+// DERIVED FIELDS ON A BARYCENTRE. Until G45 a barycentre carried nothing derived that a save could
+// fossilise, which is why nothing stripped one — `circumbinary` (the P-type stable annulus) is the
+// first, and the stability pass rebuilds it from the pair's own orbit on every process. The list
+// exists so the SECOND one is a one-word change rather than a rediscovery of why barycentres were
+// skipped. Same contract as DERIVED_FIELDS: if it is authored, it does not belong here.
+const DERIVED_BARYCENTER_FIELDS = ['circumbinary'];
+
+function stripBarycenter(bary: Barycenter): void {
+  for (const f of DERIVED_BARYCENTER_FIELDS) delete (bary as Record<string, unknown>)[f];
 }
 
 function stripBody(body: CelestialBody, classNames: Set<string>): void {
@@ -387,6 +398,7 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   delete (system as { isManuallyEdited?: boolean }).isManuallyEdited;
   migrateLagrangePlacements(system);
   for (const node of system.nodes) {
+    if (node.kind === 'barycenter') { stripBarycenter(node as Barycenter); continue; }
     if (node.kind !== 'body') continue;
     stripBody(node as CelestialBody, classNames);
     backfillGiantAtmosphere(node as CelestialBody);
@@ -416,6 +428,7 @@ export function stripSystemForExport(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
   for (const node of clone.nodes ?? []) {
     if (node.kind === 'body') stripBody(node as CelestialBody, classNames);
+    else if (node.kind === 'barycenter') stripBarycenter(node as Barycenter);
   }
   return clone;
 }
@@ -431,6 +444,7 @@ export function stripStarmapForExport<T extends { systems?: Array<{ system?: Sys
   for (const node of clone.systems ?? []) {
     for (const body of node?.system?.nodes ?? []) {
       if ((body as CelestialBody).kind === 'body') stripBody(body as CelestialBody, classNames);
+      else if ((body as Barycenter).kind === 'barycenter') stripBarycenter(body as Barycenter);
     }
   }
   return clone;

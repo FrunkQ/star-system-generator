@@ -1,5 +1,6 @@
 // ===== types.ts =====
 import type { OrbitalBoundaries } from './physics/orbits';
+import type { CircumbinaryAnnulus } from './physics/circumbinary';
 import type { GeoActivity } from './physics/geoActivity';
 import type { VolatileRetention } from './physics/volatileRetention';
 import type { ClassExplanation } from './system/classification';
@@ -726,6 +727,15 @@ export interface AIContext {
 export interface Barycenter extends NodeBase {
   kind: "barycenter";
   memberIds: ID[]; effectiveMassKg?: number; orbit?: Orbit;
+  // THE CIRCUMBINARY (P-TYPE) STABLE ANNULUS (G45) — DERIVED, never authored. Written by the
+  // stability pass (physics/stability.ts) from the pair's own orbit and its members', and rebuilt
+  // from scratch on every pass. Both edges are SEMI-MAJOR AXES in AU measured from the barycentre:
+  // the inner one is the Holman & Wiegert critical radius, the outer one a fraction of the pair's
+  // combined-mass Hill radius. THIS IS THE CONTRACT for anything that wants to show or check where
+  // a circumbinary body may live — read these fields; do not re-derive either edge, because a second
+  // derivation is a second answer. The maths, its validity range and the real-system checks are in
+  // physics/circumbinary.ts.
+  circumbinary?: CircumbinaryAnnulus;
 }
 
 export interface System {

@@ -4,6 +4,7 @@ import { weightedChoice, randomFromRange, toRoman } from '../utils';
 import { _generatePlanetaryBody } from './planet';
 import { G, AU_KM, SOLAR_MASS_KG } from '../constants';
 import { calculateOrbitalSlots } from './placement-strategy';
+import { circumbinaryCriticalAU } from '../physics/circumbinary';
 import { starFamilyOf, planetCountTableKey } from './star';
 
 export function generatePlanets(
@@ -75,7 +76,16 @@ export function generatePlanets(
         const mu = m2 / (m1 + m2);
         const starSeparationAU = (starA.orbit?.elements.a_AU || 0) + (starB.orbit?.elements.a_AU || 0);
     
-        const pTypeCriticalAU = 1.60 * starSeparationAU;
+        // G45: this was `1.60 * separation` — the leading coefficient of Holman & Wiegert's P-type
+        // fit used bare, which is the polynomial evaluated at mu = 0 and e = 0: a pair with no
+        // secondary and no eccentricity. Real pairs clear a much wider hole (an equal-mass circular
+        // pair 2.39x, an eccentric one over 3x), so the placer was seeding planets into a zone the
+        // stability pass now condemns — the engine generating systems its own physics fails. The
+        // whole fit lives in physics/circumbinary.ts; nobody restates a coefficient here.
+        const eBinary = Math.max(starA.orbit?.elements.e || 0, starB.orbit?.elements.e || 0);
+        // The LIGHTER member's fraction: the annulus cannot depend on which star is called A.
+        const muP = Math.min(m1, m2) / (m1 + m2);
+        const pTypeCriticalAU = circumbinaryCriticalAU(starSeparationAU, muP, eBinary);
         const sTypeACriticalAU = 0.464 * (1 - mu) * starSeparationAU;
         const sTypeBCriticalAU = 0.464 * mu * starSeparationAU;
     

@@ -137,6 +137,11 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Very unstable',
     description: 'Likely <1 kyr before major orbital disruption (collision, ejection or infall).'
   },
+  // The severity says how bad and the fate says which way; this says WHICH PHYSICS (G45).
+  'stability/inside-circumbinary-limit': {
+    label: 'Inside the circumbinary limit',
+    description: 'Orbits both stars of a pair, but too close in. The gravity field of a pair turns twice per binary orbit rather than standing still, and inside the critical radius (Holman & Wiegert 1999: roughly 2-4x the separation of the two stars, depending on their mass ratio and eccentricity) that forcing pumps the orbit until it crosses the stars themselves — and the encounter that follows throws the body clear of the system. The stable circumbinary zone begins outside this radius.'
+  },
   // --- RPG "reasons to visit": resource / science / frontier / intrigue ---
   'resource/heavy-metals':    { label: 'Heavy metals',      description: 'A metal-rich interior/crust — iron, nickel and friends in extractable concentrations.' },
   'resource/platinum-group':  { label: 'Platinum-group',    description: 'Unusually metal-dense — platinum, iridium, osmium: high-value, low-bulk cargo.' },
