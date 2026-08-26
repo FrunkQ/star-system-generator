@@ -56,15 +56,34 @@ describe('arriving at a Lagrange point does not snap', () => {
     }
 });
 
-describe('the ordinary orbital arrival still steps out to its parking orbit (inbox B92)', () => {
-    it('records the size of that step so it cannot grow unnoticed', () => {
-        // NOT an L-point fault and NOT introduced by G43: a plan to `lo` aims at the body's CENTRE,
-        // while the post-arrival sampler puts the ship in a parking orbit one parking-radius away —
-        // Jupiter 69,911 km x 1.3 = 90,884 km. Visible when zoomed to the planet. Filed as B92 rather
-        // than changed here, because moving the aim point is a solver change with its own Delta-v and
-        // timing consequences. This assertion is the tripwire: it fails if the step CHANGES.
-        const km = seamKm('Jupiter', 'lo');
-        expect(km).toBeGreaterThan(80000);
-        expect(km).toBeLessThan(100000);
-    });
+describe('the ordinary orbital arrival no longer steps out to its parking orbit (inbox B92 — CLOSED)', () => {
+    // B92 WAS: a plan to `lo` aimed at the body's CENTRE while the post-arrival sampler put the ship in
+    // a parking orbit one parking-radius away, so the ship reached the planet and then popped sideways
+    // into orbit. Measured at 90,884 km at Jupiter. This assertion used to PIN that step between 80,000
+    // and 100,000 km, as a tripwire against it growing.
+    //
+    // It is now zero, and for the same reason the Lagrange arrivals are: both sides read ONE convention
+    // instead of two derivations kept in step by hand. Three things had to meet.
+    //
+    //   THE RADIUS. `physics/orbits.ts` derives it and everything reads that. `transit/scheduler.ts`
+    //   had carried its own table of radius multipliers — twice, a Record and a ternary chain ten lines
+    //   apart — while the planner offered the derived figures. They disagreed by up to a factor of
+    //   ninety-five (Jupiter high orbit: 26,668,664 km derived against 279,644 assumed).
+    //
+    //   THE BEARING. The sampler phased the orbit off a HASH OF THE JOURNEY'S ID. Deterministic, and
+    //   unrelated to where the ship arrived, so the step was a chord of the parking orbit.
+    //
+    //   THE PLANE. The circle was drawn in the reference plane. Now that arrivals carry height, a ship
+    //   that came in from out of plane would have been flattened onto it on arrival.
+    //
+    // The orbit is now built on the arrival itself: one axis toward the point the flight ended at, the
+    // other along the velocity it ended with. Zero is therefore the only correct answer, and a non-zero
+    // reading here means one of those three has drifted apart again.
+    for (const [targetName, placement] of [
+        ['Jupiter', 'lo'], ['Jupiter', 'ho'], ['Mars', 'lo'], ['Mars', 'mo'], ['Earth', 'geo']
+    ] as const) {
+        it(`${targetName} ${placement.toUpperCase()}: flight ends exactly where parking begins`, () => {
+            expect(seamKm(targetName, placement)).toBeLessThan(1);
+        });
+    }
 });

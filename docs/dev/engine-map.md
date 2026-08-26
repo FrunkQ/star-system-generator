@@ -2640,6 +2640,30 @@ had been reading a `z` that was always zero. A parking orbit rides in a plane PA
 plane at its host's height — its own inclination is not modelled anywhere and must not be invented.
 `starmapSanitizer` preserves z; stripping it would flatten a course on its way through a snapshot.
 
+### TRANSIT-6 ONE DERIVATION SAYS HOW HIGH AN ORBIT IS, AND THE ARRIVAL IS BUILT FROM THE FLIGHT
+WHERE: `physics/orbits.ts` — `parkingOrbitRadiusKm`, sharing `getOrbitOptions`'s derivation. Read by
+the planner panel, by `calculateTransitPlan` (the aim point) and by `scheduler.samplePostJourneyState`
+(the parked orbit).
+RULE: `lo` / `mo` / `ho` / `geo` are DERIVED from the body — its atmosphere sets where drag stops, its
+rotation sets geostationary, its mass and host set how far its grip reaches. Never a multiple of its
+radius. And a parking orbit is built on the ARRIVAL: one axis toward the point the flight ended at,
+the other along the velocity it ended with, so position and velocity both close at the changeover.
+WHY: this is [[B92]], and it was three disagreements at once. `transit/scheduler.ts` carried its own
+table of radius multipliers — twice, a `Record` and the same four numbers as a ternary chain ten lines
+from the sampler that used them — while the panel offered the derived figures. MEASURED: Earth low
+orbit 6,536 km derived against 8,282 assumed, Jupiter low 70,076 against 90,884, Jupiter HIGH
+26,668,664 against 279,644 — a factor of ninety-five; Luna, too small to have a high orbit at all, was
+offered one at four times its own radius. The sampler then phased that orbit off a HASH OF THE
+JOURNEY'S ID, unrelated to where the ship arrived, so the step was a chord of the parking orbit. And
+the circle was drawn in the reference plane, which since TRANSIT-4 would have flattened any ship that
+arrived from out of it. The measured seam went 90,884 km -> 0.0 km on every case tested.
+BLAST: `geo` was missing from the aim-point test in BOTH plan builders, so a geostationary arrival
+aimed at the planet's centre — a full 42,241 km at Earth. A rendezvous with a WORLD now correctly
+arrives at ORBITAL speed rather than at rest (42,517 m/s at Jupiter low orbit, against sqrt(mu/r) =
+42,519): matching a planet's velocity at low altitude is hovering, which is not a manoeuvre. A
+rendezvous with no placement named still arrives at rest, because then there is no orbit to enter.
+`arrivalSnap.spec.ts` is the tripwire and now asserts ZERO rather than pinning the size of a step.
+
 ### TRANSIT-5 THE FRAME IS THE LOWEST COMMON ANCESTOR, AND THE PATH IS COMPOSED ONTO IT PER SAMPLE
 WHERE: `calculateTransitPlan`'s frame block (`lcaId`, `frameParentId`, `frameMu`), and the `toGlobal`
 composition in both `calculateLambertPlan` and `calculateFastPlan`.

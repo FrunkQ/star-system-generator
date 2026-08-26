@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.85 - 26th Aug 2026
+
+- Ships stop jumping when they arrive. A ship reached its destination and then popped sideways into orbit - 90,884 km of it at Jupiter, invisible from across the system and obvious once you zoomed in. Three things were disagreeing at once: how high a low orbit is, where round the planet the ship should appear, and which plane it should circle in. The step is now zero at every altitude tested.
+- How high an orbit is, is now decided once. The planner offered altitudes worked out from the world itself - where its air stops dragging, where a day-long orbit sits, how far its gravity reaches - while the code that parked the ship used a rough multiple of the planet's radius. They disagreed by up to ninety-five times: a high orbit of Jupiter is 26.7 million km, and the ship was being parked at 280,000. Luna was being offered a high orbit it is far too small to have.
+- A geostationary arrival aimed at the centre of the planet. It is now offered the same treatment as every other orbit.
+- Arriving at a world means entering orbit around it, and the arrival speed says so. It used to report zero for a full rendezvous, which would mean hovering over the planet - something no amount of braking achieves. Meeting a SHIP still means matching its speed exactly.
+
 ## v3.0.84 - 26th Aug 2026
 
 - Transits are planned in three dimensions. They never were: the solver asked each body for its position and got back the FLAT one - the shadow it casts on the reference plane - so a world tilted out of that plane was planned to as though it were not. The tilted position has always been available; transit simply asked for the other one.

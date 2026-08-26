@@ -524,6 +524,35 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
 
 // ... existing code ...
 
+/**
+ * THE RADIUS OF A NAMED PARKING ORBIT, AND THE ONLY PLACE THAT DECIDES IT.
+ *
+ * `lo` / `mo` / `ho` / `geo` are DERIVED from the body — its atmosphere sets where drag stops, its
+ * rotation sets geostationary, its mass and its host set how far its grip reaches. They are not
+ * multiples of its radius.
+ *
+ * They used to be both. `transit/scheduler.ts` carried its own table of radius multipliers, twice over
+ * (a `Record` and, ten lines from the sampler that needed it, the same four numbers as a ternary
+ * chain), while the planner panel offered the derived figures from here. So the solver aimed at one
+ * orbit and the ship parked in another. MEASURED across the Sol Expanse bodies, derived against
+ * multiplier: Earth low orbit 6,536 km against 8,282, Jupiter low 70,076 against 90,884, and Jupiter
+ * HIGH orbit 26,668,664 km against 279,644 — a factor of ninety-five. Luna, which is too small to have
+ * a high orbit at all, was being offered one at four times its own radius.
+ *
+ * Returns null for a placement that is not an orbit (a surface landing, an L-point, a dock).
+ */
+export function parkingOrbitRadiusKm(
+  body: CelestialBody,
+  placement: string | undefined,
+  rulePack?: RulePack,
+  system?: System
+): number | null {
+  if (!placement) return null;
+  if (placement !== 'lo' && placement !== 'mo' && placement !== 'ho' && placement !== 'geo') return null;
+  const opt = getOrbitOptions(body, rulePack ?? ({} as RulePack), system).find((o) => o.id === placement);
+  return opt && opt.radiusKm > 0 ? opt.radiusKm : null;
+}
+
 export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?: System): { id: string, name: string, radiusKm: number, color: string, isLagrange?: boolean }[] {
     // Only for planets/moons/stars? 
     // Belts and Rings should NOT have simulated Lagrange points as they are distributed masses.

@@ -10,6 +10,7 @@ import type { LagrangePointId } from '../types';
 import { calculateAssistPlan } from './assist';
 import { sampleJourneyKinematicsAtTime } from './scheduler';
 import { AU_KM, G } from '../constants';
+import { parkingOrbitRadiusKm } from '../physics/orbits';
 
 const AU_M = AU_KM * 1000;
 const DAY_S = 86400;
@@ -448,6 +449,18 @@ export function calculateTransitPlan(
   }
 
   // Update params with potentially forced radius
+  // THE AIM POINT IS THE PARKING ORBIT, NOT THE BODY'S CENTRE.
+  //
+  // When a caller does not name a parking radius the solver used to aim at the middle of the planet,
+  // while the arrival sampler put the ship in an orbit around it — so the flight ended in one place and
+  // the parking began in another, and the ship stepped between them at the completion instant. That is
+  // [[B92]], measured at 90,884 km on a Jupiter low orbit. Both sides now read `parkingOrbitRadiusKm`,
+  // the one derivation, so the seam closes by construction rather than by tolerance — the same shape of
+  // fix G43 P4 used on the Lagrange arrivals.
+  if (!(forcedParkingRadiusAu && forcedParkingRadiusAu > 0) && isOrbitalArrivalPlacement(params.arrivalPlacement)) {
+      const km = parkingOrbitRadiusKm(effectiveTarget as CelestialBody, params.arrivalPlacement, undefined, sys);
+      if (km && km > 0) forcedParkingRadiusAu = km / AU_KM;
+  }
   const finalParams = { ...params, parkingOrbitRadius_au: forcedParkingRadiusAu };
 
   function normalizeInitialStateToFrame(
@@ -882,7 +895,10 @@ function calculateLambertPlan(
 
     // FIX: Only shift the aim position if we are targeting a generic orbit (lo/mo/ho).
     // If targeting a specific node (id), we MUST hit that node's actual position.
-    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo' || params.arrivalPlacement === 'ho';
+    // `geo` belongs here too. Leaving it out meant a geostationary arrival aimed at the planet's
+    // CENTRE while the sampler parked the ship a full geostationary radius away — 42,241 km at Earth.
+    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo'
+        || params.arrivalPlacement === 'ho' || params.arrivalPlacement === 'geo';
     const targetAimPos = isGenericOrbit 
         ? resolveAimPositionAtRadius(
             startState.r,
@@ -1279,7 +1295,10 @@ function calculateFastPlan(
     if (muLocal <= 0) return null;
     const muLocalAu = muLocal / Math.pow(AU_M, 3);
 
-    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo' || params.arrivalPlacement === 'ho';
+    // `geo` belongs here too. Leaving it out meant a geostationary arrival aimed at the planet's
+    // CENTRE while the sampler parked the ship a full geostationary radius away — 42,241 km at Earth.
+    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo'
+        || params.arrivalPlacement === 'ho' || params.arrivalPlacement === 'geo';
     const rEnd = isGenericOrbit 
         ? resolveAimPositionAtRadius(
             startState.r,

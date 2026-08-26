@@ -2,6 +2,7 @@ import type { CelestialBody, System } from '$lib/types';
 import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM, G } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
+import { parkingOrbitRadiusKm } from '$lib/physics/orbits';
 import { samplePathAtTime } from '$lib/transit/pathSampling';
 import { deriveCoOrbitalOrbit, LAGRANGE_POINT_IDS } from '$lib/physics/lagrange';
 import type { LagrangePointId } from '$lib/types';
@@ -137,7 +138,12 @@ const PLACEMENT_LABELS: Record<string, string> = {
   l4: 'L4',
   l5: 'L5'
 };
-const PLACEMENT_ALT_FACTOR: Record<string, number> = { ho: 3, geo: 5, mo: 1.2, lo: 0.3 };
+// THE PARKING RADIUS IS DERIVED, AND `physics/orbits.ts` DERIVES IT. What used to be here was a table
+// of radius multipliers - and the same four numbers again as a ternary chain beside the sampler that
+// wanted them - while the planner panel offered the DERIVED figures. Two answers to 'how high is a
+// high orbit', and they disagreed by up to a factor of ninety-five (see `parkingOrbitRadiusKm`). That
+// disagreement is what [[B92]] measured as an arrival snap: the solver aimed at one orbit, the sampler
+// parked the ship in another, and the ship stepped between them at the completion instant.
 
 export interface JourneyBounds {
   startMs: number;
@@ -250,7 +256,7 @@ export function reconcileConstructArrival(
   const a_AU =
     placementKey === 'surface'
       ? targetRadiusKm / AU_KM
-      : (targetRadiusKm * (1 + (PLACEMENT_ALT_FACTOR[placementKey] ?? 0.3))) / AU_KM;
+      : (parkingOrbitRadiusKm(target as any, placementKey) ?? targetRadiusKm * 1.3) / AU_KM;
   const aM = a_AU * AU_M;
   const n_rad_per_s = hostMu > 0 && aM > 0 ? Math.sqrt(hostMu / (aM * aM * aM)) : undefined;
 
@@ -626,33 +632,76 @@ function samplePostJourneyState(
     if (state === 'Orbiting') {
       const targetRadiusKm = t.radiusKm || 1000;
       const targetMassKg = t.massKg || t.effectiveMassKg || 0;
-      // Parking-orbit radius above the target surface, by arrival placement.
-      const altFactor = placement === 'ho' ? 3 : placement === 'geo' ? 5 : placement === 'mo' ? 1.2 : 0.3; // 'lo' default
-      const parkingRadiusKm = targetRadiusKm * (1 + altFactor);
+      // Parking-orbit radius: the derived one, the same figure the planner offered and the solver
+      // aimed at. The fallback is only for a placement this body cannot actually support.
+      const parkingRadiusKm = parkingOrbitRadiusKm(t, placement, undefined, system) ?? targetRadiusKm * 1.3;
       const aAU = parkingRadiusKm / AU_KM;
       const aM = parkingRadiusKm * 1000;
       const G_CONST = 6.6743e-11;
       const mu = G_CONST * targetMassKg;
       const n = mu > 0 && aM > 0 ? Math.sqrt(mu / (aM * aM * aM)) : 0; // mean motion, rad/s
-      // Deterministic starting phase per journey so re-samples don't jump the ship.
-      let phase0 = 0;
-      for (let i = 0; i < log.id.length; i++) phase0 = (phase0 + log.id.charCodeAt(i) * 0.137) % (2 * Math.PI);
-      const theta = phase0 + n * ((timeMs - completedAtMs) / 1000);
+      // THE PARKING ORBIT STARTS WHERE THE FLIGHT ENDED, IN THE PLANE THE SHIP ARRIVED ON.
+      //
+      // It used to be a circle in the reference plane, phased by a HASH OF THE JOURNEY'S ID —
+      // deterministic, so re-sampling never jumped the ship, but unrelated to where the ship actually
+      // got to. The flight therefore ended at the approach bearing and the parking began at an
+      // arbitrary one, and the ship stepped across the orbit at the completion instant: measured at
+      // 90,884 km on a Jupiter low orbit ([[B92]]).
+      //
+      // The circle is now built on two axes taken from the arrival itself — `u` toward the point the
+      // flight ended at, `w` along the velocity it ended with — so at theta = 0 the ship is exactly
+      // where its path left it, moving exactly as its last burn left it moving. Both position and
+      // velocity close, and by construction: `resolveDesiredArrivalRelative` aims the arrival burn at
+      // the circular velocity PERPENDICULAR to the radius, which is this orbit's velocity at this
+      // bearing. That is the same device G43 P4 used on the Lagrange arrivals — one convention read
+      // from both sides — rather than two derivations that have to be kept in step by hand.
+      //
+      // It also means a ship that came in from out of the plane STAYS out of it, instead of being
+      // flattened onto the reference plane the moment it arrived.
+      const hostAtArrival = getGlobalState(system, targetNode as any, completedAtMs);
+      const norm = (v: { x: number; y: number; z: number }) => {
+        const m = Math.hypot(v.x, v.y, v.z);
+        return m > 1e-18 ? { x: v.x / m, y: v.y / m, z: v.z / m } : null;
+      };
+      let u = finalPos
+        ? norm({ x: finalPos.x - hostAtArrival.r.x, y: finalPos.y - hostAtArrival.r.y, z: (finalPos.z ?? 0) - (hostAtArrival.r.z ?? 0) })
+        : null;
+      if (!u) {
+        // No path to read: fall back to the reference plane, which is what this always did.
+        let h = 0;
+        for (let i = 0; i < log.id.length; i++) h = (h + log.id.charCodeAt(i) * 0.137) % (2 * Math.PI);
+        u = { x: Math.cos(h), y: Math.sin(h), z: 0 };
+      }
+      // `w` completes the plane: the arrival velocity with its radial part removed. A purely radial
+      // arrival leaves nothing to follow, so take the in-plane perpendicular instead.
+      const arrV = lastSeg?.endState?.v;
+      let w: { x: number; y: number; z: number } | null = null;
+      if (arrV) {
+        const rel = {
+          x: arrV.x - hostAtArrival.v.x,
+          y: arrV.y - hostAtArrival.v.y,
+          z: (arrV.z ?? 0) - (hostAtArrival.v.z ?? 0)
+        };
+        const radial = rel.x * u.x + rel.y * u.y + rel.z * u.z;
+        w = norm({ x: rel.x - u.x * radial, y: rel.y - u.y * radial, z: rel.z - u.z * radial });
+      }
+      if (!w) w = norm({ x: -u.y, y: u.x, z: 0 }) ?? { x: 0, y: 0, z: 1 };
+      const theta = n * ((timeMs - completedAtMs) / 1000);
       const cos = Math.cos(theta);
       const sin = Math.sin(theta);
       const vTanAuSec = n * aAU; // tangential orbital speed, AU/s
       return {
         journeyId: log.id,
         state: 'Orbiting',
-        // The parking circle rides in a plane PARALLEL to the reference plane, at whatever height its
-        // host is at. The host's inclination is real now; a parking orbit's own is not modelled
-        // anywhere, and inventing one here would be a number with nothing behind it. What matters is
-        // that the ship stays with its planet instead of dropping to z = 0.
-        position_au: { x: s.r.x + aAU * cos, y: s.r.y + aAU * sin, z: s.r.z ?? 0 },
+        position_au: {
+          x: s.r.x + aAU * (u.x * cos + w.x * sin),
+          y: s.r.y + aAU * (u.y * cos + w.y * sin),
+          z: (s.r.z ?? 0) + aAU * (u.z * cos + w.z * sin)
+        },
         velocity_ms: {
-          x: (s.v.x + (-vTanAuSec * sin)) * AU_M,
-          y: (s.v.y + (vTanAuSec * cos)) * AU_M,
-          z: (s.v.z ?? 0) * AU_M
+          x: (s.v.x + vTanAuSec * (-u.x * sin + w.x * cos)) * AU_M,
+          y: (s.v.y + vTanAuSec * (-u.y * sin + w.y * cos)) * AU_M,
+          z: ((s.v.z ?? 0) + vTanAuSec * (-u.z * sin + w.z * cos)) * AU_M
         }
       };
     }

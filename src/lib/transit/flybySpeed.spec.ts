@@ -63,10 +63,39 @@ describe('flyby pass speed', () => {
         expect(near).toBeLessThan(faster);
     });
 
-    it('a full rendezvous is the limit case — arrives at rest', () => {
+    it('a full rendezvous into an ORBIT arrives at orbital speed, not at rest', () => {
+        // This used to assert zero, and zero was the answer only because the test omitted a parking
+        // radius and the solver then fell back to 'match the target's velocity exactly'. Matching a
+        // planet's velocity exactly, at a low orbit's altitude, is hovering — which no amount of
+        // braking achieves. A rendezvous with a WORLD means entering orbit around it.
+        //
+        // The solver now derives the parking radius when the caller does not name one, so it gives the
+        // same answer either way. MEASURED: 42,517 m/s at the derived Jupiter low orbit of 70,076 km,
+        // against sqrt(mu/r) = 42,519 — agreement to 1.4 m/s, which is the whole chain (derived radius,
+        // aim point, arrival burn, reported speed) reading one number.
         const stop = eff(planAt(0, true));
-        expect(stop.arrivalVelocity_ms).toBe(0);
         expect(brakeSeconds(stop)).toBeGreaterThan(0);
+        const MU_JUPITER = 1.26686534e17;
+        const rM = 70076.33 * 1000;
+        const circular = Math.sqrt(MU_JUPITER / rM);
+        expect(Math.abs(stop.arrivalVelocity_ms - circular) / circular).toBeLessThan(0.01);
+    });
+
+    it('...and a rendezvous with no orbit named still arrives at rest', () => {
+        // The other half of the same rule: with no placement there is no orbit to enter, so matching
+        // the target's velocity IS the arrival. This is the branch the test above used to take.
+        const s = JSON.parse(JSON.stringify(base));
+        const i = s.nodes.findIndex((n: any) => n.name === 'Rocinante (Tachi)');
+        s.nodes[i] = { id: 'ship', parentId: 'solar-system-sun', name: 'Ship', kind: 'construct', tags: [],
+            orbit: { hostId: 'solar-system-sun', hostMu: 132751826999999990000, t0: 1763640079144,
+                     elements: { a_AU: 3.0, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 1.0 } } };
+        const target = s.nodes.find((n: any) => n.name === 'Jupiter');
+        const p = calculateTransitPlan(s, 'ship', target.id, 1767250575000, 'Economy', {
+            maxG: 0.3, accelRatio: 0.1, brakeRatio: 0.35, interceptSpeed_ms: 0,
+            shipMass_kg: 1441575, shipIsp: 1100000, brakeAtArrival: true,
+            aerobrake: { allowed: false, limit_kms: 0 }
+        }).filter((x: any) => x.isValid).find((x: any) => x.name === 'Most Efficient');
+        expect(p.arrivalVelocity_ms).toBe(0);
     });
 
     it('the plan reports the speed it will ACHIEVE, which the panel warns about if it differs', () => {
