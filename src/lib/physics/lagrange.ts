@@ -170,6 +170,18 @@ export function deriveCoOrbitalOrbit(
             M0_rad: src.elements.M0_rad || 0
         }
     };
+    // CARRY A PINNED MEAN MOTION, or the point silently walks away from its own body.
+    //
+    // An orbit may pin `n_rad_per_s` instead of letting Kepler set the rate, and the bundled maps DO:
+    // Pluto and Charon, Alpha Centauri's Oceanus/Khione, Helline and Persephone, Uggi's Cerebus moons.
+    // Every Lagrange point CO-ROTATES with its secondary by definition, so it must turn at the
+    // secondary's actual rate — not at the rate its own elements would imply. Dropping the pin left
+    // the derived orbit on Kepler's rate, and where a pin disagrees with Kepler it disagrees a lot:
+    // measured 1.33x on Oceanus/Khione (33 deg of drift per year), 1.12x on Persephone (58 deg/yr),
+    // 1.45x on Helline, and 28x on Pluto. A trojan would visibly leave its point over a campaign.
+    // The sign is already correct in a pinned value (see propagateState), so it is copied verbatim,
+    // and it applies to the collinear points too — co-rotation is exactly what they do.
+    if (src.n_rad_per_s !== undefined) orbit.n_rad_per_s = src.n_rad_per_s;
     if (retro) orbit.isRetrogradeOrbit = true;
     if (src.frame) orbit.frame = src.frame;
     return orbit;

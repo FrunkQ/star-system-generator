@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.60 - 26th Aug 2026
+
+- Fixed: anything parked at a Lagrange point could slowly walk off it. Some orbits set their own rotation rate rather than letting the physics work it out, and several bundled worlds do — Pluto and Charon, three of Alpha Centauri's, two of Uggi's moons. A Lagrange point turns with its planet by definition, but the point was falling back to the calculated rate instead of the one the planet actually uses. Where those disagree they disagree badly: a trojan of Oceanus/Khione would have drifted about 33 degrees a year off its point, Persephone's about 58, and Pluto's far worse. Points now inherit their planet's real rate, so a moon or station placed at one holds its position — checked over a decade of campaign time on the bundled maps, for all five points, for bodies and constructs alike.
+
 ## v3.0.59 - 26th Aug 2026
 
 - The dashed co-orbital track now watches its own cost. A dashed line is charged for its whole path rather than the part you can see, so a circle at deep zoom can imply millions of tiny segments and cost a frame for the sake of decoration. It stays dashed while that is cheap and quietly becomes a faint solid line when it is not.
