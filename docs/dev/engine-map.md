@@ -1899,6 +1899,29 @@ in a vertical line. Spotted in the old hand-built map by the owner before the re
 BLAST: any new orbital-element source (Gaia, WDS, VizieR). Satellites are a separate question — see
 `orbit.frame` and C3, which is about a moon's parent equator, not this.
 
+### DATA-R24 A SKIP REASON NAMES THE CAUSE, and a class-typical figure is flagged as data
+WHERE: `convert.mjs` (`starNodeFromCensus`), `stars.mjs` (`starParamsFromType`), `types.ts`
+(`CelestialBody.typicalForClass`), pinned by `substellarImport.spec.ts`
+RULE: two halves of DATA-R4's honesty that were being lost on the way out.
+  (1) When an import skips an object, the reason names WHICH cause. `no stellar parameters for this
+      spectral type` was emitted both when the type was unusable AND when the rule pack simply was
+      not loaded - so a whole import failing for a missing pack accused every object's spectral type.
+  (2) `starParamsFromType` returns `typicalForClass: true` for figures taken from the pack's band,
+      and the node must KEEP it. It was computed and dropped, so the only record that a mass or
+      radius was class-typical rather than observed was prose in the description - which no numeric
+      surface reads. Same convention as `ageEstimated` on the system.
+WHY: B89. A user's two brown dwarfs carried the IDENTICAL radius, 80,006 km. That is the midpoint of
+`radius_solar [0.08, 0.15]`, which `star/L`, `star/T` and `star/Y` all declare - and their masses are
+their own bands' midpoints too. SIMBAD carries a spectral type and NO radius, so nothing was read and
+dropped: the whole figure set is class-typical, and only the description said so.
+NOT A PHYSICS BUG: brown-dwarf radii really are near-constant at about one Jupiter radius across L, T
+and Y, because degeneracy pressure sets them rather than mass. Do not 'fix' the identical radius by
+tuning the bands apart - the fault was the silence about where the number came from, not the number.
+BLAST: an unresolved pair (`L7.5+T0.5`) is ONE catalogue row and imports as ONE body; the description
+now names the companion it does not represent. Splitting it needs a mass ratio and separation the row
+does not carry, so it stays unsplit rather than invented. If a real catalogue radius ever starts
+arriving for these objects, it wins - and `typicalForClass` must not be set for it.
+
 ### DATA-R4 The importer never invents and never overwrites — and both must reach the user
 WHERE: `convert.mjs` (`starNodeFromRow` skips, `BUNDLED_ARCHIVE_HOSTS` collisions), `RealSkyImportModal.svelte`
 RULE: a host missing mass, radius or temperature is SKIPPED with a named reason rather than guessed

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.70 - 26th Aug 2026
+
+- An imported star now carries the fact that its mass, radius and temperature are typical for its class rather than measured. SIMBAD gives a spectral type and no radius, so for objects like brown dwarfs every figure comes from the rule pack's band for that class - which is why two brown dwarfs of different types can share a radius to the kilometre. That was always stated in the body's description, but nothing else knew, so the numbers read as observations everywhere they appear. The figures themselves are unchanged: brown dwarf radii really are near-constant whatever the mass.
+- An unresolved pair says so. A catalogue row like "L7.5+T0.5" describes two objects seen as one; it still imports as one body, but the description now names the companion that is not on your map and says its mass is not included.
+- When an import brings in nothing because the rule pack had not loaded, it now says that, instead of reporting that every object's spectral type was unsupported.
+
 ## v3.0.69 - 26th Aug 2026
 
 - Saying "Not now" to the bundled-map upgrade is now remembered, and remembered with your campaign. It used to be stored only in the browser you happened to be using - and the "Not now" button recorded nothing at all - so a user could decline the offer and be asked again on the very next refresh, forever. The answer now travels inside the campaign file, so it survives a save, a reload, a different browser and a different machine. "Not now" silences the offer for the map edition you were asked about; a genuinely newer edition may still ask later, and the "do not ask again" tick still means never. Anyone who already dismissed the offer stays dismissed.

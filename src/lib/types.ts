@@ -499,6 +499,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   classes?: string[];
   /** A star's MK classification as structured data. See `StellarType`. */
   stellarType?: StellarType;
+  // WHERE THE FIGURES CAME FROM (B89). True when mass, radius and temperature are the rule pack's
+  // TYPICAL-FOR-CLASS band rather than anything measured - the state every SIMBAD-only star arrives
+  // in, because SIMBAD carries a spectral type and no radius. `starParamsFromType` has always
+  // returned this and the import always DROPPED it, so the honesty lived only in the description
+  // prose while every numeric surface showed a band midpoint as if it were observed. Same idea as
+  // `ageEstimated` on the system: a guess must never wear a measurement's clothes.
+  typicalForClass?: boolean;
   auroraEmitters?: AuroraEmitter[];  // resolved at process time from atmosphere × gas AuroraBand data
   orbit?: Orbit;
   /** G43: authored Lagrange-point relationship. When present, `orbit` is DERIVED from the

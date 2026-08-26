@@ -193,7 +193,15 @@ function starNodeFromCensus(star, id, statTemplates) {
   // classified `star/M` and imported as a red dwarf (B44).
   const otype = star.otype;
   const params = starParamsFromType(star.sp ?? '', statTemplates, { otype });
-  if (!params) return { missing: ['no stellar parameters for this spectral type'] };
+  // B89: SAY WHICH of the two causes this is. Both used to report 'no stellar parameters for this
+  // spectral type', which blames the object - so an import run before the rule pack was ready
+  // dropped every star while claiming their spectral types were unsupported. The probe that found
+  // this is `substellarImport.spec.ts`: with no statTemplates, Luhman 16 and WISEA J0855 vanish.
+  if (!params) {
+    return { missing: [statTemplates
+      ? `no stellar parameters for spectral type ${(star.sp ?? '').trim() || '(none given)'}`
+      : 'the rule pack was not loaded, so no stellar parameters were available'] };
+  }
   const { classes, image } = starClasses(star.sp ?? '', { otype });
   const typeText = (star.sp ?? '').trim();
   // Parsed ONCE, here, at import. Every consumer downstream reads the structured form.
@@ -206,6 +214,10 @@ function starNodeFromCensus(star, id, statTemplates) {
       massKg: params.massMsun * SOLAR_MASS_KG,
       radiusKm: Math.round(params.radiusRsun * SOLAR_RADIUS_KM),
       temperatureK: params.temperatureK,
+      // B89: the flag `starParamsFromType` has always returned, finally KEPT. Without it the only
+      // record that these three figures are class-typical rather than observed was the description
+      // prose, so every numeric surface presented a band midpoint as a measurement.
+      ...(params.typicalForClass ? { typicalForClass: true } : {}),
       ...(params.luminosity != null ? { radiationOutput: params.luminosity } : {}),
       image: { url: image },
       tags: [],
@@ -220,6 +232,16 @@ function starNodeFromCensus(star, id, statTemplates) {
             + `measured or inferred.`
           : `No mass, radius or temperature has been measured for it, so those figures are TYPICAL FOR ITS `
             + `${LUMINOSITY_WORD[params.luminosityClass] ?? 'CLASS'} rather than observed.`)
+        // B89: an UNRESOLVED PAIR is one catalogue row with a composite type (Luhman 16 is
+        // `L7.5+T0.5`). `parseStellarType` already reads the companion out; the import represents
+        // only the PRIMARY, and used to say nothing - so a binary brown dwarf arrived as a single
+        // body wearing the pair's joint class. Naming the absence is the honest half; splitting the
+        // pair would need a mass ratio and a separation this row does not carry, so it is not done.
+        + (stellarType?.companion
+          ? ` The catalogue reports this as an UNRESOLVED PAIR (${typeText}): only the primary is `
+            + `represented here, and the ${stellarType.companion} companion is NOT a separate body on `
+            + `this map. Its mass is not included in the figure above.`
+          : '')
     }
   };
 }
