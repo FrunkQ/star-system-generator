@@ -517,8 +517,40 @@ P5. BANKED (owner, 2026-08-07): the STARMAP 3D view must also allow travel below
     system view's polar limits did nothing for it. Half of a 3D starmap is under the plane for the
     same reason half a system is, and the rebuilt bundled maps carry real z depth, so it matters
     more there than it used to.
-P4. The new scale law (S2 + S2b's single floor) - LAST, because it moves preset looks (S3) and needs the owner's
+P4. The new scale law (S2 + S2b's single floor + S2c's two dials) - LAST, because it moves preset looks (S3) and needs the owner's
     sign-off on the reference screen first. Turns on the skipped R9 tests in scaleLaw.spec.ts.
+
+
+### S2c. TWO DIALS — BODIES AND CONSTRUCTS — owner, 2026-08-27. ADDED TO P4, NOT INSTEAD OF IT.
+
+The owner's proposal: *"two sliders, one for bodies, one for constructs. Bodies moves both, but
+constructs only moves itself — so you can set relative position you like (default to current) and be
+able to slide constructs apart if needed. We are honest as it is a user visual choice."* So the body
+dial stays the master and the construct dial is a RELATIVE offset on top of it, defaulting to today's
+look so nothing moves for anyone who does not touch it.
+
+**This is a real need and the honesty argument is sound.** Constructs are microscopic beside planets;
+wanting them separately legible is a display choice, and a choice a user MAKES and can see is not the
+engine lying — which is the same reasoning S2 already uses to let a 940 km station render at the scale
+its size puts it.
+
+**BUT IT DOES NOT REPLACE S2b's SINGLE FLOOR, and the reason is worth stating so nobody drops one for
+the other.** S2b's fault is at DIAL 0, true scale, where the user has asked for honesty: a 10 km moonlet
+renders 3.4x larger than a 22 km station because the two floors are a thousandfold apart. **A dial is a
+MULTIPLIER; the floor is a CLAMP beneath it. No dial position corrects an inverted clamp** — which is
+precisely why R9 states it as an ordering property rather than a tuning one, and why the skipped R9
+tests are the definition of done.
+
+**THEY COMPOSE, AND THE ORDER MATTERS: FLOOR FIRST, THEN DIAL.** The construct dial is a DELIBERATE,
+LABELLED DEPARTURE FROM TRUTH, and that only means something if truth exists underneath it. With the
+floors as they are, a GM who slides constructs apart cannot tell whether they are correcting a fault or
+expressing a preference — the control has no honest zero. Fix the floor and the dial becomes what the
+owner described: *I know what this really looks like, and I am choosing to show it differently.*
+
+Build notes when it is done: the dial is a per-CAMPAIGN display setting like the others (it rides
+`starmap`, not a body), it must default to the CURRENT relative look so no saved preset shifts, and
+/scale-reference wants a construct on it so the two dials can be eyeballed against each other — the
+page found S2b on its first render and is the natural place to catch whatever this introduces.
 
 ## 8. Adjacent defects (owner routed these 2026-08-06)
 

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.146 - 27th Aug 2026
+
+- Docs only. The scale-law phase gains a second dial, so ship sizes can be set relative to worlds rather than tied to them, alongside the floor fix it still needs underneath.
+
 ## v3.0.145 - 27th Aug 2026
 
 - A player view no longer rebuilds its whole 3D scene when a drifting ship reports a new position. Found while finishing the ship-message work: the update was being applied to the very scene object the check compares against, so the check could never see what had changed.
