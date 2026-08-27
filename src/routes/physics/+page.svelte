@@ -177,7 +177,7 @@
     </section>
 
     <section id="albedo">
-      <h2>Albedo — bare ground and its deposits <span class="phase">B5</span></h2>
+      <h2>Albedo — bare ground and its deposits</h2>
       <p><strong>Bare rock is DARK, and what makes a world bright is what has settled on it.</strong> The three
         measurements that pin this point in different directions: Mercury reflects 0.088 and Luna 0.11 — darker
         than a single flat "rock" value used to allow — while Mars reflects 0.25 and Io 0.63, far brighter than
@@ -229,7 +229,7 @@
 </section>
 
     <section id="eccentric-flux">
-      <h2>Eccentric flux distance <span class="phase">04.1</span></h2>
+      <h2>Eccentric flux distance</h2>
       <p>An eccentric orbit receives a higher <em>time-averaged</em> flux than its mean distance implies, so the
         flux-equivalent distance is <code>a·(1−e²)^¼</code> (&lt; a), not the mean <code>a</code>. The dominant
         eccentricity is read from the perihelion/aphelion spread (exact for a planet orbiting its star directly).
@@ -433,7 +433,7 @@
          ones the editor shows, from `starClassExplain`, which derives them from the pack's own radius
          band - so this page cannot drift from the physics or from the panel. -->
     <section id="star-designations">
-      <h2>Reading a star designation <span class="phase">04.5</span></h2>
+      <h2>Reading a star designation</h2>
       <p>A star's designation is two facts joined together, and it is worth reading them separately.
         The <strong>letter and number</strong> say how hot it is, running O B A F G K M from hottest to
         coolest with the number subdividing each letter. The <strong>roman numeral</strong> says how big
@@ -470,7 +470,7 @@
          section: this is about what a star DOES to its planets, which is what a reader is thinking
          about at this point in the page. -->
     <section id="ionising-output">
-      <h2>Ionising output &amp; the corona <span class="phase">04.6</span></h2>
+      <h2>Ionising output &amp; the corona</h2>
       <p><strong>Brightness and ionising output are two different numbers.</strong> A star's visible
         brightness is fixed by its size and temperature. Its X-ray and extreme-ultraviolet output &mdash;
         the part that strips atmospheres and matters to anything living there &mdash; comes from its
@@ -527,7 +527,7 @@
     </section>
 
     <section id="stellar-outflows">
-      <h2>Jets and shed winds <span class="phase">04.7</span></h2>
+      <h2>Jets and shed winds</h2>
       <p><strong>Two things a star throws off are drawn on the maps, and both are derived rather than
         decided.</strong> A <em>jet</em> needs three things at once: a relativistic well to launch from,
         measured as the body's Schwarzschild radius over its own radius (one at a horizon, about a
@@ -549,7 +549,7 @@
     </section>
 
     <section id="radiation-split">
-      <h2>Spectral photon/particle split <span class="phase">04.4</span></h2>
+      <h2>Spectral photon/particle split</h2>
       <p>The photon/particle ratio depends on the star's spectral class — cool dwarfs are wind- and flare-dominated,
         so their particle fraction is far higher. Because magnetospheres shield particles but not photons, this
         makes unshielded M-dwarf worlds harsher than Sun-like ones at the same flux.</p>
@@ -763,7 +763,7 @@
     </section>
 
     <section id="spin">
-      <h2>Spin axis, seasons and satellite planes <span class="phase">B10 · C3(c)</span></h2>
+      <h2>Spin axis, seasons and satellite planes</h2>
       <p><strong>Stars turn too, and some of them are visibly squashed by it.</strong> Until recently no star in the
         engine had a rotation at all, so every star was drawn as a perfect sphere however fast it should have been
         spinning. <strong>Vega</strong> is the case that gives the lie away: it turns at about 236 km/s, close to the
@@ -1017,7 +1017,7 @@
     </section>
 
     <section id="eclipses">
-      <h2>Eclipses <span class="phase">G8</span></h2>
+      <h2>Eclipses</h2>
       <p><strong>When does something next cover this world's star, and how dark does it get?</strong> An eclipse
         happens <em>somewhere</em>, and the answer is meaningless without saying where — so the observer is
         standing <strong>on the body whose data is open, at the point directly under the occulter</strong>. From
@@ -1050,7 +1050,7 @@
     </section>
 
     <section id="surface-light">
-      <h2>Surface light — the spectrum that reaches the ground <span class="phase">B45 · B54</span></h2>
+      <h2>Surface light — the spectrum that reaches the ground</h2>
       <p>Every reference chart of alien plant colour keys on one number: the star's temperature. That is the
         wrong input, and it is wrong in a way that matters. <strong>Plants see the light that reaches the
         ground</strong>, and between the star and the ground sits a sky. So this engine derives a
@@ -1132,7 +1132,7 @@
     </section>
 
     <section id="standing-on-it">
-      <h2>Standing on it — brightness, colour and how far you can see <span class="phase">B45 · B78 · B79</span></h2>
+      <h2>Standing on it — brightness, colour and how far you can see</h2>
       <p>The surface spectrum answers what light arrives. Three things follow from it that a GM can actually
         use at a table, and all three are the same derivation read differently.</p>
 
@@ -1234,7 +1234,7 @@
     </section>
 
     <section id="biosphere">
-      <h2>Biospheres — which pigment, and how much of the ground <span class="phase">G19 · B53</span></h2>
+      <h2>Biospheres — which pigment, and how much of the ground</h2>
       <p>A world's life is described by four things it already carried — how complex it is, what its chemistry
         is built on, where it gets its energy, and which <em>morphologies</em> are present — plus, now, how
         much of the land each of those covers.</p>
@@ -1409,7 +1409,7 @@
     </section>
 
     <section id="views">
-      <h2>Spatial views: grids and routes <span class="phase">G4 · A37 · A41</span></h2>
+      <h2>Spatial views: grids and routes</h2>
       <p><strong>One grid vocabulary, and one generator behind it.</strong> The 3D starmap, the flat starmap and
         the system view's ground plate all draw their lattice from the same code, so a system snapped to your hex
         in one view lands dead-centre in it in the others. The hex convention is <strong>flat-topped</strong>
@@ -1635,7 +1635,7 @@
     </section>
 
     <section id="zones">
-      <h2>Stellar zones &mdash; the lines drawn on the map <span class="phase">B80 &middot; B81 &middot; B84</span></h2>
+      <h2>Stellar zones &mdash; the lines drawn on the map</h2>
       <p>Turn <strong>Zones</strong> on in the system view and a set of rings appears. They are not decoration
         and they are not a table of astronomical-unit constants: <strong>every one of them is derived from the
         star's own luminosity, asked at a distance from THAT STAR.</strong> Two consequences follow, and both
@@ -2039,7 +2039,6 @@
   section { margin: 30px 0; scroll-margin-top: 16px; }
   section h2 { color: var(--text, #fff); border-bottom: 1px solid var(--border, #2a2d36); padding-bottom: 6px; }
   section h3 { color: var(--accent, #ff5a1f); font-size: 1rem; margin: 20px 0 6px; }
-  .phase { font-size: 0.7rem; color: var(--on-accent, #fff); background: var(--accent, #ff5a1f); border-radius: 999px; padding: 2px 8px; vertical-align: middle; margin-left: 8px; }
   p, li { line-height: 1.65; color: var(--text, #e2e2e2); }
   ol.layering { line-height: 1.7; padding-left: 1.3em; }
   ol.layering li { margin: 4px 0; }

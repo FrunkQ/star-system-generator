@@ -4,6 +4,10 @@ All notable changes are listed here:
 
 ## v3.0.158 - 28th Aug 2026
 
+## v3.0.159 - 28th Aug 2026
+
+- The small reference codes beside the physics page headings are gone. They were our own internal tracking numbers: some pointed at a planning document no longer kept, and the rest meant nothing outside the workshop. The page is for explaining the physics.
+
 - Players who scrub their own clock now see ships fly. A ship in transit is drawn where it would be at the time that viewer is looking at, rather than held at wherever the GM last left it - the same rule the planets have always followed. Views that follow the GM are unchanged. The one thing a scrubbed view cannot show you is what happens after a ship's current plan ends, because where it parks is the GM's to decide and has not happened yet.
 
 ## v3.0.157 - 28th Aug 2026
