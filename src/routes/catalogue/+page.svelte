@@ -78,6 +78,7 @@
   import { unixMsToMasterSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { inverseBoxCox } from '$lib/physics/scaling';
   import { perfCount } from '$lib/perfTrace';
+  import { resolveClockOwnership } from '$lib/player/clockOwnership';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
@@ -205,14 +206,14 @@
     const now = gmTime?.currentTime ?? (selectedSystemNode ? gameNowOf(selectedSystemNode.system) : null);
     if (now !== null && now !== undefined) currentTime = now;
   }
-  // The campaign clock READOUT, shown only while following the GM (a free-running local clock is
+  // The campaign clock READOUT, shown whenever this view is ON the GM's clock (a free-running local clock is
   // deliberately unlabelled - naming an arbitrary time would dress the mess-about mode up as the
   // campaign's). Formatted through the campaign's OWN calendar - `temporal` rides the player
   // snapshot and this is the same resolver the GM's clock bar uses, so the two surfaces cannot
   // disagree about what a date is called. Driven off docNowMs (the 1 Hz wall clock) rather than the
   // per-frame time: a readout is only ever read to the second, and the calendar maths is bigint.
   $: followClockLabel = (() => {
-    if (!followGMActive) return null;
+    if (!onGmClock) return null;
     const t = (starmap as any)?.temporal;
     const calendar = t?.temporal_registry?.[t?.activeCalendarKey];
     if (calendar) {
@@ -444,11 +445,37 @@
   let overrideFollowGM: boolean | null = null;
   // Following the GM = the override (if set) else the preset's own followGM flag.
   $: followGMActive = (overrideFollowGM ?? activePreset?.followGM) ?? false;
+
+  // WHOSE CLOCK IS THIS VIEW ON? One rule, and the time controls and the clock readout are its two
+  // faces. Owner, 2026-08-27: "when the players can't scrub time it shows the GM time."
+  //
+  // The controls were already hidden in two cases - following the GM, and a display-only preset -
+  // but only the FIRST of those put the view on the GM's clock or named the time. The second
+  // free-ran at its own rate with no readout, no reset and no way home: the projector tier, the one
+  // most likely to be left running all evening. A reader with no controls cannot be wrong on
+  // purpose, so they should be right by default.
+  //
+  // GUARDED ON THE GM ACTUALLY BEING THERE. With no heartbeat there is no GM time to show and none
+  // to follow, so a standalone view keeps its own clock and its blank readout exactly as before -
+  // which is also what keeps this from turning a disconnected display into a frozen one.
+  // WHOSE CLOCK THIS VIEW IS ON — one rule, in `player/clockOwnership.ts` so it can be tested
+  // without a DOM and so the two faces of it cannot drift apart. The time controls and the
+  // campaign readout are gated on `canScrubTime` and `onGmClock` respectively, and nothing else
+  // decides either. See that file for why a free clock is allowed at all, and why a ship standing
+  // still on one is the honest consequence rather than a fault.
+  $: clockOwnership = resolveClockOwnership({
+    presetInteractive,
+    followGM: followGMActive,
+    gmTime
+  });
+  $: canScrubTime = clockOwnership.canScrub;
+  $: onGmClock = clockOwnership.onGmClock;
+  $: clockLockReason = clockOwnership.lockReason;
   // Follow the GM's clock: snap to their absolute time when it drifts (a fresh follow, a GM scrub, or
   // rate change) — between heartbeats the local loop advances at the GM's own timeScale.
   function followTime(t: { currentTime: number; isPlaying: boolean; timeScale: number }) {
     gmTime = t;
-    if (!followGMActive) return;
+    if (!onGmClock) return;
     isPlaying = t.isPlaying;
     if (Math.abs(currentTime - t.currentTime) > 1000) currentTime = t.currentTime;
   }
@@ -880,7 +907,7 @@
       const dt = (ts - last) / 1000;
       // Following the GM: run at THEIR rate so positions match their map (heartbeats snap any drift).
       // Otherwise the player's own arbitrary clock.
-      const rate = followGMActive && gmTime ? gmTime.timeScale : RATE_STEPS[rateIndex].sec;
+      const rate = onGmClock && gmTime ? gmTime.timeScale : RATE_STEPS[rateIndex].sec;
       if (isPlaying) currentTime += dt * rate * 1000;
       // G8: the document surfaces carry a "Next eclipse" row, and a date that has gone by should stop
       // being shown. They redraw a canvas, so they get the clock at ONE HERTZ OF WALL TIME rather than
@@ -1262,11 +1289,15 @@
            the GM's clock — positions match their map) and on non-interactive presets. -->
       {#if followClockLabel}
         <!-- Campaign time, in the campaign's own calendar. Sits where the local time controls
-             would be - the two are mutually exclusive by construction (controls hide while
-             following; this shows only then). -->
-        <div class="follow-clock" title="Campaign time — following the GM's clock">{followClockLabel}</div>
+             would be, and the two are mutually exclusive BY CONSTRUCTION: both read `canScrubTime`,
+             so a reader either steers the clock or is told whose clock they are on, never neither
+             and never both. -->
+        <div class="follow-clock" title={clockLockReason ?? "Campaign time — following the GM's clock"}>
+          {followClockLabel}
+          {#if clockLockReason}<span class="lock-why">{clockLockReason}</span>{/if}
+        </div>
       {/if}
-      {#if presetInteractive && !followGMActive}
+      {#if canScrubTime}
         <div class="time-controls" class:expanded={timeExpanded} use:clickOutside={() => (timeExpanded = false)}>
           {#if timeExpanded}
             <button class="tc-btn" on:click={() => (isPlaying = !isPlaying)} aria-label={isPlaying ? 'Pause' : 'Play'} title={isPlaying ? 'Pause' : 'Play'}>{isPlaying ? '❚❚' : '▶'}</button>
@@ -1487,6 +1518,12 @@
   .tc-reset { opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
   .tc-reset.on { opacity: 1; pointer-events: auto; }
   /* Campaign clock readout (follow-GM only) - same chrome as the time controls it replaces. */
+  .lock-why {
+    display: block;
+    font-size: 0.72em;
+    opacity: 0.6;
+    letter-spacing: 0.02em;
+  }
   .follow-clock {
     position: absolute;
     bottom: 12px;

@@ -1,6 +1,6 @@
 # Who owns the clock on a player view — design note (G49)
 
-Status: DESIGN, awaiting the owner's answers to Q1-Q5 at the end. Nothing implemented from this note.
+Status: **ROUTE (A) SHIPPED at v3.0.102** — the clock-ownership rule, answered by the owner in the session that produced this note. Q1, Q2, Q4 and Q5 are settled (see section 7); Q3 is settled by construction. **Route (B) — the compact parked descriptor, which closes [[B96]] — is NOT started.**
 Written 2026-08-27 from measurement and from reading the four surfaces that already touch this, not
 from impression.
 
@@ -168,3 +168,53 @@ the preset editor, the Player Views modal) and wants the Q1-Q5 answers before an
 owns a segment's truth and can any two answer the same question differently" — is this note's question
 with a different noun: the GM and the player can both answer "where is that ship", and they do not have
 to agree.
+
+## 7. What the owner settled, and what shipped as route (A)
+
+Answered in the same conversation, and tighter than the questions were:
+
+> *"Unless the GM says time is important by RUNNING TIME, or it is follow GM — so the GM view and
+> player view align. Otherwise the players are free to play with it as a tool; ships will not MOVE
+> on their version, as it is not 'true time'."*
+
+> *"When the players can't scrub time it shows the GM time."*
+
+**Q1 — does a free clock survive? YES.** It is a tool, and Kepler makes it correct for every world.
+**Q2 — what does the lock look like?** Controls away; `followGM` needs no explanation because the
+mode is the explanation, a RUNNING clock does because a control that was there a second ago has
+gone. **Q4 — does the display-only tier follow? YES**, when there is a GM to follow. **Q5 — a
+readout when not following? YES, whenever the reader cannot scrub** — that is the owner's own rule,
+and it makes the controls and the readout exact complements.
+
+Q3 (who wins when the lock engages mid-scrub) is settled by construction: the view snaps to the
+GM's absolute time on the next heartbeat, which is what `followTime` already did.
+
+### The rule, as shipped
+
+`player/clockOwnership.ts` — outside the component so it can be tested without a DOM, and so its
+two faces cannot drift apart:
+
+```
+canScrub  = presetInteractive && !followGM && !gmRunning
+onGmClock = followGM || gmRunning || (!presetInteractive && gmTime !== null)
+```
+
+**`onGmClock` is deliberately NOT `!canScrub`.** A display-only view with no GM connected has no
+controls and no GM clock to be on: it keeps its own and the readout stays blank, rather than naming
+a campaign time it is not actually showing. Reading one off the other would have reintroduced the
+exact lie the blank readout exists to prevent.
+
+`SYNC_TIME` has carried `isPlaying` all along and nothing read it — the player knew the GM was
+running and did nothing with the fact.
+
+### Still open
+
+**Does selecting a ship IN TRANSIT force the lock?** The owner raised it — *"the only way the
+transit line makes sense, i.e. you see where it ends, and the time is forced to the current GM view
+time"* — and then qualified it with the RUNNING TIME / follow-GM rule above, which reads as the
+narrower answer. The two readings differ materially: a selection-triggered lock is a real behaviour
+and would take the clock away from a reader who was mid-scrub, on a click. Not built; asked.
+
+**Route (B) is untouched**, and it is the half that fixes the reported bug: even perfectly aligned,
+a parked ship is frozen on a player view, because nothing publishes where it is after its route
+ends. Route (A) makes the clocks agree; it does not make the ship move.

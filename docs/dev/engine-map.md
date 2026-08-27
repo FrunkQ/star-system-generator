@@ -2705,6 +2705,25 @@ so a Mars arrival was drawn parked for the 615 days it was still aerobraking. Re
 one dip because the loops coincide, and the drawn count is CAPPED at 24 with the real count in the
 label rather than silently truncated.
 
+### UI-C12 A PLAYER EITHER STEERS THE CLOCK OR IS TOLD WHOSE CLOCK IT IS — NEVER NEITHER, NEVER BOTH
+WHERE: `player/clockOwnership.ts` (`resolveClockOwnership`), read by `routes/catalogue/+page.svelte`
+for both the time controls and the campaign readout.
+RULE: gate the controls on `canScrub` and the readout on `onGmClock`, and decide neither anywhere
+else. A running GM clock is the GM saying THIS MOMENT MATTERS and locks an interactive view;
+pausing hands the freedom back. `followGM` locks standingly. A display-only view follows when there
+is a GM to follow.
+WHY: owner, 2026-08-27 — "unless the GM says time is important by RUNNING TIME, or it is follow GM,
+so the GM view and player view align. Otherwise the players are free to play with it as a tool."
+A free clock is ALLOWED because a body's position is closed-form in time, so a scrubbing reader
+draws every world correctly for the time they chose. `SYNC_TIME` has carried `isPlaying` since it
+was written and nothing read it: the player knew the GM was running and did nothing with the fact.
+BLAST: **`onGmClock` IS NOT `!canScrub`** and must not be simplified into it. A display-only view
+with no GM connected has neither controls nor a GM clock — it keeps its own, and the readout stays
+BLANK rather than naming a campaign time it is not showing, which is the lie the blank readout was
+put there to prevent. A ship standing still on a free clock is the honest consequence of a clock the
+GM does not own, not a fault — its course lives in journeys the player snapshot does not carry. That
+is [[B96]], and it is fixed by publishing a parked descriptor, not by locking the clock harder.
+
 ### UI-C11 ONE PICKER ANSWERS "WHICH BODY?", AND ITS LIST RULE IS A PURE FUNCTION
 WHERE: `ui/bodyPickerList.ts` (`buildPickerRows`, `buildCategoryChips`) and the one component that
 reads it, `components/BodyPicker.svelte`. Mounted by `SystemView`, `Starmap`, `TransitPlannerPanel`

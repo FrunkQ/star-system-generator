@@ -2,9 +2,17 @@
 
 All notable changes are listed here:
 
+## v3.0.102 - 27th Aug 2026
+
+- A player view now either steers the clock or tells you whose clock it is on - never neither, and never both. Time on a player view is a tool: worlds can be wound to any moment and are drawn correctly, because their positions are pure mathematics. So the players keep that freedom, and lose it only for the moments it would mislead.
+- Starting the clock on the GM view takes it. That is the GM saying this moment matters: the players' controls step aside, their view snaps to the GM's time and rate, and it says why. Pausing hands the freedom straight back.
+- A display that has no time controls now shows the campaign time instead of nothing, and rides the GM's clock rather than free-running at its own rate all evening. If there is no GM connected it keeps its own clock and stays honestly unlabelled, rather than putting the campaign's name on a time that is not the campaign's.
+- Note the thing this does NOT yet fix: a ship that has finished its journey still stands still on a player view even when the clocks agree, because nothing yet publishes where it goes after it arrives. That is a separate piece of work and it is on the board.
+
 ## v3.0.100 - 27th Aug 2026
 
 - Board only. The gas-giant banding fault is traced to its cause from the reporter own save: a giant stripes are painted only by cloud decks lying beneath the top one, so a stack that gains or loses a deck at a condensation threshold gains or loses every stripe at once.
+
 
 ## v3.0.99 - 27th Aug 2026
 
