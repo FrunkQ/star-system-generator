@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.107 - 26th Aug 2026
+
+- Board only. A user-reported fault reproduced and diagnosed but deliberately not fixed yet, because the fix is a change to what the engine can describe rather than a patch. Making two asteroids that share a Lagrange point into a pair orbiting each other - a real arrangement, and one this very map contains - sends the companion onto a wider and wider orbit every time anything is edited, with no warning of any kind. The cause is that the engine has no way to say "this PAIR rides the Lagrange point", only "this BODY does", so two separate passes each rebuild the arrangement their own way and undo each other. The number it drifts towards is the width of the Lagrange offset itself, which is what gave the mechanism away.
+
 ## v3.0.106 - 27th Aug 2026
 
 - A gas giant's banding now strengthens and fades with the clouds that cause it, instead of switching between two fixed looks. The belts on a giant come from a deeper cloud deck showing through the one above it, and the engine treated having any such deck at all as a yes-or-no question: a world with one was drawn at full Jovian contrast and a world without one was drawn very nearly featureless, with nothing in between. So a giant whose atmosphere sat near a condensation threshold flipped between the two on the smallest edit the composition editor can make. Banding is now proportional to how much of the deeper deck you can actually see, and the storm oval fades in with it. Jupiter, Saturn, Uranus and Neptune are all drawn as they were.
