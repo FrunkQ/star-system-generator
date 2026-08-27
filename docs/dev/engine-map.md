@@ -4054,3 +4054,21 @@ THE CHECK THAT FINDS IT, and it is one line: in `starmapSnapshotForPlayers`, com
 BLAST: `system/idempotence.test.ts` cannot see any of this and is not meant to - it gates
 `systemProcessor.process()`, which is idempotent here and stayed green throughout. A repetition test
 is the wrong instrument for a two-copy fault; the gate wanted is the identity invariant above.
+
+### SYNC-2 TWO PLAYER SNAPSHOT PATHS, AND ONLY ONE OF THEM SLIMS A CONSTRUCT
+WHERE: `computePlayerSnapshot` and `computePlayerStarmapSnapshot`, both in `system/utils.ts`.
+RULE: `computePlayerSnapshot` REDACTS (hidden nodes, secret tags, GM notes, anomaly bookkeeping)
+and nothing more. Everything that makes a snapshot SMALL - dropping `scheduled_journeys` and
+`draft_transit_plan`, publishing `driveBurns` and `route` in their place - lives in `slimNode`,
+which only `computePlayerStarmapSnapshot` calls. **Redaction and slimming are different jobs in
+different functions, and calling the first does not get you the second.**
+WHY IT IS NOT VISIBLE FROM EITHER FUNCTION: both are named for the player and both return
+something a player may see, so the per-system path reads as a smaller version of the whole-map
+one. It is not: it is the UNSLIMMED one.
+THE CONSEQUENCE, measured 2026-08-27 (inbox G51): `SYNC_SYSTEM` is built by
+`computePlayerSnapshot` alone, so it publishes the dense `pathPoints` arrays that `slimNode`
+exists to keep off the wire - ~245 KB per send on the bundled SciFi map, on the hottest path in
+the app. `shipRoute.ts` opens by explaining why those arrays must never be broadcast; the
+per-system path broadcasts them anyway.
+BLAST: anything new that redacts for players must decide which of the two it is. If it crosses a
+DataChannel it wants BOTH, and the slimming is not automatic.
