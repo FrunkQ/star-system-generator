@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.93 - 26th Aug 2026
+
+- Board only. Captured G48: painting a ship&rsquo;s name on its hull, placed and scaled and coloured by hand. The hull-picking the drive placer already uses turns out to be most of what it needs.
+
 ## v3.0.92 - 26th Aug 2026
 
 - Set a ship&rsquo;s colour from the 3D model dialog, and watch the hull repaint as you choose it. A model with no materials of its own is painted in the ship&rsquo;s colour, but that colour could only be changed on the Basics tab, with no view of the hull while you did it. It is the same single colour as before &mdash; marker, hull and plume dressing still follow it &mdash; now settable from either place.
