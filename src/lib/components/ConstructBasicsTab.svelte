@@ -15,8 +15,12 @@
   // store; the node carries only the ModelRef, so the broadcast snapshot stays light.
   import ConstructModelModal from './ConstructModelModal.svelte';
   let modelModalOpen = false;
+  // A76: the model dialog now also carries the ship's colour, because a material-less hull is
+  // painted with it and the dialog is where you can actually SEE the result. Same field as the
+  // Colour control below — one colour, two places to set it, no second source of truth.
   function onModelSave(e: CustomEvent) {
-    construct.model = e.detail;
+    construct.model = e.detail.ref;
+    if (e.detail.iconHex) construct.icon_color = e.detail.iconHex;
     construct = construct;
     modelModalOpen = false;
     dispatch('update');
@@ -142,7 +146,7 @@
         <span class="app-label">Colour</span>
         <div class="app-ctl">
           <input type="color" id="icon-color" bind:value={construct.icon_color} on:input={handleUpdate} />
-          <span class="descriptor">marker, hull tint and plume dressing all follow this</span>
+          <span class="descriptor">marker, hull tint and plume dressing all follow this &mdash; also settable in the 3D model dialog, where you can see the hull</span>
         </div>
 
         <span class="app-label">Marker</span>

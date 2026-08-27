@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.92 - 26th Aug 2026
+
+- Set a ship&rsquo;s colour from the 3D model dialog, and watch the hull repaint as you choose it. A model with no materials of its own is painted in the ship&rsquo;s colour, but that colour could only be changed on the Basics tab, with no view of the hull while you did it. It is the same single colour as before &mdash; marker, hull and plume dressing still follow it &mdash; now settable from either place.
+
 ## v3.0.91 - 26th Aug 2026
 
 - Board only. Captured A76: an untextured model should let you choose its hull colour, not only its livery accent. The hull currently inherits the ship map-icon colour with no way to say otherwise.
