@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.104 - 27th Aug 2026
+
+- A cloud deck now records how much sky it actually holds, not just which of five bands it falls into. A band cannot say how nearly a deck exists, and that is the one thing needed to fade a deck in gently instead of having it appear whole - Mars's real water-ice haze covers 2.4% of its sky and was being drawn at 8%, the typical figure for its band. Decks you have written by hand are unaffected: "water overcast" still means what it always did. Everything that depends on how cloudy a world is has become more accurate with it, so Venus is now read as very nearly total overcast rather than 92%, which darkens its modelled surface light.
+
 ## v3.0.103 - 27th Aug 2026
 
 - Board only. Captured B97 and traced it end to end: a ship that has arrived somewhere can be described three different ways at once, and two of the readings on screen are blends of two of them. "Earth: Far Orbit" turns out to be Earth's name joined to the radius of the Sun orbit the ship left months ago, and the orbital period beside it is that same old orbit read correctly. The cause is that the record of where a ship lives is only ever brought up to date by one explicit action in Settings, so in ordinary play it never is, and different parts of the app disagree about whether to trust it or work around it. No behaviour changed; the fix rests on a decision about when an arrival becomes real.
