@@ -3931,3 +3931,40 @@ STILL A STEP, LEFT ALONE DELIBERATELY: `methaneHue` picks between two fixed colo
 and the ice-giant `iceHue` picks between three at 60 K and 160 K. Neptune (46.6 K) and Uranus
 (58.5 K) sit either side of the first. Smoothing them moves BOTH ice giants, which is an anchor
 change and wants its own item rather than a ride on this one.
+
+### RENDER-S37 AN AURORAL OVAL LIVES IN A NARROW POLAR BAND. STRENGTH MOVES IT INSIDE THAT BAND, NOT OUT OF IT
+WHERE: `catalogue/PlanetDisc.svelte` - `auroraColatDeg`, `auroraOval`, `auroraTopCy`/`auroraBotCy`.
+The 2D system view promotes big discs to this same component, so it is what the orrery shows too.
+RULE: the ring marks where the last closed field line comes down, and that colatitude is set by the
+SHAPE of the magnetosphere rather than by how bright the ring is - Jupiter's main oval sits near 16
+degrees from the pole, Saturn's near 15, Earth's near 20. A stronger field pushes the magnetopause
+further out and if anything CONTRACTS the oval. So brightness may scale freely with strength; REACH
+may not. It is clamped to 12-28 degrees. And the ring's radius is geometry, `DISC_R * sin(colat)`,
+not a free parameter.
+WHY: it used to be `cy = 22 + strength * 9` with the radius growing alongside - an unbounded march
+toward the equator. On the r=30 disc that put Jupiter's oval centre at 38 degrees colatitude and its
+curtains at 60, two thirds of the way to the equator, and the blurred glow stroke alone was over 4
+units wide on a 60-unit disc. Between them they covered about a third of the visible face and
+flattened the strongest banding in the map: the owner's screenshots showed Jupiter reading PALER and
+less banded than Saturn, when measurement of the texture underneath had Jupiter at 2.3x the contrast.
+Now: Jupiter 19.8 degrees, Earth 17.9, Saturn 16.0, still ordered by strength.
+BLAST: every body with an `aurora/*` tag, not only giants - Earth moved 34.7 -> 17.9 degrees. Nothing
+in `tests/output/` moves, because the appearance model is derived at draw time and never stored.
+
+### RENDER-S38 A GIANT'S STORM AND ITS POLAR VORTEX ARE DERIVED, NOT DECORATION
+WHERE: `planetTexture.ts` - `stormChance`, used by both projections; `planetAppearance.ts` -
+`PolarVortexSpec.fillHex`/`rimHex`/`eyeHex`.
+RULE: neither is a look a renderer may choose. A long-lived anticyclone is what a strongly banded
+circulation does at the shear line between two jets, so its CHANCE follows `bandStrength` and a
+smooth ball has none to give - `stormChance` ramps from 0 at 0.45 to 1 at 0.75. Calibrated on the
+only pair anyone can check: Jupiter bands at 0.84 and has a Great Red Spot, Saturn bands at 0.38 and
+has no persistent spot. It was previously a flat `rnd() > 0.35` on any giant that banded at all,
+which gave Saturn a permanent dark oval.
+A polar vortex takes its colours from the BODY: the interior is its own cloud colour darkened (a
+cyclone clears the upper haze and you see deeper), the rim brightened. Four literal slate blues used
+to be spread across TWO painters - `rgba(60,80,120,0.32)` and `rgba(210,222,245,0.6)` in PlanetDisc,
+`rgba(48,64,104,0.42)`, `rgba(220,230,250,0.7)` and `rgba(205,218,242,0.42)` in the equirect - which
+drew Saturn's hexagon as a grey patch on a gold planet. Same shape as the hardcoded Jovian brown
+already deleted from `apparentColor`, and the same duplication: two renderers each inventing a look.
+BLAST: a gold giant now gets a gold vortex and a blue one a blue vortex (Saturn #756151/#e6d2c1,
+Uranus #336174/#a1d1e5). If you add a third painter, read the spec - do not pick a colour.

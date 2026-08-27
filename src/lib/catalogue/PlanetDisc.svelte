@@ -309,6 +309,10 @@
 
   // Auroras: a spiky glowing OVAL ringing each magnetic pole (Hubble-Jupiter style). Strength + emitter
   // colour are model-derived; the swirled oval PATHS are generated here (auroraOval).
+  // The disc is drawn as a circle of radius 30 about (50,50) in the 100x100 viewBox, so the aurora
+  // geometry below can convert a colatitude into a y on the disc honestly.
+  const DISC_R = 30;
+  const AURORA_COLAT_MIN = 12, AURORA_COLAT_MAX = 28;
   $: auroraStr = a.aurora?.strength ?? 0;
   $: hasAurora = !!a.aurora;
   $: auroraBrilliant = a.aurora?.brilliant ?? false;
@@ -321,7 +325,10 @@
   function auroraOval(cy: number, off: number): string {
     let s = 23 + off; for (let k = 0; k < body.id.length; k++) s = (s * 31 + body.id.charCodeAt(k)) & 0xffffff;
     const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
-    const rx = 11 + auroraStr * 10, ry = 4.5 + auroraStr * 3.5, N = 44, spikeAmp = 0.16 + auroraStr * 0.5;
+    // The ring's own radius is GEOMETRY, not a free parameter: a circle of colatitude on a sphere of
+    // radius DISC_R projects to R sin(colatitude), and the vertical semi-axis is that foreshortened.
+    const rx = DISC_R * Math.sin((auroraColatDeg * Math.PI) / 180), ry = rx * 0.38;
+    const N = 44, spikeAmp = 0.16 + auroraStr * 0.5;
     let d = '';
     for (let i = 0; i <= N; i++) {
       const a = (i / N) * 2 * Math.PI + (rnd() - 0.5) * 0.16;             // swirl: jitter the angle
@@ -332,11 +339,24 @@
     }
     return d + 'Z';
   }
-  // Sit tight to the poles when faint, extend toward the equator as strength grows. The far (bottom)
-  // oval is pulled up a touch so its VISIBLE lower arc stays on the disc (the upper half is clipped
-  // away behind the planet), rather than dropping off the bottom limb.
-  $: auroraTopCy = 22 + auroraStr * 9;
-  $: auroraBotCy = 76 - auroraStr * 3;
+  // WHERE THE OVAL SITS IS A NARROW POLAR BAND, AND STRENGTH ONLY MOVES IT INSIDE THAT BAND.
+  //
+  // An auroral ring marks where the last closed field line comes down, and that colatitude is set by
+  // the SHAPE of the magnetosphere rather than by how bright the ring is: Jupiter's main oval sits
+  // near 16 degrees from the pole, Saturn's near 15, Earth's near 20. If anything a stronger field
+  // pushes the magnetopause further out and CONTRACTS the oval slightly.
+  //
+  // This used to be `cy = 22 + strength * 9` with the radius growing to match, i.e. an unbounded
+  // march toward the equator. On this disc (r=30 about 50,50) that put Jupiter's oval centre at 38
+  // degrees colatitude and its curtains at 60 - two thirds of the way to the equator - and the wash
+  // covered about a third of the visible face, flattening the strongest banding in the map. Reach
+  // still follows strength, which is the owner's steer, but inside 12 to 28 degrees and never past.
+  $: auroraColatDeg = Math.min(AURORA_COLAT_MAX, AURORA_COLAT_MIN + auroraStr * 16);
+  $: auroraPolarDrop = DISC_R * Math.cos((auroraColatDeg * Math.PI) / 180);
+  $: auroraTopCy = 50 - auroraPolarDrop;
+  // The far pole is pulled up a touch so its VISIBLE lower arc stays on the disc (its upper half is
+  // clipped away behind the planet) rather than dropping off the bottom limb entirely.
+  $: auroraBotCy = 50 + auroraPolarDrop - 1.5;
   $: auroraTop = hasAurora ? auroraOval(auroraTopCy, 3) : '';
   $: auroraBot = hasAurora ? auroraOval(auroraBotCy, 8) : '';
   $: isLava = !!a.magma?.lava;
@@ -622,7 +642,7 @@
       <!-- Polar vortex: a gas giant's geometric polar jet (Saturn hexagon), foreshortened at the top pole. -->
       {#if a.polarVortex}
         <g clip-path="url(#clip-{uid})">
-          <path d={vortexPoly} fill="rgba(60,80,120,0.32)" stroke="rgba(210,222,245,0.6)" stroke-width="0.7" stroke-linejoin="round" />
+          <path d={vortexPoly} fill={a.polarVortex.fillHex} fill-opacity="0.32" stroke={a.polarVortex.rimHex} stroke-opacity="0.6" stroke-width="0.7" stroke-linejoin="round" />
         </g>
       {/if}
 
@@ -748,7 +768,9 @@
       {/if}
       <!-- Auroral ovals ringing the poles: spiky glowing rings, colour set by the atmosphere gas. -->
       {#if hasAurora}
-        {@const gw = 2.4 + auroraStr * 3.4}
+        <!-- Glow width trimmed with the oval: at 2.4 + str*3.4 the blurred stroke alone was over 4
+             units on a 60-unit disc, which smeared the ring across the banding underneath. -->
+        {@const gw = 1.0 + auroraStr * 1.8}
         {@const cw = 0.7 + auroraStr * 1.1}
         {@const go = Math.min(0.5, 0.2 + auroraStr * 0.45)}
         {@const co = Math.min(0.95, 0.45 + auroraStr * 0.55)}

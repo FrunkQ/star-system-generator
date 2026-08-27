@@ -50,6 +50,19 @@ export function chromoAlpha(weight: number): number {
   return Math.min(0.7, weight + 0.2) * Math.min(1, weight / CHROMOPHORE_MAX_WEIGHT);
 }
 
+// WHETHER A GIANT CARRIES A LONG-LIVED STORM, as a CHANCE rather than a coin flip on its id.
+//
+// A Great-Red-Spot-style anticyclone is not decoration: it is what a strongly banded circulation
+// does at the shear line between two jets, and it needs those jets to be sharp enough to pen it in
+// for centuries. So the chance follows how hard the world bands, and a smooth ball has none to give.
+// It used to be a flat `rnd() > 0.35` on any giant that banded at all, which put a permanent dark
+// oval on Saturn - and Saturn has no persistent spot, only the occasional white one.
+// Calibrated against the pair we can actually check: Jupiter bands at 0.84 and has one; Saturn bands
+// at 0.38 and does not. `giantBanding.spec.ts` pins both.
+export function stormChance(bandStrength: number): number {
+  return Math.max(0, Math.min(1, (bandStrength - 0.45) / 0.3));
+}
+
 // Deterministic PRNG seeded from the body id.
 function hashStr(s: string): number {
   let h = 2166136261;
@@ -412,10 +425,10 @@ function render(body: CelestialBody): HTMLCanvasElement {
       ctx.fillRect(0, row * bandH, SIZE, bandH * (0.6 + rnd() * 0.8));
       ctx.globalAlpha = 1;
     }
-    // Great-Red-Spot-style oval, on a giant that bands hard enough to organise one. Fades in with
+    // Great-Red-Spot-style oval, on a giant whose jets are sharp enough to pen one in. Fades in with
     // the banding rather than switching on with it — an oval appearing whole is the same cliff this
     // whole change is about, one shape further down.
-    if (bandStrength > 0.02 && n >= 4 && rnd() > 0.35) {
+    if (n >= 4 && rnd() < stormChance(bandStrength)) {
       const row = 1 + Math.floor(rnd() * (n - 2));
       ctx.globalAlpha = bandStrength;
       ctx.fillStyle = shade(chromo[0]?.hex ?? base, 0.78);
@@ -632,13 +645,21 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     ctx.beginPath(); ctx.moveTo(0, 0);
     for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yb(x));
     ctx.lineTo(EQ_W, 0); ctx.closePath();
-    ctx.fillStyle = 'rgba(48,64,104,0.42)'; ctx.fill();                 // stormy vortex interior (darker = more contrast)
-    ctx.strokeStyle = 'rgba(220,230,250,0.7)'; ctx.lineWidth = 2.6 * S; // bright jet rim
+    // Colours come from the SPEC, which derives them from this body's own cloud colour. They used to
+    // be three literal slate blues here and one more in PlanetDisc - two renderers each choosing a
+    // look, which is the one thing the physics-drives-visuals rule forbids, and which drew Saturn's
+    // hexagon as a grey patch on a gold planet.
+    ctx.globalAlpha = 0.42;
+    ctx.fillStyle = a.polarVortex.fillHex; ctx.fill();                  // interior: deeper air, darker
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = a.polarVortex.rimHex; ctx.lineWidth = 2.6 * S;    // bright jet rim
     ctx.beginPath();
     for (let x = 0; x <= EQ_W; x += 3) (x === 0 ? ctx.moveTo(x, yb(x)) : ctx.lineTo(x, yb(x)));
     ctx.stroke();
-    ctx.fillStyle = 'rgba(205,218,242,0.42)';                          // a small bright eye at the pole
+    ctx.globalAlpha = 0.42;
+    ctx.fillStyle = a.polarVortex.eyeHex;                               // a small bright eye at the pole
     ctx.beginPath(); ctx.ellipse(EQ_W / 2, baseLat * 0.35, EQ_W * 0.12, baseLat * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   // (The flat cap wash that used to live here is gone. Ice is painted with the surface now, ragged
@@ -793,7 +814,7 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
       ctx.fillRect(0, row * bandH, EQ_W, bandH * (0.6 + rnd() * 0.8));
       ctx.globalAlpha = 1;
     }
-    if (bandStrength > 0.02 && n >= 4 && rnd() > 0.35) {
+    if (n >= 4 && rnd() < stormChance(bandStrength)) {
       const row = 1 + Math.floor(rnd() * (n - 2));
       const cx = EQ_W * rnd();
       ctx.globalAlpha = bandStrength;

@@ -28,7 +28,8 @@ import { systemProcessor } from '../core/SystemProcessor';
 import { fixUpImportedSystem } from '../system/importFixup';
 import { decksFromTags, CLOUD_DECK_TAG } from '../physics/cloudDecks';
 import { deriveApparentColorParts, CHROMOPHORE_MAX_WEIGHT } from './apparentColor';
-import { giantBandRamp, chromoAlpha } from './planetTexture';
+import { giantBandRamp, chromoAlpha, stormChance } from './planetTexture';
+import { deriveAppearance } from './planetAppearance';
 import type { System, RulePack, CelestialBody } from '$lib/types';
 
 function isObject(i: any) { return i && typeof i === 'object' && !Array.isArray(i); }
@@ -246,5 +247,76 @@ describe('B95: a deck that does come and go, ramps', () => {
   it('and there are intermediate coverages, not just present-or-absent', () => {
     const mids = [0.0082, 0.0084, 0.0086].map(coverAt).filter((c) => c > 0.02 && c < 0.85);
     expect(mids.length, 'no partly-formed deck anywhere across the boundary').toBeGreaterThanOrEqual(2);
+  });
+});
+
+// A LONG-LIVED STORM IS SOMETHING A BANDED CIRCULATION DOES, not decoration sprinkled on giants.
+// It used to be a flat `rnd() > 0.35` on any giant that banded at all, which gave Saturn a permanent
+// dark oval - and Saturn has no persistent spot, only the occasional white one. The chance now
+// follows how hard the world bands, and the two we can actually check calibrate it.
+describe('B95: a storm oval belongs to a giant whose jets can pen one in', () => {
+  it("Jupiter's banding earns a storm and Saturn's does not", () => {
+    expect(stormChance(0.843), "Jupiter bands at 0.843 and has a Great Red Spot").toBe(1);
+    expect(stormChance(0.376), "Saturn bands at 0.376 and has no persistent spot").toBe(0);
+  });
+
+  it('a smooth giant and an ice giant never get one', () => {
+    expect(stormChance(0)).toBe(0);
+    expect(stormChance(0.2)).toBe(0);
+  });
+
+  it('and in between it is a CHANCE, not a switch', () => {
+    const mid = stormChance(0.6);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(1);
+    // monotone and jump-free across the whole range
+    let prev = -1, biggest = 0;
+    for (let i = 0; i <= 200; i++) {
+      const c = stormChance(i / 200);
+      if (prev >= 0) { expect(c).toBeGreaterThanOrEqual(prev - 1e-12); biggest = Math.max(biggest, c - prev); }
+      prev = c;
+    }
+    expect(biggest, 'the chance jumped - this is a switch again').toBeLessThan(0.05);
+  });
+});
+
+// THE POLAR VORTEX TAKES ITS COLOUR FROM THE BODY, not from the renderer. Two painters each held
+// their own literal slate blues, which drew Saturn's hexagon as a grey patch on a gold planet.
+describe('B95: the polar vortex is coloured off the body, not off a literal', () => {
+  const giant = (cloudHex: string) => ({
+    id: 'g', name: 'G', kind: 'body', roleHint: 'planet',
+    classes: ['planet/ammonia-clouds-gas-giant'],
+    massKg: 1.898e27, radiusKm: 69911, temperatureK: 160,
+    makeup: { metal: 0, rock: 0, carbon: 0, ice: 0.39, gas: 0.61 },
+    atmosphere: { name: 'x', pressure_bar: 1, composition: { H2: 0.86, He: 0.14 } },
+    tags: [{ key: 'feature/polar-vortex', value: '6' }],
+    apparentColor: { hex: cloudHex, banding: 6, palette: [
+      { hex: cloudHex, role: 'surface', weight: 1, rawHex: cloudHex },
+      { hex: cloudHex, role: 'cloud', weight: 0.9, label: 'ammonia cloud deck', rawHex: cloudHex }
+    ] }
+  }) as any;
+
+  it('a gold giant gets a warm vortex and a blue one gets a cool vortex', () => {
+    const gold = deriveAppearance(giant('#d4b294')).polarVortex!;
+    const blue = deriveAppearance(giant('#62b1d1')).polarVortex!;
+    const red = (h: string) => parseInt(h.slice(1, 3), 16);
+    const blu = (h: string) => parseInt(h.slice(5, 7), 16);
+    expect(red(gold.fillHex), 'a gold planet must not get a blue vortex').toBeGreaterThan(blu(gold.fillHex));
+    expect(blu(blue.fillHex), 'a blue planet must not get a warm vortex').toBeGreaterThan(red(blue.fillHex));
+  });
+
+  it('the interior is darker than the clouds and the rim is brighter', () => {
+    const v = deriveAppearance(giant('#d4b294'))!.polarVortex!;
+    const lum = (h: string) => 0.2126*parseInt(h.slice(1,3),16) + 0.7152*parseInt(h.slice(3,5),16) + 0.0722*parseInt(h.slice(5,7),16);
+    expect(lum(v.fillHex)).toBeLessThan(lum('#d4b294'));
+    expect(lum(v.rimHex)).toBeGreaterThan(lum('#d4b294'));
+  });
+
+  it('is never the old hardcoded slate blue', () => {
+    const v = deriveAppearance(giant('#d4b294'))!.polarVortex!;
+    for (const h of [v.fillHex, v.rimHex, v.eyeHex]) {
+      expect(h.toLowerCase()).not.toBe('#3c5078');   // rgba(60,80,120)
+      expect(h.toLowerCase()).not.toBe('#304068');   // rgba(48,64,104)
+    }
   });
 });

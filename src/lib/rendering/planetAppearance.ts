@@ -126,6 +126,13 @@ export interface FrostSpec {
 }
 export interface PolarVortexSpec {
 	sides: number;     // a polar jet-stream polygon (Saturn's hexagon=6; Jupiter's poles run 5–9)
+	// THE VORTEX IS THE SAME AIR AS THE REST OF THE PLANET, so its colours are DERIVED from the
+	// body's own cloud colour and published here rather than chosen by a renderer. Both painters
+	// (the SVG disc and the 3D equirect) used to hardcode their own slate blues — two copies of one
+	// authored look, which drew Saturn's hexagon as a grey patch on a gold world.
+	fillHex: string;   // the vortex interior: the body's cloud colour, darkened
+	rimHex: string;    // the jet rim: the same colour, brightened
+	eyeHex: string;    // the small bright eye at the pole
 }
 /** One painted layer of a world's life — read straight off the DERIVED `body.vegetation`, whose
  *  colours were already resolved from pack data in physics/vegetation.ts. A renderer never needs the
@@ -429,7 +436,19 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// run 5–9). The renderer draws a many-sided polygon ringing the pole.
 	const vortexTag = (body.tags ?? []).find((t) => t.key === 'feature/polar-vortex');
 	const polarVortex: PolarVortexSpec | null = (!isStar && !isBelt && rendersAsGiant(body) && vortexTag)
-		? { sides: Math.max(4, Math.min(9, parseInt(vortexTag.value ?? '6', 10) || 6)) }
+		? (() => {
+				// The pole's own air, seen deeper. A polar cyclone clears the upper haze and lets you
+				// look further down, so it reads DARKER than the surrounding cloud tops and its jet rim
+				// reads brighter where the cloud piles up against it. Both come off the giant's cloud
+				// colour, so a gold planet gets a gold vortex and a blue one gets a blue vortex.
+				const cloudHex = palette.find((p) => p.role === 'cloud')?.hex ?? baseColorHex;
+				return {
+					sides: Math.max(4, Math.min(9, parseInt(vortexTag.value ?? '6', 10) || 6)),
+					fillHex: shade(cloudHex, -0.45),
+					rimHex: shade(cloudHex, 0.42),
+					eyeHex: shade(cloudHex, 0.28)
+				};
+			})()
 		: null;
 
 	// Magma / lava: a full lava world, or discrete tidal volcanism / hotspots.
