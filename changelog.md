@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.148 - 27th Aug 2026
+
+- Docs only. The camera and scale redesign said one of its remaining pieces was still to do when it had already shipped months ago. Corrected, so the next person to pick it up does not rebuild something that is already there.
+
 ## v3.0.147 - 27th Aug 2026
 
 - Docs only. A criterion for carrying the engine map into a new engine: which of its rules are about physics, which about how a derivation engine must behave, which about the browser, and which only about the code as it stands today.

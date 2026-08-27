@@ -1,8 +1,14 @@
 # Camera, framing and scale - redesign
 
 STATUS: P1, P2, P3, P3b and P3c ALL SHIPPED AND CONFIRMED BY THE OWNER (v2.1.451-486-beta).
-ONLY P4 (the scale law) REMAINS, plus banked P5 - see section 7. P4 is gated on the owner's eye:
-it moves saved presets' mid-dial looks, so /scale-reference is signed off BEFORE it ships.
+**S2b IS ALSO DONE AND SHIPPED - VERIFIED IN THE CODE 2026-08-27, because this line used to say it
+was not and sent a reader off to re-fix it.** `NUMERICAL_FLOOR` is 1e-10 and is applied by
+`bodyRadiusScene`, the star branch AND `shipLengthScene` alike (`rendering/scaleLaw.ts` lines 54,
+104, 119, 161); it landed in commit `fd03ef1a`; and its acceptance block
+(`describe('S2b: one numerical floor across kinds')`, `scaleLaw.spec.ts`) is live and passing.
+WHAT REMAINS OF P4 IS S2 (the size law) AND S2c (the two dials) - see section 7. P4 is gated on
+the owner's eye: it moves saved presets' mid-dial looks, so /scale-reference is signed off BEFORE
+it ships.
 Companion reading before touching any of this: RENDER-S17 through S21 in engine-map.md, which are
 the traps this phase found the hard way - and section 7's P3c entry, which lists the field reports
 and their real causes (three of the four had a cause nobody had proposed).
@@ -517,8 +523,15 @@ P5. BANKED (owner, 2026-08-07): the STARMAP 3D view must also allow travel below
     system view's polar limits did nothing for it. Half of a 3D starmap is under the plane for the
     same reason half a system is, and the rebuilt bundled maps carry real z depth, so it matters
     more there than it used to.
-P4. The new scale law (S2 + S2b's single floor + S2c's two dials) - LAST, because it moves preset looks (S3) and needs the owner's
-    sign-off on the reference screen first. Turns on the skipped R9 tests in scaleLaw.spec.ts.
+P4. The new scale law - LAST, because it moves preset looks (S3) and needs the owner's sign-off on
+    the reference screen first. Turns on the skipped R9 tests in scaleLaw.spec.ts.
+    **WHAT IS LEFT IS S2 AND S2c. S2b IS DONE** - this entry used to read "S2 + S2b's single floor
+    + S2c's two dials" and the S2b term was already shipped, which is a live trap: the next reader
+    re-fixes a floor that is already one floor. Verified in the code 2026-08-27 (see STATUS above
+    for the line numbers, the commit and the passing acceptance block). DO NOT RE-FIX IT.
+    ORDER WITHIN P4, and it is not arbitrary (see S2c): S2 FIRST, THEN S2c. The construct dial is a
+    deliberate, labelled departure from truth, and that only means something once truth exists
+    underneath it.
 
 
 ### S2c. TWO DIALS — BODIES AND CONSTRUCTS — owner, 2026-08-27. ADDED TO P4, NOT INSTEAD OF IT.
