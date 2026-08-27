@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.120 - 27th Aug 2026
+
+- Board only. The player-view crash is reproduced and traced: with the clock running, a following player view rebuilds its entire 3D scene on every incoming snapshot even when nothing in the system has changed, fifty-nine times out of sixty-one in the captured run.
+
 ## v3.0.119 - 27th Aug 2026
 
 - Auroras now ring the poles instead of reaching a third of the way to the equator. An auroral oval marks where the outermost closed magnetic field line comes down, and that sits close to the pole however bright the aurora is - near sixteen degrees on Jupiter, fifteen on Saturn, twenty on Earth. The old drawing pushed it further out the stronger the field got, which is backwards, and on Jupiter it covered enough of the planet to hide the very banding that makes Jupiter look like Jupiter. A stronger aurora is still a wider one, within the range a real one occupies.
