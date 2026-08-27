@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.138 - 27th Aug 2026
+
+- Board only. A correction to what the player-view network work can be expected to achieve on its own, so the result is not misread when it lands.
+
 ## v3.0.137 - 27th Aug 2026
 
 - Board only. The seasonal-worlds idea is joined to the surface-areas work: a world whose water freezes and thaws does not do it everywhere, so what changes over a year is a region rather than a planet, and the two are better built together.
