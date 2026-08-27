@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.90 - 26th Aug 2026
+
+- Every page load no longer reports two files missing. The app probed each rule pack for an optional liquids and biospheres file; no pack has ever shipped either, so the browser logged a 404 for both on every single load, which reads as a broken app. Campaign customisations were never using that route anyway: your own liquids, atmospheres and biospheres are saved with the campaign and travel with it, which a pack file could not do. Nothing about how they work has changed.
+
 ## v3.0.89 - 26th Aug 2026
 
 - Choosing where to go is one control now, and it is the same one everywhere. Picking a destination, picking a body in the system view, and picking a system to jump to were three different things to learn - and the interstellar one was three plain dropdowns with no search at all.
