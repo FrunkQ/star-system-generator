@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.94 - 26th Aug 2026
+
+- Board only. Captured B94, a 3D player view that resets its shot every few seconds and eventually runs out of memory (not reproducible on demand, but the always-on diagnostic already records what would identify it), and A77, an on-screen memory and performance readout for beta pages including player views.
+
 ## v3.0.93 - 26th Aug 2026
 
 - Board only. Captured G48: painting a ship&rsquo;s name on its hull, placed and scaled and coloured by hand. The hull-picking the drive placer already uses turns out to be most of what it needs.
