@@ -124,8 +124,54 @@ export interface FrostSpec {
 	coverage: number;  // 0..1 bright volatile-ice cover from retained species
 	colorHex: string;  // N2/CO2/water → white-blue; SO2 → sulphur yellow
 }
+/**
+ * Read a giant's polar vortices out of its `feature/polar-vortex` tags. Returns the side count for
+ * each pole; 0 means that pole has none.
+ *
+ * THREE FORMS, and all three must keep working, because saves carry them and GMs type them by hand:
+ *   "north 6" + "south round"  — current: one tag per pole. A count is a POLYGONAL JET (a standing
+ *                                wave in the polar jet stream); `round` is a plain cyclone with an
+ *                                eye and no polygon. Saturn is exactly this pair.
+ *   "north 8" + "south 5"      — both polygonal, different counts. Jupiter is this pair: Juno
+ *                                counted eight cyclones round a central one north, five south.
+ *   "6"                        — every pre-split save, and the obvious thing to type by hand. A bare
+ *                                count means BOTH poles polygonal at that count, which is exactly
+ *                                how such a save already renders, so nothing saved changes.
+ *   (a pole named twice)       — last one wins, so a manual tag laid over an auto one behaves like
+ *                                every other manual override.
+ * Returns null for a pole with no vortex, 0 for a round cyclone, or 4..9 for a polygon. Anything
+ * unparseable is ignored rather than thrown on: a stale hand-edited tag should not blank a planet.
+ * Counts clamp to 4..9 — fewer than four sides is not a polygon anyone reads as one, and more than
+ * nine is a circle at any size we draw (which is what `round` is for anyway).
+ */
+export type PoleVortex = number | null;   // null = none, 0 = round cyclone, 4..9 = polygon sides
+export function parsePolarVortexTags(tags: { key: string; value?: string }[] | undefined):
+	{ north: PoleVortex; south: PoleVortex } {
+	const out: { north: PoleVortex; south: PoleVortex } = { north: null, south: null };
+	const clamp = (n: number) => Math.max(4, Math.min(9, n));
+	for (const t of tags ?? []) {
+		if (t.key !== 'feature/polar-vortex') continue;
+		const parts = String(t.value ?? '').trim().toLowerCase().split(/\s+/);
+		if (parts.length >= 2 && (parts[0] === 'north' || parts[0] === 'south')) {
+			const pole = parts[0] as 'north' | 'south';
+			if (parts[1] === 'round') { out[pole] = 0; continue; }
+			const n = parseInt(parts[1], 10);
+			if (Number.isFinite(n)) out[pole] = clamp(n);
+			continue;
+		}
+		if (parts[0] === 'round') { out.north = 0; out.south = 0; continue; }
+		const bare = parseInt(parts[0], 10);
+		if (Number.isFinite(bare)) { out.north = clamp(bare); out.south = clamp(bare); }
+	}
+	return out;
+}
+
 export interface PolarVortexSpec {
-	sides: number;     // a polar jet-stream polygon (Saturn's hexagon=6; Jupiter's poles run 5–9)
+	// ONE ENTRY PER POLE, because the real ones differ: Juno counted eight cyclones round a central
+	// one at Jupiter's north and five at its south, and Saturn has a hexagonal JET at the north
+	// against a plain eyed CYCLONE at the south. null = no vortex there, 0 = round, 4..9 = polygon.
+	northSides: PoleVortex;
+	southSides: PoleVortex;
 	// THE VORTEX IS THE SAME AIR AS THE REST OF THE PLANET, so its colours are DERIVED from the
 	// body's own cloud colour and published here rather than chosen by a renderer. Both painters
 	// (the SVG disc and the 3D equirect) used to hardcode their own slate blues — two copies of one
@@ -434,8 +480,9 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 	// POLAR VORTEX — a gas giant's geometric polar jet stream (Saturn's hexagon). Hard to predict, so
 	// it's spawned as a tag at generation; the SIDE COUNT rides as the value (Saturn 6; Jupiter's poles
 	// run 5–9). The renderer draws a many-sided polygon ringing the pole.
-	const vortexTag = (body.tags ?? []).find((t) => t.key === 'feature/polar-vortex');
-	const polarVortex: PolarVortexSpec | null = (!isStar && !isBelt && rendersAsGiant(body) && vortexTag)
+	const vortexPoles = parsePolarVortexTags(body.tags);
+	const polarVortex: PolarVortexSpec | null =
+		(!isStar && !isBelt && rendersAsGiant(body) && (vortexPoles.north !== null || vortexPoles.south !== null))
 		? (() => {
 				// The pole's own air, seen deeper. A polar cyclone clears the upper haze and lets you
 				// look further down, so it reads DARKER than the surrounding cloud tops and its jet rim
@@ -443,7 +490,8 @@ export function deriveAppearance(body: CelestialBody): AppearanceModel {
 				// colour, so a gold planet gets a gold vortex and a blue one gets a blue vortex.
 				const cloudHex = palette.find((p) => p.role === 'cloud')?.hex ?? baseColorHex;
 				return {
-					sides: Math.max(4, Math.min(9, parseInt(vortexTag.value ?? '6', 10) || 6)),
+					northSides: vortexPoles.north,
+					southSides: vortexPoles.south,
 					fillHex: shade(cloudHex, -0.45),
 					rimHex: shade(cloudHex, 0.42),
 					eyeHex: shade(cloudHex, 0.28)

@@ -303,14 +303,20 @@
   // put it at 34 degrees from the pole and half again too wide.
   function vortexPolyAt(north: boolean): string {
     if (!a.polarVortex) return '';
+    const sides = north ? a.polarVortex.northSides : a.polarVortex.southSides;
+    if (sides === null || sides === undefined) return '';   // no vortex at this pole
     const colat = (VORTEX_COLAT_DEG * Math.PI) / 180;
-    const sides = a.polarVortex.sides, cx = 50;
+    const cx = 50;
     const drop = DISC_R * Math.cos(colat);
     const cy = north ? 50 - drop : 50 + drop;
     const rx = DISC_R * Math.sin(colat), ry = rx * 0.38;
-    const pts = Array.from({ length: sides }, (_, i) => {
-      const th = (i / sides) * 2 * Math.PI + Math.PI / sides;
-      return `${(cx + rx * Math.cos(th)).toFixed(1)},${(cy + ry * Math.sin(th)).toFixed(1)}`;
+    // 0 sides is a ROUND cyclone - Saturn's south. Drawn as a many-sided ring so one path type
+    // serves both, rather than a second element the two painters could disagree about.
+    const n = sides < 3 ? 36 : sides;
+    const pts = Array.from({ length: n }, (_, i) => {
+      const th = (i / n) * 2 * Math.PI + Math.PI / n;
+      const r = sides < 3 ? 1 : 1 / Math.cos((((th % (2 * Math.PI / n)) + 2 * Math.PI / n) % (2 * Math.PI / n)) - Math.PI / n);
+      return `${(cx + rx * r * Math.cos(th)).toFixed(1)},${(cy + ry * r * Math.sin(th)).toFixed(1)}`;
     });
     return 'M' + pts.join(' L') + ' Z';
   }

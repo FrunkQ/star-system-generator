@@ -3598,6 +3598,14 @@
           "value": "constant"
         },
         {
+          "key": "feature/polar-vortex",
+          "value": "north 8"
+        },
+        {
+          "key": "feature/polar-vortex",
+          "value": "south 6"
+        },
+        {
           "key": "ring/system"
         },
         {
@@ -5934,7 +5942,11 @@
         },
         {
           "key": "feature/polar-vortex",
-          "value": "6"
+          "value": "north 6"
+        },
+        {
+          "key": "feature/polar-vortex",
+          "value": "south round"
         },
         {
           "key": "ring/system"
@@ -9472,7 +9484,11 @@
         },
         {
           "key": "feature/polar-vortex",
-          "value": "6"
+          "value": "north 6"
+        },
+        {
+          "key": "feature/polar-vortex",
+          "value": "south round"
         },
         {
           "key": "ring/system"
@@ -11115,6 +11131,14 @@
         {
           "key": "weather/lightning",
           "value": "frequent"
+        },
+        {
+          "key": "feature/polar-vortex",
+          "value": "north 6"
+        },
+        {
+          "key": "feature/polar-vortex",
+          "value": "south 6"
         },
         {
           "key": "ring/system"

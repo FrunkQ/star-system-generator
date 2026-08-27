@@ -270,6 +270,26 @@ Decks stack by temperature, not by the order you write them: whichever species c
 deepest, and the top one is the one you mostly see. A hand-written deck beats a derived one of the
 same species, so writing `water veil` on a dry world does not fight the physics — it replaces it.
 
+### Giving a gas giant a polar vortex
+
+`feature/polar-vortex` is the other tag worth writing by hand, and the other one that draws itself.
+It puts a polygonal jet at a giant's pole — Saturn's hexagon is the one everybody knows. One tag per
+pole:
+
+    feature/polar-vortex = north 6
+    feature/polar-vortex = south round
+
+A number is a polygon with that many sides (4 to 9; six is the commonest). The word `round` is a
+plain cyclone with an eye and no polygon, which is what Saturn's southern pole actually has. Leave a
+pole out entirely and it has nothing. You can also just write a bare number — `feature/polar-vortex
+= 6` — which puts the same polygon at both poles, and is what every map saved before this did.
+
+**The engine rolls these for you, and your tag always wins.** Most giants that spin fast enough get
+them; how alike the two poles are follows the world's axial tilt, because a strongly tilted planet
+runs its hemispheres through opposite seasons. That is a *rule*, not a simulation — see
+[known fudges](#) on the physics page for exactly how much of it is a roll of the dice. If you want a
+particular world hexagonal, tag it and the roll steps aside.
+
 ## Finding things
 
 **Find by tag** searches every body or construct carrying the tags you pick. Switch between bodies

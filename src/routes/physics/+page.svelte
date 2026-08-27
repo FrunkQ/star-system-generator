@@ -1937,6 +1937,25 @@
           of 10 µm for every substance. Both are grounded in real cloud measurements, but the shape of the
           curve between them is a judgement call — it is the biggest single fudge in the cloud model, and the
           reason Earth lands at roughly two-thirds cloud cover is that we tuned it to.</li>
+        <li><strong>Polar vortices are a seeded rule, not fluid dynamics.</strong> The polygonal jet at a
+          giant's pole — Saturn's hexagon is the famous one — is a standing wave in a narrow, fast polar
+          jet stream. Deriving one properly means solving the circulation of a rotating fluid shell, which
+          this engine does not attempt and is not going to. So it is rolled, from the body's own id, against
+          three things that are at least the right ingredients: <em>spin</em> decides whether there are polar
+          vortices at all, because it is converging jets that make them and a world whose day is far too long
+          has no Coriolis force to organise the flow; <em>axial tilt</em> decides how alike the two poles are,
+          since a barely-tilted world runs both hemispheres under the same steady forcing while a strongly
+          tilted one drives them through hard seasons in antiphase; and the <em>side count</em> is drawn per
+          pole, because how many cells a polar cluster settles into follows the size of the cap against the
+          local weather scale, and the two hemispheres are not identical. A pole that does not lock a polygon
+          still gets a cyclone, just a round one with an eye.
+          <br />It reproduces the two we can check — Jupiter, tilted 3°, gets polygons at both poles as
+          Juno found (eight cyclones around a central one at the north, five at the south), and Saturn, tilted
+          27°, gets its hexagon at one pole and a plain eyed cyclone at the other, as Cassini found. That
+          agreement is the rule being sane, not the rule being right: it is a plausible-looking result from a
+          seeded draw, and a real giant's pole is doing something far more interesting. If you want a
+          particular world to have one, say so with a tag — a hand-added
+          <code>feature/polar-vortex</code> always beats the roll.</li>
         <li>Cloud <em>colours</em> are a lookup, not a derivation. Which layers a world has and where they sit is
           computed; what each substance looks like is a chosen swatch per liquid, and the ice-giant blue is a
           hand-picked pair of colours with a temperature threshold between them. The structure is physics; the

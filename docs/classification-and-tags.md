@@ -310,6 +310,7 @@ same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Trit
 | `structure/*` | icy shell, subsurface ocean, cloud decks | processor (classification) |
 | `volatiles/*` | which ices survive on the surface | processor (classification) |
 | `weather/*` | lightning, dust storms, monsoon, precipitation | processor (classification) |
+| `feature/*` | a giant's polar vortex (one tag per pole; a side count for a polygonal jet, or `round` for a plain eyed cyclone) | processor — but SEEDED, not derived: see "known fudges" on the physics page |
 | `aurora/*` · `shape/*` · `ring/*` · `resonance/*` | polar glow, rotational deformation, ring tiers, period ratios | processor |
 | `habitability/*` | habitability tier | processor (habitability) |
 | `biodiversity/*` | which pigment a world's life settled on, how much of the LAND shows life, and how far a settlement has spread | processor (classification, the surface-light pass) |

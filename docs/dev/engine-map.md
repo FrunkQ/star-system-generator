@@ -4006,3 +4006,29 @@ drew Saturn's hexagon as a grey patch on a gold planet. Same shape as the hardco
 already deleted from `apparentColor`, and the same duplication: two renderers each inventing a look.
 BLAST: a gold giant now gets a gold vortex and a blue one a blue vortex (Saturn #756151/#e6d2c1,
 Uranus #336174/#a1d1e5). If you add a third painter, read the spec - do not pick a colour.
+
+### TAG-24 A POLAR VORTEX IS ONE TAG PER POLE, AND THE POLES ARE NOT THE SAME PLACE
+WHERE: emitted in `SystemProcessor` (the polar-vortex block), read by `parsePolarVortexTags` in
+`planetAppearance.ts`, drawn by both painters.
+RULE: `feature/polar-vortex` carries `"<pole> <sides>"` or `"<pole> round"`, one tag per pole. A
+count is a POLYGONAL JET; `round` is a plain cyclone with an eye; an absent pole has nothing. The
+parser returns null / 0 / 4..9 for those three, and 0-means-round is why an absent pole must be null
+rather than 0. A BARE COUNT (`"6"`) is every pre-split save and the obvious thing to hand-type: it
+means both poles polygonal at that count, which is exactly how such a save already rendered.
+WHY THE TWO POLES DIFFER, and this is the part that is easy to get wrong: they are not mirror images.
+Juno counted EIGHT cyclones round a central one at Jupiter's north and FIVE at its south; Saturn has
+a hexagonal jet at the north and a plain eyed cyclone at the south. Drawing one count at both makes
+Saturn hexagonal at both poles, which the owner spotted on sight.
+HOW IT IS ROLLED, because it is a ROLL and the physics page says so under "known fudges": SPIN
+decides whether there are polar vortices at all (converging jets make them; a day too long has no
+Coriolis to organise the flow) - this replaced a blind `hash01 < 0.7` that left Jupiter and Neptune
+with none, which the anchors caught. AXIAL TILT decides how ALIKE the two poles are, not how likely
+each is: `alike = 1 - min(1, obliquity/30)`, so a barely-tilted world gets twin poles and a strongly
+tilted one gets opposites. The second pole then MATCHES the first with that probability. Getting this
+wrong the other way - lowering each pole's chance independently - let Saturn lock a polygon twice on
+a 37% roll. Side counts are drawn separately even when both poles lock.
+ANCHORS: Jupiter (3.1 deg, alike 0.90) gets 8-gon north and 6-gon south; Saturn (26.7 deg, alike
+0.11) gets 6-gon north and round south. Both match life. Do NOT tune further on Neptune, whose poles
+are not characterised - it drew matching poles on a 6% roll and that is the model being honest.
+BLAST: a manual tag beats the roll (`stripForReprocess` spares it and the generator only fires when
+no tag is present), which is the documented GM override in `tags-guide.md`.

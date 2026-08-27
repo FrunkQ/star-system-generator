@@ -1437,10 +1437,54 @@ export class SystemProcessor implements ISystemProcessor {
         // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8
         // (6 = the Saturn hexagon, the commonest). Deterministic on the body id so it's stable across
         // re-runs. Re-derived → strip any prior auto copy but keep a user's manual one.
+        //
+        // ONE TAG PER POLE, AND THE TWO POLES ARE NOT THE SAME PLACE.
+        //
+        // Two things vary per pole. HOW MANY cells a polar cluster settles into depends on the polar
+        // cap's size against the local deformation radius, so the counts are drawn separately —
+        // Jupiter is the measured case, Juno counting EIGHT cyclones around a central one at the
+        // north and FIVE at the south. And WHETHER the jet locks into a polygon at all is a standing
+        // Rossby wave, which needs a steady, well-organised polar jet to hold its shape; a pole that
+        // does not get one still has a cyclone, just a round one with an eye.
+        //
+        // AXIAL TILT IS WHAT DECIDES HOW ALIKE THE TWO POLES ARE, and it separates the two giants we
+        // can actually check. A barely-tilted world has near-identical hemispheres, gets the same
+        // steady forcing at both ends and tends to lock a polygon at both: Jupiter, tilted 3.1
+        // degrees, has one at each pole. A strongly tilted world drives its hemispheres through hard
+        // seasons in antiphase, and a jet being seasonally spun up and down is a poor place for a
+        // standing wave: Saturn, tilted 26.7 degrees, has a hexagon at the north and a plain eyed
+        // cyclone at the south. So the chance a pole locks a polygon falls with tilt.
+        // See `parsePolarVortexTags` for the value format and its back-compatibility.
         body.tags = stripForReprocess(body.tags, ['feature/polar-vortex']);
-        if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex') && hash01(`${body.id}|vortex`) < 0.7) {
-            const sides = [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|vsides`) * 6) % 6];
-            body.tags.push({ key: 'feature/polar-vortex', value: String(sides) });
+        if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex')) {
+            // WHETHER THERE ARE POLAR VORTICES AT ALL IS ABOUT SPIN, not a blind roll. Converging
+            // polar jets are what a rapidly rotating envelope does, and all four of our giants have
+            // them; what stops one forming is a day too long for Coriolis to organise the flow, which
+            // is a tidally locked hot Jupiter rather than a cold fast one. (This was `hash01 < 0.7`,
+            // which left Jupiter and Neptune with no polar vortex at all - the anchors caught it.)
+            const hours = Math.abs(body.rotation_period_hours ?? 10);
+            const spin = Math.max(0, Math.min(1, (100 - hours) / 80));    // fast spinner -> certain
+            if (hash01(`${body.id}|vortex`) < spin) {
+                // HOW ALIKE THE TWO POLES ARE IS AXIAL TILT, and that is the whole discriminator.
+                // A barely-tilted world runs both hemispheres under the same steady forcing and they
+                // behave alike; a strongly tilted one drives them through hard seasons in ANTIPHASE,
+                // so what one pole does the other tends not to. Both giants we can check fall out of
+                // it: Jupiter at 3.1 degrees has a polygonal cluster at BOTH poles (Juno counted
+                // eight round a central one north, five south), and Saturn at 26.7 has a hexagonal
+                // jet north against a plain eyed cyclone south (Cassini).
+                const tiltDeg = Math.abs(body.axial_tilt_deg ?? 0) % 180;
+                const obliquity = Math.min(tiltDeg, 180 - tiltDeg);       // 0..90, how seasonal it is
+                const alike = 1 - Math.min(1, obliquity / 30);            // 1 = twin poles, 0 = opposites
+                // A polygon is a standing wave in the polar jet; most giants hold one somewhere.
+                const lead = hash01(`${body.id}|vlock`) < 0.85;
+                const follows = hash01(`${body.id}|vmatch`) < alike ? lead : !lead;
+                // The counts are drawn SEPARATELY even when both poles lock, because the cell count
+                // follows the cap size against the local deformation radius and the hemispheres are
+                // not identical - Jupiter's eight and five.
+                const sides = (salt: string) => [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|${salt}`) * 6) % 6];
+                body.tags.push({ key: 'feature/polar-vortex', value: lead ? `north ${sides('vsides')}` : 'north round' });
+                body.tags.push({ key: 'feature/polar-vortex', value: follows ? `south ${sides('vsides-s')}` : 'south round' });
+            }
         }
 
         // Ring system — DERIVED from geometry (does the body host ring children?), not hand-tagged.

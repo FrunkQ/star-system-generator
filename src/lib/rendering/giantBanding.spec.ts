@@ -29,7 +29,7 @@ import { fixUpImportedSystem } from '../system/importFixup';
 import { decksFromTags, CLOUD_DECK_TAG } from '../physics/cloudDecks';
 import { deriveApparentColorParts, CHROMOPHORE_MAX_WEIGHT } from './apparentColor';
 import { giantBandRamp, chromoAlpha, stormChance, polygonRadiusAt } from './planetTexture';
-import { deriveAppearance } from './planetAppearance';
+import { deriveAppearance, parsePolarVortexTags } from './planetAppearance';
 import type { System, RulePack, CelestialBody } from '$lib/types';
 
 function isObject(i: any) { return i && typeof i === 'object' && !Array.isArray(i); }
@@ -369,5 +369,53 @@ describe('B95: the polar vortex is a polygon, not a cosine', () => {
         expect(polygonRadiusAt(sides, APOTHEM, th)).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+// ONE VORTEX TAG PER POLE, because the real ones differ - Jupiter has polygons at both (Juno: eight
+// north, five south) and Saturn a hexagon north against a plain eyed cyclone south. Every older form
+// must keep working: saves carry them and GMs type them by hand.
+describe('B95: polar vortex tags, one per pole', () => {
+  const tag = (v: string) => ({ key: 'feature/polar-vortex', value: v });
+
+  it('reads a side count per pole', () => {
+    expect(parsePolarVortexTags([tag('north 8'), tag('south 5')])).toEqual({ north: 8, south: 5 });
+  });
+
+  it('reads `round` as a cyclone with no polygon - Saturn south', () => {
+    expect(parsePolarVortexTags([tag('north 6'), tag('south round')])).toEqual({ north: 6, south: 0 });
+  });
+
+  it('a pole with no tag has no vortex, and that is not the same as a round one', () => {
+    const only = parsePolarVortexTags([tag('north 6')]);
+    expect(only.north).toBe(6);
+    expect(only.south, 'an absent pole must be null, not 0 - 0 means a ROUND vortex').toBeNull();
+  });
+
+  // BACKWARD COMPATIBILITY. Every map saved before the split carries a bare number, and a bare number
+  // is the obvious thing to type. It must keep meaning what it already renders as: both poles.
+  it('a bare count is both poles, exactly as every pre-split save renders', () => {
+    expect(parsePolarVortexTags([tag('6')])).toEqual({ north: 6, south: 6 });
+    expect(parsePolarVortexTags([tag('8')])).toEqual({ north: 8, south: 8 });
+  });
+
+  it('a later tag overrides an earlier one, so a manual tag can sit on top of an auto one', () => {
+    expect(parsePolarVortexTags([tag('north 6'), tag('south 6'), tag('south round')]).south).toBe(0);
+  });
+
+  it('clamps a silly count rather than drawing a silly shape', () => {
+    expect(parsePolarVortexTags([tag('north 2')]).north).toBe(4);
+    expect(parsePolarVortexTags([tag('north 40')]).north).toBe(9);
+  });
+
+  it('ignores junk rather than blanking the planet', () => {
+    expect(parsePolarVortexTags([tag('north banana')])).toEqual({ north: null, south: null });
+    expect(parsePolarVortexTags([tag('')])).toEqual({ north: null, south: null });
+    expect(parsePolarVortexTags(undefined)).toEqual({ north: null, south: null });
+  });
+
+  it('is case and whitespace forgiving, because a GM types these', () => {
+    expect(parsePolarVortexTags([tag('  NORTH   7 ')]).north).toBe(7);
+    expect(parsePolarVortexTags([tag('South ROUND')]).south).toBe(0);
   });
 });

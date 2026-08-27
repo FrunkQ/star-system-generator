@@ -59,7 +59,8 @@ export function chromoAlpha(weight: number): number {
 // which gives straight sides (bow exactly 0) and a vertex 1/cos(180/n) further out than an edge:
 // 1.1547 for a hexagon, against the 1.78 the cosine was producing.
 export function polygonRadiusAt(sides: number, apothem: number, angleRad: number): number {
-  const seg = (2 * Math.PI) / Math.max(3, sides);
+  if (sides < 3) return apothem;                 // 0 = a ROUND cyclone, which is a constant radius
+  const seg = (2 * Math.PI) / sides;
   const phi = (((angleRad % seg) + seg) % seg) - seg / 2;
   return apothem / Math.cos(phi);
 }
@@ -664,8 +665,8 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     // The apothem puts the ring near 13 degrees from the pole: a polar vortex sits inside the polar
     // jet, and Saturn's real hexagon is centred on 78 degrees north. That also keeps it INSIDE the
     // auroral oval, which RENDER-S37 places at 16 degrees for Saturn - the right way round.
-    const sides = a.polarVortex.sides, apothem = EQ_H * 0.072;
-    const yb = (x: number) => polygonRadiusAt(sides, apothem, (x / EQ_W) * 2 * Math.PI);
+    const apothem = EQ_H * 0.072;
+    const yb = (sides: number, x: number) => polygonRadiusAt(sides, apothem, (x / EQ_W) * 2 * Math.PI);
     // BOTH POLES. A polar vortex is what a rotating envelope does where the jets converge, and that
     // happens at each end of the spin axis - Jupiter carries a polygonal cyclone cluster at BOTH
     // poles (Juno: eight around a central one in the north, five in the south) and Saturn's south has
@@ -676,7 +677,9 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     // is the one thing the physics-drives-visuals rule forbids, and which drew Saturn's hexagon as a
     // grey patch on a gold planet.
     for (const north of [true, false]) {
-      const yAt = (x: number) => (north ? yb(x) : EQ_H - yb(x));
+      const sides = north ? a.polarVortex.northSides : a.polarVortex.southSides;
+      if (sides === null || sides === undefined) continue;      // this pole has no vortex at all
+      const yAt = (x: number) => (north ? yb(sides, x) : EQ_H - yb(sides, x));
       const edge = north ? 0 : EQ_H;
       ctx.beginPath(); ctx.moveTo(0, edge);
       for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yAt(x));
