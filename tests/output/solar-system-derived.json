@@ -3798,7 +3798,7 @@
           {
             "hex": "#bb8156",
             "role": "cloud",
-            "weight": 0.667634829202947,
+            "weight": 0.5901891890154052,
             "label": "ammonium-hydrosulfide band",
             "rawHex": "#b8845a"
           }
@@ -6141,7 +6141,7 @@
           {
             "hex": "#bb8156",
             "role": "cloud",
-            "weight": 0.4897742926108001,
+            "weight": 0.2634985694246105,
             "label": "ammonium-hydrosulfide band",
             "rawHex": "#b8845a"
           }

@@ -456,18 +456,26 @@ export function deriveApparentColorParts(
       // HOW STRONGLY a band shows is NOT all-or-nothing, and treating it as such was inbox B95: a
       // deck arriving with 1.5% of the sky was admitted at exactly the same strength as one with
       // 88%, so a giant flipped between banded and featureless on a 0.001-percentage-point
-      // composition edit. Two published coverages bound it, and both are the same idea — you can
-      // only see a band where there is something to see it THROUGH, and something to see:
-      //   • the combined cover of everything ABOVE this deck. With no deck above, you are looking
-      //     straight at this one everywhere and there is no contrast between belt and zone at all.
-      //   • this deck's OWN cover. A hydrosulphide wisp cannot paint a strong brown belt.
+      // composition edit. Two published coverages bound it, and they enter DIFFERENTLY — the
+      // asymmetry is the point and getting it wrong made Saturn look like Jupiter:
+      //   • the combined cover of everything ABOVE this deck, LINEARLY. Belts and zones exist
+      //     because the upper deck covers part of the sky and not the rest, so how much of it there
+      //     is IS how much banding you see. With no deck above you are looking straight at this one
+      //     everywhere and there is no contrast at all. This term must NOT saturate: Jupiter's
+      //     ammonia holds 88% of its sky and Saturn's 54%, and that difference is most of why
+      //     Jupiter is stripy and Saturn is a pale ball. A `min(1, cover / 0.5)` here clamped BOTH
+      //     to 1 and left planet mass as the only thing telling them apart, which drew Saturn at
+      //     three quarters of Jupiter's contrast instead of a bit over a third.
+      //   • this deck's OWN cover, SATURATING. A hydrosulphide wisp cannot paint a strong brown
+      //     belt, but once it holds about half the sky it is showing all the colour it has; more of
+      //     it does not make the belt browner.
       // Independent covers combine as 1 - prod(1 - c), which is just "the chance a given sight line
       // is blocked by at least one of them".
       giantDecks.slice(0, -1).forEach((d, i) => {
         const hex = liquidDef(d.species, rulePack)?.colorHex;
         if (!hex) return;
         const coverAbove = 1 - giantDecks.slice(i + 1).reduce((p, u) => p * (1 - u.coverage), 1);
-        const strength = Math.min(1, coverAbove / BAND_FULL_COVER) * Math.min(1, d.coverage / BAND_FULL_COVER);
+        const strength = coverAbove * Math.min(1, d.coverage / BAND_FULL_COVER);
         push(underTop(hex), 'cloud', CHROMOPHORE_FULL_WEIGHT_FOR(massMe) * strength, `${d.species} band`);
       });
     }

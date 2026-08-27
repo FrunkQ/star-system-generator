@@ -3800,6 +3800,16 @@ seam. If you add a third projection, call the ramp — do not copy the numbers.
 PAIRS WITH PHY-31: this removed the RENDERER's cliff and PHY-31 removed the one underneath it — an
 abundance floor that was deleting whole decks. Both were needed; fixing either alone leaves the other
 visible, and the ramp here is still what keeps a genuinely marginal deck from popping.
+THE TWO COVERAGE TERMS ENTER DIFFERENTLY AND THE ASYMMETRY IS LOAD-BEARING. In `apparentColor`, a
+band's strength is `coverAbove * min(1, ownCover / BAND_FULL_COVER)`. The cover of the deck ABOVE is
+LINEAR and must never be clamped: belts and zones exist because the upper deck covers part of the sky
+and not the rest, so how much of it there is IS how much banding you see. The chromophore's OWN cover
+saturates, because once it holds about half the sky it is showing all the colour it has. Clamping the
+first one is a real bug that shipped for one version: Jupiter's ammonia holds 88% of its sky and
+Saturn's 54%, both clamped to 1, which left PLANET MASS as the only thing telling them apart and drew
+Saturn at 73% of Jupiter's contrast. Saturn is a pale ball with muted belts and Jupiter is not; the
+owner spotted it on sight. Unclamped it lands at 36% (painted SD 9.0 against 25.2), with the ice
+giants still nil.
 
 ### PHY-31 A CLOUD DECK IS ADMITTED ON OPTICAL DEPTH. NEVER ON ABUNDANCE
 WHERE: `cloudDecks.ts`, the per-gas loop in `deriveCloudDecks`.
