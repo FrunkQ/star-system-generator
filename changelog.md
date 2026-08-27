@@ -2,6 +2,25 @@
 
 All notable changes are listed here:
 
+## v3.0.154 - 28th Aug 2026
+
+- Docs only. The engine map is sorted for the move to a new engine. Each of its 205 entries now says
+  what KIND of truth it is: physics that stays true whatever we build, a property any derivation
+  engine has to have, something the browser or the GPU imposes, or something that is only true of
+  this code. Nothing was renumbered and nothing was moved - the labels are a new field beside each
+  entry, so every reference to an entry from the code still lands where it did. Half the entries
+  turned out to be two truths in one, which is worth knowing before the move is planned.
+- The half that is only true of this code is now read the useful way round, in a new document: for
+  each one, what shape would have made that fault impossible in the first place. Four separate
+  drawings of one tag pill, two pickers that look like duplicates and are not, a store still
+  answering to names it stopped using - as a set they describe the pressures this codebase put on
+  the people working in it, which is the most useful thing to hand a new design.
+- Three entries were found to have gone out of date since they were written and are corrected in
+  place, with what was checked. One is marked suspect where its explanation is wrong but the fault
+  it records was real. Two entry numbers are being used twice, and one of them is quoted from the
+  code with both meanings - flagged loudly rather than renumbered, because renumbering is what
+  breaks a year of references.
+
 ## v3.0.153 - 28th Aug 2026
 
 - Getting Started explains the Lagrange points: the shapes they are drawn as, what may be placed in each, and why the mass ceiling is a guide rather than a gate.
@@ -218,7 +237,6 @@ All notable changes are listed here:
 
 - A cloud deck now records how much sky it actually holds, not just which of five bands it falls into. A band cannot say how nearly a deck exists, and that is the one thing needed to fade a deck in gently instead of having it appear whole - Mars's real water-ice haze covers 2.4% of its sky and was being drawn at 8%, the typical figure for its band. Decks you have written by hand are unaffected: "water overcast" still means what it always did. Everything that depends on how cloudy a world is has become more accurate with it, so Venus is now read as very nearly total overcast rather than 92%, which darkens its modelled surface light.
 
-
 ## v3.0.103 - 27th Aug 2026
 
 - Board only. Captured B97 and traced it end to end: a ship that has arrived somewhere can be described three different ways at once, and two of the readings on screen are blends of two of them. "Earth: Far Orbit" turns out to be Earth's name joined to the radius of the Sun orbit the ship left months ago, and the orbital period beside it is that same old orbit read correctly. The cause is that the record of where a ship lives is only ever brought up to date by one explicit action in Settings, so in ordinary play it never is, and different parts of the app disagree about whether to trust it or work around it. No behaviour changed; the fix rests on a decision about when an arrival becomes real.
@@ -233,7 +251,6 @@ All notable changes are listed here:
 ## v3.0.100 - 27th Aug 2026
 
 - Board only. The gas-giant banding fault is traced to its cause from the reporter own save: a giant stripes are painted only by cloud decks lying beneath the top one, so a stack that gains or loses a deck at a condensation threshold gains or loses every stripe at once.
-
 
 ## v3.0.99 - 27th Aug 2026
 
@@ -874,7 +891,6 @@ All notable changes are listed here:
 
 - FIXED: the engine decided what TYPE a world is from the temperature it RADIATES at rather than the temperature on its ground. On anything with air the two are the same number, but an airless world that bakes by day and freezes by night radiates like a warm one while averaging far colder - the Moon radiates at 270 K and averages 214, Mercury 440 and 310 - so seventeen type tests, every one of them asking a question about the surface, were reading the wrong figure. Nothing in the solar system changes type as a result; what it fixes is a world sitting near the edge of a band, where it could be called an ocean world on a temperature its ground never reaches.
 
-
 ## v2.1.885-beta - 21st Aug 2026
 
 - A wet world no longer freezes because a branch closed. The vapour a sea puts into its own air is now DERIVED from the saturation pressure at its surface temperature and how much of the surface is sea, sharing one curve with the cloud decks, instead of switching on at exactly 273 K - a step that cost a world a hair below freezing its entire vapour greenhouse, which is what kept it below freezing. The reported Traveller "Earth-like" world reads +26.7 C where it read a snowball. Not water-specific: a methane sea warms its world with methane. Sol does not move by a kelvin.
@@ -898,7 +914,6 @@ All notable changes are listed here:
 ## 2.1.879-beta - 21st Aug 2026
 
 - Docs only. The surface-temperature session retires and leaves its notes: the traps in the day/night model, the ice-ageing and tidal-lock work, and how to read the derived-physics fixture as a review tool. It ends with what is still open, each in a form you can check in thirty seconds - including the one decision left for the owner, which is that the classifier is still reading the temperature a world RADIATES at where seventeen of its type tests want the temperature on its ground.
-
 
 ## v2.1.878-beta - 20th Aug 2026
 
@@ -1257,7 +1272,6 @@ All notable changes are listed here:
 - The gas card is split into what the physics READS and what it merely DRAWS with, because a GM had no way to tell the difference: a gas colour never touches the light calculation, and an absorption band decides the whole thing.
 - A world's night-side lights can now be any colour - bioluminescence, city amber, somebody's purple arc-light - chosen per morphology in the Biospheres editor. Left alone, they stay the sodium amber they have always been.
 
-
 ## v2.1.794-beta - 18th Aug 2026
 
 - FIXED: a system file with a blank rule-pack id would not load - "Invalid system file. Missing system-specific properties" - and the app writes blank ones itself on ubox and SpaceEngine imports, so a system imported, saved and reopened was refused. The pack id was never needed to load: the file is processed with the current pack regardless. It is now stamped on load where blank, the message says what is actually required, and a starmap is no longer refused for an embedded system with a blank or stale pack id.
@@ -1387,7 +1401,6 @@ All notable changes are listed here:
 ## v2.1.769-beta - 18th Aug 2026
 
 - Docs only. The surface-areas design - describing part of a world rather than all of it - is deferred whole to V4 and now has its own section in the V4 scope, so that work opens with the record already settled. The standing limitation it uncovered stays on the board: a world's surface age is currently its tectonic regime's constant, which is why the icy-moon work could not separate Ganymede from Callisto.
-
 
 ## v2.1.768-beta - 17th Aug 2026
 

@@ -61,6 +61,8 @@ Every live citation outside this file was checked and repointed where it had mov
 > file's own hardest rule: a wrong entry is worse than a missing one.
 
 ### <ID> <short imperative claim>
+BUCKET: DOMAIN | ARCHITECTURE | PLATFORM (which platform) | IMPLEMENTATION — and where it splits,
+which half is which. See THE CARRY-FORWARD SORT below.
 WHERE: file:symbol (the code that enforces it)
 RULE: the invariant, in one or two sentences.
 WHY: the failure it prevents — ideally the one that actually happened, with its inbox id.
@@ -82,11 +84,108 @@ today; every one of them is where the next bug comes from, and the point of list
 next person to touch that area finds out before they add the third copy. Do NOT go and fix them
 speculatively — record, and resolve when the area is open anyway.
 
+
+## THE CARRY-FORWARD SORT, 2026-08-28 — EVERY ENTRY NOW CARRIES A BUCKET
+
+Every entry has a `BUCKET:` line, first field after the heading, applying the criterion in
+`engine-map-carry-forward.md`. **A BUCKET IS A FIELD, NOT A FILING SYSTEM.** Nothing was renumbered
+and nothing was reordered — the ids are cited from a year of code comments, board rows and commit
+messages. An entry that changes bucket keeps its id.
+
+205 entries were sorted. (213 `###` headings, less six section stubs, the entry-format template and
+the "checked and NOT a misalignment" note.)
+
+| bucket | false when | primary | named anywhere |
+|---|---|---|---|
+| **DOMAIN** | physics, or the universe, changes | 61 | 73 |
+| **ARCHITECTURE** | you build something that is not a staged derivation over a shared model | 106 | 159 |
+| **PLATFORM** | you leave the browser, the GPU, the framework or the numeric type | 16 | 29 |
+| **IMPLEMENTATION** | a file, a component or a store changes — dies with this code | 21 | 48 |
+
+"Primary" is the bucket the field names first; "named anywhere" counts an entry once per bucket it
+mentions. `M6` is neither — it is map apparatus, not a claim about an engine.
+
+**HALF THIS FILE IS A SPLIT: 103 of 205 entries name two buckets or more.** That is the sort's
+main finding and it should change how the carry-forward is planned. The criterion doc expected
+splitting to be the exception ("if two answers feel true it is usually a domain truth wearing
+implementation clothes"); in practice it is the rule, because the entries that were expensive enough
+to write down are almost always a physical fact AND the structural decision that fact forced. Budget
+for reading each one and taking half, not for moving files between four lists.
+
+**ARCHITECTURE IS THE BIGGEST BUCKET BY A DISTANCE, AND THAT IS THE SECOND FINDING.** This reads as
+a physics engine's notebook and is mostly a record of what a derivation engine must do to stay
+honest. The new engine inherits far more of this file as REQUIREMENTS than as almanac.
+
+**Three ARCHITECTURE sub-labels**, because two different obligations were landing in one bucket:
+bare `ARCHITECTURE` is a property a derivation engine must have — inherit it as a requirement;
+`ARCHITECTURE (product contract)` is an obligation to the people using it (consent, honesty about
+what a file contains, a control that records the answer it was given) — inherit it as a promise;
+`ARCHITECTURE (instrumentation)` is how a meter must behave to be worth having. PLATFORM entries
+carry the platform in the label, so a future port to a native renderer knows which shelf to clear.
+
+#### Read these together before designing the new pass model
+
+`PHY-1` is not documentation. It is a property the new engine either has from its first commit or
+spends a year discovering it needed, and **its test — `system/idempotence.test.ts` — is more portable
+than the code it guards. Port the test first.** Three entries qualify it and all three are load-bearing:
+
+- **`PHY-12`** — the circle field → escape → atmosphere → thermal → temperature → fluid layers → field
+  is REAL. It cannot be ordered away, only broken, and breaking it is a design decision nobody has
+  made. A staged-pass architecture cannot express it; know that before you choose one.
+- **`LGR-2`** — a co-orbital body's orbit derives from a SIBLING, so parent-before-child says nothing
+  about it. **The derivation graph of a star system is not a tree.**
+- **`SYNC-1`** — PHY-1's blind spot, named by the entry itself: a repetition test is the wrong
+  instrument for a TWO-COPY fault. `process()` was idempotent and green throughout while two holders
+  of "the same" system took turns publishing different tag sets to players. The gate wanted is a
+  one-line IDENTITY invariant, and it is a different test.
+
+`DATA-G1` is the other one to build in on day one rather than retrofit: a draw takes its OWN
+id-seeded stream, and anything that must survive re-processing uses a deterministic hash rather than
+an rng at all.
+
+#### What this pass found in the file itself
+
+**TWO IDS ARE CLAIMED TWICE AND BOTH COLLISIONS ARE LIVE.** Flagged in place, deliberately NOT
+renumbered — see the two things not to do in the criterion doc.
+
+- `RENDER-S36` — "A SAMPLER THAT ANSWERS FOREVER" and "HOW MUCH METHANE YOU SEE". Cited as the
+  sampler entry from `SystemVisualizer.svelte:764` and inbox B103.
+- `RENDER-S37` — ""HAS A ROUTE" IS NOT "IS FLYING"" and "AN AURORAL OVAL". **This one is cited from
+  code with BOTH meanings** — `planetTexture.ts:667` means the aurora, `SystemVisualizer.svelte:1072`
+  means the route — so a reader following either citation reaches a coin toss. Inbox B101 and B104
+  split the same way. `RENDER-S40` and up are free.
+
+**Corrected, because each was cheap to verify** (marked `CORRECTED 2026-08-28` in place): `PHY-4`'s
+caveat (its strict-`<` divergence is CLOSED — the rule DSL now routes through the shared predicate),
+`PHY-12`'s BLAST (the dead local it names was deleted, and every GENERATED world now opts in), and
+`M6`'s last bullet (the PHY-17 collision it reports was resolved by the 2026-08-26 renumbering).
+
+**Marked SUSPECT:** `RENDER-S5` — the mechanism as stated is wrong. Left standing with what was
+checked, because the fault it records really happened.
+
+**Marked MISFILED:** `RENDER-S31`'s trailing CAVEAT is about the two Hill-radius formulas and belongs
+on `PHY-29` / `M7`. Flagged, not moved.
+
+**NOTHING WAS DROPPED.** Every entry can be restated without reading the code it describes, which is
+this file's own bar and it clears it. The four closest calls, so the judgement is auditable: `UI-C1`
+(thin — one authored colour, everything else derived; survives because it is the only thing stopping
+a second colour field), `DATA-R14` (a working practice, not a trap, but restatable and still true),
+`UI-P1` (one route's state machine; its durable half is that an unreachable branch renders the legacy
+default) and `M6` (apparatus — the practice carries, the contents do not). `GEN-1` is the one entry
+that is restatable and **DOES NOT CARRY**: it records an absence from this repo. It stays here because
+it once said the opposite, which is the whole reason it exists.
+
+**The IMPLEMENTATION bucket is read the useful way round in `faults-the-old-shape-allowed.md`** —
+not "what does this say" but "what shape would have made this impossible?". That document, not this
+sort, is the point of the exercise.
+
 ---
 
 ## ARCHITECTURE — ownership across SSE and the Labs
 
 ### ARCH-1 SSE orchestrates; System Lab resolves physical state; Evolution Lab owns every evolving mechanism
+BUCKET: ARCHITECTURE (ownership boundary) - the split this entry states IS the plan the new work is
+being built to. Carry it as requirement one, not as a note about this repo.
 WHERE: the versioned contracts/adapters between SSE, System Lab and Evolution Lab. This is an
 ownership boundary, not a runtime migration already implemented in this repository.
 RULE: **Evolution Lab is domain-neutral and is the sole home of evolutionary mechanisms.** It owns
@@ -112,6 +211,9 @@ or recursive evolving structures must check this entry before assigning ownershi
 ## TAGS — lifecycle and provenance
 
 ### TAG-1 One module decides what may delete a tag
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a destructive lifecycle operation has exactly ONE
+owner, and provenance-sparing must be expressible there. The CAVEAT is this code's: a hand-rolled
+namespace strip grew because the one owner could not express a SECOND exemption axis.
 WHERE: `src/lib/tags/tagLifecycle.ts`
 RULE: `stripForReprocess` / `stripRuleTags` are the ONLY ways engine code removes a tag by
 provenance or namespace. Removing by exact key in response to a user action is not covered and is
@@ -132,6 +234,8 @@ against THREE different definitions of legacy — `LEGACY_DUPLICATE_TAGS` (Syste
 trap applies to whichever of them runs first on a given path, which is not the same one every time.
 
 ### TAG-2 Sparing a tag on strip is only half; the emit must be guarded
+BUCKET: ARCHITECTURE - strip and emit are a PAIR. Guard one side only and you manufacture a
+duplicate of every override, every pass.
 WHERE: `tagLifecycle.emit`, used across `core/SystemProcessor.ts`
 RULE: a pass that spares hand-added tags and then pushes unconditionally produces DUPLICATES. Strip
 with `stripForReprocess`, emit with `emit()` — which no-ops when the key is already present, so a GM
@@ -141,6 +245,9 @@ named. Without the guard an override doubles on every pass.
 BLAST: multi-emit keys must NOT use `emit()` — see TAG-3.
 
 ### TAG-3 Some keys legitimately appear several times on one body
+BUCKET: DOMAIN + ARCHITECTURE - domain: a world genuinely carries four ices, two decks, two
+precipitations. Architecture: multiplicity is REPETITION, never a delimited value, and a global
+dedupe-by-key deletes real data.
 WHERE: `tagConsistency.spec.ts` ("packs no delimited list into a single tag value")
 RULE: `volatiles/ices` (x4 on real bodies), `structure/cloud-deck` (x2), `weather/precipitation` (x2).
 Several of a thing = several tags, never one delimited value. Do not dedupe tags by key globally.
@@ -149,6 +256,8 @@ mini-format the consistency suite exists to forbid.
 BLAST: any "clean up duplicate tags" idea. Any `emit()` added to a volatiles/cloud/weather push.
 
 ### TAG-4 Provenance is declared by the category; the tag carries only a flag
+BUCKET: ARCHITECTURE - provenance is a property of the NAMESPACE, not of the record; one table, and
+the same table feeds the override UI.
 WHERE: `tagDefaults.ENGINE_NAMESPACES`, `tagLifecycle.namespaceProvenance`, `TagCategory.provenance`
 RULE: the tag records whether a human added it (`manual`); the CATEGORY records what a tag in that
 namespace is otherwise (`physics` = re-derived every pass, `authored` = written once at generation,
@@ -159,6 +268,9 @@ BLAST: new engine namespace → add it to `ENGINE_NAMESPACES` or its tags read a
 table feeds the GM-override dropdown; do not add a second list.
 
 ### TAG-5 `authored` tags are removable and never come back
+BUCKET: ARCHITECTURE - a value written once at generation is a real provenance class and must be
+labelled honestly. Corollary worth carrying: an edit that makes an inferred value real must RETIRE
+the inference claim.
 WHERE: `tagLifecycle` origin table; `BodyTagsTab.svelte` "Generated" group
 RULE: `spin/*`, `origin/*`, `traveller/*`, `orbit/retrograde|double` are written ONCE at
 generation/import. Nothing re-derives them. They survive re-process AND export, and a GM may delete
@@ -170,6 +282,7 @@ BLAST: an edit that makes an inferred value real must RETIRE the claim — typin
 `spin/axis-inferred` (`BodyBasicsTab.clearSpinProvenance`). Same applies to any future `*-inferred`.
 
 ### TAG-6 A namespace is cleared by the pass that owns it, ONCE
+BUCKET: ARCHITECTURE - one clear per namespace, at the top of the owning pass, never per branch.
 WHERE: `SystemProcessor.calculateHabitabilityAndBiosphere` (the fixed example)
 RULE: one clear per namespace, at the top of the owning pass. Not per branch.
 WHY: habitability cleared in two branches; the two then disagreed about sparing hand-added tags,
@@ -177,6 +290,9 @@ because a rule applied to one was silently absent from the other (B38).
 BLAST: if you find a second clear of one namespace, hoist rather than add a third.
 
 ### TAG-22 `biodiversity/*` is the surface-light pass's namespace, and one tag there is a DRAW
+BUCKET: DOMAIN + ARCHITECTURE - domain: land cover is the UNION of the layers and legitimately
+totals past 100%, and a pigment is a contingent DRAW rather than a calculation. Architecture: one
+owning pass, one clear, and an ordering between passes that consume each other's output.
 WHERE: `SystemProcessor.processClassification` — the block that clears `biodiversity/` and calls
 `deriveSurfaceSpectrum` + `deriveVegetation`.
 RULE: one owning pass, one clear (TAG-6). It must run AFTER the cloud decks (they are the filter) and
@@ -192,6 +308,9 @@ sliders — those are coverage OF THE LAND, are independent, and legitimately to
 that adds them is wrong.
 
 ### TAG-7 Tag keys are case-insensitive with ONE canonical spelling
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: canonicalise at CREATION, never by comparing
+loosely at every site. The ordering trap - a legacy detector that recognises old data BY its
+uncanonical spelling - is this migration's.
 WHERE: `tagLifecycle.canonicalTagKey`, `tagSlugSegment`, `canonicaliseTags`
 RULE: fold at creation, not by comparing loosely everywhere. Lowercase, spaces→hyphens. Display
 casing is regenerated by `describeTag` (title-case), so storage stays canonical.
@@ -201,6 +320,8 @@ BLAST: ORDERING TRAP — `isLegacyTag` recognises a V1 tag BY its capitals and s
 AFTER the legacy strip or you launder every V1 tag into a valid-looking user tag.
 
 ### TAG-8 Rule evaluation order is load-bearing
+BUCKET: ARCHITECTURE - an authored rule list whose evaluation advances a seeded stream has an ORDER
+that is output, not presentation. Named by the carry-forward criterion.
 WHERE: `TagRule.seq`, consumed in `reasonsToVisit.poiPacks`
 RULE: each body rolls a seeded random number PER RULE and the sequence advances every time. Changing
 the ORDER rules run in changes which tags every world gets. `seq` preserves the authored order across
@@ -211,6 +332,8 @@ BLAST: anything that re-orders, filters, or re-groups the rule list. Diff
 `tests/output/solar-system-derived.json` after.
 
 ### TAG-9 Player redaction happens at exactly one point
+BUCKET: ARCHITECTURE - audience redaction happens at exactly ONE point. A second site is how a leak
+happens, and nothing reports the difference.
 WHERE: `system/utils.computePlayerSnapshot` → `tagLifecycle.redactTagsForPlayers`
 RULE: `secret` tags and `playerHidden` categories are stripped there. Every player surface
 (catalogue, player views, holo, broadcast, report) reads that snapshot.
@@ -219,6 +342,8 @@ nothing reports the difference.
 BLAST: a new player-facing surface must consume the snapshot, not the raw system.
 
 ### TAG-10 Defaults live apart from the store that seeds from them
+BUCKET: ARCHITECTURE - a registry seeds at MODULE LOAD from a type-only defaults module, so it
+cannot cycle and cannot depend on who imported first. Write the test that does NOT import the store.
 WHERE: `src/lib/tags/tagDefaults.ts`
 RULE: `tagDefaults` has TYPE-ONLY imports and therefore cannot cycle. `tagCategories` and
 `tagLifecycle` both seed from it AT MODULE LOAD, never lazily.
@@ -228,6 +353,8 @@ trap recurred with the provenance registry a phase later.
 BLAST: any new registry. Seed it at load; write a test that does NOT import the store.
 
 ### TAG-11 Storage is one store behind old names
+BUCKET: IMPLEMENTATION - a store one generation behind its own names; the views are the deletion
+target. The carry-forward criterion's own example, and exhibit 3 in faults-the-old-shape-allowed.md.
 WHERE: `tags/tagCategories.ts`; `constructs/coi.ts` and `physics/reasonsToVisit.ts` export VIEWS
 RULE: `coiCategories` / `poiPacks` / `reasonsConfig` are derived read-only views over
 `tagCategories`. Mutating them does nothing. Write through the `tagCategories` mutators.
@@ -236,6 +363,8 @@ definitions of "core".
 BLAST: these views are the deletion target once their last consumer moves.
 
 ### TAG-12 SYSTEM means undeletable, NOT undisableable
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a protection flag must name WHICH operation it
+forbids, and an absent preference is not 'on'. The slug list is this code's.
 WHERE: `tagCategories.SYSTEM_CATEGORY_IDS`, `normalizeTagCategories`
 RULE: status, owner, purpose, resource, class, drive, frontier cannot be DELETED (the engine matches
 those slugs by hand). They CAN be switched off.
@@ -246,6 +375,8 @@ ships off (caught by the derived baseline moving).
 
 
 ### TAG-13 Map markers read the snapshot, never the raw system
+BUCKET: ARCHITECTURE - the marker builder is audience-BLIND by design; the caller hands in tags
+already scoped to its audience.
 WHERE: `tags/mapHighlights.markersFor` (takes tags, not a body id)
 RULE: `markersFor` has no idea who is looking, deliberately. The caller passes tags that are ALREADY
 redacted for that audience — player surfaces pass the snapshot (TAG-9), GM surfaces pass raw.
@@ -255,6 +386,8 @@ audiences would put a second redaction rule next to the first.
 BLAST: a new marker surface → confirm which tags it hands in.
 
 ### TAG-14 Highlight selection is live and shared, not per-surface
+BUCKET: ARCHITECTURE - one live value drives the authoring surface and the published one. A separate
+preview is a second source of truth about what the audience sees.
 WHERE: `player/liveOverrides.mapHighlights`
 RULE: ONE value drives the GM's maps and the players' windows. Momentary — never saved into a preset.
 WHY: the GM must be looking at what they are about to push; a separate preview is a second source of
@@ -262,6 +395,9 @@ truth for "what shows on the map".
 BLAST: do not add a GM-only copy. Persisting a favourite set is banked, not built.
 
 ### TAG-15 A player window has its OWN store instances
+BUCKET: IMPLEMENTATION (durable half is PLATFORM) - the carry-forward criterion's example. The half
+that survives: a separate browser document is a separate MODULE GRAPH, so nothing held in module
+scope crosses it.
 WHERE: `SystemVisualizer.highlights` prop; `broadcast.PresetOverrides.mapHighlights`
 RULE: the player view runs in a separate document, so every Svelte store in it is a fresh empty
 instance. Anything the GM sets locally reaches it ONLY over the broadcast. Components shared by both
@@ -271,6 +407,8 @@ on the player's — no error, just a feature that never appears.
 BLAST: any GM-side live control that a shared component consumes. Add it to `PresetOverrides` too.
 
 ### TAG-16 There are TWO tag pickers and they are not duplicates
+BUCKET: IMPLEMENTATION - two pickers, not duplicates; the FILTERING is the difference. Carry-forward
+criterion's example, and exhibit 2 in faults-the-old-shape-allowed.md.
 WHERE: `components/TagFinder.svelte` (map-derived) vs `components/TagPicker.svelte` (full vocabulary)
 RULE: TagFinder offers only tags something ACTUALLY carries, with counts — for finding, and for
 choosing map highlights. TagPicker offers every category, engine namespace and declared tag whether
@@ -282,6 +420,9 @@ BLAST: new tag-choosing UI → pick deliberately and say which in the component 
 them; the filtering IS the difference.
 
 ### TAG-17 A helper that reads a reactive value OUT OF SCOPE is invisible to the compiler, and `{@const}` will not re-run
+BUCKET: PLATFORM (Svelte 4 legacy reactivity) - a {@const} re-runs only for values its own
+expression MENTIONS. Durable half: a declarative surface needs its dependencies made explicit; an
+imperative rAF one re-reads for free.
 WHERE: `components/Starmap.svelte` — `systemMarkers` / `systemMatches`, called from
 `{@const hl = systemMarkers(systemNode, activeHighlights, $tagCategories)}` inside the systems each-block.
 RULE: pass reactive values as ARGUMENTS at the call site. A `{@const}` re-evaluates only when a value
@@ -307,6 +448,8 @@ same shape appears wherever a helper is defined once and used in a template. A c
 made explicit; imperative ones re-read for free. Do not "fix" the canvas by copying this.
 
 ### TAG-18 The tag pill is ONE shape, and two of its four implementations cannot share code
+BUCKET: IMPLEMENTATION - one shape, four implementations, two of which cannot share code.
+Carry-forward criterion's example, and exhibit 1 in faults-the-old-shape-allowed.md.
 WHERE: `tags/tagPill.ts` (the authority), `styles/tokens.css` `--tag-pill-*`, guarded by `tagPill.spec.ts`
 RULE: a panel chip and a map marker are the same object. Geometry is defined ONCE as proportions in em
 (padX 0.625, padY/radius 0.3125, gap 0.46875) against a 12.8px base; every surface scales that, never
@@ -323,6 +466,9 @@ surface → call `tagPillMetrics`, do not copy numbers. **A ZERO MEASUREMENT IS 
 and other stub 2D contexts do exactly that and a null check sails straight past them.
 
 ### TAG-20 The player's system view is HoloView at BOTH tiers, and a marker must be added in FOUR places
+BUCKET: IMPLEMENTATION - four renderers of one badge plus a fifth document path, and 'the 2D system
+view' names two different renderers depending on who is looking. Exhibit 4 in
+faults-the-old-shape-allowed.md.
 WHERE: `catalogue/+page.svelte:effectiveSystemTier` (holo3d AND diagram2d → `'holo'`), `holo/scene.ts`
 `drawLabel`, `starmap/starmapScene.ts` `drawLabel`, `catalogue/document/guideDocument.ts`.
 RULE: a tag badge has FOUR renderers and they are not interchangeable. GM 2D orrery =
@@ -340,6 +486,8 @@ visibility for free; the cost is that the sprite grows downward, so `sprite.cent
 from the NAME's share of the canvas or the name drifts away from its body.
 
 ### TAG-21 Resolve markers where the AUDIENCE is known, not in the renderer
+BUCKET: ARCHITECTURE - resolve an audience-scoped value where the AUDIENCE is known, never inside
+the renderer, and do not add an audience flag to the resolver.
 WHERE: `starmapScene.SmSystem.markers` (handed in), vs `holo/scene.setHighlights` (resolved inside)
 RULE: `markersFor`/`rollUpMarkers` are audience-blind (TAG-13). Whoever CALLS them decides whether GM
 tags or a player's redacted snapshot go in, so resolve as close to that decision as possible.
@@ -351,6 +499,9 @@ BLAST: do NOT add an audience flag to either function. If a new surface needs ma
 tags it should badge and let it resolve, or resolve for it upstream.
 
 ### TAG-19 A canvas surface CANNOT be verified in a worker session, and the reason is not the screenshot
+BUCKET: PLATFORM (browser: requestAnimationFrame does not fire in a hidden document) - declarative
+surfaces (SVG, DOM) ARE verifiable headlessly; canvases are not, and the pane works while it is
+DISPLAYED.
 WHERE: any `requestAnimationFrame` renderer — `SystemVisualizer.drawSystem`, `holo/scene.ts`
 RULE: the Browser pane runs with `document.hidden === true` / `visibilityState: 'hidden'`, so rAF never
 fires. Measured 2026-08-08: **0 frames in 1500 ms**, and the whole 674x720 orrery canvas reads back
@@ -374,6 +525,9 @@ state you are in rather than assuming the pane is broken — and it is worth ask
 ## OVERRIDES — what a GM pins, and where it is described
 
 ### OVR-1 An override is authored INPUT, and it is described in exactly ONE place
+BUCKET: ARCHITECTURE - a pin is authored INPUT fed in before the solve, never poked into derived
+output, and ONE roster record owns every presentation fact about it. House rule inside: a figure
+that breaks physics is kept and LABELLED, never clamped.
 WHERE: `src/lib/physics/overrides.ts` `OVERRIDE_DEFS`; the shape on `types.ts` `body.overrides`.
 RULE: a key PRESENT in `body.overrides` means the GM pinned that value — it is fed into the derivation
 BEFORE the solve, never poked into derived output (PHY-1 is the guard). Every label, unit, slider
@@ -390,6 +544,8 @@ literal. NEVER CLAMP TO `plausible()` — it produces a sentence, not a limit; t
 figure which breaks physics is kept and labelled, and only the finite `hard` pair applies.
 
 ### OVR-3 An anomaly tag is DERIVED from an authored assignment, and its clear has two parts
+BUCKET: ARCHITECTURE - an authored assignment and its derived tag are two objects; the clear must
+cover both the derived twin and any manual twin, or a reset strands a reason for ever.
 WHERE: `SystemProcessor.applyAnomalyTags` (pass 7); `body.overrides.anomalies`; the category seed in
 `tags/tagDefaults.ANOMALY_CATEGORY_SEED`.
 RULE: the ASSIGNMENT (override key -> anomaly tag) is authored and saved; the `anomaly/*` TAG is
@@ -406,6 +562,9 @@ assignment map is GM bookkeeping and is deleted wholesale in `computePlayerSnaps
 reason is redacted out of `tags` but would still be named in plain text there.
 
 ### OVR-4 A pinned surface temperature needs TWO composers, because the mean falls out of the hemispheres
+BUCKET: DOMAIN + ARCHITECTURE - domain: the mean of two fourth-roots is not linear in flux, so only
+a MULTIPLICATIVE scale lands a pinned mean. Architecture: a pin short-circuits a fixed point at
+exactly one link, and a derived() reader must not hand the pin back as the physics' own answer.
 WHERE: `temperature.composeBodySurfaceTemperature` (returns the pin outright) vs
 `temperature.composeModelledSurfaceTemperature` (ignores it); the two-pass `buildProfile` in
 `SystemProcessor.processEnvironment`.
@@ -429,6 +588,10 @@ activity, pressure, this) cannot report its own derived default while pinned; th
 readers return `undefined` rather than handing the pin back as the physics' answer.
 
 ### OVR-5 A pinned density must NOT re-infer the composition, and must read from the HELD quantity
+BUCKET: DOMAIN + ARCHITECTURE - domain: mass, radius and density are ONE relation with two degrees
+of freedom, and gravity falls out of the mass. Architecture: a pin holds the second degree of
+freedom, something must say which is the other, and the derived default is measured from the HELD
+quantity or reset is not a fixed point.
 WHERE: the `densityGcm3` record in `physics/overrides.ts` — its `commit`, and
 `densityOnCompositionCurve` / `curveMassMe` beside it.
 RULE: mass, radius and density are one relation with two degrees of freedom, so a density pin pins
@@ -447,6 +610,9 @@ of its mass, and a direct `g` pin would fight mass and radius. Barycentres follo
 density pin on a binary member moves the pair's centre; that is honest and intended.
 
 ### OVR-6 A pin SUPPRESSES the model that would reconcile the thing it pinned
+BUCKET: ARCHITECTURE - any model whose job is to make two quantities AGREE must stand down when a
+human has pinned one of them; and a pin that writes an authored field must not run before anything
+that SNAPSHOTS that field.
 WHERE: `makeup.reconcileGiantMakeup` (guarded on `overrides.densityGcm3`); the `atmosphere0`
 snapshot hoisted above `applyPressurePin` in `SystemProcessor.processEnvironment`.
 RULE: any model whose job is to make two quantities AGREE must stand down when a GM has pinned one
@@ -468,6 +634,9 @@ moves an authored field (mass, radius, pressure, composition) must be added to i
 future model that reconciles two quantities must ask whether either is pinned.
 
 ### OVR-7 A star's HAZARD card is its ionising output; its brightness is a different quantity
+BUCKET: DOMAIN + ARCHITECTURE - domain: a star's brightness and its ionising output are physically
+independent, which is why 'make this one dangerous' and 'make this one brighter' are two levers.
+Architecture: PHY-2's lie, in one card.
 WHERE: `BodyTechnicalDetails` star branch; `physics/ionisingOutput.bodyIonisingOutputSolar`;
 `physics/stellarActivity.stellarActivityBucket`; the `flareActivity` term in `radiation.ts`.
 RULE: `radiationOutput` is a star's LUMINOSITY. It must never be published as a radiation hazard.
@@ -485,6 +654,9 @@ the first version of the replacement card got that wrong too and printed "1.61e+
 Sun. State what a figure measures and in what units before you put a suffix on it.
 
 ### OVR-2 `gasThermalInflation` is the one pin `process()` never reads
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a pin whose target is AUTHORED input needs a commit
+at edit time, and a pin on a DERIVED field must not have one. Which pin it happens to be is this
+code's.
 WHERE: `overrides.ts` — the `commit` on the `gasThermalInflation` record; `BodyBasicsTab.effInflation`.
 RULE: inflation sizes a body at GENERATION and `radiusKm` is authored thereafter, so pinning it has
 to move the radius AT EDIT TIME, through `bodyEdit.editMass` — the same chain the composition editor
@@ -500,6 +672,7 @@ PHY-1 and `idempotence.test.ts` exist to catch.
 ## PHYSICS — ordering and honesty
 
 ### PHY-20 A surface property that VARIES BY AN ORDER OF MAGNITUDE is a process, not a constant
+BUCKET: DOMAIN - carry-forward criterion's example. Move verbatim.
 WHERE: `physics/albedo.frozenSurfaceAlbedo` and the `surface_albedo` block in `planets.json`
 (`ice_clean`, `ice_lag`, `ice_lag_half_age_Gyr`); the rocky analogue is `deriveOxidation` + `dust`.
 RULE: where one constant has to stand for a whole class of surface, check its SPREAD against
@@ -522,6 +695,7 @@ Enceladus's own plume-fall darken Enceladus, and made Io and Pluto worse when th
 was raised.
 
 ### PHY-19 An equilibrium temperature is a POWER balance and is never a mean
+BUCKET: DOMAIN - carry-forward criterion's example. Move verbatim.
 WHERE: `physics/temperature.calculateEquilibriumTemperature` and `composeBodySurfaceTemperature`
 (which produce it) vs `physics/surfaceTemperature.surfaceTempProfile` (which produces the mean).
 RULE: `equilibriumTempK` and `temperatureK` are the temperatures at which the body RADIATES what it
@@ -546,6 +720,9 @@ deleted from `BodyTechnicalDetails.svelte` in the same commit, with its own cons
 had ever rendered it.
 
 ### PHY-1 Nothing may read a value a later pass writes
+BUCKET: ARCHITECTURE - THE requirement. Not documentation: a property the new engine either has from
+its first commit or spends a year discovering it needed. Its test (idempotence.test.ts) is MORE
+PORTABLE THAN THE CODE IT GUARDS - port the test before the engine it guards.
 WHERE: `src/lib/system/idempotence.test.ts`
 RULE: process, process the result, process that — nothing on any body may change. If that test goes
 red, find the read; do not relax the test.
@@ -555,6 +732,8 @@ BLAST: corollaries — a derived CLASS is never a physics input (the classifier 
 quantity depends on another body, iterate PARENT BEFORE CHILD, not in file order.
 
 ### PHY-27 Chromatic adaptation is BOUNDED — never amplify a cone that has no photons in it
+BUCKET: DOMAIN - adaptation is per-cone and BOUNDED by the photons actually present. The
+low-pressure sodium lamp is the everyday proof.
 WHERE: `physics/imageUnderLight.adaptationMatrix`, and any future re-lighting on the GPU.
 RULE: the degree of adaptation is PER CONE, scaled by `sqrt(this cone's share of the light, here vs
 at home)`. A starved channel is left as it arrived, not gained back up.
@@ -569,6 +748,9 @@ BLAST: the same physics used to be applied a SECOND time as a per-channel `snr` 
 confusing than it is, because the two mechanisms multiply.
 
 ### PHY-18 Visibility is the surface spectrum's optical depth turned on its side — derive it ONCE
+BUCKET: DOMAIN + ARCHITECTURE - domain: a dim sky overhead and a lost horizon are ONE mechanism, and
+Earth's ~340 km is the calibration. Architecture: one derivation, one export, or two plausible
+answers drift silently.
 WHERE: `physics/visibility.ts`, reading `surfaceSpectrum.rayleighTau550`.
 RULE: extinction at the ground is `rayleighTau550 / scaleHeight`. Do not re-derive a column density,
 a cross-section or a Rayleigh law anywhere else; that export exists so there is one of each.
@@ -581,6 +763,8 @@ Earth, Mars, Titan and Venus all read "murky", because a standing person's horiz
 kilometres everywhere and says nothing about the air.
 
 ### RENDER-B4 In the Surface view, a REFLECTANCE is re-lit and LIGHT is not
+BUCKET: DOMAIN - which of the three layers a thing belongs to (reflectance, light, emission) is
+PHYSICS, not convenience. Re-lighting a sky asks what it looks like lit by itself.
 WHERE: `charts/surfaceScene.ts` (`drawMaterials` vs `drawSky` / `drawEmissive` / `drawMarkers`) and
 `charts/UnderThisLight.svelte`'s draw path.
 RULE: three layers, and which one a thing belongs to is physics, not convenience. Ground, water,
@@ -595,6 +779,9 @@ BLAST: `relightImage` skips fully transparent pixels, which is what lets the mat
 offscreen canvas composited over the sky with no mask of its own. Do not "optimise" that skip away.
 
 ### PHY-26 Normalise a colour-matching result against the BAND, never against its own peak channel
+BUCKET: DOMAIN + PLATFORM (gamut/numeric) - domain: tristimulus values in the tails are numerically
+meaningless, so per-sample normalisation manufactures full saturation where the eye has none.
+Platform: the out-of-gamut repair turns a rounding error into a hue.
 WHERE: `physics/spectrum.wavelengthHex` (the chart ribbon) and, by the same argument, anything else
 that turns a narrow spectral feature into a colour.
 RULE: divide by a shared scale across the whole grid, not by that sample's own maximum channel.
@@ -606,6 +793,7 @@ BLAST: any new plot that colours by wavelength. Also keep the near-black floor: 
 out-of-gamut repair in `xyzToHex` (which lifts negative channels) turns a rounding error into a hue.
 
 ### PHY-24 The human eye enters at the END or it poisons the derivation
+BUCKET: DOMAIN - carry-forward criterion's example. Move verbatim.
 WHERE: `physics/spectrum.ts` (everything below the PRESENTATION BRANCH divider), `physics/pigments.ts`,
 `rendering/apparentColor.ts`.
 RULE: a selection, score or ranking reads PHOTON COUNTS (`photonFlux` / `photonSpectrum`). Colour
@@ -622,6 +810,7 @@ world's vegetation is white-balanced while its oceans are not). Both must SAY WH
 Also: per-gas `colorHex` must never be read by the spectral filter for the same reason.
 
 ### PHY-25 A capture term that does not SATURATE is the naive maximiser, and Earth falsifies it
+BUCKET: DOMAIN - carry-forward criterion's example. Move verbatim.
 WHERE: `physics/pigments.ts` — `sufficiency = 1 - exp(-absorbedFlux / saturationFlux)`.
 RULE: photon capture saturates, the three pressures MULTIPLY rather than adding, and the capture term
 reads the PIGMENT's own absorption while the colour reads pigment PLUS tissue.
@@ -641,6 +830,8 @@ calibration anchor, not a target, and fitting the constants to it is the forbidd
 change a weight, that spec is the thing that catches you.
 
 ### PHY-2 A quantity correct for its purpose can still be published as a lie
+BUCKET: ARCHITECTURE - carry-forward criterion's example. State WHAT a quantity measures, WHERE and
+IN WHAT UNITS, and check its name and its neighbours agree.
 WHERE: `tags/tagConsistency.spec.ts`
 RULE: when you add a derived field or tag, state WHAT it measures, WHERE, and IN WHAT UNITS, and
 check its name and its neighbours agree.
@@ -649,12 +840,17 @@ appearance driver published as a hazard reading (B28).
 BLAST: changing a quantity → grep every tag bucketed off it AND off any older proxy for it.
 
 ### PHY-3 The radiation bucket has exactly one implementation
+BUCKET: ARCHITECTURE - ONE function turns a continuous quantity into a word, and the tag and the
+panel both call it.
 WHERE: `physics/radiation.radiationHazardBucket`, consumed by `SystemProcessor` and `catalogue/bodyFacts`
 RULE: the tag and the info-block row must bucket with the same function.
 WHY: two implementations called Mars and Io both "high", sixty thousand times apart (B28).
 BLAST: any new place that turns a dose into a word.
 
 ### PHY-4 Surface-requiring claims are gated on makeup.gas
+BUCKET: DOMAIN + ARCHITECTURE + IMPLEMENTATION - domain: you cannot mine, refuel or resupply where
+there is no ground. Architecture: one predicate, and every caller CALLS it. The caveat's site list
+is this code's - and its first bullet is now STALE, corrected below.
 WHERE: `tagDefaults` rule DSL `SURFACE()`; eyeball fingerprints
 RULE: mining/refuelling/resupply/eyeball claims require `makeup.gas <= 0.5`. NOT `isGiant`, NOT the
 delta-v budget.
@@ -679,13 +875,18 @@ nothing is currently wrong" IS FALSE — TWO of the copies disagree at the edge,
     admits gas up to **0.575**, not 0.5. That is a gate that does not close where it says it does —
     an eligibility test written in the vocabulary of a defining band inherits the band's tolerance
     (see PHY-10). No bundled body sat in 0.500–0.575 when B25 measured its diff; nothing keeps it
-    that way.
+    that way. **STILL STANDING** — this pass re-checked the FIRST bullet only. This one is a
+    different mechanism (`bandFit`'s soft edge, not a duplicated spelling) and was not re-measured.
 Do not "harmonise" these by nudging one number: pick the boundary, then make every site CALL
 `hasSolidSurface`, which is what B36 asks for and what would have made both divergences impossible.
 
 #### Positions and eclipses (C3/C9/G8) — added 2026-08-04 by the frame/suite-hygiene session
 
 ### PHY-5 The 3D propagator returns satellites ALREADY in the parent's equator; nothing may rotate again
+BUCKET: DOMAIN + IMPLEMENTATION - the carry-forward criterion's own SPLIT example. Domain: a regular
+satellite's elements are quoted in its PARENT'S EQUATOR, and the ecliptic handover far out is the
+real Laplace plane. Implementation: 'nothing may rotate them again' is a warning about one call
+site.
 WHERE: `physics/worldPositions.computeWorldPositions3D` (its `frame` op) → `system/satelliteFrame.ts`
 RULE: a regular satellite's elements are quoted in its PARENT'S EQUATOR, and `computeWorldPositions3D`
 applies that rotation itself. So the difference of two world positions is already the framed offset —
@@ -709,6 +910,9 @@ too. Right for a low orbiter, wrong far out for the same reason C5 gave for moon
 Phoebe station is `ecliptic`-less beside a moon that declares it. Authoring question, filed with C8.
 
 ### PHY-6 An eclipse prediction is a reader's question, and its cache is DIRECTIONAL
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a forward SEARCH is a reader's question and never a
+derivation pass (computing it in process() costs per pass AND breaks PHY-1), and a directional cache
+must be sampled on WALL time. The three surfaces are this code's.
 WHERE: `system/eclipses.nextEclipseCached`, `describeEclipse`; read by `catalogue/bodyFacts` and
 `components/BodyTechnicalDetails.svelte`
 RULE: the prediction is a forward search over the propagator. It is computed when a reader asks and
@@ -727,6 +931,8 @@ builder, and pass no `formatDate` unless the campaign calendar is genuinely avai
 #### Backfilled from closed inbox items — added 2026-08-07 by the engine-map backfill session
 
 ### PHY-7 A module that declares itself THE single evaluation has no rival, upstream least of all
+BUCKET: ARCHITECTURE - carry-forward criterion's example. Carries the fixed-point-not-pipeline rule
+and the SHALLOW PROBE with it: a crude model upstream of a careful one sets the loop's answer.
 WHERE: `physics/cloudDecks.ts` header ("THE single evaluation"); the only caller that matters is
 `physics/temperature.solveThermalState`, which passes its result INTO `deriveAlbedo`.
 RULE: `deriveAlbedo` takes `decks` as an argument. It does not, and must not, work out for itself
@@ -746,6 +952,8 @@ evaluations of one question". If you need a value the solve produces, move INTO 
 committed output; do not approximate it beside it. Commit anything the solve READS before calling it.
 
 ### PHY-8 Never write a second sum of a quantity that already has one
+BUCKET: ARCHITECTURE - carry-forward criterion's example. One function, three inputs, so min <= mean
+<= max holds by CONSTRUCTION rather than by luck.
 WHERE: `physics/radiation.calculateStellarRadiationComponents` (takes a `'current' | 'near' | 'far'`
 distance selector); `calculateSurfaceRadiation` calls it three times. The deletion is commented in
 place at `radiation.ts:375`.
@@ -762,6 +970,8 @@ spectral split — that is deliberate, it answers a DIFFERENT question (atmosphe
 before reusing it. Any new min/max/mean triple: one function, three inputs.
 
 ### PHY-9 A placeholder zero is a CLAIM, not an absence
+BUCKET: ARCHITECTURE - carry-forward criterion's example. Before adding a default, ask what the
+value would be ASSERTING.
 WHERE: `core/BodyFactory.ts` (the "NOT defaulted, deliberately" block); `physics/magnetism.rotationFactor`
 (`if (!h) return 0.6; // unknown -> middling`); the star editor's "not set" note.
 RULE: never default a physical field to 0 to avoid NaN. Zero rotation, zero tilt and zero field each
@@ -782,6 +992,8 @@ repeats this exactly. Before adding a default, ask what the value would be ASSER
 `docs/dev/generation-duplication-map.md` before touching generation at all.
 
 ### PHY-10 A precondition is not a defining trait, and writing one as the other inverts the score
+BUCKET: ARCHITECTURE - carry-forward criterion's example. A gate written as a match band does not
+merely fail to help, it INVERTS the score.
 WHERE: `types.ts:Fingerprint.gate` vs `Fingerprint.match`; scored in `system/classification.fingerprintScore`;
 prototypes built from BOTH in `classification.audit.spec.ts`.
 RULE: `gate` = eligibility (failing rules the type out entirely, passing earns nothing). `match` =
@@ -799,6 +1011,9 @@ caveat: a gate written as a numeric BAND inherits `bandFit`'s 15% soft edge, so 
 actually close at 0.5.
 
 ### PHY-11 A quantity that never SETTLES is non-idempotence, even when nothing physical moves
+BUCKET: ARCHITECTURE + PLATFORM (IEEE 754) - durable: guard the ASSIGNMENT rather than chasing the
+arithmetic, and compute a nested quantity in its own deepest-first pre-pass. Platform: a round trip
+through double precision lands one ulp from where it started, for ever.
 WHERE: `core/SystemProcessor.settled` (a 1e-12 relative no-change test), applied to every barycentre
 semi-major axis and mean motion; the effective-mass pre-pass at the top of `processBarycenters`.
 RULE: where a derivation is a ROUND TRIP — separation is the sum of the members' axes, each axis is
@@ -817,6 +1032,10 @@ another had its mean motion written twice, two formulas one ulp apart, last writ
 writers of one field is the fault; `settled()` is for a single writer that cannot converge.
 
 ### PHY-12 There is exactly ONE read-before-write edge left, it is opt-in, and it is not orderable
+BUCKET: DOMAIN + IMPLEMENTATION - domain, and this is the entry a new pass model must read first:
+the circle field -> escape -> atmosphere -> thermal -> temperature -> fluid layers -> field IS REAL.
+It cannot be ordered away, only broken, and breaking it is a design decision nobody has made. Which
+flag opts in is this code's.
 WHERE: `SystemProcessor.ts:587-599` — the `body.evolveAtmosphere` branch in pass 2a reads
 `body.magneticField`, which pass 2b derives.
 RULE: turning `evolveAtmosphere` on for a body reintroduces the B13 class. The circle is real:
@@ -828,10 +1047,22 @@ The test does not cover this; it is silent about it. Deriving magnetism early fo
 late for the rest would be two evaluations of one question — PHY-7 — so the residual was documented
 rather than papered over.
 BLAST: any starmap or fixture that sets `evolveAtmosphere`. Any change that makes escape non-optional.
-`processEnvironment` also still ends with a dead `retainsAtmosphere` local that reads the field
-(`SystemProcessor.ts:645`) — unused, so it cannot drift; do not "wire it up".
+CORRECTED 2026-08-28 (the carry-forward sort), twice, and the second half changes how this entry
+should be weighed:
+  (1) The dead `retainsAtmosphere` local this line used to send you to is GONE — PHY-15's own
+  CORRECTED note records deleting it, and only a comment survives (`SystemProcessor.ts:968`). The
+  read-before-write branch itself has moved to `SystemProcessor.ts:804` / `:856`.
+  (2) **"OPT-IN" NOW UNDERSTATES THE EXPOSURE.** `generateFromConfig.ts:474` and
+  `generation/system.ts:25` set `evolveAtmosphere = true` on EVERY generated planet and moon, so every
+  world the wizard makes carries the flag. The WHY above is still literally true — no bundled body,
+  starmap or shipped example sets it, so `idempotence.test.ts` stays green and stays silent — but the
+  uncovered edge is not a rare opt-in any more, it is the default for generated content. The FIXTURES
+  are the unusual case here, not the flag.
 
 ### PHY-13 A belt's or ring's `massKg` is a debris-density proxy, never a point mass
+BUCKET: DOMAIN + IMPLEMENTATION - carry-forward criterion's example. The eight hand-written
+exclusions with no shared predicate are this code's, and are exhibit 7 in
+faults-the-old-shape-allowed.md.
 WHERE: `physics/stability.ts:413` (excluded from the mutual-Hill sibling set, pinned by
 `stability.spec.ts`) and `:257`; `orbits.ts:528` `isDistributed` (gates the Lagrange points);
 `resonance.ts:96`; `barycenterReconcile.ts:37,154,159`; `twoBodyCoast.ts:149`. Eight sites.
@@ -861,6 +1092,9 @@ SEGMENTS, never its samples". A1 is now RENDER-B1._
 #### Backfilled from closed inbox items — added 2026-08-07 by the engine-map backfill session
 
 ### RENDER-B3 There is ONE elevation field per world, and everything else is a threshold of it
+BUCKET: DOMAIN + ARCHITECTURE - domain: land, sea, coast, vegetation, shallow water and ice are all
+THRESHOLDS OF ONE FIELD, defined on the sphere and thresholded by AREA because coverage is derived.
+Architecture: one field, many thresholds, never a second scatter.
 WHERE: `rendering/landmass.ts`; consumed by `planetTexture.paintSurfaceField` (both projections) and
 `physics/vegetation` via `vegetationBand`.
 RULE: land, sea, coast, vegetation, shallow water and ice are all thresholds of the same field. Never
@@ -877,6 +1111,9 @@ twice. A morphology's `waterReach` says how far past dry land it holds — the s
 one number, because they are the same claim.
 
 ### RENDER-B1 GL texture storage is IMMUTABLE — a resized canvas silently never lands
+BUCKET: PLATFORM (WebGL2 - texStorage2D allocates once) - carry-forward criterion's example.
+Diagnostic half is portable: when a redraw demonstrably happens and the picture does not change,
+suspect the UPLOAD before the trigger.
 WHERE: `holo/scene.ts:setHud` (the `else` branch that recreates the texture), the label path at
 `scene.ts:933-943`, and the same pair in `starmap/starmapScene.ts:setHud`.
 RULE: swapping a canvas of a DIFFERENT PIXEL SIZE into a live `CanvasTexture` fails silently — WebGL2
@@ -897,6 +1134,8 @@ scenes. Textures are not the only immutable-once-allocated resource; the same re
 GPU buffer sized at creation.
 
 ### RENDER-B2 The player's "2D starmap" is the 3D renderer locked overhead, and `Starmap2DView` is mounted NOWHERE
+BUCKET: IMPLEMENTATION - carry-forward criterion's example. One name, two renderers, decided by who
+is looking. Exhibit 4 in faults-the-old-shape-allowed.md.
 WHERE: `starmap/Starmap3DView.svelte` with `flat` set, over `starmap/starmapScene.ts` — the
 `starmapView === 'holo3d' || 'diagram2d'` branch at `routes/catalogue/+page.svelte:1148`, which says so
 in a comment and then sets `angleDeg` to 0 and `flat` to true for the 2D case.
@@ -931,6 +1170,8 @@ lattice moves the centres a system is snapped to.
 #### Ship models (G3) — added 2026-08-04 by the ship-appearance stream
 
 ### RENDER-S1 One builder dresses a ship model, everywhere it is drawn
+BUCKET: ARCHITECTURE - one builder dresses a thing everywhere it is drawn; what a user APPROVED in a
+dialog must be what every surface shows.
 WHERE: `src/lib/constructs/modelViewer.ts:buildDisplayModel`
 RULE: the import modal's preview, the info-block turntable and the holo scene's focused hull ALL
 build through this one function (finish, tint, livery, normalise-to-unit-length, optional orient
@@ -940,6 +1181,8 @@ the first time a finish was added — the same fault A46 fixed for the body port
 BLAST: adding a finish, changing normalisation, or adding a fourth surface that draws a hull.
 
 ### RENDER-S2 A construct contributes NO radius, model or not
+BUCKET: ARCHITECTURE - a marker with real geometry is not a body. Its visual extent must never reach
+the physical model.
 WHERE: `src/lib/holo/scene.ts` (`frameDistance`, the clearance branch in `updatePositions`)
 RULE: a ship model is a MARKER with real geometry, not a body. It must never feed ring clearance or
 the whole-system bounding sphere (F5). `frameDistance` may read its hull length to frame it; nothing
@@ -949,6 +1192,8 @@ would push moons off their orbits around a station.
 BLAST: any new use of `shipLen`. Any "make constructs act like bodies" change.
 
 ### RENDER-S3 Nozzles live in the model's own space, orientation applies at view time
+BUCKET: ARCHITECTURE - store an authored placement in the frame that CANNOT be edited, and apply the
+editable transform at read time. Orientation is editable for ever; the placement was made once.
 WHERE: `ModelRef.nozzles` (`types.ts`), `modelViewer.setNozzles` / `setOrient`
 RULE: authored drive positions are stored BEFORE `orient` is applied, and the plume rig hangs off
 the same group the orientation fix rotates. Storing them post-orientation strands every drive the
@@ -957,6 +1202,8 @@ WHY: orientation is editable forever; the placement was made once.
 BLAST: baking orient into the stored binary; moving the plume group out of `orientGroup`.
 
 ### RENDER-S4 Camera near-plane must follow the framed object all the way down
+BUCKET: PLATFORM (3D pipeline: near plane and depth range) - the floor must suit the SMALLEST
+framable thing, and below roughly 1e-4 the depth range collapses (see RENDER-S20).
 WHERE: `src/lib/holo/scene.ts` (near-plane block in the render loop)
 RULE: `near` tracks the camera-target distance with a floor low enough for the SMALLEST framable
 thing. A ship at true scale frames at ~1e-9 scene units; the floor is 1e-11.
@@ -965,15 +1212,28 @@ a construct at true scale put the whole scene inside the near plane and the view
 BLAST: anything that can be framed smaller than a body (debris, a docked shuttle).
 
 ### RENDER-S5 An interface-declared method is not an implemented one
+BUCKET: PLATFORM (TypeScript - unenforced) - SUSPECT, mechanism corrected below: the return IS
+annotated and every member IS required, so the hole is not structural typing. The observed fault
+stands.
 WHERE: `modelViewer.ts` return object; guarded by `modelViewer.spec.ts` ("createModelViewer surface")
-RULE: the viewer is an object literal behind a hand-written interface, so a method dropped from the
-literal still type-checks against the interface and fails only at the call site, at runtime.
+RULE: a method dropped from the viewer's returned object literal reaches the call site and fails
+there, at runtime, with nothing upstream complaining.
+SUSPECT 2026-08-28 (the carry-forward sort) — THE MECHANISM AS ORIGINALLY WRITTEN IS WRONG. It said
+the loss "still type-checks against the interface". Checked at v3.0.149: `createModelViewer` IS
+annotated `: ModelViewer` (`modelViewer.ts:379`) and every member of that interface is REQUIRED (no
+`?`), so a dropped method is a genuine type error. What is true is that NOTHING RUNS THE TYPECHECKER —
+`npm run build` is Vite and strips types, and `npm run check` is the only thing that would see it,
+against the ~1357-error baseline RENDER-S7 records. So the hole is the TOOLCHAIN, not the type system,
+and it closes the day that baseline is cleared. The observed fault and the surface test are unaffected.
 WHY: a refactor replaced the span between two methods and silently deleted `setOrient` — Pitch/Yaw/
 Roll died with "setOrient is not a function" and nothing else complained. The surface test now
 asserts every declared method exists (mutation-checked: remove it again and the test fails).
 BLAST: any range-based edit of that return object. Add new methods to the required list.
 
 ### RENDER-S25 EVERY FACTOR IN A FINAL PIXEL GETS EXACTLY ONE CHANNEL — MATERIAL OR VERTEX, NEVER BOTH
+BUCKET: ARCHITECTURE + PLATFORM (three.js multiplies material by vertex attribute) - durable:
+EXACTLY ONE WRITER PER CHANNEL (PHY-11's two-writers fault, one layer down), and COMPUTE WHAT A
+CONTROL ACTUALLY DOES AT THE REPORTED SETTING before fixing anything in its code path.
 WHERE: `map/gridGeometry.ts` (`buildLattice`, pinned in `gridGeometry.spec.ts`), bound by
 `starmap/starmapScene.ts:addLattice` and `holo/scene.ts:addGridEdges`. Reported by the owner as "turn
 falloff up at all and all the lines go super dim".
@@ -1004,6 +1264,9 @@ their CONSTANTS (S24) and still looked different, because they emitted the geome
 one of them emitted it wrongly. Sharing the numbers under two emitters buys nothing.
 
 ### RENDER-S27 A STARMAP GLYPH IS A SCREEN QUANTITY — its size AND its members' spread — never a world constant
+BUCKET: ARCHITECTURE + PLATFORM (perspective projection) - durable: a MARK on a map is a SCREEN
+quantity, converted to world units per frame. Platform: the conversion uses camera-space DEPTH,
+because distance exceeds depth by 1/cos(off-axis angle).
 WHERE: `starmap/starGlyphLaw.ts` (`clusterLayout`, `clusterHalfExtent`, `bandScale`, pinned in
 `starGlyphLaw.spec.ts`), bound by `starmap/starmapScene.ts:updateStars` (per frame: group scale =
 GLYPH_PX * worldPerPx(camera-space DEPTH), offsets along the camera's right/up) and by
@@ -1027,6 +1290,9 @@ hole's schematic glyph is the one member whose size the GM scaler never moves (`
 `clusterLayout`): its horizon, ring and blaze need their pixels to read as a hole at all.
 
 ### RENDER-S28 A STAR'S DECORATIONS ARE TAGS, AND THE LOOK IS BUILT ONCE
+BUCKET: ARCHITECTURE - the house rule (physics -> tags -> visuals) in one entry: a renderer draws a
+jet because the body CARRIES the tag, and may not test a class, a field or a threshold of its own.
+The lever is the derivation.
 WHERE: `holo/bodyFeatures.ts:buildStarLook` / `updateStarLook` (corona + flares + jet + shed shell),
 called by `holo/scene.ts` (radius = the photosphere's scene radius) and `starmap/starmapScene.ts`
 (unit radius, rescaled per frame — RENDER-S27). The tags: `physics/stellarOutflows.ts`
@@ -1049,6 +1315,9 @@ does not fossilise them. The gallery (`holo/galleryScene.ts`) still holds its OW
 G26 row, not unified here.
 
 ### RENDER-S29 A LOCK OWNS THE ORIENTATION, AND THE TILT ONLY CHOOSES THE LOCKED POINT
+BUCKET: DOMAIN - tidal locking means ONE FIXED SURFACE POINT faces the host; at tilt e that point
+sits at latitude -e, and at e~90 it IS the pole. The same tides that despin also erode obliquity, so
+a despun body cannot keep a formation tilt.
 WHERE: `holo/scene.ts:faceParent` (spin(world-up) COMPOSED ONTO tilt — spin*tilt, never
 tilt*spin); `physics/axialTilt.ts:inferAxialTilt` (`despun` collapses the draw to a <=5 deg
 Cassini residual); `rendering/planetTexture.ts:paintLockedPointRamp` (the eye and the molten
@@ -1070,6 +1339,8 @@ terms) of every despun tilt-less body on every route (generation, import fixup),
 molten emissive textures. Sol fixture unmoved — every Solar body carries a measured tilt.
 
 ### RENDER-S26 A RING DRAWN AS A `LineLoop` CAN CARRY NOTHING PER-EDGE
+BUCKET: PLATFORM (GPU primitive topology) - a LineLoop is a vertex ring with NO PAIR STRUCTURE, so
+anything per-edge has nowhere to attach and silently does not happen.
 WHERE: `map/gridGeometry.ts:ringEdges`, bound by both scenes' polar grids.
 RULE: build a ring as EDGES unless you are certain nothing will ever hang off its segments. A
 `LineLoop` is a vertex ring with no pair structure, so any per-edge decoration — a curtain, a ribbon,
@@ -1083,6 +1354,9 @@ is a solid cone, not a depth cue, and that cone was the "glow at the centre". An
 primitive gets the same question asked of it before it is drawn as a loop.
 
 ### RENDER-S24 A shared LOOK needs a shared CONSTANT, or the copies diverge into a bug
+BUCKET: ARCHITECTURE - two surfaces offering the SAME control bind one module. Bind them
+PRE-EMPTIVELY, while there is nothing to reconcile and no bug to report - that is the cheapest
+moment there will ever be.
 WHERE: `src/lib/map/gridFade.ts` (`gridFadeWindow` / `gridFadeAlpha`, pinned in `gridFade.spec.ts`),
 bound by `holo/scene.ts:addGridLines` and `starmap/starmapScene.ts:fadeWindow`. Reported as C14.
 The DEPTH curtain joined it later (`skirtDepth` / `SKIRT_DEPTH_RATIO` / `SKIRT_TOP_ALPHA`, pinned in
@@ -1111,6 +1385,9 @@ whole line by its endpoints, which is why the plate grid segments itself when th
 (inbox A37) - any new grid geometry needs the same treatment or it will fade in steps.
 
 ### RENDER-S23 A working MOUSE path is no evidence at all about TOUCH
+BUCKET: ARCHITECTURE + PLATFORM (browser pointer/touch) - durable: name the SET of inputs a rule
+admits, in one exported place, and never spell it as a test against ONE MEMBER. Platform: a pinch
+fires no wheel event.
 WHERE: `viewport/cameraRig.ts:ownsDistance` (exported, pinned in `cameraRig.spec.ts`), bound by the
 pointer/wheel listeners in `holo/scene.ts`. Reported as C10.
 RULE: name the SET of inputs a rule admits, in one exported place, and pin it. Never spell an input
@@ -1140,6 +1417,10 @@ throws nothing, and reaches no instrument. It is now counted into `[sse-perf]` (
 counter proves it happens, not before.
 
 ### RENDER-S22 The scene-rebuild path is INSTRUMENTED — switch the meters on before theorising about it
+BUCKET: ARCHITECTURE (instrumentation) + IMPLEMENTATION - durable, and both halves are portable: an
+ALWAYS-RECORDING event ring beats an instrument you must switch on first (an intermittent fault a
+refresh clears outruns it every time), and NEVER LET A METER ADD THE COST CLASS IT IS FOR. The
+counter names are this code's.
 WHERE: `perfTrace.ts` (`?perf=1`, `localStorage['sse-perf']='1'`, or `window.__ssePerf.enable()`);
 counters registered by `holo/scene.ts` and `broadcast.ts`. Full index: `docs/dev/debug-tools.md`.
 RULE: `setSystem` rebuilds the WHOLE 3D scene, and a ship in transit rewrites the snapshot ~2x/second,
@@ -1203,6 +1484,9 @@ is exactly the cost class being hunted. `hashMs` is printed beside it so the ins
 visible rather than smuggled into the measurement. **Never let a meter add the cost class it is for.**
 
 ### RENDER-S21 "The orbit line vibrates" was TWO mechanisms in one line, in two ring FAMILIES
+BUCKET: PLATFORM (float32 GPU composition; 60 Hz sampling) + IMPLEMENTATION - durable diagnostic:
+jitter still present when TIME IS STOPPED is precision; jitter that vanishes when time stops and
+scales with rate is aliasing. Ask that before reading any refinement code.
 WHERE: `holo/scene.ts` - `emitOrbitRing` (A23, heliocentric) and `updateOrbitRings`' near path
 (f64 composition + the dense arc, local rings); `buildLocalOrbitRing` returns the `sample(u)`
 closure the latter re-samples through.
@@ -1233,6 +1517,8 @@ without bound as you zoom, and costs the whole buffer at every zoom). Do not con
 exactly, or a ring changes shape as it crosses the near threshold.
 
 ### RENDER-S20 A far-field sprite must be DEPTH-TESTED; `renderOrder` cannot put it behind a body
+BUCKET: PLATFORM (three.js render passes) - renderOrder sorts only WITHIN a pass, so a transparent
+depthTest:false backdrop paints over every body no matter how negative its order.
 WHERE: `src/lib/holo/scene.ts:rebuildSkyStars` (the sky dot / spike / label materials), and
 `makeGridLabel`'s `depthTest` argument.
 RULE: three draws the whole TRANSPARENT pass AFTER the opaque one, and `renderOrder` only sorts
@@ -1258,6 +1544,9 @@ render target carries a depth buffer (`renderTarget1.depthBuffer === true`), and
 identically down `composer.render()` and the bare `renderer.render()` branch.
 
 ### RENDER-S19 A code path that has never RENDERED has never been tested by anyone's eyes
+BUCKET: ARCHITECTURE + PLATFORM (three.js) - durable: ask what has ever EXERCISED a path on screen,
+and derive a heading from something that EXISTS WHEN NOTHING MOVES (a paused clock is not the rare
+case). Platform: the lookAt argument swap, per-segment vertex-colour interpolation.
 WHERE: the moving-construct path in `holo/scene.ts:updateConstructs` (facing, plume, route line);
 first actually rendered v2.1.477, first faults v2.1.479.
 RULE: before trusting visual code, ask what has ever EXERCISED it on screen. The GM system view is
@@ -1290,6 +1579,10 @@ any test or local preview without hand-building a transit. Changes here need the
 live player view - plan the round-trip in, not as an afterthought.
 
 ### RENDER-S18 A time WINDOW is only meaningful against the clock that issued it
+BUCKET: ARCHITECTURE - a published time-judged quantity carries its EPOCH and a reader must run in
+the same one. Its failure signature is the durable half: POSITIONS SURVIVE A WRONG CLOCK, so the
+view looks entirely healthy and only time-judged things fail - silently and totally, never
+approximately.
 WHERE: `routes/catalogue/+page.svelte` (seeds from the system's `epochT0`, as `SystemView` does);
 readable in `__shipDebug` as `clock` / `burnWindow` / `clockInBurn`.
 RULE: any surface that judges published game-clock data - a burn window, a route's start and end,
@@ -1307,6 +1600,8 @@ only time-judged things fail, and they fail SILENTLY and TOTALLY rather than app
 new published-with-timestamps field inherits this. Check the epoch before you check the pipe.
 
 ### RENDER-S17 Build a fixture the way the PRODUCER builds it, not the way the type allows
+BUCKET: ARCHITECTURE - a TYPE is not a claim about what a producer WRITES. Fixture the worse case; a
+hand-written fixture that hands every field a real value tests a producer that does not exist.
 WHERE: `constructs/shipRoute.ts` (geometry from `pathPoints`), pinned in `shipRoute.spec.ts`.
 RULE: `TransitSegment` declares `startState` and `endState`, so a route built from them type-checks
 and reads correctly. But `calculateFastPlan` writes literal `{ r: {x:0,y:0}, v: {x:0,y:0} }` for
@@ -1326,6 +1621,9 @@ course - the flown path is an arc, so the knots are read as a centripetal Catmul
 refinement cannot help because A23 re-samples a propagator and a player has none.
 
 ### RENDER-S16 A direction that feeds back must be UNIT, and prove it
+BUCKET: ARCHITECTURE + DOMAIN (geometry) - durable: any quantity that is both PRODUCED and
+RE-MEASURED needs its invariant asserted, not assumed. A harmless expression becomes dangerous the
+moment its result enters a loop.
 WHERE: `viewport/shotSolver.ts:headingDirection` (normalised); pinned in `shotSolver.spec.ts`.
 RULE: `UP*cos(t) + outward*sin(t)` is a unit vector ONLY when the two are orthogonal. In general its
 length is `sqrt(1 + outward.y * sin(2t))`, so any subject off the plane yields a vector that is not
@@ -1345,6 +1643,8 @@ asserts |heading|^600 == 1 so the REASON (ten seconds of compounding at 60fps) i
 the value.
 
 ### RENDER-S15 Take each camera quantity from the input that OWNS it, not from the camera
+BUCKET: ARCHITECTURE - take each quantity from the input that OWNS it. Infer it from shared state
+instead and every other writer of that state becomes indistinguishable from the user.
 WHERE: `holo/scene.ts:driveFocus` - rotation is derived from any drag, ZOOM only from the wheel.
 RULE: a drag rotates; only the wheel changes distance. Never infer a quantity from the camera when
 a specific input owns it, because then ANY other writer of the camera becomes indistinguishable
@@ -1363,6 +1663,9 @@ needs to change distance, give it its own input kind rather than widening what t
 for.
 
 ### RENDER-S14 A heading policy needs the FULL sphere, or it can be handed an impossible shot
+BUCKET: ARCHITECTURE + PLATFORM (OrbitControls damping; the pole singularity) - durable: clamp only
+what the VIEW KIND requires, never what the geometry might need; A LIMIT SET IN TWO PLACES IS A
+LIMIT YOU HAVE NOT CHANGED; and make an unsatisfiable policy SAY so.
 WHERE: `holo/scene.ts:applyPolarLimits` (3D: epsilon off each pole; a flat map stays pinned).
 RULE: any camera policy that derives a heading from REAL POSITIONS - host-relative framing, a
 route, a surface construct - can legitimately ask for a direction below the plane. The controls must
@@ -1389,6 +1692,9 @@ still cannot be satisfied, make it SAY so (`hostWouldOcclude` is the pattern) ra
 the camera chase a shot it can never reach.
 
 ### RENDER-S13 Every construct has an EXTENT, and anything self-drawn must be self-LIT
+BUCKET: ARCHITECTURE + DOMAIN - architecture: the camera and the geometry take their extent from ONE
+authored number, so they cannot disagree. Domain: a scene whose only real light is its star has no
+fill, so anything self-drawn must be EMISSIVE or it draws black on black.
 WHERE: `holo/scene.ts:attachHullVolume` (the ellipsoid stand-in), consumed by `frameDistance` and
 `focusBody`'s min-zoom via `shipLen`.
 RULE: a construct with no 3D model still gets a rendered hull - an ellipsoid at its authored
@@ -1409,6 +1715,9 @@ Adding any new construct-visual goes through this function, not a sixth branch; 
 from `constructIcon.ts` (A34's one vocabulary), never a private copy.
 
 ### RENDER-S12 The camera is a BASE the system writes plus an OFFSET only the user writes
+BUCKET: ARCHITECTURE - base + offset makes four fault classes IMPOSSIBLE rather than merely fixed,
+which is the shape to copy. There is no third category of camera writer: a thing either proposes a
+BASE or it is user input and writes the OFFSET.
 WHERE: `src/lib/viewport/cameraRig.ts` (+ `cameraRig.spec.ts`), `shotSolver.ts` (+ its spec).
 Phase P2 of `docs/dev/camera-framing-redesign.md`.
 RULE: base = the shot the solver wants, RECOMPUTED EVERY FRAME from live positions. offset = what
@@ -1439,6 +1748,9 @@ a target at 0.1 loses absolute precision to cancellation (the thing the floating
 prevent).
 
 ### RENDER-S11 The size law is one tested module; the scene binds it, never restates it
+BUCKET: ARCHITECTURE - one pure law, an EXPLICIT context, no ambient state: a caller that cannot
+pass the context is a caller about to disagree about scale. And a floor in WORLD units is the thing
+true scale exists to avoid - legibility belongs to the screen.
 WHERE: `src/lib/rendering/scaleLaw.ts` (pure) + `scaleLaw.spec.ts`; bound in `holo/scene.ts`
 (`scaleCtx()`, `bodyRadiusScene`, `starRadiusScene`, `shipLenScene`, `markerScale`, `bodyRadius`).
 RULE: how big anything draws is decided ONLY in scaleLaw.ts, from an explicit
@@ -1470,6 +1782,9 @@ exists to avoid; legibility belongs to the screen-space pixel floor. Design:
 `docs/dev/camera-framing-redesign.md` (S1/S2/S2b, phases P1/P4).
 
 ### RENDER-S10 Camera framing eases in LOG distance, and must travel with its target
+BUCKET: ARCHITECTURE + PLATFORM (floating point over ten decades) - durable: close a constant
+PROPORTION per frame, carry the shot by the target's own motion, and make arrival a RATIO test. At
+1e-9 units every absolute epsilon is either unreachable or instantly true.
 WHERE: `src/lib/holo/scene.ts:driveFocus` (`easeDistance`, `framedClose`, `_prevDesired`);
 `window.__camDebug = true` prints the shot, the chosen ladder level and the live distance.
 RULE: this scene spans ten orders of magnitude between a whole-system shot (~20 units) and a
@@ -1493,6 +1808,9 @@ depending on whether the download had landed. Derive from the authored data, whi
 once.
 
 ### RENDER-S9 A "normalised" model group is only normalised until someone sets its scale
+BUCKET: ARCHITECTURE - a builder that normalises parks that scale on a CHILD and hands back an
+identity wrapper. TEST THE CONTRACT THE CALLER RELIES ON, not the one the builder advertises - the
+old test stayed green because it measured the one thing no real caller does.
 WHERE: `src/lib/constructs/modelViewer.ts:buildDisplayModel` (returns an OUTER group whose own
 transform is the caller's); consumed by `holo/scene.ts:attachShipModel` and the portrait viewer.
 Guarded by `modelViewer.spec.ts` ("leaves its own transform free for the caller").
@@ -1513,6 +1831,10 @@ viewer hid it too: it measures whatever it is handed and frames to that, so a 25
 framed 25x further away and looks perfect - the only surface a human had ever checked.
 
 ### RENDER-S8 A ship's drawn size cannot be judged from a screenshot - measure it, and measure the OBJECT
+BUCKET: ARCHITECTURE (instrumentation) + IMPLEMENTATION - durable: an instrument that reports what
+the code INTENDS is not a measurement of what it DID. This one reconciled to five figures against a
+picture that was plainly wrong, so 'measure, do not judge from a screenshot' produced a confident
+wrong answer and closed the investigation.
 WHERE: `src/lib/holo/scene.ts:updateConstructs` (`window.__shipDebug = true` logs the numbers)
 RULE: the drawn size is `max(trueLength, minPx * f * cameraDistance)` - it depends on the
 body-size dial, the camera distance AND the viewport height together. A hull that looks "AU
@@ -1532,6 +1854,9 @@ BLAST: any change to the floor, the dial, or the framing. Note the floor RELEASE
 camera frames that ship (otherwise zoom cannot change the apparent size at all).
 
 ### RENDER-S7 Never swallow an exception on the path that decides whether a thing renders
+BUCKET: ARCHITECTURE - never swallow an exception on the path that decides whether a thing RENDERS:
+the fallback is correct behaviour, so a silent failure is indistinguishable from a design decision
+by looking at the screen.
 WHERE: `src/lib/holo/scene.ts` (`attachShipModel`, `loadShipModel`) - both now `console.warn`
 RULE: a try/catch around model building MUST report. The fallback (the glyph) is correct
 behaviour, so a silent failure looks exactly like a design decision and cannot be distinguished
@@ -1546,6 +1871,8 @@ is cleared, a refactor that changes a shared interface's SHAPE needs every reade
 hand - `grep 'fx\.' ` would have found this in seconds.
 
 ### RENDER-S6 The body-size dial interpolates GEOMETRICALLY, not linearly
+BUCKET: ARCHITECTURE - a control over a quantity spanning decades interpolates GEOMETRICALLY, so
+each step multiplies by a constant ratio.
 WHERE: `src/lib/holo/scene.ts:dialBlend` (bodies, stars and ship hulls all route through it)
 RULE: size = true^(1-v) x readable^v, so each step of the dial multiplies size by a constant ratio.
 WHY: linear blending let the readable term dominate a 1e-5 true radius immediately — 20%-90% of the
@@ -1563,6 +1890,9 @@ both before touching a published route._
 #### Opened 2026-08-07 by the engine-map backfill session. Verified against the code, not the inbox.
 
 ### TRANSIT-1 Autopilot takes FLIGHT PARAMETERS out of user-editable tag data, by slug
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: engine behaviour keyed to a USER-EDITABLE
+vocabulary by slug, with no repair and no report, fails silently by default - a GM editing a tag
+list is editing ship performance and nothing says so. Exhibit 6 in faults-the-old-shape-allowed.md.
 WHERE: `constructs/coi.constructReadiness` (STATUS tags' `readiness`) and `constructTardiness` (the
 OWNER tag's `tardiness`); consumed in `transit/autopilotAdapter.ts:180` and `:333`. Slug matches also
 sit in `components/AutopilotTab.svelte:92-100` and `constructs/inheritance.DRIVE_RANK`.
@@ -1581,6 +1911,9 @@ matching owner tag in the CATEGORY's order, which is only unambiguous because `o
 Adding a new slug-coupled behaviour: give it the TRANSIT-2 repair, or accept that it fails silently.
 
 ### TRANSIT-2 Three status slugs and one readiness number are ENGINE CONSTANTS living in user data
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: where an engine depends on a vocabulary it does not
+own, it must REPAIR that vocabulary on every normalise. That this is the ONLY place which does is
+the finding, not the rule.
 WHERE: `constructs/coi.normalizeCoIs` (the `def.id === 'status'` block); pinned by
 `tags/tagCategories.spec.ts:85-88`.
 RULE: `status/in-transit-interstellar`, `status/in-transit-system` and `status/adrift` are RE-ADDED on
@@ -1595,6 +1928,9 @@ slug with no equivalent (TRANSIT-1). If you add an engine-meaningful tag, either
 or expect it to go missing. Do not "clean up" the re-add as redundant — it is load-bearing on import.
 
 ### TRANSIT-3 A leg's arrival is its OWN departure plus transit, never the requested start
+BUCKET: DOMAIN + ARCHITECTURE - domain: a thrifty transfer legitimately WAITS for an alignment
+window, and the wait is part of the schedule. Architecture: ONE solver both costs the search and
+commits the legs, so they cannot disagree.
 WHERE: `transit/autopilotAdapter.solveLeg` (the `departMs` line and the `elapsedDays` cap).
 RULE: the Most Efficient family can commit a DELAYED launch window — `startTime` up to ~1000 days
 after `startMs`, which IS the "wait for alignment" behaviour a thrifty ship deliberately chooses. So
@@ -1612,6 +1948,9 @@ identically — see DATA-G1, and note `hash01` there is NOT the same constant as
 #### Load path and instruments (P1) — added 2026-08-07 by the performance/memory comb
 
 ### UI-L1 A progress bar at 100% is not a finished load, and the overlay outlives the work it reports
+BUCKET: ARCHITECTURE (instrumentation) - a progress bar reports ONE STAGE of a load; the diagnostic
+instrument is the stage. An overlay that never advanced looks identical to one that never started,
+so the opening frame is not evidence of progress either.
 WHERE: `routes/+page.svelte:recalcAllSystems` (the overlay is cleared AFTER the loop) + `handleLoadStarmap`
 RULE: the physics overlay reports ONE stage of a load. It is torn down only after `starmapStore.set`
 and the first render, so a hang in either of those leaves a completed bar on screen. When diagnosing
@@ -1626,6 +1965,9 @@ BLAST: any new load stage → add a `perfStage` call and a `loadGuardStage` labe
 another invisible place to hang. Anything that reads "the bar was at N%" as a diagnosis.
 
 ### UI-L2 A load guard must clear on a TIMER as well as on a painted frame
+BUCKET: PLATFORM (browser: a hidden or non-compositing tab paints no frames) + ARCHITECTURE - a
+guard needs TWO independent clears, and a timer cannot mask the fault it exists for, because a
+genuinely hung render blocks both paths.
 WHERE: `routes/+page.svelte:handleLoadStarmap` (double-rAF `clearOnce('painted')` + 15s `clearOnce('alive')`)
 RULE: a guard that arms before an auto-load and blocks the next startup if unfinished MUST have two
 independent clears: a painted frame AND a wall-clock timer. Never the paint alone.
@@ -1638,6 +1980,8 @@ BLAST: any other "did this finish?" flag keyed on rendering. Note the symmetric 
 hidden tab also changes TIMING, not just painting.
 
 ### UI-L3 A per-item yield in a loop costs 1s per item in a hidden tab
+BUCKET: PLATFORM (browser: setTimeout clamped to ~1 Hz in a background tab) - a per-item repaint
+yield becomes 1000 ms per item, so 2 s becomes 44 s with no slow code anywhere.
 WHERE: `routes/+page.svelte:recalcAllSystems` (`if (!document.hidden) await setTimeout(30)`)
 RULE: browsers clamp `setTimeout` to ~1 Hz in a background tab, so a `setTimeout(30)` yield inside a
 per-item loop silently becomes 1000 ms per item. Gate any repaint yield on `!document.hidden` — with
@@ -1649,6 +1993,9 @@ stage stamps on the first run, not by reading the code.
 BLAST: every other progress loop that yields to repaint (imports, exports, batch processing).
 
 ### UI-L4 An emergency data path must not depend on anything that could be the fault
+BUCKET: ARCHITECTURE (product contract) - the recovery route for un-loadable data must touch NOTHING
+that could be the fault. The user's only exit was resetting browser data: the campaign was destroyed
+by the workaround, not by the bug.
 WHERE: `routes/+page.svelte:downloadStoredStarmap` (storage → JSON → download, no render, no engine)
 RULE: the recovery route for un-loadable data reads storage and writes a file, touching no renderer,
 no processor and no store. Plain JSON, which the ordinary `.json` load path reads back.
@@ -1658,6 +2005,9 @@ same way. This is why it is offered on the safe-mode screen, BEFORE any retry.
 BLAST: adding assets/bundling to this path would reintroduce the dependency. Keep it dumb.
 
 ### UI-L7 A loop sized in MAP units is unbounded, because zoom is fitted to the map's own extent
+BUCKET: ARCHITECTURE - durable and general: a loop that steps in WORLD units under a FITTED zoom is
+bounded by the DATA's extent, not by anything on screen. And a GATE and a CAP are two different
+things - the cap must sit ABOVE honest use or it truncates real work instead of catching runaways.
 WHERE: `components/Grid.svelte` (the `MIN_CELL_PX` gate + `MAX_CELLS` cap); pinned by `Grid.gate.spec.ts`
 RULE: any draw loop that steps in MAP units over `view / zoom` runs a number of times set by the
 DISTANCE BETWEEN THE FURTHEST TWO SYSTEMS, not by anything on screen. It must be gated on the cell's
@@ -1681,6 +2031,9 @@ first pair tried here (3 px / 40,000) failed exactly that way: the densest legib
 wants 82,112 cells. The spec asserts the two constants against EACH OTHER for that reason.
 
 ### UI-L6 A load-failure bundle needs the STORED map and the LIVE one, and they answer different questions
+BUCKET: ARCHITECTURE - ask whether the object you are exporting is the INPUT or the STATE, and say
+which in the file. A mutating pipeline's in-memory copy is a state nobody can reproduce and no code
+path ever created.
 WHERE: `io/diagnosticBundle.ts` (`starmap` vs `liveStarmap`, `map.source`, `map.hasInMemoryCopy`)
 RULE: `recalcAllSystems` rewrites `node.system` IN PLACE, so mid-load the in-memory map is a half
 re-derived mixture that never existed on disk. Ship BOTH: the stored copy is the reproducible INPUT
@@ -1696,6 +2049,9 @@ is the INPUT or the STATE, and say which in the file. If storage cannot be read,
 the loadable name and `map.source` must say `in-memory` — never let a fallback impersonate the input.
 
 ### UI-L5 A diagnostic that carries a user's campaign is built on consent, not on convenience
+BUCKET: ARCHITECTURE (product contract) - four consent properties, all pinned by a spec: built only
+on ASK, nothing uploaded, a README that states what is inside, and the campaign confined to ONE
+deletable file so a user can still send a useful report.
 WHERE: `io/diagnosticBundle.ts` (+ `diagnosticBundle.spec.ts`); offered after Stop load, in safe mode,
 and on demand from Settings → System
 RULE: four properties, all load-bearing, all pinned by the spec: built ONLY when the user asks;
@@ -1719,6 +2075,10 @@ hand-edited._
 #### Backfilled from closed inbox items — added 2026-08-07 by the engine-map backfill session
 
 ### DATA-G1 A new random draw takes its OWN id-seeded stream, or every written-down seed stops reproducing
+BUCKET: ARCHITECTURE - with PHY-1, the other property a generator has from its first commit or
+retrofits for a year. A draw takes its OWN id-seeded stream; anything that must survive
+re-processing uses a deterministic hash rather than an rng at all, because a per-run stream's order
+depends on iteration order and that is not a promise.
 WHERE: `generation/star.starTiltFromPack` / `starFieldFromPack` (callers pass
 `new SeededRNG(\`${id}-tilt\`)` / `-mag`); `generation/planet.ts:269`; the deterministic
 `hash01(body.id + '|…')` in `SystemProcessor.ts:37` and `import/realsky/positions.mjs:17`.
@@ -1743,6 +2103,8 @@ one an import resolves to before reasoning about a stream. `Math.random` is fine
 #### Ship-model binaries (G3) — added 2026-08-04 by the ship-appearance stream
 
 ### DATA-M1 A model binary never rides the node
+BUCKET: ARCHITECTURE - the document carries a content-addressed REFERENCE; the bytes travel on
+demand. Content addressing also means two things sharing a hull cost one entry.
 WHERE: `src/lib/constructs/modelStore.ts`, `modelTransfer.ts`, `broadcast.ts` (`REQUEST_MODEL`)
 RULE: the node carries a `ModelRef` (hash + attribution) ONLY. The GLB lives in a hash-addressed
 IndexedDB store; it reaches a saved file by explicit embedding at export, and a remote player by an
@@ -1753,6 +2115,8 @@ BLAST: any new place a model is attached; anything that puts bytes on a node. Co
 means two ships sharing a hull cost one entry — do not "clean up" the store per construct.
 
 ### DATA-M3 A save is a bundle or plain JSON, and the MAGIC NUMBER decides
+BUCKET: ARCHITECTURE - format is decided by the BYTES, never by the extension, and the readable
+document sits BESIDE the binaries rather than base64'd inside them.
 WHERE: `src/lib/io/bundle.ts` (`sniffBundle` / `packBundle` / `unpackBundle`); callers in
 `routes/+page.svelte` and `components/SystemView.svelte`
 RULE: a campaign or system carrying assets saves as a zip (`.sse.zip`) - a readable
@@ -1769,6 +2133,8 @@ and must survive untouched. `.ubox`/`.sc`/`.pak` are zips too: the importer adap
 BEFORE the sniff, so do not reorder that check.
 
 ### DATA-M4 Provenance travels with the art, and the gaps are named
+BUCKET: ARCHITECTURE (product contract) - provenance travels with the art, and a GAP is named as a
+gap rather than omitted. CC-BY with no credit is called out as a breach, not left blank.
 WHERE: `src/lib/io/attributions.ts`, written into every bundle as `ATTRIBUTIONS.md`
 RULE: each uploaded model/image is listed once with what uses it and its credit/licence/source.
 An asset with NOTHING recorded is listed as such; CC-BY with no credit is called out as a breach
@@ -1780,6 +2146,9 @@ BLAST: changing the asset paths (the collector matches on the `assets/` prefix).
 surface: fill the ImageRef/ModelRef provenance fields or every asset it creates reports blank.
 
 ### DATA-M6 What a save file IS is decided ONCE, before any validator speaks
+BUCKET: ARCHITECTURE - classify the bytes ONCE, before any validator speaks. Classification NAMES a
+sister file; it does not replace validation, and it must not stamp anything on a document it is only
+inspecting.
 WHERE: `src/lib/io/classify.ts` (`classifySaveFile` / `classifyJsonDoc`); callers in
 `routes/+page.svelte` (Load Starmap), `components/SystemView.svelte` (Load System) and
 `components/GenerationWizard.svelte` (load saved system)
@@ -1797,6 +2166,9 @@ rule being broken; extend `classify.ts` instead. If a new top-level save kind is
 `classifyJsonDoc` its shape and every wrong-loader message names it for free.
 
 ### DATA-M7 A save screen names the world it saves, and there is ONE campaign save
+BUCKET: ARCHITECTURE (product contract) + IMPLEMENTATION - durable: a save screen states in plain
+words what IS and IS NOT in the file, and there is ONE live path per scope. A second, unreachable
+save path had already grown and drifted.
 WHERE: `src/lib/components/SaveSystemModal.svelte` (`scope` / `subjectName` / `showOptions`);
 callers in `SystemView.svelte` (scope 'system') and `routes/+page.svelte` (scope 'starmap')
 RULE: every save screen states in plain words what IS and IS NOT in the file — a system save is
@@ -1815,6 +2187,9 @@ gains a Player handout, `showOptions` becomes true there and the redaction must 
 `handleDownloadStarmap` — the removed dead copy is NOT a working reference.
 
 ### DATA-M5 A map-fixed image lives INSIDE the world transform, and its anchor is campaign content
+BUCKET: ARCHITECTURE - georeferenced content lives INSIDE the world transform and decoration lives
+outside; every surface asks ONE function for the rectangle. Parity is a correctness requirement, not
+polish: a player looking at borders in the wrong place is looking at a wrong map.
 WHERE: `src/lib/map/mapBackground.ts` (the only place the rectangle is worked out), `Starmap.svelte`
 (the `<image>` inside the `translate(pan) scale(zoom)` group), `starmapScene.ts` (`setMapBackground`,
 the quad in the map plane), `starmapDocument.ts` (the figure at the foot), `types.ts` (`MapBackground`).
@@ -1843,6 +2218,8 @@ NOT `SYNC_PRESET` - `SYNC_PRESET` carries `{presetId, overrides}` only, and a 2 
 2,097,819 bytes on the starmap message, gated by `sendIfChanged`'s fingerprint.
 
 ### DATA-M2 Imported model bytes are verified against their own key
+BUCKET: ARCHITECTURE - content addressing means RE-HASH ON IMPORT and drop a mismatch, or a payload
+filed under someone else's hash poisons every reference to it.
 WHERE: `modelTransfer.importEmbeddedModels`; pinned by `modelTransfer.roundtrip.spec.ts`
 RULE: an embedded blob is re-hashed on import and DROPPED if it does not match the key it arrived
 under. A ref whose binary this machine never had exports ref-only and degrades to the icon glyph.
@@ -1853,6 +2230,8 @@ BLAST: adding another transport (the broadcast path shares this function deliber
 #### Real-sky import and the bundled starmaps — added 2026-08-04 by the importer stream
 
 ### DATA-R1 A correction to a bundled map belongs in the KIT, never in the JSON
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: a GENERATED artefact is regenerated, and the
+failure mode is a build that SUCCEEDS, prints its usual two lines, and quietly reverts twelve fixes.
 WHERE: `scripts/starmap-build/build-starmaps.mjs`; pinned by `scripts/starmap-build/buildKit.spec.mjs`
 RULE: the three files in `static/example-starmaps/` are GENERATED. The pin test rebuilds into a temp
 directory and compares byte for byte, normalising only line endings and the `appVersion` stamp — so
@@ -1867,6 +2246,9 @@ shipped maps must be regenerated in the SAME commit. Adding a planet host to the
 regenerates `src/lib/generated/bundledArchiveHosts.mjs` (D15) — never hand-edit that file.
 
 ### DATA-R25 A DESTRUCTIVE OFFER ITEMISES WHAT IT DESTROYS, or it is not informed consent
+BUCKET: ARCHITECTURE (product contract) - a destructive offer ITEMISES what it destroys.
+Over-warning costs a second look; under-warning costs the campaign - so name-based over-reporting is
+the deliberate safe direction.
 WHERE: `src/lib/map/rebase.ts` (`lossesOf`), shown by `BaseMapUpgradeModal.svelte`'s review stage
 RULE: a screen that warns work will be lost must NAME the work. `lossesOf` reports constructs, a
 GM-pinned name, GM notes, and — since B88 — every BODY the replacement has no counterpart for by
@@ -1881,6 +2263,9 @@ direction — over-warning costs a second look, under-warning costs the campaign
 a new node kind must decide whether its absence is a loss and say so here, not silently omit it.
 
 ### DATA-R23 A GM's answer about their OWN campaign is recorded ON the campaign
+BUCKET: ARCHITECTURE (product contract) - an answer ABOUT a campaign is stamped ON the campaign, so
+it rides saves and other devices. Every control that ends a conversation must record something: one
+that closes a dialogue and stores nothing is an infinite loop with a polite face.
 WHERE: `src/lib/map/upgradeOffer.ts` (`recordUpgradeAnswer`, the guards in `shouldOfferUpgrade`),
 `types.ts` (`baseMapUpgradeDeclined` / `baseMapUpgradeDismissed`), `BaseMapUpgradeModal.svelte`
 RULE: when the app asks the GM a question ABOUT THEIR CAMPAIGN, the answer is stamped on the
@@ -1898,6 +2283,9 @@ a second preference key. `stripStarmapForExport` and the persist path both deep-
 fields ride for free; a future normaliser that PICKS fields instead of spreading would drop them.
 
 ### DATA-R2 Node ids are stable REFERENCES, and they feed the orbital phase hash
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: an id used as a SEED is content, not a label, so a
+rename silently moves the body in its orbit; and a generator that quietly de-duplicates a clash
+hides the next one exactly as well as silence did.
 WHERE: `build-starmaps.mjs` (`hash01(id + '|i')` …), `assertUniqueIds`; WS8 rebase reads `sys-*`
 RULE: `sys-sol`, `barnard-star` and friends are load-bearing: parents, barycentre members, orbits,
 routes, constructs and the campaign rebase all key on them. They are also the SEED for each body's
@@ -1911,6 +2299,9 @@ BLAST: any id change → expect element churn in the rebuilt map and check the p
 what you intended. Imported systems reuse a bundled id ONLY via the collision path (DATA-R4).
 
 ### DATA-R3 Inclinations are MUTUAL, never the catalogue's sky-plane value
+BUCKET: DOMAIN - a published inclination is quoted against the SKY; a system's own plane is a
+different frame, and the catalogue column is the wrong one. Move verbatim; any real-sky import in
+any engine meets this.
 WHERE: `src/lib/import/realsky/convert.mjs` (`mutualIncMax`), `data/systems-real.mjs` header
 RULE: SSE's reference plane is the SYSTEM's own plane, so planets get a near-zero mutual inclination
 (default spread 1.2°). Discovery papers quote inclination against the SKY, where a transiting system
@@ -1921,6 +2312,10 @@ BLAST: any new orbital-element source (Gaia, WDS, VizieR). Satellites are a sepa
 `orbit.frame` and C3, which is about a moon's parent equator, not this.
 
 ### DATA-R24 A SKIP REASON NAMES THE CAUSE, and a class-typical figure is flagged as data
+BUCKET: ARCHITECTURE + DOMAIN - architecture: a substituted figure carries its provenance as a
+FIELD, not as prose, and a skip reason names WHICH cause. Domain: brown-dwarf radii really are
+near-constant across L, T and Y because degeneracy sets them, so the identical number was honest and
+the SILENCE was the fault.
 WHERE: `convert.mjs` (`starNodeFromCensus`), `stars.mjs` (`starParamsFromType`), `types.ts`
 (`CelestialBody.typicalForClass`), pinned by `substellarImport.spec.ts`
 RULE: two halves of DATA-R4's honesty that were being lost on the way out.
@@ -1944,6 +2339,8 @@ does not carry, so it stays unsplit rather than invented. If a real catalogue ra
 arriving for these objects, it wins - and `typicalForClass` must not be set for it.
 
 ### DATA-R4 The importer never invents and never overwrites — and both must reach the user
+BUCKET: ARCHITECTURE - an importer neither invents nor overwrites, and BOTH the skips and the
+collisions must reach the user, or a silently short import reads as a complete survey.
 WHERE: `convert.mjs` (`starNodeFromRow` skips, `BUNDLED_ARCHIVE_HOSTS` collisions), `RealSkyImportModal.svelte`
 RULE: a host missing mass, radius or temperature is SKIPPED with a named reason rather than guessed
 into existence, and a host is treated as a COLLISION only when the TARGET MAP already holds it —
@@ -1959,6 +2356,9 @@ which is right for a new map and wrong for an append. The host→bundled-id map 
 roster, so it is only as current as the last kit run (D15).
 
 ### DATA-R5 The shared real-sky core must stay plain, dependency-free ESM
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: code shared by two runtimes must be written for the
+POORER one, and a violation type-checks, bundles and passes every test on the richer one while
+breaking the other.
 WHERE: `src/lib/import/realsky/{constants,positions,stars,planets,convert,query,clusterGate}.mjs`
 RULE: these files are imported by BOTH the Vite app and `scripts/starmap-build/build-starmaps.mjs`,
 which runs under plain `node`. No TypeScript, no `$lib` alias, no Svelte imports — use relative
@@ -1969,6 +2369,9 @@ later, as DATA-R1's failure mode.
 BLAST: `node -e "import('./src/lib/import/realsky/convert.mjs')"` is the cheap check.
 
 ### DATA-R6 The Exoplanet Archive is ALWAYS CORS-blocked in a browser; the proxy is the live path
+BUCKET: PLATFORM (browser CORS; a named external service) + ARCHITECTURE - the 'which source
+answered' label must stay honest, because a stale offline snapshot must never read as live data. It
+had been serving every browser import, silently.
 WHERE: `src/routes/api/realsky-tap/+server.ts`, `src/lib/import/realsky/catalogue.mjs`
 RULE: the archive's TAP endpoint sends no `Access-Control-Allow-Origin`, so a direct browser fetch
 fails deterministically — SIMBAD does send it and works direct. `loadArchiveRows` tries direct (for
@@ -1980,6 +2383,10 @@ BLAST: adding Gaia or VizieR — check their CORS before assuming direct fetch w
 "which source answered" label honest, because a stale snapshot must never read as live data.
 
 ### DATA-R7 The archive's DENSITY is usually not evidence — it is the mass again, in disguise
+BUCKET: DOMAIN + ARCHITECTURE - domain: above the giant threshold a high density means hydrogen
+squeezed by self-gravity. Architecture, and this is the portable half: A CATALOGUE COLUMN CAN BE
+COMPUTED FROM OTHER COLUMNS AND STILL LOOK INDEPENDENT - check provenance before treating it as
+evidence.
 WHERE: `src/lib/import/realsky/planets.mjs` (`defaultMakeup`, `estimateRadiusRe`); the `pl_dens` column
 RULE: pscomppars BACK-FILLS `pl_rade` from `pl_bmasse` when no radius was measured, using essentially
 the same Chen-Kipping relation `estimateRadiusRe` implements four lines above — 135 of the 182
@@ -2000,6 +2407,10 @@ column that looks independent. `estimateRadiusRe` is currently DEAD for both bun
 same reason: every row already carries a `pl_rade`, so the fallback never fires.
 
 ### DATA-R8 NEVER CONCLUDE ANYTHING ABOUT A BODY FROM A FIELD YOU READ DIRECTLY — find who reads it
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable and first-order for any engine with a load-path
+strip and derive-on-absence accessors: A STORED FIELD IS NOT WHAT THE APP SEES. Also the map's best
+lesson about ITSELF - a rule named after the field it was learned from only catches that field; name
+it after the MISTAKE.
 THE CUE, and it is the whole point of this entry: **you are about to say "field X is unset / wrong /
 contradictory" on the strength of having read X out of a JSON file or off a node.** Stop there. Ask
 who READS X in the running app. If the answer is "an accessor that derives X when it is missing", or
@@ -2063,6 +2474,9 @@ exclusive" — a hand-maintained `baseArchetypes` Set in the legacy rules path l
 rulepack's 64 `kind: 'base'` fingerprints — is GONE with that path, v2.1.890-beta / B67.)
 
 ### DATA-R18 A BAND is a range to draw from; a DESIGNATION is what a star IS. Bodies hold designations
+BUCKET: DOMAIN + ARCHITECTURE - domain: a BAND is a range to draw from and a DESIGNATION is what an
+object turned out to be, and a designation is COMPUTED from position so there is nothing to author.
+Architecture: one string is the template, the picker entry, the description key and the class.
 WHERE: `physics/starDesignation` (`starClassKeyFor`, `isBandKey`, `bandKeyOf`); the pack's
 `statTemplates`; `system/importFixup.resolveLegacyStarClass`.
 RULE: the pack keeps BANDS — `star/G`, `star/K-III` — and a pick chooses one. A BODY holds the
@@ -2083,6 +2497,10 @@ and gains only the digit, on the same `autoClassify` test `SystemProcessor` uses
 a class is.
 
 ### DATA-R10 A star's class is (LETTER, LUMINOSITY CLASS). The letter alone determines nothing but colour
+BUCKET: DOMAIN + ARCHITECTURE - domain: an M dwarf and an M supergiant share a temperature and share
+NOTHING ELSE; and the catalogue's own notation is full of traps (a companion after '+', a lowercase
+'d' that is not a white dwarf, '+V' meaning 'or later'). Architecture: parse ONCE at the boundary
+into a structured field.
 WHERE: `src/lib/import/realsky/stars.mjs` (`parseStellarType`, `starClasses`, `starParamsFromType`),
 `static/rulepacks/starter-sf/stars.json` (`statTemplates`), `CelestialBody.stellarType`.
 RULE: an M dwarf and an M supergiant share a temperature and share NOTHING ELSE. Mass, radius and
@@ -2110,6 +2528,9 @@ across a fixed set of census rows before and after — it was unchanged here (55
 16.5 / 25 / 41 ly), but that was measured, not assumed.
 
 ### DATA-R15 TWO GENERATORS SHARING AN ID NAMESPACE WILL COLLIDE, AND IT FAILS SILENTLY
+BUCKET: ARCHITECTURE - two id rules over one namespace must be UNABLE to collide, not merely
+unlikely to. Nothing errors: one node wins, the other's relationships resolve to it, and the map
+looks plausible and is quietly rearranged.
 WHERE: `src/lib/import/realsky/convert.mjs` — the star id and the planet id.
 RULE: if two different KINDS of node are given ids by two different rules, the rules must be unable
 to produce the same string. Not unlikely to — UNABLE to.
@@ -2129,6 +2550,10 @@ ALSO: the primary keeps `<slug>-star`, so every `parentId` and `orbit.hostId` bu
 unchanged — renaming the primary would have been a far larger change for no gain.
 
 ### PHY-17 A LUMINOSITY CLASS IS RADIUS AT A TEMPERATURE, never brightness
+BUCKET: DOMAIN + ARCHITECTURE - domain: a luminosity class is RADIUS AT A TEMPERATURE, and
+brightness alone can never tell you a B0V is a dwarf. Architecture, and this is the shape to copy:
+THE CLASSIFIER TESTS THE SAME BANDS THE GENERATOR DRAWS FROM, so 'pick X, get X back' is structural
+rather than hoped for.
 WHERE: `system/starBandMatch.ts` (`matchStarBand`, `luminosityClassFromPosition`), consumed by
 `classifyStar` when a pack is passed; pinned by `starBandMatch.spec.ts` and
 `physics/starClassification.reference.spec.ts`.
@@ -2150,6 +2575,9 @@ legacy cuts still run without it** — every caller that can pass a pack should,
 fixture asserts BOTH paths so the difference is provably the pack and nothing else.
 
 ### PHY-14 A REMNANT'S MASS AND ITS PROGENITOR'S ARE TWO FRAMES, AND ONE PARAMETER CARRIED BOTH
+BUCKET: DOMAIN - present state (T, L, R, M) is a POSITION; (initial mass, age) is a TRACK; a
+remnant's identity lives on the track and cannot be read off the position. Move verbatim - an
+evolution engine meets this on day one.
 WHERE: `physics/stellar-evolution.ts` — `classifyStar`'s remnant branch and `deriveStarFromHR`;
 pinned by `starClassification.reference.spec.ts`.
 RULE: `massKg` is the object's OWN mass, always. A remnant's IDENTITY is a fact about the star it
@@ -2169,6 +2597,9 @@ that generates a remnant must carry the progenitor mass forward, or the round-tr
 one of them.** The signatures already took the inputs; only the branch read the wrong one.
 
 ### PHY-15 THREE THINGS A BODY RADIATES, ONE SOURCE FIELD EACH — never conflate them
+BUCKET: DOMAIN + ARCHITECTURE - domain: three independent radiative mechanisms, one source quantity
+each, and A GAS GIANT IS A RADIATION SOURCE WITH ZERO LUMINOSITY. Architecture: one source FIELD is
+not one source SET; and before fixing a physics branch, check that something READS its output.
 WHERE: `radiationOutput` on a star; `physics/radiation.ts` (`calculateTotalStellarRadiation`,
 `photonParticleSplit`, `beltParticleFlux`); `physics/ionisingOutput.ts`; `flareActivity` +
 `overrides.flareActivity`.
@@ -2208,6 +2639,10 @@ if it is ever modelled as a stripping term. **The lesson generalises: before fix
 check that something reads its output.**
 
 ### PHY-16 An ageing profile is keyed on MASS, never on the star's TYPE
+BUCKET: DOMAIN + ARCHITECTURE - domain: a star does not evolve as it does BECAUSE it is a G dwarf;
+it is a G dwarf because of the mass that also sets how it evolves. Architecture: ageing PRODUCES
+state, classification READS state, nothing reads the class back out. First-order for an evolution
+engine.
 WHERE: the [[B48]] star-classification workstream; `docs/dev/type-vocabulary-prev4.md` section 9.4.
 The pattern it protects is PHY-1's corollary — a derived CLASS is never a physics input.
 RULE: **ageing PRODUCES state (T, L, mass, radius); classification READS state; nothing reads the
@@ -2226,6 +2661,9 @@ BLAST: rolling ageing into classification puts the two in one room. If the loop 
 Settle the direction before writing code, not after.
 
 ### PHY-28 "Has ground" is `hasSolidSurface`, and it is the ONLY one of the four gas-threshold questions with a predicate
+BUCKET: DOMAIN + ARCHITECTURE - domain: 'has ground', 'is a giant', 'draws as a giant' and 'has a
+surface to rust' are FOUR questions sharing one boundary; and a dense star infers as rocky, so 103
+of 141 stars passed the bare test. Architecture: one predicate turns a coincidence into a guarantee.
 WHERE: `physics/makeup.hasSolidSurface` / `makeupHasSolidSurface` / `SOLID_SURFACE_MAX_GAS`
 RULE: every site that asks "is there somewhere to stand" calls the helper — the habitability gate, the
 geology/volatiles/cryo/ascent branches, the classifier feature zeroing, the cloud saturation floor, the
@@ -2250,6 +2688,9 @@ inline on purpose. Do not route them here on the strength of the shared constant
 `isGiant` for this (different boundary, and B33 records what happens when the two are confused).
 
 ### DATA-R17 ONE spelling of "what is this star class", and 'B' is why it must be a SHAPE
+BUCKET: ARCHITECTURE + DOMAIN - architecture: resolve EXACT first, then by SHAPE, and returning
+undefined is a real answer. A LATENT FALLBACK FAULT PRODUCES NO DIFF, which is exactly why nobody
+finds it by looking at output. Domain: 'B' begins both a spectral class and a black hole.
 WHERE: `src/lib/system/starImage.ts` — `spectralLetterOf`, `resolveStarImage`; pinned by
 `starImage.spec.ts`. Callers: `BodyStarTab.updateImage`, `generation/star.ts` (both the portrait and
 the base-class derivation), `generation/generateFromConfig.ts`.
@@ -2269,6 +2710,9 @@ live. A latent fallback fault produces no diff, which is exactly why nobody foun
 output. Deleting a pack key is the move that would have exposed it.
 
 ### DATA-R13 A LIST OF EXCEPTIONS GOES STALE; A TEST FOR THE PROPERTY DOES NOT
+BUCKET: ARCHITECTURE - a list of exceptions goes stale and a test for the PROPERTY does not;
+categorise from the parsed SHAPE, never from membership. A hardcoded exclusion list is correct only
+until someone adds a class, and nothing tells them the list exists.
 WHERE: `generation/star.ts` (the base-spectral-class derivation and `starCategory`),
 `physics/stellar-evolution.ts` (`flareActivity`).
 RULE: when the question is "does this class have a spectral letter", ask THAT, rather than keeping a
@@ -2291,6 +2735,9 @@ not, and gave `star/M-III` no category at all because it matched no list. Catego
 shape, not from membership.
 
 ### DATA-R16 A PACK'S `liquids.json` IS AN OPTIONAL OVERRIDE, AND ITS 404 IS THE DESIGN WORKING
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: an absence deliberately tolerated must SAY it is
+deliberate somewhere a reader of the SYMPTOM will look; and shipping an empty override to silence
+the noise SETS an override, which is worse than the noise.
 WHERE: `src/lib/rulepack-loader.ts:73-79`, `src/lib/constants.ts:36-41`, `src/lib/data/liquids.json`.
 RULE: the solvent definitions are a BUILT-IN engine default, `import`ed at build time from
 `src/lib/data/liquids.json`. They are never fetched and cannot go missing. The loader's separate
@@ -2309,6 +2756,8 @@ a schema change, not a loader tweak. Same shape as PHY-9: **an absence deliberat
 not a fault, but it must SAY it is deliberate somewhere a reader of the symptom will look.**
 
 ### DATA-R21 A CLASS TEST ANCHORED AT THE END SILENTLY EXCLUDES EVERY SUBTYPE
+BUCKET: ARCHITECTURE + DOMAIN - anchor a match on a hierarchical vocabulary at the START. Real
+members carry subtypes, and the bare form is the one nothing actually holds.
 WHERE: `physics/starPlausibility.starImplausibilities` (`isSubstellar`), and anything else matching a
 class name with a regex.
 RULE: anchor a class test at the START — `/^star\/[LTY]/` — never at the end. Classes carry a SUBTYPE
@@ -2323,6 +2772,10 @@ BLAST: the sibling `isRemnant` on the next line is UNANCHORED and so was never a
 one line apart, written to different rules. Check both when either changes.
 
 ### DATA-R22 A BROWN DWARF HAS ONE DEFINITION, REACHABLE FROM BOTH ROLES
+BUCKET: DOMAIN + ARCHITECTURE - domain: the star/planet boundary for a brown dwarf is genuinely
+DISPUTED and some definitions go by formation, so every PHYSICAL quantity keys on mass and none on
+role. Architecture: one object reachable down two paths must be identical either way; PRESENTATION
+is the only permitted difference.
 WHERE: `physics/substellar.ts`, `physics/luminosity.ts`, `cloudDecks.spaceWeathering`, the
 `star/L,T,Y` bands in `rulepacks/*/stars.json`, the `planet/*-dwarf` fingerprints in
 `classification.json`.
@@ -2340,6 +2793,9 @@ Heavier companions are `star/L,T,Y` however they are filed. Do not widen it back
 limit: that would make the planet side claim objects that cannot have formed as planets.
 
 ### DATA-R28 A MOMENTARY EVENT CANNOT DRIVE A LASTING MODE WITHOUT A LATCH AND A NAMED WAY OUT
+BUCKET: ARCHITECTURE + PLATFORM (Svelte reactive-block self-invalidation) - durable: a MOMENTARY
+event driving a LASTING mode needs a latch and a NAMED way out, and prefer a release the reader
+performs to an invented interval nobody can defend.
 WHERE: `player/clockOwnership.ts` (`gmClockTouched`, `gmHoldsClock`, `canReclaim`) and the latch
 beside `gmTime` in `routes/catalogue/+page.svelte`.
 RULE: when a rule reads "X takes the controls" and X is INSTANTANEOUS, the rule is incomplete. State
@@ -2360,6 +2816,9 @@ BLAST: `gmTime` is never cleared when a GM disconnects, so the latch survives th
 survivable ONLY because the release is a button. A timer-based release would have hidden it.
 
 ### DATA-R29 A STORED ORBIT DESCRIBES A SHIP ONLY IF IT CARRIES THE PHASE AS WELL AS THE RADIUS
+BUCKET: DOMAIN + ARCHITECTURE - domain: a circle is not an orbit without a PHASE, and elements must
+be derived in the frame they will be READ in. Architecture: when one thing is described twice,
+derive the second FROM the first at a known instant, rather than again from the same inputs.
 WHERE: `transit/scheduler.reconcileConstructArrival`, `physics/orbits.circularElementsAtState`,
 `transit/scheduler.samplePostJourneyState`.
 RULE: when one thing is described twice - here by the journey sampler, which the GM draws from, and
@@ -2385,6 +2844,9 @@ so any fixture without `physical_parameters.massKg` has a ship that never moves 
 check then passes for the wrong reason. It cost an afternoon here.
 
 ### DATA-R30 A REPAIR THAT ONLY CHECKS THE HOST CANNOT SEE A CHANGE OF ORBIT
+BUCKET: ARCHITECTURE - an idempotence test must compare EVERYTHING THE OPERATION WRITES; a subset
+makes it a no-op for exactly the cases where the rest of the state is what changed. And widening a
+self-heal needs a second guard, or 'heal on sight' becomes 'overwrite on sight'.
 WHERE: `transit/scheduler.reconcileConstructArrival`, the idempotence test.
 RULE: an idempotence test must compare everything the operation WRITES. Comparing a subset makes it
 a no-op for exactly the cases where the rest of the state is what changed.
@@ -2398,6 +2860,9 @@ journey that finished before they did does not get to undo it. Without that the 
 hand-placed ship every tick and `placementHealCount` climbs, which is meant to mean something else.
 
 ### RENDER-S36 A SAMPLER THAT ANSWERS FOREVER MUST NOT BE WRITTEN DOWN FOREVER
+BUCKET: ARCHITECTURE - stamp a derived value onto a record only while NOTHING ELSE CAN DESCRIBE the
+thing; ask the STATE, never merely whether the sampler answered. ** ID COLLISION: this id is claimed
+again at the methane entry below (search 'HOW MUCH METHANE'). Code comments cite both. **
 WHERE: `SystemView.syncScheduledJourneysAtDisplayTime`, `transit/scheduler.needsStampedPosition`,
 `holo/scene.setSystemBuild`.
 RULE: stamp a derived position onto a node only while nothing else can describe the thing. A parked
@@ -2414,6 +2879,9 @@ BLAST: dropping the stamp is only safe because DATA-R29 made the stored orbit re
 Do them in that order or the ship teleports to the far side of its orbit the moment the stamp goes.
 
 ### RENDER-S39 DRAW AN ORBIT FROM WHATEVER PLACES THE BODY, NOT FROM ITS ELEMENTS BY DEFAULT
+BUCKET: ARCHITECTURE + DOMAIN - architecture: draw a path from the same function that PLACES the
+thing on it, and key on WHICH placer, never on the node's kind. Domain: an inclined circle projects
+to an ellipse of semi-minor a*cos(i).
 WHERE: `SystemVisualizer.drawSystem` (the orbit-ellipse pass), `physics/orbits.orbitPathProjected`,
 `physics/worldPositions.computeWorldPositions`.
 RULE: a drawn orbit must be sampled from the SAME function that places the thing on it. When a view
@@ -2440,6 +2908,9 @@ BLAST: the path is 128 Kepler solves and the pass is per frame, so it is memoise
 OBJECT. That is only a sound key because a parked ship stopped rewriting its node (RENDER-S36).
 
 ### RENDER-S37 "HAS A ROUTE" IS NOT "IS FLYING", AND THE DIFFERENCE IS A CLOCK
+BUCKET: ARCHITECTURE - state outlives the event that produced it, so a question about TIME must be
+asked live rather than answered once at build time. ** ID COLLISION: this id is claimed again at the
+auroral-oval entry below, and it is cited from code with BOTH meanings. **
 WHERE: `holo/scene.setSystemBuild` (orbit-ring build), `holo/scene.updateOrbitRings`,
 `constructs/shipRoute.routeStateAt`.
 RULE: a construct's orbit ring is suppressed while it is ON its course, which is a question about
@@ -2454,6 +2925,10 @@ BLAST: `compactRoute` packs EVERY journey into one window, gaps included, so a s
 journeys still reads as "on route" - see the board.
 
 ### DATA-R26 A DERIVED READING NEVER JOINS A HOST FROM ONE SOURCE TO A NUMBER FROM ANOTHER
+BUCKET: ARCHITECTURE + DOMAIN - architecture: before joining a NAME from one source to a NUMBER from
+another, check they DESCRIBE EACH OTHER; neither half looked wrong on its own, which is why it
+survived. Domain: a semi-major axis is an altitude above the host it was measured from and above no
+other.
 WHERE: `construct-logic.calculateFullConstructSpecs` (`orbit_string`), and any derivation that takes
 an entity from its caller and a measurement off a node.
 RULE: before combining them, CHECK THEY DESCRIBE EACH OTHER. A semi-major axis is an altitude above
@@ -2474,6 +2949,8 @@ resolved it, the transit planner read `parentId` raw, two others passed null). T
 every caller - and note that passing null is fine for a caller that only reads fuel and thrust.
 
 ### DATA-R27 A REPAIR KEYED TO A CLOCK NOTHING MOVES NEVER RUNS - AND AN UNCOUNTED REPAIR HIDES ITS CAUSE
+BUCKET: ARCHITECTURE - key a self-healing pass to the clock the app actually ADVANCES, and make the
+repair COUNT ITSELF on the record it repairs. Idempotence is what makes the count mean something.
 WHERE: `transit/scheduler.reconcileConstructArrival`, called from `SystemView`'s display-time tick.
 RULE: key a self-healing pass to the clock the app actually advances - DISPLAY time - and make the
 repair COUNT ITSELF on the record it repairs. Idempotence is what makes the count mean something: a
@@ -2499,6 +2976,8 @@ BLAST: the run-once autopilot backstop and the flown-past trim in the same tick 
 time, and should - they commit the campaign forward. Only the placement repair moved.
 
 ### DATA-R14 EDIT A RULE PACK AS TEXT
+BUCKET: IMPLEMENTATION (repo practice) - durable half: a load-and-re-dump makes the diff the WHOLE
+FILE, so a reviewer cannot see what changed. Check the diff stat against what you intended to add.
 WHERE: `static/rulepacks/**/*.json`.
 RULE: load-and-re-dump rewrites the whole file to change one key. It reflows every line, so the diff
 is the entire pack and a reviewer cannot see what actually changed — and any formatting the pack
@@ -2508,6 +2987,10 @@ WHY: it happened here (coordinator, 2026-08-14 — 6,385 lines rewritten to add 
 pack is the file most likely to be edited by someone who is not looking at it closely.
 
 ### PHYS-S1 A MULTIPLIER IS NOT A LIMIT, AND A GATE IS NOT A GUARD
+BUCKET: DOMAIN + ARCHITECTURE - domain: the Hayashi limit is a real floor, and rotational shape is
+geometry from spin and density that a STAR has too. Architecture: when the physics says FLOOR the
+code must contain a floor; A PHYSICAL MODEL SHOULD NEVER REACH ITS OWN SAFETY NET, and a measurement
+landing on a guard means the model above it failed.
 WHERE: `physics/stellar-evolution.ts` (`ageStar`'s giant branch, `hayashiLimitK`),
 `core/SystemProcessor.ts` (`applyRotationalShape` and the planet/moon gate above it).
 RULE: when the physics says "there is a floor", the code must contain a floor. A RATIO that happens
@@ -2538,6 +3021,10 @@ NOTE B43's own diagnosis names `processEnvironment`'s `roleHint === 'star'` earl
 blocker. That return is real but it is NOT this one — trust the call graph over the report.
 
 ### DATA-R12 A DESTINATION THAT EXISTS IS NOT A DESTINATION ANYTHING REACHES
+BUCKET: ARCHITECTURE + DOMAIN - architecture: before adding a class, a band or a template, ask WHAT
+ROUTES TO IT. An unreachable destination never errors - the lookup falls through to something
+plausible, and the plausible answer is the whole problem. Domain: the catalogue often already tells
+us and we throw it away.
 WHERE: `src/lib/import/realsky/stars.mjs` (`starClasses`, `OTYPE_CLASS`),
 `static/rulepacks/starter-sf/stars.json`, and every consumer keyed on `classes[0]`.
 RULE: before adding a band, a class or a template, ask WHAT ROUTES TO IT. The pack has defined
@@ -2569,6 +3056,10 @@ spectral class, so the exclusion cancelled itself and a BLACK HOLE drew the B-st
 latent for as long as nothing routed to `star/BH`, and went live the moment something did.
 
 ### DATA-R11 A name the app SHOWS must be one it can FIND — and the catalogue service is ASCII-only
+BUCKET: ARCHITECTURE + PLATFORM (browser CORS/preflight; a named external service) - architecture:
+any prettifier ships with its INVERSE, or it creates a bug by existing - a user copies the name the
+app just showed them. The measured query costs are a snapshot of a third-party service and will go
+stale.
 WHERE: `src/lib/import/realsky/starNames.mjs`, `properNames.mjs`, `query.mjs:runTap`.
 RULE: any prettifying of a catalogue identifier must ship with its inverse. Build the map two-way
 from the start; a display-only prettifier CREATES a bug, because a user copies the name the app just
@@ -2606,6 +3097,9 @@ And a prefix matching NOTHING can still scan: "zzznotastar" took 20 s, so any op
 timeout rather than a promise that it will be quick.
 
 ### DATA-R9 Cross-matching star catalogues: DISTANCE discriminates, POSITION does not — and never subtract two parallaxes
+BUCKET: DOMAIN - positions disagree by ARCMINUTES and worst for the famous stars, because the offset
+is proper motion times the epoch gap; and a 3D separation built from two parallaxes is NOISE. Move
+verbatim.
 WHERE: `src/lib/import/realsky/convert.mjs` (`matchHostToStar`), `census.mjs`
 (`projectedSeparationAu`, `groupIntoSystems`)
 RULE: two facts about the nearest stars, both measured (2026-08-13) and both counter-intuitive.
@@ -2632,6 +3126,9 @@ hand-curated bundled groupings and puts Proxima in Alpha Centauri at 0.977 Myr.
 ### GEN-*  (generation engines, seeds, system creation)
 
 ### GEN-1 The evolutionary / Accrete generator is GONE, and the preservation order that kept it is SUPERSEDED
+BUCKET: IMPLEMENTATION - DOES NOT CARRY: it records an absence from THIS repo. Its one durable
+sentence: a stale in-code instruction to delete something is the most expensive kind of wrong
+comment - and so is its inverse, which is why this entry is kept rather than deleted.
 WHERE: nowhere in this repo any more. It lives on as its own project, https://system-lab.starsystemx.com/.
 Removed at v2.1.898-beta: `physics/accrete-adapter.ts`, `vendor/accrete-js` (4.3 MB),
 `components/EvolutionaryWizard.svelte`, `components/EvolutionTimeline.svelte`, the
@@ -2654,6 +3151,10 @@ The Accrete.js attribution stays in `AboutModal.svelte`, reworded to point at th
 the code left, the credit did not. [[G17]]'s "builds WITH the accrete engine" now means that project.
 
 ### GEN-2 THE MASSES THAT SET PLANET SPACING ARE A PROXY, AND NOTHING RECONCILES THEM WITH THE MASSES ACTUALLY ASSIGNED
+BUCKET: DOMAIN + ARCHITECTURE - domain: mutual Hill spacing needs the masses of BOTH neighbours, and
+position is chosen before either body exists. Architecture: do not read a spacing MODEL as a
+stability CONSTRAINT - the new code LOOKS like it enforces stability and the old code did not, which
+is why this is written down.
 WHERE: `generation/placement-strategy.ts` (`drawSpacingMassEarth`, and the packing loop that uses it)
 vs the three callers that then create the bodies -- `generation/generateFromConfig.ts:352`,
 `generation/planet-generation.ts:44`, `traveller/importer.ts:435`.
@@ -2677,6 +3178,10 @@ tidy-up. Until then, any plausibility tag or test asserting mutual-Hill stabilit
 will fail, and it will be right to. See [[B58]], `generation-duplication-map.md`.
 
 ### GEN-3 PLANET SPACING IS A RATIO DRAWN ONCE PER SYSTEM; MUTUAL HILL RADII ARE THE FLOOR UNDER IT, NOT THE RULE
+BUCKET: DOMAIN - spacing is far more uniform WITHIN a system than between systems, so a per-gap draw
+averages two real populations into a third that matches neither; one drawn RATIO reproduces both Sol
+and TRAPPIST-1 where one drawn Hill separation reproduces neither. Move verbatim - it took three
+attempts, and each earlier one looked principled and passed its own tests.
 WHERE: `generation/placement-strategy.ts` (`sysRatio`, the floor block); pack
 `generation_parameters.orbital_spacing.spacing_ratio` + `stability_floor_hill_radii` (+ `separation_gap_spread`).
 RULE: the spacing rule is the RATIO of successive orbits, drawn ONCE per system and varied modestly per
@@ -2706,6 +3211,9 @@ but the giant-occurrence and outermost-orbit numbers are the real signals. GEN-2
 floor uses PROXY masses. See [[B58]].
 
 ### GEN-4 A FROST LINE IS A PROPERTY OF THE STAR'S LUMINOSITY, ASKED AT A HELIOCENTRIC DISTANCE — AND THE LEGACY PATH GOT BOTH HALVES WRONG
+BUCKET: DOMAIN - d_frost is proportional to sqrt(L), and for main-sequence stars L goes as M^3.5, so
+a sqrt(M) form is a DIFFERENT CURVE and wrong in opposite directions at the two ends. Two frost
+lines exist by design (formation ~170 K, current ~125 K) and are not interchangeable.
 WHERE: `physics/zones.ts` (`stellarContextFor`, `calculateAllStellarZones`) is the single source.
 The faults were at `generation/planet.ts:133` and `generation/placement.ts:9`, both since routed.
 RULE: never derive a frost line from a MASS, and never ask the question of the immediate host.
@@ -2729,6 +3237,9 @@ Sol's are 2.26 and 4.97 AU, so picking the wrong one moves the giants. Guard:
 luminosity — identical under any mass-based form. See [[B80]], [[B58]].
 
 ### GEN-5 THE STARS GREW ARMS AND LEGS; A CLASS-KEYED LOOKUP MUST READ THE LETTER, AND THE LETTER MUST COME FROM THE PACK
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: when a VOCABULARY GROWS, every class-keyed lookup
+that predates the growth fails differently and silently, and none of them fails a test written
+against the old members. Read the letter through one function, and take the letter from the DATA.
 WHERE: `generation/star.ts` `starFamilyOf()` + `planetCountTableKey()`; `physics/stellar-evolution.ts`
 `determineSpectralClass(tempK, pack)` and the temperature floor before `deriveStarFromHR`; consumers in
 `generateFromConfig.ts`, `planet-generation.ts`, `setupStars.ts`.
@@ -2759,6 +3270,8 @@ drift silently (physics page, Newton explainer, tags guide, classification doc).
 #### The player view (A42/A47) — added 2026-08-16 by the player-view closeout
 
 ### UI-P1 There is no preset-less path through `/catalogue`, and the FALLBACK is what makes that true
+BUCKET: IMPLEMENTATION - one route's state machine. Durable half: an UNREACHABLE 'none' branch does
+not render nothing, it renders whatever the legacy default happened to be.
 WHERE: `routes/catalogue/+page.svelte` — `FALLBACK_PRESET`, `resolvedPreset`, `presetMissing`,
 `pendingPreset`.
 RULE: `activePresetId` defaults to `'guide'` when the URL carries no `?preset=`, and an id that fails
@@ -2780,6 +3293,10 @@ A built-in id resolves with no data at all, so the ordinary no-URL case never wa
 #### Construct appearance (G3) — added 2026-08-04 by the ship-appearance stream
 
 ### TRANSIT-4 A TRANSIT IS PLANNED IN THREE DIMENSIONS, AND `z` IS OPTIONAL BUT NEVER IGNORED
+BUCKET: DOMAIN + IMPLEMENTATION - domain: planning between two bodies' SHADOWS on the reference
+plane is planning the wrong journey (Main Belt +2,390,850 km). Implementation: an optional z on a
+type still called Vector2 is a convention every literal must remember, and forgetting it does not
+throw - it draws a plausible wrong picture.
 WHERE: `transit/types.ts` (`Vector2`, which carries an optional `z`), `transit/math.ts` (`zOf` and
 every helper that goes through it), `transit/physics.ts` (`getGlobalState`), and by inheritance every
 plan builder. `physics/driftIntegrator.ts` and `physics/systemGravity.ts` follow the same convention.
@@ -2807,6 +3324,11 @@ plane at its host's height — its own inclination is not modelled anywhere and 
 `starmapSanitizer` preserves z; stripping it would flatten a course on its way through a snapshot.
 
 ### TRANSIT-6 ONE DERIVATION SAYS HOW HIGH AN ORBIT IS, AND THE ARRIVAL IS BUILT FROM THE FLIGHT
+BUCKET: DOMAIN + ARCHITECTURE - domain: orbit altitudes are DERIVED from the body (atmosphere sets
+where drag stops, rotation sets geostationary), and a rendezvous with a world arrives at ORBITAL
+speed because matching its velocity at low altitude is hovering. Architecture: one derivation read
+by planner, aim point and sampler, and the parked orbit is built on the ARRIVAL so position and
+velocity both close.
 WHERE: `physics/orbits.ts` — `parkingOrbitRadiusKm`, sharing `getOrbitOptions`'s derivation. Read by
 the planner panel, by `calculateTransitPlan` (the aim point) and by `scheduler.samplePostJourneyState`
 (the parked orbit).
@@ -2831,6 +3353,9 @@ rendezvous with no placement named still arrives at rest, because then there is 
 `arrivalSnap.spec.ts` is the tripwire and now asserts ZERO rather than pinning the size of a step.
 
 ### TRANSIT-5 THE FRAME IS THE LOWEST COMMON ANCESTOR, AND THE PATH IS COMPOSED ONTO IT PER SAMPLE
+BUCKET: DOMAIN + ARCHITECTURE - domain: a moon-to-moon transfer solved heliocentrically is a
+two-body problem with the WRONG TWO BODIES. Architecture: compose the local arc onto the parent's
+motion PER SAMPLE at its own time, never by index.
 WHERE: `calculateTransitPlan`'s frame block (`lcaId`, `frameParentId`, `frameMu`), and the `toGlobal`
 composition in both `calculateLambertPlan` and `calculateFastPlan`.
 RULE: a transfer is SOLVED in the frame of the lowest common ancestor that is a real body or
@@ -2846,6 +3371,9 @@ system zoom — Jupiter moves 11.9 million km during a 10-day moon hop — and w
 in the body's own frame is a separate piece of work rather than a consequence of solving in it.
 
 ### TRANSIT-7 A MANOEUVRE IS A SHAPE, AND IT IS DRAWN IN THE FRAME IT HAPPENS IN
+BUCKET: DOMAIN + ARCHITECTURE - domain: two radii determine a Hohmann transfer COMPLETELY, so there
+is nothing to search for, and an aerobrake is a phase in which the drive is DARK. Architecture:
+regenerate the PICTURE in the host's frame from radii; keep the FLOWN path global.
 WHERE: `transit/orbitChange.ts` (the closed forms and the geometry), `buildOrbitChangePlan` and
 `appendAerobrakeSegments` in `calculator.ts`, and the `plan.orbitChange` branch of `drawTransitPlan`.
 The contract is `TransitPlan.orbitChange` and the `Aerobrake` segment type.
@@ -2872,6 +3400,9 @@ one dip because the loops coincide, and the drawn count is CAPPED at 24 with the
 label rather than silently truncated.
 
 ### UI-C12 A PLAYER EITHER STEERS THE CLOCK OR IS TOLD WHOSE CLOCK IT IS — NEVER NEITHER, NEVER BOTH
+BUCKET: ARCHITECTURE (product contract) + DOMAIN - the domain enables the product: a body's position
+is CLOSED-FORM IN TIME, so a scrubbing reader draws every world correctly and a free clock is
+legitimate. onGmClock is not !canScrub and must not be simplified into it.
 WHERE: `player/clockOwnership.ts` (`resolveClockOwnership`), read by `routes/catalogue/+page.svelte`
 for both the time controls and the campaign readout.
 RULE: gate the controls on `canScrub` and the readout on `onGmClock`, and decide neither anywhere
@@ -2891,6 +3422,10 @@ GM does not own, not a fault — its course lives in journeys the player snapsho
 is [[B96]], and it is fixed by publishing a parked descriptor, not by locking the clock harder.
 
 ### UI-C11 ONE PICKER ANSWERS "WHICH BODY?", AND ITS LIST RULE IS A PURE FUNCTION
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: a list rule lives OUTSIDE its component so it can
+be tested without a DOM; an ancestor of a surviving node is kept as unselectable CONTEXT; and a
+search honours the same exclusions as the browse list, or typing hands back what the caller ruled
+out.
 WHERE: `ui/bodyPickerList.ts` (`buildPickerRows`, `buildCategoryChips`) and the one component that
 reads it, `components/BodyPicker.svelte`. Mounted by `SystemView`, `Starmap`, `TransitPlannerPanel`
 and `InterstellarTransitModal`.
@@ -2916,6 +3451,8 @@ anything the tree walk cannot reach is emitted at the top level, because an empt
 "nowhere to go" rather than "this map has a cycle in it".
 
 ### UI-C1 One colour drives a construct's whole look
+BUCKET: IMPLEMENTATION - one authored colour, everything else derived. Durable half is one sentence:
+before adding a second authored field, ask whether it can be DERIVED from the first.
 WHERE: `ConstructBasicsTab.svelte` (Appearance block), `constructIcon.ts`, `modelViewer.ts`
 RULE: `icon_color` is the single authored colour: the 2D marker, the hull tint for material-less
 models, and the seeded livery all derive from it. The livery's CONTRAST accent is DERIVED from it
@@ -2925,6 +3462,9 @@ considered and rejected; if per-faction control is ever wanted, the lever is pac
 BLAST: adding another colour field to a construct. Ask whether it can be derived first.
 
 ### UI-C8 Lifting a control OUT of the component that owns the data breaks two things silently
+BUCKET: PLATFORM (Svelte binding and scoped styles) + ARCHITECTURE - durable: AN EMPTY LIST IS NOT
+AN ABSENT KEY, so strip before diffing (PHY-9's placeholder zero, one type over); and check a save
+by reading STORAGE, not by looking at the screen.
 WHERE: `components/AbsorptionBandsEditor.svelte` (+ its spec), used by `EditBiospheresModal` (pigment
 bands) and `EditAtmospheresModal` (per-gas `absorptionBands`). Both traps are pinned by tests.
 RULE: a shared editor bound to a list must (1) RE-ASSIGN on every edit, never mutate a member, and
@@ -2953,6 +3493,8 @@ states for itself — which is also what lets the pigment curve keep its flat ba
 gas curve, which has no such term, does not.
 
 ### UI-C10 A SKIN MOVES CHROME TOKENS ONLY; COLOUR-AS-INFORMATION NEVER RIDES A SKIN
+BUCKET: ARCHITECTURE (product contract) - colour that ENCODES MEANING may never ride a theme. A skin
+moves chrome tokens only, and the domain palette is off limits to every skin.
 WHERE: `styles/skins.css` (the skin definitions), `styles/skinStore.ts` (data-skin on <html>,
 localStorage, per viewer), `styles/tokens.css` (the CHROME/DOMAIN split it obeys, and the
 `--group-*` related-data edge tokens), `rendering/colors.ts` (canvas caches invalidate on skin
@@ -2981,6 +3523,9 @@ still beat both. Token names and values are regex-validated before injection. Th
 columns are individually skinnable via --bg-rail / --bg-side (default: var(--bg-app), so classic
 is untouched).
 ### UI-C9 A fragment link into ASYNC content silently does nothing, and a refresh hides it
+BUCKET: PLATFORM (browser) - a fragment is resolved ONCE, early, so a deep link into async content
+is simply dropped; and getElementById merely misses where querySelector THROWS on a
+legal-but-unselectable id.
 WHERE: `routes/discgallery/+page.svelte` (`scrollToHash`, called after `buildGiantLab`); the link that
 needs it is the atmosphere tab's `/discgallery#giant-lab`.
 RULE: the browser resolves `#anchor` ONCE, early. If the element it names is rendered from data fetched
@@ -2999,6 +3544,10 @@ to a green build and to jsdom — nothing computes scroll position there — so 
 like UI-C8's flex/grid mismatch found in the same hour.
 
 ### UI-C6 On a small screen an open dialog gets the screen; BOTH SIDES declare themselves
+BUCKET: ARCHITECTURE - durable and one of the best shapes in the file: NEITHER SIDE KEEPS A LIST.
+Both parties mark themselves and one CSS rule joins them, so next month's dialog and next month's
+floating control are both covered at birth. The rejected first fix - a condition in each piece of
+chrome - is a list of chrome by another name.
 WHERE: `src/lib/ui/foreground.ts` (`foreground` and `chrome` actions, pinned by `foreground.spec.ts`),
 joined by ONE rule at the foot of `styles/tokens.css`. Chrome markers: `AppShell.svelte` (strip, bar,
 menu FAB, FAB layer), `BottomSheet.svelte` (so every use is covered at source), and the floating time
@@ -3035,6 +3584,9 @@ of them), 2100, 2200, 2300, 3000, 5000 up to 99999 - and adopt the tokens as eac
 Reach for the tier whose NAME fits; never invent a bigger number to win a fight.
 
 ### UI-C7 The undo history is GM-PRIVATE: it lives in the local autosave, and every path OUT strips it
+BUCKET: ARCHITECTURE (product contract) + IMPLEMENTATION - durable and first-order: IF DERIVATION IS
+A PURE FUNCTION OF AUTHORED STATE, process() IS THE REDO FUNCTION and undo needs only the authored
+slice. Also: ship memory-only first and persist second - the only order that cannot leak.
 WHERE: `lib/undo/` - `undoHistory.ts` (the stack, copied from Mappadux's `CanvasUndoManager`),
 `systemUndo.ts` and `starmapUndo.ts` (the two bindings), `campaignHistory.ts` (persistence),
 `describeChange.ts` (the labels), `historyKey.ts` (the ONE name and the ONE strip);
@@ -3090,6 +3642,9 @@ ALREADY had for autoClassify: one question, one answer, so an undo step always l
 type change the GM watched commit. The 250 ms idle gap is the fallback for controls with no release.
 
 ### UI-C5 A rule-pack override is a DELTA, and an editor must open on the EFFECTIVE list
+BUCKET: ARCHITECTURE - an override is a DELTA. A whole-list copy FREEZES the shipped defaults at the
+moment of the edit, so every later improvement silently stops reaching that campaign and nobody is
+told.
 WHERE: `lib/rulepackDelta.ts` (`makeListDelta` / `applyListDelta`); `EditBiospheresModal`; the
 override merge in `routes/+page.svelte`.
 RULE: store the keys and fields the GM changed, plus the key order when it moved. An editor opens on
@@ -3107,6 +3662,8 @@ campaigns saved before this carry one. A key absent from `order` is a DELETION; 
 fault, not yet converted, and they are the next users of this module.
 
 ### UI-C2 The picture chain is model > photo > glyph, on every surface
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: a capability is not keyed on a ROLE. The subject of
+a photo can be a planet, a star or a construct, and the display side never asks which.
 WHERE: `catalogue/document/guideDocument.ts` (imagery branch), `ConstructPortrait.svelte`
 RULE: a construct with a 3D model shows the model; without one, its uploaded photo; without that,
 its authored `icon_type` glyph. Same order in the GM pane and the player document. `imagery: 'none'`
@@ -3123,6 +3680,8 @@ display it first"). A28/A30 are the history: the wrong picture is worse than no 
 BLAST: any new construct-showing surface. Do not re-derive the chain locally — read these two.
 
 ### UI-C4 ONE upload block, three subjects — and `custom` is what holds three DIFFERENT writers off
+BUCKET: IMPLEMENTATION - one flag honoured SEPARATELY by three unrelated writers, so a reviewer who
+checks one concludes the flag is respected everywhere. Exhibit 5 in faults-the-old-shape-allowed.md.
 WHERE: `components/CustomImageBlock.svelte`; mounted by `BodyBasicsTab`, `BodyStarTab` and
 `ConstructBasicsTab`; pinned by `CustomImageBlock.spec.ts` and the G20 block in `BodyStarTab.spec.ts`.
 RULE: `ImageRef.custom` is ONE flag read by three unrelated passes, and adding a fourth picture
@@ -3144,6 +3703,9 @@ unit test and was wrong in the app** — with the clock paused nothing re-render
 blank where the portrait should be. Test the BUTTON, not the next class change.
 
 ### UI-C3 One shape TABLE, two emitters — and a duplicated table drifts at its FALLBACK first
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable, and the best line in the file: WHEN YOU DUPLICATE A
+LOOKUP, THE BRANCH THAT DIVERGES FIRST IS THE ONE NO AUTHOR EVER SELECTS. Review of a duplicated
+table looks at the entries; the drift is under them.
 WHERE: `constructs/constructIcon.ts` — `constructIconShape` (resolver), `traceConstructIcon` (canvas
 path), `constructIconPath` (SVG string), `CONSTRUCT_ICON_SHAPES`; pinned by `constructIcon.spec.ts`.
 Six consumers: `holo/scene.ts`, `SystemVisualizer.svelte`, `Starmap.svelte`, `ConstructPortrait.svelte`,
@@ -3164,6 +3726,9 @@ triangle fallback explicitly for that reason.
 #### Body facts (G8) — added 2026-08-04 by the frame/suite-hygiene session
 
 ### UI-E3 A bad identifier in a Svelte SCRIPT block survives the build and the whole unit suite
+BUCKET: PLATFORM (Svelte + Vite: an undefined identifier is a runtime error the build never sees) +
+ARCHITECTURE - a component with branching render paths needs a test that RENDERS each path; assert
+it does not throw, not the wording.
 WHERE: any component script; the guard is `components/BodyTechnicalDetails.spec.ts`.
 RULE: `npm run build` compiles an undefined identifier happily — it is a RUNTIME ReferenceError,
 not a compile error — and a unit suite that never MOUNTS the component cannot see it either. A
@@ -3181,6 +3746,9 @@ AND: a browser check skipped is not a browser check deferred — this was report
 build and suite but not seen in the browser" one release before it was reported as broken.
 
 ### UI-E1 The GM technical block is NOT built from `bodyFacts`, so a shared row must share its BUILDER
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: a fact that must read the same on two surfaces is
+shared as THE FUNCTION THAT WORDS IT, not by adding it to one side's data source - which is what the
+next person will reach for.
 WHERE: `components/BodyTechnicalDetails.svelte` vs `catalogue/bodyFacts.ts`
 RULE: the player surfaces (document, panels, printed report) render rows from `bodyFacts`; the GM's
 read-only block is its own hand-written markup and always has been. A fact that must read the same in
@@ -3194,6 +3762,8 @@ BLAST: adding a row that both sides must show → put the WORDING in a function,
 check the two against each other with a real body. Do not copy the format string.
 
 ### UI-E2 A panel showing a clock-driven derived value samples the clock on WALL time
+BUCKET: ARCHITECTURE - the SIMULATION clock and the SAMPLING clock are two clocks. Sample on wall
+time, re-sample on selection change, and null means NO ROW rather than a guess.
 WHERE: `components/BodyTechnicalDetails.svelte` (the 1 Hz `eclipseNowMs` sampler), mirrored from
 `routes/catalogue/+page.svelte` (`docNowMs`)
 RULE: pass the display clock in as a prop, but do not react to it directly. Sample it on a wall-clock
@@ -3206,6 +3776,9 @@ recompute per frame.
 BLAST: any other panel row derived from a search or a propagation rather than from stored fields.
 
 ### DATA-R19 THREE code paths change a campaign's distance unit, with OPPOSITE conventions
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable: RELABEL and CONVERT are two operations over one
+ruler, both reachable without touching a coordinate, and the app must not GUESS which the user
+meant. Neither path here was wrong on its own; the PAIR was.
 WHERE: `map/distanceUnits.ts` (`applyUnitChange`, `campaignUnit`, `normaliseCampaignUnit`);
 `SettingsModal.svelte` asks, `routes/+page.svelte:handleSaveSettings` applies, and the Traveller branch
 at `Starmap.svelte`'s `effectiveGridType === 'traveller-hex'` is the third.
@@ -3234,6 +3807,8 @@ implemented the precedence were migrated - the rest are safe ONLY because the lo
 agree. Do not delete that fold thinking it is redundant.
 
 ### DATA-R20 UNIT PREFS RELABEL PER QUANTITY x BODY TYPE; STORED VALUES NEVER LEAVE SI
+BUCKET: ARCHITECTURE - stored values never leave SI. A preference RELABELS a display, display
+converts on the way out, and an edit field converts back exactly ONCE, on commit, never mid-typing.
 WHERE: `units.ts` (the ladders, `UNIT_QUANTITIES`, defaults, `migrateUnitPrefs`), `unitPrefsStore.ts`
 (`cycleUnitPref` - the ONE writer), `types.ts:Starmap.unitPrefs`, `routes/+page.svelte:
 withStarmapDefaults` (load-time migration). Consumed by `components/UnitValue.svelte` /
@@ -3262,6 +3837,9 @@ starmap object today, so a field WHITELIST anywhere on that path would sever the
 ### TRANSPORT-*  (broadcast.ts — same-machine channel + PeerJS)
 
 ### TRANSPORT-1 A broker id collision is RETRIED before it is BELIEVED, prompts ONCE per id, and is never silently re-hosted
+BUCKET: ARCHITECTURE + PLATFORM (PeerJS broker) - durable: RETRY BEFORE YOU BELIEVE a collision,
+prompt once per id, never silently re-host - and GUARD THE AWAIT, not only the outcome, or a
+re-entrant async initialiser collides with ITSELF.
 WHERE: `src/lib/broadcast.ts` `initPeerHost` (retry ladder `HOST_RETRY_MS`, `blockedIds`,
 `promptedIds`, pagehide release), `initSender` (skips a blocked id), `enableRemote(explicit)`
 (the only thing that lifts a block); the GM route's `onHostIdUnavailable` (`+page.svelte`).
@@ -3302,6 +3880,9 @@ say so here.
 Format: **WHAT** / where / **WHY IT HOLDS TODAY** / **WHAT WOULD BREAK IT**.
 
 ### M1 "Is this a giant?" and "does this have a surface?" are two helpers with overlapping answers
+BUCKET: DOMAIN + IMPLEMENTATION - domain: an ICE GIANT is exactly the body two definitions of
+'giant' disagree about. Implementation: which repair currently holds them together, and where it
+stops (anything drawing from raw or partly-processed data steps outside it).
 `physics/makeup.rendersAsGiant` (`gas > 0.5 || isFluidGiant`, i.e. mass > 8 M⊕ AND density < 2.5) vs
 `physics/radiation.hasSolidSurface` (`gas <= 0.5`). An ICE giant is ice-dominated with a low gas
 fraction, so it is exactly the body the two could disagree about.
@@ -3315,6 +3896,8 @@ BREAKS IF: `rendersAsGiant`'s consumers are RENDERING code (`planetAppearance`, 
 Also breaks if the reconcile is moved, made conditional, or its 0.6 floor is lowered towards 0.5.
 
 ### M2 One expression, `makeup.gas` against 0.5, answers at least FOUR different questions
+BUCKET: DOMAIN + IMPLEMENTATION - domain: four questions share ONE BOUNDARY and are not one question
+in four spellings. Implementation: 30 executable sites across 14 files.
 30 executable sites across 14 files. The questions are: *has ground* (`radiation.hasSolidSurface`,
 `SystemProcessor:1345`, `cloudDecks:226`, `tagDefaults.SURFACE`), *is a giant* (`albedo:126`,
 `SystemProcessor:1036,1163`, `makeup:37,63,102`), *draws as a giant* (`rendersAsGiant`, `apparentColor`),
@@ -3325,6 +3908,9 @@ BREAKS IF: anyone "unifies" them on the strength of the shared constant. They ar
 share a boundary, not one question in four spellings, and B36 is scoped as the has-ground one only.
 
 ### M3 THREE incommensurable word-vocabularies sit in one info block, and B28's inbox entry is stale
+BUCKET: DOMAIN + IMPLEMENTATION - domain: time-to-lethal-dose, an irradiation index and a surface
+age answer genuinely different questions, which is PHY-2's whole point. The risk is a reader
+treating three vocabularies as comparable.
 On Mars: `hazard/radiation = years`, `surface/irradiation = high`, `surface/age = old`. On Io:
 `hazard/radiation = hours` beside `surface/irradiation = low`. The first is TIME-TO-LETHAL-DOSE
 (`RadiationHazard = 'hours'|'days'|'weeks'|'months'|'years'|'chronic'|'background'`,
@@ -3338,6 +3924,9 @@ that no longer exists** — the vocabulary has already turned over once since th
 trust `radiation.ts:126`, not the inbox. B20/B29 own the settlement.
 
 ### M4 CLOSED (v2.1.861, properly) One preset field, `draft.grid`, bound by BOTH stages
+BUCKET: IMPLEMENTATION (CLOSED) + ARCHITECTURE - durable: A SHARED FIELD AND AN INCOMPATIBLE
+VOCABULARY ARE TWO FAULTS THAT LOOK LIKE ONE. When a symptom has two candidate causes and one is
+cheaper, check whether the cheap fix merely stops the symptom being OBSERVABLE.
 WAS: `PlayerPresetEditor` rendered `MAP_OVERLAY_OPTIONS` (7, hexes included) for the starmap and
 `SYSTEM_OVERLAY_OPTIONS` (4, hexes filtered) for the system, both `bind:value={draft.grid}`. It held
 at RENDER time because `forSystemScale` folded a hex to `square`, and broke in the EDITOR: choose
@@ -3361,6 +3950,9 @@ sharing MORE visible, not less — before, the fold hid it. When a symptom has t
 one is cheaper to fix, check whether the cheap one merely stops the symptom being observable.
 
 ### M5 Three generation paths seed an rng from `Date.now()`, inside a codebase built on reproducibility
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: DATA-G1's boundary. A one-shot AUTHORING action may
+use wall-clock randomness because nothing replays it; anything on a load, import, rebuild or replay
+path may not.
 `system/modifiers.ts:55`, `:215`, `:429` — `new SeededRNG(sys.seed + Date.now())`, with the comment
 "Use a new RNG seed to avoid determinism issues".
 HOLDS because these are one-shot AUTHORING actions (a GM adding or re-rolling a body); the result is
@@ -3370,6 +3962,10 @@ input produces a different system every time and no test can pin it. DATA-G1 is 
 outside of; the comment is the honest signal that someone already met the tension and moved on.
 
 ### PHY-21 A SEA'S OWN VAPOUR IS DERIVED, AND ITS SATURATION CURVE IS SHARED WITH THE CLOUD MODEL
+BUCKET: DOMAIN + ARCHITECTURE - domain: a saturation curve goes to nothing SMOOTHLY, including by
+sublimation from a frozen sea, so there is no branch to fall off; and the column mean and the
+near-surface fraction are legitimately different numbers. Architecture: one curve, two consumers,
+and an authored value is a FLOOR on the derived one.
 WHERE: `physics/liquids.ts` `surfaceVapourSource` (the shared answer), `physics/atmosphere.ts`
 `evaporatedVapourFraction` (column mean, feeds the greenhouse), `physics/cloudDecks.ts`
 `evaporationFraction` (near-surface, feeds the decks). Constants:
@@ -3395,6 +3991,9 @@ Earth is pinned only because its authored 0.00398 sits just ABOVE what the deriv
 own converged 287.4 K — a ~5% margin, not a wide one.
 
 ### PHY-22 -1 IS A SENTINEL ON THE FLIGHT BUDGETS, AND `ascentBudgetApplies` IS THE ONLY READER OF IT
+BUCKET: ARCHITECTURE - a SENTINEL in a numeric field is a claim four consumers will each read
+differently (-1 is truthy). Publish a PREDICATE and its reason, and keep the row visible either way
+- a vanished row reads as a bug.
 WHERE: `physics/orbits.ts` `calculateDeltaVBudgets` (writes -1) and `ascentBudgetApplies` (decides).
 Consumers: `catalogue/bodyFacts.ts`, `reports/ReportDocument.svelte`,
 `components/BodyTechnicalDetails.svelte`, `core/SystemProcessor.ts` (the `flight/ascent` tag).
@@ -3412,6 +4011,9 @@ surface - the B11 class-regex fault, alive in a copy. If you add a fifth consume
 `radiusKm` is missing, so the field can also be `undefined` rather than -1.
 
 ### CLASS-1 THERE IS ONE CLASSIFIER, AND A PACK WITHOUT FINGERPRINTS GETS ONE BASE CLASS BY MASS
+BUCKET: ARCHITECTURE - one classifier, an explicit named fallback, and a warning that names the
+pack. The deleted rival was never REACHED and was not inert: measured, the two engines disagreed on
+essentially every body and no test could have told you which was right.
 WHERE: `system/classification.ts` `classifyBody` / `fallbackBaseClass` / `warnIfLegacyRules`;
 `rulepack-loader.ts` calls the warning. `ClassifierSpec.rules` survives in the type as `unknown[]`
 so an old pack still PARSES, and is read by nothing.
@@ -3431,6 +4033,10 @@ classify richly, the answer is to GENERATE fingerprints, not to restore scoring:
 disagreed on essentially every body and there was no test that could have told you which was right.
 
 ### GEN-6 ONE STAR-HIERARCHY PLANNER, AND THE TRAVELLER PATH WIDENS IT RATHER THAN REPLACING IT
+BUCKET: DOMAIN + ARCHITECTURE - domain: a hierarchy is not a set of orbits round one centre, and a
+TIGHT pair is the wrong answer when the ruleset mandates a habitable-zone main world. Architecture:
+PLAN, then WALK, with the callers differing only in a factory; and look a leaf up by ID, because the
+planner sorts by mass and an index is a rank.
 WHERE: `generation/generateFromConfig.ts` `planStarHierarchy` (the plan) + `buildStarHierarchy` (the
 walk, exported for this); `traveller/importer.ts` calls both with its own star factory.
 RULE: never lay stars out by hand. Plan, then walk. The two callers differ ONLY in how a plan LEAF
@@ -3451,6 +4057,9 @@ what keeps it honest: all level ratios, and so the ~7x margin, survive untouched
 caller with planets on a star rather than on a barycentre, it needs the same step.
 
 ### GEN-7 WHOEVER CALLS `infillSystem` FROM A UI MOUNTS `GenerationDials` AND PASSES ITS KNOBS
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: a UI that runs a generator WITHOUT its knob panel
+silently chooses the flavour for the user; and a band that narrows under a slider must RE-CLAMP what
+the slider already holds.
 WHERE: `components/GenerationDials.svelte` (the one panel) mounted by `GenerationWizard`,
 `ImportModal` (file / SpaceEngine / Universe Sandbox), `RealSkyImportModal` and
 `AddTravellerSystemModal`. Threaded via `realsky/fillout.ts FillOutOptions` and
@@ -3473,6 +4082,9 @@ the chosen age, because narrowing the band under a slider the GM already moved (
 star's whole life, and the panel clamps its DISPLAY so the fault would not show on screen.
 
 ### UI-B1 A REALISM BAND SAYS UNLIKELY, NEVER INVALID, AND ITS EDGES ARE PACK DATA
+BUCKET: ARCHITECTURE (product contract) - the house rule as a control: a band says UNLIKELY, never
+invalid; its edges are DATA, not code constants; and an edge value reads as the KINDER band so
+nudging onto a boundary never scolds.
 WHERE: `components/BandedSlider.svelte` (`realismBandFor`, `realismWording`, `bandOf`);
 `generation_parameters.realism_bands` in the pack; mounted through `GenerationDials`.
 RULE: the component takes a band and NEVER computes one - no default band, no code constant, no
@@ -3490,6 +4102,10 @@ over it, which measures fine in the DOM and shows nothing on screen. Found by ey
 checked out. Anything reusing this for a physics control inherits that.
 
 ### PHY-23 THE KILL ZONE DERIVES, AND IT HAS TWO HAZARDS BECAUSE ONE LETTER COULD NEVER CARRY BOTH
+BUCKET: DOMAIN + ARCHITECTURE - domain: photospheric UV alone makes every cool dwarf safe
+(contradicting the whole M-dwarf habitability argument) and coronal output alone makes every hot
+star safe, which is worse - so the hazard needs BOTH. Architecture: never read a stored dial back in
+through the side door, and a quantity the processor writes is NOT STABLE across a pass.
 WHERE: `physics/zones.ts` `calculateKillZone`; `physics/spectrum.ts` `blackbodyFractionBelowNm`;
 `physics/ionisingOutput.ts` `ionisingOutputSolar`. Constants
 `generation_parameters.uv_damage_edge_nm` / `kill_zone_sol_au`.
@@ -3520,6 +4136,11 @@ the UI and for `generation/placement.ts`, so the derived fixture does NOT move a
 there is the correct result, not a sign the change did nothing.
 
 ### GEN-8 A BODY'S AIR IS CHOSEN FOR THE ORBIT IT IS BORN AT, SO WHERE IT IS BORN IS A PHYSICS DECISION
+BUCKET: DOMAIN + ARCHITECTURE - domain: orbital distance is a RATIO quantity so it is drawn
+log-uniform, and the inner limit is the Roche limit and the kill zone rather than the stellar
+surface. Architecture: the air is chosen for the orbit a body is BORN at and moving it never
+re-rolls - correctly - so a body born in the wrong place is permanently wrong in a way no dragging
+repairs.
 WHERE: `system/modifiers.ts` `addPlanetaryBody` (`logUniform`, `preferredOrbitBandAU`, the inner
 limit); `generation/planet.ts` selects the atmosphere by filtering the pack's entries on the body's
 `Teq_K`, which comes from the orbit it was handed.
@@ -3542,6 +4163,9 @@ planet at all; it is split at the line now. Measured after: median orbit 72.5 ->
 with an atmosphere 15% -> 43%.
 
 ### RENDER-S30 A COVERED VIEW IS NOT AN UNMOUNTED ONE, AND A 0x0 MEASUREMENT IS NOT A SIZE
+BUCKET: PLATFORM (browser layout / ResizeObserver) + ARCHITECTURE - a 0x0 measurement is NOT A SIZE,
+and a COVERED view is not an unmounted one, so 'the observer ought to have fired' stops being
+reliable exactly there.
 WHERE: `starmap/Starmap3DView.svelte` and `holo/HoloView.svelte` (`push`, `revalidate`, `onReveal`);
 `routes/catalogue/+page.svelte` `dismissCover`.
 RULE: never hand a renderer a content rect below 1 px — a container that is momentarily unlaid-out
@@ -3560,6 +4184,10 @@ broadcast session between two windows, so the guards are unit-tested (`starmap/r
 and the live check is still owed.
 
 ### NET-1 A LOCAL LINK HAS NO BYTES, AND PRESENCE IS THE ONLY WAY TO COUNT ONE
+BUCKET: ARCHITECTURE (instrumentation) + PLATFORM (BroadcastChannel structured clone) - durable:
+measure only where the bytes are ALREADY being computed; never stringify a payload to print a number
+about it; and a zero meaning 'not measured' must not read as a zero meaning 'nothing sent'. Also: an
+id must live in the SAME SPACE the other side already knows that window by.
 WHERE: `broadcast.ts` (`TransferMeter`, `announcePresence`, `connectionCounts`, `peerLinks`);
 `transferReport.ts` (the one formatter); `playerConnections.ts` (the store the rail reads).
 RULE: measure bytes only where they are ALREADY being computed — `sendIfChanged` serialises for its
@@ -3589,6 +4217,9 @@ right, and `peerLinks` could never find the reported stats it looked up by broke
 (list 2, icon 3). Fixed v3.0.10.
 
 ### M7 The Hill radius has TWO formulas, and they disagree by (1-e)
+BUCKET: DOMAIN + IMPLEMENTATION - domain: the Hill radius at PERIAPSIS and at the SEMI-MAJOR AXIS
+are two defensible answers to two questions, and they part at eccentricity. Implementation: five
+copies, and the one that must not be recomputed is the one a drawn boundary and a judged one share.
 `physics/stability.ts:hillRadiusAU` uses `a*(1-e)*cbrt(m/3M)` — PERIAPSIS, the host's weakest grip,
 which is what a "is this orbit safely inside" verdict should be judged at. `physics/twoBodyCoast.ts`
 (`hillCandidates`, both wrappers) uses `a*cbrt(mu/3hostMu)` — SEMI-MAJOR AXIS, no eccentricity term.
@@ -3605,6 +4236,10 @@ them without deciding WHICH question each caller is asking — PHY-29 is the pre
 answers on purpose.
 
 ### M6 Cross-references — recorded as caveats on the entries they falsify, listed here so the sweep is one place
+BUCKET: (map apparatus - not an engine entry) - the cross-reference index for falsified WHEREs. The
+PRACTICE carries into any long-lived map: record a contradiction as a caveat ON the entry it
+falsifies and index them in one place. The contents do not carry. Its last bullet is now STALE - see
+the correction below.
 - **PHY-4 CAVEAT**: B36's "they all use the same BOUNDARY" is false twice — `SURFACE()` is strict
   `< 0.5` where `hasSolidSurface` is `<= 0.5`, and B25's classifier gate is a BAND, so `bandFit`'s
   15% soft edge means it really closes at 0.575, not 0.5.
@@ -3619,9 +4254,18 @@ answers on purpose.
   `roleHint === 'belt'` tests that answer unrelated questions.
 - **PHY-29 CAVEAT**: "the one shared formula" is scoped to `twoBodyCoast`; `stability.ts` has a
   second Hill radius that differs by (1-e). Recorded as M7, not resolved.
-- **ID COLLISION, not a concept duplication**: `PHY-17` is used TWICE — "A luminosity class is radius
-  at a temperature" and "Has ground is hasSolidSurface". Different claims, same id; whoever next
-  edits either should renumber the second.
+- ~~**ID COLLISION**: `PHY-17` is used TWICE — "A luminosity class is radius at a temperature" and
+  "Has ground is hasSolidSurface".~~ **RESOLVED, and this bullet was stale.** The 2026-08-26
+  renumbering at the head of this file moved the second claim to `PHY-28`; grep confirms exactly one
+  `### PHY-17` and one `### PHY-28` at v3.0.149. Struck 2026-08-28 by the carry-forward sort.
+- **ID COLLISION, LIVE, TWO OF THEM** — found 2026-08-28 by the carry-forward sort, FLAGGED NOT FIXED
+  (the criterion doc forbids renumbering). `RENDER-S36` is claimed by "A SAMPLER THAT ANSWERS FOREVER"
+  and by "HOW MUCH METHANE YOU SEE"; `RENDER-S37` by ""HAS A ROUTE" IS NOT "IS FLYING"" and by "AN
+  AURORAL OVAL". **`RENDER-S37` IS CITED FROM CODE WITH BOTH MEANINGS** — `planetTexture.ts:667` means
+  the aurora, `SystemVisualizer.svelte:1072` means the route — and the inbox splits the same way (B101
+  aurora, B104 route), so a reader following either citation reaches a coin toss. `RENDER-S40` and up
+  are free. This is the third and fourth collision this month, which is what makes the "grep BOTH
+  forms" rule at the head of this file worth ENFORCING rather than stating.
 
 ### Checked and NOT a misalignment, so nobody re-checks it
 - `attachHullVolume` and the read-time path at `holo/scene.ts:3529` both write `v.shipLen`, but they
@@ -3631,6 +4275,10 @@ answers on purpose.
   infer gas-dominated from density and correctly take no surface hazard tag.
 
 ### LGR-1 One Lagrange convention, one module — and the l1/l2 hostMu is scaled ON PURPOSE
+BUCKET: DOMAIN + ARCHITECTURE - domain: l3/l4/l5 are the secondary's ellipse rigidly ROTATED in
+omega, l1/l2 scale BOTH a and hostMu so a standard propagator returns the right period and the
+co-rotating velocity exactly, and an M0-shift is NOT a rotation for e>0. Architecture: one
+convention, one module, never restated - five rival conventions shipped before this.
 WHERE: `physics/lagrange.ts` (the whole module); every consumer of "where is an L-point".
 RULE: all five points derive from the secondary via `coOrbitalRelState`/`deriveCoOrbitalOrbit`:
 l3/l4/l5 = the secondary's ellipse rigidly rotated in omega (+180/+60/-60, sign flipped for a
@@ -3648,6 +4296,9 @@ BLAST: transit calculator + scheduler still hold their local copies until G43 P4
 co-orbital node, the test is wrong.
 
 ### LGR-2 A co-orbital orbit is DERIVED from a SIBLING, which parent-before-child does not order
+BUCKET: DOMAIN + ARCHITECTURE - domain, and this is first-order for a new pass model: THE DEPENDENCY
+IS ON A SIBLING, so parent-before-child does not order it. The derivation graph of a star system is
+not a tree. Read beside PHY-1 and PHY-12.
 WHERE: `physics/lagrange.ts deriveCoOrbitalOrbits` (Pass 0c), called from `SystemProcessor.process`
 after the barycentre passes and before physical basics.
 RULE: a node with `coOrbital` gets its `orbit`, `parentId` and `ui_parentId` REWRITTEN from its
@@ -3663,6 +4314,9 @@ last derived orbit as authored. `importFixup.migrateLagrangePlacements` upgrades
 strings (L4/L5 + ui_parentId) to markers on load, marker-guarded.
 
 ### LGR-3 Flying to an L-point: the solver phantom and the parked point must be ONE object
+BUCKET: ARCHITECTURE + DOMAIN - architecture: the target a plan brakes against and the point it
+parks on afterwards must be ONE derived object; two constructions of one geometry is a teleport.
+Domain: velocity cancelling is what rendezvous with a massless phantom already MEANS.
 WHERE: `transit/calculator.ts` (the `isLagrange` arrival block, and the `r2` baseline below it);
 `transit/scheduler.ts samplePostJourneyState`. Both call `deriveCoOrbitalOrbit`.
 RULE: the target a plan brakes against and the point the ship is parked on afterwards are the same
@@ -3683,6 +4337,10 @@ it publishes `arrivalVelocity_ms = 0` with no Flyby warning while arriving km/s 
 destinations too.
 
 ### PHY-29 Hill spheres are asked TWO questions, and the answers must stay different
+BUCKET: DOMAIN + ARCHITECTURE - domain: 'what bounds this body's gravity' and 'where does the
+propagator switch frames' are different questions with different floors. Architecture: two answers
+kept apart ON PURPOSE, both stated - and a display gate that is GEOMETRIC (the Hill radius must
+clear the body's own surface) is self-scaling and needs no constant.
 WHERE: `physics/twoBodyCoast.ts` — `hillCandidates(system, rootId, includeMoons)` with two wrappers:
 `soiCandidates` (coast, moons EXCLUDED) and `hillSpheresAu` (display, moons INCLUDED).
 RULE: "what bounds this body's gravity" and "where does the propagator switch frames" are not the
@@ -3703,6 +4361,10 @@ fixtures stay byte-unmoved, which is the gate. Radii come from the one shared fo
 and Titan 52,290 km against textbook ~61,500 and ~52,000.
 
 ### RENDER-S31 A dash pattern is charged per SEGMENT over the whole path, not the visible part
+BUCKET: PLATFORM (canvas 2D dash patterns) - carry-forward criterion's example. A shape is charged
+for its ENTIRE path even when nearly all of it is off-screen, and astronomical radii make the
+pathological case ordinary. ** Its trailing CAVEAT is MISFILED: it is about the two Hill-radius
+formulas and belongs on PHY-29 / M7. **
 WHERE: any dashed canvas stroke in `SystemVisualizer.svelte` at astronomical scale. Live example:
 the L-point co-orbital track (`lagrangeTrack`), which guards itself with a circumference budget.
 RULE: before `setLineDash` on a path whose length scales with the view, work out how many segments
@@ -3724,6 +4386,10 @@ but they are two numbers, and anything that draws a boundary the physics also JU
 published field rather than recompute.
 
 ### PHY-32 A CO-ORBITAL NODE'S ORBIT AND PARENTAGE HAVE EXACTLY ONE OWNER, AND A PAIR RIDES THE POINT
+BUCKET: DOMAIN + ARCHITECTURE - domain: the chord across a 60-degree L4 offset is EXACTLY the
+orbital radius, which is what named the fault; and a pair AT a point is judged on the combined mass.
+Architecture: exactly one owner for a derived orbit AND its parentage, and the marker rides the
+thing that is at the point.
 WHERE: `physics/lagrange.ts` `deriveCoOrbitalOrbits` (owner of the rider's orbit + parentId),
 `physics/barycenterReconcile.ts` `promoteMassiveCompanion` (hands the marker UP on promotion),
 `Barycenter.coOrbital` in `types.ts`.
@@ -3751,6 +4417,9 @@ binary-tightness test uses. That fate is deliberately NOT directional (contrast 
 stops holding a pair, BOTH members leave, and there is no lighter one being thrown by a heavier one.
 
 ### PHY-30 A barycentre PUBLISHES its circumbinary annulus; nothing may re-derive either edge
+BUCKET: DOMAIN + ARCHITECTURE - domain: a P-type body lives in an ANNULUS with two real edges, and
+the fit is valid only over a stated range. Architecture: the pair PUBLISHES both edges and nothing
+re-derives either, because a drawn boundary and a judged one must be the same number.
 WHERE: `physics/circumbinary.ts` (the fit, the bands, the validity range) and
 `physics/stability.ts` — `hillRadiusAU`, `barycenterHillRadiusAU`, and the publish loop at the head
 of `annotateGravitationalStability`. The contract is `Barycenter.circumbinary`.
@@ -3778,6 +4447,9 @@ a criterion with a long reason must set `fateShort` or the paragraph is printed 
 apart. Criteria that set nothing behave exactly as before.
 
 ### RENDER-S32 A SEGMENT OWNS ITS OWN PATH, AT ITS OWN RESOLUTION, IN ITS OWN FRAME
+BUCKET: ARCHITECTURE - every sample carries its OWN TIME. Never generate one path across a whole
+journey and slice it by comparing timestamps, and if points are pruned the stamps go with them - two
+arrays of different lengths silently revert every reader to even spacing.
 WHERE: `transit/pathSampling.ts` (the schedule, the slicing, the one reader), `transit/math.ts`
 (`integrateBallisticPathAtTimes`), and the three plan builders that use them — `calculateLambertPlan`,
 `calculateFastPlan` and `assist.ts`. The contract is `TransitSegment.pathTimes`.
@@ -3802,6 +4474,10 @@ carry the stamps in lockstep. Journeys saved before this carry no stamps at all 
 spacing, which is correct for them, so the fallback is not dead code.
 
 ### RENDER-S33 THE TRANSIT SPECS PIN DELTA-V AND TIMING; NOTHING PINNED THE DRAWN PATH
+BUCKET: ARCHITECTURE + DOMAIN - architecture: a correct total says NOTHING about whether the line
+beside it is possible, and a gate must be CHECKED AGAINST THE FAULT rather than watched to pass.
+Domain: a fixed time step falls off an eccentric conic near periapsis, so cap by swept ANGLE, not by
+the clock.
 WHERE: `transit/pathGeometry.spec.ts` is the gate. The gap it fills is everywhere else in
 `src/lib/transit/*.spec.ts`.
 RULE: a change to how a journey is DRAWN must ship with a geometric assertion in the same commit. A
@@ -3828,6 +4504,10 @@ legs dive inside the star's KILL ZONE — the line the generator already refuses
 a safe candidate instead, so the family is still offered: closest approach moved 0.0302 AU -> 1.5537 AU.
 
 ### RENDER-S34 A BURN PUBLISHES HOW HARD AND WHICH WAY IT PUSHES; NOTHING MAY INFER EITHER
+BUCKET: DOMAIN + ARCHITECTURE - domain: a burn's delta-v is what CHANGES the velocity, so it is not
+generally parallel to it, and an efficient arrival burn is frequently PROGRADE despite being
+labelled Brake. Architecture: PUBLISH how hard and which way; inferring it from a placeholder zero
+recovers the whole orbital velocity instead.
 WHERE: `TransitSegment.deltaV_ms` and `TransitSegment.thrustDir`, written by all three plan builders.
 Read through `constructs/shipBurn.ts` (`burnEffort`), which feeds the 3D hull heading and plume in
 `holo/scene.ts` and the acceleration arrow in `SystemVisualizer.svelte`.
@@ -3854,6 +4534,10 @@ before this carry neither field and fall back to the old inference, so the fallb
 `burnVectors.spec.ts` pins both paths.
 
 ### TAG-23 A CLOUD-DECK TAG CARRIES THREE TOKENS, AND ALL THREE OLDER FORMS MUST KEEP PARSING
+BUCKET: DOMAIN + ARCHITECTURE - domain: a BUCKET cannot express how NEARLY a deck exists, which is
+the exact quantity a renderer must fade on. Architecture: every older form of a published value
+keeps parsing; undefined must stay distinguishable from zero; and the RESOLUTION is chosen coarse
+enough that floating-point hair cannot rewrite the record and break idempotence.
 WHERE: `physics/cloudDecks.ts` — `cloudDeckTags` (emit) and `parseCloudDeckValue` (read), consumed
 through `decksFromTags` by `apparentColor.ts`, `planetAppearance.ts`, `surfaceSpectrum.ts` and
 `visibility.ts`.
@@ -3878,6 +4562,10 @@ three decimals deliberately: finer than any renderer resolves, coarse enough tha
 between passes cannot rewrite a tag and churn a save (which would break `idempotence.test.ts`).
 
 ### RENDER-S35 A GIANT'S CHROMOPHORE LIST IS A CONTRAST SWITCH, NOT A DECORATION
+BUCKET: DOMAIN + ARCHITECTURE - domain: a chromophore band IS a deeper deck seen through the one
+above, so the UPPER deck's cover is LINEAR and must never be clamped while the chromophore's own
+cover saturates. Architecture: an empty list must land on the SAME look at zero strength, never on a
+different look - a presence test standing in for a strength is a cliff.
 WHERE: `apparentColor.ts` pushes `"<species> band"` stops from `giantDecks.slice(0, -1)`; both
 painters in `planetTexture.ts` read them back as `palette.filter(role === 'cloud').slice(1)` and run
 them through `giantBandRamp`.
@@ -3913,6 +4601,10 @@ owner spotted it on sight. Unclamped it lands at 36% (painted SD 9.0 against 25.
 giants still nil.
 
 ### PHY-31 A CLOUD DECK IS ADMITTED ON OPTICAL DEPTH. NEVER ON ABUNDANCE
+BUCKET: DOMAIN - a deck is admitted on WHAT YOU COULD SEE (optical depth), never on how much gas is
+present; the floor was in the wrong currency. Its CORRECTION carries too: ruling out the exotic
+explanations is not the same as finding the cause, and a DISCONTINUITY should send you looking for a
+BRANCH before it sends you looking for physics.
 WHERE: `cloudDecks.ts`, the per-gas loop in `deriveCloudDecks`.
 RULE: whether a deck exists is decided by what you could SEE - its optical depth, computed from the
 condensed column - and never by a floor on how much of the gas is present. There WAS such a floor
@@ -3941,6 +4633,11 @@ ruling out the exotic explanations is not the same as finding the cause, and a d
 send you looking for a BRANCH before it sends you looking for physics.
 
 ### RENDER-S36 HOW MUCH METHANE YOU SEE IS A CLOUD QUESTION, NOT A TEMPERATURE ONE
+BUCKET: DOMAIN + ARCHITECTURE - domain: methane condenses coldest, so where it forms a deck that
+deck is the TOP of the stack and nothing is above it - which is why an ice giant sees all of its
+methane and Jupiter and Saturn are gold. Architecture: a PROXY can be retired the moment the engine
+publishes the thing it was proxying. ** ID COLLISION: see the sampler entry above ('A SAMPLER THAT
+ANSWERS FOREVER'). **
 WHERE: `apparentColor.ts`, the giant branch - `methaneSeen` feeding `methaneStrength`.
 RULE: a giant's methane tint is scaled by how much of the methane column the DECKS ABOVE IT leave
 visible, taken as the product of (1 - coverage) over every deck above. Methane condenses coldest, so
@@ -3966,6 +4663,10 @@ and the ice-giant `iceHue` picks between three at 60 K and 160 K. Neptune (46.6 
 change and wants its own item rather than a ride on this one.
 
 ### RENDER-S37 AN AURORAL OVAL LIVES IN A NARROW POLAR BAND. STRENGTH MOVES IT INSIDE THAT BAND, NOT OUT OF IT
+BUCKET: DOMAIN - the oval marks where the LAST CLOSED FIELD LINE comes down, so its colatitude is
+set by the SHAPE of the magnetosphere: a stronger field pushes the magnetopause out and if anything
+CONTRACTS the oval. Brightness may scale with strength; REACH may not. ** ID COLLISION: see the
+route/flying entry above, and this id is cited from code with BOTH meanings. **
 WHERE: `catalogue/PlanetDisc.svelte` - `auroraColatDeg`, `auroraOval`, `auroraTopCy`/`auroraBotCy`.
 The 2D system view promotes big discs to this same component, so it is what the orrery shows too.
 RULE: the ring marks where the last closed field line comes down, and that colatitude is set by the
@@ -3985,6 +4686,10 @@ BLAST: every body with an `aurora/*` tag, not only giants - Earth moved 34.7 -> 
 in `tests/output/` moves, because the appearance model is derived at draw time and never stored.
 
 ### RENDER-S38 A GIANT'S STORM AND ITS POLAR VORTEX ARE DERIVED, NOT DECORATION
+BUCKET: DOMAIN + ARCHITECTURE - domain: a long-lived anticyclone is what a strongly banded
+circulation does at a shear line between two jets, a vortex forms at BOTH ends of the spin axis, and
+r = a + b*cos(n*theta) draws an n-LOBED FLOWER rather than a polygon. Architecture: a look is taken
+from the BODY, never from a literal in a painter.
 WHERE: `planetTexture.ts` - `stormChance`, used by both projections; `planetAppearance.ts` -
 `PolarVortexSpec.fillHex`/`rimHex`/`eyeHex`.
 RULE: neither is a look a renderer may choose. A long-lived anticyclone is what a strongly banded
@@ -4015,6 +4720,10 @@ BLAST: a gold giant now gets a gold vortex and a blue one a blue vortex (Saturn 
 Uranus #336174/#a1d1e5). If you add a third painter, read the spec - do not pick a colour.
 
 ### TAG-24 A POLAR VORTEX IS ONE TAG PER POLE, AND THE POLES ARE NOT THE SAME PLACE
+BUCKET: DOMAIN + ARCHITECTURE - domain: the two poles are NOT mirror images (Juno counted eight
+cyclones north and five south), SPIN decides whether there are vortices at all and AXIAL TILT
+decides how ALIKE they are. Architecture: a bare legacy value keeps the meaning it already rendered
+with, and 0-means-round is why an ABSENT pole must be null.
 WHERE: emitted in `SystemProcessor` (the polar-vortex block), read by `parsePolarVortexTags` in
 `planetAppearance.ts`, drawn by both painters.
 RULE: `feature/polar-vortex` carries `"<pole> <sides>"` or `"<pole> round"`, one tag per pole. A
@@ -4041,6 +4750,10 @@ BLAST: a manual tag beats the roll (`stripForReprocess` spares it and the genera
 no tag is present), which is the documented GM override in `tags-guide.md`.
 
 ### SYNC-1 THE PLAYER SNAPSHOT IS BUILT FROM THE STARMAP'S COPY OF A SYSTEM, NOT THE LIVE ONE
+BUCKET: ARCHITECTURE + IMPLEMENTATION - durable and first-order: two holders of 'the same' object
+must hold it BY IDENTITY, not merely equal - and A REPETITION TEST IS THE WRONG INSTRUMENT FOR A
+TWO-COPY FAULT. This is PHY-1's blind spot, named by the entry itself, and the gate wanted is a
+one-line identity invariant.
 WHERE: `computePlayerStarmapSnapshot` (`system/utils.ts`) walks `starmapStore.systems[i].system`.
 The system a GM is actually looking at lives in `systemStore`, and `src/routes/+page.svelte` copies
 the second into the first on every `systemStore` emission (`systemNode.system = system`).
@@ -4063,6 +4776,9 @@ BLAST: `system/idempotence.test.ts` cannot see any of this and is not meant to -
 is the wrong instrument for a two-copy fault; the gate wanted is the identity invariant above.
 
 ### SYNC-2 TWO PLAYER SNAPSHOT PATHS, AND ONLY ONE OF THEM SLIMS A CONSTRUCT
+BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: REDACTING and SLIMMING are different jobs in
+different functions, and anything crossing a wire wants BOTH. Two functions named for the same
+audience is what hid it. Exhibit 8 in faults-the-old-shape-allowed.md.
 WHERE: `computePlayerSnapshot` and `computePlayerStarmapSnapshot`, both in `system/utils.ts`.
 RULE: `computePlayerSnapshot` REDACTS (hidden nodes, secret tags, GM notes, anomaly bookkeeping)
 and nothing more. Everything that makes a snapshot SMALL - dropping `scheduled_journeys` and
@@ -4081,6 +4797,9 @@ BLAST: anything new that redacts for players must decide which of the two it is.
 DataChannel it wants BOTH, and the slimming is not automatic.
 
 ### SYNC-3 A CONSTRUCT'S FLIGHT FIELDS LIVE ON `SYNC_FLIGHT`, AND ABSENCE THERE MEANS PARKED
+BUCKET: ARCHITECTURE - SILENCE IS A POSITIVE STATEMENT, so a diff-shaped message would park every
+ship it omitted; and a copy-on-write merge is load-bearing, not tidy, when the receiver holds the
+very object it merges into.
 WHERE: `constructs/flightState.ts` owns the message, its shape and both ends of the merge;
 `slimNode` (`system/utils.ts`) strips `FLIGHT_NODE_FIELDS` from every campaign payload.
 RULE: `route`, `driveBurns`, `vector_position_au`, `vector_velocity_ms` and `vector_epoch_ms` do
@@ -4105,6 +4824,9 @@ unchanged one keeps its identity; an update that changes nothing returns the SAM
 BLAST: `visibleNodes` had to stop asking "does it carry a stamped vector" (see SYNC-4).
 
 ### SYNC-4 ONE PREDICATE FOR "THIS CONSTRUCT IS PLACED ABSOLUTELY", AND IT NEEDS A CLOCK
+BUCKET: ARCHITECTURE + DOMAIN - architecture: one predicate for one question, and where a second one
+is deliberate BOTH are stated. Domain: a ship keeps the route it flew after arriving, so PRESENCE
+alone would leave it free-flying for ever - the window is the question.
 WHERE: `isFreeFlying` in `constructs/flightState.ts`, used by `system/visibleNodes.ts`.
 RULE: a construct is free-flying if it carries a stamped vector, OR its route covers the instant
 being drawn. The WINDOW matters: a ship keeps the route it flew after arriving, so presence alone
@@ -4120,6 +4842,8 @@ BLAST: `getVisibleNodeIds`'s third argument is optional, so a caller with no clo
 vector-only behaviour rather than silently gaining or losing ships.
 
 ### SYNC-5 WHICH CLOCK PLACES A SHIP ON ITS ROUTE — THREE ANSWERS, AND `null` IS ONE OF THEM
+BUCKET: ARCHITECTURE - three answers and null is one of them; a boolean could not express the third
+case. One clock function with three readers has no way to disagree, which is the whole point.
 WHERE: `routeClock()` in `holo/scene.ts`, fed by `setTransitMotion` and `setGmClock`.
 RULE: following the GM -> our own display clock. NOT following -> the GM's last reported instant
 (`SYNC_TIME`). No GM clock known -> `null`, meaning do not place from the route at all and fall

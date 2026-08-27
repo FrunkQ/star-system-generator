@@ -2,6 +2,14 @@
 
 Written 2026-08-27 by coordinator 6, at v3.0.146, against 209 entries in `engine-map.md`.
 
+> **THE SORT WAS DONE 2026-08-28, at v3.0.154, against 205 entries.** Every entry in `engine-map.md`
+> now carries a `BUCKET:` field and the file opens with a `THE CARRY-FORWARD SORT` section giving the
+> counts, the corrections, and what was flagged. **The IMPLEMENTATION bucket's output is
+> `faults-the-old-shape-allowed.md`** — this criterion's last section, carried out. Two things this
+> document did not predict: **half the entries split (103 of 205)**, so splitting is the rule rather
+> than the exception; and **ARCHITECTURE is the biggest bucket by a distance** (106 primary against
+> DOMAIN's 61), so the new engine inherits far more of the map as requirements than as almanac.
+
 The owner's plan is to stop working on the old code and build a new evolution engine — first life,
 exobiology, system events through n-body, galactic evolution. His words on this file: *"the
 engine-map is our secret sauce and will never leave our side. We would have run aground a while ago
@@ -80,6 +88,13 @@ pressures this architecture put on the people working in it — which is exactly
 architecture should be designed against. So the carry-forward for this bucket is not the entry, it
 is the question: **what shape would have made this impossible?**
 
+DONE, 2026-08-28: `faults-the-old-shape-allowed.md`. Nine fault shapes, the exhibits under each, and
+the counter-examples where SSE already reached the bar `RENDER-S12` sets ("four of them become
+impossible here rather than merely fixed"). Its closing three — what the new architecture should
+most avoid — are authored and derived state in one object; a published quantity with more than one
+producer or with none so consumers infer it; and a visual path nothing can exercise beside an
+instrument that reports intent rather than outcome.
+
 ## The test, when an entry is ambiguous
 
 Ask: **what would have to change for this to become false?**
@@ -114,7 +129,7 @@ reading one function, delete it") and the rewrite is the moment to drop it.
 2. **ARCHITECTURE next, as design requirements** — with `idempotence.test.ts` ported before the code
    it guards, so the property is enforced from the first commit rather than retrofitted.
 3. **PLATFORM**, labelled by platform.
-4. **IMPLEMENTATION last, and as a DESIGN REVIEW rather than a migration** — one pass asking of each
+4. **IMPLEMENTATION last, and as a DESIGN REVIEW rather than a migration** — DONE, see above — one pass asking of each
    entry "what shape would have made this impossible?", and the answers become notes on the new
    architecture. Nothing from this bucket ships into the new map as a rule.
 

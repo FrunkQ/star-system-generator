@@ -1572,6 +1572,95 @@ than kept as debt, because they are verification tasks and not writing tasks.
 ---
 
 
+## ENGINE-MAP CARRY-FORWARD SORT — DONE 2026-08-28 at v3.0.154, worktree `sse2-map-sort`
+
+All 205 entries in `docs/dev/engine-map.md` now carry a `BUCKET:` field, applying
+`engine-map-carry-forward.md`. **Nothing was renumbered and nothing was reordered** — the entry
+headings are byte-identical to v3.0.149, checked with a diff. A bucket is a FIELD.
+
+**COUNTS.** Primary bucket (the one the field names first): ARCHITECTURE 106, DOMAIN 61,
+IMPLEMENTATION 21, PLATFORM 16, plus `M6` which is map apparatus rather than a claim about an
+engine. Counting every bucket an entry names: ARCHITECTURE 159, DOMAIN 73, IMPLEMENTATION 48,
+PLATFORM 29.
+
+**TWO FINDINGS FROM THE SORT ITSELF, both of which should change how the carry-forward is planned.**
+(1) **HALF THE FILE IS A SPLIT — 103 of 205 entries name two buckets or more.** The criterion doc
+expected splitting to be the exception; it is the rule, because an entry expensive enough to write
+down is almost always a physical fact AND the structural decision that fact forced. Budget for
+reading each one and taking half, not for moving files between four lists. (2) **ARCHITECTURE is the
+biggest bucket by a distance.** This reads as a physics engine's notebook and is mostly a record of
+what a derivation engine must do to stay honest — the new engine inherits far more of it as
+REQUIREMENTS than as almanac.
+
+**NOTHING WAS DROPPED.** Every entry can be restated without reading the code it describes, which is
+the file's own bar. Four closest calls are named in the sort section so the judgement is auditable
+(`UI-C1`, `DATA-R14`, `UI-P1`, `M6`). `GEN-1` is restatable and marked **DOES NOT CARRY** — it
+records an absence from this repo; it stays because it once said the opposite.
+
+**CORRECTED (cheap to verify, each says so in place):**
+- `PHY-4` caveat bullet 1 — the strict-`<` vs `<=` divergence is **CLOSED**. `SURFACE()` is now
+  `{ eq: ['hasSolidSurface', true] }` (`tagDefaults.ts:280`), routing through the shared feature.
+  Bullet 2 (B25's band gate inheriting `bandFit`'s 15% soft edge) was NOT re-measured and is marked
+  still standing.
+- `PHY-12` BLAST — the dead `retainsAtmosphere` local it sends you to was deleted (PHY-15 records
+  it); and **"opt-in" now understates the exposure**: `generateFromConfig.ts:474` and
+  `generation/system.ts:25` set `evolveAtmosphere = true` on EVERY generated planet and moon. The
+  WHY still holds — no bundled fixture sets it, so `idempotence.test.ts` stays green and stays
+  silent — but the uncovered read-before-write edge is now the default for generated content.
+- `M6` last bullet — the `PHY-17` collision it reports was resolved by the 2026-08-26 renumbering.
+
+**MARKED SUSPECT (one):** `RENDER-S5`. Its stated mechanism is wrong — `createModelViewer` IS
+annotated `: ModelViewer` and every member is required, so a dropped method is a real type error.
+The hole is that nothing runs the typechecker (`npm run build` is Vite; `npm run check` is buried
+under RENDER-S7's ~1357-error baseline). Left standing with what was checked; the fault it records
+really happened.
+
+**MARKED MISFILED (one):** `RENDER-S31`'s trailing CAVEAT is about the two Hill-radius formulas and
+belongs on `PHY-29` / `M7`. Flagged, not moved.
+
+**TWO LIVE ID COLLISIONS, FLAGGED NOT FIXED** (the criterion doc forbids renumbering; this is a
+COORDINATOR call). `RENDER-S36` is claimed by "A SAMPLER THAT ANSWERS FOREVER" and by "HOW MUCH
+METHANE YOU SEE". `RENDER-S37` by ""HAS A ROUTE" IS NOT "IS FLYING"" and by "AN AURORAL OVAL" —
+**and RENDER-S37 is cited from code with BOTH meanings**: `planetTexture.ts:667` means the aurora,
+`SystemVisualizer.svelte:1072` means the route, and the inbox splits the same way (B101 aurora, B104
+route). A reader following either citation reaches a coin toss. `RENDER-S40` and up are free. This
+is the third and fourth collision this month.
+
+**THE DELIVERABLE IS `docs/dev/faults-the-old-shape-allowed.md`** — the IMPLEMENTATION bucket read
+as "what shape would have made this impossible?", in nine fault shapes with the exhibits under each,
+and the counter-examples where SSE already reached that bar (`RENDER-S12`, `PHY-30`, `PHY-29`,
+`UI-C6`, `RENDER-S24`). Its closing three, which are the answer to "what should the new engine most
+avoid":
+
+1. **Authored state and derived state in the same object.** It is why `DERIVED_FIELDS` drifted eight
+   releases behind the engine, why `reconcileGiantMakeup` could permanently destroy a GM's authored
+   composition into every save, why a parked ship rewrote its own node several times a second and
+   took three unrelated-looking faults with it, and why opening an editor could pin a campaign to
+   that day's rule pack. Separate them and PHY-1, DATA-R8, OVR-6, UI-C5 and UI-C8 stop being rules
+   people must remember — and `UI-C7` shows the upside: `process()` becomes the redo function, so
+   undo falls out of the property.
+2. **A published quantity with more than one producer, or with none so consumers infer it.**
+   `RENDER-S34` is the sharpest case: nothing published how hard or which way a burn pushed, so a
+   renderer differenced two velocity states one of which was a placeholder zero — 2.4x on a Hohmann
+   departure, 0.03x on a 57-hour torch burn, and 61.7 degrees off the course. `PHY-30` is the model
+   for the fix: the owner PUBLISHES the derived field and nothing re-derives it.
+3. **A visual path nothing can exercise, and an instrument that reports intent.** Three faults
+   surfaced at once the first time a moving construct was ever rendered in 3D; a 25.6x oversize hull
+   sat behind a green test that measured what no caller does; a 1,366 km/s burn shipped while every
+   transit spec passed. This is the one that decides what the other two cost, because it is what
+   makes them findable.
+
+**Also read together before the new pass model is chosen:** `PHY-1` (and port
+`system/idempotence.test.ts` BEFORE the code it guards — it is more portable than the engine),
+`PHY-12` (the field/escape/atmosphere/thermal circle is real and cannot be ordered away),
+`LGR-2` (**the derivation graph of a star system is not a tree** — a co-orbital derives from a
+SIBLING), and `SYNC-1` (PHY-1's blind spot: a repetition test is the wrong instrument for a
+two-copy fault, and the gate wanted is a one-line identity invariant). `DATA-G1` is the other
+day-one property.
+
+**NOT DONE, deliberately:** no fixing expedition. The two id collisions, the misfiled caveat and
+`PHY-4`'s second caveat bullet are all left for whoever owns that area next.
+
 ## docs/dev/engine-map.md — the traps file (started 2026-08-04)
 
 `docs/dev/engine-map.md` is a NEW, deliberately LLM-facing index of the non-obvious rules: the ones
