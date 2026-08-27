@@ -3779,7 +3779,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#c8b59f",
+        "hex": "#d6b699",
         "palette": [
           {
             "hex": "#d6c0a1",
@@ -3789,11 +3789,11 @@
             "rawHex": "#ccc2ae"
           },
           {
-            "hex": "#c8b59f",
+            "hex": "#d6b598",
             "role": "cloud",
             "weight": 0.9,
             "label": "ammonia cloud deck",
-            "rawHex": "#c8b59f"
+            "rawHex": "#d6b598"
           },
           {
             "hex": "#bb8156",
@@ -3805,7 +3805,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#c8b59f",
+      "apparentColorHex": "#d6b699",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -6122,7 +6122,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#b4b1a4",
+        "hex": "#d4b294",
         "palette": [
           {
             "hex": "#d9bf98",
@@ -6132,11 +6132,11 @@
             "rawHex": "#ccc2ae"
           },
           {
-            "hex": "#b3b1a4",
+            "hex": "#d4b194",
             "role": "cloud",
             "weight": 0.9,
             "label": "ammonia cloud deck",
-            "rawHex": "#b3b1a4"
+            "rawHex": "#d4b194"
           },
           {
             "hex": "#bb8156",
@@ -6148,7 +6148,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#b4b1a4",
+      "apparentColorHex": "#d4b294",
       "classification": {
         "base": "planet/gas-giant",
         "baseScore": 1.08,

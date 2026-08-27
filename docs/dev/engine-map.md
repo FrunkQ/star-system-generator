@@ -3828,3 +3828,28 @@ to the condensation integral, having already ruled out the pressure grid and the
 data. I had not ruled out a plain `if` twenty lines earlier. The lesson is narrow and worth keeping:
 ruling out the exotic explanations is not the same as finding the cause, and a discontinuity should
 send you looking for a BRANCH before it sends you looking for physics.
+
+### RENDER-S36 HOW MUCH METHANE YOU SEE IS A CLOUD QUESTION, NOT A TEMPERATURE ONE
+WHERE: `apparentColor.ts`, the giant branch - `methaneSeen` feeding `methaneStrength`.
+RULE: a giant's methane tint is scaled by how much of the methane column the DECKS ABOVE IT leave
+visible, taken as the product of (1 - coverage) over every deck above. Methane condenses coldest, so
+where it forms a deck at all that deck is the TOP of the stack and nothing is above it - an ice giant
+sees all of its methane. On a warm giant methane never condenses and the whole ammonia stack sits
+over it, which is exactly why Jupiter and Saturn are gold rather than green.
+WHY: this was `teq < 80 ? 1 : teq < 110 ? 0.6 : 0.35`, a three-way step standing in for the sentence
+the comment above it already stated in words. Two things were wrong with it. It was a PROXY for a
+quantity the engine did not publish - and since B95 it does, so the proxy can be replaced by the
+thing itself. And it was a CLIFF, which bit the moment the decks were fixed: giving Saturn back its
+ammonia deck raised its albedo and dropped its equilibrium temperature 81.1 K -> 78.1 K, crossing the
+80 K rung and swinging its methane tint by two thirds, from a 3 K change. It painted Saturn grey.
+MEASURED, on the bundled Sol: Jupiter #c8b59f -> #d6b699 and Saturn #b4b1a4 -> #d4b294, both warmer
+and both closer to life (real Jupiter is about RGB 216,178,137). Uranus and Neptune do not move at
+all, because their methane IS their top deck. Painted contrast, four giants: Jupiter 27.4, Saturn
+15.2, Uranus 2.4, Neptune 1.8 - Saturn banded at a little over half Jupiter's strength, which is
+what Saturn looks like, and the ice giants featureless.
+BLAST: a giant with NO decks now shows its methane in full rather than at the old 0.35 floor. That is
+the right answer - there is nothing there to hide it - but it is a change for hot cloudless giants.
+STILL A STEP, LEFT ALONE DELIBERATELY: `methaneHue` picks between two fixed colours at `teq < 52`,
+and the ice-giant `iceHue` picks between three at 60 K and 160 K. Neptune (46.6 K) and Uranus
+(58.5 K) sit either side of the first. Smoothing them moves BOTH ice giants, which is an anchor
+change and wants its own item rather than a ride on this one.

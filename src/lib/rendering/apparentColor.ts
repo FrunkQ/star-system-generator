@@ -394,8 +394,24 @@ export function deriveApparentColorParts(
     // are cyan in life precisely because of that methane. Cold matters too: on a warm giant the
     // methane sits below a thick ammonia haze we never see through, which is why Jupiter and Saturn
     // stay gold at similar abundances.
-    const coldFactor = teq < 80 ? 1 : teq < 110 ? 0.6 : 0.35;
-    const methaneStrength = Math.min(0.92, (1 - Math.exp(-60 * ch4)) * coldFactor);
+    // ...and HOW MUCH OF THE METHANE YOU CAN SEE is now asked directly, of the decks, instead of
+    // being guessed from temperature. This used to be `teq < 80 ? 1 : teq < 110 ? 0.6 : 0.35` — a
+    // three-way step stading in for exactly the sentence above it, "the methane sits below a thick
+    // ammonia haze we never see through". The deck stack publishes its coverage now (B95), so the
+    // proxy can be replaced by the thing it was proxying, which is the whole physics-drives-visuals
+    // rule in one line.
+    // It was also a CLIFF, and it bit the moment Saturn's clouds were fixed: giving Saturn back its
+    // ammonia deck raised its albedo and dropped its equilibrium temperature from 81.1 K to 78.1 K,
+    // which crossed the 80 K rung and swung its methane tint by two thirds. A 3 K change should not
+    // do that, and with the tint keyed to cloud cover instead it no longer can.
+    // A methane deck is the TOP of any stack it belongs to (methane condenses coldest), so an ice
+    // giant has nothing above its methane and sees all of it — Uranus and Neptune are unmoved. On a
+    // warm giant methane never condenses at all and the whole ammonia stack is over it, which is
+    // exactly why Jupiter and Saturn are gold rather than green.
+    const methaneIdx = giantDecks.findIndex((d) => d.species === 'methane');
+    const overMethane = methaneIdx >= 0 ? giantDecks.slice(methaneIdx + 1) : giantDecks;
+    const methaneSeen = overMethane.reduce((p, d) => p * (1 - d.coverage), 1);
+    const methaneStrength = Math.min(0.92, (1 - Math.exp(-60 * ch4)) * methaneSeen);
     if (methaneStrength > 0.06 && teq < 420) {
       // Colder → deeper blue: Neptune (≈46 K) sits below the threshold, Uranus (≈58 K) reads cyan.
       const methaneHue = teq < 52 ? [47, 107, 214] as RGB : [70, 176, 216] as RGB;
