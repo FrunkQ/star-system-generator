@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.135 - 27th Aug 2026
+
+- Board only. Two faults found this week turn out to be the same one: a value that falls either side of a line, fed by something that drifts back and forth across it. Captured as a single piece of work rather than a fix each time it surfaces.
+
 ## v3.0.133 - 27th Aug 2026
 
 ## v3.0.134 - 27th Aug 2026
