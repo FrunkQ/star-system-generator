@@ -53,6 +53,13 @@ Every live citation outside this file was checked and repointed where it had mov
 `PHY-29` — the way the inbox rule already requires for board ids. That is how these happened.
 
 
+
+> **CARRYING THIS FILE INTO A NEW ENGINE:** see `engine-map-carry-forward.md`. The entries are not
+> all the same KIND of truth - some are physics, some are properties a derivation engine must have,
+> some are the browser's, and some are only true of this code. That file is the criterion for
+> sorting them, and it exists because carrying a falsified entry into a new codebase breaks this
+> file's own hardest rule: a wrong entry is worse than a missing one.
+
 ### <ID> <short imperative claim>
 WHERE: file:symbol (the code that enforces it)
 RULE: the invariant, in one or two sentences.

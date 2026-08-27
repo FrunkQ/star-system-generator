@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.147 - 27th Aug 2026
+
+- Docs only. A criterion for carrying the engine map into a new engine: which of its rules are about physics, which about how a derivation engine must behave, which about the browser, and which only about the code as it stands today.
+
 ## v3.0.146 - 27th Aug 2026
 
 - Docs only. The scale-law phase gains a second dial, so ship sizes can be set relative to worlds rather than tied to them, alongside the floor fix it still needs underneath.
