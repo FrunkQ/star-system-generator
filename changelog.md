@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.143 - 27th Aug 2026
+
+- Board only. Two outstanding items checked before work was scheduled on them: one appears already fixed by the transit repairs, and the other did not reproduce in three full test runs. Both recorded with the evidence rather than sent off to be hunted.
+
 ## v3.0.142 - 27th Aug 2026
 
 - Board only. A correction: the explanation given for two recent findings was wrong, and measuring showed why. The quantity said to drift as a planet travels its orbit is worked out from the orbit itself and does not drift at all.
