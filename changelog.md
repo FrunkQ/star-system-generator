@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.122 - 27th Aug 2026
+
+- A trace gas is no longer deleted by being looked at. The box beside each gas showed three fixed decimals, so anything under 0.0005 per cent displayed as zero - and simply clicking into the field and out again wrote that zero back, removing the gas and shifting every other gas with it. Trace values now keep their significant figures, and a box handed back unchanged is left alone.
+
 ## v3.0.121 - 28th Aug 2026
 
 - A ship that has flown somewhere now has its orbit line drawn where the ship actually is. The GM's map draws orbits flat, in the plane of the system, which is right for everything it places that way - but a ship that has arrived somewhere is placed on the plane it actually arrived on, so its line and the ship itself only ever met at two points. A station that has never flown anywhere was drawn correctly in the same picture, which is what gave it away.

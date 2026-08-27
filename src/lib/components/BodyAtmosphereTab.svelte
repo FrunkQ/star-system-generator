@@ -251,11 +251,39 @@
       applyChanges();
   }
 
+  // B100 — HOW A TRACE GAS USED TO BE DELETED BY A CLICK.
+  //
+  // The box rendered `(fraction * 100).toFixed(3)` and its `on:blur` wrote that DISPLAYED string
+  // straight back. A gas at 0.0004 % displays as '0.000' under three fixed decimals, so merely
+  // focusing the field and leaving it again SET THE GAS TO ZERO — no edit made, no warning, and on
+  // the reporter's own Jupiter six of eight gases sat below that rounding floor. Two guards, and
+  // BOTH are needed: `fmtGasPct` below keeps enough significant figures that the value round-trips,
+  // and this refuses to write at all when the number has not actually moved. The equality is
+  // RELATIVE because the value has been through a format/parse cycle and will not be bit-identical;
+  // 1e-9 is far below any edit a human can express in this box and far above float round-trip noise.
   function updateGasFractionFromText(gas: string, rawValue: string) {
       const parsed = parseFloat(rawValue);
       if (!isFinite(parsed)) return;
       const clamped = Math.max(0, Math.min(100, parsed));
+      // Compare against what was DISPLAYED, not against the stored value. The box necessarily
+      // rounds (three significant figures), so a stored 0.001818 % shows as 0.00182 — and a guard
+      // comparing the typed text with the STORED number reads that rounding as a real edit and
+      // writes it, which is the same data loss in a smaller coat.
+      const shown = fmtGasPct(body.atmosphere?.composition?.[gas] ?? 0);
+      if (clamped === parseFloat(shown)) return;
       updateGasFraction(gas, clamped);
+  }
+
+  // B100: SIGNIFICANT FIGURES, NOT FIXED DECIMALS. Atmospheric physics keys on partial pressure,
+  // so what matters is the RATIO: 0.0004 % and 0.04 % are two decades apart and both must be
+  // legible and editable. Three significant figures, trailing zeros trimmed, capped at twelve
+  // decimals so a pathological value cannot stretch the control.
+  export function fmtGasPct(fraction: number): string {
+      const pct = (fraction ?? 0) * 100;
+      if (!isFinite(pct) || pct === 0) return '0';
+      const abs = Math.abs(pct);
+      const decimals = abs >= 1 ? 3 : Math.min(12, 3 - Math.floor(Math.log10(abs)) - 1);
+      return pct.toFixed(decimals).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
   }
 
   function addGas(gas: string) {
@@ -585,10 +613,10 @@
                             min="0"
                             max="100"
                             step="0.001"
-                            value={(fraction * 100).toFixed(3)}
+                            value={fmtGasPct(fraction)}
                             on:change={(e) => updateGasFractionFromText(gas, e.currentTarget.value)}
                             on:blur={(e) => updateGasFractionFromText(gas, e.currentTarget.value)}
-                            title="Gas percentage (0-100), supports 3 decimal places"
+                            title="Gas percentage (0-100). Trace values keep their significant figures."
                         />
                         <button class="remove-btn" on:click={() => removeGas(gas)} title="Remove Gas">×</button>
                     </div>
