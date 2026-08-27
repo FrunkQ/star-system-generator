@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.98 - 26th Aug 2026
+
+- Board only. The gas-giant banding item is corrected and narrowed: the makeup a giant is judged by is rewritten during processing, and the same function already caused a fault where a file behaved differently depending on how many times it had been loaded.
+
 ## v3.0.97 - 26th Aug 2026
 
 - Rings no longer have an orbit line drawn through them. A ring was getting both its band and a thin ellipse through the middle of it, which on a planet's rings lands as a hard line across a soft disc. Belts have never had one; rings were simply missed. The band is the orbit - it is drawn at the radius it occupies.
