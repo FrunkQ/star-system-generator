@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.106 - 27th Aug 2026
+
+- A gas giant's banding now strengthens and fades with the clouds that cause it, instead of switching between two fixed looks. The belts on a giant come from a deeper cloud deck showing through the one above it, and the engine treated having any such deck at all as a yes-or-no question: a world with one was drawn at full Jovian contrast and a world without one was drawn very nearly featureless, with nothing in between. So a giant whose atmosphere sat near a condensation threshold flipped between the two on the smallest edit the composition editor can make. Banding is now proportional to how much of the deeper deck you can actually see, and the storm oval fades in with it. Jupiter, Saturn, Uranus and Neptune are all drawn as they were.
+
 ## v3.0.104 - 27th Aug 2026
 
 - Board only. Recorded the decisions that unblock the clock and ship-placement work: the time everyone looks at is the GM's DISPLAY time, the campaign checkpoint is a separate thing and not part of what anyone sees, any touch of the GM's clock takes the players' controls and snaps them to it, and a ship found carrying stale placement is repaired on sight and the repair counted - so a user's file can tell us whether the underlying fault is still happening.
