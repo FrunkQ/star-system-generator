@@ -4,7 +4,10 @@ All notable changes are listed here:
 
 ## v3.0.104 - 27th Aug 2026
 
+- Board only. Recorded the decisions that unblock the clock and ship-placement work: the time everyone looks at is the GM's DISPLAY time, the campaign checkpoint is a separate thing and not part of what anyone sees, any touch of the GM's clock takes the players' controls and snaps them to it, and a ship found carrying stale placement is repaired on sight and the repair counted - so a user's file can tell us whether the underlying fault is still happening.
+
 - A cloud deck now records how much sky it actually holds, not just which of five bands it falls into. A band cannot say how nearly a deck exists, and that is the one thing needed to fade a deck in gently instead of having it appear whole - Mars's real water-ice haze covers 2.4% of its sky and was being drawn at 8%, the typical figure for its band. Decks you have written by hand are unaffected: "water overcast" still means what it always did. Everything that depends on how cloudy a world is has become more accurate with it, so Venus is now read as very nearly total overcast rather than 92%, which darkens its modelled surface light.
+
 
 ## v3.0.103 - 27th Aug 2026
 

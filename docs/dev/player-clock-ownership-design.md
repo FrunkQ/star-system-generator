@@ -305,3 +305,58 @@ what a GM's habits cost them:
 
 Whichever is chosen, `construct-logic.ts:158` must stop pairing a host from one source with a radius
 from another — that blend is wrong under all three.
+
+## 9. THE OWNER'S DECISIONS, 2026-08-27 — read this before writing anything
+
+Verbatim, because these settle the questions the rest of this note was asking:
+
+> *"Actual Time we ignore for now — that is a GM checkpoint to advance his campaign. On the GM
+> screen ships seem to travel based on DISPLAY time. Display Time is our main 't' for player/GM
+> visualisation. When a GM scrubs their own time or does ANYTHING to update the clock (including run
+> time) then the player view time controls are disabled. If the GM time is stationary then the
+> players can scrub their view all they like. When the GM touches time (or does follow me) everything
+> snaps back to GM Display Time."*
+
+> *"If you see a ship with broken data just try to fix it. Record how many times you do this on the
+> ship — a useful debug for us if we get user files. If it happens loads of times we still have
+> outstanding issues; once fixed it should not be >0 (or not populated)."*
+
+### What that settles
+
+**DISPLAY TIME IS `t`.** Not actual time. Actual time is a GM checkpoint for advancing the campaign
+and is out of scope for visualisation — so the whole "when does an arrival become real" question in
+section 8 collapses: an arrival is real when it has happened in DISPLAY time.
+
+**THE LOCK IS ANY GM CLOCK ACTIVITY, not just a running clock.** A scrub counts. This is WIDER than
+what shipped at v3.0.102, which locks on `gmRunning` (`SYNC_TIME.isPlaying`) alone — a GM who drags
+the scrubber currently does not take the players' clock, and should.
+
+**A STATIONARY GM CLOCK MEANS THE PLAYERS ARE FREE.** Already true.
+
+**TOUCHING TIME SNAPS EVERYONE TO GM DISPLAY TIME.** Partly true — `followTime` snaps on >1 s drift
+while `onGmClock`. It needs to fire on a scrub as well, and to snap rather than ease.
+
+**HEAL ON SIGHT, AND COUNT IT.** A ship whose stored placement disagrees with its own completed
+journeys is repaired where it is found, rather than waiting for a checkpoint — and the repair is
+INSTRUMENTED. A counter on the construct records how many times it has been healed, so a user's file
+answers the question directly: **a healthy campaign should show 0 or no counter at all, and a count
+that climbs means something upstream is still writing ships wrong.** The heal is a symptom-fix; the
+counter is how we find out whether it is still needed.
+
+### The one sub-question left, and it must not be guessed
+
+A scrub is INSTANTANEOUS. "Any clock activity disables the players' controls" is unambiguous while a
+clock is running, and ambiguous for a single drag: the GM touches the scrubber, everything snaps —
+and then the GM's clock is stationary again, which by the stationary rule hands the controls straight
+back. Taken literally that is a flicker.
+
+So the lock needs a RELEASE condition, and there are three candidates:
+
+1. **A quiet period.** Controls return after the GM's clock has been still for N seconds. Simple; N
+   is a made-up number.
+2. **The player takes it back.** The snap happens, the controls stay disabled, and a "take control"
+   affordance returns them. Explicit, and it means a player always knows whose time they are on.
+3. **Snap without locking.** A GM scrub yanks everyone to their time; the controls never disappear
+   for a scrub, only for a running clock. Least intrusive, and closest to what shipped.
+
+Not chosen. Ask before building.
