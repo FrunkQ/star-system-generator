@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.108 - 27th Aug 2026
+
+- A test now covers opening a map, making an edit and reprocessing - the exact sequence the gas-giant banding fault lived in, and one the suite had never exercised. Everything before it checked that processing the same system repeatedly changes nothing, which it does; nobody had checked what happens when you change something in between. The fixture is a giant deliberately parked one editor step away from a cloud threshold.
+
 ## v3.0.107 - 26th Aug 2026
 
 - Board only. A user-reported fault reproduced and diagnosed but deliberately not fixed yet, because the fix is a change to what the engine can describe rather than a patch. Making two asteroids that share a Lagrange point into a pair orbiting each other - a real arrangement, and one this very map contains - sends the companion onto a wider and wider orbit every time anything is edited, with no warning of any kind. The cause is that the engine has no way to say "this PAIR rides the Lagrange point", only "this BODY does", so two separate passes each rebuild the arrangement their own way and undo each other. The number it drifts towards is the width of the Lagrange offset itself, which is what gave the mechanism away.
