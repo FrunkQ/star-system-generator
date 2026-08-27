@@ -315,6 +315,30 @@ generated into the system are born into the era you chose.
 Everything recomputes live: temperature, fluids, magnetosphere, geology, habitability and tags all
 update as you edit.
 
+### Editing an atmosphere
+
+Open a body's **Atmosphere** tab and expand **Advanced Composition Editor** to set the mix gas by
+gas. Two things about the controls are worth knowing, because atmospheric chemistry lives at the
+small end and a linear control cannot reach it.
+
+**The sliders are logarithmic**, across eight decades. That is deliberate: what matters physically
+is the RATIO, not the difference. Taking hydrogen from 90% to 99% barely moves the mean molecular
+weight, while taking ammonia from 0.1% to 1% can form an entire cloud deck. A log axis gives equal
+travel to equal ratio change, so a trace gas gets as much of the slider as the bulk gas does.
+
+**Below 1% the readout switches to parts per million**, because 2.82 ppm is a number you can read
+and type and 0.000282% is not. The unit shown beside each box tells you which one you are in, and
+it follows the value rather than being a mode you set — slide a gas up past 1% and it changes to a
+percentage on its own. Type a value in whatever unit is showing, or **add a `%` or `ppm` suffix to
+force the other one**: sitting at 0.9% and typing `2` means 2 ppm, while typing `2%` means two per
+cent.
+
+The slider bottoms out at a very small but non-zero value: a log scale cannot reach zero. To remove
+a gas entirely, use the **x** button on its row.
+
+Changing one gas redistributes the difference across the others and renormalises, so the mix always
+sums to 100%. If you want a species at an exact figure, set it last.
+
 ### Breaking the physics on purpose — the Overrides tab
 
 The last tab in the body editor, after Tags. Everything on it is a number the engine normally works

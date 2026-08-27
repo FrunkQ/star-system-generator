@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.150 - 28th Aug 2026
+
+- Getting Started explains the atmosphere editor: why the gas sliders are logarithmic, when the readout speaks parts per million, and how to force a unit when you type.
+
 ## v3.0.149 - 27th Aug 2026
 
 - The physics page explained the compact transit route by a reason that is no longer true. It was described as a saving on traffic; it is in fact how a ship position is defined while it is under way, worked out at both ends from the same curve rather than sent from one to the other.
