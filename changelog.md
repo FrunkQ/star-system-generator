@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.132 - 27th Aug 2026
+
+- Board only. A routing note recording what was fixed, what is routed next and in what order, and the principle that came out of tracing the player-view fault.
+
 ## v3.0.131 - 27th Aug 2026
 
 - Board only. Recorded a fault found while tracing the player-view memory problem: three tags come and go on every snapshot sent to players, and the likely cause would mean hidden tags reaching them some of the time. Being confirmed before anything is changed.
