@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.137 - 27th Aug 2026
+
+- Board only. The seasonal-worlds idea is joined to the surface-areas work: a world whose water freezes and thaws does not do it everywhere, so what changes over a year is a region rather than a planet, and the two are better built together.
+
 ## v3.0.136 - 27th Aug 2026
 
 - Board only. A world whose oceans freeze and thaw each orbit is neither a frozen world nor a wet one, and saying so is more interesting than either. Recorded as something to build when planet generation is next rederived.
