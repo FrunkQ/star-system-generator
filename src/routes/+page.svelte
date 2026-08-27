@@ -70,6 +70,8 @@
   import WelcomeModal from '$lib/components/WelcomeModal.svelte';
   import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
+  import { BIG_BANG_TO_UNIX_EPOCH_T } from '$lib/temporal/utre';
+  import { buildFlightUpdate } from '$lib/constructs/flightState';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
@@ -950,6 +952,12 @@
             approxBytes: broadcastService.approxBytesOf('SYNC_STARMAP')
           }
         });
+        // Q2 (owner, 2026-08-27): the flight message goes AHEAD of the campaign. The DataChannel is
+        // ordered, so a few hundred bytes queued first always land first, and the joiner has every
+        // ship's course before the document those ships live in arrives. A joiner is then not a
+        // special case - it is the ordinary case with no history, and the route's own window means
+        // no catch-up protocol is needed.
+        broadcastService.sendMessage({ type: 'SYNC_FLIGHT', payload: buildFlightUpdate(map, Number(parseClockSeconds(map.temporal?.displayTimeSec, 0n) - BIG_BANG_TO_UNIX_EPOCH_T) * 1000) });
         broadcastService.sendMessage({ type: 'SYNC_STARMAP', payload: snapshot });
       }
       broadcastService.sendMessage({ type: 'SYNC_BRANDING', payload: get(brandingStore) });
@@ -1021,6 +1029,25 @@
     } else {
       perfCount('bc.SYNC_STARMAP.skippedWhilePlaying');
     }
+  }
+
+  // G51 - THE SHIP MESSAGE. Everything a player needs to place and light every ship in the campaign,
+  // and nothing it could work out for itself.
+  //
+  // IT IS NOT THROTTLED AND DOES NOT NEED TO BE. Building it is a walk over the constructs (a few
+  // dozen at most) rather than a deep clone of the campaign, and `sendIfChanged` drops it whole while
+  // nothing changes - which, once the per-tick vector stops riding it, is the entire duration of a
+  // ship flying a committed plan. What actually leaves the machine is a commit, a replan, an abort, a
+  // strand, a park, and a drifting ship's re-stamp. That is the owner's principle in one line: send
+  // what changes, and let the receiver simulate the rest from a timestamp.
+  //
+  // NOTE IT IS OUTSIDE THE `skippedWhilePlaying` GUARD ABOVE, deliberately. That guard exists because
+  // rebuilding the CAMPAIGN snapshot is expensive; this one is cheap, and suppressing it while
+  // playing is exactly when a replan or an abort most needs to reach the table.
+  $: if (browser && $starmapStore) {
+    const displaySec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, 0n);
+    const displayMs = Number(displaySec - BIG_BANG_TO_UNIX_EPOCH_T) * 1000;
+    broadcastService.sendIfChanged({ type: 'SYNC_FLIGHT', payload: buildFlightUpdate($starmapStore, displayMs) });
   }
   // Push branding (company name + logo) to player views whenever the GM edits it.
   $: if (browser && $brandingStore) {

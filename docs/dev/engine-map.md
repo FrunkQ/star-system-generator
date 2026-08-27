@@ -4072,3 +4072,52 @@ the app. `shipRoute.ts` opens by explaining why those arrays must never be broad
 per-system path broadcasts them anyway.
 BLAST: anything new that redacts for players must decide which of the two it is. If it crosses a
 DataChannel it wants BOTH, and the slimming is not automatic.
+
+### SYNC-3 A CONSTRUCT'S FLIGHT FIELDS LIVE ON `SYNC_FLIGHT`, AND ABSENCE THERE MEANS PARKED
+WHERE: `constructs/flightState.ts` owns the message, its shape and both ends of the merge;
+`slimNode` (`system/utils.ts`) strips `FLIGHT_NODE_FIELDS` from every campaign payload.
+RULE: `route`, `driveBurns`, `vector_position_au`, `vector_velocity_ms` and `vector_epoch_ms` do
+NOT ride the campaign. A construct the flight update does not mention has PARKED, and
+`applyFlightUpdate` CLEARS those fields for it — so silence is a positive statement, not "no
+change". That is why `buildFlightUpdate` must describe every non-parked ship every time rather
+than only the ones that changed: a diff-shaped message here would park every ship it omitted.
+WHY: those five fields changed every tick inside a multi-megabyte document, so `sendIfChanged`
+could never dedupe the campaign and a ship under way re-sent ~765 KB to every viewer about twice a
+second (inbox G51, and the receiving half of B94). The route was ALREADY a time-to-position
+function — its knots carry `t` — so the receiver could always have computed the ship itself.
+THE TRAP IF YOU ADD A SIXTH FIELD: add it to `FLIGHT_NODE_FIELDS` and to `applyToNode`, or the
+strip and the merge will disagree about what "absent" means and a ship will keep a stale value
+forever. `flightState.spec.ts` pins the round trip.
+BLAST: `visibleNodes` had to stop asking "does it carry a stamped vector" (see SYNC-4).
+
+### SYNC-4 ONE PREDICATE FOR "THIS CONSTRUCT IS PLACED ABSOLUTELY", AND IT NEEDS A CLOCK
+WHERE: `isFreeFlying` in `constructs/flightState.ts`, used by `system/visibleNodes.ts`.
+RULE: a construct is free-flying if it carries a stamped vector, OR its route covers the instant
+being drawn. The WINDOW matters: a ship keeps the route it flew after arriving, so presence alone
+would leave it free-flying forever instead of going back to being an ordinary orbiter.
+WHY IT IS NOT OBVIOUS: `visibleNodes` used to ask only about the vector, which was a second answer
+to the question `worldPositions` answers with "a course OR a vector". They agreed only because the
+GM stamped a vector on every transiting ship. The moment that stamp stopped riding the campaign
+(SYNC-3) the two diverged and a transiting ship would have gone INVISIBLE on a player view while
+being drawn perfectly well — found by reading, before it shipped.
+`worldPositions.ts` KEEPS its own presence-only gate on purpose: that module depends only on the
+propagator and must not import transit code. Two gates, one deliberate difference, both stated.
+BLAST: `getVisibleNodeIds`'s third argument is optional, so a caller with no clock keeps the old
+vector-only behaviour rather than silently gaining or losing ships.
+
+### SYNC-5 WHICH CLOCK PLACES A SHIP ON ITS ROUTE — THREE ANSWERS, AND `null` IS ONE OF THEM
+WHERE: `routeClock()` in `holo/scene.ts`, fed by `setTransitMotion` and `setGmClock`.
+RULE: following the GM -> our own display clock. NOT following -> the GM's last reported instant
+(`SYNC_TIME`). No GM clock known -> `null`, meaning do not place from the route at all and fall
+back to the stamped vector.
+WHY THE THIRD CASE EXISTS AND MUST NOT BE COLLAPSED: `null` is the GM'S OWN 3D view, which never
+receives `SYNC_TIME`. Defaulting it to the local clock would silently change how the GM's own
+ships are placed — from their stamp to a re-estimate — which is a different thing to have done and
+nobody asked for it.
+WHY IT REPLACED A BOOLEAN: the ship, its plume (`shipClock`) and its drawn line (`onRouteNow`) must
+all be read at the SAME instant or the torch lights in the wrong place — the bug the `shipClock`
+comment already describes. One clock function, three readers, no way to disagree.
+THE POLICY IT ENCODES, and it is the owner's: a scrubbing player sees transit traffic at the GM's
+reported instant, not at their own (2026-08-08). G51 keeps that rule and makes it cost zero bytes
+by COMPUTING the stamp instead of transmitting it. Changing it is a product decision (G51 Q6),
+not a refactor.

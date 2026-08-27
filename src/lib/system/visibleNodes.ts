@@ -3,8 +3,9 @@
 // ancestors and its siblings; a body's children (e.g. moons) surface only when it is the focus.
 // Extracted verbatim from SystemVisualizer so the two can't drift.
 import type { System, SystemNode } from '$lib/types';
+import { isFreeFlying } from '$lib/constructs/flightState';
 
-export function getVisibleNodeIds(system: System | null, focusedBodyId: string | null): Set<string> {
+export function getVisibleNodeIds(system: System | null, focusedBodyId: string | null, atMs?: number): Set<string> {
   const visibleIds = new Set<string>();
   if (!system) return visibleIds;
   const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
@@ -39,8 +40,15 @@ export function getVisibleNodeIds(system: System | null, focusedBodyId: string |
   }
   // Free-floating constructs (transit/drift) are positioned absolutely, outside the focus chain —
   // always keep them nameable/selectable.
+  //
+  // G51: this used to ask ONLY "does it carry a stamped vector", which was a second answer to the
+  // question `worldPositions` answers with "a course OR a vector". Once a ship's flight situation
+  // stopped riding the campaign, a transiting ship on a player view carried no vector — and would
+  // have gone INVISIBLE while being drawn perfectly well. `isFreeFlying` is now the one predicate.
+  // `atMs` is optional so a caller with no clock keeps the old vector-only behaviour rather than
+  // silently gaining or losing ships.
   for (const n of system.nodes) {
-    if (n.kind === 'construct' && (n as any).vector_position_au) visibleIds.add(n.id);
+    if (isFreeFlying(n, atMs)) visibleIds.add(n.id);
   }
   return visibleIds;
 }

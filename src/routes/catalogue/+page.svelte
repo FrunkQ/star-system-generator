@@ -24,6 +24,7 @@
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
   import { parseIceParam } from '$lib/iceConfig';
   import { setModelFetcher, modelArrived } from '$lib/constructs/modelFetch';
+  import { applyFlightUpdate, type FlightUpdate } from '$lib/constructs/flightState';
   import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
@@ -307,6 +308,11 @@
   // absolute time and rate — so orbital positions match the GM's map exactly. Projector pattern:
   // advance locally at the GM's rate between heartbeats, snap on >1s drift.
   let gmTime: { currentTime: number; isPlaying: boolean; timeScale: number } | null = null;
+  // G51: the last flight picture received, kept because every fresh campaign snapshot arrives with
+  // its constructs stripped of flight fields and must have it re-applied. `pendingFlight` covers
+  // the join burst, where the flight message deliberately lands BEFORE the campaign.
+  let lastFlight: FlightUpdate | null = null;
+  let pendingFlight: FlightUpdate | null = null;
   let timeExpanded = false;
 
   // Interactive-tier selection.
@@ -1032,10 +1038,33 @@
         receivingTimer = setTimeout(() => { receiving = null; receivingTimer = null; }, 30_000);
       }, RECEIVING_GRACE_MS);
     };
+    // G51 - A SHIP'S FLIGHT SITUATION, arriving on its own instead of nested in the campaign.
+    //
+    // Merged onto the map this window already holds, then the map is re-assigned so Svelte sees it.
+    // The merge is authoritative and total: a construct the update does not mention has PARKED, and
+    // `applyFlightUpdate` clears its flight fields so it falls back to parent-plus-orbit - which is
+    // [[B96]]'s fix, and the reason silence here means something definite rather than "unchanged".
+    //
+    // A flight update can arrive BEFORE the campaign it describes (the join burst sends it first, on
+    // purpose - see Q2 on the design note). `pendingFlight` holds it until there is a map to merge
+    // it into, so a joiner never sees a ship at its pre-flight parking orbit for a frame.
+    broadcastService.onFlightUpdate = (u: FlightUpdate) => {
+      perfCount('sync.flight');
+      if (!starmap) { pendingFlight = u; return; }
+      lastFlight = u;
+      applyFlightUpdate(starmap, u);
+      starmap = starmap;
+      lastHeardAt = Date.now();
+      connected = true;
+    };
     broadcastService.onStarmapUpdate = (map) => {
       perfCount('sync.starmap'); // each one re-clones the campaign + rebuilds the scene — track it
       clearReceiving();
       starmap = map;
+      // The campaign arrives with no flight fields on its constructs (slimNode strips them), so the
+      // last flight picture has to be re-applied to this fresh copy or every ship would park.
+      const flight = pendingFlight ?? lastFlight;
+      if (flight) { lastFlight = flight; pendingFlight = null; applyFlightUpdate(starmap, flight); }
       // G34: inherit the GM's unit choices, non-interactively. Absent on a pre-G34 GM build →
       // keep whatever the launch params seeded.
       if ((map as any)?.unitPrefs) { prefs = (map as any).unitPrefs; unitPrefsStore.set(prefs); }
@@ -1289,7 +1318,7 @@
     <!-- Live orbital map (the holo renderer, tilted for 3D or locked overhead for 2D) + tap-to-inspect -->
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH} style={activePreset ? `font-family:${presetFont}` : ''}>
       {#if rulePack && displaySystem}
-        <HoloView bind:this={holoView} system={displaySystem} showGridLegend={true} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} orbitLinesVisible={holoOrbitLinesOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} markerSize={activePreset?.markerSize} flagStaff={activePreset?.flagStaff} pinText={activePreset?.pinText} tagStyles={hostTagCategories} on:focus={handleFocus} />
+        <HoloView bind:this={holoView} system={displaySystem} showGridLegend={true} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} orbitLinesVisible={holoOrbitLinesOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} gmClockMs={followGMActive ? null : (gmTime?.currentTime ?? null)} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} markerSize={activePreset?.markerSize} flagStaff={activePreset?.flagStaff} pinText={activePreset?.pinText} tagStyles={hostTagCategories} on:focus={handleFocus} />
       {/if}
       {#if activePreset?.systemOverlay && !hudOverlayOn}
         <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>

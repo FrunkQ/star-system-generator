@@ -1647,8 +1647,7 @@
             if (requestingId && requestingId !== broadcastSessionId) return;
 
             if (get(systemStore)) {
-                const snapshot = computePlayerSnapshot(get(systemStore)!);
-                broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
+                // No SYNC_SYSTEM here either - see the note by the retired reactive send below.
                 broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
@@ -1696,14 +1695,22 @@
       broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
   }
 
-  // Reactive Broadcast for System State (e.g. edits, generation). systemStore ticks several times a
-  // second while idle, so this MUST go through the fingerprint gate — the ~200KB snapshot only leaves
-  // when it actually changed (32 of every 33 sends used to be byte-identical).
-  $: if (browser && $systemStore) {
-      // We compute the snapshot to avoid sending GM secrets
-      const snapshot = computePlayerSnapshot($systemStore);
-      broadcastService.sendIfChanged({ type: 'SYNC_SYSTEM', payload: snapshot });
-  }
+  // SYNC_SYSTEM IS NO LONGER SENT (G51, owner's call 2026-08-27 on Q5).
+  //
+  // Nothing consumed it. The only `initReceiver` call site in the app registers `onSystemUpdate` as
+  // `() => {}`, and four places were checked before it was stopped: the SSE receiver, `/bridge`
+  // (which only ever sends REQUEST_HELLO / REQUEST_REMOTE), `vtt-integration-design.md`'s message
+  // list, and Mappadux's own `Sse2Bridge.ts` - which handles discover/announce and no per-system
+  // message at all.
+  //
+  // AND IT WAS THE WORST PAYLOAD IN THE APP: unlike the starmap path it never passed through
+  // `slimNode`, because `computePlayerSnapshot` REDACTS but does not SLIM (engine-map SYNC-2). So it
+  // published the full `scheduled_journeys` INCLUDING the dense `pathPoints` arrays that
+  // `shipRoute.ts` opens by explaining must never be broadcast - ~245 KB per send, on every
+  // `systemStore` change.
+  //
+  // The TYPE and the RECEIVER HANDLER are deliberately kept: a Foundry/Owlbear shim may reasonably
+  // expect the contract to exist, and a deleted handler fails silently where a live one does not.
 
   onDestroy(() => {
     if (browser) {

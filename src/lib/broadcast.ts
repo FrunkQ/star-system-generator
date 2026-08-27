@@ -3,6 +3,7 @@ import { importOrReload } from '$lib/util/importOrReload';
 import { peerConfigFor, loadStoredIce, type IceServerEntry } from '$lib/iceConfig';
 import { perfCount, perfEvent } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
+import type { FlightUpdate } from '$lib/constructs/flightState';
 import type { PanState } from '$lib/viewport/stores';
 
 export type ViewSettings = {
@@ -43,6 +44,13 @@ export type BroadcastMessage =
   | { type: 'REQUEST_SYNC'; payload: string | null }
   // The whole campaign, redacted: requested + streamed independently of the per-system SYNC_SYSTEM,
   // so both can be served from the one session.
+  // G51 - A SHIP'S FLIGHT SITUATION, ON ITS OWN. The campaign used to carry each construct's
+  // instantaneous vector, so a ship under way re-sent the whole redacted campaign about twice a
+  // second to every viewer. A player already holds the compact `route`, whose knots carry TIME, so
+  // it can place the ship for itself; this message carries only what it cannot work out - the plan
+  // itself, and a stamp for a ship adrift off any plan. It is an EVENT message: while a ship flies a
+  // committed course to schedule the payload does not change and `sendIfChanged` drops it.
+  | { type: 'SYNC_FLIGHT'; payload: FlightUpdate }
   | { type: 'SYNC_STARMAP'; payload: Starmap }
   | { type: 'REQUEST_STARMAP'; payload: string | null }
   // A63 (cheap half). A one-line PRE-ANNOUNCE sent immediately before the big SYNC_STARMAP, so a
@@ -876,6 +884,8 @@ class BroadcastService {
   // (+page) to answer its REQUEST_STARMAP. Separate from onRequestSync so a per-system consumer and
   // a whole-map one can both be served by one session.
   public onStarmapUpdate: ((map: Starmap) => void) | null = null;
+  /** G51: a ship's flight situation, merged onto the campaign this window already holds. */
+  public onFlightUpdate: ((u: FlightUpdate) => void) | null = null;
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
   /** A63: something large is on its way. Receiver-only, like the other on*Update callbacks. */
@@ -947,6 +957,9 @@ class BroadcastService {
       }
 
       switch (msg.type) {
+          case 'SYNC_FLIGHT':
+              if (!this.isSender && this.onFlightUpdate) this.onFlightUpdate(msg.payload);
+              break;
           case 'SYNC_SYSTEM':
               if (!this.isSender && this.onSystemUpdate) this.onSystemUpdate(msg.payload);
               break;

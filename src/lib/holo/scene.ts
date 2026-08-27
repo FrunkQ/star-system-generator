@@ -177,6 +177,10 @@ export interface HoloController {
   // FOLLOWS the GM's clock: route playback against an arbitrary local clock would show traffic where
   // it is not (the owner's rule, 2026-08-08 - a scrubbing player is looking around, not tracking).
   setTransitMotion(on: boolean): void;
+  // G51: the GM's last reported instant, for a view that is NOT following. A ship is then placed by
+  // reading its route at the GM's clock rather than by being handed a stamped position - the same
+  // answer, at zero bytes. Null (the default, and the GM's own view) keeps the stamped-vector path.
+  setGmClock(ms: number | null): void;
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -2848,9 +2852,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * display clock like every body.
    */
   function shipClock(node: any): number {
-    if (transitMotion) {
+    const at = routeClock();
+    if (at !== null) {
       const r = routeOf(node);
-      if (r && timeMs >= r.s && timeMs <= r.e) return timeMs;
+      if (r && at >= r.s && at <= r.e) return at;
     }
     const stamp = node?.vector_epoch_ms;
     return Number.isFinite(stamp) ? stamp : timeMs;
@@ -3824,7 +3829,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const isSystemLevel = (n: any) => n.parentId === rootId || rootBaryIds.has(n.parentId);
 
     const baryRingPending: any[] = [];
-    const pos0 = computeWorldPositions3D(system, timeMs, transitMotion ? routeSampler : undefined);
+    const pos0 = computeWorldPositions3D(system, timeMs, routeSampler);
     rMax = 0;
     for (const p of pos0.values()) rMax = Math.max(rMax, Math.hypot(p.x, p.y, p.z));
     if (rMax <= 0) rMax = 1;
@@ -4265,28 +4270,52 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     emitRouteLines(camera.position.distanceTo(controls.target));
   }
 
-  // TRANSIT MOTION (follow-GM only). When on, transiting constructs are placed by evaluating their
-  // published route at the display clock - the position half of the route line, so a moving ship
-  // sits exactly ON its drawn course by construction. The gate is the SAMPLER, not the data: a
-  // free-scrubbing player passes no sampler and a transiting ship holds its GM-stamped truth,
-  // because scrubbing is for looking around, not for replaying live traffic against a clock the GM
-  // does not control (the owner's rule, 2026-08-08 - the player-setup disclaimer says exactly this).
-  // Null outside the route's window, so departure and arrival fall back to the stamped vector.
+  // WHICH CLOCK PLACES A SHIP ON ITS ROUTE - and it is a CLOCK now, not an on/off gate (G51).
+  //
+  // A transiting construct is placed by evaluating its published route: the position half of the
+  // route line, so a moving ship sits exactly ON its drawn course by construction. The only question
+  // is WHEN to evaluate it, and there are three honest answers:
+  //
+  //   following the GM   -> our own display clock, which IS the GM's. The ship moves live.
+  //   not following      -> the GM's LAST REPORTED instant (`SYNC_TIME`, 1 Hz). The ship sits where
+  //                         the GM says it is, which is exactly what a scrubbing player used to get
+  //                         from a stamped vector - the owner's rule of 2026-08-08 preserved, at
+  //                         zero bytes, because the player computes the stamp instead of being told
+  //                         it. Scrubbing is still for looking around, not for replaying live
+  //                         traffic against a clock the GM does not control.
+  //   no GM clock known  -> null: fall back to the stamped vector. This is the GM'S OWN view, which
+  //                         never receives SYNC_TIME and must keep placing ships from its own stamp.
+  //
+  // Null outside the route's window too, so departure, arrival and a drifting ship fall back to the
+  // vector - which after G51 is the only thing `SYNC_FLIGHT` still stamps.
   let transitMotion = false;
+  let gmClockMs: number | null = null;
   function setTransitMotion(on: boolean) {
     if (on === transitMotion) return;
     transitMotion = on;
     updatePositions(); // take effect NOW, not at the next clock tick (the clock may be paused)
   }
-  const routeSampler = (_sys: System, node: any, tMs: number) => {
-    const rs = routeStateAt(routeOf(node), tMs);
+  function setGmClock(ms: number | null) {
+    if (ms === gmClockMs) return;
+    gmClockMs = ms;
+    if (!transitMotion) updatePositions(); // a following view already moves on its own clock
+  }
+  /** The instant a route is read at, or null for "do not place from the route at all". */
+  function routeClock(): number | null {
+    if (transitMotion) return timeMs;
+    return gmClockMs;
+  }
+  const routeSampler = (_sys: System, node: any, _tMs: number) => {
+    const at = routeClock();
+    if (at === null) return null;
+    const rs = routeStateAt(routeOf(node), at);
     return rs ? { position_au: { x: rs.x, y: rs.y } } : null;
   };
 
   const tmpParent = new THREE.Vector3();
   function updatePositions() {
     if (!currentSystem) return;
-    const positions = computeWorldPositions3D(currentSystem, timeMs, transitMotion ? routeSampler : undefined);
+    const positions = computeWorldPositions3D(currentSystem, timeMs, routeSampler);
     for (const b of bodies) {
       const p = positions.get(b.id);
       if (!p) continue;
@@ -4394,7 +4423,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function onRouteNow(id: string): boolean {
     for (const rl of routeLines) {
       if (rl.id !== id) continue;
-      return routeStateAt(rl.route, timeMs) !== null;
+      return routeStateAt(rl.route, routeClock() ?? timeMs) !== null;
     }
     return false;
   }
@@ -4973,7 +5002,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
   };
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
 }
 
 // ---- helpers ----

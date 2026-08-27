@@ -79,6 +79,9 @@
   // host turns this on ONLY while following the GM's clock - route playback against an arbitrary
   // local clock would show traffic where it is not.
   export let transitMotion = false;
+  // G51: the GM's last reported instant (SYNC_TIME). A view that is NOT following places a
+  // transiting ship by reading its route at THIS clock instead of at a stamped vector.
+  export let gmClockMs: number | null = null;
 
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
@@ -199,6 +202,7 @@
   $: controller?.setSystem(system, 'prop');
   $: controller?.setShipCapability(shipAccel);
   $: controller?.setTransitMotion(transitMotion);
+  $: controller?.setGmClock(gmClockMs);
   $: controller?.setTime(currentTime);
   $: controller?.focusBody(focusedBodyId);
   $: if (controller) applyStyle(style);
