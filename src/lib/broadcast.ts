@@ -784,6 +784,47 @@ class BroadcastService {
     );
     perfCount(`bc.${msg.type}.strMs`, Math.round(performance.now() - t0));
     if (this.lastSentByType.get(msg.type) === json) { perfCount(`bc.${msg.type}.unchanged`); return; }
+    // B94 — WHICH KEY MADE THIS PAYLOAD 'DIFFERENT'?
+    //
+    // VOLATILE_KEYS above exists because the GM clock rode the snapshot and made every tick a new
+    // payload, sending ~400 KB several times a second. That was fixed for the clock; the owner's
+    // 2026-08-27 capture shows it happening AGAIN for something else (rx.SYNC_STARMAP 4 -> 54 and
+    // rx.SYNC_SYSTEM 3 -> 43 while the clock ran, driving 59 full scene rebuilds on the player and
+    // a 120 MB -> 3.3 GB heap). The offending field is unknown, and GUESSING AT IT IS HOW THE FIRST
+    // ONE WAS MISSED. So this names it instead: turn on `__ssePerf.whyChanged = true` on the GM
+    // window, run the clock for a few seconds, and every send prints the value PATHS that differ
+    // from the previous one. Whatever it names is a candidate for VOLATILE_KEYS.
+    //
+    // OPT-IN, and deliberately so: it parses BOTH payloads to walk them, which on a several-
+    // hundred-KB starmap is exactly the main-thread cost this whole item is about. It must never
+    // ride ?perf=1.
+    if ((globalThis as any).__ssePerf?.whyChanged) {
+      const prev = this.lastSentByType.get(msg.type);
+      if (prev) {
+        try {
+          const paths: string[] = [];
+          const walk = (a: any, b: any, at: string) => {
+            if (paths.length >= 24 || a === b) return;
+            if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') {
+              if (a !== b) paths.push(at || '(root)');
+              return;
+            }
+            if (Array.isArray(a) !== Array.isArray(b) || (Array.isArray(a) && a.length !== b.length)) {
+              paths.push(`${at}[] length ${Array.isArray(a) ? a.length : '?'} -> ${Array.isArray(b) ? b.length : '?'}`);
+              return;
+            }
+            for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+              // Collapse array indices so twenty ships reporting one field read as ONE finding.
+              const next = Array.isArray(a) ? `${at}[]` : at ? `${at}.${key}` : key;
+              if (Array.isArray(a) && paths.some((x) => x.startsWith(next))) continue;
+              walk(a[key], b[key], next);
+            }
+          };
+          walk(JSON.parse(prev), JSON.parse(json), '');
+          if (paths.length) console.info(`[sse-perf] ${msg.type} changed at:`, [...new Set(paths)].join(', '));
+        } catch { /* a payload that will not round-trip is not worth breaking the send for */ }
+      }
+    }
     const now = Date.now();
     // A big payload gets a big floor (see LARGE_PAYLOAD_BYTES). Judged on the last SENT size for this
     // type, so the very first send of anything is never delayed.

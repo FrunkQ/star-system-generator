@@ -4,6 +4,10 @@ All notable changes are listed here:
 
 ## v3.0.126 - 27th Aug 2026
 
+## v3.0.127 - 27th Aug 2026
+
+- Groundwork for the player-view memory fault. A campaign snapshot is only meant to be sent when it has actually changed, and something in it is changing on every clock tick, so the whole thing is going out repeatedly to every connected player. This adds a diagnostic that names the field responsible rather than leaving it to be guessed at.
+
 - A gas giant's two poles are no longer copies of each other. Saturn was getting its hexagon at both, and the real Saturn has one only at the north - the south is a plain cyclone with an eye. Which way a world falls follows its axial tilt: a barely tilted planet runs both hemispheres under the same steady conditions and tends to do the same thing at each pole, while a strongly tilted one puts them through opposite seasons and they diverge. Jupiter, tilted three degrees, comes out with a polygon at both poles as the Juno probe found; Saturn, tilted twenty-seven, comes out hexagon north and cyclone south as Cassini found.
 - Every gas giant that spins quickly now has polar vortices at all. Jupiter and Neptune previously had none, which was a coin flip rather than anything physical. What actually prevents them is a day so long that there is no spin to gather the winds at the pole.
 - The physics page is honest about this one: it is a rule of thumb, not fluid dynamics, and the known-fudges section now says exactly which parts are rolled and why matching Jupiter and Saturn is the rule being sensible rather than correct. You can override any of it by tagging a world by hand, and the tag format is written up for that.

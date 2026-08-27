@@ -135,6 +135,9 @@ if (typeof window !== 'undefined') {
     // Opt-in, and deliberately NOT implied by ?perf=1: sizing an inbound payload means stringifying
     // it on the receive path, which is the cost class the rebuild-storm hunt is chasing.
     rxBytes: false,
+    // B94: name the value paths that made a snapshot count as 'changed'. Opt-in for the same
+    // reason as rxBytes - it parses both payloads to walk them.
+    whyChanged: false,
     enable: () => setEnabled(true),
     disable: () => setEnabled(false),
     report,
