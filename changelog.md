@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.119 - 27th Aug 2026
+
+- Auroras now ring the poles instead of reaching a third of the way to the equator. An auroral oval marks where the outermost closed magnetic field line comes down, and that sits close to the pole however bright the aurora is - near sixteen degrees on Jupiter, fifteen on Saturn, twenty on Earth. The old drawing pushed it further out the stronger the field got, which is backwards, and on Jupiter it covered enough of the planet to hide the very banding that makes Jupiter look like Jupiter. A stronger aurora is still a wider one, within the range a real one occupies.
+- A gas giant's polar vortex is drawn in the planet's own colours rather than a fixed blue, so Saturn's hexagon is a darker gold instead of a grey patch and Uranus's is a deeper blue.
+- A giant only gets a permanent storm if its bands are sharp enough to hold one in place. Any banded giant used to have a good chance of one, which gave Saturn a standing dark oval it has never had; Jupiter keeps its Great Red Spot.
+
 ## v3.0.118 - 27th Aug 2026
 
 - A ship that changes orbit around the world it is already at now actually arrives. The repair that keeps a ship's record honest only ever asked whether it was orbiting the right WORLD, and a transfer from a high orbit to a low one ends at the world it started from - so a ship could lower itself to 6,500 km and keep a stored orbit of 768,000 km, a hundred and seventeen times too big, with its panel still reading "High Orbit".
