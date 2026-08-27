@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.151 - 28th Aug 2026
+
+- Board only. The remaining gaps in the Getting Started guide are counted and listed, so whoever finishes it starts from the list rather than from a search.
+
 ## v3.0.150 - 28th Aug 2026
 
 - Getting Started explains the atmosphere editor: why the gas sliders are logarithmic, when the readout speaks parts per million, and how to force a unit when you type.
