@@ -10,6 +10,7 @@
 // seeded from the body id (stable frame-to-frame) and cached on an offscreen canvas.
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
 import { deriveAppearance } from './planetAppearance';
+import { CHROMOPHORE_MAX_WEIGHT } from './apparentColor';
 import {
   landFieldFor, elevationAt, elevationAtDisc, vegetationBand, networkAt, edgeWobble, seedFrom,
   type LandField
@@ -19,6 +20,35 @@ import {
 // a warped fractal coastline has detail worth resolving, and 96 threw most of it away.
 const SIZE = 256;
 const cache = new Map<string, HTMLCanvasElement>();
+
+// HOW HARD A GIANT BANDS — ONE rule, read by BOTH projections.
+//
+// This lived twice, once in the disc renderer and once in the equirect one, as
+// `const smooth = chromo.length === 0` followed by its own copy of the two contrast pairs. Two
+// copies of one judgement is the fault this codebase keeps rediscovering, and the reason to unify it
+// HERE rather than patch both is that the judgement is what changed (inbox B95) while the drawing
+// legitimately differs — orthographic disc against a wrapped 2:1 sheet. The rule is shared; the
+// projection is not.
+//
+// A boolean was the bug. `chromo.length === 0` chose between 0.985/1.015 (a hair either side of
+// flat, reads featureless) and 0.86/1.06 (reads as Jupiter), so a stack gaining or losing one deck
+// at a condensation threshold moved the whole planet between those two looks at once. The stops now
+// carry their own strength, so this ramps instead. No chromophore lands exactly on the old smooth
+// pair, which is what keeps a single-deck giant — and every ice giant — looking exactly as it did.
+function giantBandRamp(chromo: ApparentColorStop[]): { strength: number; lo: number; hi: number } {
+  const strength = chromo.length
+    ? Math.max(0, Math.min(1, Math.max(...chromo.map((c) => c.weight)) / CHROMOPHORE_MAX_WEIGHT))
+    : 0;
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  return { strength, lo: lerp(0.985, 0.86, strength), hi: lerp(1.015, 1.06, strength) };
+}
+
+// The alpha a chromophore stripe paints at. The +0.2 lift is what a band needs to read at all once
+// it is there; scaling the whole thing by the stop's own weight is what lets a deck that is only
+// just condensing arrive as a hint rather than as a stripe.
+function chromoAlpha(weight: number): number {
+  return Math.min(0.7, weight + 0.2) * Math.min(1, weight / CHROMOPHORE_MAX_WEIGHT);
+}
 
 // Deterministic PRNG seeded from the body id.
 function hashStr(s: string): number {
@@ -367,29 +397,32 @@ function render(body: CelestialBody): HTMLCanvasElement {
     //     warm ammonia giants (Jupiter/Saturn) — their absence marks a smooth ice giant, low-contrast
     //     and NO storm.
     const chromo = clouds.slice(1);                 // engine emits these only for ammonia giants
-    const smooth = chromo.length === 0;
+    const { strength: bandStrength, lo, hi } = giantBandRamp(chromo);
     const base = clouds[0]?.hex ?? surface?.hex ?? '#c9b89a';
     const n = Math.max(2, banding);
     const bandH = SIZE / n;
-    const lo = smooth ? 0.985 : 0.86, hi = smooth ? 1.015 : 1.06;
     for (let i = 0; i < n; i++) {
       ctx.fillStyle = shade(base, i % 2 === 0 ? hi : lo);
       ctx.fillRect(0, i * bandH, SIZE, bandH + 1);
     }
     for (const ch of chromo) {
       const row = Math.floor(rnd() * n);
-      ctx.globalAlpha = Math.min(0.7, ch.weight + 0.2);
+      ctx.globalAlpha = chromoAlpha(ch.weight);
       ctx.fillStyle = ch.hex;
       ctx.fillRect(0, row * bandH, SIZE, bandH * (0.6 + rnd() * 0.8));
       ctx.globalAlpha = 1;
     }
-    // Great-Red-Spot-style oval only on banded ammonia giants, sitting on one band.
-    if (!smooth && n >= 4 && rnd() > 0.35) {
+    // Great-Red-Spot-style oval, on a giant that bands hard enough to organise one. Fades in with
+    // the banding rather than switching on with it — an oval appearing whole is the same cliff this
+    // whole change is about, one shape further down.
+    if (bandStrength > 0.02 && n >= 4 && rnd() > 0.35) {
       const row = 1 + Math.floor(rnd() * (n - 2));
+      ctx.globalAlpha = bandStrength;
       ctx.fillStyle = shade(chromo[0]?.hex ?? base, 0.78);
       ctx.beginPath();
       ctx.ellipse(SIZE * (0.25 + rnd() * 0.5), (row + 0.5) * bandH, bandH * 1.1, bandH * 0.45, 0, 0, 2 * Math.PI);
       ctx.fill();
+      ctx.globalAlpha = 1;
     }
   } else {
     // --- Rocky world: sea, land and life thresholded out of the SHARED elevation field, so the
@@ -745,32 +778,32 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
   if (banding > 0) {
     // Gas/ice giant: latitudinal bands are simply horizontal stripes across the whole sheet.
     const chromo = clouds.slice(1);
-    const smooth = chromo.length === 0;
+    const { strength: bandStrength, lo, hi } = giantBandRamp(chromo);   // ONE rule, both projections
     const base = clouds[0]?.hex ?? surface?.hex ?? '#c9b89a';
     const n = Math.max(2, banding);
     const bandH = EQ_H / n;
-    const lo = smooth ? 0.985 : 0.86;
-    const hi = smooth ? 1.015 : 1.06;
     for (let i = 0; i < n; i++) {
       ctx.fillStyle = shade(base, i % 2 === 0 ? hi : lo);
       ctx.fillRect(0, i * bandH, EQ_W, bandH + 1);
     }
     for (const ch of chromo) {
       const row = Math.floor(rnd() * n);
-      ctx.globalAlpha = Math.min(0.7, ch.weight + 0.2);
+      ctx.globalAlpha = chromoAlpha(ch.weight);
       ctx.fillStyle = ch.hex;
       ctx.fillRect(0, row * bandH, EQ_W, bandH * (0.6 + rnd() * 0.8));
       ctx.globalAlpha = 1;
     }
-    if (!smooth && n >= 4 && rnd() > 0.35) {
+    if (bandStrength > 0.02 && n >= 4 && rnd() > 0.35) {
       const row = 1 + Math.floor(rnd() * (n - 2));
       const cx = EQ_W * rnd();
+      ctx.globalAlpha = bandStrength;
       ctx.fillStyle = shade(chromo[0]?.hex ?? base, 0.78);
       for (const dx of [-EQ_W, 0, EQ_W]) {
         ctx.beginPath();
         ctx.ellipse(cx + dx, (row + 0.5) * bandH, bandH * 1.4, bandH * 0.5, 0, 0, 2 * Math.PI);
         ctx.fill();
       }
+      ctx.globalAlpha = 1;
     }
   } else {
     // Rocky world: the SAME elevation field the 2D disc thresholds, read through the equirect

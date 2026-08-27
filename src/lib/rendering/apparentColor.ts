@@ -151,6 +151,26 @@ function bandCount(body: CelestialBody, gasFrac: number, iceGiant = false): numb
 
 // Full derivation: flattened hex + un-mixed palette + banding. opts.starTempK lets the host star's
 // light drive liquid colour (#8); omitted → Sun-like.
+// CHROMOPHORE BANDING — the two authored numbers behind a giant's belts, and what they mean.
+//
+// BAND_FULL_COVER: the share of sky a deck must hold for the banding it takes part in to be fully
+// developed. Half. It is a judgement, not a measurement, and it is written here rather than fitted:
+// there is no observation of "how covered must an ammonia deck be before Jupiter looks like
+// Jupiter", because we have exactly one Jupiter. What it must do is span the range smoothly and put
+// the four giants where they already sit, and at 0.5 it does — Jupiter's ammonia deck holds 88% of
+// its sky and saturates this comfortably, so Jupiter's belts are unchanged, while a deck that is
+// only just condensing enters at a few percent of full strength instead of at all of it.
+// A candidate for rule-pack data if a GM ever wants the lever; module constants are the codebase
+// idiom for this kind of coefficient (DROPLET_RADIUS_M, TAU_OPAQUE in cloudDecks.ts).
+const BAND_FULL_COVER = 0.5;
+// The weight a FULLY developed chromophore band carries, from the giant's mass: a bigger world
+// drives a deeper, better-organised circulation and bands harder. Unchanged from before B95 — it is
+// only factored out so `planetTexture` can normalise a published band weight back to a 0..1 strength
+// without duplicating the number. Jupiter (318 Me) tops it out at 0.7.
+export const CHROMOPHORE_MAX_WEIGHT = 0.7;
+export const CHROMOPHORE_FULL_WEIGHT_FOR = (massMe: number): number =>
+  0.4 + (CHROMOPHORE_MAX_WEIGHT - 0.4) * Math.min(1, massMe / 318);
+
 export function deriveApparentColorParts(
   body: CelestialBody,
   rulePack?: RulePack,
@@ -403,18 +423,37 @@ export function deriveApparentColorParts(
     if (!iceGiant) {
       // Band colours from the giant's OWN condensates. A chromophore band is a DEEPER deck showing
       // through gaps in the one above it, so only the decks below the top contribute — and a giant
-      // whose stack is a single species has nothing to show through, so it bands smoothly in its own
-      // colour. This is where NH4SH earns its keep: Jupiter's ammonia parts over the brown
-      // hydrosulphide beneath and the belts are that brown.
+      // whose stack is a single species has nothing to show through. Such a giant still BANDS, in
+      // its own cloud colour and at low contrast, but that happens downstream and not here: an
+      // empty chromophore list IS the signal, and `planetTexture.render` reads it as "smooth".
+      // (That relationship used to be invisible from this end, which made this comment look false —
+      // `slice(0, -1)` on a one-deck stack is empty, so nothing is pushed and it read as if nothing
+      // banded at all. Both halves are correct; only the hand-off was unwritten. See RENDER-S35.)
+      // This is where NH4SH earns its keep: Jupiter's ammonia parts over the brown hydrosulphide
+      // beneath and the belts are that brown.
       //
       // There used to be one more push here: a hardcoded brown keyed off temperature, which meant
       // ANY warm giant got Jovian belts whether or not it had the chemistry for them. It painted
       // brown bands and a red spot onto a giant made of nothing but hydrogen and methane. Deleted —
       // if a world has no coloured condensate, it has no chromophore.
-      for (const d of giantDecks.slice(0, -1)) {
+      //
+      // HOW STRONGLY a band shows is NOT all-or-nothing, and treating it as such was inbox B95: a
+      // deck arriving with 1.5% of the sky was admitted at exactly the same strength as one with
+      // 88%, so a giant flipped between banded and featureless on a 0.001-percentage-point
+      // composition edit. Two published coverages bound it, and both are the same idea — you can
+      // only see a band where there is something to see it THROUGH, and something to see:
+      //   • the combined cover of everything ABOVE this deck. With no deck above, you are looking
+      //     straight at this one everywhere and there is no contrast between belt and zone at all.
+      //   • this deck's OWN cover. A hydrosulphide wisp cannot paint a strong brown belt.
+      // Independent covers combine as 1 - prod(1 - c), which is just "the chance a given sight line
+      // is blocked by at least one of them".
+      giantDecks.slice(0, -1).forEach((d, i) => {
         const hex = liquidDef(d.species, rulePack)?.colorHex;
-        if (hex) push(underTop(hex), 'cloud', 0.4 + 0.3 * Math.min(1, massMe / 318), `${d.species} band`);
-      }
+        if (!hex) return;
+        const coverAbove = 1 - giantDecks.slice(i + 1).reduce((p, u) => p * (1 - u.coverage), 1);
+        const strength = Math.min(1, coverAbove / BAND_FULL_COVER) * Math.min(1, d.coverage / BAND_FULL_COVER);
+        push(underTop(hex), 'cloud', CHROMOPHORE_FULL_WEIGHT_FOR(massMe) * strength, `${d.species} band`);
+      });
     }
   }
 

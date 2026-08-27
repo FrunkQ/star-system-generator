@@ -3683,3 +3683,55 @@ went 0.68 -> 0.664 and added 0.9%. Both are *more* accurate, and both move `test
 "fix" that churn by rounding coverage back to the bucket centre — that is the bug. The resolution is
 three decimals deliberately: finer than any renderer resolves, coarse enough that floating-point hair
 between passes cannot rewrite a tag and churn a save (which would break `idempotence.test.ts`).
+
+### RENDER-S35 A GIANT'S CHROMOPHORE LIST IS A CONTRAST SWITCH, NOT A DECORATION
+WHERE: `apparentColor.ts` pushes `"<species> band"` stops from `giantDecks.slice(0, -1)`; both
+painters in `planetTexture.ts` read them back as `palette.filter(role === 'cloud').slice(1)` and run
+them through `giantBandRamp`.
+RULE: the chromophore stops do NOT merely add stripes on top of a giant. Their presence sets the
+CONTRAST OF EVERY BAND ON THE PLANET, and it used to do so as a boolean — `chromo.length === 0` chose
+between shade pairs `0.985/1.015` (±1.5%, reads featureless) and `0.86/1.06` (−14%/+6%, reads as
+Jupiter), and separately gated the Great-Red-Spot oval. So a stack gaining or losing ONE deck at a
+condensation threshold moved the whole planet between those two looks at once. Measured on the
+painted pixels: row-to-row contrast SD 2.91 against 18.92 for a 0.001-percentage-point ammonia edit,
+a 6.5x jump. It now ramps with the strongest stop's weight, normalised by `CHROMOPHORE_MAX_WEIGHT`:
+2.91, 3.00, 3.37, 4.54, 6.19, 9.15, 12.45, 16.60 across weight 0 to 0.7.
+WHY: `slice(0, -1)` is right and is not the trap — a chromophore band IS a deeper deck seen through
+the one above, so a one-deck stack genuinely has none. The trap is that "none" was wired to a
+DIFFERENT look rather than to the same look at zero strength. An empty list must land exactly on the
+smooth pair, which is what keeps every ice giant and every single-deck giant unchanged.
+BLAST: the rule lived TWICE, once per projection (disc and equirect), each with its own copy of the
+two pairs — so the 3D globe and the 2D disc could have disagreed about whether a world was banded.
+Unified into `giantBandRamp`/`chromoAlpha`; the DRAWING still differs legitimately (orthographic disc
+against a wrapped 2:1 sheet, whose spot is drawn three times for the seam) and that is the right
+seam. If you add a third projection, call the ramp — do not copy the numbers.
+NOT THE WHOLE OF B95: this removes the RENDERER's cliff. On the reporter's own Jupiter the deck
+underneath it still steps — see PHY-31 — and no renderer can or should hide that.
+
+### PHY-31 A CLOUD DECK DOES NOT FADE IN. IT ARRIVES ~20x PAST OPAQUE, AND THAT IS THE MODEL'S SHAPE
+WHERE: `cloudDecks.ts` `condensationOf` + the `tau`/`opacity`/`coverage` block in `deriveCloudDecks`.
+RULE: do NOT assume a deck's coverage approaches zero as the species approaches its condensation
+point, and do NOT build a visual ramp on that assumption. It does not. Measured on a Jupiter analogue
+at 157.9 K, stepping NH3 by 0.00001 percentage points — a twentieth of the smallest edit the
+atmosphere editor can make:
+
+    NH3 0.01800 %   no deck at all
+    NH3 0.01801 %   base 0.556 bar, 132.2 K, tau = 100.2, coverage 0.907
+
+`TAU_OPAQUE` is 5, so that first deck is already twenty times past the point where a cloud stops
+looking thicker. Above the threshold tau then moves smoothly (100.2, 100.3, 100.5, 101, 103, 106,
+112, 144 across NH3 0.018 to 0.030 %), so the discontinuity is ENTIRELY in the deck's existence.
+WHY: saturation pressure collapses so steeply with falling temperature that the instant the column
+saturates anywhere, everything colder is far past saturation — the integral in `condensationOf` runs
+from the base up to the tropopause and that whole slab appears at once. It is not the 48-level grid
+(`atmosphereProfile.ts:103`) and it is not campaign rule-pack data: the identical step was measured
+against the stock pack and the reporter's overridden one, to the digit.
+BLAST: this is what B95's remaining sharpness is, after RENDER-S35 removed the renderer's own cliff.
+A renderer CANNOT smooth it, because the physical state genuinely changes a lot — a giant gaining an
+upper deck over 90% of its sky is a different planet, and hiding that would be the opposite fault.
+Smoothing it honestly means a SUBSATURATED-HAZE term (nucleation on aerosols below S = 1, which is
+real and observed), so a deck ramps in over a range of abundance instead of switching at a point.
+That is a change to every cloudy world in every map and is deliberately NOT bundled with B95 —
+scope it on its own and re-anchor Sol when you do. Note while scoping: the reporter's Jupiter sits at
+NH3 0.019 % against a 0.018 % threshold, and the real Jupiter's ~0.026 % is only 1.4x clear of losing
+the ammonia deck that defines it, which is worth a hard look at where the threshold sits at all.
