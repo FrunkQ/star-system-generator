@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.114 - 27th Aug 2026
+
+- Found and removed the real cause of the gas-giant banding fault. A cloud deck had to have a minimum amount of its gas present before it was allowed to exist at all, and below that line it did not thin out, it vanished. The measurement that settles it: the deck being deleted was not a wisp - it was twenty times thicker than the point where a cloud stops looking thicker. What decides whether you can see a cloud is how much light it blocks, and the engine already worked that out a few lines later, so the extra rule was only ever hiding decks. Editing a trace gas on a giant now changes its bands smoothly or not at all.
+- Saturn has its ammonia clouds back, and with them its banding. Its ammonia sat just under the old cut-off once the hydrosulphide reaction had taken its share, so it was drawn as a nearly featureless ball. Saturn's clouds are ammonia. It is the only body in either bundled map that changes.
+
 ## v3.0.113 - 27th Aug 2026
 
 - A GM who moves the clock at all now takes the players' time controls, not only a GM who sets it running. Dragging the scrubber counts: everyone snaps to the GM's time and the controls step aside, so nobody is quietly looking at a different moment during something that matters.
@@ -21,11 +26,11 @@ All notable changes are listed here:
 - An orbit is no longer described using a distance measured from a different world. "Earth: Far Orbit" was Earth's name joined to the radius of the Sun orbit the ship had left months earlier - a number so large it fell past every band. Where the two disagree the panel now says where the ship is and declines to guess how high.
 - The transit planner and the ship panel now work out a ship's host the same way, so they can no longer name two different worlds for the same ship at the same moment.
 
-## 3.0.110 - 27th Aug 2026
+## v3.0.110 - 27th Aug 2026
 
 - Board only. A measurement worth recording against the cloud-threshold item: our own Saturn currently has no ammonia deck. Its authored ammonia sits just under the level the model needs to condense one, so the planet is drawn very nearly featureless, and Saturn's real clouds are ammonia. Jupiter clears the same threshold by less than half again. That points at where the threshold sits rather than at how sharply it is crossed.
 
-## 3.0.109 - 27th Aug 2026
+## v3.0.109 - 27th Aug 2026
 
 - Board only. The gas-giant banding item is closed out with what was actually built and what was not. Two findings worth carrying: the atmosphere editor works in percentages and spreads any edit across every other gas, so measuring it in raw fractions looks at the wrong axis entirely and shows no fault at all; and a cloud deck does not fade into existence, it arrives about twenty times past the point where a cloud stops looking thicker, so no amount of fading in the renderer can smooth the moment one appears. Also captured: the composition sliders cannot reach the values most worlds actually use, and the box beside them quietly rounds a trace gas to nothing if you click through it.
 
