@@ -50,6 +50,18 @@ the same thing for everything on the screen.
 
 **A FREE CLOCK IS EXACTLY RIGHT FOR A WORLD AND EXACTLY WRONG FOR A SHIP, AND NOTHING SAYS SO.**
 
+> **SUPERSEDED 2026-08-27 by [[G51]] Q6 — READ THIS BEFORE THE SECTION BELOW.** A free clock is now
+> right for a SHIP IN TRANSIT too, and the premise of this section has gone rather than its
+> reasoning being wrong. It says a construct is not closed-form because `slimNode` strips the
+> journeys. It is: the compact `route` published in their place carries TIME on every knot, so
+> `routeStateAt` is a complete time-to-position function and a player view can WORK OUT where a ship
+> is rather than being told. The owner answered Q6 YES on exactly that ground, reversing his ruling
+> of 2026-08-08 — *"the clock is the viewer's whenever everything on screen is derivable from it"*,
+> which is section 9's own rule applied once the derivation existed. **What is still not derivable
+> is a ship ADRIFT off any plan (the GM re-states it) and anything AFTER a plan ends (the arrival
+> re-parenting is a GM event).** Engine-map SYNC-5 carries the shipped rule.
+
+
 The owner's Keplerian point is the whole of it. A body's position is closed-form in time: give the
 player any clock at all and every planet, moon, belt and ring is drawn CORRECTLY FOR THAT CLOCK.
 Nothing is lost. That is why the mess-about mode is a good idea.

@@ -4847,9 +4847,14 @@ vector-only behaviour rather than silently gaining or losing ships.
 BUCKET: ARCHITECTURE - three answers and null is one of them; a boolean could not express the third
 case. One clock function with three readers has no way to disagree, which is the whole point.
 WHERE: `routeClock()` in `holo/scene.ts`, fed by `setTransitMotion` and `setGmClock`.
-RULE: following the GM -> our own display clock. NOT following -> the GM's last reported instant
-(`SYNC_TIME`). No GM clock known -> `null`, meaning do not place from the route at all and fall
-back to the stamped vector.
+RULE: a PLAYER view reads the route at ITS OWN display clock, following the GM or not. A view with
+no GM clock known reads `null` - do not place from the route at all, fall back to the stamped vector.
+**AMENDED BY G51 Q6, owner 2026-08-27.** This entry used to say a NON-following view read the GM's
+last reported instant, preserving the ruling of 2026-08-08 that live traffic is the GM's clock to
+run. The owner reversed that ruling on the finding that made it obsolete: the route's knots carry
+TIME, so a player view can WORK OUT where a ship is rather than being told, and [[G49]]'s rule (the
+clock is the viewer's whenever everything on screen is derivable from it) then applies on its own
+terms. The old rule was made when the view could not work it out; that reason has gone.
 WHY THE THIRD CASE EXISTS AND MUST NOT BE COLLAPSED: `null` is the GM'S OWN 3D view, which never
 receives `SYNC_TIME`. Defaulting it to the local clock would silently change how the GM's own
 ships are placed — from their stamp to a re-estimate — which is a different thing to have done and
@@ -4857,7 +4862,11 @@ nobody asked for it.
 WHY IT REPLACED A BOOLEAN: the ship, its plume (`shipClock`) and its drawn line (`onRouteNow`) must
 all be read at the SAME instant or the torch lights in the wrong place — the bug the `shipClock`
 comment already describes. One clock function, three readers, no way to disagree.
-THE POLICY IT ENCODES, and it is the owner's: a scrubbing player sees transit traffic at the GM's
-reported instant, not at their own (2026-08-08). G51 keeps that rule and makes it cost zero bytes
-by COMPUTING the stamp instead of transmitting it. Changing it is a product decision (G51 Q6),
-not a refactor.
+THE POLICY IT NOW ENCODES: a scrubbing player sees a ship WHERE IT WOULD BE AT THEIR OWN TIME -
+not stale, and not the GM's instant. Still zero bytes, because the viewer computes it. A preset that
+FOLLOWS the GM is unaffected, its clock already being the GM's.
+THE ONE ROUGH EDGE, and it is worth knowing before someone reports it: scrubbing PAST the end of a
+ship's plan leaves `routeStateAt` null with no stamp to fall back on, so the ship draws at the orbit
+stored on its node - which for a ship in flight is the one it DEPARTED from. The arrival re-parenting
+is a GM event a player cannot derive, so this is a genuine limit rather than an oversight; clamping
+to the plan's end would be the fix if it is ever judged worth one.

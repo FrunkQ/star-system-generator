@@ -1992,9 +1992,14 @@
           The same estimate is used on the GM's own 3D view, so both see the identical line; the GM's flat map
           still draws the full path point for point. The line is also pinned to the ship itself, so it passes
           <strong>following the GM's clock</strong>, ships in transit are also <em>positioned</em> along this
-          same curve, so a moving ship sits exactly on its drawn line. A player scrubbing their own clock
-          currently sees orbits move while transit traffic holds its last reported position — a deliberate
-          rule that live traffic is the GM's clock to run, not a limit on what the view could work out.</li>
+          same curve, so a moving ship sits exactly on its drawn line. And a player scrubbing their
+          <strong>own</strong> clock now sees traffic move too — the ship where it would be at
+          <em>their</em> time, not where the GM last left it. That is the same rule the planets have
+          always followed: if the view can work a thing out from the time alone, the time is the
+          viewer's to choose. A view that is following the GM is unchanged, its clock already being
+          his. The one thing a scrubbing view cannot show you is what happens <em>after</em> a ship's
+          current plan ends, because where it parks and what it ends up orbiting is the GM's to
+          decide and has not happened yet.</li>
         <li>Coasting/adrift transit trajectories drop moons <em>while the clock is moving</em>: the gravity field used to integrate a drifting ship live (and its forecast line) includes only stars and planets, because re-integrating the full satellite census on every clock-slider frame is impractical in a browser. A moon's pull on a heliocentric coast is negligible anyway, and the star and any planet the ship passes still bend the path. Once the clock settles, the forecast upgrades to a one-shot, moon-inclusive plot — fast estimates while you scrub, the accurate path when you stop.</li>
       </ul>
     </section>

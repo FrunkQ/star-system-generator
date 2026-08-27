@@ -4276,15 +4276,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // route line, so a moving ship sits exactly ON its drawn course by construction. The only question
   // is WHEN to evaluate it, and there are three honest answers:
   //
-  //   following the GM   -> our own display clock, which IS the GM's. The ship moves live.
-  //   not following      -> the GM's LAST REPORTED instant (`SYNC_TIME`, 1 Hz). The ship sits where
-  //                         the GM says it is, which is exactly what a scrubbing player used to get
-  //                         from a stamped vector - the owner's rule of 2026-08-08 preserved, at
-  //                         zero bytes, because the player computes the stamp instead of being told
-  //                         it. Scrubbing is still for looking around, not for replaying live
-  //                         traffic against a clock the GM does not control.
+  //   a PLAYER view      -> ITS OWN display clock, following the GM or not (G51 Q6, owner
+  //                         2026-08-27: "a non-following player view should see a ship move").
   //   no GM clock known  -> null: fall back to the stamped vector. This is the GM'S OWN view, which
   //                         never receives SYNC_TIME and must keep placing ships from its own stamp.
+  //
+  // Q6 REVERSED THE RULE OF 2026-08-08, and the reason it could is the reason to record. That rule
+  // said live traffic was the GM's clock to run - made when a player view genuinely COULD NOT work
+  // out where a ship was and would have had to be told. It can now: the route's knots carry TIME, so
+  // `routeStateAt` is a complete time-to-position function and a ship in transit is derivable from
+  // the viewer's own clock exactly as a planet is from its elements. [[G49]]'s rule then applies on
+  // its own terms - the clock is the viewer's whenever everything on screen is derivable from it -
+  // and the old rule's premise had simply gone.
+  //
+  // WHAT A SCRUBBING VIEWER NOW SEES: the ship where it would be AT THEIR TIME. Not stale, and not
+  // the GM's instant. `shipClock` and `onRouteNow` read this same function, so the vessel, its plume
+  // and its drawn line are all evaluated at one instant and cannot disagree. A preset that FOLLOWS
+  // the GM is unaffected: its own clock already is the GM's.
   //
   // Null outside the route's window too, so departure, arrival and a drifting ship fall back to the
   // vector - which after G51 is the only thing `SYNC_FLIGHT` still stamps.
@@ -4295,15 +4303,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     transitMotion = on;
     updatePositions(); // take effect NOW, not at the next clock tick (the clock may be paused)
   }
+  /**
+   * The GM's clock is no longer WHERE a ship is read (Q6) - it is now only the signal that this view
+   * IS a receiving player view, which is what earns it the right to place ships from the route at
+   * all. The GM's own scene never receives SYNC_TIME and so keeps its stamp.
+   */
   function setGmClock(ms: number | null) {
+    const wasPlayerView = gmClockMs !== null;
     if (ms === gmClockMs) return;
     gmClockMs = ms;
-    if (!transitMotion) updatePositions(); // a following view already moves on its own clock
+    // Only the FIRST arrival changes anything now; later heartbeats do not move the ship, because
+    // the ship is read at our clock rather than at theirs.
+    if (!wasPlayerView && ms !== null) updatePositions();
   }
   /** The instant a route is read at, or null for "do not place from the route at all". */
   function routeClock(): number | null {
-    if (transitMotion) return timeMs;
-    return gmClockMs;
+    return gmClockMs === null && !transitMotion ? null : timeMs;
   }
   const routeSampler = (_sys: System, node: any, _tMs: number) => {
     const at = routeClock();
