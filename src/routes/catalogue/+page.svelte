@@ -78,7 +78,7 @@
   import { unixMsToMasterSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { inverseBoxCox } from '$lib/physics/scaling';
   import { perfCount } from '$lib/perfTrace';
-  import { resolveClockOwnership } from '$lib/player/clockOwnership';
+  import { resolveClockOwnership, gmClockTouched } from '$lib/player/clockOwnership';
   let holoStyle: HoloStyle = { ...DEFAULT_STYLE };
   // Momentary GM overrides — driven by the GM's Player Views modal via SYNC_PRESET (never saved).
   let holoLabelsOn = true;
@@ -463,20 +463,46 @@
   // campaign readout are gated on `canScrubTime` and `onGmClock` respectively, and nothing else
   // decides either. See that file for why a free clock is allowed at all, and why a ship standing
   // still on one is the honest consequence rather than a fault.
+  //
+  // THE LATCH. A GM touch is an EVENT and the lock is a STATE, so something has to remember. Running
+  // is a touch, and so is the time moving while PAUSED, which is a scrub - both need the PREVIOUS
+  // heartbeat to see, so the comparison lives in `followTime`, the one place `gmTime` is ever
+  // assigned. Deliberately NOT a reactive block: `$: { ...; lastGmSample = gmTime }` would invalidate
+  // its own dependency every heartbeat and re-run itself. Cleared only by `reclaimClock` - the
+  // owner's chosen release, because a scrub is instantaneous and "any touch locks, a still clock
+  // frees" would flicker within a single frame.
+  let gmClockHeld = false;
+  let lastGmSample: { currentTime: number; isPlaying: boolean; timeScale: number } | null = null;
+  function reclaimClock() {
+    gmClockHeld = false;
+  }
   $: clockOwnership = resolveClockOwnership({
     presetInteractive,
     followGM: followGMActive,
-    gmTime
+    gmTime,
+    gmHoldsClock: gmClockHeld
   });
   $: canScrubTime = clockOwnership.canScrub;
   $: onGmClock = clockOwnership.onGmClock;
   $: clockLockReason = clockOwnership.lockReason;
+  $: canReclaimClock = clockOwnership.canReclaim;
   // Follow the GM's clock: snap to their absolute time when it drifts (a fresh follow, a GM scrub, or
   // rate change) — between heartbeats the local loop advances at the GM's own timeScale.
   function followTime(t: { currentTime: number; isPlaying: boolean; timeScale: number }) {
+    // Ask BEFORE replacing the sample - the touch is the difference between the two.
+    if (gmClockTouched(lastGmSample, t)) gmClockHeld = true;
+    lastGmSample = t;
     gmTime = t;
-    if (!onGmClock) return;
+    // Resolve with the values we have IN HAND rather than reading the reactive `onGmClock`, which has
+    // not recomputed yet inside a synchronous callback. Same one rule, no second copy of it, and no
+    // dependence on when Svelte gets round to it.
+    const own = resolveClockOwnership({
+      presetInteractive, followGM: followGMActive, gmTime: t, gmHoldsClock: gmClockHeld
+    });
+    if (!own.onGmClock) return;
     isPlaying = t.isPlaying;
+    // A GM touch SNAPS everyone to their display time, per the owner. The 1 s tolerance is only there
+    // so an ordinary heartbeat, which arrives a few hundred ms of game time out, does not judder.
     if (Math.abs(currentTime - t.currentTime) > 1000) currentTime = t.currentTime;
   }
   // Follow the GM's MANUAL viewport (a pan/zoom of their orrery, not a body focus): mirror it as a
@@ -1295,6 +1321,14 @@
         <div class="follow-clock" title={clockLockReason ?? "Campaign time — following the GM's clock"}>
           {followClockLabel}
           {#if clockLockReason}<span class="lock-why">{clockLockReason}</span>{/if}
+          <!-- THE WAY BACK. A GM's touch of the clock takes the controls and snaps this view to their
+               time; it stays that way until a reader asks, rather than returning by itself the instant
+               the GM lets go of the scrubber. Offered only while the GM's clock is STILL - taking it
+               back from a RUNNING clock would be undone on the next heartbeat. -->
+          {#if canReclaimClock}
+            <button class="tc-reclaim" on:click={reclaimClock}
+              title="Take the clock back and explore your own time">take control</button>
+          {/if}
         </div>
       {/if}
       {#if canScrubTime}
@@ -1523,6 +1557,24 @@
     font-size: 0.72em;
     opacity: 0.6;
     letter-spacing: 0.02em;
+  }
+  .tc-reclaim {
+    display: block;
+    margin: 4px auto 0;
+    padding: 2px 8px;
+    font: inherit;
+    font-size: 0.72em;
+    letter-spacing: 0.04em;
+    color: inherit;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+    border-radius: 999px;
+    opacity: 0.75;
+    cursor: pointer;
+  }
+  .tc-reclaim:hover {
+    opacity: 1;
+    background: color-mix(in srgb, currentColor 18%, transparent);
   }
   .follow-clock {
     position: absolute;

@@ -360,3 +360,54 @@ So the lock needs a RELEASE condition, and there are three candidates:
    for a scrub, only for a running clock. Least intrusive, and closest to what shipped.
 
 Not chosen. Ask before building.
+
+## 10. BUILT, v3.0.113 - the release condition is THE PLAYER TAKES IT BACK
+
+Owner's choice, 2026-08-27, from the three candidates in section 9. Candidate 2: *the snap happens,
+the controls stay disabled, and a "take control" affordance returns them.*
+
+### The rule, whole
+
+| the GM | the player's controls | whose time is shown | a way back? |
+|---|---|---|---|
+| never touched the clock | present | their own | - |
+| is RUNNING the clock | away, "The GM is running the clock" | GM's | no - it would be undone next heartbeat |
+| SCRUBBED, and is now still | away, "The GM moved the clock" | GM's | **yes - "take control"** |
+| ran the clock and then PAUSED | away | GM's | yes |
+| has `followGM` set | away (standing mode, no explanation needed) | GM's | no |
+| has gone (no heartbeat) | present | their own | - |
+
+### What had to be built
+
+**`gmClockTouched(prev, next)`** - a touch is a running clock, OR the time moving while PAUSED, which
+is what a scrub looks like from outside. Two cases are deliberately NOT touches: the first heartbeat
+of a session (nothing to compare against, and treating it as one would take the controls from every
+player the moment a GM connected) and a repeated identical heartbeat (the heartbeat is periodic; if a
+repeat counted, the lock would never lift).
+
+**A latch, `gmClockHeld`.** The touch is an EVENT and the lock is a STATE, so something has to
+remember between heartbeats. It lives beside `gmTime` in the player page and is compared in
+`followTime`, the single place `gmTime` is ever assigned. It is deliberately not a reactive block: a
+`$:` that assigns `lastGmSample` would invalidate its own dependency on every heartbeat and re-run
+itself.
+
+**`canReclaim`**, the fourth face of the rule, alongside `canScrub` and `onGmClock`. Offered only
+while the GM's clock is STILL: a button that is undone on the next heartbeat is worse than no button.
+
+### Two consequences worth knowing
+
+**Pausing no longer hands the clock back on its own.** Running latches the hold, so a GM who stops
+offers the controls rather than returning them. That is the same rule for a scrub and for a run,
+which is why it was preferred to special-casing one of them.
+
+**A GM who VANISHES leaves the lock set**, because `gmTime` is never cleared on a lost heartbeat -
+that was already true before this change. It degrades well here: the "take control" button is
+exactly the escape, so a player is never stranded. A quiet-period release would have self-healed
+instead; this one needs a press.
+
+### And the correctness half is gone
+
+Section 8's frozen ship is fixed (B97, v3.0.111), so a free player clock now draws a parked ship
+correctly at any time at all - a year adrift included. **The clock lock is therefore purely an
+interface rule now, not a correctness one**, which is the right footing for it: it exists so players
+know whose time they are looking at, not to stop them seeing something wrong.

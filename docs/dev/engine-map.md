@@ -2332,6 +2332,26 @@ BLAST: the PLANET side stops at ~20 M_Jup (6,400 M_E), the ceiling core accretio
 Heavier companions are `star/L,T,Y` however they are filed. Do not widen it back to the hydrogen
 limit: that would make the planet side claim objects that cannot have formed as planets.
 
+### DATA-R28 A MOMENTARY EVENT CANNOT DRIVE A LASTING MODE WITHOUT A LATCH AND A NAMED WAY OUT
+WHERE: `player/clockOwnership.ts` (`gmClockTouched`, `gmHoldsClock`, `canReclaim`) and the latch
+beside `gmTime` in `routes/catalogue/+page.svelte`.
+RULE: when a rule reads "X takes the controls" and X is INSTANTANEOUS, the rule is incomplete. State
+the latch that remembers X happened AND the condition that releases it - and prefer a release the
+reader performs to one on a timer, because an invented interval is a number nobody can defend.
+WHY: "any GM clock activity disables the player's time controls" plus "a stationary GM clock frees
+them" is unambiguous while a clock RUNS and a flicker for a single drag: the controls vanish and
+return within one frame, because a scrub ends with a still clock. Three releases were put to the
+owner - a quiet period, the player takes it back, snap-without-locking - and he chose the second.
+See `docs/dev/player-clock-ownership-design.md` section 10 for the whole rule as a table.
+BLAST: the detector needs the PREVIOUS heartbeat, so it cannot live in a `$:` block that also stores
+that heartbeat - the assignment invalidates the block's own dependency and it re-runs itself. It
+belongs at the single point the value is assigned.
+BLAST: two cases must NOT count as activity, and both are load-bearing: the first heartbeat of a
+session (no predecessor, and counting it would lock out every player the moment a GM connected) and a
+repeat of an identical heartbeat (the beat is periodic; the lock would never lift).
+BLAST: `gmTime` is never cleared when a GM disconnects, so the latch survives them leaving. That is
+survivable ONLY because the release is a button. A timer-based release would have hidden it.
+
 ### DATA-R26 A DERIVED READING NEVER JOINS A HOST FROM ONE SOURCE TO A NUMBER FROM ANOTHER
 WHERE: `construct-logic.calculateFullConstructSpecs` (`orbit_string`), and any derivation that takes
 an entity from its caller and a measurement off a node.

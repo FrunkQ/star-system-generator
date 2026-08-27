@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.113 - 27th Aug 2026
+
+- A GM who moves the clock at all now takes the players' time controls, not only a GM who sets it running. Dragging the scrubber counts: everyone snaps to the GM's time and the controls step aside, so nobody is quietly looking at a different moment during something that matters.
+- Because nudging a scrubber is over in an instant, the controls do not simply reappear the moment the GM lets go - that would be a flicker. They stay away, with the GM's time shown, until a reader presses "take control". A player therefore always knows whose clock they are on, and getting their own back is one press.
+- The offer only appears while the GM's clock is still. There is nothing to take back from a clock that is running, and a button that undid itself a second later would be worse than none.
+
 ## v3.0.112 - 26th Aug 2026
 
 - Fixed: making two bodies that share a Lagrange point into a pair sent the companion onto a wider and wider orbit every time anything was edited, with no warning at all. The engine now understands that a PAIR can ride a Lagrange point, not only a single body - which is a real arrangement: (617) Patroclus and Menoetius are two 110 km bodies about 680 km apart circling each other while they ride Jupiter's L4 together. When two bodies at a point become a pair, the point now belongs to the pair, and the two simply orbit each other inside it. Nothing drifts any more.
