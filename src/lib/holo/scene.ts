@@ -75,6 +75,7 @@ import {
   GRID_RADIUS as SCALE_GRID_RADIUS, STAR_RADIUS as SCALE_STAR_RADIUS,
   dialBlend as scaleDialBlend, bodyRadiusScene as scaleBodyRadiusScene,
   starRadiusScene as scaleStarRadiusScene, shipLengthScene as scaleShipLengthScene,
+  physicalRadiusAu,
   markerScale as scaleMarkerScale, readableBodyRadius, wireDotSize as scaleWireDotSize,
   radiusKmOf, starRadiusKmOf, shipLengthMOf
 } from '$lib/rendering/scaleLaw';
@@ -3830,8 +3831,28 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
     const baryRingPending: any[] = [];
     const pos0 = computeWorldPositions3D(system, timeMs, routeSampler);
+    // AN EXTENT MUST INCLUDE THE EXTENT OF ITS MEMBERS, NOT JUST THEIR DISTANCES (A78).
+    //
+    // This measured POSITIONS only, and a star sits at the centre - so its position magnitude is
+    // zero and it counted for nothing. A lone red supergiant therefore fell through to the 1 AU
+    // fallback below while its own radius is 4.18 AU, and everything downstream solved correctly
+    // for the wrong system: `trueScaleFactor` is `gridRadius / rMax`, so the star drew at 50 scene
+    // units inside a frame of 12 - the unbroken orange field a user reported, with no disc, no limb
+    // and no sense of scale.
+    //
+    // It also fixes the case nobody had reported: any giant whose limb reaches past its own
+    // outermost planet used to swallow its system at every zoom level, which on a supergiant with
+    // close-in worlds is not a rare arrangement.
+    //
+    // TRUE radius, never the rendered one - see `physicalRadiusAu`, which explains why feeding a
+    // rendered size back in here would be a loop.
     rMax = 0;
-    for (const p of pos0.values()) rMax = Math.max(rMax, Math.hypot(p.x, p.y, p.z));
+    for (const [id, p] of pos0) {
+      rMax = Math.max(rMax, Math.hypot(p.x, p.y, p.z) + physicalRadiusAu(nodesById.get(id)));
+    }
+    // KEPT AS A GUARD even though radii now make it all but unreachable (A78 decided this
+    // deliberately): a system with no drawable nodes at all still reaches here, and `compressRadius`
+    // divides by `rMax` with no guard of its own. One line against a division by zero.
     if (rMax <= 0) rMax = 1;
     rebuildGrid(); // scaled AU rings depend on rMax + compression
 
@@ -4193,7 +4214,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // satellite spread to it, or the spread would distort its transit path.
       const inTransit = isConstruct && (node.scheduled_journeys || []).length > 0;
       const radiusScene = isConstruct ? 0 : (isStar ? starRadiusScene(node) : bodyRadiusScene(node, systemLevel));
-      const physRadiusAu = isConstruct ? 0 : (node.physical_parameters?.radiusKm || node.radiusKm || (isStar ? 696000 : 3000)) / AU_KM;
+      const physRadiusAu = physicalRadiusAu(node);   // A78: one expression, shared with the rMax extent above
       // Same test the document builder uses (`constructsOf`, systemTopology.ts) so the two cannot
       // disagree about which constructs are on the ground.
       const surfaceDeclared = isConstruct && String((node as any).placement ?? '').toLowerCase() === 'surface';

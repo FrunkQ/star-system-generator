@@ -4128,3 +4128,33 @@ THE POLICY IT ENCODES, and it is the owner's: a scrubbing player sees transit tr
 reported instant, not at their own (2026-08-08). G51 keeps that rule and makes it cost zero bytes
 by COMPUTING the stamp instead of transmitting it. Changing it is a product decision (G51 Q6),
 not a refactor.
+
+### RENDER-S40 AN EXTENT MUST INCLUDE THE EXTENT OF ITS MEMBERS, NOT JUST THEIR DISTANCES
+WHERE: the `rMax` loop in `holo/scene.ts` (`setSystemBuild`), and `physicalRadiusAu` in
+`rendering/scaleLaw.ts`, which both it and the `bodies[]` build now share.
+RULE: `rMax` is the largest of `|position| + that node's own TRUE radius in AU`. It used to be the
+largest `|position|` alone - and a star sits at the CENTRE, so its position magnitude is zero and it
+counted for nothing at all.
+WHY IT MATTERS BEYOND THE SCREENSHOT THAT FOUND IT (inbox A78): `rMax` is the framing normaliser for
+the whole scene. `compressRadius` maps it to `GRID_RADIUS`, `trueScaleFactor` is `gridRadius / rMax`,
+and the whole-system shot frames `GRID_RADIUS`. So a lone red supergiant fell through to the 1 AU
+fallback while its own radius is 4.19 AU, and drew at ~50 scene units inside a frame of 12 - an
+unbroken orange field with no disc and no limb. Everything downstream was solving correctly for a
+number that described the wrong system.
+TRUE RADIUS, NEVER THE RENDERED ONE, and this is the part that is easy to get backwards: the drawn
+size depends on the `bodySize` dial AND on `trueScaleFactor`, which is derived FROM `rMax`. Feeding a
+rendered size back in would close a loop. The extent is a fact about the DATA and is dial-independent
+by construction.
+THE FALLBACK IS KEPT DELIBERATELY. `if (rMax <= 0) rMax = 1` is all but unreachable now, but a system
+with no drawable nodes still reaches it and `compressRadius` divides by `rMax` with no guard of its
+own. One line against a division by zero.
+MEASURED, so nobody re-derives it: across the two bundled starmaps this moves 72 of 74 planeted
+systems by a MEDIAN of 0.016% and a worst of 0.309% (GJ 674, a red dwarf whose planet sits at 0.03 AU
+so its own radius is a real fraction of its orbit). Sol moves by 2e-7. **The six BARE single-star
+systems change completely and on purpose** - Ross 154 goes from the 1 AU fallback to 0.00093 AU -
+because those are the case this rule exists for. All of it is at the TRUE-scale end of the dial only;
+at the readable default a star still draws `STAR_RADIUS`.
+BLAST: `physicalRadiusAu` replaced an inline copy of the same expression in the `bodies[]` build. A
+belt carries `radiusInnerKm`/`radiusOuterKm` and no `radiusKm`, so it takes the 3000 km default rather
+than its true outer edge - see the A78 row for the separate finding that Sol's Kuiper Belt therefore
+draws 21% outside the grid. That is NOT fixed here and wants its own decision.

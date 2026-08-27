@@ -104,6 +104,36 @@ export function bodyRadiusScene(radiusKm: number, systemLevel: boolean, ctx: Sca
 	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, readable, ctx.bodySize));
 }
 
+/**
+ * Is this node drawn as a STAR? The scene's own rule, lifted here so the extent and the renderer
+ * cannot disagree about which default radius a node gets.
+ */
+export function rendersAsStar(node: any): boolean {
+	return node?.roleHint === 'star' || (node?.kind === 'body' && node?.parentId === null);
+}
+
+/**
+ * A node's TRUE physical radius in AU - how far its own limb reaches from its own centre.
+ *
+ * WHY IT IS ITS OWN FUNCTION (A78): the framing normaliser `rMax` has to know how big a body is,
+ * not only where it is, and the renderer had the identical expression inline. Two copies of "how
+ * big is this thing physically" is precisely the duplication the standing rules warn about - they
+ * would answer the same question differently the first time either default changed.
+ *
+ * TRUE radius, never the RENDERED one, and the distinction is load-bearing. The drawn size depends
+ * on the `bodySize` dial and on `trueScaleFactor`, which is `gridRadius / rMax` - so feeding a
+ * rendered size back into `rMax` would be a loop. The extent is a fact about the DATA and is
+ * dial-independent by construction.
+ *
+ * A CONSTRUCT IS ZERO: its drawn size is a readability marker rather than a physical one, and its
+ * true size (tens of metres) is below anything a system-scale extent can carry.
+ */
+export function physicalRadiusAu(node: any): number {
+	if (!node || node.kind === 'construct') return 0;
+	const km = node?.physical_parameters?.radiusKm || node?.radiusKm || (rendersAsStar(node) ? 696000 : 3000);
+	return km / AU_KM;
+}
+
 /** The authored stellar radius in km, with the law's default for a node that carries none. */
 export function starRadiusKmOf(node: any): number {
 	return node?.physical_parameters?.radiusKm || node?.radiusKm || 696000;
