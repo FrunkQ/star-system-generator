@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.149 - 27th Aug 2026
+
+- The physics page explained the compact transit route by a reason that is no longer true. It was described as a saving on traffic; it is in fact how a ship position is defined while it is under way, worked out at both ends from the same curve rather than sent from one to the other.
+
 ## v3.0.148 - 27th Aug 2026
 
 - Docs only. The camera and scale redesign said one of its remaining pieces was still to do when it had already shipped months ago. Corrected, so the next person to pick it up does not rebuild something that is already there.

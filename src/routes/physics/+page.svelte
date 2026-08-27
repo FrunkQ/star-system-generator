@@ -1983,15 +1983,18 @@
           points, chosen so that a smooth curve drawn through them tracks the real path to within roughly a fifth
           of a percent of the journey's own length. The 3D view then rebuilds that curve and subdivides it as you
           zoom in, so it stays smooth rather than turning into straight facets. The reason is data rather than
-          physics: a ship under way rewrites what players receive about twice a second, and the whole snapshot is
-          re-sent each time, so the full path would be thousands of numbers on the busiest channel in the app.
+          physics, though not the one you might expect: it is not a saving on traffic. The compact curve IS how
+          a ship's position is defined once it is under way. The corner points carry the times they belong to,
+          so the GM's view and a player's evaluate the same curve at the same instant rather than one of them
+          being told the answer — a player view works out where a ship is for itself, exactly as it already
+          does for a planet from its orbital elements. The several-thousand-point path stays where it was
+          computed.
           The same estimate is used on the GM's own 3D view, so both see the identical line; the GM's flat map
           still draws the full path point for point. The line is also pinned to the ship itself, so it passes
-          through the vessel exactly even where the estimate and the true path differ. While a player view is
           <strong>following the GM's clock</strong>, ships in transit are also <em>positioned</em> along this
-          same re-estimated course, so a moving ship sits exactly on its drawn line; a player scrubbing their
-          own clock sees orbits move but transit traffic hold its last GM-reported position, because live
-          traffic is the GM's clock to run, not the viewer's.</li>
+          same curve, so a moving ship sits exactly on its drawn line. A player scrubbing their own clock
+          currently sees orbits move while transit traffic holds its last reported position — a deliberate
+          rule that live traffic is the GM's clock to run, not a limit on what the view could work out.</li>
         <li>Coasting/adrift transit trajectories drop moons <em>while the clock is moving</em>: the gravity field used to integrate a drifting ship live (and its forecast line) includes only stars and planets, because re-integrating the full satellite census on every clock-slider frame is impractical in a browser. A moon's pull on a heliocentric coast is negligible anyway, and the star and any planet the ship passes still bend the path. Once the clock settles, the forecast upgrades to a one-shot, moon-inclusive plot — fast estimates while you scrub, the accurate path when you stop.</li>
       </ul>
     </section>
