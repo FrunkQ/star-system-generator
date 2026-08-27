@@ -3659,6 +3659,79 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // `window.__rebuildDebug = true` adds the payload hash, which is the only thing that can say a
   // re-cloned snapshot was byte-identical — deliberately OPT-IN, because hashing a several-hundred-KB
   // system at 12 Hz is the very cost class this item is chasing (never let the meter add it).
+  // B94 — A SHIP MOVING IS NOT A REASON TO REBUILD THE WORLD.
+  //
+  // Measured on the owner's repro (2026-08-27): with the clock running and a player following,
+  // `holo.setSystem` fired 61 times in a couple of minutes, 59 of them for a system whose id had
+  // not changed, at ~103 ms and a whole scene's worth of geometry and textures each. The heap went
+  // 120 MB → 3.3 GB and took the GM window down with it. The `whyChanged` diagnostic named what
+  // actually differed between those payloads, and it was always the same three fields on a
+  // construct in flight: position, velocity and the epoch they were stamped at.
+  //
+  // Those three are the ONLY thing this skips, and it fails open: any other difference anywhere
+  // — a body, an orbit, a tag, a construct's route or burns or flight_state, a node appearing or
+  // leaving — falls straight through to the full rebuild. Missing a rebuild that was needed is a far
+  // worse bug than doing one that was not, so the comparison is deliberately conservative.
+  //
+  // WHY UPDATING IN PLACE IS ENOUGH: `updatePositions()` reads `currentSystem` LIVE on every frame
+  // (via computeWorldPositions3D), and worldPositions takes a construct's place from
+  // `vector_position_au`. So writing the new vectors onto the system the scene already holds moves
+  // the ships on the very next frame, with nothing rebuilt and nothing allocated.
+  //
+  // COST: a short-circuiting structural walk that stops at the first real difference. On a system
+  // of a few dozen nodes that is microseconds against the 103 ms rebuild it replaces, and it is
+  // skipped entirely once a difference is found.
+  const FLIGHT_VECTOR_KEYS = new Set(['vector_position_au', 'vector_velocity_ms', 'vector_epoch_ms']);
+
+  function sameExcept(a: any, b: any, skip: Set<string> | null): boolean {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return a === b;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) if (!sameExcept(a[i], b[i], null)) return false;
+      return true;
+    }
+    const ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (const k of ka) {
+      if (skip && skip.has(k)) continue;
+      if (!(k in b)) return false;
+      if (!sameExcept(a[k], b[k], null)) return false;
+    }
+    return true;
+  }
+
+  /** True when the ONLY differences are flight vectors on constructs. */
+  function onlyFlightVectorsDiffer(cur: System, next: System): boolean {
+    const an: any[] = (cur as any).nodes ?? [], bn: any[] = (next as any).nodes ?? [];
+    if (an.length !== bn.length) return false;
+    if (!sameExcept({ ...(cur as any), nodes: null }, { ...(next as any), nodes: null }, null)) return false;
+    let moved = false;
+    for (let i = 0; i < an.length; i++) {
+      const x = an[i], y = bn[i];
+      if (!x || !y || x.id !== y.id) return false;
+      const isConstruct = x.kind === 'construct' && y.kind === 'construct';
+      if (!sameExcept(x, y, isConstruct ? FLIGHT_VECTOR_KEYS : null)) return false;
+      if (isConstruct && !moved) {
+        for (const k of FLIGHT_VECTOR_KEYS) if (!sameExcept(x[k], y[k], null)) { moved = true; break; }
+      }
+    }
+    return moved; // nothing moved at all = let the normal path handle it
+  }
+
+  /** Copy the new flight vectors onto the system the scene already holds. */
+  function applyFlightVectors(cur: System, next: System) {
+    const an: any[] = (cur as any).nodes ?? [], bn: any[] = (next as any).nodes ?? [];
+    for (let i = 0; i < an.length; i++) {
+      if (an[i]?.kind !== 'construct') continue;
+      for (const k of FLIGHT_VECTOR_KEYS) {
+        if (k in bn[i]) an[i][k] = bn[i][k];
+        else delete an[i][k];
+      }
+    }
+  }
+
   let _lastSysHash: string | null = null;
   function setSystem(system: System | null, reason = 'unknown') {
     const t0 = performance.now();
@@ -3684,6 +3757,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         _lastSysHash = hash;
       } catch { /* a cyclic or huge payload must not break the render path */ }
       hashMs = Math.round(performance.now() - h0);
+    }
+    // B94: motion-only update — move the ships, leave the world standing.
+    if (system && currentSystem && onlyFlightVectorsDiffer(currentSystem, system)) {
+      applyFlightVectors(currentSystem, system);
+      updatePositions();
+      perfCount('holo.setSystem.motionOnly');
+      perfEvent('holo.setSystem', {
+        reason, sameRef, sameId, motionOnly: true,
+        ms: Math.round(performance.now() - t0),
+        nodes: system.nodes?.length ?? 0
+      });
+      return;
     }
     setSystemBuild(system);
     const ms = Math.round(performance.now() - t0);

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.129 - 27th Aug 2026
+
+- A player view no longer rebuilds the entire system every time a ship moves. Watching a ship fly while the clock ran could fill memory until the tab died, taking the GM window with it, because each update tore down and rebuilt every planet, moon and orbit in order to draw the ship a little further along. A ship that has only moved now just moves. Anything else still rebuilds, exactly as before.
+
 ## v3.0.128 - 27th Aug 2026
 
 - Board only. The player-view memory fault is traced to its root and the fix is designed rather than patched: send only what cannot be predicted, and let a player view simulate the rest from a timestamp, the way it already does for planets.
