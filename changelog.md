@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.100 - 27th Aug 2026
+
+- Board only. The gas-giant banding fault is traced to its cause from the reporter own save: a giant stripes are painted only by cloud decks lying beneath the top one, so a stack that gains or loses a deck at a condensation threshold gains or loses every stripe at once.
+
 ## v3.0.99 - 27th Aug 2026
 
 - Board only. Captured G49: who owns the clock on a player view. A ship that has arrived somewhere orbits properly on the GM's map and sits motionless on the players', and chasing that turned out to be a symptom of something never decided - whether a player's view runs on the GM's time or its own, and what happens to the things on screen that cannot survive the difference. Worlds can: their positions are closed-form, so any clock draws them correctly. A ship cannot, because what it is doing is known only to the GM. Measured on a real save: the GM's copy of one ship moves 112,000 km an hour and the players' moves none, and a single day of clock drift puts it 2.6 million km from the world it is parked at.
