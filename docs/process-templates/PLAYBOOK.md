@@ -41,6 +41,28 @@ the working system, including the mistakes that became rules.
    invisible in the code), then stops. That is what lets a fresh session pick up in an hour what
    took the old one a week to learn.
 
+## The entry fee (measured, 2026-08-27)
+
+**A session spends roughly a FIFTH of its context just reading in.** Owner, on a mature codebase:
+*"it takes 20% just to get up to speed — we have a big load of code!"* That is not waste and it cannot
+be skipped, but it is a fixed cost paid per SESSION, not per item, and three things follow from it.
+
+1. **DO NOT SPEND A SESSION ON ONE SMALL ITEM.** Two related small items cost barely more than one
+   once the fee is paid. Batch by TERRITORY (the files they touch), not by priority — two bugs in the
+   same module share their reading; two bugs of equal urgency in different modules do not.
+2. **A DENSE BRIEF IS THE FEE, PRE-PAID BY THE COORDINATOR.** "Investigate the SOI derivation" makes
+   the session go and find it. "`orbits.ts:426` builds the SOI from the INSTANTANEOUS
+   `distanceToHost_km`" does not. Every measured fact, file:line and disproved hypothesis in a brief is
+   context the session does not have to spend — which is why briefs here run long on purpose and why
+   RECORDING DEAD ENDS matters as much as recording findings.
+3. **THE RETIREMENT NOTES ARE THE SAME LEVER, aimed at the next session instead.** A territory's
+   notes file exists so its successor inherits the traps rather than re-deriving them; that is why the
+   drill asks for what COST TIME rather than for a summary of what the code does.
+
+Corollary for the owner: a session already at 25% has about half its useful budget left after reading
+in, so give it something SHAPED to that — a bounded item, or a design phase that ends in a note
+rather than a build.
+
 ## The release discipline
 
 **The what's-new / feature list IS the scope statement.** Every unpending line is a claim the

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.139 - 27th Aug 2026
+
+- Docs only. The playbook gains a measured note on what it costs a session to read into this codebase, and what that means for how work should be grouped.
+
 ## v3.0.138 - 27th Aug 2026
 
 - Board only. A correction to what the player-view network work can be expected to achieve on its own, so the result is not misread when it lands.
