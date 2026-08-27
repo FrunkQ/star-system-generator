@@ -664,7 +664,7 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
     // so the same formula applies directly to y.
     // The apothem puts the ring near 13 degrees from the pole: a polar vortex sits inside the polar
     // jet, and Saturn's real hexagon is centred on 78 degrees north. That also keeps it INSIDE the
-    // auroral oval, which RENDER-S37 places at 16 degrees for Saturn - the right way round.
+    // auroral oval, which RENDER-S41 places at 16 degrees for Saturn - the right way round.
     const apothem = EQ_H * 0.072;
     const yb = (sides: number, x: number) => polygonRadiusAt(sides, apothem, (x / EQ_W) * 2 * Math.PI);
     // BOTH POLES. A polar vortex is what a rotating envelope does where the jets converge, and that

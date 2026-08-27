@@ -87,6 +87,8 @@ speculatively — record, and resolve when the area is open anyway.
 
 ## THE CARRY-FORWARD SORT, 2026-08-28 — EVERY ENTRY NOW CARRIES A BUCKET
 
+**ID COLLISIONS RESOLVED BY THE COORDINATOR, 2026-08-28 (v3.0.155), flagged by the sort session and acted on the same day because one of them was actively misleading readers.** `RENDER-S36` and `RENDER-S37` were each used TWICE, and S37 was cited from code with BOTH meanings — `planetTexture.ts:667` meaning the aurora and `SystemVisualizer.svelte:1072` meaning the route, so anyone following a citation got a coin toss. **Settled by FIRST CLAIM, on commit timestamps, which split them one each:** S36 went to the METHANE entry (13:44) so the transit SAMPLER moved to **RENDER-S40**; S37 went to the transit ROUTE entry (14:25) so the AURORA moved to **RENDER-S41**. One code citation moved with it (the aurora's, in `planetTexture.ts`); the route's citation was already correct and was left alone. Headings are otherwise byte-identical and nothing else was renumbered or reordered.
+
 Every entry has a `BUCKET:` line, first field after the heading, applying the criterion in
 `engine-map-carry-forward.md`. **A BUCKET IS A FIELD, NOT A FILING SYSTEM.** Nothing was renumbered
 and nothing was reordered — the ids are cited from a year of code comments, board rows and commit
@@ -2859,7 +2861,7 @@ orbit whose epoch is LATER than the arrival was written by a GM who knew what th
 journey that finished before they did does not get to undo it. Without that the repair fights a
 hand-placed ship every tick and `placementHealCount` climbs, which is meant to mean something else.
 
-### RENDER-S36 A SAMPLER THAT ANSWERS FOREVER MUST NOT BE WRITTEN DOWN FOREVER
+### RENDER-S40 A SAMPLER THAT ANSWERS FOREVER MUST NOT BE WRITTEN DOWN FOREVER
 BUCKET: ARCHITECTURE - stamp a derived value onto a record only while NOTHING ELSE CAN DESCRIBE the
 thing; ask the STATE, never merely whether the sampler answered. ** ID COLLISION: this id is claimed
 again at the methane entry below (search 'HOW MUCH METHANE'). Code comments cite both. **
@@ -4662,7 +4664,7 @@ and the ice-giant `iceHue` picks between three at 60 K and 160 K. Neptune (46.6 
 (58.5 K) sit either side of the first. Smoothing them moves BOTH ice giants, which is an anchor
 change and wants its own item rather than a ride on this one.
 
-### RENDER-S37 AN AURORAL OVAL LIVES IN A NARROW POLAR BAND. STRENGTH MOVES IT INSIDE THAT BAND, NOT OUT OF IT
+### RENDER-S41 AN AURORAL OVAL LIVES IN A NARROW POLAR BAND. STRENGTH MOVES IT INSIDE THAT BAND, NOT OUT OF IT
 BUCKET: DOMAIN - the oval marks where the LAST CLOSED FIELD LINE comes down, so its colatitude is
 set by the SHAPE of the magnetosphere: a stronger field pushes the magnetopause out and if anything
 CONTRACTS the oval. Brightness may scale with strength; REACH may not. ** ID COLLISION: see the

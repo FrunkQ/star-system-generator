@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.155 - 28th Aug 2026
+
+- Internal notes only. Two reference numbers in the engine map had each been used twice, and one was quoted from the code with both meanings. Settled by whichever claimed the number first.
+
 ## v3.0.154 - 28th Aug 2026
 
 - Docs only. The engine map is sorted for the move to a new engine. Each of its 205 entries now says
