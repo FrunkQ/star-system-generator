@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.131 - 27th Aug 2026
+
+- Board only. Recorded a fault found while tracing the player-view memory problem: three tags come and go on every snapshot sent to players, and the likely cause would mean hidden tags reaching them some of the time. Being confirmed before anything is changed.
+
 ## v3.0.130 - 27th Aug 2026
 
 - Board only. A rule for when a player view may run its own clock: it may whenever everything on screen can be worked out from the time alone, and must follow the GM whenever something is moving in a way only the GM can know.
