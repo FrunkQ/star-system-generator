@@ -149,7 +149,10 @@ export interface HoloController {
   setFlatOverhead(on: boolean): void; // "2D map": tilt pinned top-down (+ pan enabled). Never a 3D view.
   setLockRotation(on: boolean): void; // fix the heading: no spin by drag, and follow a body by PANNING
   setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
-  setBodySize(v: number): void; // 1 readable .. 0 true physical scale
+  setBodySize(v: number): void; // 1 readable .. 0 true physical scale - the MASTER dial
+  /** S2c: the construct dial, as a relative OFFSET on the master. 0 = today's look exactly;
+   *  positive slides constructs toward readable, negative toward true scale. */
+  setConstructOffset(v: number): void;
   setGrid(mode: MapOverlay): void; // ground reference overlay (shared vocabulary, lib/map/mapOverlay.ts)
   setGridFalloff(v: number): void; // G4: 0 = even brightness, 1 = bright near the centre and gone by the edge
   setGridDepth(v: number): void;   // 0 flat .. 1 a full depth curtain under each grid line (3D only)
@@ -830,6 +833,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent('bodySize');
   }
 
+  /** S2c: slide constructs relative to bodies. A rebuild, like the master dial, because the
+   *  readable endpoint changes rather than only the transform. */
+  function setConstructOffset(v: number) {
+    const clamped = Math.max(-1, Math.min(1, Number(v) || 0));
+    if (clamped === constructOffset) return;
+    constructOffset = clamped;
+    rebuildContent('constructOffset');
+  }
+
   // How far a SPRITE is allowed to shrink as the body-size dial leaves "readable". The scene draws a
   // good deal that is a marker rather than geometry — wireframe vertex dots, belt rubble, ring particles
   // — and each of those sizes was picked for the readable end and then used at every setting. At TRUE
@@ -850,7 +862,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
   /** The live dial + system extent, as the pure law wants them. */
   function scaleCtx() {
-    return { bodySize, rMax, gridRadius: GRID_RADIUS };
+    return { bodySize, constructOffset, rMax, gridRadius: GRID_RADIUS };
   }
 
   // Rendered sphere radius for a body, blending its readable size toward its true physical size.
@@ -1285,6 +1297,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let beltStyle: BeltStyle = 'rocks'; // rocks vs the orrery's flat band
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
+  // S2c: the CONSTRUCT dial, as a relative offset on `bodySize`. 0 is the single-dial law exactly,
+  // so nothing moves until a GM asks for it. See ScaleContext.constructOffset for the reasoning.
+  let constructOffset = 0;
   let timeMs = 0;
   let viewW = 1;
   let viewH = 1;
@@ -5002,7 +5017,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
   };
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
 }
 
 // ---- helpers ----

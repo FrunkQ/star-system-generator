@@ -4135,3 +4135,51 @@ THE POLICY IT ENCODES, and it is the owner's: a scrubbing player sees transit tr
 reported instant, not at their own (2026-08-08). G51 keeps that rule and makes it cost zero bytes
 by COMPUTING the stamp instead of transmitting it. Changing it is a product decision (G51 Q6),
 not a refactor.
+
+### RENDER-S41 ONE KIND-BLIND SPAN MAP DECIDES READABLE SIZE, AND ITS MONOTONICITY IS THE ORDERING
+WHERE: `readableSpanScene` in `rendering/scaleLaw.ts`. `readableBodyRadius`, `readableShipLength`
+and the star branch of `starRadiusScene` are all thin wrappers over it now.
+RULE: readable size is a function of PHYSICAL SPAN IN METRES and nothing else - a body's diameter,
+a construct's long axis, on one axis. What an object IS never enters the law. So a 940 km station
+and a 940 km rock render identically, which is the owner's "you could construct a death star"
+decision expressed as arithmetic instead of an exception.
+WHY R9 IS NOW STRUCTURAL RATHER THAN TUNED, and this is the part worth keeping: the true-scale term
+is exactly PROPORTIONAL to physical span, this readable term is MONOTONE in physical span, and
+`dialBlend` is a GEOMETRIC blend of the two. A product of two monotone positive functions is
+monotone, so "a larger thing never renders smaller" holds at EVERY dial stop by construction. Break
+monotonicity of the span map and you break R9 everywhere at once - that is the invariant to protect.
+THE SHAPE: piecewise-linear in log10(metres), continuous at the anchor. Above 2000 km across the
+slope is 0.2/decade, which IS the pre-P4 body curve - kept deliberately, so every body 1000 km in
+radius or larger renders BIT-IDENTICALLY to before (Luna, Earth, Jupiter and every giant do not
+move). Below the anchor it shallows to 0.044/decade, because the old law was FLAT there and
+flatness is what made ordering impossible: a 22 km hull cannot be both smaller than a 2000 km moon
+and larger than a 10 km moonlet if the two moons render the same size.
+WHAT DID MOVE, so nobody reports it as a regression: bodies under 1000 km radius shrink (a 100 km
+moon 0.28 -> 0.236 span), every construct shrinks a lot at the readable end (a 46 m corvette
+0.226 -> 0.076), and STARS are on the map now instead of a flat `STAR_RADIUS` - Sol 1.0 -> 0.849,
+a red dwarf 1.0 -> 0.68, a supergiant 1.0 -> 1.44. Before this, a red dwarf and a red supergiant
+were the same size on screen.
+TWO THINGS DELIBERATELY LEFT ALONE. The SATELLITE CAP (`min(full, 0.1)` for a non-system-level
+body) survives: R9 is about KIND, the cap is about HIERARCHY, and it is a readability device nobody
+has objected to. It does mean a capped Luna reads smaller than a system-level 100 km asteroid -
+PRE-EXISTING, unchanged, and recorded rather than silently fixed. And `bodyRadiusScene` floors the
+RADIUS at `NUMERICAL_FLOOR` while callers double it, so a body bottoms out at 2e-10 span against a
+construct's 1e-10; no test reaches it, and changing it would move S2b's shipped acceptance.
+BLAST: `STAR_RADIUS` is still exported and still 0.5, but NOTHING IN THE LAW READS IT. It is kept
+because `holo/scene.ts` and `/scale-reference` name it and because it is the number every pre-P4
+saved look was built around.
+
+### RENDER-S42 THE CONSTRUCT DIAL IS AN OFFSET, AND R9 IS JUDGED AT ZERO
+WHERE: `ScaleContext.constructOffset` and `constructDial` in `rendering/scaleLaw.ts`, read only by
+`shipLengthScene`; `setConstructOffset` on the holo controller.
+RULE: constructs draw at `clamp(bodySize + constructOffset, 0, 1)`. Bodies and stars NEVER see the
+offset. It is an OFFSET rather than a second absolute dial for one reason: zero is then today's
+look exactly, so no saved preset moves until a GM asks it to.
+THE INVARIANT THAT IS EASY TO GET WRONG: **R9 is asserted at offset 0 and nowhere else.** Ordering
+is a property of the LAW; sliding constructs apart is a departure the user chooses and can see, and
+the design is explicit that a visible choice is not the engine lying. `/scale-reference` therefore
+computes its violation count at offset 0 however the slider is set - if you ever make the verdict
+follow the slider, the page will start reporting the user's own preference as a fault.
+WHY THE ORDER S2-THEN-S2c MATTERED: a labelled departure from truth only means anything once truth
+exists underneath it. With the overlapping bands still in place a GM sliding constructs apart could
+not tell whether they were correcting a fault or expressing a preference.

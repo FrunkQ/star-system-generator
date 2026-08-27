@@ -13,78 +13,85 @@ import { AU_KM } from '$lib/constants';
 import {
 	GRID_RADIUS, STAR_RADIUS, dialBlend, readableBodyRadius, bodyRadiusScene,
 	starRadiusScene, readableShipLength, shipLengthScene, markerScale,
-	radiusKmOf, starRadiusKmOf, shipLengthMOf, trueScaleFactor, NUMERICAL_FLOOR, wireDotSize } from './scaleLaw';
+	radiusKmOf, starRadiusKmOf, shipLengthMOf, trueScaleFactor, NUMERICAL_FLOOR, wireDotSize,
+	readableSpanScene, constructDial } from './scaleLaw';
 
-// --- the old closures, verbatim -----------------------------------------------------------------
-const legacyDialBlend = (trueScene: number, readable: number, bodySize: number) => {
-	const t = Math.max(1e-12, trueScene);
-	const r = Math.max(1e-12, readable);
-	return Math.exp(Math.log(t) * (1 - bodySize) + Math.log(r) * bodySize);
-};
-const legacyBodyRadius = (km: number) => 0.14 + 0.1 * Math.max(0, Math.log10(km / 1000));
-// S2b, THE ONE DELIBERATE DIVERGENCE from P1's byte-for-byte extraction. The bodies' floor was
-// 1e-7 scene units and the constructs' 1e-10 - a thousandfold apart - so at true scale a 10 km
-// moonlet rendered 2.0e-7 while a physically LARGER 22 km station rendered 5.9e-8, an ordering
-// violation (R9) no dial setting could fix. /scale-reference found it on its first render. Both now
-// use NUMERICAL_FLOOR. Everything else in this column still pins the law unchanged.
-const legacyBodyRadiusScene = (km: number, systemLevel: boolean, bodySize: number, rMax: number) => {
-	const readable = systemLevel ? legacyBodyRadius(km) : Math.min(legacyBodyRadius(km), 0.1);
-	if (bodySize >= 0.999) return readable;
-	const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-	return Math.max(NUMERICAL_FLOOR, legacyDialBlend(trueScene, readable, bodySize));
-};
-const legacyStarRadiusScene = (km: number, bodySize: number, rMax: number) => {
-	if (bodySize >= 0.999) return STAR_RADIUS;
-	const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
-	return Math.max(NUMERICAL_FLOOR, legacyDialBlend(trueScene, STAR_RADIUS, bodySize));
-};
-const legacyShipLenScene = (lengthM: number, bodySize: number, rMax: number) => {
-	const readable = Math.min(0.7, Math.max(0.14, 0.16 + 0.1 * (Math.log10(lengthM) - 1)));
-	if (bodySize >= 0.999) return readable;
-	const trueScene = ((lengthM / 1000) / AU_KM) * (GRID_RADIUS / rMax);
-	return Math.max(1e-10, legacyDialBlend(trueScene, readable, bodySize));
-};
-const legacyMarkerScale = (bodySize: number) => (bodySize >= 0.999 ? 1 : Math.max(0.02, bodySize));
+// P1's EQUIVALENCE COLUMN IS GONE, and this is the commit the file itself said would delete it:
+// "The law itself CHANGES in P4. When it does, delete the legacy column in the same commit and
+// replace these with the monotonicity properties." Pinning the old law bit-for-bit is exactly what
+// P4 exists to stop doing; what replaces it is the R9 ordering block below, which is a PROPERTY
+// rather than a snapshot and so cannot go stale the way a copied closure can.
+//
+// WHAT IS STILL PINNED, deliberately, because P4 was not supposed to move it:
+//   - every body 1000 km in radius or larger renders EXACTLY as before (the anchor and the 0.2
+//     slope above it ARE the shipped body curve, kept on purpose);
+//   - dialBlend, markerScale, wireDotSize, the authored-size defaults and the true-scale factor;
+//   - S2b's single floor.
 
 // A sweep wide enough to catch a clamp moving: every dial stop against real object sizes, in
 // systems from a tight red dwarf (rMax 0.5 AU) to a wide one (rMax 100 AU).
 const DIALS = [0, 0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98, 0.999, 1];
 const RMAXES = [0.5, 5, 30, 100];
-const BODY_KM = [1, 100, 1737, 6371, 69911, 696000];      // pebble, small moon, Luna, Earth, Jupiter, Sol
-const SHIP_M = [1, 20, 46, 109, 1000, 22000, 940000];     // drone .. Eros .. Ceres Station
 
-describe('scaleLaw is the old scene.ts law, exactly (P1)', () => {
-	it('dialBlend matches at every dial stop', () => {
+/** The shipped body curve - the half of the law P4 must not have moved. */
+const shippedBodyRadius = (km: number) => 0.14 + 0.1 * Math.max(0, Math.log10(km / 1000));
+
+describe('S2 kept the half of the law it was not meant to move', () => {
+	it('every body 1000 km in radius or larger renders exactly as before, at every dial stop', () => {
+		for (const v of DIALS) for (const rMax of RMAXES) for (const km of [1000, 1737, 6371, 69911, 696000]) {
+			expect(readableBodyRadius(km)).toBeCloseTo(shippedBodyRadius(km), 12);
+			const trueScene = (km / AU_KM) * (GRID_RADIUS / rMax);
+			const before = v >= 0.999 ? shippedBodyRadius(km)
+				: Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, shippedBodyRadius(km), v));
+			expect(bodyRadiusScene(km, true, { bodySize: v, rMax })).toBeCloseTo(before, 12);
+		}
+	});
+
+	it('the small end DID move, and that is the fix rather than a regression', () => {
+		// A 100 km moon used to sit on the flat 0.28 span with every other small body. It now has a
+		// place in the order, which is what makes room for ships underneath it.
+		expect(readableBodyRadius(100) * 2).toBeLessThan(0.28);
+		expect(readableBodyRadius(100) * 2).toBeGreaterThan(readableShipLength(22_000));
+		// ...and it loses to a 940 km station, which is the point: the station is PHYSICALLY bigger.
+		expect(readableBodyRadius(100) * 2).toBeLessThan(readableShipLength(940_000));
+	});
+
+	it('dialBlend, markerScale and the authored defaults are untouched', () => {
 		for (const v of DIALS) for (const t of [1e-12, 1e-9, 1e-5, 0.01, 1, 100]) for (const r of [0.1, 0.5, 1]) {
-			expect(dialBlend(t, r, v)).toBe(legacyDialBlend(t, r, v));
+			expect(dialBlend(t, r, v)).toBe(Math.exp(Math.log(Math.max(1e-12, t)) * (1 - v) + Math.log(Math.max(1e-12, r)) * v));
+		}
+		for (const v of DIALS) expect(markerScale(v)).toBe(v >= 0.999 ? 1 : Math.max(0.02, v));
+	});
+});
+
+describe('S2: one kind-blind span map', () => {
+	it('is monotone in physical size across thirteen decades', () => {
+		let prev = -Infinity;
+		for (let L = 0; L <= 13; L += 0.05) {
+			const v = readableSpanScene(Math.pow(10, L));
+			expect(v).toBeGreaterThanOrEqual(prev);
+			prev = v;
 		}
 	});
 
-	it('body radii match at every dial stop, both system-level and satellite', () => {
-		for (const v of DIALS) for (const rMax of RMAXES) for (const km of BODY_KM) for (const sys of [true, false]) {
-			expect(bodyRadiusScene(km, sys, { bodySize: v, rMax })).toBe(legacyBodyRadiusScene(km, sys, v, rMax));
+	it('a construct and a body of the SAME physical size render the same size', () => {
+		for (const m of [1000, 22_000, 940_000, 3_474_000]) {
+			expect(readableShipLength(m)).toBeCloseTo(readableBodyRadius(m / 2000) * 2, 12);
 		}
 	});
 
-	it('star radii match at every dial stop', () => {
-		for (const v of DIALS) for (const rMax of RMAXES) for (const km of [70000, 696000, 6960000]) {
-			expect(starRadiusScene(km, { bodySize: v, rMax })).toBe(legacyStarRadiusScene(km, v, rMax));
-		}
+	it('stars are on the same map, so a supergiant no longer matches a red dwarf', () => {
+		const dwarf = starRadiusScene(100_181, { bodySize: 1, rMax: 30 });      // Wolf 359
+		const sol = starRadiusScene(696_000, { bodySize: 1, rMax: 30 });
+		const supergiant = starRadiusScene(626_000_000, { bodySize: 1, rMax: 30 });
+		expect(dwarf).toBeLessThan(sol);
+		expect(sol).toBeLessThan(supergiant);
+		// ...and the flat value every star used to draw at is no longer any of them.
+		expect(Math.abs(sol - STAR_RADIUS)).toBeGreaterThan(0.01);
 	});
 
-	it('ship lengths match at every dial stop', () => {
-		for (const v of DIALS) for (const rMax of RMAXES) for (const m of SHIP_M) {
-			expect(shipLengthScene(m, { bodySize: v, rMax })).toBe(legacyShipLenScene(m, v, rMax));
-		}
-	});
-
-	it('marker scale matches', () => {
-		for (const v of DIALS) expect(markerScale(v)).toBe(legacyMarkerScale(v));
-	});
-
-	it('readable bands match', () => {
-		for (const km of BODY_KM) expect(readableBodyRadius(km)).toBe(legacyBodyRadius(km));
-		for (const m of SHIP_M) expect(readableShipLength(m)).toBe(Math.min(0.7, Math.max(0.14, 0.16 + 0.1 * (Math.log10(m) - 1))));
+	it('never returns a non-positive span, however small the object', () => {
+		for (const m of [1e-6, 0.001, 0.1, 1, 20]) expect(readableSpanScene(m)).toBeGreaterThan(0);
 	});
 });
 
@@ -111,10 +118,44 @@ describe('the law defaults for nodes that authored nothing', () => {
 // that this is kind-blind - bands are by PHYSICAL size, with no construct cap, because "you could
 // construct a death star".
 //
-// These are SKIPPED because today's law fails them, by design and on purpose: the ship band
-// (0.14-0.7) overlaps the body band, so a 46 m frigate out-draws a 100 km moon at the readable end.
-// Un-skip in P4; they are the definition of done.
-describe.skip('R9 ordering (P4 acceptance - today\'s law fails these)', () => {
+// UN-SKIPPED IN P4/S2, 2026-08-27, and NOT ONE ASSERTION WAS TOUCHED - they are the owner's
+// decision written down, so the LAW was moved until they passed rather than the other way about.
+// They used to fail because the ship band (0.14-0.7) OVERLAPPED the body band, so a 46 m frigate
+// out-drew a 100 km moon at the readable end. There is one band now: `readableSpanScene`.
+describe('S2c: the construct dial is a RELATIVE offset, and zero is today', () => {
+	it('offset 0 is bit-identical to the single-dial law, at every dial stop', () => {
+		for (const v of DIALS) for (const rMax of RMAXES) for (const m of [20, 46, 1000, 22_000, 940_000]) {
+			expect(shipLengthScene(m, { bodySize: v, rMax, constructOffset: 0 }))
+				.toBe(shipLengthScene(m, { bodySize: v, rMax }));
+		}
+	});
+
+	it('a positive offset moves constructs toward readable and leaves BODIES alone', () => {
+		const base = { bodySize: 0.3, rMax: 30 };
+		const nudged = { ...base, constructOffset: 0.4 };
+		expect(shipLengthScene(46, nudged)).toBeGreaterThan(shipLengthScene(46, base));
+		// The body law never sees the offset - that is the whole of "bodies moves both, constructs
+		// only moves itself".
+		expect(bodyRadiusScene(1737, true, nudged)).toBe(bodyRadiusScene(1737, true, base));
+		expect(starRadiusScene(696_000, nudged)).toBe(starRadiusScene(696_000, base));
+	});
+
+	it('the offset cannot push the dial outside its own range', () => {
+		expect(constructDial({ bodySize: 0.9, rMax: 30, constructOffset: 0.5 })).toBe(1);
+		expect(constructDial({ bodySize: 0.1, rMax: 30, constructOffset: -0.5 })).toBe(0);
+	});
+
+	it('R9 is a property of the LAW, so it is asserted at offset 0 and not against a departure', () => {
+		// Sliding constructs apart is a user's visible choice, not the engine lying - so a non-zero
+		// offset is ALLOWED to break the ordering, and this pins that it is the offset doing it.
+		const ctx = { bodySize: 0.5, rMax: 30, constructOffset: 0.5 };
+		expect(shipLengthScene(46, ctx)).toBeGreaterThan(bodyRadiusScene(100, true, ctx) * 2);
+		const honest = { bodySize: 0.5, rMax: 30 };
+		expect(shipLengthScene(46, honest)).toBeLessThan(bodyRadiusScene(100, true, honest) * 2);
+	});
+});
+
+describe('R9 ordering (P4 acceptance - now the law)', () => {
 	const renderedSize = (kind: 'body' | 'ship', size: number, ctx: { bodySize: number; rMax: number }) =>
 		kind === 'body' ? bodyRadiusScene(size, true, ctx) * 2 : shipLengthScene(size, ctx);
 

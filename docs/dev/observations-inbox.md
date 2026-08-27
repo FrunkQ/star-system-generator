@@ -1420,6 +1420,78 @@ a topic letter, which is the rule going forward, so `(closed)` finding 311's com
    G11's toroid mechanism (absent spin reads as ZERO, not infinite — the toroids need a different
    explanation; G11's audit should chase it).
 
+## P4 (THE SCALE LAW) - BUILT AND HELD 2026-08-27, branch `wt/p4-scalelaw`
+
+**NOT MERGED TO BETA. P4 has sat unshipped since 2026-08-05 for one reason - it moves saved presets'
+mid-dial looks and the owner signs off /scale-reference BEFORE it lands - and that reason is
+unchanged. What follows is what to look at.
+
+**WHAT SHIPPED TO BETA (v3.0.148, safe, docs only): the design doc was STALE and was sending readers
+to rebuild something already done.** Its STATUS line and its P4 entry both said P4 = "S2 + S2b's
+single floor + S2c's two dials". S2b shipped months ago: `NUMERICAL_FLOOR` is 1e-10 and is applied by
+`bodyRadiusScene`, the star branch AND `shipLengthScene` alike (`scaleLaw.ts` 54/104/119/161), it
+landed in commit `fd03ef1a`, and its acceptance block is live and passing. Verified in the code, not
+taken on trust. Corrected in both places.
+
+**WHAT IS BUILT AND HELD ON THE BRANCH: S2 (the size law) and S2c (the two dials), in that order,
+which the design insists on and which turned out to matter.**
+
+**S2.** The two readable bands are gone; there is ONE kind-blind span map of physical size
+(`readableSpanScene`). Piecewise-linear in log10(metres): above 2000 km across the slope is
+0.2/decade, **which IS the shipped body curve**, so every body 1000 km in radius or larger renders
+BIT-IDENTICALLY to before; below it, the slope shallows to 0.044/decade so eleven decades of ships
+and boulders fit underneath. **R9 now holds by construction rather than by tuning**: the true term is
+proportional to physical span, the readable term is monotone in it, and `dialBlend` is geometric, so
+the product is monotone at every dial stop. Engine-map RENDER-S41.
+
+**THE ACCEPTANCE, EXACTLY AS IT WAS WRITTEN.** `describe.skip('R9 ordering')` is un-skipped and
+GREEN, and **not one assertion was edited** - the law was moved until they passed, which is the only
+honest direction. The P1 equivalence column was deleted in the same commit, which is precisely what
+its own header instructed for this phase. Suite 3,257 green; build green.
+
+**SEEN IN THE BROWSER, which is this item's whole verdict: /scale-reference now reads "NO ORDERING
+VIOLATIONS" for the first time.** It read "4 ordering violations" on beta minutes earlier, with the
+construct rows flagged red. Every column is non-increasing down the table at every dial position.
+
+**S2c.** The construct dial is a RELATIVE OFFSET on the master (`clamp(bodySize + offset, 0, 1)`),
+read only by `shipLengthScene`. **Zero is today's look exactly**, pinned by a test that requires
+offset 0 to be bit-identical to the single-dial law at every dial stop, so no saved preset moves.
+Verified on the page at +0.30: every CONSTRUCT row rises while every BODY row stands still, which is
+the owner's "bodies moves both, constructs only moves itself" exactly. Engine-map RENDER-S42, which
+also records the invariant that is easiest to get wrong later: **R9 is judged at offset 0 and nowhere
+else** - the page computes its verdict at zero however the slider is set, because a departure the
+user chooses is not a fault to report back at them.
+
+**WHAT DID MOVE, so nobody reports it as a regression.** Bodies under 1000 km radius shrink (a 100 km
+moon 0.28 -> 0.236 span). Constructs shrink a lot at the readable end (a 46 m corvette 0.226 ->
+0.076) - that is the point, and S3 predicted it. **And STARS are on the map now instead of a flat
+`STAR_RADIUS`**: Sol 1.0 -> 0.849, a red dwarf 1.0 -> 0.68, a supergiant 1.0 -> 1.44. Before this a
+red dwarf and a red supergiant were the same size on screen, which is the same dishonesty S2 removed
+between ships and bodies, one band further up. **This is the biggest visual change in the batch and
+the one most worth an eye.**
+
+**WHAT IS NOT DONE, and must not be read as done.** S2c's LAW is complete and the holo controller
+takes `setConstructOffset`, but **there is no GM control and no persistence yet** - the offset is
+settable on /scale-reference only. That is deliberate: the design note says the dial "rides
+`starmap`" as a per-CAMPAIGN setting, but its master `bodySize` rides the PRESET
+(`PlayerPresetEditor.svelte`, `draft.bodySize`). **Those are two different homes for two halves of
+one control**, and picking one silently is how a setting ends up half-saved. Owner's call; it is a
+small wiring job once decided.
+
+**THE THIRTY-SECOND EYEBALL LIST.** (1) `/scale-reference` on the branch: the banner should read NO
+ORDERING VIOLATIONS, and no cell should be flagged, at all four system extents. (2) Slide the
+Construct dial: construct rows move, body rows do not, and the banner never changes. (3) **The one
+that matters most: open an ordinary system in 3D at a MID dial position** (say 0.5) and judge
+whether it reads better or worse - ships are much smaller relative to worlds now, and stars are
+smaller relative to giants. (4) A red dwarf system and a giant system side by side: the stars should
+no longer be the same size. (5) The readable default (dial 1) on a normal system should look
+unchanged except that ships have shrunk.
+
+**WHAT I WOULD DO NEXT:** settle where the construct dial lives (preset or starmap), wire the GM
+control beside the body-size slider, and merge both this and [[A78]] together - they touch
+`scaleLaw.ts` in different places and neither disagrees with the other about what `rMax` means, but
+they are both changes to the same screen and are best eyeballed in one pass.
+
 ## Documentation debt
 
 One line per shipped change that a reader needs to know, appended as you go. Sweep periodically into
@@ -1431,6 +1503,8 @@ that claims to SHOW THE WORKING, so the worst to leave wrong), `docs/tags-guide.
 **SWEPT TO ZERO at v3.0.0-rc.10, 2026-08-21 — the V3 documentation pass.** Every line that stood
 here has been written up or struck with a reason. The record of that sweep is below; the list itself
 is empty, and the next line appended goes straight under this paragraph.
+
+- **P4/S2 + S2c (BUILT AND HELD, branch `wt/p4-scalelaw`): READER-FACING DEBT IS OWED THE MOMENT IT MERGES, and it is on the surface that claims to show the working.** `/scale-reference` was updated in the same batch (its verdict prose described the OLD law and pointed at a `describe.skip` that no longer exists), so that one is PAID. **What is not:** `docs/dev/engine-map.md` RENDER-S11 is named on the page as the rule for this law and should be re-read against S41/S42 before merge; and nothing user-facing anywhere explains that a star's drawn size now depends on how big the star is - which is a visible change to every system and exactly the kind of thing a GM notices and reports as a bug. A sentence in `GettingStarted.md` where the body-size dial is explained would cover it. **Deliberately NOT written yet**, because if the owner rejects the star change on sight the sentence would be wrong as well as premature.
 
 - **[[G51]]: THE DEBT IS NOW REAL AND PARTLY OWED. Phase 1 has shipped and it FALSIFIES a sentence on the surface that claims to show the working.** `src/routes/physics/+page.svelte`, in the "known fudges" list under the drawn-transit-route entry, explains the compact route by its CAUSE: *"a ship under way rewrites what players receive about twice a second, and the whole snapshot is re-sent each time, so the full path would be thousands of numbers on the busiest channel in the app."* **That is no longer true** - the snapshot is not re-sent, and the compact route has stopped being a bandwidth apology and become the ship's actual definition of where it is, evaluated at both ends. The conclusion survives, the REASON has changed, so the paragraph wants rewriting rather than appending to. **NOT DONE IN THIS BATCH, deliberately: the second half of that same paragraph is gated on Q6** - *"a player scrubbing their own clock sees orbits move but transit traffic hold its last GM-reported position"* is STILL TRUE after Phase 1 (the player now computes that position instead of being sent it) and becomes false the moment Q6 is answered yes. Rewriting half a paragraph now and the other half later is how a surface ends up self-contradictory, so it is one edit once Q6 lands. `docs/dev/player-clock-ownership-design.md` carries the same rule and takes the same edit. **Nothing else is owed:** `tags-guide.md`, `classification-and-tags.md` and `physicsTrace` say nothing about how a ship's position travels, and the compact route's own accuracy claim (a declared re-estimate, 0.2% of the route's extent) is unchanged and still correct.
 

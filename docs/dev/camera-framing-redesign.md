@@ -6,7 +6,10 @@ was not and sent a reader off to re-fix it.** `NUMERICAL_FLOOR` is 1e-10 and is 
 `bodyRadiusScene`, the star branch AND `shipLengthScene` alike (`rendering/scaleLaw.ts` lines 54,
 104, 119, 161); it landed in commit `fd03ef1a`; and its acceptance block
 (`describe('S2b: one numerical floor across kinds')`, `scaleLaw.spec.ts`) is live and passing.
-WHAT REMAINS OF P4 IS S2 (the size law) AND S2c (the two dials) - see section 7. P4 is gated on
+**S2 AND S2c ARE NOW BUILT AND HELD (2026-08-27, branch `wt/p4-scalelaw`) - NOT MERGED.** The R9
+acceptance block in `scaleLaw.spec.ts` is un-skipped and GREEN with not one assertion edited, and
+/scale-reference reads "No ordering violations" for the first time. **P4 IS THEREFORE COMPLETE IN
+CODE AND WAITING ONLY ON THE OWNER'S EYE**, which is what this gate always was. P4 is gated on
 the owner's eye: it moves saved presets' mid-dial looks, so /scale-reference is signed off BEFORE
 it ships.
 Companion reading before touching any of this: RENDER-S17 through S21 in engine-map.md, which are
