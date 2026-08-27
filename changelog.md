@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.130 - 27th Aug 2026
+
+- Board only. A rule for when a player view may run its own clock: it may whenever everything on screen can be worked out from the time alone, and must follow the GM whenever something is moving in a way only the GM can know.
+
 ## v3.0.129 - 27th Aug 2026
 
 - A player view no longer rebuilds the entire system every time a ship moves. Watching a ship fly while the clock ran could fill memory until the tab died, taking the GM window with it, because each update tore down and rebuilt every planet, moon and orbit in order to draw the ship a little further along. A ship that has only moved now just moves. Anything else still rebuilds, exactly as before.
