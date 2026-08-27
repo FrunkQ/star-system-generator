@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## 3.0.110 - 27th Aug 2026
+
+- Board only. A measurement worth recording against the cloud-threshold item: our own Saturn currently has no ammonia deck. Its authored ammonia sits just under the level the model needs to condense one, so the planet is drawn very nearly featureless, and Saturn's real clouds are ammonia. Jupiter clears the same threshold by less than half again. That points at where the threshold sits rather than at how sharply it is crossed.
+
 ## 3.0.109 - 27th Aug 2026
 
 - Board only. The gas-giant banding item is closed out with what was actually built and what was not. Two findings worth carrying: the atmosphere editor works in percentages and spreads any edit across every other gas, so measuring it in raw fractions looks at the wrong axis entirely and shows no fault at all; and a cloud deck does not fade into existence, it arrives about twenty times past the point where a cloud stops looking thicker, so no amount of fading in the renderer can smooth the moment one appears. Also captured: the composition sliders cannot reach the values most worlds actually use, and the box beside them quietly rounds a trace gas to nothing if you click through it.
