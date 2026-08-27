@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.116 - 27th Aug 2026
+
+- Saturn is no longer drawn as a small Jupiter. Its banding was being set almost entirely by the planet's mass, because the quantity that should have separated the two - how much of the sky the upper cloud deck covers - was being rounded up to "all of it" for both. Jupiter's ammonia clouds cover about seven eighths of its sky and Saturn's about half, and that difference is most of why one is stripy and the other is a pale ball. Saturn now reads at a bit over a third of Jupiter's contrast instead of three quarters, and Uranus and Neptune stay smooth.
+
 ## v3.0.115 - 27th Aug 2026
 
 - How much of a giant's methane you can see is now decided by the clouds above it rather than guessed from its temperature. The old rule had three fixed rungs, and giving Saturn its ammonia clouds back nudged it a few degrees cooler and straight across one of them, which turned it grey. Methane condenses colder than anything else, so where a world has methane clouds they sit on top and nothing hides them - which is why Uranus and Neptune are unchanged, and why Jupiter and Saturn are gold rather than green. Both now read warmer and closer to life, and Saturn keeps the bands it regained, at a little over half Jupiter's strength.
