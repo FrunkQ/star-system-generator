@@ -2332,6 +2332,51 @@ BLAST: the PLANET side stops at ~20 M_Jup (6,400 M_E), the ceiling core accretio
 Heavier companions are `star/L,T,Y` however they are filed. Do not widen it back to the hydrogen
 limit: that would make the planet side claim objects that cannot have formed as planets.
 
+### DATA-R26 A DERIVED READING NEVER JOINS A HOST FROM ONE SOURCE TO A NUMBER FROM ANOTHER
+WHERE: `construct-logic.calculateFullConstructSpecs` (`orbit_string`), and any derivation that takes
+an entity from its caller and a measurement off a node.
+RULE: before combining them, CHECK THEY DESCRIBE EACH OTHER. A semi-major axis is an altitude above
+the host it was measured from and above no other; if `orbit.hostId` is not the host being named, the
+altitude is unknown and must be left unclaimed rather than computed.
+WHY: `altitudeKm = a_AU * AU_KM - hostBody.radiusKm` took the host from the panel's resolver (Earth)
+and the axis from the ship's stale record (3.05 AU, heliocentric). The subtraction gave ~456 million
+km, which falls past every band, so the panel read **"Earth: Far Orbit"** with complete confidence -
+Earth's NAME beside the radius of the Sun orbit the ship left months earlier. Neither half looked
+wrong on its own, which is why it survived so long. B97; pinned in `construct-logic.spec.ts` by
+reinstating the join and requiring that exact string back.
+BLAST: the star branch one line above blends the same two sources the other way round - it prints
+`a_AU` raw, so a ship parked 6,536 km above Earth reads "Sol: 0.00 AU" to anything that asks against
+the star. One guard covers both; do not fix only the branch you were looking at.
+BLAST: the same function was handed a DIFFERENT host by each of its four callers (the ship panel
+resolved it, the transit planner read `parentId` raw, two others passed null). That is the visible
+"Callisto: High Orbit" against "Jupiter: High Orbit" for one ship at one moment. One resolver,
+every caller - and note that passing null is fine for a caller that only reads fuel and thrust.
+
+### DATA-R27 A REPAIR KEYED TO A CLOCK NOTHING MOVES NEVER RUNS - AND AN UNCOUNTED REPAIR HIDES ITS CAUSE
+WHERE: `transit/scheduler.reconcileConstructArrival`, called from `SystemView`'s display-time tick.
+RULE: key a self-healing pass to the clock the app actually advances - DISPLAY time - and make the
+repair COUNT ITSELF on the record it repairs. Idempotence is what makes the count mean something: a
+heal that fires every tick reads in the thousands within a minute and says nothing.
+WHY: the reconcile existed, was correct, and had never once run in ordinary play. It read the
+ACTUAL/master clock, and `temporal.masterTimeSec` is written by exactly one control in Settings -
+playing or scrubbing moves `displayTimeSec` and never touches it. So every ship that had ever arrived
+anywhere was still carrying the orbit it departed from, and that ONE stale record produced four
+unrelated-looking symptoms: a five-year orbital period beside a low parking orbit, a picker and a
+panel naming different hosts, a ship frozen in space on every player view (B96), and an apparent need
+to lock players to the GM's clock for any of it to look right. Owner, 2026-08-27: *"Display Time is
+our main 't' for player/GM visualisation"* and *"record how many times you do this on the ship - if
+it happens loads of times we still have outstanding issues"*. `placementHealCount` is that record:
+0 or absent is healthy, a climbing count means something upstream is still writing ships wrong.
+BLAST: the cost of display-keying is real and was accepted deliberately - scrub forward past an
+arrival and it is committed, so a later scrub back to before the departure draws the ship at its
+destination. The journeys still carry the truth for every moment in between.
+BLAST: re-parenting is not enough on its own. `computeWorldPositions3D` prefers a stamped
+`vector_position_au` OVER the orbit, so a healed ship still hung motionless at the point it stopped -
+exactly 0 km per hour. The heal must drop the vector too, but ONLY for a parked ship: a drifter's
+vector is the honest answer and a ship under way is being placed from its journey.
+BLAST: the run-once autopilot backstop and the flown-past trim in the same tick still key off ACTUAL
+time, and should - they commit the campaign forward. Only the placement repair moved.
+
 ### DATA-R14 EDIT A RULE PACK AS TEXT
 WHERE: `static/rulepacks/**/*.json`.
 RULE: load-and-re-dump rewrites the whole file to change one key. It reflows every line, so the diff

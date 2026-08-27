@@ -645,6 +645,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   vector_epoch_ms?: number;
   flight_state?: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked';
   
+  // HOW OFTEN THIS SHIP HAS BEEN FOUND CARRYING A PLACEMENT ITS OWN JOURNEYS DISAGREE WITH, and
+  // repaired on the spot by `reconcileConstructArrival`. The repair is idempotent, so a healthy ship
+  // reads 0 or has no counter at all; a count that CLIMBS means something upstream is still writing
+  // the ship wrong and the underlying fault ([[B97]]) is still live. Diagnostic only - nothing reads
+  // it to make a decision, and it exists so a user's saved file can answer the question directly.
+  placementHealCount?: number;
+
   // Transit Planning Persistence
   draft_transit_plan?: any[]; // Holds TransitPlan[] for resuming sessions
   scheduled_journeys?: ScheduledJourneyLog[];

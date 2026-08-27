@@ -206,31 +206,48 @@ export function resolveConstructCurrentHostId(
 }
 
 /**
- * Self-heal a construct's stale persistent placement. After a ship transits to a body,
- * its parentId/orbit/placement can still describe its *authored* home (e.g. a heliocentric
- * orbit around the star) - which then blocks landing and corrupts future-transit origins.
- * Once the AUTHORITATIVE (master/actual) clock has passed a captured (non-flyby) arrival,
- * rewrite parentId + orbit (a circular parking orbit around the real host) + placement to
- * match. Keyed to actual time (NOT display time) so previewing/scrubbing never mutates
- * saved state, and idempotent so it's a no-op once healed. The journey log is left intact.
+ * HEAL A SHIP THAT IS STILL CARRYING THE ORBIT IT DEPARTED FROM - AND COUNT THE REPAIR.
  *
- * Returns the same reference when there's nothing to heal (no captured arrival yet, or
- * already reconciled) so callers can cheaply detect a change.
+ * After a ship transits to a body, its parentId/orbit/placement can still describe its *authored*
+ * home (a heliocentric orbit around the star, say). That one stale record is the source of four
+ * separate symptoms - a panel reading "Earth: Far Orbit" beside an orbital period of 5.33 YEARS, a
+ * picker that says Sol while the panel says Earth, a ship frozen in space on every player view, and
+ * the need to lock players to the GM's clock for any of it to look right ([[B96]], [[B97]]).
+ *
+ * So: once a captured (non-flyby) arrival has passed, rewrite parentId + orbit (a circular parking
+ * orbit around the real host) + placement to match, and drop the stamped vector that would otherwise
+ * pin the ship to the spot it stopped at. The journey log is left intact. Idempotent - a no-op once
+ * healed, returning the same reference so callers can cheaply detect a change.
+ *
+ * KEYED TO DISPLAY TIME, which is a deliberate reversal. Owner, 2026-08-27: *"Actual Time we ignore
+ * for now - that is a GM checkpoint to advance his campaign... Display Time is our main 't' for
+ * player/GM visualisation."* It used to key off actual time, on the reasoning that scrubbing must not
+ * mutate saved state - but `masterTimeSec` is written by exactly one control in Settings, so in
+ * ordinary play the heal NEVER FIRED and a stale ship was the normal case rather than the edge one.
+ * The cost of the reversal is honest and small: scrub forward past an arrival and it is committed, so
+ * a later scrub back to before the departure draws the ship at its destination. The journeys still
+ * carry the truth for every moment in between.
+ *
+ * AND IT IS INSTRUMENTED. `placementHealCount` counts the repairs. Owner: *"Record how many times you
+ * do this on the ship - a useful debug for us if we get user files. If it happens loads of times we
+ * still have outstanding issues; once fixed it should not be >0 (or not populated)."* Because the heal
+ * is idempotent the count can only climb when something UPSTREAM writes the ship wrong again - which
+ * makes it a direct read on whether the real fault is still live.
  */
 export function reconcileConstructArrival(
   system: System,
   construct: CelestialBody,
-  actualTimeMs: number
+  atTimeMs: number
 ): CelestialBody {
   if (construct.kind !== 'construct') return construct;
   const logs = Array.isArray(construct.scheduled_journeys) ? construct.scheduled_journeys : [];
 
-  // Latest captured (non-flyby) arrival whose end has passed in actual time.
+  // Latest captured (non-flyby) arrival whose end has passed.
   let best: { endMs: number; plan: TransitPlan } | null = null;
   for (const log of logs) {
     if (log.status === 'cancelled') continue;
     const bounds = getJourneyBounds(log.plans);
-    if (!bounds || actualTimeMs < bounds.endMs) continue;
+    if (!bounds || atTimeMs < bounds.endMs) continue;
     const lastPlan = log.plans[log.plans.length - 1];
     if (!lastPlan) continue;
     const isFlyby =
@@ -260,10 +277,28 @@ export function reconcileConstructArrival(
   const aM = a_AU * AU_M;
   const n_rad_per_s = hostMu > 0 && aM > 0 ? Math.sqrt(hostMu / (aM * aM * aM)) : undefined;
 
+  // THE STAMPED VECTOR HAS TO GO WITH THE STALE ORBIT, or the repair is invisible. It is the GM's
+  // frozen answer for "where is this ship right now", and `computeWorldPositions3D` prefers it OVER
+  // the orbit - so a re-parented ship still hung motionless at the spot it stopped, which is the
+  // visible half of [[B96]]. But only for a ship that is PARKED: a drifter's vector is the honest
+  // answer (it must not snap back to an orbit it abandoned), and a ship under way is being placed by
+  // the GM's tick from its journey. SystemView clears the vector on exactly this condition one step
+  // earlier; matching it here is what lets the heal be correct wherever else it is called from.
+  const parked = construct.flight_state !== 'Transit' && construct.flight_state !== 'Deep Space';
+  const parkedFields = parked
+    ? {
+        vector_position_au: undefined,
+        vector_epoch_ms: undefined,
+        flight_state: placementKey === 'surface' ? 'Landed' : 'Orbiting'
+      }
+    : {};
+
   return {
     ...construct,
     parentId: hostId,
     placement: label,
+    ...parkedFields,
+    placementHealCount: (construct.placementHealCount ?? 0) + 1,
     orbit: {
       ...(construct.orbit || {}),
       hostId,

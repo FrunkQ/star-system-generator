@@ -1746,8 +1746,9 @@
       if (!sys) return null;
       let changed = false;
 
-      // Reconciliation is keyed to the AUTHORITATIVE (master/actual) clock, not the display
-      // time being previewed - so scrubbing the display never rewrites saved placement.
+      // The actual/master clock is the GM's campaign checkpoint. It still drives the autopilot's
+      // run-once backstop and the flown-past trim below - but NOT arrival reconciliation, which now
+      // reads the display clock (see reconcileConstructArrival, and [[B97]]).
       const actualMs = getActualTimeMs();
 
       // C1 — a construct that has coasted BEYOND the system edge has left the local system. The edge is a
@@ -1866,9 +1867,11 @@
           nodeChanged = true;
         }
 
-        // Self-heal stale legacy placement: once master time is past a captured arrival,
-        // rewrite parentId/orbit/placement to the real host (idempotent no-op once healed).
-        const reconciled = reconcileConstructArrival(sys, nextNode, actualMs);
+        // Heal a ship still carrying the orbit it departed from, judged against DISPLAY time - the
+        // clock everyone is actually looking at. Idempotent, so this is a no-op once healed, and it
+        // counts its own repairs on the node (`placementHealCount`) so a saved file says whether
+        // anything upstream is still writing ships wrong.
+        const reconciled = reconcileConstructArrival(sys, nextNode, timeMs);
         if (reconciled !== nextNode) {
           nextNode = reconciled;
           nodeChanged = true;

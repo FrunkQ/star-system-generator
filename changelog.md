@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.111 - 27th Aug 2026
+
+- A ship that had flown somewhere is now repaired the moment it is looked at, rather than waiting for a checkpoint almost nobody ever reaches. Ships kept the orbit they set off from, which is why one could read "Earth: Far Orbit" beside an orbital period of five years, show as orbiting Earth on its own panel and the Sun in the picker at the same time, and hang motionless in space on every player view. The repair already existed; it was keyed to a clock that only one control in Settings ever moves, so in ordinary play it never ran. It now follows the clock everyone is actually looking at.
+- Each repair is counted on the ship itself. Nothing reads it or acts on it - it is there so a saved file can tell us whether ships are still being written wrong somewhere upstream. A healthy ship shows no counter at all.
+- An orbit is no longer described using a distance measured from a different world. "Earth: Far Orbit" was Earth's name joined to the radius of the Sun orbit the ship had left months earlier - a number so large it fell past every band. Where the two disagree the panel now says where the ship is and declines to guess how high.
+- The transit planner and the ship panel now work out a ship's host the same way, so they can no longer name two different worlds for the same ship at the same moment.
+
 ## 3.0.110 - 27th Aug 2026
 
 - Board only. A measurement worth recording against the cloud-threshold item: our own Saturn currently has no ammonia deck. Its authored ammonia sits just under the level the model needs to condense one, so the planet is drawn very nearly featureless, and Saturn's real clouds are ammonia. Jupiter clears the same threshold by less than half again. That points at where the threshold sits rather than at how sharply it is crossed.

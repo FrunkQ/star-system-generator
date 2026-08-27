@@ -3,6 +3,7 @@
   import type { System, CelestialBody, ID } from '$lib/types';
   import type { TransitPlan, TransitMode, Vector2, StateVector } from '$lib/transit/types';
   import { calculateTransitPlan } from '$lib/transit/calculator';
+  import { resolveConstructCurrentHostId } from '$lib/transit/scheduler';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { getOrbitOptions } from '$lib/physics/orbits';
   import { lagrangePlacementId } from '$lib/physics/lagrange';
@@ -330,7 +331,13 @@
           if (shipNode && shipNode.kind === 'construct') {
              const engineDefs = rulePack.engineDefinitions?.entries || [];
              const fuelDefs = rulePack.fuelDefinitions?.entries || [];
-             const host = shipNode.parentId ? system.nodes.find(n => n.id === shipNode.parentId) : null;
+             // ONE RESOLVER, EVERY CALLER. This read `shipNode.parentId` directly, while the ship
+             // panel next to it asked `resolveConstructCurrentHostId` - so the two named different
+             // hosts for the same ship at the same moment ("Callisto: High Orbit" against "Jupiter:
+             // High Orbit"), and after a transit the raw parentId was simply the world it left
+             // ([[B97]]). A construct's host is where its journeys have put it at the display time.
+             const hostId = resolveConstructCurrentHostId(shipNode as CelestialBody, currentTime);
+             const host = hostId ? system.nodes.find(n => n.id === hostId) : null;
              
              // @ts-ignore
              currentConstructSpecs = calculateFullConstructSpecs(shipNode, engineDefs, fuelDefs, host);

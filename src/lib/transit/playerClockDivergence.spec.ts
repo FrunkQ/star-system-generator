@@ -14,15 +14,21 @@
 // them correctly. It is not harmless for a ship whose position the player cannot recompute: the ship
 // stands still while the world it is parked at moves on.
 //
-// This is a TRIPWIRE, not a specification of correct behaviour. It pins the size of a fault so it
-// cannot change unnoticed, in the shape `arrivalSnap.spec.ts` used for B92. When B96 is fixed - by
-// publishing a compact PARKED descriptor beside the other two, per
-// `docs/dev/player-clock-ownership-design.md` - these assertions should be inverted rather than
-// deleted: the player should then move, and match the GM.
+// FIXED, 2026-08-27, and NOT by the route this note expected. No compact parked descriptor was
+// needed. The ship was frozen because its stored record still described the heliocentric orbit it
+// departed from, while a stamped `vector_position_au` - which `computeWorldPositions3D` prefers OVER
+// the orbit - pinned it to the instant it stopped. Repairing the record and dropping that vector
+// makes a parked ship an ordinary Keplerian orbiter, which any clock draws correctly. See B97 and
+// DATA-R27.
+//
+// So, as the note asked, the assertions are INVERTED rather than deleted, and both halves are kept:
+// the first test measures the fault on an UNHEALED node (which is what every save contained until
+// today), and the second runs the same node through the repair the app now performs and requires the
+// player to move, to match the GM, and to still be right on a clock a year adrift.
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { sampleJourneyKinematicsAtTime } from './scheduler';
+import { sampleJourneyKinematicsAtTime, reconcileConstructArrival } from './scheduler';
 import { computeWorldPositions3D } from '../physics/worldPositions';
 import { compactRoute } from '../constructs/shipRoute';
 
@@ -92,7 +98,7 @@ function slim(n: any) {
 
 const km = (a: any, b: any) => Math.hypot(a.x - b.x, a.y - b.y, (a.z ?? 0) - (b.z ?? 0)) * AU_KM;
 
-describe('B96 — a parked ship is frozen on a player view (TRIPWIRE)', () => {
+describe('B96 - the fault, on a node that was never repaired (the state of every save until today)', () => {
   it('the GM sees it orbiting and the player sees it stopped', () => {
     const T = 1843648394000;            // the vector's own epoch — "now" on the GM's clock
     const HOUR = 3600 * 1000;
@@ -157,5 +163,48 @@ describe('B96 — a parked ship is frozen on a player view (TRIPWIRE)', () => {
     const earthAt = (t: number) => computeWorldPositions3D(sys, t)!.get('solar-system-earth')!;
     expect(km(p0, earthAt(T))).toBeLessThan(20_000);
     expect(km(p0, earthAt(T - 86400000))).toBeGreaterThan(1_000_000);
+  });
+});
+
+describe('B96 - inverted: the repaired node moves, matches the GM, and needs no clock lock', () => {
+  it('a healed ship orbits for a player holding nothing but the node', () => {
+    const T = 1843648394000;
+    const HOUR = 3600 * 1000;
+    const sys = systemWithRoci();
+    const roci = sys.nodes.find((n: any) => n.id === 'sol-rocinante');
+
+    // Exactly what SystemView's display-time tick now does to it.
+    const healed: any = reconcileConstructArrival(sys, roci, T);
+    expect(healed).not.toBe(roci);
+    sys.nodes[sys.nodes.findIndex((n: any) => n.id === 'sol-rocinante')] = healed;
+
+    const psys = JSON.parse(JSON.stringify(sys));
+    const i = psys.nodes.findIndex((n: any) => n.id === 'sol-rocinante');
+    psys.nodes[i] = slim(psys.nodes[i]);
+    console.log('healed player node keeps: vector=', !!psys.nodes[i].vector_position_au,
+                ' journeys=', !!psys.nodes[i].scheduled_journeys, ' parentId=', psys.nodes[i].parentId);
+
+    const p0 = computeWorldPositions3D(psys, T)!.get('sol-rocinante')!;
+    const p1 = computeWorldPositions3D(psys, T + HOUR)!.get('sol-rocinante')!;
+    console.log('PLR moved:', km(p0, p1).toFixed(0), 'km in an hour (was 0.0)');
+
+    // THE INVERSION. Where the fault pinned `< 1 km`, the fix requires real orbital motion.
+    expect(km(p0, p1)).toBeGreaterThan(10_000);
+
+    // ...and it agrees with the GM, who is still reading the journeys.
+    const g0 = sampleJourneyKinematicsAtTime(sys, healed, T);
+    expect(g0).toBeTruthy();
+    console.log('GM vs PLR:', km(g0!.position_au, p0).toFixed(0), 'km');
+    expect(km(g0!.position_au, p0)).toBeLessThan(20_000);
+
+    // THE ONE THAT RETIRES THE CLOCK LOCK AS A MATTER OF CORRECTNESS. The fault grew to millions of
+    // km after a single day of drift; a Keplerian orbiter is right at any time at all.
+    const earthAt = (t: number) => computeWorldPositions3D(psys, t)!.get('solar-system-earth')!;
+    const shipAt = (t: number) => computeWorldPositions3D(psys, t)!.get('sol-rocinante')!;
+    for (const lagDays of [1, 30, 365]) {
+      const t = T - lagDays * 86400000;
+      console.log(`LAG ${String(lagDays).padStart(3)}d : healed ship -> Earth = ${km(shipAt(t), earthAt(t)).toFixed(0)} km`);
+      expect(km(shipAt(t), earthAt(t))).toBeLessThan(20_000);
+    }
   });
 });

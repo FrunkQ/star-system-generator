@@ -15,10 +15,12 @@
 //   3. the body picker says 'orbits Sol' while the panel says 'Earth: Far Orbit'
 //   4. players must be locked to the GM's clock for a ship to look right
 //
-// AND WHY IT IS THE NORMAL STATE RATHER THAN AN EDGE CASE: reconcile keys off ACTUAL time
+// AND WHY IT USED TO BE THE NORMAL STATE RATHER THAN AN EDGE CASE: reconcile keyed off ACTUAL time
 // (`masterTimeSec`), which is written ONLY by the Settings time-shift control. Playing or scrubbing
-// the clock moves `displayTimeSec` and never touches it - so in ordinary play the heal never fires.
-// That is the open question on [[G49]], not something this spec asserts either way.
+// the clock moves `displayTimeSec` and never touches it - so in ordinary play the heal never fired.
+// SETTLED by the owner on 2026-08-27: *"Display Time is our main 't' for player/GM visualisation."*
+// The heal now reads the display clock, and the second half of this file is the gate on that - each
+// fault measured by reinstating it, so the assertions cannot pass for the wrong reason.
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -148,5 +150,121 @@ describe('a healed arrival is an ordinary orbiter, and the player can follow it 
     // THE ONE THAT MATTERS: a free clock a YEAR adrift still finds it in orbit. A Keplerian orbiter
     // is correct at any time, so the clock lock stops being a matter of correctness at all.
     expect(km(pf, ef)).toBeLessThan(20_000);
+  });
+});
+
+// ============================================================================================
+// THE GATE. Everything above measures what healing BUYS. What follows measures that it actually
+// HAPPENS in ordinary play, and each check is paired with the fault deliberately put back - because
+// an assertion that passes whether or not the fix is present is not a gate.
+// ============================================================================================
+
+// The two clocks, as they stood in the owner's own save. `masterTimeSec` had never been advanced past
+// the arrival, because only one control in Settings ever writes it.
+const ACTUAL_STUCK = ARRIVAL - 30 * 86400000;   // where the campaign checkpoint was left
+const MID_FLIGHT = ARRIVAL - 60 * 86400000;     // still under way, on any clock
+
+describe('the heal is judged on the clock everyone is looking at', () => {
+  it('fires at a DISPLAY time past the arrival', () => {
+    const s = sys();
+    const roci = s.nodes.find((n: any) => n.id === 'sol-rocinante');
+    expect(reconcileConstructArrival(s, roci, AFTER).parentId).toBe('solar-system-earth');
+  });
+
+  it('...and REINSTATING THE FAULT - the actual clock, stuck where Settings left it - heals nothing', () => {
+    // This is the old behaviour, verbatim, and it is the whole of [[B97]]: the repair existed and
+    // never ran. If this ever starts healing, the test above has stopped proving anything.
+    const s = sys();
+    const roci = s.nodes.find((n: any) => n.id === 'sol-rocinante');
+    const notHealed = reconcileConstructArrival(s, roci, ACTUAL_STUCK);
+    expect(notHealed).toBe(roci);
+    expect(notHealed.parentId).toBe('solar-system-sun');
+    expect(notHealed.orbit.elements.a_AU).toBe(3.05);
+  });
+
+  it('and it still refuses to re-park a ship that has not got there yet', () => {
+    // The guard that keeps display time from becoming a licence to rewrite anything: mid-flight is
+    // mid-flight on whichever clock you ask.
+    const s = sys();
+    const roci = s.nodes.find((n: any) => n.id === 'sol-rocinante');
+    expect(reconcileConstructArrival(s, roci, MID_FLIGHT)).toBe(roci);
+  });
+});
+
+describe('the repair counts itself, and the count is the diagnostic', () => {
+  it('an untouched ship carries no counter at all', () => {
+    const roci = sys().nodes.find((n: any) => n.id === 'sol-rocinante');
+    expect(roci.placementHealCount).toBeUndefined();
+  });
+
+  it('one repair reads 1, and repeating it does NOT climb', () => {
+    // Idempotence is what makes the number mean something. If the heal counted every tick it would
+    // read in the thousands within a minute and say nothing about whether the fault is still live.
+    const s = sys();
+    const roci = s.nodes.find((n: any) => n.id === 'sol-rocinante');
+    const once = reconcileConstructArrival(s, roci, AFTER);
+    expect(once.placementHealCount).toBe(1);
+
+    const s2 = sys();
+    s2.nodes[s2.nodes.findIndex((n: any) => n.id === 'sol-rocinante')] = once;
+    expect(reconcileConstructArrival(s2, once, AFTER)).toBe(once);
+    expect(reconcileConstructArrival(s2, once, AFTER).placementHealCount).toBe(1);
+  });
+
+  it('and a ship BROKEN AGAIN reads 2 - which is the signal we are watching for', () => {
+    // Owner: "if it happens loads of times we still have outstanding issues". This is that case in
+    // miniature - something upstream put the heliocentric orbit back, and the count says so.
+    const s = sys();
+    const roci = s.nodes.find((n: any) => n.id === 'sol-rocinante');
+    const once = reconcileConstructArrival(s, roci, AFTER);
+    const rebroken = {
+      ...once,
+      parentId: 'solar-system-sun',
+      orbit: { ...once.orbit, hostId: 'solar-system-sun', elements: { ...once.orbit.elements, a_AU: 3.05 } }
+    };
+    const twice = reconcileConstructArrival(s, rebroken as any, AFTER);
+    expect(twice.placementHealCount).toBe(2);
+  });
+});
+
+describe('a healed ship is not left pinned by the vector that outranks its orbit', () => {
+  it('the heal drops the stamped vector, and the ship MOVES for a player holding only the node', () => {
+    const s = sys();
+    const roci = s.nodes.find((n: any) => n.id === 'sol-rocinante');
+    const healed: any = reconcileConstructArrival(s, roci, AFTER);
+    expect(healed.vector_position_au).toBeUndefined();
+    expect(healed.vector_epoch_ms).toBeUndefined();
+
+    const ps = sys();
+    ps.nodes[ps.nodes.findIndex((n: any) => n.id === 'sol-rocinante')] = slim(healed);
+    const p0 = computeWorldPositions3D(ps, AFTER)!.get('sol-rocinante')!;
+    const p1 = computeWorldPositions3D(ps, AFTER + 3600_000)!.get('sol-rocinante')!;
+    expect(km(p0, p1)).toBeGreaterThan(10_000);
+  });
+
+  it('...and REINSTATING THE FAULT - the vector left behind - freezes it solid again', () => {
+    // The visible half of [[B96]], measured: `computeWorldPositions3D` prefers a stamped vector over
+    // the orbit, so re-parenting alone left the ship hanging at the point it stopped. Exactly 0 km.
+    const s = sys();
+    const roci = s.nodes.find((n: any) => n.id === 'sol-rocinante');
+    const healed: any = reconcileConstructArrival(s, roci, AFTER);
+    const pinned = { ...healed, vector_position_au: roci.vector_position_au, vector_epoch_ms: roci.vector_epoch_ms };
+
+    const ps = sys();
+    ps.nodes[ps.nodes.findIndex((n: any) => n.id === 'sol-rocinante')] = slim(pinned);
+    const p0 = computeWorldPositions3D(ps, AFTER)!.get('sol-rocinante')!;
+    const p1 = computeWorldPositions3D(ps, AFTER + 3600_000)!.get('sol-rocinante')!;
+    console.log('vector left behind, movement in an hour:', km(p0, p1).toFixed(1), 'km');
+    expect(km(p0, p1)).toBe(0);
+  });
+
+  it('but a DRIFTER keeps its vector, because for a drifter the vector is the true answer', () => {
+    // The guard that stops the heal from snapping an adrift ship back into an orbit it abandoned.
+    const s = sys();
+    const roci = s.nodes.find((n: any) => n.id === 'sol-rocinante');
+    const adrift: any = reconcileConstructArrival(s, { ...roci, flight_state: 'Deep Space' } as any, AFTER);
+    expect(adrift.parentId).toBe('solar-system-earth');
+    expect(adrift.vector_position_au).toEqual(roci.vector_position_au);
+    expect(adrift.flight_state).toBe('Deep Space');
   });
 });
