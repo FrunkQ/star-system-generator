@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## 3.0.109 - 27th Aug 2026
+
+- Board only. The gas-giant banding item is closed out with what was actually built and what was not. Two findings worth carrying: the atmosphere editor works in percentages and spreads any edit across every other gas, so measuring it in raw fractions looks at the wrong axis entirely and shows no fault at all; and a cloud deck does not fade into existence, it arrives about twenty times past the point where a cloud stops looking thicker, so no amount of fading in the renderer can smooth the moment one appears. Also captured: the composition sliders cannot reach the values most worlds actually use, and the box beside them quietly rounds a trace gas to nothing if you click through it.
+
 ## v3.0.108 - 27th Aug 2026
 
 - A test now covers opening a map, making an edit and reprocessing - the exact sequence the gas-giant banding fault lived in, and one the suite had never exercised. Everything before it checked that processing the same system repeatedly changes nothing, which it does; nobody had checked what happens when you change something in between. The fixture is a giant deliberately parked one editor step away from a cloud threshold.
