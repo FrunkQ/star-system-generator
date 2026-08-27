@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.123 - 27th Aug 2026
+
+- Board only. The design for the gas sliders is settled: a log axis, and a readout that switches to parts per million below one per cent so trace gases are legible and typeable.
+
 ## v3.0.122 - 27th Aug 2026
 
 - A trace gas is no longer deleted by being looked at. The box beside each gas showed three fixed decimals, so anything under 0.0005 per cent displayed as zero - and simply clicking into the field and out again wrote that zero back, removing the gas and shifting every other gas with it. Trace values now keep their significant figures, and a box handed back unchanged is left alone.
