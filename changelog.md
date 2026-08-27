@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.133 - 27th Aug 2026
+
+- Board only. The three tags that come and go on every snapshot sent to players were confirmed in the running app, and the worry behind them turned out to be unfounded: nothing hidden has ever reached a player. The real cause is that two copies of an open system exist while the clock runs and drift apart, so players are served a slightly stale one. Recorded with the measurements; nothing changed yet.
+
 ## v3.0.132 - 27th Aug 2026
 
 - Board only. A routing note recording what was fixed, what is routed next and in what order, and the principle that came out of tracing the player-view fault.

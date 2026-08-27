@@ -4032,3 +4032,25 @@ ANCHORS: Jupiter (3.1 deg, alike 0.90) gets 8-gon north and 6-gon south; Saturn 
 are not characterised - it drew matching poles on a 6% roll and that is the model being honest.
 BLAST: a manual tag beats the roll (`stripForReprocess` spares it and the generator only fires when
 no tag is present), which is the documented GM override in `tags-guide.md`.
+
+### SYNC-1 THE PLAYER SNAPSHOT IS BUILT FROM THE STARMAP'S COPY OF A SYSTEM, NOT THE LIVE ONE
+WHERE: `computePlayerStarmapSnapshot` (`system/utils.ts`) walks `starmapStore.systems[i].system`.
+The system a GM is actually looking at lives in `systemStore`, and `src/routes/+page.svelte` copies
+the second into the first on every `systemStore` emission (`systemNode.system = system`).
+RULE: while a system is open those two must be THE SAME OBJECT, not merely equal. Anything that
+replaces `starmapStore.systems[i].system` with its own copy silently forks the campaign in two, and
+the fork that reaches players is the one nobody is looking at.
+WHY IT IS NOT VISIBLE FROM THE CODE: both stores hold something that looks like the right system,
+and every screen the GM can see reads the LIVE one, so a divergence is invisible on the GM side by
+construction. It shows up only in what players receive.
+MEASURED (inbox B108, 2026-08-27): with Sol open and the clock running, `systemStore`'s Jupiter
+carried 20 tags while the starmap's carried 17, `sameObj === false`, for as long as it was watched.
+Three tags - a cloud deck, its precipitation and a polar vortex - appeared and disappeared on every
+snapshot sent to players as the two copies took turns. NOT ONE of Jupiter's other 221 leaf fields
+differed between them, which is the tell: a physics oscillation moves numbers, a forked copy moves
+only whatever the pass that forked it had already written.
+THE CHECK THAT FINDS IT, and it is one line: in `starmapSnapshotForPlayers`, compare
+`get(systemStore)` with the matching `map.systems[...].system` by IDENTITY. `false` is the fault.
+BLAST: `system/idempotence.test.ts` cannot see any of this and is not meant to - it gates
+`systemProcessor.process()`, which is idempotent here and stayed green throughout. A repetition test
+is the wrong instrument for a two-copy fault; the gate wanted is the identity invariant above.
