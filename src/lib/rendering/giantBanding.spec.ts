@@ -11,10 +11,16 @@
 //             a smooth giant lands. That is the B95 fix (engine-map RENDER-S35).
 //   PINNED  - an edit and its exact reversal return the body to the same tags and the same picture,
 //             and reprocessing without an edit changes nothing.
-//   NOT     - that a tiny composition edit cannot change the DECK STACK. It can, and honestly:
-//             a deck arrives ~20x past opaque rather than fading in (engine-map PHY-31). That step
-//             is real physics and is characterised below rather than asserted away, so that whoever
-//             adds a subsaturated-haze term sees exactly which number moved.
+//   PINNED  - the DECK STACK itself is stable across the range the reporter was editing in, and
+//             where a deck genuinely does come and go - at the stoichiometric boundary, where the
+//             hydrosulphide reaction has consumed all the ammonia - its coverage RAMPS.
+//
+// The first draft of this file pinned the opposite of that last line, as a characterisation test:
+// "a newly-condensing deck arrives near-total, and that is physics we cannot smooth". It was not
+// physics. It was an abundance floor (`cloud.minFraction`) deleting an optically thick deck, and
+// the measurement that looked like evidence for a hard physical step was evidence for the floor.
+// Kept in the comment because a wrong conclusion that survived one round of measurement is worth
+// leaving a marker for.
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -79,13 +85,38 @@ const bandRamp = (weights: number[]) =>
   giantBandRamp(weights.map((w) => ({ hex: '#bb8155', role: 'cloud', weight: w, rawHex: '#bb8155' })) as any);
 
 describe('B95: a giant survives load -> edit -> process', () => {
-  it('the fixture really does sit on a deck threshold (or it pins nothing)', () => {
-    const below = load(); editGasPercent(giantOf(below), 'NH3', 0.017);
-    const above = load(); editGasPercent(giantOf(above), 'NH3', 0.019);
+  // The fixture's H2S is 0.008 %, and NH4SH consumes NH3 and H2S one for one, so below about that
+  // much ammonia there is none left over to condense on its own. THAT is the real boundary, and it
+  // is a chemical one rather than a threshold anybody chose.
+  it('the fixture really does sit on a deck boundary (or it pins nothing)', () => {
+    const below = load(); editGasPercent(giantOf(below), 'NH3', 0.0070);
+    const above = load(); editGasPercent(giantOf(above), 'NH3', 0.0090);
     const b = decksFromTags(giantOf(systemProcessor.process(below, pack)).tags, pack);
     const a = decksFromTags(giantOf(systemProcessor.process(above, pack)).tags, pack);
-    expect(b.length, 'fixture no longer straddles a threshold - retune it or this suite is vacuous')
+    expect(b.length, 'fixture no longer straddles a boundary - retune it or this suite is vacuous')
       .not.toBe(a.length);
+  });
+
+  // THE REPORTED FAULT, as its own regression. He was editing around NH3 0.019 % and a 0.001-point
+  // step took his Jupiter from banded to featureless. Nothing may move across this range.
+  it('the deck stack and the banding are FLAT across the range the fault was reported in', () => {
+    const strengths: number[] = [];
+    const stacks = new Set<string>();
+    for (const pct of [0.016, 0.017, 0.018, 0.0181, 0.019, 0.020, 0.022, 0.025]) {
+      const sys = load();
+      editGasPercent(giantOf(sys), 'NH3', pct);
+      const b = giantOf(systemProcessor.process(sys, pack));
+      stacks.add(decksFromTags(b.tags, pack).map((d) => d.species).sort().join('+'));
+      strengths.push(bandRamp(chromoWeights(b)).strength);
+    }
+    expect([...stacks], 'the deck stack changed across the range the fault was reported in')
+      .toHaveLength(1);
+    // Not "identical" - the banding drifts very slightly as the ammonia deck thins with abundance,
+    // and that gentle slide is correct. What must never come back is the SWING: before the fix this
+    // same range went 0 to 0.92 in one 0.001-point step.
+    const swing = Math.max(...strengths) - Math.min(...strengths);
+    expect(swing, 'the banding swung across the reported range - the cliff is back').toBeLessThan(0.1);
+    for (const s of strengths) expect(s, 'the banding dropped out somewhere in the range').toBeGreaterThan(0.5);
   });
 
   it('reprocessing without an edit changes nothing (the load is already converged)', () => {
@@ -185,24 +216,35 @@ describe('B95: band contrast ramps with chromophore strength, never switches', (
   });
 });
 
-// CHARACTERISATION, not an assertion of correctness - engine-map PHY-31. A deck does not fade in:
-// it arrives already far past opaque. This is the residual sharpness in B95, it is physics rather
-// than rendering, and closing it needs a subsaturated-haze term that would move every cloudy world.
-// Pinned so that change is visible and deliberate rather than a surprise.
-describe('B95 (characterisation): a deck arrives thick, it does not fade in', () => {
-  it('the first deck to appear is already near-total cover', () => {
-    const at = (pct: number) => {
-      const sys = load();
-      editGasPercent(giantOf(sys), 'NH3', pct);
-      return decksFromTags(giantOf(systemProcessor.process(sys, pack)).tags, pack);
-    };
-    const before = at(0.0180);
-    const after = at(0.0190);
-    const arrived = after.find((d) => !before.some((b) => b.species === d.species));
-    expect(arrived, 'expected a deck to appear between NH3 0.0180 and 0.0190 pct').toBeTruthy();
-    // If a subsaturated-haze term ever lands, THIS is the number that should fall well below 0.5.
-    expect(arrived.coverage,
-      'a newly-condensing deck still arrives near-total (PHY-31) - if this fails, the haze term landed')
-      .toBeGreaterThan(0.5);
+// WHERE A DECK GENUINELY DOES COME AND GO, it must arrive gradually. With the abundance floor gone
+// (engine-map PHY-31) the only boundary left on this fixture is the chemical one: NH4SH takes ammonia
+// and hydrogen sulphide one for one, so below about 0.008 % NH3 there is nothing left to condense on
+// its own. Crossing it, coverage climbs through the whole range instead of switching.
+describe('B95: a deck that does come and go, ramps', () => {
+  const coverAt = (pct: number) => {
+    const sys = load();
+    editGasPercent(giantOf(sys), 'NH3', pct);
+    const decks = decksFromTags(giantOf(systemProcessor.process(sys, pack)).tags, pack);
+    return decks.find((d) => d.species === 'ammonia')?.coverage ?? 0;
+  };
+
+  it('the ammonia deck fades in across the stoichiometric boundary rather than switching', () => {
+    const steps = [0.0080, 0.0082, 0.0084, 0.0086, 0.0088, 0.0090, 0.0095, 0.0100];
+    const covers = steps.map(coverAt);
+    // It must actually get somewhere - a flat zero would pass a "no jump" test trivially.
+    expect(covers[covers.length - 1], 'the deck never forms at all - fixture drifted').toBeGreaterThan(0.5);
+    // Monotone, and no single step may take more than half the range. The floor took ALL of it.
+    for (let i = 1; i < covers.length; i++) {
+      expect(covers[i], 'coverage must not fall as the condensable increases')
+        .toBeGreaterThanOrEqual(covers[i - 1] - 1e-9);
+    }
+    const biggest = Math.max(...covers.slice(1).map((c, i) => c - covers[i]));
+    expect(biggest, 'one step took most of the range - an abundance floor is back')
+      .toBeLessThan(0.5);
+  });
+
+  it('and there are intermediate coverages, not just present-or-absent', () => {
+    const mids = [0.0082, 0.0084, 0.0086].map(coverAt).filter((c) => c > 0.02 && c < 0.85);
+    expect(mids.length, 'no partly-formed deck anywhere across the boundary').toBeGreaterThanOrEqual(2);
   });
 });

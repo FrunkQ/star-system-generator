@@ -9,10 +9,10 @@ scattered over three files, and is the root fix for the Mars borderline-clouds b
 **Gas** (`gasPhysics`, optional blocks — absence = not cloud-forming / not a reaction product):
 
 ```json
-"H2O":   { "cloud": { "condensesTo": "water", "minFraction": 0.001 } },
+"H2O":   { "cloud": { "condensesTo": "water" } },
 "NH4SH": { "colorHex": "#b8845a",
            "reaction": { "from": ["NH3", "H2S"], "yield": 1 },
-           "cloud": { "condensesTo": "ammonium-hydrosulfide", "minFraction": 0.0001 } }
+           "cloud": { "condensesTo": "ammonium-hydrosulfide" } }
 ```
 
 `reaction.yield` (0..1, default 1) scales the conversion of the limiting constituent — bulk

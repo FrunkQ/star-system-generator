@@ -3797,33 +3797,34 @@ two pairs — so the 3D globe and the 2D disc could have disagreed about whether
 Unified into `giantBandRamp`/`chromoAlpha`; the DRAWING still differs legitimately (orthographic disc
 against a wrapped 2:1 sheet, whose spot is drawn three times for the seam) and that is the right
 seam. If you add a third projection, call the ramp — do not copy the numbers.
-NOT THE WHOLE OF B95: this removes the RENDERER's cliff. On the reporter's own Jupiter the deck
-underneath it still steps — see PHY-31 — and no renderer can or should hide that.
+PAIRS WITH PHY-31: this removed the RENDERER's cliff and PHY-31 removed the one underneath it — an
+abundance floor that was deleting whole decks. Both were needed; fixing either alone leaves the other
+visible, and the ramp here is still what keeps a genuinely marginal deck from popping.
 
-### PHY-31 A CLOUD DECK DOES NOT FADE IN. IT ARRIVES ~20x PAST OPAQUE, AND THAT IS THE MODEL'S SHAPE
-WHERE: `cloudDecks.ts` `condensationOf` + the `tau`/`opacity`/`coverage` block in `deriveCloudDecks`.
-RULE: do NOT assume a deck's coverage approaches zero as the species approaches its condensation
-point, and do NOT build a visual ramp on that assumption. It does not. Measured on a Jupiter analogue
-at 157.9 K, stepping NH3 by 0.00001 percentage points — a twentieth of the smallest edit the
-atmosphere editor can make:
-
-    NH3 0.01800 %   no deck at all
-    NH3 0.01801 %   base 0.556 bar, 132.2 K, tau = 100.2, coverage 0.907
-
-`TAU_OPAQUE` is 5, so that first deck is already twenty times past the point where a cloud stops
-looking thicker. Above the threshold tau then moves smoothly (100.2, 100.3, 100.5, 101, 103, 106,
-112, 144 across NH3 0.018 to 0.030 %), so the discontinuity is ENTIRELY in the deck's existence.
-WHY: saturation pressure collapses so steeply with falling temperature that the instant the column
-saturates anywhere, everything colder is far past saturation — the integral in `condensationOf` runs
-from the base up to the tropopause and that whole slab appears at once. It is not the 48-level grid
-(`atmosphereProfile.ts:103`) and it is not campaign rule-pack data: the identical step was measured
-against the stock pack and the reporter's overridden one, to the digit.
-BLAST: this is what B95's remaining sharpness is, after RENDER-S35 removed the renderer's own cliff.
-A renderer CANNOT smooth it, because the physical state genuinely changes a lot — a giant gaining an
-upper deck over 90% of its sky is a different planet, and hiding that would be the opposite fault.
-Smoothing it honestly means a SUBSATURATED-HAZE term (nucleation on aerosols below S = 1, which is
-real and observed), so a deck ramps in over a range of abundance instead of switching at a point.
-That is a change to every cloudy world in every map and is deliberately NOT bundled with B95 —
-scope it on its own and re-anchor Sol when you do. Note while scoping: the reporter's Jupiter sits at
-NH3 0.019 % against a 0.018 % threshold, and the real Jupiter's ~0.026 % is only 1.4x clear of losing
-the ammonia deck that defines it, which is worth a hard look at where the threshold sits at all.
+### PHY-31 A CLOUD DECK IS ADMITTED ON OPTICAL DEPTH. NEVER ON ABUNDANCE
+WHERE: `cloudDecks.ts`, the per-gas loop in `deriveCloudDecks`.
+RULE: whether a deck exists is decided by what you could SEE - its optical depth, computed from the
+condensed column - and never by a floor on how much of the gas is present. There WAS such a floor
+(`cloud.minFraction`, per gas in the rule pack) and it was the root cause of inbox B95. It was a hard
+`continue`, so a deck did not thin out as its gas ran low, it blinked out; and it was in the wrong
+currency, because abundance does not decide visibility. The optical-depth guard twelve lines below it
+was always the correct one and this merely shadowed it.
+WHY: measured on the reporter's Jupiter - effective NH3 9.9909e-5 gave NO deck, 1.0091e-4 gave a deck
+of 0.906 coverage, and the floor sat at 1.0e-4. With the floor bypassed the deck below it was real and
+OPTICALLY THICK the whole way down (tau 44 where the floor was deleting it outright, against a
+`TAU_OPAQUE` of 5). It was not suppressing a negligible haze; it was suppressing a cloud.
+THE ANCHOR SETTLES IT: our own SATURN failed the floor. Its authored NH3 is 0.0120% and the
+hydrosulphide reaction takes NH3 and H2S one for one, so 0.0040% of H2S left 0.008% effective - under
+the 0.01% floor - and Saturn was drawn with NO AMMONIA DECK. Saturn's clouds are ammonia. Removing
+the floor changed exactly ONE body across the 40 atmospheres in both bundled starmaps: Saturn, which
+gained `ammonia broken 0.538`.
+BLAST: `GasCloud.minFraction` is gone from the type and from the shipped pack. A campaign whose
+`gasPhysics` override still carries the key is harmless - nothing reads it.
+CORRECTED 2026-08-27, SAME DAY IT WAS WRITTEN, AND THE WRONG VERSION IS WORTH KNOWING ABOUT: this
+entry first said the opposite - "a deck does not fade in, it arrives ~20x past opaque, and that is the
+model's shape" - and scoped a subsaturated-haze term to fix it. The measurement behind that was
+correct and the conclusion was not. Seeing a deck appear at tau 100 in one step, I attributed the step
+to the condensation integral, having already ruled out the pressure grid and the campaign's rule-pack
+data. I had not ruled out a plain `if` twenty lines earlier. The lesson is narrow and worth keeping:
+ruling out the exotic explanations is not the same as finding the cause, and a discontinuity should
+send you looking for a BRANCH before it sends you looking for physics.

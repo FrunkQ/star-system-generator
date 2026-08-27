@@ -946,9 +946,13 @@ export interface AuroraBand {
 export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; altitude: number; }
 
 // Cloud formation for a gas (absent = not cloud-forming). condensesTo names the LIQUID whose data
-// gives the deck its look (colour, cloudOpacity, meltK for ice-crystal vs droplet); minFraction is
-// the partial-fraction floor below which no deck forms. See docs/dev/cloud-decks-design.md.
-export interface GasCloud { condensesTo: string; minFraction?: number; }
+// gives the deck its look (colour, cloudOpacity, meltK for ice-crystal vs droplet).
+// There was a `minFraction` here — an abundance floor below which no deck formed. Removed with
+// inbox B95: it deleted real, optically thick decks (our own Saturn's ammonia among them) and it
+// measured the wrong thing. Whether a cloud can be seen is decided by its OPTICAL DEPTH, which
+// `deriveCloudDecks` computes anyway. A campaign whose gasPhysics override still carries the key is
+// harmless — nothing reads it. See docs/dev/cloud-decks-design.md.
+export interface GasCloud { condensesTo: string; }
 // A reaction PRODUCT declares its recipe (NH4SH from NH3 + H2S). The product's effective fraction
 // derives from its constituents at process time: min(constituents) × yield, constituents depleted
 // by the amount converted. `yield` (0..1, default 1) models photochemical traces — Titan's HCN is

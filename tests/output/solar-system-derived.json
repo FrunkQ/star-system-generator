@@ -5914,11 +5914,19 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "ammonium-hydrosulfide broken 0.532"
+          "value": "ammonium-hydrosulfide broken 0.533"
+        },
+        {
+          "key": "structure/cloud-deck",
+          "value": "ammonia broken 0.538"
         },
         {
           "key": "weather/precipitation",
           "value": "ammonium-hydrosulfide snow"
+        },
+        {
+          "key": "weather/precipitation",
+          "value": "ammonia snow"
         },
         {
           "key": "weather/lightning",
@@ -5936,7 +5944,7 @@
         },
         {
           "key": "aurora/moderate",
-          "value": "0.26"
+          "value": "0.25"
         },
         {
           "key": "habitability/none"
@@ -5963,7 +5971,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 0.2396
+        "strengthGauss": 0.2163
       },
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
@@ -5976,7 +5984,7 @@
         },
         "main": "H2",
         "pressure_bar": 1,
-        "scaleHeightKm": 47.302433268157074,
+        "scaleHeightKm": 46.17867412235318,
         "molarMassKg": 0.0021154000000000004
       },
       "axial_tilt_deg": 26.73,
@@ -5987,13 +5995,13 @@
       },
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.4150703222086807,
-      "radiationShieldingMag": 0.4657481936701288,
+      "radiationShieldingMag": 0.4515615179849095,
       "photonRadiation": 2.871069777572149,
-      "particleRadiation": 0.2145307620189512,
-      "surfaceRadiationMin": 4.759982967703513,
-      "surfaceRadiationMax": 5.460681216537956,
-      "equilibriumTempMinK": 78.83621169063838,
-      "equilibriumTempMaxK": 83.42371876999309,
+      "particleRadiation": 0.22022747339962673,
+      "surfaceRadiationMin": 4.76507851593824,
+      "surfaceRadiationMax": 5.467070411062064,
+      "equilibriumTempMinK": 75.98540268012009,
+      "equilibriumTempMaxK": 80.40702017349417,
       "tidallyLocked": false,
       "internalHeatK": 51.98372959092766,
       "calculatedGravity_ms2": 11.185617569939861,
@@ -6004,46 +6012,46 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 81.06512784582517,
+      "equilibriumTempK": 78.09924533605735,
       "albedoBreakdown": {
-        "albedo": 0.343,
+        "albedo": 0.433,
         "surfaceAlbedo": 0.3,
         "bareAlbedo": 0.3,
-        "cloudAlbedo": 0.38,
-        "cloudCover": 0.53,
-        "cloudSpecies": "ammonium-hydrosulfide",
-        "note": "Ammonium Hydrosulfide cloud deck over a deep atmosphere."
+        "cloudAlbedo": 0.51,
+        "cloudCover": 0.54,
+        "cloudSpecies": "ammonia",
+        "note": "Ammonia cloud deck over a deep atmosphere (2 decks)."
       },
-      "greenhouseTempK": 6.28888876998089,
-      "temperatureK": 134.6176176081641,
+      "greenhouseTempK": 5.632623601144658,
+      "temperatureK": 131.4195204169284,
       "temperatureProfile": {
-        "meanK": 135,
-        "totalMinK": 123,
-        "totalMaxK": 147,
+        "meanK": 131,
+        "totalMinK": 120,
+        "totalMaxK": 143,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 125,
-            "highK": 144
+            "lowK": 122,
+            "highK": 141
           },
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 127,
-            "highK": 142
+            "lowK": 124,
+            "highK": 138
           },
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 134,
-            "highK": 138
+            "lowK": 131,
+            "highK": 135
           }
         ]
       },
       "temperatureRangeK": {
-        "min": 123,
-        "max": 147
+        "min": 120,
+        "max": 143
       },
       "hydrosphere": {
         "layers": [
@@ -6059,10 +6067,10 @@
         "geometry": "dipolar",
         "intrinsic": true,
         "estimatedRangeGauss": {
-          "min": 0.2662,
-          "max": 1.4197
+          "min": 0.2403,
+          "max": 1.2816
         },
-        "nominalGauss": 0.239572232292452,
+        "nominalGauss": 0.21627657330663935,
         "notes": [
           "A cool interior lets helium rain out and throttle the metallic-hydrogen dynamo → a weak, axisymmetric field (Saturn-like)."
         ]
@@ -6071,9 +6079,9 @@
       "totalIncidentFluxMin": 0.010008962768785818,
       "totalIncidentFluxMax": 0.012550015654547959,
       "starlightFlux": 0.010907559153713584,
-      "surfaceRadiation": 5.0856005395911,
-      "orbitalRadiation": 250329.03897937777,
-      "beltInnerEdgeRadii": 1.1218,
+      "surfaceRadiation": 5.091297250971776,
+      "orbitalRadiation": 192572.2538043534,
+      "beltInnerEdgeRadii": 1.119,
       "oblateness": 0.17457339743332512,
       "auroraEmitters": [
         {
@@ -6089,8 +6097,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 9.574943314411572,
         "totalTopWm2": 12.448960828870732,
-        "totalSurfaceWm2": 6.805398738806829,
-        "photonFlux": 24864447613527904000,
+        "totalSurfaceWm2": 5.029188957716307,
+        "photonFlux": 18374824191358765000,
         "peakTopNm": 500,
         "peakSurfaceNm": 570,
         "surfaceLightHex": "#ffead1",
@@ -6101,7 +6109,11 @@
           },
           {
             "label": "ammonium-hydrosulfide cloud deck",
-            "strength": 0.3043040000000001
+            "strength": 0.30487600000000004
+          },
+          {
+            "label": "ammonia cloud deck",
+            "strength": 0.26039200000000007
           },
           {
             "label": "Rayleigh scattering",
@@ -6110,7 +6122,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#beab97",
+        "hex": "#b4b1a4",
         "palette": [
           {
             "hex": "#d9bf98",
@@ -6120,19 +6132,26 @@
             "rawHex": "#ccc2ae"
           },
           {
-            "hex": "#bdaa97",
+            "hex": "#b3b1a4",
             "role": "cloud",
             "weight": 0.9,
             "label": "ammonia cloud deck",
-            "rawHex": "#bdaa97"
+            "rawHex": "#b3b1a4"
+          },
+          {
+            "hex": "#bb8156",
+            "role": "cloud",
+            "weight": 0.4897742926108001,
+            "label": "ammonium-hydrosulfide band",
+            "rawHex": "#b8845a"
           }
         ],
         "banding": 6
       },
-      "apparentColorHex": "#beab97",
+      "apparentColorHex": "#b4b1a4",
       "classification": {
-        "base": "planet/ammonia-clouds-gas-giant",
-        "baseScore": 1.2,
+        "base": "planet/gas-giant",
+        "baseScore": 1.08,
         "bands": [
           {
             "feature": "mass_Me",
@@ -6141,35 +6160,17 @@
             "fit": 1
           },
           {
-            "feature": "Teq_K",
-            "value": 81.06512784582517,
-            "band": "80 – 160",
+            "feature": "radius_Re",
+            "value": 9.14016637890441,
+            "band": "3.5 – 25",
             "fit": 1
           }
         ],
         "runnerUp": {
-          "class": "planet/gas-giant",
-          "score": 1.08
+          "class": "planet/mini-jupiter",
+          "score": 1.14
         },
         "candidates": [
-          {
-            "class": "planet/ammonia-clouds-gas-giant",
-            "score": 1.2,
-            "bands": [
-              {
-                "feature": "mass_Me",
-                "value": 95.16075016744809,
-                "band": "50 – 4000",
-                "fit": 1
-              },
-              {
-                "feature": "Teq_K",
-                "value": 81.06512784582517,
-                "band": "80 – 160",
-                "fit": 1
-              }
-            ]
-          },
           {
             "class": "planet/gas-giant",
             "score": 1.08,
@@ -6205,6 +6206,24 @@
                 "fit": 0.9
               }
             ]
+          },
+          {
+            "class": "planet/ammonia-clouds-gas-giant",
+            "score": 1.1,
+            "bands": [
+              {
+                "feature": "mass_Me",
+                "value": 95.16075016744809,
+                "band": "50 – 4000",
+                "fit": 1
+              },
+              {
+                "feature": "Teq_K",
+                "value": 78.09924533605735,
+                "band": "80 – 160",
+                "fit": 0.84
+              }
+            ]
           }
         ],
         "borderline": true,
@@ -6230,7 +6249,7 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 982.9909507948422,
+        "minLeoKm": 953.8652929935134,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 54005.76829774813,
         "heoUpperBoundaryKm": 65407793.930461206,
@@ -6280,9 +6299,9 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.907691522990484,
-      "particleRadiation": 87239.47080966692,
-      "surfaceRadiationMin": 87243.78820716408,
-      "surfaceRadiationMax": 87245.05845717278,
+      "particleRadiation": 64390.80067564835,
+      "surfaceRadiationMin": 64395.118073145495,
+      "surfaceRadiationMax": 64396.388323154184,
       "equilibriumTempMinK": 85.56935719839717,
       "equilibriumTempMaxK": 90.54829773060284,
       "internalHeatK": 0,
@@ -6332,12 +6351,12 @@
         "min": 64,
         "max": 114
       },
-      "totalIncidentFlux": 174.48875700237983,
-      "totalIncidentFluxMin": 174.48757641432815,
-      "totalIncidentFluxMax": 174.49011691434552,
+      "totalIncidentFlux": 128.79141673434268,
+      "totalIncidentFluxMin": 128.790236146291,
+      "totalIncidentFluxMax": 128.79277664630837,
       "starlightFlux": 0.010905981162201074,
-      "surfaceRadiation": 87244.37850118992,
-      "orbitalRadiation": 87244.37850118992,
+      "surfaceRadiation": 64395.70836717134,
+      "orbitalRadiation": 64395.70836717134,
       "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -6481,9 +6500,9 @@
       "radiationShieldingAtmo": 0.9999657044984797,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.00016804954554273108,
-      "particleRadiation": 0.000023503750766991092,
-      "surfaceRadiationMin": 2.0001713469135716,
-      "surfaceRadiationMax": 2.0002148277639065,
+      "particleRadiation": 0.00002350375067471713,
+      "surfaceRadiationMin": 2.0001713469135365,
+      "surfaceRadiationMax": 2.000214827763666,
       "equilibriumTempMinK": 80.68424071658066,
       "equilibriumTempMaxK": 85.37726665002573,
       "internalHeatK": 0,
@@ -6558,12 +6577,12 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
-      "totalIncidentFlux": 0.011170753470171612,
-      "totalIncidentFluxMin": 0.009992384188941267,
-      "totalIncidentFluxMax": 0.012528043293330385,
+      "totalIncidentFlux": 0.0111707534647905,
+      "totalIncidentFluxMin": 0.009992384186878076,
+      "totalIncidentFluxMax": 0.012528043279302868,
       "starlightFlux": 0.010888991791476954,
-      "surfaceRadiation": 2.0001915532963097,
-      "orbitalRadiation": 5.585376735085806,
+      "surfaceRadiation": 2.0001915532962173,
+      "orbitalRadiation": 5.58537673239525,
       "beltInnerEdgeRadii": 2.2735,
       "oblateness": 0.0000497411769757759,
       "geoActivity": {
@@ -6930,9 +6949,9 @@
       "radiationShieldingAtmo": 8.045454524818751e-9,
       "radiationShieldingMag": 0.05869708635189371,
       "photonRadiation": 4.906770734810531,
-      "particleRadiation": 2020.221480943504,
-      "surfaceRadiationMin": 1965.2331699194012,
-      "surfaceRadiationMax": 2091.0288230900546,
+      "particleRadiation": 1311.48046397696,
+      "surfaceRadiationMin": 1276.6559800812138,
+      "surfaceRadiationMax": 1361.537921007761,
       "equilibriumTempMinK": 61.91347008157447,
       "equilibriumTempMaxK": 65.51567201733117,
       "internalHeatK": 0,
@@ -7014,12 +7033,12 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
-      "totalIncidentFlux": 4.3022075581941825,
-      "totalIncidentFluxMin": 4.170716879350727,
-      "totalIncidentFluxMax": 4.437958724113025,
+      "totalIncidentFlux": 2.796335192577261,
+      "totalIncidentFluxMin": 2.707687587315896,
+      "totalIncidentFluxMax": 2.887998025132576,
       "starlightFlux": 0.010903935053972738,
-      "surfaceRadiation": 2027.1282516783147,
-      "orbitalRadiation": 2151.0634969934586,
+      "surfaceRadiation": 1318.3872347117704,
+      "orbitalRadiation": 1398.1273141849974,
       "beltInnerEdgeRadii": 164.6199,
       "oblateness": 0.007830957040493275,
       "geoActivity": {
@@ -7245,10 +7264,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "2027.13 mSv",
+            "value": "1318.39 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 2027.13,
+              "value": 1318.39,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -7449,18 +7468,18 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.9077622971394854,
-      "totalIncidentFluxMin": 0.9058538053434966,
-      "totalIncidentFluxMax": 0.9098506093204114,
+      "totalIncidentFlux": 0.5623575040903265,
+      "totalIncidentFluxMin": 0.5607140875652397,
+      "totalIncidentFluxMax": 0.5641805385544609,
       "starlightFlux": 0.010903069953015217,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.906381478856848,
-      "particleRadiation": 448.97476709088585,
-      "surfaceRadiation": 455.8811485697427,
-      "surfaceRadiationMin": 454.9269026717483,
-      "surfaceRadiationMax": 456.9253046602057,
-      "orbitalRadiation": 453.8811485697427,
+      "particleRadiation": 276.2723705663064,
+      "surfaceRadiation": 283.17875204516326,
+      "surfaceRadiationMin": 282.3570437826198,
+      "surfaceRadiationMax": 284.09026927723045,
+      "orbitalRadiation": 281.17875204516326,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.006740121027054645,
       "geoActivity": {
@@ -7675,10 +7694,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "455.88 mSv",
+            "value": "283.18 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 455.88,
+              "value": 283.18,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -7887,18 +7906,18 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.10257588974883353,
-      "totalIncidentFluxMin": 0.09932656620738078,
-      "totalIncidentFluxMax": 0.10605234615977283,
+      "totalIncidentFlux": 0.06308862452421926,
+      "totalIncidentFluxMin": 0.060693121212359945,
+      "totalIncidentFluxMax": 0.06569246832011946,
       "starlightFlux": 0.010901809494723221,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.90581427262545,
-      "particleRadiation": 46.38213060179131,
-      "surfaceRadiation": 53.287944874416766,
-      "surfaceRadiationMin": 51.66328310369038,
-      "surfaceRadiationMax": 55.026173079886405,
-      "orbitalRadiation": 51.287944874416766,
+      "particleRadiation": 26.63849798948418,
+      "surfaceRadiation": 33.54431226210963,
+      "surfaceRadiationMin": 32.34656060617998,
+      "surfaceRadiationMax": 34.84623416005973,
+      "orbitalRadiation": 31.54431226210963,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.0021345219919025886,
       "geoActivity": {
@@ -8089,10 +8108,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "53.29 mSv",
+            "value": "33.54 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 53.29,
+              "value": 33.54,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -8245,9 +8264,9 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.907130231648317,
-      "particleRadiation": 9095.66242215607,
-      "surfaceRadiationMin": 8234.048235337465,
-      "surfaceRadiationMax": 10062.744912867853,
+      "particleRadiation": 6207.220081486953,
+      "surfaceRadiationMin": 5601.7499803623305,
+      "surfaceRadiationMax": 6893.49316135092,
       "equilibriumTempMinK": 73.77596905333446,
       "equilibriumTempMaxK": 78.0686449049394,
       "internalHeatK": 0,
@@ -8327,12 +8346,12 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 18.20113910477544,
-      "totalIncidentFluxMin": 16.464096470674928,
-      "totalIncidentFluxMax": 20.121489825735704,
+      "totalIncidentFlux": 12.424254423437201,
+      "totalIncidentFluxMin": 11.19949996072466,
+      "totalIncidentFluxMax": 13.78298632270184,
       "starlightFlux": 0.01090473384810737,
-      "surfaceRadiation": 9102.56955238772,
-      "orbitalRadiation": 9100.56955238772,
+      "surfaceRadiation": 6214.127211718601,
+      "orbitalRadiation": 6212.127211718601,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.0231060686934541,
       "geoActivity": {
@@ -8553,10 +8572,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "9102.57 mSv",
+            "value": "6214.13 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 9102.57,
+              "value": 6214.13,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -8687,9 +8706,9 @@
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.904791910031834,
-      "particleRadiation": 1.4317212034181706,
-      "surfaceRadiationMin": 7.735972653701432,
-      "surfaceRadiationMax": 9.026767989536374,
+      "particleRadiation": 1.0531732289271947,
+      "surfaceRadiationMin": 7.362701406691944,
+      "surfaceRadiationMax": 8.642868879671532,
       "equilibriumTempMinK": 75.18973733346263,
       "equilibriumTempMaxK": 79.56342811096228,
       "internalHeatK": 0,
@@ -8760,12 +8779,12 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.01267302622690001,
-      "totalIncidentFluxMin": 0.011471945307402864,
-      "totalIncidentFluxMax": 0.014053535979072747,
+      "totalIncidentFlux": 0.011915930277918058,
+      "totalIncidentFluxMin": 0.010725402813383886,
+      "totalIncidentFluxMax": 0.013285737759343063,
       "starlightFlux": 0.01089953757784852,
-      "surfaceRadiation": 8.336513113450005,
-      "orbitalRadiation": 6.336513113450005,
+      "surfaceRadiation": 7.957965138959029,
+      "orbitalRadiation": 5.957965138959029,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.0009425286679432292,
       "geoActivity": {
@@ -8948,12 +8967,12 @@
           },
           {
             "label": "Radiation",
-            "points": 14.2,
+            "points": 14.5,
             "max": 17,
-            "value": "8.34 mSv",
+            "value": "7.96 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 8.34,
+              "value": 7.96,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -8977,7 +8996,7 @@
             }
           }
         ],
-        "surfaceScore": 17,
+        "surfaceScore": 18,
         "modifiers": [
           {
             "label": "Geologically inactive (no recycling)",

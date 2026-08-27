@@ -47,8 +47,6 @@ export interface CloudDeck {
   opticalDepth?: number;// the deck's own optical depth, before persistence
 }
 
-const DEFAULT_MIN_FRACTION = 0.001;
-
 // ── Turning a condensate column into something you can see ───────────────────────────────────────
 // A deck's OPACITY is its optical depth, and for a cloud of droplets that is geometric: cross-section
 // per unit mass, which for a suspension of radius r and density rho comes to 3/(2 rho r). Take the
@@ -250,7 +248,20 @@ export function deriveCloudDecks(
     const frac = hasSurface
       ? Math.min(fracRaw ?? 0, saturationPressureBar(def, surfT) / profile.pAnchorBar)
       : (fracRaw ?? 0);
-    if (frac < (cloud.minFraction ?? DEFAULT_MIN_FRACTION)) continue;
+    if (!(frac > 0)) continue;
+    // NO ABUNDANCE FLOOR. There used to be one here — `frac < cloud.minFraction` — and it was the
+    // root cause of inbox B95. Two things were wrong with it and the second is the instructive one.
+    // It was a hard `continue`, so a deck did not thin out as the gas ran low, it BLINKED OUT; and it
+    // was expressed in ABUNDANCE, which is not the quantity that decides whether you can see a cloud.
+    // Optical depth is, and it is computed twelve lines below, so the guard already existed in the
+    // right currency and this one was only shadowing it.
+    // Measured, on the reporter's own Jupiter: effective NH3 9.9909e-5 gave NO deck and 1.0091e-4
+    // gave a deck of 0.906 coverage, because the floor sat at 1.0e-4. Bypassing the floor, the deck
+    // below it was real and OPTICALLY THICK all the way down — tau 44 where the floor was deleting
+    // it outright. It was not suppressing a negligible haze, it was suppressing a cloud.
+    // The anchor settles it: our own SATURN failed this floor (effective NH3 8e-5 after the
+    // hydrosulphide reaction takes its share) and was drawn with no ammonia deck at all. Saturn's
+    // clouds are ammonia.
     // Does this species saturate anywhere in the column, and how much condensate does that put up
     // there? Everything about the deck — that it exists at all, how high it sits, how thick it is —
     // comes out of this one crossing. (Edge E4's supercritical ceiling is inside it: a level hotter
