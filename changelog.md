@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.140 - 27th Aug 2026
+
+- Design note only. Player views are meant to work out where a ship is for themselves, the way they already work out where a planet is, so that flying a ship stops re-sending the whole campaign to every viewer. Written up with the questions it needs answered first. It turns out the pieces are largely already there and were never joined up.
+
 ## v3.0.139 - 27th Aug 2026
 
 - Docs only. The playbook gains a measured note on what it costs a session to read into this codebase, and what that means for how work should be grouped.
