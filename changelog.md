@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.95 - 26th Aug 2026
+
+- Board only. The performance-readout item grows the part that matters: diagnostics are held in memory and die with the tab, so a crash destroys the evidence of what caused it. Writing a compact record when memory first runs high is what makes the crash report itself.
+
 ## v3.0.94 - 26th Aug 2026
 
 - Board only. Captured B94, a 3D player view that resets its shot every few seconds and eventually runs out of memory (not reproducible on demand, but the always-on diagnostic already records what would identify it), and A77, an on-screen memory and performance readout for beta pages including player views.
