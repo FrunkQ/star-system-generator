@@ -694,6 +694,28 @@ orbit lines.
 Or open a second browser window and drag it to a player-facing screen, which is the shared-screen
 case.
 
+#### Whose clock is it
+
+A player view either steers the clock or tells you whose clock it is on — never neither, and never
+both.
+
+**Touching the clock on the GM view takes it.** Not just pressing play — dragging the scrubber counts
+too, because that is you saying *this* moment matters. The players' own time controls step aside
+while you hold it, and because a scrubber nudge is over in an instant they do not flicker back the
+moment you let go. The offer to hand time back appears once your clock is still again; there is
+nothing to hand back from a clock that is running.
+
+**When you are not holding it, a player view may run its own time** — and it will show ships moving
+as well as planets. The rule underneath is simple: if the view can work a thing out from the time
+alone, the time is the viewer's to choose. Orbits have always been that way, and a ship under way
+now is too, because its course travels as a curve the view can read rather than as a position it
+has to be told.
+
+The one thing a self-scrubbing view cannot show is what happens *after* a ship's current plan ends
+ — where it parks and what it ends up orbiting is yours to decide and has not happened yet.
+
+A view set to **Follow GM** is unaffected by all of this: its clock is already yours.
+
 ![The projection view on a greenscreen](static/screenshots/Greenscreen-ProjectionView.png)
 
 **If a player's device cannot connect**, the cause is usually the network rather than the app.

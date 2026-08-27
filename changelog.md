@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.160 - 28th Aug 2026
+
+- Getting Started explains who owns the clock on a player view: what taking it does, when players may run their own time, and what a self-scrubbing view can and cannot show.
+
 ## v3.0.158 - 28th Aug 2026
 
 ## v3.0.159 - 28th Aug 2026
