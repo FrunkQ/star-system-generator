@@ -62,8 +62,8 @@ describe('B100 — the gas number box must not delete what it displays', () => {
     // Not one of them may render as a bare zero: each of these gases is really there.
     expect(shown.length).toBeGreaterThanOrEqual(Object.keys(AIR).length);
     expect(shown.filter((v) => parseFloat(v) === 0)).toEqual([]);
-    // Xenon at 0.087 ppm is 0.000087 % — three fixed decimals render that as '0.000'.
-    expect(shown).toContain('0.000087');
+    // Xenon at 0.087 ppm: shown in ppm below 1 %, and never as a rounded-away zero.
+    expect(shown).toContain('0.87');
   });
 
   it('LEAVES THE VALUE ALONE when the box is blurred without an edit — the actual data loss', async () => {
@@ -77,6 +77,34 @@ describe('B100 — the gas number box must not delete what it displays', () => {
     for (const [gas, frac] of Object.entries(AIR)) {
       expect(b.atmosphere!.composition[gas], `${gas} was destroyed by a blur`).toBeCloseTo(frac, 12);
     }
+  });
+
+  it('speaks ppm below one per cent and per cent above it', async () => {
+    const { container } = mount(body());
+    await openAdvanced(container);
+    const units = [...container.querySelectorAll('.gas-unit')].map((u) => u.textContent?.trim());
+    // N2 78%, O2 21%, Ar 0.93% -> %, %, ppm ... and the true traces are all ppm.
+    expect(units[0]).toBe('%');
+    expect(units[1]).toBe('%');
+    expect(units[2]).toBe('ppm');
+    const shown = numberBoxes(container).map((i) => i.value);
+    // CH4 at 1.8 ppm reads as 1.8, not 0.00018.
+    expect(shown).toContain('1.8');
+    // Xenon 0.087 ppm.
+    expect(shown).toContain('0.87');
+  });
+
+  it('a typed suffix overrides the shown unit', async () => {
+    const b = body();
+    const { container } = mount(b);
+    await openAdvanced(container);
+    // CH4 is displayed in ppm. Typing "2%" must mean two PER CENT, not two ppm.
+    const boxes = numberBoxes(container);
+    const idx = Object.keys(AIR).indexOf('CH4');
+    await fireEvent.change(boxes[idx], { target: { value: '2%' } });
+    // Two per cent, not two ppm — a 4,500x difference. The small shortfall is updateGasFraction's
+    // own renormalisation across the other gases, not a parse error.
+    expect(b.atmosphere!.composition.CH4).toBeCloseTo(0.02, 4);
   });
 
   it('still accepts a real edit', async () => {

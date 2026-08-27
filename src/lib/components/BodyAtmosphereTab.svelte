@@ -262,28 +262,77 @@
   // RELATIVE because the value has been through a format/parse cycle and will not be bit-identical;
   // 1e-9 is far below any edit a human can express in this box and far above float round-trip noise.
   function updateGasFractionFromText(gas: string, rawValue: string) {
-      const parsed = parseFloat(rawValue);
-      if (!isFinite(parsed)) return;
+      const currentFrac = body.atmosphere?.composition?.[gas] ?? 0;
+      const parsed = parseGasEntry(rawValue, gasUnitFor(currentFrac));
+      if (parsed === null) return;
       const clamped = Math.max(0, Math.min(100, parsed));
       // Compare against what was DISPLAYED, not against the stored value. The box necessarily
       // rounds (three significant figures), so a stored 0.001818 % shows as 0.00182 — and a guard
       // comparing the typed text with the STORED number reads that rounding as a real edit and
       // writes it, which is the same data loss in a smaller coat.
-      const shown = fmtGasPct(body.atmosphere?.composition?.[gas] ?? 0);
-      if (clamped === parseFloat(shown)) return;
+      const shownPct = parseGasEntry(fmtGasPct(currentFrac), gasUnitFor(currentFrac));
+      if (shownPct !== null && clamped === shownPct) return;
       updateGasFraction(gas, clamped);
   }
 
-  // B100: SIGNIFICANT FIGURES, NOT FIXED DECIMALS. Atmospheric physics keys on partial pressure,
-  // so what matters is the RATIO: 0.0004 % and 0.04 % are two decades apart and both must be
-  // legible and editable. Three significant figures, trailing zeros trimmed, capped at twelve
-  // decimals so a pathological value cannot stretch the control.
+  // B100 — READING AND WRITING A GAS FRACTION ACROSS EIGHT DECADES.
+  //
+  // Atmospheric physics keys on PARTIAL PRESSURE, so what matters is the RATIO, not the difference:
+  // 0.0001 % and 0.3 % are three decades apart and matter enormously, while 50 % to 100 % is one
+  // doubling that barely moves mean molecular weight. A linear 0-100 axis spends nearly all its
+  // travel on the bulk gas and has no purchase where the chemistry actually turns over.
+  //
+  // THE UNIT FOLLOWS THE VALUE AND IS NOT A MODE: at or above 1 % the control speaks per cent,
+  // below 1 % it speaks ppm. Nothing to toggle, nothing to get out of sync, and the SLIDER is what
+  // carries you across the boundary so the switch is discoverable rather than surprising. A typed
+  // `%` or `ppm` suffix overrides for that entry — without it, typing 2 while sitting at 0.9 %
+  // (9,000 ppm) would mean 2 ppm, a 4,500x miss.
+  const GAS_MIN_PCT = 1e-6;      // 0.01 ppm: under xenon's 0.087 ppm, so nothing real is unreachable
+  const GAS_MAX_PCT = 100;
+  const GAS_SLIDER_STEPS = 1000; // 8 decades / 1000: a step is never a visible jump
+  const PPM_SWITCH_PCT = 1;
+  const PPM_PER_PCT = 10000;     // 1 % = 10,000 ppm
+
+  // A log axis CANNOT REACH ZERO and must not pretend to: the row's remove button deletes a gas,
+  // and the slider bottoms out at GAS_MIN_PCT instead.
+  function gasPctToSlider(pct: number): number {
+      if (!(pct > 0)) return 0;
+      const c = Math.min(GAS_MAX_PCT, Math.max(GAS_MIN_PCT, pct));
+      const lo = Math.log10(GAS_MIN_PCT), hi = Math.log10(GAS_MAX_PCT);
+      return Math.round(((Math.log10(c) - lo) / (hi - lo)) * GAS_SLIDER_STEPS);
+  }
+  function gasSliderToPct(rawVal: number): number {
+      const tt = Math.min(1, Math.max(0, (rawVal || 0) / GAS_SLIDER_STEPS));
+      const lo = Math.log10(GAS_MIN_PCT), hi = Math.log10(GAS_MAX_PCT);
+      return Math.pow(10, lo + (hi - lo) * tt);
+  }
+
+  function sig3(n: number): string {
+      if (!isFinite(n) || n === 0) return '0';
+      const abs = Math.abs(n);
+      const decimals = abs >= 1 ? 3 : Math.min(12, 3 - Math.floor(Math.log10(abs)) - 1);
+      return n.toFixed(decimals).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  }
+
+  export function gasUnitFor(fraction: number): '%' | 'ppm' {
+      const pct = (fraction ?? 0) * 100;
+      return pct > 0 && pct < PPM_SWITCH_PCT ? 'ppm' : '%';
+  }
+  /** The number shown in the box, in whatever unit gasUnitFor says. */
   export function fmtGasPct(fraction: number): string {
       const pct = (fraction ?? 0) * 100;
       if (!isFinite(pct) || pct === 0) return '0';
-      const abs = Math.abs(pct);
-      const decimals = abs >= 1 ? 3 : Math.min(12, 3 - Math.floor(Math.log10(abs)) - 1);
-      return pct.toFixed(decimals).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+      return gasUnitFor(fraction) === 'ppm' ? sig3(pct * PPM_PER_PCT) : sig3(pct);
+  }
+  /** Parse what was typed into a PERCENT, an explicit suffix beating the shown unit. */
+  export function parseGasEntry(rawText: string, shownUnit: '%' | 'ppm'): number | null {
+      const m = String(rawText).trim().toLowerCase()
+          .match(/^([-+]?[0-9]*\.?[0-9]+(?:e[-+]?[0-9]+)?)\s*(%|ppm)?$/);
+      if (!m) return null;
+      const n = parseFloat(m[1]);
+      if (!isFinite(n)) return null;
+      const unit = m[2] === '%' ? '%' : m[2] === 'ppm' ? 'ppm' : shownUnit;
+      return unit === 'ppm' ? n / PPM_PER_PCT : n;
   }
 
   function addGas(gas: string) {
@@ -603,21 +652,20 @@
                         </span>
                         <input 
                             type="range" 
-                            min="0" max="100" step="0.1" 
-                            value={fraction * 100} 
-                            on:input={(e) => updateGasFraction(gas, parseFloat(e.currentTarget.value))}
+                            min="0" max={GAS_SLIDER_STEPS} step="1"
+                            value={gasPctToSlider(fraction * 100)}
+                            on:input={(e) => updateGasFraction(gas, gasSliderToPct(parseFloat(e.currentTarget.value)))}
                         />
                         <input
                             class="gas-val-input"
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.001"
+                            type="text"
+                            inputmode="decimal"
                             value={fmtGasPct(fraction)}
                             on:change={(e) => updateGasFractionFromText(gas, e.currentTarget.value)}
                             on:blur={(e) => updateGasFractionFromText(gas, e.currentTarget.value)}
-                            title="Gas percentage (0-100). Trace values keep their significant figures."
+                            title="Type a value in the unit shown, or add % or ppm to force one."
                         />
+                        <span class="gas-unit" title="Below 1% the readout is in parts per million.">{gasUnitFor(fraction)}</span>
                         <button class="remove-btn" on:click={() => removeGas(gas)} title="Remove Gas">×</button>
                     </div>
                     {#if activeTags.length > 0}
@@ -812,6 +860,7 @@
       cursor: help;
   }
   .gas-row input[type="range"] { flex: 1; }
+  .gas-unit { width: 30px; font-size: 0.72rem; opacity: 0.65; font-family: monospace; }
   .gas-val-input {
       width: 72px;
       text-align: right;

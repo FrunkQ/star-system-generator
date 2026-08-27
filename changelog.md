@@ -4,6 +4,10 @@ All notable changes are listed here:
 
 ## v3.0.124 - 27th Aug 2026
 
+## v3.0.125 - 27th Aug 2026
+
+- The gas sliders now work where the chemistry does. Each one runs on a logarithmic scale across eight decades, so a trace gas has as much of the slider as the bulk gas does, and below one per cent the readout switches to parts per million - 2.82 ppm rather than 0.000282 per cent. Type a value in the unit shown, or add a per cent or ppm suffix to force the other one.
+
 - Saturn's hexagon is a hexagon. It was being drawn as a six-petalled flower, because the boundary was a wave rather than a polygon - and a wave wrapped around a pole gives you petals with sides that curve inwards, not flat edges and sharp corners. It is also the right size and in the right place now, sitting just inside the auroral ring at the latitude Saturn's real hexagon occupies.
 - Gas giants have a polar vortex at both poles rather than only the north. Both ends of a spinning world have jets converging on them: Jupiter has a ring of storms at each pole and Saturn's south has a cyclone with a clear eye, even though only its north is hexagonal. Turning the globe no longer shows a bare far pole.
 
