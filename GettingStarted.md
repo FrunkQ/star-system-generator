@@ -111,6 +111,16 @@ hex or Traveller hex), **Traveller mode**, an overall **Star size** dial, and **
 giants and supergiants. At zero they are all the same size. Black holes keep their own glyph
 whatever you choose. Each player view carries its own copy of that dial, on its Starmap step.
 
+### Centring the map on a star
+
+By default the starmap's distance rings radiate from the map's own origin, which on a map built from
+real sky positions is rarely anywhere interesting. **Right-click any star and choose Centre Map
+Here.** Reset View then frames that star, zoomed so every other star still fits, and the distance
+rings measure *from it* — so they read as "ten parsecs from Sol" rather than from a point in empty
+space. **Clear Map Centre** puts it back.
+
+The choice is saved with your campaign and travels to player views.
+
 ### Stars that show what they are
 
 Three things a star does are drawn on the map rather than badged onto it, on the GM starmap, the
@@ -205,6 +215,33 @@ Click a system to drop into the **system visualiser** — a real-time orbital vi
   one screen while keeping the order and the rough proportions.
 * **Measure**, from the rail, reads the straight-line distance between two bodies, and tracks a
   moving ship.
+
+### Where a world can actually orbit
+
+Two overlays answer the question "could something sit *there*?", and both are drawn from the same
+physics that judges a world once you place one.
+
+**Hill spheres** mark each body's gravitational hold — the bubble inside which it keeps a companion
+rather than losing it to whatever it orbits. Switch them on from the display options. They draw for
+the selected body's neighbourhood — itself, its parent, its siblings and one level down — rather
+than for everything at once, so picking Earth shows you Luna's without filling the screen with the
+rest of the system.
+
+**A pair of stars, or any two bodies sharing a barycentre, clears a surprisingly large hole around
+itself and holds a stable ring beyond it.** Both edges are worked out and drawn, in their own pink
+shade alongside the Hill spheres. The inner edge is real physics rather than a stylistic margin: a
+world too close to a pair gets thrown out, and the boundary sits at roughly two to four times the
+separation between them, depending on how eccentric the pair is and how the mass is split. Beyond
+the outer edge the pair's grip gives out and the world belongs to whatever the pair itself orbits.
+
+**Right-click inside the ring to put a body there.** You are offered a mass ceiling rather than a
+hard rule — the stability model assumes the newcomer is light enough not to disturb the pair, and it
+tells you where that assumption stops holding rather than refusing the placement.
+
+Hierarchical triples get theirs too: Alpha Centauri, Polaris and Algol are each an inner pair with a
+third star further out, and the ring is drawn for the inner pair.
+
+Generated systems respect the same boundary — the generator no longer seeds planets into the hole.
 
 ### Five ways to look at a world
 

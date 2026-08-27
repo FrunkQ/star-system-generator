@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.152 - 28th Aug 2026
+
+- Getting Started covers two more of the things that landed since the guide was written: where a world can actually orbit (Hill spheres, and the ring a pair of stars holds), and centring the starmap on a star so the distance rings measure from it.
+
 ## v3.0.151 - 28th Aug 2026
 
 - Board only. The remaining gaps in the Getting Started guide are counted and listed, so whoever finishes it starts from the list rather than from a search.
