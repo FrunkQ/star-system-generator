@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.128 - 27th Aug 2026
+
+- Board only. The player-view memory fault is traced to its root and the fix is designed rather than patched: send only what cannot be predicted, and let a player view simulate the rest from a timestamp, the way it already does for planets.
+
 ## v3.0.126 - 27th Aug 2026
 
 ## v3.0.127 - 27th Aug 2026
