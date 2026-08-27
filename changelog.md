@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.97 - 26th Aug 2026
+
+- Rings no longer have an orbit line drawn through them. A ring was getting both its band and a thin ellipse through the middle of it, which on a planet's rings lands as a hard line across a soft disc. Belts have never had one; rings were simply missed. The band is the orbit - it is drawn at the radius it occupies.
+
 ## v3.0.96 - 26th Aug 2026
 
 - Board only. Captured B95: a gas giant loses its bands on the first atmosphere edit after opening and regains them on the next. The banding threshold is real physics, but the quantity it reads cannot legitimately be moved by an atmosphere edit at all.

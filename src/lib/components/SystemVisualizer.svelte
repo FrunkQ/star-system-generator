@@ -1013,7 +1013,21 @@
       if (showTravellerZones) drawTravellerZones(ctx);
       drawSensorOverlay(ctx);   // gates internally on the global view toggle OR the ship's sensors flag
       for (const node of system.nodes) {
-          if (!node.orbit || !node.parentId || (node.kind === 'body' && node.roleHint === 'belt')) continue;
+          if (!node.orbit || !node.parentId) continue;
+          // A BELT OR A RING IS ITS OWN ORBIT LINE. Both are drawn just below as an annulus at the
+          // radius they occupy, so an ellipse through the middle of that band is the same information
+          // twice — and on a planet's rings it lands as a hard line across a soft disc. Belts have
+          // been skipped here since they were introduced; rings were not, which is the asymmetry the
+          // owner spotted: "can we get rid of the orbital lines of rings? The ring is enough."
+          //
+          // Only skipped where the band will ACTUALLY draw, though. The annulus below needs an inner
+          // and an outer radius and a positive width between them; authored or imported data may have
+          // neither, and dropping the ellipse as well would leave the body with nothing drawn at all.
+          if (node.kind === 'body' && (node.roleHint === 'belt' || node.roleHint === 'ring')) {
+              const drawsAsBand = !!node.radiusInnerKm && !!node.radiusOuterKm
+                  && node.radiusOuterKm > node.radiusInnerKm;
+              if (drawsAsBand) continue;
+          }
           const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
           if (!parentPos) continue;
           let a = node.orbit.elements.a_AU; let e = node.orbit.elements.e;
