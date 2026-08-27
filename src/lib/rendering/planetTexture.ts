@@ -35,7 +35,7 @@ const cache = new Map<string, HTMLCanvasElement>();
 // at a condensation threshold moved the whole planet between those two looks at once. The stops now
 // carry their own strength, so this ramps instead. No chromophore lands exactly on the old smooth
 // pair, which is what keeps a single-deck giant — and every ice giant — looking exactly as it did.
-function giantBandRamp(chromo: ApparentColorStop[]): { strength: number; lo: number; hi: number } {
+export function giantBandRamp(chromo: ApparentColorStop[]): { strength: number; lo: number; hi: number } {
   const strength = chromo.length
     ? Math.max(0, Math.min(1, Math.max(...chromo.map((c) => c.weight)) / CHROMOPHORE_MAX_WEIGHT))
     : 0;
@@ -46,7 +46,7 @@ function giantBandRamp(chromo: ApparentColorStop[]): { strength: number; lo: num
 // The alpha a chromophore stripe paints at. The +0.2 lift is what a band needs to read at all once
 // it is there; scaling the whole thing by the stop's own weight is what lets a deck that is only
 // just condensing arrive as a hint rather than as a stripe.
-function chromoAlpha(weight: number): number {
+export function chromoAlpha(weight: number): number {
   return Math.min(0.7, weight + 0.2) * Math.min(1, weight / CHROMOPHORE_MAX_WEIGHT);
 }
 

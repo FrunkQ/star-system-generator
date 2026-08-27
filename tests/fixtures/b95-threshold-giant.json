@@ -1,0 +1,77 @@
+{
+  "_comment": [
+    "B95 - a gas giant parked on a cloud-deck condensation threshold.",
+    "SYNTHESISED. Derived from a fault reported against a real campaign, but none of that campaign is",
+    "here: this is a bare G2V star and one Jupiter-parameter giant, with published Solar System",
+    "figures for both. The real save reproduces the fault and lives outside the repo; this pins it.",
+    "WHAT IT IS FOR: the giant's ammonia deck sits within one editor step of condensing, so a tiny",
+    "composition edit adds or removes a deck - and therefore a chromophore band. That used to move the",
+    "whole planet between banded and featureless. See engine-map RENDER-S35 and PHY-31."
+  ],
+  "id": "b95-threshold-giant",
+  "name": "B95 threshold giant",
+  "seed": "b95-fixture",
+  "age_Gyr": 4.6,
+  "nodes": [
+    {
+      "id": "star",
+      "name": "Star",
+      "kind": "body",
+      "roleHint": "star",
+      "parentId": null,
+      "classes": [
+        "star/G2V"
+      ],
+      "massKg": 1.989e+30,
+      "radiusKm": 696156,
+      "temperatureK": 5778,
+      "radiationOutput": 0.999
+    },
+    {
+      "id": "giant",
+      "name": "Giant",
+      "kind": "body",
+      "roleHint": "planet",
+      "parentId": "star",
+      "classes": [
+        "planet/ammonia-clouds-gas-giant"
+      ],
+      "massKg": 1.898070969180712e+27,
+      "radiusKm": 69886,
+      "rotation_period_hours": 9.92,
+      "axial_tilt_deg": 3.12,
+      "makeup": {
+        "metal": 0,
+        "rock": 0,
+        "carbon": 0,
+        "ice": 0.392519110844993,
+        "gas": 0.607480889155007
+      },
+      "orbit": {
+        "hostId": "star",
+        "elements": {
+          "a_AU": 5.20248019,
+          "e": 0.0485359,
+          "i_deg": 0.0485359,
+          "omega_deg": 273.9821259,
+          "Omega_deg": 100.29282654,
+          "M0_rad": 0.344949060261712
+        }
+      },
+      "atmosphere": {
+        "name": "Custom Mix",
+        "pressure_bar": 1,
+        "composition": {
+          "H2": 0.86222,
+          "He": 0.1356074045030034,
+          "CH4": 0.0018121643979565143,
+          "NH3": 0.0001902341676623968,
+          "H2S": 8.008998806998613e-05,
+          "HD": 5.0058745481015386e-05,
+          "Ne": 2.002389867037956e-05,
+          "Ar": 2.002429915636269e-05
+        }
+      }
+    }
+  ]
+}
