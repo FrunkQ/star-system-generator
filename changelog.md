@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.153 - 28th Aug 2026
+
+- Getting Started explains the Lagrange points: the shapes they are drawn as, what may be placed in each, and why the mass ceiling is a guide rather than a gate.
+
 ## v3.0.152 - 28th Aug 2026
 
 - Getting Started covers two more of the things that landed since the guide was written: where a world can actually orbit (Hill spheres, and the ring a pair of stars holds), and centring the starmap on a star so the distance rings measure from it.

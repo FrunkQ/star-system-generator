@@ -216,6 +216,37 @@ Click a system to drop into the **system visualiser** — a real-time orbital vi
 * **Measure**, from the rail, reads the straight-line distance between two bodies, and tracks a
   moving ship.
 
+### Lagrange points, and putting things in them
+
+Every planet has five points where its pull and its star's balance out. Switch **Lagrange points**
+on from the display options and they are drawn as the shapes the physics actually makes, not as
+five dots: **L4 and L5** get their true tadpole regions — the long curved lobes that trojan asteroids
+really occupy, leading and trailing the planet by sixty degrees — while **L1, L2 and L3** get
+station-keeping envelopes, because nothing sits still at those three without spending fuel.
+
+A faint dashed circle runs through all five: the co-orbital track, meaning "the distance the planet
+is at right now". On an eccentric orbit the points ride in and out with it, so the track leaves the
+drawn orbit line and that is correct rather than a glitch.
+
+**Right-click inside any zone to put something there.**
+
+- At **any of the five**, you can park a construct. A station at L1 or L2 is doing real work to stay
+  there, and its tags say so.
+- At **L4 or L5**, you can also settle a world — a trojan, sharing the planet's orbit sixty degrees
+  ahead or behind. The body picker opens with a mass ceiling for that particular pair, because a
+  trojan only stays put while it is light enough relative to the planet and the star.
+
+The mass ceiling is a guide, not a gate: place something too heavy and it goes where you put it,
+and the physics tags it as unstable rather than refusing you. That is the same bargain as everywhere
+else in the editor — author freely, and the engine tells you honestly what it thinks.
+
+A **binary** can sit at a Lagrange point too, and it is judged on two questions a single body is
+never asked: whether the point can hold the pair, and whether the pair holds together while it is
+there.
+
+Ships can fly to any of the five, and arrive matching the point's motion rather than merely reaching
+its position.
+
 ### Where a world can actually orbit
 
 Two overlays answer the question "could something sit *there*?", and both are drawn from the same
