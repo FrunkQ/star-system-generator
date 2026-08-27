@@ -81,8 +81,8 @@ describe('the snapshot a player actually receives', () => {
 
   const playerConstruct = (map: any, atMs = 1) => {
     const snap = computePlayerStarmapSnapshot(map);
-    applyFlightUpdate(snap, buildFlightUpdate(map, atMs));   // the second half of the wire
-    return (snap as any).systems[0].system.nodes.find((n: any) => n.id === 'ship');
+    const merged: any = applyFlightUpdate(snap, buildFlightUpdate(map, atMs));   // the second half of the wire
+    return merged.systems[0].system.nodes.find((n: any) => n.id === 'ship');
   };
 
   it('carries the burns through to the player, and lights the same plume the GM sees', () => {

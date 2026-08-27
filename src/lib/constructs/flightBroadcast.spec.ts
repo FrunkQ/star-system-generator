@@ -212,8 +212,8 @@ describe('G51 acceptance — measured on the wire', () => {
 
     expect(received).not.toBeNull();
     expect(campaign).not.toBeNull();
-    applyFlightUpdate(campaign, received);
-    const playerShip: any = (campaign as any).systems[0].system.nodes.find((n: any) => n.id === 'roci');
+    const merged: any = applyFlightUpdate(campaign, received);
+    const playerShip: any = merged.systems[0].system.nodes.find((n: any) => n.id === 'roci');
     const gmShip: any = (map as any).systems[0].system.nodes.find((n: any) => n.id === 'roci');
 
     // IT MOVES: two different instants give two different places, and they are not the stamp.
@@ -232,8 +232,7 @@ describe('G51 acceptance — measured on the wire', () => {
     const at = START + 7 * HOUR;
     gmReStamp(map, at);
     // A window that has seen nothing before this moment: campaign + one flight message.
-    const fresh: any = computePlayerStarmapSnapshot(map);
-    applyFlightUpdate(fresh, buildFlightUpdate(map, at));
+    const fresh: any = applyFlightUpdate(computePlayerStarmapSnapshot(map), buildFlightUpdate(map, at));
     const joined = fresh.systems[0].system.nodes.find((n: any) => n.id === 'roci');
     const gmShip: any = (map as any).systems[0].system.nodes.find((n: any) => n.id === 'roci');
     const jp = routeStateAt(routeOf(joined), at)!;

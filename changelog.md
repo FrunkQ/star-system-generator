@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.145 - 27th Aug 2026
+
+- A player view no longer rebuilds its whole 3D scene when a drifting ship reports a new position. Found while finishing the ship-message work: the update was being applied to the very scene object the check compares against, so the check could never see what had changed.
+
 ## v3.0.144 - 27th Aug 2026
 
 - Flying a ship no longer re-sends your whole campaign to every player, several times a second. A ship's course now travels as its own small message and the player view works out where the ship is from it, exactly as it already works out where a planet is - so while a ship flies to plan, nothing is sent at all. Commits, replans, aborts and your own edits still reach the table immediately.

@@ -208,8 +208,8 @@ describe('the route reaches the player', () => {
 	}) as any;
 	const playerNode = (map: any, atMs = 1) => {
 		const snap: any = computePlayerStarmapSnapshot(map);
-		applyFlightUpdate(snap, buildFlightUpdate(map, atMs));   // the second half of the wire
-		return snap.systems[0].system.nodes.find((n: any) => n.id === 'ship');
+		const merged: any = applyFlightUpdate(snap, buildFlightUpdate(map, atMs));   // the second half of the wire
+		return merged.systems[0].system.nodes.find((n: any) => n.id === 'ship');
 	};
 
 	it('crosses to the player, and draws the same course the GM sees', () => {

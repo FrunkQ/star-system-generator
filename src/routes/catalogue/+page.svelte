@@ -1052,8 +1052,11 @@
       perfCount('sync.flight');
       if (!starmap) { pendingFlight = u; return; }
       lastFlight = u;
-      applyFlightUpdate(starmap, u);
-      starmap = starmap;
+      // COPY-ON-WRITE, and it is load-bearing rather than tidy: the 3D scene holds this very system
+      // object (`displaySystem` is `starmap.systems[i].system` by reference), so mutating it in
+      // place would make B94's motion-only gate compare an object with itself, report "nothing
+      // moved", and full-rebuild the scene for five numbers. A new object lets it do its job.
+      starmap = applyFlightUpdate(starmap, u);
       lastHeardAt = Date.now();
       connected = true;
     };
@@ -1064,7 +1067,7 @@
       // The campaign arrives with no flight fields on its constructs (slimNode strips them), so the
       // last flight picture has to be re-applied to this fresh copy or every ship would park.
       const flight = pendingFlight ?? lastFlight;
-      if (flight) { lastFlight = flight; pendingFlight = null; applyFlightUpdate(starmap, flight); }
+      if (flight) { lastFlight = flight; pendingFlight = null; starmap = applyFlightUpdate(starmap, flight); }
       // G34: inherit the GM's unit choices, non-interactively. Absent on a pre-G34 GM build →
       // keep whatever the launch params seeded.
       if ((map as any)?.unitPrefs) { prefs = (map as any).unitPrefs; unitPrefsStore.set(prefs); }

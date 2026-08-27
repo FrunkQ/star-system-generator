@@ -4085,9 +4085,16 @@ WHY: those five fields changed every tick inside a multi-megabyte document, so `
 could never dedupe the campaign and a ship under way re-sent ~765 KB to every viewer about twice a
 second (inbox G51, and the receiving half of B94). The route was ALREADY a time-to-position
 function — its knots carry `t` — so the receiver could always have computed the ship itself.
-THE TRAP IF YOU ADD A SIXTH FIELD: add it to `FLIGHT_NODE_FIELDS` and to `applyToNode`, or the
+THE TRAP IF YOU ADD A SIXTH FIELD: add it to `FLIGHT_NODE_FIELDS` and to `flightFieldsOf`, or the
 strip and the merge will disagree about what "absent" means and a ship will keep a stale value
 forever. `flightState.spec.ts` pins the round trip.
+AND THE MERGE IS COPY-ON-WRITE, WHICH IS LOAD-BEARING RATHER THAN TIDY. The 3D scene HOLDS the
+very system object the receiver merges into - `displaySystem` is `starmap.systems[i].system` by
+reference and `setSystem` stores it as `currentSystem` - so an in-place merge makes B94's
+motion-only gate compare an object with ITSELF. `onlyFlightVectorsDiffer` then reports "nothing
+moved", falls through, and does a full ~103 ms rebuild for five numbers, which is B94's storm
+returning through the front door. A changed ship therefore gets a NEW node object and an
+unchanged one keeps its identity; an update that changes nothing returns the SAME map.
 BLAST: `visibleNodes` had to stop asking "does it carry a stamped vector" (see SYNC-4).
 
 ### SYNC-4 ONE PREDICATE FOR "THIS CONSTRUCT IS PLACED ABSOLUTELY", AND IT NEEDS A CLOCK

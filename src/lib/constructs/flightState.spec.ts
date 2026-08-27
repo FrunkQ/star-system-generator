@@ -172,32 +172,51 @@ describe('G51 flight message', () => {
   it('build then apply restores the ship to a stripped snapshot', () => {
     const gm = campaign([shipWithJourney('roci', start, end)]);
     const update = buildFlightUpdate(gm, midFlight);
-    const snap: any = computePlayerStarmapSnapshot(gm);
-    applyFlightUpdate(snap, update);
+    const snap: any = applyFlightUpdate(computePlayerStarmapSnapshot(gm), update);
     const ship = snap.systems[0].system.nodes.find((n: any) => n.id === 'roci');
     expect(ship.route.p.length).toBeGreaterThanOrEqual(2);
     expect(ship.driveBurns.length).toBeGreaterThan(0);
   });
 
+  it('THE MERGE MUST NOT MUTATE: the scene holds this object, and the B94 gate compares against it', () => {
+    const gm = campaign([shipWithJourney('roci', start, end)]);
+    const before: any = computePlayerStarmapSnapshot(gm);
+    const beforeShip = before.systems[0].system.nodes.find((n: any) => n.id === 'roci');
+    const after: any = applyFlightUpdate(before, buildFlightUpdate(gm, midFlight));
+    // A new map, a new system, a new node for the ship that changed...
+    expect(after).not.toBe(before);
+    expect(after.systems[0].system).not.toBe(before.systems[0].system);
+    expect(after.systems[0].system.nodes.find((n: any) => n.id === 'roci')).not.toBe(beforeShip);
+    // ...and the ORIGINAL is untouched, so a before/after comparison is still possible.
+    expect(beforeShip.route).toBeUndefined();
+    // Bodies that did not change keep their identity, so the comparison stays cheap.
+    expect(after.systems[0].system.nodes[1]).toBe(before.systems[0].system.nodes[1]);
+  });
+
+  it('an update that changes nothing returns the SAME map, so nothing downstream re-renders', () => {
+    const gm = campaign([shipWithJourney('roci', start, end)]);
+    const u = buildFlightUpdate(gm, midFlight);
+    const once: any = applyFlightUpdate(computePlayerStarmapSnapshot(gm), u);
+    expect(applyFlightUpdate(once, u)).toBe(once);
+  });
+
   it('a ship the update does NOT mention is cleared — silence means PARKED, not unchanged', () => {
     const gm = campaign([shipWithJourney('roci', start, end)]);
-    const snap: any = computePlayerStarmapSnapshot(gm);
-    applyFlightUpdate(snap, buildFlightUpdate(gm, midFlight));
+    let snap: any = applyFlightUpdate(computePlayerStarmapSnapshot(gm), buildFlightUpdate(gm, midFlight));
     // The ship arrives: the GM's next update has nothing to say about it.
-    applyFlightUpdate(snap, { ships: [] });
+    snap = applyFlightUpdate(snap, { ships: [] });
     const ship = snap.systems[0].system.nodes.find((n: any) => n.id === 'roci');
     for (const f of FLIGHT_NODE_FIELDS) expect(ship[f], `${f} survived the park`).toBeUndefined();
   });
 
   it('a superseding plan REPLACES the old one rather than merging with it', () => {
     const gm = campaign([shipWithJourney('roci', start, end)]);
-    const snap: any = computePlayerStarmapSnapshot(gm);
-    applyFlightUpdate(snap, buildFlightUpdate(gm, midFlight));
-    const ship = snap.systems[0].system.nodes.find((n: any) => n.id === 'roci');
-    const firstKnots = ship.route.p.length;
+    let snap: any = applyFlightUpdate(computePlayerStarmapSnapshot(gm), buildFlightUpdate(gm, midFlight));
+    const firstKnots = snap.systems[0].system.nodes.find((n: any) => n.id === 'roci').route.p.length;
 
     const replanned = campaign([shipWithJourney('roci', midFlight, end + 5 * HOUR)]);
-    applyFlightUpdate(snap, buildFlightUpdate(replanned, midFlight + HOUR));
+    snap = applyFlightUpdate(snap, buildFlightUpdate(replanned, midFlight + HOUR));
+    const ship = snap.systems[0].system.nodes.find((n: any) => n.id === 'roci');
     expect(ship.route.s).toBe(midFlight);
     expect(ship.route.e).toBe(end + 5 * HOUR);
     expect(ship.route.p.length).toBeLessThanOrEqual(Math.max(firstKnots, 16));
@@ -206,8 +225,7 @@ describe('G51 flight message', () => {
   describe('visibility — a transiting ship must not vanish now that it carries no stamp', () => {
     const system = () => {
       const gm = campaign([shipWithJourney('roci', start, end)]);
-      const snap: any = computePlayerStarmapSnapshot(gm);
-      applyFlightUpdate(snap, buildFlightUpdate(gm, midFlight));
+      const snap: any = applyFlightUpdate(computePlayerStarmapSnapshot(gm), buildFlightUpdate(gm, midFlight));
       return snap.systems[0].system;
     };
 

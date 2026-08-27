@@ -128,49 +128,96 @@ export function buildFlightUpdate(map: Starmap | null, atMs: number): FlightUpda
   return { ships };
 }
 
-/** Write one ship's entry onto a construct node. Absent fields are DELETED, never left standing. */
-function applyToNode(node: any, ship: FlightShip | undefined): void {
-  if (!node) return;
-  if (ship?.route) node.route = ship.route; else delete node.route;
-  if (ship?.burns?.length) node.driveBurns = ship.burns; else delete node.driveBurns;
+/** The five fields, read off a ship entry, as they should sit on the node. */
+function flightFieldsOf(ship: FlightShip | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (ship?.route) out.route = ship.route;
+  if (ship?.burns?.length) out.driveBurns = ship.burns;
   if (ship?.r) {
-    node.vector_position_au = ship.r;
-    if (ship.v) node.vector_velocity_ms = ship.v; else delete node.vector_velocity_ms;
-    if (ship.e !== undefined) node.vector_epoch_ms = ship.e; else delete node.vector_epoch_ms;
-  } else {
-    delete node.vector_position_au;
-    delete node.vector_velocity_ms;
-    delete node.vector_epoch_ms;
+    out.vector_position_au = ship.r;
+    if (ship.v) out.vector_velocity_ms = ship.v;
+    if (ship.e !== undefined) out.vector_epoch_ms = ship.e;
   }
+  return out;
+}
+
+/** Cheap structural equality, enough for the five fields these objects actually hold. */
+function same(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false;
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /**
- * Merge a flight update into a received starmap, IN PLACE.
+ * The node this construct should be, given the update. RETURNS THE SAME OBJECT when nothing about
+ * its flight has changed, and that is not an optimisation - it is what makes the receiving scene
+ * able to tell a drifting ship's re-stamp from a replan.
  *
- * A construct the update does not mention has PARKED: its fields are cleared so it falls back to
- * parent-plus-orbit, which is the whole of [[B96]]'s fix. Silence therefore means something
+ * WHY THIS MUST NOT MUTATE, and it is the trap that nearly shipped: the scene HOLDS the very system
+ * object the receiver is merging into (`displaySystem` is `starmap.systems[i].system` by reference,
+ * and `setSystem` stores it as `currentSystem`). Mutating it in place makes B94's motion-only gate
+ * compare an object with ITSELF - `onlyFlightVectorsDiffer` then reports "nothing moved", falls
+ * through, and does a full ~103 ms scene rebuild for what was five numbers. That is B94's storm
+ * coming back through the front door. Copy-on-write instead: a changed ship gets a NEW node object,
+ * so the gate sees a real before and after and takes the in-place path it was built for.
+ */
+function nodeWith(node: any, ship: FlightShip | undefined): any {
+  const want = flightFieldsOf(ship);
+  let differs = false;
+  for (const f of FLIGHT_NODE_FIELDS) {
+    if (!same(node[f], want[f])) { differs = true; break; }
+  }
+  if (!differs) return node;
+  const next: any = { ...node };
+  for (const f of FLIGHT_NODE_FIELDS) {
+    if (want[f] === undefined) delete next[f];
+    else next[f] = want[f];
+  }
+  return next;
+}
+
+/**
+ * Merge a flight update into a received starmap, returning a NEW map (structurally shared) and
+ * leaving the old one untouched. Unchanged systems and unchanged nodes keep their identity, so a
+ * receiver can tell exactly what moved - see `nodeWith` for why that matters more than it looks.
+ *
+ * A construct the update does not mention has PARKED: its flight fields are cleared so it falls back
+ * to parent-plus-orbit, which is the whole of [[B96]]'s fix. Silence therefore means something
  * definite here, which is why `build` must always describe every non-parked ship rather than only
  * the ones that changed.
  */
-export function applyFlightUpdate(map: Starmap | null, update: FlightUpdate | null): void {
-  if (!map || !update) return;
+export function applyFlightUpdate<T extends Starmap | null>(map: T, update: FlightUpdate | null): T {
+  if (!map || !update) return map;
   const byId = new Map<string, FlightShip>();
   for (const s of update.ships ?? []) byId.set(s.id, s);
-  for (const sysNode of (map as any).systems ?? []) {
-    for (const node of (sysNode?.system?.nodes ?? []) as any[]) {
-      if (node?.kind !== 'construct') continue;
-      applyToNode(node, byId.get(node.id));
-    }
-  }
+  let mapChanged = false;
+  const systems = ((map as any).systems ?? []).map((sysNode: any) => {
+    const nodes0: any[] = sysNode?.system?.nodes ?? [];
+    let sysChanged = false;
+    const nodes = nodes0.map((n) => {
+      if (n?.kind !== 'construct') return n;
+      const next = nodeWith(n, byId.get(n.id));
+      if (next !== n) sysChanged = true;
+      return next;
+    });
+    if (!sysChanged) return sysNode;
+    mapChanged = true;
+    return { ...sysNode, system: { ...sysNode.system, nodes } };
+  });
+  return (mapChanged ? { ...(map as any), systems } : map) as T;
 }
 
-/** The same merge against a single System — the shape the per-system surfaces want. */
-export function applyFlightUpdateToSystem(system: System | null, update: FlightUpdate | null): void {
-  if (!system || !update) return;
+/** The same merge against a single System - the shape the per-system surfaces want. */
+export function applyFlightUpdateToSystem<T extends System | null>(system: T, update: FlightUpdate | null): T {
+  if (!system || !update) return system;
   const byId = new Map<string, FlightShip>();
   for (const s of update.ships ?? []) byId.set(s.id, s);
-  for (const node of (system.nodes ?? []) as any[]) {
-    if (node?.kind !== 'construct') continue;
-    applyToNode(node, byId.get(node.id));
-  }
+  let changed = false;
+  const nodes = ((system as any).nodes ?? []).map((n: any) => {
+    if (n?.kind !== 'construct') return n;
+    const next = nodeWith(n, byId.get(n.id));
+    if (next !== n) changed = true;
+    return next;
+  });
+  return (changed ? { ...(system as any), nodes } : system) as T;
 }
