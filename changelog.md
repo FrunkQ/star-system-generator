@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.103 - 27th Aug 2026
+
+- Board only. Captured B97 and traced it end to end: a ship that has arrived somewhere can be described three different ways at once, and two of the readings on screen are blends of two of them. "Earth: Far Orbit" turns out to be Earth's name joined to the radius of the Sun orbit the ship left months ago, and the orbital period beside it is that same old orbit read correctly. The cause is that the record of where a ship lives is only ever brought up to date by one explicit action in Settings, so in ordinary play it never is, and different parts of the app disagree about whether to trust it or work around it. No behaviour changed; the fix rests on a decision about when an arrival becomes real.
+
 ## v3.0.102 - 27th Aug 2026
 
 - A player view now either steers the clock or tells you whose clock it is on - never neither, and never both. Time on a player view is a tool: worlds can be wound to any moment and are drawn correctly, because their positions are pure mathematics. So the players keep that freedom, and lose it only for the moments it would mislead.

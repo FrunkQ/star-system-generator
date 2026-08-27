@@ -218,3 +218,90 @@ and would take the clock away from a reader who was mid-scrub, on a click. Not b
 **Route (B) is untouched**, and it is the half that fixes the reported bug: even perfectly aligned,
 a parked ship is frozen on a player view, because nothing publishes where it is after its route
 ends. Route (A) makes the clocks agree; it does not make the ship move.
+
+## 8. THE INVESTIGATION — why one screen showed four contradictory things
+
+Owner, 2026-08-27: *"It SHOWS the Roci in close orbit and orbital period shows 5.33 y, which is
+wrong. We have a big issue here... final positioning is getting very mixed up."* He was right, and
+it is worse than a disagreement: two of the readings are BLENDS of two different answers.
+
+### There are THREE answers to "what does this ship orbit", and six readers
+
+| reader | asks | for the Roci |
+|---|---|---|
+| construct panel, host row | `resolveConstructCurrentHostId(node, DISPLAY time)` — the JOURNEYS | Earth |
+| construct panel, orbital period | the node's own `orbit.elements.a_AU` = 3.05 AU | Sol's period, 5.33 y |
+| body picker context line | `n.orbit?.hostId ?? n.parentId` | Sol |
+| GM map position | `sampleJourneyKinematicsAtTime` → `samplePostJourneyState` | Earth parking orbit, moving |
+| player map position | the node + a frozen `vector_position_au` | one motionless point |
+| `reconcileConstructArrival` | ACTUAL time (`masterTimeSec`) | would say Earth — but never runs, see below |
+
+### The blend, and the exact line
+
+`construct-logic.ts:158` decides the orbit band:
+
+```
+const altitudeKm = (construct.orbit.elements.a_AU * AU_KM) - (hostBody.radiusKm || 0);
+```
+
+`hostBody` is **Earth**, from the resolver. `a_AU` is **3.05 AU**, the stale Sol orbit. So the
+altitude comes out at 3.05 AU minus Earth's radius — about 456 million km — which falls past every
+band and lands on `Far Orbit`. **"Earth: Far Orbit" is Earth's NAME joined to the Sun orbit's
+RADIUS.** The 5.33 y beside it is that same 3.05 AU read (correctly) as a heliocentric orbit. Two
+readings, one subtraction, two sources.
+
+### And the same function is handed a different host by each caller
+
+| caller | host it passes | for the Roci |
+|---|---|---|
+| `BodyTechnicalDetails` (the construct panel) | `parentBody`, which is the resolver | Earth |
+| `TransitPlannerPanel` | `shipNode.parentId`, directly | Sol |
+| `ConstructPortrait`, `ShipLogPane` | `null` | — |
+
+That is also the "Callisto: High Orbit" in the ship panel against "Jupiter: High Orbit" in the
+transit planner, noticed earlier in the same session and unexplained until now.
+
+### Why the stale node is the NORMAL state, not an edge case
+
+`reconcileConstructArrival` is the one thing that makes the node true, and it keys off ACTUAL time:
+`getActualTimeMs()` reads `temporal.masterTimeSec`. **`masterTimeSec` is written in exactly one
+place — the Settings time-shift control.** Playing or scrubbing the clock writes `displayTimeSec`
+and never touches it. So in ordinary play the heal never fires, and every ship that has ever arrived
+anywhere is still carrying the orbit it departed from.
+
+### What healing buys, measured
+
+`transit/arrivalReconcile.spec.ts`, on the owner's own node:
+
+| | before | after reconcile |
+|---|---|---|
+| `parentId` | `solar-system-sun` | `solar-system-earth` |
+| orbit radius | 3.05 AU | 6,536 km |
+| period | 5.33 years | 1.46 hours |
+| placement | — | Low Orbit |
+| player movement, node only | 0 km/hour | 107,725 km/hour |
+| player, free clock ONE YEAR adrift | — | still 6,536 km from Earth |
+
+That last row is the prize, and it is the owner's own observation: *"That fix may also fix the ship
+appearing to orbit Earth once done... letting the players have their clock back."* A healed ship is
+an ordinary Keplerian orbiter, so a player holding nothing but the node places it correctly at ANY
+time. **Route (B) — the compact parked descriptor — becomes unnecessary**, and the clock lock stops
+being a matter of correctness at all.
+
+### The decision this now rests on
+
+Healing needs ACTUAL time to move, and today only an explicit Settings action moves it. There is a
+good reason for that: scrubbing display time forward and back must not permanently rewrite the
+campaign. So the question is **when does an arrival become real?** Three shapes, and they differ in
+what a GM's habits cost them:
+
+1. **Running the clock advances actual time; scrubbing does not.** Fits the rule already shipped —
+   the GM says time matters by running it. Risk: a GM who plays the clock merely to SHOW an orbit
+   would be committing the campaign forward without meaning to.
+2. **Derive the healed orbit for display without writing it**, and publish that derived orbit to
+   players. No commit semantics change; more machinery, and a second derived truth to keep in step.
+3. **Leave healing where it is, and make every reader use one resolver.** Fixes the contradictions
+   on screen and NOT the frozen player ship.
+
+Whichever is chosen, `construct-logic.ts:158` must stop pairing a host from one source with a radius
+from another — that blend is wrong under all three.
