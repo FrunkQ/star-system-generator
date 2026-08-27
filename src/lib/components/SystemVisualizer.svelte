@@ -24,7 +24,7 @@
   import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
   import { regionOfInterest, inRegionOfInterest } from '$lib/system/regionOfInterest';
   import { scaleBoxCox } from '../physics/scaling';
-  import { findContainingHost } from '$lib/physics/orbits';
+  import { findContainingHost, orbitPathProjected } from '$lib/physics/orbits';
   import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
@@ -759,6 +759,21 @@
       lagrangePoints = allPoints.size > 0 ? allPoints : null;
   }
 
+  // The projected orbit path for a construct, memoised on the ORBIT OBJECT. Sampling a full
+  // revolution is 128 Kepler solves and this runs per frame per ship, so it must not be redone while
+  // nothing has changed - and since a parked ship stopped rewriting its own node (RENDER-S36) the
+  // orbit object is a stable key. A WeakMap so a deleted ship's path goes with it.
+  const _orbitPathCache = new WeakMap<object, { x: number; y: number }[]>();
+  function projectedOrbitPath(node: CelestialBody, parent: any): { x: number; y: number }[] | null {
+      const key = node.orbit as unknown as object;
+      if (!key) return null;
+      const hit = _orbitPathCache.get(key);
+      if (hit) return hit;
+      const pts = orbitPathProjected(node, parent);
+      if (pts.length > 1) _orbitPathCache.set(key, pts);
+      return pts.length > 1 ? pts : null;
+  }
+
   // Per-frame world positions now live in the shared physics/worldPositions module so the 2D orrery
   // and the 3D holo view place bodies identically (they differ only in the propagator). The construct
   // kinematics sampler is injected — it resolves a ship's position per-frame at the render clock
@@ -1040,11 +1055,37 @@
           // The designed grey, scaled by the dial. Drawn as rgba rather than via globalAlpha so it
           // cannot leak into the fills that follow in this pass.
           ctx.strokeStyle = `rgba(51,51,51,${Math.max(0, Math.min(1, orbitOpacity))})`; ctx.lineWidth = 1 / zoom;
+
+          // A LINE A SHIP IS NOT ON IS WORSE THAN NO LINE, AND THAT IS WHAT AN ELLIPSE FROM `a`, `e`
+          // AND OMEGA ALONE IS FOR A SHIP THAT HAS FLOWN SOMEWHERE.
+          //
+          // The plan-view convention (2D is the plan view) is right for everything the FLAT propagator
+          // also places. A construct with journeys is not one of those: `calculateWorldPositions`
+          // injects `sampleJourneyKinematicsAtTime`, which parks a ship on the plane it actually
+          // ARRIVED on, inclination and all. So the ship rode an inclined circle while its line was
+          // drawn as a flat one and the two only met at two points - the owner's "the only orbit line
+          // missing is when a construct establishes an orbit", with Tiangong's line correct beside it
+          // because Tiangong has never flown anywhere and so IS placed by the flat propagator.
+          //
+          // Two rules, both keyed on what actually places the thing:
+          //   - on a route right now -> no orbit line at all (it is not on its orbit), matching the 3D
+          //     view's rule (RENDER-S37).
+          //   - placed by the sampler -> draw the path the 3D walk walks, projected. Same rotation,
+          //     same satellite framing, so the line passes through the ship BY CONSTRUCTION.
+          const sampled = node.kind === 'construct' ? sampleJourneyKinematicsAtTime(system, node as CelestialBody, currentTime) : null;
+          if (sampled && sampled.state !== 'Orbiting') continue;   // in transit or adrift: no orbit to draw
+          const projected = sampled ? projectedOrbitPath(node as CelestialBody, nodesById.get(node.parentId)) : null;
+
           ctx.save();
           ctx.translate(parentPos.x - renderPan.x, parentPos.y - renderPan.y);
-          ctx.rotate(omega_rad);
           ctx.beginPath();
-          ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI);
+          if (projected && projected.length > 1) {
+            ctx.moveTo(projected[0].x, projected[0].y);
+            for (let i = 1; i < projected.length; i++) ctx.lineTo(projected[i].x, projected[i].y);
+          } else {
+            ctx.rotate(omega_rad);
+            ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI);
+          }
           ctx.stroke();
           ctx.restore();
       }

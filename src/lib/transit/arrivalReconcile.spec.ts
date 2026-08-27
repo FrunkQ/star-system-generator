@@ -27,6 +27,8 @@ import path from 'path';
 import { reconcileConstructArrival, resolveConstructCurrentHostId, getJourneyBounds,
   sampleJourneyKinematicsAtTime, needsStampedPosition } from './scheduler';
 import { getGlobalState } from './physics';
+import { orbitPathProjected } from '../physics/orbits';
+import { computeWorldPositions } from '../physics/worldPositions';
 import { routeOf, routeStateAt } from '../constructs/shipRoute';
 import { computeWorldPositions3D } from '../physics/worldPositions';
 import { compactRoute } from '../constructs/shipRoute';
@@ -711,5 +713,135 @@ describe('a route says WHEN it is being flown, not merely that it exists', () =>
     const node = rociAfterOrbitChange();
     const route = routeOf(node)!;
     expect(routeStateAt(route, route.s - 1)).toBeNull();
+  });
+});
+
+// ================================================================================================
+// THE LINE HAS TO PASS THROUGH THE SHIP.
+//
+// Owner, 2026-08-28: *"The only orbit line missing is when a construct establishes an orbit. It shows
+// on the 3D player view but NOT on the GM view after it achieves orbit."*
+//
+// The plan view drew every orbit as an ellipse from `a`, `e` and OMEGA alone - correct for anything
+// the FLAT propagator also places. A construct with journeys is not one of those: the orrery injects
+// `sampleJourneyKinematicsAtTime`, which parks a ship on the plane it actually ARRIVED on. So the
+// ship rode an inclined circle and its line was drawn as a flat one; the two meet at two points and
+// nowhere else. Tiangong's line was right beside it because Tiangong has never flown anywhere and so
+// IS placed by the flat propagator.
+//
+// The measure is the only one that matters: how far is the drawn line from the ship?
+// ================================================================================================
+
+const AU = 1.495978707e8;
+
+/** The plan view's own ellipse: `a`, `e` and OMEGA alone, in the reference plane. */
+function flatEllipse(orbit: any, samples = 256): { x: number; y: number }[] {
+  const a = orbit.elements.a_AU, e = orbit.elements.e || 0;
+  const b = a * Math.sqrt(1 - e * e);
+  const w = ((orbit.elements.omega_deg || 0) * Math.PI) / 180;
+  const out: { x: number; y: number }[] = [];
+  for (let i = 0; i <= samples; i++) {
+    const th = (i / samples) * 2 * Math.PI;
+    const x = -a * e + a * Math.cos(th), y = b * Math.sin(th);
+    out.push({ x: x * Math.cos(w) - y * Math.sin(w), y: x * Math.sin(w) + y * Math.cos(w) });
+  }
+  return out;
+}
+
+/** Closest approach from a point to a polyline, in km - i.e. "does the line pass through the ship". */
+function distToPathKm(path: { x: number; y: number }[], p: { x: number; y: number }): number {
+  let best = Infinity;
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i], b = path[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
+    best = Math.min(best, Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)));
+  }
+  return best * AU;
+}
+
+describe('the plan view draws a ship on the orbit the ship is actually on', () => {
+  /** The healed Roci, and the flat 2D world positions the orrery itself computes. */
+  function scene() {
+    const node = rociAfterOrbitChange();
+    const healed: any = reconcileConstructArrival(sysWith(node), node, OC_NOW);
+    const sys = sysWith(healed);
+    const earth = sys.nodes.find((n: any) => n.id === 'solar-system-earth');
+    return { healed, sys, earth };
+  }
+
+  const shipRelAt = (sys: any, t: number) => {
+    const w = computeWorldPositions(sys, t, sampleJourneyKinematicsAtTime);
+    const s = w.get('sol-rocinante')!, e = w.get('solar-system-earth')!;
+    return { x: s.x - e.x, y: s.y - e.y };
+  };
+
+  it('the projected path passes through the ship, all the way round', () => {
+    const { healed, sys, earth } = scene();
+    const path = orbitPathProjected(healed, earth);
+    expect(path.length).toBeGreaterThan(2);
+    let worst = 0;
+    for (let i = 0; i <= 8; i++) {
+      const t = OC_ARRIVAL + (i / 8) * (2 * Math.PI / healed.orbit.n_rad_per_s) * 1000;
+      worst = Math.max(worst, distToPathKm(path, shipRelAt(sys, t)));
+    }
+    console.log('projected line, worst gap to the ship:', worst.toFixed(1), 'km');
+    expect(worst).toBeLessThan(20);
+  });
+
+  it('REINSTATING THE FAULT: the flat a/e/omega ellipse misses it by most of the orbit', () => {
+    // What the plan view drew. A circle of radius `a` in the reference plane, while the ship rides
+    // the plane it arrived on - so the ship sits INSIDE its own line except where the two cross.
+    const { healed, sys } = scene();
+    const flat = flatEllipse(healed.orbit);
+    let worst = 0;
+    for (let i = 0; i <= 8; i++) {
+      const t = OC_ARRIVAL + (i / 8) * (2 * Math.PI / healed.orbit.n_rad_per_s) * 1000;
+      worst = Math.max(worst, distToPathKm(flat, shipRelAt(sys, t)));
+    }
+    console.log('flat ellipse, worst gap to the ship  :', worst.toFixed(1), 'km  (orbit radius 6,536 km)');
+    // Two orders of magnitude worse than the projected line's 0.0 km, and on a 6,536 km orbit that is
+    // a 5% error - tens of pixels at the zoom a low orbit is actually looked at. Worse than it sounds,
+    // too: an inclined circle projects to an ellipse with semi-minor `a cos i`, which for Earth's tilt
+    // is 5,999 km - INSIDE the planet's 6,371 km disc - while the flat circle sits 165 km above the
+    // limb where the planet graphic drawn after it covers what little shows.
+    expect(worst).toBeGreaterThan(100);
+  });
+
+  it('a construct that has NEVER flown keeps the plan-view ellipse, and is right to', () => {
+    // Tiangong's case. No journeys means the flat propagator places it, so a flat ellipse is exactly
+    // where it goes - which is why its line was correct all along and must not be disturbed.
+    const { sys, earth } = scene();
+    const station: any = {
+      kind: 'construct', roleHint: 'station', id: 'station', parentId: 'solar-system-earth',
+      name: 'Station', physical_parameters: { massKg: 400000 },
+      orbit: {
+        hostId: 'solar-system-earth', hostMu: 398589196000000, t0: OC_ARRIVAL,
+        elements: { a_AU: 0.000045, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0.5 }
+      }
+    };
+    const s2 = { ...sys, nodes: [...sys.nodes, station] };
+    expect(sampleJourneyKinematicsAtTime(s2 as any, station, OC_NOW)).toBeNull();
+    // ...so the ELLIPSE branch is the one taken, and it is exactly right for it.
+    const w = computeWorldPositions(s2 as any, OC_NOW, sampleJourneyKinematicsAtTime);
+    const sp = w.get('station')!, ep = w.get('solar-system-earth')!;
+    const rel = { x: sp.x - ep.x, y: sp.y - ep.y };
+    expect(distToPathKm(flatEllipse(station.orbit), rel)).toBeLessThan(20);
+
+    // AND WHY THE PROJECTED PATH WOULD BE WRONG HERE, which is the whole reason the choice is made on
+    // who PLACES the node rather than on what kind of node it is: `computeWorldPositions` - the flat
+    // walk the plan view uses for bodies - has no `frame` step at all, so it never applies the
+    // parent's axial tilt. `orbitPathProjected` does, because it mirrors the 3D walk. Handing this
+    // station a projected path would put its line 23.4 degrees off the ellipse it actually rides.
+    console.log('station: flat', distToPathKm(flatEllipse(station.orbit), rel).toFixed(1),
+                'km | projected', distToPathKm(orbitPathProjected(station, earth), rel).toFixed(1), 'km');
+    expect(distToPathKm(orbitPathProjected(station, earth), rel)).toBeGreaterThan(50);
+  });
+
+  it('and a ship UNDER WAY gets no orbit line, because it is not on one', () => {
+    const { sys, healed } = scene();
+    const midway = 1942000000000;
+    expect(sampleJourneyKinematicsAtTime(sys, healed, midway)!.state).toBe('Transit');
   });
 });

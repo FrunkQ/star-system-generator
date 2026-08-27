@@ -3,6 +3,7 @@ import { G, AU_KM } from '../constants';
 import { getNodeColor } from '../rendering/colors';
 import { hasSolidSurface } from './makeup';
 import type { CelestialBody } from '../types';
+import { satelliteTiltRad, toParentEquator } from '../system/satelliteFrame';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -557,6 +558,47 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
  * latitude. Inputs are RELATIVE to the host, in any consistent units - only directions are used.
  * Returns null for a degenerate state (no radius to point along).
  */
+/**
+ * THE ORBIT AS THE 3D WALK ACTUALLY WALKS IT, projected flat - parent-relative offsets in AU, one
+ * full revolution, ready to be translated to the parent and stroked.
+ *
+ * WHY THE PLAN VIEW NEEDS THIS AND ONLY FOR SOME NODES. The 2D orrery draws an orbit as an ellipse
+ * from `a`, `e` and OMEGA ALONE - the plan-view convention, and correct for anything the flat
+ * propagator also places. But a construct with journeys is NOT placed by that propagator: the orrery
+ * injects `sampleJourneyKinematicsAtTime`, which parks a ship on the plane it actually ARRIVED on and
+ * is inclination-aware. So the ship was drawn on an inclined circle while its line was drawn as a
+ * flat one, and the two only touch at two points. One of them has to give, and it cannot be the ship.
+ *
+ * Same rotation and the same satellite framing `computeWorldPositions3D` applies, so the line passes
+ * through the ship by construction rather than by agreement between two derivations.
+ */
+export function orbitPathProjected(
+  node: CelestialBody | Barycenter | { orbit: any },
+  parent: any,
+  samples = 128
+): { x: number; y: number }[] {
+  const orbit = (node as any)?.orbit;
+  if (!orbit?.elements) return [];
+  const a_AU = orbit.elements.a_AU;
+  if (!(a_AU > 0)) return [];
+
+  const aM = a_AU * AU_KM * 1000;
+  const n = orbit.n_rad_per_s ?? (orbit.hostMu > 0 ? Math.sqrt(orbit.hostMu / (aM * aM * aM)) : 0);
+  if (!(Math.abs(n) > 0)) return [];
+  const periodMs = (2 * Math.PI) / Math.abs(n) * 1000;
+  const t0 = orbit.t0 ?? 0;
+
+  const tilt = satelliteTiltRad(node, parent);
+  const out: { x: number; y: number }[] = [];
+  const scratch = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i <= samples; i++) {
+    const r = propagateState3D(node, t0 + (periodMs * i) / samples).r;
+    const f = tilt ? toParentEquator(r.x, r.y, r.z, tilt, scratch) : r;
+    out.push({ x: f.x, y: f.y });
+  }
+  return out;
+}
+
 export function circularElementsAtState(
   rRel: { x: number; y: number; z?: number },
   vRel: { x: number; y: number; z?: number }

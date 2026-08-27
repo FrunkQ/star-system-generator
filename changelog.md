@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.121 - 28th Aug 2026
+
+- A ship that has flown somewhere now has its orbit line drawn where the ship actually is. The GM's map draws orbits flat, in the plane of the system, which is right for everything it places that way - but a ship that has arrived somewhere is placed on the plane it actually arrived on, so its line and the ship itself only ever met at two points. A station that has never flown anywhere was drawn correctly in the same picture, which is what gave it away.
+- A ship under way draws no orbit line at all on the GM's map, matching the 3D view: it is not on an orbit while it is flying.
+
 ## v3.0.120 - 27th Aug 2026
 
 - Board only. The player-view crash is reproduced and traced: with the clock running, a following player view rebuilds its entire 3D scene on every incoming snapshot even when nothing in the system has changed, fifty-nine times out of sixty-one in the captured run.

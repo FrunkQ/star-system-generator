@@ -2406,6 +2406,32 @@ orbiting on the player's own clock. Pinned as a FIXED POINT: 200 ticks, 0 rewrit
 BLAST: dropping the stamp is only safe because DATA-R29 made the stored orbit reproduce the sampler.
 Do them in that order or the ship teleports to the far side of its orbit the moment the stamp goes.
 
+### RENDER-S39 DRAW AN ORBIT FROM WHATEVER PLACES THE BODY, NOT FROM ITS ELEMENTS BY DEFAULT
+WHERE: `SystemVisualizer.drawSystem` (the orbit-ellipse pass), `physics/orbits.orbitPathProjected`,
+`physics/worldPositions.computeWorldPositions`.
+RULE: a drawn orbit must be sampled from the SAME function that places the thing on it. When a view
+places different nodes by different means, the line has to key on WHICH - never on what kind of node
+it is.
+WHY: the plan view drew every orbit as an ellipse from `a`, `e` and OMEGA alone. That is right for
+anything the FLAT propagator also places, which is what the plan-view convention means. But a
+construct with journeys is not one of those: the orrery injects `sampleJourneyKinematicsAtTime`,
+which parks a ship on the plane it actually ARRIVED on, inclination and all. So the ship rode an
+inclined circle while its line was drawn as a flat one, and the two met at two points and nowhere
+else. Owner: *"the only orbit line missing is when a construct establishes an orbit - it shows on the
+3D player view but NOT on the GM view"*, with a station's line correct beside it because the station
+had never flown anywhere and so WAS placed by the flat propagator. Measured, on one Earth low orbit:
+projected line 0.0 km from the ship, flat ellipse 342.6 km; and for the station, flat 0.3 km,
+projected 112.0 km. Both are needed, which is the point.
+BLAST: `computeWorldPositions` (the flat walk) has NO `frame` step - it never applies the parent's
+axial tilt, while `computeWorldPositions3D` always does. So a projected path is right only for a node
+the SAMPLER places (whose answer is already absolute) and wrong by the tilt for anything else. That
+asymmetry is why the choice is made on who places it.
+BLAST: an inclined circle projects to an ellipse of semi-minor `a cos i`. For an Earth low orbit at
+6,536 km and a 23.4-degree tilt that is 5,999 km - INSIDE the planet's 6,371 km disc - so part of a
+correct line is behind the planet graphic, which is drawn after it. Not a fault; expect it.
+BLAST: the path is 128 Kepler solves and the pass is per frame, so it is memoised on the ORBIT
+OBJECT. That is only a sound key because a parked ship stopped rewriting its node (RENDER-S36).
+
 ### RENDER-S37 "HAS A ROUTE" IS NOT "IS FLYING", AND THE DIFFERENCE IS A CLOCK
 WHERE: `holo/scene.setSystemBuild` (orbit-ring build), `holo/scene.updateOrbitRings`,
 `constructs/shipRoute.routeStateAt`.
