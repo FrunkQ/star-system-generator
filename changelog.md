@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.96 - 26th Aug 2026
+
+- Board only. Captured B95: a gas giant loses its bands on the first atmosphere edit after opening and regains them on the next. The banding threshold is real physics, but the quantity it reads cannot legitimately be moved by an atmosphere edit at all.
+
 ## v3.0.95 - 26th Aug 2026
 
 - Board only. The performance-readout item grows the part that matters: diagnostics are held in memory and die with the tab, so a crash destroys the evidence of what caused it. Writing a compact record when memory first runs high is what makes the crash report itself.
