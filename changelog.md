@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.117 - 27th Aug 2026
+
+- Board only. Two things found while checking the gas giants against the owner's screenshots, both measured and neither yet changed. Jupiter looks washed out next to Saturn even though its bands are more than twice the contrast underneath - its aurora covers about a third of the disc and flattens them. The strength is right, since Jupiter's magnetic field is twenty times Saturn's; the reach is not, because the real thing is a small ring around each pole. And a gas giant's polar vortex is drawn in a fixed slate blue that takes no account of the planet it sits on, which is why Saturn's hexagon reads as a grey patch on a gold world.
+
 ## v3.0.116 - 27th Aug 2026
 
 - Saturn is no longer drawn as a small Jupiter. Its banding was being set almost entirely by the planet's mass, because the quantity that should have separated the two - how much of the sky the upper cloud deck covers - was being rounded up to "all of it" for both. Jupiter's ammonia clouds cover about seven eighths of its sky and Saturn's about half, and that difference is most of why one is stripy and the other is a pale ball. Saturn now reads at a bit over a third of Jupiter's contrast instead of three quarters, and Uranus and Neptune stay smooth.
