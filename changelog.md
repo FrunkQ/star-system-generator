@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.115 - 27th Aug 2026
+
+- How much of a giant's methane you can see is now decided by the clouds above it rather than guessed from its temperature. The old rule had three fixed rungs, and giving Saturn its ammonia clouds back nudged it a few degrees cooler and straight across one of them, which turned it grey. Methane condenses colder than anything else, so where a world has methane clouds they sit on top and nothing hides them - which is why Uranus and Neptune are unchanged, and why Jupiter and Saturn are gold rather than green. Both now read warmer and closer to life, and Saturn keeps the bands it regained, at a little over half Jupiter's strength.
+
 ## v3.0.114 - 27th Aug 2026
 
 - Found and removed the real cause of the gas-giant banding fault. A cloud deck had to have a minimum amount of its gas present before it was allowed to exist at all, and below that line it did not thin out, it vanished. The measurement that settles it: the deck being deleted was not a wisp - it was twenty times thicker than the point where a cloud stops looking thicker. What decides whether you can see a cloud is how much light it blocks, and the engine already worked that out a few lines later, so the extra rule was only ever hiding decks. Editing a trace gas on a giant now changes its bands smoothly or not at all.
