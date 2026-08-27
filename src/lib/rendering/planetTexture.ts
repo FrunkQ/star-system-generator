@@ -50,6 +50,20 @@ export function chromoAlpha(weight: number): number {
   return Math.min(0.7, weight + 0.2) * Math.min(1, weight / CHROMOPHORE_MAX_WEIGHT);
 }
 
+// A REGULAR POLYGON IN POLAR FORM, which is what a polar vortex boundary is. Exported so both the
+// painter and its test read one definition, and so the next renderer cannot invent a third shape.
+//
+// The trap this replaces: a COSINE is not a polygon. `r = a + b cos(n th)` draws an n-LOBED FLOWER
+// with sides bowing inward - measured at 54% of the apothem - and that is what Saturn's "hexagon"
+// was. A regular n-gon is `r = apothem / cos(phi)` with phi measured from the nearest edge midpoint,
+// which gives straight sides (bow exactly 0) and a vertex 1/cos(180/n) further out than an edge:
+// 1.1547 for a hexagon, against the 1.78 the cosine was producing.
+export function polygonRadiusAt(sides: number, apothem: number, angleRad: number): number {
+  const seg = (2 * Math.PI) / Math.max(3, sides);
+  const phi = (((angleRad % seg) + seg) % seg) - seg / 2;
+  return apothem / Math.cos(phi);
+}
+
 // WHETHER A GIANT CARRIES A LONG-LIVED STORM, as a CHANCE rather than a coin flip on its id.
 //
 // A Great-Red-Spot-style anticyclone is not decoration: it is what a strongly banded circulation
@@ -637,29 +651,49 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
 
   // POLAR ICE CAPS — bright frozen caps at the two poles (the equirect's top and bottom rows ARE the
   // poles). A soft gradient fading toward the equator; craters/features drawn after show faintly through.
-  // POLAR VORTEX — a gas giant's geometric polar jet (Saturn hexagon). A polygon ringing the north
-  // pole: the boundary latitude waves N times with longitude, so from the pole it reads as an N-gon.
+  // POLAR VORTEX — a gas giant's geometric polar jet (Saturn hexagon). A polygon ringing EACH pole:
+  // the boundary latitude is the polar radius of a regular N-gon, so from the pole it reads as one.
   if (a.polarVortex) {
-    const sides = a.polarVortex.sides, baseLat = EQ_H * 0.1, amp = EQ_H * 0.028;
-    const yb = (x: number) => baseLat + amp * Math.cos(sides * (x / EQ_W) * 2 * Math.PI);
-    ctx.beginPath(); ctx.moveTo(0, 0);
-    for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yb(x));
-    ctx.lineTo(EQ_W, 0); ctx.closePath();
-    // Colours come from the SPEC, which derives them from this body's own cloud colour. They used to
-    // be three literal slate blues here and one more in PlanetDisc - two renderers each choosing a
-    // look, which is the one thing the physics-drives-visuals rule forbids, and which drew Saturn's
-    // hexagon as a grey patch on a gold planet.
-    ctx.globalAlpha = 0.42;
-    ctx.fillStyle = a.polarVortex.fillHex; ctx.fill();                  // interior: deeper air, darker
-    ctx.globalAlpha = 0.7;
-    ctx.strokeStyle = a.polarVortex.rimHex; ctx.lineWidth = 2.6 * S;    // bright jet rim
-    ctx.beginPath();
-    for (let x = 0; x <= EQ_W; x += 3) (x === 0 ? ctx.moveTo(x, yb(x)) : ctx.lineTo(x, yb(x)));
-    ctx.stroke();
-    ctx.globalAlpha = 0.42;
-    ctx.fillStyle = a.polarVortex.eyeHex;                               // a small bright eye at the pole
-    ctx.beginPath(); ctx.ellipse(EQ_W / 2, baseLat * 0.35, EQ_W * 0.12, baseLat * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
-    ctx.globalAlpha = 1;
+    // A POLYGON, NOT A COSINE. This was `baseLat + amp * cos(sides * longitude)`, and a cosine in
+    // polar coordinates is not a polygon — r = a + b cos(n th) draws an n-LOBED FLOWER with concave
+    // sides, which is what Saturn's "hexagon" was actually being drawn as. A regular n-gon is
+    // r = apothem / cos(phi), phi measured from the nearest edge's midpoint: flat sides, sharp
+    // corners, and a vertex only 1/cos(180/n) further out than an edge (15% for a hexagon, against
+    // the 28% swing the cosine had). Latitude off the pole IS the polar radius on an equirect sheet,
+    // so the same formula applies directly to y.
+    // The apothem puts the ring near 13 degrees from the pole: a polar vortex sits inside the polar
+    // jet, and Saturn's real hexagon is centred on 78 degrees north. That also keeps it INSIDE the
+    // auroral oval, which RENDER-S37 places at 16 degrees for Saturn - the right way round.
+    const sides = a.polarVortex.sides, apothem = EQ_H * 0.072;
+    const yb = (x: number) => polygonRadiusAt(sides, apothem, (x / EQ_W) * 2 * Math.PI);
+    // BOTH POLES. A polar vortex is what a rotating envelope does where the jets converge, and that
+    // happens at each end of the spin axis - Jupiter carries a polygonal cyclone cluster at BOTH
+    // poles (Juno: eight around a central one in the north, five in the south) and Saturn's south has
+    // a cyclone with a clear eye even though only its NORTH is hexagonal. Drawing the north alone
+    // left a giant's far pole bare the moment you turned the globe.
+    // Colours come from the SPEC, derived from this body's own cloud colour. They used to be three
+    // literal slate blues here and one more in PlanetDisc - two renderers each choosing a look, which
+    // is the one thing the physics-drives-visuals rule forbids, and which drew Saturn's hexagon as a
+    // grey patch on a gold planet.
+    for (const north of [true, false]) {
+      const yAt = (x: number) => (north ? yb(x) : EQ_H - yb(x));
+      const edge = north ? 0 : EQ_H;
+      ctx.beginPath(); ctx.moveTo(0, edge);
+      for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yAt(x));
+      ctx.lineTo(EQ_W, edge); ctx.closePath();
+      ctx.globalAlpha = 0.42;
+      ctx.fillStyle = a.polarVortex.fillHex; ctx.fill();                // interior: deeper air, darker
+      ctx.globalAlpha = 0.7;
+      ctx.strokeStyle = a.polarVortex.rimHex; ctx.lineWidth = 2.6 * S;  // bright jet rim
+      ctx.beginPath();
+      for (let x = 0; x <= EQ_W; x += 3) (x === 0 ? ctx.moveTo(x, yAt(x)) : ctx.lineTo(x, yAt(x)));
+      ctx.stroke();
+      ctx.globalAlpha = 0.42;
+      ctx.fillStyle = a.polarVortex.eyeHex;                             // a small bright eye at the pole
+      const eyeY = north ? apothem * 0.35 : EQ_H - apothem * 0.35;
+      ctx.beginPath(); ctx.ellipse(EQ_W / 2, eyeY, EQ_W * 0.12, apothem * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
   }
 
   // (The flat cap wash that used to live here is gone. Ice is painted with the surface now, ragged

@@ -3986,6 +3986,18 @@ smooth ball has none to give - `stormChance` ramps from 0 at 0.45 to 1 at 0.75. 
 only pair anyone can check: Jupiter bands at 0.84 and has a Great Red Spot, Saturn bands at 0.38 and
 has no persistent spot. It was previously a flat `rnd() > 0.35` on any giant that banded at all,
 which gave Saturn a permanent dark oval.
+A POLAR VORTEX BOUNDARY IS A POLYGON, AND A COSINE IS NOT ONE. It was
+`baseLat + amp * cos(sides * longitude)`, and `r = a + b cos(n th)` in polar coordinates draws an
+n-LOBED FLOWER: measured, its sides bow inward by 54% of the apothem and its vertex sits 1.78x an
+edge. Saturn's "hexagon" was rendering as a six-petalled star and stayed that way until the owner
+sent a close-up. Use `polygonRadiusAt` (exported, shared, pinned): `apothem / cos(phi)` with phi from
+the nearest edge midpoint gives straight sides (bow exactly 0) and a vertex 1/cos(180/n) out - 1.1547
+for a hexagon. Latitude off the pole IS the polar radius on an equirect sheet, so it applies to y
+directly. It is drawn at BOTH poles: a vortex is what a rotating envelope does where the jets
+converge, and that happens at each end of the spin axis - Jupiter carries a polygonal cyclone cluster
+at both (Juno: eight around a central one north, five south) and Saturn's south has a cyclone with a
+clear eye even though only its NORTH is hexagonal. Placement is a colatitude (13 degrees) so it sits
+INSIDE the auroral oval of RENDER-S37, which is the right order.
 A polar vortex takes its colours from the BODY: the interior is its own cloud colour darkened (a
 cyclone clears the upper haze and you see deeper), the rim brightened. Four literal slate blues used
 to be spread across TWO painters - `rgba(60,80,120,0.32)` and `rgba(210,222,245,0.6)` in PlanetDisc,

@@ -28,7 +28,7 @@ import { systemProcessor } from '../core/SystemProcessor';
 import { fixUpImportedSystem } from '../system/importFixup';
 import { decksFromTags, CLOUD_DECK_TAG } from '../physics/cloudDecks';
 import { deriveApparentColorParts, CHROMOPHORE_MAX_WEIGHT } from './apparentColor';
-import { giantBandRamp, chromoAlpha, stormChance } from './planetTexture';
+import { giantBandRamp, chromoAlpha, stormChance, polygonRadiusAt } from './planetTexture';
 import { deriveAppearance } from './planetAppearance';
 import type { System, RulePack, CelestialBody } from '$lib/types';
 
@@ -317,6 +317,57 @@ describe('B95: the polar vortex is coloured off the body, not off a literal', ()
     for (const h of [v.fillHex, v.rimHex, v.eyeHex]) {
       expect(h.toLowerCase()).not.toBe('#3c5078');   // rgba(60,80,120)
       expect(h.toLowerCase()).not.toBe('#304068');   // rgba(48,64,104)
+    }
+  });
+});
+
+// A POLAR VORTEX BOUNDARY IS A POLYGON. It was a cosine, and a cosine in polar coordinates draws an
+// n-lobed FLOWER with concave sides - which is what Saturn's "hexagon" rendered as until the owner
+// sent a close-up of it. Straight sides and the right vertex ratio are the whole test.
+describe('B95: the polar vortex is a polygon, not a cosine', () => {
+  const APOTHEM = 100;
+  const boundary = (sides: number, samples = 720) =>
+    Array.from({ length: samples }, (_, i) => polygonRadiusAt(sides, APOTHEM, (i / samples) * 2 * Math.PI));
+
+  it('a vertex sits exactly 1/cos(pi/n) further out than an edge', () => {
+    for (const sides of [4, 5, 6, 8, 9]) {
+      const r = boundary(sides);
+      expect(Math.max(...r) / Math.min(...r)).toBeCloseTo(1 / Math.cos(Math.PI / sides), 3);
+    }
+  });
+
+  it('the sides are STRAIGHT - a cosine bows them in by half the apothem', () => {
+    for (const sides of [4, 6, 8]) {
+      const seg = (2 * Math.PI) / sides;
+      const pts: [number, number][] = [];
+      for (let i = 0; i <= 60; i++) {
+        const th = (i / 60) * seg, r = polygonRadiusAt(sides, APOTHEM, th);
+        pts.push([r * Math.cos(th), r * Math.sin(th)]);
+      }
+      const [ax, ay] = pts[0], [bx, by] = pts[pts.length - 1];
+      let worst = 0;
+      for (const [px, py] of pts) {
+        const t = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2);
+        worst = Math.max(worst, Math.hypot(px - (ax + t * (bx - ax)), py - (ay + t * (by - ay))));
+      }
+      expect(worst / APOTHEM, `${sides}-gon sides are not straight - is this a cosine again?`)
+        .toBeLessThan(1e-9);
+    }
+  });
+
+  it('the edge midpoint is the apothem, by definition', () => {
+    for (const sides of [5, 6, 7]) {
+      expect(polygonRadiusAt(sides, APOTHEM, Math.PI / sides)).toBeCloseTo(APOTHEM, 9);
+    }
+  });
+
+  it('it is periodic in the side count and never negative', () => {
+    for (const sides of [3, 6, 9]) {
+      const seg = (2 * Math.PI) / sides;
+      for (const th of [0.1, 0.7, 1.9, 4.4]) {
+        expect(polygonRadiusAt(sides, APOTHEM, th)).toBeCloseTo(polygonRadiusAt(sides, APOTHEM, th + seg), 9);
+        expect(polygonRadiusAt(sides, APOTHEM, th)).toBeGreaterThan(0);
+      }
     }
   });
 });

@@ -297,15 +297,29 @@
   })();
 
   // Polar vortex: a gas giant's geometric polar jet, drawn as a foreshortened polygon near the top pole.
-  $: vortexPoly = (() => {
+  // Placed from a COLATITUDE like the auroral oval, so the two agree about where the pole is and sit
+  // in the right order: the vortex is INSIDE the aurora (Saturn's hexagon is centred on 78 degrees
+  // north, its auroral oval a little further out). It used to be `cy=25, rx=11` — free numbers that
+  // put it at 34 degrees from the pole and half again too wide.
+  function vortexPolyAt(north: boolean): string {
     if (!a.polarVortex) return '';
-    const sides = a.polarVortex.sides, cx = 50, cy = 25, rx = 11, ry = 4;
+    const colat = (VORTEX_COLAT_DEG * Math.PI) / 180;
+    const sides = a.polarVortex.sides, cx = 50;
+    const drop = DISC_R * Math.cos(colat);
+    const cy = north ? 50 - drop : 50 + drop;
+    const rx = DISC_R * Math.sin(colat), ry = rx * 0.38;
     const pts = Array.from({ length: sides }, (_, i) => {
       const th = (i / sides) * 2 * Math.PI + Math.PI / sides;
       return `${(cx + rx * Math.cos(th)).toFixed(1)},${(cy + ry * Math.sin(th)).toFixed(1)}`;
     });
     return 'M' + pts.join(' L') + ' Z';
-  })();
+  }
+  // BOTH POLES. A polar vortex is what a rotating envelope does where the jets converge, so it happens
+  // at each end of the spin axis - Jupiter carries a polygonal cyclone cluster at both, and Saturn's
+  // south has a cyclone with a clear eye even though only its north is hexagonal. The far one is
+  // mostly hidden behind the limb, exactly like the far auroral oval.
+  $: vortexPoly = vortexPolyAt(true);
+  $: vortexPolyFar = vortexPolyAt(false);
 
   // Auroras: a spiky glowing OVAL ringing each magnetic pole (Hubble-Jupiter style). Strength + emitter
   // colour are model-derived; the swirled oval PATHS are generated here (auroraOval).
@@ -313,6 +327,9 @@
   // geometry below can convert a colatitude into a y on the disc honestly.
   const DISC_R = 30;
   const AURORA_COLAT_MIN = 12, AURORA_COLAT_MAX = 28;
+  // A polar vortex sits inside the polar jet. Saturn's hexagon is centred on 78 degrees north, i.e.
+  // 12 from the pole; keeping it inside the auroral oval's 12-28 band is the correct ordering.
+  const VORTEX_COLAT_DEG = 13;
   $: auroraStr = a.aurora?.strength ?? 0;
   $: hasAurora = !!a.aurora;
   $: auroraBrilliant = a.aurora?.brilliant ?? false;
@@ -642,6 +659,7 @@
       <!-- Polar vortex: a gas giant's geometric polar jet (Saturn hexagon), foreshortened at the top pole. -->
       {#if a.polarVortex}
         <g clip-path="url(#clip-{uid})">
+          <path d={vortexPolyFar} fill={a.polarVortex.fillHex} fill-opacity="0.18" stroke={a.polarVortex.rimHex} stroke-opacity="0.3" stroke-width="0.6" stroke-linejoin="round" />
           <path d={vortexPoly} fill={a.polarVortex.fillHex} fill-opacity="0.32" stroke={a.polarVortex.rimHex} stroke-opacity="0.6" stroke-width="0.7" stroke-linejoin="round" />
         </g>
       {/if}
