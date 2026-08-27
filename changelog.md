@@ -4,6 +4,10 @@ All notable changes are listed here:
 
 ## v3.0.140 - 27th Aug 2026
 
+## v3.0.141 - 27th Aug 2026
+
+- Board only. A player reported that zooming all the way out on a lone red supergiant shows nothing but orange. The framing works out how far to stand back from how far apart things are, and never from how big they are, so a huge star at the centre counts for nothing.
+
 - Design note only. Player views are meant to work out where a ship is for themselves, the way they already work out where a planet is, so that flying a ship stops re-sending the whole campaign to every viewer. Written up with the questions it needs answered first. It turns out the pieces are largely already there and were never joined up.
 
 ## v3.0.139 - 27th Aug 2026
