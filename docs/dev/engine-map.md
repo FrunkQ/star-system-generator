@@ -2352,6 +2352,74 @@ repeat of an identical heartbeat (the beat is periodic; the lock would never lif
 BLAST: `gmTime` is never cleared when a GM disconnects, so the latch survives them leaving. That is
 survivable ONLY because the release is a button. A timer-based release would have hidden it.
 
+### DATA-R29 A STORED ORBIT DESCRIBES A SHIP ONLY IF IT CARRIES THE PHASE AS WELL AS THE RADIUS
+WHERE: `transit/scheduler.reconcileConstructArrival`, `physics/orbits.circularElementsAtState`,
+`transit/scheduler.samplePostJourneyState`.
+RULE: when one thing is described twice - here by the journey sampler, which the GM draws from, and
+by the elements on the node, which is all a player has - the second description must REPRODUCE the
+first, not merely resemble it. Derive it FROM the first at a known instant rather than deriving it
+again from the same inputs.
+WHY: the heal wrote a radius and kept whatever `M0_rad`/`i_deg`/`Omega_deg` the ship was authored
+with, so the two agreed about the circle and disagreed about where on it the ship was - measured at
+12,951 km on a 6,536 km orbit, very nearly a diameter. It stayed invisible while a stamped vector
+overrode the orbit on both sides, and would have appeared the instant that vector was dropped.
+Now: ask the sampler where it puts the ship at the arrival instant, and store the circular orbit
+through that state. Measured agreement 0.0 km at arrival, +1 h, +1 day and +1 year.
+BLAST: the elements must be derived IN THE FRAME THEY WILL BE READ IN. A satellite's are quoted in
+its parent's EQUATORIAL frame (C3/C9, `system/satelliteFrame.ts`), and `computeWorldPositions3D`
+rotates every propagated offset by the parent's axial tilt on the way out. Deriving in the system
+plane and storing without the inverse rotation came out 23.44 degrees wrong around Earth - the
+planet's tilt exactly, and a 1,163 km miss.
+BLAST: the radius must come from the sampler too, not from a second `parkingOrbitRadiusKm` call -
+and note that `getOrbitOptions` reads the `system` argument, so omitting it derives a DIFFERENT
+orbit from the one the sampler parks at. Two answers to one question is the [[B92]] fault again.
+BLAST: a MASSLESS construct is propagated at its epoch forever (`worldPositions`, `isStationary`),
+so any fixture without `physical_parameters.massKg` has a ship that never moves - and every phase
+check then passes for the wrong reason. It cost an afternoon here.
+
+### DATA-R30 A REPAIR THAT ONLY CHECKS THE HOST CANNOT SEE A CHANGE OF ORBIT
+WHERE: `transit/scheduler.reconcileConstructArrival`, the idempotence test.
+RULE: an idempotence test must compare everything the operation WRITES. Comparing a subset makes it
+a no-op for exactly the cases where the rest of the state is what changed.
+WHY: the test read `parentId === hostId && orbit.hostId === hostId` - true of every orbit change
+ever flown, because a high-to-low transfer ENDS AT THE HOST IT STARTED FROM. So a ship that had just
+lowered itself to 6,536 km kept a stored orbit of 767,944 km, a hundred and seventeen times out, and
+its panel read "Earth: High Orbit" beside a transfer whose own tags said LOWERING ORBIT.
+BLAST: widening the test needs a second guard or "heal on sight" becomes "overwrite on sight" - an
+orbit whose epoch is LATER than the arrival was written by a GM who knew what they wanted, and a
+journey that finished before they did does not get to undo it. Without that the repair fights a
+hand-placed ship every tick and `placementHealCount` climbs, which is meant to mean something else.
+
+### RENDER-S36 A SAMPLER THAT ANSWERS FOREVER MUST NOT BE WRITTEN DOWN FOREVER
+WHERE: `SystemView.syncScheduledJourneysAtDisplayTime`, `transit/scheduler.needsStampedPosition`,
+`holo/scene.setSystemBuild`.
+RULE: stamp a derived position onto a node only while nothing else can describe the thing. A parked
+ship has a host and an orbit; a ship in transit or adrift does not. Ask the STATE, never merely
+whether the sampler answered.
+WHY: `sampleJourneyKinematicsAtTime` keeps answering past the last arrival - it returns a live
+parking orbit, which MOVES. Stamping it meant every ship that had ever arrived anywhere rewrote its
+own node several times a second for the rest of the campaign. A changed node is a changed broadcast
+snapshot, and a player's 3D scene rebuilds on every one: `setSystem` bumps `buildGen`, which discards
+any ship-model load still in flight. ONE cause, three reported faults - the model never appeared on
+the player view, the camera reset while following, and the ship sat at a GM instant instead of
+orbiting on the player's own clock. Pinned as a FIXED POINT: 200 ticks, 0 rewrites (was 200).
+BLAST: dropping the stamp is only safe because DATA-R29 made the stored orbit reproduce the sampler.
+Do them in that order or the ship teleports to the far side of its orbit the moment the stamp goes.
+
+### RENDER-S37 "HAS A ROUTE" IS NOT "IS FLYING", AND THE DIFFERENCE IS A CLOCK
+WHERE: `holo/scene.setSystemBuild` (orbit-ring build), `holo/scene.updateOrbitRings`,
+`constructs/shipRoute.routeStateAt`.
+RULE: a construct's orbit ring is suppressed while it is ON its course, which is a question about
+TIME and must be asked per frame. Build the ring whenever there is an orbit; decide visibility live,
+exactly as the surface lock beside it already does.
+WHY: the ring was omitted at BUILD time for any construct that HAD a route - but a route outlives the
+journey that made it (`routeOf` packs the path whether or not the ship is still on it), so a ship
+that had finished a course drew no orbit line for the rest of the campaign. Owner: *"parked in low
+orbit but does not have an orbital line"*. `routeStateAt` already answers the live question by
+returning null outside the window - ask it rather than writing the window test a second time.
+BLAST: `compactRoute` packs EVERY journey into one window, gaps included, so a ship idle between two
+journeys still reads as "on route" - see the board.
+
 ### DATA-R26 A DERIVED READING NEVER JOINS A HOST FROM ONE SOURCE TO A NUMBER FROM ANOTHER
 WHERE: `construct-logic.calculateFullConstructSpecs` (`orbit_string`), and any derivation that takes
 an entity from its caller and a measurement off a node.

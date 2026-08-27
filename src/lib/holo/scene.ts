@@ -3786,8 +3786,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         contentGroup.add(line);
         routeLines.push({ id: node.id, obj: line, route, node, abs: new Float64Array(2048 * 3), count: 0 });
       }
-      const isJourneying = route !== null;
-      if (node.orbit && !isJourneying) {
+      // A SHIP IS OFF ITS ORBIT WHILE IT IS FLYING - NOT FOR EVER AFTERWARDS. This used to omit the
+      // ring at BUILD time for any construct that HAD a route at all, and a route survives its own
+      // journey: `routeOf` packs the path whether or not the ship is still on it. So a ship that had
+      // finished a course - a completed orbit change, say - drew no orbit line for the rest of the
+      // campaign, which is what the owner reported as "parked in low orbit but does not have an orbit
+      // line". Build the ring whenever there is an orbit to draw and decide per FRAME whether the ship
+      // is currently on it, exactly as the surface lock beside it in `updateOrbitRings` already does -
+      // the state is live (a ship departs and arrives while the scene stands), so the test must be too.
+      if (node.orbit) {
         if (node.parentId && nodesById.get(node.parentId)?.kind === 'barycenter') {
           // A member orbits the PAIR's common point, not the star. Deferred: the clearance that holds the
           // pair apart needs the PARTNER's rendered radius, and that is only known once every body exists.
@@ -4296,6 +4303,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const _ringParent = new THREE.Vector3();
   const _ringFocusLocal = new THREE.Vector3(); // the focus in a local ring's parent frame
   const _ringSample = new THREE.Vector3(); // scratch for the local dense-arc sampler
+  /** Is this construct actually flying its course at the moment being drawn? `routeStateAt` already
+   *  answers exactly this - it returns null outside the window by design - so ask it rather than
+   *  writing the window test a second time. */
+  function onRouteNow(id: string): boolean {
+    for (const rl of routeLines) {
+      if (rl.id !== id) continue;
+      return routeStateAt(rl.route, timeMs) !== null;
+    }
+    return false;
+  }
+
   function updateOrbitRings() {
     for (const r of orbitRings) {
       // A construct glued to a surface is not on its orbit, so it must not draw one. The lock is live
@@ -4304,7 +4322,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // rather than drawn transparent - 70 invisible LineLoops is still 70 draw calls, and "hides
       // every orbit line" should mean it.
       const orbitsOn = orbitLinesVisible && orbitOpacity > 0;
-      r.obj.visible = orbitsOn && visibleSet.has(r.id) && !bodyById.get(r.id)?.surfaceLock;
+      // ...and a ship UNDER WAY is not on its orbit either. Live, for the same reason the surface lock
+      // is: the ship leaves and arrives while this scene stands, and the route window says which.
+      r.obj.visible = orbitsOn && visibleSet.has(r.id) && !bodyById.get(r.id)?.surfaceLock && !onRouteNow(r.id);
       if (r.obj.visible) {
         // Scale each line's OWN designed opacity, so the weights between ring kinds survive the dial.
         const m = (r.obj as any).material as THREE.LineBasicMaterial | undefined;

@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.118 - 27th Aug 2026
+
+- A ship that changes orbit around the world it is already at now actually arrives. The repair that keeps a ship's record honest only ever asked whether it was orbiting the right WORLD, and a transfer from a high orbit to a low one ends at the world it started from - so a ship could lower itself to 6,500 km and keep a stored orbit of 768,000 km, a hundred and seventeen times too big, with its panel still reading "High Orbit".
+- A parked ship is now stored with the phase of its orbit and not just the size, so the orbit a player reads puts the ship exactly where the GM's map does - at the moment it arrived, an hour later, and a year later.
+- A ship that has arrived somewhere stops rewriting its own record. It had been doing so several times a second for the rest of the campaign, and because that record travels to the players, every player's 3D view was rebuilding itself just as often - which is why a ship's model never appeared on the player view, and part of why the camera would not settle.
+- A parked ship draws its orbit line again. The line was suppressed for any ship that had a course at all, and a course outlives the journey that made it - so a ship that had finished flying drew no orbit for the rest of the campaign.
+
 ## v3.0.117 - 27th Aug 2026
 
 - Board only. Two things found while checking the gas giants against the owner's screenshots, both measured and neither yet changed. Jupiter looks washed out next to Saturn even though its bands are more than twice the contrast underneath - its aurora covers about a third of the disc and flattens them. The strength is right, since Jupiter's magnetic field is twenty times Saturn's; the reach is not, because the real thing is a small ring around each pole. And a gas giant's polar vortex is drawn in a fixed slate blue that takes no account of the planet it sits on, which is why Saturn's hexagon reads as a grey patch on a gold world.

@@ -32,7 +32,7 @@
   import SisterFileModal from './SisterFileModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
   import type { TransitPlan } from '$lib/transit/types';
-  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast } from '$lib/transit/scheduler';
+  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast, needsStampedPosition } from '$lib/transit/scheduler';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { unitPrefs } from '$lib/unitPrefsStore';
@@ -1811,7 +1811,22 @@
         }
 
         const sampled = sampleJourneyKinematicsAtTime(sys, nextNode, timeMs);
-        if (sampled) {
+        // A SAMPLE ONLY BECOMES A STAMPED VECTOR WHILE THE SHIP IS ACTUALLY FREE-FLOATING.
+        //
+        // The sampler keeps answering forever: past its last arrival it returns a LIVE PARKING ORBIT,
+        // which moves. Stamping that meant every ship that had ever arrived anywhere rewrote its own
+        // node several times a second, for the rest of the campaign - and a changed node is a changed
+        // broadcast snapshot, so a player's holo scene called setSystem (and bumped `buildGen`) about
+        // twice a second and never held still long enough for anything to finish. That is one cause
+        // with three faces the owner reported: the ship's 3D model never attached, the camera reset
+        // itself every few seconds while following, and the ship was placed at a GM instant rather
+        // than orbiting on the player's own clock.
+        //
+        // A PARKED ship does not need a vector: its ORBIT describes it, and since the heal now stores
+        // the phase as well as the radius that orbit reproduces this very sampler exactly. A ship in
+        // TRANSIT or adrift in DEEP SPACE genuinely has no orbit to describe it, and keeps the stamp.
+        const freeFloating = !!sampled && needsStampedPosition(sampled.state);
+        if (sampled && freeFloating) {
           const priorPos = nextNode.vector_position_au;
           const priorVel = nextNode.vector_velocity_ms;
           if (
@@ -1832,8 +1847,20 @@
             };
             nodeChanged = true;
           }
+        } else if (sampled) {
+          // PARKED (Orbiting / Landed / Docked). Drop the stamp and let the orbit speak. Once this has
+          // run the node stops changing, which is what lets a player's scene stand still.
+          if (nextNode.vector_position_au || nextNode.vector_epoch_ms !== undefined || nextNode.flight_state !== sampled.state) {
+            nextNode = {
+              ...nextNode,
+              vector_position_au: undefined,
+              vector_epoch_ms: undefined,
+              flight_state: sampled.state
+            };
+            nodeChanged = true;
+          }
         } else if (nextNode.vector_position_au) {
-          // No active sampled journey at this display time.
+          // No sampled journey at all at this display time.
           // Keep deep-space constructs moving inertially instead of snapping back to legacy orbit.
           if (
             nextNode.flight_state === 'Deep Space' &&

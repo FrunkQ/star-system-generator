@@ -541,6 +541,65 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
  *
  * Returns null for a placement that is not an orbit (a surface landing, an L-point, a dock).
  */
+/**
+ * ELEMENTS FOR THE CIRCULAR ORBIT THAT PASSES THROUGH A GIVEN STATE, in the convention
+ * `solvePerifocal` above reads: M = M0 + n(t - t0), oriented Rz(Omega)Rx(i)Rz(omega).
+ *
+ * WHY THIS EXISTS. A ship that has arrived somewhere is described TWICE - by the sampler, which
+ * builds a parking circle on axes taken from the arrival itself so the flight and the orbit close
+ * exactly ([[B92]]), and by the elements stored on the node, which is all a player has. Storing a
+ * radius without a PHASE means the two disagree about where on that circle the ship is: right orbit,
+ * wrong point, up to a diameter apart. Feed this the state the sampler reports AT THE ARRIVAL INSTANT
+ * and the stored orbit reproduces the sampler at every later moment too.
+ *
+ * Circular by construction (e = 0), so the argument of periapsis is degenerate: omega is pinned to 0
+ * and the whole angle rides in M0, which for e = 0 is also the true anomaly and the argument of
+ * latitude. Inputs are RELATIVE to the host, in any consistent units - only directions are used.
+ * Returns null for a degenerate state (no radius to point along).
+ */
+export function circularElementsAtState(
+  rRel: { x: number; y: number; z?: number },
+  vRel: { x: number; y: number; z?: number }
+): { i_deg: number; Omega_deg: number; omega_deg: number; M0_rad: number } | null {
+  const norm = (v: { x: number; y: number; z: number }) => {
+    const m = Math.hypot(v.x, v.y, v.z);
+    return m > 1e-18 ? { x: v.x / m, y: v.y / m, z: v.z / m } : null;
+  };
+  const u = norm({ x: rRel.x, y: rRel.y, z: rRel.z ?? 0 });
+  if (!u) return null;
+
+  // The in-plane direction of travel: velocity with its radial part removed. A purely radial state
+  // leaves nothing to follow, so take the in-plane perpendicular - the same fallback the sampler uses.
+  const v = { x: vRel.x, y: vRel.y, z: vRel.z ?? 0 };
+  const radial = v.x * u.x + v.y * u.y + v.z * u.z;
+  const w = norm({ x: v.x - u.x * radial, y: v.y - u.y * radial, z: v.z - u.z * radial })
+    ?? norm({ x: -u.y, y: u.x, z: 0 })
+    ?? { x: 0, y: 0, z: 1 };
+
+  const h = norm({ x: u.y * w.z - u.z * w.y, y: u.z * w.x - u.x * w.z, z: u.x * w.y - u.y * w.x });
+  if (!h) return null;
+
+  const i = Math.acos(Math.max(-1, Math.min(1, h.z)));
+  // Ascending node, z x h. An equatorial orbit has none, and Omega is then arbitrary: take +x, which
+  // is what the 3-1-3 rotation reduces to anyway once i = 0.
+  const node = norm({ x: -h.y, y: h.x, z: 0 }) ?? { x: 1, y: 0, z: 0 };
+  const q = {
+    x: h.y * node.z - h.z * node.y,
+    y: h.z * node.x - h.x * node.z,
+    z: h.x * node.y - h.y * node.x
+  };
+  const M0 = Math.atan2(
+    u.x * q.x + u.y * q.y + u.z * q.z,
+    u.x * node.x + u.y * node.y + u.z * node.z
+  );
+  return {
+    i_deg: (i * 180) / Math.PI,
+    Omega_deg: (Math.atan2(node.y, node.x) * 180) / Math.PI,
+    omega_deg: 0,
+    M0_rad: M0
+  };
+}
+
 export function parkingOrbitRadiusKm(
   body: CelestialBody,
   placement: string | undefined,

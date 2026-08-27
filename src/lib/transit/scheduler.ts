@@ -2,7 +2,8 @@ import type { CelestialBody, System } from '$lib/types';
 import type { TransitPlan, Vector2 } from '$lib/transit/types';
 import { AU_KM, G } from '$lib/constants';
 import { getGlobalState } from '$lib/transit/physics';
-import { parkingOrbitRadiusKm } from '$lib/physics/orbits';
+import { parkingOrbitRadiusKm, circularElementsAtState } from '$lib/physics/orbits';
+import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { samplePathAtTime } from '$lib/transit/pathSampling';
 import { deriveCoOrbitalOrbit, LAGRANGE_POINT_IDS } from '$lib/physics/lagrange';
 import type { LagrangePointId } from '$lib/types';
@@ -157,6 +158,10 @@ export interface JourneyKinematics {
   state: 'Transit' | 'Deep Space' | 'Orbiting' | 'Docked' | 'Landed';
 }
 
+// The journey-log element type, structurally. `ScheduledJourneyLog` is declared in the types module
+// but not exported, and exporting it is not this change's business.
+type JourneyLogOf = NonNullable<CelestialBody['scheduled_journeys']>[number];
+
 export function getJourneyBounds(plans: TransitPlan[]): JourneyBounds | null {
   if (!plans || plans.length === 0) return null;
   const ordered = [...plans].sort((a, b) => a.startTime - b.startTime);
@@ -219,6 +224,9 @@ export function resolveConstructCurrentHostId(
  * pin the ship to the spot it stopped at. The journey log is left intact. Idempotent - a no-op once
  * healed, returning the same reference so callers can cheaply detect a change.
  *
+ * AND "ARRIVAL" INCLUDES AN ORBIT CHANGE, which ends at the host it started from. That case has to be
+ * judged on the RADIUS, not the host, or every high-to-low transfer reads as "already healed".
+ *
  * KEYED TO DISPLAY TIME, which is a deliberate reversal. Owner, 2026-08-27: *"Actual Time we ignore
  * for now - that is a GM checkpoint to advance his campaign... Display Time is our main 't' for
  * player/GM visualisation."* It used to key off actual time, on the reasoning that scrubbing must not
@@ -243,7 +251,7 @@ export function reconcileConstructArrival(
   const logs = Array.isArray(construct.scheduled_journeys) ? construct.scheduled_journeys : [];
 
   // Latest captured (non-flyby) arrival whose end has passed.
-  let best: { endMs: number; plan: TransitPlan } | null = null;
+  let best: { endMs: number; plan: TransitPlan; log: JourneyLogOf } | null = null;
   for (const log of logs) {
     if (log.status === 'cancelled') continue;
     const bounds = getJourneyBounds(log.plans);
@@ -254,7 +262,7 @@ export function reconcileConstructArrival(
       (lastPlan.interceptSpeed_ms || 0) > 0 ||
       (lastPlan.segments || []).some((s) => (s.warnings || []).includes('Flyby'));
     if (isFlyby) continue;
-    if (!best || bounds.endMs > best.endMs) best = { endMs: bounds.endMs, plan: lastPlan };
+    if (!best || bounds.endMs > best.endMs) best = { endMs: bounds.endMs, plan: lastPlan, log };
   }
   if (!best) return construct;
 
@@ -262,20 +270,105 @@ export function reconcileConstructArrival(
   const target = system.nodes.find((n) => n.id === hostId) as any;
   if (!target) return construct;
 
-  // Already pointing at the right host -> nothing to do (idempotent).
-  if (construct.parentId === hostId && construct.orbit?.hostId === hostId) return construct;
-
   const placementKey = best.plan.arrivalPlacement || 'lo';
   const label = PLACEMENT_LABELS[placementKey] || construct.placement || 'Orbit';
   const targetRadiusKm = target.radiusKm || 1000;
   const targetMassKg = target.massKg || target.effectiveMassKg || 0;
   const hostMu = G * targetMassKg;
-  const a_AU =
+  // The fallback radius, for a landed ship and for the case where the sampler cannot answer. Note the
+  // `system` argument: `getOrbitOptions` reads it, so omitting it derives a DIFFERENT high orbit from
+  // the one the sampler parks at - which is precisely the two-answers-to-one-question fault [[B92]]
+  // was about, and it was worth 1,163 km on an Earth low orbit.
+  let a_AU =
     placementKey === 'surface'
       ? targetRadiusKm / AU_KM
-      : (parkingOrbitRadiusKm(target as any, placementKey) ?? targetRadiusKm * 1.3) / AU_KM;
+      : (parkingOrbitRadiusKm(target as any, placementKey, undefined, system) ?? targetRadiusKm * 1.3) / AU_KM;
+
+  // A RADIUS WITHOUT A PHASE IS THE RIGHT ORBIT AND THE WRONG POINT ON IT. The elements used to keep
+  // whatever `M0_rad`/`i_deg`/`Omega_deg` the ship was authored with, so the stored orbit and the
+  // journey sampler agreed about the circle and disagreed about where on it the ship was - by up to a
+  // DIAMETER. That did not show while a stamped vector was overriding the orbit; it is exactly what
+  // would show the moment the vector is dropped.
+  //
+  // So ask the sampler where it puts the ship AT THE ARRIVAL INSTANT and store the circular orbit that
+  // passes through that state. One derivation of the arrival axes, not two kept in step by hand -
+  // the same rule G43 P4 used on the Lagrange arrivals, and the one [[B92]] was about. Landed and
+  // Docked are exempt: they snap to the host centre and have no phase to get wrong.
+  //
+  // AND THE RADIUS COMES FROM THE SAMPLER TOO, not from a second derivation that has to be kept in
+  // step with it by hand. Reading `parkingOrbitRadiusKm` here as well left the stored orbit and the
+  // drawn ship on two different circles.
+  let phase: { i_deg: number; Omega_deg: number; omega_deg: number; M0_rad: number } | null = null;
+  if (placementKey !== 'surface') {
+    const atArrival = samplePostJourneyState(system, best.log, best.endMs, best.endMs);
+    if (atArrival && atArrival.state === 'Orbiting') {
+      const host = getGlobalState(system, target as any, best.endMs);
+      const rRel = {
+        x: atArrival.position_au.x - host.r.x,
+        y: atArrival.position_au.y - host.r.y,
+        z: (atArrival.position_au.z ?? 0) - (host.r.z ?? 0)
+      };
+      const vRel = {
+        x: atArrival.velocity_ms.x - host.v.x * AU_M,
+        y: atArrival.velocity_ms.y - host.v.y * AU_M,
+        z: (atArrival.velocity_ms.z ?? 0) - (host.v.z ?? 0) * AU_M
+      };
+      // ...AND IN THE FRAME THE ELEMENTS WILL BE READ IN. A satellite's elements are quoted in its
+      // PARENT'S EQUATORIAL frame (C3/C9, `satelliteFrame.ts`), so `computeWorldPositions3D` rotates
+      // every propagated offset by the parent's axial tilt on the way out. The sampler's answer is
+      // absolute, in the system plane. Handing it over unrotated stored elements that came out 23.44
+      // degrees wrong around Earth - the planet's tilt exactly, and a 1,163 km miss on a 6,536 km
+      // orbit. Going in, apply the INVERSE of that rotation; the two then compose to identity.
+      //
+      // Rotating rather than declaring `frame: 'ecliptic'` on the healed orbit, which would also have
+      // worked: one convention for every satellite beats a second one that only constructs use, and
+      // the ship's inclination then still reads against the world it is orbiting.
+      const tilt = satelliteTiltRad(construct, target);
+      const intoHostFrame = (v: { x: number; y: number; z: number }) =>
+        tilt ? toParentEquator(v.x, v.y, v.z, -tilt, { x: 0, y: 0, z: 0 }) : v;
+      const rHost = intoHostFrame(rRel);
+      phase = circularElementsAtState(rHost, intoHostFrame(vRel));
+      const rMag = Math.hypot(rHost.x, rHost.y, rHost.z);
+      if (phase && rMag > 0) a_AU = rMag;
+    }
+  }
+
   const aM = a_AU * AU_M;
   const n_rad_per_s = hostMu > 0 && aM > 0 ? Math.sqrt(hostMu / (aM * aM * aM)) : undefined;
+
+  // TWO REASONS TO LEAVE A SHIP ALONE, and asking only the first one is what let an ORBIT CHANGE slip
+  // through. This used to read "already pointing at the right host -> nothing to do", which is true of
+  // every high-to-low transfer ever flown: an orbit change ENDS AT THE HOST IT STARTED FROM. So the
+  // radius, the placement and the epoch were never touched, and a ship that had just lowered itself to
+  // 6,536 km kept a stored orbit of 767,944 km - a hundred and seventeen times out. On a map scaled to
+  // the planet that orbit line is simply off the side of the screen, which is what the owner saw as
+  // "parked in low orbit but no orbital line".
+  //
+  // (1) THE RECORD ALREADY DESCRIBES THIS ARRIVAL - host AND radius, not host alone. This is what
+  //     makes the heal idempotent, so `placementHealCount` counts repairs rather than ticks.
+  const near = (v: unknown, target: number) =>
+    typeof v === 'number' && Math.abs(v - target) <= Math.max(1e-15, Math.abs(target) * 1e-9);
+  const describesThisArrival =
+    construct.parentId === hostId &&
+    construct.orbit?.hostId === hostId &&
+    near(construct.orbit?.elements?.a_AU, a_AU) &&
+    // ...and the PHASE, or a healed ship would be re-healed on every tick and the counter would read
+    // in the thousands within a minute instead of meaning what it is supposed to mean.
+    (!phase || (
+      near(construct.orbit?.elements?.M0_rad, phase.M0_rad) &&
+      near(construct.orbit?.elements?.i_deg, phase.i_deg) &&
+      near(construct.orbit?.t0, best.endMs)
+    ));
+
+  // (2) SOMEONE PUT THE SHIP THERE AFTER THE JOURNEY ENDED. An orbit whose epoch is LATER than the
+  //     arrival was written by a GM who knew what they wanted, and a journey that finished before they
+  //     did does not get to undo it. Without this, "heal on sight" becomes "overwrite on sight": the
+  //     repair would fight a hand-placed ship on every tick and send the counter climbing, which is
+  //     meant to mean something quite different.
+  const t0 = construct.orbit?.t0;
+  const placedSinceArrival = typeof t0 === 'number' && Number.isFinite(t0) && t0 > best.endMs;
+
+  if (describesThisArrival || placedSinceArrival) return construct;
 
   // THE STAMPED VECTOR HAS TO GO WITH THE STALE ORBIT, or the repair is invisible. It is the GM's
   // frozen answer for "where is this ship right now", and `computeWorldPositions3D` prefers it OVER
@@ -305,9 +398,28 @@ export function reconcileConstructArrival(
       hostMu: hostMu || construct.orbit?.hostMu,
       n_rad_per_s,
       t0: best.endMs,
-      elements: { ...(construct.orbit?.elements || {}), a_AU, e: 0 }
+      elements: { ...(construct.orbit?.elements || {}), ...(phase || {}), a_AU, e: 0 }
     }
   } as CelestialBody;
+}
+
+/**
+ * IS THIS SAMPLED STATE ONE THAT NEEDS A STAMPED POSITION?
+ *
+ * Only a ship with nowhere to be described FROM does. In transit it is between hosts; adrift in deep
+ * space it has abandoned its orbit and must not snap back to it. Parked - Orbiting, Landed, Docked -
+ * it has a host and an orbit, and `reconcileConstructArrival` has written that orbit to reproduce
+ * this very sampler, phase included.
+ *
+ * WHY IT MATTERS MORE THAN IT LOOKS. The sampler answers FOREVER: past its last arrival it returns a
+ * live parking orbit, which moves. Stamping that made every arrived ship rewrite its own node several
+ * times a second for the rest of the campaign, and a changed node is a changed broadcast snapshot -
+ * so a player's 3D scene rebuilt about twice a second and never held still. Three reported faults,
+ * one cause: models that never attached, a camera that reset every few seconds while following a
+ * ship, and a ship placed at a GM instant instead of orbiting on the player's own clock.
+ */
+export function needsStampedPosition(state: JourneyKinematics['state'] | undefined | null): boolean {
+  return state === 'Transit' || state === 'Deep Space';
 }
 
 export function countFutureJourneys(construct: CelestialBody, timeMs: number): number {
