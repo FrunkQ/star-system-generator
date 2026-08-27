@@ -445,3 +445,78 @@ describe('ADRIAN: two living blooms, layered', () => {
     expect(deriveCloudDecks(bare, pack)).toEqual([]);
   });
 });
+
+// ── The tag carries the emitter's coverage (B95) ─────────────────────────────────────────────
+// A bucket cannot express "this deck is only just there", and that is what made a giant's whole
+// banding flip on a 0.001-percentage-point composition edit: a deck with 1.5% of sky landed in the
+// same 'wisps' bucket as one with 11%, and was republished as the bucket's 8% centre. The exact
+// figure now rides in the tag so a renderer can fade on it. Every older form must still parse.
+describe('cloud-deck tag value: coverage rides with the bucket', () => {
+  it('emits species, bucket and the exact coverage', () => {
+    const tags = cloudDeckTags([
+      { species: 'ammonia', bucket: 'wisps', coverage: 0.014962, condenseK: 200, precip: 'snow' } as any
+    ]);
+    const deck = tags.find((t) => t.key === CLOUD_DECK_TAG)!;
+    expect(deck.value).toBe('ammonia wisps 0.015');
+    expect(parseCloudDeckValue(deck.value)).toEqual({ species: 'ammonia', bucket: 'wisps', coverage: 0.015 });
+  });
+
+  it('round-trips a multi-word species without eating part of the name', () => {
+    const tags = cloudDeckTags([
+      { species: 'ammonium-hydrosulfide', bucket: 'broken', coverage: 0.4342, condenseK: 250, precip: 'snow' } as any
+    ]);
+    const v = tags.find((t) => t.key === CLOUD_DECK_TAG)!.value;
+    expect(v).toBe('ammonium-hydrosulfide broken 0.434');
+    expect(parseCloudDeckValue(v).species).toBe('ammonium-hydrosulfide');
+    expect(decksFromTags([{ key: CLOUD_DECK_TAG, value: v }], pack)[0].coverage).toBeCloseTo(0.434, 3);
+  });
+
+  // BACKWARD COMPATIBILITY. Saved maps carry the two-token form and GMs type it by hand; both must
+  // behave exactly as they did before, which means falling back to the bucket centre.
+  it('a pre-B95 two-token value still reads as the bucket centre', () => {
+    expect(parseCloudDeckValue('water broken')).toEqual({ species: 'water', bucket: 'broken' });
+    const decks = decksFromTags([{ key: CLOUD_DECK_TAG, value: 'water broken' }], pack);
+    expect(decks[0].coverage).toBe(0.42);           // bucketCoverage('broken'), unchanged
+  });
+
+  it("a GM's hand-typed tag still works, and a manual tag still wins", () => {
+    const decks = decksFromTags([
+      { key: CLOUD_DECK_TAG, value: 'water veil 0.90' },
+      { key: CLOUD_DECK_TAG, value: 'water wisps', manual: true } as Tag
+    ], pack);
+    expect(decks).toHaveLength(1);
+    expect(decks[0].bucket).toBe('wisps');
+    expect(decks[0].coverage).toBe(0.08);           // the manual tag's bucket centre, not the auto 0.90
+  });
+
+  it('a V1 colour-word fossil still parses (edge E8)', () => {
+    expect(parseCloudDeckValue('white')).toEqual({ species: 'white', bucket: 'scattered' });
+    expect(decksFromTags([{ key: CLOUD_DECK_TAG, value: 'white' }], pack)[0].coverage).toBe(0.2);
+  });
+
+  it('a junk trailing token falls back rather than throwing', () => {
+    // The bucket token is there but the figure is junk, so the whole value drops to the lenient
+    // fallback: first token as the species, moderate bucket. Same as it has always behaved.
+    expect(parseCloudDeckValue('water broken plenty')).toEqual({ species: 'water', bucket: 'scattered' });
+    expect(parseCloudDeckValue('water broken NaN').bucket).toBe('scattered');
+  });
+
+  it('coverage is clamped into 0..1 however the tag was edited', () => {
+    expect(parseCloudDeckValue('water veil 4.2').coverage).toBe(1);
+    expect(parseCloudDeckValue('water veil -1').coverage).toBe(0);
+  });
+
+  it('a real derived stack round-trips through its own tags with coverage intact', () => {
+    const decks = deriveCloudDecks(world({
+      massKg: 5.972e24, radiusKm: 6371, temperatureK: 288, equilibriumTempK: 255,
+      makeup: { metal: 0.32, rock: 0.68, carbon: 0, ice: 0, gas: 0 },
+      hydrosphere: { composition: 'water', coverage: 0.71 },
+      atmosphere: { main: 'N2', pressure_bar: 1, composition: { N2: 0.78, O2: 0.21, H2O: 0.01 } }
+    } as any), pack);
+    const back = decksFromTags(cloudDeckTags(decks), pack);
+    for (const d of decks) {
+      const r = back.find((x) => x.species === d.species)!;
+      expect(r.coverage).toBeCloseTo(d.coverage, 3);   // the emitter's own number, not a bucket centre
+    }
+  });
+});

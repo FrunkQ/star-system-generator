@@ -3,7 +3,7 @@
 // docs/dev/architecture-physics-tags-visuals.md).
 //
 // The processor calls deriveCloudDecks() once per pass and publishes the result as
-// `structure/cloud-deck` tags (one per deck, value "<species> <bucket>"). Renderers read ONLY the
+// `structure/cloud-deck` tags (one per deck, value "<species> <bucket> <coverage>"). Renderers read ONLY the
 // tags plus the liquid's look-data — never this module, never the raw atmosphere. Which gases can
 // condense, and what the condensate looks like, is rule-pack DATA: a gas's `cloud` block says it
 // condenses and into what; the liquid it condenses to carries colour, opacity and melt point.
@@ -26,16 +26,20 @@ export type PrecipKind = 'rain' | 'snow' | 'virga';
 export const LIGHTNING_TAG = 'weather/lightning';       // value: bucket (occasional|frequent|constant)
 export const DUST_STORM_TAG = 'weather/dust-storms';    // value: bucket (seasonal|frequent|planet-wide)
 export const MONSOON_TAG = 'weather/monsoon';           // value: the raining species
-// Coverage buckets, thinnest → thickest. Buckets, not floats: they read better in the tag list,
-// survive hand-editing, and make GM authoring a dropdown (the codebase idiom — surface/age,
-// surface/irradiation). The emitter computes precisely and publishes the band.
+// Coverage buckets, thinnest → thickest. The bucket is the READABLE half of the value: it reads well
+// in a tag list, survives hand-editing, and makes GM authoring a dropdown (the codebase idiom —
+// surface/age, surface/irradiation). It is no longer the WHOLE value, because a bucket cannot carry
+// the one thing a renderer needs in order to FADE: a deck one step inside 'wisps' and a deck one step
+// outside it are visually a hair apart and land in different buckets, or in no bucket at all. So the
+// emitter's exact coverage now rides along after the bucket (B95). A value with no number — an old
+// save, a GM's hand-typed tag — still reads as the bucket's centre exactly as it always did.
 export const CLOUD_BUCKETS = ['wisps', 'scattered', 'broken', 'overcast', 'veil'] as const;
 export type CloudBucket = (typeof CLOUD_BUCKETS)[number];
 
 export interface CloudDeck {
   species: string;      // the LIQUID the deck is made of ('water', 'ammonium-hydrosulfide', …)
   bucket: CloudBucket;
-  coverage: number;     // the emitter's exact 0..1 (internal — the tag carries only the bucket)
+  coverage: number;     // the emitter's exact 0..1 — PUBLISHED in the tag value since B95, not internal
   condenseK: number;    // condensation temperature — SORT KEY for the stack (higher condenses deeper)
   precip: PrecipKind;   // what this deck drops at the surface (rain / snow / virga)
   baseBar?: number;     // pressure level of the deck BASE, where the column first saturates
@@ -448,18 +452,45 @@ export function deriveWeather(body: CelestialBody, decks: CloudDeck[], pack?: Ru
 }
 
 // ── Tags (the published interface) ───────────────────────────────────────────────────────────────
+// COVERAGE RESOLUTION. Three decimals, i.e. a tenth of a percent of sky. That is finer than any
+// renderer can show and far finer than the 12-point-wide buckets it sits inside, so nothing visual
+// is quantised by it; it is coarse enough that the tag stays short and hand-editable, and that a
+// re-derive producing a floating-point hair's difference does not rewrite the tag and churn a save.
+const COVERAGE_DP = 3;
+
 export function cloudDeckTags(decks: CloudDeck[]): Tag[] {
-  const tags: Tag[] = decks.map((d) => ({ key: CLOUD_DECK_TAG, value: `${d.species} ${d.bucket}` }));
+  const tags: Tag[] = decks.map((d) => ({
+    key: CLOUD_DECK_TAG, value: `${d.species} ${d.bucket} ${d.coverage.toFixed(COVERAGE_DP)}` }));
   // One precipitation tag per species that drops anything — pure flavour, deduped with the decks.
   for (const d of decks) tags.push({ key: PRECIPITATION_TAG, value: `${d.species} ${d.precip}` });
   return tags;
 }
 
-// Parse a tag value back into { species, bucket } — lenient for legacy values (old saves held a
-// colour word like "white"): an unparseable value reads as an unknown species with a moderate
+// Parse a tag value back into { species, bucket, coverage? } — lenient for legacy values (old saves
+// held a colour word like "white"): an unparseable value reads as an unknown species with a moderate
 // bucket, so a stale manual tag still draws SOMETHING rather than throwing (edge E8).
-export function parseCloudDeckValue(value: string | undefined): { species: string; bucket: string } {
+//
+// THREE FORMS, and all three must keep working forever, because saves and GM-typed tags carry them:
+//   "ammonia broken 0.415"  — current: species, bucket, exact coverage
+//   "ammonia broken"        — pre-B95 saves and anything a GM types by hand: coverage is UNKNOWN,
+//                             and the caller substitutes the bucket centre. Deliberately `undefined`
+//                             rather than a default here, so a consumer can tell "no figure was
+//                             published" from "the figure happens to be 0".
+//   "white"                 — V1 fossil: unknown species, moderate bucket.
+export function parseCloudDeckValue(value: string | undefined): { species: string; bucket: string; coverage?: number } {
   const parts = (value ?? '').trim().split(/\s+/);
+  // An exact coverage may be appended after the bucket. Take it only if the token before it is a
+  // real bucket, so a species whose NAME ends in a number can never be mistaken for one.
+  if (parts.length >= 3 && (CLOUD_BUCKETS as readonly string[]).includes(parts[parts.length - 2])) {
+    const cov = Number(parts[parts.length - 1]);
+    if (Number.isFinite(cov)) {
+      return {
+        species: parts.slice(0, -2).join(' '),
+        bucket: parts[parts.length - 2],
+        coverage: Math.max(0, Math.min(1, cov))
+      };
+    }
+  }
   if (parts.length >= 2 && (CLOUD_BUCKETS as readonly string[]).includes(parts[parts.length - 1])) {
     return { species: parts.slice(0, -1).join(' '), bucket: parts[parts.length - 1] };
   }
@@ -480,9 +511,15 @@ export function decksFromTags(tags: Tag[] | undefined, pack?: RulePack | null): 
   const seen = new Map<string, { species: string; bucket: string; coverage: number; condenseK: number }>();
   for (const t of tags ?? []) {
     if (t.key !== CLOUD_DECK_TAG) continue;
-    const { species, bucket } = parseCloudDeckValue(t.value);
+    const { species, bucket, coverage } = parseCloudDeckValue(t.value);
     if (!seen.has(species) || t.manual) {
-      seen.set(species, { species, bucket, coverage: bucketCoverage(bucket), condenseK: condenseTempK(species, pack) });
+      // The published figure when there is one; the bucket's centre when there is not. A GM who
+      // types "ammonia broken" by hand gets exactly what they always got.
+      seen.set(species, {
+        species, bucket,
+        coverage: coverage ?? bucketCoverage(bucket),
+        condenseK: condenseTempK(species, pack)
+      });
     }
   }
   return [...seen.values()].sort((a, b) => b.condenseK - a.condenseK);

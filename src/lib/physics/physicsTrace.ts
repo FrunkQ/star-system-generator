@@ -422,7 +422,10 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
       const outputs: TraceField[] = decks.length
         ? decks.map((d) => ({
             label: d.species,
-            value: `${d.bucket} — base ${d.baseBar! >= 0.01 ? n(d.baseBar, 2, ' bar') : d.baseBar!.toExponential(1) + ' bar'} at ${n(d.baseK, 0, ' K')}, ${d.precip}`
+            // The COVERAGE is shown as a figure, not just as its bucket word, because it is what the
+            // tag publishes and what the picture fades on: a deck at 2% of sky and one at 11% are
+            // both "wisps" and look nothing alike (B95).
+            value: `${d.coverage < 0.1 ? (d.coverage * 100).toFixed(1) + '%' : pct(d.coverage)} of the sky (${d.bucket}) — base ${d.baseBar! >= 0.01 ? n(d.baseBar, 2, ' bar') : d.baseBar!.toExponential(1) + ' bar'} at ${n(d.baseK, 0, ' K')}, ${d.precip}`
           }))
         : [{ label: 'Cloud layers', value: 'none — nothing in this air condenses before the sky stops cooling' }];
       layers.push({
@@ -436,6 +439,7 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         outputs,
         notes: [
           'A gas condenses where its own pressure crosses the point it can no longer stay a gas. Rising air cools, but its gases thin out more slowly than it cools — so the two lines cross, and that crossing is the cloud base.',
+          'How much sky a deck holds is its optical depth, not its abundance: the condensed column over the droplet size it falls into, less whatever is currently raining out. That figure is published in the deck tag, so a deck that is only just condensing arrives faintly and thickens as it grows rather than appearing whole.',
           ...(decks.some((d) => d.precip === 'virga')
             ? ['Virga: what falls evaporates before it lands, so it recycles into the deck and the cover never clears.'] : []),
           'Only the atmosphere from the reference level UP is modelled — as far as you could see into it.'

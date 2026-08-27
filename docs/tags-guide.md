@@ -241,6 +241,26 @@ They are derived, so they cannot be switched on from the renderer; the way to re
 remove the tag (the Tags tab), and the way to earn one is to change the numbers that derive it — feed
 the hole, or swell the star.
 
+### Writing a cloud deck by hand
+
+`structure/cloud-deck` is the one tag whose value is worth knowing in full, because it is the one GMs
+most often write themselves — a world is *supposed* to be shrouded and the physics disagrees. It reads
+`<species> <bucket> <coverage>`, one tag per deck:
+
+    structure/cloud-deck = water overcast 0.664
+
+The species is the LIQUID the deck is made of (`water`, `ammonia`, `sulfuric-acid`,
+`ammonium-hydrosulfide`, `methane`), the bucket is one of *wisps, scattered, broken, overcast, veil*,
+and the coverage is the exact share of sky the physics found. **You only need the first two.**
+`water overcast` on its own works exactly as it always has — the engine reads the bucket's typical
+coverage and draws it — and that is the form to type when you just want a cloudy world. The number is
+there for the engine's own use: it is what lets a deck that is only barely condensing fade in gently
+instead of appearing all at once, which it used to do.
+
+Decks stack by temperature, not by the order you write them: whichever species condenses hottest sits
+deepest, and the top one is the one you mostly see. A hand-written deck beats a derived one of the
+same species, so writing `water veil` on a dry world does not fight the physics — it replaces it.
+
 ## Finding things
 
 **Find by tag** searches every body or construct carrying the tags you pick. Switch between bodies

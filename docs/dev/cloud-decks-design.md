@@ -36,9 +36,16 @@ per-gas cloud fieldset stays on the Gas Physics tab beside aurora bands.
 **Liquid** (`liquids`): existing `colorHex` is the cloud colour; new `cloudOpacity` (0..1 veil
 strength). Ice-crystal vs droplet look derives from existing `meltK` vs deck temperature.
 
-**Tag** (type unchanged): `structure/cloud-deck`, value `"<species> <bucket>"`, one tag per deck.
-Buckets: `wisps | scattered | broken | overcast | veil`. Stack order is NOT stored — it re-derives
-by condensation temperature.
+**Tag** (type unchanged): `structure/cloud-deck`, value `"<species> <bucket> <coverage>"`, one tag
+per deck. Buckets: `wisps | scattered | broken | overcast | veil`. Stack order is NOT stored — it
+re-derives by condensation temperature.
+
+`<coverage>` is the emitter's own 0..1 fraction of sky to three decimals, added 2026-08-27 for B95
+so a renderer can FADE a deck in rather than admit it binary. It is OPTIONAL on read: a value with
+only two tokens — every pre-B95 save, and anything a GM types by hand — still resolves to the
+bucket's centre via `bucketCoverage`, exactly as it did before. See engine-map **TAG-23** for the
+three forms that must keep parsing, and the amended tag idiom in
+`architecture-physics-tags-visuals.md` for when a figure may ride along with a bucket at all.
 
 ## Emitter (processor)
 

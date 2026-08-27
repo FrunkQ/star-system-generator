@@ -3659,3 +3659,27 @@ burn is four orders of magnitude too small and points at the star — correct fo
 lie about what it was labelled (see the standing rule on published quantities). Journeys committed
 before this carry neither field and fall back to the old inference, so the fallback is not dead code;
 `burnVectors.spec.ts` pins both paths.
+
+### TAG-23 A CLOUD-DECK TAG CARRIES THREE TOKENS, AND ALL THREE OLDER FORMS MUST KEEP PARSING
+WHERE: `physics/cloudDecks.ts` — `cloudDeckTags` (emit) and `parseCloudDeckValue` (read), consumed
+through `decksFromTags` by `apparentColor.ts`, `planetAppearance.ts`, `surfaceSpectrum.ts` and
+`visibility.ts`.
+RULE: the value is `"<species> <bucket> <coverage>"`, and the bucket token is what anchors the parse —
+coverage is taken ONLY when the token before it is a real bucket name. Three forms exist in the wild
+and every one of them is load-bearing: the current three-token form; the two-token `"ammonia broken"`
+that every pre-B95 save carries AND that a GM types by hand, which must fall back to the bucket's
+centre; and the bare V1 colour word `"white"`. `parseCloudDeckValue` returns `coverage` as
+`undefined` rather than a default for the older forms on purpose, so a consumer can tell "no figure
+was published" from "the figure is 0".
+WHY: a bucket cannot express *how nearly a deck exists*, and that is precisely the quantity a renderer
+must fade on. Five buckets over 0..1 means a deck at 1.5% of sky and one at 11% both read `wisps` and
+are both republished as the bucket's 8% centre — a 5x inflation of the fainter one. Mars is the
+measured case: its real water-ice cloud is 2.4% of sky and was being drawn at 8%. B95 is the same
+quantisation seen from the other side: a deck appearing at 1.5% coverage was admitted at FULL strength
+as a chromophore stripe and flipped a giant's whole banding.
+BLAST: publishing the exact figure moves everything downstream of cloud COVER, not just banding —
+Venus's sulphuric veil went 0.92 -> 0.995 and took 15% off its modelled surface light; Earth's water
+went 0.68 -> 0.664 and added 0.9%. Both are *more* accurate, and both move `tests/output/`. Do NOT
+"fix" that churn by rounding coverage back to the bucket centre — that is the bug. The resolution is
+three decimals deliberately: finer than any renderer resolves, coarse enough that floating-point hair
+between passes cannot rewrite a tag and churn a save (which would break `idempotence.test.ts`).

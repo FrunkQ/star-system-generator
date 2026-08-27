@@ -550,7 +550,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "sulfuric-acid veil"
+          "value": "sulfuric-acid veil 0.995"
         },
         {
           "key": "weather/precipitation",
@@ -727,8 +727,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 0.7233237068588907,
         "totalTopWm2": 2181.4241908285253,
-        "totalSurfaceWm2": 80.59802848314638,
-        "photonFlux": 298868762506475700000,
+        "totalSurfaceWm2": 68.5193048685059,
+        "photonFlux": 254079165945559800000,
         "peakTopNm": 500,
         "peakSurfaceNm": 880,
         "surfaceLightHex": "#ffbd7c",
@@ -743,7 +743,7 @@
           },
           {
             "label": "sulfuric-acid cloud deck",
-            "strength": 0.6476800000000001
+            "strength": 0.70048
           },
           {
             "label": "H2O absorption",
@@ -757,14 +757,14 @@
           {
             "hex": "#b26123",
             "role": "surface",
-            "weight": 0.0013651129525738784,
+            "weight": 0.000986610304147715,
             "label": "oxidised rock surface",
             "rawHex": "#986c4e"
           },
           {
             "hex": "#f8e4bb",
             "role": "cloud",
-            "weight": 0.7360000000000001,
+            "weight": 0.796,
             "label": "sulfuric-acid clouds",
             "rawHex": "#f0e7c3"
           }
@@ -1008,7 +1008,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "water overcast"
+          "value": "water overcast 0.664"
         },
         {
           "key": "weather/precipitation",
@@ -1251,8 +1251,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 0.9999301983634474,
         "totalTopWm2": 1141.4743437161387,
-        "totalSurfaceWm2": 710.6884373993857,
-        "photonFlux": 2.4908149838117596e+21,
+        "totalSurfaceWm2": 716.8507457245479,
+        "photonFlux": 2.5124125912912767e+21,
         "peakTopNm": 500,
         "peakSurfaceNm": 530,
         "surfaceLightHex": "#ffedde",
@@ -1263,7 +1263,7 @@
           },
           {
             "label": "water cloud deck",
-            "strength": 0.26928
+            "strength": 0.262944
           },
           {
             "label": "O2 absorption",
@@ -1283,90 +1283,90 @@
             "key": "carotenes",
             "label": "Carotenes",
             "captured": 0.1426602062337931,
-            "sufficiency": 0.6940908951927489,
-            "protection": 0.37849099569357353,
-            "steadiness": 0.5260171747532774,
-            "score": 0.44984488130827843,
+            "sufficiency": 0.6972166244670888,
+            "protection": 0.3764622248078775,
+            "steadiness": 0.5260171747532781,
+            "score": 0.4506580110748553,
             "viable": true,
-            "drawWeight": 0.3068983071539463,
+            "drawWeight": 0.3094057285853824,
             "reflectedHex": "#f6d000",
             "reflectedUnderStarHex": "#fbcf00"
           },
           {
             "key": "pheophytin",
             "label": "Pheophytin",
-            "captured": 0.21170426534402365,
-            "sufficiency": 0.8275625161828937,
-            "protection": 0.30853433547778986,
-            "steadiness": 0.4695505576257385,
-            "score": 0.4324856918462348,
+            "captured": 0.21170426534402345,
+            "sufficiency": 0.8301707128320521,
+            "protection": 0.30669550284730634,
+            "steadiness": 0.4695505576257359,
+            "score": 0.43255396139757374,
             "viable": true,
-            "drawWeight": 0.24235292103434578,
+            "drawWeight": 0.2419287817937974,
             "reflectedHex": "#d0aea4",
             "reflectedUnderStarHex": "#d9ac97"
           },
           {
             "key": "chlorophyll",
             "label": "Chlorophyll",
-            "captured": 0.2274395495234044,
-            "sufficiency": 0.8486811571391616,
-            "protection": 0.2991996605134346,
-            "steadiness": 0.4339326868629205,
-            "score": 0.40644543665479227,
+            "captured": 0.22743954952340434,
+            "sufficiency": 0.8511386524958664,
+            "protection": 0.29739253407635924,
+            "steadiness": 0.43393268686291653,
+            "score": 0.40638950899457765,
             "viable": true,
-            "drawWeight": 0.16696725438942575,
+            "drawWeight": 0.16637984087716595,
             "reflectedHex": "#8fdd4f",
             "reflectedUnderStarHex": "#98dc41"
           },
           {
             "key": "phycoerythrin",
             "label": "Phycoerythrin",
-            "captured": 0.1941518327748257,
-            "sufficiency": 0.8005092974239126,
-            "protection": 0.3289870864521639,
-            "steadiness": 0.4085047161842629,
-            "score": 0.38157393455263167,
+            "captured": 0.1941518327748256,
+            "sufficiency": 0.8032782589963553,
+            "protection": 0.3270840181448252,
+            "steadiness": 0.40850471618426554,
+            "score": 0.3817847432309612,
             "viable": true,
-            "drawWeight": 0.11431151898177784,
+            "drawWeight": 0.11438186985436354,
             "reflectedHex": "#de00cc",
             "reflectedUnderStarHex": "#e700c1"
           },
           {
             "key": "bacteriorhodopsin",
             "label": "Bacteriorhodopsin",
-            "captured": 0.2370435574078556,
-            "sufficiency": 0.8602786898368455,
-            "protection": 0.29563447969445755,
-            "steadiness": 0.3728189728049704,
-            "score": 0.36063614653415493,
+            "captured": 0.23704355740785532,
+            "sufficiency": 0.8626428385599855,
+            "protection": 0.29383985777490396,
+            "steadiness": 0.3728189728049711,
+            "score": 0.36052793459715254,
             "viable": true,
-            "drawWeight": 0.08147667876346422,
+            "drawWeight": 0.08111091483796488,
             "reflectedHex": "#4b21cd",
             "reflectedUnderStarHex": "#6217bf"
           },
           {
             "key": "melanin",
             "label": "Melanin",
-            "captured": 0.8321143073900225,
-            "sufficiency": 0.9990010534493874,
-            "protection": 0.10928544023443222,
-            "steadiness": 0.5053475911627389,
-            "score": 0.333804459977505,
+            "captured": 0.8321143073900217,
+            "sufficiency": 0.9990591387488978,
+            "protection": 0.10844786518237616,
+            "steadiness": 0.5053475911627392,
+            "score": 0.33254217748717574,
             "viable": true,
-            "drawWeight": 0.051235455828915415,
+            "drawWeight": 0.049948930507195156,
             "reflectedHex": "#000000",
             "reflectedUnderStarHex": "#000000"
           },
           {
             "key": "phycocyanin",
             "label": "Phycocyanin",
-            "captured": 0.18618022215407257,
-            "sufficiency": 0.7868590560534016,
-            "protection": 0.36153705387053287,
-            "steadiness": 0.3082550062517095,
-            "score": 0.3158314773153476,
+            "captured": 0.18618022215407246,
+            "sufficiency": 0.7896968283066679,
+            "protection": 0.35954658659469696,
+            "steadiness": 0.30825500625170654,
+            "score": 0.31609675368587425,
             "viable": true,
-            "drawWeight": 0.0367578638481248,
+            "drawWeight": 0.03684393354413078,
             "reflectedHex": "#00defb",
             "reflectedUnderStarHex": "#00d3e4"
           }
@@ -1412,7 +1412,7 @@
         "bandWidthDeg": 39.5
       },
       "apparentColor": {
-        "hex": "#96a2aa",
+        "hex": "#96a2a9",
         "palette": [
           {
             "hex": "#987250",
@@ -1438,14 +1438,14 @@
           {
             "hex": "#cfd2df",
             "role": "cloud",
-            "weight": 0.30600000000000005,
+            "weight": 0.2988,
             "label": "water clouds",
             "rawHex": "#c3d5e9"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#96a2aa",
+      "apparentColorHex": "#96a2a9",
       "classification": {
         "base": "planet/earth-analogue",
         "baseScore": 2.17,
@@ -2189,7 +2189,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "water wisps"
+          "value": "water wisps 0.024"
         },
         {
           "key": "weather/precipitation",
@@ -2368,8 +2368,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 1.5203460952974899,
         "totalTopWm2": 493.7653356139176,
-        "totalSurfaceWm2": 465.3108560785047,
-        "photonFlux": 1.621320483082475e+21,
+        "totalSurfaceWm2": 475.96718202901366,
+        "photonFlux": 1.6584511868093792e+21,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -2380,12 +2380,12 @@
           },
           {
             "label": "water cloud deck",
-            "strength": 0.03168000000000001
+            "strength": 0.009504
           }
         ]
       },
       "apparentColor": {
-        "hex": "#a06546",
+        "hex": "#9e6140",
         "palette": [
           {
             "hex": "#9e6140",
@@ -2393,18 +2393,11 @@
             "weight": 1,
             "label": "oxidised rock surface",
             "rawHex": "#9c6444"
-          },
-          {
-            "hex": "#cfd2df",
-            "role": "cloud",
-            "weight": 0.036000000000000004,
-            "label": "water clouds",
-            "rawHex": "#c3d5e9"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#a06546",
+      "apparentColorHex": "#9e6140",
       "classification": {
         "base": "planet/sub-earth",
         "baseScore": 1.3,
@@ -3586,11 +3579,11 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "ammonium-hydrosulfide broken"
+          "value": "ammonium-hydrosulfide broken 0.477"
         },
         {
           "key": "structure/cloud-deck",
-          "value": "ammonia veil"
+          "value": "ammonia veil 0.884"
         },
         {
           "key": "weather/precipitation",
@@ -3761,19 +3754,19 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 5.201286002943443,
         "totalTopWm2": 42.1875255850465,
-        "totalSurfaceWm2": 16.11589915524612,
-        "photonFlux": 58461246014008510000,
+        "totalSurfaceWm2": 15.908793027080112,
+        "photonFlux": 57709957972734090000,
         "peakTopNm": 500,
         "peakSurfaceNm": 530,
         "surfaceLightHex": "#ffeedf",
         "attenuators": [
           {
             "label": "ammonia cloud deck",
-            "strength": 0.4452800000000001
+            "strength": 0.427856
           },
           {
             "label": "ammonium-hydrosulfide cloud deck",
-            "strength": 0.24024
+            "strength": 0.272844
           },
           {
             "label": "CH4 absorption",
@@ -3786,7 +3779,7 @@
         ]
       },
       "apparentColor": {
-        "hex": "#c9b6a0",
+        "hex": "#c8b59f",
         "palette": [
           {
             "hex": "#d6c0a1",
@@ -3796,11 +3789,11 @@
             "rawHex": "#ccc2ae"
           },
           {
-            "hex": "#c8b6a0",
+            "hex": "#c8b59f",
             "role": "cloud",
             "weight": 0.9,
             "label": "ammonia cloud deck",
-            "rawHex": "#c8b6a0"
+            "rawHex": "#c8b59f"
           },
           {
             "hex": "#bb8156",
@@ -3812,7 +3805,7 @@
         ],
         "banding": 6
       },
-      "apparentColorHex": "#c9b6a0",
+      "apparentColorHex": "#c8b59f",
       "classification": {
         "base": "planet/ammonia-clouds-gas-giant",
         "baseScore": 1.2,
@@ -5921,7 +5914,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "ammonium-hydrosulfide broken"
+          "value": "ammonium-hydrosulfide broken 0.532"
         },
         {
           "key": "weather/precipitation",
@@ -6096,8 +6089,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 9.574943314411572,
         "totalTopWm2": 12.448960828870732,
-        "totalSurfaceWm2": 7.432082038413154,
-        "photonFlux": 27154120073787924000,
+        "totalSurfaceWm2": 6.805398738806829,
+        "photonFlux": 24864447613527904000,
         "peakTopNm": 500,
         "peakSurfaceNm": 570,
         "surfaceLightHex": "#ffead1",
@@ -6108,7 +6101,7 @@
           },
           {
             "label": "ammonium-hydrosulfide cloud deck",
-            "strength": 0.24024
+            "strength": 0.3043040000000001
           },
           {
             "label": "Rayleigh scattering",
@@ -6423,7 +6416,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "methane overcast"
+          "value": "methane overcast 0.755"
         },
         {
           "key": "weather/precipitation",
@@ -6622,8 +6615,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 9.583103193804634,
         "totalTopWm2": 12.427769619919049,
-        "totalSurfaceWm2": 3.9787784833752182,
-        "photonFlux": 13510109464368065000,
+        "totalSurfaceWm2": 3.8625193974538825,
+        "photonFlux": 13115346854791418000,
         "peakTopNm": 500,
         "peakSurfaceNm": 660,
         "surfaceLightHex": "#ffe7b5",
@@ -6638,12 +6631,12 @@
           },
           {
             "label": "methane cloud deck",
-            "strength": 0.20944
+            "strength": 0.23254
           }
         ]
       },
       "apparentColor": {
-        "hex": "#e8e3cb",
+        "hex": "#e7e3cb",
         "palette": [
           {
             "hex": "#f0eac7",
@@ -6655,14 +6648,14 @@
           {
             "hex": "#ceced6",
             "role": "cloud",
-            "weight": 0.238,
+            "weight": 0.26425,
             "label": "methane clouds",
             "rawHex": "#c3d1df"
           }
         ],
         "banding": 0
       },
-      "apparentColorHex": "#e8e3cb",
+      "apparentColorHex": "#e7e3cb",
       "classification": {
         "base": "planet/mesoplanet",
         "baseScore": 1.16,
@@ -9448,7 +9441,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "methane overcast"
+          "value": "methane overcast 0.743"
         },
         {
           "key": "weather/precipitation",
@@ -9619,8 +9612,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 19.208056009890708,
         "totalTopWm2": 3.0934186292785513,
-        "totalSurfaceWm2": 1.6014293231713497,
-        "photonFlux": 5367025789562543000,
+        "totalSurfaceWm2": 1.5621228384177361,
+        "photonFlux": 5235294145638400000,
         "peakTopNm": 500,
         "peakSurfaceNm": 570,
         "surfaceLightHex": "#fff1d6",
@@ -9631,7 +9624,7 @@
           },
           {
             "label": "methane cloud deck",
-            "strength": 0.20944
+            "strength": 0.228844
           },
           {
             "label": "H2S absorption",
@@ -11094,7 +11087,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "methane overcast"
+          "value": "methane overcast 0.600"
         },
         {
           "key": "weather/precipitation",
@@ -11252,8 +11245,8 @@
         "starTempK": 5780.657086335943,
         "distanceAU": 30.109038767496358,
         "totalTopWm2": 1.2589594490941822,
-        "totalSurfaceWm2": 0.7404360453387749,
-        "photonFlux": 2564753545083933700,
+        "totalSurfaceWm2": 0.7635137929571054,
+        "photonFlux": 2644691218822635000,
         "peakTopNm": 500,
         "peakSurfaceNm": 560,
         "surfaceLightHex": "#ffefd8",
@@ -11264,7 +11257,7 @@
           },
           {
             "label": "methane cloud deck",
-            "strength": 0.20944
+            "strength": 0.1848
           },
           {
             "label": "Rayleigh scattering",
