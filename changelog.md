@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.157 - 28th Aug 2026
+
+- Four small reference codes beside physics page headings are removed. They pointed at a planning document that is no longer kept, so there was nowhere for a curious reader to go and look.
+
 ## v3.0.156 - 28th Aug 2026
 
 - Board only. The small reference codes beside the physics page headings are recorded as a question: four of them point at a document that no longer exists, and the rest are internal item numbers that mean nothing to a reader.

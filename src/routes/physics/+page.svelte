@@ -136,7 +136,7 @@
     </section>
 
     <section id="makeup">
-      <h2>Interior makeup <span class="phase">§2a</span></h2>
+      <h2>Interior makeup</h2>
       <p>A body's bulk composition is the first-class control: mass fractions of <strong>metal</strong> (ρ≈7.9),
         <strong>rock</strong> (3.3), <strong>carbon</strong> (2.3), <strong>ice</strong> (0.95) and <strong>gas</strong>
         (0.12 g/cc). Bulk density is volume-additive, <code>1⁄ρ = Σ fᵢ⁄ρᵢ</code>, and radius follows from mass +
@@ -637,7 +637,7 @@
     </section>
 
     <section id="fluids">
-      <h2>Fluid layers <span class="phase">§2c</span></h2>
+      <h2>Fluid layers</h2>
       <p>Beyond a single "hydrosphere coverage", a body can carry several distinct <strong>fluid layers</strong>,
         each derived from makeup + temperature + atmosphere:</p>
       <ul>
@@ -724,7 +724,7 @@
     </section>
 
     <section id="magnetism">
-      <h2>Magnetism <span class="phase">§2d</span></h2>
+      <h2>Magnetism</h2>
       <p>A dynamo needs a convecting <em>conductive</em> layer plus <em>rotation</em>. From the interior fluid
         layers + spin we report the implied field — <strong>descriptively, without overriding</strong> the editable
         field-strength value:</p>
@@ -1351,7 +1351,7 @@
     </section>
 
     <section id="colour">
-      <h2>Apparent colour &amp; visualisation <span class="phase">§2e</span></h2>
+      <h2>Apparent colour &amp; visualisation</h2>
       <p><strong>A surface is weathered as well as made of something.</strong> Bulk makeup alone gives every
         rocky world the same brown, and two processes pull it apart. <strong>Oxidation</strong> is why Mars is
         red: iron plus an oxidiser gives hematite, and it arrives as a tag. <strong>Space weathering</strong> is
