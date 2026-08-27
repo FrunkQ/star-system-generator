@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.112 - 26th Aug 2026
+
+- Fixed: making two bodies that share a Lagrange point into a pair sent the companion onto a wider and wider orbit every time anything was edited, with no warning at all. The engine now understands that a PAIR can ride a Lagrange point, not only a single body - which is a real arrangement: (617) Patroclus and Menoetius are two 110 km bodies about 680 km apart circling each other while they ride Jupiter's L4 together. When two bodies at a point become a pair, the point now belongs to the pair, and the two simply orbit each other inside it. Nothing drifts any more.
+- A binary at a Lagrange point is now judged on two things a single body is never asked. Whether the point can hold the PAIR, since two bodies weigh more than either one and a place that would hold one can fail to hold both. And whether the pair can hold ITSELF together where it sits - the two orbit each other inside a bubble they only have by virtue of being there, so a pair spread wider than that bubble is pulled apart and the two go their separate ways. Both come with the reason and the numbers.
+- Fixed, and older than the above: a correct binary at a Lagrange point was marked very unstable for "overlapping" with the planet whose point it rides. Sharing that orbit is what being a trojan MEANS. Single trojans were already excused this; pairs were not, so any pair anyone built was mis-flagged.
+
 ## v3.0.111 - 27th Aug 2026
 
 - A ship that had flown somewhere is now repaired the moment it is looked at, rather than waiting for a checkpoint almost nobody ever reaches. Ships kept the orbit they set off from, which is why one could read "Earth: Far Orbit" beside an orbital period of five years, show as orbiting Earth on its own panel and the Sun in the picker at the same time, and hang motionless in space on every player view. The repair already existed; it was keyed to a clock that only one control in Settings ever moves, so in ordinary play it never ran. It now follows the clock everyone is actually looking at.

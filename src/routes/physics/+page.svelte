@@ -972,6 +972,16 @@
         holds a craft there; nothing holds a moon, so a body authored at L1/L2 reads Very Unstable and says
         why. <strong>L3</strong> is the antipode — weakly unstable, drifting into a horseshoe passage over
         years to centuries rather than being thrown out.</p>
+      <p><strong>A pair can ride a point, not just a body.</strong> (617)&nbsp;Patroclus&ndash;Menoetius is a
+        real binary Jupiter trojan &mdash; two ~110&nbsp;km bodies about 680&nbsp;km apart, librating about L4
+        together &mdash; so when two bodies at a point become a pair, it is the pair's <em>barycentre</em> that
+        sits at the point and the members simply orbit each other. That asks one extra question the single-body
+        case never does: <strong>can the pair hold itself together where it sits?</strong> The members orbit
+        inside a Hill sphere the pair only has by virtue of being there, so a pair wider than that sphere is
+        pulled apart by the primary and the two go their separate ways. Gascheau is also re-asked with the
+        pair's <em>combined</em> mass, since a pair is heavier than either half and a trio one body would
+        survive can fail once it is doubled. And sharing the secondary's orbit is not a crossing &mdash; that is
+        what a trojan <em>is</em>.</p>
       <p>A <strong>construct</strong> may be parked at any of the five, and carries what that costs it as
         <code>flight/fuel-use</code>: <em>coasting</em> at a sound L4/L5, where a free-fall orbit holds it
         for nothing; <em>station-keeping</em> at L1/L2/L3, the periodic trim burns real halo-orbit missions

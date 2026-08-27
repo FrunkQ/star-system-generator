@@ -370,14 +370,35 @@ export function coOrbitalSecondary(system: System, node: CelestialBody): Celesti
  * shape as the other reconcile passes. Deterministic and idempotent: everything written derives
  * from the secondary's authored orbit.
  */
+// WHO OWNS A CO-ORBITAL NODE'S ORBIT AND PARENTAGE (B98). This derivation does, and NOTHING ELSE may
+// re-home a node that rides a point - but the converse matters just as much: a node that is a MEMBER
+// of a barycentre never rides a point itself, because the PAIR does. Both halves are needed. With
+// only the first, the reconciler rebuilt the pair every other pass; with only the second, a promoted
+// trojan would lose its point altogether.
+//
+// The failure this prevents is worth stating because the number named it: a binary trojan's
+// companion drifted 2.5e-6 -> 2.91 -> 4.55 -> ... -> 6.5 AU, one step per process, because the
+// reconciler was measuring the 60-degree L4 OFFSET as if it were the pair's separation. The chord
+// across 60 degrees is exactly the orbital radius, which is the value it climbed toward.
 export function deriveCoOrbitalOrbits(system: System): void {
     const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
     const done = new Set<string>();
+    // Every id that is a MEMBER of some barycentre, and the barycentre it belongs to.
+    const memberOf = new Map<string, Barycenter>();
+    for (const n of system.nodes) {
+        if (n.kind !== 'barycenter') continue;
+        for (const id of (n as Barycenter).memberIds || []) memberOf.set(id, n as Barycenter);
+    }
 
-    const resolve = (node: CelestialBody, stack: Set<string>): void => {
+    const resolve = (node: CelestialBody | Barycenter, stack: Set<string>): void => {
         if (done.has(node.id)) return;
         if (stack.has(node.id)) { delete node.coOrbital; done.add(node.id); return; } // cycle: drop this link
         if (!node.coOrbital) { done.add(node.id); return; }
+        // THE PAIR RIDES THE POINT, NOT ITS MEMBERS. A member's orbit belongs to the barycentre it
+        // belongs to; re-homing it to the secondary's host below is precisely what tore the pair
+        // apart. The marker moves up to the barycentre on promotion, so this only fires on data
+        // authored or imported the old way - and dropping it here is the repair, not a loss.
+        if (memberOf.has(node.id)) { delete node.coOrbital; done.add(node.id); return; }
         stack.add(node.id);
 
         const secondary = nodesById.get(node.coOrbital.hostId) as CelestialBody | Barycenter | undefined;
@@ -403,8 +424,11 @@ export function deriveCoOrbitalOrbits(system: System): void {
     };
 
     for (const n of system.nodes) {
-        if ((n.kind === 'body' || n.kind === 'construct') && (n as CelestialBody).coOrbital) {
-            resolve(n as CelestialBody, new Set());
+        // Barycentres included: a PAIR may ride a point (B98). Deriving the barycentre's orbit leaves
+        // the members' own orbits ABOUT it untouched, which is the whole point - they keep the mutual
+        // orbit the GM gave them and the pair as a whole sits at the Lagrange point.
+        if ((n.kind === 'body' || n.kind === 'construct' || n.kind === 'barycenter') && n.coOrbital) {
+            resolve(n as CelestialBody | Barycenter, new Set());
         }
     }
 }

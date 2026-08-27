@@ -326,6 +326,91 @@ function assessCoOrbitalStability(
   return out;
 }
 
+// B98: A PAIR RIDING A LAGRANGE POINT. Everything above judges a SINGLE body at a point; a binary
+// trojan is a real thing - (617) Patroclus-Menoetius is two ~110 km bodies about 680 km apart
+// librating about Jupiter's L4 together - and it asks two questions instead of one.
+//
+//  1. CAN THE POINT HOLD THE PAIR? Gascheau, exactly as for a single trojan, but with the pair's
+//     COMBINED mass as m3. A pair is heavier than either of its members, so a trio that a single
+//     body would survive can fail once it is doubled - which is the whole reason to ask separately.
+//  2. CAN THE PAIR HOLD ITSELF THERE? This one has no single-body equivalent. The members orbit each
+//     other inside a Hill sphere the pair only has by virtue of sitting where it does, so a pair
+//     wider than that sphere is pulled apart by the primary and the two go their own ways. Judged at
+//     the SAME sep/Hill bands the binary-tightness test upstream uses (0.3 / 0.4 / 0.5), because it
+//     is the same physical question asked in a different place, and two answers to it would drift.
+//
+// The fate is deliberately NOT directional here (B19). When a point stops holding a pair, BOTH
+// members leave it - there is no lighter one to be thrown by a heavier one, which is the asymmetry
+// B19 exists to capture.
+function assessCoOrbitalPairStability(
+  bary: Barycenter,
+  members: CelestialBody[],
+  secondary: CelestialBody | Barycenter | undefined,
+  grandHostMassKg: number
+): StabilityAssessment {
+  const out: StabilityAssessment = { severity: 0, reasons: [] };
+  const point = bary.coOrbital?.point;
+  if (!point || !secondary || !(grandHostMassKg > 0) || members.length !== 2) return out;
+  const m2 = getHostMassKg(secondary);
+  const mPair = (bary.effectiveMassKg || 0) || members.reduce((s, m) => s + getNodeMassKg(m), 0);
+  if (!(m2 > 0) || !(mPair > 0)) return out;
+  const pairName = bary.name || 'the pair';
+  const secondaryName = (secondary as CelestialBody).name ?? 'its secondary';
+
+  // 1) The point against the pair's COMBINED mass.
+  if (point === 'l4' || point === 'l5') {
+    const margin = coOrbitalHold(point, grandHostMassKg, m2, mPair).margin ?? Infinity;
+    if (margin < 1) {
+      out.severity = 3;
+      out.fate = 'eject';
+      out.reasons.push(
+        `${pairName} rides ${secondaryName}'s ${point.toUpperCase()} as a PAIR, and their combined mass is too much for the ` +
+        `triangular point to hold: Gascheau's bound needs (M+m2+m3)^2 at least 27x the pairwise mass products, and this trio ` +
+        `reaches only ${margin.toFixed(2)}x of it. Both members leave the point together`
+      );
+    } else if (margin < 1.2) {
+      out.severity = 1;
+      out.reasons.push(
+        `${pairName} sits at ${secondaryName}'s ${point.toUpperCase()} right at the edge of the trojan regime for its ` +
+        `COMBINED mass (Gascheau margin ${margin.toFixed(2)}x; below 1x the point stops holding) - a single body of either ` +
+        `member's mass would be comfortable, the pair together is not`
+      );
+    }
+  } else {
+    out.severity = Math.max(out.severity, point === 'l3' ? 2 : 3) as 0 | 1 | 2 | 3;
+    if (point !== 'l3') { out.fate = 'eject'; }
+    out.reasons.push(
+      `${pairName} sits on ${secondaryName}'s ${point.toUpperCase()}, a saddle equilibrium with no free orbit - nothing holds ` +
+      `a body there without station-keeping, and a pair of them even less so`
+    );
+  }
+
+  // 2) The pair against the Hill sphere its position gives it.
+  const sepAU = members.reduce((s, m) => s + (m.orbit?.elements.a_AU || 0), 0);
+  const hillAU = bary.orbit
+    ? hillRadiusAU(bary.orbit.elements.a_AU || 0, bary.orbit.elements.e || 0, mPair, grandHostMassKg)
+    : 0;
+  if (sepAU > 0 && hillAU > 0) {
+    const frac = sepAU / hillAU;
+    const detail =
+      `their ${sepAU.toPrecision(3)} AU separation against the ${hillAU.toPrecision(3)} AU Hill radius the pair has at ` +
+      `${secondaryName}'s ${point.toUpperCase()} (sep/Hill=${frac.toFixed(2)})`;
+    if (frac >= 0.5) {
+      out.severity = 3;
+      if (!out.fate) out.fate = 'eject';
+      out.reasons.push(`${pairName} is too widely separated to stay a pair where it sits - ${detail}; the primary pulls the two apart and each goes its own way`);
+    } else if (frac >= 0.4) {
+      out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
+      out.reasons.push(`${pairName} is loosely bound for a pair at a Lagrange point - ${detail}`);
+    } else if (frac >= 0.3) {
+      out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
+      out.reasons.push(`${pairName} is perturbation-sensitive as a pair at this point - ${detail}`);
+    }
+  }
+
+  return out;
+}
+
 function isPrimaryBarycenterMemberPair(
   host: CelestialBody | Barycenter | undefined,
   a: CelestialBody,
@@ -394,6 +479,14 @@ function assessBinaryPairStability(
         // Belts/rings are DISTRIBUTED debris, not a point-mass gravitational sibling — a barycentre
         // crossing the Kuiper Belt is normal, not a disruption (matches the main sibling loop's rule).
         if (b.roleHint === 'belt' || b.roleHint === 'ring') return false;
+        // B98: A CO-ORBITAL PAIR SHARES ITS SECONDARY'S ORBIT BY DEFINITION. A binary trojan at
+        // Jupiter's L4 has exactly Jupiter's semi-major axis, so this crossing test read it as a
+        // catastrophic overlap with a body 760 million times its mass and called a perfectly good
+        // Patroclus "very unstable". G43 P2 exempted this for a SINGLE trojan (`coOrbitalExempt` in
+        // assessPairStability) and the pair assessor never got the equivalent. The pair is still
+        // judged against the point — assessCoOrbitalPairStability does that properly, with Gascheau
+        // on the combined mass — so this is a skip of the wrong question, not of the question.
+        if (bary.coOrbital && b.id === bary.coOrbital.hostId) return false;
         return b.parentId === bary.parentId;
       }) as CelestialBody[];
 
@@ -695,6 +788,20 @@ export function annotateGravitationalStability(system: System): System {
     siblings.sort((a, b) => (a.orbit?.elements.a_AU || 0) - (b.orbit?.elements.a_AU || 0));
     const assessments = new Map<string, StabilityAssessment>();
     for (const n of siblings) assessments.set(n.id, { severity: 0, reasons: [] });
+
+    // B98: the PAIR rides the point, so the trio is judged with its COMBINED mass and the pair is
+    // asked whether it can hold itself together there. The verdict lands on BOTH members, which are
+    // the bodies a GM actually sees - a barycentre has no card of its own.
+    if (host && host.kind === 'barycenter' && (host as Barycenter).coOrbital) {
+      const bary = host as Barycenter;
+      const memberIds = new Set(bary.memberIds || []);
+      const members = siblings.filter((n) => memberIds.has(n.id));
+      const secondary = nodesById.get(bary.coOrbital!.hostId) as CelestialBody | Barycenter | undefined;
+      const pairVerdict = assessCoOrbitalPairStability(bary, members, secondary, getHostMassKg(grandparent));
+      if (pairVerdict.severity > 0) {
+        for (const m of members) mergeAssessment(assessments.get(m.id)!, pairVerdict, m.id);
+      }
+    }
 
     if (host) {
       for (const node of siblings) {

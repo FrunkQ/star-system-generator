@@ -85,6 +85,15 @@ the lowest surviving orbit rather than a hard wall, so "just outside" is a warni
 Every barycentre publishes the ring's two edges, so the panel, the verdict and the map all quote the
 same numbers. The physics page's "Circumbinary worlds" section has the formula and the real cases.
 
+When two bodies at a Lagrange point are made into a PAIR, the marker moves to their barycentre: the
+pair rides the point and the members orbit each other. They are then judged on two things rather than
+one - Gascheau's bound against their COMBINED mass, and whether their own separation fits inside the
+Hill sphere the pair has at that point. A pair too wide for it reads `stability/very-unstable` with
+`fate/eject` on BOTH members, because when a point stops holding a pair there is no lighter member
+being thrown by a heavier one - they both leave. A real binary trojan is comfortably tight: (617)
+Patroclus and Menoetius are about 680 km apart where their Hill radius at Jupiter's L4 is some
+55,000 km.
+
 A **construct** parked at one also gets `flight/fuel-use`, which says what staying there costs it:
 *coasting* at a sound L4/L5 (a free-fall orbit holds it for nothing), *station-keeping* at L1/L2/L3
 (periodic trim burns, which is what real missions at those points budget for), or *holding* when the

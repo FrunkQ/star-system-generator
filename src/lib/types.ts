@@ -741,6 +741,14 @@ export interface AIContext {
 export interface Barycenter extends NodeBase {
   kind: "barycenter";
   memberIds: ID[]; effectiveMassKg?: number; orbit?: Orbit;
+  // A PAIR CAN RIDE A LAGRANGE POINT, not just a single body (B98). (617) Patroclus-Menoetius is a
+  // real binary Jupiter trojan - two ~110 km bodies about 680 km apart librating about L4 together -
+  // and until this existed the engine had no way to SAY that. A GM who built one got the marker on a
+  // MEMBER instead, which put the L-point derivation and the barycentre reconciler in a fight over
+  // the same node's orbit and parentage, and the companion's orbit ran away a little further on
+  // every pass. When this is set, the pair's barycentre is the thing at the point and the members
+  // simply orbit it; no member may carry `coOrbital` as well (physics/lagrange.ts enforces it).
+  coOrbital?: CoOrbital;
   // THE CIRCUMBINARY (P-TYPE) STABLE ANNULUS (G45) — DERIVED, never authored. Written by the
   // stability pass (physics/stability.ts) from the pair's own orbit and its members', and rebuilt
   // from scratch on every pass. Both edges are SEMI-MAJOR AXES in AU measured from the barycentre:

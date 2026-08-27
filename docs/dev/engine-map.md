@@ -3602,6 +3602,33 @@ Pluto's e=0.249 the drawn bubble is 33% larger than the judged one. Both are def
 but they are two numbers, and anything that draws a boundary the physics also JUDGES must take the
 published field rather than recompute.
 
+### PHY-32 A CO-ORBITAL NODE'S ORBIT AND PARENTAGE HAVE EXACTLY ONE OWNER, AND A PAIR RIDES THE POINT
+WHERE: `physics/lagrange.ts` `deriveCoOrbitalOrbits` (owner of the rider's orbit + parentId),
+`physics/barycenterReconcile.ts` `promoteMassiveCompanion` (hands the marker UP on promotion),
+`Barycenter.coOrbital` in `types.ts`.
+RULE: whatever carries `coOrbital` is the thing AT the point, and the L-point derivation owns its
+`orbit` and its `parentId`; nothing else may re-home it. The converse is half the rule and is what
+was missing: a node that is a MEMBER of a barycentre never carries `coOrbital` - the PAIR does, and
+`deriveCoOrbitalOrbits` strips the marker off any member it finds one on. On promotion the marker
+moves UP from the primary to the new barycentre, because the barycentre has already taken the
+primary's orbit and host. The members then simply orbit the barycentre and nothing touches them.
+WHY: [[B98]]. With the marker on a member, `reconcileBarycenters` (SystemProcessor:179) promoted the
+pair and re-homed both members; `deriveCoOrbitalOrbits` (:189) then rewrote the member's `parentId`
+back to the secondary's host, tearing the pair apart; and the next pass rebuilt it from the wreckage.
+**The companion's semi-major axis climbed on every process - 2.5e-6, 2.91, 4.55, 5.46, 5.97, 6.26,
+6.42, 6.51 AU - and the number is the diagnosis: the chord across a 60-degree L4 offset is EXACTLY
+the orbital radius, so the reconciler was reading the Lagrange OFFSET as the pair's SEPARATION.**
+Silent, too: the member lost its `coOrbital`, so `assessCoOrbitalStability` never spoke for it.
+BLAST: a co-orbital pair shares its secondary's semi-major axis BY DEFINITION, so the crossing tests
+must exempt it - G43 P2 did that for a single trojan (`coOrbitalExempt`) and
+`assessBinaryPairStability` did NOT, which called a correct Patroclus-scale binary "very unstable"
+for overlapping with Jupiter. Fixed in the same commit. A pair at a point is judged by
+`assessCoOrbitalPairStability`: Gascheau on the COMBINED mass (a pair is heavier than either member,
+so a trio one body would survive can fail once doubled), plus the criterion only a pair has - its own
+separation against the Hill radius it has at the point, on the same 0.3/0.4/0.5 sep/Hill bands the
+binary-tightness test uses. That fate is deliberately NOT directional (contrast B19): when a point
+stops holding a pair, BOTH members leave, and there is no lighter one being thrown by a heavier one.
+
 ### PHY-30 A barycentre PUBLISHES its circumbinary annulus; nothing may re-derive either edge
 WHERE: `physics/circumbinary.ts` (the fit, the bands, the validity range) and
 `physics/stability.ts` — `hillRadiusAU`, `barycenterHillRadiusAU`, and the publish loop at the head
