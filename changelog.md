@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.142 - 27th Aug 2026
+
+- Board only. A correction: the explanation given for two recent findings was wrong, and measuring showed why. The quantity said to drift as a planet travels its orbit is worked out from the orbit itself and does not drift at all.
+
 ## v3.0.140 - 27th Aug 2026
 
 ## v3.0.141 - 27th Aug 2026
