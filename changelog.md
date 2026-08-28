@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.162 - 28th Aug 2026
+
+- Board only. The coordinator hands over, recording what shipped to production, what is still open and what this stretch of work learned.
+
 ## v3.0.161 - 28th Aug 2026
 
 - Board only. The moon Hill spheres are confirmed by eye, which was the last documentation claim resting on unseen behaviour; and the scale-law work is marked as trusted to real use rather than held for a further review.
