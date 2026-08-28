@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.183 - 28th Aug 2026
+
+- Paired stars orbit each other again. Two bodies sharing a barycentre were sitting at the wrong points on their paths - turning in step rather than around one another - because each half of the pair kept its own idea of when its orbit started. They now share one, and stay exactly opposite across a whole revolution.
+- Editing one half of a pair no longer knocks it out of step with the other. That was why the fault came and went: it took an edit to create it.
+- A barycentre whose member has since paired up with something else now knows it. Loading such a campaign will move the outer star to where it truly belongs - it had been left orbiting a body that was no longer its partner, and its mass was short by a whole star.
+
 ## v3.0.182 - 28th Aug 2026
 
 - Mega-constructs, the numbers pinned (G53): Earth demands about 48.5 GPa cm3/g of a space-elevator ribbon (the literature figure), a default ringworld gives Earth gravity at 1 AU and about three million Earths of floor, a 40% Dyson shell dims its star by exactly 40%, and a world with no real geostationary gets an honest "no tether", never a substitute figure. All held by headless tests, seen red first with the physics deliberately broken.

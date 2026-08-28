@@ -4401,6 +4401,12 @@ was missing: a node that is a MEMBER of a barycentre never carries `coOrbital` -
 `deriveCoOrbitalOrbits` strips the marker off any member it finds one on. On promotion the marker
 moves UP from the primary to the new barycentre, because the barycentre has already taken the
 primary's orbit and host. The members then simply orbit the barycentre and nothing touches them.
+**AMENDED at v3.0.183 (B111): MEMBERSHIP MOVES UP TOO, and it is the same sentence.** If the primary
+was itself a MEMBER of an outer barycentre, that barycentre's `memberIds` must now name the new pair,
+for the identical reason the marker does - the pair has taken the primary's place. This was the one
+item missing from the list and it cost the second half of B111: an outer pair went on naming a star
+that had become half of an inner one, so its `effectiveMassKg` was short by a whole star and it was
+1811x out of balance. `resyncStaleMembership` is the heal for files already saved that way.
 WHY: [[B98]]. With the marker on a member, `reconcileBarycenters` (SystemProcessor:179) promoted the
 pair and re-homed both members; `deriveCoOrbitalOrbits` (:189) then rewrote the member's `parentId`
 back to the secondary's host, tearing the pair apart; and the next pass rebuilt it from the wreckage.
@@ -4417,6 +4423,47 @@ so a trio one body would survive can fail once doubled), plus the criterion only
 separation against the Hill radius it has at the point, on the same 0.3/0.4/0.5 sep/Hill bands the
 binary-tightness test uses. That fate is deliberately NOT directional (contrast B19): when a point
 stops holding a pair, BOTH members leave, and there is no lighter one being thrown by a heavier one.
+
+### PHY-33 A STORED PHASE IS MEANINGLESS WITHOUT ITS EPOCH, AND A PAIR HAS ONE OF EACH
+BUCKET: DOMAIN + ARCHITECTURE - domain: `M(t) = M0 + n*(t - t0)`, so `M0` and `t0` are ONE FACT and
+moving either alone moves the body. Architecture: when a derived relationship has a single owner,
+that owner must write EVERY field the relationship is made of - a field left out is not "kept", it is
+owned by nobody. Read beside DATA-R29, which states the same rule for ships.
+WHERE: `physics/orbits.rephasedM0` + `orbitMeanMotion` (the helper and the one authority on `n`);
+`SystemProcessor.processBarycenters` (the pair's single owner); `physics/barycenterReconcile`
+`promoteMassiveCompanion` and `swapDominantChild` (both re-stamp an epoch).
+RULE: anything that changes an EXISTING orbit's `t0` must recompute `M0` through `rephasedM0`, or it
+teleports the body by `n*dt` while every element still reads correctly. The one exception is a
+relationship's single owner CHOOSING a phase rather than keeping one: the barycentre coupling pass
+writes `t0` and `M0_rad` together onto both members from the reference, because putting them opposite
+each other is the whole job. A pair therefore has ONE epoch, ONE mean anomaly, ONE mean motion and
+opposed arguments of periapsis - and a promotion must hand out all four, not leave three to a later
+pass.
+WHY: [[B111]], reported as *"they are not at the right point on their orbital paths... they rotate at
+the same time and not AROUND each other"*. The coupling pass had owned every element of the relative
+orbit for a year EXCEPT `t0`, and `promoteMassiveCompanion` gave the heavy member the HOST-TRACK
+epoch while the light one kept its own. Same `M0`, different `t0`, identical `n`: a FIXED 240.7-degree
+error, constant rather than drifting, which is exactly why it looked like two stars turning in step
+instead of around each other. Measured on the reporter's file at 49.9 / 30.6 / 132.1 / 121.9 degrees
+across one period where 180 is the only correct answer; 180.000 at every sample after.
+BLAST: `n` has ONE reader-facing authority, `orbitMeanMotion`, and it RESPECTS a stored
+`n_rad_per_s` rather than recomputing `sqrt(mu/a^3)` - LGR-1's l1/l2 points scale `hostMu` on
+purpose, so recomputing would silently be the wrong number there, and a binary member's `n` is the
+pair's relative motion rather than anything derivable from its own semi-major axis. A `t0` that is
+not a wall clock is normal: these are campaign-clock milliseconds (the reporter's file sits at
+2.75e13, about 873 years in), so never sanity-check an epoch against `Date.now()`.
+BLAST: the fix is INVISIBLE through `process()` for the promotion half - the coupling pass repairs
+the epoch later in the same call - so a gate on the promotion must call `reconcileBarycenters`
+directly. `pairPhase.spec.ts` does, and every gate in it was run with its fix removed and seen red.
+BLAST: STILL TWO CONVENTIONS FOR ONE GEOMETRY, reported rather than fixed. `promoteMassiveCompanion`
+offsets the second member's `M0` by pi; `processBarycenters` gives both the SAME `M0` and flips
+`omega` by 180, and its own comment explains why the pi offset only lines up a CIRCULAR pair. The
+coupling pass overwrites the promotion within the same `process()`, so nothing is wrong today - this
+is the [[B110]] test, not the duplication test: could these two answer the same question differently.
+They already do, for e > 0, and anyone reading `reconcileBarycenters` alone gets the wrong answer.
+Unifying them means deciding where a promoted pair's SHAPE comes from, which today is the primary's
+orbit around the STAR (`hostTrackOrbit.elements`) rather than the pair's own relative orbit - a
+separate and larger question, because changing it moves bodies in existing maps.
 
 ### PHY-30 A barycentre PUBLISHES its circumbinary annulus; nothing may re-derive either edge
 BUCKET: DOMAIN + ARCHITECTURE - domain: a P-type body lives in an ANNULUS with two real edges, and

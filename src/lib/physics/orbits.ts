@@ -124,6 +124,43 @@ interface PerifocalState {
 }
 
 /**
+ * THE MEAN MOTION OF A STORED ORBIT, and the only place that decides it. A stored `n_rad_per_s`
+ * already CARRIES ITS SIGN (a binary member's is copied from the pair's relative orbit, an l1/l2
+ * point's comes from a deliberately scaled hostMu - LGR-1), so the retrograde flag applies only when
+ * there is no stored value to respect. `aMeters` lets a caller pass a semi-major axis it has already
+ * sanitised; without one it is read from the elements.
+ */
+export function orbitMeanMotion(
+  orbit: { n_rad_per_s?: number; hostMu?: number; isRetrogradeOrbit?: boolean; elements?: { a_AU?: number } },
+  aMeters?: number
+): number {
+  if (orbit.n_rad_per_s !== undefined) return orbit.n_rad_per_s;
+  const a_m = aMeters ?? (orbit.elements?.a_AU ?? 0) * AU_KM * 1000;
+  const mu = orbit.hostMu ?? 0;
+  if (!(a_m > 0) || !(mu > 0)) return 0;
+  const n = Math.sqrt(mu / (a_m * a_m * a_m));
+  return orbit.isRetrogradeOrbit ? -n : n;
+}
+
+/**
+ * THE EPOCH AND THE PHASE ARE ONE FACT, NOT TWO - `M(t) = M0 + n*(t - t0)` - so moving `t0` without
+ * moving `M0` TELEPORTS the body by `n * dt`, silently, because every element still reads correctly
+ * afterwards. Returns the `M0_rad` that leaves the body exactly where it is once its epoch becomes
+ * `t0New`. Anything that re-stamps an epoch on an EXISTING orbit must go through this; the one place
+ * that may set both freely is a pair's single owner, which is choosing the phase rather than keeping
+ * it (`SystemProcessor.processBarycenters`). B111.
+ */
+export function rephasedM0(
+  orbit: { t0?: number; n_rad_per_s?: number; hostMu?: number; isRetrogradeOrbit?: boolean; elements?: { a_AU?: number; M0_rad?: number } },
+  t0New: number
+): number {
+  const m0 = orbit.elements?.M0_rad ?? 0;
+  const t0Old = orbit.t0 ?? 0;
+  if (!Number.isFinite(t0New) || !Number.isFinite(t0Old) || t0New === t0Old) return normalizeAngle(m0);
+  return normalizeAngle(m0 + orbitMeanMotion(orbit) * ((t0New - t0Old) / 1000));
+}
+
+/**
  * Shared elliptical Kepler solve. Returns the perifocal-frame position (m) and velocity (m/s)
  * plus the three orientation angles (ω, i, Ω). Both propagateState (the flat, ω-only projection
  * the 2D orrery uses) and propagateState3D (the full Rz(Ω)·Rx(i)·Rz(ω) rotation the holo view
@@ -157,15 +194,8 @@ function solvePerifocal(node: CelestialBody | Barycenter | { orbit: any }, tMs: 
 
   const a_m = a_AU * AU_KM * 1000; // semi-major axis in meters
 
-  // 1. Mean motion (n)
-  let n = node.orbit.n_rad_per_s ?? Math.sqrt(hostMu / Math.pow(a_m, 3));
-
-  // Retrograde handling:
-  // If n_rad_per_s is provided, it should ALREADY have the correct sign.
-  // Otherwise, we check the flag.
-  if (node.orbit.n_rad_per_s === undefined && !!node.orbit.isRetrogradeOrbit) {
-    n = -n;
-  }
+  // 1. Mean motion (n) - one authority, shared with anything that must re-express a phase.
+  const n = orbitMeanMotion(node.orbit, a_m);
 
   // 2. Mean anomaly (M) at time t
   // tMs is current time in ms, t0 is epoch in ms

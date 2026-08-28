@@ -1,5 +1,6 @@
 import type { Barycenter, CelestialBody, Orbit, System } from '../types';
-import { G } from '../constants';
+import { G, AU_KM } from '../constants';
+import { rephasedM0 } from './orbits';
 import { generateId } from '../utils';
 
 const PROMOTE_RATIO = 0.08;
@@ -79,7 +80,22 @@ function promoteMassiveCompanion(system: System): boolean {
 
     // Preserve the original host-track orbit (around star/parent), not the local pair orbit.
     const hostTrackOrbit = primaryBody.orbit ? cloneOrbit(primaryBody.orbit) : undefined;
-    const phaseBase = normalizeAngle(light.orbit?.elements.M0_rad ?? 0);
+
+    // ONE PAIR, ONE EPOCH - B111. `M(t) = M0 + n*(t - t0)`, so two members carrying the same mean
+    // anomaly at DIFFERENT epochs are not opposite each other, they are a fixed `n*dt` apart, for
+    // ever. This block used to hand the heavy member the HOST-TRACK epoch and let the light member
+    // keep its OWN, which is exactly that: a user's pair came out 240.7 degrees off and chased its
+    // partner round instead of orbiting it. The phase is re-expressed at the shared epoch rather
+    // than merely copied, so promotion does not move the body that had the orbit.
+    const pairT0 = hostTrackOrbit ? hostTrackOrbit.t0 : (light.orbit?.t0 ?? 0);
+    const phaseBase = light.orbit ? rephasedM0(light.orbit, pairT0) : 0;
+
+    // AND ONE PERIOD. Both members go round the barycentre in the RELATIVE orbit's time - that is
+    // what makes them a pair - so the mean motion is the pair's, not the star-track orbit's that the
+    // heavy member used to inherit. `processBarycenters` computes the same number from the same two
+    // inputs on the next pass, so nothing churns.
+    const separationMeters = separationAU * AU_KM * 1000;
+    const pairN = separationMeters > 0 ? Math.sqrt((G * pairMass) / Math.pow(separationMeters, 3)) : undefined;
 
     const baryId = `bary-auto-${generateId()}`;
     const barycenter: Barycenter = {
@@ -119,8 +135,8 @@ function promoteMassiveCompanion(system: System): boolean {
     heavy.orbit = {
       hostId: baryId,
       hostMu: pairMu,
-      t0: hostTrackOrbit ? hostTrackOrbit.t0 : (light.orbit?.t0 ?? 0),
-      n_rad_per_s: hostTrackOrbit?.n_rad_per_s,
+      t0: pairT0,
+      n_rad_per_s: pairN ?? hostTrackOrbit?.n_rad_per_s,
       elements: {
         ...(hostTrackOrbit ? hostTrackOrbit.elements : { e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0 }),
         a_AU: aHeavy,
@@ -131,8 +147,8 @@ function promoteMassiveCompanion(system: System): boolean {
     light.orbit = {
       hostId: baryId,
       hostMu: pairMu,
-      t0: light.orbit?.t0 ?? (hostTrackOrbit?.t0 ?? 0),
-      n_rad_per_s: light.orbit?.n_rad_per_s,
+      t0: pairT0,
+      n_rad_per_s: pairN ?? light.orbit?.n_rad_per_s,
       elements: {
         ...(light.orbit?.elements || (hostTrackOrbit ? hostTrackOrbit.elements : { e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0 })),
         a_AU: aLight,
@@ -155,6 +171,21 @@ function promoteMassiveCompanion(system: System): boolean {
       if (!(a > separationAU)) continue; // inside the pair: stays circumstellar (no orbit → stays put)
       n.parentId = baryId;
       n.orbit = { ...n.orbit!, hostId: baryId, hostMu: pairMu };
+    }
+
+    // THE PAIR TAKES THE PRIMARY'S PLACE IN ITS PARENT'S MEMBERSHIP TOO - B111, second fault.
+    // The barycentre has already taken the primary's orbit and its host above, and PHY-32 hands the
+    // co-orbital marker up for exactly that reason. MEMBERSHIP is the same argument and was missed:
+    // an outer pair went on naming a star that had since become half of an inner pair, so its
+    // `effectiveMassKg` omitted the new companion entirely and `processBarycenters` coupled the outer
+    // star to a body 617 AU from its real partner - the outer pair was 1811x out of balance and did
+    // not orbit at all. Nothing repaired it: the reconciler only ever checked that a member EXISTS.
+    if (originalHost && originalHost.kind === 'barycenter') {
+      const hostBary = originalHost as Barycenter;
+      if (Array.isArray(hostBary.memberIds)) {
+        const replaced = hostBary.memberIds.map((id) => (id === heavy.id || id === light.id ? baryId : id));
+        hostBary.memberIds = replaced.filter((id, i) => replaced.indexOf(id) === i);
+      }
     }
 
     system.nodes.push(barycenter);
@@ -194,6 +225,9 @@ function swapDominantChild(system: System): boolean {
     const separationAU = Math.max(child.orbit.elements.a_AU || 0, 1e-9);
     const parentHostTrack = parentBody.orbit ? cloneOrbit(parentBody.orbit) : undefined;
     const childT0 = child.orbit.t0 ?? parentBody.orbit?.t0 ?? 0;
+    // The demoted parent keeps its own mean anomaly but is about to be quoted at the CHILD's epoch,
+    // which moves it by `n*dt` unless the phase is re-expressed. Same fault as B111, different pass.
+    const swappedParentM0 = parentBody.orbit ? rephasedM0(parentBody.orbit, childT0) : 0;
 
     // The child takes the parent's place (same host + orbit around the grandparent). If the parent
     // was the system root (no orbit), the child becomes the root.
@@ -214,7 +248,8 @@ function swapDominantChild(system: System): boolean {
       n_rad_per_s: parentBody.orbit?.n_rad_per_s,
       elements: {
         ...(parentBody.orbit?.elements || { e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 }),
-        a_AU: separationAU
+        a_AU: separationAU,
+        M0_rad: swappedParentM0
       }
     };
 
@@ -299,6 +334,57 @@ function demoteWeakBinary(system: System): boolean {
 // parentId, so it resolves to the system centre (0,0) and drags anything under it to the middle.
 // Since nothing references a ghost, deleting it moves nothing — it just clears the stray centre marker
 // and the corrupt reference. Also prunes member-id lists of removed/ghost ids.
+// A BARYCENTRE'S MEMBERSHIP AND ITS MEMBERS' PARENTAGE MUST AGREE, and until B111 nothing checked.
+// The reconciler asked only whether a member still EXISTS (dissolveStaleBinary) or had been REMOVED
+// (removeGhostBarycenters); a member that was still there but had been promoted into a sub-pair - so
+// its `parentId` now names that sub-pair - passed both tests while the outer barycentre went on
+// naming it. That is the second half of B111, measured on a user's file: the outer pair's
+// `effectiveMassKg` was short by a whole star, and `processBarycenters` coupled the outer star to a
+// body 617 AU from its real partner.
+//
+// The repair follows the SUBTREE, which is the only honest answer available: walk up from the stale
+// member until an ancestor is found whose parent IS this barycentre, and name that ancestor instead.
+// If the member has left the subtree altogether it is not orbiting this point by any reading, so the
+// entry goes and the existing dissolve/ghost passes take it from there. Promotion now hands
+// membership up by itself, so this is the heal for files already saved with the fault.
+function resyncStaleMembership(system: System): boolean {
+  const byId = new Map(system.nodes.map((n) => [n.id, n]));
+  let changed = false;
+  for (const node of system.nodes) {
+    if (node.kind !== 'barycenter') continue;
+    const bary = node as Barycenter;
+    if (!Array.isArray(bary.memberIds) || !bary.memberIds.length) continue;
+
+    const next: string[] = [];
+    for (const id of bary.memberIds) {
+      const member = byId.get(id);
+      if (!member) { next.push(id); continue; }          // absent: dissolveStaleBinary/ghost own it
+      if (member.parentId === bary.id) { next.push(id); continue; }
+
+      // Climb, cycle-guarded: a corrupt file can point a parent chain at itself.
+      let cursor: typeof member | undefined = member;
+      const seen = new Set<string>([member.id]);
+      let standIn: string | undefined;
+      while (cursor?.parentId) {
+        const parent = byId.get(cursor.parentId as string);
+        if (!parent || seen.has(parent.id)) break;
+        if (parent.id === bary.id) { standIn = cursor.id; break; }
+        seen.add(parent.id);
+        cursor = parent;
+      }
+      if (standIn) { next.push(standIn); changed = true; }
+      else changed = true;                                 // left the subtree: drop it
+    }
+
+    const deduped = next.filter((id, i) => next.indexOf(id) === i);
+    if (deduped.length !== bary.memberIds.length || deduped.some((id, i) => id !== bary.memberIds[i])) {
+      bary.memberIds = deduped;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function removeGhostBarycenters(system: System): boolean {
   const childCount = new Map<string, number>();
   for (const n of system.nodes) if (n.parentId) childCount.set(n.parentId, (childCount.get(n.parentId) || 0) + 1);
@@ -440,13 +526,14 @@ export function reconcileBarycenters(system: System): System {
   // Run until stable to handle create/remove chains from one edit.
   for (let i = 0; i < 8; i++) {
     const reparented = reparentDanglingNodes(system);
+    const resynced = resyncStaleMembership(system);
     const dissolved = dissolveStaleBinary(system);
     const swapped = swapDominantChild(system);
     const promoted = promoteMassiveCompanion(system);
     const demoted = demoteWeakBinary(system);
     const healed = removeGhostBarycenters(system);
     const repaired = repairDegenerateAutoBary(system);
-    if (!reparented && !dissolved && !swapped && !promoted && !demoted && !healed && !repaired) break;
+    if (!reparented && !resynced && !dissolved && !swapped && !promoted && !demoted && !healed && !repaired) break;
   }
   return system;
 }

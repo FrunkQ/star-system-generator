@@ -557,6 +557,20 @@ export class SystemProcessor implements ISystemProcessor {
                     m0.orbit.elements.omega_deg = refIsM0 ? coupledArgPeri : oppositeArgPeri;
                     m1.orbit.elements.omega_deg = refIsM0 ? oppositeArgPeri : coupledArgPeri;
 
+                    // THE EPOCH TRAVELS WITH THE PHASE, and forgetting that is the whole of B111.
+                    // `M(t) = M0 + n*(t - t0)`: this pass has always given both members the SAME mean
+                    // anomaly and left each with its OWN `t0`, which is not "opposite" but a fixed
+                    // `n*dt` apart - constant rather than drifting, because n is shared, which is
+                    // exactly why the reported symptom was two stars "rotating at the same time and
+                    // not AROUND each other". A user's pair sat 240.7 degrees out. Every other element
+                    // of the relative orbit already has this single owner; `t0` was the one field that
+                    // did not, and the reference's is the pair's.
+                    //
+                    // This CHOOSES the phase rather than preserving it (which is what a pair's one
+                    // owner is for), so it does NOT go through `rephasedM0` - the point is to put the
+                    // members opposite each other, not to leave them where they were.
+                    m0.orbit.t0 = reference.t0;
+                    m1.orbit.t0 = reference.t0;
                     m0.orbit.elements.M0_rad = refM0;
                     m1.orbit.elements.M0_rad = refM0;
 
