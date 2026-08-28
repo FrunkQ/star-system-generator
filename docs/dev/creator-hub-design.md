@@ -209,18 +209,190 @@ item; do not let the migration depend on it.
 
 ---
 
-## 6. What the plan does not yet cover
+## 6. Moderation, control and abuse — the full shape
+
+Owner, 2026-08-28: *"obviously I will have an admin account to delete offensive content - we will
+need a mechanism for users to report as well as hearts on their uploads. And we will need some basic
+gates so it cant be abused - i.e. a user uses it to pass around porn images as 'planets'...
+'celestial bodies are not nude!' So limit to 1 zip file per user per day (tunable and relaxable over
+time) and I can ban zips altogether (with files) and only allow json. So some moderation and some
+control. An admin tool to quickly review images and their copyright info would be useful - so it is
+easy to scan from all archives and checked ones never appear again. Manual pic review."*
+
+### 6.1 THE ONE PROPERTY THAT MAKES THIS CHEAP: a verdict is per-HASH, not per-upload
+
+**Assets are already content-addressed by sha256 (§3.4), and that turns moderation from an
+ever-growing job into a shrinking one.** Review an image once and store the verdict against its
+hash, and:
+
+- **Every future upload of those exact bytes inherits the verdict instantly.** The hundredth person
+  to share the same nebula backdrop costs zero review.
+- **An approved hash never enters the queue again** — which is precisely the owner's *"checked ones
+  never appear again"*, and it falls out of a decision already taken for storage reasons.
+- **A banned hash is refused at upload time**, before a presigned URL is ever issued. It never
+  reaches R2 at all.
+- **Re-uploading a banned image under a new filename does nothing.** Same bytes, same hash, same
+  verdict. To evade, the bytes must change — and changed bytes are a new hash, which lands back in
+  the queue as novel.
+
+> **SO THE REVIEW QUEUE ONLY EVER HOLDS GENUINELY NOVEL IMAGES, AND IT SHRINKS AS THE LIBRARY
+> GROWS.** That is the difference between a moderation burden that scales with traffic and one that
+> scales with variety.
+
+**BE HONEST ABOUT THE LIMIT: this is exact-byte matching, not perceptual matching.** Re-saving a
+banned image at 99% JPEG quality produces a different hash and a fresh queue entry. That is a real
+gap and it is the correct trade for now — the escalation, if it is ever needed, is a perceptual hash
+(pHash) stored *alongside* the sha256 so near-duplicates cluster in the queue. **Do not build that
+yet**; note it, and let evidence decide.
+
+### 6.2 Nothing unreviewed is ever served, and nothing waits in a queue
+
+These pull in opposite directions and the hash ledger resolves them, which matters because a hub with
+a review backlog is a dead funnel.
+
+**The rule: an upload is never blocked; an unreviewed ASSET is never served.**
+
+- An upload whose assets are **all previously-approved hashes** goes live immediately. After a short
+  while this is most uploads.
+- An upload containing **novel hashes** also goes live — with those specific assets withheld. The map
+  is public, downloadable and usable; the unreviewed pictures show as placeholders and the creator
+  sees *"3 images awaiting review"*.
+- **The withholding covers the DOWNLOAD too, not just the page.** This is the part that is easy to
+  get wrong: serving the original zip would hand out the very bytes being withheld. So the
+  downloadable bundle is assembled from approved assets only.
+
+**HOW TO SERVE IT: keep the R2 bucket PRIVATE and serve every object through a Worker that checks
+the ledger.** No quarantine bucket, no copying objects on approval, one source of truth. Approve or
+ban is a row update and takes effect on the next request — including revoking something already
+public, which a copy-on-approve design makes slow and error-prone.
+
+### 6.3 The gates — a config table, not code
+
+Every one of these is a row an admin edits, because the owner asked for *"tunable and relaxable over
+time"* and a limit that needs a deploy to relax is a limit nobody relaxes.
+
+| gate | default | why |
+|---|---|---|
+| `uploads_per_user_per_day` | **1** | the owner's number |
+| `zips_allowed` | true | **the kill switch** — see below |
+| `max_bundle_bytes` | tunable | cost control |
+| `max_assets_per_bundle` | tunable | one map should not carry a gallery |
+| `new_account_cooldown_hours` | tunable | a brand-new account uploading instantly is the classic pattern |
+| `novel_hash_limit_per_upload` | tunable | the abuse signal that matters most (§6.6) |
+
+> **`zips_allowed: false` IS A REAL KILL SWITCH AND IT COSTS ALMOST NOTHING TO BUILD, because the app
+> already supports assetless saves:** *"A plain .json save (no assets) still loads, and always will"*
+> (`bundle.ts`). Flipping it reduces the entire abuse surface to TEXT — names, descriptions, notes —
+> which is a far smaller moderation problem than images, and the hub keeps working. Implementation is
+> one check: reject when `sniffBundle(bytes)` is true.
+
+**One interaction worth designing for now: an UPDATE to your own existing entry should not cost a
+daily upload, or cost less.** A creator iterating on a map would otherwise burn their allowance in a
+morning, and an update is inherently lower risk — same creator, mostly-known hashes. Count only
+*novel* hashes against the allowance and the limit stops punishing the people you want.
+
+### 6.4 The admin review tool
+
+The owner asked for *"an admin tool to quickly review images and their copyright info... easy to scan
+from all archives"*. **The copyright info is already in the bundle** — `ATTRIBUTIONS.md` carries
+`title`, `credit`, `license`, `sourceUrl` per asset (§3.3), parsed at upload.
+
+**So the review card shows the image AND the creator's own licence claim side by side**, which lets
+one pass judge two things at once: is this acceptable content, and is that attribution plausible?
+A stock photo credited *"my own work, CC0"* is a different problem from an uncredited one, and only
+this view makes it visible.
+
+**Design for SPEED, because it is manual and volume is the enemy:**
+
+- A grid of **unreviewed hashes only**, newest first, with usage count (*"used by 4 maps"*) so the
+  highest-impact decisions come first.
+- **Keyboard-driven**: approve / reject / ban-creator, with undo. A mouse-driven queue is a queue
+  nobody clears.
+- Each card carries: the image, its attribution block, the maps using it, the uploader, and any
+  reports against it.
+- **Bulk approve a whole upload** when it is obviously fine — the common case.
+- A decision is written against the HASH with a reviewer and a timestamp. **Never against the
+  upload**, or the same bytes come back tomorrow.
+
+**Reject needs a reason** (content / copyright / spam), because the reason drives what happens next:
+a copyright rejection is a note to the creator, a content rejection may be a creator-level action.
+
+### 6.5 Reports and hearts
+
+**Reports** target either a MAP or a specific ASSET, and the distinction matters: an asset report
+feeds the hash queue directly and therefore protects every other map using the same bytes.
+
+- A short reason list plus free text. Reasons drive triage order.
+- **Reports on one hash collapse into one queue entry with a count.** Ten reports on the same image
+  is one decision, not ten.
+- Report volume against a creator is itself a signal (§6.6).
+- Signed-in reporters only — an anonymous report button is a griefing tool.
+
+**Hearts** are one per user per system, and they are not decoration: **for a funnel, discovery IS the
+product** (§7.5), and hearts are the ranking axis that makes a front page possible. They require an
+account for the same reason reports do.
+
+### 6.6 What catches abuse without an image classifier
+
+There is no free, reliable nudity classifier to lean on, and an ML content filter is out of scope
+here. **The signals that actually work are behavioural and cost nothing:**
+
+- **Novel-hash rate.** A legitimate map reuses models and carries a handful of pictures. An account
+  uploading dozens of never-seen images is the pattern worth flagging, and it is the single best
+  signal available.
+- **New account + immediate upload + all-novel assets.** The classic shape.
+- **Report velocity** against one creator or one hash.
+- **Attribution quality.** A bundle where every asset says *"No provenance recorded"* is already
+  blocked from public by the existing gate (§3.3) — which means the provenance gate is doing
+  moderation work as a side effect, and that is worth knowing.
+
+**Flagged uploads are not blocked; they are moved to the FRONT of the review queue.** Same
+philosophy as the rest of this design: never stop the funnel, just look sooner.
+
+**Cloudflare Workers AI does offer image classification models**, and it is worth EVALUATING as a
+pre-filter that only reorders the queue — never as an automatic reject. Its cost and accuracy at this
+volume are unknown and should be measured before anything depends on it. **Not in scope for launch.**
+
+### 6.7 States, and who can do what
+
+```
+draft ──► public ──► hidden (admin)        assets: novel ──► approved
+                └──► removed (creator)             └──► banned
+creator: active ──► suspended ──► banned
+```
+
+**Two roles only at launch: `user` and `admin`.** A moderator tier is easy to add later and pointless
+before there is a queue worth sharing. The owner is admin.
+
+**An admin action is always recorded — who, what, when, why.** Not for bureaucracy: when a creator
+asks why their map vanished, the answer must exist, and a hub that removes things silently loses the
+people it wants.
+
+### 6.8 What this still needs from the owner
+
+1. **Terms and an acceptable-use line.** The tooling above enforces a policy; it does not write one.
+   One page, plain English, and it must exist before the first public upload.
+2. **A takedown route** — an email address that reaches a person, for copyright claims from people
+   who do not have an account.
+3. **Is a rejected asset's map still published without it, or does the whole map come down?** §6.2
+   assumes the former (map lives, asset withheld). Confirm — it is the difference between a hub that
+   feels fair and one that feels arbitrary.
+
+---
+
+## 7. Other gaps the plan does not yet cover
 
 Named rather than designed, because each needs a decision.
 
-1. **MODERATION AND TAKEDOWN.** A public hub accepting user uploads needs a report path, a way to
-   remove content, and terms. The provenance gate handles *"is this art credited"*; it does nothing
-   about *"is this content acceptable"* or a DMCA notice. **This is the largest missing piece and it
-   is not technical** — it is a policy the app then implements.
+1. ~~**MODERATION AND TAKEDOWN.**~~ **DESIGNED IN §6**, 2026-08-28, on the owner's brief. What
+   remains is the non-technical half he still owes: terms, an acceptable-use line, and a takedown
+   address that reaches a person (§6.8).
 2. **ACCOUNT DELETION AND DATA EXPORT.** UK/EU users, a real obligation. Supabase makes it
    straightforward; the R2 objects are the part people forget, and content-addressed objects
    **must not** be deleted on account deletion when another creator's map references the same hash.
-   That is a refcount, and it should be designed in rather than bolted on.
+   That is a refcount, and it should be designed in rather than bolted on. **Note it interacts with
+   §6.1:** a hash's review VERDICT must outlive the account that uploaded it, or a banned image
+   returns the moment its uploader deletes themselves.
 3. **RATE LIMITING AND ABUSE.** Presigned R2 URLs are capability tokens. Scope them tightly (single
    object, short expiry, exact content-length) or the hub becomes free anonymous storage.
 4. **WHAT IS THE COVER IMAGE?** OG previews need one. The bundle carries player-view graphics under
@@ -235,7 +407,7 @@ Named rather than designed, because each needs a decision.
 
 ---
 
-## 7. Phasing
+## 8. Phasing
 
 **Phase 0 — SSE-side prerequisites, before the hub reads anything.** The `bundleFormat` stamp and
 the canonical fixture (§4). Small, and everything else depends on it.
@@ -244,18 +416,21 @@ the canonical fixture (§4). Small, and everything else depends on it.
 verify, cut DNS, leave Vercel up. **Do not combine this with hub work** — it is a change to a live
 product with a known failure mode, and it deserves to be the only variable.
 
-**Phase 2 — read-only hub.** Upload, parse, normalise, store, one-click download, OG previews. No
-accounts beyond what upload requires, no comments, no votes. **This is the whole funnel and it is
-shippable alone.**
+**Phase 2 — the funnel, with the gates from day one.** Upload, parse, normalise, store, one-click
+download, OG previews. **The gate config table (§6.3), the hash ledger (§6.1) and the admin review
+tool (§6.4) ship WITH this phase, not after it** — a public upload path without them is a liability
+from its first hour, and the ledger has to be there from the first asset or the queue starts life
+with a backlog. Reports (§6.5) too: they are a table and a button.
 
-**Phase 3 — community.** Upvotes, comments, search and discovery. Needs §6.1 answered first.
+**Phase 3 — community.** Hearts, search and discovery, and comments if wanted. **Hearts are the
+ranking axis** the front page needs, so this is closer to the funnel than it sounds.
 
 **Phase 4 — the tier hooks.** Already specified in the plan: `account_tier` and `visibility` exist in
 the schema from phase 2 and are simply not exposed. Correct approach, no notes.
 
 ---
 
-## 8. Questions still open for the owner
+## 9. Questions still open for the owner
 
 1. **Moderation (§6.1)** — the largest gap, and the answer is a policy before it is code.
 2. **Cover image (§6.4)** — what designates one, and what happens with none.

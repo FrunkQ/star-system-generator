@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.176 - 28th Aug 2026
+
+- Board only. The Creator Hub gets its moderation half: reporting, hearts, upload limits you can tighten or relax, a switch that turns off file uploads entirely, and a review tool where checking a picture once means never seeing it again.
+
 ## v3.0.175 - 28th Aug 2026
 
 - Board only. A design for the Creator Hub, where finished star systems can be shared and opened in one click - and a warning that the planned move between hosts would strand returning visitors on a stale copy of the app unless one line changes first.
