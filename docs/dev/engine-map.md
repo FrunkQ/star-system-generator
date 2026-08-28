@@ -4183,3 +4183,44 @@ follow the slider, the page will start reporting the user's own preference as a 
 WHY THE ORDER S2-THEN-S2c MATTERED: a labelled departure from truth only means anything once truth
 exists underneath it. With the overlapping bands still in place a GM sliding constructs apart could
 not tell whether they were correcting a fault or expressing a preference.
+
+### RENDER-S43 A PIXEL FLOOR IS NOT THE SCALE LAW, AND NO DIAL CAN CORRECT ONE
+WHERE: `rendering/pixelFloor.ts` (the whole file), read by `holo/scene.ts` at two call sites.
+RULE: the scale law decides size in SCENE units; the pixel floors clamp the result in SCREEN units
+UNDERNEATH it. A dial is a multiplier and a floor is a clamp beneath it, so **no dial position
+corrects a floor** - which is not a fine distinction: the owner went looking for the P4/S2c construct
+dial after noticing constructs read over-large until you zoom in, and the dial would not have fixed
+it, because the fault was here. Two controls over apparently the same thing, one of which does not
+address the complaint.
+AND THE FLOORS ARE ALL ON ONE AXIS NOW - EVERY ONE IS A SPAN. A body used to be floored by RADIUS
+and a construct by LENGTH, declared 170 lines apart in one file, and nothing said so. Compared
+naively that reads as a ship floored six times a planet (14 px against 2.2); the honest comparison,
+on one axis, is three (14 against a planet's 4.4 px of DIAMETER). Same fault shape as A33/B27/B28 -
+a quantity correct for its own purpose, published against a neighbour measured differently.
+`MIN_SPAN_PX` is the table; `bodyMinRadiusPx` converts at the one call site that measures radii.
+**`floorScale` takes both arguments on WHICHEVER axis the caller measures on** and does not know
+which - passing a span where a radius belongs silently doubles the enlargement cap below.
+THE `1e-9` INSIDE `floorScale` IS A CAP ON ENLARGEMENT, NOT A DIVIDE-BY-ZERO GUARD, and this was
+learned by extracting it and briefly getting it wrong. Without it a thing measuring 2e-10 px is
+scaled by 1.6e10 to meet a 3.2 px floor, and a body sitting on `NUMERICAL_FLOOR` is blown up into a
+visible disc. It never fires in practice and fires on exactly the inputs a sweep test uses, which is
+how the equivalence spec caught the axis mistake in one run. Do not tidy it away.
+THE VALUES, and why a construct is where it is: a focused ship floors at a PLANET span and an idle
+one at a MOON's (owner, 2026-08-27: *"2px planet 14px ship seems silly - maybe pin at 2px/1px for
+constructs\"*), so a construct joins the marker hierarchy rather than sitting above it. A FRAMED ship
+has no floor at all, deliberately: a screen-size floor pins the hull to a constant number of pixels,
+so while it is active the camera cannot change the apparent size - the "wrestles the view" fault.
+CHECKED BEFORE LOWERING, both of the obvious objections: CLICKING is unaffected (the tap assist picks
+the nearest clickable body within 14 px on a raycast miss, and its own comment says it exists for
+construct icons already drawn far below that); LABELS are unaffected (`setLabelSize` is a fixed px
+font with a global toggle, gated on nothing). The tap radius and the old floor were both 14, but they
+are independent literals with no shared constant and the floor gave an unrelated reason for its own
+value, so the coincidence is unexplained rather than causal.
+MEASURED, so the next tuner does not have to guess: across the 26 bundled constructs carrying
+`dimensionsM` the MEDIAN aspect ratio is 1.6, which puts a hull at ~0.8x the lit area of a disc of
+the same span. The worry that a hull needs a bigger floor than a planet to read at all is therefore
+much weaker than it sounds. **Nobody has yet LOOKED at a 4.4 px hull**; if it does not read, raise
+`constructFocused` alone.
+BLAST: `pixelFloor.spec.ts` pins the BODY clamp bit-for-bit against the old closure arithmetic - the
+extraction had to be behaviour-identical there - while asserting the construct floors as the thing
+that deliberately moved.

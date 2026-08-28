@@ -16,6 +16,7 @@
     bodyRadiusScene, starRadiusScene, shipLengthScene, readableBodyRadius, readableShipLength,
     markerScale, GRID_RADIUS
   } from '$lib/rendering/scaleLaw';
+  import { MIN_SPAN_PX } from '$lib/rendering/pixelFloor';
 
   // The canonical set. Sizes are real, so the table doubles as a sanity check against the sky.
   // `metres` is the object's rendered EXTENT in physical metres (diameter for a body, long axis for
@@ -125,6 +126,22 @@
     </span>
   </div>
 
+  <div class="controls floors">
+    <label for="floors">Pixel floors</label>
+    <span id="floors" class="hint">
+      <strong>Screen-space, and NOT part of the law above.</strong> The law decides size in scene
+      units; these clamp the result in screen pixels underneath it, so <em>no dial position can
+      correct a floor</em> — which is why the construct dial could not fix constructs reading
+      over-large. All five are SPANS (a body's diameter, a hull's long axis) so they can be read
+      against each other: star <strong>{MIN_SPAN_PX.star}</strong> · planet
+      <strong>{MIN_SPAN_PX.planet}</strong> · moon <strong>{MIN_SPAN_PX.moon}</strong> · ship focused
+      <strong>{MIN_SPAN_PX.constructFocused}</strong> · ship idle
+      <strong>{MIN_SPAN_PX.constructIdle}</strong> px. A ship joins the body hierarchy rather than
+      sitting above it; it used to floor at 14 px of length against a planet's 4.4 px of diameter.
+      A ship the camera has FRAMED has no floor at all, on purpose.
+    </span>
+  </div>
+
   <div class="verdict" class:bad={violationCount > 0}>
     {#if violationCount > 0}
       <strong>{violationCount} ordering violations.</strong> R9 requires that a physically larger object
@@ -216,4 +233,6 @@
   tr.construct td.obj .name { color: #eccff8; }
   .off { font-variant-numeric: tabular-nums; min-width: 5.5em; }
   .off-zero { opacity: 0.65; font-weight: 500; }
+  .floors { align-items: flex-start; }
+  .floors .hint { max-width: 70ch; }
 </style>

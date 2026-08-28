@@ -1487,6 +1487,50 @@ smaller relative to giants. (4) A red dwarf system and a giant system side by si
 no longer be the same size. (5) The readable default (dial 1) on a normal system should look
 unchanged except that ships have shrunk.
 
+**FOLDED IN 2026-08-27, OWNER'S CALL, AND IT IS THE SAME QUESTION: THE SCREEN-SPACE PIXEL FLOOR.**
+His observation on beta - constructs read overly large until you zoom in, then shrink to something
+like true size. **That is not the scale law and the construct dial would NOT have fixed it**: a dial
+is a multiplier in scene space, a floor is a clamp in screen space underneath it, and no dial
+position corrects a clamp. Worth having settled before the S2c UI is wired, since it is two controls
+over apparently the same thing and only one of them addresses the complaint.
+
+**THE NUMBERS, AND ONE OF THEM WAS BEING READ WRONG.** `SHIP_MODEL_MIN_PX` was 14 (7 idle) against
+`MIN_PX_STAR/BODY/MOON` of 3.2/2.2/1.2 - but **the ship floor is a LENGTH and the body floors are
+RADII**, declared 170 lines apart with nothing saying so. On one axis the ratio is three, not six
+(14 px of length against a planet's 4.4 px of diameter). Same shape as A33/B27/B28. **Extracted to
+`rendering/pixelFloor.ts`**: one table, every floor a SPAN, testable and shown on /scale-reference.
+A focused ship now floors at a planet's span (4.4) and an idle one at a moon's (2.4), so a construct
+JOINS the marker hierarchy instead of sitting above it - which is what the owner's "2px/1px" means
+once both are on one axis. A FRAMED ship still has no floor, deliberately. Engine-map RENDER-S43.
+
+**THE EXTRACTION ITSELF CAUGHT A BUG I INTRODUCED, which is the argument for gating it as a
+measurement.** Moving the clamp from a radius axis to a span axis silently DOUBLED an enlargement cap
+(`Math.max(1e-9, px)` turns out to be a cap on how far a floor may stretch something, not a
+divide-by-zero guard - without it a body on `NUMERICAL_FLOOR` is blown up into a visible disc). The
+bit-for-bit equivalence sweep against the old closure found it in one run; without it, it would have
+shipped as "just a refactor". Both new gates run against the old values and seen to go red.
+
+**AND THE JUDGEMENT THE BRIEF ASKED FOR - is 4.4 px enough for a HULL, which is thinner than a
+sphere? MEASURED, and the worry is much weaker than it sounds:** across the 26 bundled constructs
+carrying `dimensionsM` the MEDIAN aspect ratio is **1.6** (not the 4:1 or 10:1 one imagines), putting
+a hull at ~0.8x the lit area of a disc of the same span. The extreme is the Hail Mary at 5.88:1
+(~0.2x), a 47 m craft that sits on its floor in almost any shot regardless. So parity is defensible
+on measurement rather than only on the owner's suggestion. **WHAT WAS NOT DONE: nobody has LOOKED at
+a 4.4 px hull.** The pane was hidden for every attempt this session ([[E7]]). If it does not read,
+raise `constructFocused` alone - one line in the table, and it does not disturb the bodies.
+
+**A NEW STANDING RULE CAME OUT OF THIS, at the owner's request** (*"add a standing rule to ask to do
+this in future... we need to extract all core data into files at some point"*): scattered constants
+and hand-tuned numbers are DATA in the wrong place - the test being whether a human will want to
+change the number after using the product - and extracting them is a MEASUREMENT that must pin the
+old behaviour bit-for-bit in the same commit. It is at the foot of this file with the pixel floors as
+its worked example.
+
+**ADDED TO THE EYEBALL LIST:** (6) a ship at whole-system zoom, focused and unfocused - it should
+read as a marker in the same family as a planet and a moon rather than a shout, and this is the one
+judgement no test made. (7) click a ship at that zoom: the tap assist should still pick it up at
+14 px however small it draws.
+
 **WHAT I WOULD DO NEXT:** settle where the construct dial lives (preset or starmap), wire the GM
 control beside the body-size slider, and merge both this and [[A78]] together - they touch
 `scaleLaw.ts` in different places and neither disagrees with the other about what `rMax` means, but
@@ -1813,6 +1857,36 @@ noticed.
   and refactor mid-item — write it up as a finding with every copy located by file and line, and let it
   be scoped. Either way it must reach the board; a second copy noticed and not recorded is one that
   drifts next month. Prefer removing the copy over syncing it: syncing preserves the fault.
+- **SCATTERED CONSTANTS AND HAND-TUNED NUMBERS ARE DATA IN THE WRONG PLACE. WHEN YOU FIND THEM, ASK
+  TO EXTRACT THEM - DO NOT JUST WORK AROUND THEM.** Owner, 2026-08-27, after the screen-space pixel
+  floors turned out to be five numbers buried in a 5,000-line renderer closure: *"if you find similar
+  scattered code and things that may require hand tuning later. We need to extract all core data into
+  files at some point."*
+  **THE TEST, and it is about the NUMBER rather than the code around it: will a human want to change
+  this after using the product?** If yes, it is DATA and it belongs in a file that can be read,
+  tested and shown - not in a closure where tuning it means editing a renderer and where nothing can
+  assert what it is. Coefficients, thresholds, per-class bands, pixel floors, marker ranks, easing
+  constants: all of them.
+  **THIS IS THE SAME RULE THE PHYSICS SIDE ALREADY HAS, applied to everything else.**
+  `architecture-physics-tags-visuals.md` says "physics constants live in DATA, not code... code holds
+  the SHAPE of the model; data holds its numbers", and it was written about rule packs. It is just as
+  true of rendering, camera and UI numbers, which have no rule pack and so have quietly kept their
+  constants inline.
+  **WHY SCATTERING IS THE ACTUAL FAULT, not just untidiness - the worked example that produced this
+  rule.** The body pixel floors and the construct pixel floor sat 170 lines apart in one file. One was
+  a RADIUS and one was a LENGTH, and nothing said so, so a ship looked six times a planet's floor when
+  the honest ratio was three. **Two numbers you cannot see together are two numbers nobody compares,** 
+  and this codebase has now been bitten by that in the same shape three times (A33, B27, B28: a
+  quantity correct for its own purpose, published against a neighbour measured differently).
+  Extracting them put them on one axis, in one table, and the mismatch was obvious in a sentence.
+  **AND EXTRACTION IS A MEASUREMENT, so gate it as one.** Pin the OLD behaviour bit-for-bit against
+  the old expression in the same commit (the P1 pattern in `scaleLaw.spec.ts`, and `pixelFloor.spec.ts`
+  after it) - moving a number and changing it are two commits, never one. Extracting the pixel floors
+  silently changed a clamp from a radius axis to a span axis and doubled it; the equivalence sweep
+  caught it in one run, and without that sweep it would have shipped as "just a refactor".
+  **ASK, DO NOT ASSUME.** The extraction itself is usually cheap and the owner has now said he wants
+  it - but it moves code the item in hand may not own, so raise it and let it be scoped rather than
+  widening your own item. If it is not taken up, leave a finding naming every site by file and line.
 - **NOTHING MAY READ A VALUE A LATER PASS WRITES, and `src/lib/system/idempotence.test.ts` is what
   enforces it.** Process, process the result, process that, and nothing on any body may change. Seven
   such edges were found at once in B13 and one of them put a hundredfold error on Earth's radiation
