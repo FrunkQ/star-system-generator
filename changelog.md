@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.177 - 28th Aug 2026
+
+- Board only. A user's paired stars were chasing each other round instead of orbiting each other, and the cause is now measured: editing one of a pair silently moves it out of step with the other.
+
 ## v3.0.176 - 28th Aug 2026
 
 - Board only. The Creator Hub gets its moderation half: reporting, hearts, upload limits you can tighten or relax, a switch that turns off file uploads entirely, and a review tool where checking a picture once means never seeing it again.
