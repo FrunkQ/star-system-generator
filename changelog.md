@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.163 - 28th Aug 2026
+
+- Board only. Two finished branches - the scale law and the supergiant framing fix - were never merged, so the release went out without them. Recorded with what is missing and what still needs building.
+
 ## v3.0.162 - 28th Aug 2026
 
 - Board only. The coordinator hands over, recording what shipped to production, what is still open and what this stretch of work learned.
