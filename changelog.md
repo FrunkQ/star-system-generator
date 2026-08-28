@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.161 - 28th Aug 2026
+
+- Board only. The moon Hill spheres are confirmed by eye, which was the last documentation claim resting on unseen behaviour; and the scale-law work is marked as trusted to real use rather than held for a further review.
+
 ## v3.0.160 - 28th Aug 2026
 
 - Getting Started explains who owns the clock on a player view: what taking it does, when players may run their own time, and what a self-scrubbing view can and cannot show.
