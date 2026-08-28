@@ -1425,6 +1425,122 @@ a topic letter, which is the rule going forward, so `(closed)` finding 311's com
    G11's toroid mechanism (absent spin reads as ZERO, not infinite — the toroids need a different
    explanation; G11's audit should chase it).
 
+## P4 (THE SCALE LAW) - BUILT AND HELD 2026-08-27, branch `wt/p4-scalelaw`
+
+**NOT MERGED TO BETA. P4 has sat unshipped since 2026-08-05 for one reason - it moves saved presets'
+mid-dial looks and the owner signs off /scale-reference BEFORE it lands - and that reason is
+unchanged. What follows is what to look at.
+
+**WHAT SHIPPED TO BETA (v3.0.148, safe, docs only): the design doc was STALE and was sending readers
+to rebuild something already done.** Its STATUS line and its P4 entry both said P4 = "S2 + S2b's
+single floor + S2c's two dials". S2b shipped months ago: `NUMERICAL_FLOOR` is 1e-10 and is applied by
+`bodyRadiusScene`, the star branch AND `shipLengthScene` alike (`scaleLaw.ts` 54/104/119/161), it
+landed in commit `fd03ef1a`, and its acceptance block is live and passing. Verified in the code, not
+taken on trust. Corrected in both places.
+
+**WHAT IS BUILT AND HELD ON THE BRANCH: S2 (the size law) and S2c (the two dials), in that order,
+which the design insists on and which turned out to matter.**
+
+**S2.** The two readable bands are gone; there is ONE kind-blind span map of physical size
+(`readableSpanScene`). Piecewise-linear in log10(metres): above 2000 km across the slope is
+0.2/decade, **which IS the shipped body curve**, so every body 1000 km in radius or larger renders
+BIT-IDENTICALLY to before; below it, the slope shallows to 0.044/decade so eleven decades of ships
+and boulders fit underneath. **R9 now holds by construction rather than by tuning**: the true term is
+proportional to physical span, the readable term is monotone in it, and `dialBlend` is geometric, so
+the product is monotone at every dial stop. Engine-map RENDER-S41.
+
+**THE ACCEPTANCE, EXACTLY AS IT WAS WRITTEN.** `describe.skip('R9 ordering')` is un-skipped and
+GREEN, and **not one assertion was edited** - the law was moved until they passed, which is the only
+honest direction. The P1 equivalence column was deleted in the same commit, which is precisely what
+its own header instructed for this phase. Suite 3,257 green; build green.
+
+**SEEN IN THE BROWSER, which is this item's whole verdict: /scale-reference now reads "NO ORDERING
+VIOLATIONS" for the first time.** It read "4 ordering violations" on beta minutes earlier, with the
+construct rows flagged red. Every column is non-increasing down the table at every dial position.
+
+**S2c.** The construct dial is a RELATIVE OFFSET on the master (`clamp(bodySize + offset, 0, 1)`),
+read only by `shipLengthScene`. **Zero is today's look exactly**, pinned by a test that requires
+offset 0 to be bit-identical to the single-dial law at every dial stop, so no saved preset moves.
+Verified on the page at +0.30: every CONSTRUCT row rises while every BODY row stands still, which is
+the owner's "bodies moves both, constructs only moves itself" exactly. Engine-map RENDER-S42, which
+also records the invariant that is easiest to get wrong later: **R9 is judged at offset 0 and nowhere
+else** - the page computes its verdict at zero however the slider is set, because a departure the
+user chooses is not a fault to report back at them.
+
+**WHAT DID MOVE, so nobody reports it as a regression.** Bodies under 1000 km radius shrink (a 100 km
+moon 0.28 -> 0.236 span). Constructs shrink a lot at the readable end (a 46 m corvette 0.226 ->
+0.076) - that is the point, and S3 predicted it. **And STARS are on the map now instead of a flat
+`STAR_RADIUS`**: Sol 1.0 -> 0.849, a red dwarf 1.0 -> 0.68, a supergiant 1.0 -> 1.44. Before this a
+red dwarf and a red supergiant were the same size on screen, which is the same dishonesty S2 removed
+between ships and bodies, one band further up. **This is the biggest visual change in the batch and
+the one most worth an eye.**
+
+**WHAT IS NOT DONE, and must not be read as done.** S2c's LAW is complete and the holo controller
+takes `setConstructOffset`, but **there is no GM control and no persistence yet** - the offset is
+settable on /scale-reference only. That is deliberate: the design note says the dial "rides
+`starmap`" as a per-CAMPAIGN setting, but its master `bodySize` rides the PRESET
+(`PlayerPresetEditor.svelte`, `draft.bodySize`). **Those are two different homes for two halves of
+one control**, and picking one silently is how a setting ends up half-saved. Owner's call; it is a
+small wiring job once decided.
+
+**THE THIRTY-SECOND EYEBALL LIST.** (1) `/scale-reference` on the branch: the banner should read NO
+ORDERING VIOLATIONS, and no cell should be flagged, at all four system extents. (2) Slide the
+Construct dial: construct rows move, body rows do not, and the banner never changes. (3) **The one
+that matters most: open an ordinary system in 3D at a MID dial position** (say 0.5) and judge
+whether it reads better or worse - ships are much smaller relative to worlds now, and stars are
+smaller relative to giants. (4) A red dwarf system and a giant system side by side: the stars should
+no longer be the same size. (5) The readable default (dial 1) on a normal system should look
+unchanged except that ships have shrunk.
+
+**FOLDED IN 2026-08-27, OWNER'S CALL, AND IT IS THE SAME QUESTION: THE SCREEN-SPACE PIXEL FLOOR.**
+His observation on beta - constructs read overly large until you zoom in, then shrink to something
+like true size. **That is not the scale law and the construct dial would NOT have fixed it**: a dial
+is a multiplier in scene space, a floor is a clamp in screen space underneath it, and no dial
+position corrects a clamp. Worth having settled before the S2c UI is wired, since it is two controls
+over apparently the same thing and only one of them addresses the complaint.
+
+**THE NUMBERS, AND ONE OF THEM WAS BEING READ WRONG.** `SHIP_MODEL_MIN_PX` was 14 (7 idle) against
+`MIN_PX_STAR/BODY/MOON` of 3.2/2.2/1.2 - but **the ship floor is a LENGTH and the body floors are
+RADII**, declared 170 lines apart with nothing saying so. On one axis the ratio is three, not six
+(14 px of length against a planet's 4.4 px of diameter). Same shape as A33/B27/B28. **Extracted to
+`rendering/pixelFloor.ts`**: one table, every floor a SPAN, testable and shown on /scale-reference.
+A focused ship now floors at a planet's span (4.4) and an idle one at a moon's (2.4), so a construct
+JOINS the marker hierarchy instead of sitting above it - which is what the owner's "2px/1px" means
+once both are on one axis. A FRAMED ship still has no floor, deliberately. Engine-map RENDER-S43.
+
+**THE EXTRACTION ITSELF CAUGHT A BUG I INTRODUCED, which is the argument for gating it as a
+measurement.** Moving the clamp from a radius axis to a span axis silently DOUBLED an enlargement cap
+(`Math.max(1e-9, px)` turns out to be a cap on how far a floor may stretch something, not a
+divide-by-zero guard - without it a body on `NUMERICAL_FLOOR` is blown up into a visible disc). The
+bit-for-bit equivalence sweep against the old closure found it in one run; without it, it would have
+shipped as "just a refactor". Both new gates run against the old values and seen to go red.
+
+**AND THE JUDGEMENT THE BRIEF ASKED FOR - is 4.4 px enough for a HULL, which is thinner than a
+sphere? MEASURED, and the worry is much weaker than it sounds:** across the 26 bundled constructs
+carrying `dimensionsM` the MEDIAN aspect ratio is **1.6** (not the 4:1 or 10:1 one imagines), putting
+a hull at ~0.8x the lit area of a disc of the same span. The extreme is the Hail Mary at 5.88:1
+(~0.2x), a 47 m craft that sits on its floor in almost any shot regardless. So parity is defensible
+on measurement rather than only on the owner's suggestion. **WHAT WAS NOT DONE: nobody has LOOKED at
+a 4.4 px hull.** The pane was hidden for every attempt this session ([[E7]]). If it does not read,
+raise `constructFocused` alone - one line in the table, and it does not disturb the bodies.
+
+**A NEW STANDING RULE CAME OUT OF THIS, at the owner's request** (*"add a standing rule to ask to do
+this in future... we need to extract all core data into files at some point"*): scattered constants
+and hand-tuned numbers are DATA in the wrong place - the test being whether a human will want to
+change the number after using the product - and extracting them is a MEASUREMENT that must pin the
+old behaviour bit-for-bit in the same commit. It is at the foot of this file with the pixel floors as
+its worked example.
+
+**ADDED TO THE EYEBALL LIST:** (6) a ship at whole-system zoom, focused and unfocused - it should
+read as a marker in the same family as a planet and a moon rather than a shout, and this is the one
+judgement no test made. (7) click a ship at that zoom: the tap assist should still pick it up at
+14 px however small it draws.
+
+**WHAT I WOULD DO NEXT:** settle where the construct dial lives (preset or starmap), wire the GM
+control beside the body-size slider, and merge both this and [[A78]] together - they touch
+`scaleLaw.ts` in different places and neither disagrees with the other about what `rMax` means, but
+they are both changes to the same screen and are best eyeballed in one pass.
+
 ## Documentation debt
 
 One line per shipped change that a reader needs to know, appended as you go. Sweep periodically into
@@ -1442,6 +1558,8 @@ is empty, and the next line appended goes straight under this paragraph.
 
 
 - **[[G51]]: THE DEBT IS NOW REAL AND PARTLY OWED. Phase 1 has shipped and it FALSIFIES a sentence on the surface that claims to show the working.** `src/routes/physics/+page.svelte`, in the "known fudges" list under the drawn-transit-route entry, explains the compact route by its CAUSE: *"a ship under way rewrites what players receive about twice a second, and the whole snapshot is re-sent each time, so the full path would be thousands of numbers on the busiest channel in the app."* **That is no longer true** - the snapshot is not re-sent, and the compact route has stopped being a bandwidth apology and become the ship's actual definition of where it is, evaluated at both ends. The conclusion survives, the REASON has changed, so the paragraph wants rewriting rather than appending to. **NOT DONE IN THIS BATCH, deliberately: the second half of that same paragraph is gated on Q6** - *"a player scrubbing their own clock sees orbits move but transit traffic hold its last GM-reported position"* is STILL TRUE after Phase 1 (the player now computes that position instead of being sent it) and becomes false the moment Q6 is answered yes. Rewriting half a paragraph now and the other half later is how a surface ends up self-contradictory, so it is one edit once Q6 lands. `docs/dev/player-clock-ownership-design.md` carries the same rule and takes the same edit. **Nothing else is owed:** `tags-guide.md`, `classification-and-tags.md` and `physicsTrace` say nothing about how a ship's position travels, and the compact route's own accuracy claim (a declared re-estimate, 0.2% of the route's extent) is unchanged and still correct. **PAID v3.0.149 (coordinator).** The bullet keeps its conclusion and loses its false cause: the compact route is no longer explained as a saving on traffic but as what it actually became — the ship's own definition of where it is, the corner points carrying their times so BOTH ends evaluate the same curve rather than one being told the answer. **The same bullet's LAST CLAUSE was falsified too and is fixed with it:** it said a self-scrubbing player sees traffic hold its last position, which read as a limit on what the view could compute. It is not — it is a deliberate rule, and it now says so, which leaves [[G49]]'s Q6 genuinely open instead of the physics page quietly pre-judging it.
+- **P4/S2 + S2c (BUILT AND HELD, branch `wt/p4-scalelaw`): READER-FACING DEBT IS OWED THE MOMENT IT MERGES, and it is on the surface that claims to show the working.** `/scale-reference` was updated in the same batch (its verdict prose described the OLD law and pointed at a `describe.skip` that no longer exists), so that one is PAID. **What is not:** `docs/dev/engine-map.md` RENDER-S11 is named on the page as the rule for this law and should be re-read against S41/S42 before merge; and nothing user-facing anywhere explains that a star's drawn size now depends on how big the star is - which is a visible change to every system and exactly the kind of thing a GM notices and reports as a bug. A sentence in `GettingStarted.md` where the body-size dial is explained would cover it. **Deliberately NOT written yet**, because if the owner rejects the star change on sight the sentence would be wrong as well as premature.
+- **[[G51]]: THE DEBT IS NOW REAL AND PARTLY OWED. Phase 1 has shipped and it FALSIFIES a sentence on the surface that claims to show the working.** `src/routes/physics/+page.svelte`, in the "known fudges" list under the drawn-transit-route entry, explains the compact route by its CAUSE: *"a ship under way rewrites what players receive about twice a second, and the whole snapshot is re-sent each time, so the full path would be thousands of numbers on the busiest channel in the app."* **That is no longer true** - the snapshot is not re-sent, and the compact route has stopped being a bandwidth apology and become the ship's actual definition of where it is, evaluated at both ends. The conclusion survives, the REASON has changed, so the paragraph wants rewriting rather than appending to. **NOT DONE IN THIS BATCH, deliberately: the second half of that same paragraph is gated on Q6** - *"a player scrubbing their own clock sees orbits move but transit traffic hold its last GM-reported position"* is STILL TRUE after Phase 1 (the player now computes that position instead of being sent it) and becomes false the moment Q6 is answered yes. Rewriting half a paragraph now and the other half later is how a surface ends up self-contradictory, so it is one edit once Q6 lands. `docs/dev/player-clock-ownership-design.md` carries the same rule and takes the same edit. **Nothing else is owed:** `tags-guide.md`, `classification-and-tags.md` and `physicsTrace` say nothing about how a ship's position travels, and the compact route's own accuracy claim (a declared re-estimate, 0.2% of the route's extent) is unchanged and still correct.
 
 - **[[B108]]: NO READER-FACING CHANGE, and the point of this line is that the claim was TESTED rather than left assumed.** `docs/tags-guide.md` promises a reader that a category hidden from players "never reaches them: not the shared catalogue, not a player view, not the holo table, not a printed report". That sentence is TRUE and is now measured, not merely intended: with `resource` marked hidden, 19 consecutive player snapshots each dropped all 203 of its tags, the first snapshot after a cold load included, and not one reached the player side. Nothing in `tags-guide.md`, `classification-and-tags.md`, the physics page or `physicsTrace` needs a word changed. **What is NOT documented anywhere, and is a GM-facing gap rather than a physics one:** only the thirteen GM categories can be hidden this way, so the engine namespaces a body carries (`structure/`, `weather/`, `hazard/`, `surface/` and the rest) cannot be hidden by category at all - a GM who wants one of those kept back has to mark the individual tag secret. That wants a sentence in the Secrets section of `tags-guide.md` whenever someone is next in there.
 
@@ -1837,6 +1955,36 @@ noticed.
   and refactor mid-item — write it up as a finding with every copy located by file and line, and let it
   be scoped. Either way it must reach the board; a second copy noticed and not recorded is one that
   drifts next month. Prefer removing the copy over syncing it: syncing preserves the fault.
+- **SCATTERED CONSTANTS AND HAND-TUNED NUMBERS ARE DATA IN THE WRONG PLACE. WHEN YOU FIND THEM, ASK
+  TO EXTRACT THEM - DO NOT JUST WORK AROUND THEM.** Owner, 2026-08-27, after the screen-space pixel
+  floors turned out to be five numbers buried in a 5,000-line renderer closure: *"if you find similar
+  scattered code and things that may require hand tuning later. We need to extract all core data into
+  files at some point."*
+  **THE TEST, and it is about the NUMBER rather than the code around it: will a human want to change
+  this after using the product?** If yes, it is DATA and it belongs in a file that can be read,
+  tested and shown - not in a closure where tuning it means editing a renderer and where nothing can
+  assert what it is. Coefficients, thresholds, per-class bands, pixel floors, marker ranks, easing
+  constants: all of them.
+  **THIS IS THE SAME RULE THE PHYSICS SIDE ALREADY HAS, applied to everything else.**
+  `architecture-physics-tags-visuals.md` says "physics constants live in DATA, not code... code holds
+  the SHAPE of the model; data holds its numbers", and it was written about rule packs. It is just as
+  true of rendering, camera and UI numbers, which have no rule pack and so have quietly kept their
+  constants inline.
+  **WHY SCATTERING IS THE ACTUAL FAULT, not just untidiness - the worked example that produced this
+  rule.** The body pixel floors and the construct pixel floor sat 170 lines apart in one file. One was
+  a RADIUS and one was a LENGTH, and nothing said so, so a ship looked six times a planet's floor when
+  the honest ratio was three. **Two numbers you cannot see together are two numbers nobody compares,** 
+  and this codebase has now been bitten by that in the same shape three times (A33, B27, B28: a
+  quantity correct for its own purpose, published against a neighbour measured differently).
+  Extracting them put them on one axis, in one table, and the mismatch was obvious in a sentence.
+  **AND EXTRACTION IS A MEASUREMENT, so gate it as one.** Pin the OLD behaviour bit-for-bit against
+  the old expression in the same commit (the P1 pattern in `scaleLaw.spec.ts`, and `pixelFloor.spec.ts`
+  after it) - moving a number and changing it are two commits, never one. Extracting the pixel floors
+  silently changed a clamp from a radius axis to a span axis and doubled it; the equivalence sweep
+  caught it in one run, and without that sweep it would have shipped as "just a refactor".
+  **ASK, DO NOT ASSUME.** The extraction itself is usually cheap and the owner has now said he wants
+  it - but it moves code the item in hand may not own, so raise it and let it be scoped rather than
+  widening your own item. If it is not taken up, leave a finding naming every site by file and line.
 - **NOTHING MAY READ A VALUE A LATER PASS WRITES, and `src/lib/system/idempotence.test.ts` is what
   enforces it.** Process, process the result, process that, and nothing on any body may change. Seven
   such edges were found at once in B13 and one of them put a hundredfold error on Earth's radiation

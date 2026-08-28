@@ -79,6 +79,9 @@ import {
   markerScale as scaleMarkerScale, readableBodyRadius, wireDotSize as scaleWireDotSize,
   radiusKmOf, starRadiusKmOf, shipLengthMOf
 } from '$lib/rendering/scaleLaw';
+import {
+  sceneUnitsPerPixel, floorScale, flooredSpanScene, bodyMinRadiusPx, constructMinSpanPx
+} from '$lib/rendering/pixelFloor';
 import type { System } from '$lib/types';
 
 const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
@@ -150,7 +153,10 @@ export interface HoloController {
   setFlatOverhead(on: boolean): void; // "2D map": tilt pinned top-down (+ pan enabled). Never a 3D view.
   setLockRotation(on: boolean): void; // fix the heading: no spin by drag, and follow a body by PANNING
   setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
-  setBodySize(v: number): void; // 1 readable .. 0 true physical scale
+  setBodySize(v: number): void; // 1 readable .. 0 true physical scale - the MASTER dial
+  /** S2c: the construct dial, as a relative OFFSET on the master. 0 = today's look exactly;
+   *  positive slides constructs toward readable, negative toward true scale. */
+  setConstructOffset(v: number): void;
   setGrid(mode: MapOverlay): void; // ground reference overlay (shared vocabulary, lib/map/mapOverlay.ts)
   setGridFalloff(v: number): void; // G4: 0 = even brightness, 1 = bright near the centre and gone by the edge
   setGridDepth(v: number): void;   // 0 flat .. 1 a full depth curtain under each grid line (3D only)
@@ -831,6 +837,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     rebuildContent('bodySize');
   }
 
+  /** S2c: slide constructs relative to bodies. A rebuild, like the master dial, because the
+   *  readable endpoint changes rather than only the transform. */
+  function setConstructOffset(v: number) {
+    const clamped = Math.max(-1, Math.min(1, Number(v) || 0));
+    if (clamped === constructOffset) return;
+    constructOffset = clamped;
+    rebuildContent('constructOffset');
+  }
+
   // How far a SPRITE is allowed to shrink as the body-size dial leaves "readable". The scene draws a
   // good deal that is a marker rather than geometry — wireframe vertex dots, belt rubble, ring particles
   // — and each of those sizes was picked for the readable end and then used at every setting. At TRUE
@@ -851,7 +866,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
   /** The live dial + system extent, as the pure law wants them. */
   function scaleCtx() {
-    return { bodySize, rMax, gridRadius: GRID_RADIUS };
+    return { bodySize, constructOffset, rMax, gridRadius: GRID_RADIUS };
   }
 
   // Rendered sphere radius for a body, blending its readable size toward its true physical size.
@@ -1286,6 +1301,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let beltStyle: BeltStyle = 'rocks'; // rocks vs the orrery's flat band
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
+  // S2c: the CONSTRUCT dial, as a relative offset on `bodySize`. 0 is the single-dial law exactly,
+  // so nothing moves until a GM asks for it. See ScaleContext.constructOffset for the reasoning.
+  let constructOffset = 0;
   let timeMs = 0;
   let viewW = 1;
   let viewH = 1;
@@ -2602,12 +2620,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function shipLenScene(node: any): number {
     return scaleShipLengthScene(shipLengthMOf(node), scaleCtx());
   }
-  // A model smaller than this on screen is mush, so it is ENLARGED to it rather than hidden -
-  // the same answer the bodies' true-scale floor gives (A9): keep the honest render and guarantee
-  // its legibility in SCREEN space. Hiding it was the old rule, and it meant a player preset that
-  // frames the whole system (never zooming to a body) showed the icon and never the ship.
-  const SHIP_MODEL_MIN_PX = 14;
-  const SHIP_MODEL_IDLE_PX = 7; // an unfocused ship: still a shape, not a shout
+  // The screen-space pixel floors live in `rendering/pixelFloor.ts` - one table, on one axis,
+  // testable and showable. They are NOT part of the scale law: the law decides scene size, they
+  // clamp it in screen space underneath, and no dial position can correct a floor.
   let buildGen = 0; // invalidates async ship-model loads across setSystem rebuilds
   // Parsed hulls by content hash, for the life of the scene. Shared safely because
   // buildDisplayModel CLONES its source - two ships on one hull cost one parse.
@@ -2776,21 +2791,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // allowed below it, so true proportions appear the moment they can be resolved and nothing ever
   // vanishes. Same principle as the construct glyphs, which have always been sized this way.
   // Readable mode is left alone entirely: its sizes are already chosen to read.
-  // Per-ROLE pixel floors, exactly as the GM orrery ranks its markers (star 4 / planet 2 / moon 1 px
-  // there): when bodies are too far to resolve they become markers, and the marker hierarchy should
-  // still say which is the star, which the planet, which the moon — one shared floor made a framed
-  // Earth and its Luna read as equals.
-  const MIN_PX_STAR = 3.2, MIN_PX_BODY = 2.2, MIN_PX_MOON = 1.2; // on-screen RADIUS in px
   function updateTrueScaleFloor() {
-    const perPx = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH); // scene units per px at unit distance
+    const unitsPerPx = sceneUnitsPerPixel(camera.fov, viewH);
     for (const b of bodies) {
       if (b.isConstruct || !b.baseScale) continue;
       let k = 1;
       if (bodySize < 0.999 && (b.radiusScene ?? 0) > 0) {
-        const minPx = b.isStar ? MIN_PX_STAR : b.satellite ? MIN_PX_MOON : MIN_PX_BODY;
+        // A body is measured by RADIUS, so it is floored by one. `floorScale` takes both on
+        // whichever axis the caller measures on; only the TABLE is normalised to spans. Passing
+        // spans here instead DOUBLES the enlargement cap - see the 1e-9 note in floorScale.
         const dist = camera.position.distanceTo(b.mesh.position);
-        const pxR = (b.radiusScene as number) / Math.max(1e-9, perPx * dist);
-        if (pxR < minPx) k = minPx / Math.max(1e-9, pxR);
+        k = floorScale(b.radiusScene as number, bodyMinRadiusPx(!!b.isStar, !!b.satellite), unitsPerPx, dist);
       }
       if (k === b.screenK) continue;
       b.screenK = k;
@@ -2965,7 +2976,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { rigs };
   }
   function updateConstructs() {
-    const f = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, viewH);
+    const f = sceneUnitsPerPixel(camera.fov, viewH);
     // A rebase shifts every position by one constant vector; a motion delta measured across it
     // would read as a huge false velocity and slew the ship. Resync instead of orienting.
     const rebased = !_lastOrigin.equals(originShift);
@@ -2999,7 +3010,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // So: framed => draw it at its real size and let the camera do the work, exactly as a
           // true-scale body behaves; otherwise floor it so it stays findable.
           const framingThis = focusedId === b.id && followEngaged && !framingWhole;
-          const minPx = framingThis ? 0 : inFocus ? SHIP_MODEL_MIN_PX : SHIP_MODEL_IDLE_PX;
+          const minPx = constructMinSpanPx({ framed: framingThis, inFocus });
           // DIAGNOSTIC HOOK. Ship scale has been misdiagnosed from screenshots repeatedly - the
           // drawn size depends on the dial, the camera distance and the viewport together, and
           // none of those can be read off a picture. `window.__shipDebug = true` in any window
@@ -3017,7 +3028,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // group, not in the floor.
           if ((window as any).__shipDebug && performance.now() - _dbgAt > 1000) {
             _dbgAt = performance.now();
-            const drawn = Math.max(b.shipLen ?? 0, minPx * f * distToCam);
+            const drawn = Math.max(b.shipLen ?? 0, flooredSpanScene(minPx, f, distToCam));
             const measured = Math.max(...new THREE.Box3().setFromObject(b.shipModel)
               .getSize(_dbgSize).toArray());
             // The BURN too: a player's node carries `driveBurns` (compact) where the GM's carries
@@ -5038,7 +5049,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
   };
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
 }
 
 // ---- helpers ----
