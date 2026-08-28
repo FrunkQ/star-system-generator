@@ -27,6 +27,47 @@ export interface Tag {
   manual?: boolean; coi?: boolean; inherited?: boolean; source?: string;
 }
 
+// G53 §3.5/§4.2: A MEGA-CONSTRUCT'S PLACEMENT PREDICATE, SPLIT BY CLAUSE KIND — the owner's own
+// correction, and the split is the rule. `hard` is RELEVANCE: the option has no referent without it
+// (a space elevator with no surface to anchor to is meaningless, not implausible), so it greys and
+// that is final. `steer` is PLAUSIBILITY: the placement is meaningful and the numbers are bad, so
+// it TAGS AND EXPLAINS and never refuses — alien tech, unobtanium and PlotDevice live here.
+// The test an implementer can apply: is there a HOST FEATURE the object attaches to or depends on?
+// Absent = relevance = hard. Present but the numbers are bad = plausibility = steer.
+// `inHabitableZone` is a steer clause and MUST NEVER be hard (a ring at 3 AU is legitimate and
+// cold; the engine owes it a temperature, not a refusal) — the evaluator demotes it if a pack
+// author promotes it. Lives in types.ts because it is PACK DATA (rule-pack templates author it);
+// the registry (`constructs/megaTypes.ts`) carries per-type defaults in the same shape.
+
+/** RELEVANCE — greys the option, final. Each clause names a host feature the object depends on. */
+export interface MegaHardClauses {
+  /** The host's roleHint ('planet' | 'moon' | 'star') or kind 'barycenter'. */
+  hostKind?: readonly string[];
+  /** The host must have a surface to anchor to — not a gas giant, not a star. */
+  hasSurface?: true;
+  /** The object circles a star; anything else has nothing to circle. */
+  hostIsStar?: true;
+  /** A REAL geostationary altitude — not OrbitalBoundaries' fallback. */
+  needsGeostationary?: true;
+}
+
+/** PLAUSIBILITY — tags and explains, never refuses. Published numbers, not walls. */
+export interface MegaSteerClauses {
+  /** Geostationary should sit well inside the Hill sphere; above this fraction the tether is marginal. */
+  geoBelowHillFraction?: number;
+  /** The goldilocks-zone RECOMMENDATION (the owner's word). NEVER a hard clause — see above. */
+  inHabitableZone?: true;
+  /** Beyond this many AU the collector intercepts almost nothing. */
+  maxPlacementAU?: number;
+  minHostMassKg?: number;
+  maxHostMassKg?: number;
+}
+
+export interface MegaRequires {
+  hard?: MegaHardClauses;
+  steer?: MegaSteerClauses;
+}
+
 export interface NodeBase {
   id: ID; name: string; parentId: ID | null; ui_parentId?: ID | null;
   placement?: string; // e.g., 'L4', 'L5', 'Surface'
@@ -509,6 +550,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
    *  (`src/lib/constructs/megaTypes.ts`). A pack may name a type this build does not know; an
    *  unknown key degrades to an ordinary construct rather than erroring. */
   megaType?: string;
+  /** G53 §4.2: the placement predicate, as PACK DATA on a mega template — evaluated by ONE function
+   *  (`src/lib/constructs/megaPlacement.ts`), never by switches in the UI. When absent the registry
+   *  record's default applies. Copied inert onto instances (a later phase re-evaluates on move). */
+  requires?: MegaRequires;
+  /** G53 §4.2: the GM-facing sentence shown when the hard clauses grey this template, with `{host}`
+   *  interpolated — prose in data, so a pack author can write their own. */
+  explain?: string;
   classes?: string[];
   /** A star's MK classification as structured data. See `StellarType`. */
   stellarType?: StellarType;

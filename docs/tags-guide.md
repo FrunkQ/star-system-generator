@@ -47,6 +47,13 @@ it has stopped being true.
 
 **Yours.** Anything you add by hand, for any purpose. It survives every re-process and every save.
 
+**Placement steers (`mega/…`).** Stamped when a mega-construct is placed somewhere the physics finds
+demanding — a ringworld outside the goldilocks zone, a space elevator whose counterweight rides near
+the edge of its world's gravity well. Each carries its explanation, numbers included, in the tag
+itself. They are advice, never vetoes: the placement went ahead, and the tag records why it is
+interesting. Written once at placement (nothing re-derives them yet), so like generated tags they
+stay deleted if you delete them.
+
 ### One physics tag that is deliberately not deterministic
 
 `biodiversity/pigment` names the pigment most of a world's photosynthetic life uses, and it is

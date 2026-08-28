@@ -35,6 +35,6 @@ export function showsAsConstruct(node: Pick<CelestialBody, 'kind' | 'constructCh
  *  `artificial` flag alone: for `kind: 'construct'` the answer is not consulted by anything (no
  *  physics path ever sees a construct), and when constructs migrate through this seam they gain the
  *  flag explicitly rather than being guessed at. */
-export function isArtificial(node: Pick<CelestialBody, 'artificial'>): boolean {
+export function isArtificial(node: Pick<CelestialBody, 'kind' | 'artificial'>): boolean {
   return node.artificial === true;
 }

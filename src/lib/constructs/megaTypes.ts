@@ -32,45 +32,19 @@
 // PHASE 1 SCOPE: nothing reads `shape()` yet (every type still renders as today's ellipsoid), no
 // occlusion feeds any physics, and `kind` stays 'construct'. Docking (`dockNodes`, §7) joins the
 // record in phase 5 with the transit-planner work, not before.
-import type { CelestialBody } from '$lib/types';
+import type { CelestialBody, MegaRequires } from '$lib/types';
 import { G, AU_KM, EARTH_GRAVITY, EARTH_RADIUS_KM } from '$lib/constants';
 import type { ConstructIconShape } from './constructIcon';
 
 // ── The placement vocabulary, as DATA (§4.2) ─────────────────────────────────────────────────────
-// Complete for the seven shipped types and deliberately no wider: `clearOrbitBand` (undefined
-// semantics), `minTechLevel` (open question 5 — nothing carries a tech level) and
-// `minHostLuminosityLsun` (blocked by B110) are all NAMED in the design and NOT implemented here;
-// an evaluator meeting an unknown clause must pass it with a warning rather than grey on a rule it
-// cannot state (steer-do-not-stop, applied to pack authors).
-
-/** RELEVANCE — greys the option, final. Each clause names a HOST FEATURE the object depends on. */
-export interface MegaHardClauses {
-  /** The host's roleHint ('planet' | 'moon' | 'star') or kind 'barycenter'. */
-  hostKind?: readonly string[];
-  /** The host must have a surface to anchor to — not a gas giant. */
-  hasSurface?: true;
-  /** The object circles a star; anything else has nothing to circle. */
-  hostIsStar?: true;
-  /** A REAL geostationary altitude — not OrbitalBoundaries' fallback. */
-  needsGeostationary?: true;
-}
-
-/** PLAUSIBILITY — tags and explains, never refuses. Published numbers, not walls. */
-export interface MegaSteerClauses {
-  /** Geostationary should sit well inside the Hill sphere; above this fraction the tether is marginal. */
-  geoBelowHillFraction?: number;
-  /** The goldilocks-zone RECOMMENDATION (owner's word). NEVER a hard clause — see module header. */
-  inHabitableZone?: true;
-  /** Beyond this many AU the collector intercepts almost nothing. */
-  maxPlacementAU?: number;
-  minHostMassKg?: number;
-  maxHostMassKg?: number;
-}
-
-export interface MegaRequires {
-  hard?: MegaHardClauses;
-  steer?: MegaSteerClauses;
-}
+// The clause interfaces live in `$lib/types` because they are PACK DATA (templates author them);
+// re-exported here so registry consumers have one import. The vocabulary is complete for the seven
+// shipped types and deliberately no wider: `clearOrbitBand` (undefined semantics), `minTechLevel`
+// (open question 5 — nothing carries a tech level) and `minHostLuminosityLsun` (blocked by B110)
+// are all NAMED in the design and NOT implemented; an evaluator meeting an unknown clause must
+// pass it with a warning rather than grey on a rule it cannot state (steer-do-not-stop, applied to
+// pack authors).
+export type { MegaRequires, MegaHardClauses, MegaSteerClauses } from '$lib/types';
 
 // ── The record ───────────────────────────────────────────────────────────────────────────────────
 

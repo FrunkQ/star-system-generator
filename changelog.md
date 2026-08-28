@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.184 - 28th Aug 2026
+
+- Mega-constructs, where they may go (G53): placement rules are now data with two strengths. A rule about relevance greys the option and says why in a sentence ("Sol has no surface to anchor to"); a rule about plausibility tags and explains - a ringworld at 3 AU is allowed, cold, and told so - and can never refuse. The goldilocks zone is always the second kind, even if a rule pack tries to make it a wall.
+
 ## v3.0.183 - 28th Aug 2026
 
 - Paired stars orbit each other again. Two bodies sharing a barycentre were sitting at the wrong points on their paths - turning in step rather than around one another - because each half of the pair kept its own idea of when its orbit started. They now share one, and stay exactly opposite across a whole revolution.

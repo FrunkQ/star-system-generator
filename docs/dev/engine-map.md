@@ -5057,3 +5057,23 @@ chrome, which is why one flag cannot serve both facts - conflating them was a re
 earlier design draft.
 BLAST: any new `kind === 'construct'` test in view code forks the convention. Phase 5 (the kind
 flip) relies on every site touched between now and then having migrated.
+
+### UI-B2 MEGA PLACEMENT: HARD GREYS ON RELEVANCE, STEER EXPLAINS AND CANNOT REFUSE
+BUCKET: ARCHITECTURE (product contract) - the owner's own correction to a draft that misapplied
+steer-do-not-stop: not offering a NONSENSE option is not refusing a creative choice.
+WHERE: `constructs/megaPlacement.ts` (`megaHardCheck` / `megaSteerNotes`); `requires` on pack mega
+templates and registry records (`constructs/megaTypes.ts`); clause interfaces in types.ts.
+RULE: the test for which side a clause goes: does the placement have a HOST FEATURE the object
+attaches to or depends on - a surface, a star to circle, a real geostationary? Feature ABSENT =
+relevance = `hard` = greyed, final, with a sentence naming the host. Feature present but the
+numbers are bad = plausibility = `steer` = a tag plus a sentence with the numbers in it, and the
+placement proceeds. `megaSteerNotes` returns notes; its type cannot say no. `inHabitableZone` is
+ALWAYS steer - the evaluator DEMOTES it if a pack promotes it to hard, because the goldilocks zone
+is a recommendation and no pack file may turn it into a wall. An unknown clause PASSES with a
+warning: greying on a rule this build cannot state refuses for a reason nobody can read.
+WHY: "i cant have a space elevator as an option in deep space - only relevant on a planet. You cant
+put a death star on a planet. That simple." (owner, 2026-08-28) - versus the standing rule that a
+physics criterion tags and explains and never refuses an authored choice. Both are true; the split
+is where they meet.
+BLAST: adding a placement rule as a modal branch instead of a `requires` clause; putting any
+numbers-are-bad test in `hard`; any code path that blocks creation off the back of a steer note.

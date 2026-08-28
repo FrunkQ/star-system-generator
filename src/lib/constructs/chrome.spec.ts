@@ -34,6 +34,6 @@ describe('chrome predicates — the §3.3 table', () => {
   it('the flags are read strictly — a truthy-but-not-true value is not a flag', () => {
     // Saves are hand-editable JSON; only literal `true` may switch chrome on.
     expect(showsAsConstruct({ kind: 'body', constructChrome: 1 as unknown as true })).toBe(false);
-    expect(isArtificial({ artificial: 'yes' as unknown as true })).toBe(false);
+    expect(isArtificial({ kind: 'body', artificial: 'yes' as unknown as true })).toBe(false);
   });
 });
