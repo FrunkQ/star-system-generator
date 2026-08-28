@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.175 - 28th Aug 2026
+
+- Board only. A design for the Creator Hub, where finished star systems can be shared and opened in one click - and a warning that the planned move between hosts would strand returning visitors on a stale copy of the app unless one line changes first.
+
 ## v3.0.174 - 28th Aug 2026
 
 - Board only. Mega-structures get a proper structure rather than a pile of special cases, and six render paths collapse into one: a sphere you can leave unfinished is a ring, and one drawn as dots is a swarm. The inside of a ring or sphere is a living world with real weather.
