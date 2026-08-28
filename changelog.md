@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.165 - 28th Aug 2026
+
+- Board only. Production takes the scale law and the supergiant framing fix, and the release routine now asks what is still sitting on a branch before it goes.
+
 ## v3.0.164 - 28th Aug 2026
 
 - Ships and worlds are now sized honestly against one another: one scale runs across every kind of object, so nothing small ever draws larger than something big. Stars are on that scale too, which means a red dwarf and a red supergiant are no longer the same size on screen.
