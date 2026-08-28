@@ -23,6 +23,13 @@ processed as a body but has construct chrome."* Followed by: *"Anticipate any is
 sized constructs like a death star having their own gravity for ships to orbit, etc."* — which §3.4
 answers in nine numbered items.
 
+**AND TWO MORE, which between them simplified the hardest part and generalised the whole mechanism.**
+On the moving Death Star: *"have a function that docks (lands) every orbiting construct while moving
+and drops them out at destination. Narratively sound and saves a LOT of work :)"* — §3.6. On
+asteroids: *"Small bodies like asteroids are available as constructs or bodies... by choice... they
+do bridge - I guess we could just hybrid them too like a death star"* — §3.7, and it corrected a
+naming error in §3.3.
+
 ---
 
 ## 1. What a mega-construct IS, and why the category needs a boundary
@@ -47,6 +54,12 @@ mega-construct. Three ways an object earns the category:
 **Any ONE of the three qualifies.** A space elevator has (1) alone. A Death Star has (2) alone. A
 Dyson swarm has all three. Keeping the test explicit is what stops the category becoming "big
 things" and swallowing the O'Neill cylinder that is already a perfectly good `habitat` template.
+
+**AND THE CATEGORY HAS TWO ENTRANCES, not one — see §3.7, which is what turns this from a set of
+exotic megastructures into one seam worth building.** A Death Star arrives from the CONSTRUCT side,
+wanting body physics it never had. An asteroid arrives from the BODY side, wanting construct chrome
+it never had. Both want the same thing: **body physics with construct chrome.** The mega-constructs
+are the loud half of a split the product already has.
 
 ---
 
@@ -210,13 +223,27 @@ one question, which is the duplication test this codebase names as its most recu
 Do not re-point 154 sites. Add one module and let the chrome layers migrate to it as they are
 touched:
 
+**TWO ORTHOGONAL FACTS, and conflating them was a real error in an earlier draft of this section.**
+It called the flag `artificial`, which is wrong the moment asteroids join the mechanism (§3.7): an
+asteroid is entirely natural and still wants construct chrome. The two facts are:
+
 ```ts
-// src/lib/constructs/artificial.ts — the ONLY place that knows a body can be artificial.
-export function isArtificial(node: CelestialBody): boolean;   // built, not formed
-export function showsAsConstruct(node: CelestialBody): boolean; // draw it with construct chrome
+// src/lib/constructs/chrome.ts — the ONLY place that knows a body can wear construct chrome.
+/** Present and handle this as a PLACE, not a world: glyph, dock, construct lists. */
+export function showsAsConstruct(node: CelestialBody): boolean;   // reads `constructChrome`
+/** BUILT, not formed — so its composition is DECLARED, never derived (§3.4 item 1). */
+export function isArtificial(node: CelestialBody): boolean;       // reads `artificial`
 ```
 
-The node carries `artificial?: true` plus the existing `megaType`. **A chrome site not yet migrated
+|  | `kind` | `constructChrome` | `artificial` |
+|---|---|---|---|
+| Death Star, ringworld, Dyson shell | `body` | yes | **yes** |
+| asteroid as a PLACE (§3.7) | `body` | yes | no — it is a real rock, derive it |
+| ordinary station (ISS, Ceres) | `construct` | n/a | n/a — needs no body physics |
+| planet | `body` | no | no |
+
+**`artificial` governs the PHYSICS chain; `constructChrome` governs the VIEW.** An asteroid gets full
+classification because deriving a rock's composition is correct; a Death Star does not. **A chrome site not yet migrated
 shows a sphere in a body list — legible, and obviously wrong to a human eye, which is exactly the
 kind of wrong that gets fixed.** Migration order should follow visibility: `scene.ts` and
 `SystemVisualizer.svelte` first, then the catalogue and reports, then the long tail.
@@ -265,15 +292,14 @@ kinematics or a stamped vector, **and which sampler runs is CALLER POLICY** (`wo
 free-scrubbing player view passes *none at all*, deliberately — the owner's rule, 2026-08-08). A
 hybrid needs both models and they cannot both be authoritative.
 
-> **RESOLUTION: the position model follows the object's STATE, not its type. Parked, it is a body —
-> Keplerian, and it may host satellites. Under way, it is a construct — kinematics, and it may NOT
-> host orbiting satellites.**
+> **RESOLUTION — SETTLED BY THE OWNER, §3.6: CARRY AND RELEASE.** The position model follows the
+> object's STATE, not its type. Parked, it is a body — Keplerian, and it hosts satellites. Under
+> way, every orbiting construct is CARRIED (no independent position at all) and released at the
+> destination.
 
-That restriction is physically honest rather than a limitation: **you cannot drag an orbiting fleet
-along under thrust.** Ships must undock and fly, which is a good bit of play and exactly the kind of
-consequence this engine is for. It also avoids a player-view fault of the [[B94]] shape — on a
-free-scrubbing player view no sampler runs, so a moving attractor would sit at its stamped position
-while its children propagated from it, and the two would disagree with nobody noticing.
+**Read §3.6 for why that is the strong answer rather than the cheap one:** a carried construct has
+nothing for two views to disagree about, which is what actually removes the [[B94]]-shaped
+divergence risk here.
 
 **7. Redaction.** A player snapshot's `slimNode` strips `scheduled_journeys`, and the redaction
 boundary keys off `kind === 'construct'`. A hybrid is `kind: 'body'` and would be redacted like a
@@ -335,15 +361,98 @@ carries two kinds of clause, and each is tagged in the data:
 A whole TAB still hides when nothing in it passes its HARD clauses — which is what the owner asked
 for ("only appears… when available").
 
+### 3.6 A hybrid that moves: CARRY AND RELEASE — and it removes a bug class, not just work
+
+Owner, 2026-08-28: *"have a function that docks (lands) every orbiting construct while moving and
+drops them out at destination. Narratively sound and saves a LOT of work :)"*
+
+**Take this. It is the right answer and its best argument is not the one it was offered with.**
+
+The difficulty in §3.4 item 6 was never the geometry — a child's orbit is relative to its parent, and
+`worldPositions` resolves parent before child, so a child already moves with a moving parent for
+free. The difficulty was that **a moving hybrid's position comes from a SAMPLER whose choice is
+CALLER POLICY** (`worldPositions.ts` 60-90: the orrery passes journey kinematics, a followed player
+view passes the route sampler, and a free-scrubbing player view passes *none at all*, by the owner's
+own rule of 2026-08-08). A child propagating from a parent that different views place differently is
+a divergence with nothing to catch it — the [[B94]] shape, where the GM window and the player window
+each told a coherent, different story.
+
+> **CARRY AND RELEASE DELETES THAT, because a carried construct has NO INDEPENDENT POSITION AT ALL
+> for the duration. There is nothing left for two views to disagree about.**
+
+That is a stronger reason than the labour saving, and it means this is not a simplification to be
+regretted later.
+
+**The mechanic.**
+
+- **On departure**, every construct parented to the hybrid is CARRIED: its position resolution is
+  suspended, it renders aboard rather than in space, and its own scheduled journeys are suspended
+  with it (a construct cannot depart from a host that is itself under way — say so, do not silently
+  drop the journey).
+- **On arrival**, they are RELEASED. Their orbital elements are relative to the hybrid and were never
+  touched, so the orbits simply resume — nothing is re-derived, which is why this is cheap.
+- **The log is derived, not mirrored.** `constructInteractions.ts` already builds a target's incoming
+  log by scanning the fleet's own `flight_log`s, deliberately keeping one source of truth so
+  time-scrubbing stays correct. A `carried` / `released` event pair on the carried construct's own
+  log fits that exactly. **Do not write a manifest onto the hybrid.**
+
+**NATURAL SATELLITES CANNOT BE DOCKED, and the honest answer is that they are LEFT BEHIND.** If a
+captured rock orbits a Death Star and the Death Star leaves, the rock stays in the orbit it was in,
+re-parented to the old host. That needs no new physics, it is narratively obvious, and it is a
+*steer*: say what will happen before the burn, and let the GM decide. It must not silently delete
+the moon or silently drag it.
+
+**Two things to publish rather than enforce**, per steer-do-not-stop: whether the hybrid has the
+capacity for what it is carrying (`cargoCapacity_tonnes` exists on the template), and what the
+voyage costs the carried crews in consumables (`systems.life_support.consumables_*` exists too). Show
+both; refuse neither.
+
+### 3.7 Asteroids are the same mechanism from the other side — and this generalises the feature
+
+Owner, 2026-08-28: *"Small bodies like asteroids are available as constructs or bodies... by
+choice... they do bridge - I guess we could just hybrid them too like a death star"*
+
+**Verified: they genuinely are available both ways today.** The construct pack's `small_body`
+category holds 'Asteroid (C-Type)', 'Asteroid (M-Type)', 'Comet (Active)' and 'Captured Rock
+(Moonlet)', all authored `kind: 'construct'`; and the classifier side carries `asteroid`,
+`dwarf-planet`, `rubble-pile` and `planetesimal` as real body classes. A GM picks a lane and the two
+lanes behave completely differently — see [[B109]] for what the construct lane silently costs.
+
+**So the hybrid is not a mega-construct special case. It is a general mechanism with two entrances:**
+
+| | comes from | wants |
+|---|---|---|
+| **Death Star, ringworld** | a CONSTRUCT that the physics must treat as real | body physics it never had |
+| **asteroid, comet, moonlet** | a BODY that the GM wants to treat as a place | construct chrome it never had |
+
+Both want *body physics + construct chrome*. **That is the whole feature, and framing it this way is
+what makes it worth building** — it stops being "six exotic megastructures" and becomes one seam that
+also fixes the small-body split the product already has.
+
+**This changes [[B109]]'s routing.** That row says "do not fix this inside G53"; with this decision it
+becomes G53's own phase 5 instead, because it is the identical migration
+(`kind: 'construct'` → `kind: 'body'` + `constructChrome`) and doing it twice would be two conventions
+for one idea. **The migration question is still real and still owned by the owner:** existing saved
+campaigns hold asteroids as constructs, and moving them gains them gravity, classification and a spin
+axis they did not have. That is a better asteroid and a CHANGED one, and a GM's system will not look
+identical afterwards. Recommend an opt-in per object ("treat this as a real body") rather than a
+sweeping migration on load, which is also the least surprising thing.
+
+
 ## 4. Data model
 
 ### 4.1 On the node
 
 ```ts
-/** THE HYBRID (§3). `kind` is 'body', so every physics path already works; this is what the CHROME
- *  layers read to know they should not draw a world. Absent = an ordinary body, unchanged. */
-artificial?: true;
-megaType?: MegaConstructType;
+/** THE HYBRID (§3). `kind` is 'body', so every physics path already works. These two are ORTHOGONAL
+ *  and §3.3 has the table: chrome governs the VIEW, artificial governs the PHYSICS chain. Both
+ *  absent = an ordinary body, unchanged. */
+constructChrome?: true;   // present and handle as a PLACE — glyph, dock, construct lists
+artificial?: true;        // BUILT, not formed → composition DECLARED, never derived
+megaType?: MegaConstructType;   // absent on an asteroid-as-place; present on a megastructure
+/** Carried aboard a moving hybrid (§3.6). Set on departure, cleared on release; while set the node
+ *  has NO independent position and must not be resolved or drawn in space. */
+carriedBy?: ID;
 /** The shape family the renderers switch on. Derived from megaType; stored so a GM can override. */
 megaForm?: 'tether' | 'ring' | 'shell' | 'swarm' | 'spheroid';
 /** Ring/shell/torus geometry, in km, where dimensionsM cannot express it (§5). */
@@ -599,8 +708,12 @@ systems.
 **Phase 5 — THE HYBRID FLIP, and it is the risky one.** Move mega-constructs to `kind: 'body'` and
 migrate the chrome sites behind `showsAsConstruct`. Run `idempotence.test.ts` first and often; gate
 `hierarchyRebuild.ts:112`'s changed walk with the hybrid removed; answer the redaction question
-(§3.4 item 7) BEFORE starting. Then `DockNode` through the planner. Parked-only satellites (§3.4
-item 6) ship with it, not after.
+(§3.4 item 7) BEFORE starting. Carry-and-release (§3.6) ships WITH this phase, not after it — it is
+what makes a moving hybrid safe rather than a follow-up nicety. Then `DockNode` through the planner.
+
+**Phase 5b — asteroids through the same seam (§3.7).** The identical migration, opt-in per object.
+Deliberately last of the risky work and deliberately NOT a separate feature: doing it twice would be
+two conventions for one idea, which is the fault this codebase names as its most recurring.
 
 **Phase 6 — the catalogue widens.** Shkadov, soletta, Birch, aerostat. All are parameter sets on
 families that exist by now.
@@ -609,18 +722,20 @@ families that exist by now.
 
 ## 11. Open questions for the owner
 
-Answers change the work; they are not blocking Phase 1.
+Answers change the work; **none of them blocks Phase 1**, and two of the original five have since
+been answered by the owner and are struck rather than deleted.
 
-1. **Can a mega-construct be a PARENT?** Can a moon orbit a Death Star, or a shuttle orbit a
-   ringworld? **§3.4 item 6 answers the mechanics** — yes while PARKED, no while under way, because
-   you cannot drag an orbiting fleet along under thrust. What is still yours to say is whether that
-   restriction is acceptable play, or whether a moving Death Star should carry a docked fleet with it
-   as cargo rather than as satellites.
+1. ~~**Can a mega-construct be a PARENT?**~~ **ANSWERED 2026-08-28, §3.6: yes, and a moving one
+   CARRIES its orbiting constructs and releases them at the destination.** Left here so nobody
+   reopens it. The one loose end is natural satellites, which cannot be docked and are therefore
+   LEFT BEHIND — say so before the burn; do not silently drag or delete a moon.
 2. **Does a ringworld's interior get a "from the surface" view?** It has a surface, a sky, a
    day/night cycle from shadow squares, and no horizon curvature in one axis. The surface view
    already exists for bodies; this would be its strangest case and possibly its best.
 3. **Is a mega-construct redacted from player views like a ship, or always visible like a world?**
-   A ringworld is not a secret. The redaction boundary currently keys off `kind === 'construct'`.
+   **THIS IS NOW THE ONLY QUESTION THAT BLOCKS PHASE 5** and it should be answered before that phase
+   starts, not during. A hybrid is `kind: 'body'`, so it redacts like a planet by default: right for
+   a ringworld, which is not a secret; possibly exactly wrong for a warship parked behind a moon.
 4. **Should the generator ever PLACE one?** The standing rule says the generator is the opposite
    case from the editor — it may place where physics allows, because that is the engine choosing for
    itself. A "advanced civilisation" generation flag is a natural fit but is its own scope.

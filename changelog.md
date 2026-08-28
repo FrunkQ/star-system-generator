@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.169 - 28th Aug 2026
+
+- Board only. A mega-structure on the move now carries its docked craft and sets them down again on arrival, and small bodies like asteroids go through the same door - a rock you can land on is the same idea as a battle station with real gravity, approached from the other side.
+
 ## v3.0.168 - 28th Aug 2026
 
 - Board only. The mega-construct design takes its owner corrections: these are built objects the engine treats as real worlds, and an option that makes no sense in a place is simply not offered there.
