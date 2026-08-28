@@ -4,16 +4,20 @@
   import { get } from 'svelte/store';
   import type { CelestialBody, RulePack, OrbitalBoundaries } from '$lib/types';
   import { generateId } from '$lib/utils';
+  import { deriveCoOrbitalOrbit, lagrangePlacementId, LAGRANGE_PLACEMENTS } from '$lib/physics/lagrange';
 
   export let rulePack: RulePack;
   export let hostBody: CelestialBody; // The body the user right-clicked on
   export let orbitalBoundaries: OrbitalBoundaries | undefined; // For planets/moons
+  // G43: preselect a placement (an L-point, when opened from a right-click inside its zone).
+  export let initialPlacement: string | undefined = undefined;
 
   const dispatch = createEventDispatcher();
 
   let selectedRoleHint: string | undefined;
   let selectedTemplate: CelestialBody | undefined;
-  let selectedPlacement: 'Surface' | 'Low Orbit' | 'Mid Orbit' | 'Geostationary Orbit' | 'High Orbit' | 'L4' | 'L5' | 'AU Distance' | undefined;
+  let selectedPlacement: string | undefined;   // an orbit band, 'Surface', 'AU Distance', or one of LAGRANGE_PLACEMENTS
+  $: if (initialPlacement && selectedPlacement === undefined) selectedPlacement = initialPlacement;
   let auDistance: number = 1.0; // For star-focused placement
 
   $: constructRoleHints = Object.keys(rulePack.constructTemplates || {}).filter(key => key !== 'id' && key !== 'name');
@@ -46,9 +50,11 @@
       }
     }
 
-    // Any body with a parent has L4/L5 points in its orbit
+    // Any body with a parent has all five Lagrange points in its orbit (G43 P3 — was L4/L5 only,
+    // even though the transit planner has always been able to fly to all five). What each costs
+    // is physics and arrives as the flight/fuel-use tag; the editor just offers them.
     if (hostBody.parentId) {
-      placements.push('L4', 'L5');
+      placements.push(...LAGRANGE_PLACEMENTS);
     }
     
     // Stars and barycenters have a direct AU distance option
@@ -70,23 +76,26 @@
     newConstruct.IsTemplate = false; // This is now an instance
     newConstruct.placement = selectedPlacement; // Store the placement type
 
-    // Handle L-point parenting and orbit copying first
-    if (selectedPlacement === 'L4' || selectedPlacement === 'L5') {
+    const lagrangePoint = lagrangePlacementId(selectedPlacement);
+    // Handle L-point parenting and orbit derivation first
+    if (lagrangePoint) {
+      // G43: the structured marker is the load-bearing record — the processor re-derives the orbit
+      // from the secondary on every pass, so editing the planet later moves its L-point riders.
+      // The orbit written here (the same shared convention) is only the instant-feedback copy.
       newConstruct.parentId = hostBody.parentId; // Gravitational parent is the star/grandparent
       newConstruct.ui_parentId = hostBody.id;   // UI parent is the planet/moon
+      newConstruct.coOrbital = { hostId: hostBody.id, point: lagrangePoint };
 
-      if (hostBody.orbit) {
-        newConstruct.orbit = JSON.parse(JSON.stringify(hostBody.orbit)); // Deep copy orbit from host
-        
-        // The hostMu for this orbit is the STAR's/GRANDPARENT's, which is already in the copied orbit object.
-        // Adjust the mean anomaly for L4/L5 position
-        if (selectedPlacement === 'L4') {
-          newConstruct.orbit.elements.M0_rad = (hostBody.orbit.elements.M0_rad + Math.PI / 3) % (2 * Math.PI);
-        } else { // L5
-          newConstruct.orbit.elements.M0_rad = (hostBody.orbit.elements.M0_rad - Math.PI / 3 + 2 * Math.PI) % (2 * Math.PI);
-        }
-      }
+      const sys = get(systemStore);
+      const grandparent = sys?.nodes.find(n => n.id === hostBody.parentId);
+      const grandparentMassKg = grandparent
+        ? ((grandparent as any).kind === 'barycenter' ? (grandparent as any).effectiveMassKg : (grandparent as any).massKg) || 0
+        : 0;
+      const derived = deriveCoOrbitalOrbit(hostBody, grandparentMassKg, newConstruct.coOrbital.point);
+      if (derived) newConstruct.orbit = derived;
+      else if (hostBody.orbit) newConstruct.orbit = JSON.parse(JSON.stringify(hostBody.orbit));
     } else {
+      delete newConstruct.coOrbital;
       newConstruct.parentId = hostBody.id; // Gravitational and UI parent are the same
       // Create a new orbit object for non-L-point placements
       newConstruct.orbit = {
@@ -101,7 +110,7 @@
     }
 
     // Set initial orbit based on placement (for non-L-point cases)
-    if (selectedPlacement !== 'L4' && selectedPlacement !== 'L5') {
+    if (!lagrangePoint) {
       const hostRadiusKm = hostBody.radiusKm || 0;
       let altitudeKm = 0;
 

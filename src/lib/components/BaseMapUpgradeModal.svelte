@@ -17,7 +17,7 @@
   export let campaign: Starmap;
   export let offer: UpgradeOffer;
 
-  const dispatch = createEventDispatcher<{ backup: void; accept: Starmap; close: void; dismiss: void }>();
+  const dispatch = createEventDispatcher<{ backup: void; accept: Starmap; close: void; dismiss: void; later: void }>();
 
   type Stage = 'offer' | 'working' | 'review' | 'failed';
   let stage: Stage = 'offer';
@@ -115,7 +115,9 @@
       <footer>
         <label class="chk quiet"><input type="checkbox" on:change={(e) => e.currentTarget.checked && dispatch('dismiss')} /> Do not ask again for this campaign</label>
         <span class="spacer"></span>
-        <button class="secondary" type="button" on:click={() => dispatch('close')}>Not now</button>
+        <!-- B88: 'Not now' RECORDS the answer for this base edition. It used to dispatch a bare `close`,
+             which stored nothing, so a user who kept clicking it was re-asked on every single refresh. -->
+        <button class="secondary" type="button" on:click={() => dispatch('later')}>Not now</button>
         <button class="primary" type="button" disabled={!canProceed} on:click={build}>Prepare the upgrade…</button>
       </footer>
       {#if !canProceed}<p class="gate">Save a copy (or confirm you have one) to continue.</p>{/if}

@@ -297,7 +297,26 @@ function updateOrbit() {
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div class="tab-panel" on:focusin={() => (editing = true)} on:focusout={() => (editing = false)}>
-    {#if !body.orbit}
+    {#if body.coOrbital}
+        <!-- G43: a co-orbital body's orbit is DERIVED from its secondary every pass — hand-edits
+             would be silently reverted, so the editors are replaced by the relationship itself. -->
+        {@const coSecondary = system?.nodes?.find((n) => n.id === body.coOrbital?.hostId)}
+        <div class="form-group">
+            <div class="label-row"><label>Co-orbital companion</label></div>
+            <div class="info-row" style="font-size: 0.85em;">
+                Rides the <strong>{body.coOrbital.point.toUpperCase()}</strong> point of
+                <strong>{coSecondary?.name ?? 'a deleted body'}</strong>
+                — {body.coOrbital.point === 'l4' ? 'leading its orbit by 60°' : body.coOrbital.point === 'l5' ? 'trailing its orbit by 60°' : body.coOrbital.point === 'l3' ? 'on the far side of its orbit' : 'on the line to its host'}.
+            </div>
+            <div class="info-row" style="font-size: 0.78em; color: var(--text-faint); margin-top: 4px;">
+                The orbit is derived from {coSecondary?.name ?? 'the secondary'} on every pass: edit the
+                secondary and this body follows. To give it an independent orbit, release it below.
+            </div>
+            <button style="margin-top: 8px;" on:click={() => { delete body.coOrbital; dispatch('update'); }}>
+                Release from {coSecondary?.name ?? 'the secondary'} (keep current orbit)
+            </button>
+        </div>
+    {:else if !body.orbit}
         <p>This body has no orbit (it might be the central star).</p>
     {:else}
         {#if isBinaryMember}

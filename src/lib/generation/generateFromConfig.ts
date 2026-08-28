@@ -9,6 +9,7 @@ import { systemProcessor } from '../core/SystemProcessor';
 import { _generatePlanetaryBody } from './planet';
 import { starFieldFromPack, starTiltFromPack, starFamilyOf, planetCountTableKey } from './star';
 import { resolveStarImage } from '../system/starImage';
+import { circumbinaryCriticalAU } from '../physics/circumbinary';
 import { generateBodyOfType, viableTypesAt } from './generateBodyOfType';
 import { drawTypeForSlot, rarityOf, rarityTier } from './typeDraw';
 import { calculateOrbitalSlots } from './placement-strategy';
@@ -179,7 +180,12 @@ export interface BaryHost { bary: Barycenter; innerAU: number; outerAU: number; 
 const SOLAR = 1.989e30;
 const HIER_STEP = 7;       // each level's separation ≥ ~7× the one below → hierarchical stability
 export const S_TYPE_FRAC = 0.37;  // a star's planets are stable out to ~0.37× the distance to its companion
-const P_TYPE_FRAC = 2.3;   // circumbinary planets are stable beyond ~2.3× the pair separation
+// G45: the inner P-type bound was `P_TYPE_FRAC = 2.3`, which is Holman & Wiegert's polynomial
+// evaluated at mu = 0.5, e = 0 — right for an equal-mass circular pair and wrong for every other
+// one, and it disagreed with the OTHER hardcoded corner of the same fit in planet-generation.ts
+// (1.60, the mu = 0 end). Both now call the one authority in physics/circumbinary.ts, which takes
+// the pair's real mass ratio; the hierarchy planner builds circular pairs, so e is 0 here by
+// construction (see orbitAround, which sets e: 0).
 
 // A tight-pair base separation (AU), scaled by combined mass; multiplied by HIER_STEP^level above.
 const closeSepAU = (totalMassKg: number) => 0.3 + Math.cbrt(totalMassKg / SOLAR) * 0.9;
@@ -315,7 +321,11 @@ export function buildStarHierarchy(
     const bary: Barycenter = { id: baryId, parentId: null, name: `${baseName} Barycentre ${baryN_own + 1}`,
       kind: 'barycenter', memberIds: [childA.id, childB.id], effectiveMassKg: total, tags: [] };
     nodes.push(bary);
-    baryHosts.push({ bary, innerAU: P_TYPE_FRAC * node.sepAU, outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU });
+    baryHosts.push({
+      bary,
+      innerAU: circumbinaryCriticalAU(node.sepAU, Math.min(mA, mB) / total, 0),
+      outerAU: parentSepAU === Infinity ? Infinity : S_TYPE_FRAC * parentSepAU
+    });
     return bary;
   };
 

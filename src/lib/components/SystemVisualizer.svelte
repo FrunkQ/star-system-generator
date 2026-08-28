@@ -3,14 +3,16 @@
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
-  import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime } from '$lib/transit/scheduler';
+  import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime, isFlybyPlan } from '$lib/transit/scheduler';
   import { onMount, onDestroy, createEventDispatcher } from "svelte";
   import { computeWorldPositions } from "$lib/physics/worldPositions";
   import { getVisibleNodeIds } from "$lib/system/visibleNodes";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
   import * as zones from "$lib/physics/zones";
-  import { calculateLagrangePoints } from "$lib/physics/lagrange";
+  import { calculateLagrangePoints, tadpoleRegion, isTriangularPoint, tadpoleOutline,
+           hillFactor, coOrbitalScale, COLLINEAR_ENVELOPE_HILL } from "$lib/physics/lagrange";
+  import type { LagrangePointId } from "$lib/types";
   import { get } from 'svelte/store';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatDistanceKm, distanceFlavour } from '$lib/units';
@@ -20,8 +22,9 @@
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
+  import { regionOfInterest, inRegionOfInterest } from '$lib/system/regionOfInterest';
   import { scaleBoxCox } from '../physics/scaling';
-  import { findContainingHost } from '$lib/physics/orbits';
+  import { findContainingHost, orbitPathProjected } from '$lib/physics/orbits';
   import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
   import { getPlanetTexture } from '$lib/rendering/planetTexture';
@@ -83,7 +86,7 @@
     focus: string | null,
     levelchange: { id: string; level: number },
     showBodyContextMenu: { node: CelestialBody, x: number, y: number },
-    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }
+    backgroundContextMenu: { x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: LagrangePointId } | null, circumbinaryHit?: { baryId: string; baryName: string } | null }
   }>();
 
   // --- Configurable Visuals ---
@@ -109,6 +112,8 @@
   const MARKER_PILL_FONT_PX = 9;
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  import { shipBurnAt } from '$lib/constructs/shipBurn';
+  import { orbitCirclePath, transferEllipsePath } from '$lib/transit/orbitChange';
   export let highlights: MapHighlights | null = null;
   // The mute is part of the selection's meaning, not a separate render flag: muted means "none".
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights);
@@ -119,6 +124,9 @@
   let fgCtx: CanvasRenderingContext2D | null = null;
   let animationFrameId: number;
   let worldPositions = new Map<string, { x: number, y: number }>();
+  // The circumbinary rings drawn THIS frame, in world coords, so the right-click hit test uses the
+  // same geometry the user can see (G43's rule for the L-zones, reused).
+  let circumbinaryAreas: { baryId: string; baryName: string; cx: number; cy: number; rInner: number; rOuter: number }[] = [];
   let scaledWorldPositions = new Map<string, { x: number, y: number }>();
   let stellarZones = new Map<string, any>();
   let needsReset = false;
@@ -188,6 +196,12 @@
   }
 
   $: worldPositions = calculateWorldPositions(system, currentTime);
+  // THE REGION OF INTEREST for the current selection - one shared rule ($lib/system/regionOfInterest),
+  // recomputed only when the selection or the node set changes rather than per frame. null = nothing
+  // selected = no narrowing.
+  // Named `roi`, not `region`: calculateAndStorePoints has its own local `region` (the tadpole
+  // geometry), and two things called region in one file is how the wrong one gets read.
+  $: roi = regionOfInterest(system?.nodes ?? [], focusedBodyId);
   $: if (!transitPreviewPos) {
       lastPreviewSample = null;
   }
@@ -603,12 +617,60 @@
   let drawErrorLogged = false;
 
   let lagrangePoints: Map<string, {x: number, y: number}> | null = null;
+  // G43: the L4/L5 tadpole AREAS — one lobe per triangular point, in the render frame.
+  //
+  // ONLY FOR THE SELECTED OBJECT'S OWN PAIR (owner, 2026-08-26, on seeing every planet's lobes at
+  // once: "maybe ONLY show the ones of the currently selected object — points for the others are
+  // fine"). Every body still gets its five CROSSES; the shaded region is a focus affordance.
+  //
+  // The lobe is centred ON the point and spans the observed swarm amplitude, not the separatrix —
+  // see physics/lagrange.tadpoleRegion for why those are very different pictures. The same entries
+  // drive the right-click placement hit-test, so what you see is exactly what you can click.
+  // Each zone is a POLYGON in render-frame world coordinates — the true tadpole contour for L4/L5,
+  // and the station-keeping envelope for L1/L2/L3. One shape type for all five means the draw and
+  // the placement hit-test read the SAME geometry and cannot drift apart.
+  interface LagrangeArea {
+      secondaryId: string;
+      secondaryName: string;
+      point: LagrangePointId;
+      poly: { x: number; y: number }[];
+  }
+  let lagrangeAreas: LagrangeArea[] = [];
+
+  // THE CO-ORBITAL TRACK — where the L-points actually are RIGHT NOW, which is not the orbit line.
+  //
+  // The triangular points form an equilateral triangle with the two bodies at every instant, so L3,
+  // L4 and L5 all sit at exactly the secondary's CURRENT distance; L1/L2 sit a Hill radius inside and
+  // outside that. The drawn orbit is the secondary's path over TIME, and on an eccentric orbit its
+  // radius at some OTHER longitude is a different number — up to 5.5% different for Luna, and it
+  // swings sign as the month goes round, so a different point looks wrong each time you look. The
+  // points really do leave the orbit line, and this one faint circle is what makes that read as
+  // geometry rather than as a bug: every point lands on it. On a circular orbit it coincides with the
+  // orbit exactly (measured: 0.00% at every phase), which is the honest tell that it IS eccentricity.
+  let lagrangeTrack: { cx: number; cy: number; r: number } | null = null;
+  // Whose L-points are the SELECTED ones. Every pair still draws its five crosses, but the ones
+  // that are not the selection's recede, so the selected body's points read at a glance instead of
+  // being lost in a field of identical markers (owner, 2026-08-26: "it's confusing just now").
+  // Null = nothing is selected that owns a set (a star), and then nothing is dimmed.
+  let lagrangeFocusSecondaryId: string | null = null;
   function calculateLagrangePointPositions() {
       const idToUse = focusedBodyId || (system ? system.nodes.find(n => n.parentId === null)?.id : undefined);
+      lagrangeAreas = [];
+      lagrangeTrack = null;
       if (!system || !showLPoints || !idToUse) { lagrangePoints = null; return; }
       const nodesById = new Map(system.nodes.map(n => [n.id, n]));
       const focusedNode = nodesById.get(idToUse);
       if (!focusedNode || (focusedNode.kind !== 'body' && focusedNode.kind !== 'construct')) { lagrangePoints = null; return; }
+      // WHOSE zones get shaded. The selected body's own, normally — and if the selection is
+      // something already SITTING at a point (a trojan, or a station parked there), the zones of
+      // the body it rides, which is the pair the user is looking at either way. Selecting a star
+      // shades nothing: it is the primary of every pair below it, so "its" zones are all of them,
+      // which is the noise this rule exists to remove.
+      const focusedCoOrbital = (focusedNode as CelestialBody).coOrbital;
+      const areaSecondaryId = focusedCoOrbital
+          ? focusedCoOrbital.hostId
+          : ((focusedNode as CelestialBody).roleHint === 'star' ? null : focusedNode.id);
+      lagrangeFocusSecondaryId = areaSecondaryId;
       const allPoints = new Map<string, {x: number, y: number}>();
       const calculateAndStorePoints = (primary: CelestialBody, secondaries: CelestialBody[]) => {
           const primaryPos = worldPositions.get(primary.id);
@@ -636,6 +698,43 @@
                   }
                   allPoints.set(`${p.name}-${secondary.id}`, { x: x + scaledPrimaryPos.x, y: y + scaledPrimaryPos.y });
               });
+              // G43: the five zones, but ONLY for the pair the user has actually selected.
+              if (primary.massKg && secondary.massKg && secondary.id === areaSecondaryId) {
+                  const region = tadpoleRegion(secondary.massKg, primary.massKg);
+                  const R = Math.sqrt(scaledRelativeSecondaryPos.x ** 2 + scaledRelativeSecondaryPos.y ** 2);
+                  const thetaSec = Math.atan2(scaledRelativeSecondaryPos.y, scaledRelativeSecondaryPos.x);
+                  const retro = !!secondary.orbit?.isRetrogradeOrbit;
+                  lagrangeTrack = { cx: scaledPrimaryPos.x, cy: scaledPrimaryPos.y, r: R };
+                  const mu = secondary.massKg / (primary.massKg + secondary.massKg);
+                  // Normalised (secondary along +x, primary at origin) -> render frame. The scale is
+                  // the CURRENT separation, not the semi-major axis, so an eccentric pair's zones
+                  // breathe over the orbit the way the real pulsating-frame geometry does.
+                  const place = (p: { x: number; y: number }) => {
+                      const y = retro ? -p.y : p.y;
+                      return {
+                          x: scaledPrimaryPos.x + R * (p.x * Math.cos(thetaSec) - y * Math.sin(thetaSec)),
+                          y: scaledPrimaryPos.y + R * (p.x * Math.sin(thetaSec) + y * Math.cos(thetaSec))
+                      };
+                  };
+                  for (const point of ['l4', 'l5'] as const) {
+                      const poly = tadpoleOutline(mu, point, region.swarmHalfAngleDeg).map(place);
+                      if (poly.length >= 3) lagrangeAreas.push({ secondaryId: secondary.id, secondaryName: secondary.name, point, poly });
+                  }
+                  // The collinear envelopes: an ellipse about each point, sized on the Hill radius.
+                  const k = hillFactor(secondary.massKg, primary.massKg);
+                  for (const point of ['l1', 'l2', 'l3'] as const) {
+                      const scale = coOrbitalScale(point, secondary.massKg, primary.massKg);
+                      const cx = point === 'l3' ? -1 : scale;   // normalised, along the +x line
+                      const along = COLLINEAR_ENVELOPE_HILL.alongOrbit * k;
+                      const rad = COLLINEAR_ENVELOPE_HILL.radial * k;
+                      const poly: { x: number; y: number }[] = [];
+                      for (let s = 0; s < 40; s++) {
+                          const a = (s / 40) * 2 * Math.PI;
+                          poly.push(place({ x: cx + rad * Math.cos(a), y: along * Math.sin(a) }));
+                      }
+                      lagrangeAreas.push({ secondaryId: secondary.id, secondaryName: secondary.name, point, poly });
+                  }
+              }
           }
       };
       if (focusedNode.parentId) {
@@ -658,6 +757,21 @@
       ) as CelestialBody[];
       if (children.length > 0) calculateAndStorePoints(focusedNode as CelestialBody, children);
       lagrangePoints = allPoints.size > 0 ? allPoints : null;
+  }
+
+  // The projected orbit path for a construct, memoised on the ORBIT OBJECT. Sampling a full
+  // revolution is 128 Kepler solves and this runs per frame per ship, so it must not be redone while
+  // nothing has changed - and since a parked ship stopped rewriting its own node (RENDER-S36) the
+  // orbit object is a stable key. A WeakMap so a deleted ship's path goes with it.
+  const _orbitPathCache = new WeakMap<object, { x: number; y: number }[]>();
+  function projectedOrbitPath(node: CelestialBody, parent: any): { x: number; y: number }[] | null {
+      const key = node.orbit as unknown as object;
+      if (!key) return null;
+      const hit = _orbitPathCache.get(key);
+      if (hit) return hit;
+      const pts = orbitPathProjected(node, parent);
+      if (pts.length > 1) _orbitPathCache.set(key, pts);
+      return pts.length > 1 ? pts : null;
   }
 
   // Per-frame world positions now live in the shared physics/worldPositions module so the 2D orrery
@@ -772,8 +886,41 @@
         const clickPos = screenToWorld(clickX, clickY);
         const targetPositions = toytownFactor > 0 ? scaledWorldPositions : worldPositions;
         const dominantBody = findContainingHost(clickPos.x, clickPos.y, system.nodes, targetPositions);
-        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX, screenY });
+        // G43: a click inside a drawn L4/L5 lobe offers trojan placement there. Same geometry and
+        // px floor as the draw, so the clickable region is exactly the visible one.
+        const lagrangeHit = hitTestLagrangeArea(clickPos.x, clickPos.y);
+        // G45: a click inside a drawn circumbinary ring offers a P-type body of that pair.
+        const circumbinaryHit = hitTestCircumbinaryArea(clickPos.x, clickPos.y);
+        dispatch("backgroundContextMenu", { x: clickPos.x, y: clickPos.y, dominantBody, screenX, screenY, lagrangeHit, circumbinaryHit });
       }
+  }
+
+  // Inside a drawn circumbinary ring? Same centres and radii the draw published, so the clickable
+  // region is exactly the visible one. An open ring (a root pair, no outer edge) has rOuter Infinity,
+  // which is honest: outside the inner edge there is no further wall in this system.
+  function hitTestCircumbinaryArea(wx: number, wy: number): { baryId: string; baryName: string } | null {
+      if (!showHillSpheres) return null;
+      for (const a of circumbinaryAreas) {
+          const d = Math.hypot(wx - a.cx, wy - a.cy);
+          if (d >= a.rInner && d <= a.rOuter) return { baryId: a.baryId, baryName: a.baryName };
+      }
+      return null;
+  }
+
+  // Point-in-polygon against the SAME outlines that were drawn, so the clickable region is exactly
+  // the visible one for all five points — no second geometry to keep in step.
+  function hitTestLagrangeArea(wx: number, wy: number): { secondaryId: string; secondaryName: string; point: LagrangePointId } | null {
+      if (!showLPoints) return null;
+      for (const area of lagrangeAreas) {
+          const p = area.poly;
+          let inside = false;
+          for (let a = 0, b = p.length - 1; a < p.length; b = a++) {
+              const xa = p[a].x, ya = p[a].y, xb = p[b].x, yb = p[b].y;
+              if (((ya > wy) !== (yb > wy)) && (wx < ((xb - xa) * (wy - ya)) / (yb - ya) + xa)) inside = !inside;
+          }
+          if (inside) return { secondaryId: area.secondaryId, secondaryName: area.secondaryName, point: area.point };
+      }
+      return null;
   }
 
   // Zoom about a canvas-relative point, keeping that point fixed (old handleWheel logic,
@@ -881,7 +1028,21 @@
       if (showTravellerZones) drawTravellerZones(ctx);
       drawSensorOverlay(ctx);   // gates internally on the global view toggle OR the ship's sensors flag
       for (const node of system.nodes) {
-          if (!node.orbit || !node.parentId || (node.kind === 'body' && node.roleHint === 'belt')) continue;
+          if (!node.orbit || !node.parentId) continue;
+          // A BELT OR A RING IS ITS OWN ORBIT LINE. Both are drawn just below as an annulus at the
+          // radius they occupy, so an ellipse through the middle of that band is the same information
+          // twice — and on a planet's rings it lands as a hard line across a soft disc. Belts have
+          // been skipped here since they were introduced; rings were not, which is the asymmetry the
+          // owner spotted: "can we get rid of the orbital lines of rings? The ring is enough."
+          //
+          // Only skipped where the band will ACTUALLY draw, though. The annulus below needs an inner
+          // and an outer radius and a positive width between them; authored or imported data may have
+          // neither, and dropping the ellipse as well would leave the body with nothing drawn at all.
+          if (node.kind === 'body' && (node.roleHint === 'belt' || node.roleHint === 'ring')) {
+              const drawsAsBand = !!node.radiusInnerKm && !!node.radiusOuterKm
+                  && node.radiusOuterKm > node.radiusInnerKm;
+              if (drawsAsBand) continue;
+          }
           const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
           if (!parentPos) continue;
           let a = node.orbit.elements.a_AU; let e = node.orbit.elements.e;
@@ -894,11 +1055,37 @@
           // The designed grey, scaled by the dial. Drawn as rgba rather than via globalAlpha so it
           // cannot leak into the fills that follow in this pass.
           ctx.strokeStyle = `rgba(51,51,51,${Math.max(0, Math.min(1, orbitOpacity))})`; ctx.lineWidth = 1 / zoom;
+
+          // A LINE A SHIP IS NOT ON IS WORSE THAN NO LINE, AND THAT IS WHAT AN ELLIPSE FROM `a`, `e`
+          // AND OMEGA ALONE IS FOR A SHIP THAT HAS FLOWN SOMEWHERE.
+          //
+          // The plan-view convention (2D is the plan view) is right for everything the FLAT propagator
+          // also places. A construct with journeys is not one of those: `calculateWorldPositions`
+          // injects `sampleJourneyKinematicsAtTime`, which parks a ship on the plane it actually
+          // ARRIVED on, inclination and all. So the ship rode an inclined circle while its line was
+          // drawn as a flat one and the two only met at two points - the owner's "the only orbit line
+          // missing is when a construct establishes an orbit", with Tiangong's line correct beside it
+          // because Tiangong has never flown anywhere and so IS placed by the flat propagator.
+          //
+          // Two rules, both keyed on what actually places the thing:
+          //   - on a route right now -> no orbit line at all (it is not on its orbit), matching the 3D
+          //     view's rule (RENDER-S37).
+          //   - placed by the sampler -> draw the path the 3D walk walks, projected. Same rotation,
+          //     same satellite framing, so the line passes through the ship BY CONSTRUCTION.
+          const sampled = node.kind === 'construct' ? sampleJourneyKinematicsAtTime(system, node as CelestialBody, currentTime) : null;
+          if (sampled && sampled.state !== 'Orbiting') continue;   // in transit or adrift: no orbit to draw
+          const projected = sampled ? projectedOrbitPath(node as CelestialBody, nodesById.get(node.parentId)) : null;
+
           ctx.save();
           ctx.translate(parentPos.x - renderPan.x, parentPos.y - renderPan.y);
-          ctx.rotate(omega_rad);
           ctx.beginPath();
-          ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI);
+          if (projected && projected.length > 1) {
+            ctx.moveTo(projected[0].x, projected[0].y);
+            for (let i = 1; i < projected.length; i++) ctx.lineTo(projected[i].x, projected[i].y);
+          } else {
+            ctx.rotate(omega_rad);
+            ctx.ellipse(-c, 0, a, b, 0, 0, 2 * Math.PI);
+          }
           ctx.stroke();
           ctx.restore();
       }
@@ -979,12 +1166,63 @@
               }
           }
       }
+      // A point belongs to the selection when its key names the selected secondary. Keys are
+      // `${name}-${secondaryId}`, so the id is everything after the first hyphen.
+      const lagrangeIsSelected = (key: string) =>
+          !lagrangeFocusSecondaryId || key.slice(key.indexOf('-') + 1) === lagrangeFocusSecondaryId;
+      if (showLPoints && lagrangeTrack && lagrangeTrack.r > 0) {
+          // DASH BUDGET (owner's standing warning, and this view is exactly where it would bite).
+          // A dash pattern costs per SEGMENT over the whole path, not over the visible part, so a
+          // full circle at deep zoom is charged for its entire circumference even when almost all of
+          // it is off-screen: at 100x that is ~45,000 segments and at 10,000x about 4.5 MILLION, which
+          // is a stalled frame for a decorative line. The dashes are worth it here — they are what
+          // says 'this is the L-points' own track, not the orbit' — so keep them, but fall back to a
+          // solid stroke once the circumference stops being affordable. Solid costs the same at any
+          // scale. Anything else that wants dashes at astronomical scale should do the same check.
+          const circumferencePx = 2 * Math.PI * lagrangeTrack.r * zoom;
+          const dashesAffordable = circumferencePx < 40000;   // ~2,800 segments
+          ctx.beginPath();
+          ctx.arc(lagrangeTrack.cx - renderPan.x, lagrangeTrack.cy - renderPan.y, lagrangeTrack.r, 0, 2 * Math.PI);
+          if (dashesAffordable) ctx.setLineDash([6 / zoom, 8 / zoom]);
+          ctx.lineWidth = 1 / zoom;
+          ctx.strokeStyle = dashesAffordable ? 'rgba(120, 220, 180, 0.22)' : 'rgba(120, 220, 180, 0.13)';
+          ctx.stroke();
+          ctx.setLineDash([]);
+      }
+      if (showLPoints && lagrangeAreas.length) {
+          // The zones, drawn as the shapes the physics actually makes: a true tadpole contour at
+          // L4/L5 (fat head at the point, tail narrowing toward the secondary) and a station-keeping
+          // ellipse at each collinear point.
+          //
+          // BOTH ARE GREEN, AND THAT IS A COLOUR-CHANNEL DECISION rather than a preference: AMBER IS
+          // THE HILL SPHERE'S (`rgba(255, 232, 130, …)` further down), and the collinear zones used to
+          // be amber too — which read as a Hill sphere, especially at L1/L2 where they genuinely sit
+          // ON the Hill boundary and overlap it. Green now means "Lagrange" across all five. The two
+          // kinds stay distinguishable within that: triangular zones are a saturated green and filled
+          // (a body can sit there for free), collinear zones a cooler teal and fainter (nothing is
+          // held there — a station-keeping envelope, not a trap).
+          for (const area of lagrangeAreas) {
+              const tri = isTriangularPoint(area.point);
+              ctx.beginPath();
+              ctx.moveTo(area.poly[0].x - renderPan.x, area.poly[0].y - renderPan.y);
+              for (let i = 1; i < area.poly.length; i++) ctx.lineTo(area.poly[i].x - renderPan.x, area.poly[i].y - renderPan.y);
+              ctx.closePath();
+              ctx.fillStyle = tri ? 'rgba(0, 200, 100, 0.16)' : 'rgba(60, 205, 165, 0.075)';
+              ctx.fill();
+              ctx.lineWidth = 1 / zoom;
+              ctx.strokeStyle = tri ? 'rgba(0, 200, 100, 0.35)' : 'rgba(60, 205, 165, 0.32)';
+              ctx.stroke();
+          }
+      }
       if (showLPoints && lagrangePoints) {
           const crossSize = 5 / zoom; ctx.lineWidth = 1.5 / zoom;
           for (const [key, pos] of lagrangePoints.entries()) {
-              const name = key.split('-')[0]; const isStable = name === 'L4' || name === 'L5';
+              const name = key.split('-')[0]; const isStable = isTriangularPoint(name);
               if (toytownFactor > 0 && !isStable) continue;
-              ctx.strokeStyle = isStable ? 'green' : '#888';
+              const sel = lagrangeIsSelected(key);
+              ctx.strokeStyle = sel
+                  ? (isStable ? 'green' : '#888')
+                  : (isStable ? 'rgba(0, 128, 0, 0.30)' : 'rgba(136, 136, 136, 0.25)');
               ctx.beginPath();
               const rx = pos.x - renderPan.x; const ry = pos.y - renderPan.y;
               ctx.moveTo(rx - crossSize, ry); ctx.lineTo(rx + crossSize, ry);
@@ -1207,20 +1445,36 @@
       // Hill spheres — each planet-mass body's gravitational bubble, and EXACTLY the boundary the adrift
       // coast physics hands over at (same helper, so the drawn circle can't disagree with the handoff).
       // Solid light yellow + faint fill — dashed strokes over AU-scale circles make the canvas grind.
+      // G44: WHOSE Hill spheres are drawn — the selected body's NEIGHBOURHOOD, one level in each
+      // direction: itself, its parent, its siblings, and its children (owner, 2026-08-26: "someone
+      // may pick earth and pop a construct around Luna - so seeing 1 down makes sense and all
+      // parents and siblings - to cover weird moon of a moon rocks"). Selecting a PLANET is
+      // therefore unchanged in practice — its siblings are the other planets, its parent the star —
+      // while selecting a moon narrows to that moon's own neighbourhood instead of every bubble in
+      // the system. No selection at all = draw everything, as before.
+      // The REGION OF INTEREST is hoisted to a reactive value above - one shared rule for every
+      // overlay that narrows by selection (owner, 2026-08-26: "stay consistent - we call this a
+      // 'region of interest' selection - and reuse it where possible"). It replaced a local helper
+      // here that went one level in each direction; the rule is now self + ALL ancestors + siblings
+      // + ALL descendants, and a circumbinary body falls out of the sibling clause with no case of
+      // its own.
+      // Radial Box-Cox compression for a circle drawn around a node in Toytown: span it between its
+      // scaled inner/outer radial extent and take the mean (the mode is stylised; exactness lives in
+      // Real scale). Shared by the Hill bubbles and the circumbinary annulus so the two cannot drift.
+      const drawnRadiusAu = (nodeId: string, rAu: number): number => {
+          if (!(toytownFactor > 0)) return rAu;
+          const world = worldPositions.get(nodeId);
+          const d = world ? Math.hypot(world.x, world.y) : 0;
+          const outer = scaleBoxCox(d + rAu, toytownFactor, x0_distance);
+          const inner = scaleBoxCox(Math.max(0, d - rAu), toytownFactor, x0_distance);
+          return Math.max(0, (outer - inner) / 2);
+      };
       if (showHillSpheres && system) {
           for (const h of hillSpheresAu(system)) {
+              if (!inRegionOfInterest(roi, h.id)) continue;
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : worldPositions.get(h.id);
               if (!pos) continue;
-              let r = h.rAu;
-              if (toytownFactor > 0) {
-                  // Radial Box-Cox compression: span the sphere between its scaled inner/outer radial extent
-                  // and draw the mean as a circle (the mode is stylised; exactness lives in Real scale).
-                  const world = worldPositions.get(h.id);
-                  const d = world ? Math.hypot(world.x, world.y) : 0;
-                  const outer = scaleBoxCox(d + h.rAu, toytownFactor, x0_distance);
-                  const inner = scaleBoxCox(Math.max(0, d - h.rAu), toytownFactor, x0_distance);
-                  r = Math.max(0, (outer - inner) / 2);
-              }
+              const r = drawnRadiusAu(h.id, h.rAu);
               if (!(r > 0)) continue;
               ctx.beginPath();
               ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
@@ -1233,6 +1487,53 @@
               ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
               ctx.lineWidth = 1 / zoom;
               ctx.stroke();
+          }
+      }
+      // THE CIRCUMBINARY ANNULUS (G45) — the ring a P-type body can live in around a pair.
+      // COLOUR: the SAME FAMILY as the Hill sphere, one step deeper (owner, 2026-08-26: "the
+      // circumbinary shading should be aligned - slightly different but same family of colours as
+      // hill spheres... maybe yellow and deep yellow"). Hill is pale yellow 255,232,130; this is
+      // deep gold 255,184,46. They read as two kinds of the same thing, which is what they are —
+      // both answer "where can something orbit" — while Lagrange keeps the separate green channel
+      // because it answers a different question. A third HUE said "unrelated", which was wrong.
+      //
+      // BOTH EDGES ARE READ FROM `bary.circumbinary`, NEVER RECOMPUTED HERE. The physics pass
+      // publishes them (engine-map PHY-30) and the inner edge is a Holman & Wiegert fit this file has
+      // no business restating. The outer edge is ABSENT for a root pair — nothing outside it to strip
+      // it — and that is drawn as an open ring: inner stroke only, no outer wall and no fill, because
+      // filling to an invented radius would draw a boundary the physics has not claimed.
+      if (showHillSpheres && system) {
+          circumbinaryAreas = [];
+          for (const node of system.nodes) {
+              if (node.kind !== 'barycenter') continue;
+              const cb = (node as any).circumbinary;
+              if (!cb || !(cb.innerAU > 0)) continue;
+              if (!inRegionOfInterest(roi, node.id)) continue;
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(node.id) : worldPositions.get(node.id);
+              if (!pos) continue;
+              const rIn = drawnRadiusAu(node.id, cb.innerAU);
+              const rOut = cb.outerAU > 0 ? drawnRadiusAu(node.id, cb.outerAU) : 0;
+              if (!(rIn > 0)) continue;
+              const cx = pos.x - renderPan.x, cy = pos.y - renderPan.y;
+              // The ring itself: outer disc minus inner disc, drawn as one even-odd path so the hole
+              // is a real hole rather than a second fill over the top.
+              if (rOut > rIn) {
+                  ctx.beginPath();
+                  ctx.arc(cx, cy, rOut, 0, 2 * Math.PI);
+                  ctx.arc(cx, cy, rIn, 0, 2 * Math.PI, true);
+                  ctx.fillStyle = 'rgba(255, 184, 46, 0.07)';
+                  ctx.fill();
+              }
+              ctx.strokeStyle = 'rgba(255, 184, 46, 0.55)';
+              ctx.lineWidth = 1 / zoom;
+              ctx.beginPath(); ctx.arc(cx, cy, rIn, 0, 2 * Math.PI); ctx.stroke();
+              if (rOut > rIn) { ctx.beginPath(); ctx.arc(cx, cy, rOut, 0, 2 * Math.PI); ctx.stroke(); }
+              // Published for the right-click hit test, in the SAME frame's drawn radii, so the
+              // clickable ring is exactly the visible one (the rule G43 set for the L-zones).
+              circumbinaryAreas.push({
+                  baryId: node.id, baryName: node.name ?? 'the pair',
+                  cx: pos.x, cy: pos.y, rInner: rIn, rOuter: rOut > rIn ? rOut : Infinity
+              });
           }
       }
       // Trip lines for each ship's current + NEXT journey only — enough to show who's going where without
@@ -1525,6 +1826,7 @@
       if (showHillSpheres && system) {
           ctx.font = `12px sans-serif`; ctx.textAlign = 'center';
           for (const h of hillSpheresAu(system)) {
+              if (!inRegionOfInterest(roi, h.id)) continue;
               if (!h.isStar) continue;
               const world = worldPositions.get(h.id);
               const pos = toytownFactor > 0 ? scaledWorldPositions.get(h.id) : world;
@@ -1542,9 +1844,12 @@
       if (showLPoints && lagrangePoints) {
           const crossSize = 5 / zoom; ctx.lineWidth = 1.5 / zoom;
           for (const [key, pos] of lagrangePoints.entries()) {
-              const name = key.split('-')[0]; const isStable = name === 'L4' || name === 'L5';
+              const name = key.split('-')[0]; const isStable = isTriangularPoint(name);
               if (toytownFactor > 0 && !isStable) continue;
-              ctx.fillStyle = isStable ? 'green' : '#888';
+              const sel = lagrangeIsSelected(key);
+              ctx.fillStyle = sel
+                  ? (isStable ? 'green' : '#888')
+                  : (isStable ? 'rgba(0, 128, 0, 0.30)' : 'rgba(136, 136, 136, 0.25)');
               const screenPos = worldToScreen(pos.x, pos.y);
               ctx.fillText(name, screenPos.x + 8, screenPos.y);
           }
@@ -1906,6 +2211,29 @@
 
           if (showVectors) {
               const acc = computeNetGravityAccelerationMs2(physicalPos, node.id);
+              // THE SHIP'S OWN DRIVE IS PART OF ITS ACCELERATION, and while it burns it is nearly all
+              // of it: 0.3 g is 2.94 m/s2 against roughly 2.4e-4 m/s2 of solar gravity out at Jupiter,
+              // four orders of magnitude. Showing gravity alone left the arrow pointing at the star
+              // through the one part of a journey where the ship is being pushed somewhere else - a
+              // reading that was correct for what it measured and a lie about what it was labelled
+              // (the standing rule). Thrust direction comes from the segment that sized the burn; the
+              // velocity fallback is for journeys committed before that was published.
+              const burn = shipBurnAt(node, timeMs);
+              if (burn.thrusting && burn.accelMs2 > 0) {
+                  let dx = burn.thrustDir?.x, dy = burn.thrustDir?.y;
+                  if (dx === undefined || dy === undefined) {
+                      const m = vel ? Math.hypot(vel.x, vel.y) : 0;
+                      if (m > 0) {
+                          const sgn = burn.braking ? -1 : 1;
+                          dx = (vel!.x / m) * sgn;
+                          dy = (vel!.y / m) * sgn;
+                      }
+                  }
+                  if (dx !== undefined && dy !== undefined) {
+                      acc.x += dx * burn.accelMs2;
+                      acc.y += dy * burn.accelMs2;
+                  }
+              }
               const aMs2 = Math.hypot(acc.x, acc.y);
               if (aMs2 > 1e-6 && Number.isFinite(aMs2)) {
                   const aLen = Math.max(10, Math.min(72, 8 + Math.log10(aMs2 * 100 + 1) * 18));
@@ -1922,38 +2250,151 @@
       if (!plan) return;
       const alpha = alphaOverride !== undefined ? alphaOverride : (isCompleted ? 0.6 : 1.0);
       const isGhost = alphaOverride !== undefined && !forceGrey && !colorized;
+      // The toytown radial compression, in one place — it was written out three times in this
+      // function and the terminal marker below would have made four.
+      const mapPt = (p: { x: number; y: number }) => {
+          if (!(toytownFactor > 0) || plan.isKinematic) return { x: p.x, y: p.y };
+          const r = Math.hypot(p.x, p.y);
+          const rn = scaleBoxCox(r, toytownFactor, x0_distance);
+          const a = Math.atan2(p.y, p.x);
+          return { x: rn * Math.cos(a), y: rn * Math.sin(a) };
+      };
+      // THE ORBIT-CHANGE PICTURE: initial orbit, transfer ellipse, final orbit, two burns.
+      //
+      // DRAWN IN THE HOST'S FRAME, which is the whole reason it reads as a manoeuvre. A ship lowering
+      // its Jupiter orbit over three days is, heliocentrically, a 3.6-million-kilometre streak trailing
+      // after Jupiter - because Jupiter travelled that far while the ship went round. Every other path
+      // in this app is drawn that way and should be; this one must not, or the figure is a smear beside
+      // two rings it never touches.
+      //
+      // So the whole figure is regenerated from the plan's radii and its plane against the host's
+      // position NOW. That is exact rather than approximate: the map draws one instant, and at that
+      // instant host-now plus host-relative IS the ship's global position, so the ship sits on the line
+      // it is flying and the two circles are the orbits it is actually between.
+      //
+      // The flown path is still global and still what the samplers read - only the PICTURE changes
+      // frame, which is the 'in its own frame' half of the principle this whole item is built on.
+      let orbitChangeDrawn = false;
+      if (plan.orbitChange && !forceGrey) {
+          const oc = plan.orbitChange;
+          const host = worldPositions.get(oc.hostId);
+          if (host) {
+              const strokeLocal = (pts: { x: number; y: number }[], dash: number[], colour: string, width: number) => {
+                  ctx.beginPath();
+                  ctx.setLineDash(dash.map((d) => d / zoom));
+                  ctx.strokeStyle = colour;
+                  ctx.lineWidth = width / zoom;
+                  for (let i = 0; i < pts.length; i++) {
+                      const q = mapPt({ x: host.x + pts[i].x, y: host.y + pts[i].y });
+                      if (i === 0) ctx.moveTo(q.x - renderPan.x, q.y - renderPan.y);
+                      else ctx.lineTo(q.x - renderPan.x, q.y - renderPan.y);
+                  }
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+              };
+              // Solid for the orbit being left, dashed for the one being joined, so which is which is
+              // readable without a legend. Two rings only, and only while a plan is selected: RENDER-S31
+              // charges a dash pattern over a shape's WHOLE path, so this stays a pair rather than a habit.
+              strokeLocal(orbitCirclePath(oc.fromRadius_au, oc.u, oc.w, 128), [], `rgba(150, 200, 255, ${alpha * 0.5})`, 1.5);
+              strokeLocal(orbitCirclePath(oc.toRadius_au, oc.u, oc.w, 128), [6, 6], `rgba(150, 200, 255, ${alpha * 0.8})`, 1.5);
+              // The transfer itself, in the coast colour the rest of the app uses for a ballistic arc.
+              const ell = transferEllipsePath(oc.fromRadius_au, oc.toRadius_au, oc.u, oc.w, 0, 1, 96);
+              strokeLocal(ell.points, [], `rgba(255, 255, 0, ${alpha})`, isCompleted ? 2 : 3);
+              // The two burns, where the reference figure puts them: at the start of the ellipse and at
+              // its far end, on the ring each belongs to.
+              const marks: [{ x: number; y: number }, string][] = [
+                  [ell.points[0], '#4ade80'],
+                  [ell.points[ell.points.length - 1], '#ff3333']
+              ];
+              for (const [ptLocal, colour] of marks) {
+                  const q = mapPt({ x: host.x + ptLocal.x, y: host.y + ptLocal.y });
+                  const x = q.x - renderPan.x;
+                  const y = q.y - renderPan.y;
+                  const size = 5 / zoom;
+                  ctx.strokeStyle = colour;
+                  ctx.lineWidth = 2 / zoom;
+                  ctx.beginPath(); ctx.arc(x, y, size, 0, 2 * Math.PI); ctx.stroke();
+                  ctx.beginPath();
+                  ctx.moveTo(x - size * 1.9, y); ctx.lineTo(x - size * 0.7, y);
+                  ctx.moveTo(x + size * 0.7, y); ctx.lineTo(x + size * 1.9, y);
+                  ctx.moveTo(x, y - size * 1.9); ctx.lineTo(x, y - size * 0.7);
+                  ctx.moveTo(x, y + size * 0.7); ctx.lineTo(x, y + size * 1.9);
+                  ctx.stroke();
+              }
+              orbitChangeDrawn = true;
+          }
+      }
+
+      if (!orbitChangeDrawn)
       for (const segment of plan.segments) {
           ctx.beginPath();
           if (forceGrey) { ctx.setLineDash([]); ctx.strokeStyle = `rgba(100, 100, 100, ${alpha})`; }
           else if (isGhost) ctx.strokeStyle = `rgba(200, 200, 255, ${alpha})`;
           else if (segment.type === 'Coast') { ctx.setLineDash([]); ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`; }
           else if (segment.type === 'Brake') { ctx.setLineDash([]); ctx.strokeStyle = `rgba(255, 51, 51, ${alpha})`; }
+          // The aerobrake dip, in the purple it was asked for - distinct from the red of a brake
+          // BURN because nothing is burning: the atmosphere is doing the work and the drive is dark.
+          else if (segment.type === 'Aerobrake') { ctx.setLineDash([]); ctx.strokeStyle = `rgba(186, 104, 255, ${alpha})`; }
           else { ctx.setLineDash([]); ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`; }
           ctx.lineWidth = (isCompleted || isGhost || forceGrey ? 2 : 3) / zoom;
           for (let i = 0; i < segment.pathPoints.length; i++) {
-              let p = segment.pathPoints[i];
-              if (toytownFactor > 0 && !plan.isKinematic) { 
-                 const r = Math.sqrt(p.x*p.x + p.y*p.y); const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
-                 const angle = Math.atan2(p.y, p.x); const x_new = r_new * Math.cos(angle); const y_new = r_new * Math.sin(angle);
-                 p = { x: x_new, y: y_new };
-              }
+              const p = mapPt(segment.pathPoints[i]);
               if (i === 0) ctx.moveTo(p.x - renderPan.x, p.y - renderPan.y);
               else ctx.lineTo(p.x - renderPan.x, p.y - renderPan.y);
           }
           ctx.stroke();
           if (segment.pathPoints.length > 0) {
-              const p0 = segment.pathPoints[0]; let x = p0.x; let y = p0.y;
-              if (toytownFactor > 0 && !plan.isKinematic) {
-                 const r = Math.sqrt(x*x + y*y); const r_new = scaleBoxCox(r, toytownFactor, x0_distance);
-                 const angle = Math.atan2(y, x); x = r_new * Math.cos(angle); y = r_new * Math.sin(angle);
+              const p0 = mapPt(segment.pathPoints[0]);
+              ctx.beginPath(); ctx.arc(p0.x - renderPan.x, p0.y - renderPan.y, 4 / zoom, 0, 2 * Math.PI); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+          }
+      }
+
+      // HOW THE PATH SAYS 'I STOP HERE' VERSUS 'I AM PASSING THROUGH'.
+      //
+      // Nothing used to distinguish them: a flyby and a rendezvous both end Accel -> Coast -> Brake
+      // and the brake draws red in both, because a flyby DOES brake — it sheds closing speed down to
+      // its intercept velocity rather than to zero. So the burn colours cannot carry this; only the
+      // shape of the ending can. A rendezvous terminates in a ring at the destination. A flyby
+      // carries on past it, in the coast colour, and ends in an arrowhead: the ship does not stop, so
+      // neither does its line. The predicate is the transit layer's own `isFlybyPlan`, so the picture
+      // and the post-arrival behaviour cannot disagree about what this plan is.
+      if (!forceGrey && !isGhost) {
+          const lastSeg = plan.segments[plan.segments.length - 1];
+          const pts = lastSeg?.pathPoints ?? [];
+          if (pts.length >= 2) {
+              const tip = mapPt(pts[pts.length - 1]);
+              const prev = mapPt(pts[pts.length - 2]);
+              const hx = tip.x - prev.x, hy = tip.y - prev.y;
+              const hLen = Math.hypot(hx, hy) || 1;
+              const ux = hx / hLen, uy = hy / hLen;
+              const tx = tip.x - renderPan.x, ty = tip.y - renderPan.y;
+              ctx.lineWidth = 2 / zoom;
+              if (isFlybyPlan(plan)) {
+                  const tail = 26 / zoom, head = 8 / zoom;
+                  const ex = tx + ux * tail, ey = ty + uy * tail;
+                  ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`;   // coasting on past
+                  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ex, ey); ctx.stroke();
+                  ctx.beginPath();
+                  for (const s of [1, -1]) {
+                      const a = Math.atan2(uy, ux) + s * 2.618;      // 150 degrees back from the tip
+                      ctx.moveTo(ex, ey);
+                      ctx.lineTo(ex + Math.cos(a) * head, ey + Math.sin(a) * head);
+                  }
+                  ctx.stroke();
+              } else {
+                  ctx.strokeStyle = `rgba(255, 51, 51, ${alpha})`;   // stops here
+                  ctx.beginPath(); ctx.arc(tx, ty, 5 / zoom, 0, 2 * Math.PI); ctx.stroke();
               }
-              ctx.beginPath(); ctx.arc(x - renderPan.x, y - renderPan.y, 4 / zoom, 0, 2 * Math.PI); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
           }
       }
 
       // Draw Burn Symbols (Corrections, etc)
       if (plan.burns && !forceGrey) {
           for (const burn of plan.burns) {
+              // An orbit change's burns are marked as part of its FIGURE, in the host's frame, so they
+              // are skipped here - `burn.position` is global at the moment of the burn and would land
+              // wherever the host had got to by then.
+              if (plan.orbitChange && (burn.type === 'Departure' || burn.type === 'Arrival')) continue;
               if (burn.type === 'Correction') {
                   const x = burn.position.x - renderPan.x;
                   const y = burn.position.y - renderPan.y;

@@ -1,5 +1,6 @@
 // ===== types.ts =====
 import type { OrbitalBoundaries } from './physics/orbits';
+import type { CircumbinaryAnnulus } from './physics/circumbinary';
 import type { GeoActivity } from './physics/geoActivity';
 import type { VolatileRetention } from './physics/volatileRetention';
 import type { ClassExplanation } from './system/classification';
@@ -108,6 +109,17 @@ export interface Area {
 }
 
 export interface Kepler { a_AU: number; e: number; i_deg: number; Omega_deg: number; omega_deg: number; M0_rad: number; }
+
+// G43: the AUTHORED co-orbital relationship — "this node rides a Lagrange point of that body".
+// The node stays a child of the SECONDARY'S OWN HOST (the star/barycentre) — a trojan orbits the
+// star, and sits outside the secondary's Hill sphere by construction — and the ENGINE derives its
+// `orbit` from the secondary's every pass (physics/lagrange.ts owns the one convention). The loose
+// `placement` string ('L4'/'L5') is display-legacy; this is the load-bearing record.
+export type LagrangePointId = 'l1' | 'l2' | 'l3' | 'l4' | 'l5';
+export interface CoOrbital {
+  hostId: ID;             // the SECONDARY whose point this is (a planet, moon, or barycentre)
+  point: LagrangePointId; // l4 leads, l5 trails (in the secondary's direction of motion)
+}
 
 export interface Orbit {
   hostId: ID; elements: Kepler; t0: number; hostMu: number; seed?: string;
@@ -487,8 +499,18 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   classes?: string[];
   /** A star's MK classification as structured data. See `StellarType`. */
   stellarType?: StellarType;
+  // WHERE THE FIGURES CAME FROM (B89). True when mass, radius and temperature are the rule pack's
+  // TYPICAL-FOR-CLASS band rather than anything measured - the state every SIMBAD-only star arrives
+  // in, because SIMBAD carries a spectral type and no radius. `starParamsFromType` has always
+  // returned this and the import always DROPPED it, so the honesty lived only in the description
+  // prose while every numeric surface showed a band midpoint as if it were observed. Same idea as
+  // `ageEstimated` on the system: a guess must never wear a measurement's clothes.
+  typicalForClass?: boolean;
   auroraEmitters?: AuroraEmitter[];  // resolved at process time from atmosphere × gas AuroraBand data
   orbit?: Orbit;
+  /** G43: authored Lagrange-point relationship. When present, `orbit` is DERIVED from the
+   *  secondary's orbit every pass (see physics/lagrange.ts) — do not hand-edit the elements. */
+  coOrbital?: CoOrbital;
 
   // Physical parameters
   radiusKm?: number;
@@ -623,6 +645,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   vector_epoch_ms?: number;
   flight_state?: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked';
   
+  // HOW OFTEN THIS SHIP HAS BEEN FOUND CARRYING A PLACEMENT ITS OWN JOURNEYS DISAGREE WITH, and
+  // repaired on the spot by `reconcileConstructArrival`. The repair is idempotent, so a healthy ship
+  // reads 0 or has no counter at all; a count that CLIMBS means something upstream is still writing
+  // the ship wrong and the underlying fault ([[B97]]) is still live. Diagnostic only - nothing reads
+  // it to make a decision, and it exists so a user's saved file can answer the question directly.
+  placementHealCount?: number;
+
   // Transit Planning Persistence
   draft_transit_plan?: any[]; // Holds TransitPlan[] for resuming sessions
   scheduled_journeys?: ScheduledJourneyLog[];
@@ -712,6 +741,23 @@ export interface AIContext {
 export interface Barycenter extends NodeBase {
   kind: "barycenter";
   memberIds: ID[]; effectiveMassKg?: number; orbit?: Orbit;
+  // A PAIR CAN RIDE A LAGRANGE POINT, not just a single body (B98). (617) Patroclus-Menoetius is a
+  // real binary Jupiter trojan - two ~110 km bodies about 680 km apart librating about L4 together -
+  // and until this existed the engine had no way to SAY that. A GM who built one got the marker on a
+  // MEMBER instead, which put the L-point derivation and the barycentre reconciler in a fight over
+  // the same node's orbit and parentage, and the companion's orbit ran away a little further on
+  // every pass. When this is set, the pair's barycentre is the thing at the point and the members
+  // simply orbit it; no member may carry `coOrbital` as well (physics/lagrange.ts enforces it).
+  coOrbital?: CoOrbital;
+  // THE CIRCUMBINARY (P-TYPE) STABLE ANNULUS (G45) — DERIVED, never authored. Written by the
+  // stability pass (physics/stability.ts) from the pair's own orbit and its members', and rebuilt
+  // from scratch on every pass. Both edges are SEMI-MAJOR AXES in AU measured from the barycentre:
+  // the inner one is the Holman & Wiegert critical radius, the outer one a fraction of the pair's
+  // combined-mass Hill radius. THIS IS THE CONTRACT for anything that wants to show or check where
+  // a circumbinary body may live — read these fields; do not re-derive either edge, because a second
+  // derivation is a second answer. The maths, its validity range and the real-system checks are in
+  // physics/circumbinary.ts.
+  circumbinary?: CircumbinaryAnnulus;
 }
 
 export interface System {
@@ -900,9 +946,13 @@ export interface AuroraBand {
 export interface AuroraEmitter { gas: string; colour: string; hex: string; weight: number; altitude: number; }
 
 // Cloud formation for a gas (absent = not cloud-forming). condensesTo names the LIQUID whose data
-// gives the deck its look (colour, cloudOpacity, meltK for ice-crystal vs droplet); minFraction is
-// the partial-fraction floor below which no deck forms. See docs/dev/cloud-decks-design.md.
-export interface GasCloud { condensesTo: string; minFraction?: number; }
+// gives the deck its look (colour, cloudOpacity, meltK for ice-crystal vs droplet).
+// There was a `minFraction` here — an abundance floor below which no deck formed. Removed with
+// inbox B95: it deleted real, optically thick decks (our own Saturn's ammonia among them) and it
+// measured the wrong thing. Whether a cloud can be seen is decided by its OPTICAL DEPTH, which
+// `deriveCloudDecks` computes anyway. A campaign whose gasPhysics override still carries the key is
+// harmless — nothing reads it. See docs/dev/cloud-decks-design.md.
+export interface GasCloud { condensesTo: string; }
 // A reaction PRODUCT declares its recipe (NH4SH from NH3 + H2S). The product's effective fraction
 // derives from its constituents at process time: min(constituents) × yield, constituents depleted
 // by the amount converted. `yield` (0..1, default 1) models photochemical traces — Titan's HCN is
@@ -1237,8 +1287,15 @@ export interface Starmap {
   //  - `baseMapVersion`: which edition of a BUNDLED starter map this descends from. Set by the shipped
   //    maps (static/example-starmaps/manifest.json), carried through saves untouched, and never invented
   //    for a map the GM built themselves — a map with no base has no base version.
+  //  - `baseMapUpgradeDeclined`: the base-map edition the GM said 'Not now' to, recorded ON THE MAP so
+  //    the answer rides saves, bundles and other devices. B88: the decline used to live only in this
+  //    browser's localStorage, so a user was re-asked on every refresh, forever. A NEWER edition than
+  //    the one declined may still be offered - 'not now' is not 'never'.
+  //  - `baseMapUpgradeDismissed`: the GM ticked 'do not ask again for this campaign'. Never offer again.
   appVersion?: string;
   baseMapVersion?: number;
+  baseMapUpgradeDeclined?: number;
+  baseMapUpgradeDismissed?: boolean;
   /**
    * DEAD (G35). The experimental "evolutionary" (accrete) generator was removed; it lives on as its
    * own project at https://system-lab.starsystemx.com/. Kept in the type ONLY so a starmap saved by

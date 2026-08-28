@@ -49,7 +49,7 @@
   // render time (worldPositions.ts), leaving the ship mispositioned and orbit
   // edits ignored.
   const SITUATION_FIELDS = [
-    'id', 'parentId', 'ui_parentId', 'orbit', 'placement',
+    'id', 'parentId', 'ui_parentId', 'orbit', 'placement', 'coOrbital',
     'scheduled_journeys', 'flight_state', 'vector_position_au',
     'vector_velocity_ms', 'vector_epoch_ms', 'autopilot', 'flight_log'
   ];

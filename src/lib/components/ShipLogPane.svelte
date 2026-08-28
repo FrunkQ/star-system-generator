@@ -9,6 +9,7 @@
   import { systemStore } from '$lib/stores';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatSpeedAuto, speedFlavour } from '$lib/units';
+  import { isFlybyPlan } from '$lib/transit/scheduler';
   import { starmapStore } from '$lib/starmapStore';
   import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
@@ -82,7 +83,7 @@
   };
   function exitState(leg: any): string {
       const target = leg.targetId ? nodeName(leg.targetId) : '';
-      const isFlyby = (leg.interceptSpeed_ms || 0) > 0 || (leg.segments || []).some((s: any) => (s.warnings || []).includes('Flyby'));
+      const isFlyby = isFlybyPlan(leg);   // the transit layer's own test — see scheduler.ts
       if (isFlyby) {
           const v = leg.arrivalVelocity_ms || leg.interceptSpeed_ms || 0;
           return `Fly-past${target ? ` of ${target}` : ''} — carries ${formatSpeedAuto(v, speedFlavour($unitPrefs, 'construct'))} Δv`;
@@ -96,6 +97,12 @@
   const KIND_GLYPH: Record<string, string> = {
       load: '▲', unload: '▼', mine: '⛏', refuel: '⛽', loiter: '◷', stuck: '!', disengage: '✕', depart: '→', arrive: '⇲'
   };
+  // Days, in words a player reads rather than a raw number of seconds.
+  function formatDurationDays(d: number): string {
+      if (d >= 1) return d.toFixed(d < 10 ? 1 : 0) + ' days';
+      const h = d * 24;
+      return h >= 1 ? h.toFixed(1) + ' hours' : (h * 60).toFixed(0) + ' minutes';
+  }
   $: flightLog = [...(focusedBody.flight_log || [])].sort((a, b) => Number(a.atSec) - Number(b.atSec));
   $: cargoAboard = Number.isFinite(displayTimeMs) ? cargoAboardAt(focusedBody.flight_log, Math.floor(displayTimeMs / 1000), focusedBody.current_cargo_tonnes || 0) : 0;
   // Fuel % at the display moment — derived from the burn segments + refuel events (see fuelKgAt). Needs the
@@ -251,6 +258,18 @@
             <div class="ship-log-meta">Arrive: {formatLogTime(arriveMs)} {@render seekClock(arriveMs)}</div>
             <div class="ship-log-meta">Arrival speed: {formatSpeedAuto(leg.arrivalVelocity_ms || 0, speedFlavour($unitPrefs, 'construct'))}</div>
             <div class="ship-log-meta ship-log-exit">Ends: {exitState(leg)}</div>
+            {#if leg.aeroNote}
+              <!-- What the atmosphere did, and what it cost in time rather than propellant. Worth
+                   saying out loud: the fuel figure alone hides a manoeuvre that can take days, and
+                   the crew declining it (Aerobrake off) is a legitimate call for a ship with fuel. -->
+              <div class="ship-log-meta ship-log-aero">{leg.aeroNote}</div>
+              {#if (leg.aeroTimeSec || 0) > 0}
+                <div class="ship-log-meta ship-log-aero-time">
+                  Aerobraking adds {formatDurationDays((leg.aeroTimeSec || 0) / 86400)} to the journey —
+                  propellant saved, time spent.
+                </div>
+              {/if}
+            {/if}
           </div>
         {/each}
       </div>
@@ -406,6 +425,8 @@
       flex-direction: column;
       gap: 0.4em;
   }
+  .ship-log-aero { color: #9ad6ff; }
+  .ship-log-aero-time { color: #ffb066; }
   .ship-log-leg {
       border-left: 2px solid #2f5d76;
       padding-left: 0.55em;

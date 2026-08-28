@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { compactBurns, shipBurnAt } from './shipBurn';
 import { computePlayerStarmapSnapshot } from '$lib/system/utils';
+import { buildFlightUpdate, applyFlightUpdate } from './flightState';
 
 const AU_S = 1 / 1.495978707e11; // 1 m/s expressed in AU/s
 const seg = (type: string, startTime: number, endTime: number, dvMs: number, vx = 1000) => ({
@@ -61,9 +62,14 @@ describe('compact burns for the player snapshot', () => {
 
 // THE PLUMBING, not the unit. Everything above proves compactBurns/shipBurnAt in isolation and
 // stayed green while a player's ship showed no plume at all, because nothing asserted that the
-// snapshot a player actually RECEIVES carries the burns. The catalogue takes the whole map via
-// SYNC_STARMAP (its per-system callback is a no-op), so computePlayerStarmapSnapshot is the only
-// path that matters - and it is the only one that calls slimNode.
+// snapshot a player actually RECEIVES carries the burns.
+//
+// G51 CHANGED THE ROAD, NOT THE DESTINATION, and this describe follows it rather than being relaxed.
+// The burns used to ride the campaign snapshot; they now travel on SYNC_FLIGHT, because a field that
+// changed every tick inside a multi-megabyte document is what stopped `sendIfChanged` deduping it.
+// So "what a player actually receives" is now the campaign snapshot WITH the flight update applied,
+// which is exactly what the catalogue does on the wire. The property being guarded is unchanged and
+// the guard is no weaker: break the plumbing anywhere along it and these still fail.
 describe('the snapshot a player actually receives', () => {
   const mapWith = (construct: any) => ({
     id: 'map', name: 'Map',
@@ -73,9 +79,10 @@ describe('the snapshot a player actually receives', () => {
     ] } }]
   }) as any;
 
-  const playerConstruct = (map: any) => {
+  const playerConstruct = (map: any, atMs = 1) => {
     const snap = computePlayerStarmapSnapshot(map);
-    return (snap as any).systems[0].system.nodes.find((n: any) => n.id === 'ship');
+    const merged: any = applyFlightUpdate(snap, buildFlightUpdate(map, atMs));   // the second half of the wire
+    return merged.systems[0].system.nodes.find((n: any) => n.id === 'ship');
   };
 
   it('carries the burns through to the player, and lights the same plume the GM sees', () => {

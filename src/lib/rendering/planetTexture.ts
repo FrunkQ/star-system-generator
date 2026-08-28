@@ -10,6 +10,7 @@
 // seeded from the body id (stable frame-to-frame) and cached on an offscreen canvas.
 import type { CelestialBody, ApparentColorStop } from '$lib/types';
 import { deriveAppearance } from './planetAppearance';
+import { CHROMOPHORE_MAX_WEIGHT } from './apparentColor';
 import {
   landFieldFor, elevationAt, elevationAtDisc, vegetationBand, networkAt, edgeWobble, seedFrom,
   type LandField
@@ -19,6 +20,63 @@ import {
 // a warped fractal coastline has detail worth resolving, and 96 threw most of it away.
 const SIZE = 256;
 const cache = new Map<string, HTMLCanvasElement>();
+
+// HOW HARD A GIANT BANDS — ONE rule, read by BOTH projections.
+//
+// This lived twice, once in the disc renderer and once in the equirect one, as
+// `const smooth = chromo.length === 0` followed by its own copy of the two contrast pairs. Two
+// copies of one judgement is the fault this codebase keeps rediscovering, and the reason to unify it
+// HERE rather than patch both is that the judgement is what changed (inbox B95) while the drawing
+// legitimately differs — orthographic disc against a wrapped 2:1 sheet. The rule is shared; the
+// projection is not.
+//
+// A boolean was the bug. `chromo.length === 0` chose between 0.985/1.015 (a hair either side of
+// flat, reads featureless) and 0.86/1.06 (reads as Jupiter), so a stack gaining or losing one deck
+// at a condensation threshold moved the whole planet between those two looks at once. The stops now
+// carry their own strength, so this ramps instead. No chromophore lands exactly on the old smooth
+// pair, which is what keeps a single-deck giant — and every ice giant — looking exactly as it did.
+export function giantBandRamp(chromo: ApparentColorStop[]): { strength: number; lo: number; hi: number } {
+  const strength = chromo.length
+    ? Math.max(0, Math.min(1, Math.max(...chromo.map((c) => c.weight)) / CHROMOPHORE_MAX_WEIGHT))
+    : 0;
+  const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+  return { strength, lo: lerp(0.985, 0.86, strength), hi: lerp(1.015, 1.06, strength) };
+}
+
+// The alpha a chromophore stripe paints at. The +0.2 lift is what a band needs to read at all once
+// it is there; scaling the whole thing by the stop's own weight is what lets a deck that is only
+// just condensing arrive as a hint rather than as a stripe.
+export function chromoAlpha(weight: number): number {
+  return Math.min(0.7, weight + 0.2) * Math.min(1, weight / CHROMOPHORE_MAX_WEIGHT);
+}
+
+// A REGULAR POLYGON IN POLAR FORM, which is what a polar vortex boundary is. Exported so both the
+// painter and its test read one definition, and so the next renderer cannot invent a third shape.
+//
+// The trap this replaces: a COSINE is not a polygon. `r = a + b cos(n th)` draws an n-LOBED FLOWER
+// with sides bowing inward - measured at 54% of the apothem - and that is what Saturn's "hexagon"
+// was. A regular n-gon is `r = apothem / cos(phi)` with phi measured from the nearest edge midpoint,
+// which gives straight sides (bow exactly 0) and a vertex 1/cos(180/n) further out than an edge:
+// 1.1547 for a hexagon, against the 1.78 the cosine was producing.
+export function polygonRadiusAt(sides: number, apothem: number, angleRad: number): number {
+  if (sides < 3) return apothem;                 // 0 = a ROUND cyclone, which is a constant radius
+  const seg = (2 * Math.PI) / sides;
+  const phi = (((angleRad % seg) + seg) % seg) - seg / 2;
+  return apothem / Math.cos(phi);
+}
+
+// WHETHER A GIANT CARRIES A LONG-LIVED STORM, as a CHANCE rather than a coin flip on its id.
+//
+// A Great-Red-Spot-style anticyclone is not decoration: it is what a strongly banded circulation
+// does at the shear line between two jets, and it needs those jets to be sharp enough to pen it in
+// for centuries. So the chance follows how hard the world bands, and a smooth ball has none to give.
+// It used to be a flat `rnd() > 0.35` on any giant that banded at all, which put a permanent dark
+// oval on Saturn - and Saturn has no persistent spot, only the occasional white one.
+// Calibrated against the pair we can actually check: Jupiter bands at 0.84 and has one; Saturn bands
+// at 0.38 and does not. `giantBanding.spec.ts` pins both.
+export function stormChance(bandStrength: number): number {
+  return Math.max(0, Math.min(1, (bandStrength - 0.45) / 0.3));
+}
 
 // Deterministic PRNG seeded from the body id.
 function hashStr(s: string): number {
@@ -367,29 +425,32 @@ function render(body: CelestialBody): HTMLCanvasElement {
     //     warm ammonia giants (Jupiter/Saturn) — their absence marks a smooth ice giant, low-contrast
     //     and NO storm.
     const chromo = clouds.slice(1);                 // engine emits these only for ammonia giants
-    const smooth = chromo.length === 0;
+    const { strength: bandStrength, lo, hi } = giantBandRamp(chromo);
     const base = clouds[0]?.hex ?? surface?.hex ?? '#c9b89a';
     const n = Math.max(2, banding);
     const bandH = SIZE / n;
-    const lo = smooth ? 0.985 : 0.86, hi = smooth ? 1.015 : 1.06;
     for (let i = 0; i < n; i++) {
       ctx.fillStyle = shade(base, i % 2 === 0 ? hi : lo);
       ctx.fillRect(0, i * bandH, SIZE, bandH + 1);
     }
     for (const ch of chromo) {
       const row = Math.floor(rnd() * n);
-      ctx.globalAlpha = Math.min(0.7, ch.weight + 0.2);
+      ctx.globalAlpha = chromoAlpha(ch.weight);
       ctx.fillStyle = ch.hex;
       ctx.fillRect(0, row * bandH, SIZE, bandH * (0.6 + rnd() * 0.8));
       ctx.globalAlpha = 1;
     }
-    // Great-Red-Spot-style oval only on banded ammonia giants, sitting on one band.
-    if (!smooth && n >= 4 && rnd() > 0.35) {
+    // Great-Red-Spot-style oval, on a giant whose jets are sharp enough to pen one in. Fades in with
+    // the banding rather than switching on with it — an oval appearing whole is the same cliff this
+    // whole change is about, one shape further down.
+    if (n >= 4 && rnd() < stormChance(bandStrength)) {
       const row = 1 + Math.floor(rnd() * (n - 2));
+      ctx.globalAlpha = bandStrength;
       ctx.fillStyle = shade(chromo[0]?.hex ?? base, 0.78);
       ctx.beginPath();
       ctx.ellipse(SIZE * (0.25 + rnd() * 0.5), (row + 0.5) * bandH, bandH * 1.1, bandH * 0.45, 0, 0, 2 * Math.PI);
       ctx.fill();
+      ctx.globalAlpha = 1;
     }
   } else {
     // --- Rocky world: sea, land and life thresholded out of the SHARED elevation field, so the
@@ -591,21 +652,51 @@ function paintFeaturesEquirect(ctx: CanvasRenderingContext2D, body: CelestialBod
 
   // POLAR ICE CAPS — bright frozen caps at the two poles (the equirect's top and bottom rows ARE the
   // poles). A soft gradient fading toward the equator; craters/features drawn after show faintly through.
-  // POLAR VORTEX — a gas giant's geometric polar jet (Saturn hexagon). A polygon ringing the north
-  // pole: the boundary latitude waves N times with longitude, so from the pole it reads as an N-gon.
+  // POLAR VORTEX — a gas giant's geometric polar jet (Saturn hexagon). A polygon ringing EACH pole:
+  // the boundary latitude is the polar radius of a regular N-gon, so from the pole it reads as one.
   if (a.polarVortex) {
-    const sides = a.polarVortex.sides, baseLat = EQ_H * 0.1, amp = EQ_H * 0.028;
-    const yb = (x: number) => baseLat + amp * Math.cos(sides * (x / EQ_W) * 2 * Math.PI);
-    ctx.beginPath(); ctx.moveTo(0, 0);
-    for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yb(x));
-    ctx.lineTo(EQ_W, 0); ctx.closePath();
-    ctx.fillStyle = 'rgba(48,64,104,0.42)'; ctx.fill();                 // stormy vortex interior (darker = more contrast)
-    ctx.strokeStyle = 'rgba(220,230,250,0.7)'; ctx.lineWidth = 2.6 * S; // bright jet rim
-    ctx.beginPath();
-    for (let x = 0; x <= EQ_W; x += 3) (x === 0 ? ctx.moveTo(x, yb(x)) : ctx.lineTo(x, yb(x)));
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(205,218,242,0.42)';                          // a small bright eye at the pole
-    ctx.beginPath(); ctx.ellipse(EQ_W / 2, baseLat * 0.35, EQ_W * 0.12, baseLat * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
+    // A POLYGON, NOT A COSINE. This was `baseLat + amp * cos(sides * longitude)`, and a cosine in
+    // polar coordinates is not a polygon — r = a + b cos(n th) draws an n-LOBED FLOWER with concave
+    // sides, which is what Saturn's "hexagon" was actually being drawn as. A regular n-gon is
+    // r = apothem / cos(phi), phi measured from the nearest edge's midpoint: flat sides, sharp
+    // corners, and a vertex only 1/cos(180/n) further out than an edge (15% for a hexagon, against
+    // the 28% swing the cosine had). Latitude off the pole IS the polar radius on an equirect sheet,
+    // so the same formula applies directly to y.
+    // The apothem puts the ring near 13 degrees from the pole: a polar vortex sits inside the polar
+    // jet, and Saturn's real hexagon is centred on 78 degrees north. That also keeps it INSIDE the
+    // auroral oval, which RENDER-S41 places at 16 degrees for Saturn - the right way round.
+    const apothem = EQ_H * 0.072;
+    const yb = (sides: number, x: number) => polygonRadiusAt(sides, apothem, (x / EQ_W) * 2 * Math.PI);
+    // BOTH POLES. A polar vortex is what a rotating envelope does where the jets converge, and that
+    // happens at each end of the spin axis - Jupiter carries a polygonal cyclone cluster at BOTH
+    // poles (Juno: eight around a central one in the north, five in the south) and Saturn's south has
+    // a cyclone with a clear eye even though only its NORTH is hexagonal. Drawing the north alone
+    // left a giant's far pole bare the moment you turned the globe.
+    // Colours come from the SPEC, derived from this body's own cloud colour. They used to be three
+    // literal slate blues here and one more in PlanetDisc - two renderers each choosing a look, which
+    // is the one thing the physics-drives-visuals rule forbids, and which drew Saturn's hexagon as a
+    // grey patch on a gold planet.
+    for (const north of [true, false]) {
+      const sides = north ? a.polarVortex.northSides : a.polarVortex.southSides;
+      if (sides === null || sides === undefined) continue;      // this pole has no vortex at all
+      const yAt = (x: number) => (north ? yb(sides, x) : EQ_H - yb(sides, x));
+      const edge = north ? 0 : EQ_H;
+      ctx.beginPath(); ctx.moveTo(0, edge);
+      for (let x = 0; x <= EQ_W; x += 3) ctx.lineTo(x, yAt(x));
+      ctx.lineTo(EQ_W, edge); ctx.closePath();
+      ctx.globalAlpha = 0.42;
+      ctx.fillStyle = a.polarVortex.fillHex; ctx.fill();                // interior: deeper air, darker
+      ctx.globalAlpha = 0.7;
+      ctx.strokeStyle = a.polarVortex.rimHex; ctx.lineWidth = 2.6 * S;  // bright jet rim
+      ctx.beginPath();
+      for (let x = 0; x <= EQ_W; x += 3) (x === 0 ? ctx.moveTo(x, yAt(x)) : ctx.lineTo(x, yAt(x)));
+      ctx.stroke();
+      ctx.globalAlpha = 0.42;
+      ctx.fillStyle = a.polarVortex.eyeHex;                             // a small bright eye at the pole
+      const eyeY = north ? apothem * 0.35 : EQ_H - apothem * 0.35;
+      ctx.beginPath(); ctx.ellipse(EQ_W / 2, eyeY, EQ_W * 0.12, apothem * 0.3, 0, 0, 2 * Math.PI); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
   }
 
   // (The flat cap wash that used to live here is gone. Ice is painted with the surface now, ragged
@@ -745,32 +836,32 @@ function renderEquirect(body: CelestialBody): HTMLCanvasElement {
   if (banding > 0) {
     // Gas/ice giant: latitudinal bands are simply horizontal stripes across the whole sheet.
     const chromo = clouds.slice(1);
-    const smooth = chromo.length === 0;
+    const { strength: bandStrength, lo, hi } = giantBandRamp(chromo);   // ONE rule, both projections
     const base = clouds[0]?.hex ?? surface?.hex ?? '#c9b89a';
     const n = Math.max(2, banding);
     const bandH = EQ_H / n;
-    const lo = smooth ? 0.985 : 0.86;
-    const hi = smooth ? 1.015 : 1.06;
     for (let i = 0; i < n; i++) {
       ctx.fillStyle = shade(base, i % 2 === 0 ? hi : lo);
       ctx.fillRect(0, i * bandH, EQ_W, bandH + 1);
     }
     for (const ch of chromo) {
       const row = Math.floor(rnd() * n);
-      ctx.globalAlpha = Math.min(0.7, ch.weight + 0.2);
+      ctx.globalAlpha = chromoAlpha(ch.weight);
       ctx.fillStyle = ch.hex;
       ctx.fillRect(0, row * bandH, EQ_W, bandH * (0.6 + rnd() * 0.8));
       ctx.globalAlpha = 1;
     }
-    if (!smooth && n >= 4 && rnd() > 0.35) {
+    if (n >= 4 && rnd() < stormChance(bandStrength)) {
       const row = 1 + Math.floor(rnd() * (n - 2));
       const cx = EQ_W * rnd();
+      ctx.globalAlpha = bandStrength;
       ctx.fillStyle = shade(chromo[0]?.hex ?? base, 0.78);
       for (const dx of [-EQ_W, 0, EQ_W]) {
         ctx.beginPath();
         ctx.ellipse(cx + dx, (row + 0.5) * bandH, bandH * 1.4, bandH * 0.5, 0, 0, 2 * Math.PI);
         ctx.fill();
       }
+      ctx.globalAlpha = 1;
     }
   } else {
     // Rocky world: the SAME elevation field the 2D disc thresholds, read through the equirect

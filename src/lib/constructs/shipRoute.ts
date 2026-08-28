@@ -41,6 +41,8 @@
  */
 
 /** One knot on the route: a position in AU, and the game-clock ms the ship is there. */
+import { pathSampleTimesMs } from '$lib/transit/pathSampling';
+
 export interface RouteNode {
 	/** Game-clock milliseconds. */
 	t: number;
@@ -76,10 +78,12 @@ interface Sample extends RouteNode {
 /**
  * The whole committed course as dense time-stamped samples, in flight order.
  *
- * `pathPoints` are uniform IN TIME across their segment - that is exactly how
- * `samplePlanPathAtTime` reads them back - so the time of sample i is a straight lerp of the
- * segment's own bounds. Getting this mapping right is what keeps the ship on the line it is drawn
- * beside; getting it wrong would slide the two apart in a way no static picture would reveal.
+ * The time of sample i comes from `pathSampleTimesMs`, the same helper `samplePlanPathAtTime` uses
+ * to place the ship - the segment's own stamps when it has them, an even lerp of its bounds when it
+ * does not. Reading them any other way here would slide the ship off the line it is drawn beside, in
+ * a way no static picture would reveal, which is why both come from one place (G46). Before that,
+ * this file lerped and the sampler indexed, and both were assuming a uniformity that per-phase
+ * sampling has now deliberately broken.
  */
 function denseSamples(construct: any): Sample[] {
 	const out: Sample[] = [];
@@ -104,8 +108,9 @@ function denseSamples(construct: any): Sample[] {
 
 				const pts: any[] = Array.isArray(seg?.pathPoints) ? seg.pathPoints : [];
 				if (pts.length >= 2) {
+					const times = pathSampleTimesMs({ pathPoints: pts, pathTimes: seg?.pathTimes, startTime: st, endTime: en });
 					for (let i = 0; i < pts.length; i++) {
-						const t = st + ((en - st) * i) / (pts.length - 1);
+						const t = num(times[i]);
 						push({ t, x: num(pts[i]?.x), y: num(pts[i]?.y), z: num(pts[i]?.z), hard: i === 0 || i === pts.length - 1 });
 					}
 				} else {

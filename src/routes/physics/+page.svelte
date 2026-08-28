@@ -136,7 +136,7 @@
     </section>
 
     <section id="makeup">
-      <h2>Interior makeup <span class="phase">§2a</span></h2>
+      <h2>Interior makeup</h2>
       <p>A body's bulk composition is the first-class control: mass fractions of <strong>metal</strong> (ρ≈7.9),
         <strong>rock</strong> (3.3), <strong>carbon</strong> (2.3), <strong>ice</strong> (0.95) and <strong>gas</strong>
         (0.12 g/cc). Bulk density is volume-additive, <code>1⁄ρ = Σ fᵢ⁄ρᵢ</code>, and radius follows from mass +
@@ -177,7 +177,7 @@
     </section>
 
     <section id="albedo">
-      <h2>Albedo — bare ground and its deposits <span class="phase">B5</span></h2>
+      <h2>Albedo — bare ground and its deposits</h2>
       <p><strong>Bare rock is DARK, and what makes a world bright is what has settled on it.</strong> The three
         measurements that pin this point in different directions: Mercury reflects 0.088 and Luna 0.11 — darker
         than a single flat "rock" value used to allow — while Mars reflects 0.25 and Io 0.63, far brighter than
@@ -229,7 +229,7 @@
 </section>
 
     <section id="eccentric-flux">
-      <h2>Eccentric flux distance <span class="phase">04.1</span></h2>
+      <h2>Eccentric flux distance</h2>
       <p>An eccentric orbit receives a higher <em>time-averaged</em> flux than its mean distance implies, so the
         flux-equivalent distance is <code>a·(1−e²)^¼</code> (&lt; a), not the mean <code>a</code>. The dominant
         eccentricity is read from the perihelion/aphelion spread (exact for a planet orbiting its star directly).
@@ -433,7 +433,7 @@
          ones the editor shows, from `starClassExplain`, which derives them from the pack's own radius
          band - so this page cannot drift from the physics or from the panel. -->
     <section id="star-designations">
-      <h2>Reading a star designation <span class="phase">04.5</span></h2>
+      <h2>Reading a star designation</h2>
       <p>A star's designation is two facts joined together, and it is worth reading them separately.
         The <strong>letter and number</strong> say how hot it is, running O B A F G K M from hottest to
         coolest with the number subdividing each letter. The <strong>roman numeral</strong> says how big
@@ -470,7 +470,7 @@
          section: this is about what a star DOES to its planets, which is what a reader is thinking
          about at this point in the page. -->
     <section id="ionising-output">
-      <h2>Ionising output &amp; the corona <span class="phase">04.6</span></h2>
+      <h2>Ionising output &amp; the corona</h2>
       <p><strong>Brightness and ionising output are two different numbers.</strong> A star's visible
         brightness is fixed by its size and temperature. Its X-ray and extreme-ultraviolet output &mdash;
         the part that strips atmospheres and matters to anything living there &mdash; comes from its
@@ -527,7 +527,7 @@
     </section>
 
     <section id="stellar-outflows">
-      <h2>Jets and shed winds <span class="phase">04.7</span></h2>
+      <h2>Jets and shed winds</h2>
       <p><strong>Two things a star throws off are drawn on the maps, and both are derived rather than
         decided.</strong> A <em>jet</em> needs three things at once: a relativistic well to launch from,
         measured as the body's Schwarzschild radius over its own radius (one at a horizon, about a
@@ -549,7 +549,7 @@
     </section>
 
     <section id="radiation-split">
-      <h2>Spectral photon/particle split <span class="phase">04.4</span></h2>
+      <h2>Spectral photon/particle split</h2>
       <p>The photon/particle ratio depends on the star's spectral class — cool dwarfs are wind- and flare-dominated,
         so their particle fraction is far higher. Because magnetospheres shield particles but not photons, this
         makes unshielded M-dwarf worlds harsher than Sun-like ones at the same flux.</p>
@@ -637,7 +637,7 @@
     </section>
 
     <section id="fluids">
-      <h2>Fluid layers <span class="phase">§2c</span></h2>
+      <h2>Fluid layers</h2>
       <p>Beyond a single "hydrosphere coverage", a body can carry several distinct <strong>fluid layers</strong>,
         each derived from makeup + temperature + atmosphere:</p>
       <ul>
@@ -724,7 +724,7 @@
     </section>
 
     <section id="magnetism">
-      <h2>Magnetism <span class="phase">§2d</span></h2>
+      <h2>Magnetism</h2>
       <p>A dynamo needs a convecting <em>conductive</em> layer plus <em>rotation</em>. From the interior fluid
         layers + spin we report the implied field — <strong>descriptively, without overriding</strong> the editable
         field-strength value:</p>
@@ -763,7 +763,7 @@
     </section>
 
     <section id="spin">
-      <h2>Spin axis, seasons and satellite planes <span class="phase">B10 · C3(c)</span></h2>
+      <h2>Spin axis, seasons and satellite planes</h2>
       <p><strong>Stars turn too, and some of them are visibly squashed by it.</strong> Until recently no star in the
         engine had a rotation at all, so every star was drawn as a perfect sphere however fast it should have been
         spinning. <strong>Vega</strong> is the case that gives the lie away: it turns at about 236 km/s, close to the
@@ -915,6 +915,78 @@
         (comparable-mass crossing) or <em>hierarchy inversion</em>. Protective resonances cap a crossing pair at
         Marginal. Results surface as <code>stability/*</code>, <code>fate/*</code> and <code>resonance/*</code>
         tags plus the Orbital Stability and Resonance rows in the body panel.</p>
+      <h3>Circumbinary worlds &mdash; the annulus, not the outside</h3>
+      <p>A planet that orbits <em>both</em> stars of a pair (a <strong>P-type</strong> or circumbinary world)
+        does not simply live &ldquo;outside the binary&rdquo;. It lives in a <strong>ring</strong> with two
+        edges, and each edge is real physics. Every barycentre publishes both, and everything &mdash; the
+        verdict, the explanation, the drawing &mdash; reads the same two numbers.</p>
+      <p>The <strong>inner edge</strong> is the <strong>critical semi-major axis</strong>. The pull of a pair
+        is not a steady tug from one place: the field <em>turns</em>, twice per binary orbit, and close in
+        that forcing pumps a planet's orbit faster than it can settle, until the orbit crosses the stars
+        themselves and the first close encounter throws the planet clear. The engine uses the standard
+        measured fit &mdash; <strong>Holman &amp; Wiegert (1999)</strong>, who integrated test particles for
+        10<sup>4</sup> binary periods and fitted the lowest orbit that survived:</p>
+      <p style="margin-left:1.5em"><code>a<sub>c</sub>/a<sub>b</sub> = 1.60 + 5.10e<sub>b</sub> &minus;
+        2.2e<sub>b</sub>&sup2; + 4.12&mu; &minus; 4.27e<sub>b</sub>&mu; &minus; 5.09&mu;&sup2; +
+        4.61e<sub>b</sub>&sup2;&mu;&sup2;</code></p>
+      <p>where <code>a<sub>b</sub></code> is the stars' separation, <code>e<sub>b</sub></code> the pair's
+        eccentricity and <code>&mu;</code> the lighter star's share of the total mass. The hole is typically
+        <strong>2&ndash;4&times; the separation</strong>, and it widens sharply with eccentricity: an
+        equal-mass circular pair clears 2.39&times;, the same pair at e&nbsp;=&nbsp;0.4 clears 3.41&times;.
+        Two checks against reality: <strong>Kepler-16b</strong> comes out at 1.09&times; its own limit, which
+        is exactly where it is observed to be &mdash; the known circumbinary planet closest to falling in
+        &mdash; and Pluto's small moons come out just <em>outside</em> the Pluto&ndash;Charon limit of about
+        38,900&nbsp;km, which is where Styx, Nix, Kerberos and Hydra actually orbit.</p>
+      <p><strong>The edge is a floor, not a wall</strong>, and the paper says so: unstable islands sit
+        <em>above</em> a<sub>c</sub> wherever a planet falls into step with the pair, so clearing the limit
+        by a little is not the same as being safe. A world inside the limit reads Very Unstable with the
+        <em>flung out</em> fate and wears <code>stability/inside-circumbinary-limit</code>; one clearing it
+        by less than 1.2&times; reads Marginal and is given no predicted fate, because &ldquo;near the
+        edge&rdquo; is not a prediction. An eccentric orbit whose <em>periapsis</em> dips inside also reads
+        Marginal &mdash; the fit was measured on circular orbits, so that case is outside what it tested.
+        The fit itself is only valid for &mu; between 0.1 and 0.5 and e<sub>b</sub> up to about 0.7; outside
+        that the engine still evaluates it but <strong>says on the panel that the number is extrapolated</strong>,
+        rather than quietly presenting an untested figure as a measurement.</p>
+      <p>The <strong>outer edge</strong> is where the pair loses its own grip: half the combined-mass
+        <em>Hill radius</em> the pair holds within whatever it orbits &mdash; the same half that counts a
+        moon as &ldquo;stolen by external tide&rdquo; elsewhere on this page. A pair that <em>is</em> the
+        root of its system has no outer edge at all, and the engine publishes none rather than inventing
+        a large number to stand for infinity.</p>
+
+      <h3>Lagrange points &amp; trojans</h3>
+      <p>A body or construct can be pinned to another body's <strong>Lagrange point</strong>
+        (<code>orbit/lagrange</code> tag). The triangular points L4/L5 are genuine free-fall orbits: the
+        companion rides the secondary's own ellipse rigidly rotated by ±60° with the same mean anomaly, an
+        exact Kepler orbit that keeps the Sun–secondary–trojan triangle equilateral at every instant,
+        eccentric orbits included — which is why a trojan coasts there for free. They only <em>hold</em>
+        while the masses allow it: <strong>Gascheau's bound</strong> (1843) requires
+        (M+m₂+m₃)² ≥ 27·(Mm₂ + Mm₃ + m₂m₃), which for a small trojan is Routh's 27μ(1−μ) &lt; 1 — the
+        secondary must stay below about 1/25 of the total mass (Sun–Jupiter passes at μ ≈ 0.001;
+        Pluto–Charon would fail at μ ≈ 0.11). A breach reads Very Unstable with the margin quoted, and the
+        lighter member wears the <em>flung out</em> fate. The drawn L4/L5 <strong>areas</strong> are the
+        tadpole libration regions: radial half-width (8μ/3)<sup>1/2</sup>·a, reaching from ~24° off the
+        secondary round to L3 at the widest (Murray &amp; Dermott 1999).</p>
+      <p>The collinear points are different animals: <strong>L1/L2</strong> co-rotate on the sun-line at the
+        Hill distance — saddle equilibria with no free orbit, where a deviation e-folds in about a sixteenth
+        of the orbital period (the 23-day figure every Sun–Earth halo mission plans around). Station-keeping
+        holds a craft there; nothing holds a moon, so a body authored at L1/L2 reads Very Unstable and says
+        why. <strong>L3</strong> is the antipode — weakly unstable, drifting into a horseshoe passage over
+        years to centuries rather than being thrown out.</p>
+      <p><strong>A pair can ride a point, not just a body.</strong> (617)&nbsp;Patroclus&ndash;Menoetius is a
+        real binary Jupiter trojan &mdash; two ~110&nbsp;km bodies about 680&nbsp;km apart, librating about L4
+        together &mdash; so when two bodies at a point become a pair, it is the pair's <em>barycentre</em> that
+        sits at the point and the members simply orbit each other. That asks one extra question the single-body
+        case never does: <strong>can the pair hold itself together where it sits?</strong> The members orbit
+        inside a Hill sphere the pair only has by virtue of being there, so a pair wider than that sphere is
+        pulled apart by the primary and the two go their separate ways. Gascheau is also re-asked with the
+        pair's <em>combined</em> mass, since a pair is heavier than either half and a trio one body would
+        survive can fail once it is doubled. And sharing the secondary's orbit is not a crossing &mdash; that is
+        what a trojan <em>is</em>.</p>
+      <p>A <strong>construct</strong> may be parked at any of the five, and carries what that costs it as
+        <code>flight/fuel-use</code>: <em>coasting</em> at a sound L4/L5, where a free-fall orbit holds it
+        for nothing; <em>station-keeping</em> at L1/L2/L3, the periodic trim burns real halo-orbit missions
+        budget for; and <em>holding</em> when the trojan regime is breached, because then there is no
+        equilibrium left to keep and the ship is simply thrusting to stay put.</p>
     </section>
 
     <section id="ejection">
@@ -945,7 +1017,7 @@
     </section>
 
     <section id="eclipses">
-      <h2>Eclipses <span class="phase">G8</span></h2>
+      <h2>Eclipses</h2>
       <p><strong>When does something next cover this world's star, and how dark does it get?</strong> An eclipse
         happens <em>somewhere</em>, and the answer is meaningless without saying where — so the observer is
         standing <strong>on the body whose data is open, at the point directly under the occulter</strong>. From
@@ -978,7 +1050,7 @@
     </section>
 
     <section id="surface-light">
-      <h2>Surface light — the spectrum that reaches the ground <span class="phase">B45 · B54</span></h2>
+      <h2>Surface light — the spectrum that reaches the ground</h2>
       <p>Every reference chart of alien plant colour keys on one number: the star's temperature. That is the
         wrong input, and it is wrong in a way that matters. <strong>Plants see the light that reaches the
         ground</strong>, and between the star and the ground sits a sky. So this engine derives a
@@ -1060,7 +1132,7 @@
     </section>
 
     <section id="standing-on-it">
-      <h2>Standing on it — brightness, colour and how far you can see <span class="phase">B45 · B78 · B79</span></h2>
+      <h2>Standing on it — brightness, colour and how far you can see</h2>
       <p>The surface spectrum answers what light arrives. Three things follow from it that a GM can actually
         use at a table, and all three are the same derivation read differently.</p>
 
@@ -1162,7 +1234,7 @@
     </section>
 
     <section id="biosphere">
-      <h2>Biospheres — which pigment, and how much of the ground <span class="phase">G19 · B53</span></h2>
+      <h2>Biospheres — which pigment, and how much of the ground</h2>
       <p>A world's life is described by four things it already carried — how complex it is, what its chemistry
         is built on, where it gets its energy, and which <em>morphologies</em> are present — plus, now, how
         much of the land each of those covers.</p>
@@ -1279,7 +1351,7 @@
     </section>
 
     <section id="colour">
-      <h2>Apparent colour &amp; visualisation <span class="phase">§2e</span></h2>
+      <h2>Apparent colour &amp; visualisation</h2>
       <p><strong>A surface is weathered as well as made of something.</strong> Bulk makeup alone gives every
         rocky world the same brown, and two processes pull it apart. <strong>Oxidation</strong> is why Mars is
         red: iron plus an oxidiser gives hematite, and it arrives as a tag. <strong>Space weathering</strong> is
@@ -1337,7 +1409,7 @@
     </section>
 
     <section id="views">
-      <h2>Spatial views: grids and routes <span class="phase">G4 · A37 · A41</span></h2>
+      <h2>Spatial views: grids and routes</h2>
       <p><strong>One grid vocabulary, and one generator behind it.</strong> The 3D starmap, the flat starmap and
         the system view's ground plate all draw their lattice from the same code, so a system snapped to your hex
         in one view lands dead-centre in it in the others. The hex convention is <strong>flat-topped</strong>
@@ -1446,7 +1518,8 @@
         <li><code>geology/*</code> — tectonic regime (plate-tectonics, stagnant-lid, cryovolcanic, …)</li>
         <li><code>magnetic/*</code> — dynamo (intrinsic / induced / unshielded)</li>
         <li><code>habitability/*</code> — habitability tier (incl. subsurface)</li>
-        <li><code>stability/*</code> — n-body instability risk (marginal / unstable / very-unstable)</li>
+        <li><code>stability/*</code> — n-body instability risk (marginal / unstable / very-unstable), plus
+          <code>stability/inside-circumbinary-limit</code> for a world too close to the pair it orbits</li>
         <li><code>resonance/*</code> — mean-motion resonances (2-1, 3-2, …, laplace)</li>
         <li><code>fate/*</code> — predicted end-state of an unstable orbit (infall, eject, collision)</li>
         <li><code>barycenter/auto</code> — auto-generated barycentre marker</li>
@@ -1562,7 +1635,7 @@
     </section>
 
     <section id="zones">
-      <h2>Stellar zones &mdash; the lines drawn on the map <span class="phase">B80 &middot; B81 &middot; B84</span></h2>
+      <h2>Stellar zones &mdash; the lines drawn on the map</h2>
       <p>Turn <strong>Zones</strong> on in the system view and a set of rings appears. They are not decoration
         and they are not a table of astronomical-unit constants: <strong>every one of them is derived from the
         star's own luminosity, asked at a distance from THAT STAR.</strong> Two consequences follow, and both
@@ -1864,6 +1937,25 @@
           of 10 µm for every substance. Both are grounded in real cloud measurements, but the shape of the
           curve between them is a judgement call — it is the biggest single fudge in the cloud model, and the
           reason Earth lands at roughly two-thirds cloud cover is that we tuned it to.</li>
+        <li><strong>Polar vortices are a seeded rule, not fluid dynamics.</strong> The polygonal jet at a
+          giant's pole — Saturn's hexagon is the famous one — is a standing wave in a narrow, fast polar
+          jet stream. Deriving one properly means solving the circulation of a rotating fluid shell, which
+          this engine does not attempt and is not going to. So it is rolled, from the body's own id, against
+          three things that are at least the right ingredients: <em>spin</em> decides whether there are polar
+          vortices at all, because it is converging jets that make them and a world whose day is far too long
+          has no Coriolis force to organise the flow; <em>axial tilt</em> decides how alike the two poles are,
+          since a barely-tilted world runs both hemispheres under the same steady forcing while a strongly
+          tilted one drives them through hard seasons in antiphase; and the <em>side count</em> is drawn per
+          pole, because how many cells a polar cluster settles into follows the size of the cap against the
+          local weather scale, and the two hemispheres are not identical. A pole that does not lock a polygon
+          still gets a cyclone, just a round one with an eye.
+          <br />It reproduces the two we can check — Jupiter, tilted 3°, gets polygons at both poles as
+          Juno found (eight cyclones around a central one at the north, five at the south), and Saturn, tilted
+          27°, gets its hexagon at one pole and a plain eyed cyclone at the other, as Cassini found. That
+          agreement is the rule being sane, not the rule being right: it is a plausible-looking result from a
+          seeded draw, and a real giant's pole is doing something far more interesting. If you want a
+          particular world to have one, say so with a tag — a hand-added
+          <code>feature/polar-vortex</code> always beats the roll.</li>
         <li>Cloud <em>colours</em> are a lookup, not a derivation. Which layers a world has and where they sit is
           computed; what each substance looks like is a chosen swatch per liquid, and the ice-giant blue is a
           hand-picked pair of colours with a temperature threshold between them. The structure is physics; the
@@ -1891,15 +1983,23 @@
           points, chosen so that a smooth curve drawn through them tracks the real path to within roughly a fifth
           of a percent of the journey's own length. The 3D view then rebuilds that curve and subdivides it as you
           zoom in, so it stays smooth rather than turning into straight facets. The reason is data rather than
-          physics: a ship under way rewrites what players receive about twice a second, and the whole snapshot is
-          re-sent each time, so the full path would be thousands of numbers on the busiest channel in the app.
+          physics, though not the one you might expect: it is not a saving on traffic. The compact curve IS how
+          a ship's position is defined once it is under way. The corner points carry the times they belong to,
+          so the GM's view and a player's evaluate the same curve at the same instant rather than one of them
+          being told the answer — a player view works out where a ship is for itself, exactly as it already
+          does for a planet from its orbital elements. The several-thousand-point path stays where it was
+          computed.
           The same estimate is used on the GM's own 3D view, so both see the identical line; the GM's flat map
           still draws the full path point for point. The line is also pinned to the ship itself, so it passes
-          through the vessel exactly even where the estimate and the true path differ. While a player view is
           <strong>following the GM's clock</strong>, ships in transit are also <em>positioned</em> along this
-          same re-estimated course, so a moving ship sits exactly on its drawn line; a player scrubbing their
-          own clock sees orbits move but transit traffic hold its last GM-reported position, because live
-          traffic is the GM's clock to run, not the viewer's.</li>
+          same curve, so a moving ship sits exactly on its drawn line. And a player scrubbing their
+          <strong>own</strong> clock now sees traffic move too — the ship where it would be at
+          <em>their</em> time, not where the GM last left it. That is the same rule the planets have
+          always followed: if the view can work a thing out from the time alone, the time is the
+          viewer's to choose. A view that is following the GM is unchanged, its clock already being
+          his. The one thing a scrubbing view cannot show you is what happens <em>after</em> a ship's
+          current plan ends, because where it parks and what it ends up orbiting is the GM's to
+          decide and has not happened yet.</li>
         <li>Coasting/adrift transit trajectories drop moons <em>while the clock is moving</em>: the gravity field used to integrate a drifting ship live (and its forecast line) includes only stars and planets, because re-integrating the full satellite census on every clock-slider frame is impractical in a browser. A moon's pull on a heliocentric coast is negligible anyway, and the star and any planet the ship passes still bend the path. Once the clock settles, the forecast upgrades to a one-shot, moon-inclusive plot — fast estimates while you scrub, the accurate path when you stop.</li>
       </ul>
     </section>
@@ -1939,7 +2039,6 @@
   section { margin: 30px 0; scroll-margin-top: 16px; }
   section h2 { color: var(--text, #fff); border-bottom: 1px solid var(--border, #2a2d36); padding-bottom: 6px; }
   section h3 { color: var(--accent, #ff5a1f); font-size: 1rem; margin: 20px 0 6px; }
-  .phase { font-size: 0.7rem; color: var(--on-accent, #fff); background: var(--accent, #ff5a1f); border-radius: 999px; padding: 2px 8px; vertical-align: middle; margin-left: 8px; }
   p, li { line-height: 1.65; color: var(--text, #e2e2e2); }
   ol.layering { line-height: 1.7; padding-left: 1.3em; }
   ol.layering li { margin: 4px 0; }

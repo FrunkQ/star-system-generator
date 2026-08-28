@@ -12,7 +12,7 @@ export const G_AU = G / (AU_M * AU_M * AU_M);
 
 // One attractor from a body's mass + a (time → AU position) function. Belts/rings are distributed debris,
 // not point masses, so the caller should exclude them.
-export function gravAttractor(massKg: number, posAt: (t: number) => [number, number]): Attractor {
+export function gravAttractor(massKg: number, posAt: (t: number) => [number, number] | [number, number, number]): Attractor {
   return { mu: G_AU * Math.max(0, massKg), posAt };
 }
 
@@ -22,7 +22,7 @@ export function gravAttractor(massKg: number, posAt: (t: number) => [number, num
 // to miss the sun" hand-wave for a star-targeted fly-by).
 export function systemGravityField(
   bodies: { id: string; massKg: number }[],
-  positionAt: (id: string, t: number) => [number, number],
+  positionAt: (id: string, t: number) => [number, number] | [number, number, number],
   soften = 1e-6
 ): AccelField {
   const attractors = bodies

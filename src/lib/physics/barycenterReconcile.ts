@@ -97,6 +97,18 @@ function promoteMassiveCompanion(system: System): boolean {
       tags: [{ key: 'barycenter/auto' }]
     };
 
+    // A CO-ORBITAL PRIMARY HANDS ITS L-POINT TO THE PAIR (B98). Pomona rides Jupiter's L4 and the GM
+    // gives it a companion: once promoted it is the PAIR that rides the point, and each member simply
+    // orbits the pair. The barycentre has already taken the primary's orbit and host above, so the
+    // marker belongs with it for exactly the same reason. Leaving it on a member is what made the
+    // L-point derivation and this reconciler tear the pair apart on alternate passes.
+    const inheritedCoOrbital = (primaryBody as CelestialBody).coOrbital ?? secondary.coOrbital;
+    if (inheritedCoOrbital && inheritedCoOrbital.hostId !== heavy.id && inheritedCoOrbital.hostId !== light.id) {
+      barycenter.coOrbital = { ...inheritedCoOrbital };
+      delete heavy.coOrbital;
+      delete light.coOrbital;
+    }
+
     const aHeavy = separationAU * (mLight / pairMass);
     const aLight = separationAU * (mHeavy / pairMass);
     const pairMu = G * pairMass;

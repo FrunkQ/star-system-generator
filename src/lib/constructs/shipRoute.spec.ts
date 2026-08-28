@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import { compactRoute, routeOf, isUnderWay, routePolyline, routeStateAt } from './shipRoute';
 import { computePlayerStarmapSnapshot } from '$lib/system/utils';
+import { buildFlightUpdate, applyFlightUpdate } from './flightState';
 
 /** A segment as the planner really emits one: geometry in pathPoints, states often placeholders. */
 const seg = (type: string, startTime: number, endTime: number, pathPoints: any[], states?: any) => ({
@@ -192,6 +193,12 @@ describe('routeOf reads either source, so GM and player draw the same course (R1
 
 // THE PLUMBING. This is the test that was missing for the plume, and its absence let a green suite
 // coexist with a broken feature for weeks.
+//
+// G51 CHANGED THE ROAD, NOT THE DESTINATION. The route used to ride the campaign snapshot; it now
+// travels on SYNC_FLIGHT, because a field that changed every tick inside a multi-megabyte document
+// is what stopped `sendIfChanged` deduping it. "What the player receives" is therefore the campaign
+// snapshot WITH the flight update applied - what the catalogue actually does - and the property
+// guarded here is word for word the one that was guarded before.
 describe('the route reaches the player', () => {
 	const mapWith = (construct: any) => ({
 		id: 'map', name: 'Map',
@@ -199,8 +206,11 @@ describe('the route reaches the player', () => {
 			{ id: 'star', name: 'Star', kind: 'body', roleHint: 'star' }, construct
 		] } }]
 	}) as any;
-	const playerNode = (map: any) =>
-		(computePlayerStarmapSnapshot(map) as any).systems[0].system.nodes.find((n: any) => n.id === 'ship');
+	const playerNode = (map: any, atMs = 1) => {
+		const snap: any = computePlayerStarmapSnapshot(map);
+		const merged: any = applyFlightUpdate(snap, buildFlightUpdate(map, atMs));   // the second half of the wire
+		return merged.systems[0].system.nodes.find((n: any) => n.id === 'ship');
+	};
 
 	it('crosses to the player, and draws the same course the GM sees', () => {
 		const gm = ship(ARC_LEG);

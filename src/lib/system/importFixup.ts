@@ -7,7 +7,7 @@
 // So on import we STRIP everything the processor will re-derive, keeping only the authored INPUTS
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
-import type { System, CelestialBody, Tag, RulePack } from '$lib/types';
+import type { System, CelestialBody, Barycenter, Tag, RulePack } from '$lib/types';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
 import { makeupFractions } from '$lib/physics/makeup';
 import { survivesRederive } from '$lib/tags/tagLifecycle';
@@ -18,6 +18,7 @@ import { luminosityClassFromPosition } from '$lib/system/starBandMatch';
 import { determineSpectralClass } from '$lib/physics/stellar-evolution';
 import { SOLAR_RADIUS_KM } from '$lib/constants';
 import { stripUndoHistory } from '$lib/undo/historyKey';
+import { lagrangePlacementId } from '$lib/physics/lagrange';
 
 // Derived fields the processor recomputes — never trust them from an old file. (Also stripped on EXPORT
 // so saved files carry only authored INPUTS and stay small — the load path re-derives all of this.)
@@ -125,6 +126,17 @@ function classNamesFromPack(pack?: RulePack): Set<string> {
   for (const k of Object.keys((pack?.classifier as any)?.starImages ?? {})) add(k);
   for (const fp of pack?.classifier?.fingerprints ?? []) add(fp.class);
   return out;
+}
+
+// DERIVED FIELDS ON A BARYCENTRE. Until G45 a barycentre carried nothing derived that a save could
+// fossilise, which is why nothing stripped one — `circumbinary` (the P-type stable annulus) is the
+// first, and the stability pass rebuilds it from the pair's own orbit on every process. The list
+// exists so the SECOND one is a one-word change rather than a rediscovery of why barycentres were
+// skipped. Same contract as DERIVED_FIELDS: if it is authored, it does not belong here.
+const DERIVED_BARYCENTER_FIELDS = ['circumbinary'];
+
+function stripBarycenter(bary: Barycenter): void {
+  for (const f of DERIVED_BARYCENTER_FIELDS) delete (bary as Record<string, unknown>)[f];
 }
 
 function stripBody(body: CelestialBody, classNames: Set<string>): void {
@@ -358,13 +370,35 @@ function resolveLegacyStarClass(body: CelestialBody, pack?: RulePack): void {
   body.classes = [key, ...(body.classes ?? []).slice(1).filter((c) => c !== key)];
 }
 
+// MIGRATION (G43): a node parked at L4/L5 used to be recorded as a loose `placement` string plus a
+// `ui_parentId` and a one-off COPY of the secondary's orbit — a snapshot that silently drifted off
+// the point whenever the secondary's orbit was later edited. The structured `coOrbital` marker is
+// now the load-bearing record, and the processor re-derives the orbit from the secondary on every
+// pass (which HEALS any accumulated drift on first load). Marker-guarded and idempotent: a node
+// already carrying `coOrbital` is left alone, and the legacy `placement` string stays for display.
+// Both kinds — the bundled Uggi map ships fifteen such constructs; bodies could only reach this
+// state by hand-editing JSON, but the same record applies.
+export function migrateLagrangePlacements(system: System): void {
+  for (const node of system.nodes) {
+    if (node.kind !== 'body' && node.kind !== 'construct') continue;
+    const b = node as CelestialBody;
+    if (b.coOrbital) continue;
+    const point = lagrangePlacementId(b.placement);
+    if (!point) continue;
+    if (!b.ui_parentId) continue;   // no recorded secondary — nothing to anchor the marker to
+    b.coOrbital = { hostId: b.ui_parentId, point };
+  }
+}
+
 export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
   // RETIRED (G37): `isManuallyEdited` was written by ~20 sites and read by NONE — the G28 undo session
   // found it dead and `describeChange` had to filter it back out of every edit label. It is deleted on
   // load so it stops riding every save; nothing anywhere consumed it, so nothing can miss it.
   delete (system as { isManuallyEdited?: boolean }).isManuallyEdited;
+  migrateLagrangePlacements(system);
   for (const node of system.nodes) {
+    if (node.kind === 'barycenter') { stripBarycenter(node as Barycenter); continue; }
     if (node.kind !== 'body') continue;
     stripBody(node as CelestialBody, classNames);
     backfillGiantAtmosphere(node as CelestialBody);
@@ -394,6 +428,7 @@ export function stripSystemForExport(system: System, pack?: RulePack): System {
   const classNames = classNamesFromPack(pack);
   for (const node of clone.nodes ?? []) {
     if (node.kind === 'body') stripBody(node as CelestialBody, classNames);
+    else if (node.kind === 'barycenter') stripBarycenter(node as Barycenter);
   }
   return clone;
 }
@@ -409,6 +444,7 @@ export function stripStarmapForExport<T extends { systems?: Array<{ system?: Sys
   for (const node of clone.systems ?? []) {
     for (const body of node?.system?.nodes ?? []) {
       if ((body as CelestialBody).kind === 'body') stripBody(body as CelestialBody, classNames);
+      else if ((body as Barycenter).kind === 'barycenter') stripBarycenter(body as Barycenter);
     }
   }
   return clone;

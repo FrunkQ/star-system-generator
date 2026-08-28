@@ -23,9 +23,12 @@ function isFiniteNumber(value: unknown): value is number {
 
 function sanitizeVector2(value: unknown): Vector2 | null {
   if (!value || typeof value !== 'object') return null;
-  const v = value as { x?: unknown; y?: unknown };
+  const v = value as { x?: unknown; y?: unknown; z?: unknown };
   if (!isFiniteNumber(v.x) || !isFiniteNumber(v.y)) return null;
-  return { x: v.x, y: v.y };
+  // The height is OPTIONAL and survives if it is there. Stripping it would quietly flatten every
+  // inclined course on its way through a snapshot, which is the same fault transit itself had until
+  // 2026-08-26 — and it would do it silently, since a flat path is a perfectly valid-looking path.
+  return isFiniteNumber(v.z) ? { x: v.x, y: v.y, z: v.z } : { x: v.x, y: v.y };
 }
 
 function sanitizeSegment(segment: unknown): TransitSegment | null {
@@ -38,13 +41,30 @@ function sanitizeSegment(segment: unknown): TransitSegment | null {
   if (!sanitizeVector2(s.startState.r) || !sanitizeVector2(s.startState.v)) return null;
   if (!sanitizeVector2(s.endState.r) || !sanitizeVector2(s.endState.v)) return null;
 
-  const pathPoints = Array.isArray(s.pathPoints)
-    ? s.pathPoints.map(sanitizeVector2).filter((p): p is Vector2 => !!p)
-    : [];
+  // The points and their time stamps are ONE array in two pieces, so a point dropped for being
+  // unreadable takes its stamp with it. Letting the two lengths drift apart would not throw; every
+  // reader would quietly fall back to assuming even spacing across a segment that no longer has it,
+  // and the ship would be drawn at the wrong moment for the rest of that segment (G46).
+  const rawPoints = Array.isArray(s.pathPoints) ? s.pathPoints : [];
+  const rawTimes = Array.isArray(s.pathTimes) && s.pathTimes.length === rawPoints.length
+    ? (s.pathTimes as unknown[])
+    : null;
+  const pathPoints: Vector2[] = [];
+  const keptTimes: number[] = [];
+  for (let i = 0; i < rawPoints.length; i++) {
+    const p = sanitizeVector2(rawPoints[i]);
+    if (!p) continue;
+    pathPoints.push(p);
+    if (rawTimes) keptTimes.push(isFiniteNumber(rawTimes[i]) ? (rawTimes[i] as number) : NaN);
+  }
+  const pathTimes = rawTimes && keptTimes.length === pathPoints.length && keptTimes.every((t) => Number.isFinite(t))
+    ? keptTimes
+    : undefined;
 
   return {
     ...s,
     pathPoints,
+    pathTimes,
     warnings: Array.isArray(s.warnings) ? s.warnings.filter((w) => typeof w === 'string') : [],
     fuelUsed_kg: isFiniteNumber(s.fuelUsed_kg) ? s.fuelUsed_kg : 0
   };

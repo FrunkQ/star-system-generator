@@ -5,6 +5,7 @@
   import UnitValue from './UnitValue.svelte';
   import UnitInput from './UnitInput.svelte';
   import { getPlanetColor } from '$lib/rendering/colors';
+  import { deriveCoOrbitalOrbit, lagrangePlacementId, LAGRANGE_PLACEMENTS } from '$lib/physics/lagrange';
 
   export let system: System;
   export let construct: CelestialBody;
@@ -16,6 +17,10 @@
   
   let selectedParentId: string | undefined = undefined;
   let selectedPlacement: string | null = null;
+  // G43: which of the five points the current placement names (null for Surface / an orbit band).
+  // The orbit of a co-orbital construct is DERIVED from its secondary, so every element control
+  // below is read-only for one — this is the single predicate they all gate on.
+  $: selectedLagrangePoint = lagrangePlacementId(selectedPlacement);
   let auDistance: number = 0;
   let anomalyDeg: number = 0;
   let eccentricity = 0;
@@ -139,7 +144,9 @@
     }
     
     if (parentBody.parentId && parentBody.roleHint !== 'star') {
-      placements.push('L4', 'L5');
+      // G43 P3: all five points, not just the triangular pair. What each COSTS is physics and
+      // arrives as the flight/fuel-use tag; the editor does not judge, it just offers.
+      placements.push(...LAGRANGE_PLACEMENTS);
     }
     
     availablePlacements = placements;
@@ -271,17 +278,22 @@
         construct.orbit = { hostId: '', hostMu: 0, t0: 0, elements: { a_AU: 0, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 }};
     }
 
-    if (selectedPlacement === 'L4' || selectedPlacement === 'L5') {
+    if (selectedLagrangePoint) {
+      // G43: the structured marker is the load-bearing record — the processor re-derives the orbit
+      // from the secondary every pass. The derivation here (same shared convention) is only the
+      // instant feedback before the next process().
       construct.parentId = parentBody.parentId;
       construct.ui_parentId = parentBody.id;
-      if (parentBody.orbit) {
-        construct.orbit = JSON.parse(JSON.stringify(parentBody.orbit));
-        const baseAnomaly = parentBody.orbit.elements.M0_rad;
-        const adjustment = selectedPlacement === 'L4' ? Math.PI / 3 : -Math.PI / 3;
-        construct.orbit.elements.M0_rad = (baseAnomaly + adjustment + 2 * Math.PI) % (2 * Math.PI);
-      }
-      construct.orbit.elements.e = parentBody.orbit?.elements.e || 0; // Inherit eccentricity for L-points
+      construct.coOrbital = { hostId: parentBody.id, point: selectedLagrangePoint };
+      const grandparent = parentBody.parentId ? system.nodes.find(n => n.id === parentBody.parentId) : null;
+      const grandparentMassKg = grandparent
+        ? ((grandparent as any).kind === 'barycenter' ? (grandparent as any).effectiveMassKg : (grandparent as any).massKg) || 0
+        : 0;
+      const derived = deriveCoOrbitalOrbit(parentBody, grandparentMassKg, selectedLagrangePoint);
+      if (derived) construct.orbit = derived;
+      else if (parentBody.orbit) construct.orbit = JSON.parse(JSON.stringify(parentBody.orbit));
     } else {
+      delete construct.coOrbital;
       construct.parentId = parentBody.id;
       construct.ui_parentId = null;
       
@@ -465,7 +477,7 @@
       <div class="form-group">
         <div class="label-row">
             <label for="eccentricity">Eccentricity</label>
-            <input type="number" step="any" min="0" max="0.999" bind:value={eccentricity} on:input={handleEccentricityChange} disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5'} />
+            <input type="number" step="any" min="0" max="0.999" bind:value={eccentricity} on:input={handleEccentricityChange} disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedLagrangePoint} />
         </div>
         <input 
             type="range" 
@@ -475,14 +487,14 @@
             step="0.001" 
             bind:value={eccentricity} 
             on:input={handleEccentricityChange} 
-            disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5'} 
+            disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedLagrangePoint} 
             class="full-width-slider"
         />
       </div>
       <div class="form-group">
         <div class="label-row">
             <label for="eccentricityAngle">Arg. Periapsis (°)</label>
-            <input type="number" step="any" min="0" max="360" bind:value={eccentricityAngle} on:input={handleEccentricityAngleChange} disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5' || eccentricity === 0} />
+            <input type="number" step="any" min="0" max="360" bind:value={eccentricityAngle} on:input={handleEccentricityAngleChange} disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedLagrangePoint || eccentricity === 0} />
         </div>
         <input 
             type="range" 
@@ -492,7 +504,7 @@
             step="0.01" 
             bind:value={eccentricityAngle} 
             on:input={handleEccentricityAngleChange} 
-            disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedPlacement === 'L4' || selectedPlacement === 'L5' || eccentricity === 0} 
+            disabled={!selectedParentId || selectedPlacement === 'Surface' || selectedLagrangePoint || eccentricity === 0} 
             class="full-width-slider"
         />
       </div>

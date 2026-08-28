@@ -38,6 +38,15 @@
   // Nozzles in the model's own space, plus the size dial that applies to all of them.
   let nozzles: [number, number, number][] = [...((construct.model?.nozzles ?? []) as [number, number, number][])];
   let nozzleScale = construct.model?.nozzleScale ?? 1;
+  // A76 — THE HULL COLOUR IS THE CONSTRUCT'S OWN `icon_color`, EDITABLE FROM HERE.
+  // A material-less source (every STL, and plenty of OBJs) is painted with this: the fill, both
+  // panel-line edge shades, the matcap ramp and the base of the plated/patina livery all derive
+  // from it in buildDisplayModel. It was previously readable here but not settable, so the only
+  // way to recolour a grey STL was to leave, change the marker colour on the Basics tab, and come
+  // back — with no preview of the result on the way. It is deliberately NOT a separate hull field:
+  // one colour drives the marker, the hull and the plume dressing (the Basics tab says exactly that),
+  // and splitting them would let a ship's map marker and its hull disagree.
+  let iconHex = construct.icon_color || '#f0f0f0';
   // Livery accent: auto (derived from the ship's colour) unless the GM pins one.
   let accentAuto = !construct.model?.accentHex;
   let accentHex = construct.model?.accentHex ?? '#d8642f';
@@ -101,7 +110,7 @@
       uploadBytes = stored.bytes.byteLength;
       viewer?.setObject(parsedStored.object, {
         hadMaterials: construct.model?.hadMaterials ?? parsedStored.hadMaterials,
-        tintHex: construct.icon_color || '#ffd24d',
+        tintHex: iconHex,
         finish: finish ?? null, seed: construct.id, accentHex: accentAuto ? null : accentHex
       });
       viewer?.setOrient(orientArr);
@@ -126,7 +135,7 @@
       const stored = await parseModel('stored.glb', c.glb);
       parsed = p; converted = c;
       viewer?.setObject(stored.object, {
-        hadMaterials: p.hadMaterials, tintHex: construct.icon_color || '#ffd24d',
+        hadMaterials: p.hadMaterials, tintHex: iconHex,
         finish: finish ?? null, seed: construct.id, accentHex: accentAuto ? null : accentHex
       });
       viewer?.setOrient(orientArr);
@@ -199,17 +208,17 @@
   })();
   // Re-dress the preview whenever a look parameter changes (cheap: no re-parse, just materials).
   $: if (parsed && viewer) {
-    finish; accentAuto; accentHex;
+    finish; accentAuto; accentHex; iconHex;
     redress();
   }
   let redressKey = '';
   async function redress() {
-    const key = `${finish ?? ''}|${accentAuto ? 'auto' : accentHex}`;
+    const key = `${finish ?? ''}|${accentAuto ? 'auto' : accentHex}|${iconHex}`;
     if (!converted || key === redressKey) return;
     redressKey = key;
     const stored = await parseModel('stored.glb', converted.glb);
     viewer?.setObject(stored.object, {
-      hadMaterials: parsed!.hadMaterials, tintHex: construct.icon_color || '#ffd24d',
+      hadMaterials: parsed!.hadMaterials, tintHex: iconHex,
       finish: finish ?? null, seed: construct.id, accentHex: accentAuto ? null : accentHex
     });
     viewer?.setOrient(orientArr);
@@ -275,10 +284,10 @@
         // Nothing to store: the file is part of the app. Every viewer - GM, player, another
         // machine opening the save - resolves the same path locally, so this costs no storage,
         // no bytes in the save file and no transfer over the broadcast.
-        dispatch('save', { ...meta, url: bundledUrl } as ModelRef);
+        dispatch('save', { ref: { ...meta, url: bundledUrl } as ModelRef, iconHex });
       } else {
         const hash = await putModel(converted.glb, meta);
-        dispatch('save', { ...meta, hash } as ModelRef);
+        dispatch('save', { ref: { ...meta, hash } as ModelRef, iconHex });
       }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Could not store the model.';
@@ -404,6 +413,13 @@
                 <option value="iridescent">Iridescent</option>
                 <option value="blueprint">Blueprint</option>
               </select>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label for="mdl-hull">Hull colour</label>
+              <div class="accent-row">
+                <input id="mdl-hull" type="color" bind:value={iconHex} />
+              </div>
+              <span class="hint">This is the ship&rsquo;s colour: it paints the hull here, and its marker on the map.</span>
             </div>
             <div class="form-group" style="flex:1">
               <label for="mdl-accent">Livery accent</label>

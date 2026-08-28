@@ -1,5 +1,11 @@
 import type { CelestialBody, Barycenter, System } from '../types';
 import { stripForReprocess } from '../tags/tagLifecycle';
+import { coOrbitalHold, lagrangePlacementId } from './lagrange';
+import {
+  circumbinaryAnnulus,
+  CIRCUMBINARY_EDGE_FACTOR,
+  type CircumbinaryAnnulus
+} from './circumbinary';
 
 type OrbitalNode = CelestialBody;
 
@@ -21,6 +27,22 @@ interface StabilityAssessment {
   // orbit-crossing test had spared the pair; the host-binding test had failed it. Both were right.
   // Carrying the fate's own reason lets the verdict be printed next to its cause.
   fateReason?: string;
+  // A ONE-LINE FORM OF THAT CAUSE, for the "Driven by:" restatement (G45). B24 prints the fate's
+  // own reason after the verdict so the two cannot be read as contradicting each other, and that
+  // works while reasons are short ("Critical Hill spacing (Delta=2.31)"). The reasons in this file
+  // have since grown into full explanations — which is right, they are what a GM reads — and
+  // restating a 400-word paragraph verbatim two lines below itself is unreadable. A criterion with
+  // a long reason gives a short one here; anything that does not sets nothing and behaves exactly
+  // as before.
+  fateShort?: string;
+  // EXTRA TAG KEYS this criterion wants on the body, beyond the severity and fate keys every
+  // assessment already produces (G45). A severity says HOW BAD and a fate says WHICH WAY, but
+  // neither says BY WHAT MECHANISM — "very unstable, flung out" reads identically whether a
+  // neighbour crossed the orbit or the body sat inside a pair's forbidden hole, and those are not
+  // the same thing to a GM deciding where to put a colony. A criterion with a name worth filtering
+  // on declares it here rather than reaching past the merge. The emitter strips `stability/` on
+  // every pass, so anything named here clears with the severities.
+  tags?: string[];
 }
 
 const FATE_TEXT: Record<Fate, string> = {
@@ -79,14 +101,58 @@ function mergeAssessment(target: StabilityAssessment, incoming: StabilityAssessm
   // its own cause instead of beside whichever other test happened to speak last.
   if (incoming.severity > target.severity) {
     target.severity = incoming.severity as 0 | 1 | 2 | 3;
-    if (fateApplies) { target.fate = incoming.fate; target.fateReason = incoming.reasons[0]; }
+    if (fateApplies) {
+      target.fate = incoming.fate;
+      target.fateReason = incoming.reasons[0];
+      target.fateShort = incoming.fateShort;
+    }
   } else if (!target.fate && fateApplies) {
     target.fate = incoming.fate;
     target.fateReason = incoming.reasons[0];
+    target.fateShort = incoming.fateShort;
   }
   for (const reason of incoming.reasons) {
     if (!target.reasons.includes(reason)) target.reasons.push(reason);
   }
+  if (incoming.tags?.length) {
+    if (!target.tags) target.tags = [];
+    for (const key of incoming.tags) if (!target.tags.includes(key)) target.tags.push(key);
+  }
+}
+
+// THE HILL RADIUS THIS FILE JUDGES AGAINST, in AU, and there is now one of it (G45). It was
+// computed identically in two places — the pair-tightness test and the host-binding test — and a
+// third reader was about to arrive when the circumbinary annulus needed the same number. Two copies
+// of one quantity is the fault this codebase has most often; the annulus's outer edge and the
+// verdict a body gets there must come from the same arithmetic or they will drift.
+//
+// PERIAPSIS-BASED, deliberately: the host's grip is weakest at closest approach to ITS host, so an
+// eccentric orbit's Hill sphere is judged at periapsis. That is the conservative form and it is what
+// both callers already used.
+//
+// NOT THE ONLY HILL RADIUS IN THE ENGINE, and the difference matters to whoever draws this: the
+// overlay's sphere (`twoBodyCoast.ts`) uses the SEMI-MAJOR AXIS with no (1-e) factor, so on an
+// eccentric orbit the drawn bubble is larger than the judged one. That is a real seam, not a
+// rounding difference — recorded on the G45 row rather than changed here.
+export function hillRadiusAU(aAU: number, e: number, massKg: number, hostMassKg: number): number {
+  if (!(aAU > 0) || !(massKg > 0) || !(hostMassKg > 0)) return 0;
+  const eClamped = Math.max(0, Math.min(0.999, e));
+  return aAU * (1 - eClamped) * Math.cbrt(massKg / (3 * hostMassKg));
+}
+
+/** The combined-mass Hill radius of a PAIR within its parent's gravity, in AU. Returns 0 for a root
+ *  barycentre — nothing outside it to be stripped by, so it has no outer bound in-system. Falls back
+ *  to the members' summed mass when `effectiveMassKg` has not been reconciled yet, which is the
+ *  behaviour the pair-tightness test already had. */
+export function barycenterHillRadiusAU(
+  bary: Barycenter,
+  nodesById: Map<string, CelestialBody | Barycenter>,
+  members: Array<CelestialBody | Barycenter>
+): number {
+  if (!bary.parentId || !bary.orbit) return 0;
+  const parentMassKg = getHostMassKg(nodesById.get(bary.parentId));
+  const mBin = (bary.effectiveMassKg || 0) || members.reduce((sum, m) => sum + getHostMassKg(m), 0);
+  return hillRadiusAU(bary.orbit.elements.a_AU || 0, bary.orbit.elements.e || 0, mBin, parentMassKg);
 }
 
 const isResonanceProtected = (n: CelestialBody) => !!(n as any).resonanceProtective;
@@ -102,8 +168,13 @@ function assessPairStability(
   const outerBand = getOrbitSafetyBandAU(outer);
   if (!innerBand || !outerBand) return out;
 
+  // G43: a co-orbital pair "crosses" by construction — the crossing/spacing heuristics below do
+  // not apply to it. The structured marker is authoritative; the placement strings are the legacy
+  // form older saves still carry. P2 replaces this blanket escape with the real trojan criteria
+  // (Routh/Gascheau + regime), which judge rather than exempt.
   const coOrbitalExempt =
-    (inner.placement === 'L4' || inner.placement === 'L5' || outer.placement === 'L4' || outer.placement === 'L5');
+    !!inner.coOrbital || !!outer.coOrbital ||
+    !!lagrangePlacementId(inner.placement) || !!lagrangePlacementId(outer.placement);
 
   // 1) Orbit overlap / crossing check.
   // We attenuate by mutual inclination and mass ratio so giant planets are not
@@ -186,6 +257,160 @@ function assessPairStability(
   return out;
 }
 
+// G43 P2: judge a co-orbital (Lagrange-pinned) BODY properly, instead of merely exempting the pair
+// from the crossing tests. All criteria are reference-anchored (see physics/lagrange.ts header and
+// docs/dev/lagrange-full-citizens-design.md):
+//  - Triangular points (l4/l5): Gascheau's 1843 bound — (m1+m2+m3)^2 >= 27*(m1m2+m2m3+m3m1),
+//    collapsing to Routh's 27*mu*(1-mu) < 1 as the trojan mass vanishes (critical mu ~ 0.0385;
+//    Sun-Jupiter 0.00095 passes, Pluto-Charon 0.109 fails). A breach scatters the LIGHTER of
+//    trojan/secondary (B19), and the margin is quoted in the reason (B24).
+//  - Collinear points: saddle equilibria. A deviation at l1/l2 e-folds in roughly a SIXTEENTH of
+//    the orbital period (the small-mu rate is ~2.5n: 23 days at an Earth-like orbit — the figure
+//    every halo-orbit mission plans around); station-keeping holds a craft there, nothing holds a
+//    moon. l3's hold is far weaker still, but its drift is slow (years to centuries) and ends in a
+//    horseshoe passage rather than a scattering, so it reads Unstable rather than Very Unstable
+//    and carries no fate.
+function assessCoOrbitalStability(
+  node: CelestialBody,
+  secondary: CelestialBody | Barycenter | undefined,
+  hostMassKg: number
+): StabilityAssessment {
+  const out: StabilityAssessment = { severity: 0, reasons: [] };
+  const point = node.coOrbital?.point;
+  if (!point || !secondary || !(hostMassKg > 0)) return out;
+  const m2 = getHostMassKg(secondary);
+  const m3 = getNodeMassKg(node);
+  const secondaryName = (secondary as CelestialBody).name ?? 'its secondary';
+
+  if (point === 'l4' || point === 'l5') {
+    // ONE judgement of the trojan regime: `coOrbitalHold` also decides the construct fuel-use
+    // bucket, so a verdict here and the tag a ship wears can never disagree.
+    const margin = coOrbitalHold(point, hostMassKg, m2, m3).margin ?? Infinity;
+    if (margin < 1) {
+      out.severity = 3;
+      out.fate = 'eject';
+      out.fateNodeId = (m3 <= m2 ? node : (secondary as CelestialBody)).id;
+      out.reasons.push(
+        `${node.name} rides ${secondaryName}'s ${point.toUpperCase()} point, but the trio is too heavy for the triangular points to hold: ` +
+        `Gascheau's bound needs (M+m₂+m₃)² at least 27× the pairwise mass products, and this trio reaches only ${margin.toFixed(2)}× of that requirement — ` +
+        `the libration grows instead of damping, and the lighter member is scattered off the point`
+      );
+    } else if (margin < 1.2) {
+      out.severity = 1;
+      out.reasons.push(
+        `${node.name} sits at ${secondaryName}'s ${point.toUpperCase()} point right at the edge of the trojan regime ` +
+        `(Gascheau margin ${margin.toFixed(2)}×; below 1× the point stops holding) — stable on paper, but resonances at the boundary make real systems here chaos-prone`
+      );
+    }
+    return out;
+  }
+
+  if (point === 'l1' || point === 'l2') {
+    out.severity = 3;
+    out.fate = 'eject';
+    out.fateNodeId = node.id;
+    out.reasons.push(
+      `${point.toUpperCase()} is a saddle equilibrium: a deviation e-folds in about a sixteenth of the orbital period ` +
+      `(23 days at an Earth-like orbit), so station-keeping holds a craft here but nothing holds a moon — ` +
+      `${node.name} falls off the ${secondaryName} sun-line within a few orbits`
+    );
+    return out;
+  }
+
+  // l3
+  out.severity = 2;
+  out.reasons.push(
+    `L3 is also an unstable equilibrium, but a weak one: ${node.name} drifts off ${secondaryName}'s antipode over years to centuries ` +
+    `and slides into a horseshoe passage along the shared orbit rather than being thrown out`
+  );
+  return out;
+}
+
+// B98: A PAIR RIDING A LAGRANGE POINT. Everything above judges a SINGLE body at a point; a binary
+// trojan is a real thing - (617) Patroclus-Menoetius is two ~110 km bodies about 680 km apart
+// librating about Jupiter's L4 together - and it asks two questions instead of one.
+//
+//  1. CAN THE POINT HOLD THE PAIR? Gascheau, exactly as for a single trojan, but with the pair's
+//     COMBINED mass as m3. A pair is heavier than either of its members, so a trio that a single
+//     body would survive can fail once it is doubled - which is the whole reason to ask separately.
+//  2. CAN THE PAIR HOLD ITSELF THERE? This one has no single-body equivalent. The members orbit each
+//     other inside a Hill sphere the pair only has by virtue of sitting where it does, so a pair
+//     wider than that sphere is pulled apart by the primary and the two go their own ways. Judged at
+//     the SAME sep/Hill bands the binary-tightness test upstream uses (0.3 / 0.4 / 0.5), because it
+//     is the same physical question asked in a different place, and two answers to it would drift.
+//
+// The fate is deliberately NOT directional here (B19). When a point stops holding a pair, BOTH
+// members leave it - there is no lighter one to be thrown by a heavier one, which is the asymmetry
+// B19 exists to capture.
+function assessCoOrbitalPairStability(
+  bary: Barycenter,
+  members: CelestialBody[],
+  secondary: CelestialBody | Barycenter | undefined,
+  grandHostMassKg: number
+): StabilityAssessment {
+  const out: StabilityAssessment = { severity: 0, reasons: [] };
+  const point = bary.coOrbital?.point;
+  if (!point || !secondary || !(grandHostMassKg > 0) || members.length !== 2) return out;
+  const m2 = getHostMassKg(secondary);
+  const mPair = (bary.effectiveMassKg || 0) || members.reduce((s, m) => s + getNodeMassKg(m), 0);
+  if (!(m2 > 0) || !(mPair > 0)) return out;
+  const pairName = bary.name || 'the pair';
+  const secondaryName = (secondary as CelestialBody).name ?? 'its secondary';
+
+  // 1) The point against the pair's COMBINED mass.
+  if (point === 'l4' || point === 'l5') {
+    const margin = coOrbitalHold(point, grandHostMassKg, m2, mPair).margin ?? Infinity;
+    if (margin < 1) {
+      out.severity = 3;
+      out.fate = 'eject';
+      out.reasons.push(
+        `${pairName} rides ${secondaryName}'s ${point.toUpperCase()} as a PAIR, and their combined mass is too much for the ` +
+        `triangular point to hold: Gascheau's bound needs (M+m2+m3)^2 at least 27x the pairwise mass products, and this trio ` +
+        `reaches only ${margin.toFixed(2)}x of it. Both members leave the point together`
+      );
+    } else if (margin < 1.2) {
+      out.severity = 1;
+      out.reasons.push(
+        `${pairName} sits at ${secondaryName}'s ${point.toUpperCase()} right at the edge of the trojan regime for its ` +
+        `COMBINED mass (Gascheau margin ${margin.toFixed(2)}x; below 1x the point stops holding) - a single body of either ` +
+        `member's mass would be comfortable, the pair together is not`
+      );
+    }
+  } else {
+    out.severity = Math.max(out.severity, point === 'l3' ? 2 : 3) as 0 | 1 | 2 | 3;
+    if (point !== 'l3') { out.fate = 'eject'; }
+    out.reasons.push(
+      `${pairName} sits on ${secondaryName}'s ${point.toUpperCase()}, a saddle equilibrium with no free orbit - nothing holds ` +
+      `a body there without station-keeping, and a pair of them even less so`
+    );
+  }
+
+  // 2) The pair against the Hill sphere its position gives it.
+  const sepAU = members.reduce((s, m) => s + (m.orbit?.elements.a_AU || 0), 0);
+  const hillAU = bary.orbit
+    ? hillRadiusAU(bary.orbit.elements.a_AU || 0, bary.orbit.elements.e || 0, mPair, grandHostMassKg)
+    : 0;
+  if (sepAU > 0 && hillAU > 0) {
+    const frac = sepAU / hillAU;
+    const detail =
+      `their ${sepAU.toPrecision(3)} AU separation against the ${hillAU.toPrecision(3)} AU Hill radius the pair has at ` +
+      `${secondaryName}'s ${point.toUpperCase()} (sep/Hill=${frac.toFixed(2)})`;
+    if (frac >= 0.5) {
+      out.severity = 3;
+      if (!out.fate) out.fate = 'eject';
+      out.reasons.push(`${pairName} is too widely separated to stay a pair where it sits - ${detail}; the primary pulls the two apart and each goes its own way`);
+    } else if (frac >= 0.4) {
+      out.severity = Math.max(out.severity, 2) as 0 | 1 | 2 | 3;
+      out.reasons.push(`${pairName} is loosely bound for a pair at a Lagrange point - ${detail}`);
+    } else if (frac >= 0.3) {
+      out.severity = Math.max(out.severity, 1) as 0 | 1 | 2 | 3;
+      out.reasons.push(`${pairName} is perturbation-sensitive as a pair at this point - ${detail}`);
+    }
+  }
+
+  return out;
+}
+
 function isPrimaryBarycenterMemberPair(
   host: CelestialBody | Barycenter | undefined,
   a: CelestialBody,
@@ -222,9 +447,8 @@ function assessBinaryPairStability(
     const parent = nodesById.get(bary.parentId);
     const parentMassKg = getHostMassKg(parent);
     if (parentMassKg > 0) {
-      const aExt = bary.orbit.elements.a_AU || 0;
-      const eExt = Math.max(0, Math.min(0.999, bary.orbit.elements.e || 0));
-      const hillAU = aExt * (1 - eExt) * Math.cbrt(mBin / (3 * parentMassKg));
+      const hillAU = hillRadiusAU(
+        bary.orbit.elements.a_AU || 0, bary.orbit.elements.e || 0, mBin, parentMassKg);
       if (hillAU > 0) {
         // A binary stays bound while its (apoapsis) separation is comfortably inside the Hill radius it
         // has within its parent. Empirically a pair is safe out to ~1/3 of the Hill radius, so only flag
@@ -255,6 +479,14 @@ function assessBinaryPairStability(
         // Belts/rings are DISTRIBUTED debris, not a point-mass gravitational sibling — a barycentre
         // crossing the Kuiper Belt is normal, not a disruption (matches the main sibling loop's rule).
         if (b.roleHint === 'belt' || b.roleHint === 'ring') return false;
+        // B98: A CO-ORBITAL PAIR SHARES ITS SECONDARY'S ORBIT BY DEFINITION. A binary trojan at
+        // Jupiter's L4 has exactly Jupiter's semi-major axis, so this crossing test read it as a
+        // catastrophic overlap with a body 760 million times its mass and called a perfectly good
+        // Patroclus "very unstable". G43 P2 exempted this for a SINGLE trojan (`coOrbitalExempt` in
+        // assessPairStability) and the pair assessor never got the equivalent. The pair is still
+        // judged against the point — assessCoOrbitalPairStability does that properly, with Gascheau
+        // on the combined mass — so this is a skip of the wrong question, not of the question.
+        if (bary.coOrbital && b.id === bary.coOrbital.hostId) return false;
         return b.parentId === bary.parentId;
       }) as CelestialBody[];
 
@@ -322,6 +554,94 @@ function assessBinaryPairStability(
   return out;
 }
 
+// G45: THE INNER EDGE OF THE CIRCUMBINARY ANNULUS — the half of the story this file could not tell.
+// `assessBinaryPairStability` looks OUTWARD only (the pair against its own host's tide, the pair
+// against its siblings), and `assessHostBindingStability` gives a barycentre's child its OUTER bound
+// via the Hill check. Between them nothing spoke for the INNER bound, so a circumbinary planet
+// authored a hair outside its two suns — the single most obviously doomed placement a GM can make,
+// and one the map invites — collected no verdict at all. It does now.
+//
+// The criterion is Holman & Wiegert's critical semi-major axis; the fit, its stated validity range
+// and the two real-system checks live in physics/circumbinary.ts, which is the only place any of it
+// is written down. Three bands, and the middle one is the honest part:
+//
+//  a < a_c              Very Unstable + eject. The pair's potential is not static — it turns, twice
+//                       per binary orbit — and inside a_c that forcing pumps the orbit faster than
+//                       it can be damped until the body crosses the stars' own orbits. The close
+//                       encounter that follows almost always throws it out; occasionally it hits a
+//                       star. The body is thrown and the stars are what throw it, so the fate is
+//                       directional (B19).
+//  a_c <= a < 1.2 a_c   Marginal. H&W publish a_c as the LOWEST surviving orbit and say plainly that
+//                       instability islands sit above it at mean-motion resonances with the pair, so
+//                       a_c is a floor rather than a wall. No fate: "near the edge" is not a
+//                       prediction, and claiming one would be inventing a result the fit does not
+//                       contain.
+//  periapsis < a_c      Marginal even when a clears. H&W's particles started on CIRCULAR orbits, so
+//  (a >= a_c)           the fit strictly speaks only for those; an eccentric circumbinary orbit
+//                       whose periapsis reaches inside the hole is outside what was measured, and
+//                       saying so is better than either ignoring it or pretending a_c covers it.
+function assessCircumbinaryStability(
+  node: CelestialBody,
+  bary: Barycenter,
+  annulus: CircumbinaryAnnulus
+): StabilityAssessment {
+  const out: StabilityAssessment = { severity: 0, reasons: [] };
+
+  const aNode = node.orbit?.elements.a_AU || 0;
+  if (!(aNode > 0) || !(annulus.innerAU > 0)) return out;
+  const eNode = Math.max(0, Math.min(0.999, node.orbit?.elements.e || 0));
+  const periNode = aNode * (1 - eNode);
+
+  const pairName = bary.name || 'the pair';
+  // The fit's own caveat, printed wherever the number is: a pair outside the grid H&W sampled gets
+  // an extrapolated limit, and the reader is told rather than left to assume it was measured.
+  const fitNote = annulus.fitExtrapolated
+    ? ` (the pair's mass ratio or eccentricity sits outside the range Holman & Wiegert fitted, so this limit is extrapolated)`
+    : '';
+  const limits =
+    `${annulus.criticalRatio.toFixed(2)}x the pair's ${annulus.pairSeparationAU.toPrecision(3)} AU separation ` +
+    `(Holman & Wiegert 1999, for mass ratio ${annulus.massRatioMu.toFixed(3)} and pair eccentricity ${annulus.eccentricity.toFixed(3)})`;
+
+  if (aNode < annulus.innerAU) {
+    out.severity = 3;
+    out.fate = 'eject';
+    out.fateNodeId = node.id;
+    out.reasons.push(
+      `${node.name} orbits inside ${pairName}'s circumbinary limit: a P-type orbit only survives beyond ${limits}, ` +
+      `which puts the limit at ${annulus.innerAU.toPrecision(3)} AU, and ${node.name} sits at ${aNode.toPrecision(3)} AU — ` +
+      `${(100 * aNode / annulus.innerAU).toFixed(0)}% of it. The pair's gravity field turns twice per binary orbit rather than ` +
+      `standing still, and this close that forcing pumps the orbit until it crosses the stars themselves; ` +
+      `the encounter that follows throws ${node.name} clear of the system${fitNote}`
+    );
+    out.fateShort =
+      `${node.name} orbits inside ${pairName}'s circumbinary limit — ${aNode.toPrecision(3)} AU ` +
+      `against a ${annulus.innerAU.toPrecision(3)} AU limit`;
+    out.tags = ['stability/inside-circumbinary-limit'];
+    return out;
+  }
+
+  if (aNode < annulus.innerAU * CIRCUMBINARY_EDGE_FACTOR) {
+    out.severity = 1;
+    out.reasons.push(
+      `${node.name} clears ${pairName}'s circumbinary limit by only ${(aNode / annulus.innerAU).toFixed(2)}x — ` +
+      `beyond ${limits}, but that fit gives the LOWEST surviving orbit, not a clean wall: mean-motion resonances with the ` +
+      `pair leave unstable islands above it, so a planet this close to the edge can still be cleared out${fitNote}`
+    );
+    return out;
+  }
+
+  if (periNode < annulus.innerAU) {
+    out.severity = 1;
+    out.reasons.push(
+      `${node.name}'s orbit averages clear of ${pairName}'s circumbinary limit (${annulus.innerAU.toPrecision(3)} AU) but its ` +
+      `periapsis reaches ${periNode.toPrecision(3)} AU, inside it. The Holman & Wiegert limit was measured for bodies on ` +
+      `CIRCULAR orbits, so an eccentric one dipping into the hole is outside what the fit actually tested${fitNote}`
+    );
+  }
+
+  return out;
+}
+
 function assessHostBindingStability(
   node: CelestialBody,
   host: CelestialBody | Barycenter,
@@ -374,11 +694,8 @@ function assessHostBindingStability(
   if (grandparent && hostOrbit) {
     const grandparentMass = getHostMassKg(grandparent);
     if (grandparentMass > 0) {
-      const aHost = hostOrbit.elements.a_AU || 0;
-      const eHost = Math.max(0, Math.min(0.999, hostOrbit.elements.e || 0));
-      const periHost = aHost * (1 - eHost);
-      
-      const hillAU = periHost * Math.cbrt(hostMassKg / (3 * grandparentMass));
+      const hillAU = hillRadiusAU(
+        hostOrbit.elements.a_AU || 0, hostOrbit.elements.e || 0, hostMassKg, grandparentMass);
       const apoNode = aNode * (1 + eNode);
 
       if (hillAU > 0) {
@@ -407,6 +724,39 @@ export function annotateGravitationalStability(system: System): System {
     node.tags = stripForReprocess(node.tags, ['stability/', 'fate/']);
     delete (node as any).orbitalStability;
     delete (node as any).orbitalStabilityDetails;
+  }
+
+  // G45: PUBLISH THE CIRCUMBINARY ANNULUS ON EVERY PAIR, and do it here — before any child is
+  // judged and before any surface reads it. Both edges are derived from the pair's own orbit and its
+  // members' orbits, all of which are settled long before this pass and never rewritten by it, so
+  // this is the earliest point at which either edge is knowable. It is also the PARENT half of
+  // parent-before-child: the barycentre publishes, then its children are assessed against what it
+  // published, never the other way round.
+  //
+  // This runs over every barycentre, not only the ones with children, for two reasons: a pair with
+  // no circumbinary bodies still has an annulus a GM may want to place one in, and the per-host loop
+  // below never visits a host that has no orbiting children at all.
+  //
+  // The delete is the idempotence guard (nothing may read what a later pass writes): process,
+  // process again, and the field is rebuilt from the same inputs rather than accumulated.
+  const annulusByBary = new Map<string, CircumbinaryAnnulus>();
+  for (const node of system.nodes) {
+    if (node.kind !== 'barycenter') continue;
+    const bary = node as Barycenter;
+    delete (bary as any).circumbinary;
+    const memberIds = bary.memberIds || [];
+    if (memberIds.length !== 2) continue;   // the annulus is a TWO-body result; anything else abstains
+    // A member may itself be a BARYCENTRE — every hierarchical triple is built that way, and
+    // insisting on two bodies left Alpha Centauri, Polaris and Algol publishing nothing for their
+    // outer pair. circumbinary.ts documents the point-mass approximation that licenses it.
+    const first = nodesById.get(memberIds[0]);
+    const second = nodesById.get(memberIds[1]);
+    if (!first || !second) continue;
+    const hill = barycenterHillRadiusAU(bary, nodesById, [first, second]);
+    const annulus = circumbinaryAnnulus(first, second, hill > 0 ? hill : undefined);
+    if (!annulus) continue;
+    (bary as any).circumbinary = annulus;
+    annulusByBary.set(bary.id, annulus);
   }
 
   // Belts/rings are DISTRIBUTED mass (their massKg is a debris-density proxy, not a point
@@ -439,11 +789,51 @@ export function annotateGravitationalStability(system: System): System {
     const assessments = new Map<string, StabilityAssessment>();
     for (const n of siblings) assessments.set(n.id, { severity: 0, reasons: [] });
 
+    // B98: the PAIR rides the point, so the trio is judged with its COMBINED mass and the pair is
+    // asked whether it can hold itself together there. The verdict lands on BOTH members, which are
+    // the bodies a GM actually sees - a barycentre has no card of its own.
+    if (host && host.kind === 'barycenter' && (host as Barycenter).coOrbital) {
+      const bary = host as Barycenter;
+      const memberIds = new Set(bary.memberIds || []);
+      const members = siblings.filter((n) => memberIds.has(n.id));
+      const secondary = nodesById.get(bary.coOrbital!.hostId) as CelestialBody | Barycenter | undefined;
+      const pairVerdict = assessCoOrbitalPairStability(bary, members, secondary, getHostMassKg(grandparent));
+      if (pairVerdict.severity > 0) {
+        for (const m of members) mergeAssessment(assessments.get(m.id)!, pairVerdict, m.id);
+      }
+    }
+
     if (host) {
       for (const node of siblings) {
         const bindingAssessment = assessHostBindingStability(node, host, grandparent, hostMassKg);
         if (bindingAssessment.severity > 0) {
           mergeAssessment(assessments.get(node.id)!, bindingAssessment);
+        }
+        // G45: a NON-MEMBER child of a barycentre is a circumbinary (P-type) body, and only its
+        // outer bound has been judged so far (the Hill check inside assessHostBindingStability).
+        // Members are excluded because they are the pair — they are judged as one by
+        // assessBinaryPairStability, and a star is not in orbit around the hole it makes.
+        if (host.kind === 'barycenter' && !(host.memberIds || []).includes(node.id)) {
+          const annulus = annulusByBary.get(host.id);
+          if (annulus) {
+            const cb = assessCircumbinaryStability(node, host as Barycenter, annulus);
+            if (cb.severity > 0) mergeAssessment(assessments.get(node.id)!, cb, node.id);
+          }
+        }
+        // G43 P2: a Lagrange-pinned body gets the real co-orbital judgement (the pair heuristics
+        // below exempt marked pairs, so this is the only test that speaks for them). A triangular
+        // breach endangers BOTH members (the fate still lands only on the one B19 names); a
+        // collinear placement dooms only the body sitting on the saddle.
+        if (node.coOrbital) {
+          const secondary = nodesById.get(node.coOrbital.hostId) as CelestialBody | Barycenter | undefined;
+          const co = assessCoOrbitalStability(node, secondary, hostMassKg);
+          if (co.severity > 0) {
+            mergeAssessment(assessments.get(node.id)!, co, node.id);
+            const point = node.coOrbital.point;
+            if ((point === 'l4' || point === 'l5') && secondary && assessments.has(secondary.id)) {
+              mergeAssessment(assessments.get(secondary.id)!, co, secondary.id);
+            }
+          }
         }
       }
     }
@@ -486,8 +876,11 @@ export function annotateGravitationalStability(system: System): System {
       // test had spared the pair and the host-binding test had failed it). Only attributed when
       // there is more than one driver; with a single reason the cause is already unambiguous.
       // Some reasons already end in a full stop and some do not, so trim before adding one.
-      const cause = assessment.fateReason && assessment.reasons.length > 1
-        ? ` Driven by: ${assessment.fateReason.replace(/\.\s*$/, '')}.`
+      // Prefer the criterion's own one-liner; fall back to its full reason, which is what every
+      // pre-G45 criterion still produces and what the B24 tests pin.
+      const causeText = assessment.fateShort ?? assessment.fateReason;
+      const cause = causeText && assessment.reasons.length > 1
+        ? ` Driven by: ${causeText.replace(/\.\s*$/, '')}.`
         : '';
       const fateText = assessment.fate ? ` ${FATE_TEXT[assessment.fate]}${cause}` : '';
       (node as any).orbitalStability = label;
@@ -501,6 +894,9 @@ export function annotateGravitationalStability(system: System): System {
       const slug = label.toLowerCase().replace(/\s+/g, '-');
       node.tags.push({ key: `stability/${slug}` });
       if (assessment.fate) node.tags.push({ key: `fate/${assessment.fate}` });
+      // Mechanism tags a criterion asked for by name (G45). Severity says how bad and fate says
+      // which way; this says WHICH PHYSICS, so a GM can filter for it and a rule can test it.
+      for (const key of assessment.tags ?? []) node.tags.push({ key });
     }
   }
 

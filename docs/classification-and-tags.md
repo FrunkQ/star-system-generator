@@ -273,7 +273,7 @@ every consumer — renderers, rules, the finder — reads the override exactly a
 | `climate/*` | climate states (`runaway-greenhouse`) | (was the accrete adapter, removed v2.1.898-beta) |
 | `hazard/*` | `hazard/flaring` (an active star) and `hazard/radiation` / `hazard/orbital-radiation` (the dose, as a survival time) | star generation **and** processor (classification) |
 | `stellar/*` | `stellar/activity` (the magnetic-activity bucket every star surface reads: quiet / moderate / active / flare-star), `stellar/jets` (moderate / strong — a relativistic well, an ordered field and a power source: a fed black hole, a neutron star, a magnetar), `stellar/shedding` (wind / shell — Reimers mass loss, L·R/M: giants and supergiants, hot O stars) | processor (the star pass, before pass 0) — **both starmaps and the system view draw exactly what these say**; remove the tag and the mark goes |
-| `flight/*` | `flight/ascent` — what it costs to leave | processor (**flight dynamics, pass 4**) |
+| `flight/*` | `flight/ascent` — what it costs to leave; `flight/fuel-use` — what it costs a construct to STAY at a Lagrange point (`coasting` / `station-keeping` / `holding`) | processor (**flight dynamics, pass 4**; fuel-use in **co-orbital, pass 0c**) |
 | `tidal/*` | `tidal/hotspots` | processor (environment) |
 | `magnetic/*` | dynamo / induced / tenuous / **anomalous** / unshielded | processor (**interior, pass 2b**) |
 | `anomaly/*` | the GM's stated REASON for a pinned value | processor (**anomaly, pass 7**), from `overrides.anomalies` |
@@ -310,10 +310,13 @@ same way, from frost rather than dust — Io's sulphur dioxide, Pluto's and Trit
 | `structure/*` | icy shell, subsurface ocean, cloud decks | processor (classification) |
 | `volatiles/*` | which ices survive on the surface | processor (classification) |
 | `weather/*` | lightning, dust storms, monsoon, precipitation | processor (classification) |
+| `feature/*` | a giant's polar vortex (one tag per pole; a side count for a polygonal jet, or `round` for a plain eyed cyclone) | processor — but SEEDED, not derived: see "known fudges" on the physics page |
 | `aurora/*` · `shape/*` · `ring/*` · `resonance/*` | polar glow, rotational deformation, ring tiers, period ratios | processor |
 | `habitability/*` | habitability tier | processor (habitability) |
 | `biodiversity/*` | which pigment a world's life settled on, how much of the LAND shows life, and how far a settlement has spread | processor (classification, the surface-light pass) |
 | `stability/*` | n‑body instability risk | processor (stability) |
+| `stability/inside-circumbinary-limit` | orbits BOTH stars of a pair, but inside the P‑type critical radius (Holman & Wiegert 1999 — roughly 2–4x the pair separation, rising with the pair's eccentricity and mass ratio). Arrives with `stability/very-unstable` + `fate/eject`; the pair publishes both edges of the stable annulus as `Barycenter.circumbinary` | processor (stability) |
+| `orbit/lagrange` | this node rides a Lagrange point of another body (value: `l1`..`l5`); the orbit is DERIVED from that secondary every pass. Breached trojan regimes read as `stability/*` + `fate/*` with the Gascheau margin in the reason | processor (**co-orbital, pass 0c**) |
 | `barycenter/auto` | auto‑generated barycentre marker | barycentre reconcile |
 
 > **The live registry is `src/lib/tags/tagPresentation.ts`**, which carries every tag's label and a

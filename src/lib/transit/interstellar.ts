@@ -200,6 +200,35 @@ export function endJourneyAtSource(starmap: Starmap, journeyId: string): Starmap
 
 // Arrive: move the construct node into the destination system, re-hosted on the target body (or the
 // destination's primary star), then drop the journey.
+// A SENSIBLE ARRIVAL ORBIT, because the ship's OLD elements mean nothing around a new star.
+//
+// Arrival used to keep whatever `a_AU` the ship had in the system it left, so a ship that departed a
+// 0.002 AU moon orbit arrived 0.002 AU from a star — inside the corona — while one leaving a wide
+// orbit arrived implausibly far out. The elements were never updated because only the HOST was.
+//
+// The rule follows what the GM actually chose as the destination:
+//   a NAMED BODY  -> a high parking orbit around it, the same 4x-radius the in-system 'ho' arrival
+//                    uses, so arriving from interstellar space and arriving from next door agree.
+//   a STAR/BARYCENTRE (the default when no body was named) -> the SYSTEM EDGE, just beyond the
+//                    outermost thing orbiting it, which is where a starship decelerating into a
+//                    system actually finds itself rather than materialising among the planets.
+//   nothing to measure -> a distance scaled off the host itself, so it is at least proportionate.
+function arrivalOrbitAU(host: any, nodes: any[]): number {
+  const hostRadiusAU = ((host?.radiusKm || 0) * 1) / AU_KM;
+  const isCentral = host?.roleHint === 'star' || host?.kind === 'barycenter' || host?.parentId == null;
+  if (!isCentral && hostRadiusAU > 0) return hostRadiusAU * 4;      // high parking orbit
+  let outermost = 0;
+  for (const n of nodes) {
+    if (n?.id === host?.id || n?.parentId !== host?.id) continue;
+    const a = n?.orbit?.elements?.a_AU || 0;
+    const e = Math.max(0, Math.min(0.999, n?.orbit?.elements?.e || 0));
+    if (a > 0) outermost = Math.max(outermost, a * (1 + e));
+  }
+  if (outermost > 0) return outermost * 1.1;                        // the system edge
+  return Math.max(0.1, hostRadiusAU * 100);                         // bare star: proportionate
+}
+
+
 export function endJourneyAtDestination(starmap: Starmap, journeyId: string): Starmap {
   const journey = findJourney(starmap, journeyId);
   if (!journey) return starmap;
@@ -213,6 +242,30 @@ export function endJourneyAtDestination(starmap: Starmap, journeyId: string): St
     dest[0];
 
   const ship = clone(loc.node);
+
+  // LEAVE THE OLD SYSTEM'S SITUATION BEHIND, or the ship arrives and draws where it used to be.
+  //
+  // Re-parenting and rewriting hostId is not enough, because two of these fields OUTRANK `orbit` at
+  // render time: `worldPositions` places a construct that has journeys by its kinematics sampler,
+  // and `getGlobalState` prefers a stored vector while `flight_state` is Transit or Deep Space. Both
+  // still described the system it just left — a completed journey names bodies that are not here, and
+  // a cached vector is a position in another star's frame — so the ship rendered at the old
+  // coordinates however correct its new orbit was. `ConstructSidePanel`'s SITUATION_FIELDS comment
+  // records exactly this failure for the IMPORT path; interstellar arrival is the same move between
+  // systems and was missed. The flight LOG is deliberately kept: it is the ship's history, not its
+  // position. The autopilot goes because its route names places in the system it has left.
+  delete (ship as any).vector_position_au;
+  delete (ship as any).vector_velocity_ms;
+  delete (ship as any).vector_epoch_ms;
+  delete (ship as any).coOrbital;          // its secondary is in the other system
+  delete (ship as any).placement;          // 'L4' etc. described a body that is not here
+  delete (ship as any).ui_parentId;
+  delete (ship as any).autopilot;
+  delete (ship as any).autopilotStuckReason;
+  (ship as any).scheduled_journeys = [];
+  (ship as any).draft_transit_plan = [];
+  (ship as any).flight_state = 'Orbiting';
+
   if (host) {
     ship.parentId = host.id;
     ship.orbit = {
@@ -220,8 +273,18 @@ export function endJourneyAtDestination(starmap: Starmap, journeyId: string): St
       hostId: host.id,
       hostMu: G * (host.massKg || SOLAR_MASS_KG),
       t0: ship.orbit?.t0 ?? 0,
-      elements: ship.orbit?.elements ?? { a_AU: 0.1, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 }
+      // FRESH elements sized on the destination — never the old system's (see arrivalOrbitAU).
+      // Circular and in-plane: an arriving ship has just spent its budget matching this system, and
+      // an inherited eccentricity or inclination would be a leftover from another star's geometry.
+      elements: {
+        a_AU: arrivalOrbitAU(host, dest),
+        e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0,
+        // Spread arrivals around the circle deterministically rather than stacking every ship on
+        // the same spoke — seeded on the ship's id, so a reload puts it back in the same place.
+        M0_rad: [...String(ship.id ?? '')].reduce((h, c) => (h + c.charCodeAt(0) * 0.137) % (2 * Math.PI), 0)
+      }
     } as any;
+    delete (ship.orbit as any).n_rad_per_s;   // a pinned rate from the old system's geometry
   }
 
   const systems = starmap.systems.map((s) => {

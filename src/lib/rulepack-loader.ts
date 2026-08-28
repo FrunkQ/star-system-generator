@@ -72,28 +72,25 @@ export async function fetchAndLoadRulePack(url: string): Promise<RulePack> {
         console.warn(`Failed to load fuel definitions from ${new URL('fuel-definitions.json', baseUrl).href}: ${fuelDefinitionsResponse.statusText}`);
     }
 
-    // Fetch liquid definitions (OPTIONAL override). The built-in engine default lives in
-    // src/lib/data/liquids.json (constants.LIQUIDS); a pack only needs a liquids.json if it wants to
-    // override it. A missing file is normal — allLiquids(pack) falls back to the default — so it's not
-    // an error and must stay quiet (a 404 warn on every load reads as breakage).
-    try {
-        const liquidsResponse = await fetch(new URL('liquids.json', baseUrl).href);
-        if (liquidsResponse.ok) mainPack.liquids = await liquidsResponse.json();
-    } catch { /* no pack override — use the built-in default */ }
-
-    // Fetch biosphere look data (OPTIONAL override) — pigments, how they are chosen, and the
-    // morphology definitions. The built-in defaults live in src/lib/data/pigments.json and
-    // morphologies.json; a pack only needs this file if it wants its own. Missing is normal and
-    // must stay quiet, exactly as for liquids.json above.
-    try {
-        const bioResponse = await fetch(new URL('biospheres.json', baseUrl).href);
-        if (bioResponse.ok) {
-            const bio = await bioResponse.json();
-            if (bio.pigments) mainPack.pigments = bio.pigments;
-            if (bio.pigmentModel) mainPack.pigmentModel = bio.pigmentModel;
-            if (bio.morphologies) mainPack.morphologies = bio.morphologies;
-        }
-    } catch { /* no pack override — use the built-in defaults */ }
+    // NO PACK-LEVEL liquids.json OR biospheres.json FETCH. Removed 2026-08-26; it produced TWO GUARANTEED
+    // 404s on every single page load, which reads to a user as a broken app.
+    //
+    // The mechanism was a second way to fill fields that already have a live one, and it had never once
+    // fired: only one rule pack exists (starter-sf) and it ships NEITHER file, so `response.ok` was always
+    // false and `mainPack.liquids` / `.pigments` / `.morphologies` were never set here. Deleting it is
+    // therefore behaviour-identical, not a behaviour change.
+    //
+    // WHERE OVERRIDES ACTUALLY COME FROM, and why a pack file is the wrong home for them: a campaign's own
+    // customisations live in `starmap.rulePackOverrides` (Edit Liquids / Edit Atmospheres / Edit Biospheres
+    // write there) and are merged onto a CLONE of the pack in routes/+page.svelte — `pack.liquids` by
+    // whole-list replace, `pack.pigments` and `pack.morphologies` by list delta. That path rides the save
+    // file, so a GM's liquids travel with the campaign to every device. A pack file could not do that.
+    //
+    // The built-in defaults are src/lib/data/liquids.json, pigments.json and morphologies.json, reached
+    // through allLiquids() / allPigments() / allMorphologies(), which fall back whenever the pack field is
+    // empty — which, absent a campaign override, is always. If a pack ever genuinely needs to ship its own
+    // set, DECLARE the file in main.json and fetch only what is declared: never probe for a file that is
+    // normally absent, because the browser logs the 404 whatever the code does with it.
 
     // Fetch classification definitions (including tagVocab, planetImages etc.)
     const classificationResponse = await fetch(new URL('classification.json', baseUrl).href);

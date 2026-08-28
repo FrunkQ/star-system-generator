@@ -19,6 +19,7 @@
 // Internals are SI (metres, m/s, mu in m^3/s^2).
 
 import { AU_KM, G } from '../constants';
+import { memberSatelliteLimitAU } from './circumbinary';
 import type { System, Vector2 } from '../types';
 import { getGlobalState } from '../transit/physics';
 
@@ -139,24 +140,88 @@ const trackCache = new Map<string, CoastTrack>();
 
 interface SoiCandidate { id: string; node: any; mu: number; rHm: number }
 
-// Bodies whose Hill sphere is worth patching for. Hill radius comes from the candidate's OWN orbit (a around
-// its actual host, mass ratio to that host) — exact for single-star systems and right for S-type planets in
-// barycentric systems, where distance-to-root would be wildly off. Moons/belts/rings excluded (see header).
-function soiCandidates(system: System, rootId: string): SoiCandidate[] {
+// THE HILL RADIUS ITSELF — one formula, from the candidate's OWN orbit (a around its actual host, mass
+// ratio to that host): exact for single-star systems and right for S-type planets in barycentric systems,
+// where distance-to-root would be wildly off. Both callers below share this so the drawn bubble and the
+// handed-off boundary can never quote different numbers.
+//
+// G44: WHO COUNTS AS A CANDIDATE IS TWO DIFFERENT QUESTIONS, and they had one answer until now.
+// `includeMoons` is the whole difference, and it is deliberate in both directions — see the two wrappers.
+function hillCandidates(system: System, rootId: string, forDisplay: boolean): SoiCandidate[] {
   const out: SoiCandidate[] = [];
+  const membership = forDisplay ? pairMembership(system) : null;
   for (const n of system.nodes as any[]) {
     if (n.kind !== 'body' || n.id === rootId) continue;
-    if (n.roleHint === 'belt' || n.roleHint === 'ring' || n.roleHint === 'moon') continue;
+    if (n.roleHint === 'belt' || n.roleHint === 'ring') continue;
+    const isMoon = n.roleHint === 'moon';
+    if (!forDisplay && isMoon) continue;
     const m = n.massKg || 0;
-    if (!(m > MIN_SOI_MASS_KG)) continue;
+    // A MOON IS JUDGED GEOMETRICALLY, NOT BY THE SOI MASS BAR, and the measurement is why (G44).
+    // `MIN_SOI_MASS_KG` is roughly MERCURY's mass — it is the "big enough to bend a heliocentric
+    // coast" bar, and it excludes every major moon in the solar system: Ganymede 1.48e23, Titan
+    // 1.35e23, Luna 7.34e22, Io 8.93e22 all sit under it. Applying it to the display would draw no
+    // moon bubble at all on any bundled map, which is precisely the feature not existing.
+    // The honest question for a DISPLAYED bubble is instead "is there room outside this body for
+    // anything to orbit in" — so the Hill radius must clear the body's own surface. That is
+    // self-scaling, needs no constant, and lets Deimos have its (correctly tiny, sub-pixel) bubble
+    // while a body whose Hill sphere is inside itself gets none.
+    // B90: THE MASS BAR IS THE COAST'S QUESTION AND IT IS GONE FROM THE DISPLAY ENTIRELY.
+    // Owner, 2026-08-26, on Pluto drawing no bubble while Charon did: *"I don't think we need that
+    // low mass check now as the logic has changed - it is based on what is selected (that refines
+    // what is shown - children/siblings, etc). The mass check is redundant and getting in the way."*
+    // He is right, and the history is why it lingered: the bar predates selection scoping, when
+    // every bubble in the system drew at once and something had to keep the canvas readable. The
+    // region of interest does that job now. G44 had already replaced the bar with the geometric
+    // test - "is there room outside this body to orbit in" - but only for moons, which is exactly
+    // how a 1.3e22 kg dwarf PLANET came to be dropped while a 1.6e21 kg MOON of the same pair was
+    // kept. One rule for everything on the display side now.
+    if (!(m > 0)) continue;
+    if (!forDisplay && !isMoon && !(m > MIN_SOI_MASS_KG)) continue;
     const a_AU = n.orbit?.elements?.a_AU;
     const hostMu = n.orbit?.hostMu;
     if (!(a_AU > 0) || !(hostMu > 0)) continue;
     const mu = G * m;
-    const rHm = a_AU * AU_M * Math.cbrt(mu / (3 * hostMu));
-    if (rHm > 0) out.push({ id: n.id, node: n, mu, rHm });
+    // B91: A PAIR MEMBER'S BUBBLE IS NOT ITS HILL RADIUS ABOUT THE BARYCENTRE. That radius is a
+    // function of the member's own WOBBLE, so the body closest to the shared centre gets the
+    // smallest bubble - which inverted Pluto and Charon, giving the 8.2x heavier body a bubble 4x
+    // smaller. What a member actually holds on to is bounded by its COMPANION, which is Holman &
+    // Wiegert's S-type critical radius. Members only: everything else keeps the Hill radius, which
+    // is right for it.
+    const pair = membership?.get(n.id);
+    const sType = pair ? memberSatelliteLimitAU(n, pair) : null;
+    const rHm = sType !== null ? sType * AU_M : a_AU * AU_M * Math.cbrt(mu / (3 * hostMu));
+    if (!(rHm > 0)) continue;
+    // The geometric floor described above, now applied to EVERYTHING on the display side: a bubble
+    // that does not clear the body itself is not a place anything can orbit, so it is not drawn.
+    if (forDisplay && rHm <= (n.radiusKm || 0) * 1000) continue;
+    out.push({ id: n.id, node: n, mu, rHm });
   }
   return out;
+}
+
+/** For every body that is a MEMBER of a barycentre, the OTHER member. Two-member pairs only: a
+ *  three-way barycentre has no single companion and no S-type answer, so those keep the Hill radius.
+ *  Built once per call rather than searched per body. */
+function pairMembership(system: System): Map<string, any> {
+  const byId = new Map((system.nodes as any[]).map((n) => [n.id, n]));
+  const out = new Map<string, any>();
+  for (const n of system.nodes as any[]) {
+    if (n.kind !== 'barycenter') continue;
+    const ids: string[] = n.memberIds || [];
+    if (ids.length !== 2) continue;
+    const a = byId.get(ids[0]), b = byId.get(ids[1]);
+    if (!a || !b) continue;
+    out.set(a.id, b);
+    out.set(b.id, a);
+  }
+  return out;
+}
+
+/** Bodies the patched-conic coast HANDS OFF at. MOONS ARE EXCLUDED ON PURPOSE and must stay excluded:
+ *  a moon SOI handoff is not modelled, so admitting one here would silently change every coast in the
+ *  game rather than adding a feature. This is NOT the display list — see `hillSpheresAu` (G44). */
+function soiCandidates(system: System, rootId: string): SoiCandidate[] {
+  return hillCandidates(system, rootId, false);   // forDisplay=false: moons out, mass bar in, Hill radius
 }
 
 const LY_AU = 63241.077;
@@ -170,19 +235,26 @@ export function rootStarHillAu(massKg: number): number {
   return mSun > 0 ? SUN_GALACTIC_HILL_LY * LY_AU * Math.cbrt(mSun) : 0;
 }
 
-// Hill spheres for DISPLAY — the same candidates and radii the patched-conic coast hands off at (planets +
-// companion stars), PLUS the root star's galactic Hill limit (the system boundary). `isStar` lets the overlay
-// draw stars as a bare labelled line and planets as shaded bubbles. Radii in AU.
-export function hillSpheresAu(system: System): { id: string; rAu: number; isStar: boolean; name: string }[] {
+// Hill spheres for DISPLAY — planets, companion stars AND MOONS (G44), plus the root star's galactic Hill
+// limit (the system boundary). `isStar` lets the overlay draw stars as a bare labelled line and planets as
+// shaded bubbles; `isMoon` marks the ones the coast deliberately knows nothing about. Radii in AU.
+//
+// G44: THIS LIST IS DELIBERATELY WIDER THAN THE COAST'S. A moon's Hill sphere is a real, useful boundary
+// to SHOW — it is where a submoon could live, which is the whole point of drawing it — while remaining a
+// handoff the propagator does not model. The two questions ("what bounds this body's gravity" and "where
+// does the integrator switch frames") had one answer here until they were split; do not re-merge them.
+// The MIN_SOI_MASS_KG floor still applies: a moon below it has no bubble worth drawing.
+export function hillSpheresAu(system: System): { id: string; rAu: number; isStar: boolean; isMoon: boolean; name: string }[] {
   const root: any = system.nodes.find((n: any) => n.parentId === null || n.parentId == null);
   if (!root) return [];
-  const out = soiCandidates(system, root.id).map((c) => ({
-    id: c.id, rAu: c.rHm / AU_M, isStar: c.node.roleHint === 'star', name: c.node.name ?? ''
+  const out = hillCandidates(system, root.id, true).map((c) => ({
+    id: c.id, rAu: c.rHm / AU_M, isStar: c.node.roleHint === 'star',
+    isMoon: c.node.roleHint === 'moon', name: c.node.name ?? ''
   }));
   // The root star's own (galactic) Hill limit — the "[Star] Hill Limit" boundary. A barycentre root has no
   // single star to label; its companion stars above already carry their local Hill spheres.
   if (root.roleHint === 'star' && (root.massKg || 0) > 0) {
-    out.push({ id: root.id, rAu: rootStarHillAu(root.massKg), isStar: true, name: root.name ?? '' });
+    out.push({ id: root.id, rAu: rootStarHillAu(root.massKg), isStar: true, isMoon: false, name: root.name ?? '' });
   }
   return out;
 }

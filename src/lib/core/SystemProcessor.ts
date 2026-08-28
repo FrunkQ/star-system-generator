@@ -80,6 +80,7 @@ import { SeededRNG } from '../rng';
 import { stripForReprocess, survivesRederive, emit, canonicalTagKey } from '../tags/tagLifecycle';
 import { OVERRIDE_DEFS } from '../physics/overrides';
 import { annotateGravitationalStability } from '../physics/stability';
+import { deriveCoOrbitalOrbits, coOrbitalHold } from '../physics/lagrange';
 import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
@@ -179,6 +180,38 @@ export class SystemProcessor implements ISystemProcessor {
 
         // 0. Pass 0b: Orbital Dynamics & existing barycenters (Ensure mass/orbits are correct first)
         this.processBarycenters(processedSystem);
+
+        // 0. Pass 0c (G43): co-orbital (Lagrange) orbits — a node pinned to a secondary's L-point
+        //    gets its orbit DERIVED from that secondary's, every pass. After the barycentre passes
+        //    (which may rewrite member orbits), before physical basics (which reads orbits). This
+        //    is a SIBLING dependency the parent-before-child rule does not order; the pass resolves
+        //    chains itself (see physics/lagrange.ts).
+        deriveCoOrbitalOrbits(processedSystem);
+
+        //    The relationship is published as a tag (physics decides, tags record): one
+        //    `orbit/lagrange` per pinned node, value = the point. This pass OWNS the key and
+        //    clears it first (TAG-6), so a released trojan loses its mark. Bodies AND constructs —
+        //    a station at L1 carries the same record a trojan moon does.
+        //    A CONSTRUCT also gets what the point COSTS it (`flight/fuel-use`) — coasting at a
+        //    sound triangular point, station-keeping at a collinear one, and holding when the
+        //    trojan regime is breached and there is no equilibrium left to keep. A trojan MOON
+        //    burns nothing, so the cost tag is constructs-only. Both keys are owned and cleared
+        //    here (TAG-6). Masses are inputs at this point, so this is order-safe and idempotent.
+        for (const node of allNodes) {
+            if (node.kind !== 'body' && node.kind !== 'construct') continue;
+            const b = node as CelestialBody;
+            if (!b.tags && !b.coOrbital) continue;
+            b.tags = stripForReprocess(b.tags ?? [], ['orbit/lagrange', 'flight/fuel-use']);
+            if (!b.coOrbital) continue;
+            emit(b.tags, { key: 'orbit/lagrange', value: b.coOrbital.point });
+            if (b.kind !== 'construct') continue;
+            const secondary = allNodes.find((n) => n.id === b.coOrbital!.hostId);
+            const primary = secondary?.parentId ? allNodes.find((n) => n.id === secondary.parentId) : undefined;
+            const massOf = (n: any) => (n?.kind === 'barycenter' ? n?.effectiveMassKg : n?.massKg) || 0;
+            if (!secondary || !primary) continue;
+            const hold = coOrbitalHold(b.coOrbital.point, massOf(primary), massOf(secondary), b.massKg || 0);
+            emit(b.tags, { key: 'flight/fuel-use', value: hold.fuelUse });
+        }
 
         // 1. First Pass: Physical Basics (Orbital Period, Gravity, etc.)
         for (const node of allNodes) {
@@ -1404,10 +1437,54 @@ export class SystemProcessor implements ISystemProcessor {
         // predict from bulk params, so spawn it procedurally: most giants develop one, side count 5–8
         // (6 = the Saturn hexagon, the commonest). Deterministic on the body id so it's stable across
         // re-runs. Re-derived → strip any prior auto copy but keep a user's manual one.
+        //
+        // ONE TAG PER POLE, AND THE TWO POLES ARE NOT THE SAME PLACE.
+        //
+        // Two things vary per pole. HOW MANY cells a polar cluster settles into depends on the polar
+        // cap's size against the local deformation radius, so the counts are drawn separately —
+        // Jupiter is the measured case, Juno counting EIGHT cyclones around a central one at the
+        // north and FIVE at the south. And WHETHER the jet locks into a polygon at all is a standing
+        // Rossby wave, which needs a steady, well-organised polar jet to hold its shape; a pole that
+        // does not get one still has a cyclone, just a round one with an eye.
+        //
+        // AXIAL TILT IS WHAT DECIDES HOW ALIKE THE TWO POLES ARE, and it separates the two giants we
+        // can actually check. A barely-tilted world has near-identical hemispheres, gets the same
+        // steady forcing at both ends and tends to lock a polygon at both: Jupiter, tilted 3.1
+        // degrees, has one at each pole. A strongly tilted world drives its hemispheres through hard
+        // seasons in antiphase, and a jet being seasonally spun up and down is a poor place for a
+        // standing wave: Saturn, tilted 26.7 degrees, has a hexagon at the north and a plain eyed
+        // cyclone at the south. So the chance a pole locks a polygon falls with tilt.
+        // See `parsePolarVortexTags` for the value format and its back-compatibility.
         body.tags = stripForReprocess(body.tags, ['feature/polar-vortex']);
-        if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex') && hash01(`${body.id}|vortex`) < 0.7) {
-            const sides = [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|vsides`) * 6) % 6];
-            body.tags.push({ key: 'feature/polar-vortex', value: String(sides) });
+        if (mk.gas > 0.5 && !body.tags.some((t) => t.key === 'feature/polar-vortex')) {
+            // WHETHER THERE ARE POLAR VORTICES AT ALL IS ABOUT SPIN, not a blind roll. Converging
+            // polar jets are what a rapidly rotating envelope does, and all four of our giants have
+            // them; what stops one forming is a day too long for Coriolis to organise the flow, which
+            // is a tidally locked hot Jupiter rather than a cold fast one. (This was `hash01 < 0.7`,
+            // which left Jupiter and Neptune with no polar vortex at all - the anchors caught it.)
+            const hours = Math.abs(body.rotation_period_hours ?? 10);
+            const spin = Math.max(0, Math.min(1, (100 - hours) / 80));    // fast spinner -> certain
+            if (hash01(`${body.id}|vortex`) < spin) {
+                // HOW ALIKE THE TWO POLES ARE IS AXIAL TILT, and that is the whole discriminator.
+                // A barely-tilted world runs both hemispheres under the same steady forcing and they
+                // behave alike; a strongly tilted one drives them through hard seasons in ANTIPHASE,
+                // so what one pole does the other tends not to. Both giants we can check fall out of
+                // it: Jupiter at 3.1 degrees has a polygonal cluster at BOTH poles (Juno counted
+                // eight round a central one north, five south), and Saturn at 26.7 has a hexagonal
+                // jet north against a plain eyed cyclone south (Cassini).
+                const tiltDeg = Math.abs(body.axial_tilt_deg ?? 0) % 180;
+                const obliquity = Math.min(tiltDeg, 180 - tiltDeg);       // 0..90, how seasonal it is
+                const alike = 1 - Math.min(1, obliquity / 30);            // 1 = twin poles, 0 = opposites
+                // A polygon is a standing wave in the polar jet; most giants hold one somewhere.
+                const lead = hash01(`${body.id}|vlock`) < 0.85;
+                const follows = hash01(`${body.id}|vmatch`) < alike ? lead : !lead;
+                // The counts are drawn SEPARATELY even when both poles lock, because the cell count
+                // follows the cap size against the local deformation radius and the hemispheres are
+                // not identical - Jupiter's eight and five.
+                const sides = (salt: string) => [5, 6, 6, 6, 7, 8][Math.floor(hash01(`${body.id}|${salt}`) * 6) % 6];
+                body.tags.push({ key: 'feature/polar-vortex', value: lead ? `north ${sides('vsides')}` : 'north round' });
+                body.tags.push({ key: 'feature/polar-vortex', value: follows ? `south ${sides('vsides-s')}` : 'south round' });
+            }
         }
 
         // Ring system — DERIVED from geometry (does the body host ring children?), not hand-tagged.

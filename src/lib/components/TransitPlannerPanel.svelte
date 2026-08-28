@@ -3,8 +3,11 @@
   import type { System, CelestialBody, ID } from '$lib/types';
   import type { TransitPlan, TransitMode, Vector2, StateVector } from '$lib/transit/types';
   import { calculateTransitPlan } from '$lib/transit/calculator';
+  import { resolveConstructCurrentHostId } from '$lib/transit/scheduler';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { getOrbitOptions } from '$lib/physics/orbits';
+  import { lagrangePlacementId } from '$lib/physics/lagrange';
+  const isLagrangeOption = (id: string) => !!lagrangePlacementId(id);
   import { AU_KM } from '$lib/constants';
   import type { RulePack } from '$lib/types';
   import { get } from 'svelte/store';
@@ -20,6 +23,7 @@
   import TransitStressGraph from './TransitStressGraph.svelte';
   import BodyPicker from './BodyPicker.svelte';
   import { foreground } from '$lib/ui/foreground';
+  import { samplePathAtTime } from '$lib/transit/pathSampling';
 
   function getTcmClass(g: number): string {
       if (g > 10.0) return 'tcm-critical';
@@ -54,7 +58,12 @@
   let directBurnBrakeStartPercent: number = 90;
   let directProfileTouched = false;
   let directProfileDragging = false;
-  let arrivalMode: 'Rendezvous' | 'Flyby' = 'Rendezvous';
+  // ARRIVAL IS ONE NUMBER, NOT A MODE. Relative arrival velocity says everything the old
+  // Rendezvous/Flyby dropdown said and more: zero means match velocity and dock, anything above it
+  // is a pass at that speed. The binary was the point solution — it needed a hidden second control
+  // for the speed, and the two could disagree. `arrivalMode` survives only as a DERIVED label, so
+  // the places that still read it keep working and there is exactly one thing to set.
+  $: arrivalMode = interceptSpeed === 0 ? 'Rendezvous' : 'Flyby';
   let brakeAtArrival: boolean = true;
   let useAerobrake: boolean = true;
   let maxG: number = 1.0;
@@ -182,7 +191,7 @@
       telemetryData = [];
   }
 
-  $: brakeAtArrival = arrivalMode === 'Rendezvous';
+  $: brakeAtArrival = interceptSpeed === 0;   // stopping IS asking for zero relative velocity
   $: targetHasAtmosphere = false;
   $: canAerobrakeConstruct = currentConstructSpecs?.canAerobrake || false;
   $: canAerobrakeEffective = brakeAtArrival && targetHasAtmosphere && canAerobrakeConstruct;
@@ -212,7 +221,7 @@
       maxG = 1.0;
       maxGByPlanType = { Efficiency: 1.0, Assist: 1.0, Speed: 1.0, Complex: 1.0 };
       selectedPlanTypePreference = 'Efficiency';
-      arrivalMode = 'Rendezvous';
+      interceptSpeed = 0;            // back to dock-and-stay
       directProfileTouched = false;
       directProfileDragging = false;
       previousOriginId = originId;
@@ -238,10 +247,11 @@
   // Filter constructs/bodies for dropdowns
   // Rule: Only show "Major" targets (Stars, Planets, Barycenters, and Independent Constructs)
   // Hide Moons and things orbiting planets (users should target the planet first)
+  // NOTE the origin is NOT dropped here any more. The picker takes it as `excludeIds`, which keeps
+  // it on screen as unselectable CONTEXT when it still holds somewhere you can go - a ship at Earth
+  // is offered Luna and the ISS, and can see that is where they are. Dropping it from the list
+  // instead left those two hanging under nothing.
   $: bodies = system.nodes.filter(n => {
-      // Exclude self
-      if (n.id === originId) return false;
-
       // Always show stars & barycenters
       if (n.roleHint === 'star' || n.kind === 'barycenter') return true;
       
@@ -321,7 +331,13 @@
           if (shipNode && shipNode.kind === 'construct') {
              const engineDefs = rulePack.engineDefinitions?.entries || [];
              const fuelDefs = rulePack.fuelDefinitions?.entries || [];
-             const host = shipNode.parentId ? system.nodes.find(n => n.id === shipNode.parentId) : null;
+             // ONE RESOLVER, EVERY CALLER. This read `shipNode.parentId` directly, while the ship
+             // panel next to it asked `resolveConstructCurrentHostId` - so the two named different
+             // hosts for the same ship at the same moment ("Callisto: High Orbit" against "Jupiter:
+             // High Orbit"), and after a transit the raw parentId was simply the world it left
+             // ([[B97]]). A construct's host is where its journeys have put it at the display time.
+             const hostId = resolveConstructCurrentHostId(shipNode as CelestialBody, currentTime);
+             const host = hostId ? system.nodes.find(n => n.id === hostId) : null;
              
              // @ts-ignore
              currentConstructSpecs = calculateFullConstructSpecs(shipNode, engineDefs, fuelDefs, host);
@@ -454,18 +470,8 @@
                   directBurnBrakeStartPercent = brakeStartPercent;
               }
           }
-          if (plan.planType === 'Speed') {
-              // For Speed plans, only switch to Flyby if the plan explicitly has an intercept speed or flyby warning.
-              // Otherwise, we respect the user's manual dropdown selection.
-              const planIsFlyby = plan.interceptSpeed_ms > 0 || plan.segments.some((s) => (s.warnings || []).includes('Flyby'));
-              if (planIsFlyby) arrivalMode = 'Flyby';
-          } else {
-              // For Efficiency/Assist plans, we sync to the solver's result.
-              arrivalMode = (
-                  plan.interceptSpeed_ms > 0 ||
-                  plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
-              ) ? 'Flyby' : 'Rendezvous';
-          }
+          // (The solver's answer no longer writes back into the arrival control: the requested
+          //  velocity is the INPUT now, and the panel reports what was actually achieved instead.)
           
           dispatch('planUpdate', plan);
           
@@ -488,21 +494,16 @@
 
       // Resolve Orbit Option
       let targetOrbitRadiusKm = 0;
-      let targetOffsetAnomaly = 0;
-      let forcedParkingRadiusAu: number | undefined = undefined;
-      
+
       const selectedOpt = orbitOptions.find(o => o.id === selectedOrbitId);
       if (selectedOpt) {
           targetOrbitRadiusKm = selectedOpt.radiusKm;
-          // Lagrange offsets (relative to host planet in parent frame)
-          if (selectedOrbitId === 'l3') targetOffsetAnomaly = Math.PI; // 180 deg
-          if (selectedOrbitId === 'l4') targetOffsetAnomaly = Math.PI / 3; // +60 deg
-          if (selectedOrbitId === 'l5') targetOffsetAnomaly = -Math.PI / 3; // -60 deg
-          
-          // L1 and L2 are collinear, handled via radial offsets in the solver
-          if (selectedOrbitId === 'l1' || selectedOrbitId === 'l2') {
-              forcedParkingRadiusAu = targetOrbitRadiusKm / AU_KM;
-          }
+          // G43 P4: the L-point geometry is NOT the panel's business any more — physics/lagrange.ts
+          // owns it and the solver reads it from there. This block used to send an anomaly offset
+          // for l3/l4/l5 and, worse, the dropdown's PLANET-CENTRIC l1/l2 distance as a parking
+          // radius, which the solver then used as a HELIOCENTRIC semi-major axis: a Mars L1 plan
+          // terminated 0.007 AU from the Sun. The dropdown radius stays a display figure only.
+          if (isLagrangeOption(selectedOrbitId)) targetOrbitRadiusKm = 0;
       }
       const targetNode = system.nodes.find(n => n.id === targetId);
       const isConstructTarget = !!(targetNode && targetNode.kind === 'construct');
@@ -536,8 +537,7 @@
           shipIsp: undefined as number | undefined,
           brakeAtArrival: brakeAtArrival,
           initialState: safeInitialState,
-          parkingOrbitRadius_au: forcedParkingRadiusAu || (targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined),
-          targetOffsetAnomaly: targetOffsetAnomaly,
+          parkingOrbitRadius_au: targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined,
           // Construct rendezvous must explicitly target that construct id.
           arrivalPlacement: (isConstructTarget && arrivalMode === 'Rendezvous') ? targetId : selectedOrbitId,
           aerobrake: {
@@ -608,18 +608,8 @@
           } else if (plan.planType === 'Speed' && !directProfileDragging && brakeAtArrival && plan.brakeRatio !== undefined) {
                directBurnBrakeStartPercent = 100 - (plan.brakeRatio * 100);
           }
-          if (plan.planType === 'Speed') {
-              // For Speed plans, only switch to Flyby if the plan explicitly has an intercept speed or flyby warning.
-              // Otherwise, we respect the user's manual dropdown selection.
-              const planIsFlyby = plan.interceptSpeed_ms > 0 || plan.segments.some((s) => (s.warnings || []).includes('Flyby'));
-              if (planIsFlyby) arrivalMode = 'Flyby';
-          } else {
-              // For Efficiency/Assist plans, we sync to the solver's result.
-              arrivalMode = (
-                  plan.interceptSpeed_ms > 0 ||
-                  plan.segments.some((s) => (s.warnings || []).includes('Flyby'))
-              ) ? 'Flyby' : 'Rendezvous';
-          }
+          // (The solver's answer no longer writes back into the arrival control: the requested
+          //  velocity is the INPUT now, and the panel reports what was actually achieved instead.)
           
           dispatch('planUpdate', plan);
           
@@ -829,9 +819,9 @@
           for (const segment of activeLegObj.segments) {
               const segDuration = segment.endTime - segment.startTime;
               if (absTime >= segment.startTime && absTime <= segment.endTime && segDuration > 0) {
-                  const segProgress = (absTime - segment.startTime) / segDuration;
-                  const idx = Math.min(Math.floor(segProgress * (segment.pathPoints.length - 1)), segment.pathPoints.length - 1);
-                  pos = segment.pathPoints[idx];
+                  // Shared reader (G46): brackets by the samples' own times, so the preview marker
+                  // sits where the ship will actually be rather than at a fraction-of-count index.
+                  pos = samplePathAtTime(segment, absTime)?.position_au ?? null;
                   activeSegmentType = segment.type; 
                   break;
               }
@@ -946,6 +936,7 @@
             inline
             nodes={bodies}
             focusedId={targetId}
+            excludeIds={originId ? [originId] : []}
             emptyLabel="Select target…"
             placeholder="Search destinations…"
             colorOf={getOptionColor}
@@ -1074,13 +1065,34 @@
             </div>
         </div>
         
-        <div class="form-group checkbox-row">
-            <label for="arrival-mode">Arrival Mode</label>
-            <select id="arrival-mode" bind:value={arrivalMode} on:change={handleCalculate}>
-                <option value="Rendezvous">Brake Burn / Rendezvous</option>
-                <option value="Flyby">Flyby</option>
-            </select>
-            <label class:disabled={!canAerobrakeEffective} title={!canAerobrakeEffective ? "Requires Rendezvous to a body with atmosphere and heatshield" : "Use atmosphere to reduce braking fuel"}>
+        <div class="form-group">
+            <div class="label-row">
+                <label for="arrival-speed">Arrival velocity</label>
+                <span style="font-size: 0.85em; color: {interceptSpeed === 0 ? '#7fd6a0' : '#ff9900'};">
+                    {interceptSpeed === 0 ? 'Rendezvous — matches velocity and stays' : `Flyby — crosses at ${(interceptSpeed / 1000).toFixed(1)} km/s`}
+                </span>
+            </div>
+            <!-- ONE control, not a mode plus a hidden speed. Zero is dock; anything else is a pass,
+                 and the number is what sizes the arrival burn — to cross at v the ship shed the
+                 difference between v and its closing speed, which is where the red brake stroke
+                 begins. Defaults to zero, so the everyday case is still "go there and stop". -->
+            <div style="display:flex; align-items:center; gap:8px;">
+                <input id="arrival-speed" type="range" min="0" max="50" step="0.5"
+                    value={interceptSpeed / 1000}
+                    on:input={(e) => { interceptSpeed = Number((e.currentTarget as HTMLInputElement).value) * 1000; }}
+                    on:change={handleCalculate} style="flex:1;" />
+                <input type="number" min="0" step="0.5" style="width:5.5em;"
+                    value={interceptSpeed / 1000}
+                    on:input={(e) => { interceptSpeed = Math.max(0, Number((e.currentTarget as HTMLInputElement).value)) * 1000; }}
+                    on:change={handleCalculate} />
+                <span style="font-size: 0.85em;">km/s</span>
+            </div>
+            {#if plan && interceptSpeed > 0 && Math.abs((plan.arrivalVelocity_ms ?? 0) - interceptSpeed) > 50}
+                <div class="info-row" style="font-size: 0.78em; color: #ff9900;">
+                    Crosses at {((plan.arrivalVelocity_ms ?? 0) / 1000).toFixed(1)} km/s — the burn window is too short to shed any more.
+                </div>
+            {/if}
+            <label class:disabled={!canAerobrakeEffective} style="margin-top:6px;" title={!canAerobrakeEffective ? "Requires a zero-velocity arrival at a body with atmosphere, and a heatshield" : "Use atmosphere to reduce braking fuel"}>
                 <input type="checkbox" bind:checked={useAerobrake} disabled={!canAerobrakeEffective} on:change={handleCalculate} />
                 Aerobrake
                 {#if canAerobrakeEffective}

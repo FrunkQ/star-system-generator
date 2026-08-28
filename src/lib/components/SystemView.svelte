@@ -29,9 +29,10 @@
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
   import SaveSystemModal from './SaveSystemModal.svelte';
+  import SisterFileModal from './SisterFileModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
   import type { TransitPlan } from '$lib/transit/types';
-  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast } from '$lib/transit/scheduler';
+  import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast, needsStampedPosition } from '$lib/transit/scheduler';
 
   import { systemStore, viewportStore } from '$lib/stores';
   import { unitPrefs } from '$lib/unitPrefsStore';
@@ -46,7 +47,8 @@
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
-  import { packBundle, unpackBundle, sniffBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { packBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { classifySaveFile } from '$lib/io/classify';
   import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
   import ImportModal from './ImportModal.svelte';
@@ -60,6 +62,8 @@
   import PhysicsTraceModal from './PhysicsTraceModal.svelte';
   import AddBodyTypeModal from './AddBodyTypeModal.svelte';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
+  import { deriveCoOrbitalOrbit, maxTrojanMassKg } from '$lib/physics/lagrange';
+  import { maxCircumbinaryMassKg } from '$lib/physics/circumbinary';
   import { laplaceRadiusAU } from '$lib/generation/planet';
   import { spinProvenanceTags } from '$lib/generation/spinProvenance';
   import AppShell from './AppShell.svelte';
@@ -335,15 +339,22 @@
   // Physics "working" (Newton/Apple) panel
   let showPhysicsModal = false;
 
-  // §4c add-by-viable-type picker
+  // §4c add-by-viable-type picker. `trojan` (G43) rides along when the add came from a click
+  // inside an L4/L5 area: the body will be co-orbital with that secondary, and the picker shows
+  // the pair's trojan mass guide (guide + honest tags, never a hard block — owner Q3).
   let showAddTypeModal = false;
-  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number; ageGyr?: number; canTidallyLock?: boolean } | null = null;
+  let pendingAdd: { distAU: number; startAngle: number; hostId: string; hostMassKg: number; role: 'planet' | 'moon'; teqK: number; ageGyr?: number; canTidallyLock?: boolean;
+      trojan?: { secondaryId: string; secondaryName: string; point: 'l4' | 'l5'; maxTrojanMassKg: number };
+      circumbinary?: { pairName: string; maxMassKg: number } } | null = null;
 
   // Create Construct (Background) Modal State
   let showCreateConstructModal = false;
   let showSaveModal = false;
   let backgroundClickHost: CelestialBody | Barycenter | null = null;
   let backgroundClickPosition: { x: number, y: number } | null = null;
+  let backgroundLagrangeHit: { secondaryId: string; secondaryName: string; point: string } | null = null; // G43: click landed inside an L-zone
+  let backgroundCircumbinaryHit: { baryId: string; baryName: string } | null = null; // G45: click landed inside a pair's circumbinary ring
+  let constructInitialPlacement: string | undefined = undefined;   // G43: preselect an L-point in the add-construct modal
   let showBackgroundContextMenu = false;
   let contextMenuActionLabel = 'Add Planet Here';
   let showAddBeltOption = false;
@@ -356,13 +367,14 @@
 
   // ...
 
-  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number }>) {
-      console.log('Background Context Menu Triggered:', event.detail);
+  function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: string } | null, circumbinaryHit?: { baryId: string; baryName: string } | null }>) {
       backgroundClickHost = event.detail.dominantBody;
       backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
+      backgroundLagrangeHit = event.detail.lagrangeHit ?? null;
+      backgroundCircumbinaryHit = event.detail.circumbinaryHit ?? null;
       contextMenuX = event.detail.screenX;
       contextMenuY = event.detail.screenY;
-      
+
       showAddBeltOption = false;
       showAddRingOption = false;
 
@@ -389,6 +401,96 @@
       showSummaryContextMenu = false;
   }
 
+  // G43: the click landed inside an L4/L5 area — offer a TROJAN of that secondary. The body picker
+  // opens with the pair's trojan mass guide; the created body carries the coOrbital marker and the
+  // processor derives its orbit from the secondary every pass.
+  function handleAddTrojanFromBackground() {
+      showBackgroundContextMenu = false;
+      const hit = backgroundLagrangeHit;
+      backgroundLagrangeHit = null;
+      if (!hit || !$systemStore) return;
+      const secondary = $systemStore.nodes.find(n => n.id === hit.secondaryId) as CelestialBody | undefined;
+      const star = secondary?.parentId ? $systemStore.nodes.find(n => n.id === secondary.parentId) : null;
+      if (!secondary?.orbit || !star) return;
+      const starMassKg = ((star as any).kind === 'barycenter' ? (star as any).effectiveMassKg : (star as any).massKg) || 0;
+      const aAU = secondary.orbit.elements.a_AU || 1;
+      const probe = { id: 'probe', kind: 'body', roleHint: 'planet', parentId: star.id,
+          orbit: { hostId: star.id, elements: { a_AU: aAU, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as unknown as CelestialBody;
+      const teqK = calculateEquilibriumTemperature(probe, $systemStore.nodes, 0.3);
+      pendingAdd = {
+          distAU: aAU, startAngle: 0, hostId: star.id, hostMassKg: secondary.massKg || 0,
+          role: 'moon', teqK, ageGyr: ($systemStore as any)?.age_Gyr, canTidallyLock: undefined,
+          trojan: { secondaryId: secondary.id, secondaryName: secondary.name, point: hit.point as 'l4' | 'l5',
+                    maxTrojanMassKg: maxTrojanMassKg(starMassKg, secondary.massKg || 0) }
+      };
+      showAddTypeModal = true;
+  }
+
+  // G43: put a CONSTRUCT at whichever of the five points was clicked. All five are offered — what
+  // each costs is physics and arrives as the flight/fuel-use tag, so the menu does not judge. The
+  // modal opens on the secondary with the point preselected, and its own placement writer stamps
+  // the coOrbital marker and derives the orbit.
+  function handleAddConstructAtLagrange() {
+      showBackgroundContextMenu = false;
+      const hit = backgroundLagrangeHit;
+      backgroundLagrangeHit = null;
+      if (!hit || !$systemStore) return;
+      const secondary = $systemStore.nodes.find(n => n.id === hit.secondaryId) as CelestialBody | undefined;
+      if (!secondary) return;
+      constructHostBody = secondary;
+      constructInitialPlacement = hit.point.toUpperCase();
+      showAddConstructModal = true;
+  }
+
+  // Absolute position of any node, by walking the hierarchy and propagating each hop. Was a local
+  // closure inside handleCreateBodyFromBackground; hoisted so the circumbinary handler measures its
+  // click against the barycentre with the SAME arithmetic rather than a second copy of it.
+  function absolutePositionOf(nodeId: string): { x: number, y: number } {
+      if (!$systemStore) return { x: 0, y: 0 };
+      const node = $systemStore.nodes.find(n => n.id === nodeId);
+      if (!node || !node.parentId) return { x: 0, y: 0 };
+      const parentPos = absolutePositionOf(node.parentId);
+      let relativePos = { x: 0, y: 0 };
+      if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && (node as any).orbit) {
+          const p = propagate(node as any, currentTime);
+          if (p) relativePos = p;
+      }
+      return { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
+  }
+
+  // G45: the click landed inside a pair's drawn circumbinary ring — offer a P-type body of that
+  // pair. The host is the BARYCENTRE (which is what makes it circumbinary), the distance is measured
+  // from the barycentre, and the type picker is given a mass CEILING rather than a mass rule: the
+  // Holman & Wiegert annulus is a massless-test-particle result, so a body comparable to the pair is
+  // outside what any of this models. It is a guide the GM can switch off, like every other gate.
+  function handleAddCircumbinaryFromBackground() {
+      showBackgroundContextMenu = false;
+      const hit = backgroundCircumbinaryHit;
+      backgroundCircumbinaryHit = null;
+      if (!hit || !$systemStore) return;
+      const bary = $systemStore.nodes.find(n => n.id === hit.baryId) as Barycenter | undefined;
+      if (!bary) return;
+      const pairMassKg = bary.effectiveMassKg || 0;
+      const baryPos = absolutePositionOf(bary.id);
+      const dx = (backgroundClickPosition?.x ?? 0) - baryPos.x;
+      const dy = (backgroundClickPosition?.y ?? 0) - baryPos.y;
+      const distAU = Math.hypot(dx, dy);
+      if (!(distAU > 0)) return;
+      // A pair of STARS hosts planets; a pair of anything else hosts moons. Same question the rest of
+      // the menu asks, asked of the members rather than of a single host.
+      const members = (bary.memberIds || []).map(id => $systemStore!.nodes.find(n => n.id === id)).filter(Boolean) as CelestialBody[];
+      const role: 'planet' | 'moon' = members.some(m => m.roleHint === 'star') ? 'planet' : 'moon';
+      const probe = { id: 'probe', kind: 'body', roleHint: role, parentId: bary.id,
+          orbit: { hostId: bary.id, elements: { a_AU: distAU, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } } } as unknown as CelestialBody;
+      const teqK = calculateEquilibriumTemperature(probe, $systemStore.nodes, 0.3);
+      pendingAdd = {
+          distAU, startAngle: Math.atan2(dy, dx), hostId: bary.id, hostMassKg: pairMassKg,
+          role, teqK, ageGyr: ($systemStore as any)?.age_Gyr, canTidallyLock: undefined,
+          circumbinary: { pairName: bary.name || 'the pair', maxMassKg: maxCircumbinaryMassKg(pairMassKg) }
+      };
+      showAddTypeModal = true;
+  }
+
   function handleCreateBodyFromBackground(forceRole?: string) {
       showBackgroundContextMenu = false;
       const host = backgroundClickHost;
@@ -399,21 +501,7 @@
       let startAngle = 0;
       
       let hostPos = { x: 0, y: 0 };
-      // ... (existing calc logic) ...
-      if (host.parentId) {
-         const getAbsolutePosition = (nodeId: string): { x: number, y: number } => {
-             const node = $systemStore.nodes.find(n => n.id === nodeId);
-             if (!node || !node.parentId) return { x: 0, y: 0 };
-             const parentPos = getAbsolutePosition(node.parentId);
-             let relativePos = { x: 0, y: 0 };
-             if ((node.kind === 'body' || node.kind === 'construct') && node.orbit) {
-                 const p = propagate(node, currentTime);
-                 if (p) relativePos = p;
-             }
-             return { x: parentPos.x + relativePos.x, y: parentPos.y + relativePos.y };
-         };
-         hostPos = getAbsolutePosition(host.id);
-      }
+      if (host.parentId) hostPos = absolutePositionOf(host.id);
 
       const dx = backgroundClickPosition!.x - hostPos.x;
       const dy = backgroundClickPosition!.y - hostPos.y;
@@ -600,6 +688,37 @@
       if (!ctx || !$systemStore) return;
       const host = $systemStore.nodes.find(n => n.id === ctx.hostId);
       if (!host) return;
+
+      // G43: a trojan placement — the body is a sibling of its secondary (both orbit the star),
+      // carries the coOrbital marker, and gets its orbit from the one convention module. The
+      // process() below re-derives it every pass thereafter.
+      if (ctx.trojan) {
+          const secondary = $systemStore.nodes.find(n => n.id === ctx.trojan!.secondaryId) as CelestialBody | undefined;
+          if (!secondary) return;
+          const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
+          const starMassKg = ((host as any).kind === 'barycenter' ? (host as any).effectiveMassKg : (host as any).massKg) || 0;
+          const trojanBody: CelestialBody = {
+              id: generateId(),
+              name: `${secondary.name} ${ctx.trojan.point.toUpperCase()} Trojan`,
+              kind: 'body',
+              parentId: host.id,
+              ui_parentId: secondary.id,
+              roleHint: 'moon',
+              atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
+              hydrosphere: { coverage: 0, composition: 'water' },
+              biosphere: null,
+              classes: [],
+              ...gen,
+              tags: [...(gen.tags || [])],
+              coOrbital: { hostId: secondary.id, point: ctx.trojan.point },
+              orbit: deriveCoOrbitalOrbit(secondary, starMassKg, ctx.trojan.point) ?? undefined
+          } as CelestialBody;
+          systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, trojanBody] }, rulePack) });
+          updateFocus(trojanBody.id);
+          isEditing = true;
+          return;
+      }
+
       const siblings = $systemStore.nodes.filter(n => n.parentId === ctx.hostId);
       const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
       // Some moons are CAPTURED rogues (irregular satellites): eccentric, inclined, often retrograde —
@@ -1386,6 +1505,11 @@
     showSaveModal = true;
   }
 
+  // G42: a whole campaign (starmap) was dropped on Load System. The classified payload waits here
+  // while the sister-file modal offers open-as-campaign; the actual load runs in the root page
+  // (the campaign pipeline lives there), so confirm just hands the payload up.
+  let sisterStarmap: { doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null; name: string } | null = null;
+
   async function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
     if (!$systemStore) return;
     
@@ -1440,20 +1564,23 @@
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        // Bundle (zip) or plain JSON, decided by the magic number rather than the file name.
+        // G42: classify FIRST (bundle kind from the zip, JSON kind from shape — classify.ts), so a
+        // campaign dropped here is named in plain words instead of failing isLoadableSystem with a
+        // message about missing fields. A real system still goes through isLoadableSystem below.
         const raw = new Uint8Array(e.target?.result as ArrayBuffer);
-        let newSystem: any;
-        if (sniffBundle(raw)) {
-          const unpacked = unpackBundle(raw);
-          if (unpacked.kind !== 'system') {
-            alert('That bundle holds a whole campaign, not a single system. Load it from the starmap instead.');
-            return;
-          }
-          await importEmbeddedModels(unpacked.models).catch(() => 0);
-          newSystem = unpacked.doc;
-        } else {
-          newSystem = JSON.parse(new TextDecoder().decode(raw));
+        const classified = classifySaveFile(raw);
+        if (classified.kind === 'starmap') {
+          // Sister file: hold the already-classified payload and OFFER open-as-campaign. Nothing
+          // is loaded unless the GM confirms; closing the modal drops the payload untouched.
+          sisterStarmap = { doc: classified.doc, models: classified.models ?? null, name: file.name };
+          return;
         }
+        if (classified.kind === 'unknown') {
+          alert('This file is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
+          return;
+        }
+        if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
+        let newSystem: any = classified.doc;
         if (isLoadableSystem(newSystem)) {
           // Keep the old ID to preserve starmap link
           const oldId = $systemStore?.id;
@@ -1468,14 +1595,19 @@
           currentTime = newSystem?.epochT0 || Date.now();
           focusedBodyId = null;
         } else {
-          alert('Invalid system file: it needs an id, a name and a nodes array.');
+          // classify said 'system' (it has a nodes array), so what is missing is the id or name.
+          alert('This system file is missing its "id" or "name", so it cannot be loaded.');
         }
       } catch (err) {
-        alert('Failed to parse JSON file.');
+        // Unreadable files never reach here (classifySaveFile answers 'unknown' for them and the
+        // guard above already spoke) - this catch is the load pipeline itself failing.
+        alert(`The file loaded but could not be opened: ${(err as Error)?.message ?? err}`);
         console.error(err);
       }
     };
     reader.readAsArrayBuffer(file);
+    // Clear the picker so cancelling a sister-file modal and choosing the SAME file again re-fires.
+    input.value = '';
   }
 
   let unsubscribePanStore: () => void;
@@ -1515,8 +1647,7 @@
             if (requestingId && requestingId !== broadcastSessionId) return;
 
             if (get(systemStore)) {
-                const snapshot = computePlayerSnapshot(get(systemStore)!);
-                broadcastService.sendMessage({ type: 'SYNC_SYSTEM', payload: snapshot });
+                // No SYNC_SYSTEM here either - see the note by the retired reactive send below.
                 broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
@@ -1564,14 +1695,22 @@
       broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
   }
 
-  // Reactive Broadcast for System State (e.g. edits, generation). systemStore ticks several times a
-  // second while idle, so this MUST go through the fingerprint gate — the ~200KB snapshot only leaves
-  // when it actually changed (32 of every 33 sends used to be byte-identical).
-  $: if (browser && $systemStore) {
-      // We compute the snapshot to avoid sending GM secrets
-      const snapshot = computePlayerSnapshot($systemStore);
-      broadcastService.sendIfChanged({ type: 'SYNC_SYSTEM', payload: snapshot });
-  }
+  // SYNC_SYSTEM IS NO LONGER SENT (G51, owner's call 2026-08-27 on Q5).
+  //
+  // Nothing consumed it. The only `initReceiver` call site in the app registers `onSystemUpdate` as
+  // `() => {}`, and four places were checked before it was stopped: the SSE receiver, `/bridge`
+  // (which only ever sends REQUEST_HELLO / REQUEST_REMOTE), `vtt-integration-design.md`'s message
+  // list, and Mappadux's own `Sse2Bridge.ts` - which handles discover/announce and no per-system
+  // message at all.
+  //
+  // AND IT WAS THE WORST PAYLOAD IN THE APP: unlike the starmap path it never passed through
+  // `slimNode`, because `computePlayerSnapshot` REDACTS but does not SLIM (engine-map SYNC-2). So it
+  // published the full `scheduled_journeys` INCLUDING the dense `pathPoints` arrays that
+  // `shipRoute.ts` opens by explaining must never be broadcast - ~245 KB per send, on every
+  // `systemStore` change.
+  //
+  // The TYPE and the RECEIVER HANDLER are deliberately kept: a Foundry/Owlbear shim may reasonably
+  // expect the contract to exist, and a deleted handler fails silently where a live one does not.
 
   onDestroy(() => {
     if (browser) {
@@ -1614,8 +1753,9 @@
       if (!sys) return null;
       let changed = false;
 
-      // Reconciliation is keyed to the AUTHORITATIVE (master/actual) clock, not the display
-      // time being previewed - so scrubbing the display never rewrites saved placement.
+      // The actual/master clock is the GM's campaign checkpoint. It still drives the autopilot's
+      // run-once backstop and the flown-past trim below - but NOT arrival reconciliation, which now
+      // reads the display clock (see reconcileConstructArrival, and [[B97]]).
       const actualMs = getActualTimeMs();
 
       // C1 — a construct that has coasted BEYOND the system edge has left the local system. The edge is a
@@ -1654,10 +1794,17 @@
                     ...p,
                     segments: p.segments.map(s => {
                         let pts = s.pathPoints || [];
+                        let times = s.pathTimes;
                         if (pts.length > 3) {
-                            pts = [pts[0], pts[pts.length - 2], pts[pts.length - 1]];
+                            const keep = [0, pts.length - 2, pts.length - 1];
+                            // The STAMPS have to be pruned with the points they belong to. Keeping a
+                            // full time array against three points would make them disagree in length,
+                            // and every reader would silently fall back to assuming even spacing across
+                            // a segment whose remaining samples are anything but (G46).
+                            if (times && times.length === pts.length) times = keep.map(i => times![i]);
+                            pts = keep.map(i => pts[i]);
                         }
-                        return { ...s, pathPoints: pts };
+                        return { ...s, pathPoints: pts, ...(times ? { pathTimes: times } : {}) };
                     })
                 }));
             }
@@ -1671,7 +1818,22 @@
         }
 
         const sampled = sampleJourneyKinematicsAtTime(sys, nextNode, timeMs);
-        if (sampled) {
+        // A SAMPLE ONLY BECOMES A STAMPED VECTOR WHILE THE SHIP IS ACTUALLY FREE-FLOATING.
+        //
+        // The sampler keeps answering forever: past its last arrival it returns a LIVE PARKING ORBIT,
+        // which moves. Stamping that meant every ship that had ever arrived anywhere rewrote its own
+        // node several times a second, for the rest of the campaign - and a changed node is a changed
+        // broadcast snapshot, so a player's holo scene called setSystem (and bumped `buildGen`) about
+        // twice a second and never held still long enough for anything to finish. That is one cause
+        // with three faces the owner reported: the ship's 3D model never attached, the camera reset
+        // itself every few seconds while following, and the ship was placed at a GM instant rather
+        // than orbiting on the player's own clock.
+        //
+        // A PARKED ship does not need a vector: its ORBIT describes it, and since the heal now stores
+        // the phase as well as the radius that orbit reproduces this very sampler exactly. A ship in
+        // TRANSIT or adrift in DEEP SPACE genuinely has no orbit to describe it, and keeps the stamp.
+        const freeFloating = !!sampled && needsStampedPosition(sampled.state);
+        if (sampled && freeFloating) {
           const priorPos = nextNode.vector_position_au;
           const priorVel = nextNode.vector_velocity_ms;
           if (
@@ -1692,8 +1854,20 @@
             };
             nodeChanged = true;
           }
+        } else if (sampled) {
+          // PARKED (Orbiting / Landed / Docked). Drop the stamp and let the orbit speak. Once this has
+          // run the node stops changing, which is what lets a player's scene stand still.
+          if (nextNode.vector_position_au || nextNode.vector_epoch_ms !== undefined || nextNode.flight_state !== sampled.state) {
+            nextNode = {
+              ...nextNode,
+              vector_position_au: undefined,
+              vector_epoch_ms: undefined,
+              flight_state: sampled.state
+            };
+            nodeChanged = true;
+          }
         } else if (nextNode.vector_position_au) {
-          // No active sampled journey at this display time.
+          // No sampled journey at all at this display time.
           // Keep deep-space constructs moving inertially instead of snapping back to legacy orbit.
           if (
             nextNode.flight_state === 'Deep Space' &&
@@ -1727,9 +1901,11 @@
           nodeChanged = true;
         }
 
-        // Self-heal stale legacy placement: once master time is past a captured arrival,
-        // rewrite parentId/orbit/placement to the real host (idempotent no-op once healed).
-        const reconciled = reconcileConstructArrival(sys, nextNode, actualMs);
+        // Heal a ship still carrying the orbit it departed from, judged against DISPLAY time - the
+        // clock everyone is actually looking at. Idempotent, so this is a no-op once healed, and it
+        // counts its own repairs on the node (`placementHealCount`) so a saved file says whether
+        // anything upstream is still writing ships wrong.
+        const reconciled = reconcileConstructArrival(sys, nextNode, timeMs);
         if (reconciled !== nextNode) {
           nextNode = reconciled;
           nodeChanged = true;
@@ -2500,6 +2676,17 @@
     {#if showBackgroundContextMenu}
         <div class="context-menu" style="left: {contextMenuX}px; top: {contextMenuY}px;" on:click|stopPropagation>
             <ul>
+                {#if backgroundCircumbinaryHit}
+                    <li on:click={handleAddCircumbinaryFromBackground}>Add circumbinary body around {backgroundCircumbinaryHit.baryName}</li>
+                {/if}
+                {#if backgroundLagrangeHit}
+                    {@const lagName = backgroundLagrangeHit.secondaryName}
+                    {@const lagPt = backgroundLagrangeHit.point.toUpperCase()}
+                    <li on:click={handleAddConstructAtLagrange}>Put construct at {lagName} {lagPt}</li>
+                    {#if backgroundLagrangeHit.point === 'l4' || backgroundLagrangeHit.point === 'l5'}
+                        <li on:click={handleAddTrojanFromBackground}>Add Trojan at {lagName} {lagPt}</li>
+                    {/if}
+                {/if}
                 <li on:click={handleCreateConstructFromBackground}>Add Construct Here</li>
                 <li on:click={() => handleCreateBodyFromBackground()}>{contextMenuActionLabel}</li>
                 {#if showAddBeltOption}
@@ -2513,7 +2700,7 @@
     {/if}
 
     {#if showAddConstructModal && constructHostBody}
-      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} on:create={handleAddConstructCreated} on:close={() => showAddConstructModal = false} />
+      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} initialPlacement={constructInitialPlacement} on:create={handleAddConstructCreated} on:close={() => showAddConstructModal = false} />
     {/if}
 
     {#if showCreateConstructModal}
@@ -2526,8 +2713,13 @@
 
 
 
+    {#if sisterStarmap}
+        <SisterFileModal fileKind="starmap" context="system" fileName={sisterStarmap.name}
+            on:close={() => (sisterStarmap = null)}
+            on:confirm={() => { const p = sisterStarmap; sisterStarmap = null; if (p) dispatch('openstarmap', { doc: p.doc, models: p.models }); }} />
+    {/if}
     {#if showSaveModal}
-        <SaveSystemModal on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
+        <SaveSystemModal scope="system" subjectName={$systemStore?.name ?? ''} on:save={handleSaveSystem} on:close={() => showSaveModal = false} />
     {/if}
 
     {#if showDisengageDialog && focusedBody && focusedBody.kind === 'construct'}
@@ -2544,7 +2736,7 @@
 
     {#if showAddTypeModal && pendingAdd}
         <AddBodyTypeModal {rulePack} teqK={pendingAdd.teqK} role={pendingAdd.role} hostMassKg={pendingAdd.hostMassKg}
-            ageGyr={pendingAdd.ageGyr} canTidallyLock={pendingAdd.canTidallyLock}
+            ageGyr={pendingAdd.ageGyr} canTidallyLock={pendingAdd.canTidallyLock} trojan={pendingAdd.trojan} circumbinary={pendingAdd.circumbinary}
             on:select={placeBodyOfType} on:close={() => { showAddTypeModal = false; pendingAdd = null; }} />
     {/if}
 

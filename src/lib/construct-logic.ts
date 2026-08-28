@@ -1,6 +1,7 @@
 import type { CelestialBody, EngineDefinition, FuelDefinition, PhysicalParameters, RulePack, Systems } from './types';
 import { AU_KM, THERMAL_LIMITS } from './constants';
 import { calculateFuelMass } from './transit/physics';
+import { lagrangePlacementId } from './physics/lagrange';
 
 // Define constants
 const g0 = 9.81; // Standard gravity for ISP and g-force calcs
@@ -144,17 +145,26 @@ export function calculateFullConstructSpecs(
     } else if (construct.placement && construct.placement.startsWith('Docked')) {
         specs.orbit_string = construct.placement;
     } else {
-        if ((hostBody?.roleHint === 'star' || hostBody?.kind === 'barycenter') && construct.orbit?.elements.a_AU !== undefined) {
+        // A SEMI-MAJOR AXIS ONLY MEANS ANYTHING ABOVE THE HOST IT WAS MEASURED FROM. `hostBody` comes
+        // from the caller (four callers, and they did not agree on how to find it); `orbit.elements`
+        // comes off the node. Joining them without checking they describe the same host is what
+        // printed "Earth: Far Orbit" for a ship in a 6,500 km parking orbit - Earth's NAME beside the
+        // radius of the Sun orbit it had left months earlier, a number so large it fell past every
+        // band ([[B97]]). When the two disagree we do not know the altitude, so we do not claim one.
+        const orbitHostId = construct.orbit?.hostId ?? construct.parentId ?? null;
+        const describesThisHost = !hostBody?.id || !orbitHostId || orbitHostId === hostBody.id;
+
+        if ((hostBody?.roleHint === 'star' || hostBody?.kind === 'barycenter') && describesThisHost && construct.orbit?.elements.a_AU !== undefined) {
             placementDescription = `${construct.orbit.elements.a_AU.toFixed(2)} AU`;
         } else if (construct.placement && construct.placement.endsWith(' Orbit')) {
             placementDescription = construct.placement;
         } else if (construct.placement === 'Surface') {
-            placementDescription = 'Surface';  
-        } else if (construct.placement === 'L4' || construct.placement === 'L5') {
+            placementDescription = 'Surface';
+        } else if (lagrangePlacementId(construct.placement)) {
           placementDescription = construct.placement;
         } else if (hostBody && construct.orbit) {
           // Fallback logic to determine zone from altitude if placement is generic 'Orbit'
-          if (hostBody.orbitalBoundaries) {
+          if (hostBody.orbitalBoundaries && describesThisHost) {
               const altitudeKm = (construct.orbit.elements.a_AU * AU_KM) - (hostBody.radiusKm || 0);
               const boundaries = hostBody.orbitalBoundaries;
               if (boundaries.hasSurface && boundaries.surface && altitudeKm <= boundaries.surface.max) placementDescription = 'Surface';

@@ -3,6 +3,7 @@ import { G, AU_KM } from '../constants';
 import { getNodeColor } from '../rendering/colors';
 import { hasSolidSurface } from './makeup';
 import type { CelestialBody } from '../types';
+import { satelliteTiltRad, toParentEquator } from '../system/satelliteFrame';
 
 const TWO_PI = 2 * Math.PI;
 
@@ -523,6 +524,135 @@ export function calculateOrbitalBoundaries(planet: PlanetData, pack: RulePack): 
 // ... existing code ...
 
 // ... existing code ...
+
+/**
+ * THE RADIUS OF A NAMED PARKING ORBIT, AND THE ONLY PLACE THAT DECIDES IT.
+ *
+ * `lo` / `mo` / `ho` / `geo` are DERIVED from the body — its atmosphere sets where drag stops, its
+ * rotation sets geostationary, its mass and its host set how far its grip reaches. They are not
+ * multiples of its radius.
+ *
+ * They used to be both. `transit/scheduler.ts` carried its own table of radius multipliers, twice over
+ * (a `Record` and, ten lines from the sampler that needed it, the same four numbers as a ternary
+ * chain), while the planner panel offered the derived figures from here. So the solver aimed at one
+ * orbit and the ship parked in another. MEASURED across the Sol Expanse bodies, derived against
+ * multiplier: Earth low orbit 6,536 km against 8,282, Jupiter low 70,076 against 90,884, and Jupiter
+ * HIGH orbit 26,668,664 km against 279,644 — a factor of ninety-five. Luna, which is too small to have
+ * a high orbit at all, was being offered one at four times its own radius.
+ *
+ * Returns null for a placement that is not an orbit (a surface landing, an L-point, a dock).
+ */
+/**
+ * ELEMENTS FOR THE CIRCULAR ORBIT THAT PASSES THROUGH A GIVEN STATE, in the convention
+ * `solvePerifocal` above reads: M = M0 + n(t - t0), oriented Rz(Omega)Rx(i)Rz(omega).
+ *
+ * WHY THIS EXISTS. A ship that has arrived somewhere is described TWICE - by the sampler, which
+ * builds a parking circle on axes taken from the arrival itself so the flight and the orbit close
+ * exactly ([[B92]]), and by the elements stored on the node, which is all a player has. Storing a
+ * radius without a PHASE means the two disagree about where on that circle the ship is: right orbit,
+ * wrong point, up to a diameter apart. Feed this the state the sampler reports AT THE ARRIVAL INSTANT
+ * and the stored orbit reproduces the sampler at every later moment too.
+ *
+ * Circular by construction (e = 0), so the argument of periapsis is degenerate: omega is pinned to 0
+ * and the whole angle rides in M0, which for e = 0 is also the true anomaly and the argument of
+ * latitude. Inputs are RELATIVE to the host, in any consistent units - only directions are used.
+ * Returns null for a degenerate state (no radius to point along).
+ */
+/**
+ * THE ORBIT AS THE 3D WALK ACTUALLY WALKS IT, projected flat - parent-relative offsets in AU, one
+ * full revolution, ready to be translated to the parent and stroked.
+ *
+ * WHY THE PLAN VIEW NEEDS THIS AND ONLY FOR SOME NODES. The 2D orrery draws an orbit as an ellipse
+ * from `a`, `e` and OMEGA ALONE - the plan-view convention, and correct for anything the flat
+ * propagator also places. But a construct with journeys is NOT placed by that propagator: the orrery
+ * injects `sampleJourneyKinematicsAtTime`, which parks a ship on the plane it actually ARRIVED on and
+ * is inclination-aware. So the ship was drawn on an inclined circle while its line was drawn as a
+ * flat one, and the two only touch at two points. One of them has to give, and it cannot be the ship.
+ *
+ * Same rotation and the same satellite framing `computeWorldPositions3D` applies, so the line passes
+ * through the ship by construction rather than by agreement between two derivations.
+ */
+export function orbitPathProjected(
+  node: CelestialBody | Barycenter | { orbit: any },
+  parent: any,
+  samples = 128
+): { x: number; y: number }[] {
+  const orbit = (node as any)?.orbit;
+  if (!orbit?.elements) return [];
+  const a_AU = orbit.elements.a_AU;
+  if (!(a_AU > 0)) return [];
+
+  const aM = a_AU * AU_KM * 1000;
+  const n = orbit.n_rad_per_s ?? (orbit.hostMu > 0 ? Math.sqrt(orbit.hostMu / (aM * aM * aM)) : 0);
+  if (!(Math.abs(n) > 0)) return [];
+  const periodMs = (2 * Math.PI) / Math.abs(n) * 1000;
+  const t0 = orbit.t0 ?? 0;
+
+  const tilt = satelliteTiltRad(node, parent);
+  const out: { x: number; y: number }[] = [];
+  const scratch = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i <= samples; i++) {
+    const r = propagateState3D(node, t0 + (periodMs * i) / samples).r;
+    const f = tilt ? toParentEquator(r.x, r.y, r.z, tilt, scratch) : r;
+    out.push({ x: f.x, y: f.y });
+  }
+  return out;
+}
+
+export function circularElementsAtState(
+  rRel: { x: number; y: number; z?: number },
+  vRel: { x: number; y: number; z?: number }
+): { i_deg: number; Omega_deg: number; omega_deg: number; M0_rad: number } | null {
+  const norm = (v: { x: number; y: number; z: number }) => {
+    const m = Math.hypot(v.x, v.y, v.z);
+    return m > 1e-18 ? { x: v.x / m, y: v.y / m, z: v.z / m } : null;
+  };
+  const u = norm({ x: rRel.x, y: rRel.y, z: rRel.z ?? 0 });
+  if (!u) return null;
+
+  // The in-plane direction of travel: velocity with its radial part removed. A purely radial state
+  // leaves nothing to follow, so take the in-plane perpendicular - the same fallback the sampler uses.
+  const v = { x: vRel.x, y: vRel.y, z: vRel.z ?? 0 };
+  const radial = v.x * u.x + v.y * u.y + v.z * u.z;
+  const w = norm({ x: v.x - u.x * radial, y: v.y - u.y * radial, z: v.z - u.z * radial })
+    ?? norm({ x: -u.y, y: u.x, z: 0 })
+    ?? { x: 0, y: 0, z: 1 };
+
+  const h = norm({ x: u.y * w.z - u.z * w.y, y: u.z * w.x - u.x * w.z, z: u.x * w.y - u.y * w.x });
+  if (!h) return null;
+
+  const i = Math.acos(Math.max(-1, Math.min(1, h.z)));
+  // Ascending node, z x h. An equatorial orbit has none, and Omega is then arbitrary: take +x, which
+  // is what the 3-1-3 rotation reduces to anyway once i = 0.
+  const node = norm({ x: -h.y, y: h.x, z: 0 }) ?? { x: 1, y: 0, z: 0 };
+  const q = {
+    x: h.y * node.z - h.z * node.y,
+    y: h.z * node.x - h.x * node.z,
+    z: h.x * node.y - h.y * node.x
+  };
+  const M0 = Math.atan2(
+    u.x * q.x + u.y * q.y + u.z * q.z,
+    u.x * node.x + u.y * node.y + u.z * node.z
+  );
+  return {
+    i_deg: (i * 180) / Math.PI,
+    Omega_deg: (Math.atan2(node.y, node.x) * 180) / Math.PI,
+    omega_deg: 0,
+    M0_rad: M0
+  };
+}
+
+export function parkingOrbitRadiusKm(
+  body: CelestialBody,
+  placement: string | undefined,
+  rulePack?: RulePack,
+  system?: System
+): number | null {
+  if (!placement) return null;
+  if (placement !== 'lo' && placement !== 'mo' && placement !== 'ho' && placement !== 'geo') return null;
+  const opt = getOrbitOptions(body, rulePack ?? ({} as RulePack), system).find((o) => o.id === placement);
+  return opt && opt.radiusKm > 0 ? opt.radiusKm : null;
+}
 
 export function getOrbitOptions(body: CelestialBody, rulePack: RulePack, system?: System): { id: string, name: string, radiusKm: number, color: string, isLagrange?: boolean }[] {
     // Only for planets/moons/stars? 

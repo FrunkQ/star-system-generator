@@ -34,11 +34,23 @@ PHYSICS  ──emits──▶  TAGS (+ the body's stored physical properties)  �
 
 - **One tag, one value.** `Tag.value` is a single string holding the one datum that identifies /
   quantifies the tag. No structured data field; no delimited mini-formats beyond
-  `"<species> <bucket>"`.
+  `"<species> <bucket>"` — with the ONE amendment below.
 - **Continuous physics is BUCKETED into tag values.** Precedents: `surface/age`
   (young/moderate/old/ancient), `surface/irradiation` (low/moderate/high). Buckets read better
   for users than floats, survive hand-editing, and make GM authoring a dropdown. The emitter may
   compute precisely; it publishes the bucket.
+- **AMENDED 2026-08-27 (inbox B95): where a VISUAL must FADE on a quantity, the bucket may carry
+  the exact figure after it — `"<species> <bucket> <value>"`.** The bucket stays first and stays
+  the readable half; the number is optional and a value without one must parse exactly as before.
+  **The criterion is narrow and worth stating, because "publish the float" is normally the wrong
+  instinct:** a bucket is fine whenever the consumer makes a DECISION (draw rust or do not, call
+  this surface ancient). It fails when the consumer must RAMP, because the quantisation then
+  becomes a visible cliff at every bucket edge and, worse, at the emission threshold below the
+  lowest bucket — where the tag is not emitted at all and there is nothing left to fade against.
+  B95 is the worked example: a cloud deck at 1.5% of sky and one at 11% both read `wisps`, both were
+  republished as the bucket's 8% centre, and a giant's entire banding flipped on the difference.
+  **So: bucket for a decision, bucket-plus-figure for a ramp.** Do not read this as licence to
+  append a float to every tag — if nothing has to fade on it, the bucket alone is still right.
 - **Multiple tags may share a key** where a body legitimately has several of a thing
   (`structure/cloud-deck` once per deck). Value distinguishes them; dedupe by (key, species).
 - **Manual tags survive re-derivation.** The processor strips only its own auto tags

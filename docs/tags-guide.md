@@ -61,6 +61,45 @@ outcome genuinely is contingent: nature tries many things and the second best ca
 similar worlds around similar stars can legitimately grow different-coloured plants, and the same
 world always gives you the same answer no matter how many times you re-process it.
 
+### A tag that pins a body to another's orbit
+
+`orbit/lagrange` (value `l1`..`l5`) records that a body or construct rides one of another body's
+Lagrange points — a trojan moon at a giant's L4, a station holding at L1. The relationship is the
+authored fact; the ORBIT is derived from the secondary on every pass, so editing the planet moves
+its trojans. The physics judges the configuration rather than refusing it: a trojan too heavy for
+the pair (Gascheau's bound — for a small trojan, the secondary must stay below about 1/25 of the
+total mass) wears `stability/very-unstable` and `fate/eject` with the margin quoted in the reason,
+and a body authored at the collinear points L1/L2 is told honestly that only station-keeping holds
+anything there. The full working appears on the body's physics trace, and the physics page's
+"Lagrange points & trojans" section explains the criteria.
+
+`stability/inside-circumbinary-limit` marks a world that orbits BOTH stars of a pair but sits too
+close in. A pair does not pull steadily from one place — the field turns twice per binary orbit — and
+inside the critical radius that forcing pumps the orbit until it crosses the stars themselves, and
+the encounter throws the world out. The limit is Holman & Wiegert's 1999 fit, typically two to four
+times the gap between the stars and widening sharply with the pair's eccentricity and how evenly
+matched the two stars are; the tag comes with `stability/very-unstable` and `fate/eject`, and the
+reason quotes the limit, the mass ratio and the eccentricity it was computed from. A world that
+clears the limit by less than 1.2x reads `stability/marginal` with no fate instead — the fit gives
+the lowest surviving orbit rather than a hard wall, so "just outside" is a warning, not a sentence.
+Every barycentre publishes the ring's two edges, so the panel, the verdict and the map all quote the
+same numbers. The physics page's "Circumbinary worlds" section has the formula and the real cases.
+
+When two bodies at a Lagrange point are made into a PAIR, the marker moves to their barycentre: the
+pair rides the point and the members orbit each other. They are then judged on two things rather than
+one - Gascheau's bound against their COMBINED mass, and whether their own separation fits inside the
+Hill sphere the pair has at that point. A pair too wide for it reads `stability/very-unstable` with
+`fate/eject` on BOTH members, because when a point stops holding a pair there is no lighter member
+being thrown by a heavier one - they both leave. A real binary trojan is comfortably tight: (617)
+Patroclus and Menoetius are about 680 km apart where their Hill radius at Jupiter's L4 is some
+55,000 km.
+
+A **construct** parked at one also gets `flight/fuel-use`, which says what staying there costs it:
+*coasting* at a sound L4/L5 (a free-fall orbit holds it for nothing), *station-keeping* at L1/L2/L3
+(periodic trim burns, which is what real missions at those points budget for), or *holding* when the
+trojan regime is breached and there is no equilibrium left — the ship is thrusting continuously to
+stay somewhere the physics does not hold it.
+
 ## Categories
 
 A category is a group of related tags sharing a namespace and a colour: `faction/*`, `resource/*`,
@@ -210,6 +249,46 @@ player starmaps and the system view alike:
 They are derived, so they cannot be switched on from the renderer; the way to remove a mark is to
 remove the tag (the Tags tab), and the way to earn one is to change the numbers that derive it — feed
 the hole, or swell the star.
+
+### Writing a cloud deck by hand
+
+`structure/cloud-deck` is the one tag whose value is worth knowing in full, because it is the one GMs
+most often write themselves — a world is *supposed* to be shrouded and the physics disagrees. It reads
+`<species> <bucket> <coverage>`, one tag per deck:
+
+    structure/cloud-deck = water overcast 0.664
+
+The species is the LIQUID the deck is made of (`water`, `ammonia`, `sulfuric-acid`,
+`ammonium-hydrosulfide`, `methane`), the bucket is one of *wisps, scattered, broken, overcast, veil*,
+and the coverage is the exact share of sky the physics found. **You only need the first two.**
+`water overcast` on its own works exactly as it always has — the engine reads the bucket's typical
+coverage and draws it — and that is the form to type when you just want a cloudy world. The number is
+there for the engine's own use: it is what lets a deck that is only barely condensing fade in gently
+instead of appearing all at once, which it used to do.
+
+Decks stack by temperature, not by the order you write them: whichever species condenses hottest sits
+deepest, and the top one is the one you mostly see. A hand-written deck beats a derived one of the
+same species, so writing `water veil` on a dry world does not fight the physics — it replaces it.
+
+### Giving a gas giant a polar vortex
+
+`feature/polar-vortex` is the other tag worth writing by hand, and the other one that draws itself.
+It puts a polygonal jet at a giant's pole — Saturn's hexagon is the one everybody knows. One tag per
+pole:
+
+    feature/polar-vortex = north 6
+    feature/polar-vortex = south round
+
+A number is a polygon with that many sides (4 to 9; six is the commonest). The word `round` is a
+plain cyclone with an eye and no polygon, which is what Saturn's southern pole actually has. Leave a
+pole out entirely and it has nothing. You can also just write a bare number — `feature/polar-vortex
+= 6` — which puts the same polygon at both poles, and is what every map saved before this did.
+
+**The engine rolls these for you, and your tag always wins.** Most giants that spin fast enough get
+them; how alike the two poles are follows the world's axial tilt, because a strongly tilted planet
+runs its hemispheres through opposite seasons. That is a *rule*, not a simulation — see
+[known fudges](#) on the physics page for exactly how much of it is a roll of the dice. If you want a
+particular world hexagonal, tag it and the roll steps aside.
 
 ## Finding things
 

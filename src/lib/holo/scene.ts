@@ -177,6 +177,10 @@ export interface HoloController {
   // FOLLOWS the GM's clock: route playback against an arbitrary local clock would show traffic where
   // it is not (the owner's rule, 2026-08-08 - a scrubbing player is looking around, not tracking).
   setTransitMotion(on: boolean): void;
+  // G51: the GM's last reported instant, for a view that is NOT following. A ship is then placed by
+  // reading its route at the GM's clock rather than by being handed a stamped position - the same
+  // answer, at zero bytes. Null (the default, and the GM's own view) keeps the stamped-vector path.
+  setGmClock(ms: number | null): void;
   resetView(): void;
   resize(w: number, h: number): void;
   dispose(): void;
@@ -2848,15 +2852,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * display clock like every body.
    */
   function shipClock(node: any): number {
-    if (transitMotion) {
+    const at = routeClock();
+    if (at !== null) {
       const r = routeOf(node);
-      if (r && timeMs >= r.s && timeMs <= r.e) return timeMs;
+      if (r && at >= r.s && at <= r.e) return at;
     }
     const stamp = node?.vector_epoch_ms;
     return Number.isFinite(stamp) ? stamp : timeMs;
   }
-  let _burnCache = { id: '', atMs: -Infinity, braking: false, thrust01: 0 };
-  function shipBurnState(id: string): { braking: boolean; thrust01: number } {
+  type SceneBurn = { braking: boolean; thrust01: number; thrusting: boolean; thrustDir?: { x: number; y: number } };
+  let _burnCache: SceneBurn & { id: string; atMs: number } =
+    { id: '', atMs: -Infinity, braking: false, thrust01: 0, thrusting: false };
+  function shipBurnState(id: string): SceneBurn {
     const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (_burnCache.id === id && now - _burnCache.atMs < 250) return _burnCache;
     const node = currentSystem?.nodes.find((n) => n.id === id) as any;
@@ -2866,7 +2873,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const burn = shipBurnAt(node, shipClock(node));
     const cap = Math.max(0.01, shipCapability?.[id]?.accelMs2 ?? FULL_PLUME_MS2);
     const thrust01 = burn.thrusting && burn.accelMs2 > BRAKE_ACCEL_MS2 ? Math.min(1, burn.accelMs2 / cap) : 0;
-    _burnCache = { id, atMs: now, braking: burn.braking && thrust01 > 0, thrust01 };
+    _burnCache = {
+      id, atMs: now, braking: burn.braking && thrust01 > 0, thrust01,
+      // Aim by the published thrust vector only while the drive is actually doing something; a
+      // sub-threshold puff keeps the course heading rather than snapping the hull about.
+      thrusting: thrust01 > 0,
+      thrustDir: thrust01 > 0 ? burn.thrustDir : undefined
+    };
     return _burnCache;
   }
 
@@ -3099,7 +3112,34 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // The braking negate composes on top: a torch ship brakes engines-first either way.
           let heading = false;
           const rl = routeLines.length ? routeLines.find((x) => x.id === b.id) : undefined;
-          if (rl) {
+          // WHILE THE ENGINES ARE LIT, THE NOSE GOES ON THE THRUST - not on the course.
+          //
+          // Owner, 2026-08-26: orientation "is ONLY important when the engines are firing", and then it
+          // should be "pointing in direction of desired vector". Those are different vectors: a burn's
+          // Delta-v is what CHANGES the velocity, so it sits at an angle to it, and a departure burn can
+          // be well off the course line. The route tangent below is the right answer for a coasting ship
+          // and an approximation for a burning one; the flip for a brake is that approximation's crude
+          // half. The solver now publishes the direction it sized the burn from (`thrustDir`), so where
+          // it is present the nose goes exactly there and the brake flip is not needed - retrograde is
+          // simply what a braking Delta-v already points.
+          //
+          // Converted by finite difference THROUGH `positionToScene`, like the tangent, because the
+          // radial compression bends directions and a world-space vector is not a scene-space one.
+          let thrustAimed = false;
+          if (rl && burn.thrusting && burn.thrustDir) {
+            const sc = shipClock(rl.node);
+            const here = routeStateAt(rl.route, Math.min(rl.route.e, Math.max(rl.route.s, sc)));
+            if (here) {
+              const step = Math.max(1e-9, Math.hypot(here.x, here.y) * 1e-3);
+              positionToScene(
+                { x: here.x + burn.thrustDir.x * step, y: here.y + burn.thrustDir.y * step, z: here.z ?? 0 },
+                _shipLook
+              );
+              _shipDelta.copy(_shipLook).sub(positionToScene(here, _shipTan));
+              thrustAimed = heading = _shipDelta.lengthSq() > 0;
+            }
+          }
+          if (rl && !thrustAimed) {
             const sc = shipClock(rl.node);
             if (sc >= rl.route.s && sc <= rl.route.e) {
               // Tangent by central difference on the SAME curve the line draws, through the live
@@ -3115,7 +3155,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             }
           }
           if (heading || (!rebased && _shipDelta.lengthSq() > moveEps)) {
-            if (burn.braking) _shipDelta.negate();
+            // The published thrust direction already points the right way; the flip is only for the
+            // course-tangent fallback, which does not know a brake from a burn.
+            if (burn.braking && !thrustAimed) _shipDelta.negate();
             _shipDelta.multiplyScalar(b.noseSign ?? 1);
             b.shipModel.lookAt(_shipLook.copy(b.mesh.position).add(_shipDelta));
           }
@@ -3622,6 +3664,79 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // `window.__rebuildDebug = true` adds the payload hash, which is the only thing that can say a
   // re-cloned snapshot was byte-identical — deliberately OPT-IN, because hashing a several-hundred-KB
   // system at 12 Hz is the very cost class this item is chasing (never let the meter add it).
+  // B94 — A SHIP MOVING IS NOT A REASON TO REBUILD THE WORLD.
+  //
+  // Measured on the owner's repro (2026-08-27): with the clock running and a player following,
+  // `holo.setSystem` fired 61 times in a couple of minutes, 59 of them for a system whose id had
+  // not changed, at ~103 ms and a whole scene's worth of geometry and textures each. The heap went
+  // 120 MB → 3.3 GB and took the GM window down with it. The `whyChanged` diagnostic named what
+  // actually differed between those payloads, and it was always the same three fields on a
+  // construct in flight: position, velocity and the epoch they were stamped at.
+  //
+  // Those three are the ONLY thing this skips, and it fails open: any other difference anywhere
+  // — a body, an orbit, a tag, a construct's route or burns or flight_state, a node appearing or
+  // leaving — falls straight through to the full rebuild. Missing a rebuild that was needed is a far
+  // worse bug than doing one that was not, so the comparison is deliberately conservative.
+  //
+  // WHY UPDATING IN PLACE IS ENOUGH: `updatePositions()` reads `currentSystem` LIVE on every frame
+  // (via computeWorldPositions3D), and worldPositions takes a construct's place from
+  // `vector_position_au`. So writing the new vectors onto the system the scene already holds moves
+  // the ships on the very next frame, with nothing rebuilt and nothing allocated.
+  //
+  // COST: a short-circuiting structural walk that stops at the first real difference. On a system
+  // of a few dozen nodes that is microseconds against the 103 ms rebuild it replaces, and it is
+  // skipped entirely once a difference is found.
+  const FLIGHT_VECTOR_KEYS = new Set(['vector_position_au', 'vector_velocity_ms', 'vector_epoch_ms']);
+
+  function sameExcept(a: any, b: any, skip: Set<string> | null): boolean {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return a === b;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) if (!sameExcept(a[i], b[i], null)) return false;
+      return true;
+    }
+    const ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (const k of ka) {
+      if (skip && skip.has(k)) continue;
+      if (!(k in b)) return false;
+      if (!sameExcept(a[k], b[k], null)) return false;
+    }
+    return true;
+  }
+
+  /** True when the ONLY differences are flight vectors on constructs. */
+  function onlyFlightVectorsDiffer(cur: System, next: System): boolean {
+    const an: any[] = (cur as any).nodes ?? [], bn: any[] = (next as any).nodes ?? [];
+    if (an.length !== bn.length) return false;
+    if (!sameExcept({ ...(cur as any), nodes: null }, { ...(next as any), nodes: null }, null)) return false;
+    let moved = false;
+    for (let i = 0; i < an.length; i++) {
+      const x = an[i], y = bn[i];
+      if (!x || !y || x.id !== y.id) return false;
+      const isConstruct = x.kind === 'construct' && y.kind === 'construct';
+      if (!sameExcept(x, y, isConstruct ? FLIGHT_VECTOR_KEYS : null)) return false;
+      if (isConstruct && !moved) {
+        for (const k of FLIGHT_VECTOR_KEYS) if (!sameExcept(x[k], y[k], null)) { moved = true; break; }
+      }
+    }
+    return moved; // nothing moved at all = let the normal path handle it
+  }
+
+  /** Copy the new flight vectors onto the system the scene already holds. */
+  function applyFlightVectors(cur: System, next: System) {
+    const an: any[] = (cur as any).nodes ?? [], bn: any[] = (next as any).nodes ?? [];
+    for (let i = 0; i < an.length; i++) {
+      if (an[i]?.kind !== 'construct') continue;
+      for (const k of FLIGHT_VECTOR_KEYS) {
+        if (k in bn[i]) an[i][k] = bn[i][k];
+        else delete an[i][k];
+      }
+    }
+  }
+
   let _lastSysHash: string | null = null;
   function setSystem(system: System | null, reason = 'unknown') {
     const t0 = performance.now();
@@ -3647,6 +3762,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         _lastSysHash = hash;
       } catch { /* a cyclic or huge payload must not break the render path */ }
       hashMs = Math.round(performance.now() - h0);
+    }
+    // B94: motion-only update — move the ships, leave the world standing.
+    if (system && currentSystem && onlyFlightVectorsDiffer(currentSystem, system)) {
+      applyFlightVectors(currentSystem, system);
+      updatePositions();
+      perfCount('holo.setSystem.motionOnly');
+      perfEvent('holo.setSystem', {
+        reason, sameRef, sameId, motionOnly: true,
+        ms: Math.round(performance.now() - t0),
+        nodes: system.nodes?.length ?? 0
+      });
+      return;
     }
     setSystemBuild(system);
     const ms = Math.round(performance.now() - t0);
@@ -3702,7 +3829,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const isSystemLevel = (n: any) => n.parentId === rootId || rootBaryIds.has(n.parentId);
 
     const baryRingPending: any[] = [];
-    const pos0 = computeWorldPositions3D(system, timeMs, transitMotion ? routeSampler : undefined);
+    const pos0 = computeWorldPositions3D(system, timeMs, routeSampler);
     rMax = 0;
     for (const p of pos0.values()) rMax = Math.max(rMax, Math.hypot(p.x, p.y, p.z));
     if (rMax <= 0) rMax = 1;
@@ -3749,8 +3876,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         contentGroup.add(line);
         routeLines.push({ id: node.id, obj: line, route, node, abs: new Float64Array(2048 * 3), count: 0 });
       }
-      const isJourneying = route !== null;
-      if (node.orbit && !isJourneying) {
+      // A SHIP IS OFF ITS ORBIT WHILE IT IS FLYING - NOT FOR EVER AFTERWARDS. This used to omit the
+      // ring at BUILD time for any construct that HAD a route at all, and a route survives its own
+      // journey: `routeOf` packs the path whether or not the ship is still on it. So a ship that had
+      // finished a course - a completed orbit change, say - drew no orbit line for the rest of the
+      // campaign, which is what the owner reported as "parked in low orbit but does not have an orbit
+      // line". Build the ring whenever there is an orbit to draw and decide per FRAME whether the ship
+      // is currently on it, exactly as the surface lock beside it in `updateOrbitRings` already does -
+      // the state is live (a ship departs and arrives while the scene stands), so the test must be too.
+      if (node.orbit) {
         if (node.parentId && nodesById.get(node.parentId)?.kind === 'barycenter') {
           // A member orbits the PAIR's common point, not the star. Deferred: the clearance that holds the
           // pair apart needs the PARTNER's rendered radius, and that is only known once every body exists.
@@ -4136,28 +4270,67 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     emitRouteLines(camera.position.distanceTo(controls.target));
   }
 
-  // TRANSIT MOTION (follow-GM only). When on, transiting constructs are placed by evaluating their
-  // published route at the display clock - the position half of the route line, so a moving ship
-  // sits exactly ON its drawn course by construction. The gate is the SAMPLER, not the data: a
-  // free-scrubbing player passes no sampler and a transiting ship holds its GM-stamped truth,
-  // because scrubbing is for looking around, not for replaying live traffic against a clock the GM
-  // does not control (the owner's rule, 2026-08-08 - the player-setup disclaimer says exactly this).
-  // Null outside the route's window, so departure and arrival fall back to the stamped vector.
+  // WHICH CLOCK PLACES A SHIP ON ITS ROUTE - and it is a CLOCK now, not an on/off gate (G51).
+  //
+  // A transiting construct is placed by evaluating its published route: the position half of the
+  // route line, so a moving ship sits exactly ON its drawn course by construction. The only question
+  // is WHEN to evaluate it, and there are three honest answers:
+  //
+  //   a PLAYER view      -> ITS OWN display clock, following the GM or not (G51 Q6, owner
+  //                         2026-08-27: "a non-following player view should see a ship move").
+  //   no GM clock known  -> null: fall back to the stamped vector. This is the GM'S OWN view, which
+  //                         never receives SYNC_TIME and must keep placing ships from its own stamp.
+  //
+  // Q6 REVERSED THE RULE OF 2026-08-08, and the reason it could is the reason to record. That rule
+  // said live traffic was the GM's clock to run - made when a player view genuinely COULD NOT work
+  // out where a ship was and would have had to be told. It can now: the route's knots carry TIME, so
+  // `routeStateAt` is a complete time-to-position function and a ship in transit is derivable from
+  // the viewer's own clock exactly as a planet is from its elements. [[G49]]'s rule then applies on
+  // its own terms - the clock is the viewer's whenever everything on screen is derivable from it -
+  // and the old rule's premise had simply gone.
+  //
+  // WHAT A SCRUBBING VIEWER NOW SEES: the ship where it would be AT THEIR TIME. Not stale, and not
+  // the GM's instant. `shipClock` and `onRouteNow` read this same function, so the vessel, its plume
+  // and its drawn line are all evaluated at one instant and cannot disagree. A preset that FOLLOWS
+  // the GM is unaffected: its own clock already is the GM's.
+  //
+  // Null outside the route's window too, so departure, arrival and a drifting ship fall back to the
+  // vector - which after G51 is the only thing `SYNC_FLIGHT` still stamps.
   let transitMotion = false;
+  let gmClockMs: number | null = null;
   function setTransitMotion(on: boolean) {
     if (on === transitMotion) return;
     transitMotion = on;
     updatePositions(); // take effect NOW, not at the next clock tick (the clock may be paused)
   }
-  const routeSampler = (_sys: System, node: any, tMs: number) => {
-    const rs = routeStateAt(routeOf(node), tMs);
+  /**
+   * The GM's clock is no longer WHERE a ship is read (Q6) - it is now only the signal that this view
+   * IS a receiving player view, which is what earns it the right to place ships from the route at
+   * all. The GM's own scene never receives SYNC_TIME and so keeps its stamp.
+   */
+  function setGmClock(ms: number | null) {
+    const wasPlayerView = gmClockMs !== null;
+    if (ms === gmClockMs) return;
+    gmClockMs = ms;
+    // Only the FIRST arrival changes anything now; later heartbeats do not move the ship, because
+    // the ship is read at our clock rather than at theirs.
+    if (!wasPlayerView && ms !== null) updatePositions();
+  }
+  /** The instant a route is read at, or null for "do not place from the route at all". */
+  function routeClock(): number | null {
+    return gmClockMs === null && !transitMotion ? null : timeMs;
+  }
+  const routeSampler = (_sys: System, node: any, _tMs: number) => {
+    const at = routeClock();
+    if (at === null) return null;
+    const rs = routeStateAt(routeOf(node), at);
     return rs ? { position_au: { x: rs.x, y: rs.y } } : null;
   };
 
   const tmpParent = new THREE.Vector3();
   function updatePositions() {
     if (!currentSystem) return;
-    const positions = computeWorldPositions3D(currentSystem, timeMs, transitMotion ? routeSampler : undefined);
+    const positions = computeWorldPositions3D(currentSystem, timeMs, routeSampler);
     for (const b of bodies) {
       const p = positions.get(b.id);
       if (!p) continue;
@@ -4259,6 +4432,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const _ringParent = new THREE.Vector3();
   const _ringFocusLocal = new THREE.Vector3(); // the focus in a local ring's parent frame
   const _ringSample = new THREE.Vector3(); // scratch for the local dense-arc sampler
+  /** Is this construct actually flying its course at the moment being drawn? `routeStateAt` already
+   *  answers exactly this - it returns null outside the window by design - so ask it rather than
+   *  writing the window test a second time. */
+  function onRouteNow(id: string): boolean {
+    for (const rl of routeLines) {
+      if (rl.id !== id) continue;
+      return routeStateAt(rl.route, routeClock() ?? timeMs) !== null;
+    }
+    return false;
+  }
+
   function updateOrbitRings() {
     for (const r of orbitRings) {
       // A construct glued to a surface is not on its orbit, so it must not draw one. The lock is live
@@ -4267,7 +4451,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // rather than drawn transparent - 70 invisible LineLoops is still 70 draw calls, and "hides
       // every orbit line" should mean it.
       const orbitsOn = orbitLinesVisible && orbitOpacity > 0;
-      r.obj.visible = orbitsOn && visibleSet.has(r.id) && !bodyById.get(r.id)?.surfaceLock;
+      // ...and a ship UNDER WAY is not on its orbit either. Live, for the same reason the surface lock
+      // is: the ship leaves and arrives while this scene stands, and the route window says which.
+      r.obj.visible = orbitsOn && visibleSet.has(r.id) && !bodyById.get(r.id)?.surfaceLock && !onRouteNow(r.id);
       if (r.obj.visible) {
         // Scale each line's OWN designed opacity, so the weights between ring kinds survive the dial.
         const m = (r.obj as any).material as THREE.LineBasicMaterial | undefined;
@@ -4831,7 +5017,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
   };
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
 }
 
 // ---- helpers ----

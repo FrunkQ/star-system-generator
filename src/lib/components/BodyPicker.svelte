@@ -1,9 +1,17 @@
 <script lang="ts">
-  // Phase 03 §03.7 — body picker / hierarchy navigator. A slim always-on command strip
-  // ([● Name role] | search | ▾) with a dropdown that drills the system hierarchy by
-  // category (Stars / Terrestrial / Gas giants / Moons / Constructs / …). Selecting a row
-  // emits `select` with the node id; the host focuses it (camera tweens). Makes 100+ body
-  // systems navigable without hunting on the canvas. Reference: v2 prototype's picker.
+  // THE ONE PICKER. Every "which body?" in the app is this component: the system view's navigator,
+  // the transit planner's destination, and the interstellar modal's system and body.
+  //
+  // A slim command strip ([● Name role] | search | ▾) over a dropdown that shows the system as a
+  // HIERARCHY — Sol > Earth > Luna > Lunar Gateway — with type toggles above it. Selecting a row emits
+  // `select` with the node id.
+  //
+  // It used to be a list of categories you drilled INTO, one at a time. Owner, 2026-08-26: the pickers
+  // want "a proper Earth / Moon / construct hierarchy and to be able to toggle types on and off...
+  // Reuse and refine, and ONE interface for the user to learn." Drilling meant finding a station
+  // required knowing it was a Construct rather than knowing it was at Earth, and it could show only one
+  // category at a time. The list rule now lives in `ui/bodyPickerList.ts`, where it can be tested
+  // without a DOM, and is shared by every mount.
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import type { SystemNode } from '$lib/types';
   import { createFloatingControl } from '$lib/ui/floatingControl';
@@ -11,6 +19,7 @@
   import FloatPin from './FloatPin.svelte';
   import { getNodeColor } from '$lib/rendering/colors';
   import { AU_KM } from '$lib/constants';
+  import { buildPickerRows, buildCategoryChips } from '$lib/ui/bodyPickerList';
 
   // Stars white, Constructs yellow (Alex), Biospheres green, etc. — category swatches so
   // the established type colours read on the list. Declared before the props that default
@@ -45,7 +54,15 @@
   export let floating = false;
   export let summaryText = ''; // optional aggregate summary shown at the top of the dropdown
   export let startOpen = false; // open the dropdown immediately (e.g. in a dedicated modal)
-  export let sections = false; // multi-category: show consecutive heading+items sections instead of drill-in
+  // NOT A DESTINATION: the ship's own current home. Shown as unselectable CONTEXT when it holds
+  // something that IS pickable (a ship at Earth may still be offered Luna and the ISS), and dropped
+  // entirely when it does not.
+  export let excludeIds: string[] = [];
+  // Categories switched on. Empty means everything - a filter nobody has touched must not hide.
+  export let activeCategories: string[] = [];
+  // Show the type toggles. Off for a picker with one kind of thing in it, where a row of chips
+  // that all say the same thing is furniture.
+  export let showTypeToggles = true;
 
   // Injectable so the same picker drives the starmap (systems) as well as a system (bodies).
   // categorize returns ALL categories a node belongs to (overlapping, like the old summary
@@ -76,7 +93,13 @@
 
   let open = false;
   let query = '';
-  let drill: string | null = null; // active category when drilled in
+  // Which type toggles are pressed. Local, so the component owns its own filtering, but seeded from
+  // the `activeCategories` prop so a host can open the picker already narrowed.
+  let active: string[] = [];
+  $: active = activeCategories.length && !active.length ? [...activeCategories] : active;
+  function toggleCategory(key: string) {
+    active = active.includes(key) ? active.filter((k) => k !== key) : [...active, key];
+  }
   let root: HTMLElement;
   // Floating mode shares ONE behaviour with the time transport: grip on the left, lock on the
   // right, puts itself away when something else is touched unless it is locked open.
@@ -165,33 +188,25 @@
     return ((distById.get(a.id) ?? 0) - (distById.get(b.id) ?? 0)) || a.name.localeCompare(b.name);
   }
 
-  $: selectable = nodes.filter((n: any) => filterItems(n));
-  $: byCat = (() => {
-    const m = new Map<string, any[]>();
-    for (const n of selectable as any[]) {
-      for (const c of categorize(n)) {
-        if (!m.has(c)) m.set(c, []);
-        m.get(c)!.push(n);
-      }
-    }
-    for (const arr of m.values()) arr.sort(byStarDistance);
-    return m;
-  })();
-  $: extraCats = Array.from(byCat.keys()).filter((c) => !categoryOrder.includes(c));
-  $: categories = [...categoryOrder, ...extraCats]
-      .filter((c) => byCat.has(c))
-      .map((c) => ({ key: c, items: byCat.get(c)! }));
+  // ONE list rule, shared with every other picker in the app (`ui/bodyPickerList.ts`). Sorting stays
+  // here because it is the picker's own idea of nearness - siblings by distance from the star.
+  $: chips = showTypeToggles
+    ? buildCategoryChips({ nodes, filterItems, categorize, excludeIds, order: categoryOrder })
+    : [];
+  $: rows = buildPickerRows({
+    nodes, filterItems, categorize, excludeIds,
+    activeCategories: active,
+    query,
+    sort: byStarDistance
+  });
 
   $: focused = (nodes as any[]).find((n) => n.id === focusedId) || null;
   $: q = query.trim().toLowerCase();
-  $: searchResults = q ? (selectable as any[]).filter((n) => n.name.toLowerCase().includes(q)).sort(byStarDistance).slice(0, 100) : [];
-  $: drillItems = drill ? byCat.get(drill) ?? [] : [];
 
   function pick(id: string) {
     dispatch('select', id);
     open = false;
     query = '';
-    drill = null;
     // A floating picker's whole point is to leave again — unless it has been locked open.
     if (floating && !$float.pinned) float.setOpen(false);
     removeOutside();
@@ -202,12 +217,10 @@
     if (float.didDrag()) return;
     float.setOpen(true);
     open = true;
-    drill = null;
     addOutside();
   }
   function collapse() {
     open = false;
-    drill = null;
     if (floating && !$float.pinned) float.setOpen(false);
     removeOutside();
   }
@@ -215,7 +228,6 @@
   // still expanded — that listener is what puts the puck away again.
   function closeDropdown() {
     open = false;
-    drill = null;
     if (!expanded) removeOutside();
   }
   function toggleOpen() {
@@ -225,11 +237,10 @@
   // Primary affordance: always opens at the root category list.
   function browseClick() {
     if (open) closeDropdown();
-    else { open = true; drill = null; addOutside(); }
+    else { open = true; addOutside(); }
   }
   function openToFocused() {
     open = true;
-    drill = focused ? (categorize(focused)[0] ?? null) : null;
     addOutside();
   }
   function clearSearch() {
@@ -243,7 +254,6 @@
   }
   function onInput() {
     if (!open) { open = true; addOutside(); }
-    drill = null; // search is a flat list, no category context
   }
 
   function onOutside(e: Event) {
@@ -258,7 +268,7 @@
   onDestroy(removeOutside);
   // In a modal we want the list visible immediately and NOT closing on clicks inside the
   // modal, so open without the outside-click listener (the modal owns dismissal).
-  onMount(() => { if (startOpen) { open = true; drill = null; } });
+  onMount(() => { if (startOpen) open = true; });
 
   // If the host changes the focused body (e.g. canvas tap), collapse the dropdown — and the puck
   // with it, since the user has just said what they wanted by other means. A locked-open picker
@@ -314,72 +324,65 @@
 
   {#if open}
     <div class="dropdown">
-      {#if summaryText && !q && !drill}
+      {#if summaryText && !q}
         <div class="picker-summary">{summaryText}</div>
       {/if}
+
+      <!-- TYPE TOGGLES. Multi-select and additive: pressing two shows both, pressing none shows
+           everything. They used to be a list you drilled INTO one at a time, which meant finding a
+           station required knowing it was a Construct rather than knowing it was at Earth. -->
+      {#if showTypeToggles && chips.length > 1}
+        <div class="type-toggles">
+          {#each chips as c (c.key)}
+            <button
+              class="chip"
+              class:on={active.includes(c.key)}
+              on:click={() => toggleCategory(c.key)}
+              title={active.includes(c.key) ? `Stop showing only ${c.key}` : `Show ${c.key}`}
+              aria-pressed={active.includes(c.key)}
+            >
+              <span class="dot" style="background:{categoryColors[c.key] ?? '#888'}; {c.key === 'Constructs' ? 'clip-path:polygon(50% 0%, 100% 100%, 0% 100%); border-radius:0;' : ''}"></span>
+              <span class="chip-label">{c.key}</span>
+              <span class="chip-count">{c.count}</span>
+            </button>
+          {/each}
+          {#if active.length}
+            <button class="chip clear" on:click={() => (active = [])} title="Show everything again">Clear</button>
+          {/if}
+        </div>
+      {/if}
+
       {#if q}
         <div class="panel-head"><span>Results for “{query}”</span></div>
-        {#if searchResults.length === 0}
-          <div class="empty">No bodies match.</div>
-        {:else}
-          <ul>
-            {#each searchResults as n (n.id)}
-              <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-                <span class="dot" style={swatchStyle(n)}></span>
-                <span class="row-name">{n.name}</span>
-                <span class="row-ctx">{contextOf(n)}</span>
-              </button></li>
-            {/each}
-          </ul>
-        {/if}
-      {:else if drill}
-        <div class="panel-head">
-          <button class="back" on:click={() => (drill = null)} aria-label="Back">‹</button>
-          <span>{drill}</span>
-        </div>
-        <ul>
-          {#each drillItems as n (n.id)}
-            <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-              <span class="dot" style={swatchStyle(n)}></span>
-              <span class="row-name">{n.name}</span>
-              <span class="row-ctx">{contextOf(n)}</span>
-            </button></li>
-          {/each}
-        </ul>
-      {:else if sections && categories.length > 1}
-        <!-- Consecutive sections: each category is a heading followed by its items, all expanded. -->
-        <ul>
-          {#each categories as c (c.key)}
-            <li class="section-head">{c.key}</li>
-            {#each c.items as n (n.id)}
-              <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-                <span class="dot" style={swatchStyle(n)}></span>
-                <span class="row-name">{n.name}</span>
-                <span class="row-ctx">{contextOf(n)}</span>
-              </button></li>
-            {/each}
-          {/each}
-        </ul>
-      {:else if categories.length === 1}
-        <!-- One category (e.g. starmap systems): list items directly, no drill step. -->
-        <ul>
-          {#each categories[0].items as n (n.id)}
-            <li><button class="row" class:active={n.id === focusedId} on:click={() => pick(n.id)}>
-              <span class="dot" style={swatchStyle(n)}></span>
-              <span class="row-name">{n.name}</span>
-              <span class="row-ctx">{contextOf(n)}</span>
-            </button></li>
-          {/each}
-        </ul>
+      {/if}
+
+      {#if rows.length === 0}
+        <div class="empty">{q ? 'No bodies match.' : 'Nothing to show — try clearing the type filters.'}</div>
       {:else}
         <ul>
-          {#each categories as c (c.key)}
-            <li><button class="row category" on:click={() => (drill = c.key)}>
-              <span class="dot" style="background:{categoryColors[c.key] ?? colorOf(c.items[0])}; {c.key === 'Constructs' ? 'clip-path:polygon(50% 0%, 100% 100%, 0% 100%); border-radius:0;' : ''}"></span>
-              <span class="row-name">{c.key}</span>
-              <span class="row-ctx">{c.items.length}</span>
-              <span class="chevron">›</span>
-            </button></li>
+          {#each rows as r (r.node.id)}
+            <li>
+              {#if r.context}
+                <!-- A parent kept only to say WHERE its children are. Not a legal answer, so it is
+                     not a button: it cannot be tabbed to and cannot be clicked by accident. -->
+                <div class="row context" style="padding-left:{8 + r.depth * 14}px">
+                  <span class="dot" style={swatchStyle(r.node)}></span>
+                  <span class="row-name">{r.node.name}</span>
+                  <span class="row-ctx">{contextOf(r.node)}</span>
+                </div>
+              {:else}
+                <button
+                  class="row"
+                  class:active={r.node.id === focusedId}
+                  style="padding-left:{8 + r.depth * 14}px"
+                  on:click={() => pick(r.node.id)}
+                >
+                  <span class="dot" style={swatchStyle(r.node)}></span>
+                  <span class="row-name">{r.node.name}</span>
+                  <span class="row-ctx">{contextOf(r.node)}</span>
+                </button>
+              {/if}
+            </li>
           {/each}
         </ul>
       {/if}
@@ -390,6 +393,51 @@
 </div>
 
 <style>
+  /* TYPE TOGGLES - a wrapping row of chips above the list. Pressed chips read as pressed at a
+     glance (filled, brighter) because a filter you cannot see is a filter you forget you set, and
+     then the picker looks broken. */
+  .type-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border, #2a3040);
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border, #2a3040);
+    background: transparent;
+    color: var(--text-muted, #9aa4b8);
+    font: inherit;
+    font-size: 0.78em;
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .chip:hover { border-color: var(--accent, #6ea8ff); color: var(--text, #e6ebf5); }
+  .chip.on {
+    background: color-mix(in srgb, var(--accent, #6ea8ff) 22%, transparent);
+    border-color: var(--accent, #6ea8ff);
+    color: var(--text, #e6ebf5);
+  }
+  .chip.clear { font-style: italic; }
+  .chip-count { opacity: 0.6; font-variant-numeric: tabular-nums; }
+  /* A context row places its children and cannot be chosen, so it must not look choosable: no
+     pointer, no hover, dimmed. */
+  .row.context {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 5px 8px;
+    opacity: 0.45;
+    cursor: default;
+    font-size: 0.95em;
+  }
+  .row.context .row-name { font-style: italic; }
   .body-picker {
     position: absolute;
     /* top set inline via the `top` prop */

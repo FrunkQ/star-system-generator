@@ -1,0 +1,425 @@
+# Who owns the clock on a player view — design note (G49)
+
+Status: **ROUTE (A) SHIPPED at v3.0.102** — the clock-ownership rule, answered by the owner in the session that produced this note. Q1, Q2, Q4 and Q5 are settled (see section 7); Q3 is settled by construction. **Route (B) — the compact parked descriptor, which closes [[B96]] — is NOT started.**
+Written 2026-08-27 from measurement and from reading the four surfaces that already touch this, not
+from impression.
+
+The owner, 2026-08-27, on a ship that had arrived at Earth on his map and sat motionless on the
+players': *"The time on the player view is just to be illustrative — to show orbits — which is why we
+DON'T have a time showing. On GM view it 'holds the time', and the 'view time' is what is shown on the
+player view. So when the GM is advancing time on the GM view, we need to wrest control of the view and
+align it — as the Roci probably thinks it hit Earth but Earth moved on in the player view. When the GM
+is updating time we effectively need to lock out the time controls on the player view... and on 'follow
+GM' the user view has no time controls at all."*
+
+And then the part that decides the shape of the fix: *"Keplerian dynamics means we should be able to
+set time on the player view easily enough. We just need to indicate to the players they cannot mess
+with time when it is actually relevant — i.e. transits, GM control, and the GM actually advancing the
+clock."*
+
+He also named the real problem: *"we are wrestling an unclear and undefined user interface issue we
+have kinda skipped over without thinking."*
+
+## 1. The clock model that exists today
+
+Most of it is already built, and built deliberately. This is not a hole so much as an unfinished idea.
+
+| mode | time controls | clock readout | what it runs on |
+|---|---|---|---|
+| `followGM` | **hidden** | campaign time, in the campaign's own calendar | the GM's absolute time AND rate; snaps on >1 s drift |
+| interactive, not following | play/pause, a rate ladder (1 s .. 10 y per second), a `↺` reset | **none, deliberately** | its own rate |
+| non-interactive, not following | **none at all** | none | its own default rate, and no way home |
+
+`followGMActive = (overrideFollowGM ?? activePreset.followGM) ?? false` — so the GM can force it live
+from the Player Views modal, or bake it into a preset. `SYNC_TIME` carries `{currentTime, isPlaying,
+timeScale}` on a 1 Hz heartbeat; the player advances locally between beats and snaps when it drifts.
+The clock deliberately does NOT ride the campaign snapshot (a few dozen bytes against ~400 KB), and
+`masterTimeSec`/`displayTimeSec` are in `VOLATILE_KEYS` so a running clock does not re-broadcast the
+whole starmap.
+
+The free-running case is documented as intentional, in the code: *"A free-running local clock diverges
+from the GM's by design (this is the mess-about mode)"*, and the readout is deliberately omitted
+because *"naming an arbitrary time would dress the mess-about mode up as the campaign's"*. There is
+even a divergence indicator: `clockAdrift = |local - campaign| > 1 hour`, which lights the reset
+button.
+
+**So the intent is right and the plumbing is right.** What is missing is that "adrift" does not mean
+the same thing for everything on the screen.
+
+## 2. What is actually wrong
+
+**A FREE CLOCK IS EXACTLY RIGHT FOR A WORLD AND EXACTLY WRONG FOR A SHIP, AND NOTHING SAYS SO.**
+
+> **SUPERSEDED 2026-08-27 by [[G51]] Q6 — READ THIS BEFORE THE SECTION BELOW.** A free clock is now
+> right for a SHIP IN TRANSIT too, and the premise of this section has gone rather than its
+> reasoning being wrong. It says a construct is not closed-form because `slimNode` strips the
+> journeys. It is: the compact `route` published in their place carries TIME on every knot, so
+> `routeStateAt` is a complete time-to-position function and a player view can WORK OUT where a ship
+> is rather than being told. The owner answered Q6 YES on exactly that ground, reversing his ruling
+> of 2026-08-08 — *"the clock is the viewer's whenever everything on screen is derivable from it"*,
+> which is section 9's own rule applied once the derivation existed. **What is still not derivable
+> is a ship ADRIFT off any plan (the GM re-states it) and anything AFTER a plan ends (the arrival
+> re-parenting is a GM event).** Engine-map SYNC-5 carries the shipped rule.
+
+
+The owner's Keplerian point is the whole of it. A body's position is closed-form in time: give the
+player any clock at all and every planet, moon, belt and ring is drawn CORRECTLY FOR THAT CLOCK.
+Nothing is lost. That is why the mess-about mode is a good idea.
+
+A construct is not closed-form. Its truth is the GM's `scheduled_journeys`, and `slimNode` strips those
+from every player snapshot — for good reasons (huge `pathPoints` arrays, and a forward plan that must
+not cross). Two compact substitutes are published in their place, and the note beside them states the
+principle exactly: *"The player evaluates them against their own clock, so the plume stays live between
+snapshots."*
+
+- `driveBurns` — when, how hard, which way. Live at any clock.
+- `route` — the flight's own segment boundaries. Live at any clock, **for the duration of the flight**.
+
+There is no third one. **After the route ends there is nothing**, and the player falls back to
+`vector_position_au`: a single position the GM stamped at one instant. The plume stays live; the
+position does not.
+
+### Measured, on the owner's own Rocinante
+
+His save, replayed through the real code. The ship has completed a 243-day flight to Earth low orbit.
+
+| | at t | one hour later | moved |
+|---|---|---|---|
+| GM (has the journeys) | 0.99531 AU, `Orbiting` | 0.99539 AU | **112,105 km** |
+| Player (journeys stripped) | 0.99529 AU | 0.99529 AU | **0 km** |
+
+Both are 6,536 km from Earth at the same instant, so the player has it in the right PLACE. It simply
+never moves again. The GM sees it orbiting because `samplePostJourneyState` gives it a live parking
+orbit; the player has no such thing.
+
+Then add the clock divergence the owner suspected — Earth moving on while the ship stands still:
+
+| player clock lags the GM by | frozen ship → Earth |
+|---|---|
+| 0 | 7,000 km (correctly in orbit) |
+| 1 day | 2,585,000 km |
+| 7 days | 18,103,000 km |
+| 30 days | 76,986,000 km |
+| 182 days | 299,134,000 km |
+
+**One day of drift puts the ship 2.6 million km from the world it is parked at.** The existing
+`clockAdrift` threshold of one hour is therefore well chosen — but it is wired only to the visibility
+of a reset button, not to the thing that actually breaks.
+
+### The third case, which nothing covers at all
+
+A preset that is neither interactive nor following has NO time controls and does not follow: it
+free-runs at its default rate forever, with no readout, no reset, and no way for the reader to know
+their sky is not the GM's. That is the projector/table-display tier — the one most likely to be left
+running all evening.
+
+## 3. The two routes, and why they are not alternatives
+
+**(A) LOCK THE CLOCK when something time-sensitive is on screen.** The owner's instinct, and it is a
+presentation rule: while the GM is running the scene, everyone looks at the same instant. Cheap,
+honest, and it makes "we are all in the same moment" visible.
+
+**(B) MAKE A CONSTRUCT AS TIME-FREE AS A WORLD.** Publish a compact PARKED descriptor beside
+`driveBurns` and `route` — host, radius, mean motion, phase, epoch — so the player can compute a parked
+ship's position at any clock, exactly as it already computes a burn and a route. This is the third
+instance of a rule the codebase already applies twice, and it is small.
+
+They are not competing. **(B) is correctness** — without it a parked ship is frozen even when the
+clocks agree, which is the bug as reported. **(A) is presentation** — with (B) done, a free clock
+becomes merely a different moment rather than a wrong picture, and the lock is then about attention
+rather than about truth. Doing (A) alone would hide the fault rather than fix it: the ship would still
+be frozen, it would just be frozen at the GM's instant.
+
+## 4. What "time-sensitive" means, precisely
+
+The owner's three, made testable:
+
+1. **A construct is placed by something the player cannot recompute.** After (B) this shrinks to: a
+   ship in FLIGHT whose route the player holds — still fine — versus one whose placement needs the
+   journeys. If (B) is complete, this condition may empty out entirely.
+2. **The GM is driving** (`followGM`, from the preset or the live override). Already handled: controls
+   hidden, campaign clock shown.
+3. **The GM is actively advancing the clock.** Currently invisible to a non-following player. This is
+   the one with no representation at all — `SYNC_TIME` carries `isPlaying`, so the player already
+   KNOWS, and does nothing with it.
+
+## 5. Questions for the owner
+
+**Q1 — DOES A FREE CLOCK SURVIVE AT ALL?** Keep the mess-about mode (a player scrubbing their own sky,
+which Kepler makes free and correct), or is the player view always the GM's instant?
+**Recommendation: keep it.** It is the only way a table display is useful when the GM is not driving,
+and after (B) it costs nothing in correctness.
+
+**Q2 — WHAT DOES THE LOCK LOOK LIKE?** When the GM starts advancing, do the player's controls
+disappear, or grey out with a reason? **Recommendation: grey out, with the reason.** A control that
+vanishes reads as a bug; one that greys with "the GM is running the clock" teaches the rule once.
+Disappearing is right for `followGM`, where the mode is the whole point and the campaign clock takes
+the same space.
+
+**Q3 — WHO WINS WHEN THE LOCK ENGAGES AND THE PLAYER IS SCRUBBED AWAY?** Snap them to the GM's
+instant, or hold and offer a "catch up" affordance? **Recommendation: snap.** The lock exists because
+the GM wants everyone looking at the same thing; leaving a reader behind at their own time defeats it.
+The existing `↺` already does this by hand.
+
+**Q4 — DOES THE NON-INTERACTIVE TIER FOLLOW BY DEFAULT?** A projector preset that neither follows nor
+offers controls free-runs forever today. **Recommendation: yes, follow by default** — a display with
+no controls has no way to be wrong on purpose, so it should be right by default.
+
+**Q5 — DOES THE PLAYER GET A CLOCK READOUT WHEN NOT FOLLOWING?** Today it is deliberately blank, so an
+arbitrary time is not dressed up as the campaign's. **Recommendation: show it, but marked** — "your
+time, not the campaign's", or the campaign time with an offset. The current blank is the reason a
+reader cannot tell the mess-about mode from the real one, which is the fault the owner is describing.
+
+## 6. Scope note
+
+(B) is a contained change with a clear precedent and a spec-able surface — it is the one to do first,
+and it fixes the reported bug on its own. (A) is a UI pass across three surfaces (`catalogue/+page`,
+the preset editor, the Player Views modal) and wants the Q1-Q5 answers before anything is written.
+
+`[[B96]]` is the bug this note came out of and should be closed by (B). `[[G47]]`'s question — "who
+owns a segment's truth and can any two answer the same question differently" — is this note's question
+with a different noun: the GM and the player can both answer "where is that ship", and they do not have
+to agree.
+
+## 7. What the owner settled, and what shipped as route (A)
+
+Answered in the same conversation, and tighter than the questions were:
+
+> *"Unless the GM says time is important by RUNNING TIME, or it is follow GM — so the GM view and
+> player view align. Otherwise the players are free to play with it as a tool; ships will not MOVE
+> on their version, as it is not 'true time'."*
+
+> *"When the players can't scrub time it shows the GM time."*
+
+**Q1 — does a free clock survive? YES.** It is a tool, and Kepler makes it correct for every world.
+**Q2 — what does the lock look like?** Controls away; `followGM` needs no explanation because the
+mode is the explanation, a RUNNING clock does because a control that was there a second ago has
+gone. **Q4 — does the display-only tier follow? YES**, when there is a GM to follow. **Q5 — a
+readout when not following? YES, whenever the reader cannot scrub** — that is the owner's own rule,
+and it makes the controls and the readout exact complements.
+
+Q3 (who wins when the lock engages mid-scrub) is settled by construction: the view snaps to the
+GM's absolute time on the next heartbeat, which is what `followTime` already did.
+
+### The rule, as shipped
+
+`player/clockOwnership.ts` — outside the component so it can be tested without a DOM, and so its
+two faces cannot drift apart:
+
+```
+canScrub  = presetInteractive && !followGM && !gmRunning
+onGmClock = followGM || gmRunning || (!presetInteractive && gmTime !== null)
+```
+
+**`onGmClock` is deliberately NOT `!canScrub`.** A display-only view with no GM connected has no
+controls and no GM clock to be on: it keeps its own and the readout stays blank, rather than naming
+a campaign time it is not actually showing. Reading one off the other would have reintroduced the
+exact lie the blank readout exists to prevent.
+
+`SYNC_TIME` has carried `isPlaying` all along and nothing read it — the player knew the GM was
+running and did nothing with the fact.
+
+### Still open
+
+**Does selecting a ship IN TRANSIT force the lock?** The owner raised it — *"the only way the
+transit line makes sense, i.e. you see where it ends, and the time is forced to the current GM view
+time"* — and then qualified it with the RUNNING TIME / follow-GM rule above, which reads as the
+narrower answer. The two readings differ materially: a selection-triggered lock is a real behaviour
+and would take the clock away from a reader who was mid-scrub, on a click. Not built; asked.
+
+**Route (B) is untouched**, and it is the half that fixes the reported bug: even perfectly aligned,
+a parked ship is frozen on a player view, because nothing publishes where it is after its route
+ends. Route (A) makes the clocks agree; it does not make the ship move.
+
+## 8. THE INVESTIGATION — why one screen showed four contradictory things
+
+Owner, 2026-08-27: *"It SHOWS the Roci in close orbit and orbital period shows 5.33 y, which is
+wrong. We have a big issue here... final positioning is getting very mixed up."* He was right, and
+it is worse than a disagreement: two of the readings are BLENDS of two different answers.
+
+### There are THREE answers to "what does this ship orbit", and six readers
+
+| reader | asks | for the Roci |
+|---|---|---|
+| construct panel, host row | `resolveConstructCurrentHostId(node, DISPLAY time)` — the JOURNEYS | Earth |
+| construct panel, orbital period | the node's own `orbit.elements.a_AU` = 3.05 AU | Sol's period, 5.33 y |
+| body picker context line | `n.orbit?.hostId ?? n.parentId` | Sol |
+| GM map position | `sampleJourneyKinematicsAtTime` → `samplePostJourneyState` | Earth parking orbit, moving |
+| player map position | the node + a frozen `vector_position_au` | one motionless point |
+| `reconcileConstructArrival` | ACTUAL time (`masterTimeSec`) | would say Earth — but never runs, see below |
+
+### The blend, and the exact line
+
+`construct-logic.ts:158` decides the orbit band:
+
+```
+const altitudeKm = (construct.orbit.elements.a_AU * AU_KM) - (hostBody.radiusKm || 0);
+```
+
+`hostBody` is **Earth**, from the resolver. `a_AU` is **3.05 AU**, the stale Sol orbit. So the
+altitude comes out at 3.05 AU minus Earth's radius — about 456 million km — which falls past every
+band and lands on `Far Orbit`. **"Earth: Far Orbit" is Earth's NAME joined to the Sun orbit's
+RADIUS.** The 5.33 y beside it is that same 3.05 AU read (correctly) as a heliocentric orbit. Two
+readings, one subtraction, two sources.
+
+### And the same function is handed a different host by each caller
+
+| caller | host it passes | for the Roci |
+|---|---|---|
+| `BodyTechnicalDetails` (the construct panel) | `parentBody`, which is the resolver | Earth |
+| `TransitPlannerPanel` | `shipNode.parentId`, directly | Sol |
+| `ConstructPortrait`, `ShipLogPane` | `null` | — |
+
+That is also the "Callisto: High Orbit" in the ship panel against "Jupiter: High Orbit" in the
+transit planner, noticed earlier in the same session and unexplained until now.
+
+### Why the stale node is the NORMAL state, not an edge case
+
+`reconcileConstructArrival` is the one thing that makes the node true, and it keys off ACTUAL time:
+`getActualTimeMs()` reads `temporal.masterTimeSec`. **`masterTimeSec` is written in exactly one
+place — the Settings time-shift control.** Playing or scrubbing the clock writes `displayTimeSec`
+and never touches it. So in ordinary play the heal never fires, and every ship that has ever arrived
+anywhere is still carrying the orbit it departed from.
+
+### What healing buys, measured
+
+`transit/arrivalReconcile.spec.ts`, on the owner's own node:
+
+| | before | after reconcile |
+|---|---|---|
+| `parentId` | `solar-system-sun` | `solar-system-earth` |
+| orbit radius | 3.05 AU | 6,536 km |
+| period | 5.33 years | 1.46 hours |
+| placement | — | Low Orbit |
+| player movement, node only | 0 km/hour | 107,725 km/hour |
+| player, free clock ONE YEAR adrift | — | still 6,536 km from Earth |
+
+That last row is the prize, and it is the owner's own observation: *"That fix may also fix the ship
+appearing to orbit Earth once done... letting the players have their clock back."* A healed ship is
+an ordinary Keplerian orbiter, so a player holding nothing but the node places it correctly at ANY
+time. **Route (B) — the compact parked descriptor — becomes unnecessary**, and the clock lock stops
+being a matter of correctness at all.
+
+### The decision this now rests on
+
+Healing needs ACTUAL time to move, and today only an explicit Settings action moves it. There is a
+good reason for that: scrubbing display time forward and back must not permanently rewrite the
+campaign. So the question is **when does an arrival become real?** Three shapes, and they differ in
+what a GM's habits cost them:
+
+1. **Running the clock advances actual time; scrubbing does not.** Fits the rule already shipped —
+   the GM says time matters by running it. Risk: a GM who plays the clock merely to SHOW an orbit
+   would be committing the campaign forward without meaning to.
+2. **Derive the healed orbit for display without writing it**, and publish that derived orbit to
+   players. No commit semantics change; more machinery, and a second derived truth to keep in step.
+3. **Leave healing where it is, and make every reader use one resolver.** Fixes the contradictions
+   on screen and NOT the frozen player ship.
+
+Whichever is chosen, `construct-logic.ts:158` must stop pairing a host from one source with a radius
+from another — that blend is wrong under all three.
+
+## 9. THE OWNER'S DECISIONS, 2026-08-27 — read this before writing anything
+
+Verbatim, because these settle the questions the rest of this note was asking:
+
+> *"Actual Time we ignore for now — that is a GM checkpoint to advance his campaign. On the GM
+> screen ships seem to travel based on DISPLAY time. Display Time is our main 't' for player/GM
+> visualisation. When a GM scrubs their own time or does ANYTHING to update the clock (including run
+> time) then the player view time controls are disabled. If the GM time is stationary then the
+> players can scrub their view all they like. When the GM touches time (or does follow me) everything
+> snaps back to GM Display Time."*
+
+> *"If you see a ship with broken data just try to fix it. Record how many times you do this on the
+> ship — a useful debug for us if we get user files. If it happens loads of times we still have
+> outstanding issues; once fixed it should not be >0 (or not populated)."*
+
+### What that settles
+
+**DISPLAY TIME IS `t`.** Not actual time. Actual time is a GM checkpoint for advancing the campaign
+and is out of scope for visualisation — so the whole "when does an arrival become real" question in
+section 8 collapses: an arrival is real when it has happened in DISPLAY time.
+
+**THE LOCK IS ANY GM CLOCK ACTIVITY, not just a running clock.** A scrub counts. This is WIDER than
+what shipped at v3.0.102, which locks on `gmRunning` (`SYNC_TIME.isPlaying`) alone — a GM who drags
+the scrubber currently does not take the players' clock, and should.
+
+**A STATIONARY GM CLOCK MEANS THE PLAYERS ARE FREE.** Already true.
+
+**TOUCHING TIME SNAPS EVERYONE TO GM DISPLAY TIME.** Partly true — `followTime` snaps on >1 s drift
+while `onGmClock`. It needs to fire on a scrub as well, and to snap rather than ease.
+
+**HEAL ON SIGHT, AND COUNT IT.** A ship whose stored placement disagrees with its own completed
+journeys is repaired where it is found, rather than waiting for a checkpoint — and the repair is
+INSTRUMENTED. A counter on the construct records how many times it has been healed, so a user's file
+answers the question directly: **a healthy campaign should show 0 or no counter at all, and a count
+that climbs means something upstream is still writing ships wrong.** The heal is a symptom-fix; the
+counter is how we find out whether it is still needed.
+
+### The one sub-question left, and it must not be guessed
+
+A scrub is INSTANTANEOUS. "Any clock activity disables the players' controls" is unambiguous while a
+clock is running, and ambiguous for a single drag: the GM touches the scrubber, everything snaps —
+and then the GM's clock is stationary again, which by the stationary rule hands the controls straight
+back. Taken literally that is a flicker.
+
+So the lock needs a RELEASE condition, and there are three candidates:
+
+1. **A quiet period.** Controls return after the GM's clock has been still for N seconds. Simple; N
+   is a made-up number.
+2. **The player takes it back.** The snap happens, the controls stay disabled, and a "take control"
+   affordance returns them. Explicit, and it means a player always knows whose time they are on.
+3. **Snap without locking.** A GM scrub yanks everyone to their time; the controls never disappear
+   for a scrub, only for a running clock. Least intrusive, and closest to what shipped.
+
+Not chosen. Ask before building.
+
+## 10. BUILT, v3.0.113 - the release condition is THE PLAYER TAKES IT BACK
+
+Owner's choice, 2026-08-27, from the three candidates in section 9. Candidate 2: *the snap happens,
+the controls stay disabled, and a "take control" affordance returns them.*
+
+### The rule, whole
+
+| the GM | the player's controls | whose time is shown | a way back? |
+|---|---|---|---|
+| never touched the clock | present | their own | - |
+| is RUNNING the clock | away, "The GM is running the clock" | GM's | no - it would be undone next heartbeat |
+| SCRUBBED, and is now still | away, "The GM moved the clock" | GM's | **yes - "take control"** |
+| ran the clock and then PAUSED | away | GM's | yes |
+| has `followGM` set | away (standing mode, no explanation needed) | GM's | no |
+| has gone (no heartbeat) | present | their own | - |
+
+### What had to be built
+
+**`gmClockTouched(prev, next)`** - a touch is a running clock, OR the time moving while PAUSED, which
+is what a scrub looks like from outside. Two cases are deliberately NOT touches: the first heartbeat
+of a session (nothing to compare against, and treating it as one would take the controls from every
+player the moment a GM connected) and a repeated identical heartbeat (the heartbeat is periodic; if a
+repeat counted, the lock would never lift).
+
+**A latch, `gmClockHeld`.** The touch is an EVENT and the lock is a STATE, so something has to
+remember between heartbeats. It lives beside `gmTime` in the player page and is compared in
+`followTime`, the single place `gmTime` is ever assigned. It is deliberately not a reactive block: a
+`$:` that assigns `lastGmSample` would invalidate its own dependency on every heartbeat and re-run
+itself.
+
+**`canReclaim`**, the fourth face of the rule, alongside `canScrub` and `onGmClock`. Offered only
+while the GM's clock is STILL: a button that is undone on the next heartbeat is worse than no button.
+
+### Two consequences worth knowing
+
+**Pausing no longer hands the clock back on its own.** Running latches the hold, so a GM who stops
+offers the controls rather than returning them. That is the same rule for a scrub and for a run,
+which is why it was preferred to special-casing one of them.
+
+**A GM who VANISHES leaves the lock set**, because `gmTime` is never cleared on a lost heartbeat -
+that was already true before this change. It degrades well here: the "take control" button is
+exactly the escape, so a player is never stranded. A quiet-period release would have self-healed
+instead; this one needs a press.
+
+### And the correctness half is gone
+
+Section 8's frozen ship is fixed (B97, v3.0.111), so a free player clock now draws a parked ship
+correctly at any time at all - a year adrift included. **The clock lock is therefore purely an
+interface rule now, not a correctness one**, which is the right footing for it: it exists so players
+know whose time they are looking at, not to stop them seeing something wrong.

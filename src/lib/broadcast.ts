@@ -3,6 +3,7 @@ import { importOrReload } from '$lib/util/importOrReload';
 import { peerConfigFor, loadStoredIce, type IceServerEntry } from '$lib/iceConfig';
 import { perfCount, perfEvent } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
+import type { FlightUpdate } from '$lib/constructs/flightState';
 import type { PanState } from '$lib/viewport/stores';
 
 export type ViewSettings = {
@@ -43,6 +44,13 @@ export type BroadcastMessage =
   | { type: 'REQUEST_SYNC'; payload: string | null }
   // The whole campaign, redacted: requested + streamed independently of the per-system SYNC_SYSTEM,
   // so both can be served from the one session.
+  // G51 - A SHIP'S FLIGHT SITUATION, ON ITS OWN. The campaign used to carry each construct's
+  // instantaneous vector, so a ship under way re-sent the whole redacted campaign about twice a
+  // second to every viewer. A player already holds the compact `route`, whose knots carry TIME, so
+  // it can place the ship for itself; this message carries only what it cannot work out - the plan
+  // itself, and a stamp for a ship adrift off any plan. It is an EVENT message: while a ship flies a
+  // committed course to schedule the payload does not change and `sendIfChanged` drops it.
+  | { type: 'SYNC_FLIGHT'; payload: FlightUpdate }
   | { type: 'SYNC_STARMAP'; payload: Starmap }
   | { type: 'REQUEST_STARMAP'; payload: string | null }
   // A63 (cheap half). A one-line PRE-ANNOUNCE sent immediately before the big SYNC_STARMAP, so a
@@ -784,6 +792,47 @@ class BroadcastService {
     );
     perfCount(`bc.${msg.type}.strMs`, Math.round(performance.now() - t0));
     if (this.lastSentByType.get(msg.type) === json) { perfCount(`bc.${msg.type}.unchanged`); return; }
+    // B94 — WHICH KEY MADE THIS PAYLOAD 'DIFFERENT'?
+    //
+    // VOLATILE_KEYS above exists because the GM clock rode the snapshot and made every tick a new
+    // payload, sending ~400 KB several times a second. That was fixed for the clock; the owner's
+    // 2026-08-27 capture shows it happening AGAIN for something else (rx.SYNC_STARMAP 4 -> 54 and
+    // rx.SYNC_SYSTEM 3 -> 43 while the clock ran, driving 59 full scene rebuilds on the player and
+    // a 120 MB -> 3.3 GB heap). The offending field is unknown, and GUESSING AT IT IS HOW THE FIRST
+    // ONE WAS MISSED. So this names it instead: turn on `__ssePerf.whyChanged = true` on the GM
+    // window, run the clock for a few seconds, and every send prints the value PATHS that differ
+    // from the previous one. Whatever it names is a candidate for VOLATILE_KEYS.
+    //
+    // OPT-IN, and deliberately so: it parses BOTH payloads to walk them, which on a several-
+    // hundred-KB starmap is exactly the main-thread cost this whole item is about. It must never
+    // ride ?perf=1.
+    if ((globalThis as any).__ssePerf?.whyChanged) {
+      const prev = this.lastSentByType.get(msg.type);
+      if (prev) {
+        try {
+          const paths: string[] = [];
+          const walk = (a: any, b: any, at: string) => {
+            if (paths.length >= 24 || a === b) return;
+            if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') {
+              if (a !== b) paths.push(at || '(root)');
+              return;
+            }
+            if (Array.isArray(a) !== Array.isArray(b) || (Array.isArray(a) && a.length !== b.length)) {
+              paths.push(`${at}[] length ${Array.isArray(a) ? a.length : '?'} -> ${Array.isArray(b) ? b.length : '?'}`);
+              return;
+            }
+            for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+              // Collapse array indices so twenty ships reporting one field read as ONE finding.
+              const next = Array.isArray(a) ? `${at}[]` : at ? `${at}.${key}` : key;
+              if (Array.isArray(a) && paths.some((x) => x.startsWith(next))) continue;
+              walk(a[key], b[key], next);
+            }
+          };
+          walk(JSON.parse(prev), JSON.parse(json), '');
+          if (paths.length) console.info(`[sse-perf] ${msg.type} changed at:`, [...new Set(paths)].join(', '));
+        } catch { /* a payload that will not round-trip is not worth breaking the send for */ }
+      }
+    }
     const now = Date.now();
     // A big payload gets a big floor (see LARGE_PAYLOAD_BYTES). Judged on the last SENT size for this
     // type, so the very first send of anything is never delayed.
@@ -835,6 +884,8 @@ class BroadcastService {
   // (+page) to answer its REQUEST_STARMAP. Separate from onRequestSync so a per-system consumer and
   // a whole-map one can both be served by one session.
   public onStarmapUpdate: ((map: Starmap) => void) | null = null;
+  /** G51: a ship's flight situation, merged onto the campaign this window already holds. */
+  public onFlightUpdate: ((u: FlightUpdate) => void) | null = null;
   public onRequestStarmap: ((requestingId: string | null) => void) | null = null;
   public onBrandingUpdate: ((b: { name: string; logo: string | null }) => void) | null = null;
   /** A63: something large is on its way. Receiver-only, like the other on*Update callbacks. */
@@ -906,6 +957,9 @@ class BroadcastService {
       }
 
       switch (msg.type) {
+          case 'SYNC_FLIGHT':
+              if (!this.isSender && this.onFlightUpdate) this.onFlightUpdate(msg.payload);
+              break;
           case 'SYNC_SYSTEM':
               if (!this.isSender && this.onSystemUpdate) this.onSystemUpdate(msg.payload);
               break;

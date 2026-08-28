@@ -2,6 +2,581 @@
 
 All notable changes are listed here:
 
+## v3.0.161 - 28th Aug 2026
+
+- Board only. The moon Hill spheres are confirmed by eye, which was the last documentation claim resting on unseen behaviour; and the scale-law work is marked as trusted to real use rather than held for a further review.
+
+## v3.0.160 - 28th Aug 2026
+
+- Getting Started explains who owns the clock on a player view: what taking it does, when players may run their own time, and what a self-scrubbing view can and cannot show.
+
+## v3.0.158 - 28th Aug 2026
+
+## v3.0.159 - 28th Aug 2026
+
+- The small reference codes beside the physics page headings are gone. They were our own internal tracking numbers: some pointed at a planning document no longer kept, and the rest meant nothing outside the workshop. The page is for explaining the physics.
+
+- Players who scrub their own clock now see ships fly. A ship in transit is drawn where it would be at the time that viewer is looking at, rather than held at wherever the GM last left it - the same rule the planets have always followed. Views that follow the GM are unchanged. The one thing a scrubbed view cannot show you is what happens after a ship's current plan ends, because where it parks is the GM's to decide and has not happened yet.
+
+## v3.0.157 - 28th Aug 2026
+
+- Four small reference codes beside physics page headings are removed. They pointed at a planning document that is no longer kept, so there was nowhere for a curious reader to go and look.
+
+## v3.0.156 - 28th Aug 2026
+
+- Board only. The small reference codes beside the physics page headings are recorded as a question: four of them point at a document that no longer exists, and the rest are internal item numbers that mean nothing to a reader.
+
+## v3.0.155 - 28th Aug 2026
+
+- Internal notes only. Two reference numbers in the engine map had each been used twice, and one was quoted from the code with both meanings. Settled by whichever claimed the number first.
+
+## v3.0.154 - 28th Aug 2026
+
+- Docs only. The engine map is sorted for the move to a new engine. Each of its 205 entries now says
+  what KIND of truth it is: physics that stays true whatever we build, a property any derivation
+  engine has to have, something the browser or the GPU imposes, or something that is only true of
+  this code. Nothing was renumbered and nothing was moved - the labels are a new field beside each
+  entry, so every reference to an entry from the code still lands where it did. Half the entries
+  turned out to be two truths in one, which is worth knowing before the move is planned.
+- The half that is only true of this code is now read the useful way round, in a new document: for
+  each one, what shape would have made that fault impossible in the first place. Four separate
+  drawings of one tag pill, two pickers that look like duplicates and are not, a store still
+  answering to names it stopped using - as a set they describe the pressures this codebase put on
+  the people working in it, which is the most useful thing to hand a new design.
+- Three entries were found to have gone out of date since they were written and are corrected in
+  place, with what was checked. One is marked suspect where its explanation is wrong but the fault
+  it records was real. Two entry numbers are being used twice, and one of them is quoted from the
+  code with both meanings - flagged loudly rather than renumbered, because renumbering is what
+  breaks a year of references.
+
+## v3.0.153 - 28th Aug 2026
+
+- Getting Started explains the Lagrange points: the shapes they are drawn as, what may be placed in each, and why the mass ceiling is a guide rather than a gate.
+
+## v3.0.152 - 28th Aug 2026
+
+- Getting Started covers two more of the things that landed since the guide was written: where a world can actually orbit (Hill spheres, and the ring a pair of stars holds), and centring the starmap on a star so the distance rings measure from it.
+
+## v3.0.151 - 28th Aug 2026
+
+- Board only. The remaining gaps in the Getting Started guide are counted and listed, so whoever finishes it starts from the list rather than from a search.
+
+## v3.0.150 - 28th Aug 2026
+
+- Getting Started explains the atmosphere editor: why the gas sliders are logarithmic, when the readout speaks parts per million, and how to force a unit when you type.
+
+## v3.0.149 - 27th Aug 2026
+
+- The physics page explained the compact transit route by a reason that is no longer true. It was described as a saving on traffic; it is in fact how a ship position is defined while it is under way, worked out at both ends from the same curve rather than sent from one to the other.
+
+## v3.0.148 - 27th Aug 2026
+
+- Docs only. The camera and scale redesign said one of its remaining pieces was still to do when it had already shipped months ago. Corrected, so the next person to pick it up does not rebuild something that is already there.
+
+## v3.0.147 - 27th Aug 2026
+
+- Docs only. A criterion for carrying the engine map into a new engine: which of its rules are about physics, which about how a derivation engine must behave, which about the browser, and which only about the code as it stands today.
+
+## v3.0.146 - 27th Aug 2026
+
+- Docs only. The scale-law phase gains a second dial, so ship sizes can be set relative to worlds rather than tied to them, alongside the floor fix it still needs underneath.
+
+## v3.0.145 - 27th Aug 2026
+
+- A player view no longer rebuilds its whole 3D scene when a drifting ship reports a new position. Found while finishing the ship-message work: the update was being applied to the very scene object the check compares against, so the check could never see what had changed.
+
+## v3.0.144 - 27th Aug 2026
+
+- Flying a ship no longer re-sends your whole campaign to every player, several times a second. A ship's course now travels as its own small message and the player view works out where the ship is from it, exactly as it already works out where a planet is - so while a ship flies to plan, nothing is sent at all. Commits, replans, aborts and your own edits still reach the table immediately.
+- Player views no longer receive a large per-system update that nothing was reading.
+
+## v3.0.143 - 27th Aug 2026
+
+- Board only. Two outstanding items checked before work was scheduled on them: one appears already fixed by the transit repairs, and the other did not reproduce in three full test runs. Both recorded with the evidence rather than sent off to be hunted.
+
+## v3.0.142 - 27th Aug 2026
+
+- Board only. A correction: the explanation given for two recent findings was wrong, and measuring showed why. The quantity said to drift as a planet travels its orbit is worked out from the orbit itself and does not drift at all.
+
+## v3.0.140 - 27th Aug 2026
+
+## v3.0.141 - 27th Aug 2026
+
+- Board only. A player reported that zooming all the way out on a lone red supergiant shows nothing but orange. The framing works out how far to stand back from how far apart things are, and never from how big they are, so a huge star at the centre counts for nothing.
+
+- Design note only. Player views are meant to work out where a ship is for themselves, the way they already work out where a planet is, so that flying a ship stops re-sending the whole campaign to every viewer. Written up with the questions it needs answered first. It turns out the pieces are largely already there and were never joined up.
+
+## v3.0.139 - 27th Aug 2026
+
+- Docs only. The playbook gains a measured note on what it costs a session to read into this codebase, and what that means for how work should be grouped.
+
+## v3.0.138 - 27th Aug 2026
+
+- Board only. A correction to what the player-view network work can be expected to achieve on its own, so the result is not misread when it lands.
+
+## v3.0.137 - 27th Aug 2026
+
+- Board only. The seasonal-worlds idea is joined to the surface-areas work: a world whose water freezes and thaws does not do it everywhere, so what changes over a year is a region rather than a planet, and the two are better built together.
+
+## v3.0.136 - 27th Aug 2026
+
+- Board only. A world whose oceans freeze and thaw each orbit is neither a frozen world nor a wet one, and saying so is more interesting than either. Recorded as something to build when planet generation is next rederived.
+
+## v3.0.135 - 27th Aug 2026
+
+- Board only. Two faults found this week turn out to be the same one: a value that falls either side of a line, fed by something that drifts back and forth across it. Captured as a single piece of work rather than a fix each time it surfaces.
+
+## v3.0.133 - 27th Aug 2026
+
+## v3.0.134 - 27th Aug 2026
+
+- Board only. The flickering tags turn out to be correct physics rather than a fault: values that move as a planet travels its orbit carry a few tags back and forth across a threshold. Nothing is wrong, but it does re-send the whole campaign each time, so it is folded into the work already planned for that.
+
+- Board only. The three tags that come and go on every snapshot sent to players were confirmed in the running app, and the worry behind them turned out to be unfounded: nothing hidden has ever reached a player. The real cause is that two copies of an open system exist while the clock runs and drift apart, so players are served a slightly stale one. Recorded with the measurements; nothing changed yet.
+
+## v3.0.132 - 27th Aug 2026
+
+- Board only. A routing note recording what was fixed, what is routed next and in what order, and the principle that came out of tracing the player-view fault.
+
+## v3.0.131 - 27th Aug 2026
+
+- Board only. Recorded a fault found while tracing the player-view memory problem: three tags come and go on every snapshot sent to players, and the likely cause would mean hidden tags reaching them some of the time. Being confirmed before anything is changed.
+
+## v3.0.130 - 27th Aug 2026
+
+- Board only. A rule for when a player view may run its own clock: it may whenever everything on screen can be worked out from the time alone, and must follow the GM whenever something is moving in a way only the GM can know.
+
+## v3.0.129 - 27th Aug 2026
+
+- A player view no longer rebuilds the entire system every time a ship moves. Watching a ship fly while the clock ran could fill memory until the tab died, taking the GM window with it, because each update tore down and rebuilt every planet, moon and orbit in order to draw the ship a little further along. A ship that has only moved now just moves. Anything else still rebuilds, exactly as before.
+
+## v3.0.128 - 27th Aug 2026
+
+- Board only. The player-view memory fault is traced to its root and the fix is designed rather than patched: send only what cannot be predicted, and let a player view simulate the rest from a timestamp, the way it already does for planets.
+
+## v3.0.126 - 27th Aug 2026
+
+## v3.0.127 - 27th Aug 2026
+
+- Groundwork for the player-view memory fault. A campaign snapshot is only meant to be sent when it has actually changed, and something in it is changing on every clock tick, so the whole thing is going out repeatedly to every connected player. This adds a diagnostic that names the field responsible rather than leaving it to be guessed at.
+
+- A gas giant's two poles are no longer copies of each other. Saturn was getting its hexagon at both, and the real Saturn has one only at the north - the south is a plain cyclone with an eye. Which way a world falls follows its axial tilt: a barely tilted planet runs both hemispheres under the same steady conditions and tends to do the same thing at each pole, while a strongly tilted one puts them through opposite seasons and they diverge. Jupiter, tilted three degrees, comes out with a polygon at both poles as the Juno probe found; Saturn, tilted twenty-seven, comes out hexagon north and cyclone south as Cassini found.
+- Every gas giant that spins quickly now has polar vortices at all. Jupiter and Neptune previously had none, which was a coin flip rather than anything physical. What actually prevents them is a day so long that there is no spin to gather the winds at the pole.
+- The physics page is honest about this one: it is a rule of thumb, not fluid dynamics, and the known-fudges section now says exactly which parts are rolled and why matching Jupiter and Saturn is the rule being sensible rather than correct. You can override any of it by tagging a world by hand, and the tag format is written up for that.
+
+## v3.0.124 - 27th Aug 2026
+
+## v3.0.125 - 27th Aug 2026
+
+- The gas sliders now work where the chemistry does. Each one runs on a logarithmic scale across eight decades, so a trace gas has as much of the slider as the bulk gas does, and below one per cent the readout switches to parts per million - 2.82 ppm rather than 0.000282 per cent. Type a value in the unit shown, or add a per cent or ppm suffix to force the other one.
+
+- Saturn's hexagon is a hexagon. It was being drawn as a six-petalled flower, because the boundary was a wave rather than a polygon - and a wave wrapped around a pole gives you petals with sides that curve inwards, not flat edges and sharp corners. It is also the right size and in the right place now, sitting just inside the auroral ring at the latitude Saturn's real hexagon occupies.
+- Gas giants have a polar vortex at both poles rather than only the north. Both ends of a spinning world have jets converging on them: Jupiter has a ring of storms at each pole and Saturn's south has a cyclone with a clear eye, even though only its north is hexagonal. Turning the globe no longer shows a bare far pole.
+
+## v3.0.123 - 27th Aug 2026
+
+- Board only. The design for the gas sliders is settled: a log axis, and a readout that switches to parts per million below one per cent so trace gases are legible and typeable.
+
+## v3.0.122 - 27th Aug 2026
+
+- A trace gas is no longer deleted by being looked at. The box beside each gas showed three fixed decimals, so anything under 0.0005 per cent displayed as zero - and simply clicking into the field and out again wrote that zero back, removing the gas and shifting every other gas with it. Trace values now keep their significant figures, and a box handed back unchanged is left alone.
+
+## v3.0.121 - 28th Aug 2026
+
+- A ship that has flown somewhere now has its orbit line drawn where the ship actually is. The GM's map draws orbits flat, in the plane of the system, which is right for everything it places that way - but a ship that has arrived somewhere is placed on the plane it actually arrived on, so its line and the ship itself only ever met at two points. A station that has never flown anywhere was drawn correctly in the same picture, which is what gave it away.
+- A ship under way draws no orbit line at all on the GM's map, matching the 3D view: it is not on an orbit while it is flying.
+
+## v3.0.120 - 27th Aug 2026
+
+- Board only. The player-view crash is reproduced and traced: with the clock running, a following player view rebuilds its entire 3D scene on every incoming snapshot even when nothing in the system has changed, fifty-nine times out of sixty-one in the captured run.
+
+## v3.0.119 - 27th Aug 2026
+
+- Auroras now ring the poles instead of reaching a third of the way to the equator. An auroral oval marks where the outermost closed magnetic field line comes down, and that sits close to the pole however bright the aurora is - near sixteen degrees on Jupiter, fifteen on Saturn, twenty on Earth. The old drawing pushed it further out the stronger the field got, which is backwards, and on Jupiter it covered enough of the planet to hide the very banding that makes Jupiter look like Jupiter. A stronger aurora is still a wider one, within the range a real one occupies.
+- A gas giant's polar vortex is drawn in the planet's own colours rather than a fixed blue, so Saturn's hexagon is a darker gold instead of a grey patch and Uranus's is a deeper blue.
+- A giant only gets a permanent storm if its bands are sharp enough to hold one in place. Any banded giant used to have a good chance of one, which gave Saturn a standing dark oval it has never had; Jupiter keeps its Great Red Spot.
+
+## v3.0.118 - 27th Aug 2026
+
+- A ship that changes orbit around the world it is already at now actually arrives. The repair that keeps a ship's record honest only ever asked whether it was orbiting the right WORLD, and a transfer from a high orbit to a low one ends at the world it started from - so a ship could lower itself to 6,500 km and keep a stored orbit of 768,000 km, a hundred and seventeen times too big, with its panel still reading "High Orbit".
+- A parked ship is now stored with the phase of its orbit and not just the size, so the orbit a player reads puts the ship exactly where the GM's map does - at the moment it arrived, an hour later, and a year later.
+- A ship that has arrived somewhere stops rewriting its own record. It had been doing so several times a second for the rest of the campaign, and because that record travels to the players, every player's 3D view was rebuilding itself just as often - which is why a ship's model never appeared on the player view, and part of why the camera would not settle.
+- A parked ship draws its orbit line again. The line was suppressed for any ship that had a course at all, and a course outlives the journey that made it - so a ship that had finished flying drew no orbit for the rest of the campaign.
+
+## v3.0.117 - 27th Aug 2026
+
+- Board only. Two things found while checking the gas giants against the owner's screenshots, both measured and neither yet changed. Jupiter looks washed out next to Saturn even though its bands are more than twice the contrast underneath - its aurora covers about a third of the disc and flattens them. The strength is right, since Jupiter's magnetic field is twenty times Saturn's; the reach is not, because the real thing is a small ring around each pole. And a gas giant's polar vortex is drawn in a fixed slate blue that takes no account of the planet it sits on, which is why Saturn's hexagon reads as a grey patch on a gold world.
+
+## v3.0.116 - 27th Aug 2026
+
+- Saturn is no longer drawn as a small Jupiter. Its banding was being set almost entirely by the planet's mass, because the quantity that should have separated the two - how much of the sky the upper cloud deck covers - was being rounded up to "all of it" for both. Jupiter's ammonia clouds cover about seven eighths of its sky and Saturn's about half, and that difference is most of why one is stripy and the other is a pale ball. Saturn now reads at a bit over a third of Jupiter's contrast instead of three quarters, and Uranus and Neptune stay smooth.
+
+## v3.0.115 - 27th Aug 2026
+
+- How much of a giant's methane you can see is now decided by the clouds above it rather than guessed from its temperature. The old rule had three fixed rungs, and giving Saturn its ammonia clouds back nudged it a few degrees cooler and straight across one of them, which turned it grey. Methane condenses colder than anything else, so where a world has methane clouds they sit on top and nothing hides them - which is why Uranus and Neptune are unchanged, and why Jupiter and Saturn are gold rather than green. Both now read warmer and closer to life, and Saturn keeps the bands it regained, at a little over half Jupiter's strength.
+
+## v3.0.114 - 27th Aug 2026
+
+- Found and removed the real cause of the gas-giant banding fault. A cloud deck had to have a minimum amount of its gas present before it was allowed to exist at all, and below that line it did not thin out, it vanished. The measurement that settles it: the deck being deleted was not a wisp - it was twenty times thicker than the point where a cloud stops looking thicker. What decides whether you can see a cloud is how much light it blocks, and the engine already worked that out a few lines later, so the extra rule was only ever hiding decks. Editing a trace gas on a giant now changes its bands smoothly or not at all.
+- Saturn has its ammonia clouds back, and with them its banding. Its ammonia sat just under the old cut-off once the hydrosulphide reaction had taken its share, so it was drawn as a nearly featureless ball. Saturn's clouds are ammonia. It is the only body in either bundled map that changes.
+
+## v3.0.113 - 27th Aug 2026
+
+- A GM who moves the clock at all now takes the players' time controls, not only a GM who sets it running. Dragging the scrubber counts: everyone snaps to the GM's time and the controls step aside, so nobody is quietly looking at a different moment during something that matters.
+- Because nudging a scrubber is over in an instant, the controls do not simply reappear the moment the GM lets go - that would be a flicker. They stay away, with the GM's time shown, until a reader presses "take control". A player therefore always knows whose clock they are on, and getting their own back is one press.
+- The offer only appears while the GM's clock is still. There is nothing to take back from a clock that is running, and a button that undid itself a second later would be worse than none.
+
+## v3.0.112 - 26th Aug 2026
+
+- Fixed: making two bodies that share a Lagrange point into a pair sent the companion onto a wider and wider orbit every time anything was edited, with no warning at all. The engine now understands that a PAIR can ride a Lagrange point, not only a single body - which is a real arrangement: (617) Patroclus and Menoetius are two 110 km bodies about 680 km apart circling each other while they ride Jupiter's L4 together. When two bodies at a point become a pair, the point now belongs to the pair, and the two simply orbit each other inside it. Nothing drifts any more.
+- A binary at a Lagrange point is now judged on two things a single body is never asked. Whether the point can hold the PAIR, since two bodies weigh more than either one and a place that would hold one can fail to hold both. And whether the pair can hold ITSELF together where it sits - the two orbit each other inside a bubble they only have by virtue of being there, so a pair spread wider than that bubble is pulled apart and the two go their separate ways. Both come with the reason and the numbers.
+- Fixed, and older than the above: a correct binary at a Lagrange point was marked very unstable for "overlapping" with the planet whose point it rides. Sharing that orbit is what being a trojan MEANS. Single trojans were already excused this; pairs were not, so any pair anyone built was mis-flagged.
+
+## v3.0.111 - 27th Aug 2026
+
+- A ship that had flown somewhere is now repaired the moment it is looked at, rather than waiting for a checkpoint almost nobody ever reaches. Ships kept the orbit they set off from, which is why one could read "Earth: Far Orbit" beside an orbital period of five years, show as orbiting Earth on its own panel and the Sun in the picker at the same time, and hang motionless in space on every player view. The repair already existed; it was keyed to a clock that only one control in Settings ever moves, so in ordinary play it never ran. It now follows the clock everyone is actually looking at.
+- Each repair is counted on the ship itself. Nothing reads it or acts on it - it is there so a saved file can tell us whether ships are still being written wrong somewhere upstream. A healthy ship shows no counter at all.
+- An orbit is no longer described using a distance measured from a different world. "Earth: Far Orbit" was Earth's name joined to the radius of the Sun orbit the ship had left months earlier - a number so large it fell past every band. Where the two disagree the panel now says where the ship is and declines to guess how high.
+- The transit planner and the ship panel now work out a ship's host the same way, so they can no longer name two different worlds for the same ship at the same moment.
+
+## v3.0.110 - 27th Aug 2026
+
+- Board only. A measurement worth recording against the cloud-threshold item: our own Saturn currently has no ammonia deck. Its authored ammonia sits just under the level the model needs to condense one, so the planet is drawn very nearly featureless, and Saturn's real clouds are ammonia. Jupiter clears the same threshold by less than half again. That points at where the threshold sits rather than at how sharply it is crossed.
+
+## v3.0.109 - 27th Aug 2026
+
+- Board only. The gas-giant banding item is closed out with what was actually built and what was not. Two findings worth carrying: the atmosphere editor works in percentages and spreads any edit across every other gas, so measuring it in raw fractions looks at the wrong axis entirely and shows no fault at all; and a cloud deck does not fade into existence, it arrives about twenty times past the point where a cloud stops looking thicker, so no amount of fading in the renderer can smooth the moment one appears. Also captured: the composition sliders cannot reach the values most worlds actually use, and the box beside them quietly rounds a trace gas to nothing if you click through it.
+
+## v3.0.108 - 27th Aug 2026
+
+- A test now covers opening a map, making an edit and reprocessing - the exact sequence the gas-giant banding fault lived in, and one the suite had never exercised. Everything before it checked that processing the same system repeatedly changes nothing, which it does; nobody had checked what happens when you change something in between. The fixture is a giant deliberately parked one editor step away from a cloud threshold.
+
+## v3.0.107 - 26th Aug 2026
+
+- Board only. A user-reported fault reproduced and diagnosed but deliberately not fixed yet, because the fix is a change to what the engine can describe rather than a patch. Making two asteroids that share a Lagrange point into a pair orbiting each other - a real arrangement, and one this very map contains - sends the companion onto a wider and wider orbit every time anything is edited, with no warning of any kind. The cause is that the engine has no way to say "this PAIR rides the Lagrange point", only "this BODY does", so two separate passes each rebuild the arrangement their own way and undo each other. The number it drifts towards is the width of the Lagrange offset itself, which is what gave the mechanism away.
+
+## v3.0.106 - 27th Aug 2026
+
+- A gas giant's banding now strengthens and fades with the clouds that cause it, instead of switching between two fixed looks. The belts on a giant come from a deeper cloud deck showing through the one above it, and the engine treated having any such deck at all as a yes-or-no question: a world with one was drawn at full Jovian contrast and a world without one was drawn very nearly featureless, with nothing in between. So a giant whose atmosphere sat near a condensation threshold flipped between the two on the smallest edit the composition editor can make. Banding is now proportional to how much of the deeper deck you can actually see, and the storm oval fades in with it. Jupiter, Saturn, Uranus and Neptune are all drawn as they were.
+
+## v3.0.104 - 27th Aug 2026
+
+- Board only. Recorded the decisions that unblock the clock and ship-placement work: the time everyone looks at is the GM's DISPLAY time, the campaign checkpoint is a separate thing and not part of what anyone sees, any touch of the GM's clock takes the players' controls and snaps them to it, and a ship found carrying stale placement is repaired on sight and the repair counted - so a user's file can tell us whether the underlying fault is still happening.
+
+- A cloud deck now records how much sky it actually holds, not just which of five bands it falls into. A band cannot say how nearly a deck exists, and that is the one thing needed to fade a deck in gently instead of having it appear whole - Mars's real water-ice haze covers 2.4% of its sky and was being drawn at 8%, the typical figure for its band. Decks you have written by hand are unaffected: "water overcast" still means what it always did. Everything that depends on how cloudy a world is has become more accurate with it, so Venus is now read as very nearly total overcast rather than 92%, which darkens its modelled surface light.
+
+## v3.0.103 - 27th Aug 2026
+
+- Board only. Captured B97 and traced it end to end: a ship that has arrived somewhere can be described three different ways at once, and two of the readings on screen are blends of two of them. "Earth: Far Orbit" turns out to be Earth's name joined to the radius of the Sun orbit the ship left months ago, and the orbital period beside it is that same old orbit read correctly. The cause is that the record of where a ship lives is only ever brought up to date by one explicit action in Settings, so in ordinary play it never is, and different parts of the app disagree about whether to trust it or work around it. No behaviour changed; the fix rests on a decision about when an arrival becomes real.
+
+## v3.0.102 - 27th Aug 2026
+
+- A player view now either steers the clock or tells you whose clock it is on - never neither, and never both. Time on a player view is a tool: worlds can be wound to any moment and are drawn correctly, because their positions are pure mathematics. So the players keep that freedom, and lose it only for the moments it would mislead.
+- Starting the clock on the GM view takes it. That is the GM saying this moment matters: the players' controls step aside, their view snaps to the GM's time and rate, and it says why. Pausing hands the freedom straight back.
+- A display that has no time controls now shows the campaign time instead of nothing, and rides the GM's clock rather than free-running at its own rate all evening. If there is no GM connected it keeps its own clock and stays honestly unlabelled, rather than putting the campaign's name on a time that is not the campaign's.
+- Note the thing this does NOT yet fix: a ship that has finished its journey still stands still on a player view even when the clocks agree, because nothing yet publishes where it goes after it arrives. That is a separate piece of work and it is on the board.
+
+## v3.0.100 - 27th Aug 2026
+
+- Board only. The gas-giant banding fault is traced to its cause from the reporter own save: a giant stripes are painted only by cloud decks lying beneath the top one, so a stack that gains or loses a deck at a condensation threshold gains or loses every stripe at once.
+
+## v3.0.99 - 27th Aug 2026
+
+- Board only. Captured G49: who owns the clock on a player view. A ship that has arrived somewhere orbits properly on the GM's map and sits motionless on the players', and chasing that turned out to be a symptom of something never decided - whether a player's view runs on the GM's time or its own, and what happens to the things on screen that cannot survive the difference. Worlds can: their positions are closed-form, so any clock draws them correctly. A ship cannot, because what it is doing is known only to the GM. Measured on a real save: the GM's copy of one ship moves 112,000 km an hour and the players' moves none, and a single day of clock drift puts it 2.6 million km from the world it is parked at.
+
+## v3.0.98 - 26th Aug 2026
+
+- Board only. The gas-giant banding item is corrected and narrowed: the makeup a giant is judged by is rewritten during processing, and the same function already caused a fault where a file behaved differently depending on how many times it had been loaded.
+
+## v3.0.97 - 26th Aug 2026
+
+- Rings no longer have an orbit line drawn through them. A ring was getting both its band and a thin ellipse through the middle of it, which on a planet's rings lands as a hard line across a soft disc. Belts have never had one; rings were simply missed. The band is the orbit - it is drawn at the radius it occupies.
+
+## v3.0.96 - 26th Aug 2026
+
+- Board only. Captured B95: a gas giant loses its bands on the first atmosphere edit after opening and regains them on the next. The banding threshold is real physics, but the quantity it reads cannot legitimately be moved by an atmosphere edit at all.
+
+## v3.0.95 - 26th Aug 2026
+
+- Board only. The performance-readout item grows the part that matters: diagnostics are held in memory and die with the tab, so a crash destroys the evidence of what caused it. Writing a compact record when memory first runs high is what makes the crash report itself.
+
+## v3.0.94 - 26th Aug 2026
+
+- Board only. Captured B94, a 3D player view that resets its shot every few seconds and eventually runs out of memory (not reproducible on demand, but the always-on diagnostic already records what would identify it), and A77, an on-screen memory and performance readout for beta pages including player views.
+
+## v3.0.93 - 26th Aug 2026
+
+- Board only. Captured G48: painting a ship&rsquo;s name on its hull, placed and scaled and coloured by hand. The hull-picking the drive placer already uses turns out to be most of what it needs.
+
+## v3.0.92 - 26th Aug 2026
+
+- Set a ship&rsquo;s colour from the 3D model dialog, and watch the hull repaint as you choose it. A model with no materials of its own is painted in the ship&rsquo;s colour, but that colour could only be changed on the Basics tab, with no view of the hull while you did it. It is the same single colour as before &mdash; marker, hull and plume dressing still follow it &mdash; now settable from either place.
+
+## v3.0.91 - 26th Aug 2026
+
+- Board only. Captured A76: an untextured model should let you choose its hull colour, not only its livery accent. The hull currently inherits the ship map-icon colour with no way to say otherwise.
+
+## v3.0.90 - 26th Aug 2026
+
+- Every page load no longer reports two files missing. The app probed each rule pack for an optional liquids and biospheres file; no pack has ever shipped either, so the browser logged a 404 for both on every single load, which reads as a broken app. Campaign customisations were never using that route anyway: your own liquids, atmospheres and biospheres are saved with the campaign and travel with it, which a pack file could not do. Nothing about how they work has changed.
+
+## v3.0.89 - 26th Aug 2026
+
+- Choosing where to go is one control now, and it is the same one everywhere. Picking a destination, picking a body in the system view, and picking a system to jump to were three different things to learn - and the interstellar one was three plain dropdowns with no search at all.
+- It shows the system as it really is. Sol, then Earth, then Luna, then the Gateway parked at Luna - indented, so you find a station by knowing where it is rather than by knowing it counts as a construct. Before, you picked a CATEGORY and drilled into it, one at a time.
+- Type filters you can switch on and off, several at once, with a count on each. Turn on Constructs and you see just the four of them - still sitting under the worlds they orbit, so you can tell the station at Earth from the one at Luna.
+- Type to search anywhere in the map, in any of them.
+- Where you already are is not offered as somewhere to go, but it still appears, greyed, so the moons and stations around it are not left dangling under nothing.
+
+## v3.0.88 - 26th Aug 2026
+
+- Fixed: adding a trojan at a Lagrange point threw an error and the type picker never opened. This was broken by yesterday's circumbinary work and it broke an existing feature, not just the new one - reported against Njord in Alpha Centauri. The picker now opens for an ordinary body, for a trojan, and for a circumbinary body, and there is a test that mounts all three so this cannot happen again unnoticed.
+
+## v3.0.87 - 26th Aug 2026
+
+- Changing orbit is a manoeuvre now, and it looks like one. Moving a ship between two orbits of the same world is the most classical thing in spaceflight - burn once to stretch the orbit out to the height you want, coast half way round, burn again to settle there - and the app could neither draw it nor, it turned out, fly it. Asked to raise a ship from a low Jupiter orbit to a high one it offered the torch option and nothing else, at 45 km/s. The two-burn answer costs 19.6.
+- The picture is the one everybody already knows: the orbit you are leaving, the orbit you are joining, the transfer between them, and both burns marked. It is drawn around the planet rather than across the sky - a ship lowering its Jupiter orbit over three days is, from the Sun's point of view, a three-million-kilometre streak trailing after Jupiter, which is true and useless.
+- The aerobrake dip is drawn, in purple. Since aerobraking became real the engine has known how deep the ship dips, how many passes it takes and how long they last - and drew none of it. A Mars arrival dipping to 40 km, twelve times over 615 days, is now a line you can point at. The passes trace the same loop, so a dozen of them read as one dip while the ship genuinely goes round a dozen times.
+- A journey that ends in aerobraking now lasts as long as it always said it did. The passes were costed and written into the ship's log, but the plan's duration stopped at the moment the ship reached the planet - so it was drawn parked for the 615 days it was still skimming the air.
+- Routes that fly through the sun are no longer offered. The gravity-assist search checked whether a ship survives the swing past the planet and never asked where the long legs went in between - and one of them passed 550,000 km from the centre of the Sun, inside the corona, offered as an ordinary route. It stayed hidden because the old drawing fell apart near the sun and sketched something tamer. Candidates that dive inside the star's kill zone are now dropped the same way an unsurvivable flyby already was; a safe route is found instead.
+
+## v3.0.86 - 26th Aug 2026
+
+- The circumbinary ring is now the same colour family as the Hill spheres, one step deeper - pale yellow for a Hill sphere, deep gold for the ring. It was pink, which read as an unrelated kind of thing when it is really the same kind: both answer "where can something orbit". The Lagrange zones keep their separate green, because those answer a different question.
+
+## v3.0.85 - 26th Aug 2026
+
+- Ships stop jumping when they arrive. A ship reached its destination and then popped sideways into orbit - 90,884 km of it at Jupiter, invisible from across the system and obvious once you zoomed in. Three things were disagreeing at once: how high a low orbit is, where round the planet the ship should appear, and which plane it should circle in. The step is now zero at every altitude tested.
+- How high an orbit is, is now decided once. The planner offered altitudes worked out from the world itself - where its air stops dragging, where a day-long orbit sits, how far its gravity reaches - while the code that parked the ship used a rough multiple of the planet's radius. They disagreed by up to ninety-five times: a high orbit of Jupiter is 26.7 million km, and the ship was being parked at 280,000. Luna was being offered a high orbit it is far too small to have.
+- A geostationary arrival aimed at the centre of the planet. It is now offered the same treatment as every other orbit.
+- Arriving at a world means entering orbit around it, and the arrival speed says so. It used to report zero for a full rendezvous, which would mean hovering over the planet - something no amount of braking achieves. Meeting a SHIP still means matching its speed exactly.
+
+## v3.0.84 - 26th Aug 2026
+
+- Transits are planned in three dimensions. They never were: the solver asked each body for its position and got back the FLAT one - the shadow it casts on the reference plane - so a world tilted out of that plane was planned to as though it were not. The tilted position has always been available; transit simply asked for the other one.
+- Distances are longer now, by real amounts. From a ship at 3 AU in the Sol Expanse map: Earth, which has no tilt, is unchanged to the metre; Mars is 79,000 km farther; Jupiter 122,000; Saturn 633,000; and the Main Belt, which sits ten degrees over, is **2.4 million km** farther than the engine used to think. Fuel and flight times follow.
+- Courses now climb and dip. A route to a tilted world used to be drawn flat and the world drawn where it really is, so the line and its destination disagreed - most of half an AU for the Main Belt. In the 3D view the line goes where the ship goes.
+- Flat systems are untouched, and not merely to a tolerance: for two bodies in the same plane the new expression for a transfer's geometry is algebraically the same as the old one, so an existing campaign plans exactly the journeys it always did.
+- A ship cut loose mid-flight now drifts in three dimensions too, rather than dropping to the plane.
+
+## v3.0.83 - 26th Aug 2026
+
+- A ship now points the way its engine is actually pushing. It used to aim down its course line and simply turn around for a braking burn, which is right for a torch burn and wrong for almost everything else: an efficient transfer's burn is a change of velocity, not a shove along it, so it sits at an angle. Measured on the same journey, the old rule drew the arrival burn 107 degrees off, and a gravity-assist arrival 153 degrees off - very nearly backwards. Orientation only matters while the engines are lit, and nothing drew a ship's heading at all until the 3D models arrived, so this has been wrong quietly for a long time.
+- The drive plume now burns at the thrust the ship was actually given. It was being worked out by subtracting one end of a burn from the other, but most routes leave those end values blank, so the sum was the ship's whole orbital speed rather than the burn. A 0.3 g freighter's departure flared at 2.4 times its real thrust - and a 57-hour torch burn, the longest in the game, showed 3% of its own, which is to say the drive looked switched off through the most dramatic thing a ship does.
+- The acceleration arrow includes the drive. It showed gravity only, which while a ship is burning is about ten thousand times too small and points at the star instead of where the ship is going.
+- The velocity arrow is fixed by the same change as the burn drawing: during a burn it was reading the borrowed path points, so it reported over a thousand kilometres a second for a ship doing twenty.
+
+## v3.0.82 - 26th Aug 2026
+
+- Burns are drawn where they actually happen, and at a speed a ship could actually manage. A burn lasting under an hour inside a three-year transfer used to catch none of the path samples at all — the whole journey was drawn as one line of a point every two days, then chopped into acceleration, coast and braking after the fact — so the burn borrowed two coast points forty-eight hours apart and the ship was drawn crossing three million kilometres in forty-one minutes. That is 1,366 km/s for a freighter that manages about 10 km/s in an hour, and it happened at exactly the moment you were watching, because that is when the engine is lit. Each phase now draws its own path over its own stretch of time: the same burn draws at 19.4 km/s.
+- The ship no longer glitches when you speed the clock up. Every point along a course now carries the time it belongs to, instead of the four different parts of the app that place a ship each assuming the points were evenly spaced. They were not, and the ship, the line it flies along, the telemetry readout and the planner's preview marker could all disagree about where it was.
+- Local transfers — moon to moon, or a change of orbit around a planet — are drawn as curves rather than as polygons. Points are now placed where the path BENDS rather than at a fixed number of hours apart, because a path swings fastest exactly where it passes closest to something. A Jupiter-local transfer used to turn 57 degrees between one drawn point and the next; it now turns under 4.
+- Long, stretched transfers are drawn on the trajectory they were actually solved for. The path was stepped forward at a flat two-day interval regardless of what it was doing, which is fine on a gentle arc and hopeless on a sharp one: a gravity-assist leg that dips inside Earth's orbit was being drawn flung out to 53 AU at 313 km/s. The step now shortens automatically wherever the path turns quickly.
+- Also fixed, found by the above: a gravity-assist route was drawn starting from a point that was never on its own trajectory, so the picture and the flight were two different journeys.
+- Ordinary interplanetary transfers are unchanged. That was checked rather than assumed, and the numbers are recorded.
+
+## v3.0.81 - 26th Aug 2026
+
+- Board only. G47 banks a full transit review with the subsystem measured up front, so whoever takes it starts from line counts and a blast radius rather than an impression.
+
+## v3.0.80 - 26th Aug 2026
+
+- Board only. The duplicated B88 is resolved: the base-map upgrade item keeps the number it claimed first and has already shipped under, and the ordinary-orbit arrival step becomes B92 in its spec and in the local-transfer design note.
+
+## v3.0.79 - 26th Aug 2026
+
+- Board only. Captured G46: local transfers and how a journey is drawn — the burn phases, the ship's motion along its path, the missing orbit-change picture and the aerobrake dip line. Design note written with the causes measured rather than guessed; no engine changes.
+
+## v3.0.77 - 26th Aug 2026
+
+- Aerobraking is a real manoeuvre now instead of a flat discount. It used to subtract the ship's heatshield rating from the arrival burn wherever the destination had any air at all — which meant a ship arriving at a Lagrange point half an astronomical unit from Jupiter collected the same free braking as one skimming the cloud tops, and Mars scrubbed speed as freely as Venus.
+- What changed: the atmosphere's own capability now matters, worked out from the pressure and scale height the engine already derives. Gas giants, Venus, Earth and Titan are thick enough that the heatshield is the limit — free braking, as it should be. Thin air like Mars gives about a tenth of that per pass, which lands close to what Mars Odyssey really managed. Airless worlds give nothing.
+- Aerobraking now costs TIME rather than being free: shedding more than one pass can take means going round again, and the ship's log says how many passes, how long, how low it dips, and what climbing back out to the orbit you actually wanted costs in propellant. Arriving in a high orbit is still allowed — it is a dip and a climb — and now it is priced. A ship with fuel to burn can still switch aerobraking off and go fast.
+- Also fixed: the heatshield rating is a maximum ENTRY SPEED, not a fuel allowance. A ship closing far faster than its shield can survive must burn down to a survivable speed before the air can help at all.
+
+## v3.0.78 - 26th Aug 2026
+
+- The circumbinary ring is drawn. Where a pair of bodies can hold worlds that orbit both of them, that ring now appears with the Hill spheres, in its own pink shade so it is not mistaken for a Hill sphere (amber) or a Lagrange zone (green). Its inner edge is where the pair stops throwing things out; its outer edge is where the pair loses its own grip. A pair at the centre of its system has nothing outside it to lose that grip to, so the ring is drawn open outward rather than walled at an invented distance.
+- Right-click inside the ring to put a body there. It is offered with a mass ceiling rather than a mass rule: the stability physics assumes something light enough not to pull the pair about, so the type list is filtered to that by default - and, as everywhere, the filter is a switch you can turn off and author what you like, leaving the tags to say what breaks.
+- Small bodies get their Hill spheres back. The drawn bubble was gated on a mass bar belonging to the flight propagator, so Pluto drew nothing while Charon drew a circle - the heavier body of the pair losing out to the lighter. Which spheres appear is decided by what you have selected, so the bar was doing nothing but hiding things.
+- A body that shares a barycentre now shows the region ITS COMPANION leaves it, not a circle worked out from its own wobble about the shared centre. That wobble made Pluto's sphere four times smaller than Charon's despite Pluto being eight times the mass. Pluto now reads about 8,200 km and Charon about 2,400 km, the right way round. Anything that is not half of a pair is unchanged, and the flight propagator is untouched.
+- Selecting a body now shows a consistent region of interest: itself, everything it contains, its whole chain of parents, and its siblings - but not the contents of its siblings or of its parents. One rule, shared by the Hill spheres and the new ring, instead of each overlay having its own idea one level deep.
+
+## v3.0.76 - 26th Aug 2026
+
+- Arrival is now one setting instead of two. The Rendezvous/Flyby dropdown has gone; there is a single arrival velocity, and it says everything the dropdown said and more. Leave it at zero — the default — and the ship matches velocity and stays, exactly as before. Give it any speed and it is a flyby at that speed, labelled as one beside the control. The old pairing needed a mode AND a hidden speed that nothing exposed, and the two could disagree with each other.
+
+## v3.0.75 - 26th Aug 2026
+
+- Board only. Two faults recorded from an owner report that selecting Pluto draws a Hill sphere around Charon and none around Pluto. The drawn bubble is gated on a mass bar that belongs to the flight propagator rather than to the display, so a small planet is dropped while a moon of the same pair is kept; and a binary member bubble is worked out from its small wobble about the shared centre, which makes the heavier body bubble the smaller one. Neither is changed yet - the fix for the second needs the circumstellar half of the stability work, which does not exist in the engine.
+
+## v3.0.74 - 26th Aug 2026
+
+- Ships arriving from another star now get a sensible orbit instead of the one they left with. Aim at a named world and you park in a high orbit around it; aim at the star and you arrive at the edge of the system, which is where a starship decelerating in actually finds itself. Previously the old orbit came along for the ride, so a ship that set off from a tight moon orbit arrived the same distance from a star.
+- Flyby pass speed is now something you set. The planner always had the parameter and never exposed it, so every flyby ran as "cross at whatever speed you happen to be doing" — often extremely fast. Choose a pass speed and the ship brakes to it, and the size of that burn follows how much speed has to change, so asking to creep past costs a long burn and asking to scream past costs little.  
+- A flyby and a rendezvous no longer look identical on the map. Both brake, so the burn colours could never tell them apart; now a rendezvous ends in a ring at the destination and a flyby carries straight on past it and ends in an arrowhead, because the ship does not stop and neither should its line.
+- Fixed: a gravity assist's braking burn was drawn with a single point, so the red brake stroke never actually appeared.
+
+## v3.0.73 - 26th Aug 2026
+
+- The bundled-map upgrade now lists the planets and moons you would lose, not just the ships. It only ever itemised constructs, so a system you had populated yourself showed an empty list under a warning that said your work would be dropped - measured on a real campaign, a Procyon holding eighteen bodies the updated map has no counterpart for reported nothing at all. Every body the new edition cannot match by name is now named and counted before you decide.
+
+## v3.0.72 - 26th Aug 2026
+
+- Board only. Writes down the rule the physics has always been meant to follow: it steers you away from arrangements that break physics, and never stops you. A criterion tags and explains; it does not refuse an edit, clamp a value you set, or quietly fix your map. Alien tech, a reality breakdown, unobtanium or a plot device are all reasons the engine cannot see, so the verdict is information and the decision stays yours.
+
+## v3.0.71 - 26th Aug 2026
+
+- Board only. The circumbinary work was checked in the running app rather than only in tests: the two Uggi worlds that sit inside their pair read very unstable with the reason and the numbers, a pair member and a distant companion both still read stable, and a planet orbiting one star of the pair is untouched. Also records a duplicated finding id for the coordinator to settle.
+
+## v3.0.70 - 26th Aug 2026
+
+- An imported star now carries the fact that its mass, radius and temperature are typical for its class rather than measured. SIMBAD gives a spectral type and no radius, so for objects like brown dwarfs every figure comes from the rule pack's band for that class - which is why two brown dwarfs of different types can share a radius to the kilometre. That was always stated in the body's description, but nothing else knew, so the numbers read as observations everywhere they appear. The figures themselves are unchanged: brown dwarf radii really are near-constant whatever the mass.
+- An unresolved pair says so. A catalogue row like "L7.5+T0.5" describes two objects seen as one; it still imports as one body, but the description now names the companion that is not on your map and says its mass is not included.
+- When an import brings in nothing because the rule pack had not loaded, it now says that, instead of reporting that every object's spectral type was unsupported.
+
+## v3.0.69 - 26th Aug 2026
+
+- Saying "Not now" to the bundled-map upgrade is now remembered, and remembered with your campaign. It used to be stored only in the browser you happened to be using - and the "Not now" button recorded nothing at all - so a user could decline the offer and be asked again on the very next refresh, forever. The answer now travels inside the campaign file, so it survives a save, a reload, a different browser and a different machine. "Not now" silences the offer for the map edition you were asked about; a genuinely newer edition may still ask later, and the "do not ask again" tick still means never. Anyone who already dismissed the offer stays dismissed.
+
+## v3.0.68 - 26th Aug 2026
+
+- Fixed: a ship arriving in a NEW SYSTEM kept the old one's flight state, and was sometimes drawn where it used to be rather than where it had got to. Re-homing it onto the destination was not enough, because a cached position vector and any leftover in-system journey both outrank its new orbit when the map decides where to draw it — and both describe the system it just left. Arrival now clears them, along with a draft plan, an autopilot route and any Lagrange-point marker, all of which named places in the other system. The ship's flight log is kept, since that is history rather than position.
+- Checked the arrival seam for the "snap" at a destination: arriving at any of the five Lagrange points now lands exactly where the parking begins, to the metre. An ordinary orbital arrival still steps out to its parking orbit at the last instant (about 90,000 km at Jupiter, which is one parking radius) — that one is older and separate, is now measured and logged, and will be looked at on its own.
+
+## v3.0.67 - 26th Aug 2026
+
+- Board only. The circumbinary work is written up on its row: what shipped, the two findings left deliberately unfixed, the bundled-example heads-up, and exactly what the drawing half must read rather than recompute.
+
+## v3.0.66 - 26th Aug 2026
+
+- Fixed a stability note that said the same thing twice. When a world has more than one thing wrong with it, the panel prints the predicted outcome next to the specific cause that produced it, so the two cannot be read as contradicting each other. That was written when the causes were short phrases; the newer ones are full explanations, so a circumbinary planet that ALSO crossed a neighbour's orbit had its entire paragraph repeated verbatim two lines below itself. The restatement is now a single line naming the driver and the numbers.
+
+## v3.0.65 - 26th Aug 2026
+
+- Board only. Real user files now have a home outside the repository, with a standing rule covering how they are used and why they are never committed.
+
+## v3.0.64 - 26th Aug 2026
+
+- Hierarchical triples now get a circumbinary ring too. Alpha Centauri, Polaris and Algol are each an inner binary with a third star further out, so the outer pairing has a pair as one of its two partners — and the new circumbinary limit was skipping exactly those, publishing nothing at all for the widest and most interesting pairing in the system. A tight inner binary stands in for a single point of mass, which is the same assumption the whole nested arrangement is built on, so those pairings now publish their ring like any other.
+- Heads-up on a bundled example: the Uggi Traveller system has two planets, Barry and Philonius, orbiting inside the zone their two suns clear, and they are now marked very unstable. Nothing has been changed in that map. The stars are 23 AU apart, which sweeps a hole out to about 44 AU, and the two planets sit at 24 and 38. Traveller's own world generation has no rule about this, so the import placed them where its rules allow; the engine simply had no opinion until now.
+
+## v3.0.63 - 25th Aug 2026
+
+- Board only. Two user-reported faults captured and measured against the reporter own map: B88, the base-map upgrade offer misfiring on a three-id coincidence, re-asking on every refresh and threatening real work; and B89, brown dwarf imports dropping the radius, collapsing a binary, and only reading correctly after a reload.
+
+## v3.0.62 - 26th Aug 2026
+
+- The explanations caught up with yesterday's circumbinary physics, and one of them had been wrong for longer than that. The Newton panel was showing the wrong orbit for any planet that circles a pair of stars: it substituted the PAIR's orbit around the galaxy-ward star for the planet's own, so a world 0.7 AU from its two suns was labelled as orbiting at 39 AU, "as the pair" — and described as a member of the binary, which it is not. It now tells a member from a world orbiting the pair, and shows each the orbit that actually governs it. The stability card for a circumbinary world now also names the pair, the separation, the mass ratio, the eccentricity, the limit those imply and where the orbit sits against it, and explains in plain words why a turning gravity field clears a hole that a single star does not.
+- The physics page has a new "Circumbinary worlds" section under Resonances and stability: the formula, why the hole is 2-4 times the gap between the stars and grows with eccentricity, the two real systems it reproduces, and the honest caveats — that the published limit is the lowest surviving orbit rather than a wall, and that outside the range the measurements covered the engine says on the panel that the number is extrapolated instead of presenting it as fact.
+
+## v3.0.61 - 26th Aug 2026
+
+- Binary systems now know where a planet can actually orbit BOTH stars, and say so. A world circling a pair has to keep clear of them by a surprising margin — the two stars swing round each other, so their combined pull is not a steady tug from one place but a field that turns twice per orbit, and anything too close gets shaken until its orbit crosses the stars themselves and it is thrown out of the system. The clear-out radius is typically two to four times the gap between the stars, and it grows sharply with how eccentric and how evenly matched the pair is. Until now the engine had no idea: a planet parked just outside its two suns got no warning at all, because the binary check only ever looked outward at whether the PAIR was safe from things beyond it. It now looks inward too. A planet inside the limit is marked very unstable and flung out, with the reason naming the mechanism and the numbers; one that clears it by only a little is marked marginal rather than doomed, because the published limit is the lowest surviving orbit rather than a hard wall — there are unstable gaps above it where a planet lines up in step with the stars. The figures come from the standard measured fit (Holman & Wiegert 1999) and reproduce the real cases: Kepler-16b comes out at 1.09 times its own limit, which is exactly where astronomers place it, and Pluto's small moons come out just outside the Pluto-Charon limit, which is where they are.
+- Every barycentre now publishes its stable ring — the inner edge above and the outer edge where the pair's own grip gives out — so the same two numbers drive the verdict, the explanations and, shortly, the drawing.
+- Generated binary systems stopped seeding planets into that forbidden zone. Two different places in the generator each used a different rough approximation of the same limit, one of them right only for a pair of identical stars and the other only for a pair with no second star at all, so an eccentric or lopsided binary could be built with planets the engine's own physics condemns. Both now ask the real formula.
+
+## v3.0.60 - 26th Aug 2026
+
+- Fixed: anything parked at a Lagrange point could slowly walk off it. Some orbits set their own rotation rate rather than letting the physics work it out, and several bundled worlds do — Pluto and Charon, three of Alpha Centauri's, two of Uggi's moons. A Lagrange point turns with its planet by definition, but the point was falling back to the calculated rate instead of the one the planet actually uses. Where those disagree they disagree badly: a trojan of Oceanus/Khione would have drifted about 33 degrees a year off its point, Persephone's about 58, and Pluto's far worse. Points now inherit their planet's real rate, so a moon or station placed at one holds its position — checked over a decade of campaign time on the bundled maps, for all five points, for bodies and constructs alike.
+
+## v3.0.59 - 26th Aug 2026
+
+- The dashed co-orbital track now watches its own cost. A dashed line is charged for its whole path rather than the part you can see, so a circle at deep zoom can imply millions of tiny segments and cost a frame for the sake of decoration. It stays dashed while that is cheap and quietly becomes a faint solid line when it is not.
+
+## v3.0.58 - 26th Aug 2026
+
+- When Lagrange points are shown there is now a faint dashed circle through them — the co-orbital track, meaning "the distance the planet is at right now". It exists to explain something that looks wrong and is not: on an eccentric orbit the L-points drift off the drawn orbit line, and they are supposed to. The points keep an equilateral triangle with the planet and its star at every moment, so they are always at the planet's CURRENT distance, while the drawn orbit is where the planet will be at OTHER times — and on an ellipse those are different distances, by up to 5.5% for the Moon, swinging from one side to the other over a month. That is why a different point looks off each time you look. On a circular orbit the new circle sits exactly on the orbit line, which is the giveaway that it is eccentricity doing it.
+
+## v3.0.57 - 26th Aug 2026
+
+- The L1, L2 and L3 zones are green now instead of amber. Amber belongs to the Hill spheres, and the two were being confused — especially at L1 and L2, which genuinely sit on the Hill boundary and overlap it. Green means Lagrange across all five; the triangular zones stay a stronger, filled green and the collinear ones a cooler, fainter teal, since nothing is actually held at those.
+
+## v3.0.56 - 26th Aug 2026
+
+- A ship flying a gravity-assist route now lights its drive and turns around. It had always been charged for three burns — departure, the slingshot kick and the arrival brake — but the plan was made only of coasting legs, and the drive plume reads the leg type to decide whether a ship is thrusting and which way it is pointing. So a multi-year assist flight crossed the system with a dead engine and never flipped, on your map and on your players' devices. The ends of the coasts are now real acceleration and braking phases, each lasting as long as that ship's own thrust ceiling needs for the burn, so the torch fires at the right moment and for the right duration. The route, the fuel and the delta-v are unchanged.
+
+## v3.0.55 - 26th Aug 2026
+
+- The Lagrange zones are now the shapes the physics actually makes, not stylised arcs. L4 and L5 draw their true tadpole outline — computed from the zero-velocity contour of the three-body problem, so it has the fat head around the point and the tail that narrows toward the planet, and it widens with the mass ratio exactly as it should. That is why Luna's zones look so much bigger than Earth's and it is correct: the Moon is over a hundredth of Earth's mass where Earth is three millionths of the Sun's, which makes the Earth-Moon co-orbital region about sixty times wider in proportion. Eccentric orbits are handled by scaling the region to the planet's CURRENT distance, so it breathes over the orbit.
+- L1, L2 and L3 now have zones too — station-keeping envelopes sized on the Hill radius, drawn in amber and outlined rather than filled, because nothing is held at those points and the shape is where a station can practically hold rather than where physics traps anything.
+- Right-clicking inside any of the five zones now offers to put a construct at that point. L4 and L5 additionally offer a trojan body, as before. The clickable region is the drawn outline itself, for all five.
+
+## v3.0.54 - 26th Aug 2026
+
+- Hill spheres now draw for the selected body's neighbourhood rather than for everything at once: the body itself, its parent, its siblings and its moons. Picking a planet looks the same as it always did — its siblings are the other planets — but picking a moon narrows the view to that moon's own surroundings, one level down, so a submoon still shows.
+
+## v3.0.53 - 26th Aug 2026
+
+- Moons draw their Hill spheres now, when the Hill sphere overlay is on — the boundary inside which a moon holds on to anything of its own, which is where a submoon would go. They had been excluded because the display shared its list with the flight propagator, which deliberately does not model a handoff at a moon; those are now two separate lists and the flight side is untouched. The mass bar the propagator uses turned out to be roughly Mercury's, which excluded every major moon in the solar system, so a drawn bubble is judged on whether there is actually room outside the moon to orbit in instead.
+
+## v3.0.52 - 26th Aug 2026
+
+- A gravity-assist plan now arrives the way it says it does. It had always charged for its arrival brake — the Delta-v and the fuel both included it, and it reported an arrival velocity of zero — but the trajectory it published ended at the speed the ship was doing BEFORE that burn, several km/s fast (4.8 km/s on a Jupiter low orbit, up to 21.8 on a Lagrange point). Anything chaining a second leg onto an assist was therefore planning from a velocity the ship would never have. The brake now also appears as an arrival burn you can see, at exactly the cost it was always quoting.
+- Lagrange points dim when they are not the selected body's, so the selection's own five read at a glance instead of being lost among every other planet's.
+- Engine map: seven ids had been claimed twice by parallel sessions (and one three times). The first claim keeps its number, the later entries moved, and a translation table at the top of the file maps the old numbers to the new so older notes stay readable.
+
+## v3.0.51 - 25th Aug 2026
+
+- Board only. G44 corrected: trojan placement already uses the right-click background menu, so a submoon rides the same path.
+
+## v3.0.50 - 25th Aug 2026
+
+- Board only. Captured G44 (Hill spheres on moons, so a submoon can be placed where one could actually hold) and G45 (the circumbinary annulus — a combined Hill sphere outside, and the inner stability limit that the engine does not yet compute at all).
+
+## v3.0.49 - 26th Aug 2026
+
+- The Lagrange zones are readable now. They were drawn for every planet at once and each lobe swept from near the planet round to the far side of the orbit, so the map filled with green smears. Two fixes, both from the owner's eye on it: only the SELECTED object's zones are shaded (every body still shows its five crosses, and selecting something already parked at a point shades the zones of the body it rides), and each lobe is now centred on its point spanning the amplitude real trojans actually keep — 42 degrees wide instead of 156. Selecting a star shades nothing, since it is the primary of every pair beneath it.
+
+## v3.0.48 - 26th Aug 2026
+
+- G43 phase 4: flying to a Lagrange point now actually arrives there, matching its motion. The solver and the post-arrival parking used to build the point two different ways, so a ship braked to a dead stop against one place and was then teleported to another the instant the journey completed — up to 71 million km and a 13 km/s jolt for an eccentric target like Jupiter's L4. Worse, an L1 or L2 plan sent the planner's planet-centric distance to the solver as a distance from the STAR: a flight to Mars L1 finished inside the solar corona, 1.4 AU from Mars. Both sides now read the same geometry, so every efficiency and direct-burn plan to all five points arrives exactly on the point with its velocity cancelled to zero. Gravity-assist plans still arrive fast and are logged as a separate known issue.
+
+## v3.0.47 - 26th Aug 2026
+
+- G43 phase 3: constructs can be parked at ALL FIVE Lagrange points, not just L4 and L5 — the transit planner could always fly to all five, but the editors only ever offered the trojan pair. Each parked craft now carries what staying there costs it: coasting at a sound L4/L5 (a free-fall orbit holds it for nothing), station-keeping at L1/L2/L3 (the periodic trim burns real missions budget for), and holding when the trojan regime is breached and there is no equilibrium left to keep. The nine scattered "is this L4 or L5" checks that had let L1-L3 fall out of the editors are now one shared test.
+
+## v3.0.46 - 26th Aug 2026
+
+- G43 phase 2: the engine now judges a Lagrange placement instead of quietly exempting it. A trojan at L4/L5 is tested against Gascheau's 1843 bound (for a small trojan, Routh's limit: the secondary must stay under about a twenty-fifth of the total mass); breach it and the body reads Very Unstable with the margin quoted, and the LIGHTER of trojan and secondary wears the "flung out" fate. A body authored at L1 or L2 is told the honest truth — those are saddle points where a deviation e-folds in about a sixteenth of an orbit, so station-keeping holds a craft but nothing holds a moon — while L3 reads Unstable and drifts into a horseshoe rather than being thrown out. The relationship itself is published as an `orbit/lagrange` tag, and the physics trace shows the working: the derived orbit, the Gascheau margin, and why a stable trojan coasts for free. The physics page, the tag registry, tags-guide.md and classification-and-tags.md all move in the same batch.
+
+## v3.0.45 - 25th Aug 2026
+
+- G43 phase 1: Lagrange points become authorable. A body or construct can be pinned to a secondary's L-point with a structured co-orbital record, and the engine derives its orbit from the secondary on every pass (editing the planet moves its trojans; the old copy-once drift is healed on load, including the Traveller example's fifteen L4/L5 stations). One shared convention module now answers "where is an L-point" for the overlay, the authoring tabs and the derivation: L3/L4/L5 as the secondary's ellipse rigidly rotated (exact, eccentric orbits included), L1/L2 as the Hill-scaled co-rotating track. The L-points overlay draws the L4/L5 tadpole regions as areas; right-clicking inside one offers "Add Trojan here", and the type picker shows the pair's Gascheau mass limit as a switchable filter (an over-mass trojan is allowed and will wear honest tags — criteria land in phase 2). A co-orbital body's orbit tab shows the relationship, with a release control.
+
+## v3.0.44 - 25th Aug 2026
+
+- Saving now says which world you are saving. The system save screen states that the file holds that one system only - naming it - and that your other systems, the map and the routes are not in it, with the way to save all of that. Saving the campaign gets the matching screen saying the file holds everything. Both show the filename they will write, and the File menu entries say in their tooltips which of the two they act on.
+- Housekeeping: the campaign-save code that used to sit in the starmap component was unreachable (nothing could open it) and had drifted behind the real one - it never stripped derived physics or carried assets. Removed; the working save is untouched.
+
+## v3.0.43 - 25th Aug 2026
+
+- Board only. G43 phase 0: the Lagrange design note is posted (docs/dev/lagrange-full-citizens-design.md) with the owner questions Q1-Q7. The phase-0 probe measured today's L-point arrivals: the solver velocity-cancels against a mean-anomaly-shifted phantom while the parked track is the omega-rotated orbit, so eccentric arrivals teleport (Jupiter L4: 0.31-0.48 AU, 0.6-13 km/s step), and a panel-driven L1/L2 plan flies to the parking DISTANCE as a heliocentric radius (Mars L1 terminates 0.007 AU from the Sun). No engine changes yet.
+
+## v3.0.42 - 25th Aug 2026
+
+- The wrong-loader message becomes an offer. Drop a campaign (starmap) file on Load System and a compact panel names it, states plainly that opening it replaces your whole current campaign, and offers to open it - or cancel, which changes nothing. Drop a single system on Load Starmap and the same panel names it and points at the right door. Bundles (.sse.zip) go through the same panel, so the two old one-line warnings are gone.
+
+## v3.0.41 - 25th Aug 2026
+
+- A file dropped on the wrong loader is now named for what it is. All three loaders (Load Starmap, Load System, and the generation wizard) share one classifier that reads the file's shape - never its name - so a system save dropped on Load Starmap says "this is a saved SYSTEM" and points at the right door, a campaign dropped on Load System says so in mirror, and a file that is neither gets one plain sentence instead of a validator dump. The wizard also accepts .sse.zip bundles now, which are our own saves and used to fail there as "could not load".
+
+## v3.0.40 - 25th Aug 2026
+
+- Board only. Captured G43: Lagrange points become full citizens — authored trojan bodies at L4/L5 with stability tags, constructs at all five points with fuel-use tags, and transit arriving properly with velocity cancelling. Design note and owner questions come before any code.
+
+## v3.0.39 - 25th Aug 2026
+
+- Board only. Captured G42: load and save need to say which world they act on — a system save is not a campaign save, and a file dropped on the wrong loader should be recognised as its sister type and offered the right door with a clear warning, not an esoteric error.
+
+## v3.0.38 - 25th Aug 2026
+
+- Board only. The custom-liquids question closes with the owner's verdict (interiors are the deliberate edge of the simulation, until V4), and the V4 regional-worlds design is captured for the first time: areas, shocks, subsurface life, tectonics, and the event driver they all need.
+
+## v3.0.37 - 25th Aug 2026
+
+- Board only. A user question ("can I add a custom interior liquid?") is answered and captured: custom liquids work fully as surface oceans today, but the subsurface and interior layers are hardcoded - the gap and its fix shape are on the board. Coordinator 5 retires with its handover recorded.
+
 ## v3.0.36 - 25th Aug 2026
 
 - Centre the map on a star: right-click any star on the GM map for Centre Map Here (and Clear). The 3D starmap's distance rings then radiate from that star and measure from it, and Reset View centres it on screen, zoomed so every star still fits. Snap grids and hex addresses never move - this is display and navigation only.
@@ -344,7 +919,6 @@ All notable changes are listed here:
 
 - FIXED: the engine decided what TYPE a world is from the temperature it RADIATES at rather than the temperature on its ground. On anything with air the two are the same number, but an airless world that bakes by day and freezes by night radiates like a warm one while averaging far colder - the Moon radiates at 270 K and averages 214, Mercury 440 and 310 - so seventeen type tests, every one of them asking a question about the surface, were reading the wrong figure. Nothing in the solar system changes type as a result; what it fixes is a world sitting near the edge of a band, where it could be called an ocean world on a temperature its ground never reaches.
 
-
 ## v2.1.885-beta - 21st Aug 2026
 
 - A wet world no longer freezes because a branch closed. The vapour a sea puts into its own air is now DERIVED from the saturation pressure at its surface temperature and how much of the surface is sea, sharing one curve with the cloud decks, instead of switching on at exactly 273 K - a step that cost a world a hair below freezing its entire vapour greenhouse, which is what kept it below freezing. The reported Traveller "Earth-like" world reads +26.7 C where it read a snowball. Not water-specific: a methane sea warms its world with methane. Sol does not move by a kelvin.
@@ -368,7 +942,6 @@ All notable changes are listed here:
 ## 2.1.879-beta - 21st Aug 2026
 
 - Docs only. The surface-temperature session retires and leaves its notes: the traps in the day/night model, the ice-ageing and tidal-lock work, and how to read the derived-physics fixture as a review tool. It ends with what is still open, each in a form you can check in thirty seconds - including the one decision left for the owner, which is that the classifier is still reading the temperature a world RADIATES at where seventeen of its type tests want the temperature on its ground.
-
 
 ## v2.1.878-beta - 20th Aug 2026
 
@@ -727,7 +1300,6 @@ All notable changes are listed here:
 - The gas card is split into what the physics READS and what it merely DRAWS with, because a GM had no way to tell the difference: a gas colour never touches the light calculation, and an absorption band decides the whole thing.
 - A world's night-side lights can now be any colour - bioluminescence, city amber, somebody's purple arc-light - chosen per morphology in the Biospheres editor. Left alone, they stay the sodium amber they have always been.
 
-
 ## v2.1.794-beta - 18th Aug 2026
 
 - FIXED: a system file with a blank rule-pack id would not load - "Invalid system file. Missing system-specific properties" - and the app writes blank ones itself on ubox and SpaceEngine imports, so a system imported, saved and reopened was refused. The pack id was never needed to load: the file is processed with the current pack regardless. It is now stamped on load where blank, the message says what is actually required, and a starmap is no longer refused for an embedded system with a blank or stale pack id.
@@ -857,7 +1429,6 @@ All notable changes are listed here:
 ## v2.1.769-beta - 18th Aug 2026
 
 - Docs only. The surface-areas design - describing part of a world rather than all of it - is deferred whole to V4 and now has its own section in the V4 scope, so that work opens with the record already settled. The standing limitation it uncovered stays on the board: a world's surface age is currently its tectonic regime's constant, which is why the icy-moon work could not separate Ganymede from Callisto.
-
 
 ## v2.1.768-beta - 17th Aug 2026
 

@@ -1,7 +1,9 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, StateVector, Vector2 } from './types';
-import { solveLambert, magnitude, subtract, distanceAU, integrateBallisticPath, dot } from './math';
+import { solveLambert, magnitude, subtract, distanceAU, integrateBallisticPath, integrateBallisticPathAtTimes, dot, perihelionOf } from './math';
+import { buildPathSchedule, slicePhase, DEFAULT_PATH_BUDGET } from './pathSampling';
 import { getGlobalState, calculateFuelMass } from './physics';
+import { calculateKillZone } from '../physics/zones';
 import { AU_KM, G } from '../constants';
 
 const AU_M = AU_KM * 1000;
@@ -108,6 +110,11 @@ export function calculateAssistPlan(
 
     const mu = (root.kind === 'body' ? (root as CelestialBody).massKg : (root as Barycenter).effectiveMassKg || 0) * G;
     const mu_au = mu / Math.pow(AU_M, 3);
+    // How close to the star a route may pass. The engine already derives this line and the generator
+    // already refuses to place a body across it, so a ship's route reads the same number rather than a
+    // fresh one. Zero for a root with no luminosity, which disables the check rather than inventing a
+    // limit for a star we know nothing about. Sol's is 0.0899 AU.
+    const starKillZoneAU = root.kind === 'body' ? (calculateKillZone(root as CelestialBody, null) || 0) : 0;
     
     // Iterate through candidates (best first)
     for (const cand of candidates) {
@@ -217,6 +224,30 @@ export function calculateAssistPlan(
                     continue; 
                 }
 
+                // WHERE DOES THIS ROUTE ACTUALLY GO? ([[B93]])
+                //
+                // The check above asks whether the ship can survive the FLYBY. Nothing asked where the
+                // two heliocentric legs went in between — and a Lambert solution is perfectly happy to
+                // route a ship through the middle of a star. Measured on Sol 2030, Mars -> Main Belt:
+                // the offered Jupiter-assist plan's second leg was a valid solution with a = 2.670 AU
+                // and e = 0.9986, a perihelion of 0.0037 AU. That is 550,000 km from the Sun's centre,
+                // inside the corona, presented as an ordinary route. It stayed unseen for as long as it
+                // existed because the display integrator marched at a flat two-day step and fell off the
+                // conic near perihelion, drawing a different and less alarming curve (G46).
+                //
+                // The limit is the star's own KILL ZONE — the line the generator already refuses to place
+                // a body across — rather than a number invented here. Sol's is 0.0899 AU. A candidate
+                // that dives inside it is dropped exactly as an unsurvivable flyby periapsis is; the
+                // search simply goes on to the next one.
+                const legPerihelionAU = (r0: Vector2, v0: Vector2) => perihelionOf(r0, v0, mu_au);
+                const q1 = legPerihelionAU(startState.r, leg1.v1);
+                const q2 = legPerihelionAU(flybyStateAtArrival.r, leg2.v1);
+                const closest = Math.min(q1 ?? Infinity, q2 ?? Infinity);
+                if (Number.isFinite(closest) && closest < starKillZoneAU) {
+                    if (DEBUG_TRANSIT) console.log(`[AssistDebug] Reject: leg perihelion ${closest.toFixed(4)} AU inside kill zone ${starKillZoneAU.toFixed(4)} AU`);
+                    continue;
+                }
+
                 if (DEBUG_TRANSIT) console.log(`[AssistDebug] FOUND PLAN! ${origin.name} -> ${flybyBody.name} -> ${target.name}`);
                 // If we got here, this is a VALID Assist!
                 // Calculate Costs
@@ -243,7 +274,7 @@ export function calculateAssistPlan(
                     startTime, arrivalTime, targetTime,
                     startState, leg1, leg2, 
                     v_dep, dv_assist, v_arr,
-                    params
+                    params, closest, starKillZoneAU
                 );
             }
         }
@@ -261,7 +292,8 @@ function buildAssistTransitPlan(
     t1: number, t2: number, t3: number,
     s1: StateVector, leg1: {v1: Vector2, v2: Vector2}, leg2: {v1: Vector2, v2: Vector2},
     dv1: number, dv_assist: number, dv3: number,
-    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; costOnly?: boolean; }
+    params: { maxG: number; shipMass_kg?: number; shipIsp?: number; costOnly?: boolean; },
+    closestApproachAU: number, starKillZoneAU: number
 ): TransitPlan {
     const totalTimeDays = (t3 - t1) / (1000 * 86400);
     const totalDV = dv1 + dv_assist + dv3;
@@ -294,37 +326,78 @@ function buildAssistTransitPlan(
     
     // Dynamic steps for long coasts (costOnly keeps the analytic cost but skips the dense display path).
     const costOnly = params.costOnly;
-    const steps1 = costOnly ? 24 : Math.min(2000, Math.max(100, Math.ceil((t1_end - t1) / (1000 * 86400 * 2))));
-    const steps2 = costOnly ? 24 : Math.min(2000, Math.max(100, Math.ceil((t3 - t2_start) / (1000 * 86400 * 2))));
+    // G46: the burn windows are known before the paths are drawn, so each leg's integration can put
+    // points INSIDE them instead of the burn being carved afterwards out of a two-day grid. Carving
+    // was what left the arrival brake with two points spanning a whole coast sample — measured at
+    // 109.6 km/s over a 1.24 h burn for a 0.3 g ship, the same absurdity as the Lambert family's.
+    const burnAccel = Math.max(0.01, (params.maxG || 0.1) * 9.81);
+    const leg1Ms = Math.max(1, t1_end - t1);
+    const accelMs = Math.min(leg1Ms * 0.9, (dv1 / burnAccel) * 1000);
+    const leg2Ms = Math.max(1, t3 - t2_start);
+    const brakeMs = Math.min(leg2Ms * 0.9, (dv3 / burnAccel) * 1000);
+    const ASSIST_SPACING_SEC = 86400 * 2;
 
     // LEG 1 Path (Truncated) - WITH DRIFT CORRECTION
     // We generate the FULL path to T2 (Flyby Center), force it to hit the Planet, then slice it back.
     const flybyCenterState = getGlobalState(sys, flybyBody, t2);
     
-    // Integrate fully to T2 with correction
-    const integration1 = integrateBallisticPath(
-        s1.r, 
-        leg1.v1, 
-        (t2 - t1) / 1000, 
-        mu_au, 
-        steps1 + 10, // Add a few steps buffer
-        flybyCenterState.r // Force hit Jupiter center
+    // Integrate fully to T2 with correction. The run continues past the drawn leg to the flyby
+    // centre — that tail is what the drift correction aims at — but it is a separate PHASE, so it is
+    // discarded by name rather than by an index computed from a length.
+    const sched1 = buildPathSchedule([
+        { key: 'accel', startSec: 0, endSec: accelMs / 1000, spacingSec: ASSIST_SPACING_SEC },
+        { key: 'coast', startSec: accelMs / 1000, endSec: (t1_end - t1) / 1000, spacingSec: ASSIST_SPACING_SEC },
+        { key: 'tail', startSec: (t1_end - t1) / 1000, endSec: (t2 - t1) / 1000, spacingSec: ASSIST_SPACING_SEC }
+    ], costOnly ? 24 : DEFAULT_PATH_BUDGET);
+    const integration1 = integrateBallisticPathAtTimes(
+        s1.r, leg1.v1, sched1.timesSec, mu_au,
+        { targetEndPos: flybyCenterState.r, maxStepSec: ASSIST_SPACING_SEC }
     );
     const leg1FullPoints = integration1.points;
-    
-    // Find the slice point for T1_end
-    // t1_end is 'flybyDtSec' before t2
-    const sliceIndex = Math.floor(leg1FullPoints.length * ((t1_end - t1) / (t2 - t1)));
-    const leg1Points = leg1FullPoints.slice(0, sliceIndex + 1);
+    const leg1Accel = slicePhase(sched1, leg1FullPoints, 'accel', t1);
+    const leg1Coast = slicePhase(sched1, leg1FullPoints, 'coast', t1);
+    // The drawn leg is the accel plus the coast, sharing their boundary vertex exactly once.
+    const leg1Points = [...leg1Accel.points, ...leg1Coast.points.slice(1)];
+    const leg1Times = [...leg1Accel.timesMs, ...leg1Coast.timesMs.slice(1)];
     
     const p1 = leg1Points[leg1Points.length - 1];
     const v1 = leg1.v2; 
 
-    // Bezier Calculations...
-    const integrationGap = integrateBallisticPath(getGlobalState(sys, flybyBody, t2).r, leg2.v1, flybyDtSec, mu_au, 10);
-    const gapPoints = integrationGap.points;
-    const p2 = gapPoints[gapPoints.length - 1];
-    
+    // LEG 2 — DRAWN FROM THE STATE IT WAS SOLVED FROM.
+    //
+    // `leg2` is a Lambert solution from the FLYBY BODY'S POSITION AT t2 across the whole t2->t3 span.
+    // The drawing used to start somewhere else entirely: at the Bezier's end point, produced by a
+    // separate ten-step integration, and then run for a SHORTER span. A Lambert velocity applied at a
+    // position it was not solved for is simply a different conic, and the end-point drift correction
+    // then hauled the far end back onto the target while leaving the middle wherever it had gone. The
+    // coarse two-day sampling hid how far that was; sampling the arrival brake at its own resolution
+    // did not, and showed the ship drawn at 264 km/s on a plan whose entire Delta-v budget is 34 km/s.
+    //
+    // So the integration now starts at the flyby centre with the velocity that belongs there, and the
+    // lead-in across the flyby window is a PHASE that is generated and then dropped — the same device
+    // leg 1 uses to run on to the flyby centre for its own drift target.
+    const finalTargetPos = getGlobalState(sys, target, t3).r;
+    const leadSec = flybyDtSec;
+    const sched2 = buildPathSchedule([
+        { key: 'lead', startSec: 0, endSec: leadSec, spacingSec: ASSIST_SPACING_SEC },
+        { key: 'coast', startSec: leadSec, endSec: leadSec + (leg2Ms - brakeMs) / 1000, spacingSec: ASSIST_SPACING_SEC },
+        { key: 'brake', startSec: leadSec + (leg2Ms - brakeMs) / 1000, endSec: leadSec + leg2Ms / 1000, spacingSec: ASSIST_SPACING_SEC }
+    ], costOnly ? 24 : DEFAULT_PATH_BUDGET);
+    const integration2 = integrateBallisticPathAtTimes(
+        flybyCenterState.r, leg2.v1, sched2.timesSec, mu_au,
+        { targetEndPos: finalTargetPos, maxStepSec: ASSIST_SPACING_SEC }
+    );
+    const leg2FullPoints = integration2.points;
+    const leg2Coast = slicePhase(sched2, leg2FullPoints, 'coast', t2);
+    const leg2Brake = slicePhase(sched2, leg2FullPoints, 'brake', t2);
+    const leg2Points = [...leg2Coast.points, ...leg2Brake.points.slice(1)];
+    const leg2Times = [...leg2Coast.timesMs, ...leg2Brake.timesMs.slice(1)];
+
+    // The flyby arc now joins two points that are both ON the solved trajectory: leg 1's last drawn
+    // point and leg 2's first. It used to end at a point invented by an integration that nothing else
+    // read, which is why that integration is gone.
+    const p2 = leg2Coast.points[0];
+
     // ... Bezier Loop ... (Unchanged)
     const flybyPoints: Vector2[] = [];
     const stepsFlyby = 20;
@@ -339,27 +412,16 @@ function buildAssistTransitPlan(
         flybyPoints.push({x, y});
     }
 
-    // LEG 2 Path (Truncated) - WITH DRIFT CORRECTION
-    // Target: The actual position of the destination body at T3
-    const finalTargetPos = getGlobalState(sys, target, t3).r;
-    
-    // Note: We integrate from P2 (Bezier End) to T3.
-    // We enforce that it ends at finalTargetPos.
-    const integration2 = integrateBallisticPath(
-        p2, 
-        leg2.v1, 
-        (t3 - t2_start) / 1000, 
-        mu_au, 
-        steps2, 
-        finalTargetPos // <--- Drift Correction Enabled
-    ); 
-    const leg2Points = integration2.points;
-
     // --- CORRECTION LOGIC & FUEL ---
     const burns: BurnPoint[] = [];
     let correctionDV = 0;
     let correctionFuel = 0;
     const tags = ['GRAVITY-ASSIST'];
+    // Survivable but unpleasant: inside three kill-zone radii the route is legal and worth saying so
+    // out loud, which is this engine's habit with a hazard - tag and explain rather than refuse.
+    if (Number.isFinite(closestApproachAU) && closestApproachAU < starKillZoneAU * 3) {
+        tags.push(`SOLAR CLOSE PASS (${closestApproachAU.toFixed(3)} AU)`);
+    }
 
     const checkDriftAndAddBurns = (driftAu: number, path: Vector2[], startT: number, durationMs: number, prefix: string) => {
         const driftM = driftAu * AU_M;
@@ -392,20 +454,67 @@ function buildAssistTransitPlan(
     
     const segments: TransitSegment[] = [];
 
-    // LEG 1
-    segments.push({
-        id: 'leg-1-coast',
-        type: 'Coast',
-        startTime: t1,
-        endTime: t1_end,
-        startState: { r: s1.r, v: leg1.v1 },
-        endState: { r: p1, v: leg1.v2 },
-        hostId: root.id,
-        pathPoints: leg1Points,
-        warnings: [],
-        fuelUsed_kg: 0
-    });
+    // B87: THE BURNS ARE PHASES, NOT JUST NUMBERS.
+    //
+    // This plan has always PAID for three burns — departure, the periapsis kick, and the arrival
+    // brake — but emitted three `Coast` segments and nothing else, so `constructs/shipBurn.ts` (which
+    // reads the segment LABEL to decide whether a ship is thrusting and which way it points) saw
+    // nothing but coast and returned NONE. A multi-year gravity-assist flight therefore crossed the
+    // system with a dead drive and never turned retrograde, on the GM map and on player devices alike.
+    //
+    // So the ends of the two coasts are carved into real `Accel` and `Brake` segments, each lasting
+    // the time the ship's own thrust ceiling needs for that Delta-v (dv / (maxG*g0)). The trajectory
+    // is UNCHANGED and so are the Delta-v and fuel totals: the Lambert legs are impulsive solutions
+    // and re-solving them with finite burns is a different piece of work. This is the same
+    // display-grade split the torch families already use — it makes the burn VISIBLE at the right
+    // moment and for the right duration, which is what the plume and the flip read.
+    /** Unit vector of a burn's Delta-v — the direction the drive actually points while it fires. */
+    const unitOf = (v: Vector2): Vector2 | undefined => {
+        const m = Math.hypot(v.x, v.y);
+        return m > 1e-18 ? { x: v.x / m, y: v.y / m } : undefined;
+    };
+
+    // The burn phases now OWN their points — generated over their own window by the leg's own
+    // integration — so nothing is carved out of anyone else's grid and nothing has to be interpolated
+    // into existence at the boundary. What used to live here was `sliceAt`, which split a two-day
+    // sampled leg at an arbitrary fraction and handed the burn whatever fell on its side: two points
+    // for any burn shorter than the sampling cadence, which every short burn is.
+    if (accelMs > 0 && leg1Accel.points.length > 1) {
+        segments.push({
+            id: 'leg-1-accel', type: 'Accel',
+            startTime: t1, endTime: t1 + accelMs,
+            startState: { r: s1.r, v: s1.v },
+            endState: { r: leg1Accel.points[leg1Accel.points.length - 1], v: leg1.v1 },
+            hostId: root.id, pathPoints: leg1Accel.points, pathTimes: leg1Accel.timesMs,
+            deltaV_ms: dv1, thrustDir: unitOf(subtract(leg1.v1, s1.v)),
+            warnings: [], fuelUsed_kg: 0
+        });
+        segments.push({
+            id: 'leg-1-coast', type: 'Coast',
+            startTime: t1 + accelMs, endTime: t1_end,
+            startState: { r: leg1Coast.points[0], v: leg1.v1 },
+            endState: { r: p1, v: leg1.v2 },
+            hostId: root.id, pathPoints: leg1Coast.points, pathTimes: leg1Coast.timesMs,
+            warnings: [], fuelUsed_kg: 0
+        });
+    } else {
+        segments.push({
+            id: 'leg-1-coast', type: 'Coast',
+            startTime: t1, endTime: t1_end,
+            startState: { r: s1.r, v: leg1.v1 },
+            endState: { r: p1, v: leg1.v2 },
+            hostId: root.id, pathPoints: leg1Points, pathTimes: leg1Times, warnings: [], fuelUsed_kg: 0
+        });
+    }
     
+    // THE FLYBY ARC IS A COSMETIC BEZIER, NOT THE FLOWN HYPERBOLA. Its parameter is not time, so
+    // these stamps are an even spread rather than a truth — good enough because the curve's implied
+    // speed measures 2.9 km/s average against a 4.4 km/s peak, well inside what the ship can do, and
+    // stamping it at least keeps every reader agreeing about where the ship is. Replacing the Bezier
+    // with a real integrated pass in the flyby body's frame is a solver change, recorded for G47.
+    const evenTimes = (pts: Vector2[], startMs: number, endMs: number) =>
+        pts.map((_, i) => startMs + ((endMs - startMs) * i) / Math.max(1, pts.length - 1));
+
     // FLYBY SEGMENT
     segments.push({
         id: 'leg-flyby',
@@ -416,23 +525,66 @@ function buildAssistTransitPlan(
         endState: { r: flybyPoints[flybyPoints.length-1], v: {x:0,y:0} },
         hostId: flybyBody.id,
         pathPoints: flybyPoints,
+        pathTimes: evenTimes(flybyPoints, t1_end, t2_start),
         warnings: ['Gravity Assist'],
         fuelUsed_kg: 0
     });
     
     // LEG 2
-    segments.push({
-        id: 'leg-2-coast',
-        type: 'Coast',
-        startTime: t2_start,
-        endTime: t3,
-        startState: { r: p2, v: leg2.v1 },
-        endState: { r: getGlobalState(sys, target, t3).r, v: leg2.v2 },
-        hostId: root.id,
-        pathPoints: leg2Points,
-        warnings: [],
-        fuelUsed_kg: 0
-    });
+    //
+    // B86: THE TERMINAL STATE IS THE BRAKED ONE, because that is what this plan has already been
+    // charged for. `v_arr` (the |target.v - leg2.v2| brake) is in `totalDV` and its fuel is in the
+    // estimate, and the plan publishes `arrivalVelocity_ms: 0` — but the end state used to carry
+    // `leg2.v2`, the transfer ellipse's arrival velocity, i.e. the ship BEFORE the burn it had
+    // paid for. So a plan claiming a braked rendezvous ended several km/s fast: measured 4,788 m/s
+    // on a plain Jupiter low orbit and 13-22 km/s on Lagrange arrivals. Two things read this and
+    // were wrong because of it — leg CHAINING (SystemView takes the next leg's initial state from
+    // here, so every following leg was planned from a velocity the ship would never have) and the
+    // arrival telemetry. Same convention as the other plan families, which end their last segment
+    // on the target-matched `finalState` (calculator.ts).
+    const targetEndState = getGlobalState(sys, target, t3);
+    // LEG 2 — the coast, then the arrival brake it has already been charged for (B86). Splitting it
+    // makes the deceleration a real phase with a start time, so the ship flips retrograde and lights
+    // its drive for exactly as long as the burn takes, instead of the whole change appearing as a
+    // discontinuity in the final instant.
+    if (brakeMs > 0 && leg2Brake.points.length > 1) {
+        segments.push({
+            id: 'leg-2-coast', type: 'Coast',
+            startTime: t2_start, endTime: t3 - brakeMs,
+            startState: { r: p2, v: leg2.v1 },
+            endState: { r: leg2Coast.points[leg2Coast.points.length - 1], v: leg2.v2 },
+            hostId: root.id, pathPoints: leg2Coast.points, pathTimes: leg2Coast.timesMs,
+            warnings: [], fuelUsed_kg: 0
+        });
+        segments.push({
+            id: 'leg-2-brake', type: 'Brake',
+            startTime: t3 - brakeMs, endTime: t3,
+            startState: { r: leg2Brake.points[0], v: leg2.v2 },
+            endState: { r: targetEndState.r, v: targetEndState.v },
+            hostId: root.id, pathPoints: leg2Brake.points, pathTimes: leg2Brake.timesMs,
+            deltaV_ms: dv3, thrustDir: unitOf(subtract(targetEndState.v, leg2.v2)),
+            warnings: [], fuelUsed_kg: 0
+        });
+    } else {
+        segments.push({
+            id: 'leg-2-coast', type: 'Coast',
+            startTime: t2_start, endTime: t3,
+            startState: { r: p2, v: leg2.v1 },
+            endState: { r: targetEndState.r, v: targetEndState.v },
+            hostId: root.id, pathPoints: leg2Points, pathTimes: leg2Times, warnings: [], fuelUsed_kg: 0
+        });
+    }
+
+    // ...and the brake is now VISIBLE where it happens, rather than only inside the Δv total.
+    if (dv3 > 0) {
+        burns.push({
+            id: `assist-arrival-brake-${t3}`,
+            time: t3,
+            position: targetEndState.r,
+            deltaV_ms: dv3,
+            type: 'Arrival'
+        });
+    }
 
     return {
         id: 'assist-' + Date.now(),

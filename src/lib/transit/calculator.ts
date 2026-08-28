@@ -1,10 +1,17 @@
 import type { System, CelestialBody, Barycenter } from '../types';
 import type { TransitPlan, TransitSegment, TransitMode, Vector2, StateVector, BurnPoint } from './types';
-import { solveLambert, distanceAU, subtract, magnitude, integrateBallisticPath, add } from './math';
+import { solveLambert, distanceAU, subtract, magnitude, dot, zOf, integrateBallisticPath, integrateBallisticPathAtTimes, add } from './math';
+import { buildPathSchedule, slicePhase, refineScheduleByTurn, PREFERRED_SPACING_SEC, DEFAULT_PATH_BUDGET } from './pathSampling';
+import type { PathSchedule } from './pathSampling';
 import { getGlobalState, getLocalState, calculateFuelMass } from './physics';
+import { deriveCoOrbitalOrbit, LAGRANGE_POINT_IDS } from '../physics/lagrange';
+import { aerobrakeSolution, brakingCorridorKm } from '../physics/aerobrake';
+import type { LagrangePointId } from '../types';
 import { calculateAssistPlan } from './assist';
 import { sampleJourneyKinematicsAtTime } from './scheduler';
 import { AU_KM, G } from '../constants';
+import { parkingOrbitRadiusKm } from '../physics/orbits';
+import { solveHohmann, transferEllipsePath, aerobrakeDipPath } from './orbitChange';
 
 const AU_M = AU_KM * 1000;
 const DAY_S = 86400;
@@ -33,6 +40,26 @@ function getNodeMass(sys: System, node: any): number {
     return 0;
 }
 
+/** Unit vector, or undefined when there is no direction to speak of. */
+function unitOf(v: Vector2): Vector2 | undefined {
+    const m = Math.hypot(v.x, v.y);
+    if (!(m > 1e-18)) return undefined;
+    return { x: v.x / m, y: v.y / m };
+}
+
+/** The sample nearest a given offset from the journey start. Sample times are no longer evenly
+ *  spaced, so a fraction-of-count index is not the same thing as a fraction-of-time one. */
+function indexAtTimeSec(timesSec: number[], tSec: number): number {
+    if (timesSec.length === 0) return 0;
+    let best = 0;
+    let bestGap = Infinity;
+    for (let i = 0; i < timesSec.length; i++) {
+        const gap = Math.abs(timesSec[i] - tSec);
+        if (gap < bestGap) { bestGap = gap; best = i; }
+    }
+    return best;
+}
+
 function estimateOrbitalPeriodDays(
   node: CelestialBody | Barycenter,
   parentMu: number
@@ -56,21 +83,25 @@ function resolveAimPositionAtRadius(
   if (!radiusAu || radiusAu <= 0) return targetPos;
   let dx = startPos.x - targetPos.x;
   let dy = startPos.y - targetPos.y;
-  let d = Math.hypot(dx, dy);
+  let dz = zOf(startPos) - zOf(targetPos);
+  let d = Math.hypot(dx, dy, dz);
   if (!Number.isFinite(d) || d < 1e-12) {
     // Fallback: aim "behind" target velocity direction
     dx = -targetVel.x;
     dy = -targetVel.y;
-    d = Math.hypot(dx, dy);
+    dz = -zOf(targetVel);
+    d = Math.hypot(dx, dy, dz);
   }
   if (!Number.isFinite(d) || d < 1e-12) {
     dx = 1;
     dy = 0;
+    dz = 0;
     d = 1;
   }
   return {
     x: targetPos.x + (dx / d) * radiusAu,
-    y: targetPos.y + (dy / d) * radiusAu
+    y: targetPos.y + (dy / d) * radiusAu,
+    z: zOf(targetPos) + (dz / d) * radiusAu
   };
 }
 
@@ -93,17 +124,20 @@ function resolveDesiredArrivalRelative(
     // it means a free flyby (no arrival burn).
     if (desiredMs <= 0) return { desiredRelVec_au_s: arrivalRelVec_au_s, dv2Required_ms: 0 };
     
-    if (relMag <= 1e-12) return { desiredRelVec_au_s: { x: 0, y: 0 }, dv2Required_ms: desiredMs };
+    if (relMag <= 1e-12) return { desiredRelVec_au_s: { x: 0, y: 0, z: 0 }, dv2Required_ms: desiredMs };
     const desiredAuS = desiredMs / AU_M;
+    // Same closing DIRECTION, the requested closing SPEED. The z term is not decoration: scaling only
+    // x and y by a magnitude that included z left the pass 2 m/s off the 2,000 it was asked for.
     const desired = {
       x: (arrivalRelVec_au_s.x / relMag) * desiredAuS,
-      y: (arrivalRelVec_au_s.y / relMag) * desiredAuS
+      y: (arrivalRelVec_au_s.y / relMag) * desiredAuS,
+      z: (zOf(arrivalRelVec_au_s) / relMag) * desiredAuS
     };
     return { desiredRelVec_au_s: desired, dv2Required_ms: Math.abs(relMag - desiredAuS) * AU_M };
   }
 
   if (!parkingOrbitRadius_au || parkingOrbitRadius_au <= 0 || targetMassKg <= 0) {
-    return { desiredRelVec_au_s: { x: 0, y: 0 }, dv2Required_ms: relMag * AU_M };
+    return { desiredRelVec_au_s: { x: 0, y: 0, z: 0 }, dv2Required_ms: relMag * AU_M };
   }
 
   const rVec = subtract(targetAimPos, targetPos);
@@ -113,14 +147,33 @@ function resolveDesiredArrivalRelative(
   const vCirc_ms = Math.sqrt((targetMassKg * G) / rM);
   const vCirc_au_s = vCirc_ms / AU_M;
 
-  const rx = rVec.x / Math.max(1e-12, rAu);
-  const ry = rVec.y / Math.max(1e-12, rAu);
-  const tA = { x: -ry * vCirc_au_s, y: rx * vCirc_au_s };
-  const tB = { x: ry * vCirc_au_s, y: -rx * vCirc_au_s };
-
-  const dA = magnitude(subtract(arrivalRelVec_au_s, tA));
-  const dB = magnitude(subtract(arrivalRelVec_au_s, tB));
-  const desired = dA <= dB ? tA : tB;
+  // THE CHEAPEST CIRCULAR ORBIT THROUGH THE AIM POINT, which is the one whose velocity lies along the
+  // part of the arrival velocity that is already perpendicular to the radius. Nothing about that is
+  // two-dimensional, and it replaces a pair of candidate tangents built by rotating the radius a
+  // quarter turn in x and y and then comparing which was nearer: in a plane those two ARE the only
+  // perpendiculars and the nearer one is this projection, so a flat system gets the same answer it
+  // always did — but out of plane they were two arbitrary vectors and neither was perpendicular to
+  // anything the ship was actually doing.
+  const rHat = { x: rVec.x / rAu, y: rVec.y / rAu, z: zOf(rVec) / rAu };
+  const radialPart = dot(arrivalRelVec_au_s, rHat);
+  let tangential = {
+    x: arrivalRelVec_au_s.x - rHat.x * radialPart,
+    y: arrivalRelVec_au_s.y - rHat.y * radialPart,
+    z: zOf(arrivalRelVec_au_s) - rHat.z * radialPart
+  };
+  let tMag = magnitude(tangential);
+  if (!(tMag > 1e-15)) {
+    // A purely RADIAL approach has no perpendicular component to follow, so any perpendicular will
+    // do; take the one in the reference plane, which is what the old pair would have picked.
+    tangential = { x: -rHat.y, y: rHat.x, z: 0 };
+    tMag = magnitude(tangential);
+    if (!(tMag > 1e-15)) return { desiredRelVec_au_s: { x: 0, y: 0, z: 0 }, dv2Required_ms: relMag * AU_M };
+  }
+  const desired = {
+    x: (tangential.x / tMag) * vCirc_au_s,
+    y: (tangential.y / tMag) * vCirc_au_s,
+    z: (zOf(tangential) / tMag) * vCirc_au_s
+  };
   const dv2Req = magnitude(subtract(arrivalRelVec_au_s, desired)) * AU_M;
   return { desiredRelVec_au_s: desired, dv2Required_ms: dv2Req };
 }
@@ -168,6 +221,15 @@ function solveBestLambert(
   return best;
 }
 
+// Is this arrival an ORBIT AROUND THE TARGET, as opposed to a co-orbital point beside it? Only an
+// orbital arrival has a periapsis that can be dropped into the air, which is what makes aerobraking
+// possible at all — and it is the check the old flat model was missing, so an L-point arrival half an
+// AU from the planet was collecting the same free braking as a low pass.
+function isOrbitalArrivalPlacement(placement?: string): boolean {
+  if (!placement) return true;                    // an unqualified arrival is an orbit by default
+  return !LAGRANGE_POINT_IDS.includes(placement as LagrangePointId);
+}
+
 export function calculateTransitPlan(
   sys: System,
   originId: string,
@@ -187,7 +249,8 @@ export function calculateTransitPlan(
       initialState?: StateVector; 
       initialStateFrame?: 'auto' | 'global' | 'local';
       parkingOrbitRadius_au?: number; 
-      targetOffsetAnomaly?: number; 
+      // targetOffsetAnomaly RETIRED (G43 P4): the L-point geometry lives in physics/lagrange.ts,
+      // so callers no longer pass an anomaly offset for it.
       arrivalPlacement?: string;
       aerobrake?: { allowed: boolean; limit_kms: number; }; // NEW
       initialDelay_days?: number;
@@ -298,7 +361,7 @@ export function calculateTransitPlan(
   
   if (params.arrivalPlacement) {
       const placementNode = sys.nodes.find(n => n.id === params.arrivalPlacement);
-      const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(params.arrivalPlacement);
+      const isLagrange = LAGRANGE_POINT_IDS.includes(params.arrivalPlacement as LagrangePointId);
 
       if (placementNode || isLagrange) {
           // For explicit nodes (Moons/Stations)
@@ -318,30 +381,35 @@ export function calculateTransitPlan(
               }
           } 
           
-          // For Virtual Lagrange Points
+          // For Virtual Lagrange Points (G43 P4).
+          //
+          // THE PHANTOM IS NOW THE REAL POINT. This block used to build its own geometry — a
+          // MEAN-ANOMALY shift for l3/l4/l5, and the panel's planet-centric parking distance
+          // dropped in as a HELIOCENTRIC a_AU for l1/l2 — while the post-arrival sampler in
+          // scheduler.ts used a rigid omega rotation. Two conventions for one point, so the solver
+          // braked to zero relative velocity against a place the ship was then teleported away
+          // from: measured at up to 0.48 AU and a 13 km/s step for an eccentric Jupiter L4, and a
+          // Mars L1 plan terminated 0.007 AU from the SUN. Both sides now call the one convention,
+          // so "rendezvous with the phantom" IS arriving at the point with its velocity matched —
+          // the cancelling falls out of the shared geometry instead of being a second calculation
+          // that has to agree with the first.
           if (isLagrange && target.orbit) {
-              const lagrangeId = params.arrivalPlacement;
-              
-              // Lagrange points are co-orbital with the 'target' (host planet) 
-              // around its parent (usually the Star).
-              effectiveTarget = {
-                  ...target,
-                  orbit: {
-                      ...target.orbit,
-                      elements: {
-                          ...target.orbit.elements,
-                          // L3-L5 use Anomaly offsets (180, +60, -60)
-                          M0_rad: target.orbit.elements.M0_rad + (params.targetOffsetAnomaly || 0),
-                          // L1-L2 use Radius offsets (Radial inner/outer)
-                          a_AU: params.parkingOrbitRadius_au || target.orbit.elements.a_AU
-                      }
-                  },
-                  // Since L-points have no mass, we force the solver into "Rendezvous" mode
-                  kind: 'construct' as any, 
-                  massKg: 0
-              };
-              // Clear parking radius from params so solver doesn't try to "orbit" the mass-less L-point.
-              forcedParkingRadiusAu = undefined; 
+              const lagrangePoint = params.arrivalPlacement as LagrangePointId;
+              const lagrangeHost = sys.nodes.find(n => n.id === target.parentId);
+              const lagrangeHostMassKg = lagrangeHost ? getNodeMass(sys, lagrangeHost) : 0;
+              const pointOrbit = deriveCoOrbitalOrbit(target, lagrangeHostMassKg, lagrangePoint);
+              if (pointOrbit) {
+                  effectiveTarget = {
+                      ...target,
+                      orbit: pointOrbit,
+                      // An L-point has no mass, so the solver runs in "Rendezvous" mode: it matches
+                      // the point's velocity rather than trying to enter an orbit around it.
+                      kind: 'construct' as any,
+                      massKg: 0
+                  };
+              }
+              // Never "orbit" a mass-less point — and never let a parking radius reach the elements.
+              forcedParkingRadiusAu = undefined;
           }
       }
   }
@@ -382,6 +450,18 @@ export function calculateTransitPlan(
   }
 
   // Update params with potentially forced radius
+  // THE AIM POINT IS THE PARKING ORBIT, NOT THE BODY'S CENTRE.
+  //
+  // When a caller does not name a parking radius the solver used to aim at the middle of the planet,
+  // while the arrival sampler put the ship in an orbit around it — so the flight ended in one place and
+  // the parking began in another, and the ship stepped between them at the completion instant. That is
+  // [[B92]], measured at 90,884 km on a Jupiter low orbit. Both sides now read `parkingOrbitRadiusKm`,
+  // the one derivation, so the seam closes by construction rather than by tolerance — the same shape of
+  // fix G43 P4 used on the Lagrange arrivals.
+  if (!(forcedParkingRadiusAu && forcedParkingRadiusAu > 0) && isOrbitalArrivalPlacement(params.arrivalPlacement)) {
+      const km = parkingOrbitRadiusKm(effectiveTarget as CelestialBody, params.arrivalPlacement, undefined, sys);
+      if (km && km > 0) forcedParkingRadiusAu = km / AU_KM;
+  }
   const finalParams = { ...params, parkingOrbitRadius_au: forcedParkingRadiusAu };
 
   function normalizeInitialStateToFrame(
@@ -438,8 +518,8 @@ export function calculateTransitPlan(
           if (sampled) {
               originForState = {
                   ...oc,
-                  vector_position_au: { x: sampled.position_au.x, y: sampled.position_au.y },
-                  vector_velocity_ms: { x: sampled.velocity_ms.x, y: sampled.velocity_ms.y },
+                  vector_position_au: { x: sampled.position_au.x, y: sampled.position_au.y, z: sampled.position_au.z ?? 0 },
+                  vector_velocity_ms: { x: sampled.velocity_ms.x, y: sampled.velocity_ms.y, z: sampled.velocity_ms.z ?? 0 },
                   vector_epoch_ms: startTime,
                   flight_state: sampled.state,
                   orbit: undefined
@@ -469,9 +549,12 @@ export function calculateTransitPlan(
   const r1 = magnitude(startPos);
   let r2 = r1;
   
-  const isLagrange = ['l1', 'l2', 'l3', 'l4', 'l5'].includes(params.arrivalPlacement || '');
+  const isLagrange = LAGRANGE_POINT_IDS.includes((params.arrivalPlacement || '') as LagrangePointId);
   if (isLagrange && effectiveTarget.orbit) {
-      r2 = params.parkingOrbitRadius_au || effectiveTarget.orbit.elements.a_AU;
+      // The derived point orbit ALREADY carries the right radius (scaled by (1∓k) for the
+      // collinear points). Reading a parking radius here is what sent a Mars L1 plan to 0.007 AU
+      // from the Sun: the panel's figure is planet-centric and this baseline is heliocentric.
+      r2 = effectiveTarget.orbit.elements.a_AU;
   } else if (effectiveTarget.orbit && effectiveTarget.orbit.elements) {
       r2 = effectiveTarget.orbit.elements.a_AU;
   } else {
@@ -522,14 +605,14 @@ export function calculateTransitPlan(
           targetAtT.v,
           finalParams.parkingOrbitRadius_au
       );
-      const r1_m = { x: variantStartState.r.x * AU_M, y: variantStartState.r.y * AU_M };
-      const r2_m = { x: targetAimAtT.x * AU_M, y: targetAimAtT.y * AU_M };
+      const r1_m = { x: variantStartState.r.x * AU_M, y: variantStartState.r.y * AU_M, z: zOf(variantStartState.r) * AU_M };
+      const r2_m = { x: targetAimAtT.x * AU_M, y: targetAimAtT.y * AU_M, z: zOf(targetAimAtT) * AU_M };
       const result_m = solveBestLambert(r1_m, r2_m, t_curr, frameMu, variantStartState.v, targetAtT.v);
       if (!result_m) return null;
 
       const result = {
-          v1: { x: result_m.v1.x / AU_M, y: result_m.v1.y / AU_M },
-          v2: { x: result_m.v2.x / AU_M, y: result_m.v2.y / AU_M }
+          v1: { x: result_m.v1.x / AU_M, y: result_m.v1.y / AU_M, z: zOf(result_m.v1) / AU_M },
+          v2: { x: result_m.v2.x / AU_M, y: result_m.v2.y / AU_M, z: zOf(result_m.v2) / AU_M }
       };
 
       const dv1_req_ms = magnitude(subtract(result.v1, variantStartState.v)) * AU_M;
@@ -775,7 +858,319 @@ export function calculateTransitPlan(
       }
   });
 
+  // 5. ORBIT CHANGE - the Hohmann figure, when both ends are orbits of ONE body.
+  //
+  // The general families cannot express this well and one of them cannot express it at all: asked to
+  // raise a ship from a low Jupiter orbit to a high one, the solver returned ONLY the torch option at
+  // 45.44 km/s and no efficient plan whatsoever, because its Lambert window sweep has nothing sensible
+  // to sweep between two points a few planetary radii apart. The Hohmann answer is closed-form and
+  // costs a fraction of that. See `orbitChange.ts`.
+  if (!quote && frameParentId && effectiveTarget.id === frameParentId && isOrbitalArrivalPlacement(params.arrivalPlacement)) {
+      const hohmannPlan = buildOrbitChangePlan(
+          sys, effectiveOrigin, effectiveTarget, frameParentId, frameMu,
+          startState, startTime, finalParams
+      );
+      if (hohmannPlan) plans.push(hohmannPlan);
+  }
+
   return plans.sort((a, b) => a.totalFuel_kg - b.totalFuel_kg);
+}
+
+/**
+ * THE ORBIT-CHANGE PLAN: burn, half an ellipse, burn.
+ *
+ * Built rather than searched. The two radii determine the transfer completely - its shape, its cost
+ * and its duration - so there is no window to sweep and no Lambert to solve. What this adds on top of
+ * the closed form in `orbitChange.ts` is the engine's own conventions: burns sized by the ship's
+ * thrust ceiling, each phase owning its own time-stamped path (G46), and the whole composed onto the
+ * host's motion sample by sample so the figure rides the planet rather than sitting where it was.
+ */
+function buildOrbitChangePlan(
+    sys: System,
+    origin: CelestialBody | Barycenter | undefined,
+    host: CelestialBody | Barycenter,
+    frameParentId: string,
+    frameMu_si: number,
+    startState: StateVector,
+    startTime: number,
+    params: any
+): TransitPlan | null {
+    const r1_au = magnitude(startState.r);
+    const r2_au = params.parkingOrbitRadius_au;
+    if (!(r1_au > 0) || !(r2_au > 0)) return null;
+
+    // `frameMu` is ALREADY SI (mass x G, m^3/s^2) — the Lambert sweep hands it metres. Converting it
+    // again produced a Delta-v of 8.8e17 km/s, which is a good example of why the name matters.
+    const mu_si = frameMu_si;
+    const sol = solveHohmann(r1_au, r2_au, mu_si);
+    if (!sol) return null;
+
+    // THE MANOEUVRE PLANE, host-relative: `u` at the ship, `w` the way it is going. Taking `w` from
+    // the ship's actual velocity rather than assuming the reference plane is what lets an inclined
+    // orbit change stay inclined.
+    const norm = (v: Vector2): Vector2 | null => {
+        const m = magnitude(v);
+        return m > 1e-18 ? { x: v.x / m, y: v.y / m, z: zOf(v) / m } : null;
+    };
+    const u = norm(startState.r);
+    if (!u) return null;
+    const radial = dot(startState.v, u);
+    const wRaw = {
+        x: startState.v.x - u.x * radial,
+        y: startState.v.y - u.y * radial,
+        z: zOf(startState.v) - (u.z ?? 0) * radial
+    };
+    const w = norm(wRaw) ?? norm({ x: -u.y, y: u.x, z: 0 });
+    if (!w) return null;
+
+    const g0 = 9.81;
+    const accel = Math.max(0.01, (params.maxG || 0.1) * g0);
+    const burn1Sec = Math.max(1, Math.abs(sol.deltaV1_ms) / accel);
+    const burn2Sec = Math.max(1, Math.abs(sol.deltaV2_ms) / accel);
+    const totalSec = burn1Sec + sol.transferTimeSec + burn2Sec;
+
+    const hostNode = sys.nodes.find((n) => n.id === frameParentId);
+    if (!hostNode) return null;
+    /** Host-relative point -> global, at the moment the ship is there. */
+    const toGlobal = (pt: Vector2, tMs: number): Vector2 => add(pt, getGlobalState(sys, hostNode as any, tMs).r);
+
+    // An arc of a circular orbit of radius r, swept for as long as the burn lasts. A burn at this
+    // scale covers a small arc, and drawing it on the circle it belongs to is both honest and what
+    // puts the burn marker where the reference figure has it.
+    const burnArc = (r_au: number, startMs: number, sweepSec: number, phase: number) => {
+        const rM = r_au * AU_M;
+        const n = Math.sqrt(mu_si / (rM * rM * rM)); // rad/s
+        const count = 24;
+        const points: Vector2[] = [];
+        const timesMs: number[] = [];
+        for (let i = 0; i < count; i++) {
+            const f = i / (count - 1);
+            const t = phase + n * sweepSec * f;
+            const c = Math.cos(t), sn = Math.sin(t);
+            const local = {
+                x: (u.x * c + w.x * sn) * r_au,
+                y: (u.y * c + w.y * sn) * r_au,
+                z: ((u.z ?? 0) * c + (w.z ?? 0) * sn) * r_au
+            };
+            const tMs = startMs + sweepSec * f * 1000;
+            points.push(toGlobal(local, tMs));
+            timesMs.push(tMs);
+        }
+        return { points, timesMs };
+    };
+
+    const burn1EndMs = startTime + burn1Sec * 1000;
+    const coastEndMs = burn1EndMs + sol.transferTimeSec * 1000;
+    const endMs = coastEndMs + burn2Sec * 1000;
+
+    const a1 = burnArc(r1_au, startTime, burn1Sec, 0);
+    const ell = transferEllipsePath(r1_au, r2_au, u, w, burn1EndMs, sol.transferTimeSec);
+    const coastPts = ell.points.map((pt, i) => toGlobal(pt, ell.timesMs[i]));
+    // The second burn happens half a revolution round, which is where the ellipse put the ship.
+    const a2 = burnArc(r2_au, coastEndMs, burn2Sec, Math.PI);
+
+    const fuelFor = (dv: number, m: number) =>
+        params.shipMass_kg && params.shipIsp
+            ? calculateFuelMass(m, Math.abs(dv), params.shipIsp)
+            : Math.abs(dv) * 0.01;
+    const m0 = params.shipMass_kg || 0;
+    const fuel1 = fuelFor(sol.deltaV1_ms, m0);
+    const fuel2 = fuelFor(sol.deltaV2_ms, Math.max(1, m0 - fuel1));
+
+    // A raising burn pushes along the motion; a lowering one pushes against it.
+    const dirOf = (dv: number): Vector2 => (dv >= 0 ? w : { x: -w.x, y: -w.y, z: -(w.z ?? 0) });
+    const hostAtEnd = getGlobalState(sys, hostNode as any, endMs);
+    // The velocity the ship ends with: its new circular orbit, plus the host's own motion.
+    const vCirc2_au = sol.speedEnd_ms / AU_M;
+    const endVel = add(hostAtEnd.v, {
+        x: -u.x * 0 + w.x * vCirc2_au,
+        y: -u.y * 0 + w.y * vCirc2_au,
+        z: (w.z ?? 0) * vCirc2_au
+    });
+
+    const segments: TransitSegment[] = [
+        {
+            id: 'seg-oc-burn1', type: 'Accel',
+            startTime, endTime: burn1EndMs,
+            startState,
+            endState: { r: a1.points[a1.points.length - 1], v: startState.v },
+            hostId: frameParentId, pathPoints: a1.points, pathTimes: a1.timesMs,
+            deltaV_ms: Math.abs(sol.deltaV1_ms), thrustDir: dirOf(sol.deltaV1_ms),
+            warnings: [], fuelUsed_kg: fuel1
+        },
+        {
+            id: 'seg-oc-transfer', type: 'Coast',
+            startTime: burn1EndMs, endTime: coastEndMs,
+            startState: { r: coastPts[0], v: startState.v },
+            endState: { r: coastPts[coastPts.length - 1], v: endVel },
+            hostId: frameParentId, pathPoints: coastPts, pathTimes: ell.timesMs,
+            warnings: [], fuelUsed_kg: 0
+        },
+        {
+            id: 'seg-oc-burn2', type: 'Brake',
+            startTime: coastEndMs, endTime: endMs,
+            startState: { r: a2.points[0], v: endVel },
+            endState: { r: a2.points[a2.points.length - 1], v: endVel },
+            hostId: frameParentId, pathPoints: a2.points, pathTimes: a2.timesMs,
+            deltaV_ms: Math.abs(sol.deltaV2_ms), thrustDir: dirOf(sol.deltaV2_ms),
+            warnings: [], fuelUsed_kg: fuel2
+        }
+    ];
+
+    const rising = r2_au > r1_au;
+    return {
+        id: 'plan-orbitchange-' + Date.now(),
+        originId: origin ? origin.id : 'unknown',
+        targetId: host.id,
+        startTime,
+        mode: 'Economy',
+        segments,
+        burns: [
+            { id: 'oc-burn-1', time: startTime, position: a1.points[0], deltaV_ms: Math.abs(sol.deltaV1_ms), type: 'Departure' },
+            { id: 'oc-burn-2', time: coastEndMs, position: a2.points[0], deltaV_ms: Math.abs(sol.deltaV2_ms), type: 'Arrival' }
+        ],
+        totalDeltaV_ms: sol.totalDeltaV_ms,
+        totalTime_days: totalSec / DAY_S,
+        totalFuel_kg: fuel1 + fuel2,
+        arrivalVelocity_ms: sol.speedEnd_ms,
+        distance_au: Math.abs(r2_au - r1_au),
+        isValid: true,
+        maxG: params.maxG,
+        accelRatio: params.accelRatio,
+        brakeRatio: params.brakeRatio,
+        interceptSpeed_ms: 0,
+        arrivalPlacement: params.arrivalPlacement,
+        tags: ['ORBIT CHANGE', rising ? 'RAISING ORBIT' : 'LOWERING ORBIT', 'HOHMANN'],
+        planType: 'Efficiency',
+        name: rising ? 'Raise Orbit' : 'Lower Orbit',
+        orbitChange: {
+            hostId: frameParentId,
+            fromRadius_au: r1_au,
+            toRadius_au: r2_au,
+            u, w,
+            burn1Time: startTime,
+            burn2Time: coastEndMs
+        }
+    };
+}
+
+/**
+ * THE AEROBRAKE DIP, AS SEGMENTS — the manoeuvre made drawable.
+ *
+ * v3.0.78 made aerobraking real: how much speed the air takes, over how many passes, how deep, and
+ * what climbing back out costs. All of that went into the ship's log and none of it into the picture,
+ * because there were no path points for it. So a ship that spent 615 days dipping into Mars was drawn
+ * arriving and parking, and the plan's own duration did not include those days either.
+ *
+ * Two segments are appended: the dip itself (`Aerobrake`, purple, the drive DARK because the air is
+ * doing the braking), and the circularisation burn that lifts the ship out of the corridor into the
+ * orbit it actually wanted. The plan's total time grows to include them, which is the honest reading
+ * of a manoeuvre it was already charging for.
+ */
+function appendAerobrakeSegments(opts: {
+    sys: System;
+    hostNode: any;
+    target: CelestialBody | Barycenter;
+    segments: TransitSegment[];
+    arrivalTimeMs: number;
+    parkingRadius_au: number;
+    aeroTimeSec: number;
+    aeroCircularise_ms: number;
+    passes: number;
+    maxG: number;
+}): { endMs: number; addedSec: number } {
+    const { sys, hostNode, target, segments, arrivalTimeMs, parkingRadius_au, aeroTimeSec, aeroCircularise_ms, passes, maxG } = opts;
+    const last = segments[segments.length - 1];
+    const pts = last?.pathPoints ?? [];
+    if (!last || pts.length < 2 || !(aeroTimeSec > 0) || !(parkingRadius_au > 0)) {
+        return { endMs: arrivalTimeMs, addedSec: 0 };
+    }
+
+    // The dip's depth: the top of the sensible atmosphere, which is where drag stops mattering and
+    // exactly the altitude `physics/aerobrake.ts` costed the passes at.
+    const bodyRadiusKm = ((target as CelestialBody).radiusKm) || 0;
+    const corridorKm = brakingCorridorKm(target as CelestialBody);
+    const periapsis_au = (bodyRadiusKm + corridorKm) / AU_KM;
+    if (!(periapsis_au > 0) || periapsis_au >= parkingRadius_au) return { endMs: arrivalTimeMs, addedSec: 0 };
+
+    // The plane the ship arrived on, taken from the arrival itself — same convention the parking
+    // orbit uses, so the dip starts exactly where the flight ended.
+    const hostAtArrival = getGlobalState(sys, hostNode, arrivalTimeMs);
+    const relFinal = subtract(pts[pts.length - 1], hostAtArrival.r);
+    const uMag = magnitude(relFinal);
+    if (!(uMag > 1e-18)) return { endMs: arrivalTimeMs, addedSec: 0 };
+    const u = { x: relFinal.x / uMag, y: relFinal.y / uMag, z: zOf(relFinal) / uMag };
+    const relV = subtract(last.endState?.v ?? { x: 0, y: 0, z: 0 }, hostAtArrival.v);
+    const radial = dot(relV, u);
+    let w = { x: relV.x - u.x * radial, y: relV.y - u.y * radial, z: zOf(relV) - u.z * radial };
+    let wMag = magnitude(w);
+    if (!(wMag > 1e-18)) { w = { x: -u.y, y: u.x, z: 0 }; wMag = magnitude(w); }
+    if (!(wMag > 1e-18)) return { endMs: arrivalTimeMs, addedSec: 0 };
+    const wHat = { x: w.x / wMag, y: w.y / wMag, z: zOf(w) / wMag };
+
+    const dip = aerobrakeDipPath({
+        apoapsis_au: parkingRadius_au,
+        periapsis_au,
+        passes,
+        u, w: wHat,
+        startTimeMs: arrivalTimeMs,
+        durationSec: aeroTimeSec
+    });
+    if (dip.points.length < 2) return { endMs: arrivalTimeMs, addedSec: 0 };
+
+    const dipEndMs = arrivalTimeMs + aeroTimeSec * 1000;
+    const toGlobal = (pt: Vector2, tMs: number) => add(pt, getGlobalState(sys, hostNode, tMs).r);
+    segments.push({
+        id: 'seg-aerobrake', type: 'Aerobrake',
+        startTime: arrivalTimeMs, endTime: dipEndMs,
+        startState: { r: pts[pts.length - 1], v: last.endState?.v ?? { x: 0, y: 0, z: 0 } },
+        endState: { r: toGlobal(dip.points[dip.points.length - 1], dipEndMs), v: last.endState?.v ?? { x: 0, y: 0, z: 0 } },
+        hostId: target.id,
+        pathPoints: dip.points.map((pt, i) => toGlobal(pt, dip.timesMs[i])),
+        pathTimes: dip.timesMs,
+        warnings: passes > dip.drawnPasses
+            ? [`Aerobraking: ${passes} passes (${dip.drawnPasses} drawn)`]
+            : [`Aerobraking: ${passes} pass${passes === 1 ? '' : 'es'}`],
+        fuelUsed_kg: 0
+    });
+
+    let endMs = dipEndMs;
+    if (aeroCircularise_ms > 1) {
+        // Climbing out of the corridor into the orbit the ship actually wanted. A real burn, so it is
+        // drawn as one and the drive lights for it.
+        const g0 = 9.81;
+        const burnSec = Math.max(1, aeroCircularise_ms / Math.max(0.01, maxG * g0));
+        const circEndMs = dipEndMs + burnSec * 1000;
+        const count = 24;
+        const cp: Vector2[] = [];
+        const ct: number[] = [];
+        const rM = parkingRadius_au * AU_M;
+        const muT = (getNodeMass(sys, target) || 0) * G;
+        const n = muT > 0 ? Math.sqrt(muT / (rM * rM * rM)) : 0;
+        for (let i = 0; i < count; i++) {
+            const f = i / (count - 1);
+            const th = n * burnSec * f;
+            const c = Math.cos(th), sn2 = Math.sin(th);
+            const tMs = dipEndMs + burnSec * f * 1000;
+            cp.push(toGlobal({
+                x: (u.x * c + wHat.x * sn2) * parkingRadius_au,
+                y: (u.y * c + wHat.y * sn2) * parkingRadius_au,
+                z: (u.z * c + wHat.z * sn2) * parkingRadius_au
+            }, tMs));
+            ct.push(tMs);
+        }
+        segments.push({
+            id: 'seg-aero-circularise', type: 'Brake',
+            startTime: dipEndMs, endTime: circEndMs,
+            startState: { r: cp[0], v: last.endState?.v ?? { x: 0, y: 0, z: 0 } },
+            endState: { r: cp[cp.length - 1], v: last.endState?.v ?? { x: 0, y: 0, z: 0 } },
+            hostId: target.id, pathPoints: cp, pathTimes: ct,
+            deltaV_ms: aeroCircularise_ms, thrustDir: wHat,
+            warnings: ['Circularise'], fuelUsed_kg: 0
+        });
+        endMs = circEndMs;
+    }
+    return { endMs, addedSec: (endMs - arrivalTimeMs) / 1000 };
 }
 
 function calculateLambertPlan(
@@ -813,7 +1208,10 @@ function calculateLambertPlan(
 
     // FIX: Only shift the aim position if we are targeting a generic orbit (lo/mo/ho).
     // If targeting a specific node (id), we MUST hit that node's actual position.
-    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo' || params.arrivalPlacement === 'ho';
+    // `geo` belongs here too. Leaving it out meant a geostationary arrival aimed at the planet's
+    // CENTRE while the sampler parked the ship a full geostationary radius away — 42,241 km at Earth.
+    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo'
+        || params.arrivalPlacement === 'ho' || params.arrivalPlacement === 'geo';
     const targetAimPos = isGenericOrbit 
         ? resolveAimPositionAtRadius(
             startState.r,
@@ -856,17 +1254,29 @@ function calculateLambertPlan(
     );
     const desiredArrivalRelVec_au_s = desiredArrival.desiredRelVec_au_s;
     let dv2Req_ms = desiredArrival.dv2Required_ms;
-    if (params.brakeAtArrival && params.aerobrake && params.aerobrake.allowed) {
-        const targetBody = target as CelestialBody;
-        const hasAtmosphere = !!(targetBody.atmosphere && targetBody.atmosphere.pressure_bar && targetBody.atmosphere.pressure_bar > 0.001);
-        if (hasAtmosphere) {
-            const aeroMax = params.aerobrake.limit_kms * 1000;
-            const aeroApplied = Math.min(dv2Req_ms, aeroMax);
-            aerobraking_dv_ms = aeroApplied;
-            dv2Req_ms = Math.max(0, dv2Req_ms - aeroApplied);
-            if (aeroApplied > 0) {
-                tags.push(dv2Req_ms <= 1 ? 'AEROCAPTURE' : 'PARTIAL-AERO');
-            }
+    // AEROBRAKING — one shared judgement (physics/aerobrake.ts), not a flat subtraction. It knows
+    // whether the ship is actually entering an orbit here, what this particular sky can deliver, and
+    // what climbing back out to the wanted orbit costs. See that module for why each part exists.
+    let aeroCircularise_ms = 0;
+    let aeroTimeSec = 0;
+    let aeroNote = '';
+    let aeroPasses = 0;
+    if (params.brakeAtArrival && params.aerobrake?.allowed) {
+        const aero = aerobrakeSolution({
+            target: target as CelestialBody,
+            shipLimitKms: params.aerobrake.limit_kms,
+            dv2Required_ms: dv2Req_ms,
+            parkingRadiusAU: params.parkingOrbitRadius_au,
+            isOrbitalArrival: isOrbitalArrivalPlacement(params.arrivalPlacement)
+        });
+        if (aero.applied_ms > 0) {
+            aerobraking_dv_ms = aero.applied_ms;
+            dv2Req_ms = aero.remaining_ms + aero.circularise_ms;
+            aeroCircularise_ms = aero.circularise_ms;
+            aeroTimeSec = aero.timeSec;
+            aeroNote = aero.note;
+            aeroPasses = aero.passes;
+            tags.push(aero.circularise_ms <= 1 ? 'AEROCAPTURE' : 'AEROBRAKE+CIRCULARISE');
         }
     }
     dv2_req_au_s = dv2Req_ms / AU_M;
@@ -875,6 +1285,9 @@ function calculateLambertPlan(
     const g0 = 9.81;
     const accel_mps2 = (params.maxG || 0.1) * g0;
     const dv1_applied_mps = dv1_req_au_s * AU_M;
+    // The direction the drive points during the departure burn (G46 / owner, 2026-08-26: "pointing
+    // in direction of desired vector"). Same vector the magnitude above is taken from.
+    const dv1_dir = unitOf(subtract(result.v1, startVel));
     
     let m0 = 0; 
     let useRocketEq = false;
@@ -936,7 +1349,19 @@ function calculateLambertPlan(
     const displayBrakeTimeSec = brakeTime_sec;
     const accelEndTime = startTime + displayAccelTimeSec * 1000;
     const brakeStartTime = arrivalTime - displayBrakeTimeSec * 1000;
-    const totalPoints = params.costOnly ? 24 : Math.min(5000, Math.max(300, Math.ceil(durationSec / (86400 * 2))));
+    // G46: THE PHASES OWN THE SAMPLING, not one uniform grid sliced afterwards. A sub-hour burn
+    // inside a three-year transfer used to catch no samples at all and borrow two coast points 48
+    // hours apart, which drew it at 1,366 km/s. Each phase now asks for the points it needs over
+    // its own duration; the coast keeps the two-day cadence it always had.
+    const coastStartSec = Math.min(displayAccelTimeSec, durationSec);
+    const coastEndSec = Math.max(coastStartSec, durationSec - displayBrakeTimeSec);
+    let schedule = params.costOnly
+        ? buildPathSchedule([{ key: 'accel', startSec: 0, endSec: coastStartSec },
+                             { key: 'coast', startSec: coastStartSec, endSec: coastEndSec },
+                             { key: 'brake', startSec: coastEndSec, endSec: durationSec }], 24)
+        : buildPathSchedule([{ key: 'accel', startSec: 0, endSec: coastStartSec },
+                             { key: 'coast', startSec: coastStartSec, endSec: coastEndSec },
+                             { key: 'brake', startSec: coastEndSec, endSec: durationSec }]);
     
     // 5. N-Body & Path Integration
     // Belts/rings are DISTRIBUTED mass — their `massKg` is a debris-density proxy, not gravitational
@@ -946,8 +1371,41 @@ function calculateLambertPlan(
     // full n-body perturber set here made the integrated path drift off the Lambert target, and the linear
     // drift-correction then flattened the conic into a near-straight chord (the "straight transit lines"
     // bug). Proper fix = solve Lambert against the n-body field; banked. Until then: draw what we solved.
-    const integration = integrateBallisticPath(startState.r, result.v1, durationSec, mu_au, totalPoints, targetAimPos);
-    const localPath = integration.points;
+    // The RK4 is still capped at the old two-day march across the coast, so the coast trajectory is
+    // the one that always shipped; the burn windows simply ask for points inside it.
+    const frameParentNode = frameParentId ? sys.nodes.find(n => n.id === frameParentId) : null;
+    // Compose the local arc onto the frame parent's own motion, EACH SAMPLE AT ITS OWN TIME.
+    const toGlobal = (pts: Vector2[], timesSec: number[]): Vector2[] => {
+        if (!frameParentNode) return pts;
+        return pts.map((pt, i) => {
+            const tAbs = startTime + (timesSec[i] ?? durationSec) * 1000;
+            return add(pt, getGlobalState(sys, frameParentNode, tAbs).r);
+        });
+    };
+    const runIntegration = (sch: PathSchedule) => integrateBallisticPathAtTimes(
+        startState.r, result.v1, sch.timesSec, mu_au,
+        { targetEndPos: targetAimPos, maxStepSec: PREFERRED_SPACING_SEC }
+    );
+
+    let integration = runIntegration(schedule);
+    let localPath = integration.points;
+    let fullPath = toGlobal(localPath, schedule.timesSec);
+
+    // PUT THE POINTS WHERE THE PATH BENDS. Time-uniform sampling is right for a coast and wrong for
+    // anything that swings close to a body, because angular rate peaks at closest approach. Measured
+    // before this loop existed: an interplanetary coast turned at most 2.24 degrees per sample and
+    // needs no help, while a Jupiter-local transfer turned 56.8 degrees and drew a visible corner.
+    // Refinement is measured on the GLOBAL path, because that is the line the eye follows.
+    if (!params.costOnly) {
+        for (let round = 0; round < 4; round++) {
+            const refined = refineScheduleByTurn(schedule, fullPath);
+            if (!refined) break;
+            schedule = refined;
+            integration = runIntegration(schedule);
+            localPath = integration.points;
+            fullPath = toGlobal(localPath, schedule.timesSec);
+        }
+    }
     const totalDriftM = integration.drift_au * AU_M;
 
     const burns: BurnPoint[] = [];
@@ -965,7 +1423,8 @@ function calculateLambertPlan(
             const tOffset = durationSec * fraction;
             const burnTime = startTime + tOffset * 1000;
             
-            const idx = Math.floor(fraction * (localPath.length - 1));
+            // Index BY TIME, not by fraction-of-count: the samples are deliberately uneven now.
+            const idx = indexAtTimeSec(schedule.timesSec, tOffset);
             const localPos = localPath[idx];
             const parentNode = frameParentId ? sys.nodes.find(fn => fn.id === frameParentId) : null;
             const parentState = parentNode ? getGlobalState(sys, parentNode, burnTime) : null;
@@ -991,48 +1450,18 @@ function calculateLambertPlan(
         }
     }
     
-    // Reconstruct Global Path if Local Frame Used
-    let fullPath = localPath;
-    if (frameParentId) {
-        const parentNode = sys.nodes.find(n => n.id === frameParentId);
-        if (parentNode) {
-            fullPath = localPath.map((pt, i) => {
-                const dt_step = localPath.length > 1 ? durationSec / (localPath.length - 1) : durationSec;
-                const tAbs = startTime + i * dt_step * 1000;
-                const parentState = getGlobalState(sys, parentNode, tAbs); 
-                return add(pt, parentState.r);
-            });
-        }
-    }
 
-    const dt_step = fullPath.length > 1 ? durationSec / (fullPath.length - 1) : durationSec;
-    let accelPoints: Vector2[] = [];
-    let coastPoints: Vector2[] = [];
-    let brakePoints: Vector2[] = [];
-
-    for(let i=0; i<fullPath.length; i++) {
-         const absTime = startTime + i * dt_step * 1000;
-         const pt = fullPath[i];
-         if (absTime < accelEndTime) accelPoints.push(pt);
-         else if (absTime < brakeStartTime) {
-             if (coastPoints.length === 0 && accelPoints.length > 0) coastPoints.push(accelPoints[accelPoints.length-1]);
-             coastPoints.push(pt);
-         } else {
-             if (brakePoints.length === 0) {
-                 if (coastPoints.length > 0) brakePoints.push(coastPoints[coastPoints.length-1]);
-                 else if (accelPoints.length > 0) brakePoints.push(accelPoints[accelPoints.length-1]);
-             }
-             brakePoints.push(pt);
-         }
-    }
-
-    // If burn windows are shorter than path sampling cadence, ensure visible phase stubs.
-    if (accelTime_sec > 0 && accelPoints.length < 2 && fullPath.length > 1) {
-        accelPoints = [fullPath[0], fullPath[Math.min(1, fullPath.length - 1)]];
-    }
-    if (brakeTime_sec > 0 && brakePoints.length < 2 && fullPath.length > 1) {
-        brakePoints = [fullPath[Math.max(0, fullPath.length - 2)], fullPath[fullPath.length - 1]];
-    }
+    // Each phase takes the points that were generated FOR IT, with the times they were generated at.
+    // The stubs that used to live here — 'if the burn caught fewer than two samples, hand it the
+    // first two of the whole path' — are gone with the cause: no phase can come up short now, because
+    // no phase is sharing anyone else's grid. Reinstating them is what the speed gate in
+    // pathGeometry.spec.ts exists to catch.
+    const accelSlice = slicePhase(schedule, fullPath, 'accel', startTime);
+    const coastSlice = slicePhase(schedule, fullPath, 'coast', startTime);
+    const brakeSlice = slicePhase(schedule, fullPath, 'brake', startTime);
+    const accelPoints = accelSlice.points;
+    const coastPoints = coastSlice.points;
+    const brakePoints = brakeSlice.points;
 
     let distance_au = 0; // Estimation
     if (fullPath.length > 1) distance_au = distanceAU(fullPath[0], fullPath[fullPath.length-1]); // Simplified
@@ -1052,7 +1481,8 @@ function calculateLambertPlan(
     const applyFrac = deltaNeeded_ms > 1e-9 ? Math.max(0, Math.min(1, dv2_applied_mps / deltaNeeded_ms)) : 1;
     const relFinal_au_s = {
         x: relArrivalBeforeBrake_au_s.x + deltaNeeded_au_s.x * applyFrac,
-        y: relArrivalBeforeBrake_au_s.y + deltaNeeded_au_s.y * applyFrac
+        y: relArrivalBeforeBrake_au_s.y + deltaNeeded_au_s.y * applyFrac,
+        z: zOf(relArrivalBeforeBrake_au_s) + zOf(deltaNeeded_au_s) * applyFrac
     };
     const globalAimPos = frameParentId && parentGlobalState
         ? add(targetAimPos, parentGlobalState.r)
@@ -1065,23 +1495,40 @@ function calculateLambertPlan(
     if (accelPoints.length > 1) segments.push({
         id: 'seg-accel', type: 'Accel', startTime, endTime: accelEndTime,
         startState, endState: {r:accelPoints[accelPoints.length-1], v:{x:0,y:0}}, 
-        hostId: root.id, pathPoints: accelPoints, warnings: [], fuelUsed_kg: fuel1
+        hostId: root.id, pathPoints: accelPoints, pathTimes: accelSlice.timesMs, warnings: [], fuelUsed_kg: fuel1,
+        deltaV_ms: dv1_applied_mps, thrustDir: dv1_dir
     });
     
     if (coastPoints.length > 1) segments.push({
         id: 'seg-coast', type: 'Coast', startTime: accelEndTime, endTime: brakeStartTime,
         startState: {r:coastPoints[0], v:{x:0,y:0}}, endState: {r:coastPoints[coastPoints.length-1], v:{x:0,y:0}},
-        hostId: root.id, pathPoints: coastPoints, warnings: [], fuelUsed_kg: 0
+        hostId: root.id, pathPoints: coastPoints, pathTimes: coastSlice.timesMs, warnings: [], fuelUsed_kg: 0
     });
 
     if (brakePoints.length > 1) segments.push({
         id: 'seg-brake', type: 'Brake', startTime: brakeStartTime, endTime: arrivalTime,
         startState: {r:brakePoints[0], v:{x:0,y:0}}, endState: finalState,
-        hostId: root.id, pathPoints: brakePoints, warnings: !params.brakeAtArrival ? ['Flyby'] : [], fuelUsed_kg: fuel2
+        hostId: root.id, pathPoints: brakePoints, pathTimes: brakeSlice.timesMs, warnings: !params.brakeAtArrival ? ['Flyby'] : [], fuelUsed_kg: fuel2,
+        deltaV_ms: dv2_applied_mps, thrustDir: unitOf(deltaNeeded_au_s)
     });
 
     // Ensure last segment has final state
     if (segments.length > 0) segments[segments.length-1].endState = finalState;
+
+    // The aerobrake dip and its circularisation, when the air did some of the work. These EXTEND the
+    // journey: the plan was already charging for the passes and saying so in the ship's log, while
+    // reporting a duration that stopped at the moment the ship reached the planet.
+    let aeroExtraSec = 0;
+    if (aeroTimeSec > 0 && frameParentId !== target.id) {
+        const r = appendAerobrakeSegments({
+            sys, hostNode: target, target, segments,
+            arrivalTimeMs: arrivalTime,
+            parkingRadius_au: params.parkingOrbitRadius_au || 0,
+            aeroTimeSec, aeroCircularise_ms: aeroCircularise_ms, passes: aeroPasses,
+            maxG: params.maxG
+        });
+        aeroExtraSec = r.addedSec;
+    }
 
     const arrivalVelocity_ms = magnitude(relFinal_au_s) * AU_M;
 
@@ -1094,7 +1541,7 @@ function calculateLambertPlan(
         segments,
         burns, 
         totalDeltaV_ms: totalDeltaV_ms + correctionDV_ms,
-        totalTime_days: durationSec / DAY_S,
+        totalTime_days: (durationSec + aeroExtraSec) / DAY_S,
         totalFuel_kg: fuel1 + fuel2 + correctionFuel_kg,
         distance_au: distance_au,
         isValid: true,
@@ -1106,6 +1553,9 @@ function calculateLambertPlan(
         arrivalPlacement: params.arrivalPlacement,
         tags: tags,
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
+        aeroCirculariseDeltaV_ms: aeroCircularise_ms,
+        aeroTimeSec: aeroTimeSec,
+        aeroNote: aeroNote,
         initialDelay_days: (params as any).initialDelay_days
     };
 }
@@ -1175,7 +1625,10 @@ function calculateFastPlan(
     if (muLocal <= 0) return null;
     const muLocalAu = muLocal / Math.pow(AU_M, 3);
 
-    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo' || params.arrivalPlacement === 'ho';
+    // `geo` belongs here too. Leaving it out meant a geostationary arrival aimed at the planet's
+    // CENTRE while the sampler parked the ship a full geostationary radius away — 42,241 km at Earth.
+    const isGenericOrbit = params.arrivalPlacement === 'lo' || params.arrivalPlacement === 'mo'
+        || params.arrivalPlacement === 'ho' || params.arrivalPlacement === 'geo';
     const rEnd = isGenericOrbit 
         ? resolveAimPositionAtRadius(
             startState.r,
@@ -1191,20 +1644,23 @@ function calculateFastPlan(
     // when forced into a ballistic box.
     const dx = rEnd.x - rStart.x;
     const dy = rEnd.y - rStart.y;
-    const dMag = Math.hypot(dx, dy) || 1;
+    const dz = zOf(rEnd) - zOf(rStart);
+    const dMag = Math.hypot(dx, dy, dz) || 1;
     const dvGuessAuS = (accel * totalTime * ar) / AU_M;
     
     // Initial Burn (v1) adds the required velocity boost in the direction of the target.
     let v1 = {
         x: startState.v.x + (dx / dMag) * dvGuessAuS,
-        y: startState.v.y + (dy / dMag) * dvGuessAuS
+        y: startState.v.y + (dy / dMag) * dvGuessAuS,
+        z: zOf(startState.v) + (dz / dMag) * dvGuessAuS
     };
     
     // Arrival Velocity (v2) before braking. 
     // In a pure kinematic straight-line model, this is the same as v1.
     let v2 = {
         x: v1.x,
-        y: v1.y
+        y: v1.y,
+        z: zOf(v1)
     };
 
     if (!Number.isFinite(v1.x) || !Number.isFinite(v1.y)) return null;
@@ -1217,7 +1673,7 @@ function calculateFastPlan(
         v1.y *= scale;
     }
 
-    if (!Number.isFinite(v2.x) || !Number.isFinite(v2.y)) v2 = { ...targetEndState.v };
+    if (!Number.isFinite(v2.x) || !Number.isFinite(v2.y)) v2 = { x: targetEndState.v.x, y: targetEndState.v.y, z: zOf(targetEndState.v) };
 
     let accelTime = totalTime * ar;
     let brakeTime = totalTime * br;
@@ -1251,21 +1707,28 @@ function calculateFastPlan(
     let dv2 = dv2Required_mps;
     
     let aerobraking_dv_ms = 0;
+    let aeroCircularise_ms = 0;
+    let aeroTimeSec = 0;
+    let aeroNote = '';
+    let aeroPasses = 0;
     if (params.brakeAtArrival && params.aerobrake?.allowed) {
-        const targetBody = target as CelestialBody;
-        const hasAtmo = !!(targetBody.atmosphere && targetBody.atmosphere.pressure_bar && targetBody.atmosphere.pressure_bar > 0.001);
-        if (hasAtmo) {
-            const limit_mps = params.aerobrake.limit_kms * 1000;
-            if (dv2 <= limit_mps) {
-                aerobraking_dv_ms = dv2;
-                dv2 = 0;
-            } else {
-                aerobraking_dv_ms = limit_mps;
-                dv2 -= limit_mps;
-            }
-            if (aerobraking_dv_ms > 0) {
-                tags.push(dv2 <= 1 ? 'AEROCAPTURE' : 'PARTIAL-AERO');
-            }
+        // Same judgement the efficiency families use — see physics/aerobrake.ts. It used to be a
+        // second copy of a flat subtraction here, and the two could have drifted.
+        const aero = aerobrakeSolution({
+            target: target as CelestialBody,
+            shipLimitKms: params.aerobrake.limit_kms,
+            dv2Required_ms: dv2,
+            parkingRadiusAU: params.parkingOrbitRadius_au,
+            isOrbitalArrival: isOrbitalArrivalPlacement(params.arrivalPlacement)
+        });
+        if (aero.applied_ms > 0) {
+            aerobraking_dv_ms = aero.applied_ms;
+            dv2 = aero.remaining_ms + aero.circularise_ms;
+            aeroCircularise_ms = aero.circularise_ms;
+            aeroTimeSec = aero.timeSec;
+            aeroNote = aero.note;
+            aeroPasses = aero.passes;
+            tags.push(aero.circularise_ms <= 1 ? 'AEROCAPTURE' : 'AEROBRAKE+CIRCULARISE');
         }
     }
 
@@ -1288,7 +1751,8 @@ function calculateFastPlan(
     const applyFrac = needMs > 1e-9 ? Math.max(0, Math.min(1, dv2 / needMs)) : 1;
     const relFinalAu = {
         x: arrivalRelBeforeBrakeAu.x + needVecAu.x * applyFrac,
-        y: arrivalRelBeforeBrakeAu.y + needVecAu.y * applyFrac
+        y: arrivalRelBeforeBrakeAu.y + needVecAu.y * applyFrac,
+        z: zOf(arrivalRelBeforeBrakeAu) + zOf(needVecAu) * applyFrac
     };
     const arrivalVelocity_ms = magnitude(relFinalAu) * AU_M;
 
@@ -1296,12 +1760,25 @@ function calculateFastPlan(
     const brakeStartTime = startTime + (accelTime + coastTime) * 1000;
 
     const segments: TransitSegment[] = [];
-    const sampleCount = params.costOnly ? 24 : Math.min(3000, Math.max(240, Math.ceil(totalTime / (3600 * 2))));
-    
+    // G46: the phases own the sampling here too. A torch plan has always drawn at a two-hour cadence,
+    // so that is the spacing each phase asks for and an ordinary Direct Burn is unchanged; what
+    // changes is that the burns get points generated FOR them, with their own times, instead of being
+    // carved out of a shared grid by `makePoints` and its two-point fallback.
+    const FAST_SPACING_SEC = 3600 * 2;
+    const fastPhases = [
+        { key: 'accel', startSec: 0, endSec: accelTime, spacingSec: FAST_SPACING_SEC },
+        { key: 'coast', startSec: accelTime, endSec: accelTime + coastTime, spacingSec: FAST_SPACING_SEC },
+        { key: 'brake', startSec: accelTime + coastTime, endSec: totalTime, spacingSec: FAST_SPACING_SEC }
+    ];
+    let schedule = buildPathSchedule(fastPhases, params.costOnly ? 24 : DEFAULT_PATH_BUDGET);
+
     // 2-body displayed path (matches the solved trajectory) — see the note in calculateLambertPlan: the
     // n-body perturbers here drove the straight-line bug via the drift-correction. Banked: n-body-aware solve.
-    const integration = integrateBallisticPath(rStart, v1, totalTime, muLocalAu, sampleCount, rEnd);
-    const rawLocalPath = integration.points;
+    const runFastIntegration = (sch: PathSchedule) => integrateBallisticPathAtTimes(
+        rStart, v1, sch.timesSec, muLocalAu, { targetEndPos: rEnd, maxStepSec: FAST_SPACING_SEC }
+    );
+    let integration = runFastIntegration(schedule);
+    let rawLocalPath = integration.points;
     const totalDriftM = integration.drift_au * AU_M;
 
     const burns: BurnPoint[] = [];
@@ -1317,7 +1794,7 @@ function calculateFastPlan(
             const tOffset = totalTime * fraction;
             const burnTime = startTime + tOffset * 1000;
             
-            const idx = Math.floor(fraction * (rawLocalPath.length - 1));
+            const idx = indexAtTimeSec(schedule.timesSec, tOffset);
             const localPos = rawLocalPath[idx];
             const parentState = getGlobalState(sys, frameNode, burnTime);
             const globalPos = add(localPos, parentState.r);
@@ -1340,45 +1817,56 @@ function calculateFastPlan(
         }
     }
 
-    const localPath: Vector2[] = [];
-    let lastFinite: Vector2 = { ...rStart };
-    for (const pt of rawLocalPath) {
-        if (Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
-            lastFinite = pt;
-            localPath.push(pt);
-        } else {
-            localPath.push({ ...lastFinite });
+    // Non-finite guards, then compose onto the frame parent AT EACH SAMPLE'S OWN TIME.
+    const sanitiseLocal = (raw: Vector2[]): Vector2[] => {
+        const out: Vector2[] = [];
+        let lastFinite: Vector2 = { ...rStart };
+        for (const pt of raw) {
+            if (Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
+                lastFinite = pt;
+                out.push(pt);
+            } else {
+                out.push({ ...lastFinite });
+            }
         }
-    }
-    const dtStep = localPath.length > 1 ? totalTime / (localPath.length - 1) : totalTime;
-    const fullPath: Vector2[] = [];
-    let lastGlobalFinite = add(rStart, getGlobalState(sys, frameNode, startTime).r);
-    for (let i = 0; i < localPath.length; i++) {
-        const pt = localPath[i];
-        const tAbs = startTime + i * dtStep * 1000;
-        const parentState = getGlobalState(sys, frameNode, tAbs);
-        const g = add(pt, parentState.r);
-        if (Number.isFinite(g.x) && Number.isFinite(g.y)) {
-            lastGlobalFinite = g;
-            fullPath.push(g);
-        } else {
-            fullPath.push({ ...lastGlobalFinite });
-        }
-    }
-    const makePoints = (t0: number, t1: number): Vector2[] => {
-        const pts: Vector2[] = [];
-        for (let i = 0; i < fullPath.length; i++) {
-            const tAbs = startTime + i * dtStep * 1000;
-            if (tAbs >= t0 && tAbs <= t1) pts.push(fullPath[i]);
-        }
-        if (pts.length < 2) {
-            const p0 = fullPath[Math.max(0, Math.floor((t0 - startTime) / 1000 / Math.max(1e-9, dtStep)))];
-            const p1 = fullPath[Math.min(fullPath.length - 1, Math.ceil((t1 - startTime) / 1000 / Math.max(1e-9, dtStep)))];
-            if (p0) pts.push(p0);
-            if (p1 && p1 !== p0) pts.push(p1);
-        }
-        return pts;
+        return out;
     };
+    const toGlobalFast = (pts: Vector2[], timesSec: number[]): Vector2[] => {
+        const out: Vector2[] = [];
+        let lastGlobalFinite = add(rStart, getGlobalState(sys, frameNode, startTime).r);
+        for (let i = 0; i < pts.length; i++) {
+            const tAbs = startTime + (timesSec[i] ?? totalTime) * 1000;
+            const g = add(pts[i], getGlobalState(sys, frameNode, tAbs).r);
+            if (Number.isFinite(g.x) && Number.isFinite(g.y)) {
+                lastGlobalFinite = g;
+                out.push(g);
+            } else {
+                out.push({ ...lastGlobalFinite });
+            }
+        }
+        return out;
+    };
+
+    let localPath = sanitiseLocal(rawLocalPath);
+    let fullPath = toGlobalFast(localPath, schedule.timesSec);
+
+    // Put the points where the path bends — see calculateLambertPlan for the measurement that made
+    // this necessary. A torch plan crossing open space never triggers it; one swinging past a planet does.
+    if (!params.costOnly) {
+        for (let round = 0; round < 4; round++) {
+            const refined = refineScheduleByTurn(schedule, fullPath);
+            if (!refined) break;
+            schedule = refined;
+            integration = runFastIntegration(schedule);
+            rawLocalPath = integration.points;
+            localPath = sanitiseLocal(rawLocalPath);
+            fullPath = toGlobalFast(localPath, schedule.timesSec);
+        }
+    }
+
+    const accelSlice = slicePhase(schedule, fullPath, 'accel', startTime);
+    const coastSlice = slicePhase(schedule, fullPath, 'coast', startTime);
+    const brakeSlice = slicePhase(schedule, fullPath, 'brake', startTime);
 
     if (accelTime > 0) {
         segments.push({
@@ -1389,7 +1877,10 @@ function calculateFastPlan(
             startState,
             endState: { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } },
             hostId: frameNode.id,
-            pathPoints: makePoints(startTime, accelEndTime),
+            pathPoints: accelSlice.points,
+            pathTimes: accelSlice.timesMs,
+            deltaV_ms: dv1,
+            thrustDir: unitOf(subtract(v1, startState.v)),
             warnings: params.maxG > 2 ? ['High G'] : [],
             fuelUsed_kg: fuel1
         });
@@ -1403,7 +1894,8 @@ function calculateFastPlan(
             startState: { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } },
             endState: { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } },
             hostId: frameNode.id,
-            pathPoints: makePoints(accelEndTime, brakeStartTime),
+            pathPoints: coastSlice.points,
+            pathTimes: coastSlice.timesMs,
             warnings: [],
             fuelUsed_kg: 0
         });
@@ -1418,11 +1910,13 @@ function calculateFastPlan(
     const applyFracGlobal = needGlobalMs > 1e-9 ? Math.max(0, Math.min(1, dv2 / needGlobalMs)) : 1;
     const relFinalGlobal = {
         x: relArrivalBeforeBrake.x + needVecGlobal.x * applyFracGlobal,
-        y: relArrivalBeforeBrake.y + needVecGlobal.y * applyFracGlobal
+        y: relArrivalBeforeBrake.y + needVecGlobal.y * applyFracGlobal,
+        z: zOf(relArrivalBeforeBrake) + zOf(needVecGlobal) * applyFracGlobal
     };
     const finalVelocity = {
         x: globalTarget.v.x + relFinalGlobal.x,
-        y: globalTarget.v.y + relFinalGlobal.y
+        y: globalTarget.v.y + relFinalGlobal.y,
+        z: zOf(globalTarget.v) + zOf(relFinalGlobal)
     };
     const globalAim = add(rEnd, parentAtEnd.r);
 
@@ -1435,7 +1929,10 @@ function calculateFastPlan(
             startState: { r: { x: 0, y: 0 }, v: { x: 0, y: 0 } },
             endState: { r: globalAim, v: finalVelocity },
             hostId: frameNode.id,
-            pathPoints: makePoints(brakeStartTime, endTime),
+            pathPoints: brakeSlice.points,
+            pathTimes: brakeSlice.timesMs,
+            deltaV_ms: dv2,
+            thrustDir: unitOf(needVecGlobal),
             warnings: [
                 ...(params.maxG > 2 ? ['High G'] : []),
                 ...(!params.brakeAtArrival ? ['Flyby'] : [])
@@ -1450,6 +1947,19 @@ function calculateFastPlan(
         }
     }
 
+    // The aerobrake dip and its circularisation — see the note in calculateLambertPlan.
+    let aeroExtraSecFast = 0;
+    if (aeroTimeSec > 0 && frameNode.id !== target.id) {
+        const r = appendAerobrakeSegments({
+            sys, hostNode: target, target, segments,
+            arrivalTimeMs: endTime,
+            parkingRadius_au: params.parkingOrbitRadius_au || 0,
+            aeroTimeSec, aeroCircularise_ms: aeroCircularise_ms, passes: aeroPasses,
+            maxG: params.maxG
+        });
+        aeroExtraSecFast = r.addedSec;
+    }
+
     return {
         id: 'plan-fast-' + Date.now(),
         originId: origin ? origin.id : 'unknown',
@@ -1459,7 +1969,7 @@ function calculateFastPlan(
         segments,
         burns,
         totalDeltaV_ms: totalDeltaV_ms + correctionDV_ms,
-        totalTime_days: totalTime / DAY_S,
+        totalTime_days: (totalTime + aeroExtraSecFast) / DAY_S,
         totalFuel_kg: fuelEst + correctionFuel_kg,
         isValid: true,
         maxG: params.maxG,
@@ -1471,6 +1981,9 @@ function calculateFastPlan(
         arrivalPlacement: params.arrivalPlacement,
         tags: [...tags],
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
+        aeroCirculariseDeltaV_ms: aeroCircularise_ms,
+        aeroTimeSec: aeroTimeSec,
+        aeroNote: aeroNote,
         initialDelay_days: params.initialDelay_days
     };
 }

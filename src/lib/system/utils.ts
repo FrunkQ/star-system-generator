@@ -1,7 +1,6 @@
 // src/lib/system/utils.ts
 import type { System, ID, CelestialBody, Barycenter, BurnPlan, Orbit, RulePack, SystemNode, Starmap } from '../types';
-import { compactBurns } from '$lib/constructs/shipBurn';
-import { compactRoute } from '$lib/constructs/shipRoute';
+import { FLIGHT_NODE_FIELDS } from '$lib/constructs/flightState';
 import { G, AU_KM } from '../constants';
 import { propagateState } from '../physics/orbits';
 import { systemProcessor } from '../core/SystemProcessor';
@@ -145,21 +144,20 @@ export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
   // Drop bulky fields the guide never shows — transit logs (with huge pathPoint arrays), classifier
   // debug, drafts, AI context. Keeps the broadcast small enough to cross a WebRTC data channel.
   const slimNode = (n: any) => {
-    // A ship's DRIVE PLUME is observable - anyone looking at it sees the torch - but the journeys
-    // that say so are stripped below (huge pathPoint arrays, and a forward plan that must not
-    // cross). So publish the burns in a compact form first: when, how hard, which way, and
-    // nothing else. The player evaluates them against their own clock, so the plume stays live
-    // between snapshots. No destination, no route, no path.
+    // A SHIP'S FLIGHT SITUATION NO LONGER RIDES THE CAMPAIGN AT ALL (G51).
+    //
+    // The drive plume and the current flight plan still cross to players - the owner settled that on
+    // 2026-08-06 - but they travel on `SYNC_FLIGHT` now instead of nested in here, and the
+    // instantaneous vector travels only when a ship is adrift off any plan. The reason is the whole
+    // of G51: those fields changed every tick, so `sendIfChanged` could never dedupe the campaign and
+    // a ship under way re-sent ~765 KB to every viewer about twice a second. `constructs/flightState`
+    // owns the message, its shape, and the merge that writes these fields back on the receiving side.
+    //
+    // The strip is UNCONDITIONAL rather than conditional on a ship being under way: a parked ship
+    // must not carry a stale route or stamp either, because `applyFlightUpdate` clears exactly these
+    // fields for a construct it does not mention, and the two must agree about what "absent" means.
     if (n?.kind === 'construct') {
-      const burns = compactBurns(n);
-      if (burns.length) n.driveBurns = burns;
-      // ...and the ROUTE, for the same reason and by the same rule (owner, 2026-08-06: the current
-      // flight plan DOES cross to players). Its segment BOUNDARIES only - a handful of points, not
-      // the pathPoint arrays that are half the reason the journeys are stripped at all. The GM's
-      // uncommitted `draft_transit_plan` still never crosses; "current flight plan" is the one the
-      // ship is actually flying.
-      const route = compactRoute(n);
-      if (route) n.route = route;
+      for (const f of FLIGHT_NODE_FIELDS) delete n[f];
     }
     delete n.scheduled_journeys;
     delete n.draft_transit_plan;

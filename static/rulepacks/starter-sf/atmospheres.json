@@ -234,8 +234,7 @@
         }
       ],
       "cloud": {
-        "condensesTo": "water",
-        "minFraction": 0.0001
+        "condensesTo": "water"
       }
     },
     "CH4": {
@@ -279,8 +278,7 @@
         }
       ],
       "cloud": {
-        "condensesTo": "methane",
-        "minFraction": 0.0005
+        "condensesTo": "methane"
       }
     },
     "SO2": {
@@ -311,8 +309,7 @@
         }
       ],
       "cloud": {
-        "condensesTo": "sulfur-dioxide",
-        "minFraction": 0.0005
+        "condensesTo": "sulfur-dioxide"
       }
     },
     "H2S": {
@@ -370,8 +367,7 @@
         }
       ],
       "cloud": {
-        "condensesTo": "ammonia",
-        "minFraction": 0.0001
+        "condensesTo": "ammonia"
       }
     },
     "Cl2": {
@@ -531,8 +527,7 @@
         "yield": 0.002
       },
       "cloud": {
-        "condensesTo": "hydrogen-cyanide",
-        "minFraction": 8e-05
+        "condensesTo": "hydrogen-cyanide"
       }
     },
     "C2H6": {
@@ -603,8 +598,7 @@
       "boilK": 1156,
       "tags": [],
       "cloud": {
-        "condensesTo": "sodium",
-        "minFraction": 0.001
+        "condensesTo": "sodium"
       }
     },
     "K": {
@@ -622,8 +616,7 @@
       "boilK": 1032,
       "tags": [],
       "cloud": {
-        "condensesTo": "potassium",
-        "minFraction": 0.001
+        "condensesTo": "potassium"
       }
     },
     "Fe": {
@@ -641,8 +634,7 @@
       "boilK": 3134,
       "tags": [],
       "cloud": {
-        "condensesTo": "molten-iron",
-        "minFraction": 0.001
+        "condensesTo": "molten-iron"
       }
     },
     "SiO": {
@@ -657,8 +649,7 @@
       "boilK": 2150,
       "tags": [],
       "cloud": {
-        "condensesTo": "molten-glass",
-        "minFraction": 0.001
+        "condensesTo": "molten-glass"
       }
     },
     "HF": {
@@ -743,8 +734,7 @@
         }
       ],
       "cloud": {
-        "condensesTo": "sulfuric-acid",
-        "minFraction": 1e-05
+        "condensesTo": "sulfuric-acid"
       },
       "reaction": {
         "from": [
@@ -843,8 +833,7 @@
         "yield": 1
       },
       "cloud": {
-        "condensesTo": "ammonium-hydrosulfide",
-        "minFraction": 3e-05
+        "condensesTo": "ammonium-hydrosulfide"
       }
     },
     "Taumoeba": {
@@ -867,8 +856,7 @@
         }
       ],
       "cloud": {
-        "condensesTo": "taumoeba-bloom",
-        "minFraction": 0.0001
+        "condensesTo": "taumoeba-bloom"
       }
     },
     "Astrophage": {
@@ -891,8 +879,7 @@
         }
       ],
       "cloud": {
-        "condensesTo": "astrophage-bloom",
-        "minFraction": 0.0001
+        "condensesTo": "astrophage-bloom"
       }
     }
   },

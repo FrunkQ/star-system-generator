@@ -104,6 +104,33 @@ describe('rebase — what a replacement loses', () => {
     expect(lossesOf(node, sys('sys-sol', 'Sol', 0, 0)).join(' | ')).toContain('Rocinante');
   });
 
+  // B88: THE SILENCE THAT MATTERED. A user's campaign held a Procyon he had populated with nineteen
+  // generated bodies; the bundled replacement holds three, and NONE of his was a construct - so the
+  // itemised loss list came back empty under a warning that said work would be dropped. Shape
+  // synthesised from his file, which is never committed (see the user-test-files standing rule).
+  it('names BODIES the new edition has no counterpart for', () => {
+    const node = sys('sys-procyon', 'Procyon', 400, 300);
+    (node.system as any).nodes = [
+      { kind: 'body', name: 'Procyon' }, { kind: 'body', name: 'Procyon b' },
+      { kind: 'body', name: 'Procyon c' }, { kind: 'body', name: 'Procyon c I' },
+      { kind: 'body', name: 'Procyon d' }, { kind: 'body', name: 'Procyon e' }
+    ];
+    const rep = sys('sys-procyon', 'Procyon', 0, 0);
+    (rep.system as any).nodes = [{ kind: 'body', name: 'Procyon' }];
+    const said = lossesOf(node, rep).join(' | ');
+    expect(said).toContain('5 bodies');          // every one the replacement lacks, counted
+    expect(said).toContain('Procyon b');          // and named, up to the cap
+    expect(said).not.toContain('Procyon |');      // the one it DOES keep is not claimed as a loss
+  });
+
+  it('says nothing when the new edition carries every body by name', () => {
+    const node = sys('sys-sol', 'Sol', 400, 300);
+    (node.system as any).nodes = [{ kind: 'body', name: 'Earth' }, { kind: 'body', name: 'Mars' }];
+    const rep = sys('sys-sol', 'Sol', 0, 0);
+    (rep.system as any).nodes = [{ kind: 'body', name: 'Earth' }, { kind: 'body', name: 'Mars' }];
+    expect(lossesOf(node, rep)).toEqual([]);
+  });
+
   it('does NOT claim a construct the new edition also ships', () => {
     // The bug this pins: the ISS and Tiangong Station are bundled with the map, and the first version of
     // this reported them as the GM's own work.

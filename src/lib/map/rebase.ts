@@ -83,8 +83,17 @@ function posOf(n: StarSystemNode) {
  * GM's own pin, because otherwise the label simply tracks the primary star and a difference is the rebuild's
  * own renaming.
  *
- * Body-level differences are not reported at all: they cannot be told apart from the data corrections the
- * rebuild exists to deliver, and a confident wrong list is worse than no list.
+ * BODIES ARE REPORTED WHEN THEY ARE ABSENT ENTIRELY (B88). They used to be skipped wholesale, on the
+ * grounds that a body-level difference cannot be told apart from the data corrections the rebuild exists
+ * to deliver - true of a CHANGED body, and the reason nothing here diffs masses or orbits. It is not true
+ * of a body the replacement has no counterpart for under any name: that one is simply gone afterwards.
+ * The silence was measured against a real campaign and it was total - a user's Procyon held NINETEEN
+ * bodies he had generated, the bundled replacement holds three, and this function reported NOTHING to
+ * lose because none of them was a construct. The modal's warning was honest and its itemised list was
+ * empty, which is the worst combination: a scary sentence with no evidence under it.
+ *
+ * A rebuild that RENAMES a body will over-report it here. That is the safe direction and the same standard
+ * the rest of this function keeps: it is here now under this name, and it will not be afterwards.
  */
 export function lossesOf(node: StarSystemNode, replacement: StarSystemNode | undefined): string[] {
   const out: string[] = [];
@@ -101,6 +110,22 @@ export function lossesOf(node: StarSystemNode, replacement: StarSystemNode | und
   if (dropped.length) {
     const names = dropped.map((c) => c.name).filter(Boolean);
     out.push(names.length ? names.slice(0, 4).join(', ') + (names.length > 4 ? `, and ${names.length - 4} more` : '') : `${dropped.length} constructs`);
+  }
+  // Bodies with no counterpart by name in the replacement. Same test as the constructs above, and
+  // deliberately BY NAME rather than by id: a GM's own planet has an id the bundled map never minted.
+  const myBodies = ((node.system as any)?.nodes as any[] | undefined)?.filter((n) => n?.kind === 'body') ?? [];
+  const theirBodies = new Set(
+    (((replacement?.system as any)?.nodes as any[] | undefined) ?? [])
+      .filter((n) => n?.kind === 'body')
+      .map((n) => String(n.name ?? '').toLowerCase())
+  );
+  const goneBodies = myBodies.filter((b) => !theirBodies.has(String(b.name ?? '').toLowerCase()));
+  if (goneBodies.length) {
+    const names = goneBodies.map((b) => b.name).filter(Boolean);
+    out.push(names.length
+      ? `${goneBodies.length} ${goneBodies.length === 1 ? 'body' : 'bodies'} - ` +
+        names.slice(0, 4).join(', ') + (names.length > 4 ? `, and ${names.length - 4} more` : '')
+      : `${goneBodies.length} bodies`);
   }
   if ((node.system as any)?.gmNotes) out.push('its GM notes');
   return out;

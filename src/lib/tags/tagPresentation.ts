@@ -137,6 +137,11 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Very unstable',
     description: 'Likely <1 kyr before major orbital disruption (collision, ejection or infall).'
   },
+  // The severity says how bad and the fate says which way; this says WHICH PHYSICS (G45).
+  'stability/inside-circumbinary-limit': {
+    label: 'Inside the circumbinary limit',
+    description: 'Orbits both stars of a pair, but too close in. The gravity field of a pair turns twice per binary orbit rather than standing still, and inside the critical radius (Holman & Wiegert 1999: roughly 2-4x the separation of the two stars, depending on their mass ratio and eccentricity) that forcing pumps the orbit until it crosses the stars themselves — and the encounter that follows throws the body clear of the system. The stable circumbinary zone begins outside this radius.'
+  },
   // --- RPG "reasons to visit": resource / science / frontier / intrigue ---
   'resource/heavy-metals':    { label: 'Heavy metals',      description: 'A metal-rich interior/crust — iron, nickel and friends in extractable concentrations.' },
   'resource/platinum-group':  { label: 'Platinum-group',    description: 'Unusually metal-dense — platinum, iridium, osmium: high-value, low-bulk cargo.' },
@@ -204,6 +209,10 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Double planet',
     description: 'Two comparable-mass bodies orbiting their common barycentre rather than one clearly orbiting the other (Pluto–Charon).'
   },
+  'orbit/lagrange': {
+    label: 'Lagrange point',
+    description: 'Rides one of another body\'s Lagrange points (the value says which). L4 leads and L5 trails by 60° — genuine free-fall orbits that cost nothing to hold while the masses pass Gascheau\'s bound (a breached trojan wears the stability tags instead, with the margin quoted). L1/L2 sit on the sun-line at the Hill distance and are saddle points: station-keeping holds a craft there, nothing holds a moon. L3 is the weakly-held antipode. The orbit is derived from the secondary on every pass, so editing the secondary moves this body with it.'
+  },
 
   // --- Origin (how the body came to be where it is) ---
   'origin/captured': {
@@ -254,6 +263,10 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   },
 
   // --- Flight ---
+  'flight/fuel-use': {
+    label: 'Station-holding cost',
+    description: 'What it costs this craft to STAY where it is parked. Coasting — a sound L4/L5 point is a genuine free-fall orbit, so nothing is spent holding it. Station-keeping — a collinear point (L1/L2/L3) is a saddle: real missions there budget periodic trim burns, indefinitely. Holding — the trojan regime is breached, so there is no equilibrium left to keep and the craft is thrusting continuously to stay somewhere the physics does not hold it.'
+  },
   'flight/ascent': {
     label: 'Ascent cost',
     description: 'What it takes to get off this world and into a low orbit - trivial (under 2 km/s, a small craft hops off, like Luna), moderate (under 5, Mars), hard (under 15, Earth), extreme (Venus at 29 km/s). The figure itself is the Ascent Delta-v row in the data block.'

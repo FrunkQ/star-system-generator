@@ -111,6 +111,16 @@ hex or Traveller hex), **Traveller mode**, an overall **Star size** dial, and **
 giants and supergiants. At zero they are all the same size. Black holes keep their own glyph
 whatever you choose. Each player view carries its own copy of that dial, on its Starmap step.
 
+### Centring the map on a star
+
+By default the starmap's distance rings radiate from the map's own origin, which on a map built from
+real sky positions is rarely anywhere interesting. **Right-click any star and choose Centre Map
+Here.** Reset View then frames that star, zoomed so every other star still fits, and the distance
+rings measure *from it* — so they read as "ten parsecs from Sol" rather than from a point in empty
+space. **Clear Map Centre** puts it back.
+
+The choice is saved with your campaign and travels to player views.
+
 ### Stars that show what they are
 
 Three things a star does are drawn on the map rather than badged onto it, on the GM starmap, the
@@ -206,6 +216,64 @@ Click a system to drop into the **system visualiser** — a real-time orbital vi
 * **Measure**, from the rail, reads the straight-line distance between two bodies, and tracks a
   moving ship.
 
+### Lagrange points, and putting things in them
+
+Every planet has five points where its pull and its star's balance out. Switch **Lagrange points**
+on from the display options and they are drawn as the shapes the physics actually makes, not as
+five dots: **L4 and L5** get their true tadpole regions — the long curved lobes that trojan asteroids
+really occupy, leading and trailing the planet by sixty degrees — while **L1, L2 and L3** get
+station-keeping envelopes, because nothing sits still at those three without spending fuel.
+
+A faint dashed circle runs through all five: the co-orbital track, meaning "the distance the planet
+is at right now". On an eccentric orbit the points ride in and out with it, so the track leaves the
+drawn orbit line and that is correct rather than a glitch.
+
+**Right-click inside any zone to put something there.**
+
+- At **any of the five**, you can park a construct. A station at L1 or L2 is doing real work to stay
+  there, and its tags say so.
+- At **L4 or L5**, you can also settle a world — a trojan, sharing the planet's orbit sixty degrees
+  ahead or behind. The body picker opens with a mass ceiling for that particular pair, because a
+  trojan only stays put while it is light enough relative to the planet and the star.
+
+The mass ceiling is a guide, not a gate: place something too heavy and it goes where you put it,
+and the physics tags it as unstable rather than refusing you. That is the same bargain as everywhere
+else in the editor — author freely, and the engine tells you honestly what it thinks.
+
+A **binary** can sit at a Lagrange point too, and it is judged on two questions a single body is
+never asked: whether the point can hold the pair, and whether the pair holds together while it is
+there.
+
+Ships can fly to any of the five, and arrive matching the point's motion rather than merely reaching
+its position.
+
+### Where a world can actually orbit
+
+Two overlays answer the question "could something sit *there*?", and both are drawn from the same
+physics that judges a world once you place one.
+
+**Hill spheres** mark each body's gravitational hold — the bubble inside which it keeps a companion
+rather than losing it to whatever it orbits. Switch them on from the display options. They draw for
+the selected body's neighbourhood — itself, its parent, its siblings and one level down — rather
+than for everything at once, so picking Earth shows you Luna's without filling the screen with the
+rest of the system.
+
+**A pair of stars, or any two bodies sharing a barycentre, clears a surprisingly large hole around
+itself and holds a stable ring beyond it.** Both edges are worked out and drawn, in their own pink
+shade alongside the Hill spheres. The inner edge is real physics rather than a stylistic margin: a
+world too close to a pair gets thrown out, and the boundary sits at roughly two to four times the
+separation between them, depending on how eccentric the pair is and how the mass is split. Beyond
+the outer edge the pair's grip gives out and the world belongs to whatever the pair itself orbits.
+
+**Right-click inside the ring to put a body there.** You are offered a mass ceiling rather than a
+hard rule — the stability model assumes the newcomer is light enough not to disturb the pair, and it
+tells you where that assumption stops holding rather than refusing the placement.
+
+Hierarchical triples get theirs too: Alpha Centauri, Polaris and Algol are each an inner pair with a
+third star further out, and the ring is drawn for the inner pair.
+
+Generated systems respect the same boundary — the generator no longer seeds planets into the hole.
+
 ### Five ways to look at a world
 
 ![The five view tabs on a world](static/screenshots/gs-body-views.png)
@@ -252,7 +320,7 @@ applicable — debris spread round an orbit, with no surface to leave*, and a ga
 **Add System Here** on the starmap opens a two-step wizard.
 
 **Step 1 — pick your star or stars.** Load one of the bundled example systems, load a system you
-saved earlier (an SSE `.json`, a Universe Sandbox `.ubox`, or a SpaceEngine `.sc`), or click a
+saved earlier (an SSE `.json` or `.sse.zip`, a Universe Sandbox `.ubox`, or a SpaceEngine `.sc`), or click a
 calibrated **Hertzsprung–Russell diagram** to place stars yourself. Add more than one and they nest
 into a proper **binary hierarchy** — the only arrangement that is really stable — shown as you build
 it: a binary, an Alpha-Centauri-like triple, an Epsilon-Lyrae double-double.
@@ -314,6 +382,30 @@ generated into the system are born into the era you chose.
 
 Everything recomputes live: temperature, fluids, magnetosphere, geology, habitability and tags all
 update as you edit.
+
+### Editing an atmosphere
+
+Open a body's **Atmosphere** tab and expand **Advanced Composition Editor** to set the mix gas by
+gas. Two things about the controls are worth knowing, because atmospheric chemistry lives at the
+small end and a linear control cannot reach it.
+
+**The sliders are logarithmic**, across eight decades. That is deliberate: what matters physically
+is the RATIO, not the difference. Taking hydrogen from 90% to 99% barely moves the mean molecular
+weight, while taking ammonia from 0.1% to 1% can form an entire cloud deck. A log axis gives equal
+travel to equal ratio change, so a trace gas gets as much of the slider as the bulk gas does.
+
+**Below 1% the readout switches to parts per million**, because 2.82 ppm is a number you can read
+and type and 0.000282% is not. The unit shown beside each box tells you which one you are in, and
+it follows the value rather than being a mode you set — slide a gas up past 1% and it changes to a
+percentage on its own. Type a value in whatever unit is showing, or **add a `%` or `ppm` suffix to
+force the other one**: sitting at 0.9% and typing `2` means 2 ppm, while typing `2%` means two per
+cent.
+
+The slider bottoms out at a very small but non-zero value: a log scale cannot reach zero. To remove
+a gas entirely, use the **x** button on its row.
+
+Changing one gas redistributes the difference across the others and renormalises, so the mix always
+sums to 100%. If you want a species at an exact figure, set it last.
 
 ### Breaking the physics on purpose — the Overrides tab
 
@@ -602,6 +694,28 @@ orbit lines.
 Or open a second browser window and drag it to a player-facing screen, which is the shared-screen
 case.
 
+#### Whose clock is it
+
+A player view either steers the clock or tells you whose clock it is on — never neither, and never
+both.
+
+**Touching the clock on the GM view takes it.** Not just pressing play — dragging the scrubber counts
+too, because that is you saying *this* moment matters. The players' own time controls step aside
+while you hold it, and because a scrubber nudge is over in an instant they do not flicker back the
+moment you let go. The offer to hand time back appears once your clock is still again; there is
+nothing to hand back from a clock that is running.
+
+**When you are not holding it, a player view may run its own time** — and it will show ships moving
+as well as planets. The rule underneath is simple: if the view can work a thing out from the time
+alone, the time is the viewer's to choose. Orbits have always been that way, and a ship under way
+now is too, because its course travels as a curve the view can read rather than as a position it
+has to be told.
+
+The one thing a self-scrubbing view cannot show is what happens *after* a ship's current plan ends
+ — where it parks and what it ends up orbiting is yours to decide and has not happened yet.
+
+A view set to **Follow GM** is unaffected by all of this: its clock is already yours.
+
 ![The projection view on a greenscreen](static/screenshots/Greenscreen-ProjectionView.png)
 
 **If a player's device cannot connect**, the cause is usually the network rather than the app.
@@ -627,6 +741,16 @@ and descriptions, which makes it a safe "sensor scan" handout.
   when space runs low; **Settings > System > Your data** shows how much you are using and can ask the
   browser to keep it — but the browser decides, so that lowers the risk rather than removing it.
   **Saving to a file is the only real backup.**
+* **Two different things to save, and the screen says which.** Saving from the starmap writes your
+  **whole campaign** — every system and the routes between them. Saving from inside a system writes
+  **that one system only**, and says so: your other systems and the map they sit on are not in that
+  file. Both screens show the filename they will write (`-Starmap` or `-System`), so the two are
+  told apart at a glance later.
+* **Give a loader the wrong file and it says what the file is.** Drop a campaign on **Load System**
+  and it is named as a campaign, with an offer to open it as one — stating plainly that doing so
+  replaces the campaign you have open. Drop a single system on **Load Starmap** and it is named as a
+  system, pointing you at the door that takes it. This works by looking inside the file, so a
+  renamed one is still recognised.
 * **Download and upload.** Export your whole sector, or an individual system. A plain map saves as
   **JSON**, exactly as it always did. A map carrying **assets** — ship models, uploaded pictures, a
   map background — saves as a **`.sse.zip` bundle** instead: readable JSON with the assets beside it
