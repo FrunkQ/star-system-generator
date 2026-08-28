@@ -167,6 +167,9 @@ export interface MegaTypeDef {
   /** The per-TEMPLATE half of the placement axis (§2.2): which of the picker's host-derived
    *  placement options make sense for this type at all. Absent = all of them. */
   allowedPlacements?: readonly string[];
+  /** Display only: the spheroid PREVIEW draws a concave dish. Data on the record rather than a
+   *  key-switch in the preview module, for the same reason everything else is. */
+  dished?: true;
   /** The knobs. Each OverrideDef-shaped — see `MegaParamDef`. */
   params: readonly MegaParamDef[];
   /** PURE. params + host → the NUMBERS. No THREE, no DOM, no globals, no mutation of `host`. */
@@ -611,6 +614,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     // Every orbital placement, never the surface — the owner: "You cant put a death star on a
     // planet. That simple."
     allowedPlacements: [...ORBIT_BAND_PLACEMENTS, 'AU Distance', 'L1', 'L2', 'L3', 'L4', 'L5'],
+    dished: true,
     params: [
       {
         key: 'diameterKm',

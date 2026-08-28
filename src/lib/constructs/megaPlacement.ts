@@ -17,7 +17,11 @@
 // PURE ON PURPOSE (E7, same as derive/shape): everything here is host + context in, data out, so
 // the greying logic and every sentence are ordinary headless tests. The caller supplies the
 // goldilocks band (zones.ts needs allNodes; this module must not reach into a store).
-import type { CelestialBody, MegaRequires, MegaHardClauses, MegaSteerClauses, Tag } from '$lib/types';
+import type { Barycenter, CelestialBody, MegaRequires, MegaHardClauses, MegaSteerClauses, Tag } from '$lib/types';
+
+/** A mega host may be a barycentre (a Death Star at a binary's balance point is pack-legal), and
+ *  every clause answers honestly for one: no surface, not a star, no boundaries, kind 'barycenter'. */
+export type MegaHost = CelestialBody | Barycenter;
 import type { MegaTypeDef } from './megaTypes';
 
 export interface MegaHardResult {
@@ -46,10 +50,10 @@ export interface MegaPlacementContext {
 
 /** Does this host have a surface something can anchor to? One answer for the evaluator and the
  *  picker both — not a gas giant, not a star, not a barycentre or belt. */
-export function hostHasSurface(host: CelestialBody): boolean {
+export function hostHasSurface(host: MegaHost): boolean {
   if (host.kind !== 'body') return false;
   if (host.roleHint !== 'planet' && host.roleHint !== 'moon') return false;
-  return !(host.classes?.some((c) => c.includes('gas-giant')) ?? false);
+  return !((host as CelestialBody).classes?.some((c) => c.includes('gas-giant')) ?? false);
 }
 
 /** The requires that actually applies: the pack template's own wins (constants are data, and a
@@ -71,14 +75,14 @@ function warnOnce(key: string, message: string): void {
 const KNOWN_HARD: ReadonlySet<string> = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary']);
 
 /** What the host IS, for sentences: 'barycentre' for a barycentre node, else its roleHint. */
-function hostKindWord(host: CelestialBody): string {
-  return (host.kind as string) === 'barycenter' ? 'barycentre' : host.roleHint;
+function hostKindWord(host: MegaHost): string {
+  return host.kind === 'barycenter' ? 'barycentre' : (host as CelestialBody).roleHint;
 }
 
 /** A real geostationary altitude, km — never the fallback figure (an elevator hung from a
  *  substitute is fiction wearing a measurement's clothes). Same rule as megaTypes' derive. */
-function realGeoKm(host: CelestialBody): number | null {
-  const b = host.orbitalBoundaries;
+function realGeoKm(host: MegaHost): number | null {
+  const b = (host as CelestialBody).orbitalBoundaries;
   if (!b || !b.geoStationaryKm || b.isGeoFallback) return null;
   return b.geoStationaryKm;
 }
@@ -91,7 +95,7 @@ function realGeoKm(host: CelestialBody): number | null {
  */
 export function megaHardCheck(
   requires: MegaRequires,
-  host: CelestialBody,
+  host: MegaHost,
   explain?: string
 ): MegaHardResult {
   const hard = (requires.hard ?? {}) as MegaHardClauses & Record<string, unknown>;
@@ -110,12 +114,12 @@ export function megaHardCheck(
   }
 
   if (hard.hostKind) {
-    const kindWord = (host.kind as string) === 'barycenter' ? 'barycenter' : host.roleHint;
+    const kindWord = host.kind === 'barycenter' ? 'barycenter' : (host as CelestialBody).roleHint;
     if (!hard.hostKind.includes(kindWord)) {
       return say(`This needs a ${listWords(hard.hostKind)} to attach to — {host} is a ${hostKindWord(host)}.`);
     }
   }
-  if (hard.hostIsStar && host.roleHint !== 'star') {
+  if (hard.hostIsStar && (host as CelestialBody).roleHint !== 'star') {
     return say(`This circles a star, and {host} is a ${hostKindWord(host)} — there is nothing here to circle.`);
   }
   if (hard.hasSurface && !hostHasSurface(host)) {
@@ -147,7 +151,7 @@ const fmt = (v: number): string => {
  */
 export function megaSteerNotes(
   requires: MegaRequires,
-  host: CelestialBody,
+  host: MegaHost,
   ctx: MegaPlacementContext = {}
 ): MegaSteerNote[] {
   const steer = { ...(requires.steer ?? {}) } as MegaSteerClauses;
@@ -165,7 +169,7 @@ export function megaSteerNotes(
 
   if (steer.geoBelowHillFraction !== undefined) {
     const geo = realGeoKm(host);
-    const reach = host.orbitalBoundaries?.heoUpperBoundaryKm;
+    const reach = (host as CelestialBody).orbitalBoundaries?.heoUpperBoundaryKm;
     if (geo !== null && reach && reach > 0) {
       const frac = geo / reach;
       if (frac > steer.geoBelowHillFraction) {
@@ -189,7 +193,7 @@ export function megaSteerNotes(
       `At ${fmt(ctx.placementAU)} AU the collector is ${fmt((ctx.placementAU / steer.maxPlacementAU) ** 2)}x further into the dark than its design distance (${fmt(steer.maxPlacementAU)} AU) — starlight thins with the square of distance, so it harvests a whisper of what it could closer in.`);
   }
 
-  const massKg = host.massKg ?? 0;
+  const massKg = (host.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody).massKg) ?? 0;
   if (steer.minHostMassKg !== undefined && massKg > 0 && massKg < steer.minHostMassKg) {
     note('minHostMassKg', 'host-mass-low',
       `${host.name} masses ${fmt(massKg)} kg, below the ${fmt(steer.minHostMassKg)} kg this structure was imagined for — the anchoring gravity is thin, which is a challenge, not a wall.`);

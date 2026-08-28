@@ -355,6 +355,10 @@
   let backgroundLagrangeHit: { secondaryId: string; secondaryName: string; point: string } | null = null; // G43: click landed inside an L-zone
   let backgroundCircumbinaryHit: { baryId: string; baryName: string } | null = null; // G45: click landed inside a pair's circumbinary ring
   let constructInitialPlacement: string | undefined = undefined;   // G43: preselect an L-point in the add-construct modal
+  // G53: a megaconstruct chosen in the rich picker routes HERE for its placement step - the
+  // template locked, the AU field seeded from the click when the GM clicked a place.
+  let constructInitialTemplate: CelestialBody | undefined = undefined;
+  let constructInitialAuDistance: number | undefined = undefined;
   let showBackgroundContextMenu = false;
   let contextMenuActionLabel = 'Add Planet Here';
   let showAddBeltOption = false;
@@ -439,6 +443,8 @@
       if (!secondary) return;
       constructHostBody = secondary;
       constructInitialPlacement = hit.point.toUpperCase();
+      constructInitialTemplate = undefined;
+      constructInitialAuDistance = undefined;
       showAddConstructModal = true;
   }
 
@@ -855,6 +861,25 @@
           startAngle = Math.random() * 2 * Math.PI;
       }
 
+      // G53: a megaconstruct is placement-SENSITIVE, so it never takes the default-orbit stamp.
+      // The rich picker chose WHAT; AddConstructModal chooses WHERE, with the hard/steer machinery
+      // attached - and the AU field starts at the clicked distance when there is one.
+      if ((template as CelestialBody).megaType) {
+          showCreateConstructModal = false;
+          constructHostBody = host as CelestialBody;
+          constructInitialTemplate = template;
+          constructInitialPlacement = undefined;
+          // Seed only from a REAL click ("Add Construct Here") - Case 2's distAU is a synthetic
+          // default orbit, not a place the GM pointed at.
+          constructInitialAuDistance =
+              backgroundClickPosition && backgroundClickHost &&
+              (host.roleHint === 'star' || host.kind === 'barycenter') && distAU > 0
+                  ? Number(distAU.toPrecision(3))
+                  : undefined;
+          showAddConstructModal = true;
+          return;
+      }
+
       // 3. Create Circular Orbit
       const massKg = (host as CelestialBody).massKg || (host as Barycenter).effectiveMassKg || 0;
       const G_constant = 6.67430e-11;
@@ -945,6 +970,8 @@
   async function handleAddConstructCreated(event: CustomEvent<CelestialBody>) {
       const newConstruct = event.detail;
       showAddConstructModal = false;
+      constructInitialTemplate = undefined;
+      constructInitialAuDistance = undefined;
       
       // Find the host body for the editor context
       let hostBodyForEditor: CelestialBody | null = null;
@@ -2739,11 +2766,11 @@
     {/if}
 
     {#if showAddConstructModal && constructHostBody}
-      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} initialPlacement={constructInitialPlacement} on:create={handleAddConstructCreated} on:close={() => showAddConstructModal = false} />
+      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} initialPlacement={constructInitialPlacement} initialTemplate={constructInitialTemplate} initialAuDistance={constructInitialAuDistance} on:create={handleAddConstructCreated} on:close={() => { showAddConstructModal = false; constructInitialTemplate = undefined; constructInitialAuDistance = undefined; }} />
     {/if}
 
     {#if showCreateConstructModal}
-        <LoadConstructTemplateModal {rulePack} mode="create" on:load={handleCreateConstructLoad} on:close={() => showCreateConstructModal = false} />
+        <LoadConstructTemplateModal {rulePack} mode="create" hostBody={backgroundClickHost || constructHostBody} on:load={handleCreateConstructLoad} on:close={() => showCreateConstructModal = false} />
     {/if}
 
     {#if showReportConfigModal}

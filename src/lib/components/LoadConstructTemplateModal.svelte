@@ -3,9 +3,18 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { coiCategories, activeCoICategories, coiTagLabel } from '$lib/constructs/coi';
   import { constructDriveTag, byId } from '$lib/constructs/inheritance';
+  import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
+  import { effectiveMegaRequires, megaHardCheck, type MegaHost } from '$lib/constructs/megaPlacement';
+  import { megaSummaryLine } from '$lib/constructs/megaPreview';
+  import MegaPreview from '$lib/constructs/MegaPreview.svelte';
 
   export let rulePack: RulePack;
   export let mode: 'overwrite' | 'create' = 'overwrite';
+  /** G53: the body this construct will be created around. When given (create mode), the
+   *  Megaconstructs tab appears — IF anything passes its hard clauses for this host — and every
+   *  mega row is judged against it. Absent (overwrite mode, or no host known): no mega tab, since
+   *  a placement-sensitive category cannot be offered placement-blind. */
+  export let hostBody: MegaHost | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -14,6 +23,32 @@
   let expanded: string | null = null;    // which category facet is open
   let filters: string[] = [];            // active tag keys (ANDed, like Find by tag)
   let selectedTemplate: CelestialBody | null = null;
+
+  // G53: THE MEGACONSTRUCTS TAB — the owner's original ask, on the picker the wheel was invented
+  // for: "only appears on the picker under their own tab when available - options greyed out
+  // otherwise." Same evaluator as everywhere else; no placement rule lives in this file.
+  let activeTab: 'constructs' | 'mega' = 'constructs';
+  $: megaTemplates = mode === 'create' && hostBody ? ((rulePack?.constructTemplates?.mega ?? []) as CelestialBody[]) : [];
+  $: megaRows = megaTemplates.map((t) => {
+    const def = megaTypeDef(t.megaType);
+    return { template: t, def, hard: megaHardCheck(effectiveMegaRequires(t, def), hostBody!, t.explain ?? def?.explain) };
+  });
+  $: megaTabAvailable = megaRows.some((r) => r.hard.ok);
+  $: if (!megaTabAvailable && activeTab === 'mega') activeTab = 'constructs';
+
+  function switchTab(tab: 'constructs' | 'mega'): void {
+    if (tab === activeTab) return;
+    activeTab = tab;
+    selectedTemplate = null;   // a hidden selection under the other tab would make Create a mystery
+  }
+
+  // The footer's honest numbers for a selected mega: derive() at defaults on THIS host.
+  $: selectedMegaSummary = (() => {
+    if (activeTab !== 'mega' || !selectedTemplate || !hostBody) return '';
+    const def = megaTypeDef(selectedTemplate.megaType);
+    if (!def) return '';
+    return megaSummaryLine(def.derive(defaultMegaParams(def, hostBody as CelestialBody), hostBody as CelestialBody));
+  })();
 
   $: cats = $coiCategories;
   $: activeCats = activeCoICategories(cats);
@@ -25,10 +60,9 @@
     const flat: CelestialBody[] = [];
     if (rulePack?.constructTemplates) {
       for (const [key, list] of Object.entries(rulePack.constructTemplates)) {
-        // G53: the mega category is placement-SENSITIVE — a space elevator in deep space is not an
-        // option — so it is offered only where placement is checked (AddConstructModal's mega tab),
-        // never through this placement-blind list. The owner's ask, verbatim: "only appears on the
-        // picker under their own tab when available".
+        // G53: the mega category has ITS OWN TAB above (judged per-host); it never joins this
+        // placement-blind flatten — in overwrite mode, or with no host known, it is simply absent,
+        // because a placement-sensitive category cannot be offered placement-blind.
         if (key === 'mega') continue;
         if (Array.isArray(list)) flat.push(...(list as CelestialBody[]));
       }
@@ -57,18 +91,30 @@
     }))
     .filter((f) => f.tags.length > 0);
 
+  // ONE search predicate for both tabs — two copies of "does the query match" would drift.
+  const matchesQuery = (t: CelestialBody, query: string): boolean => {
+    if (!query.trim()) return true;
+    const s = query.trim().toLowerCase();
+    const keys = tagKeys(t);
+    return Boolean(
+      t.name?.toLowerCase().includes(s) ||
+      t.description?.toLowerCase().includes(s) ||
+      keys.some((k) => k.toLowerCase().includes(s) || label(k).toLowerCase().includes(s))
+    );
+  };
+
   $: results = allTemplates.filter((t) => {
     const keys = new Set(tagKeys(t));
     if (!filters.every((f) => keys.has(f))) return false;          // must carry ALL active filter tags
-    if (q.trim()) {
-      const s = q.trim().toLowerCase();
-      const inName = t.name?.toLowerCase().includes(s);
-      const inDesc = t.description?.toLowerCase().includes(s);
-      const inTags = [...keys].some((k) => k.toLowerCase().includes(s) || label(k).toLowerCase().includes(s));
-      if (!inName && !inDesc && !inTags) return false;             // search spans names AND tags
-    }
-    return true;
+    return matchesQuery(t, q);                                     // search spans names AND tags
   }).sort((a, b) => a.name.localeCompare(b.name));
+
+  // The mega tab searches but does not facet — seven rows need no bubbles, and the facet counts
+  // are built from the ordinary catalogue. Available rows list first, greyed ones after, so what
+  // this host can take is never below the fold.
+  $: megaResults = megaRows
+    .filter((r) => matchesQuery(r.template, q))
+    .sort((a, b) => Number(b.hard.ok) - Number(a.hard.ok) || a.template.name.localeCompare(b.template.name));
 
   const catColor = (key: string) => activeCats.find((c) => key.startsWith(c.id + '/'))?.color || '#666';
   // Tags worth showing on a row — skip Status noise; lead class, owner, purpose, resource.
@@ -91,14 +137,22 @@
 
 <div class="modal-background" on:click={close}>
   <div class="modal" on:click|stopPropagation>
-    <h2>{mode === 'create' ? 'Create New Construct' : 'Load Construct Template'}</h2>
+    <h2>{mode === 'create' ? (megaTabAvailable ? 'Create New Construct/Megaconstruct' : 'Create New Construct') : 'Load Construct Template'}</h2>
     {#if mode === 'overwrite'}
       <p class="warning">Warning: Overwrites current configuration.</p>
+    {/if}
+
+    {#if megaTabAvailable}
+      <div class="tabs">
+        <button class="tab" class:active={activeTab === 'constructs'} on:click={() => switchTab('constructs')}>Constructs</button>
+        <button class="tab" class:active={activeTab === 'mega'} on:click={() => switchTab('mega')}>Megaconstructs</button>
+      </div>
     {/if}
 
     <div class="filters-panel">
       <input class="search" type="text" placeholder="Search name or tag (e.g. Rocinante, shipyard, refuel)…" bind:value={q} />
 
+      {#if activeTab === 'constructs'}
       <!-- One bubble per enabled CoI category; open it to pick tags into the filter (ANDed). -->
       <div class="bubbles">
         {#each facets as f (f.id)}
@@ -131,8 +185,43 @@
           <span class="hint">Open a category to filter, or search by name/tag.</span>
         {/if}
       </div>
+      {/if}
     </div>
 
+    {#if activeTab === 'mega'}
+    <!-- G53: judged against {hostBody.name} by the one evaluator. Available rows select and create;
+         a greyed row states WHY in a sentence and stays final (relevance, §3.5). The portrait is
+         DERIVED from the registry's shape() at defaults — the preview cannot disagree with the data. -->
+    <div class="browser-window">
+      {#if megaResults.length === 0}
+        <div class="empty-msg">No megaconstructs match.</div>
+      {/if}
+      {#each megaResults as row (row.template.id || row.template.name)}
+        <div class="browser-item mega {selectedTemplate === row.template ? 'selected' : ''} {row.hard.ok ? '' : 'unavailable'}"
+             on:click={() => { if (row.hard.ok) selectedTemplate = row.template; }}
+             on:dblclick={() => { if (row.hard.ok && selectedTemplate === row.template) handleLoad(); }}>
+          <div class="preview-wrapper">
+            {#if row.def && hostBody}
+              <MegaPreview def={row.def} host={hostBody} color={row.template.icon_color || '#ffd24d'} />
+            {:else}
+              <div class="construct-icon {row.template.icon_type || 'triangle'}" style="background-color: {row.template.icon_color || '#ffd24d'}"></div>
+            {/if}
+          </div>
+          <div class="file-info">
+            <span class="name">{row.template.name}</span>
+            {#if !row.hard.ok}
+              <span class="mega-reason">{row.hard.reason}</span>
+            {:else if row.template.description}
+              <span class="mega-desc">{row.template.description}</span>
+            {/if}
+            <div class="tag-chips">
+              {#each chipTags(row.template) as k}<span class="tag-chip" style="border-color:{catColor(k)}">{label(k)}</span>{/each}
+            </div>
+          </div>
+        </div>
+      {/each}
+    </div>
+    {:else}
     <div class="browser-window">
       {#if results.length === 0}
         <div class="empty-msg">No constructs match.</div>
@@ -156,16 +245,23 @@
         </div>
       {/each}
     </div>
+    {/if}
 
     <div class="footer">
       <div class="selected-info">
         {#if selectedTemplate}
           <strong>{selectedTemplate.name}</strong>
           <div class="stats">
-            {roleLabel(selectedTemplate.roleHint || '')} •
-            {((selectedTemplate.physical_parameters?.massKg || 0) / 1000).toLocaleString()}t •
-            {selectedTemplate.systems?.power_plants?.[0]?.type || 'No Power'}
+            {#if selectedMegaSummary}
+              {selectedMegaSummary}
+            {:else}
+              {roleLabel(selectedTemplate.roleHint || '')} •
+              {((selectedTemplate.physical_parameters?.massKg || 0) / 1000).toLocaleString()}t •
+              {selectedTemplate.systems?.power_plants?.[0]?.type || 'No Power'}
+            {/if}
           </div>
+        {:else if activeTab === 'mega'}
+          <span class="placeholder">{megaResults.length} megaconstruct{megaResults.length === 1 ? '' : 's'} — select one…</span>
         {:else}
           <span class="placeholder">{results.length} construct{results.length === 1 ? '' : 's'} — select one…</span>
         {/if}
@@ -201,6 +297,22 @@
     background-color: #443300; color: var(--warning); margin: 0; padding: 5px;
     font-size: 0.8em; text-align: center;
   }
+
+  /* G53: the Constructs / Megaconstructs tab bar. Present only when this host can take something. */
+  .tabs { display: flex; gap: 2px; padding: 8px 15px 0; background-color: var(--bg-panel); }
+  .tab {
+    background: var(--bg-control); color: var(--text-muted); border: 1px solid var(--border-soft);
+    border-bottom: none; border-radius: 6px 6px 0 0; padding: 6px 14px; font-size: 0.85em; cursor: pointer;
+  }
+  .tab.active { background: var(--bg-panel); color: var(--text); border-color: var(--border); font-weight: 600; }
+
+  /* Mega rows: a derived portrait instead of the glyph square; greyed rows keep their sentence. */
+  .browser-item.mega { align-items: center; }
+  .browser-item.mega .preview-wrapper { width: 48px; margin-right: 12px; display: flex; justify-content: center; flex-shrink: 0; }
+  .browser-item.mega.unavailable { opacity: 0.45; cursor: default; }
+  .browser-item.mega.unavailable:hover { background-color: transparent; }
+  .mega-reason { font-size: 0.76em; color: var(--text-muted); font-style: italic; }
+  .mega-desc { font-size: 0.76em; color: var(--text-faint); }
 
   .filters-panel {
     padding: 10px 15px; background-color: var(--bg-panel);

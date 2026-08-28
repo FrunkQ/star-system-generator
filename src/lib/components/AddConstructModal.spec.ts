@@ -130,6 +130,35 @@ describe('AddConstructModal — the mega tab (G53 phase 1)', () => {
     expect(get(systemStore)!.nodes.filter((n) => n.id === 'sol')).toHaveLength(1);
   });
 
+  it('a template locked from the rich picker skips the choosing, seeds the AU field, and still steers', async () => {
+    const star = sun();
+    systemStore.set({ nodes: [star] } as unknown as System);
+    const pack = megaPack();
+    const created = vi.fn();
+    const { container, getByText, queryByText } = render(AddConstructModal, {
+      props: {
+        rulePack: pack, hostBody: star, orbitalBoundaries: undefined,
+        initialTemplate: pack.constructTemplates!.mega[1],   // the ringworld, chosen in the picker
+        initialAuDistance: 3
+      },
+      events: { create: created }
+    });
+    // The picker chose WHAT; only WHERE is asked here.
+    expect(getByText('Add Ringworld to Sol')).toBeTruthy();
+    expect(queryByText('Construct Type:')).toBeNull();
+    expect(queryByText('Template:')).toBeNull();
+    await pickOption(container.querySelectorAll('select')[0]!, 'AU Distance');
+    const auInput = container.querySelector('input[type="number"]') as HTMLInputElement;
+    expect(auInput.value).toBe('3');                          // seeded from the click
+    expect(container.textContent).toMatch(/goldilocks/);      // and the steer still speaks
+    const addButton = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.includes('Add Construct'))!;
+    await fireEvent.click(addButton);
+    expect(created).toHaveBeenCalledTimes(1);
+    const node = created.mock.calls[0][0].detail as CelestialBody;
+    expect(node.megaType).toBe('ringworld');
+    expect((node.tags ?? []).some((t) => t.key === 'mega/outside-goldilocks')).toBe(true);
+  });
+
   it('the per-template placement axis: a ringworld on a star offers AU Distance and nothing else', async () => {
     const star = sun();
     systemStore.set({ nodes: [star] } as unknown as System);

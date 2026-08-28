@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.193 - 28th Aug 2026
+
+- Megaconstructs move to the proper picker (G53, owner correction). Create New Construct is now Create New Construct/Megaconstruct: the faceted browser gains a Megaconstructs tab beside Constructs, appearing only when the chosen host can take something. Each row carries a small drawn preview generated from the type's own numbers - a swarm's dots follow its density, a part-built shell shows exactly its coverage as a growing arc, the Death Star gets its dish - and a type this host cannot take greys out with its reason under the name. Selecting one shows its honest figures in the footer ("spin gravity ~1.00 g - 2.9 million Earths of floor"); Create then opens the placement step with the choice locked, placements narrowed to what fits, the distance seeded from where you clicked, and the amber advice still speaking. Verified live: a ringworld placed at 3 AU around Sol arrives carrying its own explanation of the cold.
+
 ## v3.0.192 - 28th Aug 2026
 
 - A thin memory line now sits at the bottom of the rail: green normally, orange as the tab passes 2 GB, red past 3 GB - the zone where sessions have actually died. On beta, entering the red zone also downloads a crash-recovery copy of the campaign automatically, once, so a session that dies at 3.5 GB no longer takes its evidence with it.

@@ -14,14 +14,26 @@
   export let orbitalBoundaries: OrbitalBoundaries | undefined; // For planets/moons
   // G43: preselect a placement (an L-point, when opened from a right-click inside its zone).
   export let initialPlacement: string | undefined = undefined;
+  // G53: the rich picker chose WHAT; this dialog chooses WHERE. When a megaconstruct arrives from
+  // Create New Construct/Megaconstruct, the template is locked (no re-choosing here) and only the
+  // placement flow shows — with the hard/steer machinery attached.
+  export let initialTemplate: CelestialBody | undefined = undefined;
+  // Seed for the AU field — the click distance, when the GM clicked a place around a star.
+  export let initialAuDistance: number | undefined = undefined;
 
   const dispatch = createEventDispatcher();
 
-  let selectedRoleHint: string | undefined;
-  let selectedTemplate: CelestialBody | undefined;
+  // Match the locked template back to the PACK's own object so the (hidden) select still binds by
+  // identity; fall back to the handed copy for a template the pack no longer carries.
+  const lockedTemplate: CelestialBody | undefined = initialTemplate
+    ? (((rulePack.constructTemplates?.mega ?? []) as CelestialBody[]).find((t) => t.id === initialTemplate!.id) ?? initialTemplate)
+    : undefined;
+
+  let selectedRoleHint: string | undefined = lockedTemplate ? 'mega' : undefined;
+  let selectedTemplate: CelestialBody | undefined = lockedTemplate;
   let selectedPlacement: string | undefined;   // an orbit band, 'Surface', 'AU Distance', or one of LAGRANGE_PLACEMENTS
   $: if (initialPlacement && selectedPlacement === undefined) selectedPlacement = initialPlacement;
-  let auDistance: number = 1.0; // For star-focused placement
+  let auDistance: number = initialAuDistance ?? 1.0; // For star-focused placement
 
   // G53: the mega tab — per-HOST and per-TEMPLATE (§2.2's one new axis). Every mega template is
   // checked against this host through the ONE evaluator; a template whose hard clauses fail lists
@@ -231,8 +243,12 @@
 
 <div class="modal-background">
   <div class="modal">
-    <h2>Add New Construct to {hostBody.name}</h2>
+    <h2>Add {lockedTemplate ? lockedTemplate.name : 'New Construct'} to {hostBody.name}</h2>
 
+    {#if lockedTemplate}
+      <!-- Chosen in the Create New Construct/Megaconstruct picker; only the placement is asked here. -->
+      <p class="locked-note">{lockedTemplate.description || 'Choose where it goes.'}</p>
+    {:else}
     <label class="form-row">
       <span>Construct Type:</span>
       <select bind:value={selectedRoleHint}>
@@ -242,8 +258,9 @@
         {/each}
       </select>
     </label>
+    {/if}
 
-    {#if selectedRoleHint}
+    {#if selectedRoleHint && !lockedTemplate}
       <label class="form-row">
         <span>Template:</span>
         <select bind:value={selectedTemplate}>
@@ -342,6 +359,13 @@
     justify-content: flex-end;
     gap: 10px;
     margin-top: 1rem;
+  }
+
+  .locked-note {
+    margin: -0.25rem 0 0.75rem;
+    font-size: 0.8rem;
+    text-align: left;
+    color: var(--text-muted, #8a8f98);
   }
 
   /* G53: the two §3.5 voices. A grey reason is final; an amber steer explains and lets you carry on. */
