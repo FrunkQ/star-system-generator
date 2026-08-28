@@ -46,3 +46,21 @@ export const MEMORY_REARM_FRAC = 0.65;
 export function formatMB(mb: number): string {
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
 }
+
+// The rail strip's ladder (owner, 2026-08-28): ABSOLUTE gigabytes, because the observed collapse is
+// absolute — "things tend to collapse at 3.5Gb" — regardless of what fraction of the allocation
+// limit that happens to be on a given machine. The strip goes orange at 2 GB and red at 3 GB.
+// The FRACTION ladder above still applies too: on a browser profile whose limit is below ~3.4 GB
+// the absolute ladder alone would warn too late, so the level is the WORST of the two readings.
+export const MEMORY_ORANGE_MB = 2048;
+export const MEMORY_RED_MB = 3072;
+
+export type MemoryLevel = 'green' | 'orange' | 'red';
+
+/** The strip's colour for a reading — worst of the absolute-GB and fraction-of-limit ladders. */
+export function memoryLevel(r: MemoryReading): MemoryLevel {
+  if (!r.supported) return 'green';
+  if (r.usedMB >= MEMORY_RED_MB || r.frac >= MEMORY_CRITICAL_FRAC) return 'red';
+  if (r.usedMB >= MEMORY_ORANGE_MB || r.frac >= MEMORY_WARN_FRAC) return 'orange';
+  return 'green';
+}

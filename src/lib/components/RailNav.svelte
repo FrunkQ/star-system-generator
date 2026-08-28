@@ -4,6 +4,7 @@
   // icon-only (minimal) ⇄ icon+text, toggled by the control at the top and remembered.
   import { createEventDispatcher } from 'svelte';
   import { railCollapsed } from '$lib/railStore';
+  import MemoryStrip from './MemoryStrip.svelte';
   import { APP_BUILD_STAMP } from '$lib/constants';
   const dispatch = createEventDispatcher();
 
@@ -174,6 +175,7 @@ ${playerConnSummary}`
   <button class="rail-btn" title="About, attributions & debug tools" on:click={() => go('about')}>
     <span class="ic">{@html svg(I.about)}</span><span class="rail-label">About</span>
   </button>
+  <MemoryStrip />
 </nav>
 
 <script context="module" lang="ts">

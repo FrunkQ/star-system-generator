@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.192 - 28th Aug 2026
+
+- A thin memory line now sits at the bottom of the rail: green normally, orange as the tab passes 2 GB, red past 3 GB - the zone where sessions have actually died. On beta, entering the red zone also downloads a crash-recovery copy of the campaign automatically, once, so a session that dies at 3.5 GB no longer takes its evidence with it.
 ## v3.0.191 - 28th Aug 2026
 
 - The body list stopped letting a long caption squeeze out a body's name - captions now trim with an ellipsis and the name always keeps its room. Found the moment a binary trojan existed: its members' captions named the whole pair back at you and left no space for the bodies themselves.

@@ -29,7 +29,7 @@
   import { starmapStore } from '$lib/starmapStore';
   import { perfStage, perfEnabled } from '$lib/perfTrace';
   import { APP_VERSION } from '$lib/constants';
-  import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
+  import { memoryReading, formatMB, memoryLevel, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
   import { systemStore, viewportStore } from '$lib/stores';
   import { syncUnitPrefsFromStarmap, unitPrefs } from '$lib/unitPrefsStore';
   import { migrateUnitPrefs } from '$lib/units';
@@ -900,6 +900,13 @@
     const h = window.location.hostname;
     return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h.endsWith('.local');
   }
+  // The crash-save watcher below is BETA-ONLY (owner, 2026-08-28): a red-zone excursion is likely a
+  // memory bug, so the state that produced it is evidence — but an unasked-for download on PROD
+  // would read as the app misbehaving. Dev origins are included so the path can be exercised at all.
+  function isBetaOrigin(): boolean {
+    if (!browser) return false;
+    return window.location.hostname.startsWith('beta.') || isDevOrigin();
+  }
   onMount(() => {
     if (!browser) return;
     // G28: the CAMPAIGN's undo history. Attached here rather than in `Starmap.svelte` so that
@@ -1423,11 +1430,21 @@
   // gauge itself (with the limit) lives in Settings → System → Memory.
   let memWarnLevel: 0 | 1 | 2 = 0;   // highest warning already shown this excursion
   let memBanner: { critical: boolean; text: string } | null = null;
+  // ONE crash file per red excursion (owner, 2026-08-28): entering the red band on beta writes the
+  // campaign to disk automatically, because live sessions have died at ~3.5 GB and the autosave
+  // queue may never flush once the tab is dying. Re-arms with the same ladder as the warnings, so
+  // a session hovering at the line gets one file, not one per poll.
+  let crashSavedThisExcursion = false;
   $: {
     const m = $memoryReading;
     if (m.supported) {
+      if (memoryLevel(m) === 'red' && !crashSavedThisExcursion && isBetaOrigin()) {
+        crashSavedThisExcursion = true;
+        writeCrashSave(m.usedMB);
+      }
       if (m.frac < MEMORY_REARM_FRAC) {
         memWarnLevel = 0;
+        crashSavedThisExcursion = false;
       } else if (m.frac >= MEMORY_CRITICAL_FRAC && memWarnLevel < 2) {
         memWarnLevel = 2;
         memBanner = { critical: true, text: `Memory is nearly exhausted — using ${formatMB(m.usedMB)} of the ${formatMB(m.limitMB)} this browser allows (${Math.round(m.frac * 100)}%). Save your campaign to a file NOW; the tab may be closed by the browser without warning. Reloading the tab after saving frees the memory.` };
@@ -1798,6 +1815,33 @@
   // already inside a modal that marks "Saved ✓" the moment it fires, and stacking a second modal
   // on it would break that flow.
   let showStarmapSaveModal = false;
+
+  // The red-zone crash file. DELIBERATELY LEANER THAN A NORMAL SAVE: no model binaries and no zip.
+  // handleDownloadStarmap base64-embeds every model, and at 3 GB of heap that allocation could
+  // itself be the push over the cliff — a crash save must never cause the crash it is recording.
+  // Models are content-addressed and reloadable; the campaign STATE is what dies with the tab.
+  // The IDB autosave is enqueued first because it is cheapest and survives tab death on its own.
+  function writeCrashSave(usedMB: number) {
+    const map = $starmapStore;
+    if (!map) return;
+    try {
+      enqueueStarmapPersist(map);
+      const lean = stripStarmapForExport(map, selectedRulepack ?? undefined);
+      const exportObj = stampForSave({ ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() });
+      const blob = new Blob([JSON.stringify(exportObj)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(map.name || 'starmap').replace(/\s/g, '_')}-CRASH-${(usedMB / 1024).toFixed(1)}GB.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      remoteNotice = `Memory is in the red zone — a crash-recovery save of the campaign has been downloaded.`;
+      if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+      remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 8000);
+    } catch (e) {
+      console.warn('[memory] crash save failed', e);
+    }
+  }
 
   async function handleDownloadStarmap() {
     if (!$starmapStore) return;
