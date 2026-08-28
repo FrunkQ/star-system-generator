@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.179 - 28th Aug 2026
+
+- The "a new version is available" prompt works again. It had been pinned to a build from months ago, so the app never noticed its own updates and kept serving an old copy of itself from the device.
+- Save files now carry a format number, and the project ships a sample save that pins what that format looks like. This is what lets a second application read your saves without guessing.
+
 ## v3.0.178 - 28th Aug 2026
 
 - Board only. Three pieces of work written up ready to hand out: the paired-star fix, the first slice of mega-structures, and the sharing hub as its own application.

@@ -25,6 +25,15 @@ import { readZipMembers } from '$lib/import/shared/zip';
 import { buildAttributionsFile } from './attributions';
 
 export const BUNDLE_EXT = '.sse.zip';
+
+// THE FORMAT CONTRACT. A second codebase now reads these archives (the Creator Hub, its own repo,
+// its own release cadence), and `provenance.appVersion` cannot serve: it is a BUILD STAMP, so
+// v3.0.1 and v3.9.0 may have identical or incompatible layouts and nothing says which. This integer
+// says which. Bump it ONLY on a breaking layout change - a new optional field is not one - and
+// regenerate `tests/fixtures/creator-hub-bundle.sse.zip` in the same commit; `hubFixture.spec.ts`
+// goes red if you do one without the other. A reader that meets a HIGHER number should refuse
+// politely rather than parse what it does not understand.
+export const BUNDLE_FORMAT = 1;
 const MODELS_DIR = 'assets/models/';
 const IMAGES_DIR = 'assets/images/';
 // Player-view graphics live in their own subfolder of the image directory. A subfolder rather than a
@@ -95,6 +104,9 @@ function* allNodes(doc: any): Generator<any> {
 export interface PackOptions {
   /** Model binaries by hash, already collected from the store (see modelTransfer). */
   models?: Record<string, { b64: string; meta: Record<string, unknown> }>;
+  /** Pin every zip entry's timestamp, so the archive is reproducible byte for byte. Only the
+   *  checked-in contract fixture sets this; a real save leaves it unset and carries the true date. */
+  mtime?: number | string | Date;
 }
 
 /**
@@ -105,6 +117,7 @@ export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): 
   const files: Record<string, Uint8Array> = {};
   // Deep clone so the live campaign is never mutated by an export.
   const out = JSON.parse(JSON.stringify(doc));
+  delete out.bundleFormat; // never inherit a stamp: THIS writer decides what format it just wrote
   let assets = 0;
 
   // Models: already base64 by hash from the store; write them out as real .glb files, and keep a
@@ -149,7 +162,9 @@ export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): 
 
   if (!assets) return null; // nothing to carry: plain JSON is the better file
 
-  files[DOC_NAME[kind]] = strToU8(JSON.stringify(out, null, 2));
+  // The format stamp goes FIRST in the file, so a reader - or a GM with a text editor - meets it
+  // before anything else rather than hunting for it after a megabyte of nodes.
+  files[DOC_NAME[kind]] = strToU8(JSON.stringify({ bundleFormat: BUNDLE_FORMAT, ...out }, null, 2));
   // Provenance travels WITH the art: a readable file naming every uploaded asset, what uses it,
   // and its credit/licence/source - including the ones with nothing recorded, so a GM can see
   // what still needs filling in before they share the save.
@@ -167,13 +182,15 @@ export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): 
   );
   // Models are already compressed (Draco/meshopt) and images are JPEG/PNG - storing them without
   // a second pass keeps packing fast and the archive honest about its size. The JSON does deflate.
-  return zipSync(files, { level: 0 });
+  return zipSync(files, opts.mtime === undefined ? { level: 0 } : { level: 0, mtime: opts.mtime });
 }
 
 // --- unpacking -------------------------------------------------------------------------------
 
 export interface UnpackedBundle {
   kind: BundleKind;
+  /** The archive's `bundleFormat`, or 0 for a bundle written before the stamp existed. */
+  format: number;
   doc: any;
   /** Model binaries by hash, in the shape importEmbeddedModels expects. */
   models: Record<string, { b64: string; meta: Record<string, unknown> }>;
@@ -196,6 +213,11 @@ export function unpackBundle(bytes: Uint8Array): UnpackedBundle {
   if (!docName) throw new Error('That zip is not a Star System Explorer save (no starmap.json or system.json inside).');
   const kind: BundleKind = docName.endsWith(DOC_NAME.starmap) ? 'starmap' : 'system';
   const doc = JSON.parse(strFromU8(members[docName]));
+  // The stamp describes the CONTAINER, not the campaign, so it comes off the doc the way modelMeta
+  // does - otherwise re-saving a bundle as plain JSON would leave a format claim on a file that has
+  // no format. It is returned instead, where a caller can act on it.
+  const format = typeof doc.bundleFormat === 'number' ? doc.bundleFormat : 0;
+  delete doc.bundleFormat;
 
   // Models back into the { hash: { b64, meta } } shape the existing importer verifies and stores.
   const models: Record<string, { b64: string; meta: Record<string, unknown> }> = {};
@@ -238,5 +260,5 @@ export function unpackBundle(bytes: Uint8Array): UnpackedBundle {
     node.image = { ...node.image, url: bytesToDataUrl(bytes3, MIME_BY_EXT[ext] ?? 'application/octet-stream') };
   }
 
-  return { kind, doc, models };
+  return { kind, format, doc, models };
 }
