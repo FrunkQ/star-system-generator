@@ -4338,6 +4338,33 @@ gravity-assist family is EXCLUDED from those assertions and is a separate known 
 it publishes `arrivalVelocity_ms = 0` with no Flyby warning while arriving km/s fast, on ordinary
 destinations too.
 
+### LGR-4 AN ADD AT AN OCCUPIED L-POINT IS A COMPANION OF THE RIDER, NEVER A SECOND RIDER
+BUCKET: ARCHITECTURE + DOMAIN - architecture: when a position is fully DERIVED, a second record
+with the same derivation inputs is not a second object at a place, it is the same place twice - the
+degeneracy is invisible precisely because the derivation is correct. Domain: two bodies sharing one
+L-point are a BINARY AT the point, which is a pair riding it (PHY-32), not two riders.
+WHERE: `physics/lagrange.placeBodyAtCoOrbitalPoint` (the decision), consumed by
+`SystemView.placeBodyOfType` (the trojan branch); the gate is `coOrbitalCompanion.spec.ts`.
+RULE: before stamping a `coOrbital` marker for a new BODY, ask the decision. An empty point takes a
+rider; an occupied one takes a companion OF the rider - parented to it, orbiting at a quarter of
+its Hill radius, carrying NO marker - and the reconciler does the rest (comparable mass promotes
+into a pair whose barycentre rides the point; a small body stays the trojan's moon). A pair already
+at the point IS the rider (its barycentre carries the marker), so a third body joins the pair.
+Constructs at the point are not riders: massless chrome binds nothing, and a body parented to one
+inherits the massless-stationary trap (DATA-R29 BLAST).
+WHY: [[B111]] third part, root-caused by the owner: he placed a second trojan inside an existing
+trojan's Hill sphere and got a second marker instead - which LGR-1 derives onto the SAME ellipse at
+the SAME phase and epoch, exactly on top of the first (measured under 1e-12 AU apart at every
+sample), while both stayed children of the STAR so no mass ratio ever compared them and the
+barycentre he was building could not form by any amount of fiddling. His clicked position also
+never existed in the data flow (the L-zone hit carries only `{secondaryId, point}`), and a rider's
+own position is derived (LGR-2), so a rider has nowhere for an offset to live - the companion's
+separation is where the GM's intent goes, and the pair-distance control makes it theirs afterwards.
+BLAST: old saves can hold several riders on one point; the decision picks the HEAVIEST as the
+companion's host rather than healing the stack - repairing authored data is the steer-do-not-stop
+line and nothing here crosses it. The picker caption reads the marker for its "with X (L4)" clause
+and falls back to the PARENT's marker for a pair member, because PHY-32 strips markers off members.
+
 ### PHY-29 Hill spheres are asked TWO questions, and the answers must stay different
 BUCKET: DOMAIN + ARCHITECTURE - domain: 'what bounds this body's gravity' and 'where does the
 propagator switch frames' are different questions with different floors. Architecture: two answers

@@ -26,6 +26,7 @@
 //    tadpole spans mean longitudes ~24..180 degrees from the secondary (the separatrix through L3).
 import type { CelestialBody, Barycenter, Orbit, LagrangePointId, System } from '../types';
 import { G } from '../constants';
+import { hillRadiusAU } from './stability';
 
 export const LAGRANGE_POINT_IDS: LagrangePointId[] = ['l1', 'l2', 'l3', 'l4', 'l5'];
 
@@ -372,6 +373,60 @@ export function coOrbitalSecondary(system: System, node: CelestialBody): Celesti
  */
 // WHO OWNS A CO-ORBITAL NODE'S ORBIT AND PARENTAGE (B98). This derivation does, and NOTHING ELSE may
 // re-home a node that rides a point - but the converse matters just as much: a node that is a MEMBER
+// WHAT "ADD A BODY AT THIS POINT" MEANS WHEN THE POINT IS TAKEN - B111's third part, root-caused
+// by the owner himself: he clicked inside an existing trojan's Hill sphere intending a companion,
+// and the placement ignored the position, stamped a SECOND coOrbital marker and derived a SECOND
+// rider - which by LGR-1 is the same ellipse at the same phase and epoch, i.e. exactly on top of
+// the first, invisibly. And because every rider is a child of the STAR, the mass-ratio promotion
+// compared each trojan against the star (ratio ~0) and never against the other, so the barycentre
+// he was trying to make could not form by any amount of fiddling.
+//
+// The decision, not the geometry: a point with no rider takes a rider; a point WITH one takes a
+// COMPANION OF THE RIDER - parented to it, orbiting inside its Hill sphere, carrying NO marker.
+// From there the existing machinery does the rest and both outcomes are the intended ones: a
+// comparable-mass companion promotes into a pair whose barycentre rides the point (B98/PHY-32,
+// membership and marker handed up), and a small one simply stays the trojan's moon. A pair already
+// at the point is itself the rider (the barycentre carries the marker), so a third body becomes
+// the pair's companion - the hierarchical shape, again already handled.
+//
+// Constructs at the point are NOT riders: they are massless chrome, cannot bind a companion, and a
+// body parented to one would inherit the massless-stationary trap (DATA-R29's blast line).
+export interface CoOrbitalBodyPlacement {
+    kind: 'point' | 'companion';
+    /** companion only: the body or pair already at the point. */
+    rider?: CelestialBody | Barycenter;
+    /** companion only: a comfortably bound starting separation, editable afterwards. */
+    suggestedAAU?: number;
+}
+
+export function placeBodyAtCoOrbitalPoint(
+    system: System,
+    secondaryId: string,
+    point: LagrangePointId,
+    hostMassKg: number
+): CoOrbitalBodyPlacement {
+    const secondary = system.nodes.find((n) => n.id === secondaryId) as CelestialBody | Barycenter | undefined;
+    const riders = system.nodes.filter((n) =>
+        n.kind !== 'construct' &&
+        (n as CelestialBody).coOrbital?.hostId === secondaryId &&
+        (n as CelestialBody).coOrbital?.point === point &&
+        nodeMassKg(n as CelestialBody | Barycenter) > 0
+    ) as (CelestialBody | Barycenter)[];
+    if (!riders.length || !secondary) return { kind: 'point' };
+
+    // More than one rider only happens in a save from before this decision existed; the heaviest
+    // is the one a companion physically belongs to.
+    const rider = riders.reduce((best, n) => (nodeMassKg(n) > nodeMassKg(best) ? n : best), riders[0]);
+    const src = (secondary as CelestialBody).orbit;
+    const aSec = src?.elements.a_AU ?? 0;
+    const eSec = src?.elements.e ?? 0;
+    // A quarter of the rider's Hill radius at the point: bound at any mass ratio, far enough in
+    // that the pair's own separation never rivals the Lagrange offset (the B98 confusion), and the
+    // pair-distance control makes it the GM's number the moment the pair exists.
+    const hill = hillRadiusAU(aSec, eSec, nodeMassKg(rider), hostMassKg);
+    return { kind: 'companion', rider, suggestedAAU: hill > 0 ? hill / 4 : undefined };
+}
+
 // of a barycentre never rides a point itself, because the PAIR does. Both halves are needed. With
 // only the first, the reconciler rebuilt the pair every other pass; with only the second, a promoted
 // trojan would lose its point altogether.

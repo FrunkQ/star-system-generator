@@ -62,7 +62,7 @@
   import PhysicsTraceModal from './PhysicsTraceModal.svelte';
   import AddBodyTypeModal from './AddBodyTypeModal.svelte';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
-  import { deriveCoOrbitalOrbit, maxTrojanMassKg } from '$lib/physics/lagrange';
+  import { deriveCoOrbitalOrbit, maxTrojanMassKg, placeBodyAtCoOrbitalPoint } from '$lib/physics/lagrange';
   import { maxCircumbinaryMassKg } from '$lib/physics/circumbinary';
   import { laplaceRadiusAU } from '$lib/generation/planet';
   import { spinProvenanceTags } from '$lib/generation/spinProvenance';
@@ -692,27 +692,66 @@
       // G43: a trojan placement — the body is a sibling of its secondary (both orbit the star),
       // carries the coOrbital marker, and gets its orbit from the one convention module. The
       // process() below re-derives it every pass thereafter.
+      //
+      // UNLESS THE POINT IS ALREADY TAKEN (B111's third part). A second marker at an occupied point
+      // derives a second rider exactly on top of the first - same ellipse, same phase, invisibly
+      // stacked - and both being children of the star, no mass ratio ever compares them and no pair
+      // can form however the GM fiddles. What a GM adding a body onto an existing trojan MEANS is a
+      // COMPANION: parented to the rider, orbiting inside its Hill sphere, no marker of its own.
+      // The reconciler then does what it already knows how to do - a comparable mass promotes into
+      // a pair whose barycentre rides the point (B98/PHY-32); a small one stays the trojan's moon.
       if (ctx.trojan) {
           const secondary = $systemStore.nodes.find(n => n.id === ctx.trojan!.secondaryId) as CelestialBody | undefined;
           if (!secondary) return;
           const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
           const starMassKg = ((host as any).kind === 'barycenter' ? (host as any).effectiveMassKg : (host as any).massKg) || 0;
-          const trojanBody: CelestialBody = {
-              id: generateId(),
-              name: `${secondary.name} ${ctx.trojan.point.toUpperCase()} Trojan`,
-              kind: 'body',
-              parentId: host.id,
-              ui_parentId: secondary.id,
-              roleHint: 'moon',
-              atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
-              hydrosphere: { coverage: 0, composition: 'water' },
-              biosphere: null,
-              classes: [],
-              ...gen,
-              tags: [...(gen.tags || [])],
-              coOrbital: { hostId: secondary.id, point: ctx.trojan.point },
-              orbit: deriveCoOrbitalOrbit(secondary, starMassKg, ctx.trojan.point) ?? undefined
-          } as CelestialBody;
+          const placement = placeBodyAtCoOrbitalPoint($systemStore, secondary.id, ctx.trojan.point, starMassKg);
+
+          let trojanBody: CelestialBody;
+          if (placement.kind === 'companion' && placement.rider) {
+              const rider = placement.rider;
+              const riderMassKg = ((rider as any).kind === 'barycenter' ? (rider as any).effectiveMassKg : (rider as any).massKg) || 0;
+              // Never inside contact: the suggestion is a quarter Hill radius, floored well clear
+              // of the two surfaces for a rider small enough that the Hill fraction dips inside.
+              const contactAU = (((rider as any).radiusKm || 0) + ((gen as any).radiusKm || 0)) * 4 / AU_KM;
+              const aAU = Math.max(placement.suggestedAAU ?? contactAU, contactAU, 1e-9);
+              trojanBody = {
+                  id: generateId(),
+                  name: `${(rider as any).name} Companion`,
+                  kind: 'body',
+                  parentId: rider.id,
+                  roleHint: 'moon',
+                  atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
+                  hydrosphere: { coverage: 0, composition: 'water' },
+                  biosphere: null,
+                  classes: [],
+                  ...gen,
+                  tags: [...(gen.tags || [])],
+                  orbit: {
+                      hostId: rider.id,
+                      hostMu: riderMassKg * G,
+                      t0: currentTime,
+                      elements: { a_AU: aAU, e: 0.02, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: Math.random() * 2 * Math.PI }
+                  }
+              } as CelestialBody;
+          } else {
+              trojanBody = {
+                  id: generateId(),
+                  name: `${secondary.name} ${ctx.trojan.point.toUpperCase()} Trojan`,
+                  kind: 'body',
+                  parentId: host.id,
+                  ui_parentId: secondary.id,
+                  roleHint: 'moon',
+                  atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
+                  hydrosphere: { coverage: 0, composition: 'water' },
+                  biosphere: null,
+                  classes: [],
+                  ...gen,
+                  tags: [...(gen.tags || [])],
+                  coOrbital: { hostId: secondary.id, point: ctx.trojan.point },
+                  orbit: deriveCoOrbitalOrbit(secondary, starMassKg, ctx.trojan.point) ?? undefined
+              } as CelestialBody;
+          }
           systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, trojanBody] }, rulePack) });
           updateFocus(trojanBody.id);
           isEditing = true;

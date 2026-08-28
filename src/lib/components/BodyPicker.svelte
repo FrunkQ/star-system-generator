@@ -138,6 +138,14 @@
     // (altitude ~0), so say "on X" rather than "orbits X".
     const a = n.orbit?.elements?.a_AU;
     if (a != null && p.radiusKm && a * AU_KM <= p.radiusKm * 1.005) return `on ${p.name}`;
+    // A co-orbital rider orbits the star AND rides with its secondary - "orbits Sol" alone is true
+    // but loses the half a GM actually placed it for (owner, 2026-08-28). A member of a PAIR riding
+    // a point carries no marker of its own (the pair does - PHY-32), so read the parent's too.
+    const marker = n.coOrbital ?? (p.kind === 'barycenter' ? p.coOrbital : null);
+    if (marker) {
+      const sec = (nodes as any[]).find((x) => x.id === marker.hostId);
+      if (sec) return `orbits ${p.name} · with ${sec.name} (${String(marker.point).toUpperCase()})`;
+    }
     return `orbits ${p.name}`;
   }
   function defaultRole(n: any): string {
