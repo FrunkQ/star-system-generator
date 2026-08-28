@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.180 - 28th Aug 2026
+
+- Mega-constructs, first groundwork (G53): a node can now say it is artificial, or that it should be presented as a construct, without either changing any physics - and one small module is the only place that reads those switches. Nothing visible changes yet; existing maps load and behave exactly as before.
+
 ## v3.0.179 - 28th Aug 2026
 
 - The "a new version is available" prompt works again. It had been pinned to a build from months ago, so the app never noticed its own updates and kept serving an old copy of itself from the device.

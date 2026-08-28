@@ -4992,3 +4992,21 @@ much weaker than it sounds. **Nobody has yet LOOKED at a 4.4 px hull**; if it do
 BLAST: `pixelFloor.spec.ts` pins the BODY clamp bit-for-bit against the old closure arithmetic - the
 extraction had to be behaviour-identical there - while asserting the construct floors as the thing
 that deliberately moved.
+
+### DATA-R31 ONE MODULE DECIDES WHETHER A NODE WEARS CONSTRUCT CHROME
+BUCKET: ARCHITECTURE - a convention that will exist at 150+ sites gets ONE predicate BEFORE the
+first divergent copy, not after the fifth (the G43 lesson, five rival L-point conventions).
+WHERE: `src/lib/constructs/chrome.ts` (`showsAsConstruct`, `isArtificial`); the flags
+`constructChrome` / `artificial` on `CelestialBody` (types.ts, beside `kind`).
+RULE: the two flags are ORTHOGONAL and neither may be inferred from the other: `constructChrome`
+governs the VIEW (present as a place - glyph, dock, construct lists), `artificial` governs the
+PHYSICS chain (composition DECLARED, never derived). New view code calls `showsAsConstruct()`;
+never test `kind === 'construct'` or the raw flags in new code. Existing sites migrate AS TOUCHED,
+deliberately - a chrome site not yet migrated shows a hybrid as a sphere in a body list, which is
+visibly wrong and gets fixed; re-pointing all 154 in one sweep is the risky move.
+WHY: G53's hybrid (mega-constructs, later asteroids-as-places) is `kind: 'body'` so the 209 physics
+gates work unedited; the chrome is what gets taught. An asteroid-as-place is natural AND wants
+chrome, which is why one flag cannot serve both facts - conflating them was a real error in an
+earlier design draft.
+BLAST: any new `kind === 'construct'` test in view code forks the convention. Phase 5 (the kind
+flip) relies on every site touched between now and then having migrated.

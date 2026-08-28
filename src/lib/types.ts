@@ -496,6 +496,19 @@ export interface StellarType {
 export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
   roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
+  // G53 THE HYBRID'S TWO FLAGS, AND THEY ARE ORTHOGONAL (mega-constructs-design.md §3.3):
+  // `constructChrome` governs the VIEW (present and handle as a PLACE — glyph, dock, construct
+  // lists); `artificial` governs the PHYSICS chain (BUILT, not formed — composition is DECLARED,
+  // never derived). A Death Star is both; an asteroid-as-place is chrome without artificial, because
+  // it is a real rock and deriving it is correct. Both absent = an ordinary node, unchanged
+  // everywhere. Read them ONLY through `src/lib/constructs/chrome.ts` — never test the raw flags in
+  // view or physics code, so the convention cannot fork (the G43 lesson, five rival conventions).
+  constructChrome?: true;
+  artificial?: true;
+  /** G53: names this node's record in the mega-construct registry
+   *  (`src/lib/constructs/megaTypes.ts`). A pack may name a type this build does not know; an
+   *  unknown key degrades to an ordinary construct rather than erroring. */
+  megaType?: string;
   classes?: string[];
   /** A star's MK classification as structured data. See `StellarType`. */
   stellarType?: StellarType;
