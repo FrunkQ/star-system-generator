@@ -165,6 +165,32 @@ by a build-time dependency, is a bigger cost than mirroring a hundred lines. Ins
   `/api/generate` (a `fetch` proxy to an LLM endpoint) and `/api/realsky-tap` (a `fetch` proxy to the
   NASA archive) use **no Node-only APIs** — checked, no `fs`, no `node:`, no `path`, no `process.env`.
 
+### 5.0 STATUS, MEASURED 2026-08-28 — the parallel deploy exists and its failure is NOT SSE's
+
+The owner created the Cloudflare account and pointed a Pages project at SSE ahead of sequence. It
+fails — **and the failure is Cloudflare's auto-config, not the repo.** The failing build ran
+`wrangler types --check && node scripts/generate-examples-list.cjs && vite build`, but SSE's build
+script has no `wrangler` step: the stack trace shows `maybeRunAutoConfig` → `runAutoConfig`
+injecting it because the repo has no `wrangler.toml`, then failing on types nothing ever generated.
+
+> **DO NOT EDIT SSE'S BUILD SCRIPT IN RESPONSE.** The fix is explicit configuration so auto-config
+> has nothing to guess: select the SvelteKit framework preset (or set the build command explicitly)
+> in the Pages project — which is what Part 2 step 2.4 already says — and do the adapter swap when
+> the migration properly starts. Recorded as R-08 in the hub repo's `sse-requirements.md`.
+
+**Sequence check:** a broken parallel deploy on `*.pages.dev` harms nobody — different origin, no
+service worker involvement. What remains gated is the DNS CUTOVER, which waits for the `sw.js` bump
+to reach PROD and propagate. **The bump shipped to beta in v3.0.179** (`sse-static-v3.0.179`); prod
+still carries the dead v3.0.22 pin until the next prod push.
+
+**ANALYTICS (the hub agent's R-09, and it is right).** SSE carries `@vercel/analytics@^2.0.1`, so
+during the parallel window the same code runs on both hosts: ship both beacons and figures
+double-count, ship either alone and one host is dark. Adopt an explicit
+`PUBLIC_ANALYTICS=vercel|cloudflare|none` build-time switch rather than sniffing host env vars —
+partly so a `pages.dev` verification build can be `none` and pollute neither dataset. **Do not drop
+`@vercel/analytics` until Vercel is actually off**, or rollback stops being a DNS change and becomes
+a code change.
+
 ### 5.2 THE SERVICE WORKER WILL BREAK THE CUTOVER UNLESS ONE LINE CHANGES
 
 **This is the most important thing in Part 2 and the plan does not mention it.**

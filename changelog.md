@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.189 - 28th Aug 2026
+
+- Board only. The three parallel work streams are verified and recorded: the paired-star fix, the first slice of mega-structures, and the sharing hub underway - plus what the early Cloudflare test deploy actually tripped over, and how analytics survives running on two hosts at once.
+
 ## v3.0.188 - 28th Aug 2026
 
 - When a large moon stops being a moon and becomes half of a double planet is now a setting rather than a number buried in the engine. It still happens at the same place - a companion 8% of its host's mass - and nothing on any existing map moves; but a rule pack can now put the line somewhere else, and say where it lets a pair break up again.
