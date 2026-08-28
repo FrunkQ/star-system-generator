@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.186 - 28th Aug 2026
+
+- Board only. The mega-constructs design document had multiplied a ringworld wrong - it called the ring's circumference its area. Corrected with the working shown: a 1 AU ring 1,000 km wide is about 1,800 Earths of floor; the fabled three million needs a band 1.6 million km wide, which is what the shipped template uses.
+
 ## v3.0.185 - 28th Aug 2026
 
 - Mega-constructs arrive on the picker (G53 phase 1). Seven templates ship in the rule pack - space elevator, planetary torus, ringworld, Dyson sphere and swarm, energy collector, Death Star - under their own Mega type in the add-construct dialog. The tab only appears when this host can take something; an option the host cannot take greys out and says why in a sentence ("A ringworld circles a star. Earth is not a star."); a placement the physics finds demanding - a ringworld out in the cold, a tether reaching near the edge of its world's gravity well - explains itself in amber, goes ahead anyway, and leaves its explanation as a tag on the construct. A mega type also narrows where it can sit: an elevator is Surface only, a Death Star is anywhere but a surface. Everything still renders as today's constructs do; the shapes come later.

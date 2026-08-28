@@ -884,9 +884,13 @@ with a FIXED distance and no eccentricity — which means it runs through the se
 luminosity sites [[B110]] names. **Unify that first**, or a ringworld inside a Dyson swarm will be
 lit by an undimmed star.
 
-**PUBLISH THE AREA, because it is the number that makes a ringworld land.** A 1 AU ring 1,000 km
-wide is about 9.4e8 km² of living space — roughly **three million Earths**. That single figure does
-more to convey what a megastructure IS than any render, and the engine can state it exactly.
+**PUBLISH THE AREA, because it is the number that makes a ringworld land.** CORRECTED during the
+phase-1 build (the original sentence conflated the circumference with the area): a 1 AU ring's
+circumference is 9.4e8 km; at 1,000 km wide that is 9.4e11 km² — about **1,800 Earths**. The
+**three million Earths** headline needs Niven's width, ~1.6 million km: 9.4e8 km × 1.6e6 km ≈
+1.5e15 km² ≈ 2.9e6 Earth surface areas — which is why the shipped template seeds that width, and
+`megaDerive.spec.ts` pins the figure. That single number does more to convey what a megastructure
+IS than any render, and the engine states it exactly.
 
 **RENDERING THE INTERIOR — three concrete notes.**
 - **Normals face inward.** The interior needs `side: THREE.BackSide` (or flipped normals) on the
