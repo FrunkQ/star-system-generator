@@ -21,8 +21,72 @@ import { AU_KM } from '$lib/constants';
 
 /** Scene units the outermost body in a system maps to. The scene's own GRID_RADIUS. */
 export const GRID_RADIUS = 12;
-/** Readable-end scene radius of a star photosphere. */
+/**
+ * LEGACY: the flat readable-end scene radius every star used to draw at, whatever its size - so a
+ * red dwarf and a red supergiant were the same size on screen. P4/S2 replaced it with the one
+ * kind-blind span map (`readableSpanScene`), which a star now goes through like everything else.
+ *
+ * Still exported because `holo/scene.ts` and `/scale-reference` name it, and because it is the
+ * number every pre-P4 saved look was built around - keeping it makes the size of the change
+ * legible rather than lost. NOTHING IN THE LAW READS IT ANY MORE.
+ */
 export const STAR_RADIUS = 0.5;
+
+// --- S2: ONE KIND-BLIND SPAN MAP ----------------------------------------------------------------
+
+/**
+ * P4/S2, the owner's decision of 2026-08-06: readable size is a single KIND-BLIND monotone map of
+ * log(PHYSICAL size). What an object IS never enters the law - only how big it is. So a 940 km
+ * station and a 940 km rock render identically, and "you could construct a death star" is answered
+ * by the law rather than by an exception.
+ *
+ * WHAT WAS WRONG BEFORE: bodies and ships had SEPARATE readable bands and the bands OVERLAPPED.
+ * Ships ran 0.14-0.7 while every body under 2000 km across sat flat at 0.28, so a 1 km cruiser
+ * out-drew Luna and a 22 km station out-drew EARTH. That is R9's ordering inversion, and no dial
+ * position could correct it because it was in the readable endpoint itself.
+ *
+ * THE SHAPE: piecewise-linear in log10(metres), continuous, monotone end to end.
+ *
+ *   - ABOVE the anchor (2000 km across) the slope is 0.2 per decade, which IS the shipped body
+ *     curve. Every body 1000 km in radius or larger therefore renders BIT-IDENTICALLY to before -
+ *     Luna, Earth, Jupiter and every gas giant do not move at all.
+ *   - BELOW the anchor the slope shallows to 0.044 per decade, so eleven decades of ships,
+ *     boulders and moonlets fit underneath 0.28 without the map going negative. The shipped law
+ *     was FLAT here (every body under 2000 km read 0.28), and that flatness is precisely what made
+ *     ordering impossible: a 22 km hull cannot be both smaller than a 2000 km moon and larger than
+ *     a 10 km moonlet if the two moons render the same size.
+ *
+ * WHY MONOTONE IS ENOUGH TO SETTLE R9 FOR GOOD: the true-scale term is exactly proportional to
+ * physical span, this readable term is monotone in physical span, and `dialBlend` is a GEOMETRIC
+ * blend of the two - so the product of two monotone positive functions is monotone at every dial
+ * stop. R9 holds by construction rather than by tuning, which is what the redesign asked for.
+ *
+ * The argument is the object's LONGEST PHYSICAL DIMENSION in metres, and the result is that same
+ * dimension in scene units: a body's DIAMETER, a construct's LENGTH. Callers that want a radius
+ * halve it.
+ */
+export const SPAN_ANCHOR_M = 2e6;         // 2000 km across - where the shipped body curve starts rising
+export const SPAN_ANCHOR = 0.28;          // its readable span there, unchanged from the shipped law
+export const SPAN_SLOPE_LARGE = 0.2;      // per decade above the anchor - the shipped body slope, kept
+export const SPAN_SLOPE_SMALL = 0.044;    // per decade below it - chosen so a 20 m craft lands on 0.06
+/** Positive floor for the readable span. Not a design size - it stops the map going negative for
+ *  sub-metre objects. Legibility below this is the SCREEN-space pixel floor's job, as it is for
+ *  everything else in this file. */
+export const MIN_READABLE_SPAN = 0.002;
+
+export function readableSpanScene(metres: number): number {
+	const L = Math.log10(Math.max(1e-9, metres));
+	const L0 = Math.log10(SPAN_ANCHOR_M);
+	const span = L >= L0
+		? SPAN_ANCHOR + SPAN_SLOPE_LARGE * (L - L0)
+		: SPAN_ANCHOR - SPAN_SLOPE_SMALL * (L0 - L);
+	return Math.max(MIN_READABLE_SPAN, span);
+}
+
+/** A body's diameter in metres, from its authored radius in km - the span map's argument. */
+export function bodySpanM(radiusKm: number): number {
+	return 2 * radiusKm * 1000;
+}
 
 /**
  * Everything the law needs about the system being drawn, so the functions stay pure.
@@ -30,10 +94,32 @@ export const STAR_RADIUS = 0.5;
  * to. Their ratio is the true-scale factor: metres -> AU -> scene units.
  */
 export interface ScaleContext {
-	/** 1 = readable, 0 = true physical scale. */
+	/** 1 = readable, 0 = true physical scale. THE MASTER DIAL: it moves bodies AND constructs. */
 	bodySize: number;
+	/**
+	 * S2c, owner 2026-08-27: the CONSTRUCT dial, as a RELATIVE OFFSET on the master rather than a
+	 * second absolute dial. *"Bodies moves both, but constructs only moves itself - so you can set
+	 * relative position you like (default to current) and be able to slide constructs apart if
+	 * needed. We are honest as it is a user visual choice."*
+	 *
+	 * ZERO IS TODAY'S LOOK, which is why it is an offset and not a dial: at 0 a construct sits at
+	 * exactly the body dial, which is what the single-dial law always did, so no saved preset moves.
+	 * Positive nudges constructs toward the readable end (bigger, more legible); negative toward
+	 * true scale.
+	 *
+	 * IT IS A DELIBERATE, LABELLED DEPARTURE FROM TRUTH, and R9 DOES NOT APPLY TO IT. Ordering is a
+	 * property of the LAW, which is what offset 0 is; sliding ships apart from bodies is a display
+	 * choice a user makes and can see. That distinction only means anything because S2 put truth
+	 * underneath it - which is why the design insists S2 ships first.
+	 */
+	constructOffset?: number;
 	rMax: number;
 	gridRadius?: number;
+}
+
+/** The dial a CONSTRUCT is drawn at: the master, nudged by the offset, clamped to the dial's range. */
+export function constructDial(ctx: ScaleContext): number {
+	return Math.max(0, Math.min(1, ctx.bodySize + (ctx.constructOffset ?? 0)));
 }
 
 /** At or above this the dial is "fully readable" and the true term is not consulted at all. */
@@ -79,12 +165,18 @@ export function radiusKmOf(node: any): number {
 }
 
 /**
- * Readable radius for a body: a log map of its physical radius, so a gas giant reads bigger than a
- * moon without either leaving the screen. NOT capped here - see `bodyRadiusScene`, where a
- * satellite is capped so it reads as a satellite rather than rivalling its primary.
+ * Readable radius for a body - half its span through the one kind-blind map (S2). NOT capped here:
+ * see `bodyRadiusScene`, where a SATELLITE is still capped so it reads as a satellite rather than
+ * rivalling its primary.
+ *
+ * THE SATELLITE CAP IS DELIBERATELY KEPT AND IS NOT AN R9 EXCEPTION IN S2'S SENSE. R9 is about KIND
+ * - a ship must not out-draw a physically larger body - and the cap is about HIERARCHY, which is a
+ * different axis and a readability device the owner has never objected to. It does mean a capped
+ * Luna (0.1) reads smaller than a system-level 100 km asteroid (0.118); that inversion is
+ * PRE-EXISTING and unchanged by S2, which is why it is recorded here rather than silently fixed.
  */
 export function readableBodyRadius(radiusKm: number): number {
-	return 0.14 + 0.1 * Math.max(0, Math.log10(radiusKm / 1000));
+	return readableSpanScene(bodySpanM(radiusKm)) / 2;
 }
 
 /**
@@ -104,19 +196,52 @@ export function bodyRadiusScene(radiusKm: number, systemLevel: boolean, ctx: Sca
 	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, readable, ctx.bodySize));
 }
 
+/**
+ * Is this node drawn as a STAR? The scene's own rule, lifted here so the extent and the renderer
+ * cannot disagree about which default radius a node gets.
+ */
+export function rendersAsStar(node: any): boolean {
+	return node?.roleHint === 'star' || (node?.kind === 'body' && node?.parentId === null);
+}
+
+/**
+ * A node's TRUE physical radius in AU - how far its own limb reaches from its own centre.
+ *
+ * WHY IT IS ITS OWN FUNCTION (A78): the framing normaliser `rMax` has to know how big a body is,
+ * not only where it is, and the renderer had the identical expression inline. Two copies of "how
+ * big is this thing physically" is precisely the duplication the standing rules warn about - they
+ * would answer the same question differently the first time either default changed.
+ *
+ * TRUE radius, never the RENDERED one, and the distinction is load-bearing. The drawn size depends
+ * on the `bodySize` dial and on `trueScaleFactor`, which is `gridRadius / rMax` - so feeding a
+ * rendered size back into `rMax` would be a loop. The extent is a fact about the DATA and is
+ * dial-independent by construction.
+ *
+ * A CONSTRUCT IS ZERO: its drawn size is a readability marker rather than a physical one, and its
+ * true size (tens of metres) is below anything a system-scale extent can carry.
+ */
+export function physicalRadiusAu(node: any): number {
+	if (!node || node.kind === 'construct') return 0;
+	const km = node?.physical_parameters?.radiusKm || node?.radiusKm || (rendersAsStar(node) ? 696000 : 3000);
+	return km / AU_KM;
+}
+
 /** The authored stellar radius in km, with the law's default for a node that carries none. */
 export function starRadiusKmOf(node: any): number {
 	return node?.physical_parameters?.radiusKm || node?.radiusKm || 696000;
 }
 
 /**
- * Rendered star radius: the readable STAR_RADIUS at the top of the dial, blending toward its true
- * physical size (a star is still far larger than any planet, so it stays clearly visible).
+ * Rendered star radius. S2 put stars through the same kind-blind span map as everything else, so a
+ * star's readable size now depends on HOW BIG IT IS. Before P4 every star drew at a flat
+ * `STAR_RADIUS` whatever its class, which made a red dwarf and a red supergiant identical on
+ * screen - the same dishonesty S2 removed between ships and bodies, one band further up.
  */
 export function starRadiusScene(radiusKm: number, ctx: ScaleContext): number {
-	if (ctx.bodySize >= READABLE_DIAL) return STAR_RADIUS;
+	const readable = readableSpanScene(bodySpanM(radiusKm)) / 2;
+	if (ctx.bodySize >= READABLE_DIAL) return readable;
 	const trueScene = (radiusKm / AU_KM) * trueScaleFactor(ctx);
-	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, STAR_RADIUS, ctx.bodySize));
+	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, readable, ctx.bodySize));
 }
 
 // --- Constructs ---------------------------------------------------------------------------------
@@ -132,17 +257,13 @@ export function shipLengthMOf(node: any): number {
 }
 
 /**
- * Readable LENGTH for a construct - a log-mapped marker length, so relative size stays honest (a
- * 1 km cruiser visibly dwarfs a 110 m frigate) while both stay legible.
- *
- * NOTE for P4: this band (0.14 - 0.7) OVERLAPS the bodies' band, which is what lets a 46 m ship
- * out-draw a small moon at the readable end - the ordering inversion the redesign's R9 exists to
- * kill. Do not "fix" it here; P4 replaces both bands with one kind-blind monotone map of physical
- * size. Changing it in isolation would move ships without moving bodies and make the inversion
- * worse.
+ * Readable LENGTH for a construct - the SAME span map a body goes through, on the same axis and in
+ * the same units (S2). There is no ship band any more, which is the whole of the fix: the old one
+ * ran 0.14-0.7 and OVERLAPPED the bodies', so a 1 km cruiser out-drew Luna and a 22 km station
+ * out-drew Earth.
  */
 export function readableShipLength(lengthM: number): number {
-	return Math.min(0.7, Math.max(0.14, 0.16 + 0.1 * (Math.log10(lengthM) - 1)));
+	return readableSpanScene(lengthM);
 }
 
 /**
@@ -156,9 +277,12 @@ export function readableShipLength(lengthM: number): number {
  */
 export function shipLengthScene(lengthM: number, ctx: ScaleContext): number {
 	const readable = readableShipLength(lengthM);
-	if (ctx.bodySize >= READABLE_DIAL) return readable;
+	// S2c: a construct reads its OWN dial - the master plus the campaign's offset. At the default
+	// offset of 0 this is `ctx.bodySize` exactly, so nothing moves for anyone who has not touched it.
+	const dial = constructDial(ctx);
+	if (dial >= READABLE_DIAL) return readable;
 	const trueScene = (lengthM / 1000 / AU_KM) * trueScaleFactor(ctx);
-	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, readable, ctx.bodySize));
+	return Math.max(NUMERICAL_FLOOR, dialBlend(trueScene, readable, dial));
 }
 
 // --- Markers ------------------------------------------------------------------------------------

@@ -4870,3 +4870,125 @@ ship's plan leaves `routeStateAt` null with no stamp to fall back on, so the shi
 stored on its node - which for a ship in flight is the one it DEPARTED from. The arrival re-parenting
 is a GM event a player cannot derive, so this is a genuine limit rather than an oversight; clamping
 to the plan's end would be the fix if it is ever judged worth one.
+THE POLICY IT ENCODES, and it is the owner's: a scrubbing player sees transit traffic at the GM's
+reported instant, not at their own (2026-08-08). G51 keeps that rule and makes it cost zero bytes
+by COMPUTING the stamp instead of transmitting it. Changing it is a product decision (G51 Q6),
+not a refactor.
+
+### RENDER-S40 AN EXTENT MUST INCLUDE THE EXTENT OF ITS MEMBERS, NOT JUST THEIR DISTANCES
+WHERE: the `rMax` loop in `holo/scene.ts` (`setSystemBuild`), and `physicalRadiusAu` in
+`rendering/scaleLaw.ts`, which both it and the `bodies[]` build now share.
+RULE: `rMax` is the largest of `|position| + that node's own TRUE radius in AU`. It used to be the
+largest `|position|` alone - and a star sits at the CENTRE, so its position magnitude is zero and it
+counted for nothing at all.
+WHY IT MATTERS BEYOND THE SCREENSHOT THAT FOUND IT (inbox A78): `rMax` is the framing normaliser for
+the whole scene. `compressRadius` maps it to `GRID_RADIUS`, `trueScaleFactor` is `gridRadius / rMax`,
+and the whole-system shot frames `GRID_RADIUS`. So a lone red supergiant fell through to the 1 AU
+fallback while its own radius is 4.19 AU, and drew at ~50 scene units inside a frame of 12 - an
+unbroken orange field with no disc and no limb. Everything downstream was solving correctly for a
+number that described the wrong system.
+TRUE RADIUS, NEVER THE RENDERED ONE, and this is the part that is easy to get backwards: the drawn
+size depends on the `bodySize` dial AND on `trueScaleFactor`, which is derived FROM `rMax`. Feeding a
+rendered size back in would close a loop. The extent is a fact about the DATA and is dial-independent
+by construction.
+THE FALLBACK IS KEPT DELIBERATELY. `if (rMax <= 0) rMax = 1` is all but unreachable now, but a system
+with no drawable nodes still reaches it and `compressRadius` divides by `rMax` with no guard of its
+own. One line against a division by zero.
+MEASURED, so nobody re-derives it: across the two bundled starmaps this moves 72 of 74 planeted
+systems by a MEDIAN of 0.016% and a worst of 0.309% (GJ 674, a red dwarf whose planet sits at 0.03 AU
+so its own radius is a real fraction of its orbit). Sol moves by 2e-7. **The six BARE single-star
+systems change completely and on purpose** - Ross 154 goes from the 1 AU fallback to 0.00093 AU -
+because those are the case this rule exists for. All of it is at the TRUE-scale end of the dial only;
+at the readable default a star still draws `STAR_RADIUS`.
+BLAST: `physicalRadiusAu` replaced an inline copy of the same expression in the `bodies[]` build. A
+belt carries `radiusInnerKm`/`radiusOuterKm` and no `radiusKm`, so it takes the 3000 km default rather
+than its true outer edge - see the A78 row for the separate finding that Sol's Kuiper Belt therefore
+draws 21% outside the grid. That is NOT fixed here and wants its own decision.
+### RENDER-S41 ONE KIND-BLIND SPAN MAP DECIDES READABLE SIZE, AND ITS MONOTONICITY IS THE ORDERING
+WHERE: `readableSpanScene` in `rendering/scaleLaw.ts`. `readableBodyRadius`, `readableShipLength`
+and the star branch of `starRadiusScene` are all thin wrappers over it now.
+RULE: readable size is a function of PHYSICAL SPAN IN METRES and nothing else - a body's diameter,
+a construct's long axis, on one axis. What an object IS never enters the law. So a 940 km station
+and a 940 km rock render identically, which is the owner's "you could construct a death star"
+decision expressed as arithmetic instead of an exception.
+WHY R9 IS NOW STRUCTURAL RATHER THAN TUNED, and this is the part worth keeping: the true-scale term
+is exactly PROPORTIONAL to physical span, this readable term is MONOTONE in physical span, and
+`dialBlend` is a GEOMETRIC blend of the two. A product of two monotone positive functions is
+monotone, so "a larger thing never renders smaller" holds at EVERY dial stop by construction. Break
+monotonicity of the span map and you break R9 everywhere at once - that is the invariant to protect.
+THE SHAPE: piecewise-linear in log10(metres), continuous at the anchor. Above 2000 km across the
+slope is 0.2/decade, which IS the pre-P4 body curve - kept deliberately, so every body 1000 km in
+radius or larger renders BIT-IDENTICALLY to before (Luna, Earth, Jupiter and every giant do not
+move). Below the anchor it shallows to 0.044/decade, because the old law was FLAT there and
+flatness is what made ordering impossible: a 22 km hull cannot be both smaller than a 2000 km moon
+and larger than a 10 km moonlet if the two moons render the same size.
+WHAT DID MOVE, so nobody reports it as a regression: bodies under 1000 km radius shrink (a 100 km
+moon 0.28 -> 0.236 span), every construct shrinks a lot at the readable end (a 46 m corvette
+0.226 -> 0.076), and STARS are on the map now instead of a flat `STAR_RADIUS` - Sol 1.0 -> 0.849,
+a red dwarf 1.0 -> 0.68, a supergiant 1.0 -> 1.44. Before this, a red dwarf and a red supergiant
+were the same size on screen.
+TWO THINGS DELIBERATELY LEFT ALONE. The SATELLITE CAP (`min(full, 0.1)` for a non-system-level
+body) survives: R9 is about KIND, the cap is about HIERARCHY, and it is a readability device nobody
+has objected to. It does mean a capped Luna reads smaller than a system-level 100 km asteroid -
+PRE-EXISTING, unchanged, and recorded rather than silently fixed. And `bodyRadiusScene` floors the
+RADIUS at `NUMERICAL_FLOOR` while callers double it, so a body bottoms out at 2e-10 span against a
+construct's 1e-10; no test reaches it, and changing it would move S2b's shipped acceptance.
+BLAST: `STAR_RADIUS` is still exported and still 0.5, but NOTHING IN THE LAW READS IT. It is kept
+because `holo/scene.ts` and `/scale-reference` name it and because it is the number every pre-P4
+saved look was built around.
+
+### RENDER-S42 THE CONSTRUCT DIAL IS AN OFFSET, AND R9 IS JUDGED AT ZERO
+WHERE: `ScaleContext.constructOffset` and `constructDial` in `rendering/scaleLaw.ts`, read only by
+`shipLengthScene`; `setConstructOffset` on the holo controller.
+RULE: constructs draw at `clamp(bodySize + constructOffset, 0, 1)`. Bodies and stars NEVER see the
+offset. It is an OFFSET rather than a second absolute dial for one reason: zero is then today's
+look exactly, so no saved preset moves until a GM asks it to.
+THE INVARIANT THAT IS EASY TO GET WRONG: **R9 is asserted at offset 0 and nowhere else.** Ordering
+is a property of the LAW; sliding constructs apart is a departure the user chooses and can see, and
+the design is explicit that a visible choice is not the engine lying. `/scale-reference` therefore
+computes its violation count at offset 0 however the slider is set - if you ever make the verdict
+follow the slider, the page will start reporting the user's own preference as a fault.
+WHY THE ORDER S2-THEN-S2c MATTERED: a labelled departure from truth only means anything once truth
+exists underneath it. With the overlapping bands still in place a GM sliding constructs apart could
+not tell whether they were correcting a fault or expressing a preference.
+
+### RENDER-S43 A PIXEL FLOOR IS NOT THE SCALE LAW, AND NO DIAL CAN CORRECT ONE
+WHERE: `rendering/pixelFloor.ts` (the whole file), read by `holo/scene.ts` at two call sites.
+RULE: the scale law decides size in SCENE units; the pixel floors clamp the result in SCREEN units
+UNDERNEATH it. A dial is a multiplier and a floor is a clamp beneath it, so **no dial position
+corrects a floor** - which is not a fine distinction: the owner went looking for the P4/S2c construct
+dial after noticing constructs read over-large until you zoom in, and the dial would not have fixed
+it, because the fault was here. Two controls over apparently the same thing, one of which does not
+address the complaint.
+AND THE FLOORS ARE ALL ON ONE AXIS NOW - EVERY ONE IS A SPAN. A body used to be floored by RADIUS
+and a construct by LENGTH, declared 170 lines apart in one file, and nothing said so. Compared
+naively that reads as a ship floored six times a planet (14 px against 2.2); the honest comparison,
+on one axis, is three (14 against a planet's 4.4 px of DIAMETER). Same fault shape as A33/B27/B28 -
+a quantity correct for its own purpose, published against a neighbour measured differently.
+`MIN_SPAN_PX` is the table; `bodyMinRadiusPx` converts at the one call site that measures radii.
+**`floorScale` takes both arguments on WHICHEVER axis the caller measures on** and does not know
+which - passing a span where a radius belongs silently doubles the enlargement cap below.
+THE `1e-9` INSIDE `floorScale` IS A CAP ON ENLARGEMENT, NOT A DIVIDE-BY-ZERO GUARD, and this was
+learned by extracting it and briefly getting it wrong. Without it a thing measuring 2e-10 px is
+scaled by 1.6e10 to meet a 3.2 px floor, and a body sitting on `NUMERICAL_FLOOR` is blown up into a
+visible disc. It never fires in practice and fires on exactly the inputs a sweep test uses, which is
+how the equivalence spec caught the axis mistake in one run. Do not tidy it away.
+THE VALUES, and why a construct is where it is: a focused ship floors at a PLANET span and an idle
+one at a MOON's (owner, 2026-08-27: *"2px planet 14px ship seems silly - maybe pin at 2px/1px for
+constructs\"*), so a construct joins the marker hierarchy rather than sitting above it. A FRAMED ship
+has no floor at all, deliberately: a screen-size floor pins the hull to a constant number of pixels,
+so while it is active the camera cannot change the apparent size - the "wrestles the view" fault.
+CHECKED BEFORE LOWERING, both of the obvious objections: CLICKING is unaffected (the tap assist picks
+the nearest clickable body within 14 px on a raycast miss, and its own comment says it exists for
+construct icons already drawn far below that); LABELS are unaffected (`setLabelSize` is a fixed px
+font with a global toggle, gated on nothing). The tap radius and the old floor were both 14, but they
+are independent literals with no shared constant and the floor gave an unrelated reason for its own
+value, so the coincidence is unexplained rather than causal.
+MEASURED, so the next tuner does not have to guess: across the 26 bundled constructs carrying
+`dimensionsM` the MEDIAN aspect ratio is 1.6, which puts a hull at ~0.8x the lit area of a disc of
+the same span. The worry that a hull needs a bigger floor than a planet to read at all is therefore
+much weaker than it sounds. **Nobody has yet LOOKED at a 4.4 px hull**; if it does not read, raise
+`constructFocused` alone.
+BLAST: `pixelFloor.spec.ts` pins the BODY clamp bit-for-bit against the old closure arithmetic - the
+extraction had to be behaviour-identical there - while asserting the construct floors as the thing
+that deliberately moved.
