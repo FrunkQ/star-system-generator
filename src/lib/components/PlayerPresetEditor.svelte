@@ -185,6 +185,15 @@
     return z > 1 ? `${z}× stretched` : `${Math.round((1 / z) * 10) / 10}× flatter`;
   }
 
+  // S2c: the construct dial's read-out. It names BOTH numbers on purpose — the departure the GM
+  // chose, and where constructs actually land on the same 0..100% axis the Body size dial reads on.
+  // An offset shown alone is unreadable, because its meaning depends entirely on the master beside it.
+  function constructLabel(bodySize: number, offset: number): string {
+    if (offset === 0) return 'as bodies';
+    const dial = Math.max(0, Math.min(1, bodySize + offset));
+    return `${offset > 0 ? '+' : ''}${Math.round(offset * 100)}% · drawn at ${Math.round(dial * 100)}%`;
+  }
+
   // ── A48: collapsible sections, per GM ───────────────────────────────────────
   // The tab strip above IS the top-level grouping the item asked for — Identity/Theme, Cover,
   // Starmap, System, Transitions, Filter — and it has been there since the wizard landed. What was
@@ -958,6 +967,19 @@
                   <label>Body size <span class:actual-on={draft.bodySize === 0}>{draft.bodySize === 0 ? 'actual size' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span>
                     <div class="range-actual" title="Left end = actual (true) body sizes"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></div>
                   </label>
+                  <!-- S2c, owner 2026-08-27: ships and stations slid RELATIVE to Body size, which stays the
+                       master. The centre pip is the honest zero — constructs on exactly the same dial as
+                       bodies, which is what this view has always drawn — so sliding off it is a departure
+                       a GM makes deliberately and can see, in either direction. Range matches
+                       /scale-reference's own dial (±0.5); two controls for one quantity must not disagree. -->
+                  <label>Constructs <span class:actual-on={(draft.constructOffset ?? 0) === 0}>{constructLabel(draft.bodySize, draft.constructOffset ?? 0)}</span>
+                    <div class="range-actual range-mid" title="Centre = ships and stations on the same dial as bodies; left draws them nearer true scale, right nearer readable">
+                      <span class="actual-pip mid" aria-hidden="true"></span>
+                      <input type="range" min="-0.5" max="0.5" step="0.05" value={draft.constructOffset ?? 0}
+                        on:input={(e) => (draft = { ...draft, constructOffset: Number((e.currentTarget as HTMLInputElement).value) })} />
+                    </div>
+                  </label>
+                  <p class="hint">Ships and stations are microscopic beside worlds, so a map that is honest about both can be hard to read. This slides constructs alone, leaving Body size in charge of everything. Centre is the true relationship &mdash; anywhere else is a display choice you have made, not the physics.</p>
                   <label>Spread <span class:actual-on={draft.compression === 0}>{draft.compression === 0 ? 'actual distances' : Math.round(draft.compression * 100) + '%'}</span>
                     <div class="range-actual" title="Left end = actual (true) distances"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></div>
                   </label>

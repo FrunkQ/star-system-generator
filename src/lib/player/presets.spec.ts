@@ -172,3 +172,42 @@ describe('atmospheres switch', () => {
     expect(systemStageStyle(p).atmospheres).toBe(false);
   });
 });
+
+// S2c: THE CONSTRUCT DIAL RIDES THE PRESET, and these are the properties that make it a feature
+// rather than a field. The LAW was merged with P4; what was missing until now was persistence and a
+// control, so the user-facing dial did not exist. Owner's call, 2026-08-28: both dials live on the
+// preset, because an offset whose master lives elsewhere is unreadable - the same slider position
+// would mean a different thing in every view.
+describe('S2c: the construct offset on a preset', () => {
+  it('defaults to 0, which is the single-dial law exactly - no authored preset may move', () => {
+    expect(DEFAULT_PRESET.constructOffset).toBe(0);
+    for (const p of BUILTIN_PRESETS) expect(normalizePreset(p).constructOffset ?? 0).toBe(0);
+  });
+
+  // The migration case, and the one that actually bites: a campaign saved before this field existed.
+  it('reads an ABSENT field as 0, not as undefined arriving at the scene', () => {
+    const old: any = { ...DEFAULT_PRESET };
+    delete old.constructOffset;
+    expect(normalizePreset(old).constructOffset).toBe(0);
+    expect(holoStyleOf(old).constructOffset).toBe(0);
+  });
+
+  it('carries a GM’s chosen offset through to the style the view is handed', () => {
+    expect(holoStyleOf({ ...DEFAULT_PRESET, constructOffset: 0.25 }).constructOffset).toBe(0.25);
+    expect(holoStyleOf({ ...DEFAULT_PRESET, constructOffset: -0.3 }).constructOffset).toBe(-0.3);
+  });
+
+  // It is a DISPLAY choice, so it must survive the 2D flattening for the same reason bodySize does:
+  // a 2D map is this renderer locked overhead, not a different scale law.
+  it('survives the 2D flattening, and does not disturb the master dial', () => {
+    const p = { ...DEFAULT_PRESET, systemView: 'diagram2d' as const, bodySize: 0.8, constructOffset: 0.2 };
+    const s = systemStageStyle(p);
+    expect(s.constructOffset).toBe(0.2);
+    expect(s.bodySize).toBe(0.8);
+  });
+
+  it('survives normalizePreset, so the load path and the code path agree about it', () => {
+    const p = normalizePreset({ ...DEFAULT_PRESET, id: 'x', name: 'X', constructOffset: -0.45 });
+    expect(p.constructOffset).toBe(-0.45);
+  });
+});

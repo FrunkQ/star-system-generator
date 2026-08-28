@@ -102,6 +102,7 @@
     controller?.setAtmospheres(s.atmospheres !== false);
     controller?.setBeltStyle(s.beltStyle ?? 'rocks');
     controller?.setBodySize(s.bodySize);
+    controller?.setConstructOffset(s.constructOffset ?? 0); // S2c: 0 = constructs sit on the master dial
     controller?.setSkyStars(skyStars, s.constellations ?? 'off', { boost: s.constellationBoost ?? 0.35, labelPx: s.constellationLabelSize ?? 11 });
     controller?.setGrid(s.grid);
     controller?.setGridFalloff(s.gridFalloff ?? 0);

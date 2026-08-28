@@ -103,6 +103,7 @@ export const DEFAULT_PRESET: PlayerPreset = {
   // exaggeration — so they are set together and to the same number rather than drifting apart.
   compression: 0.8,
   bodySize: 0.8,
+  constructOffset: 0, // S2c: constructs on the master dial until a GM slides them off it
   beltDetail: 0.6,
   orbitSpeed: 0,
   lockRotation: true, // 2D views are fixed maps by default
@@ -294,6 +295,7 @@ export function holoPresetToPlayer(hp: HoloStyle & { id?: string; name?: string 
     grid: hp.grid ?? 'plain',
     compression: hp.compression ?? 0.65,
     bodySize: hp.bodySize ?? 1,
+    constructOffset: hp.constructOffset ?? 0,
     beltDetail: hp.beltDetail ?? 0.6,
     orbitSpeed: hp.orbitSpeed ?? 0,
     skybox: hp.skybox ?? true,
@@ -329,6 +331,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     beltStyle: p.beltStyle,
     background: p.background,
     bodySize: p.bodySize,
+    constructOffset: p.constructOffset ?? 0, // S2c: travels with the preset, so a player window gets the GM's choice
     grid: p.grid,
     gridFalloff: p.gridFalloff ?? 0,
     gridDepth: p.gridDepth ?? 0,

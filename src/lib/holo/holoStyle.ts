@@ -31,7 +31,10 @@ export interface HoloStyle {
   atmospheres?: boolean; // build cloud decks, limb glow and haze at all (default on; off is a perf saving)
   beltStyle?: 'rocks' | 'band'; // belts/rings as tumbling rocks, or the GM orrery's flat grey band
   background: 'space' | 'green' | 'blue' | 'black'; // dark space, or a chroma-key colour for OBS
-  bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale
+  bodySize: number; // 1 = readable (chunky) .. 0 = true physical scale — the MASTER dial: it moves bodies AND constructs
+  // S2c: constructs slid RELATIVE to the master, not a second absolute dial. 0 = exactly the
+  // single-dial law, so no preset authored before this moves. See ScaleContext.constructOffset.
+  constructOffset?: number;
   grid: 'off' | 'plain' | 'scaled' | 'hex'; // ground reference: none / polar rings / scale rings / hex (hex is starmap-only; the system view treats it as plain)
   gridFalloff?: number; // G4: ground-grid distance fade, 0 (even, the default) .. 1 (bright centre, gone by the edge)
   gridDepth?: number;   // ground-grid depth curtain, 0 (flat, the default) .. 1 — the starmap's twin
@@ -71,6 +74,7 @@ export const DEFAULT_STYLE: HoloStyle = {
   bodyStyle: 'textured',
   background: 'space',
   bodySize: 1,
+  constructOffset: 0, // S2c: constructs follow the master dial until a GM says otherwise
   grid: 'plain',
   gridFalloff: 0,
   gridDepth: 0,

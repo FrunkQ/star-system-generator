@@ -1477,13 +1477,28 @@ red dwarf and a red supergiant were the same size on screen, which is the same d
 between ships and bodies, one band further up. **This is the biggest visual change in the batch and
 the one most worth an eye.**
 
-**WHAT IS NOT DONE, and must not be read as done.** S2c's LAW is complete and the holo controller
-takes `setConstructOffset`, but **there is no GM control and no persistence yet** - the offset is
-settable on /scale-reference only. That is deliberate: the design note says the dial "rides
-`starmap`" as a per-CAMPAIGN setting, but its master `bodySize` rides the PRESET
-(`PlayerPresetEditor.svelte`, `draft.bodySize`). **Those are two different homes for two halves of
-one control**, and picking one silently is how a setting ends up half-saved. Owner's call; it is a
-small wiring job once decided.
+**S2c IS COMPLETE AS OF v3.0.166 - THE OWNER DECIDED THE HOME, 2026-08-28: BOTH DIALS RIDE THE
+PRESET.** The design note used to say the construct dial "rides `starmap`" as a per-CAMPAIGN setting
+while its master `bodySize` rode the PRESET, which was two homes for two halves of one control. It
+went to him as a decision and he chose the preset for both. **The reasoning, worth keeping because it
+generalises:** an offset whose master lives somewhere else is UNREADABLE - a campaign-wide offset
+against a per-preset master means the same slider position draws differently in every view, which is
+the "two numbers you cannot see together" fault the scattered-constants rule already names. **What
+was wired (five files, one gate):** `constructOffset` on `HoloStyle` + `DEFAULT_STYLE`
+(`holoStyle.ts`), handed to the controller in `HoloView.svelte` beside `setBodySize`, the optional
+field on `PlayerPreset` (`presetTypes.ts`), the default + migration + `holoStyleOf` pass-through
+(`presets.ts` 106/298/334), and the Constructs slider under Body size in the Scaling section
+(`PlayerPresetEditor.svelte`). Range is +/-0.5, MATCHING /scale-reference's own dial deliberately -
+two controls for one quantity must not disagree about its range. The read-out names BOTH numbers
+("+15% . drawn at 95%") for the same reason the homing decision went the way it did. Absent reads as
+0 everywhere, so no preset authored before this moves. **The gate was run with the wiring removed and
+went red on three of its five checks** (`presets.spec.ts`, the S2c describe block); the two that
+stayed green test `presets.ts` defaults rather than `holoStyleOf`, which is correct.
+
+**STILL OWED ON S2c: THE OWNER'S EYE.** Unit tests and a green build are not a visual verification.
+Open a player preset > System > Scaling: there should now be THREE sliders (Body size, Constructs,
+Spread), the Constructs one centre-pipped green reading "as bodies", and sliding it should move ships
+and stations on the preview WITHOUT moving worlds. Nothing else in the editor should have moved.
 
 **THE THIRTY-SECOND EYEBALL LIST.** (1) `/scale-reference` on the branch: the banner should read NO
 ORDERING VIOLATIONS, and no cell should be flagged, at all four system extents. (2) Slide the

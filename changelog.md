@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.166 - 28th Aug 2026
+
+- Ships and stations have their own size slider, under Body size. Constructs are microscopic beside worlds, so a map honest about both can be hard to read; this slides them alone, leaving Body size in charge of everything. The centre is the true relationship, and the read-out always says where constructs actually land, so a departure from truth is one you choose and can see.
+
 ## v3.0.165 - 28th Aug 2026
 
 - Board only. Production takes the scale law and the supergiant framing fix, and the release routine now asks what is still sitting on a branch before it goes.

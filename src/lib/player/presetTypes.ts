@@ -233,7 +233,13 @@ export interface PlayerPreset {
   orbitOpacity?: number; // G5: orbit-line strength 0..1, multiplying each line's designed opacity. 1 = unchanged
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1
-  bodySize: number;    // 1 readable .. 0 true scale
+  bodySize: number;    // 1 readable .. 0 true scale — the MASTER dial, moving bodies AND constructs
+  // S2c (owner, 2026-08-27): ships and stations slid RELATIVE to the master. Optional and defaulted
+  // 0 because 0 IS the single-dial law, so every preset authored before this reads identically.
+  // It rides the PRESET rather than the campaign, deliberately: an offset whose master lives
+  // somewhere else is unreadable — the same slider position would mean a different thing in every
+  // view, which is the "two numbers you cannot see together" fault the scattered-constants rule names.
+  constructOffset?: number;
   beltDetail: number;  // 0..1
   orbitSpeed: number;  // auto view-orbit 0..1 (3D only — a 2D map never turntables)
   lockRotation: boolean; // 2D views: pin the flat top-down view (no tilt, no rotate, no turntable)
