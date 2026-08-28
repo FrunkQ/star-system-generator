@@ -138,13 +138,22 @@
     // (altitude ~0), so say "on X" rather than "orbits X".
     const a = n.orbit?.elements?.a_AU;
     if (a != null && p.radiusKm && a * AU_KM <= p.radiusKm * 1.005) return `on ${p.name}`;
+    // A MEMBER OF A PAIR names its PARTNER, not the barycentre - the auto pair name concatenates
+    // both members plus "Barycentre", so "orbits <that>" reads the row's own name back at the GM
+    // twice over (owner screenshot, 2026-08-28; same lesson as BodyOrbitTab's host labels). The
+    // pair's marker sits on the barycentre (PHY-32), so the riding clause comes from the parent.
+    if (p.kind === 'barycenter' && (p.memberIds || []).includes(n.id) && p.memberIds.length === 2) {
+      const partner = (nodes as any[]).find((x) => x.id !== n.id && p.memberIds.includes(x.id));
+      if (partner) {
+        const sec = p.coOrbital ? (nodes as any[]).find((x) => x.id === p.coOrbital.hostId) : null;
+        return `pairs with ${partner.name}` + (sec ? ` · at ${sec.name} ${String(p.coOrbital.point).toUpperCase()}` : '');
+      }
+    }
     // A co-orbital rider orbits the star AND rides with its secondary - "orbits Sol" alone is true
-    // but loses the half a GM actually placed it for (owner, 2026-08-28). A member of a PAIR riding
-    // a point carries no marker of its own (the pair does - PHY-32), so read the parent's too.
-    const marker = n.coOrbital ?? (p.kind === 'barycenter' ? p.coOrbital : null);
-    if (marker) {
-      const sec = (nodes as any[]).find((x) => x.id === marker.hostId);
-      if (sec) return `orbits ${p.name} · with ${sec.name} (${String(marker.point).toUpperCase()})`;
+    // but loses the half a GM actually placed it for (owner, 2026-08-28).
+    if (n.coOrbital) {
+      const sec = (nodes as any[]).find((x) => x.id === n.coOrbital.hostId);
+      if (sec) return `orbits ${p.name} · with ${sec.name} (${String(n.coOrbital.point).toUpperCase()})`;
     }
     return `orbits ${p.name}`;
   }
@@ -652,7 +661,14 @@
   .row:hover { background: var(--bg-control, #1b1e26); }
   .row.active { background: color-mix(in srgb, var(--accent, #ff5a1f) 22%, transparent); }
   .row-name { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row-ctx { color: var(--text-faint, #8a8f9a); font-size: 0.78rem; flex: 0 0 auto; }
+  /* The caption NEVER wins the row: it may shrink to ellipsis, the name may not vanish. A pair
+     member's caption used to be "orbits <auto pair name> - with <secondary> (L4)" and at that
+     length it crushed the body's own name to zero width (owner screenshot, 2026-08-28). */
+  .row-ctx {
+    color: var(--text-faint, #8a8f9a); font-size: 0.78rem;
+    flex: 0 1 auto; max-width: 60%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .row.category .row-name { font-weight: 600; }
   .chevron { color: var(--text-faint, #8a8f9a); }
   .empty { padding: 14px; color: var(--text-faint, #8a8f9a); text-align: center; }

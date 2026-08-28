@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.191 - 28th Aug 2026
+
+- The body list stopped letting a long caption squeeze out a body's name - captions now trim with an ellipsis and the name always keeps its room. Found the moment a binary trojan existed: its members' captions named the whole pair back at you and left no space for the bodies themselves.
+- A member of a pair now reads "pairs with <its partner> - at Jupiter L4" instead of reciting the pair's full auto-generated name.
+
 ## v3.0.190 - 28th Aug 2026
 
 - Binary trojans can now be built the way you would expect. Adding a body at a Lagrange point that already holds a trojan used to drop it invisibly on top of the existing one, where the two could never pair up; it now arrives as that trojan's companion - a moon if it is small, and if the two are comparable they promote into a proper pair orbiting each other while riding the point together, like the real Patroclus and Menoetius at Jupiter's L4.
