@@ -5,6 +5,9 @@
   import type { CelestialBody, RulePack, OrbitalBoundaries } from '$lib/types';
   import { generateId } from '$lib/utils';
   import { deriveCoOrbitalOrbit, lagrangePlacementId, LAGRANGE_PLACEMENTS } from '$lib/physics/lagrange';
+  import { megaTypeDef } from '$lib/constructs/megaTypes';
+  import { effectiveMegaRequires, megaHardCheck, megaSteerNotes, hostHasSurface } from '$lib/constructs/megaPlacement';
+  import { calculateGoldilocksZone } from '$lib/physics/zones';
 
   export let rulePack: RulePack;
   export let hostBody: CelestialBody; // The body the user right-clicked on
@@ -20,19 +23,51 @@
   $: if (initialPlacement && selectedPlacement === undefined) selectedPlacement = initialPlacement;
   let auDistance: number = 1.0; // For star-focused placement
 
-  $: constructRoleHints = Object.keys(rulePack.constructTemplates || {}).filter(key => key !== 'id' && key !== 'name');
+  // G53: the mega tab — per-HOST and per-TEMPLATE (§2.2's one new axis). Every mega template is
+  // checked against this host through the ONE evaluator; a template whose hard clauses fail lists
+  // GREYED with its reason printed below, and when nothing passes the whole tab hides ("only
+  // appears... when available"). No placement rule lives in this file — megaPlacement.ts owns them.
+  $: megaTemplates = ((rulePack.constructTemplates?.mega ?? []) as CelestialBody[]);
+  $: megaRows = megaTemplates.map((t) => {
+    const def = megaTypeDef(t.megaType);
+    return { template: t, def, hard: megaHardCheck(effectiveMegaRequires(t, def), hostBody, t.explain ?? def?.explain) };
+  });
+  $: megaAvailable = megaRows.some((r) => r.hard.ok);
+
+  $: constructRoleHints = Object.keys(rulePack.constructTemplates || {})
+      .filter(key => key !== 'id' && key !== 'name')
+      .filter(key => key !== 'mega' || megaAvailable);   // an empty mega tab hides, it never greys whole
 
   // Reactive variables for available templates based on selected role hint
   $: availableTemplates = selectedRoleHint && rulePack.constructTemplates ? rulePack.constructTemplates[selectedRoleHint] : [];
+  $: megaHardFor = (t: CelestialBody) => megaRows.find((r) => r.template === t)?.hard;
+
+  // PLAUSIBILITY, live beside the form (§3.5): sentences and tags, never a refusal. Reacts to the
+  // chosen placement and AU so a ringworld dragged to 3 AU is told about the cold while the GM is
+  // still looking at the field. The goldilocks band is the caller's to supply (megaPlacement stays
+  // pure), and it is only computed for a star host.
+  $: steerNotes = (selectedRoleHint === 'mega' && selectedTemplate)
+    ? megaSteerNotes(
+        effectiveMegaRequires(selectedTemplate, megaTypeDef(selectedTemplate.megaType)),
+        hostBody,
+        {
+          placementAU: selectedPlacement === 'AU Distance' ? auDistance : undefined,
+          goldilocks: hostBody.roleHint === 'star'
+            ? calculateGoldilocksZone(hostBody, get(systemStore)?.nodes ?? [])
+            : null
+        }
+      )
+    : [];
 
   // Reactive variable for available placement options
   $: availablePlacements = [];
   $: {
     const placements: string[] = [];
-    const isGasGiant = hostBody.classes?.some(c => c.includes('gas-giant')) ?? false;
 
     if (hostBody.kind === 'body' && (hostBody.roleHint === 'planet' || hostBody.roleHint === 'moon')) {
-      if (!isGasGiant) {
+      // ONE answer to "has a surface" — the same predicate the mega evaluator uses (G53), so the
+      // Surface option and a hasSurface clause can never disagree about one host.
+      if (hostHasSurface(hostBody)) {
         placements.push('Surface');
       }
       placements.push('Low Orbit');
@@ -65,6 +100,14 @@
     availablePlacements = placements;
   }
 
+  // The per-TEMPLATE half of the axis (G53): a mega type constrains which of the host's placements
+  // make sense for it at all — an elevator is Surface or nothing, a Death Star is anywhere BUT the
+  // surface. Data on the registry record, intersected here; ordinary constructs are untouched.
+  $: shownPlacements = (() => {
+    const allowed = selectedRoleHint === 'mega' ? megaTypeDef(selectedTemplate?.megaType)?.allowedPlacements : undefined;
+    return allowed ? availablePlacements.filter((p: string) => allowed.includes(p)) : availablePlacements;
+  })();
+
   function createConstruct() {
     if (!selectedTemplate || !selectedPlacement || !hostBody) return;
 
@@ -75,6 +118,13 @@
     newConstruct.id = generateId();
     newConstruct.IsTemplate = false; // This is now an instance
     newConstruct.placement = selectedPlacement; // Store the placement type
+
+    // G53 steer: the placement went ahead — these record why it is interesting. Tags plus their
+    // sentences (in the tag value), stamped once at creation; they change no authored value and
+    // the mega/ namespace is authored-provenance, so a re-process keeps them.
+    if (selectedRoleHint === 'mega' && steerNotes.length) {
+      newConstruct.tags = [...(newConstruct.tags ?? []), ...steerNotes.map((n) => n.tag)];
+    }
 
     const lagrangePoint = lagrangePlacementId(selectedPlacement);
     // Handle L-point parenting and orbit derivation first
@@ -199,10 +249,18 @@
         <select bind:value={selectedTemplate}>
           <option value={undefined} disabled>Select a template</option>
           {#each availableTemplates as template}
-            <option value={template}>{template.name}</option>
+            <option value={template} disabled={selectedRoleHint === 'mega' && !(megaHardFor(template)?.ok ?? true)}>
+              {template.name}
+            </option>
           {/each}
         </select>
       </label>
+      {#if selectedRoleHint === 'mega'}
+        <!-- RELEVANCE (§3.5): a greyed option states WHY, in a sentence, and that is final. -->
+        {#each megaRows.filter((r) => !r.hard.ok) as row (row.template.id)}
+          <p class="mega-reason">{row.template.name} — {row.hard.reason}</p>
+        {/each}
+      {/if}
     {/if}
 
     {#if selectedTemplate}
@@ -210,7 +268,7 @@
         <span>Placement:</span>
         <select bind:value={selectedPlacement}>
           <option value={undefined} disabled>Select placement</option>
-          {#each availablePlacements as placementOption}
+          {#each shownPlacements as placementOption}
             <option value={placementOption}>{placementOption}</option>
           {/each}
         </select>
@@ -223,6 +281,11 @@
         <input type="number" bind:value={auDistance} min="0.1" step="0.1" />
       </label>
     {/if}
+
+    <!-- PLAUSIBILITY (§3.5): tags and explains, never refuses. The Add button stays live. -->
+    {#each steerNotes as n (n.tag.key)}
+      <p class="mega-steer">{n.sentence}</p>
+    {/each}
 
     <div class="buttons">
       <button on:click={createConstruct} disabled={!selectedTemplate || !selectedPlacement}>Add Construct</button>
@@ -279,5 +342,19 @@
     justify-content: flex-end;
     gap: 10px;
     margin-top: 1rem;
+  }
+
+  /* G53: the two §3.5 voices. A grey reason is final; an amber steer explains and lets you carry on. */
+  .mega-reason {
+    margin: -0.5rem 0 0.5rem;
+    font-size: 0.8rem;
+    text-align: left;
+    color: var(--text-muted, #8a8f98);
+  }
+  .mega-steer {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    text-align: left;
+    color: var(--warning, #d9a23c);
   }
 </style>

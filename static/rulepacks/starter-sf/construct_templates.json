@@ -1,6 +1,543 @@
 {
   "id": "constructs-palette",
   "name": "Default Construct Palette",
+  "mega": [
+    {
+      "id": "template-mega-space-elevator",
+      "tags": [
+        {
+          "key": "purpose/cargo-transport",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/advanced",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Space Elevator",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "space-elevator",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostKind": [
+            "planet",
+            "moon"
+          ],
+          "hasSurface": true,
+          "needsGeostationary": true
+        },
+        "steer": {
+          "geoBelowHillFraction": 0.5
+        }
+      },
+      "explain": "A space elevator hangs from a geostationary orbit above a surface. {host} has no real geostationary altitude to hang it from.",
+      "description": "A tapered ribbon from an equatorial anchor to a counterweight above geostationary. Surface to orbit at almost no delta-v.",
+      "gmNotes": "The taper the ribbon needs depends on the host: Earth demands about 50 GPa cm3/g (carbon nanotube territory; steel manages 2).",
+      "IsTemplate": true,
+      "icon_type": "cross",
+      "icon_color": "#8fd3ff",
+      "crew": {
+        "current": 200,
+        "max": 1000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          45000000,
+          30,
+          30
+        ],
+        "massKg": 50000000.0,
+        "cargoCapacity_tonnes": 100000,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Solar Array",
+            "output_MW": 500
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 100000,
+          "consumables_current_person_days": 100000
+        },
+        "modules": [
+          "Ground Terminal",
+          "Climber Fleet",
+          "Geostationary Platform",
+          "Counterweight"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-planetary-torus",
+      "tags": [
+        {
+          "key": "class/habitat",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "purpose/colony",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/advanced",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Planetary Torus",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "planetary-torus",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostKind": [
+            "planet",
+            "moon"
+          ]
+        }
+      },
+      "explain": "An orbital ring circles a planet or moon. {host} is not one.",
+      "description": "A rigid ring circling a world, spun for gravity. A rigid ring is gravitationally unstable and station-keeps forever - that is a fact about rings, not a veto.",
+      "gmNotes": "Docking everywhere along the rim; can later carry tethers down to the surface.",
+      "IsTemplate": true,
+      "icon_type": "circle",
+      "icon_color": "#ffd27f",
+      "crew": {
+        "current": 500000,
+        "max": 5000000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          25500000,
+          25500000,
+          100000
+        ],
+        "massKg": 500000000000000.0,
+        "cargoCapacity_tonnes": 10000000,
+        "rotation_period_hours": 1.99,
+        "spinRadiusM": 12742000,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Fusion Grid",
+            "output_MW": 100000
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 2000000000,
+          "consumables_current_person_days": 2000000000
+        },
+        "modules": [
+          "Rim Habitats",
+          "Ring Ports",
+          "Station-keeping Grid"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-ringworld",
+      "tags": [
+        {
+          "key": "class/habitat",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "purpose/colony",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/precursor",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Ringworld",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "ringworld",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostIsStar": true
+        },
+        "steer": {
+          "inHabitableZone": true
+        }
+      },
+      "explain": "A ringworld circles a star. {host} is not a star.",
+      "description": "A band a million and a half kilometres wide circling its star, spun for gravity - an inside-out world. At the default radius and spin: about Earth gravity and three million Earths of floor.",
+      "gmNotes": "The goldilocks zone is a recommendation, not a wall: a ring at 3 AU is legitimate and cold, and the engine will say how cold. A rigid ring station-keeps forever.",
+      "IsTemplate": true,
+      "icon_type": "circle",
+      "icon_color": "#9fe8a0",
+      "crew": {
+        "current": 1000000000,
+        "max": 1000000000000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          300000000000,
+          300000000000,
+          1600000000
+        ],
+        "massKg": 2e+27,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 215.5,
+        "spinRadiusM": 149597870700,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Solar Collection Rim",
+            "output_MW": 1000000000
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 0,
+          "consumables_current_person_days": 0
+        },
+        "modules": [
+          "Inner Surface",
+          "Rim Walls",
+          "Shadow Squares",
+          "Attitude Jets"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-dyson-sphere",
+      "tags": [
+        {
+          "key": "purpose/power-generation",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/precursor",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Dyson Sphere",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "dyson-sphere",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostIsStar": true
+        }
+      },
+      "explain": "A Dyson sphere closes around a star. {host} is not a star.",
+      "description": "A rigid shell closing around its star, coverage growing to 100%. Materially impossible and physically coherent - which is exactly what the amber warning is for.",
+      "gmNotes": "Prefer the swarm for anything buildable; the shell is the monument. From the outside a completed sphere is a warm dark thing where a star should be.",
+      "IsTemplate": true,
+      "icon_type": "circle",
+      "icon_color": "#e0b0ff",
+      "crew": {
+        "current": 0,
+        "max": 0
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          300000000000,
+          300000000000,
+          300000000000
+        ],
+        "massKg": 1e+26,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Shell Collection Grid",
+            "output_MW": 0
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 0,
+          "consumables_current_person_days": 0
+        },
+        "modules": [
+          "Shell Sections",
+          "Radiator Bands"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-dyson-swarm",
+      "tags": [
+        {
+          "key": "purpose/power-generation",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/advanced",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Dyson Swarm",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "dyson-swarm",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostIsStar": true
+        }
+      },
+      "explain": "A Dyson swarm orbits a star. {host} is not a star.",
+      "description": "Independent collectors sharing an orbit shell - the buildable one. Density sets how much sky it fills, how far the star dims, and how much power comes home, all from one number.",
+      "gmNotes": "The physically plausible sibling of the sphere. Show it to players as a star that is dimmer than its spectral class says it should be.",
+      "IsTemplate": true,
+      "icon_type": "diamond",
+      "icon_color": "#ffe08a",
+      "crew": {
+        "current": 0,
+        "max": 0
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          300000000000,
+          300000000000,
+          300000000000
+        ],
+        "massKg": 1e+22,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Collector Fleet",
+            "output_MW": 0
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 0,
+          "consumables_current_person_days": 0
+        },
+        "modules": [
+          "Collector Shells",
+          "Relay Ring"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-energy-collector",
+      "tags": [
+        {
+          "key": "purpose/power-generation",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/advanced",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Massive Energy Collector",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "energy-collector",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostIsStar": true
+        },
+        "steer": {
+          "maxPlacementAU": 5
+        }
+      },
+      "explain": "An energy collector harvests a star. {host} is not a star.",
+      "description": "A collector array close in to a star - a Dyson swarm that stopped early, on purpose. Closer is brighter; starlight thins with the square of distance.",
+      "gmNotes": "Good first megastructure for a rising polity. Park it inside a few AU or watch the yield fall away.",
+      "IsTemplate": true,
+      "icon_type": "diamond",
+      "icon_color": "#ffb37f",
+      "crew": {
+        "current": 50,
+        "max": 500
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          150000000000,
+          150000000000,
+          150000000000
+        ],
+        "massKg": 1e+20,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Collector Array",
+            "output_MW": 0
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 5000,
+          "consumables_current_person_days": 5000
+        },
+        "modules": [
+          "Collector Panels",
+          "Beam Relay"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-death-star",
+      "tags": [
+        {
+          "key": "purpose/defence-platform",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/experimental",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Death Star",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "death-star",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostKind": [
+            "planet",
+            "moon",
+            "star",
+            "barycenter"
+          ]
+        }
+      },
+      "explain": "A battle station orbits a real mass. {host} has no gravity to hold an orbit.",
+      "description": "A mobile battle station the size of a moon. Mass enough that, one day, ships will orbit it - and it goes anywhere except a planet's surface.",
+      "gmNotes": "That is no moon. At the default 160 km and 1e18 kg the surface pull is about a milligee and the bulk density says mostly corridors.",
+      "IsTemplate": true,
+      "icon_type": "circle",
+      "icon_color": "#c8c8d0",
+      "crew": {
+        "current": 1000000,
+        "max": 2000000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          160000,
+          160000,
+          160000
+        ],
+        "massKg": 1e+18,
+        "cargoCapacity_tonnes": 10000000,
+        "rotation_period_hours": 24,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Hypermatter Reactor",
+            "output_MW": 100000000
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 2000000000,
+          "consumables_current_person_days": 2000000000
+        },
+        "modules": [
+          "Docking Bays",
+          "Superlaser Array",
+          "Garrison Decks"
+        ]
+      }
+    }
+  ],
   "small_body": [
     {
       "id": "template-asteroid-c-type",

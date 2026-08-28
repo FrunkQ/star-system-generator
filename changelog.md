@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.185 - 28th Aug 2026
+
+- Mega-constructs arrive on the picker (G53 phase 1). Seven templates ship in the rule pack - space elevator, planetary torus, ringworld, Dyson sphere and swarm, energy collector, Death Star - under their own Mega type in the add-construct dialog. The tab only appears when this host can take something; an option the host cannot take greys out and says why in a sentence ("A ringworld circles a star. Earth is not a star."); a placement the physics finds demanding - a ringworld out in the cold, a tether reaching near the edge of its world's gravity well - explains itself in amber, goes ahead anyway, and leaves its explanation as a tag on the construct. A mega type also narrows where it can sit: an elevator is Surface only, a Death Star is anywhere but a surface. Everything still renders as today's constructs do; the shapes come later.
+
 ## v3.0.184 - 28th Aug 2026
 
 - Mega-constructs, where they may go (G53): placement rules are now data with two strengths. A rule about relevance greys the option and says why in a sentence ("Sol has no surface to anchor to"); a rule about plausibility tags and explains - a ringworld at 3 AU is allowed, cold, and told so - and can never refuse. The goldilocks zone is always the second kind, even if a rule pack tries to make it a wall.

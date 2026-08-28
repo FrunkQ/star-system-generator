@@ -24,7 +24,12 @@
   onMount(() => {
     const flat: CelestialBody[] = [];
     if (rulePack?.constructTemplates) {
-      for (const list of Object.values(rulePack.constructTemplates)) {
+      for (const [key, list] of Object.entries(rulePack.constructTemplates)) {
+        // G53: the mega category is placement-SENSITIVE — a space elevator in deep space is not an
+        // option — so it is offered only where placement is checked (AddConstructModal's mega tab),
+        // never through this placement-blind list. The owner's ask, verbatim: "only appears on the
+        // picker under their own tab when available".
+        if (key === 'mega') continue;
         if (Array.isArray(list)) flat.push(...(list as CelestialBody[]));
       }
     }
