@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.178 - 28th Aug 2026
+
+- Board only. Three pieces of work written up ready to hand out: the paired-star fix, the first slice of mega-structures, and the sharing hub as its own application.
+
 ## v3.0.177 - 28th Aug 2026
 
 - Board only. A user's paired stars were chasing each other round instead of orbiting each other, and the cause is now measured: editing one of a pair silently moves it out of step with the other.
