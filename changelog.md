@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.168 - 28th Aug 2026
+
+- Board only. The mega-construct design takes its owner corrections: these are built objects the engine treats as real worlds, and an option that makes no sense in a place is simply not offered there.
+
 ## v3.0.167 - 28th Aug 2026
 
 - Board only. A design for mega-constructs - space elevators, orbital rings, ringworlds, Dyson swarms and the like - written up ready to be built.

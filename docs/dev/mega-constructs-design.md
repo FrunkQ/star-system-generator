@@ -13,6 +13,16 @@ Planetary toruses / Ringworlds / Dyson spheres/swarms / Massive energy collector
 Add others? Each will need its own specialised render path on 2D and 3D - and probably can be docked
 against - so needs properties for the transit planner to work against."*
 
+**TWO OWNER CORRECTIONS THE SAME DAY, both of which changed the design rather than decorating it.**
+
+On the greying, overruling an earlier draft of §3.5: *"i cant have a space elevator as an option in
+deep space - only relevant on a planet. You cant put a death star on a planet. That simple."*
+
+On the architecture, replacing an earlier §3 entirely: *"maybe create a hybrid object - one that is
+processed as a body but has construct chrome."* Followed by: *"Anticipate any issues with planet
+sized constructs like a death star having their own gravity for ships to orbit, etc."* — which §3.4
+answers in nine numbered items.
+
 ---
 
 ## 1. What a mega-construct IS, and why the category needs a boundary
@@ -125,96 +135,215 @@ const isStationary = node.kind === 'construct' && (node.physical_parameters?.mas
 const timeToPropagate = isStationary ? node.orbit.t0 : timeMs;
 ```
 
-A zero-mass construct is pinned at its epoch instead of propagating on the live clock. So **the
-moment a mega-construct is given a real mass it stops being stationary and starts orbiting** — which
+**SOLVED BY THE HYBRID (§3), and left here because it still governs ORDINARY constructs.** This line
+tests `kind === 'construct'`, so a hybrid never enters it. For an ordinary construct it stands: a
+zero-mass construct is pinned at its epoch instead of propagating on the live clock, so **the
+moment such a construct is given a real mass it stops being stationary and starts orbiting** — which
 is usually the right answer and is never what the author of that line was deciding. Whatever the
 mass design becomes, this line must be revisited in the same change, and "does it move" must stop
 being inferred from "does it weigh anything".
 
 ---
 
-## 3. The three decisions this design makes
+## 3. The architecture: a HYBRID — processed as a body, wearing construct chrome
 
-### 3.1 A mega-construct stays `kind: 'construct'`
+Owner, 2026-08-28: *"maybe create a hybrid object - one that is processed as a body but has construct
+chrome."* **That is the design, and it replaces an earlier draft of this section that kept
+mega-constructs on `kind: 'construct'` and taught the physics to see them.** The reversal is worth
+recording with its reason, because the reason is measurable.
 
-`kind` is load-bearing in dozens of branches across physics, rendering, redaction, transit and
-serialisation. A third kind means auditing every one, and the failure mode is silent: a branch
-written `kind === 'body' ? A : B` does not break when a third kind arrives — it quietly takes `B`.
+### 3.1 The measurement that settles it
 
-So `kind` stays and the category is a new discriminator:
+Counted across `src/`, excluding specs:
+
+| gate | sites | what it is |
+|---|---|---|
+| `kind === 'body'` / `kind !== 'body'` | **209** | physics, processing, classification, hierarchy |
+| `kind === 'construct'` / `kind !== 'construct'` | **154** | overwhelmingly presentation |
+
+The counts are close. **Where they live is not.** Of the 97 `kind === 'construct'` sites, roughly
+nine in ten are in view layers — `SystemView.svelte` (27), `SystemVisualizer.svelte` (16),
+`catalogue/+page.svelte` (9), `routes/+page.svelte` (9), `scene.ts` (8), `Starmap.svelte` (5),
+`ReportDocument.svelte` (5), `BodyPicker.svelte` (4), `guideDocument.ts` (4). The `kind === 'body'`
+sites are `SystemProcessor`, `gravity`, `hierarchyRebuild`, `barycentres`, `classification`.
+
+**And the two failure modes are not symmetric, which is the whole argument:**
+
+> **A chrome site that has not been taught about the hybrid degrades GRACEFULLY — the object renders
+> as a sphere and lists as a body, which is wrong-looking but not wrong. A physics site that has not
+> been taught about it is SILENTLY INCORRECT — the gravity sum simply omits it and nothing anywhere
+> says so.**
+
+So the hybrid goes on the side of the fence where the misses are visible. `kind: 'body'`, and the
+chrome is what gets taught. That is the owner's proposal and it is right.
+
+### 3.2 What being a body buys, for free
+
+Every one of these works with no edit at all, where the earlier draft would have had to change each
+one and risk missing one:
+
+- **`orbits.ts:156` — the propagation cliff.** `if (hostMu === 0 || !a_AU) return null`. A construct
+  has no mass in any gravity path, so `hostMu` is 0, so propagation returns null — and in
+  `worldPositions` a null propagate leaves `relative` at zero. **A ship "orbiting" a construct is
+  therefore drawn at the construct's exact centre**: no error, no warning, everything stacked on one
+  point. This is the single most concrete answer to "can ships orbit a Death Star", and as a body it
+  simply does not arise.
+- **`worldPositions.ts:105` — the stationary trap is GONE, not worked around.** That line tests
+  `kind === 'construct'`; a hybrid never enters it. §2.6 flagged it as the trap that would bite
+  first; the hybrid deletes it. Keep §2.6 for ordinary constructs, which still live under it.
+- **`gravity.ts:92`, `SystemProcessor.ts:210/458/488`, `hierarchyRebuild.ts:90/112`,
+  `barycentres.ts:26`, `barycenterReconcile.ts:184`** — all pass, unedited.
+- **`hostMu` on children.** A child's `orbit.hostMu = G * hostMass` is set at creation from the
+  host's mass; a hybrid host has one, so its satellites propagate correctly.
+- **No new gravity predicate is needed at all.** The earlier draft proposed
+  `gravitationalMassKg()` in one module to avoid five rival conventions (the G43 lesson). The hybrid
+  removes the need for the module rather than centralising it, which is strictly better.
+
+**One site is already half-wired and shows the seam is in the wrong place today.**
+`SystemProcessor.ts:602` computes `hostMass` as `host?.kind === 'barycenter' ? effectiveMassKg :
+(host as CelestialBody)?.massKg` — **no body gate.** So the orbital PERIOD of something orbiting a
+construct already reads that construct's authored mass, while its POSITION does not. Two answers to
+one question, which is the duplication test this codebase names as its most recurring fault.
+
+### 3.3 How the chrome is switched — ONE predicate, and the migration is safe
+
+Do not re-point 154 sites. Add one module and let the chrome layers migrate to it as they are
+touched:
 
 ```ts
-/** MEGA-CONSTRUCTS. Present = this construct is one; absent = an ordinary construct, unchanged. */
-megaType?: MegaConstructType;
+// src/lib/constructs/artificial.ts — the ONLY place that knows a body can be artificial.
+export function isArtificial(node: CelestialBody): boolean;   // built, not formed
+export function showsAsConstruct(node: CelestialBody): boolean; // draw it with construct chrome
 ```
 
-Absent means today's behaviour exactly, everywhere. Same discipline as S2c's `constructOffset`, and
-the reason no saved campaign moves.
+The node carries `artificial?: true` plus the existing `megaType`. **A chrome site not yet migrated
+shows a sphere in a body list — legible, and obviously wrong to a human eye, which is exactly the
+kind of wrong that gets fixed.** Migration order should follow visibility: `scene.ts` and
+`SystemVisualizer.svelte` first, then the catalogue and reports, then the long tail.
 
-### 3.2 Gravitational significance goes through ONE predicate, in ONE module
+**The chrome that must be taught, in priority order:** the 3D render (sphere → GLB or shaped
+geometry, `scene.ts` 4045/4244/4260), the 2D glyph (`SystemVisualizer.svelte:797`), the info card
+and body picker, docking (`constructInteractions.ts` gates `kind !== 'construct'` and would miss a
+hybrid — see §7), and the catalogue/report groupings.
 
-Do NOT change the four mass gates to `kind === 'body' || node.megaType`. That is five rival
-conventions waiting to happen, and this project has already paid for exactly that: G43 put L-point
-conventions in five places and the result was an arrival teleport (memory
-`project_sse_g43_lagrange`; the fix was ONE convention module).
+### 3.4 Anticipating the problems — what a gravitationally significant hybrid actually breaks
 
-**Add `src/lib/physics/gravitationalMass.ts` with one exported function**, and make every mass gate
-call it:
+The owner asked directly. Nine issues, in the order they will be met.
 
-```ts
-/** The mass this node contributes to the system's gravity, in kg. 0 = invisible to gravity. */
-export function gravitationalMassKg(node: CelestialBody | Barycenter): number;
+**1. The classifier will try to classify it, and most of that is nonsense.** As a body it enters
+composition, makeup, radiogenic heat, tidal heating, atmosphere and temperature, and comes out with
+`classes`. Some of that is genuinely wanted — a real radius, a real surface gravity, possibly an
+internal atmosphere. Much is not: radiogenic heat from an artificial shell, a `makeup` model, a
+chance of reading "ice-giant". **The fix is not to skip the chain silently** (the standing rules
+forbid exactly that). It is that **an artificial body's composition is DECLARED, not derived** —
+the same shape as `typicalForClass`, where a guess must not wear a measurement's clothes. Where a
+derivation has no meaning, say so on the card rather than printing a number.
+
+**2. Idempotence, and it is the test that will catch the mistake.** `src/lib/system/idempotence.test.ts`
+enforces that nothing reads a value a later pass writes, and its two corollaries both apply here: a
+derived CLASS is never a physics input, and **when one quantity depends on another body, iterate
+PARENT BEFORE CHILD.** A hybrid that hosts satellites must be processed before them. Run this test
+early and do not relax it.
+
+**3. `hierarchyRebuild.ts:112` changes behaviour the moment a hybrid exists.** The walk currently
+breaks on `parent.kind !== 'body'`; a hybrid parent now continues it. That is a change to EXISTING
+hierarchy walks, not a new path, so it needs its own gate run with the hybrid removed.
+
+**4. Barycentres may form, and it will surprise someone.** If a Death Star is massive relative to
+its host, `SystemProcessor`'s barycentre pass can produce a planet–DeathStar barycentre. Probably
+correct; definitely startling. Bound it or declare it.
+
+**5. The Roche limit does not apply, and the engine will compute one anyway.** A rigid artificial
+body is held by structure, not self-gravity, so a Death Star parked inside a planet's Roche limit is
+fine. `generation/placement.ts:21` computes a Roche limit for any body host. This is a genuine
+*steer-and-explain*: say the number, say why it does not bind here, change nothing.
+
+**6. THE REAL COLLISION: a hybrid that MOVES.** This is the hard one and it deserves its own
+paragraph. A body's position is `parent + Keplerian propagation`. A construct's position is journey
+kinematics or a stamped vector, **and which sampler runs is CALLER POLICY** (`worldPositions.ts`
+60-90: the orrery passes journey kinematics, a followed player view passes the route sampler, and a
+free-scrubbing player view passes *none at all*, deliberately — the owner's rule, 2026-08-08). A
+hybrid needs both models and they cannot both be authoritative.
+
+> **RESOLUTION: the position model follows the object's STATE, not its type. Parked, it is a body —
+> Keplerian, and it may host satellites. Under way, it is a construct — kinematics, and it may NOT
+> host orbiting satellites.**
+
+That restriction is physically honest rather than a limitation: **you cannot drag an orbiting fleet
+along under thrust.** Ships must undock and fly, which is a good bit of play and exactly the kind of
+consequence this engine is for. It also avoids a player-view fault of the [[B94]] shape — on a
+free-scrubbing player view no sampler runs, so a moving attractor would sit at its stamped position
+while its children propagated from it, and the two would disagree with nobody noticing.
+
+**7. Redaction.** A player snapshot's `slimNode` strips `scheduled_journeys`, and the redaction
+boundary keys off `kind === 'construct'`. A hybrid is `kind: 'body'` and would be redacted like a
+world. For a ringworld that is right; for a Death Star it may be exactly wrong. **This is open
+question 3 in §11 and it should be answered before phase 5, not after.**
+
+**8. The scale law.** P4 put ships, bodies and stars on one kind-blind span map, and R9 says a
+physically larger object never renders smaller than a smaller one
+(`src/lib/rendering/scaleLaw.ts`, gates in `scaleLaw.spec.ts`). A hybrid enters that map on the
+BODY branch, which is what we want — but a ringworld is 300 million km across and will sit at the
+top of it. **Put a mega-construct on the span map and keep R9 green before drawing any new
+geometry.** Also note `scene.ts:2991` — *"the model contributes no radius anywhere"* — which is true
+of constructs and must NOT be true of a hybrid: framing, `minDistance` and the system extent (A78,
+`systemExtent.spec.ts`) all have to see its radius, or zooming out on a ringworld system frames the
+star and clips the ring.
+
+**9. A pre-existing fault this uncovers, worth its own row.** The construct templates author
+`roleHint` as `'small_body'`, `'station'`, `'infrastructure'` — **none of which are in the declared
+union at `types.ts:498`**, so the shipped data already contradicts the type. Worse: an **asteroid**
+is authored `kind: 'construct'`, and the picker never rewrites `kind`. So every asteroid, comet and
+captured moonlet placed from the pack is a construct: no gravity, no classification, and no spin
+axis (`importFixup.ts:302` says so in as many words). **That is the hybrid problem inverted and
+already shipped** — natural objects wearing construct clothing — and the same `artificial` flag is
+what fixes both ends. Do not fix it inside this feature; record it and let it be scoped.
+
+### 3.5 "Greyed out" — the owner corrected this, and the correction is the rule
+
+An earlier draft argued that greying an option collides with *steer, do not stop*, and proposed that
+grey stay clickable. **The owner overruled it, 2026-08-28:** *"i cant have a space elevator as an
+option in deep space - only relevant on a planet. You cant put a death star on a planet. That
+simple."*
+
+He is right, and the earlier draft misapplied the rule. **The distinction the design needs is
+RELEVANCE versus PLAUSIBILITY, and only one of them is a physics criterion:**
+
+- **RELEVANCE — a hard gate, no escape hatch.** The option has no referent. A space elevator anchors
+  to a surface; in deep space there is no surface to anchor to, so the option is not implausible, it
+  is meaningless. A Death Star sits in space; "on a planet's surface" is not a hard version of the
+  option, it is a category error. **Not offering a nonsense option is not refusing a creative
+  choice**, and *steer, do not stop* was never about this. Grey it, or do not list it.
+- **PLAUSIBILITY — steer and explain, never refuse.** The placement is meaningful and the physics
+  says it is hard: a tether whose taper ratio needs unobtanium, a rigid Dyson shell, a ringworld
+  needing eternal station-keeping, a hybrid parked inside a Roche limit. **This is where alien tech,
+  unobtanium and PlotDevice live.** Tag it, publish the number, change nothing.
+
+**The test, so an implementer can apply it without asking:** does the placement have a HOST FEATURE
+the object attaches to or depends on — a surface, a star to circle, an orbital band to occupy? If
+that feature is absent, it is relevance and it is a hard gate. If the feature is present and only
+the numbers are bad, it is plausibility and it steers. The `requires` vocabulary in §4.2 therefore
+carries two kinds of clause, and each is tagged in the data:
+
+```jsonc
+"requires": {
+  "hard":  { "hostKind": ["planet", "moon"], "hasSurface": true },   // relevance — greyed, final
+  "steer": { "geoBelowHillFraction": 0.5, "minTetherStrengthGPa": 50 } // plausibility — tag and explain
+}
 ```
 
-The rule inside: a body contributes `massKg`; a barycentre contributes `effectiveMassKg`; a
-construct contributes `massKg` **only when it declares itself gravitationally significant**, and
-zero otherwise.
-
-**That last clause is the honest design, not timidity.** Ceres Station's 9e20 kg is real, and
-switching it on retroactively would move every belt orbit in every saved campaign that has one.
-**Significance is a declaration, not a threshold** — so nothing changes for anyone who does not ask.
-
-The declaration should be DERIVED-AND-SHOWN rather than a bare authored boolean: publish the
-construct's mass as a fraction of its host's, so a GM can see WHY it does or does not matter. That is
-what the physics page and the tag system already do for everything else, and it is the
-physics → tags → visuals chain rather than a switch.
-
-### 3.3 "Greyed out" must not become a refusal — the ask meets a standing rule here
-
-The owner asked for options *"greyed out otherwise"*. The inbox's standing rules say:
-
-> **STEER, DO NOT STOP. A PHYSICS CRITERION TAGS AND EXPLAINS; IT NEVER REFUSES AN EDIT, CLAMPS AN
-> AUTHORED VALUE, OR QUIETLY CORRECTS SOMEBODY'S MAP.** […] *"the idea is that I steer you away from
-> stuff that 'breaks physics'… but I don't stop you because: alien tech / reality breakdown /
-> unobtanium / PlotDevice / IDontCare."* — owner, 2026-08-26
-
-A greyed-out Dyson sphere on a moon is a refusal, and it is the one the rule's own examples name.
-**The resolution is not to drop the greying — it is to make grey mean "we do not think so, and here
-is why" rather than "no".** Concretely:
-
-- An option failing its predicate renders greyed, **with the reason** in a line beneath it:
-  *"A ringworld needs a star to circle. Luna has none."*
-- **Greyed is still clickable.** Clicking explains and offers to place it anyway. The GM's reason is
-  unobtanium and the engine cannot tell that from a mistake.
-- Placed anyway, it is **TAGGED, not corrected** — the shape G45 used when it found two authored
-  Uggi worlds inside their circumbinary stability limit and changed nothing.
-- **A whole TAB may hide when nothing in it is placeable.** That is decluttering, not refusal: the
-  category has no candidate here, and it is what the owner asked for ("only appears… when
-  available"). **Individual options grey; empty tabs hide.**
-
-This is the one place the design deliberately does not do exactly what was asked. It is a sentence
-of difference, not a change of intent, and it is flagged rather than made silently.
-
----
+A whole TAB still hides when nothing in it passes its HARD clauses — which is what the owner asked
+for ("only appears… when available").
 
 ## 4. Data model
 
 ### 4.1 On the node
 
 ```ts
+/** THE HYBRID (§3). `kind` is 'body', so every physics path already works; this is what the CHROME
+ *  layers read to know they should not draw a world. Absent = an ordinary body, unchanged. */
+artificial?: true;
 megaType?: MegaConstructType;
-/** Gravity: this construct's mass is fed to the n-body sum. Default false — see §3.2. */
-gravitySignificant?: boolean;
 /** The shape family the renderers switch on. Derived from megaType; stored so a GM can override. */
 megaForm?: 'tether' | 'ring' | 'shell' | 'swarm' | 'spheroid';
 /** Ring/shell/torus geometry, in km, where dimensionsM cannot express it (§5). */
@@ -422,12 +551,17 @@ one.
 
 Named explicitly, because each of these has cost this project real work at least once:
 
-- **Steer, do not stop** — §3.3. Grey explains and stays clickable; tags never rewrite authored data.
+- **Steer, do not stop** — §3.5, and note the owner's own correction there: RELEVANCE is a hard gate
+  (a space elevator in deep space has no referent), PLAUSIBILITY steers (a tether needing unobtanium).
+  Only the second is a physics criterion, and tags never rewrite authored data.
 - **Physics and data drive tags; tags drive the image** — occlusion, spin gravity, ring instability
   and taper ratio are physics; the tags follow; the renderer reads tags. No renderer computes a
   physical fact.
 - **Constants are data** — every placement predicate and every threshold lives in the rule pack (§4.2).
-- **Duplicated functionality is this codebase's most recurring fault** — one gravity predicate (§3.2),
+- **Duplicated functionality is this codebase's most recurring fault** — one `artificial` predicate
+  (§3.3) rather than 154 edited chrome gates, and note `SystemProcessor.ts:602` in §3.2, where the
+  orbital PERIOD around a construct already reads a mass its POSITION does not — two answers to one
+  question, found by this design rather than fixed by it. Also:
   one glyph vocabulary (§2.4), one radius field for rings (§4.1), one docking source of truth (§7).
 - **Never assume an Earth/Sol/human baseline** — §6.
 - **A physics change is not finished until the explanations follow it** — the physics page,
@@ -444,10 +578,11 @@ Named explicitly, because each of these has cost this project real work at least
 
 Each phase is shippable on its own and none of them is wasted if the next is dropped.
 
-**Phase 1 — the category exists and is honest.** `megaType`, the `mega` pack category, the placement
-predicate module and its `requires` vocabulary, the picker tab with explaining-grey. Every type
-renders with today's ellipsoid. **Nothing is gravitationally significant yet and nothing occludes.**
-Ships as a data-and-UI change with no physics risk.
+**Phase 1 — the category exists and is honest.** `artificial` + `megaType`, the `artificial.ts`
+predicate module, the `mega` pack category, the placement vocabulary with its hard/steer split, and
+the picker tab. **Hybrids are still `kind: 'construct'` in this phase** — no physics change at all,
+so the whole of phase 1 carries no risk to any existing system. Every type renders with today's
+ellipsoid.
 
 **Phase 2 — the scale law learns about them.** Put a mega-construct on P4's span map and keep R9
 green; give the shapes a real extent so framing, `minDistance` and the system extent see them. Do
@@ -461,8 +596,11 @@ updated in the same batch. `shell` and `swarm` rendering. **This is the phase th
 matter**, and it is deliberately after the cheap ones because it is the one that can break existing
 systems.
 
-**Phase 5 — gravity and docking.** `gravitationalMassKg`, the `worldPositions.ts:105` trap, and
-`DockNode` through the planner.
+**Phase 5 — THE HYBRID FLIP, and it is the risky one.** Move mega-constructs to `kind: 'body'` and
+migrate the chrome sites behind `showsAsConstruct`. Run `idempotence.test.ts` first and often; gate
+`hierarchyRebuild.ts:112`'s changed walk with the hybrid removed; answer the redaction question
+(§3.4 item 7) BEFORE starting. Then `DockNode` through the planner. Parked-only satellites (§3.4
+item 6) ship with it, not after.
 
 **Phase 6 — the catalogue widens.** Shkadov, soletta, Birch, aerostat. All are parameter sets on
 families that exist by now.
@@ -474,8 +612,10 @@ families that exist by now.
 Answers change the work; they are not blocking Phase 1.
 
 1. **Can a mega-construct be a PARENT?** Can a moon orbit a Death Star, or a shuttle orbit a
-   ringworld? The hierarchy allows it and the physics would need `gravitationalMassKg`. Cheap if
-   decided now, expensive later.
+   ringworld? **§3.4 item 6 answers the mechanics** — yes while PARKED, no while under way, because
+   you cannot drag an orbiting fleet along under thrust. What is still yours to say is whether that
+   restriction is acceptable play, or whether a moving Death Star should carry a docked fleet with it
+   as cargo rather than as satellites.
 2. **Does a ringworld's interior get a "from the surface" view?** It has a surface, a sky, a
    day/night cycle from shadow squares, and no horizon curvature in one axis. The surface view
    already exists for bodies; this would be its strangest case and possibly its best.
