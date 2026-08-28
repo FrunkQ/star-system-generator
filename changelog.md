@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.170 - 28th Aug 2026
+
+- Board only. A design for stars that are not what they look like: a swarm or a dust cloud changes what an observer measures, and the GM chooses how much of the reason the table is told.
+
 ## v3.0.169 - 28th Aug 2026
 
 - Board only. A mega-structure on the move now carries its docked craft and sets them down again on arrival, and small bodies like asteroids go through the same door - a rock you can land on is the same idea as a battle station with real gravity, approached from the other side.
