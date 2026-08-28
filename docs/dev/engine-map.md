@@ -4424,6 +4424,30 @@ separation against the Hill radius it has at the point, on the same 0.3/0.4/0.5 
 binary-tightness test uses. That fate is deliberately NOT directional (contrast B19): when a point
 stops holding a pair, BOTH members leave, and there is no lighter one being thrown by a heavier one.
 
+### PHY-35 A PROMOTE/DEMOTE PAIR IS A HYSTERESIS BAND, AND INVERTING IT FAILS SILENTLY
+BUCKET: ARCHITECTURE - a threshold PAIR has an ordering invariant, and the moment the numbers become
+data a human can invert them. Guarantee the ordering AT THE READ, where it cannot be skipped, never
+by documenting it at the write.
+WHERE: `physics/barycenterReconcile.pairThresholds` (the reader and the clamp),
+`generation_parameters.barycentre_promote_ratio` / `barycentre_demote_ratio` in the pack.
+RULE: whatever reads a promote/demote pair returns them already ordered, with demote STRICTLY below
+promote, and falls back to the defaults for anything absent, non-finite or outside (0, 1]. A pack
+that inverts them is honoured on the promote figure and has its demote pulled one double under it.
+WHY: [[B111]]'s third part made the 8%/5% double-planet thresholds tunable, which is right - there
+is no physical discontinuity at any mass ratio, and where the line sits is a GM's judgement. But a
+tunable pair can be inverted, and THE FAILURE MODE IS NOT THE OBVIOUS ONE. It does not oscillate
+visibly: promotion and demotion both fire on the same pair in the same pass, the reconciler burns
+its whole eight-iteration budget flipping it, and because that budget is EVEN the state that
+survives is always the demoted one. Measured with a probe, not assumed. So an inverted pack makes
+the promote threshold do NOTHING - no pair forms however massive the companion - and every
+structural assertion still passes. A guard at the read is one line; finding this on a GM's map is
+not.
+BLAST: the same shape wherever a pair of thresholds is extracted to data next. The general form is
+that the ORDERING is part of the contract, so it belongs in the reader's return type rather than in
+a comment above the numbers. `pairThresholds.spec.ts` pins the defaults unchanged (a companion
+crossing 8% still promotes, crossing back below 5% still demotes) beside the proof that a pack can
+genuinely move them - the two halves of a move-it-without-changing-it commit.
+
 ### PHY-34 HOW BRIGHT A STAR IS HAS ONE ANSWER, AND THE GATE THAT PROVES IT NEEDS AN ABSOLUTE ANCHOR
 BUCKET: DOMAIN + ARCHITECTURE - domain: a star's output is one quantity that reaches the engine in
 two unit conventions, and INTRINSIC output is not what a body RECEIVES. Architecture: two correct

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.188 - 28th Aug 2026
+
+- When a large moon stops being a moon and becomes half of a double planet is now a setting rather than a number buried in the engine. It still happens at the same place - a companion 8% of its host's mass - and nothing on any existing map moves; but a rule pack can now put the line somewhere else, and say where it lets a pair break up again.
+
 ## v3.0.187 - 28th Aug 2026
 
 - Groundwork with no visible change today, and a deliberate one: the engine worked out how bright a star is in eight different places, and now does it in one. Nothing you can see moves - the habitable zone, the frost lines and every world's temperature are all held to twelve figures of exactly what they were.

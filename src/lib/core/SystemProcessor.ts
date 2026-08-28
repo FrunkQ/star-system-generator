@@ -176,7 +176,7 @@ export class SystemProcessor implements ISystemProcessor {
         }
 
         // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
-        reconcileBarycenters(processedSystem);
+        reconcileBarycenters(processedSystem, rulePack);
 
         // 0. Pass 0b: Orbital Dynamics & existing barycenters (Ensure mass/orbits are correct first)
         this.processBarycenters(processedSystem);

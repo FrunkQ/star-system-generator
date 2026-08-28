@@ -1,10 +1,43 @@
-import type { Barycenter, CelestialBody, Orbit, System } from '../types';
+import type { Barycenter, CelestialBody, Orbit, RulePack, System } from '../types';
 import { G, AU_KM } from '../constants';
 import { rephasedM0 } from './orbits';
 import { generateId } from '../utils';
 
-const PROMOTE_RATIO = 0.08;
-const DEMOTE_RATIO = 0.05;
+// WHEN A LARGE MOON BECOMES A DOUBLE PLANET, and it is a JUDGEMENT rather than a law. There is no
+// physical discontinuity at any mass ratio - Pluto-Charon is called a double at 0.12, the Earth-Moon
+// system is not at 0.0123, and where between them the line falls is a matter of what a GM wants to
+// see on their map. So the standing rule applies straight off: "will a human want to change this
+// after using the product?" - obviously yes, so it is DATA, and these two numbers are the DEFAULTS
+// rather than the values.
+//
+// THE HYSTERESIS IS THE PART THAT IS NOT NEGOTIABLE. Demote must sit BELOW promote, and the failure
+// without it is worse than it first looks because it is SILENT: promotion and demotion both fire on
+// the same pair in the same pass, the reconciler burns its whole eight-pass budget flipping it, and
+// because that budget is EVEN the state that survives is the demoted one. So an inverted pack does
+// not oscillate visibly - it makes the promote threshold do NOTHING, and no pair ever forms however
+// massive the companion. Measured, not assumed. A pack that asks for this is honoured on the promote
+// figure and has its demote pulled just under it: the engine choosing for ITSELF, which the
+// steer-do-not-stop rule explicitly allows, and nothing a GM authored is touched.
+export const DEFAULT_PROMOTE_RATIO = 0.08;
+export const DEFAULT_DEMOTE_RATIO = 0.05;
+
+export interface PairThresholds { promote: number; demote: number; }
+
+/**
+ * The pair thresholds a pack asks for, with the hysteresis guaranteed. Absent, non-finite or
+ * out-of-range values fall back to the defaults rather than producing a system that cannot settle.
+ */
+export function pairThresholds(pack?: RulePack | null): PairThresholds {
+  const g = pack?.generation_parameters ?? {};
+  const asked = (v: unknown, fallback: number) =>
+    typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 1 ? v : fallback;
+  const promote = asked(g.barycentre_promote_ratio, DEFAULT_PROMOTE_RATIO);
+  let demote = asked(g.barycentre_demote_ratio, DEFAULT_DEMOTE_RATIO);
+  // Strictly below, so no ratio can satisfy both tests at once. One step of a double is enough and
+  // leaves an honestly-authored band untouched.
+  if (demote >= promote) demote = promote - Math.abs(promote) * Number.EPSILON;
+  return { promote, demote };
+}
 
 function getMass(node: CelestialBody | Barycenter | undefined): number {
   if (!node) return 0;
@@ -27,7 +60,7 @@ function isAutoBarycenter(bary: Barycenter): boolean {
   return !!bary.tags?.some((t) => t.key === 'barycenter/auto');
 }
 
-function promoteMassiveCompanion(system: System): boolean {
+function promoteMassiveCompanion(system: System, t: PairThresholds): boolean {
   const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
 
   for (const node of system.nodes) {
@@ -63,7 +96,7 @@ function promoteMassiveCompanion(system: System): boolean {
     if (mPrimary <= 0 || mSecondary <= 0) continue;
 
     const ratio = Math.min(mPrimary, mSecondary) / Math.max(mPrimary, mSecondary);
-    if (ratio < PROMOTE_RATIO) continue;
+    if (ratio < t.promote) continue;
 
     const originalHostId = primaryBody.parentId;
     const originalHost = originalHostId ? nodesById.get(originalHostId) : null;
@@ -202,7 +235,7 @@ function promoteMassiveCompanion(system: System): boolean {
 // promoteMassiveCompanion/demoteWeakBinary miss — those only act through the comparable-mass
 // barycentre band, so a mass edit that jumps a child from far-lighter to far-heavier (or back)
 // never triggers a swap. Fully symmetric: shrink the new primary again and this fires in reverse.
-function swapDominantChild(system: System): boolean {
+function swapDominantChild(system: System, t: PairThresholds): boolean {
   const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
 
   for (const node of system.nodes) {
@@ -220,7 +253,7 @@ function swapDominantChild(system: System): boolean {
     const mParent = getMass(parentBody);
     if (mChild <= 0 || mParent <= 0) continue;
     if (mChild <= mParent) continue;                         // parent still dominant — correct as-is
-    if (mParent / mChild >= PROMOTE_RATIO) continue;         // comparable → promoteMassiveCompanion owns it
+    if (mParent / mChild >= t.promote) continue;              // comparable → promoteMassiveCompanion owns it
 
     const separationAU = Math.max(child.orbit.elements.a_AU || 0, 1e-9);
     const parentHostTrack = parentBody.orbit ? cloneOrbit(parentBody.orbit) : undefined;
@@ -265,7 +298,7 @@ function swapDominantChild(system: System): boolean {
   return false;
 }
 
-function demoteWeakBinary(system: System): boolean {
+function demoteWeakBinary(system: System, t: PairThresholds): boolean {
   const nodesById = new Map(system.nodes.map((n) => [n.id, n]));
 
   for (const node of system.nodes) {
@@ -287,7 +320,7 @@ function demoteWeakBinary(system: System): boolean {
     if (mass0 <= 0 || mass1 <= 0) continue;
 
     const ratio = Math.min(mass0, mass1) / Math.max(mass0, mass1);
-    if (ratio > DEMOTE_RATIO) continue;
+    if (ratio > t.demote) continue;
 
     const primary = mass0 >= mass1 ? body0 : body1;
     const secondary = primary.id === body0.id ? body1 : body0;
@@ -522,15 +555,16 @@ function dissolveStaleBinary(system: System): boolean {
   return false;
 }
 
-export function reconcileBarycenters(system: System): System {
+export function reconcileBarycenters(system: System, pack?: RulePack | null): System {
+  const t = pairThresholds(pack);
   // Run until stable to handle create/remove chains from one edit.
   for (let i = 0; i < 8; i++) {
     const reparented = reparentDanglingNodes(system);
     const resynced = resyncStaleMembership(system);
     const dissolved = dissolveStaleBinary(system);
-    const swapped = swapDominantChild(system);
-    const promoted = promoteMassiveCompanion(system);
-    const demoted = demoteWeakBinary(system);
+    const swapped = swapDominantChild(system, t);
+    const promoted = promoteMassiveCompanion(system, t);
+    const demoted = demoteWeakBinary(system, t);
     const healed = removeGhostBarycenters(system);
     const repaired = repairDegenerateAutoBary(system);
     if (!reparented && !resynced && !dissolved && !swapped && !promoted && !demoted && !healed && !repaired) break;
