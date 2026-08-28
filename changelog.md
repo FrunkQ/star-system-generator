@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.182 - 28th Aug 2026
+
+- Mega-constructs, the numbers pinned (G53): Earth demands about 48.5 GPa cm3/g of a space-elevator ribbon (the literature figure), a default ringworld gives Earth gravity at 1 AU and about three million Earths of floor, a 40% Dyson shell dims its star by exactly 40%, and a world with no real geostationary gets an honest "no tether", never a substitute figure. All held by headless tests, seen red first with the physics deliberately broken.
+
 ## v3.0.181 - 28th Aug 2026
 
 - Mega-constructs, the catalogue itself (G53): seven types - space elevator, planetary torus, ringworld, Dyson sphere, Dyson swarm, energy collector, Death Star - each described once in a registry with its knobs, its placement rules, and honest derived numbers (a ringworld's living area, the tether strength a world demands, what a swarm dims and harvests). Nothing on screen reads it yet; every figure is pinned by tests.
