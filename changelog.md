@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.164 - 28th Aug 2026
+
+- Ships and worlds are now sized honestly against one another: one scale runs across every kind of object, so nothing small ever draws larger than something big. Stars are on that scale too, which means a red dwarf and a red supergiant are no longer the same size on screen.
+- Zooming all the way out on a lone star now frames the star. How far back the view stands is worked out from how large things are as well as how far apart, so a supergiant with no planets no longer fills the screen.
+
 ## v3.0.163 - 28th Aug 2026
 
 - Board only. Two finished branches - the scale law and the supergiant framing fix - were never merged, so the release went out without them. Recorded with what is missing and what still needs building.

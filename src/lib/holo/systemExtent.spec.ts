@@ -116,10 +116,17 @@ describe('A78 — the system extent includes its members own sizes', () => {
     expect(starSceneRadiusAtTrueScale(lone)).toBeCloseTo(GRID_RADIUS, 6);
   });
 
-  it('the readable end of the dial is untouched — this is a TRUE-scale law', () => {
+  // SUPERSEDED BY P4, and the scope was what was wrong rather than the code. A78 was written when
+  // a star rendered at a FLAT STAR_RADIUS at the readable end, so "the readable end is untouched"
+  // was true of it. P4 then put stars on the kind-blind span map on purpose, because a red dwarf and
+  // a red supergiant drawing the SAME SIZE is the dishonesty S2 removed between ships and bodies,
+  // one band up. So the readable end DOES move for a star now, by the span map's own factor: this
+  // supergiant lands at 1.4394 x STAR_RADIUS, and 0.5 x 1.44 = 0.72 is P4's own published number.
+  // A78's rMax law is unaffected — it is still a true-scale law, which the tests above pin.
+  it('the readable end follows P4s span map for a star (A78s own law is unchanged)', () => {
     const lone = sys([star(SUPERGIANT_KM)]);
     const rMax = systemRMax(lone, T);
-    expect(starRadiusScene(SUPERGIANT_KM, { bodySize: 1, rMax, gridRadius: GRID_RADIUS })).toBe(STAR_RADIUS);
+    expect(starRadiusScene(SUPERGIANT_KM, { bodySize: 1, rMax, gridRadius: GRID_RADIUS })).toBeCloseTo(STAR_RADIUS * 1.4394, 4);
   });
 
   describe('ordinary systems must not move perceptibly', () => {
