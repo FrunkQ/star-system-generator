@@ -28,6 +28,7 @@
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
   import { radiationPlace } from '$lib/catalogue/bodyFacts';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
+  import { luminositySolarFromRT } from '$lib/physics/luminosity';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
@@ -434,9 +435,9 @@
                 + '\nLuminosity, below, is how BRIGHT the star is. That is a different quantity.';
             
             if (body.radiusKm && body.temperatureK) {
-                const r_sol = body.radiusKm / SOLAR_RADIUS_KM;
-                const t_ratio = body.temperatureK / 5778;
-                luminosity = Math.pow(r_sol, 2) * Math.pow(t_ratio, 4);
+                // Through the ONE Stefan-Boltzmann ([[B110]]): a panel deriving a physics quantity
+                // for itself is the same fault as two engine modules doing it.
+                luminosity = luminositySolarFromRT(body.radiusKm, body.temperatureK);
             }
 
         } else if (body.massKg) {

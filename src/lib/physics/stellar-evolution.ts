@@ -1,4 +1,5 @@
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
+import { SOLAR_TEFF_K } from './luminosity';
 import type { RulePack } from '../types';
 import { luminosityClassFromPosition } from '../system/starBandMatch';
 
@@ -218,9 +219,13 @@ export function stellarRadiusAU(star: { radiusKm: number }): number {
 export function isEngulfedAt(star: { radiusKm: number }, distAU: number): boolean {
     return distAU < stellarRadiusAU(star) * 1.2; // a little margin for tidal drag-in
 }
-export const SOLAR_TEMPERATURE_K = 5778;
+/**
+ * Kept as a NAME, not a second definition - `luminosity.ts` owns the value ([[B110]]). Two constants
+ * for one quantity is the same fault as two functions for one law, and this file's own inversions of
+ * Stefan-Boltzmann below read it.
+ */
+export const SOLAR_TEMPERATURE_K = SOLAR_TEFF_K;
 const G = 6.67430e-11;
-const SOLAR_LUM_WATT = 3.828e26;
 
 /**
  * Advanced Stellar Classifier

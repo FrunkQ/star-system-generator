@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.187 - 28th Aug 2026
+
+- Groundwork with no visible change today, and a deliberate one: the engine worked out how bright a star is in eight different places, and now does it in one. Nothing you can see moves - the habitable zone, the frost lines and every world's temperature are all held to twelve figures of exactly what they were.
+- Why it matters for what comes next: the moment anything can dim a star - a swarm of collectors around it, a dust lane, a companion passing in front - it has to dim it for everything at once. Eight separate sums could not do that; one can.
+
 ## v3.0.186 - 28th Aug 2026
 
 - Board only. The mega-constructs design document had multiplied a ringworld wrong - it called the ring's circumference its area. Corrected with the working shown: a 1 AU ring 1,000 km wide is about 1,800 Earths of floor; the fabled three million needs a band 1.6 million km wide, which is what the shipped template uses.

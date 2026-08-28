@@ -14,7 +14,7 @@
 import type { CelestialBody, RulePack } from '$lib/types';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
 import { starStatTemplate } from '$lib/generation/star';
-import { SOLAR_TEMPERATURE_K } from './stellar-evolution';
+import { luminositySolarFromRT } from './luminosity';
 
 /**
  * ONE namespace, owned by SystemProcessor's stellar pass (TAG-6). The VALUE names the law, so a
@@ -109,7 +109,8 @@ export function starImplausibilities(body: CelestialBody, pack?: RulePack): Impl
 	// This is B57's fault made visible for hand-authored stars, since generation can no longer produce
 	// it. Non-thermal emitters are exempt: a black hole's output is its disc, not its surface.
 	if (!isRemnant && rSolar > 0 && tK > 0 && (body.radiationOutput ?? 0) > 0) {
-		const thermal = Math.pow(rSolar, 2) * Math.pow(tK / SOLAR_TEMPERATURE_K, 4);
+		// Through the one Stefan-Boltzmann ([[B110]]) - the raw radius, not `rSolar` multiplied back up.
+		const thermal = luminositySolarFromRT(body.radiusKm ?? 0, tK);
 		if (ratio(body.radiationOutput!, thermal) > 10) {
 			out.push({
 				law: 'luminosity-mismatch',

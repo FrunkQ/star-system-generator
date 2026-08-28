@@ -4424,6 +4424,49 @@ separation against the Hill radius it has at the point, on the same 0.3/0.4/0.5 
 binary-tightness test uses. That fate is deliberately NOT directional (contrast B19): when a point
 stops holding a pair, BOTH members leave, and there is no lighter one being thrown by a heavier one.
 
+### PHY-34 HOW BRIGHT A STAR IS HAS ONE ANSWER, AND THE GATE THAT PROVES IT NEEDS AN ABSOLUTE ANCHOR
+BUCKET: DOMAIN + ARCHITECTURE - domain: a star's output is one quantity that reaches the engine in
+two unit conventions, and INTRINSIC output is not what a body RECEIVES. Architecture: two correct
+implementations of one law are still a fault, and an equivalence gate that compares two things
+through the SAME function cannot see a factor applied to that function.
+WHERE: `physics/luminosity.ts` (`luminositySolarFromRT` is the primitive, `luminosityWattsFromRT` is
+derived from it, `SOLAR_TEFF_K` and `SOLAR_LUMINOSITY_W` are the only definitions); its callers in
+`physics/zones.ts`, `physics/temperature.ts`, `physics/starPlausibility.ts`, `generation/star.ts`,
+`BodyStarTab.svelte`, `BodyTechnicalDetails.svelte`, `physics/substellar.ts`,
+`physics/stellarOutflows.ts`. The gate is `physics/luminosityUnification.spec.ts`.
+RULE: nothing computes `R^2 T^4` for a star anywhere else. The WATTS form is DERIVED from the solar
+form by one multiplication, not computed again, so a factor applied to the primitive - occlusion by a
+Dyson swarm, a dust lane, an eclipse - reaches every consumer or none. When occlusion arrives it is a
+SECOND quantity beside this one (what a body RECEIVES) derived FROM it, never a second R^2 T^4 with a
+coefficient bolted on.
+WHY: [[B110]]. The sweep found EIGHT sites in three unit conventions, two of them with a bare 5778
+rather than a named constant, where the row that raised it had named two. They all agreed, which was
+never the question - the standing rule asks whether they COULD answer the same question differently,
+and the answer became yes the moment anything dims a star: a world dimmed for its habitable zone and
+not for its temperature, silently and incoherently.
+BLAST: THE FIRST VERSION OF THE GATE PASSED WITH THE BUG FULLY PRESENT, and this is the reusable
+lesson. Dimming `zones.getLuminosity` alone - precisely the reported hazard - left every equivalence
+assertion GREEN, because each compared one star against another THROUGH THE SAME FUNCTION and a
+common factor cancels. Catching it needed an ABSOLUTE anchor the two subsystems reach from opposite
+directions: the runaway-greenhouse edge is a TEMPERATURE (285.904693697 K for a Sun-like star,
+273.413778070 K at 3200 K, 296.124004421 K at 7000 K), identical whatever the star's SIZE, because
+the luminosity cancels between the zone's distance and the flux at it - and it only cancels while
+both sides use one luminosity. Any ratio test between two stars is blind to a constant divergence.
+BLAST: BIT-FOR-BIT WAS NOT ACHIEVABLE AND THAT IS A FACT ABOUT THE INPUTS, not a shortcut. The two
+conventions were `(R/Rs)^2 (T/Ts)^4` and `4 pi R^2 sigma T^4` over the same for the Sun - the same
+algebra, different roundings, so no single implementation can be bit-equal to both. The ratio form
+won (no constants, no 1e26 intermediate, exactly 1.0 for the Sun by construction) and the cost is
+MEASURED at 5.9e-16 relative worst case over a sweep from an O5 to a Y dwarf, under three units in
+the last place, against the 1e-12 `SystemProcessor.settled` already calls "not a change". Every
+PUBLISHED figure is pinned unchanged to twelve significant figures.
+BLAST: THE ENGINE STILL HOLDS FOUR OPINIONS ABOUT HOW BRIGHT THE SUN IS, and they differ by 0.6%,
+which is a VALUE change and deliberately not in that commit: `luminosity.SOLAR_LUMINOSITY_W` derives
+3.851e26 W from this engine's own R and 5778 K; `stellar-evolution.ts` carried `3.828e26` (the IAU
+nominal, which corresponds to 5769.35 K - it was DEAD and is deleted); `BodyStarTab.svelte:595` has
+`3.828e26` live, for the black-hole accretion disc; `import/ubox/convert.ts:16` has `3.846e26`. The
+same file also keeps `SB_SIGMA = 5.670374e-8`, a truncated copy of the exact SI constant. Unifying
+those MOVES NUMBERS, so it wants its own commit and its own gate.
+
 ### PHY-33 A STORED PHASE IS MEANINGLESS WITHOUT ITS EPOCH, AND A PAIR HAS ONE OF EACH
 BUCKET: DOMAIN + ARCHITECTURE - domain: `M(t) = M0 + n*(t - t0)`, so `M0` and `t0` are ONE FACT and
 moving either alone moves the body. Architecture: when a derived relationship has a single owner,

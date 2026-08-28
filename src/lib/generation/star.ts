@@ -3,7 +3,7 @@ import type { CelestialBody, RulePack, ID, Tag } from '../types';
 import { SeededRNG } from '../rng';
 import { weightedChoice, randomFromRange, drawFromBand } from '../utils';
 import { SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '../constants';
-import { SOLAR_TEMPERATURE_K } from '../physics/stellar-evolution';
+import { luminositySolarFromRT } from '../physics/luminosity';
 import { bodyFactory } from '../core/BodyFactory';
 import { resolveStarImage, spectralLetterOf } from '../system/starImage';
 import { activityScatterFromRoll } from '../physics/ionisingOutput';
@@ -182,9 +182,8 @@ export function _generateStar(id: ID, parentId: ID | null, pack: RulePack, rng: 
     // class names in code. Only four bands keep one, and each is genuinely NON-THERMAL: a black hole
     // emits from its accretion disc and a neutron star or magnetar from spin-down and its
     // magnetosphere, neither of which is R^2 T^4 of the object itself. Everything else computes.
-    const thermalLumSolar = (starRadiusKm > 0 && starTemperatureK > 0)
-        ? Math.pow(starRadiusKm / SOLAR_RADIUS_KM, 2) * Math.pow(starTemperatureK / SOLAR_TEMPERATURE_K, 4)
-        : 0;
+    // Through the one Stefan-Boltzmann ([[B110]]); the guard is now inside it.
+    const thermalLumSolar = luminositySolarFromRT(starRadiusKm, starTemperatureK);
     const radiationOutput = starTemplate?.radiation_output
         ? drawFromBand(rng, [starTemplate.radiation_output[0], starTemplate.radiation_output[1]], starTemplate.radiation_output_scale)
         : (thermalLumSolar || 1);

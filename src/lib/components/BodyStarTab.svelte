@@ -283,8 +283,10 @@
       return `background-color: ${bg}; border: 2px solid ${border}; box-shadow: 0 0 10px ${shadow};`;
   });
 
-  // Bolometric luminosity from Stefan-Boltzmann: L/L☉ = (R/R☉)²·(T/T☉)⁴.
-  let luminosity = $derived((radiusSuns ** 2) * ((tempK / 5778) ** 4));
+  // Bolometric luminosity, through the ONE Stefan-Boltzmann ([[B110]]). This was written out here
+  // with a bare 5778 while `syncRadiationFromSB` below already called the shared function - the same
+  // quantity computed twice in one component.
+  let luminosity = $derived(luminositySolarFromRT(radiusSuns * SOLAR_RADIUS_KM, tempK));
 
   // The four classes whose output is NOT their own surface: an accretion disc or a magnetosphere.
   // Same list `syncRadiationFromSB` returns early on — one spelling, checked in one place.

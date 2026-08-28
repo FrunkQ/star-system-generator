@@ -1,5 +1,6 @@
 import type { CelestialBody, Barycenter, System, RulePack } from '../types';
 import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG, STEFAN_BOLTZMANN_CONSTANT } from '../constants';
+import { luminosityWattsFromRT, SOLAR_TEFF_K } from './luminosity';
 import { GIANT_METALLIC_HYDROGEN_MIN_MASS_ME } from './fluidLayers';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
@@ -491,9 +492,10 @@ export function calculateEquilibriumTemperature(
     let totalLuminosityTimesArea = 0;
     
     for (const star of allStars) {
-        const starTemp = star.temperatureK || 5778;
-        const starRadius_m = (star.radiusKm || SOLAR_RADIUS_KM) * 1000;
-        const starLuminosity = 4 * Math.PI * Math.pow(starRadius_m, 2) * STEFAN_BOLTZMANN_CONSTANT * Math.pow(starTemp, 4);
+        const starTemp = star.temperatureK || SOLAR_TEFF_K;
+        // ONE Stefan-Boltzmann for the whole engine ([[B110]]) - this was `4*pi*R^2*sigma*T^4`
+        // written out here, a second implementation of what `zones.ts` was also computing its own way.
+        const starLuminosity = luminosityWattsFromRT(star.radiusKm || SOLAR_RADIUS_KM, starTemp);
 
         const dist_au = calculateDistanceToStar(body, star, allNodes);
 
@@ -527,9 +529,10 @@ export function calculateEquilibriumTemperatureRange(
     let fluxMax = 0;
 
     for (const star of allStars) {
-        const starTemp = star.temperatureK || 5778;
-        const starRadius_m = (star.radiusKm || SOLAR_RADIUS_KM) * 1000;
-        const starLuminosity = 4 * Math.PI * Math.pow(starRadius_m, 2) * STEFAN_BOLTZMANN_CONSTANT * Math.pow(starTemp, 4);
+        const starTemp = star.temperatureK || SOLAR_TEFF_K;
+        // ONE Stefan-Boltzmann for the whole engine ([[B110]]) - this was `4*pi*R^2*sigma*T^4`
+        // written out here, a second implementation of what `zones.ts` was also computing its own way.
+        const starLuminosity = luminosityWattsFromRT(star.radiusKm || SOLAR_RADIUS_KM, starTemp);
         const d = calculateDistanceRangeToStar(body, star, allNodes);
 
         if (d.max > 0) {

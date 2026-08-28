@@ -1,9 +1,9 @@
 import type { CelestialBody, Barycenter, RulePack } from '../types';
-import { SOLAR_RADIUS_KM, STEFAN_BOLTZMANN_CONSTANT } from '../constants';
+import { SOLAR_RADIUS_KM } from '../constants';
+import { luminositySolarFromRT, SOLAR_TEFF_K } from './luminosity';
 import { blackbodyFractionBelowNm } from './spectrum';
 import { ionisingOutputSolar } from './ionisingOutput';
 
-const SOLAR_TEMP_K = 5778;
 
 /**
  * The biological UV damage edge, nm. Shortward of roughly this, photons break the bonds that hold
@@ -25,15 +25,10 @@ const SOLAR_FLARE_ACTIVITY = 0.052;
  */
 function getLuminosity(star: CelestialBody): number {
     if (!star.radiusKm || !star.temperatureK) return 1;
-    const radius_m = star.radiusKm * 1000;
-    const temp_k = star.temperatureK;
-
-    const solar_radius_m = SOLAR_RADIUS_KM * 1000;
-    const solar_luminosity = 4 * Math.PI * (solar_radius_m**2) * STEFAN_BOLTZMANN_CONSTANT * (SOLAR_TEMP_K**4);
-
-    const star_luminosity = 4 * Math.PI * (radius_m**2) * STEFAN_BOLTZMANN_CONSTANT * (temp_k**4);
-
-    return star_luminosity / solar_luminosity;
+    // ONE Stefan-Boltzmann for the whole engine ([[B110]]). This used to build the star's output and
+    // the Sun's in watts and divide - the same law, spelled a second way. A star can only be DIMMED
+    // in one place if it is only computed in one place.
+    return luminositySolarFromRT(star.radiusKm, star.temperatureK);
 }
 
 /**
@@ -82,7 +77,7 @@ export function calculateKillZone(star: CelestialBody, pack?: RulePack | null): 
     const solAU = (cfg as any).kill_zone_sol_au ?? KILL_ZONE_SOL_AU;
 
     const tempK = star.temperatureK ?? 0;
-    const solarUvShare = blackbodyFractionBelowNm(edgeNm, SOLAR_TEMP_K);
+    const solarUvShare = blackbodyFractionBelowNm(edgeNm, SOLAR_TEFF_K);
     const uvRelative = solarUvShare > 0
         ? (luminosity * blackbodyFractionBelowNm(edgeNm, tempK)) / solarUvShare
         : 0;
@@ -150,7 +145,7 @@ export function calculateGoldilocksZone(
     // Replace legacy blackbody 373K/273K band with a conservative
     // Kopparapu-style HZ: Runaway Greenhouse (inner) to Maximum Greenhouse (outer).
     // This keeps a single HZ band in the UI/generation while aligning to common literature.
-    const teff = star.temperatureK || SOLAR_TEMP_K;
+    const teff = star.temperatureK || SOLAR_TEFF_K;
     const luminosity = getLuminosity(star);
 
     // Valid range in published fits; clamp for stability on exotic stars.
@@ -387,7 +382,7 @@ export function calculateAllStellarZones(
     const zamsFactor = 1 / (1 + (alpha * age_Gyr));
     
     // Create a temporary proxy star for the formation calculation (Lower L)
-    const formationStar = { ...star, temperatureK: (star.temperatureK || SOLAR_TEMP_K) * Math.pow(zamsFactor, 0.25) };
+    const formationStar = { ...star, temperatureK: (star.temperatureK || SOLAR_TEFF_K) * Math.pow(zamsFactor, 0.25) };
     
     // Current Frost Line: Vacuum ice stability today (~125K)
     const currentFrostLine = calculateFrostLine(star, allNodes);
