@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.174 - 28th Aug 2026
+
+- Board only. Mega-structures get a proper structure rather than a pile of special cases, and six render paths collapse into one: a sphere you can leave unfinished is a ring, and one drawn as dots is a swarm. The inside of a ring or sphere is a living world with real weather.
+
 ## v3.0.173 - 28th Aug 2026
 
 - Board only. Three assumptions in the mega-structure design were measured instead of trusted, and two of them were wrong.

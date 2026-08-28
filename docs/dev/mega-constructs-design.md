@@ -30,6 +30,20 @@ asteroids: *"Small bodies like asteroids are available as constructs or bodies..
 do bridge - I guess we could just hybrid them too like a death star"* — §3.7, and it corrected a
 naming error in §3.3.
 
+**AND THE STRUCTURE ITSELF, which is §5b:** *"These are a special 'subsection' of special constructs
+rather than a bunch of if thens... i.e. proper structure for mega-constructs"*, with programmatic
+models, the ship shader pipeline reused, and parameters that DO something — a swarm density slider
+showing power harvested as well as occlusion, shell coverage to 100% *"seeing it grow"*, an asteroid
+counterweight for a beanstalk. **Plus three simplifications, each cheaper than the draft before it:**
+*"a swarm will not be lots of objects just 1 shaded appropriately... practical rather than
+realistic"*; *"zooming for rings will be like belts/rings"*; and the one that collapsed the render
+work outright — *"effectively a swarm would be a simple polygon (dyson sphere/part sphere/ring) but
+only the apexes are drawn. A ring is just an unfinished sphere - they can all use the same draw
+call."* **Six render paths became one parametric generator and a line.** And with it: *"The INSIDE of
+a ringworld or sphere will be 'livable' and show living world parameters and are drawn in 3D - An
+inside out planet with green life"* — §5b.4b, which is the strongest argument in this document for
+the hybrid being a body.
+
 **AND TWO CORRECTIONS AFTER THAT, the first of which withdrew a claim this document had made.** On
 carrying a fleet: *"if we can travel objects with a death star then that is better - one use case
 catches a fleet, moons, etc... surely everything stays kepler[ian], the origin for orbiting
@@ -581,10 +595,18 @@ for every one of these. So the predicates live in the rule pack, not in a switch
 `reason`; nothing else in the UI knows the rules. `explain` is the GM-facing sentence with `{host}`
 interpolated — prose in data, so a pack author can write their own.
 
-**Suggested `requires` vocabulary (complete for the six, extensible):** `hostKind`, `hasSurface`,
-`needsGeostationary`, `geoBelowHillFraction`, `minHostMassKg`, `maxHostMassKg`, `inHabitableZone`,
-`hostIsStar`, `minHostLuminosityLsun`, `clearOrbitBand` (nothing else may occupy the band it would
-fill), `minTechLevel`.
+**Suggested `requires` vocabulary (complete for the six, extensible), SPLIT BY CLAUSE KIND (§3.5):**
+
+- **`hard`** — relevance; the option has no referent without it, so it greys and that is final:
+  `hostKind`, `hasSurface`, `hostIsStar`, `needsGeostationary`.
+- **`steer`** — plausibility; tag, publish the number, change nothing:
+  `geoBelowHillFraction`, `minHostMassKg`, `maxHostMassKg`, **`inHabitableZone`**,
+  `minHostLuminosityLsun`, `clearOrbitBand`, `minTechLevel`.
+
+**`inHabitableZone` IS A STEER CLAUSE AND MUST NEVER BE HARD** — owner, 2026-08-28: it is a
+*"goldilocks zone recommendation"*. A ring at 3 AU is legitimate and cold, and the engine owes it a
+temperature rather than a refusal. **The zone is also species-relative** (*"maybe aliens can have
+hotter/colder ones"*), so the clause must name WHOSE zone it measured — see §5b.4b and [[G19]].
 
 ---
 
@@ -594,17 +616,11 @@ The owner said each type needs its own specialised path. **They do not need six 
 five SHAPE FAMILIES**, and every named type falls into one. That is the difference between a feature
 that ships and one that becomes six half-finished renderers.
 
-| family | 3D | 2D | types |
-|---|---|---|---|
-| `tether` | line/thin cylinder, surface → counterweight, spinning with the host | radial line from the host glyph, length to scale | space elevator, skyhook, star lifter |
-| `ring` | annulus/torus in a declared plane, `megaRadiusKm` x `megaWidthKm` — see the WARNING below | circle at true scale (reuse the ORBIT-line renderer, not the glyph) | orbital ring, planetary torus, ringworld, Bishop ring, Halo |
-| `shell` | sphere at `megaRadiusKm`, back-face visible from inside, occluding the star | circle with a distinct stroke, at true scale | Dyson sphere, supramundane shell, Matrioshka brain |
-| `swarm` | instanced particles on a shell distribution — **reuse the belt/ring particle renderer** | stippled annulus, exactly as belts already draw | Dyson swarm, collector array, statite cloud |
-| `spheroid` | today's `attachHullVolume` ellipsoid, or a GLB | today's glyph | Death Star, anything moon-shaped |
+**SUPERSEDED BY §5b.4 — read that instead.** The table that stood here listed five families with separate renderers. The owner collapsed them: a swarm is one object with only its apexes drawn, and *"a ring is just an unfinished sphere - they can all use the same draw call"*. **What survives is THREE families and ONE new generator** — a parametric sphere section (faces or points) covering shell, swarm, ringworld and orbital ring; a `tether`, which is a line; and `spheroid`, which already exists as `attachHullVolume`.
 
-**Two of the five already exist.** `swarm` is the belt renderer (`beltStyle: 'rocks' | 'band'` and
-its particle path); `spheroid` is `attachHullVolume` unchanged. **Genuinely new: `tether` and
-`shell`.** Scoping this way turns "six specialised renderers" into two, and that is the single
+`spheroid` is `attachHullVolume` unchanged; the sphere-section family reuses the belt/ring ZOOM
+semantics (§5b.5) but NOT `buildPlanetRingBand`'s sizing (warning below). **Genuinely new: the
+sphere-section generator and the tether, and those two cover all seven named types.** Scoping this way turns "six specialised renderers" into two, and that is the single
 biggest cost saving in this document.
 
 > **WARNING, CHECKED 2026-08-28 — `ring` IS ONLY HALF-REUSABLE, AND AN EARLIER DRAFT OVERSTATED IT.**
@@ -658,6 +674,297 @@ Note also that these objects break the *"a construct's model contributes no radi
 `minDistance` and the system extent (A78 now counts each member's own radius —
 `src/lib/holo/systemExtent.spec.ts`) all have to see it, or zooming out on a ringworld system will
 frame the star and clip the ring.
+
+---
+
+## 5b. THE REGISTRY — proper structure, not a switch
+
+Owner, 2026-08-28: *"These will all have to have unique 3d models produced programmatically - maybe
+let the user do the same shader stuff as a ship... along with things like a swarm density slider
+(showing power harvested from star as well as occlusion). Dyson shell coverage up to 100% for a
+sphere (seeing it grow). Asteroid counterweight for beanstalk/space elevator, etc... These are a
+special 'subsection' of special constructs rather than a bunch of if thens... i.e. proper structure
+for mega-constructs."*
+
+**THE PATTERN ALREADY EXISTS IN THIS CODEBASE, IT IS PROVEN, AND ITS OWN FILE ARGUES THE CASE BETTER
+THAN THIS SECTION CAN.** `src/lib/physics/overrides.ts` (G37) is one record per quantity a GM may
+pin, and it replaced exactly the shape the owner is trying to avoid. Its header:
+
+> *"WHY A REGISTRY RATHER THAN A ROW PER QUANTITY IN THE EDITOR. The overrides were four scattered
+> implementations before this... Each had its own seed, its own clamp, its own reset and its own
+> wording, and the info panel listed a hand-written subset of them that had already drifted... One
+> record per quantity means the tab, the info-panel strip, the Newton trace and the warnings all read
+> the SAME description, and a ninth override is a new record rather than a new copy of the pattern."*
+
+**Copy it.** A mega type is a record; adding a Shkadov thruster is a new record, not a new branch.
+
+### 5b.1 The record
+
+Deliberately shaped like `OverrideDef`, because a mega-construct's tunables ARE overrides in every way
+that matters — and that means the existing override ROW, badge, warning colours and Newton-trace
+rendering already know how to display them.
+
+```ts
+export interface MegaTypeDef {
+  key: MegaType;                     // 'space-elevator' | 'ringworld' | 'dyson-swarm' | …
+  label: string;
+  family: ShapeFamily;               // 'tether' | 'ring' | 'shell' | 'spheroid'
+  hint: string;                      // one line: what this thing IS
+  icon: ConstructIconShape;          // 2D chrome, from the ONE glyph table (§2.4)
+
+  /** Placement, as DATA (§3.5): `hard` clauses grey it, `steer` clauses tag and explain. */
+  requires: MegaRequires;
+
+  /** The knobs. Each record is OverrideDef-shaped: label, unit, hint, soft/hard, plausible, absurd. */
+  params: readonly MegaParamDef[];
+
+  /** PURE. params + host → the NUMBERS. No THREE, no DOM, no globals. §5b.3. */
+  derive(params: MegaParams, host: CelestialBody): MegaDerived;
+
+  /** PURE. params + host → a geometry SPEC: radii, profiles, segment counts. Still no THREE. §5b.3. */
+  shape(params: MegaParams, host: CelestialBody): ShapeSpec;
+
+  /** Where a ship may dock, from the same params (§7). */
+  dockNodes(params: MegaParams, spec: ShapeSpec): DockNode[];
+}
+```
+
+**The two-tier warning transfers exactly and it is worth keeping.** `OverrideDef` distinguishes
+*amber* (no known mechanism, but breaks no law) from *red* (breaks conservation or contradicts the
+quantity's own definition) — the owner's own distinction, 2026-08-22, and **neither is a refusal**.
+Mega parameters land on it perfectly: a Dyson shell at 100% coverage is amber (materially impossible,
+physically coherent); a swarm harvesting more power than the star emits is red.
+
+### 5b.2 The parameters are PHYSICS INPUTS that happen to also drive geometry
+
+**This is what stops them being cosmetic sliders, and it is the house rule rather than a preference:
+physics and data drive tags; tags drive the image.** Every knob the owner named has a derivation
+hanging off it, and the geometry is the *second* consumer, never the first.
+
+| parameter | physics it drives | geometry it drives |
+|---|---|---|
+| **swarm density** 0..1 | `starOcclusion` → insolation → temperature, habitability, colour (§6); **power harvested** = density × L\* × efficiency | shell patchiness / fill (§5b.4) |
+| **shell coverage** 0..100% | occlusion; re-radiated waste heat (W and T); shell mass | how much of the sphere is closed — *watch it grow* |
+| **counterweight mass** | the tether's taper ratio, and whether the elevator stands up at all | the mass at the top of the ribbon |
+| **ring radius / width** | spin gravity ω²r; orbital band occupied; ring-instability tag | the annulus itself |
+
+**Power harvested is the owner's own addition and it is the best one**, because it closes a loop the
+engine already has: `systems.power_plants[].output_MW` exists on every construct template. A swarm's
+harvest is not a new field — it is that field, derived instead of authored. A GM sliding density up
+watches the star dim, the worlds cool, and the output climb, all from one number. **That is the
+physics→tags→visuals chain doing real work rather than illustrating itself.**
+
+### 5b.3 `derive` and `shape` are PURE and return DATA — and this is the load-bearing decision
+
+**THREE.js appears at ONE edge and nowhere else.** `shape()` returns radii, profiles, segment counts
+and vertex positions; a thin builder turns that spec into geometry.
+
+**THE REASON IS VERIFICATION, and it is a standing rule rather than taste.** [[E7]], measured
+2026-08-08: *a canvas surface cannot be verified by a worker session AT ALL* — the pane runs
+`document.hidden === true`, so `requestAnimationFrame` never fires. **If the shape maths lives inside
+the geometry construction, no agent can ever gate a ringworld's dimensions, and the owner's eye is
+the only test that exists.** Pure `shape()` puts the maths in the ordinary headless suite: a
+ringworld's circumference, a tether's taper profile, a shell's area at 40% coverage are all just
+numbers, asserted like any other.
+
+**And the same split is what let the scale law be trusted.** `scaleLaw.ts` is pure, `scene.ts` calls
+it, and that is why R9 is a test rather than a hope — §5's mega-scale measurement was possible only
+because of it.
+
+**Corollary: `derive()` must be idempotent and clock-derived, never accumulated.** See §5b.6.
+
+### 5b.4 ONE GEOMETRY: a parametric sphere section, with a render-mode switch
+
+Owner, 2026-08-28, two messages that between them collapsed this further than any draft had:
+
+> *"a swarm will not be lots of objects just 1 shaded appropriately... they may move but together -
+> practical rather than realistic."*
+>
+> *"effectively a swarm would be a simple polygon (dyson sphere/part sphere/ring) but only the apexes
+> are drawn. A ring is just an unfinished sphere - they can all use the same draw call."*
+
+**He is right, and THREE already has the primitive.** `THREE.SphereGeometry(radius, widthSegments,
+heightSegments, phiStart, phiLength, thetaStart, thetaLength)` takes longitude AND latitude extents
+directly, so "an unfinished sphere" is not a metaphor — it is two arguments.
+
+| what | latitude (`theta`) | longitude (`phi`) | drawn as |
+|---|---|---|---|
+| Dyson sphere (complete) | full | full | faces |
+| Dyson shell, partial | full | partial, growing to full | faces |
+| **Ringworld** | **narrow band at the equator** | full | faces |
+| Orbital ring / planetary torus | narrow band | full | faces |
+| **Dyson swarm** | full | full | **points — the apexes only** |
+| Collector array | partial | partial | points |
+
+**ONE generator, ONE draw call, and the differences are arguments rather than branches.** That is the
+"proper structure rather than a bunch of if thens" applied at the geometry layer as well as the
+registry layer.
+
+**A ringworld as a latitude band is geometrically honest, not a fudge.** A 1 AU ring 1,000 km wide
+subtends about 4e-6 radians of latitude; the difference between that sphere band and a true cylinder
+ribbon is far below a pixel at any zoom. Niven's ribbon and an unfinished sphere are the same object
+at this scale.
+
+**SO THE FAMILY LIST COLLAPSES TO THREE, AND ONLY ONE IS A NEW GENERATOR:**
+
+| family | what it is | new? |
+|---|---|---|
+| `sphere-section` | the parametric section above, faces or points | **yes — the one new generator** |
+| `tether` | a line/thin cylinder, surface to counterweight | **yes — but it is a line, not a mesh problem** |
+| `spheroid` | today's `attachHullVolume` ellipsoid, or a GLB | no, exists |
+
+From "six specialised render paths" in the owner's original ask, to **one parametric generator plus a
+line.** Everything else is parameters.
+
+**DENSITY IS THE SEGMENT COUNT, and that is an honest mapping rather than a convenient one.** A
+swarm's density slider drives `widthSegments × heightSegments` — more collectors, more apexes drawn —
+AND drives `starOcclusion` and the harvested power (§5b.2). One number, three consumers, no
+duplication.
+
+> **ONE RENDERING TRAP, worth naming before somebody ships it.** A UV sphere's vertices CLUSTER AT
+> THE POLES: `SphereGeometry`'s apexes are dense at top and bottom and sparse at the equator. Drawn
+> as points, a swarm would visibly bunch at its poles for no physical reason. **Use an even
+> distribution for the points path — a Fibonacci sphere is about six lines and needs no library** —
+> and keep `SphereGeometry` for the faces path, where the clustering does not show. Same family, same
+> parameters, one honest difference in how the vertices are chosen.
+
+### 5b.4b THE INSIDE IS A WORLD — and this is the strongest argument yet for the hybrid
+
+Owner, 2026-08-28: *"The INSIDE of a ringworld or sphere will be 'livable' and show living world
+parameters and are drawn in 3D - An inside out planet with green life."*
+
+**This is the payoff for §3.1's decision, and it goes further than gravity did.** A ringworld is not
+`kind: 'body'` merely so the n-body sum sees its mass. **It is a body because it has a SURFACE, and
+this engine's entire surface stack — temperature, atmosphere, hydrosphere, biosphere,
+classification, apparent colour — already exists and already runs on bodies.** Making a ringworld a
+construct would have meant rebuilding every one of those for it. Making it a body means the inner
+surface gets them for free.
+
+**What is genuinely the same, and should be reused without modification:** atmosphere and pressure,
+hydrosphere and liquids, biosphere and vegetation tint, apparent colour, the tag chain, the info card,
+the from-the-surface view.
+
+**What is genuinely DIFFERENT, and each of these is a derivation change rather than a new subsystem:**
+
+| quantity | on a planet | on the inner surface |
+|---|---|---|
+| **gravity** | GM/r² from its own mass | **spin: ω²r** — `spinRadiusM` and `rotation_period_hours` already exist |
+| **insolation** | 1/d² from a star at varying distance | fixed distance from a star **at the centre**; no eccentricity, no seasons |
+| **day/night** | axial rotation, tilt-driven seasons | **shadow squares** (a ringworld) or the far side of the shell; no tilt, no seasons at all |
+| **lighting direction** | lit from outside, one terminator | **lit from the middle** — the concave side is lit everywhere the star sees |
+| **horizon** | curves away in every direction | curves **UP** along the ring and is flat across it |
+| **surface area** | 4πr² | band circumference × width — **and it is the headline number** |
+| **composition** | derived from makeup | **DECLARED** — it is built, not formed (`artificial`, §3.3) |
+
+**"Artificial structure, real climate"** is the line to hold, and the owner stated it directly,
+2026-08-28: *"'habitable' is the standard parameters - although spheres and rings WILL be subject to
+actual temps based on distance - hence the goldilocks zone recommendation (maybe aliens can have
+hotter/colder ones)."*
+
+**So: the habitability stack is used UNCHANGED — no special case, no parallel model — and the
+temperature feeding it is DERIVED, not authored.** A ring at 0.5 AU is hot, one at 2 AU is cold, and
+the engine says so. The floor is built; the climate on it is real. That keeps the honesty rule intact
+while refusing to pretend a built world condensed out of a disc.
+
+**AND THAT IS EXACTLY WHY THE HABITABLE ZONE IS A *STEER* CLAUSE AND NOT A HARD GATE (§3.5).** A
+ringworld needs A STAR TO CIRCLE — that is relevance, and it is hard. **Sitting in the goldilocks
+zone is plausibility**: building one at 3 AU is a perfectly legitimate thing a GM may do, and what
+the engine owes them is the number (*"the inner surface sits near 160 K"*), not a refusal. It is a
+recommendation, which is the word the owner used.
+
+**AND THE ZONE ITSELF IS A DEFAULT THAT CAN BE SWAPPED — *"maybe aliens can have hotter/colder
+ones"*.** This is the standing rule about never assuming an Earth, Sol or human baseline, arriving
+exactly where it always does: the goldilocks band is HUMAN-habitable by default, and the honest
+general answer is the SOLVENT'S OWN liquid range ([[G19]]). A ring built by something living in
+liquid ammonia wants a colder ring, and the engine should say *whose* zone it is measuring against
+rather than presenting one band as "the" habitable zone.
+
+**A NOTE FOR WHOEVER BUILDS IT:** the inner-surface temperature is `calculateEquilibriumTemperature`
+with a FIXED distance and no eccentricity — which means it runs through the second of the two
+luminosity sites [[B110]] names. **Unify that first**, or a ringworld inside a Dyson swarm will be
+lit by an undimmed star.
+
+**PUBLISH THE AREA, because it is the number that makes a ringworld land.** A 1 AU ring 1,000 km
+wide is about 9.4e8 km² of living space — roughly **three million Earths**. That single figure does
+more to convey what a megastructure IS than any render, and the engine can state it exactly.
+
+**RENDERING THE INTERIOR — three concrete notes.**
+- **Normals face inward.** The interior needs `side: THREE.BackSide` (or flipped normals) on the
+  faces path; the camera lives inside the shell, not outside it.
+- **The star is inside the geometry**, so the usual "is the star occluded" logic runs backwards.
+  Interior lighting comes from the centre outward.
+- **The livable band is a TEXTURE on the section, not new geometry** — the same green/blue/cloud
+  treatment `apparentColor.ts` already derives for a planet, mapped along the band. Which is the
+  other reason §5b.6's UV note matters: real UVs running along the ring's length make this work and a
+  box projection does not.
+
+**AND IT ANSWERS AN OPEN QUESTION.** §11 asked whether a ringworld's interior should get a
+"from the surface" view. **The owner has answered it: yes, drawn in 3D, showing living-world
+parameters.** Struck from the open list.
+
+### 5b.5 Zoom for rings follows belts and rings
+
+Owner, 2026-08-28: *"zooming for rings will be like belts/rings."* So a mega ring does NOT take the
+ship pixel-LOD (a screen-size floor that hands back to a glyph). It takes the belt/ring behaviour the
+engine already has — `beltStyle: 'rocks' | 'band'` and `beltDetail` — a band at distance resolving
+into structure as the camera comes down. **That is a third existing renderer partly reused, and it
+also answers what a ringworld does under zoom, which was open.**
+
+### 5b.6 The shader reuse is FREE — with one caveat found
+
+`buildDisplayModel(source: THREE.Object3D, { hadMaterials, tintHex, finish, seed, … })`
+(`modelViewer.ts:303`) takes **any** `Object3D`, and `HullFinish` is already seven finishes:
+`flat` · `cel` · `matcap` · `blueprint` · `plated` · `patina` · `iridescent` (`modelViewer.ts:61`).
+**Procedural geometry gets the whole ship treatment with no changes to that pipeline** — which is
+exactly what the owner asked for, and it costs nothing.
+
+> **THE CAVEAT, `modelViewer.ts:340`:** *"The livery finishes need UVs a printing mesh never has -
+> box-project them from the shape"*, and `boxProjectUVs` is the fallback. That fallback exists for
+> imported hulls with no UVs, and it will be WRONG on a 1 AU hoop — a box projection across a
+> ringworld smears the texture across its whole circumference. **A procedural generator should emit
+> real UVs** (running along a ring's length, around a shell's latitude, along a tether's rise), which
+> is nearly free when you are generating the vertices anyway and is the difference between `plated`
+> looking like plating and looking like a stretched smear.
+
+`seed` is already a parameter, so deterministic per-object variation is available — and **must** be
+used rather than RNG, for the same reason as §3.7.
+
+### 5b.7 Parts are NOT nodes — with one deliberate exception
+
+A ringworld has shadow squares; an elevator has a ground station, a ribbon and a counterweight; a
+swarm has notional collectors. **None of those become `System.nodes`.** They are geometry plus dock
+nodes on ONE node. Making them nodes would put them into the hierarchy, the transit planner, the
+redaction path and the position walk, for no gain.
+
+**THE EXCEPTION IS THE OWNER'S OWN, AND IT IS THE GOOD ONE:** *"Asteroid counterweight for
+beanstalk/space elevator"*. A counterweight that is a **real captured asteroid** is already a node —
+a GM put it there — so the elevator REFERENCES it rather than owning it:
+
+```ts
+counterweightId?: ID;      // a real body in this system; its mass feeds the taper derivation
+counterweightMassKg?: number;  // fallback when there is no such node — a notional mass
+```
+
+**And this is where §3.7's asteroid work pays off in a way nobody designed for:** grab a rock, make
+it your counterweight, and its actual mass — now that asteroids are real bodies with real mass —
+feeds whether the beanstalk stands up. Two features meeting is worth more than either alone.
+
+### 5b.8 Growth over time — the first genuinely TEMPORAL mega feature
+
+*"Dyson shell coverage up to 100% for a sphere (seeing it grow)"* implies coverage may be a function
+of the campaign clock, not only a stored scalar. That is new for this family and it points straight
+at the owner's evolution-engine work.
+
+**Phase it: a scalar first, a schedule later.** A stored `coverage` is phase 1 and gives the slider.
+A completion curve (start, rate, target) is a later item and is genuinely an EVENT — the same driver
+[[G41]] says it needs.
+
+> **WHICHEVER IT IS, IT MUST BE DERIVED FROM THE CLOCK AND NEVER ACCUMULATED PER TICK.**
+> `src/lib/system/idempotence.test.ts` enforces that nothing reads a value a later pass writes, and a
+> coverage that increments each frame is precisely that fault. `coverage(t)` from a stored start and
+> rate is idempotent; `coverage += rate` is not, and it would also make a save non-reproducible and
+> break time-scrubbing backwards.
+
 
 ---
 
@@ -854,9 +1161,12 @@ been answered by the owner and are struck rather than deleted.
    CARRIES its orbiting constructs and releases them at the destination.** Left here so nobody
    reopens it. The one loose end is natural satellites, which cannot be docked and are therefore
    LEFT BEHIND — say so before the burn; do not silently drag or delete a moon.
-2. **Does a ringworld's interior get a "from the surface" view?** It has a surface, a sky, a
-   day/night cycle from shadow squares, and no horizon curvature in one axis. The surface view
-   already exists for bodies; this would be its strangest case and possibly its best.
+2. ~~**Does a ringworld's interior get a "from the surface" view?**~~ **ANSWERED 2026-08-28, §5b.4b:
+   YES** — *"The INSIDE of a ringworld or sphere will be 'livable' and show living world parameters
+   and are drawn in 3D - An inside out planet with green life."* Struck rather than deleted. The
+   surface stack is reused wholesale; what changes is seven derivations (gravity from spin,
+   insolation from a star at the centre, day/night from shadow squares, lighting from the middle, a
+   horizon that curves UP, area as the headline number, and composition DECLARED not derived).
 3. **Is a mega-construct redacted from player views like a ship, or always visible like a world?**
    **THIS IS NOW THE ONLY QUESTION THAT BLOCKS PHASE 5** and it should be answered before that phase
    starts, not during. A hybrid is `kind: 'body'`, so it redacts like a planet by default: right for
