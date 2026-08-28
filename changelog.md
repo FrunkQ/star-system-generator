@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.181 - 28th Aug 2026
+
+- Mega-constructs, the catalogue itself (G53): seven types - space elevator, planetary torus, ringworld, Dyson sphere, Dyson swarm, energy collector, Death Star - each described once in a registry with its knobs, its placement rules, and honest derived numbers (a ringworld's living area, the tether strength a world demands, what a swarm dims and harvests). Nothing on screen reads it yet; every figure is pinned by tests.
+
 ## v3.0.180 - 28th Aug 2026
 
 - Mega-constructs, first groundwork (G53): a node can now say it is artificial, or that it should be presented as a construct, without either changing any physics - and one small module is the only place that reads those switches. Nothing visible changes yet; existing maps load and behave exactly as before.
