@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.171 - 28th Aug 2026
+
+- Board only. A mega-structure on the move simply takes its moons and fleet with it - the orbits were always measured from the host, so nothing has to be rebuilt. Existing asteroids will be brought in as real bodies, and three of the bundled ones turn out to be denser than any real material.
+
 ## v3.0.170 - 28th Aug 2026
 
 - Board only. A design for stars that are not what they look like: a swarm or a dust cloud changes what an observer measures, and the GM chooses how much of the reason the table is told.

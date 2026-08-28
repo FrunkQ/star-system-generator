@@ -30,6 +30,16 @@ asteroids: *"Small bodies like asteroids are available as constructs or bodies..
 do bridge - I guess we could just hybrid them too like a death star"* — §3.7, and it corrected a
 naming error in §3.3.
 
+**AND TWO CORRECTIONS AFTER THAT, the first of which withdrew a claim this document had made.** On
+carrying a fleet: *"if we can travel objects with a death star then that is better - one use case
+catches a fleet, moons, etc... surely everything stays kepler[ian], the origin for orbiting
+ships/moons is the planet which is 'stationary to them'... orbits stay and we only have to transmit
+position of the host?"* — **verified in the code and correct; §3.6 is rewritten and the earlier
+objection is recorded as a DEAD END rather than deleted.** On the asteroid migration: *"just bring
+them all into the new system - we have a mass... keep imported ones in low bounds of spin so we
+don't need to determine when they fall apart, etc and wreck their intent"* — §3.7, where it turns
+out the data already has the spin and the engine already has the breakup model.
+
 ---
 
 ## 1. What a mega-construct IS, and why the category needs a boundary
@@ -292,14 +302,15 @@ kinematics or a stamped vector, **and which sampler runs is CALLER POLICY** (`wo
 free-scrubbing player view passes *none at all*, deliberately — the owner's rule, 2026-08-08). A
 hybrid needs both models and they cannot both be authoritative.
 
-> **RESOLUTION — SETTLED BY THE OWNER, §3.6: CARRY AND RELEASE.** The position model follows the
-> object's STATE, not its type. Parked, it is a body — Keplerian, and it hosts satellites. Under
-> way, every orbiting construct is CARRIED (no independent position at all) and released at the
-> destination.
+> **THIS ITEM IS WITHDRAWN. §3.6 SHOWS THE PREMISE WAS WRONG.** A child is composed as
+> `parentPos + relative` unconditionally (`worldPositions.ts:112`), so it is computed FROM its parent
+> and cannot drift away from it. Everything comes along, orbits intact, for free.
 
-**Read §3.6 for why that is the strong answer rather than the cheap one:** a carried construct has
-nothing for two views to disagree about, which is what actually removes the [[B94]]-shaped
-divergence risk here.
+Left on the page rather than deleted, because "children of a moving parent diverge across views" is a
+plausible-sounding claim that cost a draft and would cost the next reader the same hour. **It is
+false.** What remains is a physics tag, not a mechanism: you cannot hold an orbit around a thrusting
+primary, so an assembly that stays together under power gets a sentence saying so — and keeps
+flying.
 
 **7. Redaction.** A player snapshot's `slimNode` strips `scheduled_journeys`, and the redaction
 boundary keys off `kind === 'construct'`. A hybrid is `kind: 'body'` and would be redacted like a
@@ -361,83 +372,134 @@ carries two kinds of clause, and each is tagged in the data:
 A whole TAB still hides when nothing in it passes its HARD clauses — which is what the owner asked
 for ("only appears… when available").
 
-### 3.6 A hybrid that moves: CARRY AND RELEASE — and it removes a bug class, not just work
+### 3.6 A hybrid that moves: EVERYTHING COMES ALONG, and it costs nothing
 
-Owner, 2026-08-28: *"have a function that docks (lands) every orbiting construct while moving and
-drops them out at destination. Narratively sound and saves a LOT of work :)"*
+**CORRECTED 2026-08-28 by the owner, and the correction is load-bearing.** An earlier draft of this
+section argued that a moving hybrid could not host satellites and proposed carry-and-release as the
+way round it. He challenged it: *"surely everything stays kepler[ian], the origin for orbiting
+ships/moons is the planet which is 'stationary to them' - they all still run keplerian - orbits stay
+and we only have to transmit position of the host?"*
 
-**Take this. It is the right answer and its best argument is not the one it was offered with.**
+**He is right, it was verified in the code, and the earlier objection was over-called.**
+`worldPositions.ts:112` composes every position as:
 
-The difficulty in §3.4 item 6 was never the geometry — a child's orbit is relative to its parent, and
-`worldPositions` resolves parent before child, so a child already moves with a moving parent for
-free. The difficulty was that **a moving hybrid's position comes from a SAMPLER whose choice is
-CALLER POLICY** (`worldPositions.ts` 60-90: the orrery passes journey kinematics, a followed player
-view passes the route sampler, and a free-scrubbing player view passes *none at all*, by the owner's
-own rule of 2026-08-08). A child propagating from a parent that different views place differently is
-a divergence with nothing to catch it — the [[B94]] shape, where the GM window and the player window
-each told a coherent, different story.
+```ts
+const abs = ops.add(parentPos, relative);   // parent's resolved position + own Keplerian offset
+```
 
-> **CARRY AND RELEASE DELETES THAT, because a carried construct has NO INDEPENDENT POSITION AT ALL
-> for the duration. There is nothing left for two views to disagree about.**
+**Unconditionally, for every node, however the parent's own position was obtained** — sampler,
+GM-stamped vector, or its own orbit. A child is computed FROM its parent, so it cannot drift away
+from it. Move the host and the whole assembly moves, orbits intact, with no new machinery and
+nothing extra to transmit but the host's position.
 
-That is a stronger reason than the labour saving, and it means this is not a simplification to be
-regretted later.
+**Where the earlier draft went wrong, recorded so nobody re-derives it.** The concern was that a
+moving hybrid's position comes from a sampler whose choice is caller policy, and a free-scrubbing
+player view passes none — so the host would sit at its GM-stamped position rather than one derived
+from the player's own clock. **That is true and it is not a fault:** it is the owner's own rule of
+2026-08-08, deliberately chosen, and the assembly stays SELF-CONSISTENT because the children are
+added to whatever the host resolved to. What varies between views is where the whole assembly is —
+which is already the accepted behaviour for every transiting construct. **A dead end worth its row:
+"children of a moving parent diverge" is FALSE, and the reason is one line of vector addition.**
 
-**The mechanic.**
+**So carrying a fleet, moons and stations along is the DEFAULT, and it is free.** Owner: *"if we can
+travel objects with a death star then that is better - one use case catches a fleet, moons, etc."*
 
-- **On departure**, every construct parented to the hybrid is CARRIED: its position resolution is
-  suspended, it renders aboard rather than in space, and its own scheduled journeys are suspended
-  with it (a construct cannot depart from a host that is itself under way — say so, do not silently
-  drop the journey).
-- **On arrival**, they are RELEASED. Their orbital elements are relative to the hybrid and were never
-  touched, so the orbits simply resume — nothing is re-derived, which is why this is cheap.
-- **The log is derived, not mirrored.** `constructInteractions.ts` already builds a target's incoming
-  log by scanning the fleet's own `flight_log`s, deliberately keeping one source of truth so
-  time-scrubbing stays correct. A `carried` / `released` event pair on the carried construct's own
-  log fits that exactly. **Do not write a manifest onto the hybrid.**
+**THE ONE HONEST OBJECTION LEFT IS PHYSICS, NOT IMPLEMENTATION, AND IT IS A TAG RATHER THAN A
+BLOCK.** You cannot hold a Keplerian orbit around a primary that is under thrust: the orbiting
+objects are in free fall and a thrusting host simply accelerates out from under them. So an assembly
+that stays together under power is doing something remarkable. **Steer, do not stop** — say so, name
+it, and let the GM keep it. Unobtanium, inertial compensation, a plot device: all valid, and the tag
+is the interesting part rather than the obstacle. The engine's job is the sentence *"this fleet is
+being carried; something is holding it together"*, not a refusal.
 
-**NATURAL SATELLITES CANNOT BE DOCKED, and the honest answer is that they are LEFT BEHIND.** If a
-captured rock orbits a Death Star and the Death Star leaves, the rock stays in the orbit it was in,
-re-parented to the old host. That needs no new physics, it is narratively obvious, and it is a
-*steer*: say what will happen before the burn, and let the GM decide. It must not silently delete
-the moon or silently drag it.
+**CARRY-AND-RELEASE SURVIVES AS AN OPTION, NOT A REQUIREMENT.** Docking a fleet on departure and
+setting it down on arrival is still worth having — it is narratively neat, it handles craft that
+should not be left in an orbit, and it makes a manifest possible. It is now a GM's choice rather
+than the mechanism that makes movement work at all.
 
-**Two things to publish rather than enforce**, per steer-do-not-stop: whether the hybrid has the
-capacity for what it is carrying (`cargoCapacity_tonnes` exists on the template), and what the
-voyage costs the carried crews in consumables (`systems.life_support.consumables_*` exists too). Show
-both; refuse neither.
+- **Carried** (opt-in): the construct's position resolution is suspended, it renders aboard, its own
+  scheduled journeys are suspended with it. Log a `carried` / `released` pair on the carried
+  construct's OWN `flight_log` — `constructInteractions.ts` derives a target's incoming log from the
+  fleet on demand, so **do not write a manifest onto the hybrid**; there must stay one source of
+  truth.
+- **Along for the ride** (default): nothing happens at all. The orbit is relative and the vector
+  addition does the work.
 
-### 3.7 Asteroids are the same mechanism from the other side — and this generalises the feature
+### 3.7 Asteroids come through the same seam — and the migration is a SWEEP, not an opt-in
 
 Owner, 2026-08-28: *"Small bodies like asteroids are available as constructs or bodies... by
-choice... they do bridge - I guess we could just hybrid them too like a death star"*
+choice... they do bridge - I guess we could just hybrid them too like a death star"*, and then:
+*"Existing asteroids - just bring them all into the new system - we have a mass... just giving them
+spin, etc makes sense - keep imported ones in low bounds of spin so we don't need to determine when
+they fall apart, etc and wreck their intent."*
 
-**Verified: they genuinely are available both ways today.** The construct pack's `small_body`
-category holds 'Asteroid (C-Type)', 'Asteroid (M-Type)', 'Comet (Active)' and 'Captured Rock
-(Moonlet)', all authored `kind: 'construct'`; and the classifier side carries `asteroid`,
-`dwarf-planet`, `rubble-pile` and `planetesimal` as real body classes. A GM picks a lane and the two
-lanes behave completely differently — see [[B109]] for what the construct lane silently costs.
+**Verified: they genuinely are available both ways today.** The pack's `small_body` category holds
+'Asteroid (C-Type)', 'Asteroid (M-Type)', 'Comet (Active)' and 'Captured Rock (Moonlet)', all
+authored `kind: 'construct'`; and the classifier side carries `asteroid`, `dwarf-planet`,
+`rubble-pile` and `planetesimal` as real body classes. A GM picks a lane and the lanes behave
+completely differently — see [[B109]].
 
-**So the hybrid is not a mega-construct special case. It is a general mechanism with two entrances:**
+**So the hybrid is not a mega-construct special case. It is one mechanism with two entrances:**
 
 | | comes from | wants |
 |---|---|---|
-| **Death Star, ringworld** | a CONSTRUCT that the physics must treat as real | body physics it never had |
-| **asteroid, comet, moonlet** | a BODY that the GM wants to treat as a place | construct chrome it never had |
+| **Death Star, ringworld** | a CONSTRUCT the physics must treat as real | body physics it never had |
+| **asteroid, comet, moonlet** | a BODY a GM wants to treat as a place | construct chrome it never had |
 
-Both want *body physics + construct chrome*. **That is the whole feature, and framing it this way is
-what makes it worth building** — it stops being "six exotic megastructures" and becomes one seam that
-also fixes the small-body split the product already has.
+**That framing is what makes this worth building** — it stops being "six exotic megastructures" and
+becomes one seam that also fixes a split the product already has.
 
-**This changes [[B109]]'s routing.** That row says "do not fix this inside G53"; with this decision it
-becomes G53's own phase 5 instead, because it is the identical migration
-(`kind: 'construct'` → `kind: 'body'` + `constructChrome`) and doing it twice would be two conventions
-for one idea. **The migration question is still real and still owned by the owner:** existing saved
-campaigns hold asteroids as constructs, and moving them gains them gravity, classification and a spin
-axis they did not have. That is a better asteroid and a CHANGED one, and a GM's system will not look
-identical afterwards. Recommend an opt-in per object ("treat this as a real body") rather than a
-sweeping migration on load, which is also the least surprising thing.
+#### The data is further along than the ask assumes
 
+**The templates ALREADY carry mass, dimensions AND spin.** `massKg`, `dimensionsM` and
+`rotation_period_hours` (8 h, 5 h, 12 h, and 0 for the moonlet) are all authored. Nothing needs
+inventing: `importFixup.ts:302` simply refuses a construct a spin axis, so the authored rotation has
+never been read.
+
+**And the engine ALREADY determines when a body falls apart** — the thing the owner hoped to avoid
+needing. `src/lib/physics/rotation.ts` is a complete, calibrated model:
+`breakupPeriodHours(densityGcc)` (T_min = sqrt(3π/Gρ)), `spinFraction`, `oblateness`, and named
+bands `OBLATE_AT` 0.25 / `ELLIPSOID_AT` 0.5 / `NEAR_BREAKUP_AT` 0.8 / `BREAKUP_AT` 1.0, calibrated so
+Earth reads spherical and Jupiter and Saturn read oblate.
+
+> **SO THE GUARD IS NOT A HAND-PICKED HOUR RANGE. Clamp a migrated rock to
+> `spinFraction < OBLATE_AT` — the engine's own constant, the top of its 'spherical' band — and no
+> imported asteroid changes shape on migration.** That is the "do not wreck their intent" requirement
+> expressed in a number the engine already owns, per the standing rule that thresholds are DATA and
+> not hand-tuned inline.
+
+**DETERMINISM IS NOT OPTIONAL.** Where a value must be invented (the moonlet's `rotation_period_hours`
+is 0), seed it from the object's STABLE ID — never `Math.random()`. A rock that spins differently on
+each load is a value a later pass writes and an earlier one read, which is what
+`src/lib/system/idempotence.test.ts` exists to catch, and it would also make every save non-
+reproducible. This codebase already holds that line elsewhere (`makePresetId` is documented as
+"deterministic — no RNG").
+
+#### THE MIGRATION WILL EXPOSE AUTHORED VALUES NOBODY HAS EVER CHECKED
+
+Because a construct's `massKg` is read by nothing, the bundled small-body templates have never been
+validated against their own dimensions. Computing bulk density from the authored mass and
+`dimensionsM`:
+
+| template | ρ (g/cc) | T_breakup | T authored | spin fraction | on migration |
+|---|---|---|---|---|---|
+| Asteroid (C-Type) | 4.8 | 1.5 h | 8 h | 0.19 | spherical — fine, though dense for a C-type (real ≈1.4) |
+| Asteroid (M-Type) | **127** | 0.3 h | 5 h | 0.06 | **impossible** — osmium, the densest element, is 22.6 |
+| Comet (Active) | 0.07 | 12.8 h | 12 h | **1.07** | **UNSTABLE** — already past mass-shedding as authored |
+| Captured Rock (Moonlet) | **32** | 0.6 h | 0 h | — | **impossible**, and no spin authored |
+
+**Three of the four are physically impossible or unstable, and none of it matters today.** The
+moment they become bodies, the M-type gets a density five times any real material, and the comet
+classifies as `unstable` and is clamped to `oblateness` 0.95 — it would render as a flat disc.
+
+**Fix the PACK data; that is not what steer-do-not-stop protects.** The rule is about not correcting
+a GM's authored map. These are our own shipped templates, and shipping a rock denser than osmium is
+a defect rather than a creative choice. **A GM's own asteroids are the opposite case:** migrate them,
+tag whatever the physics finds, and change nothing.
+
+**Add a gate while doing it:** every bundled template's authored mass and dimensions must yield a
+plausible bulk density and a stable spin. That is a cheap test over pack JSON and it would have
+caught all three of these before they shipped.
 
 ## 4. Data model
 
@@ -711,9 +773,11 @@ migrate the chrome sites behind `showsAsConstruct`. Run `idempotence.test.ts` fi
 (§3.4 item 7) BEFORE starting. Carry-and-release (§3.6) ships WITH this phase, not after it — it is
 what makes a moving hybrid safe rather than a follow-up nicety. Then `DockNode` through the planner.
 
-**Phase 5b — asteroids through the same seam (§3.7).** The identical migration, opt-in per object.
-Deliberately last of the risky work and deliberately NOT a separate feature: doing it twice would be
-two conventions for one idea, which is the fault this codebase names as its most recurring.
+**Phase 5b — asteroids through the same seam (§3.7). A SWEEP, not an opt-in** — the owner's call:
+*"just bring them all into the new system"*. Clamp migrated rocks to `spinFraction < OBLATE_AT` so
+none changes shape; seed any invented value from the stable id, never RNG; **fix the three impossible
+bundled templates first** and add the pack-plausibility gate that would have caught them. Deliberately
+NOT a separate feature: doing it twice would be two conventions for one idea.
 
 **Phase 6 — the catalogue widens.** Shkadov, soletta, Birch, aerostat. All are parameter sets on
 families that exist by now.
