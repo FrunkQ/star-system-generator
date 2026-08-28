@@ -412,18 +412,40 @@ it, and let the GM keep it. Unobtanium, inertial compensation, a plot device: al
 is the interesting part rather than the obstacle. The engine's job is the sentence *"this fleet is
 being carried; something is holding it together"*, not a refusal.
 
-**CARRY-AND-RELEASE SURVIVES AS AN OPTION, NOT A REQUIREMENT.** Docking a fleet on departure and
-setting it down on arrival is still worth having — it is narratively neat, it handles craft that
-should not be left in an orbit, and it makes a manifest possible. It is now a GM's choice rather
-than the mechanism that makes movement work at all.
+**AND THE TWO FOLD TOGETHER INTO ONE THING, which is the owner's own framing, 2026-08-28:** *"We are
+not TELLING the GM to dock everything - just to have a reason they come as they are and we don't
+leave them behind. OR ask them to dock them or poke the magic button 'unobtanium'. We can always
+create lost moons later."*
 
-- **Carried** (opt-in): the construct's position resolution is suspended, it renders aboard, its own
-  scheduled journeys are suspended with it. Log a `carried` / `released` pair on the carried
-  construct's OWN `flight_log` — `constructInteractions.ts` derives a target's incoming log from the
-  fleet on demand, so **do not write a manifest onto the hybrid**; there must stay one source of
-  truth.
-- **Along for the ride** (default): nothing happens at all. The orbit is relative and the vector
-  addition does the work.
+> **SO: ONE OFFER AT DEPARTURE, THREE BUTTONS, NO ENFORCEMENT ANYWHERE.** The engine never docks
+> silently, never leaves anything behind silently, and never refuses the burn. What it does is ask
+> once, and then record which answer it was given.
+
+| choice | what happens | what it is for |
+|---|---|---|
+| **They come as they are** (default) | nothing at all — the vector addition already does it | the common case, and it is free |
+| **Dock them first** | carry-and-release: positions suspended, a `carried`/`released` pair on each craft's own log | a fleet you want accounted for, or craft that should not sit in an orbit |
+| **Unobtanium** | same as the default, but the *reason* is named and tagged | the GM saying "something holds them, do not ask" |
+
+**The magic button is not a joke setting; it is the honest one.** The engine's only real objection —
+that you cannot hold a Keplerian orbit around a primary under thrust — is a statement about physics,
+not about what a GM may do. Pressing the button is the GM answering it. **The tag is the interesting
+part:** a moon orbiting a battle station under way, with `unobtanium` on the assembly, is a story
+hook sitting on the map waiting to be found.
+
+**And that tag wants [[G54]]'s disclosure ladder, which is why the two items should stay aware of
+each other.** At rung 2 (`anonymous`) the players see that *something* is holding the fleet together
+and not what — which is exactly the shape this wants and costs nothing extra once G54's middle rung
+exists.
+
+**Default is "they come".** It is what is free, it is what the owner asked for, and it is the least
+surprising thing: a GM who moves a battle station expects its fleet to still be there.
+
+**BANKED, NOT BUILT: LOST MOONS.** The owner: *"We can always create lost moons later."* A fourth
+choice — leave them behind, re-parented to the old host, possibly on disturbed orbits — is a real
+feature and a good one, and it is deliberately not in this design. Recorded here so it is not
+re-derived: the mechanism is a re-parent plus an orbit that no longer closes, and it wants its own
+item when someone wants the story.
 
 ### 3.7 Asteroids come through the same seam — and the migration is a SWEEP, not an opt-in
 

@@ -16,9 +16,9 @@
       "crew": { "current": 0, "max": 0 },
       "physical_parameters": {
         "dimensionsM": [5000, 4000, 3000],
-        "massKg": 1.5e+14,
+        "massKg": 4.4e+13,
         "cargoCapacity_tonnes": 0,
-        "rotation_period_hours": 8,
+        "rotation_period_hours": 14,
         "spinRadiusM": 0,
         "can_aerobrake": false,
         "has_landing_gear": false
@@ -45,9 +45,9 @@
       "crew": { "current": 0, "max": 0 },
       "physical_parameters": {
         "dimensionsM": [2000, 1500, 1500],
-        "massKg": 3e+14,
+        "massKg": 1.06e+13,
         "cargoCapacity_tonnes": 0,
-        "rotation_period_hours": 5,
+        "rotation_period_hours": 8,
         "spinRadiusM": 0,
         "can_aerobrake": false,
         "has_landing_gear": false
@@ -74,9 +74,9 @@
       "crew": { "current": 0, "max": 0 },
       "physical_parameters": {
         "dimensionsM": [8000, 6000, 6000],
-        "massKg": 1e+13,
+        "massKg": 7.54e+13,
         "cargoCapacity_tonnes": 0,
-        "rotation_period_hours": 12,
+        "rotation_period_hours": 24,
         "spinRadiusM": 0,
         "can_aerobrake": false,
         "has_landing_gear": false
@@ -103,9 +103,9 @@
       "crew": { "current": 0, "max": 0 },
       "physical_parameters": {
         "dimensionsM": [500, 300, 200],
-        "massKg": 5e+11,
+        "massKg": 3.14e+10,
         "cargoCapacity_tonnes": 0,
-        "rotation_period_hours": 0,
+        "rotation_period_hours": 12,
         "spinRadiusM": 0,
         "can_aerobrake": false,
         "has_landing_gear": false
