@@ -597,22 +597,61 @@ that ships and one that becomes six half-finished renderers.
 | family | 3D | 2D | types |
 |---|---|---|---|
 | `tether` | line/thin cylinder, surface → counterweight, spinning with the host | radial line from the host glyph, length to scale | space elevator, skyhook, star lifter |
-| `ring` | torus in a declared plane, `megaRadiusKm` × `megaWidthKm` | circle at true scale (reuse the ORBIT-line renderer, not the glyph) | orbital ring, planetary torus, ringworld, Bishop ring, Halo |
+| `ring` | annulus/torus in a declared plane, `megaRadiusKm` x `megaWidthKm` — see the WARNING below | circle at true scale (reuse the ORBIT-line renderer, not the glyph) | orbital ring, planetary torus, ringworld, Bishop ring, Halo |
 | `shell` | sphere at `megaRadiusKm`, back-face visible from inside, occluding the star | circle with a distinct stroke, at true scale | Dyson sphere, supramundane shell, Matrioshka brain |
 | `swarm` | instanced particles on a shell distribution — **reuse the belt/ring particle renderer** | stippled annulus, exactly as belts already draw | Dyson swarm, collector array, statite cloud |
 | `spheroid` | today's `attachHullVolume` ellipsoid, or a GLB | today's glyph | Death Star, anything moon-shaped |
 
 **Two of the five already exist.** `swarm` is the belt renderer (`beltStyle: 'rocks' | 'band'` and
-its particle path); `spheroid` is `attachHullVolume` unchanged. `ring` is close to the existing
-planetary-ring path. **Genuinely new: `tether` and `shell`.** Scoping it this way turns "six
-specialised renderers" into two, and that is the single biggest cost saving in this document.
+its particle path); `spheroid` is `attachHullVolume` unchanged. **Genuinely new: `tether` and
+`shell`.** Scoping this way turns "six specialised renderers" into two, and that is the single
+biggest cost saving in this document.
 
-**Scale-law consequence, and it is not optional.** P4 put ships, bodies and stars on ONE kind-blind
-span map so a physically larger object can never render smaller than a smaller one (R9,
-`src/lib/rendering/scaleLaw.ts`, gates in `scaleLaw.spec.ts`). **A ringworld is 300 million km
-across and would sit at the top of that map.** Before any mega geometry is drawn, `scaleLaw.ts` must
-be shown a mega-construct and the R9 ordering block must still pass. Expect this to be the hardest
-part of the render work, and do it FIRST — a shape that cannot be sized honestly is not finished.
+> **WARNING, CHECKED 2026-08-28 — `ring` IS ONLY HALF-REUSABLE, AND AN EARLIER DRAFT OVERSTATED IT.**
+> `buildPlanetRingBand` (`scene.ts:5647`) does give you a working annulus: `THREE.RingGeometry` at
+> `scene.ts:5662`, rotated into the pivot's ground plane, with vertex colours already carrying the
+> planet's shadow arc. **Reuse that geometry and that shadow machinery.** But do NOT reuse the
+> BUILDER: it sizes the ring RELATIVE TO ITS PARENT's rendered radius (`planetRenderedR`) and then
+> clamps hard — `innerScene >= planetRenderedR * 1.08` and **`outerScene <= planetRenderedR * 4.5`,
+> commented "don't let a ring dominate"**. A ringworld is roughly 200x its star's radius, so that
+> clamp would draw it as a modest Saturn-like band around the star. **A mega ring must be sized
+> ABSOLUTELY through `scaleLaw`, never through `planetRenderedR`.** Note too that `RingGeometry` is a
+> flat annulus — correct for a Niven ribbon, wrong for a planetary TORUS, which wants
+> `TorusGeometry`. The `ring` family therefore has two shapes in it, not one.
+
+**SCALE LAW: MEASURED 2026-08-28, AND THE EARLIER WARNING IN THIS SECTION WAS WRONG.** It said a
+ringworld "would sit at the top of the span map", that R9 was at risk, and that this would be the
+hardest part of the render work. **Mega-scale objects were run through the real law and R9 holds
+perfectly — ZERO violations, at every dial position.** Ordering is monotonic from a ringworld's
+9.4e11 m circumference down to a 46 m corvette. There is no pre-work to do and phase 2 does not need
+to exist as a risk item.
+
+**THE REAL CONSEQUENCE IS THE OPPOSITE ONE, and it is a design problem rather than a correctness
+one.** Measured at `rMax` 30, `GRID_RADIUS` 12:
+
+| | ringworld (1 AU) | Sol | Earth | ringworld / Sol |
+|---|---|---|---|---|
+| `bodySize` 1 (readable) | 1.414 | 0.849 | 0.441 | **1.67x** |
+| `bodySize` 0.5 | 1.885 | 0.056 | 0.0039 | 33x |
+| `bodySize` 0 (true) | 2.513 | 0.0037 | 0.000034 | **675x** |
+
+**At the readable end a ringworld draws barely wider than its own star**, despite being some 675
+times larger. That is the log compression doing exactly what it is designed to do, and it is not a
+bug — but it means a megastructure does not LOOK mega at the dial position most presets ship at.
+
+**SO MEGA-CONSTRUCTS MAKE THE SIZE DIALS MATTER FAR MORE THAN THEY DID, AND [[S2c]] IS ALREADY THE
+CONTROL FOR IT** — shipped v3.0.166, before this was known. A GM can pull CONSTRUCTS toward true
+scale while leaving bodies readable, which is exactly the ringworld case. **But note the ceiling,
+because it is a real limit and not a tuning problem:** with `bodySize` 1 and the construct offset
+driven fully negative, the construct dial reaches 0 and the ringworld draws 2.513 against Sol's
+0.849 — **about 3x, and that is the most contrast the law can give while bodies stay readable.**
+A system with a megastructure in it probably wants a LOWER `bodySize` default, and that is a
+preset-authoring recommendation rather than a code change.
+
+Note also `scene.ts:2991` — *"the model contributes no radius anywhere"* — which is true of
+constructs and must NOT be true of a hybrid: framing, `minDistance` and the system extent (A78,
+`systemExtent.spec.ts`) all have to see its radius, or zooming out on a ringworld system frames the
+star and clips the ring. **That one still stands and was not measured.**
 
 Note also that these objects break the *"a construct's model contributes no radius anywhere"* rule at
 [scene.ts:2991](../../src/lib/holo/scene.ts). A ringworld absolutely contributes a radius: framing,

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.173 - 28th Aug 2026
+
+- Board only. Three assumptions in the mega-structure design were measured instead of trusted, and two of them were wrong.
+
 ## v3.0.172 - 28th Aug 2026
 
 - Four bundled small bodies had masses that made them denser than any real material, and one comet was spinning fast enough to fly apart. Their sizes are unchanged; their masses and spins are now those of real asteroids and comets, and a new check keeps it that way.
