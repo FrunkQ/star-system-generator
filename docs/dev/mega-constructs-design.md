@@ -830,6 +830,8 @@ duplication.
 
 ### 5b.4b THE INSIDE IS A WORLD — and this is the strongest argument yet for the hybrid
 
+> **ROLLED INTO THE SURFACE-AREAS SYSTEM, owner decision 2026-08-28 — see `surface-areas-design.md` §10 ([[G56]]) before building any of this section.** The interior is a `SurfaceArea` band with an inward facing; gravity comes from a CALCULATED SPIN (never a fake g) through one region-gravity provider; the atmosphere is the same model with retention restated (rim walls in scale heights; a spun sphere pools its air into an equatorial band — a sphere is atmospherically a ring, which is why honest catalogues grow many rings and spheres read amber off-equator). The seven derivations below stand; §10 names the record they hang from.
+
 Owner, 2026-08-28: *"The INSIDE of a ringworld or sphere will be 'livable' and show living world
 parameters and are drawn in 3D - An inside out planet with green life."*
 

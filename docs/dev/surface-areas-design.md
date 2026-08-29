@@ -415,3 +415,97 @@ into). Scope deliberately: this is where the cost is, and it is separable from a
   E-ring plating it, which is a whole-body coating rather than an area. Iapetus (0.531 against 0.20)
   IS an area case — leading-hemisphere dust — and is the best phase-3/4 acceptance body after
   Ganymede.
+
+## 10. PRE-V4 REQUIREMENT — the INTERNAL surface, and megastructures roll into THIS system
+
+**Commissioned by the owner, 2026-08-28, while G53 phase 1 was landing**, in his words: *"being able
+to segment planets - have internal features and complex composition, surface features, etc. Dyson
+spheres and ring worlds logic should roll into that. i.e. we have the concept of an internal surface
+that can have properties. Maybe even have the concept of an internal gradient... these are spheres
+turned inside out - so their internal surface is effectively the external surface on a planet - able
+to hold an atmosphere... so same systems with a different entry point... At the moment how are you
+coping with 'breathable atmospheres' on these? ...not a fake g - but a spin... which we can
+calculate - can that hold an atmosphere? So no fake g - but a calculated spin."* And on spheres:
+*"magic tech as that works on the edge - not elsewhere - which is why we are unlikely to have
+spheres but many rings without magic."*
+
+**The honest current state, so nobody assumes otherwise: TODAY NOTHING COMPUTES AN ATMOSPHERE ON A
+MEGASTRUCTURE AT ALL.** A G53 phase-1 mega is `kind: 'construct'`; the atmosphere, temperature and
+habitability chain gates on `kind === 'body'` and never sees it. There is no special case, and this
+requirement is the reason none may ever be built: the interior is served by the SAME systems as a
+planet's surface, entered differently.
+
+### 10.1 The interior surface is a REGION IN THIS SPEC, not a new model
+
+An inside-out world's habitable floor is a `SurfaceArea` on the hybrid body (G53 phase 5's
+`kind: 'body'` + `constructChrome`):
+
+```ts
+{ frame: 'spin', shape: { kind: 'band', fromLatDeg: -x, toLatDeg: x } }   // the livable band
+```
+
+with ONE new bit of information: **which face is inhabited** — `facing?: 'outward' | 'inward'`,
+default `'outward'` (today's meaning, so nothing existing says anything). Down is outward on an
+inner surface; everything else about the record — the frames, the paint layers, the derived
+fractions, the radial extents of §5 — is UNCHANGED and immediately reusable: seas, cities and
+shadow-square strips on a ringworld floor are just further layers painted onto that band, and a
+megastructure's non-uniform composition is §5's interior chunks. Complex composition, internal
+features and segmented surfaces are ONE vocabulary for planets and megastructures both.
+
+### 10.2 No fake g — a CALCULATED SPIN, through one gravity provider
+
+The chain today reads surface gravity as GM/r². The requirement is ONE region-effective-gravity
+seam: a body's region answers GM/r² exactly as now (bit-for-bit — pin it); a spun interior answers
+
+```
+g_eff(lat) = omega^2 * r * cos^2(lat)      omega = 2*pi / rotation_period, r = spinRadiusM
+```
+
+from fields that ALREADY EXIST and are already authored coherently on the shipped mega templates
+(`spinRadiusM` + `rotation_period_hours`; the bundled ringworld spins 215.5 h at 1 AU = 1.00 g —
+held by `megaDerive.spec.ts`). No fake g, no fake mass, nothing authored that the physics can
+derive: the spin is the input, the gravity is the output, like everything else in this engine. The
+cos^2 fall-off across the band IS the owner's "internal gradient", and it is one cosine, not a
+subsystem.
+
+### 10.3 The atmosphere: same model, retention restated
+
+Reuse the WHOLE atmosphere stack — composition, pressure, scale height H = kT/(m*g_eff),
+breathability, cloud decks — with g_eff swapped in at the seam. What genuinely changes is
+RETENTION, because an inner surface does not lose gas to space by escape velocity; it loses it over
+an EDGE:
+
+- **A band (ringworld, torus): air sits in the spinning trough against rim walls.** The honest
+  figure is the wall height in scale heights: Niven's ~1,600 km walls against H ~ 8.5 km at 1 g and
+  288 K is hundreds of scale heights — leakage is nothing. Publish `wallHeightsInH` and steer:
+  a GM's 20 km walls get a sentence about thin air at the rim, never a refusal.
+- **A full sphere: the shell theorem is the whole story, and it is the owner's point.** A uniform
+  shell exerts NO gravity on its own interior; the star pulls gas OFF the floor toward the centre;
+  spin presses gas floorward only by cos^2(lat) while the tangential component omega^2*r*cos*sin
+  drains everything equatorward. So a spun sphere's atmosphere POOLS INTO AN EQUATORIAL BAND with a
+  derivable edge latitude, and the rest of the interior is vacuum — **a sphere is, atmospherically,
+  a ring wearing extra shell.** Habitability anywhere else on a sphere's interior is AMBER — no
+  known mechanism, magic tech, allowed and said plainly — which is why an honest catalogue grows
+  MANY RINGS rather than spheres, exactly the shapes G53's one sphere-section generator already
+  draws with different arguments. A GM's full-sphere paradise is tagged and explained, never
+  refused.
+
+The other entry-point differences are already recorded in `mega-constructs-design.md` §5b.4b
+(insolation from a star at the CENTRE, day/night from shadow squares, a horizon that curves up,
+composition DECLARED because it is built) and stand unchanged; this section adds the gravity
+provider and the retention restatement, and names the record they all hang from.
+
+### 10.4 Acceptance shape
+
+1. ONE gravity provider; every existing body's numbers bit-for-bit unchanged (the P1 pin pattern).
+2. The bundled ringworld at defaults derives ~1.00 g, H ~ 8.5 km for an Earth-mix at 288 K, and a
+   published walls-in-scale-heights figure.
+3. A spun sphere derives its pooled-band edge latitude; the remainder tags amber with the
+   shell-theorem sentence.
+4. No authored value is rewritten anywhere (steer, never stop).
+5. `idempotence.test.ts` stays green — g_eff is derived from authored spin, never accumulated.
+
+**Sequencing:** needs the G53 phase-5 hybrid flip (so the chain runs on megas at all) and phase 1
+of THIS spec (the record). Both are already scheduled; this section is the requirement that they
+meet in the middle. Inbox: [[G56]].
+

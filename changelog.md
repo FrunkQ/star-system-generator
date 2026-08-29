@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.195 - 28th Aug 2026
+
+- Board only. A pre-V4 requirement is written: megastructure interiors roll into the planet-segmentation system rather than growing their own. An inside-out world's floor becomes an ordinary surface region facing inward; its gravity is the calculated spin, never a faked figure; the same atmosphere model then holds air against rim walls - and the physics says a spun sphere pools its air into an equatorial band, which is why worlds without magic build many rings rather than spheres.
+
 ## v3.0.194 - 28th Aug 2026
 
 - A new pair is named after what its two bodies have in common rather than by gluing both names together: "Jupiter L4 Trojan Pair", not "Jupiter L4 Trojan-Jupiter L4 Trojan I Barycentre". Two bodies with genuinely different names still read the old way, because there it tells you something - Pluto-Charon stays Pluto-Charon.

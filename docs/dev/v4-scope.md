@@ -418,6 +418,8 @@ the spec — pre-V4, and it stands alone.
 
 Measurements taken at v2.1.764 and v2.1.775-beta; re-take rather than trust them if this sits.
 
+**ADDED 2026-08-28 ([[G56]]): megastructure interiors ROLL INTO this system** — `surface-areas-design.md` §10. An inside-out world's floor is a region record with an inward facing; its gravity is a calculated spin through one region-gravity provider; its atmosphere is the existing model with retention restated. Same systems, different entry point — the owner's framing, and the reason neither megastructures nor V4 generation grows a second surface model.
+
 ## Two warnings for whoever opens V4
 
 1. **THE GENERATION DUPLICATION PROBLEM IS THE MAIN RISK, and V4 is where it is either fixed or made
