@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.194 - 28th Aug 2026
+
+- A new pair is named after what its two bodies have in common rather than by gluing both names together: "Jupiter L4 Trojan Pair", not "Jupiter L4 Trojan-Jupiter L4 Trojan I Barycentre". Two bodies with genuinely different names still read the old way, because there it tells you something - Pluto-Charon stays Pluto-Charon.
+- The barycentre's own row in the body list now says what it is instead of just looking faded: "the point Pluto + Charon orbit - select either to edit". It is a point in space with nothing to edit, which is why it is not selectable; the pair is edited from either body.
+
 ## v3.0.193 - 28th Aug 2026
 
 - Megaconstructs move to the proper picker (G53, owner correction). Create New Construct is now Create New Construct/Megaconstruct: the faceted browser gains a Megaconstructs tab beside Constructs, appearing only when the chosen host can take something. Each row carries a small drawn preview generated from the type's own numbers - a swarm's dots follow its density, a part-built shell shows exactly its coverage as a growing arc, the Death Star gets its dish - and a type this host cannot take greys out with its reason under the name. Selecting one shows its honest figures in the footer ("spin gravity ~1.00 g - 2.9 million Earths of floor"); Create then opens the placement step with the choice locked, placements narrowed to what fits, the distance seeded from where you clicked, and the amber advice still speaking. Verified live: a ringworld placed at 3 AU around Sol arrives carrying its own explanation of the cold.

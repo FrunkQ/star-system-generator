@@ -138,6 +138,18 @@
     // (altitude ~0), so say "on X" rather than "orbits X".
     const a = n.orbit?.elements?.a_AU;
     if (a != null && p.radiusKm && a * AU_KM <= p.radiusKm * 1.005) return `on ${p.name}`;
+    // A BARYCENTRE IS DELIBERATELY UNSELECTABLE (owner, 2026-08-28: "the barycentre cant be selected
+    // so should be greyed out but they are full citizens") - it is a POINT, with no surface, no
+    // panel and nothing to edit; the pair is edited from either member's Orbit tab, which carries
+    // both the separation and the pair's own distance. Greying it is right, but greying WITHOUT
+    // SAYING WHY reads as a bug, so the row states what it is and where to go instead.
+    if (n.kind === 'barycenter') {
+      const held = (n.memberIds || [])
+        .map((id: string) => (nodes as any[]).find((x) => x.id === id)?.name)
+        .filter(Boolean);
+      const where = held.length ? held.join(' + ') : p.name;
+      return `the point ${where} orbit · select either to edit`;
+    }
     // A MEMBER OF A PAIR names its PARTNER, not the barycentre - the auto pair name concatenates
     // both members plus "Barycentre", so "orbits <that>" reads the row's own name back at the GM
     // twice over (owner screenshot, 2026-08-28; same lesson as BodyOrbitTab's host labels). The

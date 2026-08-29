@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { contextPeerIds, dominantMemberOf, isBarycentre, pairMembersOf } from './barycentres';
+import { autoPairName, contextPeerIds, dominantMemberOf, isBarycentre, pairMembersOf } from './barycentres';
 import { availableFrameLevels, frameForLevel } from '../viewport/camera';
 import type { System } from '../types';
 
@@ -78,4 +78,39 @@ describe('barycentres are pair containers', () => {
     const half = halfViewAU(f.zoom);
     expect(half).toBeGreaterThanOrEqual(120); // reaches back to the pair it orbits
   });
+});
+
+// THE AUTO NAME FOR A NEW PAIR. Owner's screenshot, 2026-08-28: promoting a trojan and its companion
+// produced "Jupiter L4 Trojan-Jupiter L4 Trojan I Barycentre" - 47 characters saying one thing twice,
+// and long enough that the picker row it captioned had no space left for the body's own name. A
+// companion is normally named FROM its primary, so the joined form repeats the shared part by
+// construction; this is not a rare case, it is the DEFAULT one for anything created as a companion.
+describe('autoPairName', () => {
+	it('collapses the shared prefix, which is what a companion name always has', () => {
+		expect(autoPairName('Jupiter L4 Trojan', 'Jupiter L4 Trojan I')).toBe('Jupiter L4 Trojan Pair');
+		expect(autoPairName('Alpha Centauri A', 'Alpha Centauri B')).toBe('Alpha Centauri Pair');
+		expect(autoPairName('PS21 Ba', 'PS21 Bb')).toBe('PS21 Pair');
+	});
+
+	it('KEEPS the joined form when the two names share nothing - there it is the informative one', () => {
+		expect(autoPairName('Pluto', 'Charon')).toBe('Pluto-Charon Barycentre');
+		expect(autoPairName('Rigil Kentaurus', 'Toliman')).toBe('Rigil Kentaurus-Toliman Barycentre');
+	});
+
+	it('matches WHOLE WORDS only, so a coincidental letter run is not a shared name', () => {
+		expect(autoPairName('Mars', 'Marsha')).toBe('Mars-Marsha Barycentre');
+		expect(autoPairName('Io', 'Ion')).toBe('Io-Ion Barycentre');
+	});
+
+	it('never returns something longer than the two names joined - the whole point', () => {
+		for (const [a, b] of [['Jupiter L4 Trojan', 'Jupiter L4 Trojan I'], ['Alpha Centauri A', 'Alpha Centauri B'],
+		                      ['Pluto', 'Charon'], ['Mars', 'Marsha']]) {
+			expect(autoPairName(a, b).length).toBeLessThanOrEqual(`${a}-${b} Barycentre`.length);
+		}
+	});
+
+	it('survives a missing name rather than producing "-X Barycentre"', () => {
+		expect(autoPairName('', 'Charon')).toBe('Charon Barycentre');
+		expect(autoPairName('Pluto', '')).toBe('Pluto Barycentre');
+	});
 });

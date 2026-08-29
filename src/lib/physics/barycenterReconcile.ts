@@ -1,6 +1,7 @@
 import type { Barycenter, CelestialBody, Orbit, RulePack, System } from '../types';
 import { G, AU_KM } from '../constants';
 import { rephasedM0 } from './orbits';
+import { autoPairName } from '../system/barycentres';
 import { generateId } from '../utils';
 
 // WHEN A LARGE MOON BECOMES A DOUBLE PLANET, and it is a JUDGEMENT rather than a law. There is no
@@ -134,7 +135,10 @@ function promoteMassiveCompanion(system: System, t: PairThresholds): boolean {
     const barycenter: Barycenter = {
       id: baryId,
       kind: 'barycenter',
-      name: `${heavy.name}-${light.name} Barycentre`, // UK spelling in UI text; the node KIND stays 'barycenter'
+      // Shared-prefix aware: a companion is usually named FROM its primary, so joining both whole
+      // names says one thing twice and produces a caption long enough to crush its own row.
+      // UK spelling in UI text; the node KIND stays 'barycenter'.
+      name: autoPairName(heavy.name ?? '', light.name ?? ''),
       parentId: originalHostId,
       memberIds: [heavy.id, light.id],
       effectiveMassKg: pairMass,

@@ -71,6 +71,36 @@ export function pairBodyNames(system: System | null, baryId: string): string[] {
 }
 
 /**
+ * THE AUTO NAME FOR A NEW PAIR, and the reason it is not just "A-B Barycentre". A companion is
+ * usually named FROM its primary - "Jupiter L4 Trojan" gains "Jupiter L4 Trojan I" - so joining the
+ * two whole names repeats the shared part and produces "Jupiter L4 Trojan-Jupiter L4 Trojan I
+ * Barycentre": 47 characters that say one thing twice, and long enough to crush the row it sits in
+ * (owner screenshot, 2026-08-28). Collapse the shared WORD prefix and the pair is named after what
+ * the two actually have in common.
+ *
+ * Genuinely distinct names keep the joined form, because that IS the informative one: Pluto and
+ * Charon share nothing, so "Pluto-Charon Barycentre" is right and stays.
+ */
+export function autoPairName(heavyName: string, lightName: string): string {
+	const a = (heavyName ?? '').trim();
+	const b = (lightName ?? '').trim();
+	if (!a || !b) return `${a || b} Barycentre`;
+
+	// Word-wise, so "Jupiter L4 Trojan" + "Jupiter L4 Trojan I" share three words, while "Kepler-16 A"
+	// and "Kepler-16 B" share one. Never a partial word: "Mars"/"Marsha" have nothing in common.
+	const aw = a.split(/\s+/);
+	const bw = b.split(/\s+/);
+	let shared = 0;
+	while (shared < aw.length && shared < bw.length && aw[shared].toLowerCase() === bw[shared].toLowerCase()) shared++;
+
+	// The whole of one name being a prefix of the other is the companion case above: name the pair
+	// after the common part. "Pair" rather than "Barycentre" because that is what a GM calls it, and
+	// it keeps the row short enough to read.
+	if (shared > 0) return `${aw.slice(0, shared).join(' ')} Pair`;
+	return `${a}-${b} Barycentre`;
+}
+
+/**
  * How to name a barycentre in the UI: the point's own name plus the bodies it holds, e.g.
  * "Alpha Centauri Barycentre (Rigil Kentaurus + Toliman)". A barycentre is invisible and unselectable,
  * so naming it alone leaves the user with no idea what is being orbited.
