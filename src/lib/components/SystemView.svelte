@@ -25,6 +25,9 @@
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
+  import { megaTypeDef } from '$lib/constructs/megaTypes';
+  import { effectiveMegaRequires, megaSteerNotes } from '$lib/constructs/megaPlacement';
+  import { calculateGoldilocksZone } from '$lib/physics/zones';
   import ConstructDetailsPane from './ConstructDetailsPane.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
@@ -359,6 +362,8 @@
   // template locked, the AU field seeded from the click when the GM clicked a place.
   let constructInitialTemplate: CelestialBody | undefined = undefined;
   let constructInitialAuDistance: number | undefined = undefined;
+  /** G53: how far from the host the GM clicked, AU - known before a template is even chosen. */
+  let constructClickAU: number | undefined = undefined;
   let showBackgroundContextMenu = false;
   let contextMenuActionLabel = 'Add Planet Here';
   let showAddBeltOption = false;
@@ -803,6 +808,14 @@
       showCreateConstructModal = true;
       showBackgroundContextMenu = false;
       constructHostBody = null;
+      // G53: THE CLICK ALREADY SAID WHERE. Measure it once here so the picker can show a
+      // megaconstruct's placement advice while the GM is still choosing - the warning belongs
+      // BEFORE the commit, which is the whole point of steering rather than stopping.
+      constructClickAU = undefined;
+      if (backgroundClickHost && backgroundClickPosition) {
+          const hp = backgroundClickHost.parentId ? absolutePositionOf(backgroundClickHost.id) : { x: 0, y: 0 };
+          constructClickAU = Math.hypot(backgroundClickPosition.x - hp.x, backgroundClickPosition.y - hp.y);
+      }
   }
 
   async function handleCreateConstructLoad(event: CustomEvent<CelestialBody>) {
@@ -864,18 +877,20 @@
       // G53: a megaconstruct is placement-SENSITIVE, so it never takes the default-orbit stamp.
       // The rich picker chose WHAT; AddConstructModal chooses WHERE, with the hard/steer machinery
       // attached - and the AU field starts at the clicked distance when there is one.
-      if ((template as CelestialBody).megaType) {
+      // G53: ASK ONLY WHEN THE CLICK DID NOT ALREADY SAY WHERE (owner, 2026-08-28: "that is where I
+      // clicked - so that is where it should be"). An ordinary construct placed from "Add Construct
+      // Here" has never been asked a second time; the mega placement dialog was a step I added on
+      // top of that, and on the click route it re-asks a question the GM has answered. So the
+      // dialog is now reserved for the route with NO click - "Add Construct" on a body, where
+      // nothing says where it goes - and the click route falls through to the ordinary creation
+      // path below, gaining only its steer tags.
+      const clickPlaced = !!(backgroundClickPosition && backgroundClickHost);
+      if ((template as CelestialBody).megaType && !clickPlaced) {
           showCreateConstructModal = false;
           constructHostBody = host as CelestialBody;
           constructInitialTemplate = template;
           constructInitialPlacement = undefined;
-          // Seed only from a REAL click ("Add Construct Here") - Case 2's distAU is a synthetic
-          // default orbit, not a place the GM pointed at.
-          constructInitialAuDistance =
-              backgroundClickPosition && backgroundClickHost &&
-              (host.roleHint === 'star' || host.kind === 'barycenter') && distAU > 0
-                  ? Number(distAU.toPrecision(3))
-                  : undefined;
+          constructInitialAuDistance = undefined;
           showAddConstructModal = true;
           return;
       }
@@ -938,6 +953,24 @@
       }
 
       newConstruct.placement = placement;
+
+      // G53: the placement went ahead - record WHY it is interesting. Same evaluator and same tags
+      // the dialog route stamps, so a mega placed by clicking and one placed through the dialog
+      // carry identical provenance; only the number of questions asked differs.
+      if ((newConstruct as any).megaType) {
+          const mDef = megaTypeDef((newConstruct as any).megaType);
+          const notes = megaSteerNotes(
+              effectiveMegaRequires(newConstruct as any, mDef),
+              host as any,
+              {
+                  placementAU: distAU > 0 ? distAU : undefined,
+                  goldilocks: (host as any).roleHint === 'star'
+                      ? calculateGoldilocksZone(host as any, $systemStore.nodes as any)
+                      : null
+              }
+          );
+          if (notes.length) newConstruct.tags = [...(newConstruct.tags ?? []), ...notes.map((n) => n.tag)];
+      }
       console.log('Creating New Construct:', newConstruct);
 
       // Add to System
@@ -2770,7 +2803,7 @@
     {/if}
 
     {#if showCreateConstructModal}
-        <LoadConstructTemplateModal {rulePack} mode="create" hostBody={backgroundClickHost || constructHostBody} on:load={handleCreateConstructLoad} on:close={() => showCreateConstructModal = false} />
+        <LoadConstructTemplateModal {rulePack} mode="create" hostBody={backgroundClickHost || constructHostBody} placementAU={constructClickAU} on:load={handleCreateConstructLoad} on:close={() => showCreateConstructModal = false} />
     {/if}
 
     {#if showReportConfigModal}

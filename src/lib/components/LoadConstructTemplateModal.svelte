@@ -4,8 +4,10 @@
   import { coiCategories, activeCoICategories, coiTagLabel } from '$lib/constructs/coi';
   import { constructDriveTag, byId } from '$lib/constructs/inheritance';
   import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
-  import { effectiveMegaRequires, megaHardCheck, type MegaHost } from '$lib/constructs/megaPlacement';
+  import { effectiveMegaRequires, megaHardCheck, megaSteerNotes, type MegaHost } from '$lib/constructs/megaPlacement';
   import { megaSummaryLine } from '$lib/constructs/megaPreview';
+  import { calculateGoldilocksZone } from '$lib/physics/zones';
+  import { systemStore } from '$lib/stores';
   import MegaPreview from '$lib/constructs/MegaPreview.svelte';
 
   export let rulePack: RulePack;
@@ -15,6 +17,10 @@
    *  mega row is judged against it. Absent (overwrite mode, or no host known): no mega tab, since
    *  a placement-sensitive category cannot be offered placement-blind. */
   export let hostBody: MegaHost | null = null;
+  /** G53: how far from the host the GM clicked, AU. When the click already decided the placement
+   *  there is no second dialog to carry the advice (the owner: "that is where I clicked"), so the
+   *  steer sentence is shown HERE - before the commit, which is where a steer belongs. */
+  export let placementAU: number | undefined = undefined;
 
   const dispatch = createEventDispatcher();
 
@@ -41,6 +47,19 @@
     activeTab = tab;
     selectedTemplate = null;   // a hidden selection under the other tab would make Create a mystery
   }
+
+  // The steer advice for the selected mega AT THE CLICKED DISTANCE - amber, never a refusal, and
+  // shown while the GM can still change their mind rather than after the thing exists.
+  $: selectedSteers = (() => {
+    if (activeTab !== 'mega' || !selectedTemplate || !hostBody || placementAU === undefined) return [];
+    const def = megaTypeDef(selectedTemplate.megaType);
+    return megaSteerNotes(effectiveMegaRequires(selectedTemplate, def), hostBody, {
+      placementAU,
+      goldilocks: (hostBody as any).roleHint === 'star'
+        ? calculateGoldilocksZone(hostBody as any, ($systemStore?.nodes ?? []) as any)
+        : null
+    });
+  })();
 
   // The footer's honest numbers for a selected mega: derive() at defaults on THIS host.
   $: selectedMegaSummary = (() => {
@@ -247,6 +266,10 @@
     </div>
     {/if}
 
+    {#each selectedSteers as n (n.tag.key)}
+      <p class="mega-steer">{n.sentence}</p>
+    {/each}
+
     <div class="footer">
       <div class="selected-info">
         {#if selectedTemplate}
@@ -313,6 +336,11 @@
   .browser-item.mega.unavailable:hover { background-color: transparent; }
   .mega-reason { font-size: 0.76em; color: var(--text-muted); font-style: italic; }
   .mega-desc { font-size: 0.76em; color: var(--text-faint); }
+  /* Plausibility, spoken before the commit: amber advice, never a wall. */
+  .mega-steer {
+    margin: 0; padding: 8px 15px 0; font-size: 0.78rem; text-align: left;
+    color: var(--warning, #d9a23c);
+  }
 
   .filters-panel {
     padding: 10px 15px; background-color: var(--bg-panel);

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.209 - 28th Aug 2026
+
+- Placing a megaconstruct by clicking no longer asks you where you want it. You already said - you clicked there. The extra placement step now only appears on the route that has no click behind it, matching how every other construct has always worked, and the advice that step used to carry ("0.891 AU sits outside Sol's goldilocks zone...") now appears in the picker while you are still choosing, which is where a warning is actually useful.
+
 ## v3.0.208 - 28th Aug 2026
 
 - Board only. Four notes taken from the GM screen for when the megaconstruct render work continues: draw a shell as a thick orbital ring in the plan view, give it a named circle to click that is easier to grab than a belt, frame the ring together with its star rather than flying to a point on it - and the big one, that a ringworld's inner surface can never be a painted texture. An eight-thousand-pixel map of a one-AU ring puts nine Earth diameters in a single pixel, so the surface has to be generated as you approach it: the physics decides where the seas and ice are, and the detail fills in at whatever scale you are looking from, so the size of the thing lands on you by making you travel it.
