@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.216 - 28th Aug 2026
+
+- Board only. A plain-English terms draft for the sharing hub: your uploads are yours and your responsibility, we know almost nothing about you on purpose, and we can show the door to anyone who makes the place worse.
+
 ## v3.0.215 - 28th Aug 2026
 
 - Board only. The construct panels' unit work is signed off, and the next stream is briefed: stars that are not what they look like, and a way to show players that something is there without saying what.
