@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.215 - 28th Aug 2026
+
+- Board only. The construct panels' unit work is signed off, and the next stream is briefed: stars that are not what they look like, and a way to show players that something is there without saying what.
+
 ## v3.0.214 - 28th Aug 2026
 
 - Board only. The megaconstruct work is written up for whoever picks it up next: a full brief for the session that continues it, and a routing note saying it is really two jobs - the starlight-dimming physics, and the visual pass the owner deferred until the shapes are settled.

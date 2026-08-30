@@ -306,3 +306,89 @@ it is theirs, leave it.
 > rule you had to work out, and correct any entry your change falsifies; record dead ends; do not
 > stop early on a context guess. The preview pane may not render for you — if so, hand back a
 > thirty-second eyeball list naming exactly what the owner should look at.
+
+---
+
+## STREAM E — observed vs intrinsic (G54): the disclosure ladder and the star that lies
+
+> You are building [[G54]] phases 1-3 for Star System Explorer. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (v3.0.213+ — fetch
+> and read the tip; other streams are pushing, expect rebases). Work in your OWN worktree
+> (`git worktree add ../sse2-observed -b wt/observed origin/beta`); the main checkout is shared.
+> Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST, IN THIS ORDER.** (1) `docs/dev/observed-vs-intrinsic-design.md` — the whole design,
+> owner-corrected; §2's physics correction and §2b's directional-bands refinement are HIS and are
+> not up for re-litigation. (2) The [[G54]] row in `docs/dev/observations-inbox.md`, then the
+> standing rules at that file's foot. (3) **In `docs/dev/engine-map.md`:** `TAG-9` (player redaction
+> happens at exactly ONE point — your rung lives there and nowhere else), `TAG-1`, `TAG-4`, `PHY-34`
+> (how bright a star is has ONE answer, and a gate needs an ABSOLUTE anchor — a ratio test is blind
+> to a constant divergence; this entry was paid for THIS WEEK), `OVR-7` (brightness vs ionising
+> output are different quantities), `DATA-R10` + `PHY-17` (a designation is LETTER + LUMINOSITY
+> CLASS). (4) The header of `src/lib/physics/spectrum.ts` — its two rules (B45/B54) govern
+> everything you do on the spectral side.
+>
+> **VERIFIED ANCHORS (re-verify line numbers; the tree moves).** [[B110]] is DONE: ONE luminosity
+> module, `src/lib/physics/luminosity.ts` (`luminositySolarFromRT`, with `luminosityWattsFromRT`
+> derived from it by one multiplication — a factor applied to the primitive reaches everything,
+> which is the hook you exist to use). `redactTagsForPlayers` is `tagLifecycle.ts:242`.
+> **`starOcclusion` is ALREADY LIVE in `megaTypes.ts`** (published at ~460; a swarm's `densityFrac`
+> maps to it at ~531) — you are consuming a number another stream already produces.
+>
+> **THE JOB, three phases, each its own green push.**
+>
+> **E1 — the disclosure ladder, ALONE, and it is the reusable core.** Redaction today is binary: a
+> player sees a tag or has no idea it exists. Add the middle rung — **`anonymous`: the tag's
+> PRESENCE survives redaction, its IDENTITY does not** ("something is here and I am not telling you
+> what"). Computed INSIDE `redactTagsForPlayers` and nowhere else — `mapHighlights.ts:57` explains
+> that a second site is how a leak happens, and TAG-9 is the rule. It needs a neutral marker style,
+> not a new symbol system (marker styles are shipped vocabulary). **Sweep every surface that renders
+> a tag** (map markers, panels, catalogue, reports, the printed document) and prove the identity
+> cannot leak through any of them — name, value, category colour, tooltip, hover. **The owner's
+> note: "will be useful for constructs" — keep the rung GENERAL.** Its first construct customer is
+> already designed: the carried-fleet `unobtanium` tag (`mega-constructs-design.md` §3.6) wants
+> players to see that something holds a fleet together without being told what.
+>
+> **E2 — the observed appearance.** A `LineOfSightEffect` composed onto the star's spectrum
+> (`observed[i] = intrinsic[i] x transmission[i]` on the existing grid — flat for a swarm/shell),
+> the observed COLOUR on both starmaps, and the optional anomaly badge. **Both readings are ALWAYS
+> computed; only `cause` is redacted** (design §6) — that is what makes "both sides of the story"
+> one object rather than two code paths. **THE OUT-OF-BAND RULE IS NOT OPTIONAL:** re-emission is a
+> SCALAR plus a TEMPERATURE (`wienPeakNm` gives the peak), NEVER a widened grid — the grid is the
+> photochemistry window and extending it to the far-IR is ~100,000 samples per body per pass.
+> **§2b, directional:** a full shell dims every direction; a BAND dims only observers near its
+> plane — the bearing test is one dot product using the shape's `thetaStartRad`/`thetaLengthRad`,
+> and with no viewpoint chosen fall back to isotropic and say so.
+>
+> **E3 — the observed designation.** Into `src/lib/system/starClassExplain.ts` beside the intrinsic
+> one — it is the ONE designation builder and its header says why; do not write a second. The
+> reader-facing text is the THREE-WAY DISAGREEMENT (spectroscopy says G2V; photometry says four
+> magnitudes too faint; infrared says a large excess) — the design's §2 correction: a swarm dims
+> WITHOUT reddening, so "looks like an M star" is a NEBULA story, not a swarm story, and the lines
+> are the tell that never lies.
+>
+> **DELIBERATELY NOT IN SCOPE — do not drift:** nebula EMISSION (own item), interstellar
+> ray-through-volume geometry (own item), and **the thermal/insolation coupling — occlusion changing
+> a planet's TEMPERATURE is [[G53]] phase 4 and belongs to the mega stream.** You own what an
+> OBSERVER measures; they own what a world FEELS. The seam is `luminosity.ts`, and if you find
+> yourself editing `temperature.ts` you have crossed it.
+>
+> **ACCEPTANCE — thirty seconds each, negative cases included.** (1) An `anonymous` tag on any node
+> shows players a neutral "something" marker and leaks nothing through ANY surface — including the
+> report and the catalogue. (2) The same tag at `hidden` shows nothing at all; at `open`,
+> everything: three rungs, one tag, no code fork per surface. (3) A star with a swarm at 0.4 dims on
+> the starmap without changing hue; behind authored dust it dims AND reddens. (4) A BAND's badge
+> appears only for viewpoints near its plane; a shell's for all. (5) The physics page / Newton
+> explainer describes the observed designation honestly (a physics change is not finished until the
+> explanations follow it — standing rule). (6) **Every new gate run with the fix removed and seen
+> red — and at least one spectral assertion ABSOLUTE, not a ratio** (PHY-34: this project has now
+> shipped three gates that passed with their bug present, and the third was in exactly this
+> territory).
+>
+> **RULES THAT ARE NOT OPTIONAL:** green `npm run build` before every push; version bump + changelog
+> prose a GM understands; explicit staging, never `git add -A`; `git show --stat` before every push
+> (the CRLF tell); fetch before every push and on rejection rebase, renumber, keep both changelog
+> entries, check conflicted files for markers; an engine-map entry in the same commit for any
+> non-obvious rule, and correct any entry you falsify; record dead ends loudly; do not stop early on
+> a context guess; if the pane will not render, hand back a thirty-second eyeball list. Anything
+> that changes what the product IS: recommend, then ask.
