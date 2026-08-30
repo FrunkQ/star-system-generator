@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.199 - 28th Aug 2026
+
+- Board only. The first mega-structure card in the wild showed its mass as a twenty-digit number and its size in raw metres; captured as its own item - one unit system across the construct panels, scale-aware and click-to-change like the bodies.
+
 ## v3.0.198 - 28th Aug 2026
 
 - Board only. Who a megastructure shadows is now written down properly: a full shell dims everyone outside it, but a band - a ringworld, a torus - dims only what lines up with its plane, in-system and on the starmap alike. The alignment test is one angle comparison using geometry the engine already holds, and the anomaly badge on the starmap follows the viewer's bearing for bands: two crews in different systems can honestly disagree about what that star looks like, and both are right.
