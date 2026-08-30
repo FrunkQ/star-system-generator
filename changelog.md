@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.211 - 28th Aug 2026
+
+- On the flat map a ringworld or Dyson shell now draws as its own orbit path in its own colour, which is the honest picture rather than a shortcut: those structures really do sit on that circle, all the way round. The clickable marker stays on top, because grabbing a whole ring is awkward.
+- Only a Death Star can be replaced with your own uploaded model. A ring or a shell is effectively a world - its size, its living area and how much starlight it blocks are all figures the engine publishes - so a hand-made stand-in would quietly contradict them.
+- When a megaconstruct falls back to the plain blob shape it now says so once, with the reason. Chasing that by screenshot was costing more than it was worth.
+
 ## v3.0.210 - 28th Aug 2026
 
 - The space elevator is now an actual elevator: a ribbon from the ground up to geostationary with a captured asteroid on the end as its counterweight, standing on its anchor point and sweeping round with the planet as it turns. The height is the real geostationary altitude the engine already works out for that world - on Earth, six and a half planet radii up.

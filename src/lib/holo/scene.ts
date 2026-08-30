@@ -2719,10 +2719,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Unit radius 0.5 => unit DIAMETER, the same long-axis convention the hull path uses.
       // A TETHER IS DRAWN FROM ITS HOST, so it needs the host's own drawn radius and real radius to
       // put geostationary in the right place - both already to hand, both computed at runtime.
-      const hostV = node?.parentId ? bodyById.get(node.parentId) : undefined;
+      // NOT `bodyById` - it is rebuilt AFTER this loop, so during the attach it is empty and a
+      // tether would have been built against a host radius of zero. Ask the scale law directly,
+      // which is the same answer the host's own visual will get a moment later.
       const built = spec.family === 'tether'
         ? buildMegaGeometry(spec, 0.5, {
-            hostRadiusScene: hostV?.radiusScene ?? 0,
+            hostRadiusScene: host ? bodyRadiusScene(host, true) : 0,
             hostRadiusKm: radiusKmOf(host)
           })
         : buildMegaGeometry(spec, 0.5);
@@ -4382,7 +4384,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
       // G3: a construct carrying a 3D model loads it in the background; the sprite stands until
       // (and unless) it lands, and stands permanently on a machine that lacks the binary.
-      if (isConstruct && ((node as any).model?.hash || (node as any).model?.url)) {
+      // G53: ONLY A SKINNABLE MEGA MAY WEAR AN UPLOADED MODEL. A spheroid is a hull and an artist may
+      // replace it; a ring or shell is a WORLD whose radius, band and coverage the engine publishes
+      // as figures, so a hand-modelled stand-in would quietly contradict them. The registry says
+      // which is which (`skinnable`), so this is data rather than a list of names here.
+      const megaDefFor = megaTypeDef((node as any).megaType);
+      const modelAllowed = !megaDefFor || megaDefFor.skinnable === true;
+      if (isConstruct && modelAllowed && ((node as any).model?.hash || (node as any).model?.url)) {
         const sceneLen = shipLenScene(node);
         // The hull's LENGTH is known from the authored dimensions the moment the node is read, so
         // record it NOW rather than when the binary lands. Framing and the min-zoom both used to
@@ -4410,7 +4418,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // G53 phase 3: a mega draws its own shape; everything else keeps the ellipsoid.
         const mv = bodies[bodies.length - 1];
         const tint = (node as any).icon_color || '#ffd24d';
-        if (!attachMegaVolume(mv, node, tint)) attachHullVolume(mv, node, tint);
+        if (!attachMegaVolume(mv, node, tint)) {
+          // RENDER-S7: never silent on the path that decides whether a thing renders. A mega that
+          // falls back to the ellipsoid says so ONCE, with the reason, so "it drew a blob" arrives
+          // as a diagnosis rather than a screenshot to argue about.
+          if ((node as any).megaType && !_megaFellBack.has(node.id)) {
+            _megaFellBack.add(node.id);
+            console.warn('[mega] fell back to the ellipsoid for', node.name,
+              '- megaType:', JSON.stringify((node as any).megaType),
+              '- known to the registry:', !!megaTypeDef((node as any).megaType));
+          }
+          attachHullVolume(mv, node, tint);
+        }
       }
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
@@ -4869,6 +4888,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   const _tetherUp = new THREE.Vector3(0, 1, 0);   // the axis megaGeometry builds a tether along
+  const _megaFellBack = new Set<string>();       // warn once per node, not once per rebuild
 
   function updateSurfaceConstructs() {
     for (const b of bodies) {

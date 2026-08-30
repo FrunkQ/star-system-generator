@@ -170,6 +170,19 @@ export interface MegaTypeDef {
   /** Display only: the spheroid PREVIEW draws a concave dish. Data on the record rather than a
    *  key-switch in the preview module, for the same reason everything else is. */
   dished?: true;
+  /**
+   * MAY A GM SKIN THIS WITH THEIR OWN UPLOADED MODEL? Owner, 2026-08-28: *"it is a construct so a
+   * user can upload their own --- that CAN'T be allowed on ring shaped objects - it's effectively a
+   * planet. So each type should be able to be skinned based on geometry - probably ONLY the death
+   * star."*
+   *
+   * It is a property of the GEOMETRY, not of taste. A spheroid is a hull: it has a surface an
+   * artist can wrap and no structural meaning the engine derives from its shape. A ring or shell is
+   * a WORLD - its radius is its orbit, its band is its living area, its coverage is its occlusion -
+   * so a hand-modelled replacement would silently contradict figures the engine publishes. Absent
+   * means NO, because that is the safe half: a type has to earn the right to be replaced.
+   */
+  skinnable?: true;
   /** The knobs. Each OverrideDef-shaped — see `MegaParamDef`. */
   params: readonly MegaParamDef[];
   /** PURE. params + host → the NUMBERS. No THREE, no DOM, no globals, no mutation of `host`. */
@@ -615,6 +628,8 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     // planet. That simple."
     allowedPlacements: [...ORBIT_BAND_PLACEMENTS, 'AU Distance', 'L1', 'L2', 'L3', 'L4', 'L5'],
     dished: true,
+    // The one type a GM may replace with their own model: it is a hull, not a world (see `skinnable`).
+    skinnable: true,
     params: [
       {
         key: 'diameterKm',

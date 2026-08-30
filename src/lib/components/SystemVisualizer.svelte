@@ -1,6 +1,7 @@
 <script lang="ts">
   import { niceStepBelow, formatNice } from '$lib/map/niceInterval';
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
+  import { megaTypeDef } from '$lib/constructs/megaTypes';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime, isFlybyPlan } from '$lib/transit/scheduler';
@@ -790,6 +791,14 @@
   // at (x, y) with the given pixel size. Single source of truth for both the
   // world-space pass (sizePx = 8 / zoom) and the screen-space overlay (sizePx = 8),
   // which had drifted apart. Screen-space sizing (8px) is the canonical default.
+  // G53: does this node's own orbit line ARE the structure? True for the sphere-section family -
+  // ring, torus, shell, swarm - all of which are centred on the host at their orbital radius. The
+  // registry answers it (never a list of names here), and a tether or spheroid says no.
+  function isMegaRing(node: any): boolean {
+    const def = megaTypeDef(node?.megaType);
+    return !!def && def.family === 'sphere-section';
+  }
+
   function drawConstructGlyph(ctx: CanvasRenderingContext2D, node: CelestialBody, x: number, y: number, sizePx: number): void {
       // The ONE glyph vocabulary (inbox A34) — this was a private copy of the same five shapes.
       const c = node as any;
@@ -1055,6 +1064,19 @@
           // The designed grey, scaled by the dial. Drawn as rgba rather than via globalAlpha so it
           // cannot leak into the fills that follow in this pass.
           ctx.strokeStyle = `rgba(51,51,51,${Math.max(0, Math.min(1, orbitOpacity))})`; ctx.lineWidth = 1 / zoom;
+
+          // G53: A RING IS ITS OWN ORBIT LINE. Owner, 2026-08-28: *"gm map ringworlds can just use
+          // the orbital line - coloured as ringworld - at a distance."* And he is right that this is
+          // the honest drawing rather than a shortcut: a ringworld, torus, shell or swarm is
+          // CENTRED on its host at exactly this radius, so the ellipse already traced here IS the
+          // structure. It takes the construct's own colour and a heavier stroke, so the plan view
+          // says "a thing lives on this path" instead of drawing a dot that pretends to be a place.
+          // The glyph still draws on top as the click target (a whole ring is cumbersome to hit).
+          const megaRing = isMegaRing(node as any);
+          if (megaRing) {
+            ctx.strokeStyle = (node as any).icon_color || '#9fe8a0';
+            ctx.lineWidth = 2.5 / zoom;
+          }
 
           // A LINE A SHIP IS NOT ON IS WORSE THAN NO LINE, AND THAT IS WHAT AN ELLIPSE FROM `a`, `e`
           // AND OMEGA ALONE IS FOR A SHIP THAT HAS FLOWN SOMEWHERE.

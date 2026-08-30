@@ -1258,6 +1258,36 @@ single dot on an orbit line.
    computed every frame for the centring fix (v3.0.204), so the shot wants that radius as its
    half-extent and the host as its target.
 
+### Phase 3c — WHAT IS STILL VISUALLY WRONG, owner-reported 2026-08-28. NOT FIXED, ON PURPOSE.
+
+His call, and it is the right one: *"no point in trying to fix all visual bugs before visuals
+finished... best to finish and we loop back with fixes."* So these are CAPTURED, not chased. Each
+is a real observation from a running build, with what is known about the cause.
+
+1. **THE SPACE ELEVATOR MUST BE EQUATORIAL.** Today its anchor is `surfacePointFromId` - a stable
+   pseudo-random point on the sphere, deterministic per construct, which is right for a station and
+   WRONG for a beanstalk: a tether only works at the equator, because anywhere else the ribbon is
+   not in the plane it is being spun about. The fix is a placement rule, not a render one - the
+   anchor latitude for a `tether` family should be 0 by construction, and the LONGITUDE may stay
+   seeded from the id.
+2. **A TETHER SHOULD STAY VISIBLE AS A CONSTRUCT UNTIL YOU ARE CLOSE.** Owner: *"at least
+   'construct visible' until zoomed in."* Reported as showing only its label high above the planet.
+   The suspect is the pixel LOD plus the surface-construct path: the marker is placed on the
+   surface (`updateSurfaceConstructs`) while the ribbon is a separate group, so at system zoom the
+   label survives and the thing itself does not read.
+3. **THE GM VIEW STILL SHOWS THE OLD CROSS.** Same report as (2) from the GM side.
+4. **AND THE ONE THAT BLOCKS DIAGNOSIS, now instrumented rather than argued about.** Megas were
+   observed drawing as the textured ellipsoid on v3.0.210 in a fresh player view - i.e. NOT stale.
+   Measured against that report: the shipped pack templates all resolve (`megaTypeDef` finds every
+   one), the builder produces ring/shell/points geometry in the live bundle, a freshly created node
+   persists `megaType: "ringworld"` and `artificial: true` to IndexedDB, and every serialisation
+   path on the way to a player (`computePlayerSnapshot` deep-copies, `slimNode` is a deny-list,
+   `sanitizeSystem` spreads) preserves the field. So the data and the builder are both innocent and
+   the fault is in the ATTACH, which no headless test can reach. `attachMegaVolume` therefore now
+   WARNS ONCE per node when it declines, naming the megaType and whether the registry knew it
+   (RENDER-S7: never silent on the path that decides whether a thing renders). The next report
+   carries its own diagnosis.
+
 **Phase 4 — starlight occlusion.** `starOcclusion` into the insolation chain, with the explainers
 updated in the same batch. `shell` and `swarm` rendering. **This is the phase that makes the feature
 matter**, and it is deliberately after the cheap ones because it is the one that can break existing
