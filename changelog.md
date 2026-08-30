@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.202 - 28th Aug 2026
+
+- Megaconstructs get their real shapes (G53 phase 3). A ringworld draws as a ring, a Dyson sphere as a closed shell, a half-built shell as exactly the arc it has finished, and a swarm as its collectors - evenly spread, never bunched at the poles - all from one generator, because a ring really is just an unfinished sphere. They keep the size, zoom behaviour and framing they already had; only the shape changes, so nothing else on screen moves. The Death Star keeps its ellipsoid until it earns a better one. Note for the eye: a ring band is genuinely a sliver of its own width - about half a percent - so it may need a minimum drawn thickness to be visible at all, and that is a judgement to make by looking.
+
 ## v3.0.201 - 28th Aug 2026
 
 - Megaconstructs, the scale work (G53 phase 2) - which measurement turned into a correction rather than a build. The plan said to give a ringworld a real size so the camera could see it; measured, that would have made every system holding one draw at half size, because a ring is centred on its star and its orbit already IS its reach. The engine was right and the plan was wrong, so the plan changed and a test now guards the tempting mistake. One genuine fault did turn up alongside: three places asked "how big is this thing on screen" and one got the answer zero for every construct - now they all ask once.

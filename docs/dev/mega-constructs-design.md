@@ -1176,6 +1176,27 @@ double count above. Decide what a centred body's extent means before the kind ch
 **Phase 3 — the two new shape families.** `tether` and `ring` in 3D and 2D. These are the two most
 visually striking and they cover four of the seven named types.
 
+**Phase 3 — the two new shape families. THE GENERATOR IS BUILT AND GATED (2026-08-28); the LOOK is
+the only part still unseen.** `constructs/megaGeometry.ts` is the one builder: `SphereGeometry`'s
+phi/theta window makes shell, growing shell, ringworld, torus and swarm one draw call with
+different arguments, exactly as the owner said; the points path uses a golden-angle distribution
+so a swarm does not bunch at its poles (the named trap, now a test that measures equal-area
+latitude bands); the faces path emits real UVs so a livery cannot smear round a 1 AU hoop. Wired
+into `scene.ts` as `attachMegaVolume`, which keeps `attachHullVolume`'s whole contract — unit long
+axis, `shipModel`, emissive, the same `shipLenScene` SIZE — so ONLY THE SHAPE CHANGES and no
+framing, LOD or scale-law behaviour moves. A type with no generator (the Death Star spheroid)
+returns null and keeps the ellipsoid, undluplicated.
+
+> **THE ONE THING MEASURED AND NOT SOLVED, because solving it blind would be the renderer
+> inventing a fact.** A ring's band is genuinely a sliver of its own diameter: measured in the
+> shipped bundle, a default ringworld is **0.0053** of its diameter thick and a planetary torus
+> **0.0039**. That is geometrically honest (§5b.4 says so) and it means that at most zoom levels
+> the band is SUB-PIXEL — a 1 AU hoop drawn one pixel wide, or aliased away entirely. The
+> existing pixel floor scales the WHOLE object and cannot thicken a band. Whether a ring needs a
+> minimum DRAWN thickness (the same honest device as RENDER-S43's screen-space floor, applied to
+> one axis) is a decision that needs an eye on it first: it is the difference between a ring you
+> can see and a ring that is technically correct and invisible. **Phase 3's first eyeball item.**
+
 **Phase 4 — starlight occlusion.** `starOcclusion` into the insolation chain, with the explainers
 updated in the same batch. `shell` and `swarm` rendering. **This is the phase that makes the feature
 matter**, and it is deliberately after the cheap ones because it is the one that can break existing

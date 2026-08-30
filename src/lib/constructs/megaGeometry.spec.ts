@@ -1,0 +1,158 @@
+// G53 phase 3: the geometry, gated headlessly. THREE runs fine in node — it is the CANVAS that E7
+// rules out (document.hidden, rAF never fires), not the library — so every claim the builder makes
+// about vertices, bounds, windows and the pole-clustering trap is an ordinary assertion here.
+// Precedent: `modelViewer.spec.ts` builds meshes and measures their bounding boxes.
+import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
+import { buildMegaGeometry } from './megaGeometry';
+import { megaTypeDef, defaultMegaParams, type MegaTypeDef } from './megaTypes';
+import type { CelestialBody } from '$lib/types';
+
+const sol = (): CelestialBody =>
+  ({ id: 'sol', name: 'Sol', parentId: null, tags: [], kind: 'body', roleHint: 'star', massKg: 1.989e30, radiusKm: 696340 }) as unknown as CelestialBody;
+const earth = (): CelestialBody =>
+  ({
+    id: 'earth', name: 'Earth', parentId: 'sol', tags: [], kind: 'body', roleHint: 'planet',
+    massKg: 5.972e24, radiusKm: 6371, rotation_period_hours: 23.934,
+    orbitalBoundaries: { minLeoKm: 200, leoMoeBoundaryKm: 2000, meoHeoBoundaryKm: 50000, heoUpperBoundaryKm: 1.47e6, geoStationaryKm: 35786, isGeoFallback: false }
+  }) as unknown as CelestialBody;
+
+const def = (key: string): MegaTypeDef => {
+  const d = megaTypeDef(key);
+  if (!d) throw new Error(`no '${key}'`);
+  return d;
+};
+/** The spec a type produces at defaults on its natural host — the real path, not a hand-built spec. */
+const specOf = (key: string, host = sol()) => {
+  const d = def(key);
+  return d.shape(defaultMegaParams(d, host), host);
+};
+
+const positionsOf = (g: THREE.BufferGeometry): Float32Array => g.getAttribute('position').array as Float32Array;
+const radiiOf = (g: THREE.BufferGeometry): number[] => {
+  const p = positionsOf(g);
+  const out: number[] = [];
+  for (let i = 0; i < p.length; i += 3) out.push(Math.hypot(p[i], p[i + 1], p[i + 2]));
+  return out;
+};
+
+describe('the one sphere-section generator', () => {
+  it('a Dyson sphere at full coverage closes: a complete sphere at the asked radius', () => {
+    const built = buildMegaGeometry(specOf('dyson-sphere'), 3)!;
+    expect(built.mode).toBe('faces');
+    expect(built.interior).toBe(true);          // the camera lives inside it (§5b.4b)
+    const box = new THREE.Box3().setFromBufferAttribute(built.geometry.getAttribute('position') as THREE.BufferAttribute);
+    const size = box.getSize(new THREE.Vector3());
+    expect(size.x).toBeCloseTo(6, 3);           // diameter on every axis
+    expect(size.y).toBeCloseTo(6, 3);
+    expect(size.z).toBeCloseTo(6, 3);
+    for (const r of radiiOf(built.geometry)) expect(r).toBeCloseTo(3, 3);
+  });
+
+  it('a HALF-BUILT shell is a longitude wedge — the coverage is visible in the geometry, not faked', () => {
+    const d = def('dyson-sphere');
+    const half = d.shape({ ...defaultMegaParams(d, sol()), coveragePct: 50 }, sol());
+    const built = buildMegaGeometry(half, 3)!;
+    const p = positionsOf(built.geometry);
+    // Half coverage sweeps phi 0..PI, which in THREE's convention spans z>=0 only (within epsilon).
+    let minZ = Infinity;
+    for (let i = 0; i < p.length; i += 3) minZ = Math.min(minZ, p[i + 2]);
+    expect(minZ).toBeGreaterThan(-1e-6);
+    // ...and the closed shell does reach negative z, so the difference is the coverage itself.
+    const full = positionsOf(buildMegaGeometry(specOf('dyson-sphere'), 3)!.geometry);
+    let fullMinZ = Infinity;
+    for (let i = 0; i < full.length; i += 3) fullMinZ = Math.min(fullMinZ, full[i + 2]);
+    expect(fullMinZ).toBeLessThan(-2.9);
+  });
+
+  it('a ringworld is a narrow equatorial band — flat, not a ball, and still at its full radius', () => {
+    const built = buildMegaGeometry(specOf('ringworld'), 4)!;
+    const box = new THREE.Box3().setFromBufferAttribute(built.geometry.getAttribute('position') as THREE.BufferAttribute);
+    const size = box.getSize(new THREE.Vector3());
+    expect(size.x).toBeCloseTo(8, 2);                 // full diameter across
+    expect(size.z).toBeCloseTo(8, 2);
+    expect(size.y).toBeLessThan(0.05);                // a sliver in the spin axis: 1.6e6 km on 1 AU
+    for (const r of radiiOf(built.geometry)) expect(r).toBeCloseTo(4, 2);
+  });
+
+  it('the faces path emits REAL UVs — a box projection would smear a livery across a 1 AU hoop', () => {
+    const built = buildMegaGeometry(specOf('ringworld'), 4)!;
+    const uv = built.geometry.getAttribute('uv');
+    expect(uv).toBeTruthy();
+    expect(uv.count).toBe(built.geometry.getAttribute('position').count);
+    let minU = Infinity, maxU = -Infinity;
+    for (let i = 0; i < uv.count; i++) { minU = Math.min(minU, uv.getX(i)); maxU = Math.max(maxU, uv.getX(i)); }
+    expect(minU).toBeGreaterThanOrEqual(-1e-6);
+    expect(maxU).toBeLessThanOrEqual(1 + 1e-6);
+    expect(maxU - minU).toBeGreaterThan(0.9);         // u runs the ring's whole length
+  });
+});
+
+describe('the swarm points path', () => {
+  it('draws apexes, all on the shell, and the count follows density', () => {
+    const d = def('dyson-swarm');
+    const at = (density: number) => {
+      const spec = d.shape({ ...defaultMegaParams(d, sol()), densityFrac: density }, sol());
+      return buildMegaGeometry(spec, 5)!;
+    };
+    const sparse = at(0.1), dense = at(1);
+    expect(sparse.mode).toBe('points');
+    expect(dense.geometry.getAttribute('position').count).toBeGreaterThan(
+      sparse.geometry.getAttribute('position').count * 2
+    );
+    for (const r of radiiOf(dense.geometry)) expect(r).toBeCloseTo(5, 6);
+  });
+
+  it('DOES NOT BUNCH AT THE POLES — the named trap, measured by latitude bands', () => {
+    const d = def('dyson-swarm');
+    const built = buildMegaGeometry(d.shape({ ...defaultMegaParams(d, sol()), densityFrac: 1 }, sol()), 5)!;
+    const p = positionsOf(built.geometry);
+    // Equal-area latitude bands must hold roughly equal counts. A UV sphere would pile up at |y|~r.
+    const BANDS = 8;
+    const counts = new Array(BANDS).fill(0);
+    for (let i = 0; i < p.length; i += 3) {
+      const band = Math.min(BANDS - 1, Math.floor(((p[i + 1] / 5 + 1) / 2) * BANDS));  // even in cos(theta) = even in y
+      counts[band]++;
+    }
+    const min = Math.min(...counts), max = Math.max(...counts);
+    expect(min).toBeGreaterThan(0);
+    expect(max / min).toBeLessThan(1.25);   // even to within a quarter; a UV sphere is many times worse
+  });
+
+  it('is deterministic — the same swarm draws identically on every load (no RNG)', () => {
+    const spec = specOf('dyson-swarm');
+    const a = positionsOf(buildMegaGeometry(spec, 5)!.geometry);
+    const b = positionsOf(buildMegaGeometry(spec, 5)!.geometry);
+    expect(Array.from(a)).toEqual(Array.from(b));
+  });
+});
+
+describe('the tether', () => {
+  it('runs from the host surface to geostationary, in the host own drawn currency', () => {
+    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
+    expect(built.mode).toBe('line');
+    const p = positionsOf(built.geometry);
+    expect(p[1]).toBeCloseTo(0.2, 6);                       // anchored on the surface
+    // Geostationary is 35,786 km up on a 6,371 km world — 6.6 host radii from the centre.
+    expect(p[4] / 0.2).toBeCloseTo(1 + 35786 / 6371, 3);
+  });
+
+  it('a world with no real geostationary gets NOTHING rather than an invented ribbon', () => {
+    const locked = earth();
+    locked.orbitalBoundaries!.isGeoFallback = true;
+    expect(buildMegaGeometry(specOf('space-elevator', locked), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })).toBeNull();
+  });
+});
+
+describe('what this builder deliberately does NOT own', () => {
+  it('a spheroid returns null — the scene ellipsoid (RENDER-S13) already serves it, undluplicated', () => {
+    expect(buildMegaGeometry(specOf('death-star', earth()), 1)).toBeNull();
+  });
+
+  it('every registry type either builds or honestly declines, and none throws', () => {
+    for (const key of ['space-elevator', 'planetary-torus', 'ringworld', 'dyson-sphere', 'dyson-swarm', 'energy-collector', 'death-star']) {
+      const host = megaTypeDef(key)!.requires.hard?.hostIsStar ? sol() : earth();
+      expect(() => buildMegaGeometry(specOf(key, host), 2, { hostRadiusScene: 0.2, hostRadiusKm: host.radiusKm }), key).not.toThrow();
+    }
+  });
+});

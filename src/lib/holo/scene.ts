@@ -15,6 +15,8 @@ import { traceConstructIcon, constructIconShape } from '$lib/constructs/construc
 import { loadModelBytes, isFetchableFromPeer, modelKey } from '$lib/constructs/modelSource';
 import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
+import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
+import { buildMegaGeometry } from '$lib/constructs/megaGeometry';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
 // Highlight badges on the player's system view. The pill shape is the SAME object as the panel's tag
@@ -2683,6 +2685,64 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * normalised to a UNIT long axis so `updateConstructs` can scale it exactly as it scales a real
    * hull (RENDER-S9's contract - the caller owns the transform).
    */
+  /**
+   * A MEGA-CONSTRUCT GETS ITS REAL SHAPE INSTEAD OF THE ELLIPSOID (G53 phase 3).
+   *
+   * Same contract as `attachHullVolume` in every other respect — normalised to a UNIT long axis
+   * (RENDER-S9), assigned to `shipModel` so it inherits the pixel LOD, framing, min-zoom and plume
+   * plumbing already built for hulls, and EMISSIVE because the scene's only real light is its star
+   * (RENDER-S13). ONLY THE SHAPE CHANGES: the drawn SIZE is `shipLenScene` exactly as before, so
+   * nothing about framing or the scale law moves — which is what makes this phase safe on its own.
+   *
+   * The geometry itself comes from `constructs/megaGeometry`, built at unit radius from the
+   * registry's pure `shape()` spec. A type with no generator of its own (the Death Star spheroid)
+   * returns null and falls through to the ellipsoid, which is the honest stand-in for it anyway.
+   *
+   * PHASE 3 SCOPE, stated so the gap is not mistaken for a bug: the spec is built from the
+   * registry's DEFAULT params, because phase 1 stores no per-instance parameters on a node and the
+   * knob editor is a later phase. A GM cannot yet tune a ring's width and watch it change.
+   */
+  function attachMegaVolume(v: BodyVisual, node: any, tint: string): boolean {
+    try {
+      const def = megaTypeDef(node?.megaType);
+      if (!def) return false;
+      const host = node?.parentId ? nodesById.get(node.parentId) : undefined;
+      const spec = def.shape(defaultMegaParams(def, host as any), host as any);
+      // Unit radius 0.5 => unit DIAMETER, the same long-axis convention the hull path uses.
+      const built = buildMegaGeometry(spec, 0.5);
+      if (!built || built.mode === 'line') return false;   // tether wiring is its own step
+      const wire = renderStyle.startsWith('wire');
+      const col = new THREE.Color(tint);
+      const g = new THREE.Group();
+      if (built.mode === 'points') {
+        // A swarm is ONE object shaded appropriately, not a fleet of nodes (the owner's own
+        // simplification) - apexes only, evenly spread by the generator.
+        g.add(new THREE.Points(built.geometry, new THREE.PointsMaterial({
+          color: col, size: 0.02, sizeAttenuation: true, transparent: true, opacity: 0.95
+        })));
+      } else {
+        // DoubleSide: a ring is a real object seen from outside as well as from its inhabited face.
+        // The inward-facing lighting §5b.4b describes belongs with the interior surface work, not here.
+        g.add(new THREE.Mesh(built.geometry, new THREE.MeshStandardMaterial({
+          color: col, emissive: col, emissiveIntensity: wire ? 1 : 0.55,
+          side: THREE.DoubleSide, metalness: 0.15, roughness: 0.6,
+          wireframe: wire, transparent: true, opacity: wire ? 0.8 : 0.95
+        })));
+      }
+      const sceneLen = shipLenScene(node);
+      g.scale.setScalar(sceneLen);
+      g.visible = false;   // updateConstructs reveals it at the pixel LOD, exactly as for a hull
+      contentGroup.add(g);
+      v.shipModel = g;
+      v.shipLen = sceneLen;
+      v.shipPrev = v.mesh.position.clone();
+      return true;
+    } catch (e) {
+      console.warn('[mega] geometry build failed, falling back to the hull volume', e);
+      return false;
+    }
+  }
+
   function attachHullVolume(v: BodyVisual, node: any, tint: string) {
     try {
       const dims = node?.physical_parameters?.dimensionsM;
@@ -4273,7 +4333,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // It is assigned to `shipModel`, so it inherits the pixel LOD, the framing, the min-zoom and
         // the drive plume already built for hulls. That is the point: it removes the
         // modelled-vs-glyph branch rather than adding a third case.
-        attachHullVolume(bodies[bodies.length - 1], node, (node as any).icon_color || '#ffd24d');
+        // G53 phase 3: a mega draws its own shape; everything else keeps the ellipsoid.
+        const mv = bodies[bodies.length - 1];
+        const tint = (node as any).icon_color || '#ffd24d';
+        if (!attachMegaVolume(mv, node, tint)) attachHullVolume(mv, node, tint);
       }
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
