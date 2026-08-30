@@ -3,6 +3,44 @@ import { SOLAR_RADIUS_KM } from '../constants';
 import { luminositySolarFromRT, SOLAR_TEFF_K } from './luminosity';
 import { blackbodyFractionBelowNm } from './spectrum';
 import { ionisingOutputSolar } from './ionisingOutput';
+import { starOccluders } from './starlightOcclusion';
+
+/**
+ * ZONES FOLLOW THE DIMMING (G53 phase 4, the other half of B110's coherence warning): a star dimmed
+ * for a planet's temperature and undimmed for the habitable zone is the exact "silent, physically
+ * incoherent" split luminosity.ts's header names. Every zone line here is a flux threshold, so
+ * every one of them moves when a megastructure stands inside it.
+ *
+ * THE ZONE CIRCLES LIVE IN THE SYSTEM PLANE, and the plane is the aligned direction for every BAND
+ * occluder — a ringworld's shadow falls exactly where the zone rings are drawn — so for zones every
+ * occluder applies its FULL fraction beyond its radius, bands included (the per-body directional
+ * relief belongs to bodies, whose orbits can tilt out of the shadow; a drawn circle cannot).
+ *
+ * THE WALK: solve the line in clear sky; while the answer lands beyond an occluder, re-solve with
+ * that occluder's light removed; if the re-solve falls back INSIDE the occluder, the flux
+ * discontinuity at its radius stepped over the threshold and the edge IS the occluder's radius —
+ * beyond a solid ringworld, in-plane, there is no more zone to have. `solveAt(f)` re-runs the
+ * line's own solver with the host luminosity scaled by f, so companion flux stays undimmed (a
+ * companion's light is not intercepted by this star's structures — the stated approximation in
+ * starlightOcclusion.ts).
+ */
+function occludedZoneDistance(
+    star: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[] | undefined,
+    solveAt: (lumFactor: number) => number
+): number {
+    let r = solveAt(1);
+    if (!(r > 0) || !allNodes || allNodes.length === 0) return r;
+    const occs = starOccluders(star, allNodes).sort((a, b) => a.radiusAu - b.radiusAu);
+    let f = 1;
+    for (const occ of occs) {
+        if (r <= occ.radiusAu) return r;
+        f *= 1 - occ.fraction;
+        r = f > 0 ? solveAt(f) : 0;
+        if (r <= occ.radiusAu) return occ.radiusAu;
+    }
+    return r;
+}
 
 
 /**
@@ -68,7 +106,11 @@ function getLuminosity(star: CelestialBody): number {
  * Both halves are expressed RELATIVE TO SOL and averaged, so Sol lands on the anchor by
  * construction and the constant keeps meaning what it says.
  */
-export function calculateKillZone(star: CelestialBody, pack?: RulePack | null): number {
+export function calculateKillZone(
+    star: CelestialBody,
+    pack?: RulePack | null,
+    allNodes?: (CelestialBody | Barycenter)[]
+): number {
     const luminosity = getLuminosity(star);
     if (!(luminosity > 0)) return 0;
 
@@ -88,8 +130,10 @@ export function calculateKillZone(star: CelestialBody, pack?: RulePack | null): 
         : 0;
 
     // Mean of the two, so a star that is lethal by EITHER route is lethal, and Sol is exactly 1.
+    // Both halves are LINEAR in luminosity, so a megastructure's grey cut scales the radius as
+    // sqrt(f) — a swarm inside the kill zone is, honestly, a radiation shield.
     const hazardRelative = (uvRelative + ionisingRelative) / 2;
-    return solAU * Math.sqrt(Math.max(0, hazardRelative));
+    return occludedZoneDistance(star, allNodes, (f) => solAU * Math.sqrt(Math.max(0, hazardRelative * f)));
 }
 
 /**
@@ -174,15 +218,15 @@ export function calculateGoldilocksZone(
     const safeOuterSeff = Math.max(1e-6, maximumGreenhouse);
     const safeLuminosity = Math.max(1e-6, luminosity);
 
-    let inner = Math.sqrt(safeLuminosity / safeInnerSeff);
-    let outer = Math.sqrt(safeLuminosity / safeOuterSeff);
-
     // Close binary adjustment: include flux from sibling stars sharing the same barycenter.
+    // The occlusion factor f scales only the HOST's light (see occludedZoneDistance's header).
     const context = getNearestCompanionFluxContext(star, allNodes);
-    if (context) {
-        inner = solveCompanionAdjustedDistanceAu(safeLuminosity, context.companionLuminosity, context.separationAu, safeInnerSeff);
-        outer = solveCompanionAdjustedDistanceAu(safeLuminosity, context.companionLuminosity, context.separationAu, safeOuterSeff);
-    }
+    const solveEdge = (seff: number) => (f: number) =>
+        context
+            ? solveCompanionAdjustedDistanceAu(safeLuminosity * f, context.companionLuminosity, context.separationAu, seff)
+            : Math.sqrt((safeLuminosity * f) / seff);
+    const inner = occludedZoneDistance(star, allNodes, solveEdge(safeInnerSeff));
+    const outer = occludedZoneDistance(star, allNodes, solveEdge(safeOuterSeff));
 
     return {
         inner: Math.min(inner, outer),
@@ -276,15 +320,15 @@ function getCompanionAdjustedTemperatureLineDistance(
     if (baseDistance <= 0) return 0;
 
     const context = getNearestCompanionFluxContext(star, allNodes);
-    if (!context) return baseDistance;
-
     const hostLuminosity = Math.max(1e-9, getLuminosity(star));
+    // The line is a flux threshold, so the clear-sky distance defines it and a distance under
+    // dimmed light scales as sqrt(f) — through the companion solver when there is one, since the
+    // companion's own light is not intercepted by this star's structures.
     const targetSeff = hostLuminosity / Math.max(1e-12, baseDistance * baseDistance);
-    return solveCompanionAdjustedDistanceAu(
-        hostLuminosity,
-        context.companionLuminosity,
-        context.separationAu,
-        targetSeff
+    return occludedZoneDistance(star, allNodes, (f) =>
+        context
+            ? solveCompanionAdjustedDistanceAu(hostLuminosity * f, context.companionLuminosity, context.separationAu, targetSeff)
+            : baseDistance * Math.sqrt(f)
     );
 }
 
@@ -369,7 +413,7 @@ export function calculateAllStellarZones(
     allNodes?: (CelestialBody | Barycenter)[],
     age_Gyr: number = 4.6
 ): Record<string, any> {
-    const killZone = calculateKillZone(star, pack);
+    const killZone = calculateKillZone(star, pack, allNodes);
     const dangerZoneMultiplier = pack?.generation_parameters?.danger_zone_multiplier || 5;
     const dangerZone = killZone * dangerZoneMultiplier;
     

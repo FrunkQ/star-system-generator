@@ -5308,8 +5308,13 @@ equilibrium 0 K - and a 30-degree-inclined one loses under 1%: direction is most
 an instantaneous-position test would have made temperatures tick with the clock while the orbits
 did not (PHY-11's non-settling fault, pre-empted).
 BLAST: `deriveStarlightDimming` COMMITS OR DELETES - a removed structure must take its shadow with
-it or idempotence catches the ghost. `zones.ts` still speaks INTRINSIC luminosity everywhere: after
-this entry a dimmed system's habitable zone is drawn as if undimmed, which is exactly the
-incoherence luminosity.ts's header warns about - the zones follow-up is on the G53 row, not
-optional. megaPreview says "shadows worlds in its own plane" for bands because "dims the star
-100%" would be the A33/B27 lie.
+it or idempotence catches the ghost. megaPreview says "shadows worlds in its own plane" for bands
+because "dims the star 100%" would be the A33/B27 lie.
+CORRECTION (same day): the zones gap this entry originally named is PAID - `zones.ts` runs every
+line through `occludedZoneDistance` (solve clear; while the edge lands beyond an occluder,
+re-solve with its light removed; if the re-solve falls back inside it, the flux jump at its radius
+IS the edge - beyond a solid ringworld, in-plane, there is no more zone). For ZONES every occluder
+applies its full fraction beyond its radius, BANDS INCLUDED, because the zone circles live in the
+system plane and the plane is the aligned direction - the per-body tilt relief belongs to bodies.
+Companion flux stays undimmed through the solver. A swarm inside the kill zone is honestly a
+radiation shield (both hazard halves are linear in L, so the radius scales as sqrt f).

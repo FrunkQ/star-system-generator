@@ -1307,10 +1307,13 @@ designed, one correction and one honest gap:**
   `starOcclusion` of 1; the ANGLE is computed at the instance's real ORBIT, not the param seed
   (RENDER-S44's argument, applied to flux). Planetary torus publishes nothing — it circles a
   planet and shades nothing at system scale (its host's moons are a real unbuilt question).
-- **THE HONEST GAP, deliberate: `zones.ts` still speaks INTRINSIC luminosity**, so a dimmed
-  system's habitable-zone rings draw as if undimmed — the exact incoherence `luminosity.ts`'s
-  header warns about, now with the received half built and the zones half OWED. It is the next
-  slice of this phase, not an option (PHY-36 BLAST names it).
+- **THE ZONES HALF LANDED THE SAME DAY (v3.0.218): every zone line follows the dimming.** One
+  walk (`occludedZoneDistance`) re-solves each flux threshold with occluded light removed and pins
+  an edge AT an occluder's radius when the flux jump steps over the threshold — beyond a solid
+  ringworld, in-plane, there is no more habitable zone to draw. For zones every occluder applies
+  its FULL fraction beyond its radius, bands included, because the zone circles live in the system
+  plane — the aligned direction. Companion flux stays undimmed. A swarm inside the kill zone is
+  honestly a radiation shield. PHY-36 carries the correction.
 
 `shell` and `swarm` RENDERING was already phase 3's generator; nothing further needed here.
 

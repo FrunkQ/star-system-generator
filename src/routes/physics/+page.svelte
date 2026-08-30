@@ -187,7 +187,11 @@
         briefly, so it is dimmed by the share of its year it spends behind the band (from its inclination, not
         the clock — the same time-free convention as every distance here). The temperature range takes the
         envelope: coldest is aphelion in full shadow, warmest is perihelion in clear sky. The body's trace names
-        who took what.</p>
+        who took what. The <strong>drawn zones follow the same dimming</strong> — habitable zone, frost lines
+        and kill zone are all flux thresholds, so they move to where the light actually reaches, and a zone
+        edge that a structure's shadow steps right over is pinned at the structure itself: beyond a solid
+        ringworld, in its plane, there is no more habitable zone to draw. (For zones a band counts in full —
+        the zone circles live in the system plane, which is exactly where a band's shadow falls.)</p>
     </section>
 
     <section id="albedo">

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.218 - 30th Aug 2026
+
+- The gap from the last entry is closed: the drawn zones now follow the dimming. Put a swarm around a star and the habitable zone, frost lines and kill zone all move to where the light actually reaches; put a solid ringworld there and the zones simply END at the ring - beyond it, in its plane, there is nothing left to mark. One honest surprise fell out of the physics: a collector swarm orbiting INSIDE the kill zone shields what lies beyond it, and the kill zone shrinks to say so.
+
 ## v3.0.217 - 30th Aug 2026
 
 - Megastructures now shade the worlds behind them. Build a Dyson swarm and every planet outside it cools by exactly the share of starlight the swarm intercepts; a full shell can put the lights out. A ringworld is stricter still, and directional: a world sharing its plane beyond it sits in its shadow and honestly freezes, while a tilted orbit only clips the shadow for the small part of its year the geometry says it must. Nothing shades itself - a collector's sunward face takes the raw star, because that interception is the harvest - and nothing inside a structure's radius is touched.

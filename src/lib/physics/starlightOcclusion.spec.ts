@@ -27,6 +27,7 @@ import {
 	deriveStarlightDimming,
 	heliocentricEdgeElements
 } from './temperature';
+import { calculateGoldilocksZone, calculateKillZone, calculateFrostLine } from './zones';
 import { systemProcessor } from '../core/SystemProcessor';
 
 // ── Hand-built nodes, the luminosityUnification.spec pattern ─────────────────────────────────────
@@ -181,6 +182,51 @@ describe('equilibrium temperature receives the dimmed light', () => {
 		const pShare = calculateEquilibriumTemperature(p, nodes, 0.3) / calculateEquilibriumTemperature(p, clear, 0.3);
 		const mShare = calculateEquilibriumTemperature(moon, nodes, 0.3) / calculateEquilibriumTemperature(moon, clear, 0.3);
 		expect(mShare).toBeCloseTo(pShare, 9);
+	});
+});
+
+describe('the zones follow the dimming (the B110 coherence half)', () => {
+	// The zone circles LIVE in the system plane, which is the aligned direction for every band -
+	// so for zones every occluder applies its full fraction beyond its radius, bands included.
+	it('a 0.3 swarm at 0.5 AU pulls the habitable zone inward by exactly sqrt(0.7)', () => {
+		const clear = calculateGoldilocksZone(sol(), [sol()]);
+		// ABSOLUTE anchors first (PHY-34): Sol's conservative HZ is about 0.95-1.68 AU.
+		expect(clear.inner).toBeGreaterThan(0.94); expect(clear.inner).toBeLessThan(0.96);
+		expect(clear.outer).toBeGreaterThan(1.66); expect(clear.outer).toBeLessThan(1.69);
+		const dimmed = calculateGoldilocksZone(sol(), swarmSystem(0.5, []));
+		expect(dimmed.inner).toBeCloseTo(clear.inner * Math.sqrt(0.7), 9);
+		expect(dimmed.outer).toBeCloseTo(clear.outer * Math.sqrt(0.7), 9);
+	});
+
+	it('a zone edge that lands INSIDE the occluder stands undimmed - the kill zone ignores a 0.5 AU swarm', () => {
+		const clear = calculateKillZone(sol(), null);
+		const dimmed = calculateKillZone(sol(), null, swarmSystem(0.5, []));
+		expect(clear).toBeGreaterThan(0);
+		expect(dimmed).toBe(clear);
+	});
+
+	it('a swarm INSIDE the kill zone shields it: radius falls by sqrt(0.7)', () => {
+		const clear = calculateKillZone(sol(), null);
+		const dimmed = calculateKillZone(sol(), null, swarmSystem(0.05, []));
+		expect(dimmed).toBeCloseTo(clear * Math.sqrt(0.7), 9);
+	});
+
+	it('a solid ringworld PINS every outer zone at its own radius: beyond it, in-plane, is dark', () => {
+		const nodes = [sol(), mega('ring1', 'ringworld', 1)];
+		const clear = calculateGoldilocksZone(sol(), [sol()]);
+		const gz = calculateGoldilocksZone(sol(), nodes);
+		expect(gz.inner).toBeCloseTo(clear.inner, 9); // 0.95 < 1: lands inside the ring, undimmed
+		expect(gz.outer).toBeCloseTo(1, 9);           // the flux jump at the ring IS the zone edge
+		const frost = calculateFrostLine(sol(), nodes);
+		expect(frost).toBeCloseTo(1, 9);              // ~4.9 AU in clear sky; the ring ends it
+		const clearFrost = calculateFrostLine(sol(), [sol()]);
+		expect(clearFrost).toBeGreaterThan(3);
+	});
+
+	it('two swarms compose multiplicatively on a line beyond both', () => {
+		const nodes = [sol(), mega('s1', 'dyson-swarm', 0.3), mega('s2', 'dyson-swarm', 0.6)];
+		const clear = calculateFrostLine(sol(), [sol()]);
+		expect(calculateFrostLine(sol(), nodes)).toBeCloseTo(clear * Math.sqrt(0.7 * 0.7), 6);
 	});
 });
 
