@@ -1,14 +1,18 @@
 # Creator Hub — terms of use (DRAFT for owner sign-off)
 
-STATUS: DRAFT, 2026-08-28. Written on the owner's brief for [[G55]] §6.8: *"their liability is
-explained clearly. No formal AUP... Its just protective - i wanna know nothing about them but can
-kick them off if they do annoying or genuinely bad things."* Plain English throughout, one page,
-no legalese. **This is a working draft, not legal advice; it must not ship without the owner's
-read-through**, and if the hub ever grows real money or real volume it is worth a professional
-once-over. The hub agent copies the approved text into the site verbatim.
+STATUS: OWNER-REVIEWED 2026-08-28 ("Reads well"), his three tweaks applied — ready to pass to the
+web dev. Written on the owner's brief for [[G55]] §6.8: *"their liability is explained clearly. No
+formal AUP... Its just protective - i wanna know nothing about them but can kick them off if they
+do annoying or genuinely bad things."* Plain English, one page, no legalese; not legal advice, and
+if the hub ever grows real money or volume it is worth a professional once-over.
 
-Two placeholders to fill before it ships: `<TAKEDOWN EMAIL>` (an address that reaches a person —
-§6.8 item 2) and the site name if it ends up other than share.starsystemx.com.
+One placeholder left: the site name, if it ends up other than share.starsystemx.com.
+
+**FOR THE WEB DEV — the takedown address must not appear as scrapable plain text.** The address is
+frunk@frunk.net and the owner wants it KEPT HIDDEN on the page: render it obfuscated (assembled by
+script on click, or behind a small form that sends the mail), never a bare `mailto:` or plain text
+in the HTML source. The page copy below says "the takedown address on this page" for exactly that
+reason — the wording works however you render it.
 
 ---
 
@@ -42,12 +46,19 @@ the account that uploaded it is deleted.
 
 **We know almost nothing about you, on purpose.** An account is an email address and whatever name
 you choose to show. We do not want your real name, we do not sell anything about you, and we run
-the minimum analytics needed to keep the site standing. If you ask us to delete your account we
-will delete it, along with your uploads — except that an asset also used by other creators' maps
-(the same file, shared) may remain in service of theirs.
+the minimum analytics needed to keep the site standing.
 
-**Copyright owners: tell us.** If something here is yours and should not be, email
-`<TAKEDOWN EMAIL>` with a link to the page and enough detail to identify what is yours. A real
+**Deleting your account deletes everything about you and everything you uploaded.** There is one
+deliberate delay: deletion takes effect after a seven-day hold, in case the request came from a
+hijacked account rather than from you — say so if you want it faster and can show it is really you.
+Two honest limits: where another creator independently uploaded the same file for their own map,
+their copy is their upload and stays; and copies people downloaded before you deleted are on their
+machines and beyond anyone's reach. Sharing between maps is something people do by hand here — we
+do not track it and we are not going to chase it.
+
+**Copyright owners: tell us.** If something here is yours and should not be, use the takedown
+address on this page, with a subject line starting **`SSE TAKEDOWN REQUEST:`** — that prefix is what
+gets it seen fast. Include a link to the page and enough detail to identify what is yours. A real
 person reads that inbox and acts promptly. You do not need an account to report something.
 
 **No promises.** The hub is provided as-is: no uptime guarantee, no warranty, and no liability for
@@ -71,8 +82,14 @@ mechanism a free site with anonymous users actually has.
   pseudo-legal specificity that implies a process you do not intend to run.
 - **The banned-image line** ("stays banned even if the account is deleted") states §6.1's
   verdict-outlives-the-account rule as policy, so the tooling and the terms agree.
-- **The shared-asset carve-out** in the deletion paragraph states §7.2's refcount rule as policy —
-  without it, honouring a deletion request would tear assets out of other creators' maps.
+- **The deletion paragraph is the owner's own GDPR position, 2026-08-28:** deletion deletes
+  everything about the user; cross-sharing is manual and the disclaimer covers not chasing it; and
+  the SEVEN-DAY HOLD is deliberate hijack protection, stated in the open because a delay users
+  discover by surprise reads as bad faith. Under the hood this is still §7.2's refcount rule — a
+  shared object survives because the OTHER uploader's reference is their data — but the page says it
+  in terms of uploads, not object stores.
+- **The takedown subject prefix (`SSE TAKEDOWN REQUEST:`)** is the owner's triage filter — keep it
+  verbatim, including the trailing colon.
 - **The attributions paragraph** makes the existing provenance gate do its moderation work in the
   open: the upload gate enforces *recorded*, the terms make clear that *truthful* is the
   uploader's liability. That is the "their liability is explained clearly" you asked for.
