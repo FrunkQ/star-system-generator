@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.217 - 30th Aug 2026
+
+- Megastructures now shade the worlds behind them. Build a Dyson swarm and every planet outside it cools by exactly the share of starlight the swarm intercepts; a full shell can put the lights out. A ringworld is stricter still, and directional: a world sharing its plane beyond it sits in its shadow and honestly freezes, while a tilted orbit only clips the shadow for the small part of its year the geometry says it must. Nothing shades itself - a collector's sunward face takes the raw star, because that interception is the harvest - and nothing inside a structure's radius is touched.
+- The working is shown, not just the answer: a shaded world's physics trace names what stands between it and its star and how much light still arrives, and the physics reference page explains the three rules. The temperature range is honest about the extremes - coldest is aphelion in full shadow, warmest is perihelion in clear sky.
+- Known gap, next slice: the drawn habitable-zone rings do not yet move when a structure dims the star - worlds cool, the green band stays put. The zones follow the same dimming next.
 ## v3.0.216 - 28th Aug 2026
 
 - Board only. A plain-English terms draft for the sharing hub: your uploads are yours and your responsibility, we know almost nothing about you on purpose, and we can show the door to anyone who makes the place worse.

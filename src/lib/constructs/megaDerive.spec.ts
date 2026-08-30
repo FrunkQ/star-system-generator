@@ -85,6 +85,10 @@ describe('ringworld — the Niven anchors', () => {
     expect(out.areaEarths).toBeGreaterThan(2.8e6);
     expect(out.areaEarths).toBeLessThan(3.1e6);
     expect(out.ringUnstable).toBe(true); // no restoring force — a tag, never a refusal
+    // Phase 4: a solid band is opaque to what aligns with it, and the WIDTH is what says how much
+    // of the sky that is. The angle is the physics module's, taken at the instance's real orbit.
+    expect(out.starOcclusion).toBe(1);
+    expect(out.occlusionBandWidthKm).toBe(1.6e6);
   });
 
   it('the band is an unfinished sphere: full longitude, a latitude sliver centred on the equator', () => {

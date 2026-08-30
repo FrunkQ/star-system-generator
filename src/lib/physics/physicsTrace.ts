@@ -371,6 +371,14 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         value: `${n(partnerSepKm, 0, 'km')} apart`
       }] : []),
       { label: 'Star', value: ctx.star?.name ?? '—' },
+      // G53 phase 4: what a megastructure took out of the light, stamped by the same derivation the
+      // equilibrium figure used — the panel that claims to show the working must show this too.
+      ...(body.starlightDimming?.length ? [{
+        label: 'Megastructure shading (derived)',
+        value: body.starlightDimming
+          .map((d) => `${d.starName}: ${pct(d.receivedFrac)} arrives past ${d.occluders.map((o) => o.name).join(', ')}`)
+          .join(' · ')
+      }] : []),
       ...(ctx.host && (ctx.host as any).isSelfLuminous ? [{
         label: `+ self-luminous host (${ctx.host.name})`,
         value: `${n((ctx.host as any).selfLuminousTeffK, 0, 'K')} · ${(((ctx.host as any).internalLuminositySolar ?? 0) as number).toExponential(1)} L☉`
@@ -386,6 +394,12 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     ],
     outputs: tempOut,
     notes: [
+      ...(body.starlightDimming ?? []).map((d) => {
+        const who = d.occluders.map((o) => o.band && o.alignedShare < 1
+          ? `${o.name} — a band this orbit is aligned with ${pct(o.alignedShare)} of the time`
+          : `${o.name}${o.band ? ' — a band this orbit sits inside' : ''}`).join('; ');
+        return `SOMETHING WAS BUILT BETWEEN THIS WORLD AND ITS STAR. Only ${pct(d.receivedFrac)} of ${d.starName}'s light arrives here, and every temperature above is computed from what ARRIVES, not what the star emits: ${who}. The rules are the honest ones — a structure never shades itself, shades nothing inside its own radius, and a band shades only what aligns with its plane — so moving the world, or the structure, moves this number.`;
+      }),
       ...(seaVapour && seaVapour.beatsAuthored ? [`The ${seaVapour.solvent} sea is evaporating into this world's own air and that vapour is part of the greenhouse above. The amount is NOT authored: it is the saturation pressure of ${seaVapour.solvent} at ${n(body.temperatureK, 0, 'K')} — the same curve that decides where the cloud decks sit — over the surface pressure, scaled by the ${pct(body.hydrosphere?.coverage ?? 0)} of the surface that is sea and by how much of saturation a whole air column holds (it dries with altitude). Earth's own 0.4% is what calibrates that last figure. Because saturation falls away smoothly — by sublimation once the sea freezes — a cooling world loses this warmth gradually instead of at a threshold.`] : []),
       ...(ctx.host && (ctx.host as any).isSelfLuminous ? [`Warmed and irradiated by BOTH ${ctx.star?.name ?? 'the star'} AND its self-luminous host ${ctx.host.name} (a brown dwarf, ${n((ctx.host as any).selfLuminousTeffK, 0, 'K')}). Flux and radiation SUM over every luminous source (Σ Lᵢ / 4πdᵢ²), so a close-in moon of a brown dwarf is far warmer and more irradiated than its distance from the system star alone would imply.`] : []),
       ...((body as any).isSelfLuminous && selfLumTeff ? [`Self-luminous: a brown dwarf (~${n((body.massKg ?? 0) / 1.898e27, 0)} M♃) that radiates its OWN heat from gravitational contraction and early deuterium burning. Its surface sits at ~${n(selfLumTeff, 0, 'K')} regardless of the distant star, it cools with age (L→T→Y, floor ~250 K), and it warms & irradiates its moons like a mini-star.`] : []),

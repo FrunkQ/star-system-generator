@@ -5282,3 +5282,34 @@ merely early, which is what makes this worth an entry.
 BLAST: anything new in the attach loop that needs a peer's RENDERED size. The host's own radius is
 available as `bodyRadiusScene(node, systemLevel)`, which is the same answer its visual will get a
 moment later.
+
+### PHY-36 A STAR'S LIGHT IS DIMMED IN ONE PLACE, FROM AUTHORED DATA, TIME-FREE
+BUCKET: ARCHITECTURE (the transmission convention) + DOMAIN (the band time-share result).
+WHERE: `physics/starlightOcclusion.ts` (the ONE place who-shades-whom is computed);
+`physics/luminosity.ts` `receivedLuminosityWatts` (the received form, derived from the intrinsic
+primitive); wired in `physics/temperature.ts` (both equilibrium functions and
+`deriveStarlightDimming`, which stamps `body.starlightDimming` for the trace). Gated by
+`starlightOcclusion.spec.ts` (absolute 233 K anchor per PHY-34, seen red first).
+RULE: anything asking "how much light lands HERE" multiplies the intrinsic luminosity by
+`starlightTransmission`, never its own factor - B110's fork warning, now with the received side
+built. The factor derives FRESH each pass from authored data alone (megaType + the instance's real
+orbit + registry defaults), never accumulated, so no pass ordering exists to get wrong. The three
+§6 rules: an occluder never dims itself; radially inside is undimmed; outside is dimmed by the
+fraction - isotropically for a shell/whole-sky swarm (longitude coverage time-averages because the
+strip orbits), but a BAND dims only what aligns with its plane. The alignment test is TIME-FREE to
+match the a_AU distance convention: an orbit inclined i to a band reaching latitude +/-w is
+shadowed for (2/pi)*asin(sin w / sin i) of its period (1 when i <= w), and the temperature RANGE
+takes the envelope - aphelion in deepest shadow, perihelion in clearest sky, each end running its
+own inside/outside test so an eccentric orbit dipping inside a ring is honestly undimmed there. A
+moon's plane is its PLANET's heliocentric edge (the GEN-4 lesson applied to inclination). The
+occluder's radius is its ORBIT, not its param seed (RENDER-S44's argument carried into physics).
+WHY: a solid ringworld at 1 AU honestly BLACKS OUT a coplanar world beyond it - transmission 0,
+equilibrium 0 K - and a 30-degree-inclined one loses under 1%: direction is most of the story, and
+an instantaneous-position test would have made temperatures tick with the clock while the orbits
+did not (PHY-11's non-settling fault, pre-empted).
+BLAST: `deriveStarlightDimming` COMMITS OR DELETES - a removed structure must take its shadow with
+it or idempotence catches the ghost. `zones.ts` still speaks INTRINSIC luminosity everywhere: after
+this entry a dimmed system's habitable zone is drawn as if undimmed, which is exactly the
+incoherence luminosity.ts's header warns about - the zones follow-up is on the G53 row, not
+optional. megaPreview says "shadows worlds in its own plane" for bands because "dims the star
+100%" would be the A33/B27 lie.

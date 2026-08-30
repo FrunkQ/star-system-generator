@@ -1288,10 +1288,31 @@ is a real observation from a running build, with what is known about the cause.
    (RENDER-S7: never silent on the path that decides whether a thing renders). The next report
    carries its own diagnosis.
 
-**Phase 4 — starlight occlusion.** `starOcclusion` into the insolation chain, with the explainers
-updated in the same batch. `shell` and `swarm` rendering. **This is the phase that makes the feature
-matter**, and it is deliberately after the cheap ones because it is the one that can break existing
-systems.
+**Phase 4 — starlight occlusion. DONE 2026-08-30 (core chain).** `starOcclusion` into the
+luminosity→insolation→temperature chain, with the explainers in the same batch. **Built as
+designed, one correction and one honest gap:**
+
+- `physics/starlightOcclusion.ts` is the ONE who-shades-whom site; `receivedLuminosityWatts` sits
+  beside the intrinsic form in `luminosity.ts` exactly as its header demanded; both equilibrium
+  functions in `temperature.ts` read the received form; `deriveStarlightDimming` stamps
+  `body.starlightDimming` (commit-or-delete) for the trace; the physics page and the trace both
+  speak megastructure now. Engine map: **PHY-36**. Gate: `starlightOcclusion.spec.ts`, absolute
+  233 K anchor (PHY-34), seen red first.
+- **§6's band rule needed a time-free form** — the whole distance chain is a_AU sums, so "the
+  star→body ray passes through the band" became *the share of its orbit the body spends inside the
+  band's latitude extent*: (2/π)·asin(sin w / sin i), 1 when i ≤ w. A coplanar world beyond a
+  solid ringworld honestly freezes (transmission 0); a 30°-inclined one loses under 1%. The RANGE
+  takes the envelope (aphelion in deepest shadow, perihelion in clearest sky, each end running its
+  own inside/outside test). A ringworld/torus band publishes `occlusionBandWidthKm` beside a
+  `starOcclusion` of 1; the ANGLE is computed at the instance's real ORBIT, not the param seed
+  (RENDER-S44's argument, applied to flux). Planetary torus publishes nothing — it circles a
+  planet and shades nothing at system scale (its host's moons are a real unbuilt question).
+- **THE HONEST GAP, deliberate: `zones.ts` still speaks INTRINSIC luminosity**, so a dimmed
+  system's habitable-zone rings draw as if undimmed — the exact incoherence `luminosity.ts`'s
+  header warns about, now with the received half built and the zones half OWED. It is the next
+  slice of this phase, not an option (PHY-36 BLAST names it).
+
+`shell` and `swarm` RENDERING was already phase 3's generator; nothing further needed here.
 
 **Phase 5 — THE HYBRID FLIP, and it is the risky one.** Move mega-constructs to `kind: 'body'` and
 migrate the chrome sites behind `showsAsConstruct`. Run `idempotence.test.ts` first and often; gate

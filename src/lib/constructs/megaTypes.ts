@@ -101,9 +101,18 @@ export interface MegaDerived {
   areaKm2?: number;
   /** The same area in Earth surface areas — the headline number that makes a megastructure land. */
   areaEarths?: number;
-  /** Share of the host star's output intercepted, 0..1. DATA ONLY in phase 1 — nothing feeds the
-   *  insolation chain until phase 4 (after B110 unifies the luminosity sites). */
+  /** Share of the host star's output intercepted, 0..1. FED TO PHYSICS since phase 4:
+   *  `physics/starlightOcclusion.ts` reads it into the luminosity→insolation→temperature chain.
+   *  Without `occlusionBandWidthKm` beside it this is the ISOTROPIC case — every body outside the
+   *  structure is dimmed by it (a partial SPHERE counts: its strip orbits, so longitude coverage
+   *  time-averages out; latitude coverage never does). */
   starOcclusion?: number;
+  /** Present = the occluder is a BAND, not a shell: `starOcclusion` applies only to bodies aligned
+   *  with its plane (design §6, owner refinement — "a band dims only what aligns with it"). The
+   *  value is the band's physical WIDTH in km; the physics module turns it into a latitude extent
+   *  at the instance's REAL orbital radius, because params carry the template default while the
+   *  orbit carries where the GM actually put the thing (RENDER-S44's argument, applied to flux). */
+  occlusionBandWidthKm?: number;
   /** Power harvested as a FRACTION of the host star's bolometric output (occlusion × efficiency).
    *  Dimensionless on purpose — the watts multiply waits for B110's one luminosity function. */
   powerHarvestedLstarFrac?: number;
@@ -347,6 +356,9 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       }
     ],
     derive(params) {
+      // NO starOcclusion, deliberately: this ring circles a PLANET, and at system scale a
+      // planet-hugging hoop shades nothing the flux chain models (what it does to its host's own
+      // moons is a real, unbuilt question - recorded on the G53 row, not smuggled in here).
       const out: MegaDerived = { ringUnstable: true };
       const g = spinGravityMs2(params.ringRadiusKm, params.rotationPeriodHours);
       if (g !== undefined) out.spinGravityMs2 = g;
@@ -412,6 +424,11 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       if (radiusKm > 0 && params.widthKm > 0) {
         out.areaKm2 = 2 * Math.PI * radiusKm * params.widthKm;
         out.areaEarths = out.areaKm2 / EARTH_AREA_KM2;
+        // A solid band is OPAQUE: a world aligned with its plane, beyond it, sits in real shadow
+        // (the default band is wider than the Sun's own disc, so limb leakage is second-order).
+        // The width is what makes it a BAND rather than a shell - most of the sky never sees it.
+        out.starOcclusion = 1;
+        out.occlusionBandWidthKm = params.widthKm;
       }
       return out;
     },

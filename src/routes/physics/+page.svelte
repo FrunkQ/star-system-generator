@@ -174,6 +174,20 @@
         the cover is marginal. Against measured Bond albedos: Venus 0.76 (model 0.757), Earth 0.306 (0.308),
         Saturn 0.342 (0.343), Neptune 0.290 (0.288), Jupiter 0.503 (0.490). A manually-pinned albedo still wins,
         but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
+
+      <h3>A megastructure shades the worlds behind it</h3>
+      <p>The luminosity above is what the star <strong>emits</strong>; what a world <strong>receives</strong> can
+        be less, because something was built in the way. A Dyson swarm or shell orbiting the star intercepts its
+        published share of the light (the same number driving its harvested power), and every body outside it
+        receives the rest — build a swarm at 30% density and every world beyond it cools by <code>0.7^¼</code>,
+        about 9%. Three rules keep it honest: a structure <strong>never shades itself</strong> (interception is
+        the harvest, its sunward face takes the raw star); a body <strong>inside its radius is untouched</strong>
+        (the light gets there first); and a <strong>band shades only what aligns with its plane</strong> — a
+        ringworld blacks out a world sharing its plane beyond it, while an inclined orbit only crosses the shadow
+        briefly, so it is dimmed by the share of its year it spends behind the band (from its inclination, not
+        the clock — the same time-free convention as every distance here). The temperature range takes the
+        envelope: coldest is aphelion in full shadow, warmest is perihelion in clear sky. The body's trace names
+        who took what.</p>
     </section>
 
     <section id="albedo">

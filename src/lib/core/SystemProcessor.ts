@@ -1,7 +1,7 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter, SurfaceSpectrumCurves, Tag } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, composeModelledSurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, composeModelledSurfaceTemperature, deriveStarlightDimming, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket, radiationPlace } from '../physics/radiation';
 // The annual-dose hazard tag. Its key is serialised, so it lives beside the other tag constants.
 const RADIATION_HAZARD_TAG = 'hazard/radiation';
@@ -856,6 +856,12 @@ export class SystemProcessor implements ISystemProcessor {
             const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, solved.albedoInfo.albedo);
             (body as any).equilibriumTempMinK = eqRange.minK;
             (body as any).equilibriumTempMaxK = eqRange.maxK;
+            // G53 phase 4: the trace's dimming summary rides the same commit as the temperature it
+            // explains. COMMIT OR DELETE, never leave stale: a removed megastructure must take its
+            // shadow with it on the next pass, or idempotence would catch the ghost.
+            const dimming = deriveStarlightDimming(body, allNodes);
+            if (dimming) body.starlightDimming = dimming;
+            else delete body.starlightDimming;
         };
         if (allStars.length > 0) commitThermal();
         body.equilibriumTempK = equilibriumTempK;

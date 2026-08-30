@@ -17,12 +17,18 @@
 // never the question. The question the standing rule asks is whether they COULD answer the same
 // question differently, and the answer became yes the moment anything dims a star.
 //
-// WHAT THIS FUNCTION MEANS, and the distinction the occlusion work will need: it is the star's
-// INTRINSIC output, what the photosphere emits. Every caller today wants exactly that - the zones,
-// the equilibrium temperature, the generator's stored `radiationOutput`, the plausibility check that
-// compares a stored figure against this one. A Dyson swarm, a dust lane or an eclipsing companion
-// changes what a particular body RECEIVES, which is a second quantity that belongs beside this one
-// and must be derived FROM it - never a second R^2 T^4 with a factor bolted on.
+// WHAT THIS FUNCTION MEANS, and the distinction the occlusion work turns on: it is the star's
+// INTRINSIC output, what the photosphere emits. Most callers want exactly that - the zones, the
+// generator's stored `radiationOutput`, the plausibility check that compares a stored figure
+// against this one. A Dyson swarm, a dust lane or an eclipsing companion changes what a particular
+// body RECEIVES, which is a second quantity that belongs beside this one and must be derived FROM
+// it - never a second R^2 T^4 with a factor bolted on.
+//
+// AS OF G53 PHASE 4 THE RECEIVED SIDE EXISTS: `receivedLuminosityWatts` below is that second
+// quantity, and `physics/starlightOcclusion.ts` is the ONE place the transmission factor is
+// computed (who shades whom, and by how much). The equilibrium-temperature chain now reads the
+// received form; anything else that asks "how much light lands HERE" must come through the same
+// pair rather than multiplying its own factor in - that is the exact fork this header warns about.
 //
 // THE INVERSES LIVE ELSEWHERE AND MUST STAY CONSISTENT WITH THIS LAW: `stellar-evolution.ts` solves
 // the same relation for radius (`Math.sqrt(L) / (T/Tsun)^2`, twice) and for temperature
@@ -60,4 +66,16 @@ export const SOLAR_LUMINOSITY_W =
  */
 export function luminosityWattsFromRT(radiusKm: number, tempK: number): number {
 	return luminositySolarFromRT(radiusKm, tempK) * SOLAR_LUMINOSITY_W;
+}
+
+/**
+ * WHAT A PARTICULAR BODY RECEIVES, in watts: the intrinsic output through a transmission factor -
+ * the header's "second quantity", derived FROM the primitive so a dimmed star cannot disagree with
+ * its own brightness. The factor comes from `physics/starlightOcclusion.ts` (megastructure
+ * shading, G53 phase 4) and is clamped here so a malformed factor can only darken, never amplify:
+ * nothing between a star and a world manufactures light.
+ */
+export function receivedLuminosityWatts(radiusKm: number, tempK: number, transmissionFrac: number): number {
+	const t = Number.isFinite(transmissionFrac) ? Math.min(1, Math.max(0, transmissionFrac)) : 1;
+	return luminosityWattsFromRT(radiusKm, tempK) * t;
 }

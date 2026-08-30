@@ -132,7 +132,11 @@ export function megaSummaryLine(derived: MegaDerived): string {
     parts.push('no real geostationary here');
   }
   if (derived.starOcclusion !== undefined && derived.starOcclusion > 0) {
-    parts.push(`dims the star ${(derived.starOcclusion * 100).toFixed(0)}%`);
+    // A band's shadow is directional (G53 phase 4): "dims the star 100%" would be true only for
+    // worlds in its own plane, so say the directional thing instead of the misleading number.
+    parts.push(derived.occlusionBandWidthKm !== undefined
+      ? 'shadows worlds in its own plane'
+      : `dims the star ${(derived.starOcclusion * 100).toFixed(0)}%`);
   }
   if (derived.surfaceGravityMs2 !== undefined) {
     parts.push(`surface pull ~${(derived.surfaceGravityMs2 / 9.80665).toPrecision(2)} g`);

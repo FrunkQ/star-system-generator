@@ -745,6 +745,16 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   radiationShieldingAtmo?: number; // 0-1 effectiveness
   radiationShieldingMag?: number;  // 0-1 effectiveness
   equilibriumTempK?: number;
+  /** G53 phase 4: what a megastructure took out of this body's starlight, one entry per shaded
+   *  star — DERIVED every pass by `physics/temperature.ts deriveStarlightDimming` and deliberately
+   *  ABSENT (deleted, not zeroed) when nothing shades the body, so systems without megastructures
+   *  never carry the field. The trace reads it; nothing else may re-derive who shadows whom. */
+  starlightDimming?: {
+    starName: string;
+    /** Time-averaged share of that star's light this body receives, 0..1. */
+    receivedFrac: number;
+    occluders: { name: string; fraction: number; band: boolean; alignedShare: number }[];
+  }[];
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
   apparentColor?: ApparentColor;  // un-mixed palette behind apparentColorHex (for richer rendering)

@@ -1,6 +1,7 @@
-import type { CelestialBody, Barycenter, System, RulePack } from '../types';
+import type { CelestialBody, Barycenter, System, RulePack, Kepler } from '../types';
 import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG, STEFAN_BOLTZMANN_CONSTANT } from '../constants';
-import { luminosityWattsFromRT, SOLAR_TEFF_K } from './luminosity';
+import { receivedLuminosityWatts, SOLAR_TEFF_K } from './luminosity';
+import { starOccluders, starlightTransmission } from './starlightOcclusion';
 import { GIANT_METALLIC_HYDROGEN_MIN_MASS_ME } from './fluidLayers';
 import { isLuminousSource } from './substellar';
 import { equivalentFluxDistanceAU } from './zones';
@@ -110,6 +111,31 @@ export function calculateDistanceRangeToStar(
     allNodes: (CelestialBody | Barycenter)[]
 ): DistanceRangeAU {
     return distanceRangeBetweenNodes(body, star, allNodes);
+}
+
+/**
+ * The Kepler elements of the orbit that ACTUALLY CIRCLES the star on this body's parent chain —
+ * the first edge below the common ancestor with the star. For a planet that is its own orbit; for
+ * a moon it is its planet's, which is the right answer for starlight occlusion (G53 phase 4): a
+ * moon rides its planet's plane through a band's shadow, exactly as it rides its planet's distance
+ * through the frost line (the GEN-4 lesson, applied to inclination).
+ */
+export function heliocentricEdgeElements(
+    body: CelestialBody,
+    star: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[]
+): Kepler | null {
+    const pathB = pathToRoot(body, allNodes);
+    const pathS = pathToRoot(star, allNodes);
+    if (pathB.length === 0 || pathS.length === 0) return null;
+    let lca = -1;
+    const lim = Math.min(pathB.length, pathS.length);
+    for (let i = 0; i < lim; i++) {
+        if (pathB[i].id === pathS[i].id) lca = i;
+        else break;
+    }
+    const edge = lca >= 0 ? pathB[lca + 1] : undefined;
+    return (edge as CelestialBody | undefined)?.orbit?.elements ?? null;
 }
 
 function getMainGasFraction(body: CelestialBody, gas: string): number {
@@ -430,6 +456,10 @@ export function calculateSurfaceTemperature(
         if (pack) body.greenhouseTempK = solved.greenhouseTempK;
         body.temperatureK = composeBodySurfaceTemperature(body, solved.equilibriumTempK);
     }
+    // Same commit-or-delete the processor does — the two paths may not disagree about the field.
+    const dimming = deriveStarlightDimming(body, allNodes);
+    if (dimming) body.starlightDimming = dimming;
+    else delete body.starlightDimming;
 }
 
 export function estimateInternalHeatK(body: CelestialBody, rulePack?: RulePack, ageGyr = 4.6): number {
@@ -493,13 +523,18 @@ export function calculateEquilibriumTemperature(
     
     for (const star of allStars) {
         const starTemp = star.temperatureK || SOLAR_TEFF_K;
-        // ONE Stefan-Boltzmann for the whole engine ([[B110]]) - this was `4*pi*R^2*sigma*T^4`
-        // written out here, a second implementation of what `zones.ts` was also computing its own way.
-        const starLuminosity = luminosityWattsFromRT(star.radiusKm || SOLAR_RADIUS_KM, starTemp);
-
         const dist_au = calculateDistanceToStar(body, star, allNodes);
 
         if (dist_au > 0) {
+            // ONE Stefan-Boltzmann for the whole engine ([[B110]]), through the RECEIVED form (G53
+            // phase 4): a megastructure between this star and this body takes its share out of the
+            // light before the inverse square sees it. `starlightTransmission` owns who shades whom
+            // (never itself; nothing radially inside; a band only what aligns with its plane).
+            const occluders = starOccluders(star, allNodes);
+            const frac = occluders.length
+                ? starlightTransmission(body.id, dist_au, heliocentricEdgeElements(body, star, allNodes), occluders).frac
+                : 1;
+            const starLuminosity = receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, frac);
             const dist_m = dist_au * AU_KM * 1000;
             totalLuminosityTimesArea += starLuminosity / (4 * Math.PI * Math.pow(dist_m, 2));
         }
@@ -530,18 +565,30 @@ export function calculateEquilibriumTemperatureRange(
 
     for (const star of allStars) {
         const starTemp = star.temperatureK || SOLAR_TEFF_K;
-        // ONE Stefan-Boltzmann for the whole engine ([[B110]]) - this was `4*pi*R^2*sigma*T^4`
-        // written out here, a second implementation of what `zones.ts` was also computing its own way.
-        const starLuminosity = luminosityWattsFromRT(star.radiusKm || SOLAR_RADIUS_KM, starTemp);
         const d = calculateDistanceRangeToStar(body, star, allNodes);
+        // The RANGE takes the occlusion envelope (G53 phase 4): the cold end pairs aphelion with
+        // the deepest shadow (everything the orbit ever crosses), the warm end pairs perihelion
+        // with the clearest sky (only what the orbit can never leave). Each end runs its own
+        // inside/outside test at its own distance, so an eccentric orbit that dips inside a ring
+        // is honestly undimmed at perihelion. ONE Stefan-Boltzmann, received form ([[B110]]).
+        const occluders = starOccluders(star, allNodes);
+        const edge = occluders.length ? heliocentricEdgeElements(body, star, allNodes) : null;
 
         if (d.max > 0) {
+            const worst = occluders.length
+                ? starlightTransmission(body.id, d.max, edge, occluders).worstFrac
+                : 1;
             const maxDistM = d.max * AU_KM * 1000;
-            fluxMin += starLuminosity / (4 * Math.PI * Math.pow(maxDistM, 2));
+            fluxMin += receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, worst)
+                / (4 * Math.PI * Math.pow(maxDistM, 2));
         }
         if (d.min > 0) {
+            const best = occluders.length
+                ? starlightTransmission(body.id, d.min, edge, occluders).bestFrac
+                : 1;
             const minDistM = d.min * AU_KM * 1000;
-            fluxMax += starLuminosity / (4 * Math.PI * Math.pow(minDistM, 2));
+            fluxMax += receivedLuminosityWatts(star.radiusKm || SOLAR_RADIUS_KM, starTemp, best)
+                / (4 * Math.PI * Math.pow(minDistM, 2));
         }
     }
 
@@ -553,4 +600,35 @@ export function calculateEquilibriumTemperatureRange(
         : 0;
     const maxK = Math.pow(fluxMax * absorbed / (4 * STEFAN_BOLTZMANN_CONSTANT), 0.25);
     return { minK, maxK };
+}
+
+/**
+ * The dimming summary the physics trace shows (G53 phase 4): what each star's megastructures took
+ * out of this body's light, with the same transmission the equilibrium chain just used — derived
+ * here so the panel that claims to show the working cannot disagree with the working. Returns null
+ * when nothing shades the body, and the committers DELETE the field on null rather than stamping a
+ * zero, so a system without megastructures never grows the field at all.
+ */
+export function deriveStarlightDimming(
+    body: CelestialBody,
+    allNodes: (CelestialBody | Barycenter)[]
+): NonNullable<CelestialBody['starlightDimming']> | null {
+    const allStars = allNodes.filter(n => isLuminousSource(n as any)) as CelestialBody[];
+    let out: NonNullable<CelestialBody['starlightDimming']> | null = null;
+    for (const star of allStars) {
+        const occluders = starOccluders(star, allNodes);
+        if (occluders.length === 0) continue;
+        const dist_au = calculateDistanceToStar(body, star, allNodes);
+        if (!(dist_au > 0)) continue;
+        const trans = starlightTransmission(body.id, dist_au, heliocentricEdgeElements(body, star, allNodes), occluders);
+        if (trans.dimmedBy.length === 0) continue;
+        (out ??= []).push({
+            starName: star.name || 'the star',
+            receivedFrac: trans.frac,
+            occluders: trans.dimmedBy.map(d => ({
+                name: d.name, fraction: d.fraction, band: d.band, alignedShare: d.alignedShare
+            }))
+        });
+    }
+    return out;
 }
