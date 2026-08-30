@@ -5475,3 +5475,35 @@ BLAST: a tag cannot carry a bearing. `stellar/dimmed` states what an observer TH
 measures (everyone for a shell, the plane only for a ring) because a tag is a property of the star
 and travels into every surface; the per-viewer answer belongs where the audience is known (TAG-21),
 which is the starmap. Both are true and they are different sentences.
+
+### PHY-38 THE OBSERVED DESIGNATION NEVER OVERWRITES THE SPECTRUM
+BUCKET: DOMAIN + ARCHITECTURE - domain: grey attenuation leaves the absorption LINES where they were,
+so a swarmed G2V reads G2V from any depth and the designation is the measurement that does not move.
+Architecture: one designation builder, and the observed reading is a SECOND FIELD on it rather than
+a second builder.
+WHERE: `system/starClassExplain.ts` - `explainObservedStarClass` beside `explainStarClass`;
+`physics/observedStar.apparentColourTempK`; `physics/starDesignation.spectralLetterForTempK` (the
+inverse of `spectralSubclass`, reading the same pack anchors). Gate:
+`system/observedStarClass.spec.ts`.
+RULE: the designation is what the SPECTRUM says and nothing rewrites it. What changes is what the
+other two measurements say, and the three disagreeing is the feature. `apparentColourTempK` is the
+temperature PHOTOMETRY ALONE would assign - a bisection on a monotonic short-over-long power ratio -
+and its use is to say "colour alone would call it a K star", NEVER to relabel. For a grey occluder it
+returns the star's own temperature EXACTLY, because a flat factor cancels out of a ratio, so the
+colour sentence cannot appear where nothing moved the colour.
+RULE: `cause` is present on the explanation ONLY when the caller passes it, and it never appears
+inside the three measurement sentences. Design §6: both readings are always computed and only the
+cause is redacted, which is what stops a player surface re-deriving anything.
+WHY: G54. The design's whole §2 correction is that "a G star that looks M" is a NEBULA story rather
+than a swarm one, and the obvious implementation - take the apparent colour, look up the letter, use
+it as the designation - is the exact error it corrects.
+BLAST: A FALSIFICATION RUN FOUND A HOLE IN THIS FILE'S OWN GATE AND IT IS THE REUSABLE LESSON. The
+"designation does not move" assertion originally tested a SWARM with no apparent temperature passed,
+so a deliberately relabelling implementation walked straight through it green - the assertion was
+true for a reason unrelated to what it claimed to check. It now tests the case a naive
+implementation would actually relabel: dust, reddening the star, with an apparent temperature in
+hand whose letter is provably not the star's. Write the negative assertion against the input that
+would TRIGGER the bug, not against a convenient one.
+BLAST: `apparentColourTempK` runs 60 bisections, each building a blackbody - affordable only because
+it runs where a designation is EXPLAINED and never on the map's per-star path. Do not move it into
+`observedStarReading`.

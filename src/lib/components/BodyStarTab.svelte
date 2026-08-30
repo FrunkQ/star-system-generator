@@ -9,7 +9,8 @@
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
   import CustomImageBlock from './CustomImageBlock.svelte';
   import { resolveStarImage } from '$lib/system/starImage';
-  import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
+  import { explainStarClass, explainObservedStarClass, pickerLabel } from '$lib/system/starClassExplain';
+  import { observedStarOf, apparentColourTempK } from '$lib/physics/observedStar';
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
   import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatsFromPack } from '$lib/generation/star';
@@ -20,7 +21,11 @@
   const isDesignationKey = (c: string) => c.startsWith('star/') && !isBandKey(c);
   import { SeededRNG } from '$lib/rng';
 
-  let { body, rulePack } = $props();
+  // `nodes` is the star's own system. It is what lets this panel say what an OBSERVER measures as
+  // well as what the star IS — a megastructure in front of it is a fact about the system, not about
+  // the star's record. Defaulted so every existing mount keeps working and simply shows the
+  // intrinsic half, which is the honest answer when there is no system in hand.
+  let { body, rulePack, nodes = [] } = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -34,6 +39,24 @@
   const classExplanation = $derived(
       explainStarClass(rulePack, currentClass, activityBucket)
   );
+  // G54: WHAT AN OBSERVER MEASURES, beside what the star IS. Built by the ONE designation builder,
+  // never a second one. No viewpoint exists in a body panel, so this is the isotropic answer and it
+  // NAMES any band it could not test rather than quietly counting or quietly ignoring it.
+  //
+  // THE GM SEES THE CAUSE. This is the GM's own editor; the disclosure ladder governs what reaches a
+  // PLAYER, and it does that at the snapshot (TAG-9), not here.
+  const observed = $derived.by(() => {
+      if (!body || body.roleHint !== 'star' || !nodes?.length) return null;
+      const { reading, los } = observedStarOf(body, nodes);
+      if (!los.sources.length && !los.bandsUnresolved.length) return null;
+      const explanation = explainObservedStarClass(rulePack, currentClass, reading, {
+          activity: activityBucket,
+          apparentTempK: reading.reddened ? apparentColourTempK(body.temperatureK ?? 0, los) : undefined,
+          cause: los.sources.map((s) => s.name).join(', ') || undefined
+      });
+      return explanation ? { explanation, unresolved: los.bandsUnresolved.map((b) => b.name) } : null;
+  });
+
   // The designation the body actually holds, shown so a GM can see it follow the sliders. Remnants
   // and anything with no letter show nothing rather than a made-up string.
   const designationNow = $derived.by(() => {
@@ -781,6 +804,29 @@
                 <strong>{classExplanation.kind}</strong>{#if classExplanation.colour}, {classExplanation.colour} to human eyes{/if}{#if classExplanation.size}, {classExplanation.size}{/if}
             </div>
         {/if}
+        <!-- G54: what an OBSERVER measures. Shown only when the three readings actually disagree —
+             an ordinary star has nothing to say here and a row saying "nothing in the way" on every
+             star in the map would be noise. -->
+        {#if observed?.explanation.disagrees}
+            <div class="observed-explain">
+                <div class="obs-head" title="A star's designation is what its SPECTRUM says. These are what the other measurements say, and the three disagreeing is the point.">Measured from outside</div>
+                <div class="obs-row"><span class="obs-what">Spectroscopy</span><span>{observed.explanation.spectroscopy}</span></div>
+                <div class="obs-row"><span class="obs-what">Photometry</span><span>{observed.explanation.photometry}</span></div>
+                {#if observed.explanation.infrared}
+                    <div class="obs-row"><span class="obs-what">Infrared</span><span>{observed.explanation.infrared}</span></div>
+                {/if}
+                {#if observed.explanation.cause}
+                    <div class="obs-cause">Because of: {observed.explanation.cause}</div>
+                {/if}
+                {#if observed.unresolved.length}
+                    <div class="obs-cause">Not counted here: {observed.unresolved.join(', ')} — a ring only dims observers near its own plane, and this panel has no viewpoint. The starmap answers it per system.</div>
+                {/if}
+            </div>
+        {:else if observed?.unresolved.length}
+            <div class="observed-explain">
+                <div class="obs-cause">{observed.unresolved.join(', ')} stands around this star, but a ring only dims observers near its own plane — and this panel has no viewpoint. The starmap answers it per system.</div>
+            </div>
+        {/if}
         <!-- WHY A STAR HAS NO "auto-classify" CHECKBOX WHERE A PLANET DOES, said out loud (owner,
              2026-08-16). The opposite default on two body kinds is deliberate and reads as a bug
              unless the UI explains it: a planet's type is a judgement about parameters the GM
@@ -1046,6 +1092,11 @@
   /* Read-only: no pointer affordance, because there is nothing to grab. */
   .gauge { pointer-events: none; }
   .derived-readout { width: 100px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.95em; }
+  .observed-explain { margin-top: 6px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.78em; line-height: 1.45; }
+  .obs-head { font-weight: 600; opacity: 0.85; margin-bottom: 3px; }
+  .obs-row { display: flex; gap: 6px; }
+  .obs-what { flex: 0 0 5.6em; opacity: 0.7; }
+  .obs-cause { margin-top: 3px; opacity: 0.75; font-style: italic; }
   .class-explain { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
   
   .color-preview {

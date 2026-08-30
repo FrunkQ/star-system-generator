@@ -91,7 +91,7 @@
   <div class="tab-content">
     {#if selectedTab === 'Details'}
       {#if isStar}
-          <BodyStarTab {body} {rulePack} on:update={handleUpdate} />
+          <BodyStarTab {body} {rulePack} nodes={system.nodes} on:update={handleUpdate} />
       {:else}
           <BodyDetailsTab {body} {parentBody} on:update={handleUpdate} />
       {/if}

@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.231 - 30th Aug 2026
+
+- A star with something in front of it now reads out all three measurements, in the star's own panel, and the point is that they disagree. The spectrum says what it always said - G2V, and the absorption lines are untouched, because blocking light evenly does not move them. The brightness says four magnitudes too faint for a G2V at that distance. The infrared says forty per cent of the star's output is arriving as heat at 394 K. No G2V does that, and a crew that spots the contradiction has found something rather than been told something.
+- The designation itself never changes, and that is deliberate. Behind dust the engine works out the temperature photometry ALONE would assign - by finding the blackbody whose colour matches what actually arrives - and says "colour alone would call it a K star" beside a designation that still reads G2V. Point a spectrometer at it and the lines settle the argument. For a Dyson swarm that same calculation gives the star's own temperature exactly, so the sentence about colour never appears where nothing changed the colour.
+- The panel is honest about what it cannot answer. A ringworld only dims observers near its own plane and a body panel has no viewpoint, so it says so and points at the starmap, which answers it per system.
+- The physics page gains the whole story: the three readings side by side, the compact form a card shows, and why both readings are always worked out while only the CAUSE is ever withheld.
+- Changelog repair: the v3.0.227 release notes had been left duplicated under v3.0.228 by an earlier rebase. The stray copy is removed; nothing else moved.
+
 ## v3.0.230 - 30th Aug 2026
 
 - Changelog repair, no app change. Landing the save-shape fix took four rebases against a fast-moving beta, and the automation written to keep up mislabelled one commit and moved another release's notes onto the wrong version number. Both are put back where they belong.
@@ -15,12 +23,6 @@ All notable changes are listed here:
 - A saved campaign now describes what YOU made, not what the app happens to ship with. Every save ever written carried the four built-in calendars, the nine built-in tag categories and the on/off state of all of them, exactly as the app ships them, as though a GM had sat down and authored the lot. Nothing reading a save could tell a campaign with its own invented reckoning from one that had simply been saved. Now a file carries the calendars, categories and switches you added or changed, and nothing else.
 - Your maps open exactly as before, and older files open exactly as before: the app puts its own library back on load, which is where it belongs. A built-in calendar you have EDITED counts as yours and is saved in full.
 - This is a correctness fix and not a size one, and it is worth saying so plainly: the built-in data was under 4% of a typical save. The 45% that is indentation stays exactly as it is, because that is what makes a save readable and diffable by hand, which was a deliberate choice and a good one.
-
-- Stars now look like what an observer would actually see. Build a Dyson swarm and the star dims on both starmaps by exactly the share of light the swarm takes - and it does NOT change colour, which is the interesting part: even blocking cuts the brightness and leaves the spectrum alone, so a swarmed G2V star still reads G2V to a spectrometer. What you get instead is three measurements that disagree - too faint for its class, a large infrared excess, and a spectrum insisting nothing is wrong. That contradiction is the real technosignature, and a crew that spots it has found something rather than been told something.
-- A ringworld is directional and honest about it. A shell or an all-sky swarm dims everyone; a ring only stands in front of its star for observers near its own plane, which is about a third of a degree of sky. The map answers it per viewer, from whichever system you have set as the map's centre (right-click a system to set it) - so two crews in different systems can disagree about what that star looks like and both be right. With no centre chosen the map says so rather than guessing.
-- Dust is the case that really does redden, and you can now author it: a "Line-of-sight dust" slider on a star's Overrides tab, as an optical depth. Blue scatters out of the beam first, so the star goes fainter AND redder, and a G star behind enough of it can honestly be mistaken for a cooler one until someone takes a spectrum. It dims the star for observers only - the dust is between here and there, not around the star's own worlds.
-- A dimmed star carries two new tags, Dimmed and Infrared excess, which say how much and where the missing light went. Like every tag they have the shown / anon / hidden setting, so you choose whether players get both sides of the story, just the anomaly, or a star that is simply too faint for what its spectrum says.
-- The physics page has a new section explaining all of it, including where the blocked light goes: a shell at 1 AU settles near 394 K and glows at 7,400 nm, deep in the infrared, which is what makes such a thing findable at all.
 
 ## v3.0.227 - 30th Aug 2026
 

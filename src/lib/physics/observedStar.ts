@@ -506,6 +506,50 @@ export function observedStarTags(
 	return out;
 }
 
+// ── WHAT PHOTOMETRY ALONE WOULD SAY ─────────────────────────────────────────────
+
+/** The wavelength the colour index is split at, nm. Not "the visible band" — it is simply the
+ *  middle of the grid the engine already works on, and what matters is that both halves are
+ *  measured the same way. */
+const COLOUR_SPLIT_NM = 700;
+
+/** Short-over-long power ratio on the shared grid: one number that rises monotonically with a
+ *  blackbody's temperature, which is what makes it invertible. */
+function colourIndex(spec: Spectrum): number {
+	let blue = 0, red = 0;
+	for (let i = 0; i < GRID_NM.length; i++) {
+		if (GRID_NM[i] < COLOUR_SPLIT_NM) blue += spec[i] ?? 0; else red += spec[i] ?? 0;
+	}
+	return red > 0 ? blue / red : Infinity;
+}
+
+/**
+ * THE TEMPERATURE PHOTOMETRY ALONE WOULD ASSIGN — the blackbody whose colour matches what arrives.
+ *
+ * This is the number behind "a G star that looks M", and deriving it rather than asserting it is the
+ * point: for a GREY occluder it comes back EXACTLY the star's own temperature, because flat
+ * attenuation cancels out of a ratio, and that is the §2 correction falsifiable rather than merely
+ * stated. For dust it comes back lower, by an amount the extinction law decides.
+ *
+ * Bisection on a monotonic index rather than a fit: 60 halvings of [1000, 60000] K land inside a
+ * fiftieth of a kelvin, it cannot diverge, and it costs nothing anybody notices because it runs only
+ * where a designation is being EXPLAINED — never on the map's per-star path.
+ */
+export function apparentColourTempK(tempK: number, los: ComposedLineOfSight): number {
+	if (!(tempK > 0)) return 0;
+	if (!los.sources.length) return tempK;
+	const intrinsic = blackbodySpectrum(tempK, gridShare(tempK));
+	const observed = intrinsic.map((v, i) => v * (los.transmission[i] ?? 1) + (los.emission[i] ?? 0));
+	const target = colourIndex(observed);
+	if (!Number.isFinite(target)) return tempK;
+	let lo = 1000, hi = 60000;
+	for (let n = 0; n < 60; n++) {
+		const mid = (lo + hi) / 2;
+		if (colourIndex(blackbodySpectrum(mid, gridShare(mid))) < target) lo = mid; else hi = mid;
+	}
+	return (lo + hi) / 2;
+}
+
 /** The star's colour as an observer sees it: whatever colour the surface already shows for it,
  *  through the gain. A clear line of sight returns the input unchanged, exactly. */
 export function observedStarHex(intrinsicHex: string, reading: ObservedStarReading): string {

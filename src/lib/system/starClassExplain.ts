@@ -12,7 +12,8 @@
 // the physics, and retuning a band updates every explanation for free. Authoring "roughly 10 times
 // wider" as a string would have been a second copy of a number the pack already holds.
 import type { RulePack } from '$lib/types';
-import { starClassParts } from '$lib/physics/starDesignation';
+import { starClassParts, spectralLetterForTempK } from '$lib/physics/starDesignation';
+import type { ObservedStarReading } from '$lib/physics/observedStar';
 import { starStatTemplate } from '$lib/generation/star';
 import { SOLAR_RADIUS_KM } from '$lib/constants';
 
@@ -142,6 +143,117 @@ export function explainStarClass(
 	const headline = flaring ? `Flaring ${kind.toLowerCase()}` : kind;
 	const clauses = [headline, colour && `${colour} to human eyes`, size].filter(Boolean) as string[];
 	return { designation, kind: headline, colour, size, text: `${designation} (${clauses.join(', ')})` };
+}
+
+// ── THE OBSERVED DESIGNATION (G54 phase 3) ───────────────────────────────────────────────────────
+//
+// BESIDE THE INTRINSIC ONE, IN THIS FILE, AND FOR THE REASON THE HEADER ALREADY GIVES: this is the
+// ONE designation builder, so the editor tooltip and the physics page cannot describe the same star
+// differently. A second builder for "what it looks like from here" would be exactly that fault with
+// a new excuse.
+//
+// THE CORRECTION IS THE WHOLE POINT, AND IT IS WHY THE DESIGNATION DOES NOT MOVE.
+// Grey attenuation - a Dyson swarm, a shell, a ring - cuts FLUX at every wavelength equally. It does
+// not touch the colour and it does not touch the absorption lines, so a spectrometer pointed at a
+// heavily swarmed G2V star still reads G2V and always will. Dust does redden, and there photometry
+// alone genuinely can mis-type the star - but its lines are untouched too. So:
+//
+//     THE SPECTRUM IS NEVER OVERWRITTEN. The lines are the tell and they never lie.
+//
+// What changes is what the OTHER two measurements say, and the three disagreeing is the drama. A
+// crew that notices a G-type spectrum attached to a star four magnitudes too faint, pouring out far
+// infrared, has FOUND something. A crew told "it is an M star" has merely been told a fact.
+
+/** One reading, in the words a GM would read out. */
+export interface ObservedStarClassExplanation {
+	/** The designation, UNCHANGED. Spectroscopy is the measurement that does not move. */
+	designation: string;
+	/** What the lines say - and that they are untouched, which is the fact doing the work. */
+	spectroscopy: string;
+	/** What the brightness says, and the colour with it when dust has moved the colour. */
+	photometry: string;
+	/** What the infrared says, or undefined when there is no excess to report. */
+	infrared?: string;
+	/** The compact form for a card or a tooltip: `G2V (4.1 mag faint, IR excess)`. */
+	text: string;
+	/**
+	 * WHAT IS DOING IT. Present ONLY when the caller passes it, and the caller passes it only at
+	 * disclosure level `open` (design §6: both readings are always computed, only the CAUSE is
+	 * redacted). That is what makes "both sides of the story" one object rather than two code paths,
+	 * and it is what stops a player surface ever having to re-derive anything.
+	 */
+	cause?: string;
+	/** True when the three measurements do not agree - the condition the anomaly is about. */
+	disagrees: boolean;
+}
+
+/**
+ * The three measurements for a star with something in front of it, or undefined when the
+ * designation cannot be explained at all (the same refusal `explainStarClass` makes).
+ *
+ * `apparentTempK` is what PHOTOMETRY ALONE would assign - `physics/observedStar.apparentColourTempK`
+ * - and it is handed in rather than derived here so this file keeps no spectral machinery of its
+ * own. For a grey occluder it equals the star's real temperature exactly, which is the correction
+ * above expressed as an input: pass it and the sentence about colour writes itself correctly.
+ */
+export function explainObservedStarClass(
+	pack: RulePack | any,
+	classKey: string,
+	reading: ObservedStarReading,
+	opts: { activity?: string; apparentTempK?: number; cause?: string } = {}
+): ObservedStarClassExplanation | undefined {
+	const intrinsic = explainStarClass(pack, classKey, opts.activity);
+	if (!intrinsic) return undefined;
+	const { designation } = intrinsic;
+
+	const mag = reading.magnitudeDrop;
+	const faint = Number.isFinite(mag) && mag >= 0.1;
+	const gone = !Number.isFinite(mag) || reading.transmission <= 0;
+	const excess = reading.irExcessFrac > 0;
+
+	// SPECTROSCOPY. The one that does not move, and the sentence says WHY rather than just asserting
+	// it - a reader who understands why grey attenuation leaves the lines alone has learnt the piece
+	// of astronomy this feature exists to teach.
+	const spectroscopy = gone
+		? `No spectrum: nothing of ${designation} reaches the visible sky from here.`
+		: `${designation} — ${intrinsic.kind.toLowerCase()}. The absorption lines are untouched, `
+			+ 'and they are the measurement that never lies.';
+
+	// PHOTOMETRY. Brightness always; colour only when something actually moved it.
+	const apparentLetter = opts.apparentTempK && reading.reddened
+		? spectralLetterForTempK(opts.apparentTempK, pack)
+		: undefined;
+	const photometry = gone
+		? 'Absent from the visible sky altogether.'
+		: `${mag.toFixed(1)} magnitudes too faint for a ${designation} at this distance`
+			+ (reading.reddened
+				? `, and reddened with it${apparentLetter ? ` — colour alone would call it a ${apparentLetter} star` : ''}.`
+				: ', with no change of colour at all — which is the tell for something that blocks light evenly.');
+
+	// INFRARED. Absent rather than "none", because a star with no excess has nothing to report and a
+	// row saying so is noise on every ordinary star.
+	const infrared = excess
+		? `${(reading.irExcessFrac * 100).toFixed(0)}% of the star's output arriving as far infrared`
+			+ (reading.reradiatedTempK > 0
+				? `, at about ${Math.round(reading.reradiatedTempK)} K peaking near `
+					+ `${Math.round(reading.reradiatedPeakNm).toLocaleString()} nm`
+				: '')
+			+ `. No ${designation} produces that.`
+		: undefined;
+
+	// THE COMPACT FORM, and it keeps the designation FIRST because the designation is still true.
+	const notes: string[] = [];
+	if (gone) notes.push('not visible');
+	else if (faint) notes.push(`${mag.toFixed(1)} mag faint`);
+	if (reading.reddened) notes.push('reddened');
+	if (excess) notes.push('IR excess');
+	const text = notes.length ? `${designation} (${notes.join(', ')})` : designation;
+
+	return {
+		designation, spectroscopy, photometry, infrared, text,
+		cause: opts.cause,
+		disagrees: faint || gone || excess || reading.reddened
+	};
 }
 
 // A FAMOUS STAR PER DESIGNATION, so a reader has something to hang the label on — owner, 2026-08-15:

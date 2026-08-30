@@ -550,6 +550,33 @@
         and set it); with no centre chosen the map gives the direction-independent answer and treats
         rings as unresolved rather than guessing.</p>
 
+      <h3>Two designations, and only one of them moves</h3>
+      <p>A star's designation is what its <em>spectrum</em> says, and the engine never overwrites it.
+        Beside it the star publishes what an observer <em>measures</em>, as the three readings laid out
+        separately:</p>
+      <table class="mini">
+        <thead><tr><th>Measurement</th><th>A G2V star behind a 40% Dyson swarm</th></tr></thead>
+        <tbody>
+          <tr><td>Spectroscopy</td><td><code>G2V</code> &mdash; main-sequence dwarf. The absorption lines are untouched, and they are the measurement that never lies.</td></tr>
+          <tr><td>Photometry</td><td>0.6 magnitudes too faint for a G2V at this distance, with no change of colour at all &mdash; which is the tell for something that blocks light evenly.</td></tr>
+          <tr><td>Infrared</td><td>40% of the star's output arriving as far infrared, at about 394 K peaking near 7,351 nm. No G2V produces that.</td></tr>
+        </tbody>
+      </table>
+      <p>The compact form a card or a tooltip shows is the designation with the disagreement appended
+        &mdash; <code>G2V (0.6 mag faint, IR excess)</code> &mdash; and the designation stays at the
+        front, because it is still true.</p>
+      <p><strong>Behind dust the colour genuinely does move, and the engine says so without relabelling
+        the star.</strong> It works out the temperature <em>photometry alone</em> would assign, by
+        finding the blackbody whose colour matches what actually arrives, and reports the letter that
+        goes with it: <em>colour alone would call it a K star</em>. Point a spectrometer at it and the
+        lines still say G. For a swarm that same calculation returns the star's own temperature
+        <em>exactly</em>, because blocking light evenly cancels out of a colour measurement &mdash; so
+        the sentence about colour never appears where nothing changed the colour.</p>
+      <p class="note">Both readings are always computed, and only the <em>cause</em> is ever withheld.
+        That is what makes "both sides of the story" one thing rather than two, and it is why a player
+        surface never has to work anything out for itself &mdash; which is where a leak would come
+        from.</p>
+
       <h3>What players are told is a separate question</h3>
       <p>A dimmed star carries two tags &mdash; <strong>Dimmed</strong> (how many magnitudes) and
         <strong>Infrared excess</strong> (what share of the star's output comes back out as heat)

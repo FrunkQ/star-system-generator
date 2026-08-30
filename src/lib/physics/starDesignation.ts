@@ -66,6 +66,31 @@ export function spectralSubclass(spectral: string, tempK: number, pack?: RulePac
 }
 
 /**
+ * WHICH SPECTRAL LETTER A TEMPERATURE FALLS IN, from the pack's own subclass anchors.
+ *
+ * The exact inverse of `spectralSubclass` and it reads the SAME table, which is PHY-17's shape: the
+ * classifier tests the bands the generator draws from, so "pick X, get X back" is structural. Used
+ * where a temperature is MEASURED rather than authored — what photometry alone would call a star
+ * behind dust (G54) — so it must never be used to relabel a star the GM has already designated.
+ *
+ * Undefined when the pack states no anchors. A temperature outside every letter's range takes the
+ * NEAREST letter rather than nothing: an O star hotter than the O0 anchor is still an O.
+ */
+export function spectralLetterForTempK(tempK: number, pack?: RulePack | any): string | undefined {
+  const anchors = subclassAnchors(pack);
+  if (!anchors || !(tempK > 0)) return undefined;
+  let best: { letter: string; distance: number } | undefined;
+  for (const [letter, subs] of Object.entries(anchors)) {
+    const ts = Object.values(subs as Record<string, number>).map(Number).filter((t) => t > 0);
+    if (!ts.length) continue;
+    const lo = Math.min(...ts), hi = Math.max(...ts);
+    const distance = tempK < lo ? lo - tempK : tempK > hi ? tempK - hi : 0;
+    if (!best || distance < best.distance) best = { letter, distance };
+  }
+  return best?.letter;
+}
+
+/**
  * A pack band key -> the structured classification it states, with the SUBCLASS filled in from the
  * star's temperature when one is known.
  *
