@@ -260,6 +260,11 @@ interface BodyVisual {
   // G53: a ring, shell or swarm SURROUNDS its host - it is drawn CENTRED on the host at its own
   // orbit's drawn radius, not as a lump sitting at a point on that orbit. Set by attachMegaVolume.
   megaCentred?: boolean;
+  // G53: a space elevator. Its geometry is already built in the HOST's drawn currency and stood up
+  // by `updateSurfaceConstructs`, so the per-frame hull scaling must not touch it, and the
+  // surface-construct model suppression must not hide it - a tether is the one surface construct
+  // whose whole point is that it reaches off the ground.
+  megaTether?: boolean;
   // WHICH END IS THE NOSE, as a sign on the model's +Z. The ModelRef convention says nose = +Z, but
   // which end of the long axis is the nose is UNKNOWABLE from geometry - it is an authoring choice,
   // and nothing rendered motion until v2.1.477, so a backwards guess had never been visible. The
@@ -2712,11 +2717,50 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const host = node?.parentId ? nodesById.get(node.parentId) : undefined;
       const spec = def.shape(defaultMegaParams(def, host as any), host as any);
       // Unit radius 0.5 => unit DIAMETER, the same long-axis convention the hull path uses.
-      const built = buildMegaGeometry(spec, 0.5);
-      if (!built || built.mode === 'line') return false;   // tether wiring is its own step
+      // A TETHER IS DRAWN FROM ITS HOST, so it needs the host's own drawn radius and real radius to
+      // put geostationary in the right place - both already to hand, both computed at runtime.
+      const hostV = node?.parentId ? bodyById.get(node.parentId) : undefined;
+      const built = spec.family === 'tether'
+        ? buildMegaGeometry(spec, 0.5, {
+            hostRadiusScene: hostV?.radiusScene ?? 0,
+            hostRadiusKm: radiusKmOf(host)
+          })
+        : buildMegaGeometry(spec, 0.5);
+      if (!built) return false;
       const wire = renderStyle.startsWith('wire');
       const col = new THREE.Color(tint);
       const g = new THREE.Group();
+      if (built.mode === 'line') {
+        // THE BEANSTALK. A ribbon up the +Y axis with a captured rock on the end;
+        // `updateSurfaceConstructs` stands it on the anchor point and turns it with the world.
+        g.add(new THREE.Line(built.geometry, new THREE.LineBasicMaterial({
+          color: col, transparent: true, opacity: 0.9
+        })));
+        const cw = built.counterweight;
+        if (cw) {
+          // The counterweight is a CAPTURED ASTEROID (§5b.7), so it is drawn as a rock rather than
+          // a machined shape: a low-poly icosahedron reads as irregular at any size and costs
+          // nothing. Flat-shaded so its facets catch the light and it does not read as a ball.
+          const rock = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(cw.radiusScene, 0),
+            new THREE.MeshStandardMaterial({
+              color: col, emissive: col, emissiveIntensity: 0.35,
+              flatShading: true, metalness: 0.1, roughness: 0.9, wireframe: wire
+            })
+          );
+          rock.position.set(0, cw.atScene, 0);
+          g.add(rock);
+        }
+        g.visible = false;
+        contentGroup.add(g);
+        v.shipModel = g;
+        // NOT `megaCentred`, and NOT scaled by shipLen: the geometry is already in the host's own
+        // drawn currency, so `updateConstructs` must leave its scale alone (see megaTether).
+        v.megaTether = true;
+        v.shipLen = built.radiusScene;
+        v.shipPrev = v.mesh.position.clone();
+        return true;
+      }
       if (built.mode === 'points') {
         // A swarm is ONE object shaded appropriately, not a fleet of nodes (the owner's own
         // simplification) - apexes only, evenly spread by the generator.
@@ -3078,7 +3122,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // gating on the focus set meant a ship in DEEP SPACE - not in the system's visible set at
       // all - stayed a cross however far you zoomed in. Legibility is a SCREEN-SIZE floor, never
       // a reason to withhold the render.
-      const showModel = !!b.shipModel && !b.surfaceLock;
+      // A surface construct's hull is suppressed (RENDER-S13's exception) - but a TETHER is the one
+      // surface construct whose entire point is that it leaves the ground, so it is exempt.
+      const showModel = !!b.shipModel && (!b.surfaceLock || !!b.megaTether);
       if (b.shipModel) {
         b.shipModel.visible = showModel;
         if (showModel) {
@@ -3168,7 +3214,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // drawn AU across and grew as you zoomed: the two faults reported together.
           const minWorld = minPx * f * distToCam;
           let drawnLen = Math.max(b.shipLen ?? 0, minWorld);
-          if (b.megaCentred) {
+          if (b.megaTether) {
+            // Already in the host's drawn currency, and stood up by updateSurfaceConstructs.
+            b.shipModel.scale.setScalar(1);
+          } else if (b.megaCentred) {
             // THE RING ENCLOSES ITS STAR (G53). Its drawn radius is the distance between its own
             // projected position and its host's - which IS the drawn radius of its orbit, already
             // computed, already compressed, already dial-correct. Taking it from there rather than
@@ -3189,7 +3238,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // meant to illuminate and lit a volume nobody could see. Expressed here in hull lengths of
           // the LIT object (the owner's ask), it means the same thing at every scale and dial stop.
           for (const rig of b.shipFx?.rigs ?? []) rig.light.distance = Math.max(1e-12, drawnLen * PLUME_REACH_HULLS);
-          if (b.megaCentred) {
+          if (b.megaTether) {
+            // Positioned and oriented by updateSurfaceConstructs, which knows the live anchor.
+          } else if (b.megaCentred) {
             const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
             b.shipModel.position.copy(hostV ? hostV.mesh.position : b.mesh.position);
           } else {
@@ -4817,6 +4868,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return out.set(cl * Math.sin(lon), Math.sin(lat), cl * Math.cos(lon));
   }
 
+  const _tetherUp = new THREE.Vector3(0, 1, 0);   // the axis megaGeometry builds a tether along
+
   function updateSurfaceConstructs() {
     for (const b of bodies) {
       if (!b.surfaceLock || !b.parentId) continue;
@@ -4824,6 +4877,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!pv) continue;
       _surfDir.copy(b.surfaceLock.dir0).applyQuaternion(pv.mesh.quaternion);
       b.mesh.position.copy(pv.mesh.position).addScaledVector(_surfDir, pv.radiusScene ?? 0.01);
+      // G53: A TETHER STANDS UP FROM ITS ANCHOR. The ribbon is built along +Y from the host's
+      // surface to geostationary, so it is placed at the host's CENTRE and turned so +Y points at
+      // the anchor - which means it rises from the right spot and sweeps round with the planet's
+      // own spin, for free, because `dir0` is re-applied against the live quaternion above.
+      if (b.megaTether && b.shipModel) {
+        b.shipModel.position.copy(pv.mesh.position);
+        b.shipModel.quaternion.setFromUnitVectors(_tetherUp, _surfDir);
+      }
     }
   }
 

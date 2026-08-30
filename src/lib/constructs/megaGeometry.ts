@@ -33,6 +33,19 @@ export interface BuiltMegaGeometry {
   /** True when the habitable face points INWARD (a ring or shell interior), so the caller knows to
    *  render `THREE.BackSide` and light from the centre outward (§5b.4b). */
   interior: boolean;
+  /**
+   * TETHER ONLY: where the captured-asteroid counterweight rides, and how big to draw it — both in
+   * scene units from the host's centre, along the ribbon.
+   *
+   * `atScene` is PHYSICS (the real geostationary altitude in the host's own drawn currency).
+   * `radiusScene` is READABILITY and says so: a counterweight is a captured rock a few km across on
+   * a world thousands of km across, so at true scale it is invisible at every zoom that shows the
+   * ribbon. It is drawn as a fraction of the HOST's drawn radius — the same honest device as the
+   * screen-space pixel floors (RENDER-S43), and for the same reason: the alternative is a feature
+   * nobody can see. The elevator's real counterweight MASS is a separate authored/referenced thing
+   * (§5b.7's `counterweightId`) and is not what this number is.
+   */
+  counterweight?: { atScene: number; radiusScene: number };
 }
 
 /** Face-path resolution. A band needs plenty of longitude and almost no latitude; a full shell wants
@@ -42,6 +55,8 @@ const THETA_SEGMENTS_FULL = 64;
 /** A swarm's apex count at density 1. Density scales it; §5b.4's "density IS the segment count". */
 const SWARM_POINTS_MAX = 4000;
 const SWARM_POINTS_MIN = 24;
+/** The counterweight rock, as a fraction of the host's DRAWN radius — legibility, not scale. */
+const COUNTERWEIGHT_HOST_FRAC = 0.07;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -116,7 +131,10 @@ export function buildMegaGeometry(
       new THREE.Vector3(0, hostR, 0),
       new THREE.Vector3(0, topScene, 0)
     ]);
-    return { geometry, mode: 'line', radiusScene: topScene, interior: false };
+    return {
+      geometry, mode: 'line', radiusScene: topScene, interior: false,
+      counterweight: { atScene: topScene, radiusScene: Math.max(1e-9, hostR * COUNTERWEIGHT_HOST_FRAC) }
+    };
   }
 
   if (spec.family === 'spheroid') {

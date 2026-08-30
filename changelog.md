@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.210 - 28th Aug 2026
+
+- The space elevator is now an actual elevator: a ribbon from the ground up to geostationary with a captured asteroid on the end as its counterweight, standing on its anchor point and sweeping round with the planet as it turns. The height is the real geostationary altitude the engine already works out for that world - on Earth, six and a half planet radii up.
+- The placement box is gone for megaconstructs entirely. Either you clicked somewhere, or the structure knows where it belongs - a ringworld wants an AU out, a collector half that - and either way you can drag it afterwards. It also fixes a lurking absurdity: with no click, the old default would have put a ringworld 0.005 AU from its star, inside the fire.
+
 ## v3.0.209 - 28th Aug 2026
 
 - Placing a megaconstruct by clicking no longer asks you where you want it. You already said - you clicked there. The extra placement step now only appears on the route that has no click behind it, matching how every other construct has always worked, and the advice that step used to carry ("0.891 AU sits outside Sol's goldilocks zone...") now appears in the picker while you are still choosing, which is where a warning is actually useful.

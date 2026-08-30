@@ -25,7 +25,7 @@
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
-  import { megaTypeDef } from '$lib/constructs/megaTypes';
+  import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
   import { effectiveMegaRequires, megaSteerNotes } from '$lib/constructs/megaPlacement';
   import { calculateGoldilocksZone } from '$lib/physics/zones';
   import ConstructDetailsPane from './ConstructDetailsPane.svelte';
@@ -358,10 +358,6 @@
   let backgroundLagrangeHit: { secondaryId: string; secondaryName: string; point: string } | null = null; // G43: click landed inside an L-zone
   let backgroundCircumbinaryHit: { baryId: string; baryName: string } | null = null; // G45: click landed inside a pair's circumbinary ring
   let constructInitialPlacement: string | undefined = undefined;   // G43: preselect an L-point in the add-construct modal
-  // G53: a megaconstruct chosen in the rich picker routes HERE for its placement step - the
-  // template locked, the AU field seeded from the click when the GM clicked a place.
-  let constructInitialTemplate: CelestialBody | undefined = undefined;
-  let constructInitialAuDistance: number | undefined = undefined;
   /** G53: how far from the host the GM clicked, AU - known before a template is even chosen. */
   let constructClickAU: number | undefined = undefined;
   let showBackgroundContextMenu = false;
@@ -448,8 +444,6 @@
       if (!secondary) return;
       constructHostBody = secondary;
       constructInitialPlacement = hit.point.toUpperCase();
-      constructInitialTemplate = undefined;
-      constructInitialAuDistance = undefined;
       showAddConstructModal = true;
   }
 
@@ -877,22 +871,21 @@
       // G53: a megaconstruct is placement-SENSITIVE, so it never takes the default-orbit stamp.
       // The rich picker chose WHAT; AddConstructModal chooses WHERE, with the hard/steer machinery
       // attached - and the AU field starts at the clicked distance when there is one.
-      // G53: ASK ONLY WHEN THE CLICK DID NOT ALREADY SAY WHERE (owner, 2026-08-28: "that is where I
-      // clicked - so that is where it should be"). An ordinary construct placed from "Add Construct
-      // Here" has never been asked a second time; the mega placement dialog was a step I added on
-      // top of that, and on the click route it re-asks a question the GM has answered. So the
-      // dialog is now reserved for the route with NO click - "Add Construct" on a body, where
-      // nothing says where it goes - and the click route falls through to the ordinary creation
-      // path below, gaining only its steer tags.
+      // G53: NO PLACEMENT DIALOG FOR A MEGA, EVER (owner, 2026-08-28: "it's either one choice or
+      // where the mouse was clicked - easy to edit visually afterwards - no need for that clutter").
+      // The step is gone rather than conditional, because both of his cases are already answered
+      // here: a click says where, and with no click the TYPE ITSELF says where - its registry seed
+      // is a real default distance (a ringworld wants 1 AU, a collector 0.5) rather than the
+      // mid-orbit guess the ordinary path would make, which around a STAR would have put a
+      // ringworld at 0.005 AU, inside the photosphere.
       const clickPlaced = !!(backgroundClickPosition && backgroundClickHost);
-      if ((template as CelestialBody).megaType && !clickPlaced) {
-          showCreateConstructModal = false;
-          constructHostBody = host as CelestialBody;
-          constructInitialTemplate = template;
-          constructInitialPlacement = undefined;
-          constructInitialAuDistance = undefined;
-          showAddConstructModal = true;
-          return;
+      const megaDef = megaTypeDef((template as CelestialBody).megaType);
+      if (megaDef && !clickPlaced) {
+          const spec = megaDef.shape(defaultMegaParams(megaDef, host as any), host as any);
+          if (spec.family === 'sphere-section' && spec.radiusKm > 0) {
+              distAU = spec.radiusKm / AU_KM;
+              startAngle = Math.random() * 2 * Math.PI;
+          }
       }
 
       // 3. Create Circular Orbit
@@ -1003,8 +996,6 @@
   async function handleAddConstructCreated(event: CustomEvent<CelestialBody>) {
       const newConstruct = event.detail;
       showAddConstructModal = false;
-      constructInitialTemplate = undefined;
-      constructInitialAuDistance = undefined;
       
       // Find the host body for the editor context
       let hostBodyForEditor: CelestialBody | null = null;
@@ -2799,7 +2790,7 @@
     {/if}
 
     {#if showAddConstructModal && constructHostBody}
-      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} initialPlacement={constructInitialPlacement} initialTemplate={constructInitialTemplate} initialAuDistance={constructInitialAuDistance} on:create={handleAddConstructCreated} on:close={() => { showAddConstructModal = false; constructInitialTemplate = undefined; constructInitialAuDistance = undefined; }} />
+      <AddConstructModal {rulePack} hostBody={constructHostBody} orbitalBoundaries={constructHostBody.orbitalBoundaries} initialPlacement={constructInitialPlacement} on:create={handleAddConstructCreated} on:close={() => showAddConstructModal = false} />
     {/if}
 
     {#if showCreateConstructModal}

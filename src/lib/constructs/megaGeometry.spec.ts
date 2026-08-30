@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { buildMegaGeometry } from './megaGeometry';
 import { megaTypeDef, defaultMegaParams, type MegaTypeDef } from './megaTypes';
+import { readFileSync } from 'fs';
 import type { CelestialBody } from '$lib/types';
 
 const sol = (): CelestialBody =>
@@ -137,6 +138,21 @@ describe('the tether', () => {
     expect(p[4] / 0.2).toBeCloseTo(1 + 35786 / 6371, 3);
   });
 
+  it('carries a captured-asteroid counterweight at the top of the ribbon', () => {
+    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
+    expect(built.counterweight).toBeTruthy();
+    // The rock rides at geostationary — the same figure the ribbon ends at, not a second answer.
+    expect(built.counterweight!.atScene).toBeCloseTo(built.radiusScene, 9);
+    const p = positionsOf(built.geometry);
+    // 6 places, not more: the vertex buffer is a Float32Array (~7 significant figures) while
+    // `atScene` is a double, so a tighter assertion measures IEEE rounding rather than the code.
+    expect(built.counterweight!.atScene).toBeCloseTo(p[4], 6);
+    // Its drawn size is a READABILITY fraction of the host, never true scale: a few-km rock on a
+    // 6,371 km world would be invisible at every zoom that shows the ribbon.
+    expect(built.counterweight!.radiusScene).toBeGreaterThan(0);
+    expect(built.counterweight!.radiusScene).toBeLessThan(0.2);   // smaller than the host itself
+  });
+
   it('a world with no real geostationary gets NOTHING rather than an invented ribbon', () => {
     const locked = earth();
     locked.orbitalBoundaries!.isGeoFallback = true;
@@ -154,5 +170,49 @@ describe('what this builder deliberately does NOT own', () => {
       const host = megaTypeDef(key)!.requires.hard?.hostIsStar ? sol() : earth();
       expect(() => buildMegaGeometry(specOf(key, host), 2, { hostRadiusScene: 0.2, hostRadiusKm: host.radiusKm }), key).not.toThrow();
     }
+  });
+});
+
+// THE CHAIN A REAL NODE TAKES, end to end. The scene's attach function lives inside a 1,000-line
+// closure that cannot be called from a test, so this pins everything it does BEFORE touching THREE:
+// a node created from the shipped pack template must resolve a registry record, produce a spec and
+// build geometry. If this is green and the app still draws an ellipsoid, the fault is the build the
+// browser is running, not the logic — which is exactly the question a screenshot cannot settle.
+describe('a node created from the shipped pack builds geometry', () => {
+  const packMega = JSON.parse(
+    readFileSync('static/rulepacks/starter-sf/construct_templates.json', 'utf8')
+  ).mega as any[];
+
+  it('every shipped mega template still carries a megaType the registry knows', () => {
+    for (const t of packMega) {
+      expect(megaTypeDef(t.megaType), `${t.name} -> ${t.megaType}`).toBeDefined();
+    }
+  });
+
+  it('a ringworld instance, as the picker creates it, yields RING geometry and not a fallback', () => {
+    // Exactly what createConstruct does: deep-copy the template, drop the orbit, give it a host.
+    const template = packMega.find((t) => t.megaType === 'ringworld')!;
+    const node = JSON.parse(JSON.stringify(template));
+    delete node.orbit;
+    node.id = 'rw-1';
+    node.IsTemplate = false;
+    node.parentId = 'sol';
+
+    const def = megaTypeDef(node.megaType)!;
+    expect(def).toBeDefined();
+    const built = buildMegaGeometry(def.shape(defaultMegaParams(def, sol()), sol()), 0.5);
+    expect(built, 'the scene would fall back to the ellipsoid if this were null').toBeTruthy();
+    expect(built!.mode).toBe('faces');
+    // And it is a RING, not the flat lens the ellipsoid stand-in makes from the same dimensions.
+    built!.geometry.computeBoundingBox();
+    const bb = built!.geometry.boundingBox!;
+    expect(bb.max.x - bb.min.x).toBeCloseTo(1, 3);
+    expect(bb.max.y - bb.min.y).toBeLessThan(0.02);
+  });
+
+  it('a Death Star declines and keeps the ellipsoid — that fallback is intended, not a failure', () => {
+    const template = packMega.find((t) => t.megaType === 'death-star')!;
+    const def = megaTypeDef(template.megaType)!;
+    expect(buildMegaGeometry(def.shape(defaultMegaParams(def, earth()), earth()), 0.5)).toBeNull();
   });
 });
