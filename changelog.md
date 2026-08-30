@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.214 - 28th Aug 2026
+
+- Board only. The megaconstruct work is written up for whoever picks it up next: a full brief for the session that continues it, and a routing note saying it is really two jobs - the starlight-dimming physics, and the visual pass the owner deferred until the shapes are settled.
+
 ## v3.0.213 - 30th Aug 2026
 
 - A long reading no longer runs off its own tile and takes the unit button with it. A megastructure showing "160,000 x 160,000 x 160,000 km" was too wide for the box, so the unit label - the only way to change the unit - was pushed off the edge and could not be clicked, exactly when you would most want to change it. The reading now wraps onto a second line inside its tile, and a number is still never separated from its unit.
