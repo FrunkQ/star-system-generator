@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.207 - 30th Aug 2026
+
+- Board only. The construct unit work is written up: what was converted, what was deliberately left alone and why, what was checked in the running app, and the four things worth a human eye.
+
 ## v3.0.206 - 30th Aug 2026
 
 - Units for the construct panels, part three - the corrections that came from actually using it. Two of the rules written yesterday passed every test and looked wrong on screen within a minute of a ship being opened.
