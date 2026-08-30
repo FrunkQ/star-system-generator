@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.200 - 28th Aug 2026
+
+- Board only. The unit-system work is written up ready to hand to an agent.
+
 ## v3.0.199 - 28th Aug 2026
 
 - Board only. The first mega-structure card in the wild showed its mass as a twenty-digit number and its size in raw metres; captured as its own item - one unit system across the construct panels, scale-aware and click-to-change like the bodies.

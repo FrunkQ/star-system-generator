@@ -236,3 +236,73 @@ it is theirs, leave it.
 > green build before every push, a changelog a human can read, explicit staging, and **record what you
 > had to work out** so the next session does not re-derive it. Anything that changes what the product
 > IS: recommend, then ask.
+
+---
+
+## STREAM D — one unit system across the construct panels (A80)
+
+> You are building [[A80]] for Star System Explorer. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (v3.0.199+ — fetch
+> and read the tip; other streams are pushing). Work in your OWN worktree
+> (`git worktree add ../sse2-units2 -b wt/units2 origin/beta`); the main checkout is shared. Commit
+> as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** (1) The [[A80]] row in `docs/dev/observations-inbox.md` — it carries the owner's
+> ask verbatim and the screenshot's two faults. (2) The standing rules at that file's foot. (3) In
+> `docs/dev/engine-map.md`: **`DATA-R20` first** (UNIT PREFS RELABEL PER QUANTITY x BODY TYPE;
+> STORED VALUES NEVER LEAVE SI — the load-bearing rule for everything you touch), then `UI-C10`.
+> (4) `src/lib/units.ts` 145-175 — read the `UNIT_QUANTITIES` table's own comment: *"adding a key
+> here is cheap, forking cycle behaviour in a component is the thing this table exists to prevent."*
+> That sentence is your whole job description.
+>
+> **THE JOB.** The first mega-construct card in the wild showed `DRY MASS
+> 100,000,000,000,000,010,0… t` overflowing its tile and `DIMENSIONS 300000000000 x … m` (that is
+> 2 AU, in metres). Owner: *"smarter units on the side panel - a bit more reactive of their scale…
+> a general system across those ui components to let us change units (like the bodies)."*
+>
+> **THE SYSTEM ALREADY EXISTS AND IS CLOSER THAN THE ROW CLAIMED — verified:** `UnitBodyType`
+> already includes `'construct'` (`units.ts:142`); the `radius` quantity's comment already names
+> "construct dimensions" as its scope; `formatPref(prefs, quantity, bodyType, si)` (`units.ts:266`)
+> and `cycleUnitPref` (`unitPrefsStore.ts:36`) are the shipped call pair; and an `'auto'` stop
+> already exists on `orbit` with its magnitude rule pinned in `units.spec.ts` (the
+> Pluto-about-the-barycentre lesson — read that spec before adding any auto ladder). **The
+> construct components simply never joined:** `ConstructDerivedSpecs.svelte` ~241-268 does raw
+> `Math.round(t).toLocaleString()` and `dimensionsM?.join(' x ')` in bare metres.
+>
+> **BUILD ORDER, each its own green push.**
+> 1. **Vocabulary:** extend `UNIT_QUANTITIES` — an `'auto'` stop on `mass` (t → kt → Mt → Gt →
+>    M-Earth by magnitude, mirroring orbit's auto shape); a `volume` quantity (m³ ladder); a
+>    `power` quantity (MW → GW → TW; a fraction-of-L☉ stop is wanted by the G53 power figures —
+>    coordinate the label with `megaTypes.ts` rather than inventing a second spelling). Dimensions
+>    stay SI underneath, per DATA-R20, always.
+> 2. **Significant figures in the ONE formatter.** The `…010` tail is kg→t float noise printed as
+>    if measured. `formatPref` owns rounding for every caller; no per-tile `Math.round`. Three
+>    significant figures is the house feel for large derived values — check what the body panels do
+>    and match them rather than choosing fresh.
+> 3. **The sweep.** Convert every construct-facing formatter to `formatPref` + click-to-cycle:
+>    `ConstructDerivedSpecs.svelte` + `ConstructDerivedSpecsModal`, `ConstructBasicsTab`,
+>    `ConstructCargoTab`, `ConstructEnginesTab`, `ConstructFuelTab`; then check
+>    `BodyTechnicalDetails` and `BodyStarTab` for stragglers the G34 pass missed. Say in the row
+>    which sites you converted and which you deliberately left (a count in a log line is not a
+>    quantity and needs no ladder).
+> 4. **Dimensions display:** `dimensionsM` renders through the `radius` quantity per its own
+>    comment — `300000000000 x …` becomes `2.01 x 2.01 x 2.01 AU` (or km at smaller scales), one
+>    click cycling all three together, never three separate prefs.
+>
+> **ACCEPTANCE — thirty seconds each.** (1) The Dyson Sphere card from the owner's screenshot
+> reads sanely: mass in Gt or M-Earth with no float dust, dimensions in AU. (2) Clicking any unit
+> on a construct card cycles it, the choice survives a reload, and it is per quantity x body type
+> exactly as bodies behave. (3) A 46 m corvette still reads in metres/tonnes — the auto ladder must
+> not push small craft into absurd units. (4) Body panels are UNCHANGED — pin one or two of their
+> rendered strings in a test before you start, so drift is caught rather than eyeballed. (5) Every
+> new gate run with the fix removed and seen red.
+>
+> **RULES THAT ARE NOT OPTIONAL:** green `npm run build` before every push; version bump + changelog
+> after the preamble (prose a GM understands); stage explicit files, never `git add -A`; read
+> `git show --stat` before every push — a whole-file diff on a small edit is the CRLF tell; expect
+> OTHER STREAMS to push while you work (fetch before every push; on rejection pull --rebase, take
+> their version, renumber yours from theirs, keep both changelog entries, check every conflicted
+> file for markers before `git add`); an engine-map entry in the same commit for any non-obvious
+> rule you had to work out, and correct any entry your change falsifies; record dead ends; do not
+> stop early on a context guess. The preview pane may not render for you — if so, hand back a
+> thirty-second eyeball list naming exactly what the owner should look at.
