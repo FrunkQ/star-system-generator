@@ -505,7 +505,9 @@ provider and the retention restatement, and names the record they all hang from.
 4. No authored value is rewritten anywhere (steer, never stop).
 5. `idempotence.test.ts` stays green — g_eff is derived from authored spin, never accumulated.
 
-**Sequencing:** needs the G53 phase-5 hybrid flip (so the chain runs on megas at all) and phase 1
-of THIS spec (the record). Both are already scheduled; this section is the requirement that they
-meet in the middle. Inbox: [[G56]].
+**Sequencing:** scheduled as **G53 PHASE 5c** (`mega-constructs-design.md` §10 Phasing, amended
+2026-08-28): the phase-5 hybrid flip carries an interim honesty gate (no atmosphere figure printed
+on an artificial body — the naive GM/r² read would derive microgees and "airless", a wrong number
+in a derivation's clothes) and 5c replaces the gate with this section's provider, in the same
+commit. Needs phase 1 of THIS spec (the record) alongside. Inbox: [[G56]].
 

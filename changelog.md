@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.196 - 28th Aug 2026
+
+- Board only. The megaconstruct plan gains phase 5c - the interior surface breathes - and an honesty gate at the flip: when a ringworld first becomes a body, its atmosphere lines will say "not yet derived for a built world" rather than printing the microgravity nonsense a naive reading would produce; 5c then swaps the gate for the real spin-gravity provider in the same commit. With 5c in the plan, ring and torus interiors hold correct atmospheres by the end of the megaconstruct work.
+
 ## v3.0.195 - 28th Aug 2026
 
 - Board only. A pre-V4 requirement is written: megastructure interiors roll into the planet-segmentation system rather than growing their own. An inside-out world's floor becomes an ordinary surface region facing inward; its gravity is the calculated spin, never a faked figure; the same atmosphere model then holds air against rim walls - and the physics says a spun sphere pools its air into an equatorial band, which is why worlds without magic build many rings rather than spheres.

@@ -1147,11 +1147,34 @@ migrate the chrome sites behind `showsAsConstruct`. Run `idempotence.test.ts` fi
 (§3.4 item 7) BEFORE starting. Carry-and-release (§3.6) ships WITH this phase, not after it — it is
 what makes a moving hybrid safe rather than a follow-up nicety. Then `DockNode` through the planner.
 
+> **THE FLIP SHIPS WITH AN HONESTY GATE ON THE SURFACE CHAIN, added 2026-08-28 with [[G56]].** The
+> moment a ringworld is a body, the atmosphere/habitability chain runs on it — and until phase 5c
+> it would read gravity as GM/r² of the ring's own mass at its own radius, which for the bundled
+> ringworld is ~6 microgees: the model would confidently derive "cannot hold an atmosphere", a
+> wrong number wearing a derivation's clothes (§3.4 item 1's exact case). So at the flip, an
+> `artificial` body's atmosphere, temperature-range and habitability lines SAY "not yet derived
+> for a built world" instead of printing a figure, and a test pins that no such figure is emitted.
+> The gate is removed IN THE SAME COMMIT as phase 5c's provider — a stale gate is a stale lie.
+
 **Phase 5b — asteroids through the same seam (§3.7). A SWEEP, not an opt-in** — the owner's call:
 *"just bring them all into the new system"*. Clamp migrated rocks to `spinFraction < OBLATE_AT` so
 none changes shape; seed any invented value from the stable id, never RNG; **fix the three impossible
 bundled templates first** and add the pack-plausibility gate that would have caught them. Deliberately
 NOT a separate feature: doing it twice would be two conventions for one idea.
+
+**Phase 5c — THE INTERIOR SURFACE BREATHES ([[G56]], `surface-areas-design.md` §10).** The
+owner-approved mechanism, in his words: *"no fake g - but a calculated spin."* One
+region-effective-gravity provider (bodies answer GM/r² pinned bit-for-bit; a spun interior answers
+ω²·r·cos²(lat) from `spinRadiusM` + `rotation_period_hours`); the interior floor as a
+`SurfaceArea` band with `facing: 'inward'` (needs surface-areas phase 1 — schedulable now, its
+spec §8); the WHOLE atmosphere model reused with g_eff swapped in; retention restated and
+published (rim walls in scale heights; a spun sphere pools its air into an equatorial band with a
+derivable edge latitude — off-equator sphere interiors are AMBER magic tech, which is why honest
+catalogues grow many rings). Temperature comes through phase 4's occlusion-aware luminosity, so a
+ring inside a swarm is lit by a dimmed star, not an undimmed one. Acceptance is §10.4. **After
+this phase — and not before — atmospheres on ring and torus interiors are CORRECT: declared
+composition, derived pressure, scale height and breathability at the spin gravity, honest
+retention figures, and the goldilocks steer's promised temperature actually delivered.**
 
 **Phase 6 — the catalogue widens.** Shkadov, soletta, Birch, aerostat. All are parameter sets on
 families that exist by now.
