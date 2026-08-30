@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.225 - 30th Aug 2026
+
+- Board only. The owner confirmed the 2D megastructure rings by eye, and two new notes joined the visual-pass list in his own words: on the GM view a Dyson sphere should read as a band with a clickable handle rather than the occluding shell it really is, and a spinning band should let you sense its rotation speed.
+
 ## v3.0.224 - 30th Aug 2026
 
 - Board only. The sharing hub's thirteen requirements for the engine are banked and triaged - two of its blockers turn out to be half-done here (a format stamp that misses plain saves, and a test bundle whose model is not really named by its own bytes), and a revision counter is flagged as the one that prevents real data loss.

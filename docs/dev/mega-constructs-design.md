@@ -1258,6 +1258,21 @@ single dot on an orbit line.
    computed every frame for the centring fix (v3.0.204), so the shot wants that radius as its
    half-extent and the host as its target.
 
+> **MORE OWNER NOTES, 2026-08-30, on seeing the 2D rings live at v3.0.224 - captured, not yet
+> acted on.** The 2D treatment is CONFIRMED right by his eye ("perfect"): ring-as-orbit-line in
+> the construct's colour, glyph on top as the click target. Two 3D asks added: **(e) a Dyson
+> SPHERE must not draw as the occluding shell it really is ON THE GM VIEW** - his words: a "not
+> get in the way" visualisation, "rendering as a band rather than an occluding disc (the
+> reality)", "with an easily clickable handle for selection" (the same named-circle target as
+> (b)). PROPOSAL AWAITING HIS CALL: GM view draws the band plus an honest sphere hint (coverage
+> strip or faint wireframe); the PLAYER view keeps the honest closed shell, because the lights
+> going out is the drama the players are owed. **(f) the GM view should let you SENSE THE SPEED
+> OF ROTATION** from the band. The honest form derives the spin angle from the campaign clock x
+> rotationPeriodHours (derived, never accumulated), so rotation becomes visible under time
+> compression exactly as orbits do - but a ~215 h ringworld is imperceptible at real time, and an
+> exaggerated indicator spin would be the renderer inventing a fact. Decide BY EYE whether
+> honest-under-compression reads well enough before any indicator is considered.
+
 ### Phase 3c — WHAT IS STILL VISUALLY WRONG, owner-reported 2026-08-28. NOT FIXED, ON PURPOSE.
 
 His call, and it is the right one: *"no point in trying to fix all visual bugs before visuals
