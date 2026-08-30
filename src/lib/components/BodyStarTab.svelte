@@ -49,7 +49,13 @@
       if (!body || body.roleHint !== 'star' || !nodes?.length) return null;
       const { reading, los } = observedStarOf(body, nodes);
       if (!los.sources.length && !los.bandsUnresolved.length) return null;
-      const explanation = explainObservedStarClass(rulePack, currentClass, reading, {
+      // THE HELD DESIGNATION, NOT THE PICKER'S BAND. `currentClass` is the BAND key the selector
+      // sits on (`star/G`), which is right for the picker and wrong in a sentence: the panel says
+      // "Currently G2V" two lines below, and "too faint for a G" beside it reads as a second opinion.
+      // The body's own first class is the designation the engine wrote; fall back to the band when
+      // it has none, which is what a freshly-picked star looks like.
+      const held = (body.classes ?? []).find((c: string) => c.startsWith('star/')) ?? currentClass;
+      const explanation = explainObservedStarClass(rulePack, held, reading, {
           activity: activityBucket,
           apparentTempK: reading.reddened ? apparentColourTempK(body.temperatureK ?? 0, los) : undefined,
           cause: los.sources.map((s) => s.name).join(', ') || undefined

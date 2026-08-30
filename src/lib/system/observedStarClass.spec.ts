@@ -131,7 +131,10 @@ describe('the observed designation, beside the intrinsic one', () => {
 		const o = explainObservedStarClass(pack, 'star/G2V', r, { apparentTempK: apparentColourTempK(SOLAR_TEFF_K, los) })!;
 		expect(o.designation).toBe('G2V');            // still. always.
 		expect(o.photometry).toContain('reddened');
-		expect(o.photometry).toMatch(/colour alone would call it a [KM] star/);
+		// "an M star", not "a M star" - a spectral letter is read aloud, and this sentence is the one
+		// place a reader is guaranteed to notice. Found in the browser, on the real Sun, behind dust.
+		expect(o.photometry).toMatch(/colour alone would call it (an [AFHILMNORSX]|a [BCDGJKPQTUVWYZ]) star/);
+		expect(o.photometry).not.toMatch(/ a [AFHILMNORSX] star/);
 		expect(o.text).toContain('reddened');
 		// And the swarm case must NOT claim a colour it did not change.
 		expect(explainObservedStarClass(pack, 'star/G2V', swarmed)!.photometry).not.toContain('reddened');

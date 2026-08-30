@@ -164,6 +164,12 @@ export function explainStarClass(
 // crew that notices a G-type spectrum attached to a star four magnitudes too faint, pouring out far
 // infrared, has FOUND something. A crew told "it is an M star" has merely been told a fact.
 
+// A SPECTRAL LETTER IS READ ALOUD, so the article follows how the LETTER SOUNDS and not what it is:
+// "an M star", "an F star", "a G star". Spelling it out beats a vowel test, which gets M and F
+// wrong in the one place a reader is guaranteed to notice - a sentence about what a star looks like.
+const ARTICLE_AN = new Set(['A', 'E', 'F', 'H', 'I', 'L', 'M', 'N', 'O', 'R', 'S', 'X']);
+const articleFor = (letter: string): string => (ARTICLE_AN.has(letter.toUpperCase()) ? 'an' : 'a');
+
 /** One reading, in the words a GM would read out. */
 export interface ObservedStarClassExplanation {
 	/** The designation, UNCHANGED. Spectroscopy is the measurement that does not move. */
@@ -227,7 +233,7 @@ export function explainObservedStarClass(
 		? 'Absent from the visible sky altogether.'
 		: `${mag.toFixed(1)} magnitudes too faint for a ${designation} at this distance`
 			+ (reading.reddened
-				? `, and reddened with it${apparentLetter ? ` — colour alone would call it a ${apparentLetter} star` : ''}.`
+				? `, and reddened with it${apparentLetter ? ` — colour alone would call it ${articleFor(apparentLetter)} ${apparentLetter} star` : ''}.`
 				: ', with no change of colour at all — which is the tell for something that blocks light evenly.');
 
 	// INFRARED. Absent rather than "none", because a star with no excess has nothing to report and a

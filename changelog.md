@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.233 - 30th Aug 2026
+
+- Three fixes the browser found, on the real Sun with a real Dyson swarm around it. The star's panel called it "a G" where the line beneath it called it G2V - it now uses the designation the star actually holds, so the panel agrees with itself. Behind dust it read "colour alone would call it a M star"; it reads "an M star" now, which is the one sentence in the feature a reader is guaranteed to notice.
+- And the info panel was printing tag values raw. "Dimmed: 0.39" told you nothing about 0.39 of what; it now reads "Dimmed: 0.39 mag fainter" and "Infrared excess: 30.0% of output". That panel was the only surface not routing values through the one function that decides how a tag value is shown, so every numeric tag on it was affected - a self-luminous world's temperature and an aurora's renderer figure among them - and all of them are right now.
+
 ## v3.0.232 - 30th Aug 2026
 
 - Clicking a ringworld, Dyson sphere, swarm or torus now frames it the way a belt is framed: the whole structure AND the world or star it encloses, in one shot. The old first click flew the camera to a point on the hoop with the star out of frame - technically where the object 'is', but never the picture anyone wanted.

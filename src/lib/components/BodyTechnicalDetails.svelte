@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
-  import { describeTag } from "$lib/tags/tagPresentation";
+  import { describeTag, formatTagValue } from "$lib/tags/tagPresentation";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { calculateDeltaVBudgets, ascentBudgetApplies } from '$lib/physics/orbits';
@@ -1017,9 +1017,18 @@
           <div class="detail-item tags-list">
               <span class="label">Tags</span>
               <div class="tags-container">
+                  <!-- THE VALUE GOES THROUGH `formatTagValue`, like every other surface. This panel
+                       printed the RAW value, so a numeric tag arrived here as a bare float beside its
+                       label — "Dimmed: 0.39" with nothing saying 0.39 of what, which is exactly the
+                       A33/B27/B28 fault, and it was this panel alone. `formatTagValue` is the one
+                       place that decides (a unit, or suppression) and `tagConsistency.spec.ts` fails
+                       when a new numeric tag arrives with neither; returning null means SHOW THE
+                       LABEL ALONE, so the test is on the formatted value and not on the raw one.
+                       Found by G54's own tags landing here wrong; the fix is every tag's. -->
                   {#each body.tags as tag}
                       {@const info = describeTag(tag.key)}
-                      <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if tag.value}: {tag.value}{/if}</span>
+                      {@const shown = formatTagValue(tag.key, tag.value)}
+                      <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if shown}: {shown}{/if}</span>
                   {/each}
               </div>
           </div>
