@@ -3409,6 +3409,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const tilt = flatOverhead && lockRotate ? LOCK_POLAR : framingAngleRad;
 
     if (b) {
+      // G53 §Phase 3b(c): A RING, SHELL OR SWARM IS FRAMED LIKE A BELT — the structure AND its host
+      // in one shot. Owner, 2026-08-30: "utilise the BELT like selection for ring/sphere object
+      // framing. i.e. first click shows ring/belt and host object (usually the star)." The old shot
+      // flew to a point ON the ring with the star out of frame, because a megaCentred construct's
+      // node position IS a point on its own hoop (RENDER-S44). So: target the HOST, and take the
+      // belt solver's distance from the ring's drawn radius — the same two numbers updateConstructs
+      // already recomputes every frame, so this shot cannot disagree with the drawn shell.
+      if (b.megaCentred) {
+        const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
+        if (hostV) {
+          const hostPos = v3(hostV.mesh.position);
+          const ringR = b.mesh.position.distanceTo(hostV.mesh.position);
+          return {
+            target: hostPos,
+            heading: headingDirection({ policy, tiltRad: tilt, subject: undefined, origin: hostPos }),
+            dist: beltDistance(ringR, GRID_RADIUS)
+          };
+        }
+      }
       const target = v3(b.mesh.position);
       // A SURFACE CONSTRUCT has no standalone shot worth taking: it is a point ON a world, its hull
       // is not drawn at all (`showModel` suppresses it under surfaceLock), and framing to its own

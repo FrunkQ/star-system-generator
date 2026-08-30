@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.232 - 30th Aug 2026
+
+- Clicking a ringworld, Dyson sphere, swarm or torus now frames it the way a belt is framed: the whole structure AND the world or star it encloses, in one shot. The old first click flew the camera to a point on the hoop with the star out of frame - technically where the object 'is', but never the picture anyone wanted.
 ## v3.0.231 - 30th Aug 2026
 
 - A star with something in front of it now reads out all three measurements, in the star's own panel, and the point is that they disagree. The spectrum says what it always said - G2V, and the absorption lines are untouched, because blocking light evenly does not move them. The brightness says four magnitudes too faint for a G2V at that distance. The infrared says forty per cent of the star's output is arriving as heat at 394 K. No G2V does that, and a crew that spots the contradiction has found something rather than been told something.
