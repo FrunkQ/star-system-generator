@@ -40,7 +40,16 @@
 {/if}
 
 <style>
-  .unit-value { white-space: nowrap; }
+  /* THE READING MAY WRAP; A NUMBER AND ITS UNIT MAY NOT BE PARTED.
+     `nowrap` here made the whole reading one unbreakable line, which is fine for "450 t" and
+     breaks badly for a group: "160,000 × 160,000 × 160,000 km" overflowed its 150px tile and
+     carried the unit button — the ONLY way to change the unit — off the panel edge with it. The
+     unit was unreachable exactly when a reader most wanted to change it (owner, 2026-08-30).
+     The break opportunities are the ordinary spaces inside the separator, so a group wraps
+     between its members; the non-breaking space before the unit label keeps the last number
+     welded to it, and nothing can break inside a number because a digit run is one word. A single
+     value is therefore still unbreakable, exactly as it was. */
+  .unit-value { white-space: normal; }
   .unit {
     font-size: 0.92em;
     color: var(--text-muted, #8a8f9a);

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.213 - 30th Aug 2026
+
+- A long reading no longer runs off its own tile and takes the unit button with it. A megastructure showing "160,000 x 160,000 x 160,000 km" was too wide for the box, so the unit label - the only way to change the unit - was pushed off the edge and could not be clicked, exactly when you would most want to change it. The reading now wraps onto a second line inside its tile, and a number is still never separated from its unit.
+- The same fault was waiting one panel over: the three dimension boxes in the editor sat in a row that could not wrap, so on a narrower window the last box's unit went off the side. That row wraps now too.
+
 ## v3.0.212 - 28th Aug 2026
 
 - Board only. The megaconstruct session hands over: what is built, what is deliberately left for the visual pass, and the two traps it paid for - that a structure surrounding its star is placed and sized by its own orbit rather than as an object beside it, and that a lookup the renderer rebuilds after its own build loop answers every question inside that loop with nothing.

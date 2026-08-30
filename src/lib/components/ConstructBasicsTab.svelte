@@ -306,6 +306,10 @@
   
   .dimensions-group .dimensions-inputs {
     display: flex;
+    flex-wrap: wrap; /* three unit-cycling fields do not fit a narrow panel on one line, and a
+                        flex row that cannot wrap pushes the last field's unit label — its only
+                        click target — outside the row. Measured at tablet width. Each field keeps
+                        its own nowrap, so a box and its unit always travel together. */
     gap: 5px;
   }
 
