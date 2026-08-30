@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.212 - 28th Aug 2026
+
+- Board only. The megaconstruct session hands over: what is built, what is deliberately left for the visual pass, and the two traps it paid for - that a structure surrounding its star is placed and sized by its own orbit rather than as an object beside it, and that a lookup the renderer rebuilds after its own build loop answers every question inside that loop with nothing.
+
 ## v3.0.211 - 28th Aug 2026
 
 - On the flat map a ringworld or Dyson shell now draws as its own orbit path in its own colour, which is the honest picture rather than a shortcut: those structures really do sit on that circle, all the way round. The clickable marker stays on top, because grabbing a whole ring is awkward.

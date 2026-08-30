@@ -5247,3 +5247,38 @@ physics criterion tags and explains and never refuses an authored choice. Both a
 is where they meet.
 BLAST: adding a placement rule as a modal branch instead of a `requires` clause; putting any
 numbers-are-bad test in `hard`; any code path that blocks creation off the back of a steer note.
+
+### RENDER-S44 A MEGA IS CENTRED ON ITS HOST, AND ITS DRAWN RADIUS IS ITS OWN ORBIT
+BUCKET: ARCHITECTURE - a structure that SURROUNDS its host is positioned and sized differently from
+one that orbits it, and getting that wrong draws a ringworld as a lump beside its star.
+WHERE: `holo/scene.ts` - `attachMegaVolume` (sets `megaCentred`), the `megaCentred` branches in
+`updateConstructs`; `constructs/megaGeometry.ts`.
+RULE: a sphere-section mega (ring, torus, shell, swarm) is drawn AT ITS HOST'S POSITION, and its
+drawn radius is `b.mesh.position.distanceTo(hostV.mesh.position)` - the distance between its own
+projected position and its host's, which IS its orbit's drawn radius. Take it from there rather
+than re-projecting `a_AU`: the ring and its own orbit line then cannot disagree at any compression
+or dial position, because there is only one projection. Geometry is built at radius 0.5, so the
+scale is twice that distance.
+WHY: the first cut drew the geometry at the NODE's position (as every construct is drawn) and sized
+it by `shipLenScene`, which put a Dyson sphere out at 14 AU as a purple ball beside Sol instead of
+around it. The centring was identified while measuring phase 2's extent question and not carried
+into phase 3 - the two halves of one fact, landed a version apart.
+BLAST: a TETHER is the opposite case and must NOT be centred - it is stood up on its anchor by
+`updateSurfaceConstructs` and is exempt from the surface-construct model suppression, because a
+beanstalk's whole point is that it leaves the ground. Inclined orbits are NOT yet oriented: a ring
+currently lies in the ground plane whatever its inclination.
+
+### RENDER-S45 `bodyById` IS EMPTY WHILE THE BODIES ARE BEING BUILT
+BUCKET: IMPLEMENTATION - a lookup map rebuilt AFTER the loop that fills it answers every question
+asked during that loop with `undefined`, silently and plausibly.
+WHERE: `holo/scene.ts` `setSystemBuild` - `bodyById = new Map(bodies.map(...))` runs after the node
+loop; `nodesById` by contrast is built BEFORE it and is safe.
+RULE: inside the build loop, ask `nodesById` (nodes) or call the scale law directly. Never ask
+`bodyById` for a peer's visual - the map you get is the previous build's, cleared to empty.
+WHY: the space elevator asked `bodyById` for its host's `radiusScene` to place geostationary and
+always got `undefined`, so every tether was built against a host radius of ZERO - a zero-length
+ribbon at the planet's centre. It looked like a missing feature rather than a lookup that was
+merely early, which is what makes this worth an entry.
+BLAST: anything new in the attach loop that needs a peer's RENDERED size. The host's own radius is
+available as `bodyRadiusScene(node, systemLevel)`, which is the same answer its visual will get a
+moment later.
