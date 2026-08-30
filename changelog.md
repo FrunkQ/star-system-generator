@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.223 - 30th Aug 2026
+
+- Board only. The hub terms close with the owner's last word: this runs for the love of it, and abuse simply gets it shut down.
+
 ## v3.0.222 - 30th Aug 2026
 
 - Clicking the SSE3 mark in the corner now copies the app version, ready to paste into a bug report. A brief green tick confirms it; hovering still names the build.

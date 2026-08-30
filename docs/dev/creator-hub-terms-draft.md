@@ -72,6 +72,11 @@ without notice, including tightening sharply if the place is being abused.
 Using the hub after a change means accepting it — which is standard, and also the only enforcement
 mechanism a free site with anonymous users actually has.
 
+**A last word.** This hub exists because making star maps is fun and sharing them should be too. It
+is run by one person, for the love of it, and it earns nothing. If abuse ever makes it more work
+than joy, it will simply be shut down — so whoever is spoiling it is spoiling it for everyone.
+Be the reason it stays up.
+
 ---
 
 ## Notes for the owner (not part of the shipped text)
@@ -88,6 +93,9 @@ mechanism a free site with anonymous users actually has.
   discover by surprise reads as bad faith. Under the hood this is still §7.2's refcount rule — a
   shared object survives because the OTHER uploader's reference is their data — but the page says it
   in terms of uploads, not object stores.
+- **The last-word paragraph is the owner's own closing position, 2026-08-30** (*"I do this for fun.
+  if this is abused i will just shut it down"*) — said plainly on the page because it is true, it
+  costs nothing, and it is the most honest deterrent a free one-person site has.
 - **The takedown subject prefix (`SSE TAKEDOWN REQUEST:`)** is the owner's triage filter — keep it
   verbatim, including the trailing colon.
 - **The attributions paragraph** makes the existing provenance gate do its moderation work in the
