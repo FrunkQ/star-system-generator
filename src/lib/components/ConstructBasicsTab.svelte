@@ -3,6 +3,7 @@
   import type { CelestialBody } from '$lib/types';
   import { THERMAL_LIMITS, DEFAULT_AEROBRAKE_LIMIT_KM_S } from '$lib/constants';
   import UnitInput from './UnitInput.svelte';
+  import { dimensionsKmFromM, KM_PER_METRE } from '$lib/units';
   import CustomImageBlock from './CustomImageBlock.svelte';
 
   export let construct: CelestialBody;
@@ -61,32 +62,23 @@
   let _thermalProtectionType: string = construct.physical_parameters.thermal_protection_type || 'none';
   let _aerobrakeLimitKms: number = construct.physical_parameters.aerobrake_limit_kms ?? (THERMAL_LIMITS[_thermalProtectionType] || DEFAULT_AEROBRAKE_LIMIT_KM_S);
 
-  // UI variable for mass in tonnes
-  let massTonnes: number = (construct.physical_parameters.massKg || 0) / 1000;
-  let oldKg = construct.physical_parameters.massKg || 0;
-
-  // Sync UI (tonnes) from data (kg) ONLY when data changes externally
-  $: if (construct.physical_parameters) {
-    const kg = construct.physical_parameters.massKg || 0;
-    // Only update UI if the underlying data actually changed from what we last saw
-    // This prevents the UI variable update (from typing) triggering a revert
-    if (kg !== oldKg) {
-        massTonnes = kg / 1000;
-        oldKg = kg;
-    }
+  // A80: mass is edited through the ladder now, so the hand-rolled kg<->tonnes bridge (and the
+  // "did the data change externally or did the user type" tracker it needed) is gone. <UnitInput>
+  // takes SI in and emits SI on commit, converting exactly once - DATA-R20.
+  function commitMass(kg: number) {
+    if (!construct.physical_parameters) return;
+    construct.physical_parameters.massKg = kg;
+    handleUpdate();
   }
 
-  // Update data (kg) when UI (tonnes) changes
-  function updateMass(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const val = parseFloat(input.value);
-    if (!isNaN(val) && construct.physical_parameters) {
-        massTonnes = val; // Update local state
-        const newKg = val * 1000;
-        construct.physical_parameters.massKg = newKg;
-        oldKg = newKg; // Update tracker so we don't sync back
-        handleUpdate();
-    }
+  // The hull is ONE reading with three axes: its longest picks the rung so L, W and H never show
+  // three different units in one row.
+  $: dimsKm = dimensionsKmFromM(construct.physical_parameters.dimensionsM) ?? [0, 0, 0];
+  $: dimsRefKm = Math.max(...dimsKm.map((d: number) => Math.abs(d)));
+  function commitDim(i: number, km: number) {
+    if (!construct.physical_parameters?.dimensionsM) return;
+    construct.physical_parameters.dimensionsM[i] = km / KM_PER_METRE;
+    handleUpdate();
   }
 
   // Reactive statements for aerobraking
@@ -243,17 +235,21 @@
 
     <div class="row">
       <div class="form-group">
-        <label for="dry-mass">Dry Mass (tonnes):</label>
-        <input type="number" id="dry-mass" value={massTonnes} on:change={updateMass} />
+        <label for="dry-mass">Dry Mass:</label>
+        <UnitInput quantity="mass" bodyType="construct" id="dry-mass" min={0}
+          value={construct.physical_parameters.massKg || 0}
+          on:commit={(e) => commitMass(e.detail)} />
       </div>
     </div>
 
     <div class="form-group dimensions-group">
-        <span class="dim-label">Dimensions (L x W x H) m:</span>
+        <span class="dim-label">Dimensions (L x W x H):</span>
         <div class="dimensions-inputs">
-          <input type="number" placeholder="L" bind:value={construct.physical_parameters.dimensionsM[0]} on:input={handleUpdate} />
-          <input type="number" placeholder="W" bind:value={construct.physical_parameters.dimensionsM[1]} on:input={handleUpdate} />
-          <input type="number" placeholder="H" bind:value={construct.physical_parameters.dimensionsM[2]} on:input={handleUpdate} />
+          {#each [0, 1, 2] as axis (axis)}
+            <UnitInput quantity="dimensions" bodyType="construct" min={0} width="5.5rem"
+              value={dimsKm[axis] ?? 0} refValue={dimsRefKm}
+              on:commit={(e) => commitDim(axis, e.detail)} />
+          {/each}
         </div>
     </div>
 

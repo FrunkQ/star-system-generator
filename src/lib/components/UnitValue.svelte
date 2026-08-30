@@ -5,22 +5,33 @@
   // `value` is ALWAYS SI (K, kg, km, km/s) — storage never leaves SI; this only relabels.
   import { unitPrefs, unitPrefsLocked, cycleUnitPref } from '../unitPrefsStore';
   import {
-    resolveUnitPref, resolveAutoUnit, unitFromSI, unitIdLabel, formatUnitNum,
+    resolveUnitPref, resolveAutoUnit, unitFromSI, unitIdLabel, formatUnitNum, groupRefValue,
     type UnitQuantity, type UnitBodyType
   } from '../units';
 
   export let quantity: UnitQuantity;
   export let bodyType: UnitBodyType;
-  export let value: number;                       // SI: K / kg / km / km·s⁻¹
+  export let value: number = NaN;                 // SI: K / kg / km / km·s⁻¹ / m³ / W
   export let decimals: number | undefined = undefined;
+  // SEVERAL readings of ONE quantity that must share a unit — a hull's three axes, a current/max
+  // pair. They render as one value with ONE unit button, because they are one reading and cycling
+  // them apart is the thing this component exists to prevent (A80: "one click cycling all three
+  // together, never three separate prefs").
+  export let values: number[] | undefined = undefined;
+  export let separator = ' × ';
 
+  $: list = values ?? [value];
+  // The LARGEST reading picks the rung, so a 300 × 40 × 40 m hull reads in metres rather than
+  // having its longest axis pushed off scale by its shortest. Shared with formatPrefValues.
+  $: ref = groupRefValue(list);
   $: unit = resolveUnitPref($unitPrefs, quantity, bodyType);
-  $: shown = resolveAutoUnit(unit, value, quantity); // 'auto' resolves by the QUANTITY's rule
-  $: num = formatUnitNum(shown, unitFromSI(shown, value), decimals, unit === 'auto');
+  $: shown = resolveAutoUnit(unit, ref, quantity); // 'auto' resolves by the QUANTITY's rule
+  $: nums = list.map((v) => formatUnitNum(shown, unitFromSI(shown, v), decimals, unit === 'auto'));
+  $: renderable = list.length > 0 && list.every((v) => Number.isFinite(v));
 </script>
 
-{#if Number.isFinite(value)}
-  <span class="unit-value">{num}&nbsp;{#if $unitPrefsLocked}<span class="unit">{unitIdLabel(shown)}</span>{:else}<button
+{#if renderable}
+  <span class="unit-value">{nums.join(separator)}&nbsp;{#if $unitPrefsLocked}<span class="unit">{unitIdLabel(shown)}</span>{:else}<button
     type="button" class="unit clickable"
     title="Change unit — every {bodyType} {quantity} follows"
     on:click|stopPropagation={() => cycleUnitPref(quantity, bodyType)}>{unitIdLabel(shown)}</button>{/if}</span>

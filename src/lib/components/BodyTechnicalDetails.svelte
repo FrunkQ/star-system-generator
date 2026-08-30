@@ -10,7 +10,7 @@
   import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
   import { systemStore } from '$lib/stores';
   import { unitPrefs } from '$lib/unitPrefsStore';
-  import { formatPref, unitBodyTypeFor } from '$lib/units';
+  import { formatPref, unitBodyTypeFor, dimensionsKmFromM, KG_PER_TONNE, W_PER_MW } from '$lib/units';
   import UnitValue from './UnitValue.svelte';
   import { get } from 'svelte/store';
   import { onMount } from 'svelte';
@@ -620,13 +620,13 @@
       {#if body.physical_parameters?.massKg}
         <div class="detail-item g-bulk">
             <span class="label">Mass</span>
-            <span class="value">{(body.physical_parameters.massKg / 1000).toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes</span>
+            <span class="value"><UnitValue quantity="mass" bodyType="construct" value={body.physical_parameters.massKg} /></span>
         </div>
       {/if}
       {#if body.physical_parameters?.dimensionsM}
         <div class="detail-item g-bulk">
             <span class="label">Dimensions</span>
-            <span class="value">{body.physical_parameters.dimensionsM.join(' x ')} m</span>
+            <span class="value"><UnitValue quantity="dimensions" bodyType="construct" values={dimensionsKmFromM(body.physical_parameters.dimensionsM) ?? []} /></span>
         </div>
       {/if}
 
@@ -640,7 +640,7 @@
       {#if constructSpecs}
         <div class="detail-item g-bulk">
           <span class="label">Total Mass</span>
-          <span class="value">{constructSpecs.totalMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes</span>
+          <span class="value"><UnitValue quantity="mass" bodyType="construct" value={constructSpecs.totalMass_tonnes * KG_PER_TONNE} /></span>
         </div>
         <div class="detail-item g-infra">
           <span class="label">Max Vacuum Accel.</span>
@@ -651,7 +651,7 @@
         </div>
         <div class="detail-item g-infra">
           <span class="label">Power Surplus</span>
-          <span class="value">{constructSpecs.powerSurplus_MW.toLocaleString(undefined, {maximumFractionDigits: 1})} MW</span>
+          <span class="value"><UnitValue quantity="power" bodyType="construct" value={constructSpecs.powerSurplus_MW * W_PER_MW} /></span>
         </div>
       {/if}
     {/if}

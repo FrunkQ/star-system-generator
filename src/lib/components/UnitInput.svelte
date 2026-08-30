@@ -21,6 +21,10 @@
   export let id: string | undefined = undefined;
   export let disabled = false;
   export let width: string | undefined = undefined;
+  // When several fields are ONE reading (a hull's L/W/H), an 'auto' stop must be chosen from the
+  // reading as a whole — otherwise a 3e11 × 100 × 100 m hull shows AU, m and m in one row. Pass the
+  // largest of the group here; it only affects which stop is picked, never the value.
+  export let refValue: number | undefined = undefined;
 
   const dispatch = createEventDispatcher<{ commit: number }>();
 
@@ -28,7 +32,7 @@
   let focused = false;
 
   $: unit = resolveUnitPref($unitPrefs, quantity, bodyType);
-  $: shown = resolveAutoUnit(unit, value, quantity);
+  $: shown = resolveAutoUnit(unit, refValue !== undefined && Number.isFinite(refValue) ? refValue : value, quantity);
   $: if (!focused) text = toText(unitFromSI(shown, value));
 
   // Trim float noise from the conversion (310.92777777777775 → 310.927777778) without rounding

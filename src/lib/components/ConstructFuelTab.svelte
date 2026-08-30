@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, FuelTank, FuelDefinition } from '$lib/types';
+  import UnitValue from './UnitValue.svelte';
 
   export let construct: CelestialBody;
   export let rulePack: RulePack;
@@ -71,7 +72,7 @@
           </div>
           <div class="fuel-controls">
             <input type="range" bind:value={tank.current_units} on:input={handleChange} min="0" max={tank.capacity_units} step="1" />
-            <span>{tank.current_units.toLocaleString(undefined, {maximumFractionDigits: 0})} / {tank.capacity_units.toLocaleString(undefined, {maximumFractionDigits: 0})} m³</span>
+            <span><UnitValue quantity="volume" bodyType="construct" separator={' / '} values={[tank.current_units, tank.capacity_units]} /></span>
             <button class="remove-btn" on:click={() => removeFuelTank(index)}>Remove</button>
           </div>
         </li>

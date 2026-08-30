@@ -243,6 +243,25 @@ const SPEED_KMS_PER: Record<string, number> = {
   'mi/s': KM_PER_MILE
 };
 
+// `ConstructSpecs` publishes its masses in TONNES while this system, and storage generally, speaks
+// SI kilogrammes — so every construct tile has to bridge the two. ONE named bridge, derived from
+// the ladder itself so there is exactly one number, rather than a bare `* 1000` at a dozen sites.
+// (The mismatch itself is a finding on the A80 row: the specs module is the odd one out, and moving
+// it to kg is a physics-side change, not a display one.)
+export const KG_PER_TONNE = MASS_KG_PER['t'];
+// Same bridge for the other two: reactor figures are authored in MW, hull extents in metres, and
+// the ladders want SI watts and km. Both derived from the ladder rather than written out again.
+export const W_PER_MW = POWER_W_PER['MW'];
+export const KM_PER_METRE = DIST_KM_PER['m']; // both directions of the hull-extent bridge
+
+// A construct's `physical_parameters.dimensionsM` (metres) as the km the distance ladder speaks.
+// Null when the hull has no usable extent, so a caller can show "N/A" rather than "0 × 0 × 0".
+// ONE conversion: four panels print this and three of them used to do their own arithmetic.
+export function dimensionsKmFromM(dimsM: readonly number[] | null | undefined): number[] | null {
+  if (!dimsM?.length || !dimsM.every((d) => Number.isFinite(d))) return null;
+  return dimsM.map((d) => d * KM_PER_METRE);
+}
+
 // Stops that belong to the IMPERIAL flavour. An 'auto' stop is a MAGNITUDE rule and stays metric:
 // km and mi are the SAME magnitude in two systems, so letting the ladder walk choose between them
 // would put a 6,371 km radius in miles purely because 3,959 sits nearer 1,000. An imperial GM pins
@@ -344,6 +363,9 @@ export function unitIdLabel(unit: UnitId): string {
 // (`toPrecision(4)`, pinned in units.spec.ts as "317.8" and "1.000"), and it keeps a four-digit
 // authored tonnage exact through the ladder: 2,547 t reads "2.547 kt", not "2.55 kt".
 export const SIG_FIGS = 4;
+// 1e15 is not a fresh opinion: the catalogue block had ALREADY chosen it independently
+// (bodyFacts' own fmtNum, now gone with its last caller), which is the second time this codebase
+// has arrived at the same honest-digits ceiling. This promotes the existing answer.
 const FIXED_NOTATION_MAX = 1e15;
 const SIG_FIG_STOPS: ReadonlySet<string> = new Set([
   'M-Earth', 'M-Jup', 'M-Sol', 'L-Sol', 'kt', 'Mt', 'Gt', 'km3', 'MW', 'GW', 'TW'
@@ -408,6 +430,26 @@ export function formatSIInUnit(si: number, unit: UnitId, q: UnitQuantity, decima
 // is the click target.
 export function formatPref(prefs: UnitPrefs | undefined, q: UnitQuantity, b: UnitBodyType, si: number, decimals?: number): string {
   return formatSIInUnit(si, resolveUnitPref(prefs, q, b), q, decimals);
+}
+
+// SEVERAL readings of one quantity that must share a unit — a hull's three axes, a current/max
+// pair. THE LARGEST PICKS THE RUNG: exported rather than written twice, because <UnitValue> needs
+// the same answer and a hull that reads "3 × 20 × 20 km" when it is 3 km by 20 METRES is not a
+// rounding difference, it is a hundred-and-fiftyfold lie.
+export function groupRefValue(values: readonly number[]): number {
+  return values.reduce((m, v) => (Number.isFinite(v) && Math.abs(v) > Math.abs(m) ? v : m), 0);
+}
+
+// The string counterpart of `<UnitValue values={…}>`, for the surfaces that cannot host a component.
+export function formatPrefValues(
+  prefs: UnitPrefs | undefined, q: UnitQuantity, b: UnitBodyType,
+  siValues: readonly number[], separator = ' × ', decimals?: number
+): string {
+  if (!siValues.length || !siValues.every((v) => Number.isFinite(v))) return '—';
+  const unit = resolveUnitPref(prefs, q, b);
+  const concrete = resolveAutoUnit(unit, groupRefValue(siValues), q);
+  const nums = siValues.map((v) => formatUnitNum(concrete, unitFromSI(concrete, v), decimals, unit === 'auto'));
+  return `${nums.join(separator)} ${unitIdLabel(concrete)}`;
 }
 
 // The magnitude-aware formatSpeedAuto (m/s ↔ km/s by size — B37's Phobos lesson) still wants a

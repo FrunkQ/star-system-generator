@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.205 - 30th Aug 2026
+
+- Units for the construct panels, part two: the panels themselves. Every ship and megastructure readout now goes through the unit system instead of formatting its own numbers - dry, cargo, fuel and total mass, hull dimensions, fuel volume, power surplus, the cargo and fuel gauges, and the landing and takeoff sentences. Click any unit and every reading of that kind moves with it, on the card, in the catalogue and in a printed report alike.
+- The Dyson Sphere that started this now reads its mass as a fraction of an Earth and its size in AU, and a 46 m corvette still reads 46 x 12 x 9 m. A hull is treated as ONE measurement with three axes, so its length, width and height always share a unit - a 3 km tether 20 m thick can no longer print its thickness as 20 km.
+- Editing improved with it: dry mass and the three dimensions are now unit-cycling fields, so a megastructure can be typed in AU rather than in eleven digits of metres, and the hand-written kilogramme-to-tonne juggling behind those boxes is gone.
+- Three places outside the panels were quietly doing the same thing their own way - the catalogue block, the printed report and the text handed to the writing assistant. The catalogue had its own private rule about when metres become kilometres, at its own threshold. There is now one answer to that question instead of four.
+
 ## v3.0.204 - 28th Aug 2026
 
 - A Dyson sphere now goes AROUND its star instead of sitting beside it like a purple moon (G53). Rings, shells and swarms surround the thing they orbit - that is what they are - so they are drawn centred on their host at the drawn radius of their own orbit, which means the shell and its orbit line can never disagree at any zoom or scale setting. Reported from a screenshot; the shape was right and the placement was not.

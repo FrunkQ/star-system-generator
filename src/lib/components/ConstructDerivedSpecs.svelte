@@ -3,6 +3,8 @@
   import type { CelestialBody, RulePack } from '$lib/types';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { AU_KM } from '$lib/constants';
+  import { KG_PER_TONNE, W_PER_MW, dimensionsKmFromM, formatPref } from '$lib/units';
+  import { unitPrefs } from '$lib/unitPrefsStore';
   import UnitValue from './UnitValue.svelte';
   import { describeTag } from '$lib/tags/tagPresentation';
   import { getJourneyBounds } from '$lib/transit/scheduler';
@@ -97,6 +99,12 @@
     : null;
   const fmtG = (g: number) => (g < 1 ? g.toFixed(2) : g.toFixed(1));
 
+  // The hull's three axes, in the km the distance ladder speaks. One reading, one pref.
+  $: dimensionsKm = dimensionsKmFromM(construct.physical_parameters?.dimensionsM);
+  // The landing sentences are prose in a tooltip, so they cannot host a <UnitValue> — formatPref is
+  // the door for exactly that, and it follows the same pref the tiles above show.
+  $: fmtMass = (tonnes: number) => formatPref($unitPrefs, 'mass', 'construct', tonnes * KG_PER_TONNE);
+
   function formatOrbitalPeriod(seconds: number): string {
     if (!isFinite(seconds) || seconds <= 0) return 'N/A';
     if (seconds < 60) return `${seconds.toFixed(1)} s`;
@@ -136,8 +144,6 @@
   let landingAnalysis: { takeoff: any; consolidatedLanding: any; roundTrip: any; } | null = null;
   $: {
     if (specs && hostBody && hostBody.kind === 'body' && hostBody.roleHint !== 'star' && hostBody.roleHint !== 'belt' && hostBody.roleHint !== 'ring' && !hostBody.class?.includes('star')) {
-      const formatFuel = (t: number) => t.toLocaleString(undefined, { maximumFractionDigits: 1 });
-      
       const takeoff = { possible: false, reason: 'N/A', twr: specs.surfaceTWR, fuel: specs.takeoffFuel_tonnes };
       const propulsiveLanding = { possible: false, reason: 'N/A', fuel: specs.propulsiveLandFuel_tonnes };
       const aerobraking = { possible: false, reason: 'N/A', fuel: specs.aerobrakeLandFuel_tonnes };
@@ -150,7 +156,7 @@
       } else if (specs.surfaceTWR <= 1) {
         takeoff.reason = `Insufficient TWR. Needs > 1, has ${specs.surfaceTWR.toFixed(2)}.`;
       } else if (availableFuel_tonnes < takeoff.fuel) {
-        takeoff.reason = `Insufficient fuel. Needs ${formatFuel(takeoff.fuel)}t, has ${formatFuel(availableFuel_tonnes)}t.`;
+        takeoff.reason = `Insufficient fuel. Needs ${fmtMass(takeoff.fuel)}, has ${fmtMass(availableFuel_tonnes)}.`;
       } else {
         takeoff.possible = true;
         takeoff.reason = `Sufficient TWR and fuel.`;
@@ -162,7 +168,7 @@
       } else if (!(construct as any).physical_parameters?.has_landing_gear) {
         propulsiveLanding.reason = 'No landing gear equipped.';
       } else if (availableFuel_tonnes < propulsiveLanding.fuel) {
-        propulsiveLanding.reason = `Insufficient fuel. Needs ${formatFuel(propulsiveLanding.fuel)}t, has ${formatFuel(availableFuel_tonnes)}t.`;
+        propulsiveLanding.reason = `Insufficient fuel. Needs ${fmtMass(propulsiveLanding.fuel)}, has ${fmtMass(availableFuel_tonnes)}.`;
       } else {
         propulsiveLanding.possible = true;
         propulsiveLanding.reason = `Sufficient fuel for propulsive landing.`;
@@ -176,7 +182,7 @@
       } else if (!(construct as any).physical_parameters?.has_landing_gear) {
         aerobraking.reason = 'No landing gear equipped.';
       } else if (availableFuel_tonnes < aerobraking.fuel) {
-        aerobraking.reason = `Insufficient fuel. Needs ${formatFuel(aerobraking.fuel)}t, has ${formatFuel(availableFuel_tonnes)}t.`;
+        aerobraking.reason = `Insufficient fuel. Needs ${fmtMass(aerobraking.fuel)}, has ${fmtMass(availableFuel_tonnes)}.`;
       } else {
         aerobraking.possible = true;
         aerobraking.reason = 'Sufficient fuel for post-aerobraking maneuvers.';
@@ -209,7 +215,7 @@
           roundTrip.reason = `Sufficient fuel for takeoff and ${consolidatedLanding.method} landing.`;
         } else {
           roundTrip.additionalFuel = roundTrip.fuelNeeded - availableFuel_tonnes;
-          roundTrip.reason = `Insufficient fuel for round trip. Needs ${formatFuel(roundTrip.fuelNeeded)}t. Additional ${formatFuel(roundTrip.additionalFuel)}t required.`;
+          roundTrip.reason = `Insufficient fuel for round trip. Needs ${fmtMass(roundTrip.fuelNeeded)}. Additional ${fmtMass(roundTrip.additionalFuel)} required.`;
         }
       } else if (!takeoff.possible) {
         roundTrip.reason = `Cannot take off: ${takeoff.reason}`; 
@@ -239,15 +245,15 @@
       </div>
       <div class="spec-item fixed" title="Dry mass of the vessel, excluding fuel and cargo">
         <span class="label">Dry Mass</span>
-        <span class="value">{Math.round(specs.dryMass_tonnes).toLocaleString()} t</span>
+        <span class="value"><UnitValue quantity="mass" bodyType="construct" value={specs.dryMass_tonnes * KG_PER_TONNE} /></span>
       </div>
       <div class="spec-item fixed" title="Current mass of cargo onboard">
         <span class="label">Cargo Mass</span>
-        <span class="value">{Math.round(construct.current_cargo_tonnes || 0).toLocaleString()} t</span>
+        <span class="value"><UnitValue quantity="mass" bodyType="construct" value={(construct.current_cargo_tonnes || 0) * KG_PER_TONNE} /></span>
       </div>
       <div class="spec-item fixed" title="Current mass of fuel onboard">
         <span class="label">Fuel Mass</span>
-        <span class="value">{Math.round(specs.fuelMass_tonnes).toLocaleString()} t</span>
+        <span class="value"><UnitValue quantity="mass" bodyType="construct" value={specs.fuelMass_tonnes * KG_PER_TONNE} /></span>
       </div>
       {#if refuelSources.length}
         <div class="spec-item fixed wide" title="Resources / refuelling contexts this ship's fuels can be sourced from. A body carrying any of these is a valid top-up — and the autopilot will refuel there.">
@@ -257,19 +263,19 @@
       {/if}
       <div class="spec-item derived" title="Current total mass including fuel and cargo">
         <span class="label">Total Mass</span>
-        <span class="value">{Math.round(specs.totalMass_tonnes).toLocaleString()} t</span>
+        <span class="value"><UnitValue quantity="mass" bodyType="construct" value={specs.totalMass_tonnes * KG_PER_TONNE} /></span>
       </div>
       <div class="spec-item fixed" title="Physical dimensions of the vessel">
         <span class="label">Dimensions</span>
-        <span class="value">{construct.physical_parameters?.dimensionsM?.join(' x ') || 'N/A'} m</span>
+        <span class="value">{#if dimensionsKm}<UnitValue quantity="dimensions" bodyType="construct" values={dimensionsKm} />{:else}N/A{/if}</span>
       </div>
       <div class="spec-item fixed" title="Current fuel volume / Maximum fuel volume">
         <span class="label">Fuel Volume</span>
-        <span class="value">{Math.round(specs.fuelVolume_units).toLocaleString()} m³ <span class="detail">(Max: {Math.round(specs.fuelCapacity_units).toLocaleString()} m³)</span></span>
+        <span class="value"><UnitValue quantity="volume" bodyType="construct" value={specs.fuelVolume_units} /> <span class="detail">(Max: <UnitValue quantity="volume" bodyType="construct" value={specs.fuelCapacity_units} />)</span></span>
       </div>
       <div class="spec-item derived" title="Remaining power after all systems are active">
         <span class="label">Power Surplus</span>
-        <span class="value">{specs.powerSurplus_MW.toLocaleString(undefined, {maximumFractionDigits: 1})} MW</span>
+        <span class="value"><UnitValue quantity="power" bodyType="construct" value={specs.powerSurplus_MW * W_PER_MW} /></span>
       </div>
       <div class="spec-item derived" title="Estimated endurance based on current crew and supplies">
         <span class="label">Supplies Remaining</span>
@@ -333,7 +339,7 @@
             <span class="label">Takeoff Possible?</span>
             <span class="value {landingAnalysis.takeoff.possible ? 'possible' : 'impossible'}">
               {landingAnalysis.takeoff.possible ? 'Yes' : 'No'}
-              <span class="detail">({landingAnalysis.takeoff.fuel.toFixed(1)}t Fuel)</span>
+              <span class="detail">({fmtMass(landingAnalysis.takeoff.fuel)} Fuel)</span>
             </span>
           </div>
           <div class="spec-item derived" title={landingAnalysis.consolidatedLanding.reason}>
@@ -341,7 +347,7 @@
             <span class="value {landingAnalysis.consolidatedLanding.possible ? 'possible' : 'impossible'}">
               {landingAnalysis.consolidatedLanding.possible ? 'Yes' : 'No'}
               {#if landingAnalysis.consolidatedLanding.possible}
-                <span class="detail">({landingAnalysis.consolidatedLanding.fuel.toFixed(1)}t {landingAnalysis.consolidatedLanding.method})</span>
+                <span class="detail">({fmtMass(landingAnalysis.consolidatedLanding.fuel)} {landingAnalysis.consolidatedLanding.method})</span>
               {/if}
             </span>
           </div>
@@ -350,9 +356,9 @@
             <span class="value {landingAnalysis.roundTrip.possible ? 'possible' : 'impossible'}">
               {landingAnalysis.roundTrip.possible ? 'Yes' : 'No'}
               {#if landingAnalysis.roundTrip.possible}
-                <span class="detail">({(availableFuel_tonnes - landingAnalysis.roundTrip.fuelNeeded).toFixed(1)}t fuel remaining)</span>
+                <span class="detail">({fmtMass(availableFuel_tonnes - landingAnalysis.roundTrip.fuelNeeded)} fuel remaining)</span>
               {:else if landingAnalysis.roundTrip.additionalFuel > 0}
-                <span class="detail">({landingAnalysis.roundTrip.additionalFuel.toFixed(1)}t additional fuel required)</span>
+                <span class="detail">({fmtMass(landingAnalysis.roundTrip.additionalFuel)} additional fuel required)</span>
               {:else}
                 <!-- No fuel needed, but still not possible (e.g., no landing gear) -->
                 <span class="detail">({landingAnalysis.roundTrip.reason})</span>
@@ -366,7 +372,7 @@
             <span class="value {landingAnalysis.consolidatedLanding.possible ? 'possible' : 'impossible'}">
               {landingAnalysis.consolidatedLanding.possible ? 'Yes' : 'No'}
               {#if landingAnalysis.consolidatedLanding.possible}
-                <span class="detail">({landingAnalysis.consolidatedLanding.fuel.toFixed(1)}t {landingAnalysis.consolidatedLanding.method})</span>
+                <span class="detail">({fmtMass(landingAnalysis.consolidatedLanding.fuel)} {landingAnalysis.consolidatedLanding.method})</span>
               {/if}
             </span>
           </div>
@@ -374,7 +380,7 @@
             <span class="label">Takeoff Possible?</span>
             <span class="value {landingAnalysis.takeoff.possible ? 'possible' : 'impossible'}">
               {landingAnalysis.takeoff.possible ? 'Yes' : 'No'}
-              <span class="detail">({landingAnalysis.takeoff.fuel.toFixed(1)}t Fuel)</span>
+              <span class="detail">({fmtMass(landingAnalysis.takeoff.fuel)} Fuel)</span>
             </span>
           </div>
           <div class="spec-item derived" title={landingAnalysis.roundTrip.reason}>
@@ -382,9 +388,9 @@
             <span class="value {landingAnalysis.roundTrip.possible ? 'possible' : 'impossible'}">
               {landingAnalysis.roundTrip.possible ? 'Yes' : 'No'}
               {#if landingAnalysis.roundTrip.possible}
-                <span class="detail">({(availableFuel_tonnes - landingAnalysis.roundTrip.fuelNeeded).toFixed(1)}t fuel remaining)</span>
+                <span class="detail">({fmtMass(availableFuel_tonnes - landingAnalysis.roundTrip.fuelNeeded)} fuel remaining)</span>
               {:else if landingAnalysis.roundTrip.additionalFuel > 0}
-                <span class="detail">({landingAnalysis.roundTrip.additionalFuel.toFixed(1)}t additional fuel required)</span>
+                <span class="detail">({fmtMass(landingAnalysis.roundTrip.additionalFuel)} additional fuel required)</span>
               {:else}
                 <span class="detail">({landingAnalysis.roundTrip.reason})</span>
               {/if}
@@ -433,7 +439,7 @@
                     {#if landingAnalysis.takeoff.possible}
                         <button class="action-btn transit" on:click={() => dispatch('takeoff', { fuel: landingAnalysis.takeoff.fuel })}>
                             Takeoff
-                            <span class="btn-detail">({landingAnalysis.takeoff.fuel.toFixed(1)}t)</span>
+                            <span class="btn-detail">({fmtMass(landingAnalysis.takeoff.fuel)})</span>
                         </button>
                     {/if}
                 {:else}
@@ -441,7 +447,7 @@
                     {#if landingAnalysis.consolidatedLanding.possible}
                         <button class="action-btn transit" on:click={() => dispatch('land', { method: landingAnalysis.consolidatedLanding.method, fuel: landingAnalysis.consolidatedLanding.fuel })}>
                             Land on {hostBody?.name || 'Surface'}
-                            <span class="btn-detail">({landingAnalysis.consolidatedLanding.fuel.toFixed(1)}t)</span>
+                            <span class="btn-detail">({fmtMass(landingAnalysis.consolidatedLanding.fuel)})</span>
                         </button>
                     {/if}
                 {/if}

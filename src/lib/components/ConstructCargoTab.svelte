@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody } from '$lib/types';
+  import { KG_PER_TONNE } from '$lib/units';
+  import UnitValue from './UnitValue.svelte';
 
   export let construct: CelestialBody;
 
@@ -48,9 +50,11 @@
         max={construct.physical_parameters?.cargoCapacity_tonnes || 0} 
         step="1" 
       />
+      <!-- Load and capacity are ONE reading of one quantity, so they share a unit and one click
+           moves both (A80). Stored in tonnes; the ladder relabels, it never converts the store. -->
       <span>
-        {(construct.current_cargo_tonnes || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} / 
-        {(construct.physical_parameters?.cargoCapacity_tonnes || 0).toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes
+        <UnitValue quantity="mass" bodyType="construct" separator={' / '}
+          values={[(construct.current_cargo_tonnes || 0) * KG_PER_TONNE, (construct.physical_parameters?.cargoCapacity_tonnes || 0) * KG_PER_TONNE]} />
       </span>
     </div>
   </div>

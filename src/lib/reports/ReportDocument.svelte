@@ -5,7 +5,7 @@
   import { composeSurfaceTemperatureFromDeltaComponents } from '$lib/physics/temperature';
   import { oblatePolarFactor } from '$lib/rendering/bodyShape';
   import { tagContextLabel } from '$lib/tags/tagPresentation';
-  import { formatPref, unitBodyTypeFor, type UnitPrefs } from '$lib/units';
+  import { formatPref, formatPrefValues, dimensionsKmFromM, unitBodyTypeFor, type UnitPrefs } from '$lib/units';
   import { ascentBudgetApplies } from '$lib/physics/orbits';
 
   // Extracted from /report so the printable report and the live /catalogue (Companion App)
@@ -23,6 +23,11 @@
   const tf = (b: CelestialBody | Barycenter, k: number) => formatPref(prefs, 'temperature', unitBodyTypeFor(b as any), k);
   const rf = (b: CelestialBody | Barycenter, km: number) => formatPref(prefs, 'radius', unitBodyTypeFor(b as any), km);
   const sf = (b: CelestialBody | Barycenter, kms: number) => formatPref(prefs, 'speed', unitBodyTypeFor(b as any), kms);
+  // A construct hull is ONE reading with three axes — one unit for all three, per A80.
+  const cdims = (c: CelestialBody) => {
+    const km = dimensionsKmFromM(c.physical_parameters?.dimensionsM);
+    return km ? formatPrefValues(prefs, 'dimensions', 'construct', km) : null;
+  };
   let overviewMainHostId: string | null = null;
   let overviewBodies: Array<CelestialBody | Barycenter> = [];
   let rootStars: CelestialBody[] = [];
@@ -1578,8 +1583,8 @@
                     <div>
                         <table>
                             <tbody>
-                                <tr><th>Hull Mass</th><td>{formatNumber(construct.physical_parameters?.massKg)} kg</td></tr>
-                                <tr><th>Dimensions</th><td>{construct.physical_parameters?.dimensionsM?.join('x') || '-'} m</td></tr>
+                                <tr><th>Hull Mass</th><td>{formatPref(prefs, 'mass', 'construct', construct.physical_parameters?.massKg ?? NaN)}</td></tr>
+                                <tr><th>Dimensions</th><td>{cdims(construct) ?? '-'}</td></tr>
                                 <tr><th>Crew</th><td>{construct.crew?.current || 0} / {construct.crew?.max || 0}</td></tr>
                                 <tr><th>Cargo</th><td>{construct.current_cargo_tonnes || 0} / {construct.physical_parameters?.cargoCapacity_tonnes || 0} t</td></tr>
                             </tbody>
