@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.219 - 30th Aug 2026
+
+- A collector's harvest is finally spoken in watts. The picker footer for a Dyson swarm or energy collector now says what the array actually gathers - the intercepted share multiplied by THIS star's real output, so a K-dwarf's harvest never reads as if the star were the Sun. The default swarm on Sol collects about 3e25 W, and the line says so beside the share it takes.
+
 ## v3.0.218 - 30th Aug 2026
 
 - The gap from the last entry is closed: the drawn zones now follow the dimming. Put a swarm around a star and the habitable zone, frost lines and kill zone all move to where the light actually reaches; put a solid ringworld there and the zones simply END at the ring - beyond it, in its plane, there is nothing left to mark. One honest surprise fell out of the physics: a collector swarm orbiting INSIDE the kill zone shields what lies beyond it, and the kill zone shrinks to say so.

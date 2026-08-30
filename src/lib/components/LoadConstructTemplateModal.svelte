@@ -66,7 +66,7 @@
     if (activeTab !== 'mega' || !selectedTemplate || !hostBody) return '';
     const def = megaTypeDef(selectedTemplate.megaType);
     if (!def) return '';
-    return megaSummaryLine(def.derive(defaultMegaParams(def, hostBody as CelestialBody), hostBody as CelestialBody));
+    return megaSummaryLine(def.derive(defaultMegaParams(def, hostBody as CelestialBody), hostBody as CelestialBody), hostBody as CelestialBody);
   })();
 
   $: cats = $coiCategories;

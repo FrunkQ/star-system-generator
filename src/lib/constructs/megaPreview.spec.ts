@@ -18,7 +18,7 @@ const earth = (): CelestialBody =>
   }) as unknown as CelestialBody;
 
 const sol = (): CelestialBody =>
-  ({ id: 'sol', name: 'Sol', parentId: null, tags: [], kind: 'body', roleHint: 'star', massKg: 1.989e30, radiusKm: 696340 }) as unknown as CelestialBody;
+  ({ id: 'sol', name: 'Sol', parentId: null, tags: [], kind: 'body', roleHint: 'star', massKg: 1.989e30, radiusKm: 696340, temperatureK: 5778 }) as unknown as CelestialBody;
 
 const def = (key: string): MegaTypeDef => {
   const d = megaTypeDef(key);
@@ -114,6 +114,26 @@ describe('the footer summary line', () => {
     expect(line).toMatch(/spin gravity ~1\.00 g/);
     expect(line).toMatch(/million Earths of floor/);
     expect(line.split('·').length).toBeLessThanOrEqual(2);
+  });
+
+  it('a swarm harvest is spoken in WATTS through the one luminosity function, host given', () => {
+    // 0.3 density x 0.25 efficiency on Sol: 0.075 x 3.85e26 W = 2.9e25 W. The registry publishes
+    // the FRACTION (B110: no luminosity computed there); the presentation multiplies through the
+    // single function, exactly as units.ts:241's note demands - never the bare fraction as watts.
+    const d = def('dyson-swarm');
+    const host = sol();
+    const line = megaSummaryLine(d.derive(defaultMegaParams(d, host), host), host);
+    expect(line).toContain('harvests ~2.9e+25 W');
+    expect(line).toContain('7.5% of the star');
+  });
+
+  it('the harvest without a luminous host falls back to the honest percentage', () => {
+    const d = def('dyson-swarm');
+    const host = sol();
+    const derived = d.derive(defaultMegaParams(d, host), host);
+    const line = megaSummaryLine(derived);
+    expect(line).toContain("harvests ~7.5% of the star's output");
+    expect(line).not.toContain(' W');
   });
 
   it('an elevator on a world with no real geostationary says so instead of inventing a figure', () => {

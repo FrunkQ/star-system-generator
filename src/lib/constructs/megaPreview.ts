@@ -18,6 +18,7 @@
 import type { CelestialBody } from '$lib/types';
 import type { MegaTypeDef, MegaDerived } from './megaTypes';
 import { defaultMegaParams } from './megaTypes';
+import { luminosityWattsFromRT } from '$lib/physics/luminosity';
 
 export const PREVIEW_BOX = 64;
 
@@ -118,7 +119,7 @@ const shortNum = (v: number): string => {
  * At most two figures, human framing on the OUTPUT only (the standing rule): "about Earth
  * gravity" is welcome here; nothing anthropocentric fed the derivation.
  */
-export function megaSummaryLine(derived: MegaDerived): string {
+export function megaSummaryLine(derived: MegaDerived, host?: CelestialBody): string {
   const parts: string[] = [];
   if (derived.spinGravityMs2 !== undefined) {
     parts.push(`spin gravity ~${(derived.spinGravityMs2 / 9.80665).toFixed(2)} g`);
@@ -137,6 +138,19 @@ export function megaSummaryLine(derived: MegaDerived): string {
     parts.push(derived.occlusionBandWidthKm !== undefined
       ? 'shadows worlds in its own plane'
       : `dims the star ${(derived.starOcclusion * 100).toFixed(0)}%`);
+  }
+  if (derived.powerHarvestedLstarFrac !== undefined && derived.powerHarvestedLstarFrac > 0) {
+    // The registry publishes a FRACTION of the host star's output (B110: it computes no luminosity)
+    // and the watts multiply happens HERE, presentation-side, through the one luminosity function —
+    // units.ts:241's note is the rule: the bare fraction must never be shown as if it were watts,
+    // and a K-dwarf's harvest must never read as the Sun's.
+    const pctS = (derived.powerHarvestedLstarFrac * 100).toPrecision(2);
+    const watts = host?.radiusKm && host?.temperatureK
+      ? luminosityWattsFromRT(host.radiusKm, host.temperatureK) * derived.powerHarvestedLstarFrac
+      : undefined;
+    parts.push(watts
+      ? `harvests ~${watts.toExponential(1)} W (${pctS}% of the star)`
+      : `harvests ~${pctS}% of the star's output`);
   }
   if (derived.surfaceGravityMs2 !== undefined) {
     parts.push(`surface pull ~${(derived.surfaceGravityMs2 / 9.80665).toPrecision(2)} g`);

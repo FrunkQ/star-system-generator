@@ -17,8 +17,9 @@
 //
 // NO LUMINOSITY IS COMPUTED HERE, DELIBERATELY (inbox B110): a star's output already has two
 // independent R²T⁴ sites and this module must not become the third. Power figures are therefore
-// FRACTIONS OF THE HOST STAR'S OUTPUT (`powerHarvestedLstarFrac`); the multiply into watts waits
-// for B110's single luminosity function (a phase-4 prerequisite, not part of this feature).
+// FRACTIONS OF THE HOST STAR'S OUTPUT (`powerHarvestedLstarFrac`); the multiply into watts happens
+// PRESENTATION-SIDE through B110's single luminosity function (megaPreview's summary line, since
+// phase 4) — never here, and never as a bare fraction shown as if it were watts (units.ts:241).
 //
 // PLACEMENT PREDICATES (`requires`) ARE SPLIT BY CLAUSE KIND (§3.5), the owner's own correction:
 // `hard` is RELEVANCE — the option has no referent without it (a space elevator with no surface to
@@ -114,7 +115,8 @@ export interface MegaDerived {
    *  orbit carries where the GM actually put the thing (RENDER-S44's argument, applied to flux). */
   occlusionBandWidthKm?: number;
   /** Power harvested as a FRACTION of the host star's bolometric output (occlusion × efficiency).
-   *  Dimensionless on purpose — the watts multiply waits for B110's one luminosity function. */
+   *  Dimensionless on purpose — the watts multiply happens presentation-side through B110's one
+   *  luminosity function (megaPreview), never in this module. */
   powerHarvestedLstarFrac?: number;
   /** Geostationary altitude above the host surface, km — the elevator's top anchor. `null` when
    *  the host has no real geostationary (tidally locked, no rotation data, or fallback figure). */
