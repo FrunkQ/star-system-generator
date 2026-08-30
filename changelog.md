@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.206 - 30th Aug 2026
+
+- Units for the construct panels, part three - the corrections that came from actually using it. Two of the rules written yesterday passed every test and looked wrong on screen within a minute of a ship being opened.
+- A hull is one measurement, so its three axes share a unit - but WHICH unit is now chosen from the middle of the three rather than the longest. A 3 km tether 20 m thick used to read "3 x 0.02 x 0.02 km", technically shared and mostly unreadable; it now reads "3,000 x 20 x 20 m". The same fix makes a small cargo load in a big hold read "5 / 5,000 t" instead of "0.005 / 5 kt".
+- Editing is the opposite case and now behaves that way: each dimension box takes the unit that suits ITS OWN axis, so a two-AU spine and its seventy-metre thickness are both typeable. Sharing one unit there had turned the short axes into 0.0000000005 AU.
+- The unit tooltip reads properly again - "every construct hull size follows" rather than "every construct dimensions follows".
+
 ## v3.0.205 - 30th Aug 2026
 
 - Units for the construct panels, part two: the panels themselves. Every ship and megastructure readout now goes through the unit system instead of formatting its own numbers - dry, cargo, fuel and total mass, hull dimensions, fuel volume, power surplus, the cargo and fuel gauges, and the landing and takeoff sentences. Click any unit and every reading of that kind moves with it, on the card, in the catalogue and in a printed report alike.

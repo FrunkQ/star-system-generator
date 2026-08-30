@@ -71,10 +71,10 @@
     handleUpdate();
   }
 
-  // The hull is ONE reading with three axes: its longest picks the rung so L, W and H never show
-  // three different units in one row.
+  // Each axis is edited at its OWN scale. The READOUT on the card shares one rung across the three
+  // (they are one reading), but an editor must stay typeable: a 3e11 m spine 73 m thick would show
+  // its short axes as "4.879e-10 AU" under a shared rung. Two jobs, two answers, on purpose.
   $: dimsKm = dimensionsKmFromM(construct.physical_parameters.dimensionsM) ?? [0, 0, 0];
-  $: dimsRefKm = Math.max(...dimsKm.map((d: number) => Math.abs(d)));
   function commitDim(i: number, km: number) {
     if (!construct.physical_parameters?.dimensionsM) return;
     construct.physical_parameters.dimensionsM[i] = km / KM_PER_METRE;
@@ -247,7 +247,7 @@
         <div class="dimensions-inputs">
           {#each [0, 1, 2] as axis (axis)}
             <UnitInput quantity="dimensions" bodyType="construct" min={0} width="5.5rem"
-              value={dimsKm[axis] ?? 0} refValue={dimsRefKm}
+              value={dimsKm[axis] ?? 0}
               on:commit={(e) => commitDim(axis, e.detail)} />
           {/each}
         </div>
@@ -307,9 +307,6 @@
   .dimensions-group .dimensions-inputs {
     display: flex;
     gap: 5px;
-  }
-  .dimensions-group .dimensions-inputs input {
-    text-align: center;
   }
 
   .img-btn {

@@ -68,9 +68,12 @@ describe('A80 — the construct card reads its numbers through the unit system',
   // axes are all the same size, letting each axis pick its own rung looks identical to sharing one.
   // A 3 km tether 20 m thick separates them — per-axis rungs print the number 20 under a "km" label,
   // which is not a rounding difference, it is a hundred-and-fiftyfold lie.
-  it('the hull is ONE reading: the three axes share a rung, not just a label', () => {
+  //
+  // It also pins WHICH rung the group takes: the middle of it, not the largest. Under "largest" the
+  // same hull reads "3 × 0.02 × 0.02 km" — correct, shared, and two of its three axes unreadable.
+  it('the hull is ONE reading: the three axes share a rung, and every axis stays readable', () => {
     const text = cardText(construct(1e9, [3000, 20, 20]));
-    expect(text).toContain('3 × 0.02 × 0.02 km');
+    expect(text).toContain('3,000 × 20 × 20 m');
   });
 
   it('a GM who pins a unit gets it everywhere that quantity appears', () => {

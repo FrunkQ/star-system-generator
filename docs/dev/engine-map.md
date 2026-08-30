@@ -3868,6 +3868,20 @@ FOUR THINGS THAT ARE NOT OBVIOUS AND EACH COST SOMETHING TO FIND:
     "7,465,000 km" into "7,400,000 km". Show enough decimals to reach SIG_FIGS, never fewer than the
     stop's own DEFAULT_DECIMALS asks (AU keeps its three), and let unneeded trailing zeros simply
     not appear. Integer digits are real digits; FIXED_NOTATION_MAX handles the fake ones.
+ 5. A GROUP SHARES A RUNG AND THE MIDDLE OF IT PICKS THAT RUNG - but only on a READOUT. Several
+    readings of one quantity (a hull's three axes, a current/max pair) go through `groupRefValue`,
+    which takes the GEOMETRIC MEAN of the non-zero magnitudes: the middle on a LOG scale, which is
+    the scale a ladder works on. Taking the LARGEST instead keeps the headline figure clean and
+    pushes everything smaller off scale with it - a 3 km tether 20 m thick then reads
+    "3 x 0.02 x 0.02 km" rather than "3,000 x 20 x 20 m", and a 5 t load in a 5,000 t hold reads
+    "0.005 / 5 kt". A group is only worth sharing a unit if EVERY member of it stays readable.
+    THE EDIT SIDE IS THE OPPOSITE AND MUST STAY SO: `UnitInput` resolves auto from ITS OWN value,
+    never from the group, because a 3e11 m spine 73 m thick would otherwise put its short axes at
+    "4.879e-10 AU", which is not a number anyone can type into a box. Two jobs, two answers.
+    BOTH of these were found by USING the thing, not by reasoning about it: the shared-rung editor
+    and the largest-picks-it readout each passed every unit test and each looked wrong on screen
+    within a minute. `ConstructBasicsTab.spec.ts` and `ConstructDerivedSpecs.spec.ts` now pin the
+    difference so a tidy-up cannot quietly unify them.
  4. AN AUTO WALK STAYS METRIC. km and mi are the SAME magnitude in two systems, so a walk allowed to
     choose between them hands a metric GM miles for a 6,371 km radius purely because 3,959 sits
     nearer 1,000. `IMPERIAL_STOPS` excludes them; an imperial GM pins the stop, which is the shape

@@ -5,7 +5,7 @@
   // `value` is ALWAYS SI (K, kg, km, km/s) — storage never leaves SI; this only relabels.
   import { unitPrefs, unitPrefsLocked, cycleUnitPref } from '../unitPrefsStore';
   import {
-    resolveUnitPref, resolveAutoUnit, unitFromSI, unitIdLabel, formatUnitNum, groupRefValue,
+    resolveUnitPref, resolveAutoUnit, unitFromSI, unitIdLabel, formatUnitNum, groupRefValue, quantityNoun,
     type UnitQuantity, type UnitBodyType
   } from '../units';
 
@@ -21,8 +21,8 @@
   export let separator = ' × ';
 
   $: list = values ?? [value];
-  // The LARGEST reading picks the rung, so a 300 × 40 × 40 m hull reads in metres rather than
-  // having its longest axis pushed off scale by its shortest. Shared with formatPrefValues.
+  // The MIDDLE of the group picks the rung (see groupRefValue) so every member stays readable,
+  // not just the biggest. Shared with formatPrefValues so the card and the report cannot drift.
   $: ref = groupRefValue(list);
   $: unit = resolveUnitPref($unitPrefs, quantity, bodyType);
   $: shown = resolveAutoUnit(unit, ref, quantity); // 'auto' resolves by the QUANTITY's rule
@@ -33,7 +33,7 @@
 {#if renderable}
   <span class="unit-value">{nums.join(separator)}&nbsp;{#if $unitPrefsLocked}<span class="unit">{unitIdLabel(shown)}</span>{:else}<button
     type="button" class="unit clickable"
-    title="Change unit — every {bodyType} {quantity} follows"
+    title="Change unit — every {bodyType} {quantityNoun(quantity)} follows"
     on:click|stopPropagation={() => cycleUnitPref(quantity, bodyType)}>{unitIdLabel(shown)}</button>{/if}</span>
 {:else}
   <span class="unit-value">—</span>

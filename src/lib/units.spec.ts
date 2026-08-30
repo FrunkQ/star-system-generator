@@ -6,7 +6,7 @@ import {
   formatOrbitRadiusAu, ORBIT_KM_BELOW_AU,
   UNIT_QUANTITIES, UNIT_BODY_TYPES, unitToSI, unitFromSI, unitIdLabel, formatUnitNum,
   formatSIInUnit, resolveAutoUnit, cycleUnit, defaultUnitFor, resolveUnitPref, unitPrefKey,
-  migrateUnitPrefs, formatPref,
+  migrateUnitPrefs, formatPref, formatPrefValues, groupRefValue,
   type UnitId, type UnitQuantity
 } from './units';
 import {
@@ -395,5 +395,35 @@ describe('A80 — the body panels are untouched by the construct ladders', () =>
     expect([...UNIT_QUANTITIES.temperature.stops]).toEqual(['K', 'C', 'F']);
     expect([...UNIT_QUANTITIES.speed.stops]).toEqual(['km/s', 'mi/s']);
     expect([...UNIT_QUANTITIES.distance.stops]).toEqual(['km', 'mi', 'AU', 'ly', 'pc']);
+  });
+});
+
+// A GROUP SHARES A RUNG, AND THE MIDDLE OF THE GROUP PICKS IT. Both halves are load-bearing and
+// each was found by looking rather than by reasoning: sharing was found by falsifying the card
+// test (a cube-ish hull cannot tell shared from per-axis apart), and the MIDDLE was found by
+// reading the live card, where "largest picks it" had printed two of three axes as 1e-10.
+describe('A80 — several readings that are one reading', () => {
+  it('every member of a group stays readable, not just the biggest', () => {
+    // a 3 km tether 20 m thick, in km
+    expect(formatPrefValues({}, 'dimensions', 'construct', [3, 0.02, 0.02])).toBe('3,000 × 20 × 20 m');
+    // 5 t of cargo in a 5,000 t hold
+    expect(formatPrefValues({}, 'mass', 'construct', [5e3, 5e6], ' / ')).toBe('5 / 5,000 t');
+  });
+
+  it('a group whose members are all the same size reads exactly as a single value would', () => {
+    expect(formatPrefValues({}, 'dimensions', 'construct', [0.109, 0.073, 0.02])).toBe('109 × 73 × 20 m');
+    expect(formatPrefValues({}, 'dimensions', 'construct', [3e8, 3e8, 3e8])).toBe('2.005 × 2.005 × 2.005 AU');
+  });
+
+  it('the reference is the geometric mean of the non-zero magnitudes', () => {
+    expect(groupRefValue([10, 1000])).toBeCloseTo(100, 9);   // the middle on a LOG scale, not 505
+    expect(groupRefValue([5, 0, 0])).toBeCloseTo(5, 9);      // zeros are not readings
+    expect(groupRefValue([0, 0])).toBe(0);                   // nothing to go on: the base stop
+    expect(groupRefValue([-8, -2])).toBeCloseTo(4, 9);       // magnitudes, so a sign cannot flip it
+  });
+
+  it('a group of rubbish is dashed rather than guessed at', () => {
+    expect(formatPrefValues({}, 'dimensions', 'construct', [1, NaN, 3])).toBe('—');
+    expect(formatPrefValues({}, 'dimensions', 'construct', [])).toBe('—');
   });
 });

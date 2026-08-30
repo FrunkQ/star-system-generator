@@ -201,6 +201,16 @@ export const UNIT_QUANTITIES = {
 
 export type UnitQuantity = keyof typeof UNIT_QUANTITIES;
 
+// What to call a quantity in a sentence. The cycle affordance says "every construct <this> follows",
+// and the key is not always the word: "every construct dimensions follows" does not parse. UK English.
+const QUANTITY_NOUN: Record<UnitQuantity, string> = {
+  temperature: 'temperature', mass: 'mass', radius: 'radius', dimensions: 'hull size',
+  orbit: 'orbit', distance: 'distance', volume: 'volume', power: 'power', speed: 'speed'
+};
+export function quantityNoun(q: UnitQuantity): string {
+  return QUANTITY_NOUN[q] ?? q;
+}
+
 // SI-per-unit factors for the linear dimensions (temperature is affine and handled explicitly,
 // through the SAME formulae as the legacy helpers above — one source for each conversion).
 const KM_PER_LY = LY_M / 1000;
@@ -433,11 +443,23 @@ export function formatPref(prefs: UnitPrefs | undefined, q: UnitQuantity, b: Uni
 }
 
 // SEVERAL readings of one quantity that must share a unit — a hull's three axes, a current/max
-// pair. THE LARGEST PICKS THE RUNG: exported rather than written twice, because <UnitValue> needs
-// the same answer and a hull that reads "3 × 20 × 20 km" when it is 3 km by 20 METRES is not a
-// rounding difference, it is a hundred-and-fiftyfold lie.
+// pair. Exported rather than written twice, because <UnitValue> and formatPrefValues must give the
+// same answer: a hull that reads "3 × 20 × 20 km" when it is 3 km by 20 METRES is not a rounding
+// difference, it is a hundred-and-fiftyfold lie.
+//
+// THE MIDDLE OF THE GROUP PICKS THE RUNG, not the largest of it — the geometric mean, which is the
+// middle on a LOG scale, which is the scale a ladder works on. "The largest picks it" was the first
+// version and looking at the live card is what corrected it: the largest reading is always clean
+// under that rule, but everything smaller is pushed off scale with it, and a group is only worth
+// sharing a unit if EVERY member of it stays readable.
+//   3 km × 20 m × 20 m   largest: "3 × 0.02 × 0.02 km"      middle: "3,000 × 20 × 20 m"
+//   5 t of 5,000 t cargo largest: "0.005 / 5 kt"            middle: "5 / 5,000 t"
+// Groups whose members are all the same size — the common case, and every hull that is not a
+// tether — get the same answer from both rules.
 export function groupRefValue(values: readonly number[]): number {
-  return values.reduce((m, v) => (Number.isFinite(v) && Math.abs(v) > Math.abs(m) ? v : m), 0);
+  const mags = values.filter((v) => Number.isFinite(v) && v !== 0).map((v) => Math.abs(v));
+  if (!mags.length) return 0; // all zero (or all rubbish): the ladder falls back to its base stop
+  return Math.pow(10, mags.reduce((s, v) => s + Math.log10(v), 0) / mags.length);
 }
 
 // The string counterpart of `<UnitValue values={…}>`, for the surfaces that cannot host a component.
