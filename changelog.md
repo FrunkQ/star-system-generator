@@ -2,16 +2,13 @@
 
 All notable changes are listed here:
 
-<<<<<<< HEAD
+## v3.0.221 - 30th Aug 2026
+
+- Board only. The hub's terms are signed off with the takedown route and a seven-day deletion hold; and a finding is banked - saves carry the app's own calendars and categories as if the GM had made them, so a save cannot honestly say what its GM actually built.
 ## v3.0.220 - 30th Aug 2026
 
 - Tags now have three settings for who sees them, not two. **shown** is the tag as you wrote it. **hidden** is what "secret" always did - players see nothing, and no sign that anything was hidden. The new middle one, **anon**, tells players that *something* is here without telling them what: the tag reaches them as a neutral grey "Undisclosed" marker carrying no name, no value, and not even its category's colour. It is the setting for a station with an owner the crew have not identified, or a star with something obviously going on that they have not worked out. The button beside each of your own tags cycles through the three.
 - Two things worth knowing about the middle setting. Several anonymous tags on one world show as one marker on purpose - three markers would tell players you are hiding three things, which is a fact you did not choose to give them. And a category you have hidden from players stays hidden: the category switch is the stronger statement, and a tag inside it shows nothing even on **anon**.
-=======
-## v3.0.220 - 28th Aug 2026
-
-- Board only. The hub's terms are signed off with the takedown route and a seven-day deletion hold; and a finding is banked - saves carry the app's own calendars and categories as if the GM had made them, so a save cannot honestly say what its GM actually built.
->>>>>>> 21534259 (v3.0.217 - board: terms signed off with the owner's three tweaks; B112 banked with the hub's save-defaults task)
 
 ## v3.0.219 - 30th Aug 2026
 
