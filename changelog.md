@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.197 - 28th Aug 2026
+
+- Board only. Two occlusion sentences in the megaconstruct design had the geometry backwards and are corrected: an occluder never dims itself - its sunward face takes the raw star, and that interception is the harvest - and only a body with the occluder between it and the star sees less light. The observable half (a star whose apparent profile differs from its true classification, with the anomaly symbol on the starmap) is G54's system, driven by the same occlusion number.
+
 ## v3.0.196 - 28th Aug 2026
 
 - Board only. The megaconstruct plan gains phase 5c - the interior surface breathes - and an honesty gate at the flip: when a ringworld first becomes a body, its atmosphere lines will say "not yet derived for a built world" rather than printing the microgravity nonsense a naive reading would produce; 5c then swaps the gate for the real spin-gravity provider in the same commit. With 5c in the plan, ring and torus interiors hold correct atmospheres by the end of the megaconstruct work.

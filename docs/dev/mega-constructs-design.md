@@ -883,8 +883,12 @@ rather than presenting one band as "the" habitable zone.
 
 **A NOTE FOR WHOEVER BUILDS IT:** the inner-surface temperature is `calculateEquilibriumTemperature`
 with a FIXED distance and no eccentricity — which means it runs through the second of the two
-luminosity sites [[B110]] names. **Unify that first**, or a ringworld inside a Dyson swarm will be
-lit by an undimmed star.
+luminosity sites [[B110]] names. **Unify that first**, or the two sites will disagree the moment anything dims a star — a world
+orbiting OUTSIDE a swarm could have its habitable zone drawn from the dimmed star while its
+temperature comes from the undimmed one: silent, and physically incoherent. (Direction of the
+rule, corrected 2026-08-28 — this sentence originally had it backwards: an occluder never dims
+ITSELF, its sunward face takes the raw star and that is the harvest; a body INSIDE an occluder's
+radius is likewise undimmed; only a body with the occluder between it and the star sees less.)
 
 **PUBLISH THE AREA, because it is the number that makes a ringworld land.** CORRECTED during the
 phase-1 build (the original sentence conflated the circumference with the area): a 1 AU ring's
@@ -1170,8 +1174,11 @@ region-effective-gravity provider (bodies answer GM/r² pinned bit-for-bit; a sp
 spec §8); the WHOLE atmosphere model reused with g_eff swapped in; retention restated and
 published (rim walls in scale heights; a spun sphere pools its air into an equatorial band with a
 derivable edge latitude — off-equator sphere interiors are AMBER magic tech, which is why honest
-catalogues grow many rings). Temperature comes through phase 4's occlusion-aware luminosity, so a
-ring inside a swarm is lit by a dimmed star, not an undimmed one. Acceptance is §10.4. **After
+catalogues grow many rings). Temperature uses the star's output at the interior's own radius, and THE OCCLUDER NEVER DIMS
+ITSELF: a ring or swarm's sunward face receives the RAW star — that interception IS the harvest —
+so the interior climate is driven by the undimmed flux at its radius. Occlusion applies to OTHER
+bodies, per §6's rule: only occluders sitting radially INSIDE a body's own orbit stand between it
+and the star. Acceptance is §10.4. **After
 this phase — and not before — atmospheres on ring and torus interiors are CORRECT: declared
 composition, derived pressure, scale height and breathability at the spin gravity, honest
 retention figures, and the goldilocks steer's promised temperature actually delivered.**
