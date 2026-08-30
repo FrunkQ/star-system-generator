@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.226 - 30th Aug 2026
+
+- Board only. Signing the app into the hub is decided: pair with a short code approved in your own browser - no password ever enters the app, and the token can be revoked from your account page.
+
 ## v3.0.225 - 30th Aug 2026
 
 - Board only. The owner confirmed the 2D megastructure rings by eye, and two new notes joined the visual-pass list in his own words: on the GM view a Dyson sphere should read as a band with a clickable handle rather than the occluding shell it really is, and a spinning band should let you sense its rotation speed.

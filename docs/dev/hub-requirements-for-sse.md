@@ -11,7 +11,7 @@ hub could not see.
 | R-03 hash assert on export | NEW, cheap | One comparison on a path that already computed the hash. Do it in the same batch as the R-02 regeneration, or the new fixture fails it. |
 | R-04 in-app upload/update/download | NEW feature | Blocked on R-06. Never pre-tick `attest`; never default `publishGmTree` on; surface `missingProvenance` in the EDITOR. |
 | R-05 ?hub=<slug> one-click open | NEW feature | The funnel. Untrusted input; never auto-merge into a live campaign. |
-| R-06 auth shape | **OWNER DECISION** | Device-code pairing (hub-recommended, coordinator concurs — no password ever near the app) vs OAuth redirect. Blocks R-04. |
+| R-06 auth shape | **DECIDED 2026-08-30: DEVICE-CODE PAIRING** | The app shows a code, the user approves it on the hub in their browser, the app gets a revocable token. No password ever near the app. Batch 3 is unblocked; the hub side builds the pairing endpoint. |
 | R-07 cover/screenshot/created_with | NEW, small | The in-app "capture for the hub" screenshot is the highest-value item after R-01/R-02, per the hub. |
 | R-08 Cloudflare deploy | ALREADY RECORDED | Identical to `creator-hub-design.md` §5.0. Consistent; no action. |
 | R-09 analytics switch | ALREADY ADOPTED | §5.0. No action. |
