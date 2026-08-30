@@ -3847,6 +3847,49 @@ WHY: G34. Built against the A43 scar (DATA-R19): convert-vs-relabel must be expl
 choice that touched stored numbers would silently corrupt every campaign it loaded. The migration
 takes two conscious losses, recorded on the G34 row: an explicitly-`C` map now shows stars in K,
 and an imperial map's sub-threshold PLANET orbit reads km via 'auto' rather than miles.
+RULE (amended A80, v3.0.203 - THE 'auto' STOP IS A RULE, NOT A UNIT, AND WHICH RULE IS THE
+QUANTITY'S OWN DATA): `UNIT_QUANTITIES[q].autoRule` names it, `resolveAutoUnit(unit, si, q)` takes
+the quantity because of that, and there are exactly TWO rules which must never be folded together.
+`orbit-threshold` is the pinned ORBIT_KM_BELOW_AU choice; `ladder` walks the quantity's own metric
+stops for the one nearest a human-scale reading (1 to 1,000), preferring the SMALLER stop on a tie
+so an authored figure stays in the unit it was typed in until it actually overflows.
+FOUR THINGS THAT ARE NOT OBVIOUS AND EACH COST SOMETHING TO FIND:
+ 1. IAPETUS, NOT LUNA, IS WHERE THE TWO RULES DISAGREE. At 0.0238 AU the ladder walk prefers AU
+    while the threshold holds it in km - and "keeps every one of Sol's major moons in km" is a
+    promise the threshold makes out loud. Luna (0.00257 AU) lands on km under BOTH, by half a
+    percent, so a fold checked against Luna alone looks harmless. The gate uses Iapetus.
+ 2. THE WALK IS NEAREST-WINDOW, NOT "the largest stop still at or above 1". The tonnage ladder tops
+    out at Gt (1e12 kg) and the next stop is M-Earth (5.97e24 kg), TWELVE DECADES on. A Dyson shell
+    at 1e23 kg is over every tonnage stop, so "largest stop still >= 1" prints 1e11 Gt. Nearest-
+    window reaches across the gap and reads 0.01674 M-Earth, which is the comparison A80 asked for.
+    Any ladder with a gap wider than three decades has this property; do not add stops to close it.
+ 3. AN AUTO STOP CHOOSES DECIMALS; IT NEVER ROUNDS INTEGER DIGITS. Rounding to significant figures
+    instead turned every planetary orbit from "1.000 AU" into "1 AU" and a barycentre member from
+    "7,465,000 km" into "7,400,000 km". Show enough decimals to reach SIG_FIGS, never fewer than the
+    stop's own DEFAULT_DECIMALS asks (AU keeps its three), and let unneeded trailing zeros simply
+    not appear. Integer digits are real digits; FIXED_NOTATION_MAX handles the fake ones.
+ 4. AN AUTO WALK STAYS METRIC. km and mi are the SAME magnitude in two systems, so a walk allowed to
+    choose between them hands a metric GM miles for a 6,371 km radius purely because 3,959 sits
+    nearer 1,000. `IMPERIAL_STOPS` excludes them; an imperial GM pins the stop, which is the shape
+    the orbit rule always had.
+SIGNIFICANT FIGURES LIVE IN `formatUnitNum` AND NOWHERE ELSE. A per-tile `Math.round(t)
+.toLocaleString()` is the A80 fault verbatim: a kg->t division leaves float dust in the low digits
+and toLocaleString prints every spurious one as if it had been measured
+("100,000,000,000,000,010,000 t"). Three rules, one function: SIG_FIG_STOPS (relative and prefixed
+stops) print significant figures, an auto-chosen stop prints SIG_FIGS of them, and NOTHING is
+printed in fixed notation above FIXED_NOTATION_MAX (1e15) because a double cannot carry those
+digits. SIG_FIGS is 4 because that is what the shipped relative-mass rule already used
+(`toPrecision(4)`, pinned as "317.8" and "1.000"), not a fresh choice.
+WHERE (A80 additions): quantities `dimensions` (a construct hull, m/km/AU - kept OFF `radius` so a
+body radius never cycles into metres or AU and so the construct ORBIT-radius edit field keeps a
+concrete stop), `volume` (m3/km3) and `power` (MW/GW/TW/L-Sol); `mass` gained the tonnage rungs
+kt/Mt/Gt and an auto stop, and `mass:construct` now DEFAULTS to auto rather than 't'. Body defaults
+are untouched and `units.spec.ts` pins their rendered strings so drift is caught rather than
+eyeballed - that pin is what caught fault 3 above, one commit after it was written.
+NOTE FOR G53 BEFORE ANYTHING IS WIRED TO THE POWER LADDER: `megaTypes.ts` publishes
+`powerHarvestedLstarFrac`, a fraction of the HOST STAR's output. It is not watts and it is not a
+fraction of L-Sol. It must be multiplied by that host's luminosity (`luminosityWattsFromRT`, the one
+B110 unified) before it can be shown, or a K-dwarf's harvest reads as the Sun's.
 BLAST: the interstellar MAP unit (DATA-R19, `map/distanceUnits.ts`) is a different concept - never
 fold these ladders into it. A new quantity key goes in `UNIT_QUANTITIES`, never as cycle logic in a
 component. Anything that builds a snapshot or bundle must keep carrying `unitPrefs` - it rides the

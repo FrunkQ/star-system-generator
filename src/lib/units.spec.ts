@@ -6,10 +6,14 @@ import {
   formatOrbitRadiusAu, ORBIT_KM_BELOW_AU,
   UNIT_QUANTITIES, UNIT_BODY_TYPES, unitToSI, unitFromSI, unitIdLabel, formatUnitNum,
   formatSIInUnit, resolveAutoUnit, cycleUnit, defaultUnitFor, resolveUnitPref, unitPrefKey,
-  migrateUnitPrefs,
+  migrateUnitPrefs, formatPref,
   type UnitId, type UnitQuantity
 } from './units';
-import { AU_KM, EARTH_MASS_KG, JUPITER_MASS_KG, SOLAR_MASS_KG, LY_M, PC_M } from './constants';
+import {
+  AU_KM, EARTH_MASS_KG, JUPITER_MASS_KG, SOLAR_MASS_KG, LY_M, PC_M,
+  EARTH_RADIUS_KM, SOLAR_RADIUS_KM
+} from './constants';
+import { SOLAR_LUMINOSITY_W } from './physics/luminosity';
 
 describe('units — metric vs imperial display (SI stays internal)', () => {
   it('distance in km stays km for metric, converts to miles for imperial', () => {
@@ -164,26 +168,45 @@ describe('unit ladders — every stop round-trips SI without drift', () => {
     expect(unitFromSI('pc', PC_M / 1000)).toBeCloseTo(1, 12);
     // 1 pc = 3.2616 ly, through the ladder
     expect(unitToSI('pc', 1) / unitToSI('ly', 1)).toBeCloseTo(3.2616, 3);
-    expect(formatSIInUnit(AU_KM, 'AU')).toBe('1.000 AU');
-    expect(formatSIInUnit(4.13 * (LY_M / 1000), 'ly')).toBe('4.13 ly');
+    expect(formatSIInUnit(AU_KM, 'AU', 'distance')).toBe('1.000 AU');
+    expect(formatSIInUnit(4.13 * (LY_M / 1000), 'ly', 'distance')).toBe('4.13 ly');
   });
 
   it("the orbit ladder's auto stop follows the magnitude rule (Pluto stays in km)", () => {
     const plutoKm = 1.405886379192334e-5 * AU_KM; // Pluto about the Pluto–Charon barycentre
-    expect(resolveAutoUnit('auto', plutoKm)).toBe('km');
-    expect(resolveAutoUnit('auto', AU_KM)).toBe('AU');
-    expect(resolveAutoUnit('auto', ORBIT_KM_BELOW_AU * AU_KM)).toBe('AU'); // same threshold, same side
-    expect(resolveAutoUnit('km', AU_KM)).toBe('km'); // concrete stops pass through
-    expect(formatSIInUnit(plutoKm, 'auto')).toBe('2,103 km'); // never "0.000 AU"
+    expect(resolveAutoUnit('auto', plutoKm, 'orbit')).toBe('km');
+    expect(resolveAutoUnit('auto', AU_KM, 'orbit')).toBe('AU');
+    expect(resolveAutoUnit('auto', ORBIT_KM_BELOW_AU * AU_KM, 'orbit')).toBe('AU'); // same threshold, same side
+    expect(resolveAutoUnit('km', AU_KM, 'orbit')).toBe('km'); // concrete stops pass through
+    expect(formatSIInUnit(plutoKm, 'auto', 'orbit')).toBe('2,103 km'); // never "0.000 AU"
+  });
+
+  // A80 added a SECOND auto rule, and this is the line that keeps them apart. IAPETUS is where they
+  // disagree: the general ladder walk prefers AU for it, while ORBIT_KM_BELOW_AU holds it in km
+  // because "keeps every one of Sol's major moons in km" is a promise this threshold makes. Folding
+  // orbit onto the general walk would quietly break that promise.
+  //
+  // Luna is NOT the test, and that is worth saying out loud: at 0.00257 AU it lands on km under
+  // both rules, by half a percent. Checked against Luna alone, the fold looks harmless.
+  it('the orbit threshold is NOT the ladder walk, and Iapetus is where they disagree', () => {
+    const iapetusKm = 0.0238 * AU_KM; // the widest of Sol's major moons
+    expect(resolveAutoUnit('auto', iapetusKm, 'orbit')).toBe('km');
+    expect(resolveAutoUnit('auto', iapetusKm, 'dimensions')).toBe('AU'); // the same value, the other rule
+    expect(resolveAutoUnit('auto', 0.00257 * AU_KM, 'orbit')).toBe('km'); // Luna, where they agree
+    expect(UNIT_QUANTITIES.orbit.autoRule).toBe('orbit-threshold');
+    expect(UNIT_QUANTITIES.dimensions.autoRule).toBe('ladder');
   });
 
   it('labels: masses use the symbols the panels already speak; non-finite is dashed', () => {
     expect(unitIdLabel('M-Earth')).toBe('M⊕');
     expect(unitIdLabel('M-Jup')).toBe('M♃');
     expect(unitIdLabel('M-Sol')).toBe('M☉');
+    expect(unitIdLabel('L-Sol')).toBe('L☉');
+    expect(unitIdLabel('m3')).toBe('m³');
+    expect(unitIdLabel('km3')).toBe('km³');
     expect(unitIdLabel('C')).toBe('°C');
     expect(unitIdLabel('K')).toBe('K');
-    expect(formatSIInUnit(NaN, 'km')).toBe('—');
+    expect(formatSIInUnit(NaN, 'km', 'radius')).toBe('—');
     expect(formatUnitNum('AU', Infinity)).toBe('—');
   });
 });
@@ -205,8 +228,13 @@ describe('unit prefs — one cycle order, remembered per quantity × body type',
     expect(defaultUnitFor('temperature', 'moon')).toBe('C');
     expect(defaultUnitFor('mass', 'star')).toBe('M-Sol');
     expect(defaultUnitFor('mass', 'planet')).toBe('M-Earth');
-    expect(defaultUnitFor('mass', 'construct')).toBe('t');
+    // A80: a construct's mass now defaults to the LADDER, not tonnes — a mega-construct at the t
+    // stop is a twenty-digit number. Bodies keep their concrete stops.
+    expect(defaultUnitFor('mass', 'construct')).toBe('auto');
     expect(defaultUnitFor('orbit', 'planet')).toBe('auto');
+    expect(defaultUnitFor('dimensions', 'construct')).toBe('auto');
+    expect(defaultUnitFor('volume', 'construct')).toBe('auto');
+    expect(defaultUnitFor('power', 'construct')).toBe('auto');
   });
 
   it('a stored pref wins; an absent or out-of-ladder pref falls back to the default', () => {
@@ -245,5 +273,127 @@ describe('unit prefs migration — the two legacy map-wide fields, once', () => 
     // planet/star orbits keep the magnitude rule — AU above the threshold, exactly as imperial showed them
     expect(resolveUnitPref(prefs, 'orbit', 'planet')).toBe('auto');
     expect(resolveUnitPref(prefs, 'orbit', 'star')).toBe('auto');
+  });
+});
+
+// ——————————————————————————————————————————————————————————————————————————————————————————————
+// A80 — the construct ladders. The report was one mega-construct card: `DRY MASS
+// 100,000,000,000,000,010,0… t` overflowing its tile and `DIMENSIONS 300000000000 x … m`, which is
+// 2 AU written in metres. TWO faults, and the second is the sneaky one — the trailing `…010` is
+// kg→t float dust that `toLocaleString` printed as if it had been measured. A unit system owns
+// BOTH: pick the unit AND the honest significant figures.
+
+describe('A80 — the auto ladders read at human scale', () => {
+  it('the Dyson Sphere card from the report reads sanely, in one call each', () => {
+    // the mass the card actually showed: 1e20 t carrying the kg→t division's float dust
+    const dysonKg = 1.0000000000000001e23;
+    const mass = formatPref({}, 'mass', 'construct', dysonKg);
+    expect(mass).toBe('0.01674 M⊕');
+    // and the dust is GONE — no run of digits a double could not have carried
+    expect(mass).not.toMatch(/\d{7}/);
+
+    // 3e11 m of hull, handed in as km (SI), is 2 AU and now says so
+    expect(formatPref({}, 'dimensions', 'construct', 3e11 / 1000)).toBe('2.005 AU');
+  });
+
+  it('a 46 m corvette still reads in metres and tonnes — the ladder must not inflate small craft', () => {
+    expect(formatPref({}, 'dimensions', 'construct', 46 / 1000)).toBe('46 m');
+    expect(formatPref({}, 'mass', 'construct', 500 * 1000)).toBe('500 t');
+    // an authored four-digit tonnage stays exact through the ladder rather than rounded away
+    expect(formatPref({}, 'mass', 'construct', 2547 * 1000)).toBe('2.547 kt');
+    expect(formatPref({}, 'mass', 'construct', 50000 * 1000)).toBe('50 kt');
+  });
+
+  it('the tonnage ladder crosses the twelve-decade gap to M-Earth rather than printing 1e11 Gt', () => {
+    expect(resolveAutoUnit('auto', 1e13, 'mass')).toBe('Gt');       // 10 Gt: a big station
+    expect(resolveAutoUnit('auto', 1e23, 'mass')).toBe('M-Earth');  // over every tonnage stop
+    expect(resolveAutoUnit('auto', 5e5, 'mass')).toBe('t');         // a corvette
+    expect(resolveAutoUnit('auto', SOLAR_MASS_KG, 'mass')).toBe('M-Sol');
+  });
+
+  it('an auto walk stays METRIC — miles are the same magnitude as km and would win on arithmetic alone', () => {
+    // 6,371 km is 3,959 mi, which sits NEARER 1,000; without the imperial guard the walk would
+    // hand an unsuspecting metric GM miles.
+    expect(resolveAutoUnit('auto', 6371, 'dimensions')).toBe('km');
+    for (const q of ['mass', 'dimensions', 'volume', 'power'] as const) {
+      for (const si of [1e-3, 1, 1e6, 1e13, 1e23, 1e30]) {
+        expect(resolveAutoUnit('auto', si, q), `${q} @ ${si}`).not.toBe('mi');
+      }
+    }
+  });
+
+  it('volume and power ladders reach both ends of the construct range', () => {
+    expect(formatPref({}, 'volume', 'construct', 500)).toBe('500 m³');           // a corvette's tanks
+    expect(formatPref({}, 'volume', 'construct', 1e12)).toBe('1,000 km³');       // a mega-construct's
+    expect(formatPref({}, 'power', 'construct', 25e6)).toBe('25 MW');            // a ship's surplus
+    expect(formatPref({}, 'power', 'construct', 4e12)).toBe('4 TW');
+    // 7.5% of the Sun's output — the scale a Dyson swarm's harvest lands on
+    expect(formatPref({}, 'power', 'construct', 0.075 * SOLAR_LUMINOSITY_W)).toBe('0.075 L☉');
+  });
+
+  it('zero and rubbish never pick an absurd rung', () => {
+    expect(formatPref({}, 'mass', 'construct', 0)).toBe('0 t');
+    expect(formatPref({}, 'dimensions', 'construct', 0)).toBe('0 m');
+    expect(formatPref({}, 'volume', 'construct', 0)).toBe('0 m³');
+    expect(formatPref({}, 'power', 'construct', 0)).toBe('0 MW');
+    expect(formatPref({}, 'mass', 'construct', NaN)).toBe('—');
+    expect(formatPref({}, 'dimensions', 'construct', Infinity)).toBe('—');
+  });
+
+  it('every quantity offering an auto stop declares WHICH rule it uses', () => {
+    for (const [q, spec] of Object.entries(UNIT_QUANTITIES)) {
+      const hasAuto = (spec.stops as readonly string[]).includes('auto');
+      expect(hasAuto === ('autoRule' in spec), q).toBe(true);
+    }
+  });
+});
+
+describe('A80 — significant figures live in the ONE formatter', () => {
+  it('float dust is never printed as if it were measured', () => {
+    // the exact fault: a kg→t division leaves 1.0000000000000001e20 and toLocaleString prints
+    // "100,000,000,000,000,010,000". A pinned tonne stop must not do that either.
+    expect(formatUnitNum('t', 1.0000000000000001e20)).toBe('1.00e+20');
+    expect(formatUnitNum('Gt', 1.0000000000000001e11)).toBe('1.00e+11');
+    // and the universal ceiling catches the stops with no ladder rule of their own
+    expect(formatUnitNum('m', 3.0000000000000004e17)).toBe('3.00e+17');
+    expect(formatUnitNum('km', 6371)).toBe('6,371'); // …while ordinary readings are untouched
+  });
+
+  it('an auto-chosen stop prints significant figures with the fixed-precision zeros trimmed', () => {
+    expect(formatUnitNum('m', 46, undefined, true)).toBe('46');          // not "46.00"
+    expect(formatUnitNum('km', 2.4, undefined, true)).toBe('2.4');       // not "2" — the 0-decimal km rule
+    expect(formatUnitNum('AU', 2.00537, undefined, true)).toBe('2.005');
+    expect(formatUnitNum('kt', 2.547, undefined, true)).toBe('2.547');   // four figures keep it exact
+    // an explicit decimals from the caller still wins over the ladder's own choice
+    expect(formatUnitNum('km', 2.4, 2, true)).toBe('2.40');
+  });
+
+  it('a pinned stop far off its own scale still says something rather than "0"', () => {
+    // 25 MW pinned to GW used to be the "0.000 AU" fault in another dimension
+    expect(formatUnitNum('GW', 0.025)).toBe('0.02500');
+    expect(formatUnitNum('L-Sol', 7.9e-26)).toBe('7.90e-26');
+  });
+});
+
+// ACCEPTANCE (4): the body panels must be UNCHANGED by all of the above. These are strings a GM
+// reads on a body card today, pinned here so drift is CAUGHT rather than eyeballed.
+describe('A80 — the body panels are untouched by the construct ladders', () => {
+  it('renders the same body readings it rendered before the construct ladders existed', () => {
+    expect(formatPref({}, 'radius', 'planet', EARTH_RADIUS_KM)).toBe('6,371 km');
+    expect(formatPref({}, 'radius', 'star', SOLAR_RADIUS_KM)).toBe('696,340 km');
+    expect(formatPref({}, 'mass', 'planet', EARTH_MASS_KG)).toBe('1.000 M⊕');
+    expect(formatPref({}, 'mass', 'planet', JUPITER_MASS_KG)).toBe('317.8 M⊕');
+    expect(formatPref({}, 'mass', 'star', SOLAR_MASS_KG)).toBe('1.000 M☉');
+    expect(formatPref({}, 'temperature', 'star', 5778)).toBe('5,778 K');
+    expect(formatPref({}, 'temperature', 'planet', 288.15)).toBe('15 °C');
+    expect(formatPref({}, 'orbit', 'planet', AU_KM)).toBe('1.000 AU');
+    expect(formatPref({}, 'speed', 'planet', 29.78)).toBe('29.8 km/s');
+  });
+
+  it('leaves the stops a body actually cycles through alone', () => {
+    expect([...UNIT_QUANTITIES.radius.stops]).toEqual(['km', 'mi']);
+    expect([...UNIT_QUANTITIES.temperature.stops]).toEqual(['K', 'C', 'F']);
+    expect([...UNIT_QUANTITIES.speed.stops]).toEqual(['km/s', 'mi/s']);
+    expect([...UNIT_QUANTITIES.distance.stops]).toEqual(['km', 'mi', 'AU', 'ly', 'pc']);
   });
 });

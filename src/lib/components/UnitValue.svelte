@@ -15,8 +15,8 @@
   export let decimals: number | undefined = undefined;
 
   $: unit = resolveUnitPref($unitPrefs, quantity, bodyType);
-  $: shown = resolveAutoUnit(unit, value);        // 'auto' (orbit) picks km/AU by magnitude
-  $: num = formatUnitNum(shown, unitFromSI(shown, value), decimals);
+  $: shown = resolveAutoUnit(unit, value, quantity); // 'auto' resolves by the QUANTITY's rule
+  $: num = formatUnitNum(shown, unitFromSI(shown, value), decimals, unit === 'auto');
 </script>
 
 {#if Number.isFinite(value)}

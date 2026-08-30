@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.203 - 30th Aug 2026
+
+- Units for the construct panels, part one: the vocabulary and the honest digits. The unit system the body cards already have - click a unit, every reading of that kind follows, and the choice travels with the campaign - now knows how to talk about ships and megastructures. Masses climb a ladder from tonnes through kilo-, mega- and gigatonnes and out to Earth masses when a thing is genuinely planet-sized; hull dimensions run from metres to AU; fuel volumes and reactor power get ladders of their own, the power one reaching all the way to a fraction of the Sun. The system picks the rung that reads at a glance, and you can still click to pin whichever unit you prefer.
+- The second half of that is the digits themselves. A dry mass of 1e20 tonnes was being printed as twenty-one digits ending in "...010", and those last digits were not measurements - they were the leftovers of dividing kilogrammes by a thousand, faithfully rendered as if somebody had weighed them. Rounding now lives in the one place that formats a unit, so no tile can invent precision it does not have.
+- Nothing on a body card changes. That is now pinned by a test rather than trusted, and the pin earned its keep immediately: the first version of the rounding turned every planetary orbit from "1.000 AU" into "1 AU", and the test said so before anyone saw it.
+
 ## v3.0.202 - 28th Aug 2026
 
 - Megaconstructs get their real shapes (G53 phase 3). A ringworld draws as a ring, a Dyson sphere as a closed shell, a half-built shell as exactly the arc it has finished, and a swarm as its collectors - evenly spread, never bunched at the poles - all from one generator, because a ring really is just an unfinished sphere. They keep the size, zoom behaviour and framing they already had; only the shape changes, so nothing else on screen moves. The Death Star keeps its ellipsoid until it earns a better one. Note for the eye: a ring band is genuinely a sliver of its own width - about half a percent - so it may need a minimum drawn thickness to be visible at all, and that is a judgement to make by looking.

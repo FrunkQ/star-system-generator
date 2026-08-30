@@ -28,7 +28,7 @@
   let focused = false;
 
   $: unit = resolveUnitPref($unitPrefs, quantity, bodyType);
-  $: shown = resolveAutoUnit(unit, value);
+  $: shown = resolveAutoUnit(unit, value, quantity);
   $: if (!focused) text = toText(unitFromSI(shown, value));
 
   // Trim float noise from the conversion (310.92777777777775 → 310.927777778) without rounding
