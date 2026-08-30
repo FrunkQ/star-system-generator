@@ -2,7 +2,15 @@
 
 All notable changes are listed here:
 
+## v3.0.230 - 30th Aug 2026
+
+- Changelog repair, no app change. Landing the save-shape fix took four rebases against a fast-moving beta, and the automation written to keep up mislabelled one commit and moved another release's notes onto the wrong version number. Both are put back where they belong.
+
 ## v3.0.229 - 30th Aug 2026
+
+- Board only. Restored a release note that a rebase had dropped.
+
+## v3.0.228 - 30th Aug 2026
 
 - A saved campaign now describes what YOU made, not what the app happens to ship with. Every save ever written carried the four built-in calendars, the nine built-in tag categories and the on/off state of all of them, exactly as the app ships them, as though a GM had sat down and authored the lot. Nothing reading a save could tell a campaign with its own invented reckoning from one that had simply been saved. Now a file carries the calendars, categories and switches you added or changed, and nothing else.
 - Your maps open exactly as before, and older files open exactly as before: the app puts its own library back on load, which is where it belongs. A built-in calendar you have EDITED counts as yours and is saved in full.
