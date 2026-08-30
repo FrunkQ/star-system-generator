@@ -2710,11 +2710,17 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * registry's DEFAULT params, because phase 1 stores no per-instance parameters on a node and the
    * knob editor is a later phase. A GM cannot yet tune a ring's width and watch it change.
    */
-  function attachMegaVolume(v: BodyVisual, node: any, tint: string): boolean {
+  // THE HOST ARRIVES AS A PARAMETER, not a lookup. The obvious `nodesById.get(node.parentId)` here
+  // was the whole of the drawn-as-a-blob fault: that map is LOCAL to setSystem's build (it does not
+  // exist in this function's scope at all), so the line threw ReferenceError on every attach, the
+  // catch below ate it, and every mega fell back to the ellipsoid - in the shipped bundle, where
+  // esbuild had stripped the types without checking them (svelte-check names the fault in one line;
+  // the green build never would - RENDER-S46). RENDER-S45's "ask nodesById" advice holds only
+  // INSIDE the build loop; a helper defined beside the loop must be handed what it needs.
+  function attachMegaVolume(v: BodyVisual, node: any, tint: string, host: any): boolean {
     try {
       const def = megaTypeDef(node?.megaType);
       if (!def) return false;
-      const host = node?.parentId ? nodesById.get(node.parentId) : undefined;
       const spec = def.shape(defaultMegaParams(def, host as any), host as any);
       // Unit radius 0.5 => unit DIAMETER, the same long-axis convention the hull path uses.
       // A TETHER IS DRAWN FROM ITS HOST, so it needs the host's own drawn radius and real radius to
@@ -4418,7 +4424,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // G53 phase 3: a mega draws its own shape; everything else keeps the ellipsoid.
         const mv = bodies[bodies.length - 1];
         const tint = (node as any).icon_color || '#ffd24d';
-        if (!attachMegaVolume(mv, node, tint)) {
+        if (!attachMegaVolume(mv, node, tint, node.parentId ? nodesById.get(node.parentId) : undefined)) {
           // RENDER-S7: never silent on the path that decides whether a thing renders. A mega that
           // falls back to the ellipsoid says so ONCE, with the reason, so "it drew a blob" arrives
           // as a diagnosis rather than a screenshot to argue about.

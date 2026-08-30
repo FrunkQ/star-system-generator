@@ -1,6 +1,6 @@
 {
   "name": "star-system-generator",
-  "version": "3.0.223",
+  "version": "3.0.224",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {

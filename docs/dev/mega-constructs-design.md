@@ -1288,6 +1288,14 @@ is a real observation from a running build, with what is known about the cause.
    (RENDER-S7: never silent on the path that decides whether a thing renders). The next report
    carries its own diagnosis.
 
+   > IT DID, AND THE FAULT IS FIXED (2026-08-30, v3.0.224). The owner's console line read
+   > `ReferenceError: nodesById is not defined` on every attach: the helper had followed
+   > RENDER-S45's "ask nodesById" advice from OUTSIDE the build scope that owns the map, so the
+   > lookup was a free variable, the catch ate the throw, and every mega wore the ellipsoid on
+   > every path. Esbuild ships free variables without complaint (the build does not typecheck);
+   > svelte-check names the fault in one line and was seen red-then-green on it. The host now
+   > arrives as a PARAMETER. RENDER-S46 carries the trap; RENDER-S45 carries the correction.
+
 **Phase 4 — starlight occlusion. DONE 2026-08-30 (core chain).** `starOcclusion` into the
 luminosity→insolation→temperature chain, with the explainers in the same batch. **Built as
 designed, one correction and one honest gap:**

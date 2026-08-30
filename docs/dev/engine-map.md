@@ -5282,6 +5282,10 @@ merely early, which is what makes this worth an entry.
 BLAST: anything new in the attach loop that needs a peer's RENDERED size. The host's own radius is
 available as `bodyRadiusScene(node, systemLevel)`, which is the same answer its visual will get a
 moment later.
+CORRECTION (2026-08-30): "ask `nodesById`" holds only for code textually INSIDE the build - the
+map is a LOCAL of setSystem, not module state. A helper function defined beside the loop cannot
+see it at all, and following this entry's advice from one was the drawn-as-a-blob fault
+(RENDER-S46): thread what a helper needs as a PARAMETER.
 
 ### PHY-36 A STAR'S LIGHT IS DIMMED IN ONE PLACE, FROM AUTHORED DATA, TIME-FREE
 BUCKET: ARCHITECTURE (the transmission convention) + DOMAIN (the band time-share result).
@@ -5346,3 +5350,24 @@ and this must not be the one thing that puts one back.
 BLAST: `TagDef.secretDefault` is DECLARED AND NEVER READ (`tags/tagCategories.ts`) - "new instances
 start redacted" is a comment, not a behaviour. Do not add a `disclosureDefault` beside it until
 something consumes one; a second unconsumed field is a second thing that looks implemented.
+
+### RENDER-S46 THE GREEN BUILD DOES NOT TYPECHECK - A FREE VARIABLE SHIPS AS A RUNTIME THROW
+BUCKET: PLATFORM (vite/esbuild strips types without checking them) + IMPLEMENTATION (the fault).
+WHERE: `holo/scene.ts` `attachMegaVolume` - the drawn-as-a-blob fault, diagnosed by the owner's
+console line 2026-08-30 and fixed the same hour: it read `nodesById`, a LOCAL of setSystem's build,
+from a sibling scope. At runtime that is a free variable, so EVERY mega attach threw
+ReferenceError, the try/catch ate it, and every mega fell back to the textured ellipsoid on every
+path (setSystem, setCompression, setBodySize) - GM holo and player view alike.
+RULE: `npm run build` green means the BUNDLE built, not that the TypeScript is sound - esbuild
+does not typecheck, and svelte-check is not in the gate set (it carries ~1300 legacy errors, which
+is why). So a scope mistake in canvas-adjacent code has NO gate at all: E7 keeps the attach out of
+headless tests, and the build cannot see it. When a fault lands in that shadow, `npx svelte-check
+--threshold error` FILTERED TO THE TOUCHED FILE is the cheap detector - it named this fault in one
+line (`Cannot find name 'nodesById'`), observed red before the fix and green after.
+WHY: three sessions believed the attach was verified because the BUILDER was (headless geometry
+gates, dynamic-import bundle checks) - but the builder was never reached: the throw was one line
+above it. The one-shot fallback warn (RENDER-S7) is what converted a screenshot into this
+diagnosis; keep that pattern on every render-or-not decision path.
+BLAST: any helper beside a build loop that quietly reads the loop's locals; any belief that a
+green build cleared a TS error. The fix pattern is RENDER-S45's correction: thread the dependency
+as a parameter.
