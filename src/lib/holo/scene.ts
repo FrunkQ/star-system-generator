@@ -257,6 +257,9 @@ interface BodyVisual {
   shipPrev?: THREE.Vector3;  // last frame's position, for the motion direction
   shipFx?: ShipFx | null;    // the drive plume at the stern, driven by the sampled burn
   shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
+  // G53: a ring, shell or swarm SURROUNDS its host - it is drawn CENTRED on the host at its own
+  // orbit's drawn radius, not as a lump sitting at a point on that orbit. Set by attachMegaVolume.
+  megaCentred?: boolean;
   // WHICH END IS THE NOSE, as a sign on the model's +Z. The ModelRef convention says nose = +Z, but
   // which end of the long axis is the nose is UNKNOWABLE from geometry - it is an authoring choice,
   // and nothing rendered motion until v2.1.477, so a backwards guess had never been visible. The
@@ -2735,6 +2738,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       contentGroup.add(g);
       v.shipModel = g;
       v.shipLen = sceneLen;
+      // A sphere-section mega ENCLOSES its host: `updateConstructs` re-centres and re-sizes it every
+      // frame from the host's own drawn position, so it cannot disagree with its own orbit line.
+      v.megaCentred = true;
       v.shipPrev = v.mesh.position.clone();
       return true;
     } catch (e) {
@@ -3161,7 +3167,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // zero. Once the clamp fired the result stopped tracking distance, so the hull was
           // drawn AU across and grew as you zoomed: the two faults reported together.
           const minWorld = minPx * f * distToCam;
-          const drawnLen = Math.max(b.shipLen ?? 0, minWorld);
+          let drawnLen = Math.max(b.shipLen ?? 0, minWorld);
+          if (b.megaCentred) {
+            // THE RING ENCLOSES ITS STAR (G53). Its drawn radius is the distance between its own
+            // projected position and its host's - which IS the drawn radius of its orbit, already
+            // computed, already compressed, already dial-correct. Taking it from there rather than
+            // re-projecting `a_AU` means the shell and its own orbit line cannot disagree at any
+            // compression or dial position. Geometry is built at radius 0.5, so scale = 2 x radius.
+            const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
+            if (hostV) {
+              const orbitRadius = b.mesh.position.distanceTo(hostV.mesh.position);
+              if (orbitRadius > 1e-9) drawnLen = orbitRadius * 2;
+            }
+          }
           b.shipModel.scale.setScalar(drawnLen);
           // THE PLUME LIGHT'S REACH FOLLOWS THE HULL THAT IS ACTUALLY DRAWN, not the authored one.
           // It was set once at build from `shipLenScene` - the ship's TRUE length - while this line
@@ -3171,7 +3189,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // meant to illuminate and lit a volume nobody could see. Expressed here in hull lengths of
           // the LIT object (the owner's ask), it means the same thing at every scale and dial stop.
           for (const rig of b.shipFx?.rigs ?? []) rig.light.distance = Math.max(1e-12, drawnLen * PLUME_REACH_HULLS);
-          b.shipModel.position.copy(b.mesh.position);
+          if (b.megaCentred) {
+            const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
+            b.shipModel.position.copy(hostV ? hostV.mesh.position : b.mesh.position);
+          } else {
+            b.shipModel.position.copy(b.mesh.position);
+          }
           if (!b.shipPrev) b.shipPrev = b.mesh.position.clone();
           _shipDelta.copy(b.mesh.position).sub(b.shipPrev);
           const burn = shipBurnState(b.id);

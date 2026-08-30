@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.204 - 28th Aug 2026
+
+- A Dyson sphere now goes AROUND its star instead of sitting beside it like a purple moon (G53). Rings, shells and swarms surround the thing they orbit - that is what they are - so they are drawn centred on their host at the drawn radius of their own orbit, which means the shell and its orbit line can never disagree at any zoom or scale setting. Reported from a screenshot; the shape was right and the placement was not.
+
 ## v3.0.203 - 30th Aug 2026
 
 - Units for the construct panels, part one: the vocabulary and the honest digits. The unit system the body cards already have - click a unit, every reading of that kind follows, and the choice travels with the campaign - now knows how to talk about ships and megastructures. Masses climb a ladder from tonnes through kilo-, mega- and gigatonnes and out to Earth masses when a thing is genuinely planet-sized; hull dimensions run from metres to AU; fuel volumes and reactor power get ladders of their own, the power one reaching all the way to a fraction of the Sun. The system picks the rung that reads at a glance, and you can still click to pin whichever unit you prefer.
