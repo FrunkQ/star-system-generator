@@ -1147,9 +1147,31 @@ the picker tab. **Hybrids are still `kind: 'construct'` in this phase** — no p
 so the whole of phase 1 carries no risk to any existing system. Every type renders with today's
 ellipsoid.
 
-**Phase 2 — the scale law learns about them.** Put a mega-construct on P4's span map and keep R9
-green; give the shapes a real extent so framing, `minDistance` and the system extent see them. Do
-this BEFORE any new geometry (§5).
+**Phase 2 — the scale law learns about them. DONE 2026-08-28, AND MOSTLY IT WAS ALREADY TRUE —
+this phase turned out to be a MEASUREMENT rather than a build, and it corrected itself.** The ask
+was: put a mega on P4's span map and keep R9 green; give the shapes a real extent so framing,
+`minDistance` and the system extent see them. Measured on the bundled ringworld:
+
+- **The span map already carries mega scale.** A 1 AU ringworld draws 1.315 scene units against
+  Sol's 0.424 and Earth's 0.220 — ordered, R9 intact, nothing to do. (Confirms §5's own measurement.)
+- **THE EXTENT ASK WAS WRONG AND IS WITHDRAWN.** A body's radius reaches BEYOND its orbital
+  position, which is why A78 adds it; a ring, shell or swarm is CENTRED ON ITS HOST, so its orbit IS
+  its radius and the position term already carries its whole reach. Lone star + 1 AU ringworld:
+  rMax is 1 AU and correct; adding the radius gives 2.005 AU, and `trueScaleFactor` being
+  `gridRadius / rMax` means every object in that system would draw at **0.499x**. `RENDER-S2`
+  therefore SURVIVES — it was expected to be falsified here — and `systemExtent.spec.ts` now guards
+  the wrong change with the measurement on it.
+- **`frameDistance` passing a construct's FULL length where the solver documents a HALF-extent is
+  DELIBERATE**, reasoned at the code (a half-length close-up "read as zoomed in too much"). Not a
+  bug; left alone.
+- **What WAS real:** three spellings of "how big is this visual" and one of them wrong — the
+  occlusion site read `radiusScene ?? shipLen`, and a construct's `radiusScene` is a hard `0` rather
+  than undefined, so `??` never fell through and every construct was a point there. Unified onto one
+  `renderedSpanScene` accessor in `scene.ts`.
+
+**The one thing phase 2 hands forward:** at the phase-5 flip a mega becomes `kind: 'body'` and
+starts answering `physicalRadiusAu` on the body branch — which for a CENTRED ring is exactly the
+double count above. Decide what a centred body's extent means before the kind changes.
 
 **Phase 3 — the two new shape families.** `tether` and `ring` in 3D and 2D. These are the two most
 visually striking and they cover four of the seven named types.

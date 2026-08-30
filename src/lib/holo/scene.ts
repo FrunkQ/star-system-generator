@@ -2541,6 +2541,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // half-extent into a perspective distance (fitting it into half the viewport's min dimension — exactly
   // what the 2D orrery's zoom does). The framing ANGLE is separate, so 2D (overhead) and 3D (tilted) get
   // identical framing from the same click.
+  /**
+   * HOW BIG IS THIS VISUAL ON SCREEN, in scene units — the ONE answer, because there were three and
+   * one of them was wrong (G53 phase 2). A body carries `radiusScene`; a construct carries `shipLen`
+   * and its `radiusScene` is set to a hard 0 rather than left undefined, which is what made
+   * `radiusScene ?? shipLen` silently yield 0 at the occlusion site while `||` and an explicit
+   * ternary elsewhere got it right. Two of three spellings agreed, which is exactly how this
+   * codebase's recurring duplication fault presents.
+   *
+   * NOT a half-extent: a construct answers its FULL length here, deliberately, and `frameDistance`
+   * relies on that (see its own comment). Callers wanting a half-extent halve it themselves.
+   */
+  function renderedSpanScene(b: BodyVisual | undefined): number {
+    if (!b) return 0;
+    return (b.isConstruct ? b.shipLen : b.radiusScene) || 0;
+  }
+
   function frameDistance(b: BodyVisual): number {
     // A modelled construct frames to its HULL (dial-blended length), so "zoom to the ship" comes
     // all the way down to it at true scale; a glyph-only construct keeps the radius-less patch.
@@ -2551,7 +2567,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // `shipLen` is set when the node is READ, not when the model attaches, so the shot is the same
     // whether or not the binary has landed yet (a glyph-only construct still has none, and keeps
     // the radius-less patch below).
-    const radius = b.isConstruct ? (b.shipLen ?? 0) : (b.radiusScene ?? 0);
+    const radius = renderedSpanScene(b);
     // Reach the FURTHEST context peer — for a barycentre member that is the partner star, so the pair
     // frames as a pair from either half (the barycentre point itself has no mesh here).
     let parentDist = 0;
@@ -3287,7 +3303,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const hostFraming = !lockRotate && b.framingParentId ? bodyById.get(b.framingParentId) : undefined;
       const hostPos = hostFraming ? v3(hostFraming.mesh.position) : undefined;
       const sep = hostPos ? Math.hypot(target.x - hostPos.x, target.y - hostPos.y, target.z - hostPos.z) : 0;
-      const useHost = !!hostPos && !hostWouldOcclude({ dist, subjectRadius: b.radiusScene ?? b.shipLen ?? 0, hostSeparation: sep });
+      const useHost = !!hostPos && !hostWouldOcclude({ dist, subjectRadius: renderedSpanScene(b), hostSeparation: sep });
       return {
         target,
         heading: useHost
@@ -3470,7 +3486,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const bv = id ? bodies.find((x) => x.id === id) : undefined;
-    const rad = bv ? (bv.radiusScene || bv.shipLen || 0) : 0;
+    const rad = renderedSpanScene(bv);
     // THE ZOOM FLOOR IS THE SUBJECT'S SURFACE, PLUS A METRE (owner, 2026-08-06). You may fly right
     // down to a world or a hull and stop just off it; you may not fly through it.
     //
@@ -4629,7 +4645,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const dist = camera.position.distanceTo(labelWorld);
       // A construct has no `radiusScene`; `shipLen` is what the framing solver uses in its place
       // (see the focus ladder), so use the same one rather than leaving ships with no clearance.
-      const rScene = (b.isConstruct ? b.shipLen : b.radiusScene) ?? 0;
+      const rScene = renderedSpanScene(b);
       const bodyPxR = (rScene * (b.screenK ?? 1)) / Math.max(1e-9, pxToScale * dist);
       const hPx = Math.max(1e-6, labelSizePx * ls.heightRatio);
       ls.sprite.center.set(0.5, -(0.25 * ls.nameFraction + bodyPxR / hPx));

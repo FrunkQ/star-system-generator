@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.201 - 28th Aug 2026
+
+- Megaconstructs, the scale work (G53 phase 2) - which measurement turned into a correction rather than a build. The plan said to give a ringworld a real size so the camera could see it; measured, that would have made every system holding one draw at half size, because a ring is centred on its star and its orbit already IS its reach. The engine was right and the plan was wrong, so the plan changed and a test now guards the tempting mistake. One genuine fault did turn up alongside: three places asked "how big is this thing on screen" and one got the answer zero for every construct - now they all ask once.
+
 ## v3.0.200 - 28th Aug 2026
 
 - Board only. The unit-system work is written up ready to hand to an agent.

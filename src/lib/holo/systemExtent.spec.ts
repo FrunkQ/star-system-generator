@@ -162,6 +162,54 @@ describe('A78 — the system extent includes its members own sizes', () => {
     });
   });
 
+  // ── G53 PHASE 2: A MEGA-CONSTRUCT AND THE EXTENT — MEASURED 2026-08-28, AND THE DESIGN'S
+  // PREMISE WAS WRONG. `mega-constructs-design.md` phase 2 said to "give the shapes a real extent
+  // so framing, minDistance and the system extent see them". Measured on the bundled ringworld,
+  // that would be a REGRESSION, and these tests exist to stop a well-meaning later change making it.
+  //
+  // WHY: a body's radius reaches BEYOND its orbital position, so A78's `+ physicalRadiusAu` is the
+  // whole point for a body. A ring, shell or swarm is CENTRED ON ITS HOST — its orbit IS its radius
+  // — so the position term already carries its full reach, and adding the radius on top DOUBLE
+  // COUNTS. On a lone star with a 1 AU ringworld: rMax is 1 AU today and correct; adding the radius
+  // gives 2.005 AU, and `trueScaleFactor` being `gridRadius / rMax` means EVERY object in that
+  // system would then draw at 0.499x. The construct zero in `physicalRadiusAu` therefore STANDS for
+  // megas — for a different reason than the one written on it, which engine-map RENDER-S2 now
+  // records.
+  describe('a mega-construct is centred on its host, so its position already carries its reach', () => {
+    /** The bundled ringworld template as the picker creates it: 3e11 m across = a 1 AU radius. */
+    const ringworld = (aAU: number) => ({
+      id: 'rw', name: 'Ringworld', parentId: 'star', tags: [], kind: 'construct', roleHint: 'construct',
+      megaType: 'ringworld', artificial: true,
+      physical_parameters: { dimensionsM: [3e11, 3e11, 1.6e9], massKg: 2e27 },
+      orbit: { hostId: 'star', hostMu: 1.327e20, t0: T, elements: { a_AU: aAU, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 2 } }
+    });
+
+    it('a lone star with a 1 AU ringworld frames to 1 AU — the ring reaches exactly its own orbit', () => {
+      const withRing = sys([star(R_SUN_KM), ringworld(1) as any]);
+      expect(systemRMax(withRing, T)).toBeCloseTo(1, 6);
+    });
+
+    it('ADDING a mega’s own radius would halve every object in that system — the change not to make', () => {
+      const withRing = sys([star(R_SUN_KM), ringworld(1) as any]);
+      const honest = systemRMax(withRing, T);
+      const doubleCounted = honest + (3e11 / 2) / (AU_KM * 1000);   // what "give it a real extent" would do
+      expect(doubleCounted / honest).toBeGreaterThan(1.99);          // 2.005 AU against 1 AU
+      // `trueScaleFactor` is gridRadius/rMax, so the whole system shrinks by exactly that ratio.
+      const shrink = trueScaleFactor({ bodySize: 0, rMax: doubleCounted }) / trueScaleFactor({ bodySize: 0, rMax: honest });
+      expect(shrink).toBeLessThan(0.5001);
+      expect(shrink).toBeGreaterThan(0.4989);
+    });
+
+    it('a mega does not disturb a system whose real edge lies further out', () => {
+      const outer = { ...star(R_SUN_KM, { id: 'p', name: 'P', roleHint: 'planet', parentId: 'star' }),
+        radiusKm: 24622,
+        orbit: { hostId: 'star', hostMu: 1.327e20, t0: T, elements: { a_AU: 30, e: 0, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 1 } } };
+      const bare = sys([star(R_SUN_KM), outer as any]);
+      const withRing = sys([star(R_SUN_KM), outer as any, ringworld(1) as any]);
+      expect(systemRMax(withRing, T)).toBeCloseTo(systemRMax(bare, T), 9);
+    });
+  });
+
   // DRIFT GUARD, the same shape `motionOnly.spec.ts` uses and for the same reason: the real rule
   // lives inside `createHoloScene`'s closure and cannot be imported, so this file's copy could
   // silently stop describing it. Read the source and require the expression to still be there.

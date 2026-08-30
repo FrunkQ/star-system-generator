@@ -1182,16 +1182,35 @@ WHY: what the GM approves in the dialog must be what every surface shows. Three 
 the first time a finish was added — the same fault A46 fixed for the body portrait.
 BLAST: adding a finish, changing normalisation, or adding a fourth surface that draws a hull.
 
-### RENDER-S2 A construct contributes NO radius, model or not
+### RENDER-S2 A construct contributes NO radius, model or not - AND A MEGA DOES NOT EITHER
 BUCKET: ARCHITECTURE - a marker with real geometry is not a body. Its visual extent must never reach
-the physical model.
-WHERE: `src/lib/holo/scene.ts` (`frameDistance`, the clearance branch in `updatePositions`)
+the physical model. G53 was expected to FALSIFY this entry; measurement kept the rule and replaced
+its reason, which at mega scale is the more interesting half.
+WHERE: `src/lib/holo/scene.ts` (`frameDistance`, the clearance branch in `updatePositions`),
+`physicalRadiusAu` in `rendering/scaleLaw.ts`. Gated by `holo/systemExtent.spec.ts`.
 RULE: a ship model is a MARKER with real geometry, not a body. It must never feed ring clearance or
 the whole-system bounding sphere (F5). `frameDistance` may read its hull length to frame it; nothing
-else may.
+else may. A MEGA-CONSTRUCT IS NOT AN EXCEPTION.
 WHY: real extent in the clearance maths makes camera framing depend on zoom — F4's bug class — and
 would push moons off their orbits around a station.
-BLAST: any new use of `shipLen`. Any "make constructs act like bodies" change.
+AND THE MEGA REASON, MEASURED 2026-08-28 (G53 phase 2), because `physicalRadiusAu`'s own comment
+gives a reason a ringworld falsifies - it says a construct is zero because "its true size (tens of
+metres) is below anything a system-scale extent can carry", and a ringworld is 2 AU across. The rule
+survives for a BETTER reason: a body's radius reaches BEYOND its orbital position, but a ring, shell
+or swarm is CENTRED ON ITS HOST - its orbit IS its radius - so the position term already carries its
+whole reach and adding the radius DOUBLE COUNTS. Measured, lone star + 1 AU ringworld: rMax is 1 AU
+and correct; "give it a real extent" yields 2.005 AU, and since `trueScaleFactor` is
+`gridRadius / rMax`, EVERY object in that system would then draw at 0.499x. The design's phase 2
+asked for exactly that change; it is wrong, and `systemExtent.spec.ts` now guards it.
+ALSO MEASURED so phase 2 is not re-attempted: the span map ALREADY carries mega scale (a 1 AU
+ringworld draws 1.315 scene units against Sol's 0.424 - ordered, R9 intact); and `frameDistance`
+passing a construct's FULL length where the solver documents a HALF-extent is DELIBERATE and
+reasoned at the code (a half-length close-up "read as zoomed in too much"), not a bug to tidy.
+BLAST: any new use of `shipLen`. Any "make constructs act like bodies" change. PHASE 5'S HYBRID FLIP
+CHANGES THIS: a mega that becomes `kind: 'body'` starts answering `physicalRadiusAu` on the BODY
+branch and so contributes its radius - which for a centred ring is the double count above. Decide
+what a CENTRED body's extent means before the kind changes, or every system holding a ringworld
+silently reframes.
 
 ### RENDER-S3 Nozzles live in the model's own space, orientation applies at view time
 BUCKET: ARCHITECTURE - store an authored placement in the frame that CANNOT be edited, and apply the
