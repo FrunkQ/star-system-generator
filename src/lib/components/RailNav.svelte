@@ -5,7 +5,7 @@
   import { createEventDispatcher } from 'svelte';
   import { railCollapsed } from '$lib/railStore';
   import MemoryStrip from './MemoryStrip.svelte';
-  import { APP_BUILD_STAMP } from '$lib/constants';
+  import { APP_BUILD_STAMP, APP_VERSION } from '$lib/constants';
   const dispatch = createEventDispatcher();
 
   // Which top-level view is showing. The Starmap entry is a live indicator when 'starmap'
@@ -35,6 +35,26 @@ ${playerConnSummary}`
     : "Design, open and manage the players' views (guides, tables, projections)";
 
   let fileOpen = false; // File group (New / Open / Save) inline accordion
+
+  // Owner, 2026-08-30: clicking the brand mark copies "SSE v3.0.220"-style text for pasting into a
+  // bug report or chat. The tick in the title is the only feedback — a toast for a copy would be
+  // louder than the act. Clipboard access can be refused (permissions, non-secure context); the
+  // title then says so instead of lying about having copied.
+  let brandCopied: 'ok' | 'fail' | null = null;
+  let brandCopyTimer: ReturnType<typeof setTimeout> | null = null;
+  async function copyVersion() {
+    try {
+      await navigator.clipboard.writeText(`SSE v${APP_VERSION}`);
+      brandCopied = 'ok';
+    } catch {
+      brandCopied = 'fail';
+    }
+    if (brandCopyTimer) clearTimeout(brandCopyTimer);
+    brandCopyTimer = setTimeout(() => (brandCopied = null), 1500);
+  }
+  $: brandTitle = brandCopied === 'ok' ? 'Copied: SSE v' + APP_VERSION
+    : brandCopied === 'fail' ? 'Could not copy — clipboard blocked'
+    : APP_BUILD_STAMP + ' — click to copy';
   $: collapsed = $railCollapsed;
   function toggleCollapsed() { railCollapsed.update((v) => !v); }
 
@@ -68,7 +88,8 @@ ${playerConnSummary}`
   <div class="rail-header">
     <!-- The brand mark doubles as the version read-out: hovering it names the build, so a version
          can be checked from any screen without opening About. Same stamp the footer prints. -->
-    <span class="brand rail-label" title={APP_BUILD_STAMP}>SSE3</span>
+    <button class="brand rail-label brand-copy" title={brandTitle} on:click={copyVersion}
+      aria-label="Copy app version to clipboard">SSE3{#if brandCopied === 'ok'}<span class="brand-tick" aria-hidden="true"> ✓</span>{/if}</button>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
       {#if collapsed}
         <!-- panel-left-open: expand the rail -->
@@ -275,6 +296,8 @@ ${playerConnSummary}`
   .rail-btn.danger { color: var(--status-bad, #ef4444); }
   .rail-btn.danger .ic { color: var(--status-bad, #ef4444); }
   .spacer { flex: 1 1 auto; }
+  .brand-copy { background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+  .brand-tick { color: #35c96b; }
 
   /* Collapsed (icon-only): hide labels + section titles everywhere in the rail (incl. the
      slotted view content), centre the icons. :global so it reaches slotted buttons. */

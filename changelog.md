@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.222 - 30th Aug 2026
+
+- Clicking the SSE3 mark in the corner now copies the app version, ready to paste into a bug report. A brief green tick confirms it; hovering still names the build.
+
 ## v3.0.221 - 30th Aug 2026
 
 - Board only. The hub's terms are signed off with the takedown route and a seven-day deletion hold; and a finding is banked - saves carry the app's own calendars and categories as if the GM had made them, so a save cannot honestly say what its GM actually built.
