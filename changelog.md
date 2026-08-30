@@ -4,6 +4,7 @@ All notable changes are listed here:
 
 ## v3.0.224 - 30th Aug 2026
 
+- Board only. The sharing hub's thirteen requirements for the engine are banked and triaged - two of its blockers turn out to be half-done here (a format stamp that misses plain saves, and a test bundle whose model is not really named by its own bytes), and a revision counter is flagged as the one that prevents real data loss.
 - Megastructures finally draw as themselves. Every ringworld, shell, swarm and torus has been falling back to the old textured blob since the shape generator shipped, because the code that attaches the real geometry tripped over a variable that did not exist where it looked and the safety net quietly swallowed the error - on the GM view and player view alike. The diagnostic line added last session named it from a single console paste. The shapes now attach; how they LOOK close up is the visual-pass session, deliberately still to come.
 
 ## v3.0.223 - 30th Aug 2026
