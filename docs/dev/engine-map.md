@@ -5210,6 +5210,63 @@ BLAST: `pixelFloor.spec.ts` pins the BODY clamp bit-for-bit against the old clos
 extraction had to be behaviour-identical there - while asserting the construct floors as the thing
 that deliberately moved.
 
+### DATA-R32 A SAVE CARRIES WHAT THE GM MADE, NEVER WHAT THE APP SHIPS
+BUCKET: ARCHITECTURE (file format) - a file must be able to describe itself to a reader who does not
+have this repo. Serialising the app's own library as though the GM authored it is a CORRECTNESS bug,
+not a size one.
+WHERE: `io/shippedDefaults.ts` (`canonicalJson`, `sameAsShipped`, `shippedDelta` - the one test for
+"did we ship this?"), `io/saveRegistries.ts` (`registriesForStarmap`, what a save carries beside the
+campaign, called by BOTH export paths), `constructs/coi.ts` (`coiForStarmap`),
+`physics/reasonsToVisit.ts` (`reasonsConfigForStarmap`), `temporal/defaults.ts`
+(`temporalForExport`, `applyTemporalRegistryConfig`), `system/importFixup.ts`
+(`stripStarmapForExport` applies the temporal strip so neither save path can forget it). Gated by
+`io/saveShape.spec.ts` against `tests/fixtures/b112-pre-delta-starmap.json`.
+RULE: an entry identical to what this build ships is NOT the GM's and does not go in the file; an
+entry that is new, or that DIFFERS in any way, is written in full. An empty container is not a
+statement - omit the key and let absence mean absence. The load path already merges the shipped set
+back in (`ensureTemporalState`, `mergeStarmapCoIs`, `applyStarmapReasonsConfig` all fold into an
+already-seeded store), which is what makes this a SERIALISATION change and not a data-model one.
+APPLY IT FROM DAY ONE to the registries that do not exist yet - gases, liquids, fuels, engines,
+reactions, atmosphere mixes (hub R-11). Getting it right at the start costs nothing; retrofitting it
+means every consumer needs a baseline list of this repo's static files.
+WHY: [[B112]], found by the Creator Hub 2026-08-28 while deriving facets from real saves. Every real
+starmap carried the four shipped calendars, the nine shipped tag categories and the enabled-state of
+all of them, so a facet counting CUSTOM calendars fired on every map ever made. Nothing reading a
+save could tell "this campaign uses a custom reckoning" from "this campaign was saved by Star System
+Explorer". NOT a size item and the hub measured it so nobody re-argues: shipped defaults are under 4%
+of a 327 KB save, while 45% is the pretty-printing that buys the hand-editable, diffable file
+`io/bundle.ts` deliberately set out to produce. Never sell this as a size win; it is not one.
+THREE THINGS THAT ARE NOT OBVIOUS, each measured rather than reasoned:
+ 1. THE BASELINE IS "WHAT AN UNTOUCHED APP WOULD SERIALISE", NOT THE DEFAULTS CONSTANT. Three of the
+    nine shipped CoI categories fail a naive deep-equal against their own definitions - the store
+    drops `single: false` and re-orders keys inside a tag on the way through. Comparing against
+    `DEFAULT_COI_CATEGORIES` would have marked those three as GM-authored and written them to every
+    save, leaving the fix two-thirds effective and silently so. `pristineTagCategories()` runs the
+    defaults through the SAME pipeline the live store came through. It is deliberately NOT the live
+    store: `loadCategories` reads localStorage first, so on a GM's machine the store starts from
+    THEIR edits and every edit would be its own baseline.
+ 2. COMPARE VALUES, NOT TEXT. The plain .json save is the file "GMs hand-edit, diff and swap art in",
+    so a save that has been through an editor or a formatter is an ORDINARY input and its keys may
+    be in any order. Compared as text, a shipped calendar with reordered keys is a calendar the GM
+    wrote, and the app writes its whole library back on the next save.
+ 3. A DELTA CANNOT KNOW WHAT AN OLDER BUILD SHIPPED. Re-saving a pre-B112 file may carry forward a
+    switch nobody moved, because this build ships `intrigue` disabled and the old file has it on.
+    That errs towards KEEPING the GM's data rather than dropping it, which is the right way to be
+    wrong, and it affects only the first re-save of an old file.
+THE CONSCIOUS COST, stated because it is the real trade: an unmodified shipped entry is no longer in
+the file, so if a later version CHANGES one, campaigns follow the new definition, and if a later
+version REMOVES one, a campaign using it unmodified loses it (`resolveActiveCalendarKey` already
+falls back rather than dangling). Same bargain `unitPrefs` takes in DATA-R20 - sparse, validated on
+read, defaults filled in - and the case that matters, an entry the GM EDITED, is written in full.
+BLAST: `BUNDLE_FORMAT` IS DELIBERATELY NOT BUMPED, and the reasoning is the point. The contract says
+bump on a breaking LAYOUT change, and instructs a reader meeting a higher number to REFUSE. This
+changes no layout: same keys, same shapes, fewer entries, and a format-1 parser reads a delta file
+correctly - the hub's own baseline subtraction still yields the right answer, it simply becomes a
+no-op it can delete at leisure. Bumping would strand every new bundle against a hub pinned at 1 for
+no reader benefit. A plain .json carries no `bundleFormat` at all (only `packBundle` stamps it), so
+a reader wanting to know whether a JSON save is delta-shaped keys on `appVersion` - a one-time
+constant, unlike a list of calendar names that must track this repo forever.
+
 ### DATA-R31 ONE MODULE DECIDES WHETHER A NODE WEARS CONSTRUCT CHROME
 BUCKET: ARCHITECTURE - a convention that will exist at 150+ sites gets ONE predicate BEFORE the
 first divergent copy, not after the fifth (the G43 lesson, five rival L-point conventions).

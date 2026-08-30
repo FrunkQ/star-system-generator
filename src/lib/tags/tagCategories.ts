@@ -430,3 +430,27 @@ export function mergeStarmapCategories(cats: TagCategory[] | undefined): void {
     return normalizeTagCategories([...byId.values()]);
   });
 }
+
+// ——————————————————————————————————————————————————————————————————————————————————————————————
+// B112: THE PRISTINE SET — what this app's categories look like when the GM has changed nothing.
+//
+// A save must carry what the GM AUTHORED, not the app's own library, and telling those apart needs
+// something to compare against. `DEFAULT_COI_CATEGORIES` is NOT that thing, measured: the store's
+// own normalisation drops `single: false`, reorders the categories and reorders keys inside a tag,
+// so three of the nine shipped categories fail a naive deep-equal against their own definition and
+// would be written to every save as "the GM changed this". The honest baseline is the defaults put
+// through the SAME pipeline the live store came through — which is this, and it is deliberately the
+// same two calls `loadCategories` makes when localStorage is empty.
+//
+// NOT the live store: `loadCategories` reads localStorage first, so on a GM's machine the store
+// starts from THEIR edits. Capturing the store at module load would make every edit its own
+// baseline and the delta would always be empty.
+let pristineCache: TagCategory[] | null = null;
+export function pristineTagCategories(): TagCategory[] {
+  if (!pristineCache) {
+    pristineCache = normalizeTagCategories(
+      migrateLegacyCategories(null, null, null, { coi: DEFAULT_COI_CATEGORIES, poi: DEFAULT_POI_PACK })
+    );
+  }
+  return pristineCache;
+}

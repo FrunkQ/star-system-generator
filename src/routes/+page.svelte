@@ -76,6 +76,7 @@
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
+  import { registriesForStarmap } from '$lib/io/saveRegistries';
   import { collectModelsForExport, importEmbeddedModels, bytesToBase64 } from '$lib/constructs/modelTransfer';
   import { packBundle, BUNDLE_EXT } from '$lib/io/bundle';
   import { classifySaveFile } from '$lib/io/classify';
@@ -1827,7 +1828,7 @@
     try {
       enqueueStarmapPersist(map);
       const lean = stripStarmapForExport(map, selectedRulepack ?? undefined);
-      const exportObj = stampForSave({ ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap() });
+      const exportObj = stampForSave({ ...lean, ...registriesForStarmap() });
       const blob = new Blob([JSON.stringify(exportObj)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1854,7 +1855,7 @@
     const models = await collectModelsForExport(lean).catch(() => undefined);
     // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
     // M1: stamp the build that wrote the file. See lib/map/provenance.ts for why explicit saves only.
-    const exportObj = stampForSave({ ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap(), ...(models ? { models } : {}) });
+    const exportObj = stampForSave({ ...lean, ...registriesForStarmap(), ...(models ? { models } : {}) });
     // A campaign carrying assets saves as a BUNDLE: a zip holding a small, readable starmap.json
     // beside the models and pictures as real files. One with no assets stays a plain .json, which
     // is the file GMs hand-edit and diff. Both load; the loader sniffs, it does not trust names.

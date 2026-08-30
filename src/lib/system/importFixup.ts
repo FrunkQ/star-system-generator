@@ -7,7 +7,8 @@
 // So on import we STRIP everything the processor will re-derive, keeping only the authored INPUTS
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
-import type { System, CelestialBody, Barycenter, Tag, RulePack } from '$lib/types';
+import type { System, CelestialBody, Barycenter, Tag, RulePack, TemporalState } from '$lib/types';
+import { temporalForExport } from '$lib/temporal/defaults';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
 import { makeupFractions } from '$lib/physics/makeup';
 import { survivesRederive } from '$lib/tags/tagLifecycle';
@@ -447,5 +448,9 @@ export function stripStarmapForExport<T extends { systems?: Array<{ system?: Sys
       else if ((body as Barycenter).kind === 'barycenter') stripBarycenter(body as Barycenter);
     }
   }
+  // B112: the calendars the GM added or altered, not the app's own library. Here rather than at the
+  // call sites because BOTH save paths already come through this function and neither can forget it.
+  const withTemporal = clone as T & { temporal?: TemporalState };
+  if (withTemporal.temporal) withTemporal.temporal = temporalForExport(withTemporal.temporal);
   return clone;
 }

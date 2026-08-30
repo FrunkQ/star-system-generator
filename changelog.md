@@ -2,7 +2,11 @@
 
 All notable changes are listed here:
 
-## v3.0.227 - 30th Aug 2026
+## v3.0.228 - 30th Aug 2026
+
+- A saved campaign now describes what YOU made, not what the app happens to ship with. Every save ever written carried the four built-in calendars, the nine built-in tag categories and the on/off state of all of them, exactly as the app ships them, as though a GM had sat down and authored the lot. Nothing reading a save could tell a campaign with its own invented reckoning from one that had simply been saved. Now a file carries the calendars, categories and switches you added or changed, and nothing else.
+- Your maps open exactly as before, and older files open exactly as before: the app puts its own library back on load, which is where it belongs. A built-in calendar you have EDITED counts as yours and is saved in full.
+- This is a correctness fix and not a size one, and it is worth saying so plainly: the built-in data was under 4% of a typical save. The 45% that is indentation stays exactly as it is, because that is what makes a save readable and diffable by hand, which was a deliberate choice and a good one.
 
 - Stars now look like what an observer would actually see. Build a Dyson swarm and the star dims on both starmaps by exactly the share of light the swarm takes - and it does NOT change colour, which is the interesting part: even blocking cuts the brightness and leaves the spectrum alone, so a swarmed G2V star still reads G2V to a spectrometer. What you get instead is three measurements that disagree - too faint for its class, a large infrared excess, and a spectrum insisting nothing is wrong. That contradiction is the real technosignature, and a crew that spots it has found something rather than been told something.
 - A ringworld is directional and honest about it. A shell or an all-sky swarm dims everyone; a ring only stands in front of its star for observers near its own plane, which is about a third of a degree of sky. The map answers it per viewer, from whichever system you have set as the map's centre (right-click a system to set it) - so two crews in different systems can disagree about what that star looks like and both be right. With no centre chosen the map says so rather than guessing.

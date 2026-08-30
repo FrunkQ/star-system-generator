@@ -1,5 +1,6 @@
 import type { Starmap, TemporalState } from '$lib/types';
 import { parseClockSeconds, unixMsToMasterSeconds } from '$lib/temporal/utre';
+import { sameAsShipped } from '$lib/io/shippedDefaults';
 
 export const STARTDATE_EPOCH_OFFSET_T = 435084632967250575n;
 
@@ -82,6 +83,27 @@ function getTemporalRegistryDefaults(): { registry: TemporalState['temporal_regi
   return { registry, activeKey };
 }
 
+/**
+ * Adopt a parsed calendars.json as THIS BUILD'S shipped library. Split out from the fetch below so
+ * the shipped set is reachable without a browser: B112 has to be able to ask "is this calendar one
+ * of ours?", and a rule that can only be exercised behind `typeof window !== 'undefined'` cannot be
+ * gated at all. The fetch is the only caller in the app; tests are the other.
+ */
+export function applyTemporalRegistryConfig(payload: TemporalConfigPayload | null | undefined): void {
+  if (!payload?.temporal_registry || Object.keys(payload.temporal_registry).length === 0) return;
+
+  runtimeTemporalRegistry = cloneRegistry(payload.temporal_registry);
+
+  if (
+    payload.default_active_calendar_key &&
+    runtimeTemporalRegistry[payload.default_active_calendar_key]
+  ) {
+    runtimeActiveCalendarKey = payload.default_active_calendar_key;
+  } else {
+    runtimeActiveCalendarKey = Object.keys(runtimeTemporalRegistry)[0] ?? FALLBACK_CALENDAR_KEY;
+  }
+}
+
 export async function loadTemporalRegistryConfig(url = '/temporal/calendars.json'): Promise<void> {
   if (typeof window === 'undefined') return;
   try {
@@ -90,25 +112,30 @@ export async function loadTemporalRegistryConfig(url = '/temporal/calendars.json
       console.warn(`Temporal config not loaded from ${url}: ${response.status} ${response.statusText}`);
       return;
     }
-
-    const payload = (await response.json()) as TemporalConfigPayload;
-    if (!payload?.temporal_registry || Object.keys(payload.temporal_registry).length === 0) {
-      return;
-    }
-
-    runtimeTemporalRegistry = cloneRegistry(payload.temporal_registry);
-
-    if (
-      payload.default_active_calendar_key &&
-      runtimeTemporalRegistry[payload.default_active_calendar_key]
-    ) {
-      runtimeActiveCalendarKey = payload.default_active_calendar_key;
-    } else {
-      runtimeActiveCalendarKey = Object.keys(runtimeTemporalRegistry)[0] ?? FALLBACK_CALENDAR_KEY;
-    }
+    applyTemporalRegistryConfig((await response.json()) as TemporalConfigPayload);
   } catch (error) {
     console.warn(`Failed to load temporal config from ${url}. Using built-in fallback.`, error);
   }
+}
+
+/**
+ * B112 — the SAVE view of a campaign's clock: the calendars the GM added or altered, and nothing
+ * else. Every real starmap on record carries all four shipped calendars as though the GM had
+ * written them, so a reader cannot tell a bespoke reckoning from an ordinary save.
+ *
+ * `activeCalendarKey` is kept whichever calendar it names, shipped or not: WHICH reckoning a
+ * campaign runs on is the GM's decision even when the calendar itself is ours. `ensureTemporalState`
+ * merges the shipped set back in on load and already resolves an active key that is missing, so an
+ * old file and a new one of the same campaign arrive at the same state.
+ */
+export function temporalForExport(temporal: TemporalState | undefined): TemporalState | undefined {
+  if (!temporal) return temporal;
+  const shipped = getTemporalRegistryDefaults().registry;
+  const registry: TemporalState['temporal_registry'] = {};
+  for (const [key, calendar] of Object.entries(temporal.temporal_registry ?? {})) {
+    if (!sameAsShipped(calendar, shipped[key])) registry[key] = calendar;
+  }
+  return { ...temporal, temporal_registry: registry };
 }
 
 export function createDefaultTemporalState(epochMs?: number): TemporalState {
