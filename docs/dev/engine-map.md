@@ -5318,3 +5318,31 @@ applies its full fraction beyond its radius, BANDS INCLUDED, because the zone ci
 system plane and the plane is the aligned direction - the per-body tilt relief belongs to bodies.
 Companion flux stays undimmed through the solver. A swarm inside the kill zone is honestly a
 radiation shield (both hazard halves are linear in L, so the radius scales as sqrt f).
+
+### TAG-25 THE DISCLOSURE LADDER HAS THREE RUNGS AND EXACTLY ONE WRITER
+BUCKET: ARCHITECTURE - durable: a redaction that REPLACES rather than removes must build its
+replacement from a CONSTANT, never by copying and blanking. The three rung names are this code's.
+WHERE: `tags/tagLifecycle.ts` - `tagDisclosure`, `anonymousTag`, `ANONYMOUS_TAG_KEY`,
+`redactTagsForPlayers`; the neutral presentation in `tags/tagPresentation.ts` (`unknown` namespace);
+the always-match branch in `tags/mapHighlights.markersFor`. Gate: `tags/tagDisclosure.spec.ts`.
+RULE: `Tag.disclosure` is `hidden` | `anonymous` | `open`, absent means `open`, and `secret: true` is
+the LEGACY spelling of `hidden`. Read either ONLY through `tagDisclosure()` - two spellings of one
+idea is the duplication fault, and one reader is what stops them becoming two answers. The
+`anonymous` rung is computed inside `redactTagsForPlayers` and NOWHERE ELSE (TAG-9): it replaces the
+tag with `anonymousTag()`, a constant, so a field added to `Tag` later cannot leak through a
+blanking function that forgot it. Several anonymous tags on one node collapse to ONE - a COUNT is
+information the GM did not choose to disclose.
+WHY: G54. Redaction was binary - a player saw a tag or had no idea it existed - and the ask needed
+"something is here and I am not telling you what". The three leaks a naive implementation has are
+the ones worth naming: the tag's VALUE (copied through with the key blanked), its CATEGORY COLOUR (a
+placeholder in Faction purple among neutral pills says which category it came from without ever
+naming it), and its MONOGRAM (`monogramOf('Undisclosed')` is "UN", which reads as an abbreviation of
+something and invites a guess).
+BLAST: THE PLACEHOLDER MATCHES NO HIGHLIGHT SELECTION, and a selection-only marker rule therefore
+deletes exactly the presence the rung exists to preserve - `markersFor` gives it an always-match
+branch, which can only ever fire on redacted data because nothing else emits that key. It still
+respects the empty-selection early return: with no highlights at all the surface draws no badges,
+and this must not be the one thing that puts one back.
+BLAST: `TagDef.secretDefault` is DECLARED AND NEVER READ (`tags/tagCategories.ts`) - "new instances
+start redacted" is a comment, not a behaviour. Do not add a `disclosureDefault` beside it until
+something consumes one; a second unconsumed field is a second thing that looks implemented.

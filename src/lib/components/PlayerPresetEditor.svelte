@@ -20,6 +20,7 @@
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  import { tagDisclosure } from '$lib/tags/tagLifecycle';
   // The GM's live snap-grid, so the preview shows the same grid the players will see.
   $: previewMapGrid = { type: toLegacyMapGridType($starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType), size: 50 };
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
@@ -66,7 +67,10 @@
     // FIRST CHOICE: a tag the previewed system genuinely carries. That is the case a GM is really
     // tuning for — a real world, a real badge — and it needs nothing fabricated at all.
     for (const n of ((previewSystem?.nodes ?? []) as any[])) {
-      for (const t of (n.tags ?? [])) if (t?.key && !t.secret && usable(t.key)) return t.key as string;
+      // G54: EVERY RUNG BELOW `open` IS SKIPPED, not just the top one. This preview is a GM control
+      // showing what players will get, so a tag that reaches them anonymised (or not at all) is the
+      // wrong sample — it would advertise a key the player never sees under that name.
+      for (const t of (n.tags ?? [])) if (t?.key && tagDisclosure(t) === 'open' && usable(t.key)) return t.key as string;
     }
     // ELSE the first tag of the first enabled category that describes a PLACE. `status` is skipped
     // deliberately: it is runtime state (in transit, adrift), it is the first category in the list,

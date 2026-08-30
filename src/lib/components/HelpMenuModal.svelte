@@ -53,7 +53,7 @@
         </a>
         <button class="help-item" on:click={() => (inlineDoc = tagsGuide)}>
           <span class="hi-title">Tags</span>
-          <span class="hi-desc">Where tags come from, categories, overriding the physics, secret tags, highlighting them on the maps, and Find-by-tag.</span>
+          <span class="hi-desc">Where tags come from, categories, overriding the physics, who sees what (shown / anon / hidden), highlighting them on the maps, and Find-by-tag.</span>
         </button>
         <button class="help-item" on:click={() => (inlineDoc = autopilotGuide)}>
           <span class="hi-title">Autopilot</span>

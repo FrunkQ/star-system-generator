@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.220 - 30th Aug 2026
+
+- Tags now have three settings for who sees them, not two. **shown** is the tag as you wrote it. **hidden** is what "secret" always did - players see nothing, and no sign that anything was hidden. The new middle one, **anon**, tells players that *something* is here without telling them what: the tag reaches them as a neutral grey "Undisclosed" marker carrying no name, no value, and not even its category's colour. It is the setting for a station with an owner the crew have not identified, or a star with something obviously going on that they have not worked out. The button beside each of your own tags cycles through the three.
+- Two things worth knowing about the middle setting. Several anonymous tags on one world show as one marker on purpose - three markers would tell players you are hiding three things, which is a fact you did not choose to give them. And a category you have hidden from players stays hidden: the category switch is the stronger statement, and a tag inside it shows nothing even on **anon**.
+
 ## v3.0.219 - 30th Aug 2026
 
 - A collector's harvest is finally spoken in watts. The picker footer for a Dyson swarm or energy collector now says what the array actually gathers - the intercepted share multiplied by THIS star's real output, so a K-dwarf's harvest never reads as if the star were the Sun. The default swarm on Sol collects about 3e25 W, and the line says so beside the share it takes.
@@ -15,6 +20,7 @@ All notable changes are listed here:
 - Megastructures now shade the worlds behind them. Build a Dyson swarm and every planet outside it cools by exactly the share of starlight the swarm intercepts; a full shell can put the lights out. A ringworld is stricter still, and directional: a world sharing its plane beyond it sits in its shadow and honestly freezes, while a tilted orbit only clips the shadow for the small part of its year the geometry says it must. Nothing shades itself - a collector's sunward face takes the raw star, because that interception is the harvest - and nothing inside a structure's radius is touched.
 - The working is shown, not just the answer: a shaded world's physics trace names what stands between it and its star and how much light still arrives, and the physics reference page explains the three rules. The temperature range is honest about the extremes - coldest is aphelion in full shadow, warmest is perihelion in clear sky.
 - Known gap, next slice: the drawn habitable-zone rings do not yet move when a structure dims the star - worlds cool, the green band stays put. The zones follow the same dimming next.
+
 ## v3.0.216 - 28th Aug 2026
 
 - Board only. A plain-English terms draft for the sharing hub: your uploads are yours and your responsibility, we know almost nothing about you on purpose, and we can show the door to anyone who makes the place worse.

@@ -69,7 +69,12 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   resource:     { group: 'Resources',    color: '#d4a843', poi: true },
   science:      { group: 'Science',       color: '#5a9fd0', poi: true },
   frontier:     { group: 'Frontier',      color: '#6fae8f', poi: true },
-  intrigue:     { group: 'Intrigue',      color: '#b07ad0', poi: true }
+  intrigue:     { group: 'Intrigue',      color: '#b07ad0', poi: true },
+  // G54 — THE ANONYMOUS RUNG'S OWN NAMESPACE, and its colour is load-bearing. A neutral grey that
+  // matches NO category is the whole point: a placeholder wearing Faction purple or Resource gold
+  // would hand back the identity the rung exists to destroy. It carries exactly one reserved key
+  // (`tagLifecycle.ANONYMOUS_TAG_KEY`) and nothing may emit another.
+  unknown:      { group: 'Unknown',      color: '#7d7d86' }
 };
 
 // Namespace-level fallback description. Every derived tag should justify its existence in the physics
@@ -98,11 +103,20 @@ const NAMESPACE_DESC: Record<string, string> = {
   habitability: 'The body\'s habitability tier under the current model.',
   biodiversity: 'A property of the body\'s biosphere.',
   shape:        'The body\'s rotational shape — how far its spin has deformed it from a sphere.',
-  spin:         'The body\'s spin AXIS — which way it leans, and where that lean came from.'
+  spin:         'The body\'s spin AXIS — which way it leans, and where that lean came from.',
+  unknown:      'Something is recorded here that has not been disclosed.'
 };
 
 // Friendly label + physics description, keyed by exact tag.
 const TAG_INFO: Record<string, { label: string; description: string }> = {
+  // --- G54: the anonymous rung ---
+  // THE ONE PLACEHOLDER. Its wording says only that a record exists and volunteers NOTHING about
+  // what kind of record it is — not the category, not the namespace, not whether it is physics or
+  // a plot hook. Read it as the sentence a player is actually being told.
+  'unknown/undisclosed': {
+    label: 'Undisclosed',
+    description: 'Something is here. What it is has not been disclosed.'
+  },
   // --- Resonances & predicted fates ---
   'resonance/laplace': {
     label: 'Laplace resonance',

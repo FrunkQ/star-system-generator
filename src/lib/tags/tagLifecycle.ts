@@ -29,7 +29,7 @@
 // PROMISE TO THE READER — that an inferred obliquity is distinguishable from a measured one (inbox
 // B10, C3c) — and it should not rest on nobody having added `spin/` to a list. It is now declared,
 // per namespace, in tagDefaults.ENGINE_NAMESPACES, and a test holds it.
-import type { Tag } from '../types';
+import type { Tag, TagDisclosure } from '../types';
 // Safe to import: tagDefaults has type-only imports, so this cannot cycle.
 import { ENGINE_NAMESPACES } from './tagDefaults';
 
@@ -230,25 +230,80 @@ export function stripRuleTags(tags: Tag[] | undefined, categoryPrefixes: readonl
  * `weather/precipitation` — see tagConsistency.spec.ts, which requires several of a thing to be
  * several tags rather than one delimited value). Those sites push directly.
  */
+// ── THE DISCLOSURE LADDER (G54) ────────────────────────────────────────────────────
+
 /**
- * Strip everything a player must not see: a tag marked `secret`, and every tag belonging to a
- * category marked `playerHidden`.
+ * THE ONE KEY AN ANONYMISED TAG BECOMES. Reserved: nothing in the engine or a pack may emit it, and
+ * nothing may derive anything from it beyond "a tag was here". Its presentation (label, colour,
+ * description) is registered once in `tagPresentation`, like every other key.
+ */
+export const ANONYMOUS_TAG_KEY = 'unknown/undisclosed';
+
+/**
+ * WHAT A PLAYER IS TOLD ABOUT THIS TAG — the single authority, and the only thing that may read
+ * either field.
+ *
+ * `disclosure` is the field; `secret: true` is its LEGACY spelling of `hidden` and is still written
+ * by shipped campaigns, so it is honoured here and nowhere else. Two spellings of one idea is the
+ * duplication fault this codebase names as its most recurring — one reader is what stops them
+ * becoming two answers.
+ */
+export function tagDisclosure(t: Pick<Tag, 'disclosure' | 'secret'>): TagDisclosure {
+  if (t.disclosure) return t.disclosure;
+  return t.secret ? 'hidden' : 'open';
+}
+
+/**
+ * The neutral twin an `anonymous` tag becomes: a tag with NOTHING of the original on it.
+ *
+ * Built from a constant rather than by copying-and-blanking the original, which is the point — a
+ * blanking function grows a field it forgets the next time `Tag` gains one, and the field it forgets
+ * is the leak. There is nothing here to forget.
+ */
+export function anonymousTag(): Tag {
+  return { key: ANONYMOUS_TAG_KEY, origin: 'derived' };
+}
+
+/**
+ * Strip or anonymise everything a player must not see. THE THREE RUNGS:
+ *
+ *   `hidden` (or the legacy `secret: true`), and every tag of a `playerHidden` category
+ *                       → gone. The player sees the consequence and no cause.
+ *   `anonymous`         → replaced by ONE neutral placeholder. Presence survives, identity does not.
+ *   `open` (the default) → untouched.
  *
  * ONE place does this, and it is called from `computePlayerSnapshot` — the single point every player
  * surface already flows through (the catalogue, the player views, the holo table, the broadcast, the
  * printed report). A second redaction site is how a leak happens: one surface gets the fix and
  * another does not, and nothing reports the difference.
+ *
+ * SEVERAL ANONYMOUS TAGS ON ONE NODE COLLAPSE TO ONE, and that is deliberate rather than incidental.
+ * A COUNT is information too: three neutral markers say "the GM is hiding three things here", which
+ * is a fact the GM did not choose to disclose. The rung promises presence, not a census.
+ *
+ * A PLAYER-HIDDEN CATEGORY WINS OVER `anonymous`. The category flag is the GM saying "this whole
+ * channel does not exist for players", which is a stronger statement than any single tag's rung, and
+ * a marker appearing for a category that is supposed to be invisible would contradict it.
  */
 export function redactTagsForPlayers(
   tags: Tag[] | undefined,
   categories: { id: string; playerHidden?: boolean }[]
 ): Tag[] {
-  const hidden = new Set(categories.filter((c) => c.playerHidden).map((c) => c.id));
-  return (tags ?? []).filter((t) => {
-    if (t.secret) return false;
+  const hiddenCats = new Set(categories.filter((c) => c.playerHidden).map((c) => c.id));
+  const out: Tag[] = [];
+  let anonymised = false;
+  for (const t of tags ?? []) {
     const ns = canonicalTagKey(t.key).split('/')[0];
-    return !hidden.has(ns);
-  });
+    if (hiddenCats.has(ns)) continue;
+    const rung = tagDisclosure(t);
+    if (rung === 'hidden') continue;
+    if (rung === 'anonymous') {
+      if (!anonymised) { anonymised = true; out.push(anonymousTag()); }
+      continue;
+    }
+    out.push(t);
+  }
+  return out;
 }
 
 export function emit(tags: Tag[], tag: Tag): void {

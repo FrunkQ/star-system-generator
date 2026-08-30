@@ -1586,8 +1586,9 @@
         Precursor Engineering, Exotic Matter, Nanite Ecology, Magic and the rest, or one you write yourself. The
         tag that reaches the world names the quantities it is accounting for, so a player reading
         <em>Alien Technology: Anomalous magnetosphere, surface temperature</em> learns what is odd about the place rather
-        than only that something is. A reason can be kept secret, and a pin with no reason given shows players
-        nothing at all. Reset the override and its reason goes with it.</p>
+        than only that something is. A reason can be hidden from players, or shown to them as an unnamed
+        <em>something</em> (the tag's own shown / anon / hidden setting), and a pin with no reason given shows
+        players nothing at all. Reset the override and its reason goes with it.</p>
       <p>The Newton trace (the “show the working” panel on a body) puts every pinned figure at the head of the
         panel and marks it again inside each layer whose number it sets — the trace is a record of how an answer
         was reached, so a hand-set answer has to say so.</p>

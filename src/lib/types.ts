@@ -19,11 +19,28 @@ export interface Visibility {
 // `origin` states where a tag came from and therefore what may delete it — see tags/tagLifecycle.ts,
 // which is the only place that interprets it. It is OPTIONAL and inferred from the flags below when
 // absent, so the existing writers did not have to change; set it explicitly on new ones.
+/** G54: the disclosure ladder — see `Tag.disclosure` and `tagLifecycle.redactTagsForPlayers`. */
+export type TagDisclosure = 'hidden' | 'anonymous' | 'open';
+
 export interface Tag {
   key: string; value?: string; ns?: string;
   origin?: 'physics' | 'rule' | 'authored' | 'manual' | 'inherited' | 'derived';
   override?: true;   // manual, inside a namespace the engine derives — it wins that key
-  secret?: true;     // never reaches a player surface (see tags/tagLifecycle redactTagsForPlayers)
+  secret?: true;     // LEGACY SPELLING of `disclosure: 'hidden'`. Read it ONLY through
+                     // `tagLifecycle.tagDisclosure()`, never directly (G54, engine-map TAG-24).
+  /**
+   * G54 — THE DISCLOSURE LADDER, and the rung in the middle is the whole point.
+   *
+   *   `hidden`     stripped entirely. The player sees the consequence and no cause.
+   *   `anonymous`  the tag's PRESENCE survives; its IDENTITY does not — "something is here and I am
+   *                not telling you what". It reaches a player as one neutral placeholder tag.
+   *   `open`       the full tag.
+   *
+   * Absent means `open`, so nothing that exists today moves. Applied at exactly ONE point
+   * (`tagLifecycle.redactTagsForPlayers`, engine-map TAG-9); nothing else may act on it, because a
+   * second site is how a leak happens.
+   */
+  disclosure?: TagDisclosure;
   manual?: boolean; coi?: boolean; inherited?: boolean; source?: string;
 }
 
