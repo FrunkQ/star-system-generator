@@ -6,7 +6,7 @@
   // G26/C17: the glyph is a SCREEN quantity — its size, its members' spread and its band scale come
   // from the shared glyph law, and WHAT it draws (band, activity, jets, shedding) from the shared
   // systemVisualStars — one reader for this map and the 3D starmap, so they cannot disagree.
-  import { systemVisualStars } from '$lib/starmap/systemStars';
+  import { systemVisualStars, starmapViewBearing } from '$lib/starmap/systemStars';
   import { clusterLayout, clusterHalfExtent, type GlyphMember } from '$lib/starmap/starGlyphLaw';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
@@ -676,6 +676,16 @@
   // The system's visible stars — the SHARED reader (starmap/systemStars), which this map used to
   // duplicate as `getVisualNodes` + `getBlackHoleType`. Same mass order, same root-body fallback.
   const getVisualStars = (system: System) => systemVisualStars(system);
+  // G54: THE DRAWN GLYPH TAKES THE OBSERVED COLOUR — the intrinsic one through whatever stands
+  // between that star and where the map is being looked at from, which for a ringworld is a
+  // different answer for a system in its plane and one over its pole.
+  //
+  // A SEPARATE FUNCTION FROM `getVisualStars`, ON PURPOSE. The two callers above measure the glyph
+  // CLUSTER (band, letter, black-hole-ness) and colour means nothing to them; and `map` must be
+  // PASSED IN and named at the call site rather than closed over, or the colours freeze at the
+  // mount value when the GM moves the map's centre — the TAG-17 fault this file has paid for once.
+  const getObservedStars = (system: System, id: string, map: Starmap) =>
+      systemVisualStars(system, { viewDir: starmapViewBearing(map, id) });
 
   // ── WHERE A SYSTEM'S WRITING GOES, and why it is measured off the GLYPH rather than the position ──
   //
@@ -1470,7 +1480,7 @@
             {/if}
           </g>
         {/if}
-        {@const visualStars = getVisualStars(systemNode.system)}
+        {@const visualStars = getObservedStars(systemNode.system, systemNode.id, starmap)}
         {@const slots = clusterLayout(membersOf(visualStars), $starmapUiStore.starScale)}
         <g
           role="button"

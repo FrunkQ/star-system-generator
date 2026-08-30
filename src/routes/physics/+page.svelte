@@ -34,6 +34,7 @@
     ['ionising-output', 'Ionising output & the corona'],
     ['stellar-outflows', 'Jets and shed winds'],
     ['star-designations', 'Reading a star designation'],
+    ['observed-vs-intrinsic', 'What a star looks like from here'],
     ['belts', 'Trapped belts & the giants'],
     ['fluids', 'Fluid layers'],
     ['clouds', 'Clouds & weather'],
@@ -482,6 +483,81 @@
       <p class="note">Brightness is never stored: it is computed from radius and temperature by
         <code>L = 4&pi;R&sup2;&sigma;T&#8308;</code>, which is exact. A figure that is derived cannot
         drift away from the numbers it came from.</p>
+    </section>
+
+
+    <!-- G54. Deliberately AFTER the designation section: everything below is about the difference
+         between the designation a star HAS and the readings an observer GETS, which only means
+         something once a reader knows what a designation is. -->
+    <section id="observed-vs-intrinsic">
+      <h2>What a star is, and what it looks like from here</h2>
+      <p>Put something between a star and an observer &mdash; a Dyson swarm, a ringworld, a lane of
+        dust &mdash; and the two stop being the same question. The engine computes <strong>both</strong>
+        readings for every star and publishes them side by side: what it <em>is</em>, and what it
+        <em>measures as</em> from where you are looking.</p>
+
+      <h3>A Dyson swarm does not turn a G star red</h3>
+      <p>This is the part that is worth getting right, because the obvious guess is wrong and the
+        truth is better. A swarm of collectors blocks light <strong>evenly at every wavelength</strong>.
+        Even blocking cuts the <em>flux</em> and leaves the <em>colour</em> exactly where it was, and it
+        leaves the absorption lines exactly where they were too &mdash; so a spectrometer pointed at a
+        heavily swarmed G2V star still reads, unambiguously, <code>G2V</code>.</p>
+      <p>What you get instead is <strong>three measurements that disagree</strong>, and that is a far
+        better thing to hand a crew than a relabelled star:</p>
+      <table class="mini">
+        <thead><tr><th>Cause</th><th>Brightness</th><th>Colour</th><th>Infrared</th><th>Spectral lines</th></tr></thead>
+        <tbody>
+          <tr><td>Partial swarm</td><td>much fainter</td><td><strong>unchanged</strong></td><td>strong excess</td><td>unchanged &mdash; still G</td></tr>
+          <tr><td>Complete shell</td><td>gone from the visible</td><td>&mdash;</td><td>the object <em>is</em> the infrared source</td><td>none visible</td></tr>
+          <tr><td>Dust or nebula</td><td>fainter</td><td><strong>reddened</strong></td><td>modest excess</td><td>unchanged &mdash; still G</td></tr>
+          <tr><td>Genuinely an M star</td><td>fainter</td><td>red</td><td>normal for its type</td><td><strong>M lines</strong></td></tr>
+        </tbody>
+      </table>
+      <p><strong>The last row is the punchline: the lines are the tell, and they never lie.</strong> A
+        crew that notices a G-type spectrum attached to a star four magnitudes too faint, pouring out
+        far infrared, has <em>found something</em>. A crew told "it is an M star" has merely been told a
+        fact.</p>
+      <p><strong>Dust is the case that really does redden</strong>, and there the old story is exactly
+        right. Interstellar extinction runs roughly as 1/&lambda;, so blue is scattered out of the beam
+        first and what survives is both fainter and redder. A G star behind enough dust genuinely can be
+        mistaken for a cooler one &mdash; right up until someone takes a spectrum. You author it as an
+        <em>optical depth at 550 nm</em> on the star's Overrides tab; 1 leaves about 37% of the visible
+        light, 3 leaves 5%. It dims the star <em>for observers</em> and does not touch the star's own
+        worlds, because the dust is between here and there rather than around them.</p>
+
+      <h3>Where the blocked light goes</h3>
+      <p>It does not vanish. A structure that intercepts starlight heats up and radiates the same power
+        back out as waste heat, at its own equilibrium temperature &mdash; and that is what makes a
+        Dyson structure <em>findable</em>. A shell at 1 AU around a Sun-like star settles near
+        <strong>394 K</strong> and peaks near <strong>7,400 nm</strong>, deep in the infrared. The
+        covering fraction cancels out: a tenth of a shell absorbs a tenth as much over a tenth of the
+        area, so a sparse swarm sits at the same temperature as a complete one at the same radius.</p>
+      <p class="note">That peak is far outside the 280&ndash;1400 nm grid the rest of the engine works
+        on, which is chosen for the wavelengths that can drive chemistry rather than for the ones we can
+        see. So the re-emission is carried as a <em>total power and a temperature</em> rather than as a
+        curve &mdash; everything a reading needs, without sampling tens of thousands of wavelengths on
+        every body on every pass to serve one feature.</p>
+
+      <h3>A ring dims almost nobody; a shell dims everybody</h3>
+      <p>A shell or an all-sky swarm surrounds its star, so it dims every observer equally. <strong>A
+        ringworld does not.</strong> It is a band, and it only stands between the star and observers
+        near its own plane &mdash; a default ringworld covers about a third of a degree of sky, so a
+        system even one degree out of its plane sees the star completely unobstructed.</p>
+      <p>The starmap knows where every system is in three dimensions, so it answers this per viewer:
+        the star is dimmed for whoever is actually in the shadow and left alone for everyone else.
+        <strong>Two crews in different systems can honestly disagree about what that star looks like,
+        and both are right.</strong> The viewpoint is the map's own centre system (right-click a system
+        and set it); with no centre chosen the map gives the direction-independent answer and treats
+        rings as unresolved rather than guessing.</p>
+
+      <h3>What players are told is a separate question</h3>
+      <p>A dimmed star carries two tags &mdash; <strong>Dimmed</strong> (how many magnitudes) and
+        <strong>Infrared excess</strong> (what share of the star's output comes back out as heat)
+        &mdash; and like every tag they have a <em>shown / anon / hidden</em> setting. Leave them shown
+        and your players get both sides of the story: a G2V star with a Dyson swarm. Set them to
+        <em>anon</em> and they get the anomaly with no cause: something is here, and the readings do not
+        add up. Hide them and they simply have a star that is far too faint for what its spectrum
+        says.</p>
     </section>
 
     <!-- Placed HERE, beside the other radiation sections, rather than in the star-designation

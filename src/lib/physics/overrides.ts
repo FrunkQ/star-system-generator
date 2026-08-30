@@ -42,7 +42,8 @@ export type OverrideKey =
   | 'magneticFieldGauss'
   | 'surfaceTempK'
   | 'pressureBar'
-  | 'densityGcm3';
+  | 'densityGcm3'
+  | 'lineOfSightExtinction';
 
 export interface OverrideDef {
   key: OverrideKey;
@@ -441,6 +442,39 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
         b.massKg = massFromRadiusDensity(radiusRe, density) * EARTH_MASS_KG;
       }
     }
+  },
+  {
+    // G54: DUST BETWEEN THIS STAR AND WHOEVER IS LOOKING. The only override on the roster that
+    // changes nothing about the system it names — it is a property of the SIGHT LINE, not of the
+    // star, so the star's own worlds are not dimmed by it and no trace layer reads it. That is why
+    // `traceLayers` is absent and deliberately so: nothing in the Newton panel derives from this.
+    //
+    // WHY A GM PIN AND NOT A DERIVATION. Interstellar extinction is honestly a ray through a volume
+    // — a nebula dims a star for observers on one side and not the other — and nothing in the engine
+    // traces that yet (design §5: circumstellar now, interstellar its own item). This is the DATA
+    // SHAPE that item will fill: when the geometry arrives it computes this number instead of the
+    // GM authoring it, and every reader downstream is already correct.
+    key: 'lineOfSightExtinction',
+    label: 'Line-of-sight dust',
+    unit: '',
+    hint: 'Optical depth at 550 nm of dust between this star and an observer. It makes the star look '
+      + 'fainter AND redder — extinction goes as 1/wavelength, so blue is scattered out of the beam '
+      + 'first, which is how a G star can be mistaken for a cooler one until someone takes a '
+      + 'spectrum. It does NOT dim this star’s own worlds: the dust is between here and there.',
+    appliesTo: ['star'],
+    // 1 leaves about 37% of the V-band light, 3 leaves 5%, 5 leaves under 1%.
+    soft: [0, 5],
+    hard: [0, 50],
+    step: 0.05,
+    decimals: 2,
+    // THE PHYSICS SAYS ZERO, and that is a real answer rather than a missing one: with no volume
+    // geometry the engine has no dust anywhere until a GM puts some there.
+    derived: () => 0,
+    plausible: () => [0, 10],
+    absurd: 'past about ten optical depths the star is fainter than one part in twenty thousand and '
+      + 'has effectively left the visible sky — which is allowed, and worth saying out loud.',
+    possible: () => [0, Number.MAX_VALUE],
+    breaks: 'a negative optical depth is dust that ADDS light to a beam by absorbing it.'
   }
 ] as const;
 

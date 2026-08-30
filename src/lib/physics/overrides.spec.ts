@@ -41,8 +41,11 @@ describe('the roster is the single description of every override', () => {
 
   it('offers a star its own overrides and a planet its own', () => {
     expect(overrideDefsFor(planet()).map((d) => d.key)).not.toContain('flareActivity');
+    // Two, and they are deliberately different KINDS of thing: `flareActivity` changes what the
+    // star does, `lineOfSightExtinction` changes only what an observer of it sees (G54).
     expect(overrideDefsFor(planet({ roleHint: 'star' } as Partial<CelestialBody>)).map((d) => d.key))
-      .toEqual(['flareActivity']);
+      .toEqual(['flareActivity', 'lineOfSightExtinction']);
+    expect(overrideDefsFor(planet()).map((d) => d.key)).not.toContain('lineOfSightExtinction');
     // A belt has nothing to pin, and saying so is a real answer rather than an empty tab by accident.
     expect(overrideDefsFor(planet({ roleHint: 'belt' } as Partial<CelestialBody>))).toEqual([]);
   });

@@ -468,11 +468,34 @@ const SPIKE_PEAK = (() => {
   return peak;
 })();
 
+/**
+ * XYZ (D65) → LINEAR sRGB, unclamped and ungammaed. Exported because a caller that needs the
+ * per-channel RATIO between two spectra (how much of each primary something took out of the light)
+ * must have it before the gamma curve, and the matrix must exist exactly once.
+ */
+export function xyzToLinearSrgb(rx: number, ry: number, rz: number): [number, number, number] {
+  return [
+    3.2404542 * rx - 1.5371385 * ry - 0.4985314 * rz,
+    -0.9692660 * rx + 1.8760108 * ry + 0.0415560 * rz,
+    0.0556434 * rx - 0.2040259 * ry + 1.0572252 * rz
+  ];
+}
+
+/**
+ * A hex colour scaled by a per-channel LINEAR gain — decode, multiply, re-encode.
+ *
+ * The multiply belongs in linear light and nowhere else: scaling the 8-bit sRGB values directly is
+ * the classic error, and it darkens a colour by the wrong amount and shifts its hue while doing it.
+ * A gain of exactly (1, 1, 1) returns the input colour unchanged, which is what makes "nothing in
+ * the way changes nothing" true by construction rather than by threshold.
+ */
+export function scaleHexLinear(hex: string, gain: readonly [number, number, number]): string {
+  const [r, g, b] = srgbToLinear(hex);
+  return `#${hex2(srgbGamma(r * gain[0]))}${hex2(srgbGamma(g * gain[1]))}${hex2(srgbGamma(b * gain[2]))}`;
+}
+
 function xyzToHex(rx: number, ry: number, rz: number): string {
-  // XYZ (D65) → linear sRGB
-  const r = 3.2404542 * rx - 1.5371385 * ry - 0.4985314 * rz;
-  const g = -0.9692660 * rx + 1.8760108 * ry + 0.0415560 * rz;
-  const b = 0.0556434 * rx - 0.2040259 * ry + 1.0572252 * rz;
+  const [r, g, b] = xyzToLinearSrgb(rx, ry, rz);
   // A saturated spectral colour can land outside the sRGB gamut (a negative channel). Desaturate
   // toward the luminance it already has rather than clipping to black, which would turn a vivid
   // out-of-gamut violet into a wrong-hued near-black.

@@ -374,6 +374,12 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'volatiles/ices':             { label: 'Retained ice',      description: 'A volatile that survives ON THE SURFACE as frost or bright ice, rather than being lost to space. It needs both traps: cold enough for the species to stay solid, and gravity enough to hold the vapour it sublimates (the Jeans parameter above the retention floor). A body emits one of these per species it keeps.' },
   'surface/oxidised':           { label: 'Oxidised surface', description: 'Iron at the surface has RUSTED — this is why Mars is red. It takes iron, an oxidiser to react with (free oxygen, or the carbon dioxide and water that did the job on early Mars) and long exposure: the Moon has the iron and the age but no atmosphere, so it stays grey.' },
   'stellar/activity':           { label: 'Magnetic activity', description: 'How tangled this star\'s magnetic field is — the one thing behind its starspots, its bright faculae and its flares. Young, fast-spinning and low-mass stars run active or flare constantly; an old sun-like star shows a handful of small spots.' },
+  // G54: THE TWO MEASUREMENTS THAT DISAGREE WITH THE SPECTRUM. Derived in physics/observedStar from
+  // what stands between this star and whoever is looking. The spectrum is the third measurement and
+  // it never disagrees with itself - the absorption lines are the tell, and grey attenuation does not
+  // touch them, which is why a Dyson swarm makes a star FAINT rather than RED.
+  'stellar/dimmed':             { label: 'Dimmed',           description: 'This star reads fainter than a star of its class and distance should, because something is intercepting its light. The value is how many magnitudes fainter, as measured by an observer the obstruction actually covers - for a shell or a whole-sky swarm that is everyone, for a ringworld only observers near its plane. Crucially it is NOT redder: flat attenuation cuts the flux and leaves the colour and the absorption lines exactly where they were, so a spectrum still reads the star it always was. Dust is the case that reddens as well, because extinction goes as 1/wavelength.' },
+  'stellar/ir-excess':          { label: 'Infrared excess',  description: 'Far-infrared output no star of this class should produce: the light an intervening structure took out of the beam has to go somewhere, and it comes back out as waste heat at the structure\'s own equilibrium temperature - about 400 K for a shell at 1 AU, peaking near 7,400 nm. The value is the excess as a fraction of the star\'s own bolometric output. Taken with the dimming and an unchanged spectrum, this is the real technosignature: three measurements that cannot all be describing an ordinary star.' },
   // G26: the two outflow decorations, derived in physics/stellarOutflows and DRAWN by both starmaps
   // and the system view. Remove the tag and the mark goes — there is no renderer-side switch.
   'stellar/jets':               { label: 'Jets',             description: 'Collimated beams launched along the magnetic axis. A jet needs a relativistic well to launch from (compactness — Schwarzschild radius over the body\'s own radius), an ordered field to collimate along, and energy to tap: infall (the Eddington fraction of a fed black hole) or the magnetosphere of a neutron star or magnetar. A quiescent hole, a white dwarf and every ordinary star fall below the gate. The value is the beam strength: moderate or strong.' },
@@ -547,6 +553,17 @@ export function formatTagValue(key: string, value?: string): string | null {
   if (key === 'thermal/self-luminous') {
     const k = Number(value);
     return Number.isFinite(k) ? `${k.toLocaleString()} K` : value;     // it is an effective temperature
+  }
+  // G54: both are bare numbers and both therefore need a unit, or the chip says "Dimmed: 0.55" and
+  // a reader has no idea whether that is a lot. A magnitude is a magnitude; the infrared excess is a
+  // share of the star's own output, which reads best as a percentage.
+  if (key === 'stellar/dimmed') {
+    const m = Number(value);
+    return Number.isFinite(m) ? `${m.toFixed(2)} mag fainter` : value;
+  }
+  if (key === 'stellar/ir-excess') {
+    const f = Number(value);
+    return Number.isFinite(f) ? `${(f * 100).toFixed(1)}% of output` : value;
   }
   if (key === 'feature/polar-vortex') {
     const n = Number(value);

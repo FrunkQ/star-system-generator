@@ -17,7 +17,7 @@
   // star glyphs (the binaries-as-single fix), with route lines and name labels. Themeable.
   import { createEventDispatcher } from 'svelte';
   import type { Starmap } from '$lib/types';
-  import { systemVisualStars, starClusterOffsets } from './systemStars';
+  import { systemVisualStars, starClusterOffsets, starmapViewBearing } from './systemStars';
 
   export let starmap: Starmap | null = null;
   export let accentColor = '#6aa0ff';
@@ -69,7 +69,7 @@
     <!-- systems (multi-star clusters) -->
     {#each systems as node (node.id)}
       {@const c = posById.get(node.id)}
-      {@const stars = systemVisualStars(node.system)}
+      {@const stars = systemVisualStars(node.system, { viewDir: starmapViewBearing(starmap, node.id) })}
       {@const offs = starClusterOffsets(stars.length)}
       {#if c}
         <g class="sys" class:selectable class:sel={node.id === selectedId}

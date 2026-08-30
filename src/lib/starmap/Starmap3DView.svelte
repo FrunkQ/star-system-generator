@@ -21,7 +21,7 @@
   // local store only on the GM's own screen, where the store IS the answer.
   export let tagStyles: import('$lib/tags/tagCategories').TagCategory[] | null = null;
   $: activeTagCategories = tagStyles ?? $tagCategories;
-  import { systemVisualStars } from './systemStars';
+  import { systemVisualStars, starmapViewBearing } from './systemStars';
   import { drawHud } from '$lib/catalogue/infoCard';
 
   export let starmap: Starmap | null = null;
@@ -129,7 +129,11 @@
     id: s.id, name: s.name, x: s.position?.x ?? 0, y: s.position?.y ?? 0, z: s.position?.z ?? 0,
     // Everything a glyph draws is resolved by systemVisualStars from the star's classes and TAGS
     // (band, activity/flares, jets, shedding) — the scene reads it and decides nothing (G26).
-    stars: systemVisualStars(s.system).map((v) => ({ color: v.color, bh: v.bh, edd: v.edd, band: v.band, letter: v.letter, activity: v.activity, flares: v.flares, jets: v.jets, shedding: v.shedding })),
+    // G54: `color` is the OBSERVED colour — the intrinsic one through whatever stands between this
+    // star and the map's chosen centre. Both starmaps get it here rather than each applying the
+    // shift, which is the same reason the band and the decorations are resolved here.
+    stars: systemVisualStars(s.system, { viewDir: starmapViewBearing(starmap, s.id) })
+      .map((v) => ({ color: v.color, bh: v.bh, edd: v.edd, band: v.band, letter: v.letter, activity: v.activity, flares: v.flares, jets: v.jets, shedding: v.shedding })),
     markers: activeHighlights.length
       ? rollUpMarkers(s.system?.nodes ?? [], activeHighlights, activeTagCategories, markerStyle)
       : []

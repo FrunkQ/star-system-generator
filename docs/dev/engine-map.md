@@ -5371,3 +5371,50 @@ diagnosis; keep that pattern on every render-or-not decision path.
 BLAST: any helper beside a build loop that quietly reads the loop's locals; any belief that a
 green build cleared a TS error. The fix pattern is RENDER-S45's correction: thread the dependency
 as a parameter.
+
+### PHY-37 WHAT A WORLD RECEIVES AND WHAT AN OBSERVER MEASURES ARE TWO QUESTIONS OVER ONE GEOMETRY
+BUCKET: DOMAIN + ARCHITECTURE - domain: grey attenuation cuts FLUX without touching COLOUR, so a
+Dyson swarm makes a star FAINT and never RED, and the absorption lines are the tell that never
+lies. Architecture: two consumers of one occluder list, and the difference is the band test.
+WHERE: `physics/observedStar.ts` (the observer's side); `physics/starlightOcclusion.ts` (the
+world's side, PHY-36) which it CONSUMES rather than re-walks; the colour reaches both starmaps
+through `starmap/systemStars.visualStarOf`; the tags are emitted in the SystemProcessor star pass.
+Gates: `observedStar.spec.ts`, `starmap/observedStarGlyph.spec.ts`.
+RULE: `starOccluders` is the ONE place that decides who shades whom - a second walk keyed on
+`megaType` is the duplication that ends with two answers. What differs is the geometry, and only
+the geometry: a world is dimmed for the SHARE OF ITS ORBIT it spends inside a band
+(`bandAlignmentShare`, a time average for a power balance); an observer on a fixed bearing either
+is or is not inside it (`bandCoversBearing`, one dot product against the plane normal). DO NOT
+CONFUSE THE TWO - they take the same arguments and answer different questions. The observer's side
+also drops rule 2 (nothing radially inside is undimmed): an observer outside the system is outside
+every occluder by definition.
+RULE: OUT-OF-BAND RE-EMISSION IS A SCALAR PLUS A TEMPERATURE, NEVER A WIDENED GRID. The shared grid
+is 280-1400 nm (photochemistry, not vision); a shell at 1 AU re-radiates at 394 K peaking at 7,351
+nm, 5.25x outside it. Reaching that would be tens of thousands of samples per spectrum per body per
+pass for one feature. `wienPeakNm` gives the peak from the temperature and nothing is sampled where
+nothing else in the engine looks.
+RULE: THE MAP COLOUR IS SCALED, NOT RECOMPUTED. `getPlanetColor` stays the one authority on what
+colour a star is; `observedStarHex` applies a per-channel LINEAR gain derived spectrally. A gain of
+(1,1,1) returns the input byte-identical, which is what makes "nothing in the way changes nothing"
+true by construction. A second spectral colour derivation would have moved every star on every map
+the day this shipped.
+WHY: G54. The design's own illustrative figure was CHECKED rather than copied and is wrong - it says
+a 1 AU shell sits near 150 K peaking at 19,000 nm; Stefan-Boltzmann from this engine's constants
+gives 394.208 K and 7,351 nm (150 K is a shell about seven times further out). The conclusion is
+unchanged and stronger, and the anchor rule is why anybody looked.
+BLAST: THE ABSOLUTE ANCHOR IS NOT DECORATION AND IT WAS DEMONSTRATED, not assumed. A 100x constant
+factor injected into `blackbodySpectrum` fails EXACTLY ONE assertion in the suite - the absolute
+in-band radiant power - and all 32 ratio assertions stay green, because `observed/intrinsic` divides
+the factor out. That is PHY-34's lesson reproduced deliberately in this territory. The shell
+temperature is anchored twice for the same reason: absolutely, and as exactly sqrt(2) times the
+equilibrium temperature the temperature chain gives a zero-albedo world at the same distance - two
+subsystems reaching one number from opposite directions.
+BLAST: `lineOfSightExtinction` IS THE ONLY OVERRIDE THAT CHANGES NOTHING ABOUT THE SYSTEM IT NAMES.
+It is dust between the star and an observer, so it has no trace layer and does not touch insolation:
+the star's own worlds are not dimmed by it. If interstellar ray-through-volume geometry is ever
+built, it COMPUTES this number instead of the GM authoring it and every reader downstream is already
+correct - that is the data shape the design asked for.
+BLAST: a tag cannot carry a bearing. `stellar/dimmed` states what an observer THE OCCLUDER COVERS
+measures (everyone for a shell, the plane only for a ring) because a tag is a property of the star
+and travels into every surface; the per-viewer answer belongs where the audience is known (TAG-21),
+which is the starmap. Both are true and they are different sentences.

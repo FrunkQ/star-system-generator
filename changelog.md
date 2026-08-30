@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.227 - 30th Aug 2026
+
+- Stars now look like what an observer would actually see. Build a Dyson swarm and the star dims on both starmaps by exactly the share of light the swarm takes - and it does NOT change colour, which is the interesting part: even blocking cuts the brightness and leaves the spectrum alone, so a swarmed G2V star still reads G2V to a spectrometer. What you get instead is three measurements that disagree - too faint for its class, a large infrared excess, and a spectrum insisting nothing is wrong. That contradiction is the real technosignature, and a crew that spots it has found something rather than been told something.
+- A ringworld is directional and honest about it. A shell or an all-sky swarm dims everyone; a ring only stands in front of its star for observers near its own plane, which is about a third of a degree of sky. The map answers it per viewer, from whichever system you have set as the map's centre (right-click a system to set it) - so two crews in different systems can disagree about what that star looks like and both be right. With no centre chosen the map says so rather than guessing.
+- Dust is the case that really does redden, and you can now author it: a "Line-of-sight dust" slider on a star's Overrides tab, as an optical depth. Blue scatters out of the beam first, so the star goes fainter AND redder, and a G star behind enough of it can honestly be mistaken for a cooler one until someone takes a spectrum. It dims the star for observers only - the dust is between here and there, not around the star's own worlds.
+- A dimmed star carries two new tags, Dimmed and Infrared excess, which say how much and where the missing light went. Like every tag they have the shown / anon / hidden setting, so you choose whether players get both sides of the story, just the anomaly, or a star that is simply too faint for what its spectrum says.
+- The physics page has a new section explaining all of it, including where the blocked light goes: a shell at 1 AU settles near 394 K and glows at 7,400 nm, deep in the infrared, which is what makes such a thing findable at all.
+
 ## v3.0.226 - 30th Aug 2026
 
 - Board only. Signing the app into the hub is decided: pair with a short code approved in your own browser - no password ever enters the app, and the token can be revoked from your account page.
