@@ -75,6 +75,29 @@ partial is the Tabby's-Star signature, near-total is an optically faint far-IR s
 star that has vanished from the visible sky. **This is not a new subsystem; it is the observable end
 of the occlusion hook already identified as that design's highest-value one.**
 
+### 2b. Direction matters for BANDS — owner refinement, 2026-08-28
+
+Owner, arriving at it from the starmap: *"from most directions the star will not be dimmed. But
+for those that DO... then yes apply the anomalous badge at star map level."* He is right, and the
+split falls out of the geometry the shapes already carry:
+
+- **A full shell or whole-sphere swarm dims every direction equally** — the badge and the apparent
+  profile are viewer-independent, as §2 assumed.
+- **A band (ringworld, torus, narrow swarm band) dims only observers near its PLANE.** The
+  condition is the same one the in-system rule uses (`mega-constructs-design.md` §6): the
+  observer's direction from the star must lie within the band's latitude extent
+  (`shape()`'s `thetaStartRad`/`thetaLengthRad`). From most of the sky a thin ring occludes
+  essentially nothing of its star.
+
+So the APPARENT profile is a function of (star, viewer direction) for bands, and of the star alone
+for isotropic occluders. **The starmap has true 3D positions, so the bearing test is one dot
+product per star pair** — the badge shows where the viewing system actually sits in the shadowed
+zone, which is better play than a global flag: two crews in different systems can honestly
+disagree about what that star looks like, and both are right. Where no viewpoint exists (a map
+with no chosen home system), fall back to the isotropic answer and say so. Nothing here changes
+the data shape in §6 — `starOcclusion` stays one number; the band's extent already travels with
+the construct's own record.
+
 ---
 
 ## 3. What is already in the tree — and the one thing that is not

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.198 - 28th Aug 2026
+
+- Board only. Who a megastructure shadows is now written down properly: a full shell dims everyone outside it, but a band - a ringworld, a torus - dims only what lines up with its plane, in-system and on the starmap alike. The alignment test is one angle comparison using geometry the engine already holds, and the anomaly badge on the starmap follows the viewer's bearing for bands: two crews in different systems can honestly disagree about what that star looks like, and both are right.
+
 ## v3.0.197 - 28th Aug 2026
 
 - Board only. Two occlusion sentences in the megaconstruct design had the geometry backwards and are corrected: an occluder never dims itself - its sunward face takes the raw star, and that interception is the harvest - and only a body with the occluder between it and the star sees less light. The observable half (a star whose apparent profile differs from its true classification, with the anomaly symbol on the starmap) is G54's system, driven by the same occlusion number.

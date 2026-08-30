@@ -990,6 +990,20 @@ into that chain gives a Dyson swarm real consequences on every world in the syst
 arguably a dozen lines. **This is the highest-value hook in the whole feature.** It is also the
 honest one: building a swarm and having nothing get colder would be the engine lying.
 
+> **THE GEOMETRY OF WHO IS SHADOWED — owner refinement, 2026-08-28, and it is data already in
+> hand.** The one-multiplier rule above is the ISOTROPIC case: a full shell, or a swarm spread
+> over the whole sphere, dims every body outside its radius equally. **A BAND does not.** A
+> ringworld, torus or narrow swarm band occludes another body only when that body is ALIGNED
+> with it — the star→body ray must pass through the band, i.e. the body's direction from the
+> star lies within the band's latitude extent. That extent is exactly `shape()`'s
+> `thetaStartRad`/`thetaLengthRad`, and the engine already resolves every body's position, so
+> the test is one angle comparison per body per occluder — *"we have that geometry handy to
+> use"* (owner). Three rules, then: an occluder never dims ITSELF; a body radially INSIDE the
+> occluder is undimmed; a body outside it is dimmed by the fraction (isotropic occluder) or
+> only when aligned (band). The same directionality feeds [[G54]]'s observable end: from most
+> directions a thin ring does not dim its star at all, so the anomaly badge is a function of
+> the OBSERVER'S bearing for bands — see that design's §2b.
+
 **Waste heat.** A shell re-radiates in the infrared at a temperature set by its radius and the
 star's output. That is a one-line Stefan-Boltzmann result and it is the observable that makes a
 Dyson sphere findable — directly adjacent to [[G31]] (the one-spectral-system investigation), which
