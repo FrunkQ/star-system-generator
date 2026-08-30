@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.208 - 28th Aug 2026
+
+- Board only. Four notes taken from the GM screen for when the megaconstruct render work continues: draw a shell as a thick orbital ring in the plan view, give it a named circle to click that is easier to grab than a belt, frame the ring together with its star rather than flying to a point on it - and the big one, that a ringworld's inner surface can never be a painted texture. An eight-thousand-pixel map of a one-AU ring puts nine Earth diameters in a single pixel, so the surface has to be generated as you approach it: the physics decides where the seas and ice are, and the detail fills in at whatever scale you are looking from, so the size of the thing lands on you by making you travel it.
+
 ## v3.0.207 - 30th Aug 2026
 
 - Board only. The construct unit work is written up: what was converted, what was deliberately left alone and why, what was checked in the running app, and the four things worth a human eye.

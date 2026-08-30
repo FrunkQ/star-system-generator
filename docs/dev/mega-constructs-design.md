@@ -898,6 +898,38 @@ circumference is 9.4e8 km; at 1,000 km wide that is 9.4e11 km² — about **1,80
 `megaDerive.spec.ts` pins the figure. That single number does more to convey what a megastructure
 IS than any render, and the engine states it exactly.
 
+**THE TEXTURE CANNOT BE A TEXTURE — OWNER, 2026-08-28, and this is the sharpest constraint in the
+whole interior problem.** *"how would it scale - as it may be 1 pixel per AU... we may need to
+deterministically procgen it with LOD camera view to have continents of 'our scale' across its
+surface - giving people a HINT of how truly massive it would be."*
+
+**He is right, and the arithmetic is brutal.** A 1 AU ring 1.6 million km wide is 9.4e8 km around.
+An 8192-pixel map along its length gives **115,000 km per pixel** — nine Earth diameters in one
+texel. A 16k map gives four. There is no fixed image that is not a lie at this scale: the moment a
+GM zooms toward the floor, an authored texture is either a blur or a repeat.
+
+**So the interior surface is PROCEDURAL AND LOD-DRIVEN, not painted, and that is a requirement
+rather than an optimisation.** The shape of it:
+
+- **Deterministic from the node's stable id**, never RNG and never frame-dependent — same seed rule
+  as everything else here (§3.7), and doubly required because the GM and every player must see the
+  SAME continents. A procedurally-detailed surface that differs per client is a shared-fiction bug.
+- **TWO SCALES, AND THEY COME FROM DIFFERENT PLACES, which is the part worth getting right.** The
+  LARGE-scale pattern is DERIVED: where sea lies against land, the ice at the cold end of the band,
+  the cloud cover, the vegetation tint — all of it already computed by the surface stack this design
+  reuses (`apparentColor.ts` and its inputs). The SMALL-scale detail is INVENTED: coastline
+  crinkle, mountain grain, river-scale texture, generated in the shader at whatever level the camera
+  is asking for. **Physics decides what is there; procedure decides what it looks like up close.**
+  That keeps the physics-drives-tags-drives-visuals rule intact at a scale where an artist cannot go.
+- **The LOD is the point, not a performance trick.** The intended experience is the owner's: pull in
+  from the whole ring to a coastline and have CONTINENTS OF OUR SCALE keep resolving, so the size of
+  the thing lands on someone by making them travel it. A single-resolution surface cannot give that
+  at any resolution.
+- **Cost note for whoever builds it:** procedural noise in the fragment shader carries no texture
+  memory at all, which is what makes an object this large affordable — and `buildDisplayModel`
+  already takes any `Object3D`, so a custom interior material sits beside the seven hull finishes
+  rather than replacing them.
+
 **RENDERING THE INTERIOR — three concrete notes.**
 - **Normals face inward.** The interior needs `side: THREE.BackSide` (or flipped normals) on the
   faces path; the camera lives inside the shell, not outside it.
@@ -1196,6 +1228,35 @@ returns null and keeps the ellipsoid, undluplicated.
 > minimum DRAWN thickness (the same honest device as RENDER-S43's screen-space floor, applied to
 > one axis) is a decision that needs an eye on it first: it is the difference between a ring you
 > can see and a ring that is technically correct and invisible. **Phase 3's first eyeball item.**
+
+### Phase 3b — THE 2D ORRERY, SELECTION AND FRAMING. OWNER NOTES, 2026-08-28, from the GM screen.
+
+Captured verbatim-ish and NOT acted on — his words: *"no need to do now - just notes for when you
+get there."* All four came from looking at a Dyson sphere on the 2D GM view, where it drew as a
+single dot on an orbit line.
+
+1. **DRAW IT AS A THICKISH ORBITAL RING, not a dot and not a disc.** *"for clarity I guess we should
+   draw it like a thickish orbital ring."* The 2D orrery has no mega path at all today — a
+   megaconstruct takes the ordinary construct glyph (`traceConstructIcon`, one shape from the A34
+   vocabulary), which says nothing about it being a structure that encircles the star.
+2. **ITS TRUE SIZE WILL NOT READ UNTIL YOU ARE CLOSE IN, AND THAT IS ACCEPTED.** *"which will not
+   show the right size until close in - not going to happen."* So the 2D ring is a
+   READABILITY device with a deliberate, stated departure from scale — the same honesty the size
+   dials already carry (RENDER-S42). Do not chase true scale in the plan view.
+3. **A NAMED CIRCLE IS THE SELECTION TARGET, AND IT MUST BEAT A BELT FOR EASE.** *"Having a circle
+   with the name is also helpful as a selection item as the whole ring is cumbersome and we want it
+   to be easier to select than a belt/ring as it will be used."* Two things in one sentence: the
+   click target is a MARKER (circle + label) rather than the ring itself, and the bar is explicitly
+   set ABOVE the belt/ring experience because a mega is a place a GM will actually visit. Note the
+   ring stays selectable too — the marker is an easier handle, not a replacement.
+4. **THE FRAMING IS WRONG AND THE RIGHT SHOT IS THE RING PLUS ITS STAR.** *"that image shows first
+   click but we would select the ring and star framing."* Concretely, and this is implementable as
+   stated: a `megaCentred` construct must frame its HOST at the ring's own drawn radius, not itself
+   at its `shipLen`. Today `frameDistance` reads the node's own position and hull length, so the
+   first click flies to a POINT ON the ring with the star out of frame — which is exactly what the
+   screenshot shows. The pieces already exist: the host visual and the ring's drawn radius are both
+   computed every frame for the centring fix (v3.0.204), so the shot wants that radius as its
+   half-extent and the host as its target.
 
 **Phase 4 — starlight occlusion.** `starOcclusion` into the insolation chain, with the explainers
 updated in the same batch. `shell` and `swarm` rendering. **This is the phase that makes the feature
