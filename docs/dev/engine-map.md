@@ -5374,9 +5374,14 @@ because "dims the star 100%" would be the A33/B27 lie.
 CORRECTION (same day): the zones gap this entry originally named is PAID - `zones.ts` runs every
 line through `occludedZoneDistance` (solve clear; while the edge lands beyond an occluder,
 re-solve with its light removed; if the re-solve falls back inside it, the flux jump at its radius
-IS the edge - beyond a solid ringworld, in-plane, there is no more zone). For ZONES every occluder
-applies its full fraction beyond its radius, BANDS INCLUDED, because the zone circles live in the
-system plane and the plane is the aligned direction - the per-body tilt relief belongs to bodies.
+IS the edge - beyond a solid ringworld, in-plane, there is no more zone).
+SECOND CORRECTION (2026-08-31, found by the owner's own question): a BAND counts toward zones by
+its ALIGNED SHARE against the reference plane, not always in full - the first correction's "bands
+included, full fraction" was true only of an UNTILTED band (which IS the plane, share 1, zones end
+at it). A ring tilted 30 degrees crosses the plane at two longitudes (share <1%), so the zones
+shrink by a whisker exactly as a coplanar world's temperature does; treating it as flat would have
+collapsed the drawn HZ while the worlds stayed warm - the two halves of one fact disagreeing.
+Isotropic occluders still apply in full regardless of tilt.
 Companion flux stays undimmed through the solver. A swarm inside the kill zone is honestly a
 radiation shield (both hazard halves are linear in L, so the radius scales as sqrt f).
 

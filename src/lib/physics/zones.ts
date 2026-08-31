@@ -3,7 +3,7 @@ import { SOLAR_RADIUS_KM } from '../constants';
 import { luminositySolarFromRT, SOLAR_TEFF_K } from './luminosity';
 import { blackbodyFractionBelowNm } from './spectrum';
 import { ionisingOutputSolar } from './ionisingOutput';
-import { starOccluders } from './starlightOcclusion';
+import { starOccluders, bandAlignmentShare, relativeInclinationRad, type StarOccluder } from './starlightOcclusion';
 
 /**
  * ZONES FOLLOW THE DIMMING (G53 phase 4, the other half of B110's coherence warning): a star dimmed
@@ -11,10 +11,13 @@ import { starOccluders } from './starlightOcclusion';
  * incoherent" split luminosity.ts's header names. Every zone line here is a flux threshold, so
  * every one of them moves when a megastructure stands inside it.
  *
- * THE ZONE CIRCLES LIVE IN THE SYSTEM PLANE, and the plane is the aligned direction for every BAND
- * occluder — a ringworld's shadow falls exactly where the zone rings are drawn — so for zones every
- * occluder applies its FULL fraction beyond its radius, bands included (the per-body directional
- * relief belongs to bodies, whose orbits can tilt out of the shadow; a drawn circle cannot).
+ * THE ZONE CIRCLES LIVE IN THE REFERENCE PLANE, so a band occluder counts by HOW ALIGNED WITH THAT
+ * PLANE IT IS — the same time-free share the per-body rule uses, taken against a coplanar circle.
+ * An untilted ringworld IS the plane (share 1: full fraction, the zones end at it); a ring tilted
+ * 30 degrees crosses the plane at two longitudes only (share under 1%), so the zones shrink by a
+ * whisker exactly as a coplanar world's temperature does — the two halves of one fact may not
+ * disagree (owner's question, 2026-08-31, which found this walk treating tilted bands as flat).
+ * Isotropic occluders apply in full regardless of tilt, as they do to every body.
  *
  * THE WALK: solve the line in clear sky; while the answer lands beyond an occluder, re-solve with
  * that occluder's light removed; if the re-solve falls back INSIDE the occluder, the flux
@@ -32,10 +35,15 @@ function occludedZoneDistance(
     let r = solveAt(1);
     if (!(r > 0) || !allNodes || allNodes.length === 0) return r;
     const occs = starOccluders(star, allNodes).sort((a, b) => a.radiusAu - b.radiusAu);
+    // A band's bite on a coplanar circle: its per-orbit aligned share against the reference plane.
+    const zoneFraction = (occ: StarOccluder): number =>
+        occ.bandHalfAngleRad !== undefined
+            ? occ.fraction * bandAlignmentShare(occ.bandHalfAngleRad, relativeInclinationRad(occ.elements, null))
+            : occ.fraction;
     let f = 1;
     for (const occ of occs) {
         if (r <= occ.radiusAu) return r;
-        f *= 1 - occ.fraction;
+        f *= 1 - zoneFraction(occ);
         r = f > 0 ? solveAt(f) : 0;
         if (r <= occ.radiusAu) return occ.radiusAu;
     }

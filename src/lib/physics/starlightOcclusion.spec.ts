@@ -248,6 +248,22 @@ describe('the zones follow the dimming (the B110 coherence half)', () => {
 		expect(clearFrost).toBeGreaterThan(3);
 	});
 
+	it('a TILTED ring barely moves the zones, exactly as it barely moves the temperatures', () => {
+		// The zone circles live in the reference plane. An untilted band IS that plane and pins the
+		// zones at its radius; a band tilted 30 degrees crosses it at two longitudes only, so the
+		// zones must shrink by its small aligned share, not collapse. Coherence with the body side:
+		// the same tilt costs a coplanar world under 1% of its light.
+		const tilted = { ...mega('ring1', 'ringworld', 1) } as CelestialBody;
+		tilted.orbit!.elements.i_deg = 30;
+		const clear = calculateGoldilocksZone(sol(), [sol()]);
+		const gz = calculateGoldilocksZone(sol(), [sol(), tilted]);
+		expect(gz.outer).toBeGreaterThan(clear.outer * 0.99); // NOT pinned at 1 AU
+		expect(gz.outer).toBeLessThanOrEqual(clear.outer);    // but honestly a whisker dimmer
+		const frost = calculateFrostLine(sol(), [sol(), tilted]);
+		const clearFrost = calculateFrostLine(sol(), [sol()]);
+		expect(frost).toBeGreaterThan(clearFrost * 0.99);
+	});
+
 	it('two swarms compose multiplicatively on a line beyond both', () => {
 		const nodes = [sol(), mega('s1', 'dyson-swarm', 0.3), mega('s2', 'dyson-swarm', 0.6)];
 		const clear = calculateFrostLine(sol(), [sol()]);
