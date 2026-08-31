@@ -51,6 +51,7 @@
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
+  import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
   import { classifySaveFile } from '$lib/io/classify';
   import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
@@ -1629,13 +1630,22 @@
     // 3. Download. A system carrying assets (body photos, ship models) saves as a BUNDLE - a zip
     // with a readable system.json beside the assets as real files; without them it stays plain
     // JSON. Same container the campaign save uses, so one reader opens either.
-    const models = await collectModelsForExport({ systems: [{ system: systemToSave }] }).catch(() => undefined);
-    const bundle = await packBundle('system', systemToSave, { models });
+    //
+    // R-10: this is the ONLY save with a GM/Player choice, so it is the only one whose exportMode
+    // is not a foregone conclusion - and it records the choice the GM already made at step 1
+    // rather than asking anyone to restate it. A LABEL, never a gate: a reader must still detect.
+    // The stamp also gives a system.json the `appVersion` a starmap.json has always carried.
+    // R-12 deliberately does NOT apply here: a system is a slice of a campaign rather than a
+    // separately versioned document, and bumping a counter through `systemStore` would fire the
+    // campaign write-back and broadcast rebuild that P3 exists to avoid.
+    const stamped = stampForSave(systemToSave, { exportMode: exportModeFromChoice(mode) });
+    const models = await collectModelsForExport({ systems: [{ system: stamped }] }).catch(() => undefined);
+    const bundle = await packBundle('system', stamped, { models });
     // R-01: same stamp, same function, on the plain-JSON branch too - a single system saved without
     // assets is a `.json` file, and the hub reads `system.json` as readily as `starmap.json`.
     const blob = bundle
       ? new Blob([bundle], { type: 'application/zip' })
-      : new Blob([plainSaveJson(systemToSave)], { type: 'application/json' });
+      : new Blob([plainSaveJson(stamped)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

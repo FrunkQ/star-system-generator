@@ -14,10 +14,57 @@
 
 import { APP_VERSION } from '$lib/constants';
 
+/** Which of the two trees an export holds. A LABEL, never a gate - see stampForSave. */
+export type ExportMode = 'gm' | 'player';
+
+/**
+ * The Save modal speaks `'GM' | 'Player'`; the file speaks `'gm' | 'player'`. ONE translation
+ * between the two vocabularies, here rather than inline at the call site, because one concept
+ * living under two names translated in exactly one place is a thing this codebase has been bitten
+ * by before - and because an inline ternary is untestable from anywhere the choice is made.
+ *
+ * The direction matters more than the spelling: getting this backwards labels a GM export
+ * `player`, which is the mislabel that leaks a campaign.
+ */
+export function exportModeFromChoice(choice: 'GM' | 'Player'): ExportMode {
+  return choice === 'Player' ? 'player' : 'gm';
+}
+
 /** The provenance fields, alone. Structural so it applies to a full Starmap or a lean export clone. */
 export interface Provenance {
   appVersion?: string;
   baseMapVersion?: number;
+  /** R-12: how many explicit saves this campaign has had. See nextRevision. */
+  revision?: number;
+  /** R-10: which tree this file holds, as a label. Never read as a gate. */
+  exportMode?: ExportMode;
+}
+
+/**
+ * R-12: THE REVISION A NEW EXPLICIT SAVE SHOULD CARRY - one past whatever the campaign holds.
+ *
+ * THE SCENARIO THIS PREVENTS, and it is real data loss rather than an untidiness. A creator uploads
+ * their campaign to the hub. Weeks later they find an older export in their Downloads folder and
+ * upload it as an update. Nothing in either file says which is newer - verified across two real
+ * exports of one map nine months apart: same `id`, 42/42 shared system ids, and no serial of any
+ * kind - so the hub accepts it, replaces every row, and the newer version is gone. With this the
+ * hub can ask "the copy you uploaded is older than the one published - did you mean to roll back?"
+ *
+ * `appVersion` cannot serve: two saves from one build are indistinguishable, and a creator who has
+ * not updated SSE produces identical stamps forever. Nor can a file timestamp - it is a client
+ * clock, it survives copying badly, and it is trivially wrong.
+ *
+ * THE INVARIANT THAT MAKES IT TRUSTWORTHY: **the revision in the file is the revision the campaign
+ * now holds.** The caller advances the LIVE campaign and exports from that, rather than
+ * incrementing on the way out - otherwise the file and the autosave disagree, and the next save
+ * writes the same number again. A missing, negative or non-integer value reads as "never saved",
+ * so the first explicit save of any campaign - including one made before this field existed -
+ * writes 1.
+ */
+export function nextRevision(map: Provenance): number {
+  const held = map.revision;
+  if (typeof held !== 'number' || !Number.isFinite(held) || held < 0) return 1;
+  return Math.floor(held) + 1;
 }
 
 /**
@@ -30,9 +77,23 @@ export const CURRENT_BASE_MAP_VERSION = 2;
 /**
  * Stamp a map for an explicit save. Returns a COPY — callers are building an export object and must not
  * mutate live campaign state. `baseMapVersion` is carried through exactly as found, including absent.
+ *
+ * R-10, `exportMode`: WHICH TREE THIS FILE HOLDS, AND IT IS A LABEL RATHER THAN A GATE. A reader
+ * meets it inside a file a stranger sent, so it is a CLAIM exactly like ATTRIBUTIONS.md, and
+ * detection stays the control: a stamp saying `player` on a file full of GM notes must lose to the
+ * detector, loudly. What it buys is precision in the labelling - a file with no GM notes in it is
+ * a player export OR a GM export of a campaign with no secrets, and those are indistinguishable
+ * from the outside. Nothing in this app reads it.
+ *
+ * It DEFAULTS TO 'gm', which is the safe direction: the campaign save has only ever written the
+ * full GM file, and a player export mislabelled `gm` is merely over-cautious, while a GM export
+ * mislabelled `player` is the one that leaks a campaign.
+ *
+ * `revision` is deliberately NOT incremented here. It has to be advanced on the LIVE campaign so
+ * the file and the autosave agree - see nextRevision.
  */
-export function stampForSave<T extends Provenance>(map: T): T {
-  return { ...map, appVersion: APP_VERSION };
+export function stampForSave<T extends Provenance>(map: T, opts: { exportMode?: ExportMode } = {}): T {
+  return { ...map, appVersion: APP_VERSION, exportMode: opts.exportMode ?? 'gm' };
 }
 
 /**

@@ -81,7 +81,7 @@
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { classifySaveFile } from '$lib/io/classify';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
-  import { stampForSave } from '$lib/map/provenance';
+  import { stampForSave, nextRevision } from '$lib/map/provenance';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import { unitKind, campaignUnit, normaliseCampaignUnit, applyUnitChange, type UnitChangeMode } from '$lib/map/distanceUnits';
   import { rescaleMapBackgroundForRuler } from '$lib/map/mapBackground';
@@ -1820,6 +1820,20 @@
   // on it would break that flow.
   let showStarmapSaveModal = false;
 
+  // R-12: THE MOMENT A GM WRITES A FILE, the campaign's revision advances - and it advances on the
+  // LIVE campaign, not on the way out, so the file and the autosave can never disagree about which
+  // revision this is. Exporting a bumped copy while the store kept the old number would write the
+  // same revision twice and quietly undo the whole point.
+  //
+  // WHO DOES NOT CALL THIS, and both are deliberate: `downloadStoredStarmap` (the safe-mode escape
+  // hatch) writes out the STORED campaign unchanged - it is a dump of existing work, not new work,
+  // and claiming a newer revision for it would be a lie. And a single-system save has no revision
+  // at all: a system is a slice of a campaign rather than a separately versioned document, and
+  // there is nowhere for its own counter to live that survives a reload.
+  function advanceRevision(map: StarmapType): StarmapType {
+    return { ...map, revision: nextRevision(map) };
+  }
+
   // The red-zone crash file. DELIBERATELY LEANER THAN A NORMAL SAVE: no model binaries and no zip.
   // handleDownloadStarmap base64-embeds every model, and at 3 GB of heap that allocation could
   // itself be the push over the cliff — a crash save must never cause the crash it is recording.
@@ -1829,11 +1843,15 @@
     const map = $starmapStore;
     if (!map) return;
     try {
-      enqueueStarmapPersist(map);
-      const lean = stripStarmapForExport(map, selectedRulepack ?? undefined);
+      // The bump is persisted straight to storage rather than through the store: setting
+      // `starmapStore` here would fire the write-back and broadcast rebuild that P3 exists to
+      // avoid, and a crash save must never cause the crash it is recording.
+      const advanced = advanceRevision(map);
+      enqueueStarmapPersist(advanced);
+      const lean = stripStarmapForExport(advanced, selectedRulepack ?? undefined);
       // R-01: a crash file is ALWAYS plain JSON (no zip, by design above), so it is the one save
       // that could never pick up the stamp from the bundle path. It gets it here like any other.
-      const exportObj = stampForSave({ ...lean, ...registriesForStarmap() });
+      const exportObj = stampForSave({ ...lean, ...registriesForStarmap() }, { exportMode: 'gm' });
       // R-01: a crash file is ALWAYS plain JSON (no zip, by design above), so it is the one save
       // that could never pick up the stamp from the bundle path. Unindented: see plainSaveJson.
       const blob = new Blob([plainSaveJson(exportObj, { pretty: false })], { type: 'application/json' });
@@ -1854,15 +1872,21 @@
   async function handleDownloadStarmap() {
     if (!$starmapStore) return;
 
+    // R-12: advance the revision on the live campaign FIRST. The reactive autosave above persists
+    // it, so a reload continues from the number the file just claimed.
+    const advanced = advanceRevision($starmapStore);
+    starmapStore.set(advanced);
     // Strip derived physics from a CLONE before writing — the load path re-derives everything, so the
     // file needs only authored inputs. Keeps saved files small and free of stale baked-in data.
-    const lean = stripStarmapForExport($starmapStore, selectedRulepack ?? undefined);
+    const lean = stripStarmapForExport(advanced, selectedRulepack ?? undefined);
     // G3: embed construct model binaries (base64 by hash) so the file is self-contained — a
     // ModelRef without its binary would land on another machine as the icon-glyph fallback.
     const models = await collectModelsForExport(lean).catch(() => undefined);
     // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
     // M1: stamp the build that wrote the file. See lib/map/provenance.ts for why explicit saves only.
-    const exportObj = stampForSave({ ...lean, ...registriesForStarmap(), ...(models ? { models } : {}) });
+    // R-10: the campaign save has only ever written the full GM file - there is no Player radio on
+    // this modal - so the label says so rather than leaning on the default.
+    const exportObj = stampForSave({ ...lean, ...registriesForStarmap(), ...(models ? { models } : {}) }, { exportMode: 'gm' });
     // A campaign carrying assets saves as a BUNDLE: a zip holding a small, readable starmap.json
     // beside the models and pictures as real files. One with no assets stays a plain .json, which
     // is the file GMs hand-edit and diff. Both load; the loader sniffs, it does not trust names.

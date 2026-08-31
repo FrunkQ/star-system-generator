@@ -101,6 +101,10 @@ function canonicalStarmap(): any {
 		id: 'starmap-hub-contract-sample',
 		name: 'Hub Contract Sample',
 		appVersion: FIXTURE_APP_VERSION,
+		// R-12 and R-10, present so the hub's reader exercises them. Both are pinned rather than
+		// produced: a byte-pinned fixture cannot carry a counter that moves.
+		revision: 7,
+		exportMode: 'gm',
 		distanceUnit: 'ly',
 		scale: { unit: 'ly', pixelsPerUnit: 10, showScaleBar: true },
 		routes: [],
@@ -206,6 +210,9 @@ function canonicalSystem(): any {
 		id: 'sys-hub-contract-single',
 		name: 'Contract Anchorage',
 		appVersion: FIXTURE_APP_VERSION,
+		// A single system carries the LABEL but no revision - it is a slice of a campaign rather
+		// than a separately versioned document. See the R-12 note in SystemView's save.
+		exportMode: 'player',
 		nodes: [
 			{ id: 'star-anchor', name: 'Anchorage', kind: 'body', roleHint: 'star' },
 			{
@@ -380,6 +387,22 @@ describe('the Creator Hub contract fixtures', () => {
 		// And the same documents as PLAIN JSON, which is what a JSON-only consumer would receive.
 		expect(classifySaveFile(strToU8(JSON.stringify(canonicalStarmap()))).kind).toBe('starmap');
 		expect(classifySaveFile(strToU8(JSON.stringify(canonicalSystem()))).kind).toBe('system');
+	});
+
+	it('carry the revision and the export-mode label the hub reads', async () => {
+		const members = readZipMembers(await buildStarmapFixture(), ['.json']);
+		const map = JSON.parse(
+			strFromU8(members[Object.keys(members).find((n) => n.endsWith('starmap.json'))!])
+		);
+		expect(map.revision).toBe(7);
+		expect(map.exportMode).toBe('gm');
+		const sysMembers = readZipMembers(await buildSystemFixture(), ['.json']);
+		const sys = JSON.parse(
+			strFromU8(sysMembers[Object.keys(sysMembers).find((n) => n.endsWith('system.json'))!])
+		);
+		// Both label values appear across the pair, so a reader meets each at least once.
+		expect(sys.exportMode).toBe('player');
+		expect(sys.revision).toBeUndefined();
 	});
 
 	it('exercise the sharing gate: one asset WITH provenance and one without, in each kind', async () => {

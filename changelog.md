@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.247 - 31st Aug 2026
+
+- A save now counts itself. Every time you save a campaign it writes a revision number, one higher than the last, so two files of the same map can finally be told apart. This exists to stop a specific and entirely realistic way of losing work: you upload your campaign to the sharing site, weeks later you find an older export in your Downloads folder, you upload that as an update, and the newer one is gone. Nothing in a save said which was newer - two real exports of one map nine months apart were checked and neither had anything to go on. Now the site can ask before it overwrites. The number lives with the campaign, so it survives closing the app, and it starts at 1 for every map that has ever existed.
+- Two saves that are deliberately not counted, because neither is new work: the safe-mode "download the stored map" rescue writes out exactly what is in storage, and a single system save is a slice of a campaign rather than a thing with its own history.
+- A saved file now records whether it is the GM copy or the player copy. It is a label and never a lock - anything reading a save still has to look at what is actually inside it, because a file can say anything - but it lets the sharing site print "this is the player version" honestly instead of "no GM-only content found". Single system saves take it from the choice you already made in the save box; campaign saves are always the full GM file and say so.
+
 ## v3.0.246 - 31st Aug 2026
 
 - A shadowed world now says so in its tags. Any world losing starlight to a megastructure carries a "Shadowed by" tag naming the structure - the same fact the physics trace explains, now visible in pills and filters, and it leaves with the structure. Set the tag anonymous and players learn only that something stands between this world and its sun.

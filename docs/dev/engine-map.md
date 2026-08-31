@@ -5578,6 +5578,30 @@ THREE THINGS THAT ARE NOT OBVIOUS:
     fixture models as STRING LITERALS, and the format gates pin the literal integer 1 rather than
     reading `BUNDLE_FORMAT`, so a change to the digest, the GLB padding or the constant goes red
     against an outside reference instead of agreeing with itself.
+RULE THREE (R-12, the revision counter): **the revision in the FILE is the revision the CAMPAIGN
+now holds.** It is advanced on the LIVE campaign and the file is written from that - never
+incremented on the way out, because a file claiming a number the campaign never held writes the same
+number again on the next save, which is the exact loss the counter exists to prevent. Absent,
+negative or non-numeric reads as "never saved", so the first explicit save of any campaign - every
+campaign in existence on the day this shipped included - writes 1. WHO DOES NOT ADVANCE IT, both
+deliberate and both gated: `downloadStoredStarmap` dumps the STORED campaign unchanged (existing
+work, not new work), and a single-system save has no revision at all - a system is a slice of a
+campaign rather than a separately versioned document, and bumping a counter through `systemStore`
+would fire the campaign write-back and broadcast rebuild that P3 exists to avoid. The crash file
+advances but persists STRAIGHT to storage, never through the store, for the same reason.
+RULE FOUR (R-10, `exportMode`): **a LABEL, never a gate.** It arrives inside a file a stranger sent,
+so it is a claim exactly like `ATTRIBUTIONS.md`; detection stays the control and a stamp saying
+`player` on a file full of GM notes must lose to the detector, loudly. Nothing in this app reads it,
+and `revision.spec.ts` fails if anything starts to. It DEFAULTS TO `'gm'`, which is the safe
+direction: a player export mislabelled `gm` is over-cautious, a GM export mislabelled `player` leaks
+a campaign. The Save modal speaks `'GM' | 'Player'` and the file speaks `'gm' | 'player'`;
+`exportModeFromChoice` is the ONE translation between the two vocabularies.
+BLAST: **TWO GATES IN THIS BATCH WERE WRITTEN, PASSED, AND WERE BLIND** - both caught only by running
+the mutation, and both the same shape: a unit test of a correct FUNCTION that nothing tied to the
+CALL SITE. Hard-coding `'gm'` at the system save left every player export mislabelled with the
+translator perfect and the suite green; removing the store write-back from the campaign save left the
+revision arithmetic perfect and the counter permanently stuck at 1. The lesson generalises past this
+file: when the rule is "the app does X at the moment Y", a test of X is not a test of the rule.
 BLAST: the canonical fixture was SYNTHETIC and would have failed R-03 on the day R-03 landed - its
 model was `c0ffee.glb`, six hex characters that were never the digest of anything, its GLB was the
 ASCII string `RUNNER-GLB`, and it carried no `routes`, so the canonical campaign was a shape this app
