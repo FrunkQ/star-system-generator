@@ -1340,6 +1340,11 @@ designed, one correction and one honest gap:**
 
 `shell` and `swarm` RENDERING was already phase 3's generator; nothing further needed here.
 
+> **ROUTING, 2026-08-31 ([[G58]]):** the owner called a stop/think - phases 5, 5b, 5c and 6, and the
+> remaining §Phase 3b/3c visual tweaks, now route through `nonstandard-objects-design.md`: ONE
+> capability record, consumers that stop guessing. Phase 5 becomes that design's N3 - the flip
+> rides declarations instead of hand-wiring the thirteen seams its probe counts.
+
 **Phase 5 — THE HYBRID FLIP, and it is the risky one.** Move mega-constructs to `kind: 'body'` and
 migrate the chrome sites behind `showsAsConstruct`. Run `idempotence.test.ts` first and often; gate
 `hierarchyRebuild.ts:112`'s changed walk with the hybrid removed; answer the redaction question

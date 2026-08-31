@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.235 - 31st Aug 2026
+
+- Board only. The owner called a stop/think on how exotic objects are wired in, and the design answers it: one capability record per non-standard object type - a matrix declaring which physics engines apply, how it draws in 2D and 3D, how a click frames it, which edit panels it gets, and what tags it stamps on the worlds it affects - so a soletta, a Shkadov thruster or a black-hole star becomes a record to review rather than a dozen hand-wired special cases. Design only; four questions await the owner before anything is built.
+
 ## v3.0.234 - 31st Aug 2026
 
 - A ringworld no longer claims twelve million gravities. The crew panel converted a rotation period to revolutions per minute with the minutes and hours crossed - out by a factor of 3,600 - so the bundled ring's honest 1.00 g displayed as 12,967,908 g. The stored data was never wrong (the two bad conversions were mirror images, so saves round-tripped cleanly); only the displayed RPM and gravity figure lied. Both now go through one tested conversion pair, anchored on the Niven ring: 215.5 hours at 1 AU reads exactly 1.00 g.
