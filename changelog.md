@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.241 - 31st Aug 2026
+
+- Megastructure names come back down to earth. A label clears the thing it names so it never sits inside it - right for planets and ships, and absurd for a structure the size of an orbit: "Ringworld" floated a full ring-radius up into empty sky, and "Space Elevator" hung near the counterweight instead of the anchor. An exotic's label now clears its clickable marker instead of its whole span, so the name sits on the hoop point or the anchor where you would reach to click. The Death Star keeps ordinary ship labelling - its hull IS its marker.
+
 ## v3.0.239 - 31st Aug 2026
 
 - Board only. Two owner asks captured where the next session will trip over them: custom sliders (a ringworld's width on an edit tab) land as the exotics knob editor - the slider contract already exists on every record, only the storage and the tab are missing - and the bigger idea, a declarative design language for the whole UI, is banked as its own future item with its shipped precedents named.

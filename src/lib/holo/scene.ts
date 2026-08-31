@@ -4831,7 +4831,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // A construct has no `radiusScene`; `shipLen` is what the framing solver uses in its place
       // (see the focus ladder), so use the same one rather than leaving ships with no clearance.
       const rScene = renderedSpanScene(b);
-      const bodyPxR = (rScene * (b.screenK ?? 1)) / Math.max(1e-9, pxToScale * dist);
+      let bodyPxR = (rScene * (b.screenK ?? 1)) / Math.max(1e-9, pxToScale * dist);
+      // G58 labels seam: an exotic whose structure extends beyond its marker (a ring's whole hoop,
+      // a tether's full height) must NOT clear its SPAN - that pushed "Ringworld" a ring-radius
+      // into empty sky and hung "Space Elevator" near the counterweight instead of the anchor
+      // (owner, 2026-08-30/31). The label belongs at the NODE - the marker point a GM clicks - so
+      // clear the construct marker instead. A 'node'-anchored exotic (Death Star) is a hull like
+      // any ship: its span IS its marker, and the ordinary clearance stands.
+      if (b.exotic && b.exotic.render3d.anchor !== 'node') bodyPxR = CONSTRUCT_PX_FOCUS / 2;
       const hPx = Math.max(1e-6, labelSizePx * ls.heightRatio);
       ls.sprite.center.set(0.5, -(0.25 * ls.nameFraction + bodyPxR / hPx));
     }
