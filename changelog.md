@@ -2,7 +2,7 @@
 
 All notable changes are listed here:
 
-## v3.0.238 - 30th Aug 2026
+## v3.0.239 - 31st Aug 2026
 
 - The SSE3 mark gets its bold colour back - making it clickable had accidentally flattened its styling.
 
