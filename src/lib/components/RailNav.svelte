@@ -296,7 +296,7 @@ ${playerConnSummary}`
   .rail-btn.danger { color: var(--status-bad, #ef4444); }
   .rail-btn.danger .ic { color: var(--status-bad, #ef4444); }
   .spacer { flex: 1 1 auto; }
-  .brand-copy { background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+  .brand-copy { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; }
   .brand-tick { color: #35c96b; }
 
   /* Collapsed (icon-only): hide labels + section titles everywhere in the rail (incl. the

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.238 - 30th Aug 2026
+
+- The SSE3 mark gets its bold colour back - making it clickable had accidentally flattened its styling.
+
 ## v3.0.237 - 31st Aug 2026
 
 - First exotics seam flip, invisible by design: the 3D scene and the click-framing now read each megastructure's declared capabilities instead of two private renderer flags, and the flags are gone. Nothing looks different - the parity gates are the proof - but the next object type gets this behaviour by declaration rather than by editing the renderer.
