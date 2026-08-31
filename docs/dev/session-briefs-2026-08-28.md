@@ -392,3 +392,92 @@ it is theirs, leave it.
 > non-obvious rule, and correct any entry you falsify; record dead ends loudly; do not stop early on
 > a context guess; if the pane will not render, hand back a thirty-second eyeball list. Anything
 > that changes what the product IS: recommend, then ask.
+
+---
+
+## STREAM F — everything the map-sharing site expects of the engine (G57 + B112, one stream)
+
+> You are building the SSE side of the Creator Hub integration: [[G57]] (R-01..R-13) and [[B112]],
+> as ONE stream — the owner's call, and it is right, because it is all one territory: what a save
+> SAYS, and how the app talks to the hub. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (v3.0.239+ — fetch
+> the tip; several streams push here daily, expect rebases and renumber on collision). Work in your
+> OWN worktree (`git worktree add ../sse2-hubside -b wt/hubside origin/beta`); the main checkout is
+> shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST, IN THIS ORDER.** (1) `docs/dev/hub-requirements-for-sse.md` — the hub's thirteen
+> requirements WITH the coordinator's triage table on top; the triage is the map of what is done,
+> half-done and yours. (2) `docs/dev/save-defaults-task.md` — the B112 brief, banked verbatim with
+> house rules appended; it is your batch 2. (3) The [[G57]], [[B112]] and [[G55]] rows in
+> `docs/dev/observations-inbox.md`, then the standing rules at that file's foot. (4) In
+> `docs/dev/engine-map.md`: the DATA-* save/format entries, and `PHY-34` for the gate discipline.
+> (5) `src/lib/io/bundle.ts` and `src/lib/map/provenance.ts` headers — the format's own stated
+> promises ("a plain .json save still loads, and always will") bind you.
+>
+> **TWO GAPS ALREADY VERIFIED by the coordinator — start here, they unblock the hub entirely.**
+>
+> **F1 (= G57 batch 1).** (i) R-01 gap: `bundleFormat` is stamped ONLY inside `packBundle`
+> (`bundle.ts:167`) — **a plain `.json` save carries no stamp**, and plain saves are exactly what
+> the hub's JSON-only kill switch would make its only accepted uploads. Stamp the plain-JSON export
+> path too, same integer, same "this writer decides" discipline (`bundle.ts:120`). (ii) R-02:
+> `tests/fixtures/creator-hub-bundle.sse.zip` is SYNTHETIC — its model is `c0ffee.glb`, six hex
+> chars, NOT the sha256 of its bytes, so the canonical fixture would fail R-03's own assertion.
+> Regenerate it as a REAL save meeting R-02's full spec: both `starmap.json` and a `system.json`
+> sibling, one model with a REAL content hash shared by TWO nodes, body and player images, one
+> asset fully credited and one with none, `ATTRIBUTIONS.md` + `README.txt`. (iii) R-03: assert on
+> export that a model file's path hash equals the hash of the bytes written — fail loudly. Do all
+> three in one batch; the fixture must be regenerated last or it fails the new assert.
+>
+> **F2 (= batch 2: B112 + R-11 + R-12).** The serialisation batch — `save-defaults-task.md` is the
+> whole brief. Add to it: **R-12, the `revision` counter** (an integer incremented on every explicit
+> save — it is what lets the hub say "the copy you uploaded is older than the one published" instead
+> of silently destroying work), and **R-10's `exportMode: 'player' | 'gm'` stamp** (cheap here, and
+> the hub treats it as a LABEL never a GATE). **Format judgement:** removing shipped defaults and
+> ADDING fields are non-breaking — `bundleFormat` stays 1 — but whatever you change, regenerate the
+> fixture in the same commit; the hub's parser pins it by byte. **Pin an OLD-format save as a
+> fixture FIRST**: a file written before your change, carrying the full shipped registries, must
+> load identically forever.
+>
+> **F3 (= batch 3: the in-app funnel).** R-06 is DECIDED: device-code pairing (app shows a code,
+> user approves on the hub in their browser, app holds a revocable token — no password ever near
+> the app). Build in this order:
+> - **R-05 first — `?hub=<slug>` one-click open.** `GET /api/download/<slug>` is LIVE on the hub
+>   now, no auth needed, so this ships independently. Treat the fetched map as UNTRUSTED input
+>   exactly like an imported file (`fixUpImportedSystem` path), and NEVER auto-merge into the open
+>   campaign — open as its own thing or ask.
+> - **R-07: `coverAssetId` on the doc; a "capture for the hub" screenshot action** (the hub rates
+>   this the highest-value item after the blockers); show `created_with` quietly on loading an
+>   older-build map — a capability marker, NEVER a refusal to load.
+> - **R-04: upload/update from the Save flow.** Two hard rules from the hub: NEVER pre-tick the
+>   provenance attestation, and NEVER default `publishGmTree` on — absent publishes the PLAYER tree
+>   via `computePlayerSnapshot`. Surface `mayPublish`/`missingProvenance` from the upload response
+>   IN THE EDITOR, where the credit fields actually are.
+> - **BLOCKED INPUTS, do not invent them:** the exact attestation wording (lives in the hub repo's
+>   `src/lib/attestation.ts` — ask the owner to paste it), and the device-code pairing endpoint
+>   (the hub owes it; build the SSE side to a documented interface behind a flag and park it if the
+>   endpoint is not live yet). Parking upload does NOT park R-05 or R-07.
+>
+> **R-13 (the shipped-content manifest), if room remains:** one static JSON served by the app
+> listing shipped calendar names, tag category ids, star-type image paths, starter model paths.
+> Per the doc's own conclusion: `custom` flags win for SAVE contents, the manifest earns its place
+> for ASSETS.
+>
+> **ACCEPTANCE — thirty seconds each.** (1) A fresh no-assets campaign exports a plain `.json`
+> carrying `bundleFormat: 1` and an EMPTY custom registry; add one custom calendar and it is the
+> only one in the file; both reload identically. (2) The regenerated fixture passes the R-03 assert
+> and exercises every R-02 bullet. (3) Two consecutive explicit saves differ by exactly +1 in
+> `revision`. (4) `?hub=<slug>` on a fresh tab opens the map WITHOUT touching any open campaign;
+> a garbage slug fails politely. (5) An upload with uncredited assets reports `missingProvenance`
+> in the editor and is not publishable; credit it and it is. (6) A save from BEFORE this stream
+> (the pinned old-format fixture) loads identically forever. (7) **Every new gate run with the fix
+> removed and seen red** — and mind PHY-34: at least one assertion absolute, not relative.
+>
+> **RULES THAT ARE NOT OPTIONAL:** green `npm run build` before every push; version bump +
+> changelog prose a GM understands; explicit staging, never `git add -A`; `git show --stat` before
+> every push (the CRLF tell); fetch before every push, and on rejection rebase, RENUMBER from
+> theirs, keep both changelog entries, and **verify zero conflict markers in every conflicted file
+> before `git add` — the check must GATE the pipeline, not print beside it** (this cost the
+> coordinator a pushed marker this week); an engine-map entry in the same commit for any
+> non-obvious rule, and correct any entry you falsify; record dead ends loudly; do not stop early
+> on a context guess. When the hub needs telling (its baselines can empty once F2 lands), say so in
+> your rows — the owner relays. Anything that changes what the product IS: recommend, then ask.
