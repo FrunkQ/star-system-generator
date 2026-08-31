@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.243 - 31st Aug 2026
+
+- Board only. Two future notes banked: a speced-but-held design language for editing panels, and a standing note that belts and rings - the original odd-ones-out - should migrate onto the new non-standard-object system whenever their code is touched anyway.
+
 ## v3.0.242 - 31st Aug 2026
 
 - Board only. One stream is briefed to do everything the sharing site expects of the engine: honest saves, a real test bundle, a revision counter, and opening a shared map in one click.
