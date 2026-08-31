@@ -34,6 +34,7 @@
 // occlusion feeds any physics, and `kind` stays 'construct'. Docking (`dockNodes`, §7) joins the
 // record in phase 5 with the transit-planner work, not before.
 import type { CelestialBody, MegaRequires } from '$lib/types';
+import type { ExoticCapabilities } from './exotics';
 import { G, AU_KM, EARTH_GRAVITY, EARTH_RADIUS_KM } from '$lib/constants';
 import type { ConstructIconShape } from './constructIcon';
 
@@ -194,6 +195,10 @@ export interface MegaTypeDef {
    * means NO, because that is the safe half: a type has to earn the right to be replaced.
    */
   skinnable?: true;
+  /** G58 N1: what this type IS, declared — vocabulary and rules in `exotics.ts` (EXOTICS).
+   *  Consumed today by `exoticsParity.spec.ts`, which pins every declaration to the legacy
+   *  behaviour it replaces; consumers flip to reading these seam-by-seam in N2. */
+  capabilities: ExoticCapabilities;
   /** The knobs. Each OverrideDef-shaped — see `MegaParamDef`. */
   params: readonly MegaParamDef[];
   /** PURE. params + host → the NUMBERS. No THREE, no DOM, no globals, no mutation of `host`. */
@@ -280,6 +285,14 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       steer: { geoBelowHillFraction: 0.5 }
     },
     explain: 'A space elevator hangs from a geostationary orbit above a surface. {host} has no real geostationary altitude to hang it from.',
+    capabilities: {
+      // A beanstalk: no gravity figure of its own, stood on its anchor, a glyph on the flat
+      // map, and a click frames the WORLD it rises from (the only view that shows it).
+      apparentG: 'none',
+      render3d: { generator: 'tether', anchor: 'surface-stand' },
+      render2d: { structure: 'glyph' },
+      framing: 'surface-host'
+    },
     allowedPlacements: ['Surface'],
     params: [
       {
@@ -319,6 +332,15 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     icon: 'circle',
     requires: {
       hard: { hostKind: ['planet', 'moon'] } // gas giants allowed — the ring circles, it does not land (§8)
+    },
+    capabilities: {
+      // Its rotation param at its own radius gives the g figure (the owner's orbital-ring
+      // net-of-host refinement is an N2 owner decision - it changes the number). No flux:
+      // it circles a PLANET and shades nothing the star chain models.
+      apparentG: 'own-rotation',
+      render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      render2d: { structure: 'orbit-line' },
+      framing: 'annulus'
     },
     explain: 'An orbital ring circles a planet or moon. {host} is not one.',
     allowedPlacements: ORBIT_BAND_PLACEMENTS,
@@ -384,6 +406,13 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       hard: { hostIsStar: true },
       steer: { inHabitableZone: true }
     },
+    capabilities: {
+      apparentG: 'own-rotation',
+      flux: { occludes: 'band' },   // solid band - shadows only what aligns with its plane
+      render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      render2d: { structure: 'orbit-line' },
+      framing: 'annulus'
+    },
     explain: 'A ringworld circles a star. {host} is not a star.',
     allowedPlacements: ['AU Distance'],
     params: [
@@ -447,6 +476,13 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     requires: {
       hard: { hostIsStar: true }
     },
+    capabilities: {
+      apparentG: 'none',            // a shell is not spun for gravity; interiors are 5c's work
+      flux: { occludes: 'isotropic' },
+      render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      render2d: { structure: 'orbit-line' },
+      framing: 'annulus'
+    },
     explain: 'A Dyson sphere closes around a star. {host} is not a star.',
     allowedPlacements: ['AU Distance'],
     params: [
@@ -506,6 +542,13 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     icon: 'diamond',
     requires: {
       hard: { hostIsStar: true }
+    },
+    capabilities: {
+      apparentG: 'none',
+      flux: { occludes: 'isotropic' },
+      render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      render2d: { structure: 'orbit-line' },
+      framing: 'annulus'
     },
     explain: 'A Dyson swarm orbits a star. {host} is not a star.',
     allowedPlacements: ['AU Distance'],
@@ -574,6 +617,13 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       hard: { hostIsStar: true },
       steer: { maxPlacementAU: 5 }
     },
+    capabilities: {
+      apparentG: 'none',
+      flux: { occludes: 'isotropic' },
+      render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      render2d: { structure: 'orbit-line' },
+      framing: 'annulus'
+    },
     explain: 'An energy collector harvests a star. {host} is not a star.',
     allowedPlacements: ['AU Distance'],
     params: [
@@ -641,6 +691,12 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       // "Anywhere" (§8) means any real mass to orbit: a construct or belt host has no gravity to
       // hold it, which is relevance, not plausibility (the §3.2 propagation cliff).
       hard: { hostKind: ['planet', 'moon', 'star', 'barycenter'] }
+    },
+    capabilities: {
+      apparentG: 'surface',         // GM/r-squared of its own authored mass - a hull, not a spun world
+      render3d: { generator: 'hull', anchor: 'node' },
+      render2d: { structure: 'glyph' },
+      framing: 'point'
     },
     explain: 'A battle station orbits a real mass. {host} has no gravity to hold an orbit.',
     // Every orbital placement, never the surface — the owner: "You cant put a death star on a

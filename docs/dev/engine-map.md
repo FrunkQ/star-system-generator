@@ -5507,3 +5507,27 @@ would TRIGGER the bug, not against a convenient one.
 BLAST: `apparentColourTempK` runs 60 bisections, each building a blackbody - affordable only because
 it runs where a designation is EXPLAINED and never on the map's per-star path. Do not move it into
 `observedStarReading`.
+
+### DATA-R33 AN EXOTIC IS WHAT ITS RECORD DECLARES - CONSUMERS DO NOT GUESS
+BUCKET: ARCHITECTURE - the G58 rule; the thirteen-seam probe in nonstandard-objects-design.md §2
+is the measured case for it.
+WHERE: `constructs/exotics.ts` (the capability vocabulary - apparentG, flux, render3d, render2d,
+framing); `capabilities` on every `constructs/megaTypes.ts` record; gated by
+`exoticsParity.spec.ts`, which pins every declaration to the legacy behaviour it replaces (seen
+red on a flipped declaration before first commit).
+RULE: a consumer decides how to draw, frame, panel or physically treat a non-standard object by
+reading its record's DECLARED capability - never by testing a type key, `kind`, or a scattered
+flag. During N2 each seam flips one commit at a time and DELETES the flag or key-test it replaces
+in that commit (megaCentred, megaTether, isMegaRing are all scheduled deaths). An axis exists only
+when two types disagree on it (menu, panel groups, LOD, disclosure and tag outputs are deliberately
+ABSENT until their second value arrives with N2/N3/N5 - a field nothing consumes is a claim, the
+`secretDefault` lesson). Packs INSTANTIATE registered types with params; they never remix
+capabilities (owner's call, 2026-08-31). Placement gating is already record-owned (`requires` /
+`allowedPlacements` / `explain`, UI-B2) and counts as part of this vocabulary.
+WHY: the owner's stop/think - "we have all the elements but we are combining them haphazardly...
+an if/then/else rat's nest" - plus two shipped assumptions the queue falsifies (the soletta vs the
+dims-only clamp; the station-shaped apparent-g that read 12,967,908 g). Declaring first makes G53
+phase 5 a data edit instead of thirteen hand-wired seams.
+BLAST: any new per-type `if` in a consumer after its seam has flipped forks the convention this
+exists to end. `spin-section` apparentG is declared by NO registry type on purpose - the first
+station record must flip the crew-tab seam knowingly (the parity gate throws on it).

@@ -156,6 +156,29 @@ real risks are named above as rules: capability explosion (two-types-disagree ru
 half-migrated engine living with two conventions (one seam per commit, engine-map entry each, and
 N2 does not pause mid-seam).
 
+## 8b. ANSWERED — the owner's calls, 2026-08-31, and N1's shipped shape
+
+1. **The system is named EXOTICS.** `constructs/exotics.ts` holds the vocabulary; `MegaTypeDef`
+   keeps its name until the N2/N3 flips touch its import sites (as-touched, the DATA-R31 pattern).
+2. **Packs INSTANTIATE, they do not remix.** Capability blocks are code; a pack picks a registered
+   type and sets params. A new behaviour combination is an app release, deliberately.
+3. **Coarse panel groups**, split only when two types disagree.
+4. **All four visual tweaks ride N2** — and the owner added: the record must own the PLACEMENT
+   GATES — which menu/interface offers a type, and whether it shows available or greyed there
+   (space elevator in deep space = greyed with its sentence). That is `requires` +
+   `allowedPlacements` + `explain`, already record-owned (UI-B2); named part of the vocabulary now.
+
+**N1 SHIPPED (v3.0.236): declare + parity.** Five axes on every record — `apparentG`, `flux`,
+`render3d`, `render2d`, `framing` — each consumed from day one by `exoticsParity.spec.ts` (seen
+red on a flipped declaration). Axes where all seven types agree are deliberately ABSENT until a
+second value exists (the two-types-disagree rule, and the board's own `secretDefault` lesson):
+`ui.menu` arrives with N5, panel groups with phase 5's honesty gate, LOD with N2's belt-LOD flip,
+`disclosure` with N3, declared tag outputs with the N2 flux flip that emits them. Engine map:
+DATA-R33. **The authoring guide exists from N1** (owner's call, same day - agent-friendly):
+`docs/dev/authoring-exotics.md` - the map, the add-a-type recipe, the seam table (updated with
+every flip), and the rules for growing the vocabulary. N2 flips next, one seam per commit,
+tweaks riding their seams.
+
 ## 8. Open questions for the owner
 
 1. **Naming** — "non-standard objects"? "exotics"? The word ends up in docs and the authoring guide.

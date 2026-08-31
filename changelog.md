@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.236 - 31st Aug 2026
+
+- The exotics system exists (its name is the owner's call, along with three more decisions recorded on the design). Every megastructure type now carries a declaration of what it IS - how it treats starlight, where its gravity figure comes from, how it draws in 2D and 3D, and how a click frames it - pinned by thirty-six parity gates to behave exactly as before. Nothing looks or computes differently today; what changed is that the next Soletta, Shkadov thruster or black-hole star becomes a record to review instead of a dozen hand-wired special cases.
+
 ## v3.0.235 - 31st Aug 2026
 
 - Board only. The owner called a stop/think on how exotic objects are wired in, and the design answers it: one capability record per non-standard object type - a matrix declaring which physics engines apply, how it draws in 2D and 3D, how a click frames it, which edit panels it gets, and what tags it stamps on the worlds it affects - so a soletta, a Shkadov thruster or a black-hole star becomes a record to review rather than a dozen hand-wired special cases. Design only; four questions await the owner before anything is built.

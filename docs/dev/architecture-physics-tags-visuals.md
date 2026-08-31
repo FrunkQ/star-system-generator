@@ -99,3 +99,14 @@ is bombarded, not lit.
 **Physics still decides, tags still record.** Each mechanism ends in tags a reader can see —
 `hazard/flaring` and `stellar/activity` from the dynamo, `hazard/radiation` and the belt tags from the
 dose — and nothing reads a tag back to compute a physical value.
+
+## Non-standard objects go through the same door — as ONE record
+
+Megastructures, and everything exotic after them (solettas, Shkadov thrusters, quasi-stars),
+follow this architecture by DECLARATION rather than by another set of branches: each type is a
+registry record whose `capabilities` block says which physics chains touch it, how it draws in 2D
+and 3D, and how a click frames it - and consumers read the declaration instead of testing type
+keys (engine map DATA-R33). Its physics still ends in tags a reader can see (a shadowed world
+will carry the occluder's tag once the N2 flux flip lands), and nothing reads a tag back into a
+derivation. The system: `docs/dev/nonstandard-objects-design.md`; extending it:
+`docs/dev/authoring-exotics.md`.
