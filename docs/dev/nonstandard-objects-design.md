@@ -122,6 +122,28 @@ emits `mega/shadowed-by` onto affected bodies, value = occluder name, share), th
 them exactly as other derived tags, and G54's `anon` rung can then hide the CAUSE while presence
 survives — *something is dimming this world* — with zero extra machinery.
 
+## 4c. The owner's follow-up, 2026-08-31: custom sliders, and a UI design language (banked)
+
+*"we maybe also need the ability to add a 'custom slider' — eg: width of a ringworld... which
+would be added to one of the tabs — so I guess we can write a design language to abstract the UI
+layer — maybe in a future version we can refactor the whole UI to embrace this design pattern."*
+
+Two asks, two different clocks:
+
+- **THE KNOB EDITOR (near-term, the `ui` axis's first real content).** The record's `params` are
+  ALREADY the slider contract: `MegaParamDef` was made OverrideDef-shaped on day one precisely so
+  *"the existing override row, badge, two-tier warning and Newton-trace rendering already know
+  how to display them"* (megaTypes.ts header). What is missing is per-instance param STORAGE on
+  the node and one tab that renders the record's params as rows — after which a ringworld's width
+  slider exists because its record declares a width param, with soft/hard ranges, amber/red bands
+  and seeded defaults all already authored. Scheduled beside the N2 panel work; it also retires
+  phase 3's stated scope gap ("a GM cannot yet tune a ring's width and watch it change").
+- **THE UI DESIGN LANGUAGE (banked as [[G59]], a future version).** Generalise the same move the
+  whole UI over: panels and rows described as DATA, one renderer per row kind. The precedents
+  that make it plausible are already shipped — the G37 override roster (one row renderer replaced
+  four), MegaParamDef, G34's click-to-cycle units, the editor-chrome and popup conventions. That
+  is a whole-product refactor and gets its own design when picked up; it is NOT part of G58.
+
 ## 5. What this is NOT
 
 - Not new physics: the migration changes no number anywhere.

@@ -4,6 +4,7 @@ All notable changes are listed here:
 
 ## v3.0.239 - 31st Aug 2026
 
+- Board only. Two owner asks captured where the next session will trip over them: custom sliders (a ringworld's width on an edit tab) land as the exotics knob editor - the slider contract already exists on every record, only the storage and the tab are missing - and the bigger idea, a declarative design language for the whole UI, is banked as its own future item with its shipped precedents named.
 - The SSE3 mark gets its bold colour back - making it clickable had accidentally flattened its styling.
 
 ## v3.0.237 - 31st Aug 2026

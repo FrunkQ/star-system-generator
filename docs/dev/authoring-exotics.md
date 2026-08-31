@@ -69,6 +69,7 @@ convention this system exists to end: put the fact on the record and make the co
 | Apparent-g panel | station-shaped fields | N2 (carries the owner's net-of-host decision — it CHANGES numbers, his call) | the mirrored `physical_parameters` shims |
 | Flux discovery | `derive()` output keyed on `megaType` | N2 tag-outputs flip (emits `mega/shadowed-by`, the owner's ask) | — |
 | Menu / panels / LOD / disclosure | single-valued, so NOT declared yet | N5 / phase-5 / N2 / N3 | — |
+| Param editor (custom sliders) | does not exist — `MegaParamDef` IS the slider contract (OverrideDef-shaped), but no per-instance storage and no tab renders it | planned beside the N2 panel work (design §4c) | — |
 
 ## 5. Extending the SYSTEM (not just the roster)
 
@@ -80,6 +81,10 @@ convention this system exists to end: put the fact on the record and make the co
 - **A new AXIS**: only when TWO types disagree on it — otherwise it is a constant wearing a
   capability's name. It must be consumed by `exoticsParity.spec.ts` from the day it exists.
 - **A new consumer**: read capabilities from day one; never mint a flag.
+- **A new PARAM (custom slider)**: add a `MegaParamDef` to the record — label, unit, hint,
+  soft/hard ranges, amber/red bands, a COHERENT seed. Do not build UI: when the param editor
+  lands (design §4c) every declared param becomes a slider row for free; until then it already
+  drives derive()/shape() at defaults and the picker footer.
 - **`spin-section` apparentG** is declared by NO type on purpose — the parity gate THROWS on it,
   so the first station-like record forces whoever adds it to flip the crew-tab seam knowingly.
 
