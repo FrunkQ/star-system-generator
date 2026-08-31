@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import type { CelestialBody } from '$lib/types';
-  import { calculateArtificialGravity, calculateRPMFromG } from '$lib/physics/gravity';
+  import { calculateArtificialGravity, calculateRPMFromG, rpmFromPeriodHours, periodHoursFromRpm } from '$lib/physics/gravity';
 
   export let construct: CelestialBody;
 
@@ -31,22 +31,14 @@
     }
   });
 
-  // Reactive sync: rotation_period_hours (data) <-> rotation_period_rpm (UI)
-  $: {
-    const hours = construct.physical_parameters?.rotation_period_hours;
-    if (hours === undefined || hours === 0) {
-      rotation_period_rpm = 0;
-    } else {
-      rotation_period_rpm = 1 / (hours / 60); // Convert hours to RPM
-    }
-  }
+  // Reactive sync: rotation_period_hours (data) <-> rotation_period_rpm (UI). Through the ONE
+  // conversion pair in physics/gravity.ts - the inline `1/(hours/60)` this used to do is 60/hours,
+  // 3600x too fast, and its mirrored inverse hid it by round-tripping the stored hours unharmed
+  // while the RPM and g DISPLAYS were wrong (the owner's 12,967,908 g ringworld, 2026-08-30).
+  $: rotation_period_rpm = rpmFromPeriodHours(construct.physical_parameters?.rotation_period_hours ?? 0);
 
   $: if (construct.physical_parameters && rotation_period_rpm !== undefined) {
-    if (rotation_period_rpm === 0) {
-      construct.physical_parameters.rotation_period_hours = 0;
-    } else {
-      construct.physical_parameters.rotation_period_hours = (1 / rotation_period_rpm) * 60; // Convert RPM to hours
-    }
+    construct.physical_parameters.rotation_period_hours = periodHoursFromRpm(rotation_period_rpm);
   }
 
   // Reactive calculation: Current Artificial Gravity in G's

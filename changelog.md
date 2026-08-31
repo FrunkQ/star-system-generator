@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.234 - 31st Aug 2026
+
+- A ringworld no longer claims twelve million gravities. The crew panel converted a rotation period to revolutions per minute with the minutes and hours crossed - out by a factor of 3,600 - so the bundled ring's honest 1.00 g displayed as 12,967,908 g. The stored data was never wrong (the two bad conversions were mirror images, so saves round-tripped cleanly); only the displayed RPM and gravity figure lied. Both now go through one tested conversion pair, anchored on the Niven ring: 215.5 hours at 1 AU reads exactly 1.00 g.
 ## v3.0.233 - 30th Aug 2026
 
 - Three fixes the browser found, on the real Sun with a real Dyson swarm around it. The star's panel called it "a G" where the line beneath it called it G2V - it now uses the designation the star actually holds, so the panel agrees with itself. Behind dust it read "colour alone would call it a M star"; it reads "an M star" now, which is the one sentence in the feature a reader is guaranteed to notice.
