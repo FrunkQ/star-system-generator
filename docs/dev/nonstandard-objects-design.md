@@ -120,7 +120,7 @@ what it does not do is speak TAG — the engine's lingua franca for filters, pil
 disclosure ladder. Under this design a record DECLARES its tag emissions (e.g. the flux capability
 emits `mega/shadowed-by` onto affected bodies, value = occluder name, share), the processor stamps
 them exactly as other derived tags, and G54's `anon` rung can then hide the CAUSE while presence
-survives — *something is dimming this world* — with zero extra machinery.
+survives — *something is dimming this world* — with zero extra machinery. **SHIPPED v3.0.246** exactly so - as a fixed emission of the flux capability rather than a declared-outputs axis, because every flux type emits the same tag (the two-types-disagree rule; the axis arrives with the first type that wants a different output).
 
 ## 4c. The owner's follow-up, 2026-08-31: custom sliders, and a UI design language (banked)
 

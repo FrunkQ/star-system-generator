@@ -315,7 +315,8 @@ describe('the processor commits the shadow and deletes it with the structure', (
 			cur = systemProcessor.process(JSON.parse(JSON.stringify(cur)), pack);
 			snaps.push(JSON.stringify(cur.nodes.map((n) => {
 				const b = n as CelestialBody;
-				return [b.name, b.equilibriumTempK, b.temperatureK, b.starlightDimming ?? null];
+				const shadowTag = (b.tags ?? []).find((t) => t.key === 'mega/shadowed-by')?.value ?? null;
+				return [b.name, b.equilibriumTempK, b.temperatureK, b.starlightDimming ?? null, shadowTag];
 			})));
 		}
 		expect(snaps[1]).toBe(snaps[0]);
@@ -325,12 +326,17 @@ describe('the processor commits the shadow and deletes it with the structure', (
 		expect(earth.starlightDimming).toHaveLength(1);
 		expect(earth.starlightDimming![0].receivedFrac).toBeCloseTo(0.7, 9);
 		expect(earth.equilibriumTempK!).toBeLessThan(clearEarth.equilibriumTempK!);
+		// G58 flux outputs (the owner's "occluded by ring" ask): the shadow speaks TAG, physics
+		// origin so re-derive owns it despite the mega/ namespace's authored default.
+		const shadowTag = (earth.tags ?? []).find((t) => t.key === 'mega/shadowed-by');
+		expect(shadowTag?.value).toContain('swarm1');
 
 		// Remove the swarm: the shadow must leave with it, not linger as a stale stamp.
 		cur.nodes = cur.nodes.filter((n) => n.id !== 'swarm1');
 		const after = systemProcessor.process(JSON.parse(JSON.stringify(cur)), pack);
 		const earthAfter = after.nodes.find((n) => n.name === 'Earth') as CelestialBody;
 		expect(earthAfter.starlightDimming).toBeUndefined();
+		expect((earthAfter.tags ?? []).some((t) => t.key === 'mega/shadowed-by')).toBe(false); // no ghost tag
 		expect(earthAfter.equilibriumTempK!).toBeGreaterThan(earth.equilibriumTempK!);
 	}, 60000);
 });

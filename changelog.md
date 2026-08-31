@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.246 - 31st Aug 2026
+
+- A shadowed world now says so in its tags. Any world losing starlight to a megastructure carries a "Shadowed by" tag naming the structure - the same fact the physics trace explains, now visible in pills and filters, and it leaves with the structure. Set the tag anonymous and players learn only that something stands between this world and its sun.
+
 ## v3.0.245 - 31st Aug 2026
 
 - Megastructures grew their knobs. A new Structure tab on the construct panel renders every dial a structure's own definition declares - a ringworld's radius, band width and spin, a swarm's density and efficiency, a shell's coverage - as sliders with honest ranges, warnings in plain sentences when a value leaves the plausible band, and a reset back to the sensible default. The dials are real physics controls: widen a ringworld and its shadow widens; thicken a swarm and every world beyond it cools. Only the dials a GM actually moves are saved, so existing structures quietly inherit improved defaults.

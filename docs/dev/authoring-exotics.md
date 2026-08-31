@@ -68,7 +68,7 @@ convention this system exists to end: put the fact on the record and make the co
 | Labels | clearance reads `render3d.anchor` — a non-'node' exotic clears its MARKER, never its structure span (which hung "Ringworld" a ring-radius into empty sky and "Space Elevator" near its counterweight) | **FLIPPED v3.0.241** — the visibility rule was probed and was never the fault; position was | — |
 | 2D structure | `isMegaRing` (family test) | N2 (carries the elevator glyph tweak) | `isMegaRing` |
 | Apparent-g panel | station-shaped fields | N2 (carries the owner's net-of-host decision — it CHANGES numbers, his call) | the mirrored `physical_parameters` shims |
-| Flux discovery | `derive()` output keyed on `megaType` | N2 tag-outputs flip (emits `mega/shadowed-by`, the owner's ask) | — |
+| Flux outputs | `mega/shadowed-by` emitted beside the temperature commit from the SAME derivation as the trace (explicit physics origin inside the authored-default mega/ namespace; strip-then-emit, ghost-checked) | **SHIPPED v3.0.246** | — |
 | Menu / panels / LOD / disclosure | single-valued, so NOT declared yet | N5 / phase-5 / N2 / N3 | — |
 | Param editor (custom sliders) | `ConstructMegaTab.svelte` renders every declared `MegaParamDef` generically (log sliders, hard-range typed inputs, amber/red band sentences, reset-to-seed); storage is the SPARSE `megaParams` overlay resolved ONLY via `instanceMegaParams`; scene attach and occluder discovery read instance params, so the sliders move temperatures | **SHIPPED v3.0.242** | — |
 

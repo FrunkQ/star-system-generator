@@ -877,6 +877,17 @@ export class SystemProcessor implements ISystemProcessor {
             const dimming = deriveStarlightDimming(body, allNodes);
             if (dimming) body.starlightDimming = dimming;
             else delete body.starlightDimming;
+            // G58 flux outputs — the shadow speaks TAG (owner: "occluded by ring"), from the SAME
+            // derivation, in the same commit-or-delete. EXPLICIT physics origin, deliberately: the
+            // mega/ namespace defaults to authored provenance (creation steers survive re-derive),
+            // and this tag is the opposite kind - the engine's own, re-earned every pass, stripped
+            // when the structure goes. G54's rungs apply as to any tag: a GM can set it anonymous
+            // and players see that SOMETHING dims this world without learning what.
+            body.tags = stripForReprocess(body.tags ?? [], ['mega/shadowed-by']);
+            if (body.starlightDimming?.length) {
+                const names = [...new Set(body.starlightDimming.flatMap((d) => d.occluders.map((o) => o.name)))];
+                emit(body.tags, { key: 'mega/shadowed-by', value: names.join(', '), origin: 'physics' } as Tag);
+            }
         };
         if (allStars.length > 0) commitThermal();
         body.equilibriumTempK = equilibriumTempK;
