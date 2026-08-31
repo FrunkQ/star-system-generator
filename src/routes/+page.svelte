@@ -78,7 +78,7 @@
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { registriesForStarmap } from '$lib/io/saveRegistries';
   import { collectModelsForExport, importEmbeddedModels, bytesToBase64 } from '$lib/constructs/modelTransfer';
-  import { packBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { classifySaveFile } from '$lib/io/classify';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave } from '$lib/map/provenance';
@@ -1329,7 +1329,10 @@
   async function downloadStoredStarmap() {
     const saved = await loadSavedStarmap();
     if (!saved) { alert('No starmap found in browser storage.'); return; }
-    const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' });
+    // R-01: this writes a REAL save document (it is what the ordinary .json load path reads back),
+    // so it carries the format stamp like any other. stampBundleFormat is an object spread - no
+    // machinery, nothing that could be the hang this path exists to escape.
+    const blob = new Blob([plainSaveJson(saved)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${(saved.name || 'starmap').replace(/[^\w\- ]+/g, '').trim() || 'starmap'}-recovered.json`;
@@ -1828,8 +1831,12 @@
     try {
       enqueueStarmapPersist(map);
       const lean = stripStarmapForExport(map, selectedRulepack ?? undefined);
+      // R-01: a crash file is ALWAYS plain JSON (no zip, by design above), so it is the one save
+      // that could never pick up the stamp from the bundle path. It gets it here like any other.
       const exportObj = stampForSave({ ...lean, ...registriesForStarmap() });
-      const blob = new Blob([JSON.stringify(exportObj)], { type: 'application/json' });
+      // R-01: a crash file is ALWAYS plain JSON (no zip, by design above), so it is the one save
+      // that could never pick up the stamp from the bundle path. Unindented: see plainSaveJson.
+      const blob = new Blob([plainSaveJson(exportObj, { pretty: false })], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1860,10 +1867,12 @@
     // beside the models and pictures as real files. One with no assets stays a plain .json, which
     // is the file GMs hand-edit and diff. Both load; the loader sniffs, it does not trust names.
     const base = `${$starmapStore.name.replace(/\s/g, '_') || 'starmap'}-Starmap`;
-    const bundle = packBundle('starmap', exportObj, { models });
+    const bundle = await packBundle('starmap', exportObj, { models });
+    // R-01: the plain-JSON branch stamps through the SAME function the zip path uses. An asset-free
+    // campaign is not a lesser save, and it is exactly what a JSON-only consumer would be reading.
     const blob = bundle
       ? new Blob([bundle], { type: 'application/zip' })
-      : new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      : new Blob([plainSaveJson(exportObj)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

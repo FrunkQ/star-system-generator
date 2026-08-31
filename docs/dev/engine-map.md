@@ -5532,6 +5532,61 @@ BLAST: any new per-type `if` in a consumer after its seam has flipped forks the 
 exists to end. `spin-section` apparentG is declared by NO registry type on purpose - the first
 station record must flip the crew-tab seam knowingly (the parity gate throws on it).
 
+### DATA-R34 A SAVE SAYS WHAT FORMAT IT IS, IN EVERY CONTAINER, AND AN ASSET NAME IS ITS BYTES
+BUCKET: ARCHITECTURE (file format) - a second codebase now reads these files, so what a file CLAIMS
+about itself has to be true in every container it can be written in, and a name that is a content
+address has to be one.
+WHERE: `io/bundle.ts` - `BUNDLE_FORMAT`, `stampBundleFormat` (the stamp, one decision in one place),
+`plainSaveJson` (the text of every non-zip save), `takeBundleFormat` (the stamp comes back OFF on the
+way in), and the hash assertion inside `packBundle`'s model loop. `io/classify.ts` reports `format`
+for BOTH containers. The four call sites that write a save as plain JSON: `routes/+page.svelte`
+(`handleDownloadStarmap` no-assets branch, `writeCrashSave`, `downloadStoredStarmap`) and
+`components/SystemView.svelte` (`handleSaveSystem` no-assets branch). Gated by
+`io/formatStamp.spec.ts` and `io/hubFixture.spec.ts` against `tests/fixtures/creator-hub-bundle.sse.zip`
+and `tests/fixtures/creator-hub-system.sse.zip`.
+RULE ONE: **every save carries `bundleFormat`, whatever container it is written in.** The stamp is
+written by `stampBundleFormat` and by nothing else, it goes FIRST in the document, and an inherited
+stamp is dropped before the current one goes on - THIS writer decides what it just wrote. On the way
+in the stamp comes straight back off the document (`takeBundleFormat`): it describes the CONTAINER,
+not the campaign, and a stamp left on the campaign lands in the autosave and comes back out of every
+later export as an inherited claim. Absent means 0, which means "written before there was a format",
+which is legacy and never an error.
+RULE TWO: **`assets/models/<sha256>.glb` is named after the hash of the bytes written into it, and
+`packBundle` refuses to write it otherwise.** The hash has ONE implementation in this repo
+(`constructs/modelStore.ts` `hashModelBytes`); the bundle writer is a consumer of it, never a second
+copy, because two answers to "what is this file's hash" is the fault rather than the fix.
+WHY: hub R-01 and R-03 ([[G57]]). `bundleFormat` shipped at v3.0.179 stamped inside `packBundle`, so
+it reached the zip and NOTHING ELSE - and a campaign with no assets does not produce a zip. Those
+plain `.json` files are not an edge case: the hub's JSON-only kill switch makes them its only
+accepted uploads, so the stamp was absent from exactly the files that would need it most. R-03 is the
+same idea from the writing end: a bundle can name a file after ANY hash, and a consumer that keys an
+approval or a cache entry on the path-supplied hash lets a crafted bundle inherit that approval while
+carrying different bytes.
+THREE THINGS THAT ARE NOT OBVIOUS:
+ 1. **THERE WERE FOUR PLAIN-JSON EXPORT PATHS, NOT THREE, AND THE FOURTH IS THE ONE NOBODY LISTS.**
+    `downloadStoredStarmap` - the safe-mode "download the stored map" escape hatch for a campaign
+    that will not load - writes a real save document straight from IndexedDB and was carrying no
+    stamp at all. It is also the export a distressed GM is most likely to hand to somebody else. The
+    fix is not to stamp four call sites: it is `plainSaveJson`, so there is one place to forget.
+ 2. **THE ASSERTION FORCED THE WRITER ASYNC, AND THAT WAS THE CHEAPER OF THE TWO PRICES.** The
+    content address is a SHA-256 and the platform's digest is async, so `packBundle` returns a
+    promise now and every caller awaits it. The alternative was a second, synchronous sha256 in this
+    repo - which is precisely the duplication the standing rule exists to stop, and it would have
+    been a second answer to the one question this rule says must have one.
+ 3. **A GATE THAT HASHES THE BYTES AND COMPARES THE RESULT TO A PATH BUILT FROM THAT SAME HASH CANNOT
+    FAIL** (PHY-34's lesson, in a new subsystem). The fixture gates pin the real SHA-256 of the
+    fixture models as STRING LITERALS, and the format gates pin the literal integer 1 rather than
+    reading `BUNDLE_FORMAT`, so a change to the digest, the GLB padding or the constant goes red
+    against an outside reference instead of agreeing with itself.
+BLAST: the canonical fixture was SYNTHETIC and would have failed R-03 on the day R-03 landed - its
+model was `c0ffee.glb`, six hex characters that were never the digest of anything, its GLB was the
+ASCII string `RUNNER-GLB`, and it carried no `routes`, so the canonical campaign was a shape this app
+would have refused had it arrived as plain JSON. Both fixtures are now real saves: real `glTF`
+containers, real content addresses, one hull flown by two ships, one asset fully credited and one
+with none, and they classify through this app's own door. `appVersion` in them is a PINNED LITERAL,
+not `APP_VERSION` - a byte-pinned fixture cannot carry a field that changes every release, or the
+gate becomes noise that gets regenerated unread.
+
 ### PHY-39 AN OCCLUDER CAN ONLY RE-RADIATE WHAT REACHED IT, AND ITS SKY SHARE IS NOT ITS BEARING SHARE
 BUCKET: DOMAIN + ARCHITECTURE - domain: two conservation faults with one shape, both of which
 publish energy from nowhere. Architecture: TWO COPIES OF ONE WALK, which is how they came to

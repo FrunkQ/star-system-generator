@@ -23,6 +23,10 @@
 import { zipSync, strToU8, strFromU8 } from 'fflate';
 import { readZipMembers } from '$lib/import/shared/zip';
 import { buildAttributionsFile } from './attributions';
+// The content address has ONE implementation in this repo and this is a CONSUMER of it, not a
+// second copy: a bundle names a model file after the same sha256 the store keys it by, so if the
+// two could ever disagree the archive would be the thing that lied. See DATA-R34.
+import { hashModelBytes } from '$lib/constructs/modelStore';
 
 export const BUNDLE_EXT = '.sse.zip';
 
@@ -34,6 +38,55 @@ export const BUNDLE_EXT = '.sse.zip';
 // goes red if you do one without the other. A reader that meets a HIGHER number should refuse
 // politely rather than parse what it does not understand.
 export const BUNDLE_FORMAT = 1;
+
+/**
+ * Put the format stamp on a document about to be WRITTEN, wherever it is written - the zip's
+ * `starmap.json`, and a plain `.json` save just the same.
+ *
+ * TWO RULES ARE ENCODED HERE AND BOTH MATTER (DATA-R34):
+ *  - **This writer decides.** Any inherited `bundleFormat` is dropped before the current one goes
+ *    on, so a document that came out of an old archive cannot carry an old claim into a new file.
+ *  - **The stamp goes FIRST**, so a reader - or a GM with a text editor - meets it before a
+ *    megabyte of nodes rather than hunting for it at the end.
+ *
+ * WHY PLAIN JSON NEEDS IT TOO, which is the whole of R-01's remaining half: an asset-free campaign
+ * saves as plain `.json`, and the hub's JSON-only kill switch makes exactly those files its only
+ * accepted uploads. A stamp that lives only inside the zip is absent from every file the hub would
+ * still be reading on the day it needs the stamp most.
+ */
+export function stampBundleFormat<T extends object>(doc: T): T {
+  const { bundleFormat: _inherited, ...rest } = doc as Record<string, unknown>;
+  return { bundleFormat: BUNDLE_FORMAT, ...rest } as unknown as T;
+}
+
+/**
+ * THE TEXT OF A PLAIN `.json` SAVE. Every save that is not a zip goes through here, which is the
+ * whole point: R-01's gap was not that one export forgot the stamp, it was that the stamp lived
+ * inside `packBundle` where only the zip path could reach it. FOUR call sites write a save
+ * document as plain JSON - the campaign save with no assets, the single-system save with no
+ * assets, the red-zone crash file, and the emergency "download the stored map" recovery export -
+ * and spelling the decision out four times is three chances to forget it.
+ *
+ * `pretty` is off for the crash file alone: that path runs at 3 GB of heap, where the extra
+ * allocation of an indented copy is exactly the push over the cliff it exists to survive.
+ */
+export function plainSaveJson(doc: object, opts: { pretty?: boolean } = {}): string {
+  const stamped = stampBundleFormat(doc);
+  return opts.pretty === false ? JSON.stringify(stamped) : JSON.stringify(stamped, null, 2);
+}
+
+/**
+ * Take the stamp OFF a parsed plain-JSON document and hand it back, the way `unpackBundle` does
+ * for an archive. The stamp describes the CONTAINER, not the campaign: leaving it on the live
+ * campaign would put a format claim into the autosave and out again through every later export.
+ * Returns 0 for a file written before the stamp existed - legacy, never an error.
+ */
+export function takeBundleFormat(doc: any): number {
+  if (!doc || typeof doc !== 'object') return 0;
+  const format = typeof doc.bundleFormat === 'number' ? doc.bundleFormat : 0;
+  delete doc.bundleFormat;
+  return format;
+}
 const MODELS_DIR = 'assets/models/';
 const IMAGES_DIR = 'assets/images/';
 // Player-view graphics live in their own subfolder of the image directory. A subfolder rather than a
@@ -112,12 +165,15 @@ export interface PackOptions {
 /**
  * Build a bundle. Returns null when there is NOTHING to extract — the caller then writes plain
  * JSON, so an asset-free campaign stays the small text file it has always been.
+ *
+ * ASYNC because of the R-03 assertion below: the content address is a SHA-256 and the platform's
+ * digest is async. Every caller was already async, and the alternative — a second, synchronous
+ * sha256 in this repo — is the exact fault the standing duplication rule exists to stop.
  */
-export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): Uint8Array | null {
+export async function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): Promise<Uint8Array | null> {
   const files: Record<string, Uint8Array> = {};
   // Deep clone so the live campaign is never mutated by an export.
   const out = JSON.parse(JSON.stringify(doc));
-  delete out.bundleFormat; // never inherit a stamp: THIS writer decides what format it just wrote
   let assets = 0;
 
   // Models: already base64 by hash from the store; write them out as real .glb files, and keep a
@@ -127,6 +183,20 @@ export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): 
     const raw = atob(entry.b64);
     const bytes = new Uint8Array(raw.length);
     for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    // R-03 / DATA-R34: THE NAME MUST BE THE BYTES. A model file is named after a hash, and a
+    // consumer that keys anything on the path-supplied hash — an approval, a cache entry, a
+    // dedup slot — inherits whatever that name claims. The hub defends itself by hashing the
+    // bytes and treating the path as a claim, but an engine that writes a name it did not check
+    // turns a corrupt store or a bad caller into SILENT corruption in somebody else's system.
+    // One comparison, on a path that has the bytes in hand, makes it a caught bug instead.
+    const actual = await hashModelBytes(bytes);
+    if (actual !== hash) {
+      throw new Error(
+        `Export aborted: the model stored as ${hash.slice(0, 12)}… actually hashes to ` +
+        `${actual.slice(0, 12)}…, so the file would be named after content it does not hold. ` +
+        `Re-upload that model and save again.`
+      );
+    }
     files[`${MODELS_DIR}${hash}.glb`] = bytes;
     modelMeta[hash] = entry.meta ?? {};
     assets++;
@@ -162,9 +232,9 @@ export function packBundle(kind: BundleKind, doc: any, opts: PackOptions = {}): 
 
   if (!assets) return null; // nothing to carry: plain JSON is the better file
 
-  // The format stamp goes FIRST in the file, so a reader - or a GM with a text editor - meets it
-  // before anything else rather than hunting for it after a megabyte of nodes.
-  files[DOC_NAME[kind]] = strToU8(JSON.stringify({ bundleFormat: BUNDLE_FORMAT, ...out }, null, 2));
+  // The stamp, and the discipline behind it, live in stampBundleFormat — the plain-JSON export
+  // path calls the same function, so the two containers cannot drift apart on what they claim.
+  files[DOC_NAME[kind]] = strToU8(JSON.stringify(stampBundleFormat(out), null, 2));
   // Provenance travels WITH the art: a readable file naming every uploaded asset, what uses it,
   // and its credit/licence/source - including the ones with nothing recorded, so a GM can see
   // what still needs filling in before they share the save.
@@ -214,10 +284,9 @@ export function unpackBundle(bytes: Uint8Array): UnpackedBundle {
   const kind: BundleKind = docName.endsWith(DOC_NAME.starmap) ? 'starmap' : 'system';
   const doc = JSON.parse(strFromU8(members[docName]));
   // The stamp describes the CONTAINER, not the campaign, so it comes off the doc the way modelMeta
-  // does - otherwise re-saving a bundle as plain JSON would leave a format claim on a file that has
-  // no format. It is returned instead, where a caller can act on it.
-  const format = typeof doc.bundleFormat === 'number' ? doc.bundleFormat : 0;
-  delete doc.bundleFormat;
+  // does, and is returned instead where a caller can act on it. Same function the plain-JSON door
+  // calls, so the two containers cannot answer "what format was that?" differently.
+  const format = takeBundleFormat(doc);
 
   // Models back into the { hash: { b64, meta } } shape the existing importer verifies and stores.
   const models: Record<string, { b64: string; meta: Record<string, unknown> }> = {};

@@ -50,7 +50,7 @@
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
-  import { packBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { classifySaveFile } from '$lib/io/classify';
   import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
@@ -1630,10 +1630,12 @@
     // with a readable system.json beside the assets as real files; without them it stays plain
     // JSON. Same container the campaign save uses, so one reader opens either.
     const models = await collectModelsForExport({ systems: [{ system: systemToSave }] }).catch(() => undefined);
-    const bundle = packBundle('system', systemToSave, { models });
+    const bundle = await packBundle('system', systemToSave, { models });
+    // R-01: same stamp, same function, on the plain-JSON branch too - a single system saved without
+    // assets is a `.json` file, and the hub reads `system.json` as readily as `starmap.json`.
     const blob = bundle
       ? new Blob([bundle], { type: 'application/zip' })
-      : new Blob([JSON.stringify(systemToSave, null, 2)], { type: 'application/json' });
+      : new Blob([plainSaveJson(systemToSave)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

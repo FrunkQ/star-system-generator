@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.244 - 31st Aug 2026
+
+- Every save now says what format it is, not just the zipped ones. A campaign with no pictures or models saves as a plain .json file, and those carried no format marker at all - which made them the one kind of save another program could not safely read, and the only kind the sharing site would accept if it ever had to lock itself down to text. All four places the app writes a plain save now stamp it: the ordinary campaign save, a single system, the red-zone crash file, and the "download the stored map" escape hatch in safe mode. That last one had never been on anybody's list.
+- A model file is now checked against its own contents before it is written. Ship models are filed under a fingerprint taken from the file itself, which is what lets twenty ships share one hull and cost one download. If the name and the contents ever disagreed the save would be describing art it does not contain, so an export that would write such a file now stops and says which model to re-upload, instead of writing it quietly.
+- The sample bundle the sharing site tests against was not a real save, and now is. It had been hand-built: its model was a six-character placeholder where a real fingerprint belongs, the "model" itself was a line of text rather than a model, and the campaign inside was missing a field that would have stopped this very app from opening it had it arrived as plain JSON. There are now two samples, a campaign and a single system, both genuine saves - with one hull flown by two ships, one picture fully credited and one with nothing recorded, so both sides of the sharing site's credit check are exercised.
+
 ## v3.0.243 - 31st Aug 2026
 
 - Board only. Two future notes banked: a speced-but-held design language for editing panels, and a standing note that belts and rings - the original odd-ones-out - should migrate onto the new non-standard-object system whenever their code is touched anyway.

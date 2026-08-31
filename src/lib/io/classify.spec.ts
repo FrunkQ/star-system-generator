@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { classifySaveFile, classifyJsonDoc } from './classify';
 import { packBundle } from './bundle';
+import { hashModelBytes } from '$lib/constructs/modelStore';
 import { strToU8, zipSync } from 'fflate';
 
 const enc = (o: any) => new TextEncoder().encode(JSON.stringify(o));
@@ -17,7 +18,7 @@ const starmapDoc = {
 };
 
 describe('classifyJsonDoc', () => {
-  it('names a system by its nodes array', () => {
+  it('names a system by its nodes array', async () => {
     expect(classifyJsonDoc(systemDoc)).toBe('system');
   });
 
@@ -41,8 +42,8 @@ describe('classifyJsonDoc', () => {
   });
 });
 
-describe('classifySaveFile', () => {
-  it('classifies plain JSON saves by shape, and hands the parsed doc back', () => {
+describe('classifySaveFile', async () => {
+  it('classifies plain JSON saves by shape, and hands the parsed doc back', async () => {
     const sys = classifySaveFile(enc(systemDoc));
     expect(sys).toMatchObject({ kind: 'system', container: 'json' });
     expect(sys.doc.id).toBe('sol');
@@ -52,13 +53,13 @@ describe('classifySaveFile', () => {
     expect(map.doc.systems.length).toBe(1);
   });
 
-  it('classifies a bundle by the zip, whatever the bytes were named (shape, not extension)', () => {
+  it('classifies a bundle by the zip, whatever the bytes were named (shape, not extension)', async () => {
     // packBundle only produces a zip when there is an asset to carry - give it a picture.
     const withArt = {
       ...starmapDoc,
       systems: [{ ...starmapDoc.systems[0], system: { id: 'sol', name: 'Sol', nodes: [{ id: 'star', image: { url: 'data:image/png;base64,' + b64('PNG') } }] } }]
     };
-    const zip = packBundle('starmap', withArt)!;
+    const zip = (await packBundle('starmap', withArt))!;
     expect(zip).toBeTruthy();
     const c = classifySaveFile(zip);
     expect(c.kind).toBe('starmap');
@@ -66,12 +67,15 @@ describe('classifySaveFile', () => {
     expect(c.doc.systems.length).toBe(1);
   });
 
-  it('carries a system bundle\'s models through, ready for importEmbeddedModels', () => {
-    const sys = { ...systemDoc, nodes: [{ id: 'ship', kind: 'construct', model: { hash: 'abc' } }] };
-    const zip = packBundle('system', sys, { models: { abc: { b64: b64('GLB'), meta: {} } } })!;
+  it('carries a system bundle\'s models through, ready for importEmbeddedModels', async () => {
+    // A REAL content address: R-03 refuses to write `assets/models/abc.glb` for bytes that do not
+    // hash to `abc`, which is the whole point of naming a file after what is inside it.
+    const hash = await hashModelBytes(new TextEncoder().encode('GLB'));
+    const sys = { ...systemDoc, nodes: [{ id: 'ship', kind: 'construct', model: { hash } }] };
+    const zip = (await packBundle('system', sys, { models: { [hash]: { b64: b64('GLB'), meta: {} } } }))!;
     const c = classifySaveFile(zip);
     expect(c.kind).toBe('system');
-    expect(c.models?.abc?.b64).toBe(b64('GLB'));
+    expect(c.models?.[hash]?.b64).toBe(b64('GLB'));
   });
 
   it('answers unknown, with a plain sentence, for a zip that is not a save', () => {
