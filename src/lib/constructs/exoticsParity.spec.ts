@@ -95,7 +95,7 @@ describe('the flux declarations and the phase-4 occluder discovery agree across 
 		({
 			id: `x-${key}`, name: key, parentId: 'sol', tags: [], kind: 'construct', megaType: key,
 			orbit: { hostId: 'sol', hostMu: 1.327e20, t0: 0, elements: { a_AU: aAU, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } }
-		}) as CelestialBody;
+		}) as unknown as CelestialBody;
 
 	it('a star-parented instance is an occluder exactly when its record declares flux', () => {
 		for (const d of MEGA_TYPE_DEFS) {

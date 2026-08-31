@@ -16,6 +16,7 @@ import { loadModelBytes, isFetchableFromPeer, modelKey } from '$lib/constructs/m
 import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
+import type { ExoticCapabilities } from '$lib/constructs/exotics';
 import { buildMegaGeometry } from '$lib/constructs/megaGeometry';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
@@ -259,12 +260,15 @@ interface BodyVisual {
   shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
   // G53: a ring, shell or swarm SURROUNDS its host - it is drawn CENTRED on the host at its own
   // orbit's drawn radius, not as a lump sitting at a point on that orbit. Set by attachMegaVolume.
-  megaCentred?: boolean;
+  /** G58 N2: the record's DECLARED capabilities, stamped when the exotic shape attaches -
+   *  consumers read these (anchor, framing), never a per-behaviour flag (DATA-R33). Absent on
+   *  ordinary constructs AND on a mega that fell back to the hull (parity with the old flags:
+   *  a blob behaves like a blob). */
+  exotic?: ExoticCapabilities;
   // G53: a space elevator. Its geometry is already built in the HOST's drawn currency and stood up
   // by `updateSurfaceConstructs`, so the per-frame hull scaling must not touch it, and the
   // surface-construct model suppression must not hide it - a tether is the one surface construct
   // whose whole point is that it reaches off the ground.
-  megaTether?: boolean;
   // WHICH END IS THE NOSE, as a sign on the model's +Z. The ModelRef convention says nose = +Z, but
   // which end of the long axis is the nose is UNKNOWABLE from geometry - it is an authoring choice,
   // and nothing rendered motion until v2.1.477, so a backwards guess had never been visible. The
@@ -2762,9 +2766,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         g.visible = false;
         contentGroup.add(g);
         v.shipModel = g;
-        // NOT `megaCentred`, and NOT scaled by shipLen: the geometry is already in the host's own
-        // drawn currency, so `updateConstructs` must leave its scale alone (see megaTether).
-        v.megaTether = true;
+        // Anchor 'surface-stand', and NOT scaled by shipLen: the geometry is already in the
+        // host's own drawn currency, so `updateConstructs` must leave its scale alone.
+        v.exotic = def.capabilities;
         v.shipLen = built.radiusScene;
         v.shipPrev = v.mesh.position.clone();
         return true;
@@ -2792,7 +2796,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       v.shipLen = sceneLen;
       // A sphere-section mega ENCLOSES its host: `updateConstructs` re-centres and re-sizes it every
       // frame from the host's own drawn position, so it cannot disagree with its own orbit line.
-      v.megaCentred = true;
+      v.exotic = def.capabilities;
       v.shipPrev = v.mesh.position.clone();
       return true;
     } catch (e) {
@@ -3132,7 +3136,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // a reason to withhold the render.
       // A surface construct's hull is suppressed (RENDER-S13's exception) - but a TETHER is the one
       // surface construct whose entire point is that it leaves the ground, so it is exempt.
-      const showModel = !!b.shipModel && (!b.surfaceLock || !!b.megaTether);
+      const showModel = !!b.shipModel && (!b.surfaceLock || b.exotic?.render3d.anchor === 'surface-stand');
       if (b.shipModel) {
         b.shipModel.visible = showModel;
         if (showModel) {
@@ -3222,10 +3226,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // drawn AU across and grew as you zoomed: the two faults reported together.
           const minWorld = minPx * f * distToCam;
           let drawnLen = Math.max(b.shipLen ?? 0, minWorld);
-          if (b.megaTether) {
+          if (b.exotic?.render3d.anchor === 'surface-stand') {
             // Already in the host's drawn currency, and stood up by updateSurfaceConstructs.
             b.shipModel.scale.setScalar(1);
-          } else if (b.megaCentred) {
+          } else if (b.exotic?.render3d.anchor === 'host-centred') {
             // THE RING ENCLOSES ITS STAR (G53). Its drawn radius is the distance between its own
             // projected position and its host's - which IS the drawn radius of its orbit, already
             // computed, already compressed, already dial-correct. Taking it from there rather than
@@ -3246,9 +3250,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // meant to illuminate and lit a volume nobody could see. Expressed here in hull lengths of
           // the LIT object (the owner's ask), it means the same thing at every scale and dial stop.
           for (const rig of b.shipFx?.rigs ?? []) rig.light.distance = Math.max(1e-12, drawnLen * PLUME_REACH_HULLS);
-          if (b.megaTether) {
+          if (b.exotic?.render3d.anchor === 'surface-stand') {
             // Positioned and oriented by updateSurfaceConstructs, which knows the live anchor.
-          } else if (b.megaCentred) {
+          } else if (b.exotic?.render3d.anchor === 'host-centred') {
             const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
             b.shipModel.position.copy(hostV ? hostV.mesh.position : b.mesh.position);
           } else {
@@ -3412,11 +3416,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // G53 §Phase 3b(c): A RING, SHELL OR SWARM IS FRAMED LIKE A BELT — the structure AND its host
       // in one shot. Owner, 2026-08-30: "utilise the BELT like selection for ring/sphere object
       // framing. i.e. first click shows ring/belt and host object (usually the star)." The old shot
-      // flew to a point ON the ring with the star out of frame, because a megaCentred construct's
+      // flew to a point ON the ring with the star out of frame, because an annulus exotic's
       // node position IS a point on its own hoop (RENDER-S44). So: target the HOST, and take the
       // belt solver's distance from the ring's drawn radius — the same two numbers updateConstructs
       // already recomputes every frame, so this shot cannot disagree with the drawn shell.
-      if (b.megaCentred) {
+      if (b.exotic?.framing === 'annulus') {
         const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
         if (hostV) {
           const hostPos = v3(hostV.mesh.position);
@@ -4926,7 +4930,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // surface to geostationary, so it is placed at the host's CENTRE and turned so +Y points at
       // the anchor - which means it rises from the right spot and sweeps round with the planet's
       // own spin, for free, because `dir0` is re-applied against the live quaternion above.
-      if (b.megaTether && b.shipModel) {
+      if (b.exotic?.render3d.anchor === 'surface-stand' && b.shipModel) {
         b.shipModel.position.copy(pv.mesh.position);
         b.shipModel.quaternion.setFromUnitVectors(_tetherUp, _surfDir);
       }

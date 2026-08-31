@@ -60,10 +60,11 @@ convention this system exists to end: put the fact on the record and make the co
 
 ## 4. The seam table — legacy vs capability (update WITH every flip, same commit)
 
-| Seam | Reads today (N1) | Flips in | Dies with it |
+| Seam | Reads | State | Flags |
 |---|---|---|---|
-| 3D attach + anchor | family switch + sets flags | N2 | `megaCentred`, `megaTether` (as read sites empty) |
-| Click framing | `b.megaCentred` / `surfaceLock` | N2 (first — carries ring-label + elevator-label tweaks) | flag reads in `computeBase` |
+| 3D attach + anchor | `v.exotic.render3d.anchor` (stamped at attach from the record) | **FLIPPED v3.0.237** | `megaCentred`, `megaTether` DELETED |
+| Click framing | `v.exotic.framing === 'annulus'`; surface-host still keys on `surfaceLock` for ordinary surface constructs (no record to read) | **FLIPPED v3.0.237** | flag reads gone |
+| Labels (anchor + visibility) | legacy body/construct rules | N2 next — carries the ring-label-centred and elevator-label-missing tweaks; probe the label code first | — |
 | 2D structure | `isMegaRing` (family test) | N2 (carries the elevator glyph tweak) | `isMegaRing` |
 | Apparent-g panel | station-shaped fields | N2 (carries the owner's net-of-host decision — it CHANGES numbers, his call) | the mirrored `physical_parameters` shims |
 | Flux discovery | `derive()` output keyed on `megaType` | N2 tag-outputs flip (emits `mega/shadowed-by`, the owner's ask) | — |
