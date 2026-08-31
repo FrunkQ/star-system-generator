@@ -44,7 +44,7 @@
 // longitude coverage time-averages, latitude coverage never does.
 import type { CelestialBody, Barycenter, Kepler } from '../types';
 import { AU_KM } from '../constants';
-import { megaTypeDef, defaultMegaParams } from '../constructs/megaTypes';
+import { megaTypeDef, instanceMegaParams } from '../constructs/megaTypes';
 
 /** One structure between a star and the system, reduced to what the flux chain needs. */
 export interface StarOccluder {
@@ -73,7 +73,7 @@ export function starOccluders(
 		const def = megaTypeDef(mt);
 		if (!def) continue; // an unknown key degrades to an ordinary construct — and shades nothing
 		const node = n as CelestialBody;
-		const params = defaultMegaParams(def, star);
+		const params = instanceMegaParams(node, def, star);
 		const derived = def.derive(params, star);
 		const fraction = Math.min(1, Math.max(0, derived.starOcclusion ?? 0));
 		if (!(fraction > 0)) continue;

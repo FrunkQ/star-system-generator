@@ -136,7 +136,9 @@ Two asks, two different clocks:
   how to display them"* (megaTypes.ts header). What is missing is per-instance param STORAGE on
   the node and one tab that renders the record's params as rows — after which a ringworld's width
   slider exists because its record declares a width param, with soft/hard ranges, amber/red bands
-  and seeded defaults all already authored. Scheduled beside the N2 panel work; it also retires
+  and seeded defaults all already authored. **SHIPPED v3.0.242**: sparse `megaParams` +
+  `instanceMegaParams` (the ONE merge), the generic `ConstructMegaTab` (Structure tab), and the
+  physics/render consumers on instance params — the sliders move temperatures. It also retired
   phase 3's stated scope gap ("a GM cannot yet tune a ring's width and watch it change").
 - **THE UI DESIGN LANGUAGE (banked as [[G59]], a future version).** Generalise the same move the
   whole UI over: panels and rows described as DATA, one renderer per row kind. The precedents

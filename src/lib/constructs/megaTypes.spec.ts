@@ -3,7 +3,7 @@
 // once, and an eighth type that breaks it fails the suite rather than drifting.
 import { describe, it, expect } from 'vitest';
 import type { CelestialBody } from '$lib/types';
-import { MEGA_TYPE_DEFS, megaTypeDef, defaultMegaParams } from './megaTypes';
+import { MEGA_TYPE_DEFS, megaTypeDef, defaultMegaParams, instanceMegaParams } from './megaTypes';
 import { CONSTRUCT_ICON_SHAPES } from './constructIcon';
 
 /** A minimal processed planet-ish host — enough for every seed and derivation to run. */
@@ -108,4 +108,25 @@ describe('mega-type registry integrity', () => {
       }
     }
   });
+});
+
+describe('instanceMegaParams — the ONE seed/instance merge (G58 knob editor)', () => {
+	const d = () => megaTypeDef('ringworld')!;
+	const sol = { id: 'sol', kind: 'body', roleHint: 'star', radiusKm: 696340, tags: [] } as any;
+
+	it('no stored params = the seeds, so old saves keep flowing with seed improvements', () => {
+		expect(instanceMegaParams({} as any, d(), sol)).toEqual(defaultMegaParams(d(), sol));
+	});
+
+	it('stored keys override their seed; everything else stays seeded (sparse overlay)', () => {
+		const out = instanceMegaParams({ megaParams: { widthKm: 8e5 } } as any, d(), sol);
+		expect(out.widthKm).toBe(8e5);
+		expect(out.radiusAU).toBe(defaultMegaParams(d(), sol).radiusAU);
+	});
+
+	it('unknown keys are dropped and non-finite values fall back to the seed — a save from a newer build degrades, never poisons', () => {
+		const out = instanceMegaParams({ megaParams: { widthKm: Number.POSITIVE_INFINITY, mystery: 3 } } as any, d(), sol);
+		expect(out.widthKm).toBe(defaultMegaParams(d(), sol).widthKm);
+		expect('mystery' in out).toBe(false);
+	});
 });

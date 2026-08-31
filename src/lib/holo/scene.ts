@@ -15,7 +15,7 @@ import { traceConstructIcon, constructIconShape } from '$lib/constructs/construc
 import { loadModelBytes, isFetchableFromPeer, modelKey } from '$lib/constructs/modelSource';
 import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
-import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
+import { megaTypeDef, instanceMegaParams } from '$lib/constructs/megaTypes';
 import type { ExoticCapabilities } from '$lib/constructs/exotics';
 import { buildMegaGeometry } from '$lib/constructs/megaGeometry';
 import { requestModel } from '$lib/constructs/modelFetch';
@@ -2725,7 +2725,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     try {
       const def = megaTypeDef(node?.megaType);
       if (!def) return false;
-      const spec = def.shape(defaultMegaParams(def, host as any), host as any);
+      const spec = def.shape(instanceMegaParams(node, def, host as any), host as any);
       // Unit radius 0.5 => unit DIAMETER, the same long-axis convention the hull path uses.
       // A TETHER IS DRAWN FROM ITS HOST, so it needs the host's own drawn radius and real radius to
       // put geostationary in the right place - both already to hand, both computed at runtime.

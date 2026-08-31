@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.245 - 31st Aug 2026
+
+- Megastructures grew their knobs. A new Structure tab on the construct panel renders every dial a structure's own definition declares - a ringworld's radius, band width and spin, a swarm's density and efficiency, a shell's coverage - as sliders with honest ranges, warnings in plain sentences when a value leaves the plausible band, and a reset back to the sensible default. The dials are real physics controls: widen a ringworld and its shadow widens; thicken a swarm and every world beyond it cools. Only the dials a GM actually moves are saved, so existing structures quietly inherit improved defaults.
+- For pack authors and future sessions: declare a parameter on a structure's record and the slider now exists - no interface code. The authoring guide says so.
 ## v3.0.244 - 31st Aug 2026
 
 - Every save now says what format it is, not just the zipped ones. A campaign with no pictures or models saves as a plain .json file, and those carried no format marker at all - which made them the one kind of save another program could not safely read, and the only kind the sharing site would accept if it ever had to lock itself down to text. All four places the app writes a plain save now stamp it: the ordinary campaign save, a single system, the red-zone crash file, and the "download the stored map" escape hatch in safe mode. That last one had never been on anybody's list.

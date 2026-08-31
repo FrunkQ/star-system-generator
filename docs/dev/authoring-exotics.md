@@ -48,7 +48,8 @@ convention this system exists to end: put the fact on the record and make the co
    `npx vitest run src/lib/constructs/` — then add type-specific NUMBER anchors to
    `megaDerive.spec.ts` (an external literature figure, checked not fitted — the Earth-tether
    48.5 GPa·cm³/g pattern), seen RED first by breaking the derivation.
-3. **Preview**: if the silhouette is new, add primitives in `megaPreview.ts` (pure data; the spec
+3. **Sliders come free**: every param you declared is already an edit row on the Structure tab —
+   do NOT build UI for it. **Preview**: if the silhouette is new, add primitives in `megaPreview.ts` (pure data; the spec
    pins proportions).
 4. **Pack entry**: a template in the pack's `mega` category naming your `megaType` + params.
    Packs INSTANTIATE ONLY (owner, 2026-08-31) — no capability blocks in pack data, ever.
@@ -69,7 +70,7 @@ convention this system exists to end: put the fact on the record and make the co
 | Apparent-g panel | station-shaped fields | N2 (carries the owner's net-of-host decision — it CHANGES numbers, his call) | the mirrored `physical_parameters` shims |
 | Flux discovery | `derive()` output keyed on `megaType` | N2 tag-outputs flip (emits `mega/shadowed-by`, the owner's ask) | — |
 | Menu / panels / LOD / disclosure | single-valued, so NOT declared yet | N5 / phase-5 / N2 / N3 | — |
-| Param editor (custom sliders) | does not exist — `MegaParamDef` IS the slider contract (OverrideDef-shaped), but no per-instance storage and no tab renders it | planned beside the N2 panel work (design §4c) | — |
+| Param editor (custom sliders) | `ConstructMegaTab.svelte` renders every declared `MegaParamDef` generically (log sliders, hard-range typed inputs, amber/red band sentences, reset-to-seed); storage is the SPARSE `megaParams` overlay resolved ONLY via `instanceMegaParams`; scene attach and occluder discovery read instance params, so the sliders move temperatures | **SHIPPED v3.0.242** | — |
 
 ## 5. Extending the SYSTEM (not just the roster)
 

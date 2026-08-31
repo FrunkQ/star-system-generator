@@ -185,6 +185,31 @@ describe('equilibrium temperature receives the dimmed light', () => {
 	});
 });
 
+describe('the knob editor reaches physics: instance params drive the occluder (G58)', () => {
+	it('a swarm with a stored densityFrac of 0.6 dims by 0.6, not by the seed', () => {
+		const swarm = { ...mega('swarm1', 'dyson-swarm', 0.5), megaParams: { densityFrac: 0.6 } } as CelestialBody;
+		const occ = starOccluders(sol(), [sol(), swarm]);
+		expect(occ).toHaveLength(1);
+		expect(occ[0].fraction).toBeCloseTo(0.6, 9);
+		// And the world behind it receives 40%: the slider is a physics control, not a label.
+		const p = planet('p1', 1);
+		const t = starlightTransmission('p1', 1, el(1), starOccluders(sol(), [sol(), swarm, p]));
+		expect(t.frac).toBeCloseTo(0.4, 9);
+	});
+
+	it('a ringworld with a stored width narrows its own shadow band', () => {
+		const ring = { ...mega('ring1', 'ringworld', 1), megaParams: { widthKm: 8e5 } } as CelestialBody;
+		const occ = starOccluders(sol(), [sol(), ring]);
+		expect(occ[0].bandHalfAngleRad).toBeCloseTo(4e5 / AU_KM, 9); // half the default band
+	});
+
+	it('junk in stored params cannot poison the chain: unknown keys and non-finite values are ignored', () => {
+		const swarm = { ...mega('swarm1', 'dyson-swarm', 0.5), megaParams: { densityFrac: Number.NaN, nonsense: 9 } } as unknown as CelestialBody;
+		const occ = starOccluders(sol(), [sol(), swarm]);
+		expect(occ[0].fraction).toBeCloseTo(0.3, 9); // NaN falls back to the seed; nonsense is dropped
+	});
+});
+
 describe('the zones follow the dimming (the B110 coherence half)', () => {
 	// The zone circles LIVE in the system plane, which is the aligned direction for every band -
 	// so for zones every occluder applies its full fraction beyond its radius, bands included.

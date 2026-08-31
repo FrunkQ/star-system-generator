@@ -3,6 +3,8 @@
   import type { CelestialBody, RulePack, System } from '$lib/types';
   import ConstructBasicsTab from './ConstructBasicsTab.svelte';
   import ConstructGeneralTab from './ConstructGeneralTab.svelte';
+  import ConstructMegaTab from './ConstructMegaTab.svelte';
+  import { megaTypeDef } from '$lib/constructs/megaTypes';
   import ConstructEnginesTab from './ConstructEnginesTab.svelte';
   import ConstructFuelTab from './ConstructFuelTab.svelte';
   import ConstructCargoTab from './ConstructCargoTab.svelte';
@@ -174,6 +176,9 @@
   <div class="tabs">
     <button class:active={selectedTab === 'Basics'} on:click={() => setTab('Basics')}>Basics</button>
     <button class:active={selectedTab === 'Orbit'} on:click={() => setTab('Orbit')}>Orbit</button>
+    {#if megaTypeDef(construct?.megaType)}
+      <button class:active={selectedTab === 'Structure'} on:click={() => setTab('Structure')}>Structure</button>
+    {/if}
     <button class:active={selectedTab === 'Engines'} on:click={() => setTab('Engines')}>Engines</button>
     <button class:active={selectedTab === 'Fuel'} on:click={() => setTab('Fuel')}>Fuel</button>
     <button class:active={selectedTab === 'Cargo'} on:click={() => setTab('Cargo')}>Cargo</button>
@@ -190,6 +195,8 @@
       <ConstructBasicsTab {construct} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
       <ConstructGeneralTab {system} {construct} on:update={handleUpdate} />
+    {:else if selectedTab === 'Structure'}
+      <ConstructMegaTab {system} {construct} on:update={handleUpdate} />
     {:else if selectedTab === 'Engines'}
       <ConstructEnginesTab {construct} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Fuel'}

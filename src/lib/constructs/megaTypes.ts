@@ -758,3 +758,28 @@ export function defaultMegaParams(def: MegaTypeDef, host: CelestialBody): MegaPa
   for (const p of def.params) out[p.key] = p.seed(host);
   return out;
 }
+
+/**
+ * THE ONE SEED/INSTANCE MERGE (G58 knob editor). An instance stores only the knobs a GM actually
+ * moved (`megaParams`, a SPARSE overlay), so old saves keep drinking seed improvements and a save
+ * file says what the GM chose, nothing more. Unknown keys are DROPPED and non-finite values fall
+ * back to the seed — a save from a newer build, or a hand-edited one, degrades quietly instead of
+ * poisoning derive()/shape()/occlusion (the same steer-not-crash rule the placement evaluator
+ * applies to unknown clauses). Every consumer of an INSTANCE's params comes through here; only
+ * creation-time previews (picker footer, placement seeding) speak raw defaults.
+ */
+export function instanceMegaParams(
+  node: Pick<CelestialBody, 'megaParams'>,
+  def: MegaTypeDef,
+  host: CelestialBody
+): MegaParams {
+  const out = defaultMegaParams(def, host);
+  const stored = node.megaParams;
+  if (stored) {
+    for (const p of def.params) {
+      const v = stored[p.key];
+      if (typeof v === 'number' && Number.isFinite(v)) out[p.key] = v;
+    }
+  }
+  return out;
+}

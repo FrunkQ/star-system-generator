@@ -563,6 +563,11 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // view or physics code, so the convention cannot fork (the G43 lesson, five rival conventions).
   constructChrome?: true;
   artificial?: true;
+  /** G58 knob editor: the knobs a GM actually moved, as a SPARSE overlay on the registry seeds —
+   *  resolved ONLY through `instanceMegaParams` (megaTypes.ts). Absent = pure seeds, so old
+   *  instances keep drinking seed improvements. Values are plain numbers; unknown keys are ignored
+   *  on read. */
+  megaParams?: Record<string, number>;
   /** G53: names this node's record in the mega-construct registry
    *  (`src/lib/constructs/megaTypes.ts`). A pack may name a type this build does not know; an
    *  unknown key degrades to an ordinary construct rather than erroring. */
