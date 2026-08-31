@@ -18,7 +18,8 @@ import { describe, it, expect } from 'vitest';
 import {
 	greyTransmission, dustTransmission, composeLineOfSight, reradiationTempK, observedStarReading,
 	observedStarOf, observedStarHex, orbitPlaneNormal, bandCoversBearing, occluderEffect,
-	EXTINCTION_REFERENCE_NM, ANOMALY_THRESHOLDS, CLEAR_READING, DUST_OVERRIDE_KEY,
+	EXTINCTION_REFERENCE_NM, ANOMALY_THRESHOLDS, CLEAR_READING, DUST_OVERRIDE_KEY, occluderSkyShare,
+	observedStarTags, STAR_DIMMED_TAG, STAR_IR_EXCESS_TAG, STAR_ANOMALOUS_TAG,
 	type LineOfSightEffect
 } from './observedStar';
 import { GRID_NM, GRID_MAX_NM, blackbodySpectrum, gridShare, radiantPower } from './spectrum';
@@ -359,5 +360,158 @@ describe('reading a real star with real structures around it', () => {
 		expect(r.magnitudeDrop).toBeCloseTo(0, 12);
 		expect(r.irExcessFrac).toBeCloseTo(0.05, 12);
 		expect(r.anomalous).toBe(true);
+	});
+});
+
+// ── CONSERVATION ─────────────────────────────────────────────────────────────────────────────────
+
+describe('nothing re-radiates light that never reached it', () => {
+	// FOUND IN THE BROWSER, on a Dyson swarm and a Dyson sphere around the same star: the infrared
+	// excess read 130% OF THE STAR'S OWN OUTPUT. Each occluder was being handed the star's full
+	// luminosity, so the sphere at 4.9 AU re-radiated light the swarm at 1 AU had already taken.
+	//
+	// This is the assertion that would have caught it, and it is deliberately a LAW rather than a
+	// number: whatever anybody stacks around a star, the total coming back out cannot exceed what
+	// went in. It holds for arrangements nobody has thought of yet, which a pinned figure would not.
+	const nested = (radii: readonly number[], fracs: readonly number[]) =>
+		radii.map((r, i) => ({ id: `o${i}`, name: `o${i}`, fraction: fracs[i], radiusAu: r }));
+
+	const totalOut = (occs: ReturnType<typeof nested>) => {
+		let reaching = SOLAR_LUMINOSITY_W;
+		let sum = 0;
+		for (const o of [...occs].sort((a, b) => a.radiusAu - b.radiusAu)) {
+			const e = occluderEffect(o, reaching);
+			sum += e.reradiatedW ?? 0;
+			reaching -= e.reradiatedW ?? 0;
+		}
+		return sum;
+	};
+
+	it('a swarm inside a sphere cannot give back more than the star puts out', () => {
+		// The owner's own arrangement. 0.3 at 1 AU, then a complete shell at 4.9 AU: the shell only
+		// ever receives the 0.7 that got past, so the pair returns exactly 1.0 and never 1.3.
+		const out = totalOut(nested([1, 4.864], [0.3, 1]));
+		expect(out / SOLAR_LUMINOSITY_W).toBeCloseTo(1, 12);
+	});
+
+	it('holds for any stack of any depth, which is what makes it a law and not a number', () => {
+		for (const stack of [
+			{ r: [0.5, 1, 2, 5, 10], f: [0.4, 0.4, 0.4, 0.4, 0.4] },
+			{ r: [1, 2], f: [1, 1] },
+			{ r: [3, 1, 2], f: [0.9, 0.9, 0.9] },        // out of order on purpose
+			{ r: [0.2, 0.4, 0.8, 1.6, 3.2, 6.4], f: [1, 1, 1, 1, 1, 1] }
+		]) {
+			expect(totalOut(nested(stack.r, stack.f)) / SOLAR_LUMINOSITY_W).toBeLessThanOrEqual(1 + 1e-12);
+		}
+	});
+
+	it('and the whole chain through `starObservation` obeys it too', () => {
+		const sun = star();
+		const nodes = [sun, mega('dyson-swarm', 1, 0, 'a'), mega('dyson-sphere', 4.864, 0, 'b')];
+		const { reading } = observedStarOf(sun, nodes, { viewDir: [1, 0, 0] });
+		expect(reading.irExcessFrac).toBeLessThanOrEqual(1 + 1e-12);
+		expect(reading.irExcessFrac).toBeCloseTo(1, 10);   // a complete shell outside: all of it, once
+		expect(reading.transmission).toBeCloseTo(0, 12);
+	});
+
+	it('a lone occluder is unchanged, so the fix moved only the case it was for', () => {
+		const e = occluderEffect({ id: 's', name: 'Swarm', fraction: 0.4, radiusAu: 1 }, SOLAR_LUMINOSITY_W);
+		expect(e.reradiatedW).toBeCloseTo(1.5404032573819511e26, -14);
+	});
+
+	it('a BAND intercepts its share of the SKY, not its share of one bearing', () => {
+		// The two questions diverge hardest here and conflating them is the same conservation fault
+		// wearing a different hat: a ringworld's bearing answer is 1 (a covered observer sees
+		// nothing) and its sky share is sin(w) — about half a per cent for a default ring.
+		const w = 0.00535;
+		const ring = { id: 'r', name: 'Ring', fraction: 1, radiusAu: 1, bandHalfAngleRad: w };
+		expect(occluderSkyShare(ring)).toBeCloseTo(Math.sin(w), 12);
+		expect(occluderSkyShare(ring)).toBeLessThan(0.006);
+		// while its effect on a covered observer's beam is still total.
+		expect(occluderEffect(ring, SOLAR_LUMINOSITY_W).transmission![0]).toBe(0);
+	});
+
+	it('an isotropic occluder has no such distinction, and must not gain one', () => {
+		for (const f of [0.05, 0.3, 1]) {
+			expect(occluderSkyShare({ id: 'i', name: 'i', fraction: f, radiusAu: 1 })).toBe(f);
+		}
+	});
+
+	it('keeps a band OUT of the beam and IN the infrared, for a viewer it does not dim', () => {
+		// Waste heat goes everywhere. A ring you are not standing in the shadow of still glows, and a
+		// reader asking why the star is warm in the infrared deserves that answer.
+		const sun = star();
+		const overPole = observedStarOf(sun, [sun, mega('ringworld', 1)], { viewDir: [0, 0, 1] });
+		expect(overPole.reading.transmission).toBeCloseTo(1, 12);
+		expect(overPole.reading.reradiatedW).toBeGreaterThan(0);
+		// ...and with no viewpoint at all, the same: unresolved dimming, undoubted infrared.
+		const noView = observedStarOf(sun, [sun, mega('ringworld', 1)]);
+		expect(noView.reading.transmission).toBeCloseTo(1, 12);
+		expect(noView.reading.reradiatedW).toBeGreaterThan(0);
+		expect(noView.los.bandsUnresolved).toHaveLength(1);
+	});
+});
+
+describe('the tag and the reading are ONE answer, not two', () => {
+	// THE HOLE THIS FILLS, and it was found in the browser rather than here. `observedStarTags` had
+	// its own copy of the occluder walk. The conservation fix landed in `starObservation` and not in
+	// the copy, so for a swarm inside a shell the map read an infrared excess of 100% of the star's
+	// output while the TAG beside it said 130% — the same question, two answers, and 85 green tests.
+	//
+	// Every assertion here compares the two SURFACES rather than either against a number, which is
+	// the one shape a pinned figure cannot give you: it fails whenever they drift apart, whatever
+	// they drift to. The absolute anchors above are what stop them agreeing on something wrong.
+	const cases: [string, CelestialBody[]][] = [
+		['a swarm', [mega('dyson-swarm', 1)]],
+		['a complete shell', [mega('dyson-sphere', 1)]],
+		['a swarm INSIDE a shell — the owner\'s own arrangement', [mega('dyson-swarm', 1, 0, 'a'), mega('dyson-sphere', 4.864, 0, 'b')]],
+		['a shell inside a swarm — the same pair, other way round', [mega('dyson-sphere', 1, 0, 'a'), mega('dyson-swarm', 4.864, 0, 'b')]],
+		['three deep', [mega('energy-collector', 0.5, 0, 'a'), mega('dyson-swarm', 1, 0, 'b'), mega('dyson-sphere', 5, 0, 'c')]],
+		['a ringworld', [mega('ringworld', 1)]]
+	];
+
+	for (const [name, megas] of cases) {
+		it(`agrees about ${name}`, () => {
+			const sun = star();
+			const nodes = [sun, ...megas];
+			const tags = observedStarTags(sun, nodes);
+			// The tag states what an observer the occluder COVERS measures, so the reading it must
+			// agree with is the one taken from inside every band — which for these is any bearing in
+			// the common plane.
+			const { reading } = observedStarOf(sun, nodes, { viewDir: [1, 0, 0] });
+
+			const dimmed = tags.find((t) => t.key === STAR_DIMMED_TAG);
+			if (dimmed) {
+				const expected = Number.isFinite(reading.magnitudeDrop) ? reading.magnitudeDrop : 99;
+				expect(Number(dimmed.value)).toBeCloseTo(expected, 2);
+			}
+			const ir = tags.find((t) => t.key === STAR_IR_EXCESS_TAG);
+			if (ir) expect(Number(ir.value)).toBeCloseTo(reading.irExcessFrac, 3);
+
+			// And the verdict must agree with the reading it claims to summarise.
+			const verdict = tags.find((t) => t.key === STAR_ANOMALOUS_TAG);
+			expect(!!verdict).toBe(reading.anomalous);
+			if (verdict) expect(verdict.value).toBe(reading.reddened ? 'dust' : 'structure');
+		});
+	}
+
+	it('agrees about a star behind authored dust as well as a built one', () => {
+		const sun = star({ overrides: { [DUST_OVERRIDE_KEY]: 2 } as never });
+		const nodes = [sun, mega('dyson-swarm', 1)];
+		const tags = observedStarTags(sun, nodes);
+		const { reading } = observedStarOf(sun, nodes, { viewDir: [1, 0, 0] });
+		expect(Number(tags.find((t) => t.key === STAR_DIMMED_TAG)!.value)).toBeCloseTo(reading.magnitudeDrop, 2);
+		expect(tags.find((t) => t.key === STAR_ANOMALOUS_TAG)!.value).toBe('dust');
+		expect(reading.reddened).toBe(true);
+	});
+
+	it('and neither of them ever returns more light than the star emits', () => {
+		// The conservation law, checked through BOTH surfaces rather than through the helper alone.
+		const sun = star();
+		const nodes = [sun, mega('dyson-swarm', 1, 0, 'a'), mega('dyson-sphere', 4.864, 0, 'b')];
+		expect(Number(observedStarTags(sun, nodes).find((t) => t.key === STAR_IR_EXCESS_TAG)!.value))
+			.toBeLessThanOrEqual(1 + 1e-9);
+		expect(observedStarOf(sun, nodes, { viewDir: [1, 0, 0] }).reading.irExcessFrac)
+			.toBeLessThanOrEqual(1 + 1e-9);
 	});
 });

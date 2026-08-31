@@ -7,8 +7,9 @@ import type { System, CelestialBody, Barycenter, Starmap } from '$lib/types';
 import { getPlanetColor } from '$lib/rendering/colors';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { jetStrength, sheddingStrength } from '$lib/physics/stellarOutflows';
-import { sizeBandOf, spectralLetterOfBody, type SizeBand } from './starGlyphLaw';
-import { observedStarOf, observedStarHex, type ObservedStarReading } from '$lib/physics/observedStar';
+import { sizeBandOf, spectralLetterOfBody, floorGlyphGain, type SizeBand } from './starGlyphLaw';
+import { observedStarOf, type ObservedStarReading } from '$lib/physics/observedStar';
+import { scaleHexLinear } from '$lib/physics/spectrum';
 
 // The cluster layout moved to the glyph law (G26/C17) — re-exported so nothing that imported it here
 // has to move.
@@ -41,6 +42,12 @@ export interface VisualStar {
   intrinsicColor: string;
   /** The three measurements, present ONLY when something intervenes. Absent = an ordinary star. */
   observed?: ObservedStarReading;
+  /**
+   * G54: THE SHARE OF THE STAR'S LIGHT SOMETHING IS TAKING, 0..1, from where this map is looking.
+   * The renderers draw the occlusion RING from this and nothing else — its gaps are the light still
+   * getting out — exactly as they draw the jet and the shed shell from one number each. 0 = clear.
+   */
+  occluded: number;
 }
 
 /**
@@ -89,7 +96,7 @@ export function blackHoleState(b: CelestialBody): 'quiescent' | 'active' | undef
  * the star reads intrinsically, which is exactly right for a caller that has no system in hand.
  *
  * THE COLOUR SHIFT IS APPLIED, NOT RECOMPUTED. `getPlanetColor` stays the one authority on what
- * colour a star is; `observedStarHex` scales that answer by what the light lost. A second spectral
+ * colour a star is; the map SCALES that answer by what the light lost. A second spectral
  * colour derivation would disagree with the orrery, the summary cards and the info panel the moment
  * either moved — and it would move every star on the map the day this shipped.
  */
@@ -103,11 +110,17 @@ export function visualStarOf(
   // Absent rather than a clear reading on every ordinary star: `observed` present MEANS something is
   // in the way, so a surface can test it without knowing the thresholds.
   const seen = observed && observed.anomalous ? observed : undefined;
+  // THE FLOOR IS THE MAP'S, NOT THE PHYSICS'. `observedStarHex` is handed a gain lifted just enough
+  // that a completely enclosed star still shows an ember of its own colour: at transmission 0 the
+  // honest hex is #000000, and a black mark on a black map is not a dim star, it is an absence — the
+  // owner reported exactly that, and read it as a black hole. The true figure is untouched
+  // everywhere it is a FIGURE: the reading below, the `stellar/dimmed` tag, the star panel.
   return {
     id: s.id, name: s.name,
-    color: observed ? observedStarHex(intrinsicColor, observed) : intrinsicColor,
+    color: observed ? scaleHexLinear(intrinsicColor, floorGlyphGain(observed.colourGain)) : intrinsicColor,
     intrinsicColor,
     observed: seen,
+    occluded: observed ? Math.min(1, Math.max(0, 1 - observed.transmission)) : 0,
     bh: blackHoleState(s), edd: (s as any).accretionEddington,
     band: sizeBandOf(s),
     letter: spectralLetterOfBody(s),

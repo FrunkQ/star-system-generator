@@ -5531,3 +5531,59 @@ phase 5 a data edit instead of thirteen hand-wired seams.
 BLAST: any new per-type `if` in a consumer after its seam has flipped forks the convention this
 exists to end. `spin-section` apparentG is declared by NO registry type on purpose - the first
 station record must flip the crew-tab seam knowingly (the parity gate throws on it).
+
+### PHY-39 AN OCCLUDER CAN ONLY RE-RADIATE WHAT REACHED IT, AND ITS SKY SHARE IS NOT ITS BEARING SHARE
+BUCKET: DOMAIN + ARCHITECTURE - domain: two conservation faults with one shape, both of which
+publish energy from nowhere. Architecture: TWO COPIES OF ONE WALK, which is how they came to
+disagree by 30% of a star while 85 tests stayed green.
+WHERE: `physics/observedStar.ts` - `starObservation` (the ONE walk), `occluderEffect`,
+`occluderSkyShare`; `observedStarTags` consumes the walk with `bandsAsCovered` rather than keeping
+its own. Gate: `observedStar.spec.ts`, "nothing re-radiates light that never reached it" and "the
+tag and the reading are ONE answer, not two".
+RULE: walk the occluders OUTWARD and hand each one only the power that got past the ones inside it.
+Two chains run down that walk and they answer different questions: the BEARING chain is what this
+observer sees (a band the bearing misses blocks nothing), the BOLOMETRIC chain is what each occluder
+intercepts over the whole sky (a band the bearing misses still intercepts, and still glows). A band
+therefore contributes infrared to a viewer it does not dim, which is correct - waste heat goes
+everywhere.
+RULE: `fraction` IS THE BEARING ANSWER AND `occluderSkyShare` IS THE SKY ANSWER. A ringworld's
+fraction is 1 (a covered observer sees nothing) and its sky share is sin(w), about half a per cent.
+Read the sky share off the fraction and a ringworld claims to re-radiate its star's entire output.
+WHY: G54, found in the browser on the owner's own arrangement - a 0.3 swarm at 1 AU inside a
+complete shell at 4.9 AU read an INFRARED EXCESS OF 130% OF THE STAR'S OUTPUT, because both were
+handed the star's full luminosity. The shell only ever receives the 0.7 the swarm let past.
+BLAST: THE GATE THAT CATCHES THIS IS A LAW, NOT A FIGURE - total re-emission over any stack of any
+depth cannot exceed the star - because it has to hold for arrangements nobody has thought of. A
+pinned number for one arrangement would have passed the others.
+BLAST: THE SECOND COPY IS THE REAL LESSON AND IT SURVIVED THE FIRST FIX. `observedStarTags` had its
+own occluder loop; the conservation fix landed in `starObservation` alone, so the MAP said 100% and
+the TAG beside it said 130% - one question, two answers, and every existing test green because each
+compared a surface against a number rather than against the other surface. The gate now compares the
+two SURFACES across six arrangements. When one function grows a second caller with a slightly
+different question, give the caller a FLAG, never a copy.
+
+### RENDER-S47 A STAR DIMMED TO NOTHING IS AN ABSENCE ON THE MAP, AND READS AS THE WRONG OBJECT
+BUCKET: IMPLEMENTATION - durable: a MARK is not a READING, and a derived quantity that reaches zero
+needs a legibility floor at the drawing layer and nowhere else. The ring is this code's.
+WHERE: `starmap/starGlyphLaw.ts` - `GLYPH_DIM_FLOOR`, `floorGlyphGain`, `occlusionRingArcs`,
+`ringArcPath`, `OCCLUSION_RING`; applied in `starmap/systemStars.visualStarOf`; drawn by
+`components/Starmap.svelte`, `starmap/Starmap2DView.svelte` and `starmap/starmapScene.ts`.
+RULE: the floor is the MAP'S and never the physics'. `observedStarReading` still returns
+transmission 0 and the `stellar/dimmed` tag still says 99 magnitudes; only the GLYPH is lifted, and
+lifted as ONE factor over the whole gain so the hue cannot move - per channel would floor the blue
+first and turn a reddened star grey at exactly the depths where the reddening matters most.
+RULE: the ring's GAPS ARE THE LIGHT STILL GETTING OUT - a 30% swarm draws a ring 30% closed, a
+complete shell draws a closed one, and the closed case is ONE arc rather than six meeting end to end
+(touching arcs leave hairline seams at the moment the picture must say "sealed"). Its colour is a
+fixed amber and NOT the star's, because it is the thing standing in front of the star and has to
+stay visible on a star the same occlusion has dimmed to an ember.
+WHY: owner, 2026-08-30, on putting a Dyson sphere around a star: *"it looks like a black hole! No
+sign of the IR anomaly - suspected megastructure warning on starmap level."* Coverage 100% means
+transmission 0 means #000000, which is honest photometry and, on a black map, an absence.
+BLAST: THE TWO HALVES ARE COUPLED BY CONSTRUCTION, and the gate says so: anything dark enough to be
+mistaken for a hole is far past the anomaly threshold, so it always carries a ring. Do not floor the
+glyph without the ring or the map merely lies more quietly.
+BLAST: one arc list, three surfaces - the two SVG maps share `ringArcPath` (the large-arc flag only
+shows up past a half turn, which is exactly the heavily-occluded case) and the 3D map bakes the same
+list into a canvas texture cached per 5% bucket. TAG-20 is the entry recording what a marker added
+to one renderer and not the others costs.

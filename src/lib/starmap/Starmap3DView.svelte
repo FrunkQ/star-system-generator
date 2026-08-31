@@ -133,7 +133,7 @@
     // star and the map's chosen centre. Both starmaps get it here rather than each applying the
     // shift, which is the same reason the band and the decorations are resolved here.
     stars: systemVisualStars(s.system, { viewDir: starmapViewBearing(starmap, s.id) })
-      .map((v) => ({ color: v.color, bh: v.bh, edd: v.edd, band: v.band, letter: v.letter, activity: v.activity, flares: v.flares, jets: v.jets, shedding: v.shedding })),
+      .map((v) => ({ color: v.color, bh: v.bh, edd: v.edd, band: v.band, letter: v.letter, activity: v.activity, flares: v.flares, jets: v.jets, shedding: v.shedding, occluded: v.occluded })),
     markers: activeHighlights.length
       ? rollUpMarkers(s.system?.nodes ?? [], activeHighlights, activeTagCategories, markerStyle)
       : []

@@ -378,6 +378,7 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   // what stands between this star and whoever is looking. The spectrum is the third measurement and
   // it never disagrees with itself - the absorption lines are the tell, and grey attenuation does not
   // touch them, which is why a Dyson swarm makes a star FAINT rather than RED.
+  'stellar/anomalous':          { label: 'Anomalous star',   description: 'This star\'s readings do not agree with each other, which is the thing worth investigating rather than any one of them alone. Its spectrum says one class, its brightness says another, and something is pouring out infrared that a star of that class has no way to produce. The value says which story the numbers tell: dimming with NO change of colour cannot be dust - dust scatters blue out of the beam first and would redden it - so it is something solid standing between you and the star, which is the real technosignature astronomers look for. Reddened dimming is the other case and dust is the ordinary explanation for it.' },
   'stellar/dimmed':             { label: 'Dimmed',           description: 'This star reads fainter than a star of its class and distance should, because something is intercepting its light. The value is how many magnitudes fainter, as measured by an observer the obstruction actually covers - for a shell or a whole-sky swarm that is everyone, for a ringworld only observers near its plane. Crucially it is NOT redder: flat attenuation cuts the flux and leaves the colour and the absorption lines exactly where they were, so a spectrum still reads the star it always was. Dust is the case that reddens as well, because extinction goes as 1/wavelength.' },
   'stellar/ir-excess':          { label: 'Infrared excess',  description: 'Far-infrared output no star of this class should produce: the light an intervening structure took out of the beam has to go somewhere, and it comes back out as waste heat at the structure\'s own equilibrium temperature - about 400 K for a shell at 1 AU, peaking near 7,400 nm. The value is the excess as a fraction of the star\'s own bolometric output. Taken with the dimming and an unchanged spectrum, this is the real technosignature: three measurements that cannot all be describing an ordinary star.' },
   // G26: the two outflow decorations, derived in physics/stellarOutflows and DRAWN by both starmaps
@@ -557,6 +558,13 @@ export function formatTagValue(key: string, value?: string): string | null {
   // G54: both are bare numbers and both therefore need a unit, or the chip says "Dimmed: 0.55" and
   // a reader has no idea whether that is a lot. A magnitude is a magnitude; the infrared excess is a
   // share of the star's own output, which reads best as a percentage.
+  // The VERDICT reads as a sentence, not a token: "structure" alone in a chip is a word a GM has
+  // to decode, and the whole point of the tag is that it is legible at map size.
+  if (key === 'stellar/anomalous') {
+    if (value === 'structure') return 'dimmed, not reddened — something solid';
+    if (value === 'dust') return 'dimmed and reddened — dust';
+    return value;
+  }
   if (key === 'stellar/dimmed') {
     const m = Number(value);
     return Number.isFinite(m) ? `${m.toFixed(2)} mag fainter` : value;

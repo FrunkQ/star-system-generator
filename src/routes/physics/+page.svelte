@@ -577,6 +577,32 @@
         surface never has to work anything out for itself &mdash; which is where a leak would come
         from.</p>
 
+      <h3>What the map draws, and why a shelled star is not a hole</h3>
+      <p>A star with something around it is drawn <em>with the thing around it</em>: a ring whose
+        <strong>gaps are the light still getting out</strong>. A swarm covering 30% of the sky draws a
+        ring 30% closed; a complete Dyson sphere draws a closed one. It is not a symbol to learn, it is
+        the occlusion itself.</p>
+      <p>The star inside keeps an ember of its own colour even when nothing at all is escaping. That is
+        a deliberate floor on the <em>mark</em> and not on the reading: at total occlusion the honest
+        colour is black, and a black dot on a black map is not a dim star, it is an absence &mdash; and
+        it reads as a black hole. The true figure is untouched everywhere it is a figure: the star
+        panel still says the light is gone, and the <strong>Dimmed</strong> tag still says so in
+        magnitudes. The brightness is floored as one factor across all three colour channels, so a
+        star reddened by dust stays red rather than fading to grey.</p>
+      <p><strong>Where the intercepted light goes is a conservation law, and the engine keeps it.</strong>
+        Structures are walked outward from the star and each one only receives what the ones inside it
+        let past &mdash; so a complete shell outside a 30% swarm re-radiates the 70% that reached it,
+        and the pair returns exactly the star's output rather than more than it. A <em>band</em> is the
+        case where the two questions come apart hardest: a ringworld blocks <em>everything</em> for an
+        observer in its plane, and intercepts about half a per cent of its star's sky &mdash; so it
+        blacks the star out for you and is nearly invisible in the infrared.</p>
+      <p>Three tags say all of it, and you can pin any of them onto every map from Find by tag:
+        <strong>Anomalous star</strong> (the verdict &mdash; <em>dimmed, not reddened: something
+        solid</em>, or <em>dimmed and reddened: dust</em>), <strong>Dimmed</strong> (how many
+        magnitudes) and <strong>Infrared excess</strong> (what share of the output came back as heat).
+        The first is the one to pin if you only pin one: it badges every star whose readings do not add
+        up, on your map and on the players'.</p>
+
       <h3>What players are told is a separate question</h3>
       <p>A dimmed star carries two tags &mdash; <strong>Dimmed</strong> (how many magnitudes) and
         <strong>Infrared excess</strong> (what share of the star's output comes back out as heat)

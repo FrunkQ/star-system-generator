@@ -18,6 +18,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { Starmap } from '$lib/types';
   import { systemVisualStars, starClusterOffsets, starmapViewBearing } from './systemStars';
+  import { occlusionRingArcs, ringArcPath, OCCLUSION_RING } from './starGlyphLaw';
 
   export let starmap: Starmap | null = null;
   export let accentColor = '#6aa0ff';
@@ -98,6 +99,17 @@
             {:else}
               <circle cx={sx} cy={sy} r={R} style="fill:{s.color}" class="star" />
             {/if}
+            <!-- G54: the occlusion ring, the same arcs the GM map draws. Players get it too, and
+                 that is the point — the anomaly is what they are meant to see; whether they are told
+                 the CAUSE is the tag's own shown / anon / hidden setting, not this mark's. -->
+            {#if s.occluded > 0}
+              {@const arcs = occlusionRingArcs(s.occluded)}
+              {#if arcs}
+                <g class="occl" style="stroke-width:{R * OCCLUSION_RING.widthMul}">
+                  {#each arcs as a, ai (ai)}<path d={ringArcPath(sx, sy, R * OCCLUSION_RING.radiusMul, a)} />{/each}
+                </g>
+              {/if}
+            {/if}
           {/each}
           {#if showLabels}<text x={c.x + R * 2 + 3} y={c.y + 4} class="lbl">{node.name}</text>{/if}
         </g>
@@ -113,6 +125,9 @@
   .route.dashed { stroke-dasharray: 5 4; }
   .star { stroke: rgba(0,0,0,0.4); stroke-width: 0.6; filter: drop-shadow(0 0 3px currentColor); }
   .lbl { fill: #d6deea; font-size: 12px; }
+  /* Fixed amber, not the star's colour: this is the thing in FRONT of the star, and it has to stay
+     visible on a star the same occlusion has dimmed to an ember. */
+  .occl path { fill: none; stroke: var(--warning, #e8a33d); stroke-linecap: butt; opacity: 0.95; }
   .sys.selectable { cursor: pointer; }
   .hit { fill: transparent; }
   .sys.selectable:hover .star, .sys.sel .star { stroke: var(--accent); stroke-width: 1.4; }

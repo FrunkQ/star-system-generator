@@ -16,7 +16,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { filterRegistry } from '$lib/holo/filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from '$lib/holo/filters/shaderMaterial';
 import type { FilterParamValues } from '$lib/holo/filters/schema';
-import { clusterLayout, clusterHalfExtent, depthAttenuation, SPREAD_MAX, type SizeBand, type GlyphSlot, type GlyphMember } from './starGlyphLaw';
+import { clusterLayout, clusterHalfExtent, depthAttenuation, SPREAD_MAX, occlusionRingArcs, OCCLUSION_RING, type SizeBand, type GlyphSlot, type GlyphMember } from './starGlyphLaw';
 import { ACTIVE_HOLE_FEED_FLOOR } from '$lib/physics/stellarOutflows';
 // G26: the star LOOK is the holo's — corona, flares and the tag-driven decorations — from the ONE
 // shared builder, sized here to a screen radius. Not a copy of it.
@@ -36,6 +36,8 @@ export interface SmSystem {
   stars: {
     color: string; bh?: 'quiescent' | 'active'; edd?: number;
     band?: SizeBand; letter?: string; activity?: number; flares?: boolean; jets?: 0 | 1 | 2; shedding?: 0 | 1 | 2;
+    /** G54: the share of this star's light something is taking, 0..1 — draws the occlusion ring. */
+    occluded?: number;
   }[];
   /**
    * Roll-up highlight badges for this system, ALREADY RESOLVED by the caller (design 9.4). Resolved
@@ -151,6 +153,46 @@ export interface SceneMapBackground {
 // width), which is what read as fuzz up close; the disc is the substance and the shared corona +
 // flares around it are the look.
 let discTex: THREE.Texture | null = null;
+// G54: THE OCCLUSION RING, baked from the SHARED arc list so this map and the two SVG ones cannot
+// disagree about what a given occlusion looks like. Cached per 5% bucket — twenty textures at the
+// very worst, against one per star per rebuild if it were not.
+//
+// The colour is baked in rather than tinted through the sprite's `color`, because a sprite tint
+// MULTIPLIES: tinting a white ring by amber works, but the ring must also survive `monoOn`, and a
+// fixed amber that the mono filter then desaturates is the same treatment every other decoration
+// gets. It is deliberately NOT the star's colour — this is the thing standing in front of it, and a
+// ring in the light of a star the same occlusion has dimmed to an ember would be invisible.
+const occlTex: Record<string, THREE.Texture> = {};
+function occlusionGlyph(blockedFrac: number): THREE.Texture | null {
+  if (!(blockedFrac > 0)) return null;
+  // QUANTISED ONCE, and the arcs come from the quantised figure rather than the raw one, or the
+  // texture in the cache would not be the picture the key promises. Floored at one bucket so an
+  // occluder too small to round up still draws SOMETHING - it is really there, and the two SVG maps
+  // draw it exactly.
+  const q = Math.min(20, Math.max(1, Math.round(blockedFrac * 20)));
+  const key = String(q);
+  if (occlTex[key]) return occlTex[key];
+  const arcs = occlusionRingArcs(q / 20);
+  if (!arcs) return null;
+  const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const ctx = cv.getContext('2d')!;
+  // The caller scales the sprite to the ring's DIAMETER, so the ring is drawn at the canvas edge
+  // with room for its own stroke: radius = half the canvas, less half the stroke, less a pixel.
+  const w = (S / 2) * (OCCLUSION_RING.widthMul / OCCLUSION_RING.radiusMul);
+  const r = S / 2 - w / 2 - 1;
+  ctx.strokeStyle = '#e8a33d';
+  ctx.lineWidth = w;
+  ctx.lineCap = 'butt';
+  for (const a of arcs) {
+    ctx.beginPath();
+    ctx.arc(S / 2, S / 2, r, a.startRad, a.startRad + a.sweepRad);
+    ctx.stroke();
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  occlTex[key] = t;
+  return t;
+}
+
 function starDisc(): THREE.Texture {
   if (discTex) return discTex;
   const s = 64, c = document.createElement('canvas'); c.width = c.height = s;
@@ -989,6 +1031,20 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
             flares: !!st.flares, jets: st.jets ?? 0, shedding: st.shedding ?? 0
           });
           group.add(look.group);
+        }
+        // THE RING GOES ON EVERY KIND OF GLYPH, hole included: a black hole inside a Dyson shell is
+        // absurd and a GM is allowed to build one, and the map should say what it says rather than
+        // decide the arrangement is not worth drawing (steer, do not stop).
+        const occl = st.occluded ? occlusionGlyph(st.occluded) : null;
+        if (occl) {
+          const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: occl, color: monoOn ? new THREE.Color(MONO_HEX) : 0xffffff, transparent: true, depthWrite: false
+          }));
+          // The texture draws the ring at the canvas edge, so the sprite spans the ring's DIAMETER
+          // in the same unit-layout-radius terms the disc uses (the disc is 1.0 = a 0.5 radius).
+          sp.scale.setScalar(2 * OCCLUSION_RING.radiusMul * 0.5);
+          sp.renderOrder = 3;
+          group.add(sp);
         }
         const slot = slots[i] ?? { dx: 0, dy: 0, scale: 1 };
         group.position.copy(center);

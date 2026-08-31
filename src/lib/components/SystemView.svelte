@@ -966,19 +966,25 @@
       }
       console.log('Creating New Construct:', newConstruct);
 
-      // Add to System
-      systemStore.update(s => {
-          if (!s) return s;
-          return {
-              ...s,
-              nodes: [...s.nodes, newConstruct]
-          };
-      });
+      // ADD TO THE SYSTEM AND RE-DERIVE IT, and the re-derive is the part that was missing.
+      //
+      // This was the only add path that did NOT process — a planet does, a delete does, this did
+      // not — and while a construct changed nothing the physics derives that was harmless. G53
+      // phase 4 and G54 ended that: a megastructure now dims every world behind it and re-stamps
+      // its star's own `stellar/*` tags. Without this the map was RIGHT (it computes its colours
+      // live from the nodes) while the tags and the worlds' temperatures still described the system
+      // as it was a moment earlier. The owner reported exactly that shape: a Dyson sphere with "no
+      // sign of the IR anomaly".
+      const processedWithNew = systemProcessor.process(
+          { ...$systemStore, nodes: [...$systemStore.nodes, newConstruct] }, rulePack);
+      systemStore.set({ ...processedWithNew });
 
       // Open Editor
       showCreateConstructModal = false;
       await tick();
-      constructToEdit = newConstruct;
+      // PROCESS RETURNS NEW OBJECTS. The editor has to open on the node that is IN the store, not on
+      // the detached one that went in, or every edit writes into a copy nothing else can see.
+      constructToEdit = (processedWithNew.nodes.find((n) => n.id === newConstruct.id) as CelestialBody) ?? newConstruct;
       constructHostBodyForEditor = backgroundClickHost as CelestialBody;
       showConstructEditorModal = true;
       console.log('Editor should be open');

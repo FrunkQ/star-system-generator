@@ -244,6 +244,14 @@ export interface ObservationOptions {
 	 * CHOSEN, and the answer falls back to the isotropic one and says so (`bandsUnresolved`).
 	 */
 	viewDir?: readonly [number, number, number];
+	/**
+	 * TREAT EVERY BAND AS ONE THE OBSERVER IS INSIDE. The TAG's question, and the one case where a
+	 * bearing is the wrong thing to ask: a tag travels with the star into every surface and cannot
+	 * depend on who is looking, so it states what an observer the ring ACTUALLY COVERS measures.
+	 * Everything else about the walk is identical, which is why this is a flag and not a second
+	 * function — two loops composing occluders is how they came to disagree by 30% of a star.
+	 */
+	bandsAsCovered?: boolean;
 }
 
 export interface StarObservation extends ComposedLineOfSight {
@@ -272,13 +280,40 @@ export function starObservation(
 	const bandsUnresolved: { id: ID; name: string }[] = [];
 	const luminosityW = luminosityWattsFromRT(star.radiusKm ?? 0, starTempK(star));
 
-	for (const occ of starOccluders(star, allNodes)) {
+	// OUTWARD, AND EACH ONE ONLY GETS WHAT IS LEFT. Two chains run down this loop and they answer
+	// two different questions, which is why they are two:
+	//
+	//   the BEARING chain  what this observer sees, so a band the bearing misses blocks nothing;
+	//   the BOLOMETRIC chain  what each occluder actually intercepts over the whole sky, which is
+	//                         what it can re-radiate, and which a band the bearing misses still does.
+	//
+	// A band therefore contributes infrared to a viewer it does not dim, and that is correct: waste
+	// heat goes everywhere, and the ring is really there whether or not you are standing in its
+	// shadow. Sorting by radius is what makes the bolometric chain a conservation law instead of a
+	// sum that can exceed the star.
+	const occluders = [...starOccluders(star, allNodes)].sort((a, b) => a.radiusAu - b.radiusAu);
+	let reachingW = luminosityW;
+	for (const occ of occluders) {
 		const band = occ.bandHalfAngleRad !== undefined;
+		const effect = occluderEffect(occ, reachingW);
+		reachingW -= effect.reradiatedW ?? 0;
 		if (band) {
-			if (!opts.viewDir) { bandsUnresolved.push({ id: occ.id, name: occ.name }); continue; }
-			if (!bandCoversBearing(occ.bandHalfAngleRad!, occ.elements, opts.viewDir)) continue;
+			// UNRESOLVED IS NOT ABSENT. With no viewpoint the ring's DIMMING cannot be decided and is
+			// reported as unresolved; its infrared is not in doubt and is kept, because a reader
+			// asking "why is this star pouring out heat" deserves the answer either way.
+			if (!opts.bandsAsCovered) {
+				if (!opts.viewDir) {
+					bandsUnresolved.push({ id: occ.id, name: occ.name });
+					if ((effect.reradiatedW ?? 0) > 0) effects.push({ ...effect, transmission: undefined });
+					continue;
+				}
+				if (!bandCoversBearing(occ.bandHalfAngleRad!, occ.elements, opts.viewDir)) {
+					if ((effect.reradiatedW ?? 0) > 0) effects.push({ ...effect, transmission: undefined });
+					continue;
+				}
+			}
 		}
-		effects.push(occluderEffect(occ, luminosityW));
+		effects.push(effect);
 	}
 
 	// AUTHORED DUST, LAST — it sits between the observer and everything the system contains, which
@@ -293,16 +328,48 @@ export function starObservation(
 	return { ...composeLineOfSight(effects), bandsUnresolved };
 }
 
-/** One occluder as a line-of-sight effect: what it takes out, and what it gives back in the far
- *  infrared. The two halves are the same energy, which is the point — a swarm is not a hole. */
-export function occluderEffect(occ: StarOccluder, starLuminosityW: number): LineOfSightEffect {
-	const reradiatedW = starLuminosityW > 0 ? starLuminosityW * occ.fraction : 0;
+/**
+ * THE SHARE OF THE STAR'S WHOLE SKY THIS OCCLUDER COVERS, 0..1 — which is NOT the same number as
+ * the share of the light it takes from an observer it stands in front of, and conflating the two is
+ * how a ringworld ends up claiming to re-radiate the entire output of its star.
+ *
+ * `fraction` is the along-a-bearing answer: for a ringworld it is 1, because a covered observer sees
+ * NOTHING of the star. But a ringworld covers a hair of the sky. The band between latitudes ±w is
+ * sin(w) of a sphere, so its sky share is sin(w) × fraction — about half a per cent for a default
+ * ring, against the 100% its bearing answer states. An isotropic occluder has no such distinction.
+ *
+ * This is the bolometric question and it is what the INFRARED half must be built from: the energy an
+ * occluder re-radiates is the energy it actually intercepted, over the whole sky, once.
+ */
+export function occluderSkyShare(occ: StarOccluder): number {
+	const f = Math.min(1, Math.max(0, occ.fraction));
+	if (occ.bandHalfAngleRad === undefined) return f;
+	return Math.sin(Math.min(Math.PI / 2, Math.max(0, occ.bandHalfAngleRad))) * f;
+}
+
+/**
+ * One occluder as a line-of-sight effect: what it takes out of the beam, and what it gives back in
+ * the far infrared. The two halves are the same energy, which is the point — a swarm is not a hole.
+ *
+ * `incidentW` IS THE POWER REACHING THIS OCCLUDER, not the star's output, and the difference is a
+ * conservation law rather than a refinement. A shell outside a swarm receives only what the swarm
+ * let past, and can only re-radiate that. Feeding both the star's full luminosity gave a swarm-plus-
+ * sphere pair an infrared excess of 130% OF THE STAR'S OWN OUTPUT — energy from nowhere, found in
+ * the browser on exactly that arrangement. `starObservation` walks the occluders outward and hands
+ * each one what is left.
+ *
+ * The re-radiation TEMPERATURE follows the same reduced flux: a shell at 4.9 AU behind a 0.3 swarm
+ * sits at the temperature 0.7 of a star's light gives at 4.9 AU, not the temperature the full star
+ * would.
+ */
+export function occluderEffect(occ: StarOccluder, incidentW: number): LineOfSightEffect {
+	const intercepted = incidentW > 0 ? incidentW * occluderSkyShare(occ) : 0;
 	return {
 		sourceId: occ.id,
 		sourceName: occ.name,
 		transmission: greyTransmission(occ.fraction),
-		reradiatedW,
-		reradiatedTempK: reradiationTempK(starLuminosityW, occ.radiusAu)
+		reradiatedW: intercepted,
+		reradiatedTempK: reradiationTempK(incidentW, occ.radiusAu)
 	};
 }
 
@@ -464,6 +531,22 @@ export const STAR_DIMMED_TAG = 'stellar/dimmed';
 export const STAR_IR_EXCESS_TAG = 'stellar/ir-excess';
 
 /**
+ * THE VERDICT, as against the two measurements above — one tag a GM can pin and have every star
+ * worth a second look badge itself on both maps. Owner, 2026-08-30, on finding a fully enclosed star
+ * with nothing saying so: *"no sign of the IR anomaly - suspected megastructure warning on starmap
+ * level... add tags for the system - GM can use them as pins anyway."*
+ *
+ * IT IS A VERDICT AND NOT A THIRD MEASUREMENT, which is why it is not a duplicate of the other two:
+ * they say how faint and how much infrared, this says WHICH STORY those readings tell. The value is
+ * the discrimination the physics can honestly make and the whole of design §2 in one word.
+ */
+export const STAR_ANOMALOUS_TAG = 'stellar/anomalous';
+
+/** What the readings are consistent with. `structure` = dimmed with NO reddening, which dust cannot
+ *  do; `dust` = dimmed AND reddened, which a solid occluder cannot do. */
+export type StarAnomalyKind = 'structure' | 'dust';
+
+/**
  * The tags a star earns from what stands in front of it, or none.
  *
  * DELIBERATELY THE OCCLUDER-COVERED CASE, NOT A PARTICULAR OBSERVER'S. A tag is a property of the
@@ -481,19 +564,27 @@ export function observedStarTags(
 	star: CelestialBody,
 	allNodes: (CelestialBody | Barycenter)[]
 ): { key: string; value?: string }[] {
-	// EVERY occluder counts here, band or not: the question is what a covered observer measures.
-	const occluders = starOccluders(star, allNodes);
+	// THE SAME WALK `starObservation` DOES, with one flag changed. It had its own copy of the loop
+	// and the two drifted the moment the conservation fix landed in one of them: the map read a 30%
+	// swarm inside a complete shell as returning 100% of the star's output while the TAG beside it
+	// said 130%. One walk, one answer, and the only difference is the question about bands.
 	const tempK = starTempK(star);
 	const luminosityW = luminosityWattsFromRT(star.radiusKm ?? 0, tempK);
-	const effects: LineOfSightEffect[] = occluders.map((o) => occluderEffect(o, luminosityW));
-	const tau = Number((star.overrides as Record<string, unknown> | undefined)?.[DUST_OVERRIDE_KEY]);
-	if (Number.isFinite(tau) && tau > 0) {
-		effects.push({ sourceId: `${star.id}:dust`, sourceName: 'Foreground dust', transmission: dustTransmission(tau) });
-	}
-	if (!effects.length) return [];
+	const los = starObservation(star, allNodes, { bandsAsCovered: true });
+	if (!los.sources.length) return [];
 
-	const reading = observedStarReading(tempK, composeLineOfSight(effects), luminosityW);
+	const reading = observedStarReading(tempK, los, luminosityW);
 	const out: { key: string; value?: string }[] = [];
+	// THE VERDICT FIRST, so it takes the first marker slot when a GM highlights several of these and
+	// the cap collapses the rest: "something is wrong here" is the one a reader needs at map size.
+	//
+	// GREY DIMMING IS THE TECHNOSIGNATURE AND REDDENING IS NOT, and that is the whole of §2. Dust
+	// scatters blue out of the beam first, so it CANNOT dim without reddening; a solid occluder
+	// blocks every wavelength alike, so it cannot redden. The engine can tell them apart from the
+	// spectrum alone, which is exactly what makes this an honest verdict rather than a guess.
+	if (reading.anomalous) {
+		out.push({ key: STAR_ANOMALOUS_TAG, value: reading.reddened ? 'dust' : 'structure' });
+	}
 	if (reading.magnitudeDrop >= ANOMALY_THRESHOLDS.magnitudeDrop) {
 		// Infinite when the star is completely enclosed, and a reader is better served by the number
 		// stopping at something they can read than by the word "Infinity" in a chip.

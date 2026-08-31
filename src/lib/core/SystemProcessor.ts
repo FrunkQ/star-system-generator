@@ -46,7 +46,7 @@ import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosp
 import { flareActivity, photosphereTempK } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
 import { STELLAR_JETS_TAG, STELLAR_SHEDDING_TAG, starJetBucket, starSheddingBucket } from '../physics/stellarOutflows';
-import { STAR_DIMMED_TAG, STAR_IR_EXCESS_TAG, observedStarTags } from '../physics/observedStar';
+import { STAR_DIMMED_TAG, STAR_IR_EXCESS_TAG, STAR_ANOMALOUS_TAG, observedStarTags } from '../physics/observedStar';
 import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlausibility';
 import { applyActivityScatter, activityFromFieldExcess } from '../physics/ionisingOutput';
 import { starStatTemplate } from '../generation/star';
@@ -177,7 +177,7 @@ export class SystemProcessor implements ISystemProcessor {
             // run and nothing here reads a value a later pass writes (idempotence.test.ts's rule).
             // The per-OBSERVER half of this is not a tag and cannot be: it belongs where the audience
             // is known, which is the starmap (TAG-21).
-            s.tags = stripForReprocess(s.tags, [STAR_DIMMED_TAG, STAR_IR_EXCESS_TAG]);
+            s.tags = stripForReprocess(s.tags, [STAR_ANOMALOUS_TAG, STAR_DIMMED_TAG, STAR_IR_EXCESS_TAG]);
             for (const t of observedStarTags(s, allNodes)) emit(s.tags, t);
 
             // WHY THIS STAR IS NOT A VALID STAR (owner, 2026-08-15). REFUSE TO PRODUCE, NEVER REFUSE

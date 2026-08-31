@@ -7,6 +7,7 @@
   // from the shared glyph law, and WHAT it draws (band, activity, jets, shedding) from the shared
   // systemVisualStars — one reader for this map and the 3D starmap, so they cannot disagree.
   import { systemVisualStars, starmapViewBearing } from '$lib/starmap/systemStars';
+  import { occlusionRingArcs, ringArcPath, OCCLUSION_RING } from '$lib/starmap/starGlyphLaw';
   import { clusterLayout, clusterHalfExtent, type GlyphMember } from '$lib/starmap/starGlyphLaw';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
@@ -1519,6 +1520,20 @@
                 {#if s.shedding}
                   <circle class="star-shell" cx={sx} cy={sy} r={r * (s.shedding >= 2 ? 2.6 : 2)} style="stroke:{s.color}; stroke-width:{r * (s.shedding >= 2 ? 0.5 : 0.32)}px; opacity:{s.shedding >= 2 ? 0.42 : 0.28}" />
                 {/if}
+                <!-- G54: THE OCCLUSION RING, and its GAPS ARE THE LIGHT STILL GETTING OUT — a 30%
+                     swarm draws a ring 30% closed, a complete Dyson sphere draws a closed one. Drawn
+                     from ONE number on the glyph record, exactly like the jet and the shed shell, and
+                     from the shared arc list so this map and the player's and the 3D one agree. -->
+                {#if s.occluded > 0}
+                  {@const arcs = occlusionRingArcs(s.occluded)}
+                  {#if arcs}
+                    <g class="star-occluded" style="stroke-width:{r * OCCLUSION_RING.widthMul}px">
+                      {#each arcs as a, ai (ai)}
+                        <path d={ringArcPath(sx, sy, r * OCCLUSION_RING.radiusMul, a)} />
+                      {/each}
+                    </g>
+                  {/if}
+                {/if}
                 {#if s.jets}
                   <!-- A jet NARROWS TO THE STAR and widens as it goes, the cyan-white core inside a
                        soft sheath, fading out along the beam (the gradient) and gone by the tip —
@@ -2166,6 +2181,11 @@
   .star-jet-sheath { fill: url(#sm-jet-fade); opacity: 0.3; pointer-events: none; }
   .star-jet { fill: url(#sm-jet-fade); opacity: 0.95; pointer-events: none; }
   .star-flares line { stroke-linecap: round; opacity: 0.85; pointer-events: none; }
+  /* THE RING IS NOT THE STAR'S COLOUR, deliberately: every other decoration here is drawn in the
+     star's own light because it IS the star's own light, and this one is the thing standing in
+     front of it. A fixed warning amber also survives the dimming — a ring in the colour of a
+     star that has been dimmed to an ember would be as hard to see as the ember. */
+  .star-occluded path { fill: none; stroke: var(--warning, #e8a33d); stroke-linecap: butt; opacity: 0.95; pointer-events: none; }
 
   .star-label {
     fill: #fff;

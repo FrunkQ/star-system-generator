@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.237 - 31st Aug 2026
+
+- A star inside a Dyson sphere no longer looks like a black hole. It is drawn with the thing around it: a ring whose GAPS ARE THE LIGHT STILL GETTING OUT, so a swarm covering 30% of the sky draws a ring 30% closed and a complete sphere draws a closed one. The star inside keeps an ember of its own colour rather than going fully black - a black dot on a black map is not a dim star, it is an absence, and it read as the wrong object entirely. The honest figure is untouched everywhere it is a figure: the panel still says the light is gone and the Dimmed tag still says so in magnitudes.
+- Every anomalous star now carries a tag you can pin: **Anomalous star**, which says which story the numbers tell - *dimmed, not reddened: something solid* or *dimmed and reddened: dust*. Drag it into the highlight tray from Find by tag and every star worth a second look badges itself, on your maps and the players'. It sits beside the Dimmed and Infrared excess readings, and it is the one to pin if you only pin one.
+- Adding a megastructure now re-derives its system on the spot. It was the only way of adding anything that did not, which was harmless while a construct changed no physics and a silent lie the day one did: the map was right and the tags and the worlds' temperatures still described the system as it was a moment before. This is why a freshly built Dyson sphere showed no sign of its own infrared.
+- A conservation fix worth stating plainly: a swarm inside a shell was reporting an infrared excess of 130% of its star's output. Structures are now walked outward from the star and each one only receives what the ones inside it let past, so a complete shell outside a 30% swarm re-radiates the 70% that reached it and the pair returns exactly the star's output. A ringworld is honest about the other half of this too - it blacks its star out for anyone in its plane while intercepting about half a per cent of the star's sky, so it is nearly invisible in the infrared.
+
 ## v3.0.236 - 31st Aug 2026
 
 - The exotics system exists (its name is the owner's call, along with three more decisions recorded on the design). Every megastructure type now carries a declaration of what it IS - how it treats starlight, where its gravity figure comes from, how it draws in 2D and 3D, and how a click frames it - pinned by thirty-six parity gates to behave exactly as before. Nothing looks or computes differently today; what changed is that the next Soletta, Shkadov thruster or black-hole star becomes a record to review instead of a dozen hand-wired special cases.
