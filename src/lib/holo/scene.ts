@@ -2742,11 +2742,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const wire = renderStyle.startsWith('wire');
       const col = new THREE.Color(tint);
       const g = new THREE.Group();
-      if (built.mode === 'line') {
-        // THE BEANSTALK. A ribbon up the +Y axis with a captured rock on the end;
+      if (built.mode === 'ribbon') {
+        // THE BEANSTALK. A slim box up the +Y axis with a captured rock on the end;
         // `updateSurfaceConstructs` stands it on the anchor point and turns it with the world.
-        g.add(new THREE.Line(built.geometry, new THREE.LineBasicMaterial({
-          color: col, transparent: true, opacity: 0.9
+        // A MESH, not a line primitive: WebGL lines render one pixel wide whatever is asked, and
+        // one pixel over a lit limb is invisible - the builder gives the ribbon real drawn width
+        // as a fraction of the host (its own comment says why), so it scales with the world.
+        g.add(new THREE.Mesh(built.geometry, new THREE.MeshStandardMaterial({
+          color: col, emissive: col, emissiveIntensity: wire ? 1 : 0.55,
+          metalness: 0.15, roughness: 0.6, wireframe: wire, transparent: true, opacity: 0.95
         })));
         const cw = built.counterweight;
         if (cw) {

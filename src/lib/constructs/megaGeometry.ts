@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import type { MegaShapeSpec } from './megaTypes';
 
 /** How a built mega wants to be drawn. The caller picks the material; this names the mode. */
-export type MegaDrawMode = 'faces' | 'points' | 'line';
+export type MegaDrawMode = 'faces' | 'points' | 'ribbon';
 
 export interface BuiltMegaGeometry {
   geometry: THREE.BufferGeometry;
@@ -57,6 +57,13 @@ const SWARM_POINTS_MAX = 4000;
 const SWARM_POINTS_MIN = 24;
 /** The counterweight rock, as a fraction of the host's DRAWN radius — legibility, not scale. */
 const COUNTERWEIGHT_HOST_FRAC = 0.07;
+
+/** The ribbon's drawn WIDTH as a fraction of the host's drawn radius — the counterweight's own
+ *  honest readability device, applied to the ribbon that carries it. A true-scale ribbon is
+ *  metres wide and a 1px WebGL line stood in for it, which was invisible against a lit planet
+ *  limb on every GPU (owner, 2026-08-30 and again 2026-09-01) — a drawn width that scales with
+ *  the world stays a sliver of the planet at every zoom and never vanishes into a hairline. */
+const TETHER_WIDTH_HOST_FRAC = 0.01;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -127,12 +134,14 @@ export function buildMegaGeometry(
     // currency as the world it stands on rather than a second scale.
     const perKm = hostKm > 0 ? hostR / hostKm : 0;
     const topScene = hostR + spec.topAltitudeKm * perKm;
-    const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, hostR, 0),
-      new THREE.Vector3(0, topScene, 0)
-    ]);
+    // A slim BOX rather than a line primitive: WebGL lines are one pixel whatever you ask for,
+    // and one pixel over a bright limb is no ribbon at all (see TETHER_WIDTH_HOST_FRAC).
+    const w = Math.max(1e-9, hostR * TETHER_WIDTH_HOST_FRAC);
+    const len = Math.max(1e-9, topScene - hostR);
+    const geometry = new THREE.BoxGeometry(w, len, w);
+    geometry.translate(0, hostR + len / 2, 0);
     return {
-      geometry, mode: 'line', radiusScene: topScene, interior: false,
+      geometry, mode: 'ribbon', radiusScene: topScene, interior: false,
       counterweight: { atScene: topScene, radiusScene: Math.max(1e-9, hostR * COUNTERWEIGHT_HOST_FRAC) }
     };
   }

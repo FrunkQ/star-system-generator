@@ -399,6 +399,12 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   delete (system as { isManuallyEdited?: boolean }).isManuallyEdited;
   migrateLagrangePlacements(system);
   for (const node of system.nodes) {
+    // G53 (2026-09-01): the elevator's TEMPLATE default was a generic cross until the mast glyph
+    // existed; a saved instance still wearing exactly that stamped default follows the template
+    // forward. A GM who CHOSE a different shape chose it - any other icon_type survives untouched
+    // (the authored-data rule, read at the right grain: the cross was the template's choice).
+    const cn = node as { megaType?: string; icon_type?: string };
+    if (cn.megaType === 'space-elevator' && cn.icon_type === 'cross') cn.icon_type = 'mast';
     if (node.kind === 'barycenter') { stripBarycenter(node as Barycenter); continue; }
     if (node.kind !== 'body') continue;
     stripBody(node as CelestialBody, classNames);

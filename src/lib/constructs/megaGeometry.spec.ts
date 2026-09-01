@@ -129,13 +129,29 @@ describe('the swarm points path', () => {
 });
 
 describe('the tether', () => {
-  it('runs from the host surface to geostationary, in the host own drawn currency', () => {
+  const boundsOf = (g: { getAttribute?: (n: string) => { array: ArrayLike<number> } | undefined } & object) => {
+    const arr = (g as any).getAttribute('position').array as Float32Array;
+    let minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
+    for (let i = 0; i < arr.length; i += 3) {
+      minX = Math.min(minX, arr[i]); maxX = Math.max(maxX, arr[i]);
+      minY = Math.min(minY, arr[i + 1]); maxY = Math.max(maxY, arr[i + 1]);
+    }
+    return { minY, maxY, minX, maxX };
+  };
+
+  it('is a RIBBON with real drawn width, from the host surface to geostationary, in the host own drawn currency', () => {
     const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
-    expect(built.mode).toBe('line');
-    const p = positionsOf(built.geometry);
-    expect(p[1]).toBeCloseTo(0.2, 6);                       // anchored on the surface
+    // A 1px WebGL line was invisible against a lit planet limb on every GPU (owner, twice) - the
+    // ribbon takes the counterweight's own honest device: drawn width as a READABILITY fraction of
+    // the host, so it scales with the world at every zoom and never vanishes into a hairline.
+    expect(built.mode).toBe('ribbon');
+    const b = boundsOf(built.geometry);
+    expect(b.minY).toBeCloseTo(0.2, 6);                     // anchored on the surface
     // Geostationary is 35,786 km up on a 6,371 km world — 6.6 host radii from the centre.
-    expect(p[4] / 0.2).toBeCloseTo(1 + 35786 / 6371, 3);
+    expect(b.maxY / 0.2).toBeCloseTo(1 + 35786 / 6371, 3);
+    const w = b.maxX - b.minX;
+    expect(w).toBeGreaterThan(0);
+    expect(w).toBeLessThan(built.counterweight!.radiusScene * 2); // thinner than the rock it carries
   });
 
   it('carries a captured-asteroid counterweight at the top of the ribbon', () => {
@@ -143,10 +159,9 @@ describe('the tether', () => {
     expect(built.counterweight).toBeTruthy();
     // The rock rides at geostationary — the same figure the ribbon ends at, not a second answer.
     expect(built.counterweight!.atScene).toBeCloseTo(built.radiusScene, 9);
-    const p = positionsOf(built.geometry);
     // 6 places, not more: the vertex buffer is a Float32Array (~7 significant figures) while
     // `atScene` is a double, so a tighter assertion measures IEEE rounding rather than the code.
-    expect(built.counterweight!.atScene).toBeCloseTo(p[4], 6);
+    expect(built.counterweight!.atScene).toBeCloseTo(boundsOf(built.geometry).maxY, 6);
     // Its drawn size is a READABILITY fraction of the host, never true scale: a few-km rock on a
     // 6,371 km world would be invisible at every zoom that shows the ribbon.
     expect(built.counterweight!.radiusScene).toBeGreaterThan(0);

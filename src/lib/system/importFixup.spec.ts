@@ -270,3 +270,19 @@ describe('resolving a legacy star class', () => {
     expect(run(starAt(['star/L'], 1800, 70000))).toEqual(['star/L3']);
   });
 });
+
+describe('the elevator mast migration (G53, 2026-09-01)', () => {
+	it("flips a template-stamped cross to the mast, and leaves a GM's own choice of any other shape alone", () => {
+		const sys = {
+			id: 's', name: 's', nodes: [
+				{ id: 'e1', name: 'Elev', kind: 'construct', megaType: 'space-elevator', icon_type: 'cross', tags: [], parentId: null },
+				{ id: 'e2', name: 'Elev2', kind: 'construct', megaType: 'space-elevator', icon_type: 'square', tags: [], parentId: null },
+				{ id: 'c1', name: 'Station', kind: 'construct', icon_type: 'cross', tags: [], parentId: null }
+			]
+		} as unknown as System;
+		const out = fixUpImportedSystem(sys);
+		expect((out.nodes[0] as { icon_type?: string }).icon_type).toBe('mast');   // the stamped default follows the template
+		expect((out.nodes[1] as { icon_type?: string }).icon_type).toBe('square'); // a deliberate choice survives
+		expect((out.nodes[2] as { icon_type?: string }).icon_type).toBe('cross');  // a non-elevator cross is untouched
+	});
+});
