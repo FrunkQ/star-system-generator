@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.255 - 31st Aug 2026
+
+- Board only. Documentation sweeps now fire themselves: when enough changes have banked, or always before a production release, without waiting to be asked.
+
 ## v3.0.254 - 1st Sep 2026
 
 - The space elevator's ribbon is finally visible. It was being drawn as a one-pixel line - which graphics hardware renders one pixel wide no matter what, and one pixel against a lit planet is nothing - so the beanstalk is now a slim solid ribbon whose drawn width scales with its world, the same honest readability device the counterweight rock already used. And elevators saved before the mast glyph existed now pick it up on load: the old cross was the template's stamp, not your choice, so it follows the template - any icon you chose yourself is left exactly as you set it.
