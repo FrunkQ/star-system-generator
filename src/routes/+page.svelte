@@ -11,6 +11,7 @@
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem, renameNode, computePlayerSnapshot } from '$lib/api';
   import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
+  import { openSystemReport } from '$lib/reports/openReport';
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { mintBroadcastId } from '$lib/broadcastId';
@@ -112,13 +113,17 @@
   function handleStarmapReport(event: CustomEvent<{ mode: 'GM' | 'Player'; theme: string; includeConstructs: boolean }>) {
     const sys = get(systemStore);
     showReportConfigModal = false;
-    if (!sys) return;
-    sessionStorage.setItem('reportData', JSON.stringify({
-      system: sys, mode: event.detail.mode, theme: event.detail.theme,
-      includeConstructs: event.detail.includeConstructs,
-      unitPrefs: get(unitPrefs)
-    }));
-    window.open('/report', '_blank');
+    // B113(b): this used to be `if (!sys) return;` followed by a bare window.open, so a GM who had
+    // not opened a system yet — or whose browser blocked the popup — got absolute silence. The rail
+    // entry is reachable straight from the starmap, so the no-system case is the ORDINARY path here,
+    // not an edge case.
+    const result = openSystemReport({
+      system: sys,
+      options: event.detail,
+      unitPrefs: get(unitPrefs),
+      temporal: get(starmapStore)?.temporal ?? null
+    });
+    if (!result.ok) alert(result.message);
   }
   let showInterstellarModal = false;
   let interstellarShipId = '';

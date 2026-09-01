@@ -11,7 +11,7 @@
   import { formatSpeedAuto, speedFlavour } from '$lib/units';
   import { isFlybyPlan } from '$lib/transit/scheduler';
   import { starmapStore } from '$lib/starmapStore';
-  import { resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
+  import { formatInstantMs, activeCalendarOf } from '$lib/temporal/utre';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import { cargoAboardAt, fuelKgAt, computeAutopilotTotals } from '$lib/transit/autopilotPlanner';
   import { deriveIncomingVisits } from '$lib/transit/constructInteractions';
@@ -49,12 +49,10 @@
 
   function formatLogTime(ms: number): string {
       if (!Number.isFinite(ms)) return 'n/a';
-      const temporal = get(starmapStore)?.temporal;
-      if (temporal) {
-          const calendar = temporal.temporal_registry[temporal.activeCalendarKey];
-          // Journey times are unix-epoch ms; the calendar resolver wants MASTER (since-Big-Bang) seconds.
-          if (calendar) return resolveCalendar(unixMsToMasterSeconds(ms), calendar).formatted;
-      }
+      // Journey times are unix-epoch ms; `formatInstantMs` is the one place that puts an instant on
+      // the campaign calendar (B113(a)). Null means no calendar, and the ISO stamp below stands.
+      const label = formatInstantMs(ms, activeCalendarOf(get(starmapStore)?.temporal));
+      if (label) return label;
       const d = new Date(ms);
       if (Number.isFinite(d.getTime())) return d.toISOString();
       return `${Math.floor(ms / 1000)}s`;

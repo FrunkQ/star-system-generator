@@ -30,6 +30,41 @@ export function unixMsToMasterSeconds(unixMs: number): bigint {
   return BIG_BANG_TO_UNIX_EPOCH_T + BigInt(Math.floor(unixMs / 1000));
 }
 
+/**
+ * THE one way to put a wall-clock instant on the campaign's calendar.
+ *
+ * Every surface that shows a date for a unix-epoch millisecond value goes through here: the ship
+ * log, the companion app's clock readout, and — since B113(a) — the printed report. It existed as a
+ * two-line idiom spelled out at each call site (`resolveCalendar(unixMsToMasterSeconds(ms), cal)`),
+ * which is how the report came to render `new Date(epochT0).getFullYear()` instead: there was
+ * nothing to reuse, so it invented Gregorian.
+ *
+ * Returns null rather than a string when there is no calendar or the instant is not a number, so a
+ * caller keeps its OWN no-calendar fallback — a ship log wants an ISO stamp, a clock strip wants a
+ * human sentence, and unifying those would change two shipped surfaces for no reason. What must not
+ * differ, and now cannot, is the calendar path itself.
+ */
+export function formatInstantMs(
+  unixMs: number,
+  calendar: TemporalCalendarDefinition | undefined | null
+): string | null {
+  if (!calendar) return null;
+  if (!Number.isFinite(unixMs)) return null;
+  try {
+    return resolveCalendar(unixMsToMasterSeconds(unixMs), calendar).formatted;
+  } catch {
+    return null;
+  }
+}
+
+/** The active calendar of a temporal state, or undefined when the state cannot name one. */
+export function activeCalendarOf(
+  temporal: TemporalState | null | undefined
+): TemporalCalendarDefinition | undefined {
+  if (!temporal) return undefined;
+  return temporal.temporal_registry?.[temporal.activeCalendarKey];
+}
+
 export function resolveCalendar(masterSeconds: bigint, calendar: TemporalCalendarDefinition): ResolvedTemporal {
   if (calendar.math_type === 'RATIO_LINEAR') {
     return resolveRatioLinear(masterSeconds, calendar);

@@ -31,6 +31,7 @@
   import ConstructDetailsPane from './ConstructDetailsPane.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
+  import { openSystemReport } from '$lib/reports/openReport';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import SisterFileModal from './SisterFileModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
@@ -1183,17 +1184,17 @@
   let showReportConfigModal = false;
 
   function handleGenerateReport(event: CustomEvent<{mode: 'GM' | 'Player', theme: string, includeConstructs: boolean}>) {
-      if (!$systemStore) return;
-      const reportData = {
-          system: $systemStore,
-          mode: event.detail.mode,
-          theme: event.detail.theme,
-          includeConstructs: event.detail.includeConstructs,
-          unitPrefs: get(unitPrefs) // carry the campaign's unit choices into the (separate-route) report
-      };
-      sessionStorage.setItem('reportData', JSON.stringify(reportData));
-      window.open('/report', '_blank');
       showReportConfigModal = false;
+      // B113(b): the stash-then-open pair now lives in ONE module with the starmap rail's copy, and
+      // it reports what happened. A blocked popup used to be swallowed here — `window.open` returns
+      // null and nothing looked at it — which is indistinguishable from a crashed report.
+      const result = openSystemReport({
+          system: $systemStore,
+          options: event.detail,
+          unitPrefs: get(unitPrefs), // carry the campaign's unit choices into the (separate-route) report
+          temporal: get(starmapStore)?.temporal ?? null
+      });
+      if (!result.ok) alert(result.message);
   }
 
   function handleContextMenuSelect(event: CustomEvent<string>) {

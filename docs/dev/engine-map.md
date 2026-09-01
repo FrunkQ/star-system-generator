@@ -5738,3 +5738,52 @@ BLAST: one arc list, three surfaces - the two SVG maps share `ringArcPath` (the 
 shows up past a half turn, which is exactly the heavily-occluded case) and the 3D map bakes the same
 list into a canvas texture cached per 5% bucket. TAG-20 is the entry recording what a marker added
 to one renderer and not the others costs.
+
+### UI-C13 A HAND-OFF TO A NEW WINDOW HAS THREE WAYS TO FAIL AND ALL THREE WERE SILENT
+BUCKET: ARCHITECTURE (product contract) - a user-triggered action that produces NOTHING VISIBLE is
+indistinguishable from a crash, and the browser gives exactly one signal that nobody was reading.
+WHERE: `reports/openReport.ts` (`openSystemReport` - the ONE stash-then-open, and the failure
+sentences); its two callers `routes/+page.svelte` (`handleStarmapReport`) and
+`components/SystemView.svelte` (`handleGenerateReport`). Gated by `reports/openReport.spec.ts`.
+RULE: the module that opens an auxiliary window RETURNS what happened and the caller shows it.
+`window.open` returning `null` is a BLOCKED POPUP and is the only notice the browser gives - it must
+never be discarded. A precondition failure (no system open) must not be an early `return` either:
+the starmap rail reaches the report with no system loaded as an ORDINARY path, not an edge case.
+WHY: [[B113]](b), owner: *"The Reports appears to not work at all for me - the window no longer opens
+with the paper report."* Measured on BOTH channels before anything was changed - prod v3.0.164 and
+beta v3.0.258 behaved identically: with no system open `window.open` was never called at all (0
+calls, no stash written); with a system open it was called once and returned `null`. Neither logged,
+alerted, nor marked the UI. The three-way split matters because the two faults look the same from
+the outside and have different fixes.
+BLAST: THE REPORT DOCUMENT WAS NEVER AT FAULT and the measurement is what proved it. v3.0.205 (the
+A80 unit sweep) was the leading suspect - the only commit to touch reports since prod - but /report
+renders the complete paper report on beta with an empty console when reached directly. A render that
+throws and a window that never opens are the same user report and opposite bugs; reproduce on the
+REPORTING channel before believing a commit did it.
+BLAST: the stash is `sessionStorage`, which a new tab inherits as a COPY at creation. It is written
+BEFORE the open and is not a size risk - the largest system in the real-user corpus serialises to
+60 KB against a ~5 MB quota - but a throw there is now caught rather than taking the open down with
+it, because a quota failure would otherwise present as this same silence.
+
+### UI-C14 A DATE ON ANY SURFACE IS THE CAMPAIGN'S DATE, AND ONE FUNCTION SAYS SO
+BUCKET: ARCHITECTURE - a two-line idiom repeated at call sites is a rule nothing enforces, and the
+surface that had not yet copied it invented Gregorian instead.
+WHERE: `temporal/utre.ts` - `formatInstantMs` (unix ms -> the campaign calendar) and
+`activeCalendarOf`. Readers: `reports/ReportDocument.svelte` (`epochLabel`),
+`components/ShipLogPane.svelte` (`formatLogTime`), `routes/catalogue/+page.svelte`
+(`followClockLabel`). Gated by `temporal/calendarFormat.spec.ts`.
+RULE: nothing outside `utre.ts` writes `resolveCalendar(unixMsToMasterSeconds(ms), cal)` again, and
+nothing renders a campaign instant through `new Date()`. `formatInstantMs` returns NULL rather than
+a Gregorian guess when there is no calendar, so each surface keeps its own documented fallback (a
+ship log wants ISO, a clock strip wants a sentence) while the calendar path itself cannot differ.
+WHY: [[B113]](a), user: *"The Epoch in the 'Generate Reports' is not updating to the Epoch I have
+set in the settings calendar."* `ReportDocument` rendered `new Date(system.epochT0).getFullYear()`
+unconditionally. Measured live on beta: the clock strip read "00:00:00, Monday 1st January, 2323 AD"
+while the report's Epoch cell read "2025" for the same campaign at the same instant.
+BLAST: the report is a SEPARATE ROUTE fed by a one-shot sessionStorage payload, so it can only
+render what the payload carries - the calendar had to be added to the stash (`temporal`) before the
+formatter was reachable at all. Any future report field that shows a date needs nothing more, but a
+NEW report-like route does: give it the payload, not a second resolver.
+BLAST: the report's "DATE:" header line is deliberately left as a real-world ISO date. It is when
+the paper was PRINTED, not an in-world instant, and putting it on the campaign calendar would claim
+a fiction the field does not mean.

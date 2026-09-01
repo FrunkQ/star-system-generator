@@ -3,7 +3,8 @@
   import ReportDocument from '$lib/reports/ReportDocument.svelte';
   import { computePlayerSnapshot } from '$lib/system/utils';
   import { migrateUnitPrefs } from '$lib/units';
-  import type { System } from '$lib/types';
+  import type { System, TemporalCalendarDefinition } from '$lib/types';
+  import { activeCalendarOf } from '$lib/temporal/utre';
 
   // Thin loader: reads the one-shot report payload the System View stashes in sessionStorage,
   // applies redaction for Player mode, and hands it to the shared <ReportDocument>. The live,
@@ -13,6 +14,10 @@
   let theme = 'retro';
   let includeConstructs = true;
   let prefs: import('$lib/units').UnitPrefs = {};
+  // B113(a): the campaign's active calendar rides the stash, so the report's dates read in the
+  // GM's own reckoning instead of falling back to Gregorian. An older stash (or one written before
+  // this build) simply has no `temporal`, and the report keeps its previous Gregorian behaviour.
+  let calendar: TemporalCalendarDefinition | undefined = undefined;
   let loading = true;
   let error = '';
 
@@ -34,6 +39,7 @@
         measurementUnits: data.units === 'imperial' ? 'imperial' : 'metric',
         temperatureUnit: data.tempUnit === 'F' || data.tempUnit === 'K' ? data.tempUnit : 'C'
       });
+      calendar = activeCalendarOf(data.temporal);
       system = mode === 'Player' ? computePlayerSnapshot(data.system) : data.system;
       loading = false;
     } catch (e) {
@@ -53,7 +59,7 @@
 {:else if error}
   <div class="error">{error}</div>
 {:else}
-  <ReportDocument {system} {mode} {theme} {includeConstructs} {prefs} chrome="report" />
+  <ReportDocument {system} {mode} {theme} {includeConstructs} {prefs} {calendar} chrome="report" />
 {/if}
 
 <style>

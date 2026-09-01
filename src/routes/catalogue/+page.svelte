@@ -76,7 +76,7 @@
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
   import { RATE_STEPS, DEFAULT_RATE_INDEX } from '$lib/player/timeRates';
-  import { unixMsToMasterSeconds, resolveCalendar } from '$lib/temporal/utre';
+  import { formatInstantMs, activeCalendarOf } from '$lib/temporal/utre';
   import { inverseBoxCox } from '$lib/physics/scaling';
   import { perfCount } from '$lib/perfTrace';
   import { resolveClockOwnership, gmClockTouched } from '$lib/player/clockOwnership';
@@ -215,11 +215,8 @@
   // per-frame time: a readout is only ever read to the second, and the calendar maths is bigint.
   $: followClockLabel = (() => {
     if (!onGmClock) return null;
-    const t = (starmap as any)?.temporal;
-    const calendar = t?.temporal_registry?.[t?.activeCalendarKey];
-    if (calendar) {
-      try { return resolveCalendar(unixMsToMasterSeconds(docNowMs), calendar).formatted; } catch { /* fall through */ }
-    }
+    const label = formatInstantMs(docNowMs, activeCalendarOf((starmap as any)?.temporal));
+    if (label) return label;
     return new Date(docNowMs).toUTCString().replace(/ GMT$/, '');
   })();
   $: if (selectedSystemNode && selectedSystemNode.id !== clockAnchoredFor) {

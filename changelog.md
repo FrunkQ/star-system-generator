@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.261 - 1st Sep 2026
+
+- Reports open, or tell you why not. Choosing Report with no system open used to do nothing at all, and a report window blocked by your browser also did nothing at all - both cases now say what happened and what to do about it, instead of leaving you staring at a screen that did not change. The report document itself was never broken; it was only ever the opening of it.
+- The Epoch on a printed report is now written in your campaign's own calendar. A campaign running on Stardates or the Haab used to get a Gregorian year on the paper regardless of the calendar you had chosen in Settings; reports now read dates through exactly the same reckoning as the clock strip, the ship log and the companion app.
+
 ## v3.0.259 - 1st Sep 2026
 
 - You choose the picture that represents your map. A star beside any graphic in your player-view library marks it as the cover - the shot a sharing site puts on your map's page and into a link preview. It points at a picture your campaign already carries, so it travels in the save, keeps the credit you recorded beside it, and appears in the attributions file like any other art. Choose nothing and a site falls back to guessing, exactly as before; delete the picture and the choice quietly clears rather than pointing at nothing.
