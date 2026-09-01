@@ -14,7 +14,7 @@
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { holoStyleOf, systemStageStyle, FONT_STACKS, isRainbow, RAINBOW, RAINBOW_GRADIENT, accentSolid } from '$lib/player/presets';
   import { RATE_STEPS } from '$lib/player/timeRates';
-  import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset, updateAssetProvenance, ASSET_MAX_PX, BACKGROUND_MAX_PX } from '$lib/player/presetStore';
+  import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset, updateAssetProvenance, setCoverAsset, coverAssetId, ASSET_MAX_PX, BACKGROUND_MAX_PX } from '$lib/player/presetStore';
   import { systemStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -571,6 +571,14 @@
                   <img src={a.dataUrl} alt={a.name} />
                   <span class="a-name">{a.name}</span>
                   {#if !a.id.startsWith('builtin-')}
+                    <!-- R-07: which picture represents this campaign when it is shared. A pointer at
+                         a graphic that already exists, so it needs no separate image and inherits
+                         the credit already recorded beside it. Built-ins cannot be chosen: they are
+                         app artwork on a static path and never travel inside the save. -->
+                    <button class="a-cover" class:is-cover={$coverAssetId === a.id}
+                      title={$coverAssetId === a.id ? 'This is the cover picture — click to unset' : 'Use as the cover picture when this map is shared'}
+                      aria-pressed={$coverAssetId === a.id}
+                      on:click={() => setCoverAsset(a.id)}>★</button>
                     <button class="a-cred" class:has={!!a.credit} title={a.credit ? `Credit: ${a.credit}` : 'No credit recorded — add one'}
                       on:click={() => openCredits(a)}>&copy;</button>
                     <button class="a-del" title="Remove" on:click={() => deleteAsset(a.id)}>×</button>
@@ -1370,6 +1378,9 @@
      visible at a glance rather than needing to be opened one at a time. */
   .a-cred { background: none; border: none; color: #8899aa; cursor: pointer; font-size: 0.95rem; opacity: 0.55; }
   .a-cred.has { color: #7fd18a; opacity: 1; }
+  /* The cover star reads the same way the credit mark does: quiet until it means something. */
+  .a-cover { background: none; border: none; color: #8899aa; cursor: pointer; font-size: 0.95rem; opacity: 0.55; }
+  .a-cover.is-cover { color: #e8c46a; opacity: 1; }
   .a-credits { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
   .a-credit-btns { display: flex; gap: 6px; }
   .wiz-nav { display: flex; justify-content: space-between; margin-top: auto; padding-top: 0.4rem; }

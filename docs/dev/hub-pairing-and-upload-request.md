@@ -46,6 +46,15 @@ All on `beta` and pushed. **`KNOWN_BUNDLE_FORMATS` can accept `1` and the hub ca
   file claiming `player` while full of GM notes must lose to `gmContent.ts`, loudly. It defaults to
   `gm`, the safe direction. Campaign saves are always `gm` (that flow has no Player option); system
   saves take it from the radio the GM already chose.
+- **`coverAssetId`, the creator's own choice of cover picture.** The id of a `playerAssets` entry,
+  so it points at a graphic the bundle already carries as a real file, already credited in
+  `ATTRIBUTIONS.md`. **Absent means the creator has not chosen — keep guessing exactly as you do
+  now** (map background, then any player graphic, then the first body picture). It is never present
+  and empty: choosing nothing REMOVES the key, so `'coverAssetId' in doc` is a safe test. The app
+  refuses to point it at anything the campaign does not carry, and at a built-in starter graphic
+  (those are app artwork on a static path and are never extracted into the bundle), but treat it as
+  a claim like everything else: if the id names nothing in `playerAssets`, fall back to guessing
+  rather than showing a blank.
 - **B112 landed earlier (v3.0.225)**: saves no longer carry SSE's own shipped calendars, tag
   categories or reasons config. **Your hardcoded baselines can be emptied** and the facet becomes
   simply "how many are in the file". Files written between v3.0.225 and v3.0.243 carry the delta
@@ -124,6 +133,12 @@ developing or testing against the hub, not just for us.
 - **Update semantics.** We send `replaces=<systemId>` for an update. Confirm that is still right,
   and confirm the "only novel asset hashes count against the daily allowance" behaviour, since the
   app will encourage iterating.
+- **Rendering a cover on the hub's behalf.** Raised by the owner and deliberately NOT built. If it
+  is ever wanted, R-05 has made it much cheaper than it was: `?hub=<slug>` now opens any published
+  map in the real app, so a headless browser (Cloudflare Browser Rendering) pointed at that URL
+  renders the genuine thing with no new rendering code and no engine on the hub. It is banked rather
+  than built because it is a server, a browser runtime and a compute-abuse surface to replace one
+  click in the app the creator is already sitting in. Say if you want it and it becomes a real item.
 - **A JSON index.** Not needed yet. If browsing from inside the app is ever wanted, that is when we
   would ask — flagging it so it is not built speculatively.
 

@@ -188,6 +188,11 @@ function canonicalStarmap(): any {
 			},
 			{ id: 'builtin-sse-logo', name: 'SSE', dataUrl: '/images/logo/SSE.png' }
 		],
+		// R-07: the creator's own choice of cover, pointing at a graphic the bundle actually carries.
+		// Deliberately the SAME asset the map background uses, because that is the case where the
+		// hub's guess would have been right anyway - and a fixture should exercise the field, not
+		// prove a point.
+		coverAssetId: 'asset-sector-map',
 		mapBackground: {
 			source: 'asset',
 			assetId: 'asset-sector-map',
@@ -403,6 +408,18 @@ describe('the Creator Hub contract fixtures', () => {
 		// Both label values appear across the pair, so a reader meets each at least once.
 		expect(sys.exportMode).toBe('player');
 		expect(sys.revision).toBeUndefined();
+	});
+
+	it('names the chosen cover, and it points at a file the archive actually holds', async () => {
+		const bytes = await buildStarmapFixture();
+		const members = readZipMembers(bytes, ['.json', '.png']);
+		const map = JSON.parse(strFromU8(members[Object.keys(members).find((n) => n.endsWith('starmap.json'))!]));
+		expect(map.coverAssetId).toBe('asset-sector-map');
+		// A cover is only useful if the picture it names is actually in the bundle - a pointer to
+		// nothing is worse than no pointer, because a reader follows it before falling back.
+		const named = map.playerAssets.find((a: any) => a.id === map.coverAssetId);
+		expect(named.dataUrl).toBe('assets/images/player/asset-sector-map.png');
+		expect(Object.keys(members).some((n) => n.endsWith(named.dataUrl))).toBe(true);
 	});
 
 	it('exercise the sharing gate: one asset WITH provenance and one without, in each kind', async () => {

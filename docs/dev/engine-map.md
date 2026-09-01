@@ -5639,7 +5639,19 @@ campaign (WS7's rule) - and pretending otherwise would lose somebody's campaign 
 clicked out of curiosity. With nothing to lose it opens straight away. Either way the replaced
 campaign goes to `savePreUpgradeStarmap`, the SAME single-step-back the base-map upgrade uses,
 because two mechanisms for "the campaign that was replaced" would be two answers to one question.
-RULE FIVE: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
+RULE FIVE (R-07, the cover): **`coverAssetId` is a POINTER at a graphic the campaign already
+carries, never a new picture.** The graphics ride in the bundle as real files, carry
+credit/licence/source and are listed in `ATTRIBUTIONS.md` - a separate cover image would duplicate
+all four and hand the sharing gate a second thing to check. Choosing nothing REMOVES the key rather
+than emptying it, because "absent, so guess" and "present but meaningless" are different statements
+to a reader; deleting the picture clears the pointer, because a pointer to nothing is worse than no
+pointer (a reader follows it, finds nothing, and has to guess anyway having been told not to); and a
+built-in starter is refused, because those are app artwork on a static path that never enters the
+archive. WHY A CHOSEN PICTURE RATHER THAN A RENDERED ONE (owner, 2026-09-01): the GM already has
+shots they like, and the pieces to carry one all exist. Rendering a cover was considered and banked
+- and `?hub=` has made it cheap if it is ever wanted, since a headless browser pointed at that URL
+renders the real app with no new rendering code.
+RULE SIX: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
 exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything
 worth mentioning, and an unparseable stamp compares EQUAL so a garbled version produces silence
 rather than a wrong claim.

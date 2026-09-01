@@ -1427,6 +1427,16 @@ export interface Starmap {
   playerPresets?: import('./player/presetTypes').PlayerPreset[];
   playerAssets?: import('./player/presetTypes').PlayerAsset[];
 
+  // R-07: WHICH of the campaign's graphics represents it - the picture a sharing site puts on the
+  // map's page and into a link preview. The id of a `playerAssets` entry, chosen by the GM.
+  //
+  // WHY A POINTER RATHER THAN A NEW PICTURE: the graphics already exist, already travel in the
+  // bundle as real files, already carry credit/licence/source, and already appear in
+  // ATTRIBUTIONS.md. A separate cover image would duplicate all four. Absent means the creator has
+  // not chosen, and a reader should fall back to guessing (map background, then any player graphic,
+  // then the first body picture) exactly as before - never refuse, never invent.
+  coverAssetId?: string;
+
   // G16: the picture behind the stars. CAMPAIGN CONTENT, not chrome - see MapBackground.
   mapBackground?: MapBackground;
 

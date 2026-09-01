@@ -4,6 +4,9 @@ All notable changes are listed here:
 
 ## v3.0.259 - 1st Sep 2026
 
+- You choose the picture that represents your map. A star beside any graphic in your player-view library marks it as the cover - the shot a sharing site puts on your map's page and into a link preview. It points at a picture your campaign already carries, so it travels in the save, keeps the credit you recorded beside it, and appears in the attributions file like any other art. Choose nothing and a site falls back to guessing, exactly as before; delete the picture and the choice quietly clears rather than pointing at nothing.
+- Built-in starter graphics cannot be the cover. They are the app's own artwork, they live outside your save file, and putting one on your map's page would be advertising this app rather than showing your work.
+
 - The elevator's proportions are now the real ones, in every representation (this shipped in the previous push, which collided with another stream's v3.0.258 and lost its changelog line - recorded here). The counterweight belongs ABOVE geostationary - at geo it would hold no tension - so the 3D ribbon runs past the dock to the counterweight rock (your authored ribbon length wins when it reaches past geo; a 1.25x design margin otherwise), a small station ball marks the geostationary dock on the ribbon itself, and the mast glyph's knob moved to the honest four-fifths position Earth's own numbers give it: 35,786 km of dock on a 45,000 km ribbon.
 
 ## v3.0.258 - 31st Aug 2026
@@ -17,13 +20,13 @@ All notable changes are listed here:
 ## v3.0.256 - 31st Aug 2026
 
 - Board only. Documentation sweeps now fire themselves: when enough changes have banked, or always before a production release, without waiting to be asked.
+- Board only. The documentation sweep is called: thirty-three banked changes are owed to the physics page and the user guides before the next production release.
+
+## v3.0.255 - 31st Aug 2026
 
 ## v3.0.254 - 1st Sep 2026
 
 - The space elevator's ribbon is finally visible. It was being drawn as a one-pixel line - which graphics hardware renders one pixel wide no matter what, and one pixel against a lit planet is nothing - so the beanstalk is now a slim solid ribbon whose drawn width scales with its world, the same honest readability device the counterweight rock already used. And elevators saved before the mast glyph existed now pick it up on load: the old cross was the template's stamp, not your choice, so it follows the template - any icon you chose yourself is left exactly as you set it.
-## v3.0.255 - 31st Aug 2026
-
-- Board only. The documentation sweep is called: thirty-three banked changes are owed to the physics page and the user guides before the next production release.
 
 ## v3.0.254 - 31st Aug 2026
 
@@ -44,7 +47,6 @@ All notable changes are listed here:
 
 - A megastructure's shadow now reads as what it is: an eclipse. A world that crosses a ring's shadow shows a Structure Shadow line in its technical block - how often and how long the star goes out (a tilted world behind the default ring: twice an orbit, about three and a half days each) - and a world trapped coplanar behind a solid ring says the honest word: permanent. Local eclipses keep their own Next Eclipse row untouched. The same fact lands as an Eclipsed tag beside Shadowed-by, and the physics trace speaks the cadence in its dimming note - one geometry, one wording, three surfaces.
 
-## v3.0.247 - 31st Aug 2026
 ## v3.0.249 - 1st Sep 2026
 
 - One link now opens a shared map. A link to a map on the Explorer hub - pasted into a Discord, an email, anywhere - starts the app with that map ready to go, instead of a download followed by an import. There is also a box on the load screen for anyone already inside the app: paste the link, the map's page, or just its code, and it works out which you meant, including when the link has tracking rubbish on the end.
