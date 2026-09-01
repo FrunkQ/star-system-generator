@@ -2,7 +2,11 @@
 
 All notable changes are listed here:
 
-## v3.0.255 - 31st Aug 2026
+## v3.0.257 - 31st Aug 2026
+
+- Repair: a broken package.json (conflict markers) briefly reached beta and is fixed; the failed build that should have blocked it now blocks properly.
+
+## v3.0.256 - 31st Aug 2026
 
 - Board only. Documentation sweeps now fire themselves: when enough changes have banked, or always before a production release, without waiting to be asked.
 

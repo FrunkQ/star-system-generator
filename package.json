@@ -1,10 +1,6 @@
 {
   "name": "star-system-generator",
-<<<<<<< HEAD
-  "version": "3.0.255",
-=======
-  "version": "3.0.255",
->>>>>>> b0101bed (v3.0.253 - the beanstalk gets real width, and old elevators pick up the mast)
+  "version": "3.0.257",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
