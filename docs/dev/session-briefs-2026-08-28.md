@@ -646,3 +646,57 @@ it is theirs, leave it.
 > prose, explicit staging, `git show --stat` (the CRLF tell), fetch-rebase-renumber with the
 > marker check GATING the add, engine-map entries in the same commit, dead ends recorded, no
 > stopping early on a context guess.
+
+---
+
+## STREAM I — the documentation sweep, as an AUDIT (G63)
+
+> You are running the documentation sweep for Star System Explorer — [[G63]]. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (v3.0.257+ — fetch
+> the tip; several streams push daily, renumber on collision). Work in your OWN worktree
+> (`git worktree add ../sse2-docsweep -b wt/docsweep origin/beta`); the main checkout is shared.
+> Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** (1) `CLAUDE.md` at the repo root — the front door. (2) The STANDING RULES at the
+> foot of `docs/dev/observations-inbox.md`, especially BANK A LINE SWEEP THE PROSE, the CRLF rules,
+> and "a physics change is not finished until the explanations follow it". (3) The
+> **Documentation debt** section of that same file — its ~33 banked lines ARE your work list. (4)
+> The [[G63]] row. (5) `docs/process-templates/PLAYBOOK.md`.
+>
+> **THE OWNER'S FRAMING, AND IT CHANGES WHAT THIS JOB IS:** *"just a danger of chinese whispers now
+> we are a few generations along - maybe important things have been 'forgotten'."* **So this is an
+> AUDIT that produces prose, not a transcription.** The rule, for every banked line:
+>
+> 1. **VERIFY THE CLAIM AGAINST THE TREE FIRST.** Find the shipped behaviour the line describes —
+>    the code, the gate that pins it, the row that shipped it. A banked line is a note someone made
+>    months of versions ago; the behaviour may have moved since, or the line may have garbled it.
+> 2. **THE TREE WINS.** Where a doc surface ALREADY contradicts the tree, fix the surface to the
+>    tree and record the contradiction on your rows — never average the two, never propagate the
+>    doc's version because it reads better.
+> 3. **Write the prose, DELETE the banked line in the same commit.** The sweep ends with the debt
+>    section at zero, or with the un-writable lines still banked and each one annotated with WHY
+>    (could not verify; behaviour since removed; needs the owner).
+>
+> **THE SIX SURFACES**, from the debt section's own header: `src/routes/physics/+page.svelte` (the
+> physics page), `src/lib/physics/physicsTrace.ts` (**the Newton explainer — it claims to SHOW THE
+> WORKING, so it is the worst one to leave wrong and the first to check for whispers**),
+> `docs/tags-guide.md`, `docs/classification-and-tags.md`, and for anything a GM meets rather than
+> a pack author, `GettingStarted.md` and `README.md`.
+>
+> **TRAPS SPECIFIC TO THIS STREAM.** (i) **CRLF, and this exact job has been bitten before:** a
+> 13-line edit to `physics/+page.svelte` once committed as 2,054 insertions because a regex `\s*`
+> crossed a ``. Byte-level editing is the safe form for every CRLF file here; read
+> `git show --stat` before EVERY push and treat a whole-file diff on a small edit as a stop.
+> (ii) The debt section lives inside `observations-inbox.md`, which other streams edit daily —
+> fetch before every push, rebase on rejection, and the conflict-marker check GATES the add.
+> (iii) UK English, no emoji in docs, prose a GM would understand; the physics page explains to a
+> curious user, not to us. (iv) Do not invent physics: every sentence you write must trace to a
+> behaviour you verified in step 1. Uncertain means ask via your rows, not guess.
+>
+> **ACCEPTANCE.** (1) The Documentation-debt section is at zero, or every surviving line carries
+> its reason. (2) Each of the six surfaces describes current behaviour for every swept item — spot
+> check: a reader following the physics page's account of luminosity, occlusion tags, the
+> disclosure ladder's three visibility rungs, paired-star orbits and the construct unit cycling
+> finds the app doing exactly what the page says. (3) Any doc-vs-tree contradiction found is
+> fixed to the tree AND recorded. (4) Green build per push, version bumped, changelog line
+> ("Board only" is wrong here — these are reader-facing changes, say what a reader gains).

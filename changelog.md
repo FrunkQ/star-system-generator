@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.258 - 31st Aug 2026
+
+- Board only. The documentation sweep is briefed as an audit: every banked note is checked against the running code before it becomes prose, so nothing garbled by months of fast work gets written into the guides.
+
 ## v3.0.257 - 31st Aug 2026
 
 - Repair: a broken package.json (conflict markers) briefly reached beta and is fixed; the failed build that should have blocked it now blocks properly.
