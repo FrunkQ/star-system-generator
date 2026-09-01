@@ -175,6 +175,22 @@ describe('the tether', () => {
     expect(boundsOf(clamped.geometry).maxY / 0.2).toBeGreaterThan(1 + 35786 / 6371); // geo still inside
   });
 
+  it('THE SCENE CONTRACT: asked in unit host radius, it returns pure proportion', () => {
+    // holo/scene.ts builds the tether with hostRadiusScene 1 and multiplies by the host's LIVE
+    // drawn radius every frame (the rule planetary rings follow), because the host's drawn size
+    // moves with the body-size dial, the screen floor and the build's system/body level. This
+    // pins the half that makes that possible: in unit currency every figure is in HOST RADII.
+    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 1, hostRadiusKm: 6371 })!;
+    const b = boundsOf(built.geometry);
+    expect(b.minY).toBeCloseTo(1, 6);                                  // the anchor IS one host radius (Float32 buffer: 6 places, as above)
+    expect(built.dock!.atScene).toBeCloseTo(1 + 35786 / 6371, 6);      // geo, in host radii
+    expect(b.maxY).toBeCloseTo(1 + (35786 * 1.25) / 6371, 6);          // the counterweight, likewise
+    // And it is genuinely LINEAR in the host radius - the property the per-frame multiply needs.
+    const twice = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 2, hostRadiusKm: 6371 })!;
+    expect(boundsOf(twice.geometry).maxY).toBeCloseTo(b.maxY * 2, 6);
+    expect(twice.dock!.atScene).toBeCloseTo(built.dock!.atScene * 2, 6);
+  });
+
   it('carries a captured-asteroid counterweight at the top of the ribbon', () => {
     const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
     expect(built.counterweight).toBeTruthy();

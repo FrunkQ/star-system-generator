@@ -5853,3 +5853,24 @@ every prediction). Measured on this build: the first Earth eclipse after 2026-06
 a 0.597 partial, 771.7 days from the real total of 2026-08-12. A correct anchor does not move that
 by one second. Closing it needs real elements for Earth and Luna plus nodal precession - a physics
 item, filed on the board, and `temporal/eclipseAnchor.spec.ts` records the gap with its numbers.
+### RENDER-S48 A MODEL DRAWN IN ITS HOST'S CURRENCY MUST BE SCALED BY THE HOST'S LIVE RADIUS
+BUCKET: ARCHITECTURE - a build-time snapshot of another object's drawn size is stale by the next
+frame, and the units silently square if the caller also scales by length.
+WHERE: `holo/scene.ts` - `attachMegaVolume` (tether built with `hostRadiusScene: 1`), the
+`surface-stand` branch in `updateConstructs`; the precedent is `updateRings`
+(`rv.pivot.scale.setScalar(parent.screenK)`) and the same pair in `updateLabels`.
+RULE: geometry expressed in multiples of a HOST's radius is built in UNIT host-radius currency and
+multiplied every frame by that host's live drawn radius - `radiusScene * (screenK ?? 1)`. Never
+bake `bodyRadiusScene(host, ...)` at attach: the host's drawn size moves with the body-size dial,
+with the zoom-dependent screen floor (`screenK`), and with whether the scene was built at system or
+body level - all three change after the attach runs. Keep the unit span as its own field
+(`megaUnitSpan`) and derive `shipLen` from it per frame, because framing and the pixel LOD read
+scene units.
+WHY: the space elevator's ribbon. Its `surface-stand` branch set `scale.setScalar(1)` and was then
+overwritten by the trailing `setScalar(drawnLen)`, so the ribbon was scaled by its own length -
+currency squared - and a 5.6-Earth-radii beanstalk drew as a tick a fraction of the globe. The
+build-time host radius was wrong independently (hardcoded `systemLevel: true`, no `screenK`), which
+is why the same instance drew different lengths on different rebuilds. THREE sightings before it
+was named, and DEAD CODE hid it: the comment said the scale was 1 and the next statement disagreed.
+BLAST: any new host-relative geometry (a phase-5c interior floor, a soletta aimed at a world). A
+`setScalar` in a branch that a later unconditional `setScalar` overwrites is the shape to grep for.

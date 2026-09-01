@@ -258,6 +258,10 @@ interface BodyVisual {
   shipPrev?: THREE.Vector3;  // last frame's position, for the motion direction
   shipFx?: ShipFx | null;    // the drive plume at the stern, driven by the sampled burn
   shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
+  /** A surface-stand exotic's span in HOST-RADIUS units — a measurement, not a switch. Its
+   *  geometry is built at unit host radius, so the drawn span is this times the host's live drawn
+   *  radius; `shipLen` above is kept in scene units from the two, every frame. */
+  megaUnitSpan?: number;
   // G53: a ring, shell or swarm SURROUNDS its host - it is drawn CENTRED on the host at its own
   // orbit's drawn radius, not as a lump sitting at a point on that orbit. Set by attachMegaVolume.
   /** G58 N2: the record's DECLARED capabilities, stamped when the exotic shape attaches -
@@ -2727,16 +2731,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!def) return false;
       const spec = def.shape(instanceMegaParams(node, def, host as any), host as any);
       // Unit radius 0.5 => unit DIAMETER, the same long-axis convention the hull path uses.
-      // A TETHER IS DRAWN FROM ITS HOST, so it needs the host's own drawn radius and real radius to
-      // put geostationary in the right place - both already to hand, both computed at runtime.
-      // NOT `bodyById` - it is rebuilt AFTER this loop, so during the attach it is empty and a
-      // tether would have been built against a host radius of zero. Ask the scale law directly,
-      // which is the same answer the host's own visual will get a moment later.
+      // A TETHER IS BUILT IN UNIT HOST-RADIUS CURRENCY - pure proportion, no scene units at all -
+      // and `updateConstructs` multiplies it by the host's LIVE drawn radius every frame. That is
+      // the rule planetary rings already follow (see updateRings: a ring is drawn in multiples of
+      // its planet's rendered radius, so when the true-scale floor magnifies the planet the ring
+      // comes with it). Baking a build-time radius here cannot work: the host's drawn size depends
+      // on the body-size dial, the zoom-dependent screen floor (`screenK`) and whether the scene
+      // was built at system or body level - three things that all move after this line runs.
       const dims = (node?.physical_parameters?.dimensionsM ?? []) as number[];
       const authoredRibbonKm = Math.max(0, ...dims.map((d: number) => Math.abs(Number(d)) || 0)) / 1000;
       const built = spec.family === 'tether'
         ? buildMegaGeometry(spec, 0.5, {
-            hostRadiusScene: host ? bodyRadiusScene(host, true) : 0,
+            hostRadiusScene: 1,
             hostRadiusKm: radiusKmOf(host),
             // The instance's own authored ribbon length (its long axis) sets the counterweight
             // height when it reaches past geo - the template authors 45,000 km on Earth.
@@ -2792,7 +2798,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // Anchor 'surface-stand', and NOT scaled by shipLen: the geometry is already in the
         // host's own drawn currency, so `updateConstructs` must leave its scale alone.
         v.exotic = def.capabilities;
-        v.shipLen = built.radiusScene;
+        // In HOST RADII, not scene units - `updateConstructs` converts it every frame.
+        v.megaUnitSpan = built.radiusScene;
+        v.shipLen = 0;
         v.shipPrev = v.mesh.position.clone();
         return true;
       }
@@ -3250,8 +3258,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const minWorld = minPx * f * distToCam;
           let drawnLen = Math.max(b.shipLen ?? 0, minWorld);
           if (b.exotic?.render3d.anchor === 'surface-stand') {
-            // Already in the host's drawn currency, and stood up by updateSurfaceConstructs.
-            b.shipModel.scale.setScalar(1);
+            // THE RIBBON IS DRAWN IN ITS HOST'S OWN CURRENCY, LIVE. Its geometry is unit host
+            // radius, so the scale IS the host's drawn radius: the dial-correct `radiusScene`
+            // times the screen floor's `screenK` - the same pair `updateRings` uses so Saturn
+            // keeps its rings at true scale, and the same pair the label clearance reads.
+            // THE FAULT THIS REPLACES: the old branch set scale 1 and was then overwritten by the
+            // trailing `setScalar(drawnLen)` below, so the beanstalk was scaled by its OWN length
+            // - the currency squared - and a 5.6-Earth-radii ribbon drew as a tick a fraction of
+            // the globe (owner, three sightings). Dead code hid it: the comment said 1 and the
+            // next statement said otherwise.
+            const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
+            const hostDrawnR = hostV ? (hostV.radiusScene ?? 0) * (hostV.screenK ?? 1) : 0;
+            // NO PIXEL FLOOR HERE, deliberately: a beanstalk that will not shrink with its world
+            // detaches from it. When the planet is a dot the ribbon is a dot, and the glyph and
+            // label carry the marker duty - which is exactly what they are for.
+            if (hostDrawnR > 1e-12) drawnLen = hostDrawnR;
           } else if (b.exotic?.render3d.anchor === 'host-centred') {
             // THE RING ENCLOSES ITS STAR (G53). Its drawn radius is the distance between its own
             // projected position and its host's - which IS the drawn radius of its orbit, already
