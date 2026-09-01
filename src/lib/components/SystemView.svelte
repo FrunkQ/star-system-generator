@@ -889,6 +889,19 @@
               startAngle = Math.random() * 2 * Math.PI;
           }
       }
+      // THE TETHER'S OWN ANSWER, the half this block was missing (found live, 2026-09-01): a
+      // surface-only mega (allowedPlacements exactly ['Surface']) is Surface WHEREVER the mouse
+      // was - a click cannot put a beanstalk in orbit - so it anchors at the host's radius and the
+      // placement string below is overridden. Without this, an elevator took the generic mid-orbit
+      // stamp (~735,000 km on Earth, the measured off 0.00498 AU), never carried
+      // placement 'Surface', never surface-locked, and its ribbon stood at the SYSTEM ORIGIN -
+      // which is why nobody ever saw a stick: it was at the Sun.
+      const megaSurfaceOnly = !!(megaDef && megaDef.allowedPlacements
+          && megaDef.allowedPlacements.length === 1 && megaDef.allowedPlacements[0] === 'Surface');
+      if (megaSurfaceOnly) {
+          distAU = ((host as CelestialBody).radiusKm || 0) / AU_KM;
+          startAngle = Math.random() * 2 * Math.PI;
+      }
 
       // 3. Create Circular Orbit
       const massKg = (host as CelestialBody).massKg || (host as Barycenter).effectiveMassKg || 0;
@@ -947,6 +960,7 @@
           }
       }
 
+      if (megaSurfaceOnly) placement = 'Surface'; // the registry's word outranks the altitude guesser
       newConstruct.placement = placement;
 
       // G53: the placement went ahead - record WHY it is interesting. Same evaluator and same tags

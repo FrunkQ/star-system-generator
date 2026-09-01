@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.262 - 1st Sep 2026
+
+- The space elevator finally stands where it was built. Every elevator created from the Megaconstructs tab had been quietly parked in a generic middle orbit with no Surface placement - so its ribbon, which has drawn faithfully for days, stood at the system origin where nobody would ever look. A surface-only structure now anchors to its world's surface wherever the mouse was (a click cannot put a beanstalk in orbit), and elevators stranded by the old path heal themselves the next time the campaign loads - verified live: a stranded one re-anchored to Earth on reload, ribbon, geostationary dock ball and counterweight all standing on the anchor.
 ## v3.0.261 - 1st Sep 2026
 
 - Reports open, or tell you why not. Choosing Report with no system open used to do nothing at all, and a report window blocked by your browser also did nothing at all - both cases now say what happened and what to do about it, instead of leaving you staring at a screen that did not change. The report document itself was never broken; it was only ever the opening of it.

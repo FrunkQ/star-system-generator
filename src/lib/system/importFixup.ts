@@ -7,6 +7,7 @@
 // So on import we STRIP everything the processor will re-derive, keeping only the authored INPUTS
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
+import { megaTypeDef } from '$lib/constructs/megaTypes';
 import type { System, CelestialBody, Barycenter, Tag, RulePack, TemporalState } from '$lib/types';
 import { temporalForExport } from '$lib/temporal/defaults';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
@@ -403,8 +404,20 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
     // existed; a saved instance still wearing exactly that stamped default follows the template
     // forward. A GM who CHOSE a different shape chose it - any other icon_type survives untouched
     // (the authored-data rule, read at the right grain: the cross was the template's choice).
-    const cn = node as { megaType?: string; icon_type?: string };
+    const cn = node as { megaType?: string; icon_type?: string; placement?: string; parentId?: string | null; orbit?: { elements?: { a_AU?: number } } };
     if (cn.megaType === 'space-elevator' && cn.icon_type === 'cross') cn.icon_type = 'mast';
+    // G53 (2026-09-01, found live): the rich-picker create path stamped surface-only megas with a
+    // generic mid-orbit and no 'Surface' placement, so their ribbons stood at the system origin.
+    // Heal a saved one: a surface-only mega type (registry allowedPlacements exactly ['Surface'])
+    // becomes Surface at its host's radius. A GM cannot have chosen the broken state - the dialog
+    // never offered it - so this is the template's stamp following the template, not an override.
+    const mdef = megaTypeDef(cn.megaType);
+    if (mdef && mdef.allowedPlacements && mdef.allowedPlacements.length === 1
+        && mdef.allowedPlacements[0] === 'Surface' && cn.placement !== 'Surface') {
+      cn.placement = 'Surface';
+      const hostNode = system.nodes.find((h) => h.id === cn.parentId) as { radiusKm?: number } | undefined;
+      if (cn.orbit?.elements && hostNode?.radiusKm) cn.orbit.elements.a_AU = hostNode.radiusKm / 149597870.7;
+    }
     if (node.kind === 'barycenter') { stripBarycenter(node as Barycenter); continue; }
     if (node.kind !== 'body') continue;
     stripBody(node as CelestialBody, classNames);

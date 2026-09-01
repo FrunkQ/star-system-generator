@@ -286,3 +286,19 @@ describe('the elevator mast migration (G53, 2026-09-01)', () => {
 		expect((out.nodes[2] as { icon_type?: string }).icon_type).toBe('cross');  // a non-elevator cross is untouched
 	});
 });
+
+describe('the stranded-elevator heal (G53, 2026-09-01)', () => {
+	it('a surface-only mega without Surface placement is re-anchored to its host radius', () => {
+		const sys = {
+			id: 's', name: 's', nodes: [
+				{ id: 'earth', name: 'Earth', kind: 'body', roleHint: 'planet', radiusKm: 6371, tags: [], parentId: 'sol' },
+				{ id: 'e1', name: 'Elev', kind: 'construct', megaType: 'space-elevator', icon_type: 'mast', tags: [], parentId: 'earth',
+				  placement: 'High Orbit', orbit: { hostId: 'earth', hostMu: 4e14, t0: 0, elements: { a_AU: 0.00498, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } } }
+			]
+		} as unknown as System;
+		const out = fixUpImportedSystem(sys);
+		const e = out.nodes[1] as { placement?: string; orbit?: { elements: { a_AU: number } } };
+		expect(e.placement).toBe('Surface');
+		expect(e.orbit!.elements.a_AU).toBeCloseTo(6371 / 149597870.7, 12);
+	});
+});
