@@ -8,6 +8,8 @@
   import { megaTypeDef } from '$lib/constructs/megaTypes';
   import { effectiveMegaRequires, megaHardCheck, megaSteerNotes, hostHasSurface } from '$lib/constructs/megaPlacement';
   import { calculateGoldilocksZone } from '$lib/physics/zones';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let rulePack: RulePack;
   export let hostBody: CelestialBody; // The body the user right-clicked on
@@ -229,7 +231,7 @@
   }
 </script>
 
-<div class="modal-background">
+<div class="modal-background" use:foreground>
   <div class="modal">
     <h2>Add New Construct to {hostBody.name}</h2>
 

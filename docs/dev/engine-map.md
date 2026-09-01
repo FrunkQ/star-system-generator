@@ -2025,6 +2025,26 @@ was destroyed by the workaround, not by the bug. A rescue that ran the same pipe
 same way. This is why it is offered on the safe-mode screen, BEFORE any retry.
 BLAST: adding assets/bundling to this path would reintroduce the dependency. Keep it dumb.
 
+### UI-L8 IN A HIDDEN BROWSER PANE A CSS TRANSITION NEVER ADVANCES, SO ANIMATED GEOMETRY READS FROZEN
+BUCKET: PLATFORM (the agent browser pane) - it is E7 in a new costume, and it lies in the one
+direction that matters: the DOM and the cascade are correct and the MEASUREMENT is wrong.
+WHERE: any `transition:` on a measured property. Found on `components/BottomSheet.svelte`
+(`transition: height 0.22s`), measuring the phone sheet during A84.
+RULE: before believing ANY geometry read out of a hidden pane, kill animation:
+`*,*::before,*::after{transition:none !important;animation:none !important;}` injected as a style
+element. Without it a transitioned property reports its START value for ever, because the
+transition clock is the frame clock and the frame clock is stopped (E7).
+WHY: A84. The sheet's inline style said `height: 406px` - Svelte had computed the promotion
+correctly - and `getComputedStyle().height` said `86px`, the pre-transition value. Setting
+`height: 500px !important` inline changed nothing, which reads exactly like a cascade fight and is
+not one: a control element with the same rules and NO transition measured 500 px immediately. The
+wrong conclusion available at every step was "my change did not work", and acting on it would have
+meant rewriting a fix that was already correct.
+BLAST: also affects `scroll-behavior: smooth`, view transitions, and anything measured after a
+class change that animates. **NEVER `await requestAnimationFrame` in a hidden pane** - it never
+resolves and the tool call times out at 45 s; use `setTimeout`. Screenshots still need the pane
+DISPLAYED; this only makes DOM geometry trustworthy while it is not.
+
 ### UI-L7 A loop sized in MAP units is unbounded, because zoom is fitted to the map's own extent
 BUCKET: ARCHITECTURE - durable and general: a loop that steps in WORLD units under a FITTED zoom is
 bounded by the DATA's extent, not by anything on screen. And a GATE and a CAP are two different
@@ -3419,6 +3439,34 @@ reported in the ship's log while `totalTime_days` stopped at the moment the ship
 so a Mars arrival was drawn parked for the 615 days it was still aerobraking. Repeated passes draw as
 one dip because the loops coincide, and the drawn count is CAPPED at 24 with the real count in the
 label rather than silently truncated.
+
+### UI-C14 A DIALOG DECLARED INSIDE CHROME IS HIDDEN BY THE RULE THAT HIDES CHROME
+BUCKET: ARCHITECTURE - durable: a rule that hides a whole SUBTREE is unsafe the moment the thing
+it is protecting can be IN that subtree. The general form: any "hide X while Y" rule must be able
+to state that Y is never a descendant of X, or move Y where it cannot be.
+WHERE: `ui/foreground.ts` (`foreground` now re-parents its node to <body>; pinned by
+`foreground.spec.ts`) and `ui/foregroundContract.spec.ts`, which enforces registration across the
+tree. Joined by the one rule at the foot of `styles/tokens.css` (UI-C6).
+RULE: `use:foreground` PORTALS its element to `<body>`, and only ever when the element computes
+`position: fixed` - for a fixed box the move cannot change layout, because its geometry never
+depended on its parent. A dialog is a document-level thing wherever it is declared. Do not
+"fix" a case like this by gating the chrome rule on which modal is open: that is the list UI-C6
+rejected, wearing a new hat.
+WHY: A84. UI-C6 was built on the assumption - stated in `foreground.ts`'s own header - that
+modals are rendered OUTSIDE `<AppShell>` as siblings. True of the ones declared in `+page.svelte`;
+FALSE of any modal a panel opens for ITSELF. `AIExpansionModal` is rendered by `DescriptionEditor`,
+which on a phone lives inside the bottom sheet, so opening it set `data-foreground`, the rule put
+`display: none` on `.sse-chrome`, and the sheet took the modal down with it. MEASURED at 375x812:
+the backdrop computed `width: 100%; height: 100%` and its box was 0 x 0, with `.bottom-sheet`
+`display: none` three levels up. The owner reported it as "the LLM description screen is broken on
+mobile"; the transit planner's blocked-journey dialog had the identical fault.
+BLAST: **a portalled node is no longer where Svelte left it**, so the action removes it on destroy
+rather than trusting the framework to find it. A backdrop that relied on DOM event BUBBLING to an
+ancestor outside itself would stop working - none does; component events (`createEventDispatcher`)
+are unaffected. Scoped styles ride on the element's own hash class and travel with it. THIRTEEN
+backdrops were found never registering at all, which is why the contract is now a GATE and not a
+convention: a new full-viewport fixed layer is RED until it registers or is listed as not-a-dialog
+with a reason.
 
 ### UI-C13 A SLIDER AND THE BAND PAINTED BEHIND IT ARE ONE AXIS, AND THE AXIS IS DATA
 BUCKET: IMPLEMENTATION - durable: two halves of one control must not each decide their own scale.

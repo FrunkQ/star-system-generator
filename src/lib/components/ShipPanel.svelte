@@ -9,6 +9,8 @@
   import ConstructSidePanel from './ConstructSidePanel.svelte';
   import ConstructDerivedSpecs from './ConstructDerivedSpecs.svelte';
   import ShipLogPane from './ShipLogPane.svelte';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let construct: CelestialBody;
   export let system: System;
@@ -53,7 +55,7 @@
   $: kinematicState = status === 'transit' ? 'Transit' : status === 'adrift' ? 'Deep Space' : status === 'arrived' ? 'Orbiting' : null;
 </script>
 
-<div class="ship-bg" on:click={() => dispatch('close')} role="presentation">
+<div class="ship-bg" on:click={() => dispatch('close')} role="presentation" use:foreground>
 <div class="ship-panel" on:click|stopPropagation role="dialog" aria-label="Ship">
   <header>
     <div class="title">

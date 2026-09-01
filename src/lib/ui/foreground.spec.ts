@@ -80,3 +80,94 @@ describe('the marker CSS actually keys off', () => {
     f.destroy(); h.destroy();
   });
 });
+
+/**
+ * A84 — A MODAL DECLARED INSIDE CHROME WAS HIDDEN BY ITS OWN CHROME RULE.
+ *
+ * A52 built the yield rule on one assumption, stated in this module's own header: that modals are
+ * rendered OUTSIDE `<AppShell>` as siblings. That holds for the app-level ones in `+page.svelte`.
+ * It does NOT hold for a modal a panel opens for itself — `AIExpansionModal` is rendered by
+ * `DescriptionEditor`, which on a phone lives inside the bottom sheet. So opening it set
+ * `data-foreground`, the CSS rule put `display: none` on `.sse-chrome`, and the sheet took the
+ * modal down with it. MEASURED IN THE RUNNING APP at 375x812: the backdrop computed
+ * `width: 100%; height: 100%` and its box was 0 x 0, with `.bottom-sheet` `display: none` three
+ * levels up. Exactly the owner's "the LLM description screen is broken on mobile".
+ *
+ * THE FIX IS STILL NOT A LIST. `use:foreground` re-parents its node to `<body>`, so a dialog is a
+ * document-level thing wherever it is declared — every one that exists and every one added next
+ * month. The guard is a PROPERTY, not a roster: only a `position: fixed` node is moved, and for a
+ * fixed node the move cannot change layout, because its box never depended on its parent. (All 25
+ * `use:foreground` sites in the tree are fixed; the guard is there so the 26th cannot be surprised
+ * by it.)
+ */
+describe('A84 — a foreground dialog escapes the chrome it was declared inside', () => {
+  beforeEach(() => __resetForeground());
+
+  /** The real shape: a chrome container the yield rule hides, with a dialog declared inside it. */
+  const nested = () => {
+    const sheet = document.createElement('section');
+    chrome(sheet);                       // the bottom sheet marks itself, as it really does
+    const panel = document.createElement('div');
+    sheet.appendChild(panel);
+    const backdrop = document.createElement('div');
+    backdrop.style.position = 'fixed';   // every backdrop in the tree is fixed
+    panel.appendChild(backdrop);
+    document.body.appendChild(sheet);
+    return { sheet, panel, backdrop };
+  };
+
+  it('moves the dialog out from under the chrome that is about to be hidden', () => {
+    const { sheet, backdrop } = nested();
+    expect(sheet.contains(backdrop)).toBe(true);
+    const h = foreground(backdrop);
+    expect(backdrop.parentElement, 'the dialog must hang off <body>').toBe(document.body);
+    expect(sheet.contains(backdrop), 'and no longer off the hidden chrome').toBe(false);
+    h.destroy();
+    sheet.remove();
+  });
+
+  it('still registers and releases while doing it', () => {
+    const { sheet, backdrop } = nested();
+    const h = foreground(backdrop);
+    expect(get(foregroundOpen)).toBe(true);
+    h.destroy();
+    expect(get(foregroundOpen)).toBe(false);
+    // and it takes itself off the document, so a portalled node cannot outlive its component
+    expect(backdrop.parentElement).toBeNull();
+    sheet.remove();
+  });
+
+  it('leaves a NON-fixed element exactly where it was — the guard is the property, not a list', () => {
+    const host = document.createElement('div');
+    const inflow = document.createElement('div');   // no position: fixed
+    host.appendChild(inflow);
+    document.body.appendChild(host);
+    const h = foreground(inflow);
+    expect(inflow.parentElement, 'an in-flow element must not be relocated').toBe(host);
+    expect(get(foregroundOpen)).toBe(true);
+    h.destroy();
+    host.remove();
+  });
+
+  it('is idempotent for a dialog already declared at the top level', () => {
+    const b = document.createElement('div');
+    b.style.position = 'fixed';
+    document.body.appendChild(b);
+    const h = foreground(b);
+    expect(b.parentElement).toBe(document.body);
+    h.destroy();
+  });
+
+  it('stacks: two nested dialogs both escape, and the count still holds the chrome down', () => {
+    const a = nested(), c = nested();
+    const h1 = foreground(a.backdrop), h2 = foreground(c.backdrop);
+    expect(a.backdrop.parentElement).toBe(document.body);
+    expect(c.backdrop.parentElement).toBe(document.body);
+    expect(get(foregroundDepth)).toBe(2);
+    h2.destroy();
+    expect(get(foregroundOpen)).toBe(true);
+    h1.destroy();
+    expect(get(foregroundOpen)).toBe(false);
+    a.sheet.remove(); c.sheet.remove();
+  });
+});

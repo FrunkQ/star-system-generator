@@ -4,6 +4,8 @@
   import type { RulePack } from '$lib/types';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { loadBaseMapManifest } from '$lib/map/baseMapManifest';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let rulepacks: RulePack[];
   export let hasSavedStarmap: boolean;
@@ -63,7 +65,7 @@
   }
 </script>
 
-<div class="modal-background">
+<div class="modal-background" use:foreground>
   <div class="modal">
     <div class="left-pane">
         <img src="/images/ui/SSE-Logo.png" alt="Star System Explorer" class="main-logo" />

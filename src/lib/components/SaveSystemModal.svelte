@@ -5,6 +5,8 @@
   // is recognisable later. The GM/Player and constructs options are unchanged.
   import { createEventDispatcher } from 'svelte';
   import { hubSavesEnabled, hubSavesOffered } from '$lib/hub/hubSaves';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   /** Which world this save covers. 'system' = the open system only; 'starmap' = the whole campaign. */
   export let scope: 'system' | 'starmap' = 'system';
@@ -33,7 +35,7 @@
   }
 </script>
 
-<div class="modal-background" on:click={() => dispatch('close')}>
+<div class="modal-background" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" on:click|stopPropagation>
     {#if scope === 'starmap'}
       <h2>Save the whole campaign</h2>

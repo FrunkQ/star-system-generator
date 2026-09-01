@@ -35,6 +35,7 @@
   import SaveSystemModal from './SaveSystemModal.svelte';
   import SisterFileModal from './SisterFileModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
+  import { wantedSnap, promoteSnap } from '$lib/ui/sheetSnap';
   import type { TransitPlan } from '$lib/transit/types';
   import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast, needsStampedPosition } from '$lib/transit/scheduler';
 
@@ -89,6 +90,15 @@
   // phone). `dispatch('new'|'open'|'save'|'settings'|'llmsettings')` forwards the rail's app
   // nav up to +page. Phone FAB actions:
   let mode: 'desktop' | 'phone' = 'desktop';
+  // A84: THE PHONE SHEET'S HEIGHT FOLLOWS WHAT IS IN IT.
+  //
+  // `BottomSheet` says in its own header that `snap` is bindable "so the host can promote it (e.g.
+  // to 'half' when a body is selected)". This host never did: `sheetSnap` was declared, bound to
+  // AppShell and never assigned, so every detail pane on a phone opened into an 86-pixel peek and
+  // stayed there. Measured at 375x812: "Plan Transit" put a 663 px planner inside an 87 px sheet.
+  //
+  // The rule is in `ui/sheetSnap.ts` so it can be gated, and it only ever PROMOTES — a GM who has
+  // dragged the sheet full does not want the next selection to shrink it back.
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
@@ -2128,6 +2138,16 @@
     if (contextMenu && !contextMenu.contains(event.target as Node)) {
       showSummaryContextMenu = false;
     }
+  }
+
+  // A FULL-PANEL FLOW is one that REPLACES the detail pane with a workflow of its own, rather than
+  // adding to it — the transit planner and the ship log. Half a transit planner is not usable, and
+  // both are reached from a phone by tapping a button on a panel that is 86 px tall.
+  $: if (mode === 'phone') {
+      sheetSnap = promoteSnap(sheetSnap, wantedSnap({
+          focused: !!focusedBody,
+          fullPanel: isPlanning || isShipLogOpen
+      }));
   }
 
   function handleStartPlanning() {

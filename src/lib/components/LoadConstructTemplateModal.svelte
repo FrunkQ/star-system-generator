@@ -9,6 +9,8 @@
   import { calculateGoldilocksZone } from '$lib/physics/zones';
   import { systemStore } from '$lib/stores';
   import MegaPreview from '$lib/constructs/MegaPreview.svelte';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let rulePack: RulePack;
   export let mode: 'overwrite' | 'create' = 'overwrite';
@@ -154,7 +156,7 @@
   function close() { dispatch('close'); }
 </script>
 
-<div class="modal-background" on:click={close}>
+<div class="modal-background" on:click={close} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <h2>{mode === 'create' ? (megaTabAvailable ? 'Create New Construct/Megaconstruct' : 'Create New Construct') : 'Load Construct Template'}</h2>
     {#if mode === 'overwrite'}
