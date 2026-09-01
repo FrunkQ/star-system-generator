@@ -6,6 +6,13 @@ fifth of a session's context (`PLAYBOOK.md`), and every file:line below is that 
 **Every code claim here was verified in the tree at v3.0.177. A worker still re-verifies line numbers
 before editing** — the tree moves.
 
+**EVERY STREAM, regardless of its own read list:** the repo's `CLAUDE.md` is the front door (four
+documents in reading order), the STANDING RULES at the foot of `docs/dev/observations-inbox.md` are
+the house coding rules, `docs/dev/engine-map.md` is grepped for your territory before you agree
+anything needs a change and maintained IN THE SAME COMMIT as code, and
+`docs/process-templates/PLAYBOOK.md` is read once per session. A brief pre-pays the entry fee; it
+does not replace the reading.
+
 ---
 
 ## TWO ADJUSTMENTS TO THE SPLIT, before handing these out
