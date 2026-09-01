@@ -2,9 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.266 - 2nd Sep 2026
+
+- Board only: the megastructure row records the three separate faults behind one symptom (the elevator's glyph, its placement and its drawn length), and a changelog entry that lost its blank line in a merge gets it back.
+
 ## v3.0.265 - 2nd Sep 2026
 
 - The beanstalk is finally the right LENGTH. It stood in the right place from the last release, but it was drawn scaled by its own height on top of its host's - the units squared - so a ribbon reaching 5.6 Earth radii to geostationary came out as a tick beside the planet. A structure measured in multiples of its world's radius is now scaled by that world's live drawn radius every frame, exactly as Saturn's rings already are, so the ribbon grows and shrinks with the globe at every zoom and dial position instead of drifting out of step with it.
+
 ## v3.0.264 - 1st Sep 2026
 
 - A screenshot you take of your own map no longer counts against you when you share it. The attributions file lists every uploaded picture and model and flags the ones with nothing recorded, and a sharing site uses that to decide whether a map is ready to go public - so a beauty shot of your own campaign was being treated as somebody else's uncredited art, and could have stopped you publishing your own work. A captured view now says what it is: made here, from this file, with everything in it already credited on the same page. A capture that claims a licence and still names nobody is called out exactly as before, because that is wrong whoever took the picture.
