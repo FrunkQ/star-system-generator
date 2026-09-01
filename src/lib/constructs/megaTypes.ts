@@ -157,9 +157,14 @@ export type MegaShapeSpec =
     }
   | {
       family: 'tether';
-      /** Surface to top anchor, km. `null` when the host has no real geostationary — there is no
-       *  tether to draw, and the spec says so rather than inventing a length. */
+      /** The GEOSTATIONARY DOCK altitude, km — where the mast glyph's knob rides ("the blob is
+       *  geostationary"). `null` when the host has no real geostationary — there is no tether to
+       *  draw, and the spec says so rather than inventing a length. */
       topAltitudeKm: number | null;
+      /** Where the COUNTERWEIGHT rides, km — ABOVE geo, or the ribbon would hold no tension (the
+       *  owner's correction, 2026-09-01). Default is a 1.25x design margin over geo; an instance
+       *  with authored ribbon dimensions overrides this in the builder. */
+      counterweightAltitudeKm: number | null;
     }
   | { family: 'spheroid'; dimensionsM: readonly [number, number, number] };
 
@@ -321,7 +326,8 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       return out;
     },
     shape(_params, host) {
-      return { family: 'tether', topAltitudeKm: realGeoAltitudeKm(host) };
+      const geo = realGeoAltitudeKm(host);
+      return { family: 'tether', topAltitudeKm: geo, counterweightAltitudeKm: geo != null ? geo * 1.25 : null };
     }
   },
   {

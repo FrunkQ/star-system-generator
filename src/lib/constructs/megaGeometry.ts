@@ -33,6 +33,10 @@ export interface BuiltMegaGeometry {
   /** True when the habitable face points INWARD (a ring or shell interior), so the caller knows to
    *  render `THREE.BackSide` and light from the centre outward (§5b.4b). */
   interior: boolean;
+  /** TETHER ONLY: the GEOSTATIONARY DOCK — where the LO/MO/GO ladder tops out and the mast
+   *  glyph's knob rides. Scene units from the host's centre; drawn size is the same readability
+   *  device as the counterweight's. */
+  dock?: { atScene: number; radiusScene: number };
   /**
    * TETHER ONLY: where the captured-asteroid counterweight rides, and how big to draw it — both in
    * scene units from the host's centre, along the ribbon.
@@ -121,7 +125,7 @@ function fibonacciPoints(
 export function buildMegaGeometry(
   spec: MegaShapeSpec,
   radiusScene: number,
-  opts: { hostRadiusScene?: number; hostRadiusKm?: number } = {}
+  opts: { hostRadiusScene?: number; hostRadiusKm?: number; ribbonLengthKm?: number } = {}
 ): BuiltMegaGeometry | null {
   if (spec.family === 'tether') {
     // A LINE, not a mesh problem (§5b's whole point). Two points: the anchor on the host's surface
@@ -133,7 +137,17 @@ export function buildMegaGeometry(
     // Scene units per km, from the host's own drawn size — so the ribbon's length is in the same
     // currency as the world it stands on rather than a second scale.
     const perKm = hostKm > 0 ? hostR / hostKm : 0;
-    const topScene = hostR + spec.topAltitudeKm * perKm;
+    // GEO IS THE DOCK, NOT THE TOP (the owner's correction, 2026-09-01): a counterweight AT geo
+    // would hold no tension. The ribbon runs to the counterweight - the instance's authored
+    // length when it has one and it reaches past geo, else the spec's 1.25x design margin - and
+    // the dock knob rides at geo, which is what the mast glyph promises.
+    const geoAlt = spec.topAltitudeKm;
+    const authored = opts.ribbonLengthKm;
+    const cwAlt = authored && authored > geoAlt
+      ? authored
+      : (spec.counterweightAltitudeKm ?? geoAlt * 1.25);
+    const dockScene = hostR + geoAlt * perKm;
+    const topScene = hostR + Math.max(cwAlt, geoAlt) * perKm;
     // A slim BOX rather than a line primitive: WebGL lines are one pixel whatever you ask for,
     // and one pixel over a bright limb is no ribbon at all (see TETHER_WIDTH_HOST_FRAC).
     const w = Math.max(1e-9, hostR * TETHER_WIDTH_HOST_FRAC);
@@ -142,6 +156,7 @@ export function buildMegaGeometry(
     geometry.translate(0, hostR + len / 2, 0);
     return {
       geometry, mode: 'ribbon', radiusScene: topScene, interior: false,
+      dock: { atScene: dockScene, radiusScene: Math.max(1e-9, hostR * COUNTERWEIGHT_HOST_FRAC * 0.55) },
       counterweight: { atScene: topScene, radiusScene: Math.max(1e-9, hostR * COUNTERWEIGHT_HOST_FRAC) }
     };
   }

@@ -46,10 +46,11 @@ export function traceConstructIcon(
   } else if (shape === 'mast') {
     // THE BEANSTALK (G53, owner-picked): a full-height stem with the knob at the GEOSTATIONARY
     // point - "the blob is geostationary" - so the ribbon honestly runs PAST it to the
-    // counterweight. Knob centre sits a third of the way down from the top.
+    // counterweight. The knob sits at the CANONICAL proportion (owner's correction, 2026-09-01):
+    // Earth's geo at 35,786 km on the template's 45,000 km ribbon is ~4/5 of the way up.
     const t = size / 6;
     const r = size / 5;
-    const knobY = cy - h + size / 3;
+    const knobY = cy - h + size * 0.2;
     ctx.rect(cx - t / 2, cy - h, t, size);
     ctx.moveTo(cx + r, knobY);
     ctx.arc(cx, knobY, r, 0, 2 * Math.PI);
@@ -78,10 +79,10 @@ export function constructIconPath(shape: ConstructIconShape, cx = 0, cy = 0, siz
          + `H${cx - q} V${cy + q} H${cx - h} V${cy - q} H${cx - q} Z`;
   }
   if (shape === 'mast') {
-    // Stem the full height, knob (the geostationary dock) a third down from the top - same
-    // geometry as the canvas case above, one table (this module's whole point).
+    // Stem the full height, knob (the geostationary dock) at the canonical ~4/5 proportion -
+    // same geometry as the canvas case above, one table (this module's whole point).
     const t = size / 6, q = t / 2, r = size / 5;
-    const knobY = cy - h + size / 3;
+    const knobY = cy - h + size * 0.2;
     return `M${cx - q},${cy - h} H${cx + q} V${cy + h} H${cx - q} Z `
          + `M${cx - r},${knobY} a${r},${r} 0 1,0 ${2 * r},0 a${r},${r} 0 1,0 ${-2 * r},0 Z`;
   }

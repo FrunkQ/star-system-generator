@@ -147,17 +147,38 @@ describe('the tether', () => {
     expect(built.mode).toBe('ribbon');
     const b = boundsOf(built.geometry);
     expect(b.minY).toBeCloseTo(0.2, 6);                     // anchored on the surface
-    // Geostationary is 35,786 km up on a 6,371 km world — 6.6 host radii from the centre.
-    expect(b.maxY / 0.2).toBeCloseTo(1 + 35786 / 6371, 3);
+    // The ribbon tops at the COUNTERWEIGHT - the 1.25x margin above geo (the dock test below
+    // pins geo itself); on a 6,371 km world that is ~8.0 host radii from the centre.
+    expect(b.maxY / 0.2).toBeCloseTo(1 + (35786 * 1.25) / 6371, 3);
     const w = b.maxX - b.minX;
     expect(w).toBeGreaterThan(0);
     expect(w).toBeLessThan(built.counterweight!.radiusScene * 2); // thinner than the rock it carries
   });
 
+  it('the ribbon runs PAST geostationary to the counterweight, with the DOCK at geo', () => {
+    // The owner's correction (2026-09-01): geo is the dock, not the top - a counterweight AT geo
+    // would hold no tension. Ribbon top defaults to 1.25x geo altitude; the dock knob rides at geo.
+    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
+    const b = boundsOf(built.geometry);
+    expect(b.maxY / 0.2).toBeCloseTo(1 + (35786 * 1.25) / 6371, 3);
+    expect(built.dock).toBeTruthy();
+    expect(built.dock!.atScene / 0.2).toBeCloseTo(1 + 35786 / 6371, 6);          // the geo dock
+    expect(built.dock!.atScene).toBeLessThan(built.counterweight!.atScene);       // dock below rock
+  });
+
+  it('an authored ribbon length wins over the default margin - but can never sink below geo', () => {
+    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0,
+      { hostRadiusScene: 0.2, hostRadiusKm: 6371, ribbonLengthKm: 45000 })!;
+    expect(boundsOf(built.geometry).maxY / 0.2).toBeCloseTo(1 + 45000 / 6371, 3); // the template's 45,000 km
+    const clamped = buildMegaGeometry(specOf('space-elevator', earth()), 0,
+      { hostRadiusScene: 0.2, hostRadiusKm: 6371, ribbonLengthKm: 100 })!;        // nonsense: below geo
+    expect(boundsOf(clamped.geometry).maxY / 0.2).toBeGreaterThan(1 + 35786 / 6371); // geo still inside
+  });
+
   it('carries a captured-asteroid counterweight at the top of the ribbon', () => {
     const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
     expect(built.counterweight).toBeTruthy();
-    // The rock rides at geostationary — the same figure the ribbon ends at, not a second answer.
+    // The rock rides at the ribbon's TOP - above geo, where a counterweight belongs.
     expect(built.counterweight!.atScene).toBeCloseTo(built.radiusScene, 9);
     // 6 places, not more: the vertex buffer is a Float32Array (~7 significant figures) while
     // `atScene` is a double, so a tighter assertion measures IEEE rounding rather than the code.

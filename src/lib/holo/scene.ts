@@ -2732,10 +2732,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // NOT `bodyById` - it is rebuilt AFTER this loop, so during the attach it is empty and a
       // tether would have been built against a host radius of zero. Ask the scale law directly,
       // which is the same answer the host's own visual will get a moment later.
+      const dims = (node?.physical_parameters?.dimensionsM ?? []) as number[];
+      const authoredRibbonKm = Math.max(0, ...dims.map((d: number) => Math.abs(Number(d)) || 0)) / 1000;
       const built = spec.family === 'tether'
         ? buildMegaGeometry(spec, 0.5, {
             hostRadiusScene: host ? bodyRadiusScene(host, true) : 0,
-            hostRadiusKm: radiusKmOf(host)
+            hostRadiusKm: radiusKmOf(host),
+            // The instance's own authored ribbon length (its long axis) sets the counterweight
+            // height when it reaches past geo - the template authors 45,000 km on Earth.
+            ribbonLengthKm: authoredRibbonKm > 0 ? authoredRibbonKm : undefined
           })
         : buildMegaGeometry(spec, 0.5);
       if (!built) return false;
@@ -2752,6 +2757,20 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           color: col, emissive: col, emissiveIntensity: wire ? 1 : 0.55,
           metalness: 0.15, roughness: 0.6, wireframe: wire, transparent: true, opacity: 0.95
         })));
+        // THE GEO DOCK - the mast glyph's knob, in three dimensions: a small station ball at
+        // geostationary, below the rock, where the LO/MO/GO ladder tops out (design §7).
+        const dk = built.dock;
+        if (dk) {
+          const ball = new THREE.Mesh(
+            new THREE.SphereGeometry(dk.radiusScene, 10, 8),
+            new THREE.MeshStandardMaterial({
+              color: col, emissive: col, emissiveIntensity: 0.5,
+              metalness: 0.2, roughness: 0.5, wireframe: wire
+            })
+          );
+          ball.position.set(0, dk.atScene, 0);
+          g.add(ball);
+        }
         const cw = built.counterweight;
         if (cw) {
           // The counterweight is a CAPTURED ASTEROID (§5b.7), so it is drawn as a rock rather than

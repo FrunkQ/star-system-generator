@@ -63,12 +63,14 @@ describe('space elevator — the taper sentence, anchored on Earth', () => {
     expect(out.geoAltitudeKm).toBeNull();
     expect(out.tetherSpecificStrengthGPa).toBeUndefined(); // no number where none has meaning (§3.4.1)
     const spec = d.shape(defaultMegaParams(d, locked), locked);
-    expect(spec).toEqual({ family: 'tether', topAltitudeKm: null });
+    expect(spec).toEqual({ family: 'tether', topAltitudeKm: null, counterweightAltitudeKm: null });
   });
 
   it('the tether spec tops out at the real geostationary', () => {
     const d = def('space-elevator');
-    expect(d.shape(defaultMegaParams(d, earth()), earth())).toEqual({ family: 'tether', topAltitudeKm: 35786 });
+    // The DOCK is at geostationary; the ribbon runs PAST it to the counterweight - by default a
+    // 1.25x design margin above geo (the owner's own template authors 45,000 km on Earth, ~1.26x).
+    expect(d.shape(defaultMegaParams(d, earth()), earth())).toEqual({ family: 'tether', topAltitudeKm: 35786, counterweightAltitudeKm: 35786 * 1.25 });
   });
 });
 
