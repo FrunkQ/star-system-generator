@@ -12,9 +12,9 @@
 // to a triangle, so a construct with no authored icon_type drew as a different shape on the starmap
 // than on the orrery, the holo scene and in its own info block.
 
-export type ConstructIconShape = 'triangle' | 'circle' | 'diamond' | 'cross' | 'square';
+export type ConstructIconShape = 'triangle' | 'circle' | 'diamond' | 'cross' | 'square' | 'mast';
 
-export const CONSTRUCT_ICON_SHAPES: ConstructIconShape[] = ['triangle', 'circle', 'diamond', 'cross', 'square'];
+export const CONSTRUCT_ICON_SHAPES: ConstructIconShape[] = ['triangle', 'circle', 'diamond', 'cross', 'square', 'mast'];
 
 export function constructIconShape(iconType: string | undefined | null): ConstructIconShape {
   const s = String(iconType || '').toLowerCase();
@@ -43,6 +43,16 @@ export function traceConstructIcon(
     ctx.rect(cx - h, cy - t / 2, size, t);
   } else if (shape === 'square') {
     ctx.rect(cx - h, cy - h, size, size);
+  } else if (shape === 'mast') {
+    // THE BEANSTALK (G53, owner-picked): a full-height stem with the knob at the GEOSTATIONARY
+    // point - "the blob is geostationary" - so the ribbon honestly runs PAST it to the
+    // counterweight. Knob centre sits a third of the way down from the top.
+    const t = size / 6;
+    const r = size / 5;
+    const knobY = cy - h + size / 3;
+    ctx.rect(cx - t / 2, cy - h, t, size);
+    ctx.moveTo(cx + r, knobY);
+    ctx.arc(cx, knobY, r, 0, 2 * Math.PI);
   } else {
     // triangle (the default) — bodies are spheres, constructs read as triangles
     ctx.moveTo(cx, cy - h); ctx.lineTo(cx + h, cy + h); ctx.lineTo(cx - h, cy + h);
@@ -66,6 +76,14 @@ export function constructIconPath(shape: ConstructIconShape, cx = 0, cy = 0, siz
     const t = size / 3, q = t / 2;
     return `M${cx - q},${cy - h} H${cx + q} V${cy - q} H${cx + h} V${cy + q} H${cx + q} V${cy + h} `
          + `H${cx - q} V${cy + q} H${cx - h} V${cy - q} H${cx - q} Z`;
+  }
+  if (shape === 'mast') {
+    // Stem the full height, knob (the geostationary dock) a third down from the top - same
+    // geometry as the canvas case above, one table (this module's whole point).
+    const t = size / 6, q = t / 2, r = size / 5;
+    const knobY = cy - h + size / 3;
+    return `M${cx - q},${cy - h} H${cx + q} V${cy + h} H${cx - q} Z `
+         + `M${cx - r},${knobY} a${r},${r} 0 1,0 ${2 * r},0 a${r},${r} 0 1,0 ${-2 * r},0 Z`;
   }
   return `M${cx},${cy - h} L${cx + h},${cy + h} L${cx - h},${cy + h} Z`;   // triangle
 }

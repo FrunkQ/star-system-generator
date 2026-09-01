@@ -279,7 +279,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     label: 'Space Elevator',
     family: 'tether',
     hint: 'A ribbon from the surface to a counterweight above geostationary — surface to orbit at almost no delta-v.',
-    icon: 'cross',
+    icon: 'mast',
     requires: {
       hard: { hostKind: ['planet', 'moon'], hasSurface: true, needsGeostationary: true },
       steer: { geoBelowHillFraction: 0.5 }

@@ -1103,6 +1103,14 @@ copy would need dedup, pruning and time-scrub handling. Derive per dock node the
 
 ---
 
+> **THE ELEVATOR'S DOCK LADDER — owner, 2026-09-01, captured for the phase-5 `dockNodes` work:**
+> *"in the transit planner we need to have new options - LO - Elevator, MO - Elevator, GO -
+> Elevator - as there will be multiple docks - kinda why it is so useful. And that would just be a
+> destination tweak - the ship will still be in orbit but aligned with the mast."* So: one dock
+> OPTION per orbit band the ribbon crosses, each an ordinary orbit at that band with an alignment
+> constraint (same longitude as the anchor), not a new flight mechanic. The 2D glyph already says
+> it: the mast's knob IS the geostationary dock.
+
 ## 8. The catalogue
 
 The six named, plus what each one's presence buys.

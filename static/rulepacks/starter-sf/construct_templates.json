@@ -43,7 +43,7 @@
       "description": "A tapered ribbon from an equatorial anchor to a counterweight above geostationary. Surface to orbit at almost no delta-v.",
       "gmNotes": "The taper the ribbon needs depends on the host: Earth demands about 50 GPa cm3/g (carbon nanotube territory; steel manages 2).",
       "IsTemplate": true,
-      "icon_type": "cross",
+      "icon_type": "mast",
       "icon_color": "#8fd3ff",
       "crew": {
         "current": 200,

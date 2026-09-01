@@ -66,7 +66,7 @@ convention this system exists to end: put the fact on the record and make the co
 | 3D attach + anchor | `v.exotic.render3d.anchor` (stamped at attach from the record) | **FLIPPED v3.0.237** | `megaCentred`, `megaTether` DELETED |
 | Click framing | `v.exotic.framing === 'annulus'`; surface-host still keys on `surfaceLock` for ordinary surface constructs (no record to read) | **FLIPPED v3.0.237** | flag reads gone |
 | Labels | clearance reads `render3d.anchor` — a non-'node' exotic clears its MARKER, never its structure span (which hung "Ringworld" a ring-radius into empty sky and "Space Elevator" near its counterweight) | **FLIPPED v3.0.241** — the visibility rule was probed and was never the fault; position was | — |
-| 2D structure | `isMegaRing` (family test) | N2 (carries the elevator glyph tweak) | `isMegaRing` |
+| 2D structure | `isMegaRing` (family test) | N2 - the LAST pending flip (the elevator glyph landed independently v3.0.251: 'mast' joined the icon vocabulary, knob = the geostationary dock) | `isMegaRing` |
 | Apparent-g panel | station-shaped fields | N2 (carries the owner's net-of-host decision — it CHANGES numbers, his call) | the mirrored `physical_parameters` shims |
 | Flux outputs | `mega/shadowed-by` emitted beside the temperature commit from the SAME derivation as the trace (explicit physics origin inside the authored-default mega/ namespace; strip-then-emit, ghost-checked) | **SHIPPED v3.0.246** | — |
 | Menu / panels / LOD / disclosure | single-valued, so NOT declared yet | N5 / phase-5 / N2 / N3 | — |

@@ -40,3 +40,14 @@ describe('construct icon vocabulary', () => {
     }
   });
 });
+
+describe('the mast — the beanstalk glyph (G53, owner-picked 2026-09-01)', () => {
+	it('is vocabulary, not a private shape: the resolver knows it and both emitters serve it', () => {
+		expect(constructIconShape('mast')).toBe('mast');
+		expect((CONSTRUCT_ICON_SHAPES as string[]).includes('mast')).toBe(true);
+		// The knob is the GEOSTATIONARY dock (owner: "the blob is geostationary"), so the stem must
+		// run PAST it to the counterweight - the path reaches above the knob's top.
+		const path = constructIconPath('mast', 0, 0, 12);
+		expect(path.length).toBeGreaterThan(10);
+	});
+});

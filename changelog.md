@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.252 - 1st Sep 2026
+
+- The space elevator finally looks like one on the flat map: a new mast glyph - a full-height stem with its knob at the geostationary dock and the ribbon running honestly past it to the counterweight - replaces the generic cross on new elevators everywhere glyphs are drawn (orrery, starmap, holo, info block). Existing saved elevators keep the icon they were authored with; edit or recreate to adopt the mast.
 ## v3.0.251 - 31st Aug 2026
 
 - Board only. Five owner reports captured and probed: star hover summaries, supermassive black holes, mobile menus missed in the upgrade, the report window and its calendar-blind epoch, and grounding the big-bang clock to a real date.
