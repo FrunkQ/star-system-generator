@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.251 - 31st Aug 2026
+
+- Board only. Five owner reports captured and probed: star hover summaries, supermassive black holes, mobile menus missed in the upgrade, the report window and its calendar-blind epoch, and grounding the big-bang clock to a real date.
+
 ## v3.0.250 - 31st Aug 2026
 
 - A megastructure's shadow now reads as what it is: an eclipse. A world that crosses a ring's shadow shows a Structure Shadow line in its technical block - how often and how long the star goes out (a tilted world behind the default ring: twice an orbit, about three and a half days each) - and a world trapped coplanar behind a solid ring says the honest word: permanent. Local eclipses keep their own Next Eclipse row untouched. The same fact lands as an Eclipsed tag beside Shadowed-by, and the physics trace speaks the cadence in its dimming note - one geometry, one wording, three surfaces.
