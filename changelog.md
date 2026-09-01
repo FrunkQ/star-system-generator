@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.259 - 1st Sep 2026
+
+- The elevator's proportions are now the real ones, in every representation (this shipped in the previous push, which collided with another stream's v3.0.258 and lost its changelog line - recorded here). The counterweight belongs ABOVE geostationary - at geo it would hold no tension - so the 3D ribbon runs past the dock to the counterweight rock (your authored ribbon length wins when it reaches past geo; a 1.25x design margin otherwise), a small station ball marks the geostationary dock on the ribbon itself, and the mast glyph's knob moved to the honest four-fifths position Earth's own numbers give it: 35,786 km of dock on a 45,000 km ribbon.
+
 ## v3.0.258 - 31st Aug 2026
 
 - Board only. The documentation sweep is briefed as an audit: every banked note is checked against the running code before it becomes prose, so nothing garbled by months of fast work gets written into the guides.
