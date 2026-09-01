@@ -97,6 +97,40 @@ export function stampForSave<T extends Provenance>(map: T, opts: { exportMode?: 
 }
 
 /**
+ * R-07: ORDER TWO BUILD STAMPS. Returns <0 when `a` is older than `b`, 0 when they are the same
+ * build, >0 when `a` is newer.
+ *
+ * THE ONLY THING THIS IS FOR IS SAYING SO. `created_with` is a CAPABILITY MARKER, never a gate: a
+ * newer SSE loads an older map, always, and a map from a build this one has never heard of still
+ * opens. Comparing versions to decide whether to REFUSE is the mistake `bundleFormat` exists to
+ * prevent, and this function must never be used that way.
+ *
+ * Numeric parts compare as numbers, so 3.0.9 is older than 3.0.10 (which is where a string compare
+ * gets it wrong). A pre-release suffix orders BEFORE the same version without one - `2.1.692-beta`
+ * is older than `2.1.692` - which is ordinary semver, and the shape this repo's own beta line used
+ * for hundreds of releases. Anything unparseable compares EQUAL, so a garbled stamp produces
+ * silence rather than a wrong claim about which build is older.
+ */
+export function compareBuildVersions(a: string, b: string): number {
+  const parse = (v: string) => {
+    const m = /^\s*v?(\d+(?:\.\d+)*)(?:-([0-9a-z.-]+))?\s*$/i.exec(v ?? '');
+    if (!m) return null;
+    return { nums: m[1].split('.').map(Number), pre: m[2] ?? '' };
+  };
+  const pa = parse(a), pb = parse(b);
+  if (!pa || !pb) return 0; // unparseable: no opinion, and therefore no notice
+  const len = Math.max(pa.nums.length, pb.nums.length);
+  for (let i = 0; i < len; i++) {
+    const d = (pa.nums[i] ?? 0) - (pb.nums[i] ?? 0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  if (pa.pre === pb.pre) return 0;
+  if (!pa.pre) return 1;  // a release is newer than its own pre-release
+  if (!pb.pre) return -1;
+  return pa.pre < pb.pre ? -1 : 1;
+}
+
+/**
  * Which base-map edition a campaign descends from, for maps that predate the stamp.
  *
  * `hasBaseSystems` is the caller's answer to "does this map still contain systems from a bundled base map"

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
+  import { parseHubReference } from '$lib/hub/hubClient';
   import type { RulePack } from '$lib/types';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { loadBaseMapManifest } from '$lib/map/baseMapManifest';
@@ -8,6 +9,13 @@
   export let hasSavedStarmap: boolean;
 
   const dispatch = createEventDispatcher();
+
+  // R-05: whatever the GM pasted, reduced to a map code by the one parser the URL path also uses.
+  let hubRef = '';
+  function openShared() {
+    const slug = parseHubReference(hubRef);
+    if (slug) dispatch('openHub', slug);
+  }
 
   // The bundled starter maps, read from the shipped manifest so a new one appears here by shipping data,
   // never by editing this component. Falls back to the original single entry if the manifest is unreadable
@@ -93,6 +101,26 @@
               <strong>Upload a starmap file</strong>
               <small>Load a starmap saved from this app — a .json file, or a .sse.zip bundle if it carries pictures or ship models.</small>
             </button>
+            <!-- R-05: the same funnel a `?hub=` link uses, for somebody who has the link but is
+                 already in the app. Paste whatever they actually copied: the hub's page for the
+                 map, the one-click link out of a Discord, or a bare map code. -->
+            <div class="option hub-open">
+              <strong>Open a shared map</strong>
+              <small>Paste a link from the map library, or the map's code. Opening replaces the campaign in this browser, so you will be asked first.</small>
+              <div class="hub-open-row">
+                <input
+                  type="text"
+                  bind:value={hubRef}
+                  placeholder="Paste a shared-map link"
+                  aria-label="Shared map link or code"
+                  on:keydown={(e) => { if (e.key === 'Enter') openShared(); }}
+                />
+                <button type="button" disabled={!parseHubReference(hubRef)} on:click={openShared}>Open</button>
+              </div>
+              {#if hubRef.trim() && !parseHubReference(hubRef)}
+                <small class="hub-open-hint">That does not look like a shared-map link yet.</small>
+              {/if}
+            </div>
         </section>
 
         <section class="option-group new-starmap-form">
@@ -266,6 +294,35 @@
   .modal button.option:hover {
     background-color: var(--bg-control);
     border-color: var(--accent);
+  }
+
+  /* The paste-a-link card is a DIV, not a button: it holds a field, so the whole card cannot be
+     one click target. It borrows the option card's look so the group still reads evenly. */
+  .option.hub-open {
+    background-color: var(--bg-control);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 15px;
+    font-weight: bold;
+  }
+  .hub-open-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .hub-open-row input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .hub-open-row button {
+    padding: 5px 12px;
+    white-space: nowrap;
+  }
+  .hub-open-hint {
+    display: block;
+    margin-top: 4px;
+    font-weight: normal;
+    color: var(--text-faint);
   }
 
   .new-starmap-form {

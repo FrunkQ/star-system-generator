@@ -2,9 +2,20 @@
 
 All notable changes are listed here:
 
-## v3.0.247 - 31st Aug 2026
+## v3.0.249 - 1st Sep 2026
+
+- One link now opens a shared map. A link to a map on the Explorer hub - pasted into a Discord, an email, anywhere - starts the app with that map ready to go, instead of a download followed by an import. There is also a box on the load screen for anyone already inside the app: paste the link, the map's page, or just its code, and it works out which you meant, including when the link has tracking rubbish on the end.
+- It asks first, and it always says what will happen. This browser holds one campaign at a time, so opening somebody else's map replaces yours - which is not something a link you clicked out of curiosity should do quietly. You get the map's name, a plain statement that yours will be replaced, and a button to save yours first. A copy of the replaced campaign is kept as a single step back in Settings, the same one the bundled-map upgrade has always used.
+- A shared map is treated as a stranger's file, because it is. It comes in through exactly the same door as a file you dragged in - same checks, same repairs, same refusal to open something that is not a save - and a map code that could point anywhere is refused before the app so much as asks the network for it.
+- A map made by an older build now says so, quietly, once. It is a note about what that build could do, never a reason not to open it.
+- Settings gains a switch for whether the save screen offers to publish to the map library. Publishing itself is built but switched off: it needs two things from the hub first, and one of them is the exact wording of the "I have the right to share this art" confirmation, which cannot be approximated - the whole point of it is that a real person read the real words.
+
+## v3.0.248 - 1st Sep 2026
 
 - A tilted ringworld now treats the drawn zones the way it treats the worlds: barely. A ring shadows only what lines up with its plane, so tilting one is the honest way to keep planets out of its permanent shadow - but the habitable-zone rings were still collapsing at the ring's radius as if it lay flat. The zones now count a band by how aligned with the system plane it actually is: an untilted ring still ends them, a tilted one costs a whisker.
+
+## v3.0.247 - 31st Aug 2026
+
 - A save now counts itself. Every time you save a campaign it writes a revision number, one higher than the last, so two files of the same map can finally be told apart. This exists to stop a specific and entirely realistic way of losing work: you upload your campaign to the sharing site, weeks later you find an older export in your Downloads folder, you upload that as an update, and the newer one is gone. Nothing in a save said which was newer - two real exports of one map nine months apart were checked and neither had anything to go on. Now the site can ask before it overwrites. The number lives with the campaign, so it survives closing the app, and it starts at 1 for every map that has ever existed.
 - Two saves that are deliberately not counted, because neither is new work: the safe-mode "download the stored map" rescue writes out exactly what is in storage, and a single system save is a slice of a campaign rather than a thing with its own history.
 - A saved file now records whether it is the GM copy or the player copy. It is a label and never a lock - anything reading a save still has to look at what is actually inside it, because a file can say anything - but it lets the sharing site print "this is the player version" honestly instead of "no GM-only content found". Single system saves take it from the choice you already made in the save box; campaign saves are always the full GM file and say so.

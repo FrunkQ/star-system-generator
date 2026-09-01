@@ -81,7 +81,9 @@
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { classifySaveFile } from '$lib/io/classify';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
-  import { stampForSave, nextRevision } from '$lib/map/provenance';
+  import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
+  import { fetchHubMap } from '$lib/hub/hubClient';
+  import { HUB } from '$lib/hub/hubConfig';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import { unitKind, campaignUnit, normaliseCampaignUnit, applyUnitChange, type UnitChangeMode } from '$lib/map/distanceUnits';
   import { rescaleMapBackgroundForRuler } from '$lib/map/mapBackground';
@@ -716,10 +718,162 @@
       } else {
         await handleLoadStarmap();
       }
-    } else {
+    } else if (!hubSlugFromUrl()) {
+      // R-05: a `?hub=` link is a request to open THAT map. Putting the new-campaign modal up in
+      // front of it would make the link's first act be a dialogue about something else.
       showNewStarmapModal = true;
     }
+    // R-05 runs LAST, deliberately: it has to know whether there is already a campaign in this
+    // browser before it can decide whether it is allowed to open anything.
+    await maybeOpenHubMap();
   });
+
+  // --- R-05: open a shared map from the hub, in one click ---------------------------------------
+  //
+  // `https://starsystemx.com/?hub=<slug>` is the funnel: a link in a Discord becomes a running
+  // system without a download-then-import. Two cautions govern everything below, and both come from
+  // the hub's own requirements.
+  //
+  // 1. THE MAP IS UNTRUSTED INPUT. The slug comes from a URL a stranger can craft, so the bytes go
+  //    through `classifySaveFile` and then `openStarmapPayload` - the same door, the same fix-up and
+  //    the same `validateStarmap` an imported file gets. There is no shortcut for hub content.
+  //
+  // 2. IT NEVER TOUCHES AN OPEN CAMPAIGN WITHOUT BEING TOLD TO. Browser storage holds exactly ONE
+  //    campaign, so opening a shared map REPLACES what is in this browser - "open it as its own
+  //    thing" is not a thing this app can currently do, and pretending otherwise would lose
+  //    somebody's campaign to a link they clicked out of curiosity. So: with no campaign here it
+  //    opens straight away, and with one it ASKS, says plainly what will happen, and keeps a copy
+  //    of the replaced campaign under the same one-step-back mechanism the base-map upgrade uses.
+  let hubOffer: { slug: string; name: string; doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null } | null = null;
+  let hubBusy = false;
+  let hubProblem: string | null = null;
+
+  function hubSlugFromUrl(): string | null {
+    if (!browser) return null;
+    try { return new URLSearchParams(window.location.search).get('hub'); } catch { return null; }
+  }
+
+  /** Take `?hub=` off the address bar once it has been acted on, so a refresh does not re-offer. */
+  function clearHubParam() {
+    if (!browser) return;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('hub');
+      window.history.replaceState({}, '', url.pathname + (url.search || '') + url.hash);
+    } catch { /* older engines: the offer simply reappears on a refresh, which is harmless */ }
+  }
+
+  /**
+   * OPEN A MAP BY ITS CODE, from wherever the code came from - the `?hub=` link on startup, or the
+   * field in the load screen for somebody already inside the app. One function, so a link pasted
+   * into the app behaves identically to the same link clicked in a Discord.
+   */
+  // Where the GM was when they asked, so declining puts them back rather than somewhere else.
+  let hubCameFromLoadScreen = false;
+  async function openHubBySlug(slug: string) {
+    hubCameFromLoadScreen = true;
+    showNewStarmapModal = false;
+    await runHubOpen(slug);
+  }
+
+  async function maybeOpenHubMap() {
+    const slug = hubSlugFromUrl();
+    if (!slug) return;
+    await runHubOpen(slug);
+  }
+
+  async function runHubOpen(slug: string) {
+    hubBusy = true;
+    hubProblem = null;
+    try {
+      const result = await fetchHubMap(slug);
+      if (!result.ok) { hubProblem = result.problem; return; }
+
+      // The SAME door an imported file uses. A hub map that is not a save says so in the words the
+      // importer already uses, rather than failing somewhere deeper with a message about fields.
+      const classified = classifySaveFile(result.bytes);
+      if (classified.kind === 'unknown') {
+        hubProblem = classified.problem ?? 'That shared map is not a file this app can open.';
+        return;
+      }
+      if (classified.kind !== 'starmap') {
+        hubProblem = 'That link points at a single system rather than a campaign. Download it from the hub and open it with Load System.';
+        return;
+      }
+      const name = String(classified.doc?.name ?? 'a shared map');
+      // R-07: a map made by an older build is opened, never refused - the marker is a capability
+      // note, not a verdict. Said quietly, and only when there is something to say.
+      noteCreatedWith(classified.doc);
+
+      if ($starmapStore || hasSavedStarmap) {
+        hubOffer = { slug, name, doc: classified.doc, models: classified.models ?? null };
+      } else {
+        await openHubMap({ slug, name, doc: classified.doc, models: classified.models ?? null });
+      }
+    } catch (e) {
+      hubProblem = `That shared map could not be opened: ${(e as Error)?.message ?? e}`;
+    } finally {
+      hubBusy = false;
+    }
+  }
+
+  /** The GM said yes (or there was nothing to lose). Keep a way back, then open it. */
+  async function openHubMap(offer: { slug: string; name: string; doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null }) {
+    hubOffer = null;
+    const replaced = $starmapStore ?? (await loadSavedStarmap());
+    if (replaced) {
+      // The same single-step undo the base-map upgrade keeps, for the same reason: browser storage
+      // holds one campaign, and the next autosave overwrites it. One mechanism, not two.
+      const stored = await savePreUpgradeStarmap(replaced);
+      if (!stored) {
+        alert(
+          'The shared map is ready, but a copy of your current campaign could not be kept in this browser.\n\n' +
+          'Save your campaign to a file first if you have not already — otherwise there will be no way back to it.'
+        );
+      }
+    }
+    try {
+      if (await openStarmapPayload(offer.doc, offer.models)) {
+        preUpgradeSnapshotName = replaced?.name ?? preUpgradeSnapshotName;
+        hubCameFromLoadScreen = false;
+        showNewStarmapModal = false;
+        clearHubParam();
+        remoteNotice = `Opened "${offer.name}" from the shared map library.` +
+          (replaced ? ` Your previous campaign is one step back, in Settings.` : '');
+        if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+        remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 10000);
+      }
+    } catch (e) {
+      hubProblem = `That shared map loaded but could not be opened: ${(e as Error)?.message ?? e}`;
+    }
+  }
+
+  /** Acknowledge a failed hub open. Clears the param so a refresh is a fresh start, not a replay. */
+  function dismissHubProblem() {
+    hubProblem = null;
+    clearHubParam();
+    if (hubCameFromLoadScreen || (!$starmapStore && !hasSavedStarmap)) showNewStarmapModal = true;
+    hubCameFromLoadScreen = false;
+  }
+
+  /** The GM said no. Nothing has been touched; leave them where they were. */
+  function declineHubMap() {
+    hubOffer = null;
+    clearHubParam();
+    if (hubCameFromLoadScreen || (!$starmapStore && !hasSavedStarmap)) showNewStarmapModal = true;
+    hubCameFromLoadScreen = false;
+  }
+
+  // R-07 (3): `created_with` is a CAPABILITY MARKER and never a refusal. A map made by an older
+  // build opens exactly as it always did; this only mentions it, once, and only when the build that
+  // wrote it is actually older than this one.
+  let createdWithNotice: string | null = null;
+  function noteCreatedWith(doc: any) {
+    const wrote = typeof doc?.appVersion === 'string' ? doc.appVersion : null;
+    if (!wrote || wrote === APP_VERSION) return;
+    if (compareBuildVersions(wrote, APP_VERSION) >= 0) return; // same or newer: nothing to say
+    createdWithNotice = `This map was made with Star System Explorer ${wrote}. It opens normally — some things it did not have yet may simply be absent.`;
+  }
 
   // --- WS8: offer to move a campaign onto the updated bundled base map ---
   // Checked once per campaign id, whichever way it arrived (browser storage on startup, a loaded file, the
@@ -2068,6 +2222,12 @@
       <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (remoteNotice = null)}>×</button>
     </div>
   {/if}
+  {#if createdWithNotice}
+    <div class="mem-banner" role="status">
+      <span>{createdWithNotice}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (createdWithNotice = null)}>×</button>
+    </div>
+  {/if}
   {#if memBanner}
     <div class="mem-banner" class:critical={memBanner.critical} role="alert">
       <span>{memBanner.text}</span>
@@ -2142,6 +2302,51 @@
     </div>
   {/if}
 
+  <!-- R-05: a shared map arrived by link. Fetching, refusing, and the one question worth asking. -->
+  {#if hubBusy}
+    <div class="physics-overlay" role="status" aria-label="Fetching a shared map">
+      <div class="physics-card">
+        <h2>Fetching a shared map…</h2>
+        <p class="physics-guard-detail">Getting it from the map library. Nothing in this browser has changed.</p>
+      </div>
+    </div>
+  {/if}
+
+  {#if hubProblem}
+    <div class="physics-overlay" role="alertdialog" aria-modal="true" aria-label="That shared map could not be opened">
+      <div class="physics-card">
+        <h2>That shared map could not be opened</h2>
+        <p class="physics-guard-detail">{hubProblem}</p>
+        <p class="physics-guard-detail">Your own campaign has not been touched.</p>
+        <div class="physics-guard-actions">
+          <button type="button" class="physics-guard-btn primary" on:click={dismissHubProblem}>Carry on</button>
+          <a class="physics-guard-btn" href={HUB.browseUrl} target="_blank" rel="noopener noreferrer">Open the map library</a>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  {#if hubOffer}
+    <div class="physics-overlay" role="alertdialog" aria-modal="true" aria-label="Open a shared map">
+      <div class="physics-card">
+        <h2>Open "{hubOffer.name}"?</h2>
+        <p class="physics-guard-detail">
+          Somebody shared this campaign with you. <strong>This browser holds one campaign at a time</strong>,
+          so opening it replaces the one you have open now.
+        </p>
+        <p class="physics-guard-detail">
+          A copy of your current campaign is kept as a single step back, in Settings — but the only real
+          backup is a file, so save yours first if you are not sure.
+        </p>
+        <div class="physics-guard-actions">
+          <button type="button" class="physics-guard-btn" on:click={handleDownloadStarmap}>Save my campaign first</button>
+          <button type="button" class="physics-guard-btn primary" on:click={() => hubOffer && openHubMap(hubOffer)}>Open the shared map</button>
+          <button type="button" class="physics-guard-btn" on:click={declineHubMap}>Keep what I have</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   {#if isLoading}
     <p>Loading rule pack...</p>
   {:else if error}
@@ -2152,6 +2357,7 @@
         {hasSavedStarmap} 
         on:create={handleCreateStarmap} 
         on:load={handleLoadStarmap} 
+        on:openHub={(e) => openHubBySlug(e.detail)}
         on:upload={handleUploadStarmap} 
         on:loadExampleStarmap={handleLoadExampleStarmap}
         on:realSkyImport={() => (showRealSkyImportModal = true)}

@@ -4,6 +4,7 @@
   // words, including what is NOT in the file, and the suggested filename is shown so the saved file
   // is recognisable later. The GM/Player and constructs options are unchanged.
   import { createEventDispatcher } from 'svelte';
+  import { hubSavesEnabled, hubSavesOffered } from '$lib/hub/hubSaves';
 
   /** Which world this save covers. 'system' = the open system only; 'starmap' = the whole campaign. */
   export let scope: 'system' | 'starmap' = 'system';
@@ -80,6 +81,21 @@
 
     <p class="filename">Saves as <code>{suggestedName}</code></p>
 
+    <!-- R-04: publishing to the map library, offered here because this is where a GM already is
+         when they have decided to write the campaign out. It renders only when publishing EXISTS
+         (the hub side is built) AND the GM has left it switched on in Settings - a button that
+         cannot work is worse than no button. -->
+    {#if hubSavesOffered($hubSavesEnabled)}
+      <div class="form-group hub-publish">
+        <label>Map library</label>
+        <p class="scope note">Publish this {scope === 'starmap' ? 'campaign' : 'system'} so other GMs can open it in one click.
+          You will be asked to link your map-library account and to confirm you have the right to share the art in it.</p>
+        <button type="button" on:click={() => dispatch('publish', { mode: selectedMode, includeConstructs })}>
+          Publish to the map library…
+        </button>
+      </div>
+    {/if}
+
     <div class="buttons">
       <button on:click={() => dispatch('close')}>Cancel</button>
       <button class="primary" on:click={handleSave}>{scope === 'starmap' ? 'Save campaign' : 'Save system'}</button>
@@ -94,6 +110,9 @@
     background: rgba(0,0,0,0.7);
     display: flex; justify-content: center; align-items: center;
     z-index: 2000;
+  }
+  .hub-publish button {
+    margin-top: 6px;
   }
   .modal {
     background: var(--bg-panel); color: var(--text);

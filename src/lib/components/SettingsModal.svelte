@@ -6,6 +6,8 @@
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { skin, SKINS, customSkins } from '$lib/styles/skinStore';
+  import { hubSavesEnabled } from '$lib/hub/hubSaves';
+  import { HUB } from '$lib/hub/hubConfig';
   import SkinEditorModal from './SkinEditorModal.svelte';
   let showSkinEditor = false;
   // A45: the one list, filtered to what the 2D snap grid can draw — never a hand-written copy.
@@ -659,13 +661,27 @@
 
           <!-- WS8: only shown while a pre-upgrade snapshot exists. This is the "go straight back" the upgrade
                screen promises, and it lives here because Your data is where copies of a campaign belong. -->
+          <div class="form-group">
+            <label title="Whether the save screen offers to publish a campaign to the map library.">
+              <input type="checkbox" bind:checked={$hubSavesEnabled} /> Offer to publish maps to the map library
+            </label>
+            <p class="section-hint">
+              Adds a "publish" choice to the save screen. Turning it off only hides that choice — opening
+              a map somebody shared with you keeps working either way.
+              {#if !HUB.uploadEnabled}
+                Publishing is not switched on in this build yet, so nothing appears in the save screen for now.
+              {/if}
+            </p>
+          </div>
+
           {#if preUpgradeName}
             <div class="form-group">
-              <p class="section-hint">You upgraded a campaign onto the updated bundled map. The version from
-                before that upgrade is still here, and you can go back to it. Doing so replaces what is
-                currently loaded, so save it to a file first if you want to keep it.</p>
+              <p class="section-hint">A campaign here was replaced — by a bundled-map upgrade, or by opening
+                a map somebody shared with you. The version from before that is still here, and you can go
+                back to it. Doing so replaces what is currently loaded, so save that to a file first if you
+                want to keep it.</p>
               <button class="section-btn" on:click={() => dispatch('restorepreupgrade')}>
-                Go back to "{preUpgradeName}" (before the upgrade)
+                Go back to "{preUpgradeName}"
               </button>
             </div>
           {/if}

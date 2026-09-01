@@ -5616,6 +5616,61 @@ with none, and they classify through this app's own door. `appVersion` in them i
 not `APP_VERSION` - a byte-pinned fixture cannot carry a field that changes every release, or the
 gate becomes noise that gets regenerated unread.
 
+### DATA-R35 A SHARED MAP IS AN IMPORT THAT ARRIVED BY LINK, AND IT NEVER REPLACES A CAMPAIGN UNASKED
+BUCKET: ARCHITECTURE (the funnel) - a URL a stranger can craft reaches straight into the one thing
+this app stores, so the whole path is written as untrusted input with one deliberate question in the
+middle of it.
+WHERE: `hub/hubConfig.ts` (the ONE place a hub URL exists, and the flags), `hub/hubClient.ts`
+(`isValidHubSlug`, `parseHubReference`, `fetchHubMap`), `hub/hubSaves.ts` (the GM's preference),
+`hub/hubUpload.ts` (R-04, built and parked), and in `routes/+page.svelte` `runHubOpen` /
+`openHubMap` / `declineHubMap`. Gated by `hub/hubClient.spec.ts` and `hub/hubUpload.spec.ts`.
+RULE ONE: **the slug is validated BEFORE a URL is built from it, never after.** Encoding is a second
+line of defence, not the first: `../../admin`, `//evil.example.com/x` and `a/b` are refused before
+`encodeURIComponent` is reached, and a refused slug never touches the network at all.
+RULE TWO: **the response is capped while it arrives.** `content-length` is a claim, so it is only an
+early exit; the real cap is applied to the bytes as they stream, because `arrayBuffer()` has already
+made the allocation by the time anything could measure it.
+RULE THREE: **the bytes go through `classifySaveFile` and `openStarmapPayload` - the same door, the
+same fix-up, the same `validateStarmap` an imported file gets.** There is no shortcut for hub
+content, and this module never parses anything itself.
+RULE FOUR, AND IT IS THE PRODUCT ONE: **opening a shared map REPLACES the campaign in this browser,
+so with one open it ASKS.** "Open it as its own thing" is not available - storage holds exactly ONE
+campaign (WS7's rule) - and pretending otherwise would lose somebody's campaign to a link they
+clicked out of curiosity. With nothing to lose it opens straight away. Either way the replaced
+campaign goes to `savePreUpgradeStarmap`, the SAME single-step-back the base-map upgrade uses,
+because two mechanisms for "the campaign that was replaced" would be two answers to one question.
+RULE FIVE: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
+exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything
+worth mentioning, and an unparseable stamp compares EQUAL so a garbled version produces silence
+rather than a wrong claim.
+WHY: hub R-05/R-06/R-07 ([[G57]]). The hub is a FUNNEL, not a destination - "it is one click to
+download, we want peeps using SSE" - so a Discord link has to become a running campaign without a
+download-then-import. The cautions are the hub's own: treat it as untrusted, and never auto-merge.
+THREE THINGS THAT ARE NOT OBVIOUS:
+ 1. **A PATH ONLY NAMES A MAP WHEN IT IS THE HUB'S PATH.** `parseHubReference` accepts the app's own
+    `?hub=` link from ANY host (the app runs on starsystemx.com, beta., pages.dev and localhost, and
+    all of them name the same map) but reads a PATH only on the hub's own host. Taking the last
+    segment of any URL turned `https://example.com/a/b/../c` into the map code `c` - not dangerous,
+    since the request is still built on the hub's origin, but a confident wrong answer where "that
+    is not a shared-map link" is the honest one. The spec caught it, not the reasoning.
+ 2. **TWO GATES ON PUBLISHING, ANSWERING DIFFERENT QUESTIONS.** `HUB.uploadEnabled` is "does this
+    exist yet" (a build fact); `hubSavesEnabled` is "does this person want it" (a preference). The
+    UI asks `hubSavesOffered()` and never either one alone. Neither gate touches OPENING: a `?hub=`
+    link must work for anyone who is sent one, and a local preference about publishing has no
+    business breaking somebody else's link.
+ 3. **THE ATTESTATION CANNOT BE STUBBED, EVEN TEMPORARILY.** Its entire purpose is that a person
+    read those words and took responsibility, so approximate words plus `attest=on` would be worse
+    than not shipping. That is why R-04 is built and PARKED rather than shipped with a placeholder.
+    `publishBody` throws on anything other than an explicit `true`, and omits `publishGmTree`
+    entirely unless explicitly chosen - absent means the PLAYER tree, and sending `off` is a
+    different statement a hub could read as "present, therefore chosen".
+BLAST: **THE FUNNEL IS BLOCKED ON THE HUB, AND IT IS MEASURED RATHER THAN GUESSED.** Against the live
+deploy on 2026-09-01, `GET /api/download/<slug>` sends NO `Access-Control-Allow-Origin`, so the
+browser refuses the fetch before the answer is read and no `?hub=` link can open anything yet. The
+request is written up in `docs/dev/hub-pairing-and-upload-request.md`. A CORS refusal is
+indistinguishable from being offline, which is why the failure message names the hub's own page as
+the way through instead of attempting a diagnosis it cannot make.
+
 ### PHY-39 AN OCCLUDER CAN ONLY RE-RADIATE WHAT REACHED IT, AND ITS SKY SHARE IS NOT ITS BEARING SHARE
 BUCKET: DOMAIN + ARCHITECTURE - domain: two conservation faults with one shape, both of which
 publish energy from nowhere. Architecture: TWO COPIES OF ONE WALK, which is how they came to
