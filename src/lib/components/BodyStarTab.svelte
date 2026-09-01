@@ -14,6 +14,8 @@
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
   import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatsFromPack } from '$lib/generation/star';
+  // A83: the slider bounds are DATA, not seven const pairs buried in this script block.
+  import { STAR_BOUNDS, boundPos, boundValue, bandPct } from '$lib/physics/starBounds';
   import { stellarTypeForBand, spectralSubclass, starClassParts, starClassKeyFor, isBandKey, bandKeyOf } from '$lib/physics/starDesignation';
 
   // A key a BODY holds rather than a range it was drawn from — used to drop the previous designation
@@ -85,11 +87,10 @@
   let axialTilt: number | undefined = $state(undefined);
   let magGauss = $state(0);
 
-  // --- Mass Slider Config ---
-  const massMin = 0.01; // ~10 Jupiter masses (Brown Dwarf range)
-  const massMax = 300;
-  const massLogMin = Math.log(massMin);
-  const massLogMax = Math.log(massMax);
+  // --- Slider travel: DATA (A83), pinned bit-for-bit by `physics/starBounds.spec.ts`. ---
+  // `soft` is TRAVEL, never a wall: a typed figure outside it pins the thumb and is kept as
+  // typed, which is what every writer below already did and what steer-don't-stop requires.
+  const massSoft = STAR_BOUNDS.mass.soft;
   let massSliderPos = $state(0.5);
   // Which body the editable fields below were last synced from. The sync effect re-runs on every render
   // (the body proxy re-resolves as the clock ticks), so we only pull values FROM the body when a different
@@ -97,32 +98,16 @@
   let lastSyncedBodyId: string | null = null;
   let lastSyncedUndoEpoch = -1;
 
-  // --- Radius Slider Config ---
-  const radiusMin = 0.01;
-  const radiusMax = 2000;
-  const radiusLogMin = Math.log(radiusMin);
-  const radiusLogMax = Math.log(radiusMax);
+  const radiusSoft = STAR_BOUNDS.radius.soft;
   let radiusSliderPos = $state(0.5);
 
-  // --- Temp Slider Config ---
-  const tempMin = 500; // Brown Dwarf / Y-dwarf range
-  const tempMax = 50000;
-  const tempLogMin = Math.log(tempMin);
-  const tempLogMax = Math.log(tempMax);
+  const tempSoft = STAR_BOUNDS.temp.soft;
   let tempSliderPos = $state(0.5);
 
-  // --- Radiation Slider Config ---
-  const radMin = 0.01;
-  const radMax = 50000;
-  const radLogMin = Math.log(radMin);
-  const radLogMax = Math.log(radMax);
+  const radSoft = STAR_BOUNDS.radiation.soft;
   let radSliderPos = $state(0.25);
 
-  // --- Magnetic Field Slider Config ---
-  const magMin = 0.01;
-  const magMax = 1e15; // 1 Quadrillion Gauss (Magnetar range)
-  const magLogMin = Math.log(magMin);
-  const magLogMax = Math.log(magMax);
+  const magSoft = STAR_BOUNDS.mag.soft;
   let magSliderPos = $state(0.5);
 
   const radZones = [
@@ -249,11 +234,11 @@
   }
 
   function getLogPos(val: number) {
-      return (Math.log(Math.max(radMin, val)) - radLogMin) / (radLogMax - radLogMin) * 100;
+      return boundPos(radSoft, val) * 100;
   }
 
   function getTempLogPos(val: number) {
-      return (Math.log(Math.max(tempMin, val)) - tempLogMin) / (tempLogMax - tempLogMin) * 100;
+      return boundPos(tempSoft, val) * 100;
   }
 
   // --- Derived Ranges ---
@@ -273,21 +258,20 @@
       const range = data?.ranges[prop];
       // A band the pack states as zero is a real statement, not a gap — a quiescent black hole has
       // no temperature and no field — and log(0) would poison the bar's geometry. Draw nothing.
-      if (!range || !(range[0] > 0) || !(range[1] > 0)) return 0;
-
-      let minL = 0, maxL = 0, startL = 0, endL = 0;
-      if (prop === 'mass') { minL = massLogMin; maxL = massLogMax; startL = Math.log(Math.max(massMin, range[0])); endL = Math.log(Math.min(massMax, range[1])); }
-      if (prop === 'radius') { minL = radiusLogMin; maxL = radiusLogMax; startL = Math.log(Math.max(radiusMin, range[0])); endL = Math.log(Math.min(radiusMax, range[1])); }
-      if (prop === 'temp') { minL = tempLogMin; maxL = tempLogMax; startL = Math.log(Math.max(tempMin, range[0])); endL = Math.log(Math.min(tempMax, range[1])); }
-      if (prop === 'rad') { minL = radLogMin; maxL = radLogMax; startL = Math.log(Math.max(radMin, range[0])); endL = Math.log(Math.min(radMax, range[1])); }
-      if (prop === 'mag') { minL = magLogMin; maxL = magLogMax; startL = Math.log(Math.max(magMin, range[0])); endL = Math.log(Math.min(magMax, range[1])); }
-      if (prop === 'rot') { minL = Math.log(0.1); maxL = Math.log(10000); startL = Math.log(Math.max(0.1, range[0])); endL = Math.log(Math.min(10000, range[1])); }
-
-      const startPct = (startL - minL) / (maxL - minL) * 100;
-      const endPct = (endL - minL) / (maxL - minL) * 100;
-      
-      if (type === 'start') return Math.max(0, startPct);
-      return Math.max(2, endPct - startPct);
+      const soft = prop === 'mass' ? massSoft
+          : prop === 'radius' ? radiusSoft
+          : prop === 'temp' ? tempSoft
+          : prop === 'rad' ? radSoft
+          : prop === 'mag' ? magSoft
+          : STAR_BOUNDS.rot.soft;
+      // ROTATION'S BAND IS DRAWN ON A LOG AXIS UNDER A LINEAR SLIDER — the `true` here is not a
+      // choice, it is the shipped behaviour being carried across unchanged so that the extraction
+      // moves nothing. It is a real fault (a 600 h band paints at 76% of a track where the thumb
+      // for 600 h sits at 6%), recorded as A85 and fixed in its own commit.
+      const pct = bandPct(soft, range, prop === 'rot' ? true : STAR_BOUNDS[prop === 'rad' ? 'radiation' : prop].log);
+      if (!pct) return 0;
+      if (type === 'start') return pct.start;
+      return pct.width;
   }
 
   // --- Derived Values (Runes) ---
@@ -337,7 +321,7 @@
   /** The saturation field as a position on the magnetic slider's own log axis. */
   let satFieldPct = $derived.by(() => {
       if (!(satField! > 0)) return null;
-      const p = (Math.log(Math.max(magMin, Math.min(magMax, satField!))) - magLogMin) / (magLogMax - magLogMin);
+      const p = boundPos(magSoft, satField!);
       return p > 0.02 && p < 0.98 ? p * 100 : null;
   });
   function fmtField(g: number | undefined): string {
@@ -382,7 +366,7 @@
       const L = luminositySolarFromRT(radiusSuns * SOLAR_RADIUS_KM, tempK);
       radiation = parseFloat(L.toPrecision(3));
       body.radiationOutput = radiation;
-      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, L))) - radLogMin) / (radLogMax - radLogMin);
+      radSliderPos = boundPos(radSoft, L);
   }
 
   // --- Initialization & Sync ---
@@ -408,26 +392,26 @@
       if (body.massKg) {
           const m = body.massKg / SOLAR_MASS_KG;
           massSuns = m;
-          massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, m))) - massLogMin) / (massLogMax - massLogMin);
+          massSliderPos = boundPos(massSoft, m);
       }
       if (body.radiusKm) {
           const r = body.radiusKm / SOLAR_RADIUS_KM;
           radiusSuns = r;
-          radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, r))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+          radiusSliderPos = boundPos(radiusSoft, r);
       }
       if (body.temperatureK !== undefined) {
           tempK = body.temperatureK;
-          tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, body.temperatureK))) - tempLogMin) / (tempLogMax - tempLogMin);
+          tempSliderPos = boundPos(tempSoft, body.temperatureK);
       }
       if (body.radiationOutput !== undefined) {
           radiation = body.radiationOutput;
-          radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
+          radSliderPos = boundPos(radSoft, body.radiationOutput);
       }
       rotationHours = body.rotation_period_hours ?? undefined;
       axialTilt = body.axial_tilt_deg ?? undefined;
       if (body.magneticField?.strengthGauss !== undefined) {
           magGauss = body.magneticField.strengthGauss;
-          magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
+          magSliderPos = boundPos(magSoft, magGauss);
       }
       // Black-hole accretion slider — seed from the stored Eddington fraction (active class ⇒ a default).
       accF = (body as any).accretionEddington ?? ((body.classes?.[0] === 'star/BH_active') ? 0.5 : 0);
@@ -439,7 +423,7 @@
 
   // --- Updates ---
   function updateMass() {
-      const val = Math.exp(massLogMin + (massLogMax - massLogMin) * massSliderPos);
+      const val = boundValue(massSoft, massSliderPos);
       massSuns = parseFloat(val.toPrecision(3));
       body.massKg = massSuns * SOLAR_MASS_KG;
       if (isBH) applySchwarzschild(); // event horizon is mass-driven
@@ -448,13 +432,13 @@
 
   function handleMassNumberInput() {
       body.massKg = massSuns * SOLAR_MASS_KG;
-      massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, massSuns))) - massLogMin) / (massLogMax - massLogMin);
+      massSliderPos = boundPos(massSoft, massSuns);
       if (isBH) applySchwarzschild();
       dispatch('update');
   }
 
   function updateRadius() {
-      const val = Math.exp(radiusLogMin + (radiusLogMax - radiusLogMin) * radiusSliderPos);
+      const val = boundValue(radiusSoft, radiusSliderPos);
       radiusSuns = parseFloat(val.toPrecision(3));
       body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
       syncRadiationFromSB();
@@ -463,13 +447,13 @@
 
   function handleRadiusInput() {
       body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
-      radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, radiusSuns))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+      radiusSliderPos = boundPos(radiusSoft, radiusSuns);
       syncRadiationFromSB();
       dispatch('update');
   }
 
   function updateTemp() {
-      const val = Math.exp(tempLogMin + (tempLogMax - tempLogMin) * tempSliderPos);
+      const val = boundValue(tempSoft, tempSliderPos);
       tempK = Math.round(val);
       body.temperatureK = tempK;
       updateClassFromTemp(tempK);
@@ -488,7 +472,7 @@
 
   function handleTempInput() {
       body.temperatureK = tempK;
-      tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
+      tempSliderPos = boundPos(tempSoft, tempK);
       updateClassFromTemp(tempK);
       syncRadiationFromSB();
       dispatch('update');
@@ -545,7 +529,7 @@
   }
 
   function updateRadiation() {
-      const val = Math.exp(radLogMin + (radLogMax - radLogMin) * radSliderPos);
+      const val = boundValue(radSoft, radSliderPos);
       radiation = parseFloat(val.toPrecision(3));
       body.radiationOutput = radiation;
       dispatch('update');
@@ -553,7 +537,7 @@
 
   function handleRadiationInput() {
       body.radiationOutput = radiation;
-      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, radiation))) - radLogMin) / (radLogMax - radLogMin);
+      radSliderPos = boundPos(radSoft, radiation);
       dispatch('update');
   }
 
@@ -585,7 +569,7 @@
   }
 
   function updateMagSlider() {
-      const val = Math.exp(magLogMin + (magLogMax - magLogMin) * magSliderPos);
+      const val = boundValue(magSoft, magSliderPos);
       magGauss = parseFloat(val.toPrecision(3));
       body.magneticField = { strengthGauss: magGauss };
       reclassifyForMagnetism();
@@ -594,7 +578,7 @@
 
   function handleMagInput() {
       body.magneticField = { strengthGauss: magGauss };
-      magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
+      magSliderPos = boundPos(magSoft, magGauss);
       reclassifyForMagnetism();
       dispatch('update');
   }
@@ -610,7 +594,7 @@
   function applySchwarzschild() {
       radiusSuns = parseFloat(schwarzschildRadiusSuns(massSuns).toPrecision(3));
       body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
-      radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, radiusSuns))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+      radiusSliderPos = boundPos(radiusSoft, radiusSuns);
   }
 
   // Sensible "middle ground" presets per BH state, validated against real objects:
@@ -664,9 +648,9 @@
       body.classes = [cls, ...others];
       updateImage(cls);
       accSliderPos = posFromF(f);
-      tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, Math.max(tempMin, tempK)))) - tempLogMin) / (tempLogMax - tempLogMin);
-      magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, Math.max(magMin, magGauss)))) - magLogMin) / (magLogMax - magLogMin);
-      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, Math.max(radMin, radiation)))) - radLogMin) / (radLogMax - radLogMin);
+      tempSliderPos = boundPos(tempSoft, tempK);
+      magSliderPos = boundPos(magSoft, magGauss);
+      radSliderPos = boundPos(radSoft, radiation);
       dispatch('update');
   }
   // Picking a BH from the dropdown seeds a state: keep its current infall, else default quiescent.
@@ -736,15 +720,15 @@
           const newTemp = drawn.tempK;
 
           massSuns = newMass;
-          massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, newMass))) - massLogMin) / (massLogMax - massLogMin);
+          massSliderPos = boundPos(massSoft, newMass);
           body.massKg = massSuns * SOLAR_MASS_KG;
 
           radiusSuns = newRadius;
-          radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, newRadius))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+          radiusSliderPos = boundPos(radiusSoft, newRadius);
           body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
 
           tempK = Math.round(newTemp);
-          tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
+          tempSliderPos = boundPos(tempSoft, tempK);
           body.temperatureK = tempK;
       }
       // PICKING IS THE FORWARD DIRECTION and it must leave the same structured classification an
@@ -1041,7 +1025,7 @@
             <svg class="slider-svg" width="100%" height="30">
                 <rect x="{getRangePct('rot', 'start')}%" y="0" width="{getRangePct('rot', 'width')}%" height="8" fill="#22aa44" />
             </svg>
-            <input type="range" min="0.1" max="10000" step="0.1" bind:value={rotationHours} on:input={updateRotation} class="full-width-slider overlay" />
+            <input type="range" min={STAR_BOUNDS.rot.soft[0]} max={STAR_BOUNDS.rot.soft[1]} step="0.1" bind:value={rotationHours} on:input={updateRotation} class="full-width-slider overlay" />
         </div>
         {#if rotationHours === undefined}
             <div class="sub-label">Not set &mdash; nothing derives a star's spin yet, so this is a gap rather than a still star. Set it if you need one.</div>

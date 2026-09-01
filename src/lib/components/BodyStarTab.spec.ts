@@ -274,3 +274,49 @@ describe('BodyStarTab — the star says its designation is a readout', () => {
 		expect(container.querySelector('.designation-line')).toBeNull();
 	});
 });
+
+// A83, COMMIT 1: THE BOUND MOVED TO DATA AND THE BEHAVIOUR DID NOT.
+//
+// `const massMax = 300` was a component constant — the scattered-constant fault — and it is now
+// `STAR_BOUNDS.mass.soft` in `physics/starBounds.ts`. `starBounds.spec.ts` pins the ARITHMETIC
+// against the old inline expressions; this pins the SHIPPED RESULT end to end, through the real
+// component, so the extraction cannot have moved what a GM sees. The supermassive switch arrives
+// in the next commit and these figures must survive it untouched with the switch off.
+describe('A83 — the mass slider spans exactly what it always spanned', () => {
+	const sliders = (container: HTMLElement) =>
+		Array.from(container.querySelectorAll<HTMLInputElement>('input.full-width-slider.overlay'));
+
+	/** Drive the mass slider (the first overlay slider on a non-remnant star) to `pos`. */
+	const dragMassTo = (container: HTMLElement, pos: number) => {
+		const mass = sliders(container)[0];
+		mass.value = String(pos);
+		mass.dispatchEvent(new Event('input', { bubbles: true }));
+	};
+
+	it('tops out at 300 M☉ and bottoms out at 0.01 M☉', () => {
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		dragMassTo(container, 1);
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(300, 6);
+		dragMassTo(container, 0);
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(0.01, 9);
+	});
+
+	it('is LOG-scaled, so half travel is the geometric mean rather than 150 M☉', () => {
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		dragMassTo(container, 0.5);
+		// exp((ln 0.01 + ln 300) / 2) = 1.732…, rounded to the editor's three significant figures.
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(1.73, 2);
+	});
+
+	it('a black hole\'s event horizon still follows the mass it is dragged to', () => {
+		// r_s = 2GM/c^2: one solar mass is 2.95 km, so 300 are about 886 km.
+		const body: any = { ...makeStar(['star/BH']), massKg: 10 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		dragMassTo(container, 1);
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(300, 6);
+		expect(body.radiusKm).toBeGreaterThan(870);
+		expect(body.radiusKm).toBeLessThan(900);
+	});
+});
