@@ -2,13 +2,16 @@
 
 All notable changes are listed here:
 
+## v3.0.264 - 1st Sep 2026
+
+- A screenshot you take of your own map no longer counts against you when you share it. The attributions file lists every uploaded picture and model and flags the ones with nothing recorded, and a sharing site uses that to decide whether a map is ready to go public - so a beauty shot of your own campaign was being treated as somebody else's uncredited art, and could have stopped you publishing your own work. A captured view now says what it is: made here, from this file, with everything in it already credited on the same page. A capture that claims a licence and still names nobody is called out exactly as before, because that is wrong whoever took the picture.
+
 ## v3.0.263 - 2nd Sep 2026
 
 - The campaign clock is finally tied to a real date. The master clock counts seconds since the big bang, which means nothing on its own until something says which of those seconds is a date you recognise - and the four shipped calendars each carried their own private answer, three of them wrong, by three different amounts. A clock the app itself had set to 1 January 2026 was being shown to you as 1 January 2323. There is now ONE stated reference - noon on 1 September 2026 - that every calendar hangs off, so dates read true and a campaign set in a real year looks like one.
 - YOUR CAMPAIGN'S CLOCK HAS NOT MOVED, but the date printed on it has. A map that read 2323 will now read 2026: the moment your campaign sits at is untouched, it was only ever being named wrongly. If you had already worked around this by winding the year back by hand, wind it forward again by the same amount.
 - The Gregorian calendar's leap correction was out by enough to drag the time of day around by hours across a century; it is now within a tenth of a second a year. The date is right from 1900 to 2100. The clock time within that date can still sit up to half a day off away from the reference point, because this calendar carries no 29th of February - it spreads the leap day evenly instead. Exact on the reference date, honest either side of it.
 - New campaigns now start at noon on 1 September 2026 rather than at a number with no name.
-
 
 ## v3.0.262 - 1st Sep 2026
 

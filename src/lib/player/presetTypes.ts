@@ -43,6 +43,15 @@ export interface PlayerAsset {
   // PROVENANCE (DATA-M4). A GM's uploaded sector map is precisely the case ATTRIBUTIONS.md exists
   // for, and a CC-BY image with no credit is a licence breach rather than an untidy field. Carried
   // here so the bundle can write it out and the About box can credit what is actually on screen.
+  // R-07: this picture was CAPTURED from the campaign by this app, rather than uploaded from
+  // somewhere else. It is the creator's own view of their own file, so it has no third-party
+  // provenance to record and must NOT count as an asset with none - see attributions.ts.
+  //
+  // OWNER'S RULE, 2026-09-01, and it is the right one: "a screenshot represents the FILE and the
+  // FILE has the attributions - so anything that COULD be credited is, even if accidentally caught
+  // in shot." The bundle is the unit of distribution and ATTRIBUTIONS.md travels inside it, so a
+  // shot of the map is covered by the credits sitting beside it.
+  capturedInApp?: boolean;
   credit?: string;
   license?: string;
   sourceUrl?: string;

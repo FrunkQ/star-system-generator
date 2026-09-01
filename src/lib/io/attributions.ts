@@ -14,6 +14,8 @@ export interface AttributionEntry {
   path: string;                 // where it sits in the bundle
   kind: 'model' | 'image';
   usedBy: string[];             // node names (with their system, in a campaign)
+  /** Captured from this campaign by this app: the creator's own work, not an upload to credit. */
+  capturedInApp?: boolean;
   title?: string;
   credit?: string;
   license?: string;
@@ -91,6 +93,7 @@ export function collectAttributions(
     if (typeof url !== 'string' || !url.startsWith(playerDir)) continue;
     images.push({
       path: url, kind: 'image', usedBy: [playerAssetUse(doc, a.id, a.name)],
+      capturedInApp: a.capturedInApp === true,
       title: a.name, credit: a.credit, license: a.license, sourceUrl: a.sourceUrl
     });
   }
@@ -109,7 +112,19 @@ function playerAssetUse(doc: any, id: string, name: string): string {
   return uses.length ? `${name} (${uses.join(', ')})` : `${name} (uploaded, not currently placed)`;
 }
 
-const isBlank = (e: AttributionEntry) => !e.credit && !e.license && !e.sourceUrl;
+// A CAPTURED PICTURE IS NOT AN UNCREDITED ONE, and the difference decides whether a GM can share.
+//
+// The public-sharing gate is `missing.length === 0`, so before this a screenshot of a GM's own map
+// counted as an asset with no provenance and BLOCKED them from publishing their own work. The
+// laundering worry runs the other way and does not hold: a capture travels inside the same bundle
+// as ATTRIBUTIONS.md, so whatever art it happens to show is credited on the page beside it - the
+// file is what is distributed, and the file carries its own credits.
+//
+// It is a claim, like every other field here, and a hand-edited save could set it on anything. That
+// is no weaker than the credit fields themselves, which a GM could equally fill with a fiction; this
+// file is a working document for the person sharing, and `contract-with-sse.md` C-02 already says a
+// consumer treats all of it as a claim.
+const isBlank = (e: AttributionEntry) => !e.capturedInApp && !e.credit && !e.license && !e.sourceUrl;
 /** CC-BY without a name is the one combination that is actively wrong, not merely unrecorded. */
 const breachesCcBy = (e: AttributionEntry) => /cc[- ]?by/i.test(e.license ?? '') && !e.credit;
 
@@ -151,6 +166,7 @@ export function renderAttributions(entries: AttributionEntry[], docName: string)
       if (e.license) lines.push(`- Licence: ${e.license}`);
       if (e.sourceUrl) lines.push(`- Source: ${e.sourceUrl}`);
       if (breachesCcBy(e)) lines.push('- **CC-BY with no credit recorded — the author must be named.**');
+      else if (e.capturedInApp && !e.credit) lines.push('- _Captured in Star System Explorer from this save. Anything shown in it is credited above._');
       else if (isBlank(e)) lines.push('- _No provenance recorded._');
     }
   };

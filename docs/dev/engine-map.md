@@ -5651,6 +5651,20 @@ archive. WHY A CHOSEN PICTURE RATHER THAN A RENDERED ONE (owner, 2026-09-01): th
 shots they like, and the pieces to carry one all exist. Rendering a cover was considered and banked
 - and `?hub=` has made it cheap if it is ever wanted, since a headless browser pointed at that URL
 renders the real app with no new rendering code.
+RULE FIVE-B (R-07, a captured view): **PROVENANCE BELONGS TO THE FILE, AND A SCREENSHOT IS A VIEW OF
+THE FILE.** A picture captured from the campaign carries `capturedInApp` and does NOT count toward
+`ATTRIBUTIONS.md`'s missing-provenance total. Owner's rule, 2026-09-01: *"a screenshot represents the
+FILE and the FILE has the attributions - so anything that COULD be credited is, even if accidentally
+caught in shot."* The bundle is the unit of distribution and `ATTRIBUTIONS.md` travels inside it, so
+whatever art a shot happens to show is credited on the page beside it.
+THIS STREAM FIRST GOT IT BACKWARDS, which is why it is written down. The worry was LAUNDERING - a
+shot of a map using CC-BY art arriving cleaner than the art inside it. That does not hold, for the
+reason above. **The real consequence runs the other way and would have bitten a GM:** the public
+sharing gate is `missing.length === 0`, and a blank asset counts toward `missing`, so a creator who
+captured a beauty shot of their OWN map would have been refused permission to publish it, blocked by
+their own screenshot. The exemption is for an ABSENCE of provenance only: a capture that CLAIMS
+CC-BY without naming an author is still called out, because a licence that states an obligation and
+then fails it is wrong whoever made the picture.
 RULE SIX: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
 exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything
 worth mentioning, and an unparseable stamp compares EQUAL so a garbled version produces silence
