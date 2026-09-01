@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.267 - 2nd Sep 2026
+
+- Board only. The temporal batch records what it found and what it staged for production.
+
 ## v3.0.266 - 2nd Sep 2026
 
 - Board only: the megastructure row records the three separate faults behind one symptom (the elevator's glyph, its placement and its drawn length), and a changelog entry that lost its blank line in a merge gets it back.
