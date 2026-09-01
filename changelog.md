@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.268 - 2nd Sep 2026
+
+- Hovering a star on the GM starmap now tells you what is in the system without opening it: the full star type in plain English, what is in orbit, whether anything lives there, and any megastructures - a ringworld says so by name. Your players' map is unchanged; this is the GM's side only.
+- Black holes can be supermassive. A switch on the star editor swaps the mass slider from the stellar range up to 270 billion suns, on a log scale so Sagittarius A* and M87* are somewhere you can actually land the thumb rather than a pixel from the end. A hole that is already supermassive opens on that scale by itself. Past the 270-billion mark the editor keeps whatever you type and tells you why nothing is known to grow heavier - the disc that feeds it collapses into stars first.
+- The star editor's rotation slider had never lined up with the green "typical for this class" band drawn behind it. The band was on a log scale and the slider was not, so on a Sun-like star the band painted across the middle of a track where the matching value sat hard against the left stop. The slider is now on the same scale as the band, which also makes short periods - most stars, and every pulsar - reachable at all.
+- On a phone: the "Expand with AI" description screen was invisible. Opening it hid the panel it lived inside, and took itself down with it. It now opens full-screen with all four buttons where you can reach them.
+- On a phone: planning a journey was unusable. The detail panel never grew past its 86-pixel resting height, so the transit planner opened as a strip and Schedule Journey was somewhere below the fold. The panel now sizes itself to what is in it - half the screen for a body, the whole screen for the planner - and it never shrinks back under you.
+- On a phone: eleven more dialogs now get the screen to themselves when they open, instead of leaving the bottom bar and the floating clock ghosting behind them. Saving, the route editor, the report options, adding a construct, the interstellar planner, the real-sky importer and the ship panel are among them.
 ## v3.0.267 - 2nd Sep 2026
 
 - Board only. The temporal batch records what it found and what it staged for production.
