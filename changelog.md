@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.255 - 31st Aug 2026
+
+- Board only. The documentation sweep is called: thirty-three banked changes are owed to the physics page and the user guides before the next production release.
+
 ## v3.0.254 - 31st Aug 2026
 
 - The repository gains a front door: a short CLAUDE.md that any fresh session loads automatically, pointing at the board's standing rules, the engine trap map and the playbook - so knowing the house rules no longer depends on being handed a brief.
