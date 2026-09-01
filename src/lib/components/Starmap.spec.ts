@@ -3,6 +3,7 @@ import { render, fireEvent } from '@testing-library/svelte';
 import Starmap from './Starmap.svelte';
 import type { Starmap as StarmapType, RulePack } from '$lib/types';
 import { vi } from 'vitest';
+import { tick } from 'svelte';
 
 // Starmap uses createEventDispatcher (Svelte legacy). Under Svelte 5 the
 // instance `$on` API is gone; listen via @testing-library/svelte's `events`
@@ -128,5 +129,62 @@ describe('Starmap.svelte — measure tool depth (A17)', () => {
 
   it('reports the planar separation when the campaign ignores depth', async () => {
     expect(await measureBoth(true)).toBe('40 ly');
+  });
+});
+
+// A82 — THE HOVER SUMMARY, and the two rules that are easy to lose in a refactor: the card is
+// MOUSE-ONLY (there is no hover on a touch screen, and a card that appeared on tap would cover
+// the star the tap was aimed at), and it goes away again. The counts themselves are gated in
+// `starmap/systemSummary.spec.ts`; this is only about the pointer.
+describe('A82 — the hover summary', () => {
+  // The shell decides desktop-vs-phone from a `(min-width: 900px) and (pointer: fine)` query,
+  // and the suite's jsdom stub answers `false` to everything - so every other test in this file
+  // runs in PHONE mode, where the card is deliberately not offered. Say desktop for these three.
+  const realMM = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((q: string) => ({
+      matches: true, media: q, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {},
+      dispatchEvent: () => false
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => { window.matchMedia = realMM; });
+
+  const enter = (el: Element, pointerType: string) =>
+    el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true, pointerType, clientX: 40, clientY: 40 }));
+
+  it('shows the system’s summary when a MOUSE hovers a star', async () => {
+    const { container } = renderStarmap();
+    expect(container.querySelector('.star-summary')).toBeNull();
+    enter(starGroup(container, 0), 'mouse');
+    await tick();
+    const card = container.querySelector('.star-summary');
+    expect(card).toBeTruthy();
+    expect(card!.textContent).toContain('System 1');
+    expect(card!.textContent).toMatch(/G2V/);
+  });
+
+  it('shows NOTHING on a touch pointer', async () => {
+    const { container } = renderStarmap();
+    enter(starGroup(container, 0), 'touch');
+    await tick();
+    expect(container.querySelector('.star-summary')).toBeNull();
+  });
+
+  it('goes away on leave, and on a press — a tooltip over a context menu is noise', async () => {
+    const { container } = renderStarmap();
+    const g = starGroup(container, 0);
+    enter(g, 'mouse');
+    await tick();
+    expect(container.querySelector('.star-summary')).toBeTruthy();
+    g.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true, pointerType: 'mouse' }));
+    await tick();
+    expect(container.querySelector('.star-summary')).toBeNull();
+
+    enter(g, 'mouse');
+    await tick();
+    g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }));
+    await tick();
+    expect(container.querySelector('.star-summary')).toBeNull();
   });
 });

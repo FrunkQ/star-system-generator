@@ -16,6 +16,9 @@
   import type { Starmap, System, RulePack, Barycenter } from '$lib/types';
   import { constructDisplayPlacement, flybyTurn, interstellarConstructIds } from '$lib/transit/interstellar';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
+  // A82: the hover summary. ONE builder for the counts, ONE component for the card.
+  import StarSummaryCard from '$lib/starmap/StarSummaryCard.svelte';
+  import { systemSummary, type SystemSummary } from '$lib/starmap/systemSummary';
   import BottomSheet from './BottomSheet.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
   import { railCollapsed } from '$lib/railStore';
@@ -99,6 +102,44 @@
   // Phase 03: Starmap owns its own AppShell (same shared rail as SystemView). RailNav app
   // nav forwards up to +page via dispatch; the niche bulk-editors stay in the header menu.
   let mode: 'desktop' | 'phone' = 'desktop';
+
+  // ── A82 THE HOVER SUMMARY ──────────────────────────────────────────────────────────────────
+  // Owner, 2026-08-31: hovering a star showed nothing, and he wants the system's contents at a
+  // glance — star type, what is in orbit, whether anything lives there, "and any special stuff
+  // like ringworld stuff".
+  //
+  // MOUSE ONLY, AND THAT IS NOT AN OVERSIGHT. There is no hover on a touch screen: a tap is a
+  // selection, and a card that appeared on tap would cover the star the tap was aimed at and
+  // fight the pan gesture. Phones get the bottom sheet, which already shows this and more.
+  let hoverSummary: SystemSummary | null = null;
+  let hoverX = 0, hoverY = 0;
+  let canvasEl: HTMLElement | null = null;
+  let hoverBounds = { w: 0, h: 0 };
+
+  function pointerInCanvas(e: PointerEvent) {
+      const r = canvasEl?.getBoundingClientRect();
+      if (!r) return null;
+      hoverBounds = { w: r.width, h: r.height };
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function showStarSummary(e: PointerEvent, systemNode: any) {
+      if (e.pointerType !== 'mouse' || mode === 'phone') return;
+      const p = pointerInCanvas(e);
+      if (!p) return;
+      hoverX = p.x; hoverY = p.y;
+      // Rebuilt per hover rather than cached: a system that gains a moon while the map is open
+      // must say so, and counting a system is a walk of its node list, not work worth keeping.
+      hoverSummary = systemSummary(systemNode.name, systemNode.system, rulePack);
+  }
+
+  function moveStarSummary(e: PointerEvent) {
+      if (!hoverSummary) return;
+      const p = pointerInCanvas(e);
+      if (p) { hoverX = p.x; hoverY = p.y; }
+  }
+
+  const hideStarSummary = () => { hoverSummary = null; };
   let railOpen = false; // phone slide-in rail (opened by the + menu FAB)
   const starmapFabActions = [{ id: 'reset', label: 'Reset view', icon: '↺' }];
   function handleStarmapFabAction(e: CustomEvent<string>) {
@@ -1241,7 +1282,7 @@
       />
     </svelte:fragment>
     <svelte:fragment slot="canvas">
-  <div class="starmap-canvas">
+  <div class="starmap-canvas" bind:this={canvasEl}>
     {#if ensuredTemporal}
       <div class="time-display-overlay"><TimeDisplay temporal={ensuredTemporal} /></div>
     {/if}
@@ -1492,6 +1533,10 @@
           on:dblclick={() => handleStarDblClick(systemNode.id)}
           on:contextmenu={(e) => handleStarContextMenu(e, systemNode.id)}
           on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStarClick(e, systemNode.id); }}
+          on:pointerenter={(e) => showStarSummary(e, systemNode)}
+          on:pointermove={moveStarSummary}
+          on:pointerleave={hideStarSummary}
+          on:pointerdown|capture={hideStarSummary}
         >
           {#if isSystemHidden(systemNode)}
             <!-- Crossed-eye reminder: this system's main star is player-hidden, so it won't appear
@@ -1643,6 +1688,9 @@
       {/if}
       </g>
     </svg>
+    <!-- A82: the hover card sits OUTSIDE the svg — it is HTML, so it wraps text, takes the house
+         chrome and never inherits the map's pan/zoom transform. -->
+    <StarSummaryCard summary={hoverSummary} x={hoverX} y={hoverY} bounds={hoverBounds} />
     {#if highlightKey.length}
       <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. -->
       <div class="hl-key">

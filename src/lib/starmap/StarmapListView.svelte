@@ -4,6 +4,11 @@
   import { createEventDispatcher } from 'svelte';
   import type { Starmap } from '$lib/types';
   import { systemVisualStars } from './systemStars';
+  // A82: the counts come from the ONE builder. This component used to count planets and moons
+  // itself, by a rule that disagreed with every other surface (it tallied a `dwarf-planet`
+  // roleHint the type union does not contain, so that branch had never once fired) - two answers
+  // to one question, which is this codebase's most recurring recorded fault.
+  import { systemSummary, listLine } from './systemSummary';
 
   export let starmap: Starmap | null = null;
   export let accentColor = '#6aa0ff';
@@ -13,21 +18,7 @@
 
   const dispatch = createEventDispatcher<{ select: string }>();
   $: systems = starmap?.systems ?? [];
-  function summary(node: any): string {
-    const ns = node.system?.nodes ?? [];
-    const stars = systemVisualStars(node.system).length;
-    let planets = 0, moons = 0;
-    for (const n of ns) {
-      if (n.kind !== 'body') continue;
-      if (n.roleHint === 'planet' || n.roleHint === 'dwarf-planet') planets++;
-      else if (n.roleHint === 'moon') moons++;
-    }
-    const parts: string[] = [];
-    if (stars) parts.push(stars > 1 ? `${stars} stars` : '1 star');
-    if (planets) parts.push(`${planets} planet${planets > 1 ? 's' : ''}`);
-    if (moons) parts.push(`${moons} moon${moons > 1 ? 's' : ''}`);
-    return parts.join(' · ') || 'uncharted';
-  }
+  const summary = (node: any): string => listLine(systemSummary(node.name, node.system));
 </script>
 
 <div class="sm-list" style="font-family:{font}; --accent:{accentColor}">
