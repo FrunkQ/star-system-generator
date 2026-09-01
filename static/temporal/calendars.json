@@ -1,10 +1,17 @@
 {
   "default_active_calendar_key": "Earth Gregorian",
+  "temporal_anchor": {
+    "master_t": "435084631200000000",
+    "utc": "1970-01-01T00:00:00Z",
+    "stake_utc": "2026-09-01T12:00:00Z",
+    "note": "THE STAKE IN THE SAND. The master clock counts seconds since the big bang; master_t IS the instant utc, exactly. Every shipped calendar states its zero as epoch_utc, a real instant, and its epoch_offset_t is DERIVED from this anchor on load - move master_t and every calendar moves with it. stake_utc is the date Earth Gregorian is calibrated to render exactly; the simplified year is within 0.1 s per year of a Gregorian mean year, so it holds to a few seconds a century."
+  },
   "temporal_registry": {
     "Earth Gregorian": {
       "id": "EARTH_GREG",
       "math_type": "BUCKET_DRAIN",
       "epoch_offset_t": "435084559692049800",
+      "epoch_utc": "0000-12-31T18:44:34Z",
       "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
       "hierarchy": [
         { "unit": "year", "multiplier": 31536000 },
@@ -14,7 +21,7 @@
         { "unit": "sec", "multiplier": 1 }
       ],
       "leap_logic": {
-        "drift_per_year_t": 20925,
+        "drift_per_year_t": 20938,
         "threshold_t": 86400,
         "apply_to": "day"
       },
@@ -48,6 +55,7 @@
       "id": "TNG_SD",
       "math_type": "RATIO_LINEAR",
       "epoch_offset_t": "435084632967250575",
+      "epoch_utc": "2026-01-01T06:56:15Z",
       "format": "Stardate {val}",
       "parameters": {
         "units_per_earth_year": 1000.0,
@@ -59,6 +67,7 @@
       "id": "MAYAN_HAAB_SIMPL",
       "math_type": "BUCKET_DRAIN",
       "epoch_offset_t": "435084461534290575",
+      "epoch_utc": "-003113-08-11T00:00:00Z",
       "format": "{weekday} {mday}{suffix} {month}, Haab Year {year}",
       "hierarchy": [
         { "unit": "year", "multiplier": 31536000 },
@@ -122,6 +131,7 @@
       "id": "CHINESE_LUNISOLAR_SIMPL",
       "math_type": "BUCKET_DRAIN",
       "epoch_offset_t": "435084488515324800",
+      "epoch_utc": "-002696-01-01T00:00:00Z",
       "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, Year {year}",
       "hierarchy": [
         { "unit": "year", "multiplier": 30585600 },

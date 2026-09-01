@@ -1298,6 +1298,9 @@ export interface BucketDrainCalendarDefinition {
   id: string;
   math_type: 'BUCKET_DRAIN';
   epoch_offset_t: string;
+  /** G62: this calendar's zero as a REAL instant. When present, `epoch_offset_t` is DERIVED
+   *  from the registry anchor on load and whatever is stored in it is ignored. */
+  epoch_utc?: string;
   year_offset?: number;
   format: string;
   hierarchy: TemporalHierarchyUnit[];
@@ -1309,6 +1312,9 @@ export interface RatioLinearCalendarDefinition {
   id: string;
   math_type: 'RATIO_LINEAR';
   epoch_offset_t: string;
+  /** G62: this calendar's zero as a REAL instant. When present, `epoch_offset_t` is DERIVED
+   *  from the registry anchor on load and whatever is stored in it is ignored. */
+  epoch_utc?: string;
   format: string;
   parameters: {
     units_per_earth_year: number;
@@ -1320,6 +1326,22 @@ export interface RatioLinearCalendarDefinition {
 export type TemporalCalendarDefinition =
   | BucketDrainCalendarDefinition
   | RatioLinearCalendarDefinition;
+
+/**
+ * G62 - THE STAKE IN THE SAND. The master clock counts seconds since the big bang, which is a
+ * number with no meaning until something says which real instant one of its ticks is. This is that
+ * statement, and it is DATA (`static/temporal/calendars.json`) rather than a constant in code so
+ * that moving it moves every calendar surface together.
+ */
+export interface TemporalAnchor {
+  /** Master-clock seconds at `utc`, as a decimal string (it exceeds Number.MAX_SAFE_INTEGER). */
+  master_t: string;
+  /** The real instant `master_t` names, ISO-8601 UTC. */
+  utc: string;
+  /** The date the shipped Gregorian calendar is calibrated to render exactly. */
+  stake_utc?: string;
+  note?: string;
+}
 
 export interface TemporalState {
   masterTimeSec: string;

@@ -1,10 +1,69 @@
 import type {
   BucketDrainCalendarDefinition,
+  TemporalAnchor,
   TemporalCalendarDefinition,
   TemporalState
 } from '$lib/types';
 
+/**
+ * The built-in stake in the sand, and the ONLY reason it is still a constant: something has to
+ * answer before `calendars.json` has been fetched (server-side render, a unit test, the fallback
+ * registry). `static/temporal/calendars.json` carries the real one as `temporal_anchor` and it wins
+ * wherever it has been loaded - see `anchorMasterSeconds` and G62.
+ */
 export const BIG_BANG_TO_UNIX_EPOCH_T = 435084631200000000n;
+
+export const DEFAULT_TEMPORAL_ANCHOR: TemporalAnchor = {
+  master_t: BIG_BANG_TO_UNIX_EPOCH_T.toString(),
+  utc: '1970-01-01T00:00:00Z'
+};
+
+/**
+ * G62 - the anchor read as a single number: master-clock seconds at the UNIX epoch. Everything that
+ * converts between wall time and the master clock goes through this one value, so an anchor that
+ * moves takes every calendar with it.
+ *
+ * Returns null for an anchor that does not parse, so a malformed one falls back to the built-in
+ * rather than silently placing every campaign somewhere arbitrary.
+ */
+export function anchorUnixEpochMasterSeconds(anchor: TemporalAnchor | null | undefined): bigint | null {
+  if (!anchor?.master_t || !anchor?.utc) return null;
+  const utcMs = Date.parse(anchor.utc);
+  if (!Number.isFinite(utcMs)) return null;
+  let masterAtUtc: bigint;
+  try {
+    masterAtUtc = BigInt(anchor.master_t);
+  } catch {
+    return null;
+  }
+  // master at the unix epoch = master at the anchor instant, less that instant's unix seconds.
+  return masterAtUtc - BigInt(Math.floor(utcMs / 1000));
+}
+
+/**
+ * G62 - a calendar's zero on the master clock, DERIVED from the anchor whenever the calendar states
+ * its zero as a real instant (`epoch_utc`).
+ *
+ * This is the whole mechanism. Four shipped calendars used to carry four independent absolute
+ * `epoch_offset_t` values with nothing tying them to each other or to the anchor, and three of the
+ * four were wrong by three DIFFERENT amounts (Gregorian 297 years early, Mayan 294 early, Chinese
+ * 144 late) precisely because nothing could have noticed. A calendar that states `epoch_utc` cannot
+ * drift from the anchor because it no longer holds an opinion of its own.
+ *
+ * A calendar with no `epoch_utc` - a GM's own, or one from a save written before this - keeps its
+ * stored `epoch_offset_t` untouched. That is deliberate: the GM's reckoning is the GM's.
+ */
+export function calendarEpochOffset(
+  calendar: TemporalCalendarDefinition,
+  anchor: TemporalAnchor | null | undefined = runtimeAnchor
+): bigint {
+  const stored = parseClockSeconds(calendar.epoch_offset_t, 0n);
+  if (!calendar.epoch_utc) return stored;
+  const zeroMs = Date.parse(calendar.epoch_utc);
+  if (!Number.isFinite(zeroMs)) return stored;
+  const unixEpochMaster = anchorUnixEpochMasterSeconds(anchor) ?? BIG_BANG_TO_UNIX_EPOCH_T;
+  return unixEpochMaster + BigInt(Math.floor(zeroMs / 1000));
+}
 
 const FALLBACK_DISPLAY_FORMAT = 't={master_t}s';
 
@@ -26,8 +85,36 @@ export function parseClockSeconds(value: string | number | bigint | undefined, f
   return fallback;
 }
 
+/**
+ * G62 - the anchor this build is actually running on. `applyTemporalRegistryConfig` sets it from
+ * `calendars.json`; until then (SSR, a unit test, a failed fetch) it is the built-in default. It is
+ * module state for the same reason the shipped registry is: the resolver is called from dozens of
+ * places that have no business knowing where the anchor came from.
+ */
+let runtimeAnchor: TemporalAnchor = DEFAULT_TEMPORAL_ANCHOR;
+
+export function setRuntimeTemporalAnchor(anchor: TemporalAnchor | null | undefined): void {
+  runtimeAnchor = anchorUnixEpochMasterSeconds(anchor) === null
+    ? DEFAULT_TEMPORAL_ANCHOR
+    : (anchor as TemporalAnchor);
+}
+
+export function getRuntimeTemporalAnchor(): TemporalAnchor {
+  return runtimeAnchor;
+}
+
+/** Master-clock seconds at the unix epoch, on the anchor this build is running. */
+export function anchorMasterSeconds(): bigint {
+  return anchorUnixEpochMasterSeconds(runtimeAnchor) ?? BIG_BANG_TO_UNIX_EPOCH_T;
+}
+
 export function unixMsToMasterSeconds(unixMs: number): bigint {
-  return BIG_BANG_TO_UNIX_EPOCH_T + BigInt(Math.floor(unixMs / 1000));
+  return anchorMasterSeconds() + BigInt(Math.floor(unixMs / 1000));
+}
+
+/** The inverse, for surfaces that need to hand a master tick back to wall time. */
+export function masterSecondsToUnixMs(masterSeconds: bigint): number {
+  return Number(masterSeconds - anchorMasterSeconds()) * 1000;
 }
 
 /**
@@ -85,7 +172,7 @@ export function resolveTemporalDisplay(state: TemporalState): ResolvedTemporal {
 }
 
 function resolveRatioLinear(masterSeconds: bigint, calendar: Extract<TemporalCalendarDefinition, { math_type: 'RATIO_LINEAR' }>): ResolvedTemporal {
-  const epochOffset = parseClockSeconds(calendar.epoch_offset_t, 0n);
+  const epochOffset = calendarEpochOffset(calendar);
   const local = Number(masterSeconds - epochOffset);
   const unitsPerYear = calendar.parameters.units_per_earth_year;
   const secPerYear = calendar.parameters.seconds_per_earth_year;
@@ -99,7 +186,7 @@ function resolveRatioLinear(masterSeconds: bigint, calendar: Extract<TemporalCal
 }
 
 function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendarDefinition): ResolvedTemporal {
-  const epochOffset = parseClockSeconds(calendar.epoch_offset_t, 0n);
+  const epochOffset = calendarEpochOffset(calendar);
   const localRaw = masterSeconds - epochOffset;
   const local = localRaw;
 

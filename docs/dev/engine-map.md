@@ -5787,3 +5787,55 @@ NEW report-like route does: give it the payload, not a second resolver.
 BLAST: the report's "DATE:" header line is deliberately left as a real-world ISO date. It is when
 the paper was PRINTED, not an in-world instant, and putting it on the campaign calendar would claim
 a fiction the field does not mean.
+
+### DATA-R36 ONE ANCHOR SAYS WHICH REAL INSTANT A TICK IS, AND EVERY CALENDAR DERIVES FROM IT
+BUCKET: ARCHITECTURE (scattered constants) + DOMAIN - a clock counting seconds since the big bang
+is a number with no meaning until something states which of its ticks is a real date. That
+statement is DATA, it exists once, and nothing may hold a private opinion of it.
+WHERE: `static/temporal/calendars.json` - `temporal_anchor` (`master_t`, `utc`, `stake_utc`) and
+each calendar's `epoch_utc`. Code: `temporal/utre.ts` - `anchorUnixEpochMasterSeconds`,
+`calendarEpochOffset`, `setRuntimeTemporalAnchor`, `anchorMasterSeconds`, `unixMsToMasterSeconds`,
+`masterSecondsToUnixMs`; `temporal/defaults.ts` - `applyTemporalRegistryConfig` (adopts the anchor
+BEFORE the registry), `adoptShippedCalendarEpochs`, `defaultCampaignStartSeconds`. Gated by
+`temporal/anchor.spec.ts` and `temporal/eclipseAnchor.spec.ts`.
+RULE: a shipped calendar states its zero as `epoch_utc`, a real instant, and its `epoch_offset_t`
+is DERIVED from the anchor on load - whatever is stored in that field is ignored. A calendar with
+no `epoch_utc` (a GM's own, or an old save) keeps its stored offset untouched. `epoch_offset_t` is
+therefore a CACHE for our calendars and DATA for theirs, and the discriminator is `epoch_utc`.
+Move `temporal_anchor.master_t` and every shipped calendar moves with it, together, by the same
+amount - that is the property the gate asserts and the reason the mechanism exists.
+WHY: [[G62]], owner: *"The main clock is 'seconds from big bang' but we need a genuine stake in the
+sand to the gregorian calendar... I put in a correction number to try and do this but I am not sure
+it works entirely as planned."* It did not. MEASURED before anything was changed: four calendars
+each carried an independent absolute offset, and three of the four disagreed with the code anchor
+by three DIFFERENT amounts - Earth Gregorian zero at 297 BC (should be 1 AD), Mayan Haab at 3408 BC
+(should be 3114 BC), Chinese Lunisolar at 2553 BC (should be 2697 BC); only the RATIO_LINEAR
+Stardate was right. So the shipped app rendered a clock seeded at 1 January 2026 as "00:00:00,
+Monday 1st January, 2323 AD", and that string was read off both prod and beta.
+BLAST: THE DRIFT IS NOT `Y + D`. `resolveBucketDrain` computes `working = local - floor(local/Y)*D`,
+so one displayed year consumes `Y*Y/(Y-D)` seconds of local time. The shipped `drift_per_year_t`
+of 20925 therefore ran 13.1 s/yr SLOW, and the obvious-looking "correction" to 20952 (which assumes
+365 d + D = a mean year) runs 13.9 s/yr FAST - two wrong answers either side, from one misreading.
+The value that lands is 20938, at 0.089 s/yr. Anyone retuning this must invert the ACTUAL
+expression, not the intuitive one.
+BLAST: THIS CALENDAR HAS NO LEAP DAY AND CANNOT BE MADE EXACT EVERYWHERE. `leap_logic.threshold_t`
+and `apply_to` are declared in the data and never read; the remainder is smeared evenly instead of
+inserting 29 February. So the model is calibrated EXACT at one instant (`stake_utc`, the owner's own
+12:00 on 1 September 2026) and wobbles either side by up to half a day - measured at most 11.6 h
+across 1900-2100, which keeps the DATE right and makes the clock time within it approximate. Do not
+sell this as ephemeris precision; the gate pins the bound rather than a false exactness.
+BLAST: A SHIPPED CALENDAR'S EPOCH IS THE APP'S, NOT THE SAVE'S. Every real starmap carries a copy
+of all four calendars, so without `adoptShippedCalendarEpochs` an existing campaign would render
+297 years out for ever AND - its copy no longer matching shipped - B112's delta would write the
+whole app library back into the file. Adoption is keyed on `id` and touches only the epoch fields
+and `leap_logic`; the key, format and lookup tables stay the GM's. This is the cost DATA-R32
+already states ("if a later version CHANGES one, campaigns follow the new definition"), paid on
+purpose for the first time.
+BLAST: ECLIPSE TIMINGS WERE THE ACCEPTANCE TEST AND ONLY HALF OF IT IS REACHABLE. The anchor half
+is gated exactly. The other half is not the anchor's: Luna in the bundled Sol carries
+`Omega_deg: 0` and `omega_deg: 0` - the node that sets where eclipse SEASONS fall is a placeholder
+- and `eclipses.ts` holds elements FIXED by documented decision (PHY-6, `approximate: true` on
+every prediction). Measured on this build: the first Earth eclipse after 2026-06-01 is 2028-09-22,
+a 0.597 partial, 771.7 days from the real total of 2026-08-12. A correct anchor does not move that
+by one second. Closing it needs real elements for Earth and Luna plus nodal precession - a physics
+item, filed on the board, and `temporal/eclipseAnchor.spec.ts` records the gap with its numbers.
