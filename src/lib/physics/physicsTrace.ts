@@ -395,10 +395,17 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     outputs: tempOut,
     notes: [
       ...(body.starlightDimming ?? []).map((d) => {
+        const cadence = d.occluders.map((o) => {
+          const e = o.eclipse as { permanent?: true; hoursEach?: number } | undefined;
+          if (!e) return null;
+          return e.permanent
+            ? `${o.name} eclipses it PERMANENTLY - the star never rises clear`
+            : `${o.name} eclipses it twice an orbit, about ${Math.round(e.hoursEach!)} hours each crossing`;
+        }).filter(Boolean).join('; ');
         const who = d.occluders.map((o) => o.band && o.alignedShare < 1
           ? `${o.name} — a band this orbit is aligned with ${pct(o.alignedShare)} of the time`
           : `${o.name}${o.band ? ' — a band this orbit sits inside' : ''}`).join('; ');
-        return `SOMETHING WAS BUILT BETWEEN THIS WORLD AND ITS STAR. Only ${pct(d.receivedFrac)} of ${d.starName}'s light arrives here, and every temperature above is computed from what ARRIVES, not what the star emits: ${who}. The rules are the honest ones — a structure never shades itself, shades nothing inside its own radius, and a band shades only what aligns with its plane — so moving the world, or the structure, moves this number.`;
+        return `SOMETHING WAS BUILT BETWEEN THIS WORLD AND ITS STAR. Only ${pct(d.receivedFrac)} of ${d.starName}'s light arrives here, and every temperature above is computed from what ARRIVES, not what the star emits: ${who}. The rules are the honest ones — a structure never shades itself, shades nothing inside its own radius, and a band shades only what aligns with its plane — so moving the world, or the structure, moves this number.${cadence ? ' ' + cadence + '.' : ''}`;
       }),
       ...(seaVapour && seaVapour.beatsAuthored ? [`The ${seaVapour.solvent} sea is evaporating into this world's own air and that vapour is part of the greenhouse above. The amount is NOT authored: it is the saturation pressure of ${seaVapour.solvent} at ${n(body.temperatureK, 0, 'K')} — the same curve that decides where the cloud decks sit — over the surface pressure, scaled by the ${pct(body.hydrosphere?.coverage ?? 0)} of the surface that is sea and by how much of saturation a whole air column holds (it dries with altitude). Earth's own 0.4% is what calibrates that last figure. Because saturation falls away smoothly — by sublimation once the sea freezes — a cooling world loses this warmth gradually instead of at a threshold.`] : []),
       ...(ctx.host && (ctx.host as any).isSelfLuminous ? [`Warmed and irradiated by BOTH ${ctx.star?.name ?? 'the star'} AND its self-luminous host ${ctx.host.name} (a brown dwarf, ${n((ctx.host as any).selfLuminousTeffK, 0, 'K')}). Flux and radiation SUM over every luminous source (Σ Lᵢ / 4πdᵢ²), so a close-in moon of a brown dwarf is far warmer and more irradiated than its distance from the system star alone would imply.`] : []),

@@ -1,5 +1,5 @@
 import type { CelestialBody, Barycenter, System, RulePack, Kepler } from '../types';
-import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG, STEFAN_BOLTZMANN_CONSTANT } from '../constants';
+import { SOLAR_RADIUS_KM, AU_KM, EARTH_MASS_KG, STEFAN_BOLTZMANN_CONSTANT, G } from '../constants';
 import { receivedLuminosityWatts, SOLAR_TEFF_K } from './luminosity';
 import { starOccluders, starlightTransmission } from './starlightOcclusion';
 import { GIANT_METALLIC_HYDROGEN_MIN_MASS_ME } from './fluidLayers';
@@ -620,13 +620,27 @@ export function deriveStarlightDimming(
         if (occluders.length === 0) continue;
         const dist_au = calculateDistanceToStar(body, star, allNodes);
         if (!(dist_au > 0)) continue;
-        const trans = starlightTransmission(body.id, dist_au, heliocentricEdgeElements(body, star, allNodes), occluders);
+        const edge = heliocentricEdgeElements(body, star, allNodes);
+        const trans = starlightTransmission(body.id, dist_au, edge, occluders);
         if (trans.dimmedBy.length === 0) continue;
+        // The CADENCE of a band's shadow (G58, the owner's eclipse framing): a crossed band is an
+        // eclipse twice an orbit for share x T / 2 each; a band the orbit never leaves is a
+        // PERMANENT one - the bad-ring case, said honestly. Kepler from the edge orbit and the
+        // star's own mass; a star with no mass gets no cadence rather than an invented one.
+        const aM = (edge?.a_AU ?? 0) * AU_KM * 1000;
+        const periodH = (star.massKg ?? 0) > 0 && aM > 0
+            ? (2 * Math.PI * Math.sqrt(Math.pow(aM, 3) / (G * star.massKg!))) / 3600
+            : 0;
         (out ??= []).push({
             starName: star.name || 'the star',
             receivedFrac: trans.frac,
             occluders: trans.dimmedBy.map(d => ({
-                name: d.name, fraction: d.fraction, band: d.band, alignedShare: d.alignedShare
+                name: d.name, fraction: d.fraction, band: d.band, alignedShare: d.alignedShare,
+                ...(d.band && d.alignedShare >= 1 - 1e-12
+                    ? { eclipse: { permanent: true as const } }
+                    : d.band && d.alignedShare > 0 && periodH > 0
+                        ? { eclipse: { crossingsPerOrbit: 2 as const, hoursEach: (d.alignedShare * periodH) / 2 } }
+                        : {})
             }))
         });
     }

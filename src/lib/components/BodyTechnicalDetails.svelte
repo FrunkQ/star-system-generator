@@ -62,6 +62,16 @@
       return outlook?.next ? describeEclipse(outlook.next, eclipseNowMs, undefined) : null;
   })();
 
+  // G58: the eclipse a MEGASTRUCTURE causes - a special entry BESIDE the local one, never
+  // competing with it for the row (the owner: "still need local eclipses"). Same one wording.
+  $: megaEclipseTexts = (() => {
+      const sys = $systemStore;
+      const id = (body as any)?.id;
+      if (!sys || !id || eclipseNowMs === null) return [];
+      const outlook = nextEclipseCached(sys as any, id, eclipseNowMs);
+      return (outlook?.megastructure ?? []).map((m) => describeEclipse(m, eclipseNowMs!, undefined));
+  })();
+
   // The "Orbit (from …)" label: keep the host TYPE but name the actual host too (on a multi-star system
   // a bare "Barycentre" / "star" is ambiguous). A barycentre names the bodies it holds, since a body can
   // orbit one though the point itself is invisible — e.g. "Pluto-Charon Barycentre (Pluto + Charon)".
@@ -790,6 +800,13 @@
               <span class="value">{eclipseText}</span>
           </div>
       {/if}
+
+      {#each megaEclipseTexts as met}
+          <div class="detail-item g-orbit" title="The shadow a megastructure casts on this world: a band is crossed twice an orbit for the stated span, and a world sharing a solid ring's plane beyond it is in its shadow permanently. The same geometry that sets the temperature.">
+              <span class="label">Structure Shadow</span>
+              <span class="value">{met}</span>
+          </div>
+      {/each}
 
       {#if isStar && body.temperatureK}
           <div class="detail-item g-climate" title="{Math.round(body.temperatureK).toLocaleString()} K">

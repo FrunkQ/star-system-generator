@@ -775,7 +775,11 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
     starName: string;
     /** Time-averaged share of that star's light this body receives, 0..1. */
     receivedFrac: number;
-    occluders: { name: string; fraction: number; band: boolean; alignedShare: number }[];
+    occluders: { name: string; fraction: number; band: boolean; alignedShare: number;
+      /** G58: the eclipse a BAND causes - permanent (coplanar behind a solid ring) or a cadence
+       *  (twice per orbit, this long each). Absent for isotropic occluders: steady dimming is
+       *  not an event. */
+      eclipse?: { permanent: true } | { crossingsPerOrbit: 2; hoursEach: number } }[];
   }[];
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)

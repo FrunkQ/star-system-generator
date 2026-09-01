@@ -883,10 +883,22 @@ export class SystemProcessor implements ISystemProcessor {
             // and this tag is the opposite kind - the engine's own, re-earned every pass, stripped
             // when the structure goes. G54's rungs apply as to any tag: a GM can set it anonymous
             // and players see that SOMETHING dims this world without learning what.
-            body.tags = stripForReprocess(body.tags ?? [], ['mega/shadowed-by']);
+            body.tags = stripForReprocess(body.tags ?? [], ['mega/shadowed-by', 'mega/eclipsed']);
             if (body.starlightDimming?.length) {
                 const names = [...new Set(body.starlightDimming.flatMap((d) => d.occluders.map((o) => o.name)))];
                 emit(body.tags, { key: 'mega/shadowed-by', value: names.join(', '), origin: 'physics' } as Tag);
+                // G58, the owner's eclipse framing: a band's shadow is an ECLIPSE with a cadence -
+                // permanent for the coplanar bad-ring case, else twice an orbit for so many hours.
+                // Same standard pattern: one derivation, strip-then-emit, physics origin.
+                const withEcl = body.starlightDimming.flatMap((d) => d.occluders.filter((o) => o.eclipse));
+                const perm = withEcl.find((o) => (o.eclipse as { permanent?: true }).permanent);
+                const periodic = withEcl.find((o) => !(o.eclipse as { permanent?: true }).permanent);
+                if (perm) {
+                    emit(body.tags, { key: 'mega/eclipsed', value: `permanent - ${perm.name}`, origin: 'physics' } as Tag);
+                } else if (periodic) {
+                    const e = periodic.eclipse as { hoursEach: number };
+                    emit(body.tags, { key: 'mega/eclipsed', value: `2 per orbit, ~${Math.round(e.hoursEach)} h each - ${periodic.name}`, origin: 'physics' } as Tag);
+                }
             }
         };
         if (allStars.length > 0) commitThermal();

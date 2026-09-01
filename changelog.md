@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.250 - 31st Aug 2026
+
+- A megastructure's shadow now reads as what it is: an eclipse. A world that crosses a ring's shadow shows a Structure Shadow line in its technical block - how often and how long the star goes out (a tilted world behind the default ring: twice an orbit, about three and a half days each) - and a world trapped coplanar behind a solid ring says the honest word: permanent. Local eclipses keep their own Next Eclipse row untouched. The same fact lands as an Eclipsed tag beside Shadowed-by, and the physics trace speaks the cadence in its dimming note - one geometry, one wording, three surfaces.
+
+## v3.0.247 - 31st Aug 2026
 ## v3.0.249 - 1st Sep 2026
 
 - One link now opens a shared map. A link to a map on the Explorer hub - pasted into a Discord, an email, anywhere - starts the app with that map ready to go, instead of a download followed by an import. There is also a box on the load screen for anyone already inside the app: paste the link, the map's page, or just its code, and it works out which you meant, including when the link has tracking rubbish on the end.

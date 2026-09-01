@@ -210,6 +210,18 @@ describe('the knob editor reaches physics: instance params drive the occluder (G
 	});
 });
 
+describe('band cadence on the dimming entries (G58 - the eclipse the ring causes)', () => {
+	it('coplanar behind a solid ring: permanent; tilted 30 deg: twice an orbit for ~84 h', () => {
+		const flat = deriveStarlightDimming(planet('p1', 2), [sol(), mega('ring1', 'ringworld', 1), planet('p1', 2)]);
+		expect(flat![0].occluders[0].eclipse).toEqual({ permanent: true });
+		const tilted = deriveStarlightDimming(planet('p1', 2, 30), [sol(), mega('ring1', 'ringworld', 1), planet('p1', 2, 30)]);
+		const e = tilted![0].occluders[0].eclipse as { crossingsPerOrbit: 2; hoursEach: number };
+		expect(e.crossingsPerOrbit).toBe(2);
+		expect(e.hoursEach).toBeGreaterThan(75);
+		expect(e.hoursEach).toBeLessThan(95);
+	});
+});
+
 describe('the zones follow the dimming (the B110 coherence half)', () => {
 	// The zone circles LIVE in the system plane, which is the aligned direction for every band -
 	// so for zones every occluder applies its full fraction beyond its radius, bands included.
@@ -279,6 +291,7 @@ describe('the dimming summary the trace reads', () => {
 		expect(dim![0].starName).toBe('Sol');
 		expect(dim![0].receivedFrac).toBeCloseTo(0.7, 9);
 		expect(dim![0].occluders[0]).toMatchObject({ name: 'swarm1', fraction: 0.3, band: false });
+		expect(dim![0].occluders[0].eclipse).toBeUndefined(); // isotropic: steady dimming, no event
 		expect(deriveStarlightDimming(planet('p2', 0.3), swarmSystem(0.5, [planet('p2', 0.3)]))).toBeNull();
 	});
 });
@@ -353,6 +366,22 @@ describe('the processor commits the shadow and deletes it with the structure', (
 		const earthAfter = after.nodes.find((n) => n.name === 'Earth') as CelestialBody;
 		expect(earthAfter.starlightDimming).toBeUndefined();
 		expect((earthAfter.tags ?? []).some((t) => t.key === 'mega/shadowed-by')).toBe(false); // no ghost tag
+		expect((earth.tags ?? []).some((t) => t.key === 'mega/eclipsed')).toBe(false); // isotropic swarm: no eclipse tag
 		expect(earthAfter.equilibriumTempK!).toBeGreaterThan(earth.equilibriumTempK!);
+	}, 60000);
+
+	it('a coplanar world behind a solid ring carries the permanent-eclipse tag, in the standard pattern', () => {
+		const pack = loadPack();
+		const withRing = bundledSol();
+		const star = withRing.nodes.find((n) => (n as CelestialBody).roleHint === 'star')!;
+		withRing.nodes.push({
+			...mega('ring1', 'ringworld', 0.25),
+			parentId: star.id,
+			orbit: { hostId: star.id, hostMu: 1.327e20, t0: 0, elements: el(0.25) }
+		});
+		const done = systemProcessor.process(withRing, pack);
+		const earth = done.nodes.find((n) => n.name === 'Earth') as CelestialBody;
+		const tag = (earth.tags ?? []).find((t) => t.key === 'mega/eclipsed');
+		expect(String(tag?.value ?? '')).toContain('permanent');
 	}, 60000);
 });
