@@ -481,3 +481,161 @@ it is theirs, leave it.
 > non-obvious rule, and correct any entry you falsify; record dead ends loudly; do not stop early
 > on a context guess. When the hub needs telling (its baselines can empty once F2 lands), say so in
 > your rows — the owner relays. Anything that changes what the product IS: recommend, then ask.
+
+---
+
+## STREAM G — the temporal batch: reports that lie about the date, and the stake in the sand (B113 + G62)
+
+> You are fixing [[B113]] and building [[G62]] for Star System Explorer — one stream, because the
+> report's epoch fault is a CONSUMER of the grounding G62 builds. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (v3.0.251+ — fetch
+> the tip; several streams push daily, renumber on collision). Work in your OWN worktree
+> (`git worktree add ../sse2-temporal -b wt/temporal origin/beta`); the main checkout is shared.
+> Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** (1) The [[B113]] and [[G62]] rows in `docs/dev/observations-inbox.md` — both carry
+> coordinator probes; then the standing rules at that file's foot. (2) In `docs/dev/engine-map.md`:
+> grep for `temporal|calendar|epoch|clock` and read every entry that returns (the player-clock
+> ownership entries are load-bearing here), plus `PHY-34` for the gate discipline. (3)
+> `static/temporal/calendars.json` and the temporal registry code that consumes it. (4) The player
+> clock rules: docs/GettingStarted's who-owns-the-clock section.
+>
+> **PART 1 — [[B113]], AND MEASUREMENT COMES FIRST.** Two symptoms, likely two faults:
+>
+> - **(a) The report epoch ignores the settings calendar.** PROBED: `ReportDocument.svelte:762`
+>   renders `new Date(system.epochT0)` RAW — the ms epoch pushed straight through Gregorian,
+>   never through the temporal registry. The fix is that reports render dates through the SAME
+>   calendar path every other surface uses — find that path, do not invent a second one (one
+>   formatter, or you build the next B110).
+> - **(b) "The report window no longer opens at all" (owner).** PROBED, two suspects: the report
+>   opens via a bare `window.open('/report', '_blank')` (`+page.svelte:121`,
+>   `SystemView.svelte:1195`) — a blocked popup fails SILENTLY; and exactly ONE commit touched
+>   reports since prod: **v3.0.205, the A80 unit sweep over ReportDocument** — if that render now
+>   throws, the tab opens blank, which a user reports as "does not open".
+>   **REPRODUCE ON BOTH CHANNELS BEFORE FIXING ANYTHING:** prod is v3.0.164 at starsystemx.com,
+>   beta at beta.starsystemx.com. The reporting user is presumably on prod (pre-.205) — if prod
+>   fails too, .205 is exonerated for (b). Check the /report tab's console FIRST; a thrown render
+>   is loud there and invisible otherwise. If popup blocking is implicated, the fix is graceful:
+>   detect the null return from `window.open` and tell the GM what their browser did.
+>
+> **PART 2 — [[G62]], the stake in the sand.** Owner: *"The main clock is 'seconds from big bang'
+> but we need a genuine stake in the sand to the gregorian calendar... a common reference to ground
+> the calendars so <tick> = 12:00:00 on 1/Sept/26 or stardate or whatever."*
+>
+> - **AUDIT HIS CORRECTION NUMBER FIRST — he flagged the doubt himself** (*"I put in a correction
+>   number... not sure it works entirely as planned"*). Find it (grep the temporal code and the
+>   bundled maps for offset/correction fields), measure what it ACTUALLY does, and record that on
+>   the row before replacing anything. A correction that half-works and gets silently replaced is
+>   a dead end the next reader re-walks.
+> - **The mechanism: ONE anchored reference** — tick T on the master clock = instant X on calendar
+>   C — that every calendar in the registry derives from. The anchor is DATA in the registry, not
+>   a constant in code (the scattered-constants rule), and every calendar surface (settings,
+>   reports, info cards, the clock strip) renders through it.
+> - **The calibration: the bundled Earth/Sol maps** set so real dates give real sky. **The
+>   acceptance test is the owner's own: ECLIPSE TIMINGS.** A wrong anchor moves an eclipse by
+>   hours, so pick one or two known eclipses (there is a solar eclipse 2026-08-12, conveniently
+>   recent) and gate that the engine's geometry at the anchored date puts Luna's shadow where
+>   history says. `src/lib/system/eclipses.ts` exists; read it before writing anything.
+> - **COORDINATE WITH STREAM F:** it is serialising `temporal_registry` (delta-not-defaults,
+>   [[B112]]). The anchor's data shape must land BEFORE or WITH its delta work — talk through the
+>   board rows, do not collide in the file.
+>
+> **THE TWO-CHANNEL RULE FOR THIS BATCH (owner: these fixes go to PROD and BETA).** Fix on beta
+> first, gates red-first, build green, push. For whatever reproduces on PROD: cherry-pick the fix
+> commits onto a branch off `origin/main` in the `../sse-prod-hotfix` worktree, re-run the gates
+> AGAINST THAT TREE (a fix that leans on post-.164 machinery may not port — check, do not assume),
+> build green from it, and **STOP THERE. Report the staged branch on your rows. The prod push is
+> the owner's word through the coordinator, never yours.** Version numbering is ONE SHARED LINE:
+> the hotfix takes the next free number above beta's top at that moment.
+>
+> **RELAY, in your row when you close (a):** the user also asked whether player reports can be
+> hand-edited — the answer is no, they are generated; if they want editable output that is a
+> feature request for the board, not a fault.
+>
+> **ACCEPTANCE.** (1) A campaign whose settings calendar is non-Gregorian generates a report whose
+> Epoch line matches the settings calendar. (2) /report opens with the paper report on prod-tree
+> and beta-tree builds; a deliberately blocked popup produces a visible explanation, not silence.
+> (3) The anchored reference is data; changing it moves every calendar surface together. (4) The
+> eclipse gate: the anchored Earth map puts a named historical eclipse at its recorded time,
+> within minutes. (5) The owner's correction number is measured and its story recorded BEFORE it
+> is replaced. (6) Every new gate run with the fix removed and seen red; at least one assertion
+> absolute (PHY-34).
+>
+> **RULES THAT ARE NOT OPTIONAL:** green `npm run build` per push; version bump + changelog prose
+> a GM understands; explicit staging, never `git add -A`; `git show --stat` before every push;
+> fetch before push, rebase on rejection, RENUMBER from theirs, keep both changelog entries, and
+> **the conflict-marker check GATES the add** (a marker was pushed this week when a check merely
+> printed); engine-map entry in the same commit for any non-obvious rule, correct any entry you
+> falsify; record dead ends loudly; never stop early on a context guess; if the pane will not
+> render, hand back a thirty-second eyeball list.
+
+---
+
+## STREAM H — the UI batch: star hover summaries, supermassive black holes, and the mobile audit (A82 + A83 + A84)
+
+> You are fixing [[A82]], [[A83]] and [[A84]] for Star System Explorer — one stream, all
+> self-contained UI, no physics. Repo `C:\Development\star-system-explorer-v2\star-system-generator`,
+> branch `beta` (v3.0.251+ — fetch the tip; several streams push daily, renumber on collision).
+> Work in your OWN worktree (`git worktree add ../sse2-uibatch -b wt/uibatch origin/beta`); the main
+> checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** (1) The three rows in `docs/dev/observations-inbox.md`, then the standing rules
+> at that file's foot — especially the browser-pane rules ([[E7]]: a hidden pane cannot render a
+> canvas at all) and "verify in the browser is not optional". (2) In `docs/dev/engine-map.md`:
+> `RENDER-S27` (a starmap glyph is a SCREEN quantity), `UI-C1`, `UI-C10`, `DATA-R20` (units:
+> stored values never leave SI), and the A72 overflow note in the standing rules. (3)
+> `docs/ui-design-language.md` if present — match the house chrome, compact modals over inline
+> panels.
+>
+> **H1 — [[A82]], the star hover summary.** Hover on a GM starmap star currently shows nothing.
+> Build a compact summary card: full star designation (the ONE builder,
+> `system/starClassExplain.ts` — do not format a second spelling), planet count, body count,
+> construct count, one compact life line when a biosphere exists, and a special line for
+> non-standard objects (read `megaType`/the exotics capability record — a ringworld in the system
+> is exactly what the owner wants surfaced). Check BOTH starmap surfaces (2D `Starmap.svelte` and
+> the 3D starmap) — one summary component, two mounts, never two spellings of the counts. GM side
+> only; the PLAYER starmap must not gain it (their view is redacted for a reason — if you wire the
+> shared component, prove the player path never mounts it).
+>
+> **H2 — [[A83]], supermassive black holes.** PROBED: the cap is `const massMax = 300` HARDCODED
+> at `BodyStarTab.svelte:90` — the scattered-constant fault. Owner: *"a switch that can offer
+> 'supermassive black holes' - the scale will change from 300 to 270 Billion SM - which is the
+> theoretical limit (log slider!)"*. Fix shape, in order: (i) EXTRACT the bound to data, pinning
+> today's behaviour — moving a number and changing it are two commits, never one (the pixel-floor
+> precedent); (ii) the supermassive toggle swaps the slider's soft range to a LOG scale reaching
+> 2.7e11 SM (the overrides roster's `log?: boolean` is the shipped pattern — reuse it, do not
+> invent a second log-slider); (iii) 270 billion is the THEORETICAL limit, so it is the amber band
+> edge, not a wall — a typed value beyond it stays allowed and warned, per steer-don't-stop and
+> the two-tier amber/red convention. **Then LOOK at one:** create a 4e6 SM black hole (Sgr A*)
+> and a 1e10 SM one and eyeball the renderer — lensing, accretion, the info card's derived
+> figures (Schwarzschild radius of 1e10 SM is ~200 AU; if a derived readout or the scale law
+> does something absurd, record it as a finding rather than silently clamping).
+>
+> **H3 — [[A84]], the mobile audit — and the two named faults first.** Owner: the LLM description
+> screen and the Constructs **Schedule Journey** flow are broken/unreachable on mobile, *"take a
+> quick audit to see if we have missed anything else"*. Use the preview pane's mobile preset
+> (`resize_window`, 375x812, reload after switching so load-time device gates re-run). Fix the two
+> named surfaces, then SWEEP every modal, menu and full-screen surface at that viewport — the
+> audit output is a LIST on your rows: each surface, works/broken, fixed-inline or filed. Fix the
+> trivial ones in this stream; file anything structural as its own captured row rather than
+> widening this one. **The audit REQUIRES the pane to render** — if the browser is genuinely
+> unavailable, the two named fixes still land by code-reading but the audit half is handed back
+> explicitly as NOT DONE, never silently skipped.
+>
+> **THE TWO-CHANNEL RULE (owner: this batch goes to PROD and BETA).** Beta first, gates red-first
+> where a gate applies, build green, push. Then cherry-pick what reproduces on prod onto a branch
+> off `origin/main` in `../sse-prod-hotfix`, re-verify against that tree, build green, and **STOP
+> — report the staged branch; the prod push is the owner's word through the coordinator.** One
+> shared version line: the hotfix takes the next free number above beta's top.
+>
+> **ACCEPTANCE.** (1) Hovering any star on the GM 2D and 3D starmaps shows the summary; a system
+> with a ringworld says so; the player starmap shows nothing new. (2) The default BH slider
+> behaves exactly as today; the toggle reaches 2.7e11 SM on a log scale; a typed 5e11 warns amber
+> and is kept. (3) The LLM description screen and Schedule Journey work at 375x812, and the audit
+> list is on the rows with every surface named. (4) Every new gate red-first; visual claims either
+> seen in the pane or handed to the owner as a thirty-second eyeball list.
+>
+> **RULES THAT ARE NOT OPTIONAL:** as Stream G — green build per push, version bump + changelog
+> prose, explicit staging, `git show --stat` (the CRLF tell), fetch-rebase-renumber with the
+> marker check GATING the add, engine-map entries in the same commit, dead ends recorded, no
+> stopping early on a context guess.
