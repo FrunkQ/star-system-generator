@@ -15,7 +15,8 @@
   import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatsFromPack } from '$lib/generation/star';
   // A83: the slider bounds are DATA, not seven const pairs buried in this script block.
-  import { STAR_BOUNDS, boundPos, boundValue, bandPct } from '$lib/physics/starBounds';
+  import { STAR_BOUNDS, SUPERMASSIVE_MASS, SUPERMASSIVE_AMBER_ABOVE, SUPERMASSIVE_AMBER_NOTE,
+      massSoftRange, boundPos, boundValue, bandPct } from '$lib/physics/starBounds';
   import { stellarTypeForBand, spectralSubclass, starClassParts, starClassKeyFor, isBandKey, bandKeyOf } from '$lib/physics/starDesignation';
 
   // A key a BODY holds rather than a range it was drawn from — used to drop the previous designation
@@ -90,7 +91,17 @@
   // --- Slider travel: DATA (A83), pinned bit-for-bit by `physics/starBounds.spec.ts`. ---
   // `soft` is TRAVEL, never a wall: a typed figure outside it pins the thumb and is kept as
   // typed, which is what every writer below already did and what steer-don't-stop requires.
-  const massSoft = STAR_BOUNDS.mass.soft;
+  // A83 THE SUPERMASSIVE SWITCH. Owner: *"a switch that can offer 'supermassive black holes' -
+  // the scale will change from 300 to 270 Billion SM - which is the theoretical limit (log
+  // slider!)"*. It moves the slider's TRAVEL and nothing else: the mass under the thumb does not
+  // change when it is thrown, because a control that edits the thing it is describing is a trap.
+  //
+  // IT IS NOT STORED, IT IS DERIVED - from whether this hole is ALREADY heavier than any star.
+  // A stored flag would be a second answer to a question the mass already answers, and the two
+  // would drift the first time a mass arrived from an import, a preset or an undo. So a 4e6 M☉
+  // hole always opens with the fine scale it needs, and nothing has to remember that it did.
+  let supermassive = $state(false);
+  const massSoft = $derived(massSoftRange(supermassive));
   let massSliderPos = $state(0.5);
   // Which body the editable fields below were last synced from. The sync effect re-runs on every render
   // (the body proxy re-resolves as the clock ticks), so we only pull values FROM the body when a different
@@ -392,7 +403,12 @@
       if (body.massKg) {
           const m = body.massKg / SOLAR_MASS_KG;
           massSuns = m;
-          massSliderPos = boundPos(massSoft, m);
+          // Seeded from the DATA, not from a remembered switch (see the note beside `massSoft`).
+          // Read off the body's own class rather than `currentClass`, which a separate effect
+          // writes - this must not depend on which effect ran first.
+          supermassive = String(body.classes?.[0] ?? '').startsWith('star/BH')
+              && m > STAR_BOUNDS.mass.soft[1];
+          massSliderPos = boundPos(massSoftRange(supermassive), m);
       }
       if (body.radiusKm) {
           const r = body.radiusKm / SOLAR_RADIUS_KM;
@@ -422,6 +438,12 @@
   });
 
   // --- Updates ---
+  /** Flip the travel. Re-seats the THUMB from the mass; never the mass from the thumb. */
+  function toggleSupermassive() {
+      supermassive = !supermassive;
+      massSliderPos = boundPos(massSoftRange(supermassive), massSuns);
+  }
+
   function updateMass() {
       const val = boundValue(massSoft, massSliderPos);
       massSuns = parseFloat(val.toPrecision(3));
@@ -432,7 +454,12 @@
 
   function handleMassNumberInput() {
       body.massKg = massSuns * SOLAR_MASS_KG;
-      massSliderPos = boundPos(massSoft, massSuns);
+      // THE SWITCH FOLLOWS THE NUMBER, exactly as it does on load. Type 4e6 M☉ into a hole and
+      // the scale it needs is already there; without this the thumb pins to the top of a stellar
+      // track and the slider is dead until the GM finds the switch themselves. It steers - the
+      // typed value is never touched, in either direction.
+      if (isBH && massSuns > STAR_BOUNDS.mass.soft[1]) supermassive = true;
+      massSliderPos = boundPos(massSoftRange(supermassive), massSuns);
       if (isBH) applySchwarzschild();
       dispatch('update');
   }
@@ -883,6 +910,19 @@
             </svg>
             <input type="range" min="0" max="1" step="0.001" bind:value={massSliderPos} on:input={updateMass} class="full-width-slider overlay" />
         </div>
+        {#if isBH}
+            <label class="sm-toggle">
+                <input type="checkbox" checked={supermassive} on:change={toggleSupermassive} />
+                Supermassive scale
+                <span class="sub-label">— up to {SUPERMASSIVE_MASS[1].toExponential(1)} M☉, the theoretical limit</span>
+            </label>
+        {/if}
+        {#if massSuns > SUPERMASSIVE_AMBER_ABOVE}
+            <!-- AN EDGE, NOT A WALL. The figure is kept exactly as typed; this only says what is
+                 remarkable about it. Steer, do not stop - alien engineering and plot devices are
+                 legitimate reasons and the engine cannot tell one from a typo. -->
+            <p class="mass-amber" role="status">{SUPERMASSIVE_AMBER_NOTE}</p>
+        {/if}
         {#if massSuns <= 0.015}
             <button class="action-btn douse-btn" on:click={douseStar}>❄️ Douse into Planet</button>
         {/if}
@@ -1116,6 +1156,29 @@
       fill: #fff;
       font-weight: bold;
   }
+  /* A83: the supermassive switch and the amber edge beneath the mass slider. */
+  .sm-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .sm-toggle input { margin: 0; }
+  .sm-toggle .sub-label { margin: 0; }
+  .mass-amber {
+    margin: 6px 0 0;
+    padding: 5px 8px;
+    border-left: 3px solid var(--warning, #ffcc00);
+    background: var(--bg-control, #1b1e26);
+    color: var(--warning, #ffcc00);
+    font-size: 0.8em;
+    line-height: 1.35;
+    border-radius: 0 var(--radius-sm, 4px) var(--radius-sm, 4px) 0;
+  }
+
   input[type="range"].overlay {
       position: absolute;
       top: 0;
