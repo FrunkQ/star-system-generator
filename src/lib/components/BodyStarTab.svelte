@@ -85,6 +85,11 @@
   // rotation model yet, so a freshly-made one genuinely does not have a spin — and "0 h" reads as a
   // measurement rather than the gap it is. The boxes stay empty until something fills them in.
   let rotationHours: number | undefined = $state(undefined);
+  // A85: rotation is a 0..1 POSITION on a log track now, like every other slider in this editor.
+  // `rotationHours` stays the authored figure and stays legitimately undefined; this is only
+  // where the thumb is. 0.5 is the track midpoint, which is where the browser put an empty
+  // range input before, so an unset rotation looks exactly as it did.
+  let rotSliderPos = $state(0.5);
   let axialTilt: number | undefined = $state(undefined);
   let magGauss = $state(0);
 
@@ -275,11 +280,9 @@
           : prop === 'rad' ? radSoft
           : prop === 'mag' ? magSoft
           : STAR_BOUNDS.rot.soft;
-      // ROTATION'S BAND IS DRAWN ON A LOG AXIS UNDER A LINEAR SLIDER — the `true` here is not a
-      // choice, it is the shipped behaviour being carried across unchanged so that the extraction
-      // moves nothing. It is a real fault (a 600 h band paints at 76% of a track where the thumb
-      // for 600 h sits at 6%), recorded as A85 and fixed in its own commit.
-      const pct = bandPct(soft, range, prop === 'rot' ? true : STAR_BOUNDS[prop === 'rad' ? 'radiation' : prop].log);
+      // ONE AXIS FOR BOTH HALVES (A85): the band reads the same `log` flag the slider is built
+      // from, so a future retune cannot part them again the way it had for rotation.
+      const pct = bandPct(soft, range, STAR_BOUNDS[prop === 'rad' ? 'radiation' : prop === 'rot' ? 'rot' : prop].log);
       if (!pct) return 0;
       if (type === 'start') return pct.start;
       return pct.width;
@@ -424,6 +427,7 @@
           radSliderPos = boundPos(radSoft, body.radiationOutput);
       }
       rotationHours = body.rotation_period_hours ?? undefined;
+      rotSliderPos = rotationHours === undefined ? 0.5 : boundPos(STAR_BOUNDS.rot.soft, rotationHours);
       axialTilt = body.axial_tilt_deg ?? undefined;
       if (body.magneticField?.strengthGauss !== undefined) {
           magGauss = body.magneticField.strengthGauss;
@@ -571,9 +575,19 @@
   // Clearing the box removes the field rather than writing 0 — an empty box means "we do not know",
   // and that has to survive the round trip or the honest state is unreachable once you leave it.
   function updateRotation() {
-      if (typeof rotationHours === 'number' && Number.isFinite(rotationHours)) body.rotation_period_hours = rotationHours;
-      else delete body.rotation_period_hours;
+      if (typeof rotationHours === 'number' && Number.isFinite(rotationHours)) {
+          body.rotation_period_hours = rotationHours;
+          rotSliderPos = boundPos(STAR_BOUNDS.rot.soft, rotationHours);
+      } else {
+          delete body.rotation_period_hours;
+      }
       dispatch('update');
+  }
+
+  /** The thumb, on the same log track the green band is painted on (A85). */
+  function updateRotationSlider() {
+      rotationHours = parseFloat(boundValue(STAR_BOUNDS.rot.soft, rotSliderPos).toPrecision(3));
+      updateRotation();
   }
 
   function updateTilt() {
@@ -1065,7 +1079,7 @@
             <svg class="slider-svg" width="100%" height="30">
                 <rect x="{getRangePct('rot', 'start')}%" y="0" width="{getRangePct('rot', 'width')}%" height="8" fill="#22aa44" />
             </svg>
-            <input type="range" min={STAR_BOUNDS.rot.soft[0]} max={STAR_BOUNDS.rot.soft[1]} step="0.1" bind:value={rotationHours} on:input={updateRotation} class="full-width-slider overlay" />
+            <input type="range" min="0" max="1" step="0.001" bind:value={rotSliderPos} on:input={updateRotationSlider} class="full-width-slider overlay" />
         </div>
         {#if rotationHours === undefined}
             <div class="sub-label">Not set &mdash; nothing derives a star's spin yet, so this is a gap rather than a still star. Set it if you need one.</div>

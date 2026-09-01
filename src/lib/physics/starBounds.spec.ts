@@ -115,26 +115,18 @@ describe('the extraction is bit-unchanged — every slider maps as it used to', 
 		});
 	}
 
-	// ROTATION IS THE ONE THAT DOES NOT MATCH ITSELF, and this is the pin for that (A85). The slider
-	// is LINEAR (`min="0.1" max="10000"` on the input) while `getRangePct('rot')` drew the band on a
-	// LOG axis. Both halves are pinned here as they shipped, so the fix that unifies them has
-	// something to go red against.
-	it('rotation — the SLIDER is linear and the BAND was drawn on a log axis (A85, as shipped)', () => {
-		expect(STAR_BOUNDS.rot.log).toBe(false);
-		for (const v of [0.1, 6, 600, 5000, 10000]) {
-			expect(boundPos(STAR_BOUNDS.rot.soft, v, false)).toBeCloseTo(
-				(v - LEGACY.rot.min) / (LEGACY.rot.max - LEGACY.rot.min),
-				12
-			);
-		}
-		// The log band, exactly as the component drew it.
-		const got = bandPct(STAR_BOUNDS.rot.soft, [600, 700], true)!;
+	// ROTATION WAS THE ONE THAT DID NOT MATCH ITSELF (A85), and this is what stops it happening
+	// again: the band and the thumb read ONE flag, so they cannot be given different axes. The
+	// band arithmetic is still pinned against the old `getRangePct` — that half never moved.
+	it('rotation — band and thumb are on ONE axis, and it is log (A85)', () => {
+		expect(STAR_BOUNDS.rot.log).toBe(true);
+		const band = bandPct(STAR_BOUNDS.rot.soft, [600, 700], STAR_BOUNDS.rot.log)!;
 		const want = legacyBand(LEGACY.rot.min, LEGACY.rot.max, [600, 700]);
-		expect(got.start).toBeCloseTo(want.start, 10);
-		expect(got.width).toBeCloseTo(want.width, 10);
-		// And the disagreement itself, measured: the same 600 h paints at ~76% and sits at ~6%.
-		expect(got.start).toBeGreaterThan(70);
-		expect(boundPos(STAR_BOUNDS.rot.soft, 600, false) * 100).toBeLessThan(10);
+		expect(band.start).toBeCloseTo(want.start, 10); // the band itself is unchanged
+		// ...and the thumb for the band’s own start now lands on the band’s own start.
+		expect(boundPos(STAR_BOUNDS.rot.soft, 600, STAR_BOUNDS.rot.log) * 100).toBeCloseTo(band.start, 10);
+		// The fault, stated as the thing that must not come back: on the linear axis it was 70 apart.
+		expect(Math.abs(boundPos(STAR_BOUNDS.rot.soft, 600, false) * 100 - band.start)).toBeGreaterThan(60);
 	});
 });
 

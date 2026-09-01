@@ -3420,6 +3420,31 @@ so a Mars arrival was drawn parked for the 615 days it was still aerobraking. Re
 one dip because the loops coincide, and the drawn count is CAPPED at 24 with the real count in the
 label rather than silently truncated.
 
+### UI-C13 A SLIDER AND THE BAND PAINTED BEHIND IT ARE ONE AXIS, AND THE AXIS IS DATA
+BUCKET: IMPLEMENTATION - durable: two halves of one control must not each decide their own scale.
+The general form is the standing rule about a quantity correct for its purpose being published
+against a neighbour measured differently (A33, B27, B28) - here the neighbour is one pixel away.
+WHERE: `physics/starBounds.ts` (`STAR_BOUNDS[k].log`, `boundPos`, `boundValue`, `bandPct`; pinned
+by `starBounds.spec.ts`), consumed by `components/BodyStarTab.svelte` - the slider input and
+`getRangePct` now read the SAME `log` flag off the same record.
+RULE: where a control draws a typical-for-class band behind its track, the band and the thumb take
+their mapping from ONE declaration. Never a `Math.log` in the band code beside a `min=`/`max=` on
+the input: those are two independent decisions about one axis, and nothing in a build, a type or a
+test can notice when they disagree.
+WHY: A85, found by the A83 extraction rather than by anybody looking. The star editor drew the
+rotation band on a LOG axis over 0.1..10,000 h while the slider under it was `min="0.1"
+max="10000"` - LINEAR. A G star states 24..1,000 h: the band start painted at 48% of the track
+while the thumb for 24 h sat at 0.24%. The GM saw a green stripe in the middle of a slider whose
+matching value was jammed against the left stop, on every star, for as long as the control has
+existed. **This is the argument for the scattered-constant rule stated as a measurement:** the two
+numbers were 770 lines apart and identical (`0.1` and `10000` both times), so reading either one
+told you nothing was wrong. Putting them in one table made it a one-line question.
+BLAST: the fix moved the SLIDER, not the band - five decades cannot go on a linear track, and on
+one every period under a hundred hours (most stars, every pulsar) is unreachable. The rotation
+input is a 0..1 position now like its five neighbours, with `rotationHours` still legitimately
+`undefined` for an unset spin (B9a) and the thumb parked at the track midpoint when it is. Any new
+slider in this editor gets a `STAR_BOUNDS` record rather than a fresh pair of consts.
+
 ### UI-C12 A PLAYER EITHER STEERS THE CLOCK OR IS TOLD WHOSE CLOCK IT IS — NEVER NEITHER, NEVER BOTH
 BUCKET: ARCHITECTURE (product contract) + DOMAIN - the domain enables the product: a body's position
 is CLOSED-FORM IN TIME, so a scrubbing reader draws every world correctly and a free clock is

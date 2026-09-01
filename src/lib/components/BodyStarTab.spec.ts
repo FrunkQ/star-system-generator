@@ -428,3 +428,70 @@ describe('A83 — the supermassive switch', () => {
 		expect(container.querySelector('.mass-amber')).toBeNull();
 	});
 });
+
+// A85: THE ROTATION BAND AND THE ROTATION THUMB WERE MEASURING DIFFERENT AXES.
+//
+// Found by the A83 extraction, which is the whole argument for putting scattered constants in one
+// table: `getRangePct('rot')` placed the green typical-for-class band on a LOG axis over
+// 0.1..10,000 h, while the slider under it was `min="0.1" max="10000"` — LINEAR. Same two numbers,
+// two different meanings, 770 lines apart, and nothing could report it.
+//
+// A G star's band is 24..1,000 h. Logged, 24 h paints at 48% of the track; linearly, the thumb for
+// 24 h sits at 0.24%. The GM was being shown a green stripe in the middle of a slider whose
+// matching value is jammed against the left stop.
+//
+// The fix is the slider, not the band: five decades on a linear track make everything under 100 h
+// unreachable, which is why every other slider in this editor is already log.
+describe('A85 — the rotation band and the rotation thumb measure ONE axis', () => {
+	const rotBlock = (c: HTMLElement) => {
+		const label = Array.from(c.querySelectorAll('label'))
+			.find((l) => /^Rotation Period/.test(l.textContent?.trim() ?? ''))!;
+		const group = label.closest('.form-group')!;
+		return {
+			rect: group.querySelector('rect')!,
+			range: group.querySelector<HTMLInputElement>('input[type="range"]')!,
+			number: group.querySelector<HTMLInputElement>('input[type="number"]')!
+		};
+	};
+
+	it('puts the thumb for the band\'s own start exactly where the band starts', async () => {
+		// star/G's presentation band is rot [24, 1000] — a real pack band, not a contrived one.
+		const body: any = { ...makeStar(['star/G']), rotation_period_hours: 24 };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		await tick();
+		const { rect, range } = rotBlock(container);
+		const bandStart = parseFloat(rect.getAttribute('x')!); // a percentage of the track
+		// The slider is a 0..1 position, like every other slider in this editor.
+		expect(Number(range.min)).toBe(0);
+		expect(Number(range.max)).toBe(1);
+		expect(Number(range.value) * 100).toBeCloseTo(bandStart, 6);
+	});
+
+	it('reaches the short periods a pulsar needs — 0.1 h is the bottom of the track', async () => {
+		const body: any = { ...makeStar(['star/NS']), rotation_period_hours: 0.1 };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		await tick();
+		expect(Number(rotBlock(container).range.value)).toBeCloseTo(0, 6);
+	});
+
+	it('is log-scaled: half travel is 31.6 h, not 5,000', async () => {
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		const { range, number } = rotBlock(container);
+		range.value = '0.5';
+		range.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		// sqrt(0.1 * 10000) = 31.62…
+		expect(body.rotation_period_hours).toBeCloseTo(31.6, 1);
+		expect(Number(number.value)).toBeCloseTo(31.6, 1);
+	});
+
+	it('an unset rotation stays unset — the empty box is a gap, not a still star (B9a)', async () => {
+		const body: any = makeStar(['star/G']);
+		delete body.rotation_period_hours;
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		await tick();
+		expect(body.rotation_period_hours).toBeUndefined();
+		expect(rotBlock(container).number.value).toBe('');
+	});
+});

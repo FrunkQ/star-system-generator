@@ -37,8 +37,8 @@ export interface StarBound {
 	 */
 	soft: readonly [number, number];
 	/**
-	 * Log-mapped travel. Six of the seven are; ROTATION is the odd one out and says so below, which
-	 * is only visible because they are in one table.
+	 * Log-mapped travel. ALL of them are, and rotation only became so when this table was written:
+	 * see its note. The band drawn behind a slider reads THIS FIELD, so the two cannot part again.
 	 */
 	log: boolean;
 	/** Why this bound is where it is. Prose, so retuning one is an informed act. */
@@ -105,13 +105,14 @@ export const STAR_BOUNDS: Readonly<Record<StarBoundKey, StarBound>> = {
 		label: 'Rotation Period',
 		unit: 'h',
 		soft: [0.1, 10000],
-		log: false,
+		log: true,
 		note:
 			'0.1 h is a millisecond-pulsar-ish spin; 10,000 h is about fourteen months, past the slowest ' +
-			'stellar rotators. LINEAR, and that is a FAULT rather than a choice: the typical-for-class ' +
-			'band drawn behind this slider is placed on a LOG axis, so a 600 h band paints at 76 per ' +
-			'cent of the track while the thumb for 600 h sits at 6 per cent. Recorded as A85; the flag ' +
-			'is here so the two can never again disagree silently.'
+			'stellar rotators. LOG since A85, and it was the extraction that found why it had to be: the ' +
+			'slider shipped LINEAR while the typical-for-class band behind it was drawn on a log axis, ' +
+			'so a G star\u2019s 24 h band start painted at 48 per cent of a track where the thumb for 24 h ' +
+			'sat at 0.24 per cent. Five decades cannot go on a linear track: on one, every period under ' +
+			'a hundred hours — which is most stars and every pulsar — is unreachable.'
 	}
 } as const;
 
