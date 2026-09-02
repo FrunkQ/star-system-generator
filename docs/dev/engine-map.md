@@ -5964,3 +5964,42 @@ is why the same instance drew different lengths on different rebuilds. THREE sig
 was named, and DEAD CODE hid it: the comment said the scale was 1 and the next statement disagreed.
 BLAST: any new host-relative geometry (a phase-5c interior floor, a soletta aimed at a world). A
 `setScalar` in a branch that a later unconditional `setScalar` overwrites is the shape to grep for.
+
+### DATA-R37 A BUNDLED EPHEMERIS IS ELEMENTS *AND* A MEAN MOTION, AT A NAMED INSTANT
+BUCKET: DOMAIN + ARCHITECTURE - domain: a real orbit's rate is set by the TOTAL mass, so `n` is not
+derivable from the primary's `mu` alone. Architecture: four files ship the same Sol and nothing was
+keeping them equal.
+WHERE: `scripts/ephemeris/solElements.cjs` (the source tables) and `calibrateSol.cjs` (the writer);
+the four bundled files it maintains - `static/example-starmaps/Local_Neighbourhood-Starmap.json`,
+`Local_Neighbourhood_SciFi-Starmap.json`, `static/examples/Sol_2030-System.json`,
+`Sol_Expanse-System.json`. Gated by `system/solCalibration.spec.ts`.
+RULE: the bundled Sol is calibrated to ONE datum - the anchor's `stake_utc`, 2026-09-01T12:00:00Z -
+and every calibrated body carries `t0` = that datum, real elements for it, AND an explicit
+`n_rad_per_s`. Re-run the script rather than hand-editing a planet; it is idempotent and it writes
+all four files, which is the only thing stopping them drifting apart.
+WHY: [[G62]] part 2, owner: *"before there was no point in aligning the planets to reality as time
+was arbitrary - not now."* Every planet shipped with `Omega_deg: 0` and `omega_deg: 0` - placeholders,
+because until the anchor existed there was no instant for them to be right AT.
+BLAST: THE MEAN MOTION WAS THE WHOLE FAULT ON LUNA, and it is invisible in the elements. The engine
+derives `n = sqrt(mu/a^3)` from the PRIMARY's mu, which for the Earth-Moon pair ignores the Moon's
+own 1/81 share: 27.45179 d against the real sidereal 27.32166, so 0.13 d of phase EVERY lunation and
+3.1 days over two years. Correct elements with that `n` still put the eclipses in the wrong months -
+the first predicted one moved only from 771 to 742 days out. Storing `n_rad_per_s` from the same
+table as the elements fixed it (`orbitMeanMotion` respects it - PHY-33 - and `SystemProcessor`
+prefers it for the displayed period, so motion and readout cannot disagree). ANY future bundled
+ephemeris needs the same treatment; a satellite of a non-negligible secondary is the general case.
+BLAST: WHAT THE CALIBRATION BUYS, MEASURED, so nobody oversells it. The Sun's longitude lands within
+0.5 deg (dates and seasons are right). The Moon lands within about a DAY of phase, because Meeus's
+MEAN elements omit the periodic terms - evection 1.27 deg, variation 0.66 deg - that a fixed-element
+Kepler orbit cannot carry. At the real 2026-08-12 total eclipse the engine now puts the Moon 1.29 deg
+from the Sun at 0.75 deg ecliptic latitude - a new moon near the node, which is the GEOMETRY of an
+eclipse - where before it was 771 days from any alignment at all. That makes eclipse SEASONS right
+and eclipse TIMINGS still approximate: totality needs about a tenth of a degree.
+BLAST: LUNA'S NODE IS RIGHT ONLY AT THE DATUM. It regresses 19.3 deg/yr in reality and the engine
+holds elements FIXED by documented decision (PHY-6), so the eclipse seasons stop moving. Expect the
+calibration to hold for months either side of the datum and to decay over years. Closing that means
+nodal precession in the propagator - a separate item, and one that touches every system.
+BLAST: THE FILES HAVE DIFFERENT INDENTS - the starmaps are 1, the system files 2 - and
+`JSON.stringify` at the wrong one reflows everything. Doing exactly that turned this ten-body change
+into a 15,596-line diff on one map and 20,840 on another; the diff stat caught it and it was
+reverted. `detectIndent` exists for that reason. DATA-R14 with a bigger blast radius.

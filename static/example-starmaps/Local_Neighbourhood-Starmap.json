@@ -2,19 +2,20 @@
  "id": "starmap-local-neighbourhood",
  "name": "Local Neighbourhood",
  "description": "The Sun’s real neighbourhood: every known star system within about 13 light years, every confirmed planet host out to about 16.5 light years, and a few famous landmarks beyond (Altair, Vega, Zeta Reticuli, TRAPPIST-1). Positions are true 3D positions from Gaia, Hipparcos and SIMBAD astrometry; planets are limited to those listed as confirmed by the NASA Exoplanet Archive (July 2026). Star and planet parameters are real where measured and physics-derived where not.",
- "appVersion": "2.1.692-beta",
+ "appVersion": "3.0.274",
  "baseMapVersion": 2,
  "distanceUnit": "ly",
  "unitIsPrefix": false,
  "temporal": {
-  "masterTimeSec": "435084632967250575",
-  "displayTimeSec": "435084632967250575",
+  "masterTimeSec": "435084632988264000",
+  "displayTimeSec": "435084632988264000",
   "activeCalendarKey": "Earth Gregorian",
   "temporal_registry": {
    "Earth Gregorian": {
     "id": "EARTH_GREG",
     "math_type": "BUCKET_DRAIN",
-    "epoch_offset_t": "435084559692049800",
+    "epoch_offset_t": "435084569064403200",
+    "epoch_utc": "0001-01-01T00:00:00Z",
     "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
     "hierarchy": [
      {
@@ -39,9 +40,15 @@
      }
     ],
     "leap_logic": {
-     "drift_per_year_t": 20925,
+     "drift_per_year_t": 20952,
      "threshold_t": 86400,
-     "apply_to": "day"
+     "apply_to": "day",
+     "leap_month": "February",
+     "leap_cycle": [
+      4,
+      100,
+      400
+     ]
     },
     "lookup_tables": {
      "weekdays": [
@@ -109,6 +116,7 @@
     "id": "TNG_SD",
     "math_type": "RATIO_LINEAR",
     "epoch_offset_t": "435084632967250575",
+    "epoch_utc": "2026-01-01T06:56:15Z",
     "format": "Stardate {val}",
     "parameters": {
      "units_per_earth_year": 1000,
@@ -119,7 +127,8 @@
    "Mayan Haab (Simplified)": {
     "id": "MAYAN_HAAB_SIMPL",
     "math_type": "BUCKET_DRAIN",
-    "epoch_offset_t": "435084461534290575",
+    "epoch_offset_t": "435084470815248000",
+    "epoch_utc": "-003113-08-11T00:00:00Z",
     "format": "{weekday} {mday}{suffix} {month}, Haab Year {year}",
     "hierarchy": [
      {
@@ -254,7 +263,8 @@
    "Chinese Lunisolar (Simplified)": {
     "id": "CHINESE_LUNISOLAR_SIMPL",
     "math_type": "BUCKET_DRAIN",
-    "epoch_offset_t": "435084488515324800",
+    "epoch_offset_t": "435084483955219200",
+    "epoch_utc": "-002696-01-01T00:00:00Z",
     "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, Year {year}",
     "hierarchy": [
      {
@@ -370,7 +380,7 @@
     "id": "solar-system",
     "name": "Sol",
     "seed": "solar-system-real-data",
-    "epochT0": 1762339146908,
+    "epochT0": 1788264000000,
     "age_Gyr": 4.603,
     "nodes": [
      {
@@ -421,15 +431,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132712440018000000000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 0.387098,
-        "e": 0.20563,
-        "i_deg": 7.005,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 5.020466586134799
-       }
+        "a_AU": 0.387099369,
+        "e": 0.20564101,
+        "i_deg": 7.003393,
+        "omega_deg": 29.20325,
+        "Omega_deg": 48.29734,
+        "M0_rad": 1.293803787
+       },
+       "n_rad_per_s": 8.266757627356099e-7
       },
       "massKg": 3.285e+23,
       "radiusKm": 2439.7,
@@ -503,15 +514,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132712440018000000000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 0.723332,
-        "e": 0.006772,
-        "i_deg": 3.39458,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 1.3661033419802402
-       }
+        "a_AU": 0.7233367,
+        "e": 0.00676577,
+        "i_deg": 3.394466,
+        "omega_deg": 54.99739,
+        "Omega_deg": 76.60579,
+        "M0_rad": 3.0565372914
+       },
+       "n_rad_per_s": 3.2363948766142267e-7
       },
       "massKg": 4.867e+24,
       "radiusKm": 6051.8,
@@ -585,15 +597,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132712440018000000000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 1,
-        "e": 0.0167086,
-        "i_deg": 0,
-        "omega_deg": 0,
+        "a_AU": 1.000004109,
+        "e": 0.01669952,
+        "i_deg": -0.003468,
+        "omega_deg": 103.02389,
         "Omega_deg": 0,
-        "M0_rad": 3.9329429420805933
-       }
+        "M0_rad": 4.1412009528
+       },
+       "n_rad_per_s": 1.990986570274424e-7
       },
       "massKg": 5.972e+24,
       "radiusKm": 6371,
@@ -687,15 +700,16 @@
        "frame": "ecliptic",
        "hostId": "solar-system-earth",
        "hostMu": 398600441800000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 0.00257,
-        "e": 0.0549,
-        "i_deg": 5.145,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 4.367738497485062
-       }
+        "a_AU": 0.002569549,
+        "e": 0.0549006,
+        "i_deg": 5.145396,
+        "omega_deg": 119.14763,
+        "Omega_deg": 329.27502,
+        "M0_rad": 5.3755329874
+       },
+       "n_rad_per_s": 0.0000026617071994175714
       },
       "massKg": 7.342e+22,
       "radiusKm": 1737.4,
@@ -754,15 +768,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132712440018000000000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 1.52368,
-        "e": 0.0934,
-        "i_deg": 1.85,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 0.3838857522616697
-       }
+        "a_AU": 1.523715265,
+        "e": 0.09341512,
+        "i_deg": 1.847523,
+        "omega_deg": 286.69336,
+        "Omega_deg": 49.48152,
+        "M0_rad": 1.4547738887
+       },
+       "n_rad_per_s": 1.0585763862948596e-7
       },
       "massKg": 6.39e+23,
       "radiusKm": 3389.5,
@@ -1024,15 +1039,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132712440018000000000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 5.2044,
-        "e": 0.0489,
-        "i_deg": 1.303,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 5.006958509868666
-       }
+        "a_AU": 5.202856048,
+        "e": 0.0483509,
+        "i_deg": 1.303907,
+        "omega_deg": 274.25666,
+        "Omega_deg": 100.52849,
+        "M0_rad": 1.9002607503
+       },
+       "n_rad_per_s": 1.678401142399484e-8
       },
       "massKg": 1.898e+27,
       "radiusKm": 69911,
@@ -1468,15 +1484,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132712440018000000000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 9.5826,
-        "e": 0.0565,
-        "i_deg": 2.485,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 0.5439917998244483
-       }
+        "a_AU": 9.536342447,
+        "e": 0.05372581,
+        "i_deg": 2.486508,
+        "omega_deg": 338.90171,
+        "Omega_deg": 113.58544,
+        "M0_rad": 4.947404389
+       },
+       "n_rad_per_s": 6.761141147839354e-9
       },
       "massKg": 5.683e+26,
       "radiusKm": 58232,
@@ -2048,15 +2065,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132712440018000000000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 19.2184,
-        "e": 0.046381,
-        "i_deg": 0.773,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 4.108892419074092
-       }
+        "a_AU": 19.188641504,
+        "e": 0.04724571,
+        "i_deg": 0.77199,
+        "omega_deg": 97.03486,
+        "Omega_deg": 74.02823,
+        "M0_rad": 4.475668023
+       },
+       "n_rad_per_s": 2.3697689848418572e-9
       },
       "massKg": 8.681e+25,
       "radiusKm": 25362,
@@ -2381,15 +2399,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132712440018000000000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 30.11,
-        "e": 0.0113,
-        "i_deg": 1.77,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 1.94099564119865
-       }
+        "a_AU": 30.069992869,
+        "e": 0.00860409,
+        "i_deg": 1.770138,
+        "omega_deg": 273.09592,
+        "Omega_deg": 131.78287,
+        "M0_rad": 5.5546332065
+       },
+       "n_rad_per_s": 1.2082150547947647e-9
       },
       "massKg": 1.024e+26,
       "radiusKm": 24622,
@@ -3035,16 +3054,16 @@
       "orbit": {
        "hostId": "solar-system-sun",
        "hostMu": 132751826999999990000,
-       "t0": 1762339146908,
+       "t0": 1788264000000,
        "elements": {
-        "a_AU": 39.48,
-        "e": 0.2488,
-        "i_deg": 17.16,
-        "omega_deg": 0,
-        "Omega_deg": 0,
-        "M0_rad": 1.4884242784532824
+        "a_AU": 39.482032494,
+        "e": 0.24884109,
+        "i_deg": 17.140025,
+        "omega_deg": 113.7573,
+        "Omega_deg": 110.30078,
+        "M0_rad": 0.9353749679
        },
-       "n_rad_per_s": 8.027243170523019e-10
+       "n_rad_per_s": 8.030884159320983e-10
       },
       "tags": []
      }

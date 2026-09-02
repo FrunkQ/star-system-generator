@@ -2,14 +2,15 @@
  "distanceUnit": "ly",
  "unitIsPrefix": false,
  "temporal": {
-  "masterTimeSec": "435084632967250575",
-  "displayTimeSec": "435084632967250575",
+  "masterTimeSec": "435084632988264000",
+  "displayTimeSec": "435084632988264000",
   "activeCalendarKey": "Earth Gregorian",
   "temporal_registry": {
    "Earth Gregorian": {
     "id": "EARTH_GREG",
     "math_type": "BUCKET_DRAIN",
-    "epoch_offset_t": "435084559692049800",
+    "epoch_offset_t": "435084569064403200",
+    "epoch_utc": "0001-01-01T00:00:00Z",
     "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
     "hierarchy": [
      {
@@ -34,9 +35,15 @@
      }
     ],
     "leap_logic": {
-     "drift_per_year_t": 20925,
+     "drift_per_year_t": 20952,
      "threshold_t": 86400,
-     "apply_to": "day"
+     "apply_to": "day",
+     "leap_month": "February",
+     "leap_cycle": [
+      4,
+      100,
+      400
+     ]
     },
     "lookup_tables": {
      "weekdays": [
@@ -104,6 +111,7 @@
     "id": "TNG_SD",
     "math_type": "RATIO_LINEAR",
     "epoch_offset_t": "435084632967250575",
+    "epoch_utc": "2026-01-01T06:56:15Z",
     "format": "Stardate {val}",
     "parameters": {
      "units_per_earth_year": 1000,
@@ -114,7 +122,8 @@
    "Mayan Haab (Simplified)": {
     "id": "MAYAN_HAAB_SIMPL",
     "math_type": "BUCKET_DRAIN",
-    "epoch_offset_t": "435084461534290575",
+    "epoch_offset_t": "435084470815248000",
+    "epoch_utc": "-003113-08-11T00:00:00Z",
     "format": "{weekday} {mday}{suffix} {month}, Haab Year {year}",
     "hierarchy": [
      {
@@ -249,7 +258,8 @@
    "Chinese Lunisolar (Simplified)": {
     "id": "CHINESE_LUNISOLAR_SIMPL",
     "math_type": "BUCKET_DRAIN",
-    "epoch_offset_t": "435084488515324800",
+    "epoch_offset_t": "435084483955219200",
+    "epoch_utc": "-002696-01-01T00:00:00Z",
     "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, Year {year}",
     "hierarchy": [
      {

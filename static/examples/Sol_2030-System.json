@@ -2,7 +2,7 @@
   "id": "solar-system",
   "name": "Sol",
   "seed": "solar-system-real-data",
-  "epochT0": 1762339146908,
+  "epochT0": 1788264000000,
   "age_Gyr": 4.603,
   "nodes": [
     {
@@ -53,22 +53,23 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 0.387098,
-          "e": 0.20563,
-          "i_deg": 7.005,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 5.020466586134799
-        }
+          "a_AU": 0.387099369,
+          "e": 0.20564101,
+          "i_deg": 7.003393,
+          "omega_deg": 29.20325,
+          "Omega_deg": 48.29734,
+          "M0_rad": 1.293803787
+        },
+        "n_rad_per_s": 8.266757627356099e-7
       },
       "massKg": 3.285e+23,
       "radiusKm": 2439.7,
       "tags": [],
       "areas": [],
       "equilibriumTempK": 439.7654525746886,
-      "greenhouseTempK": 4.326640157213818e-09,
+      "greenhouseTempK": 4.326640157213818e-9,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 439.76545257901523,
@@ -135,15 +136,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 0.723332,
-          "e": 0.006772,
-          "i_deg": 3.39458,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 1.3661033419802402
-        }
+          "a_AU": 0.7233367,
+          "e": 0.00676577,
+          "i_deg": 3.394466,
+          "omega_deg": 54.99739,
+          "Omega_deg": 76.60579,
+          "M0_rad": 3.0565372914
+        },
+        "n_rad_per_s": 3.2363948766142267e-7
       },
       "massKg": 4.867e+24,
       "radiusKm": 6051.8,
@@ -160,7 +162,7 @@
           "CO2": 0.965,
           "N2": 0.035,
           "SO2": 0.00015,
-          "H2O": 2e-05
+          "H2O": 0.00002
         },
         "main": "CO2",
         "pressure_bar": 92,
@@ -217,15 +219,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 1,
-          "e": 0.0167086,
-          "i_deg": 0,
-          "omega_deg": 0,
+          "a_AU": 1.000004109,
+          "e": 0.01669952,
+          "i_deg": -0.003468,
+          "omega_deg": 103.02389,
           "Omega_deg": 0,
-          "M0_rad": 3.9329429420805933
-        }
+          "M0_rad": 4.1412009528
+        },
+        "n_rad_per_s": 1.990986570274424e-7
       },
       "massKg": 5.972e+24,
       "radiusKm": 6371,
@@ -319,15 +322,16 @@
         "frame": "ecliptic",
         "hostId": "solar-system-earth",
         "hostMu": 398600441800000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 0.00257,
-          "e": 0.0549,
-          "i_deg": 5.145,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 4.367738497485062
-        }
+          "a_AU": 0.002569549,
+          "e": 0.0549006,
+          "i_deg": 5.145396,
+          "omega_deg": 119.14763,
+          "Omega_deg": 329.27502,
+          "M0_rad": 5.3755329874
+        },
+        "n_rad_per_s": 0.0000026617071994175714
       },
       "massKg": 7.342e+22,
       "radiusKm": 1737.4,
@@ -386,15 +390,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 1.52368,
-          "e": 0.0934,
-          "i_deg": 1.85,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 0.3838857522616697
-        }
+          "a_AU": 1.523715265,
+          "e": 0.09341512,
+          "i_deg": 1.847523,
+          "omega_deg": 286.69336,
+          "Omega_deg": 49.48152,
+          "M0_rad": 1.4547738887
+        },
+        "n_rad_per_s": 1.0585763862948596e-7
       },
       "massKg": 6.39e+23,
       "radiusKm": 3389.5,
@@ -473,7 +478,7 @@
         "hostMu": 42643806000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 6.26e-05,
+          "a_AU": 0.0000626,
           "e": 0.0151,
           "i_deg": 1.093,
           "omega_deg": 0,
@@ -656,15 +661,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 5.2044,
-          "e": 0.0489,
-          "i_deg": 1.303,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 5.006958509868666
-        }
+          "a_AU": 5.202856048,
+          "e": 0.0483509,
+          "i_deg": 1.303907,
+          "omega_deg": 274.25666,
+          "Omega_deg": 100.52849,
+          "M0_rad": 1.9002607503
+        },
+        "n_rad_per_s": 1.678401142399484e-8
       },
       "massKg": 1.898e+27,
       "radiusKm": 69911,
@@ -685,7 +691,7 @@
           "He": 0.13,
           "CH4": 0.003,
           "NH3": 0.00026,
-          "H2S": 8e-05
+          "H2S": 0.00008
         },
         "main": "H2",
         "pressure_bar": 1,
@@ -810,7 +816,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 118.25745818500486,
-      "greenhouseTempK": 1.808328556691768e-06,
+      "greenhouseTempK": 0.000001808328556691768,
       "tidalHeatK": 4.93145425708962,
       "radiogenicHeatK": 0,
       "temperatureK": 123.18891404182969,
@@ -821,7 +827,7 @@
           "S": 0.1
         },
         "main": "SO2",
-        "pressure_bar": 1e-08,
+        "pressure_bar": 1e-8,
         "molarMassKg": 0.06080000000000001,
         "scaleHeightKm": 9.378879335756507
       },
@@ -849,7 +855,7 @@
       "habitabilityScore": 12.753423069772463,
       "surfaceRadiation": 20.43988052919227,
       "stellarRadiation": 0.036879765152038245,
-      "radiationShieldingAtmo": 1.1099999386310344e-07,
+      "radiationShieldingAtmo": 1.1099999386310344e-7,
       "radiationShieldingMag": 0,
       "photonRadiation": 16.595892476273043,
       "particleRadiation": 1.8439880529192272,
@@ -1100,15 +1106,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 9.5826,
-          "e": 0.0565,
-          "i_deg": 2.485,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 0.5439917998244483
-        }
+          "a_AU": 9.536342447,
+          "e": 0.05372581,
+          "i_deg": 2.486508,
+          "omega_deg": 338.90171,
+          "Omega_deg": 113.58544,
+          "M0_rad": 4.947404389
+        },
+        "n_rad_per_s": 6.761141147839354e-9
       },
       "massKg": 5.683e+26,
       "radiusKm": 58232,
@@ -1129,7 +1136,7 @@
           "He": 0.03,
           "CH4": 0.0045,
           "NH3": 0.00012,
-          "H2S": 4e-05
+          "H2S": 0.00004
         },
         "main": "H2",
         "pressure_bar": 1,
@@ -1263,7 +1270,7 @@
         "composition": {
           "N2": 0.95,
           "CH4": 0.05,
-          "HCN": 1.2e-06
+          "HCN": 0.0000012
         },
         "main": "N2",
         "pressure_bar": 1.45,
@@ -1297,7 +1304,7 @@
       "radiationShieldingAtmo": 0.9999657046231983,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.00016778071698654953,
-      "particleRadiation": 1.864230188739439e-05,
+      "particleRadiation": 0.00001864230188739439,
       "stellarRadiationMin": 0.009740344708318137,
       "stellarRadiationMax": 0.012212046468452873,
       "surfaceRadiationMin": 2.000167024395975,
@@ -1340,7 +1347,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 87.16734055374522,
-      "greenhouseTempK": 4.661779406414735e-08,
+      "greenhouseTempK": 4.661779406414735e-8,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 87.16734060036302,
@@ -1353,7 +1360,7 @@
           "CH4": 0.01
         },
         "main": "H2O",
-        "pressure_bar": 1e-09,
+        "pressure_bar": 1e-9,
         "molarMassKg": 0.017779999999999997,
         "scaleHeightKm": 359.39522288066956
       },
@@ -1381,7 +1388,7 @@
       "habitabilityScore": 22.500887479059124,
       "surfaceRadiation": 7.443261156810057,
       "stellarRadiation": 0.010886522401207133,
-      "radiationShieldingAtmo": 8.045454524818751e-09,
+      "radiationShieldingAtmo": 8.045454524818751e-9,
       "radiationShieldingMag": 0,
       "photonRadiation": 4.898935041129051,
       "particleRadiation": 0.5443261156810056,
@@ -1680,15 +1687,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 19.2184,
-          "e": 0.046381,
-          "i_deg": 0.773,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 4.108892419074092
-        }
+          "a_AU": 19.188641504,
+          "e": 0.04724571,
+          "i_deg": 0.77199,
+          "omega_deg": 97.03486,
+          "Omega_deg": 74.02823,
+          "M0_rad": 4.475668023
+        },
+        "n_rad_per_s": 2.3697689848418572e-9
       },
       "massKg": 8.681e+25,
       "radiusKm": 25362,
@@ -2013,15 +2021,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 30.11,
-          "e": 0.0113,
-          "i_deg": 1.77,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 1.94099564119865
-        }
+          "a_AU": 30.069992869,
+          "e": 0.00860409,
+          "i_deg": 1.770138,
+          "omega_deg": 273.09592,
+          "Omega_deg": 131.78287,
+          "M0_rad": 5.5546332065
+        },
+        "n_rad_per_s": 1.2082150547947647e-9
       },
       "massKg": 1.024e+26,
       "radiusKm": 24622,
@@ -2164,7 +2173,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 49.17666062345122,
-      "greenhouseTempK": 2.0408335639210383e-05,
+      "greenhouseTempK": 0.000020408335639210383,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 49.176681031786856,
@@ -2175,7 +2184,7 @@
           "CH4": 0.001
         },
         "main": "N2",
-        "pressure_bar": 1.4e-05,
+        "pressure_bar": 0.000014,
         "molarMassKg": 0.027988,
         "scaleHeightKm": 18.73502361782742
       },
@@ -2284,9 +2293,9 @@
         "hostId": "bary-auto-id-1771448528579-8l0pwwf51",
         "hostMu": 975115229999.9999,
         "t0": 1762339146908,
-        "n_rad_per_s": 1.1513962834212866e-05,
+        "n_rad_per_s": 0.000011513962834212866,
         "elements": {
-          "a_AU": 1.405886379192334e-05,
+          "a_AU": 0.00001405886379192334,
           "e": 0.0002,
           "i_deg": 112.78,
           "omega_deg": 0,
@@ -2299,7 +2308,7 @@
       "tags": [],
       "areas": [],
       "equilibriumTempK": 42.947991060905515,
-      "greenhouseTempK": 5.526266059632093e-05,
+      "greenhouseTempK": 0.00005526266059632093,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 42.94804632356611,
@@ -2311,7 +2320,7 @@
           "CO": 0.01
         },
         "main": "N2",
-        "pressure_bar": 1e-05,
+        "pressure_bar": 0.00001,
         "molarMassKg": 0.02788,
         "scaleHeightKm": 20.796332219200405
       },
@@ -2339,7 +2348,7 @@
       "habitabilityScore": 24.333466666666666,
       "surfaceRadiation": 2.3207629754263026,
       "stellarRadiation": 0.0006415720012380857,
-      "radiationShieldingAtmo": 7.177742387742825e-05,
+      "radiationShieldingAtmo": 0.00007177742387742825,
       "radiationShieldingMag": 0,
       "photonRadiation": 0.2886866778836722,
       "particleRadiation": 0.03207629754263024,
@@ -2366,7 +2375,7 @@
         "hostId": "bary-auto-id-1771448528579-8l0pwwf51",
         "hostMu": 975115229999.9999,
         "t0": 1762339146908,
-        "n_rad_per_s": 1.1513962834212866e-05,
+        "n_rad_per_s": 0.000011513962834212866,
         "elements": {
           "a_AU": 0.00011594113620807666,
           "e": 0.0002,
@@ -2487,7 +2496,7 @@
         "hostMu": 398600000000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 4.5e-05,
+          "a_AU": 0.000045,
           "e": 0.0001,
           "i_deg": 51.6,
           "omega_deg": 0,
@@ -2569,7 +2578,7 @@
         "hostMu": 398600000000000,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 4.5e-05,
+          "a_AU": 0.000045,
           "e": 0.0001,
           "i_deg": 41.5,
           "omega_deg": 0,
@@ -2644,7 +2653,7 @@
         "hostMu": 4902.8,
         "t0": 1762339146908,
         "elements": {
-          "a_AU": 2e-05,
+          "a_AU": 0.00002,
           "e": 0.05,
           "i_deg": 90,
           "omega_deg": 0,
@@ -2727,9 +2736,9 @@
         "hostId": "solar-system-earth",
         "hostMu": 398600000000000,
         "t0": 1762339146908,
-        "n_rad_per_s": 7.292115e-05,
+        "n_rad_per_s": 0.00007292115,
         "elements": {
-          "a_AU": 4.258750455597227e-05,
+          "a_AU": 0.00004258750455597227,
           "e": 0,
           "i_deg": 0,
           "omega_deg": 0,
@@ -2754,16 +2763,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132751826999999990000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 39.48,
-          "e": 0.2488,
-          "i_deg": 17.16,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 1.4884242784532824
+          "a_AU": 39.482032494,
+          "e": 0.24884109,
+          "i_deg": 17.140025,
+          "omega_deg": 113.7573,
+          "Omega_deg": 110.30078,
+          "M0_rad": 0.9353749679
         },
-        "n_rad_per_s": 8.027243170523019e-10
+        "n_rad_per_s": 8.030884159320983e-10
       },
       "tags": []
     }

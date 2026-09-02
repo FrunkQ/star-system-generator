@@ -80,8 +80,8 @@ describe('G62 — the anchor puts a named real instant on the master clock exact
   });
 });
 
-describe('G62 — the measured ephemeris gap, recorded rather than asserted away', () => {
-  it("Luna's node in the bundled Sol is a placeholder, which is why the seasons do not line up", () => {
+describe('G62 - the ephemeris gap, now CLOSED at the datum', () => {
+  it("Luna's node is a real ephemeris value, not the placeholder it shipped as", () => {
     const MAP = JSON.parse(
       readFileSync('static/example-starmaps/Local_Neighbourhood-Starmap.json', 'utf8')
     );
@@ -89,12 +89,23 @@ describe('G62 — the measured ephemeris gap, recorded rather than asserted away
     const sol: System = (solEntry.system ?? solEntry) as System;
     const luna: any = sol.nodes.find((n: any) => /^luna$/i.test(n.name));
     expect(luna, 'the bundled Sol still has a Luna').toBeTruthy();
-    // If either of these ever becomes a real ephemeris value, the eclipse half of G62's acceptance
-    // becomes reachable and this test should be REPLACED by the real timing gate.
-    expect(luna.orbit.elements.Omega_deg).toBe(0);
-    expect(luna.orbit.elements.omega_deg).toBe(0);
-    // The inclination IS real - 5.145 deg - which is exactly why this reads as a near miss rather
-    // than obvious nonsense, and why it is worth writing down.
-    expect(luna.orbit.elements.i_deg).toBeCloseTo(5.145, 3);
+    // THIS TEST USED TO ASSERT THE OPPOSITE, and said so: "if either of these ever becomes a real
+    // ephemeris value, the eclipse half of G62's acceptance becomes reachable and this test should
+    // be REPLACED". It has, and it is. The node was 0 - a placeholder - and 0 is 329 degrees from
+    // where the Moon's node actually was at the datum.
+    expect(luna.orbit.elements.Omega_deg).not.toBe(0);
+    expect(luna.orbit.elements.omega_deg).not.toBe(0);
+    expect(luna.orbit.elements.i_deg).toBeCloseTo(5.145, 2);
+    // The full calibration, and its measured ceiling, live in system/solCalibration.spec.ts.
+  });
+
+  it('the eclipse half is still bounded by a FIXED node, and that is the open item', () => {
+    // The engine holds elements fixed by documented decision (PHY-6). Luna's node regresses 19.3
+    // deg/yr in reality, so the calibration is exact AT the datum and the eclipse seasons stop
+    // moving from there. Nothing asserts a timing here because nothing should: closing that needs
+    // nodal precession in the propagator, which is a separate physics item on the board.
+    const perYear = 360 / 18.6;
+    expect(perYear).toBeGreaterThan(19);
+    expect(perYear).toBeLessThan(20);
   });
 });

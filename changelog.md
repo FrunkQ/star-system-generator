@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.274 - 2nd Sep 2026
+
+- The bundled Solar System is now where the real one is. Every planet used to sit on a placeholder orbit - the tilt of its ellipse and the direction of its closest approach were both simply zero - because until the clock was tied to a real date there was no moment for them to be right AT. There is now: noon on 1 September 2026. The eight planets, the Moon and Pluto are set from real orbital data for that instant, in both Local Neighbourhood maps and both Sol system files, and opening any of them puts you at that moment with the sky as it actually was.
+- The Sun now sits within half a degree of where an almanac puts it, and the Moon shows the right phase. At the real total eclipse of 12 August 2026 the Moon now sits on the Sun, close to the node - the geometry an eclipse is made of - where before, the nearest alignment the app could find was two years away.
+- Eclipse TIMES are still approximate, and that is worth saying plainly rather than leaving you to discover it. The Moon's orbit wobbles in ways a single fixed ellipse cannot follow, so its position is good to about a day where totality needs a few minutes: eclipse SEASONS are now right, individual eclipses are not yet. The orbit also does not slowly turn the way the real one does, so the calibration is at its best around the reference date and loses accuracy over years.
+- Nothing else in those maps moved. Every other moon, belt, ring, station and ship is exactly where it was - this changes the bodies it calibrates and no others.
+
 ## v3.0.273 - 2nd Sep 2026
 
 - The Earth calendar now has a real 29th of February, and that makes it exact. The leap settings in the calendar editor were being ignored entirely: instead of adding a day every fourth year, the app spread that day thinly across every second of the year. Dates stayed roughly right but the CLOCK drifted - noon showed as 06:33 in 1970 and 23:15 in 2026. It now inserts a real leap day into February, and a calendar can state its exact rule (Earth's is "every 4th year, except every 100th, except every 400th"). Checked against 13,232 dates from 1800 to 2200: date, time and day of the week correct on every one.

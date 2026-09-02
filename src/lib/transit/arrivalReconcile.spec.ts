@@ -24,6 +24,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { restorePreCalibrationOrbits } from './preCalibrationSol';
 import { reconcileConstructArrival, resolveConstructCurrentHostId, getJourneyBounds,
   sampleJourneyKinematicsAtTime, needsStampedPosition } from './scheduler';
 import { getGlobalState } from './physics';
@@ -35,6 +36,10 @@ import { compactRoute } from '../constructs/shipRoute';
 
 const AU_KM = 1.495978707e8;
 const base = JSON.parse(fs.readFileSync(path.resolve('static/examples/Sol_Expanse-System.json'), 'utf-8'));
+// The journey below was RECORDED against the Sol this map used to carry. G62 part 2 calibrated
+// those planets to real ephemeris, so the recorded destination and the live map stopped being
+// the same place - see `preCalibrationSol.ts`. This spec tests the scheduler, not the map.
+restorePreCalibrationOrbits(base.system ?? base);
 
 const ROCI: any = {
   kind: 'construct', roleHint: 'ship', id: 'sol-rocinante', parentId: 'solar-system-sun',
