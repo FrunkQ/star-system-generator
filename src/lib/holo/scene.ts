@@ -505,8 +505,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   controls.enablePan = false;
   const DEFAULT_MIN_DIST = 0.05;
   controls.minDistance = DEFAULT_MIN_DIST; // overview floor; focusBody tightens it to the focused body's size
-  // A86 (user report, 2026-09-02; shipped to prod as v3.0.259, whose comment says A85 - an id race,
-  // the board row is A86): 6x the grid could not take in a far binary companion, so the leash is
+  // A91 (user report, 2026-09-02; shipped to prod as v3.0.259, whose comment says A85 - an id race,
+  // the board row is A91): 6x the grid could not take in a far binary companion, so the leash is
   // 60x. The owner wants effectively no limit, and the honest ceiling is the sky itself: the
   // starfield shell sits at radius 900 and the far plane at 2000, so 720 stays inside both. If this
   // ever proves short the next step is a camera-following starfield, not a bigger number here.

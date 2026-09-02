@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.278 - 2nd Sep 2026
+
+- Board only. The zoom fix's board id settles at A91 after two numbering races with fast-moving streams.
+
 ## v3.0.277 - 2nd Sep 2026
 
 - You can zoom the GM view ten times further out, so a far binary companion fits on screen. Already live on production as v3.0.259.
