@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.276 - 2nd Sep 2026
+
+- The Moon's info card now says 27.3 days, which is both how long it actually takes and what its own Day Length figure on the same card already said - 655.7 hours is the same number, because the Moon keeps one face towards us. The card had been working the period out for itself from the Earth's mass instead of reading the one the engine publishes, so with real orbital data the two figures sitting side by side disagreed.
+- The same fix corrects Pluto, which had been claiming an orbital period of about five hours. Pluto and Charon swing around each other every 6.4 days, and both now say so.
+
 ## v3.0.275 - 2nd Sep 2026
 
 - The Moon's orbital period now reads 27.3 days, which is how long it actually takes. The figure on the info card was worked out from the Earth's mass alone, ignoring the Moon's own - so the Moon MOVED at the right rate and REPORTED the wrong one, by three hours a month. Any body carrying real orbital data now reports the period it is actually moving at.

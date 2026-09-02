@@ -3,7 +3,7 @@
   import { describeTag, formatTagValue } from "$lib/tags/tagPresentation";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets, ascentBudgetApplies } from '$lib/physics/orbits';
+  import { calculateDeltaVBudgets, ascentBudgetApplies, orbitMeanMotion } from '$lib/physics/orbits';
   import { biosphereLayers, morphologyDef } from '$lib/physics/vegetation';
   import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
   import { calculateSurfaceTemperature } from '$lib/physics/temperature';
@@ -324,13 +324,20 @@
             orbitalDistanceKm = a * AU_KM;
             orbitalDistanceTooltip = `${nearWord}: ${formatPref($unitPrefs, 'orbit', ubt, peri * AU_KM)}\n${farWord}: ${formatPref($unitPrefs, 'orbit', ubt, aph * AU_KM)}`;
 
-            // Calculate Orbital Period
-            if (parentBody) {
+            // ORBITAL PERIOD COMES FROM THE ONE AUTHORITY ON RATE, `orbitMeanMotion`, which respects a
+            // stored `n_rad_per_s` and otherwise derives sqrt(mu/a^3) exactly as this used to.
+            // This panel had its OWN sqrt(a^3/GM) - a third implementation beside SystemProcessor's
+            // and reasonsToVisit's - and while every body's n was derivable from a and the primary's
+            // mass the three agreed. The calibrated Sol (DATA-R37) broke that: Luna carries a real
+            // ephemeris n set by the TOTAL mass, so it MOVED at 27.32 d while this card read 27.5.
+            const n = orbitMeanMotion(body.orbit as any);
+            if (n > 0) {
+                calculatedPeriodDays = (2 * Math.PI / Math.abs(n)) / 86400;
+            } else if (parentBody) {
                 const parentMass = (parentBody.massKg || (parentBody as Barycenter).effectiveMassKg || 0);
                 if (parentMass > 0) {
                     const a_m = body.orbit.elements.a_AU * AU_KM * 1000;
-                    const periodSeconds = 2 * Math.PI * Math.sqrt(Math.pow(a_m, 3) / (G * parentMass));
-                    calculatedPeriodDays = periodSeconds / 86400;
+                    calculatedPeriodDays = (2 * Math.PI * Math.sqrt(Math.pow(a_m, 3) / (G * parentMass))) / 86400;
                 }
             }
         }

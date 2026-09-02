@@ -56,6 +56,13 @@ function writeElements(node, el, label, log) {
   // here: sqrt(mu/a^3) uses the PRIMARY's mass alone, which gives Luna a 27.45179 d sidereal month
   // against the real 27.32166 - 0.13 d of drift every lunation.
   node.orbit.n_rad_per_s = el.n_rad_per_s;
+  // `orbital_period_days` is a DERIVED field that is SERIALISED into the map, so it goes stale the
+  // moment the elements under it move - and the app shows the STORED value, not a fresh one. Luna's
+  // read 27.4594 d while its own `rotation_period_hours` read 655.7 h (27.32 d), which for a tidally
+  // locked moon is THE SAME FACT: the file contradicted itself. Recompute it from the n just written.
+  if (typeof node.orbital_period_days === 'number') {
+    node.orbital_period_days = (2 * Math.PI / el.n_rad_per_s) / 86400;
+  }
   log.push('    ' + label.padEnd(10) +
     ' a=' + node.orbit.elements.a_AU +
     '  e=' + node.orbit.elements.e +

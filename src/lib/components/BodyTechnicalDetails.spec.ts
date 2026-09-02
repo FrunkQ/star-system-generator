@@ -133,3 +133,23 @@ describe('the figures a pin drives reach the card', () => {
     expect(badge?.getAttribute('title')).toMatch(/IMPOSSIBLE/);
   });
 });
+
+describe('the Orbital Period card reads the ONE authority on rate', () => {
+  it('a stored n_rad_per_s wins over sqrt(a^3/GM), because it is the rate the body moves at', () => {
+    // This panel used to compute its own sqrt(a^3/GM) - a third implementation beside
+    // SystemProcessor's and reasonsToVisit's. While every body's rate was derivable from a and the
+    // primary's mass the three agreed, so nothing noticed. The calibrated Sol (DATA-R37) broke that:
+    // Luna carries a real ephemeris n set by the TOTAL mass, and the card read 27.5 d for a moon
+    // moving at 27.32 - beside a Day Length of 655.7 h, which for a tidally locked moon is the SAME
+    // FACT. One quantity, two answers, on one card.
+    const { star: s, planet: p } = processed();
+    // The real sidereal month as a mean motion - a rate a^3/GM cannot produce for this a and mass.
+    (p as any).orbit.n_rad_per_s = 2 * Math.PI / (27.321661 * 86400);
+    const c = render(BodyTechnicalDetails, { props: { body: p, system: { nodes: [s, p] }, rulePack } as any });
+    const text = c.container.textContent ?? '';
+    expect(text).toContain('Orbital Period');
+    // 27.3 days, not the 365-ish that sqrt(a^3/GM) gives for a 1 AU orbit of a solar mass.
+    expect(text).toMatch(/27\.3\s*days/);
+    expect(text).not.toMatch(/365(\.\d)?\s*days/);
+  });
+});

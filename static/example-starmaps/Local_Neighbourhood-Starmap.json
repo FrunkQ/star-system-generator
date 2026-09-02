@@ -2,7 +2,7 @@
  "id": "starmap-local-neighbourhood",
  "name": "Local Neighbourhood",
  "description": "The Sun’s real neighbourhood: every known star system within about 13 light years, every confirmed planet host out to about 16.5 light years, and a few famous landmarks beyond (Altair, Vega, Zeta Reticuli, TRAPPIST-1). Positions are true 3D positions from Gaia, Hipparcos and SIMBAD astrometry; planets are limited to those listed as confirmed by the NASA Exoplanet Archive (July 2026). Star and planet parameters are real where measured and physics-derived where not.",
- "appVersion": "3.0.274",
+ "appVersion": "3.0.275",
  "baseMapVersion": 2,
  "distanceUnit": "ly",
  "unitIsPrefix": false,
@@ -462,7 +462,7 @@
        "molarMassKg": 0.029400000000000003,
        "scaleHeightKm": 33.7628874844696
       },
-      "orbital_period_days": 87.9559820091742,
+      "orbital_period_days": 87.96925644194627,
       "axial_tilt_deg": 0.034,
       "rotation_period_hours": 1407.6,
       "description": "The smallest planet and closest to the Sun. Mercury is a world of extremes, with scorching daytime temperatures (430°C) and frigid nights (-180°C). It has no real atmosphere, only a thin exosphere, and its cratered surface resembles Earth's Moon.",
@@ -547,7 +547,7 @@
        "molarMassKg": 0.04344,
        "scaleHeightKm": 15.813016434695205
       },
-      "orbital_period_days": 224.6676322970732,
+      "orbital_period_days": 224.70080116586078,
       "axial_tilt_deg": 177.36,
       "rotation_period_hours": -5832.5,
       "description": "Earth's 'sister planet' in size, but a hellish world. Venus suffers from a runaway greenhouse effect, trapping heat under a thick, toxic atmosphere of CO2 and sulfuric acid clouds. Its surface pressure is 92 times that of Earth, and it's the hottest planet in the system.",
@@ -649,7 +649,7 @@
         "fauna"
        ]
       },
-      "orbital_period_days": 365.202709145985,
+      "orbital_period_days": 365.2563671306275,
       "axial_tilt_deg": 23.44,
       "rotation_period_hours": 23.934,
       "description": "The third planet from the Sun and the only known astronomical object to harbor life. It is an ocean world, with 71% of its surface covered in liquid water, protected by a strong magnetic field and a breathable nitrogen-oxygen atmosphere.",
@@ -720,7 +720,7 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "temperatureK": 270.2719558566556,
-      "orbital_period_days": 27.45940784723342,
+      "orbital_period_days": 27.321582247041775,
       "axial_tilt_deg": 6.68,
       "rotation_period_hours": 655.7,
       "description": "Earth's only natural satellite and the largest relative to its host planet in the Solar System. It is tidally locked, always showing the same face to Earth. Its cratered, airless surface is composed of dark volcanic 'maria' and bright, ancient highlands.",
@@ -801,7 +801,7 @@
        "molarMassKg": 0.043003999999999994,
        "scaleHeightKm": 11.242726551197803
       },
-      "orbital_period_days": 686.8701465472571,
+      "orbital_period_days": 686.9797315332721,
       "axial_tilt_deg": 25.19,
       "rotation_period_hours": 24.6,
       "description": "The fourth planet, known as the 'Red Planet' due to iron oxide (rust) on its surface. It's a cold desert world with a very thin CO2 atmosphere, polar ice caps, and the largest volcano (Olympus Mons) and canyon (Valles Marineris) in the Solar System.",
@@ -1076,7 +1076,7 @@
        "molarMassKg": 0.0022879999999999997,
        "scaleHeightKm": 23.266113202618353
       },
-      "orbital_period_days": 4336.00718171218,
+      "orbital_period_days": 4332.81712752323,
       "axial_tilt_deg": 3.13,
       "rotation_period_hours": 9.925,
       "description": "The fifth planet and the largest in the Solar System. This gas giant is more than twice as massive as all other planets combined. It's known for its colorful cloud bands of ammonia ice and the Great Red Spot, a giant storm that has raged for centuries.",
@@ -1521,7 +1521,7 @@
        "molarMassKg": 0.002112,
        "scaleHeightKm": 47.30734287436708
       },
-      "orbital_period_days": 10833.256613658901,
+      "orbital_period_days": 10755.884336133118,
       "axial_tilt_deg": 26.73,
       "rotation_period_hours": 10.656,
       "description": "The sixth planet and the second-largest, Saturn is a gas giant famous for its spectacular ring system. It is the least dense planet—it would float in water. Its atmosphere is a pale yellow, striped with bands of ammonia ice clouds and powerful winds.",
@@ -2101,7 +2101,7 @@
        "molarMassKg": 0.0026279999999999997,
        "scaleHeightKm": 29.421991742327467
       },
-      "orbital_period_days": 30768.7485731925,
+      "orbital_period_days": 30687.40144359826,
       "axial_tilt_deg": 97.77,
       "rotation_period_hours": -17.24,
       "description": "The seventh planet, an ice giant tipped on its side. Uranus rotates at a 98-degree angle, likely from a past collision, causing extreme seasons where its poles face the Sun for 42 years at a time. Its blue-green color comes from methane in its H-He atmosphere.",
@@ -2435,7 +2435,7 @@
        "molarMassKg": 0.0026000000000000003,
        "scaleHeightKm": 20.35976711880303
       },
-      "orbital_period_days": 60339.28002582727,
+      "orbital_period_days": 60189.65901627789,
       "axial_tilt_deg": 28.32,
       "rotation_period_hours": 16.11,
       "description": "The eighth and most distant planet, Neptune is a dark, cold ice giant whipped by supersonic winds. It has a vivid blue color from methane in its atmosphere. It was the first planet found through mathematical prediction rather than direct observation.",
