@@ -251,7 +251,9 @@ function adoptShippedCalendarEpochs(
   const working: TemporalState['temporal_registry'] = {};
   for (const [key, calendar] of Object.entries(registry)) {
     const shipped = calendar?.id ? shippedById.get(calendar.id) : undefined;
-    if (!shipped) {
+    // A GM who typed their own zero OWNS it. Adoption exists to carry OUR correction into saves that
+    // carry OUR calendar unmodified - never to overwrite a reckoning somebody chose for themselves.
+    if (!shipped || (calendar as any).epoch_gm_authored) {
       working[key] = calendar;
       continue;
     }

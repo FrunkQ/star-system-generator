@@ -1301,6 +1301,8 @@ export interface BucketDrainCalendarDefinition {
   /** G62: this calendar's zero as a REAL instant. When present, `epoch_offset_t` is DERIVED
    *  from the registry anchor on load and whatever is stored in it is ignored. */
   epoch_utc?: string;
+  /** G62: the GM typed this calendar's zero themselves. The app never overwrites it again. */
+  epoch_gm_authored?: boolean;
   year_offset?: number;
   format: string;
   hierarchy: TemporalHierarchyUnit[];
@@ -1315,6 +1317,8 @@ export interface RatioLinearCalendarDefinition {
   /** G62: this calendar's zero as a REAL instant. When present, `epoch_offset_t` is DERIVED
    *  from the registry anchor on load and whatever is stored in it is ignored. */
   epoch_utc?: string;
+  /** G62: the GM typed this calendar's zero themselves. The app never overwrites it again. */
+  epoch_gm_authored?: boolean;
   format: string;
   parameters: {
     units_per_earth_year: number;

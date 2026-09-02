@@ -5889,6 +5889,15 @@ RULE: a shipped calendar states its zero as `epoch_utc`, a real instant, and its
 is DERIVED from the anchor on load - whatever is stored in that field is ignored. A calendar with
 no `epoch_utc` (a GM's own, or an old save) keeps its stored offset untouched. `epoch_offset_t` is
 therefore a CACHE for our calendars and DATA for theirs, and the discriminator is `epoch_utc`.
+THE CACHE MUST BE KEPT IN SYNC, and this is not tidiness: the calendar editor's Epoch Offset field
+binds straight to `epoch_offset_t`, so a stored value that disagrees with the derivation is shown
+to a GM as a number that is both WRONG and INERT. That shipped in the first cut of G62 - the editor
+displayed 435084559692049800, 297 years stale, while the engine used the derived value.
+`anchor.spec.ts` now asserts stored == derived for every shipped calendar.
+A GM WHO TYPES THEIR OWN ZERO OWNS IT: the editor sets `epoch_gm_authored` and drops `epoch_utc`,
+and `adoptShippedCalendarEpochs` skips any calendar carrying that flag. Without it, adoption - which
+exists to carry OUR correction into saves holding OUR calendar unmodified - would silently overwrite
+a reckoning somebody chose, which is the steer-do-not-stop rule broken by a repair pass.
 Move `temporal_anchor.master_t` and every shipped calendar moves with it, together, by the same
 amount - that is the property the gate asserts and the reason the mechanism exists.
 WHY: [[G62]], owner: *"The main clock is 'seconds from big bang' but we need a genuine stake in the
@@ -5911,6 +5920,12 @@ inserting 29 February. So the model is calibrated EXACT at one instant (`stake_u
 12:00 on 1 September 2026) and wobbles either side by up to half a day - measured at most 11.6 h
 across 1900-2100, which keeps the DATE right and makes the clock time within it approximate. Do not
 sell this as ephemeris precision; the gate pins the bound rather than a false exactness.
+THE WOBBLE IS THE MISSING LEAP DAY, NOT A MISTUNED RATE, and the arithmetic says so: a constant
+seconds-per-year correction is a straight line through a staircase that inserts a WHOLE DAY every
+four years, so the best possible fit leaves a sawtooth of half a leap day - 12.0 h - and the
+measured worst case across 1900-2100 is 11.63 h. No value of `drift_per_year_t` improves on that.
+Anyone asked to make this calendar eclipse-accurate must add a real leap RULE (or navigate by
+instant instead), not retune the rate.
 BLAST: A SHIPPED CALENDAR'S EPOCH IS THE APP'S, NOT THE SAVE'S. Every real starmap carries a copy
 of all four calendars, so without `adoptShippedCalendarEpochs` an existing campaign would render
 297 years out for ever AND - its copy no longer matching shipped - B112's delta would write the

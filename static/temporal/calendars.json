@@ -10,7 +10,7 @@
     "Earth Gregorian": {
       "id": "EARTH_GREG",
       "math_type": "BUCKET_DRAIN",
-      "epoch_offset_t": "435084559692049800",
+      "epoch_offset_t": "435084569064384274",
       "epoch_utc": "0000-12-31T18:44:34Z",
       "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
       "hierarchy": [
@@ -66,7 +66,7 @@
     "Mayan Haab (Simplified)": {
       "id": "MAYAN_HAAB_SIMPL",
       "math_type": "BUCKET_DRAIN",
-      "epoch_offset_t": "435084461534290575",
+      "epoch_offset_t": "435084470815248000",
       "epoch_utc": "-003113-08-11T00:00:00Z",
       "format": "{weekday} {mday}{suffix} {month}, Haab Year {year}",
       "hierarchy": [
@@ -130,7 +130,7 @@
     "Chinese Lunisolar (Simplified)": {
       "id": "CHINESE_LUNISOLAR_SIMPL",
       "math_type": "BUCKET_DRAIN",
-      "epoch_offset_t": "435084488515324800",
+      "epoch_offset_t": "435084483955219200",
       "epoch_utc": "-002696-01-01T00:00:00Z",
       "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, Year {year}",
       "hierarchy": [

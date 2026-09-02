@@ -200,6 +200,17 @@
     dispatch('save', { temporal: workingTemporal });
     dispatch('close');
   }
+
+  // G62: this field shows a number the app DERIVES for its OWN calendars, from the registry anchor
+  // and the calendar's `epoch_utc`. The moment a GM types their own the derivation has to stop, or
+  // their value would be overwritten on the next load - so editing it CLAIMS the field. This is
+  // steer-do-not-stop applied to the clock: the app corrects its own calendars and never a
+  // reckoning somebody chose.
+  function claimEpoch() {
+    if (!selectedCalendar) return;
+    (selectedCalendar as any).epoch_gm_authored = true;
+    delete (selectedCalendar as any).epoch_utc;
+  }
 </script>
 
 {#if showModal}
@@ -239,8 +250,8 @@
                   </select>
                 </div>
                 <div class="field">
-                  <label title="Master-clock second used as this calendar's zero point.">Epoch Offset t (seconds from big bang you day ZERO starts)</label>
-                  <input type="text" bind:value={selectedCalendar.epoch_offset_t} />
+                  <label title="Master-clock second used as this calendar's zero point. Shipped calendars derive this from the registry anchor; type here and it becomes yours, and the app stops deriving it.">Epoch Offset t (seconds from big bang your day ZERO starts)</label>
+                  <input type="text" bind:value={selectedCalendar.epoch_offset_t} on:input={claimEpoch} />
                 </div>
               </div>
 

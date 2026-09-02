@@ -242,3 +242,33 @@ describe('G62 - a new campaign starts on the stake, not on a number nobody can n
     expect(fresh.masterTimeSec).toBe(fresh.displayTimeSec);
   });
 });
+
+describe("G62 - the number in the editor is the number the engine uses", () => {
+  it('every shipped calendar stores the offset its epoch_utc derives to', () => {
+    // The Epoch Offset field in the calendar editor binds straight to `epoch_offset_t`. When the
+    // engine derives the offset from `epoch_utc` and the stored value says something else, that
+    // field shows a number that is both WRONG and INERT - which is exactly what shipped in the
+    // first cut of this work: 435084559692049800, 297 years stale, sitting in the editor.
+    for (const [key, cal] of Object.entries(SHIPPED.temporal_registry)) {
+      const derived = calendarEpochOffset(cal, SHIPPED.temporal_anchor);
+      expect(cal.epoch_offset_t, key).toBe(derived.toString());
+    }
+  });
+
+  it("a GM's own epoch survives a reload - adoption never overwrites what they typed", () => {
+    applyTemporalRegistryConfig(SHIPPED as any);
+    // Exactly what the editor produces when someone types in the Epoch Offset field: the value is
+    // theirs, the derivation is dropped, and the calendar is flagged as authored.
+    const theirs: any = { ...structuredClone(GREG), epoch_offset_t: '435084500000000000',
+                          epoch_gm_authored: true };
+    delete theirs.epoch_utc;
+    const starmap: any = {
+      systems: [],
+      temporal: { masterTimeSec: '1', displayTimeSec: '1', activeCalendarKey: 'Earth Gregorian',
+                  temporal_registry: { 'Earth Gregorian': theirs } }
+    };
+    const loaded: any = ensureTemporalState(starmap).temporal!.temporal_registry['Earth Gregorian'];
+    expect(loaded.epoch_offset_t).toBe('435084500000000000');
+    expect(loaded.epoch_utc).toBeUndefined();
+  });
+});

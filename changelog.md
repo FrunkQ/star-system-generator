@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.272 - 2nd Sep 2026
+
+- The calendar editor was showing a dead number. Its Epoch Offset field displayed the old, 297-years-wrong value while the app quietly used the corrected one, so the figure on screen was both wrong and had no effect if you changed it. The field now shows the number actually in use.
+- And if you DO type your own epoch, it is now yours for good. The app corrects its own shipped calendars when a campaign loads; it will no longer reach in and overwrite a zero point you set yourself.
+
+
 ## v3.0.271 - 2nd Sep 2026
 
 - Board only. A supermassive black hole is still described as "a ball about 300 km across" - recorded with its measurement, because the sentence comes from the rule pack's size band rather than from the hole's own event horizon.
