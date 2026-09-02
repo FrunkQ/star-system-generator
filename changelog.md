@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.271 - 2nd Sep 2026
+
+- Board only. A supermassive black hole is still described as "a ball about 300 km across" - recorded with its measurement, because the sentence comes from the rule pack's size band rather than from the hole's own event horizon.
 ## v3.0.269 - 2nd Sep 2026
 
 - Board only. Stream H records what it staged for production and corrects a count in its own audit.
