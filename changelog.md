@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.273 - 2nd Sep 2026
+
+- The Earth calendar now has a real 29th of February, and that makes it exact. The leap settings in the calendar editor were being ignored entirely: instead of adding a day every fourth year, the app spread that day thinly across every second of the year. Dates stayed roughly right but the CLOCK drifted - noon showed as 06:33 in 1970 and 23:15 in 2026. It now inserts a real leap day into February, and a calendar can state its exact rule (Earth's is "every 4th year, except every 100th, except every 400th"). Checked against 13,232 dates from 1800 to 2200: date, time and day of the week correct on every one.
+- Which means typing a real date now takes you to exactly the right moment - the thing you need if you want the sky to match the day. The calendar is no longer what stands between you and a real eclipse; the remaining piece is the planets' own starting positions.
+- The editor gains the two settings that make this work: which month takes the leap day, and the exact leap cycle - plus a line telling you which of the two methods your calendar is using, so nothing in that panel is a dead control any more.
+
 ## v3.0.272 - 2nd Sep 2026
 
 - The calendar editor was showing a dead number. Its Epoch Offset field displayed the old, 297-years-wrong value while the app quietly used the corrected one, so the figure on screen was both wrong and had no effect if you changed it. The field now shows the number actually in use.

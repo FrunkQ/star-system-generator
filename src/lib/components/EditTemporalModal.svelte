@@ -283,10 +283,40 @@
                     <input type="number" bind:value={selectedCalendar.leap_logic.threshold_t} />
                   </div>
                   <div class="field">
-                    <label title="Target unit for leap application.">Apply leap to</label>
+                    <label title="Which unit gets inserted when the bucket drains - normally 'day'.">Apply leap to</label>
                     <input type="text" bind:value={selectedCalendar.leap_logic.apply_to} />
                   </div>
                 </div>
+
+                <div class="row three compact">
+                  <div class="field">
+                    <label title="Which month absorbs the inserted unit. Leave blank and the last month takes it.">Leap month</label>
+                    <input type="text" bind:value={selectedCalendar.leap_logic.leap_month} placeholder="last month" />
+                  </div>
+                  <div class="field full-width">
+                    <label title="An EXACT rule, as alternating divisors: 4, 100, 400 means every 4th year, except every 100th, except every 400th. Set this and it replaces the drift bucket.">Exact leap cycle (divisors, comma-separated)</label>
+                    <input
+                      type="text"
+                      value={(selectedCalendar.leap_logic.leap_cycle || []).join(', ')}
+                      placeholder="blank = use the drift bucket above"
+                      on:change={(e) => {
+                        const parsed = (e.currentTarget as HTMLInputElement).value
+                          .split(',').map((v) => Number(v.trim())).filter((n) => Number.isFinite(n) && n > 0);
+                        if (parsed.length) selectedCalendar.leap_logic.leap_cycle = parsed;
+                        else delete selectedCalendar.leap_logic.leap_cycle;
+                        workingTemporal = { ...workingTemporal };
+                      }}
+                    />
+                  </div>
+                </div>
+                <p class="section-hint">
+                  {#if selectedCalendar.leap_logic.leap_cycle?.length}
+                    Using the exact cycle. The drift/threshold above are ignored for this calendar.
+                  {:else}
+                    Using the drift bucket: surplus seconds accumulate each year and insert one unit
+                    when they reach the threshold. Exact on average, up to a day out in any given year.
+                  {/if}
+                </p>
 
                 <div class="row full-row">
                   <div class="field full-width">
@@ -486,6 +516,11 @@
     color: var(--text);
     border-radius: 4px;
     padding: 6px 7px;
+  }
+  .section-hint {
+    margin: 2px 0 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
   }
   .section-title {
     margin-top: 6px;

@@ -1279,9 +1279,25 @@ export interface TemporalHierarchyUnit {
 }
 
 export interface TemporalLeapLogic {
+  /**
+   * G62/A89 - THE BUCKET AND THE DRAIN, and the reason this shape is called BUCKET_DRAIN.
+   * `drift_per_year_t` surplus seconds accumulate each year; when the bucket reaches
+   * `threshold_t`, one whole unit of `apply_to` is inserted into that year and the threshold
+   * drains away. Mean year = plain year + drift * (unit length / threshold).
+   * `leap_month` names which month absorbs the inserted unit - February, for Earth.
+   */
   drift_per_year_t: number;
   threshold_t: number;
   apply_to: string;
+  /** Which month absorbs an inserted leap unit. Omitted: the LAST month takes it. */
+  leap_month?: string;
+  /**
+   * An EXACT leap rule, for a calendar that has one, given as alternating divisors: [4, 100, 400]
+   * is "every 4th year, except every 100th, except every 400th" - the real Gregorian rule. When
+   * present it REPLACES the drift bucket, which can only ever approximate a staircase like that.
+   * Omitted, the bucket runs, which is what an invented calendar with a fractional year wants.
+   */
+  leap_cycle?: number[];
 }
 
 export interface TemporalMonthDefinition {

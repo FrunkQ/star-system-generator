@@ -4,14 +4,14 @@
     "master_t": "435084631200000000",
     "utc": "1970-01-01T00:00:00Z",
     "stake_utc": "2026-09-01T12:00:00Z",
-    "note": "THE STAKE IN THE SAND. The master clock counts seconds since the big bang; master_t IS the instant utc, exactly. Every shipped calendar states its zero as epoch_utc, a real instant, and its epoch_offset_t is DERIVED from this anchor on load - move master_t and every calendar moves with it. stake_utc is the date Earth Gregorian is calibrated to render exactly; the simplified year is within 0.1 s per year of a Gregorian mean year, so it holds to a few seconds a century."
+    "note": "THE STAKE IN THE SAND. The master clock counts seconds since the big bang; master_t IS the instant utc, exactly. Every shipped calendar states its zero as epoch_utc, a real instant, and its epoch_offset_t is DERIVED from this anchor on load - move master_t and every calendar moves with it. stake_utc is the date Earth Gregorian is calibrated to render exactly; the calendar inserts a real leap day (leap_logic), so the mean year is exactly 31,556,952 s and the clock time never drifts."
   },
   "temporal_registry": {
     "Earth Gregorian": {
       "id": "EARTH_GREG",
       "math_type": "BUCKET_DRAIN",
-      "epoch_offset_t": "435084569064384274",
-      "epoch_utc": "0000-12-31T18:44:34Z",
+      "epoch_offset_t": "435084569064403200",
+      "epoch_utc": "0001-01-01T00:00:00Z",
       "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
       "hierarchy": [
         { "unit": "year", "multiplier": 31536000 },
@@ -21,9 +21,11 @@
         { "unit": "sec", "multiplier": 1 }
       ],
       "leap_logic": {
-        "drift_per_year_t": 20938,
+        "drift_per_year_t": 20952,
         "threshold_t": 86400,
-        "apply_to": "day"
+        "apply_to": "day",
+        "leap_month": "February",
+        "leap_cycle": [4, 100, 400]
       },
       "lookup_tables": {
         "weekdays": [

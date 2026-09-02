@@ -198,33 +198,83 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
   const secUnit = hierarchy.find((u) => u.unit === 'sec');
 
   const fields: Record<string, string | number> = {};
-  let working = local;
 
-  if (yearUnit && calendar.leap_logic) {
-    const rawYears = floorDiv(local, BigInt(yearUnit.multiplier));
-    const totalDrift = rawYears * BigInt(calendar.leap_logic.drift_per_year_t);
-    working = local - totalDrift;
-  }
+  // A89: THE BUCKET AND THE DRAIN. `drift_per_year_t` surplus seconds accumulate; when the bucket
+  // reaches `threshold_t` a whole unit of `apply_to` is inserted into that year and the threshold
+  // drains. So a year is a plain `yearUnit.multiplier` long, sometimes plus one leap unit - and the
+  // CLOCK TIME never moves, which is the point. The previous model spread the surplus evenly across
+  // every second of the year, which kept the mean right and made noon render as 06:33.
+  const yearLen = BigInt(yearUnit?.multiplier ?? 31536000);
+  const leap = calendar.leap_logic;
+  const driftPerYear = BigInt(leap?.drift_per_year_t ?? 0);
+  const thresholdT = BigInt(leap?.threshold_t ?? 0);
+  const leapUnit = hierarchy.find((u) => u.unit === (leap?.apply_to ?? 'day'));
+  const leapUnitLen = BigInt(leapUnit?.multiplier ?? 86400);
+  const leapsRun = driftPerYear > 0n && thresholdT > 0n;
+
+  // TWO WAYS TO SAY "SOMETIMES A YEAR IS LONGER", and a calendar picks the one it can state.
+  // A CYCLE is exact and is what a real calendar has: [4, 100, 400] reads "every 4th year, except
+  // every 100th, except every 400th". A BUCKET approximates a fractional year by accumulating a
+  // surplus - the right answer for an invented reckoning, and the only thing available before this.
+  // The bucket CANNOT reproduce a cycle: measured over 1600-2400, a single accumulator lands a day
+  // out in 224 of 801 years whatever starting fill it is given, because it is a straight line
+  // through a staircase.
+  const leapCycle = (leap?.leap_cycle ?? []).filter((d) => Number.isFinite(d) && d > 0);
+  const cycleRuns = leapCycle.length > 0;
+
+  /** Leap units inserted across the years BEFORE year n (n may be negative). */
+  const leapsBefore = (n: bigint): bigint => {
+    if (cycleRuns) {
+      let total = 0n;
+      for (let i = 0; i < leapCycle.length; i++) {
+        const term = floorDiv(n, BigInt(Math.trunc(leapCycle[i])));
+        total += i % 2 === 0 ? term : -term;
+      }
+      return total;
+    }
+    return leapsRun ? floorDiv(n * driftPerYear, thresholdT) : 0n;
+  };
+  /** Seconds consumed by every year before year n. */
+  const secondsBefore = (n: bigint): bigint => n * yearLen + leapsBefore(n) * leapUnitLen;
+
+  // A first guess only - the search below is what settles it, so an approximate mean is fine.
+  const meanYear = cycleRuns
+    ? yearLen + (leapUnitLen * 97n) / 400n
+    : yearLen + (leapsRun ? (driftPerYear * leapUnitLen) / thresholdT : 0n);
+  let yearIndex = floorDiv(local, meanYear > 0n ? meanYear : yearLen);
+  // `meanYear` is exact, so this settles in a step or two; the bound is a guard against absurd
+  // authored data rather than an expected cost.
+  for (let guard = 0; guard < 8 && secondsBefore(yearIndex) > local; guard++) yearIndex -= 1n;
+  for (let guard = 0; guard < 8 && secondsBefore(yearIndex + 1n) <= local; guard++) yearIndex += 1n;
+
+  const isLeapYear = leapsBefore(yearIndex + 1n) > leapsBefore(yearIndex);
+  let working = local - secondsBefore(yearIndex);
+  fields.year = Number(yearIndex);
 
   for (const unit of hierarchy) {
+    if (unit.unit === 'year') continue;
     const divisor = BigInt(unit.multiplier);
-    const value = floorDiv(working, divisor);
+    fields[unit.unit] = Number(floorDiv(working, divisor));
     working = floorMod(working, divisor);
-    fields[unit.unit] = Number(value);
   }
 
   const dayOfYear = typeof fields.day === 'number' ? fields.day : 0;
   const months = calendar.lookup_tables?.months ?? [];
+  // The inserted unit lands in a NAMED month - February, for Earth - so every date after it keeps
+  // its number. Appending it to the year instead would push 1 March to the 2nd and leave the extra
+  // day hanging off the end of the month table with no name at all.
+  const leapMonthName = leap?.leap_month ?? months[months.length - 1]?.name;
   let remaining = dayOfYear;
   let monthName = '';
   let dayInMonth = dayOfYear + 1;
   for (const month of months) {
-    if (remaining < month.days) {
+    const days = month.days + (isLeapYear && month.name === leapMonthName ? Number(leapUnitLen / BigInt(dayUnit?.multiplier ?? 86400)) : 0);
+    if (remaining < days) {
       monthName = month.name;
       dayInMonth = remaining + 1;
       break;
     }
-    remaining -= month.days;
+    remaining -= days;
   }
 
   const dayMultiplier = BigInt(dayUnit?.multiplier ?? 86400);
@@ -263,6 +313,7 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
       min,
       sec,
       master_t: masterSeconds.toString(),
+      leap_year: isLeapYear ? 1 : 0,
       hour_unit: hourUnit?.multiplier ?? 3600,
       min_unit: minUnit?.multiplier ?? 60,
       sec_unit: secUnit?.multiplier ?? 1

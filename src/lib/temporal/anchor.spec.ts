@@ -143,40 +143,60 @@ describe('G62 — the runtime anchor carries wall-clock conversion with it', () 
 });
 
 describe('G62 - what this calendar can and cannot promise', () => {
-  it('the drift makes a Gregorian mean year THROUGH THIS ALGORITHM, not through Y + D', () => {
-    const drift = (GREG as any).leap_logic.drift_per_year_t;
+  it('states the REAL Gregorian leap rule, and its bucket agrees with it on the mean year', () => {
+    const leap = (GREG as any).leap_logic;
     const Y = (GREG as any).hierarchy.find((u: any) => u.unit === 'year').multiplier;
-    // resolveBucketDrain does `working = local - floor(local/Y) * D`, so one displayed year consumes
-    // Y*Y/(Y-D) seconds of local time - NOT Y + D. Getting that relation wrong is why an
-    // obvious-looking "365 d + 20952" runs 14 s/yr FAST while the shipped 20925 ran 13 s/yr SLOW:
-    // two wrong answers either side of the target, from the same misreading.
-    const effectiveYear = (Y * Y) / (Y - drift);
-    expect(Math.abs(effectiveYear - 31_556_952)).toBeLessThan(0.1);
-    expect(drift).toBe(20938);
+    // A89: the exact rule, as data. [4, 100, 400] is "every 4th year, except every 100th, except
+    // every 400th" - 97 leap days per 400 years - and it REPLACES the drift bucket, which is a
+    // straight line through a staircase and lands a day out in 224 of 801 years however it is tuned.
+    expect(leap.leap_cycle).toEqual([4, 100, 400]);
+    expect(leap.leap_month).toBe('February');
+    expect(leap.apply_to).toBe('day');
+    expect(leap.threshold_t).toBe(86400);
+    // The bucket no longer drives Gregorian, but it must still DESCRIBE the same year or the two
+    // halves of one record would disagree: 365 d + 20952 s is the mean Gregorian year, and it is
+    // exactly what the cycle produces (365 + 97/400 days).
+    expect(Y + leap.drift_per_year_t).toBe(31_556_952);
+    expect(Y + (86400 * 97) / 400).toBe(31_556_952);
   });
 
-  // WHAT IT CANNOT DO, pinned so nobody mistakes it for precision it does not have. There is NO
-  // LEAP DAY in this model: `leap_logic.threshold_t` and `apply_to` are declared in the data and
-  // never read - `resolveBucketDrain` uses `drift_per_year_t` alone and smears the leap remainder
-  // evenly rather than inserting 29 February. The calendar is therefore EXACT at the stake and
-  // wobbles either side of it, by up to half a day, without ever losing the date.
-  it('stays within a day of the real calendar right across 1900-2100', () => {
+  // A89 TURNED A BOUND INTO AN EQUALITY. This used to assert "within a day of reality across
+  // 1900-2100", because the model had NO LEAP DAY - it smeared the surplus evenly across the year,
+  // which kept the mean right and made noon render as 06:33. With `leap_cycle` wired, the calendar
+  // IS the proleptic Gregorian one, and the sweep says so rather than a tolerance.
+  it('is exactly the proleptic Gregorian calendar, swept across four centuries', () => {
     const MONTHS = (GREG as any).lookup_tables.months.map((m: any) => m.name);
-    const probes = ['1900-01-01T00:00:00Z', '1950-01-01T00:00:00Z', '1970-01-01T00:00:00Z',
-                    '2000-01-01T00:00:00Z', '2025-01-01T00:00:00Z', '2050-01-01T00:00:00Z',
-                    '2100-01-01T00:00:00Z'];
-    for (const iso of probes) {
-      const rendered = renderAt(iso, GREG);
-      const m = rendered.match(/^(\d{2}):(\d{2}):(\d{2}), \w+ (\d+)\w\w (\w+), (\d+) AD$/);
-      expect(m, 'unparsed: ' + rendered).toBeTruthy();
-      const [, hh, mm, ss, mday, month, year] = m as RegExpMatchArray;
-      const asReal = Date.UTC(Number(year), MONTHS.indexOf(month), Number(mday),
-                              Number(hh), Number(mm), Number(ss));
-      const hours = Math.abs(asReal - Date.parse(iso)) / 3600000;
-      expect(hours, iso + ' -> ' + rendered).toBeLessThan(24);
+    const WEEKDAYS = (GREG as any).lookup_tables.weekdays;
+    let samples = 0;
+    const wrong: string[] = [];
+    // An awkward stride and a non-midnight start, deliberately: a sweep on whole days at midnight
+    // would never exercise the hour/min/sec buckets or land inside 29 February.
+    for (let t = Date.UTC(1800, 0, 1, 7, 13, 29); t <= Date.UTC(2200, 0, 1); t += 86400000 * 11 + 3600000) {
+      const d = new Date(t);
+      const rendered = renderAt(d.toISOString(), GREG);
+      const m = rendered.match(/^(\d{2}):(\d{2}):(\d{2}), (\w+) (\d+)\w\w (\w+), (\d+) AD$/);
+      if (!m) { wrong.push('unparsed: ' + rendered); continue; }
+      const [, hh, mm, ss, weekday, mday, month, year] = m;
+      const okDate = Number(year) === d.getUTCFullYear()
+        && MONTHS.indexOf(month) === d.getUTCMonth()
+        && Number(mday) === d.getUTCDate()
+        && `${hh}:${mm}:${ss}` === d.toISOString().slice(11, 19);
+      // The weekday is checked against the PLATFORM's, not against the engine's own day count -
+      // an independent authority, which is what makes this an absolute anchor (PHY-34).
+      const okWeekday = WEEKDAYS[(d.getUTCDay() + 6) % 7] === weekday;
+      if (!okDate || !okWeekday) wrong.push(d.toISOString() + ' -> ' + rendered);
+      samples++;
     }
-    // And it is EXACT where it was calibrated. That is what a stake in the sand is for.
-    expect(renderAt(STAKE, GREG)).toBe('12:00:00, Tuesday 1st September, 2026 AD');
+    expect(samples).toBeGreaterThan(13000);
+    expect(wrong.slice(0, 5)).toEqual([]);
+  });
+
+  it('29 February exists in a leap year and does not in a common one', () => {
+    expect(renderAt('2024-02-29T06:00:00Z', GREG)).toBe('06:00:00, Thursday 29th February, 2024 AD');
+    // 2100 is divisible by 4 but NOT a leap year - the century rule the drift bucket could not state.
+    expect(renderAt('2100-03-01T00:00:00Z', GREG)).toBe('00:00:00, Monday 1st March, 2100 AD');
+    // 2000 IS a leap year, because of the 400 rule.
+    expect(renderAt('2000-02-29T00:00:00Z', GREG)).toBe('00:00:00, Tuesday 29th February, 2000 AD');
   });
 });
 
@@ -201,7 +221,9 @@ describe('G62 - an old save picks up the corrected epoch', () => {
     const out = ensureTemporalState(starmap);
     const loaded: any = out.temporal!.temporal_registry['Earth Gregorian'];
     expect(loaded.epoch_utc).toBe((GREG as any).epoch_utc);
-    expect(loaded.leap_logic.drift_per_year_t).toBe(20938);
+    expect(loaded.leap_logic.drift_per_year_t).toBe(20952);
+    // and it picks up the real rule, which is the half that actually fixes its dates
+    expect(loaded.leap_logic.leap_cycle).toEqual([4, 100, 400]);
     // ...and the campaign now names the stake correctly, which is the point of adopting it.
     expect(renderAt(STAKE, loaded)).toBe('12:00:00, Tuesday 1st September, 2026 AD');
   });

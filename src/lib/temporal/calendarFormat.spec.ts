@@ -61,23 +61,26 @@ describe('formatInstantMs — one path from an instant to a campaign date', () =
   });
 
   it('renders the shipped Gregorian calendar to its exact published string', () => {
-    // What THIS build produces for the bundled epoch. It is 297 years wrong in real terms - that
-    // is G62's fault, not B113(a)'s - and it is pinned here deliberately so the anchor fix has
-    // something to move. The real instant is 2025-11-05T10:39:06Z, a Wednesday.
-    expect(formatInstantMs(BUNDLED_EPOCH_MS, GREGORIAN)).toBe(
-      '03:42:51, Sunday 5th November, 2322 AD'
-    );
+    // THE 297-YEAR FAULT, pinned by the thing that actually was the fault: the YEAR. This calendar
+    // object is deliberately an OLD-STYLE one - a stored `epoch_offset_t` and no `epoch_utc` - so it
+    // still reads 297 years late, exactly as the shipped app did before G62.
+    // The clock time is NOT asserted: it was an artefact of the linear-smear leap model that A89
+    // replaced with a real leap day, and pinning it would have pinned the bug rather than the rule.
+    const label = formatInstantMs(BUNDLED_EPOCH_MS, GREGORIAN) as string;
+    expect(label).toContain('5th November');
+    expect(label).toContain('2322 AD');
     expect(new Date(BUNDLED_EPOCH_MS).getUTCFullYear()).toBe(2025);
   });
 
-  it('reproduces the string the shipped app puts on screen, character for character', () => {
-    // ABSOLUTE, and the strongest kind available here: this exact sentence was READ OFF the running
-    // app at starsystemx.com (v3.0.164) and beta.starsystemx.com (v3.0.258) on 2026-09-01, for the
-    // default seed clock. It is an observation of the product, not of this code.
-    const SEED_MASTER = 435084632967250575n; // STARTDATE_EPOCH_OFFSET_T, the default campaign seed
-    expect(resolveCalendar(SEED_MASTER, GREGORIAN).formatted).toBe(
-      '00:00:00, Monday 1st January, 2323 AD'
-    );
+  it('still reads 297 years late through an OLD-STYLE calendar, which is what was reported', () => {
+    // The observation this records was read off the running app at starsystemx.com (v3.0.164) and
+    // beta.starsystemx.com (v3.0.258) on 2026-09-01: a clock the app had seeded at 1 January 2026
+    // displayed "00:00:00, Monday 1st January, 2323 AD". The DATE is the fault and it reproduces
+    // here; the time of day came from the leap model A89 replaced, so it is no longer asserted.
+    const SEED_MASTER = 435084632967250575n; // the old default campaign seed, ~1 Jan 2026
+    const label = resolveCalendar(SEED_MASTER, GREGORIAN).formatted;
+    expect(label).toContain('1st January');
+    expect(label).toContain('2323 AD');
   });
 
   it('is the same answer as spelling the two-step idiom out by hand', () => {

@@ -5914,12 +5914,14 @@ of 20925 therefore ran 13.1 s/yr SLOW, and the obvious-looking "correction" to 2
 365 d + D = a mean year) runs 13.9 s/yr FAST - two wrong answers either side, from one misreading.
 The value that lands is 20938, at 0.089 s/yr. Anyone retuning this must invert the ACTUAL
 expression, not the intuitive one.
-BLAST: THIS CALENDAR HAS NO LEAP DAY AND CANNOT BE MADE EXACT EVERYWHERE. `leap_logic.threshold_t`
-and `apply_to` are declared in the data and never read; the remainder is smeared evenly instead of
-inserting 29 February. So the model is calibrated EXACT at one instant (`stake_utc`, the owner's own
-12:00 on 1 September 2026) and wobbles either side by up to half a day - measured at most 11.6 h
-across 1900-2100, which keeps the DATE right and makes the clock time within it approximate. Do not
-sell this as ephemeris precision; the gate pins the bound rather than a false exactness.
+BLAST: SUPERSEDED BY A89 - THIS CALENDAR NOW HAS A REAL LEAP DAY AND IS EXACT. It is recorded
+rather than deleted because the shape of the error is the lesson. Until A89 wired them,
+`leap_logic.threshold_t` and `apply_to` were declared in the data and read by nothing; the surplus
+was smeared evenly instead of inserting 29 February, so the model was exact only at `stake_utc` and
+wandered up to 11.6 h either side - the DATE stayed right and the CLOCK TIME did not. The residual
+was never a mistuned rate: half a leap day is 12.0 h and the measured worst case was 11.63 h, which
+is the same number. See A89 for the mechanism that replaced it and why a bucket cannot state the
+Gregorian rule at all.
 THE WOBBLE IS THE MISSING LEAP DAY, NOT A MISTUNED RATE, and the arithmetic says so: a constant
 seconds-per-year correction is a straight line through a staircase that inserts a WHOLE DAY every
 four years, so the best possible fit leaves a sawtooth of half a leap day - 12.0 h - and the
