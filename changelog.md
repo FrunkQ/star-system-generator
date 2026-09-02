@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.269 - 2nd Sep 2026
+
+- Board only. Stream H records what it staged for production and corrects a count in its own audit.
 ## v3.0.268 - 2nd Sep 2026
 
 - Hovering a star on the GM starmap now tells you what is in the system without opening it: the full star type in plain English, what is in orbit, whether anything lives there, and any megastructures - a ringworld says so by name. Your players' map is unchanged; this is the GM's side only.
