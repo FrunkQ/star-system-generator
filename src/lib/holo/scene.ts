@@ -505,7 +505,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   controls.enablePan = false;
   const DEFAULT_MIN_DIST = 0.05;
   controls.minDistance = DEFAULT_MIN_DIST; // overview floor; focusBody tightens it to the focused body's size
-  controls.maxDistance = GRID_RADIUS * 6;
+  // A86 (user report, 2026-09-02; shipped to prod as v3.0.259, whose comment says A85 - an id race,
+  // the board row is A86): 6x the grid could not take in a far binary companion, so the leash is
+  // 60x. The owner wants effectively no limit, and the honest ceiling is the sky itself: the
+  // starfield shell sits at radius 900 and the far plane at 2000, so 720 stays inside both. If this
+  // ever proves short the next step is a camera-following starfield, not a bigger number here.
+  controls.maxDistance = GRID_RADIUS * 60;
   // The OPEN range: a 3D view may be flown under the ecliptic (RENDER-S14). These must match what
   // `applyPolarLimits` sets, because that only runs on a FRAMING CHANGE - so whatever is written
   // here is what the view actually has until the user alters a framing setting. Setting the old

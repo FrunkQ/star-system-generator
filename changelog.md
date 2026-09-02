@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.277 - 2nd Sep 2026
+
+- You can zoom the GM view ten times further out, so a far binary companion fits on screen. Already live on production as v3.0.259.
+
 ## v3.0.276 - 2nd Sep 2026
 
 - The Moon's info card now says 27.3 days, which is both how long it actually takes and what its own Day Length figure on the same card already said - 655.7 hours is the same number, because the Moon keeps one face towards us. The card had been working the period out for itself from the Earth's mass instead of reading the one the engine publishes, so with real orbital data the two figures sitting side by side disagreed.
