@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.259 - 31st Aug 2026
+
+- You can zoom the GM view ten times further out, so a far binary companion fits on screen. The scale readout keeps its meaning all the way; the numbering jump is deliberate - beta and production share one sequence.
+
 ## v3.0.164 - 28th Aug 2026
 
 - Ships and worlds are now sized honestly against one another: one scale runs across every kind of object, so nothing small ever draws larger than something big. Stars are on that scale too, which means a red dwarf and a red supergiant are no longer the same size on screen.
