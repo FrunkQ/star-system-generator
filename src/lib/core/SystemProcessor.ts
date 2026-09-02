@@ -629,12 +629,20 @@ export class SystemProcessor implements ISystemProcessor {
         if (body.orbit && body.parentId) {
             const host = allNodes.find(n => n.id === body.parentId);
             const hostMass = (host?.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody)?.massKg) || 0;
-            const isBaryMember = host?.kind === 'barycenter' && (host as Barycenter).memberIds?.includes(body.id);
 
-            if (isBaryMember && (body.orbit.n_rad_per_s || 0) > 0) {
-                // A binary member orbits the barycentre; BOTH members share one period — the relative
-                // orbit's — which the binary pass carries on n_rad_per_s. Deriving from a_member³/M_total
-                // would give each member a different, physically-wrong period (Rigil 25 yr, Toliman 60 yr).
+            if ((body.orbit.n_rad_per_s || 0) > 0) {
+                // A STORED n IS THE AUTHORITY ON RATE, so the published period is derived from it and
+                // never re-derived from a³/M. Two cases need this and they are not exceptions:
+                //  - a binary member orbits the barycentre and BOTH members share ONE period, the
+                //    relative orbit's, which the binary pass carries here. Deriving from a_member³
+                //    would give each member a different, physically-wrong period (Rigil 25 yr,
+                //    Toliman 60 yr).
+                //  - a body carrying a real ephemeris (the calibrated Sol, DATA-R37) has an n set by
+                //    the TOTAL mass, which a³/M_primary cannot reproduce: Luna's real sidereal month
+                //    is 27.32 d and a³/M_earth gives 27.45.
+                // Before this the guard read `isBaryMember && n > 0`, so a calibrated Luna MOVED at
+                // 27.32 d and REPORTED 27.45 - one quantity with two answers, which is the fault the
+                // duplication rule exists to catch.
                 body.orbital_period_days = (2 * Math.PI / body.orbit.n_rad_per_s!) / (60 * 60 * 24);
             } else if (hostMass > 0) {
                 body.orbital_period_days = Math.sqrt(4 * Math.PI**2 * (body.orbit.elements.a_AU * AU_KM * 1000)**3 / (G * hostMass)) / (60 * 60 * 24);

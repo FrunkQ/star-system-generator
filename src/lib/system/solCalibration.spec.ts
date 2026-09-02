@@ -111,3 +111,30 @@ describe('the bundled Sol is calibrated, in every file that carries it', () => {
     // about a tenth of one. This asserts the geometry is RIGHT, not that the timing is to the minute.
   });
 });
+
+describe('one quantity, one answer: the published period follows the motion', () => {
+  it("Luna's reported orbital period is the one it actually moves at", async () => {
+    // The rate a body MOVES at comes from `orbitMeanMotion`, which respects a stored `n_rad_per_s`.
+    // The period a body REPORTS came from a^3/M_primary regardless - so a calibrated Luna moved at
+    // 27.32 d and reported 27.45. One quantity with two answers, which is exactly the fault the
+    // duplication rule is for; SystemProcessor now derives the readout from the same authority.
+    const { SystemProcessor } = await import('$lib/core/SystemProcessor');
+    const base = 'static/rulepacks/starter-sf';
+    const merge = (a: any, b: any): any => {
+      const o: any = { ...a };
+      for (const [k, v] of Object.entries(b)) o[k] = v && typeof v === 'object' && !Array.isArray(v) && a?.[k] ? merge(a[k], v) : v;
+      return o;
+    };
+    let pack: any = JSON.parse(readFileSync(`${base}/main.json`, 'utf8'));
+    for (const f of ['stars.json', 'planets.json', 'generation.json', 'orbital_constants.json', 'classification.json', 'atmospheres.json']) {
+      pack = merge(pack, JSON.parse(readFileSync(`${base}/${f}`, 'utf8')));
+    }
+    const sol: any = solOf(SYSTEMS[0]);
+    const processed: any = new SystemProcessor().process(JSON.parse(JSON.stringify(sol)), pack);
+    const luna: any = processed.nodes.find((n: any) => /^luna$/i.test(n.name));
+    const moves = 2 * Math.PI / orbitMeanMotion(luna.orbit) / 86400;
+    expect(luna.orbital_period_days).toBeCloseTo(moves, 4);
+    // ABSOLUTE: the sidereal month, from outside this code.
+    expect(luna.orbital_period_days).toBeCloseTo(27.321661, 2);
+  });
+});

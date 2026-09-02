@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.275 - 2nd Sep 2026
+
+- The Moon's orbital period now reads 27.3 days, which is how long it actually takes. The figure on the info card was worked out from the Earth's mass alone, ignoring the Moon's own - so the Moon MOVED at the right rate and REPORTED the wrong one, by three hours a month. Any body carrying real orbital data now reports the period it is actually moving at.
+
 ## v3.0.274 - 2nd Sep 2026
 
 - The bundled Solar System is now where the real one is. Every planet used to sit on a placeholder orbit - the tilt of its ellipse and the direction of its closest approach were both simply zero - because until the clock was tied to a real date there was no moment for them to be right AT. There is now: noon on 1 September 2026. The eight planets, the Moon and Pluto are set from real orbital data for that instant, in both Local Neighbourhood maps and both Sol system files, and opening any of them puts you at that moment with the sky as it actually was.
