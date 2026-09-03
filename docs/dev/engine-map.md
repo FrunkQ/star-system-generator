@@ -2070,6 +2070,14 @@ for me" convenience breaks the consent property and needs the owner's decision, 
 Also: a missing map must degrade to a SMALLER bundle, never to no bundle — storage failing is when a
 diagnostic matters most.
 
+### RENDER-S49 THE SCENE FRAME IS A MIRROR OF THE MAP'S EQUATORIAL FRAME, AND THE SKY MUST NOT INHERIT IT
+BUCKET: PLATFORM + ARCHITECTURE - see the beta entry of the same id for the full text; the rule: a sky
+direction reaches the scene ONLY through `map/skyStars.ts` skyDirToScene, a proper rotation
+((x, y, z) -> (x, z, -y)); bodies keep positionToScene's historic (x, z, y) swap on purpose.
+WHERE: `holo/scene.ts` rebuildSkyStars; `map/skyStars.ts`; `import/realsky/positions.mjs`.
+WHY: A93 (2026-09-02) - Orion rendered mirrored; `skyChirality.spec.ts` went red at -0.175 before the fix.
+BLAST: any new sky consumer (constellation lines, a compass rose, anomaly badges) must use the helper.
+
 ### DATA-*  (starmaps, import, rulepacks)
 _Partly written. STILL UNWRITTEN: `tests/fixtures/*` and `tests/output/*` are GENERATED, never
 hand-edited._

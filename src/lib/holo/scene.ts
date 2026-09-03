@@ -39,7 +39,7 @@ import { gridLevels, gridLevelOpacity, GRID_LEVEL_PEAK, niceSeries, formatNice }
 import { gridFadeWindow, GRID_FADE_OFF } from '$lib/map/gridFade';
 import { buildLattice, ringEdges, spokeEdges, type GridEdge } from '$lib/map/gridGeometry';
 import { latticeFor } from '$lib/map/latticeGeometry';
-import { NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
+import { skyDirToScene, NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
@@ -672,10 +672,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const marked = skyMode === 'marked';
     for (const st of skyStars) {
       const b = skyBrightness(st.magnitude);
-      // PHYSICS (x, y, z) -> SCENE (x, z, y), the same axis convention positionToScene uses. The
-      // starmap's own plane IS the system's reference plane; there is no other frame to relate them
-      // by, and both maps already treat map-z as height.
-      const pos = new THREE.Vector3(st.dir.x, st.dir.z, st.dir.y).multiplyScalar(SKY_RADIUS);
+      // A93: NOT the (x, z, y) swap positionToScene uses - that swap mirrors, which is invisible for a
+      // fictional system but wrong for a sky a user compares with a photograph. skyDirToScene keeps the
+      // handedness (map/skyStars.ts; engine map RENDER-S49; gated by skyChirality.spec.ts).
+      const pos = new THREE.Vector3(...skyDirToScene(st.dir)).multiplyScalar(SKY_RADIUS);
       const col = new THREE.Color(st.color);
       // World-space size, not screen-space: at a fixed 860 the camera's own wander of a few tens of
       // units changes the angular size by ~3%, so a per-frame resize would buy nothing.

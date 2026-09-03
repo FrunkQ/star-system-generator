@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.286 - 2nd Sep 2026
+
+- The constellation sky is no longer drawn mirror-imaged: a star entered at its real right ascension and declination now sits where a photograph puts it, with east to the left when north is up. Orion looks like Orion.
+
 ## v3.0.279 - 2nd Sep 2026
 
 - The 2D system map now zooms out fifty times further than before, so a distant binary companion fits on screen. The earlier v3.0.259 change widened the 3D view; this is the map the report was about.
