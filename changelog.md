@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.287 - 2nd Sep 2026
+
+- Board only. The hierarchy stream is briefed: a Universe Sandbox binary should import as two stars, and a body should be re-homable from its orbit panel without jumping.
+
 ## v3.0.285 - 2nd Sep 2026
 
 - The constellation sky is no longer drawn mirror-imaged: a star entered at its real right ascension and declination now sits where a photograph puts it, with east to the left when north is up. Orion looks like Orion.

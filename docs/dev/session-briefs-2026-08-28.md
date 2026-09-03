@@ -685,7 +685,8 @@ it is theirs, leave it.
 >
 > **TRAPS SPECIFIC TO THIS STREAM.** (i) **CRLF, and this exact job has been bitten before:** a
 > 13-line edit to `physics/+page.svelte` once committed as 2,054 insertions because a regex `\s*`
-> crossed a ``. Byte-level editing is the safe form for every CRLF file here; read
+> crossed a `
+`. Byte-level editing is the safe form for every CRLF file here; read
 > `git show --stat` before EVERY push and treat a whole-file diff on a small edit as a stop.
 > (ii) The debt section lives inside `observations-inbox.md`, which other streams edit daily —
 > fetch before every push, rebase on rejection, and the conflict-marker check GATES the add.
@@ -700,3 +701,74 @@ it is theirs, leave it.
 > finds the app doing exactly what the page says. (3) Any doc-vs-tree contradiction found is
 > fixed to the tree AND recorded. (4) Green build per push, version bumped, changelog line
 > ("Board only" is wrong here — these are reader-facing changes, say what a reader gains).
+
+---
+
+## STREAM J — the hierarchy batch: a binary imported as one star, and re-homing a body by hand (B114 + G64)
+
+> You are fixing [[B114]] and building [[G64]] for Star System Explorer — one stream, because they
+> share the kepler helpers and the hierarchy passes, and together they mean an imported binary comes
+> in right AND can be corrected by hand when it does not. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (v3.0.287+ — fetch
+> the tip; several streams push daily, renumber on collision). Work in your OWN worktree
+> (`git worktree add ../sse2-hierarchy -b wt/hierarchy origin/beta`); the main checkout is shared.
+> Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** (1) `CLAUDE.md` at the repo root. (2) The [[B114]] and [[G64]] rows in
+> `docs/dev/observations-inbox.md` — B114 was MEASURED on the user's file and the row carries the
+> exact lines; then the standing rules at that file's foot. (3) In `docs/dev/engine-map.md`:
+> `DATA-R29` first (a stored orbit describes a body only if it carries the PHASE), `LGR-1`, `LGR-2`,
+> `PHY-32` (a co-orbital node's orbit and parentage have ONE owner), `PHY-30` (a barycentre publishes
+> its annulus), `DATA-R30`, `GEN-6` (one star-hierarchy planner), and `PHY-34` for gates. (4) The
+> [[B111]] row — the one-epoch pair machinery you will be emitting INTO. (5) `import/ubox/hierarchy.ts`
+> and `import/ubox/kepler.ts` end to end; they are short.
+>
+> **THE FILE, and it is the gate:** `../user-test-files/Diurnus-System-V2.1.2.ubox` — a real user's
+> map, NEVER commit, bundle or publish it. Two stars, Ochel Diurnus (2.18 Msun) and Acher Diurnus
+> (2.12 Msun); Onae orbits Acher and Bonae orbits Onae.
+>
+> **PART 1 — [[B114]], the importer assumes one star.** Measured today with the importer run
+> headlessly on that file: `resolveCategory` (`convert.ts:60`) correctly calls BOTH stars by mass —
+> that is not the fault. `inferHierarchy` is: it picks ONE local root, the most massive candidate
+> (line 65); places everything else under its best-bound host or the root (112); assigns role purely
+> from the parent's role — `parent.roleHint === 'star' ? 'planet' : 'moon'` (116) — so Acher came out
+> as a `planet` with no class and its whole retinue as `moon`; and its Hill-radius binding score is
+> computed against the ROOT's mass, not the candidate host's (79), which is why Bonae was pulled up
+> to Acher instead of staying with Onae. There is NO depth cap anywhere — moons of moons are
+> structurally fine; the flattening is the scoring.
+>
+> **FIX SHAPE:** multi-root. Stellar-mass bodies gravitationally bound to each other become a PAIR
+> under a barycentre (the 8% promote ratio is pack data since v3.0.188, and B111's one-epoch pair is
+> the target shape — emit INTO it, do not invent a second pair convention); each star keeps
+> `roleHint: 'star'` and seeds its own star→planet→moon chain; Hill radii are computed against the
+> ACTUAL host mass. **Check the SpaceEngine importer for the same single-root shape** and fix it in
+> the same way if it has it — two importers with two hierarchy rules is the duplication fault.
+> Preserve every existing importer gate (`ubox.spec.ts`) bit-for-bit where the input has one star.
+>
+> **PART 2 — [[G64]], re-home a body from its orbit panel.** Owner: *"an advanced edit button next to
+> the standard orbit - to reparent - it does not deserve 1st level appearance."* Constructs already
+> choose a host (`ConstructGeneralTab.svelte`, `selectedParentId` + the placement list); bodies only
+> LABEL theirs (`BodyOrbitTab.svelte`). Build a POSITION-PRESERVING reparent: take the body's current
+> world state, re-express its orbit about the new host — `kepler.ts` `stateVectorsToElements(r, v,
+> mu)` already does exactly this for imports; with position only, a circular orbit at the current
+> distance is the honest fallback — set `parentId` and `orbit.hostMu`, then let the existing passes
+> settle it: `hierarchyRebuild`, `barycenterReconcile` (a 2 Msun body reparented under a 2 Msun star
+> must PROMOTE to a pair), with `idempotence.test.ts` as the guard. **THE TRAP IS ALREADY PAID FOR:** a
+> reparent that writes a radius and keeps the old `M0` is DATA-R29 and B111 again — the body must not
+> jump. Steer-don't-stop: reparenting INTO a physically absurd place is allowed and TAGGED, never
+> refused. UI: ONE "Advanced" disclosure beside the orbit editor opening a host picker — reuse the
+> construct one — never a first-level control.
+>
+> **ACCEPTANCE — thirty seconds each.** (1) The Diurnus file imports to TWO `star` roles under one
+> barycentre, Onae under Acher, Bonae under Onae — and this gate is run RED against today's importer
+> first. (2) A single-star ubox still imports exactly as before (pin one before you start). (3)
+> Reparent a moon to a different planet: it stays where it was on screen at that instant, then
+> follows its new host; scrub time and it orbits the new host. (4) Reparent a 2 Msun body under a
+> star: a pair forms. (5) Every new gate seen red first; at least one assertion absolute.
+>
+> **RULES THAT ARE NOT OPTIONAL:** green `npm run build` per push; version bump + changelog prose a
+> GM understands; explicit staging, never `git add -A`; `git show --stat` before every push; fetch
+> before push, rebase, RENUMBER from theirs, keep both changelog entries, and the conflict-marker
+> check GATES the add; an engine-map entry in the same commit for any non-obvious rule, and correct
+> any entry you falsify; dead ends recorded loudly; never stop early on a context guess; if the pane
+> will not render, hand back a thirty-second eyeball list.
