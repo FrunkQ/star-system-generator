@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.290 - 3rd Sep 2026
+
+- A star is now described by ITS OWN size rather than its class average. A supermassive black hole was being called "a ball about 300 km across" - the figure for an ordinary stellar-mass one - when its event horizon is nearly two hundred times the Earth-Sun distance; it now reads "a disc about 390 AU across". Red dwarfs say what fraction of the Sun they actually are, and the phrasing changed with it: "about 0.3 times the width of the Sun" rather than the clumsy "3.3 times narrower". Where there is no particular star to measure - the spectral-class picker's tooltip, for instance - it still describes the class.
 ## v3.0.289 - 3rd Sep 2026
 
 - Board only: re-homing a body (v3.0.288) verified live by the owner - Saturn placed in orbit around Jupiter, its moons travelling with it and a pair forming.

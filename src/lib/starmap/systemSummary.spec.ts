@@ -178,3 +178,32 @@ describe('A82 — the PLAYER starmap does not gain the summary', () => {
 		expect(reads('src/lib/components/Starmap.svelte')).toBe(true);
 	});
 });
+
+/**
+ * A88 ON THE SURFACE IT WAS REPORTED ON. The owner was looking at the STARMAP HOVER CARD when he
+ * saw a supermassive black hole called "a ball about 300 km across". The cause is one level down
+ * — the size clause was taking the pack band rather than the star's own radius — but the card is
+ * where a GM meets it, so the card is where it is pinned too.
+ */
+describe('A88 — the hover card describes the star in front of it', () => {
+	const SOLAR_RADIUS_KM = 695700;
+
+	it('a supermassive black hole is not described as a 300 km ball', () => {
+		// 9.87e9 M☉: the event horizon is 29,176,646,000 km, which is 195 AU.
+		const bh = star(['star/BH'], { massKg: 9.87e9 * 1.989e30, radiusKm: 29176646000 });
+		const s = systemSummary('Sirius', sys([bh]), rulePack);
+		expect(s.designation).not.toMatch(/km across/);
+		expect(s.designation).toMatch(/AU across/);
+	});
+
+	it('a stellar-mass hole still reads in kilometres', () => {
+		const bh = star(['star/BH'], { massKg: 10 * 1.989e30, radiusKm: 29.5 });
+		expect(systemSummary('X', sys([bh]), rulePack).designation).toMatch(/km across/);
+	});
+
+	it('a red dwarf is measured, not looked up', () => {
+		const m = star(['star/M'], { radiusKm: 0.3 * SOLAR_RADIUS_KM });
+		expect(systemSummary('X', sys([m]), rulePack).designation)
+			.toMatch(/0\.3 times the width of the Sun/);
+	});
+});

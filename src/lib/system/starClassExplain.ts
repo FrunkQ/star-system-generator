@@ -15,7 +15,7 @@ import type { RulePack } from '$lib/types';
 import { starClassParts, spectralLetterForTempK } from '$lib/physics/starDesignation';
 import type { ObservedStarReading } from '$lib/physics/observedStar';
 import { starStatTemplate } from '$lib/generation/star';
-import { SOLAR_RADIUS_KM } from '$lib/constants';
+import { SOLAR_RADIUS_KM, AU_KM } from '$lib/constants';
 
 export interface StarClassExplanation {
 	/** The designation itself, e.g. `G2V`. */
@@ -99,22 +99,27 @@ export function sizeInWords(radiusSolar: number | undefined): string | undefined
 		return `a ball about ${rounded.toLocaleString()} km across`;
 	}
 	if (r < 0.05) return 'roughly the size of the Earth';
-	if (r < 0.8) return `roughly ${Math.round((1 / r) * 10) / 10} times narrower than the Sun`;
+	// A FRACTION, NOT A RECIPROCAL. "3.3 times narrower" is both clumsy and not really English —
+	// narrower does not multiply — and the owner said what he wanted instead: "red dwarfs can say
+	// they are 0.3 the size of Sol".
+	if (r < 0.8) return `about ${Number(r.toPrecision(1))} times the width of the Sun`;
 	if (r < 1.25) return 'about the size of the Sun';
 	if (r < 25) return `roughly ${Math.round(r)} times wider than the Sun`;
 	if (r < 100) return 'tens of times wider than the Sun';
+	// ABOVE ABOUT 2,500 SOLAR RADII NOTHING IS A STAR ANY MORE (the largest known is ~2,150), so a
+	// figure this big is a supermassive black hole's event horizon and solar radii stop meaning
+	// anything to a reader. Give it in AU, where a GM can put it against their own outer system:
+	// a 1e10 M-sol horizon is about 390 AU across, ten times Neptune's orbit.
+	if (r > 2500) {
+		const auAcross = (2 * r * SOLAR_RADIUS_KM) / AU_KM;
+		return `a disc about ${Number(auAcross.toPrecision(2)).toLocaleString()} AU across`;
+	}
 	return 'hundreds of times wider than the Sun';
 }
 
-/**
- * Explain a star designation in plain English, deriving the size from the pack's own band.
- *
- * Returns undefined only for a key with no letter AND no known kind — an unknown designation is
- * better left unexplained than guessed at.
- */
-export function explainStarClass(
-	pack: RulePack | any,
-	classKey: string,
+/** What the caller knows about the PARTICULAR star, beyond its class. Both optional: a caller
+ *  explaining a CLASS rather than a star (the picker tooltip, the physics page) passes neither. */
+export interface StarClassContext {
 	/**
 	 * The star's activity bucket, when it is known. A FLARE STAR is worth saying out loud — owner,
 	 * 2026-08-15: "this should also change M-type to Flaring M-Type". It is not a different CLASS
@@ -122,8 +127,36 @@ export function explainStarClass(
 	 * one, and it is derived: the same `stellar/activity` bucket the renderers read, which comes from
 	 * class AND age, so an old M dwarf correctly stops being described as flaring.
 	 */
-	activity?: string
+	activity?: string;
+	/**
+	 * THIS STAR'S OWN RADIUS, in solar radii, when the caller has a body rather than a class (A88).
+	 * Preferred over the band whenever it is a real measurement; zero and undefined both fall back,
+	 * because neither is one.
+	 */
+	radiusSolar?: number;
+}
+
+/**
+ * Explain a star designation in plain English.
+ *
+ * THE SIZE CLAUSE PREFERS THE STAR'S OWN RADIUS AND FALLS BACK TO THE PACK'S BAND (A88).
+ * B57 built it from the band deliberately — a band is an anchor the pack already states, so the
+ * sentence cannot drift and retuning a band updates every explanation for free — and that
+ * reasoning still holds for a CLASS, which is what the picker tooltip and the physics page are
+ * explaining. It does not hold for a BODY, whose radius we have already measured; and for a
+ * REMNANT it never held, because a black hole's radius IS its mass and no band can stand in for
+ * it. The owner found that out loud: a 195 AU event horizon described as "a ball about 300 km
+ * across", because the band is the stellar-mass one.
+ *
+ * Returns undefined only for a key with no letter AND no known kind — an unknown designation is
+ * better left unexplained than guessed at.
+ */
+export function explainStarClass(
+	pack: RulePack | any,
+	classKey: string,
+	ctx: StarClassContext = {}
 ): StarClassExplanation | undefined {
+	const { activity, radiusSolar: measuredRadius } = ctx;
 	const { letter, band, bare } = parts(classKey);
 	// A bare letter with no stated luminosity class means MAIN SEQUENCE (mk-lum 1.1), but only when
 	// there IS a letter: an unparseable key must be declined rather than defaulted, or `star/unknown`
@@ -133,10 +166,12 @@ export function explainStarClass(
 	const designation = classKey.replace(/^star\//, '');
 	const colour = letter ? COLOUR_BY_LETTER[letter] : undefined;
 
-	// The radius comes from the band the pack states for this key — an ANCHOR, per B57.
+	// THIS STAR'S OWN RADIUS FIRST; the pack's band only when there is no star to measure. A zero
+	// or absent figure is not a measurement, so it falls back rather than printing nonsense.
 	const tpl = starStatTemplate(pack, classKey);
 	const radiusBand: [number, number] | undefined = tpl?.radius_solar;
-	const radiusSolar = radiusBand ? (radiusBand[0] + radiusBand[1]) / 2 : undefined;
+	const bandRadius = radiusBand ? (radiusBand[0] + radiusBand[1]) / 2 : undefined;
+	const radiusSolar = measuredRadius && measuredRadius > 0 ? measuredRadius : bandRadius;
 	const size = sizeInWords(radiusSolar);
 
 	const flaring = activity === 'flare-star';
@@ -208,7 +243,9 @@ export function explainObservedStarClass(
 	reading: ObservedStarReading,
 	opts: { activity?: string; apparentTempK?: number; cause?: string } = {}
 ): ObservedStarClassExplanation | undefined {
-	const intrinsic = explainStarClass(pack, classKey, opts.activity);
+	// A88 changed the third argument to a context object; the observed builder passes the activity
+	// through and has no measured radius of its own to add (its caller has the class, not the body).
+	const intrinsic = explainStarClass(pack, classKey, { activity: opts.activity });
 	if (!intrinsic) return undefined;
 	const { designation } = intrinsic;
 

@@ -26,6 +26,7 @@ import { megaTypeDef } from '$lib/constructs/megaTypes';
 import { systemVisualStars } from './systemStars';
 import { explainStarClass } from '$lib/system/starClassExplain';
 import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
+import { SOLAR_RADIUS_KM } from '$lib/constants';
 
 /** One system's contents, counted once. */
 export interface SystemSummary {
@@ -103,7 +104,12 @@ export function systemSummary(
 		const key = (primary.classes ?? []).find((c) => c.startsWith('star/')) ?? primary.classes?.[0];
 		if (key) {
 			const activity = primary.tags?.find((t) => t.key === STELLAR_ACTIVITY_TAG)?.value;
-			out.designation = explainStarClass(rulePack, key, activity as string | undefined)?.text;
+			// A88: the card describes the star in front of it, so it hands over the star's OWN radius.
+			// Without it a supermassive hole reads as the stellar-mass band's "ball about 300 km across".
+			out.designation = explainStarClass(rulePack, key, {
+				activity: activity as string | undefined,
+				radiusSolar: primary.radiusKm ? primary.radiusKm / SOLAR_RADIUS_KM : undefined
+			})?.text;
 		}
 	}
 
