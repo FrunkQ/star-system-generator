@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.284 - 2nd Sep 2026
+
+- Board only. Four reports captured with their causes found: the Universe Sandbox importer assumes one star and demotes a binary's second star to a planet; the constellation sky is drawn mirror-imaged by an axis swap; the mobile scale bar hides whenever Spread is above zero; and a way to re-home a body from its orbit panel is sized up.
+
 ## v3.0.283 - 3rd Sep 2026
 
 - Board only. The held production branch records that it now carries the collapse fix too, so it cannot ship the regression it was staged before.
