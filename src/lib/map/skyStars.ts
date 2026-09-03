@@ -166,6 +166,22 @@ function toParsecs(value: number, distanceUnit: string): number {
   return value / LY_PER_PC; // ly, and diagrammatic read as ly
 }
 
+/**
+ * A sky direction in the map's equatorial frame (x = cos dec cos ra, y = cos dec sin ra, z = north)
+ * as scene coordinates (the scene is Y-up), WITH ITS HANDEDNESS KEPT.
+ *
+ * A93: the scene had placed sky sprites at (x, z, y) - the same swap positionToScene uses for bodies.
+ * Swapping two axes is an improper rotation: it flips chirality, and every sky it drew was a mirror
+ * image - Orion with Betelgeuse on the wrong side. For a fictional system's own layout a consistent
+ * mirror is invisible; the SKY is the one thing a user compares with a photograph. So the sky takes a
+ * proper rotation, (x, y, z) -> (x, z, -y), and positionToScene is deliberately left alone: changing
+ * that would flip every system's orbit direction on screen. Gated absolutely by skyChirality.spec.ts.
+ * Engine map RENDER-S49.
+ */
+export function skyDirToScene(dir: { x: number; y: number; z: number }): [number, number, number] {
+  return [dir.x, dir.z, -dir.y];
+}
+
 export interface SkyStarOpts {
   /** Drop anything fainter than this. Defaults to the naked-eye limit. */
   magnitudeLimit?: number;

@@ -2109,6 +2109,24 @@ for me" convenience breaks the consent property and needs the owner's decision, 
 Also: a missing map must degrade to a SMALLER bundle, never to no bundle — storage failing is when a
 diagnostic matters most.
 
+### RENDER-S49 THE SCENE FRAME IS A MIRROR OF THE MAP'S EQUATORIAL FRAME, AND THE SKY MUST NOT INHERIT IT
+BUCKET: PLATFORM + ARCHITECTURE - platform: THREE is Y-up and right-handed; the map is Z-up and
+right-handed, so any (x, y, z) -> (x, z, y) carry-across is an improper rotation. Architecture: one
+conversion per frame pair, named, gated - never an inline swap.
+WHERE: `holo/scene.ts` positionToScene (bodies, deliberately left as the swap) and `rebuildSkyStars`;
+`map/skyStars.ts` skyDirToScene; `import/realsky/positions.mjs` radecToXyzLy (the frame's definition).
+RULE: a sky direction reaches the scene ONLY through `skyDirToScene`, which is a proper rotation
+((x, y, z) -> (x, z, -y)). Bodies keep the historic (x, z, y) swap: it mirrors the whole system
+consistently, which is invisible for fiction, and changing it would flip every orbit's on-screen sense.
+WHY: A93 (2026-09-02). A user entered Orion's real RA/Dec and the sky showed it reversed - Betelgeuse
+right of Rigel. The sky was reusing the body swap; measured by `skyChirality.spec.ts`, which asks the
+one absolute question a photograph answers (from Sol, north up, east is LEFT) and went red at -0.175
+before the fix.
+BLAST: any NEW consumer that places sky-frame directions in the scene (constellation lines, a compass
+rose, the anomaly badges of G54) must go through skyDirToScene, or it will be mirrored against the
+stars it sits beside. And do NOT "fix" positionToScene to match - it is the 2D canvas's convention too
+(map-y drawn downward), so 2D and 3D agree with each other today; flipping one alone breaks that.
+
 ### DATA-*  (starmaps, import, rulepacks)
 _Partly written. STILL UNWRITTEN: `tests/fixtures/*` and `tests/output/*` are GENERATED, never
 hand-edited._

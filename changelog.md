@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.285 - 2nd Sep 2026
+
+- The constellation sky is no longer drawn mirror-imaged: a star entered at its real right ascension and declination now sits where a photograph puts it, with east to the left when north is up. Orion looks like Orion.
+
 ## v3.0.284 - 2nd Sep 2026
 
 - Board only. Four reports captured with their causes found: the Universe Sandbox importer assumes one star and demotes a binary's second star to a planet; the constellation sky is drawn mirror-imaged by an axis swap; the mobile scale bar hides whenever Spread is above zero; and a way to re-home a body from its orbit panel is sized up.
