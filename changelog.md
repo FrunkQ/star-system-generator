@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.291 - 2nd Sep 2026
+
+- The space elevator now behaves like the large object it is. Its ribbon is placed by the same rule that places moons and stations around a planet, so at readable body sizes it stays a short stalk inside the Moon's orbit instead of reaching past it, at true size it stands the honest 6.6 Earth radii tall, and a station parked at geostationary sits exactly on its dock at every zoom and dial setting.
+- It also stands on the equator, where a geostationary tether has to stand, and sweeps round with the planet's spin - one was found circling the pole.
+- The GM's 2D map now draws the beanstalk too: a coloured line from the planet's edge out to geostationary and the counterweight, with a dot at the dock, instead of a lone surface icon. And the ribbon no longer vanishes at true size - its width and knobs never drop below a couple of pixels.
+
 ## v3.0.290 - 3rd Sep 2026
 
 - A star is now described by ITS OWN size rather than its class average. A supermassive black hole was being called "a ball about 300 km across" - the figure for an ordinary stellar-mass one - when its event horizon is nearly two hundred times the Earth-Sun distance; it now reads "a disc about 390 AU across". Red dwarfs say what fraction of the Sun they actually are, and the phrasing changed with it: "about 0.3 times the width of the Sun" rather than the clumsy "3.3 times narrower". Where there is no particular star to measure - the spectral-class picker's tooltip, for instance - it still describes the class.

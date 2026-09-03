@@ -6006,6 +6006,12 @@ is why the same instance drew different lengths on different rebuilds. THREE sig
 was named, and DEAD CODE hid it: the comment said the scale was 1 and the next statement disagreed.
 BLAST: any new host-relative geometry (a phase-5c interior floor, a soletta aimed at a world). A
 `setScalar` in a branch that a later unconditional `setScalar` overwrites is the shape to grep for.
+CORRECTION (v3.0.291, see RENDER-S50): the live-radius multiply is right for the BASE and the WIDTH of a
+host-relative structure and WRONG for its REACH. A length in multiples of the globe's radius follows
+the globe's readable law - a readable Earth is drawn hundreds of times its true proportion - while
+the Moon's orbit is spread by a different, gentler law, so an 8-radii ribbon reached past the Moon.
+Reach belongs to the satellite law. `megaUnitSpan` is gone; the tether is unit parts laid out per
+frame by `tetherLayout`.
 
 ### DATA-R37 A BUNDLED EPHEMERIS IS ELEMENTS *AND* A MEAN MOTION, AT A NAMED INSTANT
 BUCKET: DOMAIN + ARCHITECTURE - domain: a real orbit's rate is set by the TOTAL mass, so `n` is not
@@ -6113,3 +6119,35 @@ pair members, so a plain body's is the re-home's to set. A retrograde result fol
 convention (i > 90 AND `isRetrogradeOrbit`) for consistency with imported bodies - and that convention is
 itself a recorded seam ([[B115]]): the 3D propagator honours both signals, so such a body runs prograde
 in the holo view.
+
+### RENDER-S50 A STRUCTURE HUNG ON A PLANET IS PLACED BY THE SATELLITE LAW, NOT BY THE GLOBE
+BUCKET: ARCHITECTURE - two scale laws coexist around a planet (the globe's readable radius and the
+satellites' spread), and anything sized by the wrong one detaches from its neighbours.
+WHERE: `rendering/scaleLaw.ts` `satelliteDrawDistance` + `moonSpread` (moved out of scene.ts, where
+the formula lived twice); callers `holo/scene.ts` updatePositions (satellite branch),
+`buildMoonOrbitRing`, `updateSurfaceConstructs` (the tether layout); `constructs/megaGeometry.ts`
+`tetherLayout` / `tetherAltitudesKm` / `equatorialAnchor`; the 2D twin is
+`SystemVisualizer.svelte` `drawTetherRadial`, through the same `scaleBoxCox` the moons use.
+RULE: a moon, its orbit ring, a station, and any structure reaching a stated radius from its planet
+(a beanstalk's geostationary dock, its counterweight) all ask ONE function for their drawn distance
+from the planet's centre: `satelliteDrawDistance(offAu, kHelio, localScale, parentRadiusScene,
+moonRadiusScene, compression)`. It is monotonic in `offAu` at every dial position, so geostationary
+is always drawn inside the Moon's orbit, and a dock coincides with a station at the same radius by
+construction. The BASE of a surface-stand structure is the host's DRAWN surface (`radiusScene x
+screenK`); widths and knobs are host fractions FLOORED IN SCREEN PIXELS (`TETHER_MIN_WIDTH_PX`),
+the same instrument as RENDER-S43; when the whole structure falls inside the floored globe it is
+hidden and the glyph carries it. A tether's geometry is UNIT parts (a 1x1x1 box, a unit ball, a
+unit rock) laid out every frame - nothing about its size is decided at build. A geostationary
+tether's anchor is on the EQUATOR: the shape declares `anchorLatitudeDeg: 0` and the stand-up drops
+the id-hashed landing site onto the host's LOCAL equator (`equatorialAnchor`; local +Y is the spin
+axis because mesh.quaternion = tilt x spin). The 2D structure seam reads the record
+(`render2d.structure`: 'orbit-line' / 'radial' / 'glyph') - the last family test is gone.
+WHY: the owner's 2026-09-02 sightings after S48's fix: the ribbon, scaled by the globe's readable
+radius, reached PAST the Moon at readable body sizes; at true size it vanished (1%% of a floored
+globe is a fraction of a pixel); and the beanstalk circled the pole, because `surfacePointFromId`
+draws latitude uniformly. The GM's 2D map never drew it at all: `render2d.structure` was 'glyph'.
+BLAST: any host-relative structure (a phase-5c interior floor, an orbital ring around a world, a
+soletta aimed at a world): its drawn radius is the satellite law's answer, never a multiple of the
+globe. Grep for `radiusScene *` near a `parentId` to find the next violation. And the 2D map has
+its OWN twin of the law (`scaleBoxCox` on distances AND radii); a structure drawn in 2D goes
+through it or it will not meet the disc edge.

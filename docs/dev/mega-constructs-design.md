@@ -1177,6 +1177,21 @@ Named explicitly, because each of these has cost this project real work at least
 
 ---
 
+### 7b. How the dock is DRAWN (shipped v3.0.291) - the promise the LO/MO/GO ladder can rely on
+
+The geostationary dock is placed by the SATELLITE LAW (`scaleLaw.ts satelliteDrawDistance`, engine
+map RENDER-S50) - the same call, with the same inputs, that places a moon or a station. So a
+station whose orbit is at geostationary sits ON the dock at every body-size and compression
+setting, and the ribbon can never reach past the Moon: the law is monotonic in distance. The
+ribbon's base is the host's drawn surface, its width and knobs are host fractions floored in
+screen pixels, and when the whole structure falls inside a floored true-scale globe it hides and
+the mast glyph carries it. The anchor is on the EQUATOR (the shape declares `anchorLatitudeDeg:
+0`), so the ribbon sweeps the equatorial plane with the planet's spin and a geostationary station
+authored in the parent's equatorial frame (C3) rides its top. The plan view draws the same
+structure through its own scale (`scaleBoxCox`) as a radial from the disc edge - `render2d.structure
+'radial'`. When the ladder's dock nodes land (phase 5), the destination "GO - Elevator" is this
+point.
+
 ## 10. Phasing
 
 Each phase is shippable on its own and none of them is wasted if the next is dropped.

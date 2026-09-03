@@ -5,9 +5,10 @@ quasi-star, an alien construct — or a new capability the current vocabulary ca
 deliberately agent-friendly: exact files, exact gates, and the traps by name. Read
 `nonstandard-objects-design.md` for WHY the system is shaped this way; this document is HOW.
 
-CURRENT STATE: N1 (declare + parity, v3.0.236). Every type declares five capability axes and a
-36-row parity gate pins them to today's behaviour. Consumers still read legacy flags until their
-N2 seam flips — the table in §4 says which, and MUST be updated in the same commit as any flip.
+CURRENT STATE: N1 declared (v3.0.236) and every RENDER seam flipped (v3.0.291): 3D attach, framing,
+labels, host-relative scale and the 2D structure all read the record. The parity gate pins the
+declarations. What still reads legacy shape is the apparent-g panel (N2, the owner's net-of-host
+decision). The table in §4 is the ledger and MUST be updated in the same commit as any change.
 
 ## 1. The one rule (engine map DATA-R33)
 
@@ -27,8 +28,8 @@ convention this system exists to end: put the fact on the record and make the co
 | `src/lib/constructs/megaGeometry.ts` | The one geometry builder (sphere-section / tether; spheroid honestly declines). |
 | `src/lib/constructs/megaPreview.ts` | Picker portraits + the footer summary line (watts multiply happens HERE, presentation-side — B110). |
 | `src/lib/physics/starlightOcclusion.ts` | Who shades whom (PHY-36). Reads `derive()`'s published occlusion, keyed on `megaType`. |
-| `src/lib/holo/scene.ts` | 3D attach (~2713), per-frame scale/position (~3235), framing `computeBase` (~3411), surface stand-up (~4910). Legacy flags `megaCentred`/`megaTether` live here until N2. |
-| `src/lib/components/SystemVisualizer.svelte` | 2D orrery: `isMegaRing` (~797) draws sphere-sections as their own orbit line. Legacy until N2. |
+| `src/lib/holo/scene.ts` | 3D attach (~2740), per-frame scale (~3260), framing `computeBase`, surface stand-up + the tether layout (`updateSurfaceConstructs`). All read `v.exotic` / `v.tetherParts`; no legacy flags remain. |
+| `src/lib/components/SystemVisualizer.svelte` | 2D orrery: `isMegaRing` / `isMegaRadial` read `render2d.structure`; `drawTetherRadial` is the beanstalk on the plan view; `drawnDiscRadiusWorld` is the ONE disc law a structure must meet. |
 | `src/lib/components/ConstructCrewTab.svelte` | The apparent-g display (station-shaped; its seam flips in N2 with the owner's net-of-host decision). |
 | `docs/dev/nonstandard-objects-design.md` | The design: probe, phases N1–N5, the owner's §8/§8b decisions. |
 
@@ -65,9 +66,9 @@ convention this system exists to end: put the fact on the record and make the co
 |---|---|---|---|
 | 3D attach + anchor | `v.exotic.render3d.anchor` (stamped at attach from the record) | **FLIPPED v3.0.237** | `megaCentred`, `megaTether` DELETED |
 | Click framing | `v.exotic.framing === 'annulus'`; surface-host still keys on `surfaceLock` for ordinary surface constructs (no record to read) | **FLIPPED v3.0.237** | flag reads gone |
-| Host-relative scale | a `surface-stand` exotic is built at UNIT host radius and scaled per frame by the host's live drawn radius (`radiusScene x screenK`) - RENDER-S48, the rule `updateRings` already followed | **FLIPPED v3.0.265** | — |
+| Host-relative scale | a `surface-stand` exotic is UNIT parts laid out per frame (`tetherLayout`): base at the host's DRAWN surface (`radiusScene x screenK`), REACH by the satellite law (`satelliteDrawDistance` - RENDER-S50, correcting S48, which scaled the reach by the globe and overtook the Moon), sizes floored in screen px, hidden inside a floored globe; anchor on the equator when the shape says `anchorLatitudeDeg: 0` | **FLIPPED v3.0.265, CORRECTED v3.0.291** | — |
 | Labels | clearance reads `render3d.anchor` — a non-'node' exotic clears its MARKER, never its structure span (which hung "Ringworld" a ring-radius into empty sky and "Space Elevator" near its counterweight) | **FLIPPED v3.0.241** — the visibility rule was probed and was never the fault; position was | — |
-| 2D structure | `isMegaRing` (family test) | N2 - the LAST pending flip (the elevator glyph landed independently v3.0.251: 'mast' joined the icon vocabulary, knob = the geostationary dock) | `isMegaRing` |
+| 2D structure | `render2d.structure`: 'orbit-line' draws the node's own orbit line as the structure; 'radial' draws the beanstalk from the host's disc edge to geo and the counterweight through the same `scaleBoxCox` the moons use (`drawTetherRadial`); 'glyph' is the marker alone. The mast glyph (v3.0.251) stays as the click target | **FLIPPED v3.0.291** - the last legacy render seam | `isMegaRing` family test DELETED (it now reads the record) |
 | Apparent-g panel | station-shaped fields | N2 (carries the owner's net-of-host decision — it CHANGES numbers, his call) | the mirrored `physical_parameters` shims |
 | Flux outputs | `mega/shadowed-by` emitted beside the temperature commit from the SAME derivation as the trace (explicit physics origin inside the authored-default mega/ namespace; strip-then-emit, ghost-checked) | **SHIPPED v3.0.246** | — |
 | Menu / panels / LOD / disclosure | single-valued, so NOT declared yet | N5 / phase-5 / N2 / N3 | — |
@@ -95,7 +96,9 @@ convention this system exists to end: put the fact on the record and make the co
 DATA-R31 (one chrome predicate; never test `kind === 'construct'` in new view code) ·
 DATA-R33 (this system's rule) · UI-B2 (hard greys are relevance; steer cannot refuse) ·
 RENDER-S2 (a construct contributes no radius — and a CENTRED mega must not double-count) ·
-RENDER-S44 (centred on host; drawn radius IS its orbit) · RENDER-S45 (`bodyById` empty during the
+RENDER-S44 (centred on host; drawn radius IS its orbit) · RENDER-S50 (reach from a planet is the
+SATELLITE LAW's, never a multiple of the globe; equator for a geostationary anchor; the 2D map has
+its own twin of the law) · RENDER-S45 (`bodyById` empty during the
 build loop — thread parameters) · RENDER-S46 (builds never typecheck; scoped svelte-check on
 touched files) · PHY-36 (one who-shades-whom site; time-free band rule) · E7 (the canvas cannot be
 verified headlessly — pure data + the owner's eye) · and the standing rules at the foot of
