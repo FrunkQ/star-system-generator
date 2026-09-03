@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.280 - 2nd Sep 2026
+
+- The 2D system map now zooms out fifty times further than before, so a distant binary companion fits on screen. Already live on production as v3.0.279.
+
 ## v3.0.278 - 2nd Sep 2026
 
 - Board only. The zoom fix's board id settles at A91 after two numbering races with fast-moving streams.
