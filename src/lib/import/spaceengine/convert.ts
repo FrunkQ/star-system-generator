@@ -2,6 +2,7 @@
 import { G, AU_KM, EARTH_MASS_KG, SOLAR_MASS_KG, SOLAR_RADIUS_KM } from '$lib/constants';
 import { guessSystemAge } from '$lib/physics/systemAge';
 import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
+import { pairThresholds } from '$lib/physics/barycenterReconcile';
 import { UNKNOWN_STAR_CLASS } from '$lib/import/realsky/stars.mjs';
 import type { System, CelestialBody, Barycenter, Kepler, Makeup } from '$lib/types';
 import { parseSc, readScSources, type ScBlock } from './parse';
@@ -120,7 +121,10 @@ function atmosphereFrom(b: ScBlock): CelestialBody['atmosphere'] | undefined {
   return { name: '', composition, ...(pressureAtm != null ? { pressure_bar: +pressureAtm.toFixed(4) } : {}), ...(main ? { main } : {}) };
 }
 
-const COLLAPSE_RATIO = 0.08; // matches SSG's PROMOTE_RATIO — below this a moon orbits its planet, not a shared barycentre
+// Below the engine's own promote ratio a moon orbits its planet, not a shared barycentre. Read
+// through `pairThresholds` rather than copied: this converter has no pack, so it gets the default,
+// and the load-time reconciler re-judges every pair against the pack the GM actually uses.
+const COLLAPSE_RATIO = pairThresholds(null).promote;
 
 // SpaceEngine models a planet+moon (e.g. Earth+Moon) as both orbiting a barycentre. SSG only shows a
 // barycentre for a near-equal pair, so for a lopsided one (ratio < COLLAPSE_RATIO) we dissolve it: the

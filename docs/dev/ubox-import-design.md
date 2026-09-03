@@ -166,34 +166,55 @@ verified in the teardown: Earth 23.4°, Uranus 97.8°, Jupiter 2.2°). Emit `axi
 
 ## 6. hierarchy.ts
 
-### 6.1 Local root selection (guards against Sagittarius A*)
+**REWRITTEN at v3.0.288 (B114) — multi-root.** US stores no parent references, so the hierarchy is
+inferred from the state vectors. Bodies are placed heaviest first; each placement owns three decisions.
+
+### 6.1 Local root selection (guards against Sagittarius A*) — unchanged
 
 1. Candidates = entities with Category `star`, `planet`, `blackhole`.
 2. Compute the mass-weighted centroid of the `star` + `planet` positions ONLY.
 3. Root = the most massive candidate within `LOCAL_RADIUS_M = 1e15` (≈ 6,700 AU) of that centroid.
-4. Every candidate outside `LOCAL_RADIUS_M` → skipped, reason `far-field` ("Sagittarius A* —
-   galactic-context object, not part of the local system").
+4. Every candidate outside `LOCAL_RADIUS_M` → skipped, reason `far-field`.
 
-### 6.2 Parent inference (every body — US stores no hierarchy)
+### 6.2 Host: the smallest Hill sphere that contains and binds the body
 
-Process bodies in descending mass. For body B:
+For body B, among every already-placed node C (a body OR a pair) more massive than B: bound iff
+`ε = |vRel|²/2 − G·(mC+mB)/|rRel| < 0` AND `|rRel| < hill(C)`. The host is the bound candidate with the
+SMALLEST `hill(C)`; the root's is infinite, so it is the fallback. Hill spheres nest, so smallest-
+containing is deepest-in-the-hierarchy; a depth SCORE (distance / Hill) is wrong by construction — a
+large host always scores "deeper", which is how a second star took every moon of its planets.
 
-1. Candidates = already-placed bodies more massive than B (root always qualifies).
-2. For each candidate C: `rRel = pos(B)−pos(C)`, `vRel = vel(B)−vel(C)`,
-   `ε = |vRel|²/2 − G·(mC+mB)/|rRel|`. Bound iff `ε < 0` AND `|rRel| < hillRadius(C)`, where
-   `hillRadius(C) = a_C·(1−e_C)·(mC/(3·mRoot))^(1/3)` for a non-root C (use C's already-inferred
-   orbit), and ∞ for the root.
-3. Parent = the bound candidate with the smallest `|rRel| / hillRadius` (deepest relative binding);
-   none bound → parent = root.
+`hill(C)` is `physics/stability.hillRadiusAU(a, e, mC, hostMassOf(C))` — the engine's one Hill formula
+(engine map M7), judged against the mass C ACTUALLY orbits, never the root's. A pair member's is judged
+against its partner on their relative orbit.
 
-`roleHint`: parent is a star/barycentre → `planet` (Category `sso` also becomes `planet` — SSG's
-classifier handles dwarf planets); parent is a planet → `moon`; the root star → `star`; a LOCAL
-`blackhole` → `star` with `classes: ['star/BH']` and `temperatureK: 0`.
+`roleHint`: a `star`/`blackhole` category is `star` wherever it sits; anything else is `planet` under a
+star or a pair of stars and `moon` under anything smaller. A local `blackhole` → `star` with
+`classes: ['star/BH']`.
 
-Multi-star (untested — no sample yet): if two `star` entities are mutually bound with mass ratio
-< 10:1, emit a `barycenter` node as both stars' parent (combined-mass elements for the pair
-members), and run planet parenting against star vs barycentre by the same Hill logic. Gate this
-behind a sample teardown before trusting it.
+### 6.3 Pairing: a satellite comparable in mass to its host is half of a pair
+
+If `min(mB, mC) / max(mB, mC) >= pairThresholds().promote` (the pack default, 8%) the two become members
+of a PAIR node carrying their mass-weighted state, formed AT THE MOMENT B IS PLACED so every lighter body
+sees the pair as a host (a circumbinary body is unbound relative to either member alone). The pair takes
+the host's place under its parent — in that parent's `memberIds` too when the parent is a pair — and the
+host's other satellites orbiting OUTSIDE the pair's separation move up to orbit the pair (the same test
+`promoteMassiveCompanion` applies). A pair is refused only when its relative orbit, or its orbit about
+the grandparent, is unbound.
+
+### 6.4 Elements: every orbit from world states, once
+
+A pair member's orbit is the pair's RELATIVE orbit (lighter about heavier, mu = G·M) split by mass:
+both members share e, i, Ω, M0 and t0, `a_member = a_rel · m_other / M`, the heavier member's ω opposed,
+`n_rad_per_s = sqrt(G·M / a_rel³)` on both. This is the convention `SystemProcessor.processBarycenters`
+owns (B111 / PHY-33), emitted so that pass REPRODUCES the numbers rather than transforming them. Any
+other node's elements come from its own state about its parent's (mu = G·(m_parent + m), `hostMu` =
+G·m_parent, as before). `convert.ts` emits each pair as a `barycenter` node tagged `barycenter/auto`,
+named by `autoPairName`, parents before members.
+
+Gates: `multiRoot.spec.ts` (a synthesised 2.2/0.3 solar-mass binary with each star's retinue, a moon's
+moon and a circumbinary planet; the reporter's file when present, skipped otherwise) and
+`hierarchyPins.spec.ts` (every committed fixture pinned field-for-field).
 
 ## 7. convert.ts — entity → node mapping
 

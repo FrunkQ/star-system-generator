@@ -4415,8 +4415,9 @@ copies, and the one that must not be recomputed is the one a drawn boundary and 
 `physics/stability.ts:hillRadiusAU` uses `a*(1-e)*cbrt(m/3M)` — PERIAPSIS, the host's weakest grip,
 which is what a "is this orbit safely inside" verdict should be judged at. `physics/twoBodyCoast.ts`
 (`hillCandidates`, both wrappers) uses `a*cbrt(mu/3hostMu)` — SEMI-MAJOR AXIS, no eccentricity term.
-Three further copies exist (`orbits.ts:425` SOI, `import/ubox/hierarchy.ts:79`, and the mutual-Hill
-pair form in `infill.ts:70` / `placement-strategy.ts:151`, which is a different quantity).
+Two further copies exist (`orbits.ts:425` SOI, and the mutual-Hill pair form in `infill.ts:70` /
+`placement-strategy.ts:151`, which is a different quantity); the ubox importer's copy was deleted at
+v3.0.288 (B114) - `import/ubox/hierarchy.ts` now reads `hillRadiusAU`, against the ACTUAL host's mass.
 HOLDS because the two never had to agree: the periapsis form only ever produced verdicts and the
 semi-major form only ever produced drawings, and on the circular orbits most bundled pairs have they
 are the same number. Pluto-Charon at e=0.249 is where they part — 4.0e-2 AU judged, 5.3e-2 AU drawn.
@@ -6044,3 +6045,71 @@ BLAST: THE FILES HAVE DIFFERENT INDENTS - the starmaps are 1, the system files 2
 `JSON.stringify` at the wrong one reflows everything. Doing exactly that turned this ten-body change
 into a 15,596-line diff on one map and 20,840 on another; the diff stat caught it and it was
 reverted. `detectIndent` exists for that reason. DATA-R14 with a bigger blast radius.
+
+### DATA-R38 A HIERARCHY INFERRED FROM STATE VECTORS IS NESTED HILL SPHERES CHOSEN BY SIZE, WITH PAIRS AS HOSTS
+BUCKET: DOMAIN + ARCHITECTURE - domain: Hill spheres NEST, so a body's host is the SMALLEST sphere that
+both contains and binds it, never the one it sits "deepest" in by ratio; a Hill radius is judged against
+the mass its owner ACTUALLY orbits; and a pair is a host in its own right, because a circumbinary body is
+unbound relative to either member alone. Architecture: pairs must exist WHILE lighter bodies are being
+placed, not be discovered afterwards, and every orbit is derived ONCE, at the end, from world states.
+WHERE: `import/ubox/hierarchy.ts` (`inferHierarchy`: placement, pairing, elements), `import/ubox/convert.ts`
+(a pair becomes a `barycenter/auto` node, parents before members), gates `multiRoot.spec.ts` (every one
+seen red against the v3.0.287 code) and `hierarchyPins.spec.ts` (every single-star fixture pinned
+field-for-field). The SpaceEngine importer reads `ParentBody` from its file and has no inference at all.
+RULE: (1) the host is the smallest Hill sphere that contains and binds the body; the root's is infinite,
+so it is the fallback without a special case. (2) A Hill radius is `hillRadiusAU(a, e, m, hostMass)` with
+the mass the owner orbits - a moon's against its planet, a pair member's against its partner on their
+relative orbit (the formula overshoots for the heavier member, harmlessly: the smaller sphere still wins
+near the lighter one). (3) A satellite at or above the promote ratio of its host (`pairThresholds`)
+becomes half of a pair AT THE MOMENT IT IS PLACED - bodies are placed heaviest first, so every lighter
+body sees the pair as a host - and the host's satellites outside the pair's separation move up to the
+pair. (4) Pair members are emitted in the coupling pass's OWN convention: one relative orbit, both members
+with its e, i, Omega, M0 and epoch, a split as a * m_other / M, the heavier member's omega opposed, one
+mean motion - so `processBarycenters` finds every number settled and moves nothing.
+WHY: [[B114]], measured on two users' files. The single-root code let a non-root STAR compete on a depth
+SCORE (distance / Hill radius): 16 AU into Acher's 1,700 AU sphere scored 0.0097 against 0.09 for Bonae's
+0.039 AU into Onae's 0.43 AU sphere, so the star took the moon - the root had been EXCLUDED from that
+score for exactly this reason, which hid the fault until a second star existed. It judged every Hill
+radius against the ROOT's mass: Uitaminus's sphere came out 1,181 km against the star where it is 120,000
+km against Lajerra, so Aycrum at 29,920 km became a planet, and Plunxiapus at 66,050 km from Maei (a
+moon, sphere 11,060 km instead of 337,000) was thrown to the star and DROPPED as unbound. And a
+circumbinary planet 400 AU from a 40 AU pair was dropped too, until pairs became hosts during placement:
+relative to either star alone it is hyperbolic.
+BLAST: the emitted convention and the coupling pass's tie-break are ONE decision. `processBarycenters`
+takes the HEAVIER member as its reference when neither has been edited and both carry a shape; change
+that tie-break and every imported pair's members swap sides on the first process(). The
+"process() finds nothing to change" gate in `multiRoot.spec.ts` is what catches it.
+BLAST: the RECONCILER's promotion is still the M0-plus-pi convention (PHY-33's recorded seam), so a pair
+the IMPORTER emits stays put through process() (gated to under 1 km on the reporter's file) while a pair
+the reconciler forms later from a re-homed or edited body may step an eccentric member round its orbit.
+BLAST: `hierarchyPins.spec.ts` will go red on ANY placement change that moves a one-star file. Read the
+diff before regenerating; the pin's header records the eleven Hystrine nodes that moved at v3.0.288 and
+why each was the fix showing.
+
+### DATA-R39 A RE-HOME IS AN IMPORT OF THE BODY'S OWN STATE, AT THE DISPLAY INSTANT, IN THE NEW PARENT'S FRAME
+BUCKET: DOMAIN + ARCHITECTURE - domain: "orbit a different host without moving" is a state-vector problem -
+position AND velocity at one instant become the elements about the new host, and that instant is the
+epoch; when the state is unbound the only honest orbit is a circle at the current distance. Architecture:
+one conversion (`elementsFromState`, the importer's own core), one state walk (`computeWorldStates3D`, the
+position walk with velocity as a second operand), one host-list rule (`hostCandidates`, shared with the
+construct picker).
+WHERE: `system/reparent.ts` (`reparentBody`, `hostCandidates`, `roleHintUnderHost`),
+`physics/worldPositions.computeWorldStates3D`, `import/ubox/kepler.elementsFromState`; the control is in
+`BodyOrbitTab.svelte` behind the one Advanced disclosure and `BodySidePanel` hands it `nowMs`. Gate:
+`system/reparent.spec.ts`, each case seen red with its half of the fix removed.
+RULE: derive every element from the world state at `nowMs` and stamp `t0 = nowMs`. Never keep an old
+mean anomaly on a new host - a circle is not an orbit without its phase (DATA-R29, B111): with the
+elements kept, Luna handed to Jupiter landed 8,750,351 km from where it was. Derive IN THE FRAME THE WALK
+READS the orbit in: a satellite's elements are quoted in its parent's equator, so undo that rotation
+before converting - with the rotation dropped, a moon handed to Uranus was 3.68 BILLION km out. Use
+mu = G * hostMass, the propagator's own, so the stored orbit reproduces the state exactly (velocity to a
+part in a million in 'kepler' mode). Refuse only a cycle (a host beneath the body); everything else is
+allowed and left to the stability tags.
+WHY: [[G64]], the owner's ask, with the trap already paid for by B111.
+BLAST: the 'circular' fallback preserves position and orbital plane, NOT speed - Luna handed to Jupiter
+arrives at 30 km/s against a 0.6 km/s escape speed, so no ellipse exists and the circle is 279 years
+round; it stays where it is while Earth leaves. The processor writes `hostMu` only on barycentres and
+pair members, so a plain body's is the re-home's to set. A retrograde result follows the importer's
+convention (i > 90 AND `isRetrogradeOrbit`) for consistency with imported bodies - and that convention is
+itself a recorded seam ([[B115]]): the 3D propagator honours both signals, so such a body runs prograde
+in the holo view.

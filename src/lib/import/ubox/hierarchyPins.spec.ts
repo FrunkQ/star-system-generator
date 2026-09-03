@@ -1,9 +1,19 @@
 // THE SINGLE-STAR PIN (B114). The multi-root hierarchy in `hierarchy.ts` must import a one-star file
 // EXACTLY as the single-root code did — same parents, same roles, same elements to the last bit,
-// same skips — and "exactly" is only checkable against a record made BEFORE the change. This file
-// is that record: `tests/fixtures/ubox/hierarchy-pins.json` was generated from the importer at
-// v3.0.287 (the last single-root version) over every committed single-star fixture, and this spec
-// compares today's output against it field for field.
+// same skips — and "exactly" is only checkable against a record made BEFORE the change. So the pin
+// was generated TWICE and the two are in git one commit apart: first from the importer at v3.0.287
+// (the last single-root version), then from the multi-root importer, with the diff read.
+//
+// THE DIFF, in full: sol-realistic, moons and minimal.ubox are bit-identical. The Hystrine file (a
+// real user's, trimmed) moved in eleven nodes, every one a B114 shape and none a regression:
+//   - three double planets (Lajerra/Uitaminus 0.19, Eventiem/Triteus 0.16, Twani/Phei 0.34 by mass)
+//     now import as PAIRS under a barycentre, which is what the load-time reconciler made of them
+//     anyway - except that its promotion offsets M0 by pi and so moves an eccentric member, while the
+//     importer's pair is derived from the two states and moves nothing;
+//   - Aycrum, 29,920 km from Uitaminus, is Uitaminus's MOON (a moon of a moon) rather than a planet
+//     of Hystrix - the old Hill radius against the ROOT's mass gave Uitaminus a 1,181 km sphere;
+//   - Plunxiapus, 66,050 km from Maei (itself a moon), was DROPPED as unbound and is now Maei's moon
+//     on a near-circular orbit (e = 0.007) - the same 30x-too-small sphere, so it fell to the star.
 //
 // Regenerate ONLY when an importer change is meant to move the numbers, in its own commit, with the
 // diff read: `UBOX_PIN_WRITE=1 npx vitest run src/lib/import/ubox/hierarchyPins.spec.ts`.
@@ -69,7 +79,7 @@ describe('ubox hierarchy — a one-star file imports exactly as it did before mu
   const expected = JSON.parse(fs.readFileSync(PINS, 'utf-8'));
   const actual = pinAll();
   for (const key of Object.keys(expected)) {
-    it(`${key}: parents, roles, elements, skips and counts are bit-identical to the v3.0.287 record`, () => {
+    it(`${key}: parents, roles, elements, skips and counts are bit-identical to the recorded pin`, () => {
       expect(actual[key]).toEqual(expected[key]);
     });
   }

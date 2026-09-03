@@ -302,10 +302,12 @@ If US stores parent references, use them. Otherwise infer per body, most massive
    body/bodies → `star`. Substellar check: a "planet" of 8–80 M♃ is left as `planet` — SSG's own
    substellar pass flags it self-luminous (brown dwarf) automatically.
 
-Multi-star: if two stars are mutually bound and neither dominates (mass ratio < ~10:1), emit an
-SSG `barycenter` node as their parent with the pair's combined elements, and re-parent planets to
-star or barycentre by the same Hill logic (S-type vs P-type falls out naturally).
-`reconcileBarycenters()` runs on load and maintains the invariants after that.
+Multi-star (SHIPPED v3.0.288, B114 — confirmed on a user's save with two 2-solar-mass stars): a
+body at or above the engine's promote ratio of its host (`pairThresholds`, default 8%) becomes half of
+a PAIR, emitted as a `barycenter` node in the coupling pass's own convention; each star keeps `star` and
+seeds its own planet→moon chain; a body outside the pair's separation orbits the pair (P-type falls out
+of the same Hill logic, with the pair as a host). Design §6. `reconcileBarycenters()` still runs on load
+and maintains the invariants after that.
 
 ### 7.4 System age — must be consistent with the stellar type
 

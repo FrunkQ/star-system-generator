@@ -2,7 +2,8 @@
 import { G, AU_KM } from '$lib/constants';
 import { guessSystemAge } from '$lib/physics/systemAge';
 import { resolveImportedStarClass } from '$lib/physics/importedStarClass';
-import type { System, CelestialBody } from '$lib/types';
+import type { System, CelestialBody, Barycenter } from '$lib/types';
+import { autoPairName } from '$lib/system/barycentres';
 import { parseVec3, parseQuat, cleanHorizonId } from './parse';
 import { obliquityDeg, rotationHoursFromAngularVelocity, type V3 } from './kepler';
 import { inferHierarchy, type BodyInput, type Placement } from './hierarchy';
@@ -106,17 +107,38 @@ export function convertUbox(parsed: ParsedUbox, options: UboxImportOptions = {})
   }
   if (belowThreshold > 0) skipped.push({ name: `${belowThreshold} small bodies below ${minMass.toExponential(1)} kg`, reason: 'below-mass-threshold' });
 
-  // --- Hierarchy (local root + Hill parenting) ---
-  const { placements, farField, rootId } = inferHierarchy(bodyInputs);
+  // --- Hierarchy (local root, nested Hill parenting, comparable-mass pairs) ---
+  const { placements, pairs, farField } = inferHierarchy(bodyInputs);
   for (const id of farField) {
     const e = entityById.get(id);
     skipped.push({ name: e?.Name ?? id, reason: 'far-field' });
   }
 
   const placementById = new Map(placements.map((p) => [p.id, p]));
-  const nodes: CelestialBody[] = [];
+  const nodes: (CelestialBody | Barycenter)[] = [];
   const counts = { stars: 0, planets: 0, moons: 0, other: 0, rings: 0 };
   let rootStarEntity: UsEntity | null = null;
+
+  // A PAIR IS A BARYCENTRE NODE, emitted in the shape the engine's own pair machinery keeps (B111 /
+  // PHY-33): members orbit it on one relative orbit split by mass, one epoch, one mean motion. It
+  // is tagged `barycenter/auto` because it is this importer's inference, exactly as the load-time
+  // reconciler's would be - so the same passes may demote it if a GM later lightens a member. Parents
+  // come before members in the node list, which is the order every walk wants.
+  for (const pr of pairs) {
+    const [heavyId, lightId] = pr.memberIds;
+    const bary: Barycenter = {
+      id: nodeId(pr.id),
+      name: autoPairName(entityById.get(heavyId)?.Name ?? heavyId, entityById.get(lightId)?.Name ?? lightId),
+      kind: 'barycenter',
+      parentId: pr.parentId ? nodeId(pr.parentId) : null,
+      memberIds: pr.memberIds.map(nodeId),
+      effectiveMassKg: pr.mass,
+      tags: [{ key: 'barycenter/auto' }]
+    };
+    if (pr.elements && pr.parentId) bary.orbit = { hostId: bary.parentId!, elements: pr.elements, t0: 0, hostMu: pr.hostMu };
+    nodes.push(bary);
+    counts.other++;
+  }
 
   for (const p of placements) {
     const e = entityById.get(p.id)!;
@@ -197,6 +219,7 @@ function buildNode(
 
   if (!p.isRoot && p.elements) {
     node.orbit = { hostId: node.parentId!, elements: p.elements, t0: 0, hostMu: p.hostMu };
+    if (p.nRadPerS !== undefined) node.orbit.n_rad_per_s = p.nRadPerS;
     if (p.elements.i_deg > 90) node.orbit.isRetrogradeOrbit = true;
   }
 
@@ -356,7 +379,7 @@ function aggregateRings(
   entityById: Map<string, UsEntity>,
   placementById: Map<string, Placement>,
   nodeId: (id: string) => string,
-  nodes: CelestialBody[],
+  nodes: (CelestialBody | Barycenter)[],
   counts: UboxImportResult['counts'],
   skipped: SkippedEntity[],
   assumptions: string[]
@@ -374,7 +397,7 @@ function aggregateRings(
   }
   if (particleCount > 0) skipped.push({ name: `${particleCount} simulation particles (ring/fragment)`, reason: 'particle' });
 
-  const nodeByName = new Map(nodes.map((n) => [n.name, n]));
+  const nodeByName = new Map(nodes.filter((n) => n.kind === 'body').map((n) => [n.name, n]));
   for (const [host, group] of byHost) {
     const hostNode = nodeByName.get(host);
     if (!hostNode || group.length < 50) continue;

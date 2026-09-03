@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.288 - 3rd Sep 2026
+
+- Universe Sandbox import: a save with two stars now comes in as a binary - both stars, orbiting their shared centre - with each star's own planets and moons kept under it. Moons of moons stay with their moon instead of being pulled up to the planet or the star, a moon that used to be dropped as "unbound" (it was being judged against the star's gravity rather than its own planet's) now imports, and a double planet imports as a pair straight away, exactly where the save had it.
+- Re-home a body: under the orbit editor's Advanced section, choose a new host for a planet or moon and it moves to orbit that body without jumping - it stays exactly where it is on the map at that instant and its new orbit is worked out from there. If the new host cannot hold it, it gets a circle at its current distance and the stability tags say what would happen.
+
 ## v3.0.287 - 2nd Sep 2026
 
 - Board only. The hierarchy stream is briefed: a Universe Sandbox binary should import as two stars, and a body should be re-homable from its orbit panel without jumping.

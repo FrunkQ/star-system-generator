@@ -98,7 +98,7 @@
     {:else if selectedTab === 'Basics'}
       <BodyBasicsTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
-      <BodyOrbitTab {body} {parentBody} {system} {rulePack} on:update={handleUpdate} />
+      <BodyOrbitTab {body} {parentBody} {system} {rulePack} {nowMs} on:update={handleUpdate} />
     {:else if selectedTab === 'Temp'}
       <BodyTemperatureTab {body} {rulePack} {rootStar} {parentBody} nodes={system.nodes} systemAgeGyr={(system as any).age_Gyr ?? 4.6} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}

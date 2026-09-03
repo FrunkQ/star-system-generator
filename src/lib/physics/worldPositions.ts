@@ -169,3 +169,44 @@ export function computeWorldPositions3D(
     sampleConstruct
   );
 }
+
+export interface WorldState3 { r: Vec3; v: Vec3; }
+
+/**
+ * The same 3D walk carrying VELOCITY beside position (AU and AU/s). A body's world velocity is its
+ * parent's plus its own propagated relative velocity, framed exactly as the position is, so this
+ * is the position walk with one more operand and not a second walk. A construct placed absolutely
+ * by the sampler contributes no velocity (the sampler answers position only).
+ *
+ * G64: re-homing a body needs its full state at the display instant to re-express its orbit about
+ * a different host without moving it - the same conversion an import performs on a state vector.
+ */
+export function computeWorldStates3D(
+  system: System | null,
+  timeMs: number,
+  sampleConstruct?: ConstructSampler
+): Map<string, WorldState3> {
+  const zero3 = () => ({ x: 0, y: 0, z: 0 });
+  return walkPositions<WorldState3>(
+    system,
+    timeMs,
+    {
+      zero: { r: zero3(), v: zero3() },
+      add: (a, b) => ({
+        r: { x: a.r.x + b.r.x, y: a.r.y + b.r.y, z: a.r.z + b.r.z },
+        v: { x: a.v.x + b.v.x, y: a.v.y + b.v.y, z: a.v.z + b.v.z }
+      }),
+      lift: (p) => ({ r: { x: p.x, y: p.y, z: 0 }, v: zero3() }),
+      propagate: (node, t) => propagateState3D(node, t),
+      frame: (node, parent, s) => {
+        const tilt = satelliteTiltRad(node, parent);
+        if (!tilt) return s;
+        return {
+          r: toParentEquator(s.r.x, s.r.y, s.r.z, tilt, zero3()),
+          v: toParentEquator(s.v.x, s.v.y, s.v.z, tilt, zero3())
+        };
+      }
+    },
+    sampleConstruct
+  );
+}

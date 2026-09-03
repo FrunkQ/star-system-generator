@@ -1001,17 +1001,88 @@
  "hystrine-blank-category-star.json": {
   "counts": {
    "stars": 1,
-   "planets": 17,
-   "moons": 16,
-   "other": 0,
+   "planets": 16,
+   "moons": 18,
+   "other": 3,
    "rings": 0
   },
   "skipped": [
-   "particle: 2 simulation particles (ring/fragment)",
-   "unbound: Plunxiapus"
+   "particle: 2 simulation particles (ring/fragment)"
   ],
   "age_Gyr": 0.37,
   "nodes": {
+   "Twani-Phei Barycentre": {
+    "kind": "barycenter",
+    "roleHint": null,
+    "parent": "Hystrix",
+    "memberIds": [
+     "Twani",
+     "Phei"
+    ],
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 76.15796739046279,
+      "e": 0.00953134847372328,
+      "i_deg": 0.4985293032589612,
+      "Omega_deg": 100.33570018084676,
+      "omega_deg": 215.13347639365307,
+      "M0_rad": 4.109850191658889
+     }
+    }
+   },
+   "Eventiem-Triteus Barycentre": {
+    "kind": "barycenter",
+    "roleHint": null,
+    "parent": "Hystrix",
+    "memberIds": [
+     "Eventiem",
+     "Triteus"
+    ],
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.925167631002363,
+      "e": 0.0010151912500813516,
+      "i_deg": 2.246726975800491,
+      "Omega_deg": 68.65305391210083,
+      "omega_deg": 218.23004189895636,
+      "M0_rad": 4.107636103668639
+     }
+    }
+   },
+   "Lajerra-Uitaminus Barycentre": {
+    "kind": "barycenter",
+    "roleHint": null,
+    "parent": "Hystrix",
+    "memberIds": [
+     "Lajerra",
+     "Uitaminus"
+    ],
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.8016281178725553,
+      "e": 0.004296627773095977,
+      "i_deg": 0.0020720184056518057,
+      "Omega_deg": 97.84588441875687,
+      "omega_deg": 35.83075726670813,
+      "M0_rad": 4.881467553333469
+     }
+    }
+   },
    "Hystrix": {
     "kind": "body",
     "roleHint": "star",
@@ -1161,20 +1232,20 @@
    "Lajerra": {
     "kind": "body",
     "roleHint": "planet",
-    "parent": "Hystrix",
+    "parent": "Lajerra-Uitaminus Barycentre",
     "orbit": {
-     "host": "Hystrix",
-     "hostMu": 223034282183999980000,
+     "host": "Lajerra-Uitaminus Barycentre",
+     "hostMu": 243732304005827.28,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 0.000002290214165369678,
      "retrograde": false,
      "elements": {
-      "a_AU": 1.787346010029014,
-      "e": 0.00983774664144009,
-      "i_deg": 0.002852609413956287,
-      "Omega_deg": 83.74588429478446,
-      "omega_deg": 105.61578042319695,
-      "M0_rad": 3.914817053173131
+      "a_AU": 0.0003868321030681203,
+      "e": 0.15473814683980983,
+      "i_deg": 0.21181195095004607,
+      "Omega_deg": 205.38811677771474,
+      "omega_deg": 266.41175870822985,
+      "M0_rad": 1.3513834894734114
      }
     }
    },
@@ -1201,15 +1272,15 @@
    "Uitaminus": {
     "kind": "body",
     "roleHint": "moon",
-    "parent": "Lajerra",
+    "parent": "Lajerra-Uitaminus Barycentre",
     "orbit": {
-     "host": "Lajerra",
-     "hostMu": 204500279974441.62,
+     "host": "Lajerra-Uitaminus Barycentre",
+     "hostMu": 243732304005827.28,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 0.000002290214165369678,
      "retrograde": false,
      "elements": {
-      "a_AU": 0.0024032275181312527,
+      "a_AU": 0.0020163954150631326,
       "e": 0.15473814683980983,
       "i_deg": 0.21181195095004607,
       "Omega_deg": 205.38811677771474,
@@ -1441,20 +1512,20 @@
    "Eventiem": {
     "kind": "body",
     "roleHint": "planet",
-    "parent": "Hystrix",
+    "parent": "Eventiem-Triteus Barycentre",
     "orbit": {
-     "host": "Hystrix",
-     "hostMu": 223034282183999980000,
+     "host": "Eventiem-Triteus Barycentre",
+     "hostMu": 858365037249.9998,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 7.580521940443298e-7,
      "retrograde": false,
      "elements": {
-      "a_AU": 9.923936210529927,
-      "e": 0.0007037341036533872,
-      "i_deg": 2.2468690504394093,
-      "Omega_deg": 68.58869554090008,
-      "omega_deg": 277.3624793974227,
-      "M0_rad": 3.07492773140018
+      "a_AU": 0.00010916107782950825,
+      "e": 0.14271214827709605,
+      "i_deg": 1.0235137504835847,
+      "Omega_deg": 192.11679901527964,
+      "omega_deg": 90.06333360806366,
+      "M0_rad": 2.4735564426872045
      }
     }
    },
@@ -1561,20 +1632,40 @@
    "Twani": {
     "kind": "body",
     "roleHint": "planet",
-    "parent": "Hystrix",
+    "parent": "Twani-Phei Barycentre",
     "orbit": {
-     "host": "Hystrix",
-     "hostMu": 223034282183999980000,
+     "host": "Twani-Phei Barycentre",
+     "hostMu": 391427043380.94,
+     "t0": 0,
+     "n_rad_per_s": 0.0000161636264967239,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00001916119594989408,
+      "e": 0.2505324803395373,
+      "i_deg": 18.474857821261406,
+      "Omega_deg": 210.1840831040526,
+      "omega_deg": 90.00182342047486,
+      "M0_rad": 3.54183375407721
+     }
+    }
+   },
+   "Plunxiapus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Maei",
+    "orbit": {
+     "host": "Maei",
+     "hostMu": 361841569459962.44,
      "t0": 0,
      "n_rad_per_s": null,
      "retrograde": false,
      "elements": {
-      "a_AU": 76.92875251010113,
-      "e": 0.00480090707127817,
-      "i_deg": 0.5008003109433552,
-      "Omega_deg": 105.52509596825453,
-      "omega_deg": 100.76889350265122,
-      "M0_rad": 6.002396338066809
+      "a_AU": 0.0004433092482994207,
+      "e": 0.007433152432990933,
+      "i_deg": 0,
+      "Omega_deg": 207.242548918415,
+      "omega_deg": 255.267473408909,
+      "M0_rad": 5.287984195459218
      }
     }
    },
@@ -1601,15 +1692,15 @@
    "Triteus": {
     "kind": "body",
     "roleHint": "moon",
-    "parent": "Eventiem",
+    "parent": "Eventiem-Triteus Barycentre",
     "orbit": {
-     "host": "Eventiem",
-     "hostMu": 735741460499.9999,
+     "host": "Eventiem-Triteus Barycentre",
+     "hostMu": 858365037249.9998,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 7.580521940443298e-7,
      "retrograde": false,
      "elements": {
-      "a_AU": 0.0007641275448065577,
+      "a_AU": 0.0006549664669770495,
       "e": 0.14271214827709605,
       "i_deg": 1.0235137504835847,
       "Omega_deg": 192.11679901527964,
@@ -1621,15 +1712,15 @@
    "Phei": {
     "kind": "body",
     "roleHint": "moon",
-    "parent": "Twani",
+    "parent": "Twani-Phei Barycentre",
     "orbit": {
-     "host": "Twani",
-     "hostMu": 293370981597.11993,
+     "host": "Twani-Phei Barycentre",
+     "hostMu": 391427043380.94,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 0.0000161636264967239,
      "retrograde": false,
      "elements": {
-      "a_AU": 0.00007648900171868287,
+      "a_AU": 0.000057327805768788784,
       "e": 0.2505324803395373,
       "i_deg": 18.474857821261406,
       "Omega_deg": 210.1840831040526,
@@ -1640,21 +1731,21 @@
    },
    "Aycrum": {
     "kind": "body",
-    "roleHint": "planet",
-    "parent": "Hystrix",
+    "roleHint": "moon",
+    "parent": "Uitaminus",
     "orbit": {
-     "host": "Hystrix",
-     "hostMu": 223034282183999980000,
+     "host": "Uitaminus",
+     "hostMu": 39232024031385.66,
      "t0": 0,
      "n_rad_per_s": null,
      "retrograde": false,
      "elements": {
-      "a_AU": 1.9322592384740345,
-      "e": 0.08139345774749378,
-      "i_deg": 0.0042857585751651115,
-      "Omega_deg": 72.50999142304227,
-      "omega_deg": 303.40102641878866,
-      "M0_rad": 0.5514081274523583
+      "a_AU": 0.00020169980856376776,
+      "e": 0.02428157990433772,
+      "i_deg": 0.3150506091588209,
+      "Omega_deg": 286.9047240191136,
+      "omega_deg": 121.99854411271305,
+      "M0_rad": 5.088352173771856
      }
     }
    },
@@ -1683,17 +1774,88 @@
  "hystrine-blank-category-star.json @1e20": {
   "counts": {
    "stars": 1,
-   "planets": 17,
-   "moons": 16,
-   "other": 0,
+   "planets": 16,
+   "moons": 18,
+   "other": 3,
    "rings": 0
   },
   "skipped": [
-   "particle: 2 simulation particles (ring/fragment)",
-   "unbound: Plunxiapus"
+   "particle: 2 simulation particles (ring/fragment)"
   ],
   "age_Gyr": 0.37,
   "nodes": {
+   "Twani-Phei Barycentre": {
+    "kind": "barycenter",
+    "roleHint": null,
+    "parent": "Hystrix",
+    "memberIds": [
+     "Twani",
+     "Phei"
+    ],
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 76.15796739046279,
+      "e": 0.00953134847372328,
+      "i_deg": 0.4985293032589612,
+      "Omega_deg": 100.33570018084676,
+      "omega_deg": 215.13347639365307,
+      "M0_rad": 4.109850191658889
+     }
+    }
+   },
+   "Eventiem-Triteus Barycentre": {
+    "kind": "barycenter",
+    "roleHint": null,
+    "parent": "Hystrix",
+    "memberIds": [
+     "Eventiem",
+     "Triteus"
+    ],
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.925167631002363,
+      "e": 0.0010151912500813516,
+      "i_deg": 2.246726975800491,
+      "Omega_deg": 68.65305391210083,
+      "omega_deg": 218.23004189895636,
+      "M0_rad": 4.107636103668639
+     }
+    }
+   },
+   "Lajerra-Uitaminus Barycentre": {
+    "kind": "barycenter",
+    "roleHint": null,
+    "parent": "Hystrix",
+    "memberIds": [
+     "Lajerra",
+     "Uitaminus"
+    ],
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.8016281178725553,
+      "e": 0.004296627773095977,
+      "i_deg": 0.0020720184056518057,
+      "Omega_deg": 97.84588441875687,
+      "omega_deg": 35.83075726670813,
+      "M0_rad": 4.881467553333469
+     }
+    }
+   },
    "Hystrix": {
     "kind": "body",
     "roleHint": "star",
@@ -1843,20 +2005,20 @@
    "Lajerra": {
     "kind": "body",
     "roleHint": "planet",
-    "parent": "Hystrix",
+    "parent": "Lajerra-Uitaminus Barycentre",
     "orbit": {
-     "host": "Hystrix",
-     "hostMu": 223034282183999980000,
+     "host": "Lajerra-Uitaminus Barycentre",
+     "hostMu": 243732304005827.28,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 0.000002290214165369678,
      "retrograde": false,
      "elements": {
-      "a_AU": 1.787346010029014,
-      "e": 0.00983774664144009,
-      "i_deg": 0.002852609413956287,
-      "Omega_deg": 83.74588429478446,
-      "omega_deg": 105.61578042319695,
-      "M0_rad": 3.914817053173131
+      "a_AU": 0.0003868321030681203,
+      "e": 0.15473814683980983,
+      "i_deg": 0.21181195095004607,
+      "Omega_deg": 205.38811677771474,
+      "omega_deg": 266.41175870822985,
+      "M0_rad": 1.3513834894734114
      }
     }
    },
@@ -1883,15 +2045,15 @@
    "Uitaminus": {
     "kind": "body",
     "roleHint": "moon",
-    "parent": "Lajerra",
+    "parent": "Lajerra-Uitaminus Barycentre",
     "orbit": {
-     "host": "Lajerra",
-     "hostMu": 204500279974441.62,
+     "host": "Lajerra-Uitaminus Barycentre",
+     "hostMu": 243732304005827.28,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 0.000002290214165369678,
      "retrograde": false,
      "elements": {
-      "a_AU": 0.0024032275181312527,
+      "a_AU": 0.0020163954150631326,
       "e": 0.15473814683980983,
       "i_deg": 0.21181195095004607,
       "Omega_deg": 205.38811677771474,
@@ -2123,20 +2285,20 @@
    "Eventiem": {
     "kind": "body",
     "roleHint": "planet",
-    "parent": "Hystrix",
+    "parent": "Eventiem-Triteus Barycentre",
     "orbit": {
-     "host": "Hystrix",
-     "hostMu": 223034282183999980000,
+     "host": "Eventiem-Triteus Barycentre",
+     "hostMu": 858365037249.9998,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 7.580521940443298e-7,
      "retrograde": false,
      "elements": {
-      "a_AU": 9.923936210529927,
-      "e": 0.0007037341036533872,
-      "i_deg": 2.2468690504394093,
-      "Omega_deg": 68.58869554090008,
-      "omega_deg": 277.3624793974227,
-      "M0_rad": 3.07492773140018
+      "a_AU": 0.00010916107782950825,
+      "e": 0.14271214827709605,
+      "i_deg": 1.0235137504835847,
+      "Omega_deg": 192.11679901527964,
+      "omega_deg": 90.06333360806366,
+      "M0_rad": 2.4735564426872045
      }
     }
    },
@@ -2243,20 +2405,40 @@
    "Twani": {
     "kind": "body",
     "roleHint": "planet",
-    "parent": "Hystrix",
+    "parent": "Twani-Phei Barycentre",
     "orbit": {
-     "host": "Hystrix",
-     "hostMu": 223034282183999980000,
+     "host": "Twani-Phei Barycentre",
+     "hostMu": 391427043380.94,
+     "t0": 0,
+     "n_rad_per_s": 0.0000161636264967239,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00001916119594989408,
+      "e": 0.2505324803395373,
+      "i_deg": 18.474857821261406,
+      "Omega_deg": 210.1840831040526,
+      "omega_deg": 90.00182342047486,
+      "M0_rad": 3.54183375407721
+     }
+    }
+   },
+   "Plunxiapus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Maei",
+    "orbit": {
+     "host": "Maei",
+     "hostMu": 361841569459962.44,
      "t0": 0,
      "n_rad_per_s": null,
      "retrograde": false,
      "elements": {
-      "a_AU": 76.92875251010113,
-      "e": 0.00480090707127817,
-      "i_deg": 0.5008003109433552,
-      "Omega_deg": 105.52509596825453,
-      "omega_deg": 100.76889350265122,
-      "M0_rad": 6.002396338066809
+      "a_AU": 0.0004433092482994207,
+      "e": 0.007433152432990933,
+      "i_deg": 0,
+      "Omega_deg": 207.242548918415,
+      "omega_deg": 255.267473408909,
+      "M0_rad": 5.287984195459218
      }
     }
    },
@@ -2283,15 +2465,15 @@
    "Triteus": {
     "kind": "body",
     "roleHint": "moon",
-    "parent": "Eventiem",
+    "parent": "Eventiem-Triteus Barycentre",
     "orbit": {
-     "host": "Eventiem",
-     "hostMu": 735741460499.9999,
+     "host": "Eventiem-Triteus Barycentre",
+     "hostMu": 858365037249.9998,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 7.580521940443298e-7,
      "retrograde": false,
      "elements": {
-      "a_AU": 0.0007641275448065577,
+      "a_AU": 0.0006549664669770495,
       "e": 0.14271214827709605,
       "i_deg": 1.0235137504835847,
       "Omega_deg": 192.11679901527964,
@@ -2303,15 +2485,15 @@
    "Phei": {
     "kind": "body",
     "roleHint": "moon",
-    "parent": "Twani",
+    "parent": "Twani-Phei Barycentre",
     "orbit": {
-     "host": "Twani",
-     "hostMu": 293370981597.11993,
+     "host": "Twani-Phei Barycentre",
+     "hostMu": 391427043380.94,
      "t0": 0,
-     "n_rad_per_s": null,
+     "n_rad_per_s": 0.0000161636264967239,
      "retrograde": false,
      "elements": {
-      "a_AU": 0.00007648900171868287,
+      "a_AU": 0.000057327805768788784,
       "e": 0.2505324803395373,
       "i_deg": 18.474857821261406,
       "Omega_deg": 210.1840831040526,
@@ -2322,21 +2504,21 @@
    },
    "Aycrum": {
     "kind": "body",
-    "roleHint": "planet",
-    "parent": "Hystrix",
+    "roleHint": "moon",
+    "parent": "Uitaminus",
     "orbit": {
-     "host": "Hystrix",
-     "hostMu": 223034282183999980000,
+     "host": "Uitaminus",
+     "hostMu": 39232024031385.66,
      "t0": 0,
      "n_rad_per_s": null,
      "retrograde": false,
      "elements": {
-      "a_AU": 1.9322592384740345,
-      "e": 0.08139345774749378,
-      "i_deg": 0.0042857585751651115,
-      "Omega_deg": 72.50999142304227,
-      "omega_deg": 303.40102641878866,
-      "M0_rad": 0.5514081274523583
+      "a_AU": 0.00020169980856376776,
+      "e": 0.02428157990433772,
+      "i_deg": 0.3150506091588209,
+      "Omega_deg": 286.9047240191136,
+      "omega_deg": 121.99854411271305,
+      "M0_rad": 5.088352173771856
      }
     }
    },
