@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.279 - 2nd Sep 2026
+
+- The 2D system map now zooms out fifty times further than before, so a distant binary companion fits on screen. The earlier v3.0.259 change widened the 3D view; this is the map the report was about.
+
 ## v3.0.259 - 31st Aug 2026
 
 - You can zoom the GM view ten times further out, so a far binary companion fits on screen. The scale readout keeps its meaning all the way; the numbering jump is deliberate - beta and production share one sequence.
