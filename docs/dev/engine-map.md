@@ -3440,6 +3440,29 @@ so a Mars arrival was drawn parked for the 615 days it was still aerobraking. Re
 one dip because the loops coincide, and the drawn count is CAPPED at 24 with the real count in the
 label rather than silently truncated.
 
+### UI-C15 A RULE THAT WRITES A CONTROL'S STATE MUST EDGE ON THE CONTENT, NEVER RUN ON THE LEVEL
+BUCKET: PLATFORM (Svelte reactivity) + ARCHITECTURE - durable and general: a rule that both
+READS and WRITES a piece of UI state will undo the user, because their change is one of its own
+inputs. "Never move it against them" is two promises, not one.
+WHERE: `ui/sheetSnap.ts` (`contentKey`, `nextSnap`; pinned by `sheetSnap.spec.ts`), wired in
+`components/SystemView.svelte` via `lastSheetKey`. Same shape as `wasOpen` in
+`SettingsModal.svelte` and `lastSyncedBodyId` in `BodyStarTab.svelte`, and all three exist for
+this reason.
+RULE: hold the last CONTENT KEY and act only when it changes. Do not compare the wanted VALUE:
+two different bodies both want the same sheet height, so a value comparison reads a fresh
+request as "nothing changed" and leaves the user looking at a stale control. Compare what the
+thing IS, not what size it wants to be.
+WHY: A92, reported by the owner within a day of A84 shipping - *"Collapse does not collapse it
+all the way back to name tab"*. The phone sheet's promotion was guarded by a monotonic
+`promoteSnap` so it could never shrink under a GM. It also ran on every reactive pass, and
+`sheetSnap` was one of its own dependencies: the instant Collapse set `peek`, the rule ran
+again, saw a body still selected, and put it back to `half`. Measured at 375x812: Collapse
+left the sheet at 407 px and the tap cycle could not move it either - the control was inert.
+BLAST: any host-driven control state - a drawer, a rail, a zoom, a selected tab. The tell is a
+reactive statement whose assignment target also appears in its own dependency list. A guard
+that only limits DIRECTION (monotonic, clamped, min/max) does not fix it; only a guard on
+WHEN it fires does.
+
 ### UI-C14 A DIALOG DECLARED INSIDE CHROME IS HIDDEN BY THE RULE THAT HIDES CHROME
 BUCKET: ARCHITECTURE - durable: a rule that hides a whole SUBTREE is unsafe the moment the thing
 it is protecting can be IN that subtree. The general form: any "hide X while Y" rule must be able
@@ -5914,13 +5937,13 @@ of 20925 therefore ran 13.1 s/yr SLOW, and the obvious-looking "correction" to 2
 365 d + D = a mean year) runs 13.9 s/yr FAST - two wrong answers either side, from one misreading.
 The value that lands is 20938, at 0.089 s/yr. Anyone retuning this must invert the ACTUAL
 expression, not the intuitive one.
-BLAST: SUPERSEDED BY A89 - THIS CALENDAR NOW HAS A REAL LEAP DAY AND IS EXACT. It is recorded
-rather than deleted because the shape of the error is the lesson. Until A89 wired them,
+BLAST: SUPERSEDED BY A92 - THIS CALENDAR NOW HAS A REAL LEAP DAY AND IS EXACT. It is recorded
+rather than deleted because the shape of the error is the lesson. Until A92 wired them,
 `leap_logic.threshold_t` and `apply_to` were declared in the data and read by nothing; the surplus
 was smeared evenly instead of inserting 29 February, so the model was exact only at `stake_utc` and
 wandered up to 11.6 h either side - the DATE stayed right and the CLOCK TIME did not. The residual
 was never a mistuned rate: half a leap day is 12.0 h and the measured worst case was 11.63 h, which
-is the same number. See A89 for the mechanism that replaced it and why a bucket cannot state the
+is the same number. See A92 for the mechanism that replaced it and why a bucket cannot state the
 Gregorian rule at all.
 THE WOBBLE IS THE MISSING LEAP DAY, NOT A MISTUNED RATE, and the arithmetic says so: a constant
 seconds-per-year correction is a straight line through a staircase that inserts a WHOLE DAY every

@@ -35,7 +35,7 @@
   import SaveSystemModal from './SaveSystemModal.svelte';
   import SisterFileModal from './SisterFileModal.svelte';
   import PlannerPane from './PlannerPane.svelte';
-  import { wantedSnap, promoteSnap } from '$lib/ui/sheetSnap';
+  import { nextSnap } from '$lib/ui/sheetSnap';
   import type { TransitPlan } from '$lib/transit/types';
   import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast, needsStampedPosition } from '$lib/transit/scheduler';
 
@@ -2143,11 +2143,21 @@
   // A FULL-PANEL FLOW is one that REPLACES the detail pane with a workflow of its own, rather than
   // adding to it — the transit planner and the ship log. Half a transit planner is not usable, and
   // both are reached from a phone by tapping a button on a panel that is 86 px tall.
+  //
+  // ON THE EDGE ONLY (A92). `sheetSnap` is one of this block's own dependencies, so evaluating it
+  // on every pass meant the rule undid the GM: Collapse set peek, this ran again, and it went
+  // straight back to half. The key makes it fire when the CONTENT changes and never otherwise,
+  // so a sheet the GM has collapsed stays collapsed — while tapping a DIFFERENT body is a fresh
+  // request and does open for it.
+  let lastSheetKey: string | null = null;
   $: if (mode === 'phone') {
-      sheetSnap = promoteSnap(sheetSnap, wantedSnap({
+      const next = nextSnap(sheetSnap, {
           focused: !!focusedBody,
+          focusId: focusedBody?.id ?? null,
           fullPanel: isPlanning || isShipLogOpen
-      }));
+      }, lastSheetKey);
+      sheetSnap = next.snap;
+      lastSheetKey = next.key;
   }
 
   function handleStartPlanning() {
