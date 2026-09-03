@@ -1,0 +1,2424 @@
+{
+ "sol-realistic.json": {
+  "counts": {
+   "stars": 1,
+   "planets": 10,
+   "moons": 0,
+   "other": 0,
+   "rings": 0
+  },
+  "skipped": [
+   "below-mass-threshold: 1 small bodies below 5.0e+20 kg",
+   "dummy: dummy"
+  ],
+  "age_Gyr": 4.657,
+  "nodes": {
+   "Sun": {
+    "kind": "body",
+    "roleHint": "star",
+    "parent": null,
+    "orbit": null
+   },
+   "Jupiter": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 5.200270213161242,
+      "e": 0.0490110222174002,
+      "i_deg": 1.298070922625106,
+      "Omega_deg": 280.3114635951869,
+      "omega_deg": 273.93004604205555,
+      "M0_rad": 3.561552678340103
+     }
+    }
+   },
+   "Saturn": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.552897909191076,
+      "e": 0.05414916975370348,
+      "i_deg": 2.494820034122612,
+      "Omega_deg": 293.59910129923657,
+      "omega_deg": 339.10319995009354,
+      "M0_rad": 3.0945056713314667
+     }
+    }
+   },
+   "Neptune": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 30.140839491213537,
+      "e": 0.009619077769951793,
+      "i_deg": 1.7698519827563324,
+      "Omega_deg": 311.7806946470626,
+      "omega_deg": 260.1151371782547,
+      "M0_rad": 5.445337396306929
+     }
+    }
+   },
+   "Uranus": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 19.197438416635073,
+      "e": 0.0459431170123855,
+      "i_deg": 0.772284000769177,
+      "Omega_deg": 254.00474944148633,
+      "omega_deg": 98.93272701973346,
+      "M0_rad": 3.790933374715742
+     }
+    }
+   },
+   "Earth": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.9996322164878759,
+      "e": 0.01635265363780284,
+      "i_deg": 0.0030568804744713265,
+      "Omega_deg": 356.3542882441486,
+      "omega_deg": 286.7389463270452,
+      "M0_rad": 5.815130854682129
+     }
+    }
+   },
+   "Venus": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.7230419817421776,
+      "e": 0.0067743956205741605,
+      "i_deg": 3.397939287860104,
+      "Omega_deg": 256.6212092098373,
+      "omega_deg": 57.67426826842419,
+      "M0_rad": 1.7764258024057398
+     }
+    }
+   },
+   "Mars": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.5231619200853994,
+      "e": 0.09309075161962836,
+      "i_deg": 1.8505797814202487,
+      "Omega_deg": 229.66736016877877,
+      "omega_deg": 286.32441965064044,
+      "M0_rad": 3.6983797369278104
+     }
+    }
+   },
+   "Mercury": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.3869063995796214,
+      "e": 0.20530863944799913,
+      "i_deg": 7.0045379374504115,
+      "Omega_deg": 228.31798521012036,
+      "omega_deg": 29.118910418396286,
+      "M0_rad": 5.937052342101246
+     }
+    }
+   },
+   "Pluto": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 39.651347661408394,
+      "e": 0.2507048930044087,
+      "i_deg": 17.125136948680478,
+      "Omega_deg": 290.3027454967924,
+      "omega_deg": 114.4810026802601,
+      "M0_rad": 0.7022993522039211
+     }
+    }
+   },
+   "Ceres": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 2.7664853031388343,
+      "e": 0.07546391469813561,
+      "i_deg": 10.594485412399921,
+      "Omega_deg": 260.30764923963267,
+      "omega_deg": 73.24218906030522,
+      "M0_rad": 5.750715080502536
+     }
+    }
+   }
+  }
+ },
+ "sol-realistic.json @1e20": {
+  "counts": {
+   "stars": 1,
+   "planets": 11,
+   "moons": 0,
+   "other": 0,
+   "rings": 0
+  },
+  "skipped": [
+   "dummy: dummy"
+  ],
+  "age_Gyr": 4.657,
+  "nodes": {
+   "Sun": {
+    "kind": "body",
+    "roleHint": "star",
+    "parent": null,
+    "orbit": null
+   },
+   "Jupiter": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 5.200270213161242,
+      "e": 0.0490110222174002,
+      "i_deg": 1.298070922625106,
+      "Omega_deg": 280.3114635951869,
+      "omega_deg": 273.93004604205555,
+      "M0_rad": 3.561552678340103
+     }
+    }
+   },
+   "Saturn": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.552897909191076,
+      "e": 0.05414916975370348,
+      "i_deg": 2.494820034122612,
+      "Omega_deg": 293.59910129923657,
+      "omega_deg": 339.10319995009354,
+      "M0_rad": 3.0945056713314667
+     }
+    }
+   },
+   "Neptune": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 30.140839491213537,
+      "e": 0.009619077769951793,
+      "i_deg": 1.7698519827563324,
+      "Omega_deg": 311.7806946470626,
+      "omega_deg": 260.1151371782547,
+      "M0_rad": 5.445337396306929
+     }
+    }
+   },
+   "Uranus": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 19.197438416635073,
+      "e": 0.0459431170123855,
+      "i_deg": 0.772284000769177,
+      "Omega_deg": 254.00474944148633,
+      "omega_deg": 98.93272701973346,
+      "M0_rad": 3.790933374715742
+     }
+    }
+   },
+   "Earth": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.9996322164878759,
+      "e": 0.01635265363780284,
+      "i_deg": 0.0030568804744713265,
+      "Omega_deg": 356.3542882441486,
+      "omega_deg": 286.7389463270452,
+      "M0_rad": 5.815130854682129
+     }
+    }
+   },
+   "Venus": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.7230419817421776,
+      "e": 0.0067743956205741605,
+      "i_deg": 3.397939287860104,
+      "Omega_deg": 256.6212092098373,
+      "omega_deg": 57.67426826842419,
+      "M0_rad": 1.7764258024057398
+     }
+    }
+   },
+   "Mars": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.5231619200853994,
+      "e": 0.09309075161962836,
+      "i_deg": 1.8505797814202487,
+      "Omega_deg": 229.66736016877877,
+      "omega_deg": 286.32441965064044,
+      "M0_rad": 3.6983797369278104
+     }
+    }
+   },
+   "Mercury": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.3869063995796214,
+      "e": 0.20530863944799913,
+      "i_deg": 7.0045379374504115,
+      "Omega_deg": 228.31798521012036,
+      "omega_deg": 29.118910418396286,
+      "M0_rad": 5.937052342101246
+     }
+    }
+   },
+   "Pluto": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 39.651347661408394,
+      "e": 0.2507048930044087,
+      "i_deg": 17.125136948680478,
+      "Omega_deg": 290.3027454967924,
+      "omega_deg": 114.4810026802601,
+      "M0_rad": 0.7022993522039211
+     }
+    }
+   },
+   "Ceres": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 2.7664853031388343,
+      "e": 0.07546391469813561,
+      "i_deg": 10.594485412399921,
+      "Omega_deg": 260.30764923963267,
+      "omega_deg": 73.24218906030522,
+      "M0_rad": 5.750715080502536
+     }
+    }
+   },
+   "TinyRock": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501299999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 3.3332196484485768,
+      "e": 0.09771594501986063,
+      "i_deg": 0.0005260714611732962,
+      "Omega_deg": 148.99756476485553,
+      "omega_deg": 211.2322822782611,
+      "M0_rad": 6.279845560170553
+     }
+    }
+   }
+  }
+ },
+ "moons.json": {
+  "counts": {
+   "stars": 1,
+   "planets": 5,
+   "moons": 7,
+   "other": 0,
+   "rings": 1
+  },
+  "skipped": [
+   "far-field: Sagittarius A*",
+   "particle: 60 simulation particles (ring/fragment)"
+  ],
+  "age_Gyr": 4.657,
+  "nodes": {
+   "Sun": {
+    "kind": "body",
+    "roleHint": "star",
+    "parent": null,
+    "orbit": null
+   },
+   "Jupiter": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.161040911245172,
+      "e": 0.0009812199588990873,
+      "i_deg": 0.000041300059168711,
+      "Omega_deg": 177.91563590475965,
+      "omega_deg": 2.6236867384906404,
+      "M0_rad": 3.0957414094137654
+     }
+    }
+   },
+   "Saturn": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.593995289093936,
+      "e": 0.00029071888370412797,
+      "i_deg": 0.0006757654815405364,
+      "Omega_deg": 129.48503559256713,
+      "omega_deg": 10.279218562019924,
+      "M0_rad": 2.96244522359061
+     }
+    }
+   },
+   "Neptune": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 30.035109744798497,
+      "e": 0.00008530732091488631,
+      "i_deg": 0.0006643829315016351,
+      "Omega_deg": 180.458219909899,
+      "omega_deg": 168.6065167798212,
+      "M0_rad": 3.3404858880345714
+     }
+    }
+   },
+   "Uranus": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 19.810660757667318,
+      "e": 0.00007842155649170206,
+      "i_deg": 0.00020105055131180207,
+      "Omega_deg": 26.90465565583438,
+      "omega_deg": 0.406459881577701,
+      "M0_rad": 3.134508137011471
+     }
+    }
+   },
+   "Earth": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.9188635067767,
+      "e": 0.00200036035569285,
+      "i_deg": 0,
+      "Omega_deg": 153.24953378055275,
+      "omega_deg": 162.5640848731728,
+      "M0_rad": 0.4172500882188439
+     }
+    }
+   },
+   "Ganymede": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Jupiter",
+    "orbit": {
+     "host": "Jupiter",
+     "hostMu": 126686890589999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.007155025588431706,
+      "e": 0.0013299698528528644,
+      "i_deg": 2.1829372232444224,
+      "Omega_deg": 163.18862068247307,
+      "omega_deg": 272.930759115323,
+      "M0_rad": 5.253330122183126
+     }
+    }
+   },
+   "Titan": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Saturn",
+    "orbit": {
+     "host": "Saturn",
+     "hostMu": 37931315017000000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00816733279736134,
+      "e": 0.02884146179682336,
+      "i_deg": 27.721292593960634,
+      "Omega_deg": 349.17724998624175,
+      "omega_deg": 164.5850521049763,
+      "M0_rad": 3.1294405949767192
+     }
+    }
+   },
+   "Callisto": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Jupiter",
+    "orbit": {
+     "host": "Jupiter",
+     "hostMu": 126686890589999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.01258343848702689,
+      "e": 0.007393645037714354,
+      "i_deg": 2.0377423384852578,
+      "Omega_deg": 158.38037352070052,
+      "omega_deg": 10.852597067599522,
+      "M0_rad": 1.3904024583351298
+     }
+    }
+   },
+   "Io": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Jupiter",
+    "orbit": {
+     "host": "Jupiter",
+     "hostMu": 126686890589999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0028194489622355543,
+      "e": 0.0040932546697998225,
+      "i_deg": 2.2325333279405166,
+      "Omega_deg": 158.65810555962733,
+      "omega_deg": 147.12843255413782,
+      "M0_rad": 1.3016085714996555
+     }
+    }
+   },
+   "Moon": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Earth",
+    "orbit": {
+     "host": "Earth",
+     "hostMu": 398607558920877,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00472687885016793,
+      "e": 0.4444444446993345,
+      "i_deg": 0,
+      "Omega_deg": 329.87381498631004,
+      "omega_deg": 90.00000132230954,
+      "M0_rad": 6.283185277243131
+     }
+    }
+   },
+   "Europa": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Jupiter",
+    "orbit": {
+     "host": "Jupiter",
+     "hostMu": 126686890589999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.004485843913438809,
+      "e": 0.009446504710457554,
+      "i_deg": 2.0053064950353354,
+      "Omega_deg": 146.47349839869497,
+      "omega_deg": 339.73732651016206,
+      "M0_rad": 3.481455098050102
+     }
+    }
+   },
+   "Triton": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Neptune",
+    "orbit": {
+     "host": "Neptune",
+     "hostMu": 6835150629999999,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": true,
+     "elements": {
+      "a_AU": 0.002371337982067162,
+      "e": 0.0000334958105764965,
+      "i_deg": 130.2583474167452,
+      "Omega_deg": 35.844103583693936,
+      "omega_deg": 229.6385457927603,
+      "M0_rad": 3.1628505390159294
+     }
+    }
+   },
+   "Saturn Ring": {
+    "kind": "body",
+    "roleHint": "ring",
+    "parent": "Saturn",
+    "orbit": null
+   }
+  }
+ },
+ "moons.json @1e20": {
+  "counts": {
+   "stars": 1,
+   "planets": 5,
+   "moons": 7,
+   "other": 0,
+   "rings": 1
+  },
+  "skipped": [
+   "far-field: Sagittarius A*",
+   "particle: 60 simulation particles (ring/fragment)"
+  ],
+  "age_Gyr": 4.657,
+  "nodes": {
+   "Sun": {
+    "kind": "body",
+    "roleHint": "star",
+    "parent": null,
+    "orbit": null
+   },
+   "Jupiter": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.161040911245172,
+      "e": 0.0009812199588990873,
+      "i_deg": 0.000041300059168711,
+      "Omega_deg": 177.91563590475965,
+      "omega_deg": 2.6236867384906404,
+      "M0_rad": 3.0957414094137654
+     }
+    }
+   },
+   "Saturn": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.593995289093936,
+      "e": 0.00029071888370412797,
+      "i_deg": 0.0006757654815405364,
+      "Omega_deg": 129.48503559256713,
+      "omega_deg": 10.279218562019924,
+      "M0_rad": 2.96244522359061
+     }
+    }
+   },
+   "Neptune": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 30.035109744798497,
+      "e": 0.00008530732091488631,
+      "i_deg": 0.0006643829315016351,
+      "Omega_deg": 180.458219909899,
+      "omega_deg": 168.6065167798212,
+      "M0_rad": 3.3404858880345714
+     }
+    }
+   },
+   "Uranus": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 19.810660757667318,
+      "e": 0.00007842155649170206,
+      "i_deg": 0.00020105055131180207,
+      "Omega_deg": 26.90465565583438,
+      "omega_deg": 0.406459881577701,
+      "M0_rad": 3.134508137011471
+     }
+    }
+   },
+   "Earth": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Sun",
+    "orbit": {
+     "host": "Sun",
+     "hostMu": 132758501300241600000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.9188635067767,
+      "e": 0.00200036035569285,
+      "i_deg": 0,
+      "Omega_deg": 153.24953378055275,
+      "omega_deg": 162.5640848731728,
+      "M0_rad": 0.4172500882188439
+     }
+    }
+   },
+   "Ganymede": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Jupiter",
+    "orbit": {
+     "host": "Jupiter",
+     "hostMu": 126686890589999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.007155025588431706,
+      "e": 0.0013299698528528644,
+      "i_deg": 2.1829372232444224,
+      "Omega_deg": 163.18862068247307,
+      "omega_deg": 272.930759115323,
+      "M0_rad": 5.253330122183126
+     }
+    }
+   },
+   "Titan": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Saturn",
+    "orbit": {
+     "host": "Saturn",
+     "hostMu": 37931315017000000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00816733279736134,
+      "e": 0.02884146179682336,
+      "i_deg": 27.721292593960634,
+      "Omega_deg": 349.17724998624175,
+      "omega_deg": 164.5850521049763,
+      "M0_rad": 3.1294405949767192
+     }
+    }
+   },
+   "Callisto": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Jupiter",
+    "orbit": {
+     "host": "Jupiter",
+     "hostMu": 126686890589999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.01258343848702689,
+      "e": 0.007393645037714354,
+      "i_deg": 2.0377423384852578,
+      "Omega_deg": 158.38037352070052,
+      "omega_deg": 10.852597067599522,
+      "M0_rad": 1.3904024583351298
+     }
+    }
+   },
+   "Io": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Jupiter",
+    "orbit": {
+     "host": "Jupiter",
+     "hostMu": 126686890589999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0028194489622355543,
+      "e": 0.0040932546697998225,
+      "i_deg": 2.2325333279405166,
+      "Omega_deg": 158.65810555962733,
+      "omega_deg": 147.12843255413782,
+      "M0_rad": 1.3016085714996555
+     }
+    }
+   },
+   "Moon": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Earth",
+    "orbit": {
+     "host": "Earth",
+     "hostMu": 398607558920877,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00472687885016793,
+      "e": 0.4444444446993345,
+      "i_deg": 0,
+      "Omega_deg": 329.87381498631004,
+      "omega_deg": 90.00000132230954,
+      "M0_rad": 6.283185277243131
+     }
+    }
+   },
+   "Europa": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Jupiter",
+    "orbit": {
+     "host": "Jupiter",
+     "hostMu": 126686890589999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.004485843913438809,
+      "e": 0.009446504710457554,
+      "i_deg": 2.0053064950353354,
+      "Omega_deg": 146.47349839869497,
+      "omega_deg": 339.73732651016206,
+      "M0_rad": 3.481455098050102
+     }
+    }
+   },
+   "Triton": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Neptune",
+    "orbit": {
+     "host": "Neptune",
+     "hostMu": 6835150629999999,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": true,
+     "elements": {
+      "a_AU": 0.002371337982067162,
+      "e": 0.0000334958105764965,
+      "i_deg": 130.2583474167452,
+      "Omega_deg": 35.844103583693936,
+      "omega_deg": 229.6385457927603,
+      "M0_rad": 3.1628505390159294
+     }
+    }
+   },
+   "Saturn Ring": {
+    "kind": "body",
+    "roleHint": "ring",
+    "parent": "Saturn",
+    "orbit": null
+   }
+  }
+ },
+ "hystrine-blank-category-star.json": {
+  "counts": {
+   "stars": 1,
+   "planets": 17,
+   "moons": 16,
+   "other": 0,
+   "rings": 0
+  },
+  "skipped": [
+   "particle: 2 simulation particles (ring/fragment)",
+   "unbound: Plunxiapus"
+  ],
+  "age_Gyr": 0.37,
+  "nodes": {
+   "Hystrix": {
+    "kind": "body",
+    "roleHint": "star",
+    "parent": null,
+    "orbit": null
+   },
+   "Gallabi": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 11.082533873797315,
+      "e": 0.00045581050501794274,
+      "i_deg": 0.000058625099616498666,
+      "Omega_deg": 136.75877959188006,
+      "omega_deg": 204.22220255428334,
+      "M0_rad": 3.5164550029257597
+     }
+    }
+   },
+   "Urcen": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 6.2858366355676845,
+      "e": 0.001073304939559687,
+      "i_deg": 0.0011363643842627984,
+      "Omega_deg": 128.8120022000728,
+      "omega_deg": 341.67385805187706,
+      "M0_rad": 1.4554724141287334
+     }
+    }
+   },
+   "Veiry": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 39.0573298514768,
+      "e": 0.00013685569064731236,
+      "i_deg": 0,
+      "Omega_deg": 35.7543968118329,
+      "omega_deg": 258.9019277286529,
+      "M0_rad": 4.231071261218698
+     }
+    }
+   },
+   "Epola/Palesce": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 22.4410304972659,
+      "e": 0.0022184327451494224,
+      "i_deg": 0,
+      "Omega_deg": 50.21074859531944,
+      "omega_deg": 90.07549615526219,
+      "M0_rad": 1.1124022066925425
+     }
+    }
+   },
+   "Kinel": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 2.692666264172016,
+      "e": 0.00332984361408386,
+      "i_deg": 0.000004094554566467037,
+      "Omega_deg": 11.356362916267356,
+      "omega_deg": 306.85529911397236,
+      "M0_rad": 2.9286010829814284
+     }
+    }
+   },
+   "Gnathe": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.5085556152793855,
+      "e": 0.00010090617842500447,
+      "i_deg": 0.0005038320766161879,
+      "Omega_deg": 311.6235520692818,
+      "omega_deg": 18.39159064401144,
+      "M0_rad": 2.281970422466305
+     }
+    }
+   },
+   "Maei": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Epola/Palesce",
+    "orbit": {
+     "host": "Epola/Palesce",
+     "hostMu": 7972037543399999,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.009463741462485029,
+      "e": 0.040944542143301385,
+      "i_deg": 0,
+      "Omega_deg": 118.54743746174532,
+      "omega_deg": 276.8605727644891,
+      "M0_rad": 3.295903969592951
+     }
+    }
+   },
+   "Lajerra": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.787346010029014,
+      "e": 0.00983774664144009,
+      "i_deg": 0.002852609413956287,
+      "Omega_deg": 83.74588429478446,
+      "omega_deg": 105.61578042319695,
+      "M0_rad": 3.914817053173131
+     }
+    }
+   },
+   "Sincou": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 3.8996668981234595,
+      "e": 0.0005599592908038524,
+      "i_deg": 0.0000019090959104164224,
+      "Omega_deg": 26.157638861940292,
+      "omega_deg": 273.8631818107976,
+      "M0_rad": 3.3195881513179124
+     }
+    }
+   },
+   "Uitaminus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Lajerra",
+    "orbit": {
+     "host": "Lajerra",
+     "hostMu": 204500279974441.62,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0024032275181312527,
+      "e": 0.15473814683980983,
+      "i_deg": 0.21181195095004607,
+      "Omega_deg": 205.38811677771474,
+      "omega_deg": 86.41175870822988,
+      "M0_rad": 1.3513834894734114
+     }
+    }
+   },
+   "Daucus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Kinel",
+    "orbit": {
+     "host": "Kinel",
+     "hostMu": 3786659579316685.5,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.002419230359081908,
+      "e": 0.03189826345509672,
+      "i_deg": 0,
+      "Omega_deg": 62.707632315166066,
+      "omega_deg": 75.08947110026341,
+      "M0_rad": 0.6107701163720236
+     }
+    }
+   },
+   "Miryadee": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 2.1094942002460995,
+      "e": 0.00012823880565453077,
+      "i_deg": 0.00001024528375501914,
+      "Omega_deg": 4.954887351255688,
+      "omega_deg": 13.856935125814775,
+      "M0_rad": 1.9530767314595856
+     }
+    }
+   },
+   "Iteri": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Kinel",
+    "orbit": {
+     "host": "Kinel",
+     "hostMu": 3786659579316685.5,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0045680790863307725,
+      "e": 0.052504311451560655,
+      "i_deg": 0,
+      "Omega_deg": 71.65144167734226,
+      "omega_deg": 80.7386638617888,
+      "M0_rad": 3.002180722743862
+     }
+    }
+   },
+   "Ailur": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Urcen",
+    "orbit": {
+     "host": "Urcen",
+     "hostMu": 44351390929999990,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0012930732407747155,
+      "e": 0.004455091432886168,
+      "i_deg": 0.9634269020284688,
+      "Omega_deg": 211.11161066740314,
+      "omega_deg": 165.63117994511342,
+      "M0_rad": 3.8940970766091283
+     }
+    }
+   },
+   "Meluris": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Urcen",
+    "orbit": {
+     "host": "Urcen",
+     "hostMu": 44351390929999990,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0021770947363869875,
+      "e": 0.0029097435359343045,
+      "i_deg": 1.2063413084405936,
+      "Omega_deg": 77.90326544682497,
+      "omega_deg": 208.59772315626114,
+      "M0_rad": 0.1816016626964405
+     }
+    }
+   },
+   "Semsom": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Gallabi",
+    "orbit": {
+     "host": "Gallabi",
+     "hostMu": 101374607839999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00798655391242782,
+      "e": 0.00013670828914282267,
+      "i_deg": 0.17864683945631643,
+      "Omega_deg": 69.48293384358338,
+      "omega_deg": 106.3515541923078,
+      "M0_rad": 3.450345398155658
+     }
+    }
+   },
+   "Cyndron": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Gallabi",
+    "orbit": {
+     "host": "Gallabi",
+     "hostMu": 101374607839999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.01684481846566943,
+      "e": 0.00016731376409683365,
+      "i_deg": 11.088622679176765,
+      "Omega_deg": 286.37326858498693,
+      "omega_deg": 85.78749744171004,
+      "M0_rad": 3.0105094528417453
+     }
+    }
+   },
+   "Mericon": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Urcen",
+    "orbit": {
+     "host": "Urcen",
+     "hostMu": 44351390929999990,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0033570972944157516,
+      "e": 0.003299653293306596,
+      "i_deg": 14.419062821545477,
+      "Omega_deg": 80.28450513289471,
+      "omega_deg": 202.37310073156817,
+      "M0_rad": 5.442229370661638
+     }
+    }
+   },
+   "Ophiurus": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 5.13870926657347,
+      "e": 0.00018135395977736895,
+      "i_deg": 0.000007244509618354405,
+      "Omega_deg": 128.6656619965063,
+      "omega_deg": 271.87437375154633,
+      "M0_rad": 3.254633287867769
+     }
+    }
+   },
+   "Bemel": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Gallabi",
+    "orbit": {
+     "host": "Gallabi",
+     "hostMu": 101374607839999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.03185252460137414,
+      "e": 0.00028687846185933454,
+      "i_deg": 0.06502153466821409,
+      "Omega_deg": 86.34619074123314,
+      "omega_deg": 358.957453501476,
+      "M0_rad": 2.501184909806355
+     }
+    }
+   },
+   "Erecurni": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 98.54684213670302,
+      "e": 0.00017513873024948109,
+      "i_deg": 13.894793890902811,
+      "Omega_deg": 82.83464826906868,
+      "omega_deg": 180.36419560131634,
+      "M0_rad": 4.708165334539551
+     }
+    }
+   },
+   "Eventiem": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.923936210529927,
+      "e": 0.0007037341036533872,
+      "i_deg": 2.2468690504394093,
+      "Omega_deg": 68.58869554090008,
+      "omega_deg": 277.3624793974227,
+      "M0_rad": 3.07492773140018
+     }
+    }
+   },
+   "Decidus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Gnathe",
+    "orbit": {
+     "host": "Gnathe",
+     "hostMu": 363476657039447.9,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0032379296795286825,
+      "e": 0.014173316453730137,
+      "i_deg": 0.0001075720913837044,
+      "Omega_deg": 353.5816465615001,
+      "omega_deg": 144.8394477529858,
+      "M0_rad": 5.80703253866224
+     }
+    }
+   },
+   "Turache": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Lajerra",
+    "orbit": {
+     "host": "Lajerra",
+     "hostMu": 204500279974441.62,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00024243468033615628,
+      "e": 0.0007626005342245065,
+      "i_deg": 6.566840705866117,
+      "Omega_deg": 135.48726548872017,
+      "omega_deg": 159.78335806646194,
+      "M0_rad": 4.367392947118354
+     }
+    }
+   },
+   "Maeos": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Sincou",
+    "orbit": {
+     "host": "Sincou",
+     "hostMu": 41870144072557.36,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.003000009836512087,
+      "e": 0.01916348124565774,
+      "i_deg": 0,
+      "Omega_deg": 347.53859464891747,
+      "omega_deg": 100.38010494584259,
+      "M0_rad": 1.699000310854002
+     }
+    }
+   },
+   "Regulus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Sincou",
+    "orbit": {
+     "host": "Sincou",
+     "hostMu": 41870144072557.36,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0010262277823303082,
+      "e": 0.011505652782837435,
+      "i_deg": 0.0000022588727439225506,
+      "Omega_deg": 85.47941815921163,
+      "omega_deg": 229.50164589814094,
+      "M0_rad": 3.460091227396587
+     }
+    }
+   },
+   "Decun": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 120.23729717482406,
+      "e": 0.0002055650210520656,
+      "i_deg": 6.404711725235024,
+      "Omega_deg": 240.2652122504604,
+      "omega_deg": 24.948264069996704,
+      "M0_rad": 1.1366322455195554
+     }
+    }
+   },
+   "Twani": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 76.92875251010113,
+      "e": 0.00480090707127817,
+      "i_deg": 0.5008003109433552,
+      "Omega_deg": 105.52509596825453,
+      "omega_deg": 100.76889350265122,
+      "M0_rad": 6.002396338066809
+     }
+    }
+   },
+   "Toll": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 8.838323746826212,
+      "e": 0.00003868903053763068,
+      "i_deg": 0.000006156649318399953,
+      "Omega_deg": 194.78435579302874,
+      "omega_deg": 75.18640720405786,
+      "M0_rad": 0.3352242339660796
+     }
+    }
+   },
+   "Triteus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Eventiem",
+    "orbit": {
+     "host": "Eventiem",
+     "hostMu": 735741460499.9999,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0007641275448065577,
+      "e": 0.14271214827709605,
+      "i_deg": 1.0235137504835847,
+      "Omega_deg": 192.11679901527964,
+      "omega_deg": 270.06333360806366,
+      "M0_rad": 2.4735564426872045
+     }
+    }
+   },
+   "Phei": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Twani",
+    "orbit": {
+     "host": "Twani",
+     "hostMu": 293370981597.11993,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00007648900171868287,
+      "e": 0.2505324803395373,
+      "i_deg": 18.474857821261406,
+      "Omega_deg": 210.1840831040526,
+      "omega_deg": 270.00182342047486,
+      "M0_rad": 3.54183375407721
+     }
+    }
+   },
+   "Aycrum": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.9322592384740345,
+      "e": 0.08139345774749378,
+      "i_deg": 0.0042857585751651115,
+      "Omega_deg": 72.50999142304227,
+      "omega_deg": 303.40102641878866,
+      "M0_rad": 0.5514081274523583
+     }
+    }
+   },
+   "Endegen": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1778.533754961378,
+      "e": 0.0009547300524640949,
+      "i_deg": 2.2788726887401065,
+      "Omega_deg": 229.94637084880154,
+      "omega_deg": 45.310983797185784,
+      "M0_rad": 0.7793245254651016
+     }
+    }
+   }
+  }
+ },
+ "hystrine-blank-category-star.json @1e20": {
+  "counts": {
+   "stars": 1,
+   "planets": 17,
+   "moons": 16,
+   "other": 0,
+   "rings": 0
+  },
+  "skipped": [
+   "particle: 2 simulation particles (ring/fragment)",
+   "unbound: Plunxiapus"
+  ],
+  "age_Gyr": 0.37,
+  "nodes": {
+   "Hystrix": {
+    "kind": "body",
+    "roleHint": "star",
+    "parent": null,
+    "orbit": null
+   },
+   "Gallabi": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 11.082533873797315,
+      "e": 0.00045581050501794274,
+      "i_deg": 0.000058625099616498666,
+      "Omega_deg": 136.75877959188006,
+      "omega_deg": 204.22220255428334,
+      "M0_rad": 3.5164550029257597
+     }
+    }
+   },
+   "Urcen": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 6.2858366355676845,
+      "e": 0.001073304939559687,
+      "i_deg": 0.0011363643842627984,
+      "Omega_deg": 128.8120022000728,
+      "omega_deg": 341.67385805187706,
+      "M0_rad": 1.4554724141287334
+     }
+    }
+   },
+   "Veiry": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 39.0573298514768,
+      "e": 0.00013685569064731236,
+      "i_deg": 0,
+      "Omega_deg": 35.7543968118329,
+      "omega_deg": 258.9019277286529,
+      "M0_rad": 4.231071261218698
+     }
+    }
+   },
+   "Epola/Palesce": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 22.4410304972659,
+      "e": 0.0022184327451494224,
+      "i_deg": 0,
+      "Omega_deg": 50.21074859531944,
+      "omega_deg": 90.07549615526219,
+      "M0_rad": 1.1124022066925425
+     }
+    }
+   },
+   "Kinel": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 2.692666264172016,
+      "e": 0.00332984361408386,
+      "i_deg": 0.000004094554566467037,
+      "Omega_deg": 11.356362916267356,
+      "omega_deg": 306.85529911397236,
+      "M0_rad": 2.9286010829814284
+     }
+    }
+   },
+   "Gnathe": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.5085556152793855,
+      "e": 0.00010090617842500447,
+      "i_deg": 0.0005038320766161879,
+      "Omega_deg": 311.6235520692818,
+      "omega_deg": 18.39159064401144,
+      "M0_rad": 2.281970422466305
+     }
+    }
+   },
+   "Maei": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Epola/Palesce",
+    "orbit": {
+     "host": "Epola/Palesce",
+     "hostMu": 7972037543399999,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.009463741462485029,
+      "e": 0.040944542143301385,
+      "i_deg": 0,
+      "Omega_deg": 118.54743746174532,
+      "omega_deg": 276.8605727644891,
+      "M0_rad": 3.295903969592951
+     }
+    }
+   },
+   "Lajerra": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.787346010029014,
+      "e": 0.00983774664144009,
+      "i_deg": 0.002852609413956287,
+      "Omega_deg": 83.74588429478446,
+      "omega_deg": 105.61578042319695,
+      "M0_rad": 3.914817053173131
+     }
+    }
+   },
+   "Sincou": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 3.8996668981234595,
+      "e": 0.0005599592908038524,
+      "i_deg": 0.0000019090959104164224,
+      "Omega_deg": 26.157638861940292,
+      "omega_deg": 273.8631818107976,
+      "M0_rad": 3.3195881513179124
+     }
+    }
+   },
+   "Uitaminus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Lajerra",
+    "orbit": {
+     "host": "Lajerra",
+     "hostMu": 204500279974441.62,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0024032275181312527,
+      "e": 0.15473814683980983,
+      "i_deg": 0.21181195095004607,
+      "Omega_deg": 205.38811677771474,
+      "omega_deg": 86.41175870822988,
+      "M0_rad": 1.3513834894734114
+     }
+    }
+   },
+   "Daucus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Kinel",
+    "orbit": {
+     "host": "Kinel",
+     "hostMu": 3786659579316685.5,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.002419230359081908,
+      "e": 0.03189826345509672,
+      "i_deg": 0,
+      "Omega_deg": 62.707632315166066,
+      "omega_deg": 75.08947110026341,
+      "M0_rad": 0.6107701163720236
+     }
+    }
+   },
+   "Miryadee": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 2.1094942002460995,
+      "e": 0.00012823880565453077,
+      "i_deg": 0.00001024528375501914,
+      "Omega_deg": 4.954887351255688,
+      "omega_deg": 13.856935125814775,
+      "M0_rad": 1.9530767314595856
+     }
+    }
+   },
+   "Iteri": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Kinel",
+    "orbit": {
+     "host": "Kinel",
+     "hostMu": 3786659579316685.5,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0045680790863307725,
+      "e": 0.052504311451560655,
+      "i_deg": 0,
+      "Omega_deg": 71.65144167734226,
+      "omega_deg": 80.7386638617888,
+      "M0_rad": 3.002180722743862
+     }
+    }
+   },
+   "Ailur": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Urcen",
+    "orbit": {
+     "host": "Urcen",
+     "hostMu": 44351390929999990,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0012930732407747155,
+      "e": 0.004455091432886168,
+      "i_deg": 0.9634269020284688,
+      "Omega_deg": 211.11161066740314,
+      "omega_deg": 165.63117994511342,
+      "M0_rad": 3.8940970766091283
+     }
+    }
+   },
+   "Meluris": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Urcen",
+    "orbit": {
+     "host": "Urcen",
+     "hostMu": 44351390929999990,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0021770947363869875,
+      "e": 0.0029097435359343045,
+      "i_deg": 1.2063413084405936,
+      "Omega_deg": 77.90326544682497,
+      "omega_deg": 208.59772315626114,
+      "M0_rad": 0.1816016626964405
+     }
+    }
+   },
+   "Semsom": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Gallabi",
+    "orbit": {
+     "host": "Gallabi",
+     "hostMu": 101374607839999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00798655391242782,
+      "e": 0.00013670828914282267,
+      "i_deg": 0.17864683945631643,
+      "Omega_deg": 69.48293384358338,
+      "omega_deg": 106.3515541923078,
+      "M0_rad": 3.450345398155658
+     }
+    }
+   },
+   "Cyndron": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Gallabi",
+    "orbit": {
+     "host": "Gallabi",
+     "hostMu": 101374607839999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.01684481846566943,
+      "e": 0.00016731376409683365,
+      "i_deg": 11.088622679176765,
+      "Omega_deg": 286.37326858498693,
+      "omega_deg": 85.78749744171004,
+      "M0_rad": 3.0105094528417453
+     }
+    }
+   },
+   "Mericon": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Urcen",
+    "orbit": {
+     "host": "Urcen",
+     "hostMu": 44351390929999990,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0033570972944157516,
+      "e": 0.003299653293306596,
+      "i_deg": 14.419062821545477,
+      "Omega_deg": 80.28450513289471,
+      "omega_deg": 202.37310073156817,
+      "M0_rad": 5.442229370661638
+     }
+    }
+   },
+   "Ophiurus": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 5.13870926657347,
+      "e": 0.00018135395977736895,
+      "i_deg": 0.000007244509618354405,
+      "Omega_deg": 128.6656619965063,
+      "omega_deg": 271.87437375154633,
+      "M0_rad": 3.254633287867769
+     }
+    }
+   },
+   "Bemel": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Gallabi",
+    "orbit": {
+     "host": "Gallabi",
+     "hostMu": 101374607839999980,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.03185252460137414,
+      "e": 0.00028687846185933454,
+      "i_deg": 0.06502153466821409,
+      "Omega_deg": 86.34619074123314,
+      "omega_deg": 358.957453501476,
+      "M0_rad": 2.501184909806355
+     }
+    }
+   },
+   "Erecurni": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 98.54684213670302,
+      "e": 0.00017513873024948109,
+      "i_deg": 13.894793890902811,
+      "Omega_deg": 82.83464826906868,
+      "omega_deg": 180.36419560131634,
+      "M0_rad": 4.708165334539551
+     }
+    }
+   },
+   "Eventiem": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 9.923936210529927,
+      "e": 0.0007037341036533872,
+      "i_deg": 2.2468690504394093,
+      "Omega_deg": 68.58869554090008,
+      "omega_deg": 277.3624793974227,
+      "M0_rad": 3.07492773140018
+     }
+    }
+   },
+   "Decidus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Gnathe",
+    "orbit": {
+     "host": "Gnathe",
+     "hostMu": 363476657039447.9,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0032379296795286825,
+      "e": 0.014173316453730137,
+      "i_deg": 0.0001075720913837044,
+      "Omega_deg": 353.5816465615001,
+      "omega_deg": 144.8394477529858,
+      "M0_rad": 5.80703253866224
+     }
+    }
+   },
+   "Turache": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Lajerra",
+    "orbit": {
+     "host": "Lajerra",
+     "hostMu": 204500279974441.62,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00024243468033615628,
+      "e": 0.0007626005342245065,
+      "i_deg": 6.566840705866117,
+      "Omega_deg": 135.48726548872017,
+      "omega_deg": 159.78335806646194,
+      "M0_rad": 4.367392947118354
+     }
+    }
+   },
+   "Maeos": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Sincou",
+    "orbit": {
+     "host": "Sincou",
+     "hostMu": 41870144072557.36,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.003000009836512087,
+      "e": 0.01916348124565774,
+      "i_deg": 0,
+      "Omega_deg": 347.53859464891747,
+      "omega_deg": 100.38010494584259,
+      "M0_rad": 1.699000310854002
+     }
+    }
+   },
+   "Regulus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Sincou",
+    "orbit": {
+     "host": "Sincou",
+     "hostMu": 41870144072557.36,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0010262277823303082,
+      "e": 0.011505652782837435,
+      "i_deg": 0.0000022588727439225506,
+      "Omega_deg": 85.47941815921163,
+      "omega_deg": 229.50164589814094,
+      "M0_rad": 3.460091227396587
+     }
+    }
+   },
+   "Decun": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 120.23729717482406,
+      "e": 0.0002055650210520656,
+      "i_deg": 6.404711725235024,
+      "Omega_deg": 240.2652122504604,
+      "omega_deg": 24.948264069996704,
+      "M0_rad": 1.1366322455195554
+     }
+    }
+   },
+   "Twani": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 76.92875251010113,
+      "e": 0.00480090707127817,
+      "i_deg": 0.5008003109433552,
+      "Omega_deg": 105.52509596825453,
+      "omega_deg": 100.76889350265122,
+      "M0_rad": 6.002396338066809
+     }
+    }
+   },
+   "Toll": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 8.838323746826212,
+      "e": 0.00003868903053763068,
+      "i_deg": 0.000006156649318399953,
+      "Omega_deg": 194.78435579302874,
+      "omega_deg": 75.18640720405786,
+      "M0_rad": 0.3352242339660796
+     }
+    }
+   },
+   "Triteus": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Eventiem",
+    "orbit": {
+     "host": "Eventiem",
+     "hostMu": 735741460499.9999,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0007641275448065577,
+      "e": 0.14271214827709605,
+      "i_deg": 1.0235137504835847,
+      "Omega_deg": 192.11679901527964,
+      "omega_deg": 270.06333360806366,
+      "M0_rad": 2.4735564426872045
+     }
+    }
+   },
+   "Phei": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Twani",
+    "orbit": {
+     "host": "Twani",
+     "hostMu": 293370981597.11993,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.00007648900171868287,
+      "e": 0.2505324803395373,
+      "i_deg": 18.474857821261406,
+      "Omega_deg": 210.1840831040526,
+      "omega_deg": 270.00182342047486,
+      "M0_rad": 3.54183375407721
+     }
+    }
+   },
+   "Aycrum": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1.9322592384740345,
+      "e": 0.08139345774749378,
+      "i_deg": 0.0042857585751651115,
+      "Omega_deg": 72.50999142304227,
+      "omega_deg": 303.40102641878866,
+      "M0_rad": 0.5514081274523583
+     }
+    }
+   },
+   "Endegen": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Hystrix",
+    "orbit": {
+     "host": "Hystrix",
+     "hostMu": 223034282183999980000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 1778.533754961378,
+      "e": 0.0009547300524640949,
+      "i_deg": 2.2788726887401065,
+      "Omega_deg": 229.94637084880154,
+      "omega_deg": 45.310983797185784,
+      "M0_rad": 0.7793245254651016
+     }
+    }
+   }
+  }
+ },
+ "minimal.ubox": {
+  "counts": {
+   "stars": 1,
+   "planets": 1,
+   "moons": 1,
+   "other": 0,
+   "rings": 0
+  },
+  "skipped": [],
+  "age_Gyr": 4.658,
+  "nodes": {
+   "Star": {
+    "kind": "body",
+    "roleHint": "star",
+    "parent": null,
+    "orbit": null
+   },
+   "Planet": {
+    "kind": "body",
+    "roleHint": "planet",
+    "parent": "Star",
+    "orbit": {
+     "host": "Star",
+     "hostMu": 132751826999999990000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.9992806589209068,
+      "e": 0.0006672086498201353,
+      "i_deg": 0,
+      "Omega_deg": 0,
+      "omega_deg": -180,
+      "M0_rad": 3.141592653589793
+     }
+    }
+   },
+   "Moon": {
+    "kind": "body",
+    "roleHint": "moon",
+    "parent": "Planet",
+    "orbit": {
+     "host": "Planet",
+     "hostMu": 398589196000000,
+     "t0": 0,
+     "n_rad_per_s": null,
+     "retrograde": false,
+     "elements": {
+      "a_AU": 0.0025556054323415955,
+      "e": 0.005196967645353048,
+      "i_deg": 0,
+      "Omega_deg": 0,
+      "omega_deg": -180,
+      "M0_rad": 3.141592653589793
+     }
+    }
+   }
+  }
+ }
+}
