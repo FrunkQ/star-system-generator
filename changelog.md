@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.283 - 3rd Sep 2026
+
+- Board only. The held production branch records that it now carries the collapse fix too, so it cannot ship the regression it was staged before.
 ## v3.0.281 - 3rd Sep 2026
 
 - On a phone, the detail panel would not collapse. Last release taught it to open itself to the right height for what is in it, and the rule was written so it could never shrink the panel under you - but it also ran every time anything changed, so the moment you pressed Collapse it opened straight back up. It now only resizes when what is IN the panel changes, so a panel you collapse stays collapsed, and dragging or tapping it to any height sticks. Tapping a different world still opens its panel for you.

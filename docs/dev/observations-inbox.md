@@ -1889,12 +1889,12 @@ noticed.
 
 ## STAGED FOR PRODUCTION, NOT PUSHED — stream H, 2026-09-01
 
-**Branch `hotfix/uibatch-a82-a85`, worktree `../sse2-uibatch-prod`, 5 commits above `origin/main`
-(v3.0.164), stamped v3.0.270 — the next free number above beta's top. Owner's word to push.** Staged there rather than in
+**Branch `hotfix/uibatch-a82-a85`, worktree `../sse2-uibatch-prod`, 6 commits above `origin/main`
+(v3.0.164), stamped v3.0.282 — the next free number above beta's top at staging time, and it will need re-checking whenever it is actually pushed. Owner's word to push.** Staged there rather than in
 `../sse-prod-hotfix`, which was already holding the temporal batch's own `hotfix/b113-g62-temporal`
 (2 commits above main, v3.0.263) — whichever lands second renumbers.
 
-Carries [[A83]], [[A84]] and [[A85]]. Every fault was confirmed to reproduce on `main` BEFORE the
+Carries [[A83]], [[A84]], [[A85]] and [[A92]] — the last because A84 shipped with a regression on beta and the branch would otherwise have carried it to production. Every fault was confirmed to reproduce on `main` BEFORE the
 cherry-pick, not assumed: `const massMax = 300` at `BodyStarTab.svelte:61`, the linear rotation
 slider at `:990`, `sheetSnap` declared and never assigned, and `ui/foreground.ts`,
 `BottomSheet.svelte` and `AIExpansionModal.svelte` byte-identical to beta's pre-fix versions.
