@@ -4,7 +4,7 @@
 // Precedent: `modelViewer.spec.ts` builds meshes and measures their bounding boxes.
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { buildMegaGeometry } from './megaGeometry';
+import { buildMegaGeometry, tetherAltitudesKm, tetherLayout, equatorialAnchor } from './megaGeometry';
 import { megaTypeDef, defaultMegaParams, type MegaTypeDef } from './megaTypes';
 import { readFileSync } from 'fs';
 import type { CelestialBody } from '$lib/types';
@@ -129,86 +129,80 @@ describe('the swarm points path', () => {
 });
 
 describe('the tether', () => {
-  const boundsOf = (g: { getAttribute?: (n: string) => { array: ArrayLike<number> } | undefined } & object) => {
-    const arr = (g as any).getAttribute('position').array as Float32Array;
-    let minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
-    for (let i = 0; i < arr.length; i += 3) {
-      minX = Math.min(minX, arr[i]); maxX = Math.max(maxX, arr[i]);
-      minY = Math.min(minY, arr[i + 1]); maxY = Math.max(maxY, arr[i + 1]);
-    }
-    return { minY, maxY, minX, maxX };
-  };
-
-  it('is a RIBBON with real drawn width, from the host surface to geostationary, in the host own drawn currency', () => {
-    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
-    // A 1px WebGL line was invisible against a lit planet limb on every GPU (owner, twice) - the
-    // ribbon takes the counterweight's own honest device: drawn width as a READABILITY fraction of
-    // the host, so it scales with the world at every zoom and never vanishes into a hairline.
-    expect(built.mode).toBe('ribbon');
-    const b = boundsOf(built.geometry);
-    expect(b.minY).toBeCloseTo(0.2, 6);                     // anchored on the surface
-    // The ribbon tops at the COUNTERWEIGHT - the 1.25x margin above geo (the dock test below
-    // pins geo itself); on a 6,371 km world that is ~8.0 host radii from the centre.
-    expect(b.maxY / 0.2).toBeCloseTo(1 + (35786 * 1.25) / 6371, 3);
-    const w = b.maxX - b.minX;
-    expect(w).toBeGreaterThan(0);
-    expect(w).toBeLessThan(built.counterweight!.radiusScene * 2); // thinner than the rock it carries
-  });
-
-  it('the ribbon runs PAST geostationary to the counterweight, with the DOCK at geo', () => {
-    // The owner's correction (2026-09-01): geo is the dock, not the top - a counterweight AT geo
-    // would hold no tension. Ribbon top defaults to 1.25x geo altitude; the dock knob rides at geo.
-    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
-    const b = boundsOf(built.geometry);
-    expect(b.maxY / 0.2).toBeCloseTo(1 + (35786 * 1.25) / 6371, 3);
-    expect(built.dock).toBeTruthy();
-    expect(built.dock!.atScene / 0.2).toBeCloseTo(1 + 35786 / 6371, 6);          // the geo dock
-    expect(built.dock!.atScene).toBeLessThan(built.counterweight!.atScene);       // dock below rock
+  // THE CONTRACT (v3.0.267): the builder returns UNIT PARTS and KILOMETRE ALTITUDES; the scene lays
+  // them out every frame from three scene distances the SATELLITE LAW supplies (scaleLaw
+  // satelliteDrawDistance) - so the dock sits exactly where a station at geostationary sits, and
+  // can never overtake the Moon at any dial position. Nothing in here is in scene units.
+  const boundsOf = (g: any) => { g.computeBoundingBox(); const bb = g.boundingBox; return { minY: bb.min.y, maxY: bb.max.y }; };
+  it('publishes the dock at geostationary and the counterweight a 1.25x design margin above it, in km', () => {
+    const alt = tetherAltitudesKm(specOf('space-elevator', earth()) as any);
+    expect(alt).not.toBeNull();
+    expect(alt!.dockKm).toBeCloseTo(35786, -1);          // Earth GEO altitude, checked not fitted
+    expect(alt!.topKm).toBeCloseTo(35786 * 1.25, -1);
   });
 
   it('an authored ribbon length wins over the default margin - but can never sink below geo', () => {
-    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0,
-      { hostRadiusScene: 0.2, hostRadiusKm: 6371, ribbonLengthKm: 45000 })!;
-    expect(boundsOf(built.geometry).maxY / 0.2).toBeCloseTo(1 + 45000 / 6371, 3); // the template's 45,000 km
-    const clamped = buildMegaGeometry(specOf('space-elevator', earth()), 0,
-      { hostRadiusScene: 0.2, hostRadiusKm: 6371, ribbonLengthKm: 100 })!;        // nonsense: below geo
-    expect(boundsOf(clamped.geometry).maxY / 0.2).toBeGreaterThan(1 + 35786 / 6371); // geo still inside
-  });
-
-  it('THE SCENE CONTRACT: asked in unit host radius, it returns pure proportion', () => {
-    // holo/scene.ts builds the tether with hostRadiusScene 1 and multiplies by the host's LIVE
-    // drawn radius every frame (the rule planetary rings follow), because the host's drawn size
-    // moves with the body-size dial, the screen floor and the build's system/body level. This
-    // pins the half that makes that possible: in unit currency every figure is in HOST RADII.
-    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 1, hostRadiusKm: 6371 })!;
-    const b = boundsOf(built.geometry);
-    expect(b.minY).toBeCloseTo(1, 6);                                  // the anchor IS one host radius (Float32 buffer: 6 places, as above)
-    expect(built.dock!.atScene).toBeCloseTo(1 + 35786 / 6371, 6);      // geo, in host radii
-    expect(b.maxY).toBeCloseTo(1 + (35786 * 1.25) / 6371, 6);          // the counterweight, likewise
-    // And it is genuinely LINEAR in the host radius - the property the per-frame multiply needs.
-    const twice = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 2, hostRadiusKm: 6371 })!;
-    expect(boundsOf(twice.geometry).maxY).toBeCloseTo(b.maxY * 2, 6);
-    expect(twice.dock!.atScene).toBeCloseTo(built.dock!.atScene * 2, 6);
-  });
-
-  it('carries a captured-asteroid counterweight at the top of the ribbon', () => {
-    const built = buildMegaGeometry(specOf('space-elevator', earth()), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })!;
-    expect(built.counterweight).toBeTruthy();
-    // The rock rides at the ribbon's TOP - above geo, where a counterweight belongs.
-    expect(built.counterweight!.atScene).toBeCloseTo(built.radiusScene, 9);
-    // 6 places, not more: the vertex buffer is a Float32Array (~7 significant figures) while
-    // `atScene` is a double, so a tighter assertion measures IEEE rounding rather than the code.
-    expect(built.counterweight!.atScene).toBeCloseTo(boundsOf(built.geometry).maxY, 6);
-    // Its drawn size is a READABILITY fraction of the host, never true scale: a few-km rock on a
-    // 6,371 km world would be invisible at every zoom that shows the ribbon.
-    expect(built.counterweight!.radiusScene).toBeGreaterThan(0);
-    expect(built.counterweight!.radiusScene).toBeLessThan(0.2);   // smaller than the host itself
+    const spec = specOf('space-elevator', earth()) as any;
+    expect(tetherAltitudesKm(spec, 45000)!.topKm).toBe(45000);
+    expect(tetherAltitudesKm(spec, 30000)!.topKm).toBeCloseTo(35786 * 1.25, -1);
   });
 
   it('a world with no real geostationary gets NOTHING rather than an invented ribbon', () => {
-    const locked = earth();
-    locked.orbitalBoundaries!.isGeoFallback = true;
-    expect(buildMegaGeometry(specOf('space-elevator', locked), 0, { hostRadiusScene: 0.2, hostRadiusKm: 6371 })).toBeNull();
+    const noGeo = { ...(specOf('space-elevator', earth()) as any), topAltitudeKm: null };
+    expect(tetherAltitudesKm(noGeo)).toBeNull();
+    expect(buildMegaGeometry(noGeo, 1)).toBeNull();
+  });
+
+  it('builds a UNIT ribbon: a 1x1x1 box the scene stretches, plus the km altitudes it will stretch it to', () => {
+    const built = buildMegaGeometry(specOf('space-elevator', earth()), 1)!;
+    expect(built.mode).toBe('ribbon');
+    const b = boundsOf(built.geometry);
+    expect(b.maxY - b.minY).toBeCloseTo(1, 6);
+    expect(built.tether!.dockKm).toBeCloseTo(35786, -1);
+    expect(built.tether!.topKm).toBeCloseTo(35786 * 1.25, -1);
+  });
+
+  it('THE ANCHOR IS ON THE EQUATOR - the shape says so, because geostationary is only stationary there', () => {
+    expect((specOf('space-elevator', earth()) as any).anchorLatitudeDeg).toBe(0);
+    expect(buildMegaGeometry(specOf('space-elevator', earth()), 1)!.tether!.anchorLatitudeDeg).toBe(0);
+  });
+
+  describe('tetherLayout - the per-frame numbers, pure', () => {
+    it('stretches the ribbon from the DRAWN surface to the counterweight, dock at geo, sizes as host fractions', () => {
+      const L = tetherLayout({ surfaceR: 0.28, dockR: 0.3324, topR: 0.36, pxScene: 0.0005 });
+      expect(L.visible).toBe(true);
+      expect(L.ribbon.len).toBeCloseTo(0.08, 12);
+      expect(L.ribbon.y).toBeCloseTo(0.32, 12);            // centred on its own span
+      expect(L.ribbon.w).toBeCloseTo(0.0028, 12);          // 1% of the host's drawn radius
+      expect(L.dock.y).toBeCloseTo(0.3324, 12);
+      expect(L.dock.r).toBeCloseTo(0.28 * 0.07 * 0.55, 12);
+      expect(L.counterweight.y).toBeCloseTo(0.36, 12);
+      expect(L.counterweight.r).toBeCloseTo(0.28 * 0.07, 12);
+    });
+    it('never vanishes into a hairline: width and knobs are floored in SCREEN pixels', () => {
+      const L = tetherLayout({ surfaceR: 0.004, dockR: 0.0264, topR: 0.033, pxScene: 0.001 });
+      expect(L.ribbon.w).toBeCloseTo(0.0015, 12);          // 1.5 px beats 1% of a floored globe
+      expect(L.dock.r).toBeCloseTo(0.002, 12);             // 2 px
+      expect(L.counterweight.r).toBeCloseTo(0.0025, 12);   // 2.5 px
+    });
+    it('HONESTLY HIDES when the whole structure is inside the floored globe (true scale, far out)', () => {
+      const L = tetherLayout({ surfaceR: 0.004, dockR: 0.0006, topR: 0.00075, pxScene: 0.001 });
+      expect(L.visible).toBe(false);
+    });
+  });
+
+  describe('equatorialAnchor - the pole fault, closed', () => {
+    it('keeps the longitude and drops the latitude', () => {
+      const d = equatorialAnchor({ x: 0.3, y: 0.8, z: 0.5 });
+      const n = Math.hypot(0.3, 0.5);
+      expect(d.y).toBe(0);
+      expect(d.x).toBeCloseTo(0.3 / n, 12);
+      expect(d.z).toBeCloseTo(0.5 / n, 12);
+    });
+    it('a polar hash still lands on the equator, deterministically', () => {
+      expect(equatorialAnchor({ x: 0, y: 1, z: 0 })).toEqual({ x: 1, y: 0, z: 0 });
+      expect(equatorialAnchor({ x: 0, y: -1, z: 1e-12 })).toEqual({ x: 1, y: 0, z: 0 });
+    });
   });
 });
 
@@ -220,7 +214,7 @@ describe('what this builder deliberately does NOT own', () => {
   it('every registry type either builds or honestly declines, and none throws', () => {
     for (const key of ['space-elevator', 'planetary-torus', 'ringworld', 'dyson-sphere', 'dyson-swarm', 'energy-collector', 'death-star']) {
       const host = megaTypeDef(key)!.requires.hard?.hostIsStar ? sol() : earth();
-      expect(() => buildMegaGeometry(specOf(key, host), 2, { hostRadiusScene: 0.2, hostRadiusKm: host.radiusKm }), key).not.toThrow();
+      expect(() => buildMegaGeometry(specOf(key, host), 2), key).not.toThrow();
     }
   });
 });

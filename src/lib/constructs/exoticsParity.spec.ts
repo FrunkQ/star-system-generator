@@ -43,8 +43,8 @@ describe('every registry record declares capabilities, and they match the behavi
 				expect(d.capabilities.render3d).toEqual(expected);
 			});
 
-			it("render2d mirrors isMegaRing's rule (SystemVisualizer ~797): sphere-sections ARE their orbit line", () => {
-				expect(d.capabilities.render2d.structure).toBe(d.family === 'sphere-section' ? 'orbit-line' : 'glyph');
+			it("render2d: sphere-sections ARE their orbit line, a tether is a RADIAL from the host edge, a spheroid is its glyph", () => {
+				expect(d.capabilities.render2d.structure).toBe(d.family === 'sphere-section' ? 'orbit-line' : d.family === 'tether' ? 'radial' : 'glyph');
 			});
 
 			it("framing mirrors computeBase's three construct shots, keyed today off the same flags", () => {

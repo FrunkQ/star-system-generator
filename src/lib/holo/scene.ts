@@ -17,7 +17,7 @@ import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { megaTypeDef, instanceMegaParams } from '$lib/constructs/megaTypes';
 import type { ExoticCapabilities } from '$lib/constructs/exotics';
-import { buildMegaGeometry } from '$lib/constructs/megaGeometry';
+import { buildMegaGeometry, tetherLayout, equatorialAnchor } from '$lib/constructs/megaGeometry';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
 // Highlight badges on the player's system view. The pill shape is the SAME object as the panel's tag
@@ -76,6 +76,7 @@ import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import { AU_KM, G } from '$lib/constants';
 import {
   GRID_RADIUS as SCALE_GRID_RADIUS, STAR_RADIUS as SCALE_STAR_RADIUS,
+  satelliteDrawDistance, moonSpread,
   dialBlend as scaleDialBlend, bodyRadiusScene as scaleBodyRadiusScene,
   starRadiusScene as scaleStarRadiusScene, shipLengthScene as scaleShipLengthScene,
   physicalRadiusAu,
@@ -258,10 +259,13 @@ interface BodyVisual {
   shipPrev?: THREE.Vector3;  // last frame's position, for the motion direction
   shipFx?: ShipFx | null;    // the drive plume at the stern, driven by the sampled burn
   shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
-  /** A surface-stand exotic's span in HOST-RADIUS units — a measurement, not a switch. Its
-   *  geometry is built at unit host radius, so the drawn span is this times the host's live drawn
-   *  radius; `shipLen` above is kept in scene units from the two, every frame. */
-  megaUnitSpan?: number;
+  /** The tether's parts and the radii (AU, from the host's CENTRE) they are laid out to every
+   *  frame by `updateSurfaceConstructs` through the satellite law (RENDER-S50) - handles and
+   *  measurements, not switches. `anchorLatitudeDeg` is the shape's own physics (0 = equator). */
+  tetherParts?: { ribbon: THREE.Mesh; dock: THREE.Mesh; counterweight: THREE.Mesh; dockAu: number; topAu: number; anchorLatitudeDeg: number | null } | null;
+  /** This body's heliocentric distance this frame, AU - what the satellite law needs for its
+   *  compression factor when something is hung on this body. Stamped in updatePositions. */
+  helioAu?: number;
   // G53: a ring, shell or swarm SURROUNDS its host - it is drawn CENTRED on the host at its own
   // orbit's drawn radius, not as a lump sitting at a point on that orbit. Set by attachMegaVolume.
   /** G58 N2: the record's DECLARED capabilities, stamped when the exotic shape attaches -
@@ -2736,19 +2740,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!def) return false;
       const spec = def.shape(instanceMegaParams(node, def, host as any), host as any);
       // Unit radius 0.5 => unit DIAMETER, the same long-axis convention the hull path uses.
-      // A TETHER IS BUILT IN UNIT HOST-RADIUS CURRENCY - pure proportion, no scene units at all -
-      // and `updateConstructs` multiplies it by the host's LIVE drawn radius every frame. That is
-      // the rule planetary rings already follow (see updateRings: a ring is drawn in multiples of
-      // its planet's rendered radius, so when the true-scale floor magnifies the planet the ring
-      // comes with it). Baking a build-time radius here cannot work: the host's drawn size depends
-      // on the body-size dial, the zoom-dependent screen floor (`screenK`) and whether the scene
-      // was built at system or body level - three things that all move after this line runs.
+      // A TETHER COMES BACK AS UNIT PARTS AND KILOMETRE ALTITUDES. Nothing about its drawn size is
+      // decided here: `updateSurfaceConstructs` lays the parts out EVERY FRAME from the satellite
+      // law (RENDER-S50) - the same law that places a moon or a station - so the dock sits exactly
+      // where a station at geostationary sits and the ribbon can never overtake the Moon, at any
+      // body-size or compression setting. A build-time size cannot do that: the host's drawn radius,
+      // the screen floor and the dials all move after this line runs (RENDER-S48).
       const dims = (node?.physical_parameters?.dimensionsM ?? []) as number[];
       const authoredRibbonKm = Math.max(0, ...dims.map((d: number) => Math.abs(Number(d)) || 0)) / 1000;
       const built = spec.family === 'tether'
         ? buildMegaGeometry(spec, 0.5, {
-            hostRadiusScene: 1,
-            hostRadiusKm: radiusKmOf(host),
             // The instance's own authored ribbon length (its long axis) sets the counterweight
             // height when it reaches past geo - the template authors 45,000 km on Earth.
             ribbonLengthKm: authoredRibbonKm > 0 ? authoredRibbonKm : undefined
@@ -2758,54 +2759,50 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const wire = renderStyle.startsWith('wire');
       const col = new THREE.Color(tint);
       const g = new THREE.Group();
-      if (built.mode === 'ribbon') {
-        // THE BEANSTALK. A slim box up the +Y axis with a captured rock on the end;
-        // `updateSurfaceConstructs` stands it on the anchor point and turns it with the world.
-        // A MESH, not a line primitive: WebGL lines render one pixel wide whatever is asked, and
-        // one pixel over a lit limb is invisible - the builder gives the ribbon real drawn width
-        // as a fraction of the host (its own comment says why), so it scales with the world.
-        g.add(new THREE.Mesh(built.geometry, new THREE.MeshStandardMaterial({
+      if (built.mode === 'ribbon' && built.tether) {
+        // THE BEANSTALK, AS UNIT PARTS: a 1x1x1 box, a unit ball and a unit rock. The per-frame
+        // layout stretches the box from the host's DRAWN surface to the counterweight and parks the
+        // ball at geostationary, all along +Y; `updateSurfaceConstructs` stands the group on the
+        // anchor and turns it with the world. A MESH, not a line primitive: WebGL lines render one
+        // pixel wide whatever is asked, and one pixel over a lit limb is invisible - the width is a
+        // host fraction floored in screen pixels (megaGeometry TETHER_MIN_WIDTH_PX).
+        const ribbon = new THREE.Mesh(built.geometry, new THREE.MeshStandardMaterial({
           color: col, emissive: col, emissiveIntensity: wire ? 1 : 0.55,
           metalness: 0.15, roughness: 0.6, wireframe: wire, transparent: true, opacity: 0.95
-        })));
+        }));
         // THE GEO DOCK - the mast glyph's knob, in three dimensions: a small station ball at
         // geostationary, below the rock, where the LO/MO/GO ladder tops out (design §7).
-        const dk = built.dock;
-        if (dk) {
-          const ball = new THREE.Mesh(
-            new THREE.SphereGeometry(dk.radiusScene, 10, 8),
-            new THREE.MeshStandardMaterial({
-              color: col, emissive: col, emissiveIntensity: 0.5,
-              metalness: 0.2, roughness: 0.5, wireframe: wire
-            })
-          );
-          ball.position.set(0, dk.atScene, 0);
-          g.add(ball);
-        }
-        const cw = built.counterweight;
-        if (cw) {
-          // The counterweight is a CAPTURED ASTEROID (§5b.7), so it is drawn as a rock rather than
-          // a machined shape: a low-poly icosahedron reads as irregular at any size and costs
-          // nothing. Flat-shaded so its facets catch the light and it does not read as a ball.
-          const rock = new THREE.Mesh(
-            new THREE.IcosahedronGeometry(cw.radiusScene, 0),
-            new THREE.MeshStandardMaterial({
-              color: col, emissive: col, emissiveIntensity: 0.35,
-              flatShading: true, metalness: 0.1, roughness: 0.9, wireframe: wire
-            })
-          );
-          rock.position.set(0, cw.atScene, 0);
-          g.add(rock);
-        }
+        const dock = new THREE.Mesh(
+          new THREE.SphereGeometry(1, 10, 8),
+          new THREE.MeshStandardMaterial({
+            color: col, emissive: col, emissiveIntensity: 0.5,
+            metalness: 0.2, roughness: 0.5, wireframe: wire
+          })
+        );
+        // The counterweight is a CAPTURED ASTEROID (§5b.7), so it is drawn as a rock rather than
+        // a machined shape: a low-poly icosahedron reads as irregular at any size and costs
+        // nothing. Flat-shaded so its facets catch the light and it does not read as a ball.
+        const rock = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(1, 0),
+          new THREE.MeshStandardMaterial({
+            color: col, emissive: col, emissiveIntensity: 0.35,
+            flatShading: true, metalness: 0.1, roughness: 0.9, wireframe: wire
+          })
+        );
+        g.add(ribbon); g.add(dock); g.add(rock);
         g.visible = false;
         contentGroup.add(g);
         v.shipModel = g;
-        // Anchor 'surface-stand', and NOT scaled by shipLen: the geometry is already in the
-        // host's own drawn currency, so `updateConstructs` must leave its scale alone.
         v.exotic = def.capabilities;
-        // In HOST RADII, not scene units - `updateConstructs` converts it every frame.
-        v.megaUnitSpan = built.radiusScene;
-        v.shipLen = 0;
+        // Radii from the host's CENTRE, in AU - the satellite law's own currency (a moon's `off`).
+        const hostKm = radiusKmOf(host);
+        v.tetherParts = {
+          ribbon, dock, counterweight: rock,
+          dockAu: (hostKm + built.tether.dockKm) / AU_KM,
+          topAu: (hostKm + built.tether.topKm) / AU_KM,
+          anchorLatitudeDeg: built.tether.anchorLatitudeDeg
+        };
+        v.shipLen = 0;   // written by the layout, in scene units, every frame
         v.shipPrev = v.mesh.position.clone();
         return true;
       }
@@ -3263,21 +3260,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           const minWorld = minPx * f * distToCam;
           let drawnLen = Math.max(b.shipLen ?? 0, minWorld);
           if (b.exotic?.render3d.anchor === 'surface-stand') {
-            // THE RIBBON IS DRAWN IN ITS HOST'S OWN CURRENCY, LIVE. Its geometry is unit host
-            // radius, so the scale IS the host's drawn radius: the dial-correct `radiusScene`
-            // times the screen floor's `screenK` - the same pair `updateRings` uses so Saturn
-            // keeps its rings at true scale, and the same pair the label clearance reads.
-            // THE FAULT THIS REPLACES: the old branch set scale 1 and was then overwritten by the
-            // trailing `setScalar(drawnLen)` below, so the beanstalk was scaled by its OWN length
-            // - the currency squared - and a 5.6-Earth-radii ribbon drew as a tick a fraction of
-            // the globe (owner, three sightings). Dead code hid it: the comment said 1 and the
-            // next statement said otherwise.
-            const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
-            const hostDrawnR = hostV ? (hostV.radiusScene ?? 0) * (hostV.screenK ?? 1) : 0;
-            // NO PIXEL FLOOR HERE, deliberately: a beanstalk that will not shrink with its world
-            // detaches from it. When the planet is a dot the ribbon is a dot, and the glyph and
-            // label carry the marker duty - which is exactly what they are for.
-            if (hostDrawnR > 1e-12) drawnLen = hostDrawnR;
+            // Laid out in SCENE units, part by part, by `updateSurfaceConstructs` through the
+            // satellite law (RENDER-S50); the group itself stays at unit scale and `shipLen` is
+            // written there. The trailing setScalar below therefore receives 1, not a length -
+            // the fault this replaced scaled the ribbon by its own length (RENDER-S48).
+            drawnLen = 1;
           } else if (b.exotic?.render3d.anchor === 'host-centred') {
             // THE RING ENCLOSES ITS STAR (G53). Its drawn radius is the distance between its own
             // projected position and its host's - which IS the drawn radius of its orbit, already
@@ -4616,6 +4603,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const b of bodies) {
       const p = positions.get(b.id);
       if (!p) continue;
+      b.helioAu = Math.hypot(p.x, p.y, p.z);   // the satellite law's compression input (RENDER-S50)
       // Satellites AND barycentre members are placed relative to their (compressed) parent point —
       // members are system-level (not satellites) but still need partner clearance around the bary.
       const coRad = baryCoR.get(b.id) ?? 0;
@@ -4660,6 +4648,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // distinct per construct so two stations on one moon (LV-426 has exactly that) do not stack.
             const sceneDir = off > 1e-12 ? tmp.set(ox, oz, oy).normalize() : surfacePointFromId(b.id, tmp);
             const dir0 = sceneDir.clone().applyQuaternion(pv!.mesh.quaternion.clone().invert());
+            // A GEOSTATIONARY TETHER STANDS ON THE EQUATOR - the shape says so (megaTypes
+            // anchorLatitudeDeg). Keep the longitude, drop the latitude, in the host's LOCAL frame,
+            // where the spin axis is +Y (mesh.quaternion = tilt x spin). Without this an id-hashed
+            // landing site could be anywhere, and the owner found one circling the pole.
+            if (b.tetherParts && b.tetherParts.anchorLatitudeDeg === 0) {
+              const e = equatorialAnchor(dir0);
+              dir0.set(e.x, e.y, e.z);
+            }
             b.surfaceLock = { dir0 };
           }
           continue; // updateSurfaceConstructs positions it each frame from the parent's live spin
@@ -4668,24 +4664,26 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (off > 1e-12) {
           const parentR = Math.hypot(parent.x, parent.y, parent.z);
           const parentRad = pv?.radiusScene ?? 0;
-          const spreadDist = moonSpread(off, compressScalar(parentR), parentRad); // just outside the parent, ramped by true distance
-          const trueDist = off * (compressScalar(Math.hypot(p.x, p.y, p.z)) / Math.max(1e-12, Math.hypot(p.x, p.y, p.z))); // offset under the radial map
-          // Globe-relative clearance: a satellite must always clear the parent's RENDERED surface, so at
-          // readable body sizes (big globe) moons/constructs are pushed just outside it, staggered by true
-          // orbital order — while at true scale (tiny globe) the floor is tiny and real positions stand.
+          const pR = Math.hypot(p.x, p.y, p.z);
+          const kHelio = compressScalar(pR) / Math.max(1e-12, pR);   // offset under the radial map
+          const localScale = compressScalar(parentR);
           const moonRad = b.radiusScene ?? 0;
-          // Barycentre member: clear the PARTNER's globe (the bary point itself has no surface). Both
-          // members push outward along mutually opposite offsets, so 0.62×(sum of radii) each side
-          // keeps the pair separated by ≥1.24× the sum — Charon stays outside Pluto in readable mode.
-          // (Their heliocentric orbit line can sit a body-width off in that regime — same trade the
-          // moon clearance makes; at true scale the radii are tiny and physics stands.)
-          const clearance = coRad > 0
-            ? (moonRad + coRad) * 0.62
-            : parentRad * 1.12 + moonRad + parentRad * 0.4 * Math.log10(1 + off / 0.0006);
-          const blend = coRad > 0 && !b.satellite
-            ? trueDist // major bodies never take the moon fan-out — just physics + the clearance floor
-            : trueDist * (1 - compression) + spreadDist * compression;
-          const dist = Math.max(clearance, blend);
+          let dist: number;
+          if (coRad > 0) {
+            // Barycentre member: clear the PARTNER's globe (the bary point itself has no surface). Both
+            // members push outward along mutually opposite offsets, so 0.62x(sum of radii) each side
+            // keeps the pair separated by >=1.24x the sum - Charon stays outside Pluto in readable mode.
+            // (Their heliocentric orbit line can sit a body-width off in that regime - same trade the
+            // moon clearance makes; at true scale the radii are tiny and physics stands.) Major bodies
+            // never take the moon fan-out - just physics + the clearance floor.
+            const trueDist = off * kHelio;
+            const blend = !b.satellite ? trueDist : trueDist * (1 - compression) + moonSpread(off, localScale, parentRad) * compression;
+            dist = Math.max((moonRad + coRad) * 0.62, blend);
+          } else {
+            // THE SATELLITE LAW (rendering/scaleLaw.ts) - the one function a moon, its orbit ring and a
+            // structure hung on the planet all ask, so they agree by construction (RENDER-S50).
+            dist = satelliteDrawDistance(off, kHelio, localScale, parentRad, moonRad, compression);
+          }
           const k = dist / off;
           // axis-map the raw offset (x, z->y, y->z) and add to the compressed parent position
           b.mesh.position.set(tmpParent.x + ox * k, tmpParent.y + oz * k, tmpParent.z + oy * k);
@@ -4986,9 +4984,35 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // surface to geostationary, so it is placed at the host's CENTRE and turned so +Y points at
       // the anchor - which means it rises from the right spot and sweeps round with the planet's
       // own spin, for free, because `dir0` is re-applied against the live quaternion above.
-      if (b.exotic?.render3d.anchor === 'surface-stand' && b.shipModel) {
+      const tp = b.tetherParts;
+      if (tp && b.shipModel) {
         b.shipModel.position.copy(pv.mesh.position);
         b.shipModel.quaternion.setFromUnitVectors(_tetherUp, _surfDir);
+        // THE LAYOUT, EVERY FRAME, FROM THE SATELLITE LAW (RENDER-S50). The base is where the host's
+        // surface is DRAWN (its rendered radius times the true-scale floor's screenK); the dock and
+        // the counterweight are where a satellite at those radii would be drawn - the same call, the
+        // same inputs, as the moon and the station beside them. So at readable body sizes the ribbon
+        // hugs its chunky globe and stops short of the Moon's fan-out, and at true scale it stands
+        // 6.6 Earth radii out, because that is what the law returns at each end of the dial.
+        const helio = pv.helioAu ?? 0;
+        const localScale = helio > 0 ? compressScalar(helio) : 0;
+        const kHelio = helio > 0 ? localScale / helio : 0;
+        const parentRad = pv.radiusScene ?? 0;
+        const surfaceR = parentRad * (pv.screenK ?? 1);
+        const dockR = satelliteDrawDistance(tp.dockAu, kHelio, localScale, parentRad, 0, compression);
+        const topR = satelliteDrawDistance(tp.topAu, kHelio, localScale, parentRad, 0, compression);
+        const pxScene = sceneUnitsPerPixel(camera.fov, viewH) * camera.position.distanceTo(pv.mesh.position);
+        const L = tetherLayout({ surfaceR, dockR, topR, pxScene });
+        tp.ribbon.visible = L.visible;
+        tp.ribbon.scale.set(L.ribbon.w, Math.max(1e-9, L.ribbon.len), L.ribbon.w);
+        tp.ribbon.position.set(0, L.ribbon.y, 0);
+        tp.dock.visible = L.dock.visible;
+        tp.dock.scale.setScalar(L.dock.r);
+        tp.dock.position.set(0, L.dock.y, 0);
+        tp.counterweight.visible = L.visible;
+        tp.counterweight.scale.setScalar(L.counterweight.r);
+        tp.counterweight.position.set(0, L.counterweight.y, 0);
+        b.shipLen = L.visible ? topR : 0;   // framing and LOD read scene units
       }
     }
   }
@@ -5433,12 +5457,6 @@ function rebaseStaticGeometry(obj: THREE.Object3D, abs: Float64Array, origin: TH
 // to its planet and never grows into a neighbouring planet's orbit — even for tightly log-packed inner
 // planets (the old fixed 0.45 base made Luna's ring nearly reach Venus). The log term still ranks the
 // moons by true distance so a moon system reads correctly (Io in … Callisto out).
-function moonSpread(off: number, localScale: number, parentRadius: number): number {
-  // Sit just OUTSIDE the rendered planet, then ramp out by true distance. Scaling the base to the
-  // parent's rendered radius means a surface / low-orbit object hugs a tiny true-scale planet but still
-  // clears a chunky readable one — instead of a fixed base that flung close constructs out into "space".
-  return parentRadius * 1.15 + localScale * 0.05 * Math.log10(1 + off / 0.0006);
-}
 
 // A moon's orbit path, in its PARENT's local scene frame. Each sample is placed with the SAME magnified
 // spread transform the moon's own position uses (see the satellite branch in setTime), so the ring sits
@@ -5507,13 +5525,11 @@ function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor:
 // `orbitTiltRad` is the caller's `satelliteTiltRad(node, parent)` — the gate is made there, once, and
 // NOT repeated here. It used to be made in both places in two different spellings.
 function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, orbitTiltRad = 0): { loop: THREE.LineLoop; local: Float64Array; sample: (u: number, out: THREE.Vector3) => void } | null {
-  return buildLocalOrbitRing(node, color, orbitTiltRad, (off) => {
-    const spreadDist = moonSpread(off, localScale, parentRadius);
-    const trueDist = off * kHelio;
-    // Same globe-relative clearance as the moon body (updatePositions), so the ring sits under the moon.
-    const clearance = parentRadius * 1.12 + moonRadius + parentRadius * 0.4 * Math.log10(1 + off / 0.0006);
-    return Math.max(clearance, trueDist * (1 - compression) + spreadDist * compression);
-  });
+  // The SAME law as the moon body (updatePositions), so the ring sits under the moon - and the
+  // same law as a tether's dock, so a ring drawn for a geostationary station passes through it.
+  return buildLocalOrbitRing(node, color, orbitTiltRad, (off) =>
+    satelliteDrawDistance(off, kHelio, localScale, parentRadius, moonRadius, compression)
+  );
 }
 
 /**

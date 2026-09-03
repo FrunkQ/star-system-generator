@@ -1,7 +1,8 @@
 <script lang="ts">
   import { niceStepBelow, formatNice } from '$lib/map/niceInterval';
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
-  import { megaTypeDef } from '$lib/constructs/megaTypes';
+  import { tetherAltitudesKm } from '$lib/constructs/megaGeometry';
+  import { megaTypeDef, instanceMegaParams } from '$lib/constructs/megaTypes';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime, isFlybyPlan } from '$lib/transit/scheduler';
@@ -791,12 +792,80 @@
   // at (x, y) with the given pixel size. Single source of truth for both the
   // world-space pass (sizePx = 8 / zoom) and the screen-space overlay (sizePx = 8),
   // which had drifted apart. Screen-space sizing (8px) is the canonical default.
-  // G53: does this node's own orbit line ARE the structure? True for the sphere-section family -
-  // ring, torus, shell, swarm - all of which are centred on the host at their orbital radius. The
-  // registry answers it (never a list of names here), and a tether or spheroid says no.
+  // G53/G58: what does the plan view draw for an exotic besides its glyph? THE RECORD SAYS
+  // (DATA-R33): `render2d.structure` - 'orbit-line' when the node's own orbit line IS the
+  // structure (ring, torus, shell, swarm: centred on the host at their orbital radius), 'radial'
+  // for a tether (a line from the host's drawn edge out to geostationary and the counterweight),
+  // 'glyph' for a marker alone. Never a family test or a list of names here.
   function isMegaRing(node: any): boolean {
-    const def = megaTypeDef(node?.megaType);
-    return !!def && def.family === 'sphere-section';
+    return megaTypeDef(node?.megaType)?.capabilities.render2d.structure === 'orbit-line';
+  }
+  function isMegaRadial(node: any): boolean {
+    return megaTypeDef(node?.megaType)?.capabilities.render2d.structure === 'radial';
+  }
+
+  // A body's DRAWN disc radius in world units - the toytown-scaled true radius with the same
+  // per-role pixel floor the body pass draws with. One function, so the tether's base, the body
+  // loop and anything else that must meet the disc edge agree by construction.
+  function drawnDiscRadiusWorld(node: any, zoomNow: number): number {
+    let radiusInAU = (node.radiusKm || 0) / AU_KM;
+    if (toytownFactor > 0) radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
+    let minRadiusPx = 2;
+    if (node.roleHint === 'star') minRadiusPx = 4;
+    else if (node.roleHint === 'planet') { const isGasGiant = (node.classes ?? []).some((c: string) => c.includes('gas-giant') || c.includes('ice-giant')); minRadiusPx = isGasGiant ? 3 : 2; }
+    else if (node.roleHint === 'moon') minRadiusPx = 1;
+    const minRadiusInWorld = minRadiusPx / zoomNow;
+    return Math.sqrt(radiusInAU * radiusInAU + minRadiusInWorld * minRadiusInWorld);
+  }
+
+  // THE BEANSTALK ON THE PLAN VIEW (owner, 2026-09-02: "on the GM view we are still not seeing the
+  // elevator being drawn - just a surface icon"). A line from the host's DRAWN disc edge, along the
+  // direction the anchor glyph already sits on, out to the counterweight, with the geostationary
+  // dock as a knob - every distance through the SAME toytown transform (`scaleBoxCox`) that places
+  // the moons and sizes the discs, so geo lands between the disc and the Moon by monotonicity: the
+  // 2D twin of the 3D satellite law (RENDER-S50). Inside the drawn disc, nothing is drawn and the
+  // glyph carries it, honestly.
+  function drawTetherRadial(ctx: CanvasRenderingContext2D, node: any, pos: { x: number; y: number }, pan: { x: number; y: number }, zoomNow: number): void {
+      if (!system) return;
+      const host = system.nodes.find(n => n.id === node.parentId) as any;
+      if (!host || host.kind !== 'body') return;
+      const hostPos = scaledWorldPositions.get(host.id);
+      if (!hostPos) return;
+      const def = megaTypeDef(node.megaType);
+      if (!def) return;
+      const spec = def.shape(instanceMegaParams(node, def, host), host);
+      if (spec.family !== 'tether') return;
+      const dims = (node.physical_parameters?.dimensionsM ?? []) as number[];
+      const authoredKm = Math.max(0, ...dims.map((d: number) => Math.abs(Number(d)) || 0)) / 1000;
+      const alt = tetherAltitudesKm(spec, authoredKm > 0 ? authoredKm : undefined);
+      const hostKm = host.radiusKm || 0;
+      if (!alt || !(hostKm > 0)) return;
+      const drawnDist = (altKm: number) => {
+          const au = (hostKm + altKm) / AU_KM;
+          return toytownFactor > 0 ? scaleBoxCox(au, toytownFactor, x0_distance) : au;
+      };
+      const baseD = drawnDiscRadiusWorld(host, zoomNow);
+      const dockD = drawnDist(alt.dockKm);
+      const topD = drawnDist(alt.topKm);
+      if (!(topD > baseD)) return;
+      let dx = pos.x - hostPos.x, dy = pos.y - hostPos.y;
+      const n = Math.hypot(dx, dy);
+      if (n > 1e-12) { dx /= n; dy /= n; } else { dx = 1; dy = 0; }
+      const hx = hostPos.x - pan.x, hy = hostPos.y - pan.y;
+      ctx.save();
+      ctx.strokeStyle = node.icon_color || '#9fe8a0';
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 2 / zoomNow;
+      ctx.beginPath();
+      ctx.moveTo(hx + dx * baseD, hy + dy * baseD);
+      ctx.lineTo(hx + dx * topD, hy + dy * topD);
+      ctx.stroke();
+      if (dockD > baseD) {
+          ctx.beginPath(); ctx.arc(hx + dx * dockD, hy + dy * dockD, 3 / zoomNow, 0, 2 * Math.PI); ctx.fill();
+      }
+      ctx.beginPath(); ctx.arc(hx + dx * topD, hy + dy * topD, 2 / zoomNow, 0, 2 * Math.PI); ctx.fill();
+      ctx.restore();
   }
 
   function drawConstructGlyph(ctx: CanvasRenderingContext2D, node: CelestialBody, x: number, y: number, sizePx: number): void {
@@ -1262,6 +1331,7 @@
               ctx.moveTo(rx, ry - 10 / zoom); ctx.lineTo(rx, ry + 10 / zoom);
               ctx.stroke();
           } else if (node.kind === 'construct') {
+              if (isMegaRadial(node)) drawTetherRadial(ctx, node as any, pos, renderPan, zoom);
               drawConstructGlyph(ctx, node as CelestialBody, rx, ry, 8 / zoom);
           }
       }
@@ -1277,14 +1347,7 @@
           if (!pos || node.kind !== 'body') continue;
           if (node.roleHint === 'ring' || node.roleHint === 'belt') continue;
           const rx = pos.x - renderPan.x; const ry = pos.y - renderPan.y;
-          let radiusInAU = (node.radiusKm || 0) / AU_KM;
-          if (toytownFactor > 0) radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
-          let minRadiusPx = 2;
-          if (node.roleHint === 'star') minRadiusPx = 4;
-          else if (node.roleHint === 'planet') { const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant')); minRadiusPx = isGasGiant ? 3 : 2; }
-          else if (node.roleHint === 'moon') minRadiusPx = 1;
-          const minRadiusInWorld = minRadiusPx / zoom;
-          const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
+          const finalRadius = drawnDiscRadiusWorld(node, zoom);   // the one disc law
 
           // This body's geometry in SCREEN pixels — shared by the overlay promotion and the cull below.
           const sR = finalRadius * zoom;

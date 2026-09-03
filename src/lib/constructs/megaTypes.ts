@@ -165,6 +165,10 @@ export type MegaShapeSpec =
        *  owner's correction, 2026-09-01). Default is a 1.25x design margin over geo; an instance
        *  with authored ribbon dimensions overrides this in the builder. */
       counterweightAltitudeKm: number | null;
+      /** Where the anchor may stand, degrees of latitude - 0 for a geostationary tether, because
+       *  geostationary is only stationary over the equator: physics of the shape, so the SHAPE
+       *  says it and the renderer obeys (scene.ts applies `equatorialAnchor` to the landing site). */
+      anchorLatitudeDeg: number;
     }
   | { family: 'spheroid'; dimensionsM: readonly [number, number, number] };
 
@@ -295,7 +299,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       // map, and a click frames the WORLD it rises from (the only view that shows it).
       apparentG: 'none',
       render3d: { generator: 'tether', anchor: 'surface-stand' },
-      render2d: { structure: 'glyph' },
+      render2d: { structure: 'radial' },   // the beanstalk drawn on the plan view, host edge to geo
       framing: 'surface-host'
     },
     allowedPlacements: ['Surface'],
@@ -327,7 +331,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     },
     shape(_params, host) {
       const geo = realGeoAltitudeKm(host);
-      return { family: 'tether', topAltitudeKm: geo, counterweightAltitudeKm: geo != null ? geo * 1.25 : null };
+      return { family: 'tether', topAltitudeKm: geo, counterweightAltitudeKm: geo != null ? geo * 1.25 : null, anchorLatitudeDeg: 0 };
     }
   },
   {

@@ -33,23 +33,16 @@ export interface BuiltMegaGeometry {
   /** True when the habitable face points INWARD (a ring or shell interior), so the caller knows to
    *  render `THREE.BackSide` and light from the centre outward (§5b.4b). */
   interior: boolean;
-  /** TETHER ONLY: the GEOSTATIONARY DOCK — where the LO/MO/GO ladder tops out and the mast
-   *  glyph's knob rides. Scene units from the host's centre; drawn size is the same readability
-   *  device as the counterweight's. */
-  dock?: { atScene: number; radiusScene: number };
   /**
-   * TETHER ONLY: where the captured-asteroid counterweight rides, and how big to draw it — both in
-   * scene units from the host's centre, along the ribbon.
-   *
-   * `atScene` is PHYSICS (the real geostationary altitude in the host's own drawn currency).
-   * `radiusScene` is READABILITY and says so: a counterweight is a captured rock a few km across on
-   * a world thousands of km across, so at true scale it is invisible at every zoom that shows the
-   * ribbon. It is drawn as a fraction of the HOST's drawn radius — the same honest device as the
-   * screen-space pixel floors (RENDER-S43), and for the same reason: the alternative is a feature
-   * nobody can see. The elevator's real counterweight MASS is a separate authored/referenced thing
-   * (§5b.7's `counterweightId`) and is not what this number is.
+   * TETHER ONLY. The builder returns a UNIT ribbon (a 1x1x1 box) and the KILOMETRE altitudes of
+   * the dock (geostationary) and the counterweight; the scene lays the parts out EVERY FRAME from
+   * scene distances the satellite law supplies (`tetherLayout`, scaleLaw `satelliteDrawDistance`).
+   * Nothing here is in scene units, on purpose: a build-time length was wrong by the next frame
+   * (RENDER-S48) and, scaled by the globe instead of the satellite law, overtook the Moon at
+   * readable body sizes (RENDER-S50). `anchorLatitudeDeg` is the shape's own physics: a
+   * geostationary tether stands on the equator or it does not stand.
    */
-  counterweight?: { atScene: number; radiusScene: number };
+  tether?: { dockKm: number; topKm: number; anchorLatitudeDeg: number | null };
 }
 
 /** Face-path resolution. A band needs plenty of longitude and almost no latitude; a full shell wants
@@ -118,46 +111,24 @@ function fibonacciPoints(
 /**
  * Build the geometry for a finished shape spec.
  *
- * `radiusScene` is the drawn radius the caller wants (the scale law's answer). For a tether the
- * caller passes the HOST's drawn radius instead, and `spec.topAltitudeKm` is turned into a
- * proportion of it — a ribbon is only meaningful relative to the world it hangs from.
+ * `radiusScene` is the drawn radius the caller wants (the scale law's answer). A tether ignores
+ * it: it comes back as UNIT parts plus km altitudes, and the scene sizes it every frame (see
+ * `tetherLayout`) - a ribbon is only meaningful relative to the world it hangs from, LIVE.
  */
 export function buildMegaGeometry(
   spec: MegaShapeSpec,
   radiusScene: number,
-  opts: { hostRadiusScene?: number; hostRadiusKm?: number; ribbonLengthKm?: number } = {}
+  opts: { ribbonLengthKm?: number } = {}
 ): BuiltMegaGeometry | null {
   if (spec.family === 'tether') {
-    // A LINE, not a mesh problem (§5b's whole point). Two points: the anchor on the host's surface
-    // and the counterweight above geostationary. Drawn along +Y in local space; the caller orients
-    // it to the anchor latitude and spins it with the world.
-    if (spec.topAltitudeKm == null) return null;   // no real geostationary — nothing to draw, honestly
-    const hostR = opts.hostRadiusScene ?? radiusScene;
-    const hostKm = opts.hostRadiusKm ?? 0;
-    // Scene units per km, from the host's own drawn size — so the ribbon's length is in the same
-    // currency as the world it stands on rather than a second scale.
-    const perKm = hostKm > 0 ? hostR / hostKm : 0;
-    // GEO IS THE DOCK, NOT THE TOP (the owner's correction, 2026-09-01): a counterweight AT geo
-    // would hold no tension. The ribbon runs to the counterweight - the instance's authored
-    // length when it has one and it reaches past geo, else the spec's 1.25x design margin - and
-    // the dock knob rides at geo, which is what the mast glyph promises.
-    const geoAlt = spec.topAltitudeKm;
-    const authored = opts.ribbonLengthKm;
-    const cwAlt = authored && authored > geoAlt
-      ? authored
-      : (spec.counterweightAltitudeKm ?? geoAlt * 1.25);
-    const dockScene = hostR + geoAlt * perKm;
-    const topScene = hostR + Math.max(cwAlt, geoAlt) * perKm;
-    // A slim BOX rather than a line primitive: WebGL lines are one pixel whatever you ask for,
-    // and one pixel over a bright limb is no ribbon at all (see TETHER_WIDTH_HOST_FRAC).
-    const w = Math.max(1e-9, hostR * TETHER_WIDTH_HOST_FRAC);
-    const len = Math.max(1e-9, topScene - hostR);
-    const geometry = new THREE.BoxGeometry(w, len, w);
-    geometry.translate(0, hostR + len / 2, 0);
+    // A UNIT RIBBON, not a sized one (§5b's whole point was that a tether is a line problem;
+    // the SIZE problem turned out to be the scene's, every frame - see `tetherLayout`). The
+    // altitudes ride along in km so the scene can ask the satellite law where they are drawn.
+    const alt = tetherAltitudesKm(spec, opts.ribbonLengthKm);
+    if (!alt) return null;   // no real geostationary - nothing to draw, honestly
     return {
-      geometry, mode: 'ribbon', radiusScene: topScene, interior: false,
-      dock: { atScene: dockScene, radiusScene: Math.max(1e-9, hostR * COUNTERWEIGHT_HOST_FRAC * 0.55) },
-      counterweight: { atScene: topScene, radiusScene: Math.max(1e-9, hostR * COUNTERWEIGHT_HOST_FRAC) }
+      geometry: new THREE.BoxGeometry(1, 1, 1), mode: 'ribbon', radiusScene: 0, interior: false,
+      tether: { dockKm: alt.dockKm, topKm: alt.topKm, anchorLatitudeDeg: spec.anchorLatitudeDeg ?? null }
     };
   }
 
@@ -203,4 +174,74 @@ export function buildMegaGeometry(
     thetaLengthRad
   );
   return { geometry, mode: 'faces', radiusScene, interior };
+}
+
+/**
+ * The two altitudes a tether is drawn to, km above the host's surface. GEO IS THE DOCK, NOT THE
+ * TOP (the owner's correction, 2026-09-01): a counterweight AT geo would hold no tension, so the
+ * ribbon runs on to the counterweight - the instance's authored length when it has one and it
+ * reaches past geo, else the spec's 1.25x design margin. `null` when the host has no real
+ * geostationary: there is no tether, and the spec says so rather than inventing a length.
+ */
+export function tetherAltitudesKm(
+  spec: { topAltitudeKm: number | null; counterweightAltitudeKm?: number | null },
+  ribbonLengthKm?: number
+): { dockKm: number; topKm: number } | null {
+  const geo = spec.topAltitudeKm;
+  if (geo == null || !(geo > 0)) return null;
+  const cw = ribbonLengthKm && ribbonLengthKm > geo ? ribbonLengthKm : (spec.counterweightAltitudeKm ?? geo * 1.25);
+  return { dockKm: geo, topKm: Math.max(cw, geo) };
+}
+
+/** Screen-pixel floors for the tether's parts - the same instrument as the body floor (RENDER-S43):
+ *  a fraction of a floored globe is a fraction of a pixel, and a fraction of a pixel does not
+ *  rasterise, which is how "true size" made the elevator vanish (owner, 2026-09-02). */
+export const TETHER_MIN_WIDTH_PX = 1.5;
+export const TETHER_DOCK_MIN_PX = 2;
+export const TETHER_COUNTERWEIGHT_MIN_PX = 2.5;
+
+export interface TetherLayout {
+  /** False when the whole structure sits inside the DRAWN globe (a floored true-scale planet seen
+   *  from far away): drawing it would put a ribbon inside a marker. The glyph carries it then. */
+  visible: boolean;
+  /** The ribbon: centred at `y` along the anchor direction, `len` long, `w` wide. */
+  ribbon: { y: number; len: number; w: number };
+  /** The geostationary dock ball - drawn only when it clears the drawn surface. */
+  dock: { y: number; r: number; visible: boolean };
+  /** The captured-asteroid counterweight at the top. */
+  counterweight: { y: number; r: number };
+}
+
+/**
+ * THE PER-FRAME NUMBERS, pure. `surfaceR` is where the host's surface is DRAWN this frame
+ * (its rendered radius times the true-scale floor's screenK); `dockR` / `topR` are the satellite
+ * law's answers for the dock and counterweight radii; `pxScene` is one screen pixel in scene
+ * units at the host's distance. Sizes are host fractions floored in pixels.
+ */
+export function tetherLayout(o: { surfaceR: number; dockR: number; topR: number; pxScene: number }): TetherLayout {
+  const { surfaceR, dockR, topR, pxScene } = o;
+  const visible = surfaceR > 0 && topR > surfaceR * 1.001;
+  const len = Math.max(0, topR - surfaceR);
+  return {
+    visible,
+    ribbon: { y: surfaceR + len / 2, len, w: Math.max(surfaceR * TETHER_WIDTH_HOST_FRAC, pxScene * TETHER_MIN_WIDTH_PX) },
+    dock: {
+      y: dockR,
+      r: Math.max(surfaceR * COUNTERWEIGHT_HOST_FRAC * 0.55, pxScene * TETHER_DOCK_MIN_PX),
+      visible: visible && dockR > surfaceR
+    },
+    counterweight: { y: topR, r: Math.max(surfaceR * COUNTERWEIGHT_HOST_FRAC, pxScene * TETHER_COUNTERWEIGHT_MIN_PX) }
+  };
+}
+
+/**
+ * A unit direction in the host's LOCAL frame (spin axis = +Y), dropped onto the equator: the
+ * longitude is kept, the latitude goes. A polar input (nothing to keep) lands on +X, so a
+ * surface point hashed from an id (scene.ts surfacePointFromId) can never put a beanstalk on a
+ * pole - which is where the owner found one "precessing" (2026-09-02).
+ */
+export function equatorialAnchor(d: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  const n = Math.hypot(d.x, d.z);
+  if (!(n > 1e-9)) return { x: 1, y: 0, z: 0 };
+  return { x: d.x / n, y: 0, z: d.z / n };
 }

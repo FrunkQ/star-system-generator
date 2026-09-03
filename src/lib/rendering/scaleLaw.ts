@@ -334,3 +334,47 @@ export function wireDotSize(radiusScene: number, bodySize: number): number {
 	const wanted = Math.max(r * WIRE_DOT_FRAC, 0.02 * markerScale(bodySize));
 	return Math.min(wanted, r * WIRE_DOT_MAX_FRAC);
 }
+
+// ---------------------------------------------------------------------------------------------
+// THE SATELLITE LAW - where a thing that belongs to a planet is DRAWN, relative to that planet.
+//
+// One function, three callers, deliberately: a moon's own position (scene.ts updatePositions), the
+// moon's orbit ring (buildMoonOrbitRing, which must sit under the moon) and any STRUCTURE hung on
+// the planet at a stated radius - the space elevator's geostationary dock (RENDER-S50). It used to
+// live twice in scene.ts, spelled the same by luck; the elevator's ribbon, which ignored it and
+// scaled by the globe instead, was the third spelling and it overtook the Moon.
+//
+// The shape of it: physics (`offAu * kHelio`, the offset under the radial map) blended by the
+// compression dial with a readable fan-out (`moonSpread`), and FLOORED by a globe clearance so a
+// satellite always clears the RENDERED planet - chunky readable globes push their moons out,
+// staggered by true orbital order; a true-scale globe is tiny and physics stands. Monotonic in
+// `offAu` at every dial position, which is the property the elevator needs: geostationary is
+// drawn INSIDE the Moon's orbit whatever the dials say, and a dock at GEO lands exactly where a
+// station at GEO lands, because they ask the same function the same question.
+// ---------------------------------------------------------------------------------------------
+
+/** Sit just OUTSIDE the rendered planet, then ramp out by true distance. Scaling the base to the
+ *  parent's rendered radius means a surface / low-orbit object hugs a tiny true-scale planet but
+ *  still clears a chunky readable one - instead of a fixed base that flung close constructs out
+ *  into "space". `localScale` = the parent's orbit radius in scene units (compressScalar(r)). */
+export function moonSpread(off: number, localScale: number, parentRadius: number): number {
+  return parentRadius * 1.15 + localScale * 0.05 * Math.log10(1 + off / 0.0006);
+}
+
+/**
+ * Drawn distance from the parent's centre, scene units, for something at `offAu` from it.
+ * `kHelio` = the parent's radial compression factor (compressScalar(r)/r); `localScale` =
+ * compressScalar(r); `parentRadiusScene` the parent's rendered radius (dial-correct, unfloored -
+ * the same value its satellites are placed against); `moonRadiusScene` the satellite's own
+ * rendered radius (0 for a construct or a structure); `compression` the orbit-compression dial.
+ */
+export function satelliteDrawDistance(
+  offAu: number, kHelio: number, localScale: number,
+  parentRadiusScene: number, moonRadiusScene: number, compression: number
+): number {
+  const spreadDist = moonSpread(offAu, localScale, parentRadiusScene);
+  const trueDist = offAu * kHelio;
+  // Globe-relative clearance: always clear the parent's RENDERED surface (see the header).
+  const clearance = parentRadiusScene * 1.12 + moonRadiusScene + parentRadiusScene * 0.4 * Math.log10(1 + offAu / 0.0006);
+  return Math.max(clearance, trueDist * (1 - compression) + spreadDist * compression);
+}

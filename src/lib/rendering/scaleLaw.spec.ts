@@ -246,3 +246,51 @@ describe('wireDotSize - a vertex dot belongs to its body (C15)', () => {
 		expect(wireDotSize(-1, 1)).toBe(0);
 	});
 });
+
+import { satelliteDrawDistance } from './scaleLaw';
+
+describe('satelliteDrawDistance - THE spread law, one function for a moon, its ring, and a structure hung on its host', () => {
+	// Earth at 1 AU on a linear grid: 12 scene units per AU, so kHelio = localScale = 12.
+	const K = 12, L = 12;
+	const GEO_AU = 42164 / 149597870.7;      // geostationary RADIUS (from the centre), Earth
+	const MOON_AU = 384400 / 149597870.7;
+	const EARTH_TRUE_RAD = (6371 / 149597870.7) * K;   // Earth's true drawn radius on that grid
+
+	it('TRUE SCALE, ABSOLUTE ANCHOR: the geostationary dock stands 6.62 host radii out - physics, untouched', () => {
+		const d = satelliteDrawDistance(GEO_AU, K, L, EARTH_TRUE_RAD, 0, 0);
+		expect(d).toBeCloseTo(GEO_AU * K, 12);                 // exactly the offset under the radial map
+		expect(d / EARTH_TRUE_RAD).toBeCloseTo(42164 / 6371, 6); // 6.618 Earth radii
+	});
+
+	it('READABLE SCALE, ABSOLUTE ANCHOR: the spread formula, to the digit (a refactor that moves it fails here)', () => {
+		// parentRad 0.28 (the readable span anchor), full compression, no moon radius.
+		const d = satelliteDrawDistance(GEO_AU, K, L, 0.28, 0, 1);
+		const spread = 0.28 * 1.15 + L * 0.05 * Math.log10(1 + GEO_AU / 0.0006);
+		expect(d).toBeCloseTo(spread, 12);
+		expect(d).toBeCloseTo(0.4223, 3);
+	});
+
+	it('NEVER OVERTAKES THE MOON: monotonic in distance at every dial position and body size', () => {
+		for (const c of [0, 0.5, 1]) for (const pr of [EARTH_TRUE_RAD, 0.05, 0.28]) {
+			let prev = -1;
+			for (let off = 1e-5; off < 0.05; off *= 1.3) {
+				const d = satelliteDrawDistance(off, K, L, pr, 0, c);
+				expect(d).toBeGreaterThanOrEqual(prev);
+				prev = d;
+			}
+			expect(satelliteDrawDistance(GEO_AU, K, L, pr, 0, c)).toBeLessThan(satelliteDrawDistance(MOON_AU, K, L, pr, 0, c));
+		}
+	});
+
+	it('THE COINCIDENCE CONTRACT: a dock and a station at the same radius get the same number', () => {
+		for (const c of [0, 1]) {
+			expect(satelliteDrawDistance(GEO_AU, K, L, 0.28, 0, c)).toBe(satelliteDrawDistance(GEO_AU, K, L, 0.28, 0, c));
+		}
+	});
+
+	it('clears the parent globe: the floor is the readable clearance, never inside the rendered planet', () => {
+		// A surface-hugging offset on a chunky readable planet: physics would put it INSIDE the globe.
+		const d = satelliteDrawDistance(1e-5, K, L, 0.28, 0.01, 0);
+		expect(d).toBeGreaterThanOrEqual(0.28 * 1.12 + 0.01);
+	});
+});

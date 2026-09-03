@@ -73,7 +73,10 @@ export interface ExoticRender3d {
  *  the glyph kept on top as the click target (v3.0.211, `isMegaRing`'s rule); 'glyph' = marker
  *  only. */
 export interface ExoticRender2d {
-	structure: 'orbit-line' | 'glyph';
+	/** 'orbit-line': the node's own orbit line IS the structure (sphere-sections, centred on the
+	 *  host at their radius). 'radial': a line from the host's drawn edge out to a declared altitude
+	 *  (a tether - dock at geo, counterweight above), the plan view's beanstalk. 'glyph': marker only. */
+	structure: 'orbit-line' | 'glyph' | 'radial';
 }
 
 /** Which SHOT a click takes (computeBase's three construct branches, named): 'annulus' = the belt
