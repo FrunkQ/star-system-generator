@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.295 - 3rd Sep 2026
+
+- Board and design only: the space elevator's docking requirement is written down where the next session will find it - stations up the ribbon at low, medium and geostationary levels that turn with the world, rings and spheres that take a ship at the nearest point, and the rule that a docked ship must sit in the same place on the GM map, the 3D view and every player view.
+
 ## v3.0.294 - 4th Sep 2026
 
 - Sirius, and every star catalogued in metallic-line (Am) notation, now classifies properly: the reading follows the hydrogen lines, the odd catalogue string no longer appears as a class of its own, and the star's explainer says what an Am star is and what its two readings were.

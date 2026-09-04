@@ -1192,6 +1192,47 @@ structure through its own scale (`scaleBoxCox`) as a radial from the disc edge -
 'radial'`. When the ladder's dock nodes land (phase 5), the destination "GO - Elevator" is this
 point.
 
+### 7c. DOCKING - the owner's requirement, 2026-09-03 (queued as G53 phase 5's first item)
+
+His words, from the GM map with Anderson Station parked at GO under the ribbon: *"we need to see
+stations up the length - and it probably needs to rotate to enable 'docked ships' to orbit visibly
+with it at whatever station they are on - so needs a velocity match at its orbital level. Have a
+LO and MO and GO levels for constructs to target and dock to. On other dockable structures like
+rings and spheres we need a similar system - a 'place' where a construct can go. For those with
+no clear point (eg a ring) then it would just be 'the closest' point - we assume there are docking
+ports everywhere and once attached it rotates in time with it. This needs to work in the GM view -
+also 3D and 2D player visualisations - so everything matches and ships are where they are meant
+to be."*
+
+THE PHYSICS TO GET RIGHT FIRST. A thing docked to a tether co-rotates with the WORLD - the
+planet's spin rate at every level - not with an orbit at that radius. Below geostationary that is
+slower than circular orbit (attached, not orbiting: let go and you fall); at GEO it IS orbit
+(free fall - the reason a GEO station sits on the dock for nothing); above GEO it is faster than
+orbit (let go and you are flung - the elevator's launch trick). So "velocity match at its orbital
+level" is a match to the STRUCTURE's speed at that radius, and the delta-v to dock is the honest
+difference: LEO orbit to the LO dock is a near-landing (~7 km/s); GEO to GO is ~0; GO outward is
+free energy. A ring is the same rule with a different frame: its rim moves at omega x r from its
+rotation knob - a Niven ring's rim is ~1,190 km/s - so docking costs THAT match. Physics TAGS and
+EXPLAINS the cost (steer, never stop): alien tech pays it, a GM overrides it, nobody is refused.
+
+THE ENGINE SHAPE (recommendation). Today the only "attached" placement is the SURFACE lock, and
+it lives in the RENDERER (`holo/scene.ts` surfaceLock, spin applied per frame) - which is exactly
+why the GM's plan view and the holo can disagree about where an anchor is. "Everything matches"
+means promoting attachment to DATA the propagator owns: a construct carries
+`attachedTo: { id, frame }` where `frame` is a point in the STRUCTURE's rotating frame (elevator:
+a level radius on the anchor ray; ring: an angle around the rim; shell: a lat/lon), and ONE
+function in the propagator turns it into a world position every view reads - 2D, 3D, the player
+snapshot. The record declares HOW a structure can be docked - a `docking` capability on the
+exotic record, and the third value is what justifies the axis: `ladder` (elevator: anchor / LO /
+MO / GO / counterweight, radii from the shape and the host's orbital boundaries), `anywhere`
+(ring, torus, shell: nearest point at the moment of docking, co-rotating thereafter), `point`
+(a hull - what a station is today). The transit planner grows the destinations the owner asked
+for on 2026-09-01 ("LO - Elevator", "MO - Elevator", "GO - Elevator"; for a ring simply the
+ring), arrival becomes a DOCKED state beside Orbiting / Transit / Adrift, and the planner states
+the dock delta-v from the structure's speed at that point. Scope it as one phase-5 item; the
+surface lock migrates into the same propagator path so a landed ship and a docked ship are one
+mechanism with two frames.
+
 ## 10. Phasing
 
 Each phase is shippable on its own and none of them is wasted if the next is dropped.
