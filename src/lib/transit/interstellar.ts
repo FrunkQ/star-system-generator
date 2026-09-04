@@ -250,7 +250,7 @@ export function endJourneyAtDestination(starmap: Starmap, journeyId: string): St
   // and `getGlobalState` prefers a stored vector while `flight_state` is Transit or Deep Space. Both
   // still described the system it just left — a completed journey names bodies that are not here, and
   // a cached vector is a position in another star's frame — so the ship rendered at the old
-  // coordinates however correct its new orbit was. `ConstructSidePanel`'s SITUATION_FIELDS comment
+  // coordinates however correct its new orbit was. `constructs/constructFile.ts`'s SITUATION_FIELDS comment
   // records exactly this failure for the IMPORT path; interstellar arrival is the same move between
   // systems and was missed. The flight LOG is deliberately kept: it is the ship's history, not its
   // position. The autopilot goes because its route names places in the system it has left.

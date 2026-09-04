@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.299 - 4th Sep 2026
+
+- Exporting a construct and importing it back works again. The importer refused every exported file over a field the app never writes, so a ship could not be moved by export and import; it now says in words what is wrong when a file really is not a construct.
+
 ## v3.0.298 - 3rd Sep 2026
 
 - Ships can now DOCK to megastructures - and stay docked. Plan a trip to a space elevator and the destinations are its levels: the anchor, the low and medium levels, the geostationary dock and the counterweight. The ship flies to that height, hands itself to the ribbon on arrival and rides round with the world from then on. A ring or a shell takes a ship at the nearest point of its rim and carries it round at the rim's own speed; a hull docks as a station always has.

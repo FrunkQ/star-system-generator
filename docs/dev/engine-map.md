@@ -6252,3 +6252,7 @@ BLAST: any new "sits on / rides with" relationship (a ship on a ring floor, a ha
 tug clamped to an asteroid): declare `docking` on the record, express the point in the structure's
 frame, and let `attachedOffsetAu` place it. A renderer that computes such a position itself is the
 fault this entry names.
+
+### DATA-R40 A FILE CONTRACT IS ONE MODULE, PINNED OVER EVERY TEMPLATE THE PACK SHIPS
+WHERE: `src/lib/constructs/constructFile.ts` (`SITUATION_FIELDS`, `stripSituation`, `constructFileProblem`), bound by `src/lib/components/ConstructSidePanel.svelte`; pinned by `src/lib/constructs/constructFile.spec.ts`, which builds every starter-sf construct template the way `AddConstructModal` does, exports it, and asserts the importer accepts it back, and pins the panel to the module.
+RULE: what Export writes and what Import accepts are two halves of one contract, and they live in one module with one test over real data. The halves were two literals inside the panel from 2025-11, and drifted on 2026-06-17 (v2.0.159-beta) when the templates dropped their class-path string: the importer went on demanding a `class` field that no template carries (0 of 59) and no editor sets, so from that day every construct a GM built, exported and re-imported was refused as "Invalid construct file" (B117), and nothing said so because no test held both halves. A refusal names the missing thing; an optional field is never grounds for one.

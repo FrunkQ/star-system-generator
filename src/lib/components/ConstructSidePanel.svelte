@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, System } from '$lib/types';
   import ConstructBasicsTab from './ConstructBasicsTab.svelte';
+  import { SITUATION_FIELDS, stripSituation, constructFileProblem } from '$lib/constructs/constructFile';
   import ConstructGeneralTab from './ConstructGeneralTab.svelte';
   import ConstructMegaTab from './ConstructMegaTab.svelte';
   import { megaTypeDef } from '$lib/constructs/megaTypes';
@@ -44,17 +45,8 @@
     dispatch('update', construct);
   }
 
-  // Fields describing the construct's situation in THIS system (identity, orbit,
-  // flight dynamics) rather than its spec. These must survive spec replacement
-  // (template load / file import) and never travel in an exported file: imported
-  // journeys/vectors reference the source system and outrank orbit.elements at
-  // render time (worldPositions.ts), leaving the ship mispositioned and orbit
-  // edits ignored.
-  const SITUATION_FIELDS = [
-    'id', 'parentId', 'ui_parentId', 'orbit', 'placement', 'coOrbital',
-    'scheduled_journeys', 'flight_state', 'vector_position_au',
-    'vector_velocity_ms', 'vector_epoch_ms', 'autopilot', 'flight_log'
-  ];
+  // The construct FILE contract - the situation fields, the export body and what an import accepts -
+  // is ONE module, `constructs/constructFile.ts` (DATA-R40). B117 is what two copies of it cost.
   // APPEARANCE is neither situation nor spec, and it needs its own rule: a GM's uploaded picture
   // or 3D model belongs to THIS SHIP, not to the spec being loaded over it. Loading a template
   // used to wipe both (the template's blank fields won the spread), which is how a model gets
@@ -98,8 +90,7 @@
   }
 
   async function handleExport() {
-    const exportConstruct = JSON.parse(JSON.stringify(construct));
-    for (const f of SITUATION_FIELDS) delete exportConstruct[f];
+    const exportConstruct = stripSituation(construct);
 
     // Carry the 3D model's BINARY, not just its hash - otherwise the file opens on another
     // machine as a ref pointing at nothing and silently falls back to the icon glyph. Same
@@ -132,8 +123,11 @@
         const json = e.target?.result as string;
         const importedConstruct = JSON.parse(json);
 
-        if (importedConstruct.kind !== 'construct' || !importedConstruct.name || !importedConstruct.class) {
-          alert('Invalid construct file.');
+        // B117: the contract lives in constructs/constructFile.ts and says WHAT is wrong. The old inline
+        // check demanded a `class` field nothing in the app writes, so no exported construct could come back.
+        const problem = constructFileProblem(importedConstruct);
+        if (problem) {
+          alert(problem);
           return;
         }
 
