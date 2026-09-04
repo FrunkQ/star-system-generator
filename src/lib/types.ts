@@ -562,6 +562,43 @@ export interface StellarType {
   metallicType?: string;
 }
 
+/**
+ * R-16: a credit for CONTENT that came from somebody else's map, as opposed to art (which
+ * `ATTRIBUTIONS.md` already covers through the node and asset fields).
+ *
+ * The owner's framing: "on cut and paste are we pushing through attributions with it to store on
+ * the map they create? If not we need to engineer that in." The `origin/hub` tag on the pasted root
+ * is a BREADCRUMB - it says which body came from where - and a breadcrumb is not a credit. This is.
+ *
+ * `nodeIds` are the ids as minted on the way in, so a reader can still say which bodies the entry
+ * covers. They are a convenience and not a key: deleting every one of them does NOT retire the
+ * credit, because the campaign was still built with that person's work.
+ */
+/** One hop in a credit's lineage: where the content was before it reached the map it came from. */
+export interface ContentCreditLink {
+  url?: string;
+  title?: string;
+  creator?: string;
+}
+
+export interface ContentCredit {
+  title?: string;
+  /** The cartographer. Absent on a clip from a hub older than 0.11.0 - say so rather than guess. */
+  creator?: string;
+  url?: string;
+  site?: string;
+  /** ISO 8601. A timestamp a person reads in a hand-edited save, not a simulation instant. */
+  pastedAt: string;
+  nodeIds: string[];
+  /**
+   * WHERE IT WAS BEFORE, deepest first (hub 0.12.0). Content copied from a map that had itself
+   * copied it carries its whole lineage, so every cartographer in the chain stays named however
+   * many hands it passes through. Recorded exactly as received: this app does not shorten it,
+   * reorder it or de-duplicate it - it is somebody else's history and its shape is theirs.
+   */
+  chain?: ContentCreditLink[];
+}
+
 export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
   roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
@@ -1479,6 +1516,11 @@ export interface Starmap {
   // See $lib/player and docs/dev/unified-player-view-design.md. Optional: absent on old maps.
   playerPresets?: import('./player/presetTypes').PlayerPreset[];
   playerAssets?: import('./player/presetTypes').PlayerAsset[];
+
+  // R-16: WHOSE WORK CAME IN WITH A PASTE. One entry per paste of a hub clip, on the CAMPAIGN
+  // rather than on the nodes - because nodes get renamed, re-homed and deleted, and a credit that
+  // dies with the body it arrived on is not a credit. See `io/hubClip.ts` and `io/attributions.ts`.
+  contentCredits?: ContentCredit[];
 
   // R-07: WHICH of the campaign's graphics represents it - the picture a sharing site puts on the
   // map's page and into a link preview. The id of a `playerAssets` entry, chosen by the GM.

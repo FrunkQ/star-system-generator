@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.297 - 4th Sep 2026
+
+- Content copied from somebody else's map now arrives with a proper credit, not just a breadcrumb. Paste a star system from the Explorers site and your campaign records whose map it came from, who made it, and a link back - and that credit is printed in the attributions file that travels inside your save, under "Content from other cartographers". So when you share your own map onward, the people whose work is in it are still named. Credit follows the content through as many hands as it passes.
+- The credit lives with the campaign rather than the pasted object, because objects get renamed, moved and deleted, and a credit that dies with the body it arrived on is not a credit. Pasting six systems from one map owes one credit naming six objects, not six identical entries. If the copy came from a version of the site that did not record who made the map, the file says "cartographer not recorded" rather than quietly leaving it blank.
+- The attributions file is now written for a campaign that has pasted content but no uploaded art of its own. It used to be skipped entirely when there were no pictures or models, which would have thrown the credit away.
+
+- The credit remembers where the content was before. If what you pasted had itself been copied from somewhere else, the whole trail comes with it and reads as one line: "from Alpha by alice, via Beta by bob, via Gamma by carol". Everyone in that chain stays named however many hands it passes through. The link back now opens the source map on the exact object rather than just the map.
+
 ## v3.0.296 - 4th Sep 2026
 
 - Board: the size-comparison view (G66) captured and briefed - every object on a map at true scale, side by side, for a session to build.

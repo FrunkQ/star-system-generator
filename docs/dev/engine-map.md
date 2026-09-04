@@ -5752,6 +5752,30 @@ tagged, never refused.
 WHY: hub R-14 ([[G57]]). Every row of a hub map page has a Copy control and it has led nowhere since
 it shipped - both `main` and this branch were grepped, and the gas-giant recipe and the hub link were
 the only clipboard readers in the engine.
+R-16, THE CREDIT: **a breadcrumb is not a credit, and they are different objects.** `origin/hub` on
+the pasted root says WHICH BODY came from where; a `ContentCredit` on the CAMPAIGN says WHOSE WORK
+it is. Both are kept. The credit lives on the campaign and not the nodes because nodes get renamed,
+re-homed and deleted, and a credit that dies with the body it arrived on is not a credit - `nodeIds`
+is a convenience for saying which bodies it covers, never a key, so deleting all of them does not
+retire it. Pastes from ONE source MERGE into one row with the ids accumulated (six systems from one
+map owes one credit six bodies wide, not six identical rows), and a clip naming nobody and nothing
+produces NO row at all rather than an empty one. `pastedAt` is ISO 8601 - a date a person reads in a
+save they are hand-editing, not an instant anything computes with. A missing `creator` (a clip from
+a hub older than 0.11.0) is STATED - "cartographer not recorded" - never papered over. It prints in
+`ATTRIBUTIONS.md` under `## Content from other cartographers`, and that file is now written when
+there are credits OR assets: the old "no assets, no file" rule would have swallowed the credit for a
+campaign that pasted content but uploaded no art.
+R-16 ADDENDUM (hub 0.12.0), AND IT CHANGED THE MERGE RULE. `source.url` is now a DEEP LINK to the
+object (`.../s/<slug>#node=<id>`) and is stored WHOLE - the fragment is what opens the hub's page on
+the right row. But two bodies from one map then arrive with DIFFERENT urls, so the merge compares
+the url with its fragment dropped: **merge on the MAP, not the deep link**, or six pastes from one
+map file as six near-identical rows, which is the thing the merge exists to prevent. **The LINEAGE
+is part of a credit's identity too** (`chain`, deepest first, recorded exactly as received - not
+shortened, reordered or de-duplicated, because it is somebody else's history): one object native to
+a map and another that passed through two maps before it have different histories, and merging those
+would claim a lineage for content that has none. It prints as one sentence - "from Alpha by alice,
+via Beta by bob, via Gamma by carol" - with the map the credit names as the LAST hop, and a hop with
+no cartographer is named without one rather than left out.
 EVERY KIND, AND TWO ASYMMETRIES THAT ARE DECISIONS RATHER THAN OVERSIGHTS. A construct is a
 `CelestialBody` with `kind: 'construct'` - ships, stations, rings, belts and the megastructures all
 live there - and the insert is kind-agnostic, so all of them arrive with their own payload intact.

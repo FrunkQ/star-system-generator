@@ -34,7 +34,7 @@
 //     that already do that; nothing here refuses a paste on physical grounds.
 //  5. THE CREDIT COMES WITH IT. `source.url` lands on the pasted root as `origin/hub`, so a body
 //     lifted out of somebody's map still says whose map it came from.
-import type { System, CelestialBody, Barycenter, Tag } from '$lib/types';
+import type { System, CelestialBody, Barycenter, Tag, Starmap, ContentCredit, ContentCreditLink } from '$lib/types';
 import { G } from '$lib/constants';
 import { hostMassKg, reparentBody } from '$lib/system/reparent';
 
@@ -47,6 +47,10 @@ export interface HubClipSource {
   site?: string;
   url?: string;
   title?: string;
+  /** R-16. Absent on a clip from a hub older than 0.11.0 - then the credit says so, and does not guess. */
+  creator?: string;
+  /** Where the content was BEFORE this map, deepest first (hub 0.12.0). Recorded as received. */
+  chain?: ContentCreditLink[];
 }
 
 export interface HubClip {
@@ -140,7 +144,20 @@ export function parseHubClip(text: string): ClipParse {
 }
 
 export type ClipInsert =
-  | { ok: true; rootId: string; count: number; hostName: string; mode: 'kepler' | 'circular' | 'attached' }
+  | {
+      ok: true;
+      rootId: string;
+      count: number;
+      hostName: string;
+      mode: 'kepler' | 'circular' | 'attached';
+      /**
+       * R-16: the credit this paste earns, for the CALLER to put on the campaign. Returned rather
+       * than written because `insertClip` is handed a System and a credit belongs to the Starmap -
+       * a system does not own the campaign it sits in. Absent when the clip named nobody and
+       * nothing: a credit with no title, no creator and no url would be a row saying nothing.
+       */
+      credit?: ContentCredit;
+    }
   | { ok: false; problem: string };
 
 /** A fresh id that cannot collide with anything already in the system, or with the rest of the clip. */
@@ -237,7 +254,8 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
     rootId: newRootId,
     count: inserted.length,
     hostName: String((host as any).name ?? host.id),
-    mode
+    mode,
+    credit: creditFor(clip.source, inserted.map((n) => n.id))
   };
 }
 
@@ -252,6 +270,66 @@ function creditRoot(root: any, source: HubClipSource | undefined): void {
   const url = typeof source?.url === 'string' ? source.url.trim() : '';
   if (!root || !url) return;
   addTag(root, { ns: 'origin', key: 'hub', value: url, origin: 'authored' });
+}
+
+/**
+ * R-16: the credit a paste earns. Null when the clip named nobody and nothing - a row with no
+ * title, no creator and no link credits no one and is just noise in ATTRIBUTIONS.md.
+ */
+function creditFor(source: HubClipSource | undefined, nodeIds: string[]): ContentCredit | undefined {
+  const clean = (s: unknown) => (typeof s === 'string' && s.trim() ? s.trim() : undefined);
+  const title = clean(source?.title), creator = clean(source?.creator), url = clean(source?.url);
+  if (!title && !creator && !url) return undefined;
+  // The chain is somebody else's history: taken as received, not shortened, reordered or
+  // de-duplicated. Only the shape is checked, so a malformed one cannot poison the save.
+  const chain = Array.isArray(source?.chain)
+    ? source!.chain!.filter((l) => l && typeof l === 'object').map((l) => ({
+        url: clean(l.url), title: clean(l.title), creator: clean(l.creator)
+      })).filter((l) => l.url || l.title || l.creator)
+    : undefined;
+  return {
+    title, creator, url, site: clean(source?.site),
+    ...(chain && chain.length ? { chain } : {}),
+    // ISO rather than a millisecond count: this is a date a person reads in a save they are
+    // editing by hand, not an instant anything computes with.
+    pastedAt: new Date().toISOString(),
+    nodeIds: [...nodeIds]
+  };
+}
+
+/**
+ * R-16: put a paste's credit on the CAMPAIGN.
+ *
+ * On the campaign and not the nodes, because nodes get renamed, re-homed and deleted, and a credit
+ * that dies with the body it arrived on is not a credit. Returns a NEW campaign - the store's own
+ * discipline - and merges rather than appends when the same map is pasted twice: one source, one
+ * row, with the node ids accumulated, so a GM who pastes six systems from one map owes one credit
+ * six bodies wide rather than six identical rows.
+ */
+export function addContentCredit<T extends { contentCredits?: ContentCredit[] }>(map: T, credit: ContentCredit | undefined): T {
+  if (!credit) return map;
+  const existing = Array.isArray(map.contentCredits) ? map.contentCredits : [];
+  // MERGE ON THE MAP, NOT THE DEEP LINK. Since hub 0.12.0 `source.url` points at the OBJECT
+  // (`…/s/<slug>#node=<id>`), so two bodies from one map arrive with different urls - matching on
+  // the whole url would file six pastes from one map as six identical-looking rows, which is the
+  // thing the merge exists to prevent. The fragment is dropped for COMPARISON only; the stored url
+  // keeps it whole, because it is what opens the hub's page on the right row.
+  //
+  // AND THE LINEAGE IS PART OF THE IDENTITY. Two objects from one map can have different histories
+  // - one native to it, one passed through two maps before that - and merging those would silently
+  // claim a lineage for content that does not have it. Same map AND same chain, or separate rows.
+  const mapOf = (u?: string) => (u ?? '').split('#')[0];
+  const chainOf = (c: { chain?: ContentCreditLink[] }) => JSON.stringify((c.chain ?? []).map((l) => [l.url, l.title, l.creator]));
+  const sameSource = (c: ContentCredit) =>
+    mapOf(c.url) === mapOf(credit.url) &&
+    (c.creator ?? '') === (credit.creator ?? '') &&
+    (c.title ?? '') === (credit.title ?? '') &&
+    chainOf(c) === chainOf(credit);
+  const prior = existing.find(sameSource);
+  const merged: ContentCredit = prior
+    ? { ...prior, pastedAt: credit.pastedAt, nodeIds: [...new Set([...(prior.nodeIds ?? []), ...credit.nodeIds])] }
+    : credit;
+  return { ...map, contentCredits: [...existing.filter((c) => !sameSource(c)), merged] };
 }
 
 /** One tag per ns+key: a second paste replaces rather than stacks. */

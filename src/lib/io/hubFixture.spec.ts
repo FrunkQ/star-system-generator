@@ -105,6 +105,25 @@ function canonicalStarmap(): any {
 		// produced: a byte-pinned fixture cannot carry a counter that moves.
 		revision: 7,
 		exportMode: 'gm',
+		// R-16: content copied out of somebody else's map. Pinned rather than produced, like the
+		// rest of the fixture - and it exercises BOTH shapes the hub reads: a credited cartographer
+		// and one an older clip format could not name.
+		contentCredits: [
+			{
+				title: 'Local Neighbourhood', creator: 'frunk', url: 'https://hub.test/s/local-neighbourhood',
+				site: 'StarSystemX Explorers', pastedAt: '2026-09-04T10:00:00.000Z', nodeIds: ['moon-c']
+			},
+			{
+				title: 'An Older Map', url: 'https://hub.test/s/older-map',
+				pastedAt: '2026-09-04T10:05:00.000Z', nodeIds: ['ship-e'],
+				// A LINEAGE (hub 0.12.0): content that had already passed through two maps before
+				// the one it was copied from. Every cartographer in it stays named.
+				chain: [
+					{ url: 'https://hub.test/s/alpha#node=earth', title: 'Alpha', creator: 'alice' },
+					{ url: 'https://hub.test/s/beta#node=e', title: 'Beta', creator: 'bob' }
+				]
+			}
+		],
 		distanceUnit: 'ly',
 		scale: { unit: 'ly', pixelsPerUnit: 10, showScaleBar: true },
 		routes: [],
@@ -420,6 +439,22 @@ describe('the Creator Hub contract fixtures', () => {
 		const named = map.playerAssets.find((a: any) => a.id === map.coverAssetId);
 		expect(named.dataUrl).toBe('assets/images/player/asset-sector-map.png');
 		expect(Object.keys(members).some((n) => n.endsWith(named.dataUrl))).toBe(true);
+	});
+
+	it('credits content copied from other cartographers, named and unnamed', async () => {
+		const members = readZipMembers(await buildStarmapFixture(), ['.json', '.md']);
+		const map = JSON.parse(strFromU8(members[Object.keys(members).find((n) => n.endsWith('starmap.json'))!]));
+		expect(map.contentCredits.length).toBe(2);
+		expect(map.contentCredits[0].creator).toBe('frunk');
+		expect(map.contentCredits[1].creator).toBeUndefined();
+		// The deep link is stored whole, fragment included, and the lineage is deepest first.
+		expect(map.contentCredits[1].chain.map((l: any) => l.creator)).toEqual(['alice', 'bob']);
+		expect(map.contentCredits[1].chain[0].url).toContain('#node=earth');
+		const md = strFromU8(members[Object.keys(members).find((n) => n.endsWith('ATTRIBUTIONS.md'))!]);
+		expect(md).toContain('## Content from other cartographers');
+		expect(md).toContain('Cartographer: frunk');
+		expect(md).toContain('Cartographer not recorded');
+		expect(md).toContain('Lineage: from Alpha by alice, via Beta by bob, via An Older Map');
 	});
 
 	it('exercise the sharing gate: one asset WITH provenance and one without, in each kind', async () => {

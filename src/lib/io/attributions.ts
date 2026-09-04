@@ -8,7 +8,7 @@
 //
 // It is also a WORKING DOCUMENT, not a formality: it names the assets with nothing recorded, so a
 // GM can see what they still need to fill in before sharing.
-import type { ModelRef } from '$lib/types';
+import type { ModelRef, ContentCredit, ContentCreditLink } from '$lib/types';
 
 export interface AttributionEntry {
   path: string;                 // where it sits in the bundle
@@ -129,7 +129,61 @@ const isBlank = (e: AttributionEntry) => !e.capturedInApp && !e.credit && !e.lic
 const breachesCcBy = (e: AttributionEntry) => /cc[- ]?by/i.test(e.license ?? '') && !e.credit;
 
 /** Render the file. Markdown, because it is read far more often than parsed. */
-export function renderAttributions(entries: AttributionEntry[], docName: string): string {
+/**
+ * R-16: CONTENT that came from somebody else's map, as opposed to ART.
+ *
+ * The owner's point, and it is the one that makes this a credit rather than a breadcrumb: a body
+ * copied out of another cartographer's map is their work, and the map it lands in should say so in
+ * the file people actually read. `origin/hub` on the pasted root says which body came from where;
+ * this says whose it was, and it survives that body being renamed or deleted.
+ *
+ * A missing `creator` is stated rather than papered over - a clip from a hub older than 0.11.0
+ * carries the map but not the cartographer, and "cartographer not recorded" is the honest line.
+ */
+function creditsSection(lines: string[], credits: ContentCredit[]): void {
+  if (!credits.length) return;
+  lines.push('');
+  lines.push('## Content from other cartographers');
+  lines.push('');
+  lines.push('Objects in this campaign were copied from the maps below. They are the work of their');
+  lines.push('creators, and this credit travels with the save.');
+  for (const c of credits) {
+    lines.push('');
+    lines.push(`### ${c.title || c.url || 'A shared map'}`);
+    if (c.creator) lines.push(`- Cartographer: ${c.creator}`);
+    else lines.push('- Cartographer not recorded (the map was copied before the library carried that).');
+    if (c.url) lines.push(`- Source: ${c.url}`);
+    if (c.site) lines.push(`- Found on: ${c.site}`);
+    const lineage = lineageLine(c);
+    if (lineage) lines.push(`- Lineage: ${lineage}`);
+    const n = Array.isArray(c.nodeIds) ? c.nodeIds.length : 0;
+    if (n) lines.push(`- ${n} object${n === 1 ? '' : 's'} in this campaign came from it.`);
+  }
+}
+
+/**
+ * WHERE IT WAS BEFORE THIS MAP HAD IT (hub 0.12.0).
+ *
+ * Content copied from a map that had itself copied it carries its whole history, so every
+ * cartographer in the chain stays named however many hands it passes through - which is the point
+ * of a credit that travels. The chain is deepest first, and the map this credit names is the LAST
+ * hop, so it reads as one sentence: "from Alpha by alice, via Beta by bob, via Gamma by carol".
+ *
+ * A hop with no cartographer recorded is named without one rather than left out - dropping it would
+ * shorten somebody's history to tidy up a sentence.
+ */
+function lineageLine(c: ContentCredit): string | null {
+  const chain = Array.isArray(c.chain) ? c.chain : [];
+  if (!chain.length) return null;
+  const name = (l: ContentCreditLink) => {
+    const who = l.title || l.url || 'a map';
+    return l.creator ? `${who} by ${l.creator}` : who;
+  };
+  const hops = [...chain.map(name), name({ title: c.title, url: c.url, creator: c.creator })];
+  return `from ${hops[0]}` + hops.slice(1).map((h) => `, via ${h}`).join('');
+}
+
+export function renderAttributions(entries: AttributionEntry[], docName: string, credits: ContentCredit[] = []): string {
   const models = entries.filter((e) => e.kind === 'model');
   const images = entries.filter((e) => e.kind === 'image');
   const missing = entries.filter(isBlank);
@@ -173,6 +227,7 @@ export function renderAttributions(entries: AttributionEntry[], docName: string)
 
   section('3D models', models, 'None in this save.');
   section('Images', images, 'None in this save.');
+  creditsSection(lines, credits);
 
   lines.push('');
   lines.push('---');
@@ -190,5 +245,8 @@ export function buildAttributionsFile(
   docName = 'starmap.json'
 ): string | null {
   const entries = collectAttributions(doc, modelMeta);
-  return entries.length ? renderAttributions(entries, docName) : null;
+  const credits: ContentCredit[] = Array.isArray(doc?.contentCredits) ? doc.contentCredits : [];
+  // A campaign with no uploaded art but pasted content still owes a credit, so the file is written
+  // when EITHER exists - the earlier "no assets, no file" rule would have swallowed the credit.
+  return entries.length || credits.length ? renderAttributions(entries, docName, credits) : null;
 }
