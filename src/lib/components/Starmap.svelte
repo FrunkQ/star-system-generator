@@ -18,6 +18,8 @@
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
   // A82: the hover summary. ONE builder for the counts, ONE component for the card.
   import StarSummaryCard from '$lib/starmap/StarSummaryCard.svelte';
+  import SizeComparisonView from './SizeComparisonView.svelte';
+  import { itemsForStarmap } from '$lib/comparison/items';
   import { systemSummary, type SystemSummary } from '$lib/starmap/systemSummary';
   import BottomSheet from './BottomSheet.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
@@ -836,6 +838,10 @@
   // --- Measure tool (scaled maps only): tap two targets — any stars or interstellar ships — to read the
   //     distance between them, in the map's scale units. ---
   let measureMode = false;
+  // G66: the size-comparison view, reached from the sub-button under Measure. On the starmap the
+  // cast is every system's STARS (multi-star aware, through `systemVisualStars`), and a click goes
+  // out as the ordinary `systemclick` so the map's shared selection follows (TAG-14).
+  let sizeCompareOn = false;
   // An endpoint is a fixed point (star) or — when constructId is set — a moving construct, in which case
   // its position is re-derived from the clock so the ruler TRACKS the ship as time advances.
   // WS7: an endpoint carries DEPTH. Without it `posZ` reads both ends as the reference plane and the
@@ -1259,10 +1265,12 @@
         activeView="starmap"
         rulerOn={measureMode}
         rulerAvailable={isScaled}
+        {sizeCompareOn}
         {routesAttention}
         playerConns={{ local: $playerConnections.local, remote: $playerConnections.remote }}
         playerConnSummary={$playerConnections.summary}
         on:ruler={() => { railOpen = false; toggleMeasure(); }}
+        on:sizecompare={() => { railOpen = false; sizeCompareOn = !sizeCompareOn; }}
         on:starmap={() => { railOpen = false; }}
         on:new={() => dispatch('new')}
         on:open={() => dispatch('upload')}
@@ -1691,6 +1699,17 @@
     <!-- A82: the hover card sits OUTSIDE the svg — it is HTML, so it wraps text, takes the house
          chrome and never inherits the map's pan/zoom transform. -->
     <StarSummaryCard summary={hoverSummary} x={hoverX} y={hoverY} bounds={hoverBounds} />
+    {#if sizeCompareOn}
+      <SizeComparisonView
+        items={itemsForStarmap(starmap)}
+        scope="starmap"
+        mapId={starmap?.id ?? null}
+        {mode}
+        selectedId={null}
+        on:select={(e) => dispatch('systemclick', String(e.detail.id).split(':')[0])}
+        on:close={() => (sizeCompareOn = false)}
+      />
+    {/if}
     {#if highlightKey.length}
       <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. -->
       <div class="hl-key">

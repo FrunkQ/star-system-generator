@@ -7,6 +7,8 @@
   import type { RulePack, System, CelestialBody, Starmap } from '$lib/types';
   import { deleteNode, renameNode, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
+  import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
+  import { itemsForSystem } from '$lib/comparison/items';
   import TimeControls from '$lib/components/TimeControls.svelte';
   import { drainFuelMassKg } from '$lib/construct-logic';
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
@@ -265,6 +267,10 @@
   let showSensors = false;
   let showVectors = false;
   let rulerActive = false; // measuring-tape tool: tap two bodies for their AU separation
+  // G66: the size-comparison view, reached from the sub-button under Measure. It is a VIEW over the
+  // same system, not a second selection store — a click in it goes through `updateFocus`, which is
+  // the map's shared selection (TAG-14), so the info panel follows.
+  let sizeCompareOn = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
@@ -2514,6 +2520,7 @@
       <RailNav
         activeView="system"
         rulerOn={rulerActive}
+        {sizeCompareOn}
         {routesAttention}
         playerConns={{ local: $playerConnections.local, remote: $playerConnections.remote }}
         playerConnSummary={$playerConnections.summary}
@@ -2521,6 +2528,7 @@
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
         on:ruler={() => { railOpen = false; rulerActive = !rulerActive; }}
+        on:sizecompare={() => { railOpen = false; sizeCompareOn = !sizeCompareOn; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
         on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}
         on:new={() => dispatch('new')}
@@ -2669,6 +2677,18 @@
                 on:showBodyContextMenu={handleShowBodyContextMenu}
                 on:backgroundContextMenu={handleBackgroundContextMenu}
             />
+
+            {#if sizeCompareOn}
+              <SizeComparisonView
+                items={itemsForSystem(displaySystem)}
+                scope="system"
+                mapId={$systemStore?.id ?? null}
+                {mode}
+                selectedId={focusedBodyId}
+                on:select={(e) => updateFocus(e.detail.id)}
+                on:close={() => (sizeCompareOn = false)}
+              />
+            {/if}
 
             {#if ensuredTemporal}
               <div class="time-overlay" class:phone={mode === 'phone'} use:chrome>

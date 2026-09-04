@@ -751,3 +751,48 @@ export function accretionColor(t: number, out: THREE.Color): THREE.Color {
 	}
 	return out.copy(ACCRETION_STOPS[ACCRETION_STOPS.length - 1][1]);
 }
+
+// Moved out of scene.ts (Stream K): the aurora shell is assembled by bodyLook.ts for the holo,
+// the reference gallery and the size-comparison view alike, so its builder belongs beside the
+// other shared feature builders rather than inside the live scene.
+// An equirect aurora texture: coloured curtains at the two polar rings (transparent elsewhere). Under
+// additive blending the alpha carries the glow, so bright rings around the poles emit and the rest adds
+// nothing. Horizontal streaks give it a curtain-like shimmer.
+function makeAuroraTexture(hex: string): HTMLCanvasElement {
+  const w = 160, h = 80;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d')!;
+  const col = new THREE.Color(hex);
+  const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
+  const img = ctx.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    const v = y / (h - 1); // 0 = north pole .. 1 = south pole
+    const ring = (centre: number) => Math.exp(-Math.pow((v - centre) / 0.085, 2)); // gaussian polar oval
+    const band = Math.max(ring(0.15), ring(0.85));
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const streak = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(u * Math.PI * 22 + Math.sin(u * 7) * 2)); // curtains
+      const a = Math.max(0, Math.min(1, band * streak));
+      const i = (y * w + x) * 4;
+      img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+// A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
+// aurora strength; `weight` (0..1, relative to the dominant gas) fades the lower-concentration emitters;
+// `altitude` (0 low fringe / 1 main band / 2 high tenuous) sets the shell height so a multi-gas sky
+// STACKS physically — Earth's purple nitrogen fringe under the green oxygen band, the crimson oxygen
+// crown above. The render loop swells each layer independently around its base.
+export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1, altitude = 1): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
+  const tex = new THREE.CanvasTexture(makeAuroraTexture(hex));
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const base = Math.min(0.85, 0.28 + strength * 0.6) * (0.35 + 0.65 * weight);
+  mat.opacity = base;
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.04 + altitude * 0.025), 28, 20), mat);
+  shell.renderOrder = 2; // draw over the body surface
+  return { shell, mat, base };
+}

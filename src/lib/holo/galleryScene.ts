@@ -10,17 +10,15 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
-import { getPlanetTextureEquirect, getEmissiveEquirect } from '$lib/rendering/planetTexture';
-import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
-import { deriveAppearance } from '$lib/rendering/planetAppearance';
-import { lightningStrength } from '$lib/physics/cloudDecks';
-import { buildAuroraShell } from './scene';
 import {
-	makeHotspotTexture, makePlumeTexture, makeGlowTexture,
-	buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack, buildLightning, updateLightning, type LightningVisual,
-	applyLimbDarkening, buildStellarFlares, updateStellarFlares, makeStarSurfaceTexture, type FlareVisual, updateMagma, updatePlumes, accretionColor,
+	makeHotspotTexture, makePlumeTexture, makeGlowTexture, updateLightning, type LightningVisual,
+	updateStarLook, type StarLookVisual, updateMagma, updatePlumes, accretionColor,
 	type EmissiveVisual
 } from './bodyFeatures';
+// The ONE body-look assembly, shared with the live holo and the size-comparison view. This gallery
+// exists to show what the system view draws, so it must not assemble a look of its own — it did,
+// and its star corona had already drifted to a different size and a different pulse.
+import { buildBodyLook, type BodyLookTextures } from './bodyLook';
 import { GALLERY_ROWS, GALLERY_BLACK_HOLES } from '$lib/catalogue/galleryExamples';
 
 const R = 0.44;        // rendered body radius (scene units)
@@ -49,7 +47,7 @@ function makeLabel(text: string, colour = '#dfe6f0', px = 34): THREE.Sprite {
 // recognisable Sol. Passed in rather than imported so this module keeps no data dependencies.
 export function createGalleryScene(
 	canvas: HTMLCanvasElement,
-	extraRows: { title: string; bodies: any[] }[] = []
+	extraRows: { title: string; bodies: any[]; nightSide?: boolean }[] = []
 ) {
 	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 	renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -91,6 +89,7 @@ export function createGalleryScene(
 	const hotspotTexture = makeHotspotTexture();
 	const plumeTexture = makePlumeTexture();
 	const disposables: { dispose(): void }[] = [glowTexture, hotspotTexture, plumeTexture];
+	const bodyLookTextures: BodyLookTextures = { glow: glowTexture, hotspot: hotspotTexture, plume: plumeTexture };
 
 	const spinners: { obj: THREE.Object3D; rate: number }[] = [];
 	const cloudSpinners: { obj: THREE.Object3D; drift: number }[] = [];
@@ -99,110 +98,49 @@ export function createGalleryScene(
 	const lightningVisuals: LightningVisual[] = [];
 	const auroraVisuals: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[] = [];
 	const discs: { points: THREE.Points; rate: number }[] = [];
-	const starVisuals: { corona: THREE.Sprite; baseScale: number; activity: number; seed: number }[] = [];
-	const galleryFlares: FlareVisual[] = [];
+	// The SHARED star look (corona + flares), animated by the shared `updateStarLook` — the gallery
+	// used to inline a corona of its own at a different size, with a different pulse, which is exactly
+	// the drift this surface exists to catch.
+	const starVisuals: StarLookVisual[] = [];
 	// Black-hole lensing centres: world pos + horizon radius, and (when feeding) the accretion disc's
 	// object + radii so the lens can exempt its projected band (the front-of-hole fix).
 	const lensBHs: { pos: THREE.Vector3; r: number; disc?: { obj: THREE.Object3D; inner: number; outer: number } }[] = [];
 
-	// Build a single planet/moon/star/brown-dwarf tile at (x,y). Returns the group.
+	// Build a single planet/moon/star/brown-dwarf tile at (x,y).
+	//
+	// EVERY part of the look comes from the ONE shared assembly (bodyLook.buildBodyLook) — the same
+	// call the live holo makes. The gallery's own options are the two things it legitimately does
+	// differently: the SHOWCASE tilt (a pole-venting feature is invisible on an upright body, so a
+	// cryovolcanic world is tipped jets-toward-camera and a polar vortex hexagon-toward-camera), and
+	// the aurora read from the published TAG rather than from live physics ([[B117]] — the holo
+	// still reads physics, and the two spellings are recorded rather than folded together here).
 	function buildBody(node: any, x: number, y: number, nightSide = false): void {
 		const g = new THREE.Group();
 		g.position.set(x, y, 0);
 		const isStar = node.roleHint === 'star';
-		const appear = deriveAppearance(node);
-
-		if (isStar) {
-			const col = new THREE.Color(node.apparentColorHex || '#ffddaa');
-			// The gallery star used to be a FLAT coloured sphere — no surface at all, which is why the
-			// star row read as smooth balls. It now uses the same photosphere as the live holo:
-			// granulation, spot groups and faculae from the magnetic-activity tag, plus limb darkening.
-			const activity = activityStrength(node.tags);
-			const starMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-			const st = new THREE.CanvasTexture(makeStarSurfaceTexture(col.getHex(), activity, String(node.id)));
-			st.colorSpace = THREE.SRGBColorSpace;
-			starMat.map = st;
-			applyLimbDarkening(starMat, 0.55);
-			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), starMat);
-			g.add(sphere);
-			disposables.push(starMat, st);
-			const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9 });
-			const corona = new THREE.Sprite(coronaMat);
-			const baseScale = R * (3.2 + activity * 3);
-			corona.scale.setScalar(baseScale);
-			g.add(corona);
-			spinners.push({ obj: sphere, rate: 0.25 });
-			let ss = 0; for (const ch of String(node.id)) ss = (ss + ch.charCodeAt(0)) % 997;
-			starVisuals.push({ corona, baseScale, activity, seed: ss / 997 });
-			// Flares for the stars that earn them — the gallery's flare-star row shows them firing.
-			if (flaresVisibly(node.tags)) {
-				const fl = buildStellarFlares(R, `#${col.getHexString()}`, activity, (ss || 1) + 7, glowTexture);
-				sphere.add(fl.group);
-				galleryFlares.push(...fl.flares);
-			}
-		} else {
-			const texCanvas = getPlanetTextureEquirect(node);
-			const mat = new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-			if (texCanvas) { const t = new THREE.CanvasTexture(texCanvas); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.map = t; }
-			const emCanvas = getEmissiveEquirect(node);
-			if (emCanvas) { const et = new THREE.CanvasTexture(emCanvas); et.colorSpace = THREE.SRGBColorSpace; et.anisotropy = renderer.capabilities.getMaxAnisotropy(); mat.emissiveMap = et; mat.emissive = new THREE.Color(0xffffff); mat.emissiveIntensity = 1.15; }
-			else mat.color.set(node.apparentColorHex || '#8a8f99');
-			const sphere = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), mat);
-			const polF = appear.oblatePolarFactor;
-			if (polF < 0.999) sphere.scale.set(1, polF, 1);
-			// Axial tilt about Z (matches the holo). For a cryovolcanic body, instead tip the SOUTH pole
-			// toward the camera so its plumes (which vent from the pole) spray toward the viewer rather
-			// than straight down out of sight — the sphere still spins about that (now-tilted) pole axis,
-			// so the jets stay put while the surface turns.
-			if (appear.cryoPlumes) sphere.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -1.15);
-			// A polar vortex lives at the north pole — tip it toward the camera for a 3/4 top-down view so
-			// the hexagon/polygon actually shows (side-on you'd never see it). Still spins about that pole.
-			else if (appear.polarVortex) sphere.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.95);
-			else sphere.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), (appear.axialTiltDeg * Math.PI) / 180);
-			g.add(sphere);
-			spinners.push({ obj: sphere, rate: 0.35 });
-
-			// Emissive features — the same builders the live holo uses.
-			if (appear.magma) { const b = buildMagmaVents(R, appear.magma, node.id, hotspotTexture); sphere.add(b.group); magmaVisuals.push(...b.visuals); }
-			if (appear.cryoPlumes) { const b = buildCryoPlumes(R, appear.cryoPlumes, node.id, plumeTexture); sphere.add(b.group); plumeVisuals.push(...b.visuals); }
-			// Storms inside the deck — additive flashes, brightest against the night side.
-			const storms = lightningStrength(node.tags);
-			if (storms > 0 && (appear.clouds || appear.cloudDecks.length)) {
-				let ls = 5; for (const ch of String(node.id)) ls = (ls * 31 + ch.charCodeAt(0)) & 0xffffff;
-				const b = buildLightning(R, appear.cloudDecks.at(-1)?.colorHex ?? appear.clouds?.colorHex ?? '#e8eef8', storms, ls || 1, glowTexture);
-				sphere.add(b.group);
-				lightningVisuals.push(...b.visuals);
-			}
-			if (appear.selfLumGlow) g.add(buildSelfLumGlow(R, appear.selfLumGlow.colorHex, glowTexture));
-			if (appear.atmGlow) g.add(buildAtmoGlow(R, appear.atmGlow.colorHex, appear.atmGlow.strength));
-			if (appear.clouds) {
-				let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-				const cl = (!appear.clouds.giant && appear.cloudDecks.length > 1)
-					? buildDeckStack(R, appear.cloudDecks, cseed || 1)
-					: buildCloudDeck(R, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
-				sphere.add(cl.group);           // tracks the sphere's spin; the gallery drifts each layer separately
-				for (const l of cl.layers) cloudSpinners.push({ obj: l.mesh, drift: l.drift });
-			}
-			// Titan's smog goes OUTSIDE the cloud shells (see buildTholinHaze).
-			if (appear.tholin?.atmospheric) g.add(buildTholinHaze(R, appear.tholin.colorHex, appear.tholin.strength));
-			// Auroras from the shared appearance MODEL (the aurora/* tag) — consistent with the 2D disc.
-			// (The live holo currently derives them from physics; the model tag is what the gallery shows.)
-			if (appear.aurora) {
-				const ems = appear.aurora.emitters.length ? appear.aurora.emitters : [{ colorHex: appear.aurora.coreHex, weight: 1, altitude: 1 }];
-				let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
-				ems.forEach((e, i) => {
-					// Stacked at each gas's ALTITUDE (purple fringe low, green main, crimson crown high),
-					// fading independently so the mix reads as separate colours, not merged white.
-					const built = buildAuroraShell(R, e.colorHex, appear.aurora!.strength, e.weight / ems[0].weight, e.altitude);
-					sphere.add(built.shell);
-					auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.31) % 1 });
-				});
-			}
-			// A simple ring for a ringed giant.
-			if (node.ringed) g.add(buildStaticRing(R * 1.35, R * 2.2, 0xcdd6e2, false));
-		}
+		const look = buildBodyLook(node, R, {
+			textures: bodyLookTextures, anisotropy: renderer.capabilities.getMaxAnisotropy(),
+			aurora: 'model', tilt: 'showcase'
+		});
+		g.add(look.mesh);
+		spinners.push({ obj: look.mesh, rate: isStar ? 0.25 : 0.35 });
+		if (look.star) starVisuals.push(look.star);
+		magmaVisuals.push(...look.magma);
+		plumeVisuals.push(...look.plumes);
+		lightningVisuals.push(...look.lightning);
+		auroraVisuals.push(...look.aurora);
+		for (const l of look.clouds) cloudSpinners.push({ obj: l.mesh, drift: l.drift });
+		disposables.push(look);
+		// A simple ring for a ringed giant. The gallery's own furniture: the live holo draws a ring
+		// from a real ring NODE, which an example body does not carry.
+		if (node.ringed) g.add(buildStaticRing(R * 1.35, R * 2.2, 0xcdd6e2, false));
 		const label = makeLabel(String(node.name ?? '')); label.position.set(0, -R - 0.34, 0);
 		g.add(label);
+		// The night-side rig was BUILT AND NEVER SWITCHED ON: the lights, the layer, the camera's
+		// enable and `setLayerDeep` all shipped, `nightSide` was threaded here from the row data, and
+		// nothing ever moved a tile onto the layer — so the city-glow rows have always been reviewed
+		// under the ordinary key light, which is the one lighting that hides what they exist to show.
+		if (nightSide) setLayerDeep(g, NIGHT_LAYER);
 		scene.add(g);
 	}
 
@@ -353,20 +291,9 @@ export function createGalleryScene(
 		// Spin in-plane about the disc's local Y (its plane normal after the X-tilt). NB not rotation.z —
 		// with XYZ euler order that would wobble the plane, not spin it, and break the lens's ellipse feed.
 		for (const d of discs) d.points.rotation.y += 0.016 * d.rate;
-		updateStellarFlares(galleryFlares, clock.t);
-		// Star flares: pulse each corona's size + brightness, amplitude ∝ flare activity, so an active
-		// flare star (an M dwarf) visibly throbs while a calm one barely moves — like the discs animate.
-		for (const s of starVisuals) {
-			const t = clock.t;
-			// A corona BREATHES, it does not wobble. Halved the rates and the amplitudes: the old pair of
-			// fast sines made even a calm star jitter, which read as a rendering fault rather than as
-			// stellar activity. Discrete flares carry the drama now (buildStellarFlares).
-			const flick = 0.5 + 0.5 * (0.7 * Math.sin(t * (0.9 + s.activity * 1.8) + s.seed * 6.283)
-				+ 0.3 * Math.sin(t * (2.1 + s.activity * 3) + s.seed * 12.57));
-			const a = s.activity;
-			s.corona.scale.setScalar(s.baseScale * (1 + a * 0.18 * flick));
-			(s.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.9 * (1 - a * 0.14 + a * 0.24 * flick));
-		}
+		// The corona pulse and the timed flares, through the SHARED updater — so a star moves here
+		// exactly as it moves in the system view. The gallery used to run its own rival pulse.
+		for (const s of starVisuals) updateStarLook(s, clock.t);
 		updateMagma(magmaVisuals, clock.t);
 		updatePlumes(plumeVisuals, clock.t);
 		updateLightning(lightningVisuals, clock.t);

@@ -6266,3 +6266,59 @@ fault this entry names.
 ### DATA-R40 A FILE CONTRACT IS ONE MODULE, PINNED OVER EVERY TEMPLATE THE PACK SHIPS
 WHERE: `src/lib/constructs/constructFile.ts` (`SITUATION_FIELDS`, `stripSituation`, `constructFileProblem`), bound by `src/lib/components/ConstructSidePanel.svelte`; pinned by `src/lib/constructs/constructFile.spec.ts`, which builds every starter-sf construct template the way `AddConstructModal` does, exports it, and asserts the importer accepts it back, and pins the panel to the module.
 RULE: what Export writes and what Import accepts are two halves of one contract, and they live in one module with one test over real data. The halves were two literals inside the panel from 2025-11, and drifted on 2026-06-17 (v2.0.159-beta) when the templates dropped their class-path string: the importer went on demanding a `class` field that no template carries (0 of 59) and no editor sets, so from that day every construct a GM built, exported and re-imported was refused as "Invalid construct file" (B117), and nothing said so because no test held both halves. A refusal names the missing thing; an optional field is never grounds for one.
+
+### RENDER-S52 TRUE SCALE IS A VIEW, NOT A DIAL, AND THE SPAN MAP HAS NO SAY IN IT
+BUCKET: ARCHITECTURE - one law owns readable size and a DIFFERENT view deliberately declines it.
+The exception has to be written down, because the next reader's first instinct on seeing a renderer
+that does not call `scaleLaw` is to "fix" it.
+WHERE: `src/lib/comparison/layout.ts` (the pure laws), `src/lib/comparison/items.ts` (the true
+radii), `src/lib/holo/comparisonScene.ts` (the scene); pinned by `comparison/layout.spec.ts`.
+RULE: the size-comparison view draws every object at its TRUE size and binds NONE of the readable-
+size law. A body's drawn diameter is `radiusKm * 2` and a star's is `starRadiusKmOf() * 2`; the
+`bodySize` dial, `trueScaleFactor`, `rMax` and the screen-space pixel floors of RENDER-S11/S41/S43
+are all absent by design. They exist to compress a range no screen can hold, and removing that
+compression is the entire feature - a size comparison drawn through the span map is a comparison of
+the span map.
+THE ONE FLOOR IT KEEPS IS A MARKER, NOT A SIZE. Under `DOT_THRESHOLD_PX` an object draws as a DOT
+in the DOM with its label and the words "below 1 px at this scale" - it is never enlarged, and its
+true `diameterPx` is reported beside the dot's `spanPx` so the two can never be confused. That is
+RENDER-S43's distinction (a floor is a screen-space legibility clamp UNDERNEATH the size decision)
+applied to a view that has no size dial above it at all.
+AND THE SCENE IS ORTHOGRAPHIC, MEASURED IN PIXELS. Perspective makes the nearer body larger, which
+is exactly the lie the view exists to remove; and a frustum whose world unit IS a CSS pixel means
+the DOM overlay's labels, ruler ticks and hit areas sit over the globes by construction rather than
+through a projection nobody can check. The strip's layout is therefore computed once, in pixels, by
+a pure function, and the scene and the overlay both read it.
+WHAT IS NOT DRAWN, and it is a scope line rather than an omission: belts and rings (their radius is
+an ORBIT, so putting one beside a planet compares two different kinds of thing), constructs and
+megastructures (a MODEL or a generated volume - RENDER-S9/RENDER-S44 - a different assembly from
+the globe, and one nobody has extracted yet), and barycentres.
+BLAST: anything that "unifies" this view onto the scale law breaks the feature outright. If the
+readable law changes, this view does not move, and that is correct.
+
+### RENDER-S53 ONE ASSEMBLY DRESSES A BODY, AND A REVIEW SURFACE THAT COPIES IT STOPS BEING ONE
+BUCKET: ARCHITECTURE - the second copy of a look had already drifted, and the surface that drifted
+was the one whose whole job is to show what the other one draws.
+WHERE: `src/lib/holo/bodyLook.ts` (`buildBodyLook`, and `RenderStyle`, which lives here because the
+assembly branches on it and `scene.ts` imports this module); called by `holo/scene.ts`, by
+`holo/galleryScene.ts` and by `holo/comparisonScene.ts`; pinned by `holo/bodyLook.spec.ts`.
+RULE: how a body LOOKS at a given radius is decided in one function, and a caller passes its
+differences in as options (render style, unlit, atmospheres, aurora source, posture, textures). The
+radius is the CALLER's and this function never questions it - RENDER-S52 is why. What stays with the
+caller is what is genuinely not shared: the wireframe render family, the black-hole horizon and its
+accretion ring node, a star's point light, orbit rings, labels, per-frame spin, and the lo-poly
+LINES overlay (whose vertex-dot size is a binding of the scale law against the live dial, and
+RENDER-S11 forbids restating that outside the law's bindings).
+WHY: there were TWO assemblies over the same twelve `bodyFeatures` builders - the holo's, inside
+`createHoloScene`, and the gallery's `buildBody` - and the gallery's file header claims "what you
+see here is what the system view draws". It had already stopped being true: the gallery inlined a
+corona at `R * (3.2 + activity * 3)` where `buildStarLook` (which the holo calls) uses
+`radius * (5 + activity * 4)`, and ran a rival pulse beside `updateStarLook`. Nothing could see it,
+because no test had ever built one node twice.
+THE GATE IS A FEATURE INVENTORY, not a pixel comparison: `bodyLook.spec.ts` builds one node through
+every caller's option set and compares the child type names and the material count. A caller that
+grows a feature the others lack goes red. Seen red against five deliberate re-introductions of the
+original drift.
+BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
+fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
+holo - the holo reaches it through `buildStarLook`, one level down.

@@ -57,6 +57,11 @@ import {
   applyLimbDarkening, buildStarLook, updateStarLook, makeStarSurfaceTexture, type StarLookVisual, updateMagma, updatePlumes, updateLightning, buildLightning, type LightningVisual, accretionColor,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
+// THE ONE body-look assembly (Stream K). Before it, the holo and the reference gallery each
+// inlined their own assembly over the same builders and had already drifted; a third surface
+// (the size comparison) would have been a third copy.
+import { buildBodyLook, type BodyLookTextures, type RenderStyle } from './bodyLook';
+export type { RenderStyle };
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
@@ -93,7 +98,8 @@ const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
 
 // Body render style: solid, or an 80s vector wireframe — glowing/flat points, see-through or with the
 // back hidden (an invisible depth-writing occluder culls the far-side edges).
-export type RenderStyle = 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ';
+// RenderStyle now lives in bodyLook.ts (the assembly branches on it) and is re-exported above,
+// so every existing `import type { RenderStyle } from '$lib/holo/scene'` still resolves.
 // NB there is deliberately NO body-graphics knob here. "Body graphics" (photo / procedural disc / flat
 // shape) belongs to the INFO BLOCK — the per-body picture — and never to a system map. The scene once
 // carried a flat camera-facing-sprite path for it; it was cut so the map cannot draw one at all.
@@ -1345,6 +1351,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const glowTexture = makeGlowTexture();
   const hotspotTexture = makeHotspotTexture(); // shared filled glow for volcanic vents
   const plumeTexture = makePlumeTexture(); // shared soft white puff for cryovolcanic plumes
+  // The three shared canvas textures, in the shape the one body-look assembly wants them.
+  const bodyLookTextures: BodyLookTextures = { glow: glowTexture, hotspot: hotspotTexture, plume: plumeTexture };
   const tmp = new THREE.Vector3();
   const proj = new THREE.Vector3();
 
@@ -4217,31 +4225,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             }
           }
         } else {
-          // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
-          // scales with the star's flare activity), so you see surface detail and it spins. Under the
-          // lo-poly render the star is faceted too (fewer segments), so it isn't left out of the look.
+          // Photosphere + corona + flares + outflow decorations: the ONE shared body-look assembly
+          // (bodyLook.buildBodyLook), which the reference gallery and the size-comparison view build
+          // their stars with too. Under the lo-poly render the star is faceted (fewer segments, no
+          // limb darkening), so it isn't left out of the look. Flares only for stars whose magnetic
+          // activity earns them: a quiet sun adds nothing to the frame. The outflow decorations
+          // (jets, shed shell) are NOT passed — the holo's own star look is out of G26's scope.
           const isLopolyStar = renderStyle === 'lopoly-filled' || renderStyle === 'lopoly-lines';
-          // NB: no flatShading — a star is emissive/unlit (MeshBasicMaterial ignores normals and warns
-          // about the property). The faceted look comes from the reduced segment count below.
-          const starMat = new THREE.MeshBasicMaterial();
-          const st = new THREE.CanvasTexture(makeStarSurfaceTexture(colorHex, activity, node.id));
-          st.colorSpace = THREE.SRGBColorSpace;
-          starMat.map = st;
-          // Limb darkening — the cue that makes a star read as a sphere. Skipped on the lo-poly
-          // styles, where flat facets are the whole point.
-          if (!isLopolyStar) applyLimbDarkening(starMat, 0.55);
-          const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, isLopolyStar ? 16 : 32, isLopolyStar ? 10 : 24), starMat);
+          const look = buildBodyLook(node, starR, {
+            textures: bodyLookTextures, renderStyle, colorHex
+          });
+          const sphere = look.mesh;
           mesh = sphere;
-          // Corona + flares: the SHARED star look (bodyFeatures.buildStarLook), parented to the sphere
-          // so it tracks position; the corona billboard ignores the sphere's spin, the flares sit on
-          // its limb. Flares only for stars whose magnetic activity earns them (a quiet sun adds
-          // nothing to the frame), and only outside the lo-poly styles. The outflow decorations
-          // (jets, shed shell) are NOT passed here: the holo's own star look is out of G26's scope.
-          let fseed = 0; for (const ch of String(node.id)) fseed = (fseed + ch.charCodeAt(0) * 13) % 2147483647;
-          const look = buildStarLook(starR, colorHex, activity, fseed || 1, glowTexture, { flares: !isLopolyStar && flaresVisibly(node.tags) });
-          sphere.add(look.group);
-          starVisuals.push(look);
-          // Lo-poly LINES: glowing vector edges + vertices over the faceted star, matching the planets.
+          starVisuals.push(look.star!);
+          // Lo-poly LINES: glowing vector edges + vertices over the faceted star, matching the
+          // planets. Kept here rather than in the assembly because the dot size is a binding of the
+          // size law against the live dial (RENDER-S11) and the assembly must not restate it.
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
@@ -4304,128 +4303,43 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           }
         } else {
           // Filled family: 'filled' = smooth sphere; 'lopoly-*' = a chunky low-poly globe (flat-shaded
-          // facets). Unlit mode ('2D map') stays MeshBasic; lo-poly is always lit so the facets read.
-          const useUnlit = unlit && !isLopoly;
-          const mat = useUnlit ? new THREE.MeshBasicMaterial() : new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, flatShading: isLopoly });
-          if (bodyStyle === 'white') {
-            mat.color.set(0xffffff);
-          } else if (bodyStyle === 'flat') {
-            mat.color.set(selHex);
-          } else {
-            const texCanvas = getPlanetTextureEquirect(node); // true-colour procedural surface
-            if (texCanvas) {
-              const t = new THREE.CanvasTexture(texCanvas);
-              t.colorSpace = THREE.SRGBColorSpace;
-              t.wrapS = THREE.RepeatWrapping; // wrap the longitude seam so u=0/u=1 blend (no vertical seam line)
-              t.anisotropy = renderer.capabilities.getMaxAnisotropy(); // keep surface detail crisp at the limb
-              mat.map = t;
-            } else {
-              mat.color.set(colorHex);
+          // facets). Unlit mode ('2D map') stays MeshBasic and takes no emissive features at all —
+          // there is no lighting to darken and no night side to glow against.
+          //
+          // EVERYTHING BELOW THE SPHERE IS THE ONE SHARED ASSEMBLY (bodyLook.buildBodyLook): the
+          // procedural surface, the thermal emission map, the aurora shells, the volcanic vents and
+          // cryo plumes, the storm flashes, the self-luminous halo, the limb glow, the cloud decks
+          // and the tholin haze. The reference gallery and the size-comparison view call it with
+          // their own options, so the three surfaces cannot grow different features.
+          const look = buildBodyLook(node, radius, {
+            textures: bodyLookTextures, renderStyle, bodyStyle, unlit, atmospheres: atmospheresOn,
+            colorHex, flatColorHex: selHex, anisotropy: renderer.capabilities.getMaxAnisotropy(),
+            // The holo derives auroras from live physics; the gallery reads the published tag. Both
+            // spellings are kept until [[B117]] decides which is the one — not folded silently here.
+            aurora: 'physics',
+            // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the
+            // shader). Edge is HARD by default; an atmosphere on the moon OR its shadowing planet
+            // softens it. Unlit bodies have no lighting to darken, so the hook never fires there.
+            onLitMaterial: (m) => {
+              if (systemLevel) return;
+              const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
+              shadow = applyEclipseShadow(m, soft ? 0.4 : 0.03);
             }
-            // Thermal EMISSION: a super-hot / molten surface glows of its own heat (the molten eyeball's
-            // substellar hemisphere, or a uniformly incandescent lava world). Self-lit emissiveMap so it
-            // shows against space and on the night side.
-            if (!useUnlit) {
-              const emCanvas = getEmissiveEquirect(node);
-              if (emCanvas) {
-                const et = new THREE.CanvasTexture(emCanvas);
-                et.colorSpace = THREE.SRGBColorSpace;
-                et.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                const sm = mat as THREE.MeshStandardMaterial;
-                sm.emissiveMap = et; sm.emissive = new THREE.Color(0xffffff); sm.emissiveIntensity = 1.15;
-              }
-            }
-          }
-          // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).
-          // Edge is HARD by default; an atmosphere on the moon OR its shadowing planet softens it.
-          // Unlit bodies have no lighting to darken, so eclipses are skipped there.
-          if (!systemLevel && !unlit) {
-            const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
-            shadow = applyEclipseShadow(mat as THREE.MeshStandardMaterial, soft ? 0.4 : 0.03);
-          }
-          const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, isLopoly ? 16 : 32, isLopoly ? 10 : 24), mat);
-          if (polF < 0.999) sphere.scale.set(1, polF, 1);
+          });
+          const sphere = look.mesh;
           mesh = sphere;
-          // Lo-poly LINES: keep the filled facets but add glowing edge lines + vertex points on top.
+          auroraVisuals.push(...look.aurora);
+          magmaVisuals.push(...look.magma);
+          plumeVisuals.push(...look.plumes);
+          lightningVisuals.push(...look.lightning);
+          cloudVisuals.push(...look.clouds);
+          // Lo-poly LINES: the glowing edge/vertex overlay. Kept here rather than in the assembly
+          // because the dot size is a binding of the size law against the live dial (RENDER-S11).
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: selHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
             const dotMat = new THREE.PointsMaterial({ color: selHex, size: wireDotSize(radius), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.Points(sphere.geometry, dotMat));
-          }
-          // Aurora: an additive emissive shell glowing at the (tilted) magnetic poles, flickering over
-          // time. deriveAurora needs air + a field + ionising flux — returns 0 otherwise, so most bodies
-          // add nothing. Parented to the sphere, so it tracks position + axial tilt (spin is harmless —
-          // the ovals are polar rings). Skipped in the flat/unlit "2D map" look.
-          if (!unlit) {
-            const aur = deriveAurora(node as any);
-            if (aur.strength > 0.06) {
-              // One additive shell per emitting gas, stacked at its physical ALTITUDE (purple N₂ fringe
-              // low, green O main, crimson O crown high) and fading independently — so at any moment the
-              // sky shows one colour or several, never a merged white.
-              const ems = auroraEmitters(node as any);
-              let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
-              ems.forEach((e, i) => {
-                const built = buildAuroraShell(radius, e.hex, aur.strength, e.weight / ems[0].weight, e.altitude);
-                sphere.add(built.shell);
-                auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.31) % 1 });
-              });
-            }
-            // Emissive surface activity (3D-only wins) from the shared appearance model. Volcanism =
-            // additive hot-spot vents that flicker like heat (lava world = many white-hot; hotspots = a
-            // few orange). Cryovolcanism = icy plume jets venting from a pole, thrown far on a low-gravity
-            // world (Enceladus). Both parented to the sphere, so they turn with the surface.
-            const appear = deriveAppearance(node as any);
-            if (appear.magma) {
-              const built = buildMagmaVents(radius, appear.magma, String(node.id), hotspotTexture);
-              sphere.add(built.group);
-              magmaVisuals.push(...built.visuals);
-            }
-            if (appear.cryoPlumes) {
-              const built = buildCryoPlumes(radius, appear.cryoPlumes, String(node.id), plumeTexture);
-              sphere.add(built.group);
-              plumeVisuals.push(...built.visuals);
-            }
-            // Storms firing inside the cloud deck — additive, so they read on the night side the way
-            // they actually do from orbit. Needs a deck to fire inside: the tag says a world has the
-            // convection for lightning, the clouds are what it lights up.
-            const storms = lightningStrength((node as any).tags);
-            if (storms > 0 && (appear.clouds || appear.cloudDecks.length)) {
-              const deckHex = appear.cloudDecks.at(-1)?.colorHex ?? appear.clouds?.colorHex ?? '#e8eef8';
-              let lseed = 5; for (const ch of String(node.id)) lseed = (lseed * 31 + ch.charCodeAt(0)) & 0xffffff;
-              const built = buildLightning(radius, deckHex, storms, lseed || 1, glowTexture);
-              sphere.add(built.group);
-              lightningVisuals.push(...built.visuals);
-            }
-            // Self-luminous glow (a brown dwarf / hot young sub-stellar body radiating its own heat):
-            // a dim, cool corona-like halo coloured by the emission temperature (deep red → amber), like
-            // a failed star. Reuses the corona glow sprite at a modest scale — a steady dim glow (not a
-            // blazing stellar corona).
-            if (appear.selfLumGlow) {
-              sphere.add(buildSelfLumGlow(radius, appear.selfLumGlow.colorHex, glowTexture));
-            }
-            // Atmosphere limb-glow: a thin Fresnel halo hugging the silhouette, coloured by the air/haze.
-            if (appear.atmGlow && atmospheresOn) {
-              sphere.add(buildAtmoGlow(radius, appear.atmGlow.colorHex, appear.atmGlow.strength));
-            }
-            // Cloud deck: a separate translucent shell above the surface that DRIFTS on its own — a
-            // patchy deck on Earth-likes, an opaque haze veil on Venus-likes. Parented to the sphere so
-            // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
-            if (appear.clouds && atmospheresOn) {
-              let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-              // A world with a derived deck STACK gets one shell per deck (Jupiter's ammonia over
-              // its ammonium-hydrosulphide); a giant, or anything with no stack, keeps the single
-              // baked deck — a giant's clouds ARE its surface, so floating shells read wrong on it.
-              const cl = (!appear.clouds.giant && appear.cloudDecks.length > 1)
-                ? buildDeckStack(radius, appear.cloudDecks, cseed || 1)
-                : buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
-              sphere.add(cl.group);
-              cloudVisuals.push(...cl.layers);
-            }
-            // Titan's smog is a HIGH haze — outside the cloud shells, not baked into the surface.
-            if (appear.tholin?.atmospheric && atmospheresOn) {
-              sphere.add(buildTholinHaze(radius, appear.tholin.colorHex, appear.tholin.strength));
-            }
           }
         }
       }
@@ -5556,31 +5470,6 @@ function buildBaryMemberRing(node: any, kHelio: number, memberRadius: number, pa
   return buildLocalOrbitRing(node, color, 0, (off) => Math.max(clearance, off * kHelio));
 }
 
-// An equirect aurora texture: coloured curtains at the two polar rings (transparent elsewhere). Under
-// additive blending the alpha carries the glow, so bright rings around the poles emit and the rest adds
-// nothing. Horizontal streaks give it a curtain-like shimmer.
-function makeAuroraTexture(hex: string): HTMLCanvasElement {
-  const w = 160, h = 80;
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  const ctx = c.getContext('2d')!;
-  const col = new THREE.Color(hex);
-  const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
-  const img = ctx.createImageData(w, h);
-  for (let y = 0; y < h; y++) {
-    const v = y / (h - 1); // 0 = north pole .. 1 = south pole
-    const ring = (centre: number) => Math.exp(-Math.pow((v - centre) / 0.085, 2)); // gaussian polar oval
-    const band = Math.max(ring(0.15), ring(0.85));
-    for (let x = 0; x < w; x++) {
-      const u = x / w;
-      const streak = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(u * Math.PI * 22 + Math.sin(u * 7) * 2)); // curtains
-      const a = Math.max(0, Math.min(1, band * streak));
-      const i = (y * w + x) * 4;
-      img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = Math.round(a * 255);
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
 
 // Wireframe aurora: a FEW emissive polar arcs (line loops near each pole) in the aurora colour, rather
 // than an emissive body — the vector-display take on an aurora. Materials returned for the flicker loop.
@@ -5605,22 +5494,6 @@ function buildWireAurora(radius: number, hex: string, strength: number): { group
     g.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat));
   }
   return { group: g, mats };
-}
-
-// A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
-// aurora strength; `weight` (0..1, relative to the dominant gas) fades the lower-concentration emitters;
-// `altitude` (0 low fringe / 1 main band / 2 high tenuous) sets the shell height so a multi-gas sky
-// STACKS physically — Earth's purple nitrogen fringe under the green oxygen band, the crimson oxygen
-// crown above. The render loop swells each layer independently around its base.
-export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1, altitude = 1): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
-  const tex = new THREE.CanvasTexture(makeAuroraTexture(hex));
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-  const base = Math.min(0.85, 0.28 + strength * 0.6) * (0.35 + 0.65 * weight);
-  mat.opacity = base;
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.04 + altitude * 0.025), 28, 20), mat);
-  shell.renderOrder = 2; // draw over the body surface
-  return { shell, mat, base };
 }
 
 // Land/sea for the vector globe: the true-colour palette's land + ocean stops and the land fraction.

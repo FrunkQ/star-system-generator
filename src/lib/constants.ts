@@ -30,6 +30,12 @@ export const SOLAR_MASS_KG = 1.989e30;
 export const SOLAR_RADIUS_KM = 696340;
 export const EARTH_MASS_KG = 5.972e24;
 export const EARTH_RADIUS_KM = 6371;
+// Luna. Added for the size-comparison ruler, whose three reference ticks are Luna, Earth and the
+// Sun: the other two were already here and the Moon was nowhere in the codebase at all, so the
+// view would have had to invent one. NB `src/lib/import/realsky/constants.mjs` carries a SECOND
+// SOLAR_RADIUS_KM (695,700 against this file's 696,340) — the app reads this one; the duplicate is
+// recorded on the board, not folded in from here.
+export const LUNA_RADIUS_KM = 1737.4;
 // Matches the bundled Sol data (Jupiter stores massKg 1.898e27), so Jupiter reads exactly 1.000
 // at the M-Jup ladder stop rather than 0.9996.
 export const JUPITER_MASS_KG = 1.898e27;

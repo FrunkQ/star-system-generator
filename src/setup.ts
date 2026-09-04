@@ -54,6 +54,17 @@ if (typeof HTMLCanvasElement !== 'undefined') {
 				if (prop === 'measureText') return () => ({ width: 0 });
 				if (prop === 'getImageData')
 					return () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 });
+				// A REAL-SIZED buffer, because every procedural texture in this app paints pixel by pixel
+				// into one (planetTexture, the star photosphere, the aurora curtains, the jet beam) and a
+				// stub that returns nothing turns each of them into a throw the moment a test builds a
+				// body. Zero-filled and never read back for its content — the tests that use it assert
+				// what was BUILT, not what it looks like.
+				if (prop === 'createImageData')
+					return (w: number, h: number) => {
+						const width = Math.max(1, Math.round(Number(w) || 1));
+						const height = Math.max(1, Math.round(Number(h) || 1));
+						return { data: new Uint8ClampedArray(width * height * 4), width, height, colorSpace: 'srgb' };
+					};
 				if (prop === 'createLinearGradient' || prop === 'createRadialGradient' || prop === 'createPattern')
 					return () => gradientStub;
 				if (prop === 'getContextAttributes') return () => ({});

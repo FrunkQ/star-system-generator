@@ -2,6 +2,17 @@
 
 All notable changes are listed here:
 
+## v3.0.301 - 5th Sep 2026
+
+- New: Size comparison. Turn on Measure and a second button appears under it. It lays every object on the map out side by side at their real relative sizes, biggest first, the way the old planets-and-moons posters did - the star, the giants, the planets, the moons and the small bodies on a system map, and every star in the campaign on the starmap.
+- It opens on the middle-sized planet in the system, so you start on a world rather than on a rock, and it draws that planet at about a third of the screen. Click anything and it fills half the screen with everything else scaled to match; scroll to run along the strip, hold Shift and scroll to zoom by hand. On a phone the strip runs down the screen instead of across it.
+- A ruler runs alongside with three marked sizes to judge against: the Moon, the Earth and the Sun. It reads in whichever unit you have chosen, and it tells you when one of the three is off the end rather than quietly leaving it out.
+- Anything too small to draw honestly at the current zoom shows as a dot with its name and how small it really is, rather than being puffed up to something you can see. That is the whole point of the view.
+- You can hide anything you are not interested in, and hide everything bigger or everything smaller in one click. What you hide stays hidden next time you open it, and a badge tells you how many are hidden with one click to bring them all back.
+- Clicking an object here selects it on the map too, so the details panel follows you.
+- Behind the scenes: the system view, the 3D reference gallery and this new view now dress a body from one shared piece of code instead of three. They had already drifted - the gallery was drawing a smaller, differently-pulsing corona on its stars than the map does - and a new test builds the same world through all three and compares them, so they cannot drift apart again.
+- Also fixed: the reference gallery has a night-side lighting mode that had been built but never switched on, so the rows meant to show city lights across a dark limb were being lit from the front. They are not any more.
+
 ## v3.0.300 - 5th Sep 2026
 
 - You can now paste from the map library. Copy a star, a planet or a station on the Explorers site and paste it straight into your campaign - everything beneath it comes too, and it lands where you say. Paste anywhere in the app and it offers; or use the Paste button on the system view if you would rather choose the destination first. That button is not decoration: Firefox will not let a page read your clipboard, so without it the feature would simply look broken there.

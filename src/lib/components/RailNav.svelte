@@ -14,6 +14,7 @@
 
   export let rulerOn = false;
   export let rulerAvailable = false;   // starmap: only when scaled (system view always has it)
+  export let sizeCompareOn = false;    // the sub-tool under Measure — lit while its view is open
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → Routes notification dot
   // Owner, 2026-08-21: how many player windows are watching, at a glance, so the GM can see whether
   // anyone has joined without opening anything. Local first in green, remote second in orange —
@@ -79,6 +80,7 @@ ${playerConnSummary}`
     about: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
     help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/>',
     playerviews: '<rect x="2" y="4" width="13" height="10" rx="1.5"/><rect x="9" y="10" width="13" height="10" rx="1.5"/><line x1="5" y1="7.5" x2="12" y2="7.5"/><circle cx="15.5" cy="15" r="2"/>',
+    sizecompare: '<circle cx="7" cy="12" r="5"/><circle cx="16" cy="12" r="2.6"/><circle cx="21" cy="12" r="1.2"/>',
     ruler: '<rect x="2.5" y="7" width="19" height="10" rx="1" transform="rotate(0 12 12)"/><line x1="6.5" y1="7" x2="6.5" y2="10.5"/><line x1="10.5" y1="7" x2="10.5" y2="11.5"/><line x1="14.5" y1="7" x2="14.5" y2="10.5"/><line x1="18.5" y1="7" x2="18.5" y2="11.5"/>',
     interstellar: '<circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M6.6 16.4 17.4 7.6" stroke-dasharray="3 2.5"/>'
   };
@@ -156,6 +158,14 @@ ${playerConnSummary}`
     <button class="rail-btn" class:active={rulerOn} title={activeView === 'system' ? 'Measure: tap two bodies for the distance between them in AU' : 'Measure: tap two stars or ships for the distance between them'} on:click={() => dispatch('ruler')}>
       <span class="ic" class:accent={rulerOn}>{@html svg(I.ruler)}</span><span class="rail-label">Measure</span>
     </button>
+    <!-- The owner's placement: a second button UNDER Measure, and only while Measure is on. Measuring
+         and comparing are one question asked two ways ("how big is that, really?"), so the second
+         tool lives inside the first rather than adding a permanent row to the rail. -->
+    {#if rulerOn}
+      <button class="rail-btn sub" class:active={sizeCompareOn} title={activeView === 'system' ? 'Size comparison: every object in this system at true relative size, side by side' : 'Size comparison: the stars of every system at true relative size, side by side'} on:click={() => go('sizecompare')}>
+        <span class="ic" class:accent={sizeCompareOn}>{@html svg(I.sizecompare)}</span><span class="rail-label">Size comparison</span>
+      </button>
+    {/if}
   {/if}
   <button class="rail-btn" class:active={fileOpen} title="File — new / load / save" on:click={() => (fileOpen = !fileOpen)}>
     <span class="ic">{@html svg(I.file)}</span><span class="rail-label">File</span>
