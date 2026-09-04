@@ -24,6 +24,7 @@ convention this system exists to end: put the fact on the record and make the co
 | `src/lib/constructs/exotics.ts` | THE VOCABULARY: `ExoticCapabilities` (apparentG, flux, render3d, render2d, framing) and the rules for growing it. Read its header first. |
 | `src/lib/constructs/megaTypes.ts` | THE REGISTRY (G37 roster): one `MegaTypeDef` per type — params with seeds/bands, pure `derive()` and `shape()`, `requires`/`allowedPlacements`/`explain` (the placement gates), `capabilities`. |
 | `src/lib/constructs/exoticsParity.spec.ts` | THE GATE: iterates `MEGA_TYPE_DEFS`, so a new record is gated AUTOMATICALLY the moment it exists. |
+| `src/lib/constructs/docking.ts` | DOCKING, pure: ladder ports (the planner's own LO/MO radii, geo, counterweight), the anchor ray spun and tilted exactly as the renderer spins its globe, nearest-point attachment on a rim or shell, the docked point's speed and what docking COSTS. `effectiveAttachment` is what the propagator asks. |
 | `src/lib/constructs/megaPlacement.ts` | Hard greys / steer notes evaluator (UI-B2). Never add a placement rule anywhere else. |
 | `src/lib/constructs/megaGeometry.ts` | The one geometry builder (sphere-section / tether; spheroid honestly declines). |
 | `src/lib/constructs/megaPreview.ts` | Picker portraits + the footer summary line (watts multiply happens HERE, presentation-side — B110). |
@@ -43,7 +44,7 @@ convention this system exists to end: put the fact on the record and make the co
    - `derive()`/`shape()`: PURE, return data, no THREE/DOM (E7 — this is what makes the maths
      gateable at all). No luminosity computed here, ever (B110): publish FRACTIONS of the host
      star's output and let presentation multiply through the one luminosity function.
-   - `capabilities`: declare all five axes. If an axis's honest value doesn't exist yet
+   - `capabilities`: declare all six axes (`docking` included: how a ship attaches to it). If an axis's honest value doesn't exist yet
      (e.g. `amplifies` before the clamp work), that is a §5 extension, not a stretch of meaning.
 2. **Run the gates** — the parity spec covers the new record with zero new code:
    `npx vitest run src/lib/constructs/` — then add type-specific NUMBER anchors to
@@ -72,6 +73,7 @@ convention this system exists to end: put the fact on the record and make the co
 | Apparent-g panel | station-shaped fields | N2 (carries the owner's net-of-host decision — it CHANGES numbers, his call) | the mirrored `physical_parameters` shims |
 | Flux outputs | `mega/shadowed-by` emitted beside the temperature commit from the SAME derivation as the trace (explicit physics origin inside the authored-default mega/ namespace; strip-then-emit, ghost-checked) | **SHIPPED v3.0.246** | — |
 | Menu / panels / LOD / disclosure | single-valued, so NOT declared yet | N5 / phase-5 / N2 / N3 | — |
+| Docking | `capabilities.docking` ('ladder' / 'anywhere' / 'point'); the propagator's attachment pass places a docked construct from `attachedOffsetAu` in every walk; the planner offers a ladder's levels and a rim's nearest point as destinations (`arrivalDock`); the sampler and reconciler hand a ship over at arrival | **SHIPPED v3.0.298** (RENDER-S51) | — |
 | Param editor (custom sliders) | `ConstructMegaTab.svelte` renders every declared `MegaParamDef` generically (log sliders, hard-range typed inputs, amber/red band sentences, reset-to-seed); storage is the SPARSE `megaParams` overlay resolved ONLY via `instanceMegaParams`; scene attach and occluder discovery read instance params, so the sliders move temperatures | **SHIPPED v3.0.242** | — |
 
 ## 5. Extending the SYSTEM (not just the roster)
@@ -96,7 +98,8 @@ convention this system exists to end: put the fact on the record and make the co
 DATA-R31 (one chrome predicate; never test `kind === 'construct'` in new view code) ·
 DATA-R33 (this system's rule) · UI-B2 (hard greys are relevance; steer cannot refuse) ·
 RENDER-S2 (a construct contributes no radius — and a CENTRED mega must not double-count) ·
-RENDER-S44 (centred on host; drawn radius IS its orbit) · RENDER-S50 (reach from a planet is the
+RENDER-S44 (centred on host; drawn radius IS its orbit) · RENDER-S51 (an attached construct is
+placed by the PROPAGATOR in its structure's frame, never by a renderer) · RENDER-S50 (reach from a planet is the
 SATELLITE LAW's, never a multiple of the globe; equator for a geostationary anchor; the 2D map has
 its own twin of the law) · RENDER-S45 (`bodyById` empty during the
 build loop — thread parameters) · RENDER-S46 (builds never typecheck; scoped svelte-check on

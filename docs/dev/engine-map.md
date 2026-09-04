@@ -6216,3 +6216,39 @@ soletta aimed at a world): its drawn radius is the satellite law's answer, never
 globe. Grep for `radiusScene *` near a `parentId` to find the next violation. And the 2D map has
 its OWN twin of the law (`scaleBoxCox` on distances AND radii); a structure drawn in 2D goes
 through it or it will not meet the disc edge.
+
+### RENDER-S51 AN ATTACHED CONSTRUCT IS PLACED BY THE PROPAGATOR, IN ITS STRUCTURE'S FRAME - NEVER BY A RENDERER
+BUCKET: ARCHITECTURE - three views, one answer. A renderer that applies a spin of its own to a
+docked thing draws it somewhere the other views do not.
+WHERE: `constructs/docking.ts` (pure: `ladderPorts`, `anchorLocalDir`, `hostFrameDir`,
+`attachedOffsetAu`, `nearestAttachment`, `dockSpeedMs`, `dockMatchSpeedMs`, `effectiveAttachment`);
+`physics/worldPositions.ts` (the attachment pass in `walkPositions`, before the orbit; the `attach`
+op on all three walks); `transit/scheduler.ts` (the sampler's Docked branch; the reconciler stamps
+`attachedTo`); `TransitPlannerPanel.svelte` (dock levels as destinations, `arrivalDock`); the
+record's `capabilities.docking` ('ladder' | 'anywhere' | 'point'); `holo/scene.ts`
+`updateSurfaceConstructs` (the tether reads its ray from its PROPAGATED position and never locks).
+RULE: a construct with `attachedTo` - or a ladder structure, which is attached to ITSELF at the
+anchor - gets its world position from ONE function, `attachedOffsetAu`, added to its structure's
+HOST position, in every walk (2D, 3D, states). It outranks `orbit` (the create path leaves a
+placeholder orbit at the host's radius). The frame point is stored in the STRUCTURE's rotating
+frame: a level radius on the anchor ray for a ladder (the anchor's longitude is authored
+`surface_anchor` or the id hash the renderer always used; the shape's `anchorLatitudeDeg` forces the
+equator), a bearing at the structure's epoch plus a latitude for a rim or shell, nothing for a hull.
+The host's spin in the propagator MIRRORS the renderer's: -(t/P)*2pi about the scene pole IS a
+prograde +(t/P)*2pi about physics +z, then the tilt turns the physics (x, z) pair - `hostFrameDir`,
+pinned by the gate at a quarter turn and at a 90-degree tilt. A journey docks by flying to the
+HOST at the level's radius (`parkingOrbitRadius_au`) and carrying `arrivalDock`; the sampler hands
+the ship to the structure at arrival (ladder: the level; anywhere: the nearest point of the rim it
+reached, held at the structure's epoch so it rides the rim), and the reconciler stamps
+`attachedTo` + `placement: 'Docked: <structure> - <level>'` + `flight_state: 'Docked'`,
+idempotently. CO-ROTATION IS NOT ORBIT: `dockMatchSpeedMs` is the gap between a circular orbit at
+the docked radius and the structure's own speed there (~0 at GEO, ~7.4 km/s at the anchor, a
+Niven rim over 1,000 km/s) - the planner STATES it and never refuses.
+WHY: the owner's 2026-09-03 requirement (design 7c). The only attached placement before this was
+the renderer's surface lock, which captured a bearing once in scene space and spun it itself - so
+the GM's plan view and the holo could not agree on where an anchor was, and no ship could be told
+to sit on the ribbon at all.
+BLAST: any new "sits on / rides with" relationship (a ship on a ring floor, a habitat on a shell, a
+tug clamped to an asteroid): declare `docking` on the record, express the point in the structure's
+frame, and let `attachedOffsetAu` place it. A renderer that computes such a position itself is the
+fault this entry names.

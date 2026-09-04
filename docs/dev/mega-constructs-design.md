@@ -1192,7 +1192,7 @@ structure through its own scale (`scaleBoxCox`) as a radial from the disc edge -
 'radial'`. When the ladder's dock nodes land (phase 5), the destination "GO - Elevator" is this
 point.
 
-### 7c. DOCKING - the owner's requirement, 2026-09-03 (queued as G53 phase 5's first item)
+### 7c. DOCKING - the owner's requirement, 2026-09-03 (SHIPPED v3.0.298 as recommended below - engine map RENDER-S51; `constructs/docking.ts` is the module, `worldPositions.docking.spec.ts` and `dockingArrival.spec.ts` the gates)
 
 His words, from the GM map with Anderson Station parked at GO under the ribbon: *"we need to see
 stations up the length - and it probably needs to rotate to enable 'docked ships' to orbit visibly

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.298 - 3rd Sep 2026
+
+- Ships can now DOCK to megastructures - and stay docked. Plan a trip to a space elevator and the destinations are its levels: the anchor, the low and medium levels, the geostationary dock and the counterweight. The ship flies to that height, hands itself to the ribbon on arrival and rides round with the world from then on. A ring or a shell takes a ship at the nearest point of its rim and carries it round at the rim's own speed; a hull docks as a station always has.
+- The same docked position is used by the GM map, the 3D view and every player view, because it is worked out once, in the engine, from where the structure is and how it turns - not by each screen separately. The elevator itself now stands still on its anchor and turns with its world rather than creeping round on a placeholder orbit.
+- The planner says what docking costs: nothing at the geostationary dock, where the ribbon already moves at orbital speed; several kilometres per second at the low levels, where a docked ship is riding the planet's spin rather than orbiting; over a thousand kilometres per second on a Niven ring's rim. It states the figure and lets you decide.
+
 ## v3.0.297 - 4th Sep 2026
 
 - Content copied from somebody else's map now arrives with a proper credit, not just a breadcrumb. Paste a star system from the Explorers site and your campaign records whose map it came from, who made it, and a link back - and that credit is printed in the attributions file that travels inside your save, under "Content from other cartographers". So when you share your own map onward, the people whose work is in it are still named. Credit follows the content through as many hands as it passes.
