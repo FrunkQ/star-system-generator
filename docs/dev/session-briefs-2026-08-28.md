@@ -772,3 +772,101 @@ it is theirs, leave it.
 > check GATES the add; an engine-map entry in the same commit for any non-obvious rule, and correct
 > any entry you falsify; dead ends recorded loudly; never stop early on a context guess; if the pane
 > will not render, hand back a thirty-second eyeball list.
+
+## STREAM K — size comparison: every object at true scale, side by side (G66)
+
+**Read first, in this order:** `CLAUDE.md`; the standing rules at the top of `docs/dev/observations-inbox.md`; the [[G66]]
+row (the owner's words and the coordinator's measurements); `docs/dev/engine-map.md` entries RENDER-S11, RENDER-S41,
+RENDER-S43, RENDER-S9, RENDER-S25, RENDER-S30, RENDER-S44, RENDER-S45, RENDER-S46, RENDER-S8, TAG-14, TAG-20, DATA-R20,
+UI-L7; `docs/dev/PLAYBOOK.md`. Work in your own worktree off `origin/beta`; push `HEAD:beta` on a green build; commit as
+FrunkQ; bump the patch version every push; `git show --stat` before every push.
+
+**What the owner asked for, verbatim where it matters.** Under the rail's Measure button, when Measure is on, a second
+button: "Size comparison". It opens a view that shows EVERY object on the current map at 1:1 relative size, laid out in
+size order like the classic planets-and-moons poster: on the system map that is the star(s), the giants, the planets,
+the moons, the small bodies; on the starmap it is the stars of every system. Clicking an object centres it and draws
+it at 50% of the viewport's shorter side, with everything else scaled to match. A ruler in real units runs along the
+strip with three highlighted reference ticks: Luna's diameter, Earth's diameter, the Sun's diameter. The initial
+selection is the MEDIAN PLANET, so moons and asteroids cannot skew the opening view; the initial zoom shows the planets
+at about 30% (the median planet's diameter at ~30% of the shorter side), the strip overflows and scrolls (left/right on
+desktop, up/down on a phone), and the user can zoom by hand. Any object can be hidden; hiding offers, in one click,
+"hide this and everything bigger" and "hide this and everything smaller" so whole sections clear at once. Hidden STAYS
+hidden across re-entry, and while anything is hidden a "show all hidden" control is visible and resets the view to its
+starting state. A click is also a SELECTION on the map (the shared selection, so the info panel follows). The owner wants
+the 3D visualisations used, because this will reach the Player view later, and wants it reachable as a new view option
+on both maps as well as under Measure.
+
+**Why this is cheaper than it looks, and the refactor that makes it so (do this FIRST).** `src/lib/holo/galleryScene.ts`
+already does most of it: one holo scene laying out many bodies with labels, built from the SAME `bodyFeatures` builders
+the live holo uses (`scene.ts`). Measured: of twelve shared builders, ten are called in both files, each inside its own
+inline assembly (the gallery's `buildBody` closure near line 286; the holo's inside `createHoloScene`). That is already
+two copies of "assemble this node's look at this radius"; this stream must not write a third. Phase 1 is therefore to
+extract ONE assembly function (in `bodyFeatures.ts` or a new `holo/bodyLook.ts`) that takes a node, a rendered radius
+and options (time, detail, lighting) and returns the group plus its updaters, and to make `scene.ts` and
+`galleryScene.ts` call it. Measure the two paths before you merge them and write the differences down: grep says
+`buildStellarFlares` is called only in the gallery and `buildStarLook` only in the scene, so either the holo lost
+stellar flares or they are reached another way; if the live holo really does not flare, that is a bug row of its own
+(claim a B number, gated), not something to fix silently inside the extraction. Gate for the extraction: a spec that
+builds the same node through both callers and compares the feature inventory (child names, material counts) so the
+gallery and the holo cannot drift again; the gallery route (`routes/discgallery3d`) and the holo must still render,
+checked headlessly (store the rAF callback, step the loop; the recipe is in the starmap-stars memory and RENDER-S30).
+
+**The comparison scene itself.** A new `holo/comparisonScene.ts` and `components/SizeComparisonView.svelte`, mounted the
+way `discgallery3d/+page.svelte` mounts the gallery (onMount, dynamic import, a handle with `dispose()`). Design points,
+each a sentence you should be able to defend to the owner:
+- TRUE scale is the whole feature, so this view deliberately does NOT bind the size law. RENDER-S11/S41/S43 are the
+  readable-size law for the map; here a body's drawn radius is `radiusKm` (bodies), `starRadiusKmOf` (stars), the outer
+  radius for belts and rings (`radiusOuterKm`), a mega's own radius (RENDER-S44) and a construct's real length (its model
+  group is normalised, RENDER-S9, so scale it by the length, never by a dial). Write that exception down as a new
+  engine-map entry (claim the next free RENDER-S number): "true scale is a VIEW, not a dial, and the span map has no
+  say in it".
+- An ORTHOGRAPHIC camera. Perspective makes the nearer body larger, which is exactly the lie this view exists to remove.
+- One fixed key light from the viewer's upper left so every body is lit the same way (the poster look); black backdrop;
+  NO starfield, because a starfield implies distance.
+- Layout is a pure function `layoutStrip(items, scale, gap)` of the sorted diameters: descending, edge-to-edge with a gap
+  proportional to the larger neighbour, labels alternating above/below once bodies get small (the poster's Titania/Rhea
+  rows). Horizontal on desktop, vertical when `mode === 'phone'` (the same phone mode `SystemView`/`Starmap` already
+  key on). The strip scrolls along its axis; zoom bounds come from the set's own extent (UI-L7: never a constant).
+- Scale: `pxPerKm = 0.5 * min(w, h) / selectedDiameterKm` on a click, `0.3` for the opening view. The MEDIAN PLANET is
+  the median by radius of the bodies whose `roleHint` is `planet` (giants included); for an even count take the lower
+  middle (the smaller one), which favours the terrestrial worlds a GM is likelier to be authoring; with no planets fall
+  back to the median of all bodies, and with only a star, the star. Pin all three cases.
+- The pixel floor is a legibility device, not a size: anything under ~2 px at the current scale draws as a dot with its
+  label and the words "below 1 px at this scale", never inflated (RENDER-S43's spirit). Do not build textures or
+  materials for bodies under the floor; build looks lazily as zoom brings them up, dispose as it takes them down. A
+  system with two hundred asteroids must open in the time the map does.
+- The ruler runs along the strip's axis in the current LENGTH unit through the click-to-cycle unit prefs (DATA-R20:
+  stored values never leave SI, relabel only), with the three reference ticks highlighted where they fall and shown at
+  the ruler's edge as arrows when off its range. The tick constants live in `src/lib/constants.ts` once: EARTH_RADIUS_KM
+  and SOLAR_RADIUS_KM are already there; there is NO Luna radius anywhere in the codebase, so add `LUNA_RADIUS_KM =
+  1737.4` there and read it. Note `src/lib/import/realsky/constants.mjs` carries a second SOLAR_RADIUS_KM (695,700 vs
+  696,340); the view reads the app constant, and the duplicate is an observation to record, not yours to unify.
+- Each label carries the body's name and its diameter in the current unit.
+- Selection: a click centres the object AND selects it through the map's shared selection (TAG-14: live and shared,
+  not per-surface). The view is a selector; it does not grow a second selection store.
+- Hidden set: per map (keyed by system id, or the starmap id), persisted in localStorage next to the other viewer
+  preferences, NOT in the campaign file: it is a viewer's choice, not a fact about the system. Say so in a comment; the
+  owner may reverse it when this reaches the Player view. Hiding the selected object offers three actions in one small
+  popup: hide this; hide this and everything bigger; hide this and everything smaller. While the set is non-empty a
+  pill reads "N hidden - show all" and clears it. Hidden objects never take part in the median or the layout.
+- Entry points, all thin: the rail sub-button under Measure (`RailNav.svelte` ~line 155, shown only while `rulerOn`;
+  the two maps feed `rulerOn` from `measureMode` / `rulerActive`); and a fourth starmap view beside 2D/3D/List in
+  `src/lib/starmap/` and the system map's view switch, ONE switch each, found rather than duplicated. On the starmap the
+  items are every system's stars from `systemVisualStars` (multi-star aware) with `starRadiusKmOf` for the radius.
+- Player view later: the scene module takes plain data and has no GM chrome inside it, so the player tier (HoloView at
+  BOTH tiers, TAG-20, and its four-places marker rule when the time comes) can mount it unchanged.
+
+**Gates, every one seen RED with its law removed:** the layout law (order, spacing, axis by mode); the scale rule (50%
+on click, 30% opening, both from the shorter side); the median-planet rule with its three cases; hidden-set persistence
+round trip and "show all"; the ruler's three ticks in km and their relabel through the unit prefs; the extraction
+inventory spec above. A ratio test is blind to constant divergence (PHY-34): pin absolute pixel sizes for the Solar
+System fixture (Jupiter, Earth, Luna at a stated scale).
+
+**Eyeball list for the owner (nobody on this stream will see a browser; say so in the report):** Sol opens on Earth at
+~30% with the giants and the Sun off to the left and the ruler's Sun tick lit; click Jupiter and it fills half the
+shorter side; phone view runs vertically; hide Mercury, reload, the pill says "1 hidden", "show all" brings it back;
+the same on the starmap with Sirius A (now `star/A1V`) beside the Sun.
+
+**Report back** with versions, the engine-map entries you added, what you measured about the two assembly paths, and
+anything you left undone. Two sittings is honest: the extraction plus the desktop view; then phone, hiding, the ruler
+and the entry points.

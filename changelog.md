@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.296 - 4th Sep 2026
+
+- Board: the size-comparison view (G66) captured and briefed - every object on a map at true scale, side by side, for a session to build.
+
 ## v3.0.295 - 3rd Sep 2026
 
 - Board and design only: the space elevator's docking requirement is written down where the next session will find it - stations up the ribbon at low, medium and geostationary levels that turn with the world, rings and spheres that take a ship at the nearest point, and the rule that a docked ship must sit in the same place on the GM map, the 3D view and every player view.
