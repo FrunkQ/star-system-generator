@@ -106,6 +106,93 @@ describe('R-14: a clip is read, or refused with a reason', () => {
 	});
 });
 
+describe('R-14: EVERY object type, not just bodies', () => {
+	// A construct is a CelestialBody with `kind: 'construct'` - ships, stations, belts, rings and
+	// the megastructures all live there - so the insert must be kind-agnostic. It is; what differs
+	// is the ROOT's re-home, because G64's reparentBody takes bodies only.
+	function mixedClip(): string {
+		return JSON.stringify({
+			sseClip: 1,
+			source: { url: 'https://hub.test/s/yard' },
+			root: 'src-station',
+			nodes: [
+				{ id: 'src-station', parentId: null, kind: 'construct', roleHint: 'construct', name: 'High Yard', constructChrome: true,
+				  orbit: { hostId: 'src-old', hostMu: 3.9e14, t0: 0, elements: { a_AU: 0.001, e: 0, i_deg: 0, raan_deg: 0, argp_deg: 0, M0_deg: 0 } } },
+				{ id: 'src-ring', parentId: 'src-station', kind: 'construct', roleHint: 'ring', name: 'Hab Ring' },
+				{ id: 'src-mega', parentId: 'src-station', kind: 'construct', roleHint: 'construct', name: 'Ringworld', artificial: true, mega: { type: 'ringworld' } },
+				{ id: 'src-ship', parentId: 'src-station', kind: 'construct', roleHint: 'ship', name: 'Tender',
+				  autopilot: { enabled: true, traversal: 'in-order', repeat: true, planning: 2, drive: 0.5, ignoreFuel: false, ignoreSupplies: false,
+				               legs: [{ targetId: 'src-station' }, { targetId: 'src-never-copied' }], avoidPlaceIds: ['src-ring', 'src-also-never-copied'] } },
+				{ id: 'src-belt', parentId: 'src-station', kind: 'body', roleHint: 'belt', name: 'Scrap Belt' }
+			]
+		});
+	}
+
+	it('inserts constructs, megastructures, rings, belts and ships alike', () => {
+		const sys = hostSystem();
+		const p = parseHubClip(mixedClip());
+		expect(p.ok).toBe(true);
+		if (!p.ok) return;
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(r.count).toBe(5); // ABSOLUTE: nothing was skipped for being the wrong kind
+		const byName = (n: string) => sys.nodes.find((x: any) => x.name === n) as any;
+		for (const n of ['High Yard', 'Hab Ring', 'Ringworld', 'Tender', 'Scrap Belt']) {
+			expect(byName(n), `${n} did not arrive`).toBeTruthy();
+		}
+		// The kind-specific payload survives: a megastructure is still one, a ring still a ring.
+		expect(byName('Ringworld').mega.type).toBe('ringworld');
+		expect(byName('Hab Ring').roleHint).toBe('ring');
+		expect(byName('High Yard').parentId).toBe('target-star');
+	});
+
+	it('remaps references that are NOT parentId or orbit.hostId', () => {
+		// An autopilot leg and an avoid-list hold node ids. Remapping only the obvious two would
+		// leave a pasted ship pointing at the source map.
+		const sys = hostSystem();
+		const p = parseHubClip(mixedClip());
+		if (!p.ok) return;
+		insertClip(sys, p.clip, 'target-star', 0);
+		const ship = sys.nodes.find((n: any) => n.name === 'Tender') as any;
+		const station = sys.nodes.find((n: any) => n.name === 'High Yard') as any;
+		const ring = sys.nodes.find((n: any) => n.name === 'Hab Ring') as any;
+		expect(ship.autopilot.legs[0].targetId).toBe(station.id);
+		expect(ship.autopilot.avoidPlaceIds[0]).toBe(ring.id);
+		// A reference to something that was NOT copied is left exactly as it was, not guessed at -
+		// in an OBJECT property and in an ARRAY element, which are separate branches of the walk.
+		expect(ship.autopilot.legs[1].targetId).toBe('src-never-copied');
+		expect(ship.autopilot.avoidPlaceIds[1]).toBe('src-also-never-copied');
+	});
+
+	it('stands a pasted route down, and says so, rather than chasing ids that are not here', () => {
+		const sys = hostSystem();
+		const p = parseHubClip(mixedClip());
+		if (!p.ok) return;
+		insertClip(sys, p.clip, 'target-star', 0);
+		const ship = sys.nodes.find((n: any) => n.name === 'Tender') as any;
+		expect(ship.autopilot.enabled).toBe(false);
+		// The SHIP is untouched - the route is what did not survive, and it is tagged, not silent.
+		expect(ship.autopilot.legs.length).toBe(2);
+		expect((ship.tags ?? []).some((t: any) => t.ns === 'origin' && t.key === 'hub-route-stood-down')).toBe(true);
+	});
+
+	it('leaves a construct root attached even though G64 re-homes bodies only', () => {
+		// reparentBody takes `kind === 'body'`. A construct root therefore gets the plain attach:
+		// parent set, host and hostMu restamped, elements kept. Pinned so the asymmetry is a
+		// recorded decision rather than something nobody noticed.
+		const sys = hostSystem();
+		const p = parseHubClip(mixedClip());
+		if (!p.ok) return;
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok && r.mode).toBe('attached');
+		const station = sys.nodes.find((n: any) => n.name === 'High Yard') as any;
+		expect(station.orbit.hostId).toBe('target-star');
+		expect(station.orbit.hostMu).toBeGreaterThan(0);
+		expect(station.orbit.elements.a_AU).toBe(0.001); // its own shape, kept
+	});
+});
+
 describe('R-14: THE WHOLE HIERARCHY goes in, or none of it', () => {
 	it('inserts every level and keeps every parent link', () => {
 		const sys = hostSystem();

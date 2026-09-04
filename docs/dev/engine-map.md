@@ -5752,6 +5752,19 @@ tagged, never refused.
 WHY: hub R-14 ([[G57]]). Every row of a hub map page has a Copy control and it has led nowhere since
 it shipped - both `main` and this branch were grepped, and the gas-giant recipe and the hub link were
 the only clipboard readers in the engine.
+EVERY KIND, AND TWO ASYMMETRIES THAT ARE DECISIONS RATHER THAN OVERSIGHTS. A construct is a
+`CelestialBody` with `kind: 'construct'` - ships, stations, rings, belts and the megastructures all
+live there - and the insert is kind-agnostic, so all of them arrive with their own payload intact.
+But (1) **G64's `reparentBody` takes `kind === 'body'` only**, so a CONSTRUCT root gets the plain
+attach (parent set, `hostId`/`hostMu` restamped, elements kept) rather than the state-based
+re-expression; and (2) **a pasted construct's autopilot is stood down and tagged**
+(`origin/hub-route-stood-down`). A route is a plan made in another campaign and most of its stops
+were never copied, so leaving it enabled sets the planner chasing ids that do not exist here. The
+SHIP comes whole; the ROUTE is what did not survive, and it says so.
+EVERY REFERENCE MOVES WITH THE IDS, not just `parentId` and `orbit.hostId`. An autopilot leg, an
+avoid-list, a docking target and a flight log all hold node ids, so the clone is walked and any
+string that IS one of this clip's ids is rewritten wherever it sits. A reference to something that
+was NOT copied is left exactly as it was rather than guessed at.
 NOT OBVIOUS: **the ordering guarantee is documented and deliberately not relied on.** The hub emits
 depth-first, parents first; this reads that happily but builds the tree itself, so a producer bug
 about ordering cannot silently mis-parent somebody's moons.

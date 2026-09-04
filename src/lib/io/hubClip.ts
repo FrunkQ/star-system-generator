@@ -183,6 +183,12 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
     } else {
       copy.parentId = remap.get(n.parentId)!;
     }
+    // EVERY reference moves with the ids, not just `parentId`. A construct is a `CelestialBody`
+    // with `kind: 'construct'`, and it carries ids far from the orbit - an autopilot's legs, its
+    // avoid-list, a docking target, a flight log's `placeId`. Remapping only the obvious two would
+    // leave a pasted station pointing at the source map's ship. So the clone is walked and any
+    // string that IS one of this clip's ids is rewritten, wherever it sits.
+    remapRefsDeep(copy, remap);
     // The orbit's host is a reference like any other and has to move with the ids. A descendant
     // keeps its ELEMENTS untouched - only the name of the thing it goes round is rewritten.
     if (copy.orbit && typeof copy.orbit === 'object') {
@@ -195,6 +201,19 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
       }
     }
     inserted.push(copy);
+  }
+
+  // A ROUTE IS A PLAN MADE IN ANOTHER CAMPAIGN. Whatever the deep remap could resolve, an
+  // autopilot's stops are mostly places that were never copied - the fuel depot two systems over,
+  // the yard it returns to. Leaving it enabled sets the planner chasing ids that do not exist here.
+  // So the SHIP comes whole - hull, cargo, crew, tags - and its route is stood down and said so.
+  // That is requirement 5 exactly: tag it, keep the node.
+  for (const n of inserted) {
+    if (n?.kind !== 'construct' || !n.autopilot) continue;
+    if (n.autopilot.enabled) {
+      n.autopilot = { ...n.autopilot, enabled: false };
+      addTag(n, { ns: 'origin', key: 'hub-route-stood-down', origin: 'authored' });
+    }
   }
 
   const newRootId = remap.get(clip.root)!;
@@ -232,7 +251,34 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
 function creditRoot(root: any, source: HubClipSource | undefined): void {
   const url = typeof source?.url === 'string' ? source.url.trim() : '';
   if (!root || !url) return;
-  const tag: Tag = { ns: 'origin', key: 'hub', value: url, origin: 'authored' };
-  const tags: Tag[] = Array.isArray(root.tags) ? root.tags : [];
-  root.tags = [...tags.filter((t) => !(t?.ns === 'origin' && t?.key === 'hub')), tag];
+  addTag(root, { ns: 'origin', key: 'hub', value: url, origin: 'authored' });
+}
+
+/** One tag per ns+key: a second paste replaces rather than stacks. */
+function addTag(node: any, tag: Tag): void {
+  const tags: Tag[] = Array.isArray(node.tags) ? node.tags : [];
+  node.tags = [...tags.filter((t) => !(t?.ns === tag.ns && t?.key === tag.key)), tag];
+}
+
+/**
+ * Rewrite every reference to a clip id, wherever it is nested. Strings only, and only exact
+ * matches against an id the clip actually carries - so ordinary prose is untouched, and a
+ * reference to something that was NOT copied is left exactly as it was rather than being guessed
+ * at. Arrays and objects are walked; nothing else can hold an id.
+ */
+function remapRefsDeep(value: any, remap: Map<string, string>, depth = 0): void {
+  if (!value || typeof value !== 'object' || depth > 12) return;
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) {
+      const v = value[i];
+      if (typeof v === 'string' && remap.has(v)) value[i] = remap.get(v)!;
+      else remapRefsDeep(v, remap, depth + 1);
+    }
+    return;
+  }
+  for (const k of Object.keys(value)) {
+    const v = value[k];
+    if (typeof v === 'string' && remap.has(v)) value[k] = remap.get(v)!;
+    else remapRefsDeep(v, remap, depth + 1);
+  }
 }

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.293 - 3rd Sep 2026
+
+- Pasting from the map library works for everything, not just worlds. Ships, stations, hab rings, belts and megastructures all come across with their own detail intact - a ringworld arrives a ringworld. Anything the copied branch pointed at inside itself keeps pointing at the right thing afterwards: a station's tender still knows which station, an avoid-list still names the right ring. A reference to something that was NOT copied is left exactly as it was rather than quietly repointed at something else.
+- A pasted ship's route is stood down, and says so. A route is a plan made in somebody else's campaign and most of its stops were never copied with the ship, so leaving it running would send the autopilot chasing places that do not exist here. The ship itself arrives whole - hull, crew, cargo, tags - and carries a tag saying its route did not come with it.
+
 ## v3.0.292 - 3rd Sep 2026
 
 - Copy a star from a map on the Explorers site and this app can now read it - with its planets, and their moons, and whatever else hung beneath it. Copying there has always taken the whole branch; nothing here could read one, so the button led nowhere. The reader takes the branch entire or refuses and says why: a piece copied without its parent, a loop, or a clip made by a newer version of the site than this app understands (which tells you to update rather than pretending the copy button is broken).
