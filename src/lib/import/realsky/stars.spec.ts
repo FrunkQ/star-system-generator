@@ -61,7 +61,7 @@ describe('luminosityClassOf — the parse', () => {
 		expect(luminosityClassOf('M2')).toBeUndefined();
 		expect(luminosityClassOf('')).toBeUndefined();
 		expect(luminosityClassOf('Y0pec')).toBeUndefined();
-		expect(luminosityClassOf('A0mA1Va')).toBeUndefined(); // Sirius; unparseable, so main sequence
+		expect(luminosityClassOf('A0mA1Va')).toBe('V'); // Sirius; B116 reads the Am notation now - see amStars.spec.ts
 	});
 
 	it('discards the companion before scanning, never after', () => {
@@ -242,10 +242,18 @@ describe('the invariant: created AS it, classifies back AS it', () => {
 			'M1.5Iab+B2Vn', 'M1-M2Ia-Iab', 'B8Ia', 'A2Ia', 'F7Ib', 'K1.5III', 'K5III', 'K0III',
 			'G8III', 'M3.5III', 'F0II', 'B0Ib-II', 'K0III-IV'
 		];
+		// B116: the round trip is over the CLASSIFICATION - spectral, subclass, luminosity, band,
+		// companion, variant. A parse also carries annotation fields now (peculiarity, luminositySub,
+		// the Am component types), and `formatStellarType` deliberately does not re-emit them: they are
+		// astronomers' notes, not classification, which is this test's own stated principle.
+		const classification = (t) => t && ({
+			spectral: t.spectral, subclass: t.subclass, luminosity: t.luminosity, band: t.band,
+			companion: t.companion, variant: t.variant
+		});
 		for (const s of REAL) {
 			const once = parseStellarType(s);
 			const twice = parseStellarType(formatStellarType(once));
-			expect(twice, `${s} is not stable under the round trip`).toEqual(once);
+			expect(classification(twice), `${s} is not stable under the round trip`).toEqual(classification(once));
 		}
 	});
 

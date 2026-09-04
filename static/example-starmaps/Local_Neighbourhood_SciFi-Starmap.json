@@ -2,7 +2,7 @@
  "id": "starmap-local-neighbourhood-scifi",
  "name": "Local Neighbourhood (Science Fiction)",
  "description": "The same real stars as the Local Neighbourhood map, at their true positions — but populated with the famous science fiction set among them. Sol runs on The Expanse; Pandora circles Alpha Centauri A; Reach guards Epsilon Eridani; the Nostromo is still answering that beacon at Zeta Reticuli. This map is deliberately fictional: the planets, stations and ships come from the novels, films and games, not from the catalogues. Stars without a famous fictional tenant keep their real confirmed planets.",
- "appVersion": "3.0.275",
+ "appVersion": "3.0.294",
  "baseMapVersion": 2,
  "distanceUnit": "ly",
  "unitIsPrefix": false,
@@ -3811,8 +3811,7 @@
       "roleHint": "star",
       "classes": [
        "star/M5.5V",
-       "star/M",
-       "star/M5.5Ve"
+       "star/M"
       ],
       "massKg": 2.4265799999999998e+29,
       "radiusKm": 107138,
@@ -4533,8 +4532,7 @@
       "roleHint": "star",
       "classes": [
        "star/M6.5V",
-       "star/M",
-       "star/M6.5Ve"
+       "star/M"
       ],
       "massKg": 2.1879e+29,
       "radiusKm": 100181,
@@ -4844,9 +4842,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/A0",
-       "star/A",
-       "star/A0mA1Va"
+       "star/A1V",
+       "star/A"
       ],
       "massKg": 4.103307e+30,
       "radiusKm": 1190343,
@@ -5020,8 +5017,7 @@
       "roleHint": "star",
       "classes": [
        "star/M5.5V",
-       "star/M",
-       "star/M5.5Ve"
+       "star/M"
       ],
       "massKg": 2.4265799999999998e+29,
       "radiusKm": 114791,
@@ -5054,8 +5050,7 @@
       "roleHint": "star",
       "classes": [
        "star/M6V",
-       "star/M",
-       "star/M6Ve"
+       "star/M"
       ],
       "massKg": 2.30724e+29,
       "radiusKm": 110616,
@@ -5114,8 +5109,7 @@
       "roleHint": "star",
       "classes": [
        "star/M3.5V",
-       "star/M",
-       "star/M3.5Ve"
+       "star/M"
       ],
       "massKg": 3.52053e+29,
       "radiusKm": 139140,
@@ -6040,8 +6034,7 @@
       "roleHint": "star",
       "classes": [
        "star/M5V",
-       "star/M",
-       "star/M5Ve"
+       "star/M"
       ],
       "massKg": 2.418624e+29,
       "radiusKm": 121747,
@@ -6107,8 +6100,7 @@
       "roleHint": "star",
       "classes": [
        "star/M5V",
-       "star/M",
-       "star/M5Ve"
+       "star/M"
       ],
       "massKg": 2.277405e+29,
       "radiusKm": 146097,
@@ -6179,8 +6171,7 @@
       "roleHint": "star",
       "classes": [
        "star/F5IV",
-       "star/F",
-       "star/F5IV-V"
+       "star/F"
       ],
       "massKg": 2.939742e+30,
       "radiusKm": 1424794,
@@ -6824,8 +6815,7 @@
       "roleHint": "star",
       "classes": [
        "star/M6.5V",
-       "star/M",
-       "star/M6.5Ve"
+       "star/M"
       ],
       "massKg": 2.1083399999999998e+29,
       "radiusKm": 86267,
@@ -7782,8 +7772,7 @@
       "roleHint": "star",
       "classes": [
        "star/M7V",
-       "star/M",
-       "star/M7.0V"
+       "star/M"
       ],
       "massKg": 1.92933e+29,
       "radiusKm": 83484,
@@ -7919,8 +7908,7 @@
       "roleHint": "star",
       "classes": [
        "star/M1V",
-       "star/M",
-       "star/sdM1"
+       "star/M"
       ],
       "massKg": 5.58909e+29,
       "radiusKm": 202449,
@@ -9199,8 +9187,7 @@
       "roleHint": "star",
       "classes": [
        "star/M4.5V",
-       "star/M",
-       "star/M4.5Ve"
+       "star/M"
       ],
       "massKg": 3.9382199999999996e+29,
       "radiusKm": 190622,
@@ -9548,9 +9535,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/A0",
-       "star/A",
-       "star/A0Va"
+       "star/A0V",
+       "star/A"
       ],
       "massKg": 4.246514999999999e+30,
       "radiusKm": 1739250,
@@ -9769,8 +9755,7 @@
       "roleHint": "star",
       "classes": [
        "star/G3V",
-       "star/G",
-       "star/G3-5V"
+       "star/G"
       ],
       "massKg": 1.8895499999999999e+30,
       "radiusKm": 640044,

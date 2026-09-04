@@ -549,6 +549,17 @@ export interface StellarType {
    *  that is deliberately a separate job. Kept so the designation can be rebuilt exactly and so the
    *  information is not silently thrown away a second time. */
   companion?: string;
+  /** B116: MK sub-division of the luminosity class - the `a` of `Va`, the `b` of `Vb`. Kept; never a key. */
+  luminositySub?: string;
+  /** B116: annotation codes read off the catalogue string - `m` metallic-line (Am), `e` emission,
+   *  `n`/`nn` broad lines, `p` peculiar, `s` sharp, `var`, `:` uncertain. KEPT AND USED (the
+   *  explainer names an Am star), never part of a class key. */
+  peculiarity?: string;
+  /** B116: an Am/Ap star's component types - K line, hydrogen, metallic - as written (`A0`, `A1`).
+   *  The temperature type follows the hydrogen lines when stated, else the K/metal midpoint. */
+  kLineType?: string;
+  hydrogenType?: string;
+  metallicType?: string;
 }
 
 export interface CelestialBody extends NodeBase, PhysicalParameters {

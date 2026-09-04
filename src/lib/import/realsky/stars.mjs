@@ -154,23 +154,95 @@ export function parseStellarType(type) {
   // A leading `d`/`sd` is SIMBAD's own shorthand for a dwarf (dM6 = Wolf 359, dM4 = Ross 128) and is
   // an explicit class V. Case-sensitive: an uppercase D is a white dwarf and was caught above.
   const dwarfPrefix = /^(sd|d)(?=[OBAFGKMLTY])/.exec(primary.trim());
-  const body = dwarfPrefix ? primary.trim().slice(dwarfPrefix[0].length) : primary.trim();
+  let body = dwarfPrefix ? primary.trim().slice(dwarfPrefix[0].length) : primary.trim();
+
+  // B116: METALLIC-LINE (Am/Ap) NOTATION, and it is information rather than noise. Sirius is
+  // `A0mA1Va`: the calcium K line reads as A0, the metallic lines as A1. The full component form is
+  // `kA0 hA1 mA1` (K line, hydrogen, metals). THE TEMPERATURE TYPE FOLLOWS THE HYDROGEN LINES when
+  // they are stated; when only K-line and metallic types are given, the midpoint (rounded up) is
+  // the honest estimate - the hydrogen type of an Am star lies between the two. The components are
+  // KEPT on the result (kLineType / hydrogenType / metallicType) so a reader can be told, and the
+  // class keys stay canonical: the peculiarity never leaks into `star/...`.
+  const pec = {};
+  const STEP = { O: 0, B: 10, A: 20, F: 30, G: 40, K: 50, M: 60 };
+  const LET = Object.keys(STEP);
+  const typeOf = (l, d) => (l ? `${l.toUpperCase()}${d != null ? d : ''}` : undefined);
+  const midpoint = (a, b) => {
+    const idx = (t) => STEP[t[0]] + (t.length > 1 ? Number(t.slice(1)) : 5);
+    const v = Math.round((idx(a) + idx(b)) / 2 + 1e-9);      // .5 rounds UP: A0 + A1 -> A1
+    const li = Math.min(LET.length - 1, Math.floor(v / 10));
+    return { letter: LET[li], sub: v - li * 10 };
+  };
+  let head = null;   // { letter, subclass } the temperature type, once decided
+  const comp = /^k([OBAFGKM])(\d+(?:\.\d+)?)?(?:\s*h([OBAFGKM])(\d+(?:\.\d+)?)?)?(?:\s*m([OBAFGKM])(\d+(?:\.\d+)?)?)?/.exec(body);
+  const cond = !comp && /^([OBAFGKM])(\d+(?:\.\d+)?)?m([OBAFGKM])(\d+(?:\.\d+)?)?/.exec(body);
+  if (comp) {
+    pec.peculiarity = 'm';
+    pec.kLineType = typeOf(comp[1], comp[2]);
+    if (comp[3]) pec.hydrogenType = typeOf(comp[3], comp[4]);
+    if (comp[5]) pec.metallicType = typeOf(comp[5], comp[6]);
+    const anchor = pec.hydrogenType ?? (pec.metallicType ? midpoint(pec.kLineType, pec.metallicType) : null);
+    head = typeof anchor === 'string' ? { letter: anchor[0], subclass: anchor.length > 1 ? Number(anchor.slice(1)) : undefined }
+         : anchor ? { letter: anchor.letter, subclass: anchor.sub } : { letter: comp[1], subclass: comp[2] != null ? Number(comp[2]) : undefined };
+    body = body.slice(comp[0].length);
+  } else if (cond) {
+    pec.peculiarity = 'm';
+    pec.kLineType = typeOf(cond[1], cond[2]);
+    pec.metallicType = typeOf(cond[3], cond[4]);
+    const mid = midpoint(pec.kLineType, pec.metallicType);
+    head = { letter: mid.letter, subclass: mid.sub };
+    body = body.slice(cond[0].length);
+  }
 
   // Anchored on the letter, never a bare /[IV]+/ search: a loose scan finds the V in a peculiarity
   // suffix and the I in anything at all. The subclass may itself be a RANGE and SIMBAD repeats the
-  // letter inside it — Betelgeuse is `M1-M2Ia-Iab`, a range in BOTH positions, which is the string
-  // that breaks a naive pattern.
-  const m = body.match(
-    /^([OBAFGKMLTY])\s*(\d+(?:\.\d+)?)?(?:\s*-\s*[OBAFGKMLTY]?\s*\d+(?:\.\d+)?)?\s*([IV]+[ab]{0,2}(?:\s*-\s*[IV]*[ab]{0,2})?)?/
-  );
-  if (!m || !m[1]) return undefined;
+  // letter inside it - Betelgeuse is `M1-M2Ia-Iab`, a range in BOTH positions, which is the string
+  // that breaks a naive pattern. After an Am head the body starts at the luminosity class.
+  const m = head
+    ? /^\s*([IV]+[abz]{0,2})(?:\s*-\s*[IV]*[abz]{0,2})?(.*)$/.exec(body)
+    : /^([OBAFGKMLTY])\s*(\d+(?:\.\d+)?)?(?:\s*-\s*[OBAFGKMLTY]?\s*\d+(?:\.\d+)?)?\s*([IV]+[abz]{0,2}(?:\s*-\s*[IV]*[abz]{0,2})?)?(.*)$/.exec(body);
+  if (!m) {
+    if (!head) return undefined;
+  }
+  const letter = head ? head.letter : m[1].toUpperCase();
+  const subclass = head ? head.subclass : (m[2] != null ? Number(m[2]) : undefined);
+  const tokRaw = head ? (m ? m[1] : undefined) : m[3];
+  const tail = head ? (m ? m[2] : body) : (m[4] ?? '');
   // A range takes the FIRST, more luminous reading: `IV-V` -> `IV`, `Ia-Iab` -> `Ia`. A star bright
   // enough to have been catalogued with a range is more likely the brighter one.
-  const written = m[3] ? m[3].replace(/\s+/g, '').split('-')[0] : (dwarfPrefix ? 'V' : undefined);
+  const tok = tokRaw ? tokRaw.replace(/\s+/g, '').split('-')[0] : (dwarfPrefix ? 'V' : undefined);
+  // `Ia`, `Iab`, `Ib` are whole supergiant CLASSES and are looked up whole. Only when the whole token
+  // is unknown is a trailing a/b/z a SUB-DIVISION of the class before it: `Va` -> class V, sub `a`.
+  let written = tok, subdiv = '';
+  if (tok && !LUMINOSITY_BAND[tok]) {
+    const r = tok.replace(/[abz]+$/, '');
+    if (r !== tok && LUMINOSITY_BAND[r]) { written = r; subdiv = tok.slice(r.length); }
+  }
+  // Annotation codes sit DIRECTLY after the class (`Ve`, `Vn`, `IVp`, `Vnn`, `Ve:`, `Y0pec`) and are
+  // read as an anchored sequence from there - never scanned out of what follows, because an abundance
+  // note like `Fe-0.5` (Arcturus) or `K6VeFe-1` contains an `e` that is iron, not emission. Codes:
+  // `e` emission, `n`/`nn` broad lines, `p` peculiar (`pec` is the same word), `s` sharp, `var`,
+  // `:` uncertain. Kept as codes, never as classification; abundance notes are dropped as before.
+  const codes = [];
+  const seq = /^\s*(pec|nn|var|comp|[enps:])/;
+  let restTail = String(tail);
+  for (;;) {
+    const c = seq.exec(restTail);
+    if (!c) break;
+    const code = c[1] === 'pec' ? 'p' : c[1];
+    if (!codes.includes(code)) codes.push(code);
+    restTail = restTail.slice(c[0].length);
+  }
+  if (pec.peculiarity) codes.unshift('m');
   return {
-    spectral: m[1].toUpperCase(),
-    ...(m[2] != null ? { subclass: Number(m[2]) } : {}),
+    spectral: letter,
+    ...(subclass != null ? { subclass } : {}),
     ...(written && LUMINOSITY_BAND[written] ? { luminosity: written, band: LUMINOSITY_BAND[written] } : {}),
+    ...(subdiv ? { luminositySub: subdiv } : {}),
+    ...(codes.length ? { peculiarity: codes.join('') } : {}),
+    ...(pec.kLineType ? { kLineType: pec.kLineType } : {}),
+    ...(pec.hydrogenType ? { hydrogenType: pec.hydrogenType } : {}),
+    ...(pec.metallicType ? { metallicType: pec.metallicType } : {}),
     ...(companion ? { companion } : {})
   };
 }
@@ -295,7 +367,10 @@ export function starClasses(type, { otype } = {}) {
   const own = parseStellarType(s);
   const designation = own?.subclass != null ? formatStellarType({ ...own, companion: undefined }) : '';
   const lead = designation ? [`star/${designation}`] : [];
-  const classes = [...lead, ...specific, `star/${letter}`, ...(full && full !== letter ? [`star/${full}`] : [])]
+  // B116: THE RAW STRING IS NEVER A CLASS. `star/A0mA1Va` was a key nothing had ever defined, and it
+  // was the third class on Sirius. Annotations and Am components now live on `stellarType`
+  // (peculiarity, kLineType, metallicType), which is where a reader can be told about them.
+  const classes = [...lead, ...specific, `star/${letter}`]
     .filter((c, i, a) => a.indexOf(c) === i);
   return {
     classes,

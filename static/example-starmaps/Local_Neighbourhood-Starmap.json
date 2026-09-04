@@ -2,7 +2,7 @@
  "id": "starmap-local-neighbourhood",
  "name": "Local Neighbourhood",
  "description": "The Sun’s real neighbourhood: every known star system within about 13 light years, every confirmed planet host out to about 16.5 light years, and a few famous landmarks beyond (Altair, Vega, Zeta Reticuli, TRAPPIST-1). Positions are true 3D positions from Gaia, Hipparcos and SIMBAD astrometry; planets are limited to those listed as confirmed by the NASA Exoplanet Archive (July 2026). Star and planet parameters are real where measured and physics-derived where not.",
- "appVersion": "3.0.275",
+ "appVersion": "3.0.294",
  "baseMapVersion": 2,
  "distanceUnit": "ly",
  "unitIsPrefix": false,
@@ -3205,8 +3205,7 @@
       "roleHint": "star",
       "classes": [
        "star/M5.5V",
-       "star/M",
-       "star/M5.5Ve"
+       "star/M"
       ],
       "massKg": 2.4265799999999998e+29,
       "radiusKm": 107138,
@@ -3491,8 +3490,7 @@
       "roleHint": "star",
       "classes": [
        "star/M6.5V",
-       "star/M",
-       "star/M6.5Ve"
+       "star/M"
       ],
       "massKg": 2.1879e+29,
       "radiusKm": 100181,
@@ -3655,9 +3653,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/A0",
-       "star/A",
-       "star/A0mA1Va"
+       "star/A1V",
+       "star/A"
       ],
       "massKg": 4.103307e+30,
       "radiusKm": 1190343,
@@ -3760,8 +3757,7 @@
       "roleHint": "star",
       "classes": [
        "star/M5.5V",
-       "star/M",
-       "star/M5.5Ve"
+       "star/M"
       ],
       "massKg": 2.4265799999999998e+29,
       "radiusKm": 114791,
@@ -3794,8 +3790,7 @@
       "roleHint": "star",
       "classes": [
        "star/M6V",
-       "star/M",
-       "star/M6Ve"
+       "star/M"
       ],
       "massKg": 2.30724e+29,
       "radiusKm": 110616,
@@ -3854,8 +3849,7 @@
       "roleHint": "star",
       "classes": [
        "star/M3.5V",
-       "star/M",
-       "star/M3.5Ve"
+       "star/M"
       ],
       "massKg": 3.52053e+29,
       "radiusKm": 139140,
@@ -4385,8 +4379,7 @@
       "roleHint": "star",
       "classes": [
        "star/M5V",
-       "star/M",
-       "star/M5Ve"
+       "star/M"
       ],
       "massKg": 2.418624e+29,
       "radiusKm": 121747,
@@ -4452,8 +4445,7 @@
       "roleHint": "star",
       "classes": [
        "star/M5V",
-       "star/M",
-       "star/M5Ve"
+       "star/M"
       ],
       "massKg": 2.277405e+29,
       "radiusKm": 146097,
@@ -4524,8 +4516,7 @@
       "roleHint": "star",
       "classes": [
        "star/F5IV",
-       "star/F",
-       "star/F5IV-V"
+       "star/F"
       ],
       "massKg": 2.939742e+30,
       "radiusKm": 1424794,
@@ -5018,8 +5009,7 @@
       "roleHint": "star",
       "classes": [
        "star/M6.5V",
-       "star/M",
-       "star/M6.5Ve"
+       "star/M"
       ],
       "massKg": 2.1083399999999998e+29,
       "radiusKm": 86267,
@@ -5798,8 +5788,7 @@
       "roleHint": "star",
       "classes": [
        "star/M7V",
-       "star/M",
-       "star/M7.0V"
+       "star/M"
       ],
       "massKg": 1.92933e+29,
       "radiusKm": 83484,
@@ -5935,8 +5924,7 @@
       "roleHint": "star",
       "classes": [
        "star/M1V",
-       "star/M",
-       "star/sdM1"
+       "star/M"
       ],
       "massKg": 5.58909e+29,
       "radiusKm": 202449,
@@ -7215,8 +7203,7 @@
       "roleHint": "star",
       "classes": [
        "star/M4.5V",
-       "star/M",
-       "star/M4.5Ve"
+       "star/M"
       ],
       "massKg": 3.9382199999999996e+29,
       "radiusKm": 190622,
@@ -7321,9 +7308,8 @@
       "kind": "body",
       "roleHint": "star",
       "classes": [
-       "star/A0",
-       "star/A",
-       "star/A0Va"
+       "star/A0V",
+       "star/A"
       ],
       "massKg": 4.246514999999999e+30,
       "radiusKm": 1739250,
@@ -7471,8 +7457,7 @@
       "roleHint": "star",
       "classes": [
        "star/G3V",
-       "star/G",
-       "star/G3-5V"
+       "star/G"
       ],
       "massKg": 1.8895499999999999e+30,
       "radiusKm": 640044,

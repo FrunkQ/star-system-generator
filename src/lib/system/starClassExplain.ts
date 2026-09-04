@@ -120,6 +120,8 @@ export function sizeInWords(radiusSolar: number | undefined): string | undefined
 /** What the caller knows about the PARTICULAR star, beyond its class. Both optional: a caller
  *  explaining a CLASS rather than a star (the picker tooltip, the physics page) passes neither. */
 export interface StarClassContext {
+	/** B116: the parsed catalogue type, so an Am star can be SAID to be one - the notation is information. */
+	stellarType?: import('$lib/types').StellarType;
 	/**
 	 * The star's activity bucket, when it is known. A FLARE STAR is worth saying out loud — owner,
 	 * 2026-08-15: "this should also change M-type to Flaring M-Type". It is not a different CLASS
@@ -176,7 +178,12 @@ export function explainStarClass(
 
 	const flaring = activity === 'flare-star';
 	const headline = flaring ? `Flaring ${kind.toLowerCase()}` : kind;
-	const clauses = [headline, colour && `${colour} to human eyes`, size].filter(Boolean) as string[];
+	// B116: an Am star is a real thing and the catalogue told us - say so, with the two readings.
+	const st = ctx.stellarType;
+	const am = st?.peculiarity?.includes('m')
+		? `a metallic-line Am star${st.kLineType && st.metallicType ? ` - calcium K line ${st.kLineType}, metallic lines ${st.metallicType}${st.hydrogenType ? `, hydrogen ${st.hydrogenType}` : ', temperature between the two'}` : ''}`
+		: undefined;
+	const clauses = [headline, colour && `${colour} to human eyes`, size, am].filter(Boolean) as string[];
 	return { designation, kind: headline, colour, size, text: `${designation} (${clauses.join(', ')})` };
 }
 

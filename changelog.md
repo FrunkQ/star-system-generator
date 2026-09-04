@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.294 - 4th Sep 2026
+
+- Sirius, and every star catalogued in metallic-line (Am) notation, now classifies properly: the reading follows the hydrogen lines, the odd catalogue string no longer appears as a class of its own, and the star's explainer says what an Am star is and what its two readings were.
+
 ## v3.0.293 - 3rd Sep 2026
 
 - Pasting from the map library works for everything, not just worlds. Ships, stations, hab rings, belts and megastructures all come across with their own detail intact - a ringworld arrives a ringworld. Anything the copied branch pointed at inside itself keeps pointing at the right thing afterwards: a station's tender still knows which station, an avoid-list still names the right ring. A reference to something that was NOT copied is left exactly as it was rather than quietly repointed at something else.

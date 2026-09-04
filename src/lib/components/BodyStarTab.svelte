@@ -42,10 +42,10 @@
   const classExplanation = $derived(
       // A88: the star's OWN radius, not its class band. The editor is looking at one particular
       // star, and for a black hole the band cannot stand in - its radius IS its mass.
-      explainStarClass(rulePack, currentClass, {
+      explainStarClass(rulePack, currentClass, { ...{
           activity: activityBucket,
           radiusSolar: body?.radiusKm ? body.radiusKm / SOLAR_RADIUS_KM : undefined
-      })
+      }, stellarType: body?.stellarType })
   );
   // G54: WHAT AN OBSERVER MEASURES, beside what the star IS. Built by the ONE designation builder,
   // never a second one. No viewpoint exists in a body panel, so this is the isotropic answer and it

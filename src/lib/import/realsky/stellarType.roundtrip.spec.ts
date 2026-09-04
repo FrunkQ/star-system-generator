@@ -37,7 +37,8 @@ describe('the classification survives import', () => {
 		expect(byName['Arcturus'].stellarType).toEqual({ spectral: 'K', subclass: 1.5, luminosity: 'III', band: 'III' });
 		// SIMBAD's lowercase dwarf prefix: an explicit class V, and NOT a white dwarf.
 		expect(byName['Wolf 359'].stellarType).toEqual({ spectral: 'M', subclass: 6, luminosity: 'V', band: 'V' });
-		expect(byName['Proxima Centauri'].stellarType).toEqual({ spectral: 'M', subclass: 5.5, luminosity: 'V', band: 'V' });
+		// B116: `M5.5Ve` - the emission code is read and KEPT as a peculiarity, not lost.
+		expect(byName['Proxima Centauri'].stellarType).toEqual({ spectral: 'M', subclass: 5.5, luminosity: 'V', band: 'V', peculiarity: 'e' });
 	});
 
 	it('and the parameters follow from it — the supergiants are supergiants', () => {
