@@ -43,6 +43,10 @@ describe('every registry record declares capabilities, and they match the behavi
 				expect(d.capabilities.render3d).toEqual(expected);
 			});
 
+			it('docking mirrors the 3D anchor: a surface-stand is a LADDER, a host-centred structure docks ANYWHERE, a hull is a POINT', () => {
+				const a = d.capabilities.render3d.anchor;
+				expect(d.capabilities.docking).toBe(a === 'surface-stand' ? 'ladder' : a === 'host-centred' ? 'anywhere' : 'point');
+			});
 			it("render2d: sphere-sections ARE their orbit line, a tether is a RADIAL from the host edge, a spheroid is its glyph", () => {
 				expect(d.capabilities.render2d.structure).toBe(d.family === 'sphere-section' ? 'orbit-line' : d.family === 'tether' ? 'radial' : 'glyph');
 			});

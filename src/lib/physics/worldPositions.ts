@@ -12,6 +12,7 @@
 import { propagateState, propagateState3D } from './orbits';
 import { satelliteTiltRad, toParentEquator } from '../system/satelliteFrame';
 import type { System } from '../types';
+import { effectiveAttachment, attachedOffsetAu } from '../constructs/docking';
 
 export interface Vec2 { x: number; y: number; }
 export interface Vec3 { x: number; y: number; z: number; }
@@ -35,6 +36,8 @@ interface WalkOps<V> {
   // omega-only in the reference plane, so there is no out-of-plane axis for an equatorial rotation
   // to tilt into — 2D is the plan view, and a satellite's plan position is its projection.
   frame?: (node: any, parent: any, relative: V) => V;
+  /** A docked construct's offset from its structure's host, physics AU (x, y, z) -> V. */
+  attach: (offset: { x: number; y: number; z: number }) => V;
 }
 
 // Generic hierarchy walk, memoised per node. Faithfully mirrors the orrery's original
@@ -98,6 +101,27 @@ function walkPositions<V>(
       return ops.zero;
     }
 
+    // G53 PHASE 5 - AN ATTACHED CONSTRUCT IS PLACED BY ITS STRUCTURE, NOT BY AN ORBIT. A ladder
+    // structure stands on its anchor ray (attached to ITSELF at the anchor, spun and tilted with
+    // its world by docking.ts's own arithmetic); a construct with `attachedTo` rides the frame
+    // point it docked at - a level up the ribbon, a bearing on a rim, or the hull itself. This is
+    // THE ONE ANSWER the 2D orrery, the holo and the player snapshot all read, which is what makes
+    // a docked ship sit on its structure in every view (design 7c). It outranks `orbit` on
+    // purpose: the create path gives a surface structure a placeholder orbit at the host's radius,
+    // and propagating that would walk the anchor round at the surface-orbit period.
+    if (node.kind === 'construct') {
+      const att = effectiveAttachment(node);
+      const structure = att ? (att.id === node.id ? node : nodesById.get(att.id)) : undefined;
+      if (att && structure) {
+        const hostId = (structure as any).parentId as string | null;
+        const host = hostId ? nodesById.get(hostId) : undefined;
+        const off = host ? attachedOffsetAu(att, structure, host, timeMs, system ?? undefined) : null;
+        // A hull (point docking) has no offset of its own: the structure's position IS the answer.
+        const v = off && hostId ? ops.add(resolve(hostId), ops.attach(off)) : resolve((structure as any).id);
+        out.set(nodeId, v);
+        return v;
+      }
+    }
     const parentPos = resolve(node.parentId);
     let relative = ops.zero;
     if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
@@ -134,7 +158,8 @@ export function computeWorldPositions(
       zero: { x: 0, y: 0 },
       add: (a, b) => ({ x: a.x + b.x, y: a.y + b.y }),
       lift: (p) => ({ x: p.x, y: p.y }),
-      propagate: (node, t) => propagateState(node, t).r
+      propagate: (node, t) => propagateState(node, t).r,
+      attach: (o) => ({ x: o.x, y: o.y })
     },
     sampleConstruct
   );
@@ -161,6 +186,7 @@ export function computeWorldPositions3D(
       add: (a, b) => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }),
       lift: (p) => ({ x: p.x, y: p.y, z: 0 }),
       propagate: (node, t) => propagateState3D(node, t).r,
+      attach: (o) => ({ x: o.x, y: o.y, z: o.z }),
       frame: (node, parent, r) => {
         const tilt = satelliteTiltRad(node, parent);
         return tilt ? toParentEquator(r.x, r.y, r.z, tilt, { x: 0, y: 0, z: 0 }) : r;
@@ -197,6 +223,9 @@ export function computeWorldStates3D(
         v: { x: a.v.x + b.v.x, y: a.v.y + b.v.y, z: a.v.z + b.v.z }
       }),
       lift: (p) => ({ r: { x: p.x, y: p.y, z: 0 }, v: zero3() }),
+      // A docked construct contributes no velocity of its own here, as a sampler-placed one does
+      // not: its ride (the world's spin, a rim's turn) is docking.ts's `dockSpeedMs` when asked.
+      attach: (o) => ({ r: { x: o.x, y: o.y, z: o.z }, v: zero3() }),
       propagate: (node, t) => propagateState3D(node, t),
       frame: (node, parent, s) => {
         const tilt = satelliteTiltRad(node, parent);

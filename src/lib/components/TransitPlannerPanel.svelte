@@ -6,6 +6,7 @@
   import { resolveConstructCurrentHostId } from '$lib/transit/scheduler';
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
   import { getOrbitOptions } from '$lib/physics/orbits';
+  import { dockingOf, ladderPorts, dockMatchSpeedMs } from '$lib/constructs/docking';
   import { lagrangePlacementId } from '$lib/physics/lagrange';
   const isLagrangeOption = (id: string) => !!lagrangePlacementId(id);
   import { AU_KM } from '$lib/constants';
@@ -50,7 +51,21 @@
 
   let targetId: ID = '';
   let selectedOrbitId: string = 'lo'; // Default to Low Orbit
-  let orbitOptions: { id: string, name: string, radiusKm: number }[] = [];
+  let orbitOptions: { id: string, name: string, radiusKm: number, color?: string }[] = [];
+  // G53 PHASE 5: what docking COSTS beyond arriving - co-rotation is not orbit. Stated, never refused.
+  $: dockNote = (() => {
+      if (!system || !selectedOrbitId?.startsWith('dock:')) return '';
+      const structure = system.nodes.find(n => n.id === targetId) as any;
+      const host = structure ? system.nodes.find(n => n.id === structure.parentId) : undefined;
+      if (!structure || !host) return '';
+      const level = selectedOrbitId.slice(5);
+      const att = level === 'nearest' ? { id: structure.id, angleRad: 0, latRad: 0 } : { id: structure.id, level: level as any };
+      const dv = dockMatchSpeedMs(att, structure, host, 0, system);
+      if (dv == null) return '';
+      return dv < 50
+          ? 'Docking here costs nothing beyond arriving: the structure moves at orbital speed at this height.'
+          : `Docking here means matching the structure's own speed - about ${(dv / 1000).toFixed(1)} km/s beyond a circular orbit at this height.`;
+  })();
   
   let accelPercent: number = 10; 
   let brakeStartPercent: number = 90;
@@ -414,9 +429,25 @@
                   selectedOrbitId = 'lo';
               }
           } else if (body && body.kind === 'construct') {
-              // For independent constructs, we target them directly (Rendezvous)
-              orbitOptions = [{ id: body.id, name: 'Rendezvous', radiusKm: 0, color: '#88ccff' }];
-              selectedOrbitId = body.id;
+              const docking = dockingOf(body);
+              const host = system.nodes.find(n => n.id === body.parentId);
+              if (docking === 'ladder' && host && host.kind === 'body') {
+                  // G53 PHASE 5: a ladder structure offers its LEVELS as destinations - "LO - Elevator",
+                  // "GO - Elevator" - the same radii the propagator and the sampler place a docked
+                  // ship at (docking.ts). The flight is solved to the HOST at that radius; the arrival
+                  // hands the ship to the structure (arrivalDock, below).
+                  const ports = ladderPorts(body as any, host as any, system);
+                  orbitOptions = ports.map(p => ({ id: 'dock:' + p.id, name: `${p.label} - ${body.name}`, radiusKm: p.radiusKm, color: '#9fe8a0' }));
+                  selectedOrbitId = orbitOptions.find(o => o.id === 'dock:geo')?.id ?? orbitOptions[0]?.id ?? body.id;
+              } else if (docking === 'anywhere' && host) {
+                  // Ports everywhere: the ship docks at the nearest point of the rim it reaches.
+                  orbitOptions = [{ id: 'dock:nearest', name: `Nearest point - ${body.name}`, radiusKm: (body.orbit?.elements.a_AU ?? 0) * AU_KM, color: '#9fe8a0' }];
+                  selectedOrbitId = 'dock:nearest';
+              } else {
+                  // For independent constructs, we target them directly (Rendezvous)
+                  orbitOptions = [{ id: body.id, name: 'Rendezvous', radiusKm: 0, color: '#88ccff' }];
+                  selectedOrbitId = body.id;
+              }
           } else {
               orbitOptions = [];
               selectedOrbitId = 'lo';
@@ -507,6 +538,13 @@
       }
       const targetNode = system.nodes.find(n => n.id === targetId);
       const isConstructTarget = !!(targetNode && targetNode.kind === 'construct');
+      // G53 PHASE 5: a dock destination. The solver flies to the structure's HOST at the level's
+      // radius (parkingOrbitRadius_au carries it); the plan carries `arrivalDock` so the sampler
+      // and the reconciler hand the ship to the structure on arrival.
+      const dockLevel = selectedOrbitId.startsWith('dock:') ? selectedOrbitId.slice(5) : null;
+      const dockStructure = dockLevel && isConstructTarget ? targetNode : null;
+      const dockHostId = dockStructure?.parentId ?? null;
+      const dockPlacement = dockLevel === 'anchor' ? 'surface' : (dockLevel === 'lo' || dockLevel === 'mo') ? dockLevel : 'geo';
 
       // Validate Initial State
       let safeInitialState = initialState;
@@ -539,7 +577,8 @@
           initialState: safeInitialState,
           parkingOrbitRadius_au: targetOrbitRadiusKm > 0 ? targetOrbitRadiusKm / AU_KM : undefined,
           // Construct rendezvous must explicitly target that construct id.
-          arrivalPlacement: (isConstructTarget && arrivalMode === 'Rendezvous') ? targetId : selectedOrbitId,
+          arrivalPlacement: dockStructure ? dockPlacement : ((isConstructTarget && arrivalMode === 'Rendezvous') ? targetId : selectedOrbitId),
+          arrivalDock: dockStructure ? { structureId: dockStructure.id, level: dockLevel !== 'nearest' ? (dockLevel as any) : undefined } : undefined,
           aerobrake: {
               allowed: !!(useAerobrake && canAerobrakeEffective),
               limit_kms: currentConstructSpecs?.aerobrakeLimit_kms || 0
@@ -566,7 +605,7 @@
       console.log(`[TransitUI] Origin Vectors: Pos=${debugOrigin?.vector_position_au ? 'Yes' : 'No'}, Vel=${debugOrigin?.vector_velocity_ms ? 'Yes' : 'No'}, State=${debugOrigin?.flight_state}`);
       console.log(`[TransitUI] Params:`, params);
 
-      const allPlans = calculateTransitPlan(system, originId, targetId, effectiveStartTime, mode, params);
+      const allPlans = calculateTransitPlan(system, originId, dockHostId ?? targetId, effectiveStartTime, mode, params);
       console.log(`[TransitUI] Received ${allPlans.length} plans from solver:`);
       allPlans.forEach(p => console.log(`  - ${p.name}: DV=${p.totalDeltaV_ms.toFixed(0)}, Fuel=${p.totalFuel_kg.toFixed(0)}, Hidden=${p.hiddenReason || 'No'}`));
 
@@ -954,6 +993,7 @@
                     </option>
                 {/each}
             </select>
+            {#if dockNote}<div style="font-size:0.8em; opacity:0.85; margin-top:4px; line-height:1.3;">{dockNote}</div>{/if}
         {/if}
         <button type="button" on:click={() => dispatch('interstellar')}
             style="margin-top:8px; width:100%; background:transparent; border:1px dashed var(--border); color:var(--accent); border-radius:4px; padding:7px; cursor:pointer; font:inherit; font-size:0.85em;">

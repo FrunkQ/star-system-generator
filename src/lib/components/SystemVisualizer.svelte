@@ -2,6 +2,7 @@
   import { niceStepBelow, formatNice } from '$lib/map/niceInterval';
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
   import { tetherAltitudesKm } from '$lib/constructs/megaGeometry';
+  import { effectiveAttachment } from '$lib/constructs/docking';
   import { megaTypeDef, instanceMegaParams } from '$lib/constructs/megaTypes';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
@@ -317,7 +318,9 @@
         return parentScaledPos;
       }
       let x: number, y: number;
-      if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
+      // An ATTACHED construct is placed by its structure (docking.ts), and its placeholder orbit
+      // says nothing about where it is - scale its TRUE offset like any unorbited node below.
+      if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit && !effectiveAttachment(node)) {
         const { a_AU: a, e, omega_deg } = node.orbit.elements;
         const w = (omega_deg || 0) * (Math.PI / 180);
         const dxTrue = nodeTruePos.x - parentTruePos.x;

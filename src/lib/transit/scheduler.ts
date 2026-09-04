@@ -130,6 +130,8 @@ export function coastPathUnderGravity(
 
 // arrivalPlacement code -> human label and parking-altitude factor (radii above surface),
 // matching samplePostJourneyState's visual parking orbit.
+import { dockingOf, nearestAttachment, attachedOffsetAu, LADDER_LABELS, type Attachment } from '../constructs/docking';
+
 const PLACEMENT_LABELS: Record<string, string> = {
   lo: 'Low Orbit',
   mo: 'Medium Orbit',
@@ -269,6 +271,44 @@ export function reconcileConstructArrival(
   const hostId = best.plan.targetId;
   const target = system.nodes.find((n) => n.id === hostId) as any;
   if (!target) return construct;
+
+  // G53 PHASE 5 - A DOCKED ARRIVAL STAMPS THE ATTACHMENT, NOT AN ORBIT. From here the propagator's
+  // attachment pass places the ship on its structure (worldPositions.ts); the placement string
+  // says where in words, and `construct-logic` prints a 'Docked' placement as it stands.
+  const dock = best.plan.arrivalDock;
+  if (dock) {
+    const structure = system.nodes.find((n) => n.id === dock.structureId) as any;
+    if (structure) {
+      const kind = dockingOf(structure);
+      const level = kind === 'ladder' ? (dock.level ?? 'geo') : undefined;
+      const already = construct.attachedTo?.id === structure.id
+        && (construct.attachedTo?.level ?? undefined) === level
+        && construct.flight_state === 'Docked';
+      if (already) return construct;
+      let att: Attachment = level ? { id: structure.id, level } : { id: structure.id };
+      if (!level && kind === 'anywhere') {
+        const at = samplePostJourneyState(system, best.log, best.endMs, best.endMs);
+        const hostNode = system.nodes.find((n) => n.id === structure.parentId) as any;
+        if (at && hostNode) {
+          const h = getGlobalState(system, hostNode, best.endMs);
+          att = nearestAttachment(structure, hostNode,
+            { x: at.position_au.x - h.r.x, y: at.position_au.y - h.r.y, z: ((at.position_au as any).z ?? 0) - (h.r.z ?? 0) },
+            best.endMs, system) ?? att;
+        }
+      }
+      const where = level ? ` - ${LADDER_LABELS[level]}` : '';
+      return {
+        ...construct,
+        parentId: structure.parentId ?? construct.parentId,
+        attachedTo: att,
+        placement: `Docked: ${structure.name}${where}`,
+        flight_state: 'Docked',
+        vector_position_au: undefined,
+        vector_epoch_ms: undefined,
+        placementHealCount: (construct.placementHealCount ?? 0) + 1
+      } as CelestialBody;
+    }
+  }
 
   const placementKey = best.plan.arrivalPlacement || 'lo';
   const label = PLACEMENT_LABELS[placementKey] || construct.placement || 'Orbit';
@@ -775,6 +815,41 @@ function samplePostJourneyState(
     const placement = lastPlan.arrivalPlacement;
     const t: any = targetNode;
     const state = placement === 'surface' ? 'Landed' : (targetNode.kind === 'construct' ? 'Docked' : 'Orbiting');
+
+    // G53 PHASE 5 - A JOURNEY THAT ENDS DOCKED TO A STRUCTURE parks the ship ON the structure: at
+    // the level it aimed for (a ladder), or the nearest point of the rim it reached (anywhere),
+    // riding the structure's own turn from then on. The SAME docking.ts arithmetic the propagator
+    // uses for an authored attachment, so the GM map, the holo and the player views agree
+    // (design 7c). The flight was solved to the HOST at the level's radius; this is the hand-over
+    // from "arrived at that radius" to "attached at that radius" - a snap of at most the ribbon's
+    // bearing, and `dockMatchSpeedMs` is what the planner says it costs.
+    const dock = lastPlan.arrivalDock;
+    if (dock) {
+      const structure = system.nodes.find((n) => n.id === dock.structureId) as any;
+      const hostNode = structure ? (system.nodes.find((n) => n.id === structure.parentId) as any) : undefined;
+      if (structure && hostNode) {
+        const kind = dockingOf(structure);
+        let att: Attachment | null = null;
+        if (kind === 'ladder') att = { id: structure.id, level: dock.level ?? 'geo' };
+        else if (kind === 'anywhere' && finalPos) {
+          const hostThen = getGlobalState(system, hostNode, completedAtMs);
+          att = nearestAttachment(structure, hostNode,
+            { x: finalPos.x - hostThen.r.x, y: finalPos.y - hostThen.r.y, z: (finalPos.z ?? 0) - (hostThen.r.z ?? 0) },
+            completedAtMs, system);
+        } else att = { id: structure.id };
+        const off = att ? attachedOffsetAu(att, structure, hostNode, timeMs, system) : null;
+        const base = off ? getGlobalState(system, hostNode, timeMs) : getGlobalState(system, structure, timeMs);
+        const pos = off
+          ? { x: base.r.x + off.x, y: base.r.y + off.y, z: (base.r.z ?? 0) + off.z }
+          : base.r;
+        return {
+          journeyId: log.id,
+          state: 'Docked',
+          position_au: pos,
+          velocity_ms: { x: base.v.x * AU_M, y: base.v.y * AU_M, z: (base.v.z ?? 0) * AU_M }
+        };
+      }
+    }
 
     if (state === 'Orbiting') {
       const targetRadiusKm = t.radiusKm || 1000;

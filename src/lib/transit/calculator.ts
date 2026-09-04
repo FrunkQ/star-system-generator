@@ -252,6 +252,7 @@ export function calculateTransitPlan(
       // targetOffsetAnomaly RETIRED (G43 P4): the L-point geometry lives in physics/lagrange.ts,
       // so callers no longer pass an anomaly offset for it.
       arrivalPlacement?: string;
+      arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5, see transit/types.ts
       aerobrake?: { allowed: boolean; limit_kms: number; }; // NEW
       initialDelay_days?: number;
       directAccelRatio?: number; // NEW
@@ -1040,6 +1041,7 @@ function buildOrbitChangePlan(
         brakeRatio: params.brakeRatio,
         interceptSpeed_ms: 0,
         arrivalPlacement: params.arrivalPlacement,
+        arrivalDock: params.arrivalDock,
         tags: ['ORBIT CHANGE', rising ? 'RAISING ORBIT' : 'LOWERING ORBIT', 'HOHMANN'],
         planType: 'Efficiency',
         name: rising ? 'Raise Orbit' : 'Lower Orbit',
@@ -1193,6 +1195,7 @@ function calculateLambertPlan(
         initialState?: StateVector; 
         parkingOrbitRadius_au?: number; 
         arrivalPlacement?: string; 
+        arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5
         extraTags?: string[];
         aerobrake?: { allowed: boolean; limit_kms: number; }; 
     },
@@ -1551,6 +1554,7 @@ function calculateLambertPlan(
         interceptSpeed_ms: params.interceptSpeed_ms,
         arrivalVelocity_ms: arrivalVelocity_ms,
         arrivalPlacement: params.arrivalPlacement,
+        arrivalDock: params.arrivalDock,
         tags: tags,
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
         aeroCirculariseDeltaV_ms: aeroCircularise_ms,
@@ -1577,6 +1581,7 @@ function calculateFastPlan(
         brakeRatio: number;
         interceptSpeed_ms: number;
         arrivalPlacement?: string;
+        arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5
         parkingOrbitRadius_au?: number;
         aerobrake?: { allowed: boolean; limit_kms: number; };
         initialDelay_days?: number;
@@ -1979,6 +1984,7 @@ function calculateFastPlan(
         arrivalVelocity_ms,
         distance_au: distanceAU(fullPath[0], fullPath[fullPath.length - 1]),
         arrivalPlacement: params.arrivalPlacement,
+        arrivalDock: params.arrivalDock,
         tags: [...tags],
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
         aeroCirculariseDeltaV_ms: aeroCircularise_ms,

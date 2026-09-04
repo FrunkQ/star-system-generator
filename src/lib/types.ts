@@ -775,6 +775,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   vector_position_au?: { x: number; y: number; z?: number };
   vector_epoch_ms?: number;
   flight_state?: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked';
+  /** G53 PHASE 5 - DOCKED. Which structure this construct is attached to and where on it, in the
+   *  structure's own rotating frame (constructs/docking.ts `Attachment`). The propagator turns it
+   *  into a world position that every view reads; `orbit` is ignored while this is set. */
+  attachedTo?: { id: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight'; angleRad?: number; latRad?: number };
+  /** A surface structure's authored landing site, degrees. Absent = a stable hash of the id
+   *  (the same hash the renderer has always used), so nothing moves for existing saves. */
+  surface_anchor?: { latDeg: number; lonDeg: number };
   
   // HOW OFTEN THIS SHIP HAS BEEN FOUND CARRYING A PLACEMENT ITS OWN JOURNEYS DISAGREE WITH, and
   // repaired on the spot by `reconcileConstructArrival`. The repair is idempotent, so a healthy ship

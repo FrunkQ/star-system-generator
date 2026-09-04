@@ -299,6 +299,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       // map, and a click frames the WORLD it rises from (the only view that shows it).
       apparentG: 'none',
       render3d: { generator: 'tether', anchor: 'surface-stand' },
+      docking: 'ladder',
       render2d: { structure: 'radial' },   // the beanstalk drawn on the plan view, host edge to geo
       framing: 'surface-host'
     },
@@ -349,6 +350,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       // it circles a PLANET and shades nothing the star chain models.
       apparentG: 'own-rotation',
       render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      docking: 'anywhere',
       render2d: { structure: 'orbit-line' },
       framing: 'annulus'
     },
@@ -420,6 +422,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       apparentG: 'own-rotation',
       flux: { occludes: 'band' },   // solid band - shadows only what aligns with its plane
       render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      docking: 'anywhere',
       render2d: { structure: 'orbit-line' },
       framing: 'annulus'
     },
@@ -490,6 +493,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       apparentG: 'none',            // a shell is not spun for gravity; interiors are 5c's work
       flux: { occludes: 'isotropic' },
       render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      docking: 'anywhere',
       render2d: { structure: 'orbit-line' },
       framing: 'annulus'
     },
@@ -557,6 +561,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       apparentG: 'none',
       flux: { occludes: 'isotropic' },
       render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      docking: 'anywhere',
       render2d: { structure: 'orbit-line' },
       framing: 'annulus'
     },
@@ -631,6 +636,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
       apparentG: 'none',
       flux: { occludes: 'isotropic' },
       render3d: { generator: 'sphere-section', anchor: 'host-centred' },
+      docking: 'anywhere',
       render2d: { structure: 'orbit-line' },
       framing: 'annulus'
     },
@@ -705,6 +711,7 @@ export const MEGA_TYPE_DEFS: readonly MegaTypeDef[] = [
     capabilities: {
       apparentG: 'surface',         // GM/r-squared of its own authored mass - a hull, not a spun world
       render3d: { generator: 'hull', anchor: 'node' },
+      docking: 'point',
       render2d: { structure: 'glyph' },
       framing: 'point'
     },

@@ -84,6 +84,16 @@ export interface ExoticRender2d {
  *  with the construct dead centre; 'point' = the ordinary construct shot. */
 export type ExoticFraming = 'annulus' | 'surface-host' | 'point';
 
+/** HOW A SHIP DOCKS TO IT (G53 phase 5, design 7c). 'ladder': discrete levels up a structure
+ *  that stands on a world - anchor / low / medium / geostationary / counterweight - each a radius
+ *  from the host's centre on the anchor ray, co-rotating with the world's spin. 'anywhere': ports
+ *  everywhere - a ship docks at the NEAREST point of the structure at the moment of arrival and
+ *  co-rotates with it thereafter (a ring's rim, a shell's surface). 'point': the structure is a
+ *  hull; dock at the node itself, as at any station. Three values from day one, which is what
+ *  earns the axis its place. The maths lives in `constructs/docking.ts`, PURE, and the propagator
+ *  owns the answer so the GM map, the holo and the player views agree by construction. */
+export type ExoticDocking = 'ladder' | 'anywhere' | 'point';
+
 export interface ExoticCapabilities {
 	apparentG: ExoticApparentG;
 	/** Absent = touches no starlight (the planetary torus: it circles a PLANET and shades nothing
@@ -92,4 +102,5 @@ export interface ExoticCapabilities {
 	render3d: ExoticRender3d;
 	render2d: ExoticRender2d;
 	framing: ExoticFraming;
+	docking: ExoticDocking;
 }

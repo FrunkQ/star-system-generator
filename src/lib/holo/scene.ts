@@ -17,7 +17,8 @@ import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
 import { megaTypeDef, instanceMegaParams } from '$lib/constructs/megaTypes';
 import type { ExoticCapabilities } from '$lib/constructs/exotics';
-import { buildMegaGeometry, tetherLayout, equatorialAnchor } from '$lib/constructs/megaGeometry';
+import { buildMegaGeometry, tetherLayout } from '$lib/constructs/megaGeometry';
+import { effectiveAttachment } from '$lib/constructs/docking';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
 // Highlight badges on the player's system view. The pill shape is the SAME object as the panel's tag
@@ -241,6 +242,10 @@ interface BodyVisual {
   // The construct DECLARES it is on the surface (`placement: 'Surface'`), which outranks the geometric
   // detection below: a declaration is a statement, the radius comparison is only a guess about one.
   surfaceDeclared?: boolean;
+  /** Placed by the propagator's ATTACHMENT pass (a ladder structure on its anchor ray, or a
+   *  construct docked to one) - mirrors node data, and says: never surface-lock it here; its
+   *  spin comes with its position (RENDER-S51). */
+  attached?: boolean;
   // A construct sitting AT (or below) its parent's physical surface: glued to a fixed surface point
   // that co-rotates with the planet's spin, instead of following its own (Keplerian) orbit — so it
   // slides over the surface at the planet's rotation rate. dir0 is that point in the parent's local frame.
@@ -4446,7 +4451,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Same test the document builder uses (`constructsOf`, systemTopology.ts) so the two cannot
       // disagree about which constructs are on the ground.
       const surfaceDeclared = isConstruct && String((node as any).placement ?? '').toLowerCase() === 'surface';
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1, attached: !!effectiveAttachment(node) });
       // G3: a construct carrying a 3D model loads it in the background; the sprite stands until
       // (and unless) it lands, and stands permanently on a machine that lacks the binary.
       // G53: ONLY A SKINNABLE MEGA MAY WEAR AN UPLOADED MODEL. A spheroid is a hull and an artist may
@@ -4640,22 +4645,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // branch too (also gated on `off`), so it was never positioned at all and simply rendered at the
         // parent's centre, motionless. `physRadiusAu` was never the problem — it has a 3000 km fallback
         // and was always present.
-        const declaredOnSurface = !!(b.isConstruct && b.surfaceDeclared && pv);
-        if (declaredOnSurface || (b.isConstruct && off > 1e-12 && pv && pv.physRadiusAu && off <= pv.physRadiusAu * 1.03)) {
+        // An ATTACHED construct is already placed - spun, tilted and all - by the propagator
+        // (RENDER-S51); locking it here would freeze a bearing and then turn it a second time.
+        const declaredOnSurface = !!(b.isConstruct && !b.attached && b.surfaceDeclared && pv);
+        if (declaredOnSurface || (b.isConstruct && !b.attached && off > 1e-12 && pv && pv.physRadiusAu && off <= pv.physRadiusAu * 1.03)) {
           if (!b.surfaceLock) {
             // With a real offset the authored direction IS the landing site. With none, pick a stable
             // point from the construct's id — deterministic so it does not wander between reloads, and
             // distinct per construct so two stations on one moon (LV-426 has exactly that) do not stack.
             const sceneDir = off > 1e-12 ? tmp.set(ox, oz, oy).normalize() : surfacePointFromId(b.id, tmp);
             const dir0 = sceneDir.clone().applyQuaternion(pv!.mesh.quaternion.clone().invert());
-            // A GEOSTATIONARY TETHER STANDS ON THE EQUATOR - the shape says so (megaTypes
-            // anchorLatitudeDeg). Keep the longitude, drop the latitude, in the host's LOCAL frame,
-            // where the spin axis is +Y (mesh.quaternion = tilt x spin). Without this an id-hashed
-            // landing site could be anywhere, and the owner found one circling the pole.
-            if (b.tetherParts && b.tetherParts.anchorLatitudeDeg === 0) {
-              const e = equatorialAnchor(dir0);
-              dir0.set(e.x, e.y, e.z);
-            }
             b.surfaceLock = { dir0 };
           }
           continue; // updateSurfaceConstructs positions it each frame from the parent's live spin
@@ -4975,17 +4974,18 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function updateSurfaceConstructs() {
     for (const b of bodies) {
-      if (!b.surfaceLock || !b.parentId) continue;
+      if (!b.parentId) continue;
       const pv = bodyById.get(b.parentId);
       if (!pv) continue;
-      _surfDir.copy(b.surfaceLock.dir0).applyQuaternion(pv.mesh.quaternion);
-      b.mesh.position.copy(pv.mesh.position).addScaledVector(_surfDir, pv.radiusScene ?? 0.01);
-      // G53: A TETHER STANDS UP FROM ITS ANCHOR. The ribbon is built along +Y from the host's
-      // surface to geostationary, so it is placed at the host's CENTRE and turned so +Y points at
-      // the anchor - which means it rises from the right spot and sweeps round with the planet's
-      // own spin, for free, because `dir0` is re-applied against the live quaternion above.
       const tp = b.tetherParts;
       if (tp && b.shipModel) {
+        // G53: A TETHER STANDS UP FROM ITS ANCHOR, AND THE ANCHOR COMES FROM THE PROPAGATOR
+        // (docking.ts, RENDER-S51). The node's own position is host + anchor, spun and tilted by
+        // the same arithmetic every view uses, so the ribbon points where the node IS and a ship
+        // docked on it is on the ribbon by construction. No renderer-side lock, no second spin.
+        _surfDir.copy(b.mesh.position).sub(pv.mesh.position);
+        if (_surfDir.lengthSq() < 1e-18) continue;
+        _surfDir.normalize();
         b.shipModel.position.copy(pv.mesh.position);
         b.shipModel.quaternion.setFromUnitVectors(_tetherUp, _surfDir);
         // THE LAYOUT, EVERY FRAME, FROM THE SATELLITE LAW (RENDER-S50). The base is where the host's
@@ -5013,7 +5013,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         tp.counterweight.scale.setScalar(L.counterweight.r);
         tp.counterweight.position.set(0, L.counterweight.y, 0);
         b.shipLen = L.visible ? topR : 0;   // framing and LOD read scene units
+        continue;
       }
+      // An ordinary surface construct: glued to its captured site, turned with the planet's spin.
+      if (!b.surfaceLock) continue;
+      _surfDir.copy(b.surfaceLock.dir0).applyQuaternion(pv.mesh.quaternion);
+      b.mesh.position.copy(pv.mesh.position).addScaledVector(_surfDir, pv.radiusScene ?? 0.01);
     }
   }
 
