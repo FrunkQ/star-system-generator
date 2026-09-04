@@ -88,6 +88,17 @@ export interface BodyLookOptions {
   starJets?: 0 | 1 | 2;
   starShedding?: 0 | 1 | 2;
   /**
+   * Star only: the corona, the flares and the outflow decorations. Default true.
+   *
+   * FALSE FOR A SIZE COMPARISON, and it is a correctness point rather than a taste one: the corona
+   * is `radius * (5 + activity * 4)` across, so on a true-scale strip a star's glow reaches five
+   * times its own width and reads as part of the object. A view whose whole claim is "this is how
+   * big these things really are" cannot draw a halo that makes a star look nine times its diameter.
+   * Seen live at 2026-09-05 on the starmap strip: the coronas overlapped into one grey wash and the
+   * photospheres were the only honest thing on screen.
+   */
+  starDecorations?: boolean;
+  /**
    * Called with the lit material BEFORE the mesh is made, so a caller can hang a shader hook on it
    * (the holo's eclipse shadow). Never fires for an unlit or wire body — there is no lighting to
    * darken.
@@ -163,12 +174,14 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
     disposables.push(starMat, st, sphere.geometry);
     // Corona + flares + outflow decorations, parented to the sphere so they track it. The corona is
     // a billboard and ignores the sphere's spin.
-    const star = buildStarLook(radius, colorHex, activity, seedSum(node.id, 13, 2147483647) || 1, tex.glow, {
-      flares: !isLopoly && (opts.starFlares ?? flaresVisibly(node.tags)), jets: opts.starJets, shedding: opts.starShedding
-    });
-    sphere.add(star.group);
+    if (opts.starDecorations !== false) {
+      const star = buildStarLook(radius, colorHex, activity, seedSum(node.id, 13, 2147483647) || 1, tex.glow, {
+        flares: !isLopoly && (opts.starFlares ?? flaresVisibly(node.tags)), jets: opts.starJets, shedding: opts.starShedding
+      });
+      sphere.add(star.group);
+      look.star = star;
+    }
     look.mesh = sphere;
-    look.star = star;
     if (tiltMode !== 'none') applyTilt(sphere, appear, tiltMode);
     look.inventory = () => inventoryOf(sphere);
     return look;

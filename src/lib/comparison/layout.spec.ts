@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   sortBySize, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote,
-  idsAtLeast, idsAtMost, visibleItems, referenceMarks,
+  idsAtLeast, idsAtMost, visibleItems, referenceMarks, minorTicks, LABEL_MIN_GAP_PX,
   SELECTED_SHARE, OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX,
   type ComparisonItem
 } from './layout';
@@ -222,6 +222,43 @@ describe('size comparison — the ruler', () => {
     expect(marks[2].diameterKm).toBeCloseTo(1392680, 6);
     // NOT the realsky duplicate (695,700 x 2 = 1,391,400) — the view reads the app constant.
     expect(marks[2].diameterKm).not.toBeCloseTo(1391400, 6);
+  });
+
+  it('staggers labels that would collide, and only those', () => {
+    // On a strip of STARS, Luna and Earth both land a few pixels from zero: at the scale that makes a
+    // red dwarf 340 px across they are 3 px and 11 px in, and their labels overlapped into one smudge
+    // on the live map. The second (and third) drop to the next row; nothing else moves.
+    const starScale = 340 / 700000;
+    const crowded = referenceMarks(starScale, 1200);
+    expect(crowded.find((m) => m.id === 'luna')!.row).toBe(0);
+    expect(crowded.find((m) => m.id === 'earth')!.row).toBe(1);
+    // Zoomed right in on a moon, Luna and Earth are far apart and both sit on row 0.
+    const moonScale = 400 / 3474.8;
+    const spread = referenceMarks(moonScale, 1e7);
+    expect(spread.find((m) => m.id === 'luna')!.posPx).toBeCloseTo(400, 6);
+    expect(spread.find((m) => m.id === 'earth')!.posPx - spread.find((m) => m.id === 'luna')!.posPx)
+      .toBeGreaterThan(LABEL_MIN_GAP_PX);
+    expect(spread.find((m) => m.id === 'earth')!.row).toBe(0);
+  });
+
+  it('reads SIZE rather than position, so it does not move when the strip scrolls', () => {
+    // The ruler answers "how many pixels is one Earth at this scale", which is what lets you judge
+    // anything on screen against it. Nothing in its inputs is the scroll, and that is deliberate.
+    const a = referenceMarks(0.02, 1000);
+    const b = referenceMarks(0.02, 1000);
+    expect(a.map((m) => m.posPx)).toEqual(b.map((m) => m.posPx));
+  });
+
+  it('lays minor ticks on the app nice-interval ladder, inside the ruler', () => {
+    const scale = pxPerKm(medianPlanet(SOL)!.diameterKm, 800, OPENING_SHARE);
+    const ticks = minorTicks(scale, 1000);
+    expect(ticks.length).toBeGreaterThan(2);
+    expect(ticks.every((t) => t.posPx > 0 && t.posPx <= 1000.1)).toBe(true);
+    // 1/2/5 ladder: every step is a round multiple, so the gaps are all equal.
+    const gaps = ticks.slice(1).map((t, i) => t.km - ticks[i].km);
+    expect(new Set(gaps.map((g) => g.toPrecision(8))).size).toBe(1);
+    expect(minorTicks(0, 1000)).toEqual([]);
+    expect(minorTicks(1, 0)).toEqual([]);
   });
 
   it('reports a mark that falls off the ruler rather than dropping it', () => {

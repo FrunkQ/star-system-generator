@@ -8,6 +8,9 @@
 // of it: a body's drawn radius here is its own `radiusKm` and nothing else. The scale law has no say
 // in this file and this file has no say in the scale law.
 import { EARTH_RADIUS_KM, SOLAR_RADIUS_KM, LUNA_RADIUS_KM } from '$lib/constants';
+// The app's ONE nice-interval ladder, shared with the starmap's grid — a ruler that chose its own
+// intervals would be a second answer to a question this codebase has already settled.
+import { niceSeries } from '$lib/map/niceInterval';
 
 /** One object on the strip. `diameterKm` is the TRUE diameter — the whole point of the view. */
 export interface ComparisonItem {
@@ -35,6 +38,8 @@ export const DOT_THRESHOLD_PX = 2;
 export const DOT_PX = 6;
 /** Under this drawn diameter a label would overlap its neighbour's, so labels alternate above/below. */
 export const LABEL_ALTERNATE_BELOW_PX = 90;
+/** Two ruler labels closer than this collide, so the second drops to the next row. */
+export const LABEL_MIN_GAP_PX = 110;
 /** Zoomed all the way out, the largest object still spans this share of the shorter side. */
 export const MIN_ZOOM_LARGEST_SHARE = 0.04;
 /** Zoomed all the way in, the smallest object spans this share of the shorter side. */
@@ -210,18 +215,47 @@ export interface ReferenceMark {
   diameterKm: number;
   /** Where the mark falls along the axis, in px. */
   posPx: number;
+  /** Which label row this mark's text goes on — 0 unless it would collide with the mark before it. */
+  row: number;
   /** Off the ruler's range: the view shows it as an arrow at that edge rather than dropping it. */
   off: 'none' | 'start' | 'end';
 }
 
 /**
- * Place the three reference diameters on a ruler of `lengthPx` at `scale`. A mark that falls off the
- * range is REPORTED as off rather than dropped — "the Sun is off to the left" is information, and a
- * ruler that silently omits its own reference is a ruler that has stopped being one.
+ * Place the three reference diameters on a ruler of `lengthPx` at `scale`.
+ *
+ * THE RULER MEASURES SIZE, NOT POSITION, so it does NOT scroll with the strip: a mark sits at
+ * `diameterKm * scale` from the ruler's zero and says "this many pixels is one Earth", which is the
+ * reading that lets you judge anything on screen. A mark that falls off the range is REPORTED as off
+ * rather than dropped — "the Sun runs off to the right" is information, and a ruler that silently
+ * omits its own reference has stopped being one.
+ *
+ * `row` staggers labels that would collide. On a strip of STARS, Luna and Earth are both a handful
+ * of pixels from zero and their labels land on top of each other; seen live on the 50-system Local
+ * Neighbourhood map, where they overlapped into one unreadable smudge.
  */
-export function referenceMarks(scale: number, lengthPx: number): ReferenceMark[] {
-  return REFERENCE_TICKS.map((t) => {
+export function referenceMarks(scale: number, lengthPx: number, labelWidthPx = LABEL_MIN_GAP_PX): ReferenceMark[] {
+  const marks = REFERENCE_TICKS.map((t) => {
     const posPx = t.diameterKm * scale;
-    return { ...t, posPx, off: posPx < 0 ? 'start' : posPx > lengthPx ? 'end' : 'none' } as ReferenceMark;
+    return { ...t, posPx, row: 0, off: posPx < 0 ? 'start' : posPx > lengthPx ? 'end' : 'none' } as ReferenceMark;
   });
+  let lastPos = -Infinity, row = 0;
+  for (const m of marks) {
+    if (m.off !== 'none') continue;
+    row = m.posPx - lastPos < labelWidthPx ? row + 1 : 0;
+    m.row = row;
+    lastPos = m.posPx;
+  }
+  return marks;
+}
+
+/**
+ * The MINOR ticks: a plain nice-interval scale under the three references, so the ruler reads as a
+ * ruler rather than as three lonely marks. `niceSeries` is the app's existing 1/2/5 ladder — the
+ * starmap's grid uses it, and a second interval-chooser here would be a second answer to one
+ * question.
+ */
+export function minorTicks(scale: number, lengthPx: number): { km: number; posPx: number }[] {
+  if (!(scale > 0) || !(lengthPx > 0)) return [];
+  return niceSeries(lengthPx / scale, 6).map((km) => ({ km, posPx: km * scale }));
 }

@@ -6289,6 +6289,15 @@ is exactly the lie the view exists to remove; and a frustum whose world unit IS 
 the DOM overlay's labels, ruler ticks and hit areas sit over the globes by construction rather than
 through a projection nobody can check. The strip's layout is therefore computed once, in pixels, by
 a pure function, and the scene and the overlay both read it.
+TWO TRAPS THAT COME WITH THAT ARRANGEMENT, both paid for on the first live run and each invisible to
+every test in the suite. **The frustum carries the pan, so the camera must NOT also be aimed** - a
+`lookAt` at the scrolled centre ROTATES an ortho camera and tilts the strip out of view ([[B123]]);
+it sits at the origin looking down -Z and never turns. **And the canvas has exactly one owner of its
+size** - the renderer, whose `setSize` multiplies by the device pixel ratio; a Svelte-bound
+`width={vw}` overwrites that with the CSS count and the scene draws into a corner of its own buffer
+([[B122]]), which is invisible at ratio 1 and obvious at 2. In BOTH faults the DOM overlay was
+pixel-exact throughout, because it does its own arithmetic - so a broken canvas beside a correct
+overlay reads as a DATA fault and sends you looking in the wrong module.
 WHAT IS NOT DRAWN, and it is a scope line rather than an omission: belts and rings (their radius is
 an ORBIT, so putting one beside a planet compares two different kinds of thing), constructs and
 megastructures (a MODEL or a generated volume - RENDER-S9/RENDER-S44 - a different assembly from
@@ -6322,3 +6331,8 @@ original drift.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+A LOOK OPTION CAN BE A CORRECTNESS DECISION, not a taste one, and `starDecorations` is the example:
+the corona is `radius * (5 + activity * 4)` across, so on a TRUE-SCALE strip a star's halo reaches
+five times its own width and reads as part of the object. The size-comparison view turns it off, and
+that is not a style choice - a view whose whole claim is "this is how big these things really are"
+cannot draw a glow that makes a star look nine times its diameter. Seen live before it was believed.

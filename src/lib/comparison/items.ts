@@ -57,18 +57,23 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
  */
 export function itemsForStarmap(starmap: { systems?: any[] } | null | undefined): ComparisonEntry[] {
   const out: ComparisonEntry[] = [];
-  for (const sys of starmap?.systems ?? []) {
-    const stars = systemVisualStars(sys as any);
+  // `starmap.systems` is `StarSystemNode[]` — a WRAPPER carrying the map position, the viewport and
+  // the system's own name, with the actual `System` (and therefore the body nodes) hanging off
+  // `.system`. Reading `nodes` off the wrapper gets `undefined` and an empty strip, which is exactly
+  // what the first live run of this view showed on a fifty-system map; the gate below pins the shape.
+  for (const entry of starmap?.systems ?? []) {
+    const system = entry?.system ?? entry;
+    const stars = systemVisualStars(system as any);
     for (const vs of stars) {
-      const node = (sys?.nodes ?? []).find((n: any) => String(n.id) === String(vs.id));
+      const node = (system?.nodes ?? []).find((n: any) => String(n.id) === String(vs.id));
       if (!node) continue;
       const r = radiusKmOf(node);
       if (!(r > 0)) continue;
-      // The star's own name where it has one, qualified by its system when several systems could
-      // otherwise field a star called "A" — a strip of eight identical labels is not a comparison.
-      const name = String(vs.name || node.name || sys.name || vs.id);
+      // The star's own name where it has one; a lone star in a system usually shares the system's
+      // name, and a binary's members carry their own, which is what tells "Sirius A" from "Sirius B".
+      const name = String(vs.name || node.name || entry?.name || vs.id);
       out.push({
-        id: `${sys.id}:${vs.id}`, name,
+        id: `${entry?.id ?? system?.id}:${vs.id}`, name,
         diameterKm: r * 2, role: 'star', colorHex: vs.color, node
       });
     }

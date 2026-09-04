@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v3.0.302 - 5th Sep 2026
+
+- Size comparison, now actually looked at. On the starmap it was showing nothing at all, and on both maps the planets were not being drawn - only their names. Both fixed, along with four more faults that only turned up on screen.
+- Stars on the starmap were grey. They take their colour from the map now, the way they do everywhere else.
+- Stars no longer bring their corona into this view. A corona is five times the width of the star it surrounds, which made every star look nine times its real size - on the one view whose entire job is showing you real sizes.
+- The view now sits above the clock, the search box and the playback bar instead of underneath them, so its title, its ruler and its close button are all reachable.
+- On a phone the planets were half off the edge of the screen. They are centred now.
+- The ruler is easier to read: the Moon and Earth marks no longer print on top of each other when you are looking at stars, and there is a plain scale of smaller marks behind the three named ones.
+- Hiding something no longer needs a right-click: select an object and a "Hide…" button appears at the top, which works on a phone too.
+
 ## v3.0.301 - 5th Sep 2026
 
 - New: Size comparison. Turn on Measure and a second button appears under it. It lays every object on the map out side by side at their real relative sizes, biggest first, the way the old planets-and-moons posters did - the star, the giants, the planets, the moons and the small bodies on a system map, and every star in the campaign on the starmap.

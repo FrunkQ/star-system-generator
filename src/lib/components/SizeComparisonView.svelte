@@ -12,7 +12,7 @@
   import UnitValue from './UnitValue.svelte';
   import {
     sortBySize, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote, visibleItems,
-    idsAtLeast, idsAtMost, referenceMarks, SELECTED_SHARE, OPENING_SHARE,
+    idsAtLeast, idsAtMost, referenceMarks, minorTicks, SELECTED_SHARE, OPENING_SHARE,
     type StripLayout
   } from '$lib/comparison/layout';
   import { hiddenKey, loadHidden, saveHidden, type ComparisonEntry } from '$lib/comparison/items';
@@ -49,7 +49,9 @@
   $: sorted = sortBySize(visible);
   $: bounds = zoomBounds(visible, shorterSide);
   $: layout = scale > 0 ? layoutStrip(visible, scale, { axis }) : ({ slots: [], lengthPx: 0, axis } as StripLayout);
-  $: marks = referenceMarks(scale, axis === 'x' ? vw : vh);
+  $: rulerLen = axis === 'x' ? vw : vh;
+  $: marks = referenceMarks(scale, rulerLen);
+  $: minors = minorTicks(scale, rulerLen);
   $: byId = new Map(items.map((i) => [i.id, i]));
 
   // THE OPENING VIEW: the median planet at 30% of the shorter side. Re-armed whenever the map or the
@@ -71,7 +73,7 @@
   // and a dot is DOM. That is the performance rule (no texture for a body you cannot see) and the
   // honesty rule (RENDER-S43: a floor is a legibility device, never a size) in one place.
   $: if (handle) handle.setSlots(layout.slots.filter((s) => !s.belowFloor).map((s) => ({
-    id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, diameterPx: s.diameterPx
+    id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex
   })).filter((s) => s.node));
   $: if (handle) handle.setView(axis, scrollPx, vw, vh);
   $: if (handle) handle.setSelected(selectedId);
@@ -151,6 +153,13 @@
   <header>
     <h2>Size comparison</h2>
     <p class="hint">Everything on this map at true relative size. Click an object to fill half the view · scroll to move along · shift-scroll to zoom.</p>
+    <!-- THE HIDE OFFER NEEDS A REACHABLE DOOR. Right-clicking an object opens the same popup, but a
+         phone has no right-click and a context menu is not a thing anyone finds — so the selected
+         object's hide control lives in the header, where it is visible the moment something is
+         selected and works with a tap. -->
+    {#if selectedId && byId.has(selectedId)}
+      <button class="pill" on:click={() => (menuFor = selectedId)}>Hide {byId.get(selectedId)?.name}…</button>
+    {/if}
     {#if hidden.size}
       <button class="pill" on:click={showAll}>{hidden.size} hidden — show all</button>
     {/if}
@@ -158,7 +167,13 @@
   </header>
 
   <div class="stage" bind:this={stage} on:wheel={onWheel}>
-    <canvas bind:this={canvas} width={vw} height={vh}></canvas>
+    <!-- NO width/height ATTRIBUTES HERE. The renderer owns the backing store: `setSize(vw, vh, false)`
+         multiplies by the device pixel ratio, and a Svelte-bound `width={vw}` overwrites that with the
+         CSS pixel count every time the view re-renders. The two then disagree by the pixel ratio and
+         the scene draws into a corner of its own buffer — invisible at ratio 1 (a desktop) and obvious
+         at 2 (the phone preset), where the globes sat half off the right edge while the DOM overlay,
+         which does its own arithmetic, was exactly right. CSS below sizes the element. -->
+    <canvas bind:this={canvas}></canvas>
 
     <!-- The overlay: hit areas, labels, dots and the ruler. One world unit is one pixel, so a slot's
          `centrePx` is its position here with only the scroll subtracted. -->
@@ -198,14 +213,19 @@
            values never leave SI; a pref RELABELS). Three highlighted reference ticks — Luna, Earth,
            the Sun — shown as an arrow at the edge when they fall off the range. -->
       <div class="ruler" class:vertical={axis === 'y'}>
+        {#each minors as t (t.km)}
+          <div class="minor" style={axis === 'x' ? `left:${t.posPx}px` : `top:${t.posPx}px`}></div>
+        {/each}
         {#each marks as m (m.id)}
           {#if m.off === 'none'}
             <div class="tick" style={axis === 'x' ? `left:${m.posPx}px` : `top:${m.posPx}px`}>
-              <span class="tick-label">{m.label} · <UnitValue quantity="radius" bodyType={m.id === 'sun' ? 'star' : 'planet'} value={m.diameterKm} /></span>
+              <span class="tick-label" style={axis === 'x' ? `top:${2 + m.row * 12}px` : `left:${2 + m.row * 12}px`}>{m.label} · <UnitValue quantity="radius" bodyType={m.id === 'sun' ? 'star' : 'planet'} value={m.diameterKm} /></span>
             </div>
           {:else}
+            <!-- An arrow along the STRIP's own axis: right/left across a desktop ruler, down/up a
+                 phone one. A rightward arrow on a vertical ruler points at nothing. -->
             <div class="tick off {m.off}">
-              <span class="tick-label">{m.off === 'end' ? '→' : '←'} {m.label}</span>
+              <span class="tick-label">{axis === 'x' ? (m.off === 'end' ? '→' : '←') : (m.off === 'end' ? '↓' : '↑')} {m.label}</span>
             </div>
           {/if}
         {/each}
@@ -230,7 +250,12 @@
 </div>
 
 <style>
-  .size-comparison { position: absolute; inset: 0; display: flex; flex-direction: column; background: #05070c; color: #dfe6f0; z-index: 40; }
+  /* ABOVE THE MAP'S OWN CHROME, not beside it. The time display, the body picker, the info panel,
+     Reset View and the time controls sit at z-index 55-60 on the map surface; at 40 this view opened
+     UNDERNEATH all of them, so its header was hidden behind the clock and its ruler behind the
+     transport bar. This is a full-surface VIEW rather than a panel, so it covers them while it is
+     open and the rail (which lives outside this stacking context) stays reachable. */
+  .size-comparison { position: absolute; inset: 0; display: flex; flex-direction: column; background: #05070c; color: #dfe6f0; z-index: 70; }
   header { display: flex; align-items: baseline; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #1b2434; flex: 0 0 auto; }
   h2 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: 0.02em; }
   .hint { margin: 0; font-size: 11px; color: #7f8ea6; flex: 1 1 auto; }
@@ -255,13 +280,18 @@
   .size { display: block; color: #8fa6c4; font-size: 10px; }
   .floor { display: block; color: #6c7d96; font-size: 10px; font-style: italic; }
 
-  .ruler { position: absolute; left: 0; right: 0; bottom: 0; height: 30px; border-top: 1px solid #1b2434; background: rgba(5, 7, 12, 0.72); }
-  .ruler.vertical { top: 0; bottom: 0; left: 0; right: auto; width: 30px; height: auto; border-top: none; border-right: 1px solid #1b2434; }
+  .ruler { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; border-top: 1px solid #1b2434; background: rgba(5, 7, 12, 0.72); }
+  .minor { position: absolute; top: 0; border-left: 1px solid #2b384c; height: 7px; }
+  .ruler.vertical .minor { left: 0; border-left: none; border-top: 1px solid #2b384c; width: 7px; height: auto; }
+  .ruler.vertical { top: 0; bottom: 0; left: 0; right: auto; width: 44px; height: auto; border-top: none; border-right: 1px solid #1b2434; }
   .tick { position: absolute; top: 0; border-left: 1px solid #ffd678; height: 100%; }
   .ruler.vertical .tick { left: 0; border-left: none; border-top: 1px solid #ffd678; width: 100%; height: auto; }
   .tick-label { position: absolute; left: 4px; top: 2px; font-size: 10px; color: #ffd678; white-space: nowrap; }
+  .ruler.vertical .tick-label { left: 6px; top: 2px; }
   .tick.off.end { right: 2px; left: auto; border: none; }
   .tick.off.start { left: 2px; border: none; }
+  .ruler.vertical .tick.off.end { bottom: 2px; top: auto; right: auto; left: 0; }
+  .ruler.vertical .tick.off.start { top: 2px; left: 0; }
 
   .menu { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #101a28; border: 1px solid #2c3d55; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 240px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6); }
   .menu-title { font-size: 11px; color: #8fa6c4; padding: 4px 8px 6px; }

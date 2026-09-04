@@ -37,6 +37,8 @@ export interface ComparisonSlot {
   centrePx: number;
   /** The TRUE drawn diameter in px. Above the floor, or this slot would not be here. */
   diameterPx: number;
+  /** The object's colour, already resolved by the map that owns it. */
+  colorHex?: string;
 }
 
 export interface ComparisonSceneHandle {
@@ -127,6 +129,12 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         // The body's real axial tilt, stamped once. Not the gallery's showcase posture: this view is
         // a measurement, and tipping a world to show off its jets would tilt its silhouette too.
         tilt: 'axial',
+        // The colour the MAP resolved for this object. A star node on the starmap carries no
+        // `apparentColorHex` of its own — the map derives it — so without this every star drew grey.
+        colorHex: slot.colorHex ? new THREE.Color(slot.colorHex).getHex() : undefined,
+        // NO CORONA, NO FLARES (see the option's own note): a halo five radii wide would make every
+        // star read nine times its true diameter, on the one view that exists to stop exactly that.
+        starDecorations: false,
         segments: radius > MAX_DRAW_SCREENS * Math.max(vw, vh) ? { width: 24, height: 16 } : undefined
       });
       group.add(look.mesh);
@@ -157,8 +165,13 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       camera.left = -vw / 2; camera.right = vw / 2;
       camera.top = -scrollPx; camera.bottom = -scrollPx - vh;
     }
+    // THE FRUSTUM CARRIES THE PAN; THE CAMERA MUST NOT ALSO BE AIMED. `left/right/top/bottom` above
+    // are already in world (= pixel) coordinates, so the camera sits at the origin looking straight
+    // down -Z and never rotates. Calling `lookAt` at the scrolled centre instead TURNS the camera,
+    // which tilts the whole strip out of the frustum — found live: the labels and hit areas landed
+    // correctly and not one globe was drawn.
     camera.position.set(0, 0, 1e5);
-    camera.lookAt(axis === 'x' ? scrollPx + vw / 2 : 0, axis === 'x' ? 0 : -scrollPx - vh / 2, 0);
+    camera.rotation.set(0, 0, 0);
     camera.updateProjectionMatrix();
   }
 
