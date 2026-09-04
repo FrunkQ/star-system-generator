@@ -5731,6 +5731,34 @@ with none, and they classify through this app's own door. `appVersion` in them i
 not `APP_VERSION` - a byte-pinned fixture cannot carry a field that changes every release, or the
 gate becomes noise that gets regenerated unread.
 
+### DATA-R36-CLIP A HUB CLIP IS A BRANCH, AND IT GOES IN WHOLE OR NOT AT ALL
+BUCKET: ARCHITECTURE (the funnel) - a second codebase's copy-to-clipboard lands in this engine's
+node tree, so what arrives is a HIERARCHY and every reference in it is somebody else's.
+WHERE: `io/hubClip.ts` (`parseHubClip`, `insertClip`, `looksLikeHubClip`, `CLIP_FORMAT`), built on
+`system/reparent.ts` (G64). Gated by `io/hubClip.spec.ts`.
+RULE: the clip is `{ sseClip, source, root, nodes[] }` and `nodes` is the WHOLE subtree. **A target
+that takes `nodes[0]` and drops the rest is not this feature** (the owner's words, and the first
+gate in the spec is written so that implementation goes red rather than looking like it worked).
+Insert every node or none: a refusal must leave the campaign untouched.
+IDS ARE RE-MINTED, ALWAYS. They arrive only so `parentId` resolves INSIDE the clip; carrying them
+through means one clip pasted twice collides with itself, and a clip pasted into the map it came
+from collides immediately. `orbit.hostId` is a reference too and is remapped with the rest - miss it
+and a moon orbits a host this campaign has never heard of.
+ONLY THE ROOT CHANGES HOST. A moon's orbit about its planet came from a real save and is internally
+consistent, so its elements and its `hostMu` are untouched; the root goes through G64's
+`reparentBody` rather than beside it, which is what brings the tilt handling, the pair promotion and
+the stability tags along. STEER, DO NOT STOP: a 2 Msun star pasted under a pebble is allowed and
+tagged, never refused.
+WHY: hub R-14 ([[G57]]). Every row of a hub map page has a Copy control and it has led nowhere since
+it shipped - both `main` and this branch were grepped, and the gas-giant recipe and the hub link were
+the only clipboard readers in the engine.
+NOT OBVIOUS: **the ordering guarantee is documented and deliberately not relied on.** The hub emits
+depth-first, parents first; this reads that happily but builds the tree itself, so a producer bug
+about ordering cannot silently mis-parent somebody's moons.
+BLAST: the cycle check skipped the ROOT, and `a -> b -> a` with `a` named as the root walked one step
+to the root and looked fine - the insert would have hung a node off itself. A root's parent is the
+thing being pasted ONTO and is by definition outside the clip; the spec caught it, not the reasoning.
+
 ### DATA-R35 A SHARED MAP IS AN IMPORT THAT ARRIVED BY LINK, AND IT NEVER REPLACES A CAMPAIGN UNASKED
 BUCKET: ARCHITECTURE (the funnel) - a URL a stranger can craft reaches straight into the one thing
 this app stores, so the whole path is written as untrusted input with one deliberate question in the

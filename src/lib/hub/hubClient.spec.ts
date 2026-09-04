@@ -77,7 +77,7 @@ describe('R-05: a slug is validated BEFORE it becomes a URL', () => {
 			'https://starsystemx-creator-hub.orange-tree-847c.workers.dev/api/download/my-map'
 		);
 		expect(hubMapUrl('my-map')).toBe(
-			'https://starsystemx-creator-hub.orange-tree-847c.workers.dev/m/my-map'
+			'https://starsystemx-creator-hub.orange-tree-847c.workers.dev/s/my-map'
 		);
 		expect(hubDownloadUrl('my-map').startsWith(HUB.origin + '/')).toBe(true);
 	});

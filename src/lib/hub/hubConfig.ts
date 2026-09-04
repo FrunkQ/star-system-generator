@@ -53,7 +53,9 @@ export const HUB_FINAL_ORIGIN = 'https://explorers.starsystemx.com';
 export const HUB: HubConfig = {
   origin: LIVE_ORIGIN,
   downloadPath: (slug) => `/api/download/${encodeURIComponent(slug)}`,
-  pagePath: (slug) => `/m/${encodeURIComponent(slug)}`,
+  // `/s/`, not `/m/`. The hub redirects the old path so nothing broke, but a link this app hands a
+  // GM should be the real one rather than a redirect (hub note, 2026-09-03).
+  pagePath: (slug) => `/s/${encodeURIComponent(slug)}`,
   browseUrl: LIVE_ORIGIN,
   uploadEnabled: false
 };

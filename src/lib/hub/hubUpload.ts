@@ -26,6 +26,14 @@ import { HUB } from './hubConfig';
 /** What the hub answers with. Shapes owed by the hub; see the request document. */
 export interface PublishResult {
   ok: boolean;
+  /**
+   * A machine-readable refusal, when the hub gave one. `'stale-revision'` is R-12 doing its job:
+   * the copy being uploaded has a LOWER `revision` than the one already published, so this upload
+   * would replace newer work with older. It is the whole reason the counter exists.
+   */
+  code?: string;
+  /** For `stale-revision`: the two numbers, so the message can name them rather than gesture. */
+  revisions?: { incoming?: number; published?: number };
   /** The map's code on the hub, for the shareable link. */
   slug?: string;
   /** False when the map uploaded fine but cannot go public yet. NOT an error. */
@@ -53,6 +61,12 @@ export interface PublishOptions {
   publishGmTree?: boolean;
   /** Updating an existing map rather than creating one. Only novel assets count against the quota. */
   replaces?: string;
+  /**
+   * Publish anyway, over the hub's `stale-revision` refusal. NEVER set from code and never
+   * defaulted: the refusal exists because the upload would replace newer work with older, so the
+   * only thing allowed to set this is a person who has been shown both numbers and said yes.
+   */
+  confirmStale?: boolean;
   /** The paired token. Absent means not paired, which is a refusal rather than an anonymous upload. */
   token?: string;
 }
@@ -98,6 +112,9 @@ export function publishBody(opts: PublishOptions): FormData {
   // a hub reading it as "present, therefore chosen" is exactly the ambiguity the hub warned about.
   if (opts.publishGmTree === true) form.append('publishGmTree', 'on');
   if (opts.replaces) form.append('replaces', opts.replaces);
+  // Same discipline as `attest`: present only for an explicit true, because "the default was on"
+  // is exactly how somebody's newer work gets overwritten without anyone deciding to.
+  if (opts.confirmStale === true) form.append('confirmStale', 'on');
   return form;
 }
 
@@ -123,9 +140,26 @@ export async function publishToHub(opts: PublishOptions, fetchImpl: typeof fetch
     });
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
+      // R-12 in the wild: the hub compared revisions and refused rather than destroy newer work.
+      // It is a QUESTION for the creator, not an error to retry - so the numbers come back with it
+      // and the caller shows them. Nothing here re-sends with `confirmStale`; a person does.
+      if (payload?.code === 'stale-revision') {
+        const incoming = payload?.detail?.incoming;
+        const published = payload?.detail?.published;
+        return {
+          ok: false,
+          code: 'stale-revision',
+          revisions: { incoming, published },
+          problem:
+            payload?.message ??
+            `The copy you are uploading (revision ${incoming}) is older than the one already published ` +
+            `(revision ${published}). Publishing it would replace newer work. Did you mean to roll back?`
+        };
+      }
       return {
         ok: false,
-        problem: payload?.problem ?? `The map library refused the upload (error ${response.status}).`
+        code: typeof payload?.code === 'string' ? payload.code : undefined,
+        problem: payload?.problem ?? payload?.message ?? `The map library refused the upload (error ${response.status}).`
       };
     }
     return {

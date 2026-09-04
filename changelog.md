@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.292 - 3rd Sep 2026
+
+- Copy a star from a map on the Explorers site and this app can now read it - with its planets, and their moons, and whatever else hung beneath it. Copying there has always taken the whole branch; nothing here could read one, so the button led nowhere. The reader takes the branch entire or refuses and says why: a piece copied without its parent, a loop, or a clip made by a newer version of the site than this app understands (which tells you to update rather than pretending the copy button is broken).
+- What arrives keeps its own shape. The moons keep the orbits they had round their planet, because those came from a real save and are right; only the top object changes what it goes round, and it does that through the same re-homing the app already uses when you move a body by hand - so it is placed rather than teleported, and the usual warnings appear if you have hung something implausible somewhere implausible. Pasting a heavy star under a pebble is allowed and labelled, never refused.
+- Everything pasted gets new internal names, so the same clip can be pasted twice without the two copies fighting, and the top object carries a quiet tag saying which map it came from.
+- The button that opens a shared map now points at the site's current address for map pages rather than an old one that only worked because the site was forwarding it.
+- If you publish an update that is older than the copy already on the site, the site now says so and names both version numbers instead of silently replacing newer work. The app shows you that and waits - it will never confirm it for you.
+
 ## v3.0.291 - 2nd Sep 2026
 
 - The space elevator now behaves like the large object it is. Its ribbon is placed by the same rule that places moons and stations around a planet, so at readable body sizes it stays a short stalk inside the Moon's orbit instead of reaching past it, at true size it stands the honest 6.6 Earth radii tall, and a station parked at geostationary sits exactly on its dock at every zoom and dial setting.
