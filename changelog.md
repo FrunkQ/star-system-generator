@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.300 - 5th Sep 2026
+
+- You can now paste from the map library. Copy a star, a planet or a station on the Explorers site and paste it straight into your campaign - everything beneath it comes too, and it lands where you say. Paste anywhere in the app and it offers; or use the Paste button on the system view if you would rather choose the destination first. That button is not decoration: Firefox will not let a page read your clipboard, so without it the feature would simply look broken there.
+- It always asks before it puts anything in. From a system, it offers the body you have selected; from the whole starmap, it asks which system and then what it should go round. Nothing is touched until you say yes, and a paste that cannot be read leaves your campaign exactly as it was.
+- The credit comes with it and is shown as you paste: which map it came from and who made it, recorded on your campaign and printed in the attributions file inside your saves.
+
 ## v3.0.299 - 4th Sep 2026
 
 - Exporting a construct and importing it back works again. The importer refused every exported file over a field the app never writes, so a ship could not be moved by export and import; it now says in words what is wrong when a file really is not a construct.
@@ -120,7 +126,6 @@ All notable changes are listed here:
 
 - The calendar editor was showing a dead number. Its Epoch Offset field displayed the old, 297-years-wrong value while the app quietly used the corrected one, so the figure on screen was both wrong and had no effect if you changed it. The field now shows the number actually in use.
 - And if you DO type your own epoch, it is now yours for good. The app corrects its own shipped calendars when a campaign loads; it will no longer reach in and overwrite a zero point you set yourself.
-
 
 ## v3.0.271 - 2nd Sep 2026
 

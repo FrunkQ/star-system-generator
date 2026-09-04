@@ -84,6 +84,8 @@
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
   import { fetchHubMap } from '$lib/hub/hubClient';
+  import { looksLikeHubClip, insertClip, addContentCredit } from '$lib/io/hubClip';
+  import HubClipPasteModal from '$lib/components/HubClipPasteModal.svelte';
   import { HUB } from '$lib/hub/hubConfig';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import { unitKind, campaignUnit, normaliseCampaignUnit, applyUnitChange, type UnitChangeMode } from '$lib/map/distanceUnits';
@@ -732,6 +734,79 @@
     // browser before it can decide whether it is allowed to open anything.
     await maybeOpenHubMap();
   });
+
+  // --- R-14: pasting a hub clip into this campaign -----------------------------------------------
+  //
+  // TWO WAYS IN, ONE INSERT. A paste event anywhere in the app, and a screen with a text box for
+  // Firefox (which will not hand a page the clipboard) and for anyone who would rather point at
+  // where it goes. Both end in `applyHubClip`, so there is one implementation of "put this branch
+  // into that campaign" rather than one per entry point.
+  let clipPasteText: string | null = null; // non-null = the screen is up, with this text in it
+  let clipNotice: string | null = null;
+
+  /**
+   * A paste anywhere. It stays out of the way of ordinary typing: a paste into a field is the
+   * user filling that field in, not a request to import somebody's star system - so an editable
+   * target is left entirely alone, and so is any text that is not a clip.
+   */
+  function onWindowPaste(e: ClipboardEvent) {
+    if (!browser || clipPasteText !== null) return;
+    const el = e.target as HTMLElement | null;
+    if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+    let text = '';
+    try { text = e.clipboardData?.getData('text') ?? ''; } catch { return; }
+    if (!looksLikeHubClip(text)) return; // ordinary text: say nothing at all
+    e.preventDefault();
+    clipPasteText = text;
+  }
+
+  /**
+   * THE ONE INSERT. Puts the branch in, records the credit on the CAMPAIGN, and re-processes the
+   * system it landed in - which is what settles host masses, promotes a pair where one is due, and
+   * writes the stability tags that say whether the new home can hold what was just dropped in.
+   */
+  function applyHubClip(e: CustomEvent<{ clip: any; systemId: string; hostId: string }>) {
+    const { clip, systemId, hostId } = e.detail;
+    const map = $starmapStore;
+    if (!map) return;
+    const entry = map.systems.find((s: any) => (s.system?.id ?? s.id) === systemId);
+    if (!entry?.system) { clipPasteText = null; return; }
+
+    // A deep clone first: nothing is written into the live campaign until the insert has succeeded,
+    // so a refusal leaves the map exactly as it was.
+    const working = JSON.parse(JSON.stringify(entry.system));
+    const result = insertClip(working, clip, hostId, playerClockMs());
+    if (!result.ok) {
+      clipNotice = result.problem;
+      clipPasteText = null;
+      return;
+    }
+
+    const processed = systemProcessor.process(working, selectedRulepack!);
+    starmapStore.update((m) => {
+      if (!m) return m;
+      const systems = m.systems.map((s: any) =>
+        (s.system?.id ?? s.id) === systemId ? { ...s, system: processed } : s
+      );
+      // R-16: the credit goes on the CAMPAIGN, not the node - nodes get renamed and deleted.
+      return addContentCredit({ ...m, systems }, result.credit);
+    });
+    // The open system is the same object the campaign holds; keep the view in step with it.
+    if ($systemStore && $systemStore.id === systemId) systemStore.set(processed);
+
+    const who = result.credit?.creator ? ` (credited to ${result.credit.creator})` : '';
+    clipNotice = `Pasted ${result.count} object${result.count === 1 ? '' : 's'} into ${result.hostName}${who}.`;
+    clipPasteText = null;
+    if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+    clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
+  }
+  let clipNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** The display instant, so a pasted root is placed against the system as it stands right now. */
+  function playerClockMs(): number {
+    const t = ($systemStore as any)?.currentTimeMs ?? ($starmapStore as any)?.currentTimeMs;
+    return typeof t === 'number' && Number.isFinite(t) ? t : 0;
+  }
 
   // --- R-05: open a shared map from the hub, in one click ---------------------------------------
   //
@@ -2216,6 +2291,8 @@
   <title>Star System Explorer</title>
 </svelte:head>
 
+<svelte:window on:paste={onWindowPaste} />
+
 <main>
 
 
@@ -2225,6 +2302,12 @@
     <div class="mem-banner" role="status">
       <span>{remoteNotice}</span>
       <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (remoteNotice = null)}>×</button>
+    </div>
+  {/if}
+  {#if clipNotice}
+    <div class="mem-banner" role="status">
+      <span>{clipNotice}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (clipNotice = null)}>×</button>
     </div>
   {/if}
   {#if createdWithNotice}
@@ -2331,6 +2414,18 @@
     </div>
   {/if}
 
+  <!-- R-14: the paste screen. Mounted here, at the root, because this is where the campaign, the
+       open system and the rule pack all are - so there is ONE place that inserts a clip. -->
+  {#if clipPasteText !== null && $starmapStore}
+    <HubClipPasteModal
+      initialText={clipPasteText}
+      starmap={$starmapStore}
+      openSystemId={$systemStore?.id ?? null}
+      focusedBodyId={$systemStore ? focusedBodyId : null}
+      on:paste={applyHubClip}
+      on:close={() => (clipPasteText = null)} />
+  {/if}
+
   {#if hubOffer}
     <div class="physics-overlay" role="alertdialog" aria-modal="true" aria-label="Open a shared map">
       <div class="physics-card">
@@ -2374,6 +2469,7 @@
     <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
     {#if $systemStore && effectiveRulePack}
       <SystemView
+        on:pasteFromHub={() => (clipPasteText = '')}
         system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
         {broadcastSessionId}
         routesAttention={routesData.worstAttention}

@@ -5752,6 +5752,16 @@ tagged, never refused.
 WHY: hub R-14 ([[G57]]). Every row of a hub map page has a Copy control and it has led nowhere since
 it shipped - both `main` and this branch were grepped, and the gas-giant recipe and the hub link were
 the only clipboard readers in the engine.
+THE WAY IN (owner, 2026-09-03): a paste event ANYWHERE, and a screen with a text box. TWO ENTRY
+POINTS, ONE INSERT - `applyHubClip` in `routes/+page.svelte` is the only place that puts a branch
+into a campaign, so there is no second copy of that decision. The text box is not a nicety:
+**Firefox will not hand a page the clipboard**, so a feature reachable only by Ctrl+V is one that
+looks broken in a browser plenty of people use. The paste handler STAYS OUT OF THE WAY of ordinary
+typing - an editable target is left entirely alone, and text that is not a clip is ignored in
+silence rather than answered - and `hubClip.spec.ts` pins both at the source, because a unit test of
+`looksLikeHubClip` passes with the editable guard deleted.
+A REFUSED PASTE TOUCHES NOTHING: the system is deep-cloned, the insert runs on the clone, and the
+campaign is only written when it succeeded.
 R-16, THE CREDIT: **a breadcrumb is not a credit, and they are different objects.** `origin/hub` on
 the pasted root says WHICH BODY came from where; a `ContentCredit` on the CAMPAIGN says WHOSE WORK
 it is. Both are kept. The credit lives on the campaign and not the nodes because nodes get renamed,

@@ -10,7 +10,12 @@
 // happened to push the right number of wrong things would still satisfy.
 import { describe, it, expect } from 'vitest';
 import { parseHubClip, insertClip, looksLikeHubClip, CLIP_FORMAT } from './hubClip';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import type { System } from '$lib/types';
+
+const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Sol-ish: a star with a planet, the planet with a moon. Three deep, which is the whole point. */
 function clipText(over: Record<string, unknown> = {}): string {
@@ -103,6 +108,22 @@ describe('R-14: a clip is read, or refused with a reason', () => {
 	it('ignores ordinary text quietly, so a paste handler need not shout at every paste', () => {
 		expect(looksLikeHubClip('some notes a GM copied')).toBe(false);
 		expect(looksLikeHubClip(clipText())).toBe(true);
+	});
+});
+
+describe('R-14: the paste handler stays out of the way of ordinary typing', () => {
+	// A paste INTO A FIELD is somebody filling that field in, not a request to import a star system.
+	// The rule lives in a Svelte route, so it is pinned here at the source - a unit test of
+	// `looksLikeHubClip` would pass with the editable-target guard deleted, which is the blind-gate
+	// shape this stream has now hit five times.
+	it('bails on an editable target, and on text that is not a clip', () => {
+		const src = readFileSync(join(SRC, 'routes/+page.svelte'), 'utf-8');
+		const start = src.indexOf('function onWindowPaste(');
+		expect(start, 'the paste handler is gone - did the entry point move?').toBeGreaterThan(-1);
+		const body = src.slice(start, start + 1200);
+		expect(body.includes('isContentEditable'), 'a paste into a contenteditable must be left alone').toBe(true);
+		expect(/INPUT\|TEXTAREA\|SELECT/.test(body), 'a paste into a form field must be left alone').toBe(true);
+		expect(body.includes('looksLikeHubClip'), 'ordinary text must be ignored silently').toBe(true);
 	});
 });
 
