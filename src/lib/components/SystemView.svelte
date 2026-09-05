@@ -56,6 +56,7 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { buildClip } from '$lib/io/hubClip';
   import { clipBuffer, putClip } from '$lib/io/clipBuffer';
+  import { detectedClip, refreshDetectedClip } from '$lib/io/clipDetect';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
@@ -358,6 +359,32 @@
     showSummaryContextMenu = false;
     dispatch('pasteClip', { clip: entry.clip, systemId: $systemStore.id, hostId: host.id });
   }
+
+  // THE GOLD PULSE. Fires when the thing on offer CHANGES, not on every reactive tick - otherwise
+  // it would blink continuously and mean nothing. `clipPulseKey` is the identity of what is in
+  // hand; when it moves, the button flashes once.
+  let clipPulse = false;
+  let clipPulseKey = '';
+  let clipPulseTimer: ReturnType<typeof setTimeout> | null = null;
+  $: {
+    const key = $detectedClip ? `${$detectedClip.label}|${$detectedClip.count}|${$detectedClip.from}` : '';
+    if (key !== clipPulseKey) {
+      clipPulseKey = key;
+      if (key) {
+        clipPulse = true;
+        if (clipPulseTimer) clearTimeout(clipPulseTimer);
+        clipPulseTimer = setTimeout(() => (clipPulse = false), 1400);
+      }
+    }
+  }
+  // Look at the system clipboard when the window comes back - which is exactly when a GM returns
+  // from copying something on the map library's site. It never prompts: see clipDetect.ts.
+  onMount(() => {
+    void refreshDetectedClip();
+    const onFocus = () => void refreshDetectedClip();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  });
 
   let clipNotice: string | null = null;
   let clipNoticeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2654,9 +2681,18 @@
               <!-- R-14: the way in that does NOT need a paste event. Firefox will not hand a page
                    the clipboard, so a feature reachable only by Ctrl+V is one that looks broken in
                    a browser plenty of people use. It also gives anyone a way to say WHERE it goes
-                   before pasting, rather than after. -->
-              <button class="ov-btn faded" title="Paste an object copied from the map library"
-                aria-label="Paste from the map library" on:click={() => dispatch('pasteFromHub')}>⎘{#if !$railCollapsed} Paste{/if}</button>
+                   before pasting, rather than after.
+                   IT APPEARS ONLY WHEN THERE IS SOMETHING TO PASTE, and it says what (owner,
+                   2026-09-05). A control that is always present is one that fails most of the times
+                   it is pressed. The gold pulse fires when something NEW arrives, so a GM who has
+                   just copied on the map library's site can see the app noticed. -->
+              {#if $detectedClip}
+                <button class="ov-btn faded ov-paste" class:pulse={clipPulse}
+                  title="Paste {$detectedClip.label}{$detectedClip.count > 1 ? ` and ${$detectedClip.count - 1} more` : ''}"
+                  aria-label="Paste {$detectedClip.label}"
+                  on:click={() => dispatch('pasteFromHub', focusedBodyId)}
+                >⎘{#if !$railCollapsed} Paste {$detectedClip.label}{/if}</button>
+              {/if}
               <div class="ov-view">
                 <button class="ov-btn ov-eye" class:active={viewOpen} on:click={toggleViewPopover} title="View options" aria-label="View options">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
@@ -3275,6 +3311,20 @@
     backdrop-filter: blur(6px);
   }
   .ov-btn:hover { background: var(--bg-control-hover, #232733); }
+  /* The gold pulse: one flash when something new becomes pasteable, then quiet. Gold rather than
+     the accent so it reads as "look, this arrived" instead of "this is selected". */
+  .ov-paste.pulse {
+    animation: clip-pulse 1.4s ease-out 1;
+  }
+  @keyframes clip-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(232, 196, 106, 0.85); color: #e8c46a; }
+    60%  { box-shadow: 0 0 0 10px rgba(232, 196, 106, 0); color: #e8c46a; }
+    100% { box-shadow: 0 0 0 0 rgba(232, 196, 106, 0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    /* The message is "something arrived", and it survives without the movement. */
+    .ov-paste.pulse { animation: none; color: #e8c46a; }
+  }
   .ov-btn.faded { opacity: 0.55; font-size: 1rem; }
   .ov-btn.faded:hover { opacity: 1; }
   .ov-btn.active { border-color: var(--accent, #ff5a1f); }

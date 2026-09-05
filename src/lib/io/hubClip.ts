@@ -206,6 +206,38 @@ export function buildClip(
   return { sseClip: CLIP_FORMAT, root: rootId, nodes: out, ...(credits.length ? { credits } : {}) };
 }
 
+/**
+ * WHAT THIS CLIP IS, in the words a GM uses — "System Sol", "Planet Earth", "Ship Tender".
+ *
+ * The owner, 2026-09-05: a paste control should "say what - Paste - Planet x, system x, star x".
+ * A button reading only "Paste" asks somebody to remember what they copied; naming it means they
+ * can see they are about to drop a whole system onto a moon before they do it.
+ *
+ * A STAR WITH THINGS UNDER IT IS A SYSTEM, not a star. That is what a GM copied and what they will
+ * get, and calling it "Star Sol" would describe one node of the forty they are about to paste.
+ */
+export function describeClipRoot(clip: HubClip): string {
+  const root = clip.nodes.find((n: any) => n.id === clip.root) ?? clip.nodes[0];
+  const name = String(root?.name ?? 'object');
+  const role = String(root?.roleHint ?? '');
+  const hasChildren = clip.nodes.length > 1;
+
+  let what: string;
+  if (root?.kind === 'barycenter') what = 'Pair';
+  else if (root?.kind === 'construct') {
+    what = role === 'ship' ? 'Ship' : role === 'ring' ? 'Ring' : role === 'belt' ? 'Belt' : 'Structure';
+  } else {
+    what =
+      role === 'star' ? (hasChildren ? 'System' : 'Star')
+      : role === 'planet' ? 'Planet'
+      : role === 'moon' ? 'Moon'
+      : role === 'belt' ? 'Belt'
+      : role === 'ring' ? 'Ring'
+      : 'Object';
+  }
+  return `${what} ${name}`;
+}
+
 export type ClipInsert =
   | {
       ok: true;

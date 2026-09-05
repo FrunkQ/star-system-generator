@@ -9,7 +9,7 @@
 // integer 1 for the clip format - not "the same length as the input", which a broken insert that
 // happened to push the right number of wrong things would still satisfy.
 import { describe, it, expect } from 'vitest';
-import { parseHubClip, insertClip, buildClip, looksLikeHubClip, CLIP_FORMAT } from './hubClip';
+import { parseHubClip, insertClip, buildClip, describeClipRoot, looksLikeHubClip, CLIP_FORMAT } from './hubClip';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -124,6 +124,43 @@ describe('R-14: the paste handler stays out of the way of ordinary typing', () =
 		expect(body.includes('isContentEditable'), 'a paste into a contenteditable must be left alone').toBe(true);
 		expect(/INPUT\|TEXTAREA\|SELECT/.test(body), 'a paste into a form field must be left alone').toBe(true);
 		expect(body.includes('looksLikeHubClip'), 'ordinary text must be ignored silently').toBe(true);
+	});
+});
+
+describe('a paste control says WHAT it is about to paste', () => {
+	// Owner, 2026-09-05, after a Paste button that was always present threw the moment it was
+	// pressed: "it should probably say what - Paste - Planet x, system x, star x".
+	const clipOf = (root: any, extra: any[] = []) => ({
+		sseClip: 1, root: 'r', nodes: [{ id: 'r', parentId: null, ...root }, ...extra]
+	});
+
+	it('names a body by what it IS, not by its kind field', () => {
+		expect(describeClipRoot(clipOf({ kind: 'body', roleHint: 'planet', name: 'Earth' }))).toBe('Planet Earth');
+		expect(describeClipRoot(clipOf({ kind: 'body', roleHint: 'moon', name: 'Luna' }))).toBe('Moon Luna');
+		expect(describeClipRoot(clipOf({ kind: 'body', roleHint: 'belt', name: 'The Belt' }))).toBe('Belt The Belt');
+	});
+
+	it('calls a star with things under it a SYSTEM', () => {
+		// It is what the GM copied and what they will get. "Star Sol" would describe one node of the
+		// forty they are about to drop onto something.
+		const lone = clipOf({ kind: 'body', roleHint: 'star', name: 'Sol' });
+		expect(describeClipRoot(lone)).toBe('Star Sol');
+		const withPlanets = clipOf({ kind: 'body', roleHint: 'star', name: 'Sol' },
+			[{ id: 'p', parentId: 'r', kind: 'body', roleHint: 'planet', name: 'Earth' }]);
+		expect(describeClipRoot(withPlanets)).toBe('System Sol');
+	});
+
+	it('names constructs by what they are', () => {
+		expect(describeClipRoot(clipOf({ kind: 'construct', roleHint: 'ship', name: 'Tender' }))).toBe('Ship Tender');
+		expect(describeClipRoot(clipOf({ kind: 'construct', roleHint: 'ring', name: 'Hab' }))).toBe('Ring Hab');
+		expect(describeClipRoot(clipOf({ kind: 'construct', roleHint: 'construct', name: 'High Yard' }))).toBe('Structure High Yard');
+		expect(describeClipRoot(clipOf({ kind: 'barycenter', name: 'A-B' }))).toBe('Pair A-B');
+	});
+
+	it('never returns an empty label, whatever the clip carries', () => {
+		// The label goes on a button. "Paste " with nothing after it is worse than "Paste Object".
+		expect(describeClipRoot(clipOf({ kind: 'body' }))).toBe('Object object');
+		expect(describeClipRoot({ sseClip: 1, root: 'gone', nodes: [{ id: 'x', name: 'Odd' }] } as any)).toContain('Odd');
 	});
 });
 

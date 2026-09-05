@@ -5752,6 +5752,30 @@ tagged, never refused.
 WHY: hub R-14 ([[G57]]). Every row of a hub map page has a Copy control and it has led nowhere since
 it shipped - both `main` and this branch were grepped, and the gas-giant recipe and the hub link were
 the only clipboard readers in the engine.
+A PASTE CONTROL APPEARS ONLY WHEN THERE IS SOMETHING TO PASTE, AND IT SAYS WHAT (owner,
+2026-09-05, after the first version threw the moment it was pressed). `detectedClip` in
+`io/clipDetect.ts` is the one answer to "is there anything in hand": the app's own buffer first,
+then the SYSTEM clipboard - and the system clipboard is read ONLY where the browser has ALREADY
+granted `clipboard-read`, checked through the Permissions API and abandoned in silence otherwise.
+Calling `readText()` unprompted raises a permission dialogue in Chrome and does nothing at all in
+Firefox, and a browser prompt appearing because somebody moved the mouse would be worse than a
+missing button. Ctrl+V needs none of this: that path is handed the text by the event.
+`describeClipRoot` names it the way a GM would - and **a star with things under it is a SYSTEM, not
+a star**, because that is what was copied and what will arrive; "Star Sol" would describe one node
+of the forty about to land on a moon.
+THE CRASH THAT PRODUCED ALL OF THIS, and the process lesson is the durable half. `+page.svelte`
+referenced `focusedBodyId`, a name that lives in `SystemView.svelte` and was NEVER DECLARED in the
+route. `npm run build` was green - the Svelte compiler does not typecheck (RENDER-S46) - and the app
+threw `focusedBodyId is not defined` the instant the paste screen opened, on beta, in front of the
+owner. **`svelte-check` had the answer the whole time** ("+page.svelte:2438 Cannot find name") and
+nobody ran it, because its output is 1,366 errors long. `scripts/check-touched.mjs` now narrows that
+to the files in your own diff. It is a REPORT and not an exit code, and that is measured rather than
+lazy: whole-FILE scope fails because a 3,000-line route carries a dozen pre-existing errors; LINE
+scope fails because svelte-check's line numbers do not line up with git's hunks in a .svelte file
+(an error at 2443 against a hunk at 2491); and the crash's own error CLASS fails because there are
+already 147 "Cannot find name" errors repo-wide, 12 in `SystemView.svelte` alone. **Run it and read
+it whenever you touch a .svelte file.** Making the baseline clean enough to gate on is a real and
+separate job.
 COPY AND CUT INSIDE THE CAMPAIGN (owner, 2026-09-05), AND THE CLIP FORMAT SERVES BOTH DIRECTIONS.
 `buildClip` produces exactly what `parseHubClip` reads, so a clip this app made and one the hub made
 are indistinguishable to the reader - a second internal format would be a second thing to keep in

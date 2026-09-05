@@ -743,6 +743,10 @@
   // where it goes. Both end in `applyHubClip`, so there is one implementation of "put this branch
   // into that campaign" rather than one per entry point.
   let clipPasteText: string | null = null; // non-null = the screen is up, with this text in it
+  // WHICH BODY THE GM WAS LOOKING AT, sent by the view that actually knows. `focusedBodyId` lives
+  // in SystemView; naming it here compiled, shipped, and threw `focusedBodyId is not defined` the
+  // moment the screen opened - see the engine map on why `npm run build` did not catch it.
+  let clipPasteFocus: string | null = null;
   let clipNotice: string | null = null;
 
   /**
@@ -758,6 +762,7 @@
     try { text = e.clipboardData?.getData('text') ?? ''; } catch { return; }
     if (!looksLikeHubClip(text)) return; // ordinary text: say nothing at all
     e.preventDefault();
+    clipPasteFocus = null; // a paste from anywhere has no selection behind it
     clipPasteText = text;
   }
 
@@ -2435,7 +2440,7 @@
       initialText={clipPasteText}
       starmap={$starmapStore}
       openSystemId={$systemStore?.id ?? null}
-      focusedBodyId={$systemStore ? focusedBodyId : null}
+      focusedBodyId={clipPasteFocus}
       on:paste={applyHubClip}
       on:close={() => (clipPasteText = null)} />
   {/if}
@@ -2483,7 +2488,7 @@
     <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
     {#if $systemStore && effectiveRulePack}
       <SystemView
-        on:pasteFromHub={() => (clipPasteText = '')}
+        on:pasteFromHub={(e) => { clipPasteFocus = e.detail ?? null; clipPasteText = ''; }}
         on:pasteClip={(e) => pasteClipInto(e.detail)}
         system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
         {broadcastSessionId}

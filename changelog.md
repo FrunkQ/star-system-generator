@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.312 - 5th Sep 2026
+
+- Fixed: pasting a system copied from the Explorers site crashed the app. The paste screen asked for something the page it lived on had never been given, and the moment it opened, everything stopped. It is gone, and the exact sequence that caused it has been walked through in a browser to be sure.
+- The Paste button now only appears when there is actually something to paste, and it tells you what: "Paste System Sol", "Paste Planet Earth", "Paste Ship Tender". A star with worlds under it is called a system, because that is what you copied and what you will get - not one star. It flashes gold once when something new becomes pasteable, so if you copy on the website and come back to the app you can see it noticed.
+- It looks at your clipboard only when your browser has already given permission - it will never pop a permission box at you just because you were passing. Ctrl+V works regardless of any of that.
+
 ## v3.0.311 - 5th Sep 2026
 
 - Notes only, no change to the app: the plan for finishing the Size comparison is written up for the next session, including the decision that its labels will be drawn into the picture rather than sitting over it as web text.
