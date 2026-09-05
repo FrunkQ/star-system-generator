@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.310 - 5th Sep 2026
+
+- Notes only, no change to the app: the new Size comparison player view draws its labels and ruler as ordinary web text over the picture, and that is against a decision taken back in July — player screens are meant to be drawn into the picture itself so the visual filters bend the text along with everything else. Written down properly with what it will take to put right.
+
 ## v3.0.309 - 5th Sep 2026
 
 - Fixed: the Size comparison player view ignored the preset's visual filter and its overlay graphic entirely, so a table set up as a CRT terminal or a night-vision scope got a plain view instead. It now takes both, and the planets themselves are tinted and scanlined along with everything else.

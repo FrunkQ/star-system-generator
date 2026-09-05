@@ -6365,28 +6365,32 @@ WHERE: `routes/catalogue/+page.svelte` - one branch per stage, each of which mus
 filter itself (the holo) or wrap in `FilterFrame` (everything else); `components/FilterFrame.svelte`
 + `player/cssFilterApprox.ts` (the approximation); `holo/filteredCanvas.ts` (the real chain over a
 static canvas); mirrored in `PlayerPresetEditor.svelte`'s preview branches.
-RULE: a new player stage is not finished until it carries BOTH the preset's filter and its overlay
-graphic, and until the editor's preview of it does the same thing. Which mechanism depends on what
-the stage draws:
- - IT DRAWS EVERYTHING ITSELF, IN ONE SURFACE -> the REAL shader. The holo runs it as a GPU pass
-   inside its own scene; a static 2D surface (cover, list, document) goes through
-   `createFilteredCanvas`, which is the same chain over a quad and also hands back `warpPoint` so a
-   tap on a barrel-warped, rolling picture still hits the right row.
- - IT IS PART CANVAS AND PART DOM -> `FilterFrame`, the CSS approximation, round the WHOLE thing.
-   A CSS filter on an ancestor DOES reach a nested WebGL canvas - verified on the size comparison
-   under the CRT preset: the globes take the phosphor tint and the scanlines exactly as the labels
-   beside them do.
-WHY THE HYBRID CASE CANNOT JUST USE THE REAL ONE: the holo gets away with the GPU pass because
-everything it draws is IN the scene - its labels are sprites. The size comparison's labels, ruler
-and sub-pixel dots are DOM, so a pass over its globes alone would tint the planets and leave their
-names untouched. A consistent approximation over both halves reads better than an exact filter over
-one of them. The editor says as much in its own hint: "The 3D view uses the exact shader; text and
-2D screens use a lighter matched version so their content stays readable."
-WHY THIS IS AN ENTRY: the size comparison shipped as a player view (v3.0.308) with NEITHER - a GM
-choosing the CRT preset got no CRT at all - while the editor's preview DID wrap it, so the preview
-described a view that did not exist. Nothing failed, nothing warned, and every test was green:
-the filter is not something a stage opts out of loudly.
+RULE, AND IT IS A DECISION ALREADY TAKEN RATHER THAN A CHOICE PER STAGE. Owner, 2026-07-18, in
+`docs/dev/v2.2-player-view-visual-overhaul.md` section 7: *"a player 'info screen' ... is drawn ONE
+way - canvas region -> shader - regardless of whether the underlying view is the 2D document, the 2D
+orrery, or the 3D holo. Retire the DOM `.inspector` + `cssFilterApprox` chrome for player views; keep
+DOM only where a preset is explicitly un-filtered."* So a player stage draws its CONTENT into a
+rendered surface and takes the REAL shader. `createFilteredCanvas` is that chain over a static
+canvas and hands back `warpPoint`; the holo runs the same chain as a pass inside its own scene and
+composites its info card as a HUD quad so the card warps WITH the picture.
+`FilterFrame` / `cssFilterApprox` IS THE INTERIM, NOT A TIER. It exists because DOM cannot go
+through GLSL without a capture step, it is one source of truth rendered two ways rather than a rival
+implementation ([[A39]]), and the surfaces still on it are tracked as unfinished, not as finished.
+Reach for it only where a preset is explicitly un-filtered, or as a stop-gap you have written down.
+WHY THE DECISION EXISTS, and it is not tidiness: DOM chrome is positioned in SCREEN space and does
+not follow the warped, inset projection. Under a barrel-warped CRT preset the picture bends and the
+DOM sitting over it does not, so labels drift off the things they name - which is the exact fault
+that produced the decision (the info panel over the 3D holo, WS4, beta v2.1.147).
+WHAT WENT WRONG HERE, twice, and the second is the worse one. The size comparison shipped as a
+player view (v3.0.308) with NO filter and NO overlay at all - a GM choosing the CRT preset got no
+CRT - while the editor's preview DID wrap it, so the preview described a view that did not exist.
+That was fixed in v3.0.309 by reaching for `FilterFrame`, and THAT is the second mistake: it made a
+new player stage out of DOM chrome under the CSS approximation, which is the thing the 2026-07-18
+decision retires. Recorded as [[B126]]. The first cut of this entry wrote that choice down as a
+legitimate tier, which would have taught the next reader the wrong rule.
 BLAST: adding a stage means touching FOUR places that must agree - the catalogue branch, the preview
-branch, the overlay inside both, and the `ViewModule` union. To move a hybrid stage up to the exact
-shader, its chrome has to move into the rendered surface first (a HUD canvas composited as a quad,
-the way the holo does its info card); the filter change is the small half of that job.
+branch, the overlay inside both, and the `ViewModule` union. And if the stage has chrome, that
+chrome belongs in the rendered surface from the start: retrofitting it means moving every label into
+a canvas, routing picking through `warpPoint`, and deciding what happens to any DOM-only interaction
+the labels carried (the size comparison's unit-cycling is exactly that, and it is why [[B126]] needs
+a decision rather than just a refactor).
