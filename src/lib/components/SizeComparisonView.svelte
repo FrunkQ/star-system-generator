@@ -11,12 +11,12 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import UnitValue from './UnitValue.svelte';
   import {
-    sortBySize, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote, visibleItems,
+    sortItems, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote, visibleItems,
     idsAtLeast, idsAtMost, referenceMarks, minorTicks, clampScroll, scrollForZoom,
-    SELECTED_SHARE, OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION,
-    type StripLayout
+    SELECTED_SHARE, OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION, SORT_ORDERS,
+    type StripLayout, type SortOrder
   } from '$lib/comparison/layout';
-  import { hiddenKey, loadHidden, saveHidden, type ComparisonEntry } from '$lib/comparison/items';
+  import { hiddenKey, loadHidden, saveHidden, loadOrder, saveOrder, type ComparisonEntry } from '$lib/comparison/items';
   import type { UnitBodyType } from '$lib/units';
 
   /** Everything on the map that has a true size, from `itemsForSystem` / `itemsForStarmap`. */
@@ -33,14 +33,27 @@
 
   let canvas: HTMLCanvasElement;
   let stage: HTMLDivElement;
-  let handle: { setSlots: (s: any[]) => void; setView: (a: 'x' | 'y', s: number, w: number, h: number) => void; setSelected: (id: string | null) => void; dispose: () => void } | null = null;
+  let handle: {
+    setSlots: (s: any[]) => void;
+    setView: (a: 'x' | 'y', s: number, w: number, h: number, cross?: number) => void;
+    setSelected: (id: string | null) => void;
+    dispose: () => void;
+  } | null = null;
 
   let vw = 1, vh = 1;
   let scrollPx = 0;
+  /**
+   * ACROSS the strip. Only the orbit layout has anything there — a planet's moons stack away from the
+   * centreline and a long train runs off the screen, so it has to be reachable. Every other order
+   * leaves this at zero, and the drag then moves on one axis only.
+   */
+  let crossScrollPx = 0;
   /** Set once from the median planet, then by a click or the hand zoom. */
   let scale = 0;
   let hidden: Set<string> = new Set();
   let menuFor: string | null = null;
+  /** Which order the strip is in. Remembered per map, beside the hidden set and for the same reason. */
+  let order: SortOrder = 'size';
 
   // DRAG STATE. A phone has no wheel, so before this the strip could not be moved on a touch device
   // AT ALL - the only pan path was `onWheel`, which a finger never fires (reported by a user, 2026-
@@ -48,6 +61,8 @@
   const pointers = new Map<number, { x: number; y: number }>();
   let dragFrom = 0;          // scrollPx when the gesture started
   let dragAt = 0;            // where along the axis the gesture started
+  let dragAcrossFrom = 0;    // crossScrollPx when the gesture started
+  let dragAcrossAt = 0;      // where across the axis the gesture started
   let dragTravel = 0;        // furthest the gesture has moved, for the tap-vs-drag test
   let pinchFrom = 0;         // finger separation when the pinch started
   let pinchScale = 0;        // `scale` when the pinch started
@@ -60,11 +75,17 @@
   $: axis = (mode === 'phone' ? 'y' : 'x') as 'x' | 'y';
   $: shorterSide = Math.max(1, Math.min(vw, vh));
   $: visible = visibleItems(items, hidden);
-  $: sorted = sortBySize(visible);
+  $: sorted = sortItems(visible, order);
   $: bounds = zoomBounds(visible, shorterSide);
-  $: layout = scale > 0 ? layoutStrip(visible, scale, { axis }) : ({ slots: [], lengthPx: 0, axis } as StripLayout);
+  $: layout = scale > 0
+    ? layoutStrip(visible, scale, { axis, order })
+    : ({ slots: [], lengthPx: 0, axis, crossReachPx: 0 } as StripLayout);
   /** The window's length along the strip's own axis - the number every scroll figure is measured in. */
   $: span = axis === 'x' ? vw : vh;
+  /** ...and across it, which is the other one. */
+  $: crossSpan = axis === 'x' ? vh : vw;
+  /** How far the cross scroll may go: nowhere at all unless a row reaches past the window. */
+  $: crossMax = Math.max(0, layout.crossReachPx - crossSpan / 2);
   /** Whether there is anywhere to go: no overflow, no steppers, nothing to drag. */
   $: overflows = layout.lengthPx > span + 1;
   $: atStart = scrollPx <= 1;
@@ -78,7 +99,7 @@
   // hidden set changes the cast, because "the median" is a statement about the objects on screen.
   let armed = '';
   $: {
-    const signature = `${mapId}|${visible.length}|${shorterSide}`;
+    const signature = `${mapId}|${visible.length}|${shorterSide}|${order}|${axis}`;
     if (signature !== armed && visible.length && shorterSide > 1) {
       armed = signature;
       const opener = medianPlanet(visible);
@@ -93,9 +114,10 @@
   // and a dot is DOM. That is the performance rule (no texture for a body you cannot see) and the
   // honesty rule (RENDER-S43: a floor is a legibility device, never a size) in one place.
   $: if (handle) handle.setSlots(layout.slots.filter((s) => !s.belowFloor).map((s) => ({
-    id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex
+    id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, crossPx: s.crossPx,
+    diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex
   })).filter((s) => s.node));
-  $: if (handle) handle.setView(axis, scrollPx, vw, vh);
+  $: if (handle) handle.setView(axis, scrollPx, vw, vh, crossScrollPx);
   $: if (handle) handle.setSelected(selectedId);
 
   function bodyTypeOf(role: string): UnitBodyType {
@@ -103,13 +125,17 @@
   }
 
   function centreOn(id: string): void {
-    const next = layoutStrip(visible, scale, { axis });
+    const next = layoutStrip(visible, scale, { axis, order });
     const slot = next.slots.find((s) => s.id === id);
     if (!slot) return;
     const reach = axis === 'x' ? vw : vh;
     // Clamped against the layout AT THE NEW SCALE, not the one on screen: `pick` changes the scale
     // and then centres, so the strip it is centring in is not the one `layout` still describes.
     scrollPx = clampScroll(slot.centrePx - reach / 2, next.lengthPx, reach);
+    // Bring the object's ROW into view as well, or clicking a moon in the orbit layout centres the
+    // strip on a row that is still off the bottom of the window.
+    const across = axis === 'x' ? vh : vw;
+    crossScrollPx = clampScroll(slot.crossPx - across / 4, next.crossReachPx, across / 2);
   }
 
   /** One stepper press, or one arrow key: most of a screenful, so you keep your place. */
@@ -131,6 +157,13 @@
     hidden = new Set([...hidden, ...ids]);
     saveHidden(hiddenKey(scope, mapId), hidden);
     menuFor = null;
+  }
+
+  /** Changing the order re-arms the opening view: a new arrangement wants its own starting place. */
+  function setOrder(next: SortOrder): void {
+    order = next;
+    saveOrder(hiddenKey(scope, mapId), next);
+    armed = '';
   }
 
   function showAll(): void {
@@ -161,6 +194,7 @@
   // events rather than touch events, so a mouse, a pen and a finger all take the same path and the
   // desktop gains drag for free.
   const alongOf = (p: { x: number; y: number }) => (axis === 'x' ? p.x : p.y);
+  const acrossOf = (p: { x: number; y: number }) => (axis === 'x' ? p.y : p.x);
 
   function onPointerDown(e: PointerEvent): void {
     // Capture so a finger that slides off the stage keeps driving the gesture. Wrapped because
@@ -173,6 +207,8 @@
     if (pointers.size === 1) {
       dragFrom = scrollPx;
       dragAt = alongOf({ x: e.clientX, y: e.clientY });
+      dragAcrossFrom = crossScrollPx;
+      dragAcrossAt = acrossOf({ x: e.clientX, y: e.clientY });
       dragTravel = 0;
       dragged = false;
     } else if (pointers.size === 2) {
@@ -196,8 +232,12 @@
       return;
     }
     const moved = alongOf({ x: e.clientX, y: e.clientY }) - dragAt;
-    dragTravel = Math.max(dragTravel, Math.abs(moved));
+    const movedAcross = acrossOf({ x: e.clientX, y: e.clientY }) - dragAcrossAt;
+    dragTravel = Math.max(dragTravel, Math.hypot(moved, crossMax > 0 ? movedAcross : 0));
     if (dragTravel > TAP_SLOP_PX) dragged = true;
+    // Across the strip only where there IS anything across it — on a flat order a sideways drag must
+    // not drift the row off the centreline it is supposed to sit on.
+    if (crossMax > 0) crossScrollPx = clampScroll(dragAcrossFrom - movedAcross, layout.crossReachPx, crossSpan / 2);
     // The strip follows the finger: dragging towards the start moves the content that way, so the
     // scroll goes the OTHER way. Anything else feels like the map is fighting you.
     scrollPx = clampScroll(dragFrom - moved, layout.lengthPx, span);
@@ -216,6 +256,8 @@
       const [only] = [...pointers.values()];
       dragFrom = scrollPx;
       dragAt = alongOf(only);
+      dragAcrossFrom = crossScrollPx;
+      dragAcrossAt = acrossOf(only);
     }
   }
 
@@ -230,6 +272,7 @@
 
   onMount(() => {
     hidden = loadHidden(hiddenKey(scope, mapId));
+    order = loadOrder(hiddenKey(scope, mapId));
     let cancelled = false;
     let ro: ResizeObserver | null = null;
     (async () => {
@@ -270,6 +313,16 @@
     <button class="close" title="Close" on:click={() => dispatch('close')}>×</button>
   </header>
 
+  <!-- THE ORDER, as the pale pill group the GM's planet views use (`BodyImage.view-pills`): faint
+       until the view is hovered or focused, and ALWAYS solid on a touch screen, because a phone has
+       no hover and a control that only appears on one is a control a phone user does not have. -->
+  <div class="order-pills" role="group" aria-label="Order the strip by">
+    {#each SORT_ORDERS as o (o.id)}
+      <button type="button" class:on={order === o.id} title={o.title}
+        aria-pressed={order === o.id} on:click={() => setOrder(o.id)}>{o.label}</button>
+    {/each}
+  </div>
+
   <div
     class="stage"
     bind:this={stage}
@@ -303,8 +356,8 @@
             class:selected={slot.id === selectedId}
             class:dot={slot.belowFloor}
             style={axis === 'x'
-              ? `left:${along - slot.spanPx / 2}px; top:calc(50% - ${slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`
-              : `top:${along - slot.spanPx / 2}px; left:calc(50% - ${slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`}
+              ? `left:${along - slot.spanPx / 2}px; top:calc(50% + ${slot.crossPx - crossScrollPx - slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`
+              : `top:${along - slot.spanPx / 2}px; left:calc(50% + ${slot.crossPx - crossScrollPx - slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`}
             title={slot.name}
             on:click={() => { if (!dragged) pick(slot.id); }}
             on:contextmenu|preventDefault={() => (menuFor = slot.id)}
@@ -313,8 +366,8 @@
             class="label {slot.labelSide}"
             class:vertical={axis === 'y'}
             style={axis === 'x'
-              ? `left:${along}px; ${slot.labelSide === 'start' ? 'top' : 'bottom'}: calc(50% + ${slot.spanPx / 2 + 8}px);`
-              : `top:${along}px; ${slot.labelSide === 'start' ? 'left' : 'right'}: calc(50% + ${slot.spanPx / 2 + 8}px);`}
+              ? `left:${along}px; ${slot.labelSide === 'start' ? 'top' : 'bottom'}: calc(50% ${slot.labelSide === 'start' ? '+' : '-'} ${slot.crossPx - crossScrollPx + slot.spanPx / 2 + 8}px);`
+              : `top:${along}px; ${slot.labelSide === 'start' ? 'left' : 'right'}: calc(50% ${slot.labelSide === 'start' ? '+' : '-'} ${slot.crossPx - crossScrollPx + slot.spanPx / 2 + 8}px);`}
           >
             <span class="name">{slot.name}</span>
             <span class="size">
@@ -399,6 +452,23 @@
      claims the gesture as a page scroll and the strip cannot be dragged on a phone. `cursor: grab`
      says the same thing to a mouse. */
   .stage { position: relative; flex: 1 1 auto; overflow: hidden; touch-action: none; cursor: grab; outline: none; }
+
+  /* The GM's planet-view pills, verbatim in behaviour: faint until you go near them, solid on a
+     coarse pointer. The one thing NOT copied is hiding them from touch — see the markup note. */
+  .order-pills {
+    position: absolute; z-index: 3; left: 50%; transform: translateX(-50%); top: 44px;
+    display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.62); border: 1px solid rgba(255, 255, 255, 0.25);
+    opacity: 0.28; transition: opacity 120ms ease;
+  }
+  .size-comparison:hover .order-pills, .size-comparison:focus-within .order-pills { opacity: 1; }
+  @media (pointer: coarse) { .order-pills { opacity: 1; } }
+  .order-pills button {
+    background: none; border: none; color: #cfe0f5; font-size: 11px; letter-spacing: 0.02em;
+    padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  }
+  .order-pills button:hover { background: rgba(255, 255, 255, 0.12); }
+  .order-pills button.on { background: #2c3d55; color: #fff; }
   .stage:active { cursor: grabbing; }
   .stage:focus-visible { box-shadow: inset 0 0 0 2px rgba(140, 190, 255, 0.5); }
 

@@ -20,7 +20,31 @@ export interface ComparisonItem {
   /** The node's `roleHint`, which is what "the median PLANET" is defined against. */
   role: string;
   colorHex?: string;
+  /** SI, for the mass order. Absent sorts last rather than as zero — see `sortItems`. */
+  massKg?: number;
+  /** The node's parent, for the ORBIT order's tree. Null or absent = a root (a star). */
+  parentId?: string | null;
+  /** Semi-major axis in AU, for the ORBIT order. A root star has none. */
+  orbitAu?: number;
 }
+
+/**
+ * HOW THE STRIP IS ORDERED. `size` is the poster's own order and the default; the other three exist
+ * because a GM comes to this view with different questions — "which of these is the biggest", "where
+ * is the one called X", "which is the heaviest" and "what orbits what".
+ *
+ * `orbit` is not a re-sort but a different LAYOUT: it is the only one with a second dimension, so it
+ * gets its own function below.
+ */
+export type SortOrder = 'size' | 'name' | 'mass' | 'orbit';
+
+/** The button labels, in the order they are offered. One list, so the UI cannot invent a fifth. */
+export const SORT_ORDERS: { id: SortOrder; label: string; title: string }[] = [
+  { id: 'size', label: 'Size', title: 'Largest first — the poster order' },
+  { id: 'name', label: 'Name', title: 'Alphabetical' },
+  { id: 'mass', label: 'Mass', title: 'Heaviest first' },
+  { id: 'orbit', label: 'Orbit', title: 'What orbits what: moons under their planet, their moons to the side' }
+];
 
 // --- The numbers, in one table -------------------------------------------------------------------
 // Every one of these is a thing a human will want to change after using the view, so none of them is
@@ -74,6 +98,79 @@ export const REFERENCE_TICKS: { id: string; label: string; diameterKm: number }[
  */
 export function sortBySize(items: ComparisonItem[]): ComparisonItem[] {
   return items.slice().sort((a, b) => (b.diameterKm - a.diameterKm) || a.name.localeCompare(b.name));
+}
+
+/**
+ * The strip in whichever order was asked for. EVERY comparator falls back to the name, so no order
+ * can reshuffle equal objects between renders — the fault a bare `sort` on one key always has.
+ *
+ * A MISSING MASS SORTS LAST, NOT AS ZERO. A body a GM has not given a mass is unknown, not weightless,
+ * and putting it at the light end of the strip states something the data does not say. `orbit` is a
+ * layout rather than an order and is handled by `layoutStrip`; asked for here it gives the tree's own
+ * reading order, which is what the labels and the median then agree with.
+ */
+export function sortItems(items: ComparisonItem[], order: SortOrder = 'size'): ComparisonItem[] {
+  const byName = (a: ComparisonItem, b: ComparisonItem) => a.name.localeCompare(b.name);
+  if (order === 'name') return items.slice().sort(byName);
+  if (order === 'mass') {
+    return items.slice().sort((a, b) => {
+      const am = Number.isFinite(a.massKg) ? (a.massKg as number) : -Infinity;
+      const bm = Number.isFinite(b.massKg) ? (b.massKg as number) : -Infinity;
+      return (bm - am) || byName(a, b);
+    });
+  }
+  if (order === 'orbit') return orbitOrder(items);
+  return sortBySize(items);
+}
+
+/**
+ * THE ORBIT TREE: roots, and every item's children, each list in orbital order.
+ *
+ * A ROOT IS ANYTHING WHOSE PARENT IS NOT IN THIS SET **OR IS A STAR**. The second half is the one
+ * that matters and it is not a technicality: every planet orbits the star, so a plain parent walk
+ * makes the whole system one column of "moons of the Sun" — true, and completely useless on a poster.
+ * The columns a reader wants are the star and the things that go round it; the rows under a column
+ * are that body's own satellites. First cut got this wrong and the gate caught it.
+ *
+ * The other half makes hiding safe: hide a planet and its moons are PROMOTED to roots rather than
+ * vanishing with it, and the starmap — where every star is a root already — degenerates to a flat
+ * row for free.
+ *
+ * Siblings go innermost first, which is the order a GM reads a system in. A body with no orbit sorts
+ * before those that have one (a root star is the case that matters) and then by size, so a set with
+ * no orbital data at all still comes out in the poster's order rather than at random.
+ *
+ * The flattened reading order and the two-dimensional LAYOUT are both built from this one walk — a
+ * second tree-builder beside it is two answers to "what orbits what".
+ */
+export function orbitTree(items: ComparisonItem[]): { roots: ComparisonItem[]; childrenOf: (id: string) => ComparisonItem[] } {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const kids = new Map<string, ComparisonItem[]>();
+  const roots: ComparisonItem[] = [];
+  for (const it of items) {
+    const host = it.parentId ? byId.get(it.parentId) : undefined;
+    const parent = host && host.role !== 'star' ? host.id : null;
+    if (!parent) { roots.push(it); continue; }
+    const list = kids.get(parent);
+    if (list) list.push(it);
+    else kids.set(parent, [it]);
+  }
+  const inOrbit = (a: ComparisonItem, b: ComparisonItem) =>
+    ((a.orbitAu ?? 0) - (b.orbitAu ?? 0)) || (b.diameterKm - a.diameterKm) || a.name.localeCompare(b.name);
+  roots.sort(inOrbit);
+  for (const list of kids.values()) list.sort(inOrbit);
+  return { roots, childrenOf: (id: string) => kids.get(id) ?? [] };
+}
+
+/** The tree flattened into reading order: each root, then its children, then theirs. */
+export function orbitOrder(items: ComparisonItem[]): ComparisonItem[] {
+  const { roots, childrenOf } = orbitTree(items);
+  const out: ComparisonItem[] = [];
+  const walk = (list: ComparisonItem[]) => {
+    for (const it of list) { out.push(it); walk(childrenOf(it.id)); }
+  };
+  walk(roots);
+  return out;
 }
 
 // --- The opening selection -----------------------------------------------------------------------
@@ -170,6 +267,13 @@ export interface LayoutSlot {
   spanPx: number;
   /** Centre along the strip's axis, in px from the strip's start. */
   centrePx: number;
+  /**
+   * Offset ACROSS the strip from its centreline, in px. Zero for every flat order — only the ORBIT
+   * layout uses it, to stack a planet's moons off the line the planets sit on.
+   */
+  crossPx: number;
+  /** 0 for a root, 1 for its moons, 2 for their moons. The orbit layout's indent, and a label cue. */
+  depth: number;
   /** True when the object is drawn as a dot marker rather than as a body. */
   belowFloor: boolean;
   /** Which side of the axis the label sits on: labels alternate once the bodies get small. */
@@ -182,6 +286,11 @@ export interface StripLayout {
   lengthPx: number;
   /** 'x' on a desktop, 'y' on a phone. The strip scrolls along this axis. */
   axis: 'x' | 'y';
+  /**
+   * How far the furthest row's far EDGE sits from the centreline. Zero unless the order is 'orbit' —
+   * a flat strip has one row and needs no travel across it. The view clamps its cross scroll to this.
+   */
+  crossReachPx: number;
 }
 
 /**
@@ -195,11 +304,15 @@ export interface StripLayout {
 export function layoutStrip(
   items: ComparisonItem[],
   scale: number,
-  opts: { axis?: 'x' | 'y'; gapFraction?: number } = {}
+  opts: { axis?: 'x' | 'y'; gapFraction?: number; order?: SortOrder } = {}
 ): StripLayout {
   const axis = opts.axis ?? 'x';
   const gapFraction = opts.gapFraction ?? GAP_FRACTION;
-  const sorted = sortBySize(items);
+  const order = opts.order ?? 'size';
+  // The orbit order is a TREE, not a line, so it has its own function. Everything else is one row in
+  // a different sequence, which is the same layout with a different comparator.
+  if (order === 'orbit') return layoutOrbit(items, scale, { axis, gapFraction });
+  const sorted = sortItems(items, order);
   const slots: LayoutSlot[] = [];
   let cursor = 0;
   let alternate: 'start' | 'end' = 'start';
@@ -215,12 +328,108 @@ export function layoutStrip(
       labelSide = alternate;
       alternate = alternate === 'start' ? 'end' : 'start';
     }
-    slots.push({ id: it.id, name: it.name, diameterPx, spanPx, centrePx: cursor + spanPx / 2, belowFloor, labelSide });
+    slots.push({ id: it.id, name: it.name, diameterPx, spanPx, centrePx: cursor + spanPx / 2, crossPx: 0, depth: 0, belowFloor, labelSide });
     cursor += spanPx;
     const next = sorted[i + 1];
     if (next) cursor += gapFraction * Math.max(spanPx, Math.max(next.diameterKm * scale, DOT_PX));
   }
-  return { slots, lengthPx: cursor, axis };
+  return { slots, lengthPx: cursor, axis, crossReachPx: 0 };
+}
+
+/**
+ * THE ORBIT LAYOUT — the only one with two dimensions, and the owner's own description of it: moons
+ * stacked under their planet, moons of moons off to the side of them.
+ *
+ * One COLUMN per root, in orbital order along the strip. Inside a column the root sits on the
+ * centreline; its children stack away from that line, one per row; and a child's own children run
+ * along the STRIP's axis beside it, so a three-deep system reads as an indent rather than as a third
+ * direction nobody has room for.
+ *
+ * A column is as wide as its widest row, so a planet with a long train of moons pushes the next
+ * planet along rather than colliding with it — the arithmetic is done twice on purpose, once to
+ * measure and once to place, because a single pass cannot know a column's width until it has walked
+ * it.
+ */
+function layoutOrbit(
+  items: ComparisonItem[],
+  scale: number,
+  opts: { axis: 'x' | 'y'; gapFraction: number }
+): StripLayout {
+  const { roots, childrenOf } = orbitTree(items);
+  const slots: LayoutSlot[] = [];
+  const spanOf = (it: ComparisonItem) => {
+    const d = it.diameterKm * scale;
+    return d < DOT_THRESHOLD_PX ? DOT_PX : d;
+  };
+  const gap = (a: number, b: number) => opts.gapFraction * Math.max(a, b);
+
+  /** How far a child's row reaches along the strip, from that child's own centre rightwards. */
+  const rowReach = (child: ComparisonItem): number => {
+    let reach = spanOf(child) / 2;
+    for (const gc of childrenOf(child.id)) reach += gap(spanOf(child), spanOf(gc)) + spanOf(gc);
+    return reach;
+  };
+
+  let cursor = 0;
+  let crossReach = 0;
+  for (let r = 0; r < roots.length; r++) {
+    const root = roots[r];
+    const rootSpan = spanOf(root);
+    const kids = childrenOf(root.id);
+    // The column's half-widths: the root reaches its own radius both ways; a child reaches its radius
+    // to the left and its whole row to the right.
+    const left = Math.max(rootSpan / 2, ...kids.map((k) => spanOf(k) / 2), 0);
+    const right = Math.max(rootSpan / 2, ...kids.map(rowReach), 0);
+    const centre = cursor + left;
+
+    slots.push({
+      id: root.id, name: root.name, diameterPx: root.diameterKm * scale, spanPx: rootSpan,
+      centrePx: centre, crossPx: 0, depth: 0,
+      belowFloor: root.diameterKm * scale < DOT_THRESHOLD_PX, labelSide: 'start'
+    });
+
+    // Children stack away from the centreline, and each one's children run off to its right.
+    //
+    // THE GAP FROM A PLANET TO ITS FIRST MOON IS SIZED BY THE MOON, NOT BY THE PLANET — the one place
+    // this layout departs from the strip's larger-of-two rule, and it earns the exception. Jupiter is
+    // three thousand pixels across at a scale that makes Io eighty, so the shared rule put six
+    // hundred pixels of black between them and the moons were simply lost off the bottom of the
+    // window. A moon belongs tucked under its planet's limb; the planet's own radius is already all
+    // the separation the eye needs. Between SIBLINGS the ordinary rule stands, because there the two
+    // are comparable and the larger is what must not be crowded.
+    let cross = rootSpan / 2;
+    let prevSpan = 0;
+    for (const kid of kids) {
+      const kSpan = spanOf(kid);
+      cross += (prevSpan ? gap(prevSpan, kSpan) : opts.gapFraction * kSpan) + kSpan / 2;
+      slots.push({
+        id: kid.id, name: kid.name, diameterPx: kid.diameterKm * scale, spanPx: kSpan,
+        centrePx: centre, crossPx: cross, depth: 1,
+        belowFloor: kid.diameterKm * scale < DOT_THRESHOLD_PX, labelSide: 'end'
+      });
+      let along = centre + kSpan / 2;
+      for (const gc of childrenOf(kid.id)) {
+        const gSpan = spanOf(gc);
+        along += gap(kSpan, gSpan) + gSpan / 2;
+        slots.push({
+          id: gc.id, name: gc.name, diameterPx: gc.diameterKm * scale, spanPx: gSpan,
+          centrePx: along, crossPx: cross, depth: 2,
+          belowFloor: gc.diameterKm * scale < DOT_THRESHOLD_PX, labelSide: 'end'
+        });
+        along += gSpan / 2;
+      }
+      cross += kSpan / 2;
+      prevSpan = kSpan;
+      // The far EDGE, not the centre: this is what the cross scroll clamps against, and a bound that
+      // stopped at a centre would cut the last moon in half at the end of the travel.
+      crossReach = Math.max(crossReach, cross);
+    }
+
+    cursor = centre + right;
+    const next = roots[r + 1];
+    if (next) cursor += gap(rootSpan, spanOf(next));
+  }
+  return { slots, lengthPx: cursor, axis: opts.axis, crossReachPx: crossReach };
 }
 
 /**

@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   sortBySize, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote,
   idsAtLeast, idsAtMost, visibleItems, referenceMarks, minorTicks, LABEL_MIN_GAP_PX,
-  clampScroll, scrollForZoom, TAP_SLOP_PX, STEP_FRACTION,
+  clampScroll, scrollForZoom, TAP_SLOP_PX, STEP_FRACTION, sortItems, orbitOrder, orbitTree,
+  SORT_ORDERS, GAP_FRACTION as GAPF,
   SELECTED_SHARE, OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX,
   type ComparisonItem
 } from './layout';
@@ -178,6 +179,203 @@ describe('size comparison — the strip', () => {
     const a = layoutStrip(SOL, scale).lengthPx;
     const b = layoutStrip(SOL, scale * 2).lengthPx;
     expect(b).toBeGreaterThan(a * 1.9);
+  });
+});
+
+// A miniature Sol with the fields the new orders need: masses, parents and orbits. Small enough to
+// reason about by hand, real enough that the answers are checkable against the sky.
+const SYS: ComparisonItem[] = [
+  { id: 'sun', name: 'Sun', diameterKm: 1392000, role: 'star', massKg: 1.989e30, parentId: null },
+  { id: 'mercury', name: 'Mercury', diameterKm: 4879, role: 'planet', massKg: 3.30e23, parentId: 'sun', orbitAu: 0.387 },
+  { id: 'earth', name: 'Earth', diameterKm: 12742, role: 'planet', massKg: 5.97e24, parentId: 'sun', orbitAu: 1 },
+  { id: 'luna', name: 'Luna', diameterKm: 3475, role: 'moon', massKg: 7.34e22, parentId: 'earth', orbitAu: 0.00257 },
+  { id: 'jupiter', name: 'Jupiter', diameterKm: 139822, role: 'planet', massKg: 1.898e27, parentId: 'sun', orbitAu: 5.2 },
+  { id: 'io', name: 'Io', diameterKm: 3643, role: 'moon', massKg: 8.93e22, parentId: 'jupiter', orbitAu: 0.00282 },
+  { id: 'ganymede', name: 'Ganymede', diameterKm: 5268, role: 'moon', massKg: 1.48e23, parentId: 'jupiter', orbitAu: 0.00716 },
+  { id: 'moonlet', name: 'Moonlet', diameterKm: 60, role: 'moon', parentId: 'io', orbitAu: 0.0001 },  // no mass on purpose
+  // Saturn follows Jupiter, so a column that fails to make room for its widest row runs into
+  // something instead of into empty space at the end of the strip.
+  { id: 'saturn', name: 'Saturn', diameterKm: 116464, role: 'planet', massKg: 5.68e26, parentId: 'sun', orbitAu: 9.5 },
+  // The pair that tells an UNKNOWN mass from a mass of zero: with unknown sorting last, Dust (a known
+  // zero) comes before Ghost (unknown); treated as zero they would tie and the NAME would flip them.
+  { id: 'dust', name: 'Zzz Dust', diameterKm: 10, role: 'moon', massKg: 0, parentId: 'saturn', orbitAu: 0.002 },
+  { id: 'ghost', name: 'Aaa Ghost', diameterKm: 10, role: 'moon', parentId: 'saturn', orbitAu: 0.003 }
+];
+
+describe('size comparison — the four orders', () => {
+  it('offers exactly the four the owner asked for, and no fifth', () => {
+    expect(SORT_ORDERS.map((o) => o.id)).toEqual(['size', 'name', 'mass', 'orbit']);
+  });
+
+  it('SIZE is the default and the poster order', () => {
+    expect(sortItems(SYS).map((i) => i.id)).toEqual(sortItems(SYS, 'size').map((i) => i.id));
+    expect(sortItems(SYS, 'size').map((i) => i.name).slice(0, 3)).toEqual(['Sun', 'Jupiter', 'Saturn']);
+  });
+
+  it('NAME is alphabetical', () => {
+    expect(sortItems(SYS, 'name').map((i) => i.name)).toEqual(
+      ['Aaa Ghost', 'Earth', 'Ganymede', 'Io', 'Jupiter', 'Luna', 'Mercury', 'Moonlet', 'Saturn', 'Sun', 'Zzz Dust']);
+  });
+
+  it('MASS is heaviest first, and is NOT the same answer as size', () => {
+    const byMass = sortItems(SYS, 'mass').map((i) => i.name);
+    const bySize = sortItems(SYS, 'size').map((i) => i.name);
+    expect(byMass.slice(0, 5)).toEqual(['Sun', 'Jupiter', 'Saturn', 'Earth', 'Mercury']);
+    // GANYMEDE AND MERCURY ARE THE PAIR THAT PROVES THE TWO ORDERS ARE DIFFERENT QUESTIONS, and it is
+    // a real fact about the sky rather than a contrivance: Ganymede is the WIDER of the two (5,268 km
+    // against 4,879) and Mercury is much the HEAVIER (3.30e23 kg against 1.48e23), because Ganymede
+    // is half ice. They come out on opposite sides in the two orders.
+    expect(bySize.indexOf('Ganymede')).toBeLessThan(bySize.indexOf('Mercury'));
+    expect(byMass.indexOf('Mercury')).toBeLessThan(byMass.indexOf('Ganymede'));
+  });
+
+  it('sorts an UNKNOWN mass last — behind even a mass of ZERO, because unknown is not weightless', () => {
+    const byMass = sortItems(SYS, 'mass').map((i) => i.name);
+    // Every body that HAS a mass, including the one whose mass is zero, comes before every body that
+    // has none. Treating an absent mass as 0 would tie Dust with the two unweighed bodies and let the
+    // NAME decide, putting "Aaa Ghost" ahead of a body whose mass is actually known.
+    expect(byMass.indexOf('Zzz Dust')).toBeLessThan(byMass.indexOf('Aaa Ghost'));
+    expect(byMass.indexOf('Zzz Dust')).toBeLessThan(byMass.indexOf('Moonlet'));
+    // And the unweighed ones are name-ordered among themselves, so they do not shuffle.
+    expect(byMass.slice(-2)).toEqual(['Aaa Ghost', 'Moonlet']);
+  });
+
+  it('breaks every order on the name, so equals cannot reshuffle between renders', () => {
+    const twins: ComparisonItem[] = [
+      { id: 'b', name: 'Beta', diameterKm: 100, role: 'moon', massKg: 5 },
+      { id: 'a', name: 'Alpha', diameterKm: 100, role: 'moon', massKg: 5 }
+    ];
+    for (const o of ['size', 'name', 'mass'] as const) {
+      expect(sortItems(twins, o).map((i) => i.name)).toEqual(['Alpha', 'Beta']);
+      expect(sortItems(twins.slice().reverse(), o).map((i) => i.name)).toEqual(['Alpha', 'Beta']);
+    }
+  });
+});
+
+describe('size comparison — the orbit tree', () => {
+  it('reads as a system does: each root, then what goes round it, innermost first', () => {
+    expect(orbitOrder(SYS).map((i) => i.name)).toEqual(
+      ['Sun', 'Mercury', 'Earth', 'Luna', 'Jupiter', 'Io', 'Moonlet', 'Ganymede', 'Saturn', 'Zzz Dust', 'Aaa Ghost']);
+  });
+
+  it('is what `sortItems` hands back for the orbit order — one answer, not two', () => {
+    // The labels, the median and the layout all read the same sequence, or they disagree about which
+    // object the strip is showing.
+    expect(sortItems(SYS, 'orbit').map((i) => i.id)).toEqual(orbitOrder(SYS).map((i) => i.id));
+    expect(sortItems(SYS, 'orbit').map((i) => i.id)).not.toEqual(sortItems(SYS, 'size').map((i) => i.id));
+  });
+
+  it('PROMOTES an orphan rather than losing it — hiding a planet must not hide its moons', () => {
+    const noJupiter = SYS.filter((i) => i.id !== 'jupiter');
+    const names = orbitOrder(noJupiter).map((i) => i.name);
+    expect(names).toContain('Io');
+    expect(names).toContain('Ganymede');
+    // Io is now a root, so it and its own moon come through together.
+    const { roots } = orbitTree(noJupiter);
+    expect(roots.map((r) => r.name)).toContain('Io');
+    expect(orbitTree(noJupiter).childrenOf('io').map((c) => c.name)).toEqual(['Moonlet']);
+  });
+
+  it('degenerates to a flat row when nothing has a parent — the starmap case', () => {
+    const stars: ComparisonItem[] = [
+      { id: 'a', name: 'A', diameterKm: 100, role: 'star', parentId: null },
+      { id: 'b', name: 'B', diameterKm: 300, role: 'star', parentId: null }
+    ];
+    const { roots, childrenOf } = orbitTree(stars);
+    expect(roots.length).toBe(2);
+    expect(childrenOf('a')).toEqual([]);
+    // With no orbits at all it falls back to the poster's order rather than to input order.
+    expect(roots.map((r) => r.name)).toEqual(['B', 'A']);
+  });
+
+  it('lays moons OFF the centreline and their moons along the strip beside them', () => {
+    const { slots } = layoutStrip(SYS, 1 / 1000, { order: 'orbit' });
+    const at = (n: string) => slots.find((s) => s.name === n)!;
+    // Planets and the star sit ON the line; their moons do not.
+    expect(at('Jupiter').crossPx).toBe(0);
+    expect(at('Earth').crossPx).toBe(0);
+    expect(at('Io').crossPx).toBeGreaterThan(0);
+    expect(at('Ganymede').crossPx).toBeGreaterThan(at('Io').crossPx);
+    // A moon sits under its own planet, not under the strip's start.
+    expect(at('Io').centrePx).toBe(at('Jupiter').centrePx);
+    expect(at('Luna').centrePx).toBe(at('Earth').centrePx);
+    // A moon's moon shares its parent's row and stands to the side of it.
+    expect(at('Moonlet').crossPx).toBe(at('Io').crossPx);
+    // CLEAR of it, not merely past its centre: the two must not overlap.
+    const ioRight = at('Io').centrePx + at('Io').spanPx / 2;
+    expect(at('Moonlet').centrePx - at('Moonlet').spanPx / 2).toBeGreaterThan(ioRight);
+    // Depth is reported, so a label can say how deep it is.
+    expect([at('Jupiter').depth, at('Io').depth, at('Moonlet').depth]).toEqual([0, 1, 2]);
+  });
+
+  it('gives every column room for its widest row, so two planets cannot collide', () => {
+    const { slots, lengthPx } = layoutStrip(SYS, 1 / 1000, { order: 'orbit' });
+    const at = (n: string) => slots.find((s) => s.name === n)!;
+    // The columns run in ORBITAL order along the strip, not by size — Mercury before Earth before
+    // Jupiter, and the star before all of them.
+    expect(at('Sun').centrePx).toBeLessThan(at('Mercury').centrePx);
+    expect(at('Mercury').centrePx).toBeLessThan(at('Earth').centrePx);
+    expect(at('Earth').centrePx).toBeLessThan(at('Jupiter').centrePx);
+    expect(lengthPx).toBeGreaterThanOrEqual(at('Saturn').centrePx + at('Saturn').spanPx / 2);
+  });
+
+  it('MAKES ROOM FOR A ROW THAT OVERRUNS ITS ROOT, which is where a column sized by its root fails', () => {
+    // In the real sky this rarely bites — Jupiter's radius dwarfs its moons' whole train — so it takes
+    // a system built for it: a small world whose moons are nearly its own size, each with a moon of
+    // its own. The row then reaches well past the root, and the NEXT column has to start beyond it.
+    const TRAIN: ComparisonItem[] = [
+      { id: 'p1', name: 'P1', diameterKm: 1000, role: 'planet', parentId: null, orbitAu: 1 },
+      { id: 'm1', name: 'M1', diameterKm: 900, role: 'moon', parentId: 'p1', orbitAu: 0.01 },
+      { id: 'm1a', name: 'M1a', diameterKm: 800, role: 'moon', parentId: 'm1', orbitAu: 0.001 },
+      { id: 'm1b', name: 'M1b', diameterKm: 700, role: 'moon', parentId: 'm1', orbitAu: 0.002 },
+      { id: 'p2', name: 'P2', diameterKm: 1000, role: 'planet', parentId: null, orbitAu: 2 }
+    ];
+    const { slots } = layoutStrip(TRAIN, 1, { order: 'orbit' });
+    const at = (n: string) => slots.find((s) => s.name === n)!;
+    const rowRight = at('M1b').centrePx + at('M1b').spanPx / 2;
+    expect(rowRight).toBeGreaterThan(at('P1').centrePx + at('P1').spanPx / 2);
+    expect(at('P2').centrePx - at('P2').spanPx / 2).toBeGreaterThan(rowRight);
+  });
+
+  it('reports how far the widest row reaches, and reports ZERO for every flat order', () => {
+    expect(layoutStrip(SYS, 1 / 1000, { order: 'orbit' }).crossReachPx).toBeGreaterThan(0);
+    for (const o of ['size', 'name', 'mass'] as const) {
+      const l = layoutStrip(SYS, 1 / 1000, { order: o });
+      expect(l.crossReachPx).toBe(0);
+      expect(l.slots.every((sl) => sl.crossPx === 0)).toBe(true);
+    }
+  });
+
+  it('tucks the first moon under its planet, sized by the MOON and not by the planet', () => {
+    // Jupiter is 139,822 km and Io 3,643. At a scale that draws Jupiter 3,000 px wide the shared
+    // larger-of-two gap would put 660 px of black between them and lose the moons off the window;
+    // sized by the moon it is about 17. The planet's own radius is already all the separation there is.
+    const scale = 3000 / 139822;
+    const { slots } = layoutStrip(SYS, scale, { order: 'orbit' });
+    const at = (n: string) => slots.find((s) => s.name === n)!;
+    const jupiterEdge = at('Jupiter').spanPx / 2;
+    const ioTopEdge = at('Io').crossPx - at('Io').spanPx / 2;
+    const gapToLimb = ioTopEdge - jupiterEdge;
+    expect(gapToLimb).toBeCloseTo(GAPF * at('Io').spanPx, 6);
+    expect(gapToLimb).toBeLessThan(at('Io').spanPx);          // tucked under the limb...
+    expect(gapToLimb).toBeLessThan(0.02 * at('Jupiter').spanPx); // ...not a fraction of the planet
+  });
+
+  it('keeps the ordinary larger-of-two gap BETWEEN siblings, where the two are comparable', () => {
+    const scale = 3000 / 139822;
+    const { slots } = layoutStrip(SYS, scale, { order: 'orbit' });
+    const at = (n: string) => slots.find((s) => s.name === n)!;
+    // Io then Ganymede: the gap between them is a fraction of the LARGER, which is Ganymede.
+    const between = (at('Ganymede').crossPx - at('Ganymede').spanPx / 2) - (at('Io').crossPx + at('Io').spanPx / 2);
+    expect(between).toBeCloseTo(GAPF * Math.max(at('Io').spanPx, at('Ganymede').spanPx), 6);
+  });
+
+  it('keeps the pixel floor honest in the tree too', () => {
+    // Moonlet is 60 km; at this scale it is well under a pixel and must be a DOT, not a small disc.
+    const moonlet = layoutStrip(SYS, 1 / 1000, { order: 'orbit' }).slots.find((s) => s.name === 'Moonlet')!;
+    expect(moonlet.diameterPx).toBeCloseTo(0.06, 6);
+    expect(moonlet.belowFloor).toBe(true);
+    expect(moonlet.spanPx).toBe(DOT_PX);
   });
 });
 

@@ -37,14 +37,21 @@ export interface ComparisonSlot {
   centrePx: number;
   /** The TRUE drawn diameter in px. Above the floor, or this slot would not be here. */
   diameterPx: number;
+  /**
+   * Offset ACROSS the strip from its centreline, in px. Zero for every flat order; the ORBIT layout
+   * uses it to stack a planet's moons off the line its planets sit on. Ignoring it drew every moon
+   * on top of its own planet — seen live, with the labels in the right places and no globes under
+   * them, which is the same "the overlay is right so it must be the data" trap as B123.
+   */
+  crossPx?: number;
   /** The object's colour, already resolved by the map that owns it. */
   colorHex?: string;
 }
 
 export interface ComparisonSceneHandle {
   setSlots(slots: ComparisonSlot[]): void;
-  /** `scrollPx` is how far along the strip the window has been scrolled. */
-  setView(axis: 'x' | 'y', scrollPx: number, widthPx: number, heightPx: number): void;
+  /** `scrollPx` is along the strip; `crossScrollPx` is across it (only the orbit layout uses it). */
+  setView(axis: 'x' | 'y', scrollPx: number, widthPx: number, heightPx: number, crossScrollPx?: number): void;
   setSelected(id: string | null): void;
   /** How many globes are built right now — the lazy-build gate's own instrument. */
   builtCount(): number;
@@ -85,6 +92,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
   let slots: ComparisonSlot[] = [];
   let axis: 'x' | 'y' = 'x';
   let scrollPx = 0;
+  let crossScrollPx = 0;
   let vw = 1, vh = 1;
   let selected: string | null = null;
   let disposed = false;
@@ -93,7 +101,13 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     // The strip runs left to right on a desktop and top to bottom on a phone. Either way the objects
     // are centred on the OTHER axis, so a giant and a moonlet share one centreline and the eye can
     // read the difference off a single edge.
-    return axis === 'x' ? [slot.centrePx, 0, 0] : [0, -slot.centrePx, 0];
+    // Cross offsets grow AWAY from the centreline in the direction a reader calls "down" (or, on a
+    // vertical strip, "to the right"), so on the main axis they are negated: the ortho frame's +y is
+    // up and its +x is right.
+    const cross = slot.crossPx ?? 0;
+    return axis === 'x'
+      ? [slot.centrePx, -(cross - crossScrollPx), 0]
+      : [cross - crossScrollPx, -slot.centrePx, 0];
   }
 
   function inWindow(slot: ComparisonSlot): boolean {
@@ -110,6 +124,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       wanted.add(slot.id);
       const existing = built.get(slot.id);
       if (existing && existing.slot.diameterPx === slot.diameterPx) {
+        existing.slot = slot;   // the cross offset and the scroll both move without a rebuild
         existing.group.position.set(...positionOf(slot));
         continue;
       }
@@ -209,9 +224,10 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
 
   return {
     setSlots(next) { slots = next; },
-    setView(nextAxis, nextScroll, widthPx, heightPx) {
+    setView(nextAxis, nextScroll, widthPx, heightPx, nextCross = 0) {
       axis = nextAxis;
       scrollPx = nextScroll;
+      crossScrollPx = nextCross;
       // NEVER take a 0x0 measurement as a size (RENDER-S30): a momentarily unlaid-out container
       // reports one, and a 2x2 backing store then stretches across the next real frame.
       vw = Math.max(1, widthPx); vh = Math.max(1, heightPx);

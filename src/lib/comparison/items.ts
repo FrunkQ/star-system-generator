@@ -7,7 +7,7 @@
 // why, and the engine map entry RENDER-S51.
 import { starRadiusKmOf } from '$lib/rendering/scaleLaw';
 import { systemVisualStars } from '$lib/starmap/systemStars';
-import type { ComparisonItem } from './layout';
+import { SORT_ORDERS, type ComparisonItem, type SortOrder } from './layout';
 
 /** An item plus the node the scene needs to build its look. */
 export interface ComparisonEntry extends ComparisonItem {
@@ -40,7 +40,14 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
     if (!(r > 0)) continue;
     out.push({
       id: String(n.id), name: String(n.name ?? n.id), diameterKm: r * 2,
-      role: String(n.roleHint ?? 'other'), colorHex: n.apparentColorHex, node: n
+      role: String(n.roleHint ?? 'other'), colorHex: n.apparentColorHex,
+      // For the MASS and ORBIT orders. `massKg` stays UNDEFINED when the body has none — the sort
+      // puts an unknown mass last rather than treating it as zero, because a body a GM has not
+      // weighed is unknown, not weightless.
+      massKg: Number.isFinite(n.massKg) ? Number(n.massKg) : undefined,
+      parentId: n.parentId ?? null,
+      orbitAu: Number(n?.orbit?.elements?.a_AU) || undefined,
+      node: n
     });
   }
   return out;
@@ -74,7 +81,13 @@ export function itemsForStarmap(starmap: { systems?: any[] } | null | undefined)
       const name = String(vs.name || node.name || entry?.name || vs.id);
       out.push({
         id: `${entry?.id ?? system?.id}:${vs.id}`, name,
-        diameterKm: r * 2, role: 'star', colorHex: vs.color, node
+        diameterKm: r * 2, role: 'star', colorHex: vs.color,
+        massKg: Number.isFinite(node.massKg) ? Number(node.massKg) : undefined,
+        // Every star on the starmap is a ROOT: its parent (a barycentre, or its own system) is not on
+        // this strip, so the orbit order degenerates to a flat row here, which is the honest answer -
+        // there is no "what orbits what" between two different systems.
+        parentId: null,
+        node
       });
     }
   }
@@ -102,6 +115,29 @@ export function loadHidden(key: string): Set<string> {
     return new Set(Array.isArray(arr) ? arr.map(String) : []);
   } catch {
     return new Set();   // a private window, cleared data, or a value someone else wrote
+  }
+}
+
+/**
+ * The chosen ORDER, remembered beside the hidden set and keyed the same way — for the same reason.
+ * Which arrangement a GM wants is a fact about how they are reading the system, not about the
+ * system, so it stays out of the campaign file too.
+ */
+export function loadOrder(key: string): SortOrder {
+  try {
+    const v = localStorage.getItem(key + '.order');
+    return SORT_ORDERS.some((o) => o.id === v) ? (v as SortOrder) : 'size';
+  } catch {
+    return 'size';
+  }
+}
+
+export function saveOrder(key: string, order: SortOrder): void {
+  try {
+    if (order === 'size') localStorage.removeItem(key + '.order');   // the default is an absent key
+    else localStorage.setItem(key + '.order', order);
+  } catch {
+    /* storage refused: the view still works, it just will not remember */
   }
 }
 

@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v3.0.305 - 5th Sep 2026
+
+- The Size comparison can now be put in four different orders, from a small row of buttons at the top of the view: Size, Name, Mass and Orbit. They stay faint until you go near them, and are always solid on a touch screen.
+- Size is still what you get first - biggest to smallest, the way the old poster does it.
+- Mass answers a different question from size, and the difference is real: Ganymede is wider than Mercury, and Mercury is more than twice its weight.
+- Orbit lays the system out as it actually is: the star and the planets in orbital order across the strip, each planet's moons tucked underneath it, and a moon's own moons off to the side. Drag up and down to walk through a giant's family.
+- A body you have not given a mass sorts to the end rather than to the light end - not weighed is not the same as weightless.
+- Whichever order you choose is remembered for that map next time you open the view.
+
 ## v3.0.304 - 5th Sep 2026
 
 - You can now move around the Size comparison on a phone. You could not before: the only way to travel along the strip was a mouse wheel, so on a touch screen everything past the first screenful was simply out of reach. Thank you to whoever said so.
