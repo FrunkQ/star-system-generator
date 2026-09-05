@@ -74,7 +74,10 @@ import {
 } from '$lib/viewport/cameraRig';
 import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
-import { perfCount, perfEvent, perfFrame, perfProvider } from '$lib/perfTrace';
+import { perfCount, perfEvent, perfFrame, perfProvider, onFrameRate } from '$lib/perfTrace';
+import {
+  newPerfGuard, perfGuardSample, perfGuardStandDown, PERF_SHED_MESSAGE, type PerfGuardState
+} from '$lib/rendering/perfGuard';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { deriveAurora, auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
@@ -161,6 +164,17 @@ export interface HoloController {
   setUnlit(on: boolean): void; // flat lighting (no terminator) for the efficient "2D map" look
   setAuroras(on: boolean): void;
   setAtmospheres(on: boolean): void; // PERF: build cloud decks / limb glow / haze at all // show/hide the emissive polar aurora shells
+  /**
+   * Told once, if the frame-rate guard has had to take the atmospheres away to keep the map moving.
+   * The scene decides and acts; saying so is the view's job, because only the view knows where a
+   * notice belongs on screen. Never called again after it fires (perfGuard fires once, then stands
+   * down), and never at all if the user turns the atmospheres back on.
+   */
+  setPerfShedReporter(fn: ((message: string) => void) | null): void;
+  /** Shift the projection centre sideways so a framed body clears an open info panel. */
+  setViewInset(px: number): void;
+  /** Per-ship acceleration and exhaust colour, keyed by construct id. */
+  setShipCapability(map: Record<string, { accelMs2: number; exhaustHex?: string }> | null): void;
   setFlatOverhead(on: boolean): void; // "2D map": tilt pinned top-down (+ pan enabled). Never a 3D view.
   setLockRotation(on: boolean): void; // fix the heading: no spin by drag, and follow a body by PANNING
   setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
@@ -826,11 +840,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   // Aurora toggle: no rebuild — updateAuroras just stops modulating (opacity 0) when off.
   function setAuroras(on: boolean) { aurorasOn = on; }
+  function setPerfShedReporter(fn: ((message: string) => void) | null) { onPerfShed = fn; }
+
   function setAtmospheres(on: boolean) {
-    if (on === atmospheresOn) return;
-    atmospheresOn = on;
+    if (on === atmospheresRequested) return;   // a re-assert of the same setting is not a decision
+    // A CHANGE is a person. If they are turning them back on after the guard took them away, they
+    // have answered the question and the guard is finished — it does not get to pounce again.
+    if (on && atmospheresShed) { atmospheresShed = false; perfGuardStandDown(perfGuard); }
+    atmospheresRequested = on;
+    applyAtmospheres();
+  }
+
+  /** The AND of the two facts, rebuilt only when the drawn answer actually moves. */
+  function applyAtmospheres() {
+    const next = atmospheresRequested && !atmospheresShed;
+    if (next === atmospheresOn) return;
+    atmospheresOn = next;
     rebuildContent('atmospheres');
   }
+
 
 
   // Belts & rings: tumbling rocks vs the GM orrery's flat band. Rebuilds.
@@ -1335,7 +1363,39 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // sphere and forgotten, so a hide path would mean a registry for all three, built solely to serve a
   // switch that is set once from a preset and never scrubbed. Rebuilding is what `setRender` and
   // `setUnlit` next door already do for the same reason.
+  // ATMOSPHERES ARE TWO FACTS, NOT ONE, and keeping them apart is what stops the frame-rate guard
+  // fighting the user. `atmospheresRequested` is what the settings ASK FOR; `atmospheresShed` is the
+  // guard having taken them away to keep the map moving. The scene draws the AND of them.
+  //
+  // The host re-asserts every setting on any settings change, so a shed would be undone within the
+  // second if the request alone drove it. A request that CHANGES, on the other hand, is a person
+  // acting: turning them back on clears the shed and stands the guard down for good.
+  let atmospheresRequested = true;
+  let atmospheresShed = false;
   let atmospheresOn = true;
+  const perfGuard: PerfGuardState = newPerfGuard();
+  /** When the current content was built — the guard's warm-up is measured from here, not from load. */
+  let contentBuiltAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  /** Told when the guard sheds, so the view can say so. Set by the host. */
+  let onPerfShed: ((message: string) => void) | null = null;
+  /**
+   * THE FRAME-RATE GUARD. `perfTrace` has counted frames for the slow-spell log since 2026-08; this
+   * listens to the same measurement and `perfGuard` holds the judgement, so what is left here is the
+   * ACTION: take the atmospheres off, once, and say so. Owner, 2026-09-05: "can you dynamically
+   * determine FPS - and disable atmospheres if low (with a pop up warning)?"
+   */
+  const stopFrameRate = onFrameRate((fps) => {
+    // No `disposed` check on purpose: `disposed` is declared far below this line, and a callback
+    // that reaches forward into a binding it cannot see yet is RENDER-S45's shape. `dispose()`
+    // unsubscribes instead, which is both simpler and unconditional.
+    const age = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - contentBuiltAt;
+    if (perfGuardSample(perfGuard, fps, age) !== 'shed') return;
+    if (!atmospheresRequested) return;   // nothing to take away
+    atmospheresShed = true;
+    applyAtmospheres();
+    perfEvent('perf-shed', { fps: Math.round(fps), what: 'atmospheres' });
+    try { onPerfShed?.(PERF_SHED_MESSAGE); } catch { /* the host's problem */ }
+  });
   let beltStyle: BeltStyle = 'rocks'; // rocks vs the orrery's flat band
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
@@ -3982,6 +4042,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let _lastSysHash: string | null = null;
   function setSystem(system: System | null, reason = 'unknown') {
     const t0 = performance.now();
+    // A fresh build is a fresh warm-up: the seconds after one are the slowest a scene ever is, and
+    // the guard must not read them as how the map performs.
+    contentBuiltAt = t0;
     const sameRef = !!system && system === currentSystem;
     const sameId = !!system && !!currentSystem && (system as any).id === (currentSystem as any).id;
     perfCount(sameId ? 'holo.setSystem.same' : 'holo.setSystem.new');
@@ -5232,6 +5295,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function dispose() {
     disposed = true;
+    stopFrameRate();
     cancelAnimationFrame(raf);
     controls.dispose();
     clearContent();
@@ -5260,7 +5324,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
   };
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setPerfShedReporter, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
 }
 
 // ---- helpers ----

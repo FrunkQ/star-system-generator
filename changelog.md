@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.307 - 5th Sep 2026
+
+- The 3D view now watches its own frame rate. If it stays genuinely bad for several seconds it turns the atmospheres off to get the map moving again, and tells you it has done so.
+- It gives the view time to settle first: the seconds just after a system loads are always the slowest, and it ignores them. It also waits for a run of bad readings rather than acting on one, so a passing stutter is not mistaken for a slow map.
+- It only ever does this once, and if you turn the atmospheres back on it stops watching for good. It will not take them away from you twice.
+
 ## v3.0.306 - 5th Sep 2026
 
 - Ringed planets now show their rings in the Size comparison - a plain flat band at the real inner and outer edge, so you can see how far they actually reach. Saturn's rings are wider than the whole of Jupiter, which is not something the numbers make obvious.

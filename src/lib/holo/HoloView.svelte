@@ -53,6 +53,8 @@
   $: legend = showGridLegend ? gridLegend(gridCellAu, gridCellKind, distanceFlavour($unitPrefs, 'planet')) : null;
   // Off by default so no existing surface grows a caption it never asked for; the player views opt in.
   export let showGridLegend: boolean = false;
+  /** The frame-rate guard's one-off notice, shown over the canvas until it is dismissed. */
+  let perfNotice: string | null = null;
   /** Badge-only knobs from the preset: size multiplier, flag staff colour, pin text mode. */
   export let markerSize: number | undefined = undefined;
   export let flagStaff: 'silver' | 'gold' | 'white' | 'black' | 'tag' | undefined = undefined;
@@ -100,6 +102,11 @@
     controller?.setLockRotation(s.lockRotation ?? false); // fixed heading: follow by panning
     controller?.setAuroras(s.auroras ?? true);
     controller?.setAtmospheres(s.atmospheres !== false);
+    // The frame-rate guard reports HERE rather than to each host, so every surface that mounts this
+    // view gets the notice: the GM's holo, the player's system view at both tiers, and the preset
+    // preview. One renderer, one place to say it — the alternative is the same message written into
+    // four call sites, which is the shape TAG-20 records for markers.
+    controller?.setPerfShedReporter((message) => { perfNotice = message; });
     controller?.setBeltStyle(s.beltStyle ?? 'rocks');
     controller?.setBodySize(s.bodySize);
     controller?.setConstructOffset(s.constructOffset ?? 0); // S2c: 0 = constructs sit on the master dial
@@ -222,6 +229,15 @@
 
 <div class="holo-root" bind:this={container}>
   <canvas bind:this={canvas}></canvas>
+
+  <!-- Said once, and only when the guard has actually had to act. Dismissible, and it does not come
+       back: `perfGuard` fires once per scene and then stands down, so a GM is never nagged. -->
+  {#if perfNotice}
+    <div class="perf-notice" role="status">
+      <span>{perfNotice}</span>
+      <button type="button" title="Dismiss" aria-label="Dismiss" on:click={() => (perfNotice = null)}>x</button>
+    </div>
+  {/if}
   {#if legend}
     <!-- A grid is only a measure if the reader is told what one cell is worth. `pointer-events: none`
          because this sits over a canvas that owns drag, pinch and click-to-select. -->
@@ -258,4 +274,18 @@
     pointer-events: none;
     user-select: none;
   }
+
+  /* Over the canvas, out of the way of the middle of the map, and readable on any backdrop. */
+  .perf-notice {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px; max-width: min(560px, 92%);
+    padding: 8px 10px 8px 14px; border-radius: 8px;
+    background: rgba(16, 26, 40, 0.94); border: 1px solid #3a4d68; color: #e7eefa;
+    font-size: 12px; line-height: 1.35; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+    z-index: 30;
+  }
+  .perf-notice button {
+    background: none; border: none; color: #8fa6c4; font-size: 14px; cursor: pointer; padding: 2px 6px;
+  }
+  .perf-notice button:hover { color: #e7eefa; }
 </style>

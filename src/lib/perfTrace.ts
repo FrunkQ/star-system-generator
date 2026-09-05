@@ -110,6 +110,18 @@ function report() {
 // --- frame watcher -------------------------------------------------------------------------------
 let winStart = 0;
 let frames = 0;
+/**
+ * Anyone who wants the frame rate as a NUMBER rather than as a log line. One measurer, several
+ * consumers — the slow-spell log was here first and a second frame counter beside it would be a
+ * second answer to "how fast is this running".
+ */
+type FrameRateListener = (fps: number) => void;
+const frameRateListeners = new Set<FrameRateListener>();
+export function onFrameRate(fn: FrameRateListener): () => void {
+  frameRateListeners.add(fn);
+  return () => frameRateListeners.delete(fn);
+}
+
 export function perfFrame(nowMs: number) {
   if (!winStart) { winStart = nowMs; frames = 0; return; }
   frames++;
@@ -118,6 +130,11 @@ export function perfFrame(nowMs: number) {
   const fps = (frames * 1000) / dt;
   winStart = nowMs;
   frames = 0;
+  // Listeners first, and each in its own try: a throwing consumer must not cost the slow-spell log
+  // the very window that would have explained the slowness.
+  for (const fn of frameRateListeners) {
+    try { fn(fps); } catch { /* a consumer's problem, not the tracer's */ }
+  }
   if (fps < 45 || verbose) {
     const h = heapMB();
     const line = [`${fps.toFixed(1)}fps over 5s`, h ? `heap ${h.toFixed(0)}MB` : '', readProviders(), JSON.stringify(perfCounters)];
