@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.315 - 6th Sep 2026
+
+- Behind the scenes, for the Explorers site rather than for you: the app now publishes a small list of everything it ships with - its calendars, its tag categories, its star and planet pictures, its starter spacecraft models, and its gases, liquids and fuels. The site uses it to tell what came with the app from what a creator made themselves, instead of keeping its own copy of those lists and slowly getting them wrong.
+- That list is built from the real files every time, and the test suite refuses to pass if it has gone out of date - so it cannot quietly drift.
+
 ## v3.0.314 - 6th Sep 2026
 
 - A map page on the Explorers site can now hand you the map directly: an "Open in Star System Explorer" link opens it here, with no download and no import step. It is the same door a downloaded file goes through, so anything the map credits, carries or refuses behaves exactly as it always did.

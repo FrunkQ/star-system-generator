@@ -5380,7 +5380,9 @@ correctly - the hub's own baseline subtraction still yields the right answer, it
 no-op it can delete at leisure. Bumping would strand every new bundle against a hub pinned at 1 for
 no reader benefit. A plain .json carries no `bundleFormat` at all (only `packBundle` stamps it), so
 a reader wanting to know whether a JSON save is delta-shaped keys on `appVersion` - a one-time
-constant, unlike a list of calendar names that must track this repo forever.
+constant, unlike a list of calendar names that must track this repo forever. **THAT LAST SENTENCE IS
+NOW ANSWERED BY DATA-R41:** the list a reader would otherwise have to track is PUBLISHED, generated
+and pinned, at `/shipped-content.json`.
 
 ### DATA-R31 ONE MODULE DECIDES WHETHER A NODE WEARS CONSTRUCT CHROME
 BUCKET: ARCHITECTURE - a convention that will exist at 150+ sites gets ONE predicate BEFORE the
@@ -6331,6 +6333,43 @@ fault this entry names.
 ### DATA-R40 A FILE CONTRACT IS ONE MODULE, PINNED OVER EVERY TEMPLATE THE PACK SHIPS
 WHERE: `src/lib/constructs/constructFile.ts` (`SITUATION_FIELDS`, `stripSituation`, `constructFileProblem`), bound by `src/lib/components/ConstructSidePanel.svelte`; pinned by `src/lib/constructs/constructFile.spec.ts`, which builds every starter-sf construct template the way `AddConstructModal` does, exports it, and asserts the importer accepts it back, and pins the panel to the module.
 RULE: what Export writes and what Import accepts are two halves of one contract, and they live in one module with one test over real data. The halves were two literals inside the panel from 2025-11, and drifted on 2026-06-17 (v2.0.159-beta) when the templates dropped their class-path string: the importer went on demanding a `class` field that no template carries (0 of 59) and no editor sets, so from that day every construct a GM built, exported and re-imported was refused as "Invalid construct file" (B117), and nothing said so because no test held both halves. A refusal names the missing thing; an optional field is never grounds for one.
+
+### DATA-R41 WHAT THIS BUILD SHIPS IS PUBLISHED, GENERATED AND PINNED - NEVER HAND-WRITTEN
+BUCKET: ARCHITECTURE (file format) - the mirror of DATA-R32. That entry says a SAVE must not carry
+what the app ships; this one says the app must therefore PUBLISH what it ships, or every reader is
+left maintaining its own copy of a list that tracks this repo forever.
+WHERE: `scripts/shipped-manifest/build-shipped-manifest.mjs` (the generator, `npm run manifest`),
+`static/shipped-content.json` (the output, served at `/shipped-content.json`), pinned by
+`scripts/shipped-manifest/shippedManifest.spec.mjs`. Same generate-and-pin shape as the starmap kit
+(`build-starmaps.mjs` emitting `generated/bundledArchiveHosts.mjs`, pinned by `buildKit.spec.mjs`).
+RULE: **a hand-written manifest is the consumer's hardcoded list moved one repository over.** It
+drifts identically and it drifts more quietly, because nothing in this repo renders it and no GM
+would ever notice. So every value is read from the thing that actually ships - the files under
+`static/images/star_types` and `static/images/planet_types`, `static/models/nasa/manifest.json`,
+the `temporal_registry` keys, the starter pack's `gasPhysics` and `fuel-definitions`,
+`pristineTagCategories()` and `LIQUIDS` - and the pin regenerates in memory and deep-equals the
+checked-in file. Add a star image and the suite goes red until it is rebuilt.
+WHY IT EXISTS: hub R-13, [[G57]]. The hub told app-shipped content from GM-authored content by
+hardcoding lists copied out of this repo, and the first such list "drifted within an hour of being
+written" - the calendar baseline had one name where it needed four, and a facet lied on every map
+until it was corrected. A standing promise to notice a change in another repository becomes a fetch.
+THE TRAP, and it is the one that will actually bite: **`appVersion` IS STAMPED INTO THE FILE, so the
+rebuild must follow the VERSION BUMP, not precede it.** Bump, `npm run manifest`, then build. The
+pin says so in its own failure message, because an assertion that does not name its remedy gets
+argued with rather than run.
+TWO ROUTES TO ONE TRUTH, DELIBERATELY: two sources are TypeScript and a plain node script cannot
+import `.ts`, so the CLI loads them through vite's `ssrLoadModule` while the spec imports the same
+modules directly. Duplicating either value would be the exact fault the file exists to prevent; a
+disagreement between the two loaders surfaces in the pin instead.
+WHAT IS DELIBERATELY ABSENT: `planet_types/thumbs/` (derived by `thumbUrl()` at display time, never
+stored on a node, so it cannot appear in a save the hub is reading) and `images/ui` + `images/logo`
+(chrome, never on a body - listing them would invite a reader to treat chrome as content).
+MEASURED, so the hub is not left guessing: production and beta both serve static JSON with
+`Access-Control-Allow-Origin: *` (checked 2026-09-06 against `/temporal/calendars.json` on both), so
+a browser on another origin can fetch this with no work on either side.
+BLAST: adding a shipped registry means adding it to the GENERATOR, not to the JSON, and the spec's
+absolute assertions (a literal calendar list, a literal model path, `bundleFormat` 1) are what stop
+a builder that is wrong from deep-equalling itself into green.
 
 ### RENDER-S52 TRUE SCALE IS A VIEW, NOT A DIAL, AND THE SPAN MAP HAS NO SAY IN IT
 BUCKET: ARCHITECTURE - one law owns readable size and a DIFFERENT view deliberately declines it.
