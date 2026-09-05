@@ -27,7 +27,7 @@
 // must open in the time the map does, and a texture is only ever built for a globe you can see.
 import * as THREE from 'three';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
-import { makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes, updateLightning } from './bodyFeatures';
+import { makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes, updateLightning, buildFlatRing } from './bodyFeatures';
 
 /** One globe to draw: where it goes and how big it is, both already in pixels. */
 export interface ComparisonSlot {
@@ -46,6 +46,12 @@ export interface ComparisonSlot {
   crossPx?: number;
   /** The object's colour, already resolved by the map that owns it. */
   colorHex?: string;
+  /**
+   * A ring system's TRUE drawn radii in px, or absent. Flat-shaded (see `buildFlatRing`), because
+   * the question this view asks of a ring is how far it reaches and nothing else.
+   */
+  ringInnerPx?: number;
+  ringOuterPx?: number;
 }
 
 export interface ComparisonSceneHandle {
@@ -65,6 +71,12 @@ export interface ComparisonSceneHandle {
 const BUILD_MARGIN_SCREENS = 0.5;
 /** A body wider than this many screens is not worth tessellating past: it is a wall of surface. */
 const MAX_DRAW_SCREENS = 8;
+/**
+ * How far a ring is tilted out of the screen plane. Its TRUE width still runs along the strip — only
+ * the across-axis is foreshortened — so the reading you take off the ruler is exact and the ring
+ * still reads as a ring rather than as a disc.
+ */
+const RING_TILT_RAD = 1.15;
 
 export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonSceneHandle {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -87,7 +99,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
 
   const textures: BodyLookTextures = { glow: makeGlowTexture(), hotspot: makeHotspotTexture(), plume: makePlumeTexture() };
 
-  interface Built { look: BodyLook; group: THREE.Group; slot: ComparisonSlot }
+  interface Built { look: BodyLook; group: THREE.Group; slot: ComparisonSlot; ring?: { dispose(): void } }
   const built = new Map<string, Built>();
   let slots: ComparisonSlot[] = [];
   let axis: 'x' | 'y' = 'x';
@@ -123,7 +135,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       if (!inWindow(slot)) continue;
       wanted.add(slot.id);
       const existing = built.get(slot.id);
-      if (existing && existing.slot.diameterPx === slot.diameterPx) {
+      if (existing && existing.slot.diameterPx === slot.diameterPx && existing.slot.ringOuterPx === slot.ringOuterPx) {
         existing.slot = slot;   // the cross offset and the scroll both move without a rebuild
         existing.group.position.set(...positionOf(slot));
         continue;
@@ -153,8 +165,24 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         segments: radius > MAX_DRAW_SCREENS * Math.max(vw, vh) ? { width: 24, height: 16 } : undefined
       });
       group.add(look.mesh);
+
+      // THE RINGS, flat and at true extent. Added to the GROUP rather than to the globe, because the
+      // globe turns and a ring that turned with it would sweep through the strip; and TILTED ABOUT
+      // THE STRIP'S OWN AXIS, so the reading axis carries the ring's true width and only the other
+      // one is foreshortened. Face-on would be a disc the eye reads as a bigger planet; edge-on would
+      // be a line. Roughly two-thirds of the way over is the poster's angle.
+      let ring: { dispose(): void } | undefined;
+      if (slot.ringOuterPx && slot.ringInnerPx !== undefined && slot.ringOuterPx > slot.ringInnerPx) {
+        const r = buildFlatRing(slot.ringInnerPx, slot.ringOuterPx);
+        if (axis === 'x') r.mesh.rotation.x = RING_TILT_RAD;
+        else r.mesh.rotation.y = RING_TILT_RAD;
+        r.mesh.renderOrder = -1;   // behind the globe, so the near arc does not cut across its face
+        group.add(r.mesh);
+        ring = r;
+      }
+
       scene.add(group);
-      built.set(slot.id, { look, group, slot });
+      built.set(slot.id, { look, group, slot, ring });
     }
     for (const id of [...built.keys()]) if (!wanted.has(id)) destroy(id);
   }
@@ -164,6 +192,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     if (!b) return;
     scene.remove(b.group);
     b.look.dispose();
+    b.ring?.dispose();
     b.group.traverse((o) => {
       const g = (o as any).geometry; const m = (o as any).material;
       if (g) g.dispose?.();

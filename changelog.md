@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.306 - 5th Sep 2026
+
+- Ringed planets now show their rings in the Size comparison - a plain flat band at the real inner and outer edge, so you can see how far they actually reach. Saturn's rings are wider than the whole of Jupiter, which is not something the numbers make obvious.
+- The rings never count as the planet's size: the strip still compares worlds, and Saturn still sits below Jupiter where it belongs. They do claim the room they need, so nothing is drawn through its neighbour.
+- A ring too small to draw honestly at the current zoom is left out rather than puffed up to something visible - the whole point of it is how far it goes.
+
 ## v3.0.305 - 5th Sep 2026
 
 - The Size comparison can now be put in four different orders, from a small row of buttons at the top of the view: Size, Name, Mass and Orbit. They stay faint until you go near them, and are always solid on a touch screen.

@@ -115,7 +115,8 @@
   // honesty rule (RENDER-S43: a floor is a legibility device, never a size) in one place.
   $: if (handle) handle.setSlots(layout.slots.filter((s) => !s.belowFloor).map((s) => ({
     id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, crossPx: s.crossPx,
-    diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex
+    diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex,
+    ringInnerPx: s.ringInnerPx, ringOuterPx: s.ringOuterPx
   })).filter((s) => s.node));
   $: if (handle) handle.setView(axis, scrollPx, vw, vh, crossScrollPx);
   $: if (handle) handle.setSelected(selectedId);

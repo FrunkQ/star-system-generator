@@ -26,6 +26,16 @@ export interface ComparisonItem {
   parentId?: string | null;
   /** Semi-major axis in AU, for the ORBIT order. A root star has none. */
   orbitAu?: number;
+  /**
+   * A ring system's true inner and outer radii in km, when the body has one.
+   *
+   * THEY DO NOT CHANGE THE BODY'S SIZE and they never enter the ordering: this view compares GLOBES,
+   * and a strip sorted by ring extent would put Saturn above Jupiter for having jewellery. What they
+   * DO change is the room the body is given — Saturn's rings reach 140,180 km, so its ring is wider
+   * than Jupiter is, and without the reservation it would be drawn straight through its neighbours.
+   */
+  ringInnerKm?: number;
+  ringOuterKm?: number;
 }
 
 /**
@@ -256,6 +266,34 @@ export function scrollForZoom(
   return clampScroll((scrollPx + anchorPx) * ratio - anchorPx, lengthPx * ratio, spanPx);
 }
 
+/**
+ * How big a slot DRAWS and how much room it RESERVES, which are two different questions the moment a
+ * planet has rings. `diameterPx` is the body and is what the whole view is about; `reachPx` is what
+ * the spacing must respect. Saturn's rings reach 140,180 km — wider than Jupiter is — so a strip
+ * that spaced by the globe alone would draw them straight through its neighbours.
+ *
+ * One measurer, used by the flat strip AND by the tree, or the two disagree about a ringed planet.
+ */
+export function measureSlot(it: ComparisonItem, scale: number): {
+  diameterPx: number; spanPx: number; reachPx: number; ringInnerPx: number; ringOuterPx: number; belowFloor: boolean;
+} {
+  const diameterPx = it.diameterKm * scale;
+  const belowFloor = diameterPx < DOT_THRESHOLD_PX;
+  const spanPx = belowFloor ? DOT_PX : diameterPx;
+  const ringOuterPx = (it.ringOuterKm ?? 0) * scale;
+  const ringInnerPx = (it.ringInnerKm ?? 0) * scale;
+  // A ring narrower than the pixel floor is not drawn at all rather than floored: a floor exists to
+  // keep a BODY findable, and an inflated ring would be a false statement about how far it reaches.
+  const ringed = ringOuterPx > ringInnerPx && ringOuterPx * 2 >= DOT_THRESHOLD_PX;
+  return {
+    diameterPx, spanPx,
+    reachPx: Math.max(spanPx, ringed ? ringOuterPx * 2 : 0),
+    ringInnerPx: ringed ? ringInnerPx : 0,
+    ringOuterPx: ringed ? ringOuterPx : 0,
+    belowFloor
+  };
+}
+
 // --- The strip -----------------------------------------------------------------------------------
 
 export interface LayoutSlot {
@@ -265,6 +303,15 @@ export interface LayoutSlot {
   diameterPx: number;
   /** The span the slot RESERVES: the same number, unless the object is below the floor and draws as a dot. */
   spanPx: number;
+  /**
+   * The span the LAYOUT reserves — the body's own, or its rings' if they are wider. Spacing reads
+   * this; the size comparison itself reads `diameterPx`. Keeping them apart is what lets a ringed
+   * planet have room without claiming to be bigger than it is.
+   */
+  reachPx: number;
+  /** The ring's drawn radii in px, or 0 for a body with none. Flat-shaded, at TRUE extent. */
+  ringInnerPx: number;
+  ringOuterPx: number;
   /** Centre along the strip's axis, in px from the strip's start. */
   centrePx: number;
   /**
@@ -318,20 +365,19 @@ export function layoutStrip(
   let alternate: 'start' | 'end' = 'start';
   for (let i = 0; i < sorted.length; i++) {
     const it = sorted[i];
-    const diameterPx = it.diameterKm * scale;
-    const belowFloor = diameterPx < DOT_THRESHOLD_PX;
-    const spanPx = belowFloor ? DOT_PX : diameterPx;
+    const m = measureSlot(it, scale);
     // A big body's label has room of its own; a small one's would sit on its neighbour's, so from
     // there down the labels alternate sides — the poster's Titania/Rhea rows.
     let labelSide: 'start' | 'end' = 'start';
-    if (spanPx < LABEL_ALTERNATE_BELOW_PX) {
+    if (m.spanPx < LABEL_ALTERNATE_BELOW_PX) {
       labelSide = alternate;
       alternate = alternate === 'start' ? 'end' : 'start';
     }
-    slots.push({ id: it.id, name: it.name, diameterPx, spanPx, centrePx: cursor + spanPx / 2, crossPx: 0, depth: 0, belowFloor, labelSide });
-    cursor += spanPx;
+    // The body sits at the CENTRE of the room it reserves, so its rings reach equally either side.
+    slots.push({ id: it.id, name: it.name, ...m, centrePx: cursor + m.reachPx / 2, crossPx: 0, depth: 0, labelSide });
+    cursor += m.reachPx;
     const next = sorted[i + 1];
-    if (next) cursor += gapFraction * Math.max(spanPx, Math.max(next.diameterKm * scale, DOT_PX));
+    if (next) cursor += gapFraction * Math.max(m.reachPx, measureSlot(next, scale).reachPx);
   }
   return { slots, lengthPx: cursor, axis, crossReachPx: 0 };
 }
@@ -357,10 +403,10 @@ function layoutOrbit(
 ): StripLayout {
   const { roots, childrenOf } = orbitTree(items);
   const slots: LayoutSlot[] = [];
-  const spanOf = (it: ComparisonItem) => {
-    const d = it.diameterKm * scale;
-    return d < DOT_THRESHOLD_PX ? DOT_PX : d;
-  };
+  // SPACING reads a body's REACH — its rings, where it has them, since they are wider than it is —
+  // while the drawn size stays the globe's. Same distinction the flat strip makes, same measurer.
+  const measure = (it: ComparisonItem) => measureSlot(it, scale);
+  const spanOf = (it: ComparisonItem) => measure(it).reachPx;
   const gap = (a: number, b: number) => opts.gapFraction * Math.max(a, b);
 
   /** How far a child's row reaches along the strip, from that child's own centre rightwards. */
@@ -383,9 +429,8 @@ function layoutOrbit(
     const centre = cursor + left;
 
     slots.push({
-      id: root.id, name: root.name, diameterPx: root.diameterKm * scale, spanPx: rootSpan,
-      centrePx: centre, crossPx: 0, depth: 0,
-      belowFloor: root.diameterKm * scale < DOT_THRESHOLD_PX, labelSide: 'start'
+      id: root.id, name: root.name, ...measure(root),
+      centrePx: centre, crossPx: 0, depth: 0, labelSide: 'start'
     });
 
     // Children stack away from the centreline, and each one's children run off to its right.
@@ -403,18 +448,16 @@ function layoutOrbit(
       const kSpan = spanOf(kid);
       cross += (prevSpan ? gap(prevSpan, kSpan) : opts.gapFraction * kSpan) + kSpan / 2;
       slots.push({
-        id: kid.id, name: kid.name, diameterPx: kid.diameterKm * scale, spanPx: kSpan,
-        centrePx: centre, crossPx: cross, depth: 1,
-        belowFloor: kid.diameterKm * scale < DOT_THRESHOLD_PX, labelSide: 'end'
+        id: kid.id, name: kid.name, ...measure(kid),
+        centrePx: centre, crossPx: cross, depth: 1, labelSide: 'end'
       });
       let along = centre + kSpan / 2;
       for (const gc of childrenOf(kid.id)) {
         const gSpan = spanOf(gc);
         along += gap(kSpan, gSpan) + gSpan / 2;
         slots.push({
-          id: gc.id, name: gc.name, diameterPx: gc.diameterKm * scale, spanPx: gSpan,
-          centrePx: along, crossPx: cross, depth: 2,
-          belowFloor: gc.diameterKm * scale < DOT_THRESHOLD_PX, labelSide: 'end'
+          id: gc.id, name: gc.name, ...measure(gc),
+          centrePx: along, crossPx: cross, depth: 2, labelSide: 'end'
         });
         along += gSpan / 2;
       }

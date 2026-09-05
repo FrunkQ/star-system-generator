@@ -796,3 +796,34 @@ export function buildAuroraShell(radius: number, hex: string, strength: number, 
   shell.renderOrder = 2; // draw over the body surface
   return { shell, mat, base };
 }
+
+// FLAT-SHADED RINGS — the size-comparison view's ring, and deliberately the simplest one in the app.
+//
+// THIS IS NOT A RIVAL OF THE HOLO'S RING and it answers a different question. `scene.ts`'s
+// `buildPlanetRing` draws a ring as debris particles with density and banding, because there the
+// question is "what does this look like"; here it is "how far does it REACH", and a flat annulus at
+// true inner and outer radius answers that and nothing else. Owner, 2026-09-05: "nice if we saw
+// rings - just flat shaded".
+//
+// Unlit on purpose (MeshBasicMaterial): the comparison lights every body from one fixed key so the
+// sizes are comparable, and a ring that took that lighting would be bright on one limb and gone on
+// the other, which reads as a shorter ring rather than as a shadow.
+/** The ring's own colour when its node carries none, and how solid it draws. Tune here, once. */
+export const FLAT_RING_COLOR = 0xc9c3b4;   // pale ice-and-rock, the colour Saturn's rings actually are
+export const FLAT_RING_OPACITY = 0.55;
+
+export function buildFlatRing(
+	innerRadius: number,
+	outerRadius: number,
+	colorHex: number = FLAT_RING_COLOR,
+	opacity: number = FLAT_RING_OPACITY
+): { mesh: THREE.Mesh; dispose(): void } {
+	// Enough segments that the outer edge is a circle rather than a polygon at any size the strip
+	// draws, and one radial segment because there is nothing to interpolate across a flat band.
+	const geo = new THREE.RingGeometry(innerRadius, outerRadius, 128, 1);
+	const mat = new THREE.MeshBasicMaterial({
+		color: colorHex, side: THREE.DoubleSide, transparent: true, opacity, depthWrite: false
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	return { mesh, dispose() { geo.dispose(); mat.dispose(); } };
+}

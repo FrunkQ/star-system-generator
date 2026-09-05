@@ -33,6 +33,21 @@ function radiusKmOf(node: any): number {
 export function itemsForSystem(system: { nodes?: any[] } | null | undefined): ComparisonEntry[] {
   const nodes = system?.nodes ?? [];
   const out: ComparisonEntry[] = [];
+  // A body's RINGS come from its own ring nodes — which are not on the strip themselves (a ring is
+  // not an object you compare against a planet) but are drawn around their host at true extent, and
+  // are the reason a ringed planet is given more room than its globe needs. Several ring nodes on
+  // one host read as one system: the innermost inner edge to the outermost outer.
+  const ringsOf = new Map<string, { inner: number; outer: number }>();
+  for (const n of nodes) {
+    if (n?.roleHint !== 'ring' || !n.parentId) continue;
+    const inner = Number(n.radiusInnerKm) || 0;
+    const outer = Number(n.radiusOuterKm) || 0;
+    if (!(outer > inner)) continue;
+    const cur = ringsOf.get(String(n.parentId));
+    ringsOf.set(String(n.parentId), cur
+      ? { inner: Math.min(cur.inner, inner), outer: Math.max(cur.outer, outer) }
+      : { inner, outer });
+  }
   for (const n of nodes) {
     if (n?.kind !== 'body') continue;
     if (n.roleHint === 'belt' || n.roleHint === 'ring') continue;
@@ -47,6 +62,8 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
       massKg: Number.isFinite(n.massKg) ? Number(n.massKg) : undefined,
       parentId: n.parentId ?? null,
       orbitAu: Number(n?.orbit?.elements?.a_AU) || undefined,
+      ringInnerKm: ringsOf.get(String(n.id))?.inner,
+      ringOuterKm: ringsOf.get(String(n.id))?.outer,
       node: n
     });
   }

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   sortBySize, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote,
   idsAtLeast, idsAtMost, visibleItems, referenceMarks, minorTicks, LABEL_MIN_GAP_PX,
-  clampScroll, scrollForZoom, TAP_SLOP_PX, STEP_FRACTION, sortItems, orbitOrder, orbitTree,
+  clampScroll, scrollForZoom, TAP_SLOP_PX, STEP_FRACTION, sortItems, orbitOrder, orbitTree, measureSlot,
   SORT_ORDERS, GAP_FRACTION as GAPF,
   SELECTED_SHARE, OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX,
   type ComparisonItem
@@ -201,6 +201,78 @@ const SYS: ComparisonItem[] = [
   { id: 'dust', name: 'Zzz Dust', diameterKm: 10, role: 'moon', massKg: 0, parentId: 'saturn', orbitAu: 0.002 },
   { id: 'ghost', name: 'Aaa Ghost', diameterKm: 10, role: 'moon', parentId: 'saturn', orbitAu: 0.003 }
 ];
+
+describe('size comparison — rings', () => {
+  // Saturn's rings reach 140,180 km — WIDER than Jupiter's whole globe (139,822 km across). That one
+  // fact is why rings need room of their own and why they must not count as size.
+  const SATURN: ComparisonItem = {
+    id: 'saturn', name: 'Saturn', diameterKm: 116464, role: 'planet', massKg: 5.68e26,
+    ringInnerKm: 66900, ringOuterKm: 140180
+  };
+  const JUPITER: ComparisonItem = { id: 'jupiter', name: 'Jupiter', diameterKm: 139822, role: 'planet', massKg: 1.898e27 };
+
+  it('draws the ring at TRUE extent and never lets it change the body size', () => {
+    const m = measureSlot(SATURN, 1);
+    expect(m.diameterPx).toBe(116464);          // the globe, untouched
+    expect(m.ringInnerPx).toBe(66900);
+    expect(m.ringOuterPx).toBe(140180);
+    expect(m.spanPx).toBe(116464);              // what is DRAWN as the body
+    expect(m.reachPx).toBe(280360);             // what the layout RESERVES: the ring, both sides
+  });
+
+  it('never lets a ring into the ORDER — the strip compares globes, not jewellery', () => {
+    // Saturn's rings are wider than Jupiter. Ordered by reach it would outrank Jupiter; it must not.
+    const byName = sortItems([SATURN, JUPITER], 'size').map((i) => i.name);
+    expect(byName).toEqual(['Jupiter', 'Saturn']);
+    expect(measureSlot(SATURN, 1).reachPx).toBeGreaterThan(measureSlot(JUPITER, 1).reachPx);
+  });
+
+  it('gives a ringed planet room, so its rings cannot be drawn through its neighbours', () => {
+    const { slots } = layoutStrip([SATURN, JUPITER], 1e-3);
+    const at = (n: string) => slots.find((sl) => sl.name === n)!;
+    const jupiterRight = at('Jupiter').centrePx + at('Jupiter').reachPx / 2;
+    const saturnRingLeft = at('Saturn').centrePx - at('Saturn').ringOuterPx;
+    expect(saturnRingLeft).toBeGreaterThan(jupiterRight);
+    // And the body sits in the MIDDLE of the room it reserves, so the ring reaches equally either way.
+    expect(at('Saturn').centrePx - at('Saturn').ringOuterPx)
+      .toBeCloseTo(at('Saturn').centrePx + at('Saturn').ringOuterPx - at('Saturn').reachPx, 6);
+  });
+
+  it('reserves nothing extra for a body with no rings', () => {
+    const m = measureSlot(JUPITER, 1);
+    expect(m.ringOuterPx).toBe(0);
+    expect(m.reachPx).toBe(m.spanPx);
+  });
+
+  it('DROPS a ring too small to draw rather than flooring it — a floor is for finding a BODY', () => {
+    // At this scale the whole ring is under a pixel. Inflating it to the dot floor would be a false
+    // statement about how far it reaches, which is the one thing a ring is here to say.
+    const tiny = measureSlot(SATURN, 1e-9);
+    expect(tiny.ringOuterPx).toBe(0);
+    expect(tiny.belowFloor).toBe(true);
+    expect(tiny.spanPx).toBe(DOT_PX);           // the BODY still gets its marker
+    expect(tiny.reachPx).toBe(DOT_PX);          // and reserves no phantom ring
+  });
+
+  it('ignores a ring whose radii are nonsense rather than drawing it inside out', () => {
+    const wrong = measureSlot({ ...SATURN, ringInnerKm: 200000, ringOuterKm: 100000 }, 1);
+    expect(wrong.ringOuterPx).toBe(0);
+    expect(wrong.reachPx).toBe(wrong.spanPx);
+  });
+
+  it('reserves the ring in the ORBIT layout too, not only the flat strip', () => {
+    const withMoon: ComparisonItem[] = [
+      { ...SATURN, parentId: null, orbitAu: 9.5 },
+      { id: 'titan', name: 'Titan', diameterKm: 5149, role: 'moon', parentId: 'saturn', orbitAu: 0.008 },
+      { id: 'p2', name: 'Next', diameterKm: 50000, role: 'planet', parentId: null, orbitAu: 19 }
+    ];
+    const { slots } = layoutStrip(withMoon, 1e-3, { order: 'orbit' });
+    const at = (n: string) => slots.find((sl) => sl.name === n)!;
+    expect(at('Saturn').ringOuterPx).toBeCloseTo(140.18, 6);
+    expect(at('Next').centrePx - at('Next').reachPx / 2)
+      .toBeGreaterThan(at('Saturn').centrePx + at('Saturn').ringOuterPx);
+  });
+});
 
 describe('size comparison — the four orders', () => {
   it('offers exactly the four the owner asked for, and no fifth', () => {
