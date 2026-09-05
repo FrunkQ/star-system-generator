@@ -40,6 +40,20 @@ export const DOT_PX = 6;
 export const LABEL_ALTERNATE_BELOW_PX = 90;
 /** Two ruler labels closer than this collide, so the second drops to the next row. */
 export const LABEL_MIN_GAP_PX = 110;
+/**
+ * How far a finger may travel and still count as a TAP rather than a drag.
+ *
+ * A touch surface has no separate "click": the same gesture that pans the strip ends on an object,
+ * so without a slop threshold every drag that finished over a body would also select it and rescale
+ * the whole view. 10 px is the usual figure for a finger; a mouse rarely moves at all.
+ */
+export const TAP_SLOP_PX = 10;
+/**
+ * How much of a screenful one stepper press (or one arrow key) moves. Less than a whole screen on
+ * purpose: an overlap carries a landmark across, so you can see WHERE you have got to. A full
+ * screenful teleports you and a small nudge takes forever.
+ */
+export const STEP_FRACTION = 0.8;
 /** Zoomed all the way out, the largest object still spans this share of the shorter side. */
 export const MIN_ZOOM_LARGEST_SHARE = 0.04;
 /** Zoomed all the way in, the smallest object spans this share of the shorter side. */
@@ -108,6 +122,41 @@ export function zoomBounds(items: ComparisonItem[], shorterSidePx: number): { mi
   const min = pxPerKm(Math.max(...sizes), shorterSidePx, MIN_ZOOM_LARGEST_SHARE);
   const max = pxPerKm(Math.min(...sizes), shorterSidePx, MAX_ZOOM_SMALLEST_SHARE);
   return { min, max: Math.max(min, max) };
+}
+
+/**
+ * Keep the strip's scroll inside the strip. Two things it must get right and one it must not:
+ *  - never before the start, so the first object is always reachable;
+ *  - never past the end, so you cannot scroll off into empty space beyond the smallest object;
+ *  - and when the WHOLE strip fits in the window there is nothing to scroll, so the answer is 0
+ *    rather than the negative number `lengthPx - spanPx` gives you, which would push the strip off
+ *    the near edge.
+ */
+export function clampScroll(scrollPx: number, lengthPx: number, spanPx: number): number {
+  // NaN is the one value that must not get through: it propagates into every position on screen and
+  // the strip simply vanishes. An infinity, by contrast, clamps to the end perfectly well through
+  // the two comparisons below - and pinning at the end is a better answer to a runaway than
+  // snapping the reader back to the start.
+  if (Number.isNaN(scrollPx)) return 0;
+  return Math.min(Math.max(0, lengthPx - spanPx), Math.max(0, scrollPx));
+}
+
+/**
+ * Zoom about a fixed point of the WINDOW - the pinch's centre between two fingers, or the window's
+ * middle on a wheel - so whatever you are looking at stays put instead of sliding away under the
+ * gesture. `anchorPx` is that point measured from the window's near edge.
+ *
+ * The object under the anchor sits `(scrollPx + anchorPx) / oldScale` km along the strip, and that
+ * reading is what must not move; the new scroll falls out of it. The strip's own length scales with
+ * the zoom, so the clamp is applied against the NEW length.
+ */
+export function scrollForZoom(
+  scrollPx: number, anchorPx: number, oldScale: number, newScale: number,
+  lengthPx: number, spanPx: number
+): number {
+  if (!(oldScale > 0) || !(newScale > 0)) return clampScroll(scrollPx, lengthPx, spanPx);
+  const ratio = newScale / oldScale;
+  return clampScroll((scrollPx + anchorPx) * ratio - anchorPx, lengthPx * ratio, spanPx);
 }
 
 // --- The strip -----------------------------------------------------------------------------------

@@ -12,7 +12,8 @@
   import UnitValue from './UnitValue.svelte';
   import {
     sortBySize, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote, visibleItems,
-    idsAtLeast, idsAtMost, referenceMarks, minorTicks, SELECTED_SHARE, OPENING_SHARE,
+    idsAtLeast, idsAtMost, referenceMarks, minorTicks, clampScroll, scrollForZoom,
+    SELECTED_SHARE, OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION,
     type StripLayout
   } from '$lib/comparison/layout';
   import { hiddenKey, loadHidden, saveHidden, type ComparisonEntry } from '$lib/comparison/items';
@@ -41,6 +42,19 @@
   let hidden: Set<string> = new Set();
   let menuFor: string | null = null;
 
+  // DRAG STATE. A phone has no wheel, so before this the strip could not be moved on a touch device
+  // AT ALL - the only pan path was `onWheel`, which a finger never fires (reported by a user, 2026-
+  // 09-05). Pointer events cover mouse, pen and touch in one path, so the desktop gets drag too.
+  const pointers = new Map<number, { x: number; y: number }>();
+  let dragFrom = 0;          // scrollPx when the gesture started
+  let dragAt = 0;            // where along the axis the gesture started
+  let dragTravel = 0;        // furthest the gesture has moved, for the tap-vs-drag test
+  let pinchFrom = 0;         // finger separation when the pinch started
+  let pinchScale = 0;        // `scale` when the pinch started
+  let pinchAnchor = 0;       // the pinch's centre along the axis, from the window's near edge
+  /** True once a gesture has passed the slop threshold - suppresses the click it would otherwise end on. */
+  let dragged = false;
+
   // The strip runs down the screen on a phone and across it on a desktop — the same `mode` the
   // system view and the starmap already key on, not a second idea of what a phone is.
   $: axis = (mode === 'phone' ? 'y' : 'x') as 'x' | 'y';
@@ -49,6 +63,12 @@
   $: sorted = sortBySize(visible);
   $: bounds = zoomBounds(visible, shorterSide);
   $: layout = scale > 0 ? layoutStrip(visible, scale, { axis }) : ({ slots: [], lengthPx: 0, axis } as StripLayout);
+  /** The window's length along the strip's own axis - the number every scroll figure is measured in. */
+  $: span = axis === 'x' ? vw : vh;
+  /** Whether there is anywhere to go: no overflow, no steppers, nothing to drag. */
+  $: overflows = layout.lengthPx > span + 1;
+  $: atStart = scrollPx <= 1;
+  $: atEnd = scrollPx >= layout.lengthPx - span - 1;
   $: rulerLen = axis === 'x' ? vw : vh;
   $: marks = referenceMarks(scale, rulerLen);
   $: minors = minorTicks(scale, rulerLen);
@@ -83,10 +103,18 @@
   }
 
   function centreOn(id: string): void {
-    const slot = layoutStrip(visible, scale, { axis }).slots.find((s) => s.id === id);
+    const next = layoutStrip(visible, scale, { axis });
+    const slot = next.slots.find((s) => s.id === id);
     if (!slot) return;
-    const span = axis === 'x' ? vw : vh;
-    scrollPx = Math.max(0, slot.centrePx - span / 2);
+    const reach = axis === 'x' ? vw : vh;
+    // Clamped against the layout AT THE NEW SCALE, not the one on screen: `pick` changes the scale
+    // and then centres, so the strip it is centring in is not the one `layout` still describes.
+    scrollPx = clampScroll(slot.centrePx - reach / 2, next.lengthPx, reach);
+  }
+
+  /** One stepper press, or one arrow key: most of a screenful, so you keep your place. */
+  function step(dir: -1 | 1): void {
+    scrollPx = clampScroll(scrollPx + dir * span * STEP_FRACTION, layout.lengthPx, span);
   }
 
   /** A click SELECTS through the map's shared selection and re-scales to the owner's 50%. */
@@ -115,15 +143,89 @@
   function onWheel(e: WheelEvent): void {
     e.preventDefault();
     if (e.ctrlKey || e.metaKey || e.shiftKey) {
-      // Zoom about the window's centre, clamped to the SET's own extent (UI-L7).
-      const before = scrollPx + (axis === 'x' ? vw : vh) / 2;
-      const next = Math.min(bounds.max, Math.max(bounds.min, scale * Math.exp(-e.deltaY * 0.0015)));
-      scrollPx = Math.max(0, (before / scale) * next - (axis === 'x' ? vw : vh) / 2);
-      scale = next;
+      zoomTo(scale * Math.exp(-e.deltaY * 0.0015), span / 2);   // about the window's middle
     } else {
-      const step = e.deltaY || e.deltaX;
-      scrollPx = Math.min(Math.max(0, layout.lengthPx - (axis === 'x' ? vw : vh)), Math.max(0, scrollPx + step));
+      scrollPx = clampScroll(scrollPx + (e.deltaY || e.deltaX), layout.lengthPx, span);
     }
+  }
+
+  /** Zoom to `next`, held about `anchorPx` along the axis, clamped to the SET's own extent (UI-L7). */
+  function zoomTo(next: number, anchorPx: number): void {
+    const wanted = Math.min(bounds.max, Math.max(bounds.min, next));
+    scrollPx = scrollForZoom(scrollPx, anchorPx, scale, wanted, layout.lengthPx, span);
+    scale = wanted;
+  }
+
+  // --- DRAG AND PINCH ------------------------------------------------------------------------
+  // One pointer drags along the strip; two pinch to zoom about the point between them. Pointer
+  // events rather than touch events, so a mouse, a pen and a finger all take the same path and the
+  // desktop gains drag for free.
+  const alongOf = (p: { x: number; y: number }) => (axis === 'x' ? p.x : p.y);
+
+  function onPointerDown(e: PointerEvent): void {
+    // Capture so a finger that slides off the stage keeps driving the gesture. Wrapped because
+    // `setPointerCapture` throws on an id the browser no longer considers active, and an exception
+    // on the FIRST line of this handler would take the whole gesture with it — the strip would
+    // simply stop responding, with nothing in the console to say why. Defensive: not a fault
+    // anybody has seen.
+    try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* not capturable */ }
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1) {
+      dragFrom = scrollPx;
+      dragAt = alongOf({ x: e.clientX, y: e.clientY });
+      dragTravel = 0;
+      dragged = false;
+    } else if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinchFrom = Math.hypot(a.x - b.x, a.y - b.y);
+      pinchScale = scale;
+      const rect = stage?.getBoundingClientRect();
+      const mid = (alongOf(a) + alongOf(b)) / 2 - (rect ? (axis === 'x' ? rect.left : rect.top) : 0);
+      pinchAnchor = mid;
+      dragged = true;   // a two-finger gesture is never a tap
+    }
+  }
+
+  function onPointerMove(e: PointerEvent): void {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      const now = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchFrom > 0 && now > 0) zoomTo(pinchScale * (now / pinchFrom), pinchAnchor);
+      return;
+    }
+    const moved = alongOf({ x: e.clientX, y: e.clientY }) - dragAt;
+    dragTravel = Math.max(dragTravel, Math.abs(moved));
+    if (dragTravel > TAP_SLOP_PX) dragged = true;
+    // The strip follows the finger: dragging towards the start moves the content that way, so the
+    // scroll goes the OTHER way. Anything else feels like the map is fighting you.
+    scrollPx = clampScroll(dragFrom - moved, layout.lengthPx, span);
+  }
+
+  function onPointerUp(e: PointerEvent): void {
+    pointers.delete(e.pointerId);
+    if (pointers.size === 0) {
+      // Leave `dragged` standing for one tick: the click event that ends this gesture has not fired
+      // yet, and it is the thing the slop test exists to suppress.
+      const wasDrag = dragged;
+      setTimeout(() => { if (wasDrag) dragged = false; }, 0);
+    } else if (pointers.size === 1) {
+      // Coming out of a pinch with one finger still down: restart the drag from where it is now,
+      // or the strip jumps by however far the fingers had travelled.
+      const [only] = [...pointers.values()];
+      dragFrom = scrollPx;
+      dragAt = alongOf(only);
+    }
+  }
+
+  /** Arrow keys move along the strip too - the same journey, for anyone not using a pointer. */
+  function onKeyDown(e: KeyboardEvent): void {
+    const back = axis === 'x' ? 'ArrowLeft' : 'ArrowUp';
+    const fwd = axis === 'x' ? 'ArrowRight' : 'ArrowDown';
+    if (e.key === back) { step(-1); e.preventDefault(); }
+    else if (e.key === fwd) { step(1); e.preventDefault(); }
+    else if (e.key === 'Escape') dispatch('close');
   }
 
   onMount(() => {
@@ -152,7 +254,9 @@
 <div class="size-comparison" class:phone={mode === 'phone'}>
   <header>
     <h2>Size comparison</h2>
-    <p class="hint">Everything on this map at true relative size. Click an object to fill half the view · scroll to move along · shift-scroll to zoom.</p>
+    <p class="hint">Everything on this map at true relative size.
+      {mode === 'phone' ? 'Tap an object to fill half the view' : 'Click an object to fill half the view'}
+      · {mode === 'phone' ? 'drag to move along · pinch to zoom' : 'drag or scroll to move along · shift-scroll to zoom'}.</p>
     <!-- THE HIDE OFFER NEEDS A REACHABLE DOOR. Right-clicking an object opens the same popup, but a
          phone has no right-click and a context menu is not a thing anyone finds — so the selected
          object's hide control lives in the header, where it is visible the moment something is
@@ -166,7 +270,19 @@
     <button class="close" title="Close" on:click={() => dispatch('close')}>×</button>
   </header>
 
-  <div class="stage" bind:this={stage} on:wheel={onWheel}>
+  <div
+    class="stage"
+    bind:this={stage}
+    on:wheel={onWheel}
+    on:pointerdown={onPointerDown}
+    on:pointermove={onPointerMove}
+    on:pointerup={onPointerUp}
+    on:pointercancel={onPointerUp}
+    on:keydown={onKeyDown}
+    role="application"
+    aria-label="Size comparison strip"
+    tabindex="0"
+  >
     <!-- NO width/height ATTRIBUTES HERE. The renderer owns the backing store: `setSize(vw, vh, false)`
          multiplies by the device pixel ratio, and a Svelte-bound `width={vw}` overwrites that with the
          CSS pixel count every time the view re-renders. The two then disagree by the pixel ratio and
@@ -190,7 +306,7 @@
               ? `left:${along - slot.spanPx / 2}px; top:calc(50% - ${slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`
               : `top:${along - slot.spanPx / 2}px; left:calc(50% - ${slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`}
             title={slot.name}
-            on:click={() => pick(slot.id)}
+            on:click={() => { if (!dragged) pick(slot.id); }}
             on:contextmenu|preventDefault={() => (menuFor = slot.id)}
           ></button>
           <div
@@ -243,6 +359,21 @@
       </div>
     {/if}
 
+    <!-- THE STEPPERS, and they earn their place twice over. A finger can drag the strip now, but a
+         gesture nobody is told about is a gesture nobody finds; and on a phone, where the strip runs
+         DOWN the screen, "there is more below" is not something the layout says by itself. They only
+         appear while the strip actually overflows, and each one dims at its own end. -->
+    {#if overflows}
+      <button class="step back" class:vertical={axis === 'y'} disabled={atStart}
+        title={axis === 'x' ? 'Towards the largest' : 'Scroll up - towards the largest'}
+        aria-label={axis === 'x' ? 'Scroll towards the largest' : 'Scroll up'}
+        on:click={() => step(-1)}>{axis === 'x' ? '\u2039' : '\u2039'}</button>
+      <button class="step fwd" class:vertical={axis === 'y'} disabled={atEnd}
+        title={axis === 'x' ? 'Towards the smallest' : 'Scroll down - towards the smallest'}
+        aria-label={axis === 'x' ? 'Scroll towards the smallest' : 'Scroll down'}
+        on:click={() => step(1)}>{axis === 'x' ? '\u203a' : '\u203a'}</button>
+    {/if}
+
     {#if !sorted.length}
       <p class="empty">Nothing on this map has a size to compare.</p>
     {/if}
@@ -264,7 +395,29 @@
   .close { background: none; border: none; color: #7f8ea6; font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
   .close:hover { color: #dfe6f0; }
 
-  .stage { position: relative; flex: 1 1 auto; overflow: hidden; }
+  /* `touch-action: none` is what makes a finger reach `pointermove` at all: without it the browser
+     claims the gesture as a page scroll and the strip cannot be dragged on a phone. `cursor: grab`
+     says the same thing to a mouse. */
+  .stage { position: relative; flex: 1 1 auto; overflow: hidden; touch-action: none; cursor: grab; outline: none; }
+  .stage:active { cursor: grabbing; }
+  .stage:focus-visible { box-shadow: inset 0 0 0 2px rgba(140, 190, 255, 0.5); }
+
+  .step {
+    position: absolute; z-index: 2; pointer-events: auto;
+    width: 34px; height: 52px; display: grid; place-items: center;
+    background: rgba(16, 26, 40, 0.82); border: 1px solid #2c3d55; color: #cfe0f5;
+    border-radius: 8px; font-size: 22px; line-height: 1; cursor: pointer;
+    top: 50%; transform: translateY(-50%);
+  }
+  .step.back { left: 8px; }
+  .step.fwd { right: 8px; }
+  /* On a phone the strip runs down the screen, so the steppers do too - and they say "up"/"down",
+     which is the thing the reporter could not do. */
+  .step.vertical { top: auto; left: 50%; right: auto; transform: translateX(-50%) rotate(90deg); }
+  .step.back.vertical { top: 8px; }
+  .step.fwd.vertical { bottom: 8px; }
+  .step:hover:not(:disabled) { background: rgba(29, 42, 61, 0.95); }
+  .step:disabled { opacity: 0.25; cursor: default; }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .overlay { position: absolute; inset: 0; pointer-events: none; }
 

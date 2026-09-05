@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   sortBySize, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote,
   idsAtLeast, idsAtMost, visibleItems, referenceMarks, minorTicks, LABEL_MIN_GAP_PX,
+  clampScroll, scrollForZoom, TAP_SLOP_PX, STEP_FRACTION,
   SELECTED_SHARE, OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX,
   type ComparisonItem
 } from './layout';
@@ -177,6 +178,83 @@ describe('size comparison — the strip', () => {
     const a = layoutStrip(SOL, scale).lengthPx;
     const b = layoutStrip(SOL, scale * 2).lengthPx;
     expect(b).toBeGreaterThan(a * 1.9);
+  });
+});
+
+describe('size comparison — moving along the strip', () => {
+  // A phone has no wheel. Until a user said so (2026-09-05) the ONLY pan path was a `wheel` handler,
+  // so on a touch device the strip could not be moved at all: everything past the opening screenful
+  // was unreachable. These are the laws the drag, the pinch, the steppers and the arrow keys share.
+
+  it('never scrolls before the start, so the largest object is always reachable', () => {
+    expect(clampScroll(-500, 5000, 800)).toBe(0);
+    expect(clampScroll(-0.001, 5000, 800)).toBe(0);
+  });
+
+  it('never scrolls past the end, so you cannot land in empty space beyond the smallest', () => {
+    expect(clampScroll(99999, 5000, 800)).toBe(4200);   // 5000 - 800
+    expect(clampScroll(4200, 5000, 800)).toBe(4200);
+  });
+
+  it('answers ZERO when the whole strip already fits — not a negative offset', () => {
+    // `lengthPx - spanPx` is -300 here, and using it would push the strip off the near edge.
+    expect(clampScroll(0, 500, 800)).toBe(0);
+    expect(clampScroll(120, 500, 800)).toBe(0);
+  });
+
+  it('survives a NaN rather than propagating it through every position on screen', () => {
+    expect(clampScroll(NaN, 5000, 800)).toBe(0);
+    expect(clampScroll(Infinity, 5000, 800)).toBe(4200);
+  });
+
+  it('holds the anchor point still through a zoom — the pinch does not slide the view away', () => {
+    // A body 2,000 px along the strip sits 500 px into an 800 px window (scroll 1,500). Zoom x2
+    // about that same 500 px point and it must still be at 500 px: the strip doubles, so the body is
+    // now 4,000 px along and the scroll has to be 3,500.
+    expect(scrollForZoom(1500, 500, 1, 2, 20000, 800)).toBe(3500);
+    // And the reverse: halving puts it back.
+    expect(scrollForZoom(3500, 500, 2, 1, 40000, 800)).toBe(1500);
+  });
+
+  it('anchors on the window MIDDLE for a wheel and on the pinch centre for two fingers', () => {
+    // Same zoom, two anchors, two different scrolls — that is what "about a point" means.
+    const middle = scrollForZoom(1000, 400, 1, 2, 20000, 800);
+    const edge = scrollForZoom(1000, 0, 1, 2, 20000, 800);
+    expect(middle).not.toBe(edge);
+    expect(middle).toBe(2400);   // (1000 + 400) * 2 - 400
+    expect(edge).toBe(2000);     // (1000 + 0) * 2 - 0
+  });
+
+  it('clamps the zoom result against the strip at its NEW length, not its old one', () => {
+    // Zooming OUT shortens the strip; a scroll that was legal before can be past the new end.
+    // Strip 20,000 px at scale 1 becomes 2,000 px at scale 0.1, so the furthest scroll is 1,200.
+    // The anchor rule alone would put this at (19,000 + 400) x 0.1 - 400 = 1,540 — past the end.
+    expect(scrollForZoom(19000, 400, 1, 0.1, 20000, 800)).toBe(1200);
+    // And a scroll the anchor rule already leaves inside is not touched: 1,140, not the 1,200 cap.
+    expect(scrollForZoom(15000, 400, 1, 0.1, 20000, 800)).toBe(1140);
+  });
+
+  it('refuses to divide by a zero scale', () => {
+    expect(scrollForZoom(1500, 400, 0, 2, 20000, 800)).toBe(1500);
+    expect(scrollForZoom(1500, 400, 1, 0, 20000, 800)).toBe(1500);
+  });
+
+  it('steps by most of a screenful, so a landmark carries across', () => {
+    // A whole screenful teleports the reader; a small nudge takes forever. The overlap is the point.
+    expect(STEP_FRACTION).toBeGreaterThan(0.5);
+    expect(STEP_FRACTION).toBeLessThan(1);
+    // Two presses from the start, on a 5,000 px strip in an 800 px window: 640 then 1,280.
+    expect(clampScroll(0 + 800 * STEP_FRACTION, 5000, 800)).toBe(640);
+    expect(clampScroll(640 + 800 * STEP_FRACTION, 5000, 800)).toBe(1280);
+    // And pressing at the end goes nowhere rather than off it.
+    expect(clampScroll(4200 + 800 * STEP_FRACTION, 5000, 800)).toBe(4200);
+  });
+
+  it('has a tap slop a finger can satisfy and a drag cannot', () => {
+    // The number itself is the assertion: a touch surface has no separate click, so a drag ending on
+    // a body would otherwise select it and rescale the whole view.
+    expect(TAP_SLOP_PX).toBeGreaterThan(2);    // a finger is never pixel-steady
+    expect(TAP_SLOP_PX).toBeLessThan(30);      // and a real drag must still be told apart
   });
 });
 

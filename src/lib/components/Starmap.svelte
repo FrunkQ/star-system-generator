@@ -839,9 +839,16 @@
   //     distance between them, in the map's scale units. ---
   let measureMode = false;
   // G66: the size-comparison view, reached from the sub-button under Measure. On the starmap the
-  // cast is every system's STARS (multi-star aware, through `systemVisualStars`), and a click goes
-  // out as the ordinary `systemclick` so the map's shared selection follows (TAG-14).
+  // cast is every system's STARS, multi-star aware through `systemVisualStars`.
+  //
+  // A TAP HERE DOES NOT LEAVE THE VIEW, and that is a correction: the first wiring sent it out as
+  // `systemclick`, which is not a selection at all — it ENTERS the system, so tapping a star to
+  // compare it threw you off the strip and onto that system's map. The GM starmap has no per-system
+  // shared selection for a click to join (its info panel is about the whole map, and
+  // `selectedSystemForLink` exists only while a route is being drawn), so the tap centres, rescales
+  // and rings the star HERE. The system map is the surface that does have one, and it uses it.
   let sizeCompareOn = false;
+  let sizeCompareSelected: string | null = null;
   // An endpoint is a fixed point (star) or — when constructId is set — a moving construct, in which case
   // its position is re-derived from the clock so the ruler TRACKS the ship as time advances.
   // WS7: an endpoint carries DEPTH. Without it `posZ` reads both ends as the reference plane and the
@@ -1705,8 +1712,8 @@
         scope="starmap"
         mapId={starmap?.id ?? null}
         {mode}
-        selectedId={null}
-        on:select={(e) => dispatch('systemclick', String(e.detail.id).split(':')[0])}
+        selectedId={sizeCompareSelected}
+        on:select={(e) => (sizeCompareSelected = e.detail.id)}
         on:close={() => (sizeCompareOn = false)}
       />
     {/if}

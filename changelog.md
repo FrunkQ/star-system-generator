@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v3.0.304 - 5th Sep 2026
+
+- You can now move around the Size comparison on a phone. You could not before: the only way to travel along the strip was a mouse wheel, so on a touch screen everything past the first screenful was simply out of reach. Thank you to whoever said so.
+- Drag the strip with a finger and it follows you, one for one. Pinch to zoom in and out, and whatever is between your fingers stays put instead of sliding off.
+- There are also buttons at each end - up and down on a phone, left and right on a desktop - which move you most of a screen at a time and grey out when you reach the end. Arrow keys do the same.
+- Dragging no longer picks something by accident: if your finger travels more than a few pixels it counts as a drag, not a tap, so the strip stops where you left it instead of jumping to whatever you happened to let go over.
+- Dragging works with a mouse on the desktop now too.
+- Fixed: on the starmap, tapping a star in the size comparison used to take you into that system and close the view. It now just centres and highlights it, so you can carry on comparing.
+
 ## v3.0.303 - 5th Sep 2026
 
 - Copy and paste now work inside your own campaign. Right-click any world, moon, station or ship and you get Copy, Cut, and - once something is on the clipboard - Paste it here. It moves the whole branch: copy a planet and its moons come, copy a station and its docked ships come, and the menu says how many objects that is before you commit to it. Paste it anywhere in the same campaign, in the same system or another one.
