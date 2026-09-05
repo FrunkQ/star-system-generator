@@ -28,6 +28,19 @@
   export let mode: 'desktop' | 'phone' = 'desktop';
   /** The map's shared selection, so the info panel follows a click here (TAG-14). */
   export let selectedId: string | null = null;
+  /**
+   * PLAYER TIER (G68). The GM chose this view and set it up; a player gets to look and to tap, and
+   * nothing else. No close button (there is nothing to go back to — the view IS the system stage),
+   * no order pills and no hiding, because both are the GM's decision and both live in the preset.
+   * The strip, the scale, the ruler, the drag and the selection are all unchanged: the difference
+   * between the two tiers is chrome, not capability.
+   */
+  export let playerChrome = false;
+  /**
+   * An order imposed from outside — the preset's choice at the player tier. When null the view uses
+   * its own remembered one, which is the GM's case.
+   */
+  export let forcedOrder: SortOrder | null = null;
 
   const dispatch = createEventDispatcher<{ select: { id: string }; close: void }>();
 
@@ -53,7 +66,9 @@
   let hidden: Set<string> = new Set();
   let menuFor: string | null = null;
   /** Which order the strip is in. Remembered per map, beside the hidden set and for the same reason. */
-  let order: SortOrder = 'size';
+  let storedOrder: SortOrder = 'size';
+  /** The preset's word where there is one, otherwise the GM's remembered choice. */
+  $: order = forcedOrder ?? storedOrder;
 
   // DRAG STATE. A phone has no wheel, so before this the strip could not be moved on a touch device
   // AT ALL - the only pan path was `onWheel`, which a finger never fires (reported by a user, 2026-
@@ -162,7 +177,7 @@
 
   /** Changing the order re-arms the opening view: a new arrangement wants its own starting place. */
   function setOrder(next: SortOrder): void {
-    order = next;
+    storedOrder = next;
     saveOrder(hiddenKey(scope, mapId), next);
     armed = '';
   }
@@ -272,24 +287,38 @@
   }
 
   onMount(() => {
-    hidden = loadHidden(hiddenKey(scope, mapId));
-    order = loadOrder(hiddenKey(scope, mapId));
+    // A player's view has no hidden set of its own: what a GM chose not to show is the preset's
+    // business, and a player hiding worlds on their own screen is a different feature nobody asked
+    // for. The GM's stored set is theirs alone and is not read here.
+    hidden = playerChrome ? new Set() : loadHidden(hiddenKey(scope, mapId));
+    storedOrder = loadOrder(hiddenKey(scope, mapId));
     let cancelled = false;
     let ro: ResizeObserver | null = null;
+    const measure = () => {
+      // NEVER take a 0x0 rect as a size (RENDER-S30) — an unlaid-out container reports one and a
+      // renderer told 0x0 sets a 2x2 backing store that the next real frame stretches.
+      const r = stage?.getBoundingClientRect();
+      if (!r || r.width < 1 || r.height < 1) return;
+      vw = Math.round(r.width); vh = Math.round(r.height);
+    };
+    // MEASURED AND OBSERVED BEFORE THE SCENE, and the scene's failure is survivable. The labels, the
+    // ruler, the dots and the hit areas are DOM and owe the 3D nothing; wiring them behind the
+    // renderer's import meant a machine without WebGL got a black box with a header and no strip at
+    // all, when it could have had every reading except the globes.
+    measure();
+    ro = new ResizeObserver(measure);
+    if (stage) ro.observe(stage);
     (async () => {
-      const { createComparisonScene } = await import('$lib/holo/comparisonScene');
-      if (cancelled || !canvas) return;
-      handle = createComparisonScene(canvas);
-      const measure = () => {
-        // NEVER take a 0x0 rect as a size (RENDER-S30) — an unlaid-out container reports one and a
-        // renderer told 0x0 sets a 2x2 backing store that the next real frame stretches.
-        const r = stage?.getBoundingClientRect();
-        if (!r || r.width < 1 || r.height < 1) return;
-        vw = Math.round(r.width); vh = Math.round(r.height);
-      };
+      try {
+        const { createComparisonScene } = await import('$lib/holo/comparisonScene');
+        if (cancelled || !canvas) return;
+        handle = createComparisonScene(canvas);
+      } catch (err) {
+        // No WebGL, or a context the browser refused. Say so once — silence here is the RENDER-S7
+        // fault, where the path that decides whether a thing renders swallows its own reason.
+        console.warn('[size-comparison] no 3D context; the strip is drawn without globes', err);
+      }
       measure();
-      ro = new ResizeObserver(measure);
-      if (stage) ro.observe(stage);
     })();
     return () => { cancelled = true; ro?.disconnect(); handle?.dispose(); handle = null; };
   });
@@ -305,25 +334,33 @@
          phone has no right-click and a context menu is not a thing anyone finds — so the selected
          object's hide control lives in the header, where it is visible the moment something is
          selected and works with a tap. -->
-    {#if selectedId && byId.has(selectedId)}
+    {#if !playerChrome && selectedId && byId.has(selectedId)}
       <button class="pill" on:click={() => (menuFor = selectedId)}>Hide {byId.get(selectedId)?.name}…</button>
     {/if}
-    {#if hidden.size}
+    {#if !playerChrome && hidden.size}
       <button class="pill" on:click={showAll}>{hidden.size} hidden — show all</button>
     {/if}
-    <button class="close" title="Close" on:click={() => dispatch('close')}>×</button>
+    {#if !playerChrome}
+      <button class="close" title="Close" on:click={() => dispatch('close')}>×</button>
+    {/if}
   </header>
 
   <!-- THE ORDER, as the pale pill group the GM's planet views use (`BodyImage.view-pills`): faint
        until the view is hovered or focused, and ALWAYS solid on a touch screen, because a phone has
        no hover and a control that only appears on one is a control a phone user does not have. -->
+  {#if !playerChrome}
   <div class="order-pills" role="group" aria-label="Order the strip by">
     {#each SORT_ORDERS as o (o.id)}
       <button type="button" class:on={order === o.id} title={o.title}
         aria-pressed={order === o.id} on:click={() => setOrder(o.id)}>{o.label}</button>
     {/each}
   </div>
+  {/if}
 
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
+  <!-- The stage is a pan/zoom SURFACE, not a control: the things you can act on are the buttons
+       inside it. It takes focus so the arrow keys can move along the strip for anyone not using
+       a pointer, which is the whole reason for the tabindex the rule objects to. -->
   <div
     class="stage"
     bind:this={stage}
@@ -333,8 +370,8 @@
     on:pointerup={onPointerUp}
     on:pointercancel={onPointerUp}
     on:keydown={onKeyDown}
-    role="application"
-    aria-label="Size comparison strip"
+    role="group"
+    aria-label="Size comparison strip — drag to move along, arrow keys to step"
     tabindex="0"
   >
     <!-- NO width/height ATTRIBUTES HERE. The renderer owns the backing store: `setSize(vw, vh, false)`
@@ -361,7 +398,7 @@
               : `top:${along - slot.spanPx / 2}px; left:calc(50% + ${slot.crossPx - crossScrollPx - slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`}
             title={slot.name}
             on:click={() => { if (!dragged) pick(slot.id); }}
-            on:contextmenu|preventDefault={() => (menuFor = slot.id)}
+            on:contextmenu|preventDefault={() => { if (!playerChrome) menuFor = slot.id; }}
           ></button>
           <div
             class="label {slot.labelSide}"

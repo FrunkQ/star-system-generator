@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.308 - 5th Sep 2026
+
+- Size comparison is now one of the views you can give your players. Pick it under System in the player-view editor and your table gets the whole system at true relative size, with a preview while you set it up.
+- Tapping anything on it opens the same information block they get from the 2D and 3D maps, styled by the same preset - it is the same panel, not a copy of it.
+- You choose the order they see it in - size, name, mass or orbit - and that is the one they get. Players can move along the strip, zoom it and tap things; the arranging is yours.
+- Fixed: on a machine with no working 3D, the size comparison used to show nothing at all. It now draws the whole strip - names, sizes, the ruler and the markers - and only the round planet pictures are missing.
+
 ## v3.0.307 - 5th Sep 2026
 
 - The 3D view now watches its own frame rate. If it stays genuinely bad for several seconds it turns the atmospheres off to get the map moving again, and tells you it has done so.

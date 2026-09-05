@@ -36,6 +36,10 @@
   import { drawCover } from '$lib/catalogue/coverCard';
   import FilteredCanvas from '$lib/components/FilteredCanvas.svelte';
   import HoloView from '$lib/holo/HoloView.svelte';
+  // G68: the size comparison as a player system view. It takes plain data and carries no GM chrome,
+  // so it mounts here unchanged — the same component the GM reaches from the rail.
+  import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
+  import { itemsForSystem } from '$lib/comparison/items';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
   import { AU_KM } from '$lib/constants';
   import { migrateUnitPrefs, type UnitPrefs } from '$lib/units';
@@ -868,6 +872,17 @@
   // WS2 Guide document: the interactive canvas document (schematic + in-page info block + navigator),
   // drawn by the block-model engine through the real filter. Falls under the 'static' tier (no 3D scene).
   $: systemDoc = !!activePreset && activePreset.systemView === 'document';
+  // G68. Its own tier: it has its own canvas and its own laws, and it is neither the holo (which the
+  // 2D and 3D tiers share) nor the document. It falls under 'static' for `effectiveSystemTier`, which
+  // is the tier that means "no holo scene" — the marker rules TAG-20 records are the holo's and the
+  // document's, and this view draws no markers at all.
+  $: systemSizeCompare = !!activePreset && activePreset.systemView === 'sizecompare';
+  /**
+   * The cast, from the SAME builder the GM's view uses. `displaySystem` is already the redacted,
+   * player-facing system, so nothing here has to think about what a player may see — it inherits
+   * that for free, which is the whole reason this component takes plain data.
+   */
+  $: sizeCompareItems = systemSizeCompare && displaySystem ? itemsForSystem(displaySystem) : [];
   // Pass the body-graphics mode straight through (sphere / disc / flat / photo / none) so the document
   // can render each distinctly.
   $: docImagery = activePreset ? activePreset.bodyGfx : 'none';
@@ -1392,6 +1407,28 @@
       {#if selectedBody && !activePreset?.hideInfoPanel}
         {@render inspectorAside()}
       {/if}
+    </div>
+  {:else if systemSizeCompare}
+    <!-- The size-comparison strip, with the ORDINARY inspector beside it: a tap selects through the
+         same `selectBodyById` the document and the holo use, so the info block that opens is the
+         same one, with the same preset config, on all three. Owner, 2026-09-05: "clicking on a
+         planet/body/anything will show its data like on a 2d or 3d view - uses same info block and
+         inherits its config". -->
+    <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH}
+      style={activePreset ? `font-family:${presetFont}` : ''}>
+      {#if displaySystem}
+        <SizeComparisonView
+          items={sizeCompareItems}
+          scope="system"
+          mapId={displaySystem.id ?? null}
+          mode={isPhone ? 'phone' : 'desktop'}
+          selectedId={selectedBody?.id ?? null}
+          forcedOrder={activePreset?.sizeCompareOrder ?? 'size'}
+          playerChrome
+          on:select={(e) => { if (presetInteractive) { pushNavStep(); selectBodyById(e.detail.id); } }}
+        />
+      {/if}
+      {#if !activePreset?.hideInfoPanel}{@render inspectorAside()}{/if}
     </div>
   {:else if systemDoc}
     <!-- WS2 Guide document: the interactive canvas document (schematic + in-page body file + navigator),

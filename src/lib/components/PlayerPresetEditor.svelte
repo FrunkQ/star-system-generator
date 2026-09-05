@@ -31,6 +31,8 @@
   import GraphicLayer from './GraphicLayer.svelte';
   import GraphicPlacementControls from './GraphicPlacementControls.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
+  import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
+  import { itemsForSystem } from '$lib/comparison/items';
   import FilteredDocumentView from './FilteredDocumentView.svelte';
   import { DOCUMENT_STYLES, documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import TransitionParamControls from './TransitionParamControls.svelte';
@@ -803,8 +805,21 @@
                   <option value="document">Document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D holo</option>
+                  <option value="sizecompare">Size comparison</option>
                 </select>
               </label>
+              {#if draft.systemView === 'sizecompare'}
+                <label>Order
+                  <select bind:value={draft.sizeCompareOrder}>
+                    <option value="size">Size — largest first</option>
+                    <option value="name">Name</option>
+                    <option value="mass">Mass — heaviest first</option>
+                    <option value="orbit">Orbit — moons under their planet</option>
+                  </select>
+                </label>
+                <p class="hint">Every object in the system at true relative size. Players can move
+                  along the strip and tap anything to read its file; the order is yours to set.</p>
+              {/if}
             {:else}
               <p class="hint">Disabled: systems aren't openable; the starmap (or cover) is the whole guide.</p>
             {/if}
@@ -1288,6 +1303,18 @@
                 } : null}
                 selectable={true}
                 on:select={(e) => (previewFocusId = e.detail)} />
+            {:else if draft.systemView === 'sizecompare' && previewSystem}
+              <!-- G68: the SAME component the players get, with the same player chrome, so this
+                   preview cannot show a view that does not exist. -->
+              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                <div class="sizecmp-wrap">
+                  <SizeComparisonView items={itemsForSystem(previewSystem)} scope="system"
+                    mapId={previewSystem.id ?? null} mode="desktop"
+                    selectedId={previewFocusId} playerChrome
+                    forcedOrder={draft.sizeCompareOrder ?? 'size'}
+                    on:select={(e) => (previewFocusId = e.detail.id)} />
+                </div>
+              </FilterFrame>
             {:else if draft.systemView === 'list' && previewSystem}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 <div class="sm-preview" style="font-family:{draft.font}; --accent:{accentCss}">
@@ -1406,4 +1433,6 @@
   .sm-list li { padding: 4px 0; border-bottom: 1px solid rgba(140,170,210,0.15); font-size: 0.9rem; }
   button { padding: 7px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font: inherit; }
   button.primary { background: var(--accent); border-color: var(--accent); }
+  /* The strip needs a real box to measure; the preview pane is otherwise content-sized. */
+  .sizecmp-wrap { position: relative; width: 100%; height: 100%; min-height: 320px; }
 </style>

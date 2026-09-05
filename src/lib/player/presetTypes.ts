@@ -7,7 +7,10 @@
 // The three view modules a layer can use. `holo3d` for the starmap (galaxy view) is not built yet —
 // the editor offers it disabled until it exists. `document` (WS2) renders the system as the interactive
 // Guide document through the block-model engine — additive, does NOT replace the diagram2d→holo path.
-export type ViewModule = 'list' | 'diagram2d' | 'holo3d' | 'document';
+// `sizecompare` (G68) is the size-comparison strip as a player SYSTEM view: every object in the
+// system at true relative size, side by side. It is a system module only — there is a starmap strip
+// too, but on the starmap the cast is one star per system and that is a different feature to offer.
+export type ViewModule = 'list' | 'diagram2d' | 'holo3d' | 'document' | 'sizecompare';
 
 // WS2 document look (see catalogue/document/blocks.ts — the engine owns these). Re-exported here so a
 // preset can carry them; type-only, so no runtime coupling between presets and the renderer.
@@ -102,6 +105,12 @@ export interface PlayerPreset {
   starmapView: ViewModule;
   systemEnabled: boolean;
   systemView: ViewModule;
+  /**
+   * G68: which order the size-comparison system view opens in. Preset data rather than a per-viewer
+   * choice, because at the player tier the GM is the one arranging the page — the same reason the
+   * order pills are not offered there. Absent means the poster order.
+   */
+  sizeCompareOrder?: 'size' | 'name' | 'mass' | 'orbit';
   // WS5 lock-down: with the starmap stage disabled the player is dropped straight into ONE system and
   // can never reach the map. This pins WHICH one (chosen by the GM when authoring, so a shared link is
   // deterministic); unset falls back to the first charted system.
