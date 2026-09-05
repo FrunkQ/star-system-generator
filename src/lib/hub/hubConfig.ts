@@ -64,3 +64,75 @@ export const HUB: HubConfig = {
 export function shareableAppLink(slug: string, appOrigin: string): string {
   return `${appOrigin.replace(/\/+$/, '')}/?hub=${encodeURIComponent(slug)}`;
 }
+
+// --- R-17: opening a map from an ADDRESS rather than a code -------------------------------------
+//
+// `https://starsystemx.com/?open=<percent-encoded download URL>` is the hub's "Open in Star System
+// Explorer" button beside a map's download. The difference from `?hub=<slug>` is the whole of the
+// risk: a slug is a name this app turns into an address on the hub's own origin, so the destination
+// was never in the link's gift. `?open=` hands the app the ADDRESS, and a URL parameter the app
+// will fetch and then load is an SSRF-shaped thing.
+//
+// THE ALLOW-LIST IS THE ENTIRE DEFENCE, AND IT IS DATA, so tightening it later is one edit here
+// rather than a hunt through the fetch code. It lives beside the rest of the hub's addresses for
+// the reason stated at the top of this file: nothing else in the codebase should contain one.
+//
+// WHAT IS ON IT AND WHY EACH ENTRY IS THERE (hub's R-17, 2026-09-05):
+//  - the workers.dev deploy, which is the origin that actually answers today;
+//  - `explorers.starsystemx.com`, the agreed final name, listed AHEAD of the cutover so the hub's
+//    button does not have to wait for an engine release on the day the DNS moves;
+//  - `*.pages.dev`, the preview builds. THIS IS THE WIDEST ENTRY BY FAR and it is the first one to
+//    remove: it trusts every Cloudflare Pages site on the internet, not just the hub's. It is here
+//    because the hub asked for it by name and because the exposure is small and bounded - the
+//    request carries no credentials, the bytes go through the same untrusted-file door an import
+//    uses, and the GM is still asked before anything replaces a campaign. It is NOT here because
+//    anybody thinks a stranger's Pages deploy is trustworthy.
+export const TRUSTED_OPEN_HOSTS: readonly string[] = [
+  new URL(LIVE_ORIGIN).hostname,
+  new URL(HUB_FINAL_ORIGIN).hostname
+];
+
+/** Suffix matches, leading dot included so `notpages.dev` cannot pass as `*.pages.dev`. */
+export const TRUSTED_OPEN_HOST_SUFFIXES: readonly string[] = ['.pages.dev'];
+
+/**
+ * IS THIS AN ADDRESS THE APP IS WILLING TO FETCH A MAP FROM? Returns `null` when it is, and
+ * otherwise the reason, in words a GM can read - because this refusal is shown to a person who
+ * clicked a link and deserves to know why nothing happened.
+ *
+ * Pure, and deliberately paranoid about the things a look-alike link does:
+ *  - `https:` ONLY. `http:` is a downgrade a link should not be able to ask for, and `javascript:`,
+ *    `data:` and `file:` are not fetches of a remote map at all.
+ *  - NO USERINFO. `https://explorers.starsystemx.com@evil.example/` has a HOST of `evil.example`
+ *    and reads to a human as the hub. The host check already refuses it; refusing the shape as
+ *    well means a later reader who re-derives the host by hand cannot reintroduce the trick.
+ *  - THE DEFAULT PORT ONLY. A trusted host on a strange port is a different service.
+ *  - EXACT HOSTS, or a genuine subdomain of a suffix. `explorers.starsystemx.com.evil.example`
+ *    ends with nothing on this list and is refused, which is the case the list exists for.
+ */
+export function isTrustedOpenUrl(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw.trim()) return 'That link did not carry a map address.';
+  let url: URL;
+  try {
+    url = new URL(raw.trim());
+  } catch {
+    return 'That link does not contain a web address this app can read.';
+  }
+  if (url.protocol !== 'https:') {
+    return `Shared maps are only opened over https, and that link is ${url.protocol.replace(':', '')}.`;
+  }
+  if (url.username || url.password) {
+    return 'That link has a sign-in embedded in it, which a shared-map address never does.';
+  }
+  if (url.port) {
+    return `That link points at port ${url.port}, and the map library does not answer there.`;
+  }
+  const host = url.hostname.toLowerCase();
+  const trusted =
+    TRUSTED_OPEN_HOSTS.some((h) => h.toLowerCase() === host) ||
+    TRUSTED_OPEN_HOST_SUFFIXES.some((s) => host.endsWith(s));
+  if (!trusted) {
+    return `This app only opens shared maps from the map library, and that link points at ${host}.`;
+  }
+  return null;
+}

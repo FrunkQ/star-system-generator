@@ -5850,17 +5850,38 @@ BLAST: the cycle check skipped the ROOT, and `a -> b -> a` with `a` named as the
 to the root and looked fine - the insert would have hung a node off itself. A root's parent is the
 thing being pasted ONTO and is by definition outside the clip; the spec caught it, not the reasoning.
 
-### DATA-R35 A SHARED MAP IS AN IMPORT THAT ARRIVED BY LINK, AND IT NEVER REPLACES A CAMPAIGN UNASKED
+### DATA-R35 A SHARED MAP IS AN IMPORT THAT ARRIVED BY LINK - TWO LINKS, ONE DOOR, AND IT NEVER REPLACES A CAMPAIGN UNASKED
 BUCKET: ARCHITECTURE (the funnel) - a URL a stranger can craft reaches straight into the one thing
 this app stores, so the whole path is written as untrusted input with one deliberate question in the
 middle of it.
-WHERE: `hub/hubConfig.ts` (the ONE place a hub URL exists, and the flags), `hub/hubClient.ts`
-(`isValidHubSlug`, `parseHubReference`, `fetchHubMap`), `hub/hubSaves.ts` (the GM's preference),
-`hub/hubUpload.ts` (R-04, built and parked), and in `routes/+page.svelte` `runHubOpen` /
-`openHubMap` / `declineHubMap`. Gated by `hub/hubClient.spec.ts` and `hub/hubUpload.spec.ts`.
+WHERE: `hub/hubConfig.ts` (the ONE place a hub URL exists, the flags, and R-17's
+`TRUSTED_OPEN_HOSTS` / `isTrustedOpenUrl`), `hub/hubClient.ts` (`isValidHubSlug`,
+`parseHubReference`, `fetchHubMap`, `fetchHubMapFromUrl`, and the shared `fetchBundleBytes`),
+`hub/hubSaves.ts` (the GM's preference), `hub/hubUpload.ts` (R-04, built and parked), and in
+`routes/+page.svelte` `hubOpenRequest` / `runHubOpen` / `runHubOpenFromUrl` / `openHubBytes` /
+`openHubMap` / `declineHubMap`. Gated by `hub/hubClient.spec.ts`, `hub/hubOpenUrl.spec.ts`,
+`routes/hubOneDoor.spec.ts` and `hub/hubUpload.spec.ts`.
 RULE ONE: **the slug is validated BEFORE a URL is built from it, never after.** Encoding is a second
 line of defence, not the first: `../../admin`, `//evil.example.com/x` and `a/b` are refused before
 `encodeURIComponent` is reached, and a refused slug never touches the network at all.
+RULE ONE-B (R-17): **`?hub=` names a map, `?open=` names an ADDRESS, and that one difference is the
+whole of the extra risk.** A slug is a name this app turns into a URL on the hub's own origin, so a
+link could never choose the destination; `?open=<url>` hands the destination over, which is an
+SSRF-shaped thing. **The allow-list is the entire defence and it is DATA** - `TRUSTED_OPEN_HOSTS` +
+`TRUSTED_OPEN_HOST_SUFFIXES` in `hubConfig.ts`, beside every other hub address for the reason that
+file already gives - and **the refusal happens BEFORE the fetch**, same ordering as the slug check
+and for the same reason: an address you have already contacted has not been validated. `https:`
+only, no userinfo (`https://explorers.starsystemx.com@evil.example/` reads as the hub and fetches
+`evil.example`), the default port only, and exact hosts or a genuine subdomain of a suffix, so
+`explorers.starsystemx.com.evil.example` and `notpages.dev` both lose. The gate pins the list's
+CONTENTS literally, so widening what the app will fetch costs a test edit - deliberately. **The
+widest entry is `*.pages.dev`**, which trusts every Cloudflare Pages site rather than the hub's;
+it is there because the hub asked for it by name and it is the first thing to remove.
+RULE ONE-C (R-17): **TWO WAYS TO GET BYTES, ONE FUNCTION THAT OPENS THEM.** `runHubOpen` (by code)
+and `runHubOpenFromUrl` (by address) differ in exactly one step and share everything after it via
+`openHubBytes`. A second fetch-and-open path would be a second set of answers to "may this replace
+the campaign?", and the shape is gated in the SOURCE (`routes/hubOneDoor.spec.ts`) precisely because
+the fault it guards against is a NEW path that passes every behavioural test the old one does.
 RULE TWO: **the response is capped while it arrives.** `content-length` is a claim, so it is only an
 early exit; the real cap is applied to the bytes as they stream, because `arrayBuffer()` has already
 made the allocation by the time anything could measure it.

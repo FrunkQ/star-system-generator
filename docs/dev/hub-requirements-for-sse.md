@@ -19,6 +19,7 @@ hub could not see.
 | R-11 custom definitions in saves | **= [[B112]]** | Expanded spec of the banked `save-defaults-task.md`. Fold this text in when handing B112 out. |
 | R-12 revision counter | NEW, IMPORTANT, cheap | Prevents real data loss (stale-export overwrite). Ride it WITH the B112 serialisation batch — same territory, same fixtures. |
 | R-13 shipped-content manifest | NEW | Build guidance, no decision needed: per the doc's own conclusion, per-entry `custom` flags win for SAVE contents, the manifest earns its place for ASSETS (star-type images, starter models). |
+| R-17 open a map from a URL | **SHIPPED (stream M) — the parameter is `?open=`** | Banked verbatim below, added 2026-09-06; it arrived after this file was written. Built as a SPLIT of the existing `?hub=` door rather than a second path: `runHubOpen` (by code) and `runHubOpenFromUrl` (by address) both reach `openHubBytes`. The allow-list is DATA (`TRUSTED_OPEN_HOSTS` in `hubConfig.ts`) and the refusal precedes the fetch. **THE HUB MUST BE TOLD TWO THINGS:** the parameter is `open` on the QUERY STRING, not the hash; and `explorers.starsystemx.com` DOES NOT REACH THE HUB TODAY (measured 2026-09-06: it answers from Vercel with `DEPLOYMENT_NOT_FOUND`), so `open_in_sse_url` must carry the workers.dev download URL until the DNS moves. Both hosts are on the allow-list already, so the cutover needs no engine release. |
 
 **Suggested batching:** (1) R-01-gap + R-02-regen + R-03, one small engine batch — unblocks the hub
 entirely. (2) B112 + R-11 + R-12, the serialisation batch. (3) R-04 + R-05 + R-07 after the R-06
@@ -437,6 +438,71 @@ upload, which the hub currently decides by matching a path prefix.
 
 **Either solves the problem; the manifest solves more of it.** If both happen, the flags win for
 save contents and the manifest still earns its place for assets.
+
+---
+
+## R-17. Open a hub map from a URL — one click from a map page into the app
+
+**The owner's ask (2026-09-05):** *"how feasible is just an 'open in SSE' button next to download -
+instead of the Open SSE at the top - it is just 'open this in SSE'."*
+
+**What the hub does.** When the config row `open_in_sse_url` is set, every map page shows "Open in
+Star System Explorer" beside the download. The link is that URL with the map's download URL
+appended, percent-encoded:
+
+```
+https://starsystemx.com/?open=https%3A%2F%2Fexplorers.starsystemx.com%2Fapi%2Fdownload%2Flocal-neighbourhood
+```
+
+`GET /api/download/<slug>` already answers cross-origin: `access-control-allow-origin: *`, no
+credentials, on success and on error alike (the hub's `cors.ts`, learned the hard way). So there
+is no CORS problem to solve on the engine side: a plain `fetch` of that URL from starsystemx.com
+works today and returns the `.sse.zip` bundle, reassembled from approved assets only.
+
+**What the engine needs to do.**
+
+1. On load, read `open` from the query string (or the hash — the hub can send either; say which).
+2. Accept it only when it is an `https:` URL on a host the engine trusts — the hub's domain, its
+   workers.dev name while that lasts, a `pages.dev` preview. Anything else is ignored with a
+   plain message. A URL parameter that the app will fetch and load is an SSRF-shaped thing; the
+   allow-list is the whole defence.
+3. `fetch` it, and hand the bytes to the existing bundle import path — the same one the file
+   picker uses — so provenance, attributions and the format gate behave exactly as for a file.
+4. Then behave as a normal import would: ask the same "replace or add?" question the picker asks,
+   in the same words. Do not auto-replace a campaign somebody has open because a link said so.
+5. Strip the parameter from the address bar once handled, so a reload does not import twice.
+
+**What the hub will set.** The URL template goes in `open_in_sse_url`, e.g. `https://starsystemx.com/?open=`
+— the engine tells the hub the exact parameter name and the hub sets the row. Until then the button
+is not shown; nothing ships dead.
+
+**Not asked:** deep-linking to an object inside the map on open. The clip's `#node=<id>` already
+does that on the hub side; the engine can honour a second parameter later if it wants to.
+
+**SSE-SIDE STATUS, 2026-09-06 (stream M): SHIPPED on beta at v3.0.314.** The parameter is `open`, on
+the **query string** — the hub asked which, and this is the answer. Every numbered point above is
+built and was walked in a real browser against the live hub: with no campaign in this browser the map
+opens straight away; with one it asks the picker's own question and keeps the replaced campaign under
+the single step back; a refused host shows a plain message and **no request is made at all**; and the
+parameter is off the address bar in every one of those cases, including the refusal.
+
+**Two things the hub needs from this, and the second is the one that would have shipped a dead
+button.** (1) The prefix is `https://beta.starsystemx.com/?open=` as soon as beta carries it, and
+`https://starsystemx.com/?open=` only when the owner has released it to production — production is a
+read-tree release of beta on his explicit word, and nobody should tell the hub prod carries this until
+he has said so. (2) **`explorers.starsystemx.com` does not reach the hub.** Measured 2026-09-06:
+`GET https://explorers.starsystemx.com/api/download/local-neighbourhood` answers `404` from **Vercel**
+with `X-Vercel-Error: DEPLOYMENT_NOT_FOUND`, while the workers.dev origin answers `200` with
+`access-control-allow-origin: *` and `x-hub-version: 0.19.2`. R-17's own example URL uses the
+`explorers` host, so a button built from it today would fail for every visitor. Set `open_in_sse_url`
+to append the **workers.dev** download URL until the DNS moves; no engine change is needed on the day
+it does, because both hosts are already on the allow-list.
+
+**Also worth the hub knowing:** `/api/download/<slug>` currently returns **plain JSON**
+(`content-type: application/json`, `filename="local-neighbourhood.json"`), not a `.sse.zip`. That is
+fine and was expected — `classifySaveFile` is the same door either way — but R-17's text says the URL
+returns the bundle, so the two descriptions should be reconciled on the hub's side rather than left to
+the next reader.
 
 ---
 

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.314 - 6th Sep 2026
+
+- A map page on the Explorers site can now hand you the map directly: an "Open in Star System Explorer" link opens it here, with no download and no import step. It is the same door a downloaded file goes through, so anything the map credits, carries or refuses behaves exactly as it always did.
+- As before, it never quietly takes over the campaign you have open. With nothing loaded it just opens; with a campaign here it asks first, in plain words, and keeps your old one a single step back in Settings.
+- A link that points anywhere other than the map library is refused with a plain message, and nothing is fetched from it at all.
+
 ## v3.0.313 - 5th Sep 2026
 
 - Board: the hub-side engine work handed on as stream M - open a hub map from a link (R-17), then the shipped-content manifest (R-13) - for a fresh session to build.

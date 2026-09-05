@@ -36,7 +36,7 @@ export const MAX_HUB_BYTES = 64 * 1024 * 1024;
 /** Give up rather than hang a startup on a host that accepts the connection and then says nothing. */
 const FETCH_TIMEOUT_MS = 30_000;
 
-import { HUB } from './hubConfig';
+import { HUB, isTrustedOpenUrl } from './hubConfig';
 
 export type HubFetch =
   | { ok: true; bytes: Uint8Array }
@@ -98,19 +98,46 @@ export function hubDownloadUrl(slug: string): string {
 }
 
 /**
- * Fetch a shared map's bytes. Never throws: every failure comes back as a sentence a GM can act on,
- * because this runs at startup where an exception would be a blank screen.
+ * Fetch a shared map's bytes BY CODE — the `?hub=<slug>` funnel. Never throws: every failure comes
+ * back as a sentence a GM can act on, because this runs at startup where an exception would be a
+ * blank screen.
  */
 export async function fetchHubMap(slug: string, fetchImpl: typeof fetch = fetch): Promise<HubFetch> {
   if (!isValidHubSlug(slug)) {
     return { ok: false, problem: 'That shared-map link does not look like one — the code in it contains characters a hub map id never has.' };
   }
+  return fetchBundleBytes(hubDownloadUrl(slug), fetchImpl, hubMapUrl(slug));
+}
 
+/**
+ * FETCH A SHARED MAP'S BYTES BY ADDRESS — R-17, the hub's "Open in Star System Explorer" button.
+ *
+ * The one and only difference from `fetchHubMap` is where the address comes from, and it is the
+ * whole of the risk: a slug is a name this module turns into a URL on the hub's own origin, so the
+ * destination was never the link's to choose. Here the link names it, so `isTrustedOpenUrl` is
+ * consulted BEFORE anything is fetched — the same ordering as the slug check above, and for the
+ * same reason: validating an address after you have already requested it validates nothing.
+ *
+ * Everything after that point is shared with the slug path deliberately. The size cap, the timeout,
+ * the credential rule and the messages are properties of "fetching a map from the network", not of
+ * how the map was named, and two copies of them would be two things to keep in step.
+ */
+export async function fetchHubMapFromUrl(url: string, fetchImpl: typeof fetch = fetch): Promise<HubFetch> {
+  const refusal = isTrustedOpenUrl(url);
+  if (refusal) return { ok: false, problem: refusal };
+  return fetchBundleBytes(String(url).trim(), fetchImpl, HUB.browseUrl);
+}
+
+/**
+ * The network half, shared by both ways in. `wayThrough` is the link offered when the fetch cannot
+ * happen at all — the map's own page when a slug named it, the library's front door otherwise.
+ */
+async function fetchBundleBytes(target: string, fetchImpl: typeof fetch, wayThrough: string): Promise<HubFetch> {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS) : null;
   let response: Response;
   try {
-    response = await fetchImpl(hubDownloadUrl(slug), {
+    response = await fetchImpl(target, {
       signal: controller?.signal,
       // A shared map is public and needs no account; sending credentials to another origin for a
       // link a stranger supplied would be the wrong default even where it would work.
@@ -120,7 +147,7 @@ export async function fetchHubMap(slug: string, fetchImpl: typeof fetch = fetch)
   } catch {
     return {
       ok: false,
-      problem: `Could not reach the map library. Check your connection, or open ${hubMapUrl(slug)} in a browser tab and download the map from there.`
+      problem: `Could not reach the map library. Check your connection, or open ${wayThrough} in a browser tab and download the map from there.`
     };
   } finally {
     if (timer) clearTimeout(timer);

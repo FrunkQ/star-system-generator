@@ -83,7 +83,7 @@
   import { classifySaveFile } from '$lib/io/classify';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
-  import { fetchHubMap } from '$lib/hub/hubClient';
+  import { fetchHubMap, fetchHubMapFromUrl, type HubFetch } from '$lib/hub/hubClient';
   import { looksLikeHubClip, insertClip, addContentCredit } from '$lib/io/hubClip';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import HubClipPasteModal from '$lib/components/HubClipPasteModal.svelte';
@@ -726,13 +726,14 @@
       } else {
         await handleLoadStarmap();
       }
-    } else if (!hubSlugFromUrl()) {
-      // R-05: a `?hub=` link is a request to open THAT map. Putting the new-campaign modal up in
-      // front of it would make the link's first act be a dialogue about something else.
+    } else if (!hubOpenRequest()) {
+      // R-05/R-17: a `?hub=` or `?open=` link is a request to open THAT map. Putting the
+      // new-campaign modal up in front of it would make the link's first act be a dialogue about
+      // something else.
       showNewStarmapModal = true;
     }
-    // R-05 runs LAST, deliberately: it has to know whether there is already a campaign in this
-    // browser before it can decide whether it is allowed to open anything.
+    // R-05/R-17 runs LAST, deliberately: it has to know whether there is already a campaign in
+    // this browser before it can decide whether it is allowed to open anything.
     await maybeOpenHubMap();
   });
 
@@ -827,15 +828,25 @@
     return typeof t === 'number' && Number.isFinite(t) ? t : 0;
   }
 
-  // --- R-05: open a shared map from the hub, in one click ---------------------------------------
+  // --- R-05 / R-17: open a shared map from the hub, in one click --------------------------------
   //
-  // `https://starsystemx.com/?hub=<slug>` is the funnel: a link in a Discord becomes a running
-  // system without a download-then-import. Two cautions govern everything below, and both come from
-  // the hub's own requirements.
+  // TWO LINKS, ONE DOOR. `?hub=<slug>` is the funnel a Discord link uses: a map's CODE, which this
+  // app turns into an address on the hub's own origin. `?open=<url>` is R-17, the hub's "Open in
+  // Star System Explorer" button beside a map's download: the ADDRESS, supplied whole.
   //
-  // 1. THE MAP IS UNTRUSTED INPUT. The slug comes from a URL a stranger can craft, so the bytes go
-  //    through `classifySaveFile` and then `openStarmapPayload` - the same door, the same fix-up and
-  //    the same `validateStarmap` an imported file gets. There is no shortcut for hub content.
+  // THEY DIFFER IN EXACTLY ONE STEP - how the bytes are obtained - so that is the only step that is
+  // written twice. `runHubOpen` and `runHubOpenFromUrl` are two ways of getting bytes; both then
+  // hand them to `openHubBytes`, which classifies, asks and opens. A second fetch-and-open path
+  // would be a second set of answers to "may this replace the campaign?", and two doors into one
+  // campaign store is the duplication this codebase keeps paying for.
+  //
+  // Two cautions govern everything below, and both come from the hub's own requirements.
+  //
+  // 1. THE MAP IS UNTRUSTED INPUT, and so is the link. A stranger can craft either parameter, so
+  //    the bytes go through `classifySaveFile` and then `openStarmapPayload` - the same door, the
+  //    same fix-up and the same `validateStarmap` an imported file gets. There is no shortcut for
+  //    hub content. `?open=` has a second guard before that one, because it names the ADDRESS: the
+  //    host must be on the allow-list in `hubConfig.ts` or nothing is fetched at all.
   //
   // 2. IT NEVER TOUCHES AN OPEN CAMPAIGN WITHOUT BEING TOLD TO. Browser storage holds exactly ONE
   //    campaign, so opening a shared map REPLACES what is in this browser - "open it as its own
@@ -843,21 +854,46 @@
   //    somebody's campaign to a link they clicked out of curiosity. So: with no campaign here it
   //    opens straight away, and with one it ASKS, says plainly what will happen, and keeps a copy
   //    of the replaced campaign under the same one-step-back mechanism the base-map upgrade uses.
-  let hubOffer: { slug: string; name: string; doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null } | null = null;
+  let hubOffer: { name: string; doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null } | null = null;
   let hubBusy = false;
   let hubProblem: string | null = null;
 
-  function hubSlugFromUrl(): string | null {
+  /** The two query parameters that ask this app to open somebody else's map. */
+  type HubOpenParam = 'hub' | 'open';
+
+  function hubParamFromUrl(name: HubOpenParam): string | null {
     if (!browser) return null;
-    try { return new URLSearchParams(window.location.search).get('hub'); } catch { return null; }
+    try { return new URLSearchParams(window.location.search).get(name); } catch { return null; }
+  }
+  const hubSlugFromUrl = () => hubParamFromUrl('hub');
+  const hubUrlFromUrl = () => hubParamFromUrl('open');
+
+  /**
+   * Is this page load a request to open a shared map at all? `?hub=` is checked first because it
+   * is the older link and a URL carrying both is not a thing the hub produces; if one ever appears,
+   * the code wins, which is the narrower of the two.
+   */
+  function hubOpenRequest(): { param: HubOpenParam; value: string } | null {
+    const slug = hubSlugFromUrl();
+    if (slug) return { param: 'hub', value: slug };
+    const url = hubUrlFromUrl();
+    if (url) return { param: 'open', value: url };
+    return null;
   }
 
-  /** Take `?hub=` off the address bar once it has been acted on, so a refresh does not re-offer. */
-  function clearHubParam() {
+  /**
+   * WHICH PARAMETER STARTED THE OPEN IN FLIGHT, so the one taken off the address bar is the one
+   * that put the offer up. Defaults to `hub` for the load-screen path, which has no parameter at
+   * all and where deleting an absent one is a no-op.
+   */
+  let hubOpenParam: HubOpenParam = 'hub';
+
+  /** Take the link's parameter off the address bar once acted on, so a refresh does not re-offer. */
+  function clearHubParam(param: HubOpenParam = hubOpenParam) {
     if (!browser) return;
     try {
       const url = new URL(window.location.href);
-      url.searchParams.delete('hub');
+      url.searchParams.delete(param);
       window.history.replaceState({}, '', url.pathname + (url.search || '') + url.hash);
     } catch { /* older engines: the offer simply reappears on a refresh, which is harmless */ }
   }
@@ -876,16 +912,38 @@
   }
 
   async function maybeOpenHubMap() {
-    const slug = hubSlugFromUrl();
-    if (!slug) return;
-    await runHubOpen(slug);
+    const request = hubOpenRequest();
+    if (!request) return;
+    if (request.param === 'hub') await runHubOpen(request.value);
+    else await runHubOpenFromUrl(request.value);
   }
 
+  /** BY CODE. One of two ways to get the bytes; `openHubBytes` is what happens to them. */
   async function runHubOpen(slug: string) {
+    hubOpenParam = 'hub';
+    await openHubBytes(() => fetchHubMap(slug));
+  }
+
+  /**
+   * BY ADDRESS - R-17. The other way to get the bytes, and the only thing it adds is that the
+   * address is refused unless `isTrustedOpenUrl` (inside `fetchHubMapFromUrl`) recognises the
+   * host. It reaches `openHubBytes` exactly as the code path does, so a link and a code get the
+   * same classification, the same question and the same one-step-back.
+   */
+  async function runHubOpenFromUrl(url: string) {
+    hubOpenParam = 'open';
+    await openHubBytes(() => fetchHubMapFromUrl(url));
+  }
+
+  /**
+   * THE ONE DOOR: classify, ask, open. Everything from here down is identical whether the map was
+   * named by a code or by an address, which is the point of the split above.
+   */
+  async function openHubBytes(getBytes: () => Promise<HubFetch>) {
     hubBusy = true;
     hubProblem = null;
     try {
-      const result = await fetchHubMap(slug);
+      const result = await getBytes();
       if (!result.ok) { hubProblem = result.problem; return; }
 
       // The SAME door an imported file uses. A hub map that is not a save says so in the words the
@@ -905,9 +963,9 @@
       noteCreatedWith(classified.doc);
 
       if ($starmapStore || hasSavedStarmap) {
-        hubOffer = { slug, name, doc: classified.doc, models: classified.models ?? null };
+        hubOffer = { name, doc: classified.doc, models: classified.models ?? null };
       } else {
-        await openHubMap({ slug, name, doc: classified.doc, models: classified.models ?? null });
+        await openHubMap({ name, doc: classified.doc, models: classified.models ?? null });
       }
     } catch (e) {
       hubProblem = `That shared map could not be opened: ${(e as Error)?.message ?? e}`;
@@ -917,7 +975,7 @@
   }
 
   /** The GM said yes (or there was nothing to lose). Keep a way back, then open it. */
-  async function openHubMap(offer: { slug: string; name: string; doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null }) {
+  async function openHubMap(offer: { name: string; doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null }) {
     hubOffer = null;
     const replaced = $starmapStore ?? (await loadSavedStarmap());
     if (replaced) {
