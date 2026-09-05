@@ -981,3 +981,109 @@ full vitest suite green before every push; bump the patch version every push; `g
 `src/lib/generated/exampleSystems.ts` and the two `tests/` fixtures churn on every run — do not commit them.
 A dev server for a worktree is registered by adding an entry to `C:\Development\.claude\launch.json` (the
 tool reads the PRIMARY working directory's file, not the worktree's) — that is how Stream K drove a browser.
+
+## STREAM M — the hub's next two asks of the engine: open a hub map from a URL (R-17), then the shipped-content manifest (R-13)
+
+**WRITTEN BY COORDINATOR 7, 2026-09-05, as the successor to the hub-side engine stream.** That stream shipped
+R-14's paste target (v3.0.292), the paste UI (v3.0.300, `HubClipPasteModal.svelte`), copy/cut/paste inside the
+campaign with proper undo (v3.0.303, `io/clipBuffer.ts`, `clipUndo.spec.ts`) and R-16 credit-on-paste, and is
+out of context. The hub's standing ask, in its own words (`C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-05.md`):
+*"Engine side: the paste UI, then R-17, then R-13."* The paste UI is done. This stream is R-17 then R-13, in that
+order, and nothing else. Every file:line below was checked against `origin/beta` at v3.0.311; re-verify, the tree
+moves daily.
+
+**Read first, in this order:** `CLAUDE.md`; the standing rules at the foot of `docs/dev/observations-inbox.md`; the
+[[G57]] row (the hub's requirements and what has shipped); `docs/dev/hub-requirements-for-sse.md` (the SSE-side copy
+with the coordinator's triage - R-13 is at its section 13, and R-17 is NOT in it yet: add it, verbatim from the hub's
+prompt file above, with a status line, as part of this stream); the hub's own `docs/sse-requirements.md` in the hub
+repo for R-13's full text and R-14's status note; engine-map entries DATA-R4 (the importer never invents), DATA-R20,
+DATA-R31 and whatever the G57 row names for the bundle format gate; `docs/dev/PLAYBOOK.md`. The hub does not edit this
+repo and this repo does not edit the hub's: you report to the hub through the owner, in the report-back below.
+
+### R-17 — "Open in Star System Explorer" from a hub map page (an afternoon, the hub says; believe it, but measure)
+
+**What the hub sends:** `https://starsystemx.com/?open=<percent-encoded download URL>`, where the URL is
+`https://explorers.starsystemx.com/api/download/<slug>` and returns the `.sse.zip` bundle reassembled from approved
+assets only, with `access-control-allow-origin: *` on success AND on error, so a plain `fetch` from the app's origin
+works today. The parameter name is yours; the hub stores the prefix in a config row and shows the button only once
+it is told the prefix is live.
+
+**What already exists, and is the whole point: the app ALREADY opens hub maps by code.** `src/routes/+page.svelte`
+around lines 828-880 holds the `?hub=<slug>` path: `hubSlugFromUrl`, `clearHubParam` (strips the parameter so a
+refresh does not re-offer), `openHubBySlug` and `runHubOpen`, with two cautions written above them that you must
+keep word for word in spirit: the map is UNTRUSTED input, so the bytes go through `classifySaveFile` and then
+`openStarmapPayload` and `validateStarmap` - the same door an imported file uses, no shortcut; and it NEVER touches
+an open campaign without being told, because browser storage holds exactly one campaign - with none it opens
+straight away, with one it ASKS in plain words and keeps a copy of the replaced campaign under the one-step-back
+mechanism the base-map upgrade uses. **R-17 is that same door with the address supplied whole.** So the job is a
+SPLIT, not a second path: separate "get the bytes" (by slug today, by URL now) from "classify, ask, open" in
+`runHubOpen`, and make `?open=` and `?hub=` converge on the one open function. Do not write a second fetch-and-open;
+two doors into one campaign store is exactly the duplication this codebase keeps paying for.
+
+**The allow-list is the defence, and it is DATA.** Accept only `https:` URLs whose host is `explorers.starsystemx.com`,
+the hub's `*.workers.dev` name while it lasts, or a `*.pages.dev` preview; anything else is refused with a plain
+message and never fetched - a URL the app will fetch and load is an SSRF-shaped thing. Put the list in ONE exported
+constant next to the hub code with a pure `isTrustedOpenUrl(url): string | null` (null = trusted, otherwise the
+reason), and gate it: a spec that tries `http:`, a look-alike host (`explorers.starsystemx.com.evil.example`), a
+userinfo trick (`https://explorers.starsystemx.com@evil.example/`), a `javascript:` scheme, and each trusted host,
+seen RED with the check removed. Strip the parameter from the address bar once handled (`clearHubParam` already
+does this for `?hub=`; make it take the parameter name). Bundle bytes go to the same `sniffBundle`/`unpackBundle`
+(`src/lib/io/bundle.ts:102`, `:270`) the picker uses, so provenance, attributions, the `bundleFormat` gate
+(`BUNDLE_FORMAT`, `takeBundleFormat`, `bundle.ts:40`, `:84`) and the format refusal behave exactly as for a file.
+
+**Verify it in a browser, end to end, against the live hub.** Register your worktree as a dev server in
+`C:\Development\.claude\launch.json` (an entry like the existing ones: `cmd /c cd /d <worktree> && npm run dev --
+--port 52xx --strictPort`, the tool reads the PRIMARY working directory's file, not the worktree's), then open
+`http://localhost:52xx/?open=https%3A%2F%2Fexplorers.starsystemx.com%2Fapi%2Fdownload%2Flocal-neighbourhood` with
+no campaign in storage (it should open straight away), then again with a campaign (it should ask, in the picker's
+words, and the one-step-back copy must exist), then with a refused host (plain message, nothing fetched - check the
+network log). Say in the report what you saw, not what the code says.
+
+**Report back to the hub, through the owner:** the exact prefixes - `https://beta.starsystemx.com/?open=` as soon
+as beta carries it, `https://starsystemx.com/?open=` only when the owner has released it to prod (prod is a
+read-tree release of beta on his word; do not tell the hub prod is live until he says it is).
+
+### R-13 — a machine-readable manifest of what SSE ships (after R-17, and only then)
+
+**What the hub asked for:** one static JSON served from the app listing the content that ships with the build -
+calendar names, tag category ids, star-type image paths, starter model paths, later the shipped gases/liquids/fuels
+- carrying `appVersion`. **Why:** the hub tells GM-authored content from app-shipped content by lists hand-copied out
+of this repo, and the first such list drifted within an hour of being written; a manifest turns a standing promise
+to notice a change in another repository into a fetch. **How much it bites (hub, 2026-09-04):** less than it did -
+since B112 (v3.0.225) a new save omits the shipped registries, so the baselines only matter for older files, and
+app artwork is told from uploads by path prefix, which has not failed on a real file. **The coordinator's triage
+stands:** per-entry `custom` flags win for SAVE contents; the manifest earns its place for ASSETS (star-type and
+planet-type images, starter models). Build it for the assets first and add the registries the hub named; do not
+invent categories it did not ask for.
+
+**The one rule that matters: a HAND-WRITTEN manifest is the hub's hardcoded list moved one repo over.** Generate it
+from the real sources and PIN it. The repo already has the pattern: `scripts/starmap-build/build-starmaps.mjs`
+writes `src/lib/generated/bundledArchiveHosts.mjs` (around its line 464) and `buildKit.spec.mjs` fails the suite
+when the checked-in output no longer matches a fresh build. Do the same: a script that walks the true sources -
+`static/images/star_types/` and `static/images/planet_types/` (and `STAR_IMAGE` in `src/lib/import/realsky/stars.mjs:8`,
+which maps class to image), `static/models/nasa/`, the calendar registry in `src/lib/temporal/`, the tag categories in
+`src/lib/tags/tagCategories.ts` / `tagDefaults.ts`, and the starter-sf rulepack files for gases/liquids/fuels when
+you get to them - and writes ONE checked-in JSON under `static/` (name it once, e.g. `static/shipped-content.json`)
+with `appVersion` from `package.json` and `bundleFormat` from `bundle.ts`. Pin it with a spec that regenerates in
+memory and deep-equals the served file, so a new star image or a renamed calendar fails the suite until the manifest
+is rebuilt (measure this red: add a throwaway file under `static/images/star_types/`, watch the spec fail, remove it).
+Rebuild AFTER the version bump, because `appVersion` is stamped into it - the starmap kit taught that lesson twice.
+
+**Report back to the hub:** the manifest's URL and its exact shape, with one real example, so the hub can replace
+its hand-copied baselines with a fetch and delete them.
+
+### Gates
+
+Every new one seen RED with its law removed, with at least one absolute assertion (PHY-34): the allow-list spec
+above; a spec that `?open=` and `?hub=` reach the SAME open function (pin the source: one `openHubBytes`-shaped
+function, both callers name it); the manifest pin. The existing hub specs (`hubClip.spec.ts`, `hubFixture.spec.ts`,
+`bundle.spec.ts`, `clipUndo.spec.ts`) stay green; do not loosen one to pass.
+
+### Housekeeping
+
+Own worktree off `origin/beta`; commit as FrunkQ <frunk@frunk.net>; `npm run build` green AND the full vitest suite
+green before every push; bump the patch version every push; `git show --stat` before pushing. Two `tests/` fixtures
+and `src/lib/generated/exampleSystems.ts` churn on every run - do not commit them. The stash stack is SHARED across
+every worktree and session on this machine: never bare `git stash`/`pop`; set work aside with a WIP commit. Update
+the G57 row's status and the SSE-side requirements doc as you ship; claim any new board id at write time by checking
+both the `| id |` and `[[id]]` forms. Report versions, what the hub must be told, and anything left undone.

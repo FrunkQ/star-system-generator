@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.313 - 5th Sep 2026
+
+- Board: the hub-side engine work handed on as stream M - open a hub map from a link (R-17), then the shipped-content manifest (R-13) - for a fresh session to build.
+
 ## v3.0.312 - 5th Sep 2026
 
 - Fixed: pasting a system copied from the Explorers site crashed the app. The paste screen asked for something the page it lived on had never been given, and the moment it opened, everything stopped. It is gone, and the exact sequence that caused it has been walked through in a browser to be sure.
