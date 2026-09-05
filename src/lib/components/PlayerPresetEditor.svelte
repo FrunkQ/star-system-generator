@@ -1313,6 +1313,9 @@
                     selectedId={previewFocusId} playerChrome
                     forcedOrder={draft.sizeCompareOrder ?? 'size'}
                     on:select={(e) => (previewFocusId = e.detail.id)} />
+                  {#if draft.systemOverlay}
+                    <div class="ovl-wrap"><GraphicLayer placement={draft.systemOverlay} assets={$playerAssetList} /></div>
+                  {/if}
                 </div>
               </FilterFrame>
             {:else if draft.systemView === 'list' && previewSystem}
@@ -1435,4 +1438,5 @@
   button.primary { background: var(--accent); border-color: var(--accent); }
   /* The strip needs a real box to measure; the preview pane is otherwise content-sized. */
   .sizecmp-wrap { position: relative; width: 100%; height: 100%; min-height: 320px; }
+  .ovl-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 </style>

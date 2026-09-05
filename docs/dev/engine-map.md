@@ -6356,3 +6356,37 @@ the corona is `radius * (5 + activity * 4)` across, so on a TRUE-SCALE strip a s
 five times its own width and reads as part of the object. The size-comparison view turns it off, and
 that is not a style choice - a view whose whole claim is "this is how big these things really are"
 cannot draw a glow that makes a star look nine times its diameter. Seen live before it was believed.
+
+### RENDER-S54 EVERY PLAYER STAGE CARRIES THE FILTER AND THE OVERLAY, AND THERE ARE TWO WAYS TO DO IT
+BUCKET: ARCHITECTURE - a player-facing view that ignores the preset's visual filter does not look
+like a bug from the inside; it looks like a view. The tell is that its PREVIEW disagrees with it,
+which is the one thing the preview exists to prevent.
+WHERE: `routes/catalogue/+page.svelte` - one branch per stage, each of which must either run the
+filter itself (the holo) or wrap in `FilterFrame` (everything else); `components/FilterFrame.svelte`
++ `player/cssFilterApprox.ts` (the approximation); `holo/filteredCanvas.ts` (the real chain over a
+static canvas); mirrored in `PlayerPresetEditor.svelte`'s preview branches.
+RULE: a new player stage is not finished until it carries BOTH the preset's filter and its overlay
+graphic, and until the editor's preview of it does the same thing. Which mechanism depends on what
+the stage draws:
+ - IT DRAWS EVERYTHING ITSELF, IN ONE SURFACE -> the REAL shader. The holo runs it as a GPU pass
+   inside its own scene; a static 2D surface (cover, list, document) goes through
+   `createFilteredCanvas`, which is the same chain over a quad and also hands back `warpPoint` so a
+   tap on a barrel-warped, rolling picture still hits the right row.
+ - IT IS PART CANVAS AND PART DOM -> `FilterFrame`, the CSS approximation, round the WHOLE thing.
+   A CSS filter on an ancestor DOES reach a nested WebGL canvas - verified on the size comparison
+   under the CRT preset: the globes take the phosphor tint and the scanlines exactly as the labels
+   beside them do.
+WHY THE HYBRID CASE CANNOT JUST USE THE REAL ONE: the holo gets away with the GPU pass because
+everything it draws is IN the scene - its labels are sprites. The size comparison's labels, ruler
+and sub-pixel dots are DOM, so a pass over its globes alone would tint the planets and leave their
+names untouched. A consistent approximation over both halves reads better than an exact filter over
+one of them. The editor says as much in its own hint: "The 3D view uses the exact shader; text and
+2D screens use a lighter matched version so their content stays readable."
+WHY THIS IS AN ENTRY: the size comparison shipped as a player view (v3.0.308) with NEITHER - a GM
+choosing the CRT preset got no CRT at all - while the editor's preview DID wrap it, so the preview
+described a view that did not exist. Nothing failed, nothing warned, and every test was green:
+the filter is not something a stage opts out of loudly.
+BLAST: adding a stage means touching FOUR places that must agree - the catalogue branch, the preview
+branch, the overlay inside both, and the `ViewModule` union. To move a hybrid stage up to the exact
+shader, its chrome has to move into the rendered surface first (a HUD canvas composited as a quad,
+the way the holo does its info card); the filter change is the small half of that job.

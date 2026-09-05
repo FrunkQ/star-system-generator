@@ -1416,17 +1416,35 @@
          inherits its config". -->
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH}
       style={activePreset ? `font-family:${presetFont}` : ''}>
+      <!-- THE FILTER AND THE OVERLAY BELONG ROUND THE WHOLE PICTURE, and this view is the CSS-
+           approximation tier rather than the holo's. It first shipped (v3.0.308) with NEITHER —
+           a GM who chose the CRT preset got no CRT at all — while the preset editor's preview DID
+           wrap it, so the preview was describing a view that did not exist. That is the one thing
+           the preview exists to prevent.
+           WHY THE APPROXIMATION AND NOT THE REAL SHADER: the holo runs its filter as a GPU pass
+           INSIDE the scene, and gets away with it because everything it draws — labels included —
+           is in the scene as a sprite. Half of this view is DOM (the labels, the ruler, the dots),
+           so a GPU pass over the globes alone would tint the planets and leave their names
+           untouched, which reads worse than a consistent approximation over both. Making it the
+           real one means drawing the chrome into the rendered surface the way the holo does; that
+           is scoped on the board as part of [[G68]] and is not free. One filter over the composed
+           picture, and the overlay inside it so a graphic is filtered with what it sits on. -->
       {#if displaySystem}
-        <SizeComparisonView
-          items={sizeCompareItems}
-          scope="system"
-          mapId={displaySystem.id ?? null}
-          mode={isPhone ? 'phone' : 'desktop'}
-          selectedId={selectedBody?.id ?? null}
-          forcedOrder={activePreset?.sizeCompareOrder ?? 'size'}
-          playerChrome
-          on:select={(e) => { if (presetInteractive) { pushNavStep(); selectBodyById(e.detail.id); } }}
-        />
+        <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+          <SizeComparisonView
+            items={sizeCompareItems}
+            scope="system"
+            mapId={displaySystem.id ?? null}
+            mode={isPhone ? 'phone' : 'desktop'}
+            selectedId={selectedBody?.id ?? null}
+            forcedOrder={activePreset?.sizeCompareOrder ?? 'size'}
+            playerChrome
+            on:select={(e) => { if (presetInteractive) { pushNavStep(); selectBodyById(e.detail.id); } }}
+          />
+          {#if activePreset?.systemOverlay}
+            <div class="overlay-wrap"><GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} /></div>
+          {/if}
+        </FilterFrame>
       {/if}
       {#if !activePreset?.hideInfoPanel}{@render inspectorAside()}{/if}
     </div>

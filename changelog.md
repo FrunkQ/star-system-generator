@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.309 - 5th Sep 2026
+
+- Fixed: the Size comparison player view ignored the preset's visual filter and its overlay graphic entirely, so a table set up as a CRT terminal or a night-vision scope got a plain view instead. It now takes both, and the planets themselves are tinted and scanlined along with everything else.
+- The preview in the player-view editor had been showing the filter all along, so it was promising something the real view did not do. They match now.
+
 ## v3.0.308 - 5th Sep 2026
 
 - Size comparison is now one of the views you can give your players. Pick it under System in the player-view editor and your table gets the whole system at true relative size, with a preview while you set it up.
