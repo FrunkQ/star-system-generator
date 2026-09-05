@@ -870,3 +870,114 @@ the same on the starmap with Sirius A (now `star/A1V`) beside the Sun.
 **Report back** with versions, the engine-map entries you added, what you measured about the two assembly paths, and
 anything you left undone. Two sittings is honest: the extraction plus the desktop view; then phone, hiding, the ruler
 and the entry points.
+
+## STREAM L — finish G66: the size comparison's chrome into the canvas, and the last DOM player stage out (B126)
+
+**WRITTEN BY STREAM K, 2026-09-05, as a handover.** Stream K built G66 across v3.0.301-310 and ran out of
+context; everything below is measured, not remembered, and every line reference was re-verified against
+`origin/beta` at v3.0.310. Re-verify anyway — the tree moves daily.
+
+**Read first, in this order:** `CLAUDE.md`; the standing rules at the foot of `docs/dev/observations-inbox.md`;
+the [[B126]] row (the fault and the owner's decision), then [[G68]] and [[G66]] for what already exists;
+`docs/dev/v2.2-player-view-visual-overhaul.md` **section 7** (the 2026-07-18 decision this stream serves —
+read it before writing any code); engine-map `RENDER-S54`, `RENDER-S52`, `RENDER-S53`, `DATA-R20`, `A39`.
+
+### What is already done, and works
+
+G66 shipped in eight pushes. The laws are pure and gated in `src/lib/comparison/layout.ts` (order, the median
+planet, the 50%/30% scale shares, the strip, the orbit tree, the pixel floor, ring reach, the ruler, the scroll
+clamp and the zoom anchor) with ~70 gates in `layout.spec.ts` + `items.spec.ts` + `playerView.spec.ts`, every one
+seen RED against a deliberate mutation. `holo/comparisonScene.ts` draws the globes through an orthographic
+camera measured IN PIXELS. `components/SizeComparisonView.svelte` is the chrome. It is reachable from the rail
+under Measure on both GM maps, and as a player system view (`ViewModule` `'sizecompare'`).
+
+**Do not re-litigate any of that.** This stream is one job.
+
+### The job
+
+**THE STRIP'S CONTENT IS DOM AND MUST BE DRAWN INTO THE RENDERED SURFACE.** Owner, 2026-07-18
+(`v2.2-player-view-visual-overhaul.md` §7): *"a player 'info screen' ... is drawn ONE way - canvas region ->
+shader ... Retire the DOM `.inspector` + `cssFilterApprox` chrome for player views; keep DOM only where a preset
+is explicitly un-filtered."* The reason is a fault mode, not tidiness: DOM chrome sits in SCREEN space and does
+not follow the warped, inset projection, so a barrel-warped CRT bends the picture and leaves the text over it
+straight. Stream K went the wrong way twice (v3.0.308 added the DOM stage, v3.0.309 wrapped it in `FilterFrame`)
+and then wrote the wrong rule into `RENDER-S54`, since corrected.
+
+**THE OWNER HAS ALREADY DECIDED THE ONE QUESTION THIS RAISES (2026-09-05): ONE canvas renderer serves BOTH
+tiers, and the strip's size labels stop being a place you can cycle the unit from.** He was offered the
+alternative — a DOM renderer for the GM and a canvas one for the player — and rejected it, because two
+implementations of one set of labels is this codebase's most recurring fault. The unit still cycles from every
+other panel and the strip follows, because the labels read the same `unitPrefs` store either way (DATA-R20:
+stored values never leave SI, a pref RELABELS). **Do not add a second renderer to preserve the click.**
+
+### The shape of it
+
+1. **`src/lib/comparison/stripChrome.ts` — NEW, and the only place the strip's text is drawn.** A pure-ish
+   function taking the `StripLayout` (`layout.ts`), the `ReferenceMark[]` and `minorTicks` output, the unit prefs
+   and a `CanvasRenderingContext2D`, and drawing: the per-object label (name + diameter), the sub-pixel DOTS and
+   their "below N px at this scale" note, and the ruler with its three highlighted reference ticks and minor
+   ticks. It is all already computed — `layoutStrip` returns `centrePx`, `crossPx`, `spanPx`, `diameterPx`,
+   `belowFloor`, `labelSide`, `depth`; `referenceMarks` returns `posPx`, `row` and `off`. Nothing needs
+   recomputing, only drawing.
+   **Units go through `units.ts` and nothing else** — `resolveUnitPref` (`units.ts:519`), `resolveAutoUnit`
+   (`:314`), `unitFromSI` (`:333`), `formatUnitNum` (`:406`), `unitIdLabel` (`:345`). That is the same chain
+   `UnitValue.svelte` runs, so the canvas text and every panel cannot disagree. DATA-R20 is explicit that
+   SIG_FIGS lives in `formatUnitNum` and nowhere else — do not format a number by hand.
+   Gate it headlessly by recording the ctx calls (the jsdom canvas stub in `src/setup.ts` is a Proxy; record
+   `fillText` calls and assert the strings and positions).
+
+2. **`src/lib/holo/comparisonScene.ts` — composite that canvas and run the REAL filter chain.**
+   `createComparisonScene` is at `:81`; the renderer at `:82`, the ortho camera at `:87`, `applyCamera()` at
+   `:204`, the render call at `:249`. One world unit is one CSS pixel, so the chrome canvas is a screen-space
+   quad at the front of the frustum with a `CanvasTexture` — no projection maths.
+   **Copy `holo/filteredCanvas.ts` for the filter chain**: `EffectComposer` + `RenderPass` + a `ShaderPass` from
+   `filters/FilterRegistry` and `filters/shaderMaterial` (`buildShaderObject`, `updateUniforms`). Its controller
+   (`filteredCanvas.ts:13-21`) is the API to mirror: `setFilter(id, params)`, `warpPoint(su, sv)`, `resize`.
+   Add `setFilter` and `warpPoint` to `ComparisonSceneHandle` (`:58`).
+   NB `filteredCanvas.ts:26` sets `preserveDrawingBuffer: true` and says why — A38 paid for that lesson.
+
+3. **`SizeComparisonView.svelte` — delete the DOM content, keep the CONTROLS.** The label block is at `:404-412`
+   (it mounts `UnitValue`), the ruler at `:422-429`, the hit areas at `:393`. The order pills (`:352`), the
+   steppers (`:458`, `:462`) and the header stay DOM: they are controls, not content, and the holo keeps
+   `BodyPicker` as DOM for the same reason. Feed the chrome canvas to the scene alongside the existing
+   `setSlots` (`:131`) / `setView` (`:136`) calls.
+   **PICKING MUST GO THROUGH `warpPoint`.** The invisible hit areas are the one DOM thing that survives, and
+   under a warped filter they no longer sit over what they name. Map the pointer through `warpPoint` to a source
+   uv, then to a strip coordinate, then hit-test the LAYOUT (`slots`, which carry `centrePx`/`crossPx`/`spanPx`)
+   rather than the DOM. That also fixes the drag and the tap-vs-drag slop under warp.
+
+4. **Drop `FilterFrame` from both mounts and pass the filter instead.** The live branch is
+   `routes/catalogue/+page.svelte:1411` (the `FilterFrame` to remove is at `:1433`); the editor preview is
+   `PlayerPresetEditor.svelte:1306-1310`. Both must change together or the preview lies about the live view
+   again, which is exactly what [[B126]] records. The overlay graphic goes on being rendered — it is a
+   `GraphicLayer` over the top; decide whether it joins the quad or stays DOM and SAY WHICH.
+
+5. **`FilterFrame` stays for the GM's own view.** The GM maps are never filtered (no `filterId` anywhere in
+   `SystemView.svelte` or `Starmap.svelte` — checked), so `playerChrome === false` runs the same canvas chrome
+   with the filter set to `'none'`. One renderer, one code path, one look.
+
+### Gates
+
+The pure laws are already covered; what is NEW and needs pinning: the chrome renderer's output (recorded
+`fillText` strings and positions for a known layout — including a below-floor dot's note and a ruler mark's
+label); the unit chain (a pref change moves the drawn string, and the string equals what `UnitValue` would
+render for the same value); `warpPoint` round-tripping a pointer to the right slot with a warp active AND with
+the filter off; and the preview/live parity — assert both mounts pass the same `filterId`. **Every one seen RED
+with its law removed**, and at least one absolute assertion, not a ratio (PHY-34).
+
+### What Stream K left unseen, so this stream should look
+
+- **The frame-rate guard has never fired on a genuinely slow map** ([[G69]]) — it was verified by forcing
+  `SHED_FPS`/`WARMUP_MS`. If you can make a map that slow, watch it.
+- **An actual player window has never been opened on this view** — it needs a broadcast session between two
+  browsers. Everything player-side was verified through the preset editor's preview.
+- After the conversion: **a CRT preset on the size comparison, warped**, is the thirty-second eyeball — the
+  labels must bend WITH the planets, and a tap must still land on the world under your finger.
+
+### Housekeeping
+
+Work in your own worktree off `origin/beta`; commit as FrunkQ <frunk@frunk.net>; `npm run build` green AND the
+full vitest suite green before every push; bump the patch version every push; `git show --stat` before pushing.
+`src/lib/generated/exampleSystems.ts` and the two `tests/` fixtures churn on every run — do not commit them.
+A dev server for a worktree is registered by adding an entry to `C:\Development\.claude\launch.json` (the
+tool reads the PRIMARY working directory's file, not the worktree's) — that is how Stream K drove a browser.

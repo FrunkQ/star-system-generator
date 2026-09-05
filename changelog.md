@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.311 - 5th Sep 2026
+
+- Notes only, no change to the app: the plan for finishing the Size comparison is written up for the next session, including the decision that its labels will be drawn into the picture rather than sitting over it as web text.
+
 ## v3.0.310 - 5th Sep 2026
 
 - Notes only, no change to the app: the new Size comparison player view draws its labels and ruler as ordinary web text over the picture, and that is against a decision taken back in July — player screens are meant to be drawn into the picture itself so the visual filters bend the text along with everything else. Written down properly with what it will take to put right.
