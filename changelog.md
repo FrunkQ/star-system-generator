@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.303 - 5th Sep 2026
+
+- Copy and paste now work inside your own campaign. Right-click any world, moon, station or ship and you get Copy, Cut, and - once something is on the clipboard - Paste it here. It moves the whole branch: copy a planet and its moons come, copy a station and its docked ships come, and the menu says how many objects that is before you commit to it. Paste it anywhere in the same campaign, in the same system or another one.
+- It is the same clipboard the map library uses, so a branch copied here can be pasted into another tab, and something copied from the Explorers site pastes in exactly the same way.
+- Undo and redo treat it the way you would expect. A paste is one step and undoing it takes the whole branch away, not one object at a time; a cut is one step and undoing it puts the branch back where it was, with its moons still under their planet. Cut and paste stay two separate steps, because they are two things you did - undo reverses the paste first, then the cut.
+- The credit follows the content. Copy something you pasted in from somebody else's map and the attribution comes with it, so your campaign still says whose work it is however many times it is moved.
+
 ## v3.0.302 - 5th Sep 2026
 
 - Size comparison, now actually looked at. On the starmap it was showing nothing at all, and on both maps the planets were not being drawn - only their names. Both fixed, along with four more faults that only turned up on screen.

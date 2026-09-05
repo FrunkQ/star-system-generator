@@ -54,6 +54,9 @@
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
+  import { buildClip } from '$lib/io/hubClip';
+  import { clipBuffer, putClip } from '$lib/io/clipBuffer';
+  import { endUndoAction } from '$lib/undo/systemUndo';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
   import { classifySaveFile } from '$lib/io/classify';
@@ -300,6 +303,69 @@
 
   // Context Menu State
   let showSummaryContextMenu = false;
+
+  // --- Copy / cut / paste inside the campaign (owner, 2026-09-05) --------------------------------
+  //
+  // The same clip the map library sends, produced and consumed here, so one format serves both and
+  // there is no second thing to keep in step. A COPY takes the branch - a planet brings its moons -
+  // because that is what the hub's Copy does and because half a family is never what anyone meant.
+  //
+  // UNDO. Every one of these goes through `systemStore.set`, which is the only thing `systemUndo`
+  // watches, so they are undoable for free; what they add is `endUndoAction()` so a cut or a paste
+  // is exactly ONE step rather than being coalesced with whatever was edited in the 250 ms before
+  // it. Cut and paste stay TWO steps on purpose: they are two things a GM did, and undoing a paste
+  // to find the branch back where it started would be a lie about which of them was reversed.
+  function subtreeOf(sys: any, nodeId: string): string[] {
+    if (!sys) return [];
+    const out = [nodeId];
+    for (let i = 0; i < out.length; i++) {
+      for (const n of sys.nodes) if (n.parentId === out[i] && !out.includes(n.id)) out.push(n.id);
+    }
+    return out;
+  }
+
+  function handleCopyNode(e: CustomEvent<any>) {
+    const node = e.detail;
+    if (!$systemStore || !node?.id) return;
+    // Credits ride along, so a body pasted in from somebody's map keeps its attribution when it is
+    // copied on again. This is where a credit would otherwise quietly evaporate.
+    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [] });
+    if (!clip) return;
+    putClip(clip, String(node.name ?? 'object'));
+    showSummaryContextMenu = false;
+    clipNotice = `Copied ${clip.nodes.length} object${clip.nodes.length === 1 ? '' : 's'}.`;
+  }
+
+  function handleCutNode(e: CustomEvent<any>) {
+    const node = e.detail;
+    if (!$systemStore || !node?.id) return;
+    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [] });
+    if (!clip) return;
+    putClip(clip, String(node.name ?? 'object'), true);
+    // The SAME delete the delete action uses - `deleteNode` already takes the whole subtree, so a
+    // cut and a delete cannot disagree about what "this object" means.
+    systemStore.set(systemProcessor.process(deleteNode($systemStore, node.id), rulePack));
+    endUndoAction();
+    showSummaryContextMenu = false;
+    clipNotice = `Cut ${clip.nodes.length} object${clip.nodes.length === 1 ? '' : 's'}. Right-click where it should go.`;
+  }
+
+  /** Paste straight onto the right-clicked node: the host is unambiguous, so nothing is asked. */
+  function handlePasteHere(e: CustomEvent<any>) {
+    const host = e.detail;
+    const entry = $clipBuffer;
+    if (!$systemStore || !host?.id || !entry) return;
+    showSummaryContextMenu = false;
+    dispatch('pasteClip', { clip: entry.clip, systemId: $systemStore.id, hostId: host.id });
+  }
+
+  let clipNotice: string | null = null;
+  let clipNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  $: if (clipNotice) {
+    if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+    clipNoticeTimer = setTimeout(() => (clipNotice = null), 6000);
+  }
+
   let contextMenuX = 0;
   let contextMenuY = 0;
   let contextMenuItems: CelestialBody[] = [];
@@ -2840,8 +2906,12 @@
       {#if contextMenuType === 'generic'}
         <ContextMenu 
           selectedNode={contextMenuNode} 
+          subtreeCount={contextMenuNode ? subtreeOf($systemStore, contextMenuNode.id).length : 1}
           x={contextMenuX} 
           y={contextMenuY} 
+          on:copyNode={handleCopyNode}
+          on:cutNode={handleCutNode}
+          on:pasteHere={handlePasteHere}
           on:addConstruct={handleAddConstruct}
           on:link={handleLinkStartOrFinish}
           {isLinking}

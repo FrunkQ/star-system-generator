@@ -5752,6 +5752,26 @@ tagged, never refused.
 WHY: hub R-14 ([[G57]]). Every row of a hub map page has a Copy control and it has led nowhere since
 it shipped - both `main` and this branch were grepped, and the gas-giant recipe and the hub link were
 the only clipboard readers in the engine.
+COPY AND CUT INSIDE THE CAMPAIGN (owner, 2026-09-05), AND THE CLIP FORMAT SERVES BOTH DIRECTIONS.
+`buildClip` produces exactly what `parseHubClip` reads, so a clip this app made and one the hub made
+are indistinguishable to the reader - a second internal format would be a second thing to keep in
+step. Two differences, both deliberate: **nothing is stripped** (the hub drops `image`, `model` and
+`gmNotes` because it publishes to strangers; a GM copying their own work would just be losing a
+planet's photograph), and **`source` is absent** because there is no other cartographer. What DOES
+travel is `credits` - any `contentCredits` row covering a copied node, ids remapped on insert - so a
+body pasted in from somebody's map keeps its attribution when it is copied on. That is the exact
+point at which a credit would otherwise quietly evaporate.
+UNDO: every one of copy, cut and paste goes through `systemStore.set`, which is the only thing
+`systemUndo` watches, so they are undoable WITHOUT knowing anything about undo. What they add is
+`endUndoAction()`. **Cut and paste stay TWO steps on purpose** - they are two things a GM did, and
+undoing a paste to find the branch back in its old home would be a lie about which was reversed.
+TWO THINGS A TEST GETS WRONG HERE, both learned the hard way. (1) **`endUndoAction()` closes the
+action in a MICROTASK**, so a test performing two gestures SYNCHRONOUSLY never lets the boundary land
+and the two collapse into one step; in the app many event-loop turns separate two gestures, so
+`clipUndo.spec.ts` awaits a microtask between them as the app effectively does. (2) **A PASTE CAN ADD
+A NODE THE CLIP NEVER CONTAINED**: pasting Earth under Mars promotes the comparable-mass pair and a
+barycentre appears between them. That is the engine steering rather than stopping, and undo removes
+it with the paste that caused it, because the pair was never in the authored state.
 THE WAY IN (owner, 2026-09-03): a paste event ANYWHERE, and a screen with a text box. TWO ENTRY
 POINTS, ONE INSERT - `applyHubClip` in `routes/+page.svelte` is the only place that puts a branch
 into a campaign, so there is no second copy of that decision. The text box is not a nicety:

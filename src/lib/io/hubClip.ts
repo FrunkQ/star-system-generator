@@ -58,6 +58,13 @@ export interface HubClip {
   source?: HubClipSource;
   root: string;
   nodes: any[];
+  /**
+   * Credits that came WITH the copied content, when this clip was produced by SSE itself
+   * (`buildClip`). An SSE extension the hub neither sends nor reads - and safe precisely because
+   * both readers leave fields they do not know alone. It is what stops a credit evaporating when a
+   * GM copies a body they pasted in from somebody's map.
+   */
+  credits?: ContentCredit[];
 }
 
 export type ClipParse = { ok: true; clip: HubClip } | { ok: false; problem: string };
@@ -140,7 +147,63 @@ export function parseHubClip(text: string): ClipParse {
       cur = next;
     }
   }
-  return { ok: true, clip: { sseClip: raw.sseClip, source: raw.source, root: rootId, nodes: raw.nodes } };
+  // `credits` rides through: a clip this app produced carries the attribution of anything in it
+  // that came from somebody else's map, and dropping it here is how a credit quietly evaporates on
+  // the second copy. Shape-checked only - the content is not this reader's to edit.
+  const credits = Array.isArray(raw.credits) ? raw.credits.filter((c: any) => c && typeof c === 'object') : undefined;
+  return {
+    ok: true,
+    clip: {
+      sseClip: raw.sseClip, source: raw.source, root: rootId, nodes: raw.nodes,
+      ...(credits && credits.length ? { credits } : {})
+    }
+  };
+}
+
+/**
+ * COPY A BRANCH OUT OF A SYSTEM — the same format the hub sends, produced by this app.
+ *
+ * The owner, 2026-09-05: "on a right click on an object that menu gets a Copy option that allows
+ * me to cut and paste locally across my own star map / set of system maps." So the clip stops being
+ * a thing only the hub makes: it is the app's own copy/cut buffer too, and ONE format serves both
+ * because a second one would be a second thing to keep in step.
+ *
+ * TWO DIFFERENCES FROM A HUB CLIP, both deliberate:
+ *  - NOTHING IS STRIPPED. The hub drops `image`, `model` and `gmNotes` because it publishes to
+ *    strangers. A GM copying inside their own campaign is moving their own work, so the picture,
+ *    the model reference and the private notes all come - losing a planet's photograph on a copy
+ *    would be a bug, not a safeguard.
+ *  - `source` IS ABSENT. There is no other cartographer: this content is already the GM's. What
+ *    DOES travel is `credits` - any `contentCredits` row on the campaign that covers a copied node,
+ *    so a body pasted in from somebody's map keeps its credit when it is copied on again. Losing
+ *    that is precisely how attribution quietly evaporates.
+ */
+export function buildClip(
+  system: System,
+  rootId: string,
+  opts: { credits?: ContentCredit[] } = {}
+): HubClip | null {
+  const byId = new Map(system.nodes.map((n) => [n.id, n]));
+  if (!byId.has(rootId)) return null;
+
+  // The subtree, parents first - the order the hub documents, so a clip this app produced and one
+  // the hub produced are indistinguishable to any reader.
+  const out: any[] = [];
+  const walk = (id: string) => {
+    const node = byId.get(id);
+    if (!node) return;
+    out.push(JSON.parse(JSON.stringify(node)));
+    for (const child of system.nodes) if (child.parentId === id) walk(child.id);
+  };
+  walk(rootId);
+  out[0].parentId = null; // the root's parent is whatever it is pasted ONTO
+
+  const ids = new Set(out.map((n) => n.id));
+  const credits = (opts.credits ?? [])
+    .filter((c) => (c.nodeIds ?? []).some((i) => ids.has(i)))
+    .map((c) => ({ ...c, nodeIds: (c.nodeIds ?? []).filter((i) => ids.has(i)) }));
+
+  return { sseClip: CLIP_FORMAT, root: rootId, nodes: out, ...(credits.length ? { credits } : {}) };
 }
 
 export type ClipInsert =
@@ -157,6 +220,8 @@ export type ClipInsert =
        * nothing: a credit with no title, no creator and no url would be a row saying nothing.
        */
       credit?: ContentCredit;
+      /** Credits that came WITH the copied content (an internal copy), ids already remapped. */
+      carried?: ContentCredit[];
     }
   | { ok: false; problem: string };
 
@@ -255,7 +320,13 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
     count: inserted.length,
     hostName: String((host as any).name ?? host.id),
     mode,
-    credit: creditFor(clip.source, inserted.map((n) => n.id))
+    credit: creditFor(clip.source, inserted.map((n) => n.id)),
+    // Credits that travelled WITH the content, their node ids remapped to the copies just made.
+    // A clip from the hub has none of these (its own credit is `credit` above); a clip this app
+    // copied carries whatever covered the branch, so the attribution survives the second hop.
+    carried: (clip.credits ?? [])
+      .map((c) => ({ ...c, nodeIds: (c.nodeIds ?? []).map((i) => remap.get(i)).filter(Boolean) as string[] }))
+      .filter((c) => c.nodeIds.length)
   };
 }
 

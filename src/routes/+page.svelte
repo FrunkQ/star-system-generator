@@ -85,6 +85,7 @@
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
   import { fetchHubMap } from '$lib/hub/hubClient';
   import { looksLikeHubClip, insertClip, addContentCredit } from '$lib/io/hubClip';
+  import { endUndoAction } from '$lib/undo/systemUndo';
   import HubClipPasteModal from '$lib/components/HubClipPasteModal.svelte';
   import { HUB } from '$lib/hub/hubConfig';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
@@ -766,7 +767,11 @@
    * writes the stability tags that say whether the new home can hold what was just dropped in.
    */
   function applyHubClip(e: CustomEvent<{ clip: any; systemId: string; hostId: string }>) {
-    const { clip, systemId, hostId } = e.detail;
+    pasteClipInto(e.detail);
+  }
+
+  /** The paste itself, reached from the screen AND from a right-click "Paste here". */
+  function pasteClipInto({ clip, systemId, hostId }: { clip: any; systemId: string; hostId: string }) {
     const map = $starmapStore;
     if (!map) return;
     const entry = map.systems.find((s: any) => (s.system?.id ?? s.id) === systemId);
@@ -789,10 +794,19 @@
         (s.system?.id ?? s.id) === systemId ? { ...s, system: processed } : s
       );
       // R-16: the credit goes on the CAMPAIGN, not the node - nodes get renamed and deleted.
-      return addContentCredit({ ...m, systems }, result.credit);
+      // `carried` is an INTERNAL copy's baggage: a body pasted in from somebody's map keeps its
+      // attribution when it is copied on, so the campaign's credits stay true to what is in it.
+      let next: any = addContentCredit({ ...m, systems }, result.credit);
+      for (const c of result.carried ?? []) next = addContentCredit(next, c);
+      return next;
     });
     // The open system is the same object the campaign holds; keep the view in step with it.
     if ($systemStore && $systemStore.id === systemId) systemStore.set(processed);
+
+    // UNDO: one step per paste. Every write above went through `systemStore.set`, which is what
+    // `systemUndo` watches, so the branch is undoable for free - this only stops it being coalesced
+    // with whatever was edited in the 250 ms before it.
+    endUndoAction();
 
     const who = result.credit?.creator ? ` (credited to ${result.credit.creator})` : '';
     clipNotice = `Pasted ${result.count} object${result.count === 1 ? '' : 's'} into ${result.hostName}${who}.`;
@@ -2470,6 +2484,7 @@
     {#if $systemStore && effectiveRulePack}
       <SystemView
         on:pasteFromHub={() => (clipPasteText = '')}
+        on:pasteClip={(e) => pasteClipInto(e.detail)}
         system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
         {broadcastSessionId}
         routesAttention={routesData.worstAttention}

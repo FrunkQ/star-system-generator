@@ -9,7 +9,7 @@
 // integer 1 for the clip format - not "the same length as the input", which a broken insert that
 // happened to push the right number of wrong things would still satisfy.
 import { describe, it, expect } from 'vitest';
-import { parseHubClip, insertClip, looksLikeHubClip, CLIP_FORMAT } from './hubClip';
+import { parseHubClip, insertClip, buildClip, looksLikeHubClip, CLIP_FORMAT } from './hubClip';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -124,6 +124,110 @@ describe('R-14: the paste handler stays out of the way of ordinary typing', () =
 		expect(body.includes('isContentEditable'), 'a paste into a contenteditable must be left alone').toBe(true);
 		expect(/INPUT\|TEXTAREA\|SELECT/.test(body), 'a paste into a form field must be left alone').toBe(true);
 		expect(body.includes('looksLikeHubClip'), 'ordinary text must be ignored silently').toBe(true);
+	});
+});
+
+describe('COPY INSIDE THE CAMPAIGN: buildClip produces what parseHubClip reads', () => {
+	// The owner, 2026-09-05: right-click Copy, then paste across their own systems. One format
+	// serves both directions - a clip this app made and one the hub made must be indistinguishable
+	// to the reader, or there are two formats to keep in step.
+	function sourceSystem(): any {
+		return {
+			id: 'sys-src', name: 'Source',
+			nodes: [
+				{ id: 'star', parentId: null, kind: 'body', roleHint: 'star', name: 'Home Star' },
+				{ id: 'planet', parentId: 'star', kind: 'body', roleHint: 'planet', name: 'Verdant',
+				  image: { url: 'data:image/png;base64,AAA', custom: true }, gmNotes: 'the secret',
+				  orbit: { hostId: 'star', hostMu: 1e20, t0: 0, elements: { a_AU: 1, e: 0, i_deg: 0, raan_deg: 0, argp_deg: 0, M0_deg: 0 } } },
+				{ id: 'moon', parentId: 'planet', kind: 'body', roleHint: 'moon', name: 'Verdant Minor' },
+				{ id: 'other', parentId: 'star', kind: 'body', roleHint: 'planet', name: 'Not Copied' }
+			]
+		};
+	}
+
+	it('takes the BRANCH, and only the branch', () => {
+		const clip = buildClip(sourceSystem(), 'planet')!;
+		expect(clip.nodes.map((n: any) => n.name)).toEqual(['Verdant', 'Verdant Minor']);
+		expect(clip.root).toBe('planet');
+		expect(clip.nodes[0].parentId, 'the root is pasted ONTO something, so it has no parent').toBe(null);
+		expect(clip.sseClip).toBe(1); // ABSOLUTE: the same format the hub pins
+	});
+
+	it('KEEPS what a hub clip strips - it is the GM copying their own work', () => {
+		// The hub drops image, model and gmNotes because it publishes to strangers. Losing a
+		// planet's photograph on an internal copy would be a bug, not a safeguard.
+		const clip = buildClip(sourceSystem(), 'planet')!;
+		const planet = clip.nodes[0];
+		expect(planet.image.url).toBe('data:image/png;base64,AAA');
+		expect(planet.gmNotes).toBe('the secret');
+	});
+
+	it('round-trips through the reader that reads hub clips', () => {
+		const clip = buildClip(sourceSystem(), 'star')!;
+		const p = parseHubClip(JSON.stringify(clip));
+		expect(p.ok, p.ok ? '' : (p as any).problem).toBe(true);
+		if (!p.ok) return;
+		expect(p.clip.nodes.length).toBe(4);
+		const sys = hostSystem();
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(r.count).toBe(4);
+		expect(sys.nodes.find((n: any) => n.name === 'Verdant Minor')!.parentId)
+			.toBe(sys.nodes.find((n: any) => n.name === 'Verdant')!.id);
+	});
+
+	it('adds NO hub credit, because there is no other cartographer', () => {
+		const clip = buildClip(sourceSystem(), 'planet')!;
+		expect(clip.source).toBeUndefined();
+		const p = parseHubClip(JSON.stringify(clip));
+		if (!p.ok) return;
+		const r = insertClip(hostSystem(), p.clip, 'target-star', 0);
+		expect(r.ok && r.credit).toBeUndefined();
+		// ...and no origin/hub breadcrumb either: it did not come from the hub.
+		const sys2 = hostSystem();
+		insertClip(sys2, p.clip, 'target-star', 0);
+		const root = sys2.nodes.find((n: any) => n.name === 'Verdant') as any;
+		expect((root.tags ?? []).some((t: any) => t?.ns === 'origin' && t?.key === 'hub')).toBe(false);
+	});
+
+	it('CARRIES a credit that covers the copied branch, so it survives the second hop', () => {
+		// This is where attribution would quietly evaporate: a body pasted in from somebody's map,
+		// then copied on to another system, must still say whose work it is.
+		const credits = [
+			{ title: 'Alpha', creator: 'alice', url: 'https://hub.test/s/alpha', pastedAt: '2026-09-05T00:00:00.000Z', nodeIds: ['planet', 'moon'] },
+			{ title: 'Beta', creator: 'bob', url: 'https://hub.test/s/beta', pastedAt: '2026-09-05T00:00:00.000Z', nodeIds: ['other'] }
+		];
+		const clip = buildClip(sourceSystem(), 'planet', { credits })!;
+		// Only the one that actually covers the branch, and only the ids inside it.
+		expect(clip.credits!.length).toBe(1);
+		expect(clip.credits![0].creator).toBe('alice');
+		expect(clip.credits![0].nodeIds).toEqual(['planet', 'moon']);
+
+		const p = parseHubClip(JSON.stringify(clip));
+		expect(p.ok).toBe(true);
+		if (!p.ok) return;
+		const sys = hostSystem();
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(r.carried!.length).toBe(1);
+		expect(r.carried![0].creator).toBe('alice');
+		// The ids are the NEW ones, so the credit still points at bodies that exist.
+		expect(r.carried![0].nodeIds.length).toBe(2);
+		expect(r.carried![0].nodeIds.some((i) => i === 'planet' || i === 'moon')).toBe(false);
+		for (const id of r.carried![0].nodeIds) expect(sys.nodes.some((n) => n.id === id)).toBe(true);
+	});
+
+	it('carries nothing when nothing covered the branch', () => {
+		const clip = buildClip(sourceSystem(), 'planet', { credits: [
+			{ title: 'Beta', creator: 'bob', pastedAt: '2026-09-05T00:00:00.000Z', nodeIds: ['other'] }
+		] })!;
+		expect('credits' in clip).toBe(false);
+	});
+
+	it('returns null for a node the system does not have', () => {
+		expect(buildClip(sourceSystem(), 'no-such-node')).toBe(null);
 	});
 });
 
