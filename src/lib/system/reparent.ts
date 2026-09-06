@@ -77,13 +77,74 @@ export function hostCandidates(system: System, opts: { forBodyId?: string } = {}
 export function roleHintUnderHost(system: System, host: Node, body: CelestialBody): CelestialBody['roleHint'] {
   if (body.roleHint === 'star') return 'star';
   if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return body.roleHint;
+  const role = hostRole(system, host);
+  if (!role) return 'planet';
+  return role === 'star' ? 'planet' : 'moon';
+}
+
+/**
+ * THE ROLE THE HOST EFFECTIVELY IS - a barycentre resolving to its heaviest member, because that is
+ * what a satellite of a pair is really going round.
+ *
+ * Extracted from `roleHintUnderHost`, which did this walk inline, when the paste bias needed the
+ * same answer: that function collapses a PLANET host and a MOON host into the same result ('moon'),
+ * so it cannot express "moons on planets" and a second walk would have been a second answer to one
+ * question. One walk, two callers.
+ */
+export function hostRole(system: System, host: Node): CelestialBody['roleHint'] | null {
   let h: Node | undefined = host;
   for (let guard = 0; h && h.kind === 'barycenter' && guard < 16; guard++) {
-    const members = ((h as Barycenter).memberIds || []).map((id) => system.nodes.find((n) => n.id === id)).filter((m): m is Node => !!m);
-    h = members.reduce<Node | undefined>((best, m) => (!best || hostMassKg(system, m) > hostMassKg(system, best) ? m : best), undefined);
+    // `ids` and `members` are annotated rather than inferred: without them TypeScript walks
+    // `reduce` -> `hostMassKg` -> `Node` and back into this initializer, gives up, and quietly
+    // types the whole chain `any` - which is how a walk over the wrong thing would type-check.
+    const ids: string[] = (h as Barycenter).memberIds || [];
+    const members: Node[] = ids
+      .map((id) => system.nodes.find((n) => n.id === id))
+      .filter((m): m is Node => !!m);
+    h = members.reduce<Node | undefined>(
+      (best, m) => (!best || hostMassKg(system, m) > hostMassKg(system, best) ? m : best),
+      undefined
+    );
   }
-  if (!h || h.kind !== 'body') return 'planet';
-  return (h as CelestialBody).roleHint === 'star' ? 'planet' : 'moon';
+  return h && h.kind === 'body' ? (h as CelestialBody).roleHint : null;
+}
+
+/**
+ * WHICH HOST TO OFFER FIRST, given what is being placed. Owner, 2026-09-06, on pasting:
+ * *"by default bias the orbit to what it is - planets on stars, moons on planets.... otherwise
+ * star... be smart about it"* - and, in the same breath, *"always try to put something there - i
+ * moved saturn to orbit jupiter and it worked fine"*.
+ *
+ * So this picks a DEFAULT and never a restriction. Every candidate stays selectable; a giant handed
+ * to a rock is still the GM's to make, and the stability pass says what would happen. This only
+ * stops the picker opening on whatever `system.nodes` happened to list first, which is how a moon
+ * came to be offered a moon.
+ *
+ * THE RULE IS THE ONE THE ENGINE ALREADY HAS, asked rather than restated: a host is preferred when
+ * the body would KEEP ITS OWN ROLE under it (`roleHintUnderHost`). A planet stays a planet under a
+ * star, so stars win; a moon stays a moon under a planet, so planets win. That also gets binaries
+ * right for free, because `roleHintUnderHost` resolves a barycentre to its heaviest member - a
+ * planet of a two-star pair is still a planet, and the pair is offered.
+ *
+ * THE ROLES THAT KEEP THEIR ROLE ANYWHERE - a star, a belt, a ring, a construct - cannot be chosen
+ * that way, because the test is true of every host. For those the owner's fallback applies: a star
+ * (or a pair of them), which is the top of the system and the least surprising place to land.
+ */
+export function preferredHost(system: System, hosts: Node[], root: { roleHint?: string } | null): Node | null {
+  if (!hosts.length) return null;
+  const role = root?.roleHint;
+
+  // "planets on stars, moons on planets" - the host's OWN role, with a pair resolving to its
+  // heaviest member so a circumbinary planet is offered the pair rather than one of its stars.
+  const wanted = role === 'planet' ? 'star' : role === 'moon' ? 'planet' : null;
+  if (wanted) {
+    const fits = hosts.find((h) => hostRole(system, h) === wanted);
+    if (fits) return fits;
+  }
+
+  // "otherwise star" - and it is also the fallback when nothing of the wanted kind is in the system,
+  // because a default has to be something and the top of the system is the least surprising.
+  return hosts.find((h) => hostRole(system, h) === 'star') ?? hosts[0];
 }
 
 export interface ReparentResult {

@@ -24,6 +24,19 @@
   export let undo: () => void;
   export let redo: () => void;
 
+  // WHAT IS IN HAND, AS A SECOND ROW. Owner, 2026-09-06, on the Paste button that used to sit in the
+  // orrery controls: *"The paste at the top button should not be needed should it? what is being
+  // pasted is on the long right click. That can stay as an indicator of what is in paste just now -
+  // perhaps make it a lower part of the undo/redo modal. compact and contained and useful"* - and
+  // *"have a little paste icon and a description eg: Planet+7, Moon"*.
+  //
+  // SO THIS IS AN INDICATOR AND NOT A BUTTON. Pasting is the right-click, which knows where it is
+  // going; a second control that has to ask would be the thing he took out. It says what is in hand
+  // and, in its tooltip, what to do with it.
+  export let clip: { compact: string; label: string; from: 'app' | 'clipboard' } | null = null;
+  /** One gold flash when something NEW arrives from outside the app. The caller owns the timing. */
+  export let clipPulse = false;
+
 
   // The step is NAMED where it can be: "Undo: Mass of Earth". A step the differ could not name
   // falls back to "the last edit", which is never wrong.
@@ -61,8 +74,11 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-{#if $status.canUndo || $status.canRedo}
-  <div class="undo-pill" class:phone={mode === 'phone'} use:chrome>
+<!-- The clip alone is enough to show the pill: a GM who has just copied on the map library's site
+     and come back has nothing to undo yet, and that is exactly the moment the indicator is for. -->
+{#if $status.canUndo || $status.canRedo || clip}
+  <div class="undo-pill" class:phone={mode === 'phone'} class:has-clip={!!clip} use:chrome>
+   <div class="up-row">
     <button
       class="up-btn"
       title="{undoTitle} (Ctrl+Z)"
@@ -90,6 +106,20 @@
         <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
       </svg>
     </button>
+   </div>
+    {#if clip}
+      <div
+        class="up-clip"
+        class:pulse={clipPulse}
+        title="{clip.label} is ready to paste{clip.from === 'clipboard' ? ', from the map library' : ''} — right-click where it should go"
+      >
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="8" y="8" width="12" height="12" rx="2" />
+          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+        </svg>
+        <span>{clip.compact}</span>
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -101,7 +131,8 @@
     transform: translateX(-50%);
     z-index: var(--z-chrome, 1000);
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     gap: 2px;
     padding: 2px;
     border: 1px solid var(--border, #2a2d36);
@@ -140,5 +171,48 @@
     width: 1px;
     height: 18px;
     background: var(--border, #2a2d36);
+  }
+  .up-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  /* With a clip in hand the pill grows a second row; the pill's own radius stops being a circle at
+     the bottom, so the corners are squared off there rather than left as a lozenge round a block. */
+  .undo-pill.has-clip {
+    border-radius: 16px;
+  }
+  .up-clip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin: 0 2px 1px;
+    padding: 2px 7px;
+    border-top: 1px solid var(--border, #2a2d36);
+    padding-top: 4px;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    color: var(--text-faint, #7c8190);
+    white-space: nowrap;
+    cursor: default;
+    user-select: none;
+  }
+  /* ONE flash, when something new arrives from OUTSIDE the app - a copy made here needs no
+     announcement, because the GM just made it. `prefers-reduced-motion` keeps the colour and drops
+     the movement, which is the part that carries the meaning anyway. */
+  .up-clip.pulse {
+    animation: up-clip-pulse 1.4s ease-out 1;
+  }
+  @keyframes up-clip-pulse {
+    0% { color: var(--accent-warm, #e8b339); transform: scale(1.06); }
+    60% { color: var(--accent-warm, #e8b339); transform: scale(1); }
+    100% { color: var(--text-faint, #7c8190); transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .up-clip.pulse {
+      animation: none;
+      color: var(--accent-warm, #e8b339);
+    }
   }
 </style>

@@ -57,7 +57,7 @@
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { buildClip } from '$lib/io/hubClip';
-  import { clipBuffer, putClip } from '$lib/io/clipBuffer';
+  import { putClip } from '$lib/io/clipBuffer';
   import { detectedClip, refreshDetectedClip } from '$lib/io/clipDetect';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
@@ -353,10 +353,12 @@
     clipNotice = `Cut ${clip.nodes.length} object${clip.nodes.length === 1 ? '' : 's'}. Right-click where it should go.`;
   }
 
-  /** Paste straight onto the right-clicked node: the host is unambiguous, so nothing is asked. */
+  /** Paste straight onto the right-clicked node: the host is unambiguous, so nothing is asked.
+   *  Reads `detectedClip`, the same source the menu offered from, so a clip from the map library
+   *  pastes here exactly as one copied in the app does. */
   function handlePasteHere(e: CustomEvent<any>) {
     const host = e.detail;
-    const entry = $clipBuffer;
+    const entry = $detectedClip;
     if (!$systemStore || !host?.id || !entry) return;
     showSummaryContextMenu = false;
     dispatch('pasteClip', { clip: entry.clip, systemId: $systemStore.id, hostId: host.id });
@@ -372,7 +374,10 @@
     const key = $detectedClip ? `${$detectedClip.label}|${$detectedClip.count}|${$detectedClip.from}` : '';
     if (key !== clipPulseKey) {
       clipPulseKey = key;
-      if (key) {
+      // QUIET FOR YOUR OWN COPIES, ANNOUNCE ONES FROM OUTSIDE (owner, 2026-09-06). A Copy made here
+      // needs no announcement - the GM just made it, and the indicator appearing is enough. A branch
+      // that arrived from the map library is news, and the flash is how the app says it noticed.
+      if (key && $detectedClip?.from === 'clipboard') {
         clipPulse = true;
         if (clipPulseTimer) clearTimeout(clipPulseTimer);
         clipPulseTimer = setTimeout(() => (clipPulse = false), 1400);
@@ -2718,7 +2723,8 @@
 
             <!-- G28: the floating undo/redo. Shows itself once there is something to wind back;
                  marks itself `use:chrome` so a dialog on a phone hides it (UI-C6). -->
-            <UndoPill {mode} status={undoStatus} undo={undoSystem} redo={redoSystem} />
+            <UndoPill {mode} status={undoStatus} undo={undoSystem} redo={redoSystem}
+              clip={$detectedClip} {clipPulse} />
 
             <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
                  frequently-used display toggles (per the wireframe). -->
@@ -2727,19 +2733,13 @@
               <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲{#if !$railCollapsed} Reset View{/if}</button>
               <!-- R-14: the way in that does NOT need a paste event. Firefox will not hand a page
                    the clipboard, so a feature reachable only by Ctrl+V is one that looks broken in
-                   a browser plenty of people use. It also gives anyone a way to say WHERE it goes
-                   before pasting, rather than after.
-                   IT APPEARS ONLY WHEN THERE IS SOMETHING TO PASTE, and it says what (owner,
-                   2026-09-05). A control that is always present is one that fails most of the times
-                   it is pressed. The gold pulse fires when something NEW arrives, so a GM who has
-                   just copied on the map library's site can see the app noticed. -->
-              {#if $detectedClip}
-                <button class="ov-btn faded ov-paste" class:pulse={clipPulse}
-                  title="Paste {$detectedClip.label}{$detectedClip.count > 1 ? ` and ${$detectedClip.count - 1} more` : ''}"
-                  aria-label="Paste {$detectedClip.label}"
-                  on:click={() => dispatch('pasteFromHub', focusedBodyId)}
-                >⎘{#if !$railCollapsed} Paste {$detectedClip.label}{/if}</button>
-              {/if}
+                   a browser plenty of people use.
+                   THE PASTE BUTTON THAT WAS HERE IS GONE (owner, 2026-09-06): *"The paste at the top
+                   button should not be needed should it? what is being pasted is on the long right
+                   click."* He is right - the right-click knows WHERE it is going and this did not,
+                   so it had to open a screen to ask. What is in hand is now shown on the undo pill
+                   instead, compact and out of the way. Ctrl+V still opens the screen from anywhere,
+                   which is the route that works in every browser including Firefox. -->
               <div class="ov-view">
                 <button class="ov-btn ov-eye" class:active={viewOpen} on:click={toggleViewPopover} title="View options" aria-label="View options">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
@@ -3365,20 +3365,6 @@
     backdrop-filter: blur(6px);
   }
   .ov-btn:hover { background: var(--bg-control-hover, #232733); }
-  /* The gold pulse: one flash when something new becomes pasteable, then quiet. Gold rather than
-     the accent so it reads as "look, this arrived" instead of "this is selected". */
-  .ov-paste.pulse {
-    animation: clip-pulse 1.4s ease-out 1;
-  }
-  @keyframes clip-pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(232, 196, 106, 0.85); color: #e8c46a; }
-    60%  { box-shadow: 0 0 0 10px rgba(232, 196, 106, 0); color: #e8c46a; }
-    100% { box-shadow: 0 0 0 0 rgba(232, 196, 106, 0); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    /* The message is "something arrived", and it survives without the movement. */
-    .ov-paste.pulse { animation: none; color: #e8c46a; }
-  }
   .ov-btn.faded { opacity: 0.55; font-size: 1rem; }
   .ov-btn.faded:hover { opacity: 1; }
   .ov-btn.active { border-color: var(--accent, #ff5a1f); }

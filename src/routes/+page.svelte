@@ -2575,7 +2575,6 @@
     <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
     {#if $systemStore && effectiveRulePack}
       <SystemView
-        on:pasteFromHub={(e) => { clipPasteFocus = e.detail ?? null; clipPasteText = ''; }}
         on:pasteClip={(e) => pasteClipInto(e.detail)}
         system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
         {broadcastSessionId}

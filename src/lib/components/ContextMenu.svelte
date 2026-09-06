@@ -10,7 +10,12 @@
   export let linkStartNode: CelestialBody | Barycenter | null = null;
   void isLinking; void linkStartNode;
 
-  import { clipBuffer } from '$lib/io/clipBuffer';
+  // ONE ANSWER TO "WHAT IS IN HAND". This read `clipBuffer` - the app's own copies only - while the
+  // pill read `detectedClip`, which also sees a branch copied on the map library's site. So a clip
+  // from the website never appeared in a right-click menu even where it would have pasted perfectly,
+  // and the two controls disagreed about whether there was anything to paste. Since the right-click
+  // IS the paste (owner, 2026-09-06), it must see everything the indicator sees.
+  import { detectedClip } from '$lib/io/clipDetect';
 
   const dispatch = createEventDispatcher();
 
@@ -33,9 +38,9 @@
            is a separate step, so undo takes them apart in the order they happened. -->
       <li on:click={() => dispatch('copyNode', selectedNode)}>Copy{branch}</li>
       <li on:click={() => dispatch('cutNode', selectedNode)}>Cut{branch}</li>
-      {#if $clipBuffer}
+      {#if $detectedClip}
         <li on:click={() => dispatch('pasteHere', selectedNode)}>
-          Paste {$clipBuffer.label} here{$clipBuffer.count > 1 ? ` (${$clipBuffer.count} objects)` : ''}
+          Paste {$detectedClip.label} here{$detectedClip.count > 1 ? ` (${$detectedClip.count} objects)` : ''}
         </li>
       {/if}
     {/if}

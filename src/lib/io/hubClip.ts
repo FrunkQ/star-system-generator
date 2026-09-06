@@ -238,6 +238,22 @@ export function describeClipRoot(clip: HubClip): string {
   return `${what} ${name}`;
 }
 
+/**
+ * THE SAME THING IN AS FEW CHARACTERS AS POSSIBLE - "Planet+7", "Moon", "System+42". Owner,
+ * 2026-09-06, on the indicator that replaced the Paste button: *"have a little paste icon and a
+ * description eg: Planet+7, Moon"*.
+ *
+ * The NAME is deliberately absent, which is the whole difference from `describeClipRoot`. This sits
+ * in a pill beside the undo buttons where a long name would push the chrome about as the GM copied
+ * different things; what a glance needs there is what KIND of thing is in hand and how much of it.
+ * The name is one right-click away, on the menu item that actually pastes it.
+ */
+export function describeClipCompact(clip: HubClip): string {
+  const kind = describeClipRoot(clip).split(' ')[0];
+  const extra = Math.max(0, (clip.nodes?.length ?? 1) - 1);
+  return extra ? `${kind}+${extra}` : kind;
+}
+
 export type ClipInsert =
   | {
       ok: true;

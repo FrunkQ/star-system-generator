@@ -1,6 +1,6 @@
 import { derived, writable, get } from 'svelte/store';
 import { clipBuffer } from './clipBuffer';
-import { parseHubClip, describeClipRoot, looksLikeHubClip, type HubClip } from './hubClip';
+import { parseHubClip, describeClipRoot, describeClipCompact, looksLikeHubClip, type HubClip } from './hubClip';
 
 // IS THERE ANYTHING TO PASTE, AND WHAT IS IT? (owner, 2026-09-05)
 //
@@ -25,8 +25,11 @@ import { parseHubClip, describeClipRoot, looksLikeHubClip, type HubClip } from '
 
 export interface DetectedClip {
   clip: HubClip;
-  /** "System Sol", "Planet Earth" — what the button says. */
+  /** "System Sol", "Planet Earth" — the full name, for a menu item that has room for it. */
   label: string;
+  /** "Planet+7", "Moon" — for the pill beside the undo buttons, where a name would push the chrome
+   *  about every time the GM copied something else. */
+  compact: string;
   count: number;
   /** Where it came from, so the caller can say "cut" rather than "copied" if it ever matters. */
   from: 'app' | 'clipboard';
@@ -38,10 +41,10 @@ const fromClipboard = writable<HubClip | null>(null);
 export const detectedClip = derived([clipBuffer, fromClipboard], ([$buffer, $clip]): DetectedClip | null => {
   // The app's own buffer wins: it is what this GM just did, and it is certain.
   if ($buffer) {
-    return { clip: $buffer.clip, label: describeClipRoot($buffer.clip), count: $buffer.count, from: 'app' };
+    return { clip: $buffer.clip, label: describeClipRoot($buffer.clip), compact: describeClipCompact($buffer.clip), count: $buffer.count, from: 'app' };
   }
   if ($clip) {
-    return { clip: $clip, label: describeClipRoot($clip), count: $clip.nodes.length, from: 'clipboard' };
+    return { clip: $clip, label: describeClipRoot($clip), compact: describeClipCompact($clip), count: $clip.nodes.length, from: 'clipboard' };
   }
   return null;
 });

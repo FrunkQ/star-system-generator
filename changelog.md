@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.334 - 6th Sep 2026
+
+- The Paste button at the top of the system view has gone. Pasting is the right-click, which already knows where the thing is going - and what you have in hand now shows as a small tag under the undo and redo buttons: a paste icon and, for example, "System+38" or "Moon".
+- That tag also appears when you have copied something on the Explorers site and come back, and it gives one gold flash when it does - your own copies stay quiet, because you just made them.
+- A branch copied on the Explorers site now shows up in the right-click menu too. Before, only things you had copied inside the app did, so a system from the website could not be pasted where it would have worked perfectly.
+- When you paste, the host it offers first now suits what you are pasting: planets go to stars, moons to planets, anything else to the star. Every other host is still on the list - you can still hang Saturn off Jupiter if that is your setting.
+
 ## v3.0.333 - 6th Sep 2026
 
 - Fixed: Pluto sat between the Sun and Mercury in the Size comparison's orbit order. Pluto and Charon go round a point between the two of them, and the app was reading that little circle as Pluto's distance from the Sun. Both now sit where the pair really is, out past Neptune, next to each other.

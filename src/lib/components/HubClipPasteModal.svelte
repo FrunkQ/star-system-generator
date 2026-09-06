@@ -14,7 +14,7 @@
   // screen. The gate that caught this looks at the SHAPE of the layer, not its class name.
   import { foreground } from '$lib/ui/foreground';
   import { parseHubClip, type HubClip } from '$lib/io/hubClip';
-  import { hostCandidates } from '$lib/system/reparent';
+  import { hostCandidates, preferredHost } from '$lib/system/reparent';
   import type { Starmap, System } from '$lib/types';
 
   /** Text already in hand (a paste event). Empty opens the box for somebody to fill in. */
@@ -39,9 +39,17 @@
   $: chosenSystem = (starmap?.systems ?? []).find((s: any) => (s.system?.id ?? s.id) === systemId)?.system as System | undefined;
   // The same answer the re-home screen gives to "what can host a body" - asked, never re-derived.
   $: hosts = chosenSystem ? hostCandidates(chosenSystem) : [];
-  // Default to what the GM was looking at, and only while it is actually in the chosen system.
+  // WHAT THE HOST BOX OPENS ON. The GM's own selection wins - it is a statement of intent and beats
+  // any rule - and otherwise the default is biased by what is being pasted: planets on stars, moons
+  // on planets, otherwise the star (owner, 2026-09-06). It used to be `hosts[0]`, which is whatever
+  // `system.nodes` happened to list first, and in a real system that is often a moon.
+  //
+  // A DEFAULT, NEVER A RESTRICTION: every candidate stays in the list. *"Always try to put something
+  // there - i moved saturn to orbit jupiter and it worked fine."*
   $: if (hosts.length && !hosts.some((h: any) => h.id === hostId)) {
-    hostId = hosts.some((h: any) => h.id === focusedBodyId) ? focusedBodyId! : hosts[0].id;
+    hostId = hosts.some((h: any) => h.id === focusedBodyId)
+      ? focusedBodyId!
+      : (preferredHost(chosenSystem!, hosts as any, rootNode) ?? hosts[0]).id;
   }
 
   $: ready = !!clip && !!chosenSystem && !!hostId;
