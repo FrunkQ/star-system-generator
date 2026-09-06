@@ -1269,6 +1269,102 @@ worktree and session - never bare `git stash`/`pop`; set work aside with a WIP c
 `C:\Development\.claude\launch.json` to drive a browser. Claim any board id at write time by checking both the `| id |`
 and `[[id]]` forms. Report versions, the emission counts before and after, and anything left undone.
 
+## STREAM P — mega-constructs: what is settled, and what is next (G53 / G58 / G61 hand-over)
+
+**WRITTEN BY THE MEGA SESSION, 2026-09-06, as a handover, in Stream L's shape.** That session ran from
+v3.0.217 to v3.0.343 across the elevator, the exotics system and docking, and closed the owner's settled
+list on the G53 row. Nothing below is owed; it is what the next stream starts from.
+
+**Read first, in this order:** `CLAUDE.md`; the standing rules at the foot of `docs/dev/observations-inbox.md`;
+the G53, G58 and G61 rows there (long, and they are the record); `docs/dev/authoring-exotics.md` (the agent
+guide - its seam table is the ledger and every row now reads the record); `docs/dev/nonstandard-objects-design.md`
+(why the system is shaped this way); `docs/dev/mega-constructs-design.md` §7c, §10 and §11; then the engine-map
+entries named in the traps below.
+
+### What is already done, and works (by CODE)
+
+- **The exotics system (G58).** One `MegaTypeDef` record per type in `constructs/megaTypes.ts`; the vocabulary in
+  `constructs/exotics.ts` (apparentG, flux, render3d, render2d, framing, docking); `exoticsParity.spec.ts` gates
+  every record automatically. Consumers read the record - DATA-R33 - and no legacy flag or family test remains
+  in a render or panel seam. The knob editor (`ConstructMegaTab.svelte`) renders every declared param; the sparse
+  `megaParams` overlay resolves ONLY through `instanceMegaParams`.
+- **Starlight occlusion (phase 4, PHY-36).** Bodies, zones (tilt-weighted band share), eclipse cadence, the
+  `mega/shadowed-by` and `mega/eclipsed` tags with physics origin, the trace and the /physics page.
+- **The space elevator.** Mast glyph; anchored on the equator (`anchorLatitudeDeg`); reach by the SATELLITE LAW
+  (`rendering/scaleLaw.ts satelliteDrawDistance`, RENDER-S50 - one function for a moon, its ring, a station and a
+  structure); drawn on the GM's 2D map (`render2d 'radial'`); unit parts laid out per frame (`tetherLayout`).
+- **Docking, all seven types (RENDER-S51).** `capabilities.docking` = ladder / anywhere / point; `constructs/docking.ts`
+  is pure; attachment is PROPAGATOR data (`walkPositions` attach pass - 2D = 3D = states by gate); a ladder structure
+  stands on its own anchor ray; `TransitPlan.arrivalDock` + the planner's level destinations + the docking cost stated;
+  the sampler parks the ship on the structure (a level below geo docks when its orbit CATCHES the ribbon); the
+  reconciler stamps `attachedTo`; `getGlobalState` is attachment-aware (departures from a dock).
+- **Arrival sense.** TRANSIT-8: a Hohmann's far-side velocity is -w (every orbit change used to park retrograde);
+  at a beanstalk host the parking orbit is prograde on both paths, a reversal priced and tagged.
+- **Apparent gravity from the record.** `constructs/apparentG.ts`: own-rotation NET OF THE HOST (zero at orbital
+  rate), surface = the hull's own mass, none = nothing shown; the crew tab shows it for an exotic and writes no
+  station-shaped default onto it.
+
+### What is settled by DECISION (the owner's word, 2026-09-06 - do not reopen without him)
+
+- The GEO hand-over is at arrival (a phasing model would close the last snap) - NOT scheduled.
+- The interplanetary solver flies to the HOST at the level's radius, not to the moving dock - NOT scheduled.
+  (A same-system origin could rendezvous with a synthetic `attachedTo` node via the construct-Rendezvous path;
+  `needsRedirect` in `transit/calculator.ts` decides.)
+- A ship docked to a plain station keeps the pre-existing Rendezvous path.
+- Death Star carrying: never bespoke; a CARRIER capability record in the exotics pack if ever.
+- The eyeballs (docking in the holo and player views; the elevator's reach, equator and dock-under-station in 3D)
+  are accepted on the owner's word. The 2D radial and the 2D dock-under-station WERE seen live; the holo was not.
+
+**Do not re-litigate any of that.** What follows is the queue's order (THE QUEUE, items 5-7).
+
+### The jobs, in order
+
+1. **Phase 5c - interiors (G56 §10), gated on G30 surface areas phases 1-2 (queue item 6).** A ringworld's or
+   shell's habitable face gets the surface chain honestly; until then the honesty gate in design §10 says
+   "not yet derived for a built world" rather than printing GM/r² of the ring's own mass.
+2. **G61 - belts and rings onto the exotics mechanism.** The refactor-as-we-go job: a swarm-like member of the
+   exotics pack (particles instead of a ring), same record shape; the board row measured 63 sites.
+3. **Phase 5 - the hybrid flip** (`kind: 'body'` behind `showsAsConstruct`): answer §11 Q3 (redaction) FIRST; run
+   `idempotence.test.ts` early; ship the surface-chain honesty gate in the same commit.
+4. **Phase 6 - the catalogue widens** (Shkadov, soletta, Birch, aerostat): parameter sets on existing generators.
+   The SOLETTA must land `flux.amplifies` AND the consumer change in one batch: `receivedLuminosityWatts`'s ≤1
+   clamp learns the amplify case, red-first with a target receiving MORE than inverse-square.
+5. §11 Q4 (should the generator ever PLACE one) and Q5 (tech level as a gate) - the owner's, when he wants them.
+
+### The shape of it - the files
+
+`constructs/exotics.ts` (vocabulary) · `constructs/megaTypes.ts` (records) · `constructs/megaGeometry.ts`
+(one builder; `tetherLayout`, `equatorialAnchor`) · `constructs/docking.ts` (ports, anchor ray, attachment,
+dock cost) · `constructs/apparentG.ts` · `constructs/megaPreview.ts` · `physics/starlightOcclusion.ts` ·
+`physics/worldPositions.ts` (the attach pass) · `rendering/scaleLaw.ts` (the satellite law) · `holo/scene.ts`
+(attach, per-frame layout in `updateSurfaceConstructs`, framing) · `components/SystemVisualizer.svelte`
+(`isMegaRing` / `isMegaRadial` / `drawTetherRadial`) · `transit/scheduler.ts` (Docked branch, catch, reconciler) ·
+`transit/calculator.ts` (`progradeSense`, `buildOrbitChangePlan`) · `components/TransitPlannerPanel.svelte`
+(dock destinations) · `components/ConstructCrewTab.svelte` · `components/ConstructMegaTab.svelte`.
+
+### Gates (all red-first; run `npx vitest run src/lib/constructs src/lib/transit src/lib/physics/worldPositions.docking.spec.ts`)
+
+`exoticsParity.spec` · `megaDerive.spec` · `megaGeometry.spec` · `docking.spec` (physics anchors: 6.62 Earth radii,
+1 g rim, ~0 at GEO) · `apparentG.spec` · `worldPositions.docking.spec` · `dockingArrival.spec` · `dockingCatch.spec`
+· `dockedState.spec` · `arrivalSense.spec` · `orbitChangeSense.spec` · `scaleLaw.spec` (the satellite law) ·
+`starlightOcclusion` specs. Then `npm run build`, a scoped `npx svelte-check --threshold error` grepped for every
+file you touched (RENDER-S46: the build never typechecks), and `npm run manifest` after EVERY version bump.
+
+### The traps roster (read before, not after)
+
+DATA-R31 · DATA-R33 · UI-B2 · RENDER-S2 · RENDER-S44 · RENDER-S45 · RENDER-S46 · RENDER-S48 (+ its correction) ·
+RENDER-S50 · RENDER-S51 (+ addendum) · PHY-36 · TRANSIT-8 · E7 (the canvas cannot be verified headlessly) · the CRLF
+trap (measure each file's own ending; this briefs file is LF) · the shared stash stack (WIP commits, never
+bare stash/pop) · a conflict resolver must ASSERT before it writes and the marker check must GATE the add · never
+join a push chain with `;` · both changelog entries share a heading when two streams bump to the same number
+(git leaves the heading OUTSIDE the block - lift yours under a new heading above theirs).
+
+### Housekeeping
+
+Worktree `C:\Development\star-system-explorer-v2\sse2-mega2` (branch `wt/mega2`); dev server entry
+`sse-mega2-dev` (port 5299) in `C:\Development\.claude\launch.json`; a headless Browser-pane run at ~1 fps
+can drive the 2D orrery but not usefully the holo - the holo eyeballs are the owner's.
+
 ## THE QUEUE — what is next, in order (coordinator 7, 2026-09-06 evening, on the owner's "line up what you think should be next")
 
 The site-to-app loop is nearly closed: the hub is live at `explorers.starsystemx.com`, its "Open in Star System Explorer" button

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.343 - 6th Sep 2026
+
+- A megastructure's crew tab now shows the gravity its own design implies instead of a space station's spinning-section figure: a ringworld or orbital ring reads its own rotation with its host's pull taken off (exactly zero for a ring turning at orbital rate - free fall), a hull reads its own mass, and a structure with no honest figure shows none. The last place megastructures were treated as stations is gone.
+- Housekeeping: the megastructure work is closed out on the board and handed over as Stream P - what is settled by code, what by decision, and what is queued next.
+
 ## v3.0.342 - 6th Sep 2026
 
 - Stars on the Size comparison look like stars again. They were drawn flat in their own colour all the way across, which made the hot blue-white ones - Vega, Sirius, Altair - come out as pale lavender circles while the red dwarfs beside them looked fine. A real star's disc is white-hot in the middle and shows its colour at the edge, and now so is ours: the hotter the star, the more it burns out. A red dwarf keeps every bit of its orange.

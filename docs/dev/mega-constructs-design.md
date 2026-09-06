@@ -1415,6 +1415,13 @@ migrate the chrome sites behind `showsAsConstruct`. Run `idempotence.test.ts` fi
 (§3.4 item 7) BEFORE starting. Carry-and-release (§3.6) ships WITH this phase, not after it — it is
 what makes a moving hybrid safe rather than a follow-up nicety. Then `DockNode` through the planner.
 
+> **STATUS 2026-09-06 (v3.0.343).** `DockNode` through the planner shipped AHEAD of the flip and without
+> it: docking is `capabilities.docking` + `attachedTo` + `TransitPlan.arrivalDock` (7c, RENDER-S51,
+> TRANSIT-8) and works on constructs as they are. Carry-and-release is NOT a requirement (owner,
+> 2026-09-06): if ever built it is a CARRIER capability record, not bespoke. So what phase 5 still
+> owns is the flip itself - `kind: 'body'` behind `showsAsConstruct`, the surface-chain honesty
+> gate below, and §11 Q3 (redaction) answered before starting.
+
 > **THE FLIP SHIPS WITH AN HONESTY GATE ON THE SURFACE CHAIN, added 2026-08-28 with [[G56]].** The
 > moment a ringworld is a body, the atmosphere/habitability chain runs on it — and until phase 5c
 > it would read gravity as GM/r² of the ring's own mass at its own radius, which for the bundled
