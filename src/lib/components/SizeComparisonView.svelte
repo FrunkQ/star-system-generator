@@ -26,6 +26,7 @@
   import { drawStripChrome } from '$lib/comparison/stripChrome';
   import { hiddenKey, loadHidden, saveHidden, loadOrder, saveOrder, type ComparisonEntry } from '$lib/comparison/items';
   import { unitPrefs } from '$lib/unitPrefsStore';
+  import { lowPower } from '$lib/lowPowerStore';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
 
   /** Everything on the map that has a true size, from `itemsForSystem` / `itemsForStarmap`. */
@@ -71,6 +72,7 @@
   let stage: HTMLDivElement;
   let handle: {
     setSlots: (s: any[]) => void;
+    setAtmospheres: (on: boolean) => void;
     setView: (a: 'x' | 'y', s: number, w: number, h: number, cross?: number) => void;
     setSelected: (id: string | null) => void;
     setChrome: (c: HTMLCanvasElement | null) => void;
@@ -191,6 +193,10 @@
   // The scene only ever hears about globes it can actually draw: anything under the floor is a DOT,
   // and a dot is drawn by the CHROME. That is the performance rule (no texture for a body you cannot
   // see) and the honesty rule (RENDER-S43: a floor is a legibility device, never a size) in one place.
+  // LOW POWER: this machine is short of fill rate, so the atmospheric shells come off. Per browser
+  // and never campaign data - see `lowPowerStore` for why a statement about the HARDWARE is allowed
+  // to reach a player view where a statement about the PICTURE would not be.
+  $: handle?.setAtmospheres(!$lowPower);
   $: if (handle) handle.setSlots(layout.slots.filter((s) => !s.belowFloor).map((s) => ({
     id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, crossPx: s.crossPx,
     diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex,

@@ -21,6 +21,7 @@
   import FullscreenButton from './FullscreenButton.svelte';
   import { railCollapsed } from '$lib/railStore';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
+  import { lowPower } from '$lib/lowPowerStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import UndoPill from './UndoPill.svelte';
   import { attachSystemUndo, detachSystemUndo, silentSystemWrite, setUndoFocus, undoStatus, undo as undoSystem, redo as redoSystem } from '$lib/undo/systemUndo';
@@ -2786,6 +2787,11 @@
                       <input type="range" min="0" max="1" step="0.05" bind:value={$systemUiStore.orbitOpacity} />
                     </label>
                     <label title="Show each body's derived true colour vs broad per-class colours"><input type="checkbox" bind:checked={$trueColorMode} /> True colour</label>
+                    <!-- LOW POWER: this MACHINE, not this campaign and not this view. Per browser,
+                         so it follows the weak laptop rather than travelling to everyone else's
+                         screen - see `lowPowerStore` for why that is allowed to reach a player view
+                         where the GM's orbit-line strength above is not. -->
+                    <label title="For a machine that struggles: drops the see-through shells around bodies - cloud decks, limb glow, haze and auroras. They cost more than anything else on screen because each one repaints the same pixels again. Remembered on this computer only, and never saved into the campaign or sent to your players."><input type="checkbox" bind:checked={$lowPower} /> Low power</label>
                     <div class="ov-seg" role="group" aria-label="Orbit scale">
                       <button class:active={toytownOn} on:click={() => setScaleMode(true)} title="Compressed spacing so the whole system fits one screen">Toytown</button>
                       <button class:active={!toytownOn} on:click={() => setScaleMode(false)} title="True linear AU spacing">Real</button>

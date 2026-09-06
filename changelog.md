@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.355 - 6th Sep 2026
+
+- New "Low power" tick-box in the system view's View options, for a machine that struggles. It drops the see-through shells around bodies - cloud decks, limb glow, haze and auroras - which cost more than anything else on screen because each one repaints the same pixels over again. It is remembered on that computer only: it never goes into the campaign and never reaches your players' screens.
+- A player view could already turn those off in its preset, and the two work together - if either says no, they are not drawn.
+- The Size comparison was drawing all of that too and had no way to be told not to. It does now.
+
 ## v3.0.354 - 6th Sep 2026
 
 - The app is SSE3.1 now, and the mark in the top-left is set in the same pixel letterforms the Explorers site uses for its own headings and cover cards - so the two look like one product rather than two. It takes your theme colour like everything else, and stays crisp at any zoom because it is drawn rather than typed.
@@ -12,6 +18,7 @@ All notable changes are listed here:
 - A body you paste in from the Explorers site used to carry a tag reading "Hub", filed under a sentence about how the body FORMED. Neither told you anything: "hub" is our word for the site and appears nowhere you would meet it, and where a body came from is not how it formed. It now reads "From a shared map", says the value is a link back to it, and says plainly that it is a breadcrumb rather than the credit - the credit is recorded on your campaign and printed in the attributions file inside your saves, so it survives the body being renamed, moved or deleted. A pasted ship's tag reads "Route not carried over" and explains why its autopilot is off.
 - The tags guide now says where the three visibility settings stop. The shown/anon/hidden button is on the tags you add yourself, and the category switch hides a whole category - both of them act on the categories under Settings, Tagging. The tags the engine derives are a different population: they are not categories, they carry no button, and if you want a fact about a world kept back the lever is the world rather than the tag. That was worth writing down, because it is a switch people go looking for.
 - Behind the scenes: the test that was meant to stop a tag shipping without a proper name did not actually check for one, which is how "Hub" got out. It does now.
+
 
 ## v3.0.352 - 6th Sep 2026
 

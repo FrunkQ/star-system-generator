@@ -176,8 +176,21 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
   const filterRes = new THREE.Vector2(1, 1);
   const filterClock = new THREE.Clock();
   let filterPass: ShaderPass | null = null;
+  /** Atmospheric shells on the bodies. Off on a low-power machine; see `lowPowerStore`. */
+  let atmospheres = true;
   let filterId = 'none';
   let filterParams: FilterParamValues = {};
+  /**
+   * Atmospheric shells on or off. REBUILDS every body, because the shells are children of the look
+   * and there is no way to add one that was never made - the same reason the holo's own switch
+   * rebuilds rather than hiding.
+   */
+  function setAtmospheres(on: boolean): void {
+    if (on === atmospheres) return;
+    atmospheres = on;
+    for (const id of [...built.keys()]) destroy(id);
+  }
+
   function rebuildFilter(): void {
     if (filterPass) { composer.removePass(filterPass); (filterPass.material as THREE.Material).dispose(); filterPass = null; }
     const def = filterRegistry.get(filterId);
@@ -262,6 +275,10 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       const radius = slot.diameterPx / 2;
       const look = buildBodyLook(slot.node, radius, {
         textures,
+        // LOW POWER. The strip never passed this and so drew every cloud deck, limb glow and haze on
+        // objects that routinely fill the screen - the most expensive thing here by fill rate, and
+        // the owner's own example of what a weak machine should be able to drop.
+        atmospheres,
         anisotropy: renderer.capabilities.getMaxAnisotropy(),
         // The published TAG, in line with physics-drives-tags-drives-visuals. The live holo still
         // reads physics directly; the two spellings are recorded on the board as [[B117]].
@@ -486,6 +503,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
 
   return {
     setSlots(next) { slots = next; },
+    setAtmospheres,
     setChrome(canvas) {
       if (!canvas) {
         chromeMesh.visible = false;

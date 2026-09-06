@@ -9,6 +9,7 @@
   import type { HoloController } from '$lib/holo/scene';
   import { gridLegend } from '$lib/map/gridLegend';
   import { unitPrefs } from '$lib/unitPrefsStore';
+  import { lowPower, drawsHeavy } from '$lib/lowPowerStore';
   import { distanceFlavour } from '$lib/units';
   import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
   import { liveOverrides } from '$lib/player/liveOverrides';
@@ -85,6 +86,8 @@
   // transiting ship by reading its route at THIS clock instead of at a stamped vector.
   export let gmClockMs: number | null = null;
 
+  // The GM's (or this player's) own machine, per browser. Read as a store so a tick of the box
+  // re-applies the style immediately rather than at the next unrelated change.
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
     controller?.setFilter(filterBypass ? 'none' : s.filter, filterBypass ? undefined : s.filterParams);
@@ -100,8 +103,11 @@
     controller?.setPortrait(s.portrait ?? null, s.portraitFixed ?? false); // isolated-body portrait key light
     controller?.setFlatOverhead(s.lockOverhead ?? false); // 2D map: tilt pinned top-down
     controller?.setLockRotation(s.lockRotation ?? false); // fixed heading: follow by panning
-    controller?.setAuroras(s.auroras ?? true);
-    controller?.setAtmospheres(s.atmospheres !== false);
+    // LOW POWER AND THE PRESET COMPOSE, AND OFF WINS (`drawsHeavy`). The preset's answer is about
+    // the PICTURE and this machine's is about the HARDWARE; either is enough on its own to drop a
+    // shell, and neither may overrule the other in the direction of more work.
+    controller?.setAuroras(drawsHeavy(s.auroras, $lowPower));
+    controller?.setAtmospheres(drawsHeavy(s.atmospheres, $lowPower));
     // The frame-rate guard reports HERE rather than to each host, so every surface that mounts this
     // view gets the notice: the GM's holo, the player's system view at both tiers, and the preset
     // preview. One renderer, one place to say it — the alternative is the same message written into
@@ -218,7 +224,7 @@
   $: controller?.setUserSpin(userSpin);
   $: controller?.setViewInset(viewInsetRight);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
-  $: if (controller) { labelsVisible; orbitLinesVisible; filterBypass; orbitPaused; skyStars; applyStyle(style); }
+  $: if (controller) { labelsVisible; orbitLinesVisible; filterBypass; orbitPaused; skyStars; $lowPower; applyStyle(style); }
   // Prop first, store second (TAG-15): in a player window every store is a fresh empty instance, so the
   // value only ever arrives over the broadcast as a prop. Named in the expression, not closed over, or
   // the reactive statement would not re-run when the selection changes (TAG-17).

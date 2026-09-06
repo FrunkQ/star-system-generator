@@ -6634,6 +6634,15 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+A SWITCH ABOUT THE MACHINE MAY REACH A PLAYER VIEW; A SWITCH ABOUT THE PICTURE MAY NOT ([[G80]]).
+[[A10]]/[[A3]] record the fault of wiring a player view to a GM-local store, and the reason is
+PRESENTATION INTENT: a GM's orbit-line strength is not a player's, two audiences with two answers.
+`lowPower` carries no intent - it says this hardware is short of fill rate, which is true whoever is
+looking at it - so it is per browser, applies to every view rendered on that device, and cannot
+travel in a campaign file. Before adding a second store of this kind, ask which of the two it is.
+IT COMPOSES WITH THE PRESET THROUGH `drawsHeavy`, AND OFF WINS. Neither switch may turn the other
+back on; an ABSENT preset field reads as WANTED, or every campaign saved before the field existed
+loses its clouds.
 ON A MEASURING VIEW A DIRECTIONAL FEATURE IS FREE AND A SYMMETRIC ONE IS NOT ([[G79]]). That is the
 rule behind turning the corona off and keeping the JETS: a bipolar beam, however long, says "this
 thing is doing something" and nobody reads it as the star's width, while anything drawn as a sphere
