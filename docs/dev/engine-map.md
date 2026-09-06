@@ -5907,6 +5907,19 @@ only, no userinfo (`https://explorers.starsystemx.com@evil.example/` reads as th
 CONTENTS literally, so widening what the app will fetch costs a test edit - deliberately. **The
 widest entry is `*.pages.dev`**, which trusts every Cloudflare Pages site rather than the hub's;
 it is there because the hub asked for it by name and it is the first thing to remove.
+RULE ONE-B-CUTOVER (2026-09-06): **THE DNS MOVED, AND NOTHING BROKE BECAUSE THE LIST HAD BOTH NAMES
+IN IT BEFORE IT HAPPENED.** `explorers.starsystemx.com` now serves the hub; the workers.dev name
+still answers. The hub began publishing `explorers` download URLs and the engine accepted them with
+NO release - verified by opening one on beta the same day - which is exactly what listing the future
+name early bought. **What DID need a release is the other direction:** `HUB.origin` still addressed
+the hub by the old name, so every link the app HANDED OUT (`hubMapUrl`, `browseUrl`,
+`shareableAppLink`, the Browse control on the load doors) carried a hostname the hub had moved off.
+Reachability and address are two different things and only the first was free.
+**AND ONE TRAP THE MOVE EXPOSED:** `parseHubReference` compared a pasted URL's host against
+`HUB.origin` ALONE, so the day the origin moved, a `.../s/<slug>` link on the old name - sitting in
+people's chat logs, still working - would have quietly stopped being recognised. `isHubHost` is now
+the ONE answer to "is this host the hub?", used by both the parser and `isTrustedOpenUrl`; widening
+RECOGNITION is safe because the result is a slug and the fetch is still built on `HUB.origin`.
 RULE ONE-C (R-17): **TWO WAYS TO GET BYTES, ONE FUNCTION THAT OPENS THEM.** `runHubOpen` (by code)
 and `runHubOpenFromUrl` (by address) differ in exactly one step and share everything after it via
 `openHubBytes`. A second fetch-and-open path would be a second set of answers to "may this replace

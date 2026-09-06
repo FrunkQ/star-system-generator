@@ -35,9 +35,12 @@ describe('R-17: the allow-list, as data', () => {
 	it('is exactly these hosts and no others', () => {
 		// ABSOLUTE. If this fails, somebody widened what the app will fetch and load; read the diff
 		// before making the test agree with it.
+		// The order changed with the DNS cutover of 2026-09-06: `explorers` is where the hub IS and
+		// the workers.dev name is where it ALSO still answers. Both stay - a link carrying either
+		// must open - and this assertion firing is what made the move a decision rather than a slip.
 		expect([...TRUSTED_OPEN_HOSTS]).toEqual([
-			'starsystemx-creator-hub.orange-tree-847c.workers.dev',
-			'explorers.starsystemx.com'
+			'explorers.starsystemx.com',
+			'starsystemx-creator-hub.orange-tree-847c.workers.dev'
 		]);
 		expect([...TRUSTED_OPEN_HOST_SUFFIXES]).toEqual(['.pages.dev']);
 	});

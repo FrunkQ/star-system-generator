@@ -33,30 +33,29 @@ export interface HubConfig {
 }
 
 /**
- * WHERE THE HUB IS TODAY. The Cloudflare Workers deploy, which is the origin that actually answers
- * (owner, 2026-09-01). A feature pointing at a domain that does not resolve yet is a broken feature,
- * so this is the live one and the cutover below is deliberately one token.
+ * WHERE THE HUB IS. **THE CUTOVER HAPPENED 2026-09-06** and this is the agreed final name (owner,
+ * 2026-08-31), measured serving the hub at `x-hub-version: 0.24.0` with
+ * `access-control-allow-origin: *` on the download. The line above used to say "where the hub is
+ * going"; it now says where it is, which is the whole of the change that file promised.
  */
-const LIVE_ORIGIN = 'https://starsystemx-creator-hub.orange-tree-847c.workers.dev';
+export const HUB_ORIGIN = 'https://explorers.starsystemx.com';
 
 /**
- * WHERE THE HUB IS GOING. `explorers.starsystemx.com` is the agreed final name (owner, 2026-08-31).
- * AT CUTOVER: point `origin` and `browseUrl` at this instead — that is the whole change, and the
- * shareable links this app produces follow automatically because they are built from `HUB.origin`.
- *
- * Worth knowing at that moment: links already shared into a Discord carry the app's OWN origin, not
- * the hub's (`/?hub=<slug>` on starsystemx.com), so moving the hub does not break any link already
- * in the wild. Only this app's ability to REACH the hub moves.
+ * WHERE THE HUB ALSO STILL ANSWERS. The Cloudflare Workers deploy was the live origin until the
+ * cutover and **still serves the same hub** (measured the same day, same version header), so it is
+ * kept for two reasons rather than tidied away: links carrying it are in the wild - in Discords, in
+ * anybody's bookmarks - and they must keep naming a map; and it is the fallback if the custom
+ * hostname ever stops resolving. It is NOT where this app addresses the hub any more.
  */
-export const HUB_FINAL_ORIGIN = 'https://explorers.starsystemx.com';
+export const HUB_LEGACY_ORIGIN = 'https://starsystemx-creator-hub.orange-tree-847c.workers.dev';
 
 export const HUB: HubConfig = {
-  origin: LIVE_ORIGIN,
+  origin: HUB_ORIGIN,
   downloadPath: (slug) => `/api/download/${encodeURIComponent(slug)}`,
   // `/s/`, not `/m/`. The hub redirects the old path so nothing broke, but a link this app hands a
   // GM should be the real one rather than a redirect (hub note, 2026-09-03).
   pagePath: (slug) => `/s/${encodeURIComponent(slug)}`,
-  browseUrl: LIVE_ORIGIN,
+  browseUrl: HUB_ORIGIN,
   uploadEnabled: false
 };
 
@@ -78,9 +77,11 @@ export function shareableAppLink(slug: string, appOrigin: string): string {
 // the reason stated at the top of this file: nothing else in the codebase should contain one.
 //
 // WHAT IS ON IT AND WHY EACH ENTRY IS THERE (hub's R-17, 2026-09-05):
-//  - the workers.dev deploy, which is the origin that actually answers today;
-//  - `explorers.starsystemx.com`, the agreed final name, listed AHEAD of the cutover so the hub's
-//    button does not have to wait for an engine release on the day the DNS moves;
+//  - `explorers.starsystemx.com`, where the hub lives since the cutover of 2026-09-06;
+//  - the workers.dev deploy, which was the live origin until that day and still answers, so links
+//    carrying it keep working. **LISTING THE SECOND NAME AHEAD OF THE CUTOVER IS THE REASON THE
+//    CUTOVER COST NOTHING:** the hub started publishing `explorers` download URLs and the engine
+//    accepted them with no release, which was the whole point of writing the list this way;
 //  - `*.pages.dev`, the preview builds. THIS IS THE WIDEST ENTRY BY FAR and it is the first one to
 //    remove: it trusts every Cloudflare Pages site on the internet, not just the hub's. It is here
 //    because the hub asked for it by name and because the exposure is small and bounded - the
@@ -88,12 +89,27 @@ export function shareableAppLink(slug: string, appOrigin: string): string {
 //    uses, and the GM is still asked before anything replaces a campaign. It is NOT here because
 //    anybody thinks a stranger's Pages deploy is trustworthy.
 export const TRUSTED_OPEN_HOSTS: readonly string[] = [
-  new URL(LIVE_ORIGIN).hostname,
-  new URL(HUB_FINAL_ORIGIN).hostname
+  new URL(HUB_ORIGIN).hostname,
+  new URL(HUB_LEGACY_ORIGIN).hostname
 ];
 
 /** Suffix matches, leading dot included so `notpages.dev` cannot pass as `*.pages.dev`. */
 export const TRUSTED_OPEN_HOST_SUFFIXES: readonly string[] = ['.pages.dev'];
+
+/**
+ * IS THIS HOST THE HUB? One answer, used by everything that needs to ask.
+ *
+ * `isTrustedOpenUrl` needs it to decide what to FETCH, and `parseHubReference` needs it to decide
+ * whether a pasted path NAMES a map. Those were two questions with two answers until the cutover
+ * made them disagree: the reference parser compared against `HUB.origin` alone, so the moment the
+ * origin moved, a workers.dev link that still works would have stopped being recognised. Two
+ * spellings of one idea is the fault this codebase keeps writing rules about.
+ */
+export function isHubHost(host: string): boolean {
+  const h = host.toLowerCase();
+  return TRUSTED_OPEN_HOSTS.some((t) => t.toLowerCase() === h) ||
+    TRUSTED_OPEN_HOST_SUFFIXES.some((s) => h.endsWith(s));
+}
 
 /**
  * IS THIS AN ADDRESS THE APP IS WILLING TO FETCH A MAP FROM? Returns `null` when it is, and
@@ -128,10 +144,7 @@ export function isTrustedOpenUrl(raw: unknown): string | null {
     return `That link points at port ${url.port}, and the map library does not answer there.`;
   }
   const host = url.hostname.toLowerCase();
-  const trusted =
-    TRUSTED_OPEN_HOSTS.some((h) => h.toLowerCase() === host) ||
-    TRUSTED_OPEN_HOST_SUFFIXES.some((s) => host.endsWith(s));
-  if (!trusted) {
+  if (!isHubHost(host)) {
     return `This app only opens shared maps from the map library, and that link points at ${host}.`;
   }
   return null;

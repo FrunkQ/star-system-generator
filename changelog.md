@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.331 - 6th Sep 2026
+
+- The app now points at the Explorers site's real address, explorers.starsystemx.com, everywhere it hands you a link - the Browse button, the map library link, and the shareable links it makes. The old address still works if somebody sends you a link with it.
+- Pasting a shared-map link keeps working whichever of the site's addresses it carries. That would have quietly broken the day the site moved, and now it cannot.
+
 ## v3.0.330 - 6th Sep 2026
 
 - The Size comparison is now a player view on the STARMAP as well as inside a system - every star on your map, side by side, with its own order and ruler settings in the preset editor. A tap there compares rather than enters, so a player reading the view cannot fall out of it.

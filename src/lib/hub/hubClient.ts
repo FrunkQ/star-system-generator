@@ -36,7 +36,7 @@ export const MAX_HUB_BYTES = 64 * 1024 * 1024;
 /** Give up rather than hang a startup on a host that accepts the connection and then says nothing. */
 const FETCH_TIMEOUT_MS = 30_000;
 
-import { HUB, isTrustedOpenUrl } from './hubConfig';
+import { HUB, isTrustedOpenUrl, isHubHost } from './hubConfig';
 
 export type HubFetch =
   | { ok: true; bytes: Uint8Array }
@@ -80,7 +80,13 @@ export function parseHubReference(text: string): string | null {
   // would quietly turn an unrelated link into a map code and fetch whatever the hub had under that
   // name - not dangerous, since the request is still built on the hub's own origin, but it would
   // be a confident wrong answer where "that is not a shared-map link" is the honest one.
-  if (url.host !== new URL(HUB.origin).host) return null;
+  //
+  // ANY of the hub's hostnames, not just the one this build addresses it by. The DNS cutover of
+  // 2026-09-06 is exactly why: a `.../s/<slug>` link on the workers.dev name still works and is
+  // sitting in people's chat logs, and comparing against `HUB.origin` alone would have quietly
+  // stopped recognising it the day the origin moved. Recognition is safe to widen - the result is
+  // a SLUG, and the fetch that follows is still built on `HUB.origin`.
+  if (!isHubHost(url.hostname)) return null;
   const parts = url.pathname.split('/').filter(Boolean);
   const last = parts[parts.length - 1] ?? '';
   const candidate = last.toLowerCase().endsWith('.sse.zip') ? last.slice(0, -'.sse.zip'.length) : last;

@@ -72,14 +72,30 @@ describe('R-05: a slug is validated BEFORE it becomes a URL', () => {
 
 	it('builds the download URL on the configured origin and nowhere else', () => {
 		// ABSOLUTE: the literal origin, so a config edit that pointed the app at another host would
-		// be a deliberate change to this line rather than a silent one.
-		expect(hubDownloadUrl('my-map')).toBe(
-			'https://starsystemx-creator-hub.orange-tree-847c.workers.dev/api/download/my-map'
-		);
-		expect(hubMapUrl('my-map')).toBe(
-			'https://starsystemx-creator-hub.orange-tree-847c.workers.dev/s/my-map'
-		);
+		// be a deliberate change to this line rather than a silent one. It did exactly that job on
+		// 2026-09-06, when the DNS cutover moved the hub to `explorers.starsystemx.com`: this
+		// assertion went red and the move had to be written down instead of slipping through.
+		expect(hubDownloadUrl('my-map')).toBe('https://explorers.starsystemx.com/api/download/my-map');
+		expect(hubMapUrl('my-map')).toBe('https://explorers.starsystemx.com/s/my-map');
 		expect(hubDownloadUrl('my-map').startsWith(HUB.origin + '/')).toBe(true);
+	});
+
+	it('still reads a link on the hostname the hub used to live at', () => {
+		// THE CASE THE CUTOVER WOULD OTHERWISE HAVE BROKEN, and it is why `parseHubReference` asks
+		// `isHubHost` rather than comparing with `HUB.origin`. The workers.dev name still serves the
+		// same hub, and links carrying it are in people's chat logs; a GM pasting one is naming a map
+		// whatever this build happens to address the hub by.
+		expect(parseHubReference('https://starsystemx-creator-hub.orange-tree-847c.workers.dev/s/local-neighbourhood'))
+			.toBe('local-neighbourhood');
+		expect(parseHubReference('https://starsystemx-creator-hub.orange-tree-847c.workers.dev/api/download/local-neighbourhood'))
+			.toBe('local-neighbourhood');
+		// And a preview deploy, for the same reason. Widening RECOGNITION is safe: the answer is a
+		// slug, and the fetch that follows is still built on `HUB.origin`.
+		expect(parseHubReference('https://abc123.starsystemx-creator-hub.pages.dev/s/local-neighbourhood'))
+			.toBe('local-neighbourhood');
+		// A host that is not the hub's still names nothing, which is the whole point of asking.
+		expect(parseHubReference('https://evil.example/s/local-neighbourhood')).toBeNull();
+		expect(parseHubReference('https://explorers.starsystemx.com.evil.example/s/local-neighbourhood')).toBeNull();
 	});
 });
 
