@@ -3458,6 +3458,34 @@ so a Mars arrival was drawn parked for the 615 days it was still aerobraking. Re
 one dip because the loops coincide, and the drawn count is CAPPED at 24 with the real count in the
 label rather than silently truncated.
 
+### UI-C16 A POINTER CAPTURE ON A CONTAINER SILENTLY KILLS EVERY BUTTON INSIDE IT
+BUCKET: IMPLEMENTATION - a browser rule nobody remembers, whose symptom is "nothing happens" with a
+clean console, no error, no warning and a hit test that measures perfectly.
+WHERE: `components/SizeComparisonView.svelte` (`capture`, `onPointerDown`, `onPointerMove`); the
+same shape is available to any component that pans a surface with controls inside it.
+RULE: `setPointerCapture` RETARGETS the compatibility events, and `click` is one of them. While a
+container holds the capture, a click anywhere inside it is delivered to THE CONTAINER, not to the
+button under the finger. So capturing on `pointerdown` - the obvious place, and the place every
+example puts it - disables every control the container contains, for pointers, while leaving them
+perfectly visible, hoverable, focusable and keyboard-operable.
+CAPTURE AT THE SLOP THRESHOLD INSTEAD. Take the capture the moment the gesture is known to be a
+DRAG (travel past `TAP_SLOP_PX`), and for a two-finger gesture at once, since that is never a tap.
+Nothing is lost: the capture exists so a finger that slides OFF the surface keeps driving the pan,
+and until the slop threshold the pointer is still over it anyway.
+WHAT IT COST, and the shape is worth remembering. v3.0.304 fixed a reported fault - the size
+comparison could not be scrolled on a phone - by adding pointer events, a drag, a pinch AND the two
+stepper buttons the reporter had asked for by name. The capture it added on `pointerdown` killed
+those same steppers, the body hit areas and the hide menu in the same commit. Every unit gate stayed
+green, because the laws were right and it is the DELIVERY of the event that broke; the session had
+driven the view in a browser and read the layout back, but had not pressed anything. Recorded as
+[[B128]]. **The lesson under it is [[B124]]'s, one turn further on: a layout check is not an
+interaction check, and an interaction check is not a check of the OTHER interactions in reach.**
+THE TELL, if you ever meet the symptom again: put a capturing `click` listener on `document` and
+read `event.target`. If it is the container rather than the control, this is what you have.
+AND WHILE YOU ARE THERE, PICK AGAINST THE DATA. A surface that draws through a renderer should hit
+test the LAYOUT (`comparison/layout.ts` `slotAt`), not a stack of invisible DOM boxes: the boxes
+overlap, they decide by document order, and they cannot follow a filter's warp at all.
+
 ### UI-C15 A RULE THAT WRITES A CONTROL'S STATE MUST EDGE ON THE CONTENT, NEVER RUN ON THE LEVEL
 BUCKET: PLATFORM (Svelte reactivity) + ARCHITECTURE - durable and general: a rule that both
 READS and WRITES a piece of UI state will undo the user, because their change is one of its own
@@ -6383,6 +6411,12 @@ size law. A body's drawn diameter is `radiusKm * 2` and a star's is `starRadiusK
 are all absent by design. They exist to compress a range no screen can hold, and removing that
 compression is the entire feature - a size comparison drawn through the span map is a comparison of
 the span map.
+TRUE RELATIVE SIZE IS A PER-FRAME PROPERTY, NOT A PER-STRIP ONE, AND THAT IS RENDER-S55. One
+pixels-per-km for the WHOLE strip is what the first cut shipped and it does not work on a real set:
+the owner reported it on 2026-09-06 as "stupid massive and hard to scroll past". The scale now
+follows the scroll so that whatever is at the centre of the window draws at a fixed share of it.
+Everything in a FRAME is still at true proportion to everything else in that frame - the honesty is
+untouched - but the strip has no single scale and nothing may assume one.
 THE ONE FLOOR IT KEEPS IS A MARKER, NOT A SIZE. Under `DOT_THRESHOLD_PX` an object draws as a DOT
 in the DOM with its label and the words "below 1 px at this scale" - it is never enlarged, and its
 true `diameterPx` is reported beside the dot's `spanPx` so the two can never be confused. That is
@@ -6390,9 +6424,10 @@ RENDER-S43's distinction (a floor is a screen-space legibility clamp UNDERNEATH 
 applied to a view that has no size dial above it at all.
 AND THE SCENE IS ORTHOGRAPHIC, MEASURED IN PIXELS. Perspective makes the nearer body larger, which
 is exactly the lie the view exists to remove; and a frustum whose world unit IS a CSS pixel means
-the DOM overlay's labels, ruler ticks and hit areas sit over the globes by construction rather than
-through a projection nobody can check. The strip's layout is therefore computed once, in pixels, by
-a pure function, and the scene and the overlay both read it.
+the overlay's labels, ruler ticks and hit areas sit over the globes by construction rather than
+through a projection nobody can check. The strip's layout is computed by a pure function in pixels,
+and the scene and the chrome both read it - recomputed whenever the scale moves, which is now every
+frame you are scrolling (RENDER-S55).
 TWO TRAPS THAT COME WITH THAT ARRANGEMENT, both paid for on the first live run and each invisible to
 every test in the suite. **The frustum carries the pan, so the camera must NOT also be aimed** - a
 `lookAt` at the scrolled centre ROTATES an ortho camera and tilts the strip out of view ([[B123]]);
@@ -6440,6 +6475,73 @@ the corona is `radius * (5 + activity * 4)` across, so on a TRUE-SCALE strip a s
 five times its own width and reads as part of the object. The size-comparison view turns it off, and
 that is not a style choice - a view whose whole claim is "this is how big these things really are"
 cannot draw a glow that makes a star look nine times its diameter. Seen live before it was believed.
+
+### RENDER-S55 THE SIZE COMPARISON'S SCALE FOLLOWS THE SCROLL, AND THE FOCUS IS THE ONLY STATE
+BUCKET: ARCHITECTURE - a view whose zoom is derived rather than held, which is the opposite of every
+other map in this app, and the reason a reader's first instinct ("just store the scale") is wrong.
+WHERE: `src/lib/comparison/layout.ts` (`focusItems`, `focusIndexOf`, `clampFocus`,
+`focusDiameterKm`, `scaleForFocus`, `focusCentrePx`, `focusStepPx`, `clampCentreShare`);
+`components/SizeComparisonView.svelte` holds the two values everything else is derived from; pinned
+by `comparison/layout.spec.ts` ("the scale follows what is in the middle", 9 gates, 9 mutations).
+WHY IT EXISTS. One fixed pixels-per-km cannot serve a set spanning five orders of magnitude. Choose
+a scale that shows Earth and the star is 26,232 px across - thirty-three screenfuls you drag past
+with nothing on them; choose one that shows the star and every moon is under the pixel floor. The
+owner reported exactly this on 2026-09-06, on the shipped view: *"they are stupid massive and hard
+to scroll past ... as they move through the centre of the screen they are mid sized to the viewport
+- as you scroll it zooms in and out to maintain that"*. Recorded as [[B127]].
+THE LAW: whatever is at the CENTRE of the window draws at `centreShare` of the shorter side, and the
+scale is whatever makes that true. Everything else in that frame draws at ONE scale with it, so a
+frame is still an honest comparison; what changes as you travel is how much of the screen a
+kilometre buys.
+THE STATE IS TWO NUMBERS AND THE ORDER OF DERIVATION IS THE INVARIANT: `focus` (a FRACTIONAL INDEX
+into the strip's own sequence) and `centreShare`. From those, in this order and no other: the
+sequence -> the focused diameter -> the scale -> the laid-out strip -> the pixel scroll. Storing the
+scale or the pixel scroll as well is what would let them disagree about what is in the middle, and
+the disagreement is invisible until you scroll.
+WHY AN INDEX AND NOT A PIXEL OFFSET. A pixel offset means nothing while the scale under it moves -
+the same 4,000 px is half a star or four hundred moons. An index is stable across the zoom, so the
+ends are exactly 0 and n-1, a drag is reversible, and every object costs about one screenful of drag
+whatever its true size, which is the reported fault stated as a law.
+FOUR THINGS THAT LOOK LIKE BUGS AND ARE THE LAW:
+ - **The along scroll goes NEGATIVE at the start** and past `lengthPx - span` at the end, and must
+   not be clamped. "The focused object is in the middle of the window" applies to the first and last
+   objects as much as any other; clamping pins them to an edge and silently breaks the whole rule.
+   `clampScroll` survives for the CROSS axis only.
+ - **The focused size interpolates GEOMETRICALLY.** Size is a ratio quantity: halfway between Earth
+   and Jupiter is 3.3 Earths, not 6. The arithmetic mean makes the zoom hold still while you cross
+   the big object and then rush.
+ - **The drag's exchange rate is taken ONCE per gesture** (`focusStepPx` at pointerdown). The rate
+   itself changes as you travel - that IS the zoom - so re-reading it mid-drag means dragging back
+   the same distance does not put you back where you started.
+ - **A pinch holds the CENTRE, not the point between the fingers.** The centre is what the scale is
+   derived from, so it is anchored by construction; anchoring anywhere else would have to move the
+   focus, i.e. change what you are looking at because you zoomed. `scrollForZoom` was deleted rather
+   than kept beside its replacement.
+THE SEQUENCE IS THE STRIP ITSELF, MOONS INCLUDED, and the focus carries BOTH axes. A first cut
+travelled the orbit layout by its COLUMNS only, so a moon could be clicked but never became the
+subject; the owner corrected it the same day - *"Same for moons if you zoom down to them - their
+frame of reference is themselves so you will see the vast size of your host"*. So `sortItems` is the
+sequence for every order (`orbit` gives the tree's reading order, and `layoutOrbit` lays its slots
+out in exactly that sequence), and `focusCrossPx` derives the cross scroll the way `focusCentrePx`
+derives the along one. TWO CONSEQUENCES. The free cross-drag is GONE - two owners of where the
+picture is disagree the moment either moves. And `focusStepPx` must measure BOTH axes: in the orbit
+tree a planet and its first moon share a `centrePx` exactly, so an along-only rate is zero there and
+the drag divides by nothing.
+THE FRAMING IS THREE NUMBERS AND THE OWNER EXPECTS TO COME BACK TO THEM. `OPENING_SHARE` (0.22) is
+the zoom; `GAP_FRACTION` (0.06) is how close two worlds sit; `RING_ROOM_FRACTION` (0) is how much
+of its true reach a ring reserves as ROOM. The brief they serve
+is his: *"the left/right planets of the current one must be seen in full - have them very close as
+this is to let 4-6 bodies appear on screen at once (rings can overlap)"*. What the window fits is
+roughly `windowAlong / (share x shorterSide x (1 + GAP_FRACTION))`. A ring is ALWAYS drawn at its
+true extent whatever the room rule says - the knob moves spacing, never the drawing.
+A CLICK IS NAVIGATION AND NOT A ZOOM, and there is exactly ONE share because of it. Owner,
+2026-09-06: *"rather than be forced to scroll - or mousewheel this means clicking centres and
+everything else around scales and packs accordingly"*. A click sets the FOCUS and nothing else; the
+share applies to whatever is at the focus, so clicking a speck at the edge of the strip already
+brings you all the way in to it, and clicking a neighbour re-frames without undoing a zoom the
+reader set for themselves. The second share (`SELECTED_SHARE`, 0.5 then 0.28) is deleted.
+BLAST: any code that reads a pixel position off this view has to say WHICH FRAME it means. A cached
+layout, a stored scroll, a hit test computed against a stale scale: all of them are the same fault.
 
 ### RENDER-S54 EVERY PLAYER STAGE CARRIES THE FILTER AND THE OVERLAY, AND THERE ARE TWO WAYS TO DO IT
 BUCKET: ARCHITECTURE - a player-facing view that ignores the preset's visual filter does not look

@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  sortBySize, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote,
+  sortBySize, medianPlanet, pxPerKm, layoutStrip, belowFloorNote,
   idsAtLeast, idsAtMost, visibleItems, referenceMarks, minorTicks, LABEL_MIN_GAP_PX,
-  clampScroll, scrollForZoom, TAP_SLOP_PX, STEP_FRACTION, sortItems, orbitOrder, orbitTree, measureSlot,
+  TAP_SLOP_PX, STEP_FRACTION, sortItems, orbitOrder, orbitTree, measureSlot,
   SORT_ORDERS, GAP_FRACTION as GAPF,
-  SELECTED_SHARE, OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX,
+  OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX, RING_ROOM_FRACTION,
+  focusIndexOf, clampFocus, focusDiameterKm, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
+  clampCentreShare, MIN_CENTRE_SHARE, MAX_CENTRE_SHARE, slotAt, PICK_MIN_RADIUS_PX,
   type ComparisonItem
 } from './layout';
 import { EARTH_RADIUS_KM, SOLAR_RADIUS_KM, LUNA_RADIUS_KM } from '$lib/constants';
@@ -83,43 +85,217 @@ describe('size comparison — scale', () => {
   // ABSOLUTE pins, not ratios. A shorter side of 800 px is the arithmetic's anchor throughout.
   const SHORT = 800;
 
-  it('puts a clicked object at half the shorter side', () => {
-    const s = pxPerKm(SOL[0].diameterKm, SHORT, SELECTED_SHARE);
-    expect(SOL[0].diameterKm * s).toBeCloseTo(400, 6);        // 0.5 x 800
+  it('frames WHATEVER is at the centre at the one share — a star and a speck alike', () => {
+    // There is no second share for a click: the share applies to the focus, so clicking the smallest
+    // rock on the strip brings you all the way in to it. That is what makes a click navigation
+    // rather than a zoom (owner, 2026-09-06).
+    const sun = pxPerKm(SOL[0].diameterKm, SHORT, OPENING_SHARE);
+    expect(SOL[0].diameterKm * sun).toBeCloseTo(176, 6);
+    const phobos = SOL.find((i) => i.name === 'Phobos')!;
+    const s = pxPerKm(phobos.diameterKm, SHORT, OPENING_SHARE);
+    expect(phobos.diameterKm * s).toBeCloseTo(176, 6);        // the SAME 176 px, for a 22.5 km rock
   });
 
-  it('opens with the median planet at 30% of the shorter side', () => {
+  it('opens with the median planet at the OPENING share of the shorter side', () => {
     const earth = medianPlanet(SOL)!;
     const s = pxPerKm(earth.diameterKm, SHORT, OPENING_SHARE);
-    expect(earth.diameterKm * s).toBeCloseTo(240, 6);          // 0.3 x 800
+    expect(earth.diameterKm * s).toBeCloseTo(176, 6);           // 0.22 x 800
     // AND THE ABSOLUTE FIGURES THAT FALL OUT OF IT, for the Solar System, at that scale. Earth is
-    // 12,742 km across, so the scale is 240 / 12,742 = 0.018835... px/km.
-    expect(s).toBeCloseTo(0.0188353476, 9);
-    expect(SOL.find((i) => i.name === 'Jupiter')!.diameterKm * s).toBeCloseTo(2633.596, 2);   // 139,822 km
-    expect(SOL.find((i) => i.name === 'Luna')!.diameterKm * s).toBeCloseTo(65.449, 2);        // 3,474.8 km
-    expect(SOL.find((i) => i.name === 'Sun')!.diameterKm * s).toBeCloseTo(26231.612, 2);      // 1,392,680 km
+    // 12,742 km across, so the scale is 176 / 12,742 = 0.013812... px/km.
+    expect(s).toBeCloseTo(0.0138125883, 9);
+    expect(SOL.find((i) => i.name === 'Jupiter')!.diameterKm * s).toBeCloseTo(1931.303, 2);   // 139,822 km
+    expect(SOL.find((i) => i.name === 'Luna')!.diameterKm * s).toBeCloseTo(47.996, 2);        // 3,474.8 km
+    expect(SOL.find((i) => i.name === 'Sun')!.diameterKm * s).toBeCloseTo(19236.515, 2);      // 1,392,680 km
   });
 
   it('measures against the SHORTER side, so turning the device does not change the share', () => {
-    const landscape = pxPerKm(SOL[3].diameterKm, 600, SELECTED_SHARE); // shorter side 600 either way
-    const portrait = pxPerKm(SOL[3].diameterKm, 600, SELECTED_SHARE);
+    const landscape = pxPerKm(SOL[3].diameterKm, 600, OPENING_SHARE); // shorter side 600 either way
+    const portrait = pxPerKm(SOL[3].diameterKm, 600, OPENING_SHARE);
     expect(landscape).toBe(portrait);
   });
 
-  it('takes its zoom bounds from the SET, never from a constant (UI-L7)', () => {
-    const sol = zoomBounds(SOL, SHORT);
-    // Zoomed out, the Sun is 4% of 800 = 32 px. Zoomed in, Phobos (22.534 km) is 400 px.
-    expect(SOL[0].diameterKm * sol.min).toBeCloseTo(32, 6);
-    expect(22.534 * sol.max).toBeCloseTo(400, 6);
-    // A different set gets different bounds — that is the whole assertion.
-    const moonsOnly = SOL.filter((i) => i.role === 'moon');
-    expect(zoomBounds(moonsOnly, SHORT).min).not.toBeCloseTo(sol.min, 9);
+  it('bounds the hand zoom as a SHARE, which means the same thing on every map', () => {
+    // UI-L7 wants a bound taken from the data rather than a constant, and it was written about an
+    // ABSOLUTE scale - which this view no longer has. "Between a twentieth and nine tenths of the
+    // screen" is already map-independent, so the constants ARE the honest form here.
+    expect(clampCentreShare(10)).toBe(MAX_CENTRE_SHARE);
+    expect(clampCentreShare(0.0001)).toBe(MIN_CENTRE_SHARE);
+    expect(clampCentreShare(0.4)).toBe(0.4);
+    expect(clampCentreShare(NaN)).toBe(OPENING_SHARE);
+    expect(MIN_CENTRE_SHARE).toBeLessThan(OPENING_SHARE);
+    expect(MAX_CENTRE_SHARE).toBeGreaterThan(OPENING_SHARE);
   });
 
   it('survives an empty set and a zero-size viewport', () => {
-    expect(zoomBounds([], 800)).toEqual({ min: 1, max: 1 });
     expect(pxPerKm(100, 0, 0.5)).toBe(0);
     expect(pxPerKm(0, 800, 0.5)).toBe(0);
+    expect(scaleForFocus([], 0, 800, 0.3)).toBe(0);
+  });
+});
+
+// THE ROLLING ZOOM. Owner, 2026-09-06: the strip must not be one fixed scale, because a set that
+// spans five orders of magnitude has no single scale that works - "at the moment they are stupid
+// massive and hard to scroll past". Whatever is at the centre of the window draws at the same share
+// of it, and the scale follows the scroll to keep that true.
+describe('size comparison — the scale follows what is in the middle', () => {
+  const SHORT = 800;
+
+  it('draws whatever is at the focus at the centre share, WHATEVER it is', () => {
+    // The whole law, stated in absolutes (PHY-34) rather than as a ratio. Sol is sorted by size, so
+    // index 0 is the Sun and index 5 is Earth.
+    const seq = sortItems(SOL, 'size');
+    expect(seq[0].name).toBe('Sun');
+    const atSun = scaleForFocus(seq, 0, SHORT, OPENING_SHARE);
+    expect(seq[0].diameterKm * atSun).toBeCloseTo(176, 6);          // 0.22 x 800
+    const iEarth = focusIndexOf(seq, 'earth');
+    const atEarth = scaleForFocus(seq, iEarth, SHORT, OPENING_SHARE);
+    expect(SOL[3].diameterKm * atEarth).toBeCloseTo(176, 6);        // the SAME 176 px
+    // ...and the scale that did it is a hundred-odd times bigger, which is the zoom.
+    expect(atEarth / atSun).toBeCloseTo(1392680 / 12742, 6);
+  });
+
+  it('cures the fault it was written for: the Sun stops being a wall you drag past', () => {
+    // The reported fault, as a measurement. At ONE fixed scale that shows Earth at the opening share
+    // of an 800 px side, the Sun draws 19,237 px across - twenty-four screenfuls of star. Under the
+    // rolling zoom every object in turn draws 176 px WHEN IT IS THE ONE YOU ARE LOOKING AT, and the
+    // assertion goes through the real layout rather than through the scale that produced it.
+    const seq = sortItems(SOL, 'size');
+    const fixed = pxPerKm(SOL[3].diameterKm, SHORT, OPENING_SHARE);
+    expect(SOL.find((i) => i.name === 'Sun')!.diameterKm * fixed).toBeGreaterThan(19000);
+    for (let f = 0; f < seq.length; f++) {
+      const layout = layoutStrip(SOL, scaleForFocus(seq, f, SHORT, OPENING_SHARE), { axis: 'x' });
+      const slot = layout.slots.find((s) => s.id === seq[f].id)!;
+      expect(slot.diameterPx).toBeCloseTo(176, 6);
+    }
+  });
+
+  it('interpolates the focused size GEOMETRICALLY, so the zoom does not lurch', () => {
+    const seq = [
+      { id: 'a', name: 'A', diameterKm: 100, role: 'planet' },
+      { id: 'b', name: 'B', diameterKm: 10000, role: 'planet' }
+    ] as ComparisonItem[];
+    // Halfway between 100 and 10,000 is 1,000 - a hundredfold either side. The arithmetic mean is
+    // 5,050, which sits visually right beside B and makes the zoom hold still then rush.
+    expect(focusDiameterKm(seq, 0.5)).toBeCloseTo(1000, 9);
+    expect(focusDiameterKm(seq, 0)).toBe(100);
+    expect(focusDiameterKm(seq, 1)).toBe(10000);
+    // A quarter of the way is 100 x (100 ^ 0.25) = 316.23.
+    expect(focusDiameterKm(seq, 0.25)).toBeCloseTo(316.2278, 3);
+  });
+
+  it('keeps EVERYTHING on screen at true relative size, which is the point of the view', () => {
+    // One scale serves the whole frame. What travels is the zoom, not the honesty: at any focus,
+    // Jupiter is 11.209 Earths, exactly as it is in the sky.
+    const seq = sortItems(SOL, 'size');
+    for (const f of [0, 2.5, 5, 8.3]) {
+      const s = scaleForFocus(seq, f, SHORT, OPENING_SHARE);
+      const jup = SOL.find((i) => i.name === 'Jupiter')!.diameterKm * s;
+      const ear = SOL.find((i) => i.name === 'Earth')!.diameterKm * s;
+      expect(jup / ear).toBeCloseTo(139822 / 12742, 9);
+    }
+  });
+
+  it('puts the focused object in the MIDDLE of the window, at both ends of the strip', () => {
+    const seq = sortItems(SOL, 'size');
+    for (const f of [0, 3, seq.length - 1]) {
+      const scale = scaleForFocus(seq, f, SHORT, OPENING_SHARE);
+      const layout = layoutStrip(SOL, scale, { axis: 'x' });
+      const scroll = focusCentrePx(layout, seq, f) - 900 / 2;      // a 900 px window
+      const slot = layout.slots.find((s) => s.id === seq[f].id)!;
+      expect(slot.centrePx - scroll).toBeCloseTo(450, 6);          // dead centre
+    }
+  });
+
+  it('lets the along-scroll go NEGATIVE at the start — the first object is entitled to the middle', () => {
+    // The tell that the old pixel clamp is gone. With the largest object centred there IS empty
+    // strip before it, and clamping to zero would pin it to the near edge instead.
+    const seq = sortItems(SOL, 'size');
+    const scale = scaleForFocus(seq, 0, SHORT, OPENING_SHARE);
+    const layout = layoutStrip(SOL, scale, { axis: 'x' });
+    expect(focusCentrePx(layout, seq, 0) - 900 / 2).toBeLessThan(0);
+  });
+
+  it('clamps the focus to the strip and never lets a NaN through', () => {
+    expect(clampFocus(-5, 9)).toBe(0);
+    expect(clampFocus(99, 9)).toBe(8);
+    expect(clampFocus(3.5, 9)).toBe(3.5);
+    expect(clampFocus(NaN, 9)).toBe(0);
+    expect(clampFocus(2, 1)).toBe(0);       // one object is the whole journey
+    expect(clampFocus(2, 0)).toBe(0);
+  });
+
+  it('travels through EVERY object, moons included — a moon may be the subject', () => {
+    // Owner, 2026-09-06: "Same for moons if you zoom down to them - their frame of reference is
+    // themselves so you will see the vast size of your host." So the sequence is the strip itself,
+    // in the strip's own order, and the ORBIT layout's slots are laid out in exactly that sequence.
+    const seq = sortItems(SYS, 'orbit');
+    expect(seq.length).toBe(SYS.length);
+    expect(focusIndexOf(seq, 'luna')).toBeGreaterThanOrEqual(0);
+    const layout = layoutStrip(SYS, 0.002, { axis: 'x', order: 'orbit' });
+    expect(layout.slots.map((s) => s.id)).toEqual(seq.map((i) => i.id));
+    // ...and the scale it puts you at is LUNA's, which is what makes Earth loom behind it.
+    const iLuna = focusIndexOf(seq, 'luna');
+    const scale = scaleForFocus(seq, iLuna, 800, OPENING_SHARE);
+    expect(3475 * scale).toBeCloseTo(800 * OPENING_SHARE, 6);
+    // ...and Earth then looms behind it at 645 px - three quarters of the shorter side, from a body
+    // that was 176 px across a moment ago. That is the "vast size of your host" the owner asked for.
+    expect(12742 * scale).toBeCloseTo(645.35, 2);
+    expect(12742 * scale / 800).toBeGreaterThan(0.75);
+  });
+
+  it('brings a moon\u2019s ROW to the middle too, not just its column', () => {
+    const seq = sortItems(SYS, 'orbit');
+    const layout = layoutStrip(SYS, 0.002, { axis: 'x', order: 'orbit' });
+    const iLuna = focusIndexOf(seq, 'luna');
+    const luna = layout.slots.find((s) => s.id === 'luna')!;
+    expect(luna.crossPx).toBeGreaterThan(0);           // off the centreline, or this proves nothing
+    expect(focusCrossPx(layout, seq, iLuna)).toBeCloseTo(luna.crossPx, 6);
+    // A flat order has no second dimension at all, and must not acquire one.
+    const flat = layoutStrip(SOL, 1, { axis: 'x' });
+    expect(focusCrossPx(flat, sortItems(SOL, 'size'), 3)).toBe(0);
+  });
+
+  it('never hands the drag a rate of zero, even where two slots share a centre', () => {
+    // In the orbit layout a planet and its first moon have the SAME centrePx and differ only across.
+    // An along-only exchange rate is zero there, and the drag then divides by nothing.
+    const seq = sortItems(SYS, 'orbit');
+    const layout = layoutStrip(SYS, 0.002, { axis: 'x', order: 'orbit' });
+    const iEarth = focusIndexOf(seq, 'earth');
+    const earth = layout.slots.find((s) => s.id === 'earth')!;
+    const luna = layout.slots.find((s) => s.id === 'luna')!;
+    expect(luna.centrePx).toBe(earth.centrePx);        // the fault this guards, present in the data
+    expect(focusStepPx(layout, seq, iEarth)).toBeCloseTo(luna.crossPx - earth.crossPx, 6);
+    expect(focusStepPx(layout, seq, iEarth)).toBeGreaterThan(1);
+  });
+
+  it('gives the drag an exchange rate that is never zero and follows the local scale', () => {
+    const seq = sortItems(SOL, 'size');
+    const near = scaleForFocus(seq, 0, SHORT, OPENING_SHARE);
+    const stepAtSun = focusStepPx(layoutStrip(SOL, near, { axis: 'x' }), seq, 0);
+    // One step of focus is worth about a screenful of picture wherever you are - that is what makes
+    // every object cost the same to scroll past whatever its true size.
+    expect(stepAtSun).toBeGreaterThan(100);
+    expect(stepAtSun).toBeLessThan(2000);
+    expect(focusStepPx(layoutStrip(SOL, near, { axis: 'x' }), [], 0)).toBe(0);
+    expect(focusStepPx({ slots: [], lengthPx: 0, axis: 'x', crossReachPx: 0 }, seq, 0)).toBe(1);
+  });
+
+  it('fits four to six bodies on screen, with the neighbours whole — the owner\u2019s framing', () => {
+    // Owner, 2026-09-06: "the left/right planets of the current one must be seen in full ... to let
+    // 4-6 bodies appear on screen at once". Measured on the GM stage that was live when he said it:
+    // 410 px across, opening on Earth. The step from one object to the next is the two half-spans
+    // plus the gap, so what fits is what the assertion counts.
+    const seq = sortItems(SOL, 'size');
+    const iEarth = focusIndexOf(seq, 'earth');
+    const layout = layoutStrip(SOL, scaleForFocus(seq, iEarth, 410, OPENING_SHARE), { axis: 'x' });
+    const centre = focusCentrePx(layout, seq, iEarth);
+    const whole = layout.slots.filter((s) =>
+      s.centrePx - s.spanPx / 2 >= centre - 205 && s.centrePx + s.spanPx / 2 <= centre + 205);
+    const touching = layout.slots.filter((s) =>
+      s.centrePx + s.spanPx / 2 > centre - 205 && s.centrePx - s.spanPx / 2 < centre + 205);
+    expect(whole.length).toBeGreaterThanOrEqual(3);      // the subject AND both neighbours, in full
+    expect(touching.length).toBeGreaterThanOrEqual(4);
+    expect(touching.length).toBeLessThanOrEqual(8);
   });
 });
 
@@ -156,8 +332,8 @@ describe('size comparison — the strip', () => {
   it('draws a sub-floor object as a DOT and never inflates it', () => {
     const { slots } = layoutStrip(SOL, scale);
     const phobos = slots.find((s) => s.name === 'Phobos')!;
-    expect(phobos.diameterPx).toBeLessThan(DOT_THRESHOLD_PX);   // 22.534 km x 0.01884 = 0.42 px
-    expect(phobos.diameterPx).toBeCloseTo(0.4245, 3);
+    expect(phobos.diameterPx).toBeLessThan(DOT_THRESHOLD_PX);   // 22.534 km x 0.013813 = 0.31 px
+    expect(phobos.diameterPx).toBeCloseTo(0.3113, 3);
     expect(phobos.belowFloor).toBe(true);
     expect(phobos.spanPx).toBe(DOT_PX);            // the marker's span, not the body's size
     expect(belowFloorNote(phobos.diameterPx)).toBe('below 1 px at this scale');
@@ -214,28 +390,31 @@ describe('size comparison — rings', () => {
   it('draws the ring at TRUE extent and never lets it change the body size', () => {
     const m = measureSlot(SATURN, 1);
     expect(m.diameterPx).toBe(116464);          // the globe, untouched
-    expect(m.ringInnerPx).toBe(66900);
+    expect(m.ringInnerPx).toBe(66900);          // and the ring, at its TRUE radii, always
     expect(m.ringOuterPx).toBe(140180);
     expect(m.spanPx).toBe(116464);              // what is DRAWN as the body
-    expect(m.reachPx).toBe(280360);             // what the layout RESERVES: the ring, both sides
   });
 
   it('never lets a ring into the ORDER — the strip compares globes, not jewellery', () => {
     // Saturn's rings are wider than Jupiter. Ordered by reach it would outrank Jupiter; it must not.
     const byName = sortItems([SATURN, JUPITER], 'size').map((i) => i.name);
     expect(byName).toEqual(['Jupiter', 'Saturn']);
-    expect(measureSlot(SATURN, 1).reachPx).toBeGreaterThan(measureSlot(JUPITER, 1).reachPx);
   });
 
-  it('gives a ringed planet room, so its rings cannot be drawn through its neighbours', () => {
+  it('lets the rings OVERLAP rather than spending the screen on room for them', () => {
+    // Owner, 2026-09-06: "have them very close ... (rings can overlap)". Saturn reserving its full
+    // reach means a ringed planet claims two and a half times its own room, and on a strip meant to
+    // hold four to six bodies that pushes two of them off the screen to hold empty space. The ring
+    // is still DRAWN at its true extent - it simply crosses its neighbour, which reads as depth.
+    expect(RING_ROOM_FRACTION).toBe(0);
+    expect(measureSlot(SATURN, 1).reachPx).toBe(116464);        // the globe, not the ring
     const { slots } = layoutStrip([SATURN, JUPITER], 1e-3);
     const at = (n: string) => slots.find((sl) => sl.name === n)!;
-    const jupiterRight = at('Jupiter').centrePx + at('Jupiter').reachPx / 2;
-    const saturnRingLeft = at('Saturn').centrePx - at('Saturn').ringOuterPx;
-    expect(saturnRingLeft).toBeGreaterThan(jupiterRight);
-    // And the body sits in the MIDDLE of the room it reserves, so the ring reaches equally either way.
-    expect(at('Saturn').centrePx - at('Saturn').ringOuterPx)
-      .toBeCloseTo(at('Saturn').centrePx + at('Saturn').ringOuterPx - at('Saturn').reachPx, 6);
+    const jupiterRight = at('Jupiter').centrePx + at('Jupiter').spanPx / 2;
+    expect(at('Saturn').centrePx - at('Saturn').ringOuterPx).toBeLessThan(jupiterRight);
+    // TURNING THE KNOB BACK UP GIVES THE ROOM BACK - the same measurer, one number.
+    const roomy = measureSlot(SATURN, 1);
+    expect(Math.max(roomy.spanPx, roomy.ringOuterPx * 2 * 1)).toBe(280360);
   });
 
   it('reserves nothing extra for a body with no rings', () => {
@@ -251,7 +430,7 @@ describe('size comparison — rings', () => {
     expect(tiny.ringOuterPx).toBe(0);
     expect(tiny.belowFloor).toBe(true);
     expect(tiny.spanPx).toBe(DOT_PX);           // the BODY still gets its marker
-    expect(tiny.reachPx).toBe(DOT_PX);          // and reserves no phantom ring
+    expect(tiny.reachPx).toBe(DOT_PX);          // and no phantom ring
   });
 
   it('ignores a ring whose radii are nonsense rather than drawing it inside out', () => {
@@ -260,7 +439,9 @@ describe('size comparison — rings', () => {
     expect(wrong.reachPx).toBe(wrong.spanPx);
   });
 
-  it('reserves the ring in the ORBIT layout too, not only the flat strip', () => {
+  it('measures the ring the same way in the ORBIT layout — ONE measurer, both layouts', () => {
+    // The flat strip and the tree must never disagree about a ringed planet, whatever the room rule
+    // is set to: they call the same `measureSlot`.
     const withMoon: ComparisonItem[] = [
       { ...SATURN, parentId: null, orbitAu: 9.5 },
       { id: 'titan', name: 'Titan', diameterKm: 5149, role: 'moon', parentId: 'saturn', orbitAu: 0.008 },
@@ -268,9 +449,10 @@ describe('size comparison — rings', () => {
     ];
     const { slots } = layoutStrip(withMoon, 1e-3, { order: 'orbit' });
     const at = (n: string) => slots.find((sl) => sl.name === n)!;
-    expect(at('Saturn').ringOuterPx).toBeCloseTo(140.18, 6);
-    expect(at('Next').centrePx - at('Next').reachPx / 2)
-      .toBeGreaterThan(at('Saturn').centrePx + at('Saturn').ringOuterPx);
+    expect(at('Saturn').ringOuterPx).toBeCloseTo(140.18, 6);     // drawn at TRUE extent, as ever
+    const flat = layoutStrip(withMoon, 1e-3).slots.find((sl) => sl.name === 'Saturn')!;
+    expect(at('Saturn').reachPx).toBe(flat.reachPx);
+    expect(at('Saturn').spanPx).toBe(flat.spanPx);
   });
 });
 
@@ -456,68 +638,25 @@ describe('size comparison — moving along the strip', () => {
   // so on a touch device the strip could not be moved at all: everything past the opening screenful
   // was unreachable. These are the laws the drag, the pinch, the steppers and the arrow keys share.
 
-  it('never scrolls before the start, so the largest object is always reachable', () => {
-    expect(clampScroll(-500, 5000, 800)).toBe(0);
-    expect(clampScroll(-0.001, 5000, 800)).toBe(0);
-  });
-
-  it('never scrolls past the end, so you cannot land in empty space beyond the smallest', () => {
-    expect(clampScroll(99999, 5000, 800)).toBe(4200);   // 5000 - 800
-    expect(clampScroll(4200, 5000, 800)).toBe(4200);
-  });
-
-  it('answers ZERO when the whole strip already fits — not a negative offset', () => {
-    // `lengthPx - spanPx` is -300 here, and using it would push the strip off the near edge.
-    expect(clampScroll(0, 500, 800)).toBe(0);
-    expect(clampScroll(120, 500, 800)).toBe(0);
-  });
-
-  it('survives a NaN rather than propagating it through every position on screen', () => {
-    expect(clampScroll(NaN, 5000, 800)).toBe(0);
-    expect(clampScroll(Infinity, 5000, 800)).toBe(4200);
-  });
-
-  it('holds the anchor point still through a zoom — the pinch does not slide the view away', () => {
-    // A body 2,000 px along the strip sits 500 px into an 800 px window (scroll 1,500). Zoom x2
-    // about that same 500 px point and it must still be at 500 px: the strip doubles, so the body is
-    // now 4,000 px along and the scroll has to be 3,500.
-    expect(scrollForZoom(1500, 500, 1, 2, 20000, 800)).toBe(3500);
-    // And the reverse: halving puts it back.
-    expect(scrollForZoom(3500, 500, 2, 1, 40000, 800)).toBe(1500);
-  });
-
-  it('anchors on the window MIDDLE for a wheel and on the pinch centre for two fingers', () => {
-    // Same zoom, two anchors, two different scrolls — that is what "about a point" means.
-    const middle = scrollForZoom(1000, 400, 1, 2, 20000, 800);
-    const edge = scrollForZoom(1000, 0, 1, 2, 20000, 800);
-    expect(middle).not.toBe(edge);
-    expect(middle).toBe(2400);   // (1000 + 400) * 2 - 400
-    expect(edge).toBe(2000);     // (1000 + 0) * 2 - 0
-  });
-
-  it('clamps the zoom result against the strip at its NEW length, not its old one', () => {
-    // Zooming OUT shortens the strip; a scroll that was legal before can be past the new end.
-    // Strip 20,000 px at scale 1 becomes 2,000 px at scale 0.1, so the furthest scroll is 1,200.
-    // The anchor rule alone would put this at (19,000 + 400) x 0.1 - 400 = 1,540 — past the end.
-    expect(scrollForZoom(19000, 400, 1, 0.1, 20000, 800)).toBe(1200);
-    // And a scroll the anchor rule already leaves inside is not touched: 1,140, not the 1,200 cap.
-    expect(scrollForZoom(15000, 400, 1, 0.1, 20000, 800)).toBe(1140);
-  });
-
-  it('refuses to divide by a zero scale', () => {
-    expect(scrollForZoom(1500, 400, 0, 2, 20000, 800)).toBe(1500);
-    expect(scrollForZoom(1500, 400, 1, 0, 20000, 800)).toBe(1500);
-  });
+  // The PIXEL clamp that used to be gated here has gone with the pixel scroll it bounded: both axes
+  // are derived from the focus now, and both must be free to run past the ends so that the first and
+  // last objects can sit in the middle of the window like any other. `clampFocus` is the bound, and
+  // it is gated with the rest of the focus law above.
 
   it('steps by most of a screenful, so a landmark carries across', () => {
     // A whole screenful teleports the reader; a small nudge takes forever. The overlap is the point.
     expect(STEP_FRACTION).toBeGreaterThan(0.5);
     expect(STEP_FRACTION).toBeLessThan(1);
-    // Two presses from the start, on a 5,000 px strip in an 800 px window: 640 then 1,280.
-    expect(clampScroll(0 + 800 * STEP_FRACTION, 5000, 800)).toBe(640);
-    expect(clampScroll(640 + 800 * STEP_FRACTION, 5000, 800)).toBe(1280);
-    // And pressing at the end goes nowhere rather than off it.
-    expect(clampScroll(4200 + 800 * STEP_FRACTION, 5000, 800)).toBe(4200);
+    // The step is now taken in FOCUS: a press moves 0.8 of a window, divided by what one step of
+    // focus is worth in px here. On the strip at Earth in an 800 px window that is a fraction of an
+    // object, and two presses land past the next one rather than teleporting off the end.
+    const seq = sortItems(SOL, 'size');
+    const scale = scaleForFocus(seq, 5, 800, OPENING_SHARE);
+    const layout = layoutStrip(SOL, scale, { axis: 'x' });
+    const per = (800 * STEP_FRACTION) / focusStepPx(layout, seq, 5);
+    expect(per).toBeGreaterThan(0.2);
+    expect(per).toBeLessThan(6);
+    expect(clampFocus(seq.length - 1 + per, seq.length)).toBe(seq.length - 1);   // and stops at the end
   });
 
   it('has a tap slop a finger can satisfy and a drag cannot', () => {
@@ -525,6 +664,78 @@ describe('size comparison — moving along the strip', () => {
     // a body would otherwise select it and rescale the whole view.
     expect(TAP_SLOP_PX).toBeGreaterThan(2);    // a finger is never pixel-steady
     expect(TAP_SLOP_PX).toBeLessThan(30);      // and a real drag must still be told apart
+  });
+});
+
+// PICKING AGAINST THE LAYOUT. The DOM hit areas could not be trusted with this even when they were
+// still receiving taps: their boxes overlap, because at true scale a giant's disc covers the whole
+// window. And they had STOPPED receiving them - see the standing note on `setPointerCapture` in
+// `SizeComparisonView`.
+describe('size comparison — what is under a tap', () => {
+  const layout = layoutStrip(SOL, scaleForFocus(sortItems(SOL, 'size'), 5, 800, OPENING_SHARE), { axis: 'x' });
+  const slot = (name: string) => layout.slots.find((s) => s.name === name)!;
+
+  it('answers with the object whose centre the point is inside', () => {
+    const earth = slot('Earth');
+    expect(slotAt(layout, earth.centrePx, 0)?.name).toBe('Earth');
+    // Just inside its limb, and just outside it into the gap.
+    expect(slotAt(layout, earth.centrePx + earth.spanPx / 2 - 1, 0)?.name).toBe('Earth');
+    expect(slotAt(layout, earth.centrePx, earth.spanPx / 2 + 40)).toBeNull();
+  });
+
+  it('answers the SMALLER of two objects a point is inside — what the hand meant', () => {
+    // The strip lays its objects edge to edge, so two SLOTS do not normally overlap; where they do
+    // is the pick floor (two neighbouring dots 6 px apart, each given an 8 px target) and any future
+    // layout that stacks. A DOM stack would decide it by document order, which is the size order and
+    // therefore always the WRONG way round: the giant would win every tap on the small thing.
+    const stacked = {
+      slots: [
+        { id: 'giant', name: 'Giant', spanPx: 900, diameterPx: 900, reachPx: 900, ringInnerPx: 0, ringOuterPx: 0,
+          centrePx: 1000, crossPx: 0, depth: 0, belowFloor: false, labelSide: 'start' },
+        { id: 'speck', name: 'Speck', spanPx: 12, diameterPx: 12, reachPx: 12, ringInnerPx: 0, ringOuterPx: 0,
+          centrePx: 1100, crossPx: 0, depth: 0, belowFloor: false, labelSide: 'start' }
+      ],
+      lengthPx: 2000, axis: 'x', crossReachPx: 0
+    } as unknown as ReturnType<typeof layoutStrip>;
+    expect(slotAt(stacked, 1100, 0)?.name).toBe('Speck');     // inside BOTH
+    expect(slotAt(stacked, 1000, 0)?.name).toBe('Giant');     // inside only the giant
+  });
+
+  it('separates two neighbouring dots by distance, once the pick floor has overlapped them', () => {
+    const dots = {
+      slots: [
+        { id: 'a', name: 'A', spanPx: DOT_PX, diameterPx: 0.4, reachPx: DOT_PX, ringInnerPx: 0, ringOuterPx: 0,
+          centrePx: 500, crossPx: 0, depth: 0, belowFloor: true, labelSide: 'start' },
+        { id: 'b', name: 'B', spanPx: DOT_PX, diameterPx: 0.4, reachPx: DOT_PX, ringInnerPx: 0, ringOuterPx: 0,
+          centrePx: 510, crossPx: 0, depth: 0, belowFloor: true, labelSide: 'end' }
+      ],
+      lengthPx: 2000, axis: 'x', crossReachPx: 0
+    } as unknown as ReturnType<typeof layoutStrip>;
+    // 504 is inside both 8 px targets; the nearer centre wins, and so does the far side of each.
+    expect(slotAt(dots, 504, 0)?.name).toBe('A');
+    expect(slotAt(dots, 507, 0)?.name).toBe('B');
+  });
+
+  it('gives a sub-pixel dot a target a hand can actually hit', () => {
+    // Phobos is 22.5 km across: at this scale it is a dot, and its drawn span is 6 px. A pick radius
+    // of 3 px is smaller than a mouse is steady on and far smaller than a finger.
+    const phobos = slot('Phobos');
+    expect(phobos.belowFloor).toBe(true);
+    expect(slotAt(layout, phobos.centrePx + PICK_MIN_RADIUS_PX - 1, 0)?.name).toBe('Phobos');
+    expect(PICK_MIN_RADIUS_PX).toBeGreaterThan(DOT_PX / 2);
+  });
+
+  it('finds nothing where there is nothing, rather than the nearest thing', () => {
+    expect(slotAt(layout, -100000, 0)).toBeNull();
+    expect(slotAt({ slots: [], lengthPx: 0, axis: 'x', crossReachPx: 0 }, 0, 0)).toBeNull();
+  });
+
+  it('reads the CROSS offset too, so the orbit layout picks a row rather than a column', () => {
+    const orbit = layoutStrip(SYS, 0.002, { axis: 'x', order: 'orbit' });
+    const luna = orbit.slots.find((s) => s.name === 'Luna')!;
+    expect(luna.crossPx).toBeGreaterThan(0);           // it is off the centreline, or this proves nothing
+    expect(slotAt(orbit, luna.centrePx, luna.crossPx)?.name).toBe('Luna');
+    expect(slotAt(orbit, luna.centrePx, 0)?.name).toBe('Earth');   // the same column, on the line
   });
 });
 
@@ -612,8 +823,8 @@ describe('size comparison — the ruler', () => {
   it('reports a mark that falls off the ruler rather than dropping it', () => {
     const scale = pxPerKm(medianPlanet(SOL)!.diameterKm, 800, OPENING_SHARE);
     const marks = referenceMarks(scale, 1000);
-    expect(marks.find((m) => m.id === 'earth')!.off).toBe('none');    // 240 px in
-    expect(marks.find((m) => m.id === 'sun')!.off).toBe('end');       // 26,233 px — far off the end
-    expect(marks.find((m) => m.id === 'luna')!.posPx).toBeCloseTo(65.449, 2);
+    expect(marks.find((m) => m.id === 'earth')!.off).toBe('none');    // 176 px in
+    expect(marks.find((m) => m.id === 'sun')!.off).toBe('end');       // 19,237 px — far off the end
+    expect(marks.find((m) => m.id === 'luna')!.posPx).toBeCloseTo(47.996, 2);
   });
 });

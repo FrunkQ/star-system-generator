@@ -11,9 +11,10 @@
   import { onMount, createEventDispatcher } from 'svelte';
   import UnitValue from './UnitValue.svelte';
   import {
-    sortItems, medianPlanet, pxPerKm, zoomBounds, layoutStrip, belowFloorNote, visibleItems,
-    idsAtLeast, idsAtMost, referenceMarks, minorTicks, clampScroll, scrollForZoom,
-    SELECTED_SHARE, OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION, SORT_ORDERS,
+    sortItems, medianPlanet, layoutStrip, belowFloorNote, visibleItems,
+    idsAtLeast, idsAtMost, referenceMarks, minorTicks, clampCentreShare, slotAt,
+    focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
+    OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION, SORT_ORDERS,
     type StripLayout, type SortOrder
   } from '$lib/comparison/layout';
   import { hiddenKey, loadHidden, saveHidden, loadOrder, saveOrder, type ComparisonEntry } from '$lib/comparison/items';
@@ -54,15 +55,14 @@
   } | null = null;
 
   let vw = 1, vh = 1;
-  let scrollPx = 0;
   /**
-   * ACROSS the strip. Only the orbit layout has anything there — a planet's moons stack away from the
-   * centreline and a long train runs off the screen, so it has to be reachable. Every other order
-   * leaves this at zero, and the drag then moves on one axis only.
+   * WHERE YOU ARE, as a fractional index into the strip's own sequence — the ONE piece of state the
+   * along-axis has. The scale and the pixel scroll are both derived from it, in that order, so there
+   * is no way for them to disagree about what is in the middle of the window.
    */
-  let crossScrollPx = 0;
-  /** Set once from the median planet, then by a click or the hand zoom. */
-  let scale = 0;
+  let focus = 0;
+  /** How much of the shorter side the object at the focus fills. The hand zoom moves this and only this. */
+  let centreShare = OPENING_SHARE;
   let hidden: Set<string> = new Set();
   let menuFor: string | null = null;
   /** Which order the strip is in. Remembered per map, beside the hidden set and for the same reason. */
@@ -74,16 +74,24 @@
   // AT ALL - the only pan path was `onWheel`, which a finger never fires (reported by a user, 2026-
   // 09-05). Pointer events cover mouse, pen and touch in one path, so the desktop gets drag too.
   const pointers = new Map<number, { x: number; y: number }>();
-  let dragFrom = 0;          // scrollPx when the gesture started
+  let dragFrom = 0;          // `focus` when the gesture started
+  let dragStepPx = 1;        // px of picture per whole step of focus, TAKEN ONCE (see focusStepPx)
   let dragAt = 0;            // where along the axis the gesture started
-  let dragAcrossFrom = 0;    // crossScrollPx when the gesture started
-  let dragAcrossAt = 0;      // where across the axis the gesture started
+  let dragAcrossAt = 0;      // where across the axis the gesture started, for the tap-vs-drag test
   let dragTravel = 0;        // furthest the gesture has moved, for the tap-vs-drag test
   let pinchFrom = 0;         // finger separation when the pinch started
-  let pinchScale = 0;        // `scale` when the pinch started
-  let pinchAnchor = 0;       // the pinch's centre along the axis, from the window's near edge
-  /** True once a gesture has passed the slop threshold - suppresses the click it would otherwise end on. */
+  let pinchShare = 0;        // `centreShare` when the pinch started
+  /** True once a gesture has passed the slop threshold - suppresses the pick it would otherwise end on. */
   let dragged = false;
+  /** Set the moment a gesture becomes a drag. See `capture` for why NOT on pointerdown. */
+  let captured = false;
+  /**
+   * The gesture began on a CONTROL (a stepper, a menu row), so its end is that control's business
+   * and not a pick. The stage sees the event either way, because a button inside it bubbles.
+   */
+  let downOnControl = false;
+  /** What the pointer is over, for the hover ring. Driven by the same hit test the pick uses. */
+  let hoveredId: string | null = null;
 
   // The strip runs down the screen on a phone and across it on a desktop — the same `mode` the
   // system view and the starmap already key on, not a second idea of what a phone is.
@@ -91,37 +99,54 @@
   $: shorterSide = Math.max(1, Math.min(vw, vh));
   $: visible = visibleItems(items, hidden);
   $: sorted = sortItems(visible, order);
-  $: bounds = zoomBounds(visible, shorterSide);
+  // THE DERIVATION, and its order is the law: the sequence says what you can be looking at, the
+  // focus says which of them you ARE, the scale comes from that one's size, the strip is laid out at
+  // that scale, and the scroll is wherever the focus landed once it was. Nothing here reads a value
+  // a later line writes.
+  $: seq = sorted;
+  $: scale = scaleForFocus(seq, focus, shorterSide, centreShare);
   $: layout = scale > 0
     ? layoutStrip(visible, scale, { axis, order })
     : ({ slots: [], lengthPx: 0, axis, crossReachPx: 0 } as StripLayout);
   /** The window's length along the strip's own axis - the number every scroll figure is measured in. */
   $: span = axis === 'x' ? vw : vh;
-  /** ...and across it, which is the other one. */
-  $: crossSpan = axis === 'x' ? vh : vw;
-  /** How far the cross scroll may go: nowhere at all unless a row reaches past the window. */
-  $: crossMax = Math.max(0, layout.crossReachPx - crossSpan / 2);
-  /** Whether there is anywhere to go: no overflow, no steppers, nothing to drag. */
-  $: overflows = layout.lengthPx > span + 1;
-  $: atStart = scrollPx <= 1;
-  $: atEnd = scrollPx >= layout.lengthPx - span - 1;
+  /**
+   * DERIVED, never set: the focused object sits in the MIDDLE of the window, so the scroll is just
+   * wherever that put it. It is free to go negative (the first object is entitled to the middle as
+   * much as any other, and there is empty strip before it) — clamping it here is what would pin the
+   * ends to an edge and break the law the whole view runs on.
+   */
+  $: scrollPx = focusCentrePx(layout, seq, focus) - span / 2;
+  /**
+   * ACROSS the strip, and DERIVED from the same focus. Only the orbit layout stacks anything off the
+   * centreline, so this is zero for every other order; where it is not, scrolling onto a moon brings
+   * its ROW to the middle as well as its column. A free cross-drag beside a derived along-scroll
+   * would be two owners of where the picture is.
+   */
+  $: crossScrollPx = focusCrossPx(layout, seq, focus);
+  /** Whether there is anywhere to go: one object is the whole journey, and it needs no steppers. */
+  $: overflows = seq.length > 1;
+  $: atStart = focus <= 0.001;
+  $: atEnd = focus >= seq.length - 1.001;
   $: rulerLen = axis === 'x' ? vw : vh;
   $: marks = referenceMarks(scale, rulerLen);
   $: minors = minorTicks(scale, rulerLen);
   $: byId = new Map(items.map((i) => [i.id, i]));
 
-  // THE OPENING VIEW: the median planet at 30% of the shorter side. Re-armed whenever the map or the
-  // hidden set changes the cast, because "the median" is a statement about the objects on screen.
+  // THE OPENING VIEW: the median planet in the middle of the window at 30% of the shorter side.
+  // Re-armed whenever the map or the hidden set changes the cast, because "the median" is a
+  // statement about the objects on screen.
   let armed = '';
   $: {
     const signature = `${mapId}|${visible.length}|${shorterSide}|${order}|${axis}`;
     if (signature !== armed && visible.length && shorterSide > 1) {
       armed = signature;
       const opener = medianPlanet(visible);
-      if (opener) {
-        scale = pxPerKm(opener.diameterKm, shorterSide, OPENING_SHARE);
-        centreOn(opener.id);
-      }
+      // A set with no planets at all falls back to the middle of the strip, which is the same answer
+      // `medianPlanet` gives for that case, expressed as a position.
+      const i = focusIndexOf(seq, opener?.id ?? null);
+      focus = clampFocus(i >= 0 ? i : Math.floor((seq.length - 1) / 2), seq.length);
+      centreShare = OPENING_SHARE;
     }
   }
 
@@ -140,32 +165,28 @@
     return role === 'star' ? 'star' : role === 'moon' ? 'moon' : 'planet';
   }
 
-  function centreOn(id: string): void {
-    const next = layoutStrip(visible, scale, { axis, order });
-    const slot = next.slots.find((s) => s.id === id);
-    if (!slot) return;
-    const reach = axis === 'x' ? vw : vh;
-    // Clamped against the layout AT THE NEW SCALE, not the one on screen: `pick` changes the scale
-    // and then centres, so the strip it is centring in is not the one `layout` still describes.
-    scrollPx = clampScroll(slot.centrePx - reach / 2, next.lengthPx, reach);
-    // Bring the object's ROW into view as well, or clicking a moon in the orbit layout centres the
-    // strip on a row that is still off the bottom of the window.
-    const across = axis === 'x' ? vh : vw;
-    crossScrollPx = clampScroll(slot.crossPx - across / 4, next.crossReachPx, across / 2);
-  }
-
   /** One stepper press, or one arrow key: most of a screenful, so you keep your place. */
   function step(dir: -1 | 1): void {
-    scrollPx = clampScroll(scrollPx + dir * span * STEP_FRACTION, layout.lengthPx, span);
+    focus = clampFocus(focus + (dir * span * STEP_FRACTION) / focusStepPx(layout, seq, focus), seq.length);
   }
 
-  /** A click SELECTS through the map's shared selection and re-scales to the owner's 50%. */
+  /**
+   * A CLICK IS HOW YOU MOVE, and it is the main way. It selects through the map's shared selection
+   * and makes what you clicked the FOCUS: the view re-centres on it and everything around it
+   * re-scales and re-packs, because the scale is derived from whatever is in the middle. Owner,
+   * 2026-09-06: *"rather than be forced to scroll - or mousewheel this means clicking centres and
+   * everything else around scales and packs accordingly"*, and on clicking down to a moon: *"their
+   * frame of reference is themselves so you will see the vast size of your host"*.
+   *
+   * IT DOES NOT TOUCH THE ZOOM. The share applies to the focus, so clicking a speck at the edge
+   * already brings you all the way in to it; changing the share as well would undo whatever the
+   * reader had set for themselves every time they moved.
+   */
   function pick(id: string): void {
-    const item = byId.get(id);
-    if (!item) return;
-    scale = pxPerKm(item.diameterKm, shorterSide, SELECTED_SHARE);
+    if (!byId.has(id)) return;
+    const i = focusIndexOf(seq, id);
+    if (i >= 0) focus = i;
     dispatch('select', { id });
-    centreOn(id);
     menuFor = null;
   }
 
@@ -192,17 +213,11 @@
   function onWheel(e: WheelEvent): void {
     e.preventDefault();
     if (e.ctrlKey || e.metaKey || e.shiftKey) {
-      zoomTo(scale * Math.exp(-e.deltaY * 0.0015), span / 2);   // about the window's middle
+      centreShare = clampCentreShare(centreShare * Math.exp(-e.deltaY * 0.0015));
     } else {
-      scrollPx = clampScroll(scrollPx + (e.deltaY || e.deltaX), layout.lengthPx, span);
+      const along = e.deltaY || e.deltaX;
+      focus = clampFocus(focus + along / focusStepPx(layout, seq, focus), seq.length);
     }
-  }
-
-  /** Zoom to `next`, held about `anchorPx` along the axis, clamped to the SET's own extent (UI-L7). */
-  function zoomTo(next: number, anchorPx: number): void {
-    const wanted = Math.min(bounds.max, Math.max(bounds.min, next));
-    scrollPx = scrollForZoom(scrollPx, anchorPx, scale, wanted, layout.lengthPx, span);
-    scale = wanted;
   }
 
   // --- DRAG AND PINCH ------------------------------------------------------------------------
@@ -212,69 +227,109 @@
   const alongOf = (p: { x: number; y: number }) => (axis === 'x' ? p.x : p.y);
   const acrossOf = (p: { x: number; y: number }) => (axis === 'x' ? p.y : p.x);
 
+  /**
+   * CAPTURE ONLY ONCE THE GESTURE IS A DRAG — never on pointerdown, and this is a fix rather than a
+   * preference. `setPointerCapture` RETARGETS the click: with the stage holding the capture, every
+   * `click` inside it is delivered to the stage instead of to the button under the finger, so from
+   * v3.0.304 the body hit areas, BOTH STEPPERS and the hide menu were silently dead to a pointer -
+   * including the steppers a user had asked for by name in the same commit. Capturing at the slop
+   * threshold keeps what the capture was for (a finger that slides off the stage keeps driving the
+   * drag) and costs nothing, because until then the pointer is still over the stage anyway.
+   */
+  function capture(e: PointerEvent): void {
+    if (captured) return;
+    // Wrapped because `setPointerCapture` throws on an id the browser no longer considers active,
+    // and an exception here would take the whole gesture with it — the strip would simply stop
+    // responding, with nothing in the console to say why. Defensive: not a fault anybody has seen.
+    try { (e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId); captured = true; } catch { /* not capturable */ }
+  }
+
   function onPointerDown(e: PointerEvent): void {
-    // Capture so a finger that slides off the stage keeps driving the gesture. Wrapped because
-    // `setPointerCapture` throws on an id the browser no longer considers active, and an exception
-    // on the FIRST line of this handler would take the whole gesture with it — the strip would
-    // simply stop responding, with nothing in the console to say why. Defensive: not a fault
-    // anybody has seen.
-    try { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* not capturable */ }
+    downOnControl = !!(e.target as HTMLElement | null)?.closest?.('button:not(.hit), .menu');
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
-      dragFrom = scrollPx;
+      dragFrom = focus;
+      // ONCE, and held for the gesture: the exchange rate itself changes as you travel (that is the
+      // zoom), so re-reading it mid-drag would mean dragging back the same distance did not put you
+      // back where you started.
+      dragStepPx = focusStepPx(layout, seq, focus);
       dragAt = alongOf({ x: e.clientX, y: e.clientY });
-      dragAcrossFrom = crossScrollPx;
       dragAcrossAt = acrossOf({ x: e.clientX, y: e.clientY });
       dragTravel = 0;
       dragged = false;
     } else if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       pinchFrom = Math.hypot(a.x - b.x, a.y - b.y);
-      pinchScale = scale;
-      const rect = stage?.getBoundingClientRect();
-      const mid = (alongOf(a) + alongOf(b)) / 2 - (rect ? (axis === 'x' ? rect.left : rect.top) : 0);
-      pinchAnchor = mid;
-      dragged = true;   // a two-finger gesture is never a tap
+      pinchShare = centreShare;
+      dragged = true;   // a two-finger gesture is never a tap, so it may capture at once
+      capture(e);
     }
   }
 
   function onPointerMove(e: PointerEvent): void {
+    if (!pointers.size) { hoveredId = slotAtPointer(e)?.id ?? null; return; }
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size >= 2) {
       const [a, b] = [...pointers.values()];
       const now = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinchFrom > 0 && now > 0) zoomTo(pinchScale * (now / pinchFrom), pinchAnchor);
+      // Fingers apart = the thing in the middle gets bigger. The pinch holds the CENTRE rather than
+      // the point between the fingers, because the centre is what the scale is derived from.
+      if (pinchFrom > 0 && now > 0) centreShare = clampCentreShare(pinchShare * (now / pinchFrom));
       return;
     }
     const moved = alongOf({ x: e.clientX, y: e.clientY }) - dragAt;
     const movedAcross = acrossOf({ x: e.clientX, y: e.clientY }) - dragAcrossAt;
-    dragTravel = Math.max(dragTravel, Math.hypot(moved, crossMax > 0 ? movedAcross : 0));
-    if (dragTravel > TAP_SLOP_PX) dragged = true;
-    // Across the strip only where there IS anything across it — on a flat order a sideways drag must
-    // not drift the row off the centreline it is supposed to sit on.
-    if (crossMax > 0) crossScrollPx = clampScroll(dragAcrossFrom - movedAcross, layout.crossReachPx, crossSpan / 2);
+    dragTravel = Math.max(dragTravel, Math.hypot(moved, movedAcross));
+    if (dragTravel > TAP_SLOP_PX) { dragged = true; capture(e); }
     // The strip follows the finger: dragging towards the start moves the content that way, so the
-    // scroll goes the OTHER way. Anything else feels like the map is fighting you.
-    scrollPx = clampScroll(dragFrom - moved, layout.lengthPx, span);
+    // focus goes the OTHER way. Anything else feels like the map is fighting you.
+    focus = clampFocus(dragFrom - moved / dragStepPx, seq.length);
   }
 
   function onPointerUp(e: PointerEvent): void {
     pointers.delete(e.pointerId);
     if (pointers.size === 0) {
-      // Leave `dragged` standing for one tick: the click event that ends this gesture has not fired
+      // A GESTURE THAT DID NOT TRAVEL IS A TAP, and the tap is what selects. It is handled HERE
+      // rather than by a click on an invisible button, for two reasons: the buttons are about to
+      // stop existing ([[B126]] moves the chrome into the rendered surface), and their boxes overlap
+      // — at true scale a giant's disc covers the window, so a DOM stack decides a tap on a moon in
+      // front of it by document order. `slotAt` decides it by size, which is what the hand meant.
+      if (!dragged && !downOnControl) {
+        const hit = slotAtPointer(e);
+        if (hit) pick(hit.id);
+      }
+      captured = false;
+      // Leave `dragged` standing for one tick: any click event that ends this gesture has not fired
       // yet, and it is the thing the slop test exists to suppress.
       const wasDrag = dragged;
       setTimeout(() => { if (wasDrag) dragged = false; }, 0);
     } else if (pointers.size === 1) {
       // Coming out of a pinch with one finger still down: restart the drag from where it is now,
-      // or the strip jumps by however far the fingers had travelled.
+      // or the strip jumps by however far the fingers had travelled. The rate is re-taken with it —
+      // the pinch has just changed the scale, so the rate the gesture began with is stale.
       const [only] = [...pointers.values()];
-      dragFrom = scrollPx;
+      dragFrom = focus;
+      dragStepPx = focusStepPx(layout, seq, focus);
       dragAt = alongOf(only);
-      dragAcrossFrom = crossScrollPx;
       dragAcrossAt = acrossOf(only);
     }
+  }
+
+  /**
+   * WHAT IS UNDER THE POINTER, in the strip's own coordinates. Screen offset -> strip coordinate ->
+   * `slotAt`, which tests the LAYOUT. Nothing here consults the DOM, which is the point: the globes
+   * are drawn by a renderer the DOM knows nothing about, and (once the chrome moves into that
+   * surface, [[B126]]) a filter's warp will sit between the finger and the picture. One hit test
+   * against the data both of them were drawn from is the only thing that cannot drift.
+   */
+  function slotAtPointer(e: { clientX: number; clientY: number }) {
+    const rect = stage?.getBoundingClientRect();
+    if (!rect) return null;
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const alongPx = (axis === 'x' ? sx : sy) + scrollPx;
+    const crossPx = (axis === 'x' ? sy - vh / 2 : sx - vw / 2) + crossScrollPx;
+    return slotAt(layout, alongPx, crossPx);
   }
 
   /** Arrow keys move along the strip too - the same journey, for anyone not using a pointer. */
@@ -328,7 +383,7 @@
   <header>
     <h2>Size comparison</h2>
     <p class="hint">Everything on this map at true relative size.
-      {mode === 'phone' ? 'Tap an object to fill half the view' : 'Click an object to fill half the view'}
+      {mode === 'phone' ? 'Tap an object to bring it to the middle' : 'Click an object to bring it to the middle'}
       · {mode === 'phone' ? 'drag to move along · pinch to zoom' : 'drag or scroll to move along · shift-scroll to zoom'}.</p>
     <!-- THE HIDE OFFER NEEDS A REACHABLE DOOR. Right-clicking an object opens the same popup, but a
          phone has no right-click and a context menu is not a thing anyone finds — so the selected
@@ -369,6 +424,8 @@
     on:pointermove={onPointerMove}
     on:pointerup={onPointerUp}
     on:pointercancel={onPointerUp}
+    on:pointerleave={() => (hoveredId = null)}
+    on:contextmenu|preventDefault={(e) => { if (!playerChrome && !downOnControl) { const h = slotAtPointer(e); if (h) menuFor = h.id; } }}
     on:keydown={onKeyDown}
     role="group"
     aria-label="Size comparison strip — drag to move along, arrow keys to step"
@@ -389,16 +446,19 @@
         {@const item = byId.get(slot.id)}
         {@const along = slot.centrePx - scrollPx}
         {#if item && along > -slot.spanPx && along < (axis === 'x' ? vw : vh) + slot.spanPx}
+          <!-- POINTER-TRANSPARENT ON PURPOSE (see `.hit` in the stylesheet): the stage does the
+               picking now, against the layout. What these still are is the KEYBOARD path — one
+               focusable control per object, activated with Enter or Space — and the selection ring. -->
           <button
             class="hit"
             class:selected={slot.id === selectedId}
+            class:hover={slot.id === hoveredId}
             class:dot={slot.belowFloor}
             style={axis === 'x'
               ? `left:${along - slot.spanPx / 2}px; top:calc(50% + ${slot.crossPx - crossScrollPx - slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`
               : `top:${along - slot.spanPx / 2}px; left:calc(50% + ${slot.crossPx - crossScrollPx - slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`}
             title={slot.name}
             on:click={() => { if (!dragged) pick(slot.id); }}
-            on:contextmenu|preventDefault={() => { if (!playerChrome) menuFor = slot.id; }}
           ></button>
           <div
             class="label {slot.labelSide}"
@@ -529,8 +589,13 @@
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .overlay { position: absolute; inset: 0; pointer-events: none; }
 
-  .hit { position: absolute; border: none; background: none; border-radius: 50%; padding: 0; cursor: pointer; pointer-events: auto; }
-  .hit:hover { box-shadow: 0 0 0 2px rgba(140, 190, 255, 0.55); }
+  /* `pointer-events: none` is the OTHER half of the capture fix: with the stage picking against the
+     layout, a second pointer path through these boxes would be two answers to one tap — and their
+     boxes overlap, because at true scale a giant's disc covers the window. They remain focusable
+     (a disabled pointer does not disable the keyboard), which is what keeps every object reachable
+     without a mouse. */
+  .hit { position: absolute; border: none; background: none; border-radius: 50%; padding: 0; cursor: pointer; pointer-events: none; }
+  .hit.hover, .hit:focus-visible { box-shadow: 0 0 0 2px rgba(140, 190, 255, 0.55); outline: none; }
   .hit.selected { box-shadow: 0 0 0 2px rgba(255, 214, 120, 0.85); }
   /* A sub-floor object is a MARKER, never an inflated body: a small ring where the object is. */
   .hit.dot { background: #cfe0f5; box-shadow: 0 0 6px rgba(200, 224, 255, 0.7); }

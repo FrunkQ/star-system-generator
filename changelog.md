@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.316 - 6th Sep 2026
+
+- The Size comparison now zooms as you scroll. Whatever is passing through the middle of the screen is drawn at a comfortable size, and everything beside it is drawn to match, so you always have something you can actually see and a fair comparison against its neighbours. Before this the whole strip was drawn at one fixed scale, which meant the star was thirty-odd screenfuls wide and you had to drag past all of it to reach the planets.
+- Because of that, one screenful of dragging now moves you roughly one object along, whatever size that object is - a moon costs the same to scroll past as a giant. It is framed to show four to six bodies at once with the ones either side of your subject drawn whole, and they sit close together now - a ring may cross its neighbour, which is a better picture than the empty space it used to hold. Pinching (or shift-scrolling) changes how big the middle of the screen is, and holds the middle still while it does.
+- Clicking is how you get around now: click anything and it comes to the middle, with everything around it re-scaled and re-packed to match. It does not change your zoom while it does it - if you have pinched out to survey the whole system, clicking about keeps that view.
+- Scroll all the way down to a moon and the moon becomes the subject: it is drawn at a comfortable size and the planet it belongs to fills the sky behind it. Clicking anything does the same thing.
+- Fixed: nothing inside the Size comparison could be clicked. The planets, both scroll buttons and the hide menu had all been dead to a mouse or a finger since yesterday's scrolling fix - they looked and behaved exactly as before, they simply never received the click. Keyboard users were unaffected.
+
 ## v3.0.315 - 6th Sep 2026
 
 - Behind the scenes, for the Explorers site rather than for you: the app now publishes a small list of everything it ships with - its calendars, its tag categories, its star and planet pictures, its starter spacecraft models, and its gases, liquids and fuels. The site uses it to tell what came with the app from what a creator made themselves, instead of keeping its own copy of those lists and slowly getting them wrong.

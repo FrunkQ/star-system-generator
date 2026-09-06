@@ -7,6 +7,20 @@
 // a range no screen can hold. This view exists to remove exactly that compression, so it binds none
 // of it: a body's drawn radius here is its own `radiusKm` and nothing else. The scale law has no say
 // in this file and this file has no say in the scale law.
+//
+// BUT THE SCALE IS NOT ONE NUMBER FOR THE WHOLE STRIP, AND THAT IS THE POINT OF THE VIEW.
+// Owner, 2026-09-06: "as they move through the centre of the screen they are mid sized to the
+// viewport - as you scroll it zooms in and out to maintain that as it goes allowing you to see
+// relative sizes easily - at the moment they are stupid massive and hard to scroll past".
+// One fixed pixels-per-km across a set spanning five orders of magnitude cannot work: pick a scale
+// that shows Earth and the star is a wall you drag past for a minute; pick one that shows the star
+// and every moon is a speck. So the scale FOLLOWS THE SCROLL (see `scaleForFocus`), and whatever is
+// at the centre of the window always draws at the same share of it.
+// WHAT IS PRESERVED, and it is the thing the view exists for: ONE scale serves the WHOLE frame, so
+// everything on screen at any instant is at TRUE relative size to everything else on screen. What
+// changes as you travel is only how much of the screen a kilometre buys. The comparison is local
+// because a screen is local — Jupiter beside Earth at true scale is one of them off the edge, on
+// any screen ever made.
 import { EARTH_RADIUS_KM, SOLAR_RADIUS_KM, LUNA_RADIUS_KM } from '$lib/constants';
 // The app's ONE nice-interval ladder, shared with the starmap's grid — a ruler that chose its own
 // intervals would be a second answer to a question this codebase has already settled.
@@ -60,12 +74,48 @@ export const SORT_ORDERS: { id: SortOrder; label: string; title: string }[] = [
 // Every one of these is a thing a human will want to change after using the view, so none of them is
 // allowed to sit inline in a renderer (the standing rule on scattered constants).
 
-/** The selected object fills this share of the viewport's SHORTER side on a click. Owner's figure. */
-export const SELECTED_SHARE = 0.5;
-/** The opening view puts the median planet at this share of the shorter side. Owner's figure. */
-export const OPENING_SHARE = 0.3;
-/** Gap between neighbours, as a fraction of the LARGER of the two — so a moon beside a giant is not lost. */
-export const GAP_FRACTION = 0.22;
+/**
+ * THE SHARE OF THE SHORTER SIDE THE OBJECT AT THE CENTRE OF THE VIEW DRAWS AT — the one number the
+ * whole view is steered by. The strip opens at it, the hand zoom moves it, and NOTHING ELSE DOES.
+ *
+ * **IT IS THE TUNING KNOB, AND THE OWNER ASKED FOR IT AS ONE, 2026-09-06:** *"i think we had perhaps
+ * zoom out a bit - the idea is to show size comparison so the left/right planets of the current one
+ * must be seen in full ... this is to let 4-6 bodies appear on screen at once ... have this as a
+ * tunable parameter we may need to come back to it"*. WHAT IT MEANS IN BODIES: the window fits
+ * roughly `windowAlong / (share x shorterSide x (1 + GAP_FRACTION))` of them, so on a stage 410 px
+ * across 0.22 is a little over four — the one you are looking at, its neighbours either side in
+ * FULL, and the edges of the next pair. Turn it DOWN to fit more in.
+ *
+ * THERE WAS A SECOND SHARE — a click used to re-zoom to 0.5, then 0.28 — and it is gone, because a
+ * click is NAVIGATION and not a zoom. Owner, 2026-09-06: *"rather than be forced to scroll - or
+ * mousewheel this means clicking centres and everything else around scales and packs accordingly"*.
+ * Nothing is lost by dropping it: the share applies to whatever is at the FOCUS, so clicking a speck
+ * at the edge of the strip still brings you all the way in to it — its own frame of reference — and
+ * clicking a neighbour re-frames without undoing a zoom the reader had set for themselves.
+ */
+export const OPENING_SHARE = 0.22;
+/** How far the hand zoom may take the centre share. A share is a share: these are the honest ends. */
+export const MIN_CENTRE_SHARE = 0.05;
+export const MAX_CENTRE_SHARE = 0.9;
+/**
+ * Gap between neighbours, as a fraction of the LARGER of the two — so a moon beside a giant is not
+ * lost. Owner, 2026-09-06: *"have them very close"*, because the black between two worlds is the
+ * one thing on this view that says nothing. It was 0.22, which spent a fifth of every step on
+ * emptiness; the second knob to reach for after the shares.
+ */
+export const GAP_FRACTION = 0.06;
+/**
+ * How much of a ring system's TRUE reach the layout reserves as room, 0 to 1.
+ *
+ * Owner, 2026-09-06: *"(rings can overlap)"*, and that is a deliberate reversal. Reserving the full
+ * reach is correct if a ring must never cross a neighbour — but Saturn's reach 140,180 km against a
+ * globe of 58,232 means a ringed planet then claims two and a half times its own room, and on a
+ * strip meant to hold four to six bodies it pushes two of them off the screen to hold empty space
+ * for jewellery. A ring crossing its neighbour reads as depth; a missing neighbour reads as a fault.
+ * At 0 a ring claims nothing beyond its globe. Turn it UP towards 1 to give the rings their room
+ * back — the drawing is unchanged either way, since a ring is always drawn at its TRUE extent.
+ */
+export const RING_ROOM_FRACTION = 0;
 /** Below this drawn diameter an object is a DOT with a label, never an inflated disc (RENDER-S43). */
 export const DOT_THRESHOLD_PX = 2;
 /** The dot marker's own drawn span. A legibility device: it is a marker, not a claim about size. */
@@ -83,15 +133,19 @@ export const LABEL_MIN_GAP_PX = 110;
  */
 export const TAP_SLOP_PX = 10;
 /**
+ * The smallest radius a tap is tested against, whatever the object's drawn size.
+ *
+ * A dot is `DOT_PX` = 6 px across, so a 3 px target: smaller than a mouse is steady on and far
+ * smaller than a finger. A pick radius is not a claim about size (RENDER-S43 again) - the object is
+ * still DRAWN at the truth - it is the smallest thing a hand can be asked to hit.
+ */
+export const PICK_MIN_RADIUS_PX = 8;
+/**
  * How much of a screenful one stepper press (or one arrow key) moves. Less than a whole screen on
  * purpose: an overlap carries a landmark across, so you can see WHERE you have got to. A full
  * screenful teleports you and a small nudge takes forever.
  */
 export const STEP_FRACTION = 0.8;
-/** Zoomed all the way out, the largest object still spans this share of the shorter side. */
-export const MIN_ZOOM_LARGEST_SHARE = 0.04;
-/** Zoomed all the way in, the smallest object spans this share of the shorter side. */
-export const MAX_ZOOM_SMALLEST_SHARE = 0.5;
 
 /** The three reference diameters the ruler highlights, in km. One source; `constants.ts` holds them. */
 export const REFERENCE_TICKS: { id: string; label: string; diameterKm: number }[] = [
@@ -219,52 +273,154 @@ export function pxPerKm(diameterKm: number, shorterSidePx: number, share: number
 }
 
 /**
- * How far the hand zoom may go, FROM THE SET'S OWN EXTENT (UI-L7: a bound taken from a constant is a
- * bound that is wrong for every map but the one it was tuned on). Zoomed out, the largest object is
- * still a visible sliver; zoomed in, the smallest one fills half the shorter side.
+ * Keep the hand zoom inside the honest ends of a share. UI-L7 says a bound taken from a constant is
+ * a bound that is wrong for every map but the one it was tuned on - and that rule was about an
+ * ABSOLUTE scale, which is exactly what this view no longer has. The zoom now sets how much of the
+ * screen the thing in front of you fills, and "between a twentieth and nine tenths of it" means the
+ * same thing on a map of moons and a map of giants. So these two ARE map-independent.
  */
-export function zoomBounds(items: ComparisonItem[], shorterSidePx: number): { min: number; max: number } {
-  const sizes = items.map((i) => i.diameterKm).filter((d) => d > 0);
-  if (!sizes.length || !(shorterSidePx > 0)) return { min: 1, max: 1 };
-  const min = pxPerKm(Math.max(...sizes), shorterSidePx, MIN_ZOOM_LARGEST_SHARE);
-  const max = pxPerKm(Math.min(...sizes), shorterSidePx, MAX_ZOOM_SMALLEST_SHARE);
-  return { min, max: Math.max(min, max) };
+export function clampCentreShare(share: number): number {
+  if (!Number.isFinite(share)) return OPENING_SHARE;
+  return Math.min(MAX_CENTRE_SHARE, Math.max(MIN_CENTRE_SHARE, share));
 }
 
-/**
- * Keep the strip's scroll inside the strip. Two things it must get right and one it must not:
- *  - never before the start, so the first object is always reachable;
- *  - never past the end, so you cannot scroll off into empty space beyond the smallest object;
- *  - and when the WHOLE strip fits in the window there is nothing to scroll, so the answer is 0
- *    rather than the negative number `lengthPx - spanPx` gives you, which would push the strip off
- *    the near edge.
- */
-export function clampScroll(scrollPx: number, lengthPx: number, spanPx: number): number {
-  // NaN is the one value that must not get through: it propagates into every position on screen and
-  // the strip simply vanishes. An infinity, by contrast, clamps to the end perfectly well through
-  // the two comparisons below - and pinning at the end is a better answer to a runaway than
-  // snapping the reader back to the start.
-  if (Number.isNaN(scrollPx)) return 0;
-  return Math.min(Math.max(0, lengthPx - spanPx), Math.max(0, scrollPx));
-}
+// --- THE FOCUS: what is in the middle, and therefore what the scale is ---------------------------
+//
+// The scroll position is no longer a number of pixels. It is a FRACTIONAL INDEX into the strip's own
+// sequence — 3.0 is "the fourth object is in the middle", 3.5 is "halfway between the fourth and the
+// fifth" — and everything else falls out of it: the scale, from the size at that point, and the
+// pixel scroll, from where that point landed once the strip was laid out at that scale.
+//
+// WHY AN INDEX AND NOT A PIXEL. A pixel offset means nothing when the scale under it is moving: the
+// same 4,000 px is half a star or four hundred moons. An index is the one coordinate that stays put
+// while the zoom changes, so a drag is reversible, the ends are exactly 0 and n-1, and "how far
+// through this map am I" has an answer. It is also what makes the strip cheap to travel — every
+// object costs about one screenful of drag whatever its size, which is the "hard to scroll past"
+// fault stated as a law.
 
 /**
- * Zoom about a fixed point of the WINDOW - the pinch's centre between two fingers, or the window's
- * middle on a wheel - so whatever you are looking at stays put instead of sliding away under the
- * gesture. `anchorPx` is that point measured from the window's near edge.
+ * THE OBJECTS THE SCROLL TRAVELS THROUGH ARE THE STRIP ITSELF, IN ITS OWN ORDER — every object,
+ * moons included, which is `sortItems` for every order (`orbit` gives the tree's reading order, and
+ * `layoutOrbit` lays its slots out in exactly that sequence).
  *
- * The object under the anchor sits `(scrollPx + anchorPx) / oldScale` km along the strip, and that
- * reading is what must not move; the new scroll falls out of it. The strip's own length scales with
- * the zoom, so the clamp is applied against the NEW length.
+ * A first cut travelled the ORBIT layout by its COLUMNS only, so a moon could be clicked but never
+ * became the focus. The owner corrected it the same day: *"Same for moons if you zoom down to them -
+ * their frame of reference is themselves so you will see the vast size of your host"*. That is the
+ * whole feature said in one line — the camera re-frames on WHATEVER it lands on, and a moon at the
+ * centre means its planet fills the sky behind it, which is the true and rather good answer to "how
+ * big is Io next to Jupiter".
+ *
+ * Where in the sequence an object is, or -1. The one place an id becomes a focus.
  */
-export function scrollForZoom(
-  scrollPx: number, anchorPx: number, oldScale: number, newScale: number,
-  lengthPx: number, spanPx: number
-): number {
-  if (!(oldScale > 0) || !(newScale > 0)) return clampScroll(scrollPx, lengthPx, spanPx);
-  const ratio = newScale / oldScale;
-  return clampScroll((scrollPx + anchorPx) * ratio - anchorPx, lengthPx * ratio, spanPx);
+export function focusIndexOf(seq: ComparisonItem[], id: string | null | undefined): number {
+  return id ? seq.findIndex((i) => i.id === id) : -1;
 }
+
+/** Keep the focus on the strip. An empty strip focuses 0; a NaN would take the scale with it. */
+export function clampFocus(f: number, count: number): number {
+  if (!Number.isFinite(f) || count <= 1) return 0;
+  return Math.min(count - 1, Math.max(0, f));
+}
+
+/**
+ * The diameter AT the focus, interpolated GEOMETRICALLY between the two objects it lies between.
+ *
+ * Geometric rather than arithmetic because size here is a RATIO quantity: halfway between Earth and
+ * Jupiter is eleven-to-one on both sides (3.3 Earths), where the arithmetic mean is six Earths and
+ * sits visually right beside Jupiter. Arithmetic interpolation makes the zoom lurch — it holds still
+ * while you cross the big object and then rushes — and it is the same log-space argument the unit
+ * ladder already makes in `groupRefValue`.
+ */
+export function focusDiameterKm(seq: ComparisonItem[], f: number): number {
+  if (!seq.length) return 0;
+  const i = Math.max(0, Math.min(seq.length - 1, Math.floor(f)));
+  const j = Math.min(seq.length - 1, i + 1);
+  const t = Math.max(0, Math.min(1, f - i));
+  const a = seq[i].diameterKm, b = seq[j].diameterKm;
+  // EXACT at the stops. `exp(log(a))` is a. plus four parts in a quadrillion, which is nothing to
+  // look at and everything to a gate: a click lands the focus exactly on an object, and "the thing
+  // you clicked fills half the screen" should be true to the digit rather than to a rounding.
+  if (t <= 0) return a > 0 ? a : (b > 0 ? b : 0);
+  if (t >= 1) return b > 0 ? b : (a > 0 ? a : 0);
+  if (!(a > 0) || !(b > 0)) return Math.max(a > 0 ? a : 0, b > 0 ? b : 0);
+  return Math.exp(Math.log(a) * (1 - t) + Math.log(b) * t);
+}
+
+/**
+ * THE SCALE, and the whole law is this one line: pixels per km such that whatever is at the focus
+ * fills `share` of the shorter side. Everything else on screen then draws in true proportion to it.
+ */
+export function scaleForFocus(seq: ComparisonItem[], f: number, shorterSidePx: number, share: number): number {
+  return pxPerKm(focusDiameterKm(seq, f), shorterSidePx, share);
+}
+
+/** Every slot by id — the layout is a list, and two of the focus laws want it as a lookup. */
+function slotMap(layout: StripLayout): Map<string, LayoutSlot> {
+  return new Map(layout.slots.map((s) => [s.id, s]));
+}
+
+/**
+ * Where the focus sits ALONG the laid-out strip, in px from its start. Interpolated between the two
+ * objects' centres, so the picture slides rather than snapping from one object to the next.
+ */
+export function focusCentrePx(layout: StripLayout, seq: ComparisonItem[], f: number): number {
+  if (!seq.length) return 0;
+  const by = slotMap(layout);
+  const at = (i: number) => by.get(seq[Math.max(0, Math.min(seq.length - 1, i))].id)?.centrePx ?? 0;
+  const i = Math.max(0, Math.min(seq.length - 1, Math.floor(f)));
+  const t = Math.max(0, Math.min(1, f - i));
+  return at(i) * (1 - t) + at(i + 1) * t;
+}
+
+/**
+ * Where the focus sits ACROSS the strip. Zero for every flat order — only the ORBIT layout stacks
+ * anything off the centreline — but it is derived from the focus exactly as the along axis is, so
+ * scrolling onto a moon brings its ROW to the middle as well as its column. Two axes with one
+ * source; the alternative (a free cross-drag beside a derived along-scroll) is two owners of where
+ * the picture is, and they disagree the moment either moves.
+ */
+export function focusCrossPx(layout: StripLayout, seq: ComparisonItem[], f: number): number {
+  if (!seq.length) return 0;
+  const by = slotMap(layout);
+  const at = (i: number) => by.get(seq[Math.max(0, Math.min(seq.length - 1, i))].id)?.crossPx ?? 0;
+  const i = Math.max(0, Math.min(seq.length - 1, Math.floor(f)));
+  const t = Math.max(0, Math.min(1, f - i));
+  return at(i) * (1 - t) + at(i + 1) * t;
+}
+
+/**
+ * THE DRAG'S EXCHANGE RATE: how many pixels of picture one whole step of focus is worth, here.
+ *
+ * Taken ONCE at the start of a gesture and held for its duration, so the drag is reversible — the
+ * rate itself changes as you travel (that IS the zoom), and recomputing it mid-gesture would mean
+ * dragging back the same distance did not put you where you started.
+ *
+ * MEASURED ACROSS BOTH AXES, and that is not a nicety: in the orbit layout a planet and its first
+ * moon share a `centrePx` exactly and differ only in `crossPx`, so an along-only rate is ZERO there
+ * and the drag divides by nothing. The floor of 1 px is the second guard on the same thing.
+ */
+export function focusStepPx(layout: StripLayout, seq: ComparisonItem[], f: number): number {
+  if (seq.length < 2) return 0;
+  const i = Math.max(0, Math.min(seq.length - 2, Math.floor(f)));
+  const by = slotMap(layout);
+  const a = by.get(seq[i].id), b = by.get(seq[i + 1].id);
+  return Math.max(1, Math.hypot((b?.centrePx ?? 0) - (a?.centrePx ?? 0), (b?.crossPx ?? 0) - (a?.crossPx ?? 0)));
+}
+
+// `clampScroll` USED TO LIVE HERE, beside `scrollForZoom`, and has gone the same way. It kept a
+// PIXEL scroll inside the strip, on both axes. Neither axis is scrolled directly any more: both are
+// derived from the focus, and both must be free to run past the ends, because "the focused object
+// sits in the MIDDLE of the window" is the law and the first and last objects are entitled to the
+// middle as much as any other. A clamp would pin them to an edge. `clampFocus` is the bound now,
+// and it bounds the one thing that is actually held.
+
+// `scrollForZoom` USED TO LIVE HERE and is deliberately gone rather than kept beside its replacement.
+// It held a chosen point of the WINDOW still while the scale changed — the right law when the scroll
+// was a pixel offset and the zoom was a free dial. Under the focus law the zoom is anchored by
+// construction: the focused object is at the centre before and after, because the centre is what
+// the scale is derived FROM. A pinch therefore holds the middle, not the point between the fingers,
+// and that is the honest behaviour rather than a simplification — anchoring elsewhere would have to
+// move the focus, i.e. change what you are looking at because you zoomed.
 
 /**
  * How big a slot DRAWS and how much room it RESERVES, which are two different questions the moment a
@@ -287,7 +443,7 @@ export function measureSlot(it: ComparisonItem, scale: number): {
   const ringed = ringOuterPx > ringInnerPx && ringOuterPx * 2 >= DOT_THRESHOLD_PX;
   return {
     diameterPx, spanPx,
-    reachPx: Math.max(spanPx, ringed ? ringOuterPx * 2 : 0),
+    reachPx: Math.max(spanPx, ringed ? ringOuterPx * 2 * RING_ROOM_FRACTION : 0),
     ringInnerPx: ringed ? ringInnerPx : 0,
     ringOuterPx: ringed ? ringOuterPx : 0,
     belowFloor
@@ -473,6 +629,34 @@ function layoutOrbit(
     if (next) cursor += gap(rootSpan, spanOf(next));
   }
   return { slots, lengthPx: cursor, axis: opts.axis, crossReachPx: crossReach };
+}
+
+/**
+ * WHAT IS UNDER A POINT, tested against the LAYOUT rather than against anything on screen.
+ *
+ * `alongPx` is measured from the strip's start (so a pointer's offset plus the scroll) and
+ * `crossPx` from the centreline. Both are the same coordinates the slots carry, which is the whole
+ * reason this can be a pure function: the picture is derived from the layout, so the pick reads the
+ * layout and cannot drift from what was drawn - through a filter's warp, a device pixel ratio, or a
+ * canvas the DOM knows nothing about.
+ *
+ * THE SMALLEST CANDIDATE WINS, and that is the rule a reader means. At true scale a giant's disc
+ * covers the whole window, so a tap on a moon in front of it is inside BOTH; the moon is what the
+ * hand was pointing at. Distance breaks a tie between two of the same size.
+ */
+export function slotAt(
+  layout: StripLayout, alongPx: number, crossPx: number, minRadiusPx = PICK_MIN_RADIUS_PX
+): LayoutSlot | null {
+  let best: LayoutSlot | null = null;
+  let bestR = Infinity, bestD = Infinity;
+  for (const s of layout.slots) {
+    const r = Math.max(s.spanPx / 2, minRadiusPx);
+    const dx = alongPx - s.centrePx, dy = crossPx - s.crossPx;
+    const d = Math.hypot(dx, dy);
+    if (d > r) continue;
+    if (r < bestR || (r === bestR && d < bestD)) { best = s; bestR = r; bestD = d; }
+  }
+  return best;
 }
 
 /**
