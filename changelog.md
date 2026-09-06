@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.351 - 6th Sep 2026
+
+- Notes only, no change to the app: the second set of checks across the seam with the Explorers site is filed beside the first - a visitor with no campaign opens a shared map straight away, and the checks were re-run against the site's real address after the DNS move. The report had sat committed but unpushed in a retired session's worktree.
+
 ## v3.0.350 - 6th Sep 2026
 
 - The physics reference now explains what a barycentre actually promises. Two bodies sharing a centre sit on opposite sides of it at every instant, go round it in one shared period, and are split by mass so the heavier one sits closer in - and it says that a campaign saved before that was pinned can move bodies when it loads, because the correction is the engine putting a member where its own mass says it belongs. It also says what makes a pair in the first place: a companion heavier than 8% of what it orbits, a figure you can change in a rule pack, with the dissolve threshold below it so a pair cannot form and break on alternate passes.
