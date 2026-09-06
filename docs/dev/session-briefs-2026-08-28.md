@@ -1198,3 +1198,67 @@ R-number unchanged. Every criterion above gets PASS or FAIL and one sentence of 
 REPORT block per R-number in the protocol's shape, side `stream N`. Housekeeping: `git show --stat` before pushing;
 the stash stack is SHARED across every worktree and session - never bare `git stash`/`pop`; never tell the hub
 prod carries anything until the owner has released it.
+
+## STREAM O — a transit with the clock running must not be an edit per frame (B131)
+
+**Read first, in this order:** `CLAUDE.md`; the standing rules at the foot of `docs/dev/observations-inbox.md`; the
+[[B131]] row (the owner's report, the diagnostic's numbers and the chain, measured); `docs/dev/architecture-physics-tags-visuals.md`;
+the comment block above `src/routes/+page.svelte:1337` (the same storm through the broadcast sink, and how that one sink
+was fixed); the header comment of `src/lib/undo/systemUndo.ts` (what the recorder considers authored, and its silent
+scope); engine-map PHY-1 and the rebuild-storm entries under RENDER (search the map for `sameRef`); `docs/dev/PLAYBOOK.md`.
+The diagnostic itself is `../user-test-files/sse-load-diagnostic-2026-09-06T01-01-22.zip` - a user's campaign: read it,
+never commit, bundle or publish it.
+
+**The fault in one sentence.** A ship in transit re-stamps its state vector into its node on every animation frame
+(`SystemView.svelte` `syncScheduledJourneysAtDisplayTime`, `:2031`, the 1e-9 AU comparison), that write is a campaign
+store emission, and every sink downstream treats an emission as an authored edit: the undo recorder deep-clones the
+system, the page writes the system back into the starmap, the autosave queue deep-clones the whole campaign and chains
+an IndexedDB write per frame with no coalescing, the normaliser walks every system, the starmap recorder stringifies.
+The autosave chain is where the memory sat: one full campaign per pending frame until the transit ended.
+
+**The rule this stream serves.** A flight sample is DERIVED. Physics runs, the sampler answers from the journey plan
+and the clock, and what it answers is a fact about NOW, not an edit to the campaign. The node needs a stamp only at a
+TRANSITION - departure, arrival, docking, abort, heal - because the transition stamp plus the plan reproduce any
+instant on reload; that is the derived-from-clock journey design already in force. Nothing per frame belongs in the
+campaign document, in its undo history, in its autosave or in its broadcast snapshot.
+
+### The job, in three parts, each gated
+
+1. **Move the per-frame flight state out of the campaign store.** A transient `liveFlight` store (node id -> sampled
+   position, velocity, state, sample time) written by the frame path and read by everything that draws or reports a
+   moving ship: the 2D orrery, `holo/scene.ts`, `physics/worldPositions.ts` (vectors outrank orbit elements at render
+   time - give it the live table as an input rather than the node's stamp), the broadcast (players advance on their own
+   clock; the snapshot needs the TRANSITION stamp, not the frame), telemetry, the reports. The node's `vector_*` and
+   `flight_state` are then written only at transitions, by the code that already handles them (`flightState.ts`,
+   `reconcileConstructArrival`, the scheduler), inside the recorder's silent scope where they are machine writes.
+   Measure before and after: with perf tracing on (Settings), count campaign-store emissions per second during a
+   played transit. Before: one per frame. After: zero between transitions. Pin that count as a gate on a fixture.
+2. **Harden the sinks so no machine write can ever storm them again.** `enqueueStarmapPersist` keeps ONE pending
+   snapshot, cloned at persist time, coalescing every emission that arrives while a write is in flight; the undo
+   recorder's silent path stops deep-cloning per emission (compute the shadow lazily when the next authored change is
+   examined); the system-into-starmap write-back does not emit `starmapStore` when nothing but a machine field
+   changed. Each is a small change with its own gate: queue length never exceeds one under a burst of a thousand
+   emissions; `stripSystemForExport` is called zero times across a thousand silent emissions; the starmap store emits
+   zero times for a flight-only write. Every gate seen RED on the current code first (PHY-34: absolute counts, not
+   ratios).
+3. **Do not reintroduce the parked-ship storm.** The comment inside the block at `:2100` records why a PARKED ship's
+   sample must not be stamped (the player holo rebuilt twice a second forever). Keep that behaviour; the live table is
+   for free-floating ships only, and a parked ship's orbit remains its description.
+
+### What to check that no test can
+
+Play a transit for five minutes on the diagnostic's campaign with the memory strip visible: it must stay flat, the
+fans must stay quiet, and `bc.SYNC_STARMAP.skippedWhilePlaying` in a fresh diagnostic must stop climbing per frame.
+Press undo during and after the transit: the GM's last authored edit must be what comes back. Open a player view in a
+second browser: the ship must still move, attach and arrive as it does today (TAG-20: the player system view is HoloView
+at both tiers). Say in the report what you saw, not what the code says.
+
+### Housekeeping
+
+Own worktree off `origin/beta`; commit as FrunkQ <frunk@frunk.net>; `npm run build` green AND the full vitest suite green
+before every push; bump the patch version every push and run `npm run manifest` AFTER the bump (the shipped-content pin
+fails otherwise, and its message says so); `git show --stat` before pushing. The two `tests/` fixtures and
+`src/lib/generated/exampleSystems.ts` churn on every run - do not commit them. The stash stack is SHARED across every
+worktree and session - never bare `git stash`/`pop`; set work aside with a WIP commit. Register your worktree in
+`C:\Development\.claude\launch.json` to drive a browser. Claim any board id at write time by checking both the `| id |`
+and `[[id]]` forms. Report versions, the emission counts before and after, and anything left undone.

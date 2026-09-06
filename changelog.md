@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.320 - 6th Sep 2026
+
+- Board: a transit left running with the clock on drove memory to 2.3 GB (B131) - measured from the owner's diagnostic to the autosave queue that keeps one copy of the campaign per frame, and briefed as stream O for a session to fix at the root.
+
 ## v3.0.319 - 6th Sep 2026
 
 - Size comparison: only the ringed world you are looking at shows its rings now. The others fade out either side as you move, so a strip of ringed planets is no longer a grey wash of overlapping discs.
