@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.330 - 6th Sep 2026
+
+- The Size comparison is now a player view on the STARMAP as well as inside a system - every star on your map, side by side, with its own order and ruler settings in the preset editor. A tap there compares rather than enters, so a player reading the view cannot fall out of it.
+- The ruler's circles are drawn as plain lines rather than dashed ones. A dashed circle costs the browser per dash all the way round, and these circles get very large.
+- The ruler's names moved to the top edge of their circles, where the worlds and their own labels are not.
+- Names at the crowded end now ask for the room they actually need, so a long name like "Kruger 60 B (DO Cephei)" no longer sits on top of its neighbour while a short one is dropped for nothing.
+
 ## v3.0.329 - 6th Sep 2026
 
 - Board: the Explorers site now lives at explorers.starsystemx.com and this app's link-opening already trusts it; nothing about this app's own address changed.

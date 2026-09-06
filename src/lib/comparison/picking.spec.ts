@@ -125,6 +125,30 @@ describe('size comparison — the live mount and the preview agree', () => {
     preview: 'src/lib/components/PlayerPresetEditor.svelte'
   };
 
+  it('offers the size comparison on BOTH stages, and mounts it on both', () => {
+    // Owner, 2026-09-06: "This may work on player view - but we have not enabled that under starmap
+    // as an option - we really should!" The strip was a SYSTEM view only; the starmap could show it
+    // to a GM and never to a player.
+    const editor = readFileSync(files.preview, 'utf8');
+    // Both selects offer it...
+    const systemSel = editor.slice(editor.indexOf('bind:value={draft.systemView}'));
+    const starmapSel = editor.slice(editor.indexOf('bind:value={draft.starmapView}'));
+    expect(systemSel.slice(0, 400)).toContain('value="sizecompare"');
+    expect(starmapSel.slice(0, 400)).toContain('value="sizecompare"');
+    // ...and BOTH stages actually mount the view, or the option is a promise the app does not keep.
+    const live = readFileSync(files.live, 'utf8');
+    expect(live).toContain('itemsForStarmap');
+    expect(live).toContain("starmapView === 'sizecompare'");
+    expect((live.match(/<SizeComparisonView/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect((editor.match(/<SizeComparisonView/g) || []).length).toBeGreaterThanOrEqual(2);
+    // AND THE STARMAP MOUNT DISPATCHES NOTHING ([[B125]]): `handleSystemClick` ENTERS a system, so a
+    // tap wired outward would throw a player out of the view they are reading.
+    const smAt = live.indexOf("starmapView === 'sizecompare'");
+    const smTag = live.slice(live.indexOf('<SizeComparisonView', smAt), live.indexOf('/>', live.indexOf('<SizeComparisonView', smAt)));
+    expect(smTag).not.toContain('on:select');
+    expect(smTag).toContain('scope="starmap"');
+  });
+
   it('passes the preset’s REAL filter at both mounts, and wraps neither in the CSS approximation', () => {
     for (const [which, path] of Object.entries(files)) {
       const src = readFileSync(path, 'utf8');

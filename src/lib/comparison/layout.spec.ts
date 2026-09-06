@@ -885,6 +885,40 @@ describe('size comparison — the ruler, as arcs about whatever is in the middle
     expect(referenceArcs(starScale, 1200, 800).map((a) => a.id)).toEqual(['jupiter', 'sun']);
   });
 
+  it('puts a name on the TOP edge of its circle, where the strip is not', () => {
+    // Owner, 2026-09-06: "the names need to be on the top edge to work properly." The bodies run
+    // along the CENTRELINE with their own names under them, so a ruler label on the right-hand side
+    // of an arc lands on a world or on that world's name. The top of a circle is empty by
+    // construction.
+    const scale = pxPerKm(12742, 800, OPENING_SHARE);
+    const arcs = referenceArcs(scale, 1200, 800);
+    expect(arcs.length).toBeGreaterThan(2);
+    for (const a of arcs) {
+      // Above the centre, and within a whisker of straight up.
+      expect(a.labelY).toBeLessThan(400);
+      const fromTop = Math.abs(Math.atan2(a.labelY - 400, a.labelX - 600) + Math.PI / 2);
+      expect(fromTop).toBeLessThan(1.0);
+      // ...and still exactly ON its own circle.
+      expect(Math.hypot(a.labelX - 600, a.labelY - 400)).toBeCloseTo(a.radiusPx, 6);
+    }
+  });
+
+  it('walks off the top only when the top is off the window', () => {
+    // A tall arc in a WIDE, SHORT window cannot be labelled at its top - the top is off screen - so
+    // the ladder falls back to the sides rather than dropping the rung.
+    const scale = pxPerKm(12742, 400, 0.6);
+    const arcs = referenceArcs(scale, 1400, 400);
+    expect(arcs.length).toBeGreaterThan(0);
+    const sideways = arcs.filter((a) => Math.abs(a.labelY - 200) < a.radiusPx * 0.9);
+    expect(sideways.length).toBeGreaterThan(0);
+    for (const a of arcs) {
+      expect(a.labelX).toBeGreaterThanOrEqual(0);
+      expect(a.labelX).toBeLessThanOrEqual(1400);
+      expect(a.labelY).toBeGreaterThanOrEqual(0);
+      expect(a.labelY).toBeLessThanOrEqual(400);
+    }
+  });
+
   it('never labels an arc off the window — a label the reader cannot check is a claim, not a scale', () => {
     for (const [vw, vh] of [[1200, 800], [420, 900], [900, 420], [300, 300]] as const) {
       for (const share of [0.05, 0.22, 0.9]) {

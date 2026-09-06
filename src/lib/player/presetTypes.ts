@@ -122,6 +122,14 @@ export interface PlayerPreset {
    * comparison rather than a poster.
    */
   sizeCompareRuler?: boolean;
+  /**
+   * The same two, for the STARMAP stage's own size comparison — every star on the map side by side.
+   * Separate fields rather than shared ones because the two stages are separately chosen and a GM
+   * may want the ruler on one and not the other; `orbit` is not offered here, since there is no
+   * "what orbits what" between two different systems.
+   */
+  starmapSizeCompareOrder?: 'size' | 'name' | 'mass';
+  starmapSizeCompareRuler?: boolean;
   // WS5 lock-down: with the starmap stage disabled the player is dropped straight into ONE system and
   // can never reach the map. This pins WHICH one (chosen by the GM when authoring, so a shared link is
   // deterministic); unset falls back to the first charted system.

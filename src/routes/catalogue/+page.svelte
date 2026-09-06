@@ -39,7 +39,7 @@
   // G68: the size comparison as a player system view. It takes plain data and carries no GM chrome,
   // so it mounts here unchanged — the same component the GM reaches from the rail.
   import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
-  import { itemsForSystem } from '$lib/comparison/items';
+  import { itemsForSystem, itemsForStarmap } from '$lib/comparison/items';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
   import { AU_KM } from '$lib/constants';
   import { migrateUnitPrefs, type UnitPrefs } from '$lib/units';
@@ -883,6 +883,9 @@
    * that for free, which is the whole reason this component takes plain data.
    */
   $: sizeCompareItems = systemSizeCompare && displaySystem ? itemsForSystem(displaySystem) : [];
+  /** The STARMAP's own size comparison: every star on the map, side by side. */
+  $: starmapSizeCompare = !!activePreset && activePreset.starmapView === 'sizecompare';
+  $: starmapCompareItems = starmapSizeCompare && starmap ? itemsForStarmap(starmap) : [];
   // Pass the body-graphics mode straight through (sphere / disc / flat / photo / none) so the document
   // can render each distinctly.
   $: docImagery = activePreset ? activePreset.bodyGfx : 'none';
@@ -1296,7 +1299,31 @@
   {:else if !selectedSystemId && activePreset && activePreset.starmapEnabled}
     <!-- Starmap level, PRESET-DRIVEN: the chosen module (text list / 2D / 3D), tap a system to enter. -->
     <div class="preset-stage" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
-      {#if activePreset.starmapView === 'holo3d' || activePreset.starmapView === 'diagram2d'}
+      {#if starmapSizeCompare}
+        <!-- EVERY STAR ON THE MAP AT TRUE RELATIVE SIZE. The same component the system stage mounts,
+             fed by `itemsForStarmap`, and with the same real GLSL filter over its own chrome.
+             NO `on:select`, and that is [[B125]]'s lesson rather than an omission: on the starmap a
+             tap is a COMPARISON, not a door. `handleSystemClick` ENTERS a system, so wiring the
+             view's select to it would throw a player out of the view they are reading the moment
+             they touched anything. The view centres and rings the star in place instead. -->
+        <SizeComparisonView
+          items={starmapCompareItems}
+          scope="starmap"
+          mapId={starmap?.id ?? null}
+          mode={isPhone ? 'phone' : 'desktop'}
+          forcedOrder={activePreset.starmapSizeCompareOrder ?? 'size'}
+          showRuler={activePreset.starmapSizeCompareRuler !== false}
+          filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
+          playerChrome
+        />
+        {#if starmapOverlayHud}
+          <div class="overlay-wrap">
+            <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+              <GraphicLayer placement={starmapOverlayHud} assets={presetAssets} />
+            </FilterFrame>
+          </div>
+        {/if}
+      {:else if activePreset.starmapView === 'holo3d' || activePreset.starmapView === 'diagram2d'}
         <!-- 3D (or 2D = the same renderer LOCKED OVERHEAD): real GLSL filter + raycast selection. -->
         <Starmap3DView {starmap} accentColor={presetAccent} font={presetFont} grid={activePreset.starmapGrid ?? activePreset.grid}
           gridDepth={typeof activePreset.starmapGridDepth === 'number' ? activePreset.starmapGridDepth : (activePreset.starmapGridDepth ? 1 : 0)} gridFalloff={activePreset.starmapGridFalloff ?? 0.5}

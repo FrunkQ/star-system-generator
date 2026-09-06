@@ -138,7 +138,8 @@ describe('the strip’s chrome — what the picture says', () => {
 
   it('thins the labels where they would stack into a smudge, keeping the selected one', () => {
     // The far end of a real system is dozens of moons inside a hundred pixels. A name you cannot
-    // read is worse than none, because it hides the one beside it too.
+    // read is worse than none, because it hides the one beside it too. The rule is WIDTH-AWARE: a
+    // long name asks for the room it needs and a short one does not pay for it.
     // One big world and a train of specks behind it: at the big one's scale the specks are a few
     // pixels apart, which is exactly the far end of a real system.
     const crowd: ComparisonItem[] = [body('Host', 900, 'planet')]
@@ -153,10 +154,13 @@ describe('the strip’s chrome — what the picture says', () => {
     };
     const names = draw(s).texts.filter((t) => t.font === CHROME.nameFont);
     expect(names.length).toBeGreaterThan(2);
-    // Whatever survives is readable: no two names on the same side are closer than the separation.
-    for (const side of [0, 1]) {
-      const xs = names.filter((_, i) => i % 2 === side).map((t) => t.x).sort((a, b) => a - b);
-      for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeGreaterThan(0);
+    // Whatever survives is readable: no two names on the same side have overlapping BOXES. The
+    // recorder's `measureText` is the same one the drawing used, so this is the real test.
+    const boxes = names.map((t) => ({ x: t.x, half: t.text.length * 3 }));
+    for (let i = 1; i < boxes.length; i++) {
+      const gaps = boxes.slice(0, i).map((b) => Math.abs(boxes[i].x - b.x) - b.half - boxes[i].half);
+      // At least one of the earlier labels is on the other side, so only the NEAREST need clear it.
+      expect(Math.max(...gaps)).toBeGreaterThan(0);
     }
     // Some were dropped - or the crowd was never a crowd and this proves nothing.
     expect(names.length).toBeLessThan(layout.slots.length);
@@ -171,6 +175,19 @@ describe('the strip’s chrome — what the picture says', () => {
     const withPick = draw({ ...s, selectedId: buried.id }).texts
       .filter((t) => t.font === CHROME.nameFont).map((t) => t.text);
     expect(withPick).toContain(buried.name);
+  });
+
+  it('strokes the arcs SOLID — a dash pattern costs per segment over the whole circle', () => {
+    // Owner, 2026-09-06: "dashed lines billions of km across kill the renderer", which is the
+    // standing rule the starmap's orbit lines already carry (engine map RENDER-S31). A ruler circle's
+    // radius is whatever the zoom makes it, so it is exactly the wrong path to dash.
+    const ctx = makeChromeRecorder();
+    let dashed: number[] | null = null;
+    (ctx as any).setLineDash = (p: number[]) => { if (p && p.length) dashed = p; };
+    drawStripChrome(ctx, spec('Earth'));
+    expect(ctx.arcs.some((a) => a.stroked)).toBe(true);   // it did draw arcs, or this proves nothing
+    expect(dashed).toBeNull();
+    expect((CHROME as Record<string, unknown>).arcDash).toBeUndefined();
   });
 
   it('draws no ruler at all when it is switched off, and every body still reads', () => {

@@ -855,10 +855,24 @@ export interface ReferenceArc {
 
 /**
  * WHERE TO PUT AN ARC'S LABEL: the first of these headings, in order, whose point on the circle is
- * inside the window. Right-hand side first because that is where a reader looks for a scale, then
- * down and round. Angles are measured from the +x axis, y DOWN (canvas convention).
+ * inside the window. Angles are measured from the +x axis, y DOWN (canvas convention), so -pi/2 is
+ * the TOP of the circle.
+ *
+ * THE TOP EDGE FIRST, and it is the owner's instruction (2026-09-06: *"the names need to be on the
+ * top edge to work properly"*) because it is the only place a ruler label is reliably clear of the
+ * strip. The bodies run along the CENTRELINE and their own names sit directly under them, so a label
+ * on the right-hand side of an arc lands on a world or on that world's name; the top of the circle
+ * is empty by construction. The rest are fallbacks for an arc whose top is off the window, walking
+ * outward from the top rather than starting at the side.
  */
-const ARC_LABEL_ANGLES = [0, 0.35, -0.35, 0.9, -0.9, Math.PI / 2, -Math.PI / 2, 2.3, -2.3, Math.PI];
+const ARC_LABEL_ANGLES = [
+  -Math.PI / 2,          // top
+  -Math.PI / 2 + 0.45, -Math.PI / 2 - 0.45,
+  -Math.PI / 2 + 0.95, -Math.PI / 2 - 0.95,
+  0, Math.PI,            // the sides, once the top is unreachable
+  Math.PI / 2 + 0.45, Math.PI / 2 - 0.45,
+  Math.PI / 2            // and the bottom, last of all
+];
 
 /**
  * The reference circles that are worth drawing at this scale, concentric with the middle of a

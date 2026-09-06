@@ -85,22 +85,32 @@ export const CHROME = {
   ringWidthPx: 2,
   /** How far outside a body's limb its ring is drawn, so it never hides the edge being measured. */
   ringOutsetPx: 3,
-  /** The ruler's arcs and their labels. */
-  arcColor: 'rgba(255, 214, 120, 0.30)',
+  /**
+   * The ruler's arcs and their labels.
+   *
+   * SOLID, NOT DASHED, and that is a standing rule rather than a taste: a dash pattern costs the
+   * rasteriser per SEGMENT over the whole path, and this view's paths are circles whose radius is
+   * whatever the current zoom makes it. Owner, 2026-09-06: *"dashed lines billions of km across kill
+   * the renderer"* - the same lesson the starmap's orbit lines already carry (engine map RENDER-S31).
+   * A low-alpha hairline reads as a reference mark just as well and costs one stroke.
+   */
+  arcColor: 'rgba(255, 214, 120, 0.34)',
   arcLabelColor: 'rgba(255, 214, 120, 0.85)',
   arcWidthPx: 1,
-  arcDash: [5, 5],
   arcFont: '500 10px system-ui, -apple-system, "Segoe UI", sans-serif',
   /** The label sits this far outside the arc it names, along the radius. */
   arcLabelOffsetPx: 7,
   /**
-   * Two labels closer together than this ALONG THE STRIP are one unreadable smudge, so the second is
-   * not drawn. The far end of a real system is dozens of moons inside a hundred pixels; the layout's
-   * alternating sides buy some room and then run out. A name you cannot read is worse than no name,
-   * because it also hides the one next to it — and the object is still there, still tappable, and
-   * still names itself the moment you scroll to it.
+   * Clear space demanded BETWEEN two labels, on top of their own measured widths.
+   *
+   * The rule is width-aware rather than a flat distance, because the names are not a flat width:
+   * "Io" and "Kruger 60 B (DO Cephei)" want very different room, and a fixed gap either lets the
+   * long ones collide or throws away the short ones. The far end of a real system is dozens of
+   * moons inside a hundred pixels; the layout's alternating sides buy some room and then run out.
+   * A name you cannot read is worse than no name, because it also hides the one next to it — and
+   * the object is still there, still tappable, and still names itself the moment you scroll to it.
    */
-  labelMinSeparationPx: 34
+  labelPaddingPx: 10
 } as const;
 
 export interface StripChromeSpec {
@@ -148,7 +158,10 @@ export function drawStripChrome(ctx: ChromeCtx, spec: StripChromeSpec): void {
   // The last label drawn on each side, so a crowd at the small end thins itself out rather than
   // stacking into a smudge. Per SIDE, because the layout alternates them for exactly this reason and
   // two neighbours on opposite sides do not collide.
-  const lastOn: Record<string, number> = { start: -Infinity, end: -Infinity };
+  const lastOn: Record<string, { at: number; half: number }> = {
+    start: { at: -Infinity, half: 0 }, end: { at: -Infinity, half: 0 }
+  };
+  ctx.font = CHROME.nameFont;
   for (const slot of spec.layout.slots) {
     const p = slotScreenPos(slot, spec);
     // TWO DIFFERENT QUESTIONS, and answering them with one test was wrong. A body is worth DRAWING
@@ -162,11 +175,17 @@ export function drawStripChrome(ctx: ChromeCtx, spec: StripChromeSpec): void {
     if (slot.belowFloor) drawDot(ctx, p);
     drawRings(ctx, slot, p, spec);
     const centred = p.x >= 0 && p.x <= spec.vw && p.y >= 0 && p.y <= spec.vh;
-    // ...and not on top of the last one on this side. The SELECTED object always gets its name,
-    // whatever the crowd: it is the one the reader asked about.
-    const room = Math.abs(along - lastOn[slot.labelSide]) >= CHROME.labelMinSeparationPx;
+    // ...and not on top of the last one on this side. MEASURED, so a long name asks for the room it
+    // actually needs. The SELECTED object always gets its name whatever the crowd: it is the one the
+    // reader asked about. (On a vertical strip the names stack by LINE HEIGHT rather than by width,
+    // so that is what the half-extent means there.)
+    const prev = lastOn[slot.labelSide];
+    const half = spec.axis === 'x'
+      ? ctx.measureText(slot.name).width / 2
+      : CHROME.lineHeightPx;
+    const room = Math.abs(along - prev.at) >= prev.half + half + CHROME.labelPaddingPx;
     if (centred && (room || slot.id === spec.selectedId)) {
-      lastOn[slot.labelSide] = along;
+      lastOn[slot.labelSide] = { at: along, half };
       drawLabel(ctx, slot, p, spec);
     }
   }
@@ -183,13 +202,11 @@ function drawArcs(ctx: ChromeCtx, spec: StripChromeSpec): void {
   ctx.save();
   ctx.lineWidth = CHROME.arcWidthPx;
   ctx.strokeStyle = CHROME.arcColor;
-  ctx.setLineDash?.([...CHROME.arcDash]);
   for (const a of spec.arcs) {
     ctx.beginPath();
     ctx.arc(cx, cy, a.radiusPx, 0, Math.PI * 2);
     ctx.stroke();
   }
-  ctx.setLineDash?.([]);
   ctx.font = CHROME.arcFont;
   ctx.fillStyle = CHROME.arcLabelColor;
   ctx.textBaseline = 'middle';
@@ -201,7 +218,11 @@ function drawArcs(ctx: ChromeCtx, spec: StripChromeSpec): void {
     const len = Math.hypot(dx, dy) || 1;
     const x = a.labelX + (dx / len) * CHROME.arcLabelOffsetPx;
     const y = a.labelY + (dy / len) * CHROME.arcLabelOffsetPx;
-    ctx.textAlign = dx < -1 ? 'right' : 'left';
+    // At the TOP of a circle - where these now go by default - the text wants to sit centred over
+    // the line rather than starting at it, or every name is offset to one side of the mark it names.
+    const nearTop = Math.abs(dx) < len * 0.35;
+    ctx.textAlign = nearTop ? 'center' : dx < 0 ? 'right' : 'left';
+    ctx.textBaseline = nearTop && dy < 0 ? 'bottom' : 'middle';
     ctx.fillText(a.label, x, y);
   }
   ctx.restore();

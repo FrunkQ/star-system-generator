@@ -32,7 +32,7 @@
   import GraphicPlacementControls from './GraphicPlacementControls.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
   import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
-  import { itemsForSystem } from '$lib/comparison/items';
+  import { itemsForSystem, itemsForStarmap } from '$lib/comparison/items';
   import FilteredDocumentView from './FilteredDocumentView.svelte';
   import { DOCUMENT_STYLES, documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import TransitionParamControls from './TransitionParamControls.svelte';
@@ -646,8 +646,26 @@
                   <option value="list">Document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D map</option>
+                  <option value="sizecompare">Size comparison</option>
                 </select>
               </label>
+              {#if draft.starmapView === 'sizecompare'}
+                <label>Order
+                  <select bind:value={draft.starmapSizeCompareOrder}>
+                    <option value="size">Size — largest first</option>
+                    <option value="name">Name</option>
+                    <option value="mass">Mass — heaviest first</option>
+                  </select>
+                </label>
+                <label class="chk">
+                  <input type="checkbox" checked={draft.starmapSizeCompareRuler !== false}
+                    on:change={(e) => (draft.starmapSizeCompareRuler = (e.currentTarget as HTMLInputElement).checked)} />
+                  Show the size ruler
+                </label>
+                <p class="hint">Every star on the map at true relative size, side by side. A tap centres
+                  a star and rescales the rest against it; it does not enter that system, because on
+                  this map a tap is a comparison rather than a door.</p>
+              {/if}
             {/if}
           </CollapsibleSection>
 
@@ -1236,6 +1254,23 @@
               <div class="ph">Starmap stage is disabled — players go straight to systems.</div>
             {:else if !($starmapStore?.systems?.length)}
               <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
+            {:else if draft.starmapView === 'sizecompare'}
+              <!-- The starmap's own size comparison: every star on the map, the SAME component the
+                   system stage mounts, so this preview cannot describe a view that does not exist. -->
+              <div class="sizecmp-wrap">
+                <SizeComparisonView items={itemsForStarmap($starmapStore)} scope="starmap"
+                  mapId={$starmapStore?.id ?? null} mode="desktop" playerChrome
+                  forcedOrder={draft.starmapSizeCompareOrder ?? 'size'}
+                  showRuler={draft.starmapSizeCompareRuler !== false}
+                  filterId={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams ?? {}} />
+                {#if draft.starmapOverlay}
+                  <div class="ovl-wrap">
+                    <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                      <GraphicLayer placement={draft.starmapOverlay} assets={$playerAssetList} />
+                    </FilterFrame>
+                  </div>
+                {/if}
+              </div>
             {:else if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
               <!-- BOTH map views are the same engine (2D = it locked flat) and run the real shader
                    themselves — mirroring the live player view exactly, so this preview can't drift. -->

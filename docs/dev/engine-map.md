@@ -6468,11 +6468,22 @@ size** - the renderer, whose `setSize` multiplies by the device pixel ratio; a S
 ([[B122]]), which is invisible at ratio 1 and obvious at 2. In BOTH faults the DOM overlay was
 pixel-exact throughout, because it does its own arithmetic - so a broken canvas beside a correct
 overlay reads as a DATA fault and sends you looking in the wrong module.
-LABELS THIN THEMSELVES WHERE THEY WOULD COLLIDE (`CHROME.labelMinSeparationPx`). The far end of a
-real system is dozens of moons inside a hundred pixels, and the layout's alternating sides run out;
-a name you cannot read is worse than none, because it hides the one beside it too. The SELECTED
-object always keeps its name, whatever the crowd - it is the one the reader asked about - and every
-dropped object is still drawn, still tappable, and names itself as soon as you scroll to it.
+LABELS THIN THEMSELVES WHERE THEY WOULD COLLIDE, MEASURED (`CHROME.labelPaddingPx`). The far end of
+a real system is dozens of moons inside a hundred pixels, and the layout's alternating sides run
+out; a name you cannot read is worse than none, because it hides the one beside it too. The rule
+reads the drawn WIDTH rather than a flat distance, because "Io" and "Kruger 60 B (DO Cephei)" want
+very different room and a fixed gap either lets the long ones collide or throws away the short ones.
+The SELECTED object always keeps its name, whatever the crowd - it is the one the reader asked about
+- and every dropped object is still drawn, still tappable, and names itself as soon as you scroll to
+it.
+THE RULER'S ARCS ARE SOLID AND ITS NAMES SIT ON THE TOP EDGE. Both are the owner's, 2026-09-06, and
+both have a reason under them. SOLID because a dash pattern costs the rasteriser per SEGMENT over
+the whole path and these paths are circles whose radius is whatever the zoom makes it - the same
+lesson RENDER-S31 already carries for the starmap's orbit lines ("dashed lines billions of km across
+kill the renderer"). THE TOP EDGE because the bodies run along the CENTRELINE with their own names
+directly under them, so a ruler label on the side of an arc lands on a world or on that world's
+name; the top of a circle is empty by construction. `ARC_LABEL_ANGLES` walks outward from the top
+and only reaches the sides for an arc whose top is off the window.
 THE RULER IS CIRCLES, NOT A BAR (`referenceArcs`, drawn by `stripChrome`). Owner, 2026-09-06:
 *"perhaps more as arcs to show size ... perhaps have the ruler centred rather than to one side - so
 it aligns to the planet on screen."* A bar answers "how many pixels is an Earth" and leaves the
@@ -6690,6 +6701,16 @@ THE FOUR PLACES ARE NOW FIVE for a stage with chrome: the catalogue branch, the 
 overlay inside both, the `ViewModule` union - and the CHROME RENDERER, which must be one function for
 both tiers. A second renderer to preserve a DOM-only interaction (the strip's unit-cycling was the
 temptation) is two implementations of one set of labels.
+THE SIZE COMPARISON IS A STAGE ON BOTH MAPS (v3.0.330). It was a `systemView` only, so the starmap
+could show it to a GM and never to a player - the owner: *"we have not enabled that under starmap as
+an option - we really should!"* The starmap mount takes its own preset fields
+(`starmapSizeCompareOrder`, `starmapSizeCompareRuler`), because the two stages are chosen separately
+and a GM may want the ruler on one and not the other; `orbit` is not offered there, since there is
+no "what orbits what" between two different systems.
+AND THE STARMAP MOUNT DISPATCHES NOTHING, which is [[B125]]'s lesson rather than an omission:
+`handleSystemClick` ENTERS a system, so wiring the view's `select` outward would throw a player out
+of the view they are reading the moment they touched anything. The view centres and rings the star
+in place instead, exactly as the GM's own starmap strip does.
 BLAST: adding a stage means touching FOUR places that must agree - the catalogue branch, the preview
 branch, the overlay inside both, and the `ViewModule` union. And if the stage has chrome, that
 chrome belongs in the rendered surface from the start: retrofitting it means moving every label into
