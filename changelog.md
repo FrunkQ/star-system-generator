@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.0.356 - 6th Sep 2026
+
+- The Getting Started guide catches up with the release. It now covers: cut, copy and paste - including copying a system, planet or ship from the Explorers site and pasting it into your campaign, what the little tag under undo/redo means, and which browser asks what about your clipboard; the Size comparison, all of it, and how to give it to your players; megastructures, the seven types, the difference between a greyed row and an amber note, and ships docking at an elevator's levels or a ring's rim and riding round with it; the three doors on Load Starmap and Load System; the credit that travels with pasted content; hovering a star to see what is in the system; a Universe Sandbox binary arriving as two stars; and re-homing a body without it jumping.
+- It also explains, for the first time, what a pair of bodies actually promises once they share a centre, and warns that an old campaign can have bodies move when it loads - which is a correction rather than a fault.
+- Corrected: the guide said flares, jets and a shed shell were drawn on the starmap and the system view alike. The flat 2D system map draws flares but not yet the other two, and the guide now says so rather than promising something that is still being built.
+- Corrected: it described the message a joining player sees in words the app does not use. It says the real one now, and explains why it is a spinner and not a progress bar.
+- New: how big things draw. A star's drawn size now follows its own size, so a red dwarf and a red supergiant are no longer the same circle - a visible change to every system you already had, and the map being honest rather than a fault.
+
 ## v3.0.355 - 6th Sep 2026
 
 - New "Low power" tick-box in the system view's View options, for a machine that struggles. It drops the see-through shells around bodies - cloud decks, limb glow, haze and auroras - which cost more than anything else on screen because each one repaints the same pixels over again. It is remembered on that computer only: it never goes into the campaign and never reaches your players' screens.

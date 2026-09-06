@@ -5,8 +5,8 @@
 // and the layout's "new version available" prompt only fires when THIS FILE's bytes change, so it
 // had been dead since then. Until the bump rides the release recipe automatically, bump it on any
 // push that changes what the offline shell needs.
-const STATIC_CACHE = 'sse-static-v3.0.355';
-const RUNTIME_CACHE = 'sse-runtime-v3.0.355';
+const STATIC_CACHE = 'sse-static-v3.0.356';
+const RUNTIME_CACHE = 'sse-runtime-v3.0.356';
 
 const PRECACHE_URLS = [
   '/',
