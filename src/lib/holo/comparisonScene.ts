@@ -51,6 +51,7 @@ import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { warpUv, warpParamsOfUniforms } from './filters/warpPick';
 import type { FilterParamValues } from './filters/schema';
+import { slotOffset } from '$lib/comparison/layout';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes,
@@ -137,6 +138,8 @@ const MAX_DRAW_SCREENS = 8;
  * foreshortened, so the reading you take off the ruler is exact.
  */
 const RING_TILT_FALLBACK_RAD = 1.15;
+/** How far a feeding hole's accretion disc dips as it flickers. 0 is a still disc. */
+const DISC_FLARE_DEPTH = 0.35;
 
 export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonSceneHandle {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -200,6 +203,8 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     ring?: { dispose(): void; mat: THREE.Material & { opacity: number }; mesh: THREE.Mesh; base: number };
     /** Set for a black hole: this body is a lensing centre, and its horizon radius in px. */
     lens?: { radiusPx: number };
+    /** True for a FEEDING hole's accretion disc, which flares rather than sitting still. */
+    flares?: boolean;
   }
   const built = new Map<string, Built>();
   let slots: ComparisonSlot[] = [];
@@ -217,10 +222,17 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     // Cross offsets grow AWAY from the centreline in the direction a reader calls "down" (or, on a
     // vertical strip, "to the right"), so on the main axis they are negated: the ortho frame's +y is
     // up and its +x is right.
-    const cross = slot.crossPx ?? 0;
-    return axis === 'x'
-      ? [slot.centrePx, -(cross - crossScrollPx), 0]
-      : [cross - crossScrollPx, -slot.centrePx, 0];
+    //
+    // RELATIVE TO THE SCROLL, NEVER ABSOLUTE, and it is the whole of [[B134]]: `centrePx` is measured
+    // from the start of the strip and is unbounded, because the strip is sorted by size and ONE
+    // enormous object puts everything behind it at a coordinate of its own diameter and upwards. At
+    // 10^9 a float32 vertex pipeline quantises in steps of ~100 units, so a 150 px star built there
+    // has its vertices snapped to a grid coarser than the star and draws as a CUBE. Subtracting the
+    // scroll keeps every number the renderer sees inside a viewport of the origin, however long the
+    // strip is. Same law the holo has carried since the floating-origin work; same function the
+    // chrome uses, which is why the labels were right while the globes were blocks.
+    const { along, cross } = slotOffset(slot.centrePx, slot.crossPx ?? 0, scrollPx, crossScrollPx);
+    return axis === 'x' ? [along, -cross, 0] : [cross, -along, 0];
   }
 
   function inWindow(slot: ComparisonSlot): boolean {
@@ -263,6 +275,10 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         // NO CORONA, NO FLARES (see the option's own note): a halo five radii wide would make every
         // star read nine times its true diameter, on the one view that exists to stop exactly that.
         starDecorations: false,
+        // ...but a star should still LOOK like a light source. A tight additive bloom on the limb,
+        // a fifth of a radius rather than the corona's nine, so nothing here claims to be bigger
+        // than its label says. Owner, 2026-09-06.
+        starRim: true,
         // A BLACK HOLE gets the thin photon ring here and NOWHERE ELSE: this is the one surface
         // that draws a horizon without a lensing pass, so nothing else would mark where it is —
         // and, for the same reason, it draws at the TRUE radius rather than the lensed surfaces'
@@ -278,6 +294,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       // one is foreshortened. Face-on would be a disc the eye reads as a bigger planet; edge-on would
       // be a line. Roughly two-thirds of the way over is the poster's angle.
       let ring: Built['ring'];
+      let flares = false;
       if (slot.ringOuterPx && slot.ringInnerPx !== undefined && slot.ringOuterPx > slot.ringInnerPx) {
         const r = buildFlatRing(slot.ringInnerPx, slot.ringOuterPx,
           slot.ringColorHex ? new THREE.Color(slot.ringColorHex).getHex() : undefined);
@@ -290,6 +307,10 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         group.add(r.mesh);
         const mat = r.mesh.material as THREE.Material & { opacity: number };
         ring = { dispose: r.dispose, mat, mesh: r.mesh, base: mat.opacity };
+        // A ring with its OWN colour is an accretion disc rather than ice and rock, and a feeding
+        // hole's disc is not a still object: it flickers as the inner edge is fed. `ringColorHex` is
+        // the one thing that tells the two apart down here, and it is set nowhere else.
+        flares = !!slot.ringColorHex;
       }
 
       scene.add(group);
@@ -297,7 +318,8 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         look, group, slot, ring,
         // A black hole is a lensing centre. Its Einstein radius is taken from its OWN drawn radius,
         // which on this view is its true one — so the bend is as big as the hole really is.
-        lens: isBlackHoleNode(slot.node) ? { radiusPx: radius } : undefined
+        lens: isBlackHoleNode(slot.node) ? { radiusPx: radius } : undefined,
+        flares
       });
     }
     for (const id of [...built.keys()]) if (!wanted.has(id)) destroy(id);
@@ -314,7 +336,13 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       if (!b.ring) continue;
       const f = b.slot.ringOpacity ?? 1;
       b.ring.mesh.visible = f > 0.002;
-      b.ring.mat.opacity = b.ring.base * f;
+      // A FEEDING HOLE'S DISC FLICKERS. Two slow sines an irrational ratio apart, so it never falls
+      // into a visible loop, and it only ever DIMS from full — brightening past the base would make
+      // the disc read as denser than the physics says it is at that moment.
+      const flare = b.flares
+        ? 1 - DISC_FLARE_DEPTH * (0.5 + 0.5 * Math.sin(clock.t * 1.7)) * (0.5 + 0.5 * Math.sin(clock.t * 0.61))
+        : 1;
+      b.ring.mat.opacity = b.ring.base * f * flare;
     }
   }
 
@@ -342,18 +370,22 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
   }
 
   function applyCamera(): void {
+    // THE FRUSTUM NO LONGER CARRIES THE PAN — the POSITIONS do (see `positionOf`). It is a fixed
+    // window on the origin, so `left/right/top/bottom` are small numbers whatever the scroll, and so
+    // is every vertex the renderer sees. Putting the pan here instead was [[B134]]: the frustum's
+    // edges then ran to 10^9+ on a map carrying one enormous object, and the projection quantised
+    // the strip into blocks.
     if (axis === 'x') {
-      camera.left = scrollPx; camera.right = scrollPx + vw;
+      camera.left = 0; camera.right = vw;
       camera.top = vh / 2; camera.bottom = -vh / 2;
     } else {
       camera.left = -vw / 2; camera.right = vw / 2;
-      camera.top = -scrollPx; camera.bottom = -scrollPx - vh;
+      camera.top = 0; camera.bottom = -vh;
     }
-    // THE FRUSTUM CARRIES THE PAN; THE CAMERA MUST NOT ALSO BE AIMED. `left/right/top/bottom` above
-    // are already in world (= pixel) coordinates, so the camera sits at the origin looking straight
-    // down -Z and never rotates. Calling `lookAt` at the scrolled centre instead TURNS the camera,
-    // which tilts the whole strip out of the frustum — found live: the labels and hit areas landed
-    // correctly and not one globe was drawn.
+    // AND THE CAMERA MUST NOT BE AIMED. It sits on the axis looking straight down -Z and never
+    // rotates. Calling `lookAt` at the scrolled centre instead TURNS an ortho camera, which tilts the
+    // whole strip out of the frustum — found live: the labels and hit areas landed correctly and not
+    // one globe was drawn.
     camera.position.set(0, 0, 1e5);
     camera.rotation.set(0, 0, 0);
     camera.updateProjectionMatrix();

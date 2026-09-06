@@ -6472,8 +6472,28 @@ the overlay's labels, ruler ticks and hit areas sit over the globes by construct
 through a projection nobody can check. The strip's layout is computed by a pure function in pixels,
 and the scene and the chrome both read it - recomputed whenever the scale moves, which is now every
 frame you are scrolling (RENDER-S55).
-TWO TRAPS THAT COME WITH THAT ARRANGEMENT, both paid for on the first live run and each invisible to
-every test in the suite. **The frustum carries the pan, so the camera must NOT also be aimed** - a
+AND NOTHING IS EVER PLACED AT ITS ABSOLUTE STRIP COORDINATE ([[B134]], the third trap and the worst).
+A slot's `centrePx` is measured from the START of the strip and is UNBOUNDED: the strip is sorted by
+size, so ONE enormous object puts everything behind it at a coordinate of its own diameter and
+upwards. A GM with a 10,700 AU black hole on his starmap had every other star sitting at 10^7 and
+beyond - measured live at 2.2e7 px, with the hole itself 22 million pixels wide.
+A FLOAT32 VERTEX PIPELINE CARRIES ABOUT SEVEN SIGNIFICANT DIGITS, so at 10^7 it quantises in steps
+that approach the size of the object being drawn: a 150 px star built there has its vertices snapped
+to a grid coarser than the star, and draws as a faceted lump and then as a CUBOID, worse the further
+along the strip it sits. That progression - round near the start, blocks at the far end - is the
+signature, and it is what the two screenshots showed.
+SO `slotOffset` (in `comparison/layout.ts`) IS THE ONLY WAY A POSITION IS PRODUCED, for the scene and
+for the chrome alike: everything is relative to the scroll, and the frustum is a fixed window on the
+origin rather than a pan. The CHROME always did this, which is why its labels were in exactly the
+right places in those screenshots while the globes beside them were blocks - a very good clue that
+was there to be read. Same law the holo has carried since the floating-origin work.
+IT WAS REPORTED TWICE AND CALLED FIXED ONCE, WRONGLY: the first report was blamed on a stale build,
+which was plausible (before the rolling zoom a sphere many screens wide really did show only a few
+facets) and wrong. It was pinned when the owner deleted the black hole and the whole strip came
+right. **A symptom that varies with position along a strip is a precision symptom until proved
+otherwise.**
+TWO OTHER TRAPS THAT COME WITH THAT ARRANGEMENT, both paid for on the first live run and each
+invisible to every test in the suite. **The frustum carries the pan, so the camera must NOT also be aimed** - a
 `lookAt` at the scrolled centre ROTATES an ortho camera and tilts the strip out of view ([[B123]]);
 it sits at the origin looking down -Z and never turns. **And the canvas has exactly one owner of its
 size** - the renderer, whose `setSize` multiplies by the device pixel ratio; a Svelte-bound
@@ -6590,6 +6610,11 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+AND A STAR STILL HAS TO LOOK LIKE A LIGHT SOURCE. Turning the corona off leaves a photosphere that
+reads as a painted disc, so `starRim` adds ONE additive billboard at `STAR_RIM_SCALE` (1.22) of the
+radius - a fifth, against the corona's nine. The number is the whole point: the bloom sits ON the
+limb rather than around the star, so nothing on a true-scale view claims to be bigger than its label
+says. `STAR_RIM_OPACITY` is the other knob. Owner, 2026-09-06.
 A LOOK OPTION CAN BE A CORRECTNESS DECISION, not a taste one, and `starDecorations` is the example:
 the corona is `radius * (5 + activity * 4)` across, so on a TRUE-SCALE strip a star's halo reaches
 five times its own width and reads as part of the object. The size-comparison view turns it off, and

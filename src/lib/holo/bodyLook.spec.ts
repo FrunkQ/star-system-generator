@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { buildBodyLook, isFilledFamily, type BodyLookTextures } from './bodyLook';
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture,
-  isBlackHoleNode, isFeedingBlackHole, buildHorizonLook, BH_LENS_SHRINK
+  isBlackHoleNode, isFeedingBlackHole, buildHorizonLook, BH_LENS_SHRINK,
+  STAR_RIM_SCALE, STAR_RIM_OPACITY
 } from './bodyFeatures';
 import derived from '../../../tests/output/solar-system-derived.json';
 
@@ -94,6 +95,35 @@ describe('a black hole is a horizon, not a photosphere', () => {
     // The comparison view asks for the FULL radius, which is what this pins.
     const look = buildBodyLook(bh(['star/BH']), 1000, { ...COMPARISON, photonRing: true });
     expect((look.mesh.geometry as THREE.SphereGeometry).parameters.radius).toBe(1000);
+  });
+});
+
+// A STAR SHOULD READ AS A LIGHT SOURCE, on the one view that cannot afford its corona. Owner,
+// 2026-09-06: "any chance of them looking brighter - like light sources".
+describe("a star's rim bloom", () => {
+  const star = { id: 's', name: 'S', roleHint: 'star', kind: 'body', classes: ['star/M5V'], radiusKm: 200000, tags: [] };
+
+  it("is TIGHT to the limb - a fifth of a radius, not the corona's nine", () => {
+    // RENDER-S53: the corona is radius * (5 + activity * 4), and on a true-scale strip that made a
+    // star read nine times its own diameter. This number is what keeps the bloom honest, so it is
+    // the number the gate pins.
+    expect(STAR_RIM_SCALE).toBeGreaterThan(1);
+    expect(STAR_RIM_SCALE).toBeLessThan(1.5);
+    expect(STAR_RIM_OPACITY).toBeLessThan(1);
+    const look = buildBodyLook(star, 100, { ...COMPARISON, starRim: true, starDecorations: false });
+    const sprite = look.mesh.children.find((c) => c.type === 'Sprite') as THREE.Sprite;
+    expect(sprite).toBeTruthy();
+    // The sprite's own extent, against the star it is blooming: 100 px radius, 244 px sprite.
+    expect(sprite.scale.x).toBeCloseTo(100 * 2 * STAR_RIM_SCALE, 6);
+    expect(sprite.scale.x / (100 * 2)).toBeLessThan(1.5);
+  });
+
+  it('is OFF unless a caller asks, and never appears on a planet or a black hole', () => {
+    expect(buildBodyLook(star, 100, { ...COMPARISON, starDecorations: false })
+      .mesh.children.some((c) => c.type === 'Sprite')).toBe(false);
+    const bh = { ...star, classes: ['star/BH'] };
+    expect(buildBodyLook(bh, 100, { ...COMPARISON, starRim: true })
+      .mesh.children.some((c) => c.type === 'Sprite')).toBe(false);
   });
 });
 

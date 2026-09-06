@@ -813,6 +813,43 @@ export const FLAT_RING_COLOR = 0xc9c3b4;   // pale ice-and-rock, the colour Satu
 export const FLAT_RING_OPACITY = 0.55;
 
 /**
+ * HOW FAR A STAR'S RIM GLOW REACHES, as a multiple of its own radius.
+ *
+ * 1.22 is chosen against a recorded fault rather than by eye. `buildStarLook`'s CORONA is
+ * `radius * (5 + activity * 4)` — nine radii at the top end — and on a TRUE-SCALE strip that made a
+ * star read nine times its own diameter, on the one view whose whole claim is how big things really
+ * are (RENDER-S53). So the size comparison turns the corona off. But a star with no glow at all
+ * reads as a painted disc rather than as a light source, which the owner asked about on 2026-09-06:
+ * *"any chance of them looking brighter - like light sources"*.
+ *
+ * A fifth of a radius is the compromise, and it is a small enough number to defend: the bloom sits
+ * ON the limb rather than around the star, it is additive so it only ever brightens, and its alpha
+ * is gone well before the edge of the sprite. Turn it DOWN if a star ever looks bigger than its
+ * label says; that is the failure mode this number is holding off.
+ */
+export const STAR_RIM_SCALE = 1.22;
+export const STAR_RIM_OPACITY = 0.7;
+
+/**
+ * A star's rim bloom: one additive billboard, tight to the limb, so a photosphere reads as something
+ * EMITTING rather than as a lit ball. Deliberately NOT `buildStarLook`, which is the full corona and
+ * flare rig — this is the one decoration a measuring view can afford.
+ */
+export function buildStarRim(radius: number, colorHex: number, glowTexture: THREE.Texture): {
+	sprite: THREE.Sprite; dispose(): void;
+} {
+	const col = new THREE.Color(colorHex).lerp(new THREE.Color('#ffffff'), 0.45);
+	const mat = new THREE.SpriteMaterial({
+		map: glowTexture, color: col, transparent: true, opacity: STAR_RIM_OPACITY,
+		blending: THREE.AdditiveBlending, depthWrite: false
+	});
+	const sprite = new THREE.Sprite(mat);
+	sprite.scale.setScalar(radius * 2 * STAR_RIM_SCALE);
+	sprite.renderOrder = -2;   // behind the photosphere, so it haloes the limb rather than veiling the disc
+	return { sprite, dispose() { mat.dispose(); } };
+}
+
+/**
  * IS THIS A BLACK HOLE? Class-based, and deliberately loose: the app writes `star/BH` and
  * `star/BH_active`, an imported map may carry a bare `BH`, and a hand-authored one may spell it
  * `black-hole`. This is the predicate `holo/scene.ts` has always used, lifted here so the three

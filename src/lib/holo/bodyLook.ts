@@ -25,7 +25,7 @@ import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import {
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze,
   buildDeckStack, buildLightning, buildAuroraShell, applyLimbDarkening, buildStarLook,
-  makeStarSurfaceTexture, buildHorizonLook, isBlackHoleNode, isFeedingBlackHole,
+  makeStarSurfaceTexture, buildHorizonLook, buildStarRim, isBlackHoleNode, isFeedingBlackHole,
   type StarLookVisual, type LightningVisual, type EmissiveVisual
 } from './bodyFeatures';
 
@@ -88,6 +88,13 @@ export interface BodyLookOptions {
   /** Star only: `stellar/jets` and `stellar/shedding` strengths. */
   starJets?: 0 | 1 | 2;
   starShedding?: 0 | 1 | 2;
+  /**
+   * STAR only: a TIGHT additive bloom on the limb, so a photosphere reads as a light source rather
+   * than as a painted disc. For a surface that has turned the full corona off — the size comparison
+   * — and wants a star to look like a star anyway. See `STAR_RIM_SCALE` for why it is a fifth of a
+   * radius and not the corona's nine.
+   */
+  starRim?: boolean;
   /**
    * BLACK HOLE only: draw the thin photon ring that makes a horizon findable against black.
    *
@@ -200,6 +207,12 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
     disposables.push(starMat, st, sphere.geometry);
     // Corona + flares + outflow decorations, parented to the sphere so they track it. The corona is
     // a billboard and ignores the sphere's spin.
+    // The rim bloom goes on FIRST so it sits behind the photosphere in the transparent pass.
+    if (opts.starRim) {
+      const rim = buildStarRim(radius, colorHex, tex.glow);
+      sphere.add(rim.sprite);
+      disposables.push(rim);
+    }
     if (opts.starDecorations !== false) {
       const star = buildStarLook(radius, colorHex, activity, seedSum(node.id, 13, 2147483647) || 1, tex.glow, {
         flares: !isLopoly && (opts.starFlares ?? flaresVisibly(node.tags)), jets: opts.starJets, shedding: opts.starShedding

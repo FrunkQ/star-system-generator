@@ -7,7 +7,7 @@ import {
   OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX, RING_ROOM_FRACTION,
   focusIndexOf, clampFocus, focusDiameterKm, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
   clampCentreShare, MIN_CENTRE_SHARE, MAX_CENTRE_SHARE, slotAt, PICK_MIN_RADIUS_PX,
-  ringOpacityAt, RING_FADE_STEPS, ringProminence, ringOpenness, ringTiltRad,
+  ringOpacityAt, RING_FADE_STEPS, ringProminence, ringOpenness, ringTiltRad, slotOffset,
   DEFAULT_RING_OPENNESS, MIN_RING_OPENNESS,
   type ComparisonItem
 } from './layout';
@@ -739,6 +739,44 @@ describe('size comparison — moving along the strip', () => {
 // still receiving taps: their boxes overlap, because at true scale a giant's disc covers the whole
 // window. And they had STOPPED receiving them - see the standing note on `setPointerCapture` in
 // `SizeComparisonView`.
+// THE FLOATING ORIGIN ([[B134]]). A slot's `centrePx` is measured from the START of the strip and is
+// UNBOUNDED: the strip is sorted by size, so one enormous object puts everything behind it at a
+// coordinate of its own diameter and upwards. A float32 vertex pipeline carries about seven
+// significant digits, so at 10^9 it quantises in steps of ~100 units and a 150 px star built there
+// draws as a cuboid. The renderer must never see the absolute number.
+describe('size comparison — nothing is ever placed at its absolute strip coordinate', () => {
+  it('reports every position RELATIVE to the scroll, on both axes', () => {
+    expect(slotOffset(1200, 40, 1000, 10)).toEqual({ along: 200, cross: 30 });
+    expect(slotOffset(0, 0, 0, 0)).toEqual({ along: 0, cross: 0 });
+    expect(slotOffset(500, 0, 900, 0).along).toBe(-400);      // behind you is negative, not clamped
+  });
+
+  it('keeps the numbers small with a 10,700 AU object on the strip — the map that found this', () => {
+    // The owner's own starmap: Psi Draconis at 1,601,582,000,000 km beside ordinary red dwarfs. It
+    // sorts FIRST, so every star behind it sits at a coordinate of its diameter and upwards.
+    const monster = body('Psi Draconis', 800791000000, 'star');
+    const set = [monster, ...SOL.filter((i) => i.role !== 'star')];
+    const seq = sortItems(set, 'size');
+    // Focus a normal world, which is what the reader is actually looking at.
+    const f = focusIndexOf(seq, 'earth');
+    const scale = scaleForFocus(seq, f, 800, OPENING_SHARE);
+    const layout = layoutStrip(set, scale, { axis: 'x' });
+    const scrollPx = focusCentrePx(layout, seq, f) - 1200 / 2;
+    // THE ABSOLUTE COORDINATE IS ENORMOUS - that is the fault, present in the data.
+    const earth = layout.slots.find((s) => s.id === 'earth')!;
+    expect(earth.centrePx).toBeGreaterThan(1e8);
+    // ...and every drawn position is inside a viewport of the origin anyway.
+    for (const s of layout.slots) {
+      const { along, cross } = slotOffset(s.centrePx, s.crossPx, scrollPx, 0);
+      if (Math.abs(along) > 1200 + s.spanPx) continue;        // off-window slots are never built
+      expect(Math.abs(along)).toBeLessThanOrEqual(1200 + s.spanPx);
+      expect(Math.abs(cross)).toBeLessThanOrEqual(800);
+    }
+    // And the focused world is still dead centre, so the fix costs the law nothing.
+    expect(slotOffset(earth.centrePx, 0, scrollPx, 0).along).toBeCloseTo(600, 6);
+  });
+});
+
 describe('size comparison — what is under a tap', () => {
   const layout = layoutStrip(SOL, scaleForFocus(sortItems(SOL, 'size'), 5, 800, OPENING_SHARE), { axis: 'x' });
   const slot = (name: string) => layout.slots.find((s) => s.name === name)!;

@@ -30,7 +30,7 @@
 // most recurring recorded fault. The unit still cycles from every other panel and the strip follows,
 // because both read the same `unitPrefs` store.
 import { formatPrefValues, type UnitBodyType, type UnitPrefs } from '$lib/units';
-import { belowFloorNote, DOT_PX, type LayoutSlot, type ReferenceArc, type StripLayout } from './layout';
+import { belowFloorNote, slotOffset, DOT_PX, type LayoutSlot, type ReferenceArc, type StripLayout } from './layout';
 
 /**
  * The subset of `CanvasRenderingContext2D` this module uses. Narrow on purpose: it is what makes the
@@ -134,12 +134,15 @@ export function bodyTypeOf(role: string): UnitBodyType {
   return role === 'star' ? 'star' : role === 'moon' ? 'moon' : 'planet';
 }
 
-/** Where a slot sits on screen, in view px. The one conversion; everything else reads it. */
+/**
+ * Where a slot sits on screen, in view px. Through `slotOffset`, which is the ONE place the strip's
+ * unbounded coordinate becomes a bounded one — the scene uses the same function for the same reason
+ * (see the floating-origin note in `layout.ts`).
+ */
 export function slotScreenPos(
   slot: LayoutSlot, spec: { axis: 'x' | 'y'; scrollPx: number; crossScrollPx: number; vw: number; vh: number }
 ): { x: number; y: number } {
-  const along = slot.centrePx - spec.scrollPx;
-  const cross = slot.crossPx - spec.crossScrollPx;
+  const { along, cross } = slotOffset(slot.centrePx, slot.crossPx, spec.scrollPx, spec.crossScrollPx);
   return spec.axis === 'x'
     ? { x: along, y: spec.vh / 2 + cross }
     : { x: spec.vw / 2 + cross, y: along };

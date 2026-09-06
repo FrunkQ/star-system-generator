@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.332 - 6th Sep 2026
+
+- Fixed: stars in the Size comparison could draw as faceted lumps or flat boxes instead of globes. One very large object on a map - a black hole thousands of AU across, say - pushed everything behind it so far along the strip that the graphics card ran out of precision and snapped the shapes to a coarse grid. Nothing sits at its absolute position on the strip any more, so a map can carry an object of any size and everything else still draws properly.
+- Stars glow. A tight bloom sits on the limb so a star reads as something giving off light rather than a painted circle - deliberately tight, so nothing looks bigger than the size written under it.
+- A feeding black hole's accretion disc now flickers instead of sitting still.
+
 ## v3.0.331 - 6th Sep 2026
 
 - The app now points at the Explorers site's real address, explorers.starsystemx.com, everywhere it hands you a link - the Browse button, the map library link, and the shareable links it makes. The old address still works if somebody sends you a link with it.

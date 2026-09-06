@@ -824,6 +824,34 @@ export function visibleItems(items: ComparisonItem[], hidden: ReadonlySet<string
 // reader actually has, in a picture, and they sit concentric with the subject rather than off to
 // one side. Owner, 2026-09-06. `niceSeries` has no other caller here and its import went too.
 
+// --- WHERE A SLOT IS ON SCREEN -------------------------------------------------------------------
+//
+// THE FLOATING ORIGIN, and this view learned it the hard way twice over. A slot's `centrePx` is its
+// distance from the START of the strip, and that number is unbounded: the strip is sorted by size,
+// so ONE enormous object puts everything behind it at a coordinate of its own diameter and upwards.
+// A GM with a 10,700 AU black hole on his starmap had every other star sitting at 10^9 - 10^12 px.
+//
+// WHAT THAT DOES, and it is invisible until it is catastrophic: a float32 vertex pipeline carries
+// about seven significant digits, so a coordinate of 10^9 quantises in steps of ~100 units. A star
+// 150 px across, built at that coordinate, has its vertices snapped to a grid coarser than the star
+// - and it draws as a faceted lump, then as a CUBOID, worse the further along the strip it sits.
+// Reported twice, blamed on a stale build once, and finally pinned when the owner deleted the black
+// hole and the whole strip came right.
+//
+// THE FIX IS THE ONE THE HOLO ALREADY USES (`holo/floatingOrigin`): nothing is ever placed at its
+// absolute strip coordinate. Every position is RELATIVE to the scroll, so the numbers the renderer
+// sees are always within a viewport of the origin however long the strip is. The chrome always did
+// this - which is why the labels in those screenshots were in exactly the right places while the
+// globes beside them were blocks - and the scene now shares the same function rather than keeping a
+// second, absolute one.
+
+/** A slot's offset from the middle of the window, in view px: along the strip, and across it. */
+export function slotOffset(
+  centrePx: number, crossPx: number, scrollPx: number, crossScrollPx: number
+): { along: number; cross: number } {
+  return { along: centrePx - scrollPx, cross: crossPx - crossScrollPx };
+}
+
 // --- THE RULER AS ARCS ---------------------------------------------------------------------------
 //
 // Owner, 2026-09-06: *"we have luna earth on the scale at the bottom of the screen... perhaps more
