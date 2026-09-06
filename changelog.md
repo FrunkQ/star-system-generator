@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.326 - 6th Sep 2026
+
+- Before the site changes hosting, the app asks you once per campaign to keep a copy: download the full campaign file, or say you already have one. A file on your own disk is the one copy a move cannot touch.
+- The offline shell now refreshes on every release, so a new version shows up as one.
+
 ## v3.0.325 - 6th Sep 2026
 
 - Housekeeping: the shipped-content manifest is re-pinned to the current version after the docking releases, so the Creator Hub reads the right catalogue.

@@ -1490,6 +1490,9 @@ export interface Starmap {
   baseMapVersion?: number;
   baseMapUpgradeDeclined?: number;
   baseMapUpgradeDismissed?: boolean;
+  // G72: the version the GM kept a copy of this campaign for, before a rehosting (lib/map/keepACopy.ts).
+  // Rides the file, like the base-map answers, so a re-import does not ask again.
+  keptCopyForVersion?: string;
   /**
    * DEAD (G35). The experimental "evolutionary" (accrete) generator was removed; it lives on as its
    * own project at https://system-lab.starsystemx.com/. Kept in the type ONLY so a starmap saved by

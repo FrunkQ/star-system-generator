@@ -96,6 +96,8 @@
   import { perfCount } from '$lib/perfTrace';
   import { shouldOfferUpgrade, dismissUpgrade, recordUpgradeAnswer, type UpgradeOffer } from '$lib/map/upgradeOffer';
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
+  import KeepACopyModal from '$lib/components/KeepACopyModal.svelte';
+  import { shouldAskToKeepACopy, recordKeptCopy } from '$lib/map/keepACopy';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
@@ -573,6 +575,8 @@
   let fileInput: HTMLInputElement;
   let starmapComponent: Starmap;
   let hasSavedStarmap = false;
+  // G72: the one-version "keep a copy" notice before a rehosting - the law is lib/map/keepACopy.ts.
+  $: keepACopyDue = !!$starmapStore && shouldAskToKeepACopy($starmapStore, APP_VERSION);
   // B131: ONE pending snapshot, cloned when the write happens - never a promise chain holding a clone per
   // store emission. A ship in transit emits once per frame; the chain held a full campaign per frame.
   const starmapPersist = createPersistQueue<StarmapType>((snapshot) => persistStarmap(snapshot), {
@@ -2727,6 +2731,14 @@
       on:dismiss={() => { if ($starmapStore) { dismissUpgrade($starmapStore.id); recordBaseMapAnswer('never'); } baseMapOffer = null; }}
       on:later={() => { recordBaseMapAnswer('later'); baseMapOffer = null; }}
       on:close={() => (baseMapOffer = null)}
+    />
+  {/if}
+  <!-- G72: shown ONCE per campaign from KEEP_A_COPY_FROM, behind the base-map offer and the welcome screen so
+       nobody meets two modals at once. Both answers stamp the campaign; there is no third way out. -->
+  {#if keepACopyDue && $starmapStore && !baseMapOffer && !showWelcome}
+    <KeepACopyModal
+      on:download={async () => { await handleDownloadStarmap(); starmapStore.update((m) => (m ? recordKeptCopy(m) : m)); }}
+      on:kept={() => starmapStore.update((m) => (m ? recordKeptCopy(m) : m))}
     />
   {/if}
   {#if showAbout}

@@ -153,6 +153,15 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith
   const manifest = buildShippedManifest(await depsFromSource());
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, serialiseManifest(manifest), 'utf8');
+  // G72: the service worker's cache names ride the same stamp, so the offline shell is purged and the
+  // layout's "new version available" prompt fires on every release (static/sw.js's A68 note asked for
+  // exactly this: the bump riding the release step instead of a memory). Pinned by keepACopy.spec.ts.
+  const swPath = new URL('../../static/sw.js', import.meta.url);
+  const sw = readFileSync(swPath, 'utf8');
+  const stamped = sw
+    .replace(/'sse-static-v[^']*'/, `'sse-static-v${manifest.appVersion}'`)
+    .replace(/'sse-runtime-v[^']*'/, `'sse-runtime-v${manifest.appVersion}'`);
+  if (stamped !== sw) { writeFileSync(swPath, stamped, 'utf8'); console.log(`sw.js cache names stamped v${manifest.appVersion}.`); }
   console.log(
     `shipped-content.json written to ${out}: ${manifest.calendars.length} calendars, ` +
       `${manifest.tagCategories.length} tag categories, ${manifest.starterModels.length} starter models, ` +
