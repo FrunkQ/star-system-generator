@@ -35,6 +35,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
+import { warpUv, warpParamsOfUniforms } from './filters/warpPick';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
@@ -2553,15 +2554,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     let su = (e.clientX - rect.left) / rect.width;
     let sv = 1 - (e.clientY - rect.top) / rect.height;
     if (filterPass) {
-      const U = filterPass.uniforms as any;
-      const warp = U.uCrtWarp?.value ?? 0, roll = U.uPictureRoll?.value ?? 0, skew = U.uSkew?.value ?? 0, t = U.time?.value ?? 0;
-      if (warp || roll || skew) {
-        const cx = su * 2 - 1, cy = sv * 2 - 1, d = cx * cx + cy * cy;
-        su = (cx * (1 + warp * d) + 1) / 2;
-        sv = (cy * (1 + warp * d) + 1) / 2;
-        sv = sv + t * roll; sv -= Math.floor(sv);      // fract(sv + time*roll)
-        su += (sv - 0.5) * skew;
-      }
+      // ONE forward map, shared with `filteredCanvas` and the size comparison - see `warpPick.ts`.
+      [su, sv] = warpUv(su, sv, warpParamsOfUniforms(filterPass.uniforms as any));
     }
     ndc.x = su * 2 - 1;
     ndc.y = sv * 2 - 1;
