@@ -263,6 +263,26 @@ describe('a star burns white at the centre, and how white follows its TEMPERATUR
   });
 });
 
+describe('a jetted star is jetted inside its own system (G76)', () => {
+    // The tag decides, in the assembly, the way flares already do. Before this the holo's caller passed no
+    // strengths and the assembly drew none, so a pulsar read as jetted on the starmap and as a plain star in
+    // the holo, the gallery and the size comparison.
+    const withTags = (name: string, tags: { key: string; value?: string }[]) => ({ ...node(name), tags: [...(node(name).tags ?? []), ...tags] });
+    const jetsOf = (look: any) => (look.star?.group?.children ?? []).filter((c: any) => /jet/i.test(c.name ?? '')).length;
+    it('a star tagged stellar/jets carries a jet group; the same star untagged carries none', () => {
+      const quiet = buildBodyLook(node('Sol'), 1, HOLO);
+      const jetted = buildBodyLook(withTags('Sol', [{ key: 'stellar/jets', value: 'strong' }]), 1, HOLO);
+      expect(jetsOf(quiet)).toBe(0);
+      expect(jetsOf(jetted)).toBeGreaterThan(0);
+    });
+    it('an explicit strength still wins over the tag, which is how the 3D starmap drives it', () => {
+      const forced = buildBodyLook(node('Sol'), 1, { ...HOLO, starJets: 2 });
+      expect(jetsOf(forced)).toBeGreaterThan(0);
+      const silenced = buildBodyLook(withTags('Sol', [{ key: 'stellar/jets', value: 'strong' }]), 1, { ...HOLO, starJets: 0 });
+      expect(jetsOf(silenced)).toBe(0);
+    });
+  });
+
 describe('the one body-look assembly', () => {
   it('builds the same FEATURE INVENTORY for one node through every caller', () => {
     // THREE bodies, not the whole system, and each one is here for a feature the others lack:

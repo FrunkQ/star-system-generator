@@ -522,6 +522,7 @@ export function buildStarLook(
 			opacity: strong ? 1 : 0.85
 		});
 		const sprite = new THREE.Sprite(mat);
+		sprite.name = 'stellar-jet';
 		const len = radius * (strong ? 15 : 10.5);   // 3/4 of the first pass — "just not so long"
 		sprite.scale.set(radius * (strong ? 4.2 : 3.2), len, 1);
 		sprite.renderOrder = 2;
@@ -538,6 +539,7 @@ export function buildStarLook(
 			transparent: true, opacity: shell ? 0.42 : 0.26
 		});
 		const sprite = new THREE.Sprite(mat);
+		sprite.name = 'stellar-shell';
 		const scale = radius * (shell ? 16 : 11);
 		sprite.scale.setScalar(scale);
 		sprite.renderOrder = 1;

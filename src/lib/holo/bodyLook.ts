@@ -22,6 +22,7 @@ import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { lightningStrength } from '$lib/physics/cloudDecks';
 import { deriveAurora, auroraEmitters } from '$lib/physics/aurora';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
+import { jetStrength, sheddingStrength } from '$lib/physics/stellarOutflows';
 import {
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze,
   buildDeckStack, buildLightning, buildAuroraShell, applyLimbDarkening, buildStarLook,
@@ -85,7 +86,12 @@ export interface BodyLookOptions {
    * place, rather than each caller reading it. Lo-poly never flares whatever this says.
    */
   starFlares?: boolean;
-  /** Star only: `stellar/jets` and `stellar/shedding` strengths. */
+  /**
+   * Star only: `stellar/jets` and `stellar/shedding` strengths. Default to `jetStrength(node.tags)` and
+   * `sheddingStrength(node.tags)` - the TAG decides, in one place, exactly as flares do above (G76). The
+   * 3D starmap passes its glyph record's numbers explicitly; every other caller inherits the tag's. Until
+   * this defaulted, a jetted star read as jetted on the map and as an ordinary star inside its own system.
+   */
   starJets?: 0 | 1 | 2;
   starShedding?: 0 | 1 | 2;
   /**
@@ -225,7 +231,9 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
     }
     if (opts.starDecorations !== false) {
       const star = buildStarLook(radius, colorHex, activity, seedSum(node.id, 13, 2147483647) || 1, tex.glow, {
-        flares: !isLopoly && (opts.starFlares ?? flaresVisibly(node.tags)), jets: opts.starJets, shedding: opts.starShedding
+        flares: !isLopoly && (opts.starFlares ?? flaresVisibly(node.tags)),
+        jets: opts.starJets ?? jetStrength(node.tags),
+        shedding: opts.starShedding ?? sheddingStrength(node.tags)
       });
       sphere.add(star.group);
       look.star = star;

@@ -4294,7 +4294,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // their stars with too. Under the lo-poly render the star is faceted (fewer segments, no
           // limb darkening), so it isn't left out of the look. Flares only for stars whose magnetic
           // activity earns them: a quiet sun adds nothing to the frame. The outflow decorations
-          // (jets, shed shell) are NOT passed — the holo's own star look is out of G26's scope.
+          // (jets, shed shell) are read from the node's tags INSIDE the assembly (G76) - this caller
+          // passes nothing and a jetted star is jetted here as it is on the map.
           const isLopolyStar = renderStyle === 'lopoly-filled' || renderStyle === 'lopoly-lines';
           const look = buildBodyLook(node, starR, {
             textures: bodyLookTextures, renderStyle, colorHex

@@ -1384,8 +1384,9 @@ v3.0.286 and everything the loop needs is on beta. So the order is:
    the hub sets the production prefix; the `sse-prod-hotfix` worktree's unpushed B117 commit is deleted as moot.
 2. **Stream N, check N-2 (the credit chain end to end).** Needs the owner's account to upload a map with a pasted clip. The last seam
    check; N-1 and N-3 are done.
-3. **Stream O (the transit root fix).** The store still emits once per frame during a transit; the live-flight table is the root
-   move and the last known way to make a GM's machine sweat. Brief written and amended.
+3. ~~Stream O~~ CLOSED 2026-09-06 on the owner's word: the sinks fixed the storm, the per-frame emission is bounded and
+   deliberately left. In its place: **Stream Q** (jets on the 2D orrery, G77) and **Stream R** (kill the DOM render surface, G78),
+   both briefed below, both small and self-contained.
 4. **Stream I (the documentation sweep, as an audit).** Queued since 31 August; three weeks of streams since. Runs in parallel with
    the release prep; its output is what users read on the released version.
 5. **Mega-constructs, Stream P (hand-over).** The mega session writes its own successor brief while it has room, in Stream L's
@@ -1400,3 +1401,77 @@ v3.0.286 and everything the loop needs is on beta. So the order is:
 
 Not scheduled and not forgotten: G65 (full MK designations from physics), G60/G59 (the edit-UI design languages, banked), the UI
 leftovers A87/A52/A58, and B99's statistical rarity-dial flake (whoever owns generation).
+
+## STREAM Q — polar jets and the shed shell on the 2D orrery, drawn from ONE geometry (G77)
+
+**Read first:** `CLAUDE.md`; the standing rules at the foot of `docs/dev/observations-inbox.md`; the [[G77]] row (what was
+measured, and the 3D half already done); engine-map RENDER-S53 (one body-look assembly), RENDER-S27 (a starmap glyph is a screen
+quantity), RENDER-S25 (one channel per pixel factor); `docs/dev/architecture-physics-tags-visuals.md`; `docs/dev/PLAYBOOK.md`.
+
+**The state.** One physics source, `src/lib/physics/stellarOutflows.ts` (`jetStrength(tags)`, `sheddingStrength(tags)`, each 0/1/2
+from the `stellar/jets` and `stellar/shedding` tags). The 2D starmap draws both as SVG in `src/lib/components/Starmap.svelte`
+(lines 1619-1650 at v3.0.341: a ring for the shell, two bowtie polygons for the jet - sheath and core - with the numbers inline:
+length `r * (3 | 4)`, base half-width `0.14 r`, tip half-widths `0.62 | 0.8` and `0.25 | 0.32`, the core at `0.95` of the length). The
+3D surfaces all get them from the one assembly since v3.0.346. The 2D ORRERY does not: `src/lib/components/SystemVisualizer.svelte` is a
+canvas renderer (343 context calls, no SVG) that draws the star at its `roleHint === 'star'` site near line 1390 and reads no outflow
+tag anywhere.
+
+**The job, and the rule it serves.** Draw the jet and the shell on the orrery's star from the SAME numbers, and do it without a second
+drawing of the same thing. The starmap's inline numbers are the geometry; move them into ONE pure function in the glyph law
+(`src/lib/starmap/starGlyphLaw.ts`, where `sizeBandOf` and `floorGlyphGain` already live): `starOutflowGlyph(r, jets, shedding)` returning
+the shell radius and stroke, and the sheath and core polygons as point lists in glyph units. Then TWO painters read it: the starmap
+builds its SVG `points` strings from the lists, and the visualizer paints the same lists as canvas paths at the star's drawn radius, with
+the same additive look (a cyan-white core inside a soft sheath, fading along the beam - the starmap's CSS classes `star-jet` and
+`star-jet-sheath` say how). Colour follows the star's colour as the starmap's does. The jet scales with the star's DRAWN radius on each
+surface (`minRadiusPx` rules at `:817`/`:903` apply to the star; the jet rides that radius), and the culling radius at `:1379` must grow
+to include the jet length or it will pop at the viewport edge.
+
+**The convention, stated so nobody "fixes" it:** every renderer draws the jet as an upright, screen-space GLYPH - the holo's is a
+billboard sprite, the starmap's is a vertical bowtie - not a projection of the star's spin axis. A plan view looking down the axis
+would see a jet end-on; the glyph says "this object jets" the way the map does. An axis-true cone in the holo is a separate item.
+
+**Gates, red first:** the geometry function pinned with absolute numbers for jets 1 and 2 and shedding 1 and 2 (PHY-34); a source pin
+that `Starmap.svelte` no longer carries the inline `r * 0.14`-style numbers and calls the law; a source pin that `SystemVisualizer.svelte`
+calls the law at its star site; a canvas-call recording (the jsdom canvas Proxy in `src/setup.ts`) that a star tagged `stellar/jets`
+paints the polygons and an untagged one does not.
+
+**Eyeball for the owner:** a pulsar or an active black hole in the 2D system view shows the same bowtie as its starmap glyph, at
+the same proportion, in the star's colour; Sol shows nothing.
+
+**Housekeeping:** own worktree off `origin/beta`; commit as FrunkQ <frunk@frunk.net>; full suite and `npm run build` green before every
+push; bump the patch version and run `npm run manifest` AFTER it; `git show --stat` before pushing; if a run changes the two `tests/`
+fixtures they are a baseline - commit them with your change ([[B137]]); the stash stack is SHARED - WIP commits, never bare stash/pop.
+
+## STREAM R — kill the DOM render surface: `FilterFrame` and `cssFilterApprox` are deleted and gated out (G78)
+
+**Read first:** `CLAUDE.md`; the standing rules at the foot of `docs/dev/observations-inbox.md`; the [[G78]] row (the measured
+consumer list); engine-map RENDER-S54 (the corrected entry, which already calls the approximation the interim); [[B126]] and
+[[A39]]; `docs/dev/v2.2-player-view-visual-overhaul.md` section 7 (the 2026-07-18 decision); `holo/filteredCanvas.ts` (the real chain over
+a static canvas, with `warpPoint`); the holo's HUD-quad composite of its info card and overlay in `holo/scene.ts` (search `hudOverlayOn`
+in `routes/catalogue/+page.svelte` for the switch); `docs/dev/PLAYBOOK.md`.
+
+**Why now.** The DOM surface survived the decision that retired it because every new stage reached for it: B126 did so twice in one
+day. The only way an interim dies is to delete it and pin the deletion. At v3.0.341 its remaining consumers are exactly: the preset's
+overlay graphic at three catalogue mounts (`routes/catalogue/+page.svelte:1321`, `:1366`, `:1470`), the `.inspector` approximation for
+non-holo stages (`inspFx`, `:792`), and the preset editor's previews of the cover view and the two overlays
+(`PlayerPresetEditor.svelte:1246`, `:1268`, `:1366`, `:1373`). Everything else already renders into a surface the real shader reaches.
+
+**The job, in order, each step gated:**
+1. **The gate first, seen red.** A source scan in the shape of `src/lib/ui/foregroundContract.spec.ts` that refuses `FilterFrame`,
+   `cssFilterApprox` and `inspFx` anywhere under `src/`. Red against the seven imports on day one; green means the surface is dead.
+2. **The overlay becomes a quad in every stage's rendered surface.** The holo already composites its overlay as a HUD quad when
+   `hudOverlayOn`; make that the ONLY path for the holo, and give the starmap stage, the 2D orrery stage and the size comparison the
+   same: the `GraphicLayer` image drawn into the stage's filtered canvas (`createFilteredCanvas` for the static stages; the
+   comparison's own chain) before the shader pass, so it warps WITH the picture. One placement law (`GraphicLayer`'s placement maths)
+   feeds all of them - do not re-derive it per stage.
+3. **The cover view is drawn to a canvas and composited**, the info card's own recipe (draw the static card to a canvas, composite,
+   run the chain). The DOM `CoverView` remains only as the un-filtered rendering, if a preset is explicitly un-filtered.
+4. **The preset editor's previews use the same code as the live stages** - the B126 lesson: both mounts change together or the
+   preview lies. Pin it: a spec that both pass the same `filterId` through the same path.
+5. **Delete** `components/FilterFrame.svelte` and `player/cssFilterApprox.ts`, remove `inspFx`, correct RENDER-S54 to say the interim
+   is gone and the gate holds it gone, and update section 7's status line.
+
+**Eyeball for the owner:** a CRT preset with warp on each stage - starmap, 2D system, holo, document, size comparison - with an
+overlay set: the overlay bends with the picture on every one, and the preview in the editor matches the live view.
+
+**Housekeeping:** as Stream Q's, word for word.

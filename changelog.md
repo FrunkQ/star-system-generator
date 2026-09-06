@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.346 - 6th Sep 2026
+
+- A star that jets, or sheds a shell, now shows it inside its own system in the 3D views - the holo, the reference gallery and the size comparison - as it already did on the starmap. The 2D system map follows in its own change.
+- Board: the 2D half briefed, and the decision to delete the old DOM render surface written up with its plan.
+
 ## v3.0.345 - 6th Sep 2026
 
 - Board and design only: the megastructure work is paused at a good place on the owner's word - what is shipped stays, the rest is listed as later, and the idea of a Death Star that carries its orbiting ships is retired unless it can be built as a general capability rather than a one-off.
