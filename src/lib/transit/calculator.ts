@@ -935,12 +935,34 @@ function buildOrbitChangePlan(
         z: zOf(startState.v) - (u.z ?? 0) * radial
     };
     const w = norm(wRaw) ?? norm({ x: -u.y, y: u.x, z: 0 });
+    if (!w) return null;   // no along-track direction at all - nothing to change an orbit about
+    // G53 PHASE 5 - AT A BEANSTALK HOST THE FINAL ORBIT IS PROGRADE (owner, 2026-09-06: the ship
+    // "was orbiting the wrong way"). A Hohmann keeps the sense of the orbit it left, so a ship
+    // parked against the spin by an older arrival would reach the dock against the ribbon. When
+    // the caller states the host's spin sense and the origin runs against it, the SECOND burn
+    // reverses the sense at the far end - kill the transfer speed, rebuild circular speed the
+    // other way - and that is priced honestly: dv2 = vTransfer + vCirc, not their difference.
+    // Stated, tagged, never refused; sense 0 keeps the textbook Hohmann.
+    const sense = params.arrivalProgradeSense ?? 0;
+    const originSense = (u.x * w.y - u.y * w.x) >= 0 ? 1 : -1;
+    const reverseAtArrival = !!sense && originSense !== sense;
+    const vTransferAtR2_ms = sol.speedEnd_ms - sol.deltaV2_ms;
+    const dv2_ms = reverseAtArrival ? -(vTransferAtR2_ms + sol.speedEnd_ms) : sol.deltaV2_ms;
+    // THE FAR-SIDE SIGN (the fault the owner actually hit, 2026-09-06). A Hohmann arrives HALF AN
+    // ORBIT from where it left: the position is -u and the along-track direction there is -w, not
+    // w. The end velocity was written along w, so every orbit change parked the ship with its
+    // angular momentum flipped - retrograde from a prograde start - whatever sense it left in.
+    // Conserving the sense means -w; the deliberate reversal above means +w.
+    const wEnd = reverseAtArrival ? w : { x: -w.x, y: -w.y, z: -(w.z ?? 0) };
+    // Burn 2 pushes along the far-side velocity: raising = along -w, lowering = against it; a
+    // reversal fires along +w (kill -w's transfer speed, build +w's circular speed).
+    const thrustDir2: Vector2 = reverseAtArrival ? w : (dv2_ms >= 0 ? { x: -w.x, y: -w.y, z: -(w.z ?? 0) } : w);
     if (!w) return null;
 
     const g0 = 9.81;
     const accel = Math.max(0.01, (params.maxG || 0.1) * g0);
     const burn1Sec = Math.max(1, Math.abs(sol.deltaV1_ms) / accel);
-    const burn2Sec = Math.max(1, Math.abs(sol.deltaV2_ms) / accel);
+    const burn2Sec = Math.max(1, Math.abs(dv2_ms) / accel);
     const totalSec = burn1Sec + sol.transferTimeSec + burn2Sec;
 
     const hostNode = sys.nodes.find((n) => n.id === frameParentId);
@@ -989,7 +1011,7 @@ function buildOrbitChangePlan(
             : Math.abs(dv) * 0.01;
     const m0 = params.shipMass_kg || 0;
     const fuel1 = fuelFor(sol.deltaV1_ms, m0);
-    const fuel2 = fuelFor(sol.deltaV2_ms, Math.max(1, m0 - fuel1));
+    const fuel2 = fuelFor(dv2_ms, Math.max(1, m0 - fuel1));
 
     // A raising burn pushes along the motion; a lowering one pushes against it.
     const dirOf = (dv: number): Vector2 => (dv >= 0 ? w : { x: -w.x, y: -w.y, z: -(w.z ?? 0) });
@@ -997,9 +1019,9 @@ function buildOrbitChangePlan(
     // The velocity the ship ends with: its new circular orbit, plus the host's own motion.
     const vCirc2_au = sol.speedEnd_ms / AU_M;
     const endVel = add(hostAtEnd.v, {
-        x: -u.x * 0 + w.x * vCirc2_au,
-        y: -u.y * 0 + w.y * vCirc2_au,
-        z: (w.z ?? 0) * vCirc2_au
+        x: wEnd.x * vCirc2_au,
+        y: wEnd.y * vCirc2_au,
+        z: (wEnd.z ?? 0) * vCirc2_au
     });
 
     const segments: TransitSegment[] = [
@@ -1026,7 +1048,7 @@ function buildOrbitChangePlan(
             startState: { r: a2.points[0], v: endVel },
             endState: { r: a2.points[a2.points.length - 1], v: endVel },
             hostId: frameParentId, pathPoints: a2.points, pathTimes: a2.timesMs,
-            deltaV_ms: Math.abs(sol.deltaV2_ms), thrustDir: dirOf(sol.deltaV2_ms),
+            deltaV_ms: Math.abs(dv2_ms), thrustDir: thrustDir2,
             warnings: [], fuelUsed_kg: fuel2
         }
     ];
@@ -1041,9 +1063,9 @@ function buildOrbitChangePlan(
         segments,
         burns: [
             { id: 'oc-burn-1', time: startTime, position: a1.points[0], deltaV_ms: Math.abs(sol.deltaV1_ms), type: 'Departure' },
-            { id: 'oc-burn-2', time: coastEndMs, position: a2.points[0], deltaV_ms: Math.abs(sol.deltaV2_ms), type: 'Arrival' }
+            { id: 'oc-burn-2', time: coastEndMs, position: a2.points[0], deltaV_ms: Math.abs(dv2_ms), type: 'Arrival' }
         ],
-        totalDeltaV_ms: sol.totalDeltaV_ms,
+        totalDeltaV_ms: Math.abs(sol.deltaV1_ms) + Math.abs(dv2_ms),
         totalTime_days: totalSec / DAY_S,
         totalFuel_kg: fuel1 + fuel2,
         arrivalVelocity_ms: sol.speedEnd_ms,
@@ -1055,7 +1077,7 @@ function buildOrbitChangePlan(
         interceptSpeed_ms: 0,
         arrivalPlacement: params.arrivalPlacement,
         arrivalDock: params.arrivalDock,
-        tags: ['ORBIT CHANGE', rising ? 'RAISING ORBIT' : 'LOWERING ORBIT', 'HOHMANN'],
+        tags: ['ORBIT CHANGE', rising ? 'RAISING ORBIT' : 'LOWERING ORBIT', 'HOHMANN', ...(reverseAtArrival ? ['REVERSED TO PROGRADE'] : [])],
         planType: 'Efficiency',
         name: rising ? 'Raise Orbit' : 'Lower Orbit',
         orbitChange: {
