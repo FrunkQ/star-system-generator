@@ -4,7 +4,7 @@ import { buildBodyLook, isFilledFamily, type BodyLookTextures } from './bodyLook
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture,
   isBlackHoleNode, isFeedingBlackHole, buildHorizonLook, BH_LENS_SHRINK,
-  STAR_RIM_SCALE, STAR_RIM_OPACITY,
+  STAR_RIM_SCALE, STAR_RIM_OPACITY, updateStarLook,
   applyLimbDarkening, starCoreWhiteFor, STAR_CORE_MAX, STAR_CORE_COOL_K, STAR_CORE_HOT_K
 } from './bodyFeatures';
 import derived from '../../../tests/output/solar-system-derived.json';
@@ -125,6 +125,62 @@ describe("a star's rim bloom", () => {
     const bh = { ...star, classes: ['star/BH'] };
     expect(buildBodyLook(bh, 100, { ...COMPARISON, starRim: true })
       .mesh.children.some((c) => c.type === 'Sprite')).toBe(false);
+  });
+});
+
+describe('what a star DOES survives a true-scale view; what makes it look bigger does not', () => {
+  // Owner, 2026-09-06: "would be nice if those jets appeared on the stars that need them in the size
+  // comparison view." They could not: `starDecorations: false` was all-or-nothing, and it took the
+  // outflows away with the corona. The shape of each feature is what decides which side it falls on.
+  const jetting = { id: 'j', kind: 'body', roleHint: 'star', name: 'J', radiusKm: 700000,
+                    classes: ['star/G2V'], tags: [{ key: 'stellar/jets', value: 'strong' }] } as any;
+  const quiet = { id: 'q', kind: 'body', roleHint: 'star', name: 'Q', radiusKm: 700000,
+                  classes: ['star/G2V'], tags: [] } as any;
+  const names = (look: any) => {
+    const out: string[] = [];
+    look.mesh.traverse((o: any) => { if (o.name) out.push(o.name); });
+    return out;
+  };
+
+  it('keeps the JET on a star with the corona turned off', () => {
+    const look = buildBodyLook(jetting, 100, { ...COMPARISON, starDecorations: false });
+    expect(names(look)).toContain('stellar-jet');
+    expect(look.star).toBeTruthy();
+    // ...and the halo it refused is really gone, or the view has quietly bought back its nine radii.
+    expect(look.star!.corona).toBeUndefined();
+    // AND THE FLARES STAY WITH THE CORONA, asked for point blank so the assertion is not vacuous:
+    // they are limb decoration on a view that has said it wants none, and `starDecorations` is what
+    // that view said it with.
+    const asked = buildBodyLook(jetting, 100, { ...COMPARISON, starDecorations: false, starFlares: true });
+    expect(asked.star!.flares.length).toBe(0);
+    expect(names(asked)).toContain('stellar-jet');
+    // ...and a caller that has NOT turned decorations off gets them when it asks.
+    expect(buildBodyLook(jetting, 100, { ...COMPARISON, starFlares: true }).star!.flares.length)
+      .toBeGreaterThan(0);
+  });
+
+  it('still builds NOTHING for a quiet star with decorations off', () => {
+    // The empty case has to stay empty: this is the promise that a measuring view costs nothing it
+    // does not need, and the branch above is the only thing that could break it.
+    const look = buildBodyLook(quiet, 100, { ...COMPARISON, starDecorations: false });
+    expect(names(look)).not.toContain('stellar-jet');
+    expect(look.star).toBeFalsy();
+  });
+
+  it('keeps the corona for everybody else, by default', () => {
+    const look = buildBodyLook(jetting, 100, { ...COMPARISON });
+    expect(look.star!.corona).toBeTruthy();
+    expect(names(look)).toContain('stellar-jet');
+  });
+
+  it('animates a star that has no corona without falling over', () => {
+    // `updateStarLook` reached straight into `look.corona` for any active star, and an absent corona
+    // would have thrown once a frame - the fault this option could most easily have introduced.
+    const look = buildBodyLook(
+      { ...jetting, tags: [{ key: 'stellar/jets', value: 'strong' }, { key: 'stellar/activity', value: 'high' }] },
+      100, { ...COMPARISON, starDecorations: false });
+    expect(look.star).toBeTruthy();
+    expect(() => updateStarLook(look.star!, 12.5)).not.toThrow();
   });
 });
 

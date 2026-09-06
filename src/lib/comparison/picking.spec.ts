@@ -168,6 +168,28 @@ describe('size comparison — the live mount and the preview agree', () => {
 // needs a WebGL context to build anything. The seam is one line, it is the whole of the owner's
 // "why do stars look so DULL on this?", and a silent deletion would put the pastel discs straight
 // back - so it is read out of the SOURCE, the same way the two mount sites are above.
+// THE WHEEL AND THE KEYS HAVE TO COUNT OBJECTS, and the component cannot be rendered to check it:
+// it dynamic-imports a WebGL scene. The seam is two lines and it is the whole of [[B139]], so it is
+// read out of the SOURCE like the mount sites above.
+describe('the size comparison steps in objects, not pixels', () => {
+  const view = readFileSync('src/lib/components/SizeComparisonView.svelte', 'utf8');
+
+  it('takes a key press and a wheel notch through stepFocus', () => {
+    expect(view).toContain('focus = stepFocus(focus, dir, seq.length);');
+    expect(view).toContain('focus = stepFocus(focus, notches, seq.length);');
+    // The DRAG is the one that stays in pixels, and it must: a finger follows the picture.
+    expect(view).toContain('dragStepPx = focusStepPx(');
+  });
+
+  it('SPENDS the wheel travel it uses rather than throwing the rest away', () => {
+    // A trackpad sends a stream of small deltas. Resetting the accumulator instead of subtracting
+    // what was spent loses whatever had built up, so a slow scroll never moves at all.
+    expect(view).toContain('wheelAcc -= notches * WHEEL_NOTCH_PX;');
+    // Once, and that once is the declaration.
+    expect(view.split('wheelAcc = 0').length - 1).toBe(1);
+  });
+});
+
 describe('the size comparison asks for a star that reads as a light source', () => {
   const scene = readFileSync('src/lib/holo/comparisonScene.ts', 'utf8');
 
@@ -177,6 +199,16 @@ describe('the size comparison asks for a star that reads as a light source', () 
     expect(scene).toMatch(/starDecorations:\s*false/);
     expect(scene).toMatch(/starRim:\s*true/);
     expect(scene).toMatch(/starCore:\s*starCoreWhiteFor\(/);
+  });
+
+  it('takes the JETS and refuses the shed SHELL, which is a shape decision', () => {
+    // A jet is BIPOLAR - two beams out of the poles - so however far it reaches nobody reads it as
+    // the star's width. The shed shell is a SPHERE at 11-16 radii, wider than the corona this view
+    // already refuses, and a sphere around a sphere is read as size on the one view whose whole
+    // claim is size. So the shell is off by an explicit number rather than by accident.
+    expect(scene).toMatch(/starShedding:\s*0/);
+    // ...and the jets are NOT switched off, nor pinned to a number: they follow the star's tags.
+    expect(scene).not.toMatch(/starJets:/);
   });
 
   it('reads the core from the star\u2019s own COLOUR, so two stars on one strip differ', () => {

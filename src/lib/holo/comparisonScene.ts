@@ -285,6 +285,14 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         // colour is palest and whose real surface is the brightest thing in the sky. A red dwarf
         // three steps along the same strip looked fine and gets none of this.
         starCore: starCoreWhiteFor(slot.colorHex, slot.node?.temperatureK),
+        // JETS YES, SHED SHELL NO, and the shape is the whole reason. Owner, 2026-09-06: "would be
+        // nice if those jets appeared on the stars that need them in the size comparison view."
+        // A jet is BIPOLAR - two beams out of the poles - so however far it reaches nobody reads it
+        // as the star's width; it says "this thing is doing something". The shed shell is a SPHERE
+        // at 11-16 radii, wider than the corona this view already refuses, and a sphere around a
+        // sphere is read as size on the one view whose whole claim is size (RENDER-S53). So the
+        // shell is turned off here by number rather than by accident.
+        starShedding: 0,
         // A BLACK HOLE gets the thin photon ring here and NOWHERE ELSE: this is the one surface
         // that draws a horizon without a lensing pass, so nothing else would mark where it is —
         // and, for the same reason, it draws at the TRUE radius rather than the lensed surfaces'

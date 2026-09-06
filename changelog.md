@@ -2,9 +2,16 @@
 
 All notable changes are listed here:
 
+## v3.0.352 - 6th Sep 2026
+
+- A star that fires polar jets now shows them on the Size comparison as well, so the ones that do something are visibly the ones that do something. Its shed shell stays off there: a jet is two beams out of the poles and reads as an outflow, while a shell is a ball of light around a ball of light and would make the star look bigger than the number under it.
+- The mouse wheel and the arrow keys now move one object at a time on the Size comparison, and land on it. Before, a notch was worth however much of the picture happened to be under it, so at a planet with a train of small moons the wheel jumped clean over the lot and the only way to reach a moon was to click it. You can now scroll down into a planet's moons and back out again.
+- Scrolling also reads the same on Firefox as on Chrome, and a trackpad's small movements add up instead of being discarded.
+
 ## v3.0.351 - 6th Sep 2026
 
 - Notes only, no change to the app: the second set of checks across the seam with the Explorers site is filed beside the first - a visitor with no campaign opens a shared map straight away, and the checks were re-run against the site's real address after the DNS move. The report had sat committed but unpushed in a retired session's worktree.
+
 
 ## v3.0.350 - 6th Sep 2026
 
@@ -13,6 +20,7 @@ All notable changes are listed here:
 - And it says what an Am star is. A catalogue string like Sirius's "A0mA1Va" quotes more than one reading because its calcium, hydrogen and metal lines disagree about the temperature; the page explains that the hydrogen lines are the honest thermometer, and that the annotations after a class are kept rather than mistaken for a class of their own.
 - New section on Hill spheres: what the overlay draws, why a moon has one at all (it is where a submoon could live), why the test is "is there room outside this body to orbit in" rather than a mass limit, and why a member of a pair is bounded by its partner instead of by the shared centre.
 - Fixed a broken sentence in the same reference that had been on the page for two hundred versions: an edit had eaten the end of the sentence describing how a drawn route is pinned to its ship, leaving a line that did not parse. Restored.
+
 ## v3.0.349 - 6th Sep 2026
 
 - Board: the documentation sweep's brief now names every surface a reader meets - the in-app help, the two older guides and the generated attributions - beside the physics pages and the getting-started document.
@@ -20,6 +28,7 @@ All notable changes are listed here:
 ## v3.0.348 - 6th Sep 2026
 
 - Board: the coordinator's handover to the next session, written where the earlier ones are.
+
 
 ## v3.0.347 - 6th Sep 2026
 

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   sortBySize, medianPlanet, pxPerKm, layoutStrip, belowFloorNote,
   idsAtLeast, idsAtMost, visibleItems, referenceArcs, REFERENCE_TICKS, MIN_ARC_RADIUS_PX,
-  TAP_SLOP_PX, STEP_FRACTION, sortItems, orbitOrder, orbitTree, measureSlot,
+  TAP_SLOP_PX, stepFocus, wheelPx, WHEEL_NOTCH_PX, sortItems, orbitOrder, orbitTree, measureSlot,
   SORT_ORDERS, GAP_FRACTION as GAPF,
   OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX, RING_ROOM_FRACTION,
   focusIndexOf, clampFocus, focusDiameterKm, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
@@ -833,20 +833,57 @@ describe('size comparison — moving along the strip', () => {
   // last objects can sit in the middle of the window like any other. `clampFocus` is the bound, and
   // it is gated with the rest of the focus law above.
 
-  it('steps by most of a screenful, so a landmark carries across', () => {
-    // A whole screenful teleports the reader; a small nudge takes forever. The overlap is the point.
-    expect(STEP_FRACTION).toBeGreaterThan(0.5);
-    expect(STEP_FRACTION).toBeLessThan(1);
-    // The step is now taken in FOCUS: a press moves 0.8 of a window, divided by what one step of
-    // focus is worth in px here. On the strip at Earth in an 800 px window that is a fraction of an
-    // object, and two presses land past the next one rather than teleporting off the end.
-    const seq = sortItems(SOL, 'size');
-    const scale = scaleForFocus(seq, 5, 800, OPENING_SHARE);
-    const layout = layoutStrip(SOL, scale, { axis: 'x' });
-    const per = (800 * STEP_FRACTION) / focusStepPx(layout, seq, 5);
-    expect(per).toBeGreaterThan(0.2);
-    expect(per).toBeLessThan(6);
-    expect(clampFocus(seq.length - 1 + per, seq.length)).toBe(seq.length - 1);   // and stops at the end
+  it('steps ONE OBJECT per notch, so you can walk down a planet’s moons', () => {
+    // [[B139]]. The step used to be 0.8 of a window divided by the DRAG's pixel rate, and that rate
+    // is whatever the local pair is worth on screen - at a planet with a train of tiny moons it made
+    // one notch worth a dozen objects, so the wheel flew over the whole family and a moon could only
+    // be reached by clicking it. The measurement, on the orbit strip at Jupiter:
+    const seq = sortItems(SYS, 'orbit');
+    const iJup = focusIndexOf(seq, 'jupiter');
+    const layout = layoutStrip(SYS, scaleForFocus(seq, iJup, 800, OPENING_SHARE), { axis: 'x', order: 'orbit' });
+    const oldWay = (800 * 0.8) / focusStepPx(layout, seq, iJup);
+    // Measured at 1.88 objects per notch on this fixture - already more than one, so the very next
+    // object could not be landed on at all. On a real strip, where a giant's moons are specks a few
+    // pixels apart, the same arithmetic runs to a dozen and the whole family goes by unseen.
+    expect(oldWay).toBeGreaterThan(1);
+    // ...and one notch is now one object, whichever way, from wherever you are.
+    expect(stepFocus(iJup, 1, seq.length)).toBe(iJup + 1);
+    expect(stepFocus(iJup, -1, seq.length)).toBe(iJup - 1);
+    expect(seq[iJup + 1].parentId).toBe('jupiter');   // and the next object IS a moon of it
+  });
+
+  it('lands ON an object from a half-way position - the snap the owner asked for', () => {
+    // Owner: "have it snap on BIG jumps - it helps". A step starts from the whole object on the side
+    // you are leaving, so a move begun mid-slide still ends somewhere readable.
+    expect(stepFocus(4.37, 1, 20)).toBe(5);
+    expect(stepFocus(4.37, -1, 20)).toBe(4);      // back onto the one you were sliding off
+    expect(stepFocus(4, 1, 20)).toBe(5);
+    expect(stepFocus(4, -1, 20)).toBe(3);
+    expect(stepFocus(4.99, 1, 20)).toBe(5);
+    expect(stepFocus(3, 5, 20)).toBe(8);          // several notches at once, still whole
+  });
+
+  it('stops at the ends and never answers with a NaN', () => {
+    expect(stepFocus(19, 1, 20)).toBe(19);
+    expect(stepFocus(0, -1, 20)).toBe(0);
+    expect(stepFocus(0, 1, 1)).toBe(0);           // a strip of one
+    expect(stepFocus(NaN, 1, 20)).toBe(0);
+    expect(stepFocus(4, 0, 20)).toBe(4);          // no travel, no move
+    expect(stepFocus(4, NaN, 20)).toBe(4);
+  });
+
+  it('reads a wheel the same whatever units the browser sends', () => {
+    // `deltaMode` is the trap: Firefox reports LINES (~3 per notch) where Chrome reports pixels, and
+    // taking the raw number makes the wheel thirty times slower on one of them.
+    expect(wheelPx(100, 0, 0)).toBe(100);         // pixels, as sent
+    expect(wheelPx(3, 0, 1)).toBe(48);            // lines -> about half a notch
+    expect(wheelPx(1, 0, 2)).toBe(WHEEL_NOTCH_PX);// pages
+    expect(wheelPx(0, -40, 0)).toBe(-40);         // a sideways wheel still moves along the strip
+    expect(wheelPx(NaN, 0, 0)).toBe(0);
+    // A trackpad's dribble adds up to exactly one notch rather than being thrown away.
+    let acc = 0;
+    for (let i = 0; i < 25; i++) acc += wheelPx(4, 0, 0);
+    expect(Math.trunc(acc / WHEEL_NOTCH_PX)).toBe(1);
   });
 
   it('has a tap slop a finger can satisfy and a drag cannot', () => {

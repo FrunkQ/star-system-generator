@@ -249,11 +249,47 @@ export const TAP_SLOP_PX = 10;
  */
 export const PICK_MIN_RADIUS_PX = 8;
 /**
- * How much of a screenful one stepper press (or one arrow key) moves. Less than a whole screen on
- * purpose: an overlap carries a landmark across, so you can see WHERE you have got to. A full
- * screenful teleports you and a small nudge takes forever.
+ * A WHEEL NOTCH AND AN ARROW KEY MOVE ONE OBJECT, AND LAND ON IT.
+ *
+ * [[B139]], and it is a units mistake rather than a tuning one. The focus is an INDEX into the
+ * sequence; a notch and a key press are DISCRETE. Both used to be converted through the DRAG's pixel
+ * rate (`0.8 of a window / focusStepPx`), and that rate is whatever the local pair happens to be
+ * worth on screen - so at a planet with a train of tiny moons one notch was worth a dozen objects
+ * and the wheel flew clean over the whole family. The owner, 2026-09-06: *"when scrolling with mouse
+ * wheel on the orbits one - you don't travel DOWN the moons - for them they need to be clicked on to
+ * centre"*. Exactly so: clicking was the only way in, because the wheel could not stop there.
+ *
+ * AND IT SNAPS - *"have it snap on BIG jumps - it helps"*. A step starts from the whole object on
+ * the side you are moving away from, so a move that begins mid-slide still ends ON something you can
+ * read, rather than between two things at a scale that belongs to neither.
+ *
+ * THE DRAG IS NOT THIS and must not become it: a finger follows the picture, so it stays in pixels
+ * (`focusStepPx`) and stays continuous. Discrete inputs count objects; continuous ones count pixels.
  */
-export const STEP_FRACTION = 0.8;
+export function stepFocus(focus: number, objects: number, count: number): number {
+  if (!Number.isFinite(objects) || objects === 0) return clampFocus(focus, count);
+  const from = objects > 0 ? Math.floor(focus) : Math.ceil(focus);
+  return clampFocus(from + Math.trunc(objects), count);
+}
+
+/**
+ * One wheel notch, in pixels. A mouse sends about this in `deltaY`; the accumulator in the view
+ * turns whatever a trackpad sends into the same currency.
+ */
+export const WHEEL_NOTCH_PX = 100;
+
+/**
+ * A wheel event's travel in PIXELS, whatever units it arrived in.
+ *
+ * `deltaMode` is the trap: Firefox reports LINES (mode 1, ~3 per notch) where Chrome reports pixels,
+ * and reading the raw number makes the wheel thirty times slower on one browser than the other. The
+ * multipliers are the conventional ones - a line is about 16 px, a page about a notch's worth here.
+ */
+export function wheelPx(deltaY: number, deltaX: number, deltaMode: number): number {
+  const raw = deltaY || deltaX || 0;
+  if (!Number.isFinite(raw)) return 0;
+  return raw * (deltaMode === 1 ? 16 : deltaMode === 2 ? WHEEL_NOTCH_PX : 1);
+}
 
 /**
  * THE RULER'S LADDER, in km. One source; `constants.ts` holds every figure.

@@ -20,7 +20,7 @@
     idsAtLeast, idsAtMost, referenceArcs, clampCentreShare, slotAt,
     focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
     ringOpacityAt, ringProminence, ringTiltRad,
-    OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION, SORT_ORDERS,
+    OPENING_SHARE, TAP_SLOP_PX, stepFocus, wheelPx, WHEEL_NOTCH_PX, SORT_ORDERS,
     type StripLayout, type SortOrder
   } from '$lib/comparison/layout';
   import { drawStripChrome } from '$lib/comparison/stripChrome';
@@ -243,10 +243,20 @@
     handle?.setChrome(chromeCanvas);
   }
 
-  /** One stepper press, or one arrow key: most of a screenful, so you keep your place. */
+  /**
+   * One stepper press, or one arrow key: ONE OBJECT, landed on. See `stepFocus` for why this counts
+   * objects rather than pixels - in short, it used to count pixels and flew over a planet's moons.
+   */
   function step(dir: -1 | 1): void {
-    focus = clampFocus(focus + (dir * span * STEP_FRACTION) / focusStepPx(layout, seq, focus), seq.length);
+    focus = stepFocus(focus, dir, seq.length);
   }
+
+  /**
+   * Wheel travel not yet spent, in px. A mouse notch arrives as one event worth about
+   * `WHEEL_NOTCH_PX`; a trackpad sends a stream of small ones, and they have to add up to the same
+   * thing or the two devices move the strip at wildly different rates.
+   */
+  let wheelAcc = 0;
 
   /**
    * A CLICK IS HOW YOU MOVE, and it is the main way. It selects through the map's shared selection
@@ -293,8 +303,12 @@
     if (e.ctrlKey || e.metaKey || e.shiftKey) {
       centreShare = clampCentreShare(centreShare * Math.exp(-e.deltaY * 0.0015));
     } else {
-      const along = e.deltaY || e.deltaX;
-      focus = clampFocus(focus + along / focusStepPx(layout, seq, focus), seq.length);
+      wheelAcc += wheelPx(e.deltaY, e.deltaX, e.deltaMode);
+      const notches = Math.trunc(wheelAcc / WHEEL_NOTCH_PX);
+      if (notches) {
+        wheelAcc -= notches * WHEEL_NOTCH_PX;
+        focus = stepFocus(focus, notches, seq.length);
+      }
     }
   }
 

@@ -6634,6 +6634,20 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+ON A MEASURING VIEW A DIRECTIONAL FEATURE IS FREE AND A SYMMETRIC ONE IS NOT ([[G79]]). That is the
+rule behind turning the corona off and keeping the JETS: a bipolar beam, however long, says "this
+thing is doing something" and nobody reads it as the star's width, while anything drawn as a sphere
+around a sphere is read as SIZE. The shed shell is 11-16 radii of sphere - wider than the corona
+this view already refuses - so it stays off by an explicit `starShedding: 0`.
+`starDecorations` USED TO CONFLATE THREE UNLIKE THINGS - corona, flares, outflows - and that is why
+the owner's jets could not be had without nine radii of halo. The halo and the flares answer to it
+now; the outflows answer only to the star's tags.
+DISCRETE INPUTS COUNT OBJECTS, CONTINUOUS ONES COUNT PIXELS ([[B139]]). The focus is an INDEX, so a
+wheel notch and an arrow key are naturally worth one OBJECT; pricing them through the drag's pixel
+rate made a notch worth 1.88 objects at Jupiter (measured) and a dozen among a giant's moons, which
+is why the wheel flew over a moon family and a moon could only be reached by clicking it. `stepFocus`
+also SNAPS - it starts from the whole object on the side you are leaving - so a move begun mid-slide
+ends somewhere readable. The DRAG stays on `focusStepPx` because a finger follows the picture.
 AND A STAR HAS NO `apparentColorHex`, WHICH IS CORRECT AND WAS A TRAP ([[B138]]). That field is
 derived from makeup, atmosphere and temperature - a REFLECTED-light answer - so every planet has one
 and a star has `null`. Read straight, the Sun reached `buildBodyLook` with no colour and fell to its

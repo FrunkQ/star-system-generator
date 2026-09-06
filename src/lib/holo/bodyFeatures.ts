@@ -407,7 +407,8 @@ export function updateStellarFlares(flares: FlareVisual[], nowSec: number): void
 // physics/stellarOutflows. No caller may decide for itself which star gets one.
 export interface StarLookVisual {
 	group: THREE.Group;
-	corona: THREE.Sprite;
+	/** Absent when the caller asked for no corona — a measuring view, which cannot afford nine radii. */
+	corona?: THREE.Sprite;
 	coronaScale: number;
 	activity: number;
 	flares: FlareVisual[];
@@ -418,6 +419,12 @@ export interface StarLookVisual {
 }
 
 export interface StarLookOptions {
+	/**
+	 * The additive halo. Default ON, because every surface that has ever called this wanted it — but
+	 * a TRUE-SCALE view cannot have it (RENDER-S53: at `radius * (5 + activity * 4)` a star reads
+	 * nine times its own diameter) and still wants the rest of what a star does.
+	 */
+	corona?: boolean;
 	/** Timed limb flares (an active star). Default off — the caller has read `flaresVisibly`. */
 	flares?: boolean;
 	/** `stellar/jets` strength: 0 none, 1 moderate, 2 strong. */
@@ -490,12 +497,15 @@ export function buildStarLook(
 	const hex = `#${colorHex.toString(16).padStart(6, '0')}`;
 	// Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
 	// pulsing (flaring) over time in updateStarLook. A billboard, so it ignores the photosphere's spin.
-	const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
-	const corona = new THREE.Sprite(coronaMat);
 	const coronaScale = radius * (5 + activity * 4);
-	corona.scale.setScalar(coronaScale);
-	group.add(corona);
-	const look: StarLookVisual = { group, corona, coronaScale, activity, flares: [] };
+	const look: StarLookVisual = { group, coronaScale, activity, flares: [] };
+	if (opts.corona !== false) {
+		const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+		const corona = new THREE.Sprite(coronaMat);
+		corona.scale.setScalar(coronaScale);
+		group.add(corona);
+		look.corona = corona;
+	}
 
 	// Flares — only for stars whose magnetic activity actually earns them, so a quiet sun adds
 	// nothing to the frame.
@@ -557,7 +567,7 @@ export function buildStarLook(
 export function updateStarLook(look: StarLookVisual, nowSec: number): void {
 	// Flaring: an active star's corona pulses (and flickers brighter) over time; a quiet star is steady.
 	// The holo's numbers, moved here unchanged — if this pulse moves, the system view's star moved.
-	if (look.activity > 0.01) {
+	if (look.corona && look.activity > 0.01) {
 		const pulse = 1 + look.activity * (0.1 * Math.sin(nowSec * 2.3) + 0.06 * Math.sin(nowSec * 6.1));
 		look.corona.scale.setScalar(look.coronaScale * pulse);
 		(look.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.85 + look.activity * 0.15 * (0.5 + 0.5 * Math.sin(nowSec * 9.3)));

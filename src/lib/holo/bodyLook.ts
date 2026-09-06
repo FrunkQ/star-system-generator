@@ -229,11 +229,20 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
       sphere.add(rim.sprite);
       disposables.push(rim);
     }
-    if (opts.starDecorations !== false) {
+    // WHAT A STAR *DOES* SURVIVES `starDecorations: false`; WHAT MAKES IT LOOK BIGGER DOES NOT.
+    // That switch used to be all-or-nothing, and it conflated three different things - the halo, the
+    // flares, and the outflows. The owner asked for the third on the size comparison
+    // (*"would be nice if those jets appeared on the stars that need them"*) and it could not be had
+    // without the first. Now the halo and the flares answer to `starDecorations` and the OUTFLOWS
+    // answer only to the tags, so a true-scale view gets a jetting star that still measures true.
+    const jets = opts.starJets ?? jetStrength(node.tags);
+    const shedding = opts.starShedding ?? sheddingStrength(node.tags);
+    if (opts.starDecorations !== false || jets || shedding) {
       const star = buildStarLook(radius, colorHex, activity, seedSum(node.id, 13, 2147483647) || 1, tex.glow, {
-        flares: !isLopoly && (opts.starFlares ?? flaresVisibly(node.tags)),
-        jets: opts.starJets ?? jetStrength(node.tags),
-        shedding: opts.starShedding ?? sheddingStrength(node.tags)
+        corona: opts.starDecorations !== false,
+        flares: opts.starDecorations !== false && !isLopoly && (opts.starFlares ?? flaresVisibly(node.tags)),
+        jets,
+        shedding
       });
       sphere.add(star.group);
       look.star = star;
