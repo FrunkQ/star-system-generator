@@ -36,6 +36,8 @@
   import { openSystemReport } from '$lib/reports/openReport';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import SisterFileModal from './SisterFileModal.svelte';
+  import LoadSourceModal, { FILE_ACCEPT } from './LoadSourceModal.svelte';
+  import { fetchHubMap } from '$lib/hub/hubClient';
   import PlannerPane from './PlannerPane.svelte';
   import { nextSnap } from '$lib/ui/sheetSnap';
   import type { TransitPlan } from '$lib/transit/types';
@@ -1729,7 +1731,7 @@
   // G42: a whole campaign (starmap) was dropped on Load System. The classified payload waits here
   // while the sister-file modal offers open-as-campaign; the actual load runs in the root page
   // (the campaign pipeline lives there), so confirm just hands the payload up.
-  let sisterStarmap: { doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null; name: string } | null = null;
+  let sisterStarmap: { doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null; name: string; subject: string } | null = null;
 
   async function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
     if (!$systemStore) return;
@@ -1785,6 +1787,8 @@
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
     // An external simulator file (.ubox / .sc / .pak) goes through the converter modal, not the JSON path.
+    // Only a FILE can be one of these: the map library serves this app's own saves and nothing else,
+    // which is why the hub path below goes straight to `openSystemBytes`.
     const adapter = adapterForFile(file.name);
     if (adapter) {
       importSource = adapter;
@@ -1795,51 +1799,94 @@
     }
     const reader = new FileReader();
     reader.onload = async (e) => {
-      try {
-        // G42: classify FIRST (bundle kind from the zip, JSON kind from shape — classify.ts), so a
-        // campaign dropped here is named in plain words instead of failing isLoadableSystem with a
-        // message about missing fields. A real system still goes through isLoadableSystem below.
-        const raw = new Uint8Array(e.target?.result as ArrayBuffer);
-        const classified = classifySaveFile(raw);
-        if (classified.kind === 'starmap') {
-          // Sister file: hold the already-classified payload and OFFER open-as-campaign. Nothing
-          // is loaded unless the GM confirms; closing the modal drops the payload untouched.
-          sisterStarmap = { doc: classified.doc, models: classified.models ?? null, name: file.name };
-          return;
-        }
-        if (classified.kind === 'unknown') {
-          alert('This file is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
-          return;
-        }
-        if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
-        let newSystem: any = classified.doc;
-        if (isLoadableSystem(newSystem)) {
-          // Keep the old ID to preserve starmap link
-          const oldId = $systemStore?.id;
-          if (oldId) {
-              newSystem.id = oldId;
-          }
-
-          // One-way fix-up: strip baked-in derived data / legacy tags so the new engine re-derives
-          // cleanly (v1 imports otherwise carry stale physics that shadows the model).
-          newSystem = fixUpImportedSystem(newSystem, rulePack);
-          systemStore.set(systemProcessor.process(newSystem, rulePack));
-          currentTime = newSystem?.epochT0 || Date.now();
-          focusedBodyId = null;
-        } else {
-          // classify said 'system' (it has a nodes array), so what is missing is the id or name.
-          alert('This system file is missing its "id" or "name", so it cannot be loaded.');
-        }
-      } catch (err) {
-        // Unreadable files never reach here (classifySaveFile answers 'unknown' for them and the
-        // guard above already spoke) - this catch is the load pipeline itself failing.
-        alert(`The file loaded but could not be opened: ${(err as Error)?.message ?? err}`);
-        console.error(err);
-      }
+      await openSystemBytes(new Uint8Array(e.target?.result as ArrayBuffer), { kind: 'file', name: file.name });
     };
     reader.readAsArrayBuffer(file);
     // Clear the picker so cancelling a sister-file modal and choosing the SAME file again re-fires.
     input.value = '';
+  }
+
+  /**
+   * OPEN A SYSTEM FROM BYTES - the one door, whether they came off the disk or off the network.
+   *
+   * The file picker and the shared-map link differ in exactly one step, which is how the bytes were
+   * obtained; everything after that - classification, the sister-file offer for a campaign, the
+   * fix-up and the store write - is identical and is therefore written once. Two doors into the
+   * open system would be two answers to "is this loadable?", which is the duplication this codebase
+   * keeps paying for.
+   */
+  async function openSystemBytes(raw: Uint8Array, source: { kind: string; name?: string }) {
+    try {
+      // G42: classify FIRST (bundle kind from the zip, JSON kind from shape — classify.ts), so a
+      // campaign dropped here is named in plain words instead of failing isLoadableSystem with a
+      // message about missing fields. A real system still goes through isLoadableSystem below.
+      const classified = classifySaveFile(raw);
+      if (classified.kind === 'starmap') {
+        // Sister file: hold the already-classified payload and OFFER open-as-campaign. Nothing
+        // is loaded unless the GM confirms; closing the modal drops the payload untouched.
+        // A campaign reached by LINK lands here too, which is the right answer: the offer is the
+        // same one, and it is the only place that asks before replacing a campaign.
+        //
+        // A NAME AND A KIND ARE DIFFERENT THINGS, and conflating them shipped a sentence that read
+        // "shared map is a saved campaign". A file names itself; a link does not, so the campaign's
+        // OWN name is used - which is the better sentence in both cases and the only one available
+        // in the second.
+        sisterStarmap = {
+          doc: classified.doc,
+          models: classified.models ?? null,
+          name: source.name || String(classified.doc?.name ?? 'That map'),
+          subject: source.kind
+        };
+        return;
+      }
+      if (classified.kind === 'unknown') {
+        alert('This is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
+        return;
+      }
+      if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
+      let newSystem: any = classified.doc;
+      if (isLoadableSystem(newSystem)) {
+        // Keep the old ID to preserve starmap link
+        const oldId = $systemStore?.id;
+        if (oldId) {
+            newSystem.id = oldId;
+        }
+
+        // One-way fix-up: strip baked-in derived data / legacy tags so the new engine re-derives
+        // cleanly (v1 imports otherwise carry stale physics that shadows the model).
+        newSystem = fixUpImportedSystem(newSystem, rulePack);
+        systemStore.set(systemProcessor.process(newSystem, rulePack));
+        currentTime = newSystem?.epochT0 || Date.now();
+        focusedBodyId = null;
+      } else {
+        // classify said 'system' (it has a nodes array), so what is missing is the id or name.
+        alert('This system is missing its "id" or "name", so it cannot be loaded.');
+      }
+    } catch (err) {
+      // Unreadable input never reaches here (classifySaveFile answers 'unknown' for it and the
+      // guard above already spoke) - this catch is the load pipeline itself failing.
+      alert(`The ${source.kind} loaded but could not be opened: ${(err as Error)?.message ?? err}`);
+      console.error(err);
+    }
+  }
+
+  // WHERE FROM? - the rail's Load System, 2026-09-06. Browse the library, pick a file, or paste a
+  // link somebody sent.
+  let showLoadSystemSource = false;
+
+  /**
+   * A SYSTEM NAMED BY A LINK. The other way to get bytes; `openSystemBytes` is what happens to them.
+   *
+   * This closes a loop the app already pointed at: opening a SYSTEM link from the campaign door
+   * refuses with "download it from the hub and open it with Load System", and until now Load System
+   * had no way to take a link. Failures speak through `alert`, which is what every other failure on
+   * this path already does - a second error surface here would be a second thing to keep in step.
+   */
+  async function openSystemFromHub(slug: string) {
+    showLoadSystemSource = false;
+    const result = await fetchHubMap(slug);
+    if (!result.ok) { alert(result.problem); return; }
+    await openSystemBytes(result.bytes, { kind: 'shared map' });
   }
 
   let unsubscribePanStore: () => void;
@@ -2623,7 +2670,7 @@
         on:ruler={() => { railOpen = false; rulerActive = !rulerActive; }}
         on:sizecompare={() => { railOpen = false; sizeCompareOn = !sizeCompareOn; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
-        on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}
+        on:uploadsystem={() => { railOpen = false; showLoadSystemSource = true; }}
         on:new={() => dispatch('new')}
         on:open={() => dispatch('open')}
         on:save={() => dispatch('save')}
@@ -2642,7 +2689,7 @@
            Starmap nav and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
-      <input type="file" accept="application/json,.json,.zip,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+      <input type="file" accept={FILE_ACCEPT.system} bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">
@@ -2998,8 +3045,15 @@
 
 
 
+    {#if showLoadSystemSource}
+        <LoadSourceModal
+            kind="system"
+            on:file={() => { showLoadSystemSource = false; railUploadInput?.click(); }}
+            on:openHub={(e) => openSystemFromHub(e.detail)}
+            on:close={() => (showLoadSystemSource = false)} />
+    {/if}
     {#if sisterStarmap}
-        <SisterFileModal fileKind="starmap" context="system" fileName={sisterStarmap.name}
+        <SisterFileModal fileKind="starmap" context="system" fileName={sisterStarmap.name} subject={sisterStarmap.subject}
             on:close={() => (sisterStarmap = null)}
             on:confirm={() => { const p = sisterStarmap; sisterStarmap = null; if (p) dispatch('openstarmap', { doc: p.doc, models: p.models }); }} />
     {/if}

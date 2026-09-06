@@ -84,6 +84,7 @@
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
   import { fetchHubMap, fetchHubMapFromUrl, type HubFetch } from '$lib/hub/hubClient';
+  import LoadSourceModal, { FILE_ACCEPT } from '$lib/components/LoadSourceModal.svelte';
   import { looksLikeHubClip, insertClip, addContentCredit } from '$lib/io/hubClip';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import HubClipPasteModal from '$lib/components/HubClipPasteModal.svelte';
@@ -904,9 +905,15 @@
    * into the app behaves identically to the same link clicked in a Discord.
    */
   // Where the GM was when they asked, so declining puts them back rather than somewhere else.
+  //
+  // FALSE SINCE 2026-09-06, and the reason is the move: the paste field left the welcome screen for
+  // `LoadSourceModal`, which is only reachable from the rail - and the rail is only reachable with
+  // a campaign already open. So declining leaves the GM exactly where they were standing. The
+  // no-campaign case is still covered, by `declineHubMap`'s own `!$starmapStore` test.
   let hubCameFromLoadScreen = false;
   async function openHubBySlug(slug: string) {
-    hubCameFromLoadScreen = true;
+    hubCameFromLoadScreen = false;
+    showLoadStarmapSource = false;
     showNewStarmapModal = false;
     await runHubOpen(slug);
   }
@@ -2216,9 +2223,16 @@
     URL.revokeObjectURL(url);
   }
 
+  /** The welcome screen's plain file route. It stays a file picker: the owner took the sharing
+   *  route OFF that screen, so putting it back behind this button would undo the change. */
   function handleUploadStarmap() {
     fileInput.click();
   }
+
+  // WHERE FROM? - the rail's Load Starmap, 2026-09-06. Browse the library, pick a file, or paste a
+  // link somebody sent. Three ways in, asked at the moment a GM has decided they want to open
+  // something, rather than on the first screen they ever see.
+  let showLoadStarmapSource = false;
 
   // G42: a system save dropped on Load Starmap - the sister-file modal names it and guides.
   let sisterSystemFileName: string | null = null;
@@ -2373,7 +2387,7 @@
 <main>
 
 
-  <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json,.zip" />
+  <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept={FILE_ACCEPT.campaign} />
 
   {#if remoteNotice}
     <div class="mem-banner" role="status">
@@ -2491,6 +2505,16 @@
     </div>
   {/if}
 
+  <!-- WHERE FROM? The rail's Load Starmap. At the root because both rails raise it and the file
+       input it drives lives here. -->
+  {#if showLoadStarmapSource}
+    <LoadSourceModal
+      kind="campaign"
+      on:file={() => { showLoadStarmapSource = false; handleUploadStarmap(); }}
+      on:openHub={(e) => openHubBySlug(e.detail)}
+      on:close={() => (showLoadStarmapSource = false)} />
+  {/if}
+
   <!-- R-14: the paste screen. Mounted here, at the root, because this is where the campaign, the
        open system and the rule pack all are - so there is ONE place that inserts a clip. -->
   {#if clipPasteText !== null && $starmapStore}
@@ -2534,7 +2558,6 @@
         {hasSavedStarmap} 
         on:create={handleCreateStarmap} 
         on:load={handleLoadStarmap} 
-        on:openHub={(e) => openHubBySlug(e.detail)}
         on:upload={handleUploadStarmap} 
         on:loadExampleStarmap={handleLoadExampleStarmap}
         on:realSkyImport={() => (showRealSkyImportModal = true)}
@@ -2552,7 +2575,7 @@
         {broadcastSessionId}
         routesAttention={routesData.worstAttention}
         on:new={handleRequestNewStarmap}
-        on:open={handleUploadStarmap}
+        on:open={() => (showLoadStarmapSource = true)}
         on:save={() => (showStarmapSaveModal = true)}
         on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
         on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
@@ -2590,7 +2613,7 @@
       on:deletesystem={handleDeleteSystem}
       on:renamesystem={handleRenameSystem}
       on:download={() => (showStarmapSaveModal = true)}
-      on:upload={handleUploadStarmap}
+      on:upload={() => (showLoadStarmapSource = true)}
       on:clear={handleClearStarmap}
       on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
       on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}

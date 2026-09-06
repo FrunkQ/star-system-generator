@@ -5950,6 +5950,18 @@ captured a beauty shot of their OWN map would have been refused permission to pu
 their own screenshot. The exemption is for an ABSENCE of provenance only: a capture that CLAIMS
 CC-BY without naming an author is still called out, because a licence that states an obligation and
 then fails it is wrong whoever made the picture.
+RULE ONE-D ([[A95]], 2026-09-06): **THE SYSTEM VIEW HAS THE SAME SPLIT, one level down.**
+`SystemView.openSystemBytes` classifies, offers and opens; `handleUploadJson` (a file) and
+`openSystemFromHub` (a link) are two ways of getting bytes to it. And the ENTRY is one component:
+`LoadSourceModal`, parameterised by `kind`, serves Load Starmap and Load System both, with
+`FILE_ACCEPT` in its module context so a filter and the sentence describing it cannot drift apart.
+**The paste field is NOT on the welcome screen** - owner, 2026-09-06, and the reasoning is worth
+keeping: nobody arrives already holding a map code, they arrive by clicking a link, so a paste field
+there answered a question nobody had. It lives behind the load doors, where somebody has already
+decided they want to open something. Putting it back is pinned against in `loadSource.spec.ts`.
+**A NAME AND A KIND ARE DIFFERENT THINGS** - passing the kind into `SisterFileModal`'s name slot
+shipped the sentence "shared map is a saved campaign", so the offer takes both and falls back to the
+campaign's own name when the caller has no filename.
 RULE SIX: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
 exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything
 worth mentioning, and an unparseable stamp compares EQUAL so a garbled version produces silence

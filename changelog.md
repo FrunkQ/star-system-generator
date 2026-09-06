@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.317 - 6th Sep 2026
+
+- The paste-a-link box has gone from the opening screen. It was in the way and nobody was using it - if somebody sends you a link to a map, you click the link and it just opens.
+- Load Starmap and Load System now ask where the map is coming from: browse what other explorers have shared, pick a file from your computer, or paste a link somebody sent you. The file picker now offers exactly the file types that door can actually open.
+- Load System can take a shared link too, which it never could before. Paste one there and if it turns out to be a whole campaign rather than a single system, it says so and offers to open it properly.
+
 ## v3.0.316 - 6th Sep 2026
 
 - The Size comparison now zooms as you scroll. Whatever is passing through the middle of the screen is drawn at a comfortable size, and everything beside it is drawn to match, so you always have something you can actually see and a fair comparison against its neighbours. Before this the whole strip was drawn at one fixed scale, which meant the star was thirty-odd screenfuls wide and you had to drag past all of it to reach the planets.
