@@ -759,8 +759,10 @@
   // A clip the app already holds, handed straight to the screen instead of through the text box.
   let clipPasteClip: HubClip | null = null;
   // Which system the screen should paste into, when the starmap already decided that by being
-  // right-clicked on a star.
+  // right-clicked on a star. NULL with `clipPasteFromMap` set means the opposite: the starmap is
+  // asking, so the screen must show its system chooser.
   let clipPasteSystemId: string | null = null;
+  let clipPasteFromMap = false;
   // WHICH BODY THE GM WAS LOOKING AT, sent by the view that actually knows. `focusedBodyId` lives
   // in SystemView; naming it here compiled, shipped, and threw `focusedBodyId is not defined` the
   // moment the screen opened - see the engine map on why `npm run build` did not catch it.
@@ -805,6 +807,7 @@
     clipPasteText = null;
     clipPasteClip = null;
     clipPasteSystemId = null;
+    clipPasteFromMap = false;
   }
 
   /**
@@ -812,11 +815,12 @@
    * gesture; the body inside it is not, so the screen opens with the system already chosen and asks
    * only the remaining question - which is the shape the owner picked for the starmap on 2026-09-03.
    */
-  function pasteIntoSystemFromMap(systemId: string) {
+  function pasteIntoSystemFromMap(systemId: string | null) {
     const d = $detectedClip;
     if (!d) return;
     clipPasteClip = d.clip;
     clipPasteSystemId = systemId;
+    clipPasteFromMap = true;
     clipPasteFocus = null;
     clipPasteText = '';
   }
@@ -842,8 +846,9 @@
 
     const id = generateId();
     // The star's own type decides the age, exactly as an import does - not a constant, and not the
-    // age of whatever system the GM happened to be looking at.
-    const rootStar = built.nodes.find((n: any) => n.id === built.rootId);
+    // age of whatever system the GM happened to be looking at. `starId` rather than `rootId`,
+    // because a BINARY's root is a barycentre and a barycentre has no spectral type to date.
+    const rootStar = built.nodes.find((n: any) => n.id === built.starId);
     const age = guessSystemAge(rootStar as any);
     const system: any = {
       id,
@@ -2632,7 +2637,7 @@
       initialText={clipPasteText}
       initialClip={clipPasteClip}
       starmap={$starmapStore}
-      openSystemId={clipPasteSystemId ?? $systemStore?.id ?? null}
+      openSystemId={clipPasteFromMap ? clipPasteSystemId : (currentSystemId ?? null)}
       focusedBodyId={clipPasteFocus}
       on:paste={applyHubClip}
       on:close={closeClipPaste} />

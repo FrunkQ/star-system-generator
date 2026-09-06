@@ -36,7 +36,7 @@
 //     lifted out of somebody's map still says whose map it came from.
 import type { System, CelestialBody, Barycenter, Tag, Starmap, ContentCredit, ContentCreditLink } from '$lib/types';
 import { G } from '$lib/constants';
-import { hostMassKg, reparentBody } from '$lib/system/reparent';
+import { hostMassKg, reparentBody, hostRole } from '$lib/system/reparent';
 
 type Node = CelestialBody | Barycenter;
 
@@ -362,7 +362,18 @@ function cloneClipNodes(
 }
 
 export type ClipAsSystem =
-  | { ok: true; nodes: any[]; rootId: string; name: string; count: number; credit?: ContentCredit; carried: ContentCredit[] }
+  | {
+      ok: true;
+      nodes: any[];
+      rootId: string;
+      /** The STAR to date the system by. The root itself when it is one; the heaviest member when
+       *  the root is a pair, because a barycentre has no spectral type to guess an age from. */
+      starId: string;
+      name: string;
+      count: number;
+      credit?: ContentCredit;
+      carried: ContentCredit[];
+    }
   | { ok: false; problem: string };
 
 /**
@@ -375,23 +386,38 @@ export type ClipAsSystem =
  * the campaign receiving it, so the caller - which knows the campaign - assembles them. Inventing
  * them here would be this module guessing at things it cannot know.
  *
- * ONLY A STAR CAN BE THE TOP OF A SYSTEM. A planet or a ship pasted into empty space has nothing to
- * orbit and no system to belong to; the menu offers the action greyed out and says so, rather than
- * hiding it, so the GM can see the whole shape of what paste can do.
+ * WHAT MAY BE THE TOP OF A SYSTEM: A STAR, OR A PAIR OF THEM. The first cut of this asked for a
+ * BODY with `roleHint: 'star'`, and refused every binary - the owner pasted Zeta Reticuli, whose
+ * root is a `barycenter` with two G stars under it, and got the option greyed out. A pair of stars
+ * is not an edge case of a star system; it is one of the commonest kinds, and the bundled maps are
+ * full of them.
+ *
+ * The test is therefore the ROLE THE ROOT RESOLVES TO, which is `hostRole` - the same walk that
+ * decides what a body becomes under a host, asked rather than restated. A barycentre resolves to its
+ * heaviest member, so a star pair answers 'star' and is accepted; a body answers its own role, so a
+ * lone star still is. A planet, a moon, a ship or a double-PLANET barycentre answers something else
+ * and the menu greys the option out with the reason, rather than hiding it.
  */
 export function systemNodesFromClip(clip: HubClip): ClipAsSystem {
   const root = clip.nodes.find((n: any) => n.id === clip.root) ?? clip.nodes[0];
   if (!root) return { ok: false, problem: 'That clip has nothing in it.' };
-  if (root.kind !== 'body' || root.roleHint !== 'star') {
-    return { ok: false, problem: `Only a star and what orbits it can become a system on the map. This is ${describeClipRoot(clip)}.` };
+  // `hostRole` reads only `system.nodes`, so the clip's own node list stands in for a system here -
+  // there is no system yet, which is the whole point of the call.
+  if (hostRole({ nodes: clip.nodes } as unknown as System, root as any) !== 'star') {
+    return { ok: false, problem: `Only a star, or a pair of them, and what orbits it can become a system on the map. This is ${describeClipRoot(clip)}.` };
   }
 
   const { inserted, remap } = cloneClipNodes(clip, new Set<string>(), { rootParentId: null, tMs: 0 });
   const rootId = remap.get(clip.root)!;
+  // The heaviest star among what arrived - the root when it is a star, a member when it is a pair.
+  const heaviestStar = inserted
+    .filter((n: any) => n.kind === 'body' && n.roleHint === 'star')
+    .sort((a: any, b: any) => (b.massKg ?? 0) - (a.massKg ?? 0))[0];
   return {
     ok: true,
     nodes: inserted,
     rootId,
+    starId: String(heaviestStar?.id ?? rootId),
     name: String(root.name ?? 'New system'),
     count: inserted.length,
     credit: creditFor(clip.source, inserted.map((n) => n.id)),

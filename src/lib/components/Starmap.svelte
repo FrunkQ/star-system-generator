@@ -938,6 +938,12 @@
     if (systemId) dispatch('pasteintosystem', systemId);
   }
 
+  /** Paste into a system chosen on the screen - the route for anything that is not a system itself. */
+  function handleContextMenuPasteIntoAny() {
+    showContextMenu = false;
+    dispatch('pasteintosystem', null);
+  }
+
   /** Paste a copied system into empty space as a system of its own, where it was right-clicked. */
   function handleContextMenuPasteAsSystem() {
     const at = contextMenuClickCoords;
@@ -1851,6 +1857,17 @@
                         on:click={() => { if (pasteAsSystem.ok) handleContextMenuPasteAsSystem(); }}
                       >
                         Paste {$detectedClip.label} here
+                      </li>
+                      <!-- AND THE ROUTE A PLANET ACTUALLY HAS. Owner, 2026-09-06, on pasting Jupiter
+                           and its moons into empty space: *"on the right click menu never lets me
+                           place them. If you tried pasting at the starmap level it asks for the
+                           system to include it in"*. Greying the first item said WHY it could not be
+                           a system of its own and then left him with nowhere to go; a planet has a
+                           perfectly good home, it just needs to be asked which one. This opens the
+                           paste screen with no system chosen, so it asks - which is the shape the
+                           owner picked for the starmap on 2026-09-03. -->
+                      <li on:click={handleContextMenuPasteIntoAny}>
+                        Paste {$detectedClip.label} into a system…
                       </li>
                     {/if}
                     <li on:click={handleContextMenuRealSky}>Import Real Stars Here…</li>

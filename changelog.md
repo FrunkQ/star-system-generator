@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.339 - 6th Sep 2026
+
+- Fixed: pasting a binary star system - a pair, like Zeta Reticuli - was refused on the starmap. A pair of stars is a star system; it is now recognised as one, lands with both stars still orbiting their shared centre, and takes its age from the brighter of the two rather than from the centre point, which has no age to give.
+- Pasting a planet and its moons into empty space on the starmap now offers to put it in a system and asks which one, instead of only telling you it could not be a system on its own.
+
 ## v3.0.338 - 6th Sep 2026
 
 - Fixed, and this is why nothing was ever offered: the app was only allowed to look at your clipboard if the browser had ALREADY given it permission - and no browser grants that until it has been asked once, which the app never did. So it never looked, never found the system you had copied on the Explorers site, and with nothing copied and nothing to undo the little undo/redo tag had nothing to show either. One cause behind both.

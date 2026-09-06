@@ -1,0 +1,64 @@
+{
+  "sseClip": 1,
+  "source": {
+    "site": "StarSystemX Explorers",
+    "url": "https://explorers.starsystemx.com/s/local-neighbourhood#node=zetareticuli-pair-barycenter",
+    "title": "Local Neighbourhood",
+    "creator": "FrunkQ"
+  },
+  "root": "zetareticuli-pair-barycenter",
+  "nodes": [
+    {
+      "id": "zetareticuli-pair-barycenter",
+      "kind": "barycenter",
+      "name": "Zeta Reticuli Barycentre",
+      "tags": [],
+      "parentId": null,
+      "memberIds": ["zetareticuli-z2", "zetareticuli-z1"],
+      "description": "A rare wide pair of Sun-like stars, visible as a naked-eye double from Earth's southern hemisphere.",
+      "effectiveMassKg": 3.6995399999999997e30
+    },
+    {
+      "id": "zetareticuli-z1",
+      "kind": "body",
+      "name": "Zeta 1 Reticuli",
+      "tags": [],
+      "image": { "url": "/images/star_types/G.webp" },
+      "orbit": {
+        "t0": 1762339146908,
+        "hostId": "zetareticuli-pair-barycenter",
+        "hostMu": 246918398219999970000,
+        "elements": { "e": 0.2, "a_AU": 1834.677419354839, "i_deg": 0, "M0_rad": 4.0686, "Omega_deg": 0, "omega_deg": 180 },
+        "n_rad_per_s": 1.1826104324828945e-12
+      },
+      "massKg": 1.8895499999999999e30,
+      "classes": ["star/G3V", "star/G"],
+      "parentId": "zetareticuli-pair-barycenter",
+      "radiusKm": 640044,
+      "roleHint": "star",
+      "temperatureK": 5737,
+      "radiationOutput": 0.8
+    },
+    {
+      "id": "zetareticuli-z2",
+      "kind": "body",
+      "name": "Zeta 2 Reticuli",
+      "tags": [],
+      "image": { "url": "/images/star_types/G.webp" },
+      "orbit": {
+        "t0": 1762339146908,
+        "hostId": "zetareticuli-pair-barycenter",
+        "hostMu": 246918398219999970000,
+        "elements": { "e": 0.2, "a_AU": 1915.3225806451612, "i_deg": 0, "M0_rad": 4.0686, "Omega_deg": 0, "omega_deg": 0 },
+        "n_rad_per_s": 1.1826104324828945e-12
+      },
+      "massKg": 1.80999e30,
+      "classes": ["star/G2V", "star/G"],
+      "parentId": "zetareticuli-pair-barycenter",
+      "radiusKm": 681786,
+      "roleHint": "star",
+      "temperatureK": 5846,
+      "radiationOutput": 1.01
+    }
+  ]
+}

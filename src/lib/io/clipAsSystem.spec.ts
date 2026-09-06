@@ -13,6 +13,8 @@
 import { describe, it, expect } from 'vitest';
 import { systemNodesFromClip } from './hubClip';
 import type { HubClip } from './hubClip';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const clip = (nodes: any[], root = 'r', extra: Partial<HubClip> = {}): HubClip =>
   ({ sseClip: 1, root, nodes, ...extra }) as HubClip;
@@ -94,5 +96,68 @@ describe('what cannot become a system says so, rather than being hidden', () => 
 		const ship = { id: 'r', name: 'Tender', kind: 'construct', roleHint: 'ship', parentId: null };
 		expect(systemNodesFromClip(clip([ship])).ok).toBe(false);
 		expect(systemNodesFromClip(clip([])).ok).toBe(false);
+	});
+});
+
+describe('A PAIR OF STARS IS A STAR SYSTEM — the case the first cut refused', () => {
+	// THE REGRESSION, AND IT WAS REPORTED FROM THE REAL APP. The owner copied Zeta Reticuli off the
+	// map library, right-clicked empty space on his starmap, and got the option GREYED: the rule
+	// asked for a body with `roleHint: 'star'`, and a binary's root is a `barycenter`. This fixture
+	// is his clip, unedited, so the case cannot quietly stop being covered.
+	const zeta = JSON.parse(
+		readFileSync(join(process.cwd(), 'tests/fixtures/zeta-reticuli-pair.clip.json'), 'utf8')
+	) as HubClip;
+
+	it('accepts a barycentre whose members are stars', () => {
+		const out = systemNodesFromClip(zeta);
+		expect(out.ok, out.ok ? '' : out.problem).toBe(true);
+		if (!out.ok) return;
+		expect(out.count).toBe(3);
+		expect(out.name).toBe('Zeta Reticuli Barycentre');
+	});
+
+	it('makes the PAIR the root, with both stars still going round it', () => {
+		const out = systemNodesFromClip(zeta);
+		if (!out.ok) throw new Error(out.problem);
+		const rootNode = out.nodes.find((n: any) => n.id === out.rootId);
+		expect(rootNode.kind).toBe('barycenter');
+		expect(rootNode.parentId, 'the pair is the top, so it has no parent').toBeNull();
+		const stars = out.nodes.filter((n: any) => n.roleHint === 'star');
+		expect(stars.length).toBe(2);
+		for (const s of stars) {
+			expect(s.parentId).toBe(out.rootId);
+			expect(s.orbit.hostId, 'and each star still orbits the pair').toBe(out.rootId);
+		}
+		// The barycentre's OWN member list moves with the ids, like every other reference.
+		expect(rootNode.memberIds.sort()).toEqual(stars.map((s: any) => s.id).sort());
+	});
+
+	it('names a STAR to date the system by, never the massless pair', () => {
+		// `guessSystemAge` reads a star's mass and type. Handing it a barycentre - which has neither -
+		// would silently fall back to the galactic median for every binary ever pasted.
+		const out = systemNodesFromClip(zeta);
+		if (!out.ok) throw new Error(out.problem);
+		expect(out.starId).not.toBe(out.rootId);
+		const star = out.nodes.find((n: any) => n.id === out.starId);
+		expect(star.roleHint).toBe('star');
+		// The heavier of the two: Zeta 1 at 1.88955e30 against Zeta 2 at 1.80999e30.
+		expect(star.name).toBe('Zeta 1 Reticuli');
+	});
+
+	it('still refuses a pair that is NOT a pair of stars', () => {
+		// A double PLANET resolves to 'planet', so it is not a system's top - and the menu says why
+		// rather than hiding the option.
+		const doublePlanet = {
+			sseClip: 1, root: 'b',
+			nodes: [
+				{ id: 'b', kind: 'barycenter', name: 'Twin Barycentre', parentId: null, memberIds: ['x', 'y'] },
+				{ id: 'x', kind: 'body', name: 'Twin A', roleHint: 'planet', parentId: 'b', massKg: 6e24 },
+				{ id: 'y', kind: 'body', name: 'Twin B', roleHint: 'planet', parentId: 'b', massKg: 5e24 }
+			]
+		} as unknown as HubClip;
+		const out = systemNodesFromClip(doublePlanet);
+		expect(out.ok).toBe(false);
+		if (out.ok) return;
+		expect(out.problem).toMatch(/or a pair of them/i);
 	});
 });
