@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.335 - 6th Sep 2026
+
+- The starmap now knows what you have copied. The tag under undo/redo appears there too, and right-clicking a star offers to paste into that system.
+- Right-click empty space on the starmap and a copied system drops in as a new system of its own, right where you clicked - which is what copying from the Explorers site usually gives you. If what you have in hand cannot be a system on its own, the option is still shown but greyed, and hovering it says why.
+- Fixed: pressing Ctrl+V handed the app a copied object but the app then went on claiming to hold nothing - so the tag stayed empty and the right-click menus did not offer it. It registers properly now.
+
 ## v3.0.334 - 6th Sep 2026
 
 - The Paste button at the top of the system view has gone. Pasting is the right-click, which already knows where the thing is going - and what you have in hand now shows as a small tag under the undo and redo buttons: a paste icon and, for example, "System+38" or "Moon".

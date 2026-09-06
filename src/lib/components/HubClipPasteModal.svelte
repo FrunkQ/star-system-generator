@@ -19,6 +19,12 @@
 
   /** Text already in hand (a paste event). Empty opens the box for somebody to fill in. */
   export let initialText = '';
+  /**
+   * A clip the APP already holds - the starmap's "Paste into this system" hands one straight over.
+   * The text box is for text; when the clip is already parsed, showing a GM several hundred
+   * kilobytes of its own JSON and asking them to look at it would be theatre.
+   */
+  export let initialClip: HubClip | null = null;
   export let starmap: Starmap;
   /** The system the GM is looking at, if any. Absent means the starmap view: ask which. */
   export let openSystemId: string | null = null;
@@ -32,7 +38,7 @@
   let hostId = '';
 
   $: parsed = text.trim() ? parseHubClip(text) : null;
-  $: clip = parsed?.ok ? (parsed.clip as HubClip) : null;
+  $: clip = initialClip ?? (parsed?.ok ? (parsed.clip as HubClip) : null);
   $: rootNode = clip ? clip.nodes.find((n: any) => n.id === clip.root) : null;
 
   $: systems = (starmap?.systems ?? []).map((s: any) => ({ id: s.system?.id ?? s.id, name: s.name ?? s.system?.name ?? 'System' }));
@@ -69,10 +75,12 @@
         and paste it here. Everything beneath it comes too.</p>
     {/if}
 
-    <label class="field">
-      <span>What you copied</span>
-      <textarea bind:value={text} rows="4" placeholder="Paste here" aria-label="Copied object"></textarea>
-    </label>
+    {#if !initialClip}
+      <label class="field">
+        <span>What you copied</span>
+        <textarea bind:value={text} rows="4" placeholder="Paste here" aria-label="Copied object"></textarea>
+      </label>
+    {/if}
 
     {#if parsed && !parsed.ok}
       <p class="problem">{parsed.problem}</p>

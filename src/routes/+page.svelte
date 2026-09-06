@@ -86,7 +86,9 @@
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
   import { fetchHubMap, fetchHubMapFromUrl, type HubFetch } from '$lib/hub/hubClient';
   import LoadSourceModal, { FILE_ACCEPT } from '$lib/components/LoadSourceModal.svelte';
-  import { looksLikeHubClip, insertClip, addContentCredit } from '$lib/io/hubClip';
+  import { looksLikeHubClip, insertClip, addContentCredit, systemNodesFromClip, type HubClip } from '$lib/io/hubClip';
+  import { detectedClip, noteClipText } from '$lib/io/clipDetect';
+  import { guessSystemAge } from '$lib/physics/systemAge';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import HubClipPasteModal from '$lib/components/HubClipPasteModal.svelte';
   import { HUB } from '$lib/hub/hubConfig';
@@ -754,6 +756,11 @@
   // where it goes. Both end in `applyHubClip`, so there is one implementation of "put this branch
   // into that campaign" rather than one per entry point.
   let clipPasteText: string | null = null; // non-null = the screen is up, with this text in it
+  // A clip the app already holds, handed straight to the screen instead of through the text box.
+  let clipPasteClip: HubClip | null = null;
+  // Which system the screen should paste into, when the starmap already decided that by being
+  // right-clicked on a star.
+  let clipPasteSystemId: string | null = null;
   // WHICH BODY THE GM WAS LOOKING AT, sent by the view that actually knows. `focusedBodyId` lives
   // in SystemView; naming it here compiled, shipped, and threw `focusedBodyId is not defined` the
   // moment the screen opened - see the engine map on why `npm run build` did not catch it.
@@ -773,6 +780,13 @@
     try { text = e.clipboardData?.getData('text') ?? ''; } catch { return; }
     if (!looksLikeHubClip(text)) return; // ordinary text: say nothing at all
     e.preventDefault();
+    // THE CLIP IS NOW IN HAND, AND EVERYTHING THAT SHOWS WHAT IS IN HAND SHOULD SAY SO. This call
+    // was missing entirely - `noteClipText` was exported and never used - so a branch the app had
+    // just been HANDED did not reach the indicator or the right-click menus, and a GM who pressed
+    // Ctrl+V and then closed the screen was back to the app claiming to hold nothing. It is the
+    // one source of a clip that needs no clipboard permission at all, which makes it the one that
+    // works in every browser.
+    noteClipText(text);
     clipPasteFocus = null; // a paste from anywhere has no selection behind it
     clipPasteText = text;
   }
@@ -786,12 +800,102 @@
     pasteClipInto(e.detail);
   }
 
+  /** One place to put the paste screen away, so no route into it can leave state behind it. */
+  function closeClipPaste() {
+    clipPasteText = null;
+    clipPasteClip = null;
+    clipPasteSystemId = null;
+  }
+
+  /**
+   * RIGHT-CLICK A STAR ON THE STARMAP: paste into THAT system. The system is settled by the
+   * gesture; the body inside it is not, so the screen opens with the system already chosen and asks
+   * only the remaining question - which is the shape the owner picked for the starmap on 2026-09-03.
+   */
+  function pasteIntoSystemFromMap(systemId: string) {
+    const d = $detectedClip;
+    if (!d) return;
+    clipPasteClip = d.clip;
+    clipPasteSystemId = systemId;
+    clipPasteFocus = null;
+    clipPasteText = '';
+  }
+
+  /**
+   * RIGHT-CLICK EMPTY SPACE ON THE STARMAP: the copied system becomes a system of its own, there.
+   * Owner, 2026-09-06: *"We also need to be able to paste a star system into the starmap level in
+   * the same way. eg - copy from source - paste in empty space on starmap"* - and it is the common
+   * case, because *"people will generally only be copying systems from the explorers site"*.
+   *
+   * It lands through the SAME door the generation wizard uses (`placeGeneratedSystem`): a processed
+   * system and a position, pushed onto the map. What the clip cannot carry - a seed, an epoch, an
+   * age, the rule pack - belongs to the campaign receiving it and is supplied here, which is why
+   * `systemNodesFromClip` returns nodes rather than pretending to know them.
+   */
+  function pasteClipAsNewSystem(at: { x: number; y: number; z?: number }) {
+    const map = $starmapStore;
+    const d = $detectedClip;
+    if (!map || !d || !selectedRulepack) return;
+
+    const built = systemNodesFromClip(d.clip);
+    if (!built.ok) { clipNotice = built.problem; return; }
+
+    const id = generateId();
+    // The star's own type decides the age, exactly as an import does - not a constant, and not the
+    // age of whatever system the GM happened to be looking at.
+    const rootStar = built.nodes.find((n: any) => n.id === built.rootId);
+    const age = guessSystemAge(rootStar as any);
+    const system: any = {
+      id,
+      name: uniqueSystemName(map, built.name),
+      seed: id,
+      epochT0: playerClockMs(),
+      age_Gyr: age.ageGyr,
+      ageEstimated: age.estimated,
+      ageBandGyr: age.bandGyr,
+      nodes: built.nodes,
+      rulePackId: selectedRulepack.id,
+      rulePackVersion: (selectedRulepack as any).version ?? '',
+      tags: []
+    };
+    const processed = systemProcessor.process(system, selectedRulepack);
+    const displayTimeSec = parseClockSeconds(map.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
+    const node: any = { id, name: system.name, position: at, system: processed, time: { displayTimeSec } };
+
+    starmapStore.update((m) => {
+      if (!m) return m;
+      // R-16 again: the credit goes on the CAMPAIGN. A system pasted from somebody's map earns its
+      // attribution exactly as a branch pasted into one does - this was the easiest place in the
+      // whole feature for a credit to quietly evaporate.
+      let next: any = { ...m, systems: [...m.systems, node] };
+      next = addContentCredit(next, built.credit);
+      for (const c of built.carried) next = addContentCredit(next, c);
+      return next;
+    });
+
+    const who = built.credit?.creator ? ` (credited to ${built.credit.creator})` : '';
+    clipNotice = `Pasted ${built.count} object${built.count === 1 ? '' : 's'} as a new system, ${system.name}${who}.`;
+    if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+    clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
+  }
+
+  /** Two systems called "Sol" on one map is a map nobody can read. */
+  function uniqueSystemName(map: any, wanted: string): string {
+    const taken = new Set((map?.systems ?? []).map((s: any) => String(s.name ?? s.system?.name ?? '')));
+    if (!taken.has(wanted)) return wanted;
+    for (let n = 2; n < 500; n++) {
+      const candidate = `${wanted} (${n})`;
+      if (!taken.has(candidate)) return candidate;
+    }
+    return `${wanted} (${Date.now()})`;
+  }
+
   /** The paste itself, reached from the screen AND from a right-click "Paste here". */
   function pasteClipInto({ clip, systemId, hostId }: { clip: any; systemId: string; hostId: string }) {
     const map = $starmapStore;
     if (!map) return;
     const entry = map.systems.find((s: any) => (s.system?.id ?? s.id) === systemId);
-    if (!entry?.system) { clipPasteText = null; return; }
+    if (!entry?.system) { closeClipPaste(); return; }
 
     // A deep clone first: nothing is written into the live campaign until the insert has succeeded,
     // so a refusal leaves the map exactly as it was.
@@ -799,7 +903,7 @@
     const result = insertClip(working, clip, hostId, playerClockMs());
     if (!result.ok) {
       clipNotice = result.problem;
-      clipPasteText = null;
+      closeClipPaste();
       return;
     }
 
@@ -826,7 +930,7 @@
 
     const who = result.credit?.creator ? ` (credited to ${result.credit.creator})` : '';
     clipNotice = `Pasted ${result.count} object${result.count === 1 ? '' : 's'} into ${result.hostName}${who}.`;
-    clipPasteText = null;
+    closeClipPaste();
     if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
     clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
   }
@@ -2526,11 +2630,12 @@
   {#if clipPasteText !== null && $starmapStore}
     <HubClipPasteModal
       initialText={clipPasteText}
+      initialClip={clipPasteClip}
       starmap={$starmapStore}
-      openSystemId={$systemStore?.id ?? null}
+      openSystemId={clipPasteSystemId ?? $systemStore?.id ?? null}
       focusedBodyId={clipPasteFocus}
       on:paste={applyHubClip}
-      on:close={() => (clipPasteText = null)} />
+      on:close={closeClipPaste} />
   {/if}
 
   {#if hubOffer}
@@ -2613,6 +2718,8 @@
       on:openship={(e) => shipPanelJourneyId = e.detail.journeyId}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
+      on:pasteintosystem={(e) => pasteIntoSystemFromMap(e.detail)}
+      on:pasteasnewsystem={(e) => pasteClipAsNewSystem(e.detail)}
       on:selectsystemforlink={handleSelectSystemForLink}
       on:editroute={handleEditRoute}
       on:deletesystem={handleDeleteSystem}

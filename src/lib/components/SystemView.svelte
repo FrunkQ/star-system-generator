@@ -58,7 +58,7 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { buildClip } from '$lib/io/hubClip';
   import { putClip } from '$lib/io/clipBuffer';
-  import { detectedClip, refreshDetectedClip } from '$lib/io/clipDetect';
+  import { detectedClip, clipPulse, watchClipboard } from '$lib/io/clipDetect';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
@@ -365,33 +365,10 @@
   }
 
   // THE GOLD PULSE. Fires when the thing on offer CHANGES, not on every reactive tick - otherwise
-  // it would blink continuously and mean nothing. `clipPulseKey` is the identity of what is in
-  // hand; when it moves, the button flashes once.
-  let clipPulse = false;
-  let clipPulseKey = '';
-  let clipPulseTimer: ReturnType<typeof setTimeout> | null = null;
-  $: {
-    const key = $detectedClip ? `${$detectedClip.label}|${$detectedClip.count}|${$detectedClip.from}` : '';
-    if (key !== clipPulseKey) {
-      clipPulseKey = key;
-      // QUIET FOR YOUR OWN COPIES, ANNOUNCE ONES FROM OUTSIDE (owner, 2026-09-06). A Copy made here
-      // needs no announcement - the GM just made it, and the indicator appearing is enough. A branch
-      // that arrived from the map library is news, and the flash is how the app says it noticed.
-      if (key && $detectedClip?.from === 'clipboard') {
-        clipPulse = true;
-        if (clipPulseTimer) clearTimeout(clipPulseTimer);
-        clipPulseTimer = setTimeout(() => (clipPulse = false), 1400);
-      }
-    }
-  }
-  // Look at the system clipboard when the window comes back - which is exactly when a GM returns
-  // from copying something on the map library's site. It never prompts: see clipDetect.ts.
-  onMount(() => {
-    void refreshDetectedClip();
-    const onFocus = () => void refreshDetectedClip();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  });
+  // The flash and the clipboard watch moved into `clipDetect` when the STARMAP needed both too - a
+  // second copy of "look on focus, flash once for something from outside" is two answers to one
+  // question waiting to drift apart.
+  onMount(() => watchClipboard());
 
   let clipNotice: string | null = null;
   let clipNoticeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -2724,7 +2701,7 @@
             <!-- G28: the floating undo/redo. Shows itself once there is something to wind back;
                  marks itself `use:chrome` so a dialog on a phone hides it (UI-C6). -->
             <UndoPill {mode} status={undoStatus} undo={undoSystem} redo={redoSystem}
-              clip={$detectedClip} {clipPulse} />
+              clip={$detectedClip} clipPulse={$clipPulse} />
 
             <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
                  frequently-used display toggles (per the wireframe). -->

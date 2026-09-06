@@ -79,6 +79,56 @@ export async function refreshDetectedClip(): Promise<void> {
   }
 }
 
+/**
+ * THE WATCH, AND THE FLASH, IN ONE PLACE - because there are now two views that need them.
+ *
+ * The system view had both written into it. The starmap needs the same indicator (owner,
+ * 2026-09-06), and a second copy of "look at the clipboard on focus, flash once when something new
+ * arrives from outside" is two answers to one question waiting to drift apart. So the timing lives
+ * here, with the store it is about, and a view just reads `clipPulse` and calls `watchClipboard()`.
+ */
+const pulse = writable(false);
+
+/** True for one beat when something NEW arrives from OUTSIDE the app. */
+export const clipPulse = { subscribe: pulse.subscribe };
+
+let pulseKey = '';
+let pulseTimer: ReturnType<typeof setTimeout> | null = null;
+
+detectedClip.subscribe((d) => {
+  const key = d ? `${d.label}|${d.count}|${d.from}` : '';
+  if (key === pulseKey) return;
+  pulseKey = key;
+  // QUIET FOR YOUR OWN COPIES, ANNOUNCE ONES FROM OUTSIDE (owner, 2026-09-06). A Copy made in the
+  // app needs no announcement - the GM just made it, and the indicator appearing says enough. A
+  // branch that arrived from the map library is news, and the flash is the app saying it noticed.
+  if (!key || d?.from !== 'clipboard') { pulse.set(false); return; }
+  pulse.set(true);
+  if (pulseTimer) clearTimeout(pulseTimer);
+  pulseTimer = setTimeout(() => pulse.set(false), 1400);
+});
+
+/**
+ * Look at the clipboard now, and again whenever the window comes back - which is exactly when a GM
+ * returns from copying something on the map library's site. Returns its own teardown, so a view can
+ * hand it straight to `onMount`. It never prompts: see the note at the top of this file.
+ *
+ * `visibilitychange` as well as `focus`, because a GM who copied in ANOTHER TAB of the same window
+ * comes back without the window ever losing focus, and that is the commonest way this happens.
+ */
+export function watchClipboard(): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const look = () => void refreshDetectedClip();
+  look();
+  const onVisible = () => { if (!document.hidden) look(); };
+  window.addEventListener('focus', look);
+  document.addEventListener('visibilitychange', onVisible);
+  return () => {
+    window.removeEventListener('focus', look);
+    document.removeEventListener('visibilitychange', onVisible);
+  };
+}
+
 /** Take note of a clip we were HANDED (a paste event) - no permission needed for that. */
 export function noteClipText(text: string): void {
   if (!looksLikeHubClip(text)) return;

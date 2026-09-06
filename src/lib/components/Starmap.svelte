@@ -64,6 +64,10 @@
   import { BUILTIN_ASSETS } from '$lib/player/presets';
   import { chrome } from '$lib/ui/foreground';
   import UndoPill from './UndoPill.svelte';
+  // The starmap had no idea anything was in hand: every paste affordance lived in the system view,
+  // which is not where a GM lands when they come back from the map library (owner, 2026-09-06).
+  import { detectedClip, clipPulse, watchClipboard } from '$lib/io/clipDetect';
+  import { systemNodesFromClip } from '$lib/io/hubClip';
   import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
   // THE SELECTION IS PASSED IN, NEVER CLOSED OVER. `{@const hl = systemMarkers(systemNode)}` inside the
@@ -918,6 +922,28 @@
     contextMenuRoute = null;
   }
 
+  // Can what is in hand become a system of its own? Asked of the clip module rather than answered
+  // here, so the menu and the paste cannot disagree about it.
+  onMount(() => watchClipboard());
+
+  $: pasteAsSystem = $detectedClip
+    ? systemNodesFromClip($detectedClip.clip)
+    : ({ ok: false, problem: 'Nothing is copied.' } as const);
+
+  /** Paste into the system that was right-clicked: the system is known, the body is not. */
+  function handleContextMenuPasteInto() {
+    const systemId = contextMenuSystemId;
+    showContextMenu = false;
+    if (systemId) dispatch('pasteintosystem', systemId);
+  }
+
+  /** Paste a copied system into empty space as a system of its own, where it was right-clicked. */
+  function handleContextMenuPasteAsSystem() {
+    const at = contextMenuClickCoords;
+    showContextMenu = false;
+    dispatch('pasteasnewsystem', at);
+  }
+
   let contextMenuClickCoords = { x: 0, y: 0 };
 
   function handleMapContextMenu(event: MouseEvent) {
@@ -1737,7 +1763,8 @@
     <!-- G28: the campaign's undo/redo. Same component as the system view's, handed the STARMAP
          history instead - moving, renaming, adding and deleting systems, the routes, and the map's
          own description and notes. The two views are never on screen together, so one pill each. -->
-    <UndoPill {mode} status={starmapUndoStatus} undo={undoStarmap} redo={redoStarmap} />
+    <UndoPill {mode} status={starmapUndoStatus} undo={undoStarmap} redo={redoStarmap}
+      clip={$detectedClip} clipPulse={$clipPulse} />
 
     {#if ensuredTemporal}
       <div class="time-overlay" class:phone={mode === 'phone'} use:chrome>
@@ -1790,6 +1817,14 @@
               <li on:click={handleContextMenuCentre}>Centre Map Here</li>
             {/if}
             <li on:click={handleContextMenuAddNear}>Add System near here…</li>
+            <!-- Paste into the system that was right-clicked. The system is known, the host is not,
+                 so this opens the paste screen with the system already chosen - which is the shape
+                 the owner picked for the starmap on 2026-09-03. -->
+            {#if $detectedClip}
+              <li on:click={handleContextMenuPasteInto}>
+                Paste {$detectedClip.label} into this system
+              </li>
+            {/if}
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
                 Start Link
@@ -1802,6 +1837,20 @@
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
+                    <!-- SHOWN, AND GREYED WHEN IT DOES NOT APPLY (owner, 2026-09-06: "show but grey
+                         out if not applicable"). Only a star and what orbits it can become a system
+                         on the map; a planet or a ship in empty space has nothing to go round. The
+                         item stays visible with the reason in its tooltip, so the GM can see the
+                         whole shape of what paste can do rather than wondering where it went. -->
+                    {#if $detectedClip}
+                      <li
+                        class:disabled={!pasteAsSystem.ok}
+                        title={pasteAsSystem.ok ? '' : pasteAsSystem.problem}
+                        on:click={() => { if (pasteAsSystem.ok) handleContextMenuPasteAsSystem(); }}
+                      >
+                        Paste {$detectedClip.label} here
+                      </li>
+                    {/if}
                     <li on:click={handleContextMenuRealSky}>Import Real Stars Here…</li>
                     {#if $starmapUiStore.travellerMode}
                         <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP Here</li>
@@ -1969,6 +2018,13 @@
     box-shadow: 0 0 15px rgba(229, 62, 62, 0.5);
   }
 
+  .context-menu li.disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .context-menu li.disabled:hover {
+    background: none;
+  }
   .context-menu {
     position: absolute;
     background-color: var(--bg-panel);

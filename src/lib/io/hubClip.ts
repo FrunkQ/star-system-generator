@@ -294,11 +294,19 @@ function mintId(taken: Set<string>, hint: string): string {
  * pair, and writes the stability tags that say whether the new home can hold what was just dropped
  * into it.
  */
-export function insertClip(system: System, clip: HubClip, hostId: string, tMs: number): ClipInsert {
-  const host = system.nodes.find((n) => n.id === hostId) as Node | undefined;
-  if (!host) return { ok: false, problem: 'The place to paste it into is no longer there.' };
-
-  const taken = new Set(system.nodes.map((n) => n.id));
+/**
+ * CLONE A CLIP'S NODES WITH FRESH IDS, ready to be put somewhere. Lifted out of `insertClip` when
+ * pasting a system onto the STARMAP needed the same work with a different destination.
+ *
+ * `rootParentId` is the whole of the difference: an id when the branch hangs under a host, and NULL
+ * when the root becomes a system's own root - in which case it loses its orbit entirely, because the
+ * top of a system goes round nothing.
+ */
+function cloneClipNodes(
+  clip: HubClip,
+  taken: Set<string>,
+  opts: { rootParentId: string | null; tMs: number; hostMu?: number }
+): { inserted: any[]; remap: Map<string, string> } {
   const remap = new Map<string, string>();
   for (const n of clip.nodes) remap.set(n.id, mintId(taken, n.name ?? n.id));
 
@@ -308,11 +316,8 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
     // whatever the caller still holds.
     const copy = JSON.parse(JSON.stringify(n));
     copy.id = remap.get(n.id)!;
-    if (n.id === clip.root) {
-      copy.parentId = host.id;
-    } else {
-      copy.parentId = remap.get(n.parentId)!;
-    }
+    const isRoot = n.id === clip.root;
+    copy.parentId = isRoot ? opts.rootParentId : remap.get(n.parentId)!;
     // EVERY reference moves with the ids, not just `parentId`. A construct is a `CelestialBody`
     // with `kind: 'construct'`, and it carries ids far from the orbit - an autopilot's legs, its
     // avoid-list, a docking target, a flight log's `placeId`. Remapping only the obvious two would
@@ -322,12 +327,18 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
     // The orbit's host is a reference like any other and has to move with the ids. A descendant
     // keeps its ELEMENTS untouched - only the name of the thing it goes round is rewritten.
     if (copy.orbit && typeof copy.orbit === 'object') {
-      copy.orbit = { ...copy.orbit, hostId: copy.parentId };
-      if (n.id === clip.root) {
-        // The root is the only one whose host actually changed, so it is the only one whose
-        // gravitational parameter is now wrong. Restamped here, then re-derived by G64 below.
-        copy.orbit.hostMu = G * hostMassKg(system, host);
-        copy.orbit.t0 = tMs;
+      if (isRoot && opts.rootParentId === null) {
+        // A SYSTEM ROOT ORBITS NOTHING. Keeping the old orbit would leave the star of a new system
+        // describing a path round a host that is not in this map at all.
+        delete copy.orbit;
+      } else {
+        copy.orbit = { ...copy.orbit, hostId: copy.parentId };
+        if (isRoot) {
+          // The root is the only one whose host actually changed, so it is the only one whose
+          // gravitational parameter is now wrong. Restamped here, then re-derived by G64.
+          copy.orbit.hostMu = opts.hostMu;
+          copy.orbit.t0 = opts.tMs;
+        }
       }
     }
     inserted.push(copy);
@@ -346,9 +357,62 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
     }
   }
 
+  creditRoot(inserted.find((n) => n.id === remap.get(clip.root)), clip.source);
+  return { inserted, remap };
+}
+
+export type ClipAsSystem =
+  | { ok: true; nodes: any[]; rootId: string; name: string; count: number; credit?: ContentCredit; carried: ContentCredit[] }
+  | { ok: false; problem: string };
+
+/**
+ * A CLIP AS A SYSTEM OF ITS OWN - what a paste into empty space on the starmap needs (owner,
+ * 2026-09-06: *"We also need to be able to paste a star system into the starmap level in the same
+ * way. eg - copy from source - paste in empty space on starmap"*).
+ *
+ * It returns NODES rather than a `System`, and that is deliberate: a system also needs a seed, an
+ * epoch, an age and the rule pack it was made under, and none of those are in a clip. They belong to
+ * the campaign receiving it, so the caller - which knows the campaign - assembles them. Inventing
+ * them here would be this module guessing at things it cannot know.
+ *
+ * ONLY A STAR CAN BE THE TOP OF A SYSTEM. A planet or a ship pasted into empty space has nothing to
+ * orbit and no system to belong to; the menu offers the action greyed out and says so, rather than
+ * hiding it, so the GM can see the whole shape of what paste can do.
+ */
+export function systemNodesFromClip(clip: HubClip): ClipAsSystem {
+  const root = clip.nodes.find((n: any) => n.id === clip.root) ?? clip.nodes[0];
+  if (!root) return { ok: false, problem: 'That clip has nothing in it.' };
+  if (root.kind !== 'body' || root.roleHint !== 'star') {
+    return { ok: false, problem: `Only a star and what orbits it can become a system on the map. This is ${describeClipRoot(clip)}.` };
+  }
+
+  const { inserted, remap } = cloneClipNodes(clip, new Set<string>(), { rootParentId: null, tMs: 0 });
+  const rootId = remap.get(clip.root)!;
+  return {
+    ok: true,
+    nodes: inserted,
+    rootId,
+    name: String(root.name ?? 'New system'),
+    count: inserted.length,
+    credit: creditFor(clip.source, inserted.map((n) => n.id)),
+    carried: (clip.credits ?? [])
+      .map((c) => ({ ...c, nodeIds: (c.nodeIds ?? []).map((i) => remap.get(i)).filter(Boolean) as string[] }))
+      .filter((c) => c.nodeIds.length)
+  };
+}
+
+export function insertClip(system: System, clip: HubClip, hostId: string, tMs: number): ClipInsert {
+  const host = system.nodes.find((n) => n.id === hostId) as Node | undefined;
+  if (!host) return { ok: false, problem: 'The place to paste it into is no longer there.' };
+
+  const taken = new Set(system.nodes.map((n) => n.id));
+  const { inserted, remap } = cloneClipNodes(clip, taken, {
+    rootParentId: host.id,
+    tMs,
+    hostMu: G * hostMassKg(system, host)
+  });
   const newRootId = remap.get(clip.root)!;
   const rootCopy = inserted.find((n) => n.id === newRootId);
-  creditRoot(rootCopy, clip.source);
 
   system.nodes.push(...inserted);
 
