@@ -15,13 +15,26 @@ import { parseHubClip, describeClipRoot, describeClipCompact, looksLikeHubClip, 
 //   1. THE APP'S OWN BUFFER — a Copy or Cut made here. Always known, no permission, no guessing.
 //   2. THE SYSTEM CLIPBOARD — a branch copied on the map library's site, in another tab.
 //
-// READING THE SYSTEM CLIPBOARD IS NOT FREE, and this deliberately does not pay the price. Calling
-// `navigator.clipboard.readText()` unprompted throws up a permission dialogue in Chrome and does
-// nothing at all in Firefox, and a browser prompt appearing because a GM moved their mouse over the
-// starmap would be worse than the missing button. So the clipboard is read ONLY where the browser
-// has ALREADY granted permission, checked first through the Permissions API and abandoned in silence
-// otherwise. Ctrl+V still works everywhere regardless: that path carries the text with the event and
-// needs no permission at all.
+// READING THE SYSTEM CLIPBOARD IS NOT FREE, and there are two ways to pay: silently, where the
+// browser has already said yes, and ON A GESTURE, where it will ask.
+//
+// THE SILENT READ ALONE COULD NEVER WORK, AND THAT WAS THE BUG (owner, 2026-09-06: *"never being
+// offered a paste when i have a paste buffer from the sharing site"*). `mayReadClipboard` requires
+// the permission state to be `granted` - but Chrome's default is `prompt` and NOTHING EVER MOVES IT
+// to `granted` except a read attempt the user allows. Firefox has no such permission at all and
+// throws. So the check returned false for essentially every user, forever, the clipboard was never
+// looked at, and a branch copied on the map library's site was invisible to the app. Worse, with no
+// clip and no edits the undo pill has nothing to show either, so the GM saw an empty screen and two
+// broken-looking features with one cause.
+//
+// THE FIX IS WHERE THE READ HAPPENS, not whether. `readClipboardOnGesture` is called when a GM opens
+// a context menu - a deliberate "show me my options", which is exactly what the original caution
+// ruled IN. It is emphatically not "a GM moved their mouse over the starmap", which is what that
+// caution ruled out and which is still never done. Chrome prompts once; on allow the state becomes
+// `granted` and every later check takes the silent path for free.
+//
+// Ctrl+V still works everywhere regardless, and remains the only route in Firefox: that path carries
+// the text with the event and needs no permission at all.
 
 export interface DetectedClip {
   clip: HubClip;
@@ -62,8 +75,41 @@ async function mayReadClipboard(): Promise<boolean> {
 }
 
 /**
+ * ASK FOR THE CLIPBOARD, ON A USER GESTURE. Call this from a gesture handler and nowhere else.
+ *
+ * TWO THINGS ABOUT THE ORDER, BOTH OF WHICH BREAK IT IF GOT WRONG:
+ *  - `readText()` IS CALLED FIRST, before any `await`. The browser grants a gesture "transient
+ *    activation" that an intervening await can spend, so checking the permission first - which is
+ *    what the silent path does - would lose the very thing that makes the read allowed.
+ *  - A REFUSAL IS REMEMBERED FOR THE SESSION. If the GM dismisses the prompt, or the browser has no
+ *    clipboard read at all, this stops asking; a control that raises a dialogue on every right-click
+ *    would be worse than the one that never asked.
+ */
+let gestureReadRefused = false;
+
+export function clipboardCanBeAsked(): boolean {
+  return typeof navigator !== 'undefined' && !!navigator.clipboard?.readText && !gestureReadRefused;
+}
+
+export async function readClipboardOnGesture(): Promise<void> {
+  if (!clipboardCanBeAsked()) return;
+  if (get(clipBuffer)) return; // the app's own copy already wins; do not go looking
+  let text: string;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    gestureReadRefused = true;
+    return;
+  }
+  if (!looksLikeHubClip(text)) { fromClipboard.set(null); return; }
+  const parsed = parseHubClip(text);
+  fromClipboard.set(parsed.ok ? parsed.clip : null);
+}
+
+/**
  * Look at the system clipboard, if we are allowed to without asking. Safe to call often: it is
- * cheap, it never prompts, and it never throws.
+ * cheap, it never prompts, and it never throws. This is the FAST PATH once a gesture read has been
+ * allowed once - from then on the permission is `granted` and no gesture is needed.
  */
 export async function refreshDetectedClip(): Promise<void> {
   if (typeof navigator === 'undefined') return;

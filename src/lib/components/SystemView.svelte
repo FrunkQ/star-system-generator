@@ -58,7 +58,7 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { buildClip } from '$lib/io/hubClip';
   import { putClip } from '$lib/io/clipBuffer';
-  import { detectedClip, clipPulse, watchClipboard } from '$lib/io/clipDetect';
+  import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture } from '$lib/io/clipDetect';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
@@ -422,6 +422,10 @@
   }
 
   function handleShowBodyContextMenu(event: CustomEvent<{ node: CelestialBody, x: number, y: number }>) {
+    // OPENING A MENU IS ASKING WHAT THE OPTIONS ARE, so this is where the clipboard is looked at.
+    // The menu opens now and the paste item joins it when the read resolves - the store is reactive,
+    // so nothing here waits on the network-speed part of a browser permission.
+    void readClipboardOnGesture();
     contextMenuNode = event.detail.node;
     contextMenuX = event.detail.x;
     contextMenuY = event.detail.y;

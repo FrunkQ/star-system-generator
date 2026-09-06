@@ -66,7 +66,7 @@
   import UndoPill from './UndoPill.svelte';
   // The starmap had no idea anything was in hand: every paste affordance lived in the system view,
   // which is not where a GM lands when they come back from the map library (owner, 2026-09-06).
-  import { detectedClip, clipPulse, watchClipboard } from '$lib/io/clipDetect';
+  import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture } from '$lib/io/clipDetect';
   import { systemNodesFromClip } from '$lib/io/hubClip';
   import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
@@ -912,6 +912,7 @@
 
   function handleStarContextMenu(event: MouseEvent, systemId: string) {
     event.preventDefault();
+    void readClipboardOnGesture(); // see the note in clipDetect: a menu is a question
     event.stopPropagation();
     showContextMenu = true;
     isStarContextMenu = true;
@@ -948,6 +949,7 @@
 
   function handleMapContextMenu(event: MouseEvent) {
     event.preventDefault();
+    void readClipboardOnGesture(); // the empty-space menu is where a copied SYSTEM lands
     event.stopPropagation();
     showContextMenu = true;
     isStarContextMenu = false;

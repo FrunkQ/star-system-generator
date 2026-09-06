@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.338 - 6th Sep 2026
+
+- Fixed, and this is why nothing was ever offered: the app was only allowed to look at your clipboard if the browser had ALREADY given it permission - and no browser grants that until it has been asked once, which the app never did. So it never looked, never found the system you had copied on the Explorers site, and with nothing copied and nothing to undo the little undo/redo tag had nothing to show either. One cause behind both.
+- Now it looks when you right-click, which is you asking what your options are. Chrome asks your permission the first time only; say yes and from then on a system copied on the site simply appears, ready to paste, wherever you right-click. Ctrl+V still works everywhere regardless, and remains the way in on Firefox, which has no such permission at all.
+
 ## v3.0.337 - 6th Sep 2026
 
 - The keep-a-copy notice is switched off. The hosting change turned out to touch only the site's address book; the app never moved and nothing of yours was ever at risk.
