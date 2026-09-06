@@ -4,6 +4,7 @@ import { subtract } from './math';
 import { propagateState3D } from '../physics/orbits';
 import { G } from '../constants';
 import { AU_KM } from '../constants';
+import { effectiveAttachment, attachedOffsetAu } from '../constructs/docking';
 
 const G0 = 9.81;
 const AU_M = AU_KM * 1000;
@@ -16,6 +17,33 @@ export function getGlobalState(sys: System, node: CelestialBody | Barycenter | {
     // 1. Kinematic / Construct Override
     if ((node as any).kind === 'construct') {
         const c = node as any;
+        // G53 PHASE 5 - A DOCKED CONSTRUCT IS WHERE ITS STRUCTURE CARRIES IT (constructs/docking.ts),
+        // moving as the structure moves: a ribbon level's co-rotation, a rim's turn. The origin of a
+        // departure from a dock and the moving target of an arrival at one both read this, and a
+        // stale `orbit` left on the node says nothing about where it is. A ladder structure is
+        // attached to itself at the anchor, so it answers with its anchor too. The velocity is the
+        // structure's own motion, taken as a one-second difference of the propagator's offset - the
+        // same function every view reads, so the state cannot disagree with the drawing.
+        const att = effectiveAttachment(c);
+        if (att) {
+            const structure = att.id === c.id ? c : (sys.nodes.find(n => n.id === att.id) as any);
+            const host = structure?.parentId ? sys.nodes.find(n => n.id === structure.parentId) : undefined;
+            if (structure && host) {
+                const off0 = attachedOffsetAu(att, structure, host, tMs, sys);
+                if (off0) {
+                    const hostG = getGlobalState(sys, host, tMs);
+                    // A CENTRAL difference: a forward one leaves half of omega^2 R dt pointing inward
+                    // (0.11 m/s at geo), and a docked ship's velocity has no radial part.
+                    const offP = attachedOffsetAu(att, structure, host, tMs + 1000, sys) ?? off0;
+                    const offM = attachedOffsetAu(att, structure, host, tMs - 1000, sys) ?? off0;
+                    return {
+                        r: { x: hostG.r.x + off0.x, y: hostG.r.y + off0.y, z: (hostG.r.z ?? 0) + off0.z },
+                        v: { x: hostG.v.x + (offP.x - offM.x) / 2, y: hostG.v.y + (offP.y - offM.y) / 2, z: (hostG.v.z ?? 0) + (offP.z - offM.z) / 2 }
+                    };
+                }
+                if (structure !== c) return getGlobalState(sys, structure, tMs);   // point docking: the hull's own state
+            }
+        }
         
         // A. Explicit Kinematic Vector
         // Only use if actively in transit/deep space, OR if it has no orbit definition to fall back on.

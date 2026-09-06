@@ -130,7 +130,7 @@ export function coastPathUnderGravity(
 
 // arrivalPlacement code -> human label and parking-altitude factor (radii above surface),
 // matching samplePostJourneyState's visual parking orbit.
-import { dockingOf, nearestAttachment, attachedOffsetAu, LADDER_LABELS, type Attachment } from '../constructs/docking';
+import { dockingOf, nearestAttachment, attachedOffsetAu, ladderLevelRadiusKm, LADDER_LABELS, type Attachment } from '../constructs/docking';
 
 const PLACEMENT_LABELS: Record<string, string> = {
   lo: 'Low Orbit',
@@ -816,39 +816,44 @@ function samplePostJourneyState(
     const t: any = targetNode;
     const state = placement === 'surface' ? 'Landed' : (targetNode.kind === 'construct' ? 'Docked' : 'Orbiting');
 
-    // G53 PHASE 5 - A JOURNEY THAT ENDS DOCKED TO A STRUCTURE parks the ship ON the structure: at
+    // G53 PHASE 5 - A JOURNEY THAT ENDS DOCKED TO A STRUCTURE hands the ship to the structure: at
     // the level it aimed for (a ladder), or the nearest point of the rim it reached (anywhere),
     // riding the structure's own turn from then on. The SAME docking.ts arithmetic the propagator
     // uses for an authored attachment, so the GM map, the holo and the player views agree
-    // (design 7c). The flight was solved to the HOST at the level's radius; this is the hand-over
-    // from "arrived at that radius" to "attached at that radius" - a snap of at most the ribbon's
-    // bearing, and `dockMatchSpeedMs` is what the planner says it costs.
+    // (design 7c). WHEN it is handed over matters (owner, 2026-09-06: "it magically snapped on"):
+    // a rim's nearest point IS where the ship arrived, a hull is a rendezvous, and the anchor is a
+    // landing - those dock at arrival. A ladder level ABOVE the surface is handed over in the
+    // parking branch below, when the ship's (prograde) orbit catches the ribbon's bearing.
     const dock = lastPlan.arrivalDock;
-    if (dock) {
-      const structure = system.nodes.find((n) => n.id === dock.structureId) as any;
-      const hostNode = structure ? (system.nodes.find((n) => n.id === structure.parentId) as any) : undefined;
-      if (structure && hostNode) {
-        const kind = dockingOf(structure);
-        let att: Attachment | null = null;
-        if (kind === 'ladder') att = { id: structure.id, level: dock.level ?? 'geo' };
-        else if (kind === 'anywhere' && finalPos) {
-          const hostThen = getGlobalState(system, hostNode, completedAtMs);
-          att = nearestAttachment(structure, hostNode,
-            { x: finalPos.x - hostThen.r.x, y: finalPos.y - hostThen.r.y, z: (finalPos.z ?? 0) - (hostThen.r.z ?? 0) },
-            completedAtMs, system);
-        } else att = { id: structure.id };
-        const off = att ? attachedOffsetAu(att, structure, hostNode, timeMs, system) : null;
-        const base = off ? getGlobalState(system, hostNode, timeMs) : getGlobalState(system, structure, timeMs);
-        const pos = off
-          ? { x: base.r.x + off.x, y: base.r.y + off.y, z: (base.r.z ?? 0) + off.z }
-          : base.r;
-        return {
-          journeyId: log.id,
-          state: 'Docked',
-          position_au: pos,
-          velocity_ms: { x: base.v.x * AU_M, y: base.v.y * AU_M, z: (base.v.z ?? 0) * AU_M }
-        };
-      }
+    const dockStructure = dock ? (system.nodes.find((n) => n.id === dock.structureId) as any) : undefined;
+    const dockHost = dockStructure ? (system.nodes.find((n) => n.id === dockStructure.parentId) as any) : undefined;
+    const dockKind = dockStructure ? dockingOf(dockStructure) : null;
+    const dockLevel = dockKind === 'ladder' ? (dock!.level ?? 'geo') : undefined;
+    let dockAtt: Attachment | null = null;
+    if (dockStructure && dockHost) {
+      if (dockKind === 'ladder') dockAtt = { id: dockStructure.id, level: dockLevel };
+      else if (dockKind === 'anywhere' && finalPos) {
+        const hostThen = getGlobalState(system, dockHost, completedAtMs);
+        dockAtt = nearestAttachment(dockStructure, dockHost,
+          { x: finalPos.x - hostThen.r.x, y: finalPos.y - hostThen.r.y, z: (finalPos.z ?? 0) - (hostThen.r.z ?? 0) },
+          completedAtMs, system);
+      } else dockAtt = { id: dockStructure.id };
+    }
+    const dockedSample = (): JourneyKinematics | null => {
+      if (!dockAtt || !dockStructure || !dockHost) return null;
+      const off = attachedOffsetAu(dockAtt, dockStructure, dockHost, timeMs, system);
+      const base = off ? getGlobalState(system, dockHost, timeMs) : getGlobalState(system, dockStructure, timeMs);
+      const pos = off ? { x: base.r.x + off.x, y: base.r.y + off.y, z: (base.r.z ?? 0) + off.z } : base.r;
+      return {
+        journeyId: log.id,
+        state: 'Docked',
+        position_au: pos,
+        velocity_ms: { x: base.v.x * AU_M, y: base.v.y * AU_M, z: (base.v.z ?? 0) * AU_M }
+      };
+    };
+    if (dockAtt && !(dockKind === 'ladder' && dockLevel !== 'anchor')) {
+      const d = dockedSample();
+      if (d) return d;
     }
 
     if (state === 'Orbiting') {
@@ -856,7 +861,10 @@ function samplePostJourneyState(
       const targetMassKg = t.massKg || t.effectiveMassKg || 0;
       // Parking-orbit radius: the derived one, the same figure the planner offered and the solver
       // aimed at. The fallback is only for a placement this body cannot actually support.
-      const parkingRadiusKm = parkingOrbitRadiusKm(t, placement, undefined, system) ?? targetRadiusKm * 1.3;
+      // A dock plan parks at the LEVEL's radius (the same figure the planner solved to).
+      const parkingRadiusKm =
+        (dockKind === 'ladder' && dockLevel && dockStructure && dockHost ? ladderLevelRadiusKm(dockLevel, dockStructure, dockHost, system) : null)
+        ?? parkingOrbitRadiusKm(t, placement, undefined, system) ?? targetRadiusKm * 1.3;
       const aAU = parkingRadiusKm / AU_KM;
       const aM = parkingRadiusKm * 1000;
       const G_CONST = 6.6743e-11;
@@ -908,6 +916,28 @@ function samplePostJourneyState(
         w = norm({ x: rel.x - u.x * radial, y: rel.y - u.y * radial, z: rel.z - u.z * radial });
       }
       if (!w) w = norm({ x: -u.y, y: u.x, z: 0 }) ?? { x: 0, y: 0, z: 1 };
+      // G53 PHASE 5 - THE CATCH. Below geo the parked ship laps the ribbon: it docks the first time
+      // its bearing meets the ribbon's, and orbits visibly until then - no teleport. At (or above)
+      // geo the two co-move, a phasing gap the app does not model yet, so the hand-over is at
+      // arrival. A retrograde parking orbit (a journey planned before the prograde rule) never
+      // catches a prograde ribbon, so it too is handed over at arrival.
+      if (dockAtt && dockKind === 'ladder' && dockLevel && dockLevel !== 'anchor' && dockStructure && dockHost) {
+        const P = Math.abs((dockHost.rotation_period_hours || 0) * 3600);
+        const omega = P > 0 ? (2 * Math.PI) / P : 0;
+        const prograde = (u.x * w.y - u.y * w.x) >= 0;
+        let tCatch = completedAtMs;
+        if (prograde && n > omega * 1.01) {
+          const ribbon0 = attachedOffsetAu(dockAtt, dockStructure, dockHost, completedAtMs, system);
+          if (ribbon0) {
+            const gap = (((Math.atan2(ribbon0.y, ribbon0.x) - Math.atan2(u.y, u.x)) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+            tCatch = completedAtMs + (gap / (n - omega)) * 1000;
+          }
+        }
+        if (timeMs >= tCatch) {
+          const d = dockedSample();
+          if (d) return d;
+        }
+      }
       const theta = n * ((timeMs - completedAtMs) / 1000);
       const cos = Math.cos(theta);
       const sin = Math.sin(theta);

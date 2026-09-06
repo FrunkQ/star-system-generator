@@ -545,6 +545,11 @@
       const dockStructure = dockLevel && isConstructTarget ? targetNode : null;
       const dockHostId = dockStructure?.parentId ?? null;
       const dockPlacement = dockLevel === 'anchor' ? 'surface' : (dockLevel === 'lo' || dockLevel === 'mo') ? dockLevel : 'geo';
+      // The owner's rule (2026-09-06): at a host that carries a beanstalk, ALWAYS park with the
+      // planet's spin - a ship parked against it cannot transfer to the ribbon without reversing.
+      const arrivalHost = system.nodes.find(n => n.id === (dockHostId ?? targetId)) as any;
+      const beanstalkHere = !!arrivalHost && system.nodes.some(n => n.parentId === arrivalHost.id && dockingOf(n) === 'ladder');
+      const arrivalProgradeSense = beanstalkHere ? (Math.sign(arrivalHost.rotation_period_hours || 1) || 1) : 0;
 
       // Validate Initial State
       let safeInitialState = initialState;
@@ -579,6 +584,7 @@
           // Construct rendezvous must explicitly target that construct id.
           arrivalPlacement: dockStructure ? dockPlacement : ((isConstructTarget && arrivalMode === 'Rendezvous') ? targetId : selectedOrbitId),
           arrivalDock: dockStructure ? { structureId: dockStructure.id, level: dockLevel !== 'nearest' ? (dockLevel as any) : undefined } : undefined,
+          arrivalProgradeSense,
           aerobrake: {
               allowed: !!(useAerobrake && canAerobrakeEffective),
               limit_kms: currentConstructSpecs?.aerobrakeLimit_kms || 0

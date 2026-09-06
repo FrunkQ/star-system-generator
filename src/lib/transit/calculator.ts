@@ -105,7 +105,7 @@ function resolveAimPositionAtRadius(
   };
 }
 
-function resolveDesiredArrivalRelative(
+export function resolveDesiredArrivalRelative(
   arrivalRelVec_au_s: Vector2,
   targetPos: Vector2,
   targetVel: Vector2,
@@ -113,7 +113,8 @@ function resolveDesiredArrivalRelative(
   targetMassKg: number,
   parkingOrbitRadius_au: number | undefined,
   brakeAtArrival: boolean | undefined,
-  interceptSpeed_ms: number | undefined
+  interceptSpeed_ms: number | undefined,
+  progradeSense: number = 0
 ): { desiredRelVec_au_s: Vector2; dv2Required_ms: number } {
   const relMag = magnitude(arrivalRelVec_au_s);
   const intercept = Math.max(0, interceptSpeed_ms || 0);
@@ -168,6 +169,16 @@ function resolveDesiredArrivalRelative(
     tangential = { x: -rHat.y, y: rHat.x, z: 0 };
     tMag = magnitude(tangential);
     if (!(tMag > 1e-15)) return { desiredRelVec_au_s: { x: 0, y: 0, z: 0 }, dv2Required_ms: relMag * AU_M };
+  }
+  // G53 PHASE 5 - AT A BEANSTALK HOST, PARK PROGRADE (owner, 2026-09-06: "ALWAYS orbit IN the
+  // direction of planet spin IF there is a beanstalk so you can transfer with less delta v"). The
+  // parking orbit used to take the sense of the APPROACH, so a ship could arrive retrograde and be
+  // handed to a ribbon moving against it. When the caller states the host's spin sense, a
+  // retrograde approach is turned to prograde here and the reversal is PRICED in dv2 below -
+  // stated, never refused. Sense 0 keeps the old behaviour for hosts with nothing to dock to.
+  if (progradeSense) {
+    const pro = { x: -rHat.y * progradeSense, y: rHat.x * progradeSense, z: 0 };
+    if (dot(tangential, pro) < 0) tangential = { x: -tangential.x, y: -tangential.y, z: -zOf(tangential) };
   }
   const desired = {
     x: (tangential.x / tMag) * vCirc_au_s,
@@ -253,6 +264,7 @@ export function calculateTransitPlan(
       // so callers no longer pass an anomaly offset for it.
       arrivalPlacement?: string;
       arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5, see transit/types.ts
+      arrivalProgradeSense?: number; // G53 phase 5: +1/-1 = park with the host's spin (a beanstalk host); 0 = keep the approach sense
       aerobrake?: { allowed: boolean; limit_kms: number; }; // NEW
       initialDelay_days?: number;
       directAccelRatio?: number; // NEW
@@ -627,7 +639,8 @@ export function calculateTransitPlan(
           targetMassKg,
           finalParams.parkingOrbitRadius_au,
           params.brakeAtArrival,
-          params.interceptSpeed_ms
+          params.interceptSpeed_ms,
+          params.arrivalProgradeSense ?? 0
       );
 
           const dv2_req_ms = desiredArrival.dv2Required_ms;
@@ -1196,6 +1209,7 @@ function calculateLambertPlan(
         parkingOrbitRadius_au?: number; 
         arrivalPlacement?: string; 
         arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5
+        arrivalProgradeSense?: number; // G53 phase 5: +1/-1 = park with the host's spin (a beanstalk host); 0 = keep the approach sense
         extraTags?: string[];
         aerobrake?: { allowed: boolean; limit_kms: number; }; 
     },
@@ -1253,7 +1267,8 @@ function calculateLambertPlan(
         targetMassKg,
         params.parkingOrbitRadius_au,
         params.brakeAtArrival,
-        params.interceptSpeed_ms
+        params.interceptSpeed_ms,
+        params.arrivalProgradeSense ?? 0
     );
     const desiredArrivalRelVec_au_s = desiredArrival.desiredRelVec_au_s;
     let dv2Req_ms = desiredArrival.dv2Required_ms;
@@ -1582,6 +1597,7 @@ function calculateFastPlan(
         interceptSpeed_ms: number;
         arrivalPlacement?: string;
         arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5
+        arrivalProgradeSense?: number; // G53 phase 5: +1/-1 = park with the host's spin (a beanstalk host); 0 = keep the approach sense
         parkingOrbitRadius_au?: number;
         aerobrake?: { allowed: boolean; limit_kms: number; };
         initialDelay_days?: number;
@@ -1701,7 +1717,8 @@ function calculateFastPlan(
         targetMassKg,
         params.parkingOrbitRadius_au,
         params.brakeAtArrival,
-        params.interceptSpeed_ms
+        params.interceptSpeed_ms,
+        params.arrivalProgradeSense ?? 0
     );
     
     const desiredArrivalRelVec_au_s = desiredArrival.desiredRelVec_au_s;
