@@ -111,6 +111,17 @@ export interface PlayerPreset {
    * order pills are not offered there. Absent means the poster order.
    */
   sizeCompareOrder?: 'size' | 'name' | 'mass' | 'orbit';
+  /**
+   * Whether the size comparison draws its RULER — the reference circles (Ceres, Luna, Mars, Earth,
+   * Neptune, Jupiter, the Sun, Betelgeuse) concentric with whatever is in the middle.
+   *
+   * A preset field on the owner's word, 2026-09-06: *"turning the ruler on off should be a player
+   * view option"*. It is a genuine choice rather than a tidiness one — a GM putting a picture on a
+   * screen at the table may want the worlds and not the measuring marks, and the same GM's own
+   * working view may want them. Absent means ON, because the ruler is what makes the view a
+   * comparison rather than a poster.
+   */
+  sizeCompareRuler?: boolean;
   // WS5 lock-down: with the starmap stage disabled the player is dropped straight into ONE system and
   // can never reach the map. This pins WHICH one (chosen by the GM when authoring, so a shared link is
   // deterministic); unset falls back to the first charted system.

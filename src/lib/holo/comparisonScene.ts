@@ -26,6 +26,14 @@
 // DOM. That is the performance rule as much as the honesty one — a system with two hundred asteroids
 // must open in the time the map does, and a texture is only ever built for a globe you can see.
 //
+// AND THE SIXTH: THE CHROME IS IN THE PICTURE, NOT OVER IT. The labels, the dots, the rings and the
+// ruler are drawn to a 2D canvas by `comparison/stripChrome.ts` and composited here as a screen-space
+// quad IN FRONT of the globes, so the preset's real GLSL filter treats them exactly as it treats the
+// worlds — they bend with a warped CRT instead of floating straight over a bent picture. That is the
+// owner's decision of 2026-07-18 (RENDER-S54, inbox B126), and the arcs made it unavoidable: a
+// circle concentric with the subject is not something DOM can draw. Picking goes through
+// `warpPoint`, the same inverse the holo and the filtered document use.
+//
 // AND THE FIFTH DECISION: A BLACK HOLE BENDS ITS NEIGHBOURS. The strip runs the SAME stylised
 // gravitational-lensing pass the live holo and the reference gallery use (`lensingShader.ts`), so a
 // horizon on the strip warps whatever is drawn beside it into arcs over and under a genuinely black
@@ -39,6 +47,10 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
+import { filterRegistry } from './filters/FilterRegistry';
+import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
+import { warpUv, warpParamsOfUniforms } from './filters/warpPick';
+import type { FilterParamValues } from './filters/schema';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes,
@@ -80,6 +92,20 @@ export interface ComparisonSlot {
 
 export interface ComparisonSceneHandle {
   setSlots(slots: ComparisonSlot[]): void;
+  /**
+   * The chrome canvas to composite over the globes, or null for none. The CALLER owns it and draws
+   * into it; this end only uploads it. Call again after every redraw — the texture is re-uploaded,
+   * and recreated outright if the canvas has changed SIZE (see the note in `setChrome`).
+   */
+  setChrome(canvas: HTMLCanvasElement | null): void;
+  /** The preset's real GLSL filter, run over the composed picture. `'none'` removes the pass. */
+  setFilter(id: string, params?: FilterParamValues): void;
+  /**
+   * Screen uv (y-UP, 0..1) -> the SOURCE uv the eye sees there, through whatever the filter is
+   * doing. Identity when nothing distorts. This is what a tap has to go through before it can be
+   * hit-tested against the layout.
+   */
+  warpPoint(su: number, sv: number): [number, number];
   /** `scrollPx` is along the strip; `crossScrollPx` is across it (only the orbit layout uses it). */
   setView(axis: 'x' | 'y', scrollPx: number, widthPx: number, heightPx: number, crossScrollPx?: number): void;
   setSelected(id: string | null): void;
@@ -130,6 +156,33 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
   composer.addPass(new RenderPass(scene, camera));
   const lensingPass = new ShaderPass(makeLensingShader());
   composer.addPass(lensingPass);
+
+  // THE PRESET'S FILTER, LAST IN THE CHAIN so it treats the composed picture — globes, chrome and
+  // any lensing alike. This is the REAL shader rather than the CSS approximation `FilterFrame` runs:
+  // the whole point of moving the chrome into the rendered surface is that one pass now covers both.
+  const filterRes = new THREE.Vector2(1, 1);
+  const filterClock = new THREE.Clock();
+  let filterPass: ShaderPass | null = null;
+  let filterId = 'none';
+  let filterParams: FilterParamValues = {};
+  function rebuildFilter(): void {
+    if (filterPass) { composer.removePass(filterPass); (filterPass.material as THREE.Material).dispose(); filterPass = null; }
+    const def = filterRegistry.get(filterId);
+    if (!def || filterId === 'none') return;
+    filterPass = new ShaderPass(buildShaderObject(def, { ...filterRegistry.defaultParams(filterId), ...filterParams }, filterRes));
+    composer.addPass(filterPass);
+  }
+
+  // THE CHROME QUAD. One world unit is one CSS pixel and the camera never turns, so the quad is just
+  // a plane the size of the viewport at the middle of the frustum — no projection maths, and the
+  // labels land on the globes by construction, which is the same property the DOM overlay had and
+  // the reason this view was built in pixels in the first place.
+  const chromeMat = new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false });
+  const chromeMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), chromeMat);
+  chromeMesh.renderOrder = 1000;   // after every globe, ring and atmosphere
+  chromeMesh.visible = false;
+  scene.add(chromeMesh);
+  let chromeTex: THREE.CanvasTexture | null = null;
 
   interface Built {
     look: BodyLook; group: THREE.Group; slot: ComparisonSlot;
@@ -266,6 +319,15 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     built.delete(id);
   }
 
+  /**
+   * Size and place the chrome quad to cover exactly what the camera sees. Called from `applyCamera`,
+   * because the frustum carries the scroll and the quad has to travel with it.
+   */
+  function placeChrome(): void {
+    chromeMesh.scale.set(Math.max(1, camera.right - camera.left), Math.max(1, camera.top - camera.bottom), 1);
+    chromeMesh.position.set((camera.left + camera.right) / 2, (camera.top + camera.bottom) / 2, 0);
+  }
+
   function applyCamera(): void {
     if (axis === 'x') {
       camera.left = scrollPx; camera.right = scrollPx + vw;
@@ -282,6 +344,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     camera.position.set(0, 0, 1e5);
     camera.rotation.set(0, 0, 0);
     camera.updateProjectionMatrix();
+    placeChrome();
   }
 
   const _q = new THREE.Quaternion();
@@ -351,15 +414,59 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       // it in the DOM instead.
       void selected;
     }
-    // A LENSED FRAME COSTS A FULL-SCREEN PASS, so it is only taken when a hole is actually there.
-    if (feedLenses() > 0) composer.render();
-    else renderer.render(scene, camera);
+    // A COMPOSED FRAME COSTS A FULL-SCREEN PASS, so it is only taken when something needs one — a
+    // black hole to lens, or a preset filter to run. An ordinary strip on a GM's map pays nothing.
+    const lensed = feedLenses() > 0;
+    if (lensed || filterPass) {
+      if (filterPass) filterPass.uniforms.time.value = filterClock.getElapsedTime();
+      composer.render();
+    } else renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
   }
   frame();
 
   return {
     setSlots(next) { slots = next; },
+    setChrome(canvas) {
+      if (!canvas) {
+        chromeMesh.visible = false;
+        chromeTex?.dispose(); chromeTex = null; chromeMat.map = null; chromeMat.needsUpdate = true;
+        return;
+      }
+      // A CANVAS OF A DIFFERENT SIZE MUST NOT BE SWAPPED INTO A LIVE TEXTURE. WebGL2 storage is
+      // immutable once allocated, so the upload of a resized canvas lands against the old-size
+      // storage and FAILS SILENTLY — the quad then stretches the stale bitmap over every new frame.
+      // That was A1, and it cost a shipped-but-never-visible resize path; the holo's HUD carries the
+      // same note. Recreate on a dimension change; keep the cheap image swap otherwise.
+      const old = chromeTex?.image as HTMLCanvasElement | undefined;
+      if (!chromeTex || !old || old.width !== canvas.width || old.height !== canvas.height) {
+        chromeTex?.dispose();
+        chromeTex = new THREE.CanvasTexture(canvas);
+        chromeTex.colorSpace = THREE.SRGBColorSpace;
+        chromeMat.map = chromeTex;
+        chromeMat.needsUpdate = true;
+      } else {
+        chromeMat.map!.image = canvas;
+      }
+      chromeTex.needsUpdate = true;
+      chromeMesh.visible = true;
+      placeChrome();
+    },
+    setFilter(id, params) {
+      const nextId = id || 'none', next = params || {};
+      if (nextId === filterId && filterPass) {
+        filterParams = next;
+        const def = filterRegistry.get(filterId);
+        if (def) updateUniforms(filterPass.uniforms, def, { ...filterRegistry.defaultParams(filterId), ...next });
+        return;
+      }
+      if (nextId === filterId && filterId === 'none') return;
+      filterId = nextId; filterParams = next; rebuildFilter();
+    },
+    warpPoint(su, sv) {
+      if (!filterPass) return [su, sv];
+      return warpUv(su, sv, warpParamsOfUniforms(filterPass.uniforms as any));
+    },
     setView(nextAxis, nextScroll, widthPx, heightPx, nextCross = 0) {
       axis = nextAxis;
       scrollPx = nextScroll;
@@ -369,6 +476,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       vw = Math.max(1, widthPx); vh = Math.max(1, heightPx);
       renderer.setSize(vw, vh, false);
       composer.setSize(vw, vh);
+      filterRes.set(vw, vh);
       applyCamera();
     },
     setSelected(id) { selected = id; },
@@ -378,7 +486,10 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       cancelAnimationFrame(raf);
       for (const id of [...built.keys()]) destroy(id);
       textures.glow.dispose(); textures.hotspot.dispose(); textures.plume.dispose();
+      chromeTex?.dispose();
+      chromeMesh.geometry.dispose(); chromeMat.dispose();
       (lensingPass.material as THREE.Material).dispose();
+      if (filterPass) (filterPass.material as THREE.Material).dispose();
       composer.dispose();
       renderer.dispose();
     }

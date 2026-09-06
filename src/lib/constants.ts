@@ -36,6 +36,19 @@ export const EARTH_RADIUS_KM = 6371;
 // SOLAR_RADIUS_KM (695,700 against this file's 696,340) — the app reads this one; the duplicate is
 // recorded on the board, not folded in from here.
 export const LUNA_RADIUS_KM = 1737.4;
+// THE REST OF THE SIZE-COMPARISON RULER'S LADDER. Owner, 2026-09-06: *"add more common sizes -
+// jupiter sun... and a few bigger/smaller - to make the ruler at the bottom more useful and
+// interesting"*. Every one is a body a reader already has a feel for, and they are spaced roughly a
+// half-order apart so that at ANY zoom two or three of them are legible on screen and the rest fall
+// outside the window on their own — the ruler picks itself. Mean radii, in km.
+export const CERES_RADIUS_KM = 469.7;
+export const MARS_RADIUS_KM = 3389.5;
+export const NEPTUNE_RADIUS_KM = 24622;
+export const JUPITER_RADIUS_KM = 69911;
+// A red supergiant, for the top of the ladder — 764 solar radii, the figure the app's own example
+// data uses. Without something at this end a star map's ruler stops at the Sun and says nothing
+// about the objects a GM is actually looking at up there.
+export const BETELGEUSE_RADIUS_KM = 531514800;
 // Matches the bundled Sol data (Jupiter stores massKg 1.898e27), so Jupiter reads exactly 1.000
 // at the M-Jup ladder stop rather than 0.9996.
 export const JUPITER_MASS_KG = 1.898e27;

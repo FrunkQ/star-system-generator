@@ -3,22 +3,29 @@
   // order the classic planets-and-moons poster uses.
   //
   // THE SPLIT, and it is the reason this file stays small: the LAWS are pure and live in
-  // `comparison/layout.ts` (order, the median planet, the scale shares, the strip, the pixel floor,
-  // the ruler's reference marks), the GLOBES are drawn by `holo/comparisonScene.ts` through the one
-  // shared body-look assembly, and this component is the chrome between them — labels, the ruler,
-  // the hit areas, the hide menu. The scene's camera is orthographic and measured IN PIXELS, so a
-  // label placed here at `centrePx` sits over its globe by construction rather than by a projection.
+  // `comparison/layout.ts` (order, the median planet, the centre share, the strip, the pixel floor,
+  // the ruler's arcs, the hit test), the GLOBES are drawn by `holo/comparisonScene.ts` through the
+  // one shared body-look assembly, the CHROME is drawn by `comparison/stripChrome.ts` into a canvas
+  // that the scene composites and filters, and this component is what is left: the controls, the
+  // gestures, and the wiring between the three.
+  //
+  // WHAT IS DOM HERE AND WHY. Only CONTROLS — the header, the order pills, the steppers, the hide
+  // menu, and one invisible focusable button per object as the keyboard path. Everything the picture
+  // SAYS is in the rendered surface, because DOM sits in screen space and does not follow a warped,
+  // inset projection: under a barrel-warped CRT preset the picture bends and the text over it does
+  // not. Owner's decision, 2026-07-18; engine map RENDER-S54; inbox B126.
   import { onMount, createEventDispatcher } from 'svelte';
-  import UnitValue from './UnitValue.svelte';
   import {
-    sortItems, medianPlanet, layoutStrip, belowFloorNote, visibleItems,
-    idsAtLeast, idsAtMost, referenceMarks, minorTicks, clampCentreShare, slotAt,
+    sortItems, medianPlanet, layoutStrip, visibleItems,
+    idsAtLeast, idsAtMost, referenceArcs, clampCentreShare, slotAt,
     focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx, ringOpacityAt,
     OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION, SORT_ORDERS,
     type StripLayout, type SortOrder
   } from '$lib/comparison/layout';
+  import { drawStripChrome } from '$lib/comparison/stripChrome';
   import { hiddenKey, loadHidden, saveHidden, loadOrder, saveOrder, type ComparisonEntry } from '$lib/comparison/items';
-  import type { UnitBodyType } from '$lib/units';
+  import { unitPrefs } from '$lib/unitPrefsStore';
+  import type { FilterParamValues } from '$lib/holo/filters/schema';
 
   /** Everything on the map that has a true size, from `itemsForSystem` / `itemsForStarmap`. */
   export let items: ComparisonEntry[] = [];
@@ -42,15 +49,32 @@
    * its own remembered one, which is the GM's case.
    */
   export let forcedOrder: SortOrder | null = null;
+  /**
+   * The preset's REAL filter, run as a GPU pass over the composed picture — globes and chrome alike.
+   * `'none'` at the GM tier, which is the same code path with nothing in it. This replaces the
+   * `FilterFrame` CSS approximation both mounts used to wrap this view in (B126).
+   */
+  export let filterId: string = 'none';
+  export let filterParams: FilterParamValues = {};
+  /**
+   * The ruler's reference arcs. A player-view option, because a GM setting up a screen for a table
+   * may want the picture and not the measuring marks. Owner, 2026-09-06.
+   */
+  export let showRuler = true;
 
   const dispatch = createEventDispatcher<{ select: { id: string }; close: void }>();
 
   let canvas: HTMLCanvasElement;
+  /** The 2D canvas the chrome is drawn to. Owned here, uploaded by the scene. See `redrawChrome`. */
+  let chromeCanvas: HTMLCanvasElement;
   let stage: HTMLDivElement;
   let handle: {
     setSlots: (s: any[]) => void;
     setView: (a: 'x' | 'y', s: number, w: number, h: number, cross?: number) => void;
     setSelected: (id: string | null) => void;
+    setChrome: (c: HTMLCanvasElement | null) => void;
+    setFilter: (id: string, params?: FilterParamValues) => void;
+    warpPoint: (su: number, sv: number) => [number, number];
     dispose: () => void;
   } | null = null;
 
@@ -128,10 +152,15 @@
   $: overflows = seq.length > 1;
   $: atStart = focus <= 0.001;
   $: atEnd = focus >= seq.length - 1.001;
-  $: rulerLen = axis === 'x' ? vw : vh;
-  $: marks = referenceMarks(scale, rulerLen);
-  $: minors = minorTicks(scale, rulerLen);
+  /**
+   * THE RULER, as circles of the reference diameters concentric with the middle of the window — which
+   * is where the focused object is, by the focus law. The ladder picks itself: only the rungs that
+   * are legible at this zoom come back (see `referenceArcs`).
+   */
+  $: arcs = showRuler ? referenceArcs(scale, vw, vh) : [];
   $: byId = new Map(items.map((i) => [i.id, i]));
+  /** What the chrome needs per object: its role (for the unit bucket) and its true size. */
+  $: chromeInfo = new Map(items.map((i) => [i.id, { role: i.role, diameterKm: i.diameterKm }]));
   /** Where each object sits in the travelling sequence — the ring fade is measured in these steps. */
   $: seqIndex = new Map(seq.map((i, n) => [i.id, n]));
 
@@ -159,8 +188,8 @@
   }
 
   // The scene only ever hears about globes it can actually draw: anything under the floor is a DOT,
-  // and a dot is DOM. That is the performance rule (no texture for a body you cannot see) and the
-  // honesty rule (RENDER-S43: a floor is a legibility device, never a size) in one place.
+  // and a dot is drawn by the CHROME. That is the performance rule (no texture for a body you cannot
+  // see) and the honesty rule (RENDER-S43: a floor is a legibility device, never a size) in one place.
   $: if (handle) handle.setSlots(layout.slots.filter((s) => !s.belowFloor).map((s) => ({
     id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, crossPx: s.crossPx,
     diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex,
@@ -172,9 +201,36 @@
   })).filter((s) => s.node));
   $: if (handle) handle.setView(axis, scrollPx, vw, vh, crossScrollPx);
   $: if (handle) handle.setSelected(selectedId);
+  $: if (handle) handle.setFilter(filterId, filterParams);
 
-  function bodyTypeOf(role: string): UnitBodyType {
-    return role === 'star' ? 'star' : role === 'moon' ? 'moon' : 'planet';
+  /**
+   * REDRAW THE CHROME. Listed dependencies rather than a blanket reaction, because this runs on every
+   * pointer move of a drag and the list is what says so out loud.
+   *
+   * `$unitPrefs` is in it because a unit cycled anywhere else in the app has to reach these labels —
+   * that is the whole reason the strip's own labels could stop being buttons (DATA-R20: a pref
+   * RELABELS). AND `handle` IS IN IT because the scene arrives LATE: it is a dynamic import, so the
+   * first chrome is drawn before there is anything to hand it to, and without the dependency the
+   * canvas is never uploaded at all — a perfectly correct bitmap that nothing ever composites. Seen
+   * exactly that way: content in the canvas, nothing on the screen.
+   */
+  $: redrawChrome(layout, arcs, chromeInfo, scrollPx, crossScrollPx, vw, vh, axis, selectedId, hoveredId, $unitPrefs, handle);
+
+  function redrawChrome(..._deps: unknown[]): void {
+    if (!chromeCanvas || !(vw > 1) || !(vh > 1)) return;
+    // The backing store is at the device ratio so the text is crisp, and the context is scaled so
+    // everything in this module can be written in CSS pixels — the same coordinates the layout is in.
+    const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+    const w = Math.round(vw * dpr), h = Math.round(vh * dpr);
+    if (chromeCanvas.width !== w || chromeCanvas.height !== h) { chromeCanvas.width = w; chromeCanvas.height = h; }
+    const ctx = chromeCanvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawStripChrome(ctx as any, {
+      layout, info: chromeInfo, arcs, scrollPx, crossScrollPx, vw, vh, axis,
+      selectedId, hoveredId, prefs: $unitPrefs
+    });
+    handle?.setChrome(chromeCanvas);
   }
 
   /** One stepper press, or one arrow key: most of a screenful, so you keep your place. */
@@ -337,8 +393,15 @@
    */
   function slotAtPointer(e: { clientX: number; clientY: number }) {
     const rect = stage?.getBoundingClientRect();
-    if (!rect) return null;
-    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
+    // THROUGH THE WARP FIRST. A distorting preset is a POST pass: the thing under the finger is not
+    // at the finger's own uv, it is at the uv the shader SAMPLED to paint that pixel. Screen uv is
+    // y-UP by the shader's convention, so it flips going in and back coming out. Identity when
+    // nothing distorts, which is every GM view — a tap there must not move by an epsilon.
+    const su = (e.clientX - rect.left) / rect.width;
+    const sv = 1 - (e.clientY - rect.top) / rect.height;
+    const [u, v] = handle?.warpPoint(su, sv) ?? [su, sv];
+    const sx = u * vw, sy = (1 - v) * vh;
     const alongPx = (axis === 'x' ? sx : sy) + scrollPx;
     const crossPx = (axis === 'x' ? sy - vh / 2 : sx - vw / 2) + crossScrollPx;
     return slotAt(layout, alongPx, crossPx);
@@ -451,64 +514,35 @@
          which does its own arithmetic, was exactly right. CSS below sizes the element. -->
     <canvas bind:this={canvas}></canvas>
 
-    <!-- The overlay: hit areas, labels, dots and the ruler. One world unit is one pixel, so a slot's
-         `centrePx` is its position here with only the scroll subtracted. -->
+    <!-- THE CHROME. Drawn by `comparison/stripChrome.ts` and handed to the scene, which composites
+         it in FRONT of the globes and runs the preset's real filter over both — so a label bends
+         with a warped CRT instead of floating straight over a bent picture (B126, RENDER-S54).
+         IT STAYS IN THE DOM, invisible, for one reason: a machine with no WebGL still gets every
+         reading. `.chrome.fallback` makes it visible when the scene failed to start, which is the
+         same fault G68's gate found the first time round — a black box with a header and no strip,
+         when it could have had everything except the globes. -->
+    <canvas class="chrome" class:fallback={!handle} bind:this={chromeCanvas}></canvas>
+
+    <!-- THE KEYBOARD PATH, and nothing else: one focusable, pointer-transparent, invisible button
+         per object, so every world is reachable and nameable without a mouse. The pointer never
+         comes through here (the stage picks against the layout, through the filter's warp), and
+         nothing is drawn here either — the ring and the label are in the picture now. -->
     <div class="overlay">
       {#each layout.slots as slot (slot.id)}
-        {@const item = byId.get(slot.id)}
         {@const along = slot.centrePx - scrollPx}
-        {#if item && along > -slot.spanPx && along < (axis === 'x' ? vw : vh) + slot.spanPx}
-          <!-- POINTER-TRANSPARENT ON PURPOSE (see `.hit` in the stylesheet): the stage does the
-               picking now, against the layout. What these still are is the KEYBOARD path — one
-               focusable control per object, activated with Enter or Space — and the selection ring. -->
+        {#if along > -slot.spanPx && along < (axis === 'x' ? vw : vh) + slot.spanPx}
           <button
             class="hit"
-            class:selected={slot.id === selectedId}
-            class:hover={slot.id === hoveredId}
-            class:dot={slot.belowFloor}
             style={axis === 'x'
               ? `left:${along - slot.spanPx / 2}px; top:calc(50% + ${slot.crossPx - crossScrollPx - slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`
               : `top:${along - slot.spanPx / 2}px; left:calc(50% + ${slot.crossPx - crossScrollPx - slot.spanPx / 2}px); width:${slot.spanPx}px; height:${slot.spanPx}px;`}
             title={slot.name}
             on:click={() => { if (!dragged) pick(slot.id); }}
+            on:focus={() => (hoveredId = slot.id)}
+            on:blur={() => { if (hoveredId === slot.id) hoveredId = null; }}
           ></button>
-          <div
-            class="label {slot.labelSide}"
-            class:vertical={axis === 'y'}
-            style={axis === 'x'
-              ? `left:${along}px; ${slot.labelSide === 'start' ? 'top' : 'bottom'}: calc(50% ${slot.labelSide === 'start' ? '+' : '-'} ${slot.crossPx - crossScrollPx + slot.spanPx / 2 + 8}px);`
-              : `top:${along}px; ${slot.labelSide === 'start' ? 'left' : 'right'}: calc(50% ${slot.labelSide === 'start' ? '+' : '-'} ${slot.crossPx - crossScrollPx + slot.spanPx / 2 + 8}px);`}
-          >
-            <span class="name">{slot.name}</span>
-            <span class="size">
-              <UnitValue quantity="radius" bodyType={bodyTypeOf(item.role)} value={item.diameterKm} />
-            </span>
-            {#if slot.belowFloor}<span class="floor">{belowFloorNote(slot.diameterPx)}</span>{/if}
-          </div>
         {/if}
       {/each}
-
-      <!-- The ruler, in the current LENGTH unit through the click-to-cycle prefs (DATA-R20: stored
-           values never leave SI; a pref RELABELS). Three highlighted reference ticks — Luna, Earth,
-           the Sun — shown as an arrow at the edge when they fall off the range. -->
-      <div class="ruler" class:vertical={axis === 'y'}>
-        {#each minors as t (t.km)}
-          <div class="minor" style={axis === 'x' ? `left:${t.posPx}px` : `top:${t.posPx}px`}></div>
-        {/each}
-        {#each marks as m (m.id)}
-          {#if m.off === 'none'}
-            <div class="tick" style={axis === 'x' ? `left:${m.posPx}px` : `top:${m.posPx}px`}>
-              <span class="tick-label" style={axis === 'x' ? `top:${2 + m.row * 12}px` : `left:${2 + m.row * 12}px`}>{m.label} · <UnitValue quantity="radius" bodyType={m.id === 'sun' ? 'star' : 'planet'} value={m.diameterKm} /></span>
-            </div>
-          {:else}
-            <!-- An arrow along the STRIP's own axis: right/left across a desktop ruler, down/up a
-                 phone one. A rightward arrow on a vertical ruler points at nothing. -->
-            <div class="tick off {m.off}">
-              <span class="tick-label">{axis === 'x' ? (m.off === 'end' ? '→' : '←') : (m.off === 'end' ? '↓' : '↑')} {m.label}</span>
-            </div>
-          {/if}
-        {/each}
-      </div>
     </div>
 
     {#if menuFor}
@@ -606,30 +640,19 @@
      boxes overlap, because at true scale a giant's disc covers the window. They remain focusable
      (a disabled pointer does not disable the keyboard), which is what keeps every object reachable
      without a mouse. */
-  .hit { position: absolute; border: none; background: none; border-radius: 50%; padding: 0; cursor: pointer; pointer-events: none; }
-  .hit.hover, .hit:focus-visible { box-shadow: 0 0 0 2px rgba(140, 190, 255, 0.55); outline: none; }
-  .hit.selected { box-shadow: 0 0 0 2px rgba(255, 214, 120, 0.85); }
-  /* A sub-floor object is a MARKER, never an inflated body: a small ring where the object is. */
-  .hit.dot { background: #cfe0f5; box-shadow: 0 0 6px rgba(200, 224, 255, 0.7); }
+  /* THE KEYBOARD PATH'S BOXES. Pointer-transparent (the stage picks against the layout, through the
+     filter's warp) and INVISIBLE: the selection ring, the hover ring, the dot and the label are all
+     drawn into the picture now, so a box that also painted them would be a second answer to what a
+     body looks like - and the wrong one, because it would not bend with the filter. What survives
+     is a focusable target with a name, which is what keeps every world reachable without a mouse. */
+  .hit { position: absolute; border: none; background: none; padding: 0; cursor: pointer; pointer-events: none; }
 
-  .label { position: absolute; transform: translateX(-50%); text-align: center; font-size: 11px; white-space: nowrap; pointer-events: none; }
-  .label.vertical { transform: translateY(-50%); text-align: left; }
-  .name { display: block; color: #e7eefa; }
-  .size { display: block; color: #8fa6c4; font-size: 10px; }
-  .floor { display: block; color: #6c7d96; font-size: 10px; font-style: italic; }
-
-  .ruler { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; border-top: 1px solid #1b2434; background: rgba(5, 7, 12, 0.72); }
-  .minor { position: absolute; top: 0; border-left: 1px solid #2b384c; height: 7px; }
-  .ruler.vertical .minor { left: 0; border-left: none; border-top: 1px solid #2b384c; width: 7px; height: auto; }
-  .ruler.vertical { top: 0; bottom: 0; left: 0; right: auto; width: 44px; height: auto; border-top: none; border-right: 1px solid #1b2434; }
-  .tick { position: absolute; top: 0; border-left: 1px solid #ffd678; height: 100%; }
-  .ruler.vertical .tick { left: 0; border-left: none; border-top: 1px solid #ffd678; width: 100%; height: auto; }
-  .tick-label { position: absolute; left: 4px; top: 2px; font-size: 10px; color: #ffd678; white-space: nowrap; }
-  .ruler.vertical .tick-label { left: 6px; top: 2px; }
-  .tick.off.end { right: 2px; left: auto; border: none; }
-  .tick.off.start { left: 2px; border: none; }
-  .ruler.vertical .tick.off.end { bottom: 2px; top: auto; right: auto; left: 0; }
-  .ruler.vertical .tick.off.start { top: 2px; left: 0; }
+  /* The chrome canvas is uploaded to the scene and drawn INSIDE the picture, so the element itself
+     is hidden - it is a source bitmap, not a layer. `visibility` rather than `display`, because a
+     canvas that is not laid out cannot be measured. It becomes visible only when the scene failed
+     to start: no globes then, but every label, dot and arc still reads. */
+  .chrome { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; visibility: hidden; }
+  .chrome.fallback { visibility: visible; }
 
   .menu { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #101a28; border: 1px solid #2c3d55; border-radius: 8px; padding: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 240px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6); }
   .menu-title { font-size: 11px; color: #8fa6c4; padding: 4px 8px 6px; }

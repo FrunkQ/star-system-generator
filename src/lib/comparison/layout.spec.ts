@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   sortBySize, medianPlanet, pxPerKm, layoutStrip, belowFloorNote,
-  idsAtLeast, idsAtMost, visibleItems, referenceMarks, minorTicks, LABEL_MIN_GAP_PX,
+  idsAtLeast, idsAtMost, visibleItems, referenceArcs, REFERENCE_TICKS, MIN_ARC_RADIUS_PX,
   TAP_SLOP_PX, STEP_FRACTION, sortItems, orbitOrder, orbitTree, measureSlot,
   SORT_ORDERS, GAP_FRACTION as GAPF,
   OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX, RING_ROOM_FRACTION,
@@ -789,59 +789,69 @@ describe('size comparison — hiding', () => {
   });
 });
 
-describe('size comparison — the ruler', () => {
-  it('marks Luna, Earth and the Sun, in km, from the app constants', () => {
-    const marks = referenceMarks(1, 1e7);
-    expect(marks.map((m) => m.label)).toEqual(['Luna', 'Earth', 'Sun']);
-    expect(marks[0].diameterKm).toBeCloseTo(3474.8, 6);
-    expect(marks[1].diameterKm).toBeCloseTo(12742, 6);
-    expect(marks[2].diameterKm).toBeCloseTo(1392680, 6);
-    // NOT the realsky duplicate (695,700 x 2 = 1,391,400) — the view reads the app constant.
-    expect(marks[2].diameterKm).not.toBeCloseTo(1391400, 6);
+describe('size comparison — the ruler, as arcs about whatever is in the middle', () => {
+  // Owner, 2026-09-06: "perhaps more as arcs to show size ... perhaps have the ruler centred rather
+  // than to one side - so it aligns to the planet on screen." An arc is a circle of the reference's
+  // TRUE diameter drawn concentric with the subject, so "three Earths across" is a picture rather
+  // than a calculation carried across the screen.
+
+  it('offers a ladder a reader already has a feel for, in ascending size, from the app constants', () => {
+    expect(REFERENCE_TICKS.map((t) => t.id)).toEqual(
+      ['ceres', 'luna', 'mars', 'earth', 'neptune', 'jupiter', 'sun', 'betelgeuse']);
+    // Strictly ascending, or the "picks itself" rule below has no ladder to walk.
+    const d = REFERENCE_TICKS.map((t) => t.diameterKm);
+    expect(d).toEqual([...d].sort((a, b) => a - b));
+    // ABSOLUTE, from `constants.ts` (PHY-34): a ratio test cannot see a drifted constant.
+    expect(REFERENCE_TICKS.find((t) => t.id === 'earth')!.diameterKm).toBeCloseTo(12742, 6);
+    expect(REFERENCE_TICKS.find((t) => t.id === 'jupiter')!.diameterKm).toBeCloseTo(139822, 6);
+    expect(REFERENCE_TICKS.find((t) => t.id === 'sun')!.diameterKm).toBeCloseTo(1392680, 6);
+    // Six orders of magnitude, so that at any zoom SOMETHING is legible.
+    expect(d[d.length - 1] / d[0]).toBeGreaterThan(1e6);
   });
 
-  it('staggers labels that would collide, and only those', () => {
-    // On a strip of STARS, Luna and Earth both land a few pixels from zero: at the scale that makes a
-    // red dwarf 340 px across they are 3 px and 11 px in, and their labels overlapped into one smudge
-    // on the live map. The second (and third) drop to the next row; nothing else moves.
-    const starScale = 340 / 700000;
-    const crowded = referenceMarks(starScale, 1200);
-    expect(crowded.find((m) => m.id === 'luna')!.row).toBe(0);
-    expect(crowded.find((m) => m.id === 'earth')!.row).toBe(1);
-    // Zoomed right in on a moon, Luna and Earth are far apart and both sit on row 0.
-    const moonScale = 400 / 3474.8;
-    const spread = referenceMarks(moonScale, 1e7);
-    expect(spread.find((m) => m.id === 'luna')!.posPx).toBeCloseTo(400, 6);
-    expect(spread.find((m) => m.id === 'earth')!.posPx - spread.find((m) => m.id === 'luna')!.posPx)
-      .toBeGreaterThan(LABEL_MIN_GAP_PX);
-    expect(spread.find((m) => m.id === 'earth')!.row).toBe(0);
+  it('draws a circle of the reference’s TRUE diameter, centred on the window', () => {
+    // At the scale that puts Earth at the opening share of an 800 px side, Earth's arc has radius 88
+    // px — half of the 176 px the subject itself draws, which is what makes the two coincide when
+    // you are looking at an Earth-sized world.
+    const scale = pxPerKm(12742, 800, OPENING_SHARE);
+    const arcs = referenceArcs(scale, 1200, 800);
+    const earth = arcs.find((a) => a.id === 'earth')!;
+    expect(earth.radiusPx).toBeCloseTo(88, 6);
+    // ...and the label sits ON its own arc, not beside it.
+    expect(Math.hypot(earth.labelX - 600, earth.labelY - 400)).toBeCloseTo(earth.radiusPx, 6);
   });
 
-  it('reads SIZE rather than position, so it does not move when the strip scrolls', () => {
-    // The ruler answers "how many pixels is one Earth at this scale", which is what lets you judge
-    // anything on screen against it. Nothing in its inputs is the scroll, and that is deliberate.
-    const a = referenceMarks(0.02, 1000);
-    const b = referenceMarks(0.02, 1000);
-    expect(a.map((m) => m.posPx)).toEqual(b.map((m) => m.posPx));
+  it('PICKS ITSELF: only the rungs that are legible at this zoom, at either end', () => {
+    // Looking at an Earth-sized world in a 1200x800 window: the ladder runs from Ceres (a 6.5 px
+    // dot inside the subject) up to Neptune (340 px). Jupiter's circle is 966 px and never enters a
+    // window whose half-diagonal is 721, so it is not drawn at all - nothing is "hidden".
+    const scale = pxPerKm(12742, 800, OPENING_SHARE);
+    const ids = referenceArcs(scale, 1200, 800).map((a) => a.id);
+    expect(ids).toEqual(['ceres', 'luna', 'mars', 'earth', 'neptune']);
+    // AND THE SAME LADDER ON A STRIP OF STARS SELECTS THE OTHER END, with no code that knows which
+    // map it is on: looking at the Sun you get Jupiter inside it, and the rocks have fallen off.
+    const starScale = pxPerKm(1392680, 800, OPENING_SHARE);
+    expect(referenceArcs(starScale, 1200, 800).map((a) => a.id)).toEqual(['jupiter', 'sun']);
   });
 
-  it('lays minor ticks on the app nice-interval ladder, inside the ruler', () => {
-    const scale = pxPerKm(medianPlanet(SOL)!.diameterKm, 800, OPENING_SHARE);
-    const ticks = minorTicks(scale, 1000);
-    expect(ticks.length).toBeGreaterThan(2);
-    expect(ticks.every((t) => t.posPx > 0 && t.posPx <= 1000.1)).toBe(true);
-    // 1/2/5 ladder: every step is a round multiple, so the gaps are all equal.
-    const gaps = ticks.slice(1).map((t, i) => t.km - ticks[i].km);
-    expect(new Set(gaps.map((g) => g.toPrecision(8))).size).toBe(1);
-    expect(minorTicks(0, 1000)).toEqual([]);
-    expect(minorTicks(1, 0)).toEqual([]);
+  it('never labels an arc off the window — a label the reader cannot check is a claim, not a scale', () => {
+    for (const [vw, vh] of [[1200, 800], [420, 900], [900, 420], [300, 300]] as const) {
+      for (const share of [0.05, 0.22, 0.9]) {
+        const scale = pxPerKm(12742, Math.min(vw, vh), share);
+        for (const a of referenceArcs(scale, vw, vh)) {
+          expect(a.labelX).toBeGreaterThanOrEqual(0);
+          expect(a.labelX).toBeLessThanOrEqual(vw);
+          expect(a.labelY).toBeGreaterThanOrEqual(0);
+          expect(a.labelY).toBeLessThanOrEqual(vh);
+          expect(a.radiusPx).toBeGreaterThanOrEqual(MIN_ARC_RADIUS_PX);
+        }
+      }
+    }
   });
 
-  it('reports a mark that falls off the ruler rather than dropping it', () => {
-    const scale = pxPerKm(medianPlanet(SOL)!.diameterKm, 800, OPENING_SHARE);
-    const marks = referenceMarks(scale, 1000);
-    expect(marks.find((m) => m.id === 'earth')!.off).toBe('none');    // 176 px in
-    expect(marks.find((m) => m.id === 'sun')!.off).toBe('end');       // 19,237 px — far off the end
-    expect(marks.find((m) => m.id === 'luna')!.posPx).toBeCloseTo(47.996, 2);
+  it('survives a zero scale and a zero-size window rather than dividing by them', () => {
+    expect(referenceArcs(0, 1200, 800)).toEqual([]);
+    expect(referenceArcs(1, 0, 800)).toEqual([]);
+    expect(referenceArcs(1, 1200, 0)).toEqual([]);
   });
 });

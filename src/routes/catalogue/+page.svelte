@@ -1416,35 +1416,35 @@
          inherits its config". -->
     <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH}
       style={activePreset ? `font-family:${presetFont}` : ''}>
-      <!-- THE FILTER AND THE OVERLAY BELONG ROUND THE WHOLE PICTURE, and this view is the CSS-
-           approximation tier rather than the holo's. It first shipped (v3.0.308) with NEITHER —
-           a GM who chose the CRT preset got no CRT at all — while the preset editor's preview DID
-           wrap it, so the preview was describing a view that did not exist. That is the one thing
-           the preview exists to prevent.
-           WHY THE APPROXIMATION AND NOT THE REAL SHADER: the holo runs its filter as a GPU pass
-           INSIDE the scene, and gets away with it because everything it draws — labels included —
-           is in the scene as a sprite. Half of this view is DOM (the labels, the ruler, the dots),
-           so a GPU pass over the globes alone would tint the planets and leave their names
-           untouched, which reads worse than a consistent approximation over both. Making it the
-           real one means drawing the chrome into the rendered surface the way the holo does; that
-           is scoped on the board as part of [[G68]] and is not free. One filter over the composed
-           picture, and the overlay inside it so a graphic is filtered with what it sits on. -->
+      <!-- THE REAL SHADER, NOT THE APPROXIMATION. This view draws its own chrome — the labels, the
+           dots, the rings and the ruler's arcs — INTO the rendered surface (`comparison/stripChrome.ts`,
+           composited by `holo/comparisonScene.ts`), so one GPU pass covers the worlds and the words
+           alike and a label bends with a warped CRT instead of floating straight over a bent picture.
+           That is the owner's decision of 2026-07-18, finished here: [[B126]], engine map RENDER-S54.
+           It shipped without any filter at all (v3.0.308), then under the CSS approximation
+           (v3.0.309) which was the wrong tier, and `FilterFrame` is now gone from this branch. The
+           overlay graphic keeps its own frame, exactly as the holo branch above does — it is a
+           GraphicLayer over the top rather than part of the picture. -->
       {#if displaySystem}
-        <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-          <SizeComparisonView
-            items={sizeCompareItems}
-            scope="system"
-            mapId={displaySystem.id ?? null}
-            mode={isPhone ? 'phone' : 'desktop'}
-            selectedId={selectedBody?.id ?? null}
-            forcedOrder={activePreset?.sizeCompareOrder ?? 'size'}
-            playerChrome
-            on:select={(e) => { if (presetInteractive) { pushNavStep(); selectBodyById(e.detail.id); } }}
-          />
-          {#if activePreset?.systemOverlay}
-            <div class="overlay-wrap"><GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} /></div>
-          {/if}
-        </FilterFrame>
+        <SizeComparisonView
+          items={sizeCompareItems}
+          scope="system"
+          mapId={displaySystem.id ?? null}
+          mode={isPhone ? 'phone' : 'desktop'}
+          selectedId={selectedBody?.id ?? null}
+          forcedOrder={activePreset?.sizeCompareOrder ?? 'size'}
+          showRuler={activePreset?.sizeCompareRuler !== false}
+          filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
+          playerChrome
+          on:select={(e) => { if (presetInteractive) { pushNavStep(); selectBodyById(e.detail.id); } }}
+        />
+        {#if activePreset?.systemOverlay}
+          <div class="overlay-wrap">
+            <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+              <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
+            </FilterFrame>
+          </div>
+        {/if}
       {/if}
       {#if !activePreset?.hideInfoPanel}{@render inspectorAside()}{/if}
     </div>

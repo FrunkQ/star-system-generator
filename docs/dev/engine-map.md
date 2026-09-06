@@ -6449,6 +6449,17 @@ size** - the renderer, whose `setSize` multiplies by the device pixel ratio; a S
 ([[B122]]), which is invisible at ratio 1 and obvious at 2. In BOTH faults the DOM overlay was
 pixel-exact throughout, because it does its own arithmetic - so a broken canvas beside a correct
 overlay reads as a DATA fault and sends you looking in the wrong module.
+THE RULER IS CIRCLES, NOT A BAR (`referenceArcs`, drawn by `stripChrome`). Owner, 2026-09-06:
+*"perhaps more as arcs to show size ... perhaps have the ruler centred rather than to one side - so
+it aligns to the planet on screen."* A bar answers "how many pixels is an Earth" and leaves the
+reader to carry that number across the screen and compare two lengths by eye; a circle of the
+reference's TRUE diameter drawn concentric with whatever is in the middle makes "three Earths across"
+a picture instead of a calculation. THE LADDER PICKS ITSELF: eight rungs from Ceres to Betelgeuse,
+and a rung is drawn only where it is legible - bigger than `MIN_ARC_RADIUS_PX` and small enough that
+its circle still crosses the window. On a strip of moons that selects Ceres, Luna and Mars; on a
+strip of stars, Jupiter and the Sun; and no code knows which map it is on. Switched off by
+`sizeCompareRuler` in the preset, because a GM putting a picture on a screen may want the worlds
+without the marks.
 ONLY THE RING AT THE FOCUS IS DRAWN AT FULL STRENGTH (`ringOpacityAt`). Owner, 2026-09-06: *"rings
 on unselected planets need to disappear each side - fade in/out as it moves so only 1 ring is only
 fully visible - 2 on a move - saves a lot of nasty alpha."* Three ringed worlds drawn at true extent
@@ -6625,6 +6636,20 @@ That was fixed in v3.0.309 by reaching for `FilterFrame`, and THAT is the second
 new player stage out of DOM chrome under the CSS approximation, which is the thing the 2026-07-18
 decision retires. Recorded as [[B126]]. The first cut of this entry wrote that choice down as a
 legitimate tier, which would have taught the next reader the wrong rule.
+**[[B126]] IS DONE (v3.0.322) AND THE SIZE COMPARISON IS NOW THE WORKED EXAMPLE of this rule rather
+than the counter-example.** Its labels, dots, rings and ruler are drawn by `comparison/stripChrome.ts`
+into a 2D canvas; `holo/comparisonScene.ts` composites that canvas as a screen-space quad in front of
+the globes and runs the preset's real GLSL pass over the lot; picking goes through `warpPoint`.
+`FilterFrame` is gone from both of its mounts. SEEN LIVE under the CRT preset: the labels take the
+phosphor and the scanlines, and at full barrel warp they bend with the worlds they name.
+WHAT FORCED IT, and it is worth knowing because it is the shape of argument that usually wins: not
+tidiness, a FEATURE. The ruler became reference circles concentric with the subject, and a circle is
+not something DOM can draw. A rule nobody could find time for became the cheapest way to build the
+next thing asked for.
+THE FOUR PLACES ARE NOW FIVE for a stage with chrome: the catalogue branch, the preview branch, the
+overlay inside both, the `ViewModule` union - and the CHROME RENDERER, which must be one function for
+both tiers. A second renderer to preserve a DOM-only interaction (the strip's unit-cycling was the
+temptation) is two implementations of one set of labels.
 BLAST: adding a stage means touching FOUR places that must agree - the catalogue branch, the preview
 branch, the overlay inside both, and the `ViewModule` union. And if the stage has chrome, that
 chrome belongs in the rendered surface from the start: retrofitting it means moving every label into

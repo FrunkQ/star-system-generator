@@ -4,6 +4,11 @@ All notable changes are listed here:
 
 ## v3.0.322 - 6th Sep 2026
 
+- The Size comparison's ruler is now a set of circles drawn around whatever is in the middle of the screen, instead of a bar along the bottom. Ceres, Luna, Mars, Earth, Neptune, Jupiter, the Sun and Betelgeuse are all on the ladder, and only the ones you could actually see at your current zoom are drawn - so on a screen of moons you get the small ones and on a screen of stars you get the big ones, without touching anything. You can see how many Earths would fit across the world you are looking at rather than working it out.
+- The ruler can be turned off for a player view, in the preset editor beside the order.
+- Everything the Size comparison says - the names, the sizes, the dots for things too small to draw, the rings round what you have picked, and the ruler - is now drawn INTO the picture rather than laid over it as web text. Under a CRT preset that means the writing takes the phosphor and the scanlines like everything else, and when the screen is curved the words curve with the worlds they name instead of sitting flat on top of a bent picture. Tapping still lands on what your eye sees.
+- The one thing lost: you can no longer click a unit on the strip itself to change it. Change it from any other panel and the strip follows, exactly as before.
+
 - Fixed: a transit left running with the clock on no longer fills memory. The autosave kept a copy of the whole campaign for every frame the ship moved and wrote them one by one; it now keeps only the latest and writes that. The undo recorder also stops copying the whole system every frame a ship is in flight.
 - Fixed: a liquid you create now appears in the list a gas can condense into. The gas editor was reading the shipped liquids rather than yours.
 

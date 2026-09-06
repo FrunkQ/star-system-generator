@@ -817,8 +817,16 @@
                     <option value="orbit">Orbit — moons under their planet</option>
                   </select>
                 </label>
+                <label class="chk">
+                  <input type="checkbox" checked={draft.sizeCompareRuler !== false}
+                    on:change={(e) => (draft.sizeCompareRuler = (e.currentTarget as HTMLInputElement).checked)} />
+                  Show the size ruler
+                </label>
                 <p class="hint">Every object in the system at true relative size. Players can move
-                  along the strip and tap anything to read its file; the order is yours to set.</p>
+                  along the strip and tap anything to read its file; the order is yours to set. The
+                  ruler draws Luna, Earth, Jupiter and the rest as circles around whatever is in the
+                  middle, so you can see how many of them would fit across it — turn it off for a
+                  picture rather than a measurement.</p>
               {/if}
             {:else}
               <p class="hint">Disabled: systems aren't openable; the starmap (or cover) is the whole guide.</p>
@@ -1180,7 +1188,7 @@
                 <FilterParamControls filterId={draft.filter} values={draft.filterParams}
                   on:change={(e) => (draft = { ...draft, filterParams: e.detail })} />
               </div>
-              <p class="hint">The 3D view uses the exact shader; text and 2D screens use a lighter matched version so their content stays readable.</p>
+              <p class="hint">The 3D view and the size comparison use the exact shader, text and all; other text screens use a lighter matched version so their content stays readable.</p>
             {/if}
           </CollapsibleSection>
         {/if}
@@ -1305,19 +1313,27 @@
                 on:select={(e) => (previewFocusId = e.detail)} />
             {:else if draft.systemView === 'sizecompare' && previewSystem}
               <!-- G68: the SAME component the players get, with the same player chrome, so this
-                   preview cannot show a view that does not exist. -->
-              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
-                <div class="sizecmp-wrap">
-                  <SizeComparisonView items={itemsForSystem(previewSystem)} scope="system"
-                    mapId={previewSystem.id ?? null} mode="desktop"
-                    selectedId={previewFocusId} playerChrome
-                    forcedOrder={draft.sizeCompareOrder ?? 'size'}
-                    on:select={(e) => (previewFocusId = e.detail.id)} />
-                  {#if draft.systemOverlay}
-                    <div class="ovl-wrap"><GraphicLayer placement={draft.systemOverlay} assets={$playerAssetList} /></div>
-                  {/if}
-                </div>
-              </FilterFrame>
+                   preview cannot show a view that does not exist.
+                   NO `FilterFrame` HERE ANY MORE (B126): the view draws its own chrome into the
+                   rendered surface and runs the REAL shader over the lot, so wrapping it in the CSS
+                   approximation as well would tint the picture twice and still not warp the text.
+                   The overlay graphic keeps its own frame, exactly as the holo branch does. -->
+              <div class="sizecmp-wrap">
+                <SizeComparisonView items={itemsForSystem(previewSystem)} scope="system"
+                  mapId={previewSystem.id ?? null} mode="desktop"
+                  selectedId={previewFocusId} playerChrome
+                  forcedOrder={draft.sizeCompareOrder ?? 'size'}
+                  showRuler={draft.sizeCompareRuler !== false}
+                  filterId={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams ?? {}}
+                  on:select={(e) => (previewFocusId = e.detail.id)} />
+                {#if draft.systemOverlay}
+                  <div class="ovl-wrap">
+                    <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                      <GraphicLayer placement={draft.systemOverlay} assets={$playerAssetList} />
+                    </FilterFrame>
+                  </div>
+                {/if}
+              </div>
             {:else if draft.systemView === 'list' && previewSystem}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 <div class="sm-preview" style="font-family:{draft.font}; --accent:{accentCss}">

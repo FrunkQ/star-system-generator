@@ -21,10 +21,10 @@
 // changes as you travel is only how much of the screen a kilometre buys. The comparison is local
 // because a screen is local — Jupiter beside Earth at true scale is one of them off the edge, on
 // any screen ever made.
-import { EARTH_RADIUS_KM, SOLAR_RADIUS_KM, LUNA_RADIUS_KM } from '$lib/constants';
-// The app's ONE nice-interval ladder, shared with the starmap's grid — a ruler that chose its own
-// intervals would be a second answer to a question this codebase has already settled.
-import { niceSeries } from '$lib/map/niceInterval';
+import {
+  EARTH_RADIUS_KM, SOLAR_RADIUS_KM, LUNA_RADIUS_KM,
+  CERES_RADIUS_KM, MARS_RADIUS_KM, NEPTUNE_RADIUS_KM, JUPITER_RADIUS_KM, BETELGEUSE_RADIUS_KM
+} from '$lib/constants';
 
 /** One object on the strip. `diameterKm` is the TRUE diameter — the whole point of the view. */
 export interface ComparisonItem {
@@ -148,8 +148,6 @@ export const DOT_THRESHOLD_PX = 2;
 export const DOT_PX = 6;
 /** Under this drawn diameter a label would overlap its neighbour's, so labels alternate above/below. */
 export const LABEL_ALTERNATE_BELOW_PX = 90;
-/** Two ruler labels closer than this collide, so the second drops to the next row. */
-export const LABEL_MIN_GAP_PX = 110;
 /**
  * How far a finger may travel and still count as a TAP rather than a drag.
  *
@@ -173,12 +171,36 @@ export const PICK_MIN_RADIUS_PX = 8;
  */
 export const STEP_FRACTION = 0.8;
 
-/** The three reference diameters the ruler highlights, in km. One source; `constants.ts` holds them. */
+/**
+ * THE RULER'S LADDER, in km. One source; `constants.ts` holds every figure.
+ *
+ * Eight rungs spanning six orders of magnitude, roughly a half-order apart, and every one a body a
+ * reader already has a feel for. The spacing is the whole trick: the ruler shows only the rungs that
+ * are LEGIBLE at the current zoom (see `referenceArcs`), so it picks itself — on a strip of moons
+ * you get Ceres, Luna and Mars, on a strip of stars you get the Sun and Betelgeuse, and nobody has
+ * to choose. It went from three rungs to eight on the owner's word, 2026-09-06.
+ */
 export const REFERENCE_TICKS: { id: string; label: string; diameterKm: number }[] = [
+  { id: 'ceres', label: 'Ceres', diameterKm: CERES_RADIUS_KM * 2 },
   { id: 'luna', label: 'Luna', diameterKm: LUNA_RADIUS_KM * 2 },
+  { id: 'mars', label: 'Mars', diameterKm: MARS_RADIUS_KM * 2 },
   { id: 'earth', label: 'Earth', diameterKm: EARTH_RADIUS_KM * 2 },
-  { id: 'sun', label: 'Sun', diameterKm: SOLAR_RADIUS_KM * 2 }
+  { id: 'neptune', label: 'Neptune', diameterKm: NEPTUNE_RADIUS_KM * 2 },
+  { id: 'jupiter', label: 'Jupiter', diameterKm: JUPITER_RADIUS_KM * 2 },
+  { id: 'sun', label: 'Sun', diameterKm: SOLAR_RADIUS_KM * 2 },
+  { id: 'betelgeuse', label: 'Betelgeuse', diameterKm: BETELGEUSE_RADIUS_KM * 2 }
 ];
+
+/**
+ * Below this drawn radius a reference circle is a smudge in the middle of the subject, not a ruler.
+ *
+ * 6 px is deliberately generous — a circle that small still reads as a circle, and the rungs at the
+ * bottom of the ladder are exactly the interesting ones: Ceres as a dot inside Earth's arc, or
+ * Jupiter as a dot inside the Sun's, is the comparison a reader came for.
+ */
+export const MIN_ARC_RADIUS_PX = 6;
+/** The label sits this far in from the window edge, and this far off the arc it names. */
+export const ARC_LABEL_MARGIN_PX = 8;
 
 // --- Order ---------------------------------------------------------------------------------------
 
@@ -718,55 +740,79 @@ export function visibleItems(items: ComparisonItem[], hidden: ReadonlySet<string
   return items.filter((i) => !hidden.has(i.id));
 }
 
-// --- The ruler -----------------------------------------------------------------------------------
+// THE LINEAR RULER USED TO LIVE HERE — `ReferenceMark`, `referenceMarks`, `minorTicks` and
+// `LABEL_MIN_GAP_PX`, a bar along the window's edge with three ticks on it and a stagger rule for
+// labels that collided. It is gone with the bar. A bar answers "how many pixels is an Earth" and
+// leaves the reader to carry that number across the screen; the arcs below answer the question the
+// reader actually has, in a picture, and they sit concentric with the subject rather than off to
+// one side. Owner, 2026-09-06. `niceSeries` has no other caller here and its import went too.
 
-export interface ReferenceMark {
+// --- THE RULER AS ARCS ---------------------------------------------------------------------------
+//
+// Owner, 2026-09-06: *"we have luna earth on the scale at the bottom of the screen... perhaps more
+// as arcs to show size ... perhaps have the ruler centred rather than to one side - so it aligns to
+// the planet on screen."*
+//
+// WHY IT IS BETTER THAN A BAR, and it is not a style preference. A linear ruler along the bottom
+// answers "how many pixels is an Earth" and leaves the reader to carry that number up to the object
+// and compare two lengths by eye across half a screen. An arc is a circle of the reference's TRUE
+// diameter drawn CONCENTRIC with whatever is in the middle of the window — so "this world is three
+// Earths across" is not a calculation, it is a picture: Earth's circle sits inside the subject's
+// limb and you can see how many would fit. Nothing to read, nothing to carry.
+//
+// THE LADDER PICKS ITSELF. A rung is drawn only where it is legible: bigger than a smudge, and small
+// enough that its circle still crosses the window. On a strip of moons that selects Ceres, Luna and
+// Mars; on a strip of stars, the Sun and Betelgeuse. That is why the ladder is eight rungs rather
+// than three — the ones that do not apply are not "hidden", they simply do not intersect the view.
+
+export interface ReferenceArc {
   id: string;
   label: string;
   diameterKm: number;
-  /** Where the mark falls along the axis, in px. */
-  posPx: number;
-  /** Which label row this mark's text goes on — 0 unless it would collide with the mark before it. */
-  row: number;
-  /** Off the ruler's range: the view shows it as an arrow at that edge rather than dropping it. */
-  off: 'none' | 'start' | 'end';
+  /** The circle's drawn radius in px. Its centre is the middle of the window, where the subject is. */
+  radiusPx: number;
+  /** Where the arc's label goes, in view px — a point ON the arc that is inside the window. */
+  labelX: number;
+  labelY: number;
 }
 
 /**
- * Place the three reference diameters on a ruler of `lengthPx` at `scale`.
- *
- * THE RULER MEASURES SIZE, NOT POSITION, so it does NOT scroll with the strip: a mark sits at
- * `diameterKm * scale` from the ruler's zero and says "this many pixels is one Earth", which is the
- * reading that lets you judge anything on screen. A mark that falls off the range is REPORTED as off
- * rather than dropped — "the Sun runs off to the right" is information, and a ruler that silently
- * omits its own reference has stopped being one.
- *
- * `row` staggers labels that would collide. On a strip of STARS, Luna and Earth are both a handful
- * of pixels from zero and their labels land on top of each other; seen live on the 50-system Local
- * Neighbourhood map, where they overlapped into one unreadable smudge.
+ * WHERE TO PUT AN ARC'S LABEL: the first of these headings, in order, whose point on the circle is
+ * inside the window. Right-hand side first because that is where a reader looks for a scale, then
+ * down and round. Angles are measured from the +x axis, y DOWN (canvas convention).
  */
-export function referenceMarks(scale: number, lengthPx: number, labelWidthPx = LABEL_MIN_GAP_PX): ReferenceMark[] {
-  const marks = REFERENCE_TICKS.map((t) => {
-    const posPx = t.diameterKm * scale;
-    return { ...t, posPx, row: 0, off: posPx < 0 ? 'start' : posPx > lengthPx ? 'end' : 'none' } as ReferenceMark;
-  });
-  let lastPos = -Infinity, row = 0;
-  for (const m of marks) {
-    if (m.off !== 'none') continue;
-    row = m.posPx - lastPos < labelWidthPx ? row + 1 : 0;
-    m.row = row;
-    lastPos = m.posPx;
+const ARC_LABEL_ANGLES = [0, 0.35, -0.35, 0.9, -0.9, Math.PI / 2, -Math.PI / 2, 2.3, -2.3, Math.PI];
+
+/**
+ * The reference circles that are worth drawing at this scale, concentric with the middle of a
+ * `vw` x `vh` window, each with a label position that is guaranteed to be on screen.
+ *
+ * A rung is dropped when its circle is smaller than `MIN_ARC_RADIUS_PX` (a smudge over the subject)
+ * or larger than the window's half-diagonal (it never enters the view at all). Both ends are the
+ * honest test — "does any of this circle appear in front of the reader" — rather than a count.
+ */
+export function referenceArcs(
+  scale: number, vw: number, vh: number, ticks = REFERENCE_TICKS
+): ReferenceArc[] {
+  if (!(scale > 0) || !(vw > 0) || !(vh > 0)) return [];
+  const cx = vw / 2, cy = vh / 2;
+  const m = ARC_LABEL_MARGIN_PX;
+  const maxR = Math.hypot(cx, cy);
+  const out: ReferenceArc[] = [];
+  for (const t of ticks) {
+    const radiusPx = (t.diameterKm * scale) / 2;
+    if (!(radiusPx >= MIN_ARC_RADIUS_PX) || radiusPx > maxR) continue;
+    let labelX = NaN, labelY = NaN;
+    for (const a of ARC_LABEL_ANGLES) {
+      const x = cx + radiusPx * Math.cos(a);
+      const y = cy + radiusPx * Math.sin(a);
+      if (x >= m && x <= vw - m && y >= m && y <= vh - m) { labelX = x; labelY = y; break; }
+    }
+    // Every arc that passes the radius test crosses the window somewhere, but not necessarily at one
+    // of the headings above; such a rung is dropped rather than labelled off-screen, where the label
+    // would be a claim the reader cannot check.
+    if (!Number.isFinite(labelX)) continue;
+    out.push({ id: t.id, label: t.label, diameterKm: t.diameterKm, radiusPx, labelX, labelY });
   }
-  return marks;
-}
-
-/**
- * The MINOR ticks: a plain nice-interval scale under the three references, so the ruler reads as a
- * ruler rather than as three lonely marks. `niceSeries` is the app's existing 1/2/5 ladder — the
- * starmap's grid uses it, and a second interval-chooser here would be a second answer to one
- * question.
- */
-export function minorTicks(scale: number, lengthPx: number): { km: number; posPx: number }[] {
-  if (!(scale > 0) || !(lengthPx > 0)) return [];
-  return niceSeries(lengthPx / scale, 6).map((km) => ({ km, posPx: km * scale }));
+  return out;
 }

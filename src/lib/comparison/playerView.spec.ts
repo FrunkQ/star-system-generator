@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { render } from '@testing-library/svelte';
 import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
 import { itemsForSystem } from './items';
+import { makeChromeRecorder, type ChromeRecorder } from './chromeRecorder';
+import { CHROME } from './stripChrome';
 import { tick } from 'svelte';
 import derived from '../../../tests/output/solar-system-derived.json';
 
@@ -22,12 +24,25 @@ beforeAll(() => {
   };
 });
 
-const mount = (props: Record<string, unknown>) =>
-  render(SizeComparisonView, { props: { items, scope: 'system', mapId: 'sol', ...props } });
+// THE STRIP'S CONTENT IS NO LONGER DOM (B126) — the labels, the dots, the rings and the ruler are
+// drawn into a canvas the scene composites and filters, so a `.label .name` query has nothing to
+// find. This is the replacement instrument, and it is a stricter one: it reads the exact strings the
+// view actually drew. Every mount gets its own recorder, installed over `getContext('2d')`.
+let recorder: ChromeRecorder;
+function recordCanvas() {
+  recorder = makeChromeRecorder();
+  HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) =>
+    kind === '2d' ? recorder : null) as unknown as HTMLCanvasElement['getContext'];
+}
 
-/** The names on the strip, in the order they are laid out. Non-empty, or the test proves nothing. */
-function stripNames(container: HTMLElement): string[] {
-  const names = [...container.querySelectorAll('.label .name')].map((n) => n.textContent?.trim() ?? '');
+const mount = (props: Record<string, unknown>) => {
+  recordCanvas();
+  return render(SizeComparisonView, { props: { items, scope: 'system', mapId: 'sol', ...props } });
+};
+
+/** The names the strip DREW, in draw order. Non-empty, or the test proves nothing. */
+function stripNames(_container?: HTMLElement): string[] {
+  const names = recorder.texts.filter((t) => t.font === CHROME.nameFont).map((t) => t.text);
   expect(names.length).toBeGreaterThan(2);   // never assert against an empty strip
   return names;
 }
@@ -52,9 +67,32 @@ describe('the size comparison at the player tier', () => {
   it('still shows the strip, the labels and the ruler to a player — the view is not cut down', () => {
     const { container } = mount({ playerChrome: true });
     expect(container.querySelector('.stage')).toBeTruthy();
-    expect(container.querySelector('.ruler')).toBeTruthy();
-    expect(container.querySelector('canvas')).toBeTruthy();
+    expect(container.querySelector('canvas.chrome')).toBeTruthy();
     expect(container.querySelector('h2')?.textContent).toContain('Size comparison');
+    // The labels and the ruler are DRAWN now rather than laid out, so this is where they are found.
+    expect(stripNames().length).toBeGreaterThan(2);
+    expect(recorder.texts.some((t) => t.font === CHROME.arcFont)).toBe(true);
+  });
+
+  it('draws no ruler when the preset turns it off, and everything else still reads', () => {
+    // Owner, 2026-09-06: "turning the ruler on off should be a player view option".
+    mount({ playerChrome: true, showRuler: false });
+    expect(recorder.texts.some((t) => t.font === CHROME.arcFont)).toBe(false);
+    expect(stripNames().length).toBeGreaterThan(2);
+  });
+
+  it('keeps the strip’s CONTENT out of the DOM — it has to bend with the filter (B126)', () => {
+    // The fault this prevents is not tidiness: DOM sits in SCREEN space and does not follow a warped
+    // projection, so under a barrel CRT the picture bends and the text over it does not.
+    const { container } = mount({ playerChrome: true, selectedId: items[0].id });
+    expect(container.querySelector('.label')).toBeNull();
+    expect(container.querySelector('.ruler')).toBeNull();
+    expect(container.textContent).not.toContain('12,742');      // Earth's diameter, drawn not written
+    // What survives is the CONTROLS and the keyboard path: one focusable, invisible, POINTER-
+    // TRANSPARENT button per object, so every world is still reachable without a mouse.
+    const hits = [...container.querySelectorAll('button.hit')];
+    expect(hits.length).toBeGreaterThan(2);
+    expect(hits.every((h) => !!h.getAttribute('title'))).toBe(true);
   });
 
   it('keeps your place when the WINDOW changes size — a resize is not a new view', async () => {
