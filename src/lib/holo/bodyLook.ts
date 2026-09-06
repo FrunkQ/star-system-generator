@@ -96,6 +96,16 @@ export interface BodyLookOptions {
    */
   starRim?: boolean;
   /**
+   * STAR only: how far the photosphere burns out to WHITE at the centre of the disc, 0 to 1.
+   *
+   * DEFAULT 0, WHICH IS THE HOLO'S ANSWER AND DELIBERATE: there the corona does the work of saying
+   * "this is a light source", and the owner is happy with how a star looks at system level. On a
+   * surface that has turned the corona OFF the disc has to carry that impression alone, and a flat
+   * chromaticity disc cannot - see the note in `applyLimbDarkening` for why the white core is the
+   * more honest picture as well as the brighter one.
+   */
+  starCore?: number;
+  /**
    * BLACK HOLE only: draw the thin photon ring that makes a horizon findable against black.
    *
    * FALSE (the default) for a surface with a gravitational-lensing pass — there the shader draws
@@ -202,7 +212,7 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
     const st = new THREE.CanvasTexture(makeStarSurfaceTexture(colorHex, activity, String(node.id)));
     st.colorSpace = THREE.SRGBColorSpace;
     starMat.map = st;
-    if (!isLopoly) applyLimbDarkening(starMat, 0.55);
+    if (!isLopoly) applyLimbDarkening(starMat, 0.55, opts.starCore ?? 0);
     const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, segW, segH), starMat);
     disposables.push(starMat, st, sphere.geometry);
     // Corona + flares + outflow decorations, parented to the sphere so they track it. The corona is

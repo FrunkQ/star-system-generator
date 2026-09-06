@@ -6634,6 +6634,19 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+AND A PHOTOSPHERE IS NOT PAINTED FLAT AT ITS CHROMATICITY ([[G76]]). That was the rest of the same
+problem and it took the owner's eye to see it: *"why do stars look so DULL on this?"* - Vega and
+Sirius pastel lavender on the strip while the M dwarfs beside them looked vivid. A hot star's
+chromaticity IS pale (`#cad8ff` for an A), so a big circle filled with it is paint; an M dwarf's
+`#ffc46f` is saturated and survives. Chromaticity is the colour of the light and not its INTENSITY -
+surface brightness goes as T^4, the middle of a real disc saturates to white, and the colour belongs
+at the LIMB where the gas is cooler. `starCoreWhiteFor` + `uCore` in `applyLimbDarkening` do it, over
+`mu^2` so the white keeps to the middle third.
+IT READS THE TEMPERATURE WHERE THERE IS ONE AND THE COLOUR WHERE THERE IS NOT, and both halves are
+load-bearing: the per-letter swatch is a LEGEND (a K1V is painted `#ffd2a1` when Toliman at 5,231 K
+is nearly the Sun's colour), while the bundled Sol's star node carries NO temperature field at all.
+Either source alone silently does nothing on half the data - which is worse than doing nothing
+everywhere, because it looks fixed.
 AND A STAR STILL HAS TO LOOK LIKE A LIGHT SOURCE. Turning the corona off leaves a photosphere that
 reads as a painted disc, so `starRim` adds ONE additive billboard at `STAR_RIM_SCALE` (1.22) of the
 radius - a fifth, against the corona's nine. The number is the whole point: the bloom sits ON the

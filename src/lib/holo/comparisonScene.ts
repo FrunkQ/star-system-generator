@@ -55,7 +55,7 @@ import { slotOffset } from '$lib/comparison/layout';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes,
-  updateLightning, buildFlatRing, isBlackHoleNode
+  updateLightning, buildFlatRing, isBlackHoleNode, starCoreWhiteFor
 } from './bodyFeatures';
 
 /** One globe to draw: where it goes and how big it is, both already in pixels. */
@@ -279,6 +279,12 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         // a fifth of a radius rather than the corona's nine, so nothing here claims to be bigger
         // than its label says. Owner, 2026-09-06.
         starRim: true,
+        // ...and the disc burns out to white in the middle, BY TEMPERATURE. Owner, 2026-09-06: "why
+        // do stars look so DULL on this?" - with the corona off, a photosphere painted flat at its
+        // chromaticity reads as paint rather than as light, and worst of all on the HOT stars, whose
+        // colour is palest and whose real surface is the brightest thing in the sky. A red dwarf
+        // three steps along the same strip looked fine and gets none of this.
+        starCore: starCoreWhiteFor(slot.colorHex, slot.node?.temperatureK),
         // A BLACK HOLE gets the thin photon ring here and NOWHERE ELSE: this is the one surface
         // that draws a horizon without a lensing pass, so nothing else would mark where it is —
         // and, for the same reason, it draws at the TRUE radius rather than the lensed surfaces'

@@ -163,3 +163,25 @@ describe('size comparison — the live mount and the preview agree', () => {
     }
   });
 });
+
+// THE STRIP HAS TO ASK FOR THE WHITE CORE, and no unit test can watch it do so: `comparisonScene`
+// needs a WebGL context to build anything. The seam is one line, it is the whole of the owner's
+// "why do stars look so DULL on this?", and a silent deletion would put the pastel discs straight
+// back - so it is read out of the SOURCE, the same way the two mount sites are above.
+describe('the size comparison asks for a star that reads as a light source', () => {
+  const scene = readFileSync('src/lib/holo/comparisonScene.ts', 'utf8');
+
+  it('turns the corona off and pays for it with the rim AND the burnt-out core', () => {
+    // Corona off is the measuring view's promise (RENDER-S53); the other two are what stop that
+    // promise from making a star look like paint.
+    expect(scene).toMatch(/starDecorations:\s*false/);
+    expect(scene).toMatch(/starRim:\s*true/);
+    expect(scene).toMatch(/starCore:\s*starCoreWhiteFor\(/);
+  });
+
+  it('reads the core from the star\u2019s own COLOUR, so two stars on one strip differ', () => {
+    // Not a constant: a flat number would whiten a red dwarf as hard as Vega, which is the fault
+    // upside down. `slot.colorHex` is the per-star source.
+    expect(scene).toMatch(/starCore:\s*starCoreWhiteFor\(slot\.colorHex,\s*slot\.node\?\.temperatureK\)/);
+  });
+});

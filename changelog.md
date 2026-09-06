@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.342 - 6th Sep 2026
+
+- Stars on the Size comparison look like stars again. They were drawn flat in their own colour all the way across, which made the hot blue-white ones - Vega, Sirius, Altair - come out as pale lavender circles while the red dwarfs beside them looked fine. A real star's disc is white-hot in the middle and shows its colour at the edge, and now so is ours: the hotter the star, the more it burns out. A red dwarf keeps every bit of its orange.
+- The glow on a star's rim is brighter too - brighter, deliberately not bigger, so nothing on the one view that promises true sizes looks larger than the number under it.
+
 ## v3.0.341 - 6th Sep 2026
 
 - Board: the owner's word on what is settled in the megastructure work and the decision that a moving Death Star is not a requirement; the queue of what comes next, written where every session reads it.

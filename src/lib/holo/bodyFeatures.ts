@@ -318,21 +318,33 @@ export function makeStarSurfaceTexture(colorHex: number, activity: number, seedS
 // It is the single strongest cue that a star is a SPHERE rather than a flat glowing disc, and it is
 // view-dependent, so it belongs on the material and not in the surface map. Applied as a cheap patch
 // on the standard emissive material: one dot product, no extra pass, no extra draw.
-export function applyLimbDarkening(mat: THREE.Material, strength = 0.55): void {
+export function applyLimbDarkening(mat: THREE.Material, strength = 0.55, coreWhite = 0): void {
 	mat.onBeforeCompile = (shader) => {
 		shader.uniforms.uLimb = { value: strength };
+		shader.uniforms.uCore = { value: coreWhite };
 		shader.vertexShader = shader.vertexShader
 			.replace('#include <common>', '#include <common>\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
 			.replace('#include <begin_vertex>',
 				'#include <begin_vertex>\nvLimbN = normalize(normalMatrix * normal);\nvLimbP = (modelViewMatrix * vec4(position,1.0)).xyz;');
 		shader.fragmentShader = shader.fragmentShader
-			.replace('#include <common>', '#include <common>\nuniform float uLimb;\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
+			.replace('#include <common>', '#include <common>\nuniform float uLimb;\nuniform float uCore;\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
 			.replace('#include <dithering_fragment>',
 				`#include <dithering_fragment>
 				 // mu = cos(angle between the surface normal and the line of sight). 1 at the disc
 				 // centre, 0 at the limb. The classic linear law: I(mu) = 1 - u(1 - mu).
 				 float mu = clamp(dot(normalize(vLimbN), normalize(-vLimbP)), 0.0, 1.0);
 				 float darken = 1.0 - uLimb * (1.0 - mu);
+				 // THE DISC SATURATES TOWARD ITS CENTRE. A photosphere painted at its CHROMATICITY all
+				 // the way across is the flaw the owner saw on the size comparison: "why do stars look
+				 // so DULL on this?" — Vega and Sirius came out pastel lavender discs while the M
+				 // dwarfs beside them looked vivid, because a hot star's colour (#cad8ff) is pale and a
+				 // pale colour spread flat over a big circle reads as paint, not as light.
+				 // It is also wrong. Chromaticity is the colour of the light, not its INTENSITY: look
+				 // at the middle of a real disc and you are seeing the hottest, deepest gas, which
+				 // saturates any eye or sensor to white. The colour belongs at the LIMB, where the gas
+				 // is cooler and dimmer - which is exactly where the reddening below already puts it.
+				 // mu^2 keeps the white in the middle third rather than washing the whole disc.
+				 gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), uCore * mu * mu);
 				 // Redden as it darkens — the limb shows cooler gas, so the blue falls off fastest.
 				 gl_FragColor.rgb *= vec3(darken, darken * (0.94 + 0.06 * mu), darken * (0.86 + 0.14 * mu));`);
 	};
@@ -827,8 +839,70 @@ export const FLAT_RING_OPACITY = 0.55;
  * is gone well before the edge of the sprite. Turn it DOWN if a star ever looks bigger than its
  * label says; that is the failure mode this number is holding off.
  */
+/**
+ * HOW WHITE A STAR'S DISC BURNS AT ITS CENTRE, read from the star's own colour. 0 keeps the flat
+ * chromaticity disc; 1 would be a white ball with no colour left to read.
+ *
+ * IT HAS TO FOLLOW TEMPERATURE, and the owner's report is the evidence: *"why do stars look so DULL
+ * on this?"* about a strip where Vega and Sirius were pastel lavender discs while the M dwarfs three
+ * steps away looked vivid. That asymmetry is not a coincidence and it is not a taste question - a
+ * hot star's CHROMATICITY is pale by definition (#cad8ff for an A), so painting a big circle flat in
+ * it gives you lavender paint, while an M dwarf's #ffc46f is saturated and survives the treatment.
+ *
+ * The physics says the same thing louder: surface brightness goes as T^4, so Vega leaves a retina or
+ * a sensor a hundred times harder than a red dwarf does. Its middle is WHITE and always was; the
+ * colour lives at the LIMB, where the gas is cooler - which is where the reddening in
+ * `applyLimbDarkening` already puts it. A flat disc was the wrong picture as well as the dull one.
+ *
+ * TEMPERATURE FIRST, COLOUR AS THE FALLBACK, and both halves are there because the data made them
+ * necessary rather than as a belt and braces. The starmap's stars carry `temperatureK` (Toliman
+ * 5,231 K, Vega 9,600) and it is the honest input: the per-letter colour swatch is a LEGEND, coarse
+ * by design, and it paints a K1V at #ffd2a1 when the real thing is very nearly the Sun's colour -
+ * reading that back as a temperature would rob a K star of a burn it has earned. But the bundled
+ * Sol's star node carries NO temperature at all (radius, mass, flare activity, radiation - none), so
+ * a law that read only the field would have looked fixed on an imported sky and done nothing on the
+ * bundled one, which is the worst kind of half-fix. The colour is the same quantity in the form this
+ * view is always guaranteed to have, so it answers when the number is missing.
+ *
+ * The temperature curve: nothing at or below 3,500 K, the cap by 9,500. Toliman lands at 0.29, the
+ * Sun at 0.37, Vega at the cap. The exponent bends it toward the cool end, where a colour going is
+ * what the eye notices. The colour curve reads blue-minus-red, which walks the spectral sequence
+ * monotonically, and is scaled by the peak channel so a DIMMED star keeps its dimness.
+ */
+export const STAR_CORE_COOL_K = 3500;
+export const STAR_CORE_HOT_K = 9500;
+export const STAR_CORE_COOLEST = -0.5;   // blue-minus-red at and below which a disc stays flat
+export const STAR_CORE_HOTTEST = 0.4;    // ...and at which it reaches the cap
+export const STAR_CORE_MAX = 0.8;
+export function starCoreWhiteFor(
+	colorHex: number | string | undefined | null, temperatureK?: number | null
+): number {
+	const t = Number(temperatureK);
+	if (Number.isFinite(t) && t > 0) {
+		if (t <= STAR_CORE_COOL_K) return 0;
+		const f = Math.min(1, (t - STAR_CORE_COOL_K) / (STAR_CORE_HOT_K - STAR_CORE_COOL_K));
+		return Math.pow(f, 0.8) * STAR_CORE_MAX;
+	}
+	if (colorHex === undefined || colorHex === null || colorHex === '') return 0;
+	let c: THREE.Color;
+	try { c = new THREE.Color(colorHex as any); } catch { return 0; }
+	if (!Number.isFinite(c.r) || !Number.isFinite(c.g) || !Number.isFinite(c.b)) return 0;
+	const hot = (c.b - c.r - STAR_CORE_COOLEST) / (STAR_CORE_HOTTEST - STAR_CORE_COOLEST);
+	// AND A DIM STAR DOES NOT BURN. The peak channel is 1 for every swatch on the ladder, so this
+	// changes nothing for an ordinary star - but a colour that has been scaled DOWN (a star seen
+	// through something, which is what `floorGlyphGain` hands the map) keeps its dimness, and a black
+	// one stays black rather than being bleached toward white by a hue read that cannot see it.
+	const peak = Math.min(1, Math.max(0, Math.max(c.r, c.g, c.b)));
+	return Math.min(1, Math.max(0, hot)) * STAR_CORE_MAX * peak;
+}
+
 export const STAR_RIM_SCALE = 1.22;
-export const STAR_RIM_OPACITY = 0.7;
+/**
+ * How hard the rim bloom burns. 0.7 -> 0.95 on the owner's "why do stars look so DULL on this?",
+ * 2026-09-06: BRIGHTNESS is the knob to reach for here and SIZE is not, because the scale above is
+ * the one holding the promise that nothing on a measuring view looks bigger than its label says.
+ */
+export const STAR_RIM_OPACITY = 0.95;
 
 /**
  * A star's rim bloom: one additive billboard, tight to the limb, so a photosphere reads as something

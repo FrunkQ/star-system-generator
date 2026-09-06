@@ -4,7 +4,8 @@ import { buildBodyLook, isFilledFamily, type BodyLookTextures } from './bodyLook
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture,
   isBlackHoleNode, isFeedingBlackHole, buildHorizonLook, BH_LENS_SHRINK,
-  STAR_RIM_SCALE, STAR_RIM_OPACITY
+  STAR_RIM_SCALE, STAR_RIM_OPACITY,
+  applyLimbDarkening, starCoreWhiteFor, STAR_CORE_MAX, STAR_CORE_COOL_K, STAR_CORE_HOT_K
 } from './bodyFeatures';
 import derived from '../../../tests/output/solar-system-derived.json';
 
@@ -124,6 +125,141 @@ describe("a star's rim bloom", () => {
     const bh = { ...star, classes: ['star/BH'] };
     expect(buildBodyLook(bh, 100, { ...COMPARISON, starRim: true })
       .mesh.children.some((c) => c.type === 'Sprite')).toBe(false);
+  });
+});
+
+describe('a star burns white at the centre, and how white follows its TEMPERATURE', () => {
+  // Owner, 2026-09-06: "why do stars look so DULL on this?" - about a strip where Vega and Sirius
+  // were pastel lavender discs while the M dwarfs three steps away looked vivid. That asymmetry is
+  // the whole diagnosis: a hot star's CHROMATICITY is pale (#cad8ff for an A), so a big circle
+  // painted flat in it is lavender paint, while an M dwarf's #ffc46f is saturated and survives.
+  // Surface brightness goes as T^4, so the hot ones are exactly the ones whose middles are white.
+
+  // The app's own star swatches, which is what the strip actually hands the look.
+  const SWATCH = { O: '#9bb0ff', B: '#aabfff', A: '#cad8ff', F: '#f8f7ff', G: '#fff4ea',
+                   K: '#ffd2a1', M: '#ffc46f', white: '#ffffff' };
+
+  it('gives a red dwarf NOTHING and a blue-white star all of it', () => {
+    // The two ends of the owner's own comparison, in one assertion: the M dwarfs he had no complaint
+    // about keep every bit of their orange, and the A stars he did are the ones that burn white.
+    expect(starCoreWhiteFor(SWATCH.M)).toBe(0);
+    expect(starCoreWhiteFor(SWATCH.K)).toBe(0);
+    expect(starCoreWhiteFor(SWATCH.A)).toBeCloseTo(STAR_CORE_MAX, 6);
+    expect(starCoreWhiteFor(SWATCH.O)).toBeCloseTo(STAR_CORE_MAX, 6);
+  });
+
+  it('puts the Sun between them, warm white in the middle and yellow at the rim', () => {
+    // #fff4ea in the working (linear) space is r 1.0, b 0.825, so blue-minus-red is -0.175 and the
+    // map gives (0.325 / 0.9) x 0.8 = 0.289. Written out because a ratio test cannot catch a curve
+    // that has drifted (PHY-34).
+    expect(starCoreWhiteFor(SWATCH.G)).toBeCloseTo(0.289, 2);
+    expect(starCoreWhiteFor(SWATCH.G)).toBeLessThan(0.5);   // still plainly a coloured star, not a bulb
+  });
+
+  it('never runs backwards along the spectral sequence, and never past the cap', () => {
+    const ladder = [SWATCH.M, SWATCH.K, SWATCH.G, SWATCH.F, SWATCH.A, SWATCH.B, SWATCH.O];
+    let last = -1;
+    for (const hex of ladder) {
+      const v = starCoreWhiteFor(hex);
+      expect(v).toBeGreaterThanOrEqual(last);
+      expect(v).toBeLessThanOrEqual(STAR_CORE_MAX);
+      last = v;
+    }
+    // And the sequence really does move - a flat 0 or a flat cap would pass the loop above.
+    expect(starCoreWhiteFor(SWATCH.O) - starCoreWhiteFor(SWATCH.M)).toBeGreaterThan(0.5);
+  });
+
+  it('answers a missing or unreadable colour with a number, never a NaN', () => {
+    // A NaN here would take the whole shader with it and the disc would render black.
+    for (const c of [undefined, null, '']) expect(starCoreWhiteFor(c)).toBe(0);
+    for (const c of ['not-a-colour' as any, 0x000000, '#000000', 0xffffff]) {
+      const v = starCoreWhiteFor(c);
+      expect(Number.isFinite(v)).toBe(true);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(STAR_CORE_MAX);
+    }
+    // A BLACK swatch stays black rather than being bleached: blue-minus-red cannot see brightness,
+    // so the peak channel has to. This is the black hole's swatch, and it never takes the star
+    // branch - but a law that would whiten it is a law waiting for the day something does.
+    expect(starCoreWhiteFor('#000000')).toBe(0);
+    // ...and a star DIMMED by something in the way keeps its dimness rather than burning white.
+    expect(starCoreWhiteFor('#324050')).toBeLessThan(starCoreWhiteFor('#cad8ff') / 2);
+  });
+
+  it('reaches the shader, and is OFF unless asked for', () => {
+    // The uniform and the mix have to be there together: either alone is a no-op that would pass a
+    // laxer gate. `onBeforeCompile` is where three hands a material its source, so this is the seam.
+    const compile = (core?: number) => {
+      const mat = new THREE.MeshBasicMaterial();
+      applyLimbDarkening(mat, 0.55, core);
+      const shader = {
+        uniforms: {} as any,
+        vertexShader: '#include <common>\n#include <begin_vertex>',
+        fragmentShader: '#include <common>\n#include <dithering_fragment>'
+      };
+      (mat.onBeforeCompile as any)(shader);
+      return shader;
+    };
+    const on = compile(0.55);
+    expect(on.uniforms.uCore.value).toBe(0.55);
+    expect(on.fragmentShader).toContain('uniform float uCore;');
+    expect(on.fragmentShader).toContain('mix(gl_FragColor.rgb, vec3(1.0), uCore');
+    // DEFAULT OFF is the holo's answer and deliberate: there the corona says "light source", and the
+    // owner is happy with a star at system level. Only a surface with the corona turned off asks.
+    expect(compile().uniforms.uCore.value).toBe(0);
+  });
+
+  it('carries the option through the ASSEMBLY, and a star built without it stays flat', () => {
+    // The gate above proves the shader honours `uCore`; this one proves the assembly actually hands
+    // it over, and hands over ZERO when nobody asked. Without it the holo would quietly acquire the
+    // strip's look - the drift this whole spec exists to catch.
+    const uCoreOf = (look: any) => {
+      const mat = look.mesh.material as THREE.Material;
+      const shader = { uniforms: {} as any, vertexShader: '#include <common>\n#include <begin_vertex>',
+                       fragmentShader: '#include <common>\n#include <dithering_fragment>' };
+      (mat.onBeforeCompile as any)(shader);
+      return shader.uniforms.uCore?.value;
+    };
+    const star = { id: 'x', kind: 'body', roleHint: 'star', name: 'X', radiusKm: 700000,
+                   classes: ['star/G2V'], tags: [] } as any;
+    expect(uCoreOf(buildBodyLook(star, 100, { ...COMPARISON, starCore: 0.42 }))).toBe(0.42);
+    expect(uCoreOf(buildBodyLook(star, 100, { ...COMPARISON }))).toBe(0);
+  });
+
+  it('takes the TEMPERATURE where there is one, because the swatch is a legend not a photometry', () => {
+    // The owner's own pair, from the bundled Local Neighbourhood. Toliman is a K1V at 5,231 K - only
+    // a tenth cooler than the Sun - and its per-letter swatch (#ffd2a1) is far more orange than the
+    // real star. Reading the swatch back as a temperature would rob it of a burn it has earned, so
+    // the number wins wherever the data has one.
+    expect(starCoreWhiteFor(SWATCH.K, 5231)).toBeCloseTo(0.296, 3);      // Toliman
+    expect(starCoreWhiteFor(SWATCH.G, 5795)).toBeCloseTo(0.369, 2);      // Rigil Kentaurus
+    expect(starCoreWhiteFor(SWATCH.A, 9600)).toBeCloseTo(STAR_CORE_MAX, 6);  // Vega
+    expect(starCoreWhiteFor(SWATCH.M, 2992)).toBe(0);                    // Proxima keeps its colour
+    // The two Alpha Centauri stars must not come out the SAME, which is what the owner's screenshot
+    // showed and what the flat disc was doing to them.
+    expect(starCoreWhiteFor(SWATCH.G, 5795)).toBeGreaterThan(starCoreWhiteFor(SWATCH.K, 5231));
+    // And the temperature really is in charge: the same swatch, two temperatures, two answers.
+    expect(starCoreWhiteFor(SWATCH.K, 9000)).toBeGreaterThan(starCoreWhiteFor(SWATCH.K, 4000));
+    expect(starCoreWhiteFor(SWATCH.K, 9000)).toBeGreaterThan(starCoreWhiteFor(SWATCH.K));
+    expect(starCoreWhiteFor(SWATCH.M, STAR_CORE_COOL_K)).toBe(0);
+    expect(starCoreWhiteFor(SWATCH.M, STAR_CORE_HOT_K)).toBeCloseTo(STAR_CORE_MAX, 6);
+  });
+
+  it('falls back to the COLOUR, because half the data has no temperature at all', () => {
+    // THE MEASUREMENT THAT DECIDED THE FALLBACK: the bundled Sol's own star node carries no
+    // temperature (radius, mass, flare activity, radiation - none). A law reading only the field
+    // would have looked fixed on an imported sky and done nothing here.
+    const sun = (derived as any).nodes.find((n: any) => n.name === 'Sol');
+    expect(sun.roleHint).toBe('star');
+    expect(sun.temperatureK).toBeUndefined();
+    expect((sun.classes ?? []).length).toBeGreaterThan(0);   // ...but it is classified, so it has a colour
+    // ...and the fallback then does the work, landing in the same neighbourhood as the number would.
+    expect(starCoreWhiteFor(SWATCH.G)).toBeGreaterThan(0.2);
+    expect(starCoreWhiteFor(SWATCH.G, undefined)).toBe(starCoreWhiteFor(SWATCH.G));
+    // A temperature of zero or nonsense is NOT a temperature; the colour answers for those too.
+    for (const t of [0, -50, NaN, 'hot' as any]) {
+      expect(starCoreWhiteFor(SWATCH.A, t)).toBe(starCoreWhiteFor(SWATCH.A));
+    }
   });
 });
 
