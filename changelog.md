@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.325 - 6th Sep 2026
+
+- Housekeeping: the shipped-content manifest is re-pinned to the current version after the docking releases, so the Creator Hub reads the right catalogue.
+
 ## v3.0.324 - 6th Sep 2026
 
 - Arriving at a world with a space elevator now parks you the right way round: with the planet's spin, always, so the hop to the ribbon costs as little as it can. A ship that came in against the spin is turned, and the cost of turning is shown in the plan rather than hidden.
