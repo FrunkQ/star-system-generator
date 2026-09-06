@@ -702,6 +702,20 @@ it is theirs, leave it.
 > fixed to the tree AND recorded. (4) Green build per push, version bumped, changelog line
 > ("Board only" is wrong here — these are reader-facing changes, say what a reader gains).
 
+**AMENDED 2026-09-06 by coordinator 7, at v3.0.348, on the owner's "will that doc sweep do help files, physics and
+attributions? The full bifta?"** Yes, and the brief above under-counts the surfaces. The Documentation debt section now
+holds 42 banked lines, not 33. Add to the six surfaces: (7) the in-app help itself - `src/lib/components/HelpModal.svelte`,
+`HelpMenuModal.svelte`, `AboutModal.svelte` and `WelcomeModal.svelte` - which a GM meets before any document, so every
+claim in them is verified against the tree the same way; (8) `docs/autopilot-guide.md` and `docs/time-architecture.md`,
+which predate the temporal batch and the docking work; (9) the attributions, which are NOT a document to edit but text the
+app GENERATES into every save and bundle from `src/lib/io/attributions.ts` (`attributions.spec.ts` pins it): audit its
+static credits (the catalogues behind the real-sky import, the NASA models, fonts, the Explorers site's "Content from
+other cartographers" block) against what the app actually ships and imports, and fix the generator, never a copy. Five
+things the brief could not know: every version bump is followed by `npm run manifest` (it stamps the manifest AND
+`static/sw.js`); the two `tests/` fixtures are a baseline - commit them if a run changes them ([[B137]]); the stash stack
+is shared - WIP commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial test is a known statistical
+flake, green alone is the accepted form. The "keep a copy" notice ([[G72]]) is disarmed and gets no prose.
+
 ---
 
 ## STREAM J — the hierarchy batch: a binary imported as one star, and re-homing a body by hand (B114 + G64)

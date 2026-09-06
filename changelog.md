@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.349 - 6th Sep 2026
+
+- Board: the documentation sweep's brief now names every surface a reader meets - the in-app help, the two older guides and the generated attributions - beside the physics pages and the getting-started document.
+
 ## v3.0.348 - 6th Sep 2026
 
 - Board: the coordinator's handover to the next session, written where the earlier ones are.
