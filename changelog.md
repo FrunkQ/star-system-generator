@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.354 - 6th Sep 2026
+
+- The app is SSE3.1 now, and the mark in the top-left is set in the same pixel letterforms the Explorers site uses for its own headings and cover cards - so the two look like one product rather than two. It takes your theme colour like everything else, and stays crisp at any zoom because it is drawn rather than typed.
+- No font is downloaded for it: the letters are a small table of dots turned into shapes, so there is nothing to load before the page appears.
+
 ## v3.0.353 - 6th Sep 2026
 
 - A body you paste in from the Explorers site used to carry a tag reading "Hub", filed under a sentence about how the body FORMED. Neither told you anything: "hub" is our word for the site and appears nowhere you would meet it, and where a body came from is not how it formed. It now reads "From a shared map", says the value is a link back to it, and says plainly that it is a breadcrumb rather than the credit - the credit is recorded on your campaign and printed in the attributions file inside your saves, so it survives the body being renamed, moved or deleted. A pasted ship's tag reads "Route not carried over" and explains why its autopilot is off.

@@ -646,6 +646,38 @@ carries on working — which is a confusing shape, and is exactly why the promis
 
 ---
 
+## The shared heading face — ANSWERED 2026-09-06. ROUND, at scale 3.
+
+**The hub sent a recipe rather than a request** (`docs/prompt-for-sse-2026-09-06-headings.md`, hub
+v0.40.1) and asked one thing back: *"a line saying which alphabet you used and at what scale, so the
+hub can match it if the two ever sit side by side — a map card on the hub and the same map's heading
+in the app should not be set in two different faces by accident."*
+
+**The answer: `ROUND`, at `scale = 3`, for the rail wordmark `SSE3.1` (engine v3.0.350).** That is
+35 columns by 7 rows, rendered 105 x 21 css pixels, in `currentColor` so it takes the theme's
+`var(--accent)` like every other accent in the app.
+
+**ROUND because of the hub's own trap 2:** NARROW's letters are three columns and it does not define
+a full stop, so `SSE3.1` set in NARROW would put a five-wide stop beside three-wide letters. The
+engine's `pixelFont.spec.ts` pins that fact rather than leaving it as folklore - it asserts the
+punctuation lives in the base set only and that the fall-through costs the wordmark six columns.
+
+**What was copied, and what was not.** `GLYPHS`, `GLYPH_H`, `fold`, `ROUND` and `NARROW` verbatim,
+plus `runs`, `textRows` and `gridWidth`, into ONE module (`src/lib/ui/pixelFont.ts`) rather than the
+hub's four files - everything below `fold` in the hub's `font.ts` paints into a Worker raster and is
+no use in a browser. `textRows` took the one-line change the recipe specified, to accept a family.
+Copied and not imported, on the hub's own advice.
+
+**The identical-glyph test came with it, and it earned its keep immediately in a second role the hub
+did not need it for:** three hundred lines of `#` and `.` moved between two repositories, and a
+botched paste is exactly as invisible as a badly drawn letter. It was seen RED against a duplicated
+`V`, a dropped `Z` and a six-row `A`.
+
+**NO GLYPHS WERE ADDED OR EDITED**, so the hub's offer to take changes back has nothing to collect.
+If this side ever draws lowercase or a fourth alphabet, the hub has asked to be told.
+
+---
+
 ## What the hub will NOT ask the engine to do
 
 Recorded so nobody builds them by mistake:

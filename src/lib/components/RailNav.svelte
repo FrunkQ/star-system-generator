@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PixelText from './PixelText.svelte';
   // Phase 03 — persistent app-nav rail. Lives in AppShell's `rail` slot (left on desktop,
   // slide-in on phone). Presentational: dispatches events; +page wires them. Two widths:
   // icon-only (minimal) ⇄ icon+text, toggled by the control at the top and remembered.
@@ -106,7 +107,22 @@ ${playerConnSummary}`
     <!-- The brand mark doubles as the version read-out: hovering it names the build, so a version
          can be checked from any screen without opening About. Same stamp the footer prints. -->
     <button class="brand rail-label brand-copy" title={brandTitle} on:click={copyVersion}
-      aria-label="Copy app version to clipboard">SSE3{#if brandCopied === 'ok'}<span class="brand-tick" aria-hidden="true"> ✓</span>{/if}</button>
+      aria-label="Copy app version to clipboard"
+    ><!--
+      SSE 3.1, SET IN THE HUB'S OWN LETTERFORMS (its ROUND alphabet, at scale 3). The two
+      products share a face now, which is the point: a map card on the hub and the app it opens
+      in should not be lettered differently by accident.
+
+      THE REAL TEXT STAYS IN THE DOM and the pixels are its picture. A wordmark made of
+      rectangles is invisible to Ctrl-F and to a screen reader, and this one is also a BUTTON -
+      its accessible name comes from aria-label, but the string "SSE3.1" itself would vanish from
+      the page entirely. So the span carries it, hidden to the eye only, and the SVG is marked
+      decorative.
+
+      The colour is deliberately not set here: fill="currentColor" means the glyphs take the
+      .brand rule's var(--accent), so the wordmark follows the theme like every other accent.
+    --><span class="brand-text">SSE3.1</span
+      ><PixelText text="SSE3.1" scale={3} decorative />{#if brandCopied === 'ok'}<span class="brand-tick" aria-hidden="true"> ✓</span>{/if}</button>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
       {#if collapsed}
         <!-- panel-left-open: expand the rail -->
@@ -321,7 +337,20 @@ ${playerConnSummary}`
   .rail-btn.danger { color: var(--status-bad, #ef4444); }
   .rail-btn.danger .ic { color: var(--status-bad, #ef4444); }
   .spacer { flex: 1 1 auto; }
-  .brand-copy { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; }
+  .brand-copy { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; display: flex; align-items: center; gap: 6px; }
+  /* Present to a screen reader and to Ctrl-F, absent to the eye. Deliberately not display:none,
+     which would take it out of the accessibility tree too and defeat the whole point. */
+  .brand-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
   .brand-tick { color: #35c96b; }
 
   /* Collapsed (icon-only): hide labels + section titles everywhere in the rail (incl. the
