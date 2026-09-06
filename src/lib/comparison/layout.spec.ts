@@ -7,6 +7,7 @@ import {
   OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX, RING_ROOM_FRACTION,
   focusIndexOf, clampFocus, focusDiameterKm, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
   clampCentreShare, MIN_CENTRE_SHARE, MAX_CENTRE_SHARE, slotAt, PICK_MIN_RADIUS_PX,
+  ringOpacityAt, RING_FADE_STEPS,
   type ComparisonItem
 } from './layout';
 import { EARTH_RADIUS_KM, SOLAR_RADIUS_KM, LUNA_RADIUS_KM } from '$lib/constants';
@@ -415,6 +416,22 @@ describe('size comparison — rings', () => {
     // TURNING THE KNOB BACK UP GIVES THE ROOM BACK - the same measurer, one number.
     const roomy = measureSlot(SATURN, 1);
     expect(Math.max(roomy.spanPx, roomy.ringOuterPx * 2 * 1)).toBe(280360);
+  });
+
+  it('draws only ONE ring at full strength, and fades the rest out either side', () => {
+    // Owner, 2026-09-06: "rings on unselected planets need to disappear each side - fade in/out as
+    // it moves so only 1 ring is only fully visible - 2 on a move - saves a lot of nasty alpha."
+    expect(ringOpacityAt(0)).toBe(1);                 // the one you are looking at
+    expect(ringOpacityAt(1)).toBe(0);                 // its neighbour, gone
+    expect(ringOpacityAt(-1)).toBe(0);                // and gone on the other side too
+    expect(ringOpacityAt(4)).toBe(0);
+    // MID-MOVE, exactly two are drawn and they share one ring's worth of alpha between them.
+    expect(ringOpacityAt(-0.5) + ringOpacityAt(0.5)).toBeCloseTo(1, 9);
+    expect(ringOpacityAt(0.25)).toBeCloseTo(0.75, 9);
+    // A FADE, not a cut: a ring that vanished at a boundary would pop on a view you scroll.
+    expect(ringOpacityAt(0.999)).toBeGreaterThan(0);
+    expect(RING_FADE_STEPS).toBeGreaterThan(0);
+    expect(ringOpacityAt(NaN)).toBe(0);
   });
 
   it('reserves nothing extra for a body with no rings', () => {

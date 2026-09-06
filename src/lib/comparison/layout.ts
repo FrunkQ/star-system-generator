@@ -111,11 +111,37 @@ export const GAP_FRACTION = 0.06;
  * reach is correct if a ring must never cross a neighbour — but Saturn's reach 140,180 km against a
  * globe of 58,232 means a ringed planet then claims two and a half times its own room, and on a
  * strip meant to hold four to six bodies it pushes two of them off the screen to hold empty space
- * for jewellery. A ring crossing its neighbour reads as depth; a missing neighbour reads as a fault.
- * At 0 a ring claims nothing beyond its globe. Turn it UP towards 1 to give the rings their room
- * back — the drawing is unchanged either way, since a ring is always drawn at its TRUE extent.
+ * for jewellery. At 0 a ring claims nothing beyond its globe. Turn it UP towards 1 to give the
+ * rings their room back — the drawing is unchanged either way, since a ring is always drawn at its
+ * TRUE extent. What stops the overlap becoming a wash is `ringOpacityAt` below.
  */
 export const RING_ROOM_FRACTION = 0;
+/**
+ * How many steps of FOCUS a ring takes to fade out. Owner, 2026-09-06, on the grey wash three
+ * ringed planets make when all of them are drawn at once: *"rings on unselected planets need to
+ * disappear each side - fade in/out as it moves so only 1 ring is only fully visible - 2 on a move
+ * - saves a lot of nasty alpha"*.
+ *
+ * At 1, exactly one ring is ever at full strength — the one you are looking at — and during a move
+ * the two either side of the focus share it between them. Turn it UP to keep more rings on screen.
+ */
+export const RING_FADE_STEPS = 1;
+
+/**
+ * How strongly a ring draws, given how far its planet is from the FOCUS in steps of the sequence.
+ *
+ * WHY A FADE RATHER THAN A CUT: a ring that vanished the instant the focus crossed a boundary would
+ * pop, and a pop on a view you scroll continuously reads as a fault. Linear because the eye is
+ * judging PRESENCE here rather than a quantity — there is nothing to be accurate about.
+ *
+ * It is a legibility device and it changes no measurement: the ring is still drawn at its TRUE
+ * extent when it is drawn at all, so what fades is the alpha and never the reach.
+ */
+export function ringOpacityAt(stepsFromFocus: number): number {
+  if (!Number.isFinite(stepsFromFocus)) return 0;
+  const d = Math.abs(stepsFromFocus);
+  return d >= RING_FADE_STEPS ? 0 : 1 - d / RING_FADE_STEPS;
+}
 /** Below this drawn diameter an object is a DOT with a label, never an inflated disc (RENDER-S43). */
 export const DOT_THRESHOLD_PX = 2;
 /** The dot marker's own drawn span. A legibility device: it is a marker, not a claim about size. */

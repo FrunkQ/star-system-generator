@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { buildBodyLook, isFilledFamily, type BodyLookTextures } from './bodyLook';
-import { makeGlowTexture, makeHotspotTexture, makePlumeTexture } from './bodyFeatures';
+import {
+  makeGlowTexture, makeHotspotTexture, makePlumeTexture,
+  isBlackHoleNode, isFeedingBlackHole, buildHorizonLook, BH_LENS_SHRINK
+} from './bodyFeatures';
 import derived from '../../../tests/output/solar-system-derived.json';
 
 // WHY THIS SPEC EXISTS. Until Stream K the live holo and the 3D reference gallery each ran their own
@@ -28,6 +31,71 @@ const HOLO = { textures, renderStyle: 'filled' as const, bodyStyle: 'textured' a
 const GALLERY = { textures, aurora: 'model' as const, tilt: 'showcase' as const };
 /** The size-comparison view's options: the same look, at a TRUE radius, lit by one fixed key. */
 const COMPARISON = { textures, aurora: 'model' as const, tilt: 'axial' as const };
+
+// A BLACK HOLE IS NOT A STAR, and every one in this app carries `roleHint: 'star'`. Until 2026-09-06
+// the size-comparison strip therefore drew Sagittarius A* as a glowing orange ball with a
+// granulation texture, because the assembly tested the roleHint and nothing tested the assembly.
+describe('a black hole is a horizon, not a photosphere', () => {
+  const bh = (classes: string[], extra: any = {}) => ({
+    id: 'bh', name: 'A*', roleHint: 'star', kind: 'body', classes,
+    radiusKm: 12e6, massKg: 8.5e36, tags: [], ...extra
+  });
+
+  it('knows one when it sees one, in every spelling the app and an import can produce', () => {
+    expect(isBlackHoleNode(bh(['star/BH']))).toBe(true);
+    expect(isBlackHoleNode(bh(['star/BH_active']))).toBe(true);
+    expect(isBlackHoleNode(bh(['BH']))).toBe(true);
+    expect(isBlackHoleNode(bh(['star/black-hole']))).toBe(true);
+    expect(isBlackHoleNode(bh(['star/G']))).toBe(false);
+    expect(isBlackHoleNode(bh([]))).toBe(false);
+    expect(isBlackHoleNode(null)).toBe(false);
+    expect(isFeedingBlackHole(bh(['star/BH_active']))).toBe(true);
+    expect(isFeedingBlackHole(bh(['star/BH'], { accretionEddington: 0.4 }))).toBe(true);
+    expect(isFeedingBlackHole(bh(['star/BH']))).toBe(false);
+  });
+
+  it('draws NO photosphere, NO corona and no star texture — the fault this branch fixes', () => {
+    const look = buildBodyLook(bh(['star/BH']), 100, { ...COMPARISON, photonRing: true });
+    expect(look.star).toBeUndefined();                       // no corona/flare rig at all
+    const mat = look.mesh.material as THREE.MeshBasicMaterial;
+    expect(mat.color.getHex()).toBe(0x000000);
+    expect(mat.map).toBeFalsy();                             // no granulation texture
+    // ...and a star of the same shape still gets all of it, or the branch proves nothing.
+    const star = buildBodyLook(bh(['star/G']), 100, COMPARISON);
+    expect(star.star).toBeDefined();
+    expect((star.mesh.material as THREE.MeshBasicMaterial).map).toBeTruthy();
+  });
+
+  it('marks the horizon with a photon ring ONLY where nothing else will', () => {
+    // The lensed surfaces get their ring from the shader; a painted one beside it is a second,
+    // wrong answer. The size comparison has no lensing pass, so without this a black hole is a
+    // labelled hole in the strip.
+    const withRing = buildBodyLook(bh(['star/BH']), 100, { ...COMPARISON, photonRing: true });
+    const without = buildBodyLook(bh(['star/BH']), 100, COMPARISON);
+    expect(withRing.mesh.children.length).toBe(1);
+    expect(without.mesh.children.length).toBe(0);
+    // AND IT MARKS THE MEASUREMENT RATHER THAN INFLATING IT: the ring's INNER edge is the horizon.
+    const ring = withRing.mesh.children[0] as THREE.Mesh;
+    const geo = ring.geometry as THREE.RingGeometry;
+    expect(geo.parameters.innerRadius).toBe(100);
+    expect(geo.parameters.outerRadius).toBeLessThanOrEqual(103);
+  });
+
+  it('keeps the LENS SHRINK with the lens, and never applies it to a true-scale drawing', () => {
+    // The 0.55 exists because a lensing pass magnifies the black it finds; a surface without one
+    // that applied it would state that a black hole is 45% smaller than it is - on the one view
+    // whose whole claim is true size. `buildHorizonLook` takes a radius and never scales it.
+    expect(BH_LENS_SHRINK).toBeGreaterThan(0);
+    expect(BH_LENS_SHRINK).toBeLessThan(1);
+    const trueScale = buildHorizonLook(1000);
+    expect((trueScale.mesh.geometry as THREE.SphereGeometry).parameters.radius).toBe(1000);
+    const lensed = buildHorizonLook(1000 * BH_LENS_SHRINK);
+    expect((lensed.mesh.geometry as THREE.SphereGeometry).parameters.radius).toBe(550);
+    // The comparison view asks for the FULL radius, which is what this pins.
+    const look = buildBodyLook(bh(['star/BH']), 1000, { ...COMPARISON, photonRing: true });
+    expect((look.mesh.geometry as THREE.SphereGeometry).parameters.radius).toBe(1000);
+  });
+});
 
 describe('the one body-look assembly', () => {
   it('builds the same FEATURE INVENTORY for one node through every caller', () => {

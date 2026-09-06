@@ -25,7 +25,8 @@ import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import {
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze,
   buildDeckStack, buildLightning, buildAuroraShell, applyLimbDarkening, buildStarLook,
-  makeStarSurfaceTexture, type StarLookVisual, type LightningVisual, type EmissiveVisual
+  makeStarSurfaceTexture, buildHorizonLook, isBlackHoleNode, isFeedingBlackHole,
+  type StarLookVisual, type LightningVisual, type EmissiveVisual
 } from './bodyFeatures';
 
 /**
@@ -87,6 +88,15 @@ export interface BodyLookOptions {
   /** Star only: `stellar/jets` and `stellar/shedding` strengths. */
   starJets?: 0 | 1 | 2;
   starShedding?: 0 | 1 | 2;
+  /**
+   * BLACK HOLE only: draw the thin photon ring that makes a horizon findable against black.
+   *
+   * FALSE (the default) for a surface with a gravitational-lensing pass — there the shader draws
+   * the ring for real and a painted one would be a second, wrong answer. TRUE for a surface with no
+   * lensing, which is the size comparison: a pure black sphere on a black backdrop is a labelled
+   * hole in the strip.
+   */
+  photonRing?: boolean;
   /**
    * Star only: the corona, the flares and the outflow decorations. Default true.
    *
@@ -158,6 +168,22 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
   };
   const appear = deriveAppearance(node);
   const colorHex = opts.colorHex ?? new THREE.Color(node.apparentColorHex || '#8a8f99').getHex();
+
+  // A BLACK HOLE IS NOT A STAR, whatever its `roleHint` says, and it has to be tested FIRST.
+  // Every black hole in this app carries `roleHint: 'star'`, so without this branch it goes down the
+  // photosphere path and draws as a glowing orange ball with a granulation texture — which is what
+  // the size-comparison strip did until 2026-09-06. The horizon look is shared with the live holo
+  // and the reference gallery (`buildHorizonLook`); what those two add on top of it — the lensing
+  // pass and the temperature-graded accretion disc — are SCENE effects rather than a body's look,
+  // and stay with them (RENDER-S53's line, applied to the one case that tested it).
+  if (isBlackHoleNode(node)) {
+    const horizon = buildHorizonLook(radius, { photonRing: opts.photonRing, feeding: isFeedingBlackHole(node) });
+    disposables.push(horizon);
+    look.mesh = horizon.mesh;
+    if (tiltMode !== 'none') applyTilt(horizon.mesh, appear, tiltMode);
+    look.inventory = () => inventoryOf(horizon.mesh);
+    return look;
+  }
 
   if (node.roleHint === 'star') {
     // Photosphere: an emissive (unlit) textured sphere — granulation, spot groups and faculae from

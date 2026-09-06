@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { render } from '@testing-library/svelte';
 import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
 import { itemsForSystem } from './items';
+import { tick } from 'svelte';
 import derived from '../../../tests/output/solar-system-derived.json';
 
 // G68 — the size comparison as a PLAYER system view. The difference between the two tiers is CHROME,
@@ -54,6 +55,24 @@ describe('the size comparison at the player tier', () => {
     expect(container.querySelector('.ruler')).toBeTruthy();
     expect(container.querySelector('canvas')).toBeTruthy();
     expect(container.querySelector('h2')?.textContent).toContain('Size comparison');
+  });
+
+  it('keeps your place when the WINDOW changes size — a resize is not a new view', async () => {
+    // The opening view is re-armed on a change of CAST (a different map, a different order, a body
+    // hidden), never on a change of SIZE: the focus is an index and the scale is derived from it, so
+    // both survive a resize by construction. Carrying the viewport in the arming signature meant
+    // every resize re-opened the view on its median — and selecting a body with a longer name
+    // reflows the header by a pixel, so it fired on a CLICK.
+    const { container } = mount({ selectedId: items[0].id });
+    await tick();
+    const before = stripNames(container);
+    // A one-pixel reflow, which is all it took.
+    Element.prototype.getBoundingClientRect = function () {
+      return { width: 900, height: 699, top: 0, left: 0, right: 900, bottom: 699, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    };
+    window.dispatchEvent(new Event('resize'));
+    await tick();
+    expect(stripNames(container)).toEqual(before);
   });
 
   it('takes the ORDER from the preset when one is imposed, and ignores what was remembered', () => {

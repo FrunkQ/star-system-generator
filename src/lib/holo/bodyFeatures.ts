@@ -812,6 +812,102 @@ export function buildAuroraShell(radius: number, hex: string, strength: number, 
 export const FLAT_RING_COLOR = 0xc9c3b4;   // pale ice-and-rock, the colour Saturn's rings actually are
 export const FLAT_RING_OPACITY = 0.55;
 
+/**
+ * IS THIS A BLACK HOLE? Class-based, and deliberately loose: the app writes `star/BH` and
+ * `star/BH_active`, an imported map may carry a bare `BH`, and a hand-authored one may spell it
+ * `black-hole`. This is the predicate `holo/scene.ts` has always used, lifted here so the three
+ * surfaces that draw a horizon agree about what one IS as well as what one looks like.
+ *
+ * NOT the same function as `starmap/systemStars.ts` `blackHoleState`, which is STRICTER (exact
+ * class matches) and answers a different question — which GLYPH the starmap draws. The two have
+ * disagreed since before this extraction; unifying them would change what appears on the map, so it
+ * is recorded on the board rather than done here.
+ */
+export function isBlackHoleNode(node: any): boolean {
+	return (node?.classes || []).some((c: string) => String(c).includes('BH') || String(c).includes('black-hole'));
+}
+
+/** FEEDING: the active class, or any accretion at all. Drives the hot inner glow. */
+export function isFeedingBlackHole(node: any): boolean {
+	return node?.classes?.[0] === 'star/BH_active' || ((node?.accretionEddington ?? 0) > 0.01);
+}
+
+/**
+ * How much of its true radius a lensed horizon is DRAWN at.
+ *
+ * A gravitational-lensing pass magnifies whatever black it finds at the centre, so a full-size
+ * sphere smears black well past the photon ring and eats the starfield: the live holo and the 3D
+ * gallery both draw the mesh small and let the shader's mask be the real shadow. **A surface with
+ * NO lensing pass must NOT apply this** — it would state that a black hole is 45% smaller than it
+ * is, which on a true-scale size comparison is the one lie that view exists to remove. That is
+ * exactly the shape of fault the standing rules record three times over (A33, B27, B28: a quantity
+ * correct for its own purpose, published against a neighbour measured differently), so the number
+ * lives here with its reason rather than inline in two renderers.
+ */
+export const BH_LENS_SHRINK = 0.55;
+
+/**
+ * HOW FAR A FEEDING HOLE'S ACCRETION DISC REACHES, in km, or null for a hole that is not feeding.
+ *
+ * Real black-hole systems carry no explicit ring node, so every surface that wants to draw a disc
+ * has to invent its extent — and until this function there was one inline expression in
+ * `holo/scene.ts` and nothing at all anywhere else, which is how the size comparison came to draw
+ * Sagittarius A* with no disc at all. The inner edge is the innermost stable orbit; the outer edge
+ * grows with the Eddington fraction, because a hole eating harder lights a wider disc.
+ *
+ * These three numbers are the ones a human will want to change after looking at a black hole, which
+ * is the standing rule's test for data in the wrong place.
+ */
+export const DISC_INNER_RADII = 1.6;
+export const DISC_OUTER_RADII_BASE = 5;
+export const DISC_OUTER_RADII_PER_EDDINGTON = 4;
+
+export function accretionDiscExtentKm(node: any): { innerKm: number; outerKm: number } | null {
+	if (!isFeedingBlackHole(node)) return null;
+	const rkm = Number(node?.radiusKm) || Number(node?.physical_parameters?.radiusKm) || 30;
+	const edd = Math.max(0, Math.min(1, node?.accretionEddington ?? 0.5));
+	return {
+		innerKm: rkm * DISC_INNER_RADII,
+		outerKm: rkm * (DISC_OUTER_RADII_BASE + edd * DISC_OUTER_RADII_PER_EDDINGTON)
+	};
+}
+
+/** The disc's hot inner colour, for a surface that draws it as ONE flat band rather than graded. */
+export const DISC_FLAT_COLOR = 0xffc46b;
+
+/**
+ * THE EVENT HORIZON, as an object: a black sphere, and optionally the thin photon ring that is the
+ * only thing making it findable on a black background.
+ *
+ * `photonRing` is FALSE for the lensed surfaces — there the shader draws the ring for real, and a
+ * painted one beside it would be a second, wrong answer. It is TRUE for the size comparison, which
+ * has no lensing pass at all: without it a black hole is a labelled hole in the strip.
+ */
+export function buildHorizonLook(
+	radius: number,
+	opts: { photonRing?: boolean; feeding?: boolean } = {}
+): { mesh: THREE.Mesh; dispose(): void } {
+	const disposables: { dispose(): void }[] = [];
+	const geo = new THREE.SphereGeometry(radius, 32, 24);
+	const mat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+	const mesh = new THREE.Mesh(geo, mat);
+	disposables.push(geo, mat);
+	if (opts.photonRing) {
+		// A hairline at EXACTLY the horizon radius, so it marks the measurement rather than inflating
+		// it: the ring's inner edge is the horizon. Hotter and brighter when the hole is feeding.
+		const ringGeo = new THREE.RingGeometry(radius, radius * 1.02, 96, 1);
+		const ringMat = new THREE.MeshBasicMaterial({
+			color: opts.feeding ? 0xfff0c8 : 0xffb066,
+			side: THREE.DoubleSide, transparent: true, opacity: opts.feeding ? 0.95 : 0.7, depthWrite: false
+		});
+		const ring = new THREE.Mesh(ringGeo, ringMat);
+		ring.renderOrder = 1;   // over the sphere, or the horizon's own limb hides its far half
+		mesh.add(ring);
+		disposables.push(ringGeo, ringMat);
+	}
+	return { mesh, dispose() { for (const x of disposables) x.dispose(); } };
+}
+
 export function buildFlatRing(
 	innerRadius: number,
 	outerRadius: number,

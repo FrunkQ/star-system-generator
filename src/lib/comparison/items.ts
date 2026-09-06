@@ -6,12 +6,33 @@
 // consults the readable-size law, the body-size dial or the system's extent — see `layout.ts` for
 // why, and the engine map entry RENDER-S51.
 import { starRadiusKmOf } from '$lib/rendering/scaleLaw';
+import { accretionDiscExtentKm, DISC_FLAT_COLOR } from '$lib/holo/bodyFeatures';
 import { systemVisualStars } from '$lib/starmap/systemStars';
 import { SORT_ORDERS, type ComparisonItem, type SortOrder } from './layout';
 
 /** An item plus the node the scene needs to build its look. */
 export interface ComparisonEntry extends ComparisonItem {
   node: any;
+  /**
+   * The ring's own colour, where it is not the pale ice-and-rock a planet's is: a FEEDING black
+   * hole's accretion disc. Kept off `ComparisonItem` because `layout.ts` is the pure geometry and a
+   * colour is not a layout question.
+   */
+  ringColorHex?: string;
+}
+
+/**
+ * A FEEDING BLACK HOLE'S DISC, as the strip's ring fields. Real holes carry no ring node — the disc
+ * is derived — so without this Sagittarius A* is a bare horizon on a view where its disc is the
+ * most interesting thing about it. Quiescent holes get nothing, which is the honest difference.
+ */
+function discRing(node: any): { ringInnerKm: number; ringOuterKm: number; ringColorHex: string } | undefined {
+  const ext = accretionDiscExtentKm(node);
+  if (!ext) return undefined;
+  return {
+    ringInnerKm: ext.innerKm, ringOuterKm: ext.outerKm,
+    ringColorHex: '#' + DISC_FLAT_COLOR.toString(16).padStart(6, '0')
+  };
 }
 
 /** The authored radius of a body node, in km, or 0 for a node that has none. */
@@ -64,7 +85,8 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
       orbitAu: Number(n?.orbit?.elements?.a_AU) || undefined,
       ringInnerKm: ringsOf.get(String(n.id))?.inner,
       ringOuterKm: ringsOf.get(String(n.id))?.outer,
-      node: n
+      node: n,
+      ...discRing(n)
     });
   }
   return out;
@@ -104,7 +126,8 @@ export function itemsForStarmap(starmap: { systems?: any[] } | null | undefined)
         // this strip, so the orbit order degenerates to a flat row here, which is the honest answer -
         // there is no "what orbits what" between two different systems.
         parentId: null,
-        node
+        node,
+        ...discRing(node)
       });
     }
   }

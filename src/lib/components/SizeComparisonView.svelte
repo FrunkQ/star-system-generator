@@ -13,7 +13,7 @@
   import {
     sortItems, medianPlanet, layoutStrip, belowFloorNote, visibleItems,
     idsAtLeast, idsAtMost, referenceMarks, minorTicks, clampCentreShare, slotAt,
-    focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
+    focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx, ringOpacityAt,
     OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION, SORT_ORDERS,
     type StripLayout, type SortOrder
   } from '$lib/comparison/layout';
@@ -132,13 +132,21 @@
   $: marks = referenceMarks(scale, rulerLen);
   $: minors = minorTicks(scale, rulerLen);
   $: byId = new Map(items.map((i) => [i.id, i]));
+  /** Where each object sits in the travelling sequence — the ring fade is measured in these steps. */
+  $: seqIndex = new Map(seq.map((i, n) => [i.id, n]));
 
   // THE OPENING VIEW: the median planet in the middle of the window at 30% of the shorter side.
   // Re-armed whenever the map or the hidden set changes the cast, because "the median" is a
   // statement about the objects on screen.
   let armed = '';
   $: {
-    const signature = `${mapId}|${visible.length}|${shorterSide}|${order}|${axis}`;
+    // THE SIGNATURE IS THE CAST, NOT THE WINDOW. It used to carry `shorterSide` and `axis` — a
+    // leftover from when the opening view SET an absolute scale and therefore needed the size. The
+    // scale is derived now, and the focus is an INDEX, so both survive a resize by construction;
+    // carrying them here meant every resize re-armed the opening view and threw away where you
+    // were. Seen live: selecting a body whose name is longer reflows the header by a pixel, which
+    // changes the stage height, which re-opened the whole view on its median.
+    const signature = `${mapId}|${visible.length}|${order}`;
     if (signature !== armed && visible.length && shorterSide > 1) {
       armed = signature;
       const opener = medianPlanet(visible);
@@ -156,7 +164,11 @@
   $: if (handle) handle.setSlots(layout.slots.filter((s) => !s.belowFloor).map((s) => ({
     id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, crossPx: s.crossPx,
     diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex,
-    ringInnerPx: s.ringInnerPx, ringOuterPx: s.ringOuterPx
+    ringInnerPx: s.ringInnerPx, ringOuterPx: s.ringOuterPx, ringColorHex: byId.get(s.id)?.ringColorHex,
+    // ONLY THE RING YOU ARE LOOKING AT is at full strength. Three ringed worlds drawn at true
+    // extent at once is a grey wash across the whole strip, and every one of them is transparent,
+    // which is expensive as well as ugly.
+    ringOpacity: ringOpacityAt((seqIndex.get(s.id) ?? focus) - focus)
   })).filter((s) => s.node));
   $: if (handle) handle.setView(axis, scrollPx, vw, vh, crossScrollPx);
   $: if (handle) handle.setSelected(selectedId);

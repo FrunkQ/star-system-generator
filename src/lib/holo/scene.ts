@@ -56,6 +56,7 @@ import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack,
   applyLimbDarkening, buildStarLook, updateStarLook, makeStarSurfaceTexture, type StarLookVisual, updateMagma, updatePlumes, updateLightning, buildLightning, type LightningVisual, accretionColor,
+  buildHorizonLook, isBlackHoleNode as isBlackHoleNodeShared, isFeedingBlackHole, BH_LENS_SHRINK, accretionDiscExtentKm,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
 // THE ONE body-look assembly (Stream K). Before it, the holo and the reference gallery each
@@ -4262,8 +4263,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // Drawn far smaller than the lens's shadow mask — the lens magnifies the black it finds at
           // the centre, so a full-size sphere would smear black well past the photon ring and eat the
           // starfield. The shader's horizon mask (sized from radiusScene) is the real shadow.
-          const eh = new THREE.Mesh(new THREE.SphereGeometry(starR * 0.55, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
-          mesh = eh;
+          // ONE horizon builder, shared with the reference gallery and the size comparison. The
+          // shrink factor travels WITH it and carries its own note: it exists because the lensing
+          // pass magnifies the black, and a surface without that pass must not apply it. No photon
+          // ring here — the shader draws the real one.
+          const eh = buildHorizonLook(starR * BH_LENS_SHRINK);
+          mesh = eh.mesh;
           const edd = Math.max(0, Math.min(1, (node as any).accretionEddington ?? (feeding ? 0.5 : 0)));
           // A black hole is BLACK — no big glow ball (that read as a "crystal ball"). The look is the
           // temperature-graded accretion disc + the gravitational-lensing pass wrapping it + a small
@@ -4272,8 +4277,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // Auto-generate a glowing, temperature-graded ACCRETION DISC (real BH systems carry no
             // explicit ring node). It's a normal RingVisual so updateRings spins it + tracks the hole;
             // the lensing pass then wraps its far side over/under the shadow (the Interstellar look).
-            const rkm = node.radiusKm || 30;
-            const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: rkm * 1.6, radiusOuterKm: rkm * (5 + edd * 4) };
+            // ONE extent, shared with the size comparison (`accretionDiscExtentKm`) — the numbers
+            // used to be this expression, inline, and nothing else could reach them.
+            const ext = accretionDiscExtentKm(node) ?? { innerKm: (node.radiusKm || 30) * 1.6, outerKm: (node.radiusKm || 30) * 5 };
+            const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: ext.innerKm, radiusOuterKm: ext.outerKm };
             const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs);
             if (disc) {
               contentGroup.add(disc.pivot);
@@ -5342,13 +5349,11 @@ function bodyRadius(node: any): number {
 }
 
 // A black hole is a star-class 'star/BH' or 'star/BH_active'. Feeding = the active class, or any
-// accretion (Eddington fraction > 0) — drives the bright hot accretion glow vs a bare quiescent horizon.
-function isBlackHoleNode(node: any): boolean {
-  return (node.classes || []).some((c: string) => String(c).includes('BH') || String(c).includes('black-hole'));
-}
-function bhFeeding(node: any): boolean {
-  return node.classes?.[0] === 'star/BH_active' || ((node.accretionEddington ?? 0) > 0.01);
-}
+// accretion (Eddington fraction > 0) — drives the bright hot accretion glow vs a bare quiescent
+// horizon. BOTH now live in `bodyFeatures` beside the horizon look they decide, so the three
+// surfaces that draw a black hole agree about what one IS as well as what one looks like.
+const isBlackHoleNode = isBlackHoleNodeShared;
+const bhFeeding = isFeedingBlackHole;
 
 type Projector = (p: { x: number; y: number; z: number }, out: THREE.Vector3) => THREE.Vector3;
 

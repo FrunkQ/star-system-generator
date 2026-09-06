@@ -6449,10 +6449,23 @@ size** - the renderer, whose `setSize` multiplies by the device pixel ratio; a S
 ([[B122]]), which is invisible at ratio 1 and obvious at 2. In BOTH faults the DOM overlay was
 pixel-exact throughout, because it does its own arithmetic - so a broken canvas beside a correct
 overlay reads as a DATA fault and sends you looking in the wrong module.
-WHAT IS NOT DRAWN, and it is a scope line rather than an omission: belts and rings (their radius is
-an ORBIT, so putting one beside a planet compares two different kinds of thing), constructs and
-megastructures (a MODEL or a generated volume - RENDER-S9/RENDER-S44 - a different assembly from
-the globe, and one nobody has extracted yet), and barycentres.
+ONLY THE RING AT THE FOCUS IS DRAWN AT FULL STRENGTH (`ringOpacityAt`). Owner, 2026-09-06: *"rings
+on unselected planets need to disappear each side - fade in/out as it moves so only 1 ring is only
+fully visible - 2 on a move - saves a lot of nasty alpha."* Three ringed worlds drawn at true extent
+at once is a grey wash across the whole strip, and every one of them is transparent, which is
+expensive as well as ugly. It is a legibility device and changes no measurement: a ring that is
+drawn at all is drawn at its TRUE extent. A FADE rather than a cut, because a ring that vanished at
+a boundary would pop on a view you scroll continuously.
+AND A BLACK HOLE BENDS ITS NEIGHBOURS. The strip runs the same stylised lensing pass the holo and
+the gallery use (`lensingShader.ts`), fed from the built holes each frame, and takes the cheap
+`renderer.render` path on every frame with no hole on screen. Owner, 2026-09-06: *"be fun to see the
+world next being bent in spacetime"*. It is not decoration on a measuring instrument: the one thing
+a size comparison cannot otherwise say about a black hole is that it is not an object of that size
+sitting there, and the bent world behind it says that in a way no label can.
+WHAT IS NOT DRAWN, and it is a scope line rather than an omission: belts (their radius is an ORBIT,
+so putting one beside a planet compares two different kinds of thing), constructs and megastructures
+(a MODEL or a generated volume - RENDER-S9/RENDER-S44 - a different assembly from the globe, and one
+nobody has extracted yet), and barycentres.
 BLAST: anything that "unifies" this view onto the scale law breaks the feature outright. If the
 readable law changes, this view does not move, and that is correct.
 
@@ -6479,6 +6492,26 @@ THE GATE IS A FEATURE INVENTORY, not a pixel comparison: `bodyLook.spec.ts` buil
 every caller's option set and compares the child type names and the material count. A caller that
 grows a feature the others lack goes red. Seen red against five deliberate re-introductions of the
 original drift.
+A BLACK HOLE IS NOT A STAR, AND THE ROLE HINT SAYS IT IS. Every black hole in this app carries
+`roleHint: 'star'`, so the assembly's star branch caught them and drew Sagittarius A* as a glowing
+orange ball with a granulation texture - on the size comparison, for a day ([[B129]]). The horizon
+is now the FIRST test in the assembly, and `buildHorizonLook` + `isBlackHoleNode` +
+`isFeedingBlackHole` + `accretionDiscExtentKm` live in `bodyFeatures` beside the other shared
+builders, because THREE surfaces draw a horizon and each had its own copy of the mesh.
+THE LENS SHRINK IS THE TRAP IN THAT EXTRACTION. A lensed surface draws the horizon mesh at
+`BH_LENS_SHRINK` (0.55) of its radius, because the pass magnifies whatever black it finds; a surface
+with NO lensing pass that copied the number would state that a black hole is 45% smaller than it is.
+So the factor is a named export with its reason attached and the builder never applies it itself -
+the caller does. Same shape as A33/B27/B28: a quantity correct for its own purpose, published
+against a neighbour measured differently.
+WHAT STAYS WITH THE SCENE rather than joining the look: the gravitational-lensing PASS and the
+temperature-graded accretion DISC NODE. Those are scene effects, not a body's appearance. The size
+comparison draws its own disc as a flat ring from the SHARED extent (`accretionDiscExtentKm`), which
+is the same expression the holo's graded disc is built from.
+NOT UNIFIED, deliberately: `starmap/systemStars.ts` `blackHoleState` is a STRICTER predicate (exact
+class matches) answering a different question - which glyph the starmap draws. The two have
+disagreed since before this extraction and unifying them would change what appears on the map, so it
+is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
@@ -6514,6 +6547,12 @@ WHY AN INDEX AND NOT A PIXEL OFFSET. A pixel offset means nothing while the scal
 the same 4,000 px is half a star or four hundred moons. An index is stable across the zoom, so the
 ends are exactly 0 and n-1, a drag is reversible, and every object costs about one screenful of drag
 whatever its true size, which is the reported fault stated as a law.
+THE OPENING VIEW RE-ARMS ON THE CAST, NEVER ON THE WINDOW. The arming signature is
+`mapId | visibleCount | order` and must not carry the viewport: the focus is an INDEX and the scale
+is derived from it, so both survive a resize by construction. Carrying `shorterSide` was a leftover
+from when the opening view SET an absolute scale, and it meant every resize threw away where you
+were - including on a CLICK, because selecting a body with a longer name reflows the header by a
+pixel ([[B130]]).
 FOUR THINGS THAT LOOK LIKE BUGS AND ARE THE LAW:
  - **The along scroll goes NEGATIVE at the start** and past `lengthPx - span` at the end, and must
    not be clamped. "The focused object is in the middle of the window" applies to the first and last

@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.319 - 6th Sep 2026
+
+- Size comparison: only the ringed world you are looking at shows its rings now. The others fade out either side as you move, so a strip of ringed planets is no longer a grey wash of overlapping discs.
+- Black holes are black holes. They were being drawn as glowing orange stars on this view - the app files them under "star", and the comparison believed it. A hole now shows its event horizon at its true size with a thin ring of light marking the edge, and if it is feeding, its accretion disc.
+- And it bends what is behind it. Scroll a black hole up against a giant and you can watch the giant's face curve round the shadow, using the same lensing the 3D map has always had. Nothing without a black hole on screen pays anything for it.
+- Fixed: the Size comparison lost your place whenever the window changed size - and because the hide button carries the selected object's name, picking something with a longer name resized the header by a pixel and did it too. Clicking a body appeared to do nothing at all.
+
 ## v3.0.318 - 6th Sep 2026
 
 - Board: the seam protocol between the app and the Explorers site - two halves of one contract, a fixed report block, and stream N, the integration check that walks both sides.

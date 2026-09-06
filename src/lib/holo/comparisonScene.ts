@@ -25,9 +25,25 @@
 // A body BELOW THE PIXEL FLOOR never reaches this module at all: the view draws it as a dot in the
 // DOM. That is the performance rule as much as the honesty one — a system with two hundred asteroids
 // must open in the time the map does, and a texture is only ever built for a globe you can see.
+//
+// AND THE FIFTH DECISION: A BLACK HOLE BENDS ITS NEIGHBOURS. The strip runs the SAME stylised
+// gravitational-lensing pass the live holo and the reference gallery use (`lensingShader.ts`), so a
+// horizon on the strip warps whatever is drawn beside it into arcs over and under a genuinely black
+// shadow. That is not decoration on a measuring instrument: the one thing a size comparison cannot
+// otherwise say about a black hole is that it is not an object of that size sitting there, and the
+// bent world next to it says it in a way no label can. Owner, 2026-09-06: *"be fun to see the world
+// next being bent in spacetime"*. The pass runs ONLY while a hole is actually on screen — every
+// other frame goes straight to the renderer, exactly as before.
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
-import { makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes, updateLightning, buildFlatRing } from './bodyFeatures';
+import {
+  makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes,
+  updateLightning, buildFlatRing, isBlackHoleNode
+} from './bodyFeatures';
 
 /** One globe to draw: where it goes and how big it is, both already in pixels. */
 export interface ComparisonSlot {
@@ -52,6 +68,14 @@ export interface ComparisonSlot {
    */
   ringInnerPx?: number;
   ringOuterPx?: number;
+  /** The ring's own colour, where it is not a planet's pale ice and rock — a BH's accretion disc. */
+  ringColorHex?: string;
+  /**
+   * 0..1, from `ringOpacityAt`: how strongly this ring draws, given how far its planet is from the
+   * focus. Only the ring you are looking at is at full strength. Applied per FRAME, so a scroll
+   * fades it rather than popping it, and it never rebuilds the ring.
+   */
+  ringOpacity?: number;
 }
 
 export interface ComparisonSceneHandle {
@@ -99,7 +123,21 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
 
   const textures: BodyLookTextures = { glow: makeGlowTexture(), hotspot: makeHotspotTexture(), plume: makePlumeTexture() };
 
-  interface Built { look: BodyLook; group: THREE.Group; slot: ComparisonSlot; ring?: { dispose(): void } }
+  // THE LENSING CHAIN, built once and idle until a black hole is on screen. `composer.render()` is a
+  // full-screen pass over a render target; `renderer.render()` is not, so the cheap path stays the
+  // default and a strip of ordinary worlds pays nothing for a feature it does not use.
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const lensingPass = new ShaderPass(makeLensingShader());
+  composer.addPass(lensingPass);
+
+  interface Built {
+    look: BodyLook; group: THREE.Group; slot: ComparisonSlot;
+    /** `base` is the material's own opacity at build time — the fade multiplies it, never replaces it. */
+    ring?: { dispose(): void; mat: THREE.Material & { opacity: number }; mesh: THREE.Mesh; base: number };
+    /** Set for a black hole: this body is a lensing centre, and its horizon radius in px. */
+    lens?: { radiusPx: number };
+  }
   const built = new Map<string, Built>();
   let slots: ComparisonSlot[] = [];
   let axis: 'x' | 'y' = 'x';
@@ -162,6 +200,11 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         // NO CORONA, NO FLARES (see the option's own note): a halo five radii wide would make every
         // star read nine times its true diameter, on the one view that exists to stop exactly that.
         starDecorations: false,
+        // A BLACK HOLE gets the thin photon ring here and NOWHERE ELSE: this is the one surface
+        // that draws a horizon without a lensing pass, so nothing else would mark where it is —
+        // and, for the same reason, it draws at the TRUE radius rather than the lensed surfaces'
+        // shrunken one (`BH_LENS_SHRINK`, and its note says why that must not travel).
+        photonRing: true,
         segments: radius > MAX_DRAW_SCREENS * Math.max(vw, vh) ? { width: 24, height: 16 } : undefined
       });
       group.add(look.mesh);
@@ -171,20 +214,42 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       // THE STRIP'S OWN AXIS, so the reading axis carries the ring's true width and only the other
       // one is foreshortened. Face-on would be a disc the eye reads as a bigger planet; edge-on would
       // be a line. Roughly two-thirds of the way over is the poster's angle.
-      let ring: { dispose(): void } | undefined;
+      let ring: Built['ring'];
       if (slot.ringOuterPx && slot.ringInnerPx !== undefined && slot.ringOuterPx > slot.ringInnerPx) {
-        const r = buildFlatRing(slot.ringInnerPx, slot.ringOuterPx);
+        const r = buildFlatRing(slot.ringInnerPx, slot.ringOuterPx,
+          slot.ringColorHex ? new THREE.Color(slot.ringColorHex).getHex() : undefined);
         if (axis === 'x') r.mesh.rotation.x = RING_TILT_RAD;
         else r.mesh.rotation.y = RING_TILT_RAD;
         r.mesh.renderOrder = -1;   // behind the globe, so the near arc does not cut across its face
         group.add(r.mesh);
-        ring = r;
+        const mat = r.mesh.material as THREE.Material & { opacity: number };
+        ring = { dispose: r.dispose, mat, mesh: r.mesh, base: mat.opacity };
       }
 
       scene.add(group);
-      built.set(slot.id, { look, group, slot, ring });
+      built.set(slot.id, {
+        look, group, slot, ring,
+        // A black hole is a lensing centre. Its Einstein radius is taken from its OWN drawn radius,
+        // which on this view is its true one — so the bend is as big as the hole really is.
+        lens: isBlackHoleNode(slot.node) ? { radiusPx: radius } : undefined
+      });
     }
     for (const id of [...built.keys()]) if (!wanted.has(id)) destroy(id);
+  }
+
+  /**
+   * THE RING FADE, applied every frame and never a rebuild. Only the ring at the focus is at full
+   * strength; the rest fade out with distance and are switched off entirely at zero, so a strip of
+   * ringed worlds does not stack four transparent discs over each other. The number comes from the
+   * caller (`ringOpacityAt` in `comparison/layout.ts`) — this end only applies it.
+   */
+  function applyRingFade(): void {
+    for (const b of built.values()) {
+      if (!b.ring) continue;
+      const f = b.slot.ringOpacity ?? 1;
+      b.ring.mesh.visible = f > 0.002;
+      b.ring.mat.opacity = b.ring.base * f;
+    }
   }
 
   function destroy(id: string): void {
@@ -221,12 +286,52 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
 
   const _q = new THREE.Quaternion();
   const _y = new THREE.Vector3(0, 1, 0);
+  const _lc = new THREE.Vector3();
+  const _le = new THREE.Vector3();
+  const _right = new THREE.Vector3();
+
+  /**
+   * Feed the lensing pass the black holes that are actually on screen, and say how many. Returns 0
+   * when there are none, which is the signal to take the cheap render path.
+   *
+   * The centre and the radius are PROJECTED rather than computed from the slot's pixels, because the
+   * shader wants aspect-corrected screen UV and the camera already knows how to produce it — one
+   * conversion instead of two that can disagree. Same feed the reference gallery runs.
+   */
+  function feedLenses(): number {
+    _right.setFromMatrixColumn(camera.matrixWorld, 0);
+    const bh = lensingPass.uniforms.uBH.value as THREE.Vector4[];
+    const disc = lensingPass.uniforms.uDisc.value as THREE.Vector4[];
+    const discN = lensingPass.uniforms.uDiscN.value as THREE.Vector2[];
+    const aspect = vw / Math.max(1, vh);
+    let n = 0;
+    for (const b of built.values()) {
+      if (!b.lens || n >= MAX_LENSES) continue;
+      _lc.copy(b.group.position).project(camera);
+      if (_lc.x < -1.6 || _lc.x > 1.6 || _lc.y < -1.6 || _lc.y > 1.6) continue;   // off screen: no lens
+      _le.copy(b.group.position).addScaledVector(_right, b.lens.radiusPx).project(camera);
+      const rC = Math.hypot((_le.x - _lc.x) * 0.5 * aspect, (_le.y - _lc.y) * 0.5);
+      if (!(rC > 0.0002)) continue;
+      const ringMesh = b.ring?.mesh;
+      const outerPx = b.slot.ringOuterPx ?? 0;
+      const k = ringMesh && outerPx > 0 ? (b.slot.ringInnerPx ?? 0) / outerPx : 0;
+      bh[n].set(_lc.x * 0.5 + 0.5, _lc.y * 0.5 + 0.5, Math.min(0.5, rC * 0.85), k);
+      if (ringMesh && outerPx > 0 && b.ring!.mesh.visible) {
+        feedDiscEllipse(disc[n], discN[n], ringMesh, b.group.position, outerPx, camera, _lc.x, _lc.y, aspect);
+      } else { disc[n].set(0, 0, 0, 0); discN[n].set(0, 0); }
+      n++;
+    }
+    lensingPass.uniforms.uCount.value = n;
+    lensingPass.uniforms.uAspect.value = aspect;
+    return n;
+  }
   let raf = 0;
   const clock = { t: 0 };
   function frame(): void {
     if (disposed) return;
     clock.t += 0.016;
     reconcile();
+    applyRingFade();
     for (const b of built.values()) {
       // A slow turn, so a globe reads as a globe rather than as a printed circle. Slow on purpose:
       // this is a measuring instrument and a spinning one is harder to compare against its neighbour.
@@ -246,7 +351,9 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       // it in the DOM instead.
       void selected;
     }
-    renderer.render(scene, camera);
+    // A LENSED FRAME COSTS A FULL-SCREEN PASS, so it is only taken when a hole is actually there.
+    if (feedLenses() > 0) composer.render();
+    else renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
   }
   frame();
@@ -261,6 +368,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       // reports one, and a 2x2 backing store then stretches across the next real frame.
       vw = Math.max(1, widthPx); vh = Math.max(1, heightPx);
       renderer.setSize(vw, vh, false);
+      composer.setSize(vw, vh);
       applyCamera();
     },
     setSelected(id) { selected = id; },
@@ -270,6 +378,8 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       cancelAnimationFrame(raf);
       for (const id of [...built.keys()]) destroy(id);
       textures.glow.dispose(); textures.hotspot.dispose(); textures.plume.dispose();
+      (lensingPass.material as THREE.Material).dispose();
+      composer.dispose();
       renderer.dispose();
     }
   };

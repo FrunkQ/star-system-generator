@@ -13,6 +13,7 @@ import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader'
 import {
 	makeHotspotTexture, makePlumeTexture, makeGlowTexture, updateLightning, type LightningVisual,
 	updateStarLook, type StarLookVisual, updateMagma, updatePlumes, accretionColor,
+	buildHorizonLook, BH_LENS_SHRINK,
 	type EmissiveVisual
 } from './bodyFeatures';
 // The ONE body-look assembly, shared with the live holo and the size-comparison view. This gallery
@@ -175,8 +176,8 @@ export function createGalleryScene(
 		// The DRAWN horizon mesh is much smaller than the lens's shadow mask — the lens magnifies
 		// whatever black it finds at the centre, so a full-size sphere would smear black far past the
 		// photon ring and eat the starfield around it. The shader's mask is the real shadow.
-		const eh = new THREE.Mesh(new THREE.SphereGeometry(shadowR * 0.55, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
-		g.add(eh); // a black hole is BLACK — no glow ball; the disc + lensing are the whole look
+		const eh = buildHorizonLook(shadowR * BH_LENS_SHRINK);
+		g.add(eh.mesh); // a black hole is BLACK — no glow ball; the disc + lensing are the whole look
 		const edd = entry.node.accretionEddington || 0;
 		const lens: (typeof lensBHs)[number] = { pos: new THREE.Vector3(x, y, 0), r: shadowR };
 		if (edd > 0.01) {
