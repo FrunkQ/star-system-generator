@@ -1268,3 +1268,33 @@ fails otherwise, and its message says so); `git show --stat` before pushing. The
 worktree and session - never bare `git stash`/`pop`; set work aside with a WIP commit. Register your worktree in
 `C:\Development\.claude\launch.json` to drive a browser. Claim any board id at write time by checking both the `| id |`
 and `[[id]]` forms. Report versions, the emission counts before and after, and anything left undone.
+
+## THE QUEUE — what is next, in order (coordinator 7, 2026-09-06 evening, on the owner's "line up what you think should be next")
+
+The site-to-app loop is nearly closed: the hub is live at `explorers.starsystemx.com`, its "Open in Star System Explorer" button
+works, the manifest is consumed, the paste target and credit chain are built. What keeps it from closing is that PRODUCTION is at
+v3.0.286 and everything the loop needs is on beta. So the order is:
+
+1. **A production release of beta (the owner's word; the coordinator runs the read-tree recipe).** It ships R-14/R-16/R-17 so the
+   hub can point its button at `https://starsystemx.com/?open=`, plus B117 (construct export/import), the size comparison, docking,
+   the Am parsing, the transit sinks, the disarmed keep-a-copy notice. BEFORE it: the "what is sitting on a branch?" sweep, and the
+   owner's eyeball list (docking in the holo and player views; the elevator in 3D; the size comparison under a CRT warp). AFTER it:
+   the hub sets the production prefix; the `sse-prod-hotfix` worktree's unpushed B117 commit is deleted as moot.
+2. **Stream N, check N-2 (the credit chain end to end).** Needs the owner's account to upload a map with a pasted clip. The last seam
+   check; N-1 and N-3 are done.
+3. **Stream O (the transit root fix).** The store still emits once per frame during a transit; the live-flight table is the root
+   move and the last known way to make a GM's machine sweat. Brief written and amended.
+4. **Stream I (the documentation sweep, as an audit).** Queued since 31 August; three weeks of streams since. Runs in parallel with
+   the release prep; its output is what users read on the released version.
+5. **Mega-constructs, Stream P (hand-over).** The mega session writes its own successor brief while it has room, in Stream L's
+   shape: what is settled by code and what by decision, then phase 5c (interiors), which is gated on item 6. Carrying is not a
+   requirement (see the G53 row).
+6. **G30 surface areas, phases 1 and 2.** Spec complete, no design pass owed; unlocks 5c.
+7. **G61 belts and rings onto the exotics mechanism.** The refactor-as-we-go job, now that the two exotics decisions are settled.
+8. **The physics hygiene batch:** A86, B90/B91, B110's four solar luminosities, B121's two solar radii, B54's third star-colour path.
+9. **The owner's own list:** the Discord bot on the hub; the dated watch item in `C:\Development\INFRASTRUCTURE.md` for 2026-10-05
+   (four subdomains ride a wildcard certificate that can no longer renew after the zone move); disconnect the failing Cloudflare
+   build of the SSE repo if it is still connected.
+
+Not scheduled and not forgotten: G65 (full MK designations from physics), G60/G59 (the edit-UI design languages, banked), the UI
+leftovers A87/A52/A58, and B99's statistical rarity-dial flake (whoever owns generation).

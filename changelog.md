@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.341 - 6th Sep 2026
+
+- Board: the owner's word on what is settled in the megastructure work and the decision that a moving Death Star is not a requirement; the queue of what comes next, written where every session reads it.
+
 ## v3.0.340 - 6th Sep 2026
 
 - Fixed: inside a system, right-clicking empty space offered to add a planet, a belt or a construct but never to paste what you already had in hand - so a copied planet had nowhere to land unless you happened to right-click an existing body. It is now the first item on that menu, and it goes round whatever that patch of sky belongs to, exactly as "Add Planet Here" would.
