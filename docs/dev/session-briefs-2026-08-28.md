@@ -1087,3 +1087,114 @@ and `src/lib/generated/exampleSystems.ts` churn on every run - do not commit the
 every worktree and session on this machine: never bare `git stash`/`pop`; set work aside with a WIP commit. Update
 the G57 row's status and the SSE-side requirements doc as you ship; claim any new board id at write time by checking
 both the `| id |` and `[[id]]` forms. Report versions, what the hub must be told, and anything left undone.
+
+## SEAM PROTOCOL — how the app and the Creator Hub stay one contract (2026-09-06)
+
+**Why this exists.** The hub and the engine are two repositories with two agents, and the contract between them
+drifted three times in one week: the hub's file still said "paste UI pending" a day after the engine shipped it;
+the engine's copy of the requirements lacked R-17 until a brief told a stream to add it; and the rule that the
+"Open in Star System Explorer" prefix goes to BETA first lived in nobody's file. None of that was a misunderstanding
+of terms. It was two copies of one contract, and checks that no single-repo agent can run. The owner's instinct
+(2026-09-06) was a bridge agent "in a very limited way"; this protocol is that bridge, made of two rules and one
+episodic stream, so that nothing crosses the seam as a paraphrase.
+
+**Rule 1 - two halves, two files, no paraphrase.** The ENGINE's half of the contract is
+`docs/dev/hub-requirements-for-sse.md` in this repo: the hub's requirements banked verbatim, the coordinator's triage,
+and the engine's `SSE-SIDE STATUS` report under each R-number it ships. The HUB's half is
+`C:\Development\starsystemx-creator-hub\docs\sse-requirements.md`: the R-numbers as the hub wrote them and, under
+each, what the hub has SET, CONSUMED and VERIFIED. Each side writes only its own half. Each side reads the other's
+file directly - both repositories are on this machine and reading across is allowed both ways - and QUOTES it; a
+status that has been retold is not a status. Neither side ever edits the other's repository: a push to the hub's
+`main` is a deploy, and the hub's standing rule forbids editing the engine.
+
+**Rule 2 - every shipped R-number is reported in one fixed block, pasted whole.** An engine stream that ships an
+R-number ends its report with this block, and the hub agent pastes it unchanged under that R-number in its file;
+a hub change to the contract goes the other way in the same shape, and the coordinator pastes it into the G57 row:
+
+```
+SEAM REPORT | R-17 | engine | beta v3.0.314 (21779f3e) | prod: NOT RELEASED
+sets:      open_in_sse_url = https://beta.starsystemx.com/?open=
+must know: the parameter is `open` on the query string, not the hash; explorers.starsystemx.com answers 404 from
+           Vercel (DEPLOYMENT_NOT_FOUND) so download URLs must use the workers.dev origin until DNS moves; both
+           hosts are already on the allow-list (TRUSTED_OPEN_HOSTS, src/lib/hub/hubConfig.ts:90)
+verified:  walked in a browser against the live hub - no campaign: opens; a campaign: asks in the picker's words;
+           refused host: plain message and no request; the parameter is stripped in every case
+not done:  -
+ready for: STREAM N N-1
+```
+
+The fields are fixed: `who | R-number | side | version (commit) | prod state`, then `sets` (config rows or URLs the
+other side must set or use), `must know` (facts the other side would otherwise assume), `verified` (what was SEEN,
+not what the code says), `not done`, and `ready for` naming the Stream N check it unlocks. Versions and URLs are
+copied, never retyped from memory.
+
+**The prod rule, stated once.** The engine's production is a read-tree release of beta on the owner's explicit
+word. Nothing on either side points the hub at `https://starsystemx.com` for a feature until he has said the
+release is made; until then the block says `prod: NOT RELEASED` and the hub's prefix stays on beta.
+
+**Stream N.** The checks that need both products open at once are run by STREAM N below. It is fired by the OWNER,
+never by a parent agent, when both halves of a check have said `ready for: STREAM N N-x`. It edits no product code
+on either side and never pushes to the hub; its report is the artefact.
+
+## STREAM N — the integration check across the seam (episodic; fired by the owner when a pair of halves has landed)
+
+**What you are.** A short session that runs the checks no single-repo agent can: the ones that need the engine and
+the hub open at the same time. You read both repositories, the SSE board (`docs/dev/observations-inbox.md`), both
+halves of the contract (SEAM PROTOCOL above) and the latest SEAM REPORT blocks, drive a browser at both products,
+and write ONE report in both dialects. You change no product code on either side, you never push to the hub
+repository (a push is a deploy), and the only thing you commit is your report, in the engine repo, from your own
+worktree off `origin/beta`, as FrunkQ <frunk@frunk.net>.
+
+**Read first:** `CLAUDE.md`; the SEAM PROTOCOL section above; the [[G57]] row; `docs/dev/hub-requirements-for-sse.md`
+(the engine's half, with Stream M's `SSE-SIDE STATUS` under R-13 and R-17); the hub's `docs/sse-requirements.md` and
+`docs/handover-2026-09-06.md` (its standing rules and traps - the local hub dev server has no `platform.env`, so
+the hub is verified LIVE at `https://starsystemx-creator-hub.orange-tree-847c.workers.dev`, version by
+`curl -sI <host>/ | grep x-hub-version`). The engine is verified on beta (`https://beta.starsystemx.com`) or from a
+worktree dev server registered in `C:\Development\.claude\launch.json` (the tool reads the PRIMARY working
+directory's file). Fetch first: both trees move daily.
+
+**N-1 - open a hub map from a link (R-17, engine beta v3.0.314).** Pass when ALL of these are seen, not read:
+1. The hub's `open_in_sse_url` is set to the beta prefix and the "Open in Star System Explorer" control appears on a
+   map page and on its card; the hub's version header says which build you are looking at.
+2. The link the hub builds is `<prefix><percent-encoded download URL>`, with the parameter `open` on the QUERY
+   STRING, and the download URL's host is one the engine's allow-list accepts (`TRUSTED_OPEN_HOSTS`,
+   `src/lib/hub/hubConfig.ts:90`: the workers.dev origin and `explorers.starsystemx.com`; `*.pages.dev` by suffix).
+3. `curl -sI https://explorers.starsystemx.com/api/download/local-neighbourhood`: report whether it still answers
+   404 from Vercel (`DEPLOYMENT_NOT_FOUND`, measured 2026-09-06) or has moved to the Worker. Until it moves, the
+   hub's links must carry the workers.dev download URL; if a link carries the explorers host while it is still
+   dead, that is a FAIL with a plain cause, not a mystery.
+4. With no campaign in the browser the map opens straight away; with a campaign open it asks in the picker's own
+   words and the replaced campaign is one step back; a refused host shows a plain message and the network log
+   shows NO request; the parameter is off the address bar in every case, including the refusal.
+5. The opened map's provenance and attributions are what the bundle carries (the same door as a file import).
+
+**N-2 - the credit chain (R-14 + R-16), when the owner has a map with a pasted clip to upload.** Pass when:
+1. Copying a row on a hub map page puts a clip on the clipboard whose `source` carries `site`, `url` (a deep link
+   with `#node=<id>`), `title`, `creator` and, for re-pasted content, `chain`.
+2. Pasting it in the engine (the paste UI, v3.0.300+) lands the subtree with re-minted ids, the `origin/hub` tag,
+   a `contentCredits` entry on the CAMPAIGN (title, creator, url, site, pastedAt, nodeIds, chain as received), and
+   the `ATTRIBUTIONS.md` lines under "Content from other cartographers", with the lineage sentence for a chain.
+3. Saved and uploaded to the hub, the new map's page reads "Includes work from <title> by <creator>" with the deep
+   link, lists every cartographer in a chain, and the ORIGINAL map's page shows "Used in". The upload needs an
+   account: the owner does that step, or lends a test account; you prepare the bundle and verify both pages.
+4. `creator` absent (an older clip) credits title and url and says "cartographer not recorded".
+
+**N-3 - the shipped-content manifest (R-13, engine beta v3.0.315).** Pass when:
+1. `https://beta.starsystemx.com/shipped-content.json` answers with `Access-Control-Allow-Origin: *` and the keys
+   `appVersion`, `bundleFormat`, `appAssetPrefixes`, `calendars`, `tagCategories`, `starterModels`, `appImages`,
+   `gases`, `liquids`, `fuels`, and `appVersion` equals the version the app itself reports (the rail's brand click
+   copies it; `package.json` on the deployed commit).
+2. The hub has replaced its hand-copied baselines with a fetch of that file (the hub agent's work under R-13) and
+   the copies are DELETED, not shadowed; a map page classifies an app star image and an app calendar as app content
+   and a GM's own upload as the GM's.
+3. The manifest unreachable (block it in the browser) degrades the hub page to a stated fallback, never a broken page.
+
+**Your report** goes to `docs/dev/seam-reports/<yyyy-mm-dd>-N-<x>.md` in the engine repo, committed from your
+worktree (docs only; bump the patch version and add a one-line changelog entry as every push does), in two
+sections: **For the engine**, in SSE terms - board ids, versions, files, with a row filed on the board for every
+FAIL (a B or A number claimed at write time by checking both `| id |` and `[[id]]` forms) - and **For the hub**, in
+its terms - R-numbers, D-numbers to record, config rows to set - written so the hub agent can paste it under the
+R-number unchanged. Every criterion above gets PASS or FAIL and one sentence of what was seen. End with a SEAM
+REPORT block per R-number in the protocol's shape, side `stream N`. Housekeeping: `git show --stat` before pushing;
+the stash stack is SHARED across every worktree and session - never bare `git stash`/`pop`; never tell the hub
+prod carries anything until the owner has released it.

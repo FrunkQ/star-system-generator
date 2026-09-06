@@ -2195,3 +2195,4 @@ covering the viewport, used on an element — rather than at any of the twelve n
   the commit goes out without it — four commits shipped that way on 2026-07-31 before it was noticed.
   Check `git status` after committing, not just the push result.
 - UK English in UI, docs and new code. No emoji in docs. No personal names in shipped files.
+- **THE SEAM WITH THE CREATOR HUB HAS A PROTOCOL (2026-09-06).** Two repositories, two halves of one contract, neither paraphrases the other: the engine's half is `docs/dev/hub-requirements-for-sse.md`, the hub's is its `docs/sse-requirements.md`; every shipped R-number is reported in the fixed SEAM REPORT block and pasted whole; the checks that need both products open at once are STREAM N, fired by the owner only, never by a stream. Read `session-briefs-2026-08-28.md` under SEAM PROTOCOL before touching anything hub-facing.

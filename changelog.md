@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.318 - 6th Sep 2026
+
+- Board: the seam protocol between the app and the Explorers site - two halves of one contract, a fixed report block, and stream N, the integration check that walks both sides.
+
 ## v3.0.317 - 6th Sep 2026
 
 - The paste-a-link box has gone from the opening screen. It was in the way and nobody was using it - if somebody sends you a link to a map, you click the link and it just opens.

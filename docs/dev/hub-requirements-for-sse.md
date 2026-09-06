@@ -1,5 +1,12 @@
 # Hub requirements for the SSE engine — coordinator triage, 2026-08-30
 
+**SEAM PROTOCOL (2026-09-06).** This file is the ENGINE's half of the contract with the Creator Hub: the hub's
+requirements banked verbatim, the coordinator's triage, and the engine's `SSE-SIDE STATUS` report under each
+R-number it ships. The HUB's half - what the hub has set, consumed and verified - lives in the hub repo's
+`docs/sse-requirements.md`, which is read directly and quoted, never paraphrased, and never edited from here.
+The protocol, the fixed SEAM REPORT block and Stream N (the integration check across both) are in
+`session-briefs-2026-08-28.md` under SEAM PROTOCOL.
+
 BOARD: [[G57]]. The full document below is the Creator Hub session's, banked verbatim. This header
 is the coordinator's triage of each item against the tree AT v3.0.223, with two verified gaps the
 hub could not see.
