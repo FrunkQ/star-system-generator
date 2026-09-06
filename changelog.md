@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.323 - 6th Sep 2026
+
+- Notes only, no change to the app: the first cross-checks between the app and the Explorers site were run end to end - clicking the site's "Open in Star System Explorer" button was followed all the way into a loaded campaign, and the list of what the app ships was confirmed to be the one the site is actually reading. Both passed.
+
 ## v3.0.322 - 6th Sep 2026
 
 - The Size comparison's ruler is now a set of circles drawn around whatever is in the middle of the screen, instead of a bar along the bottom. Ceres, Luna, Mars, Earth, Neptune, Jupiter, the Sun and Betelgeuse are all on the ladder, and only the ones you could actually see at your current zoom are drawn - so on a screen of moons you get the small ones and on a screen of stars you get the big ones, without touching anything. You can see how many Earths would fit across the world you are looking at rather than working it out.
