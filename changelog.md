@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.348 - 6th Sep 2026
+
+- Board: the coordinator's handover to the next session, written where the earlier ones are.
+
 ## v3.0.347 - 6th Sep 2026
 
 - Board: the owner has seen the Size comparison's stars and they are right, so the two rows about them are closed on his eye rather than on a measurement.
