@@ -6369,6 +6369,20 @@ BLAST: any new "sits on / rides with" relationship (a ship on a ring floor, a ha
 tug clamped to an asteroid): declare `docking` on the record, express the point in the structure's
 frame, and let `attachedOffsetAu` place it. A renderer that computes such a position itself is the
 fault this entry names.
+ADDENDUM (v3.0.324, the owner's first flight to a dock, 2026-09-06): the ship "did an orbital transfer,
+was orbiting the wrong way, went the wrong direction and then magically snapped on to the
+beanstalk". Two rules came out of it. (1) THE PARKING SENSE: `resolveDesiredArrivalRelative` took
+the sense of the APPROACH; it now takes `progradeSense`, and the planner passes the host's spin
+sign whenever the host carries a ladder structure ("ALWAYS orbit IN the direction of planet spin
+IF there is a beanstalk") - a retrograde approach is turned prograde and the reversal is priced in
+dv2. (2) THE HAND-OVER: a rim's nearest point IS where the ship arrived, a hull is a rendezvous
+and the anchor is a landing - those dock at arrival; a ladder level ABOVE the surface parks at the
+level's radius and docks when its prograde orbit CATCHES the ribbon's bearing (`tCatch =
+gap / (n - omega)`), orbiting visibly until then. At or above geo the two co-move, so the hand-over
+is at arrival - a PHASING GAP the app does not model yet (open on the board). (3) `getGlobalState`
+is attachment-aware: a docked construct's state is host + `attachedOffsetAu`, velocity a CENTRAL
+difference of the offset (a forward one leaves half omega^2 R dt pointing inward, 0.11 m/s at
+geo) - the origin of a departure from a dock and the moving target of an arrival at one.
 
 ### DATA-R40 A FILE CONTRACT IS ONE MODULE, PINNED OVER EVERY TEMPLATE THE PACK SHIPS
 WHERE: `src/lib/constructs/constructFile.ts` (`SITUATION_FIELDS`, `stripSituation`, `constructFileProblem`), bound by `src/lib/components/ConstructSidePanel.svelte`; pinned by `src/lib/constructs/constructFile.spec.ts`, which builds every starter-sf construct template the way `AddConstructModal` does, exports it, and asserts the importer accepts it back, and pins the panel to the module.

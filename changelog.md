@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.324 - 6th Sep 2026
+
+- Arriving at a world with a space elevator now parks you the right way round: with the planet's spin, always, so the hop to the ribbon costs as little as it can. A ship that came in against the spin is turned, and the cost of turning is shown in the plan rather than hidden.
+- No more magic snap onto the beanstalk from a low or medium level. The ship parks at that height, orbits until it catches up with the ribbon, and docks as it passes - you can watch it happen. At the geostationary dock the ship and the ribbon move together, so the hand-over there is still at arrival; a proper phasing manoeuvre is on the list.
+- A ship that is docked departs from where it actually is, on the ribbon and moving with it, instead of from the orbit it had before it docked.
+
 ## v3.0.323 - 6th Sep 2026
 
 - Notes only, no change to the app: the first cross-checks between the app and the Explorers site were run end to end - clicking the site's "Open in Star System Explorer" button was followed all the way into a loaded campaign, and the list of what the app ships was confirmed to be the one the site is actually reading. Both passed.
