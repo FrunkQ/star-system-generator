@@ -539,6 +539,8 @@ is not shown; nothing ships dead.
 **Not asked:** deep-linking to an object inside the map on open. The clip's `#node=<id>` already
 does that on the hub side; the engine can honour a second parameter later if it wants to.
 
+**SSE-SIDE STATUS ADDENDUM, 2026-09-06 (coordinator): THE DNS MOVED AND `explorers.starsystemx.com` IS LIVE.** MEASURED FROM THE COORDINATOR'S MACHINE 2026-09-06 after the owner's cutover: `starsystemx.com`, `beta.` and `legacy.` still answer `Server: Vercel` (SSE untouched, as planned); `explorers.starsystemx.com` answers `Server: cloudflare` with `x-hub-version: 0.23.1`; `GET /api/download/local-neighbourhood` on it returns 200 `application/json` (334,708 bytes) with `Access-Control-Allow-Origin: *`; nameservers are `dave.ns.cloudflare.com` / `gwen.ns.cloudflare.com`. Both hosts were already on `TRUSTED_OPEN_HOSTS`, so no engine release was needed; the hub may now embed explorers download URLs in its `?open=` links, and Stream N's check N-1 is runnable against the real hostname. The "does not reach the hub" caution below is history from the morning of the same day.
+
 **SSE-SIDE STATUS, 2026-09-06 (stream M): SHIPPED on beta at v3.0.314.** The parameter is `open`, on
 the **query string** — the hub asked which, and this is the answer. Every numbered point above is
 built and was walked in a real browser against the live hub: with no campaign in this browser the map

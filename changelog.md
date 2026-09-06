@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.329 - 6th Sep 2026
+
+- Board: the Explorers site now lives at explorers.starsystemx.com and this app's link-opening already trusts it; nothing about this app's own address changed.
+
 ## v3.0.328 - 6th Sep 2026
 
 - Size comparison: rings are drawn as brightly as they deserve. Saturn's are the finest sight in the sky and now look it; Jupiter's are dust you would need a spacecraft to see, and no longer draw as a grand set of hoops just because they happen to reach further. The app works it out from the mass of the rings spread over their own area, so your own worlds get the same treatment.
