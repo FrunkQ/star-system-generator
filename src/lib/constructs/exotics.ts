@@ -41,9 +41,10 @@
 /** How this type's APPARENT GRAVITY figure is derived — the owner's own example of one quantity
  *  with several honest wirings (design §1). Values map to what `derive()` publishes today:
  *  - 'own-rotation': ω²r from the type's own rotation param at its own radius (`spinGravityMs2`).
- *    NOTE the owner's orbital-ring refinement — rotation about a host should really be netted
- *    against the host's pull (ω²r − GM/r², zero at orbital rate). That CHANGES displayed numbers,
- *    so it is an owner decision scheduled with the N2 crew-tab flip, not smuggled into N1 parity.
+ *    DECIDED (owner, 2026-09-06 - the N2 crew-tab flip): the figure a panel shows is NET OF THE HOST
+ *    (omega^2 r - GM/r^2, zero at orbital rate). `constructs/apparentG.ts` computes it from this
+ *    declaration and the crew tab shows nothing else for an exotic; `derive()` still publishes the
+ *    raw omega^2 r as `spinGravityMs2`.
  *  - 'spin-section': a separate habitat ring on a hull (`spinRadiusM` + `rotation_period_hours`) —
  *    ordinary stations; no registry type uses it yet but the crew tab serves it today.
  *  - 'surface': GM/r² of the object's own mass (`surfaceGravityMs2`) — the Death Star.

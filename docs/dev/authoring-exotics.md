@@ -7,8 +7,8 @@ deliberately agent-friendly: exact files, exact gates, and the traps by name. Re
 
 CURRENT STATE: N1 declared (v3.0.236) and every RENDER seam flipped (v3.0.291): 3D attach, framing,
 labels, host-relative scale and the 2D structure all read the record. The parity gate pins the
-declarations. What still reads legacy shape is the apparent-g panel (N2, the owner's net-of-host
-decision). The table in §4 is the ledger and MUST be updated in the same commit as any change.
+declarations. Every seam now reads the record (the apparent-g panel flipped 2026-09-06). The table in §4 is
+the ledger and MUST be updated in the same commit as any change.
 
 ## 1. The one rule (engine map DATA-R33)
 
@@ -70,7 +70,7 @@ convention this system exists to end: put the fact on the record and make the co
 | Host-relative scale | a `surface-stand` exotic is UNIT parts laid out per frame (`tetherLayout`): base at the host's DRAWN surface (`radiusScene x screenK`), REACH by the satellite law (`satelliteDrawDistance` - RENDER-S50, correcting S48, which scaled the reach by the globe and overtook the Moon), sizes floored in screen px, hidden inside a floored globe; anchor on the equator when the shape says `anchorLatitudeDeg: 0` | **FLIPPED v3.0.265, CORRECTED v3.0.291** | — |
 | Labels | clearance reads `render3d.anchor` — a non-'node' exotic clears its MARKER, never its structure span (which hung "Ringworld" a ring-radius into empty sky and "Space Elevator" near its counterweight) | **FLIPPED v3.0.241** — the visibility rule was probed and was never the fault; position was | — |
 | 2D structure | `render2d.structure`: 'orbit-line' draws the node's own orbit line as the structure; 'radial' draws the beanstalk from the host's disc edge to geo and the counterweight through the same `scaleBoxCox` the moons use (`drawTetherRadial`); 'glyph' is the marker alone. The mast glyph (v3.0.251) stays as the click target | **FLIPPED v3.0.291** - the last legacy render seam | `isMegaRing` family test DELETED (it now reads the record) |
-| Apparent-g panel | station-shaped fields | N2 (carries the owner's net-of-host decision — it CHANGES numbers, his call) | the mirrored `physical_parameters` shims |
+| Apparent-g panel | `constructs/apparentG.ts` from `capabilities.apparentG`: own-rotation NET OF THE HOST (zero at orbital rate), surface = the hull's own mass, none = nothing shown; the crew tab hides the station spin section for an exotic and writes no station-shaped field onto it | **FLIPPED 2026-09-06 (close-out)** - the owner's decision was his own three-wirings sentence | the station-shaped default is no longer written onto an exotic |
 | Flux outputs | `mega/shadowed-by` emitted beside the temperature commit from the SAME derivation as the trace (explicit physics origin inside the authored-default mega/ namespace; strip-then-emit, ghost-checked) | **SHIPPED v3.0.246** | — |
 | Menu / panels / LOD / disclosure | single-valued, so NOT declared yet | N5 / phase-5 / N2 / N3 | — |
 | Docking | `capabilities.docking` ('ladder' / 'anywhere' / 'point'); the propagator's attachment pass places a docked construct from `attachedOffsetAu` in every walk; the planner offers a ladder's levels and a rim's nearest point as destinations (`arrivalDock`); the sampler and reconciler hand a ship over at arrival | **SHIPPED v3.0.298** (RENDER-S51) | — |

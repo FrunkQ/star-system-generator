@@ -198,7 +198,7 @@
     {:else if selectedTab === 'Cargo'}
       <ConstructCargoTab {construct} on:update={handleUpdate} />
     {:else if selectedTab === 'Crew'}
-      <ConstructCrewTab {construct} on:update={handleUpdate} />
+      <ConstructCrewTab {construct} {hostBody} on:update={handleUpdate} />
     {:else if selectedTab === 'Power'}
       <ConstructPowerTab {construct} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Sensors'}
