@@ -15,8 +15,13 @@
 // if the hostname itself changes (null while it does not).
 import { compareBuildVersions } from './provenance';
 
-/** The app version from which the notice is armed. Production jumps straight to it on the cutover release. */
-export const KEEP_A_COPY_FROM = '3.0.326';
+/**
+ * The app version from which the notice is armed, or null while it is DISARMED. Armed at 3.0.326 for the
+ * 2026-09-06 rehosting; disarmed the same evening on the owner's word ("kill this happening - we are all good
+ * now") once the cutover turned out to move only the DNS zone and never the app. Set a version string here
+ * to arm it again for a real host or hostname move; nothing else needs touching.
+ */
+export const KEEP_A_COPY_FROM: string | null = null;
 
 /** Where the app will live if its hostname changes. `null` means "same address, different house". */
 export const NEW_ADDRESS: string | null = null;
@@ -27,16 +32,21 @@ type Stamped = { systems?: unknown[]; keptCopyForVersion?: string; createdWithVe
  * Should this campaign be asked to keep a copy? Yes when the app is at or past the armed version, the
  * campaign has systems worth keeping, and its stamp is absent or older than the armed version.
  */
-export function shouldAskToKeepACopy(map: Stamped | null | undefined, appVersion: string): boolean {
+export function shouldAskToKeepACopy(
+	map: Stamped | null | undefined,
+	appVersion: string,
+	armedFrom: string | null = KEEP_A_COPY_FROM
+): boolean {
+	if (!armedFrom) return false; // disarmed: nobody is asked, whatever the version
 	if (!map || !Array.isArray(map.systems) || map.systems.length === 0) return false;
-	if (compareBuildVersions(appVersion, KEEP_A_COPY_FROM) < 0) return false;
+	if (compareBuildVersions(appVersion, armedFrom) < 0) return false;
 	const kept = map.keptCopyForVersion;
-	return !kept || compareBuildVersions(kept, KEEP_A_COPY_FROM) < 0;
+	return !kept || compareBuildVersions(kept, armedFrom) < 0;
 }
 
 /** The GM has a copy (downloaded through the notice, or says so): record it on the campaign. */
-export function recordKeptCopy<T extends Stamped>(map: T): T {
-	return { ...map, keptCopyForVersion: KEEP_A_COPY_FROM };
+export function recordKeptCopy<T extends Stamped>(map: T, forVersion: string | null = KEEP_A_COPY_FROM): T {
+	return forVersion ? { ...map, keptCopyForVersion: forVersion } : map;
 }
 
 /** The notice's own words, so the modal and any test say the same thing. */

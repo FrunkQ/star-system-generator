@@ -5,27 +5,35 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { KEEP_A_COPY_FROM, shouldAskToKeepACopy, recordKeptCopy, keepACopyMessage } from './keepACopy';
 
+const ARMED = '3.0.326'; // the version it was armed at for the 2026-09-06 rehosting
 const older = (v: string) => { const p = v.split('.').map(Number); p[2] -= 1; return p.join('.'); };
 const newer = (v: string) => { const p = v.split('.').map(Number); p[2] += 1; return p.join('.'); };
 const campaign = (extra: Record<string, unknown> = {}) => ({ systems: [{ id: 's1' }], ...extra });
 
 describe('keep a copy (G72)', () => {
 	it('asks once the app reaches the armed version, for a campaign with systems and no stamp', () => {
-		expect(shouldAskToKeepACopy(campaign(), KEEP_A_COPY_FROM)).toBe(true);
-		expect(shouldAskToKeepACopy(campaign(), newer(KEEP_A_COPY_FROM))).toBe(true);
+		expect(shouldAskToKeepACopy(campaign(), ARMED, ARMED)).toBe(true);
+		expect(shouldAskToKeepACopy(campaign(), newer(ARMED), ARMED)).toBe(true);
 	});
 
 	it('stays silent on an older app, an empty campaign, or no campaign at all', () => {
-		expect(shouldAskToKeepACopy(campaign(), older(KEEP_A_COPY_FROM))).toBe(false);
-		expect(shouldAskToKeepACopy({ systems: [] }, KEEP_A_COPY_FROM)).toBe(false);
-		expect(shouldAskToKeepACopy(null, KEEP_A_COPY_FROM)).toBe(false);
+		expect(shouldAskToKeepACopy(campaign(), older(ARMED), ARMED)).toBe(false);
+		expect(shouldAskToKeepACopy({ systems: [] }, ARMED, ARMED)).toBe(false);
+		expect(shouldAskToKeepACopy(null, ARMED, ARMED)).toBe(false);
 	});
 
 	it('the answer is stamped on the campaign and silences the notice, but an older stamp does not', () => {
-		const kept = recordKeptCopy(campaign());
-		expect(kept.keptCopyForVersion).toBe(KEEP_A_COPY_FROM);
-		expect(shouldAskToKeepACopy(kept, KEEP_A_COPY_FROM)).toBe(false);
-		expect(shouldAskToKeepACopy(campaign({ keptCopyForVersion: older(KEEP_A_COPY_FROM) }), KEEP_A_COPY_FROM)).toBe(true);
+		const kept = recordKeptCopy(campaign(), ARMED);
+		expect(kept.keptCopyForVersion).toBe(ARMED);
+		expect(shouldAskToKeepACopy(kept, ARMED, ARMED)).toBe(false);
+		expect(shouldAskToKeepACopy(campaign({ keptCopyForVersion: older(ARMED) }), ARMED, ARMED)).toBe(true);
+	});
+
+	it('is SHIPPED DISARMED: with the default constant null nobody is asked, at any version, stamped or not', () => {
+		expect(KEEP_A_COPY_FROM).toBeNull();
+		expect(shouldAskToKeepACopy(campaign(), ARMED)).toBe(false);
+		expect(shouldAskToKeepACopy(campaign(), '9.9.9')).toBe(false);
+		expect(recordKeptCopy(campaign())).toEqual(campaign());
 	});
 
 	it('the words say what is happening, and name the new address only when there is one', () => {

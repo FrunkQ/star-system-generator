@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.337 - 6th Sep 2026
+
+- The keep-a-copy notice is switched off. The hosting change turned out to touch only the site's address book; the app never moved and nothing of yours was ever at risk.
+
 ## v3.0.336 - 6th Sep 2026
 
 - Switching Measure off on the rail now closes the Size comparison with it. The comparison's button lives under Measure, so turning Measure off used to leave the view up with no button to turn it off by.

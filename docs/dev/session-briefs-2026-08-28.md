@@ -978,7 +978,7 @@ with its law removed**, and at least one absolute assertion, not a ratio (PHY-34
 
 Work in your own worktree off `origin/beta`; commit as FrunkQ <frunk@frunk.net>; `npm run build` green AND the
 full vitest suite green before every push; bump the patch version every push; `git show --stat` before pushing.
-`src/lib/generated/exampleSystems.ts` and the two `tests/` fixtures churn on every run — do not commit them.
+`src/lib/generated/exampleSystems.ts` and the two `tests/` fixtures are a BASELINE — if a run changes the two `tests/` fixtures, COMMIT them with your change ([[B137]]); leave `exampleSystems.ts`.
 A dev server for a worktree is registered by adding an entry to `C:\Development\.claude\launch.json` (the
 tool reads the PRIMARY working directory's file, not the worktree's) — that is how Stream K drove a browser.
 
@@ -1082,8 +1082,9 @@ function, both callers name it); the manifest pin. The existing hub specs (`hubC
 ### Housekeeping
 
 Own worktree off `origin/beta`; commit as FrunkQ <frunk@frunk.net>; `npm run build` green AND the full vitest suite
-green before every push; bump the patch version every push; `git show --stat` before pushing. Two `tests/` fixtures
-and `src/lib/generated/exampleSystems.ts` churn on every run - do not commit them. The stash stack is SHARED across
+green before every push; bump the patch version every push; `git show --stat` before pushing. The two `tests/` fixtures are a
+BASELINE `physics-baseline.test.ts` regenerates deterministically: if a run changes them, COMMIT them with your change
+([[B137]] - restoring them kept a stale baseline for ten days); `src/lib/generated/exampleSystems.ts` churn is separate, leave it. The stash stack is SHARED across
 every worktree and session on this machine: never bare `git stash`/`pop`; set work aside with a WIP commit. Update
 the G57 row's status and the SSE-side requirements doc as you ship; claim any new board id at write time by checking
 both the `| id |` and `[[id]]` forms. Report versions, what the hub must be told, and anything left undone.
@@ -1263,7 +1264,7 @@ at both tiers). Say in the report what you saw, not what the code says.
 Own worktree off `origin/beta`; commit as FrunkQ <frunk@frunk.net>; `npm run build` green AND the full vitest suite green
 before every push; bump the patch version every push and run `npm run manifest` AFTER the bump (the shipped-content pin
 fails otherwise, and its message says so); `git show --stat` before pushing. The two `tests/` fixtures and
-`src/lib/generated/exampleSystems.ts` churn on every run - do not commit them. The stash stack is SHARED across every
+`src/lib/generated/exampleSystems.ts` are a BASELINE - if a run changes the two `tests/` fixtures, COMMIT them with your change ([[B137]]); leave `exampleSystems.ts`. The stash stack is SHARED across every
 worktree and session - never bare `git stash`/`pop`; set work aside with a WIP commit. Register your worktree in
 `C:\Development\.claude\launch.json` to drive a browser. Claim any board id at write time by checking both the `| id |`
 and `[[id]]` forms. Report versions, the emission counts before and after, and anything left undone.
