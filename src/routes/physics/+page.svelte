@@ -480,6 +480,27 @@
         an ordinary pulsar's 10<sup>12</sup>. The engine does not generate magnetars as a separate kind
         of thing &mdash; it generates neutron stars, draws a field, and reads the label back off it,
         which is what they are in reality.</p>
+      <p>A <strong>black hole</strong> is outside it too, and it is the one object whose mass you can
+        dial across eleven orders of magnitude: an ordinary stellar-mass hole with an event horizon a few
+        hundred kilometres across, or &mdash; with the <em>supermassive</em> switch on the star editor
+        &mdash; something up to <strong>270 billion solar masses</strong>, whose horizon is measured in AU
+        rather than in solar radii. That figure is the theoretical ceiling on growth <em>by accretion</em>:
+        past it the accretion disc's own self-gravity wins, and the disc fragments into stars faster than
+        the hole can swallow it, so luminous feeding shuts off. It is a limit on a mechanism and not a law
+        of nature &mdash; nothing forbids a heavier hole, there is simply no known way to grow one. So the
+        editor shows the warning in amber and <strong>keeps whatever you typed</strong>: alien engineering,
+        a reality breakdown and a plot device are all legitimate reasons, and the engine cannot tell one of
+        those from a typo.</p>
+      <p>Finally, a catalogue designation sometimes carries <strong>annotations after the class</strong>
+        &mdash; <code>m</code> for metallic-line, <code>e</code> for emission, <code>n</code> for broad
+        lines, <code>p</code> for peculiar, and so on. These are read and kept rather than treated as part
+        of the class, which is what stops a string like Sirius's <code>A0mA1Va</code> turning up as a
+        spectral class of its own. An <strong>Am star</strong> is the case worth knowing: it quotes more
+        than one reading, because its calcium, hydrogen and metal lines disagree about how hot it is. The
+        engine follows the <em>hydrogen</em> lines for temperature when they are stated &mdash; they are
+        the honest thermometer &mdash; falls back to the midpoint between the other two when they are not,
+        and the star's explainer names it as a metallic-line Am star and prints both readings, so you can
+        see what the disagreement was.</p>
       <p class="note">Brightness is never stored: it is computed from radius and temperature by
         <code>L = 4&pi;R&sup2;&sigma;T&#8308;</code>, which is exact. A figure that is derived cannot
         drift away from the numbers it came from.</p>
@@ -1134,6 +1155,24 @@
         for nothing; <em>station-keeping</em> at L1/L2/L3, the periodic trim burns real halo-orbit missions
         budget for; and <em>holding</em> when the trojan regime is breached, because then there is no
         equilibrium left to keep and the ship is simply thrusting to stay put.</p>
+
+      <h3>Hill spheres &mdash; the room a body has of its own</h3>
+      <p>Switch the Hill-sphere overlay on and every body that has one draws its bubble: the region within
+        which <em>it</em>, rather than the thing it orbits, is what holds on to something. That is where a
+        moon can sit around a planet, and where a <strong>submoon</strong> could sit around a moon &mdash;
+        which is why moons draw bubbles here at all.</p>
+      <p>Two things about what gets drawn are worth knowing, because both look like bugs until you know
+        them. <strong>The test is geometric, not a mass bar.</strong> A bubble appears when the Hill radius
+        clears the body's own surface &mdash; when there is genuinely room <em>outside</em> the body for
+        anything to orbit in &mdash; so Deimos gets its correctly tiny bubble and a body whose Hill sphere
+        lies inside itself gets none. The flight propagator asks a different question with a different floor
+        (roughly Mercury's mass, the bar for bending a heliocentric coast), and applying <em>that</em> to the
+        display would draw no moon bubble anywhere: Ganymede, Titan, Luna and Io all sit under it. The two
+        questions are deliberately kept apart. And <strong>a member of a pair is bounded by its partner,
+        not by the shared centre</strong>: its bubble is the largest orbit that survives the companion,
+        because a Hill radius measured about the barycentre is really a measure of the member's own wobble
+        &mdash; which would hand the body closest to the centre the smallest bubble, and did exactly that to
+        Pluto against Charon before it was corrected.</p>
     </section>
 
     <section id="ejection">
@@ -1921,6 +1960,25 @@
         ~2.3× the separation). Tight pairs push their planets circumbinary; well-separated stars each keep their
         own little system.</p>
 
+      <p><strong>What a barycentre guarantees, once a pair has formed.</strong> The two members sit on
+        <strong>opposite sides of the centre at every instant</strong>, go round it in <strong>one shared
+        period</strong>, and are split by mass so the <strong>heavier one sits closer in</strong> — its distance
+        from the centre is the separation times the <em>other</em> body's share of the pair's mass. That is not a
+        drawing convention; it is what being a pair means, and the three facts are enforced together, because
+        enforcing any one of them alone is how a pair ends up chasing its partner round instead of orbiting it.
+        A campaign saved before this was pinned can therefore <strong>move bodies when it loads</strong>:
+        the correction is the engine putting a member where its own mass says it belongs.</p>
+      <p><strong>And what makes a pair in the first place is a mass ratio you can change.</strong> A companion
+        heavier than <strong>8%</strong> of what it orbits stops being a satellite and becomes half of a
+        barycentre; below <strong>5%</strong> an automatic pair is dissolved again. There is no physical
+        discontinuity at either figure — Pluto and Charon are called a double at 0.12 and the Earth and Moon are
+        not at 0.0123, and where between them the line falls is a matter of what you want on your map — so both
+        are rule-pack data (<code>generation_parameters.barycentre_promote_ratio</code> and
+        <code>barycentre_demote_ratio</code>). The gap between them is deliberate: the lower figure has to stay
+        <em>below</em> the upper one or a pair would form and dissolve on alternate passes, so a pack that asks
+        for them the wrong way round is honoured on the promote figure and has the other pulled just under it.
+        Nothing you authored by hand is touched either way.</p>
+
       <h3>Which one is drawn &mdash; the four dials</h3>
       <p>Among the types that survive the gates, the draw is a product of independent weights, each answering a
         different question. Position has already decided <em>where</em> a giant is viable (beyond the frost line);
@@ -2139,13 +2197,14 @@
           computed.
           The same estimate is used on the GM's own 3D view, so both see the identical line; the GM's flat map
           still draws the full path point for point. The line is also pinned to the ship itself, so it passes
+          through the vessel exactly even where the estimate and the true path differ. While a player view is
           <strong>following the GM's clock</strong>, ships in transit are also <em>positioned</em> along this
           same curve, so a moving ship sits exactly on its drawn line. And a player scrubbing their
           <strong>own</strong> clock now sees traffic move too — the ship where it would be at
           <em>their</em> time, not where the GM last left it. That is the same rule the planets have
           always followed: if the view can work a thing out from the time alone, the time is the
           viewer's to choose. A view that is following the GM is unchanged, its clock already being
-          his. The one thing a scrubbing view cannot show you is what happens <em>after</em> a ship's
+          theirs. The one thing a scrubbing view cannot show you is what happens <em>after</em> a ship's
           current plan ends, because where it parks and what it ends up orbiting is the GM's to
           decide and has not happened yet.</li>
         <li>Coasting/adrift transit trajectories drop moons <em>while the clock is moving</em>: the gravity field used to integrate a drifting ship live (and its forecast line) includes only stars and planets, because re-integrating the full satellite census on every clock-slider frame is impractical in a browser. A moon's pull on a heliocentric coast is negligible anyway, and the star and any planet the ship passes still bend the path. Once the clock settles, the forecast upgrades to a one-shot, moon-inclusive plot — fast estimates while you scrub, the accurate path when you stop.</li>

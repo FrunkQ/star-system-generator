@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.350 - 6th Sep 2026
+
+- The physics reference now explains what a barycentre actually promises. Two bodies sharing a centre sit on opposite sides of it at every instant, go round it in one shared period, and are split by mass so the heavier one sits closer in - and it says that a campaign saved before that was pinned can move bodies when it loads, because the correction is the engine putting a member where its own mass says it belongs. It also says what makes a pair in the first place: a companion heavier than 8% of what it orbits, a figure you can change in a rule pack, with the dissolve threshold below it so a pair cannot form and break on alternate passes.
+- It explains black holes properly. A hole can be dialled from a stellar-mass one a few hundred kilometres across up to 270 billion suns, whose horizon is measured in AU; the page says where that ceiling comes from - past it the accretion disc collapses into stars faster than the hole can swallow it - and that the app keeps whatever you type anyway, because alien engineering and a plot device are reasons it cannot tell from a typo.
+- And it says what an Am star is. A catalogue string like Sirius's "A0mA1Va" quotes more than one reading because its calcium, hydrogen and metal lines disagree about the temperature; the page explains that the hydrogen lines are the honest thermometer, and that the annotations after a class are kept rather than mistaken for a class of their own.
+- New section on Hill spheres: what the overlay draws, why a moon has one at all (it is where a submoon could live), why the test is "is there room outside this body to orbit in" rather than a mass limit, and why a member of a pair is bounded by its partner instead of by the shared centre.
+- Fixed a broken sentence in the same reference that had been on the page for two hundred versions: an edit had eaten the end of the sentence describing how a drawn route is pinned to its ship, leaving a line that did not parse. Restored.
 ## v3.0.349 - 6th Sep 2026
 
 - Board: the documentation sweep's brief now names every surface a reader meets - the in-app help, the two older guides and the generated attributions - beside the physics pages and the getting-started document.
