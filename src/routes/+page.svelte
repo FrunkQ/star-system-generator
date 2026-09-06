@@ -38,6 +38,7 @@
   import { setUndoPersist } from '$lib/undo/campaignHistory';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
+  import { createPersistQueue } from '$lib/persistQueue';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
@@ -572,7 +573,11 @@
   let fileInput: HTMLInputElement;
   let starmapComponent: Starmap;
   let hasSavedStarmap = false;
-  let persistQueue: Promise<void> = Promise.resolve();
+  // B131: ONE pending snapshot, cloned when the write happens - never a promise chain holding a clone per
+  // store emission. A ship in transit emits once per frame; the chain held a full campaign per frame.
+  const starmapPersist = createPersistQueue<StarmapType>((snapshot) => persistStarmap(snapshot), {
+    onError: (e) => console.error('Failed to persist starmap:', e)
+  });
 
   $: currentSystemId = $page.state.systemId || null;
 
@@ -1507,10 +1512,7 @@
   }
 
   function enqueueStarmapPersist(starmap: StarmapType) {
-    const snapshot = JSON.parse(JSON.stringify(starmap)) as StarmapType;
-    persistQueue = persistQueue
-      .then(() => persistStarmap(snapshot))
-      .catch((e) => console.error('Failed to persist starmap:', e));
+    starmapPersist.enqueue(starmap);
   }
 
   async function persistStarmap(starmap: StarmapType) {
@@ -2681,7 +2683,7 @@
     <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showFuelModal = false; returnToSettings(); }} />
   {/if}
   {#if showAtmosphereModal && $starmapStore && selectedRulepack}
-    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
+    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
   {/if}
   {#if showBiospheresModal && $starmapStore && selectedRulepack}
     <EditBiospheresModal showModal={showBiospheresModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />

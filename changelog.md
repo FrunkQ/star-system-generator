@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.322 - 6th Sep 2026
+
+- Fixed: a transit left running with the clock on no longer fills memory. The autosave kept a copy of the whole campaign for every frame the ship moved and wrote them one by one; it now keeps only the latest and writes that. The undo recorder also stops copying the whole system every frame a ship is in flight.
+- Fixed: a liquid you create now appears in the list a gas can condense into. The gas editor was reading the shipped liquids rather than yours.
+
 ## v3.0.321 - 6th Sep 2026
 
 - Notes only, no change to the app: the engine's half of the contract with the Explorers site is brought up to date - the download-format question the site has already answered is closed, the open-from-a-link feature was re-checked on the live beta site rather than a test server, and the site is told that opening a single system from a link is now half-built rather than absent.

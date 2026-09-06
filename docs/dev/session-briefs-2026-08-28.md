@@ -1222,6 +1222,11 @@ TRANSITION - departure, arrival, docking, abort, heal - because the transition s
 instant on reload; that is the derived-from-clock journey design already in force. Nothing per frame belongs in the
 campaign document, in its undo history, in its autosave or in its broadcast snapshot.
 
+**AMENDED 3.0.322 (coordinator):** part 2's persist queue (`src/lib/persistQueue.ts`, gated) and the recorder's per-frame
+clone (flight-only machine writes skip the rebuild, gated in `systemUndo.silent.spec.ts`) are DONE. Part 1 (the
+live-flight table) and the rest of part 2 (the write-back, the normaliser and the starmap recorder still run per
+emission) remain yours; the store still emits once per frame during a transit, and that count is your gate.
+
 ### The job, in three parts, each gated
 
 1. **Move the per-frame flight state out of the campaign store.** A transient `liveFlight` store (node id -> sampled
