@@ -6383,6 +6383,11 @@ is at arrival - a PHASING GAP the app does not model yet (open on the board). (3
 is attachment-aware: a docked construct's state is host + `attachedOffsetAu`, velocity a CENTRAL
 difference of the offset (a forward one leaves half omega^2 R dt pointing inward, 0.11 m/s at
 geo) - the origin of a departure from a dock and the moving target of an arrival at one.
+CORRECTION (v3.0.327): the owner's flight was an ORBIT CHANGE, and the wrong-way orbit he saw was not
+the approach sense at all - it was TRANSIT-8, the far-side velocity sign in `buildOrbitChangePlan`,
+which parked EVERY Hohmann retrograde. The approach-sense rule above still stands for the
+interplanetary paths; the orbit-change path now conserves the sense and applies the same prograde
+rule at a beanstalk host, with a reversal priced when the origin runs against the spin.
 
 ### DATA-R40 A FILE CONTRACT IS ONE MODULE, PINNED OVER EVERY TEMPLATE THE PACK SHIPS
 WHERE: `src/lib/constructs/constructFile.ts` (`SITUATION_FIELDS`, `stripSituation`, `constructFileProblem`), bound by `src/lib/components/ConstructSidePanel.svelte`; pinned by `src/lib/constructs/constructFile.spec.ts`, which builds every starter-sf construct template the way `AddConstructModal` does, exports it, and asserts the importer accepts it back, and pins the panel to the module.
@@ -6670,3 +6675,21 @@ chrome belongs in the rendered surface from the start: retrofitting it means mov
 a canvas, routing picking through `warpPoint`, and deciding what happens to any DOM-only interaction
 the labels carried (the size comparison's unit-cycling is exactly that, and it is why [[B126]] needs
 a decision rather than just a refactor).
+
+### TRANSIT-8 A HOHMANN ARRIVES HALF AN ORBIT AWAY, AND THE ALONG-TRACK DIRECTION THERE IS -w
+BUCKET: PHYSICS - a sign that only shows after the plan completes, as a ship going the wrong way.
+WHERE: `transit/calculator.ts buildOrbitChangePlan` - `w` is the origin's along-track unit vector;
+the end velocity, the burn-2 thrust direction and the `endState` of the coast and brake segments.
+RULE: the transfer ends at position -u, where the tangent is -w. The end velocity that CONSERVES
+the sense is `-w * vCirc2`; burn 2 for a raising transfer thrusts along -w. Writing `w` there
+flips the angular momentum: a prograde parking orbit became retrograde after every orbit change,
+whatever it left in. Gate: `orbitChangeSense.spec.ts` measures r x v at the plan's end against the
+origin's sense (legacy keeps it; the prograde rule at a beanstalk host reverses it deliberately and
+prices the reversal as vTransfer + vCirc, tagged 'REVERSED TO PROGRADE').
+WHY: the owner's first flight to a space-elevator dock (2026-09-06, an orbit change LEO -> GEO):
+"orbiting the wrong way... went the wrong direction and then magically snapped on to the
+beanstalk". The first diagnosis blamed the approach sense (a real fault in the interplanetary
+paths, also fixed); the spec written to pin the fix exposed this sign underneath it.
+BLAST: anything that reads a completed orbit change's end state - the sampler's parking orbit
+(sense from `u x w` of the arrival), the reconciler's circular elements, and now the dock catch,
+which assumes a prograde park to compute when the ship meets the ribbon.

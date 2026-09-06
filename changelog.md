@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.327 - 6th Sep 2026
+
+- The real reason a ship arrived at the space elevator going the wrong way: an orbit change (a Hohmann transfer around the same world) ended with its velocity written for the wrong side of the orbit, so every such transfer parked the ship retrograde. Fixed - an orbit change now keeps the sense it left in, and at a world with a beanstalk it ends with the planet's spin, turning round at the far end if it must and showing what that costs.
+
 ## v3.0.326 - 6th Sep 2026
 
 - Before the site changes hosting, the app asks you once per campaign to keep a copy: download the full campaign file, or say you already have one. A file on your own disk is the one copy a move cannot touch.
