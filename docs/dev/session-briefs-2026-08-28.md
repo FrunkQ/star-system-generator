@@ -1275,6 +1275,10 @@ and `[[id]]` forms. Report versions, the emission counts before and after, and a
 v3.0.217 to v3.0.343 across the elevator, the exotics system and docking, and closed the owner's settled
 list on the G53 row. Nothing below is owed; it is what the next stream starts from.
 
+**THE OWNER'S CLOSE, 2026-09-06, verbatim:** *"I killed the death star decision - unless we can make that type of functionality into a better generalised system. I think we are in a good place for now - what we have works - and we can fix the rest later."* **So this stream is PAUSED, not open:** what is shipped
+works and stays; everything under "settled by decision" and "the jobs" below is "later" - pick it up when THE
+QUEUE reaches it, in the order given, and not before.
+
 **Read first, in this order:** `CLAUDE.md`; the standing rules at the foot of `docs/dev/observations-inbox.md`;
 the G53, G58 and G61 rows there (long, and they are the record); `docs/dev/authoring-exotics.md` (the agent
 guide - its seam table is the ledger and every row now reads the record); `docs/dev/nonstandard-objects-design.md`
@@ -1311,7 +1315,9 @@ entries named in the traps below.
   (A same-system origin could rendezvous with a synthetic `attachedTo` node via the construct-Rendezvous path;
   `needsRedirect` in `transit/calculator.ts` decides.)
 - A ship docked to a plain station keeps the pre-existing Rendezvous path.
-- Death Star carrying: never bespoke; a CARRIER capability record in the exotics pack if ever.
+- Death Star carrying: KILLED as a feature (owner, 2026-09-06) - not bespoke, not scheduled. Only a GENERALISED
+  carrier capability on the exotics record (a structure that docks what orbits it and releases it at its
+  destination) could revive it, and that is a design question, not a job.
 - The eyeballs (docking in the holo and player views; the elevator's reach, equator and dock-under-station in 3D)
   are accepted on the owner's word. The 2D radial and the 2D dock-under-station WERE seen live; the holo was not.
 

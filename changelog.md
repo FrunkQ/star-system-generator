@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.345 - 6th Sep 2026
+
+- Board and design only: the megastructure work is paused at a good place on the owner's word - what is shipped stays, the rest is listed as later, and the idea of a Death Star that carries its orbiting ships is retired unless it can be built as a general capability rather than a one-off.
+
 ## v3.0.344 - 6th Sep 2026
 
 - Fixed: the star was drawn in grey on the Size comparison inside a system, which made it look dim next to Jupiter or Earth. A planet's colour is worked out from what it is made of and what its air does to sunlight; a star has no such colour, because its colour comes from how hot it is - and the view had never asked it that question. It now takes the star's own colour, the same one the starmap comparison was already using.

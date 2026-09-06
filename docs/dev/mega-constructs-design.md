@@ -1417,8 +1417,9 @@ what makes a moving hybrid safe rather than a follow-up nicety. Then `DockNode` 
 
 > **STATUS 2026-09-06 (v3.0.343).** `DockNode` through the planner shipped AHEAD of the flip and without
 > it: docking is `capabilities.docking` + `attachedTo` + `TransitPlan.arrivalDock` (7c, RENDER-S51,
-> TRANSIT-8) and works on constructs as they are. Carry-and-release is NOT a requirement (owner,
-> 2026-09-06): if ever built it is a CARRIER capability record, not bespoke. So what phase 5 still
+> TRANSIT-8) and works on constructs as they are. Carry-and-release is KILLED as a feature (owner,
+> 2026-09-06: "unless we can make that type of functionality into a better generalised system") -
+> only a generalised CARRIER capability on the exotics record could revive it. So what phase 5 still
 > owns is the flip itself - `kind: 'body'` behind `showsAsConstruct`, the surface-chain honesty
 > gate below, and §11 Q3 (redaction) answered before starting.
 
