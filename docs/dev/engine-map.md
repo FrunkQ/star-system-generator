@@ -6472,6 +6472,11 @@ the overlay's labels, ruler ticks and hit areas sit over the globes by construct
 through a projection nobody can check. The strip's layout is computed by a pure function in pixels,
 and the scene and the chrome both read it - recomputed whenever the scale moves, which is now every
 frame you are scrolling (RENDER-S55).
+AND THE STRIP COMES AWAY WITH THE TOOL THAT HOLDS IT ([[G75]]). The comparison's rail button is a
+SUB-ROW inside Measure, so Measure going off has to take the view with it - otherwise the strip
+stays up with its own button no longer on the rail. `closeMeasure` in `RailNav.svelte` is the one
+place that knows this, and it is the right place BECAUSE the sub-button is rendered there: the same
+rule kept in `SystemView` and `Starmap` would be one rule written twice.
 AND A STEP OF THE ZOOM IS FLOWN AT A CONSTANT APPARENT SPEED ([[B136]]). The scale follows the focus
 GEOMETRICALLY, so the screen distance between two neighbours multiplies by their diameter RATIO
 across one step: Sol to Mercury is 285:1, and 93 px becomes 25,750 px. Blending their positions

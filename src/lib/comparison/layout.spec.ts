@@ -391,6 +391,23 @@ describe('size comparison — a step of the zoom is flown at a constant apparent
     expect(fromBig).toBeLessThan(WIN);
   });
 
+  it('leaves a giant’s small neighbour clear of its limb — the gap, on the owner’s word', () => {
+    // Owner, 2026-09-06: "may need a slightly larger gap to zoom properly". The zoom fault was the
+    // interpolation rather than the spacing, but he was right that a speck beside a star was crowded:
+    // at GAP_FRACTION 0.06 Mercury's edge cleared the Sun's by under ten pixels on a 730 px stage.
+    // THE GAP IS A FRACTION OF THE LARGER NEIGHBOUR, so this is the case that decides the number -
+    // wherever the ratio is worst, the clearance is the gap itself.
+    const seq = sortItems(PAIR, 'size');
+    const scale = scaleForFocus(seq, 0, SHORT_W, OPENING_SHARE);
+    const layout = layoutStrip(PAIR, scale, { axis: 'x' });
+    const sun = layout.slots.find((s) => s.id === 'sun')!;
+    const merc = layout.slots.find((s) => s.id === 'mercury')!;
+    const clear = (merc.centrePx - merc.spanPx / 2) - (sun.centrePx + sun.spanPx / 2);
+    // 0.10 x the Sun's 160.6 px reach = 16 px of black. Below 15 is the crowding he saw.
+    expect(clear).toBeGreaterThan(15);
+    expect(clear).toBeLessThan(30);          // and not so much that the strip goes empty
+  });
+
   it('moves both axes on the same weight', () => {
     // A moon stacked off the centreline: the cross scroll must be as far through the step as the
     // along scroll is, or the picture slides sideways while it dives in.

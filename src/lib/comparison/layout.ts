@@ -102,8 +102,15 @@ export const MAX_CENTRE_SHARE = 0.9;
  * lost. Owner, 2026-09-06: *"have them very close"*, because the black between two worlds is the
  * one thing on this view that says nothing. It was 0.22, which spent a fifth of every step on
  * emptiness; the second knob to reach for after the shares.
+ *
+ * 0.06 -> 0.10 the same day, on his word, after [[B136]]: he had read the broken zoom as a spacing
+ * problem, and while it was not (the fault was the interpolation), a giant's small neighbour really
+ * was crowded against its limb. Because the gap is a fraction of the LARGER neighbour, the worst
+ * ratio on the strip is where the number shows: Mercury's edge cleared the Sun's by 9.6 px on a
+ * 730 px stage, and now clears it by 16. Gated on that clearance rather than on the constant, since
+ * a magic number pinned to itself proves nothing. It costs about half an object off each end.
  */
-export const GAP_FRACTION = 0.06;
+export const GAP_FRACTION = 0.10;
 /**
  * How much of a ring system's TRUE reach the layout reserves as room, 0 to 1.
  *

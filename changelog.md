@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.336 - 6th Sep 2026
+
+- Switching Measure off on the rail now closes the Size comparison with it. The comparison's button lives under Measure, so turning Measure off used to leave the view up with no button to turn it off by.
+- A little more air between neighbours on the Size comparison, so a small world beside a giant is not pressed against its edge.
+
 ## v3.0.335 - 6th Sep 2026
 
 - The starmap now knows what you have copied. The tag under undo/redo appears there too, and right-clicking a star offers to paste into that system.

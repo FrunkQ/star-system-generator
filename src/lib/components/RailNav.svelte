@@ -63,6 +63,21 @@ ${playerConnSummary}`
   // close the phone slide-in rail — otherwise the result is hidden behind the open menu.
   function go(name: string) { dispatch(name); dispatch('navigate'); }
 
+  /**
+   * Measure's button, and it puts the SUB-TOOL away with itself. Owner, 2026-09-06: *"unclicking the
+   * measure on the rail should also come out of comparison view"*. The size comparison lives inside
+   * Measure by his own placement, so closing the parent has to close the child - otherwise the strip
+   * stays up with its own button no longer on the rail, and the only way out is the view's own X.
+   *
+   * HERE rather than at the two mounts, because THIS is the file that owns the nesting: the sub-button
+   * is rendered inside Measure's `{#if}` here, and a rule about that relationship kept in the callers
+   * would be the same rule written twice.
+   */
+  function closeMeasure() {
+    if (rulerOn && sizeCompareOn) dispatch('sizecompare');
+    dispatch('ruler');
+  }
+
   // Flat Lucide-style monochrome icons (inline SVG).
   const I = {
     file: '<path d="M20 7h-7L9.5 4.5A1 1 0 0 0 8.8 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>',
@@ -155,7 +170,7 @@ ${playerConnSummary}`
   <div class="spacer"></div>
 
   {#if activeView === 'system' || rulerAvailable}
-    <button class="rail-btn" class:active={rulerOn} title={activeView === 'system' ? 'Measure: tap two bodies for the distance between them in AU' : 'Measure: tap two stars or ships for the distance between them'} on:click={() => dispatch('ruler')}>
+    <button class="rail-btn" class:active={rulerOn} title={activeView === 'system' ? 'Measure: tap two bodies for the distance between them in AU' : 'Measure: tap two stars or ships for the distance between them'} on:click={() => closeMeasure()}>
       <span class="ic" class:accent={rulerOn}>{@html svg(I.ruler)}</span><span class="rail-label">Measure</span>
     </button>
     <!-- The owner's placement: a second button UNDER Measure, and only while Measure is on. Measuring
