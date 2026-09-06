@@ -136,6 +136,43 @@ describe('the strip’s chrome — what the picture says', () => {
     }
   });
 
+  it('thins the labels where they would stack into a smudge, keeping the selected one', () => {
+    // The far end of a real system is dozens of moons inside a hundred pixels. A name you cannot
+    // read is worse than none, because it hides the one beside it too.
+    // One big world and a train of specks behind it: at the big one's scale the specks are a few
+    // pixels apart, which is exactly the far end of a real system.
+    const crowd: ComparisonItem[] = [body('Host', 900, 'planet')]
+      .concat(Array.from({ length: 24 }, (_, i) => body(`M${i}`, 40 - i * 0.5, 'moon')));
+    const seq = sortItems(crowd, 'size');
+    const scale = scaleForFocus(seq, 0, Math.min(VW, VH), OPENING_SHARE);
+    const layout = layoutStrip(crowd, scale, { axis: 'x' });
+    const s: StripChromeSpec = {
+      layout, info: new Map(crowd.map((i) => [i.id, { role: i.role, diameterKm: i.diameterKm }])),
+      arcs: [], scrollPx: focusCentrePx(layout, seq, 0) - VW / 2, crossScrollPx: 0,
+      vw: VW, vh: VH, axis: 'x', selectedId: null, hoveredId: null, prefs: undefined
+    };
+    const names = draw(s).texts.filter((t) => t.font === CHROME.nameFont);
+    expect(names.length).toBeGreaterThan(2);
+    // Whatever survives is readable: no two names on the same side are closer than the separation.
+    for (const side of [0, 1]) {
+      const xs = names.filter((_, i) => i % 2 === side).map((t) => t.x).sort((a, b) => a - b);
+      for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeGreaterThan(0);
+    }
+    // Some were dropped - or the crowd was never a crowd and this proves nothing.
+    expect(names.length).toBeLessThan(layout.slots.length);
+    // AND THE SELECTED ONE IS NEVER DROPPED: it is the object the reader asked about. Pick one that
+    // is genuinely ON SCREEN and genuinely was thinned out, or the assertion proves nothing.
+    const shown = new Set(names.map((t) => t.text));
+    const buried = layout.slots.find((sl) => {
+      const x = sl.centrePx - s.scrollPx;
+      return x > 0 && x < VW && !shown.has(sl.name);
+    })!;
+    expect(buried, 'a crowd with something thinned out of it').toBeTruthy();
+    const withPick = draw({ ...s, selectedId: buried.id }).texts
+      .filter((t) => t.font === CHROME.nameFont).map((t) => t.text);
+    expect(withPick).toContain(buried.name);
+  });
+
   it('draws no ruler at all when it is switched off, and every body still reads', () => {
     const ctx = draw(spec('Earth', { arcs: [] }));
     expect(ctx.texts.some((t) => t.font === CHROME.arcFont)).toBe(false);

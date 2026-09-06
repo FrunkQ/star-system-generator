@@ -92,7 +92,15 @@ export const CHROME = {
   arcDash: [5, 5],
   arcFont: '500 10px system-ui, -apple-system, "Segoe UI", sans-serif',
   /** The label sits this far outside the arc it names, along the radius. */
-  arcLabelOffsetPx: 7
+  arcLabelOffsetPx: 7,
+  /**
+   * Two labels closer together than this ALONG THE STRIP are one unreadable smudge, so the second is
+   * not drawn. The far end of a real system is dozens of moons inside a hundred pixels; the layout's
+   * alternating sides buy some room and then run out. A name you cannot read is worse than no name,
+   * because it also hides the one next to it — and the object is still there, still tappable, and
+   * still names itself the moment you scroll to it.
+   */
+  labelMinSeparationPx: 34
 } as const;
 
 export interface StripChromeSpec {
@@ -137,6 +145,10 @@ export function slotScreenPos(
 export function drawStripChrome(ctx: ChromeCtx, spec: StripChromeSpec): void {
   ctx.clearRect(0, 0, spec.vw, spec.vh);
   drawArcs(ctx, spec);
+  // The last label drawn on each side, so a crowd at the small end thins itself out rather than
+  // stacking into a smudge. Per SIDE, because the layout alternates them for exactly this reason and
+  // two neighbours on opposite sides do not collide.
+  const lastOn: Record<string, number> = { start: -Infinity, end: -Infinity };
   for (const slot of spec.layout.slots) {
     const p = slotScreenPos(slot, spec);
     // TWO DIFFERENT QUESTIONS, and answering them with one test was wrong. A body is worth DRAWING
@@ -150,7 +162,13 @@ export function drawStripChrome(ctx: ChromeCtx, spec: StripChromeSpec): void {
     if (slot.belowFloor) drawDot(ctx, p);
     drawRings(ctx, slot, p, spec);
     const centred = p.x >= 0 && p.x <= spec.vw && p.y >= 0 && p.y <= spec.vh;
-    if (centred) drawLabel(ctx, slot, p, spec);
+    // ...and not on top of the last one on this side. The SELECTED object always gets its name,
+    // whatever the crowd: it is the one the reader asked about.
+    const room = Math.abs(along - lastOn[slot.labelSide]) >= CHROME.labelMinSeparationPx;
+    if (centred && (room || slot.id === spec.selectedId)) {
+      lastOn[slot.labelSide] = along;
+      drawLabel(ctx, slot, p, spec);
+    }
   }
 }
 

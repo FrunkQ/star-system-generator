@@ -127,6 +127,83 @@ export const RING_ROOM_FRACTION = 0;
  */
 export const RING_FADE_STEPS = 1;
 
+// --- WHAT A RING ACTUALLY LOOKS LIKE ------------------------------------------------------------
+//
+// Owner, 2026-09-06: *"you sure the rings are drawing the right size - most planets look as
+// spectacular as saturn - and that aint right - and get inclination right too."*
+//
+// THE SIZES WERE RIGHT AND THAT WAS THE PROBLEM. Every figure comes straight from the ring nodes and
+// every one is real: Saturn's main rings reach 2.41 planet radii, Jupiter's reach 3.23 and Uranus'
+// 3.86, because those two include their faint outer rings. Drawn as identical bright bands, the
+// giants with the WIDEST rings are the ones nobody can actually see, and the poster said the exact
+// opposite of the truth. What was missing is not a radius, it is how much stuff is in them.
+
+/**
+ * Surface density (kg/m^2) at which a ring is drawn at full strength, and the density below which it
+ * is drawn at essentially nothing. Both from the bundled Solar System, which spans the whole range:
+ * Saturn 1.0e7, Neptune 2.9e4, Uranus 1.6e4, Jupiter 1.1e3 - four orders of magnitude, which is
+ * exactly the difference between "the finest sight in the sky" and "invisible without a spacecraft".
+ */
+export const RING_SIGMA_FULL = 1e6;
+export const RING_SIGMA_NONE = 1e3;
+
+/**
+ * HOW SUBSTANTIAL A RING IS, 0..1, from the mass spread over its own annulus.
+ *
+ * Physics drives visuals, which is the house rule: the ring node carries a mass and two radii, and
+ * the surface density that falls out of them is the one number that tells Saturn from Jupiter. It is
+ * read LOGARITHMICALLY (the range is four decades, and a linear read makes everything but Saturn
+ * zero) and then squared, because the eye judges a faint band against black far more generously than
+ * the physics does - without the square, Uranus still reads as half a Saturn.
+ *
+ * A RING WITH NO MASS AUTHORED IS DRAWN IN FULL, and that is deliberate: a GM who drew a ring wants
+ * to see a ring, and answering their authored data with "invisible, because you did not weigh it" is
+ * the refusal the standing rule forbids.
+ */
+export function ringProminence(innerKm: number, outerKm: number, massKg?: number): number {
+  if (!Number.isFinite(massKg as number) || !(massKg as number > 0)) return 1;
+  if (!(outerKm > innerKm) || !(innerKm >= 0)) return 1;
+  const areaM2 = Math.PI * (outerKm * outerKm - innerKm * innerKm) * 1e6;
+  if (!(areaM2 > 0)) return 1;
+  const sigma = (massKg as number) / areaM2;
+  const t = (Math.log10(sigma) - Math.log10(RING_SIGMA_NONE))
+    / (Math.log10(RING_SIGMA_FULL) - Math.log10(RING_SIGMA_NONE));
+  const clamped = Math.min(1, Math.max(0, t));
+  return clamped * clamped;
+}
+
+/**
+ * How OPEN a ring appears, 0 (edge-on, a line) to 1 (face-on, a circle), from the host's obliquity.
+ *
+ * THE CONVENTION, and it is a convention rather than a measurement, so it is written down: the strip
+ * views every body the same way, from its own orbital plane, and presents each ring at its most open
+ * azimuth. A body's obliquity is then the whole answer - openness is `sin(tilt)`. Saturn at 26.7 deg
+ * opens to 0.45, Neptune at 28.3 to 0.47, URANUS AT 97.8 TO 0.99 (a circle, lying on its side, which
+ * is the one thing everybody knows about Uranus) and Jupiter at 3.1 to 0.05, a line. Every one of
+ * those is checkable against a photograph, which a single shared tilt was not.
+ *
+ * NO TILT AUTHORED FALLS BACK TO THE POSTER ANGLE rather than to zero: an unmeasured obliquity is
+ * unknown, not upright, and answering it with an invisible edge-on line would hide authored data.
+ * The same fallback carries a black hole's accretion disc, which has no obliquity at all.
+ */
+export const DEFAULT_RING_OPENNESS = 0.41;
+/** Below this a ring is a hairline nobody can see; a ring that is DRAWN is drawn thick enough to be. */
+export const MIN_RING_OPENNESS = 0.05;
+
+export function ringOpenness(axialTiltDeg?: number): number {
+  if (!Number.isFinite(axialTiltDeg as number)) return DEFAULT_RING_OPENNESS;
+  const open = Math.abs(Math.sin(((axialTiltDeg as number) * Math.PI) / 180));
+  return Math.min(1, Math.max(MIN_RING_OPENNESS, open));
+}
+
+/**
+ * The ring mesh's tilt out of the screen plane, in radians — what a renderer actually needs.
+ * A `RingGeometry` starts face-on, so this is `acos(openness)`: 0 is a circle, pi/2 is a line.
+ */
+export function ringTiltRad(axialTiltDeg?: number): number {
+  return Math.acos(Math.min(1, Math.max(0, ringOpenness(axialTiltDeg))));
+}
+
 /**
  * How strongly a ring draws, given how far its planet is from the FOCUS in steps of the sequence.
  *

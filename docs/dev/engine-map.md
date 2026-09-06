@@ -6468,6 +6468,11 @@ size** - the renderer, whose `setSize` multiplies by the device pixel ratio; a S
 ([[B122]]), which is invisible at ratio 1 and obvious at 2. In BOTH faults the DOM overlay was
 pixel-exact throughout, because it does its own arithmetic - so a broken canvas beside a correct
 overlay reads as a DATA fault and sends you looking in the wrong module.
+LABELS THIN THEMSELVES WHERE THEY WOULD COLLIDE (`CHROME.labelMinSeparationPx`). The far end of a
+real system is dozens of moons inside a hundred pixels, and the layout's alternating sides run out;
+a name you cannot read is worse than none, because it hides the one beside it too. The SELECTED
+object always keeps its name, whatever the crowd - it is the one the reader asked about - and every
+dropped object is still drawn, still tappable, and names itself as soon as you scroll to it.
 THE RULER IS CIRCLES, NOT A BAR (`referenceArcs`, drawn by `stripChrome`). Owner, 2026-09-06:
 *"perhaps more as arcs to show size ... perhaps have the ruler centred rather than to one side - so
 it aligns to the planet on screen."* A bar answers "how many pixels is an Earth" and leaves the
@@ -6479,6 +6484,22 @@ its circle still crosses the window. On a strip of moons that selects Ceres, Lun
 strip of stars, Jupiter and the Sun; and no code knows which map it is on. Switched off by
 `sizeCompareRuler` in the preset, because a GM putting a picture on a screen may want the worlds
 without the marks.
+A RING'S BRIGHTNESS IS ITS SURFACE DENSITY, AND ITS OPENNESS IS ITS HOST'S OBLIQUITY. Owner,
+2026-09-06: *"most planets look as spectacular as saturn - and that aint right - and get inclination
+right too."* Both were the same shape of fault - a real number used for every body alike.
+ - `ringProminence(inner, outer, mass)` reads the ring node's own mass over its annulus. The bundled
+   Sol spans four decades (Saturn 1.0e7 kg/m2, Neptune 2.9e4, Uranus 1.6e4, Jupiter 1.1e3), which is
+   the difference between the finest sight in the sky and something no eye has seen. Read
+   logarithmically and then squared, because a linear read zeroes everything but Saturn and an
+   unsquared one still gives Uranus half a Saturn. **The RADII were right all along and that was the
+   trap**: Jupiter's rings reach 3.23 planet radii against Saturn's 2.41, because Jupiter's include
+   the gossamer ring - so at one brightness the faintest rings in the system read as the grandest.
+   A ring with NO mass authored draws in FULL: a GM who drew a ring wants to see it.
+ - `ringOpenness(axialTiltDeg)` is `sin(obliquity)`, under a stated CONVENTION: the strip views every
+   body from its own orbital plane and presents each ring at its most open azimuth. Saturn 0.45,
+   Neptune 0.47, Uranus 0.99 (a circle, on its side - the one thing everybody knows about Uranus),
+   Jupiter 0.05. Every figure is checkable against a photograph, which one shared tilt was not. No
+   obliquity authored falls back to the poster angle rather than to an invisible edge-on line.
 ONLY THE RING AT THE FOCUS IS DRAWN AT FULL STRENGTH (`ringOpacityAt`). Owner, 2026-09-06: *"rings
 on unselected planets need to disappear each side - fade in/out as it moves so only 1 ring is only
 fully visible - 2 on a move - saves a lot of nasty alpha."* Three ringed worlds drawn at true extent

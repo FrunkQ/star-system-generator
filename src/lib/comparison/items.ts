@@ -19,6 +19,14 @@ export interface ComparisonEntry extends ComparisonItem {
    * colour is not a layout question.
    */
   ringColorHex?: string;
+  /**
+   * The ring system's own MASS, in kg. What tells Saturn's rings from Jupiter's: spread over the
+   * annulus it gives a surface density, and that is four orders of magnitude apart between the two
+   * (`ringProminence`). Absent for a hand-authored ring, which is then drawn in full.
+   */
+  ringMassKg?: number;
+  /** The HOST's obliquity, which is what decides how open its rings look (`ringOpenness`). */
+  axialTiltDeg?: number;
 }
 
 /**
@@ -58,16 +66,22 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
   // not an object you compare against a planet) but are drawn around their host at true extent, and
   // are the reason a ringed planet is given more room than its globe needs. Several ring nodes on
   // one host read as one system: the innermost inner edge to the outermost outer.
-  const ringsOf = new Map<string, { inner: number; outer: number }>();
+  const ringsOf = new Map<string, { inner: number; outer: number; massKg?: number }>();
   for (const n of nodes) {
     if (n?.roleHint !== 'ring' || !n.parentId) continue;
     const inner = Number(n.radiusInnerKm) || 0;
     const outer = Number(n.radiusOuterKm) || 0;
     if (!(outer > inner)) continue;
+    // Several ring nodes on one host read as one system, and their MASSES add: it is one annulus
+    // from the innermost inner edge to the outermost outer, carrying everything in them.
+    const m = Number(n.massKg);
     const cur = ringsOf.get(String(n.parentId));
     ringsOf.set(String(n.parentId), cur
-      ? { inner: Math.min(cur.inner, inner), outer: Math.max(cur.outer, outer) }
-      : { inner, outer });
+      ? {
+          inner: Math.min(cur.inner, inner), outer: Math.max(cur.outer, outer),
+          massKg: Number.isFinite(m) ? (cur.massKg ?? 0) + m : cur.massKg
+        }
+      : { inner, outer, massKg: Number.isFinite(m) ? m : undefined });
   }
   for (const n of nodes) {
     if (n?.kind !== 'body') continue;
@@ -85,6 +99,8 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
       orbitAu: Number(n?.orbit?.elements?.a_AU) || undefined,
       ringInnerKm: ringsOf.get(String(n.id))?.inner,
       ringOuterKm: ringsOf.get(String(n.id))?.outer,
+      ringMassKg: ringsOf.get(String(n.id))?.massKg,
+      axialTiltDeg: Number.isFinite(Number(n.axial_tilt_deg)) ? Number(n.axial_tilt_deg) : undefined,
       node: n,
       ...discRing(n)
     });
@@ -126,6 +142,7 @@ export function itemsForStarmap(starmap: { systems?: any[] } | null | undefined)
         // this strip, so the orbit order degenerates to a flat row here, which is the honest answer -
         // there is no "what orbits what" between two different systems.
         parentId: null,
+        axialTiltDeg: Number.isFinite(Number(node.axial_tilt_deg)) ? Number(node.axial_tilt_deg) : undefined,
         node,
         ...discRing(node)
       });

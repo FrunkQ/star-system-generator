@@ -18,7 +18,8 @@
   import {
     sortItems, medianPlanet, layoutStrip, visibleItems,
     idsAtLeast, idsAtMost, referenceArcs, clampCentreShare, slotAt,
-    focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx, ringOpacityAt,
+    focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
+    ringOpacityAt, ringProminence, ringTiltRad,
     OPENING_SHARE, TAP_SLOP_PX, STEP_FRACTION, SORT_ORDERS,
     type StripLayout, type SortOrder
   } from '$lib/comparison/layout';
@@ -194,10 +195,19 @@
     id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, crossPx: s.crossPx,
     diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex,
     ringInnerPx: s.ringInnerPx, ringOuterPx: s.ringOuterPx, ringColorHex: byId.get(s.id)?.ringColorHex,
-    // ONLY THE RING YOU ARE LOOKING AT is at full strength. Three ringed worlds drawn at true
-    // extent at once is a grey wash across the whole strip, and every one of them is transparent,
-    // which is expensive as well as ugly.
+    // HOW OPEN THE RING LOOKS is the host's own obliquity — Uranus lies on its side and its rings
+    // draw as a circle, Jupiter's are all but edge-on. One shared tilt made every giant look like
+    // Saturn, which is the thing the owner spotted.
+    ringTiltRad: ringTiltRad(byId.get(s.id)?.axialTiltDeg),
+    // TWO THINGS MULTIPLY INTO THE ALPHA and they answer different questions. `ringOpacityAt` is
+    // about ATTENTION — only the ring you are looking at is at full strength, or a strip of ringed
+    // worlds is a grey wash. `ringProminence` is about the RING — Saturn's are 10,000 times denser
+    // than Jupiter's, and drawn at one brightness the faintest rings in the system read as the
+    // grandest, because they happen to be the widest.
+    // NB the prominence is computed from the TRUE radii in km, never the drawn ones: it is a surface
+    // DENSITY, so a pixel area would make it depend on how far you happen to be zoomed in.
     ringOpacity: ringOpacityAt((seqIndex.get(s.id) ?? focus) - focus)
+      * ringProminence(byId.get(s.id)?.ringInnerKm ?? 0, byId.get(s.id)?.ringOuterKm ?? 0, byId.get(s.id)?.ringMassKg)
   })).filter((s) => s.node));
   $: if (handle) handle.setView(axis, scrollPx, vw, vh, crossScrollPx);
   $: if (handle) handle.setSelected(selectedId);

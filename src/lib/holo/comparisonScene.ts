@@ -83,6 +83,12 @@ export interface ComparisonSlot {
   /** The ring's own colour, where it is not a planet's pale ice and rock — a BH's accretion disc. */
   ringColorHex?: string;
   /**
+   * How far the ring is tilted out of the screen plane, in radians, from `ringTiltRad` — 0 is a
+   * circle seen face-on, pi/2 a line seen edge-on. It is the HOST'S OBLIQUITY, so Uranus's rings
+   * present as a circle and Jupiter's as a sliver, which is the difference a shared angle erased.
+   */
+  ringTiltRad?: number;
+  /**
    * 0..1, from `ringOpacityAt`: how strongly this ring draws, given how far its planet is from the
    * focus. Only the ring you are looking at is at full strength. Applied per FRAME, so a scroll
    * fades it rather than popping it, and it never rebuilds the ring.
@@ -122,11 +128,15 @@ const BUILD_MARGIN_SCREENS = 0.5;
 /** A body wider than this many screens is not worth tessellating past: it is a wall of surface. */
 const MAX_DRAW_SCREENS = 8;
 /**
- * How far a ring is tilted out of the screen plane. Its TRUE width still runs along the strip — only
- * the across-axis is foreshortened — so the reading you take off the ruler is exact and the ring
- * still reads as a ring rather than as a disc.
+ * The fallback tilt for a ring whose host has no obliquity authored — see `ringTiltRad` in
+ * `comparison/layout.ts`, which is where the real number comes from now. It USED to be the tilt for
+ * every ring in the strip, and that is what made Jupiter, Uranus and Neptune all present like
+ * Saturn. Kept only so the scene has an answer when the caller sends none.
+ *
+ * Whatever the angle, the ring's TRUE width still runs along the strip and only the across-axis is
+ * foreshortened, so the reading you take off the ruler is exact.
  */
-const RING_TILT_RAD = 1.15;
+const RING_TILT_FALLBACK_RAD = 1.15;
 
 export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonSceneHandle {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -271,8 +281,11 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       if (slot.ringOuterPx && slot.ringInnerPx !== undefined && slot.ringOuterPx > slot.ringInnerPx) {
         const r = buildFlatRing(slot.ringInnerPx, slot.ringOuterPx,
           slot.ringColorHex ? new THREE.Color(slot.ringColorHex).getHex() : undefined);
-        if (axis === 'x') r.mesh.rotation.x = RING_TILT_RAD;
-        else r.mesh.rotation.y = RING_TILT_RAD;
+        const tilt = Number.isFinite(slot.ringTiltRad as number) ? (slot.ringTiltRad as number) : RING_TILT_FALLBACK_RAD;
+        // Tilted about the STRIP'S OWN AXIS, so the reading axis carries the ring's true width and
+        // only the other one is foreshortened.
+        if (axis === 'x') r.mesh.rotation.x = tilt;
+        else r.mesh.rotation.y = tilt;
         r.mesh.renderOrder = -1;   // behind the globe, so the near arc does not cut across its face
         group.add(r.mesh);
         const mat = r.mesh.material as THREE.Material & { opacity: number };

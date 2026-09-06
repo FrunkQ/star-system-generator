@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.328 - 6th Sep 2026
+
+- Size comparison: rings are drawn as brightly as they deserve. Saturn's are the finest sight in the sky and now look it; Jupiter's are dust you would need a spacecraft to see, and no longer draw as a grand set of hoops just because they happen to reach further. The app works it out from the mass of the rings spread over their own area, so your own worlds get the same treatment.
+- And rings now lie the way the planet does. Saturn's are tipped a little, Uranus' come round almost face-on because Uranus lies on its side, and Jupiter's are all but edge-on. They were all drawn at one angle before, which made every giant look like Saturn.
+- The names at the crowded end of a strip no longer pile into an unreadable smudge - where two would land on each other, one is left out. Whatever you have selected always keeps its name, and anything left out still names itself as soon as you scroll to it.
+
 ## v3.0.327 - 6th Sep 2026
 
 - The real reason a ship arrived at the space elevator going the wrong way: an orbit change (a Hohmann transfer around the same world) ended with its velocity written for the wrong side of the orbit, so every such transfer parked the ship retrograde. Fixed - an orbit change now keeps the sense it left in, and at a world with a beanstalk it ends with the planet's spin, turning round at the far end if it must and showing what that costs.

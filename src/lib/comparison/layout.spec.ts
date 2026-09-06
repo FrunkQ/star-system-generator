@@ -7,7 +7,8 @@ import {
   OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX, RING_ROOM_FRACTION,
   focusIndexOf, clampFocus, focusDiameterKm, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
   clampCentreShare, MIN_CENTRE_SHARE, MAX_CENTRE_SHARE, slotAt, PICK_MIN_RADIUS_PX,
-  ringOpacityAt, RING_FADE_STEPS,
+  ringOpacityAt, RING_FADE_STEPS, ringProminence, ringOpenness, ringTiltRad,
+  DEFAULT_RING_OPENNESS, MIN_RING_OPENNESS,
   type ComparisonItem
 } from './layout';
 import { EARTH_RADIUS_KM, SOLAR_RADIUS_KM, LUNA_RADIUS_KM } from '$lib/constants';
@@ -432,6 +433,56 @@ describe('size comparison — rings', () => {
     expect(ringOpacityAt(0.999)).toBeGreaterThan(0);
     expect(RING_FADE_STEPS).toBeGreaterThan(0);
     expect(ringOpacityAt(NaN)).toBe(0);
+  });
+
+  it('draws a ring as brightly as it DESERVES, from the stuff actually in it', () => {
+    // Owner, 2026-09-06: "most planets look as spectacular as saturn - and that aint right." The
+    // sizes were right and that was the problem: Jupiter's rings reach 3.23 planet radii against
+    // Saturn's 2.41, because Jupiter's include the gossamer ring nobody can see. Drawn at one
+    // brightness, the faintest rings in the Solar System read as the grandest.
+    // THE REAL FIGURES, from the bundled Sol, as surface density in kg/m^2:
+    const sat = ringProminence(66900, 140180, 5e23);      // 1.0e7 - the finest sight in the sky
+    const nep = ringProminence(41900, 62930, 2e20);       // 2.9e4
+    const ura = ringProminence(38000, 98000, 4e20);       // 1.6e4
+    const jup = ringProminence(92000, 226000, 1.5e20);    // 1.1e3 - invisible without a spacecraft
+    expect(sat).toBe(1);
+    expect(jup).toBeLessThan(0.01);
+    // Saturn outshines every one of them by a wide margin, and the order is the physical one.
+    expect(sat).toBeGreaterThan(nep * 3);
+    expect(nep).toBeGreaterThan(ura);
+    expect(ura).toBeGreaterThan(jup * 10);
+    // ...and the WIDEST rings are no longer the brightest, which was the whole complaint.
+    expect(226000 / 69911).toBeGreaterThan(140180 / 58232);   // Jupiter's reach beats Saturn's
+    expect(jup).toBeLessThan(sat);                            // and its rings do not
+  });
+
+  it('draws an authored ring with no mass IN FULL rather than refusing it', () => {
+    // Steer, never stop: a GM who drew a ring wants to see a ring, and "invisible, because you did
+    // not weigh it" is the refusal the standing rule forbids.
+    expect(ringProminence(66900, 140180)).toBe(1);
+    expect(ringProminence(66900, 140180, 0)).toBe(1);
+    expect(ringProminence(66900, 140180, NaN)).toBe(1);
+    expect(ringProminence(140180, 66900, 5e23)).toBe(1);   // nonsense radii: draw it, do not divide
+  });
+
+  it('opens a ring by its host’s OBLIQUITY, so Uranus does not look like Saturn', () => {
+    // The convention is written down in `ringOpenness`: the strip views every body from its own
+    // orbital plane and presents each ring at its most open azimuth, so openness is sin(tilt).
+    // Every figure below is checkable against a photograph.
+    expect(ringOpenness(26.73)).toBeCloseTo(0.4498, 4);    // Saturn
+    expect(ringOpenness(28.32)).toBeCloseTo(0.4744, 4);    // Neptune
+    expect(ringOpenness(97.77)).toBeCloseTo(0.9908, 4);    // URANUS - all but a circle, on its side
+    expect(ringOpenness(3.13)).toBeCloseTo(0.0546, 4);     // Jupiter - all but a line
+    // The one everybody knows: Uranus's rings present twice as open as Saturn's, not the same.
+    expect(ringOpenness(97.77)).toBeGreaterThan(ringOpenness(26.73) * 2);
+    // A tilt nobody measured falls back to the poster angle, not to an invisible edge-on line.
+    expect(ringOpenness(undefined)).toBe(DEFAULT_RING_OPENNESS);
+    expect(ringOpenness(NaN)).toBe(DEFAULT_RING_OPENNESS);
+    // And a genuinely upright body still shows a sliver rather than nothing.
+    expect(ringOpenness(0)).toBe(MIN_RING_OPENNESS);
+    // The renderer wants an angle: face-on is 0, edge-on is a right angle.
+    expect(ringTiltRad(90)).toBeCloseTo(0, 9);
+    expect(Math.cos(ringTiltRad(26.73))).toBeCloseTo(ringOpenness(26.73), 9);
   });
 
   it('reserves nothing extra for a body with no rings', () => {
