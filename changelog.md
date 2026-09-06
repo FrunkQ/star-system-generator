@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.321 - 6th Sep 2026
+
+- Notes only, no change to the app: the engine's half of the contract with the Explorers site is brought up to date - the download-format question the site has already answered is closed, the open-from-a-link feature was re-checked on the live beta site rather than a test server, and the site is told that opening a single system from a link is now half-built rather than absent.
+
 ## v3.0.320 - 6th Sep 2026
 
 - Board: a transit left running with the clock on drove memory to 2.3 GB (B131) - measured from the owner's diagnostic to the autosave queue that keeps one copy of the campaign per frame, and briefed as stream O for a session to fix at the root.

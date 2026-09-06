@@ -558,11 +558,33 @@ with `X-Vercel-Error: DEPLOYMENT_NOT_FOUND`, while the workers.dev origin answer
 to append the **workers.dev** download URL until the DNS moves; no engine change is needed on the day
 it does, because both hosts are already on the allow-list.
 
-**Also worth the hub knowing:** `/api/download/<slug>` currently returns **plain JSON**
-(`content-type: application/json`, `filename="local-neighbourhood.json"`), not a `.sse.zip`. That is
-fine and was expected — `classifySaveFile` is the same door either way — but R-17's text says the URL
-returns the bundle, so the two descriptions should be reconciled on the hub's side rather than left to
-the next reader.
+**The download-format question is CLOSED, and the hub answered it in its own half** (`sse-requirements.md`,
+R-17, 2026-09-06), quoted rather than retold: *"`/api/download/<slug>` serves the bundle reassembled from
+approved assets — `.sse.zip` when the upload carried assets, and the plain `.json` document when it did
+not (`server/pack.ts`: an assetless save has nothing to withhold and nothing to repack)."* Both go through
+`classifySaveFile`, so nothing on this side cares which arrives. No action.
+
+**RE-VERIFIED ON THE DEPLOYED BETA, 2026-09-06, not on a dev server.**
+`https://beta.starsystemx.com/?open=<the workers.dev download URL, percent-encoded>` opened Local
+Neighbourhood straight away in a browser with no campaign, and stripped the parameter; a look-alike host
+(`explorers.starsystemx.com.evil.example`) gave the plain refusal naming the host and no offer. **A deploy
+landed between the two checks** — the manifest read `appVersion` 3.0.318 for the first and 3.0.319 for the
+second — so both were seen, on two consecutive builds, and R-17's code is unchanged since v3.0.314. The
+`explorers` host was re-measured at the same time and still answers 404 from Vercel.
+
+**AND ONE THING THE HUB'S R-18 WAS WRITTEN WITHOUT, because it read the tree at v3.0.314-316:
+SINCE v3.0.317 THE ENGINE CAN ALREADY OPEN A SINGLE SYSTEM FROM A HUB REFERENCE — just not from
+`?open=`.** [[A95]] gave File > Load System a paste field, and `openSystemFromHub` → `openSystemBytes`
+fetches, classifies and opens a SYSTEM there; a campaign pasted into that door raises the existing
+sister-file offer instead. So R-18 is an ENTRY-POINT change rather than a new capability: route
+`?open=`'s system branch into the door that already exists, instead of refusing it. **The engine will not
+say it is verified, because it is not:** the library holds exactly ONE map and it is a campaign
+(`/api/maps`, count 1, measured 2026-09-06), so there is nothing on the hub to point a system link at.
+What was SEEN is a campaign reference pasted into Load System fetching, classifying and raising the
+sister-file offer; the system arm of the same function is gated but has never met a real hub system.
+**Worth saying plainly for sequencing:** R-18's premise that the library will be mostly single systems is
+a forecast about a library that currently has one map in it, and that is an argument about when, not
+whether.
 
 ---
 
