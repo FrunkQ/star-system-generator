@@ -2,10 +2,15 @@
 
 All notable changes are listed here:
 
+## v3.0.344 - 6th Sep 2026
+
+- Fixed: the star was drawn in grey on the Size comparison inside a system, which made it look dim next to Jupiter or Earth. A planet's colour is worked out from what it is made of and what its air does to sunlight; a star has no such colour, because its colour comes from how hot it is - and the view had never asked it that question. It now takes the star's own colour, the same one the starmap comparison was already using.
+
 ## v3.0.343 - 6th Sep 2026
 
 - A megastructure's crew tab now shows the gravity its own design implies instead of a space station's spinning-section figure: a ringworld or orbital ring reads its own rotation with its host's pull taken off (exactly zero for a ring turning at orbital rate - free fall), a hull reads its own mass, and a structure with no honest figure shows none. The last place megastructures were treated as stations is gone.
 - Housekeeping: the megastructure work is closed out on the board and handed over as Stream P - what is settled by code, what by decision, and what is queued next.
+
 
 ## v3.0.342 - 6th Sep 2026
 

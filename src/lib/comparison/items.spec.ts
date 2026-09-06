@@ -55,6 +55,53 @@ describe('what goes on the strip — a system', () => {
   });
 });
 
+describe('what colour a body is on the strip', () => {
+  // [[B138]]. The owner, 2026-09-06, on the SYSTEM strip while the starmap one was fine: the Sun
+  // "looks dim compared to jupiter next to it or neptune or earth". `apparentColorHex` is a
+  // REFLECTED-light answer - makeup, atmosphere, temperature - and a star does not have one.
+
+  it('holds the DATA down: every planet has a derived colour and the star has none', () => {
+    // The gate is worthless if the fixture ever grows a colour for Sol, so it asserts the shape
+    // that made the fault possible rather than only the fix.
+    const nodes = sol.nodes as any[];
+    expect(nodes.find((n) => n.name === 'Sol').apparentColorHex).toBeFalsy();
+    for (const name of ['Earth', 'Jupiter', 'Neptune']) {
+      expect(nodes.find((n) => n.name === name).apparentColorHex).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+  });
+
+  it('gives the star its SPECTRAL swatch rather than the grey nothing-known fallback', () => {
+    const sun = itemsForSystem(sol).find((i) => i.name === 'Sol')!;
+    // #8a8f99 is `buildBodyLook`'s last resort for a body with no colour at all, and it is what the
+    // Sun was being drawn in. A G star is warm white.
+    expect(sun.colorHex).toBeTruthy();
+    expect(String(sun.colorHex).toLowerCase()).not.toBe('#8a8f99');
+    expect(String(sun.colorHex).toLowerCase()).toBe('#fff4ea');
+  });
+
+  it('leaves a body that HAS a derived colour exactly as it was', () => {
+    // The swatch is the fallback and not the preference: this view's claim is that it shows things
+    // as they are, so a solved planet keeps its own answer.
+    const items = itemsForSystem(sol);
+    const nodes = sol.nodes as any[];
+    for (const name of ['Earth', 'Jupiter', 'Neptune', 'Luna']) {
+      expect(items.find((i) => i.name === name)!.colorHex)
+        .toBe(nodes.find((n) => n.name === name).apparentColorHex);
+    }
+  });
+
+  it('agrees with the STARMAP builder about the same star, which is the fault in one line', () => {
+    // Two builders for one strip had two different answers to "what colour is this", and only the
+    // starmap one had ever asked what a star is.
+    const fromSystem = itemsForSystem(sol).find((i) => i.name === 'Sol')!;
+    const fromStarmap = itemsForStarmap({ systems: [{ id: 's', name: 'Sol', system: sol }] })
+      .find((i) => i.name === 'Sol')!;
+    expect(fromStarmap).toBeTruthy();
+    expect(String(fromSystem.colorHex).toLowerCase())
+      .toBe(String(fromStarmap.colorHex).toLowerCase());
+  });
+});
+
 describe('a barycentre is a door, not a destination', () => {
   // [[B135]]. Pluto's own `a_AU` is the 2,035 km waltz it dances with Charon about the point between
   // them, and reading it straight put Pluto SECOND on the strip - between the Sun and Mercury, which

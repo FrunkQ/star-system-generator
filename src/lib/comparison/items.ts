@@ -8,6 +8,7 @@
 import { starRadiusKmOf } from '$lib/rendering/scaleLaw';
 import { accretionDiscExtentKm, DISC_FLAT_COLOR } from '$lib/holo/bodyFeatures';
 import { systemVisualStars } from '$lib/starmap/systemStars';
+import { getClassColor } from '$lib/rendering/colors';
 import { SORT_ORDERS, type ComparisonItem, type SortOrder } from './layout';
 
 /** An item plus the node the scene needs to build its look. */
@@ -99,7 +100,7 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
     if (!(r > 0)) continue;
     out.push({
       id: String(n.id), name: String(n.name ?? n.id), diameterKm: r * 2,
-      role: String(n.roleHint ?? 'other'), colorHex: n.apparentColorHex,
+      role: String(n.roleHint ?? 'other'), colorHex: stripColorOf(n),
       // For the MASS and ORBIT orders. `massKg` stays UNDEFINED when the body has none — the sort
       // puts an unknown mass last rather than treating it as zero, because a body a GM has not
       // weighed is unknown, not weightless.
@@ -114,6 +115,30 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
     });
   }
   return out;
+}
+
+/**
+ * WHAT COLOUR A BODY IS ON THE STRIP: its DERIVED true colour where it has one, and its class
+ * swatch where it does not.
+ *
+ * THE SECOND HALF IS [[B138]] AND A STAR IS THE WHOLE OF IT. `apparentColorHex` is worked out from
+ * makeup, atmosphere and temperature - it is a REFLECTED-light answer, and a star does not have one:
+ * measured on the bundled Sol, every planet carries a hex and the star carries `null`. Passed
+ * straight through, that `null` fell to `buildBodyLook`'s last-resort `#8a8f99`, so the Sun was
+ * drawn in GREY beside a correctly-coloured Jupiter - which is exactly what the owner reported:
+ * *"looks dim compared to jupiter next to it or neptune or earth"*.
+ *
+ * The class swatch is where a star's colour has always lived (`getClassColor` returns the spectral
+ * swatch for `roleHint: 'star'`), which is why the STARMAP half of this file was fine all along -
+ * it reads `systemVisualStars`, which goes through that law. Two builders for one strip had two
+ * different answers to "what colour is this", and only one of them had asked what a star is.
+ *
+ * NOT `getPlanetColor`, deliberately: that one hands a PLANET its class swatch whenever the orrery
+ * is out of true-colour mode, and this view's whole claim is that it shows things as they are. The
+ * derived colour wins wherever there is one; the swatch is the fallback, not the preference.
+ */
+function stripColorOf(n: any): string | undefined {
+  return n?.apparentColorHex || getClassColor(n) || undefined;
 }
 
 /**

@@ -6634,6 +6634,16 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+AND A STAR HAS NO `apparentColorHex`, WHICH IS CORRECT AND WAS A TRAP ([[B138]]). That field is
+derived from makeup, atmosphere and temperature - a REFLECTED-light answer - so every planet has one
+and a star has `null`. Read straight, the Sun reached `buildBodyLook` with no colour and fell to its
+last-resort `#8a8f99`: a grey disc beside a correctly-coloured Jupiter, which reads as "dim" and is
+really "wrong paint". A star's colour is its spectral class (`getClassColor` treats `roleHint:
+'star'` as an override), which is why the STARMAP half of the same view was fine - it goes through
+that law via `systemVisualStars`. `stripColorOf` is now the one answer for both builders: the
+derived colour where there is one, the class swatch where there is not. Deliberately NOT
+`getPlanetColor`, which would hand a PLANET its swatch whenever the orrery is out of true-colour
+mode - the swatch is the fallback here and never the preference.
 AND A PHOTOSPHERE IS NOT PAINTED FLAT AT ITS CHROMATICITY ([[G76]]). That was the rest of the same
 problem and it took the owner's eye to see it: *"why do stars look so DULL on this?"* - Vega and
 Sirius pastel lavender on the strip while the M dwarfs beside them looked vivid. A hot star's
