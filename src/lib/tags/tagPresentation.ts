@@ -241,6 +241,18 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
     label: 'Generated',
     description: 'INVENTED, NOT OBSERVED. A real-sky import filled this world in around a confirmed star to make the system playable; no telescope has seen it. Seeded from the star\'s catalogue id, so the same import always produces the same worlds. The confirmed detections in the same system carry no such tag — that is how you tell them apart.'
   },
+  // R-16: the two tags a PASTE leaves behind. They are provenance rather than formation, so the
+  // namespace description ("how and where this body formed") is wrong for them and they need their
+  // own words - without these they fell through to the title-cased key and a GM read "Hub", which is
+  // our word for the Explorers site and not one that appears anywhere a GM looks.
+  'origin/hub': {
+    label: 'From a shared map',
+    description: 'Pasted in from a map published on the Explorers site; the value is a link back to it. This is the breadcrumb on the body, not the credit — the credit is recorded on the campaign and printed in the attributions file inside your saves, so it survives this body being renamed, moved or deleted.'
+  },
+  'origin/hub-route-stood-down': {
+    label: 'Route not carried over',
+    description: 'This ship was pasted in from somebody else\'s campaign and its autopilot has been switched off. A route is a plan made somewhere else and most of its stops — the depot two systems over, the yard it returns to — were never copied with the ship, so leaving it running would send the planner chasing places that do not exist here. The ship itself arrived whole: hull, crew, cargo and tags. Give it a new route when you are ready.'
+  },
 
   // --- Spin (the axis, as opposed to shape/ which is what the spin does to the body) ---
   'spin/axis-inferred': {
@@ -501,6 +513,23 @@ const FLAT_ATMOSPHERE_TAGS = new Set([
   'prebiotic-precursor', 'technosignature'
 ]);
 
+/**
+ * Whether `key` has its OWN write-up, as opposed to falling through to its namespace's description.
+ *
+ * `tagConsistency.spec.ts` gates on this, and the gate is the point: a tag with no entry renders as
+ * a TITLE-CASED KEY beside a namespace-level sentence, which looks deliberate and explains nothing.
+ * That is B29's fault applied to the LABEL rather than to the figure, and it shipped: `origin/hub`
+ * read as "Hub" - our word for the Explorers site, which appears nowhere a GM looks - under
+ * "How and where this body formed", a sentence that is simply false about a provenance tag.
+ *
+ * TWO FAMILIES ANSWER FALSE LEGITIMATELY, and the gate excludes them rather than this function
+ * pretending otherwise: the flat atmosphere tags, which carry no namespace at all, and the dynamic
+ * `resonance/N-M` keys, for which `describeTag` builds an exact sentence from the ratio itself.
+ */
+export function hasOwnTagWriteUp(key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(TAG_INFO, key)
+    || Object.prototype.hasOwnProperty.call(POI_TAG_META, key);
+}
 export function describeTag(key: string): TagPresentation {
   const ns = key.split('/')[0];
   // A registered PoI category wins (user/pack-chosen colour + heading), then flat atmosphere, then

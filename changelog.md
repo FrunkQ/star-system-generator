@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.353 - 6th Sep 2026
+
+- A body you paste in from the Explorers site used to carry a tag reading "Hub", filed under a sentence about how the body FORMED. Neither told you anything: "hub" is our word for the site and appears nowhere you would meet it, and where a body came from is not how it formed. It now reads "From a shared map", says the value is a link back to it, and says plainly that it is a breadcrumb rather than the credit - the credit is recorded on your campaign and printed in the attributions file inside your saves, so it survives the body being renamed, moved or deleted. A pasted ship's tag reads "Route not carried over" and explains why its autopilot is off.
+- The tags guide now says where the three visibility settings stop. The shown/anon/hidden button is on the tags you add yourself, and the category switch hides a whole category - both of them act on the categories under Settings, Tagging. The tags the engine derives are a different population: they are not categories, they carry no button, and if you want a fact about a world kept back the lever is the world rather than the tag. That was worth writing down, because it is a switch people go looking for.
+- Behind the scenes: the test that was meant to stop a tag shipping without a proper name did not actually check for one, which is how "Hub" got out. It does now.
+
 ## v3.0.352 - 6th Sep 2026
 
 - A star that fires polar jets now shows them on the Size comparison as well, so the ones that do something are visibly the ones that do something. Its shed shell stays off there: a jet is two beams out of the poles and reads as an outflow, while a shell is a ball of light around a ball of light and would make the star look bigger than the number under it.
@@ -11,7 +17,6 @@ All notable changes are listed here:
 ## v3.0.351 - 6th Sep 2026
 
 - Notes only, no change to the app: the second set of checks across the seam with the Explorers site is filed beside the first - a visitor with no campaign opens a shared map straight away, and the checks were re-run against the site's real address after the DNS move. The report had sat committed but unpushed in a retired session's worktree.
-
 
 ## v3.0.350 - 6th Sep 2026
 

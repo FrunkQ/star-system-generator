@@ -192,6 +192,19 @@ marker, deliberately: three markers would tell players you are hiding three thin
 you did not choose to give them. And a whole category hidden from players stays hidden — the category
 switch is the stronger statement, and a tag inside it shows nothing even at **anon**.
 
+**And there is a limit to what the three settings reach, which is worth knowing before you go looking
+for a switch that is not there.** The rung button appears on **the tags you added yourself** — the
+"Yours" group on the Tags tab — and the category switch hides a whole category. Both act on the
+categories you configure under **Settings → Tagging**: there are thirteen of them shipped, and any you
+add.
+
+The tags the *engine* derives are a different population. `structure/`, `weather/`, `hazard/`,
+`surface/`, `stellar/` and the rest are not categories, so there is no category switch for them and no
+rung button on them either — they describe what the physics found, and they go to players with
+everything else the physics publishes. If you want a particular fact about a world kept back, the
+lever is the world, not the tag: change the thing that produces it, or keep the body itself off the
+players' map. A GM override in a physics namespace is in the same position — it is filed under **GM
+override** rather than under **Yours**, and it carries no rung.
 ## Automated tagging rules
 
 Each category can carry rules that apply its tags for you. A rule is a condition over a body's

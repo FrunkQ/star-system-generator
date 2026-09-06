@@ -267,7 +267,7 @@ every consumer — renderers, rules, the finder — reads the override exactly a
 
 | namespace | meaning | written by |
 |---|---|---|
-| `origin/*` | provenance (`migrated`, `captured`) | generation |
+| `origin/*` | provenance, and it answers TWO different questions under one namespace. **How the body came to be where it is:** `origin/migrated`, `origin/captured`, `origin/generated` (a real-sky import invented this world around a confirmed star). **Where the body came from, as a document:** `origin/hub` on the root of anything pasted in from a map on the Explorers site, its value the link back — and `origin/hub-route-stood-down` on a pasted ship whose autopilot was switched off because its stops were never copied with it. The second pair are a BREADCRUMB and not the credit: the credit is recorded on the campaign and printed in `ATTRIBUTIONS.md`, so it survives the body being renamed, moved or deleted | generation; the paste pair: `io/hubClip.ts`, authored at paste |
 | `orbit/*` | orbital traits (`retrograde`, `double`) | generation |
 | `atmosphere/*` | atmosphere conditions (`reducing`, `breathable`) | generation |
 | `climate/*` | climate states (`runaway-greenhouse`) | (was the accrete adapter, removed v2.1.898-beta) |
