@@ -15,9 +15,13 @@
   // from the website never appeared in a right-click menu even where it would have pasted perfectly,
   // and the two controls disagreed about whether there was anything to paste. Since the right-click
   // IS the paste (owner, 2026-09-06), it must see everything the indicator sees.
-  import { detectedClip } from '$lib/io/clipDetect';
+  import { detectedClip, clipboardHint } from '$lib/io/clipDetect';
 
   const dispatch = createEventDispatcher();
+
+  // Evaluated once per opening, which is right: this component is created fresh each time the menu
+  // is shown, and the answer cannot change while it is up.
+  const hint = clipboardHint();
 
   // A branch, not an object: copying a planet takes its moons, exactly as the map library's own
   // Copy does. The count says so out loud rather than surprising anyone after the fact.
@@ -42,12 +46,24 @@
         <li on:click={() => dispatch('pasteHere', selectedNode)}>
           Paste {$detectedClip.label} here{$detectedClip.count > 1 ? ` (${$detectedClip.count} objects)` : ''}
         </li>
+      {:else if hint}
+        <!-- SAY SO RATHER THAN SHOW NOTHING. In Firefox the app can never look at the clipboard, so
+             without this a GM who has copied a system on the map library's site sees no paste option
+             anywhere and no way to find out why. Greyed, like every other inapplicable item. -->
+        <li class="disabled" title="This browser will not let a page read the clipboard, so the app cannot see what you copied until you paste it.">{hint}</li>
       {/if}
     {/if}
   </ul>
 </div>
 
 <style>
+  li.disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  li.disabled:hover {
+    background: none;
+  }
   .context-menu {
     position: absolute;
     background-color: var(--bg-panel);

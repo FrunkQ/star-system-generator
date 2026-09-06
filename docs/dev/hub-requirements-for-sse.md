@@ -603,6 +603,49 @@ whether.
 
 ---
 
+## R-14 addendum — what the ENGINE depends on in a clip's nodes. SETTLED 2026-09-06; nothing was added.
+
+**The hub offered to add optional data to a clip so the app could tell what it IS. The engine
+declined, because it already has what it needs — and what it asked for instead was a promise.**
+
+**WHAT THE ENGINE READS, and why it is these two fields.** `describeClipRoot` and
+`describeClipCompact` turn a clip into the words on the pill and in the right-click menu ("System
+Sol", "Planet+7"), and `systemNodesFromClip` decides whether a clip may become a system of its own
+on the starmap. Both key on **`kind`** and **`roleHint`** on the clip's nodes, and nothing else:
+`kind` separates a body from a barycentre from a construct, and `roleHint` separates a star from a
+planet from a moon from a ring. A clip whose root resolves to a star — including a BARYCENTRE of
+stars, which is what a binary's root is — can land in empty space as a new system; anything else is
+offered "into a system…" instead.
+
+**WHY IT WAS A PROMISE RATHER THAN A FIELD.** The hub builds a clip node as `snippetFor(node)` =
+`{...node}` minus `gmNotes` and bundle-local assets, so both fields survive today by virtue of the
+spread. That is an accident of the implementation, not a commitment — and if `snippetFor` ever
+became a whitelist, "Paste as a new system" would stop being offered for every hub clip with no
+error and no failing test on this side, just an option quietly greying out. An explicit `rootKind`
+on the envelope was declined for the reason DATA-R4 gives: a claim in a file is a claim, so the app
+would have to verify it against the nodes anyway, and a second answer to "what is this clip" is the
+duplication both repositories keep unpicking.
+
+**THE HUB'S HALF, quoted from its `docs/sse-requirements.md` (R-14 addendum, hub 0.37.0) rather
+than retold:**
+
+> - **PROMISED.** `snippetFor` (`bundle/normalise.ts`) is a DENY list and stays one; if it ever
+>   becomes a whitelist, `kind` and `roleHint` are the two names that must be on it. The paragraph
+>   above is quoted in the code beside it.
+> - **PINNED.** `tests/clip.test.ts` asserts both survive a real node, alongside what must NOT
+>   survive (`gmNotes`, bundle-local `image` and `model`). A silent loss is the worst-shaped
+>   failure there is, so it is a test rather than a habit.
+> - **DECLINED, agreed.** No `rootKind`, no envelope change, no `CLIP_FORMAT` bump. Two answers to
+>   one question is the fault, not the fix.
+
+**ENGINE-SIDE STATUS, 2026-09-06: NO WORK OWED, and no change is wanted.** The dependency is
+recorded here so that a future reader of either repository can see that the two fields are load
+bearing rather than incidental. If the hub's pin ever goes red, the engine symptom to expect is the
+starmap's "Paste … here" greying out for every clip from the library while the in-app copy path
+carries on working — which is a confusing shape, and is exactly why the promise was worth asking for.
+
+---
+
 ## What the hub will NOT ask the engine to do
 
 Recorded so nobody builds them by mistake:

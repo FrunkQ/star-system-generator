@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.340 - 6th Sep 2026
+
+- Fixed: inside a system, right-clicking empty space offered to add a planet, a belt or a construct but never to paste what you already had in hand - so a copied planet had nowhere to land unless you happened to right-click an existing body. It is now the first item on that menu, and it goes round whatever that patch of sky belongs to, exactly as "Add Planet Here" would.
+- In a browser that will not let a page read the clipboard at all - Firefox - the right-click menus now say "Press Ctrl+V to paste something copied elsewhere" instead of simply showing nothing. It disappears the moment you have something in hand.
+
 ## v3.0.339 - 6th Sep 2026
 
 - Fixed: pasting a binary star system - a pair, like Zeta Reticuli - was refused on the starmap. A pair of stars is a star system; it is now recognised as one, lands with both stars still orbiting their shared centre, and takes its age from the brighter of the two rather than from the centre point, which has no age to give.

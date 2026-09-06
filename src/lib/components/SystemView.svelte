@@ -58,7 +58,8 @@
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { buildClip } from '$lib/io/hubClip';
   import { putClip } from '$lib/io/clipBuffer';
-  import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture } from '$lib/io/clipDetect';
+  import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture, clipboardHint } from '$lib/io/clipDetect';
+  import { hostCandidates, preferredHost } from '$lib/system/reparent';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
@@ -364,6 +365,31 @@
     dispatch('pasteClip', { clip: entry.clip, systemId: $systemStore.id, hostId: host.id });
   }
 
+  /**
+   * PASTE INTO THE EMPTY SPACE THAT WAS RIGHT-CLICKED, inside a system.
+   *
+   * THE GAP THIS CLOSES, reported by the owner 2026-09-06 with Jupiter and its moons in hand:
+   * *"still not being offered the paste ... this is on the IN system view"*. The paste lived only on
+   * the right-click of an existing BODY; right-clicking empty space opened a different menu that
+   * offered to ADD a planet, a belt, a construct - and never to put down the thing already in hand.
+   * A GM wanting to place a copied planet naturally right-clicks where they want it, and got
+   * nothing at all.
+   *
+   * The host is the one this menu ALREADY works out for "Add Planet Here": `dominantBody`, the body
+   * whose neighbourhood that point belongs to. So a paste lands where an add would have, and the two
+   * cannot disagree about what "here" means. With no dominant body it falls back to the same bias
+   * the paste screen uses - planets on stars, moons on planets.
+   */
+  function handlePasteAtBackground() {
+    const entry = $detectedClip;
+    if (!$systemStore || !entry) return;
+    showBackgroundContextMenu = false;
+    const root = entry.clip.nodes.find((n: any) => n.id === entry.clip.root) ?? entry.clip.nodes[0];
+    const host = backgroundClickHost ?? preferredHost($systemStore, hostCandidates($systemStore) as any, root);
+    if (!host) return;
+    dispatch('pasteClip', { clip: entry.clip, systemId: $systemStore.id, hostId: host.id });
+  }
+
   // THE GOLD PULSE. Fires when the thing on offer CHANGES, not on every reactive tick - otherwise
   // The flash and the clipboard watch moved into `clipDetect` when the STARMAP needed both too - a
   // second copy of "look on focus, flash once for something from outside" is two answers to one
@@ -461,6 +487,7 @@
   let constructClickAU: number | undefined = undefined;
   let showBackgroundContextMenu = false;
   let contextMenuActionLabel = 'Add Planet Here';
+  let backgroundClipHint: string | null = null;
   let showAddBeltOption = false;
   let showAddRingOption = false;
 
@@ -473,6 +500,9 @@
 
   function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: string } | null, circumbinaryHit?: { baryId: string; baryName: string } | null }>) {
       backgroundClickHost = event.detail.dominantBody;
+      // A menu is a question, so this is a place to look at the clipboard (see clipDetect).
+      void readClipboardOnGesture().then(() => (backgroundClipHint = clipboardHint()));
+      backgroundClipHint = clipboardHint();
       backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
       backgroundLagrangeHit = event.detail.lagrangeHit ?? null;
       backgroundCircumbinaryHit = event.detail.circumbinaryHit ?? null;
@@ -3000,6 +3030,16 @@
                         <li on:click={handleAddTrojanFromBackground}>Add Trojan at {lagName} {lagPt}</li>
                     {/if}
                 {/if}
+                <!-- WHAT IS IN HAND COMES FIRST, because if a GM has just copied something the odds
+                     are that is what this right-click is for. It lands on the same host "Add Planet
+                     Here" would have used, so the two agree about what "here" means. -->
+                {#if $detectedClip}
+                    <li on:click={handlePasteAtBackground}>
+                        Paste {$detectedClip.label} here{$detectedClip.count > 1 ? ` (${$detectedClip.count} objects)` : ''}
+                    </li>
+                {:else if backgroundClipHint}
+                    <li class="disabled" title="This browser will not let a page read the clipboard, so the app cannot see what you copied until you paste it.">{backgroundClipHint}</li>
+                {/if}
                 <li on:click={handleCreateConstructFromBackground}>Add Construct Here</li>
                 <li on:click={() => handleCreateBodyFromBackground()}>{contextMenuActionLabel}</li>
                 {#if showAddBeltOption}
@@ -3443,6 +3483,13 @@
       border-color: var(--border);
   }
 
+  .context-menu li.disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .context-menu li.disabled:hover {
+    background: none;
+  }
   .context-menu {
     position: fixed; /* Fixed positioning for clientX/clientY */
     background-color: var(--bg-panel);

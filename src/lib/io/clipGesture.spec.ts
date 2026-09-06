@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { get } from 'svelte/store';
-import { detectedClip, readClipboardOnGesture, clipboardCanBeAsked } from './clipDetect';
+import { detectedClip, readClipboardOnGesture, clipboardCanBeAsked, clipboardHint, noteClipText } from './clipDetect';
 import { clipBuffer, clearClip, putClip } from './clipBuffer';
 
 const CLIP = JSON.stringify({
@@ -100,5 +100,41 @@ describe('the order that makes a gesture read legal, pinned in the source', () =
 		const map = readFileSync(join(process.cwd(), 'src/lib/components/Starmap.svelte'), 'utf8');
 		expect(sys).toContain('readClipboardOnGesture()');
 		expect((map.match(/readClipboardOnGesture\(\)/g) ?? []).length, 'a star AND empty space').toBeGreaterThanOrEqual(2);
+	});
+});
+
+describe('when the app cannot look, it says so instead of showing nothing', () => {
+	// FIREFOX IS THE CASE. It has no `clipboard-read` permission at all, so no gesture will ever get
+	// the clipboard - and without this a GM who copied a system on the map library's site would see
+	// no paste option anywhere, and nothing to tell them Ctrl+V is the way in. A Chrome user who
+	// refused the prompt lands in the same place.
+	//
+	// A FRESH MODULE PER TEST, because `gestureReadRefused` is module state by design - one refusal
+	// must silence the asking for the whole session. That is right for the app and poison for a test
+	// file, where the refusal test above would otherwise decide the answers down here.
+	const fresh = async () => {
+		vi.resetModules();
+		return await import('./clipDetect');
+	};
+
+	it('offers the Ctrl+V hint when the clipboard cannot be asked at all', async () => {
+		Object.defineProperty(globalThis.navigator, 'clipboard', { value: undefined, configurable: true });
+		const m = await fresh();
+		expect(m.clipboardCanBeAsked()).toBe(false);
+		expect(m.clipboardHint()).toMatch(/ctrl\+v/i);
+	});
+
+	it('stays quiet while the browser CAN still be asked - the right-click will do it', async () => {
+		withClipboard(async () => '');
+		const m = await fresh();
+		expect(m.clipboardCanBeAsked()).toBe(true);
+		expect(m.clipboardHint(), 'no hint needed: the next right-click asks').toBeNull();
+	});
+
+	it('stays quiet once something is in hand, whichever way it arrived', async () => {
+		Object.defineProperty(globalThis.navigator, 'clipboard', { value: undefined, configurable: true });
+		const m = await fresh();
+		m.noteClipText(CLIP);
+		expect(m.clipboardHint(), 'Ctrl+V worked; stop telling them to press it').toBeNull();
 	});
 });

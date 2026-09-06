@@ -66,7 +66,7 @@
   import UndoPill from './UndoPill.svelte';
   // The starmap had no idea anything was in hand: every paste affordance lived in the system view,
   // which is not where a GM lands when they come back from the map library (owner, 2026-09-06).
-  import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture } from '$lib/io/clipDetect';
+  import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture, clipboardHint } from '$lib/io/clipDetect';
   import { systemNodesFromClip } from '$lib/io/hubClip';
   import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
@@ -912,7 +912,8 @@
 
   function handleStarContextMenu(event: MouseEvent, systemId: string) {
     event.preventDefault();
-    void readClipboardOnGesture(); // see the note in clipDetect: a menu is a question
+    void readClipboardOnGesture().then(() => (clipHint = clipboardHint()));
+    clipHint = clipboardHint();
     event.stopPropagation();
     showContextMenu = true;
     isStarContextMenu = true;
@@ -926,6 +927,9 @@
   // Can what is in hand become a system of its own? Asked of the clip module rather than answered
   // here, so the menu and the paste cannot disagree about it.
   onMount(() => watchClipboard());
+
+  // Re-asked each time a menu opens, because a gesture read may have just settled the answer.
+  let clipHint: string | null = null;
 
   $: pasteAsSystem = $detectedClip
     ? systemNodesFromClip($detectedClip.clip)
@@ -955,7 +959,8 @@
 
   function handleMapContextMenu(event: MouseEvent) {
     event.preventDefault();
-    void readClipboardOnGesture(); // the empty-space menu is where a copied SYSTEM lands
+    void readClipboardOnGesture().then(() => (clipHint = clipboardHint())); // the empty-space menu is where a copied SYSTEM lands
+    clipHint = clipboardHint();
     event.stopPropagation();
     showContextMenu = true;
     isStarContextMenu = false;
@@ -1832,6 +1837,8 @@
               <li on:click={handleContextMenuPasteInto}>
                 Paste {$detectedClip.label} into this system
               </li>
+            {:else if clipHint}
+              <li class="disabled" title="This browser will not let a page read the clipboard, so the app cannot see what you copied until you paste it.">{clipHint}</li>
             {/if}
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
@@ -1869,6 +1876,8 @@
                       <li on:click={handleContextMenuPasteIntoAny}>
                         Paste {$detectedClip.label} into a system…
                       </li>
+                    {:else if clipHint}
+                      <li class="disabled" title="This browser will not let a page read the clipboard, so the app cannot see what you copied until you paste it.">{clipHint}</li>
                     {/if}
                     <li on:click={handleContextMenuRealSky}>Import Real Stars Here…</li>
                     {#if $starmapUiStore.travellerMode}

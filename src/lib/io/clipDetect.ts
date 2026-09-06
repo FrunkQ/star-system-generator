@@ -87,6 +87,24 @@ async function mayReadClipboard(): Promise<boolean> {
  */
 let gestureReadRefused = false;
 
+/**
+ * WHAT TO SAY WHEN THE APP CANNOT LOOK. Null when there is nothing to say - either something is
+ * already in hand, or the browser can still be asked and the right-click will do it.
+ *
+ * FIREFOX IS THE CASE THIS EXISTS FOR: it has no `clipboard-read` permission at all, so no gesture
+ * will ever get us the clipboard and the app would otherwise show a GM with a copied system exactly
+ * nothing, forever, with no way to learn that Ctrl+V is the way in. A Chrome user who refused the
+ * prompt lands here too, which is the other half of the same courtesy.
+ *
+ * It is ONE sentence in ONE place so the menus cannot word it differently.
+ */
+export function clipboardHint(): string | null {
+  if (typeof navigator === 'undefined') return null;
+  if (get(clipBuffer) || get(fromClipboard)) return null;
+  if (clipboardCanBeAsked()) return null;
+  return 'Press Ctrl+V to paste something copied elsewhere';
+}
+
 export function clipboardCanBeAsked(): boolean {
   return typeof navigator !== 'undefined' && !!navigator.clipboard?.readText && !gestureReadRefused;
 }
