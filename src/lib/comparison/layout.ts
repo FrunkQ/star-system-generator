@@ -479,6 +479,50 @@ export function scaleForFocus(seq: ComparisonItem[], f: number, shorterSidePx: n
   return pxPerKm(focusDiameterKm(seq, f), shorterSidePx, share);
 }
 
+/**
+ * HOW FAR ALONG THE PICTURE IS between two neighbours, which is NOT how far along the focus is.
+ *
+ * [[B136]], and the owner found it going from the star to Mercury: *"zooming between huge to small -
+ * star to mercury - breaks it"*. Mid-drag the whole strip flew off the screen and came back.
+ *
+ * WHY, and it is worth having in one place, because it is the arithmetic of every zoom-and-pan there
+ * has ever been. The SCALE moves geometrically (`focusDiameterKm`), so the separation between two
+ * neighbours in SCREEN pixels multiplies by their diameter ratio across one step - Sol to Mercury is
+ * 285:1, so a 100 px gap becomes 29,000 px. Blending their positions LINEARLY across that means the
+ * incoming object races out to twenty screens away and then comes back: the camera spends the middle
+ * of the journey looking at nothing, because a linear share of a distance that is growing
+ * exponentially is not a monotone approach.
+ *
+ * THE LAW THAT IS: move the camera at a CONSTANT APPARENT SPEED - the same pixels-per-step of picture
+ * at every moment of the step. Ask for `dx/dt * scale(t)` to be constant with `scale(t)` proportional
+ * to `r^-t` and the path falls straight out:
+ *
+ *     weight(t) = (r^t - 1) / (r - 1)      r = the ratio of the two diameters
+ *
+ * and both objects then approach and recede monotonically, at both ends, in both directions. It is
+ * exactly time-symmetric (walking the pair backwards retraces the same path), which a drag needs, and
+ * it collapses to `t` as `r` goes to 1 - so a strip of same-sized worlds behaves precisely as before
+ * and only the ruinous pairs move. The same weight drives both axes, or the picture would slide
+ * across while it dived along.
+ */
+export function focusBlend(seq: ComparisonItem[], f: number): number {
+  if (!seq.length) return 0;
+  const i = Math.max(0, Math.min(seq.length - 1, Math.floor(f)));
+  const j = Math.min(seq.length - 1, i + 1);
+  const t = Math.max(0, Math.min(1, f - i));
+  // EXACT at the stops, the same discipline `focusDiameterKm` keeps: a click lands the focus on an
+  // object, and "the thing you clicked is in the middle" should be true to the digit.
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const a = seq[i].diameterKm, b = seq[j].diameterKm;
+  if (!(a > 0) || !(b > 0)) return t;
+  const r = b / a;
+  // A pair of equal size has no ratio to speak of and the formula is 0/0 there. The straight blend is
+  // the limit, not a fallback.
+  if (!Number.isFinite(r) || Math.abs(r - 1) < 1e-9) return t;
+  return (Math.pow(r, t) - 1) / (r - 1);
+}
+
 /** Every slot by id — the layout is a list, and two of the focus laws want it as a lookup. */
 function slotMap(layout: StripLayout): Map<string, LayoutSlot> {
   return new Map(layout.slots.map((s) => [s.id, s]));
@@ -493,7 +537,7 @@ export function focusCentrePx(layout: StripLayout, seq: ComparisonItem[], f: num
   const by = slotMap(layout);
   const at = (i: number) => by.get(seq[Math.max(0, Math.min(seq.length - 1, i))].id)?.centrePx ?? 0;
   const i = Math.max(0, Math.min(seq.length - 1, Math.floor(f)));
-  const t = Math.max(0, Math.min(1, f - i));
+  const t = focusBlend(seq, f);
   return at(i) * (1 - t) + at(i + 1) * t;
 }
 
@@ -509,7 +553,9 @@ export function focusCrossPx(layout: StripLayout, seq: ComparisonItem[], f: numb
   const by = slotMap(layout);
   const at = (i: number) => by.get(seq[Math.max(0, Math.min(seq.length - 1, i))].id)?.crossPx ?? 0;
   const i = Math.max(0, Math.min(seq.length - 1, Math.floor(f)));
-  const t = Math.max(0, Math.min(1, f - i));
+  // THE SAME WEIGHT AS THE ALONG AXIS, and for the same reason: two axes derived from one focus have
+  // to agree about how far along the step the picture is, or a moon slides across while it dives in.
+  const t = focusBlend(seq, f);
   return at(i) * (1 - t) + at(i + 1) * t;
 }
 
@@ -523,13 +569,30 @@ export function focusCrossPx(layout: StripLayout, seq: ComparisonItem[], f: numb
  * MEASURED ACROSS BOTH AXES, and that is not a nicety: in the orbit layout a planet and its first
  * moon share a `centrePx` exactly and differ only in `crossPx`, so an along-only rate is ZERO there
  * and the drag divides by nothing. The floor of 1 px is the second guard on the same thing.
+ *
+ * AND IT IS THE APPARENT DISTANCE, NOT THE CURRENT SEPARATION ([[B136]]). The separation between two
+ * neighbours multiplies by their diameter ratio across the step, so measuring it at the moment the
+ * gesture starts prices the whole journey at whichever end you happen to be standing: from Sol, the
+ * 285:1 step to Mercury measured 93 px, and a flick of the wrist crossed it. Under the constant-speed
+ * path of `focusBlend` the step has ONE honest length - the pixels of picture that actually go past -
+ * and it is the same number from either end, which is what makes the drag reversible across a pair
+ * that changes scale. Collapses to the plain separation as the ratio goes to 1.
  */
 export function focusStepPx(layout: StripLayout, seq: ComparisonItem[], f: number): number {
   if (seq.length < 2) return 0;
   const i = Math.max(0, Math.min(seq.length - 2, Math.floor(f)));
   const by = slotMap(layout);
   const a = by.get(seq[i].id), b = by.get(seq[i + 1].id);
-  return Math.max(1, Math.hypot((b?.centrePx ?? 0) - (a?.centrePx ?? 0), (b?.crossPx ?? 0) - (a?.crossPx ?? 0)));
+  const sep = Math.hypot((b?.centrePx ?? 0) - (a?.centrePx ?? 0), (b?.crossPx ?? 0) - (a?.crossPx ?? 0));
+  const da = seq[i].diameterKm, db = seq[i + 1].diameterKm;
+  const r = da > 0 && db > 0 ? db / da : 1;
+  const t = Math.max(0, Math.min(1, f - i));
+  // `sep` is the separation HERE, at `t`; `sep * r^t` is what it would be at the big end, and the log
+  // factor turns that into the constant apparent speed the path is flown at.
+  const apparent = !Number.isFinite(r) || Math.abs(r - 1) < 1e-9
+    ? sep
+    : sep * Math.pow(r, t) * Math.log(r) / (r - 1);
+  return Math.max(1, apparent);
 }
 
 // `clampScroll` USED TO LIVE HERE, beside `scrollForZoom`, and has gone the same way. It kept a

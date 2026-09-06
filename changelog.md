@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.333 - 6th Sep 2026
+
+- Fixed: Pluto sat between the Sun and Mercury in the Size comparison's orbit order. Pluto and Charon go round a point between the two of them, and the app was reading that little circle as Pluto's distance from the Sun. Both now sit where the pair really is, out past Neptune, next to each other.
+- Fixed: moving between two objects of wildly different sizes - the star and Mercury, say - threw the picture off the screen and brought it back. The view now flies that step at a steady speed, so the world you are heading for only ever gets closer and the one you are leaving only ever gets further away.
+- And a drag across such a step is worth a proper drag rather than a flick: the distance it costs is now the distance the picture actually travels, which is the same whichever end you start from.
+
 ## v3.0.332 - 6th Sep 2026
 
 - Fixed: stars in the Size comparison could draw as faceted lumps or flat boxes instead of globes. One very large object on a map - a black hole thousands of AU across, say - pushed everything behind it so far along the strip that the graphics card ran out of precision and snapped the shapes to a coarse grid. Nothing sits at its absolute position on the strip any more, so a map can carry an object of any size and everything else still draws properly.

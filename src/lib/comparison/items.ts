@@ -62,6 +62,15 @@ function radiusKmOf(node: any): number {
 export function itemsForSystem(system: { nodes?: any[] } | null | undefined): ComparisonEntry[] {
   const nodes = system?.nodes ?? [];
   const out: ComparisonEntry[] = [];
+  // A BARYCENTRE IS A DOOR, NOT A DESTINATION, and this is [[B135]]: it has no body, so it is not on
+  // the strip - but the bodies that orbit it DO name it as their parent, and their own orbit is the
+  // little one they make about EACH OTHER. Read straight, Pluto's `a_AU` is 0.000014 and it sorts
+  // between the Sun and Mercury, which is exactly where the owner found it. What a reader means by
+  // "where is Pluto" is where the PAIR goes round the star, so a member takes the barycentre's own
+  // parent and the barycentre's own orbit, and the two of them come out adjacent at 39.5 AU with the
+  // larger first. Chains resolve (a barycentre may orbit a barycentre); a cycle in authored data
+  // stops at the step cap rather than hanging the view.
+  const homeOf = barycentreHomes(nodes);
   // A body's RINGS come from its own ring nodes — which are not on the strip themselves (a ring is
   // not an object you compare against a planet) but are drawn around their host at true extent, and
   // are the reason a ringed planet is given more room than its globe needs. Several ring nodes on
@@ -95,8 +104,7 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
       // puts an unknown mass last rather than treating it as zero, because a body a GM has not
       // weighed is unknown, not weightless.
       massKg: Number.isFinite(n.massKg) ? Number(n.massKg) : undefined,
-      parentId: n.parentId ?? null,
-      orbitAu: Number(n?.orbit?.elements?.a_AU) || undefined,
+      ...homeInTree(n, homeOf),
       ringInnerKm: ringsOf.get(String(n.id))?.inner,
       ringOuterKm: ringsOf.get(String(n.id))?.outer,
       ringMassKg: ringsOf.get(String(n.id))?.massKg,
@@ -106,6 +114,50 @@ export function itemsForSystem(system: { nodes?: any[] } | null | undefined): Co
     });
   }
   return out;
+}
+
+/**
+ * WHERE EACH BARYCENTRE LEADS: its own parent and its own orbit, chased through any chain of them.
+ *
+ * Kept as its own pass because it is the only thing in this file that has to look at a node OTHER
+ * than the one being read, and because it is the pass a gate wants to hold still.
+ */
+function barycentreHomes(nodes: any[]): Map<string, { parentId: string | null; orbitAu?: number }> {
+  const bary = new Map<string, any>();
+  for (const n of nodes) if (n?.kind === 'barycenter' && n.id != null) bary.set(String(n.id), n);
+  const out = new Map<string, { parentId: string | null; orbitAu?: number }>();
+  for (const [id, n] of bary) {
+    let cur = n;
+    // The cap is the cycle guard: authored data can name a loop, and a view that hangs on one is
+    // worse than a view that gives up on it.
+    for (let hop = 0; hop < 16; hop++) {
+      const next = cur.parentId != null ? bary.get(String(cur.parentId)) : undefined;
+      if (!next || next === cur) break;
+      cur = next;
+    }
+    out.set(id, {
+      parentId: cur.parentId != null ? String(cur.parentId) : null,
+      orbitAu: Number(cur?.orbit?.elements?.a_AU) || undefined
+    });
+  }
+  return out;
+}
+
+/**
+ * A body's place in the tree AS THE STRIP READS IT: its parent and its orbit, with any barycentre
+ * between it and its host stepped through. Both fields move together - taking the barycentre's orbit
+ * while keeping the barycentre as the parent would put the pair at the right distance under a host
+ * that is not on the strip.
+ */
+function homeInTree(
+  n: any, homeOf: Map<string, { parentId: string | null; orbitAu?: number }>
+): { parentId: string | null; orbitAu?: number } {
+  const home = n.parentId != null ? homeOf.get(String(n.parentId)) : undefined;
+  if (home) return { parentId: home.parentId, orbitAu: home.orbitAu };
+  return {
+    parentId: n.parentId ?? null,
+    orbitAu: Number(n?.orbit?.elements?.a_AU) || undefined
+  };
 }
 
 /**

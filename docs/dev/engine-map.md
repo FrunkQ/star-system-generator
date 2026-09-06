@@ -6472,6 +6472,25 @@ the overlay's labels, ruler ticks and hit areas sit over the globes by construct
 through a projection nobody can check. The strip's layout is computed by a pure function in pixels,
 and the scene and the chrome both read it - recomputed whenever the scale moves, which is now every
 frame you are scrolling (RENDER-S55).
+AND A STEP OF THE ZOOM IS FLOWN AT A CONSTANT APPARENT SPEED ([[B136]]). The scale follows the focus
+GEOMETRICALLY, so the screen distance between two neighbours multiplies by their diameter RATIO
+across one step: Sol to Mercury is 285:1, and 93 px becomes 25,750 px. Blending their positions
+linearly across that is not a monotone approach - measured, Mercury flew from a seventh of a screen
+out to nearly four screens away before coming back, and the middle of the step was empty black.
+`focusBlend` is the fix and it is the standard one: require `dx/dt * scale(t)` to be constant and the
+path is `(r^t - 1) / (r - 1)`. It is time-symmetric (a drag has to retrace), it collapses to the
+straight blend as `r` goes to 1 (so equal neighbours are untouched), and BOTH AXES take the same
+weight or a moon slides across while it dives in.
+`focusStepPx` IS THE APPARENT LENGTH OF THE STEP, not the separation at the moment you grabbed it -
+the same fault wearing a different hat, since measuring the gap at one end prices the whole journey
+there. The two ends agree to within the 3% the sub-pixel DOT FLOOR adds, which is a real effect and
+not slop: seen from Sol, Mercury reserves the dot's 6 px instead of its own width.
+AND A BARYCENTRE IS A DOOR, NOT A DESTINATION ([[B135]]). It has no body, so it is not on the strip -
+but the bodies that orbit it name it as their parent, and THEIR `a_AU` is the little one they make
+about each other. Pluto's is 0.000014, which sorted it between the Sun and Mercury. `barycentreHomes`
+resolves the chain to the first real host and hands the member that host AND that host's orbit
+together; taking one without the other puts a pair at the right distance under a parent that is not
+on the strip.
 AND NOTHING IS EVER PLACED AT ITS ABSOLUTE STRIP COORDINATE ([[B134]], the third trap and the worst).
 A slot's `centrePx` is measured from the START of the strip and is UNBOUNDED: the strip is sorted by
 size, so ONE enormous object puts everything behind it at a coordinate of its own diameter and

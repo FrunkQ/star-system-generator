@@ -6,6 +6,7 @@ import {
   SORT_ORDERS, GAP_FRACTION as GAPF,
   OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX, RING_ROOM_FRACTION,
   focusIndexOf, clampFocus, focusDiameterKm, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
+  focusBlend,
   clampCentreShare, MIN_CENTRE_SHARE, MAX_CENTRE_SHARE, slotAt, PICK_MIN_RADIUS_PX,
   ringOpacityAt, RING_FADE_STEPS, ringProminence, ringOpenness, ringTiltRad, slotOffset,
   DEFAULT_RING_OPENNESS, MIN_RING_OPENNESS,
@@ -266,7 +267,12 @@ describe('size comparison — the scale follows what is in the middle', () => {
     const earth = layout.slots.find((s) => s.id === 'earth')!;
     const luna = layout.slots.find((s) => s.id === 'luna')!;
     expect(luna.centrePx).toBe(earth.centrePx);        // the fault this guards, present in the data
-    expect(focusStepPx(layout, seq, iEarth)).toBeCloseTo(luna.crossPx - earth.crossPx, 6);
+    // The rate is the cross separation carried through the constant-speed factor ([[B136]]) - the
+    // point of THIS gate is that it is driven by the CROSS gap and so is never zero, and the exact
+    // figure is written out so a change to either law has to be meant.
+    const r = seq[iEarth + 1].diameterKm / seq[iEarth].diameterKm;
+    expect(focusStepPx(layout, seq, iEarth))
+      .toBeCloseTo((luna.crossPx - earth.crossPx) * Math.log(r) / (r - 1), 6);
     expect(focusStepPx(layout, seq, iEarth)).toBeGreaterThan(1);
   });
 
@@ -298,6 +304,105 @@ describe('size comparison — the scale follows what is in the middle', () => {
     expect(whole.length).toBeGreaterThanOrEqual(3);      // the subject AND both neighbours, in full
     expect(touching.length).toBeGreaterThanOrEqual(4);
     expect(touching.length).toBeLessThanOrEqual(8);
+  });
+});
+
+describe('size comparison — a step of the zoom is flown at a constant apparent speed', () => {
+  // [[B136]]. Owner, 2026-09-06: "zooming between huge to small - star to mercury - breaks it". The
+  // SCALE moves geometrically, so the screen gap between two neighbours multiplies by their diameter
+  // ratio across one step - 285:1 from the Sun to Mercury. A linear blend of their positions sends
+  // the incoming object out to twenty screens away and back, and the middle of the journey is empty
+  // black. `focusBlend` is the constant-apparent-speed path that fixes it.
+  const PAIR: ComparisonItem[] = [
+    body('Sun', SOLAR_RADIUS_KM, 'star'),
+    body('Mercury', 2439.7, 'planet')
+  ];
+  const SHORT_W = 730, WIN = 1400;
+
+  /** Where the two objects sit relative to the middle of the window, at focus `f`. */
+  const offsets = (items: ComparisonItem[], f: number) => {
+    const seq = sortItems(items, 'size');
+    const scale = scaleForFocus(seq, f, SHORT_W, OPENING_SHARE);
+    const layout = layoutStrip(items, scale, { axis: 'x' });
+    const scroll = focusCentrePx(layout, seq, f) - WIN / 2;
+    const at = (i: number) => layout.slots.find((s) => s.id === seq[i].id)!.centrePx - scroll - WIN / 2;
+    return { first: at(0), second: at(1) };
+  };
+
+  it('is EXACT at both stops and reduces to a straight blend for equal neighbours', () => {
+    const seq = sortItems(PAIR, 'size');
+    // A whole-numbered focus is ON its object, so the weight there is a hard zero - and the far stop
+    // of a step is a hard one, reached from inside the step rather than from the index after it.
+    expect(focusBlend(seq, 0)).toBe(0);
+    expect(focusBlend(seq, 1 - 1e-12)).toBeCloseTo(1, 9);
+    expect(focusBlend(seq, 1)).toBe(0);              // the last object, and the start of no step
+    const twins = sortItems([body('A', 6000, 'planet'), body('B', 6000, 'planet')], 'size');
+    for (const t of [0.1, 0.25, 0.5, 0.9]) expect(focusBlend(twins, t)).toBeCloseTo(t, 12);
+    // 285:1 is emphatically NOT the straight blend - halfway through the step the picture is nearly
+    // all the way onto Mercury, because that is where the scale has got to.
+    expect(focusBlend(seq, 0.5)).toBeGreaterThan(0.9);
+  });
+
+  it('brings the incoming object in MONOTONICALLY instead of throwing it off the screen', () => {
+    const ts = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+    const seen = ts.map((t) => offsets(PAIR, t).second);
+    // It never leaves the window it started inside, and it only ever gets closer.
+    for (let i = 1; i < seen.length; i++) expect(seen[i]).toBeLessThan(seen[i - 1] + 1e-9);
+    expect(Math.max(...seen)).toBeCloseTo(seen[0], 9);
+    expect(seen[0]).toBeLessThan(WIN / 2);          // on screen at the start
+    expect(seen[seen.length - 1]).toBeCloseTo(0, 9); // dead centre at the end
+    // AND THE OUTGOING ONE ONLY EVER RECEDES, which is the other half of monotone.
+    const away = ts.map((t) => offsets(PAIR, t).first);
+    for (let i = 1; i < away.length; i++) expect(away[i]).toBeLessThan(away[i - 1] + 1e-9);
+    expect(away[0]).toBeCloseTo(0, 9);
+  });
+
+  it('flies the same path in both directions, which is what a drag needs', () => {
+    // The same two bodies with the SMALL one first: walking the pair backwards must retrace the same
+    // picture, or dragging back the way you came would not put you where you started.
+    const back = [body('Mercury', 2439.7, 'planet'), body('Sun', SOLAR_RADIUS_KM, 'star')];
+    const seqBack = sortItems(back, 'name');   // 'name' keeps Mercury first
+    expect(seqBack.map((i) => i.name)).toEqual(['Mercury', 'Sun']);
+    const seqFwd = sortItems(PAIR, 'size');
+    for (const t of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+      expect(focusBlend(seqBack, 1 - t)).toBeCloseTo(1 - focusBlend(seqFwd, t), 9);
+    }
+  });
+
+  it('prices the step the same from either end - the drag rate is not the local gap', () => {
+    const seq = sortItems(PAIR, 'size');
+    const lay = (f: number) => layoutStrip(PAIR, scaleForFocus(seq, f, SHORT_W, OPENING_SHARE), { axis: 'x' });
+    const fromBig = focusStepPx(lay(0), seq, 0);
+    const fromSmall = focusStepPx(lay(1), seq, 0.999999);
+    // Within 5%, and the 3% that is there is the DOT FLOOR rather than the law: seen from the Sun,
+    // Mercury is below a pixel and reserves the dot's 6 px instead of its own width, which stretches
+    // the layout's idea of the gap by exactly that much (measured: 805,916 km against 782,341 km).
+    expect(fromSmall / fromBig).toBeGreaterThan(0.95);
+    expect(fromSmall / fromBig).toBeLessThan(1.05);
+    // And it is worth a real drag rather than a flick: the raw separation at the big end was 93 px
+    // for this pair, which crossed a 285-fold zoom in a thumb's width.
+    const rawSeparation = (() => {
+      const l = lay(0);
+      const a = l.slots.find((s) => s.id === seq[0].id)!, b = l.slots.find((s) => s.id === seq[1].id)!;
+      return Math.abs(b.centrePx - a.centrePx);
+    })();
+    expect(fromBig).toBeGreaterThan(rawSeparation * 3);
+    expect(fromBig).toBeGreaterThan(300);
+    expect(fromBig).toBeLessThan(WIN);
+  });
+
+  it('moves both axes on the same weight', () => {
+    // A moon stacked off the centreline: the cross scroll must be as far through the step as the
+    // along scroll is, or the picture slides sideways while it dives in.
+    const seq = sortItems(SYS, 'orbit');
+    const i = focusIndexOf(seq, 'earth');
+    const layout = layoutStrip(SYS, 0.002, { axis: 'x', order: 'orbit' });
+    const f = i + 0.4;
+    const w = focusBlend(seq, f);
+    const a = layout.slots.find((s) => s.id === seq[i].id)!;
+    const b = layout.slots.find((s) => s.id === seq[i + 1].id)!;
+    expect(focusCrossPx(layout, seq, f)).toBeCloseTo(a.crossPx * (1 - w) + b.crossPx * w, 9);
+    expect(focusCentrePx(layout, seq, f)).toBeCloseTo(a.centrePx * (1 - w) + b.centrePx * w, 9);
   });
 });
 

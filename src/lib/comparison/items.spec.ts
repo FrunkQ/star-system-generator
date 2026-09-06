@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { itemsForSystem, itemsForStarmap, hiddenKey, loadHidden, saveHidden } from './items';
+import { sortItems } from './layout';
 import { SOLAR_RADIUS_KM, EARTH_RADIUS_KM } from '$lib/constants';
 import derived from '../../../tests/output/solar-system-derived.json';
 
@@ -51,6 +52,72 @@ describe('what goes on the strip — a system', () => {
   it('answers an absent or empty system with nothing rather than throwing', () => {
     expect(itemsForSystem(null)).toEqual([]);
     expect(itemsForSystem({ nodes: [] })).toEqual([]);
+  });
+});
+
+describe('a barycentre is a door, not a destination', () => {
+  // [[B135]]. Pluto's own `a_AU` is the 2,035 km waltz it dances with Charon about the point between
+  // them, and reading it straight put Pluto SECOND on the strip - between the Sun and Mercury, which
+  // is where the owner found it. The pair's distance from the star is the BARYCENTRE's orbit, and a
+  // barycentre is not on the strip because it has no body, so the strip has to step through it.
+  it('gives Pluto the PAIR’s orbit and the barycentre’s own host, from the real Sol', () => {
+    const items = itemsForSystem(sol);
+    const pluto = items.find((i) => i.name === 'Pluto')!;
+    const charon = items.find((i) => i.name === 'Charon')!;
+    const bary = (sol.nodes as any[]).find((n) => n.kind === 'barycenter' && /Pluto/.test(String(n.name)));
+    const sun = (sol.nodes as any[]).find((n) => n.name === 'Sol');
+    // The fixture really is shaped this way, or the gate proves nothing: both bodies name the
+    // barycentre, and their own orbits are the tiny mutual ones.
+    expect(String(bary.parentId)).toBe(String(sun.id));
+    expect(bary.orbit.elements.a_AU).toBeCloseTo(39.482, 3);
+    expect((sol.nodes as any[]).find((n) => n.name === 'Pluto').parentId).toBe(bary.id);
+    expect((sol.nodes as any[]).find((n) => n.name === 'Pluto').orbit.elements.a_AU).toBeLessThan(0.001);
+    // And the strip reads through it: 39.5 AU, under the star, for BOTH members.
+    expect(pluto.orbitAu).toBeCloseTo(39.482, 3);
+    expect(charon.orbitAu).toBeCloseTo(39.482, 3);
+    expect(pluto.parentId).toBe(String(sun.id));
+    expect(charon.parentId).toBe(String(sun.id));
+  });
+
+  it('puts the pair at the far end of the orbit order, larger first', () => {
+    const seq = sortItems(itemsForSystem(sol), 'orbit');
+    const names = seq.map((i) => i.name);
+    expect(names.slice(-2)).toEqual(['Pluto', 'Charon']);
+    expect(names[0]).toBe('Sol');
+    expect(names[1]).toBe('Mercury');          // the fault: Pluto used to sit here
+    expect(names.indexOf('Pluto')).toBeGreaterThan(names.indexOf('Neptune'));
+  });
+
+  it('leaves a body whose parent is a BODY exactly where it was', () => {
+    const luna = itemsForSystem(sol).find((i) => i.name === 'Luna')!;
+    const earth = (sol.nodes as any[]).find((n) => n.name === 'Earth');
+    expect(luna.parentId).toBe(String(earth.id));
+    expect(luna.orbitAu).toBeCloseTo(
+      (sol.nodes as any[]).find((n) => n.name === 'Luna').orbit.elements.a_AU, 12);
+  });
+
+  it('walks a CHAIN of barycentres out to the one that orbits something real', () => {
+    const nodes = [
+      { id: 'star', kind: 'body', roleHint: 'star', name: 'Star', radiusKm: 700000 },
+      { id: 'outer', kind: 'barycenter', parentId: 'star', orbit: { elements: { a_AU: 12 } } },
+      { id: 'inner', kind: 'barycenter', parentId: 'outer', orbit: { elements: { a_AU: 0.4 } } },
+      { id: 'a', kind: 'body', roleHint: 'planet', name: 'A', parentId: 'inner', radiusKm: 6000,
+        orbit: { elements: { a_AU: 0.0002 } } }
+    ];
+    const a = itemsForSystem({ nodes })!.find((i) => i.name === 'A')!;
+    expect(a.parentId).toBe('star');
+    expect(a.orbitAu).toBe(12);
+  });
+
+  it('gives up on a CYCLE rather than hanging the view', () => {
+    const nodes = [
+      { id: 'x', kind: 'barycenter', parentId: 'y' },
+      { id: 'y', kind: 'barycenter', parentId: 'x' },
+      { id: 'a', kind: 'body', roleHint: 'planet', name: 'A', parentId: 'x', radiusKm: 6000 }
+    ];
+    const items = itemsForSystem({ nodes });
+    expect(items.map((i) => i.name)).toEqual(['A']);
+    expect(items[0].orbitAu).toBeUndefined();
   });
 });
 
