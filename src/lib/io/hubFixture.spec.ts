@@ -298,8 +298,13 @@ function pin(built: Uint8Array, path: string, what: string) {
 	}
 	expect(
 		Buffer.from(built).equals(readFileSync(path)),
-		`The ${what} bundle layout changed. If that was deliberate: bump BUNDLE_FORMAT in bundle.ts ` +
-			'and regenerate with UPDATE_HUB_FIXTURE=1, in the SAME commit. The hub reads these files.'
+		`The ${what} archive no longer matches its fixture. FIRST WORK OUT WHICH KIND OF CHANGE IT IS, ` +
+			'because the answer decides whether BUNDLE_FORMAT moves. Diff the two archives member by member: ' +
+			'a path ADDED, REMOVED or RENAMED, or a change inside a JSON document, is a LAYOUT change - bump ' +
+			'BUNDLE_FORMAT in bundle.ts and regenerate with UPDATE_HUB_FIXTURE=1 in the SAME commit. A change ' +
+			'confined to a HUMAN-READABLE member (ATTRIBUTIONS.md) is not: the hub parses the JSON and the ' +
+			'asset paths, so regenerate the fixtures and LEAVE THE FORMAT ALONE - bumping it would announce a ' +
+			'breaking change to a second codebase that has nothing to fix. The hub reads these files.'
 	).toBe(true);
 }
 

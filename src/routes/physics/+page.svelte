@@ -1618,10 +1618,13 @@
     <section id="habitability">
       <h2>Habitability score</h2>
       <p>A 0–100 weighted score, rebalanced toward current astrobiology thinking — a liquid <strong>solvent</strong>
-        is the master variable: solvent (20, +5 for water = 25), temperature against that solvent's band (25),
+        is the master variable: solvent (25), temperature against that solvent's band (25),
         atmospheric pressure (18), radiation (17), and surface gravity (15, a weak constraint with a wide 0.5–1.5 g
         tolerance) — the instantaneous <em>surface</em> conditions. The solvent must be genuinely <em>liquid</em>
-        (a frozen ice cap scores 0 — its life potential is the subsurface ocean below).</p>
+        (a frozen ice cap scores 0 — its life potential is the subsurface ocean below). <strong>Those 25 marks
+        are scaled by the solvent's own quality</strong>, not handed out for any liquid: water is ideal and takes
+        the lot, a hydrocarbon or ammonia sea is a plausible alternative and takes 0.6 of them — 15 points, not 20
+        — and anything else scores nothing at all. The coverage ramp below scales what is left.</p>
       <p><strong>Which temperature, and it matters more than it sounds.</strong> The score reads the
         <em>mean surface</em> temperature — the average of the day and night sides worked out under
         <a href="#temp-range">temperature range</a> — and never the radiating temperature. The two diverge by 56 K
@@ -1641,7 +1644,8 @@
       <ul>
         <li><strong>Plate tectonics</strong> +8 (carbonate–silicate climate regulation); <strong>stagnant-lid</strong>
           −25 (runaway-greenhouse risk); <strong>tidal-volcanic</strong> −20 (resurfaced too fast); <strong>inactive</strong>
-          −10 (no outgassing / nutrient recycling).</li>
+          −10 (no outgassing / nutrient recycling); <strong>plutonic</strong> −10 (intrusive only, so the same
+          loss with a different cause).</li>
         <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).</li>
         <li>A <strong>subsurface ocean</strong> (cryovolcanic or under-ice) floors the score at 35 with a
           <code>habitability/subsurface</code> tier — sub-ice life is a separate axis from the surface Goldilocks zone.</li>

@@ -8,6 +8,8 @@
   import tagsGuide from '../../../docs/tags-guide.md?raw';
   import autopilotGuide from '../../../docs/autopilot-guide.md?raw';
   import { foreground } from '$lib/ui/foreground';
+  // ONE hub address in this codebase, and it is not spelled out here (hubConfig's own rule).
+  import { HUB } from '$lib/hub/hubConfig';
 
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
@@ -59,6 +61,19 @@
           <span class="hi-title">Autopilot</span>
           <span class="hi-desc">Standing orders for NPC ships — routes, ship character, smart routing, the Ship's Log.</span>
         </button>
+      </div>
+
+      <div class="help-group">
+        <span class="group-label">Share and borrow</span>
+        <!-- A GM looking for "where do I share this?" comes to Help, and until now found nothing
+             here about the Explorers site at all (stream I, the G63 sweep). -->
+        <a class="help-item" href={HUB.browseUrl} target="_blank" rel="noopener noreferrer">
+          <span class="hi-title">Explorers &mdash; the shared map library &#8599;</span>
+          <span class="hi-desc">Browse maps other cartographers have published, and share your own. Every map page has an
+            &ldquo;Open in Star System Explorer&rdquo; button that opens it straight back here, and you can copy any star,
+            system, planet or ship from a page and paste it into your campaign &mdash; the cartographer is credited
+            automatically, and that credit travels on inside your saves.</span>
+        </a>
       </div>
 
       <div class="help-group">

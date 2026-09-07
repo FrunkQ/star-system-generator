@@ -33,6 +33,42 @@ describe('buildPhysicsTrace', () => {
     }
   });
 
+  // THE PANEL PROMISES THE WORKING, SO A SCORE WITH NO TERMS IS THE ONE THING IT MAY NOT SHOW
+  // (stream I, the G63 sweep). This card used to print the final number and the two smallest
+  // modifiers while `habitabilityBreakdown` - every weighted term, its reading and its ideal band -
+  // sat unread on the body. The assertions are absolute rather than a count: each of the five
+  // factors must appear by name, and the score must be attributed to somebody.
+  it('shows every weighted term behind the habitability score, not just the score', () => {
+    const b = earthLike();
+    b.habitabilityBreakdown = {
+      factors: [
+        { label: 'Temperature', points: 25, max: 25, value: '288 K (15 °C)', ideal: '283-298 K' },
+        { label: 'Liquid solvent', points: 25, max: 25, value: '70% water', ideal: 'standing liquid' },
+        { label: 'Pressure', points: 18, max: 18, value: '1.00 bar', ideal: '0.5-2.0 bar' },
+        { label: 'Radiation', points: 17, max: 17, value: '2.40 mSv', ideal: 'under 5 mSv' },
+        { label: 'Gravity', points: 15, max: 15, value: '1.00 g', ideal: '0.5-1.5 g' }
+      ],
+      surfaceScore: 100,
+      modifiers: [{ label: 'Plate tectonics', delta: 8 }],
+      finalScore: 100,
+      tier: 'earth-like'
+    };
+    const hab = buildPhysicsTrace(b, { ageGyr: 4.6 }).layers.find((l) => l.id === 'habitability')!;
+    const said = [...hab.inputs, ...hab.outputs].map((f) => `${f.label} ${f.value}`).join(' | ');
+    for (const term of ['Temperature', 'Liquid solvent', 'Pressure', 'Radiation', 'Gravity']) {
+      expect(said, `${term} is not shown`).toContain(term);
+    }
+    // The reading AND the band it is judged against, not merely the term's name.
+    expect(said).toContain('283-298 K');
+    expect(said).toContain('25 of 25');
+    // The modifier and the surface subtotal, so the arithmetic can be followed to the final figure.
+    expect(said).toContain('Plate tectonics');
+    expect(said).toContain('+8');
+    expect(hab.outputs.some((o) => o.label.startsWith('Surface score'))).toBe(true);
+    // SAY WHOSE: a score named for human beings must say so on the output.
+    expect(hab.notes.join(' ')).toMatch(/HABITABILITY FOR US|human/i);
+  });
+
   it('surfaces the habitability score and tier in the habitability card', () => {
     const t = buildPhysicsTrace(earthLike(), { ageGyr: 4.6 });
     const hab = t.layers.find((l) => l.id === 'habitability')!;

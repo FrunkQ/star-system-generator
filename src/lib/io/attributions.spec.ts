@@ -4,6 +4,7 @@
 // about to breach by sharing.
 import { describe, it, expect } from 'vitest';
 import { collectAttributions, renderAttributions, buildAttributionsFile } from './attributions';
+import { SHIPPED_ART_CREDITS, SHIPPED_DATA_CREDITS, licenceRequiresNaming } from './shippedCredits';
 
 const campaign = {
   systems: [
@@ -84,6 +85,45 @@ describe('renderAttributions', () => {
     expect(text).toMatch(/1 asset has no provenance recorded at all/);
     expect(text).toContain('_No provenance recorded._');
     expect(text).toContain('fine for art you made yourself');
+  });
+});
+
+// WHAT THE APP ITSELF BROUGHT (stream I, 2026-09-06). This file is the one that TRAVELS, and the
+// app's own shipped imagery includes CC BY-SA and CC BY works whose licences require the author be
+// named wherever the work goes. It carried ONE sentence about the NASA models, while telling a GM
+// in the same breath that "CC-BY requires naming the author" about their uploads. These assert the
+// obligation rather than the wording.
+describe('the credits the app itself owes', () => {
+  const rendered = () => renderAttributions(collectAttributions(campaign, meta), 'starmap.json');
+
+  it('names every shipped work, its author and its licence, in the file that leaves the machine', () => {
+    const out = rendered();
+    for (const c of [...SHIPPED_ART_CREDITS, ...SHIPPED_DATA_CREDITS]) {
+      expect(out, `${c.what} is not credited`).toContain(c.what);
+      expect(out, `${c.what} does not name ${c.who}`).toContain(c.who);
+      expect(out, `${c.what} does not state its licence`).toContain(c.licence);
+    }
+  });
+
+  // ABSOLUTE, NOT A RATIO: a CC-BY entry with no author is the one combination that is actively
+  // wrong, and it is the exact fault this file already flags on a GM's own uploads.
+  it('leaves no attribution-licensed work of ours without a name', () => {
+    const unnamed = [...SHIPPED_ART_CREDITS, ...SHIPPED_DATA_CREDITS]
+      .filter((c) => licenceRequiresNaming(c.licence) && !c.who.trim())
+      .map((c) => c.what);
+    expect(unnamed, 'attribution-licensed with nobody named: ' + unnamed.join(', ')).toEqual([]);
+  });
+
+  // The section rides on a file that is only written when there is something to attribute, so a
+  // campaign with pasted content but no uploads must still carry it.
+  it('rides along on a save whose only credit is pasted content', () => {
+    const out = buildAttributionsFile({
+      nodes: [{ id: 'a', name: 'A' }],
+      contentCredits: [{ title: 'Alpha', creator: 'alice', url: 'https://example/map', nodeIds: ['a'] }]
+    });
+    expect(out).not.toBeNull();
+    expect(out!).toContain('What the app itself brought');
+    expect(out!).toContain('Content from other cartographers');
   });
 });
 

@@ -1954,6 +1954,80 @@ is a contradiction between a surface and the tree, found by checking a banked li
   is now genuinely owed rather than premature. The line has been rewritten to say so; the sentence
   itself lands in the `GettingStarted.md` sweep.
 
+
+### The AMENDED surfaces (7, 8, 9), swept 2026-09-06 at v3.0.357 — and each one was wrong about something
+
+- **THE NEWTON PANEL SHOWED A HABITABILITY SCORE WITH NO WORKING, on the surface whose whole promise
+  is the working.** The layer printed the final number, the tier, and the two SMALLEST contributors
+  (geology regime and magnetosphere) — while `habitabilityBreakdown`, every weighted term with its
+  reading, its ideal band and its points, sat unread on the body. A reader asking "why 63?" had
+  nowhere to go. It now renders the breakdown it already had, reading that record rather than
+  re-deriving a second sum beside it, and SAYS WHOSE: the score is human habitability with Earth as
+  the anchor, so a low score means hostile to a human and not lifeless. Gated, red first.
+- **AND `/physics#habitability` PUBLISHED A WRONG NUMBER.** It said the solvent term was
+  "20, +5 for water = 25". `biosolventScore` returns 1.0 for water and **0.6** for a hydrocarbon or
+  ammonia sea, into 25 marks — so an alternative solvent's ceiling is **15**, not 20. A reader working
+  out an ammonia world's score got a different answer from the app. Fixed to the tree, and the
+  `plutonic` regime (-10) added to the modifier list, which the page had omitted.
+- **THE ATTRIBUTIONS FILE CARRIED NONE OF THE APP'S OWN OBLIGATIONS, and it is the file that TRAVELS.**
+  One static sentence about the NASA models, while the app ships CC BY-SA planet and star imagery,
+  CC BY ESO backgrounds and CC BY logos — and while telling a GM, in the same file, that "CC-BY
+  requires naming the author" about THEIR uploads. A save handed to somebody who never runs this app
+  carried the works and not the credits. Now written from a table (`io/shippedCredits.ts`), rendered
+  by the generator, gated by a test that walks the table rather than the wording — and by an absolute
+  assertion that no attribution-licensed entry lacks a name.
+- **AND THAT LIST EXISTS THREE TIMES, WITH TWO OF THEM ALREADY DRIFTED — for the coordinator.**
+  `components/AboutModal.svelte` (~69-84) is the most complete and current copy and is what the table
+  was built from. `README.md`'s "Visual & Media Credits" is MISSING four entries that AboutModal has:
+  the WOH G64 red supergiant, the NASA/Chris Smith red giant, the asteroid and comet images, and the
+  World Zero corporate logos. **Recommendation: both should read `shippedCredits.ts`.** Moving them is
+  a change to a component and to prose rather than to the generator this stream was asked to fix, so
+  it is reported rather than smuggled in — but a credit list that disagrees with itself in three places
+  is the duplication rule's exact case, and the copies are named here so nobody has to find them again.
+- **`docs/autopilot-guide.md` ASSERTED THE ONE THING [[PHY-29]] RECORDS AS DELIBERATELY UNTRUE.** It
+  said an adrift ship's line kinks at the Hill-sphere overlay's boundary "because the overlay and the
+  physics share one definition". They were split at [[G44]] and must stay split: the overlay includes
+  MOONS (a moon's bubble is where a submoon could live) while the coast hands over at planets and
+  companion stars only. Rewritten to say which question each answers. Its "known simplifications" line
+  claiming moons get no bubble "either for the overlay or for adrift ships" was half false for the same
+  reason and is now split in two. The guide also had nothing about DOCKING, which now decides where a
+  leg ends and what it costs; a section was added.
+- **`docs/time-architecture.md` still described the pre-[[G62]] clock.** It named
+  `BIG_BANG_TO_UNIX_EPOCH_T` as THE offset and a calendar's zero as "per active calendar's epoch". The
+  live conversion goes through the RUNTIME ANCHOR, and a calendar's zero is now DERIVED from that
+  anchor plus its own `epoch_utc`, with the stored `epoch_offset_t` surviving only as a fallback —
+  which is the whole point of G62, since three of the four shipped calendars each carried an
+  independent absolute correction wrong by a different amount. Its location-state table also had no
+  row for ATTACHED, which is neither docked-to-a-body nor orbiting; the rule is written in.
+- **The in-app help had no route to the Explorers site at all.** A GM looking for "where do I share
+  this?" comes to Help, and the hub listed guides, the changelog and Discord. It now carries a
+  "Share and borrow" group pointing at `HUB.browseUrl` — read from `hubConfig`, never spelled out, per
+  that module's own rule.
+- **THE HUB CONTRACT FIXTURE WENT RED AND IT WOULD HAVE INVITED A WRONG `BUNDLE_FORMAT` BUMP — for
+  the coordinator, and it touches the seam.** Adding the shipped credits changed `ATTRIBUTIONS.md`
+  inside the two checked-in archives (1,840 -> 5,097 bytes), so `hubFixture.spec.ts`'s byte pin failed
+  with its message "bump BUNDLE_FORMAT... and regenerate". **It was measured before acting, member by
+  member: no path added, removed or renamed, and not one byte of any JSON document moved.** The layout
+  is unchanged, so the format was NOT bumped - announcing a breaking change to a second codebase that
+  has nothing to fix is worse than the red. The fixtures were regenerated with `UPDATE_HUB_FIXTURE=1`
+  and the diff read.
+  **The gate is coarser than its own stated intent** ("the bytes only move when the LAYOUT does"): it
+  cannot tell a layout change from prose growing inside a human-readable member, and its message names
+  only one remedy. The MESSAGE is now sharpened to make the reader diff the members first and say which
+  answer means what; the assertion is untouched, because tightening a hub-facing gate is not a stream's
+  call. **Recommendation: the pin could hash the JSON members and the path list separately from the
+  Markdown, which would make the red mean exactly one thing.**
+  **THIS IS HUB-FACING and a stream does not cross the seam: it needs a line in the next SEAM REPORT
+  saying the fixtures were refreshed, that `bundleFormat` is unchanged, and that the hub's parser needs
+  no work.**
+- **THE CRLF TRAP BIT THIS STREAM ONCE AND WAS CAUGHT BY AN ASSERTION RATHER THAN BY LUCK.** A
+  scripted edit to `attributions.spec.ts` left the file MIXED (134 CRLF, 136 LF) — two bare LFs inside
+  one inserted template literal, exactly the shape the standing rule describes, and `git diff` showed
+  nothing unusual. What caught it was that the edit helper REFUSES to open a mixed file and says the
+  counts. **The cheap habit: make the tool that writes assert the file's endings on the way IN, not
+  only compare the diff on the way out** — a whole-file diff tells you afterwards, an assertion tells
+  you before you commit.
+
 ## FINDINGS FROM THE STREAM-E SESSION, 2026-08-30 - for the coordinator
 
 - **`beta`'s `package.json` reads 3.0.225 and its newest changelog entry is v3.0.224.** Found while numbering this stream's push (which took 3.0.226 to stay clear of it). A user clicking the version mark sees a number with no changelog entry behind it. Not fixed here because the numbering is the coordinator's and the missing entry is somebody's shipped work that only they can describe.

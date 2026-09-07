@@ -9,6 +9,7 @@
 // It is also a WORKING DOCUMENT, not a formality: it names the assets with nothing recorded, so a
 // GM can see what they still need to fill in before sharing.
 import type { ModelRef, ContentCredit, ContentCreditLink } from '$lib/types';
+import { SHIPPED_ART_CREDITS, SHIPPED_DATA_CREDITS, type ShippedCredit } from './shippedCredits';
 
 export interface AttributionEntry {
   path: string;                 // where it sits in the bundle
@@ -183,6 +184,44 @@ function lineageLine(c: ContentCredit): string | null {
   return `from ${hops[0]}` + hops.slice(1).map((h) => `, via ${h}`).join('');
 }
 
+/**
+ * WHAT THE APP ITSELF BROUGHT, AND IT IS AN OBLIGATION RATHER THAN A COURTESY (stream I, 2026-09-06).
+ *
+ * This file is what TRAVELS. Until now it carried one sentence about the NASA models while the app
+ * ships CC BY-SA planet and star imagery, CC BY ESO backgrounds and CC BY logos - the licences that
+ * require the author be named wherever the work goes. The file was already telling a GM that
+ * "CC-BY requires naming the author" about THEIR uploads while saying nothing about ours, which is
+ * the one inconsistency a document about credit cannot afford.
+ *
+ * It reads `shippedCredits.ts` and states nothing itself, so a new starter model or a replaced
+ * illustration is a table edit rather than a prose edit here.
+ */
+function shippedSection(lines: string[]): void {
+  const entry = (c: ShippedCredit) => {
+    lines.push('');
+    lines.push(`### ${c.what}`);
+    lines.push(`- Credit: ${c.who}`);
+    lines.push(`- Licence: ${c.licence}`);
+    if (c.source) lines.push(`- Source: ${c.source}`);
+    if (c.changes) lines.push(`- Changes: ${c.changes}`);
+  };
+  lines.push('');
+  lines.push('## What the app itself brought');
+  lines.push('');
+  lines.push('These belong to neither you nor the person who made this campaign: they ship with Star System');
+  lines.push('Explorer and travel in this save because the campaign uses them. Several carry a');
+  lines.push('share-alike or attribution licence, which means the credit has to travel too - so it is');
+  lines.push('written here rather than left behind in the app.');
+  lines.push('');
+  lines.push('### Art and models');
+  for (const c of SHIPPED_ART_CREDITS) entry(c);
+  lines.push('');
+  lines.push('### Astronomy data');
+  lines.push('');
+  lines.push('The real-sky import and the bundled starmaps are built from these.');
+  for (const c of SHIPPED_DATA_CREDITS) entry(c);
+}
+
 export function renderAttributions(entries: AttributionEntry[], docName: string, credits: ContentCredit[] = []): string {
   const models = entries.filter((e) => e.kind === 'model');
   const images = entries.filter((e) => e.kind === 'image');
@@ -228,12 +267,13 @@ export function renderAttributions(entries: AttributionEntry[], docName: string,
   section('3D models', models, 'None in this save.');
   section('Images', images, 'None in this save.');
   creditsSection(lines, credits);
+  shippedSection(lines);
 
   lines.push('');
   lines.push('---');
   lines.push('');
   lines.push('Edit the provenance in the app (the model dialog, or the picture controls beside it) and');
-  lines.push('export again to refresh this file. Bundled starter models from NASA are public domain.');
+  lines.push('export again to refresh this file.');
   lines.push('');
   return lines.join('\n');
 }

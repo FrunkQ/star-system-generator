@@ -724,19 +724,51 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   }
 
   // 8. Habitability
+  //
+  // IT SHOWED A SCORE AND NOT ONE STEP OF ITS WORKING, on the panel whose whole promise is the
+  // working (stream I, the G63 sweep). Every term was already computed and sitting on the body as
+  // `habitabilityBreakdown` - five weighted factors with their points, their reading and the ideal
+  // band, then the modifiers - and this layer printed the FINAL NUMBER plus the two SMALLEST terms.
+  // A reader asking "why 63?" had nowhere to go.
+  //
+  // IT READS THE BREAKDOWN, IT DOES NOT RE-DERIVE IT. That record is the authoritative one (the Bio
+  // tab renders the same object), so there is one answer to "what did temperature score" rather than
+  // a second sum here that could drift from it - which is this codebase's most recurring fault.
+  //
+  // AND IT SAYS WHOSE. The score is HUMAN habitability with Earth as the anchor, which the standing
+  // rule asks to be stated on the output rather than smuggled: the tiers are named "human-habitable"
+  // and "Earth-like", and a world that is hostile to us may be perfectly good for something else.
   if (body.habitabilityScore != null) {
     const tier = (body.tags || []).find((t) => t.key.startsWith('habitability/'));
+    const hb = body.habitabilityBreakdown;
     layers.push({
       id: 'habitability', title: 'Habitability', link: '/physics#habitability',
       inputs: [
+        ...(hb?.factors ?? []).map((f) => ({
+          label: `${f.label} (max ${f.max})`,
+          value: `${f.value} — ideal ${f.ideal}`
+        })),
         { label: 'Geology regime', value: body.geoActivity?.regime ?? '—' },
         { label: 'Magnetosphere', value: body.magnetism ? (body.magnetism.intrinsic ? 'intrinsic' : body.magnetism.source) : '—' }
       ],
       outputs: [
-        { label: 'Score (Earth=100)', value: n(body.habitabilityScore, 0) },
+        ...(hb?.factors ?? []).map((f) => ({
+          label: `${f.label} scored`,
+          value: `${f.points} of ${f.max}`
+        })),
+        ...(hb ? [{ label: 'Surface score (the five above)', value: n(hb.surfaceScore, 0) }] : []),
+        ...(hb?.modifiers ?? []).map((m) => ({
+          label: m.label,
+          value: `${m.delta >= 0 ? '+' : ''}${m.delta}`
+        })),
+        { label: 'Score (Earth = 100)', value: n(body.habitabilityScore, 0) },
         { label: 'Tier', value: tier ? describeTag(tier.key).label : '—' }
       ],
-      notes: ['Geology + magnetism modifiers are heuristic guesswork — see /physics.']
+      notes: [
+        'THIS SCORES HABITABILITY FOR US. Earth is the 100 anchor and the tiers are named for human beings, so a low score means hostile TO A HUMAN and not lifeless - the biosphere model above asks a different question and can find life on a world that scores nothing here.',
+        'The five surface factors are the instantaneous conditions and sum to 100 between them. Geology and magnetism are then added as long-term modifiers, and a super-habitable world can pass 100 (capped at 130) while a subsurface ocean floors the score at 35 on an axis of its own.',
+        'Heuristic, not first-principles - the weights and especially the geology and magnetism modifiers are judgement calls tuned to be plausible rather than derived. See /physics#habitability for what each one is and why.'
+      ]
     });
   }
 
