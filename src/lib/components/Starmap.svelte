@@ -22,7 +22,7 @@
   import { itemsForStarmap } from '$lib/comparison/items';
   import { systemSummary, type SystemSummary } from '$lib/starmap/systemSummary';
   import BottomSheet from './BottomSheet.svelte';
-  import TimeDisplay from './TimeDisplay.svelte';
+  import TimeDisplayOverlay from './TimeDisplayOverlay.svelte';
   import { railCollapsed } from '$lib/railStore';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -1338,7 +1338,7 @@
     <svelte:fragment slot="canvas">
   <div class="starmap-canvas" bind:this={canvasEl}>
     {#if ensuredTemporal}
-      <div class="time-display-overlay"><TimeDisplay temporal={ensuredTemporal} /></div>
+      <TimeDisplayOverlay temporal={ensuredTemporal} />
     {/if}
     <BodyPicker
       floating
@@ -2106,12 +2106,6 @@
     padding: 8px;
     font: inherit;
     font-size: 0.9rem;
-  }
-  .time-display-overlay {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 57;
   }
   .ov-topright {
     position: absolute;

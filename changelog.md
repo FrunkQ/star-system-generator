@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.361 - 7th Sep 2026
+
+- The clock read-out on the canvas can be moved. It has a small grip on its left: drag it wherever it suits your screen and it stays there, keeping its distance from the nearest edge so it moves with that edge when the details pane opens or the window changes shape - exactly as the body picker, the time transport and the undo pill already do. Where you put it is remembered on this computer, not in the campaign, so it does not follow your maps about.
+
 ## v3.0.360 - 7th Sep 2026
 
 - The floating controls stay where you put them. The body picker no longer slides under the menu rail when the details pane opens: every floating control now keeps its distance from the nearest edge of its screen area and moves with that edge, on the starmap and in the system view alike. A locked picker or time transport can still be moved by dragging its padlock, and a tap still unlocks it. The undo pill can be dragged about too, and dragging its right edge wider shows the name of what is in hand.

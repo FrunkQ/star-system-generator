@@ -17,7 +17,7 @@
   import ConstructPortrait from './ConstructPortrait.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
   import BodyPicker from './BodyPicker.svelte';
-  import TimeDisplay from './TimeDisplay.svelte';
+  import TimeDisplayOverlay from './TimeDisplayOverlay.svelte';
   import FullscreenButton from './FullscreenButton.svelte';
   import { railCollapsed } from '$lib/railStore';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
@@ -2717,13 +2717,11 @@
 
         <div class="main-view">
             {#if ensuredTemporal}
-              <div class="time-display-overlay">
-                <TimeDisplay
-                  temporal={ensuredTemporal}
-                  displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
-                  masterOverrideSec={isAligningTime ? alignTargetSec : null}
-                />
-              </div>
+              <TimeDisplayOverlay
+                temporal={ensuredTemporal}
+                displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
+                masterOverrideSec={isAligningTime ? alignTargetSec : null}
+              />
             {/if}
             <BodyPicker
                 floating
@@ -3359,12 +3357,6 @@
     min-height: 0;
     min-width: 0;
     overflow: hidden; /* the orrery fills this exactly; clip any sub-pixel overshoot */
-  }
-  .time-display-overlay {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 57;
   }
   /* On-canvas orrery controls (top-right): faded Reset + a View popover. */
   .orrery-controls {
