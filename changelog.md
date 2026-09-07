@@ -4,6 +4,8 @@ All notable changes are listed here:
 
 ## v3.0.375 - 7th Sep 2026
 
+- The undo/redo buttons are always on screen now, greyed out when there is nothing to wind back, instead of appearing only once you have made an edit. The shading says "nothing yet" in the place you were looking for the answer.
+
 - Four fixes to the floating chrome, all found by driving the real app rather than the tests. A docked pair no longer comes apart when the canvas changes width - the controls do not all hang off the same corner, so keeping them together needed more than moving them by the same amount. Dropping one control against another now actually docks them (the check was reading where the control had been, not where it was let go). The clock read-out starts in its old top-left corner and stays there instead of jumping to the far edge on a wide screen. And a control is bounded by whatever is clipping it NOW, which is not always the same thing it was when the window was a different shape.
 
 ## v3.0.374 - 7th Sep 2026
