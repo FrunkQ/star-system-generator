@@ -2,6 +2,16 @@
 
 All notable changes are listed here:
 
+## v3.0.381 - 7th Sep 2026
+
+- Auroras now sit at the latitude their world's magnetic field actually puts them, instead of the same ring on
+  every planet in the app. An aurora glows where the last closed field line comes back down to the surface, so
+  a world with a big magnetosphere has its oval tucked close to the pole and a world with a small one has it
+  further down. Jupiter's moves fifteen degrees poleward, which is where Hubble photographs it; Earth's shifts
+  by three and a half. Mercury, whose field is too weak to close a line above the ground, correctly has none
+  at all. It is the same number that draws the shaded region on the system map, so the globe and the map can
+  never disagree about where a field closes.
+
 ## v3.0.380 - 7th Sep 2026
 
 - Fixed: a neutron star was being told it was harmless. Its ionising output was worked out the way a normal

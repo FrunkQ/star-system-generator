@@ -334,7 +334,11 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
         : auroraEmitters(node).map((m) => ({ colorHex: m.hex, weight: m.weight, altitude: m.altitude }));
       const seed = seedSum(node.id);
       ems.forEach((e, i) => {
-        const built = buildAuroraShell(radius, e.colorHex, strength, e.weight / ems[0].weight, e.altitude);
+        // [[G82]] job 3: the oval's latitude is PUBLISHED now - the footprint of the last closed
+        // field line - instead of nailed at 63 degrees for every world in the app. A body with no
+        // magnetosphere block (an older save, mid-import) passes undefined and keeps the old ring,
+        // which is the honest fallback: no worse than it was, and never a wrong claim.
+        const built = buildAuroraShell(radius, e.colorHex, strength, e.weight / ems[0].weight, e.altitude, node.magnetosphere?.ovalColatDeg);
         sphere.add(built.shell);
         look.aurora.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.31) % 1 });
         disposables.push(built.mat, built.shell.geometry);

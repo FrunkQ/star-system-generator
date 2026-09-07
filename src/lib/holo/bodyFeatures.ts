@@ -779,20 +779,48 @@ export function accretionColor(t: number, out: THREE.Color): THREE.Color {
 // Moved out of scene.ts (Stream K): the aurora shell is assembled by bodyLook.ts for the holo,
 // the reference gallery and the size-comparison view alike, so its builder belongs beside the
 // other shared feature builders rather than inside the live scene.
+/**
+ * WHERE THE OVAL SITS ON THE TEXTURE, as a pure function of the published colatitude ([[G82]] job 3).
+ *
+ * `v` runs 0 at the north pole to 1 at the south on an equirectangular map, so a colatitude in degrees
+ * is simply `colat / 180`. THE OVAL USED TO BE NAILED AT 0.15 AND 0.85 - 27 degrees of colatitude, 63
+ * of latitude - for every world in the app, which put Jupiter's oval eleven degrees too far from its
+ * pole and Mercury's on a body that has no oval at all. It now comes from `magnetosphere.ovalColatDeg`,
+ * which is the footprint of the last closed field line and the same number the 2D overlay shades to.
+ *
+ * SEPARATED OUT SO IT CAN BE GATED: the texture is a canvas and a canvas cannot be checked headlessly
+ * ([[E7]]), but this is arithmetic and can.
+ *
+ * The WIDTH is a drawing choice, not a measurement - the physics page already says the oval is
+ * exaggerated for legibility, Hubble-style - but it may not spill over the pole, so a tight oval gets a
+ * proportionally tighter curtain. Earth (23.7 deg) keeps the width the app has always used.
+ */
+export const AURORA_OVAL_SIGMA = 0.085;
+export function auroraRingCentres(ovalColatDeg: number | undefined): { north: number; south: number; sigma: number } {
+	const colat = Math.max(0, Math.min(90, ovalColatDeg ?? 27));
+	const north = colat / 180;
+	// Never wider than the distance to the pole, or the curtain wraps it and reads as a polar CAP
+	// rather than an oval. The floor is one texture row (the map is 80 tall), so a very tight oval is
+	// still drawn - but even that yields to the pole clamp rather than spilling over it.
+	const sigma = Math.min(north, Math.max(1 / 80, north * 0.65));
+	return { north, south: 1 - north, sigma: Math.min(AURORA_OVAL_SIGMA, sigma) };
+}
+
 // An equirect aurora texture: coloured curtains at the two polar rings (transparent elsewhere). Under
 // additive blending the alpha carries the glow, so bright rings around the poles emit and the rest adds
 // nothing. Horizontal streaks give it a curtain-like shimmer.
-function makeAuroraTexture(hex: string): HTMLCanvasElement {
+function makeAuroraTexture(hex: string, ovalColatDeg?: number): HTMLCanvasElement {
   const w = 160, h = 80;
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const ctx = c.getContext('2d')!;
   const col = new THREE.Color(hex);
   const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
   const img = ctx.createImageData(w, h);
+  const oval = auroraRingCentres(ovalColatDeg);
   for (let y = 0; y < h; y++) {
     const v = y / (h - 1); // 0 = north pole .. 1 = south pole
-    const ring = (centre: number) => Math.exp(-Math.pow((v - centre) / 0.085, 2)); // gaussian polar oval
-    const band = Math.max(ring(0.15), ring(0.85));
+    const ring = (centre: number) => Math.exp(-Math.pow((v - centre) / oval.sigma, 2)); // gaussian polar oval
+    const band = Math.max(ring(oval.north), ring(oval.south));
     for (let x = 0; x < w; x++) {
       const u = x / w;
       const streak = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(u * Math.PI * 22 + Math.sin(u * 7) * 2)); // curtains
@@ -810,8 +838,8 @@ function makeAuroraTexture(hex: string): HTMLCanvasElement {
 // `altitude` (0 low fringe / 1 main band / 2 high tenuous) sets the shell height so a multi-gas sky
 // STACKS physically — Earth's purple nitrogen fringe under the green oxygen band, the crimson oxygen
 // crown above. The render loop swells each layer independently around its base.
-export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1, altitude = 1): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
-  const tex = new THREE.CanvasTexture(makeAuroraTexture(hex));
+export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1, altitude = 1, ovalColatDeg?: number): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
+  const tex = new THREE.CanvasTexture(makeAuroraTexture(hex, ovalColatDeg));
   tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
   const base = Math.min(0.85, 0.28 + strength * 0.6) * (0.35 + 0.65 * weight);

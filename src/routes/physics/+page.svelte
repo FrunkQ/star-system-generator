@@ -958,10 +958,17 @@
         <li><strong>Hydrogen / helium</strong> → red-pink (the giant-planet palette).</li>
       </ul>
       <p>The renderer reads the dominant auroral gas and paints the oval in that colour. <strong>Shape</strong> is a
-        pole-hugging ring (an auroral oval), exaggerated for legibility à la Hubble's Jupiter — stronger auroras reach
-        further toward the equator, glow slightly past the limb, and follow the body's <strong>axial tilt</strong>
+        pole-hugging ring (an auroral oval), exaggerated in width for legibility à la Hubble's Jupiter — stronger
+        auroras glow slightly past the limb, and the whole thing follows the body's <strong>axial tilt</strong>
         along with everything else in its frame (see the visualisation notes below). The Newton panel's
         <em>Aurora</em> layer names the gas and the colour for any world that has one.</p>
+      <p><strong>How far from the pole it sits is not a style choice — it is the magnetosphere's own answer.</strong>
+        The oval traces where the last <em>closed</em> field line comes back to the surface, which is exactly the
+        boundary described under <a href="#magnetism">Magnetism</a> above: inside it the wind is turned away, outside
+        it the lines are open and what travels down them lands on the cap. So a world with a bigger bubble has an oval
+        closer to its pole, and one number produces both pictures. Earth's lands near 66° of magnetic latitude and
+        Jupiter's near 78°, hugging the pole because its magnetosphere is so much larger — and a body whose field is
+        too weak to close a line above the ground gets no oval at all, which is Mercury's real situation.</p>
     </section>
 
     <section id="spin">
