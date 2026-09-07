@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.358 - 7th Sep 2026
+
+- The README gains a "What's new in V3.1" section: megastructures and docking, the Explorers site and pasting from it, the Size comparison, binaries that behave, Am stars and stars that jet inside their own system, the calendars tied to one anchor, and the quieter machinery behind all of it.
+- Four credits were missing from the README that the app's own About panel has carried all along - the WOH G64 red supergiant, the NASA red-giant illustration, the asteroid and comet photographs, and the corporate logos. Restored, with a note saying which of the three lists is the canonical one, because three lists that disagree is how they got out of step.
+- For anyone writing a program that reads a save: the README now explains what the format number at the top of the file is for, that two real archives are checked in to test a parser against, and what the shipped-content list is.
 ## v3.0.357 - 6th Sep 2026
 
 - The apple panel now shows the working behind a world's habitability score instead of just the number. Every term is there - temperature, liquid solvent, pressure, radiation and gravity - with the world's own reading, the band it is judged against and the marks it earned, then the geology and magnetism adjustments and how they reach the final figure. And it says plainly whose habitability it is: ours, with Earth as the 100, so a low score means hostile to a human rather than lifeless.

@@ -17,6 +17,7 @@ the ideas still hold and almost every screen in it has changed since. Read
 ## Table of Contents
 
 * [What is it for?](#what-is-it-for)
+* [What's new in V3.1](#whats-new-in-v31)
 * [What's new in V3](#whats-new-in-v3)
 * [Features](#features)
 * [Integrating with a virtual tabletop](#integrating-with-a-virtual-tabletop)
@@ -47,6 +48,61 @@ subsector import fetches from travellermap.com (both carry what you typed, not y
 the hosted site records one anonymous visit event per browser per day through Vercel Web Analytics,
 keeping a single timestamp in your browser under `sse-analytics-last-sent` so it does not count you
 more often than that. Player views connect peer-to-peer between your device and your players'.
+
+## What's new in V3.1
+
+Everything you already do still works and your saved starmaps still load. V3.1 is about **scale**:
+bigger structures, bigger views, and a place to share it all.
+
+**Megastructures.** Space elevators, planetary toruses and orbital rings, ringworlds, Dyson spheres
+and swarms, massive energy collectors and a battle station — seven types, placed like any other
+object from the **Megastructures** tab on Add Construct, drawn to scale in 2D and 3D, and obeying the
+physics rather than sitting on top of it. A swarm dims its star and every world's temperature
+follows; the habitable zone and the frost lines move with the light. Each type's own dials — coverage,
+density, where the tether's counterweight rides — move the numbers as you drag them. A hard
+requirement greys a row and says why; an amber note advises and never refuses.
+
+**Docking.** Ships dock at an elevator's stations at low, middle and geostationary height, on a ring's
+rim or on a hull, and ride round with the structure from then on. The planner prices the approach —
+nothing at the geostationary dock, several km/s at the low levels, over a thousand on a Niven ring's
+rim — and turns a wrong-way arrival around, charging for it in the plan rather than hiding it. Every
+screen agrees on where a docked ship is, because it is worked out once in the engine.
+
+**The Explorers site.** Share a map at [explorers.starsystemx.com](https://explorers.starsystemx.com/),
+browse other people's, and open a shared map here in one click with no download and no import step.
+Copy any star, system, planet or ship from a map page and paste it into your campaign — with the
+cartographer credited automatically, in your campaign and in the attributions file inside your saves,
+and the whole chain named if it has passed through several hands.
+
+**Cut, copy and paste, anywhere.** Right-click any world, moon, station or ship for Copy, Cut and
+Paste. It moves the whole branch, it works between systems and between tabs, and undo treats a paste
+as one step.
+
+**Size comparison.** Every object on your map at true relative size, side by side, ordered by size,
+mass, name or orbit — rings drawn to their real extent and at the planet's own tilt, black holes
+showing their event horizon and bending what is behind them, and anything too small to draw honestly
+shown as a dot with its real size rather than puffed up. Click anything to centre it. It is a player
+view too, on both the system and the starmap.
+
+**Binaries that behave.** A pair orbits its shared centre properly — opposite sides at every instant,
+one period, split by mass — a binary imported from a file arrives as two stars, a body can be moved
+to a new host by hand without jumping, and the Lagrange points are real places ships can hold at and
+leave from.
+
+**Stars named properly.** A star catalogued in metallic-line (Am) notation classifies from its
+hydrogen lines instead of leaking the raw string as a class of its own, and a star that jets or sheds
+a shell now shows it inside its own system in the 3D views rather than only on the map. A photosphere
+burns white at its centre and keeps its colour at the limb, as a real one does.
+
+**Break physics on purpose.** An Overrides tab lets you set what the physics would not, and labels it
+as an anomaly rather than pretending.
+
+**Time on a real footing.** The calendars are tied to one anchor — a genuine stake in the sand — so
+they agree with each other and with a real date, instead of each carrying its own correction.
+
+**Quieter machinery.** A memory gauge in the rail with an automatic crash save, a transit left running
+no longer filling memory, a construct you export importing back, a liquid you invent reaching the gas
+editor, and the phone layout given a proper audit.
 
 ## What's new in V3
 
@@ -240,6 +296,23 @@ the Discord — the design notes live in `docs/dev/vtt-integration-design.md`.
 Players see one change from all of this: the LIVE/OFFLINE pill on a player view goes OFFLINE when the
 GM stops sharing, where it used to stick.
 
+### Reading a save, and knowing what came with the app
+
+Two things exist for a program that opens a `.sse.zip` without running SSE.
+
+**`bundleFormat`** is an integer, the first line of `starmap.json`/`system.json` inside the archive.
+It says which layout the file uses, so a reader can parse it or refuse politely. It is **not** the
+app version and does not move when the app does — only when the archive's layout changes. Two
+canonical archives are checked in at `tests/fixtures/creator-hub-*.sse.zip` and pinned byte for byte,
+so a parser can be tested against real saves rather than against a description of one.
+
+**`/shipped-content.json`** is what the app publishes about itself: its calendars, tag categories,
+star and planet pictures, starter spacecraft models, and its gases, liquids and fuels. It exists so a
+consumer can tell what came with the app from what a creator made themselves, without keeping its own
+copy of those lists and slowly getting them wrong. It is rebuilt from the real files on every release
+and the test suite refuses to pass if it has gone stale — **which means anyone bumping the version
+here must run `npm run manifest` after the bump**, before the build.
+
 ## Usage
 
 ### Generating a system
@@ -352,12 +425,22 @@ assets.
 
 ### Visual & Media Credits
 
+> **These three lists must agree, and two of them had already drifted apart.** The canonical one is
+> now `src/lib/io/shippedCredits.ts`, which the `ATTRIBUTIONS.md` written into every save reads — that
+> is the copy that has to be right, because it is the one that leaves the machine with the work. The
+> About panel in the app and the list below are the other two; four entries were missing here and have
+> been restored. If you add or replace a shipped asset, change the table and check all three.
+
 * **Planet Images**: Courtesy of **Pablo Carlos Budassi**, used under a [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) license. Source: [pablocarlosbudassi.com](https://pablocarlosbudassi.com/2021/02/planet-types.html)
+* **Star-type illustrations**: orange giant (Arcturus) by **Pablo Carlos Budassi**, Wikimedia Commons, used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Red giant by [**NASA's Goddard Space Flight Center** / Chris Smith (KBRwyle)](https://science.nasa.gov/universe/stars/types/), public domain.
 * **Star Images**: Sourced from the [Beyond Universe Wiki](https://beyond-universe.fandom.com/wiki/) on Fandom, used under a [CC-BY-SA](https://creativecommons.org/licenses/by-sa/3.0/us/) license.
 * **Magnetar Image & Starmap Background**: Courtesy of **ESO/L. Calçada & S. Brunier**, used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license. Sources: [ESO Magnetar](https://www.eso.org/public/images/eso1415a/), [ESO Milky Way](https://www.eso.org/public/images/eso0932a/)
 * **H-R Diagram Background**: Courtesy of **ESO**, used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license. Source: [ESO HR Diagram](https://www.eso.org/public/images/eso0728c/).
 * **Black Hole Accretion Disk Image**: Courtesy of **NASA's Goddard Space Flight Center/Jeremy Schnittman**, used under a [Public Domain](https://svs.gsfc.nasa.gov/13232) license. Source: [NASA SVS](https://svs.gsfc.nasa.gov/13232).
 * **Starter Spacecraft Models** (ISS, Hubble, Cassini-Huygens, Juno, Voyager, Mars Reconnaissance Orbiter): Courtesy of **NASA**, public domain. Source: [NASA 3D Resources](https://github.com/nasa/NASA-3D-Resources). Textured models resampled to 512 px for bundle size. The NASA insignia is protected and is not used.
+* **Red Supergiant**: an artist's reconstruction of [WOH G64](https://www.eso.org/public/images/eso2417a/), **ESO / L. Calcada**, used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
+* **Asteroid & Comet Images**: Courtesy of **NASA** (not subject to copyright). C-type: 253 Mathilde ([NEAR, NSSDCA](https://nssdc.gsfc.nasa.gov/imgcat/html/object_page/nea_19970627_mos.html)); S-type: 433 Eros ([NEAR Shoemaker, PIA02923](https://photojournal.jpl.nasa.gov/catalog/PIA02923)); M-type: 16 Psyche illustration ([NASA/JPL-Caltech](https://www.nasa.gov/feature/jpl/how-nasa-s-psyche-mission-will-explore-an-unexplored-world)); Comet: Hartley 2 ([EPOXI, NASA/JPL-Caltech/UMD](https://science.nasa.gov/photojournal/introducing-comet-hartley-2/)).
+* **Corporate Logos** (Interspan, Kelido, Nexum, Terra, TSEC): Courtesy of **World Zero**, from [World Zero](https://worldzero.itch.io/), used under a [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) license.
 * **Save Bundles**: campaign and system saves are zip containers (`.sse.zip`) holding a readable `starmap.json`/`system.json` beside `assets/models/*.glb` and `assets/images/*` — hand-editable, and a third smaller than embedding the same assets as base64. Plain `.json` saves are still written when a campaign has no assets, and both load either way (the loader sniffs the zip magic number, not the file name).
 * **3D Model Pipeline**: [three.js](https://threejs.org/) (MIT) for rendering and GLB/STL/OBJ loading; [meshoptimizer](https://github.com/zeux/meshoptimizer) (MIT) for import-time simplification of high-poly meshes; Google's [Draco](https://github.com/google/draco) decoder (Apache-2.0, bundled from three.js's distribution) for compressed models.
 * **Weyland-Yutani Logo**: Sourced from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Weyland-Yutani_cryo-tube.jpg) by [IllaZilla](https://commons.wikimedia.org/wiki/User:IllaZilla), used under a [Creative Commons Attribution-Share Alike 3.0 Unported](https://creativecommons.org/licenses/by-sa/3.0/deed.en) license. Changes made: Logo Extracted.
