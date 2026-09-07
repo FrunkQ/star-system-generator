@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.0.386 - 7th Sep 2026
+
+- You can copy a whole star system off the starmap now. Right-click a star and there is a Copy System item, next to the paste that was already there; what you copy shows on the paste indicator and can be dropped back onto empty space as a new system - on this map, or in another campaign in another window.
+- A copied system keeps the name YOU gave it. If you renamed a system without renaming its star, the duplicate comes back under your name for it rather than the star's.
+- Copying a double star takes both of them. The copy starts at the pair rather than at one of the stars, so a binary duplicates whole.
+- The paste menu now calls a copied system by its name instead of by its barycentre - "Paste System Alpha Centauri here" rather than "Paste Pair Alpha Centauri System Barycentre here".
+
 ## v3.0.385 - 7th Sep 2026
 
 - The "?" is now on all four pack editors, not just gases: Liquids, Fuel & Drives and Sensors each explain every field the same way - what it is, what else it is called, the units, what in the app reads it, and what a real value looks like, with the same chip saying whether it is a measured quantity you can look up, a coefficient this app invented, or a field nothing reads.

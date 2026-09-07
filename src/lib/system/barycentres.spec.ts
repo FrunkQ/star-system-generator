@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { autoPairName, contextPeerIds, dominantMemberOf, isBarycentre, pairMembersOf } from './barycentres';
+import { autoPairName, contextPeerIds, dominantMemberOf, isBarycentre, pairMembersOf, systemRootNode } from './barycentres';
 import { availableFrameLevels, frameForLevel } from '../viewport/camera';
 import type { System } from '../types';
 
@@ -112,5 +112,71 @@ describe('autoPairName', () => {
 	it('survives a missing name rather than producing "-X Barycentre"', () => {
 		expect(autoPairName('', 'Charon')).toBe('Charon Barycentre');
 		expect(autoPairName('Pluto', '')).toBe('Pluto Barycentre');
+	});
+});
+
+describe('systemRootNode: which node is the top of a system', () => {
+	it('takes the PAIR CONTAINER of a binary, not either of its stars', () => {
+		// THE WHOLE REASON THIS IS SHARED. Both stars are parented to the barycentre, so a naive
+		// "first node with no parent" would still land on the barycentre here - but only because the
+		// list happens to open with it. The rule asks for the barycentre by name so the answer does
+		// not depend on node order, which nothing in the format promises.
+		expect(systemRootNode(pairSystem)?.id).toBe('bary');
+	});
+
+	it('finds it wherever it sits in the list', () => {
+		// The order-independence, stated as its own question: the same system with the barycentre
+		// LAST must give the same answer. Written because a copy of this rule that reads "the first
+		// parentless node" passes the test above and fails this one.
+		const shuffled = { nodes: [...(pairSystem as any).nodes].reverse() } as any;
+		expect(systemRootNode(shuffled)?.id).toBe('bary');
+	});
+
+	it('takes the lone star of a single system', () => {
+		const single = {
+			nodes: [
+				{ id: 'sun', kind: 'body', roleHint: 'star', parentId: null, name: 'Sun' },
+				{ id: 'earth', kind: 'body', roleHint: 'planet', parentId: 'sun', name: 'Earth' }
+			]
+		} as unknown as System;
+		expect(systemRootNode(single)?.id).toBe('sun');
+	});
+
+	it('never mistakes a NESTED barycentre for the top', () => {
+		// A hierarchical triple: a close pair orbiting a third star. The inner barycentre has a
+		// parent, so it is not the top - and copying from it would take two of the three stars.
+		const triple = {
+			nodes: [
+				// The INNER pair is listed FIRST on purpose: a rule that asks only 'is it a barycentre'
+				// and forgets to ask 'has it a parent' picks this one, and takes two stars of three.
+				{ id: 'inner', kind: 'barycenter', parentId: 'outer', name: 'Inner', memberIds: ['a', 'b'] },
+				{ id: 'outer', kind: 'barycenter', parentId: null, name: 'Outer', memberIds: ['c', 'inner'] },
+				{ id: 'c', kind: 'body', roleHint: 'star', parentId: 'outer', name: 'C' },
+				{ id: 'a', kind: 'body', roleHint: 'star', parentId: 'inner', name: 'A' },
+				{ id: 'b', kind: 'body', roleHint: 'star', parentId: 'inner', name: 'B' }
+			]
+		} as unknown as System;
+		expect(systemRootNode(triple)?.id).toBe('outer');
+	});
+
+	it('prefers the pair container when a BROKEN file leaves a star parentless too', () => {
+		// THIS is what the barycentre-first clause is actually for, and it took a mutation to find
+		// out: in a well-formed system the root is the ONLY parentless node, so preferring the
+		// barycentre changes nothing there. It earns its place on a file that has been hand-edited
+		// or half-imported, where a member has lost its parentId and now looks like a second root.
+		// Answering "the star" there would copy, hide or judge a fragment of the system.
+		const broken = {
+			nodes: [
+				{ id: 's1', kind: 'body', roleHint: 'star', parentId: null, name: 'A' },
+				{ id: 'bary', kind: 'barycenter', parentId: null, name: 'A-B', memberIds: ['s1', 's2'] },
+				{ id: 's2', kind: 'body', roleHint: 'star', parentId: 'bary', name: 'B' }
+			]
+		} as unknown as System;
+		expect(systemRootNode(broken)?.id).toBe('bary');
+	});
+
+	it('says nothing rather than guessing when there is nothing to say', () => {
+		expect(systemRootNode(null)).toBeNull();
+		expect(systemRootNode({ nodes: [] } as unknown as System)).toBeNull();
 	});
 });

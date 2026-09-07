@@ -20,6 +20,25 @@ export function isBarycentre(node: AnyNode | null | undefined): boolean {
 	return !!node && (node as any).kind === 'barycenter';
 }
 
+/**
+ * THE TOP OF A SYSTEM - the node everything else in it hangs from.
+ *
+ * THE BARYCENTRE IS PREFERRED, AND THAT IS THE ONLY INTERESTING PART. A binary system has a pair
+ * container at its top with the stars underneath, so "the node with no parent" and "the star" are
+ * different answers there, and the first is the right one: taking the star would silently copy,
+ * hide or judge HALF a system. The fallback to any parentless node is what carries a single star,
+ * and it is also the repair for a hand-edited file whose root barycentre lost its members.
+ *
+ * Extracted 2026-09-07 because the rule was written out twice - the player-visibility check in
+ * `system/utils` and the crossed-eye reminder on the GM map - and Copy System would have been a
+ * third. Three copies of "which node is the top" is how the map and the guide come to disagree
+ * about what a system even is.
+ */
+export function systemRootNode(system: System | null | undefined): AnyNode | null {
+	const ns: AnyNode[] = (system as any)?.nodes ?? [];
+	return ns.find((n) => isBarycentre(n) && !(n as any).parentId) ?? ns.find((n) => !(n as any).parentId) ?? null;
+}
+
 /** Mass for ranking — a barycentre carries the pair's combined mass under a different field. */
 function massOf(node: AnyNode | null | undefined): number {
 	if (!node) return 0;

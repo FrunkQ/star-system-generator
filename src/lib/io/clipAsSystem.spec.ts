@@ -11,7 +11,7 @@
 // orbit in this file has no `elements`, so `reparentBody` cannot propagate it - the fixture would be
 // testing the fixture.) What is asserted below is the NEW path.
 import { describe, it, expect } from 'vitest';
-import { systemNodesFromClip } from './hubClip';
+import { systemNodesFromClip, buildClip, describeClipRoot, describeClipCompact } from './hubClip';
 import type { HubClip } from './hubClip';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -159,5 +159,101 @@ describe('A PAIR OF STARS IS A STAR SYSTEM — the case the first cut refused', 
 		expect(out.ok).toBe(false);
 		if (out.ok) return;
 		expect(out.problem).toMatch(/or a pair of them/i);
+	});
+});
+
+// COPYING A WHOLE SYSTEM OFF THE STARMAP, and pasting it back as another one. Owner, 2026-09-07:
+// *"why am I not offered to copy starsystem here? So it will appear on the paste tab and let me
+// duplicate here - or another map"*.
+//
+// This is the round trip the feature actually is: `buildClip` at one end, `systemNodesFromClip` at
+// the other, with the starmap only deciding WHICH node to root at. Testing the two halves together
+// is the point - each is fine on its own and the fault would be in the join.
+describe('a system copied off the starmap and pasted back', () => {
+	const binary = {
+		nodes: [
+			{ id: 'bary', name: 'Zeta Barycentre', kind: 'barycenter', parentId: null, memberIds: ['s1', 's2'], effectiveMassKg: 4e30 },
+			{ id: 's1', name: 'Zeta 1', kind: 'body', roleHint: 'star', parentId: 'bary', massKg: 2.2e30 },
+			{ id: 's2', name: 'Zeta 2', kind: 'body', roleHint: 'star', parentId: 'bary', massKg: 1.8e30 },
+			planet('p', 'bary', 'Reticuli b')
+		]
+	} as any;
+
+	it('copies the WHOLE binary, from the pair container down', () => {
+		// ABSOLUTE, and the reason the starmap roots at `systemRootNode` rather than at the star: a
+		// clip rooted on Zeta 1 would be a single star with a planet, and Zeta 2 would simply not be
+		// in the copy. Four nodes in, four nodes out.
+		const out = systemNodesFromClip(buildClip(binary, 'bary')!);
+		expect(out.ok).toBe(true);
+		if (!out.ok) return;
+		expect(out.count).toBe(4);
+		expect(out.nodes.map((n: any) => n.name).sort()).toEqual(['Reticuli b', 'Zeta 1', 'Zeta 2', 'Zeta Barycentre']);
+		const rootNode = out.nodes.find((n: any) => n.id === out.rootId);
+		expect(rootNode.kind, 'the pair stays the top').toBe('barycenter');
+	});
+
+	it('carries the MAP'+String.fromCharCode(39)+'S name for the system, not the root node'+String.fromCharCode(39)+'s', () => {
+		// THE ONE THING THE STARMAP KNOWS THAT THE SYSTEM DOES NOT. A GM who renames the system
+		// without renaming its star (`isNameUserDefined`) must not get the star name back on paste.
+		// Here the map calls it Altair and the root node is called something else entirely.
+		const out = systemNodesFromClip(buildClip(binary, 'bary', { systemName: 'Altair' })!);
+		if (!out.ok) throw new Error(String((out as any).problem));
+		expect(out.name).toBe('Altair');
+	});
+
+	it('still names a hub clip from its root, because a hub clip has no map name', () => {
+		// The fall-through, pinned: `systemName` is an SSE extension and every clip from the hub
+		// arrives without one. Removing the fallback would name every shared system "New system".
+		const out = systemNodesFromClip(clip([star('r', 'Sol'), planet('p', 'r', 'Earth')]));
+		if (!out.ok) throw new Error(String((out as any).problem));
+		expect(out.name).toBe('Sol');
+	});
+
+	it('does not put a name on the clip when the caller gives none', () => {
+		// A clip going OUT to the hub carries no field the hub would not recognise, unless there is
+		// something to say. Absent, not empty.
+		expect('systemName' in buildClip(binary, 'bary')!).toBe(false);
+		expect(buildClip(binary, 'bary', { systemName: 'Altair' })!.systemName).toBe('Altair');
+	});
+
+	it('keeps the credits of a system that came from somebody else'+String.fromCharCode(39)+'s map', () => {
+		// A duplicated system must keep saying whose it was - this is the easiest place in the whole
+		// feature for an attribution to evaporate, and it is the second time it has been gated.
+		const credits = [{ id: 'c1', creator: 'FrunkQ', title: 'Zeta', nodeIds: ['s1', 'p'] }] as any;
+		const built = buildClip(binary, 'bary', { credits, systemName: 'Altair' })!;
+		expect(built.credits?.[0].creator).toBe('FrunkQ');
+		const out = systemNodesFromClip(built);
+		if (!out.ok) throw new Error(String((out as any).problem));
+		expect(out.carried[0]?.creator, 'the credit survives the round trip').toBe('FrunkQ');
+		expect(out.carried[0]?.nodeIds.every((i: string) => out.nodes.some((n: any) => n.id === i)), 'and points at the NEW ids').toBe(true);
+	});
+});
+
+describe('what the menus call a system copied off the map', () => {
+	const binary = {
+		nodes: [
+			{ id: 'bary', name: 'Alpha Centauri System Barycentre', kind: 'barycenter', parentId: null, memberIds: ['s1', 's2'], effectiveMassKg: 4e30 },
+			{ id: 's1', name: 'Rigil Kentaurus', kind: 'body', roleHint: 'star', parentId: 'bary', massKg: 2.2e30 },
+			{ id: 's2', name: 'Toliman', kind: 'body', roleHint: 'star', parentId: 'bary', massKg: 1.8e30 }
+		]
+	} as any;
+
+	it('names it as the GM does, not by its barycentre', () => {
+		// SEEN IN A BROWSER BEFORE IT WAS FIXED: copying Alpha Centauri offered *"Paste Pair Alpha
+		// Centauri System Barycentre here"* - the one moment the GM has to recognise what they are
+		// about to drop, spent on the name of an internal node they never typed.
+		expect(describeClipRoot(buildClip(binary, 'bary', { systemName: 'Alpha Centauri' })!))
+			.toBe('System Alpha Centauri');
+	});
+
+	it('still describes a hub clip by its root, pair and all', () => {
+		// The A96 behaviour, unchanged and pinned: a clip from the Explorers site carries no map name,
+		// so a binary arriving from outside is still a "Pair". Only a system copied HERE knows better.
+		expect(describeClipRoot(buildClip(binary, 'bary')!)).toBe('Pair Alpha Centauri System Barycentre');
+		expect(describeClipCompact(buildClip(binary, 'bary')!)).toBe('Pair+2');
+	});
+
+	it('shows a copied system as System+n on the pill', () => {
+		expect(describeClipCompact(buildClip(binary, 'bary', { systemName: 'Alpha Centauri' })!)).toBe('System+2');
 	});
 });

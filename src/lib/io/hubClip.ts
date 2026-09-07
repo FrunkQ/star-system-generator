@@ -65,6 +65,16 @@ export interface HubClip {
    * GM copies a body they pasted in from somebody's map.
    */
   credits?: ContentCredit[];
+  /**
+   * THE NAME THE MAP GAVE THIS SYSTEM, when the clip is a whole system copied off the starmap.
+   *
+   * A second SSE extension, on the same footing as `credits`: the hub neither sends nor reads it,
+   * and both readers leave fields they do not know alone. It exists because a system's name and its
+   * star's name are genuinely two different things - `StarSystemNode.isNameUserDefined` is the map
+   * saying "this GM named the SYSTEM, stop tracking the star" - so rebuilding a system from its root
+   * node alone would quietly rename it back to the star on the way in.
+   */
+  systemName?: string;
 }
 
 export type ClipParse = { ok: true; clip: HubClip } | { ok: false; problem: string };
@@ -181,7 +191,7 @@ export function parseHubClip(text: string): ClipParse {
 export function buildClip(
   system: System,
   rootId: string,
-  opts: { credits?: ContentCredit[] } = {}
+  opts: { credits?: ContentCredit[]; systemName?: string } = {}
 ): HubClip | null {
   const byId = new Map(system.nodes.map((n) => [n.id, n]));
   if (!byId.has(rootId)) return null;
@@ -203,7 +213,13 @@ export function buildClip(
     .filter((c) => (c.nodeIds ?? []).some((i) => ids.has(i)))
     .map((c) => ({ ...c, nodeIds: (c.nodeIds ?? []).filter((i) => ids.has(i)) }));
 
-  return { sseClip: CLIP_FORMAT, root: rootId, nodes: out, ...(credits.length ? { credits } : {}) };
+  return {
+    sseClip: CLIP_FORMAT,
+    root: rootId,
+    nodes: out,
+    ...(credits.length ? { credits } : {}),
+    ...(opts.systemName ? { systemName: opts.systemName } : {})
+  };
 }
 
 /**
@@ -217,6 +233,12 @@ export function buildClip(
  * get, and calling it "Star Sol" would describe one node of the forty they are about to paste.
  */
 export function describeClipRoot(clip: HubClip): string {
+  // A WHOLE SYSTEM COPIED OFF THE STARMAP SAYS SO, under the name the map gives it. Only the
+  // starmap's Copy System sets `systemName`, so this is exactly the case where the root node is an
+  // implementation detail the GM never named: without it, copying Alpha Centauri offers "Paste Pair
+  // Alpha Centauri System Barycentre here", which asks somebody to recognise their own system by
+  // its barycentre. A clip from the hub has no `systemName` and is described by its root as before.
+  if (clip.systemName) return `System ${clip.systemName}`;
   const root = clip.nodes.find((n: any) => n.id === clip.root) ?? clip.nodes[0];
   const name = String(root?.name ?? 'object');
   const role = String(root?.roleHint ?? '');
@@ -418,7 +440,9 @@ export function systemNodesFromClip(clip: HubClip): ClipAsSystem {
     nodes: inserted,
     rootId,
     starId: String(heaviestStar?.id ?? rootId),
-    name: String(root.name ?? 'New system'),
+    // The map's own name for it when the clip carries one (a system copied off the starmap), and the
+    // root node's name otherwise - which is every clip the hub produces.
+    name: String(clip.systemName ?? root.name ?? 'New system'),
     count: inserted.length,
     credit: creditFor(clip.source, inserted.map((n) => n.id)),
     carried: (clip.credits ?? [])

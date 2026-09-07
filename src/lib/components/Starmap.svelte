@@ -67,7 +67,9 @@
   // The starmap had no idea anything was in hand: every paste affordance lived in the system view,
   // which is not where a GM lands when they come back from the map library (owner, 2026-09-06).
   import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture, clipboardHint } from '$lib/io/clipDetect';
-  import { systemNodesFromClip } from '$lib/io/hubClip';
+  import { systemNodesFromClip } from '$lib/io/hubClip';  import { systemRootNode } from '$lib/system/barycentres';
+  import { buildClip } from '$lib/io/hubClip';
+  import { putClip } from '$lib/io/clipBuffer';
   import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
   // THE SELECTION IS PASSED IN, NEVER CLOSED OVER. `{@const hl = systemMarkers(systemNode)}` inside the
@@ -716,8 +718,7 @@
   // underlying star only hides that star (not the whole system). Flagged on the GM map with a
   // crossed-eye reminder.
   function isSystemHidden(node: Starmap['systems'][number]): boolean {
-      const ns = node.system?.nodes || [];
-      const root = ns.find((n) => n.kind === 'barycenter' && !n.parentId) || ns.find((n) => !n.parentId);
+      const root = systemRootNode(node.system);
       return !!root && !!(root as any).object_playerhidden;
   }
 
@@ -934,6 +935,38 @@
   $: pasteAsSystem = $detectedClip
     ? systemNodesFromClip($detectedClip.clip)
     : ({ ok: false, problem: 'Nothing is copied.' } as const);
+
+  /**
+   * COPY A WHOLE SYSTEM OFF THE MAP. Owner, 2026-09-07, looking at a starmap right-click menu that
+   * could paste a system but not produce one: *"why am I not offered to copy starsystem here? So it
+   * will appear on the paste tab and let me duplicate here - or another map"*.
+   *
+   * The map already held everything needed - `StarSystemNode.system` is the whole system, not a
+   * summary - so this is the same `buildClip` the system view's Copy uses, rooted at the top of the
+   * system rather than at a body inside it. That matters for a BINARY: the top is the pair
+   * container, and rooting at the star would have copied one half of a double star and left its
+   * partner behind. `systemRootNode` is the shared answer to which node that is.
+   *
+   * THE SYSTEM'S NAME TRAVELS SEPARATELY from its root node's, because the GM may have renamed the
+   * system without renaming the star (`isNameUserDefined`). Without that, duplicating "Epsilon
+   * Rukroteinorum" would hand back a system named after whatever its primary star is called.
+   *
+   * Credits ride along exactly as they do in the system view, so duplicating a system somebody
+   * shared keeps saying whose it was - and `putClip` writes the system clipboard too, which is what
+   * makes "or another map" work: another campaign, another tab, another window.
+   */
+  function handleContextMenuCopySystem() {
+    const sysNode = starmap.systems.find((sy) => sy.id === contextMenuSystemId);
+    closeContextMenu();
+    const root = systemRootNode(sysNode?.system);
+    if (!sysNode || !root) return;
+    const clip = buildClip(sysNode.system, String((root as any).id), {
+      credits: starmap.contentCredits ?? [],
+      systemName: sysNode.name
+    });
+    if (!clip) return;
+    putClip(clip, String(sysNode.name ?? 'system'));
+  }
 
   /** Paste into the system that was right-clicked: the system is known, the body is not. */
   function handleContextMenuPasteInto() {
@@ -1830,6 +1863,11 @@
               <li on:click={handleContextMenuCentre}>Centre Map Here</li>
             {/if}
             <li on:click={handleContextMenuAddNear}>Add System near here…</li>
+            <!-- The other half of the paste below it, and deliberately directly above it: this is
+                 what fills the buffer that one reads. Named "Copy System" rather than "Copy" because
+                 the menu also offers to paste a body INTO this system, and two bare verbs would not
+                 say which scale each works at. -->
+            <li on:click={handleContextMenuCopySystem}>Copy System</li>
             <!-- Paste into the system that was right-clicked. The system is known, the host is not,
                  so this opens the paste screen with the system already chosen - which is the shape
                  the owner picked for the starmap on 2026-09-03. -->
