@@ -181,8 +181,10 @@ preview. Your skins live on your device and sit in the same picker.
 
 **Floating controls on the map**, just below the skin, gives the controls that float over the
 starmap - the body picker, the clock, the time transport, the undo pill - a palette of their own:
-follow the skin, light over the map, or dark over the map. The map is black whatever the skin does,
-so a dark interface can still float light controls over it, or a light one dark ones.
+follow the skin, light over the map, or dark over the map. The light and the dark are each tinted
+with the skin's own colour, so Nebula floats lilac or deep purple and Classic peach or warm charcoal.
+The map is black whatever the skin does, so a dark interface can still float light controls over it,
+or a light one dark ones.
 
 A skin repaints the interface. The **colour palette** page below it goes finer, one colour at a
 time — including the ones that carry meaning, like body types and zone bands — and its changes sit

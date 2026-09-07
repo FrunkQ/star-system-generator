@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.372 - 7th Sep 2026
+
+- The light and dark palettes for the floating controls now take their tint from the skin you are wearing: Nebula floats lilac or deep purple, Classic peach or warm charcoal, Modern blue-white or slate. Text stays dark on light and light on dark, so everything reads on every skin.
+
 ## v3.0.371 - 7th Sep 2026
 
 - Board: the owner has used the low power mode and the Size comparison's glide and they are right, so those rows are closed on his eye rather than on a measurement. The ring tilt fix is still waiting to be looked at.

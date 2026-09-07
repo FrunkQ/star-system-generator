@@ -32,6 +32,25 @@ function value(skin: Record<string, string>, token: string): string {
   const ref = /var\((--[a-z0-9-]+)\)/.exec(v ?? '');
   return ref ? value(skin, ref[1]) : v;
 }
+// `--skin-*` are the skin's own values under a second name (tokens.css), read here the way the
+// browser resolves them: on the root, against the skin.
+const skinAliases: Record<string, string> = {};
+for (const m of tokens.matchAll(/(--skin-[a-z-]+)\s*:\s*var\((--[a-z-]+)\)/g)) skinAliases[m[1]] = m[2];
+const hex6 = (h: string) => (h.length === 4 ? '#' + h.slice(1).split('').map((c) => c + c).join('') : h);
+const chan = (h: string) => [1, 3, 5].map((i) => parseInt(hex6(h).slice(i, i + 2), 16));
+/** `color-mix(in srgb, A p%, B)`: A weighted p, B the rest, per channel in gamma-encoded sRGB. */
+function mixHex(a: string, b: string, pa: number): string {
+  const [x, y] = [chan(a), chan(b)];
+  return '#' + x.map((v, i) => Math.round(v * pa + y[i] * (1 - pa)).toString(16).padStart(2, '0')).join('');
+}
+/** A float-palette expression evaluated FOR a skin: aliases resolved against it, then the mix. */
+function evalFor(skin: Record<string, string>, expr: string): string {
+  const e = expr.replace(/var\((--skin-[a-z-]+)\)/g, (_, k) => value(skin, skinAliases[k]));
+  const m = /^color-mix\(in srgb,\s*(#[0-9a-fA-F]{3,6})\s+(\d+(?:\.\d+)?)%\s*,\s*(#[0-9a-fA-F]{3,6})\)$/.exec(e.trim());
+  return m ? mixHex(m[1], m[3], Number(m[2]) / 100) : e.trim();
+}
+const floatValue = (skin: Record<string, string>, pal: Record<string, string>, token: string) =>
+  token in pal ? evalFor(skin, pal[token]) : value(skin, token);
 function luminance(hex: string): number {
   let h = hex.replace('#', '');
   if (h.length === 3) h = h.split('').map((c) => c + c).join('');
@@ -71,18 +90,29 @@ describe('interface skins', () => {
     }
   });
 
-  it('the floating-control palettes exist for every choice but "follow the skin", and hold the same floors', () => {
+  it('the floating-control palettes exist for every choice but "follow the skin", and hold the floors ON EVERY SKIN', () => {
+    // The palettes are DERIVED - tinted with the skin's accent through the `--skin-*` aliases - so a
+    // floor is only known once the mix is evaluated for each skin it could be worn over. Six skins,
+    // two palettes, every pair: that is what a lilac that reads on Nebula but not on Terminal
+    // would slip past otherwise.
     const expected = new Set(FLOAT_SKINS.map((f) => f.id as string).filter((id) => id !== 'skin'));
     expect(new Set(Object.keys(floatBlocks))).toEqual(expected);
-    for (const [id, pal] of Object.entries(floatBlocks)) {
-      for (const [fg, bg, min] of FLOORS) {
-        const ratio = contrast(value(pal, fg), value(pal, bg));
-        expect(ratio, `float ${id}: ${fg} on ${bg} is ${ratio.toFixed(2)}, floor ${min}`).toBeGreaterThanOrEqual(min);
+    expect(Object.keys(skinAliases).length, 'tokens.css declares the --skin-* aliases').toBeGreaterThan(0);
+    for (const s of SKINS) {
+      const skin = s.id === 'classic' ? {} : blocks[s.id];
+      for (const [id, pal] of Object.entries(floatBlocks)) {
+        for (const [fg, bg, min] of FLOORS) {
+          const ratio = contrast(floatValue(skin, pal, fg), floatValue(skin, pal, bg));
+          expect(ratio, `float ${id} on ${s.id}: ${fg} on ${bg} is ${ratio.toFixed(2)}, floor ${min}`).toBeGreaterThanOrEqual(min);
+        }
+        // The light one is light and the dark one is dark on every skin: the whole point of the choice.
+        const L = luminance(floatValue(skin, pal, '--bg-panel'));
+        if (id === 'light') expect(L, `light float on ${s.id} is light`).toBeGreaterThan(0.75);
+        if (id === 'dark') expect(L, `dark float on ${s.id} is dark`).toBeLessThan(0.06);
       }
     }
-    // The light one is light and the dark one is dark: the whole point of the choice.
-    expect(luminance(value(floatBlocks.light, '--bg-panel'))).toBeGreaterThan(0.8);
-    expect(luminance(value(floatBlocks.dark, '--bg-panel'))).toBeLessThan(0.05);
+    // And the tint is REAL: Nebula's light panel is not the same paper as Classic's.
+    expect(floatValue(blocks.nebula, floatBlocks.light, '--bg-panel')).not.toBe(floatValue({}, floatBlocks.light, '--bg-panel'));
   });
 
   it('a light skin exists, and it is light', () => {

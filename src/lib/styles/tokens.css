@@ -44,6 +44,16 @@
      info on the right"). They default to the app ground, so classic is pixel-identical. */
   --bg-rail: var(--bg-app);
   --bg-side: var(--bg-app);
+  /* THE SKIN'S OWN VALUES UNDER A SECOND NAME. A scope that re-defines the chrome tokens (the
+     floating controls' palettes, skins.css) cannot read the skin's `--accent` through `var(--accent)`
+     - inside the scope that is itself. These aliases compute HERE, on the root, after the skin and
+     any /palette override have had their say, and inherit down as plain values, so a derived palette
+     can tint itself with the skin it is worn over. Add an alias when a derived palette needs one. */
+  --skin-panel: var(--bg-panel);
+  --skin-control: var(--bg-control);
+  --skin-text: var(--text);
+  --skin-accent: var(--accent);
+  --skin-link: var(--link);
 
   /* ---------- CHROME: text ---------- */
   --text: #e8e8e8;
