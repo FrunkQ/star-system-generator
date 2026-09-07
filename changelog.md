@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.0.359 - 7th Sep 2026
+
+- Board only: the documentation sweep is retired. All nine reader-facing surfaces are done, the debt list is down to one line that says why it cannot be written yet, and the nine claims that turned out to be wrong rather than merely old are written up with what replaced them - along with a short list of the four things worth a human glance.
 ## v3.0.358 - 7th Sep 2026
 
 - The README gains a "What's new in V3.1" section: megastructures and docking, the Explorers site and pasting from it, the Size comparison, binaries that behave, Am stars and stars that jet inside their own system, the calendars tied to one anchor, and the quieter machinery behind all of it.

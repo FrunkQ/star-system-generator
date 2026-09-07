@@ -1649,7 +1649,7 @@ a GM meets rather than a pack author — `GettingStarted.md` and `README.md`; th
 `docs/time-architecture.md`, and the ATTRIBUTIONS generated into every save by `src/lib/io/attributions.ts`.
 Delete a line when it has been written up.
 
-**SWEPT AGAIN at v3.0.354, 2026-09-06 — stream I, and this one was run as an AUDIT (G63).** Every
+**SWEPT AGAIN at v3.0.350-358, 2026-09-06/07 — stream I, and this one was run as an AUDIT (G63).** Every
 banked line was verified against the tree BEFORE it became prose, and where a surface and the tree
 disagreed the tree won and the contradiction was recorded. What that turned up is in FINDINGS FROM
 THE STREAM-I SESSION below, and it is the part worth reading: the headline is the same as both
@@ -2027,6 +2027,61 @@ is a contradiction between a surface and the tree, found by checking a banked li
   counts. **The cheap habit: make the tool that writes assert the file's endings on the way IN, not
   only compare the diff on the way out** — a whole-file diff tells you afterwards, an assertion tells
   you before you commit.
+
+## STREAM I RETIRED 2026-09-07 at v3.0.358 — the G63 documentation sweep, and what still needs a human eye
+
+**DONE.** All NINE surfaces swept, five pushes (v3.0.350, 353, 356, 357, 358). The Documentation-debt
+section is at **ONE** line and that line carries its reason ([[B95]], gated on [[G50]] settling how
+sharp the transition is, so the sentence cannot be checked yet). Everything else was written up or
+struck with a reason. Suite and build green on every push; `npm run manifest` after every bump.
+
+**THE HEADLINE IS THE SAME AS BOTH EARLIER SWEEPS', WHICH IS WHY THE OWNER WAS RIGHT TO ASK FOR AN
+AUDIT.** *"Just a danger of chinese whispers now we are a few generations along."* Nine reader-facing
+claims were FALSE rather than merely stale, and several BANKED LINES were themselves wrong — a debt
+line naming a surface is still not evidence about that surface. The full list is in FINDINGS FROM THE
+STREAM-I SESSION above; the ones that would have misled a reader:
+
+- `/physics` shipped an ungrammatical sentence for 200 versions, on the surface that claims to SHOW
+  THE WORKING (an edit ate the tail of the sentence it inserted into).
+- `/physics#habitability` published a wrong number: an alternative solvent's ceiling is 15, not 20.
+- The Newton panel showed a habitability score with NO working, while the working sat unread on the body.
+- `GettingStarted` promised jets and a shed shell on the 2D system map, which does not draw them.
+- It described the joining player's message in words the app does not use.
+- `autopilot-guide` asserted the one thing [[PHY-29]] records as deliberately untrue.
+- `time-architecture` still described the pre-[[G62]] clock.
+- Every save's `ATTRIBUTIONS.md` carried none of the app's own share-alike obligations.
+- `origin/hub` reached a GM reading "Hub", under a sentence about how a body FORMED.
+
+**FOR THE COORDINATOR, IN PRIORITY ORDER:**
+1. **A SEAM REPORT LINE IS OWED.** The hub contract fixtures were regenerated (`ATTRIBUTIONS.md` grew
+   inside both archives) and `BUNDLE_FORMAT` was deliberately NOT bumped — measured member by member
+   first: no path added, removed or renamed, no JSON byte moved. The hub's parser needs no work. A
+   stream does not cross the seam, so this needs saying in the report block.
+2. **THE CREDIT LIST EXISTS THREE TIMES.** `io/shippedCredits.ts` is now canonical and the generator
+   reads it; `AboutModal.svelte` and `README.md` are the other two and should be moved onto it. The
+   README's four missing entries are restored, so the three now AGREE — but nothing enforces that.
+3. **TWO ENGINE-MAP ID COLLISIONS ARE UNFLAGGED.** `RENDER-S40` and `RENDER-S41` are each claimed
+   THREE times; the existing collision notes name only two claimants apiece.
+4. **A GATE WORTH COPYING.** `tagConsistency.spec.ts` did not test what its own comment said for
+   months. Worth asking of any gate: does the assertion actually fail on the fault the comment names?
+
+**WHAT NEEDS A HUMAN EYE — a thirty-second list, and it is short because `/physics` was verified live
+rather than assumed.** The physics page was served on a dev server and probed in a real browser: 200,
+all 40 sections render, tags balance, every one of the Newton explainer's 19 deep-links and the page's
+40 in-page anchors resolves, and each new passage was confirmed laid out in its own section. So:
+
+1. **Open a world's apple panel and scroll to Habitability.** It should now list Temperature, Liquid
+   solvent, Pressure, Radiation and Gravity — each with the world's reading, the ideal band and the
+   marks earned — then the geology/magnetism modifiers and the final score. Earth should read 100 with
+   the terms adding up. **This is the only NEW panel content and nobody has looked at it on screen.**
+2. **Export a save and open `ATTRIBUTIONS.md` inside it.** A new section, "What the app itself
+   brought", should list the shipped art and the astronomy catalogues after your own assets. Check it
+   reads as a document rather than as a dump.
+3. **Help > Share and borrow** should now offer the Explorers library. One click, right address.
+4. **`GettingStarted.md` is 253 lines longer.** The prose was written against the code and the
+   changelog, not against a running screen — it is the one surface here whose claims were not
+   eyeballed. The Size comparison and Megastructures sections are the longest new passages and the
+   most worth skimming for anything that does not match what you see.
 
 ## FINDINGS FROM THE STREAM-E SESSION, 2026-08-30 - for the coordinator
 
