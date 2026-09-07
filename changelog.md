@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.376 - 7th Sep 2026
+
+- Board only: the floating chrome work is closed and written up, with a short list of what a human still needs to look at and one question for the owner about how a docked pair should be taken apart.
+
 ## v3.0.375 - 7th Sep 2026
 
 - The undo/redo buttons are always on screen now, greyed out when there is nothing to wind back, instead of appearing only once you have made an edit. The shading says "nothing yet" in the place you were looking for the answer.
