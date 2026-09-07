@@ -866,7 +866,7 @@
       text-align: right;
       font-family: monospace;
       font-size: 0.85em;
-      background: #1f1f1f;
+      background: var(--bg-control, #1f1f1f);
       border: 1px solid var(--border);
       color: var(--text);
       padding: 2px 4px;

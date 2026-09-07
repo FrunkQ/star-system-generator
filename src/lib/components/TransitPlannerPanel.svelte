@@ -1391,7 +1391,7 @@
     }
     .dialog-card {
         width: min(520px, calc(100vw - 24px));
-        background: #1f1f1f;
+        background: var(--bg-panel, #1f1f1f);
         border: 1px solid var(--border);
         border-radius: 8px;
         padding: 14px;
@@ -1596,7 +1596,7 @@
     .hazard-pill.critical { background-color: #dc2626; }
 
     .fuel-gauge-container {
-        background: #111;
+        background: var(--bg-app, #111);
         padding: 0.8em;
         border-radius: 4px;
         border: 1px solid var(--border-soft);

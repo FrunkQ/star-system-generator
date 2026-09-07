@@ -96,9 +96,9 @@
     cursor: pointer;
   }
   .fab-action-label {
-    background: #1b1e26;
-    color: #e8e8e8;
-    border: 1px solid #2a2d36;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text, #e8e8e8);
+    border: 1px solid var(--border, #2a2d36);
     border-radius: 8px;
     padding: 6px 10px;
     font-size: 0.85rem;
@@ -113,9 +113,9 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: #232733;
-    color: #ff8a5c;
-    border: 1px solid #2a2d36;
+    background: var(--bg-control-hover, #232733);
+    color: var(--accent-hover, #ff8a5c);
+    border: 1px solid var(--border, #2a2d36);
     font-size: 1.1rem;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   }

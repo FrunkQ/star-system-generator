@@ -353,7 +353,7 @@
 
 <style>
   .ship-log-panel {
-      background: #1f1f1f;
+      background: var(--bg-card, #1f1f1f);
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 0.8em;
@@ -388,7 +388,7 @@
   .ship-log-entry {
       border: 1px solid var(--border);
       border-radius: 5px;
-      background: #181818;
+      background: var(--bg-panel, #181818);
       padding: 0.6em;
   }
   .ship-log-title {
@@ -450,7 +450,7 @@
   .flight-log {
       border: 1px solid var(--border);
       border-radius: 5px;
-      background: #181818;
+      background: var(--bg-panel, #181818);
       padding: 0.6em;
       display: flex;
       flex-direction: column;

@@ -165,7 +165,7 @@
 		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 1em;
-		background-color: #252525;
+		background-color: var(--bg-card, #252525);
 		font-size: 1em; /* You had this set to 1.0em, just tidied it */
 		font-family: sans-serif;
 	}

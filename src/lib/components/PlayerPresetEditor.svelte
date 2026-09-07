@@ -1452,7 +1452,7 @@
   .overlay-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
   .assets { display: flex; flex-direction: column; gap: 6px; }
   .asset { display: flex; align-items: center; gap: 8px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; }
-  .asset img { width: 44px; height: 28px; object-fit: contain; background: repeating-conic-gradient(#2a2d36 0 25%, #1b1e26 0 50%) 0 0/12px 12px; border-radius: 3px; }
+  .asset img { width: 44px; height: 28px; object-fit: contain; background: repeating-conic-gradient(var(--border, #2a2d36) 0 25%, var(--bg-control, #1b1e26) 0 50%) 0 0/12px 12px; border-radius: 3px; }
   .a-name { flex: 1; font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .a-del { background: none; border: none; color: #ff8080; cursor: pointer; font-size: 1rem; }
   /* G16/DATA-M4: the credit handle. Dim when nothing is recorded, so an unattributed upload is

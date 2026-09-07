@@ -317,8 +317,8 @@
         position: relative;
         width: 100%;
         height: 80px;
-        background-color: #111;
-        border: 1px solid #333;
+        background-color: var(--bg-app, #111);
+        border: 1px solid var(--border, #333);
         border-radius: 4px;
         margin-bottom: 10px;
         overflow: hidden;

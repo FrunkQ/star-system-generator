@@ -104,12 +104,12 @@
   .filter-wrap {
     padding: 0.4em;
     border-bottom: 1px solid var(--border);
-    background: #2b2b2b;
+    background: var(--bg-control, #2b2b2b);
   }
   .name-filter {
     width: 100%;
     box-sizing: border-box;
-    background: #1f1f1f;
+    background: var(--bg-panel, #1f1f1f);
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: 4px;

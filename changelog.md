@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.367 - 7th Sep 2026
+
+- The Daylight skin no longer shows dark boxes with dark text: the body description, the GM notes, the zone key, the ship log, the bottom sheet and a score of other panels had their dark colour written in by hand, and every one now follows the skin. Dark skins look exactly as before.
+
 ## v3.0.366 - 7th Sep 2026
 
 - Floating controls can now be docked together. Drop one against another - within about a finger's width of its edge - and the two snap side by side and become one block: drag either and both move, and when the details pane opens or the window changes shape the pair travels as a unit instead of drifting apart. To separate them again, right-click the grip (or press and hold) and choose Separate. Which controls are docked is remembered on this computer, with everything else about where your chrome sits.

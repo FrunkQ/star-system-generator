@@ -111,7 +111,7 @@
     margin-bottom: 0;
   }
   .name-input:hover, .name-input:focus {
-      background-color: #252525;
+      background-color: var(--bg-card, #252525);
       border-color: var(--border);
   }
   .edit-btn {

@@ -52,7 +52,7 @@
   }
   .display {
     white-space: pre-wrap;
-    background: #252525;
+    background: var(--bg-card, #252525);
     padding: 1em;
     border-radius: 4px;
     min-height: 40px;

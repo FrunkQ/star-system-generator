@@ -3218,7 +3218,7 @@
     padding: 0;
     line-height: 1;
     font-size: 0.9rem;
-    background: #1f1f1f;
+    background: var(--bg-control, #1f1f1f);
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: 4px;
@@ -3477,7 +3477,7 @@
     border-radius: 4px;
   }
   .name-input:hover, .name-input:focus {
-      background-color: #252525;
+      background-color: var(--bg-card, #252525);
       border-color: var(--border);
   }
 

@@ -39,7 +39,7 @@
     flex-grow: 1;
     overflow-y: auto;
     padding: 1rem;
-    background-color: #252525; /* Darker background */
+    background-color: var(--bg-card, #252525);
     min-height: 0;
   }
 
