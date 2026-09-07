@@ -532,6 +532,27 @@
               {#if m.notes.length}<p class="mag-note">{m.notes[0]}</p>{/if}
           </div>
       {/if}
+      {#if body.magnetosphere && body.magnetosphere.shape !== 'none'}
+          {@const ms = body.magnetosphere}
+          <!-- G82: the bubble that field cuts out of the wind. EVERY DISTANCE IS IN THIS BODY'S OWN
+               RADII and the unit is written beside each one, because a bubble quoted against the
+               wrong radius is the A33/B27/B28 fault. The tail is labelled a drawing convention
+               rather than a measurement — a real magnetotail has no sharp end. -->
+          <div class="mag-derived mag-sphere">
+              <div class="mag-derived-head">
+                  <span class="mag-source">magnetopause {ms.standoffRadii.toFixed(1)} R</span>
+                  <span class="mag-geom" title="The last closed field line: inside it the wind is turned away, outside it the field is open and what comes down it lands on the polar cap.">shielded to {ms.closedFieldRadii.toFixed(1)} R</span>
+                  {#if ms.ordered && ms.dipoleTiltDeg > 0}
+                      <span class="mag-range">axis tilted {ms.dipoleTiltDeg}&deg; from the spin{#if ms.dipoleOffsetRadii > 0}, offset {ms.dipoleOffsetRadii} R{/if}</span>
+                  {/if}
+              </div>
+              <p class="mag-note">
+                  Solved against {ms.confiningPressureNPa} nPa of {ms.upstream === 'host' ? "the host's field" : 'stellar wind'} at this orbit,
+                  in radii from the centre. Tail drawn to {Math.round(ms.tailRadii)} R (a convention &mdash; a real tail has no sharp end).
+                  {#if ms.ovalColatDeg < 90}Aurora oval at {(90 - ms.ovalColatDeg).toFixed(0)}&deg; magnetic latitude.{/if}
+              </p>
+          </div>
+      {/if}
   </div>
 
   <div class="form-group">
@@ -739,6 +760,10 @@
     background: var(--bg-panel); border: 1px solid var(--border);
   }
   .mag-derived-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+  /* G82: the field palette is a TOKEN, never a hex here — the orrery teardrop and the 3D cage read
+     the same one, so the card and the picture can never drift to different purples. */
+  .mag-sphere { border-color: var(--field-cage); }
+  .mag-sphere .mag-source { color: var(--field-cage); }
   .mag-source { font-weight: 600; text-transform: capitalize; color: var(--text); }
   .mag-geom { font-size: 0.8em; color: var(--text-muted); text-transform: capitalize; }
   .mag-range { font-size: 0.8em; color: var(--link); margin-left: auto; }

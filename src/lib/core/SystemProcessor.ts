@@ -33,6 +33,7 @@ import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, deriveOxidation, C
   LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG, OXIDISED_TAG } from '../physics/cloudDecks';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
+import { deriveMagnetosphere, insideHostMagnetosphere, astrosphereAu, magnetosphereConstants } from '../physics/magnetosphere';
 import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
 import { deriveGeoActivity } from '../physics/geoActivity';
@@ -51,7 +52,7 @@ import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlaus
 import { applyActivityScatter, activityFromFieldExcess } from '../physics/ionisingOutput';
 import { starStatTemplate } from '../generation/star';
 import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
-import { brownDwarfThermal } from '../physics/substellar';
+import { brownDwarfThermal, isLuminousSource } from '../physics/substellar';
 import { HYDROGEN_BURNING_LIMIT_SOLAR } from '../physics/starPlausibility';
 /** The coolest a fusing star gets. The M/L overlap sits here — see the ignition note below. */
 const STELLAR_FLOOR_K = 1900;
@@ -271,9 +272,34 @@ export class SystemProcessor implements ISystemProcessor {
         //     host's magnetosphere, and the belt term in 2c asks the host for its field and spin.
         //     Iterating in node order made both answers depend on the order bodies happen to appear
         //     in the file.
-        for (const node of this.parentFirstOrder(allNodes)) {
-            if (node.kind === 'body') {
+        //     AND LUMINOUS BODIES GO FIRST WITHIN IT ([[G82]]). A magnetopause is solved against the
+        //     WIND, the wind is summed over every luminous source, and a self-luminous body's field
+        //     is DERIVED BY THIS VERY PASS — so a body processed before its system's brown dwarf
+        //     read that dwarf's field as absent on the first run and as 0.42 G on the second, and
+        //     every pressure in the system moved between them. Parent-before-child does not order
+        //     SIBLINGS, and a wind source is a sibling. The luminous set is small and cannot depend
+        //     on the rest (nothing orbiting a star is inside a host's magnetosphere — a star has no
+        //     magnetopause), so running it first makes the wind fully determined for everybody else.
+        const byDepth = this.parentFirstOrder(allNodes);
+        for (const node of byDepth) {
+            if (node.kind === 'body' && isLuminousSource(node as any)) {
                 this.processInterior(node as CelestialBody, allNodes, rulePack);
+            }
+        }
+        for (const node of byDepth) {
+            if (node.kind === 'body' && !isLuminousSource(node as any)) {
+                this.processInterior(node as CelestialBody, allNodes, rulePack);
+            }
+        }
+
+        // 2b2. THE MAGNETOSPHERE — its own sub-pass, after EVERY field in the system is committed
+        //      ([[G82]]). It cannot ride inside 2b for the reason above: what it publishes is solved
+        //      against the wind, and the wind reads fields 2b is still writing. Parent before child
+        //      again, because a moon's nose faces its host's field rather than the star's wind and
+        //      that question needs the host's boundary first.
+        for (const node of byDepth) {
+            if (node.kind === 'body') {
+                this.processMagnetosphere(node as CelestialBody, allNodes, rulePack);
             }
         }
 
@@ -1077,6 +1103,14 @@ export class SystemProcessor implements ISystemProcessor {
     // temperature the layers are judged at, so moving it up would be a circular read, not an
     // ordering tweak. See the entry for the one edge that remains (atmospheric escape).
     private processInterior(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack) {
+        // A STAR'S BUBBLE IS ITS ASTROSPHERE, and it is the only thing it takes from this pass
+        // ([[G82]]). Wind against the interstellar medium, so it needs no interior model at all —
+        // only the star's own field, size and luminosity, every one of them an input by now.
+        if (body.roleHint === 'star') {
+            body.astrosphereAu = +astrosphereAu(body, magnetosphereConstants(pack)).toFixed(2);
+            return;
+        }
+        delete (body as any).astrosphereAu;
         if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return;
 
         // Fluid layers (surface/subsurface oceans, interior conductive) — feed classification
@@ -1088,16 +1122,14 @@ export class SystemProcessor implements ISystemProcessor {
         // Magnetism profile (§2d) — descriptive read of the dynamo from interior conductive layers
         // + rotation. A salty subsurface ocean only induces a field when the moon sits inside a
         // giant host's magnetosphere, so this asks the host — hence the parent-first iteration.
-        let insideHostMagnetosphere = false;
-        if (body.roleHint === 'moon' && body.parentId) {
-            const host = allNodes.find((n) => n.id === body.parentId) as CelestialBody | undefined;
-            if (host && host.kind === 'body') {
-                const hostMassMe = (host.massKg ?? 0) / EARTH_MASS_KG;
-                insideHostMagnetosphere =
-                    hostMassMe > 50 || makeupFractions(host).gas > 0.5 || (host.magneticField?.strengthGauss ?? 0) >= 1;
-            }
-        }
-        body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
+        //
+        // IT IS A DISTANCE NOW, NOT A MASS THRESHOLD ([[G82]]). It used to read "host over 50 Earth
+        // masses, or gassy, or at least 1 gauss", which stood in for the question while the engine
+        // had no standoff to compare against; it now asks whether the moon's orbit falls inside the
+        // host's published magnetopause. Same parent-first ordering, a real boundary instead of a
+        // proxy — and Titan, at 21 Saturn radii against a standoff near 18, is correctly outside.
+        const inHost = body.roleHint === 'moon' && insideHostMagnetosphere(body, allNodes, magnetosphereConstants(pack));
+        body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere: inHost });
         // The field STRENGTH derives from the model (rotation + composition + core size) unless the GM
         // has pinned one (F-OVR: `overrides.magneticFieldGauss`). So spinning a world up or making it
         // metal-rich changes its field, and a small iron-cored world like Mercury gets a tenuous field
@@ -1129,9 +1161,25 @@ export class SystemProcessor implements ISystemProcessor {
             && Number.isFinite(magBand.min) && Number.isFinite(magBand.max)
             && (pinnedGauss < magBand.min || pinnedGauss > magBand.max);
         const shieldTag = magneticShieldingTag(body.magnetism, body.magneticField, typeof pinnedGauss === 'number');
-        emit(body.tags, {
-            key: outOfClass && shieldTag === 'magnetic/dynamo' ? 'magnetic/anomalous' : shieldTag
-        });
+        const shieldKey = outOfClass && shieldTag === 'magnetic/dynamo' ? 'magnetic/anomalous' : shieldTag;
+        emit(body.tags, { key: shieldKey });
+    }
+
+    // PASS 2b2 — THE SHAPE THAT FIELD CUTS OUT OF THE WIND ([[G82]]).
+    //
+    // SEPARATE FROM 2b, and the separation is the whole point rather than tidiness: what this
+    // publishes is solved against the stellar WIND, the wind is summed over every luminous source in
+    // the system, and a self-luminous body's field is derived by 2b itself. Reading it from inside
+    // 2b therefore read a sibling's field before it existed — caught by `idempotence.test.ts`, which
+    // saw every pressure in the Testion system move between pass one and pass two.
+    //
+    // It reads nothing pass 2c or later writes either: not `totalIncidentFlux`, not
+    // `surfaceRadiation`, and NOT the `beltInnerEdgeRadii` field radiation stamps on the body — the
+    // belt geometry comes from the belt model's own pure functions instead.
+    private processMagnetosphere(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack) {
+        if (body.roleHint !== 'planet' && body.roleHint !== 'moon') { delete (body as any).magnetosphere; return; }
+        const shieldingTag = (body.tags ?? []).find((t) => t.key.startsWith('magnetic/'))?.key ?? 'magnetic/unshielded';
+        body.magnetosphere = deriveMagnetosphere(body, allNodes, pack, { shieldingTag });
     }
 
     // THE RADIATION HAZARD TAGS, for every body whose dose describes a place you could actually be

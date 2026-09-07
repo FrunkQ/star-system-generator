@@ -2,6 +2,19 @@
 
 All notable changes are listed here:
 
+## v3.0.370 - 7th Sep 2026
+
+- Every world with a magnetic field now says how far that field actually reaches. A new block on the Atmosphere
+  tab gives the magnetopause - the nose of the bubble, in the body's own radii - along with the smaller region
+  inside it where the field genuinely shields an atmosphere, how far the tail is drawn, how far the magnetic axis
+  leans off the spin axis, and where the aurora oval sits. Earth's bubble stands about eleven radii out and
+  shields to six; Jupiter's reaches forty; Mercury manages a nose and little else. A moon deep inside a giant's
+  magnetosphere is a special case and is treated as one: Europa never meets the solar wind at all, so its little
+  induced bubble is squeezed by Jupiter's field instead and points at Jupiter rather than at the Sun. Stars get
+  their own boundary, the astrosphere, where the wind gives way to interstellar space - about 120 AU for the Sun,
+  roughly where the Voyagers crossed. The physics page and the Newton panel both show the working, including a
+  plain list of what in it is an estimate. Nothing is drawn yet; the pictures come next.
+
 ## v3.0.369 - 7th Sep 2026
 
 - Low power mode now does considerably more: it draws at one screen pixel per point instead of up to four, halves the frame rate to 30, and switches off the animated extras - storm lightning, glowing magma and ice plumes - alongside the cloud shells and auroras it already dropped. The picture is softer and the motion less smooth, which is the trade, and it is why none of it happens unless you ask.

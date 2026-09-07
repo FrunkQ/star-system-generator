@@ -56,7 +56,11 @@ const DERIVED_FIELDS = [
   'orbitalRadiation', 'irradiationDose', 'volatiles', 'surfaceSpectrum', 'vegetation',
   'beltInnerEdgeRadii', 'auroraEmitters', 'flareActivity',
   'resonanceNote', 'resonanceProtective', 'resonanceTidal', 'starTidallyLocked',
-  'orbitalStability', 'orbitalStabilityDetails'
+  'orbitalStability', 'orbitalStabilityDetails',
+  // G82: the field/wind boundary and a star's astrosphere. Both are re-derived on every pass from
+  // the committed field and the star's activity, and NEITHER is authorable — a GM who wants a
+  // bigger bubble pins the FIELD, on the Overrides tab, and the boundary follows.
+  'magnetosphere', 'astrosphereAu'
 ];
 
 // FIELDS THE PROCESSOR WRITES THAT ARE DELIBERATELY *NOT* STRIPPED, each with the reason. The drift

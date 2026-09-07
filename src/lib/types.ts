@@ -231,6 +231,48 @@ export interface Magnetism {
   notes: string[];
 }
 
+/** THE SHAPE THAT FIELD CUTS OUT OF THE WIND ([[G82]]) — see `physics/magnetosphere.ts` for the law.
+ *
+ *  EVERY DISTANCE HERE IS IN THIS BODY'S OWN RADII, MEASURED FROM ITS CENTRE, except
+ *  `confiningPressureNPa`. The units are in the field names and in this comment because a bubble
+ *  quoted against the wrong radius is exactly the fault A33/B27/B28 all were. */
+export interface Magnetosphere {
+  /** none = the wind reaches the ground; tenuous = a nose but no room for a real cavity (Mercury);
+   *  bubble = a full magnetosphere; induced = a current loop driven by the host's field (Europa). */
+  shape: 'none' | 'tenuous' | 'bubble' | 'induced';
+  /** Subsolar magnetopause distance, body radii from the centre. 0 when there is no bubble. */
+  standoffRadii: number;
+  /** The USEFUL extent: the last CLOSED field line's equatorial crossing, body radii. Inside it the
+   *  wind is turned away; outside it the lines are open and what comes down them lands on the polar
+   *  cap. The aurora oval is this boundary's footprint at the surface, so the two share one number. */
+  closedFieldRadii: number;
+  /** How far downstream the DRAWN tail runs, body radii. A CONVENTION (20 standoffs), not a
+   *  measurement: a real magnetotail has no sharp end. The width is about two standoffs. */
+  tailRadii: number;
+  /** Magnetic axis away from the SPIN axis, degrees. From the pack table, keyed by the geometry word. */
+  dipoleTiltDeg: number;
+  /** Magnetic centre away from the body's centre, body radii (the ice giants' offset dynamo). */
+  dipoleOffsetRadii: number;
+  /** Which way the tilt leans, degrees of longitude. SEEDED FROM THE BODY ID AND UNOBSERVABLE —
+   *  nothing this engine holds fixes it, so it is a stable arbitrary choice, and it is labelled one. */
+  dipoleLongitudeDeg: number;
+  /** False for a multipolar field: no single magnetic axis, so no clean poles and no single oval. */
+  ordered: boolean;
+  /** Aurora oval, degrees of colatitude from the MAGNETIC pole (not the spin pole). 90 = no oval. */
+  ovalColatDeg: number;
+  /** Where the trapped belt's dose peaks, body radii — the belt's inner edge, from the BELT model's
+   *  own constants (`beltInnerEdgeRadii`), never re-derived here. Absent when there is no belt. */
+  beltPeakRadii?: number;
+  /** The belt's exponential scale length, body radii (`beltScaleLengthRadii`). */
+  beltScaleRadii?: number;
+  /** What the nose faces: the star's wind, or the host's field for a body inside its host's bubble. */
+  upstream: 'star' | 'host';
+  upstreamId?: string;
+  /** The pressure the standoff was solved against AT THIS BODY'S ORBIT, in nanopascals. */
+  confiningPressureNPa: number;
+  notes: string[];
+}
+
 /** One morphology present on a world, with how much of the LAND it paints.
  *
  *  COVERAGE IS OF THE LAND, NOT A SHARE OF IT. The layers stack painter-style in list order, so
@@ -731,6 +773,8 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   biosphere?: Biosphere;
   magnetic_field?: MagneticField;
   magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
+  magnetosphere?: Magnetosphere; // derived field/wind boundary (descriptive; see deriveMagnetosphere)
+  astrosphereAu?: number;      // STARS ONLY: where this star's wind gives way to the interstellar medium, AU
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
   volatiles?: VolatileRetention; // derived surface-ice retention per species (see deriveVolatileRetention)
   irradiationDose?: number;    // derived cumulative space-weathering dose (relative) — drives tholins

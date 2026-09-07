@@ -489,6 +489,41 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     });
   }
 
+  // 5aa. THE MAGNETOSPHERE — where that field's boundary actually stands ([[G82]]). A separate layer
+  //      from Magnetism on purpose: the dynamo answers "what field", this answers "how far", and
+  //      they take different inputs. It shows the pressure balance with BOTH sides of it named, so
+  //      the panel that claims to show the working shows the wind as well as the field — read
+  //      post-hoc from the committed block, like every other layer here.
+  if (body.magnetosphere && body.magnetosphere.shape !== 'none') {
+    const ms = body.magnetosphere;
+    const facing = ms.upstream === 'host' ? (ctx.host as CelestialBody | undefined)?.name ?? 'its host' : ctx.star?.name ?? 'the star';
+    layers.push({
+      id: 'magnetosphere', title: 'Magnetosphere — how far the field reaches', link: '/physics#magnetism',
+      inputs: [
+        { label: 'Surface field', value: n(body.magneticField?.strengthGauss, 4, ' G') },
+        { label: ms.upstream === 'host' ? `${facing}'s field here` : 'Stellar wind pressure here', value: `${ms.confiningPressureNPa} nPa` },
+        { label: 'Field geometry', value: ms.ordered ? `${body.magnetism?.geometry ?? 'dipolar'} · axis ${ms.dipoleTiltDeg}° off the spin` : `${body.magnetism?.geometry ?? 'multipolar'} · no single axis` }
+      ],
+      outputs: [
+        { label: 'Magnetopause (nose)', value: `${ms.standoffRadii.toFixed(1)} body radii, facing ${facing}` },
+        { label: 'Shielded region', value: `${ms.closedFieldRadii.toFixed(1)} body radii (inside the last closed field line)` },
+        ...(ms.ovalColatDeg < 90 ? [{ label: 'Aurora oval', value: `${(90 - ms.ovalColatDeg).toFixed(0)}° magnetic latitude` }] : []),
+        ...(ms.beltPeakRadii !== undefined ? [{ label: 'Trapped belt begins', value: `${ms.beltPeakRadii.toFixed(2)} body radii` }] : []),
+        { label: 'Tail drawn to', value: `${Math.round(ms.tailRadii)} body radii` }
+      ],
+      notes: [
+        `The boundary sits where the field's own pressure balances what is blowing on it: R/R_body = ((2B)² / 2μ₀P)^(1/6). Here that is ${n(body.magneticField?.strengthGauss, 4, ' G')} against ${ms.confiningPressureNPa} nPa, giving ${ms.standoffRadii.toFixed(1)} radii. It is a SIXTH root, so it barely moves: sixty-four times the wind would only halve it.`,
+        ms.upstream === 'host'
+          ? `This body never meets the stellar wind — ${facing}'s field stopped it further out — so its bubble is squeezed by the host's field at this orbit, and its nose points at ${facing} rather than at the star.`
+          : "The wind is a reference pressure at 1 AU, scaled by how active each star is and by the inverse square of its distance, summed over every star in the system.",
+        `Inside ${ms.closedFieldRadii.toFixed(1)} radii the field lines leave and come back, so an incoming ion is turned around: that is the part that actually shields an atmosphere. Outside it the lines are open to the wind, and what travels down them lands on the polar cap${ms.ovalColatDeg < 90 ? ` — which is exactly where the aurora oval sits, at ${(90 - ms.ovalColatDeg).toFixed(0)}°` : ''}.`,
+        ...(ms.ordered ? [] : ['A disordered field has no single magnetic axis, so it has no clean poles and no single oval: the aurora is a scatter of patches.']),
+        'ESTIMATED, and it says so: the reference wind is an average of something that genuinely swings by a factor of ten, the direction the magnetic axis leans is seeded rather than derived, and the tail length is a drawing convention. The model is a dipole against a wind, so a plasma-loaded giant like Jupiter is really larger than this.',
+        ...ms.notes.slice(0, 1)
+      ]
+    });
+  }
+
   // 5a. RADIATION — the whole quantity was MISSING from this trace (inbox D5). Fourteen layers
   //     explained a body and not one of them mentioned the dose a GM actually reads on the card, so
   //     for a Galilean moon the panel that claims to show the working showed everything EXCEPT the

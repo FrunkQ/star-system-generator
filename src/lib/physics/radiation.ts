@@ -223,6 +223,18 @@ function beltConstants(rulePack: RulePack) {
     };
 }
 
+// THE BELT'S SCALE LENGTH, in the host's own radii — the `lambda` of the exponential above, and the
+// only piece of the belt's GEOMETRY anything outside this file needs. Exported for [[G82]]: the
+// magnetosphere pass draws a belt torus and must not carry a second copy of `belt_scale_length_host_radii`
+// or of the B^(1/3) exponent, or the picture and the dose would drift apart. Returns 0 when the field is
+// below the model's own floor, which is the same answer `beltDoseSvPerDay` gives: no belt to draw.
+export function beltScaleLengthRadii(fieldGauss: number, rulePack: RulePack): number {
+    const c = beltConstants(rulePack);
+    if (!(fieldGauss >= c.MIN_B)) return 0;
+    const lambda = c.LAMBDA_REF * Math.cbrt(fieldGauss / c.B_REF);
+    return Number.isFinite(lambda) && lambda > 0 ? lambda : 0;
+}
+
 function beltDoseSvPerDay(fieldGauss: number, spinHours: number, rHostRadii: number, c: ReturnType<typeof beltConstants>): number {
     if (!(fieldGauss >= c.MIN_B) || !(spinHours > 0) || !(rHostRadii > 0)) return 0;
     const fieldRel = fieldGauss / c.B_REF;

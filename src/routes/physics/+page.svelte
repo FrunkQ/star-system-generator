@@ -906,6 +906,40 @@
       </ul>
       <p>Intrinsic vs induced and the field geometry are explicit; the estimated range is a grounded plausibility
         band, tagged <code>magnetic/dynamo</code>, <code>magnetic/induced</code> or <code>magnetic/unshielded</code>.</p>
+
+      <h3>The magnetosphere: how far that field reaches</h3>
+      <p>A field does not stop at the surface — it carves a cavity out of whatever is blowing on it, and that cavity
+        is a real place with a real size. It ends where the pressure inside balances the pressure outside. A dipole
+        weakens as the cube of distance, so the boundary sits at</p>
+      <p class="formula">R<sub>mp</sub> / R = ( (2B)² / 2μ₀P )<sup>1/6</sup></p>
+      <p>where <strong>B</strong> is the surface field and <strong>P</strong> is what is pushing back. The 2 is real:
+        the current sheet at the boundary roughly doubles the field just inside it. Because it is a sixth root, this
+        is a remarkably stubborn number — you need <em>sixty-four times</em> the wind to halve a magnetosphere, which
+        is why Earth's boundary sits around ten radii out whether the Sun is quiet or raging.</p>
+      <p><strong>What pushes back is not the same thing everywhere.</strong> Out in the open it is the star's wind: a
+        reference pressure at 1 AU, scaled by how active the star is and by the inverse square of distance, summed over
+        every star in the system. But a moon inside its host's magnetosphere never meets that wind at all — the host's
+        field stopped it further out — so its cavity is squeezed by the <em>host's</em> field instead, and the nose of
+        its bubble points at the planet rather than at the star. That is why Europa's little induced bubble stands at
+        about 1.3 of its own radii, close to what Galileo measured, and why it faces Jupiter.</p>
+      <p><strong>The shielded region is smaller than the bubble.</strong> Inside the last <em>closed</em> field line,
+        lines leave the body and come back, so an incoming ion is turned around and sent away — that is the part that
+        actually protects an atmosphere. Outside it the lines are open to the wind, and what travels down them lands
+        on the polar cap. Which is exactly why the <strong>aurora oval</strong> sits where it does: the oval is the
+        footprint of that same boundary, at colatitude θ with sin²θ = 1/L. One number, seen twice. Earth's comes out
+        near 66° of magnetic latitude and Jupiter's near 78°, hugging the pole because its bubble is so much larger.</p>
+      <p>A star's own bubble is its <strong>astrosphere</strong>: its wind against the pressure of interstellar space,
+        which for the Sun puts the heliopause near 120 AU — about where the Voyagers crossed it.</p>
+      <p><strong>What is estimated here, plainly.</strong> The reference wind pressure is an average, and a real one
+        is nothing of the sort: the Sun's swings between about a half and ten times it over the cycle and with every
+        coronal mass ejection, so a magnetosphere breathes. The <em>direction</em> the magnetic axis leans is not
+        derived at all — nothing we hold fixes it, only how far it leans — so it is seeded from the body and kept
+        stable, which is a choice rather than a measurement. The tail's drawn length is a convention too; a real
+        magnetotail has no sharp end, and Earth's has been crossed a thousand radii downstream. And the model is a
+        <em>dipole</em> against a wind: Jupiter's real magnetosphere is inflated well beyond that by plasma from Io's
+        volcanoes, which needs a plasma density this engine does not carry, so its bubble here is the honest
+        pressure-balance answer and not the observed one. As ever, a field you pin yourself is obeyed: a seventy-tesla
+        world gets its enormous bubble and a note, never an argument.</p>
     </section>
 
     <section id="aurora">

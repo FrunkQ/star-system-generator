@@ -40,6 +40,7 @@
       "flareActivity": 0.05175165467708495,
       "calculatedGravity_ms2": 274.2814900104337,
       "isSelfLuminous": false,
+      "astrosphereAu": 119.4,
       "oblateness": 0,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -208,6 +209,24 @@
         "nominalGauss": 0.003,
         "notes": [
           "A large iron core keeps a weak, disordered field despite very slow rotation (Mercury-like)."
+        ]
+      },
+      "magnetosphere": {
+        "shape": "tenuous",
+        "standoffRadii": 1.48,
+        "closedFieldRadii": 0.814,
+        "tailRadii": 29.61,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 174.4,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 13.61,
+        "notes": [
+          "A disordered, multipolar field: there is no single magnetic axis, so the bubble has no clean pole and the aurora is a scatter of patches rather than one oval.",
+          "The magnetopause stands 1.5 body radii out, where the field's pressure balances 13.6 nPa of stellar wind."
         ]
       },
       "totalIncidentFlux": 6.995720605923101,
@@ -674,6 +693,21 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 96,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 3.815,
+        "notes": []
       },
       "totalIncidentFlux": 1.9607568276786325,
       "totalIncidentFluxMin": 1.9344473474792612,
@@ -1191,6 +1225,25 @@
         "nominalGauss": 0.5013787916771121,
         "notes": [
           "Molten iron core → Earth-like dipolar field; shields the atmosphere from stellar wind."
+        ]
+      },
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 11.229,
+        "closedFieldRadii": 6.176,
+        "tailRadii": 224.58,
+        "dipoleTiltDeg": 10,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 140.9,
+        "ordered": true,
+        "ovalColatDeg": 23.73,
+        "beltPeakRadii": 1.198,
+        "beltScaleRadii": 0.796,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 1.996,
+        "notes": [
+          "The magnetopause stands 11.2 body radii out, where the field's pressure balances 2.00 nPa of stellar wind."
         ]
       },
       "totalIncidentFlux": 1.02601047052422,
@@ -1873,6 +1926,21 @@
       "magneticField": {
         "strengthGauss": 0
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 296.5,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 1.986,
+        "notes": []
+      },
       "totalIncidentFlux": 1.0207596515292243,
       "totalIncidentFluxMin": 0.9871731620731499,
       "totalIncidentFluxMax": 1.0557867446125964,
@@ -2319,6 +2387,21 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 325.8,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.8634,
+        "notes": []
+      },
       "totalIncidentFlux": 0.4438031561104972,
       "totalIncidentFluxMin": 0.36958727466857755,
       "totalIncidentFluxMax": 0.5376135628491439,
@@ -2747,6 +2830,21 @@
       "magneticField": {
         "strengthGauss": 0
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 299.2,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.8634,
+        "notes": []
+      },
       "totalIncidentFlux": 0.4437665575796843,
       "totalIncidentFluxMin": 0.36955908328268394,
       "totalIncidentFluxMax": 0.5375655756593347,
@@ -3156,6 +3254,21 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 331.2,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.8632,
+        "notes": []
       },
       "totalIncidentFlux": 0.44371189731054933,
       "totalIncidentFluxMin": 0.36951804934581456,
@@ -3742,6 +3855,25 @@
           "Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class)."
         ]
       },
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 39.882,
+        "closedFieldRadii": 21.935,
+        "tailRadii": 797.63,
+        "dipoleTiltDeg": 10,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 322,
+        "ordered": true,
+        "ovalColatDeg": 12.33,
+        "beltPeakRadii": 1.048,
+        "beltScaleRadii": 1.632,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.07382,
+        "notes": [
+          "The magnetopause stands 39.9 body radii out, where the field's pressure balances 0.0738 nPa of stellar wind."
+        ]
+      },
       "totalIncidentFlux": 0.03794193011494842,
       "totalIncidentFluxMin": 0.03448242750514411,
       "totalIncidentFluxMax": 0.04184634142425712,
@@ -4199,6 +4331,23 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 68.7,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-jupiter",
+        "confiningPressureNPa": 1538,
+        "notes": [
+          "Inside Jupiter's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
       },
       "totalIncidentFlux": 26278.948975581356,
       "totalIncidentFluxMin": 25883.6638271932,
@@ -4710,6 +4859,24 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
+      "magnetosphere": {
+        "shape": "induced",
+        "standoffRadii": 1.268,
+        "closedFieldRadii": 0.697,
+        "tailRadii": 25.36,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 202.9,
+        "ordered": true,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-jupiter",
+        "confiningPressureNPa": 95.67,
+        "notes": [
+          "Inside Jupiter's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star.",
+          "The magnetopause stands 1.3 body radii out, where the field's pressure balances 95.7 nPa of host field."
+        ]
+      },
       "totalIncidentFlux": 2982.5149492351725,
       "totalIncidentFluxMin": 2828.97044884276,
       "totalIncidentFluxMax": 3144.393363246595,
@@ -5187,6 +5354,23 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 100.3,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-jupiter",
+        "confiningPressureNPa": 5.789,
+        "notes": [
+          "Inside Jupiter's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
       "totalIncidentFlux": 90.10336103928289,
       "totalIncidentFluxMin": 89.00918309362223,
       "totalIncidentFluxMax": 91.21135265242735,
@@ -5617,6 +5801,23 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 248.6,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-jupiter",
+        "confiningPressureNPa": 0.1951,
+        "notes": [
+          "Inside Jupiter's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
       },
       "totalIncidentFlux": 0.1107525564740034,
       "totalIncidentFluxMin": 0.0989310129942552,
@@ -6081,6 +6282,25 @@
         "nominalGauss": 0.2176710673443665,
         "notes": [
           "A cool interior lets helium rain out and throttle the metallic-hydrogen dynamo → a weak, axisymmetric field (Saturn-like)."
+        ]
+      },
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 18.027,
+        "closedFieldRadii": 9.915,
+        "tailRadii": 360.54,
+        "dipoleTiltDeg": 10,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 202,
+        "ordered": true,
+        "ovalColatDeg": 18.52,
+        "beltPeakRadii": 1.119,
+        "beltScaleRadii": 0.603,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.02198,
+        "notes": [
+          "The magnetopause stands 18.0 body radii out, where the field's pressure balances 0.0220 nPa of stellar wind."
         ]
       },
       "totalIncidentFlux": 0.01129688777215063,
@@ -6585,6 +6805,21 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 233.1,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.02194,
+        "notes": []
+      },
       "totalIncidentFlux": 0.011277566707711496,
       "totalIncidentFluxMin": 0.010142628999351323,
       "totalIncidentFluxMax": 0.012575772138736441,
@@ -7041,6 +7276,24 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
+      "magnetosphere": {
+        "shape": "induced",
+        "standoffRadii": 1.463,
+        "closedFieldRadii": 0.805,
+        "tailRadii": 29.26,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 324.1,
+        "ordered": true,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 40.6,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star.",
+          "The magnetopause stands 1.5 body radii out, where the field's pressure balances 40.6 nPa of host field."
+        ]
+      },
       "totalIncidentFlux": 2.874061680086232,
       "totalIncidentFluxMin": 2.783210037616409,
       "totalIncidentFluxMax": 2.967979385347656,
@@ -7475,6 +7728,23 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 225.6,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 11.24,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
       },
       "totalIncidentFlux": 0.579800231966524,
       "totalIncidentFluxMin": 0.5781867814534714,
@@ -7913,6 +8183,23 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 114,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 2.545,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
       },
       "totalIncidentFlux": 0.0651005751553091,
       "totalIncidentFluxMin": 0.06270663978105692,
@@ -8354,6 +8641,23 @@
       "magneticField": {
         "strengthGauss": 0
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 132,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 180.5,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
       "totalIncidentFlux": 12.729405684452791,
       "totalIncidentFluxMin": 11.477182171865584,
       "totalIncidentFluxMax": 14.118290077943655,
@@ -8787,6 +9091,23 @@
       "magneticField": {
         "strengthGauss": 0
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 171.5,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 0.3449,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
       "totalIncidentFlux": 0.012056846666824996,
       "totalIncidentFluxMin": 0.010909331024691304,
       "totalIncidentFluxMax": 0.013367973058259932,
@@ -9183,6 +9504,21 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 49.8,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.02187,
+        "notes": []
       },
       "totalIncidentFlux": 0.011240672207469696,
       "totalIncidentFluxMin": 0.010110276018236426,
@@ -9615,6 +9951,25 @@
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
       },
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 22.445,
+        "closedFieldRadii": 12.345,
+        "tailRadii": 448.91,
+        "dipoleTiltDeg": 53,
+        "dipoleOffsetRadii": 0.42,
+        "dipoleLongitudeDeg": 12.3,
+        "ordered": true,
+        "ovalColatDeg": 16.54,
+        "beltPeakRadii": 1.174,
+        "beltScaleRadii": 0.595,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.005427,
+        "notes": [
+          "The magnetopause stands 22.4 body radii out, where the field's pressure balances 0.00543 nPa of stellar wind."
+        ]
+      },
       "totalIncidentFlux": 0.0027892766226489687,
       "totalIncidentFluxMin": 0.0025404412650708065,
       "totalIncidentFluxMax": 0.0030693365602769925,
@@ -10028,6 +10383,23 @@
       "magneticField": {
         "strengthGauss": 0
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 83.7,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-uranus",
+        "confiningPressureNPa": 0.006783,
+        "notes": [
+          "Inside Uranus's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
       "totalIncidentFlux": 0.002788430305480507,
       "totalIncidentFluxMin": 0.0025397052517639454,
       "totalIncidentFluxMax": 0.003068361187846305,
@@ -10424,6 +10796,21 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 50,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.005424,
+        "notes": []
       },
       "totalIncidentFlux": 0.0027881419240587527,
       "totalIncidentFluxMin": 0.0025394540951180766,
@@ -10825,6 +11212,23 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 264.2,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-uranus",
+        "confiningPressureNPa": 0.9816,
+        "notes": [
+          "Inside Uranus's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
       },
       "totalIncidentFlux": 0.007602192384360561,
       "totalIncidentFluxMin": 0.0072811867744667965,
@@ -11262,6 +11666,25 @@
         "nominalGauss": 0.22346368715083798,
         "notes": [
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
+        ]
+      },
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 26.674,
+        "closedFieldRadii": 14.671,
+        "tailRadii": 533.47,
+        "dipoleTiltDeg": 53,
+        "dipoleOffsetRadii": 0.42,
+        "dipoleLongitudeDeg": 100,
+        "ordered": true,
+        "ovalColatDeg": 15.13,
+        "beltPeakRadii": 1.124,
+        "beltScaleRadii": 0.608,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.002207,
+        "notes": [
+          "The magnetopause stands 26.7 body radii out, where the field's pressure balances 0.00221 nPa of stellar wind."
         ]
       },
       "totalIncidentFlux": 0.0011346037706852744,
@@ -11736,6 +12159,23 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 106.9,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-neptune",
+        "confiningPressureNPa": 0.0223,
+        "notes": [
+          "Inside Neptune's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
       },
       "totalIncidentFlux": 0.0011345163566276399,
       "totalIncidentFluxMin": 0.0011152042817914546,
@@ -12317,6 +12757,21 @@
       "magneticField": {
         "strengthGauss": 0
       },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 251.1,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.001322,
+        "notes": []
+      },
       "totalIncidentFlux": 0.0006794788962074409,
       "totalIncidentFluxMin": 0.0004219696216339233,
       "totalIncidentFluxMax": 0.001166357632469714,
@@ -12740,6 +13195,21 @@
       },
       "magneticField": {
         "strengthGauss": 0
+      },
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 357.8,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.001322,
+        "notes": []
       },
       "totalIncidentFlux": 0.000679475273825047,
       "totalIncidentFluxMin": 0.00042196787746516187,

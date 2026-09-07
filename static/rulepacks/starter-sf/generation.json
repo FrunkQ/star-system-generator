@@ -114,7 +114,23 @@
     "belt_peak_dose_sv_per_day": 1451.1,
     "belt_scale_length_host_radii": 1.6324,
     "belt_min_host_field_gauss": 0.01,
-    "belt_inner_edge_scale_heights": 150
+    "belt_inner_edge_scale_heights": 150,
+    "wind_ref_pressure_npa_at_1au": 2.0,
+    "wind_activity_exponent": 1.0,
+    "wind_scale_min": 0.05,
+    "wind_scale_max": 100,
+    "ism_pressure_pa": 1.4e-13,
+    "magnetopause_compression_factor": 2.0,
+    "magnetotail_standoffs": 20,
+    "aurora_oval_l_fraction": 0.55,
+    "magnet_geometry_table": {
+      "none": { "tilt_deg": 0, "offset_radii": 0, "ordered": false },
+      "dipolar": { "tilt_deg": 10, "offset_radii": 0, "ordered": true },
+      "tilted": { "tilt_deg": 45, "offset_radii": 0.1, "ordered": true },
+      "off-centre": { "tilt_deg": 53, "offset_radii": 0.42, "ordered": true },
+      "multipolar": { "tilt_deg": 0, "offset_radii": 0, "ordered": false },
+      "induced": { "tilt_deg": 0, "offset_radii": 0, "ordered": true }
+    }
   },
   "distributions": {
     "star_types": {

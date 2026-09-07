@@ -6021,6 +6021,43 @@ request is written up in `docs/dev/hub-pairing-and-upload-request.md`. A CORS re
 indistinguishable from being offline, which is why the failure message names the hub's own page as
 the way through instead of attempting a diagnosis it cannot make.
 
+### PHY-40 PARENT-BEFORE-CHILD DOES NOT ORDER SIBLINGS, AND A WIND SOURCE IS A SIBLING
+BUCKET: ARCHITECTURE - an ordering rule that is written down, obeyed, and STILL not enough, because
+the dependency it was written for runs up the tree and this one runs across it.
+WHERE: `core/SystemProcessor.process` passes 2b and 2b2 (`processInterior`, `processMagnetosphere`);
+`physics/magnetosphere.ts` (`windPressurePa`, `confiningPressurePaOf`, `standoffRadiiOf`,
+`insideHostMagnetosphere`). Gate: `system/idempotence.test.ts`, and it is the ONLY thing that can see
+this class of fault.
+RULE: pass 2b commits every body's magnetic FIELD; pass 2b2 publishes the magnetosphere that field
+cuts out of the wind. They cannot be one pass. A magnetopause is solved against the WIND, the wind is
+summed over every LUMINOUS body in the system, and a luminous body's field is derived by 2b itself -
+so a body processed before its system's brown dwarf read that dwarf's field as ABSENT on the first
+run and as 0.42 G on the second. Within 2b the luminous bodies go FIRST for the same reason, which
+makes the wind fully determined for everybody else; the luminous set cannot depend on the rest,
+because nothing orbiting a star is inside a host's magnetosphere.
+WHY: the standing rule says "when one quantity depends on another body, iterate PARENT BEFORE CHILD",
+and that IS the rule that orders the induced-field question (a moon asks its host). It says nothing
+about a body that depends on an ARBITRARY OTHER BODY, and a wind source is exactly that: not an
+ancestor, not a descendant, just somewhere else in the system. Measured 2026-09-07 on
+`Testion-System.json`: 165 fields moved between pass one and pass two, every pressure in the system,
+and the four stars' inputs were IDENTICAL at the end of both passes - which is what made it look
+impossible until the sub-pass split was tried. A final-state comparison cannot see this; only
+re-processing can.
+BLAST: A STAR HAS NO MAGNETOPAUSE, AND THAT IS LOAD-BEARING RATHER THAN A DETAIL. `standoffRadiiOf`
+returns 0 for `roleHint === 'star'` because a star's boundary is its ASTROSPHERE, a different balance
+against a different pressure - and that single line is what stops `insideHostMagnetosphere` recursing
+up the parent chain into the wind that called it. A planet in the solar wind is not "inside the Sun's
+magnetosphere"; it is in the wind. Remove that early return and the recursion has no base case.
+BLAST: THE BOUNDARY IS SOLVED ON DEMAND, NOT READ BACK FROM A PUBLISHED BLOCK, and that is why the
+dynamo pass may ask for it one whole sub-pass before any magnetosphere exists. `confiningPressurePaOf`
++ `magnetopauseStandoffRadii` are the ONE answer; `deriveMagnetosphere` publishes what they return
+rather than computing its own, so the induced-field question and the drawn bubble can never disagree
+about where a magnetopause is.
+BLAST: NOTHING HERE MAY READ `beltInnerEdgeRadii` OFF A BODY. Radiation stamps that field in pass 2c,
+one pass LATER, so the belt torus's geometry comes from `beltInnerEdgeRadii(body, pack)` and
+`beltScaleLengthRadii(field, pack)` - the belt model's own pure functions - and never from the
+stamped value. Same reason `totalIncidentFlux` and `surfaceRadiation` are forbidden here.
+
 ### PHY-39 AN OCCLUDER CAN ONLY RE-RADIATE WHAT REACHED IT, AND ITS SKY SHARE IS NOT ITS BEARING SHARE
 BUCKET: DOMAIN + ARCHITECTURE - domain: two conservation faults with one shape, both of which
 publish energy from nowhere. Architecture: TWO COPIES OF ONE WALK, which is how they came to
