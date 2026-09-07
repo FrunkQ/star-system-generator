@@ -1545,3 +1545,130 @@ overlay set: the overlay bends with the picture on every one, and the preview in
 > pair move with the edge.
 >
 > **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM T — magnetospheres, drawn from the physics the engine already has (G82)
+
+> You are drawing MAGNETIC FIELDS for Star System Explorer — [[G82]]. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams push
+> daily, renumber on collision). Work in your OWN worktree (`git worktree add ../sse2-magnetospheres -b
+> wt/magnetospheres origin/beta`); the main checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never
+> ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` - especially
+> physics-drives-tags-drives-visuals, scattered constants are DATA, check against every anchor and fit to none,
+> "a quantity correct for its purpose can still be published as a lie" (say WHAT, WHERE, UNITS), and "nothing may
+> read a value a later pass writes" (`src/lib/system/idempotence.test.ts` enforces it); the [[G82]] row (the owner's
+> words and the accepted design); engine map **PHY-34** (an absolute anchor in every gate, never a ratio alone),
+> **RENDER-S53** (ONE body-look assembly for the holo, the gallery and the size comparison), **RENDER-S52** (true
+> scale binds no size law), **UI-C6** (a floating control marks itself `use:chrome`); the [[B17]], [[B22]], [[B27]]
+> and [[B28]] rows (the belt model and the tags that lied beside it).
+>
+> **THE OWNER'S WORDS (2026-09-07):** *"sounds like we have all the machinery in place - so not hard - mauve/purple/
+> lilac is the colour palette for magnetic fields so far (eg magnetars). We will have to have an option to turn
+> them on and off in player view setup too (default off) - controls under the belts and other turn on/off options.
+> But yeah I see it as another option like Hill Sphere/Zones in the GM view... if enabled it is honoured whenever
+> 3d images are shown and hidden in Low Power mode."*
+>
+> **WHAT THE ENGINE ALREADY HAS (verified at v3.0.361 - re-verify line numbers, the tree moves daily):**
+> - `src/lib/physics/magnetism.ts` - `deriveMagnetism` publishes `magnetism.source`, `.geometry` (the WORD:
+>   dipolar / tilted / off-centre / multipolar / induced), `.nominalGauss`, `.estimatedRangeGauss`;
+>   `magneticShieldingTag` emits `magnetic/dynamo|induced|tenuous|unshielded|anomalous` (`TENUOUS_GAUSS` = 0.05).
+>   Types at `src/lib/types.ts:202-232`; `axial_tilt_deg` at `:667`; the signed `rotation_period_hours`.
+> - `src/lib/core/SystemProcessor.ts:1088-1100` - `insideHostMagnetosphere` is a THRESHOLD (host > 50 Earth masses,
+>   or gassy, or ≥ 1 G), not a distance, and the pass iterates parent before child. Your standoff replaces the
+>   threshold with a distance: a moon is inside the host's bubble when its orbit radius < the host's standoff.
+> - `src/lib/physics/radiation.ts` ~195-235 - the belt law `dose(r) = D0·(B/B_ref)²·(Ω/Ω_ref)·exp(−r/λ)` with
+>   `λ = λ_ref·(B/B_ref)^(1/3)`, constants from the pack's `generation_parameters` (`beltConstants`, read from
+>   `static/rulepacks/starter-sf/generation.json`); `:417-424` `radiationShieldingMag` = min(0.99, (log10(B+0.01)+2)/3).
+>   DO NOT re-derive the belt: read its constants for the belt torus's peak and scale.
+> - `src/lib/physics/aurora.ts` - `auroraStrength` from pressure × `radiationShieldingMag` × flux; per-gas bands.
+> - `src/lib/physics/ionisingOutput.ts` - `hasHotCorona` (:176), `magneticFluxRelative` (:181), `ionisingFromField`
+>   (:192), `saturationFieldGauss` (:237): the star side's activity and wind character.
+> - Renderers: `src/lib/holo/bodyLook.ts:175 buildBodyLook` is the ONE look for the holo (`scene.ts:4300/4379`),
+>   the gallery (`galleryScene.ts:122`) and the size comparison (`comparisonScene.ts:276`) - a feature added there
+>   is on every 3D surface at once, which is the owner's "honoured whenever 3d images are shown".
+>   `bodyLook.ts:313-316` chooses the aurora source; `holo/bodyFeatures.ts:779-830` builds the aurora shell and
+>   `:795` fixes its ring centres at 0.15/0.85 of the texture - that is the line your oval colatitude replaces.
+>   `scene.ts:4423` is the axial-tilt quaternion the spin group carries: the dipole axis lives IN that group.
+>   `scene.ts:167/844 setAuroras` and `holo/HoloView.svelte:109 controller.setAuroras(drawsHeavy(s.auroras,
+>   $lowPower))` with `src/lib/lowPowerStore.ts:68 drawsHeavy` - copy this shape exactly for `setMagnetospheres`;
+>   it is what hides the feature in Low Power ([[G80]]).
+> - 2D: `src/lib/components/SystemVisualizer.svelte:51 showHillSpheres`, drawn at `~1560-1575` through
+>   `drawnRadiusAu` (the minimum-radius discipline that keeps a bubble visible at astronomical zoom) from
+>   `physics/twoBodyCoast.ts:247 hillSpheresAu`; the GM View popover at `SystemView.svelte:2755-2775`
+>   (state `:265`), broadcast to player views in `SYNC_VIEW_SETTINGS` (`SystemView.svelte:1985`,
+>   `broadcast.ts:14` - optional fields, older senders omit them).
+> - Player presets: `src/lib/player/presetTypes.ts:213 auroras`, `presets.ts:329`, the editor checkbox at
+>   `PlayerPresetEditor.svelte:906` under "Belts & rings" - the new `magnetospheres` checkbox goes beside it,
+>   DEFAULT OFF (an absent field is false, unlike `atmospheres`).
+> - Colour: `src/lib/styles/tokens.css:141 --star-magnetar: #800080` and `rendering/colors.ts:29` are the
+>   existing purple; add the field tokens beside them (mauve for the cage, lilac for the belts, the magnetar
+>   purple for an anomalous field) - tokens are DATA, never hex in a renderer.
+> - The card: `BodyAtmosphereTab.svelte:498-529` (the reading and the implied range), `catalogue/bodyFacts.ts:420`;
+>   the physics page `src/routes/physics/+page.svelte:894 <section id="magnetism">`.
+>
+> **THE DESIGN (accepted on the G82 row; do not re-litigate, do measure):** one dimensionless number sets the
+> shape - the standoff in body radii, `R_mp/R = (B² / (2 μ0 P_wind))^(1/6)` with B the equatorial surface field
+> and `P_wind` the wind ram pressure at the body: a pack reference pressure at 1 AU (Sol ≈ 2 nPa), scaled by the
+> star's activity/ionising fraction and by 1/d², summed over the system's stars. The tail is ~20 standoffs; the
+> nose is a paraboloid. The geometry WORD becomes numbers from a pack table: dipolar ≈ 10° tilt, 0 offset;
+> tilted/off-centre ≈ 50-60° and 0.3-0.5 R offset (Uranus 59°/0.3 R, Neptune 47°/0.55 R); multipolar = no
+> single axis. The aurora oval's colatitude follows the standoff (`sin²θ = 1/L_open`, L_open ≈ standoff): Earth
+> ~67° latitude, Jupiter within ~15° of the pole. Induced fields have no bubble of their own - the nose faces
+> the host's corotating plasma. A star's bubble is its ASTROSPHERE: wind ram pressure against an interstellar
+> pressure (one pack number), Sol 100-130 AU. The tilt's LONGITUDE is unobservable: seed it from the body id
+> and say so on the physics page. Estimates are labelled estimates. A GM's pinned 70 T field gets its enormous
+> bubble and a note - steer, never stop.
+>
+> **THE JOBS, in order, each its own commit and push to beta:**
+> 1. **Publish the numbers.** `src/lib/physics/magnetosphere.ts`: per body `magnetosphere: { shape: 'none' |
+>    'tenuous' | 'bubble' | 'induced', standoffRadii, tailRadii, dipoleTiltDeg, dipoleOffsetRadii, ovalColatDeg,
+>    beltPeakRadii?, upstream: 'star' | 'host' }`, and per star `astrosphereAu`. Runs AFTER magnetism and reads
+>    only what earlier passes wrote (field, luminosity, the star's activity) - NEVER `totalIncidentFlux`, which
+>    radiation writes later; the idempotence test is the gate for that. Constants in the pack
+>    (`generation_parameters`: `wind_ref_pressure_npa_at_1au`, `ism_pressure_pa`, the tilt/offset table per
+>    geometry word), read the way `beltConstants` reads its own. Replace the `insideHostMagnetosphere` threshold
+>    with the distance test. Gates, absolute (PHY-34): Mercury 1.4-1.6 R, Earth 9-11 R, Saturn 18-25 R, Jupiter
+>    45-90 R, Sol's astrosphere 100-130 AU, Earth's oval 65-72° latitude, Jupiter's 72-78°; every one seen red
+>    with the law replaced by a constant. The card shows standoff, tail and tilt with UNITS; the physics page's
+>    magnetism section gains the standoff law and the two honesty notes; a Documentation-debt line.
+> 2. **The 2D overlay.** A `Magnetospheres` checkbox beside Hill spheres in the GM View popover, carried in
+>    `SYNC_VIEW_SETTINGS` as an optional field; `SystemVisualizer` draws a shaded teardrop per body with a
+>    bubble - nose toward the upstream source at the standoff, width ~2 standoffs, tail ~20 - through the same
+>    `drawnRadiusAu` floor the Hill bubble uses, mauve at the Hill bubble's alpha; tenuous draws a faint nose
+>    only; induced a small bubble facing its host; unshielded nothing. The star's astrosphere is an unfilled
+>    line like the star's Hill limit, labelled. Gate: the teardrop's nose and tail in canvas px for Earth at a
+>    fixed zoom, absolute. Declarative enough to verify headlessly? No - it is a canvas: hand back the eyeball.
+> 3. **The aurora ovals onto the dipole.** `bodyFeatures.ts:795` takes its ring centre from `ovalColatDeg`; the
+>    shell sits in the spin group so it tilts with the dipole axis (job 4 adds the axis; here the oval moves to
+>    the right latitude). Gate: the texture's ring centre for Earth and Jupiter, absolute.
+> 4. **The 3D cage, on every 3D surface at once.** `buildBodyLook` gains a `magnetosphere` feature (add it to the
+>    FEATURE-INVENTORY spec that guards RENDER-S53): a translucent line cage of dipole L-shells (1.5 R to the
+>    standoff, a handful of shells, a dozen meridians), each line clipped by the nose paraboloid and swept into
+>    the tail along the upstream direction (the star's direction in the holo; −x in the gallery and the size
+>    comparison, which have no star); the dipole axis in the spin group, tilted by `dipoleTiltDeg` about a
+>    seeded longitude and offset by `dipoleOffsetRadii`, so Uranus's field tumbles once a day; belts as a faint
+>    lilac torus at the belt peak, alpha from the dose; multipolar drawn as a disordered bundle. Colour from the
+>    tokens by tag: dynamo mauve, induced dim lilac, anomalous the magnetar purple. `setMagnetospheres(on)` on
+>    the controller as `setAuroras` is; `HoloView.svelte` gates it with `drawsHeavy(s.magnetospheres, $lowPower)`;
+>    the preset field `magnetospheres?: boolean`, DEFAULT OFF, its checkbox beside Auroras; the GM holo follows
+>    the GM View checkbox. Budget: a few hundred segments per bubble, only for bodies in the region of
+>    interest; measure a frame with ten bubbles before and after (the [[G69]] frame-rate guard must not fire on
+>    Sol with the option on).
+> 5. **The astrosphere in 3D** (optional, last): a faint mauve shell at `astrosphereAu` at the system's
+>    outermost scale, unfilled, honouring the same switch.
+>
+> **TRAPS:** a canvas cannot be verified headlessly ([[E7]]) - reproduce the transform in a script and compare
+> NUMBERS, then hand back a thirty-second list; CRLF everywhere (measure each file's own ending; Python bytes,
+> never `sed -i` on MSYS); `npm run manifest` after every version bump; the two `tests/` fixtures are a baseline
+> - job 1 WILL change them (a new derived block on every body) and you commit them with the change ([[B137]]);
+> the stash stack is shared - WIP commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial
+> test is a known statistical flake, green alone is the accepted form; `broadcastContract.spec.ts` guards the
+> player payload - extend the contract, do not dodge it.
+>
+> **EYEBALL FOR THE OWNER:** Earth's bubble ten radii out with a tail; Jupiter's vast; Saturn's between;
+> Mercury a nose only; Uranus tumbling; Europa a small bubble facing Jupiter, not the Sun; the 2D teardrops
+> pointing at the star at every zoom; a player view with the option off shows nothing, on shows the cage on
+> the holo AND the size comparison, and Low Power hides it again; the CRT warp bends the cage with the picture.
+>
+> **Housekeeping:** as Stream Q's, word for word.

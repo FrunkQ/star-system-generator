@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.362 - 7th Sep 2026
+
+- Board only. Magnetospheres, drawn from the physics the engine already holds, are designed and briefed as a stream: a standoff from field against wind, a teardrop overlay beside Hill spheres in the GM view, a dipole cage on every 3D surface behind a player-view switch that is off by default and hidden in Low Power.
+
 ## v3.0.361 - 7th Sep 2026
 
 - The clock read-out on the canvas can be moved. It has a small grip on its left: drag it wherever it suits your screen and it stays there, keeping its distance from the nearest edge so it moves with that edge when the details pane opens or the window changes shape - exactly as the body picker, the time transport and the undo pill already do. Where you put it is remembered on this computer, not in the campaign, so it does not follow your maps about.
