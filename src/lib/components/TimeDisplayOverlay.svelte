@@ -27,7 +27,13 @@
   export let displayOverrideSec: bigint | null = null;
   export let masterOverrideSec: bigint | null = null;
 
-  const float = createFloatingControl('sse-time-display-float', { open: true, pinned: true });
+  // THE DEFAULTS ARE WHERE IT HAS ALWAYS SAT - top-left, 8px in, which is 4 from the stage's own
+  // 4px inset. Without them the very first settle INVENTS an edge from the geometry it happens to
+  // find, and on a narrow window a read-out nearly as wide as the screen is hard against both: the
+  // clock called itself a right-hand control and jumped to the far corner on the next wide screen.
+  const float = createFloatingControl('sse-time-display-float', {
+    open: true, pinned: true, ex: 'left', gx: 4, ey: 'top', gy: 4
+  });
 </script>
 
 <div

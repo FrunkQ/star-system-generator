@@ -67,9 +67,10 @@ describe('the clock read-out floats (G81)', () => {
   });
 
   it('a clock saved off the right of the canvas is pulled back INSIDE the stage, not merely on screen', async () => {
-    // dx 900 puts it at 1058 - on a 1200px window, so the old window-only clamp saw nothing wrong,
-    // and under the detail pane is exactly where it would have sat.
-    const { at, r } = mount({ dx: 900, dy: 0, open: true, pinned: true });
+    // Saved on a wide screen and opened on a narrow one: a 900px gap from the left edge puts it at
+    // 1054, which is ON SCREEN on a 1200px window - so the old window-only clamp saw nothing wrong -
+    // and squarely under the detail pane, which is exactly where it used to sit.
+    const { at, r } = mount({ dx: 900, dy: 0, open: true, pinned: true, ex: 'left', gx: 900 });
     vi.runAllTimers();
     await tick();
     expect(at().left).toBe(696); // stage right 900 - EDGE 4 - width 200

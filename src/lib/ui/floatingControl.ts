@@ -52,6 +52,18 @@ export interface FloatingState {
    * is something to undo) must be able to leave and rejoin without anyone re-pointing at it.
    */
   dock?: string;
+  /**
+   * Where this control sits inside its group: px from the group's top-left. Recorded when the group
+   * forms, and it is what holds a docked pair together - NOT a shared delta.
+   *
+   * THE MEMBERS DO NOT SHARE AN ANCHOR. The clock hangs off its stage's top-left, the undo pill off
+   * its CENTRE, the picker off a 50% of its own. When the box changes shape those anchors move by
+   * DIFFERENT amounts - narrowing the canvas by 260 px moved the pill 130 px and the clock not at
+   * all - so nudging every member by one delta preserves nothing. A group settles by placing each
+   * member ABSOLUTELY at the group's origin plus its own offset.
+   */
+  ox?: number;
+  oy?: number;
 }
 
 /** The five things the edge menu can say. One list, not five branches. (G81) */
@@ -130,9 +142,16 @@ interface Member {
   rect(): { left: number; top: number; right: number; bottom: number; width: number; height: number } | null;
   /** Move by a delta without re-settling: a group drag must not make each member settle itself. */
   nudge(mvx: number, mvy: number, persist: boolean): void;
-  /** Take the group's settled place and the group's edge, which every member stores identically. */
-  applySettle(mvx: number, mvy: number, edge: Partial<FloatingState>): void;
-  join(id: string | undefined): void;
+  /** Where this member sits inside its group, px from the group's top-left. */
+  offset(): { ox: number; oy: number };
+  /**
+   * Hand this member the group's edge and gap. It is NOT moved from here: it places ITSELF, in its
+   * own settle, from the same edge - which is the only way the answer comes out right, because a
+   * control's offset can only be turned into a position through ITS OWN anchor, and that anchor can
+   * only be read from a DOM box that this pass may already have written to.
+   */
+  shareEdge(edge: Partial<FloatingState>): void;
+  join(id: string | undefined, ox: number, oy: number): void;
 }
 
 const members = new Set<Member>();
@@ -205,6 +224,7 @@ export function createFloatingControl(
   }
 
   let clampTimer: ReturnType<typeof setTimeout> | null = null;
+  let redockTimer: ReturnType<typeof setTimeout> | null = null;
   /**
    * Re-settle once the DOM has caught up. A macrotask, NOT requestAnimationFrame: rAF is suspended
    * while the page is not painting (background tab, minimised window), and a control that opened
@@ -263,48 +283,85 @@ export function createFloatingControl(
     if (!rootEl || typeof window === 'undefined') return;
     const r = rootEl.getBoundingClientRect();
     if (!r.width && !r.height) return; // not laid out yet
-    // THE BOX THAT MUST STAY INSIDE THE BOUNDS IS THE GROUP'S, NOT THIS CONTROL'S. Undocked, the
-    // group is this control alone and every line below reduces to what it did before docking
-    // existed - one path, not two, which is why the A97 gates still pin this exactly.
+    // THE BOX THAT MUST STAY INSIDE THE BOUNDS IS THE GROUP'S, NOT THIS CONTROL'S - and it is built
+    // from the REMEMBERED OFFSETS and the members' live SIZES, never from where they happen to be.
+    // Positions drift (the anchors are not the same anchor); sizes do not lie. Undocked, the offsets
+    // are zero and every line below reduces to what it did before docking existed - one path, not
+    // two, which is why the A97 gates still pin this exactly.
     const group = groupMembers();
-    const u = unionOf(group) ?? { ...r, width: r.width, height: r.height };
+    const ox = s.ox ?? 0, oy = s.oy ?? 0;
+    let gw = ox + r.width, gh = oy + r.height;
+    for (const m of group) {
+      if (m === me) continue;
+      const mr = m.rect();
+      if (!mr) continue;
+      const o = m.offset();
+      gw = Math.max(gw, o.ox + mr.width);
+      gh = Math.max(gh, o.oy + mr.height);
+    }
     const b = bounds();
-    let left = u.left, top = u.top;
-    if (fromEdge && s.ex && s.gx !== undefined) left = s.ex === 'right' ? b.right - s.gx - u.width : b.left + s.gx;
-    if (fromEdge && s.ey && s.gy !== undefined) top = s.ey === 'bottom' ? b.bottom - s.gy - u.height : b.top + s.gy;
-    if (left + u.width > b.right) left = b.right - u.width;
-    if (top + u.height > b.bottom) top = b.bottom - u.height;
+    let left = r.left - ox, top = r.top - oy; // the group's origin, as this member sees it
+    if (fromEdge && s.ex && s.gx !== undefined) left = s.ex === 'right' ? b.right - s.gx - gw : b.left + s.gx;
+    if (fromEdge && s.ey && s.gy !== undefined) top = s.ey === 'bottom' ? b.bottom - s.gy - gh : b.top + s.gy;
+    if (left + gw > b.right) left = b.right - gw;
+    if (top + gh > b.bottom) top = b.bottom - gh;
     if (left < b.left) left = b.left;
     if (top < b.top) top = b.top;
-    const mvx = left - u.left, mvy = top - u.top;
-    const dx = s.dx + mvx, dy = s.dy + mvy;
-    const gl = left - b.left, gr = b.right - (left + u.width);
-    const gt = top - b.top, gb = b.bottom - (top + u.height);
+    // THROUGH THIS CONTROL'S OWN ANCHOR, and as an absolute assignment rather than an increment.
+    // Two settles in one pass both read a DOM box that neither has been repainted for, so an
+    // increment applies its correction twice: measured in the browser as a docked pill 120 px past
+    // where two passes had each already put it.
+    const ax = r.left - s.dx, ay = r.top - s.dy;
+    const dx = left + ox - ax, dy = top + oy - ay;
+    const mvx = dx - s.dx, mvy = dy - s.dy;
+    const gl = left - b.left, gr = b.right - (left + gw);
+    const gt = top - b.top, gb = b.bottom - (top + gh);
     // A CHOSEN edge is kept; otherwise the nearest one is re-read from where the control now is.
     // The gap is measured from whichever edge that turns out to be, which is the same expression
     // for both cases - for an unchosen axis the nearest edge IS the smaller of the two gaps.
-    const ex: 'left' | 'right' = s.fx && s.ex ? s.ex : gr < gl ? 'right' : 'left';
-    const ey: 'top' | 'bottom' = s.fy && s.ey ? s.ey : gb < gt ? 'bottom' : 'top';
-    const gx = Math.max(0, ex === 'right' ? gr : gl), gy = Math.max(0, ey === 'bottom' ? gb : gt);
+    //
+    // A TIE KEEPS WHAT IT HAD, and the gaps are floored at zero before they are compared. A control
+    // as wide as the box it is in is hard against BOTH edges and the "nearer" one is then decided
+    // by sub-pixel noise: the clock read-out on a 390px window measured 0.000 from the left and
+    // -0.125 from the right, called itself a right-hand control, and moved to the far corner the
+    // moment the window was made wide. Nothing in a headless gate sees that, because nothing there
+    // has a fractional width.
+    const gl0 = Math.max(0, gl), gr0 = Math.max(0, gr);
+    const gt0 = Math.max(0, gt), gb0 = Math.max(0, gb);
+    const ex: 'left' | 'right' =
+      s.fx && s.ex ? s.ex : gr0 < gl0 ? 'right' : gl0 < gr0 ? 'left' : s.ex ?? 'left';
+    const ey: 'top' | 'bottom' =
+      s.fy && s.ey ? s.ey : gb0 < gt0 ? 'bottom' : gt0 < gb0 ? 'top' : s.ey ?? 'top';
+    const gx = ex === 'right' ? gr0 : gl0, gy = ey === 'bottom' ? gb0 : gt0;
     const moved = Math.abs(mvx) >= SETTLED || Math.abs(mvy) >= SETTLED;
     const rehomed =
       ex !== s.ex || ey !== s.ey || s.gx === undefined || s.gy === undefined ||
       Math.abs(gx - s.gx) >= SETTLED || Math.abs(gy - s.gy) >= SETTLED;
-    if (moved || rehomed) {
-      set({ dx, dy, ex, gx, ey, gy });
-      // The group moves by the SAME delta and stores the SAME edge, so whichever member's resize
-      // observer fires next computes the identical answer and changes nothing. That is what keeps
-      // N members from settling N times against each other (UI-C17 BLAST) - and it is also how a
-      // control that has just joined is handed the group's edge instead of keeping its own.
-      for (const m of group) if (m !== me) m.applySettle(mvx, mvy, { ex, gx, ey, gy });
-    }
-    // A DOCK IS A CLAIM ABOUT WHERE THINGS ARE, so it has to be re-checked when they move. Controls
-    // change SIZE on their own - the pill widens, the picker opens, the transport expands - and a
-    // group whose members have grown apart is a group in name only.
+    if (moved || rehomed) set({ dx, dy, ex, gx, ey, gy });
+    // THE OTHERS ARE NOT MOVED FROM HERE - they are handed the group's EDGE and place themselves.
+    // Every member computes the same origin from the same edge (that is what makes it a group) and
+    // then converts it through its OWN anchor, which is the only anchor it can read correctly.
+    // Moving them from here instead cost two attempts: a shared delta preserves nothing when the
+    // anchors differ, and an absolute placement from here reads a DOM box this pass has already
+    // written to. A member that shares an edge re-settles itself, so nothing is left behind.
+    if (group.length > 1) for (const m of group) if (m !== me) m.shareEdge({ ex, gx, ey, gy });
+    // A DOCK IS A CLAIM ABOUT THE GROUP'S LAYOUT, AND IT IS TESTED AGAINST THAT - the remembered
+    // offsets and the live SIZES - never against where the members happen to be. Controls change
+    // size on their own (the pill widens, the picker opens, the transport expands) and a group whose
+    // members have grown apart is a group in name only; but a member whose ANCHOR has just slid out
+    // from under it is not adrift, it is one settle away from being put back. Asking the question of
+    // the positions undocked a perfectly good pair the moment the canvas changed width.
     if (s.dock && group.length > 1) {
-      const mine = me.rect();
-      if (mine && group.every((m) => m === me || apart(mine, m.rect() ?? mine) > UNSNAP)) {
-        set({ dock: undefined });
+      const mine = { left: ox, top: oy, right: ox + r.width, bottom: oy + r.height };
+      const touching = group.some((m) => {
+        if (m === me) return false;
+        const mr = m.rect();
+        if (!mr) return false;
+        const o = m.offset();
+        return apart(mine, { left: o.ox, top: o.oy, right: o.ox + mr.width, bottom: o.oy + mr.height }) <= UNSNAP;
+      });
+      if (!touching) {
+        set({ dock: undefined, ox: 0, oy: 0 });
         scheduleClamp(false); // its own edge and gap again, not the group's
       }
     }
@@ -340,7 +397,7 @@ export function createFloatingControl(
       const d = apart(mine, r);
       if (d > SNAP) continue;
       id = m.state().dock || id || 'd' + Math.random().toString(36).slice(2, 8);
-      m.join(id);
+      m.join(id, m.offset().ox, m.offset().oy); // the real offsets are written once, below
       if (d < best) {
         best = d;
         snapX = mine.left - r.right >= 0 ? -(mine.left - r.right) : (r.left - mine.right >= 0 ? r.left - mine.right : 0);
@@ -348,8 +405,23 @@ export function createFloatingControl(
       }
     }
     if (id === s.dock && !snapX && !snapY) return;
-    if (id !== s.dock) set({ dock: id });
     if (snapX || snapY) set({ dx: s.dx + snapX, dy: s.dy + snapY });
+    if (id !== s.dock) set({ dock: id });
+    // WHERE EVERYONE SITS IN THE GROUP IS RECORDED HERE, once, from the boxes as dropped - including
+    // this control's own snap, which is why the snap is applied first. From now on the group is laid
+    // out from these offsets and not from wherever the members drift to.
+    if (id) {
+      const joined = [me, ...[...members].filter((m) => m !== me && m.key !== storageKey && m.stage() === stageEl && (m.state().dock === id) && m.rect())];
+      const boxes = joined.map((m) => m.rect()!).filter(Boolean);
+      const snapped = { left: mine.left + snapX, top: mine.top + snapY };
+      const originX = Math.min(snapped.left, ...boxes.slice(1).map((r) => r.left));
+      const originY = Math.min(snapped.top, ...boxes.slice(1).map((r) => r.top));
+      set({ ox: snapped.left - originX, oy: snapped.top - originY });
+      for (let i = 1; i < joined.length; i++) {
+        joined[i].join(id, boxes[i].left - originX, boxes[i].top - originY);
+      }
+    }
+    scheduleClamp(false); // the group is a different box now, and its edge is the group's
   }
 
   const me: Member = {
@@ -364,8 +436,13 @@ export function createFloatingControl(
         : null;
     },
     nudge: (mvx, mvy, persist) => set({ dx: s.dx + mvx, dy: s.dy + mvy }, persist),
-    applySettle: (mvx, mvy, edge) => set({ dx: s.dx + mvx, dy: s.dy + mvy, ...edge }),
-    join: (id) => { if (s.dock !== id) set({ dock: id }); }
+    offset: () => ({ ox: s.ox ?? 0, oy: s.oy ?? 0 }),
+    shareEdge: (edge) => {
+      if (edge.ex === s.ex && edge.gx === s.gx && edge.ey === s.ey && edge.gy === s.gy) return;
+      set(edge);
+      scheduleClamp(true); // now place yourself from it, with your own anchor
+    },
+    join: (id, ox, oy) => set({ dock: id, ox, oy })
   };
 
   const root = (node: HTMLElement) => {
@@ -375,15 +452,30 @@ export function createFloatingControl(
     // alone (`data-float` on <html>, skins.css) can find every one without anyone keeping a list -
     // the same shape as UI-C6's `use:chrome`. A host added next month is covered because it floats.
     node.classList.add('sse-float');
-    stageEl = options.stage ? options.stage(node) : nearestClippingAncestor(node);
+    let ro: ResizeObserver | null = null;
+    /**
+     * THE STAGE IS RE-RESOLVED, NOT CAPTURED ONCE. The shell swaps its structure at the tablet and
+     * phone breakpoints, so the nearest ancestor that clips this control is not the same element on
+     * a narrow window as on a wide one - and a control still observing the box it had at mount is
+     * bounded by a node that is no longer between it and the screen. FOUND IN THE BROWSER: the
+     * clock kept a 439 px gap from a right edge that had moved 300 px, because the observer was
+     * watching the wrong element and nothing fired.
+     */
+    const resolveStage = () => {
+      const next = options.stage ? options.stage(node) : nearestClippingAncestor(node);
+      if (next === stageEl && ro) return;
+      stageEl = next;
+      ro?.disconnect();
+      ro = null;
+      if (stageEl && typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => scheduleClamp(true));
+        ro.observe(stageEl);
+      }
+    };
     // The box changes shape without the window doing so - a detail pane opening narrows the canvas
     // and would drag a centre-anchored control with it. Re-settle from the remembered edge then.
-    const onResize = () => settle(true);
-    let ro: ResizeObserver | null = null;
-    if (stageEl && typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => scheduleClamp(true));
-      ro.observe(stageEl);
-    }
+    const onResize = () => { resolveStage(); settle(true); };
+    resolveStage();
     // Capture phase: the control must put itself away even when the thing being touched stops
     // propagation for its own reasons (canvas gestures do exactly that).
     document.addEventListener('pointerdown', onOutside, true);
@@ -394,6 +486,7 @@ export function createFloatingControl(
       destroy() {
         members.delete(me);
         if (clampTimer !== null) { clearTimeout(clampTimer); clampTimer = null; }
+        if (redockTimer !== null) { clearTimeout(redockTimer); redockTimer = null; }
         document.removeEventListener('pointerdown', onOutside, true);
         window.removeEventListener('resize', onResize);
         ro?.disconnect();
@@ -474,10 +567,18 @@ export function createFloatingControl(
       // drag but a flick that ENDS at the edge can stop just past it. One authoritative correction
       // on release, against a settled rect (and it persists again if it moves anything) - and the
       // nearest edge is re-read from where the control was LEFT, never from where it was.
-      // Docking is decided HERE and not per frame: a control dragged past a neighbour would
-      // otherwise snap to it in passing, and the GM's drop is the thing that means something.
-      if (dragged) redock();
       scheduleClamp(false);
+      // DOCKING IS DECIDED AFTER THE SETTLE, IN A LATER MACROTASK, AND BOTH HALVES OF THAT MATTER.
+      // Not per frame, or a control dragged PAST a neighbour snaps to it in passing - the GM's drop
+      // is the thing that means something. And not synchronously here either: the offset this drag
+      // just wrote reaches the DOM as a Svelte microtask, so `getBoundingClientRect` at this point
+      // still returns the box the control had BEFORE the drag. MEASURED IN THE BROWSER: a pill
+      // dropped 5.75 px from the clock measured itself 120.75 px away - its own starting distance -
+      // and nothing ever docked. Same trap as the in-drag clamp one frame behind (UI-C17).
+      if (dragged) {
+        if (redockTimer !== null) clearTimeout(redockTimer);
+        redockTimer = setTimeout(() => { redockTimer = null; redock(); }, 0);
+      }
     };
 
     node.addEventListener('pointerdown', down);
@@ -522,10 +623,15 @@ export function createFloatingControl(
     undock: () => {
       edgeMenu.set(null);
       if (!s.dock) return;
-      set({ dock: undefined });
+      // A GROUP OF ONE IS NOT A GROUP. Leaving a pair leaves the other member holding a group id
+      // with nobody in it - harmless to the layout, and exactly the kind of state that is still
+      // there months later when a third control lands beside it and inherits a phantom.
+      const left = groupMembers().filter((m) => m !== me);
+      if (left.length === 1) left[0].join(undefined, 0, 0);
+      set({ dock: undefined, ox: 0, oy: 0 });
       // IT KEEPS THE GROUP'S EDGE AND GAP UNTIL IT IS TOLD OTHERWISE, and those were measured from
-      // the UNION - so a control leaving a pair would inherit its neighbour's distance from the
-      // wall and the two would settle on top of each other. `settle(false)` re-reads its own.
+      // the whole GROUP - so a control leaving a pair would inherit its neighbour's distance from
+      // the wall and the two would settle on top of each other. `settle(false)` re-reads its own.
       scheduleClamp(false);
     },
     didDrag: () => { const v = dragged; dragged = false; return v; }

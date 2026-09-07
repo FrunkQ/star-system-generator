@@ -18,7 +18,7 @@ const KEY = 'test-floating-control';
 const STAGE: R = { left: 150, top: 0, width: 750, height: 700 }; // a canvas right of a 150px rail
 const SIZE = { width: 200, height: 40 };
 
-function mount(opts: { anchor: { x: number; y: number }; stage: R | null; saved?: Record<string, unknown>; explicitStage?: boolean }) {
+function mount(opts: { anchor: { x: number; y: number }; stage: R | null; saved?: Record<string, unknown>; explicitStage?: boolean; size?: { width: number; height: number } }) {
   localStorage.removeItem(KEY);
   if (opts.saved) localStorage.setItem(KEY, JSON.stringify(opts.saved));
   const stageEl = document.createElement('div');
@@ -33,7 +33,8 @@ function mount(opts: { anchor: { x: number; y: number }; stage: R | null; saved?
   const options = opts.explicitStage === false ? {} : { stage: () => (opts.stage ? stageEl : null) };
   const ctl = createFloatingControl(KEY, {}, options);
   // The rect FOLLOWS the offset, the way a translated element's does.
-  node.getBoundingClientRect = () => rect({ left: opts.anchor.x + get(ctl).dx, top: opts.anchor.y + get(ctl).dy, ...SIZE });
+  const size = opts.size ?? SIZE;
+  node.getBoundingClientRect = () => rect({ left: opts.anchor.x + get(ctl).dx, top: opts.anchor.y + get(ctl).dy, ...size });
   const action = ctl.root(node);
   return { ctl, action, node, stageEl, setStage: (r: R) => { stageRect = r; } };
 }
@@ -131,6 +132,29 @@ describe('floating control: bounded by its stage, anchored to its nearest edge (
     expect(s.ex).toBe('left');
     expect(s.gx).toBe(42); // 196 - 154
     grip.destroy();
+    action.destroy();
+  });
+
+  it('the stage is RE-RESOLVED on a resize, because the shell swaps which box clips', () => {
+    // FOUND IN THE BROWSER. The app's structure is not the same at every width, so the nearest
+    // ancestor that clips a control on a wide window is a different ELEMENT on a narrow one. A
+    // control still watching the box it was given at mount is bounded by a node that is no longer
+    // between it and the screen - and no observer fires when the real box changes.
+    const anchor = { x: 100, y: 60 };
+    const { ctl, action, stageEl, node } = mount({ anchor, stage: STAGE, explicitStage: false });
+    vi.runAllTimers();
+    expect(at(ctl, anchor).left).toBe(154); // the original stage: 150 + 4
+
+    // The shell re-arranges: a NEW element, nearer the control, becomes the one that clips it.
+    const inner = document.createElement('div');
+    inner.style.overflow = 'hidden';
+    inner.getBoundingClientRect = () => rect({ left: 500, top: 0, width: 300, height: 700 });
+    stageEl.appendChild(inner);
+    inner.appendChild(node);
+    expect(nearestClippingAncestor(node)).toBe(inner);
+
+    window.dispatchEvent(new Event('resize'));
+    expect(at(ctl, anchor).left, 'bounded by the box that clips it NOW: 500 + 4').toBe(504);
     action.destroy();
   });
 
@@ -233,6 +257,29 @@ describe('an explicit edge overrides the nearest-edge guess (G81)', () => {
     action.destroy();
   });
 
+  it('a control as wide as its box keeps the edge it had: a tie is not decided by a sub-pixel', () => {
+    // FOUND IN THE BROWSER, NOT HERE. The clock read-out is 382.125 px wide, and on a 390 px window
+    // it is hard against both edges: 0.000 from the left and -0.125 from the right. The old rule
+    // read that as "nearer the right", so the moment the window was made wide the clock left the
+    // top-left corner it has lived in since it was written and hugged the far edge instead.
+    // Nothing in a headless gate had a fractional width, so nothing here could see it.
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true });
+    const anchor = { x: 8, y: 8 };
+    const size = { width: 382.125, height: 48 };
+    const { ctl, action } = mount({ anchor, stage: null, size });
+    vi.runAllTimers();
+    expect(at(ctl, anchor).left, 'clamped hard against both edges').toBe(4);
+    expect(get(ctl).ex, 'a tie keeps what it had, and a fresh control is left-handed').toBe('left');
+    expect(get(ctl).gx).toBe(0);
+
+    // The window is made wide. A LEFT-hand control stays where it is; the sub-pixel verdict would
+    // have sent it to 893.875 instead.
+    Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true });
+    window.dispatchEvent(new Event('resize'));
+    expect(at(ctl, anchor).left, 'still in its corner').toBe(4);
+    action.destroy();
+  });
+
   it('a right-click on a handle opens the menu and never starts a drag', () => {
     const anchor = { x: 300, y: 60 };
     const { ctl, action, node } = mount({ anchor, stage: STAGE });
@@ -320,8 +367,13 @@ function pair(opts: { a: number; b: number; stage?: R }) {
     const node = document.createElement('div');
     stageEl.appendChild(node);
     const ctl = createFloatingControl(key, {}, { stage: () => stageEl });
-    node.getBoundingClientRect = () => rect({ left: x + get(ctl).dx, top: 60 + get(ctl).dy, ...SIZE });
-    return { ctl, node, anchor: { x, y: 60 }, action: ctl.root(node) };
+    // The anchor is MUTABLE, because a host's anchor really does move on its own: the undo pill
+    // hangs off its stage's CENTRE, so narrowing the canvas by 260 shifts it 130 with no drag and
+    // no settle. `shift` is that happening.
+    const anchor = { x, y: 60 };
+    const size = { ...SIZE };
+    node.getBoundingClientRect = () => rect({ left: anchor.x + get(ctl).dx, top: anchor.y + get(ctl).dy, ...size });
+    return { ctl, node, anchor, size, action: ctl.root(node) };
   };
   const a = make(KEY_A, opts.a);
   const b = make(KEY_B, opts.b);
@@ -365,6 +417,25 @@ describe('two controls dock, move as one, and settle as one box (G81)', () => {
     return p;
   }
 
+  it('the dock is decided AFTER the drop has reached the DOM, not during pointerup', () => {
+    // MEASURED IN THE BROWSER, and invisible here until it was: the offset a drag writes reaches the
+    // DOM as a Svelte microtask, so a `getBoundingClientRect` taken inside `pointerup` still returns
+    // the box the control had BEFORE the drag. A pill dropped 5.75 px from the clock measured itself
+    // 120.75 px away - its own starting distance - and nothing ever docked. So the check runs in a
+    // later macrotask, and this pins that ordering: nothing is docked the instant the finger lifts.
+    const p = pair({ a: 400, b: 614 });
+    vi.runAllTimers();
+    const grip = p.b.ctl.grip(p.b.node);
+    p.b.node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
+    p.b.node.dispatchEvent(new MouseEvent('pointermove', { clientX: 494, clientY: 300 }));
+    p.b.node.dispatchEvent(new MouseEvent('pointerup', { clientX: 494, clientY: 300 }));
+    expect(get(p.b.ctl).dock, 'not yet - the DOM has not caught up').toBeUndefined();
+    vi.runAllTimers();
+    expect(get(p.b.ctl).dock, 'and now it has').toBeTruthy();
+    grip.destroy();
+    p.done();
+  });
+
   it('dropping a control within 12 px of another snaps the edges together and docks them', () => {
     const p = docked();
     expect(at(p.b.ctl, p.b.anchor).left, 'snapped the last 8 px so the edges meet').toBe(600);
@@ -384,13 +455,47 @@ describe('two controls dock, move as one, and settle as one box (G81)', () => {
     p.done();
   });
 
-  it('one grip moves BOTH, by exactly the drag delta', () => {
+  it('one grip moves BOTH, by exactly the drag delta, DURING the drag and not after it', () => {
     const p = docked();
     expect(at(p.a.ctl, p.a.anchor).left).toBe(400);
     expect(at(p.b.ctl, p.b.anchor).left).toBe(600);
-    drag(p.a, -120);
+
+    // Mid-gesture, with no settle yet: the partner has to be following FRAME BY FRAME. Left to the
+    // settle on release it would sit still while the other was dragged across the canvas and then
+    // jump - which is not "moving as one", it is catching up.
+    const grip = p.a.ctl.grip(p.a.node);
+    p.a.node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
+    p.a.node.dispatchEvent(new MouseEvent('pointermove', { clientX: 380, clientY: 300 }));
+    expect(at(p.a.ctl, p.a.anchor).left, 'the dragged one').toBe(280);
+    expect(at(p.b.ctl, p.b.anchor).left, 'and the far member, already there').toBe(480);
+    p.a.node.dispatchEvent(new MouseEvent('pointerup', { clientX: 380, clientY: 300 }));
+    vi.runAllTimers();
     expect(at(p.a.ctl, p.a.anchor).left).toBe(280);
-    expect(at(p.b.ctl, p.b.anchor).left, 'the far member came too, to the pixel').toBe(480);
+    expect(at(p.b.ctl, p.b.anchor).left, 'and the settle left them where they were').toBe(480);
+    grip.destroy();
+    p.done();
+  });
+
+  it('a member whose ANCHOR moves under it is put back, because the members do not share one', () => {
+    // MEASURED IN THE BROWSER, and the reason a docked pair came apart there. The clock hangs off
+    // its stage's top-left and the undo pill off its CENTRE: narrowing the canvas moved the pill
+    // 130 px and the clock not at all, so a group held together by ONE shared delta was already
+    // broken by the time anything settled - and the settle, seeing its own member exactly where it
+    // wanted it, moved nothing. A group is laid out from remembered OFFSETS and each member is
+    // placed absolutely, so the one that drifted is put back.
+    const p = docked();
+    expect(at(p.b.ctl, p.b.anchor).left).toBe(600);
+    p.b.anchor.x += 80; // the pill's centre anchor slides out from under it
+    expect(at(p.b.ctl, p.b.anchor).left, 'adrift, and nothing has told it so').toBe(680);
+    window.dispatchEvent(new Event('resize'));
+    vi.runAllTimers();
+    expect(at(p.b.ctl, p.b.anchor).left, 'put back beside its partner').toBe(600);
+    expect(at(p.a.ctl, p.a.anchor).left, 'which did not move').toBe(400);
+    // AND THE PAIR IS STILL A PAIR. 80 px is well past the 24 px tolerance, so a drift check that
+    // asked where the members ARE - rather than what the group's layout SAYS - would have dissolved
+    // the group on the way past. That is what happened in the browser.
+    expect(get(p.a.ctl).dock, 'still docked').toBeTruthy();
+    expect(get(p.b.ctl).dock).toBe(get(p.a.ctl).dock);
     p.done();
   });
 
@@ -421,6 +526,32 @@ describe('two controls dock, move as one, and settle as one box (G81)', () => {
     p.done();
   });
 
+  it('a member that has GROWN APART from the group leaves it on its own', () => {
+    // This is the 24 px, and its real job. Controls change size by themselves - the undo pill
+    // widens on its handle, the picker opens, the transport expands - so a pair that was flush can
+    // stop being adjacent with nobody touching either of them. The question is asked of the group's
+    // LAYOUT (the offsets and the live sizes), never of where the members happen to be: a member
+    // whose anchor has just slid out from under it is one settle away from being put back, and
+    // asking the positions undocked a perfectly good pair the moment the canvas changed width.
+    const p = docked();
+    expect(get(p.a.ctl).dock).toBeTruthy();
+    p.a.size.width = 100; // A shrinks: it now ends 100 px short of where B's offset begins
+    window.dispatchEvent(new Event('resize'));
+    vi.runAllTimers();
+    expect(get(p.a.ctl).dock, '100 px of daylight is well past the 24 px tolerance').toBeUndefined();
+    expect(get(p.a.ctl).ox).toBe(0);
+    p.done();
+  });
+
+  it('a member that shrinks only a LITTLE stays docked', () => {
+    const p = docked();
+    p.a.size.width = 180; // 20 px of daylight - inside the tolerance
+    window.dispatchEvent(new Event('resize'));
+    vi.runAllTimers();
+    expect(get(p.a.ctl).dock, '20 px is still docked').toBeTruthy();
+    p.done();
+  });
+
   it('undocking restores INDEPENDENT settling, and neither inherits the union\'s gap', () => {
     const p = docked();
     p.a.ctl.undock();
@@ -436,6 +567,17 @@ describe('two controls dock, move as one, and settle as one box (G81)', () => {
     vi.runAllTimers();
     expect(at(p.a.ctl, p.a.anchor).left, 'a left-hand control stays put').toBe(400);
     expect(at(p.b.ctl, p.b.anchor).left, 'B is a right-hand control alone now: 696 - 96 - 200').toBe(400);
+    p.done();
+  });
+
+  it('leaving a PAIR releases the other member too - a group of one is not a group', () => {
+    const p = docked();
+    const id = get(p.a.ctl).dock;
+    expect(id).toBeTruthy();
+    p.a.ctl.undock();
+    vi.runAllTimers();
+    expect(get(p.a.ctl).dock).toBeUndefined();
+    expect(get(p.b.ctl).dock, 'and B is not left holding an empty group').toBeUndefined();
     p.done();
   });
 

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.375 - 7th Sep 2026
+
+- Four fixes to the floating chrome, all found by driving the real app rather than the tests. A docked pair no longer comes apart when the canvas changes width - the controls do not all hang off the same corner, so keeping them together needed more than moving them by the same amount. Dropping one control against another now actually docks them (the check was reading where the control had been, not where it was let go). The clock read-out starts in its old top-left corner and stays there instead of jumping to the far edge on a wide screen. And a control is bounded by whatever is clipping it NOW, which is not always the same thing it was when the window was a different shape.
+
 ## v3.0.374 - 7th Sep 2026
 
 - The 3D system view stops drawing when there is nothing to draw. With the clock paused, the camera still and low power on, it now sits idle instead of redrawing the same picture sixty times a second - which is most of what was flattening a laptop battery on a map nobody was touching. It still checks once a second regardless, so nothing can quietly go stale, and anything at all that moves - a running clock, a nudge of the camera, a glowing aurora, a drifting cloud - brings it straight back to full speed.
