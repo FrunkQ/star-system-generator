@@ -166,7 +166,7 @@ real craft on the 3D map, with a drive plume scaled to how hard it is burning.
 **Undo and redo.** Every step is named, the last twenty survive a reload, and none of it leaves the
 room in a shared map.
 
-**A fresh face for the GM view.** Four interface skins (including a colour-blind-friendly one) and a
+**A fresh face for the GM view.** Six interface skins (including a colour-blind-friendly one and a light one) and a
 skin editor to make your own; click any unit to swap it, and every reading of that kind on that body
 type follows, with your players inheriting your choice.
 

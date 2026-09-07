@@ -11,14 +11,16 @@
 //    while the user's /palette overrides, being inline styles, still beat everything.
 import { writable, get } from 'svelte/store';
 
-export type BuiltinSkinId = 'modern' | 'classic' | 'colourblind' | 'nebula';
+export type BuiltinSkinId = 'modern' | 'classic' | 'colourblind' | 'nebula' | 'daylight' | 'terminal';
 export type SkinId = string; // a BuiltinSkinId, or 'custom:<id>'
 
 export const SKINS: { id: BuiltinSkinId; name: string; blurb: string }[] = [
   { id: 'modern', name: 'Modern', blurb: 'Compact type, light-blue highlights, lighter panel grey' },
   { id: 'classic', name: 'Classic', blurb: 'The original look — warm orange on near-black' },
   { id: 'colourblind', name: 'Clarity', blurb: 'Colour-blind-friendly chrome (Okabe–Ito), higher contrast' },
-  { id: 'nebula', name: 'Nebula', blurb: 'Colourful — indigo rail, deep-blue panels, orchid accent' }
+  { id: 'nebula', name: 'Nebula', blurb: 'Colourful — indigo rail, deep-blue panels, orchid accent' },
+  { id: 'daylight', name: 'Daylight', blurb: 'Light — paper surfaces, dark type, teal accent, for a bright room' },
+  { id: 'terminal', name: 'Terminal', blurb: 'Amber phosphor on black — a console look, compact type' }
 ];
 
 export interface CustomSkin {

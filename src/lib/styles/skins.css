@@ -11,6 +11,11 @@
               chrome that complements the starmap's black rather than matching it.
    - classic: the shipped look — wider type, warm orange on near-black. No overrides;
               the tokens.css defaults ARE this skin, so it stays pixel-familiar.
+   - colourblind ("Clarity"), nebula: below.
+   - daylight: the first LIGHT skin — paper surfaces, dark type, a teal accent, classic
+              (larger) type. For a bright room or a projector that washes out a dark UI.
+   - terminal: amber phosphor on black, compact type — a console look for the CRT crowd.
+   Every skin is held to the contrast floors in skins.spec.ts (measured off the first four).
    ============================================================================= */
 
 :root[data-skin='modern'] {
@@ -95,25 +100,85 @@
   --link: #7fd4ff;
 }
 
-/* ---------- density: the compact layer (modern + nebula) ----------
+/* ---------- daylight: the light one ----------
+   The only skin where the chrome is brighter than the starmap. Muted and faint text are DARK
+   greys here — a pale "muted" is the classic light-theme fault and the contrast gate catches it.
+   Family edges and status colours are darkened to keep their meaning on white; warning drops its
+   yellow, which is unreadable on paper, for an amber that is not. */
+:root[data-skin='daylight'] {
+  --bg-app: #f3f1ec;
+  --bg-panel: #fbfaf7;
+  --bg-control: #e9e5dc;
+  --bg-control-hover: #dcd6c9;
+  --bg-card: #f5f3ee;
+  --bg-rail: #e8e4da;
+  --bg-side: #efece5;
+  --border: #c6bfb0;
+  --border-soft: #ddd7cb;
+  --text: #1d1a14;
+  --text-muted: #5a5547;
+  --text-faint: #8a8375;
+
+  --accent: #0b6a73;        /* deep teal; white on it reads at 6:1 */
+  --accent-hover: #0f8792;
+  --accent-soft: #5fb3ba;
+  --on-accent: #ffffff;
+  --link: #084a80;         /* deep blue; 7.9:1 on the panel */
+  --status-ok: #2e7d32;
+  --status-bad: #c62828;
+  --warning: #a35a00;
+
+  --group-orbit: #9a6d00;
+  --group-climate: #b0492a;
+  --group-air: #2258c9;
+  --group-life: #0f7a55;
+  --group-hazard: #c9163c;
+  --group-infra: #6d2fc9;
+}
+
+/* ---------- terminal: amber phosphor ----------
+   Warm black surfaces, amber accent, off-white-amber type. Monochrome by intent; the family
+   edges keep their own colours because they carry meaning (UI-C10). Compact density, below. */
+:root[data-skin='terminal'] {
+  --bg-app: #070604;
+  --bg-panel: #110d06;
+  --bg-control: #1a1409;
+  --bg-control-hover: #261d0d;
+  --bg-card: #17110a;
+  --bg-rail: #0b0905;
+  --bg-side: #0a0805;
+  --border: #3d2f12;
+  --border-soft: #241b0b;
+  --text: #f3dfb0;
+  --text-muted: #c39a52;
+  --text-faint: #7d6335;
+
+  --accent: #ffb000;        /* phosphor amber */
+  --accent-hover: #ffc63a;
+  --accent-soft: #ffdd8a;
+  --on-accent: #1a1200;
+  --link: #ffd166;
+}
+
+/* ---------- density: the compact layer (modern + nebula + terminal) ----------
    `html[data-skin] body …` outranks Svelte's scoped selectors without !important. Text
    tightens everywhere; control hit-areas only tighten for a mouse — the coarse-pointer
-   44px floors (touch-overrides.css, UI-C6) stay honoured. The colourblind skin keeps the
-   classic (larger) type on purpose. */
-html:is([data-skin='modern'], [data-skin='nebula']) body .detail-item { padding: 0.45em 0.55em; }
-html:is([data-skin='modern'], [data-skin='nebula']) body .detail-item .label { font-size: 0.74em; }
-html:is([data-skin='modern'], [data-skin='nebula']) body .detail-item .value { font-size: 1em; }
-html:is([data-skin='modern'], [data-skin='nebula']) body .tab-panel { font-size: 0.94em; }
-html:is([data-skin='modern'], [data-skin='nebula']) body .form-group label { font-size: 0.88em; }
-html:is([data-skin='modern'], [data-skin='nebula']) body .sub-label { font-size: 0.78em; }
-html:is([data-skin='modern'], [data-skin='nebula']) body .spec-item { font-size: 0.94em; }
-html:is([data-skin='modern'], [data-skin='nebula']) body .read-only-row { font-size: 0.94em; }
+   44px floors (touch-overrides.css, UI-C6) stay honoured. The colourblind and daylight skins
+   keep the classic (larger) type on purpose. */
+html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .detail-item { padding: 0.45em 0.55em; }
+html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .detail-item .label { font-size: 0.74em; }
+html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .detail-item .value { font-size: 1em; }
+html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .tab-panel { font-size: 0.94em; }
+html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .form-group label { font-size: 0.88em; }
+html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .sub-label { font-size: 0.78em; }
+html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .spec-item { font-size: 0.94em; }
+html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .read-only-row { font-size: 0.94em; }
 
 @media (pointer: fine) {
-  html:is([data-skin='modern'], [data-skin='nebula']) body .tab-panel input[type='number'],
-  html:is([data-skin='modern'], [data-skin='nebula']) body .tab-panel select,
-  html:is([data-skin='modern'], [data-skin='nebula']) body .form-group input[type='number'],
-  html:is([data-skin='modern'], [data-skin='nebula']) body .form-group select {
+  html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .tab-panel input[type='number'],
+  html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .tab-panel select,
+  html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .form-group input[type='number'],
+  html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body .form-group select {
     padding: 3px 6px;
     font-size: 0.92em;
   }

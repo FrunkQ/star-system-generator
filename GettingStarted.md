@@ -173,7 +173,9 @@ did not draw yourself. The About box credits whichever image is actually on scre
 **Settings > System > Appearance** picks an **interface skin** for this device: **Modern** (the
 default — compact type, light-blue highlights), **Classic** (the original warm orange on
 near-black), **Clarity** (colour-blind-friendly chrome on the Okabe–Ito palette, with contrast
-turned up) and **Nebula** (indigo rail, deep-blue panels, orchid accent). **Make your own** opens a
+turned up), **Nebula** (indigo rail, deep-blue panels, orchid accent), **Daylight** (the light one:
+paper surfaces and dark type, for a bright room) and **Terminal** (amber phosphor on black, a console
+look). **Make your own** opens a
 skin editor: pick a base, name it, and repaint twelve chrome colours with the app itself as the live
 preview. Your skins live on your device and sit in the same picker.
 

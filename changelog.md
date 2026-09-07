@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.365 - 7th Sep 2026
+
+- Two more interface skins under Settings > System > Appearance: Daylight, the first light skin (paper surfaces, dark type and a teal accent, for a bright room or a projector that washes out a dark interface), and Terminal (amber phosphor on black, a console look with compact type). Every skin is now checked for readable contrast.
+
 ## v3.0.364 - 6th Sep 2026
 
 - Fixed: on the Size comparison, a ringed planet leaned over but its rings did not - they ran flat across the planet instead of following its equator, which is not how any ringed world looks. The rings now sit in the planet's own equatorial plane, so Saturn leans and its rings lean with it, and Uranus lies on its side with its rings round it. How far open the rings are was already right and has not changed.
