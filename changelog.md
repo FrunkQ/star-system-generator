@@ -2,6 +2,17 @@
 
 All notable changes are listed here:
 
+## v3.0.387 - 7th Sep 2026
+
+- Fixed, both spotted on screen: a magnetosphere no longer paints a purple wash across the view, and it no
+  longer stops shrinking when you zoom out. The wash was the far wall of the body's own outer boundary seen
+  from inside it - Mercury's bubble is only a couple of radii across the nose but reaches thirty down the
+  tail, so a view that is comfortably outside the front of it is deep inside the back. Each surface is now
+  asked separately whether you are inside it, and hides itself if you are: you cannot see the shape of a
+  cloud you are standing in. The shrinking was the small-object floor that keeps a distant planet from
+  vanishing to nothing, quietly multiplied by the length of the tail; the bubble now follows the planet's
+  drawn size but not that floor, so it shrinks away with everything else.
+
 ## v3.0.386 - 7th Sep 2026
 
 - You can copy a whole star system off the starmap now. Right-click a star and there is a Copy System item, next to the paste that was already there; what you copy shows on the paste indicator and can be dropped back onto empty space as a new system - on this map, or in another campaign in another window.

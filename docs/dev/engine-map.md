@@ -6054,6 +6054,18 @@ BLAST: THE COST IS THAT IT IS A ZOOMED-IN OVERLAY, and that is the same property
 Earth's is legible from about a three-million-kilometre view and sub-pixel at system scale - because
 at system scale it IS sub-pixel. Anything that makes it visible out there is a dial away from the
 truth and belongs to the owner, not to a renderer.
+AND IT HAPPENED A THIRD TIME, IN 3D, IN TWO DIFFERENT PLACES ([[G82]] job 4). A holo globe's scale is
+`baseScale` x `screenK`, and those are NOT the same kind of number: `baseScale` is the readable-size
+DECISION, which a bubble must ride so its ratio to its own planet stays true, while `screenK` is the
+screen-space legibility FLOOR from RENDER-S41. Riding both froze the bubble at the zoom where the floor
+took hold - the owner's words, "as I zoom out it gets so small then stops shrinking" - so `screenK` is
+divided back out in `updateFieldAim` and only the readable size is inherited. The rule generalises: a
+floor may be multiplied by 1, and by nothing else.
+AND "INSIDE IT" IS ONE QUESTION PER SURFACE, NOT PER BODY. A magnetosphere is drawn as TWO nested
+surfaces and their proportions differ wildly - Mercury's magnetopause is 1.48 radii at the nose and 29.6
+down the tail - so a camera-to-NOSE distance says "outside" while the camera sits deep inside the tail
+tube, and the far wall paints the whole screen. The test is the boundary's own equation evaluated at the
+camera in that surface's local frame, per surface, one point each.
 BLAST: ONE SHAPE FUNCTION, AND THE GATE CALLS IT. The rotation and scaling live in the physics module
 rather than in the component precisely so that the spec which reproduces the transform is checking
 the real one. A gate carrying its own copy of the transform it checks is checking only itself.

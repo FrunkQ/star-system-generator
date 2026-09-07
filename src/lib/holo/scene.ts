@@ -5159,7 +5159,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * snapping to a default, because a wrong direction is worse than a stale one.
    */
   const _fieldFrom = new THREE.Vector3(), _fieldTo = new THREE.Vector3(), _fieldDir = new THREE.Vector3();
-  const _fieldQ = new THREE.Quaternion(), _fieldParentQ = new THREE.Quaternion(), _fieldScale = new THREE.Vector3();
+  const _fieldQ = new THREE.Quaternion(), _fieldParentQ = new THREE.Quaternion(), _fieldScale = new THREE.Vector3(), _fieldLocal = new THREE.Vector3();
   const FIELD_NOSE = new THREE.Vector3(0, 1, 0);
   function updateFieldAim() {
     if (!fieldVisuals.length) return;
@@ -5180,10 +5180,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       f.group.parent?.getWorldQuaternion(_fieldParentQ);
       f.group.quaternion.copy(_fieldParentQ.invert()).multiply(_fieldQ);
       f.group.parent?.getWorldScale(_fieldScale);
-      // THE SCALE IS DELIBERATELY INHERITED. The globe carries a per-frame screen-space scale
-      // (`baseScale` x `screenK`, RENDER-S11/S41) and the bubble rides it, so the RATIO on screen -
-      // the boundary at eleven times the planet - stays true however big the planet is being drawn.
-      // That ratio is the whole picture; what is gated instead is WHEN it is shown (`fieldVisibleFor`).
+      // THE READABLE SIZE IS INHERITED AND THE PIXEL FLOOR IS NOT, and that distinction is the whole
+      // of RENDER-S56 arriving for the third time. A globe's scale is `baseScale` x `screenK`:
+      // `baseScale` is the readable-size decision, which the bubble SHOULD ride so the ratio on screen
+      // - the boundary at eleven times the planet - stays true; `screenK` is a screen-space LEGIBILITY
+      // FLOOR that stops a sub-pixel body vanishing, and multiplying that by a thirty- or
+      // eight-hundred-radius tail is exactly the fault this rule keeps catching. Owner, 2026-09-07:
+      // *"as I zoom out it gets so small then stops shrinking"* - that is the floor, seen through the
+      // tail. Divided out, the bubble shrinks all the way down with the system, as it must.
+      const floorK = self.screenK ?? 1;
+      f.group.scale.setScalar(floorK !== 0 ? 1 / floorK : 1);
       //
       // AND YOU CANNOT SEE A MAGNETOSPHERE FROM INSIDE ONE. Framing a planet puts the camera a few
       // radii out and the boundary eleven or forty or eight hundred radii further, so the default
@@ -5197,15 +5203,33 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // (a body framing sits around a third of the nose distance, where a bubble would be fog), then
       // in over the next stretch so a small pull-back brings it, and full by a little past the nose.
       const fade = noseWorld > 0 ? Math.max(0, Math.min(1, (camD / noseWorld - 0.35) / 0.85)) : 1;
+      // AND "INSIDE THE MAGNETOSPHERE" IS NOT ONE QUESTION - IT IS ONE PER SURFACE. Owner,
+      // 2026-09-07, on Mercury: its shielded region framed beautifully while its magnetopause, the
+      // same body, painted the whole screen. Mercury's nose is 1.5 radii and its TAIL is 29.6, so a
+      // shot that is comfortably outside the nose is deep inside the tube - and a camera-to-nose
+      // distance cannot tell those apart. The test is the boundary's own equation, evaluated at the
+      // camera: transform it into the surface's local frame (+Y is the nose), take the Shue radius
+      // at that bearing, and compare. One point, exact, and it answers each surface separately.
+      f.group.worldToLocal(_fieldLocal.copy(camera.position));
       f.group.traverse((o) => {
         const m = (o as any).material as THREE.Material & { opacity: number } | undefined;
         const base = (o as any).userData?.fieldBaseOpacity as number | undefined;
         if (!m || base === undefined) return;
+        const r0 = (o as any).userData.fieldR0 as number;
+        const tail = (o as any).userData.fieldTail as number;
+        const alpha = (o as any).userData.fieldAlpha as number;
+        const axial = _fieldLocal.y;                                   // +Y is upstream, the nose
+        const radial = Math.hypot(_fieldLocal.x, _fieldLocal.z);
+        const dist = Math.hypot(axial, radial);
+        const t = Math.atan2(radial, axial);
+        const denom = 1 + Math.cos(t);
+        const bound = denom <= 1e-6 ? Infinity : r0 * Math.pow(2 / denom, alpha);
+        const inside = axial > -tail && dist < bound;
         m.opacity = base * fade;
-        // A zero-opacity additive surface still RASTERISES, and these are the biggest surfaces in
-        // the scene - so the invisible case is made free rather than merely invisible (the owner's
-        // culling instruction, 2026-09-07, applied to the third dimension).
-        o.visible = fade > 0.004;
+        // A zero-opacity additive surface still RASTERISES, and these are the biggest surfaces in the
+        // scene - so the hidden case is made free rather than merely transparent (the owner's culling
+        // instruction, applied to the third dimension).
+        o.visible = !inside && fade > 0.004;
       });
     }
   }

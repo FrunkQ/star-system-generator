@@ -437,6 +437,26 @@ describe('the one body-look assembly', () => {
       small.dispose(); big.dispose();
     });
 
+    it('EVERY SURFACE CARRIES THE BOUNDARY IT IS, so "am I inside?" is asked per surface', () => {
+      // Owner, 2026-09-07, on Mercury: the shielded region framed beautifully while the magnetopause -
+      // the SAME BODY - painted the whole screen. Mercury's nose is 1.48 radii and its tail is 29.6,
+      // so a shot comfortably outside the nose is deep inside the tube, and one camera-to-nose
+      // distance cannot tell those two apart. The renderer needs each surface's own equation.
+      const look = buildBodyLook(node('Mercury'), 1, { ...HOLO, magnetospheres: true });
+      const surfaces: any[] = [];
+      look.field!.group.traverse((o) => { if ((o as any).userData?.fieldR0 !== undefined) surfaces.push(o); });
+      expect(surfaces.length).toBeGreaterThanOrEqual(2);
+      const r0s = surfaces.map((s) => s.userData.fieldR0).sort((a, b) => a - b);
+      // ABSOLUTE: Mercury's magnetopause is 1.48 radii and its shielded region 0.55 of that = 0.814.
+      expect(r0s[1]).toBeCloseTo(1.48, 2);
+      expect(r0s[0]).toBeCloseTo(0.814, 2);
+      // The tails differ by an order of magnitude, which is the whole reason one distance cannot serve.
+      const tails = surfaces.map((s) => s.userData.fieldTail).sort((a, b) => a - b);
+      expect(tails[1] / tails[0]).toBeGreaterThan(5);
+      for (const s of surfaces) expect(s.userData.fieldAlpha).toBeCloseTo(0.58, 6);
+      look.dispose();
+    });
+
     it('draws nothing for a world that has no bubble', () => {
       for (const name of ['Venus', 'Mars']) {
         const look = buildBodyLook(node(name), 1, { ...HOLO, magnetospheres: true });

@@ -430,13 +430,15 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
       // See `magnetosphereUnit`: the bubble is NOT drawn in the globe's floored radius unless the
       // caller says so, because a floor multiplied by 224 is not a floor.
       const fieldUnit = opts.magnetosphereUnit ?? radius;
+      const innerTail = ms.closedFieldRadii * mc.CLOSED_TAIL_STANDOFFS;
       const bubble = buildMagnetosphereBubble(
         fieldUnit,
         magnetopauseOutlineRadii(ms.standoffRadii, ms.tailRadii, mc, 20, false),
         ms.closedFieldRadii > 0
-          ? magnetopauseOutlineRadii(ms.closedFieldRadii, ms.closedFieldRadii * mc.CLOSED_TAIL_STANDOFFS, mc, 20, true)
+          ? magnetopauseOutlineRadii(ms.closedFieldRadii, innerTail, mc, 20, true)
           : [],
-        cageHex, beltHex
+        cageHex, beltHex,
+        ms.standoffRadii, ms.tailRadii, ms.closedFieldRadii, innerTail, mc.FLARING_ALPHA
       );
       disposables.push(bubble);
       look.field = {

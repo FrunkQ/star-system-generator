@@ -1130,6 +1130,10 @@ export interface FieldSurfaceSpec {
 	profile: { x: number; y: number }[];
 	colorHex: string;
 	opacity: number;
+	/** The Shue parameters this surface was built from, in the SAME units the geometry ends up in. */
+	r0Units: number;
+	tailUnits: number;
+	alpha: number;
 }
 
 /**
@@ -1159,6 +1163,14 @@ function buildFieldSurface(spec: FieldSurfaceSpec, oneRadius: number, radialSegm
 	// The caller fades these by camera distance (you cannot see a bubble from inside it), so the
 	// designed opacity has to survive being multiplied down and back up again.
 	mesh.userData.fieldBaseOpacity = spec.opacity;
+	// The boundary this surface IS, in the geometry's own units - so the renderer can ask whether the
+	// camera is inside THIS surface rather than inside "the magnetosphere", which is not one thing.
+	// Owner, 2026-09-07, looking at Mercury: its shielded region framed beautifully while its
+	// magnetopause - same body, nose at 1.5 radii but a tail at 29.6 - had the camera deep inside its
+	// tube and painted the whole screen. Two surfaces, two answers.
+	mesh.userData.fieldR0 = spec.r0Units;
+	mesh.userData.fieldTail = spec.tailUnits;
+	mesh.userData.fieldAlpha = spec.alpha;
 	return { mesh, dispose() { geo.dispose(); mat.dispose(); tex.dispose(); } };
 }
 
@@ -1172,18 +1184,23 @@ export function buildMagnetosphereBubble(
 	inner: { x: number; y: number }[],
 	cageHex: string,
 	beltHex: string,
+	outerR0: number,
+	outerTail: number,
+	innerR0: number,
+	innerTail: number,
+	alpha: number,
 	radialSegments = 20
 ): { group: THREE.Group; dispose(): void } {
 	const group = new THREE.Group();
 	const parts: { dispose(): void }[] = [];
 	if (outer.length > 2) {
-		const s = buildFieldSurface({ profile: outer, colorHex: cageHex, opacity: 0.30 }, oneRadius, radialSegments);
+		const s = buildFieldSurface({ profile: outer, colorHex: cageHex, opacity: 0.30, r0Units: outerR0 * oneRadius, tailUnits: outerTail * oneRadius, alpha }, oneRadius, radialSegments);
 		group.add(s.mesh); parts.push(s);
 	}
 	if (inner.length > 2) {
 		// Brighter, because this is the part that actually shields - the same distinction the map makes
 		// with a solid fill inside a pale wash.
-		const s = buildFieldSurface({ profile: inner, colorHex: beltHex, opacity: 0.55 }, oneRadius, radialSegments);
+		const s = buildFieldSurface({ profile: inner, colorHex: beltHex, opacity: 0.55, r0Units: innerR0 * oneRadius, tailUnits: innerTail * oneRadius, alpha }, oneRadius, radialSegments);
 		group.add(s.mesh); parts.push(s);
 	}
 	return { group, dispose() { for (const p of parts) p.dispose(); } };
