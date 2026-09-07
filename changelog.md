@@ -2,6 +2,22 @@
 
 All notable changes are listed here:
 
+## v3.1.0 - 7th Sep 2026
+
+Version 3.1. Everything below has been on beta and is now the version at starsystemx.com; the last
+production release was v3.0.286.
+
+- The Explorers site and the app now work as one. A map page has an "Open in Star System Explorer" button: click it and the map opens here, asking first if you already have a campaign open and keeping the one it replaces a single step back. The app also publishes a list of what it ships, so the site can tell your own pictures and calendars from the ones that came with the app, and credit for a map you have built on travels with it.
+- Interface skins. Daylight is the first light one and Terminal is amber phosphor, alongside the existing pair, and every piece of chrome follows the skin you pick rather than a colour written into the code.
+- Controls that stay where you put them. The clock read-out and the tool strip float, carry a grip, remember their edge and settle where you leave them - and two floating controls can be docked into one box.
+- It runs better on a modest machine. A low-power switch turns down the two things that actually cost frames, and the view stops redrawing frames that nothing could have changed. A transit left running with the clock on no longer fills memory.
+- Magnetospheres and aurorae. A world's field is drawn on the system map and in 3D, sized from its own physics, and an aurora sits where that world's field puts it rather than where every other world's does.
+- Stars look like themselves. A jetting star jets everywhere it is drawn, a photosphere is no longer painted flat, a neutron star's card explains what its numbers mean, and a remnant's output comes from its surface.
+- Size comparison. Every object at true scale side by side, with a ruler of familiar worlds - Ceres to Betelgeuse - showing only the ones you could actually see at your current zoom.
+- Ships dock. All seven structure types can be docked at, the planner prices the docking, and a ship parks on the structure rather than near it. Arrivals were corrected too: a Hohmann transfer no longer parks you facing the wrong way round.
+- Copy and paste between campaigns. Copy a system or a body - with everything beneath it - and paste it into another campaign, on the map or in a system, with the ids re-minted and the credit recorded.
+- The documentation was swept end to end: nine surfaces checked against the code, and the claims that were wrong corrected rather than left.
+
 ## v3.0.388 - 7th Sep 2026
 
 - Every magnetised world now shows its magnetosphere at once in the 3D views, not just the one you have
