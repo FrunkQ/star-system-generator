@@ -13,6 +13,10 @@
   export let what = 'this panel'; // named in the tooltip, e.g. "the time controls"
 
   $: pinned = $ctl.pinned;
+  // While locked this button IS the drag handle, so it carries the drag's vocabulary too (G81).
+  $: moving = $ctl.dock
+    ? '; docked, so dragging moves both. Right-click to choose an edge or separate them'
+    : '; drag to move, right-click to choose an edge';
 </script>
 
 <button
@@ -21,7 +25,7 @@
   type="button"
   use:ctl.grip
   on:click|stopPropagation={() => { if (!ctl.didDrag()) ctl.togglePin(); }}
-  title={pinned ? `Unlock and put ${what} away; drag to move` : `Lock ${what} open (otherwise it closes when you select something else); drag to move`}
+  title={pinned ? `Unlock and put ${what} away${moving}` : `Lock ${what} open (otherwise it closes when you select something else)${moving}`}
   aria-label={pinned ? 'Unlock and close' : 'Lock open'}
   aria-pressed={pinned}
 >

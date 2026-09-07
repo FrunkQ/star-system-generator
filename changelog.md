@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.366 - 7th Sep 2026
+
+- Floating controls can now be docked together. Drop one against another - within about a finger's width of its edge - and the two snap side by side and become one block: drag either and both move, and when the details pane opens or the window changes shape the pair travels as a unit instead of drifting apart. To separate them again, right-click the grip (or press and hold) and choose Separate. Which controls are docked is remembered on this computer, with everything else about where your chrome sits.
+
 ## v3.0.365 - 7th Sep 2026
 
 - Two more interface skins under Settings > System > Appearance: Daylight, the first light skin (paper surfaces, dark type and a teal accent, for a bright room or a projector that washes out a dark interface), and Terminal (amber phosphor on black, a console look with compact type). Every skin is now checked for readable contrast.

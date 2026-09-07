@@ -294,3 +294,158 @@ describe('an explicit edge overrides the nearest-edge guess (G81)', () => {
     action.destroy();
   });
 });
+
+/**
+ * G81 job 3. TWO CONTROLS DOCKED TOGETHER ARE ONE BOX. Owner: *"allow them to be pinned together.
+ * This allow user display customisation"*. Drop one within 12 px of another's edge and they snap
+ * and join a group; one grip then moves both by the same delta, and the pair settles against the
+ * stage as the UNION of its members rather than each member on its own - which is the whole point,
+ * because settling them separately is what would pull a docked pair apart the first time the
+ * details pane opened.
+ *
+ * Every number here is absolute. The stage is 154..896 inside its inset and each control is 200
+ * wide, so a pair sitting at 400..800 has a 96 px gap from the right edge and 246 from the left.
+ */
+const KEY_A = 'test-float-a';
+const KEY_B = 'test-float-b';
+
+function pair(opts: { a: number; b: number; stage?: R }) {
+  localStorage.removeItem(KEY_A);
+  localStorage.removeItem(KEY_B);
+  const stageEl = document.createElement('div');
+  document.body.appendChild(stageEl);
+  let stageRect = opts.stage ?? STAGE;
+  stageEl.getBoundingClientRect = () => rect(stageRect);
+  const make = (key: string, x: number) => {
+    const node = document.createElement('div');
+    stageEl.appendChild(node);
+    const ctl = createFloatingControl(key, {}, { stage: () => stageEl });
+    node.getBoundingClientRect = () => rect({ left: x + get(ctl).dx, top: 60 + get(ctl).dy, ...SIZE });
+    return { ctl, node, anchor: { x, y: 60 }, action: ctl.root(node) };
+  };
+  const a = make(KEY_A, opts.a);
+  const b = make(KEY_B, opts.b);
+  return {
+    a, b,
+    setStage: (r: R) => { stageRect = r; },
+    done: () => { a.action.destroy(); b.action.destroy(); localStorage.removeItem(KEY_A); localStorage.removeItem(KEY_B); }
+  };
+}
+
+/** Drag `who` by (mx, my) with its own grip, exactly as a GM would. */
+function drag(who: { ctl: ReturnType<typeof createFloatingControl>; node: HTMLElement }, mx: number, my = 0) {
+  const grip = who.ctl.grip(who.node);
+  who.node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
+  who.node.dispatchEvent(new MouseEvent('pointermove', { clientX: 500 + mx, clientY: 300 + my }));
+  who.node.dispatchEvent(new MouseEvent('pointerup', { clientX: 500 + mx, clientY: 300 + my }));
+  vi.runAllTimers();
+  grip.destroy();
+}
+
+describe('two controls dock, move as one, and settle as one box (G81)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+    localStorage.removeItem(KEY_A);
+    localStorage.removeItem(KEY_B);
+  });
+
+  /** A at 400..600, B dropped beside it so the two are docked and settled at 400..800. */
+  function docked() {
+    const p = pair({ a: 400, b: 614 }); // 14 px apart: NOT close enough on its own
+    vi.runAllTimers();
+    expect(at(p.b.ctl, p.b.anchor).left).toBe(614);
+    expect(get(p.b.ctl).dock, 'nothing has been dropped yet').toBeUndefined();
+    drag(p.b, -6); // to 608 - now 8 px from A's right edge, inside the 12 px snap
+    return p;
+  }
+
+  it('dropping a control within 12 px of another snaps the edges together and docks them', () => {
+    const p = docked();
+    expect(at(p.b.ctl, p.b.anchor).left, 'snapped the last 8 px so the edges meet').toBe(600);
+    const id = get(p.a.ctl).dock;
+    expect(id, 'A joined a group').toBeTruthy();
+    expect(get(p.b.ctl).dock, 'and B is in the same one').toBe(id);
+    p.done();
+  });
+
+  it('a drop that lands MORE than 12 px away does not dock', () => {
+    const p = pair({ a: 400, b: 614 });
+    vi.runAllTimers();
+    drag(p.b, 4); // to 618: 18 px from A
+    expect(at(p.b.ctl, p.b.anchor).left).toBe(618);
+    expect(get(p.b.ctl).dock).toBeUndefined();
+    expect(get(p.a.ctl).dock).toBeUndefined();
+    p.done();
+  });
+
+  it('one grip moves BOTH, by exactly the drag delta', () => {
+    const p = docked();
+    expect(at(p.a.ctl, p.a.anchor).left).toBe(400);
+    expect(at(p.b.ctl, p.b.anchor).left).toBe(600);
+    drag(p.a, -120);
+    expect(at(p.a.ctl, p.a.anchor).left).toBe(280);
+    expect(at(p.b.ctl, p.b.anchor).left, 'the far member came too, to the pixel').toBe(480);
+    p.done();
+  });
+
+  it('the pair settles as ONE box: the union keeps its gap from the edge, and both move by it', () => {
+    const p = docked();
+    // The union is 400..800, so it is 96 from the right edge and 246 from the left: a RIGHT-hand
+    // pair, even though A on its own would be a left-hand control (246 against 296).
+    expect(get(p.a.ctl).ex).toBe('right');
+    expect(get(p.a.ctl).gx).toBe(96);
+    expect(get(p.b.ctl).ex, 'both members store the group\'s edge').toBe('right');
+    expect(get(p.b.ctl).gx).toBe(96);
+
+    p.setStage({ left: 150, top: 0, width: 550, height: 700 }); // right 700 -> bounds 154..696
+    window.dispatchEvent(new Event('resize'));
+    vi.runAllTimers();
+    expect(at(p.b.ctl, p.b.anchor).left, 'the union: 696 - 96 - 400').toBe(400);
+    expect(at(p.a.ctl, p.a.anchor).left, 'and A moved by the same 200').toBe(200);
+
+    // The pair is now 46 from the left and 96 from the right, so it has re-homed to the LEFT - as
+    // any control does when it is no longer nearest the edge it was. AND NARROWER STILL, until the
+    // union no longer FITS where its gap would put it: this is the half a per-member settle cannot
+    // fake, because the clamp has to bite on the 400px UNION rather than on either 200px member.
+    p.setStage({ left: 150, top: 0, width: 450, height: 700 }); // right 600 -> bounds 154..596
+    window.dispatchEvent(new Event('resize'));
+    vi.runAllTimers();
+    expect(at(p.a.ctl, p.a.anchor).left, '154 + 46 = 200, pulled back 4 so the UNION fits').toBe(196);
+    expect(at(p.b.ctl, p.b.anchor).left, 'still exactly one control width behind').toBe(396);
+    p.done();
+  });
+
+  it('undocking restores INDEPENDENT settling, and neither inherits the union\'s gap', () => {
+    const p = docked();
+    p.a.ctl.undock();
+    vi.runAllTimers();
+    expect(get(p.a.ctl).dock).toBeUndefined();
+    expect(at(p.a.ctl, p.a.anchor).left, 'leaving the group does not move it').toBe(400);
+    // A is 400..600 on its own: 246 from the left, 296 from the right. Its own edge again.
+    expect(get(p.a.ctl).ex).toBe('left');
+    expect(get(p.a.ctl).gx).toBe(246);
+
+    p.setStage({ left: 150, top: 0, width: 550, height: 700 });
+    window.dispatchEvent(new Event('resize'));
+    vi.runAllTimers();
+    expect(at(p.a.ctl, p.a.anchor).left, 'a left-hand control stays put').toBe(400);
+    expect(at(p.b.ctl, p.b.anchor).left, 'B is a right-hand control alone now: 696 - 96 - 200').toBe(400);
+    p.done();
+  });
+
+  it('a drag on an undocked neighbour no longer drags the other', () => {
+    const p = docked();
+    p.a.ctl.undock();
+    vi.runAllTimers();
+    drag(p.a, -120);
+    expect(at(p.a.ctl, p.a.anchor).left).toBe(280);
+    expect(at(p.b.ctl, p.b.anchor).left, 'B stayed where it was').toBe(600);
+    p.done();
+  });
+});
