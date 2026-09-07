@@ -124,6 +124,29 @@ describe('VTT integration broadcast contract', () => {
     // own 2s budget, so this raises the ceiling without weakening a single assertion. [[B118]]
   }, 20000);
 
+  it('SYNC_VIEW_SETTINGS carries the magnetosphere switch, and an OLDER sender that omits it reads as OFF', async () => {
+    // [[G82]] job 2. A new optional field on a payload two products speak has exactly one way to go
+    // wrong, and it is not "does it arrive": it is what a receiver does when a sender predating the
+    // field says nothing. ABSENT MUST READ AS OFF here - the opposite of the preset rule, where an
+    // absent field reads as WANTED so an old campaign keeps its clouds. The difference is which way
+    // silence should fail: a GM who never asked for magnetospheres must not have them appear.
+    const host = await makeService();
+    const guest = await makeService();
+    host.initSender('sid-view');
+    const got: any[] = [];
+    guest.initReceiver(() => {}, () => {}, () => {}, () => {}, (s) => got.push(s), () => {}, 'sid-view');
+    host.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: {
+      showNames: true, showZones: false, showLPoints: false, showHillSpheres: true, showMagnetospheres: true } });
+    await waitFor(() => got.length === 1);
+    expect(got[0].showMagnetospheres).toBe(true);
+    // The older sender: the same message with the field simply not there.
+    host.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: {
+      showNames: true, showZones: false, showLPoints: false, showHillSpheres: true } as any });
+    await waitFor(() => got.length === 2);
+    expect(got[1].showMagnetospheres).toBeUndefined();
+    expect(!!got[1].showMagnetospheres).toBe(false);
+  }, 20000);
+
   it('a targeted REQUEST_HELLO for a DIFFERENT sid is ignored by the host', async () => {
     const host = await makeService();
     const probe = await makeService();

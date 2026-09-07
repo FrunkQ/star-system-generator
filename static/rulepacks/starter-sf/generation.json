@@ -123,6 +123,8 @@
     "magnetopause_compression_factor": 2.0,
     "magnetotail_standoffs": 20,
     "aurora_oval_l_fraction": 0.55,
+    "magnetopause_flaring_alpha": 0.58,
+    "closed_field_tail_standoffs": 4,
     "magnet_geometry_table": {
       "none": { "tilt_deg": 0, "offset_radii": 0, "ordered": false },
       "dipolar": { "tilt_deg": 10, "offset_radii": 0, "ordered": true },

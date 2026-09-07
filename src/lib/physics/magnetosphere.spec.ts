@@ -30,7 +30,7 @@ import path from 'path';
 import { systemProcessor } from '../core/SystemProcessor';
 import {
   magnetosphereConstants, magnetopauseStandoffRadii, auroraOvalColatDeg,
-  hostFieldPressurePa, windScaleOf, astrosphereAu, dipoleLongitudeDeg
+  hostFieldPressurePa, windScaleOf, astrosphereAu, dipoleLongitudeDeg, magnetopauseOutlineRadii
 } from './magnetosphere';
 import type { System, RulePack, CelestialBody } from '../types';
 
@@ -330,6 +330,90 @@ describe('the belt geometry is READ from the belt model, never re-derived', () =
 
   it('a body with no field has no belt to draw', () => {
     expect(by('Venus').magnetosphere!.beltPeakRadii).toBeUndefined();
+  });
+});
+
+describe('the drawn boundary is the shape a magnetopause really is', () => {
+  // Shue et al. (1997). Gated because the ORRERY and the 3D cage both draw through this one
+  // function, so a wrong shape is wrong in two places at once and looks deliberate in both.
+  const OUT = magnetopauseOutlineRadii(10, 200, C);
+
+  it('the nose sits exactly at the standoff', () => {
+    // ABSOLUTE: t = 0 gives r = r0 by construction, so the first point is (10, 0) for a standoff of 10.
+    expect(OUT[0].x).toBeCloseTo(10, 9);
+    expect(OUT[0].y).toBeCloseTo(0, 9);
+  });
+
+  it('the waist is 1.49 standoffs, which is the WIDTH falling out of the law rather than a second number', () => {
+    // ABSOLUTE: at right angles to the nose, r = r0 x 2^alpha = 10 x 2^0.58 = 14.95.
+    const flank = OUT.find((p) => Math.abs(p.x) < 0.3 && p.y > 0)!;
+    expect(flank.y).toBeCloseTo(10 * Math.pow(2, 0.58), 1);
+  });
+
+  it('the tail is CLAMPED, because the law itself runs to infinity and a real tail has no end', () => {
+    const minX = Math.min(...OUT.map((p) => p.x));
+    expect(minX).toBeCloseTo(-200, 6);
+    expect(OUT.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);
+  });
+
+  it('it is closed, symmetric about the upstream axis, and flares monotonically away from the nose', () => {
+    expect(OUT.length).toBeGreaterThan(20);
+    // The first half is the sunward-to-tailward walk; the second is its mirror. (Take the half by
+    // INDEX, not by `y >= 0` — the mirrored nose comes back as negative zero, which passes that test
+    // and then reads as a step backwards.)
+    const upper = OUT.slice(0, OUT.length / 2);
+    for (let i = 1; i < upper.length; i++) expect(upper[i].y).toBeGreaterThanOrEqual(upper[i - 1].y - 1e-9);
+    // Every point on the top half has its mirror on the bottom.
+    const tops = OUT.filter((p) => p.y > 0).map((p) => `${p.x.toFixed(6)}`).sort();
+    const bots = OUT.filter((p) => p.y < 0).map((p) => `${p.x.toFixed(6)}`).sort();
+    expect(tops).toEqual(bots);
+  });
+
+  it('THE OPEN TAIL RUNS AT CONSTANT WIDTH AND THE CLOSED ONE COMES TO A POINT', () => {
+    // Owner, 2026-09-07, on the first cut: "is that hard edge away from the star real? I thought it
+    // would tail off like a teardrop". It was not real - it was where the drawn tail stopped. The two
+    // boundaries want two different answers and now get them.
+    const open = magnetopauseOutlineRadii(10, 200, C, 48, false);
+    const closed = magnetopauseOutlineRadii(10, 200, C, 48, true);
+    const widthAt = (pts: { x: number; y: number }[], x: number) => {
+      let best = pts[0], d = Infinity;
+      for (const p of pts) { const dd = Math.abs(p.x - x); if (dd < d && p.y >= 0) { d = dd; best = p; } }
+      return best.y;
+    };
+    // The OPEN tail is still full width where it stops - it does not end, the paint fades.
+    expect(widthAt(open, -200)).toBeGreaterThan(20);
+    // The CLOSED one has eased to nothing by the same point.
+    expect(widthAt(closed, -200)).toBeLessThan(0.01);
+    // ...and it gets there gradually rather than in one step. Measured two ways, because "it ends"
+    // and "it does not end abruptly" are different claims: the closing stretch takes several points,
+    // and no single step drops more than a third of the widest part of the shape.
+    const upper = closed.slice(0, closed.length / 2);
+    const maxW = Math.max(...upper.map((p) => p.y));
+    const closing = upper.filter((p) => p.y < maxW && p.x < 0);
+    expect(closing.length).toBeGreaterThanOrEqual(4);
+    for (let i = 1; i < upper.length; i++) {
+      expect(Math.abs(upper[i].y - upper[i - 1].y)).toBeLessThan(maxW / 3);
+    }
+    // NEITHER narrows on the DAYSIDE: a magnetosphere is blunt at the nose and widest behind it,
+    // which is the opposite of a teardrop, and getting that backwards would put the fat end at the star.
+    for (const pts of [open, closed]) {
+      const nose = pts[0].x;
+      const widest = pts.reduce((a, b) => (Math.abs(b.y) > Math.abs(a.y) ? b : a));
+      expect(widest.x).toBeLessThan(nose);
+    }
+  });
+
+  it('a body with no bubble gets no outline, rather than a degenerate one', () => {
+    expect(magnetopauseOutlineRadii(0, 200, C)).toEqual([]);
+  });
+
+  it('the whole shape scales with the standoff and nothing else', () => {
+    const a = magnetopauseOutlineRadii(10, 1e6, C);
+    const b = magnetopauseOutlineRadii(20, 2e6, C);
+    for (let i = 0; i < a.length; i++) {
+      expect(b[i].x / a[i].x).toBeCloseTo(2, 6);
+      if (Math.abs(a[i].y) > 1e-9) expect(b[i].y / a[i].y).toBeCloseTo(2, 6);
+    }
   });
 });
 

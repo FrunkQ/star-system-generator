@@ -95,10 +95,21 @@ export function magnetosphereConstants(rulePack: RulePack | null | undefined) {
     // sharp end (Earth's has been crossed beyond 1,000 radii), so any finite length is a choice
     // about the picture. The physical claim a tail does make here is its WIDTH, about two standoffs.
     TAIL_STANDOFFS: gp.magnetotail_standoffs ?? 20,
+    // How far downstream the SHIELDED region runs, in its own closed-field radii - and unlike the
+    // open tail this one is a real boundary rather than a convention. The closed lines stop where
+    // they reconnect: Earth's near-tail reconnection line sits about 25 radii downstream, which is
+    // four times its closed-field radius of 6.2. Past it the lines are open and the wind gets in.
+    CLOSED_TAIL_STANDOFFS: gp.closed_field_tail_standoffs ?? 4,
     // The open/closed field-line boundary sits well inside the subsolar standoff, because the last
     // closed line is stretched down the tail. Calibrated ONCE against both oval anchors together
     // (Earth 65-72 deg, Jupiter 72-78 deg) rather than against either one alone.
     OVAL_L_FRACTION: gp.aurora_oval_l_fraction ?? 0.55,
+    // How fast the boundary FLARES away from the nose, in Shue's form r = r0 (2/(1+cos t))^alpha.
+    // 0.58 is the observed value for Earth. It is the shape of a real magnetopause rather than a
+    // drawn teardrop, which matters because it settles the WIDTH for free: at right angles to the
+    // nose the boundary sits 2^0.58 = 1.49 standoffs out, so a bubble is about three standoffs
+    // across its waist. The tail's LENGTH is still the convention above; this is its profile.
+    FLARING_ALPHA: gp.magnetopause_flaring_alpha ?? 0.58,
     GEOMETRY: { ...DEFAULT_GEOMETRY_TABLE, ...(gp.magnet_geometry_table ?? {}) } as Record<string, GeometryEntry>
   };
 }
@@ -303,6 +314,140 @@ export function auroraOvalColatDeg(standoffRadii: number, c: ReturnType<typeof m
  */
 export function dipoleLongitudeDeg(bodyId: string): number {
   return (seedFrom(bodyId || 'x') % 3600) / 10;
+}
+
+/**
+ * THE OUTLINE OF A MAGNETOPAUSE, in body radii, in a frame where +x points UPSTREAM (at the star, or
+ * at the host for a moon inside its host's bubble) and the tail runs down -x.
+ *
+ * Shue et al. (1997): r(t) = r0 (2 / (1 + cos t))^alpha, with t measured from the upstream axis.
+ * It is the standard empirical magnetopause and it is used here rather than a drawn teardrop for one
+ * reason: it makes the WIDTH a consequence of the standoff instead of a second invented number.
+ *
+ * THE FAR END OF THE TAIL IS NOT A SHAPE PROBLEM, IT IS AN HONESTY PROBLEM, and it has two different
+ * right answers depending on which boundary is being drawn (owner, 2026-09-07, looking at the first
+ * cut: *"is that hard edge away from the star real? I thought it would tail off like a teardrop"* -
+ * it was not real, it was this clamp).
+ *   `taper: false` (the MAGNETOPAUSE): the form diverges as t approaches 180 degrees because a real
+ *     magnetotail has no end - Earth's has been crossed a thousand radii downstream. So the shape is
+ *     clamped at `tailRadii` at a CONSTANT WIDTH, which is what a real tail does, and the renderer
+ *     FADES the paint to nothing along it. There is no edge to draw because there is no edge.
+ *   `taper: true` (the CLOSED-FIELD region): this one genuinely ends. The last closed field line
+ *     comes back to the body, so the region closes, and it is drawn closing - eased to a blunt point
+ *     on the axis rather than cut off square.
+ * Neither is a teardrop that narrows to a point on the dayside: a magnetosphere is blunt at the nose
+ * and open at the back, which is the opposite of a teardrop, and drawing it the other way round
+ * would put the widest part in the wrong place.
+ *
+ * ONE SHAPE, EVERY PICTURE. The orrery and the 3D cage both come through here, so they cannot draw
+ * two different boundaries for one number.
+ */
+export function magnetopauseOutlineRadii(
+  standoffRadii: number,
+  tailRadii: number,
+  c: ReturnType<typeof magnetosphereConstants>,
+  steps = 48,
+  taper = false
+): { x: number; y: number }[] {
+  const r0 = standoffRadii || 0;
+  if (!(r0 > 0)) return [];
+  const tail = tailRadii > r0 ? tailRadii : r0;
+  const out: { x: number; y: number }[] = [];
+  // Walk the sunward half from the nose round to the tail, then mirror: the shape is symmetric about
+  // the upstream axis, so half the trigonometry answers both flanks and they cannot disagree.
+  const half: { x: number; y: number }[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (Math.PI * i) / steps;               // 0 at the nose, PI down the tail
+    const denom = 1 + Math.cos(t);
+    const r = denom <= 1e-6 ? Infinity : r0 * Math.pow(2 / denom, c.FLARING_ALPHA);
+    const x = Number.isFinite(r) ? r * Math.cos(t) : -tail;
+    const y = Number.isFinite(r) ? r * Math.sin(t) : r0 * Math.pow(2 / 1e-6, c.FLARING_ALPHA);
+    if (x < -tail) {
+      const prev = half[half.length - 1];
+      const wy = prev ? prev.y : r0;
+      if (taper) {
+        // A boundary that really closes: ease the width to nothing over the last stretch, so it
+        // comes to a blunt point on the axis instead of stopping at a wall.
+        // `1 - f^2`, not a quarter circle: a circular ease comes down VERTICALLY at the end, which
+        // is a hard edge again wearing a curve. This one flattens into the axis.
+        const x0 = prev ? prev.x : 0;
+        for (let k = 1; k <= 10; k++) {
+          const f = k / 10;
+          half.push({ x: x0 + (-tail - x0) * f, y: wy * (1 - f * f) });
+        }
+      } else {
+        // A tail that does not end: carry it downstream at constant width and let the renderer fade
+        // the paint out along it. The straight run is honest; a visible edge at the end is not.
+        half.push({ x: -tail, y: wy });
+      }
+      break;
+    }
+    half.push({ x, y });
+  }
+  for (const p of half) out.push(p);
+  for (let i = half.length - 1; i >= 0; i--) out.push({ x: half[i].x, y: -half[i].y });
+  return out;
+}
+
+/**
+ * The same outline, ORIENTED and SCALED: offsets from the body's centre in whatever unit `oneRadius`
+ * is given in, with the nose along the unit vector (ux, uy).
+ *
+ * It lives here rather than in the renderer for the reason the duplication rule gives: the orrery
+ * and the gate that checks the orrery must not each carry their own rotation, or the check stops
+ * checking anything. `oneRadius` is the caller's - the plan view hands in the body's DRAWN disc
+ * radius, so the bubble inherits the same size floor the disc has and no second one.
+ */
+export function magnetopauseOutlineOriented(
+  standoffRadii: number,
+  tailRadii: number,
+  c: ReturnType<typeof magnetosphereConstants>,
+  ux: number,
+  uy: number,
+  oneRadius: number,
+  steps = 48,
+  taper = false
+): { x: number; y: number }[] {
+  return magnetopauseOutlineRadii(standoffRadii, tailRadii, c, steps, taper).map((p) => ({
+    x: (p.x * ux - p.y * uy) * oneRadius,
+    y: (p.x * uy + p.y * ux) * oneRadius
+  }));
+}
+
+/**
+ * VIEWPORT CULLING for a drawn bubble, as two pure decisions the renderer and its gate can share.
+ *
+ * A magnetotail is twenty standoffs long, so at any useful zoom most of it is off the canvas - and a
+ * path handed to `fill()` is rasterised whether anyone can see it or not (owner, 2026-09-07: *"make
+ * sure you do culling on these shapes to avoid lagging by drawing stuff off screen"*).
+ *
+ * Coordinates are the renderer's world-minus-pan frame, where the visible rectangle is simply
+ * +/- half the canvas over the zoom, and `cx, cy` is the body's centre in it.
+ */
+export function magnetosphereOffScreen(
+  cx: number, cy: number, halfW: number, halfH: number, maxReachWorld: number
+): boolean {
+  return cx - maxReachWorld > halfW || cx + maxReachWorld < -halfW
+      || cy - maxReachWorld > halfH || cy + maxReachWorld < -halfH;
+}
+
+/**
+ * The tail length actually worth generating, in body radii: no further from the body than the far
+ * corner of the viewport. NEVER used for the gradient - the fade is built over the TRUE length, so
+ * what a viewer sees is identical and only the invisible remainder is dropped.
+ */
+export function visibleTailRadii(
+  cx: number, cy: number, halfW: number, halfH: number, oneRadiusWorld: number, tailRadii: number
+): number {
+  if (!(oneRadiusWorld > 0)) return tailRadii;
+  const reach = Math.hypot(Math.abs(cx) + halfW, Math.abs(cy) + halfH);
+  return Math.min(tailRadii, reach / oneRadiusWorld);
+}
+
+/** The furthest any point of a drawn bubble can sit from the body's centre, in body radii. The flank
+ *  never exceeds about three standoffs, so this bounds the whole shape for the cull above. */
+export function magnetosphereReachRadii(standoffRadii: number, tailRadii: number): number {
+  return Math.max(tailRadii, 3 * standoffRadii);
 }
 
 export interface MagnetosphereOpts {

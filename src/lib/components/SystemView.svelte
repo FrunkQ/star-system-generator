@@ -263,6 +263,9 @@
   let showNames = true;
   let showZones = false;
   let showHillSpheres = false;
+  // G82: the field bubbles. Beside Hill spheres because it is the same kind of switch - a boundary
+  // the GM can put on the map - and OFF by default, like the rest of the popover.
+  let showMagnetospheres = false;
   // WS3: the 2D system view's spatial overlay (shared vocabulary — see lib/map/mapOverlay.ts).
   let systemOverlay: MapOverlay = 'off';
   // The lattice cell in AU. 0 = the automatic 1/2/5 ladder that sizes cells by zoom. Pinning it is what
@@ -1947,7 +1950,7 @@
                 broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
-                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones } });
+                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showMagnetospheres, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
             }
         };
@@ -1982,7 +1985,7 @@
   $: if (browser && $systemStore) {
       broadcastService.sendIfChanged({
           type: 'SYNC_VIEW_SETTINGS',
-          payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones }
+          payload: { showNames, showZones, showHillSpheres, showMagnetospheres, showLPoints, showTravellerZones }
       });
   }
 
@@ -2759,6 +2762,7 @@
                     <label><input type="checkbox" bind:checked={showNames} /> Names</label>
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
                     <label title="Each planet-mass body's gravitational bubble — where an adrift ship gets grabbed"><input type="checkbox" bind:checked={showHillSpheres} /> Hill spheres</label>
+                    <label title="Where each magnetic field turns the stellar wind away. The shaded part is the region that actually shields an atmosphere; the pale wash is the full extent, tail and all."><input type="checkbox" bind:checked={showMagnetospheres} /> Magnetospheres</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
                     <label class="ov-select" title="Spatial overlay — the same set every map view offers">Overlay
                       <select bind:value={systemOverlay}>
@@ -2822,6 +2826,7 @@
                 {showNames}
                 {showZones}
                 {showHillSpheres}
+                {showMagnetospheres}
                 overlay={systemOverlay}
                 gridScaleAu={systemGridScaleAu}
                 {showLPoints}

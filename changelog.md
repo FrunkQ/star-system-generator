@@ -2,6 +2,18 @@
 
 All notable changes are listed here:
 
+## v3.0.377 - 7th Sep 2026
+
+- Magnetospheres can now be drawn on the system map. A new Magnetospheres box in the GM View menu, beside Hill
+  spheres, shades each magnetised world's bubble: the solid part is the region where the field genuinely turns
+  the stellar wind away and protects an atmosphere, and the pale wash around it is the full extent, tail and
+  all. Every nose points at whatever is actually blowing on it - the star for a planet, the planet for a moon
+  deep inside a giant's field - so the bubbles swing round as the system turns. Venus and Mars show nothing,
+  because they have nothing. The tail fades out rather than stopping at a line, since a real magnetotail has
+  no end; and a bubble is never drawn larger than the body's own Hill sphere, so it stays a boundary you can
+  trust rather than a smear across the map. Like Hill spheres, it is a close-in overlay: zoom in on a planet
+  to see it properly.
+
 ## v3.0.376 - 7th Sep 2026
 
 - Board only: the floating chrome work is closed and written up, with a short list of what a human still needs to look at and one question for the owner about how a docked pair should be taken apart.

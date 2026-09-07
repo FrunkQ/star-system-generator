@@ -6022,6 +6022,40 @@ request is written up in `docs/dev/hub-pairing-and-upload-request.md`. A CORS re
 indistinguishable from being offline, which is why the failure message names the hub's own page as
 the way through instead of attempting a diagnosis it cannot make.
 
+### RENDER-S56 A PIXEL FLOOR MULTIPLIED IS NO LONGER A FLOOR, AND A DRAWN TAIL NEEDS NO EDGE
+BUCKET: ARCHITECTURE + DOMAIN - a legibility clamp that is correct where it is applied and a lie
+twenty-three times further out, and a shape whose far end is a fact about the renderer rather than
+about the world. Both were found by LOOKING, after the unit tests were green.
+WHERE: `components/SystemVisualizer.svelte`, the `showMagnetospheres` block; the shape is
+`physics/magnetosphere.magnetopauseOutlineRadii` / `magnetopauseOutlineOriented`; pinned by
+`physics/magnetosphereOverlay.spec.ts` (which reproduces the transform - [[E7]], a canvas cannot be
+checked headlessly) and by `magnetosphere.spec.ts`.
+RULE: a bubble is drawn in the body's DRAWN disc radii, so it inherits the size lie the disc already
+carries instead of adding a second one - BUT the inflation is capped so the whole shape, tail
+included, stays inside that body's HILL SPHERE, and never shrinks below true scale. And the open
+magnetotail is drawn WITHOUT AN EDGE: constant width, paint faded to nothing along it. The
+closed-field region, which really does end, eases to a blunt point instead.
+WHY: `drawnDiscRadiusWorld` floors Earth's 0.17 px disc at 2 px, which is honest for a disc. The tail
+is TWENTY STANDOFFS, so the same clamp arrives as a 470 px streak; at system zoom Jupiter's bubble
+reached 1.5 AU sunward against a true 0.019 AU, and RENDER-S52's rule applies exactly - a shape drawn
+around a body is read as SIZE, however it got there. The Hill sphere is the cap because it is already
+on this map and already means "the space this body controls"; a bubble outside it is showing
+something that cannot be. That it FITS is the check that it is the right cap rather than a chosen
+number: Earth's twenty-standoff tail is 1.431e6 km and its Hill radius is 1.497e6 km.
+WHY THE EDGE: owner, 2026-09-07, on the first cut - "is that hard edge away from the star real? I
+thought it would tail off like a teardrop". It was not real. The Shue form diverges as the angle
+approaches 180 degrees, so the drawn tail has to stop somewhere, and stopping it drew a wall that
+said "the magnetosphere ends here" when the truth is "the drawing ends here". A fade says the second
+thing. NEITHER SHAPE NARROWS ON THE DAYSIDE: a magnetosphere is blunt at the nose and widest behind
+it, so a literal teardrop would put the fat end at the star.
+BLAST: THE COST IS THAT IT IS A ZOOMED-IN OVERLAY, and that is the same property the Hill bubble has.
+Earth's is legible from about a three-million-kilometre view and sub-pixel at system scale - because
+at system scale it IS sub-pixel. Anything that makes it visible out there is a dial away from the
+truth and belongs to the owner, not to a renderer.
+BLAST: ONE SHAPE FUNCTION, AND THE GATE CALLS IT. The rotation and scaling live in the physics module
+rather than in the component precisely so that the spec which reproduces the transform is checking
+the real one. A gate carrying its own copy of the transform it checks is checking only itself.
+
 ### PHY-40 PARENT-BEFORE-CHILD DOES NOT ORDER SIBLINGS, AND A WIND SOURCE IS A SIBLING
 BUCKET: ARCHITECTURE - an ordering rule that is written down, obeyed, and STILL not enough, because
 the dependency it was written for runs up the tree and this one runs across it.

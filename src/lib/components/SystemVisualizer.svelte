@@ -25,6 +25,8 @@
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
+  import { magnetopauseOutlineOriented, magnetosphereConstants, magnetosphereOffScreen,
+           visibleTailRadii, magnetosphereReachRadii } from '$lib/physics/magnetosphere';
   import { regionOfInterest, inRegionOfInterest } from '$lib/system/regionOfInterest';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost, orbitPathProjected } from '$lib/physics/orbits';
@@ -49,6 +51,7 @@
   // the preset, and the two are deliberately not one store (A10/A3).
   export let orbitOpacity: number = 1;
   export let showHillSpheres: boolean = false;
+  export let showMagnetospheres: boolean = false;
   // WS3 — the shared overlay vocabulary. The 2D system view had no grid of any kind; it now offers the
   // same set as every other spatial view (lattices in AU, or polar rings about the primary).
   import { isHexFamily } from '$lib/map/mapOverlay';
@@ -1306,6 +1309,149 @@
               ctx.lineWidth = 1 / zoom;
               ctx.strokeStyle = tri ? 'rgba(0, 200, 100, 0.35)' : 'rgba(60, 205, 165, 0.32)';
               ctx.stroke();
+          }
+      }
+      // MAGNETOSPHERES (G82) - the bubble each magnetised body cuts out of the wind, nose pointing
+      // upstream. Two nested shapes, and which is which is the owner's steer (2026-09-07: "drawn at
+      // where it can provide atmo protection levels rather than max extent - maybe very pale to max
+      // extent, more obvious at useful levels"):
+      //   the MAGNETOPAUSE, the full extent with its tail, drawn as a very pale wash;
+      //   the CLOSED-FIELD region inside it, where the lines leave the body and come back so an
+      //   incoming ion is turned away - the part that actually shields an atmosphere - shaded solidly.
+      // They share one published number apiece and one SHAPE function with the 3D cage, so no picture
+      // here can disagree with the physics or with the other view.
+      //
+      // MAUVE, NOT ANOTHER YELLOW. The Hill bubble owns pale yellow and the circumbinary ring deep
+      // gold because both answer "where can something orbit"; Lagrange owns green because it answers
+      // a third question. A magnetosphere answers a fourth - "what does this body's field protect" -
+      // so it gets the field palette, from the tokens, keyed off the magnetar purple that was already
+      // in the file. An anomalous field (one no interior model can account for) takes that purple
+      // straight, so a GM's 70-tesla world reads as the oddity it is.
+      //
+      // A BUBBLE IS DRAWN IN THE BODY'S OWN DRAWN RADII - the published number IS "in body radii",
+      // and `drawnDiscRadiusWorld` is the one place that already knows how big this view is drawing
+      // that body, floors and toytown compression and all. Multiplying by it renders the published
+      // number directly and inherits exactly the size lie the disc already carries.
+      //
+      // BUT A FLOOR MULTIPLIED BY 235 IS NO LONGER A FLOOR, AND THAT IS THE TRAP HERE. The disc's
+      // floor exists to keep a 0.17-pixel Earth visible as 2 pixels - an honest legibility clamp. The
+      // tail is twenty standoffs, so the SAME clamp comes out the other end as a 470-pixel streak,
+      // and at system zoom Jupiter's bubble reached one and a half AU sunward against a true 0.019.
+      // Seen on screen 2026-09-07 and it read as a real region, which is exactly what RENDER-S52
+      // warns about: a shape drawn around a body is read as SIZE, however it got there.
+      //
+      // SO THE INFLATION IS CAPPED AT THE BODY'S HILL SPHERE, the one boundary that is already on
+      // this map and already means "the space this body controls". A magnetosphere is always well
+      // inside it - Earth's twenty-standoff tail is 1.43 million km against a 1.5 million km Hill
+      // radius, which is the nice fact that makes this the right cap rather than a chosen number -
+      // so a bubble drawn outside it is showing something that cannot be. Never below TRUE scale
+      // either: Jupiter's drawn tail is genuinely a touch longer than its Hill radius, and shrinking
+      // it for that would be the opposite lie.
+      //
+      // WHAT IT COSTS, plainly: like the Hill bubble it is a zoomed-in overlay. Earth's is legible
+      // from about a three-million-kilometre view (the Earth-and-Luna framing) and fades out at
+      // system scale, because at system scale it really is a fifth of a pixel.
+      //
+      // AND IT IS CULLED, BOTH WAYS (owner, 2026-09-07: "make sure you do culling on these shapes to
+      // avoid lagging by drawing stuff off screen"). A magnetotail is twenty standoffs long, so at any
+      // useful zoom most of it is off the canvas - and a path handed to `fill()` is rasterised whether
+      // anyone can see it or not. Two cheap tests, in this order:
+      //   REJECT the whole body when its furthest possible point cannot reach the viewport, before any
+      //     outline is generated at all;
+      //   CLIP the drawn tail to the distance that could still land on screen, so the path stays a few
+      //     screens long instead of a few hundred. The GRADIENT is still built over the TRUE tail
+      //     length, so the fade a viewer sees is identical - only the invisible remainder is dropped.
+      // The world pass is translated to the pan and scaled by the zoom, so the visible rectangle in
+      // these coordinates is simply +/- half the canvas over the zoom.
+      if (showMagnetospheres && system) {
+          const mc = magnetosphereConstants(rulePack ?? null);
+          const hillAuById = new Map(hillSpheresAu(system).filter((h) => !h.isStar).map((h) => [h.id, h.rAu]));
+          const halfW = width / (2 * zoom), halfH = height / (2 * zoom);
+          for (const node of system.nodes) {
+              if (node.kind !== 'body') continue;
+              const b = node as CelestialBody;
+              const ms = b.magnetosphere;
+              if (!ms || ms.shape === 'none' || !(ms.standoffRadii > 0)) continue;
+              if (!inRegionOfInterest(roi, b.id)) continue;
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(b.id) : worldPositions.get(b.id);
+              if (!pos) continue;
+              // WHERE THE NOSE POINTS is published, not guessed: `upstreamId` is the star whose wind
+              // this was solved against, or the HOST whose field it was, and a moon deep inside a
+              // giant faces the giant. Drawn in the SAME frame the bodies are, so the nose tracks
+              // the real geometry as the system turns.
+              const src = ms.upstreamId
+                  ? (toytownFactor > 0 ? scaledWorldPositions.get(ms.upstreamId) : worldPositions.get(ms.upstreamId))
+                  : undefined;
+              if (!src) continue;
+              let ux = src.x - pos.x, uy = src.y - pos.y;
+              const ulen = Math.hypot(ux, uy);
+              if (!(ulen > 0)) continue;
+              ux /= ulen; uy /= ulen;
+              const trueUnit = (b.radiusKm || 0) / AU_KM;
+              const hillAu = hillAuById.get(b.id) ?? 0;
+              // The cap: the whole drawn shape, tail included, stays inside the Hill sphere - but a
+              // body whose tail genuinely reaches past it keeps true scale rather than being shrunk.
+              const capUnit = hillAu > 0 && ms.tailRadii > 0 ? Math.max(trueUnit, hillAu / ms.tailRadii) : Infinity;
+              const unit = Math.min(drawnDiscRadiusWorld(b, zoom), capUnit);
+              if (!(unit > 0)) continue;
+              const cx = pos.x - renderPan.x, cy = pos.y - renderPan.y;
+              // Both cull decisions are pure functions in the physics module, so the gate that pins
+              // them is testing the real ones rather than a copy.
+              if (magnetosphereOffScreen(cx, cy, halfW, halfH, magnetosphereReachRadii(ms.standoffRadii, ms.tailRadii) * unit)) continue;
+              const clipTail = (tail: number) => visibleTailRadii(cx, cy, halfW, halfH, unit, tail);
+              // The rotation and the scaling live in the physics module, not here: the gate that
+              // checks this overlay ([[E7]] - a canvas cannot be checked headlessly, so the transform
+              // is reproduced and the NUMBERS compared) calls the same function, and a second copy
+              // of the rotation would leave that gate checking only itself.
+              const trace = (standoff: number, tail: number, taper: boolean) => {
+                  const pts = magnetopauseOutlineOriented(standoff, clipTail(tail), mc, ux, uy, unit, 48, taper);
+                  if (!pts.length) return false;
+                  ctx.beginPath();
+                  for (let i = 0; i < pts.length; i++) {
+                      if (i === 0) ctx.moveTo(cx + pts[i].x, cy + pts[i].y);
+                      else ctx.lineTo(cx + pts[i].x, cy + pts[i].y);
+                  }
+                  ctx.closePath();
+                  return true;
+              };
+              const anomalous = (b.tags ?? []).some((t) => t.key === 'magnetic/anomalous');
+              const strong = anomalous ? '--field-anomalous' : '--field-cage';
+              const strongFallback = anomalous ? '#800080' : '#b48ad6';
+              ctx.lineWidth = 1 / zoom;
+              // 1. The full extent, with its tail. Pale, because the far end of a magnetosphere is
+              //    where the wind is only just being turned - and because the drawn tail length is a
+              //    convention rather than a measurement, so it must not read as a hard edge.
+              if (trace(ms.standoffRadii, ms.tailRadii, false)) {
+                  // NO EDGE AT THE FAR END, BECAUSE THERE IS NO EDGE (owner, 2026-09-07: "is that
+                  // hard edge away from the star real? I thought it would tail off"). It was not
+                  // real - it was where the drawn tail stopped. A magnetotail runs downstream at
+                  // roughly constant width and stops being a definable boundary rather than ending,
+                  // so the paint fades to nothing along it and the drawn length stops being a claim.
+                  const gx0 = cx + ms.standoffRadii * unit * ux, gy0 = cy + ms.standoffRadii * unit * uy;
+                  const gx1 = cx - ms.tailRadii * unit * ux, gy1 = cy - ms.tailRadii * unit * uy;
+                  const grad = (a: number) => {
+                      const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
+                      g.addColorStop(0, tokenRgba('--field-faint', '#6f5a86', a));
+                      g.addColorStop(0.12, tokenRgba('--field-faint', '#6f5a86', a));
+                      g.addColorStop(1, tokenRgba('--field-faint', '#6f5a86', 0));
+                      return g;
+                  };
+                  ctx.fillStyle = grad(0.07);
+                  ctx.fill();
+                  ctx.strokeStyle = grad(0.22);
+                  ctx.stroke();
+              }
+              // 2. The shielded region. Solid enough to read at a glance, because this is the part a
+              //    GM is actually asking about. Its downstream end is a REAL boundary - the lines
+              //    reconnect and open - so it is short where the tail is long.
+              // ...and this one DOES close, so it is drawn closing: the last closed field line comes
+              // back to the body, so the region eases to a blunt point instead of being cut off.
+              if (ms.closedFieldRadii > 0 && trace(ms.closedFieldRadii, ms.closedFieldRadii * mc.CLOSED_TAIL_STANDOFFS, true)) {
+                  ctx.fillStyle = tokenRgba(strong, strongFallback, 0.14);
+                  ctx.fill();
+                  ctx.strokeStyle = tokenRgba(strong, strongFallback, 0.42);
+                  ctx.stroke();
+              }
           }
       }
       if (showLPoints && lagrangePoints) {

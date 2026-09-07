@@ -12,6 +12,7 @@ export type ViewSettings = {
     showLPoints: boolean;
     showTravellerZones?: boolean;
     showHillSpheres?: boolean; // optional — older senders won't include it
+    showMagnetospheres?: boolean; // optional (G82) — older senders won't include it
 };
 
 export type TimeState = {
