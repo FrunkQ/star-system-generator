@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.371 - 7th Sep 2026
+
+- Board: the owner has used the low power mode and the Size comparison's glide and they are right, so those rows are closed on his eye rather than on a measurement. The ring tilt fix is still waiting to be looked at.
+
 ## v3.0.370 - 7th Sep 2026
 
 - Every world with a magnetic field now says how far that field actually reaches. A new block on the Atmosphere
@@ -14,6 +18,7 @@ All notable changes are listed here:
   their own boundary, the astrosphere, where the wind gives way to interstellar space - about 120 AU for the Sun,
   roughly where the Voyagers crossed. The physics page and the Newton panel both show the working, including a
   plain list of what in it is an estimate. Nothing is drawn yet; the pictures come next.
+
 
 ## v3.0.369 - 7th Sep 2026
 
