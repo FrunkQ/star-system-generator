@@ -28,6 +28,9 @@ export const TENUOUS_GAUSS = 0.05;
 // Mercury's ~0.003 G as "0.00 G". Small fields get more decimals.
 export function formatGauss(g: number): string {
   const v = g || 0;
+  // A remnant's field is 1e8-1e15 G; printed with toFixed it ran to fifteen digits on the card
+  // ([[B145]]). Above 1e4 G the exponent form is the readable one: "2.21e14".
+  if (v >= 1e4) return v.toExponential(2).replace('e+', 'e');
   if (v >= 1) return v.toFixed(2);
   if (v >= 0.01) return v.toFixed(3);
   if (v > 0) return v.toFixed(4);

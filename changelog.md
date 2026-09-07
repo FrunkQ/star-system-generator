@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.373 - 7th Sep 2026
+
+- A neutron star's card makes sense again: its field prints as 2.21e14 G rather than fifteen digits, the note under it says the field is within its class's normal range rather than 'typical', and the magnetic activity cell says that 'quiet' is the flare verdict (a remnant has no dynamo to flare from) and is not a statement about its radiation. The ionising figure for remnants still comes from a model built for ordinary stars, and says so until the physics follows.
+
 ## v3.0.372 - 7th Sep 2026
 
 - The light and dark palettes for the floating controls now take their tint from the skin you are wearing: Nebula floats lilac or deep purple, Classic peach or warm charcoal, Modern blue-white or slate. Text stays dark on light and light on dark, so everything reads on every skin.

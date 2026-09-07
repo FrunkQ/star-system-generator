@@ -1672,3 +1672,18 @@ overlay set: the overlay bends with the picture on every one, and the preview in
 > the holo AND the size comparison, and Low Power hides it again; the CRT warp bends the cage with the picture.
 >
 > **Housekeeping:** as Stream Q's, word for word.
+
+**AMENDED 2026-09-07 late by coordinator 8, AFTER the stream started (job 1 landed as v3.0.370) - so the running
+session must be TOLD, not expected to re-read: a job before the wind pressure, [[B145]].** Your wind pressure scales
+with the star's ACTIVITY, and for a compact remnant that activity is a FLARE verdict (`stellar-evolution.ts
+flareActivity`: an isolated neutron star or white dwarf is deliberately quiet; a magnetar 0.9; a fed hole from its
+Eddington fraction) fed through a main-sequence CORONAL fraction (`ionisingOutput.ts ionisingFraction`, the quiet
+Sun's 1e-7 of bolometric up to 1e-3 saturated). A 600,000 K photosphere is not a corona: nearly all of its light
+is above the hydrogen edge, so its ionising fraction is close to 1, the card's `1.00e-4 × Sun` is low by up to
+seven decades, the UV kill zone follows it, and your wind for a remnant would too. THE JOB: for the NAMED remnant
+classes (`star/NS`, `star/WD`, `star/magnetar`, `star/BH`), derive the ionising fraction from the photospheric
+temperature - the Planck fraction above 13.6 eV, one function, anchored (Sun unchanged; 6e5 K neutron star near
+1; 1e4 K white dwarf a few per cent; a 30,000 K O star's thermal fraction real but its corona still the soft-X-ray
+source) - keep the flare verdict as the flare verdict, and let the wind for a remnant read the thermal figure.
+Red-first, absolute (PHY-34). Then take the 'coronal model, not the surface' note off the card's ionising cell
+(`BodyTechnicalDetails.svelte`, `starIonisingNote`) in the same push.

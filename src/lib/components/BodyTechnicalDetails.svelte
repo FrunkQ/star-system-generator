@@ -148,6 +148,8 @@
   let starKillZoneAU: number | null = null;
   let starIonisingSolar: number | null = null;
   let starFieldRole: string | null = null;
+  let starRemnantNote: string | null = null; // a remnant's activity cell says what its verdict means
+  let starIonisingNote: string | null = null; // and its ionising cell says which model produced the figure
   let starFieldTooltip = '';
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
@@ -411,7 +413,17 @@
                 tempK: body.temperatureK,
                 luminositySolar: body.radiationOutput
             });
-            const typicalWords = typicalGauss ? `${formatGauss(typicalGauss)} G` : 'its class norm';
+            const typicalWords = typicalPair.length === 2
+                ? `${formatGauss(typicalPair[0])} to ${formatGauss(typicalPair[1])} G, a norm of about ${formatGauss(typicalGauss as number)} G`
+                : 'its class norm';
+            // A REMNANT: no photosphere, no convective dynamo, so the flare verdict is "quiet" BY
+            // DECISION (owner, 2026-08-14, `flareActivity`) unless it is a magnetar or fed. That is a
+            // verdict about FLARING, and the card must say so: beside a 1e14 G field and a 600,000 K
+            // surface, an unexplained "quiet (0.00)" reads as a contradiction, and the ionising figure
+            // beneath it still comes from the main-sequence coronal fraction ([[B145]]).
+            const remnant = /^star\/(NS|magnetar|BH|WD)\b/.test(body.classes?.[0] ?? '');
+            starRemnantNote = remnant ? 'the FLARE verdict: a remnant has no dynamo to flare from' : null;
+            starIonisingNote = remnant ? 'coronal model, not the surface - see B145' : null;
 
             const starActivity = (body as any).flareActivity as number | undefined;
             const ionisingSolar = bodyIonisingOutputSolar(body);
@@ -423,12 +435,12 @@
                 ? 'not driving the activity — that is pinned'
                 : fieldDriven > 0
                     ? 'raising the activity above'
-                    : 'at this class’s typical strength';
+                    : 'within this class’s normal range';
             starFieldTooltip =
                 'A star\'s surface field. AUTHORED, not derived: you set it on the star editor and the'
                 + ' engine never recomputes it (a planet\'s is the other way round, which is why the same'
                 + ' card means different things on the two).'
-                + '\n\n' + `This class typically runs about ${typicalWords}.`
+                + '\n\n' + `This class runs ${typicalWords}.`
                 + (activityPinned
                     ? '\n' + 'It is NOT feeding the magnetic activity at the moment, because that is pinned'
                       + ' on the Overrides tab and a pin overrules the field. It still sets the jets and'
@@ -436,9 +448,9 @@
                     : fieldDriven > 0
                         ? '\n' + `It is wound above that, which is what is raising the activity (+${fieldDriven.toFixed(2)}).`
                           + ' Two decades above the norm reaches the ceiling.'
-                        : '\n' + 'Sitting in its own band, so it adds NOTHING to the activity — that comes from'
-                          + ' class and age. Wind it up and it starts to; two decades above the norm reaches'
-                          + ' the ceiling. It sets the jets and the shed wind either way.')
+                        : '\n' + 'Not above the norm, so it adds NOTHING to the activity — that comes from'
+                          + ' class and age. Wind it up past the norm and it starts to; two decades above'
+                          + ' reaches the ceiling. It sets the jets and the shed wind either way.')
                 + (satGauss ? '\n' + `Past about ${formatGauss(satGauss)} G the dynamo saturates and more field buys nothing.` : '');
             radiationTooltip =
                 "MAGNETIC ACTIVITY - the ionising half of this star's output: flares, X-rays and the"
@@ -449,7 +461,15 @@
                 + (activityPinned
                     ? '\nPINNED by the GM on the Overrides tab - the class-and-age model is overruled.'
                     : "\nDerived from spectral class and age, and raised by a field wound above this class's typical strength.")
-                + '\nLuminosity, below, is how BRIGHT the star is. That is a different quantity.';
+                + '\nLuminosity, below, is how BRIGHT the star is. That is a different quantity.'
+                + (remnant
+                    ? '\n\nTHIS IS A REMNANT. "Quiet" is the FLARE verdict: an isolated neutron star or white dwarf'
+                      + ' has no convective dynamo and nothing falling in, so it does not flare (a magnetar does,'
+                      + ' and so does a fed hole). It says nothing about its RADIATION - a surface at hundreds of'
+                      + ' thousands of kelvin shines mostly in X-rays and extreme ultraviolet - and the ionising'
+                      + ' output below is still the main-sequence coronal fraction of its brightness, which is'
+                      + ' wrong for it by decades. On the board as B145.'
+                    : '');
             
             if (body.radiusKm && body.temperatureK) {
                 // Through the ONE Stefan-Boltzmann ([[B110]]): a panel deriving a physics quantity
@@ -863,6 +883,7 @@
               <span class="label">Magnetic activity (ionising)</span>
               <span class="value">{radiationLevel}</span>
               {#if isPinned('flareActivity')}<span class="ovr-flag">OVERRIDDEN</span>{/if}
+              {#if starRemnantNote}<span class="role-note">{starRemnantNote}</span>{/if}
           </div>
       {/if}
 
@@ -871,6 +892,7 @@
               <span class="label">Ionising output</span>
               <span class="value">{starIonisingSolar.toExponential(2)} × Sun</span>
               {#if isPinned('flareActivity')}<span class="ovr-flag">FROM AN OVERRIDE</span>{/if}
+              {#if starIonisingNote}<span class="role-note">{starIonisingNote}</span>{/if}
           </div>
       {/if}
 
