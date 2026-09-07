@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.383 - 7th Sep 2026
+
+- Every field in the gas editor now has a "?" beside it that tells you what the number actually is: what it means, what else it is called, the units, what in the engine reads it, and what a real value looks like with examples from the gases that ship.
+- Each one also says which KIND of number it is, because that is the thing that was hardest to guess. Some are measured quantities you can look up and get right - molar mass, melting point, specific heat. Others are coefficients on a scale this app invented with Earth as the yardstick, where only the ratios between gases mean anything - the greenhouse and shielding factors are both of these. The Greenhouse Factor in particular is NOT the Global Warming Potential you may know: that is per unit mass over a century and includes how long a gas survives, this is per partial pressure and instantaneous, which is why carbon dioxide and methane sit at 22 and 25 here rather than at 1 and about 28.
+- And one field says plainly that nothing reads it. Radiative Cooling has been carried on every gas and wired to nothing, so changing it has never done anything to any world. It now says so rather than implying otherwise.
+- Liquids, Fuel & Drives and Sensors get the same treatment next; the gas editor is the pattern.
 ## v3.0.382 - 7th Sep 2026
 
 - Docked controls: dragging one on the END of a row now takes just that one out, instead of moving the whole row with it. Drag one in the MIDDLE and the row still moves together, which is what you want from the middle. So a row of three is rearranged by pulling pieces off its ends and dropping them where you want them - and two docked controls come apart the same way, since both of them are ends.
