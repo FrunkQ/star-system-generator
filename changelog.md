@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.368 - 7th Sep 2026
+
+- The controls that float over the map (the body picker, the clock, the time transport, the undo pill) can now take a palette of their own, chosen under Settings > System > Appearance: follow the skin, light over the map, or dark over the map. The map is black whatever the skin does, so a dark interface can still float light controls over it.
+
 ## v3.0.367 - 7th Sep 2026
 
 - The Daylight skin no longer shows dark boxes with dark text: the body description, the GM notes, the zone key, the ship log, the bottom sheet and a score of other panels had their dark colour written in by hand, and every one now follows the skin. Dark skins look exactly as before.

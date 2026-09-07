@@ -5,7 +5,7 @@
   import { ensureTemporalState } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar } from '$lib/temporal/utre';
   import { starmapUiStore } from '$lib/starmapUiStore';
-  import { skin, SKINS, customSkins } from '$lib/styles/skinStore';
+  import { skin, SKINS, customSkins, floatSkin, FLOAT_SKINS } from '$lib/styles/skinStore';
   import { hubSavesEnabled } from '$lib/hub/hubSaves';
   import { HUB } from '$lib/hub/hubConfig';
   import SkinEditorModal from './SkinEditorModal.svelte';
@@ -550,6 +550,14 @@
               {/each}
               {#each $customSkins as c (c.id)}
                 <option value={`custom:${c.id}`}>{c.name} — your skin, on {SKINS.find((b) => b.id === c.base)?.name}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="floatChoice" title="The controls that float over the map — the body picker, the clock, the time transport, the undo pill — can contrast their own way. The map is black whatever the skin does, so light controls over it read well even on a dark skin. This device only.">Floating controls on the map</label>
+            <select id="floatChoice" bind:value={$floatSkin}>
+              {#each FLOAT_SKINS as f}
+                <option value={f.id}>{f.name} — {f.blurb}</option>
               {/each}
             </select>
           </div>

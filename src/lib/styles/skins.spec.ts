@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { SKINS } from './skinStore';
+import { SKINS, FLOAT_SKINS } from './skinStore';
 
 /**
  * G34 addendum (2026-09-07). Two rules for the built-in skins:
@@ -23,6 +23,9 @@ const tokens = readFileSync(resolve(process.cwd(), 'src/lib/styles/tokens.css'),
 const base = grab(tokens.slice(0, tokens.indexOf('}', tokens.indexOf(':root'))));
 const blocks: Record<string, Record<string, string>> = {};
 for (const b of css.matchAll(/:root\[data-skin='([a-z]+)'\]\s*\{([^}]*)\}/g)) blocks[b[1]] = grab(b[2]);
+// The floating controls' own palettes (`data-float`), scoped under `.sse-float`.
+const floatBlocks: Record<string, Record<string, string>> = {};
+for (const b of css.matchAll(/:root\[data-float='([a-z]+)'\]\s+\.sse-float\s*\{([^}]*)\}/g)) floatBlocks[b[1]] = grab(b[2]);
 
 function value(skin: Record<string, string>, token: string): string {
   const v = skin[token] ?? base[token];
@@ -66,6 +69,20 @@ describe('interface skins', () => {
         expect(ratio, `${s.id}: ${fg} on ${bg} is ${ratio.toFixed(2)}, floor ${min}`).toBeGreaterThanOrEqual(min);
       }
     }
+  });
+
+  it('the floating-control palettes exist for every choice but "follow the skin", and hold the same floors', () => {
+    const expected = new Set(FLOAT_SKINS.map((f) => f.id as string).filter((id) => id !== 'skin'));
+    expect(new Set(Object.keys(floatBlocks))).toEqual(expected);
+    for (const [id, pal] of Object.entries(floatBlocks)) {
+      for (const [fg, bg, min] of FLOORS) {
+        const ratio = contrast(value(pal, fg), value(pal, bg));
+        expect(ratio, `float ${id}: ${fg} on ${bg} is ${ratio.toFixed(2)}, floor ${min}`).toBeGreaterThanOrEqual(min);
+      }
+    }
+    // The light one is light and the dark one is dark: the whole point of the choice.
+    expect(luminance(value(floatBlocks.light, '--bg-panel'))).toBeGreaterThan(0.8);
+    expect(luminance(value(floatBlocks.dark, '--bg-panel'))).toBeLessThan(0.05);
   });
 
   it('a light skin exists, and it is light', () => {

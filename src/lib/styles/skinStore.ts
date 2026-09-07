@@ -23,6 +23,40 @@ export const SKINS: { id: BuiltinSkinId; name: string; blurb: string }[] = [
   { id: 'terminal', name: 'Terminal', blurb: 'Amber phosphor on black — a console look, compact type' }
 ];
 
+// THE FLOATING CONTROLS' OWN PALETTE. The on-canvas floaters sit over the starmap's black whatever
+// the skin does, so which way they contrast is a separate choice: follow the skin (no attribute),
+// light over the map, or dark over the map. Applied as `data-float` on <html>; the module marks every
+// floating root `.sse-float`, and skins.css scopes the chrome tokens under the pair.
+export type FloatSkinId = 'skin' | 'light' | 'dark';
+export const FLOAT_SKINS: { id: FloatSkinId; name: string; blurb: string }[] = [
+  { id: 'skin', name: 'Follow the skin', blurb: 'the same chrome as everything else' },
+  { id: 'light', name: 'Light on the map', blurb: 'paper-light controls over the black map, whatever the skin' },
+  { id: 'dark', name: 'Dark on the map', blurb: 'dark controls over the map, even on a light skin' }
+];
+const FLOAT_KEY = 'sse-float-skin';
+const FLOAT_IDS = new Set<string>(FLOAT_SKINS.map((s) => s.id));
+
+function loadFloat(): FloatSkinId {
+  if (typeof localStorage === 'undefined') return 'skin';
+  const v = localStorage.getItem(FLOAT_KEY);
+  return v && FLOAT_IDS.has(v) ? (v as FloatSkinId) : 'skin';
+}
+
+export const floatSkin = writable<FloatSkinId>(loadFloat());
+
+function applyFloat(id: FloatSkinId) {
+  if (typeof document === 'undefined') return;
+  if (id === 'skin') delete document.documentElement.dataset.float;
+  else document.documentElement.dataset.float = id;
+}
+
+if (typeof document !== 'undefined') {
+  floatSkin.subscribe((id) => {
+    try { localStorage.setItem(FLOAT_KEY, id); } catch { /* private mode - ignore */ }
+    applyFloat(id);
+  });
+}
+
 export interface CustomSkin {
   id: string;
   name: string;

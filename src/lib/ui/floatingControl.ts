@@ -371,6 +371,10 @@ export function createFloatingControl(
   const root = (node: HTMLElement) => {
     if (!enabled) return noop;
     rootEl = node;
+    // The control MARKS ITSELF as floating chrome, so a palette meant for the floating controls
+    // alone (`data-float` on <html>, skins.css) can find every one without anyone keeping a list -
+    // the same shape as UI-C6's `use:chrome`. A host added next month is covered because it floats.
+    node.classList.add('sse-float');
     stageEl = options.stage ? options.stage(node) : nearestClippingAncestor(node);
     // The box changes shape without the window doing so - a detail pane opening narrows the canvas
     // and would drag a centre-anchored control with it. Re-settle from the remembered edge then.
@@ -393,6 +397,7 @@ export function createFloatingControl(
         document.removeEventListener('pointerdown', onOutside, true);
         window.removeEventListener('resize', onResize);
         ro?.disconnect();
+        node.classList.remove('sse-float');
         if (rootEl === node) { rootEl = null; stageEl = null; }
       }
     };

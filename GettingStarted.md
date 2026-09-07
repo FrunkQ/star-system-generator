@@ -179,6 +179,11 @@ look). **Make your own** opens a
 skin editor: pick a base, name it, and repaint twelve chrome colours with the app itself as the live
 preview. Your skins live on your device and sit in the same picker.
 
+**Floating controls on the map**, just below the skin, gives the controls that float over the
+starmap - the body picker, the clock, the time transport, the undo pill - a palette of their own:
+follow the skin, light over the map, or dark over the map. The map is black whatever the skin does,
+so a dark interface can still float light controls over it, or a light one dark ones.
+
 A skin repaints the interface. The **colour palette** page below it goes finer, one colour at a
 time — including the ones that carry meaning, like body types and zone bands — and its changes sit
 on top of whichever skin you are wearing. A skin is chrome and stays on this device; it is not part

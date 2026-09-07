@@ -183,3 +183,52 @@ html:is([data-skin='modern'], [data-skin='nebula'], [data-skin='terminal']) body
     font-size: 0.92em;
   }
 }
+
+/* =============================================================================
+   FLOATING CONTROLS: a palette of their own (owner, 2026-09-07: "the floating windows look great
+   contrasting... have that as a separate control - so they can be highlighted differently if
+   needed - eg lighter on a dark map").
+
+   The on-canvas floating controls (the body picker, the clock, the time transport, the undo pill
+   - every host of ui/floatingControl.ts, which marks its root `.sse-float`) sit over the starmap's
+   black whatever the skin does, so their contrast is a question of its own. `data-float` on <html>
+   (skinStore.ts, per viewer, beside the skin) answers it: absent = follow the skin; `light` = the
+   Daylight surfaces over the map; `dark` = the Modern surfaces over the map. Only chrome tokens are
+   re-scoped - the domain palette never moves (UI-C10) - and the blocks are held to the same
+   contrast floors as the skins (skins.spec.ts).
+   ============================================================================= */
+:root[data-float='light'] .sse-float {
+  --bg-app: #f3f1ec;
+  --bg-panel: #fbfaf7;
+  --bg-control: #e9e5dc;
+  --bg-control-hover: #dcd6c9;
+  --bg-card: #f5f3ee;
+  --border: #c6bfb0;
+  --border-soft: #ddd7cb;
+  --text: #1d1a14;
+  --text-muted: #5a5547;
+  --text-faint: #8a8375;
+  --accent: #0b6a73;
+  --accent-hover: #0f8792;
+  --accent-soft: #5fb3ba;
+  --on-accent: #ffffff;
+  --link: #084a80;
+}
+
+:root[data-float='dark'] .sse-float {
+  --bg-app: #101318;
+  --bg-panel: #171b22;
+  --bg-control: #1f242d;
+  --bg-control-hover: #293039;
+  --bg-card: #20242c;
+  --border: #333a46;
+  --border-soft: #242a34;
+  --text: #e8e8e8;
+  --text-muted: #8a8f9a;
+  --text-faint: #5a5f6a;
+  --accent: #5aa7e8;
+  --accent-hover: #83c0f4;
+  --accent-soft: #b7d9f7;
+  --on-accent: #0a1420;
+  --link: #8fc7ff;
+}

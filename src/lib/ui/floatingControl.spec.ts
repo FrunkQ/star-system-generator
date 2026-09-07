@@ -449,3 +449,16 @@ describe('two controls dock, move as one, and settle as one box (G81)', () => {
     p.done();
   });
 });
+
+describe('a floating control marks itself, so a palette can find it without a list (G34 addendum)', () => {
+  it('the root action adds `sse-float` on mount and removes it on destroy', () => {
+    localStorage.removeItem(KEY);
+    const node = document.createElement('div');
+    document.body.appendChild(node);
+    const ctl = createFloatingControl(KEY, {}, { stage: () => null });
+    const action = ctl.root(node);
+    expect(node.classList.contains('sse-float')).toBe(true);
+    action.destroy();
+    expect(node.classList.contains('sse-float')).toBe(false);
+  });
+});
