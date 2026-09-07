@@ -41,7 +41,7 @@ import { AU_KM, SOLAR_RADIUS_KM } from '$lib/constants';
 import { calculateDistanceToStar } from './temperature';
 import { isLuminousSource } from './substellar';
 import { beltInnerEdgeRadii, beltScaleLengthRadii } from './radiation';
-import { ionisingFromField } from './ionisingOutput';
+import { ionisingFromField, isRemnantClass, ionisingOutputSolarOf } from './ionisingOutput';
 import { seedFrom } from '$lib/rendering/landmass';
 
 const MU0 = 4 * Math.PI * 1e-7;      // vacuum permeability, T m / A
@@ -136,6 +136,16 @@ export function magnetopauseStandoffRadii(
 
 /** How hard this star's wind blows, relative to the Sun's. Exactly 1 for the Sun's field and size. */
 export function windScaleOf(star: CelestialBody, c: ReturnType<typeof magnetosphereConstants>): number {
+  // A REMNANT DOES NOT BLOW A CORONAL WIND ([[B145]]), and this pass would have inherited that fault
+  // wholesale: `ionisingFromField` derives an X-ray output from the magnetic flux of a DYNAMO, and a
+  // neutron star has no dynamo and a 600,000 K surface instead - nearly all of whose light is already
+  // above the hydrogen edge. Read the thermal figure for the named remnant classes and the coronal one
+  // for everything else: two mechanisms, two questions, and the class says which applies.
+  if (isRemnantClass(star.classes?.[0])) {
+    const out = ionisingOutputSolarOf(star.radiationOutput ?? 0, star.classes?.[0], star.temperatureK, (star as any).flareActivity);
+    if (!(out > 0)) return 1;   // no luminosity on record is not a claim of no wind (the B9a rule)
+    return Math.min(c.WIND_SCALE_MAX, Math.max(c.WIND_SCALE_MIN, Math.pow(out, c.WIND_ACTIVITY_EXPONENT)));
+  }
   const ionising = ionisingFromField({
     fieldGauss: star.magneticField?.strengthGauss,
     radiusSolar: (star.radiusKm ?? 0) / SOLAR_RADIUS_KM,

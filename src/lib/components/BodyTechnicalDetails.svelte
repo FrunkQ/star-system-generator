@@ -20,7 +20,7 @@
   import { phaseAtP } from '$lib/physics/liquids';
   import { formatGauss } from '$lib/physics/magnetism';
   import { stellarActivityBucket } from '$lib/physics/stellarActivity';
-  import { bodyIonisingOutputSolar } from '$lib/physics/ionisingOutput';
+  import { bodyIonisingOutputSolar, isRemnantClass, thermalIonisingFraction, ionisingFraction } from '$lib/physics/ionisingOutput';
   import { calculateGoldilocksZone, calculateFrostLine, calculateKillZone } from '$lib/physics/zones';
   import { activityFromFieldExcess, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatTemplate } from '$lib/generation/star';
@@ -421,9 +421,15 @@
             // verdict about FLARING, and the card must say so: beside a 1e14 G field and a 600,000 K
             // surface, an unexplained "quiet (0.00)" reads as a contradiction, and the ionising figure
             // beneath it still comes from the main-sequence coronal fraction ([[B145]]).
-            const remnant = /^star\/(NS|magnetar|BH|WD)\b/.test(body.classes?.[0] ?? '');
+            // ONE COPY of "is this a remnant" - `isRemnantClass`, in the module that acts on the
+            // answer. This file carried its own regex for the same question until [[B145]] landed.
+            const remnant = isRemnantClass(body.classes?.[0]);
             starRemnantNote = remnant ? 'no dynamo to flare from; its jets are the field and the spin' : null;
-            starIonisingNote = remnant ? 'coronal model - reads low for a remnant' : null;
+            // [[B145]] part 4 is FIXED, so "reads low for a remnant" comes off. What replaces it is
+            // the positive statement - this figure is the SURFACE's - and only where the surface wins.
+            starIonisingNote = remnant && thermalIonisingFraction(body.temperatureK) > ionisingFraction((body as any).flareActivity)
+                ? 'from the surface, not a corona'
+                : null;
 
             const starActivity = (body as any).flareActivity as number | undefined;
             const ionisingSolar = bodyIonisingOutputSolar(body);

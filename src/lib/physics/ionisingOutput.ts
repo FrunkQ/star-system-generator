@@ -46,6 +46,95 @@ export function ionisingFraction(activity: number | undefined): number {
 	return Math.pow(10, lo + (hi - lo) * a);
 }
 
+// --- A REMNANT'S IONISING OUTPUT IS NOT CORONAL ([[B145]]) -------------------------------------
+//
+// Everything above is a CORONA: a magnetic dynamo heating a thin outer shell to millions of kelvin
+// while the photosphere underneath stays at a few thousand. That is the right model for a
+// main-sequence star and the wrong one for a compact remnant, and the difference is not a detail.
+// A neutron star's SURFACE is at 600,000 K. By Planck, nearly all of its light is already above the
+// hydrogen edge - it does not need a corona to be an ionising source, it IS one. Run through the
+// coronal fraction instead, a 6e5 K neutron star came out at 1.00e-4 x Sun, low by up to seven
+// decades, and the UV kill zone and the stellar wind both followed it down.
+//
+// Owner's screenshot, 2026-09-07: a neutron star reading `Ionising output 1.00e-4 x Sun` beside a
+// 2.2e14 G field and a UV kill zone `within 0.09 AU`.
+
+/** The hydrogen edge, 13.598 eV, expressed as the temperature whose kT equals it. x = this / T. */
+export const HYDROGEN_EDGE_K = 13.598434 / 8.617333262e-5;
+
+/**
+ * The share of a BLACKBODY's radiant power emitted above the hydrogen ionisation edge.
+ *
+ * Straight out of Planck, with no fitted constant anywhere in it:
+ *     f(>x) = (15/pi^4) * SUM_n e^(-n x) (x^3/n + 3x^2/n^2 + 6x/n^3 + 6/n^4),   x = 157803 K / T
+ * The series is the exact integral of the Planck function above x, so this is a derivation rather
+ * than a model - the only choice in it is where the edge sits, and that is a constant of hydrogen.
+ *
+ * MEASURED against the whole range this engine can produce: the Sun 4.8e-9 (which is WHY a
+ * main-sequence star must keep the coronal model - its EUV genuinely comes from the corona, three
+ * hundred times its photosphere's), a 3200 K M dwarf 7.5e-18, a 10,000 K white dwarf 1.03e-4, a
+ * 20,000 K one 4.2%, a 100,000 K one 89%, a 600,000 K neutron star 99.92%.
+ */
+export function thermalIonisingFraction(tempK: number | undefined): number {
+	const T = tempK ?? 0;
+	if (!(T > 0)) return 0;
+	const x = HYDROGEN_EDGE_K / T;
+	if (x < 1e-6) return 1;
+	let s = 0;
+	// 200 terms: the tail falls as 1/n^4, so this is exact to about 1e-9 even as x approaches 0.
+	for (let n = 1; n <= 200; n++) {
+		const e = Math.exp(-n * x);
+		if (e === 0) break;   // nothing further can contribute
+		s += e * ((x * x * x) / n + (3 * x * x) / (n * n) + (6 * x) / (n * n * n) + 6 / (n * n * n * n));
+	}
+	return Math.min(1, (15 / Math.pow(Math.PI, 4)) * s);
+}
+
+/**
+ * IS THIS CLASS A REMNANT? The NAMED list, and it is named for the reason `flareActivity` names its
+ * own: 'B' is both the initial of "BH" and a real spectral class, and testing the first letter once
+ * gave a black hole a B-star's flare rate ([[B44]]).
+ *
+ * ONE COPY. The card carried a second regex for the same question; it reads this now, so the two
+ * cannot answer differently.
+ */
+export function isRemnantClass(spectralClass: string | undefined): boolean {
+	// The boundary matters: without it a class that merely STARTS with those letters would match.
+	return /^(?:star\/)?(?:NS|WD|BH|BH_active|magnetar)\b/.test(spectralClass ?? '');
+}
+
+/**
+ * The ionising fraction that actually applies to a star: coronal for a main-sequence one, and for a
+ * remnant THE GREATER of the coronal and thermal figures.
+ *
+ * GREATER, NOT INSTEAD, and that is a steer rather than the letter of the brief. Both mechanisms are
+ * real and a body has at least the larger: it keeps a hot neutron star's surface (thermal 0.9992
+ * against a coronal 1e-7) and does not take an ACCRETING BLACK HOLE's output away, which a bare
+ * swap would have. A hole has no photosphere at all - its light is the disc's, which is what
+ * `flareActivity` already reads through `accretionEddington` - so a Planck fraction off a
+ * meaningless surface temperature would have zeroed the most luminous object in the catalogue.
+ * With the max, a quiescent hole keeps its quiet coronal figure and a fed one keeps its disc.
+ */
+export function effectiveIonisingFraction(
+	spectralClass: string | undefined,
+	tempK: number | undefined,
+	activity: number | undefined
+): number {
+	const coronal = ionisingFraction(activity);
+	if (!isRemnantClass(spectralClass)) return coronal;
+	return Math.max(coronal, thermalIonisingFraction(tempK));
+}
+
+/** Ionising output in solar units, taking the right fraction for the class. The one to call. */
+export function ionisingOutputSolarOf(
+	luminositySolar: number,
+	spectralClass: string | undefined,
+	tempK: number | undefined,
+	activity: number | undefined
+): number {
+	return (luminositySolar * effectiveIonisingFraction(spectralClass, tempK, activity)) / IONISING_FRACTION_QUIET;
+}
+
 /** The inverse: what dynamo strength does this fraction imply? Used when a GM sets L_X directly. */
 export function activityForFraction(fraction: number): number {
 	if (!(fraction > 0)) return 0;
@@ -92,11 +181,11 @@ export function ionisingBands(
 	return { typical, flaring };
 }
 
-/** The star's ionising output, from its own luminosity and activity. */
+/** The star's ionising output, from its own luminosity and whichever fraction its class earns. */
 export function bodyIonisingOutputSolar(body: CelestialBody): number | undefined {
 	const lum = body.radiationOutput;
 	if (!(lum! > 0)) return undefined;
-	return ionisingOutputSolar(lum!, (body as any).flareActivity);
+	return ionisingOutputSolarOf(lum!, body.classes?.[0], body.temperatureK, (body as any).flareActivity);
 }
 
 /**

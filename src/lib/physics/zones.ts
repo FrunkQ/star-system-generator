@@ -2,7 +2,7 @@ import type { CelestialBody, Barycenter, RulePack } from '../types';
 import { SOLAR_RADIUS_KM } from '../constants';
 import { luminositySolarFromRT, SOLAR_TEFF_K } from './luminosity';
 import { blackbodyFractionBelowNm } from './spectrum';
-import { ionisingOutputSolar } from './ionisingOutput';
+import { ionisingOutputSolar, ionisingOutputSolarOf } from './ionisingOutput';
 import { starOccluders, bandAlignmentShare, relativeInclinationRad, type StarOccluder } from './starlightOcclusion';
 
 /**
@@ -132,9 +132,12 @@ export function calculateKillZone(
         ? (luminosity * blackbodyFractionBelowNm(edgeNm, tempK)) / solarUvShare
         : 0;
 
+    // [[B145]]: a REMNANT's ionising output is its 600,000 K surface, not a corona it does not have,
+    // so this goes through `ionisingOutputSolarOf` rather than the coronal fraction alone. The Sun is
+    // untouched (it is not a remnant) and so is the normalisation, which is what keeps Sol on 1.
     const solarIonising = ionisingOutputSolar(1, SOLAR_FLARE_ACTIVITY);
     const ionisingRelative = solarIonising > 0
-        ? ionisingOutputSolar(luminosity, (star as any).flareActivity) / solarIonising
+        ? ionisingOutputSolarOf(luminosity, star.classes?.[0], star.temperatureK, (star as any).flareActivity) / solarIonising
         : 0;
 
     // Mean of the two, so a star that is lethal by EITHER route is lethal, and Sol is exactly 1.

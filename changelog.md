@@ -2,6 +2,19 @@
 
 All notable changes are listed here:
 
+## v3.0.380 - 7th Sep 2026
+
+- Fixed: a neutron star was being told it was harmless. Its ionising output was worked out the way a normal
+  star's is - from a corona, the thin outer shell a magnetic dynamo heats to millions of degrees - and a
+  remnant has no dynamo and no corona. What it has instead is a surface at six hundred thousand degrees,
+  and nearly all the light from a surface that hot is already energetic enough to strip electrons off
+  hydrogen. So the figure now comes from the surface for neutron stars, white dwarfs, magnetars and black
+  holes, and from the corona for everything else. The Sun and every ordinary star are unchanged, deliberately:
+  their ultraviolet really does come from the corona, about twenty times over. The owner's neutron star goes
+  from a hundredth of a percent of the Sun's ionising output to about a thousand times it - which is what a
+  cooling neutron star actually is - and its ultraviolet kill zone, and the stellar wind blowing on anything
+  orbiting it, both follow. An accreting black hole keeps its disc, since a hole has no surface to read.
+
 ## v3.0.379 - 7th Sep 2026
 
 - A star's 'Magnetic activity' is now called what it is, 'Flare activity', on the card, the tag, the override and the guides: it is how much the star flares, which is its dynamo, while its jets are a different engine (the gravitational well, the field and the spin). That is why a neutron star can carry strong jets and be quiet at once. The remnant notes on the card are plain words now.
