@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.385 - 7th Sep 2026
+
+- The "?" is now on all four pack editors, not just gases: Liquids, Fuel & Drives and Sensors each explain every field the same way - what it is, what else it is called, the units, what in the app reads it, and what a real value looks like, with the same chip saying whether it is a measured quantity you can look up, a coefficient this app invented, or a field nothing reads.
+- Three things nobody had written down anywhere turned up while writing them. An engine whose Type reads exactly "Chemical (Monopropellant)" is left out of every thrust, ISP and power total - that is how RCS blocks are stopped from flattering a ship's figures, and it means the wording of that box matters. A liquid marked "poor" as a biosolvent scores exactly the same as one marked "none", because the scorer only knows "ideal" and "alternative". And a sensor's description repeats its own range as text that nothing keeps in step with the range box above it.
+- Fixed while testing: the help panel was cut off at the bottom when its field sat low in a long list, losing the part you most wanted, and then hung slightly off the right edge on the very last field. Both were measured in the real editors rather than guessed at, and neither can happen now wherever the field sits.
+
 ## v3.0.384 - 7th Sep 2026
 
 - Magnetic fields now show in the 3D views as well, behind a Magnetospheres box in a player view's Look & feel

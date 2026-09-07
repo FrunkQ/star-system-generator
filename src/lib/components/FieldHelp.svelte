@@ -34,7 +34,14 @@
   function place() {
     if (!dot) return;
     const r = dot.getBoundingClientRect();
-    pos = placePopover(r, { width: window.innerWidth, height: window.innerHeight });
+    // `clientWidth`, NOT `innerWidth`: the latter INCLUDES the vertical scrollbar, so clamping to it
+    // lets the panel slide under the scrollbar by its own width - measured at 13 px on the liquids
+    // editor, on the last field of a long list. `clientWidth` is the area a reader can actually see.
+    const doc = document.documentElement;
+    pos = placePopover(r, {
+      width: doc?.clientWidth || window.innerWidth,
+      height: doc?.clientHeight || window.innerHeight
+    });
   }
 
   const close = () => (open = false);
@@ -117,6 +124,10 @@
   .fh-pop {
     position: fixed;
     z-index: 1200;
+    /* BORDER-BOX, and it is load-bearing rather than tidy: `placePopover` clamps against a width of
+       380, so the rendered box has to BE 380. Without this the padding and border push it to ~406
+       and the panel hangs 14 px off the right edge on the last field of a long list - measured. */
+    box-sizing: border-box;
     width: min(380px, calc(100vw - 24px));
     overflow-y: auto;
     padding: 10px 12px 12px;

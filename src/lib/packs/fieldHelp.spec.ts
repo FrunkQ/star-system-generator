@@ -13,18 +13,35 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { GAS_FIELD_HELP, kindLabel, kindBlurb, placePopover, type FieldHelpKind } from './fieldHelp';
+import {
+  GAS_FIELD_HELP, LIQUID_FIELD_HELP, FUEL_FIELD_HELP, ENGINE_FIELD_HELP, SENSOR_FIELD_HELP,
+  kindLabel, kindBlurb, placePopover, type FieldHelp, type FieldHelpKind
+} from './fieldHelp';
 
 const EDITOR = resolve('src/lib/components/EditAtmospheresModal.svelte');
+
+// THE FOUR EDITORS, and each one is checked against its own markup rather than against a list kept
+// here - a list would be a second place to update and therefore a second place to forget.
+const EDITORS: { name: string; file: string; table: Record<string, FieldHelp>; symbol: string }[] = [
+  { name: 'gases',        file: 'src/lib/components/EditAtmospheresModal.svelte',    table: GAS_FIELD_HELP,    symbol: 'GAS_FIELD_HELP' },
+  { name: 'liquids',      file: 'src/lib/components/EditLiquidsModal.svelte',        table: LIQUID_FIELD_HELP, symbol: 'LIQUID_FIELD_HELP' },
+  { name: 'fuels',        file: 'src/lib/components/EditFuelAndDrivesModal.svelte',  table: FUEL_FIELD_HELP,   symbol: 'FUEL_FIELD_HELP' },
+  { name: 'drives',       file: 'src/lib/components/EditFuelAndDrivesModal.svelte',  table: ENGINE_FIELD_HELP, symbol: 'ENGINE_FIELD_HELP' },
+  { name: 'sensors',      file: 'src/lib/components/EditSensorsModal.svelte',        table: SENSOR_FIELD_HELP, symbol: 'SENSOR_FIELD_HELP' }
+];
+const ALL: Record<string, FieldHelp> = {
+  ...GAS_FIELD_HELP, ...LIQUID_FIELD_HELP, ...FUEL_FIELD_HELP, ...ENGINE_FIELD_HELP, ...SENSOR_FIELD_HELP
+};
 
 describe('gas field help', () => {
   const markup = readFileSync(EDITOR, 'utf-8');
 
-  it('has an entry for every field the gas editor puts a "?" on', () => {
-    const wired = [...markup.matchAll(/GAS_FIELD_HELP\.(\w+)/g)].map((m) => m[1]);
-    expect(wired.length, 'the editor renders no FieldHelp at all').toBeGreaterThan(0);
-    const missing = wired.filter((k) => !(k in GAS_FIELD_HELP));
-    expect(missing, `wired in the editor with no entry: ${missing.join(', ')}`).toEqual([]);
+  it.each(EDITORS)('has an entry for every field the $name editor puts a "?" on', ({ file, table, symbol }) => {
+    const src = readFileSync(resolve(file), 'utf-8');
+    const wired = [...src.matchAll(new RegExp(symbol + '\\.(\\w+)', 'g'))].map((m) => m[1]);
+    expect(wired.length, `${symbol} is never rendered in ${file}`).toBeGreaterThan(0);
+    const missing = wired.filter((k) => !(k in table));
+    expect(missing, `wired with no entry: ${missing.join(', ')}`).toEqual([]);
   });
 
   it('puts a "?" on every editable field in the derivation block', () => {
@@ -42,7 +59,7 @@ describe('gas field help', () => {
 
   it('names a file that exists in every "what reads it" line', () => {
     const broken: string[] = [];
-    for (const [key, help] of Object.entries(GAS_FIELD_HELP)) {
+    for (const [key, help] of Object.entries(ALL)) {
       for (const path of help.reads?.match(/[\w/]+\/[\w.]+\.ts/g) ?? []) {
         if (!existsSync(resolve('src/lib', path))) broken.push(`${key}: ${path}`);
       }
@@ -54,7 +71,7 @@ describe('gas field help', () => {
   // what is it, is there a right answer to look up, and what do real values look like.
   it('answers what it is, which kind it is, and what a real value looks like', () => {
     const thin: string[] = [];
-    for (const [key, help] of Object.entries(GAS_FIELD_HELP)) {
+    for (const [key, help] of Object.entries(ALL)) {
       if (!help.label.trim()) thin.push(`${key}: no label`);
       if ((help.what ?? '').length < 40) thin.push(`${key}: 'what' is too thin to answer anything`);
       if (!['measured', 'model', 'unread'].includes(help.kind)) thin.push(`${key}: bad kind`);
@@ -64,6 +81,18 @@ describe('gas field help', () => {
       if (help.kind === 'unread' && !help.note) thin.push(`${key}: unread and unexplained`);
     }
     expect(thin, thin.join('\n  ')).toEqual([]);
+  });
+
+  // EVERY EDITOR, NOT JUST THE GAS ONE: a label that has a help entry available and does not render
+  // it is the fault this was built to fix, quietly reappearing in a different modal.
+  it.each(EDITORS)('leaves no $name field with an entry it does not show', ({ file, table, symbol }) => {
+    const src = readFileSync(resolve(file), 'utf-8');
+    const wired = new Set([...src.matchAll(new RegExp(symbol + '\\.(\\w+)', 'g'))].map((m) => m[1]));
+    // `preferred_unit` is a select inside another field's row rather than a labelled field of its
+    // own, so it has an entry and no "?" - stated here rather than left to look like an oversight.
+    const exempt = new Set(['preferred_unit']);
+    const unshown = Object.keys(table).filter((k) => !wired.has(k) && !exempt.has(k));
+    expect(unshown, `has an entry but no "?" in ${file}: ${unshown.join(', ')}`).toEqual([]);
   });
 
   it('says of the model coefficients that they are invented, and of the unread one that nothing reads it', () => {

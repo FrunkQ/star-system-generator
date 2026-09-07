@@ -407,7 +407,7 @@
                             </div>
                             <h4 class="group-head" title="These decide how the gas is DRAWN. Nothing here feeds the physics — the surface-light chain deliberately never reads a gas colour.">Presentation &mdash; how it is drawn</h4>
                             <div class="field">
-                                <label title="Intrinsic tint of the gas. Colourless gases (N₂/O₂/CO₂) have none.">Gas Colour</label>
+                                <label title="Intrinsic tint of the gas. Colourless gases (N₂/O₂/CO₂) have none.">Gas Colour<FieldHelp help={GAS_FIELD_HELP.colorHex} /></label>
                                 <div class="colour-row">
                                     <input type="checkbox" checked={gas.colorHex !== null && gas.colorHex !== undefined} on:change={(e) => toggleGasColour(gas, e.currentTarget.checked)} />
                                     {#if gas.colorHex !== null && gas.colorHex !== undefined}
