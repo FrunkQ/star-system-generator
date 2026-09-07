@@ -113,6 +113,9 @@
     // (`drawsHeavy`): the preset's answer is about the PICTURE and low power's is about the
     // HARDWARE, either is enough on its own, and neither may overrule the other toward more work.
     controller?.setAuroras(drawsHeavy(s.auroras, low));
+    // G82: same shape, same gate. An ABSENT field reads as off here (`!!`), which is the deliberate
+    // opposite of `atmospheres` - see the note on the preset type for why silence fails the other way.
+    controller?.setMagnetospheres(drawsHeavy(!!s.magnetospheres, low));
     controller?.setAtmospheres(drawsHeavy(s.atmospheres, low));
     // The frame-rate guard reports HERE rather than to each host, so every surface that mounts this
     // view gets the notice: the GM's holo, the player's system view at both tiers, and the preset

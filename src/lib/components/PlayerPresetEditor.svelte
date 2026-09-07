@@ -904,6 +904,7 @@
                     </select>
                   </label>
                   <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
+                  <label class="chk" title="The bubble each magnetic field cuts out of the stellar wind: a glowing shell with the bright part being the region that actually shields an atmosphere. Off by default, and hidden in Low Power."><input type="checkbox" bind:checked={draft.magnetospheres} /> Magnetospheres</label>
                 </CollapsibleSection>
 
                 <!-- PERFORMANCE, gathered. These three were scattered across Look & Feel and Scaling,

@@ -21,11 +21,14 @@ import { getPlanetTextureEquirect, getEmissiveEquirect } from '$lib/rendering/pl
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { lightningStrength } from '$lib/physics/cloudDecks';
 import { deriveAurora, auroraEmitters } from '$lib/physics/aurora';
+import { magnetopauseOutlineRadii, magnetosphereConstants } from '$lib/physics/magnetosphere';
+import { tokenColor } from '$lib/rendering/colors';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { jetStrength, sheddingStrength } from '$lib/physics/stellarOutflows';
 import {
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze,
   buildDeckStack, buildLightning, buildAuroraShell, applyLimbDarkening, buildStarLook,
+  buildMagnetosphereBubble, buildBeltTorus,
   makeStarSurfaceTexture, buildHorizonLook, buildStarRim, isBlackHoleNode, isFeedingBlackHole,
   type StarLookVisual, type LightningVisual, type EmissiveVisual
 } from './bodyFeatures';
@@ -66,6 +69,25 @@ export interface BodyLookOptions {
    * `deriveAurora` directly (the live holo, as shipped). 'off' draws none.
    */
   aurora?: 'physics' | 'model' | 'off';
+  /**
+   * G82: draw the body's MAGNETOSPHERE - the revolved Shue boundary with its shielded region nested
+   * inside, plus the trapped belt on the magnetic axis. Default OFF everywhere, because it is a GM's
+   * analytical overlay rather than part of what a world looks like; the holo turns it on from the GM
+   * View checkbox and a player view from its preset, both through `drawsHeavy` so Low Power drops it.
+   */
+  magnetospheres?: boolean;
+  /**
+   * ONE BODY RADIUS, IN SCENE UNITS, FOR THE BUBBLE ONLY. Defaults to the globe's own `radius`,
+   * which is right for an isolated body (the gallery, the size comparison, a portrait) where the
+   * frame holds nothing else to lie about.
+   *
+   * IT IS SEPARATE FROM `radius` BECAUSE A FLOORED RADIUS MULTIPLIED IS NOT A FLOOR - the same fault
+   * the orrery hit and RENDER-S56 records. In a SYSTEM view a planet is drawn hundreds of times its
+   * true size relative to its orbit; multiply that by a twenty-standoff tail and the bubble is bigger
+   * than the system, additively white over everything. The caller that knows the frame caps it - the
+   * holo at the body's Hill sphere, exactly as the 2D overlay does - and hands the result in here.
+   */
+  magnetosphereUnit?: number;
   /**
    * THE ANIMATED EXTRAS THAT HAVE NO SWITCH OF THEIR OWN: storm lightning, magma glow and cryo
    * plumes. Default ON, so nothing changes for a caller that has not asked.
@@ -165,6 +187,14 @@ export interface BodyLook {
   lightning: LightningVisual[];
   aurora: { mat: THREE.Material & { opacity: number }; base: number; seed: number }[];
   clouds: { mesh: THREE.Mesh; drift: number }[];
+  /**
+   * G82: the field bubble, and it is DELIBERATELY NOT A CHILD OF `mesh`. A magnetopause is oriented by
+   * the WIND, so it must not inherit the globe's axial tilt or its per-frame spin - Earth's bubble does
+   * not turn once a day. The caller parents this to the body's POSITION and calls `aim` with the
+   * direction of whatever is blowing on it (the star, or the host for a moon inside its host's field).
+   * Absent when the body has no bubble, or when the option is off.
+   */
+  field?: { group: THREE.Group; aim: (dir: THREE.Vector3) => void };
   /**
    * The child names and material count this look actually built — the drift detector. A spec runs
    * one node through both callers' option sets and compares these, so the gallery and the holo
@@ -384,7 +414,63 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
   // Titan's smog is a HIGH haze — outside the cloud shells, not baked into the surface.
   if (appear.tholin?.atmospheric && atmospheres) sphere.add(buildTholinHaze(radius, appear.tholin.colorHex, appear.tholin.strength));
 
-  look.inventory = () => inventoryOf(sphere);
+  // THE MAGNETOSPHERE (G82 job 4), on every 3D surface at once because this is the one assembly -
+  // the holo, the reference gallery and the size comparison (RENDER-S53). Two revolved surfaces from
+  // the SAME profile function the orrery draws, so the map and the globe cannot disagree; plus the
+  // trapped belt, which unlike the bubble DOES ride the magnetic axis and therefore lives in the spin
+  // frame. Nothing here re-derives anything: every number is read off the published block.
+  if (opts.magnetospheres) {
+    const ms = node.magnetosphere;
+    if (ms && ms.shape !== 'none' && ms.standoffRadii > 0) {
+      const mc = magnetosphereConstants(null);
+      const tag = (node.tags ?? []).some((t: any) => t.key === 'magnetic/anomalous')
+        ? '--field-anomalous' : ms.shape === 'induced' ? '--field-belt' : '--field-cage';
+      const cageHex = tokenColor(tag, ms.shape === 'induced' ? '#d9b8f0' : '#b48ad6');
+      const beltHex = tokenColor('--field-belt', '#d9b8f0');
+      // See `magnetosphereUnit`: the bubble is NOT drawn in the globe's floored radius unless the
+      // caller says so, because a floor multiplied by 224 is not a floor.
+      const fieldUnit = opts.magnetosphereUnit ?? radius;
+      const bubble = buildMagnetosphereBubble(
+        fieldUnit,
+        magnetopauseOutlineRadii(ms.standoffRadii, ms.tailRadii, mc, 20, false),
+        ms.closedFieldRadii > 0
+          ? magnetopauseOutlineRadii(ms.closedFieldRadii, ms.closedFieldRadii * mc.CLOSED_TAIL_STANDOFFS, mc, 20, true)
+          : [],
+        cageHex, beltHex
+      );
+      disposables.push(bubble);
+      look.field = {
+        group: bubble.group,
+        // The lathe puts the nose at +Y, so aiming is one rotation and the caller never needs to know
+        // how the profile was built.
+        aim: (dir: THREE.Vector3) => {
+          if (dir.lengthSq() > 0) bubble.group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+        }
+      };
+      // The belt: on the MAGNETIC axis, in the spin frame, leaning by the published dipole tilt about
+      // its published (seeded, and admittedly unobservable) longitude. This is what makes an ice
+      // giant's field visibly wrong-way-up.
+      if (ms.beltPeakRadii && ms.ordered) {
+        // The SAME unit as the bubble, or the belt would sit outside the boundary that contains it.
+        const belt = buildBeltTorus(fieldUnit, ms.beltPeakRadii, ms.beltScaleRadii ?? ms.beltPeakRadii * 0.3, beltHex, 0.35);
+        const lean = new THREE.Group();
+        const lon = ((ms.dipoleLongitudeDeg ?? 0) * Math.PI) / 180;
+        lean.rotation.set(0, lon, (ms.dipoleTiltDeg * Math.PI) / 180, 'YZX');
+        lean.add(belt.mesh);
+        sphere.add(lean);
+        disposables.push(belt);
+      }
+    }
+  }
+
+  look.inventory = () => {
+    const body = inventoryOf(sphere);
+    if (!look.field) return body;
+    // The bubble is a sibling rather than a child, so the drift detector has to be told about it -
+    // otherwise a caller could grow or lose a magnetosphere and RENDER-S53's gate would not notice.
+    const f = inventoryOf(look.field.group);
+    return { children: [...body.children, ...f.children].sort(), materials: body.materials + f.materials };
+  };
   return look;
 }
 

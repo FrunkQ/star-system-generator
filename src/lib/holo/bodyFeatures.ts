@@ -1074,3 +1074,148 @@ export function buildFlatRing(
 	const mesh = new THREE.Mesh(geo, mat);
 	return { mesh, dispose() { geo.dispose(); mat.dispose(); } };
 }
+
+// --- THE MAGNETOSPHERE, AS A LIT VOLUME ([[G82]] job 4) ----------------------------------------
+//
+// THE BRIEF ASKED FOR A WIREFRAME CAGE OF DIPOLE L-SHELLS AND THE OWNER ASKED FOR SOMETHING ELSE.
+// 2026-09-07, with two reference images: *"These looks great on the 2d/GM screen. The 3D - maybe we
+// can do better - see attached - able to be done in our purple highlights in a similar way."* The
+// references are a glowing translucent SURFACE - a blunt bright nose, a wide flank, a long tail, the
+// planet a small dot inside it, and a second brighter surface nested within the first. So that is
+// what this builds, in the mauve/lilac tokens instead of the references' cyan.
+//
+// IT IS THE SAME PROFILE THE ORRERY DRAWS, REVOLVED. `magnetopauseOutlineRadii` gives the Shue
+// boundary as (along-axis, half-width) pairs; a `LatheGeometry` spins that half-profile about its
+// axis. So the 2D teardrop and this surface are one function apart and cannot describe two different
+// magnetospheres - which is the whole reason the shape was put in the physics module rather than in
+// either renderer.
+//
+// TWO SURFACES, THE SAME TWO THE MAP SHADES: the outer magnetopause faint, and the closed-field
+// region inside it bright. That nesting IS the reference images' inner cone, and it is also the
+// honest reading - the bright part is where the field actually turns the wind away.
+//
+// DOUBLE-SIDED AND ADDITIVE, which is what gives the references their depth: the far wall of the
+// bubble glows THROUGH the near one, so the eye reads a volume rather than a shell. Depth writing is
+// off for the same reason.
+//
+// THE FADE IS BAKED INTO THE COLOUR, NOT INTO ALPHA. Under additive blending, black adds nothing -
+// so a gradient running from the field colour at the nose to black down the tail fades the tail out
+// exactly, whatever the material does with alpha. It is also the answer to the 2D question the owner
+// asked ("is that hard edge away from the star real?"): the open tail has no end here either.
+//
+// IT IS NOT PARENTED TO THE GLOBE, and that is physics rather than plumbing. A magnetopause is
+// oriented by the WIND, so it must not inherit the body's axial tilt or its spin - Earth's bubble
+// does not rotate once a day. The caller aims it. What DOES belong in the spin frame is the belt
+// torus below, which rides the magnetic axis.
+function makeFieldFalloffTexture(hex: string): HTMLCanvasElement {
+	const w = 4, h = 128;
+	const c = document.createElement('canvas'); c.width = w; c.height = h;
+	const ctx = c.getContext('2d')!;
+	const col = new THREE.Color(hex);
+	const g = ctx.createLinearGradient(0, 0, 0, h);
+	// v = 0 is the NOSE (LatheGeometry runs v along the profile, first point first). Brightest just
+	// behind it, where a real magnetosheath piles up, then away to nothing down the tail.
+	const at = (t: number, k: number) => `rgb(${Math.round(col.r * 255 * k)}, ${Math.round(col.g * 255 * k)}, ${Math.round(col.b * 255 * k)})`;
+	g.addColorStop(0, at(0, 0.75));
+	g.addColorStop(0.10, at(0.10, 1));
+	g.addColorStop(0.35, at(0.35, 0.55));
+	g.addColorStop(0.70, at(0.70, 0.18));
+	g.addColorStop(1, 'rgb(0,0,0)');
+	ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+	return c;
+}
+
+export interface FieldSurfaceSpec {
+	/** Along-axis / half-width pairs in BODY RADII, nose first - `magnetopauseOutlineRadii`'s output. */
+	profile: { x: number; y: number }[];
+	colorHex: string;
+	opacity: number;
+}
+
+/**
+ * One revolved surface. `oneRadius` converts body radii to the scene's units, exactly as the orrery
+ * multiplies by the body's drawn disc radius.
+ */
+function buildFieldSurface(spec: FieldSurfaceSpec, oneRadius: number, radialSegments: number): { mesh: THREE.Mesh; dispose(): void } {
+	// Only the upper half of the outline is a profile; the lower half is its mirror, which the lathe
+	// re-creates by revolving. Lathe revolves about Y, so half-width becomes the radius and the
+	// along-axis coordinate becomes the height - which puts the NOSE at +Y for the caller to aim.
+	const pts = spec.profile
+		.filter((p) => p.y >= 0)
+		.map((p) => new THREE.Vector2(Math.max(1e-4, p.y * oneRadius), p.x * oneRadius));
+	const geo = new THREE.LatheGeometry(pts, radialSegments);
+	const tex = new THREE.CanvasTexture(makeFieldFalloffTexture(spec.colorHex));
+	tex.colorSpace = THREE.SRGBColorSpace;
+	const mat = new THREE.MeshBasicMaterial({
+		map: tex,
+		transparent: true,
+		opacity: spec.opacity,
+		blending: THREE.AdditiveBlending,
+		depthWrite: false,
+		side: THREE.DoubleSide
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.renderOrder = 3;   // over the globe and its aurora, which is where a magnetosphere is
+	// The caller fades these by camera distance (you cannot see a bubble from inside it), so the
+	// designed opacity has to survive being multiplied down and back up again.
+	mesh.userData.fieldBaseOpacity = spec.opacity;
+	return { mesh, dispose() { geo.dispose(); mat.dispose(); tex.dispose(); } };
+}
+
+/**
+ * THE BUBBLE: the magnetopause with the shielded region nested inside it, both revolved from the
+ * published profile, nose along +Y for the caller to aim upstream.
+ */
+export function buildMagnetosphereBubble(
+	oneRadius: number,
+	outer: { x: number; y: number }[],
+	inner: { x: number; y: number }[],
+	cageHex: string,
+	beltHex: string,
+	radialSegments = 20
+): { group: THREE.Group; dispose(): void } {
+	const group = new THREE.Group();
+	const parts: { dispose(): void }[] = [];
+	if (outer.length > 2) {
+		const s = buildFieldSurface({ profile: outer, colorHex: cageHex, opacity: 0.30 }, oneRadius, radialSegments);
+		group.add(s.mesh); parts.push(s);
+	}
+	if (inner.length > 2) {
+		// Brighter, because this is the part that actually shields - the same distinction the map makes
+		// with a solid fill inside a pale wash.
+		const s = buildFieldSurface({ profile: inner, colorHex: beltHex, opacity: 0.55 }, oneRadius, radialSegments);
+		group.add(s.mesh); parts.push(s);
+	}
+	return { group, dispose() { for (const p of parts) p.dispose(); } };
+}
+
+/**
+ * THE TRAPPED BELT: a faint torus at the belt's peak, on the MAGNETIC axis.
+ *
+ * This one DOES belong in the spin frame, and that is the difference between it and the bubble: a
+ * belt is held by the body's own dipole, so it leans with the magnetic axis and turns with the body -
+ * which is what makes Uranus's tumble visible, since its axis is 53 degrees off its spin and its spin
+ * is already 98 degrees off its orbit.
+ */
+export function buildBeltTorus(
+	oneRadius: number,
+	peakRadii: number,
+	scaleRadii: number,
+	colorHex: string,
+	opacity: number
+): { mesh: THREE.Mesh; dispose(): void } {
+	// The belt's own scale length is its thickness - read from the belt model, never invented here.
+	const r = Math.max(1e-4, peakRadii * oneRadius);
+	const tube = Math.max(1e-5, Math.min(r * 0.6, scaleRadii * oneRadius * 0.35));
+	const geo = new THREE.TorusGeometry(r, tube, 8, 36);
+	const mat = new THREE.MeshBasicMaterial({
+		color: new THREE.Color(colorHex), transparent: true, opacity,
+		blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	// A torus is built in the XY plane with its axis along Z; the magnetic axis is +Y here, so stand
+	// it up. The caller then leans the whole thing by the dipole tilt.
+	mesh.rotation.x = Math.PI / 2;
+	mesh.renderOrder = 3;
+	return { mesh, dispose() { geo.dispose(); mat.dispose(); } };
+}

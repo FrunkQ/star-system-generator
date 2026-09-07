@@ -226,6 +226,16 @@ export interface PlayerPreset {
    */
   lowPower?: boolean;
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
+  /**
+   * G82: the field bubbles - the magnetopause and the region inside it that actually shields.
+   *
+   * DEFAULT OFF, and it is OPTIONAL for that reason: an absent field reads as FALSE here, which is the
+   * opposite of what `atmospheres` next door does deliberately (an old campaign that predates a field
+   * must not silently LOSE its clouds). The difference is which way silence should fail. Clouds are
+   * part of what a world looks like, so a save that never mentioned them wants them; a magnetosphere
+   * is an analytical overlay a GM asks for, so a save that never mentioned it did not ask.
+   */
+  magnetospheres?: boolean;
   // A construct's CURRENT levels — fuel, cargo, crew aboard — as against its permanent capacity. A star
   // catalogue would hold what a ship CAN carry; only a live instrument knows what is in the tanks right
   // now. Off = capacity alone, on = current-of-capacity. Presentation only, and deliberately so: the

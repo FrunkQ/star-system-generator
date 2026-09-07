@@ -327,6 +327,7 @@ export function holoStyleOf(p: PlayerPreset): HoloStyle {
     unlit: p.unlit,
     lensing: p.lensing !== false, // default on
     auroras: p.auroras,
+    magnetospheres: p.magnetospheres,
     atmospheres: p.atmospheres !== false,
     beltStyle: p.beltStyle,
     background: p.background,

@@ -167,6 +167,8 @@ export interface HoloController {
   setRender(mode: RenderStyle): void; // filled spheres vs 80s vector wireframe (see-through / back-occluded)
   setUnlit(on: boolean): void; // flat lighting (no terminator) for the efficient "2D map" look
   setAuroras(on: boolean): void;
+  /** G82: the field bubbles. Rebuilds; composed with Low Power by the caller, as the auroras are. */
+  setMagnetospheres(on: boolean): void;
   setAtmospheres(on: boolean): void; // PERF: build cloud decks / limb glow / haze at all // show/hide the emissive polar aurora shells
   /**
    * Told once, if the frame-rate guard has had to take the atmospheres away to keep the map moving.
@@ -850,6 +852,11 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   // Aurora toggle: no rebuild — updateAuroras just stops modulating (opacity 0) when off.
   function setAuroras(on: boolean) { aurorasOn = on; }
+  function setMagnetospheres(on: boolean) {
+    if (on === magnetospheresOn) return;   // a re-assert is not a decision
+    magnetospheresOn = on;
+    rebuildContent('magnetospheres');
+  }
   function setPerfShedReporter(fn: ((message: string) => void) | null) { onPerfShed = fn; }
 
   function setAtmospheres(on: boolean) {
@@ -981,6 +988,45 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function bodyRadiusScene(node: any, systemLevel: boolean): number {
     return scaleBodyRadiusScene(radiusKmOf(node), systemLevel, scaleCtx());
+  }
+
+  /**
+   * WHETHER A FIELD BUBBLE IS SHOWN AT ALL, and it is a question about the FRAME rather than the body.
+   *
+   * A bubble is drawn in the globe's own DRAWN radii, so the ratio a viewer sees - Earth's boundary at
+   * eleven times Earth - is exactly true, and that is the reference the owner asked for. It is true
+   * ABOUT THE PLANET and false about everything else in a system: a globe in a system view carries a
+   * screen-space legibility scale of some seventeen thousand, and multiplying that by a twenty-standoff
+   * tail put a purple cone across the whole solar system, additively white over every orbit. Seen on
+   * screen 2026-09-07, twice - once from the built radius and once, after that was capped, from the
+   * PER-FRAME scale a frame later in the pipeline.
+   *
+   * CAPPING IT INSTEAD WAS TRIED AND IS WORSE. Held to the body's Hill sphere - the rule the 2D
+   * overlay uses, where it is right - the bubble comes out 1,500 times SMALLER than the drawn globe
+   * and sits inside it, invisible at every zoom. The 2D view draws its bodies near true scale and can
+   * afford the honest answer; the 3D deliberately does not, so the honest answer there is to say WHEN
+   * the ratio is readable rather than to shrink it until it is not.
+   *
+   * So: shown for the body the view is LOOKING AT, and for its host and its fellow moons - which is
+   * the same neighbourhood the orrery's Hill overlay draws, and the frame in which everything on
+   * screen shares one inflation. Nothing at system level, where there is no such frame.
+   */
+  function fieldVisibleFor(id: string): boolean {
+    if (!focusedId) return false;
+    if (id === focusedId) return true;
+    const self = bodyById.get(id);
+    const focus = bodyById.get(focusedId);
+    if (!self || !focus) return false;
+    if (self.parentId === focusedId) return true;   // a moon of the focused planet
+    // SIBLINGS ONLY WHERE SIBLINGS ARE A NEIGHBOURHOOD. Focusing a MOON should light its planet and
+    // the other moons - one frame, one host. Focusing a PLANET must not light the other planets,
+    // because a planet's siblings are the whole system: measured 2026-09-07, it lit all eight at
+    // once and each one's tail is hundreds of radii long, so the camera sat inside several and the
+    // view went uniformly purple. The star is the test - a body whose host is a star has no
+    // neighbourhood in this sense.
+    const host = focus.parentId ? bodyById.get(focus.parentId) : undefined;
+    if (!host || host.isStar) return false;
+    return self.id === host.id || self.parentId === host.id;
   }
 
   // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
@@ -1385,6 +1431,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // COLOUR selection: true-colour / class / white
   let unlit = false; // flat lighting (MeshBasic, no terminator) — the efficient "2D map" look
   let aurorasOn = true; // GM toggle: show the emissive polar aurora shells (updateAuroras hides when off)
+  // G82: the field bubbles that need aiming each frame. `upstreamId` is PUBLISHED by the physics -
+  // the star whose wind this was solved against, or the HOST for a moon inside its host's field - so
+  // the renderer never decides for itself what a bubble faces.
+  let fieldVisuals: { id: string; group: THREE.Group; upstreamId: string | null; noseScene: number }[] = [];
+  // G82: draw the field bubbles. DEFAULT OFF - it is an analytical overlay, not part of what a world
+  // looks like, and the owner asked for it off until it is switched on. It REBUILDS rather than
+  // hiding, for the same reason `atmospheresOn` does: what it costs is FILL RATE (two double-sided
+  // additive lathes per body, drawn over everything they cover), so not building them is the saving,
+  // and unlike the auroras there is no per-frame registry to hide them through.
+  let magnetospheresOn = false;
   // PERFORMANCE: build the atmospheric shells at all — cloud deck(s), limb glow, tholin haze. What
   // this buys is FILL RATE, not memory: the shells are small meshes with cheap textures, and their
   // cost is that each is alpha-blended over the body it wraps, so a cloudy world repaints the same
@@ -4001,6 +4057,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     starLights = [];
     starVisuals = [];
     auroraVisuals = [];
+    fieldVisuals = [];
     magmaVisuals = [];
     lightningVisuals = [];
     plumeVisuals = [];
@@ -4449,6 +4506,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // The holo derives auroras from live physics; the gallery reads the published tag. Both
             // spellings are kept until [[B117]] decides which is the one — not folded silently here.
             aurora: 'physics',
+            magnetospheres: magnetospheresOn,
             // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the
             // shader). Edge is HARD by default; an atmosphere on the moon OR its shadowing planet
             // softens it. Unlit bodies have no lighting to darken, so the hook never fires there.
@@ -4465,6 +4523,15 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           plumeVisuals.push(...look.plumes);
           lightningVisuals.push(...look.lightning);
           cloudVisuals.push(...look.clouds);
+          // G82: THE FIELD BUBBLE HANGS OFF THE GLOBE BUT DOES NOT TURN WITH IT. Parenting it here
+          // is right for POSITION and for SCALE - it must ride the body and grow with its drawn
+          // radius, exactly as the 2D overlay is drawn in drawn-disc radii - and wrong for
+          // ORIENTATION, because a magnetopause is aimed by the wind and not by the planet's spin.
+          // `updateFieldAim` undoes the globe's rotation each frame and points the nose upstream.
+          if (look.field) {
+            sphere.add(look.field.group);
+            fieldVisuals.push({ id: node.id, group: look.field.group, upstreamId: node.magnetosphere?.upstreamId ?? null, noseScene: (node.magnetosphere?.standoffRadii ?? 0) * radius });
+          }
           // Lo-poly LINES: the glowing edge/vertex overlay. Kept here rather than in the assembly
           // because the dot size is a binding of the size law against the live dial (RENDER-S11).
           if (renderStyle === 'lopoly-lines') {
@@ -5079,6 +5146,70 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   // Aurora shimmer: modulate each shell's opacity around its strength-based base with a couple of
   // out-of-phase sines (per-body seed) for a slow, uneven flicker.
+  /**
+   * G82: POINT EACH FIELD BUBBLE UPSTREAM, and undo the globe's spin while doing it.
+   *
+   * The bubble is a CHILD of the globe, which is right for position and scale and wrong for
+   * orientation - a magnetopause is aimed by the wind, and Earth's does not turn once a day. So the
+   * aim is composed in world space and then pushed back through the parent's inverse rotation.
+   *
+   * WHAT IT FACES IS PUBLISHED, NOT GUESSED: `upstreamId` is the star the standoff was solved against,
+   * or the HOST for a moon inside its host's field - which is why Europa's bubble points at Jupiter
+   * and not at the Sun. If that node is not in the scene the bubble keeps its last aim rather than
+   * snapping to a default, because a wrong direction is worse than a stale one.
+   */
+  const _fieldFrom = new THREE.Vector3(), _fieldTo = new THREE.Vector3(), _fieldDir = new THREE.Vector3();
+  const _fieldQ = new THREE.Quaternion(), _fieldParentQ = new THREE.Quaternion(), _fieldScale = new THREE.Vector3();
+  const FIELD_NOSE = new THREE.Vector3(0, 1, 0);
+  function updateFieldAim() {
+    if (!fieldVisuals.length) return;
+    for (const f of fieldVisuals) {
+      // Shown only where the frame makes the ratio readable - see `fieldVisibleFor`.
+      f.group.visible = fieldVisibleFor(f.id);
+      if (!f.group.visible || !f.upstreamId) continue;
+      const src = bodyById.get(f.upstreamId);
+      const self = bodyById.get(f.id);
+      if (!src || !self) continue;
+      self.mesh.getWorldPosition(_fieldFrom);
+      src.mesh.getWorldPosition(_fieldTo);
+      _fieldDir.subVectors(_fieldTo, _fieldFrom);
+      if (_fieldDir.lengthSq() <= 0) continue;
+      _fieldDir.normalize();
+      _fieldQ.setFromUnitVectors(FIELD_NOSE, _fieldDir);
+      // The group's parent IS the globe, so take its world rotation back out again.
+      f.group.parent?.getWorldQuaternion(_fieldParentQ);
+      f.group.quaternion.copy(_fieldParentQ.invert()).multiply(_fieldQ);
+      f.group.parent?.getWorldScale(_fieldScale);
+      // THE SCALE IS DELIBERATELY INHERITED. The globe carries a per-frame screen-space scale
+      // (`baseScale` x `screenK`, RENDER-S11/S41) and the bubble rides it, so the RATIO on screen -
+      // the boundary at eleven times the planet - stays true however big the planet is being drawn.
+      // That ratio is the whole picture; what is gated instead is WHEN it is shown (`fieldVisibleFor`).
+      //
+      // AND YOU CANNOT SEE A MAGNETOSPHERE FROM INSIDE ONE. Framing a planet puts the camera a few
+      // radii out and the boundary eleven or forty or eight hundred radii further, so the default
+      // shot is INSIDE the bubble - which renders, correctly, as being in a purple fog. Seen on
+      // screen 2026-09-07. Fading it out as the camera enters is both the fix and the truth: it is
+      // the same reason you cannot see the shape of a cloud you are standing in. Pull back and it
+      // resolves into the shell, which is what the owner's reference images are.
+      const noseWorld = f.noseScene * Math.max(_fieldScale.x, 1e-9);
+      const camD = camera.position.distanceTo(_fieldFrom);
+      // The window is generous on purpose: nothing at all while the shot is FRAMED ON THE PLANET
+      // (a body framing sits around a third of the nose distance, where a bubble would be fog), then
+      // in over the next stretch so a small pull-back brings it, and full by a little past the nose.
+      const fade = noseWorld > 0 ? Math.max(0, Math.min(1, (camD / noseWorld - 0.35) / 0.85)) : 1;
+      f.group.traverse((o) => {
+        const m = (o as any).material as THREE.Material & { opacity: number } | undefined;
+        const base = (o as any).userData?.fieldBaseOpacity as number | undefined;
+        if (!m || base === undefined) return;
+        m.opacity = base * fade;
+        // A zero-opacity additive surface still RASTERISES, and these are the biggest surfaces in
+        // the scene - so the invisible case is made free rather than merely invisible (the owner's
+        // culling instruction, 2026-09-07, applied to the third dimension).
+        o.visible = fade > 0.004;
+      });
+    }
+  }
+
   function updateAuroras(nowSec: number) {
     for (const a of auroraVisuals) {
       if (!aurorasOn) { a.mat.opacity = 0; continue; } // GM toggle off → hide (additive, so opacity 0 = gone)
@@ -5321,6 +5452,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // would otherwise hold the loop awake for ever on its own.
     if (!lowPowerOn) updateStarFx(nowSec);
     updateAuroras(nowSec);
+    updateFieldAim();
     updateMagma(magmaVisuals, nowSec);
     updateLightning(lightningVisuals, nowSec);
     updatePlumes(plumeVisuals, nowSec);
@@ -5429,7 +5561,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // would rot within a month - the next person to add one would have no way of knowing they had
   // joined it. Wrapping the surface once costs a closure per method and a wasted frame per call,
   // and in exchange no setter can ever be forgotten. See `renderIdle.ts`, principle 1.
-  const api: HoloController = { setLowPower, setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setPerfShedReporter, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  const api: HoloController = { setLowPower, setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setMagnetospheres, setAtmospheres, setPerfShedReporter, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
   for (const key of Object.keys(api) as (keyof HoloController)[]) {
     const fn = api[key];
     if (typeof fn !== 'function') continue;

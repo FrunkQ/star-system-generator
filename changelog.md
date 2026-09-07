@@ -2,6 +2,18 @@
 
 All notable changes are listed here:
 
+## v3.0.384 - 7th Sep 2026
+
+- Magnetic fields now show in the 3D views as well, behind a Magnetospheres box in a player view's Look & feel
+  settings (off by default, and dropped in Low Power like the other see-through shells). A world with a trapped
+  radiation belt wears it as a faint lilac band tilted onto its magnetic axis rather than its spin axis - so
+  Neptune's leans right over, which is what an ice giant's field really does and is hard to picture any other
+  way. The boundary itself is drawn as a glowing translucent shell around the body, nose into the wind and
+  fading away down the tail; it is the same shape the system map shades, so the two views can never disagree.
+  One honest caveat while a question is settled: a magnetosphere reaches far further out than the camera sits
+  when you click a planet, so the shell only appears once you pull the view back past it - you cannot see the
+  shape of a cloud you are standing inside.
+
 ## v3.0.383 - 7th Sep 2026
 
 - Every field in the gas editor now has a "?" beside it that tells you what the number actually is: what it means, what else it is called, the units, what in the engine reads it, and what a real value looks like with examples from the gases that ship.

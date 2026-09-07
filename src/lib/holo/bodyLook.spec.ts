@@ -360,6 +360,108 @@ describe('the one body-look assembly', () => {
     }
   });
 
+  // G82 job 4. THE FEATURE-INVENTORY GATE IS WHAT RENDER-S53 IS, so a feature added to the assembly
+  // has to be added to it too - otherwise the next feature can drift between callers exactly as the
+  // corona did, and this file would say nothing.
+  describe('the magnetosphere is a feature of the ONE assembly, on every caller at once', () => {
+    it('is OFF unless a caller asks for it — on all three option sets', () => {
+      const earth = node('Earth');
+      for (const [name, opts] of [['holo', HOLO], ['gallery', GALLERY], ['comparison', COMPARISON]] as const) {
+        const off = buildBodyLook(earth, 1, opts);
+        expect(off.field, name).toBeUndefined();
+        off.dispose();
+      }
+    });
+
+    it('appears for EVERY caller when asked, with the same inventory', () => {
+      const earth = node('Earth');
+      const h = buildBodyLook(earth, 1, { ...HOLO, magnetospheres: true });
+      const g = buildBodyLook(earth, 1, { ...GALLERY, magnetospheres: true });
+      const c = buildBodyLook(earth, 1, { ...COMPARISON, magnetospheres: true });
+      expect(h.field).toBeTruthy();
+      expect(g.field).toBeTruthy();
+      expect(c.field).toBeTruthy();
+      // The gallery and the comparison read the same aurora source, so they must match exactly.
+      expect(g.inventory()).toEqual(c.inventory());
+      h.dispose(); g.dispose(); c.dispose();
+    });
+
+    it('adds itself to the inventory, so a caller that grew or lost one goes red', () => {
+      const earth = node('Earth');
+      const off = buildBodyLook(earth, 1, HOLO);
+      const on = buildBodyLook(earth, 1, { ...HOLO, magnetospheres: true });
+      const a = off.inventory(), b = on.inventory();
+      expect(b.children.length).toBeGreaterThan(a.children.length);
+      expect(b.materials).toBeGreaterThan(a.materials);
+      // TWO surfaces - the magnetopause and the shielded region inside it, which is the nesting the
+      // owner's reference images show and the same pair the 2D overlay shades.
+      expect(b.children.filter((c) => c === 'Mesh').length - a.children.filter((c) => c === 'Mesh').length)
+        .toBeGreaterThanOrEqual(2);
+      off.dispose(); on.dispose();
+    });
+
+    it('is NOT a child of the globe, because a magnetopause does not spin with the planet', () => {
+      const earth = node('Earth');
+      const look = buildBodyLook(earth, 1, { ...HOLO, magnetospheres: true });
+      let found = false;
+      look.mesh.traverse((o) => { if (o === look.field!.group) found = true; });
+      expect(found, 'the bubble must be aimed by the caller, not inherited from the globe').toBe(false);
+      look.dispose();
+    });
+
+    it('aims its nose along whatever direction the caller gives it', () => {
+      const earth = node('Earth');
+      const look = buildBodyLook(earth, 1, { ...HOLO, magnetospheres: true });
+      // The lathe puts the nose at +Y; aiming at +X must rotate +Y onto +X.
+      look.field!.aim(new THREE.Vector3(1, 0, 0));
+      const nose = new THREE.Vector3(0, 1, 0).applyQuaternion(look.field!.group.quaternion);
+      expect(nose.x).toBeCloseTo(1, 6);
+      expect(nose.y).toBeCloseTo(0, 6);
+      look.field!.aim(new THREE.Vector3(0, 0, -1));
+      const nose2 = new THREE.Vector3(0, 1, 0).applyQuaternion(look.field!.group.quaternion);
+      expect(nose2.z).toBeCloseTo(-1, 6);
+      look.dispose();
+    });
+
+    it('scales with the radius it is given, exactly as the globe does', () => {
+      const earth = node('Earth');
+      const small = buildBodyLook(earth, 1, { ...HOLO, magnetospheres: true });
+      const big = buildBodyLook(earth, 100, { ...HOLO, magnetospheres: true });
+      const reach = (l: typeof small) => {
+        const box = new THREE.Box3().setFromObject(l.field!.group);
+        return box.max.y;   // the nose, since the lathe puts it at +Y
+      };
+      // ABSOLUTE: Earth's standoff is 11.229 body radii, so at radius 1 the nose is 11.229 units out.
+      expect(reach(small)).toBeCloseTo(11.229, 2);
+      expect(reach(big) / reach(small)).toBeCloseTo(100, 4);
+      small.dispose(); big.dispose();
+    });
+
+    it('draws nothing for a world that has no bubble', () => {
+      for (const name of ['Venus', 'Mars']) {
+        const look = buildBodyLook(node(name), 1, { ...HOLO, magnetospheres: true });
+        expect(look.field, name).toBeUndefined();
+        look.dispose();
+      }
+    });
+
+    it('disposes everything it built', () => {
+      const look = buildBodyLook(node('Earth'), 1, { ...HOLO, magnetospheres: true });
+      const mats: THREE.Material[] = [];
+      const geos: THREE.BufferGeometry[] = [];
+      look.field!.group.traverse((o) => {
+        const m = (o as any).material; if (m) mats.push(m);
+        const g = (o as any).geometry; if (g) geos.push(g);
+      });
+      expect(mats.length).toBeGreaterThan(0);
+      const disposed: any[] = [];
+      for (const m of mats) { const f = m.dispose.bind(m); (m as any).dispose = () => { disposed.push(m); f(); }; }
+      for (const g of geos) { const f = g.dispose.bind(g); (g as any).dispose = () => { disposed.push(g); f(); }; }
+      look.dispose();
+      expect(disposed.length).toBe(mats.length + geos.length);
+    });
+  });
+
   it('gives a star a corona through the SHARED star look, at one size, for every caller', () => {
     const sun = node('Sol');
     const a = buildBodyLook(sun, 2, HOLO);
