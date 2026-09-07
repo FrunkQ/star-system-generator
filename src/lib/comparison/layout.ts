@@ -212,6 +212,31 @@ export function ringTiltRad(axialTiltDeg?: number): number {
 }
 
 /**
+ * THE RING'S LEAN IN THE SCREEN PLANE - the other half of its posture, and [[B140]] is what happened
+ * without it.
+ *
+ * The globe is rolled about the VIEW AXIS by its obliquity (`applyTilt` in `bodyLook.ts` puts the
+ * quaternion on (0,0,1)), so a tilted planet LEANS and its equatorial bulge leans with it. The ring
+ * was only ever FORESHORTENED (`ringTiltRad`, about the strip's own axis) and never leaned - so
+ * Saturn's globe sat over at 26.7 degrees while its rings ran dead level across it, cutting the
+ * planet at an angle no ringed world has ever been photographed at. The owner, 2026-09-07: *"the
+ * rings are not drawn at the right tilt on size comparison view"*.
+ *
+ * A RING LIES IN ITS PLANET'S EQUATORIAL PLANE. That is not a convention, it is what a ring IS - the
+ * planet's own spin is what flattened it there - so whatever the globe does, the ring does. This
+ * returns the SAME angle `applyTilt` uses, read from the SAME field (`axial_tilt_deg`, which
+ * `planetAppearance` takes as `body.axial_tilt_deg ?? 0`), so the two cannot drift apart: if the
+ * globe's lean ever changes, this is the one other place that must change with it.
+ *
+ * An unknown obliquity leans nothing, matching the globe's own `?? 0`. The ring still OPENS at the
+ * poster angle in that case (`DEFAULT_RING_OPENNESS`), because an unmeasured tilt is unknown rather
+ * than zero - but a LEAN it cannot justify is one it does not take.
+ */
+export function ringRollRad(axialTiltDeg?: number): number {
+  return Number.isFinite(axialTiltDeg as number) ? ((axialTiltDeg as number) * Math.PI) / 180 : 0;
+}
+
+/**
  * How strongly a ring draws, given how far its planet is from the FOCUS in steps of the sequence.
  *
  * WHY A FADE RATHER THAN A CUT: a ring that vanished the instant the focus crossed a boundary would

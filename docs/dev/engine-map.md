@@ -6641,6 +6641,12 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+A POSTURE HAS TWO HALVES AND BOTH LIVE IN THE SAME FRAME ([[B140]]). A body's obliquity shows up
+twice on the strip - as the globe's LEAN (`applyTilt`, a roll about the view axis) and as its ring's
+FORESHORTENING (`ringTiltRad`) - and for one release only the second existed, so a ring ran level
+across a leaning planet. A ring lies in its planet's equatorial plane, so `ringRollRad` returns the
+same angle from the same field as the globe's roll; the mesh keeps the foreshortening and a PARENT
+carries the lean, because both on one mesh makes the result depend on three.js's Euler order.
 A SWITCH ABOUT THE MACHINE MAY REACH A PLAYER VIEW; A SWITCH ABOUT THE PICTURE MAY NOT ([[G80]]).
 [[A10]]/[[A3]] record the fault of wiring a player view to a GM-local store, and the reason is
 PRESENTATION INTENT: a GM's orbit-line strength is not a player's, two audiences with two answers.

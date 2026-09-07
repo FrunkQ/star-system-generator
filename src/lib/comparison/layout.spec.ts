@@ -8,7 +8,7 @@ import {
   focusIndexOf, clampFocus, focusDiameterKm, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
   focusBlend,
   clampCentreShare, MIN_CENTRE_SHARE, MAX_CENTRE_SHARE, slotAt, PICK_MIN_RADIUS_PX,
-  ringOpacityAt, RING_FADE_STEPS, ringProminence, ringOpenness, ringTiltRad, slotOffset,
+  ringOpacityAt, RING_FADE_STEPS, ringProminence, ringOpenness, ringTiltRad, ringRollRad, slotOffset,
   DEFAULT_RING_OPENNESS, MIN_RING_OPENNESS,
   type ComparisonItem
 } from './layout';
@@ -643,6 +643,51 @@ describe('size comparison — rings', () => {
     const flat = layoutStrip(withMoon, 1e-3).slots.find((sl) => sl.name === 'Saturn')!;
     expect(at('Saturn').reachPx).toBe(flat.reachPx);
     expect(at('Saturn').spanPx).toBe(flat.spanPx);
+  });
+});
+
+describe('a ring lies in its planet’s equatorial plane', () => {
+  // [[B140]]. Owner, 2026-09-07: "the rings are not drawn at the right tilt on size comparison view."
+  // The globe is rolled about the VIEW axis by its obliquity (`applyTilt` puts the quaternion on
+  // (0,0,1)); the ring was only ever FORESHORTENED and never leaned, so Saturn's globe sat over at
+  // 26.7 degrees while its rings ran dead level across it.
+
+  it('leans by exactly the angle the globe leans by, from the same field', () => {
+    // The globe's roll is `(appear.axialTiltDeg * PI) / 180` and `planetAppearance` reads that as
+    // `body.axial_tilt_deg ?? 0`. Same number, or the two drift apart again.
+    for (const deg of [0, 3.1, 26.7, 28.3, 97.8, 177.4]) {
+      expect(ringRollRad(deg)).toBeCloseTo((deg * Math.PI) / 180, 12);
+    }
+    // AND THE SIGN SURVIVES. An obliquity authored the other way leans the other way, and the globe
+    // does too - `applyTilt` feeds the raw number to a quaternion. Taking the size of the angle
+    // would put a ring on the wrong diagonal and look almost right, which is worse than looking wrong.
+    for (const deg of [-26.7, -3.1, -90]) {
+      expect(ringRollRad(deg)).toBeCloseTo((deg * Math.PI) / 180, 12);
+      expect(ringRollRad(deg)).toBeLessThan(0);
+    }
+  });
+
+  it('leans NOTHING it cannot justify, but still opens at the poster angle', () => {
+    // An unmeasured obliquity is unknown, not upright: the ring still OPENS (that fallback is
+    // deliberate and gated below), but a LEAN would be inventing a direction from nothing.
+    expect(ringRollRad(undefined)).toBe(0);
+    expect(ringRollRad(NaN)).toBe(0);
+    expect(ringOpenness(undefined)).toBe(DEFAULT_RING_OPENNESS);
+  });
+
+  it('keeps the two halves of the posture INDEPENDENT, which is why one could go missing', () => {
+    // Foreshortening and lean answer different questions - how open, and which way up - and Uranus
+    // is where that shows: nearly face-on AND nearly on its side, two large numbers at once.
+    expect(ringOpenness(97.8)).toBeGreaterThan(0.98);          // a circle
+    expect(ringRollRad(97.8)).toBeCloseTo(1.7069, 3);          // ...lying on its side
+    // Saturn: a third of the way open, leaning a quarter of a right angle.
+    expect(ringOpenness(26.7)).toBeCloseTo(0.4493, 4);
+    expect(ringRollRad(26.7)).toBeCloseTo(0.4660, 4);
+    // Jupiter: a hairline, barely leaning.
+    expect(ringOpenness(3.1)).toBeCloseTo(0.0541, 4);
+    expect(ringRollRad(3.1)).toBeCloseTo(0.0541, 4);
+    // A retrograde spinner leans PAST the upright, and the sign has to survive: 177.4 is not 2.6.
+    expect(ringRollRad(177.4)).toBeGreaterThan(3);
   });
 });
 

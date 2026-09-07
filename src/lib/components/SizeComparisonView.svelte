@@ -19,7 +19,7 @@
     sortItems, medianPlanet, layoutStrip, visibleItems,
     idsAtLeast, idsAtMost, referenceArcs, clampCentreShare, slotAt,
     focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
-    ringOpacityAt, ringProminence, ringTiltRad,
+    ringOpacityAt, ringProminence, ringTiltRad, ringRollRad,
     OPENING_SHARE, TAP_SLOP_PX, stepFocus, wheelPx, WHEEL_NOTCH_PX, SORT_ORDERS,
     type StripLayout, type SortOrder
   } from '$lib/comparison/layout';
@@ -205,6 +205,7 @@
     // draw as a circle, Jupiter's are all but edge-on. One shared tilt made every giant look like
     // Saturn, which is the thing the owner spotted.
     ringTiltRad: ringTiltRad(byId.get(s.id)?.axialTiltDeg),
+    ringRollRad: ringRollRad(byId.get(s.id)?.axialTiltDeg),
     // TWO THINGS MULTIPLY INTO THE ALPHA and they answer different questions. `ringOpacityAt` is
     // about ATTENTION — only the ring you are looking at is at full strength, or a strip of ringed
     // worlds is a grey wash. `ringProminence` is about the RING — Saturn's are 10,000 times denser

@@ -90,6 +90,11 @@ export interface ComparisonSlot {
    */
   ringTiltRad?: number;
   /**
+   * The ring's LEAN in the screen plane, in radians, from `ringRollRad` - the same roll the globe
+   * takes, because a ring lies in its planet's equatorial plane. Absent leans nothing.
+   */
+  ringRollRad?: number;
+  /**
    * 0..1, from `ringOpacityAt`: how strongly this ring draws, given how far its planet is from the
    * focus. Only the ring you are looking at is at full strength. Applied per FRAME, so a scroll
    * fades it rather than popping it, and it never rebuilds the ring.
@@ -335,7 +340,16 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         if (axis === 'x') r.mesh.rotation.x = tilt;
         else r.mesh.rotation.y = tilt;
         r.mesh.renderOrder = -1;   // behind the globe, so the near arc does not cut across its face
-        group.add(r.mesh);
+        // ...AND THEN LEANED WITH THE PLANET ([[B140]]). The globe is rolled about the view axis by
+        // its obliquity, so a ring that is only foreshortened runs level across a leaning planet.
+        // A PARENT carries the lean and the mesh keeps the foreshortening, which is the order the
+        // geometry wants: flatten the ring about its own equator first, then lean the whole
+        // assembly. Both rotations on ONE mesh would make the answer depend on three.js's Euler
+        // order - the kind of thing that reads as correct until somebody tilts a planet past 90.
+        const ringFrame = new THREE.Group();
+        ringFrame.rotation.z = Number.isFinite(slot.ringRollRad as number) ? (slot.ringRollRad as number) : 0;
+        ringFrame.add(r.mesh);
+        group.add(ringFrame);
         const mat = r.mesh.material as THREE.Material & { opacity: number };
         ring = { dispose: r.dispose, mat, mesh: r.mesh, base: mat.opacity };
         // A ring with its OWN colour is an accretion disc rather than ice and rock, and a feeding

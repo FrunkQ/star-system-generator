@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.364 - 6th Sep 2026
+
+- Fixed: on the Size comparison, a ringed planet leaned over but its rings did not - they ran flat across the planet instead of following its equator, which is not how any ringed world looks. The rings now sit in the planet's own equatorial plane, so Saturn leans and its rings lean with it, and Uranus lies on its side with its rings round it. How far open the rings are was already right and has not changed.
+
 ## v3.0.363 - 7th Sep 2026
 
 - You can now tell a floating control WHICH screen edge to travel with. Right-click its grip or padlock (press and hold on a touchscreen) and pick Left, Right, Top, Bottom, or Nearest to go back to the automatic guess. It works on the clock, the time controls, the body picker and the undo pill. Nothing jumps when you choose: the control stays exactly where you put it and only changes which edge it keeps its distance from - so a control sitting in the middle of a wide screen can be told to follow the details pane in and out instead of standing still.
@@ -41,6 +45,7 @@ All notable changes are listed here:
 - Corrected: the guide said flares, jets and a shed shell were drawn on the starmap and the system view alike. The flat 2D system map draws flares but not yet the other two, and the guide now says so rather than promising something that is still being built.
 - Corrected: it described the message a joining player sees in words the app does not use. It says the real one now, and explains why it is a spinner and not a progress bar.
 - New: how big things draw. A star's drawn size now follows its own size, so a red dwarf and a red supergiant are no longer the same circle - a visible change to every system you already had, and the map being honest rather than a fault.
+
 
 ## v3.0.355 - 6th Sep 2026
 

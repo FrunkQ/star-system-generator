@@ -171,6 +171,32 @@ describe('size comparison — the live mount and the preview agree', () => {
 // THE WHEEL AND THE KEYS HAVE TO COUNT OBJECTS, and the component cannot be rendered to check it:
 // it dynamic-imports a WebGL scene. The seam is two lines and it is the whole of [[B139]], so it is
 // read out of the SOURCE like the mount sites above.
+describe('the size comparison leans a ring with its planet', () => {
+  const scene = readFileSync('src/lib/holo/comparisonScene.ts', 'utf8');
+  const view = readFileSync('src/lib/components/SizeComparisonView.svelte', 'utf8');
+
+  it('carries the lean from the view to the mesh', () => {
+    expect(view).toContain('ringRollRad: ringRollRad(');
+    // From the SLOT, not a constant: `ringFrame.rotation.z` alone would still match a hard zero.
+    expect(scene).toContain('ringFrame.rotation.z = Number.isFinite(slot.ringRollRad as number)');
+    expect(scene).toContain('(slot.ringRollRad as number) : 0;');
+  });
+
+  it('leans on a PARENT and foreshortens on the mesh, not both on one object', () => {
+    // Both rotations on one mesh makes the result depend on three.js's Euler order, which reads as
+    // correct right up until a planet is tilted past 90 degrees.
+    const at = scene.indexOf('const ringFrame = new THREE.Group();');
+    expect(at).toBeGreaterThan(-1);
+    const frame = scene.slice(at, at + 300);
+    expect(frame).toContain('ringFrame.add(r.mesh);');
+    expect(frame).toContain('group.add(ringFrame);');
+    // ...and the foreshortening is still on the MESH, above the frame.
+    const before = scene.slice(Math.max(0, at - 900), at);
+    expect(before).toContain('r.mesh.rotation.x = tilt;');
+    expect(frame).not.toContain('rotation.x');
+  });
+});
+
 describe('the size comparison steps in objects, not pixels', () => {
   const view = readFileSync('src/lib/components/SizeComparisonView.svelte', 'utf8');
 
