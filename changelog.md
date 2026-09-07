@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.382 - 7th Sep 2026
+
+- Docked controls: dragging one on the END of a row now takes just that one out, instead of moving the whole row with it. Drag one in the MIDDLE and the row still moves together, which is what you want from the middle. So a row of three is rearranged by pulling pieces off its ends and dropping them where you want them - and two docked controls come apart the same way, since both of them are ends.
+
 ## v3.0.381 - 7th Sep 2026
 
 - Auroras now sit at the latitude their world's magnetic field actually puts them, instead of the same ring on

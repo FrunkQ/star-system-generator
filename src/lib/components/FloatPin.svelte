@@ -15,7 +15,7 @@
   $: pinned = $ctl.pinned;
   // While locked this button IS the drag handle, so it carries the drag's vocabulary too (G81).
   $: moving = $ctl.dock
-    ? '; docked, so dragging moves both. Right-click to choose an edge or separate them'
+    ? '; docked - dragging an END of the row takes it out, a MIDDLE one moves the row. Right-click to choose an edge'
     : '; drag to move, right-click to choose an edge';
 </script>
 

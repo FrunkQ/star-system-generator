@@ -83,14 +83,14 @@
           <span>{item.label}</span>
         </button>
       {/each}
-      <!-- DOCKING IS UNDONE HERE and not by dragging, because a docked control cannot be dragged
-           away from its group: the group follows it. This is the reachable half of the gesture -
-           the other half is the drop, which does the joining. -->
+      <!-- STILL HERE, BUT NO LONGER THE ONLY WAY OUT. Dragging an END of the row takes it out
+           (owner, 2026-09-07); this is what a control in the MIDDLE has instead, since dragging one
+           of those moves the whole row by design. -->
       {#if state.dock}
         <div class="fem-sep" role="separator"></div>
         <button class="fem-item" type="button" role="menuitem" on:click={() => ctl.undock()}>
           <span class="fem-tick" aria-hidden="true"></span>
-          <span>Separate from the controls beside it</span>
+          <span>Take this one out of the row</span>
         </button>
       {/if}
     </div>

@@ -12,7 +12,7 @@
   // by looking (G81): a drag moves it, a drop beside another control joins the two, and a
   // right-click or long press opens the edge menu - which is also where a pair is separated again.
   $: hint = $ctl.dock
-    ? label + ' - it is docked, so both move together. Right-click (or press and hold) to choose an edge or separate them'
+    ? label + ' - it is docked. Drag one on the END of the row and it comes away on its own; drag one in the MIDDLE and the whole row moves. Right-click (or press and hold) to choose an edge'
     : label + '; drop it against another control to dock them. Right-click (or press and hold) to choose an edge';
 </script>
 

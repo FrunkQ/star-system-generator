@@ -380,48 +380,101 @@ export function createFloatingControl(
   }
 
   /**
-   * DROP IT BESIDE SOMETHING AND THE TWO DOCK. Run once on release, against the settled rect: any
-   * control within SNAP of this one's edge joins its group (or starts one), and this control is
-   * nudged the last few pixels so the edges actually meet - a dock that leaves a 9 px gap looks
-   * like a near miss rather than a decision.
+   * HOW MANY MEMBERS THIS ONE IS TOUCHING, asked of the group's LAYOUT - the remembered offsets and
+   * the live sizes - for the same reason the drift check is: positions are unreliable exactly when
+   * the group is mid-move, and this is asked in the middle of a drag.
+   */
+  function neighbours(): number {
+    const mr = me.rect();
+    if (!mr || !s.dock) return 0;
+    const mine = { left: ox0(), top: oy0(), right: ox0() + mr.width, bottom: oy0() + mr.height };
+    let n = 0;
+    for (const m of groupMembers()) {
+      if (m === me) continue;
+      const r2 = m.rect();
+      if (!r2) continue;
+      const o = m.offset();
+      if (apart(mine, { left: o.ox, top: o.oy, right: o.ox + r2.width, bottom: o.oy + r2.height }) <= SNAP) n++;
+    }
+    return n;
+  }
+  const ox0 = () => s.ox ?? 0;
+  const oy0 = () => s.oy ?? 0;
+
+  /**
+   * AN END OF THE ROW COMES AWAY IN YOUR HAND; A MIDDLE ONE CARRIES THE ROW. Owner, 2026-09-07, on
+   * three controls docked in a line and every one of them moving together: *"if an item is on the
+   * edge and connected to only 1 thing its default behaviour is to undock. If it is between 2 this
+   * current behaviour makes sense"*.
+   *
+   * It is the answer to the question the brief left open - with one grip moving all, there was no
+   * gesture that could take a control OUT - and it is better than the menu item it replaces, because
+   * the thing you reach for is the thing you were already going to do. Run once per gesture, the
+   * moment a press becomes a drag, so a tap on an end member still does nothing.
+   */
+  function peelIfEnd() {
+    if (!s.dock || neighbours() !== 1) return;
+    const rest = groupMembers().filter((m) => m !== me);
+    // A group of one is not a group: peeling one off a PAIR frees the other as well.
+    if (rest.length === 1) rest[0].join(undefined, 0, 0);
+    set({ dock: undefined, ox: 0, oy: 0 }, false); // persisted with the rest on release
+  }
+
+  /**
+   * DROP IT BESIDE SOMETHING AND THE TWO DOCK. Run once on release, in a later macrotask, against
+   * the settled rect: the nearest control within SNAP of this one's edge is the one it joins, and
+   * this control is nudged the last few pixels so the edges actually meet - a dock that leaves a
+   * 9 px gap looks like a near miss rather than a decision.
+   *
+   * JOINING IS WHAT A FREE CONTROL DOES: drag it onto the row. A control already in one either moves
+   * its row (from the middle) or comes out of it (from an end), and once it is out it is free to
+   * join again - so the early return on `s.dock` states the gesture's meaning. It is belt and
+   * braces rather than the fix for anything: the nearest control within reach of a docked one is
+   * always its own row-mate, flush against it, so the loop below would pick that one anyway. What
+   * DID need fixing is below - see how this control's place in the group is worked out.
    */
   function redock() {
     const mine = me.rect();
-    if (!mine || !rootEl) return;
-    let id = s.dock;
-    let snapX = 0, snapY = 0, best = Infinity;
+    if (!mine || !rootEl || s.dock) return;
+    let anchorM: Member | null = null, best = Infinity, snapX = 0, snapY = 0;
     for (const m of members) {
       if (m === me || m.key === storageKey || m.stage() !== stageEl) continue;
       const r = m.rect();
       if (!r) continue;
       const d = apart(mine, r);
-      if (d > SNAP) continue;
-      id = m.state().dock || id || 'd' + Math.random().toString(36).slice(2, 8);
-      m.join(id, m.offset().ox, m.offset().oy); // the real offsets are written once, below
-      if (d < best) {
-        best = d;
-        snapX = mine.left - r.right >= 0 ? -(mine.left - r.right) : (r.left - mine.right >= 0 ? r.left - mine.right : 0);
-        snapY = mine.top - r.bottom >= 0 ? -(mine.top - r.bottom) : (r.top - mine.bottom >= 0 ? r.top - mine.bottom : 0);
+      if (d > SNAP || d >= best) continue;
+      best = d;
+      anchorM = m;
+      snapX = mine.left - r.right >= 0 ? -(mine.left - r.right) : (r.left - mine.right >= 0 ? r.left - mine.right : 0);
+      snapY = mine.top - r.bottom >= 0 ? -(mine.top - r.bottom) : (r.top - mine.bottom >= 0 ? r.top - mine.bottom : 0);
+    }
+    if (!anchorM) return;
+
+    // MY PLACE IS MEASURED AGAINST THE ONE I LANDED ON, and taken from ITS place in the group - so
+    // joining a row leaves the row's existing layout exactly as it was. Deriving everyone's offsets
+    // afresh is what went wrong; nobody but the joiner needs a new number.
+    const ar = anchorM.rect()!;
+    const joining = anchorM.state().dock;
+    const id = joining || 'd' + Math.random().toString(36).slice(2, 8);
+    const base = joining ? anchorM.offset() : { ox: 0, oy: 0 };
+    if (!joining) anchorM.join(id, 0, 0);
+    const ox = base.ox + (mine.left + snapX - ar.left);
+    const oy = base.oy + (mine.top + snapY - ar.top);
+
+    // Landing on the LEFT end of a row puts me before its origin. The origin moves to me, and
+    // everyone already in the row shifts by the same amount - the layout is unchanged, its zero moved.
+    const shiftX = Math.min(0, ox), shiftY = Math.min(0, oy);
+    if (shiftX || shiftY) {
+      for (const m of members) {
+        if (m === me || m.stage() !== stageEl || m.state().dock !== id) continue;
+        const o = m.offset();
+        m.join(id, o.ox - shiftX, o.oy - shiftY);
       }
     }
-    if (id === s.dock && !snapX && !snapY) return;
     if (snapX || snapY) set({ dx: s.dx + snapX, dy: s.dy + snapY });
-    if (id !== s.dock) set({ dock: id });
-    // WHERE EVERYONE SITS IN THE GROUP IS RECORDED HERE, once, from the boxes as dropped - including
-    // this control's own snap, which is why the snap is applied first. From now on the group is laid
-    // out from these offsets and not from wherever the members drift to.
-    if (id) {
-      const joined = [me, ...[...members].filter((m) => m !== me && m.key !== storageKey && m.stage() === stageEl && (m.state().dock === id) && m.rect())];
-      const boxes = joined.map((m) => m.rect()!).filter(Boolean);
-      const snapped = { left: mine.left + snapX, top: mine.top + snapY };
-      const originX = Math.min(snapped.left, ...boxes.slice(1).map((r) => r.left));
-      const originY = Math.min(snapped.top, ...boxes.slice(1).map((r) => r.top));
-      set({ ox: snapped.left - originX, oy: snapped.top - originY });
-      for (let i = 1; i < joined.length; i++) {
-        joined[i].join(id, boxes[i].left - originX, boxes[i].top - originY);
-      }
-    }
+    set({ dock: id, ox: ox - shiftX, oy: oy - shiftY });
     scheduleClamp(false); // the group is a different box now, and its edge is the group's
+
   }
 
   const me: Member = {
@@ -530,7 +583,13 @@ export function createFloatingControl(
     const move = (e: PointerEvent) => {
       if (!dragging) return;
       const mx = e.clientX - startX, my = e.clientY - startY;
-      if (Math.abs(mx) + Math.abs(my) > TAP_SLOP) { dragged = true; cancelPress(); }
+      if (Math.abs(mx) + Math.abs(my) > TAP_SLOP) {
+        // AT THE SLOP THRESHOLD, not on pointerdown: a tap on an end member must not take it out of
+        // its row, and until the finger has travelled this is still a tap.
+        if (!dragged) peelIfEnd();
+        dragged = true;
+        cancelPress();
+      }
       let dx = baseX + mx, dy = baseY + my;
       // Clamp against the rect as last painted: one frame stale, so it converges over the drag
       // rather than snapping. Same approach the time pill has always used - except that what is

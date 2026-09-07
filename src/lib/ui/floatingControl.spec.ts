@@ -355,13 +355,15 @@ describe('an explicit edge overrides the nearest-edge guess (G81)', () => {
  */
 const KEY_A = 'test-float-a';
 const KEY_B = 'test-float-b';
+const KEY_C = 'test-float-c';
+const KEY_D = 'test-float-d';
+const KEYS = [KEY_A, KEY_B, KEY_C, KEY_D];
 
-function pair(opts: { a: number; b: number; stage?: R }) {
-  localStorage.removeItem(KEY_A);
-  localStorage.removeItem(KEY_B);
+function row(xs: number[], stage?: R) {
+  KEYS.forEach((k) => localStorage.removeItem(k));
   const stageEl = document.createElement('div');
   document.body.appendChild(stageEl);
-  let stageRect = opts.stage ?? STAGE;
+  let stageRect = stage ?? STAGE;
   stageEl.getBoundingClientRect = () => rect(stageRect);
   const make = (key: string, x: number) => {
     const node = document.createElement('div');
@@ -375,16 +377,24 @@ function pair(opts: { a: number; b: number; stage?: R }) {
     node.getBoundingClientRect = () => rect({ left: anchor.x + get(ctl).dx, top: anchor.y + get(ctl).dy, ...size });
     return { ctl, node, anchor, size, action: ctl.root(node) };
   };
-  const a = make(KEY_A, opts.a);
-  const b = make(KEY_B, opts.b);
+  const items = xs.map((x, i) => make(KEYS[i], x));
   return {
-    a, b,
+    items,
     setStage: (r: R) => { stageRect = r; },
-    done: () => { a.action.destroy(); b.action.destroy(); localStorage.removeItem(KEY_A); localStorage.removeItem(KEY_B); }
+    done: () => { items.forEach((i) => i.action.destroy()); KEYS.forEach((k) => localStorage.removeItem(k)); }
   };
 }
 
+function pair(opts: { a: number; b: number; stage?: R }) {
+  const r = row([opts.a, opts.b], opts.stage);
+  return { a: r.items[0], b: r.items[1], setStage: r.setStage, done: r.done };
+}
+
 /** Drag `who` by (mx, my) with its own grip, exactly as a GM would. */
+function dragOf(who: { ctl: ReturnType<typeof createFloatingControl>; node: HTMLElement }, mx: number, my = 0) {
+  drag(who, mx, my);
+}
+
 function drag(who: { ctl: ReturnType<typeof createFloatingControl>; node: HTMLElement }, mx: number, my = 0) {
   const grip = who.ctl.grip(who.node);
   who.node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
@@ -403,8 +413,7 @@ describe('two controls dock, move as one, and settle as one box (G81)', () => {
   afterEach(() => {
     vi.useRealTimers();
     document.body.innerHTML = '';
-    localStorage.removeItem(KEY_A);
-    localStorage.removeItem(KEY_B);
+    KEYS.forEach((k) => localStorage.removeItem(k));
   });
 
   /** A at 400..600, B dropped beside it so the two are docked and settled at 400..800. */
@@ -455,24 +464,114 @@ describe('two controls dock, move as one, and settle as one box (G81)', () => {
     p.done();
   });
 
-  it('one grip moves BOTH, by exactly the drag delta, DURING the drag and not after it', () => {
-    const p = docked();
-    expect(at(p.a.ctl, p.a.anchor).left).toBe(400);
-    expect(at(p.b.ctl, p.b.anchor).left).toBe(600);
-
-    // Mid-gesture, with no settle yet: the partner has to be following FRAME BY FRAME. Left to the
-    // settle on release it would sit still while the other was dragged across the canvas and then
-    // jump - which is not "moving as one", it is catching up.
-    const grip = p.a.ctl.grip(p.a.node);
-    p.a.node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
-    p.a.node.dispatchEvent(new MouseEvent('pointermove', { clientX: 380, clientY: 300 }));
-    expect(at(p.a.ctl, p.a.anchor).left, 'the dragged one').toBe(280);
-    expect(at(p.b.ctl, p.b.anchor).left, 'and the far member, already there').toBe(480);
-    p.a.node.dispatchEvent(new MouseEvent('pointerup', { clientX: 380, clientY: 300 }));
+  /** Three in a line at 200, 400 and 600, docked left to right - so the middle one has TWO. The
+   *  row is 600 px wide and the stage is 742 inside its inset, so the whole thing fits with room. */
+  function trio() {
+    const r = row([200, 414, 628]); // 14 px apart: too far to dock on their own
     vi.runAllTimers();
-    expect(at(p.a.ctl, p.a.anchor).left).toBe(280);
-    expect(at(p.b.ctl, p.b.anchor).left, 'and the settle left them where they were').toBe(480);
+    dragOf(r.items[1], -6); // 408 -> flush against A's right edge at 400
+    dragOf(r.items[2], -16); // 612 -> within the 12 px snap of B's right edge, now at 600
+    return r;
+  }
+
+  it('the MIDDLE of a row carries the whole row, frame by frame', () => {
+    // Owner, 2026-09-07: *"If it is between 2 this current behaviour makes sense"*.
+    const r = trio();
+    const [a, b, c] = r.items;
+    expect([at(a.ctl, a.anchor).left, at(b.ctl, b.anchor).left, at(c.ctl, c.anchor).left]).toEqual([200, 400, 600]);
+    const id = get(b.ctl).dock;
+    expect(id, 'all three in one group').toBeTruthy();
+    expect(get(a.ctl).dock).toBe(id);
+    expect(get(c.ctl).dock).toBe(id);
+
+    // Mid-gesture, with no settle yet: the others have to be following FRAME BY FRAME. Left to the
+    // settle on release they would sit still while the middle was dragged across the canvas and
+    // then jump - which is not "moving as one", it is catching up.
+    const grip = b.ctl.grip(b.node);
+    b.node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
+    b.node.dispatchEvent(new MouseEvent('pointermove', { clientX: 460, clientY: 300 }));
+    expect([at(a.ctl, a.anchor).left, at(b.ctl, b.anchor).left, at(c.ctl, c.anchor).left],
+      'all three, already there').toEqual([160, 360, 560]);
+    b.node.dispatchEvent(new MouseEvent('pointerup', { clientX: 460, clientY: 300 }));
+    vi.runAllTimers();
+    expect([at(a.ctl, a.anchor).left, at(b.ctl, b.anchor).left, at(c.ctl, c.anchor).left],
+      'and the settle left them where they were').toEqual([160, 360, 560]);
+    expect(get(b.ctl).dock, 'a middle one never leaves its row').toBe(id);
     grip.destroy();
+    r.done();
+  });
+
+  it('dragging a row leaves its LAYOUT alone - the offsets are not re-derived on release', () => {
+    // MEASURED IN THE BROWSER, AND ONLY THERE. Releasing a group drag used to re-derive every
+    // member's place in the group from wherever the members happened to BE - and on release they
+    // are mid-correction, because each one places itself in its own settle. The middle of a row of
+    // three came back as 512 instead of 382, which made the group 600 wide instead of 512, which
+    // put 130 px of daylight between two members that were touching, which made the drift check
+    // throw one out. One stale read, four wrong answers.
+    //
+    // THIS GATE WAS NOT SEEN RED, and it cannot be: the mocked rect here follows the store
+    // synchronously, so "the DOM is one flush behind" does not exist in jsdom and re-deriving from
+    // live boxes gives the identical answer. Restoring the old code leaves it green. It is kept
+    // because what it asserts is true and worth holding - a group drag must not touch the layout -
+    // and it would catch a synchronous regression. The fault itself was found, fixed and verified
+    // in a real browser; see UI-C18.
+    const r = trio();
+    const [a, b, c] = r.items;
+    const offsets = () => r.items.map((i) => [get(i.ctl).ox, get(i.ctl).oy]);
+    expect(offsets(), 'the row as it formed').toEqual([[0, 0], [200, 0], [400, 0]]);
+    dragOf(b, 90); // drag the row by its middle - 96 px of room before the far end hits the wall
+    expect(offsets(), 'and unchanged after a group drag').toEqual([[0, 0], [200, 0], [400, 0]]);
+    expect([at(a.ctl, a.anchor).left, at(b.ctl, b.anchor).left, at(c.ctl, c.anchor).left]).toEqual([290, 490, 690]);
+    expect([get(a.ctl).dock, get(b.ctl).dock, get(c.ctl).dock], 'and nobody was thrown out')
+      .toEqual([get(b.ctl).dock, get(b.ctl).dock, get(b.ctl).dock]);
+    r.done();
+  });
+
+  it('an END of a row comes away in your hand, and the rest stay put', () => {
+    // Owner, 2026-09-07, on three controls docked in a line and all three moving together: *"if an
+    // item is on the edge and connected to only 1 thing its default behaviour is to undock"*.
+    const r = trio();
+    const [a, b, c] = r.items;
+    const id = get(b.ctl).dock;
+    dragOf(c, 80); // the right-hand end, dragged clear
+    expect(at(c.ctl, c.anchor).left, 'it went alone').toBe(680);
+    expect(get(c.ctl).dock, 'and it left the row').toBeUndefined();
+    expect([at(a.ctl, a.anchor).left, at(b.ctl, b.anchor).left], 'the other two did not move').toEqual([200, 400]);
+    expect(get(a.ctl).dock, 'and are still docked to each other').toBe(id);
+    expect(get(b.ctl).dock).toBe(id);
+    r.done();
+  });
+
+  it('a TAP on an end member does not take it out of the row', () => {
+    // The peel happens at the slop threshold, not on pointerdown: until the finger has travelled
+    // this is still a tap, and a tap on the lock is how a control is unlocked.
+    const r = trio();
+    const [, , c] = r.items;
+    const id = get(c.ctl).dock;
+    const grip = c.ctl.grip(c.node);
+    c.node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
+    c.node.dispatchEvent(new MouseEvent('pointermove', { clientX: 502, clientY: 300 })); // 2px: a tap
+    c.node.dispatchEvent(new MouseEvent('pointerup', { clientX: 502, clientY: 300 }));
+    vi.runAllTimers();
+    expect(get(c.ctl).dock, 'still in the row').toBe(id);
+    expect(c.ctl.didDrag(), 'and it was a tap, not a drag').toBe(false);
+    grip.destroy();
+    r.done();
+  });
+
+  it('peeling one off a PAIR frees the other too - and a pair has no middle to drag by', () => {
+    // THE TRADE THIS RULE MAKES, stated where it will be found: in a pair BOTH members are ends, so
+    // dragging either one separates them and a pair cannot be moved by one grip. Moving a pair is
+    // two gestures - drag one, drag the other beside it, and it snaps back flush. Docking still
+    // does the thing it is for, which is holding them together as the canvas changes shape.
+    const p = docked();
+    const id = get(p.a.ctl).dock;
+    expect(id).toBeTruthy();
+    drag(p.a, -120);
+    expect(at(p.a.ctl, p.a.anchor).left, 'the dragged one went alone').toBe(280);
+    expect(at(p.b.ctl, p.b.anchor).left, 'and the other stayed').toBe(600);
+    expect(get(p.a.ctl).dock).toBeUndefined();
+    expect(get(p.b.ctl).dock, 'nobody is left holding an empty group').toBeUndefined();
     p.done();
   });
 
