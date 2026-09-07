@@ -289,12 +289,17 @@
     flex-direction: column; 
     gap: 1em; 
     min-height: 0; /* Important fix for flex children */
+    /* ...and the same fix on the other axis (A84): without it a flex item is `min-width: auto`,
+       so a long tag label sets the column's floor and the dialog grows past its own max-width. */
+    min-width: 0;
   }
   .form-group { display: flex; flex-direction: column; width: 100%; }
   .form-group.fill-column { flex-grow: 1; min-height: 0; }
   .form-group.fixed-height { flex-shrink: 0; }
   .form-group label { margin-bottom: 0.5em; color: var(--text); }
-  .form-group textarea, .form-group select { width: 100%; padding: 0.5em; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text); }
+  /* A72: a width:100% control with padding AND a border must be border-box, or it is 3px wider
+     than its parent - measured here at 375px, where the seed textarea reached 378px. */
+  .form-group textarea, .form-group select { box-sizing: border-box; width: 100%; padding: 0.5em; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text); }
   .generated-text-display { 
     flex-grow: 1;
     background: var(--bg-panel);
@@ -361,4 +366,52 @@
   .modal-actions button:nth-child(2) { background-color: var(--bg-control); color: white; }
   .modal-actions button:nth-child(3) { background-color: var(--accent); color: white; }
   .modal-actions button:last-child { background-color: #6c757d; color: white; }
+
+  /* A84 — THE PHONE LAYOUT. Two side-by-side columns and a four-button row do not fit 375px:
+     measured at 375x812, the modal laid out 403px wide inside a 375px viewport and pushed
+     "Generate" to left:-130px, entirely off-screen and untappable.
+
+     The selector is `data-app-mode`, not a media query, deliberately: UI-C6 - the shell already
+     folds width, pointer type and the ?mode= override into ONE decision, and a breakpoint beside
+     it would be a 26th value that disagrees the moment someone forces phone on a wide screen.
+
+     `min-width: 0` on the columns is the load-bearing line and the reason the modal was wider
+     than its own 90%: a flex item defaults to `min-width: auto`, so the long tag labels refused
+     to shrink and pushed the whole dialog out past the screen. */
+  :root[data-app-mode='phone'] .modal {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 0;
+  }
+  :root[data-app-mode='phone'] .columns {
+    flex-direction: column;
+    gap: 1em;
+    overflow-y: auto;
+  }
+  :root[data-app-mode='phone'] .left-column,
+  :root[data-app-mode='phone'] .right-column {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+  /* Stacked, the tag list must not eat the whole screen and hide the generated text under it. */
+  :root[data-app-mode='phone'] .tag-groups { max-height: 34vh; padding: 0.6em; }
+  :root[data-app-mode='phone'] .generated-text-display { min-height: 30vh; }
+  /* Four actions on one 375px row is about 500px of buttons. Wrap them into a 2x2 grid rather
+     than letting the row overflow, which is what put Generate off-screen. */
+  :root[data-app-mode='phone'] .modal-actions {
+    flex-wrap: wrap;
+    justify-content: stretch;
+    gap: 8px;
+  }
+  :root[data-app-mode='phone'] .modal-actions button {
+    flex: 1 1 calc(50% - 8px);
+    padding: 0.7em 0.4em;
+    min-height: 44px;
+  }
+  /* The prompt editor is a full-screen overlay of its own and has the same 2em problem. */
+  :root[data-app-mode='phone'] .prompt-editor-overlay { padding: 12px; }
 </style>

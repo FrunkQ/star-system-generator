@@ -106,8 +106,8 @@
     z-index: 1200;
     display: flex;
     flex-direction: column;
-    background: #14161c;
-    border-top: 1px solid #2a2d36;
+    background: var(--bg-panel, #14161c);
+    border-top: 1px solid var(--border, #2a2d36);
     border-radius: 14px 14px 0 0;
     box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.55);
     color: #e8e8e8;
@@ -149,16 +149,16 @@
     flex: 0 0 auto;
     width: 32px;
     height: 32px;
-    border: 1px solid #2a2d36;
+    border: 1px solid var(--border, #2a2d36);
     border-radius: 8px;
-    background: #1b1e26;
-    color: #cfcfcf;
+    background: var(--bg-control, #1b1e26);
+    color: var(--text-muted, #cfcfcf);
     font-size: 1.1rem;
     line-height: 1;
     cursor: pointer;
   }
   .sheet-close:hover {
-    background: #232733;
+    background: var(--bg-control-hover, #232733);
   }
   .sheet-body {
     flex: 1 1 auto;

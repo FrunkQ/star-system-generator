@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { Route, Starmap } from '../types';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
   export let route: Route;
@@ -33,7 +35,7 @@
 </script>
 
 {#if showModal}
-  <div class="modal-background">
+  <div class="modal-background" use:foreground>
     <div class="modal">
       <h2>Edit Route</h2>
       <label>

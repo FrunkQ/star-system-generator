@@ -115,7 +115,37 @@ describe('VTT integration broadcast contract', () => {
     await waitFor(() => announced.length === 1);
     expect(announced[0].starmapName).toBe('My Tuesday Game');
     expect(announced[0].presets[0].id).toBe('holo');
-  });
+    // THE FIRST TEST IN THIS FILE PAYS FOR THE LAZY IMPORT, and vitest's 5-second default is not
+    // enough headroom for it on a loaded machine: `makeService()` dynamically imports the broadcast
+    // module, and the transform + import happens once, HERE, while every other worker in the run is
+    // competing for the same CPU. It failed on a suite that was otherwise entirely green, purely
+    // because one more spec file had been added elsewhere (Stream K, 2026-09-04) — nothing in this
+    // file or the code it tests had changed. The waits inside it are still bounded by `waitFor`'s
+    // own 2s budget, so this raises the ceiling without weakening a single assertion. [[B118]]
+  }, 20000);
+
+  it('SYNC_VIEW_SETTINGS carries the magnetosphere switch, and an OLDER sender that omits it reads as OFF', async () => {
+    // [[G82]] job 2. A new optional field on a payload two products speak has exactly one way to go
+    // wrong, and it is not "does it arrive": it is what a receiver does when a sender predating the
+    // field says nothing. ABSENT MUST READ AS OFF here - the opposite of the preset rule, where an
+    // absent field reads as WANTED so an old campaign keeps its clouds. The difference is which way
+    // silence should fail: a GM who never asked for magnetospheres must not have them appear.
+    const host = await makeService();
+    const guest = await makeService();
+    host.initSender('sid-view');
+    const got: any[] = [];
+    guest.initReceiver(() => {}, () => {}, () => {}, () => {}, (s) => got.push(s), () => {}, 'sid-view');
+    host.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: {
+      showNames: true, showZones: false, showLPoints: false, showHillSpheres: true, showMagnetospheres: true } });
+    await waitFor(() => got.length === 1);
+    expect(got[0].showMagnetospheres).toBe(true);
+    // The older sender: the same message with the field simply not there.
+    host.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: {
+      showNames: true, showZones: false, showLPoints: false, showHillSpheres: true } as any });
+    await waitFor(() => got.length === 2);
+    expect(got[1].showMagnetospheres).toBeUndefined();
+    expect(!!got[1].showMagnetospheres).toBe(false);
+  }, 20000);
 
   it('a targeted REQUEST_HELLO for a DIFFERENT sid is ignored by the host', async () => {
     const host = await makeService();

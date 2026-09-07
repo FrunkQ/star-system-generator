@@ -47,6 +47,13 @@ it has stopped being true.
 
 **Yours.** Anything you add by hand, for any purpose. It survives every re-process and every save.
 
+**Placement steers (`mega/…`).** Stamped when a mega-construct is placed somewhere the physics finds
+demanding — a ringworld outside the goldilocks zone, a space elevator whose counterweight rides near
+the edge of its world's gravity well. Each carries its explanation, numbers included, in the tag
+itself. They are advice, never vetoes: the placement went ahead, and the tag records why it is
+interesting. Written once at placement (nothing re-derives them yet), so like generated tags they
+stay deleted if you delete them.
+
 ### One physics tag that is deliberately not deterministic
 
 `biodiversity/pigment` names the pigment most of a world's photosynthetic life uses, and it is
@@ -137,8 +144,8 @@ surface temperature*, and know exactly which readings on that world do not add u
 assigned shows players nothing at all — if you would rather present a strange world as though it
 were ordinary, that is your business and the program does not interfere.
 
-It is a **system** category, so it cannot be deleted, and it obeys every normal control: mark a
-single reason secret, or hide the whole category from players, and neither the tag nor the fact that
+It is a **system** category, so it cannot be deleted, and it obeys every normal control: hide a
+single reason, or hide the whole category from players, and neither the tag nor the fact that
 anything was pinned reaches them.
 
 ### Colour
@@ -166,11 +173,38 @@ surface temperature, a density, a pressure or a magnetosphere and the engine der
 downstream from your figure. The two are described together on the [physics page](/physics#overrides).
 The Anomaly category below is what ties them: it is how a value override says *why*.
 
-**Secrets.** Any hand-added tag can be marked secret, and a whole category can be hidden from
-players. Neither ever reaches them: not the shared catalogue, not a player view, not the holo table,
-not a printed report. So the syndicate that secretly runs a station can be tagged, filtered and
-mapped by you without ever appearing on their screens.
+**Who sees it: three settings, not two.** Every hand-added tag carries one of three, and the button
+beside it cycles through them:
 
+- **shown** — players see the tag in full. This is the default.
+- **anon** — players are told that *something* is here and not what it is. The tag becomes a neutral
+  grey "Undisclosed" marker: no name, no value, not even the category's colour. It is the setting for
+  *there is clearly something going on with this star and you have not worked out what*.
+- **hidden** — players see nothing at all, and no sign that anything was hidden.
+
+None of the hidden information ever reaches them by any route: not the shared catalogue, not a player
+view, not the holo table, not a printed report. So the syndicate that secretly runs a station can be
+tagged, filtered and mapped by you without ever appearing on their screens — and if you would rather
+the crew knew a station has an owner they have not identified, that is the middle setting.
+
+Two more things worth knowing about the middle one. Several anonymous tags on one body show as ONE
+marker, deliberately: three markers would tell players you are hiding three things, which is a fact
+you did not choose to give them. And a whole category hidden from players stays hidden — the category
+switch is the stronger statement, and a tag inside it shows nothing even at **anon**.
+
+**And there is a limit to what the three settings reach, which is worth knowing before you go looking
+for a switch that is not there.** The rung button appears on **the tags you added yourself** — the
+"Yours" group on the Tags tab — and the category switch hides a whole category. Both act on the
+categories you configure under **Settings → Tagging**: there are thirteen of them shipped, and any you
+add.
+
+The tags the *engine* derives are a different population. `structure/`, `weather/`, `hazard/`,
+`surface/`, `stellar/` and the rest are not categories, so there is no category switch for them and no
+rung button on them either — they describe what the physics found, and they go to players with
+everything else the physics publishes. If you want a particular fact about a world kept back, the
+lever is the world, not the tag: change the thing that produces it, or keep the body itself off the
+players' map. A GM override in a physics namespace is in the same position — it is filed under **GM
+override** rather than under **Yours**, and it carries no rung.
 ## Automated tagging rules
 
 Each category can carry rules that apply its tags for you. A rule is a condition over a body's
@@ -231,7 +265,7 @@ The colour is never part of this choice: it always comes from the tag or its cat
 flies its own colour whichever shape you pick. Every shape carries its text, so a highlight still
 reads under a CRT or colour-blind filter.
 
-The selection is momentary — it is never saved into a preset — and secret tags can never appear, so
+The selection is momentary — it is never saved into a preset — and a hidden tag can never appear, so
 leaving a faction highlighted is safe.
 
 ### Three tags that draw themselves
@@ -239,7 +273,7 @@ leaving a faction highlighted is safe.
 A few physics tags on a STAR are not badges but part of the star's own picture, on the GM starmap, the
 player starmaps and the system view alike:
 
-- `stellar/activity` — the magnetic-activity bucket. An *active* or *flare-star* star shows flares
+- `stellar/activity` — the flare-activity bucket. An *active* or *flare-star* star shows flares
   licking off its limb; a *quiet* one does not.
 - `stellar/jets` — a pair of collimated beams along the magnetic axis: a fed black hole, a neutron star
   or a magnetar. *moderate* or *strong*.

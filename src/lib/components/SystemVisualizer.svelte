@@ -1,6 +1,9 @@
 <script lang="ts">
   import { niceStepBelow, formatNice } from '$lib/map/niceInterval';
   import { traceConstructIcon, constructIconShape } from '$lib/constructs/constructIcon';
+  import { tetherAltitudesKm } from '$lib/constructs/megaGeometry';
+  import { effectiveAttachment } from '$lib/constructs/docking';
+  import { megaTypeDef, instanceMegaParams } from '$lib/constructs/megaTypes';
   import type { System, CelestialBody, Barycenter, RulePack, SystemNode } from '$lib/types';
   import type { TransitPlan } from '$lib/transit/types';
   import { getJourneyBounds, coastPathUnderGravity, sampleJourneyKinematicsAtTime, isFlybyPlan } from '$lib/transit/scheduler';
@@ -9,6 +12,8 @@
   import { getVisibleNodeIds } from "$lib/system/visibleNodes";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
+  import { discVisible, ringVisible } from '$lib/rendering/circleCull';
+  import { lowPower } from '$lib/lowPowerStore';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints, tadpoleRegion, isTriangularPoint, tadpoleOutline,
            hillFactor, coOrbitalScale, COLLINEAR_ENVELOPE_HILL } from "$lib/physics/lagrange";
@@ -22,6 +27,8 @@
   import { gestures } from '$lib/input/gestures';
   import { calculateAllStellarZones, calculateRocheLimit } from '$lib/physics/zones';
   import { hillSpheresAu } from '$lib/physics/twoBodyCoast';
+  import { magnetopauseOutlineOriented, magnetosphereConstants, magnetosphereOffScreen,
+           visibleTailRadii, magnetosphereReachRadii } from '$lib/physics/magnetosphere';
   import { regionOfInterest, inRegionOfInterest } from '$lib/system/regionOfInterest';
   import { scaleBoxCox } from '../physics/scaling';
   import { findContainingHost, orbitPathProjected } from '$lib/physics/orbits';
@@ -46,6 +53,7 @@
   // the preset, and the two are deliberately not one store (A10/A3).
   export let orbitOpacity: number = 1;
   export let showHillSpheres: boolean = false;
+  export let showMagnetospheres: boolean = false;
   // WS3 — the shared overlay vocabulary. The 2D system view had no grid of any kind; it now offers the
   // same set as every other spatial view (lattices in AU, or polar rings about the primary).
   import { isHexFamily } from '$lib/map/mapOverlay';
@@ -315,7 +323,9 @@
         return parentScaledPos;
       }
       let x: number, y: number;
-      if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit) {
+      // An ATTACHED construct is placed by its structure (docking.ts), and its placeholder orbit
+      // says nothing about where it is - scale its TRUE offset like any unorbited node below.
+      if ((node.kind === 'body' || node.kind === 'construct' || node.kind === 'barycenter') && node.orbit && !effectiveAttachment(node)) {
         const { a_AU: a, e, omega_deg } = node.orbit.elements;
         const w = (omega_deg || 0) * (Math.PI / 180);
         const dxTrue = nodeTruePos.x - parentTruePos.x;
@@ -790,6 +800,82 @@
   // at (x, y) with the given pixel size. Single source of truth for both the
   // world-space pass (sizePx = 8 / zoom) and the screen-space overlay (sizePx = 8),
   // which had drifted apart. Screen-space sizing (8px) is the canonical default.
+  // G53/G58: what does the plan view draw for an exotic besides its glyph? THE RECORD SAYS
+  // (DATA-R33): `render2d.structure` - 'orbit-line' when the node's own orbit line IS the
+  // structure (ring, torus, shell, swarm: centred on the host at their orbital radius), 'radial'
+  // for a tether (a line from the host's drawn edge out to geostationary and the counterweight),
+  // 'glyph' for a marker alone. Never a family test or a list of names here.
+  function isMegaRing(node: any): boolean {
+    return megaTypeDef(node?.megaType)?.capabilities.render2d.structure === 'orbit-line';
+  }
+  function isMegaRadial(node: any): boolean {
+    return megaTypeDef(node?.megaType)?.capabilities.render2d.structure === 'radial';
+  }
+
+  // A body's DRAWN disc radius in world units - the toytown-scaled true radius with the same
+  // per-role pixel floor the body pass draws with. One function, so the tether's base, the body
+  // loop and anything else that must meet the disc edge agree by construction.
+  function drawnDiscRadiusWorld(node: any, zoomNow: number): number {
+    let radiusInAU = (node.radiusKm || 0) / AU_KM;
+    if (toytownFactor > 0) radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
+    let minRadiusPx = 2;
+    if (node.roleHint === 'star') minRadiusPx = 4;
+    else if (node.roleHint === 'planet') { const isGasGiant = (node.classes ?? []).some((c: string) => c.includes('gas-giant') || c.includes('ice-giant')); minRadiusPx = isGasGiant ? 3 : 2; }
+    else if (node.roleHint === 'moon') minRadiusPx = 1;
+    const minRadiusInWorld = minRadiusPx / zoomNow;
+    return Math.sqrt(radiusInAU * radiusInAU + minRadiusInWorld * minRadiusInWorld);
+  }
+
+  // THE BEANSTALK ON THE PLAN VIEW (owner, 2026-09-02: "on the GM view we are still not seeing the
+  // elevator being drawn - just a surface icon"). A line from the host's DRAWN disc edge, along the
+  // direction the anchor glyph already sits on, out to the counterweight, with the geostationary
+  // dock as a knob - every distance through the SAME toytown transform (`scaleBoxCox`) that places
+  // the moons and sizes the discs, so geo lands between the disc and the Moon by monotonicity: the
+  // 2D twin of the 3D satellite law (RENDER-S50). Inside the drawn disc, nothing is drawn and the
+  // glyph carries it, honestly.
+  function drawTetherRadial(ctx: CanvasRenderingContext2D, node: any, pos: { x: number; y: number }, pan: { x: number; y: number }, zoomNow: number): void {
+      if (!system) return;
+      const host = system.nodes.find(n => n.id === node.parentId) as any;
+      if (!host || host.kind !== 'body') return;
+      const hostPos = scaledWorldPositions.get(host.id);
+      if (!hostPos) return;
+      const def = megaTypeDef(node.megaType);
+      if (!def) return;
+      const spec = def.shape(instanceMegaParams(node, def, host), host);
+      if (spec.family !== 'tether') return;
+      const dims = (node.physical_parameters?.dimensionsM ?? []) as number[];
+      const authoredKm = Math.max(0, ...dims.map((d: number) => Math.abs(Number(d)) || 0)) / 1000;
+      const alt = tetherAltitudesKm(spec, authoredKm > 0 ? authoredKm : undefined);
+      const hostKm = host.radiusKm || 0;
+      if (!alt || !(hostKm > 0)) return;
+      const drawnDist = (altKm: number) => {
+          const au = (hostKm + altKm) / AU_KM;
+          return toytownFactor > 0 ? scaleBoxCox(au, toytownFactor, x0_distance) : au;
+      };
+      const baseD = drawnDiscRadiusWorld(host, zoomNow);
+      const dockD = drawnDist(alt.dockKm);
+      const topD = drawnDist(alt.topKm);
+      if (!(topD > baseD)) return;
+      let dx = pos.x - hostPos.x, dy = pos.y - hostPos.y;
+      const n = Math.hypot(dx, dy);
+      if (n > 1e-12) { dx /= n; dy /= n; } else { dx = 1; dy = 0; }
+      const hx = hostPos.x - pan.x, hy = hostPos.y - pan.y;
+      ctx.save();
+      ctx.strokeStyle = node.icon_color || '#9fe8a0';
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 2 / zoomNow;
+      ctx.beginPath();
+      ctx.moveTo(hx + dx * baseD, hy + dy * baseD);
+      ctx.lineTo(hx + dx * topD, hy + dy * topD);
+      ctx.stroke();
+      if (dockD > baseD) {
+          ctx.beginPath(); ctx.arc(hx + dx * dockD, hy + dy * dockD, 3 / zoomNow, 0, 2 * Math.PI); ctx.fill();
+      }
+      ctx.beginPath(); ctx.arc(hx + dx * topD, hy + dy * topD, 2 / zoomNow, 0, 2 * Math.PI); ctx.fill();
+      ctx.restore();
+  }
+
   function drawConstructGlyph(ctx: CanvasRenderingContext2D, node: CelestialBody, x: number, y: number, sizePx: number): void {
       // The ONE glyph vocabulary (inbox A34) — this was a private copy of the same five shapes.
       const c = node as any;
@@ -1056,6 +1142,19 @@
           // cannot leak into the fills that follow in this pass.
           ctx.strokeStyle = `rgba(51,51,51,${Math.max(0, Math.min(1, orbitOpacity))})`; ctx.lineWidth = 1 / zoom;
 
+          // G53: A RING IS ITS OWN ORBIT LINE. Owner, 2026-08-28: *"gm map ringworlds can just use
+          // the orbital line - coloured as ringworld - at a distance."* And he is right that this is
+          // the honest drawing rather than a shortcut: a ringworld, torus, shell or swarm is
+          // CENTRED on its host at exactly this radius, so the ellipse already traced here IS the
+          // structure. It takes the construct's own colour and a heavier stroke, so the plan view
+          // says "a thing lives on this path" instead of drawing a dot that pretends to be a place.
+          // The glyph still draws on top as the click target (a whole ring is cumbersome to hit).
+          const megaRing = isMegaRing(node as any);
+          if (megaRing) {
+            ctx.strokeStyle = (node as any).icon_color || '#9fe8a0';
+            ctx.lineWidth = 2.5 / zoom;
+          }
+
           // A LINE A SHIP IS NOT ON IS WORSE THAN NO LINE, AND THAT IS WHAT AN ELLIPSE FROM `a`, `e`
           // AND OMEGA ALONE IS FOR A SHIP THAT HAS FLOWN SOMEWHERE.
           //
@@ -1214,6 +1313,149 @@
               ctx.stroke();
           }
       }
+      // MAGNETOSPHERES (G82) - the bubble each magnetised body cuts out of the wind, nose pointing
+      // upstream. Two nested shapes, and which is which is the owner's steer (2026-09-07: "drawn at
+      // where it can provide atmo protection levels rather than max extent - maybe very pale to max
+      // extent, more obvious at useful levels"):
+      //   the MAGNETOPAUSE, the full extent with its tail, drawn as a very pale wash;
+      //   the CLOSED-FIELD region inside it, where the lines leave the body and come back so an
+      //   incoming ion is turned away - the part that actually shields an atmosphere - shaded solidly.
+      // They share one published number apiece and one SHAPE function with the 3D cage, so no picture
+      // here can disagree with the physics or with the other view.
+      //
+      // MAUVE, NOT ANOTHER YELLOW. The Hill bubble owns pale yellow and the circumbinary ring deep
+      // gold because both answer "where can something orbit"; Lagrange owns green because it answers
+      // a third question. A magnetosphere answers a fourth - "what does this body's field protect" -
+      // so it gets the field palette, from the tokens, keyed off the magnetar purple that was already
+      // in the file. An anomalous field (one no interior model can account for) takes that purple
+      // straight, so a GM's 70-tesla world reads as the oddity it is.
+      //
+      // A BUBBLE IS DRAWN IN THE BODY'S OWN DRAWN RADII - the published number IS "in body radii",
+      // and `drawnDiscRadiusWorld` is the one place that already knows how big this view is drawing
+      // that body, floors and toytown compression and all. Multiplying by it renders the published
+      // number directly and inherits exactly the size lie the disc already carries.
+      //
+      // BUT A FLOOR MULTIPLIED BY 235 IS NO LONGER A FLOOR, AND THAT IS THE TRAP HERE. The disc's
+      // floor exists to keep a 0.17-pixel Earth visible as 2 pixels - an honest legibility clamp. The
+      // tail is twenty standoffs, so the SAME clamp comes out the other end as a 470-pixel streak,
+      // and at system zoom Jupiter's bubble reached one and a half AU sunward against a true 0.019.
+      // Seen on screen 2026-09-07 and it read as a real region, which is exactly what RENDER-S52
+      // warns about: a shape drawn around a body is read as SIZE, however it got there.
+      //
+      // SO THE INFLATION IS CAPPED AT THE BODY'S HILL SPHERE, the one boundary that is already on
+      // this map and already means "the space this body controls". A magnetosphere is always well
+      // inside it - Earth's twenty-standoff tail is 1.43 million km against a 1.5 million km Hill
+      // radius, which is the nice fact that makes this the right cap rather than a chosen number -
+      // so a bubble drawn outside it is showing something that cannot be. Never below TRUE scale
+      // either: Jupiter's drawn tail is genuinely a touch longer than its Hill radius, and shrinking
+      // it for that would be the opposite lie.
+      //
+      // WHAT IT COSTS, plainly: like the Hill bubble it is a zoomed-in overlay. Earth's is legible
+      // from about a three-million-kilometre view (the Earth-and-Luna framing) and fades out at
+      // system scale, because at system scale it really is a fifth of a pixel.
+      //
+      // AND IT IS CULLED, BOTH WAYS (owner, 2026-09-07: "make sure you do culling on these shapes to
+      // avoid lagging by drawing stuff off screen"). A magnetotail is twenty standoffs long, so at any
+      // useful zoom most of it is off the canvas - and a path handed to `fill()` is rasterised whether
+      // anyone can see it or not. Two cheap tests, in this order:
+      //   REJECT the whole body when its furthest possible point cannot reach the viewport, before any
+      //     outline is generated at all;
+      //   CLIP the drawn tail to the distance that could still land on screen, so the path stays a few
+      //     screens long instead of a few hundred. The GRADIENT is still built over the TRUE tail
+      //     length, so the fade a viewer sees is identical - only the invisible remainder is dropped.
+      // The world pass is translated to the pan and scaled by the zoom, so the visible rectangle in
+      // these coordinates is simply +/- half the canvas over the zoom.
+      if (showMagnetospheres && system) {
+          const mc = magnetosphereConstants(rulePack ?? null);
+          const hillAuById = new Map(hillSpheresAu(system).filter((h) => !h.isStar).map((h) => [h.id, h.rAu]));
+          const halfW = width / (2 * zoom), halfH = height / (2 * zoom);
+          for (const node of system.nodes) {
+              if (node.kind !== 'body') continue;
+              const b = node as CelestialBody;
+              const ms = b.magnetosphere;
+              if (!ms || ms.shape === 'none' || !(ms.standoffRadii > 0)) continue;
+              if (!inRegionOfInterest(roi, b.id)) continue;
+              const pos = toytownFactor > 0 ? scaledWorldPositions.get(b.id) : worldPositions.get(b.id);
+              if (!pos) continue;
+              // WHERE THE NOSE POINTS is published, not guessed: `upstreamId` is the star whose wind
+              // this was solved against, or the HOST whose field it was, and a moon deep inside a
+              // giant faces the giant. Drawn in the SAME frame the bodies are, so the nose tracks
+              // the real geometry as the system turns.
+              const src = ms.upstreamId
+                  ? (toytownFactor > 0 ? scaledWorldPositions.get(ms.upstreamId) : worldPositions.get(ms.upstreamId))
+                  : undefined;
+              if (!src) continue;
+              let ux = src.x - pos.x, uy = src.y - pos.y;
+              const ulen = Math.hypot(ux, uy);
+              if (!(ulen > 0)) continue;
+              ux /= ulen; uy /= ulen;
+              const trueUnit = (b.radiusKm || 0) / AU_KM;
+              const hillAu = hillAuById.get(b.id) ?? 0;
+              // The cap: the whole drawn shape, tail included, stays inside the Hill sphere - but a
+              // body whose tail genuinely reaches past it keeps true scale rather than being shrunk.
+              const capUnit = hillAu > 0 && ms.tailRadii > 0 ? Math.max(trueUnit, hillAu / ms.tailRadii) : Infinity;
+              const unit = Math.min(drawnDiscRadiusWorld(b, zoom), capUnit);
+              if (!(unit > 0)) continue;
+              const cx = pos.x - renderPan.x, cy = pos.y - renderPan.y;
+              // Both cull decisions are pure functions in the physics module, so the gate that pins
+              // them is testing the real ones rather than a copy.
+              if (magnetosphereOffScreen(cx, cy, halfW, halfH, magnetosphereReachRadii(ms.standoffRadii, ms.tailRadii) * unit)) continue;
+              const clipTail = (tail: number) => visibleTailRadii(cx, cy, halfW, halfH, unit, tail);
+              // The rotation and the scaling live in the physics module, not here: the gate that
+              // checks this overlay ([[E7]] - a canvas cannot be checked headlessly, so the transform
+              // is reproduced and the NUMBERS compared) calls the same function, and a second copy
+              // of the rotation would leave that gate checking only itself.
+              const trace = (standoff: number, tail: number, taper: boolean) => {
+                  const pts = magnetopauseOutlineOriented(standoff, clipTail(tail), mc, ux, uy, unit, 48, taper);
+                  if (!pts.length) return false;
+                  ctx.beginPath();
+                  for (let i = 0; i < pts.length; i++) {
+                      if (i === 0) ctx.moveTo(cx + pts[i].x, cy + pts[i].y);
+                      else ctx.lineTo(cx + pts[i].x, cy + pts[i].y);
+                  }
+                  ctx.closePath();
+                  return true;
+              };
+              const anomalous = (b.tags ?? []).some((t) => t.key === 'magnetic/anomalous');
+              const strong = anomalous ? '--field-anomalous' : '--field-cage';
+              const strongFallback = anomalous ? '#800080' : '#b48ad6';
+              ctx.lineWidth = 1 / zoom;
+              // 1. The full extent, with its tail. Pale, because the far end of a magnetosphere is
+              //    where the wind is only just being turned - and because the drawn tail length is a
+              //    convention rather than a measurement, so it must not read as a hard edge.
+              if (trace(ms.standoffRadii, ms.tailRadii, false)) {
+                  // NO EDGE AT THE FAR END, BECAUSE THERE IS NO EDGE (owner, 2026-09-07: "is that
+                  // hard edge away from the star real? I thought it would tail off"). It was not
+                  // real - it was where the drawn tail stopped. A magnetotail runs downstream at
+                  // roughly constant width and stops being a definable boundary rather than ending,
+                  // so the paint fades to nothing along it and the drawn length stops being a claim.
+                  const gx0 = cx + ms.standoffRadii * unit * ux, gy0 = cy + ms.standoffRadii * unit * uy;
+                  const gx1 = cx - ms.tailRadii * unit * ux, gy1 = cy - ms.tailRadii * unit * uy;
+                  const grad = (a: number) => {
+                      const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
+                      g.addColorStop(0, tokenRgba('--field-faint', '#6f5a86', a));
+                      g.addColorStop(0.12, tokenRgba('--field-faint', '#6f5a86', a));
+                      g.addColorStop(1, tokenRgba('--field-faint', '#6f5a86', 0));
+                      return g;
+                  };
+                  ctx.fillStyle = grad(0.07);
+                  ctx.fill();
+                  ctx.strokeStyle = grad(0.22);
+                  ctx.stroke();
+              }
+              // 2. The shielded region. Solid enough to read at a glance, because this is the part a
+              //    GM is actually asking about. Its downstream end is a REAL boundary - the lines
+              //    reconnect and open - so it is short where the tail is long.
+              // ...and this one DOES close, so it is drawn closing: the last closed field line comes
+              // back to the body, so the region eases to a blunt point instead of being cut off.
+              if (ms.closedFieldRadii > 0 && trace(ms.closedFieldRadii, ms.closedFieldRadii * mc.CLOSED_TAIL_STANDOFFS, true)) {
+                  ctx.fillStyle = tokenRgba(strong, strongFallback, 0.14);
+                  ctx.fill();
+                  ctx.strokeStyle = tokenRgba(strong, strongFallback, 0.42);
+                  ctx.stroke();
+              }
+          }
+      }
       if (showLPoints && lagrangePoints) {
           const crossSize = 5 / zoom; ctx.lineWidth = 1.5 / zoom;
           for (const [key, pos] of lagrangePoints.entries()) {
@@ -1240,6 +1482,7 @@
               ctx.moveTo(rx, ry - 10 / zoom); ctx.lineTo(rx, ry + 10 / zoom);
               ctx.stroke();
           } else if (node.kind === 'construct') {
+              if (isMegaRadial(node)) drawTetherRadial(ctx, node as any, pos, renderPan, zoom);
               drawConstructGlyph(ctx, node as CelestialBody, rx, ry, 8 / zoom);
           }
       }
@@ -1255,14 +1498,7 @@
           if (!pos || node.kind !== 'body') continue;
           if (node.roleHint === 'ring' || node.roleHint === 'belt') continue;
           const rx = pos.x - renderPan.x; const ry = pos.y - renderPan.y;
-          let radiusInAU = (node.radiusKm || 0) / AU_KM;
-          if (toytownFactor > 0) radiusInAU = scaleBoxCox(radiusInAU, toytownFactor, x0_distance);
-          let minRadiusPx = 2;
-          if (node.roleHint === 'star') minRadiusPx = 4;
-          else if (node.roleHint === 'planet') { const isGasGiant = node.classes.some(c => c.includes('gas-giant') || c.includes('ice-giant')); minRadiusPx = isGasGiant ? 3 : 2; }
-          else if (node.roleHint === 'moon') minRadiusPx = 1;
-          const minRadiusInWorld = minRadiusPx / zoom;
-          const finalRadius = Math.sqrt(Math.pow(radiusInAU, 2) + Math.pow(minRadiusInWorld, 2));
+          const finalRadius = drawnDiscRadiusWorld(node, zoom);   // the one disc law
 
           // This body's geometry in SCREEN pixels — shared by the overlay promotion and the cull below.
           const sR = finalRadius * zoom;
@@ -1476,17 +1712,32 @@
               if (!pos) continue;
               const r = drawnRadiusAu(h.id, h.rAu);
               if (!(r > 0)) continue;
-              ctx.beginPath();
-              ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
+              // CULLED, WHICH THESE NEVER WERE. The zone overlay next door has skipped an off-screen
+              // circle since it was written and these did not, so every bubble in a fifty-body system
+              // was handed to the canvas whether or not any part of it could be seen. This context is
+              // world-transformed (`translate(w/2, h/2); scale(zoom)`), so the test has to be done in
+              // the screen space it lands in.
+              const sx = width / 2 + (pos.x - renderPan.x) * zoom;
+              const sy = height / 2 + (pos.y - renderPan.y) * zoom;
+              const sr = r * zoom;
               // Planets: shaded bubble. Stars: an unshaded line only (the "[Star] Hill Limit" — labelled in
               // screen space below), so a huge star limit doesn't wash the whole canvas in fill.
-              if (!h.isStar) {
+              // A bubble is drawn only where its DISC shows; the outline only where its RING does -
+              // a circle that swallows the viewport has its boundary out past the corners.
+              const showFill = !h.isStar && !$lowPower && discVisible(sx, sy, sr, width, height, margin);
+              const showLine = ringVisible(sx, sy, sr, width, height, margin);
+              if (!showFill && !showLine) continue;
+              ctx.beginPath();
+              ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
+              if (showFill) {
                   ctx.fillStyle = 'rgba(255, 232, 130, 0.06)';
                   ctx.fill();
               }
-              ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
-              ctx.lineWidth = 1 / zoom;
-              ctx.stroke();
+              if (showLine) {
+                  ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
+                  ctx.lineWidth = 1 / zoom;
+                  ctx.stroke();
+              }
           }
       }
       // THE CIRCUMBINARY ANNULUS (G45) — the ring a P-type body can live in around a pair.
@@ -1935,7 +2186,7 @@
     const margin = 24;
     const hugeRadiusSolidThresholdPx = Math.max(width, height) * 1.25;
     const isCircleVisible = (cx: number, cy: number, r: number) =>
-      cx + r >= -margin && cx - r <= width + margin && cy + r >= -margin && cy - r <= height + margin;
+      discVisible(cx, cy, r, width, height, margin);
 
     const toScreenRadius = (radiusAu: number): number => {
       if (radiusAu <= 0) return 0;
@@ -1946,6 +2197,12 @@
 
     const drawZoneBand = (cx: number, cy: number, outerRadiusPx: number, innerRadiusPx: number, color: string) => {
       if (outerRadiusPx <= 0 || outerRadiusPx <= innerRadiusPx) return;
+      // LOW POWER DROPS THE WASH AND KEEPS THE LINE. Owner, 2026-09-07: the zones are "full of
+      // transparencies... this is not gated for low power devices". A band is a translucent fill
+      // across most of the canvas and it is the expensive half by fill rate; the LINES below carry
+      // the information - where the boundary is - and cost a stroke each. So the reading survives on
+      // a weak machine and the shading does not.
+      if ($lowPower) return;
       if (!isCircleVisible(cx, cy, outerRadiusPx)) return;
       ctx.beginPath();
       ctx.arc(cx, cy, outerRadiusPx, 0, 2 * Math.PI);
@@ -1959,7 +2216,11 @@
 
     const drawZoneLine = (cx: number, cy: number, radiusPx: number, color: string) => {
       if (radiusPx <= 0) return;
-      if (!isCircleVisible(cx, cy, radiusPx)) return;
+      // A RING, NOT A DISC: a circle that swallows the viewport has its boundary somewhere out past
+      // the corners, so there is nothing to see and the canvas would still be handed a path whose
+      // circumference runs to millions of pixels at deep zoom. The bounding-box test alone calls that
+      // visible; `ringVisible` is the one that does not.
+      if (!ringVisible(cx, cy, radiusPx, width, height, margin)) return;
       ctx.beginPath();
       ctx.arc(cx, cy, radiusPx, 0, 2 * Math.PI);
       ctx.strokeStyle = color;

@@ -9,6 +9,7 @@
   import type { HoloController } from '$lib/holo/scene';
   import { gridLegend } from '$lib/map/gridLegend';
   import { unitPrefs } from '$lib/unitPrefsStore';
+  import { lowPower, drawsHeavy } from '$lib/lowPowerStore';
   import { distanceFlavour } from '$lib/units';
   import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
   import { liveOverrides } from '$lib/player/liveOverrides';
@@ -53,6 +54,8 @@
   $: legend = showGridLegend ? gridLegend(gridCellAu, gridCellKind, distanceFlavour($unitPrefs, 'planet')) : null;
   // Off by default so no existing surface grows a caption it never asked for; the player views opt in.
   export let showGridLegend: boolean = false;
+  /** The frame-rate guard's one-off notice, shown over the canvas until it is dismissed. */
+  let perfNotice: string | null = null;
   /** Badge-only knobs from the preset: size multiplier, flag staff colour, pin text mode. */
   export let markerSize: number | undefined = undefined;
   export let flagStaff: 'silver' | 'gold' | 'white' | 'black' | 'tag' | undefined = undefined;
@@ -83,6 +86,8 @@
   // transiting ship by reading its route at THIS clock instead of at a stamped vector.
   export let gmClockMs: number | null = null;
 
+  // The GM's (or this player's) own machine, per browser. Read as a store so a tick of the box
+  // re-applies the style immediately rather than at the next unrelated change.
   function applyStyle(s: HoloStyle) {
     // Filter can be momentarily bypassed without changing the saved style.
     controller?.setFilter(filterBypass ? 'none' : s.filter, filterBypass ? undefined : s.filterParams);
@@ -98,10 +103,28 @@
     controller?.setPortrait(s.portrait ?? null, s.portraitFixed ?? false); // isolated-body portrait key light
     controller?.setFlatOverhead(s.lockOverhead ?? false); // 2D map: tilt pinned top-down
     controller?.setLockRotation(s.lockRotation ?? false); // fixed heading: follow by panning
-    controller?.setAuroras(s.auroras ?? true);
-    controller?.setAtmospheres(s.atmospheres !== false);
+    // LOW POWER HAS TWO SOURCES AND EITHER IS ENOUGH: this machine's own switch (`lowPowerStore`,
+    // set by whoever is sitting at it) and the PRESET's (set by a GM who knows the tablet at the end
+    // of the table is elderly and cannot tick a box on it). A player on a fast machine is not forced
+    // by the GM's caution and a player on a slow one is not undone by the GM's optimism.
+    const low = $lowPower || s.lowPower === true;
+    controller?.setLowPower(low);
+    // ...and the shells compose with the preset's own switches on top of that, OFF WINNING
+    // (`drawsHeavy`): the preset's answer is about the PICTURE and low power's is about the
+    // HARDWARE, either is enough on its own, and neither may overrule the other toward more work.
+    controller?.setAuroras(drawsHeavy(s.auroras, low));
+    // G82: same shape, same gate. An ABSENT field reads as off here (`!!`), which is the deliberate
+    // opposite of `atmospheres` - see the note on the preset type for why silence fails the other way.
+    controller?.setMagnetospheres(drawsHeavy(!!s.magnetospheres, low));
+    controller?.setAtmospheres(drawsHeavy(s.atmospheres, low));
+    // The frame-rate guard reports HERE rather than to each host, so every surface that mounts this
+    // view gets the notice: the GM's holo, the player's system view at both tiers, and the preset
+    // preview. One renderer, one place to say it — the alternative is the same message written into
+    // four call sites, which is the shape TAG-20 records for markers.
+    controller?.setPerfShedReporter((message) => { perfNotice = message; });
     controller?.setBeltStyle(s.beltStyle ?? 'rocks');
     controller?.setBodySize(s.bodySize);
+    controller?.setConstructOffset(s.constructOffset ?? 0); // S2c: 0 = constructs sit on the master dial
     controller?.setSkyStars(skyStars, s.constellations ?? 'off', { boost: s.constellationBoost ?? 0.35, labelPx: s.constellationLabelSize ?? 11 });
     controller?.setGrid(s.grid);
     controller?.setGridFalloff(s.gridFalloff ?? 0);
@@ -210,7 +233,7 @@
   $: controller?.setUserSpin(userSpin);
   $: controller?.setViewInset(viewInsetRight);
   // Re-apply when the momentary overrides change (style is unchanged, so these need their own trigger).
-  $: if (controller) { labelsVisible; orbitLinesVisible; filterBypass; orbitPaused; skyStars; applyStyle(style); }
+  $: if (controller) { labelsVisible; orbitLinesVisible; filterBypass; orbitPaused; skyStars; $lowPower; applyStyle(style); }
   // Prop first, store second (TAG-15): in a player window every store is a fresh empty instance, so the
   // value only ever arrives over the broadcast as a prop. Named in the expression, not closed over, or
   // the reactive statement would not re-run when the selection changes (TAG-17).
@@ -221,6 +244,15 @@
 
 <div class="holo-root" bind:this={container}>
   <canvas bind:this={canvas}></canvas>
+
+  <!-- Said once, and only when the guard has actually had to act. Dismissible, and it does not come
+       back: `perfGuard` fires once per scene and then stands down, so a GM is never nagged. -->
+  {#if perfNotice}
+    <div class="perf-notice" role="status">
+      <span>{perfNotice}</span>
+      <button type="button" title="Dismiss" aria-label="Dismiss" on:click={() => (perfNotice = null)}>x</button>
+    </div>
+  {/if}
   {#if legend}
     <!-- A grid is only a measure if the reader is told what one cell is worth. `pointer-events: none`
          because this sits over a canvas that owns drag, pinch and click-to-select. -->
@@ -257,4 +289,18 @@
     pointer-events: none;
     user-select: none;
   }
+
+  /* Over the canvas, out of the way of the middle of the map, and readable on any backdrop. */
+  .perf-notice {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px; max-width: min(560px, 92%);
+    padding: 8px 10px 8px 14px; border-radius: 8px;
+    background: rgba(16, 26, 40, 0.94); border: 1px solid #3a4d68; color: #e7eefa;
+    font-size: 12px; line-height: 1.35; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+    z-index: 30;
+  }
+  .perf-notice button {
+    background: none; border: none; color: #8fa6c4; font-size: 14px; cursor: pointer; padding: 2px 6px;
+  }
+  .perf-notice button:hover { color: #e7eefa; }
 </style>

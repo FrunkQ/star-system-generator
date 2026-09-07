@@ -38,6 +38,10 @@ export const ENGINE_NAMESPACES: { id: string; provenance: 'physics' | 'authored'
   { id: 'spin', provenance: 'authored', label: 'Spin provenance' },
   { id: 'origin', provenance: 'authored', label: 'Origin' },
   { id: 'traveller', provenance: 'authored', label: 'Traveller' },
+  // G53: mega-construct placement steers, stamped at creation by megaPlacement.ts. AUTHORED for
+  // now — nothing re-derives them each pass, so a strip would delete and never restore them. The
+  // phase that makes the processor re-evaluate placement flips this to 'physics' in the same change.
+  { id: 'mega', provenance: 'authored', label: 'Mega-construct' },
   { id: 'orbit/retrograde', provenance: 'authored', label: 'Retrograde orbit' },
   { id: 'orbit/double', provenance: 'authored', label: 'Double orbit' },
 

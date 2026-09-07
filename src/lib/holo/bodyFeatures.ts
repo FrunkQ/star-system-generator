@@ -318,21 +318,33 @@ export function makeStarSurfaceTexture(colorHex: number, activity: number, seedS
 // It is the single strongest cue that a star is a SPHERE rather than a flat glowing disc, and it is
 // view-dependent, so it belongs on the material and not in the surface map. Applied as a cheap patch
 // on the standard emissive material: one dot product, no extra pass, no extra draw.
-export function applyLimbDarkening(mat: THREE.Material, strength = 0.55): void {
+export function applyLimbDarkening(mat: THREE.Material, strength = 0.55, coreWhite = 0): void {
 	mat.onBeforeCompile = (shader) => {
 		shader.uniforms.uLimb = { value: strength };
+		shader.uniforms.uCore = { value: coreWhite };
 		shader.vertexShader = shader.vertexShader
 			.replace('#include <common>', '#include <common>\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
 			.replace('#include <begin_vertex>',
 				'#include <begin_vertex>\nvLimbN = normalize(normalMatrix * normal);\nvLimbP = (modelViewMatrix * vec4(position,1.0)).xyz;');
 		shader.fragmentShader = shader.fragmentShader
-			.replace('#include <common>', '#include <common>\nuniform float uLimb;\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
+			.replace('#include <common>', '#include <common>\nuniform float uLimb;\nuniform float uCore;\nvarying vec3 vLimbN;\nvarying vec3 vLimbP;')
 			.replace('#include <dithering_fragment>',
 				`#include <dithering_fragment>
 				 // mu = cos(angle between the surface normal and the line of sight). 1 at the disc
 				 // centre, 0 at the limb. The classic linear law: I(mu) = 1 - u(1 - mu).
 				 float mu = clamp(dot(normalize(vLimbN), normalize(-vLimbP)), 0.0, 1.0);
 				 float darken = 1.0 - uLimb * (1.0 - mu);
+				 // THE DISC SATURATES TOWARD ITS CENTRE. A photosphere painted at its CHROMATICITY all
+				 // the way across is the flaw the owner saw on the size comparison: "why do stars look
+				 // so DULL on this?" — Vega and Sirius came out pastel lavender discs while the M
+				 // dwarfs beside them looked vivid, because a hot star's colour (#cad8ff) is pale and a
+				 // pale colour spread flat over a big circle reads as paint, not as light.
+				 // It is also wrong. Chromaticity is the colour of the light, not its INTENSITY: look
+				 // at the middle of a real disc and you are seeing the hottest, deepest gas, which
+				 // saturates any eye or sensor to white. The colour belongs at the LIMB, where the gas
+				 // is cooler and dimmer - which is exactly where the reddening below already puts it.
+				 // mu^2 keeps the white in the middle third rather than washing the whole disc.
+				 gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1.0), uCore * mu * mu);
 				 // Redden as it darkens — the limb shows cooler gas, so the blue falls off fastest.
 				 gl_FragColor.rgb *= vec3(darken, darken * (0.94 + 0.06 * mu), darken * (0.86 + 0.14 * mu));`);
 	};
@@ -395,7 +407,8 @@ export function updateStellarFlares(flares: FlareVisual[], nowSec: number): void
 // physics/stellarOutflows. No caller may decide for itself which star gets one.
 export interface StarLookVisual {
 	group: THREE.Group;
-	corona: THREE.Sprite;
+	/** Absent when the caller asked for no corona — a measuring view, which cannot afford nine radii. */
+	corona?: THREE.Sprite;
 	coronaScale: number;
 	activity: number;
 	flares: FlareVisual[];
@@ -406,6 +419,12 @@ export interface StarLookVisual {
 }
 
 export interface StarLookOptions {
+	/**
+	 * The additive halo. Default ON, because every surface that has ever called this wanted it — but
+	 * a TRUE-SCALE view cannot have it (RENDER-S53: at `radius * (5 + activity * 4)` a star reads
+	 * nine times its own diameter) and still wants the rest of what a star does.
+	 */
+	corona?: boolean;
 	/** Timed limb flares (an active star). Default off — the caller has read `flaresVisibly`. */
 	flares?: boolean;
 	/** `stellar/jets` strength: 0 none, 1 moderate, 2 strong. */
@@ -478,12 +497,15 @@ export function buildStarLook(
 	const hex = `#${colorHex.toString(16).padStart(6, '0')}`;
 	// Corona: an additive halo ringing the photosphere; bigger/brighter for an active star and
 	// pulsing (flaring) over time in updateStarLook. A billboard, so it ignores the photosphere's spin.
-	const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
-	const corona = new THREE.Sprite(coronaMat);
 	const coronaScale = radius * (5 + activity * 4);
-	corona.scale.setScalar(coronaScale);
-	group.add(corona);
-	const look: StarLookVisual = { group, corona, coronaScale, activity, flares: [] };
+	const look: StarLookVisual = { group, coronaScale, activity, flares: [] };
+	if (opts.corona !== false) {
+		const coronaMat = new THREE.SpriteMaterial({ map: glowTexture, color: colorHex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
+		const corona = new THREE.Sprite(coronaMat);
+		corona.scale.setScalar(coronaScale);
+		group.add(corona);
+		look.corona = corona;
+	}
 
 	// Flares — only for stars whose magnetic activity actually earns them, so a quiet sun adds
 	// nothing to the frame.
@@ -510,6 +532,7 @@ export function buildStarLook(
 			opacity: strong ? 1 : 0.85
 		});
 		const sprite = new THREE.Sprite(mat);
+		sprite.name = 'stellar-jet';
 		const len = radius * (strong ? 15 : 10.5);   // 3/4 of the first pass — "just not so long"
 		sprite.scale.set(radius * (strong ? 4.2 : 3.2), len, 1);
 		sprite.renderOrder = 2;
@@ -526,6 +549,7 @@ export function buildStarLook(
 			transparent: true, opacity: shell ? 0.42 : 0.26
 		});
 		const sprite = new THREE.Sprite(mat);
+		sprite.name = 'stellar-shell';
 		const scale = radius * (shell ? 16 : 11);
 		sprite.scale.setScalar(scale);
 		sprite.renderOrder = 1;
@@ -543,7 +567,7 @@ export function buildStarLook(
 export function updateStarLook(look: StarLookVisual, nowSec: number): void {
 	// Flaring: an active star's corona pulses (and flickers brighter) over time; a quiet star is steady.
 	// The holo's numbers, moved here unchanged — if this pulse moves, the system view's star moved.
-	if (look.activity > 0.01) {
+	if (look.corona && look.activity > 0.01) {
 		const pulse = 1 + look.activity * (0.1 * Math.sin(nowSec * 2.3) + 0.06 * Math.sin(nowSec * 6.1));
 		look.corona.scale.setScalar(look.coronaScale * pulse);
 		(look.corona.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.85 + look.activity * 0.15 * (0.5 + 0.5 * Math.sin(nowSec * 9.3)));
@@ -750,4 +774,474 @@ export function accretionColor(t: number, out: THREE.Color): THREE.Color {
 		}
 	}
 	return out.copy(ACCRETION_STOPS[ACCRETION_STOPS.length - 1][1]);
+}
+
+// Moved out of scene.ts (Stream K): the aurora shell is assembled by bodyLook.ts for the holo,
+// the reference gallery and the size-comparison view alike, so its builder belongs beside the
+// other shared feature builders rather than inside the live scene.
+/**
+ * WHERE THE OVAL SITS ON THE TEXTURE, as a pure function of the published colatitude ([[G82]] job 3).
+ *
+ * `v` runs 0 at the north pole to 1 at the south on an equirectangular map, so a colatitude in degrees
+ * is simply `colat / 180`. THE OVAL USED TO BE NAILED AT 0.15 AND 0.85 - 27 degrees of colatitude, 63
+ * of latitude - for every world in the app, which put Jupiter's oval eleven degrees too far from its
+ * pole and Mercury's on a body that has no oval at all. It now comes from `magnetosphere.ovalColatDeg`,
+ * which is the footprint of the last closed field line and the same number the 2D overlay shades to.
+ *
+ * SEPARATED OUT SO IT CAN BE GATED: the texture is a canvas and a canvas cannot be checked headlessly
+ * ([[E7]]), but this is arithmetic and can.
+ *
+ * The WIDTH is a drawing choice, not a measurement - the physics page already says the oval is
+ * exaggerated for legibility, Hubble-style - but it may not spill over the pole, so a tight oval gets a
+ * proportionally tighter curtain. Earth (23.7 deg) keeps the width the app has always used.
+ */
+export const AURORA_OVAL_SIGMA = 0.085;
+export function auroraRingCentres(ovalColatDeg: number | undefined): { north: number; south: number; sigma: number } {
+	const colat = Math.max(0, Math.min(90, ovalColatDeg ?? 27));
+	const north = colat / 180;
+	// Never wider than the distance to the pole, or the curtain wraps it and reads as a polar CAP
+	// rather than an oval. The floor is one texture row (the map is 80 tall), so a very tight oval is
+	// still drawn - but even that yields to the pole clamp rather than spilling over it.
+	const sigma = Math.min(north, Math.max(1 / 80, north * 0.65));
+	return { north, south: 1 - north, sigma: Math.min(AURORA_OVAL_SIGMA, sigma) };
+}
+
+// An equirect aurora texture: coloured curtains at the two polar rings (transparent elsewhere). Under
+// additive blending the alpha carries the glow, so bright rings around the poles emit and the rest adds
+// nothing. Horizontal streaks give it a curtain-like shimmer.
+function makeAuroraTexture(hex: string, ovalColatDeg?: number): HTMLCanvasElement {
+  const w = 160, h = 80;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d')!;
+  const col = new THREE.Color(hex);
+  const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
+  const img = ctx.createImageData(w, h);
+  const oval = auroraRingCentres(ovalColatDeg);
+  for (let y = 0; y < h; y++) {
+    const v = y / (h - 1); // 0 = north pole .. 1 = south pole
+    const ring = (centre: number) => Math.exp(-Math.pow((v - centre) / oval.sigma, 2)); // gaussian polar oval
+    const band = Math.max(ring(oval.north), ring(oval.south));
+    for (let x = 0; x < w; x++) {
+      const u = x / w;
+      const streak = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(u * Math.PI * 22 + Math.sin(u * 7) * 2)); // curtains
+      const a = Math.max(0, Math.min(1, band * streak));
+      const i = (y * w + x) * 4;
+      img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = Math.round(a * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+// A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
+// aurora strength; `weight` (0..1, relative to the dominant gas) fades the lower-concentration emitters;
+// `altitude` (0 low fringe / 1 main band / 2 high tenuous) sets the shell height so a multi-gas sky
+// STACKS physically — Earth's purple nitrogen fringe under the green oxygen band, the crimson oxygen
+// crown above. The render loop swells each layer independently around its base.
+export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1, altitude = 1, ovalColatDeg?: number): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
+  const tex = new THREE.CanvasTexture(makeAuroraTexture(hex, ovalColatDeg));
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const base = Math.min(0.85, 0.28 + strength * 0.6) * (0.35 + 0.65 * weight);
+  mat.opacity = base;
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.04 + altitude * 0.025), 28, 20), mat);
+  shell.renderOrder = 2; // draw over the body surface
+  return { shell, mat, base };
+}
+
+// FLAT-SHADED RINGS — the size-comparison view's ring, and deliberately the simplest one in the app.
+//
+// THIS IS NOT A RIVAL OF THE HOLO'S RING and it answers a different question. `scene.ts`'s
+// `buildPlanetRing` draws a ring as debris particles with density and banding, because there the
+// question is "what does this look like"; here it is "how far does it REACH", and a flat annulus at
+// true inner and outer radius answers that and nothing else. Owner, 2026-09-05: "nice if we saw
+// rings - just flat shaded".
+//
+// Unlit on purpose (MeshBasicMaterial): the comparison lights every body from one fixed key so the
+// sizes are comparable, and a ring that took that lighting would be bright on one limb and gone on
+// the other, which reads as a shorter ring rather than as a shadow.
+/** The ring's own colour when its node carries none, and how solid it draws. Tune here, once. */
+export const FLAT_RING_COLOR = 0xc9c3b4;   // pale ice-and-rock, the colour Saturn's rings actually are
+export const FLAT_RING_OPACITY = 0.55;
+
+/**
+ * HOW FAR A STAR'S RIM GLOW REACHES, as a multiple of its own radius.
+ *
+ * 1.22 is chosen against a recorded fault rather than by eye. `buildStarLook`'s CORONA is
+ * `radius * (5 + activity * 4)` — nine radii at the top end — and on a TRUE-SCALE strip that made a
+ * star read nine times its own diameter, on the one view whose whole claim is how big things really
+ * are (RENDER-S53). So the size comparison turns the corona off. But a star with no glow at all
+ * reads as a painted disc rather than as a light source, which the owner asked about on 2026-09-06:
+ * *"any chance of them looking brighter - like light sources"*.
+ *
+ * A fifth of a radius is the compromise, and it is a small enough number to defend: the bloom sits
+ * ON the limb rather than around the star, it is additive so it only ever brightens, and its alpha
+ * is gone well before the edge of the sprite. Turn it DOWN if a star ever looks bigger than its
+ * label says; that is the failure mode this number is holding off.
+ */
+/**
+ * HOW WHITE A STAR'S DISC BURNS AT ITS CENTRE, read from the star's own colour. 0 keeps the flat
+ * chromaticity disc; 1 would be a white ball with no colour left to read.
+ *
+ * IT HAS TO FOLLOW TEMPERATURE, and the owner's report is the evidence: *"why do stars look so DULL
+ * on this?"* about a strip where Vega and Sirius were pastel lavender discs while the M dwarfs three
+ * steps away looked vivid. That asymmetry is not a coincidence and it is not a taste question - a
+ * hot star's CHROMATICITY is pale by definition (#cad8ff for an A), so painting a big circle flat in
+ * it gives you lavender paint, while an M dwarf's #ffc46f is saturated and survives the treatment.
+ *
+ * The physics says the same thing louder: surface brightness goes as T^4, so Vega leaves a retina or
+ * a sensor a hundred times harder than a red dwarf does. Its middle is WHITE and always was; the
+ * colour lives at the LIMB, where the gas is cooler - which is where the reddening in
+ * `applyLimbDarkening` already puts it. A flat disc was the wrong picture as well as the dull one.
+ *
+ * TEMPERATURE FIRST, COLOUR AS THE FALLBACK, and both halves are there because the data made them
+ * necessary rather than as a belt and braces. The starmap's stars carry `temperatureK` (Toliman
+ * 5,231 K, Vega 9,600) and it is the honest input: the per-letter colour swatch is a LEGEND, coarse
+ * by design, and it paints a K1V at #ffd2a1 when the real thing is very nearly the Sun's colour -
+ * reading that back as a temperature would rob a K star of a burn it has earned. But the bundled
+ * Sol's star node carries NO temperature at all (radius, mass, flare activity, radiation - none), so
+ * a law that read only the field would have looked fixed on an imported sky and done nothing on the
+ * bundled one, which is the worst kind of half-fix. The colour is the same quantity in the form this
+ * view is always guaranteed to have, so it answers when the number is missing.
+ *
+ * The temperature curve: nothing at or below 3,500 K, the cap by 9,500. Toliman lands at 0.29, the
+ * Sun at 0.37, Vega at the cap. The exponent bends it toward the cool end, where a colour going is
+ * what the eye notices. The colour curve reads blue-minus-red, which walks the spectral sequence
+ * monotonically, and is scaled by the peak channel so a DIMMED star keeps its dimness.
+ */
+export const STAR_CORE_COOL_K = 3500;
+export const STAR_CORE_HOT_K = 9500;
+export const STAR_CORE_COOLEST = -0.5;   // blue-minus-red at and below which a disc stays flat
+export const STAR_CORE_HOTTEST = 0.4;    // ...and at which it reaches the cap
+export const STAR_CORE_MAX = 0.8;
+export function starCoreWhiteFor(
+	colorHex: number | string | undefined | null, temperatureK?: number | null
+): number {
+	const t = Number(temperatureK);
+	if (Number.isFinite(t) && t > 0) {
+		if (t <= STAR_CORE_COOL_K) return 0;
+		const f = Math.min(1, (t - STAR_CORE_COOL_K) / (STAR_CORE_HOT_K - STAR_CORE_COOL_K));
+		return Math.pow(f, 0.8) * STAR_CORE_MAX;
+	}
+	if (colorHex === undefined || colorHex === null || colorHex === '') return 0;
+	let c: THREE.Color;
+	try { c = new THREE.Color(colorHex as any); } catch { return 0; }
+	if (!Number.isFinite(c.r) || !Number.isFinite(c.g) || !Number.isFinite(c.b)) return 0;
+	const hot = (c.b - c.r - STAR_CORE_COOLEST) / (STAR_CORE_HOTTEST - STAR_CORE_COOLEST);
+	// AND A DIM STAR DOES NOT BURN. The peak channel is 1 for every swatch on the ladder, so this
+	// changes nothing for an ordinary star - but a colour that has been scaled DOWN (a star seen
+	// through something, which is what `floorGlyphGain` hands the map) keeps its dimness, and a black
+	// one stays black rather than being bleached toward white by a hue read that cannot see it.
+	const peak = Math.min(1, Math.max(0, Math.max(c.r, c.g, c.b)));
+	return Math.min(1, Math.max(0, hot)) * STAR_CORE_MAX * peak;
+}
+
+export const STAR_RIM_SCALE = 1.22;
+/**
+ * How hard the rim bloom burns. 0.7 -> 0.95 on the owner's "why do stars look so DULL on this?",
+ * 2026-09-06: BRIGHTNESS is the knob to reach for here and SIZE is not, because the scale above is
+ * the one holding the promise that nothing on a measuring view looks bigger than its label says.
+ */
+export const STAR_RIM_OPACITY = 0.95;
+
+/**
+ * A star's rim bloom: one additive billboard, tight to the limb, so a photosphere reads as something
+ * EMITTING rather than as a lit ball. Deliberately NOT `buildStarLook`, which is the full corona and
+ * flare rig — this is the one decoration a measuring view can afford.
+ */
+export function buildStarRim(radius: number, colorHex: number, glowTexture: THREE.Texture): {
+	sprite: THREE.Sprite; dispose(): void;
+} {
+	const col = new THREE.Color(colorHex).lerp(new THREE.Color('#ffffff'), 0.45);
+	const mat = new THREE.SpriteMaterial({
+		map: glowTexture, color: col, transparent: true, opacity: STAR_RIM_OPACITY,
+		blending: THREE.AdditiveBlending, depthWrite: false
+	});
+	const sprite = new THREE.Sprite(mat);
+	sprite.scale.setScalar(radius * 2 * STAR_RIM_SCALE);
+	sprite.renderOrder = -2;   // behind the photosphere, so it haloes the limb rather than veiling the disc
+	return { sprite, dispose() { mat.dispose(); } };
+}
+
+/**
+ * IS THIS A BLACK HOLE? Class-based, and deliberately loose: the app writes `star/BH` and
+ * `star/BH_active`, an imported map may carry a bare `BH`, and a hand-authored one may spell it
+ * `black-hole`. This is the predicate `holo/scene.ts` has always used, lifted here so the three
+ * surfaces that draw a horizon agree about what one IS as well as what one looks like.
+ *
+ * NOT the same function as `starmap/systemStars.ts` `blackHoleState`, which is STRICTER (exact
+ * class matches) and answers a different question — which GLYPH the starmap draws. The two have
+ * disagreed since before this extraction; unifying them would change what appears on the map, so it
+ * is recorded on the board rather than done here.
+ */
+export function isBlackHoleNode(node: any): boolean {
+	return (node?.classes || []).some((c: string) => String(c).includes('BH') || String(c).includes('black-hole'));
+}
+
+/** FEEDING: the active class, or any accretion at all. Drives the hot inner glow. */
+export function isFeedingBlackHole(node: any): boolean {
+	return node?.classes?.[0] === 'star/BH_active' || ((node?.accretionEddington ?? 0) > 0.01);
+}
+
+/**
+ * How much of its true radius a lensed horizon is DRAWN at.
+ *
+ * A gravitational-lensing pass magnifies whatever black it finds at the centre, so a full-size
+ * sphere smears black well past the photon ring and eats the starfield: the live holo and the 3D
+ * gallery both draw the mesh small and let the shader's mask be the real shadow. **A surface with
+ * NO lensing pass must NOT apply this** — it would state that a black hole is 45% smaller than it
+ * is, which on a true-scale size comparison is the one lie that view exists to remove. That is
+ * exactly the shape of fault the standing rules record three times over (A33, B27, B28: a quantity
+ * correct for its own purpose, published against a neighbour measured differently), so the number
+ * lives here with its reason rather than inline in two renderers.
+ */
+export const BH_LENS_SHRINK = 0.55;
+
+/**
+ * HOW FAR A FEEDING HOLE'S ACCRETION DISC REACHES, in km, or null for a hole that is not feeding.
+ *
+ * Real black-hole systems carry no explicit ring node, so every surface that wants to draw a disc
+ * has to invent its extent — and until this function there was one inline expression in
+ * `holo/scene.ts` and nothing at all anywhere else, which is how the size comparison came to draw
+ * Sagittarius A* with no disc at all. The inner edge is the innermost stable orbit; the outer edge
+ * grows with the Eddington fraction, because a hole eating harder lights a wider disc.
+ *
+ * These three numbers are the ones a human will want to change after looking at a black hole, which
+ * is the standing rule's test for data in the wrong place.
+ */
+export const DISC_INNER_RADII = 1.6;
+export const DISC_OUTER_RADII_BASE = 5;
+export const DISC_OUTER_RADII_PER_EDDINGTON = 4;
+
+export function accretionDiscExtentKm(node: any): { innerKm: number; outerKm: number } | null {
+	if (!isFeedingBlackHole(node)) return null;
+	const rkm = Number(node?.radiusKm) || Number(node?.physical_parameters?.radiusKm) || 30;
+	const edd = Math.max(0, Math.min(1, node?.accretionEddington ?? 0.5));
+	return {
+		innerKm: rkm * DISC_INNER_RADII,
+		outerKm: rkm * (DISC_OUTER_RADII_BASE + edd * DISC_OUTER_RADII_PER_EDDINGTON)
+	};
+}
+
+/** The disc's hot inner colour, for a surface that draws it as ONE flat band rather than graded. */
+export const DISC_FLAT_COLOR = 0xffc46b;
+
+/**
+ * THE EVENT HORIZON, as an object: a black sphere, and optionally the thin photon ring that is the
+ * only thing making it findable on a black background.
+ *
+ * `photonRing` is FALSE for the lensed surfaces — there the shader draws the ring for real, and a
+ * painted one beside it would be a second, wrong answer. It is TRUE for the size comparison, which
+ * has no lensing pass at all: without it a black hole is a labelled hole in the strip.
+ */
+export function buildHorizonLook(
+	radius: number,
+	opts: { photonRing?: boolean; feeding?: boolean } = {}
+): { mesh: THREE.Mesh; dispose(): void } {
+	const disposables: { dispose(): void }[] = [];
+	const geo = new THREE.SphereGeometry(radius, 32, 24);
+	const mat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+	const mesh = new THREE.Mesh(geo, mat);
+	disposables.push(geo, mat);
+	if (opts.photonRing) {
+		// A hairline at EXACTLY the horizon radius, so it marks the measurement rather than inflating
+		// it: the ring's inner edge is the horizon. Hotter and brighter when the hole is feeding.
+		const ringGeo = new THREE.RingGeometry(radius, radius * 1.02, 96, 1);
+		const ringMat = new THREE.MeshBasicMaterial({
+			color: opts.feeding ? 0xfff0c8 : 0xffb066,
+			side: THREE.DoubleSide, transparent: true, opacity: opts.feeding ? 0.95 : 0.7, depthWrite: false
+		});
+		const ring = new THREE.Mesh(ringGeo, ringMat);
+		ring.renderOrder = 1;   // over the sphere, or the horizon's own limb hides its far half
+		mesh.add(ring);
+		disposables.push(ringGeo, ringMat);
+	}
+	return { mesh, dispose() { for (const x of disposables) x.dispose(); } };
+}
+
+export function buildFlatRing(
+	innerRadius: number,
+	outerRadius: number,
+	colorHex: number = FLAT_RING_COLOR,
+	opacity: number = FLAT_RING_OPACITY
+): { mesh: THREE.Mesh; dispose(): void } {
+	// Enough segments that the outer edge is a circle rather than a polygon at any size the strip
+	// draws, and one radial segment because there is nothing to interpolate across a flat band.
+	const geo = new THREE.RingGeometry(innerRadius, outerRadius, 128, 1);
+	const mat = new THREE.MeshBasicMaterial({
+		color: colorHex, side: THREE.DoubleSide, transparent: true, opacity, depthWrite: false
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	return { mesh, dispose() { geo.dispose(); mat.dispose(); } };
+}
+
+// --- THE MAGNETOSPHERE, AS A LIT VOLUME ([[G82]] job 4) ----------------------------------------
+//
+// THE BRIEF ASKED FOR A WIREFRAME CAGE OF DIPOLE L-SHELLS AND THE OWNER ASKED FOR SOMETHING ELSE.
+// 2026-09-07, with two reference images: *"These looks great on the 2d/GM screen. The 3D - maybe we
+// can do better - see attached - able to be done in our purple highlights in a similar way."* The
+// references are a glowing translucent SURFACE - a blunt bright nose, a wide flank, a long tail, the
+// planet a small dot inside it, and a second brighter surface nested within the first. So that is
+// what this builds, in the mauve/lilac tokens instead of the references' cyan.
+//
+// IT IS THE SAME PROFILE THE ORRERY DRAWS, REVOLVED. `magnetopauseOutlineRadii` gives the Shue
+// boundary as (along-axis, half-width) pairs; a `LatheGeometry` spins that half-profile about its
+// axis. So the 2D teardrop and this surface are one function apart and cannot describe two different
+// magnetospheres - which is the whole reason the shape was put in the physics module rather than in
+// either renderer.
+//
+// TWO SURFACES, THE SAME TWO THE MAP SHADES: the outer magnetopause faint, and the closed-field
+// region inside it bright. That nesting IS the reference images' inner cone, and it is also the
+// honest reading - the bright part is where the field actually turns the wind away.
+//
+// DOUBLE-SIDED AND ADDITIVE, which is what gives the references their depth: the far wall of the
+// bubble glows THROUGH the near one, so the eye reads a volume rather than a shell. Depth writing is
+// off for the same reason.
+//
+// THE FADE IS BAKED INTO THE COLOUR, NOT INTO ALPHA. Under additive blending, black adds nothing -
+// so a gradient running from the field colour at the nose to black down the tail fades the tail out
+// exactly, whatever the material does with alpha. It is also the answer to the 2D question the owner
+// asked ("is that hard edge away from the star real?"): the open tail has no end here either.
+//
+// IT IS NOT PARENTED TO THE GLOBE, and that is physics rather than plumbing. A magnetopause is
+// oriented by the WIND, so it must not inherit the body's axial tilt or its spin - Earth's bubble
+// does not rotate once a day. The caller aims it. What DOES belong in the spin frame is the belt
+// torus below, which rides the magnetic axis.
+function makeFieldFalloffTexture(hex: string): HTMLCanvasElement {
+	const w = 4, h = 128;
+	const c = document.createElement('canvas'); c.width = w; c.height = h;
+	const ctx = c.getContext('2d')!;
+	const col = new THREE.Color(hex);
+	const g = ctx.createLinearGradient(0, 0, 0, h);
+	// v = 0 is the NOSE (LatheGeometry runs v along the profile, first point first). Brightest just
+	// behind it, where a real magnetosheath piles up, then away to nothing down the tail.
+	const at = (t: number, k: number) => `rgb(${Math.round(col.r * 255 * k)}, ${Math.round(col.g * 255 * k)}, ${Math.round(col.b * 255 * k)})`;
+	g.addColorStop(0, at(0, 0.75));
+	g.addColorStop(0.10, at(0.10, 1));
+	g.addColorStop(0.35, at(0.35, 0.55));
+	g.addColorStop(0.70, at(0.70, 0.18));
+	g.addColorStop(1, 'rgb(0,0,0)');
+	ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+	return c;
+}
+
+export interface FieldSurfaceSpec {
+	/** Along-axis / half-width pairs in BODY RADII, nose first - `magnetopauseOutlineRadii`'s output. */
+	profile: { x: number; y: number }[];
+	colorHex: string;
+	opacity: number;
+	/** The Shue parameters this surface was built from, in the SAME units the geometry ends up in. */
+	r0Units: number;
+	tailUnits: number;
+	alpha: number;
+}
+
+/**
+ * One revolved surface. `oneRadius` converts body radii to the scene's units, exactly as the orrery
+ * multiplies by the body's drawn disc radius.
+ */
+function buildFieldSurface(spec: FieldSurfaceSpec, oneRadius: number, radialSegments: number): { mesh: THREE.Mesh; dispose(): void } {
+	// Only the upper half of the outline is a profile; the lower half is its mirror, which the lathe
+	// re-creates by revolving. Lathe revolves about Y, so half-width becomes the radius and the
+	// along-axis coordinate becomes the height - which puts the NOSE at +Y for the caller to aim.
+	const pts = spec.profile
+		.filter((p) => p.y >= 0)
+		.map((p) => new THREE.Vector2(Math.max(1e-4, p.y * oneRadius), p.x * oneRadius));
+	const geo = new THREE.LatheGeometry(pts, radialSegments);
+	const tex = new THREE.CanvasTexture(makeFieldFalloffTexture(spec.colorHex));
+	tex.colorSpace = THREE.SRGBColorSpace;
+	const mat = new THREE.MeshBasicMaterial({
+		map: tex,
+		transparent: true,
+		opacity: spec.opacity,
+		blending: THREE.AdditiveBlending,
+		depthWrite: false,
+		side: THREE.DoubleSide
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.renderOrder = 3;   // over the globe and its aurora, which is where a magnetosphere is
+	// The caller fades these by camera distance (you cannot see a bubble from inside it), so the
+	// designed opacity has to survive being multiplied down and back up again.
+	mesh.userData.fieldBaseOpacity = spec.opacity;
+	// The boundary this surface IS, in the geometry's own units - so the renderer can ask whether the
+	// camera is inside THIS surface rather than inside "the magnetosphere", which is not one thing.
+	// Owner, 2026-09-07, looking at Mercury: its shielded region framed beautifully while its
+	// magnetopause - same body, nose at 1.5 radii but a tail at 29.6 - had the camera deep inside its
+	// tube and painted the whole screen. Two surfaces, two answers.
+	mesh.userData.fieldR0 = spec.r0Units;
+	mesh.userData.fieldTail = spec.tailUnits;
+	mesh.userData.fieldAlpha = spec.alpha;
+	return { mesh, dispose() { geo.dispose(); mat.dispose(); tex.dispose(); } };
+}
+
+/**
+ * THE BUBBLE: the magnetopause with the shielded region nested inside it, both revolved from the
+ * published profile, nose along +Y for the caller to aim upstream.
+ */
+export function buildMagnetosphereBubble(
+	oneRadius: number,
+	outer: { x: number; y: number }[],
+	inner: { x: number; y: number }[],
+	cageHex: string,
+	beltHex: string,
+	outerR0: number,
+	outerTail: number,
+	innerR0: number,
+	innerTail: number,
+	alpha: number,
+	radialSegments = 20
+): { group: THREE.Group; dispose(): void } {
+	const group = new THREE.Group();
+	const parts: { dispose(): void }[] = [];
+	if (outer.length > 2) {
+		const s = buildFieldSurface({ profile: outer, colorHex: cageHex, opacity: 0.30, r0Units: outerR0 * oneRadius, tailUnits: outerTail * oneRadius, alpha }, oneRadius, radialSegments);
+		group.add(s.mesh); parts.push(s);
+	}
+	if (inner.length > 2) {
+		// Brighter, because this is the part that actually shields - the same distinction the map makes
+		// with a solid fill inside a pale wash.
+		const s = buildFieldSurface({ profile: inner, colorHex: beltHex, opacity: 0.55, r0Units: innerR0 * oneRadius, tailUnits: innerTail * oneRadius, alpha }, oneRadius, radialSegments);
+		group.add(s.mesh); parts.push(s);
+	}
+	return { group, dispose() { for (const p of parts) p.dispose(); } };
+}
+
+/**
+ * THE TRAPPED BELT: a faint torus at the belt's peak, on the MAGNETIC axis.
+ *
+ * This one DOES belong in the spin frame, and that is the difference between it and the bubble: a
+ * belt is held by the body's own dipole, so it leans with the magnetic axis and turns with the body -
+ * which is what makes Uranus's tumble visible, since its axis is 53 degrees off its spin and its spin
+ * is already 98 degrees off its orbit.
+ */
+export function buildBeltTorus(
+	oneRadius: number,
+	peakRadii: number,
+	scaleRadii: number,
+	colorHex: string,
+	opacity: number
+): { mesh: THREE.Mesh; dispose(): void } {
+	// THE INNER EDGE IS AN EDGE, AND A TORUS RADIUS IS A CENTRELINE. `beltPeakRadii` is where the belt
+	// BEGINS - `beltInnerEdgeRadii`, the altitude below which the atmosphere absorbs trapped particles
+	// into the loss cone ([[B22]]) - so nothing of the belt may lie inside it. Seating the tube ON that
+	// radius instead of AROUND it buried half of every belt in the app inside its own planet: Jupiter's
+	// tube is 0.57 R_J against a 1.05 R_J edge, so it reached 0.48 R_J and the depth test hid the rest,
+	// leaving a belt that appeared to grow out of the globe rather than float above it. All five
+	// magnetised worlds did it. The centre goes one tube-radius OUT, so the inner surface sits on the
+	// edge and the belt occupies [edge, edge + 2 tube] - which is what a belt is.
+	const inner = Math.max(1e-4, peakRadii * oneRadius);
+	// The belt's own scale length is its thickness - read from the belt model, never invented here -
+	// and capped so a fat belt cannot swallow the body it rings.
+	const tube = Math.max(1e-5, Math.min(inner * 0.5, scaleRadii * oneRadius * 0.35));
+	const geo = new THREE.TorusGeometry(inner + tube, tube, 8, 36);
+	const mat = new THREE.MeshBasicMaterial({
+		color: new THREE.Color(colorHex), transparent: true, opacity,
+		blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	// A torus is built in the XY plane with its axis along Z; the magnetic axis is +Y here, so stand
+	// it up. The caller then leans the whole thing by the dipole tilt.
+	mesh.rotation.x = Math.PI / 2;
+	mesh.renderOrder = 3;
+	return { mesh, dispose() { geo.dispose(); mat.dispose(); } };
 }

@@ -22,6 +22,12 @@
   // Track original keys to know what is default vs custom
   let defaultGasKeys = new Set<string>();
   let defaultCompositions = new Set<string>();
+  // THE FIELD HELP LIVES IN `packs/fieldHelp.ts`, not here (2026-09-07). The `title=` strings
+  // below stay as the hover shorthand; the "?" beside each label is the answer, because a
+  // tooltip nobody hovers is a tooltip nobody has.
+  import FieldHelp from './FieldHelp.svelte';
+  import { GAS_FIELD_HELP } from '$lib/packs/fieldHelp';
+
   const greenhouseFactorHelp = 'Relative warming potency for this gas. Higher values add more greenhouse heating at the same partial pressure. This is a model coefficient, not direct Kelvin.';
   const shieldingFactorHelp = 'Radiation blocking strength per bar for this gas. Used in transmission = exp(-(factor x pressure_bar)). Higher values block more incoming radiation.';
   const rayleighHelp = 'Rayleigh scattering cross-section RELATIVE TO N2 — the visible-light analogue of shielding, which is the ionising one. Blank = 1, i.e. treat it like nitrogen. CO2 scatters about 2.4x as hard, H2 about 0.2x, which is why a thick CO2 sky is not simply a thicker blue one.';
@@ -311,42 +317,42 @@
                                  with derivation because it gates whether a deck forms at all. -->
                             <h4 class="group-head" title="The engine reads these to work out what the sky does to light, heat and radiation.">Derivation &mdash; what the physics reads</h4>
                             <div class="field">
-                                <label>Molar Mass (kg/mol)</label>
+                                <label>Molar Mass (kg/mol)<FieldHelp help={GAS_FIELD_HELP.molarMass} /></label>
                                 <input type="number" step="0.001" bind:value={gas.molarMass} />
                             </div>
                             <div class="field">
-                                <label title={greenhouseFactorHelp}>Greenhouse Factor</label>
+                                <label title={greenhouseFactorHelp}>Greenhouse Factor<FieldHelp help={GAS_FIELD_HELP.greenhouse} /></label>
                                 <input type="number" step="0.1" bind:value={gas.greenhouse} />
                             </div>
                             <div class="field">
-                                <label title={shieldingFactorHelp}>Shielding Factor</label>
+                                <label title={shieldingFactorHelp}>Shielding Factor<FieldHelp help={GAS_FIELD_HELP.shielding} /></label>
                                 <input type="number" step="0.1" bind:value={gas.shielding} />
                             </div>
                             <div class="field">
-                                <label>Boiling Point (K)</label>
+                                <label>Boiling Point (K)<FieldHelp help={GAS_FIELD_HELP.boilK} /></label>
                                 <input type="number" bind:value={gas.boilK} />
                             </div>
                             <div class="field">
-                                <label>Melting Point (K)</label>
+                                <label>Melting Point (K)<FieldHelp help={GAS_FIELD_HELP.meltK} /></label>
                                 <input type="number" bind:value={gas.meltK} />
                             </div>
                             <div class="field">
-                                <label title="Heat capacity coefficient (model term)">Specific Heat</label>
+                                <label>Specific Heat<FieldHelp help={GAS_FIELD_HELP.specificHeat} /></label>
                                 <input type="number" step="0.01" bind:value={gas.specificHeat} />
                             </div>
                             <div class="field">
-                                <label title="Radiative cooling coefficient (model term)">Radiative Cooling</label>
+                                <label>Radiative Cooling<FieldHelp help={GAS_FIELD_HELP.radiativeCooling} /></label>
                                 <input type="number" step="0.01" bind:value={gas.radiativeCooling} />
                             </div>
 
                             <div class="field">
-                                <label title={rayleighHelp}>Rayleigh (relative to N&#8322;)</label>
+                                <label title={rayleighHelp}>Rayleigh (relative to N&#8322;)<FieldHelp help={GAS_FIELD_HELP.rayleigh} /></label>
                                 <input type="number" step="0.1" min="0" placeholder="1"
                                        value={gas.rayleigh ?? ''}
                                        on:input={(e) => { gas.rayleigh = e.currentTarget.value === '' ? undefined : +e.currentTarget.value; gases = { ...gases }; }} />
                             </div>
                             <div class="field bands-field">
-                                <label title="Where this gas EATS the incoming spectrum, as Gaussian notches. This is what the surface-light chain actually reads.">Absorption Bands</label>
+                                <label title="Where this gas EATS the incoming spectrum, as Gaussian notches. This is what the surface-light chain actually reads.">Absorption Bands<FieldHelp help={GAS_FIELD_HELP.absorptionBands} /></label>
                                 <p class="aurora-help">
                                     Where this gas <strong>eats</strong> the incoming spectrum. These feed the surface-light
                                     chain directly &mdash; the ground spectrum, what a plant has to live on, and what the sky
@@ -401,7 +407,7 @@
                             </div>
                             <h4 class="group-head" title="These decide how the gas is DRAWN. Nothing here feeds the physics — the surface-light chain deliberately never reads a gas colour.">Presentation &mdash; how it is drawn</h4>
                             <div class="field">
-                                <label title="Intrinsic tint of the gas. Colourless gases (N₂/O₂/CO₂) have none.">Gas Colour</label>
+                                <label title="Intrinsic tint of the gas. Colourless gases (N₂/O₂/CO₂) have none.">Gas Colour<FieldHelp help={GAS_FIELD_HELP.colorHex} /></label>
                                 <div class="colour-row">
                                     <input type="checkbox" checked={gas.colorHex !== null && gas.colorHex !== undefined} on:change={(e) => toggleGasColour(gas, e.currentTarget.checked)} />
                                     {#if gas.colorHex !== null && gas.colorHex !== undefined}

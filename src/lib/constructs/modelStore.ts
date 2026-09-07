@@ -41,8 +41,10 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-/** SHA-256 of the binary, hex — the content address. */
-export async function hashModelBytes(bytes: ArrayBuffer): Promise<string> {
+/** SHA-256 of the binary, hex — the content address. THE ONLY implementation in this repo: the
+ *  bundle writer (io/bundle.ts) checks a model's filename against it rather than computing its
+ *  own, because two answers to "what is this file's hash" is the fault, not the fix. */
+export async function hashModelBytes(bytes: BufferSource): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }

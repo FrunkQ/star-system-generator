@@ -20,6 +20,25 @@ export function isBarycentre(node: AnyNode | null | undefined): boolean {
 	return !!node && (node as any).kind === 'barycenter';
 }
 
+/**
+ * THE TOP OF A SYSTEM - the node everything else in it hangs from.
+ *
+ * THE BARYCENTRE IS PREFERRED, AND THAT IS THE ONLY INTERESTING PART. A binary system has a pair
+ * container at its top with the stars underneath, so "the node with no parent" and "the star" are
+ * different answers there, and the first is the right one: taking the star would silently copy,
+ * hide or judge HALF a system. The fallback to any parentless node is what carries a single star,
+ * and it is also the repair for a hand-edited file whose root barycentre lost its members.
+ *
+ * Extracted 2026-09-07 because the rule was written out twice - the player-visibility check in
+ * `system/utils` and the crossed-eye reminder on the GM map - and Copy System would have been a
+ * third. Three copies of "which node is the top" is how the map and the guide come to disagree
+ * about what a system even is.
+ */
+export function systemRootNode(system: System | null | undefined): AnyNode | null {
+	const ns: AnyNode[] = (system as any)?.nodes ?? [];
+	return ns.find((n) => isBarycentre(n) && !(n as any).parentId) ?? ns.find((n) => !(n as any).parentId) ?? null;
+}
+
 /** Mass for ranking — a barycentre carries the pair's combined mass under a different field. */
 function massOf(node: AnyNode | null | undefined): number {
 	if (!node) return 0;
@@ -68,6 +87,36 @@ export function pairBodyNames(system: System | null, baryId: string): string[] {
 	};
 	walk(baryId, 0);
 	return out.filter(Boolean);
+}
+
+/**
+ * THE AUTO NAME FOR A NEW PAIR, and the reason it is not just "A-B Barycentre". A companion is
+ * usually named FROM its primary - "Jupiter L4 Trojan" gains "Jupiter L4 Trojan I" - so joining the
+ * two whole names repeats the shared part and produces "Jupiter L4 Trojan-Jupiter L4 Trojan I
+ * Barycentre": 47 characters that say one thing twice, and long enough to crush the row it sits in
+ * (owner screenshot, 2026-08-28). Collapse the shared WORD prefix and the pair is named after what
+ * the two actually have in common.
+ *
+ * Genuinely distinct names keep the joined form, because that IS the informative one: Pluto and
+ * Charon share nothing, so "Pluto-Charon Barycentre" is right and stays.
+ */
+export function autoPairName(heavyName: string, lightName: string): string {
+	const a = (heavyName ?? '').trim();
+	const b = (lightName ?? '').trim();
+	if (!a || !b) return `${a || b} Barycentre`;
+
+	// Word-wise, so "Jupiter L4 Trojan" + "Jupiter L4 Trojan I" share three words, while "Kepler-16 A"
+	// and "Kepler-16 B" share one. Never a partial word: "Mars"/"Marsha" have nothing in common.
+	const aw = a.split(/\s+/);
+	const bw = b.split(/\s+/);
+	let shared = 0;
+	while (shared < aw.length && shared < bw.length && aw[shared].toLowerCase() === bw[shared].toLowerCase()) shared++;
+
+	// The whole of one name being a prefix of the other is the companion case above: name the pair
+	// after the common part. "Pair" rather than "Barycentre" because that is what a GM calls it, and
+	// it keeps the row short enough to read.
+	if (shared > 0) return `${aw.slice(0, shared).join(' ')} Pair`;
+	return `${a}-${b} Barycentre`;
 }
 
 /**

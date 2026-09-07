@@ -22,6 +22,8 @@
   import BodyPicker from './BodyPicker.svelte';
   import { systemVisualStars } from '$lib/starmap/systemStars';
   import { campaignUnit } from '$lib/map/distanceUnits';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let starmap: Starmap;
   export let rulePack: RulePack;
@@ -287,7 +289,7 @@
   }
 </script>
 
-<div class="modal-background" on:click={() => dispatch('close')}>
+<div class="modal-background" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <h2>Interstellar Transit</h2>
 

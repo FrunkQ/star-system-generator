@@ -7,7 +7,7 @@ import { systemProcessor } from '../core/SystemProcessor';
 import { get } from 'svelte/store';
 import { redactTagsForPlayers } from '../tags/tagLifecycle';
 import { tagCategories } from '../tags/tagCategories';
-import { stripUndoHistory } from '$lib/undo/historyKey';
+import { stripUndoHistory } from '$lib/undo/historyKey';import { systemRootNode } from './barycentres';
 
 /**
  * Recursively calculates a node's average orbital distance (semi-major axis) from the root star in AU.
@@ -136,8 +136,7 @@ export function computePlayerStarmapSnapshot(map: Starmap): Starmap {
   // system, or the lone star for a single. Hiding an underlying star just hides that star (handled
   // by computePlayerSnapshot's subtree hiding), not the whole system.
   const rootHidden = (sysNode: any): boolean => {
-    const ns = sysNode?.system?.nodes || [];
-    const root = ns.find((n: any) => n.kind === 'barycenter' && !n.parentId) || ns.find((n: any) => !n.parentId);
+    const root: any = systemRootNode(sysNode?.system);
     return !!root && !!root.object_playerhidden;
   };
 

@@ -1,11 +1,12 @@
 {
   "name": "star-system-generator",
-  "version": "3.0.286",
+  "version": "3.1.0",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
     "build": "node scripts/generate-examples-list.cjs && vite build",
+    "manifest": "node scripts/shipped-manifest/build-shipped-manifest.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "prepare": "svelte-kit sync || echo ''",

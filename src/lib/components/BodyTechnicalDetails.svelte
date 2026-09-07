@@ -1,16 +1,16 @@
 <script lang="ts">
   import type { CelestialBody, Barycenter, RulePack } from "$lib/types";
-  import { describeTag } from "$lib/tags/tagPresentation";
+  import { describeTag, formatTagValue } from "$lib/tags/tagPresentation";
   import { calculateOrbitalBoundaries, type OrbitalBoundaries, type PlanetData } from "$lib/physics/orbits";
   import { calculateFullConstructSpecs, type ConstructSpecs } from '$lib/construct-logic';
-  import { calculateDeltaVBudgets, ascentBudgetApplies } from '$lib/physics/orbits';
+  import { calculateDeltaVBudgets, ascentBudgetApplies, orbitMeanMotion } from '$lib/physics/orbits';
   import { biosphereLayers, morphologyDef } from '$lib/physics/vegetation';
   import { isCryoImpactedGreenhouseGas, calculateGreenhouseEffect } from '$lib/physics/atmosphere';
   import { calculateSurfaceTemperature } from '$lib/physics/temperature';
   import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
   import { systemStore } from '$lib/stores';
   import { unitPrefs } from '$lib/unitPrefsStore';
-  import { formatPref, unitBodyTypeFor } from '$lib/units';
+  import { formatPref, unitBodyTypeFor, dimensionsKmFromM, KG_PER_TONNE, W_PER_MW } from '$lib/units';
   import UnitValue from './UnitValue.svelte';
   import { get } from 'svelte/store';
   import { onMount } from 'svelte';
@@ -20,7 +20,7 @@
   import { phaseAtP } from '$lib/physics/liquids';
   import { formatGauss } from '$lib/physics/magnetism';
   import { stellarActivityBucket } from '$lib/physics/stellarActivity';
-  import { bodyIonisingOutputSolar } from '$lib/physics/ionisingOutput';
+  import { bodyIonisingOutputSolar, isRemnantClass, thermalIonisingFraction, ionisingFraction } from '$lib/physics/ionisingOutput';
   import { calculateGoldilocksZone, calculateFrostLine, calculateKillZone } from '$lib/physics/zones';
   import { activityFromFieldExcess, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatTemplate } from '$lib/generation/star';
@@ -28,6 +28,7 @@
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
   import { radiationPlace } from '$lib/catalogue/bodyFacts';
   import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_GRAVITY, EARTH_DENSITY, RADIATION_UNSHIELDED_DOSE_MSV_YR } from '$lib/constants';
+  import { luminositySolarFromRT } from '$lib/physics/luminosity';
 
   export let body: CelestialBody | Barycenter | null;
   export let rulePack: RulePack;
@@ -59,6 +60,16 @@
       if (!sys || !id || eclipseNowMs === null) return null;
       const outlook = nextEclipseCached(sys as any, id, eclipseNowMs);
       return outlook?.next ? describeEclipse(outlook.next, eclipseNowMs, undefined) : null;
+  })();
+
+  // G58: the eclipse a MEGASTRUCTURE causes - a special entry BESIDE the local one, never
+  // competing with it for the row (the owner: "still need local eclipses"). Same one wording.
+  $: megaEclipseTexts = (() => {
+      const sys = $systemStore;
+      const id = (body as any)?.id;
+      if (!sys || !id || eclipseNowMs === null) return [];
+      const outlook = nextEclipseCached(sys as any, id, eclipseNowMs);
+      return (outlook?.megastructure ?? []).map((m) => describeEclipse(m, eclipseNowMs!, undefined));
   })();
 
   // The "Orbit (from …)" label: keep the host TYPE but name the actual host too (on a multi-star system
@@ -137,6 +148,8 @@
   let starKillZoneAU: number | null = null;
   let starIonisingSolar: number | null = null;
   let starFieldRole: string | null = null;
+  let starRemnantNote: string | null = null; // a remnant's activity cell says what its verdict means
+  let starIonisingNote: string | null = null; // and its ionising cell says which model produced the figure
   let starFieldTooltip = '';
   let surfaceGravityG: number | null = null;
   let densityRelative: number | null = null;
@@ -313,13 +326,20 @@
             orbitalDistanceKm = a * AU_KM;
             orbitalDistanceTooltip = `${nearWord}: ${formatPref($unitPrefs, 'orbit', ubt, peri * AU_KM)}\n${farWord}: ${formatPref($unitPrefs, 'orbit', ubt, aph * AU_KM)}`;
 
-            // Calculate Orbital Period
-            if (parentBody) {
+            // ORBITAL PERIOD COMES FROM THE ONE AUTHORITY ON RATE, `orbitMeanMotion`, which respects a
+            // stored `n_rad_per_s` and otherwise derives sqrt(mu/a^3) exactly as this used to.
+            // This panel had its OWN sqrt(a^3/GM) - a third implementation beside SystemProcessor's
+            // and reasonsToVisit's - and while every body's n was derivable from a and the primary's
+            // mass the three agreed. The calibrated Sol (DATA-R37) broke that: Luna carries a real
+            // ephemeris n set by the TOTAL mass, so it MOVED at 27.32 d while this card read 27.5.
+            const n = orbitMeanMotion(body.orbit as any);
+            if (n > 0) {
+                calculatedPeriodDays = (2 * Math.PI / Math.abs(n)) / 86400;
+            } else if (parentBody) {
                 const parentMass = (parentBody.massKg || (parentBody as Barycenter).effectiveMassKg || 0);
                 if (parentMass > 0) {
                     const a_m = body.orbit.elements.a_AU * AU_KM * 1000;
-                    const periodSeconds = 2 * Math.PI * Math.sqrt(Math.pow(a_m, 3) / (G * parentMass));
-                    calculatedPeriodDays = periodSeconds / 86400;
+                    calculatedPeriodDays = (2 * Math.PI * Math.sqrt(Math.pow(a_m, 3) / (G * parentMass))) / 86400;
                 }
             }
         }
@@ -393,7 +413,23 @@
                 tempK: body.temperatureK,
                 luminositySolar: body.radiationOutput
             });
-            const typicalWords = typicalGauss ? `${formatGauss(typicalGauss)} G` : 'its class norm';
+            const typicalWords = typicalPair.length === 2
+                ? `${formatGauss(typicalPair[0])} to ${formatGauss(typicalPair[1])} G, a norm of about ${formatGauss(typicalGauss as number)} G`
+                : 'its class norm';
+            // A REMNANT: no photosphere, no convective dynamo, so the flare verdict is "quiet" BY
+            // DECISION (owner, 2026-08-14, `flareActivity`) unless it is a magnetar or fed. That is a
+            // verdict about FLARING, and the card must say so: beside a 1e14 G field and a 600,000 K
+            // surface, an unexplained "quiet (0.00)" reads as a contradiction, and the ionising figure
+            // beneath it still comes from the main-sequence coronal fraction ([[B145]]).
+            // ONE COPY of "is this a remnant" - `isRemnantClass`, in the module that acts on the
+            // answer. This file carried its own regex for the same question until [[B145]] landed.
+            const remnant = isRemnantClass(body.classes?.[0]);
+            starRemnantNote = remnant ? 'no dynamo to flare from; its jets are the field and the spin' : null;
+            // [[B145]] part 4 is FIXED, so "reads low for a remnant" comes off. What replaces it is
+            // the positive statement - this figure is the SURFACE's - and only where the surface wins.
+            starIonisingNote = remnant && thermalIonisingFraction(body.temperatureK) > ionisingFraction((body as any).flareActivity)
+                ? 'from the surface, not a corona'
+                : null;
 
             const starActivity = (body as any).flareActivity as number | undefined;
             const ionisingSolar = bodyIonisingOutputSolar(body);
@@ -405,12 +441,12 @@
                 ? 'not driving the activity — that is pinned'
                 : fieldDriven > 0
                     ? 'raising the activity above'
-                    : 'at this class’s typical strength';
+                    : 'within this class’s normal range';
             starFieldTooltip =
                 'A star\'s surface field. AUTHORED, not derived: you set it on the star editor and the'
                 + ' engine never recomputes it (a planet\'s is the other way round, which is why the same'
                 + ' card means different things on the two).'
-                + '\n\n' + `This class typically runs about ${typicalWords}.`
+                + '\n\n' + `This class runs ${typicalWords}.`
                 + (activityPinned
                     ? '\n' + 'It is NOT feeding the magnetic activity at the moment, because that is pinned'
                       + ' on the Overrides tab and a pin overrules the field. It still sets the jets and'
@@ -418,12 +454,12 @@
                     : fieldDriven > 0
                         ? '\n' + `It is wound above that, which is what is raising the activity (+${fieldDriven.toFixed(2)}).`
                           + ' Two decades above the norm reaches the ceiling.'
-                        : '\n' + 'Sitting in its own band, so it adds NOTHING to the activity — that comes from'
-                          + ' class and age. Wind it up and it starts to; two decades above the norm reaches'
-                          + ' the ceiling. It sets the jets and the shed wind either way.')
+                        : '\n' + 'Not above the norm, so it adds NOTHING to the activity — that comes from'
+                          + ' class and age. Wind it up past the norm and it starts to; two decades above'
+                          + ' reaches the ceiling. It sets the jets and the shed wind either way.')
                 + (satGauss ? '\n' + `Past about ${formatGauss(satGauss)} G the dynamo saturates and more field buys nothing.` : '');
             radiationTooltip =
-                "MAGNETIC ACTIVITY - the ionising half of this star's output: flares, X-rays and the"
+                "FLARE ACTIVITY - the ionising half of this star's output: flares, X-rays and the"
                 + ' particle wind. It is set by the dynamo, NOT by brightness, and the two genuinely'
                 + " decouple - a flare moves a star's total output by a hundredth of a percent while its"
                 + ' X-ray output jumps a thousandfold. This is what reaches a planet as a particle dose.'
@@ -431,12 +467,22 @@
                 + (activityPinned
                     ? '\nPINNED by the GM on the Overrides tab - the class-and-age model is overruled.'
                     : "\nDerived from spectral class and age, and raised by a field wound above this class's typical strength.")
-                + '\nLuminosity, below, is how BRIGHT the star is. That is a different quantity.';
+                + '\nLuminosity, below, is how BRIGHT the star is. That is a different quantity.'
+                + (remnant
+                    ? '\n\nTHIS IS A REMNANT. "Quiet" is the FLARE verdict: an isolated neutron star or white dwarf'
+                      + ' has no convective dynamo and nothing falling in, so it does not flare (a magnetar does,'
+                      + ' and so does a fed hole). It says nothing about its RADIATION - a surface at hundreds of'
+                      + ' thousands of kelvin shines mostly in X-rays and extreme ultraviolet - and the ionising'
+                      + ' output below is still the main-sequence coronal fraction of its brightness, which'
+                      + ' reads low for it by decades; deriving it from the surface temperature is on the list.'
+                      + ' Its JETS are a different engine altogether - the gravitational well, the field and the'
+                      + ' spin - which is how a pulsar can beam hard and never flare.'
+                    : '');
             
             if (body.radiusKm && body.temperatureK) {
-                const r_sol = body.radiusKm / SOLAR_RADIUS_KM;
-                const t_ratio = body.temperatureK / 5778;
-                luminosity = Math.pow(r_sol, 2) * Math.pow(t_ratio, 4);
+                // Through the ONE Stefan-Boltzmann ([[B110]]): a panel deriving a physics quantity
+                // for itself is the same fault as two engine modules doing it.
+                luminosity = luminositySolarFromRT(body.radiusKm, body.temperatureK);
             }
 
         } else if (body.massKg) {
@@ -619,13 +665,13 @@
       {#if body.physical_parameters?.massKg}
         <div class="detail-item g-bulk">
             <span class="label">Mass</span>
-            <span class="value">{(body.physical_parameters.massKg / 1000).toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes</span>
+            <span class="value"><UnitValue quantity="mass" bodyType="construct" value={body.physical_parameters.massKg} /></span>
         </div>
       {/if}
       {#if body.physical_parameters?.dimensionsM}
         <div class="detail-item g-bulk">
             <span class="label">Dimensions</span>
-            <span class="value">{body.physical_parameters.dimensionsM.join(' x ')} m</span>
+            <span class="value"><UnitValue quantity="dimensions" bodyType="construct" values={dimensionsKmFromM(body.physical_parameters.dimensionsM) ?? []} /></span>
         </div>
       {/if}
 
@@ -639,7 +685,7 @@
       {#if constructSpecs}
         <div class="detail-item g-bulk">
           <span class="label">Total Mass</span>
-          <span class="value">{constructSpecs.totalMass_tonnes.toLocaleString(undefined, {maximumFractionDigits: 0})} tonnes</span>
+          <span class="value"><UnitValue quantity="mass" bodyType="construct" value={constructSpecs.totalMass_tonnes * KG_PER_TONNE} /></span>
         </div>
         <div class="detail-item g-infra">
           <span class="label">Max Vacuum Accel.</span>
@@ -650,7 +696,7 @@
         </div>
         <div class="detail-item g-infra">
           <span class="label">Power Surplus</span>
-          <span class="value">{constructSpecs.powerSurplus_MW.toLocaleString(undefined, {maximumFractionDigits: 1})} MW</span>
+          <span class="value"><UnitValue quantity="power" bodyType="construct" value={constructSpecs.powerSurplus_MW * W_PER_MW} /></span>
         </div>
       {/if}
     {/if}
@@ -790,6 +836,13 @@
           </div>
       {/if}
 
+      {#each megaEclipseTexts as met}
+          <div class="detail-item g-orbit" title="The shadow a megastructure casts on this world: a band is crossed twice an orbit for the stated span, and a world sharing a solid ring's plane beyond it is in its shadow permanently. The same geometry that sets the temperature.">
+              <span class="label">Structure Shadow</span>
+              <span class="value">{met}</span>
+          </div>
+      {/each}
+
       {#if isStar && body.temperatureK}
           <div class="detail-item g-climate" title="{Math.round(body.temperatureK).toLocaleString()} K">
               <span class="label">Surface Temperature</span>
@@ -835,9 +888,10 @@
 
       {#if body.roleHint === 'star' && radiationLevel}
           <div class="detail-item g-hazard" title={radiationTooltip}>
-              <span class="label">Magnetic activity (ionising)</span>
+              <span class="label">Flare activity (ionising)</span>
               <span class="value">{radiationLevel}</span>
               {#if isPinned('flareActivity')}<span class="ovr-flag">OVERRIDDEN</span>{/if}
+              {#if starRemnantNote}<span class="role-note">{starRemnantNote}</span>{/if}
           </div>
       {/if}
 
@@ -846,6 +900,7 @@
               <span class="label">Ionising output</span>
               <span class="value">{starIonisingSolar.toExponential(2)} × Sun</span>
               {#if isPinned('flareActivity')}<span class="ovr-flag">FROM AN OVERRIDE</span>{/if}
+              {#if starIonisingNote}<span class="role-note">{starIonisingNote}</span>{/if}
           </div>
       {/if}
 
@@ -1016,9 +1071,18 @@
           <div class="detail-item tags-list">
               <span class="label">Tags</span>
               <div class="tags-container">
+                  <!-- THE VALUE GOES THROUGH `formatTagValue`, like every other surface. This panel
+                       printed the RAW value, so a numeric tag arrived here as a bare float beside its
+                       label — "Dimmed: 0.39" with nothing saying 0.39 of what, which is exactly the
+                       A33/B27/B28 fault, and it was this panel alone. `formatTagValue` is the one
+                       place that decides (a unit, or suppression) and `tagConsistency.spec.ts` fails
+                       when a new numeric tag arrives with neither; returning null means SHOW THE
+                       LABEL ALONE, so the test is on the formatted value and not on the raw one.
+                       Found by G54's own tags landing here wrong; the fix is every tag's. -->
                   {#each body.tags as tag}
                       {@const info = describeTag(tag.key)}
-                      <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if tag.value}: {tag.value}{/if}</span>
+                      {@const shown = formatTagValue(tag.key, tag.value)}
+                      <span class="tag" style="border-color: {info.color}; color: {info.color};" title={info.description}>{info.label}{#if shown}: {shown}{/if}</span>
                   {/each}
               </div>
           </div>

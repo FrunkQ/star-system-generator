@@ -371,6 +371,14 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         value: `${n(partnerSepKm, 0, 'km')} apart`
       }] : []),
       { label: 'Star', value: ctx.star?.name ?? '—' },
+      // G53 phase 4: what a megastructure took out of the light, stamped by the same derivation the
+      // equilibrium figure used — the panel that claims to show the working must show this too.
+      ...(body.starlightDimming?.length ? [{
+        label: 'Megastructure shading (derived)',
+        value: body.starlightDimming
+          .map((d) => `${d.starName}: ${pct(d.receivedFrac)} arrives past ${d.occluders.map((o) => o.name).join(', ')}`)
+          .join(' · ')
+      }] : []),
       ...(ctx.host && (ctx.host as any).isSelfLuminous ? [{
         label: `+ self-luminous host (${ctx.host.name})`,
         value: `${n((ctx.host as any).selfLuminousTeffK, 0, 'K')} · ${(((ctx.host as any).internalLuminositySolar ?? 0) as number).toExponential(1)} L☉`
@@ -386,6 +394,19 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
     ],
     outputs: tempOut,
     notes: [
+      ...(body.starlightDimming ?? []).map((d) => {
+        const cadence = d.occluders.map((o) => {
+          const e = o.eclipse as { permanent?: true; hoursEach?: number } | undefined;
+          if (!e) return null;
+          return e.permanent
+            ? `${o.name} eclipses it PERMANENTLY - the star never rises clear`
+            : `${o.name} eclipses it twice an orbit, about ${Math.round(e.hoursEach!)} hours each crossing`;
+        }).filter(Boolean).join('; ');
+        const who = d.occluders.map((o) => o.band && o.alignedShare < 1
+          ? `${o.name} — a band this orbit is aligned with ${pct(o.alignedShare)} of the time`
+          : `${o.name}${o.band ? ' — a band this orbit sits inside' : ''}`).join('; ');
+        return `SOMETHING WAS BUILT BETWEEN THIS WORLD AND ITS STAR. Only ${pct(d.receivedFrac)} of ${d.starName}'s light arrives here, and every temperature above is computed from what ARRIVES, not what the star emits: ${who}. The rules are the honest ones — a structure never shades itself, shades nothing inside its own radius, and a band shades only what aligns with its plane — so moving the world, or the structure, moves this number.${cadence ? ' ' + cadence + '.' : ''}`;
+      }),
       ...(seaVapour && seaVapour.beatsAuthored ? [`The ${seaVapour.solvent} sea is evaporating into this world's own air and that vapour is part of the greenhouse above. The amount is NOT authored: it is the saturation pressure of ${seaVapour.solvent} at ${n(body.temperatureK, 0, 'K')} — the same curve that decides where the cloud decks sit — over the surface pressure, scaled by the ${pct(body.hydrosphere?.coverage ?? 0)} of the surface that is sea and by how much of saturation a whole air column holds (it dries with altitude). Earth's own 0.4% is what calibrates that last figure. Because saturation falls away smoothly — by sublimation once the sea freezes — a cooling world loses this warmth gradually instead of at a threshold.`] : []),
       ...(ctx.host && (ctx.host as any).isSelfLuminous ? [`Warmed and irradiated by BOTH ${ctx.star?.name ?? 'the star'} AND its self-luminous host ${ctx.host.name} (a brown dwarf, ${n((ctx.host as any).selfLuminousTeffK, 0, 'K')}). Flux and radiation SUM over every luminous source (Σ Lᵢ / 4πdᵢ²), so a close-in moon of a brown dwarf is far warmer and more irradiated than its distance from the system star alone would imply.`] : []),
       ...((body as any).isSelfLuminous && selfLumTeff ? [`Self-luminous: a brown dwarf (~${n((body.massKg ?? 0) / 1.898e27, 0)} M♃) that radiates its OWN heat from gravitational contraction and early deuterium burning. Its surface sits at ~${n(selfLumTeff, 0, 'K')} regardless of the distant star, it cools with age (L→T→Y, floor ~250 K), and it warms & irradiates its moons like a mini-star.`] : []),
@@ -465,6 +486,41 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
         { label: 'Implied field', value: `${m.estimatedRangeGauss.min}–${m.estimatedRangeGauss.max} G` }
       ],
       notes: m.notes.slice(0, 1)
+    });
+  }
+
+  // 5aa. THE MAGNETOSPHERE — where that field's boundary actually stands ([[G82]]). A separate layer
+  //      from Magnetism on purpose: the dynamo answers "what field", this answers "how far", and
+  //      they take different inputs. It shows the pressure balance with BOTH sides of it named, so
+  //      the panel that claims to show the working shows the wind as well as the field — read
+  //      post-hoc from the committed block, like every other layer here.
+  if (body.magnetosphere && body.magnetosphere.shape !== 'none') {
+    const ms = body.magnetosphere;
+    const facing = ms.upstream === 'host' ? (ctx.host as CelestialBody | undefined)?.name ?? 'its host' : ctx.star?.name ?? 'the star';
+    layers.push({
+      id: 'magnetosphere', title: 'Magnetosphere — how far the field reaches', link: '/physics#magnetism',
+      inputs: [
+        { label: 'Surface field', value: n(body.magneticField?.strengthGauss, 4, ' G') },
+        { label: ms.upstream === 'host' ? `${facing}'s field here` : 'Stellar wind pressure here', value: `${ms.confiningPressureNPa} nPa` },
+        { label: 'Field geometry', value: ms.ordered ? `${body.magnetism?.geometry ?? 'dipolar'} · axis ${ms.dipoleTiltDeg}° off the spin` : `${body.magnetism?.geometry ?? 'multipolar'} · no single axis` }
+      ],
+      outputs: [
+        { label: 'Magnetopause (nose)', value: `${ms.standoffRadii.toFixed(1)} body radii, facing ${facing}` },
+        { label: 'Shielded region', value: `${ms.closedFieldRadii.toFixed(1)} body radii (inside the last closed field line)` },
+        ...(ms.ovalColatDeg < 90 ? [{ label: 'Aurora oval', value: `${(90 - ms.ovalColatDeg).toFixed(0)}° magnetic latitude` }] : []),
+        ...(ms.beltPeakRadii !== undefined ? [{ label: 'Trapped belt begins', value: `${ms.beltPeakRadii.toFixed(2)} body radii` }] : []),
+        { label: 'Tail drawn to', value: `${Math.round(ms.tailRadii)} body radii` }
+      ],
+      notes: [
+        `The boundary sits where the field's own pressure balances what is blowing on it: R/R_body = ((2B)² / 2μ₀P)^(1/6). Here that is ${n(body.magneticField?.strengthGauss, 4, ' G')} against ${ms.confiningPressureNPa} nPa, giving ${ms.standoffRadii.toFixed(1)} radii. It is a SIXTH root, so it barely moves: sixty-four times the wind would only halve it.`,
+        ms.upstream === 'host'
+          ? `This body never meets the stellar wind — ${facing}'s field stopped it further out — so its bubble is squeezed by the host's field at this orbit, and its nose points at ${facing} rather than at the star.`
+          : "The wind is a reference pressure at 1 AU, scaled by how active each star is and by the inverse square of its distance, summed over every star in the system.",
+        `Inside ${ms.closedFieldRadii.toFixed(1)} radii the field lines leave and come back, so an incoming ion is turned around: that is the part that actually shields an atmosphere. Outside it the lines are open to the wind, and what travels down them lands on the polar cap${ms.ovalColatDeg < 90 ? ` — which is exactly where the aurora oval sits, at ${(90 - ms.ovalColatDeg).toFixed(0)}°` : ''}.`,
+        ...(ms.ordered ? [] : ['A disordered field has no single magnetic axis, so it has no clean poles and no single oval: the aurora is a scatter of patches.']),
+        'ESTIMATED, and it says so: the reference wind is an average of something that genuinely swings by a factor of ten, the direction the magnetic axis leans is seeded rather than derived, and the tail length is a drawing convention. The model is a dipole against a wind, so a plasma-loaded giant like Jupiter is really larger than this.',
+        ...ms.notes.slice(0, 1)
+      ]
     });
   }
 
@@ -703,19 +759,51 @@ export function buildPhysicsTrace(body: CelestialBody, ctx: TraceContext = {}): 
   }
 
   // 8. Habitability
+  //
+  // IT SHOWED A SCORE AND NOT ONE STEP OF ITS WORKING, on the panel whose whole promise is the
+  // working (stream I, the G63 sweep). Every term was already computed and sitting on the body as
+  // `habitabilityBreakdown` - five weighted factors with their points, their reading and the ideal
+  // band, then the modifiers - and this layer printed the FINAL NUMBER plus the two SMALLEST terms.
+  // A reader asking "why 63?" had nowhere to go.
+  //
+  // IT READS THE BREAKDOWN, IT DOES NOT RE-DERIVE IT. That record is the authoritative one (the Bio
+  // tab renders the same object), so there is one answer to "what did temperature score" rather than
+  // a second sum here that could drift from it - which is this codebase's most recurring fault.
+  //
+  // AND IT SAYS WHOSE. The score is HUMAN habitability with Earth as the anchor, which the standing
+  // rule asks to be stated on the output rather than smuggled: the tiers are named "human-habitable"
+  // and "Earth-like", and a world that is hostile to us may be perfectly good for something else.
   if (body.habitabilityScore != null) {
     const tier = (body.tags || []).find((t) => t.key.startsWith('habitability/'));
+    const hb = body.habitabilityBreakdown;
     layers.push({
       id: 'habitability', title: 'Habitability', link: '/physics#habitability',
       inputs: [
+        ...(hb?.factors ?? []).map((f) => ({
+          label: `${f.label} (max ${f.max})`,
+          value: `${f.value} — ideal ${f.ideal}`
+        })),
         { label: 'Geology regime', value: body.geoActivity?.regime ?? '—' },
         { label: 'Magnetosphere', value: body.magnetism ? (body.magnetism.intrinsic ? 'intrinsic' : body.magnetism.source) : '—' }
       ],
       outputs: [
-        { label: 'Score (Earth=100)', value: n(body.habitabilityScore, 0) },
+        ...(hb?.factors ?? []).map((f) => ({
+          label: `${f.label} scored`,
+          value: `${f.points} of ${f.max}`
+        })),
+        ...(hb ? [{ label: 'Surface score (the five above)', value: n(hb.surfaceScore, 0) }] : []),
+        ...(hb?.modifiers ?? []).map((m) => ({
+          label: m.label,
+          value: `${m.delta >= 0 ? '+' : ''}${m.delta}`
+        })),
+        { label: 'Score (Earth = 100)', value: n(body.habitabilityScore, 0) },
         { label: 'Tier', value: tier ? describeTag(tier.key).label : '—' }
       ],
-      notes: ['Geology + magnetism modifiers are heuristic guesswork — see /physics.']
+      notes: [
+        'THIS SCORES HABITABILITY FOR US. Earth is the 100 anchor and the tiers are named for human beings, so a low score means hostile TO A HUMAN and not lifeless - the biosphere model above asks a different question and can find life on a world that scores nothing here.',
+        'The five surface factors are the instantaneous conditions and sum to 100 between them. Geology and magnetism are then added as long-term modifiers, and a super-habitable world can pass 100 (capped at 130) while a subsurface ocean floors the score at 35 on an axis of its own.',
+        'Heuristic, not first-principles - the weights and especially the geology and magnetism modifiers are judgement calls tuned to be plausible rather than derived. See /physics#habitability for what each one is and why.'
+      ]
     });
   }
 

@@ -6,6 +6,9 @@
   import { coiCategories } from '$lib/constructs/coi';
   import { poiPacks } from '$lib/physics/reasonsToVisit';
   import { describeTag } from '$lib/tags/tagPresentation';
+  // Field help lives in `packs/fieldHelp.ts` - one table, four editors (G86).
+  import FieldHelp from './FieldHelp.svelte';
+  import { FUEL_FIELD_HELP, ENGINE_FIELD_HELP } from '$lib/packs/fieldHelp';
   import { foreground } from '$lib/ui/foreground';
 
   // Tag options, sourced entirely from the data (CoI Resources + drive categories, PoI frontier rules) —
@@ -184,7 +187,7 @@
                         </div>
                         <div class="item-body">
                             <div class="field">
-                                <label>Density (kg/m³)</label>
+                                <label>Density (kg/m³)<FieldHelp help={FUEL_FIELD_HELP.density_kg_per_m3} /></label>
                                 <input type="number" bind:value={fuel.density_kg_per_m3} />
                                 <span class="format-hint">{(fuel.density_kg_per_m3 || 0).toLocaleString()} kg/m³</span>
                             </div>
@@ -193,7 +196,7 @@
                                 <input type="text" bind:value={fuel.description} />
                             </div>
                             <div class="field full">
-                                <label>Can be refuelled where (resource / frontier tags)</label>
+                                <label>Can be refuelled where (resource / frontier tags)<FieldHelp help={FUEL_FIELD_HELP.refuel_tags} /></label>
                                 <TagListEditor bind:tags={fuel.refuel_tags} options={fuelTagOpts} placeholder="+ source" />
                             </div>
                             <div class="field">
@@ -219,11 +222,11 @@
                         </div>
                         <div class="item-body">
                             <div class="field">
-                                <label>Type</label>
+                                <label>Type<FieldHelp help={ENGINE_FIELD_HELP.type} /></label>
                                 <input type="text" bind:value={engine.type} />
                             </div>
                             <div class="field">
-                                <label>Fuel Type</label>
+                                <label>Fuel Type<FieldHelp help={ENGINE_FIELD_HELP.fuel_type_id} /></label>
                                 <select bind:value={engine.fuel_type_id}>
                                     {#each fuels as f}
                                         <option value={f.id}>{f.name}</option>
@@ -231,21 +234,21 @@
                                 </select>
                             </div>
                             <div class="field">
-                                <label>Thrust (kN)</label>
+                                <label>Thrust (kN)<FieldHelp help={ENGINE_FIELD_HELP.thrust_kN} /></label>
                                 <input type="number" bind:value={engine.thrust_kN} />
                                 <span class="format-hint">{(engine.thrust_kN || 0).toLocaleString()} kN</span>
                             </div>
                             <div class="field">
-                                <label>ISP (s)</label>
+                                <label>ISP (s)<FieldHelp help={ENGINE_FIELD_HELP.efficiency_isp} /></label>
                                 <input type="number" bind:value={engine.efficiency_isp} />
                                 <span class="format-hint">{(engine.efficiency_isp || 0).toLocaleString()} s</span>
                             </div>
                             <div class="field">
-                                <label>Atmo Eff. (0-1)</label>
+                                <label>Atmo Eff. (0-1)<FieldHelp help={ENGINE_FIELD_HELP.atmo_efficiency} /></label>
                                 <input type="number" step="0.1" min="0" max="1" bind:value={engine.atmo_efficiency} />
                             </div>
                             <div class="field">
-                                <label>Power (MW)</label>
+                                <label>Power (MW)<FieldHelp help={ENGINE_FIELD_HELP.powerDraw_MW} /></label>
                                 <input type="number" bind:value={engine.powerDraw_MW} />
                                 <span class="format-hint">{(engine.powerDraw_MW || 0).toLocaleString()} MW</span>
                             </div>
@@ -254,7 +257,7 @@
                                 <input type="text" bind:value={engine.description} />
                             </div>
                             <div class="field full">
-                                <label>Provides FTL drive (blank = sublight)</label>
+                                <label>Provides FTL drive (blank = sublight)<FieldHelp help={ENGINE_FIELD_HELP.drive_tags} /></label>
                                 <TagListEditor bind:tags={engine.drive_tags} options={driveOpts} placeholder="+ FTL drive" />
                             </div>
                         </div>

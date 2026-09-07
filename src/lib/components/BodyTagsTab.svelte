@@ -1,10 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { CelestialBody, RulePack } from '$lib/types';
+  import type { CelestialBody, RulePack, TagDisclosure } from '$lib/types';
   import { describeTag, formatTagValue } from '$lib/tags/tagPresentation';
   import { poiPacks } from '$lib/physics/reasonsToVisit';
   import { customTagVocabulary } from '$lib/tags/customTags';
-  import { canonicalTagKey, tagSlugSegment, tagOrigin, overridableNamespaces, isPhysicsNamespace } from '$lib/tags/tagLifecycle';
+  import { canonicalTagKey, tagSlugSegment, tagOrigin, overridableNamespaces, isPhysicsNamespace, tagDisclosure } from '$lib/tags/tagLifecycle';
   import { tagCategories, categoriesFor, addTagToCategory } from '$lib/tags/tagCategories';
 
   export let body: CelestialBody;
@@ -96,7 +96,7 @@
   // wrong: NOTHING re-derives it, it is the generator's own claim, and the GM can legitimately delete
   // it. A tag that misreports where it came from is worse than an unexplained one, because the reader
   // has no reason to doubt it — so provenance now comes from the one module that actually knows.
-  interface TagItem { key: string; value?: string; label: string; color: string; textColor: string; desc: string; source?: string; secret?: boolean; }
+  interface TagItem { key: string; value?: string; label: string; color: string; textColor: string; desc: string; source?: string; disclosure: TagDisclosure; }
   $: groups = (() => {
     const manual: TagItem[] = [];      // hand-added, including overrides
     const overrides: TagItem[] = [];   // hand-added INSIDE a physics namespace
@@ -108,7 +108,7 @@
       const item: TagItem = {
         key: t.key, value: t.value, label: info.label, color: info.color,
         textColor: info.textColor || '#fff', desc: info.description, source: t.source,
-        secret: (t as any).secret
+        disclosure: tagDisclosure(t)
       };
       switch (tagOrigin(t)) {
         case 'manual':
@@ -123,9 +123,29 @@
   })();
   const isPhysicsNs = (key: string) => isPhysicsNamespace(key);
 
-  function toggleSecret(key: string) {
+  // THE DISCLOSURE LADDER, AS ONE CLICK-TO-CYCLE CONTROL (G54). Three rungs, one button — the same
+  // idiom the unit buttons use, and the button shows the STATE rather than the next action, because
+  // with three rungs "hide" no longer says which of the two hidden ones you would get.
+  const RUNGS: readonly TagDisclosure[] = ['open', 'anonymous', 'hidden'];
+  const RUNG_LABEL: Record<TagDisclosure, string> = { open: 'shown', anonymous: 'anon', hidden: 'hidden' };
+  const RUNG_TITLE: Record<TagDisclosure, string> = {
+    open: 'Players see this tag in full. Click to show only that something is here.',
+    anonymous: 'Players see a neutral marker and are not told what this is. Click to hide it entirely.',
+    hidden: 'Players never see this tag, or any sign that it exists. Click to show it in full.'
+  };
+  const RUNG_GLYPH: Record<TagDisclosure, string> = { open: '', anonymous: '◌', hidden: '◍' };
+
+  function cycleDisclosure(key: string) {
     if (!body.tags) return;
-    body.tags = body.tags.map((t) => t.key === key ? { ...t, secret: (t as any).secret ? undefined : true } as any : t);
+    body.tags = body.tags.map((t) => {
+      if (t.key !== key) return t;
+      const next = RUNGS[(RUNGS.indexOf(tagDisclosure(t)) + 1) % RUNGS.length];
+      // ONE SPELLING PER TAG. `secret` is the legacy spelling of `hidden`; writing `disclosure`
+      // beside a surviving `secret` would leave the tag carrying two answers, and `tagDisclosure`
+      // preferring one of them is not a reason to store both.
+      const { secret, ...rest } = t as Record<string, unknown>;
+      return (next === 'open' ? { ...rest } : { ...rest, disclosure: next }) as typeof t;
+    });
     dispatch('update');
   }
   const sortedGroups = (r: Record<string, TagItem[]>) => Object.keys(r).sort();
@@ -154,11 +174,11 @@
         <h5 class="src-head manual-head">Yours</h5>
         <div class="tags-list">
           {#each groups.manual as t (t.key)}
-            <button class="tag-chip active" class:secret={t.secret} style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Your tag — click to remove' + (t.secret ? '\nSECRET: players never see this one.' : '')} on:click={() => removeTag(t.key)}>
-              {#if t.secret}<span class="eye" title="Hidden from players">◍</span>{/if}
+            <button class="tag-chip active" class:secret={t.disclosure !== 'open'} style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Your tag — click to remove' + (t.disclosure === 'open' ? '' : '\n' + RUNG_TITLE[t.disclosure])} on:click={() => removeTag(t.key)}>
+              {#if RUNG_GLYPH[t.disclosure]}<span class="eye" title={RUNG_TITLE[t.disclosure]}>{RUNG_GLYPH[t.disclosure]}</span>{/if}
               {t.label}{#if formatTagValue(t.key, t.value)}: {formatTagValue(t.key, t.value)}{/if} <span class="x">×</span>
             </button>
-            <button class="secret-btn" title={t.secret ? 'Visible to players — click to hide' : 'Hide from players'} on:click={() => toggleSecret(t.key)}>{t.secret ? 'hidden' : 'hide'}</button>
+            <button class="secret-btn" class:anon={t.disclosure === 'anonymous'} title={RUNG_TITLE[t.disclosure]} on:click={() => cycleDisclosure(t.key)}>{RUNG_LABEL[t.disclosure]}</button>
           {/each}
         </div>
       </div>
@@ -295,6 +315,8 @@
   .eye { font-size: 0.85em; opacity: 0.9; }
   .secret-btn { border: 1px solid var(--border); background: transparent; color: var(--text-faint); border-radius: 3px; font-size: 0.62em; padding: 1px 4px; cursor: pointer; align-self: center; }
   .secret-btn:hover { color: var(--text); }
+  /* The middle rung reads as a middle rung: dimmer than shown, and dashed rather than solid. */
+  .secret-btn.anon { border-style: dashed; }
   .tags-list { display: flex; flex-wrap: wrap; gap: 5px; }
   /* THE TAG PILL — geometry from the tokens, so this chip and the map markers stay one shape. */
   .tag-chip { border: none; border-radius: var(--tag-pill-radius); padding: var(--tag-pill-pad-y) var(--tag-pill-pad-x); font-size: var(--tag-pill-font-size); cursor: pointer; display: flex; align-items: center; gap: var(--tag-pill-gap); color: #fff; }

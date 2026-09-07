@@ -105,7 +105,7 @@ function resolveAimPositionAtRadius(
   };
 }
 
-function resolveDesiredArrivalRelative(
+export function resolveDesiredArrivalRelative(
   arrivalRelVec_au_s: Vector2,
   targetPos: Vector2,
   targetVel: Vector2,
@@ -113,7 +113,8 @@ function resolveDesiredArrivalRelative(
   targetMassKg: number,
   parkingOrbitRadius_au: number | undefined,
   brakeAtArrival: boolean | undefined,
-  interceptSpeed_ms: number | undefined
+  interceptSpeed_ms: number | undefined,
+  progradeSense: number = 0
 ): { desiredRelVec_au_s: Vector2; dv2Required_ms: number } {
   const relMag = magnitude(arrivalRelVec_au_s);
   const intercept = Math.max(0, interceptSpeed_ms || 0);
@@ -168,6 +169,16 @@ function resolveDesiredArrivalRelative(
     tangential = { x: -rHat.y, y: rHat.x, z: 0 };
     tMag = magnitude(tangential);
     if (!(tMag > 1e-15)) return { desiredRelVec_au_s: { x: 0, y: 0, z: 0 }, dv2Required_ms: relMag * AU_M };
+  }
+  // G53 PHASE 5 - AT A BEANSTALK HOST, PARK PROGRADE (owner, 2026-09-06: "ALWAYS orbit IN the
+  // direction of planet spin IF there is a beanstalk so you can transfer with less delta v"). The
+  // parking orbit used to take the sense of the APPROACH, so a ship could arrive retrograde and be
+  // handed to a ribbon moving against it. When the caller states the host's spin sense, a
+  // retrograde approach is turned to prograde here and the reversal is PRICED in dv2 below -
+  // stated, never refused. Sense 0 keeps the old behaviour for hosts with nothing to dock to.
+  if (progradeSense) {
+    const pro = { x: -rHat.y * progradeSense, y: rHat.x * progradeSense, z: 0 };
+    if (dot(tangential, pro) < 0) tangential = { x: -tangential.x, y: -tangential.y, z: -zOf(tangential) };
   }
   const desired = {
     x: (tangential.x / tMag) * vCirc_au_s,
@@ -252,6 +263,8 @@ export function calculateTransitPlan(
       // targetOffsetAnomaly RETIRED (G43 P4): the L-point geometry lives in physics/lagrange.ts,
       // so callers no longer pass an anomaly offset for it.
       arrivalPlacement?: string;
+      arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5, see transit/types.ts
+      arrivalProgradeSense?: number; // G53 phase 5: +1/-1 = park with the host's spin (a beanstalk host); 0 = keep the approach sense
       aerobrake?: { allowed: boolean; limit_kms: number; }; // NEW
       initialDelay_days?: number;
       directAccelRatio?: number; // NEW
@@ -626,7 +639,8 @@ export function calculateTransitPlan(
           targetMassKg,
           finalParams.parkingOrbitRadius_au,
           params.brakeAtArrival,
-          params.interceptSpeed_ms
+          params.interceptSpeed_ms,
+          params.arrivalProgradeSense ?? 0
       );
 
           const dv2_req_ms = desiredArrival.dv2Required_ms;
@@ -921,12 +935,34 @@ function buildOrbitChangePlan(
         z: zOf(startState.v) - (u.z ?? 0) * radial
     };
     const w = norm(wRaw) ?? norm({ x: -u.y, y: u.x, z: 0 });
+    if (!w) return null;   // no along-track direction at all - nothing to change an orbit about
+    // G53 PHASE 5 - AT A BEANSTALK HOST THE FINAL ORBIT IS PROGRADE (owner, 2026-09-06: the ship
+    // "was orbiting the wrong way"). A Hohmann keeps the sense of the orbit it left, so a ship
+    // parked against the spin by an older arrival would reach the dock against the ribbon. When
+    // the caller states the host's spin sense and the origin runs against it, the SECOND burn
+    // reverses the sense at the far end - kill the transfer speed, rebuild circular speed the
+    // other way - and that is priced honestly: dv2 = vTransfer + vCirc, not their difference.
+    // Stated, tagged, never refused; sense 0 keeps the textbook Hohmann.
+    const sense = params.arrivalProgradeSense ?? 0;
+    const originSense = (u.x * w.y - u.y * w.x) >= 0 ? 1 : -1;
+    const reverseAtArrival = !!sense && originSense !== sense;
+    const vTransferAtR2_ms = sol.speedEnd_ms - sol.deltaV2_ms;
+    const dv2_ms = reverseAtArrival ? -(vTransferAtR2_ms + sol.speedEnd_ms) : sol.deltaV2_ms;
+    // THE FAR-SIDE SIGN (the fault the owner actually hit, 2026-09-06). A Hohmann arrives HALF AN
+    // ORBIT from where it left: the position is -u and the along-track direction there is -w, not
+    // w. The end velocity was written along w, so every orbit change parked the ship with its
+    // angular momentum flipped - retrograde from a prograde start - whatever sense it left in.
+    // Conserving the sense means -w; the deliberate reversal above means +w.
+    const wEnd = reverseAtArrival ? w : { x: -w.x, y: -w.y, z: -(w.z ?? 0) };
+    // Burn 2 pushes along the far-side velocity: raising = along -w, lowering = against it; a
+    // reversal fires along +w (kill -w's transfer speed, build +w's circular speed).
+    const thrustDir2: Vector2 = reverseAtArrival ? w : (dv2_ms >= 0 ? { x: -w.x, y: -w.y, z: -(w.z ?? 0) } : w);
     if (!w) return null;
 
     const g0 = 9.81;
     const accel = Math.max(0.01, (params.maxG || 0.1) * g0);
     const burn1Sec = Math.max(1, Math.abs(sol.deltaV1_ms) / accel);
-    const burn2Sec = Math.max(1, Math.abs(sol.deltaV2_ms) / accel);
+    const burn2Sec = Math.max(1, Math.abs(dv2_ms) / accel);
     const totalSec = burn1Sec + sol.transferTimeSec + burn2Sec;
 
     const hostNode = sys.nodes.find((n) => n.id === frameParentId);
@@ -975,7 +1011,7 @@ function buildOrbitChangePlan(
             : Math.abs(dv) * 0.01;
     const m0 = params.shipMass_kg || 0;
     const fuel1 = fuelFor(sol.deltaV1_ms, m0);
-    const fuel2 = fuelFor(sol.deltaV2_ms, Math.max(1, m0 - fuel1));
+    const fuel2 = fuelFor(dv2_ms, Math.max(1, m0 - fuel1));
 
     // A raising burn pushes along the motion; a lowering one pushes against it.
     const dirOf = (dv: number): Vector2 => (dv >= 0 ? w : { x: -w.x, y: -w.y, z: -(w.z ?? 0) });
@@ -983,9 +1019,9 @@ function buildOrbitChangePlan(
     // The velocity the ship ends with: its new circular orbit, plus the host's own motion.
     const vCirc2_au = sol.speedEnd_ms / AU_M;
     const endVel = add(hostAtEnd.v, {
-        x: -u.x * 0 + w.x * vCirc2_au,
-        y: -u.y * 0 + w.y * vCirc2_au,
-        z: (w.z ?? 0) * vCirc2_au
+        x: wEnd.x * vCirc2_au,
+        y: wEnd.y * vCirc2_au,
+        z: (wEnd.z ?? 0) * vCirc2_au
     });
 
     const segments: TransitSegment[] = [
@@ -1012,7 +1048,7 @@ function buildOrbitChangePlan(
             startState: { r: a2.points[0], v: endVel },
             endState: { r: a2.points[a2.points.length - 1], v: endVel },
             hostId: frameParentId, pathPoints: a2.points, pathTimes: a2.timesMs,
-            deltaV_ms: Math.abs(sol.deltaV2_ms), thrustDir: dirOf(sol.deltaV2_ms),
+            deltaV_ms: Math.abs(dv2_ms), thrustDir: thrustDir2,
             warnings: [], fuelUsed_kg: fuel2
         }
     ];
@@ -1027,9 +1063,9 @@ function buildOrbitChangePlan(
         segments,
         burns: [
             { id: 'oc-burn-1', time: startTime, position: a1.points[0], deltaV_ms: Math.abs(sol.deltaV1_ms), type: 'Departure' },
-            { id: 'oc-burn-2', time: coastEndMs, position: a2.points[0], deltaV_ms: Math.abs(sol.deltaV2_ms), type: 'Arrival' }
+            { id: 'oc-burn-2', time: coastEndMs, position: a2.points[0], deltaV_ms: Math.abs(dv2_ms), type: 'Arrival' }
         ],
-        totalDeltaV_ms: sol.totalDeltaV_ms,
+        totalDeltaV_ms: Math.abs(sol.deltaV1_ms) + Math.abs(dv2_ms),
         totalTime_days: totalSec / DAY_S,
         totalFuel_kg: fuel1 + fuel2,
         arrivalVelocity_ms: sol.speedEnd_ms,
@@ -1040,7 +1076,8 @@ function buildOrbitChangePlan(
         brakeRatio: params.brakeRatio,
         interceptSpeed_ms: 0,
         arrivalPlacement: params.arrivalPlacement,
-        tags: ['ORBIT CHANGE', rising ? 'RAISING ORBIT' : 'LOWERING ORBIT', 'HOHMANN'],
+        arrivalDock: params.arrivalDock,
+        tags: ['ORBIT CHANGE', rising ? 'RAISING ORBIT' : 'LOWERING ORBIT', 'HOHMANN', ...(reverseAtArrival ? ['REVERSED TO PROGRADE'] : [])],
         planType: 'Efficiency',
         name: rising ? 'Raise Orbit' : 'Lower Orbit',
         orbitChange: {
@@ -1193,6 +1230,8 @@ function calculateLambertPlan(
         initialState?: StateVector; 
         parkingOrbitRadius_au?: number; 
         arrivalPlacement?: string; 
+        arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5
+        arrivalProgradeSense?: number; // G53 phase 5: +1/-1 = park with the host's spin (a beanstalk host); 0 = keep the approach sense
         extraTags?: string[];
         aerobrake?: { allowed: boolean; limit_kms: number; }; 
     },
@@ -1250,7 +1289,8 @@ function calculateLambertPlan(
         targetMassKg,
         params.parkingOrbitRadius_au,
         params.brakeAtArrival,
-        params.interceptSpeed_ms
+        params.interceptSpeed_ms,
+        params.arrivalProgradeSense ?? 0
     );
     const desiredArrivalRelVec_au_s = desiredArrival.desiredRelVec_au_s;
     let dv2Req_ms = desiredArrival.dv2Required_ms;
@@ -1551,6 +1591,7 @@ function calculateLambertPlan(
         interceptSpeed_ms: params.interceptSpeed_ms,
         arrivalVelocity_ms: arrivalVelocity_ms,
         arrivalPlacement: params.arrivalPlacement,
+        arrivalDock: params.arrivalDock,
         tags: tags,
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
         aeroCirculariseDeltaV_ms: aeroCircularise_ms,
@@ -1577,6 +1618,8 @@ function calculateFastPlan(
         brakeRatio: number;
         interceptSpeed_ms: number;
         arrivalPlacement?: string;
+        arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' }; // G53 phase 5
+        arrivalProgradeSense?: number; // G53 phase 5: +1/-1 = park with the host's spin (a beanstalk host); 0 = keep the approach sense
         parkingOrbitRadius_au?: number;
         aerobrake?: { allowed: boolean; limit_kms: number; };
         initialDelay_days?: number;
@@ -1696,7 +1739,8 @@ function calculateFastPlan(
         targetMassKg,
         params.parkingOrbitRadius_au,
         params.brakeAtArrival,
-        params.interceptSpeed_ms
+        params.interceptSpeed_ms,
+        params.arrivalProgradeSense ?? 0
     );
     
     const desiredArrivalRelVec_au_s = desiredArrival.desiredRelVec_au_s;
@@ -1979,6 +2023,7 @@ function calculateFastPlan(
         arrivalVelocity_ms,
         distance_au: distanceAU(fullPath[0], fullPath[fullPath.length - 1]),
         arrivalPlacement: params.arrivalPlacement,
+        arrivalDock: params.arrivalDock,
         tags: [...tags],
         aerobrakingDeltaV_ms: aerobraking_dv_ms,
         aeroCirculariseDeltaV_ms: aeroCircularise_ms,

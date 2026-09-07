@@ -15,6 +15,10 @@ import { traceConstructIcon, constructIconShape } from '$lib/constructs/construc
 import { loadModelBytes, isFetchableFromPeer, modelKey } from '$lib/constructs/modelSource';
 import { parseModel as parseStoredModel } from '$lib/constructs/modelImport';
 import { buildDisplayModel } from '$lib/constructs/modelViewer';
+import { megaTypeDef, instanceMegaParams } from '$lib/constructs/megaTypes';
+import type { ExoticCapabilities } from '$lib/constructs/exotics';
+import { buildMegaGeometry, tetherLayout } from '$lib/constructs/megaGeometry';
+import { effectiveAttachment } from '$lib/constructs/docking';
 import { requestModel } from '$lib/constructs/modelFetch';
 import { shipBurnAt } from '$lib/constructs/shipBurn';
 // Highlight badges on the player's system view. The pill shape is the SAME object as the panel's tag
@@ -31,6 +35,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { filterRegistry } from './filters/FilterRegistry';
 import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
+import { warpUv, warpParamsOfUniforms } from './filters/warpPick';
 import { makeLensingShader, feedDiscEllipse, MAX_LENSES } from './lensingShader';
 import { expandRadius, compressRadius, toSceneAbsolute, toSceneRebased, shouldRebase, type RadialMap } from './floatingOrigin';
 import type { FilterParamValues } from './filters/schema';
@@ -39,11 +44,13 @@ import { gridLevels, gridLevelOpacity, GRID_LEVEL_PEAK, niceSeries, formatNice }
 import { gridFadeWindow, GRID_FADE_OFF } from '$lib/map/gridFade';
 import { buildLattice, ringEdges, spokeEdges, type GridEdge } from '$lib/map/gridGeometry';
 import { latticeFor } from '$lib/map/latticeGeometry';
-import { skyDirToScene, NAKED_EYE_LIMIT, type SkyStar, type SkyMode } from '$lib/map/skyStars';
+import { NAKED_EYE_LIMIT, skyDirToScene, type SkyStar, type SkyMode } from '$lib/map/skyStars';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
+import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
+import { shouldRender, IDLE_HEARTBEAT_MS } from '$lib/rendering/renderIdle';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { lightningStrength } from '$lib/physics/cloudDecks'; // shared feature model (WS1)
@@ -51,8 +58,14 @@ import {
   makeHotspotTexture, makePlumeTexture, makeGlowTexture,
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze, buildDeckStack,
   applyLimbDarkening, buildStarLook, updateStarLook, makeStarSurfaceTexture, type StarLookVisual, updateMagma, updatePlumes, updateLightning, buildLightning, type LightningVisual, accretionColor,
+  buildHorizonLook, isBlackHoleNode as isBlackHoleNodeShared, isFeedingBlackHole, BH_LENS_SHRINK, accretionDiscExtentKm,
   type EmissiveVisual
 } from './bodyFeatures'; // shared emissive builders (also used by the 3D gallery)
+// THE ONE body-look assembly (Stream K). Before it, the holo and the reference gallery each
+// inlined their own assembly over the same builders and had already drifted; a third surface
+// (the size comparison) would have been a third copy.
+import { buildBodyLook, type BodyLookTextures, type RenderStyle } from './bodyLook';
+export type { RenderStyle };
 import { debrisDensityFrac, debrisBandAlpha, DEBRIS_RING_COLOR, DEBRIS_BELT_COLOR } from '$lib/rendering/debris';
 // The ONE click-ladder ruleset, shared with the GM's 2D orrery (viewport/camera). We measure the
 // distances in SCENE units and it hands back a half-extent in the same space — so the holo (2D locked
@@ -65,7 +78,10 @@ import {
 } from '$lib/viewport/cameraRig';
 import { contextPeerIds, pairContextIds } from '$lib/system/barycentres';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
-import { perfCount, perfEvent, perfFrame, perfProvider } from '$lib/perfTrace';
+import { perfCount, perfEvent, perfFrame, perfProvider, onFrameRate } from '$lib/perfTrace';
+import {
+  newPerfGuard, perfGuardSample, perfGuardStandDown, PERF_SHED_MESSAGE, type PerfGuardState
+} from '$lib/rendering/perfGuard';
 import { oblatePolarFactor } from '$lib/rendering/bodyShape';
 import { rendersAsGiant } from '$lib/physics/makeup';
 import { deriveAurora, auroraEmitter, auroraEmitters } from '$lib/physics/aurora';
@@ -73,6 +89,7 @@ import { getVisibleNodeIds } from '$lib/system/visibleNodes';
 import { AU_KM, G } from '$lib/constants';
 import {
   GRID_RADIUS as SCALE_GRID_RADIUS, STAR_RADIUS as SCALE_STAR_RADIUS,
+  satelliteDrawDistance, moonSpread,
   dialBlend as scaleDialBlend, bodyRadiusScene as scaleBodyRadiusScene,
   starRadiusScene as scaleStarRadiusScene, shipLengthScene as scaleShipLengthScene,
   physicalRadiusAu,
@@ -88,7 +105,8 @@ const HOLO_TINT = 0x39c6ff; // cyan hologram chrome (skins wire in later)
 
 // Body render style: solid, or an 80s vector wireframe — glowing/flat points, see-through or with the
 // back hidden (an invisible depth-writing occluder culls the far-side edges).
-export type RenderStyle = 'filled' | 'lopoly-filled' | 'lopoly-lines' | 'wire-glow' | 'wire-flat' | 'wire-glow-occ' | 'wire-flat-occ';
+// RenderStyle now lives in bodyLook.ts (the assembly branches on it) and is re-exported above,
+// so every existing `import type { RenderStyle } from '$lib/holo/scene'` still resolves.
 // NB there is deliberately NO body-graphics knob here. "Body graphics" (photo / procedural disc / flat
 // shape) belongs to the INFO BLOCK — the per-body picture — and never to a system map. The scene once
 // carried a flat camera-facing-sprite path for it; it was cut so the map cannot draw one at all.
@@ -149,7 +167,22 @@ export interface HoloController {
   setRender(mode: RenderStyle): void; // filled spheres vs 80s vector wireframe (see-through / back-occluded)
   setUnlit(on: boolean): void; // flat lighting (no terminator) for the efficient "2D map" look
   setAuroras(on: boolean): void;
+  /** G82: the field bubbles. Rebuilds; composed with Low Power by the caller, as the auroras are. */
+  setMagnetospheres(on: boolean): void;
   setAtmospheres(on: boolean): void; // PERF: build cloud decks / limb glow / haze at all // show/hide the emissive polar aurora shells
+  /**
+   * Told once, if the frame-rate guard has had to take the atmospheres away to keep the map moving.
+   * The scene decides and acts; saying so is the view's job, because only the view knows where a
+   * notice belongs on screen. Never called again after it fires (perfGuard fires once, then stands
+   * down), and never at all if the user turns the atmospheres back on.
+   */
+  setPerfShedReporter(fn: ((message: string) => void) | null): void;
+  /** This machine is short of fill rate: fewer pixels, fewer frames, no animated extras. */
+  setLowPower(on: boolean): void;
+  /** Shift the projection centre sideways so a framed body clears an open info panel. */
+  setViewInset(px: number): void;
+  /** Per-ship acceleration and exhaust colour, keyed by construct id. */
+  setShipCapability(map: Record<string, { accelMs2: number; exhaustHex?: string }> | null): void;
   setFlatOverhead(on: boolean): void; // "2D map": tilt pinned top-down (+ pan enabled). Never a 3D view.
   setLockRotation(on: boolean): void; // fix the heading: no spin by drag, and follow a body by PANNING
   setBeltStyle(mode: BeltStyle): void; // belts/rings as rocks, or the orrery's flat band
@@ -237,6 +270,10 @@ interface BodyVisual {
   // The construct DECLARES it is on the surface (`placement: 'Surface'`), which outranks the geometric
   // detection below: a declaration is a statement, the radius comparison is only a guess about one.
   surfaceDeclared?: boolean;
+  /** Placed by the propagator's ATTACHMENT pass (a ladder structure on its anchor ray, or a
+   *  construct docked to one) - mirrors node data, and says: never surface-lock it here; its
+   *  spin comes with its position (RENDER-S51). */
+  attached?: boolean;
   // A construct sitting AT (or below) its parent's physical surface: glued to a fixed surface point
   // that co-rotates with the planet's spin, instead of following its own (Keplerian) orbit — so it
   // slides over the surface at the planet's rotation rate. dir0 is that point in the parent's local frame.
@@ -255,6 +292,24 @@ interface BodyVisual {
   shipPrev?: THREE.Vector3;  // last frame's position, for the motion direction
   shipFx?: ShipFx | null;    // the drive plume at the stern, driven by the sampled burn
   shipLen?: number;          // the model's long axis in scene units (dial-blended; feeds LOD + framing)
+  /** The tether's parts and the radii (AU, from the host's CENTRE) they are laid out to every
+   *  frame by `updateSurfaceConstructs` through the satellite law (RENDER-S50) - handles and
+   *  measurements, not switches. `anchorLatitudeDeg` is the shape's own physics (0 = equator). */
+  tetherParts?: { ribbon: THREE.Mesh; dock: THREE.Mesh; counterweight: THREE.Mesh; dockAu: number; topAu: number; anchorLatitudeDeg: number | null } | null;
+  /** This body's heliocentric distance this frame, AU - what the satellite law needs for its
+   *  compression factor when something is hung on this body. Stamped in updatePositions. */
+  helioAu?: number;
+  // G53: a ring, shell or swarm SURROUNDS its host - it is drawn CENTRED on the host at its own
+  // orbit's drawn radius, not as a lump sitting at a point on that orbit. Set by attachMegaVolume.
+  /** G58 N2: the record's DECLARED capabilities, stamped when the exotic shape attaches -
+   *  consumers read these (anchor, framing), never a per-behaviour flag (DATA-R33). Absent on
+   *  ordinary constructs AND on a mega that fell back to the hull (parity with the old flags:
+   *  a blob behaves like a blob). */
+  exotic?: ExoticCapabilities;
+  // G53: a space elevator. Its geometry is already built in the HOST's drawn currency and stood up
+  // by `updateSurfaceConstructs`, so the per-frame hull scaling must not touch it, and the
+  // surface-construct model suppression must not hide it - a tether is the one surface construct
+  // whose whole point is that it reaches off the ground.
   // WHICH END IS THE NOSE, as a sign on the model's +Z. The ModelRef convention says nose = +Z, but
   // which end of the long axis is the nose is UNKNOWABLE from geometry - it is an authoring choice,
   // and nothing rendered motion until v2.1.477, so a backwards guess had never been visible. The
@@ -410,7 +465,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // document's filter pass rather than being composited, unfiltered, on top of it (inbox A38).
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setClearColor(0x05070c, 1);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(pixelRatioFor(false));
   // GPU-side resource gauge for the perf trace: geometries/textures three still holds alive. If these
   // climb across setSystem cycles while the scene shows the same thing, something survives clearContent
   // — the leak detector for the rebuild-per-snapshot path. Read only when a [sse-perf] line prints.
@@ -483,15 +538,19 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
+  // RENDER ON DEMAND: any doubt draws. `change` is OrbitControls' own announcement that it moved the
+  // camera - a drag, a wheel, or damping still bleeding off after the hand has gone - so subscribing
+  // here catches every camera motion the user causes without this file having to know how.
+  controls.addEventListener('change', markDirty);
   controls.dampingFactor = 0.08;
   controls.enablePan = false;
   const DEFAULT_MIN_DIST = 0.05;
   controls.minDistance = DEFAULT_MIN_DIST; // overview floor; focusBody tightens it to the focused body's size
-  // A85 (user report, 2026-08-31): 6x the grid was not enough to take in a far binary companion,
-  // so the leash is 60x - the owner wants effectively no limit, and the honest ceiling is the sky
-  // itself: the starfield shell sits at radius 900 and the far plane at 2000, so 720 stays inside
-  // both. If this ever proves short the next step is a camera-following starfield, not a bigger
-  // number here.
+  // A91 (user report, 2026-09-02; shipped to prod as v3.0.259, whose comment says A85 - an id race,
+  // the board row is A91): 6x the grid could not take in a far binary companion, so the leash is
+  // 60x. The owner wants effectively no limit, and the honest ceiling is the sky itself: the
+  // starfield shell sits at radius 900 and the far plane at 2000, so 720 stays inside both. If this
+  // ever proves short the next step is a camera-following starfield, not a bigger number here.
   controls.maxDistance = GRID_RADIUS * 60;
   // The OPEN range: a 3D view may be flown under the ecliptic (RENDER-S14). These must match what
   // `applyPolarLimits` sets, because that only runs on a FRAMING CHANGE - so whatever is written
@@ -793,11 +852,52 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   // Aurora toggle: no rebuild — updateAuroras just stops modulating (opacity 0) when off.
   function setAuroras(on: boolean) { aurorasOn = on; }
+  function setMagnetospheres(on: boolean) {
+    if (on === magnetospheresOn) return;   // a re-assert is not a decision
+    magnetospheresOn = on;
+    rebuildContent('magnetospheres');
+  }
+  function setPerfShedReporter(fn: ((message: string) => void) | null) { onPerfShed = fn; }
+
   function setAtmospheres(on: boolean) {
-    if (on === atmospheresOn) return;
-    atmospheresOn = on;
+    if (on === atmospheresRequested) return;   // a re-assert of the same setting is not a decision
+    // A CHANGE is a person. If they are turning them back on after the guard took them away, they
+    // have answered the question and the guard is finished — it does not get to pounce again.
+    if (on && atmospheresShed) { atmospheresShed = false; perfGuardStandDown(perfGuard); }
+    atmospheresRequested = on;
+    applyAtmospheres();
+  }
+
+  /**
+   * LOW POWER: this machine is short of fill rate. Three things at once, because they are three
+   * halves of one answer and a caller should not have to know that.
+   *
+   * The PIXEL RATIO is the biggest lever in the file (a retina 2 is four times the fragments of 1)
+   * and `setSize` has to follow it or the drawing buffer keeps its old dimensions. The FRAME CAP is
+   * the cheapest (half the frames is half of everything). The DYNAMICS need a rebuild, because
+   * lightning, magma and plumes are built objects: freezing them would leave a permanent strike
+   * painted on the cloud tops, which is worse than the flash it replaced.
+   *
+   * The atmospheres and auroras are NOT touched here. They already answer to the preset through
+   * `setAtmospheres`/`setAuroras`, and `HoloView` composes the two switches before it calls those -
+   * one control silently swallowing another's job is the fault `presetTypes.ts` warns about.
+   */
+  function setLowPower(on: boolean) {
+    if (on === lowPowerOn) return;
+    lowPowerOn = on;
+    renderer.setPixelRatio(pixelRatioFor(on));
+    resize(viewW, viewH);
+    rebuildContent('lowPower');
+  }
+
+  /** The AND of the two facts, rebuilt only when the drawn answer actually moves. */
+  function applyAtmospheres() {
+    const next = atmospheresRequested && !atmospheresShed;
+    if (next === atmospheresOn) return;
+    atmospheresOn = next;
     rebuildContent('atmospheres');
   }
+
 
 
   // Belts & rings: tumbling rocks vs the GM orrery's flat band. Rebuilds.
@@ -890,6 +990,35 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return scaleBodyRadiusScene(radiusKmOf(node), systemLevel, scaleCtx());
   }
 
+  /**
+   * WHETHER A FIELD BUBBLE IS SHOWN AT ALL, and it is a question about the FRAME rather than the body.
+   *
+   * A bubble is drawn in the globe's own DRAWN radii, so the ratio a viewer sees - Earth's boundary at
+   * eleven times Earth - is exactly true, and that is the reference the owner asked for. It is true
+   * ABOUT THE PLANET and false about everything else in a system: a globe in a system view carries a
+   * screen-space legibility scale of some seventeen thousand, and multiplying that by a twenty-standoff
+   * tail put a purple cone across the whole solar system, additively white over every orbit. Seen on
+   * screen 2026-09-07, twice - once from the built radius and once, after that was capped, from the
+   * PER-FRAME scale a frame later in the pipeline.
+   *
+   * CAPPING IT INSTEAD WAS TRIED AND IS WORSE. Held to the body's Hill sphere - the rule the 2D
+   * overlay uses, where it is right - the bubble comes out 1,500 times SMALLER than the drawn globe
+   * and sits inside it, invisible at every zoom. The 2D view draws its bodies near true scale and can
+   * afford the honest answer; the 3D deliberately does not, so the honest answer there is to say WHEN
+   * the ratio is readable rather than to shrink it until it is not.
+   *
+   * So: shown for the body the view is LOOKING AT, and for its host and its fellow moons - which is
+   * the same neighbourhood the orrery's Hill overlay draws, and the frame in which everything on
+   * screen shares one inflation. Nothing at system level, where there is no such frame.
+   */
+  // EVERY MAGNETISED BODY, NOT JUST THE SELECTED ONE. Owner, 2026-09-07: *"we should see all
+  // magnetospheres if selected - not just the one planet - so we can see at a glance what is
+  // shielded"* - which is the right reading of what the overlay is FOR. An earlier cut showed only
+  // the focused body, and that was a workaround for a fault rather than a design: every bubble was
+  // being drawn hundreds of inflated radii long, so eight at once washed the system out. With the
+  // readable-standoff map (`readableStandoffRadii`) a bubble is a handful of drawn radii and they
+  // all coexist, which is what makes "at a glance" possible at all.
+
   // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
   // physical size (a star is still far larger than any planet, so it stays clearly visible).
   function starRadiusScene(node: any): number {
@@ -903,6 +1032,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const keepFocus = focusedId;
     if (currentSystem) setSystem(currentSystem, `style:${reason}`);
     if (keepFocus) focusBody(keepFocus);
+    markDirty();
   }
 
   // Fill light so the night side of a lit body isn't pure black; the star's own light does the
@@ -1291,6 +1421,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let bodyStyle: 'textured' | 'flat' | 'white' = 'textured'; // COLOUR selection: true-colour / class / white
   let unlit = false; // flat lighting (MeshBasic, no terminator) — the efficient "2D map" look
   let aurorasOn = true; // GM toggle: show the emissive polar aurora shells (updateAuroras hides when off)
+  // G82: the field bubbles that need aiming each frame. `upstreamId` is PUBLISHED by the physics -
+  // the star whose wind this was solved against, or the HOST for a moon inside its host's field - so
+  // the renderer never decides for itself what a bubble faces.
+  let fieldVisuals: { id: string; group: THREE.Group; upstreamId: string | null; noseScene: number }[] = [];
+  // G82: draw the field bubbles. DEFAULT OFF - it is an analytical overlay, not part of what a world
+  // looks like, and the owner asked for it off until it is switched on. It REBUILDS rather than
+  // hiding, for the same reason `atmospheresOn` does: what it costs is FILL RATE (two double-sided
+  // additive lathes per body, drawn over everything they cover), so not building them is the saving,
+  // and unlike the auroras there is no per-frame registry to hide them through.
+  let magnetospheresOn = false;
   // PERFORMANCE: build the atmospheric shells at all — cloud deck(s), limb glow, tholin haze. What
   // this buys is FILL RATE, not memory: the shells are small meshes with cheap textures, and their
   // cost is that each is alpha-blended over the body it wraps, so a cloudy world repaints the same
@@ -1302,7 +1442,74 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // sphere and forgotten, so a hide path would mean a registry for all three, built solely to serve a
   // switch that is set once from a preset and never scrubbed. Rebuilding is what `setRender` and
   // `setUnlit` next door already do for the same reason.
+  // ATMOSPHERES ARE TWO FACTS, NOT ONE, and keeping them apart is what stops the frame-rate guard
+  // fighting the user. `atmospheresRequested` is what the settings ASK FOR; `atmospheresShed` is the
+  // guard having taken them away to keep the map moving. The scene draws the AND of them.
+  //
+  // The host re-asserts every setting on any settings change, so a shed would be undone within the
+  // second if the request alone drove it. A request that CHANGES, on the other hand, is a person
+  // acting: turning them back on clears the shed and stands the guard down for good.
+  let atmospheresRequested = true;
+  let atmospheresShed = false;
   let atmospheresOn = true;
+  /** This machine is short of fill rate: fewer pixels, fewer frames, no animated extras. */
+  let lowPowerOn = false;
+  let lastFrameAt = 0;
+  /**
+   * SOMETHING MAY HAVE CHANGED SINCE THE LAST FRAME. Starts true (nothing has been drawn yet) and is
+   * set by anything that could possibly matter - see `renderIdle.ts` for why the bar is "possibly".
+   */
+  let dirty = true;
+  function markDirty() { dirty = true; }
+  /** The clock and the wall time at the last frame actually DRAWN, not the last one considered. */
+  let lastDrawnTimeMs = Number.NaN;
+  let lastDrawnAt = 0;
+  /**
+   * Does this scene hold anything that moves on its OWN clock rather than the simulation's? Counted
+   * once per build rather than asked per frame, because it only changes when the content does.
+   *
+   * The simulation's own motion - orbits, spins, belts - is NOT in here: all of it is a function of
+   * `timeMs`, so a paused clock freezes it and the loop's `clockAdvancing` test already covers it.
+   * What is in here is the decoration that would keep moving with the clock stopped dead.
+   */
+  let selfAnimating = false;
+  function recomputeSelfAnimating() {
+    // The scene keeps each kind in its own array, which is exactly the list to ask. An empty one is
+    // a promise that nothing of that kind is on screen - `setSystem` clears them all before a build.
+    selfAnimating =
+      auroraVisuals.length > 0 ||
+      magmaVisuals.length > 0 ||
+      lightningVisuals.length > 0 ||
+      plumeVisuals.length > 0 ||
+      cloudVisuals.length > 0 ||
+      // A corona only pulses above the activity floor `updateStarLook` itself uses, so a QUIET star
+      // is a still picture and does not hold the loop awake. Jets and shed shells flicker whatever
+      // the activity, and a flare star has flares to run.
+      (!lowPowerOn && starVisuals.some((s) => s.activity > 0.01 || !!s.jet || !!s.shell || s.flares.length > 0));
+  }
+  const perfGuard: PerfGuardState = newPerfGuard();
+  /** When the current content was built — the guard's warm-up is measured from here, not from load. */
+  let contentBuiltAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  /** Told when the guard sheds, so the view can say so. Set by the host. */
+  let onPerfShed: ((message: string) => void) | null = null;
+  /**
+   * THE FRAME-RATE GUARD. `perfTrace` has counted frames for the slow-spell log since 2026-08; this
+   * listens to the same measurement and `perfGuard` holds the judgement, so what is left here is the
+   * ACTION: take the atmospheres off, once, and say so. Owner, 2026-09-05: "can you dynamically
+   * determine FPS - and disable atmospheres if low (with a pop up warning)?"
+   */
+  const stopFrameRate = onFrameRate((fps) => {
+    // No `disposed` check on purpose: `disposed` is declared far below this line, and a callback
+    // that reaches forward into a binding it cannot see yet is RENDER-S45's shape. `dispose()`
+    // unsubscribes instead, which is both simpler and unconditional.
+    const age = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - contentBuiltAt;
+    if (perfGuardSample(perfGuard, fps, age) !== 'shed') return;
+    if (!atmospheresRequested) return;   // nothing to take away
+    atmospheresShed = true;
+    applyAtmospheres();
+    perfEvent('perf-shed', { fps: Math.round(fps), what: 'atmospheres' });
+    try { onPerfShed?.(PERF_SHED_MESSAGE); } catch { /* the host's problem */ }
+  });
   let beltStyle: BeltStyle = 'rocks'; // rocks vs the orrery's flat band
   let renderStyle: RenderStyle = 'filled'; // filled spheres vs 80s vector wireframe
   let bodySize = 1; // 1 = readable (chunky), 0 = true physical scale (tiny) — fine-tune body sizes
@@ -1318,6 +1525,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   const glowTexture = makeGlowTexture();
   const hotspotTexture = makeHotspotTexture(); // shared filled glow for volcanic vents
   const plumeTexture = makePlumeTexture(); // shared soft white puff for cryovolcanic plumes
+  // The three shared canvas textures, in the shape the one body-look assembly wants them.
+  const bodyLookTextures: BodyLookTextures = { glow: glowTexture, hotspot: hotspotTexture, plume: plumeTexture };
   const tmp = new THREE.Vector3();
   const proj = new THREE.Vector3();
 
@@ -2458,15 +2667,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     let su = (e.clientX - rect.left) / rect.width;
     let sv = 1 - (e.clientY - rect.top) / rect.height;
     if (filterPass) {
-      const U = filterPass.uniforms as any;
-      const warp = U.uCrtWarp?.value ?? 0, roll = U.uPictureRoll?.value ?? 0, skew = U.uSkew?.value ?? 0, t = U.time?.value ?? 0;
-      if (warp || roll || skew) {
-        const cx = su * 2 - 1, cy = sv * 2 - 1, d = cx * cx + cy * cy;
-        su = (cx * (1 + warp * d) + 1) / 2;
-        sv = (cy * (1 + warp * d) + 1) / 2;
-        sv = sv + t * roll; sv -= Math.floor(sv);      // fract(sv + time*roll)
-        su += (sv - 0.5) * skew;
-      }
+      // ONE forward map, shared with `filteredCanvas` and the size comparison - see `warpPick.ts`.
+      [su, sv] = warpUv(su, sv, warpParamsOfUniforms(filterPass.uniforms as any));
     }
     ndc.x = su * 2 - 1;
     ndc.y = sv * 2 - 1;
@@ -2546,6 +2748,22 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // half-extent into a perspective distance (fitting it into half the viewport's min dimension — exactly
   // what the 2D orrery's zoom does). The framing ANGLE is separate, so 2D (overhead) and 3D (tilted) get
   // identical framing from the same click.
+  /**
+   * HOW BIG IS THIS VISUAL ON SCREEN, in scene units — the ONE answer, because there were three and
+   * one of them was wrong (G53 phase 2). A body carries `radiusScene`; a construct carries `shipLen`
+   * and its `radiusScene` is set to a hard 0 rather than left undefined, which is what made
+   * `radiusScene ?? shipLen` silently yield 0 at the occlusion site while `||` and an explicit
+   * ternary elsewhere got it right. Two of three spellings agreed, which is exactly how this
+   * codebase's recurring duplication fault presents.
+   *
+   * NOT a half-extent: a construct answers its FULL length here, deliberately, and `frameDistance`
+   * relies on that (see its own comment). Callers wanting a half-extent halve it themselves.
+   */
+  function renderedSpanScene(b: BodyVisual | undefined): number {
+    if (!b) return 0;
+    return (b.isConstruct ? b.shipLen : b.radiusScene) || 0;
+  }
+
   function frameDistance(b: BodyVisual): number {
     // A modelled construct frames to its HULL (dial-blended length), so "zoom to the ship" comes
     // all the way down to it at true scale; a glyph-only construct keeps the radius-less patch.
@@ -2556,7 +2774,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // `shipLen` is set when the node is READ, not when the model attaches, so the shot is the same
     // whether or not the binary has landed yet (a glyph-only construct still has none, and keeps
     // the radius-less patch below).
-    const radius = b.isConstruct ? (b.shipLen ?? 0) : (b.radiusScene ?? 0);
+    const radius = renderedSpanScene(b);
     // Reach the FURTHEST context peer — for a barycentre member that is the partner star, so the pair
     // frames as a pair from either half (the barycentre point itself has no mesh here).
     let parentDist = 0;
@@ -2672,6 +2890,134 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * normalised to a UNIT long axis so `updateConstructs` can scale it exactly as it scales a real
    * hull (RENDER-S9's contract - the caller owns the transform).
    */
+  /**
+   * A MEGA-CONSTRUCT GETS ITS REAL SHAPE INSTEAD OF THE ELLIPSOID (G53 phase 3).
+   *
+   * Same contract as `attachHullVolume` in every other respect — normalised to a UNIT long axis
+   * (RENDER-S9), assigned to `shipModel` so it inherits the pixel LOD, framing, min-zoom and plume
+   * plumbing already built for hulls, and EMISSIVE because the scene's only real light is its star
+   * (RENDER-S13). ONLY THE SHAPE CHANGES: the drawn SIZE is `shipLenScene` exactly as before, so
+   * nothing about framing or the scale law moves — which is what makes this phase safe on its own.
+   *
+   * The geometry itself comes from `constructs/megaGeometry`, built at unit radius from the
+   * registry's pure `shape()` spec. A type with no generator of its own (the Death Star spheroid)
+   * returns null and falls through to the ellipsoid, which is the honest stand-in for it anyway.
+   *
+   * PHASE 3 SCOPE, stated so the gap is not mistaken for a bug: the spec is built from the
+   * registry's DEFAULT params, because phase 1 stores no per-instance parameters on a node and the
+   * knob editor is a later phase. A GM cannot yet tune a ring's width and watch it change.
+   */
+  // THE HOST ARRIVES AS A PARAMETER, not a lookup. The obvious `nodesById.get(node.parentId)` here
+  // was the whole of the drawn-as-a-blob fault: that map is LOCAL to setSystem's build (it does not
+  // exist in this function's scope at all), so the line threw ReferenceError on every attach, the
+  // catch below ate it, and every mega fell back to the ellipsoid - in the shipped bundle, where
+  // esbuild had stripped the types without checking them (svelte-check names the fault in one line;
+  // the green build never would - RENDER-S46). RENDER-S45's "ask nodesById" advice holds only
+  // INSIDE the build loop; a helper defined beside the loop must be handed what it needs.
+  function attachMegaVolume(v: BodyVisual, node: any, tint: string, host: any): boolean {
+    try {
+      const def = megaTypeDef(node?.megaType);
+      if (!def) return false;
+      const spec = def.shape(instanceMegaParams(node, def, host as any), host as any);
+      // Unit radius 0.5 => unit DIAMETER, the same long-axis convention the hull path uses.
+      // A TETHER COMES BACK AS UNIT PARTS AND KILOMETRE ALTITUDES. Nothing about its drawn size is
+      // decided here: `updateSurfaceConstructs` lays the parts out EVERY FRAME from the satellite
+      // law (RENDER-S50) - the same law that places a moon or a station - so the dock sits exactly
+      // where a station at geostationary sits and the ribbon can never overtake the Moon, at any
+      // body-size or compression setting. A build-time size cannot do that: the host's drawn radius,
+      // the screen floor and the dials all move after this line runs (RENDER-S48).
+      const dims = (node?.physical_parameters?.dimensionsM ?? []) as number[];
+      const authoredRibbonKm = Math.max(0, ...dims.map((d: number) => Math.abs(Number(d)) || 0)) / 1000;
+      const built = spec.family === 'tether'
+        ? buildMegaGeometry(spec, 0.5, {
+            // The instance's own authored ribbon length (its long axis) sets the counterweight
+            // height when it reaches past geo - the template authors 45,000 km on Earth.
+            ribbonLengthKm: authoredRibbonKm > 0 ? authoredRibbonKm : undefined
+          })
+        : buildMegaGeometry(spec, 0.5);
+      if (!built) return false;
+      const wire = renderStyle.startsWith('wire');
+      const col = new THREE.Color(tint);
+      const g = new THREE.Group();
+      if (built.mode === 'ribbon' && built.tether) {
+        // THE BEANSTALK, AS UNIT PARTS: a 1x1x1 box, a unit ball and a unit rock. The per-frame
+        // layout stretches the box from the host's DRAWN surface to the counterweight and parks the
+        // ball at geostationary, all along +Y; `updateSurfaceConstructs` stands the group on the
+        // anchor and turns it with the world. A MESH, not a line primitive: WebGL lines render one
+        // pixel wide whatever is asked, and one pixel over a lit limb is invisible - the width is a
+        // host fraction floored in screen pixels (megaGeometry TETHER_MIN_WIDTH_PX).
+        const ribbon = new THREE.Mesh(built.geometry, new THREE.MeshStandardMaterial({
+          color: col, emissive: col, emissiveIntensity: wire ? 1 : 0.55,
+          metalness: 0.15, roughness: 0.6, wireframe: wire, transparent: true, opacity: 0.95
+        }));
+        // THE GEO DOCK - the mast glyph's knob, in three dimensions: a small station ball at
+        // geostationary, below the rock, where the LO/MO/GO ladder tops out (design §7).
+        const dock = new THREE.Mesh(
+          new THREE.SphereGeometry(1, 10, 8),
+          new THREE.MeshStandardMaterial({
+            color: col, emissive: col, emissiveIntensity: 0.5,
+            metalness: 0.2, roughness: 0.5, wireframe: wire
+          })
+        );
+        // The counterweight is a CAPTURED ASTEROID (§5b.7), so it is drawn as a rock rather than
+        // a machined shape: a low-poly icosahedron reads as irregular at any size and costs
+        // nothing. Flat-shaded so its facets catch the light and it does not read as a ball.
+        const rock = new THREE.Mesh(
+          new THREE.IcosahedronGeometry(1, 0),
+          new THREE.MeshStandardMaterial({
+            color: col, emissive: col, emissiveIntensity: 0.35,
+            flatShading: true, metalness: 0.1, roughness: 0.9, wireframe: wire
+          })
+        );
+        g.add(ribbon); g.add(dock); g.add(rock);
+        g.visible = false;
+        contentGroup.add(g);
+        v.shipModel = g;
+        v.exotic = def.capabilities;
+        // Radii from the host's CENTRE, in AU - the satellite law's own currency (a moon's `off`).
+        const hostKm = radiusKmOf(host);
+        v.tetherParts = {
+          ribbon, dock, counterweight: rock,
+          dockAu: (hostKm + built.tether.dockKm) / AU_KM,
+          topAu: (hostKm + built.tether.topKm) / AU_KM,
+          anchorLatitudeDeg: built.tether.anchorLatitudeDeg
+        };
+        v.shipLen = 0;   // written by the layout, in scene units, every frame
+        v.shipPrev = v.mesh.position.clone();
+        return true;
+      }
+      if (built.mode === 'points') {
+        // A swarm is ONE object shaded appropriately, not a fleet of nodes (the owner's own
+        // simplification) - apexes only, evenly spread by the generator.
+        g.add(new THREE.Points(built.geometry, new THREE.PointsMaterial({
+          color: col, size: 0.02, sizeAttenuation: true, transparent: true, opacity: 0.95
+        })));
+      } else {
+        // DoubleSide: a ring is a real object seen from outside as well as from its inhabited face.
+        // The inward-facing lighting §5b.4b describes belongs with the interior surface work, not here.
+        g.add(new THREE.Mesh(built.geometry, new THREE.MeshStandardMaterial({
+          color: col, emissive: col, emissiveIntensity: wire ? 1 : 0.55,
+          side: THREE.DoubleSide, metalness: 0.15, roughness: 0.6,
+          wireframe: wire, transparent: true, opacity: wire ? 0.8 : 0.95
+        })));
+      }
+      const sceneLen = shipLenScene(node);
+      g.scale.setScalar(sceneLen);
+      g.visible = false;   // updateConstructs reveals it at the pixel LOD, exactly as for a hull
+      contentGroup.add(g);
+      v.shipModel = g;
+      v.shipLen = sceneLen;
+      // A sphere-section mega ENCLOSES its host: `updateConstructs` re-centres and re-sizes it every
+      // frame from the host's own drawn position, so it cannot disagree with its own orbit line.
+      v.exotic = def.capabilities;
+      v.shipPrev = v.mesh.position.clone();
+      return true;
+    } catch (e) {
+      console.warn('[mega] geometry build failed, falling back to the hull volume', e);
+      return false;
+    }
+  }
+
   function attachHullVolume(v: BodyVisual, node: any, tint: string) {
     try {
       const dims = node?.physical_parameters?.dimensionsM;
@@ -3001,7 +3347,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // gating on the focus set meant a ship in DEEP SPACE - not in the system's visible set at
       // all - stayed a cross however far you zoomed in. Legibility is a SCREEN-SIZE floor, never
       // a reason to withhold the render.
-      const showModel = !!b.shipModel && !b.surfaceLock;
+      // A surface construct's hull is suppressed (RENDER-S13's exception) - but a TETHER is the one
+      // surface construct whose entire point is that it leaves the ground, so it is exempt.
+      const showModel = !!b.shipModel && (!b.surfaceLock || b.exotic?.render3d.anchor === 'surface-stand');
       if (b.shipModel) {
         b.shipModel.visible = showModel;
         if (showModel) {
@@ -3090,7 +3438,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // zero. Once the clamp fired the result stopped tracking distance, so the hull was
           // drawn AU across and grew as you zoomed: the two faults reported together.
           const minWorld = minPx * f * distToCam;
-          const drawnLen = Math.max(b.shipLen ?? 0, minWorld);
+          let drawnLen = Math.max(b.shipLen ?? 0, minWorld);
+          if (b.exotic?.render3d.anchor === 'surface-stand') {
+            // Laid out in SCENE units, part by part, by `updateSurfaceConstructs` through the
+            // satellite law (RENDER-S50); the group itself stays at unit scale and `shipLen` is
+            // written there. The trailing setScalar below therefore receives 1, not a length -
+            // the fault this replaced scaled the ribbon by its own length (RENDER-S48).
+            drawnLen = 1;
+          } else if (b.exotic?.render3d.anchor === 'host-centred') {
+            // THE RING ENCLOSES ITS STAR (G53). Its drawn radius is the distance between its own
+            // projected position and its host's - which IS the drawn radius of its orbit, already
+            // computed, already compressed, already dial-correct. Taking it from there rather than
+            // re-projecting `a_AU` means the shell and its own orbit line cannot disagree at any
+            // compression or dial position. Geometry is built at radius 0.5, so scale = 2 x radius.
+            const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
+            if (hostV) {
+              const orbitRadius = b.mesh.position.distanceTo(hostV.mesh.position);
+              if (orbitRadius > 1e-9) drawnLen = orbitRadius * 2;
+            }
+          }
           b.shipModel.scale.setScalar(drawnLen);
           // THE PLUME LIGHT'S REACH FOLLOWS THE HULL THAT IS ACTUALLY DRAWN, not the authored one.
           // It was set once at build from `shipLenScene` - the ship's TRUE length - while this line
@@ -3100,7 +3466,14 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // meant to illuminate and lit a volume nobody could see. Expressed here in hull lengths of
           // the LIT object (the owner's ask), it means the same thing at every scale and dial stop.
           for (const rig of b.shipFx?.rigs ?? []) rig.light.distance = Math.max(1e-12, drawnLen * PLUME_REACH_HULLS);
-          b.shipModel.position.copy(b.mesh.position);
+          if (b.exotic?.render3d.anchor === 'surface-stand') {
+            // Positioned and oriented by updateSurfaceConstructs, which knows the live anchor.
+          } else if (b.exotic?.render3d.anchor === 'host-centred') {
+            const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
+            b.shipModel.position.copy(hostV ? hostV.mesh.position : b.mesh.position);
+          } else {
+            b.shipModel.position.copy(b.mesh.position);
+          }
           if (!b.shipPrev) b.shipPrev = b.mesh.position.clone();
           _shipDelta.copy(b.mesh.position).sub(b.shipPrev);
           const burn = shipBurnState(b.id);
@@ -3256,6 +3629,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const tilt = flatOverhead && lockRotate ? LOCK_POLAR : framingAngleRad;
 
     if (b) {
+      // G53 §Phase 3b(c): A RING, SHELL OR SWARM IS FRAMED LIKE A BELT — the structure AND its host
+      // in one shot. Owner, 2026-08-30: "utilise the BELT like selection for ring/sphere object
+      // framing. i.e. first click shows ring/belt and host object (usually the star)." The old shot
+      // flew to a point ON the ring with the star out of frame, because an annulus exotic's
+      // node position IS a point on its own hoop (RENDER-S44). So: target the HOST, and take the
+      // belt solver's distance from the ring's drawn radius — the same two numbers updateConstructs
+      // already recomputes every frame, so this shot cannot disagree with the drawn shell.
+      if (b.exotic?.framing === 'annulus') {
+        const hostV = b.parentId ? bodyById.get(b.parentId) : undefined;
+        if (hostV) {
+          const hostPos = v3(hostV.mesh.position);
+          const ringR = b.mesh.position.distanceTo(hostV.mesh.position);
+          return {
+            target: hostPos,
+            heading: headingDirection({ policy, tiltRad: tilt, subject: undefined, origin: hostPos }),
+            dist: beltDistance(ringR, GRID_RADIUS)
+          };
+        }
+      }
       const target = v3(b.mesh.position);
       // A SURFACE CONSTRUCT has no standalone shot worth taking: it is a point ON a world, its hull
       // is not drawn at all (`showModel` suppresses it under surfaceLock), and framing to its own
@@ -3292,7 +3684,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const hostFraming = !lockRotate && b.framingParentId ? bodyById.get(b.framingParentId) : undefined;
       const hostPos = hostFraming ? v3(hostFraming.mesh.position) : undefined;
       const sep = hostPos ? Math.hypot(target.x - hostPos.x, target.y - hostPos.y, target.z - hostPos.z) : 0;
-      const useHost = !!hostPos && !hostWouldOcclude({ dist, subjectRadius: b.radiusScene ?? b.shipLen ?? 0, hostSeparation: sep });
+      const useHost = !!hostPos && !hostWouldOcclude({ dist, subjectRadius: renderedSpanScene(b), hostSeparation: sep });
       return {
         target,
         heading: useHost
@@ -3475,7 +3867,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // Tighten the min-zoom to the focused body's rendered size so a tiny true-scale world can still be
     // brought up large on screen — the viewer doesn't need to know the size to get the right zoom.
     const bv = id ? bodies.find((x) => x.id === id) : undefined;
-    const rad = bv ? (bv.radiusScene || bv.shipLen || 0) : 0;
+    const rad = renderedSpanScene(bv);
     // THE ZOOM FLOOR IS THE SUBJECT'S SURFACE, PLUS A METRE (owner, 2026-08-06). You may fly right
     // down to a world or a hull and stop just off it; you may not fly through it.
     //
@@ -3655,6 +4047,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     starLights = [];
     starVisuals = [];
     auroraVisuals = [];
+    fieldVisuals = [];
     magmaVisuals = [];
     lightningVisuals = [];
     plumeVisuals = [];
@@ -3757,6 +4150,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let _lastSysHash: string | null = null;
   function setSystem(system: System | null, reason = 'unknown') {
     const t0 = performance.now();
+    // A fresh build is a fresh warm-up: the seconds after one are the slowest a scene ever is, and
+    // the guard must not read them as how the map performs.
+    contentBuiltAt = t0;
     const sameRef = !!system && system === currentSystem;
     const sameId = !!system && !!currentSystem && (system as any).id === (currentSystem as any).id;
     perfCount(sameId ? 'holo.setSystem.same' : 'holo.setSystem.new');
@@ -3980,8 +4376,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // Drawn far smaller than the lens's shadow mask — the lens magnifies the black it finds at
           // the centre, so a full-size sphere would smear black well past the photon ring and eat the
           // starfield. The shader's horizon mask (sized from radiusScene) is the real shadow.
-          const eh = new THREE.Mesh(new THREE.SphereGeometry(starR * 0.55, 32, 24), new THREE.MeshBasicMaterial({ color: 0x000000 }));
-          mesh = eh;
+          // ONE horizon builder, shared with the reference gallery and the size comparison. The
+          // shrink factor travels WITH it and carries its own note: it exists because the lensing
+          // pass magnifies the black, and a surface without that pass must not apply it. No photon
+          // ring here — the shader draws the real one.
+          const eh = buildHorizonLook(starR * BH_LENS_SHRINK);
+          mesh = eh.mesh;
           const edd = Math.max(0, Math.min(1, (node as any).accretionEddington ?? (feeding ? 0.5 : 0)));
           // A black hole is BLACK — no big glow ball (that read as a "crystal ball"). The look is the
           // temperature-graded accretion disc + the gravitational-lensing pass wrapping it + a small
@@ -3990,8 +4390,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             // Auto-generate a glowing, temperature-graded ACCRETION DISC (real BH systems carry no
             // explicit ring node). It's a normal RingVisual so updateRings spins it + tracks the hole;
             // the lensing pass then wraps its far side over/under the shadow (the Interstellar look).
-            const rkm = node.radiusKm || 30;
-            const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: rkm * 1.6, radiusOuterKm: rkm * (5 + edd * 4) };
+            // ONE extent, shared with the size comparison (`accretionDiscExtentKm`) — the numbers
+            // used to be this expression, inline, and nothing else could reach them.
+            const ext = accretionDiscExtentKm(node) ?? { innerKm: (node.radiusKm || 30) * 1.6, outerKm: (node.radiusKm || 30) * 5 };
+            const discNode = { id: node.id + '-accretion', massKg: 1e24, radiusInnerKm: ext.innerKm, radiusOuterKm: ext.outerKm };
             const disc = buildPlanetRing(discNode as any, node, starR, Math.max(beltDetail, 0.7), timeMs);
             if (disc) {
               contentGroup.add(disc.pivot);
@@ -4000,31 +4402,23 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
             }
           }
         } else {
-          // Photosphere: an emissive (unlit) textured sphere — granulation + sunspots (spot count
-          // scales with the star's flare activity), so you see surface detail and it spins. Under the
-          // lo-poly render the star is faceted too (fewer segments), so it isn't left out of the look.
+          // Photosphere + corona + flares + outflow decorations: the ONE shared body-look assembly
+          // (bodyLook.buildBodyLook), which the reference gallery and the size-comparison view build
+          // their stars with too. Under the lo-poly render the star is faceted (fewer segments, no
+          // limb darkening), so it isn't left out of the look. Flares only for stars whose magnetic
+          // activity earns them: a quiet sun adds nothing to the frame. The outflow decorations
+          // (jets, shed shell) are read from the node's tags INSIDE the assembly (G76) - this caller
+          // passes nothing and a jetted star is jetted here as it is on the map.
           const isLopolyStar = renderStyle === 'lopoly-filled' || renderStyle === 'lopoly-lines';
-          // NB: no flatShading — a star is emissive/unlit (MeshBasicMaterial ignores normals and warns
-          // about the property). The faceted look comes from the reduced segment count below.
-          const starMat = new THREE.MeshBasicMaterial();
-          const st = new THREE.CanvasTexture(makeStarSurfaceTexture(colorHex, activity, node.id));
-          st.colorSpace = THREE.SRGBColorSpace;
-          starMat.map = st;
-          // Limb darkening — the cue that makes a star read as a sphere. Skipped on the lo-poly
-          // styles, where flat facets are the whole point.
-          if (!isLopolyStar) applyLimbDarkening(starMat, 0.55);
-          const sphere = new THREE.Mesh(new THREE.SphereGeometry(starR, isLopolyStar ? 16 : 32, isLopolyStar ? 10 : 24), starMat);
+          const look = buildBodyLook(node, starR, {
+            textures: bodyLookTextures, renderStyle, colorHex
+          });
+          const sphere = look.mesh;
           mesh = sphere;
-          // Corona + flares: the SHARED star look (bodyFeatures.buildStarLook), parented to the sphere
-          // so it tracks position; the corona billboard ignores the sphere's spin, the flares sit on
-          // its limb. Flares only for stars whose magnetic activity earns them (a quiet sun adds
-          // nothing to the frame), and only outside the lo-poly styles. The outflow decorations
-          // (jets, shed shell) are NOT passed here: the holo's own star look is out of G26's scope.
-          let fseed = 0; for (const ch of String(node.id)) fseed = (fseed + ch.charCodeAt(0) * 13) % 2147483647;
-          const look = buildStarLook(starR, colorHex, activity, fseed || 1, glowTexture, { flares: !isLopolyStar && flaresVisibly(node.tags) });
-          sphere.add(look.group);
-          starVisuals.push(look);
-          // Lo-poly LINES: glowing vector edges + vertices over the faceted star, matching the planets.
+          starVisuals.push(look.star!);
+          // Lo-poly LINES: glowing vector edges + vertices over the faceted star, matching the
+          // planets. Kept here rather than in the assembly because the dot size is a binding of the
+          // size law against the live dial (RENDER-S11) and the assembly must not restate it.
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
@@ -4087,128 +4481,54 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           }
         } else {
           // Filled family: 'filled' = smooth sphere; 'lopoly-*' = a chunky low-poly globe (flat-shaded
-          // facets). Unlit mode ('2D map') stays MeshBasic; lo-poly is always lit so the facets read.
-          const useUnlit = unlit && !isLopoly;
-          const mat = useUnlit ? new THREE.MeshBasicMaterial() : new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0, flatShading: isLopoly });
-          if (bodyStyle === 'white') {
-            mat.color.set(0xffffff);
-          } else if (bodyStyle === 'flat') {
-            mat.color.set(selHex);
-          } else {
-            const texCanvas = getPlanetTextureEquirect(node); // true-colour procedural surface
-            if (texCanvas) {
-              const t = new THREE.CanvasTexture(texCanvas);
-              t.colorSpace = THREE.SRGBColorSpace;
-              t.wrapS = THREE.RepeatWrapping; // wrap the longitude seam so u=0/u=1 blend (no vertical seam line)
-              t.anisotropy = renderer.capabilities.getMaxAnisotropy(); // keep surface detail crisp at the limb
-              mat.map = t;
-            } else {
-              mat.color.set(colorHex);
+          // facets). Unlit mode ('2D map') stays MeshBasic and takes no emissive features at all —
+          // there is no lighting to darken and no night side to glow against.
+          //
+          // EVERYTHING BELOW THE SPHERE IS THE ONE SHARED ASSEMBLY (bodyLook.buildBodyLook): the
+          // procedural surface, the thermal emission map, the aurora shells, the volcanic vents and
+          // cryo plumes, the storm flashes, the self-luminous halo, the limb glow, the cloud decks
+          // and the tholin haze. The reference gallery and the size-comparison view call it with
+          // their own options, so the three surfaces cannot grow different features.
+          const look = buildBodyLook(node, radius, {
+            textures: bodyLookTextures, renderStyle, bodyStyle, unlit, atmospheres: atmospheresOn,
+            dynamics: !lowPowerOn,
+            colorHex, flatColorHex: selHex, anisotropy: renderer.capabilities.getMaxAnisotropy(),
+            // The holo derives auroras from live physics; the gallery reads the published tag. Both
+            // spellings are kept until [[B117]] decides which is the one — not folded silently here.
+            aurora: 'physics',
+            magnetospheres: magnetospheresOn,
+            // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the
+            // shader). Edge is HARD by default; an atmosphere on the moon OR its shadowing planet
+            // softens it. Unlit bodies have no lighting to darken, so the hook never fires there.
+            onLitMaterial: (m) => {
+              if (systemLevel) return;
+              const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
+              shadow = applyEclipseShadow(m, soft ? 0.4 : 0.03);
             }
-            // Thermal EMISSION: a super-hot / molten surface glows of its own heat (the molten eyeball's
-            // substellar hemisphere, or a uniformly incandescent lava world). Self-lit emissiveMap so it
-            // shows against space and on the night side.
-            if (!useUnlit) {
-              const emCanvas = getEmissiveEquirect(node);
-              if (emCanvas) {
-                const et = new THREE.CanvasTexture(emCanvas);
-                et.colorSpace = THREE.SRGBColorSpace;
-                et.anisotropy = renderer.capabilities.getMaxAnisotropy();
-                const sm = mat as THREE.MeshStandardMaterial;
-                sm.emissiveMap = et; sm.emissive = new THREE.Color(0xffffff); sm.emissiveIntensity = 1.15;
-              }
-            }
-          }
-          // Moons can be eclipse-shadowed by their parent planet (analytic ray-sphere in the shader).
-          // Edge is HARD by default; an atmosphere on the moon OR its shadowing planet softens it.
-          // Unlit bodies have no lighting to darken, so eclipses are skipped there.
-          if (!systemLevel && !unlit) {
-            const soft = softsShadow(node) || softsShadow(nodesById.get(node.parentId));
-            shadow = applyEclipseShadow(mat as THREE.MeshStandardMaterial, soft ? 0.4 : 0.03);
-          }
-          const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, isLopoly ? 16 : 32, isLopoly ? 10 : 24), mat);
-          if (polF < 0.999) sphere.scale.set(1, polF, 1);
+          });
+          const sphere = look.mesh;
           mesh = sphere;
-          // Lo-poly LINES: keep the filled facets but add glowing edge lines + vertex points on top.
+          auroraVisuals.push(...look.aurora);
+          magmaVisuals.push(...look.magma);
+          plumeVisuals.push(...look.plumes);
+          lightningVisuals.push(...look.lightning);
+          cloudVisuals.push(...look.clouds);
+          // G82: THE FIELD BUBBLE HANGS OFF THE GLOBE BUT DOES NOT TURN WITH IT. Parenting it here
+          // is right for POSITION and for SCALE - it must ride the body and grow with its drawn
+          // radius, exactly as the 2D overlay is drawn in drawn-disc radii - and wrong for
+          // ORIENTATION, because a magnetopause is aimed by the wind and not by the planet's spin.
+          // `updateFieldAim` undoes the globe's rotation each frame and points the nose upstream.
+          if (look.field) {
+            sphere.add(look.field.group);
+            fieldVisuals.push({ id: node.id, group: look.field.group, upstreamId: node.magnetosphere?.upstreamId ?? null, noseScene: look.field.noseScene * radius });
+          }
+          // Lo-poly LINES: the glowing edge/vertex overlay. Kept here rather than in the assembly
+          // because the dot size is a binding of the size law against the live dial (RENDER-S11).
           if (renderStyle === 'lopoly-lines') {
             const lineMat = new THREE.LineBasicMaterial({ color: selHex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.LineSegments(new THREE.WireframeGeometry(sphere.geometry), lineMat));
             const dotMat = new THREE.PointsMaterial({ color: selHex, size: wireDotSize(radius), sizeAttenuation: true, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
             sphere.add(new THREE.Points(sphere.geometry, dotMat));
-          }
-          // Aurora: an additive emissive shell glowing at the (tilted) magnetic poles, flickering over
-          // time. deriveAurora needs air + a field + ionising flux — returns 0 otherwise, so most bodies
-          // add nothing. Parented to the sphere, so it tracks position + axial tilt (spin is harmless —
-          // the ovals are polar rings). Skipped in the flat/unlit "2D map" look.
-          if (!unlit) {
-            const aur = deriveAurora(node as any);
-            if (aur.strength > 0.06) {
-              // One additive shell per emitting gas, stacked at its physical ALTITUDE (purple N₂ fringe
-              // low, green O main, crimson O crown high) and fading independently — so at any moment the
-              // sky shows one colour or several, never a merged white.
-              const ems = auroraEmitters(node as any);
-              let seed = 0; for (const ch of String(node.id)) seed = (seed + ch.charCodeAt(0)) % 997;
-              ems.forEach((e, i) => {
-                const built = buildAuroraShell(radius, e.hex, aur.strength, e.weight / ems[0].weight, e.altitude);
-                sphere.add(built.shell);
-                auroraVisuals.push({ mat: built.mat, base: built.base, seed: (seed / 997 + i * 0.31) % 1 });
-              });
-            }
-            // Emissive surface activity (3D-only wins) from the shared appearance model. Volcanism =
-            // additive hot-spot vents that flicker like heat (lava world = many white-hot; hotspots = a
-            // few orange). Cryovolcanism = icy plume jets venting from a pole, thrown far on a low-gravity
-            // world (Enceladus). Both parented to the sphere, so they turn with the surface.
-            const appear = deriveAppearance(node as any);
-            if (appear.magma) {
-              const built = buildMagmaVents(radius, appear.magma, String(node.id), hotspotTexture);
-              sphere.add(built.group);
-              magmaVisuals.push(...built.visuals);
-            }
-            if (appear.cryoPlumes) {
-              const built = buildCryoPlumes(radius, appear.cryoPlumes, String(node.id), plumeTexture);
-              sphere.add(built.group);
-              plumeVisuals.push(...built.visuals);
-            }
-            // Storms firing inside the cloud deck — additive, so they read on the night side the way
-            // they actually do from orbit. Needs a deck to fire inside: the tag says a world has the
-            // convection for lightning, the clouds are what it lights up.
-            const storms = lightningStrength((node as any).tags);
-            if (storms > 0 && (appear.clouds || appear.cloudDecks.length)) {
-              const deckHex = appear.cloudDecks.at(-1)?.colorHex ?? appear.clouds?.colorHex ?? '#e8eef8';
-              let lseed = 5; for (const ch of String(node.id)) lseed = (lseed * 31 + ch.charCodeAt(0)) & 0xffffff;
-              const built = buildLightning(radius, deckHex, storms, lseed || 1, glowTexture);
-              sphere.add(built.group);
-              lightningVisuals.push(...built.visuals);
-            }
-            // Self-luminous glow (a brown dwarf / hot young sub-stellar body radiating its own heat):
-            // a dim, cool corona-like halo coloured by the emission temperature (deep red → amber), like
-            // a failed star. Reuses the corona glow sprite at a modest scale — a steady dim glow (not a
-            // blazing stellar corona).
-            if (appear.selfLumGlow) {
-              sphere.add(buildSelfLumGlow(radius, appear.selfLumGlow.colorHex, glowTexture));
-            }
-            // Atmosphere limb-glow: a thin Fresnel halo hugging the silhouette, coloured by the air/haze.
-            if (appear.atmGlow && atmospheresOn) {
-              sphere.add(buildAtmoGlow(radius, appear.atmGlow.colorHex, appear.atmGlow.strength));
-            }
-            // Cloud deck: a separate translucent shell above the surface that DRIFTS on its own — a
-            // patchy deck on Earth-likes, an opaque haze veil on Venus-likes. Parented to the sphere so
-            // it tracks position/tilt; its extra local spin (updated each frame) makes it float.
-            if (appear.clouds && atmospheresOn) {
-              let cseed = 0; for (const ch of String(node.id)) cseed = (cseed + ch.charCodeAt(0) * 7) % 2147483647;
-              // A world with a derived deck STACK gets one shell per deck (Jupiter's ammonia over
-              // its ammonium-hydrosulphide); a giant, or anything with no stack, keeps the single
-              // baked deck — a giant's clouds ARE its surface, so floating shells read wrong on it.
-              const cl = (!appear.clouds.giant && appear.cloudDecks.length > 1)
-                ? buildDeckStack(radius, appear.cloudDecks, cseed || 1)
-                : buildCloudDeck(radius, appear.clouds.colorHex, appear.clouds.colorHex2, appear.clouds.coverage, cseed || 1, appear.clouds.giant);
-              sphere.add(cl.group);
-              cloudVisuals.push(...cl.layers);
-            }
-            // Titan's smog is a HIGH haze — outside the cloud shells, not baked into the surface.
-            if (appear.tholin?.atmospheric && atmospheresOn) {
-              sphere.add(buildTholinHaze(radius, appear.tholin.colorHex, appear.tholin.strength));
-            }
           }
         }
       }
@@ -4234,10 +4554,16 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // Same test the document builder uses (`constructsOf`, systemTopology.ts) so the two cannot
       // disagree about which constructs are on the ground.
       const surfaceDeclared = isConstruct && String((node as any).placement ?? '').toLowerCase() === 'surface';
-      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1 });
+      bodies.push({ id: node.id, name: String(node.name ?? ''), mesh, label, parentId: node.parentId, framingParentId: (node as any).ui_parentId || node.parentId || null, satellite: !systemLevel && !inTransit, radiusScene, physRadiusAu, surfaceDeclared, spinPeriodSec, tiltQuat, isConstruct, occluderId: !systemLevel ? node.parentId : null, shadow, isBH: isBlackHoleNode(node), tidallyLocked: !isConstruct && !!(node as any).tidallyLocked, isStar, baseScale: mesh.scale.clone(), screenK: 1, attached: !!effectiveAttachment(node) });
       // G3: a construct carrying a 3D model loads it in the background; the sprite stands until
       // (and unless) it lands, and stands permanently on a machine that lacks the binary.
-      if (isConstruct && ((node as any).model?.hash || (node as any).model?.url)) {
+      // G53: ONLY A SKINNABLE MEGA MAY WEAR AN UPLOADED MODEL. A spheroid is a hull and an artist may
+      // replace it; a ring or shell is a WORLD whose radius, band and coverage the engine publishes
+      // as figures, so a hand-modelled stand-in would quietly contradict them. The registry says
+      // which is which (`skinnable`), so this is data rather than a list of names here.
+      const megaDefFor = megaTypeDef((node as any).megaType);
+      const modelAllowed = !megaDefFor || megaDefFor.skinnable === true;
+      if (isConstruct && modelAllowed && ((node as any).model?.hash || (node as any).model?.url)) {
         const sceneLen = shipLenScene(node);
         // The hull's LENGTH is known from the authored dimensions the moment the node is read, so
         // record it NOW rather than when the binary lands. Framing and the min-zoom both used to
@@ -4262,7 +4588,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // It is assigned to `shipModel`, so it inherits the pixel LOD, the framing, the min-zoom and
         // the drive plume already built for hulls. That is the point: it removes the
         // modelled-vs-glyph branch rather than adding a third case.
-        attachHullVolume(bodies[bodies.length - 1], node, (node as any).icon_color || '#ffd24d');
+        // G53 phase 3: a mega draws its own shape; everything else keeps the ellipsoid.
+        const mv = bodies[bodies.length - 1];
+        const tint = (node as any).icon_color || '#ffd24d';
+        if (!attachMegaVolume(mv, node, tint, node.parentId ? nodesById.get(node.parentId) : undefined)) {
+          // RENDER-S7: never silent on the path that decides whether a thing renders. A mega that
+          // falls back to the ellipsoid says so ONCE, with the reason, so "it drew a blob" arrives
+          // as a diagnosis rather than a screenshot to argue about.
+          if ((node as any).megaType && !_megaFellBack.has(node.id)) {
+            _megaFellBack.add(node.id);
+            console.warn('[mega] fell back to the ellipsoid for', node.name,
+              '- megaType:', JSON.stringify((node as any).megaType),
+              '- known to the registry:', !!megaTypeDef((node as any).megaType));
+          }
+          attachHullVolume(mv, node, tint);
+        }
       }
     }
     // Parents must be POSITIONED before their satellites each frame (satellites anchor to the parent's
@@ -4371,6 +4711,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     for (const b of bodies) {
       const p = positions.get(b.id);
       if (!p) continue;
+      b.helioAu = Math.hypot(p.x, p.y, p.z);   // the satellite law's compression input (RENDER-S50)
       // Satellites AND barycentre members are placed relative to their (compressed) parent point —
       // members are system-level (not satellites) but still need partner clearance around the bary.
       const coRad = baryCoR.get(b.id) ?? 0;
@@ -4407,8 +4748,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         // branch too (also gated on `off`), so it was never positioned at all and simply rendered at the
         // parent's centre, motionless. `physRadiusAu` was never the problem — it has a 3000 km fallback
         // and was always present.
-        const declaredOnSurface = !!(b.isConstruct && b.surfaceDeclared && pv);
-        if (declaredOnSurface || (b.isConstruct && off > 1e-12 && pv && pv.physRadiusAu && off <= pv.physRadiusAu * 1.03)) {
+        // An ATTACHED construct is already placed - spun, tilted and all - by the propagator
+        // (RENDER-S51); locking it here would freeze a bearing and then turn it a second time.
+        const declaredOnSurface = !!(b.isConstruct && !b.attached && b.surfaceDeclared && pv);
+        if (declaredOnSurface || (b.isConstruct && !b.attached && off > 1e-12 && pv && pv.physRadiusAu && off <= pv.physRadiusAu * 1.03)) {
           if (!b.surfaceLock) {
             // With a real offset the authored direction IS the landing site. With none, pick a stable
             // point from the construct's id — deterministic so it does not wander between reloads, and
@@ -4423,24 +4766,26 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
         if (off > 1e-12) {
           const parentR = Math.hypot(parent.x, parent.y, parent.z);
           const parentRad = pv?.radiusScene ?? 0;
-          const spreadDist = moonSpread(off, compressScalar(parentR), parentRad); // just outside the parent, ramped by true distance
-          const trueDist = off * (compressScalar(Math.hypot(p.x, p.y, p.z)) / Math.max(1e-12, Math.hypot(p.x, p.y, p.z))); // offset under the radial map
-          // Globe-relative clearance: a satellite must always clear the parent's RENDERED surface, so at
-          // readable body sizes (big globe) moons/constructs are pushed just outside it, staggered by true
-          // orbital order — while at true scale (tiny globe) the floor is tiny and real positions stand.
+          const pR = Math.hypot(p.x, p.y, p.z);
+          const kHelio = compressScalar(pR) / Math.max(1e-12, pR);   // offset under the radial map
+          const localScale = compressScalar(parentR);
           const moonRad = b.radiusScene ?? 0;
-          // Barycentre member: clear the PARTNER's globe (the bary point itself has no surface). Both
-          // members push outward along mutually opposite offsets, so 0.62×(sum of radii) each side
-          // keeps the pair separated by ≥1.24× the sum — Charon stays outside Pluto in readable mode.
-          // (Their heliocentric orbit line can sit a body-width off in that regime — same trade the
-          // moon clearance makes; at true scale the radii are tiny and physics stands.)
-          const clearance = coRad > 0
-            ? (moonRad + coRad) * 0.62
-            : parentRad * 1.12 + moonRad + parentRad * 0.4 * Math.log10(1 + off / 0.0006);
-          const blend = coRad > 0 && !b.satellite
-            ? trueDist // major bodies never take the moon fan-out — just physics + the clearance floor
-            : trueDist * (1 - compression) + spreadDist * compression;
-          const dist = Math.max(clearance, blend);
+          let dist: number;
+          if (coRad > 0) {
+            // Barycentre member: clear the PARTNER's globe (the bary point itself has no surface). Both
+            // members push outward along mutually opposite offsets, so 0.62x(sum of radii) each side
+            // keeps the pair separated by >=1.24x the sum - Charon stays outside Pluto in readable mode.
+            // (Their heliocentric orbit line can sit a body-width off in that regime - same trade the
+            // moon clearance makes; at true scale the radii are tiny and physics stands.) Major bodies
+            // never take the moon fan-out - just physics + the clearance floor.
+            const trueDist = off * kHelio;
+            const blend = !b.satellite ? trueDist : trueDist * (1 - compression) + moonSpread(off, localScale, parentRad) * compression;
+            dist = Math.max((moonRad + coRad) * 0.62, blend);
+          } else {
+            // THE SATELLITE LAW (rendering/scaleLaw.ts) - the one function a moon, its orbit ring and a
+            // structure hung on the planet all ask, so they agree by construction (RENDER-S50).
+            dist = satelliteDrawDistance(off, kHelio, localScale, parentRad, moonRad, compression);
+          }
           const k = dist / off;
           // axis-map the raw offset (x, z->y, y->z) and add to the compressed parent position
           b.mesh.position.set(tmpParent.x + ox * k, tmpParent.y + oz * k, tmpParent.z + oy * k);
@@ -4634,14 +4979,24 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const dist = camera.position.distanceTo(labelWorld);
       // A construct has no `radiusScene`; `shipLen` is what the framing solver uses in its place
       // (see the focus ladder), so use the same one rather than leaving ships with no clearance.
-      const rScene = (b.isConstruct ? b.shipLen : b.radiusScene) ?? 0;
-      const bodyPxR = (rScene * (b.screenK ?? 1)) / Math.max(1e-9, pxToScale * dist);
+      const rScene = renderedSpanScene(b);
+      let bodyPxR = (rScene * (b.screenK ?? 1)) / Math.max(1e-9, pxToScale * dist);
+      // G58 labels seam: an exotic whose structure extends beyond its marker (a ring's whole hoop,
+      // a tether's full height) must NOT clear its SPAN - that pushed "Ringworld" a ring-radius
+      // into empty sky and hung "Space Elevator" near the counterweight instead of the anchor
+      // (owner, 2026-08-30/31). The label belongs at the NODE - the marker point a GM clicks - so
+      // clear the construct marker instead. A 'node'-anchored exotic (Death Star) is a hull like
+      // any ship: its span IS its marker, and the ordinary clearance stands.
+      if (b.exotic && b.exotic.render3d.anchor !== 'node') bodyPxR = CONSTRUCT_PX_FOCUS / 2;
       const hPx = Math.max(1e-6, labelSizePx * ls.heightRatio);
       ls.sprite.center.set(0.5, -(0.25 * ls.nameFraction + bodyPxR / hPx));
     }
   }
 
   function setTime(ms: number) {
+    // A HOST MAY CALL THIS EVERY FRAME WITH THE SAME NUMBER while the clock is paused, which is the
+    // whole case this feature exists for - so the comparison, not the call, is what counts as motion.
+    if (ms !== timeMs) markDirty();
     timeMs = ms;
     updatePositions();
   }
@@ -4720,11 +5075,54 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return out.set(cl * Math.sin(lon), Math.sin(lat), cl * Math.cos(lon));
   }
 
+  const _tetherUp = new THREE.Vector3(0, 1, 0);   // the axis megaGeometry builds a tether along
+  const _megaFellBack = new Set<string>();       // warn once per node, not once per rebuild
+
   function updateSurfaceConstructs() {
     for (const b of bodies) {
-      if (!b.surfaceLock || !b.parentId) continue;
+      if (!b.parentId) continue;
       const pv = bodyById.get(b.parentId);
       if (!pv) continue;
+      const tp = b.tetherParts;
+      if (tp && b.shipModel) {
+        // G53: A TETHER STANDS UP FROM ITS ANCHOR, AND THE ANCHOR COMES FROM THE PROPAGATOR
+        // (docking.ts, RENDER-S51). The node's own position is host + anchor, spun and tilted by
+        // the same arithmetic every view uses, so the ribbon points where the node IS and a ship
+        // docked on it is on the ribbon by construction. No renderer-side lock, no second spin.
+        _surfDir.copy(b.mesh.position).sub(pv.mesh.position);
+        if (_surfDir.lengthSq() < 1e-18) continue;
+        _surfDir.normalize();
+        b.shipModel.position.copy(pv.mesh.position);
+        b.shipModel.quaternion.setFromUnitVectors(_tetherUp, _surfDir);
+        // THE LAYOUT, EVERY FRAME, FROM THE SATELLITE LAW (RENDER-S50). The base is where the host's
+        // surface is DRAWN (its rendered radius times the true-scale floor's screenK); the dock and
+        // the counterweight are where a satellite at those radii would be drawn - the same call, the
+        // same inputs, as the moon and the station beside them. So at readable body sizes the ribbon
+        // hugs its chunky globe and stops short of the Moon's fan-out, and at true scale it stands
+        // 6.6 Earth radii out, because that is what the law returns at each end of the dial.
+        const helio = pv.helioAu ?? 0;
+        const localScale = helio > 0 ? compressScalar(helio) : 0;
+        const kHelio = helio > 0 ? localScale / helio : 0;
+        const parentRad = pv.radiusScene ?? 0;
+        const surfaceR = parentRad * (pv.screenK ?? 1);
+        const dockR = satelliteDrawDistance(tp.dockAu, kHelio, localScale, parentRad, 0, compression);
+        const topR = satelliteDrawDistance(tp.topAu, kHelio, localScale, parentRad, 0, compression);
+        const pxScene = sceneUnitsPerPixel(camera.fov, viewH) * camera.position.distanceTo(pv.mesh.position);
+        const L = tetherLayout({ surfaceR, dockR, topR, pxScene });
+        tp.ribbon.visible = L.visible;
+        tp.ribbon.scale.set(L.ribbon.w, Math.max(1e-9, L.ribbon.len), L.ribbon.w);
+        tp.ribbon.position.set(0, L.ribbon.y, 0);
+        tp.dock.visible = L.dock.visible;
+        tp.dock.scale.setScalar(L.dock.r);
+        tp.dock.position.set(0, L.dock.y, 0);
+        tp.counterweight.visible = L.visible;
+        tp.counterweight.scale.setScalar(L.counterweight.r);
+        tp.counterweight.position.set(0, L.counterweight.y, 0);
+        b.shipLen = L.visible ? topR : 0;   // framing and LOD read scene units
+        continue;
+      }
+      // An ordinary surface construct: glued to its captured site, turned with the planet's spin.
+      if (!b.surfaceLock) continue;
       _surfDir.copy(b.surfaceLock.dir0).applyQuaternion(pv.mesh.quaternion);
       b.mesh.position.copy(pv.mesh.position).addScaledVector(_surfDir, pv.radiusScene ?? 0.01);
     }
@@ -4738,6 +5136,94 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   // Aurora shimmer: modulate each shell's opacity around its strength-based base with a couple of
   // out-of-phase sines (per-body seed) for a slow, uneven flicker.
+  /**
+   * G82: POINT EACH FIELD BUBBLE UPSTREAM, and undo the globe's spin while doing it.
+   *
+   * The bubble is a CHILD of the globe, which is right for position and scale and wrong for
+   * orientation - a magnetopause is aimed by the wind, and Earth's does not turn once a day. So the
+   * aim is composed in world space and then pushed back through the parent's inverse rotation.
+   *
+   * WHAT IT FACES IS PUBLISHED, NOT GUESSED: `upstreamId` is the star the standoff was solved against,
+   * or the HOST for a moon inside its host's field - which is why Europa's bubble points at Jupiter
+   * and not at the Sun. If that node is not in the scene the bubble keeps its last aim rather than
+   * snapping to a default, because a wrong direction is worse than a stale one.
+   */
+  const _fieldFrom = new THREE.Vector3(), _fieldTo = new THREE.Vector3(), _fieldDir = new THREE.Vector3();
+  const _fieldQ = new THREE.Quaternion(), _fieldParentQ = new THREE.Quaternion(), _fieldScale = new THREE.Vector3(), _fieldLocal = new THREE.Vector3();
+  const FIELD_NOSE = new THREE.Vector3(0, 1, 0);
+  function updateFieldAim() {
+    if (!fieldVisuals.length) return;
+    for (const f of fieldVisuals) {
+      if (!f.upstreamId) continue;
+      const src = bodyById.get(f.upstreamId);
+      const self = bodyById.get(f.id);
+      if (!src || !self) continue;
+      self.mesh.getWorldPosition(_fieldFrom);
+      src.mesh.getWorldPosition(_fieldTo);
+      _fieldDir.subVectors(_fieldTo, _fieldFrom);
+      if (_fieldDir.lengthSq() <= 0) continue;
+      _fieldDir.normalize();
+      _fieldQ.setFromUnitVectors(FIELD_NOSE, _fieldDir);
+      // The group's parent IS the globe, so take its world rotation back out again.
+      f.group.parent?.getWorldQuaternion(_fieldParentQ);
+      f.group.quaternion.copy(_fieldParentQ.invert()).multiply(_fieldQ);
+      f.group.parent?.getWorldScale(_fieldScale);
+      // THE READABLE SIZE IS INHERITED AND THE PIXEL FLOOR IS NOT, and that distinction is the whole
+      // of RENDER-S56 arriving for the third time. A globe's scale is `baseScale` x `screenK`:
+      // `baseScale` is the readable-size decision, which the bubble SHOULD ride so the ratio on screen
+      // - the boundary at eleven times the planet - stays true; `screenK` is a screen-space LEGIBILITY
+      // FLOOR that stops a sub-pixel body vanishing, and multiplying that by a thirty- or
+      // eight-hundred-radius tail is exactly the fault this rule keeps catching. Owner, 2026-09-07:
+      // *"as I zoom out it gets so small then stops shrinking"* - that is the floor, seen through the
+      // tail. Divided out, the bubble shrinks all the way down with the system, as it must.
+      const floorK = self.screenK ?? 1;
+      f.group.scale.setScalar(floorK !== 0 ? 1 / floorK : 1);
+      //
+      // AND YOU CANNOT SEE A MAGNETOSPHERE FROM INSIDE ONE. Framing a planet puts the camera a few
+      // radii out and the boundary eleven or forty or eight hundred radii further, so the default
+      // shot is INSIDE the bubble - which renders, correctly, as being in a purple fog. Seen on
+      // screen 2026-09-07. Fading it out as the camera enters is both the fix and the truth: it is
+      // the same reason you cannot see the shape of a cloud you are standing in. Pull back and it
+      // resolves into the shell, which is what the owner's reference images are.
+      // The parent's world scale INCLUDES the pixel floor and the group divides that back out, so the
+      // nose's true world size is the parent scale over the floor - the readable size, and nothing else.
+      const noseWorld = f.noseScene * Math.max(_fieldScale.x / Math.max(floorK, 1e-9), 1e-9);
+      const camD = camera.position.distanceTo(_fieldFrom);
+      // The window is generous on purpose: nothing at all while the shot is FRAMED ON THE PLANET
+      // (a body framing sits around a third of the nose distance, where a bubble would be fog), then
+      // in over the next stretch so a small pull-back brings it, and full by a little past the nose.
+      const fade = noseWorld > 0 ? Math.max(0, Math.min(1, (camD / noseWorld - 0.35) / 0.85)) : 1;
+      // AND "INSIDE THE MAGNETOSPHERE" IS NOT ONE QUESTION - IT IS ONE PER SURFACE. Owner,
+      // 2026-09-07, on Mercury: its shielded region framed beautifully while its magnetopause, the
+      // same body, painted the whole screen. Mercury's nose is 1.5 radii and its TAIL is 29.6, so a
+      // shot that is comfortably outside the nose is deep inside the tube - and a camera-to-nose
+      // distance cannot tell those apart. The test is the boundary's own equation, evaluated at the
+      // camera: transform it into the surface's local frame (+Y is the nose), take the Shue radius
+      // at that bearing, and compare. One point, exact, and it answers each surface separately.
+      f.group.worldToLocal(_fieldLocal.copy(camera.position));
+      f.group.traverse((o) => {
+        const m = (o as any).material as THREE.Material & { opacity: number } | undefined;
+        const base = (o as any).userData?.fieldBaseOpacity as number | undefined;
+        if (!m || base === undefined) return;
+        const r0 = (o as any).userData.fieldR0 as number;
+        const tail = (o as any).userData.fieldTail as number;
+        const alpha = (o as any).userData.fieldAlpha as number;
+        const axial = _fieldLocal.y;                                   // +Y is upstream, the nose
+        const radial = Math.hypot(_fieldLocal.x, _fieldLocal.z);
+        const dist = Math.hypot(axial, radial);
+        const t = Math.atan2(radial, axial);
+        const denom = 1 + Math.cos(t);
+        const bound = denom <= 1e-6 ? Infinity : r0 * Math.pow(2 / denom, alpha);
+        const inside = axial > -tail && dist < bound;
+        m.opacity = base * fade;
+        // A zero-opacity additive surface still RASTERISES, and these are the biggest surfaces in the
+        // scene - so the hidden case is made free rather than merely transparent (the owner's culling
+        // instruction, applied to the third dimension).
+        o.visible = !inside && fade > 0.004;
+      });
+    }
+  }
+
   function updateAuroras(nowSec: number) {
     for (const a of auroraVisuals) {
       if (!aurorasOn) { a.mat.opacity = 0; continue; } // GM toggle off → hide (additive, so opacity 0 = gone)
@@ -4930,7 +5416,32 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function loop() {
     if (disposed) return;
-    perfFrame(performance.now()); // slow-spell tracker (logs only when a 5s window dips below 45fps)
+    // THE LOW-POWER FRAME CAP, asked before any work is done so a skipped frame costs nothing but
+    // the callback. Deliberately ahead of `perfFrame` too: the slow-spell tracker should see the
+    // frames we CHOSE not to take as the cadence we chose, not as a machine in trouble.
+    const nowMs = performance.now();
+    if (skipFrame(lowPowerOn, nowMs, lastFrameAt)) { raf = requestAnimationFrame(loop); return; }
+    lastFrameAt = nowMs;
+    // RENDER ON DEMAND. Asked here, before a single update pass runs, because the saving is the WORK
+    // and not just the draw call - twenty passes over every body is most of the cost of a frame.
+    // `selfAnimating` is recomputed rather than cached: it is a handful of array lengths, and a
+    // cached answer that went stale would freeze the picture, which is the one failure this whole
+    // feature must not have.
+    recomputeSelfAnimating();
+    const idleDraw = shouldRender({
+      dirty,
+      // `controls.autoRotate` is the turntable, `reframing` a focus ease flying the camera itself,
+      // and the view inset a panel opening. None of the three announce themselves through `change`.
+      cameraMoving: controls.autoRotate || reframing || viewInsetCur !== viewInsetTarget,
+      animated: selfAnimating || !!filterPass || lensingPass.enabled,
+      clockAdvancing: timeMs !== lastDrawnTimeMs,
+      sinceLastFrameMs: nowMs - lastDrawnAt
+    });
+    if (!idleDraw) { raf = requestAnimationFrame(loop); return; }
+    dirty = false;
+    lastDrawnTimeMs = timeMs;
+    lastDrawnAt = nowMs;
+    perfFrame(nowMs); // slow-spell tracker (logs only when a 5s window dips below 45fps)
     const nowSec = filterClock.getElapsedTime();
     // Gentle horizontal reframe while the info panel is open: ease a camera VIEW OFFSET that shifts the
     // projection centre left, so the framed body sits in the middle of the VISIBLE strip instead of
@@ -4950,8 +5461,12 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     controls.autoRotate = !lockRotate && orbitSpeed > 0 && !reframing;
     updateSpin();
     updateSurfaceConstructs();
-    updateStarFx(nowSec);
+    // The corona's pulse is decoration and freezing it leaves no artefact (unlike a bolt), so low
+    // power stops driving it. It is also what lets a quiet system reach IDLE at all: an active star
+    // would otherwise hold the loop awake for ever on its own.
+    if (!lowPowerOn) updateStarFx(nowSec);
     updateAuroras(nowSec);
+    updateFieldAim();
     updateMagma(magmaVisuals, nowSec);
     updateLightning(lightningVisuals, nowSec);
     updatePlumes(plumeVisuals, nowSec);
@@ -5026,6 +5541,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function dispose() {
     disposed = true;
+    stopFrameRate();
     cancelAnimationFrame(raf);
     controls.dispose();
     clearContent();
@@ -5054,7 +5570,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
   };
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  // EVERY PUBLIC CALL IS A CHANGE UNTIL PROVED OTHERWISE, and this is why render-on-demand is
+  // safe to have at all. There are forty-odd setters here and a list of "the ones that matter"
+  // would rot within a month - the next person to add one would have no way of knowing they had
+  // joined it. Wrapping the surface once costs a closure per method and a wasted frame per call,
+  // and in exchange no setter can ever be forgotten. See `renderIdle.ts`, principle 1.
+  const api: HoloController = { setLowPower, setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setMagnetospheres, setAtmospheres, setPerfShedReporter, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  for (const key of Object.keys(api) as (keyof HoloController)[]) {
+    const fn = api[key];
+    if (typeof fn !== 'function') continue;
+    (api as Record<string, unknown>)[key] = (...args: unknown[]) => {
+      markDirty();
+      return (fn as (...a: unknown[]) => unknown).apply(api, args);
+    };
+  }
+  return api;
 }
 
 // ---- helpers ----
@@ -5078,13 +5608,11 @@ function bodyRadius(node: any): number {
 }
 
 // A black hole is a star-class 'star/BH' or 'star/BH_active'. Feeding = the active class, or any
-// accretion (Eddington fraction > 0) — drives the bright hot accretion glow vs a bare quiescent horizon.
-function isBlackHoleNode(node: any): boolean {
-  return (node.classes || []).some((c: string) => String(c).includes('BH') || String(c).includes('black-hole'));
-}
-function bhFeeding(node: any): boolean {
-  return node.classes?.[0] === 'star/BH_active' || ((node.accretionEddington ?? 0) > 0.01);
-}
+// accretion (Eddington fraction > 0) — drives the bright hot accretion glow vs a bare quiescent
+// horizon. BOTH now live in `bodyFeatures` beside the horizon look they decide, so the three
+// surfaces that draw a black hole agree about what one IS as well as what one looks like.
+const isBlackHoleNode = isBlackHoleNodeShared;
+const bhFeeding = isFeedingBlackHole;
 
 type Projector = (p: { x: number; y: number; z: number }, out: THREE.Vector3) => THREE.Vector3;
 
@@ -5170,12 +5698,6 @@ function rebaseStaticGeometry(obj: THREE.Object3D, abs: Float64Array, origin: TH
 // to its planet and never grows into a neighbouring planet's orbit — even for tightly log-packed inner
 // planets (the old fixed 0.45 base made Luna's ring nearly reach Venus). The log term still ranks the
 // moons by true distance so a moon system reads correctly (Io in … Callisto out).
-function moonSpread(off: number, localScale: number, parentRadius: number): number {
-  // Sit just OUTSIDE the rendered planet, then ramp out by true distance. Scaling the base to the
-  // parent's rendered radius means a surface / low-orbit object hugs a tiny true-scale planet but still
-  // clears a chunky readable one — instead of a fixed base that flung close constructs out into "space".
-  return parentRadius * 1.15 + localScale * 0.05 * Math.log10(1 + off / 0.0006);
-}
 
 // A moon's orbit path, in its PARENT's local scene frame. Each sample is placed with the SAME magnified
 // spread transform the moon's own position uses (see the satellite branch in setTime), so the ring sits
@@ -5244,13 +5766,11 @@ function buildLocalOrbitRing(node: any, color: number, tiltRad: number, distFor:
 // `orbitTiltRad` is the caller's `satelliteTiltRad(node, parent)` — the gate is made there, once, and
 // NOT repeated here. It used to be made in both places in two different spellings.
 function buildMoonOrbitRing(node: any, kHelio: number, localScale: number, parentRadius: number, moonRadius: number, compression: number, color: number, orbitTiltRad = 0): { loop: THREE.LineLoop; local: Float64Array; sample: (u: number, out: THREE.Vector3) => void } | null {
-  return buildLocalOrbitRing(node, color, orbitTiltRad, (off) => {
-    const spreadDist = moonSpread(off, localScale, parentRadius);
-    const trueDist = off * kHelio;
-    // Same globe-relative clearance as the moon body (updatePositions), so the ring sits under the moon.
-    const clearance = parentRadius * 1.12 + moonRadius + parentRadius * 0.4 * Math.log10(1 + off / 0.0006);
-    return Math.max(clearance, trueDist * (1 - compression) + spreadDist * compression);
-  });
+  // The SAME law as the moon body (updatePositions), so the ring sits under the moon - and the
+  // same law as a tether's dock, so a ring drawn for a geostationary station passes through it.
+  return buildLocalOrbitRing(node, color, orbitTiltRad, (off) =>
+    satelliteDrawDistance(off, kHelio, localScale, parentRadius, moonRadius, compression)
+  );
 }
 
 /**
@@ -5272,31 +5792,6 @@ function buildBaryMemberRing(node: any, kHelio: number, memberRadius: number, pa
   return buildLocalOrbitRing(node, color, 0, (off) => Math.max(clearance, off * kHelio));
 }
 
-// An equirect aurora texture: coloured curtains at the two polar rings (transparent elsewhere). Under
-// additive blending the alpha carries the glow, so bright rings around the poles emit and the rest adds
-// nothing. Horizontal streaks give it a curtain-like shimmer.
-function makeAuroraTexture(hex: string): HTMLCanvasElement {
-  const w = 160, h = 80;
-  const c = document.createElement('canvas'); c.width = w; c.height = h;
-  const ctx = c.getContext('2d')!;
-  const col = new THREE.Color(hex);
-  const r = Math.round(col.r * 255), g = Math.round(col.g * 255), b = Math.round(col.b * 255);
-  const img = ctx.createImageData(w, h);
-  for (let y = 0; y < h; y++) {
-    const v = y / (h - 1); // 0 = north pole .. 1 = south pole
-    const ring = (centre: number) => Math.exp(-Math.pow((v - centre) / 0.085, 2)); // gaussian polar oval
-    const band = Math.max(ring(0.15), ring(0.85));
-    for (let x = 0; x < w; x++) {
-      const u = x / w;
-      const streak = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(u * Math.PI * 22 + Math.sin(u * 7) * 2)); // curtains
-      const a = Math.max(0, Math.min(1, band * streak));
-      const i = (y * w + x) * 4;
-      img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = Math.round(a * 255);
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
-}
 
 // Wireframe aurora: a FEW emissive polar arcs (line loops near each pole) in the aurora colour, rather
 // than an emissive body — the vector-display take on an aurora. Materials returned for the flicker loop.
@@ -5321,22 +5816,6 @@ function buildWireAurora(radius: number, hex: string, strength: number): { group
     g.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), mat));
   }
   return { group: g, mats };
-}
-
-// A flickering aurora glow: an additive emissive shell just above the body. `base` opacity scales with
-// aurora strength; `weight` (0..1, relative to the dominant gas) fades the lower-concentration emitters;
-// `altitude` (0 low fringe / 1 main band / 2 high tenuous) sets the shell height so a multi-gas sky
-// STACKS physically — Earth's purple nitrogen fringe under the green oxygen band, the crimson oxygen
-// crown above. The render loop swells each layer independently around its base.
-export function buildAuroraShell(radius: number, hex: string, strength: number, weight = 1, altitude = 1): { shell: THREE.Mesh; mat: THREE.MeshBasicMaterial; base: number } {
-  const tex = new THREE.CanvasTexture(makeAuroraTexture(hex));
-  tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-  const base = Math.min(0.85, 0.28 + strength * 0.6) * (0.35 + 0.65 * weight);
-  mat.opacity = base;
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(radius * (1.04 + altitude * 0.025), 28, 20), mat);
-  shell.renderOrder = 2; // draw over the body surface
-  return { shell, mat, base };
 }
 
 // Land/sea for the vector globe: the true-colour palette's land + ocean stops and the land fraction.

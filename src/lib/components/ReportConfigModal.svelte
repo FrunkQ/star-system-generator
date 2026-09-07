@@ -1,5 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   const dispatch = createEventDispatcher();
 
@@ -17,7 +19,7 @@
   }
 </script>
 
-<div class="modal-background" on:click={() => dispatch('close')}>
+<div class="modal-background" on:click={() => dispatch('close')} use:foreground>
   <div class="modal" on:click|stopPropagation>
     <h2>Generate System Report</h2>
     

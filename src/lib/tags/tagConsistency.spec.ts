@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { describeTag, formatTagValue } from './tagPresentation';
+import { describeTag, formatTagValue, hasOwnTagWriteUp } from './tagPresentation';
 import { radiationHazardBucket } from '../physics/radiation';
 import { systemProcessor } from '../core/SystemProcessor';
 import type { RulePack, System } from '../types';
@@ -100,14 +100,38 @@ describe('tag consistency', () => {
   // Every key a body actually carries must be REGISTERED. An unregistered tag renders as a
   // title-cased key with a namespace-level fallback description — it looks deliberate and explains
   // nothing, which is how a tag ends up meaning whatever the reader guesses.
+  //
+  // THIS GATE DID NOT TEST WHAT THIS COMMENT SAYS, AND THAT IS WHY IT IS WRITTEN DOWN (stream I,
+  // the G63 sweep). It asked whether `describeTag` returned ANY description — but the namespace
+  // fallback always supplies one, so the exact fault the comment describes passed it every time.
+  // It now asks for an OWN write-up, which is the claim. Two families answer no legitimately and
+  // are excluded by name rather than by weakening the assertion: the flat atmosphere tags, which
+  // have no namespace, and the dynamic `resonance/N-M` keys, which `describeTag` builds an exact
+  // sentence for from the ratio.
+  const DYNAMIC_KEY = /^resonance\/\d+-\d+$/;
   it('registers every tag it emits', () => {
     const unknown = new Set<string>();
     for (const b of bodies) {
       for (const t of tagsOf(b)) {
         if (t.manual || t.source) continue;                    // hand-added and PoI-rule tags are the user's
-        if (!describeTag(t.key).description) unknown.add(t.key);
+        if (!t.key.includes('/') || DYNAMIC_KEY.test(t.key)) continue;
+        if (!hasOwnTagWriteUp(t.key)) unknown.add(t.key);
       }
     }
     expect([...unknown].sort(), `emitted but unregistered:\n  ${[...unknown].sort().join('\n  ')}`).toEqual([]);
+  });
+
+  // AND THE TAGS NO BUNDLED BODY CAN CARRY, which is the hole the sweep fell through. The gate above
+  // walks the shipped solar system; a tag that only ever lands on something PASTED IN from somebody
+  // else's map is invisible to it however tight the assertion gets. These two are written by
+  // `io/hubClip.ts` on every paste from the Explorers site and are as reader-facing as any other.
+  it('registers the tags a paste leaves behind', () => {
+    for (const key of ['origin/hub', 'origin/hub-route-stood-down']) {
+      expect(hasOwnTagWriteUp(key), `${key} has no write-up of its own`).toBe(true);
+      // Absolute, not a ratio: the label must not be the title-cased key, and the description must
+      // not be the namespace sentence about how a body FORMED, which is false for a provenance tag.
+      expect(describeTag(key).label).not.toMatch(/^Hub/);
+      expect(describeTag(key).description).not.toContain('versus where it ended up');
+    }
   });
 });

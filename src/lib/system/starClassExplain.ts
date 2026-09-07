@@ -12,9 +12,10 @@
 // the physics, and retuning a band updates every explanation for free. Authoring "roughly 10 times
 // wider" as a string would have been a second copy of a number the pack already holds.
 import type { RulePack } from '$lib/types';
-import { starClassParts } from '$lib/physics/starDesignation';
+import { starClassParts, spectralLetterForTempK } from '$lib/physics/starDesignation';
+import type { ObservedStarReading } from '$lib/physics/observedStar';
 import { starStatTemplate } from '$lib/generation/star';
-import { SOLAR_RADIUS_KM } from '$lib/constants';
+import { SOLAR_RADIUS_KM, AU_KM } from '$lib/constants';
 
 export interface StarClassExplanation {
 	/** The designation itself, e.g. `G2V`. */
@@ -98,22 +99,29 @@ export function sizeInWords(radiusSolar: number | undefined): string | undefined
 		return `a ball about ${rounded.toLocaleString()} km across`;
 	}
 	if (r < 0.05) return 'roughly the size of the Earth';
-	if (r < 0.8) return `roughly ${Math.round((1 / r) * 10) / 10} times narrower than the Sun`;
+	// A FRACTION, NOT A RECIPROCAL. "3.3 times narrower" is both clumsy and not really English —
+	// narrower does not multiply — and the owner said what he wanted instead: "red dwarfs can say
+	// they are 0.3 the size of Sol".
+	if (r < 0.8) return `about ${Number(r.toPrecision(1))} times the width of the Sun`;
 	if (r < 1.25) return 'about the size of the Sun';
 	if (r < 25) return `roughly ${Math.round(r)} times wider than the Sun`;
 	if (r < 100) return 'tens of times wider than the Sun';
+	// ABOVE ABOUT 2,500 SOLAR RADII NOTHING IS A STAR ANY MORE (the largest known is ~2,150), so a
+	// figure this big is a supermassive black hole's event horizon and solar radii stop meaning
+	// anything to a reader. Give it in AU, where a GM can put it against their own outer system:
+	// a 1e10 M-sol horizon is about 390 AU across, ten times Neptune's orbit.
+	if (r > 2500) {
+		const auAcross = (2 * r * SOLAR_RADIUS_KM) / AU_KM;
+		return `a disc about ${Number(auAcross.toPrecision(2)).toLocaleString()} AU across`;
+	}
 	return 'hundreds of times wider than the Sun';
 }
 
-/**
- * Explain a star designation in plain English, deriving the size from the pack's own band.
- *
- * Returns undefined only for a key with no letter AND no known kind — an unknown designation is
- * better left unexplained than guessed at.
- */
-export function explainStarClass(
-	pack: RulePack | any,
-	classKey: string,
+/** What the caller knows about the PARTICULAR star, beyond its class. Both optional: a caller
+ *  explaining a CLASS rather than a star (the picker tooltip, the physics page) passes neither. */
+export interface StarClassContext {
+	/** B116: the parsed catalogue type, so an Am star can be SAID to be one - the notation is information. */
+	stellarType?: import('$lib/types').StellarType;
 	/**
 	 * The star's activity bucket, when it is known. A FLARE STAR is worth saying out loud — owner,
 	 * 2026-08-15: "this should also change M-type to Flaring M-Type". It is not a different CLASS
@@ -121,8 +129,36 @@ export function explainStarClass(
 	 * one, and it is derived: the same `stellar/activity` bucket the renderers read, which comes from
 	 * class AND age, so an old M dwarf correctly stops being described as flaring.
 	 */
-	activity?: string
+	activity?: string;
+	/**
+	 * THIS STAR'S OWN RADIUS, in solar radii, when the caller has a body rather than a class (A88).
+	 * Preferred over the band whenever it is a real measurement; zero and undefined both fall back,
+	 * because neither is one.
+	 */
+	radiusSolar?: number;
+}
+
+/**
+ * Explain a star designation in plain English.
+ *
+ * THE SIZE CLAUSE PREFERS THE STAR'S OWN RADIUS AND FALLS BACK TO THE PACK'S BAND (A88).
+ * B57 built it from the band deliberately — a band is an anchor the pack already states, so the
+ * sentence cannot drift and retuning a band updates every explanation for free — and that
+ * reasoning still holds for a CLASS, which is what the picker tooltip and the physics page are
+ * explaining. It does not hold for a BODY, whose radius we have already measured; and for a
+ * REMNANT it never held, because a black hole's radius IS its mass and no band can stand in for
+ * it. The owner found that out loud: a 195 AU event horizon described as "a ball about 300 km
+ * across", because the band is the stellar-mass one.
+ *
+ * Returns undefined only for a key with no letter AND no known kind — an unknown designation is
+ * better left unexplained than guessed at.
+ */
+export function explainStarClass(
+	pack: RulePack | any,
+	classKey: string,
+	ctx: StarClassContext = {}
 ): StarClassExplanation | undefined {
+	const { activity, radiusSolar: measuredRadius } = ctx;
 	const { letter, band, bare } = parts(classKey);
 	// A bare letter with no stated luminosity class means MAIN SEQUENCE (mk-lum 1.1), but only when
 	// there IS a letter: an unparseable key must be declined rather than defaulted, or `star/unknown`
@@ -132,16 +168,142 @@ export function explainStarClass(
 	const designation = classKey.replace(/^star\//, '');
 	const colour = letter ? COLOUR_BY_LETTER[letter] : undefined;
 
-	// The radius comes from the band the pack states for this key — an ANCHOR, per B57.
+	// THIS STAR'S OWN RADIUS FIRST; the pack's band only when there is no star to measure. A zero
+	// or absent figure is not a measurement, so it falls back rather than printing nonsense.
 	const tpl = starStatTemplate(pack, classKey);
 	const radiusBand: [number, number] | undefined = tpl?.radius_solar;
-	const radiusSolar = radiusBand ? (radiusBand[0] + radiusBand[1]) / 2 : undefined;
+	const bandRadius = radiusBand ? (radiusBand[0] + radiusBand[1]) / 2 : undefined;
+	const radiusSolar = measuredRadius && measuredRadius > 0 ? measuredRadius : bandRadius;
 	const size = sizeInWords(radiusSolar);
 
 	const flaring = activity === 'flare-star';
 	const headline = flaring ? `Flaring ${kind.toLowerCase()}` : kind;
-	const clauses = [headline, colour && `${colour} to human eyes`, size].filter(Boolean) as string[];
+	// B116: an Am star is a real thing and the catalogue told us - say so, with the two readings.
+	const st = ctx.stellarType;
+	const am = st?.peculiarity?.includes('m')
+		? `a metallic-line Am star${st.kLineType && st.metallicType ? ` - calcium K line ${st.kLineType}, metallic lines ${st.metallicType}${st.hydrogenType ? `, hydrogen ${st.hydrogenType}` : ', temperature between the two'}` : ''}`
+		: undefined;
+	const clauses = [headline, colour && `${colour} to human eyes`, size, am].filter(Boolean) as string[];
 	return { designation, kind: headline, colour, size, text: `${designation} (${clauses.join(', ')})` };
+}
+
+// ── THE OBSERVED DESIGNATION (G54 phase 3) ───────────────────────────────────────────────────────
+//
+// BESIDE THE INTRINSIC ONE, IN THIS FILE, AND FOR THE REASON THE HEADER ALREADY GIVES: this is the
+// ONE designation builder, so the editor tooltip and the physics page cannot describe the same star
+// differently. A second builder for "what it looks like from here" would be exactly that fault with
+// a new excuse.
+//
+// THE CORRECTION IS THE WHOLE POINT, AND IT IS WHY THE DESIGNATION DOES NOT MOVE.
+// Grey attenuation - a Dyson swarm, a shell, a ring - cuts FLUX at every wavelength equally. It does
+// not touch the colour and it does not touch the absorption lines, so a spectrometer pointed at a
+// heavily swarmed G2V star still reads G2V and always will. Dust does redden, and there photometry
+// alone genuinely can mis-type the star - but its lines are untouched too. So:
+//
+//     THE SPECTRUM IS NEVER OVERWRITTEN. The lines are the tell and they never lie.
+//
+// What changes is what the OTHER two measurements say, and the three disagreeing is the drama. A
+// crew that notices a G-type spectrum attached to a star four magnitudes too faint, pouring out far
+// infrared, has FOUND something. A crew told "it is an M star" has merely been told a fact.
+
+// A SPECTRAL LETTER IS READ ALOUD, so the article follows how the LETTER SOUNDS and not what it is:
+// "an M star", "an F star", "a G star". Spelling it out beats a vowel test, which gets M and F
+// wrong in the one place a reader is guaranteed to notice - a sentence about what a star looks like.
+const ARTICLE_AN = new Set(['A', 'E', 'F', 'H', 'I', 'L', 'M', 'N', 'O', 'R', 'S', 'X']);
+const articleFor = (letter: string): string => (ARTICLE_AN.has(letter.toUpperCase()) ? 'an' : 'a');
+
+/** One reading, in the words a GM would read out. */
+export interface ObservedStarClassExplanation {
+	/** The designation, UNCHANGED. Spectroscopy is the measurement that does not move. */
+	designation: string;
+	/** What the lines say - and that they are untouched, which is the fact doing the work. */
+	spectroscopy: string;
+	/** What the brightness says, and the colour with it when dust has moved the colour. */
+	photometry: string;
+	/** What the infrared says, or undefined when there is no excess to report. */
+	infrared?: string;
+	/** The compact form for a card or a tooltip: `G2V (4.1 mag faint, IR excess)`. */
+	text: string;
+	/**
+	 * WHAT IS DOING IT. Present ONLY when the caller passes it, and the caller passes it only at
+	 * disclosure level `open` (design §6: both readings are always computed, only the CAUSE is
+	 * redacted). That is what makes "both sides of the story" one object rather than two code paths,
+	 * and it is what stops a player surface ever having to re-derive anything.
+	 */
+	cause?: string;
+	/** True when the three measurements do not agree - the condition the anomaly is about. */
+	disagrees: boolean;
+}
+
+/**
+ * The three measurements for a star with something in front of it, or undefined when the
+ * designation cannot be explained at all (the same refusal `explainStarClass` makes).
+ *
+ * `apparentTempK` is what PHOTOMETRY ALONE would assign - `physics/observedStar.apparentColourTempK`
+ * - and it is handed in rather than derived here so this file keeps no spectral machinery of its
+ * own. For a grey occluder it equals the star's real temperature exactly, which is the correction
+ * above expressed as an input: pass it and the sentence about colour writes itself correctly.
+ */
+export function explainObservedStarClass(
+	pack: RulePack | any,
+	classKey: string,
+	reading: ObservedStarReading,
+	opts: { activity?: string; apparentTempK?: number; cause?: string } = {}
+): ObservedStarClassExplanation | undefined {
+	// A88 changed the third argument to a context object; the observed builder passes the activity
+	// through and has no measured radius of its own to add (its caller has the class, not the body).
+	const intrinsic = explainStarClass(pack, classKey, { activity: opts.activity });
+	if (!intrinsic) return undefined;
+	const { designation } = intrinsic;
+
+	const mag = reading.magnitudeDrop;
+	const faint = Number.isFinite(mag) && mag >= 0.1;
+	const gone = !Number.isFinite(mag) || reading.transmission <= 0;
+	const excess = reading.irExcessFrac > 0;
+
+	// SPECTROSCOPY. The one that does not move, and the sentence says WHY rather than just asserting
+	// it - a reader who understands why grey attenuation leaves the lines alone has learnt the piece
+	// of astronomy this feature exists to teach.
+	const spectroscopy = gone
+		? `No spectrum: nothing of ${designation} reaches the visible sky from here.`
+		: `${designation} — ${intrinsic.kind.toLowerCase()}. The absorption lines are untouched, `
+			+ 'and they are the measurement that never lies.';
+
+	// PHOTOMETRY. Brightness always; colour only when something actually moved it.
+	const apparentLetter = opts.apparentTempK && reading.reddened
+		? spectralLetterForTempK(opts.apparentTempK, pack)
+		: undefined;
+	const photometry = gone
+		? 'Absent from the visible sky altogether.'
+		: `${mag.toFixed(1)} magnitudes too faint for a ${designation} at this distance`
+			+ (reading.reddened
+				? `, and reddened with it${apparentLetter ? ` — colour alone would call it ${articleFor(apparentLetter)} ${apparentLetter} star` : ''}.`
+				: ', with no change of colour at all — which is the tell for something that blocks light evenly.');
+
+	// INFRARED. Absent rather than "none", because a star with no excess has nothing to report and a
+	// row saying so is noise on every ordinary star.
+	const infrared = excess
+		? `${(reading.irExcessFrac * 100).toFixed(0)}% of the star's output arriving as far infrared`
+			+ (reading.reradiatedTempK > 0
+				? `, at about ${Math.round(reading.reradiatedTempK)} K peaking near `
+					+ `${Math.round(reading.reradiatedPeakNm).toLocaleString()} nm`
+				: '')
+			+ `. No ${designation} produces that.`
+		: undefined;
+
+	// THE COMPACT FORM, and it keeps the designation FIRST because the designation is still true.
+	const notes: string[] = [];
+	if (gone) notes.push('not visible');
+	else if (faint) notes.push(`${mag.toFixed(1)} mag faint`);
+	if (reading.reddened) notes.push('reddened');
+	if (excess) notes.push('IR excess');
+	const text = notes.length ? `${designation} (${notes.join(', ')})` : designation;
+
+	return {
+		designation, spectroscopy, photometry, infrared, text,
+		cause: opts.cause,
+		disagrees: faint || gone || excess || reading.reddened
+	};
 }
 
 // A FAMOUS STAR PER DESIGNATION, so a reader has something to hang the label on — owner, 2026-08-15:

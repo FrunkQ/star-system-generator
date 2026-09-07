@@ -6,7 +6,8 @@
   // G26/C17: the glyph is a SCREEN quantity — its size, its members' spread and its band scale come
   // from the shared glyph law, and WHAT it draws (band, activity, jets, shedding) from the shared
   // systemVisualStars — one reader for this map and the 3D starmap, so they cannot disagree.
-  import { systemVisualStars } from '$lib/starmap/systemStars';
+  import { systemVisualStars, starmapViewBearing } from '$lib/starmap/systemStars';
+  import { occlusionRingArcs, ringArcPath, OCCLUSION_RING } from '$lib/starmap/starGlyphLaw';
   import { clusterLayout, clusterHalfExtent, type GlyphMember } from '$lib/starmap/starGlyphLaw';
   import AppShell from './AppShell.svelte';
   import RailNav from './RailNav.svelte';
@@ -15,8 +16,13 @@
   import type { Starmap, System, RulePack, Barycenter } from '$lib/types';
   import { constructDisplayPlacement, flybyTurn, interstellarConstructIds } from '$lib/transit/interstellar';
   import StarmapInfoPanel from './StarmapInfoPanel.svelte';
+  // A82: the hover summary. ONE builder for the counts, ONE component for the card.
+  import StarSummaryCard from '$lib/starmap/StarSummaryCard.svelte';
+  import SizeComparisonView from './SizeComparisonView.svelte';
+  import { itemsForStarmap } from '$lib/comparison/items';
+  import { systemSummary, type SystemSummary } from '$lib/starmap/systemSummary';
   import BottomSheet from './BottomSheet.svelte';
-  import TimeDisplay from './TimeDisplay.svelte';
+  import TimeDisplayOverlay from './TimeDisplayOverlay.svelte';
   import { railCollapsed } from '$lib/railStore';
   import Grid from './Grid.svelte';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -58,6 +64,12 @@
   import { BUILTIN_ASSETS } from '$lib/player/presets';
   import { chrome } from '$lib/ui/foreground';
   import UndoPill from './UndoPill.svelte';
+  // The starmap had no idea anything was in hand: every paste affordance lived in the system view,
+  // which is not where a GM lands when they come back from the map library (owner, 2026-09-06).
+  import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture, clipboardHint } from '$lib/io/clipDetect';
+  import { systemNodesFromClip } from '$lib/io/hubClip';  import { systemRootNode } from '$lib/system/barycentres';
+  import { buildClip } from '$lib/io/hubClip';
+  import { putClip } from '$lib/io/clipBuffer';
   import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : $liveOverrides.mapHighlights;
   // THE SELECTION IS PASSED IN, NEVER CLOSED OVER. `{@const hl = systemMarkers(systemNode)}` inside the
@@ -98,6 +110,44 @@
   // Phase 03: Starmap owns its own AppShell (same shared rail as SystemView). RailNav app
   // nav forwards up to +page via dispatch; the niche bulk-editors stay in the header menu.
   let mode: 'desktop' | 'phone' = 'desktop';
+
+  // ── A82 THE HOVER SUMMARY ──────────────────────────────────────────────────────────────────
+  // Owner, 2026-08-31: hovering a star showed nothing, and he wants the system's contents at a
+  // glance — star type, what is in orbit, whether anything lives there, "and any special stuff
+  // like ringworld stuff".
+  //
+  // MOUSE ONLY, AND THAT IS NOT AN OVERSIGHT. There is no hover on a touch screen: a tap is a
+  // selection, and a card that appeared on tap would cover the star the tap was aimed at and
+  // fight the pan gesture. Phones get the bottom sheet, which already shows this and more.
+  let hoverSummary: SystemSummary | null = null;
+  let hoverX = 0, hoverY = 0;
+  let canvasEl: HTMLElement | null = null;
+  let hoverBounds = { w: 0, h: 0 };
+
+  function pointerInCanvas(e: PointerEvent) {
+      const r = canvasEl?.getBoundingClientRect();
+      if (!r) return null;
+      hoverBounds = { w: r.width, h: r.height };
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function showStarSummary(e: PointerEvent, systemNode: any) {
+      if (e.pointerType !== 'mouse' || mode === 'phone') return;
+      const p = pointerInCanvas(e);
+      if (!p) return;
+      hoverX = p.x; hoverY = p.y;
+      // Rebuilt per hover rather than cached: a system that gains a moon while the map is open
+      // must say so, and counting a system is a walk of its node list, not work worth keeping.
+      hoverSummary = systemSummary(systemNode.name, systemNode.system, rulePack);
+  }
+
+  function moveStarSummary(e: PointerEvent) {
+      if (!hoverSummary) return;
+      const p = pointerInCanvas(e);
+      if (p) { hoverX = p.x; hoverY = p.y; }
+  }
+
+  const hideStarSummary = () => { hoverSummary = null; };
   let railOpen = false; // phone slide-in rail (opened by the + menu FAB)
   const starmapFabActions = [{ id: 'reset', label: 'Reset view', icon: '↺' }];
   function handleStarmapFabAction(e: CustomEvent<string>) {
@@ -668,14 +718,23 @@
   // underlying star only hides that star (not the whole system). Flagged on the GM map with a
   // crossed-eye reminder.
   function isSystemHidden(node: Starmap['systems'][number]): boolean {
-      const ns = node.system?.nodes || [];
-      const root = ns.find((n) => n.kind === 'barycenter' && !n.parentId) || ns.find((n) => !n.parentId);
+      const root = systemRootNode(node.system);
       return !!root && !!(root as any).object_playerhidden;
   }
 
   // The system's visible stars — the SHARED reader (starmap/systemStars), which this map used to
   // duplicate as `getVisualNodes` + `getBlackHoleType`. Same mass order, same root-body fallback.
   const getVisualStars = (system: System) => systemVisualStars(system);
+  // G54: THE DRAWN GLYPH TAKES THE OBSERVED COLOUR — the intrinsic one through whatever stands
+  // between that star and where the map is being looked at from, which for a ringworld is a
+  // different answer for a system in its plane and one over its pole.
+  //
+  // A SEPARATE FUNCTION FROM `getVisualStars`, ON PURPOSE. The two callers above measure the glyph
+  // CLUSTER (band, letter, black-hole-ness) and colour means nothing to them; and `map` must be
+  // PASSED IN and named at the call site rather than closed over, or the colours freeze at the
+  // mount value when the GM moves the map's centre — the TAG-17 fault this file has paid for once.
+  const getObservedStars = (system: System, id: string, map: Starmap) =>
+      systemVisualStars(system, { viewDir: starmapViewBearing(map, id) });
 
   // ── WHERE A SYSTEM'S WRITING GOES, and why it is measured off the GLYPH rather than the position ──
   //
@@ -784,6 +843,17 @@
   // --- Measure tool (scaled maps only): tap two targets — any stars or interstellar ships — to read the
   //     distance between them, in the map's scale units. ---
   let measureMode = false;
+  // G66: the size-comparison view, reached from the sub-button under Measure. On the starmap the
+  // cast is every system's STARS, multi-star aware through `systemVisualStars`.
+  //
+  // A TAP HERE DOES NOT LEAVE THE VIEW, and that is a correction: the first wiring sent it out as
+  // `systemclick`, which is not a selection at all — it ENTERS the system, so tapping a star to
+  // compare it threw you off the strip and onto that system's map. The GM starmap has no per-system
+  // shared selection for a click to join (its info panel is about the whole map, and
+  // `selectedSystemForLink` exists only while a route is being drawn), so the tap centres, rescales
+  // and rings the star HERE. The system map is the surface that does have one, and it uses it.
+  let sizeCompareOn = false;
+  let sizeCompareSelected: string | null = null;
   // An endpoint is a fixed point (star) or — when constructId is set — a moving construct, in which case
   // its position is re-derived from the clock so the ruler TRACKS the ship as time advances.
   // WS7: an endpoint carries DEPTH. Without it `posZ` reads both ends as the reference plane and the
@@ -843,6 +913,8 @@
 
   function handleStarContextMenu(event: MouseEvent, systemId: string) {
     event.preventDefault();
+    void readClipboardOnGesture().then(() => (clipHint = clipboardHint()));
+    clipHint = clipboardHint();
     event.stopPropagation();
     showContextMenu = true;
     isStarContextMenu = true;
@@ -853,10 +925,75 @@
     contextMenuRoute = null;
   }
 
+  // Can what is in hand become a system of its own? Asked of the clip module rather than answered
+  // here, so the menu and the paste cannot disagree about it.
+  onMount(() => watchClipboard());
+
+  // Re-asked each time a menu opens, because a gesture read may have just settled the answer.
+  let clipHint: string | null = null;
+
+  $: pasteAsSystem = $detectedClip
+    ? systemNodesFromClip($detectedClip.clip)
+    : ({ ok: false, problem: 'Nothing is copied.' } as const);
+
+  /**
+   * COPY A WHOLE SYSTEM OFF THE MAP. Owner, 2026-09-07, looking at a starmap right-click menu that
+   * could paste a system but not produce one: *"why am I not offered to copy starsystem here? So it
+   * will appear on the paste tab and let me duplicate here - or another map"*.
+   *
+   * The map already held everything needed - `StarSystemNode.system` is the whole system, not a
+   * summary - so this is the same `buildClip` the system view's Copy uses, rooted at the top of the
+   * system rather than at a body inside it. That matters for a BINARY: the top is the pair
+   * container, and rooting at the star would have copied one half of a double star and left its
+   * partner behind. `systemRootNode` is the shared answer to which node that is.
+   *
+   * THE SYSTEM'S NAME TRAVELS SEPARATELY from its root node's, because the GM may have renamed the
+   * system without renaming the star (`isNameUserDefined`). Without that, duplicating "Epsilon
+   * Rukroteinorum" would hand back a system named after whatever its primary star is called.
+   *
+   * Credits ride along exactly as they do in the system view, so duplicating a system somebody
+   * shared keeps saying whose it was - and `putClip` writes the system clipboard too, which is what
+   * makes "or another map" work: another campaign, another tab, another window.
+   */
+  function handleContextMenuCopySystem() {
+    const sysNode = starmap.systems.find((sy) => sy.id === contextMenuSystemId);
+    closeContextMenu();
+    const root = systemRootNode(sysNode?.system);
+    if (!sysNode || !root) return;
+    const clip = buildClip(sysNode.system, String((root as any).id), {
+      credits: starmap.contentCredits ?? [],
+      systemName: sysNode.name
+    });
+    if (!clip) return;
+    putClip(clip, String(sysNode.name ?? 'system'));
+  }
+
+  /** Paste into the system that was right-clicked: the system is known, the body is not. */
+  function handleContextMenuPasteInto() {
+    const systemId = contextMenuSystemId;
+    showContextMenu = false;
+    if (systemId) dispatch('pasteintosystem', systemId);
+  }
+
+  /** Paste into a system chosen on the screen - the route for anything that is not a system itself. */
+  function handleContextMenuPasteIntoAny() {
+    showContextMenu = false;
+    dispatch('pasteintosystem', null);
+  }
+
+  /** Paste a copied system into empty space as a system of its own, where it was right-clicked. */
+  function handleContextMenuPasteAsSystem() {
+    const at = contextMenuClickCoords;
+    showContextMenu = false;
+    dispatch('pasteasnewsystem', at);
+  }
+
   let contextMenuClickCoords = { x: 0, y: 0 };
 
   function handleMapContextMenu(event: MouseEvent) {
     event.preventDefault();
+    void readClipboardOnGesture().then(() => (clipHint = clipboardHint())); // the empty-space menu is where a copied SYSTEM lands
+    clipHint = clipboardHint();
     event.stopPropagation();
     showContextMenu = true;
     isStarContextMenu = false;
@@ -1207,10 +1344,12 @@
         activeView="starmap"
         rulerOn={measureMode}
         rulerAvailable={isScaled}
+        {sizeCompareOn}
         {routesAttention}
         playerConns={{ local: $playerConnections.local, remote: $playerConnections.remote }}
         playerConnSummary={$playerConnections.summary}
         on:ruler={() => { railOpen = false; toggleMeasure(); }}
+        on:sizecompare={() => { railOpen = false; sizeCompareOn = !sizeCompareOn; }}
         on:starmap={() => { railOpen = false; }}
         on:new={() => dispatch('new')}
         on:open={() => dispatch('upload')}
@@ -1230,9 +1369,9 @@
       />
     </svelte:fragment>
     <svelte:fragment slot="canvas">
-  <div class="starmap-canvas">
+  <div class="starmap-canvas" bind:this={canvasEl}>
     {#if ensuredTemporal}
-      <div class="time-display-overlay"><TimeDisplay temporal={ensuredTemporal} /></div>
+      <TimeDisplayOverlay temporal={ensuredTemporal} />
     {/if}
     <BodyPicker
       floating
@@ -1470,7 +1609,7 @@
             {/if}
           </g>
         {/if}
-        {@const visualStars = getVisualStars(systemNode.system)}
+        {@const visualStars = getObservedStars(systemNode.system, systemNode.id, starmap)}
         {@const slots = clusterLayout(membersOf(visualStars), $starmapUiStore.starScale)}
         <g
           role="button"
@@ -1481,6 +1620,10 @@
           on:dblclick={() => handleStarDblClick(systemNode.id)}
           on:contextmenu={(e) => handleStarContextMenu(e, systemNode.id)}
           on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStarClick(e, systemNode.id); }}
+          on:pointerenter={(e) => showStarSummary(e, systemNode)}
+          on:pointermove={moveStarSummary}
+          on:pointerleave={hideStarSummary}
+          on:pointerdown|capture={hideStarSummary}
         >
           {#if isSystemHidden(systemNode)}
             <!-- Crossed-eye reminder: this system's main star is player-hidden, so it won't appear
@@ -1508,6 +1651,20 @@
                 {@const sy = systemNode.position.y + slot.dy * STAR_R * labelK}
                 {#if s.shedding}
                   <circle class="star-shell" cx={sx} cy={sy} r={r * (s.shedding >= 2 ? 2.6 : 2)} style="stroke:{s.color}; stroke-width:{r * (s.shedding >= 2 ? 0.5 : 0.32)}px; opacity:{s.shedding >= 2 ? 0.42 : 0.28}" />
+                {/if}
+                <!-- G54: THE OCCLUSION RING, and its GAPS ARE THE LIGHT STILL GETTING OUT — a 30%
+                     swarm draws a ring 30% closed, a complete Dyson sphere draws a closed one. Drawn
+                     from ONE number on the glyph record, exactly like the jet and the shed shell, and
+                     from the shared arc list so this map and the player's and the 3D one agree. -->
+                {#if s.occluded > 0}
+                  {@const arcs = occlusionRingArcs(s.occluded)}
+                  {#if arcs}
+                    <g class="star-occluded" style="stroke-width:{r * OCCLUSION_RING.widthMul}px">
+                      {#each arcs as a, ai (ai)}
+                        <path d={ringArcPath(sx, sy, r * OCCLUSION_RING.radiusMul, a)} />
+                      {/each}
+                    </g>
+                  {/if}
                 {/if}
                 {#if s.jets}
                   <!-- A jet NARROWS TO THE STAR and widens as it goes, the cyan-white core inside a
@@ -1618,6 +1775,20 @@
       {/if}
       </g>
     </svg>
+    <!-- A82: the hover card sits OUTSIDE the svg — it is HTML, so it wraps text, takes the house
+         chrome and never inherits the map's pan/zoom transform. -->
+    <StarSummaryCard summary={hoverSummary} x={hoverX} y={hoverY} bounds={hoverBounds} />
+    {#if sizeCompareOn}
+      <SizeComparisonView
+        items={itemsForStarmap(starmap)}
+        scope="starmap"
+        mapId={starmap?.id ?? null}
+        {mode}
+        selectedId={sizeCompareSelected}
+        on:select={(e) => (sizeCompareSelected = e.detail.id)}
+        on:close={() => (sizeCompareOn = false)}
+      />
+    {/if}
     {#if highlightKey.length}
       <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. -->
       <div class="hl-key">
@@ -1638,7 +1809,8 @@
     <!-- G28: the campaign's undo/redo. Same component as the system view's, handed the STARMAP
          history instead - moving, renaming, adding and deleting systems, the routes, and the map's
          own description and notes. The two views are never on screen together, so one pill each. -->
-    <UndoPill {mode} status={starmapUndoStatus} undo={undoStarmap} redo={redoStarmap} />
+    <UndoPill {mode} status={starmapUndoStatus} undo={undoStarmap} redo={redoStarmap}
+      clip={$detectedClip} clipPulse={$clipPulse} />
 
     {#if ensuredTemporal}
       <div class="time-overlay" class:phone={mode === 'phone'} use:chrome>
@@ -1691,6 +1863,21 @@
               <li on:click={handleContextMenuCentre}>Centre Map Here</li>
             {/if}
             <li on:click={handleContextMenuAddNear}>Add System near here…</li>
+            <!-- The other half of the paste below it, and deliberately directly above it: this is
+                 what fills the buffer that one reads. Named "Copy System" rather than "Copy" because
+                 the menu also offers to paste a body INTO this system, and two bare verbs would not
+                 say which scale each works at. -->
+            <li on:click={handleContextMenuCopySystem}>Copy System</li>
+            <!-- Paste into the system that was right-clicked. The system is known, the host is not,
+                 so this opens the paste screen with the system already chosen - which is the shape
+                 the owner picked for the starmap on 2026-09-03. -->
+            {#if $detectedClip}
+              <li on:click={handleContextMenuPasteInto}>
+                Paste {$detectedClip.label} into this system
+              </li>
+            {:else if clipHint}
+              <li class="disabled" title="This browser will not let a page read the clipboard, so the app cannot see what you copied until you paste it.">{clipHint}</li>
+            {/if}
             <li on:click={handleContextMenuLink}>
               {#if selectedSystemForLink === null}
                 Start Link
@@ -1703,6 +1890,33 @@
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
+                    <!-- SHOWN, AND GREYED WHEN IT DOES NOT APPLY (owner, 2026-09-06: "show but grey
+                         out if not applicable"). Only a star and what orbits it can become a system
+                         on the map; a planet or a ship in empty space has nothing to go round. The
+                         item stays visible with the reason in its tooltip, so the GM can see the
+                         whole shape of what paste can do rather than wondering where it went. -->
+                    {#if $detectedClip}
+                      <li
+                        class:disabled={!pasteAsSystem.ok}
+                        title={pasteAsSystem.ok ? '' : pasteAsSystem.problem}
+                        on:click={() => { if (pasteAsSystem.ok) handleContextMenuPasteAsSystem(); }}
+                      >
+                        Paste {$detectedClip.label} here
+                      </li>
+                      <!-- AND THE ROUTE A PLANET ACTUALLY HAS. Owner, 2026-09-06, on pasting Jupiter
+                           and its moons into empty space: *"on the right click menu never lets me
+                           place them. If you tried pasting at the starmap level it asks for the
+                           system to include it in"*. Greying the first item said WHY it could not be
+                           a system of its own and then left him with nowhere to go; a planet has a
+                           perfectly good home, it just needs to be asked which one. This opens the
+                           paste screen with no system chosen, so it asks - which is the shape the
+                           owner picked for the starmap on 2026-09-03. -->
+                      <li on:click={handleContextMenuPasteIntoAny}>
+                        Paste {$detectedClip.label} into a system…
+                      </li>
+                    {:else if clipHint}
+                      <li class="disabled" title="This browser will not let a page read the clipboard, so the app cannot see what you copied until you paste it.">{clipHint}</li>
+                    {/if}
                     <li on:click={handleContextMenuRealSky}>Import Real Stars Here…</li>
                     {#if $starmapUiStore.travellerMode}
                         <li on:click={handleContextMenuAddTravellerSystem}>Add Traveller UWP Here</li>
@@ -1870,6 +2084,13 @@
     box-shadow: 0 0 15px rgba(229, 62, 62, 0.5);
   }
 
+  .context-menu li.disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .context-menu li.disabled:hover {
+    background: none;
+  }
   .context-menu {
     position: absolute;
     background-color: var(--bg-panel);
@@ -1923,12 +2144,6 @@
     padding: 8px;
     font: inherit;
     font-size: 0.9rem;
-  }
-  .time-display-overlay {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 57;
   }
   .ov-topright {
     position: absolute;
@@ -2156,6 +2371,11 @@
   .star-jet-sheath { fill: url(#sm-jet-fade); opacity: 0.3; pointer-events: none; }
   .star-jet { fill: url(#sm-jet-fade); opacity: 0.95; pointer-events: none; }
   .star-flares line { stroke-linecap: round; opacity: 0.85; pointer-events: none; }
+  /* THE RING IS NOT THE STAR'S COLOUR, deliberately: every other decoration here is drawn in the
+     star's own light because it IS the star's own light, and this one is the thing standing in
+     front of it. A fixed warning amber also survives the dimming — a ring in the colour of a
+     star that has been dimmed to an ember would be as hard to see as the ember. */
+  .star-occluded path { fill: none; stroke: var(--warning, #e8a33d); stroke-linecap: butt; opacity: 0.95; pointer-events: none; }
 
   .star-label {
     fill: #fff;

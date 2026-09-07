@@ -4,6 +4,9 @@
   import { AU_KM } from '$lib/constants';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatPref } from '$lib/units';
+  // Field help lives in `packs/fieldHelp.ts` - one table, four editors (G86).
+  import FieldHelp from './FieldHelp.svelte';
+  import { SENSOR_FIELD_HELP } from '$lib/packs/fieldHelp';
   import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
@@ -128,7 +131,7 @@
                     </div>
                     <div class="item-body">
                         <div class="field">
-                            <label>Range</label>
+                            <label>Range<FieldHelp help={SENSOR_FIELD_HELP.range_km} /></label>
                             <div class="range-row">
                                 <input type="number" 
                                     value={getDisplayValue(sensor.range_km, sensorUnits[sensor.id] || 'km')} 
@@ -142,7 +145,7 @@
                             <span class="format-hint">{formatRange(sensor.range_km)}</span>
                         </div>
                         <div class="field full">
-                            <label>Description (Targets / Data)</label>
+                            <label>Description (Targets / Data)<FieldHelp help={SENSOR_FIELD_HELP.description} /></label>
                             <input type="text" bind:value={sensor.description} />
                         </div>
                     </div>

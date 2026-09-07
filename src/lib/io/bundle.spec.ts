@@ -3,11 +3,21 @@
 // loading, and the format is decided by the zip magic number rather than the file name.
 import { describe, it, expect } from 'vitest';
 import { packBundle, unpackBundle, sniffBundle, BUNDLE_EXT } from './bundle';
+import { hashModelBytes } from '$lib/constructs/modelStore';
 import { strFromU8, strToU8, zipSync } from 'fflate';
 import { readZipMembers } from '$lib/import/shared/zip';
 import { stripSystemForExport, stripStarmapForExport } from '$lib/system/importFixup';
 
 const b64 = (s: string) => btoa(s);
+
+// REAL content addresses. These specs used to name their model file `abc123`, which R-03 now
+// refuses on export: `assets/models/<sha256>.glb` is a content address, and an invented name is
+// exactly the crafted-bundle shape the assertion exists to catch. Computed here rather than
+// pinned as literals because these are LAYOUT tests - the absolute anchors live in
+// formatStamp.spec.ts, which is the gate for the hashing itself.
+const hashOf = (text: string) => hashModelBytes(new TextEncoder().encode(text));
+const HASH_GLBBYTES = await hashOf('GLBBYTES');
+const HASH_G = await hashOf('G');
 
 function starmapWith(imageUrl: string | null, modelHash: string | null) {
   const node: any = { id: 'ship-1', name: 'Rocinante', kind: 'construct' };
@@ -16,21 +26,21 @@ function starmapWith(imageUrl: string | null, modelHash: string | null) {
   return { name: 'Local Neighbourhood', systems: [{ name: 'Sol', system: { id: 'sol', nodes: [node] } }] };
 }
 
-describe('packBundle', () => {
-  it('returns null when there is nothing to extract, so a plain save stays plain JSON', () => {
-    expect(packBundle('starmap', starmapWith(null, null))).toBeNull();
+describe('packBundle', async () => {
+  it('returns null when there is nothing to extract, so a plain save stays plain JSON', async () => {
+    expect(await packBundle('starmap', starmapWith(null, null))).toBeNull();
   });
 
-  it('writes models and pictures as real files and leaves the JSON small and readable', () => {
-    const map = starmapWith('data:image/jpeg;base64,' + b64('JPEGBYTES'), 'abc123');
-    const zip = packBundle('starmap', map, { models: { abc123: { b64: b64('GLBBYTES'), meta: { credit: 'A Modeller' } } } })!;
+  it('writes models and pictures as real files and leaves the JSON small and readable', async () => {
+    const map = starmapWith('data:image/jpeg;base64,' + b64('JPEGBYTES'), HASH_GLBBYTES);
+    const zip = (await packBundle('starmap', map, { models: { [HASH_GLBBYTES]: { b64: b64('GLBBYTES'), meta: { credit: 'A Modeller' } } } }))!;
     expect(zip).toBeTruthy();
     expect(sniffBundle(zip)).toBe(true);
 
     const members = readZipMembers(zip, ['.json', '.glb', '.jpg', '.txt']);
     const names = Object.keys(members);
     expect(names.some((n) => n.endsWith('starmap.json'))).toBe(true);
-    expect(names.some((n) => n.endsWith('assets/models/abc123.glb'))).toBe(true);
+    expect(names.some((n) => n.endsWith(`assets/models/${HASH_GLBBYTES}.glb`))).toBe(true);
     expect(names.some((n) => n.includes('assets/images/ship-1.jpg'))).toBe(true);
 
     // The JSON must NOT contain the payloads any more - that is the whole point.
@@ -41,62 +51,62 @@ describe('packBundle', () => {
     expect(json).toContain('A Modeller');               // attribution stays legible
   });
 
-  it('writes ATTRIBUTIONS.md naming the art and what uses it', () => {
-    const map = starmapWith('data:image/jpeg;base64,' + b64('J'), 'abc123');
-    const zip = packBundle('starmap', map, { models: { abc123: { b64: b64('G'), meta: { credit: 'A Modeller', license: 'CC-BY' } } } })!;
+  it('writes ATTRIBUTIONS.md naming the art and what uses it', async () => {
+    const map = starmapWith('data:image/jpeg;base64,' + b64('J'), HASH_G);
+    const zip = (await packBundle('starmap', map, { models: { [HASH_G]: { b64: b64('G'), meta: { credit: 'A Modeller', license: 'CC-BY' } } } }))!;
     const members = readZipMembers(zip, ['.md', '.txt']);
     const name = Object.keys(members).find((n) => n.endsWith('ATTRIBUTIONS.md'))!;
     expect(name).toBeTruthy();
     const text = strFromU8(members[name]);
     expect(text).toContain('A Modeller');
     expect(text).toContain('Rocinante');            // what uses it
-    expect(text).toContain('assets/models/abc123.glb');
+    expect(text).toContain(`assets/models/${HASH_G}.glb`);
     // The picture had nothing recorded, and the file must say so rather than omit it.
     expect(text).toContain('_No provenance recorded._');
   });
 
-  it('leaves a remote image URL exactly as authored', () => {
-    const map = starmapWith('https://example.com/pic.jpg', 'abc123');
-    const zip = packBundle('starmap', map, { models: { abc123: { b64: b64('G'), meta: {} } } })!;
+  it('leaves a remote image URL exactly as authored', async () => {
+    const map = starmapWith('https://example.com/pic.jpg', HASH_G);
+    const zip = (await packBundle('starmap', map, { models: { [HASH_G]: { b64: b64('G'), meta: {} } } }))!;
     const members = readZipMembers(zip, ['.json']);
     const json = strFromU8(members[Object.keys(members).find((n) => n.endsWith('starmap.json'))!]);
     expect(json).toContain('https://example.com/pic.jpg');
   });
 
-  it('does not mutate the campaign it was handed', () => {
+  it('does not mutate the campaign it was handed', async () => {
     const map = starmapWith('data:image/png;base64,' + b64('PNG'), null);
-    packBundle('starmap', map, {});
+    await packBundle('starmap', map, {});
     expect(map.systems[0].system.nodes[0].image.url.startsWith('data:')).toBe(true);
   });
 });
 
-describe('unpackBundle', () => {
-  it('round-trips a campaign: pictures back to data URLs, models back by hash', () => {
-    const map = starmapWith('data:image/jpeg;base64,' + b64('JPEGBYTES'), 'abc123');
-    const zip = packBundle('starmap', map, { models: { abc123: { b64: b64('GLBBYTES'), meta: { credit: 'A Modeller' } } } })!;
+describe('unpackBundle', async () => {
+  it('round-trips a campaign: pictures back to data URLs, models back by hash', async () => {
+    const map = starmapWith('data:image/jpeg;base64,' + b64('JPEGBYTES'), HASH_GLBBYTES);
+    const zip = (await packBundle('starmap', map, { models: { [HASH_GLBBYTES]: { b64: b64('GLBBYTES'), meta: { credit: 'A Modeller' } } } }))!;
 
     const out = unpackBundle(zip);
     expect(out.kind).toBe('starmap');
     const node = out.doc.systems[0].system.nodes[0];
     expect(node.image.url).toBe('data:image/jpeg;base64,' + b64('JPEGBYTES'));
     expect(node.image.custom).toBe(true);         // the rest of the ImageRef survives
-    expect(node.model.hash).toBe('abc123');
-    expect(out.models.abc123.b64).toBe(b64('GLBBYTES'));
-    expect(out.models.abc123.meta.credit).toBe('A Modeller');
+    expect(node.model.hash).toBe(HASH_GLBBYTES);
+    expect(out.models[HASH_GLBBYTES].b64).toBe(b64('GLBBYTES'));
+    expect(out.models[HASH_GLBBYTES].meta.credit).toBe('A Modeller');
     expect(out.doc.modelMeta).toBeUndefined();    // an implementation detail, not campaign data
   });
 
-  it('round-trips a single SYSTEM save the same way', () => {
+  it('round-trips a single SYSTEM save the same way', async () => {
     const system = { id: 'sol', name: 'Sol', nodes: [{ id: 'earth', name: 'Earth', image: { url: 'data:image/png;base64,' + b64('P') } }] };
-    const zip = packBundle('system', system, {})!;
+    const zip = (await packBundle('system', system, {}))!;
     const out = unpackBundle(zip);
     expect(out.kind).toBe('system');
     expect(out.doc.nodes[0].image.url).toBe('data:image/png;base64,' + b64('P'));
   });
 
-  it('drops a picture whose file is missing rather than leaving a broken reference', () => {
+  it('drops a picture whose file is missing rather than leaving a broken reference', async () => {
     const map = starmapWith('data:image/jpeg;base64,' + b64('J'), null);
-    const zip = packBundle('starmap', map, {})!;
+    const zip = (await packBundle('starmap', map, {}))!;
     // Rebuild the archive without the image member.
     const members = readZipMembers(zip, ['.json', '.jpg']);
     const docName = Object.keys(members).find((n) => n.endsWith('starmap.json'))!;
@@ -115,44 +125,44 @@ describe('unpackBundle', () => {
 // bundled example starmaps - so the GM's undo history must not be inside one, in EITHER format.
 // The strip lives in `stripSystemForExport` / `stripStarmapForExport`, which both save paths call
 // before packing; these assert the promise at the file itself, where a reader can check it.
-describe('a save never carries the GM undo history', () => {
+describe('a save never carries the GM undo history', async () => {
   const SECRET = 'the ambassador is a construct';
 
   function mapWithHistory() {
-    const map: any = starmapWith(null, 'abc123');
+    const map: any = starmapWith(null, HASH_G);
     map.undoHistory = [{ at: 1, authored: { gmNotes: SECRET } }];
     map.systems[0].system.undoHistory = [{ at: 2, authored: { name: SECRET } }];
     return map;
   }
 
-  it('as a BUNDLE: the starmap.json inside the zip has none', () => {
+  it('as a BUNDLE: the starmap.json inside the zip has none', async () => {
     const lean = stripStarmapForExport(mapWithHistory());
-    const zip = packBundle('starmap', lean, { models: { abc123: { b64: b64('G'), meta: {} } } })!;
+    const zip = (await packBundle('starmap', lean, { models: { [HASH_G]: { b64: b64('G'), meta: {} } } }))!;
     const members = readZipMembers(zip, ['.json']);
     const json = strFromU8(members[Object.keys(members).find((n) => n.endsWith('starmap.json'))!]);
     expect(json).not.toContain(SECRET);
     expect(json).not.toContain('undoHistory');
   });
 
-  it('as PLAIN JSON: the no-assets path drops it too', () => {
+  it('as PLAIN JSON: the no-assets path drops it too', async () => {
     const lean = stripStarmapForExport(mapWithHistory());
-    expect(packBundle('starmap', lean)).toBeNull();          // nothing to extract -> plain .json
+    expect(await packBundle('starmap', lean)).toBeNull();          // nothing to extract -> plain .json
     const json = JSON.stringify(lean, null, 2);              // what the download would write
     expect(json).not.toContain(SECRET);
     expect(json).not.toContain('undoHistory');
   });
 
-  it('and a SINGLE-SYSTEM save, in both formats', () => {
+  it('and a SINGLE-SYSTEM save, in both formats', async () => {
     const sys: any = { id: 'sol', name: 'Sol', nodes: [{ id: 'earth', kind: 'body', name: 'Earth' }] };
     sys.undoHistory = [{ at: 1, authored: { gmNotes: SECRET } }];
     const lean = stripSystemForExport(sys);
     expect(JSON.stringify(lean)).not.toContain(SECRET);
-    expect(packBundle('system', lean)).toBeNull();
+    expect(await packBundle('system', lean)).toBeNull();
   });
 });
 
 describe('sniffBundle', () => {
-  it('decides on the magic number, not the extension', () => {
+  it('decides on the magic number, not the extension', async () => {
     expect(sniffBundle(new TextEncoder().encode('{"name":"plain json"}'))).toBe(false);
     expect(BUNDLE_EXT).toBe('.sse.zip');
   });
@@ -182,9 +192,9 @@ function starmapWithBackground(over: any = {}) {
   };
 }
 
-describe('G16: the map background rides the save bundle', () => {
-  it('extracts the picture to a real file and takes the base64 out of the JSON', () => {
-    const zip = packBundle('starmap', starmapWithBackground())!;
+describe('G16: the map background rides the save bundle', async () => {
+  it('extracts the picture to a real file and takes the base64 out of the JSON', async () => {
+    const zip = (await packBundle('starmap', starmapWithBackground()))!;
     expect(zip).toBeTruthy();
     const members = readZipMembers(zip, ['.json', '.png', '.md', '.txt']);
     const names = Object.keys(members);
@@ -194,13 +204,13 @@ describe('G16: the map background rides the save bundle', () => {
     expect(json).toContain('assets/images/player/asset-sector-map.png');
   });
 
-  it('a campaign whose ONLY asset is the background still becomes a bundle', () => {
+  it('a campaign whose ONLY asset is the background still becomes a bundle', async () => {
     // The picture is the only thing to carry, so `packBundle` must not decide there is nothing.
-    expect(packBundle('starmap', starmapWithBackground())).not.toBeNull();
+    expect(await packBundle('starmap', starmapWithBackground())).not.toBeNull();
   });
 
-  it('round-trips picture, anchor and credit together', () => {
-    const zip = packBundle('starmap', starmapWithBackground())!;
+  it('round-trips picture, anchor and credit together', async () => {
+    const zip = (await packBundle('starmap', starmapWithBackground()))!;
     const { doc } = unpackBundle(zip);
     const asset = doc.playerAssets[0];
     expect(asset.dataUrl.startsWith('data:image/png;base64,')).toBe(true);
@@ -217,8 +227,8 @@ describe('G16: the map background rides the save bundle', () => {
     expect(asset.w).toBe(2048);
   });
 
-  it('ATTRIBUTIONS.md names the background, what it is used for, and its licence', () => {
-    const zip = packBundle('starmap', starmapWithBackground())!;
+  it('ATTRIBUTIONS.md names the background, what it is used for, and its licence', async () => {
+    const zip = (await packBundle('starmap', starmapWithBackground()))!;
     const members = readZipMembers(zip, ['.json', '.png', '.md']);
     const md = strFromU8(members[Object.keys(members).find((n) => n.endsWith('ATTRIBUTIONS.md'))!]);
     expect(md).toContain('assets/images/player/asset-sector-map.png');
@@ -227,37 +237,37 @@ describe('G16: the map background rides the save bundle', () => {
     expect(md).toContain('CC BY 4.0');
   });
 
-  it('CC-BY WITH NO CREDIT is reported as a breach, not as a tidy gap', () => {
+  it('CC-BY WITH NO CREDIT is reported as a breach, not as a tidy gap', async () => {
     const map: any = starmapWithBackground();
     delete map.playerAssets[0].credit;
-    const zip = packBundle('starmap', map)!;
+    const zip = (await packBundle('starmap', map))!;
     const members = readZipMembers(zip, ['.json', '.png', '.md']);
     const md = strFromU8(members[Object.keys(members).find((n) => n.endsWith('ATTRIBUTIONS.md'))!]);
     expect(md).toContain('CC-BY requires naming the author');
   });
 
-  it('a built-in starter graphic is NOT extracted - it is a static path, not an upload', () => {
+  it('a built-in starter graphic is NOT extracted - it is a static path, not an upload', async () => {
     const map: any = starmapWithBackground();
     map.playerAssets.push({ id: 'builtin-sse-logo', name: 'SSE2', dataUrl: '/images/logo/SSE.png' });
-    const zip = packBundle('starmap', map)!;
+    const zip = (await packBundle('starmap', map))!;
     const members = readZipMembers(zip, ['.json', '.png', '.md']);
     expect(Object.keys(members).some((n) => n.includes('builtin-sse-logo'))).toBe(false);
     const json = strFromU8(members[Object.keys(members).find((n) => n.endsWith('starmap.json'))!]);
     expect(json).toContain('/images/logo/SSE.png'); // survives exactly as authored
   });
 
-  it('a body photo and a player graphic do not claim each other, despite the shared prefix', () => {
+  it('a body photo and a player graphic do not claim each other, despite the shared prefix', async () => {
     const map: any = starmapWithBackground();
     map.systems[0].system.nodes[0].image = { url: 'data:image/jpeg;base64,' + b64('BODYJPEG'), credit: 'Someone else' };
-    const { doc } = unpackBundle(packBundle('starmap', map)!);
+    const { doc } = unpackBundle(await packBundle('starmap', map)!);
     expect(doc.systems[0].system.nodes[0].image.url.startsWith('data:image/jpeg')).toBe(true);
     expect(doc.playerAssets[0].dataUrl.startsWith('data:image/png')).toBe(true);
     expect(doc.playerAssets[0].credit).toBe('A Cartographer'); // not "Someone else"
   });
 
-  it('a campaign with a background but no image chosen stays plain JSON', () => {
+  it('a campaign with a background but no image chosen stays plain JSON', async () => {
     const map: any = starmapWithBackground({ source: 'default', assetId: undefined });
     delete map.playerAssets;
-    expect(packBundle('starmap', map)).toBeNull();
+    expect(await packBundle('starmap', map)).toBeNull();
   });
 });

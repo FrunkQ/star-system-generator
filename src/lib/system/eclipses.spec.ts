@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   angularRadius, discObscuration, eclipseKind, nextEclipse, nextEclipseCached,
-  clearEclipseCache, ECLIPSE_FLOOR
+  clearEclipseCache, ECLIPSE_FLOOR, describeEclipse
 } from './eclipses';
 import { satelliteTiltRad, toParentEquator } from './satelliteFrame';
 import { computeWorldPositions3D } from '$lib/physics/worldPositions';
@@ -278,4 +278,53 @@ describe('the satellite reference frame reaches the search', () => {
     const r = toParentEquator(0.3, -0.4, 0.5, 1.1, { x: 0, y: 0, z: 0 });
     expect(Math.hypot(r.x, r.y, r.z)).toBeCloseTo(Math.hypot(0.3, -0.4, 0.5), 12);
   });
+});
+
+describe('megastructure shadow entries — the special entry beside local eclipses (G58)', () => {
+	const el = (a_AU: number, i_deg = 0) => ({ a_AU, e: 0, i_deg, Omega_deg: 0, omega_deg: 0, M0_rad: 0 });
+	const star = { id: 's', name: 'Star', parentId: null, kind: 'body', roleHint: 'star', massKg: 1.989e30, radiusKm: 696340, temperatureK: 5778, tags: [] };
+	const world = (id: string, a: number, i: number) => ({
+		id, name: id, parentId: 's', kind: 'body', roleHint: 'planet', massKg: 5.97e24, radiusKm: 6371,
+		orbit: { hostId: 's', hostMu: 1.327e20, t0: 0, elements: el(a, i) }, tags: []
+	});
+	const ring = (i: number) => ({
+		id: 'ring', name: 'Ringworld', parentId: 's', kind: 'construct', megaType: 'ringworld',
+		orbit: { hostId: 's', hostMu: 1.327e20, t0: 0, elements: el(1, i) }, tags: []
+	});
+	const sys = (nodes: any[]): System => ({ id: 'sys-mega-ecl', name: 'x', nodes } as unknown as System);
+
+	it('a coplanar world beyond a solid ring reads PERMANENTLY eclipsed - the bad-ring case, said honestly', () => {
+		const out = nextEclipse(sys([star, ring(0), world('p', 2, 0)]), 'p', 0);
+		expect(out.megastructure).toHaveLength(1);
+		const m = out.megastructure![0];
+		expect(m.permanent).toBe(true);
+		expect(m.obscuration).toBe(1);
+		expect(m.kind).toBe('total');
+		expect(describeEclipse(m, 0)).toContain('permanent');
+		expect(describeEclipse(m, 0)).toContain('Ringworld');
+	});
+
+	it('a tilted world crosses the shadow twice an orbit, and the entry says how often and how long', () => {
+		const out = nextEclipse(sys([star, ring(0), world('p', 2, 30)]), 'p', 0);
+		expect(out.megastructure).toHaveLength(1);
+		const m = out.megastructure![0];
+		expect(m.permanent).toBeUndefined();
+		expect(m.everyOrbit).toBe(true);
+		// T(2 AU, 1 Msun) = 2.828 y; two crossings per orbit -> recurrence T/2 = 1.414 y.
+		const T = 2 * Math.PI * Math.sqrt(Math.pow(2 * AU_KM * 1000, 3) / 1.327e20) * 1000;
+		expect(m.periodMs).toBeCloseTo(T / 2, -8);
+		// Aligned share at 30 deg with the default band: ~0.68% of the orbit, split over two
+		// crossings -> ~84 h in shadow per crossing.
+		expect(m.durationMs! / 3600_000).toBeGreaterThan(75);
+		expect(m.durationMs! / 3600_000).toBeLessThan(95);
+		const text = describeEclipse(m, 0);
+		expect(text).toContain('every');
+		expect(text).toContain('for ~');
+	});
+
+	it('an isotropic swarm makes no eclipse entry (steady dimming is not an event), nor does a ring you sit inside', () => {
+		const swarm = { ...ring(0), id: 'sw', name: 'Swarm', megaType: 'dyson-swarm' };
+		expect(nextEclipse(sys([star, swarm, world('p', 2, 0)]), 'p', 0).megastructure ?? []).toHaveLength(0);
+		expect(nextEclipse(sys([star, ring(0), world('p', 0.5, 0)]), 'p', 0).megastructure ?? []).toHaveLength(0);
+	});
 });

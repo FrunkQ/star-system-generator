@@ -200,6 +200,17 @@
     dispatch('save', { temporal: workingTemporal });
     dispatch('close');
   }
+
+  // G62: this field shows a number the app DERIVES for its OWN calendars, from the registry anchor
+  // and the calendar's `epoch_utc`. The moment a GM types their own the derivation has to stop, or
+  // their value would be overwritten on the next load - so editing it CLAIMS the field. This is
+  // steer-do-not-stop applied to the clock: the app corrects its own calendars and never a
+  // reckoning somebody chose.
+  function claimEpoch() {
+    if (!selectedCalendar) return;
+    (selectedCalendar as any).epoch_gm_authored = true;
+    delete (selectedCalendar as any).epoch_utc;
+  }
 </script>
 
 {#if showModal}
@@ -239,8 +250,8 @@
                   </select>
                 </div>
                 <div class="field">
-                  <label title="Master-clock second used as this calendar's zero point.">Epoch Offset t (seconds from big bang you day ZERO starts)</label>
-                  <input type="text" bind:value={selectedCalendar.epoch_offset_t} />
+                  <label title="Master-clock second used as this calendar's zero point. Shipped calendars derive this from the registry anchor; type here and it becomes yours, and the app stops deriving it.">Epoch Offset t (seconds from big bang your day ZERO starts)</label>
+                  <input type="text" bind:value={selectedCalendar.epoch_offset_t} on:input={claimEpoch} />
                 </div>
               </div>
 
@@ -272,10 +283,40 @@
                     <input type="number" bind:value={selectedCalendar.leap_logic.threshold_t} />
                   </div>
                   <div class="field">
-                    <label title="Target unit for leap application.">Apply leap to</label>
+                    <label title="Which unit gets inserted when the bucket drains - normally 'day'.">Apply leap to</label>
                     <input type="text" bind:value={selectedCalendar.leap_logic.apply_to} />
                   </div>
                 </div>
+
+                <div class="row three compact">
+                  <div class="field">
+                    <label title="Which month absorbs the inserted unit. Leave blank and the last month takes it.">Leap month</label>
+                    <input type="text" bind:value={selectedCalendar.leap_logic.leap_month} placeholder="last month" />
+                  </div>
+                  <div class="field full-width">
+                    <label title="An EXACT rule, as alternating divisors: 4, 100, 400 means every 4th year, except every 100th, except every 400th. Set this and it replaces the drift bucket.">Exact leap cycle (divisors, comma-separated)</label>
+                    <input
+                      type="text"
+                      value={(selectedCalendar.leap_logic.leap_cycle || []).join(', ')}
+                      placeholder="blank = use the drift bucket above"
+                      on:change={(e) => {
+                        const parsed = (e.currentTarget as HTMLInputElement).value
+                          .split(',').map((v) => Number(v.trim())).filter((n) => Number.isFinite(n) && n > 0);
+                        if (parsed.length) selectedCalendar.leap_logic.leap_cycle = parsed;
+                        else delete selectedCalendar.leap_logic.leap_cycle;
+                        workingTemporal = { ...workingTemporal };
+                      }}
+                    />
+                  </div>
+                </div>
+                <p class="section-hint">
+                  {#if selectedCalendar.leap_logic.leap_cycle?.length}
+                    Using the exact cycle. The drift/threshold above are ignored for this calendar.
+                  {:else}
+                    Using the drift bucket: surplus seconds accumulate each year and insert one unit
+                    when they reach the threshold. Exact on average, up to a day out in any given year.
+                  {/if}
+                </p>
 
                 <div class="row full-row">
                   <div class="field full-width">
@@ -475,6 +516,11 @@
     color: var(--text);
     border-radius: 4px;
     padding: 6px 7px;
+  }
+  .section-hint {
+    margin: 2px 0 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
   }
   .section-title {
     margin-top: 6px;

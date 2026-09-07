@@ -19,6 +19,8 @@
   import { CEILING, costBand, estimateCost, suggestRadius } from '$lib/import/realsky/costModel.mjs';
   import GenerationDials, { DEFAULT_KNOBS } from './GenerationDials.svelte';
   import type { GenerationKnobs } from '$lib/generation/generateFromConfig';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   const dispatch = createEventDispatcher();
 
@@ -370,7 +372,7 @@
   $: suggestion = preview && band !== 'green' ? suggestRadius(radiusLy, countAt) : null;
 </script>
 
-<div class="modal-background" class:docked-wrap={mode === 'append'} role="presentation" on:click|self={() => mode === 'new' && close()}>
+<div class="modal-background" class:docked-wrap={mode === 'append'} role="presentation" on:click|self={() => mode === 'new' && close()} use:foreground>
   <div class="modal" class:docked={mode === 'append'} role="dialog" aria-label="Import from the real sky">
     <h3>{mode === 'append' ? 'Import real stars here' : 'Import from the real sky'}</h3>
     <p class="intro">

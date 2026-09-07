@@ -5,12 +5,22 @@
 
   export let ctl: FloatingControl;
   export let label = 'Drag to move';
+  /** Shown even while locked - for a host with no lock of its own (the undo pill). */
+  export let always = false;
+
+  // THE HANDLE IS WHERE THE THREE THINGS IT CAN DO ARE SAID, because none of them is discoverable
+  // by looking (G81): a drag moves it, a drop beside another control joins the two, and a
+  // right-click or long press opens the edge menu - which is also where a pair is separated again.
+  $: hint = $ctl.dock
+    ? label + ' - it is docked. Drag one on the END of the row and it comes away on its own; drag one in the MIDDLE and the whole row moves. Right-click (or press and hold) to choose an edge'
+    : label + '; drop it against another control to dock them. Right-click (or press and hold) to choose an edge';
 </script>
 
-<!-- Nothing to drag once the control is LOCKED in place, and on a narrow phone every pixel of the
-     pill is doing work — so the handle stands down. Unlock, reposition, lock again. -->
-{#if !$ctl.pinned}
-  <span class="float-grip" role="presentation" title={label} use:ctl.grip>
+<!-- On a narrow phone every pixel of the pill is doing work, so once the control is LOCKED the
+     handle stands down and the lock takes over as the handle (FloatPin): drag it to move, tap it
+     to unlock. -->
+{#if always || !$ctl.pinned}
+  <span class="float-grip" role="presentation" title={hint} use:ctl.grip>
     <svg width="5" height="15" viewBox="0 0 5 15" aria-hidden="true">
       <circle cx="1.25" cy="1.75" r="1.05" /><circle cx="3.75" cy="1.75" r="1.05" />
       <circle cx="1.25" cy="7.5" r="1.05" /><circle cx="3.75" cy="7.5" r="1.05" />

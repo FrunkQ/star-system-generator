@@ -19,11 +19,16 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { restorePreCalibrationOrbits } from './preCalibrationSol';
 import { calculateTransitPlan } from './calculator.js';
 import { compactBurns, shipBurnAt } from '../constructs/shipBurn';
 import type { TransitPlan } from './types';
 
 const base = JSON.parse(fs.readFileSync(path.resolve('static/examples/Sol_Expanse-System.json'), 'utf-8'));
+// The journey below was RECORDED against the Sol this map used to carry. G62 part 2 calibrated
+// those planets to real ephemeris, so the recorded destination and the live map stopped being
+// the same place - see `preCalibrationSol.ts`. This spec tests the scheduler, not the map.
+restorePreCalibrationOrbits(base.system ?? base);
 
 function plans(maxG: number): { system: any; plans: TransitPlan[] } {
 	const system = JSON.parse(JSON.stringify(base));

@@ -120,9 +120,97 @@ export function updateAssetProvenance(id: string, fields: Pick<PlayerAsset, 'cre
 }
 
 export function deleteAsset(id: string): void {
+  starmapStore.update((sm) => {
+    if (!sm) return sm;
+    const next = { ...sm, playerAssets: (sm.playerAssets ?? []).filter((x) => x.id !== id) };
+    // R-07: a cover that points at a deleted picture is worse than no cover - a reader would follow
+    // the pointer, find nothing, and have to guess anyway, having first been told not to.
+    if (next.coverAssetId === id) delete next.coverAssetId;
+    return next;
+  });
+}
+
+/**
+ * R-07: CAPTURE THE VIEW AS A GRAPHIC — a beauty shot without leaving the app.
+ *
+ * Same destination as an upload: it becomes an ordinary `PlayerAsset`, so it travels in the bundle
+ * as a real file, can be chosen as the cover, and is listed in ATTRIBUTIONS.md like anything else.
+ * The only difference is `capturedInApp`, which records that the creator made it from their own
+ * campaign - and that is what stops the sharing gate treating a GM's own screenshot as uncredited
+ * third-party art and refusing to let them publish their own map.
+ *
+ * WHY THIS CAN READ A WebGL CANVAS AT ALL: `holo/scene.ts` and `holo/filteredCanvas.ts` already
+ * create their renderers with `preserveDrawingBuffer: true`, because the transition engine has to
+ * snapshot the last frame. Without that a WebGL canvas reads back blank outside the frame that drew
+ * it, and this would silently produce a black rectangle.
+ *
+ * Returns null when the canvas cannot be read - a tainted canvas throws on toDataURL, and a
+ * zero-sized one is not a picture. The caller says so rather than storing an empty asset.
+ */
+export function addAssetFromCanvas(
+  source: HTMLCanvasElement,
+  name: string,
+  maxPx: number = BACKGROUND_MAX_PX
+): PlayerAsset | null {
+  if (!source || !source.width || !source.height) return null;
+  const max = maxPx > 0 ? maxPx : ASSET_MAX_PX;
+  const scale = Math.min(1, max / Math.max(source.width, source.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(source.width * scale));
+  c.height = Math.max(1, Math.round(source.height * scale));
+  const ctx = c.getContext('2d');
+  if (!ctx) return null;
+  let dataUrl: string;
+  try {
+    ctx.drawImage(source, 0, 0, c.width, c.height);
+    dataUrl = c.toDataURL('image/png');
+  } catch {
+    return null; // tainted by a cross-origin draw: refuse rather than store a broken picture
+  }
+  const slug = (name || 'view').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'view';
+  const asset: PlayerAsset = {
+    id: `asset-capture-${slug}-${c.width}x${c.height}`,
+    name: name || 'Captured view',
+    dataUrl,
+    w: c.width,
+    h: c.height,
+    capturedInApp: true
+  };
   starmapStore.update((sm) =>
-    sm ? { ...sm, playerAssets: (sm.playerAssets ?? []).filter((x) => x.id !== id) } : sm
+    sm ? { ...sm, playerAssets: [...(sm.playerAssets ?? []).filter((x) => x.id !== asset.id), asset] } : sm
   );
+  return asset;
+}
+
+// --- R-07: the cover -----------------------------------------------------------------------------
+//
+// WHICH of a campaign's graphics represents it. The hub currently GUESSES - map background, then any
+// player graphic, then the first body picture - and a guess is right often enough to be annoying
+// when it is wrong, because the creator can see a better shot sitting in the same list.
+//
+// It is a POINTER, not a picture. Everything a cover needs already exists: the graphics ride in the
+// bundle as real files, carry credit/licence/source, and are listed in ATTRIBUTIONS.md. A separate
+// cover image would duplicate all four and give the sharing gate a second thing to check.
+
+/** The id of the chosen cover, or null. Reactive so the picker can show which one is set. */
+export const coverAssetId = derived(starmapStore, ($sm): string | null => $sm?.coverAssetId ?? null);
+
+/**
+ * Choose the cover, or clear it by passing the id that is already set (the control is a toggle).
+ *
+ * A BUILT-IN GRAPHIC IS REFUSED. The starters are app artwork on a static path, not the creator's
+ * work: they are not extracted into the bundle, so a cover pointing at one would name a file the
+ * archive does not contain, and it would put SSE's own logo on somebody's map page.
+ */
+export function setCoverAsset(id: string | null): void {
+  starmapStore.update((sm) => {
+    if (!sm) return sm;
+    if (id && (id.startsWith('builtin-') || !(sm.playerAssets ?? []).some((a) => a.id === id))) return sm;
+    const next = { ...sm };
+    if (!id || next.coverAssetId === id) delete next.coverAssetId;
+    else next.coverAssetId = id;
+    return next;
+  });
 }
 
 // One-time import of any legacy localStorage holo presets into the current starmap.

@@ -28,12 +28,17 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import { restorePreCalibrationOrbits } from './preCalibrationSol';
 import { sampleJourneyKinematicsAtTime, reconcileConstructArrival } from './scheduler';
 import { computeWorldPositions3D } from '../physics/worldPositions';
 import { compactRoute } from '../constructs/shipRoute';
 
 const AU_KM = 1.495978707e8;
 const base = JSON.parse(fs.readFileSync(path.resolve('static/examples/Sol_Expanse-System.json'), 'utf-8'));
+// The journey below was RECORDED against the Sol this map used to carry. G62 part 2 calibrated
+// those planets to real ephemeris, so the recorded destination and the live map stopped being
+// the same place - see `preCalibrationSol.ts`. This spec tests the scheduler, not the map.
+restorePreCalibrationOrbits(base.system ?? base);
 
 // The owner's own Rocinante node, verbatim from the save (trimmed to the fields that place it).
 const ROCI: any = {

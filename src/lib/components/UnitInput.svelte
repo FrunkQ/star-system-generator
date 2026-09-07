@@ -8,7 +8,7 @@
   import { createEventDispatcher } from 'svelte';
   import { unitPrefs, unitPrefsLocked, cycleUnitPref } from '../unitPrefsStore';
   import {
-    resolveUnitPref, resolveAutoUnit, unitFromSI, unitToSI, unitIdLabel,
+    resolveUnitPref, resolveAutoUnit, unitFromSI, unitToSI, unitIdLabel, quantityNoun,
     type UnitQuantity, type UnitBodyType
   } from '../units';
 
@@ -28,7 +28,12 @@
   let focused = false;
 
   $: unit = resolveUnitPref($unitPrefs, quantity, bodyType);
-  $: shown = resolveAutoUnit(unit, value);
+  // NOTE, and it is the opposite of what <UnitValue> does: an EDIT field resolves 'auto' from ITS
+  // OWN value, never from the group it belongs to. Sharing a rung is right for a READOUT (a hull
+  // reads "3 × 0.02 × 0.02 km") and wrong for editing it: a 3e11 m spine 73 m thick would put the
+  // short axes at "4.879e-10 AU", which is not a number anyone can type. Measured on the live app,
+  // not reasoned: the shared-rung version was built first and only looked wrong once it was used.
+  $: shown = resolveAutoUnit(unit, value, quantity);
   $: if (!focused) text = toText(unitFromSI(shown, value));
 
   // Trim float noise from the conversion (310.92777777777775 → 310.927777778) without rounding
@@ -69,7 +74,7 @@
   {:else}
     <button
       type="button" class="unit clickable" tabindex="-1"
-      title="Change unit — every {bodyType} {quantity} follows"
+      title="Change unit — every {bodyType} {quantityNoun(quantity)} follows"
       on:click|stopPropagation={() => cycleUnitPref(quantity, bodyType)}>{unitIdLabel(shown)}</button>
   {/if}
 </span>

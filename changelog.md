@@ -2,17 +2,1145 @@
 
 All notable changes are listed here:
 
-## v3.0.286 - 2nd Sep 2026
+## v3.1.0 - 7th Sep 2026
+
+Version 3.1. Everything below has been on beta and is now the version at starsystemx.com; the last
+production release was v3.0.286.
+
+- The Explorers site and the app now work as one. A map page has an "Open in Star System Explorer" button: click it and the map opens here, asking first if you already have a campaign open and keeping the one it replaces a single step back. The app also publishes a list of what it ships, so the site can tell your own pictures and calendars from the ones that came with the app, and credit for a map you have built on travels with it.
+- Interface skins. Daylight is the first light one and Terminal is amber phosphor, alongside the existing pair, and every piece of chrome follows the skin you pick rather than a colour written into the code.
+- Controls that stay where you put them. The clock read-out and the tool strip float, carry a grip, remember their edge and settle where you leave them - and two floating controls can be docked into one box.
+- It runs better on a modest machine. A low-power switch turns down the two things that actually cost frames, and the view stops redrawing frames that nothing could have changed. A transit left running with the clock on no longer fills memory.
+- Magnetospheres and aurorae. A world's field is drawn on the system map and in 3D, sized from its own physics, and an aurora sits where that world's field puts it rather than where every other world's does.
+- Stars look like themselves. A jetting star jets everywhere it is drawn, a photosphere is no longer painted flat, a neutron star's card explains what its numbers mean, and a remnant's output comes from its surface.
+- Size comparison. Every object at true scale side by side, with a ruler of familiar worlds - Ceres to Betelgeuse - showing only the ones you could actually see at your current zoom.
+- Ships dock. All seven structure types can be docked at, the planner prices the docking, and a ship parks on the structure rather than near it. Arrivals were corrected too: a Hohmann transfer no longer parks you facing the wrong way round.
+- Copy and paste between campaigns. Copy a system or a body - with everything beneath it - and paste it into another campaign, on the map or in a system, with the ids re-minted and the credit recorded.
+- The documentation was swept end to end: nine surfaces checked against the code, and the claims that were wrong corrected rather than left.
+
+## v3.0.388 - 7th Sep 2026
+
+- Every magnetised world now shows its magnetosphere at once in the 3D views, not just the one you have
+  selected, so a glance tells you which worlds are shielded and which are bare. Getting there meant sizing them
+  for a three-dimensional view rather than for a map: a magnetotail is enormously longer than the bubble at its
+  nose, and drawn at full length it swallowed the whole solar system in purple. The 3D now compresses the
+  distance the same way it already compresses body sizes - so Mercury's stays about true, Jupiter's is clearly
+  the largest, and the order you read off them is honest even though the sizes are squeezed. The true figures
+  are unchanged on the body card and on the system map.
+- Fixed: trapped radiation belts were half-buried in their own planets. A belt begins at a definite altitude
+  and the ring was being centred on it rather than seated on it, so half the doughnut sat below the cloud tops
+  and the belt looked like it was growing out of the world instead of floating above it. All five magnetised
+  planets did it; Jupiter's was the worst.
+
+## v3.0.387 - 7th Sep 2026
+
+- Fixed, both spotted on screen: a magnetosphere no longer paints a purple wash across the view, and it no
+  longer stops shrinking when you zoom out. The wash was the far wall of the body's own outer boundary seen
+  from inside it - Mercury's bubble is only a couple of radii across the nose but reaches thirty down the
+  tail, so a view that is comfortably outside the front of it is deep inside the back. Each surface is now
+  asked separately whether you are inside it, and hides itself if you are: you cannot see the shape of a
+  cloud you are standing in. The shrinking was the small-object floor that keeps a distant planet from
+  vanishing to nothing, quietly multiplied by the length of the tail; the bubble now follows the planet's
+  drawn size but not that floor, so it shrinks away with everything else.
+
+## v3.0.386 - 7th Sep 2026
+
+- You can copy a whole star system off the starmap now. Right-click a star and there is a Copy System item, next to the paste that was already there; what you copy shows on the paste indicator and can be dropped back onto empty space as a new system - on this map, or in another campaign in another window.
+- A copied system keeps the name YOU gave it. If you renamed a system without renaming its star, the duplicate comes back under your name for it rather than the star's.
+- Copying a double star takes both of them. The copy starts at the pair rather than at one of the stars, so a binary duplicates whole.
+- The paste menu now calls a copied system by its name instead of by its barycentre - "Paste System Alpha Centauri here" rather than "Paste Pair Alpha Centauri System Barycentre here".
+
+## v3.0.385 - 7th Sep 2026
+
+- The "?" is now on all four pack editors, not just gases: Liquids, Fuel & Drives and Sensors each explain every field the same way - what it is, what else it is called, the units, what in the app reads it, and what a real value looks like, with the same chip saying whether it is a measured quantity you can look up, a coefficient this app invented, or a field nothing reads.
+- Three things nobody had written down anywhere turned up while writing them. An engine whose Type reads exactly "Chemical (Monopropellant)" is left out of every thrust, ISP and power total - that is how RCS blocks are stopped from flattering a ship's figures, and it means the wording of that box matters. A liquid marked "poor" as a biosolvent scores exactly the same as one marked "none", because the scorer only knows "ideal" and "alternative". And a sensor's description repeats its own range as text that nothing keeps in step with the range box above it.
+- Fixed while testing: the help panel was cut off at the bottom when its field sat low in a long list, losing the part you most wanted, and then hung slightly off the right edge on the very last field. Both were measured in the real editors rather than guessed at, and neither can happen now wherever the field sits.
+
+## v3.0.384 - 7th Sep 2026
+
+- Magnetic fields now show in the 3D views as well, behind a Magnetospheres box in a player view's Look & feel
+  settings (off by default, and dropped in Low Power like the other see-through shells). A world with a trapped
+  radiation belt wears it as a faint lilac band tilted onto its magnetic axis rather than its spin axis - so
+  Neptune's leans right over, which is what an ice giant's field really does and is hard to picture any other
+  way. The boundary itself is drawn as a glowing translucent shell around the body, nose into the wind and
+  fading away down the tail; it is the same shape the system map shades, so the two views can never disagree.
+  One honest caveat while a question is settled: a magnetosphere reaches far further out than the camera sits
+  when you click a planet, so the shell only appears once you pull the view back past it - you cannot see the
+  shape of a cloud you are standing inside.
+
+## v3.0.383 - 7th Sep 2026
+
+- Every field in the gas editor now has a "?" beside it that tells you what the number actually is: what it means, what else it is called, the units, what in the engine reads it, and what a real value looks like with examples from the gases that ship.
+- Each one also says which KIND of number it is, because that is the thing that was hardest to guess. Some are measured quantities you can look up and get right - molar mass, melting point, specific heat. Others are coefficients on a scale this app invented with Earth as the yardstick, where only the ratios between gases mean anything - the greenhouse and shielding factors are both of these. The Greenhouse Factor in particular is NOT the Global Warming Potential you may know: that is per unit mass over a century and includes how long a gas survives, this is per partial pressure and instantaneous, which is why carbon dioxide and methane sit at 22 and 25 here rather than at 1 and about 28.
+- And one field says plainly that nothing reads it. Radiative Cooling has been carried on every gas and wired to nothing, so changing it has never done anything to any world. It now says so rather than implying otherwise.
+- Liquids, Fuel & Drives and Sensors get the same treatment next; the gas editor is the pattern.
+## v3.0.382 - 7th Sep 2026
+
+- Docked controls: dragging one on the END of a row now takes just that one out, instead of moving the whole row with it. Drag one in the MIDDLE and the row still moves together, which is what you want from the middle. So a row of three is rearranged by pulling pieces off its ends and dropping them where you want them - and two docked controls come apart the same way, since both of them are ends.
+
+## v3.0.381 - 7th Sep 2026
+
+- Auroras now sit at the latitude their world's magnetic field actually puts them, instead of the same ring on
+  every planet in the app. An aurora glows where the last closed field line comes back down to the surface, so
+  a world with a big magnetosphere has its oval tucked close to the pole and a world with a small one has it
+  further down. Jupiter's moves fifteen degrees poleward, which is where Hubble photographs it; Earth's shifts
+  by three and a half. Mercury, whose field is too weak to close a line above the ground, correctly has none
+  at all. It is the same number that draws the shaded region on the system map, so the globe and the map can
+  never disagree about where a field closes.
+
+## v3.0.380 - 7th Sep 2026
+
+- Fixed: a neutron star was being told it was harmless. Its ionising output was worked out the way a normal
+  star's is - from a corona, the thin outer shell a magnetic dynamo heats to millions of degrees - and a
+  remnant has no dynamo and no corona. What it has instead is a surface at six hundred thousand degrees,
+  and nearly all the light from a surface that hot is already energetic enough to strip electrons off
+  hydrogen. So the figure now comes from the surface for neutron stars, white dwarfs, magnetars and black
+  holes, and from the corona for everything else. The Sun and every ordinary star are unchanged, deliberately:
+  their ultraviolet really does come from the corona, about twenty times over. The owner's neutron star goes
+  from a hundredth of a percent of the Sun's ionising output to about a thousand times it - which is what a
+  cooling neutron star actually is - and its ultraviolet kill zone, and the stellar wind blowing on anything
+  orbiting it, both follow. An accreting black hole keeps its disc, since a hole has no surface to read.
+
+## v3.0.379 - 7th Sep 2026
+
+- A star's 'Magnetic activity' is now called what it is, 'Flare activity', on the card, the tag, the override and the guides: it is how much the star flares, which is its dynamo, while its jets are a different engine (the gravitational well, the field and the spin). That is why a neutron star can carry strong jets and be quiet at once. The remnant notes on the card are plain words now.
+
+## v3.0.378 - 7th Sep 2026
+
+- The system map stops drawing zone rings and Hill-sphere outlines that cannot be seen. A circle bigger than the screen was still being drawn all the way round even though its edge was far outside the view - at deep zoom that is a line millions of pixels long, every frame, for nothing. The shading of those zones still draws, because that genuinely does cover the screen.
+- Hill spheres were never skipped when off screen at all; now they are.
+- Low power drops the translucent shading on zones and Hill spheres but keeps their outlines, so you can still see where every boundary is on a machine that cannot afford to tint half the screen.
+
+## v3.0.377 - 7th Sep 2026
+
+- Magnetospheres can now be drawn on the system map. A new Magnetospheres box in the GM View menu, beside Hill
+  spheres, shades each magnetised world's bubble: the solid part is the region where the field genuinely turns
+  the stellar wind away and protects an atmosphere, and the pale wash around it is the full extent, tail and
+  all. Every nose points at whatever is actually blowing on it - the star for a planet, the planet for a moon
+  deep inside a giant's field - so the bubbles swing round as the system turns. Venus and Mars show nothing,
+  because they have nothing. The tail fades out rather than stopping at a line, since a real magnetotail has
+  no end; and a bubble is never drawn larger than the body's own Hill sphere, so it stays a boundary you can
+  trust rather than a smear across the map. Like Hill spheres, it is a close-in overlay: zoom in on a planet
+  to see it properly.
+
+
+## v3.0.376 - 7th Sep 2026
+
+- Board only: the floating chrome work is closed and written up, with a short list of what a human still needs to look at and one question for the owner about how a docked pair should be taken apart.
+
+## v3.0.375 - 7th Sep 2026
+
+- The undo/redo buttons are always on screen now, greyed out when there is nothing to wind back, instead of appearing only once you have made an edit. The shading says "nothing yet" in the place you were looking for the answer.
+
+- Four fixes to the floating chrome, all found by driving the real app rather than the tests. A docked pair no longer comes apart when the canvas changes width - the controls do not all hang off the same corner, so keeping them together needed more than moving them by the same amount. Dropping one control against another now actually docks them (the check was reading where the control had been, not where it was let go). The clock read-out starts in its old top-left corner and stays there instead of jumping to the far edge on a wide screen. And a control is bounded by whatever is clipping it NOW, which is not always the same thing it was when the window was a different shape.
+
+
+## v3.0.374 - 7th Sep 2026
+
+- The 3D system view stops drawing when there is nothing to draw. With the clock paused, the camera still and low power on, it now sits idle instead of redrawing the same picture sixty times a second - which is most of what was flattening a laptop battery on a map nobody was touching. It still checks once a second regardless, so nothing can quietly go stale, and anything at all that moves - a running clock, a nudge of the camera, a glowing aurora, a drifting cloud - brings it straight back to full speed.
+- Low power also stops the slow pulse of a star's corona, which is both a saving in itself and what lets a quiet system go idle at all.
+
+## v3.0.373 - 7th Sep 2026
+
+- A neutron star's card makes sense again: its field prints as 2.21e14 G rather than fifteen digits, the note under it says the field is within its class's normal range rather than 'typical', and the magnetic activity cell says that 'quiet' is the flare verdict (a remnant has no dynamo to flare from) and is not a statement about its radiation. The ionising figure for remnants still comes from a model built for ordinary stars, and says so until the physics follows.
+
+## v3.0.372 - 7th Sep 2026
+
+- The light and dark palettes for the floating controls now take their tint from the skin you are wearing: Nebula floats lilac or deep purple, Classic peach or warm charcoal, Modern blue-white or slate. Text stays dark on light and light on dark, so everything reads on every skin.
+
+
+## v3.0.371 - 7th Sep 2026
+
+- Board: the owner has used the low power mode and the Size comparison's glide and they are right, so those rows are closed on his eye rather than on a measurement. The ring tilt fix is still waiting to be looked at.
+
+## v3.0.370 - 7th Sep 2026
+
+- Every world with a magnetic field now says how far that field actually reaches. A new block on the Atmosphere
+  tab gives the magnetopause - the nose of the bubble, in the body's own radii - along with the smaller region
+  inside it where the field genuinely shields an atmosphere, how far the tail is drawn, how far the magnetic axis
+  leans off the spin axis, and where the aurora oval sits. Earth's bubble stands about eleven radii out and
+  shields to six; Jupiter's reaches forty; Mercury manages a nose and little else. A moon deep inside a giant's
+  magnetosphere is a special case and is treated as one: Europa never meets the solar wind at all, so its little
+  induced bubble is squeezed by Jupiter's field instead and points at Jupiter rather than at the Sun. Stars get
+  their own boundary, the astrosphere, where the wind gives way to interstellar space - about 120 AU for the Sun,
+  roughly where the Voyagers crossed. The physics page and the Newton panel both show the working, including a
+  plain list of what in it is an estimate. Nothing is drawn yet; the pictures come next.
+
+
+## v3.0.369 - 7th Sep 2026
+
+- Low power mode now does considerably more: it draws at one screen pixel per point instead of up to four, halves the frame rate to 30, and switches off the animated extras - storm lightning, glowing magma and ice plumes - alongside the cloud shells and auroras it already dropped. The picture is softer and the motion less smooth, which is the trade, and it is why none of it happens unless you ask.
+- The Size comparison was only dropping the cloud shells, so auroras and lightning kept flashing with the switch on. It now drops everything.
+- "Low power mode" is also a player view setting now, under Performance tweaks, for a player on an old tablet who cannot reach the tick-box themselves. Either of you can turn it on and the other cannot turn it off - whoever asks for it, they get it.
+- The Size comparison glides between objects again instead of jumping. It still lands squarely on whatever you steer to, so you can still walk down a planet's moons - it just travels there now rather than arriving instantly. Dragging is unchanged and still follows your finger exactly.
+
+## v3.0.364 - 7th Sep 2026
+
+## v3.0.368 - 7th Sep 2026
+
+- The controls that float over the map (the body picker, the clock, the time transport, the undo pill) can now take a palette of their own, chosen under Settings > System > Appearance: follow the skin, light over the map, or dark over the map. The map is black whatever the skin does, so a dark interface can still float light controls over it.
+
+## v3.0.367 - 7th Sep 2026
+
+- The Daylight skin no longer shows dark boxes with dark text: the body description, the GM notes, the zone key, the ship log, the bottom sheet and a score of other panels had their dark colour written in by hand, and every one now follows the skin. Dark skins look exactly as before.
+
+## v3.0.366 - 7th Sep 2026
+
+- Floating controls can now be docked together. Drop one against another - within about a finger's width of its edge - and the two snap side by side and become one block: drag either and both move, and when the details pane opens or the window changes shape the pair travels as a unit instead of drifting apart. To separate them again, right-click the grip (or press and hold) and choose Separate. Which controls are docked is remembered on this computer, with everything else about where your chrome sits.
+
+## v3.0.365 - 7th Sep 2026
+
+- Two more interface skins under Settings > System > Appearance: Daylight, the first light skin (paper surfaces, dark type and a teal accent, for a bright room or a projector that washes out a dark interface), and Terminal (amber phosphor on black, a console look with compact type). Every skin is now checked for readable contrast.
+
+## v3.0.364 - 6th Sep 2026
+
+
+- Fixed: on the Size comparison, a ringed planet leaned over but its rings did not - they ran flat across the planet instead of following its equator, which is not how any ringed world looks. The rings now sit in the planet's own equatorial plane, so Saturn leans and its rings lean with it, and Uranus lies on its side with its rings round it. How far open the rings are was already right and has not changed.
+
+## v3.0.363 - 7th Sep 2026
+
+- You can now tell a floating control WHICH screen edge to travel with. Right-click its grip or padlock (press and hold on a touchscreen) and pick Left, Right, Top, Bottom, or Nearest to go back to the automatic guess. It works on the clock, the time controls, the body picker and the undo pill. Nothing jumps when you choose: the control stays exactly where you put it and only changes which edge it keeps its distance from - so a control sitting in the middle of a wide screen can be told to follow the details pane in and out instead of standing still.
+
+## v3.0.362 - 7th Sep 2026
+
+- Board only. Magnetospheres, drawn from the physics the engine already holds, are designed and briefed as a stream: a standoff from field against wind, a teardrop overlay beside Hill spheres in the GM view, a dipole cage on every 3D surface behind a player-view switch that is off by default and hidden in Low Power.
+
+## v3.0.361 - 7th Sep 2026
+
+- The clock read-out on the canvas can be moved. It has a small grip on its left: drag it wherever it suits your screen and it stays there, keeping its distance from the nearest edge so it moves with that edge when the details pane opens or the window changes shape - exactly as the body picker, the time transport and the undo pill already do. Where you put it is remembered on this computer, not in the campaign, so it does not follow your maps about.
+
+## v3.0.360 - 7th Sep 2026
+
+- The floating controls stay where you put them. The body picker no longer slides under the menu rail when the details pane opens: every floating control now keeps its distance from the nearest edge of its screen area and moves with that edge, on the starmap and in the system view alike. A locked picker or time transport can still be moved by dragging its padlock, and a tap still unlocks it. The undo pill can be dragged about too, and dragging its right edge wider shows the name of what is in hand.
+
+## v3.0.359 - 7th Sep 2026
+
+- Board only: the documentation sweep is retired. All nine reader-facing surfaces are done, the debt list is down to one line that says why it cannot be written yet, and the nine claims that turned out to be wrong rather than merely old are written up with what replaced them - along with a short list of the four things worth a human glance.
+## v3.0.358 - 7th Sep 2026
+
+- The README gains a "What's new in V3.1" section: megastructures and docking, the Explorers site and pasting from it, the Size comparison, binaries that behave, Am stars and stars that jet inside their own system, the calendars tied to one anchor, and the quieter machinery behind all of it.
+- Four credits were missing from the README that the app's own About panel has carried all along - the WOH G64 red supergiant, the NASA red-giant illustration, the asteroid and comet photographs, and the corporate logos. Restored, with a note saying which of the three lists is the canonical one, because three lists that disagree is how they got out of step.
+- For anyone writing a program that reads a save: the README now explains what the format number at the top of the file is for, that two real archives are checked in to test a parser against, and what the shipped-content list is.
+## v3.0.357 - 6th Sep 2026
+
+- The apple panel now shows the working behind a world's habitability score instead of just the number. Every term is there - temperature, liquid solvent, pressure, radiation and gravity - with the world's own reading, the band it is judged against and the marks it earned, then the geology and magnetism adjustments and how they reach the final figure. And it says plainly whose habitability it is: ours, with Earth as the 100, so a low score means hostile to a human rather than lifeless.
+- Corrected on the physics page: an alternative solvent - a hydrocarbon or ammonia sea - scores 15 of the 25 solvent marks, not 20. The page had the wrong number, so anyone working out an ammonia world's score by hand got a different answer from the app.
+- Your saves now carry the credits for the app's own artwork, not just for yours. The attributions file inside a save listed what you had uploaded and said one line about the NASA models, while the planet pictures, the star pictures, the ESO backgrounds and the corporate logos it ships with all carry licences that require the author to be named wherever the work goes. A file handed to somebody who has never run this app now names all of them, with their licences and sources, beside the astronomy catalogues the real-sky import is built from.
+- Help now tells you where to share. A "Share and borrow" entry points at the Explorers library - browse other people's maps, publish your own, and copy anything from a map page into your campaign with the cartographer credited automatically.
+- Also corrected: the time and autopilot notes still described the clock as it was before the calendars were tied to a real date, and the docking work had left no trace in either. Both say what the app does now.
+- The autopilot guide gains a section on docking - which points on a megastructure a leg can end at, that a docked ship rides the structure rather than orbiting, and what the planner says the approach costs. It also corrects a claim that had gone stale: the Hill-sphere overlay draws a bubble for every body including moons, while a drifting ship still only hands over at planets, so a moon's bubble on screen is a real boundary for placing something but not one an adrift ship's path will bend at.
+## v3.0.356 - 6th Sep 2026
+
+- The Getting Started guide catches up with the release. It now covers: cut, copy and paste - including copying a system, planet or ship from the Explorers site and pasting it into your campaign, what the little tag under undo/redo means, and which browser asks what about your clipboard; the Size comparison, all of it, and how to give it to your players; megastructures, the seven types, the difference between a greyed row and an amber note, and ships docking at an elevator's levels or a ring's rim and riding round with it; the three doors on Load Starmap and Load System; the credit that travels with pasted content; hovering a star to see what is in the system; a Universe Sandbox binary arriving as two stars; and re-homing a body without it jumping.
+- It also explains, for the first time, what a pair of bodies actually promises once they share a centre, and warns that an old campaign can have bodies move when it loads - which is a correction rather than a fault.
+- Corrected: the guide said flares, jets and a shed shell were drawn on the starmap and the system view alike. The flat 2D system map draws flares but not yet the other two, and the guide now says so rather than promising something that is still being built.
+- Corrected: it described the message a joining player sees in words the app does not use. It says the real one now, and explains why it is a spinner and not a progress bar.
+- New: how big things draw. A star's drawn size now follows its own size, so a red dwarf and a red supergiant are no longer the same circle - a visible change to every system you already had, and the map being honest rather than a fault.
+
+
+## v3.0.355 - 6th Sep 2026
+
+- New "Low power" tick-box in the system view's View options, for a machine that struggles. It drops the see-through shells around bodies - cloud decks, limb glow, haze and auroras - which cost more than anything else on screen because each one repaints the same pixels over again. It is remembered on that computer only: it never goes into the campaign and never reaches your players' screens.
+- A player view could already turn those off in its preset, and the two work together - if either says no, they are not drawn.
+- The Size comparison was drawing all of that too and had no way to be told not to. It does now.
+
+## v3.0.354 - 6th Sep 2026
+
+- The app is SSE3.1 now, and the mark in the top-left is set in the same pixel letterforms the Explorers site uses for its own headings and cover cards - so the two look like one product rather than two. It takes your theme colour like everything else, and stays crisp at any zoom because it is drawn rather than typed.
+- No font is downloaded for it: the letters are a small table of dots turned into shapes, so there is nothing to load before the page appears.
+
+## v3.0.353 - 6th Sep 2026
+
+- A body you paste in from the Explorers site used to carry a tag reading "Hub", filed under a sentence about how the body FORMED. Neither told you anything: "hub" is our word for the site and appears nowhere you would meet it, and where a body came from is not how it formed. It now reads "From a shared map", says the value is a link back to it, and says plainly that it is a breadcrumb rather than the credit - the credit is recorded on your campaign and printed in the attributions file inside your saves, so it survives the body being renamed, moved or deleted. A pasted ship's tag reads "Route not carried over" and explains why its autopilot is off.
+- The tags guide now says where the three visibility settings stop. The shown/anon/hidden button is on the tags you add yourself, and the category switch hides a whole category - both of them act on the categories under Settings, Tagging. The tags the engine derives are a different population: they are not categories, they carry no button, and if you want a fact about a world kept back the lever is the world rather than the tag. That was worth writing down, because it is a switch people go looking for.
+- Behind the scenes: the test that was meant to stop a tag shipping without a proper name did not actually check for one, which is how "Hub" got out. It does now.
+
+
+## v3.0.352 - 6th Sep 2026
+
+- A star that fires polar jets now shows them on the Size comparison as well, so the ones that do something are visibly the ones that do something. Its shed shell stays off there: a jet is two beams out of the poles and reads as an outflow, while a shell is a ball of light around a ball of light and would make the star look bigger than the number under it.
+- The mouse wheel and the arrow keys now move one object at a time on the Size comparison, and land on it. Before, a notch was worth however much of the picture happened to be under it, so at a planet with a train of small moons the wheel jumped clean over the lot and the only way to reach a moon was to click it. You can now scroll down into a planet's moons and back out again.
+- Scrolling also reads the same on Firefox as on Chrome, and a trackpad's small movements add up instead of being discarded.
+
+## v3.0.351 - 6th Sep 2026
+
+- Notes only, no change to the app: the second set of checks across the seam with the Explorers site is filed beside the first - a visitor with no campaign opens a shared map straight away, and the checks were re-run against the site's real address after the DNS move. The report had sat committed but unpushed in a retired session's worktree.
+
+## v3.0.350 - 6th Sep 2026
+
+- The physics reference now explains what a barycentre actually promises. Two bodies sharing a centre sit on opposite sides of it at every instant, go round it in one shared period, and are split by mass so the heavier one sits closer in - and it says that a campaign saved before that was pinned can move bodies when it loads, because the correction is the engine putting a member where its own mass says it belongs. It also says what makes a pair in the first place: a companion heavier than 8% of what it orbits, a figure you can change in a rule pack, with the dissolve threshold below it so a pair cannot form and break on alternate passes.
+- It explains black holes properly. A hole can be dialled from a stellar-mass one a few hundred kilometres across up to 270 billion suns, whose horizon is measured in AU; the page says where that ceiling comes from - past it the accretion disc collapses into stars faster than the hole can swallow it - and that the app keeps whatever you type anyway, because alien engineering and a plot device are reasons it cannot tell from a typo.
+- And it says what an Am star is. A catalogue string like Sirius's "A0mA1Va" quotes more than one reading because its calcium, hydrogen and metal lines disagree about the temperature; the page explains that the hydrogen lines are the honest thermometer, and that the annotations after a class are kept rather than mistaken for a class of their own.
+- New section on Hill spheres: what the overlay draws, why a moon has one at all (it is where a submoon could live), why the test is "is there room outside this body to orbit in" rather than a mass limit, and why a member of a pair is bounded by its partner instead of by the shared centre.
+- Fixed a broken sentence in the same reference that had been on the page for two hundred versions: an edit had eaten the end of the sentence describing how a drawn route is pinned to its ship, leaving a line that did not parse. Restored.
+
+## v3.0.349 - 6th Sep 2026
+
+- Board: the documentation sweep's brief now names every surface a reader meets - the in-app help, the two older guides and the generated attributions - beside the physics pages and the getting-started document.
+
+## v3.0.348 - 6th Sep 2026
+
+- Board: the coordinator's handover to the next session, written where the earlier ones are.
+
+
+## v3.0.347 - 6th Sep 2026
+
+- Board: the owner has seen the Size comparison's stars and they are right, so the two rows about them are closed on his eye rather than on a measurement.
+
+## v3.0.346 - 6th Sep 2026
+
+- A star that jets, or sheds a shell, now shows it inside its own system in the 3D views - the holo, the reference gallery and the size comparison - as it already did on the starmap. The 2D system map follows in its own change.
+- Board: the 2D half briefed, and the decision to delete the old DOM render surface written up with its plan.
+
+## v3.0.345 - 6th Sep 2026
+
+- Board and design only: the megastructure work is paused at a good place on the owner's word - what is shipped stays, the rest is listed as later, and the idea of a Death Star that carries its orbiting ships is retired unless it can be built as a general capability rather than a one-off.
+
+
+## v3.0.344 - 6th Sep 2026
+
+- Fixed: the star was drawn in grey on the Size comparison inside a system, which made it look dim next to Jupiter or Earth. A planet's colour is worked out from what it is made of and what its air does to sunlight; a star has no such colour, because its colour comes from how hot it is - and the view had never asked it that question. It now takes the star's own colour, the same one the starmap comparison was already using.
+
+## v3.0.343 - 6th Sep 2026
+
+- A megastructure's crew tab now shows the gravity its own design implies instead of a space station's spinning-section figure: a ringworld or orbital ring reads its own rotation with its host's pull taken off (exactly zero for a ring turning at orbital rate - free fall), a hull reads its own mass, and a structure with no honest figure shows none. The last place megastructures were treated as stations is gone.
+- Housekeeping: the megastructure work is closed out on the board and handed over as Stream P - what is settled by code, what by decision, and what is queued next.
+
+
+## v3.0.342 - 6th Sep 2026
+
+- Stars on the Size comparison look like stars again. They were drawn flat in their own colour all the way across, which made the hot blue-white ones - Vega, Sirius, Altair - come out as pale lavender circles while the red dwarfs beside them looked fine. A real star's disc is white-hot in the middle and shows its colour at the edge, and now so is ours: the hotter the star, the more it burns out. A red dwarf keeps every bit of its orange.
+- The glow on a star's rim is brighter too - brighter, deliberately not bigger, so nothing on the one view that promises true sizes looks larger than the number under it.
+
+## v3.0.341 - 6th Sep 2026
+
+- Board: the owner's word on what is settled in the megastructure work and the decision that a moving Death Star is not a requirement; the queue of what comes next, written where every session reads it.
+
+## v3.0.340 - 6th Sep 2026
+
+- Fixed: inside a system, right-clicking empty space offered to add a planet, a belt or a construct but never to paste what you already had in hand - so a copied planet had nowhere to land unless you happened to right-click an existing body. It is now the first item on that menu, and it goes round whatever that patch of sky belongs to, exactly as "Add Planet Here" would.
+- In a browser that will not let a page read the clipboard at all - Firefox - the right-click menus now say "Press Ctrl+V to paste something copied elsewhere" instead of simply showing nothing. It disappears the moment you have something in hand.
+
+## v3.0.339 - 6th Sep 2026
+
+- Fixed: pasting a binary star system - a pair, like Zeta Reticuli - was refused on the starmap. A pair of stars is a star system; it is now recognised as one, lands with both stars still orbiting their shared centre, and takes its age from the brighter of the two rather than from the centre point, which has no age to give.
+- Pasting a planet and its moons into empty space on the starmap now offers to put it in a system and asks which one, instead of only telling you it could not be a system on its own.
+
+## v3.0.338 - 6th Sep 2026
+
+- Fixed, and this is why nothing was ever offered: the app was only allowed to look at your clipboard if the browser had ALREADY given it permission - and no browser grants that until it has been asked once, which the app never did. So it never looked, never found the system you had copied on the Explorers site, and with nothing copied and nothing to undo the little undo/redo tag had nothing to show either. One cause behind both.
+- Now it looks when you right-click, which is you asking what your options are. Chrome asks your permission the first time only; say yes and from then on a system copied on the site simply appears, ready to paste, wherever you right-click. Ctrl+V still works everywhere regardless, and remains the way in on Firefox, which has no such permission at all.
+
+## v3.0.337 - 6th Sep 2026
+
+- The keep-a-copy notice is switched off. The hosting change turned out to touch only the site's address book; the app never moved and nothing of yours was ever at risk.
+
+## v3.0.336 - 6th Sep 2026
+
+- Switching Measure off on the rail now closes the Size comparison with it. The comparison's button lives under Measure, so turning Measure off used to leave the view up with no button to turn it off by.
+- A little more air between neighbours on the Size comparison, so a small world beside a giant is not pressed against its edge.
+
+## v3.0.335 - 6th Sep 2026
+
+- The starmap now knows what you have copied. The tag under undo/redo appears there too, and right-clicking a star offers to paste into that system.
+- Right-click empty space on the starmap and a copied system drops in as a new system of its own, right where you clicked - which is what copying from the Explorers site usually gives you. If what you have in hand cannot be a system on its own, the option is still shown but greyed, and hovering it says why.
+- Fixed: pressing Ctrl+V handed the app a copied object but the app then went on claiming to hold nothing - so the tag stayed empty and the right-click menus did not offer it. It registers properly now.
+
+## v3.0.334 - 6th Sep 2026
+
+- The Paste button at the top of the system view has gone. Pasting is the right-click, which already knows where the thing is going - and what you have in hand now shows as a small tag under the undo and redo buttons: a paste icon and, for example, "System+38" or "Moon".
+- That tag also appears when you have copied something on the Explorers site and come back, and it gives one gold flash when it does - your own copies stay quiet, because you just made them.
+- A branch copied on the Explorers site now shows up in the right-click menu too. Before, only things you had copied inside the app did, so a system from the website could not be pasted where it would have worked perfectly.
+- When you paste, the host it offers first now suits what you are pasting: planets go to stars, moons to planets, anything else to the star. Every other host is still on the list - you can still hang Saturn off Jupiter if that is your setting.
+
+## v3.0.333 - 6th Sep 2026
+
+- Fixed: Pluto sat between the Sun and Mercury in the Size comparison's orbit order. Pluto and Charon go round a point between the two of them, and the app was reading that little circle as Pluto's distance from the Sun. Both now sit where the pair really is, out past Neptune, next to each other.
+- Fixed: moving between two objects of wildly different sizes - the star and Mercury, say - threw the picture off the screen and brought it back. The view now flies that step at a steady speed, so the world you are heading for only ever gets closer and the one you are leaving only ever gets further away.
+- And a drag across such a step is worth a proper drag rather than a flick: the distance it costs is now the distance the picture actually travels, which is the same whichever end you start from.
+
+## v3.0.332 - 6th Sep 2026
+
+- Fixed: stars in the Size comparison could draw as faceted lumps or flat boxes instead of globes. One very large object on a map - a black hole thousands of AU across, say - pushed everything behind it so far along the strip that the graphics card ran out of precision and snapped the shapes to a coarse grid. Nothing sits at its absolute position on the strip any more, so a map can carry an object of any size and everything else still draws properly.
+- Stars glow. A tight bloom sits on the limb so a star reads as something giving off light rather than a painted circle - deliberately tight, so nothing looks bigger than the size written under it.
+- A feeding black hole's accretion disc now flickers instead of sitting still.
+
+## v3.0.331 - 6th Sep 2026
+
+- The app now points at the Explorers site's real address, explorers.starsystemx.com, everywhere it hands you a link - the Browse button, the map library link, and the shareable links it makes. The old address still works if somebody sends you a link with it.
+- Pasting a shared-map link keeps working whichever of the site's addresses it carries. That would have quietly broken the day the site moved, and now it cannot.
+
+## v3.0.330 - 6th Sep 2026
+
+- The Size comparison is now a player view on the STARMAP as well as inside a system - every star on your map, side by side, with its own order and ruler settings in the preset editor. A tap there compares rather than enters, so a player reading the view cannot fall out of it.
+- The ruler's circles are drawn as plain lines rather than dashed ones. A dashed circle costs the browser per dash all the way round, and these circles get very large.
+- The ruler's names moved to the top edge of their circles, where the worlds and their own labels are not.
+- Names at the crowded end now ask for the room they actually need, so a long name like "Kruger 60 B (DO Cephei)" no longer sits on top of its neighbour while a short one is dropped for nothing.
+
+## v3.0.329 - 6th Sep 2026
+
+- Board: the Explorers site now lives at explorers.starsystemx.com and this app's link-opening already trusts it; nothing about this app's own address changed.
+
+## v3.0.328 - 6th Sep 2026
+
+- Size comparison: rings are drawn as brightly as they deserve. Saturn's are the finest sight in the sky and now look it; Jupiter's are dust you would need a spacecraft to see, and no longer draw as a grand set of hoops just because they happen to reach further. The app works it out from the mass of the rings spread over their own area, so your own worlds get the same treatment.
+- And rings now lie the way the planet does. Saturn's are tipped a little, Uranus' come round almost face-on because Uranus lies on its side, and Jupiter's are all but edge-on. They were all drawn at one angle before, which made every giant look like Saturn.
+- The names at the crowded end of a strip no longer pile into an unreadable smudge - where two would land on each other, one is left out. Whatever you have selected always keeps its name, and anything left out still names itself as soon as you scroll to it.
+
+## v3.0.327 - 6th Sep 2026
+
+- The real reason a ship arrived at the space elevator going the wrong way: an orbit change (a Hohmann transfer around the same world) ended with its velocity written for the wrong side of the orbit, so every such transfer parked the ship retrograde. Fixed - an orbit change now keeps the sense it left in, and at a world with a beanstalk it ends with the planet's spin, turning round at the far end if it must and showing what that costs.
+
+## v3.0.326 - 6th Sep 2026
+
+- Before the site changes hosting, the app asks you once per campaign to keep a copy: download the full campaign file, or say you already have one. A file on your own disk is the one copy a move cannot touch.
+- The offline shell now refreshes on every release, so a new version shows up as one.
+
+## v3.0.325 - 6th Sep 2026
+
+- Housekeeping: the shipped-content manifest is re-pinned to the current version after the docking releases, so the Creator Hub reads the right catalogue.
+
+## v3.0.324 - 6th Sep 2026
+
+- Arriving at a world with a space elevator now parks you the right way round: with the planet's spin, always, so the hop to the ribbon costs as little as it can. A ship that came in against the spin is turned, and the cost of turning is shown in the plan rather than hidden.
+- No more magic snap onto the beanstalk from a low or medium level. The ship parks at that height, orbits until it catches up with the ribbon, and docks as it passes - you can watch it happen. At the geostationary dock the ship and the ribbon move together, so the hand-over there is still at arrival; a proper phasing manoeuvre is on the list.
+- A ship that is docked departs from where it actually is, on the ribbon and moving with it, instead of from the orbit it had before it docked.
+
+## v3.0.323 - 6th Sep 2026
+
+- Notes only, no change to the app: the first cross-checks between the app and the Explorers site were run end to end - clicking the site's "Open in Star System Explorer" button was followed all the way into a loaded campaign, and the list of what the app ships was confirmed to be the one the site is actually reading. Both passed.
+
+## v3.0.322 - 6th Sep 2026
+
+- The Size comparison's ruler is now a set of circles drawn around whatever is in the middle of the screen, instead of a bar along the bottom. Ceres, Luna, Mars, Earth, Neptune, Jupiter, the Sun and Betelgeuse are all on the ladder, and only the ones you could actually see at your current zoom are drawn - so on a screen of moons you get the small ones and on a screen of stars you get the big ones, without touching anything. You can see how many Earths would fit across the world you are looking at rather than working it out.
+- The ruler can be turned off for a player view, in the preset editor beside the order.
+- Everything the Size comparison says - the names, the sizes, the dots for things too small to draw, the rings round what you have picked, and the ruler - is now drawn INTO the picture rather than laid over it as web text. Under a CRT preset that means the writing takes the phosphor and the scanlines like everything else, and when the screen is curved the words curve with the worlds they name instead of sitting flat on top of a bent picture. Tapping still lands on what your eye sees.
+- The one thing lost: you can no longer click a unit on the strip itself to change it. Change it from any other panel and the strip follows, exactly as before.
+
+- Fixed: a transit left running with the clock on no longer fills memory. The autosave kept a copy of the whole campaign for every frame the ship moved and wrote them one by one; it now keeps only the latest and writes that. The undo recorder also stops copying the whole system every frame a ship is in flight.
+- Fixed: a liquid you create now appears in the list a gas can condense into. The gas editor was reading the shipped liquids rather than yours.
+
+## v3.0.321 - 6th Sep 2026
+
+- Notes only, no change to the app: the engine's half of the contract with the Explorers site is brought up to date - the download-format question the site has already answered is closed, the open-from-a-link feature was re-checked on the live beta site rather than a test server, and the site is told that opening a single system from a link is now half-built rather than absent.
+
+## v3.0.320 - 6th Sep 2026
+
+- Board: a transit left running with the clock on drove memory to 2.3 GB (B131) - measured from the owner's diagnostic to the autosave queue that keeps one copy of the campaign per frame, and briefed as stream O for a session to fix at the root.
+
+## v3.0.319 - 6th Sep 2026
+
+- Size comparison: only the ringed world you are looking at shows its rings now. The others fade out either side as you move, so a strip of ringed planets is no longer a grey wash of overlapping discs.
+- Black holes are black holes. They were being drawn as glowing orange stars on this view - the app files them under "star", and the comparison believed it. A hole now shows its event horizon at its true size with a thin ring of light marking the edge, and if it is feeding, its accretion disc.
+- And it bends what is behind it. Scroll a black hole up against a giant and you can watch the giant's face curve round the shadow, using the same lensing the 3D map has always had. Nothing without a black hole on screen pays anything for it.
+- Fixed: the Size comparison lost your place whenever the window changed size - and because the hide button carries the selected object's name, picking something with a longer name resized the header by a pixel and did it too. Clicking a body appeared to do nothing at all.
+
+## v3.0.318 - 6th Sep 2026
+
+- Board: the seam protocol between the app and the Explorers site - two halves of one contract, a fixed report block, and stream N, the integration check that walks both sides.
+
+## v3.0.317 - 6th Sep 2026
+
+- The paste-a-link box has gone from the opening screen. It was in the way and nobody was using it - if somebody sends you a link to a map, you click the link and it just opens.
+- Load Starmap and Load System now ask where the map is coming from: browse what other explorers have shared, pick a file from your computer, or paste a link somebody sent you. The file picker now offers exactly the file types that door can actually open.
+- Load System can take a shared link too, which it never could before. Paste one there and if it turns out to be a whole campaign rather than a single system, it says so and offers to open it properly.
+
+## v3.0.316 - 6th Sep 2026
+
+- The Size comparison now zooms as you scroll. Whatever is passing through the middle of the screen is drawn at a comfortable size, and everything beside it is drawn to match, so you always have something you can actually see and a fair comparison against its neighbours. Before this the whole strip was drawn at one fixed scale, which meant the star was thirty-odd screenfuls wide and you had to drag past all of it to reach the planets.
+- Because of that, one screenful of dragging now moves you roughly one object along, whatever size that object is - a moon costs the same to scroll past as a giant. It is framed to show four to six bodies at once with the ones either side of your subject drawn whole, and they sit close together now - a ring may cross its neighbour, which is a better picture than the empty space it used to hold. Pinching (or shift-scrolling) changes how big the middle of the screen is, and holds the middle still while it does.
+- Clicking is how you get around now: click anything and it comes to the middle, with everything around it re-scaled and re-packed to match. It does not change your zoom while it does it - if you have pinched out to survey the whole system, clicking about keeps that view.
+- Scroll all the way down to a moon and the moon becomes the subject: it is drawn at a comfortable size and the planet it belongs to fills the sky behind it. Clicking anything does the same thing.
+- Fixed: nothing inside the Size comparison could be clicked. The planets, both scroll buttons and the hide menu had all been dead to a mouse or a finger since yesterday's scrolling fix - they looked and behaved exactly as before, they simply never received the click. Keyboard users were unaffected.
+
+## v3.0.315 - 6th Sep 2026
+
+- Behind the scenes, for the Explorers site rather than for you: the app now publishes a small list of everything it ships with - its calendars, its tag categories, its star and planet pictures, its starter spacecraft models, and its gases, liquids and fuels. The site uses it to tell what came with the app from what a creator made themselves, instead of keeping its own copy of those lists and slowly getting them wrong.
+- That list is built from the real files every time, and the test suite refuses to pass if it has gone out of date - so it cannot quietly drift.
+
+## v3.0.314 - 6th Sep 2026
+
+- A map page on the Explorers site can now hand you the map directly: an "Open in Star System Explorer" link opens it here, with no download and no import step. It is the same door a downloaded file goes through, so anything the map credits, carries or refuses behaves exactly as it always did.
+- As before, it never quietly takes over the campaign you have open. With nothing loaded it just opens; with a campaign here it asks first, in plain words, and keeps your old one a single step back in Settings.
+- A link that points anywhere other than the map library is refused with a plain message, and nothing is fetched from it at all.
+
+## v3.0.313 - 5th Sep 2026
+
+- Board: the hub-side engine work handed on as stream M - open a hub map from a link (R-17), then the shipped-content manifest (R-13) - for a fresh session to build.
+
+## v3.0.312 - 5th Sep 2026
+
+- Fixed: pasting a system copied from the Explorers site crashed the app. The paste screen asked for something the page it lived on had never been given, and the moment it opened, everything stopped. It is gone, and the exact sequence that caused it has been walked through in a browser to be sure.
+- The Paste button now only appears when there is actually something to paste, and it tells you what: "Paste System Sol", "Paste Planet Earth", "Paste Ship Tender". A star with worlds under it is called a system, because that is what you copied and what you will get - not one star. It flashes gold once when something new becomes pasteable, so if you copy on the website and come back to the app you can see it noticed.
+- It looks at your clipboard only when your browser has already given permission - it will never pop a permission box at you just because you were passing. Ctrl+V works regardless of any of that.
+
+## v3.0.311 - 5th Sep 2026
+
+- Notes only, no change to the app: the plan for finishing the Size comparison is written up for the next session, including the decision that its labels will be drawn into the picture rather than sitting over it as web text.
+
+## v3.0.310 - 5th Sep 2026
+
+- Notes only, no change to the app: the new Size comparison player view draws its labels and ruler as ordinary web text over the picture, and that is against a decision taken back in July — player screens are meant to be drawn into the picture itself so the visual filters bend the text along with everything else. Written down properly with what it will take to put right.
+
+## v3.0.309 - 5th Sep 2026
+
+- Fixed: the Size comparison player view ignored the preset's visual filter and its overlay graphic entirely, so a table set up as a CRT terminal or a night-vision scope got a plain view instead. It now takes both, and the planets themselves are tinted and scanlined along with everything else.
+- The preview in the player-view editor had been showing the filter all along, so it was promising something the real view did not do. They match now.
+
+## v3.0.308 - 5th Sep 2026
+
+- Size comparison is now one of the views you can give your players. Pick it under System in the player-view editor and your table gets the whole system at true relative size, with a preview while you set it up.
+- Tapping anything on it opens the same information block they get from the 2D and 3D maps, styled by the same preset - it is the same panel, not a copy of it.
+- You choose the order they see it in - size, name, mass or orbit - and that is the one they get. Players can move along the strip, zoom it and tap things; the arranging is yours.
+- Fixed: on a machine with no working 3D, the size comparison used to show nothing at all. It now draws the whole strip - names, sizes, the ruler and the markers - and only the round planet pictures are missing.
+
+## v3.0.307 - 5th Sep 2026
+
+- The 3D view now watches its own frame rate. If it stays genuinely bad for several seconds it turns the atmospheres off to get the map moving again, and tells you it has done so.
+- It gives the view time to settle first: the seconds just after a system loads are always the slowest, and it ignores them. It also waits for a run of bad readings rather than acting on one, so a passing stutter is not mistaken for a slow map.
+- It only ever does this once, and if you turn the atmospheres back on it stops watching for good. It will not take them away from you twice.
+
+## v3.0.306 - 5th Sep 2026
+
+- Ringed planets now show their rings in the Size comparison - a plain flat band at the real inner and outer edge, so you can see how far they actually reach. Saturn's rings are wider than the whole of Jupiter, which is not something the numbers make obvious.
+- The rings never count as the planet's size: the strip still compares worlds, and Saturn still sits below Jupiter where it belongs. They do claim the room they need, so nothing is drawn through its neighbour.
+- A ring too small to draw honestly at the current zoom is left out rather than puffed up to something visible - the whole point of it is how far it goes.
+
+## v3.0.305 - 5th Sep 2026
+
+- The Size comparison can now be put in four different orders, from a small row of buttons at the top of the view: Size, Name, Mass and Orbit. They stay faint until you go near them, and are always solid on a touch screen.
+- Size is still what you get first - biggest to smallest, the way the old poster does it.
+- Mass answers a different question from size, and the difference is real: Ganymede is wider than Mercury, and Mercury is more than twice its weight.
+- Orbit lays the system out as it actually is: the star and the planets in orbital order across the strip, each planet's moons tucked underneath it, and a moon's own moons off to the side. Drag up and down to walk through a giant's family.
+- A body you have not given a mass sorts to the end rather than to the light end - not weighed is not the same as weightless.
+- Whichever order you choose is remembered for that map next time you open the view.
+
+## v3.0.304 - 5th Sep 2026
+
+- You can now move around the Size comparison on a phone. You could not before: the only way to travel along the strip was a mouse wheel, so on a touch screen everything past the first screenful was simply out of reach. Thank you to whoever said so.
+- Drag the strip with a finger and it follows you, one for one. Pinch to zoom in and out, and whatever is between your fingers stays put instead of sliding off.
+- There are also buttons at each end - up and down on a phone, left and right on a desktop - which move you most of a screen at a time and grey out when you reach the end. Arrow keys do the same.
+- Dragging no longer picks something by accident: if your finger travels more than a few pixels it counts as a drag, not a tap, so the strip stops where you left it instead of jumping to whatever you happened to let go over.
+- Dragging works with a mouse on the desktop now too.
+- Fixed: on the starmap, tapping a star in the size comparison used to take you into that system and close the view. It now just centres and highlights it, so you can carry on comparing.
+
+## v3.0.303 - 5th Sep 2026
+
+- Copy and paste now work inside your own campaign. Right-click any world, moon, station or ship and you get Copy, Cut, and - once something is on the clipboard - Paste it here. It moves the whole branch: copy a planet and its moons come, copy a station and its docked ships come, and the menu says how many objects that is before you commit to it. Paste it anywhere in the same campaign, in the same system or another one.
+- It is the same clipboard the map library uses, so a branch copied here can be pasted into another tab, and something copied from the Explorers site pastes in exactly the same way.
+- Undo and redo treat it the way you would expect. A paste is one step and undoing it takes the whole branch away, not one object at a time; a cut is one step and undoing it puts the branch back where it was, with its moons still under their planet. Cut and paste stay two separate steps, because they are two things you did - undo reverses the paste first, then the cut.
+- The credit follows the content. Copy something you pasted in from somebody else's map and the attribution comes with it, so your campaign still says whose work it is however many times it is moved.
+
+## v3.0.302 - 5th Sep 2026
+
+- Size comparison, now actually looked at. On the starmap it was showing nothing at all, and on both maps the planets were not being drawn - only their names. Both fixed, along with four more faults that only turned up on screen.
+- Stars on the starmap were grey. They take their colour from the map now, the way they do everywhere else.
+- Stars no longer bring their corona into this view. A corona is five times the width of the star it surrounds, which made every star look nine times its real size - on the one view whose entire job is showing you real sizes.
+- The view now sits above the clock, the search box and the playback bar instead of underneath them, so its title, its ruler and its close button are all reachable.
+- On a phone the planets were half off the edge of the screen. They are centred now.
+- The ruler is easier to read: the Moon and Earth marks no longer print on top of each other when you are looking at stars, and there is a plain scale of smaller marks behind the three named ones.
+- Hiding something no longer needs a right-click: select an object and a "Hide…" button appears at the top, which works on a phone too.
+
+## v3.0.301 - 5th Sep 2026
+
+- New: Size comparison. Turn on Measure and a second button appears under it. It lays every object on the map out side by side at their real relative sizes, biggest first, the way the old planets-and-moons posters did - the star, the giants, the planets, the moons and the small bodies on a system map, and every star in the campaign on the starmap.
+- It opens on the middle-sized planet in the system, so you start on a world rather than on a rock, and it draws that planet at about a third of the screen. Click anything and it fills half the screen with everything else scaled to match; scroll to run along the strip, hold Shift and scroll to zoom by hand. On a phone the strip runs down the screen instead of across it.
+- A ruler runs alongside with three marked sizes to judge against: the Moon, the Earth and the Sun. It reads in whichever unit you have chosen, and it tells you when one of the three is off the end rather than quietly leaving it out.
+- Anything too small to draw honestly at the current zoom shows as a dot with its name and how small it really is, rather than being puffed up to something you can see. That is the whole point of the view.
+- You can hide anything you are not interested in, and hide everything bigger or everything smaller in one click. What you hide stays hidden next time you open it, and a badge tells you how many are hidden with one click to bring them all back.
+- Clicking an object here selects it on the map too, so the details panel follows you.
+- Behind the scenes: the system view, the 3D reference gallery and this new view now dress a body from one shared piece of code instead of three. They had already drifted - the gallery was drawing a smaller, differently-pulsing corona on its stars than the map does - and a new test builds the same world through all three and compares them, so they cannot drift apart again.
+- Also fixed: the reference gallery has a night-side lighting mode that had been built but never switched on, so the rows meant to show city lights across a dark limb were being lit from the front. They are not any more.
+
+## v3.0.300 - 5th Sep 2026
+
+- You can now paste from the map library. Copy a star, a planet or a station on the Explorers site and paste it straight into your campaign - everything beneath it comes too, and it lands where you say. Paste anywhere in the app and it offers; or use the Paste button on the system view if you would rather choose the destination first. That button is not decoration: Firefox will not let a page read your clipboard, so without it the feature would simply look broken there.
+- It always asks before it puts anything in. From a system, it offers the body you have selected; from the whole starmap, it asks which system and then what it should go round. Nothing is touched until you say yes, and a paste that cannot be read leaves your campaign exactly as it was.
+- The credit comes with it and is shown as you paste: which map it came from and who made it, recorded on your campaign and printed in the attributions file inside your saves.
+
+## v3.0.299 - 4th Sep 2026
+
+- Exporting a construct and importing it back works again. The importer refused every exported file over a field the app never writes, so a ship could not be moved by export and import; it now says in words what is wrong when a file really is not a construct.
+
+## v3.0.298 - 3rd Sep 2026
+
+- Ships can now DOCK to megastructures - and stay docked. Plan a trip to a space elevator and the destinations are its levels: the anchor, the low and medium levels, the geostationary dock and the counterweight. The ship flies to that height, hands itself to the ribbon on arrival and rides round with the world from then on. A ring or a shell takes a ship at the nearest point of its rim and carries it round at the rim's own speed; a hull docks as a station always has.
+- The same docked position is used by the GM map, the 3D view and every player view, because it is worked out once, in the engine, from where the structure is and how it turns - not by each screen separately. The elevator itself now stands still on its anchor and turns with its world rather than creeping round on a placeholder orbit.
+- The planner says what docking costs: nothing at the geostationary dock, where the ribbon already moves at orbital speed; several kilometres per second at the low levels, where a docked ship is riding the planet's spin rather than orbiting; over a thousand kilometres per second on a Niven ring's rim. It states the figure and lets you decide.
+
+## v3.0.297 - 4th Sep 2026
+
+- Content copied from somebody else's map now arrives with a proper credit, not just a breadcrumb. Paste a star system from the Explorers site and your campaign records whose map it came from, who made it, and a link back - and that credit is printed in the attributions file that travels inside your save, under "Content from other cartographers". So when you share your own map onward, the people whose work is in it are still named. Credit follows the content through as many hands as it passes.
+- The credit lives with the campaign rather than the pasted object, because objects get renamed, moved and deleted, and a credit that dies with the body it arrived on is not a credit. Pasting six systems from one map owes one credit naming six objects, not six identical entries. If the copy came from a version of the site that did not record who made the map, the file says "cartographer not recorded" rather than quietly leaving it blank.
+- The attributions file is now written for a campaign that has pasted content but no uploaded art of its own. It used to be skipped entirely when there were no pictures or models, which would have thrown the credit away.
+
+- The credit remembers where the content was before. If what you pasted had itself been copied from somewhere else, the whole trail comes with it and reads as one line: "from Alpha by alice, via Beta by bob, via Gamma by carol". Everyone in that chain stays named however many hands it passes through. The link back now opens the source map on the exact object rather than just the map.
+
+## v3.0.296 - 4th Sep 2026
+
+- Board: the size-comparison view (G66) captured and briefed - every object on a map at true scale, side by side, for a session to build.
+
+## v3.0.295 - 3rd Sep 2026
+
+- Board and design only: the space elevator's docking requirement is written down where the next session will find it - stations up the ribbon at low, medium and geostationary levels that turn with the world, rings and spheres that take a ship at the nearest point, and the rule that a docked ship must sit in the same place on the GM map, the 3D view and every player view.
+
+## v3.0.294 - 4th Sep 2026
+
+- Sirius, and every star catalogued in metallic-line (Am) notation, now classifies properly: the reading follows the hydrogen lines, the odd catalogue string no longer appears as a class of its own, and the star's explainer says what an Am star is and what its two readings were.
+
+## v3.0.293 - 3rd Sep 2026
+
+- Pasting from the map library works for everything, not just worlds. Ships, stations, hab rings, belts and megastructures all come across with their own detail intact - a ringworld arrives a ringworld. Anything the copied branch pointed at inside itself keeps pointing at the right thing afterwards: a station's tender still knows which station, an avoid-list still names the right ring. A reference to something that was NOT copied is left exactly as it was rather than quietly repointed at something else.
+- A pasted ship's route is stood down, and says so. A route is a plan made in somebody else's campaign and most of its stops were never copied with the ship, so leaving it running would send the autopilot chasing places that do not exist here. The ship itself arrives whole - hull, crew, cargo, tags - and carries a tag saying its route did not come with it.
+
+## v3.0.292 - 3rd Sep 2026
+
+- Copy a star from a map on the Explorers site and this app can now read it - with its planets, and their moons, and whatever else hung beneath it. Copying there has always taken the whole branch; nothing here could read one, so the button led nowhere. The reader takes the branch entire or refuses and says why: a piece copied without its parent, a loop, or a clip made by a newer version of the site than this app understands (which tells you to update rather than pretending the copy button is broken).
+- What arrives keeps its own shape. The moons keep the orbits they had round their planet, because those came from a real save and are right; only the top object changes what it goes round, and it does that through the same re-homing the app already uses when you move a body by hand - so it is placed rather than teleported, and the usual warnings appear if you have hung something implausible somewhere implausible. Pasting a heavy star under a pebble is allowed and labelled, never refused.
+- Everything pasted gets new internal names, so the same clip can be pasted twice without the two copies fighting, and the top object carries a quiet tag saying which map it came from.
+- The button that opens a shared map now points at the site's current address for map pages rather than an old one that only worked because the site was forwarding it.
+- If you publish an update that is older than the copy already on the site, the site now says so and names both version numbers instead of silently replacing newer work. The app shows you that and waits - it will never confirm it for you.
+
+## v3.0.291 - 2nd Sep 2026
+
+- The space elevator now behaves like the large object it is. Its ribbon is placed by the same rule that places moons and stations around a planet, so at readable body sizes it stays a short stalk inside the Moon's orbit instead of reaching past it, at true size it stands the honest 6.6 Earth radii tall, and a station parked at geostationary sits exactly on its dock at every zoom and dial setting.
+- It also stands on the equator, where a geostationary tether has to stand, and sweeps round with the planet's spin - one was found circling the pole.
+- The GM's 2D map now draws the beanstalk too: a coloured line from the planet's edge out to geostationary and the counterweight, with a dot at the dock, instead of a lone surface icon. And the ribbon no longer vanishes at true size - its width and knobs never drop below a couple of pixels.
+
+## v3.0.290 - 3rd Sep 2026
+
+- A star is now described by ITS OWN size rather than its class average. A supermassive black hole was being called "a ball about 300 km across" - the figure for an ordinary stellar-mass one - when its event horizon is nearly two hundred times the Earth-Sun distance; it now reads "a disc about 390 AU across". Red dwarfs say what fraction of the Sun they actually are, and the phrasing changed with it: "about 0.3 times the width of the Sun" rather than the clumsy "3.3 times narrower". Where there is no particular star to measure - the spectral-class picker's tooltip, for instance - it still describes the class.
+## v3.0.289 - 3rd Sep 2026
+
+- Board only: re-homing a body (v3.0.288) verified live by the owner - Saturn placed in orbit around Jupiter, its moons travelling with it and a pair forming.
+
+## v3.0.288 - 3rd Sep 2026
+
+- Universe Sandbox import: a save with two stars now comes in as a binary - both stars, orbiting their shared centre - with each star's own planets and moons kept under it. Moons of moons stay with their moon instead of being pulled up to the planet or the star, a moon that used to be dropped as "unbound" (it was being judged against the star's gravity rather than its own planet's) now imports, and a double planet imports as a pair straight away, exactly where the save had it.
+- Re-home a body: under the orbit editor's Advanced section, choose a new host for a planet or moon and it moves to orbit that body without jumping - it stays exactly where it is on the map at that instant and its new orbit is worked out from there. If the new host cannot hold it, it gets a circle at its current distance and the stability tags say what would happen.
+
+## v3.0.287 - 2nd Sep 2026
+
+- Board only. The hierarchy stream is briefed: a Universe Sandbox binary should import as two stars, and a body should be re-homable from its orbit panel without jumping.
+
+## v3.0.285 - 2nd Sep 2026
 
 - The constellation sky is no longer drawn mirror-imaged: a star entered at its real right ascension and declination now sits where a photograph puts it, with east to the left when north is up. Orion looks like Orion.
 
-## v3.0.279 - 2nd Sep 2026
+## v3.0.284 - 2nd Sep 2026
 
-- The 2D system map now zooms out fifty times further than before, so a distant binary companion fits on screen. The earlier v3.0.259 change widened the 3D view; this is the map the report was about.
+- Board only. Four reports captured with their causes found: the Universe Sandbox importer assumes one star and demotes a binary's second star to a planet; the constellation sky is drawn mirror-imaged by an axis swap; the mobile scale bar hides whenever Spread is above zero; and a way to re-home a body from its orbit panel is sized up.
 
-## v3.0.259 - 31st Aug 2026
+## v3.0.283 - 3rd Sep 2026
 
-- You can zoom the GM view ten times further out, so a far binary companion fits on screen. The scale readout keeps its meaning all the way; the numbering jump is deliberate - beta and production share one sequence.
+- Board only. The held production branch records that it now carries the collapse fix too, so it cannot ship the regression it was staged before.
+## v3.0.281 - 3rd Sep 2026
+
+- On a phone, the detail panel would not collapse. Last release taught it to open itself to the right height for what is in it, and the rule was written so it could never shrink the panel under you - but it also ran every time anything changed, so the moment you pressed Collapse it opened straight back up. It now only resizes when what is IN the panel changes, so a panel you collapse stays collapsed, and dragging or tapping it to any height sticks. Tapping a different world still opens its panel for you.
+
+## v3.0.280 - 2nd Sep 2026
+
+- The 2D system map now zooms out fifty times further than before, so a distant binary companion fits on screen. Already live on production as v3.0.279.
+
+## v3.0.278 - 2nd Sep 2026
+
+- Board only. The zoom fix's board id settles at A91 after two numbering races with fast-moving streams.
+
+## v3.0.277 - 2nd Sep 2026
+
+- You can zoom the GM view ten times further out, so a far binary companion fits on screen. Already live on production as v3.0.259.
+
+## v3.0.276 - 2nd Sep 2026
+
+- The Moon's info card now says 27.3 days, which is both how long it actually takes and what its own Day Length figure on the same card already said - 655.7 hours is the same number, because the Moon keeps one face towards us. The card had been working the period out for itself from the Earth's mass instead of reading the one the engine publishes, so with real orbital data the two figures sitting side by side disagreed.
+- The same fix corrects Pluto, which had been claiming an orbital period of about five hours. Pluto and Charon swing around each other every 6.4 days, and both now say so.
+
+## v3.0.275 - 2nd Sep 2026
+
+- The Moon's orbital period now reads 27.3 days, which is how long it actually takes. The figure on the info card was worked out from the Earth's mass alone, ignoring the Moon's own - so the Moon MOVED at the right rate and REPORTED the wrong one, by three hours a month. Any body carrying real orbital data now reports the period it is actually moving at.
+
+## v3.0.274 - 2nd Sep 2026
+
+- The bundled Solar System is now where the real one is. Every planet used to sit on a placeholder orbit - the tilt of its ellipse and the direction of its closest approach were both simply zero - because until the clock was tied to a real date there was no moment for them to be right AT. There is now: noon on 1 September 2026. The eight planets, the Moon and Pluto are set from real orbital data for that instant, in both Local Neighbourhood maps and both Sol system files, and opening any of them puts you at that moment with the sky as it actually was.
+- The Sun now sits within half a degree of where an almanac puts it, and the Moon shows the right phase. At the real total eclipse of 12 August 2026 the Moon now sits on the Sun, close to the node - the geometry an eclipse is made of - where before, the nearest alignment the app could find was two years away.
+- Eclipse TIMES are still approximate, and that is worth saying plainly rather than leaving you to discover it. The Moon's orbit wobbles in ways a single fixed ellipse cannot follow, so its position is good to about a day where totality needs a few minutes: eclipse SEASONS are now right, individual eclipses are not yet. The orbit also does not slowly turn the way the real one does, so the calibration is at its best around the reference date and loses accuracy over years.
+- Nothing else in those maps moved. Every other moon, belt, ring, station and ship is exactly where it was - this changes the bodies it calibrates and no others.
+
+## v3.0.273 - 2nd Sep 2026
+
+- The Earth calendar now has a real 29th of February, and that makes it exact. The leap settings in the calendar editor were being ignored entirely: instead of adding a day every fourth year, the app spread that day thinly across every second of the year. Dates stayed roughly right but the CLOCK drifted - noon showed as 06:33 in 1970 and 23:15 in 2026. It now inserts a real leap day into February, and a calendar can state its exact rule (Earth's is "every 4th year, except every 100th, except every 400th"). Checked against 13,232 dates from 1800 to 2200: date, time and day of the week correct on every one.
+- Which means typing a real date now takes you to exactly the right moment - the thing you need if you want the sky to match the day. The calendar is no longer what stands between you and a real eclipse; the remaining piece is the planets' own starting positions.
+- The editor gains the two settings that make this work: which month takes the leap day, and the exact leap cycle - plus a line telling you which of the two methods your calendar is using, so nothing in that panel is a dead control any more.
+
+## v3.0.272 - 2nd Sep 2026
+
+- The calendar editor was showing a dead number. Its Epoch Offset field displayed the old, 297-years-wrong value while the app quietly used the corrected one, so the figure on screen was both wrong and had no effect if you changed it. The field now shows the number actually in use.
+- And if you DO type your own epoch, it is now yours for good. The app corrects its own shipped calendars when a campaign loads; it will no longer reach in and overwrite a zero point you set yourself.
+
+## v3.0.271 - 2nd Sep 2026
+
+- Board only. A supermassive black hole is still described as "a ball about 300 km across" - recorded with its measurement, because the sentence comes from the rule pack's size band rather than from the hole's own event horizon.
+## v3.0.269 - 2nd Sep 2026
+
+- Board only. Stream H records what it staged for production and corrects a count in its own audit.
+## v3.0.268 - 2nd Sep 2026
+
+- Hovering a star on the GM starmap now tells you what is in the system without opening it: the full star type in plain English, what is in orbit, whether anything lives there, and any megastructures - a ringworld says so by name. Your players' map is unchanged; this is the GM's side only.
+- Black holes can be supermassive. A switch on the star editor swaps the mass slider from the stellar range up to 270 billion suns, on a log scale so Sagittarius A* and M87* are somewhere you can actually land the thumb rather than a pixel from the end. A hole that is already supermassive opens on that scale by itself. Past the 270-billion mark the editor keeps whatever you type and tells you why nothing is known to grow heavier - the disc that feeds it collapses into stars first.
+- The star editor's rotation slider had never lined up with the green "typical for this class" band drawn behind it. The band was on a log scale and the slider was not, so on a Sun-like star the band painted across the middle of a track where the matching value sat hard against the left stop. The slider is now on the same scale as the band, which also makes short periods - most stars, and every pulsar - reachable at all.
+- On a phone: the "Expand with AI" description screen was invisible. Opening it hid the panel it lived inside, and took itself down with it. It now opens full-screen with all four buttons where you can reach them.
+- On a phone: planning a journey was unusable. The detail panel never grew past its 86-pixel resting height, so the transit planner opened as a strip and Schedule Journey was somewhere below the fold. The panel now sizes itself to what is in it - half the screen for a body, the whole screen for the planner - and it never shrinks back under you.
+- On a phone: eleven more dialogs now get the screen to themselves when they open, instead of leaving the bottom bar and the floating clock ghosting behind them. Saving, the route editor, the report options, adding a construct, the interstellar planner, the real-sky importer and the ship panel are among them.
+## v3.0.267 - 2nd Sep 2026
+
+- Board only. The temporal batch records what it found and what it staged for production.
+
+## v3.0.266 - 2nd Sep 2026
+
+- Board only: the megastructure row records the three separate faults behind one symptom (the elevator's glyph, its placement and its drawn length), and a changelog entry that lost its blank line in a merge gets it back.
+
+## v3.0.265 - 2nd Sep 2026
+
+- The beanstalk is finally the right LENGTH. It stood in the right place from the last release, but it was drawn scaled by its own height on top of its host's - the units squared - so a ribbon reaching 5.6 Earth radii to geostationary came out as a tick beside the planet. A structure measured in multiples of its world's radius is now scaled by that world's live drawn radius every frame, exactly as Saturn's rings already are, so the ribbon grows and shrinks with the globe at every zoom and dial position instead of drifting out of step with it.
+
+## v3.0.264 - 1st Sep 2026
+
+- A screenshot you take of your own map no longer counts against you when you share it. The attributions file lists every uploaded picture and model and flags the ones with nothing recorded, and a sharing site uses that to decide whether a map is ready to go public - so a beauty shot of your own campaign was being treated as somebody else's uncredited art, and could have stopped you publishing your own work. A captured view now says what it is: made here, from this file, with everything in it already credited on the same page. A capture that claims a licence and still names nobody is called out exactly as before, because that is wrong whoever took the picture.
+
+## v3.0.263 - 2nd Sep 2026
+
+- The campaign clock is finally tied to a real date. The master clock counts seconds since the big bang, which means nothing on its own until something says which of those seconds is a date you recognise - and the four shipped calendars each carried their own private answer, three of them wrong, by three different amounts. A clock the app itself had set to 1 January 2026 was being shown to you as 1 January 2323. There is now ONE stated reference - noon on 1 September 2026 - that every calendar hangs off, so dates read true and a campaign set in a real year looks like one.
+- YOUR CAMPAIGN'S CLOCK HAS NOT MOVED, but the date printed on it has. A map that read 2323 will now read 2026: the moment your campaign sits at is untouched, it was only ever being named wrongly. If you had already worked around this by winding the year back by hand, wind it forward again by the same amount.
+- The Gregorian calendar's leap correction was out by enough to drag the time of day around by hours across a century; it is now within a tenth of a second a year. The date is right from 1900 to 2100. The clock time within that date can still sit up to half a day off away from the reference point, because this calendar carries no 29th of February - it spreads the leap day evenly instead. Exact on the reference date, honest either side of it.
+- New campaigns now start at noon on 1 September 2026 rather than at a number with no name.
+
+## v3.0.262 - 1st Sep 2026
+
+- The space elevator finally stands where it was built. Every elevator created from the Megaconstructs tab had been quietly parked in a generic middle orbit with no Surface placement - so its ribbon, which has drawn faithfully for days, stood at the system origin where nobody would ever look. A surface-only structure now anchors to its world's surface wherever the mouse was (a click cannot put a beanstalk in orbit), and elevators stranded by the old path heal themselves the next time the campaign loads - verified live: a stranded one re-anchored to Earth on reload, ribbon, geostationary dock ball and counterweight all standing on the anchor.
+## v3.0.261 - 1st Sep 2026
+
+- Reports open, or tell you why not. Choosing Report with no system open used to do nothing at all, and a report window blocked by your browser also did nothing at all - both cases now say what happened and what to do about it, instead of leaving you staring at a screen that did not change. The report document itself was never broken; it was only ever the opening of it.
+- The Epoch on a printed report is now written in your campaign's own calendar. A campaign running on Stardates or the Haab used to get a Gregorian year on the paper regardless of the calendar you had chosen in Settings; reports now read dates through exactly the same reckoning as the clock strip, the ship log and the companion app.
+
+## v3.0.259 - 1st Sep 2026
+
+- You choose the picture that represents your map. A star beside any graphic in your player-view library marks it as the cover - the shot a sharing site puts on your map's page and into a link preview. It points at a picture your campaign already carries, so it travels in the save, keeps the credit you recorded beside it, and appears in the attributions file like any other art. Choose nothing and a site falls back to guessing, exactly as before; delete the picture and the choice quietly clears rather than pointing at nothing.
+- Built-in starter graphics cannot be the cover. They are the app's own artwork, they live outside your save file, and putting one on your map's page would be advertising this app rather than showing your work.
+
+- The elevator's proportions are now the real ones, in every representation (this shipped in the previous push, which collided with another stream's v3.0.258 and lost its changelog line - recorded here). The counterweight belongs ABOVE geostationary - at geo it would hold no tension - so the 3D ribbon runs past the dock to the counterweight rock (your authored ribbon length wins when it reaches past geo; a 1.25x design margin otherwise), a small station ball marks the geostationary dock on the ribbon itself, and the mast glyph's knob moved to the honest four-fifths position Earth's own numbers give it: 35,786 km of dock on a 45,000 km ribbon.
+
+## v3.0.258 - 31st Aug 2026
+
+- Board only. The documentation sweep is briefed as an audit: every banked note is checked against the running code before it becomes prose, so nothing garbled by months of fast work gets written into the guides.
+
+## v3.0.257 - 31st Aug 2026
+
+- Repair: a broken package.json (conflict markers) briefly reached beta and is fixed; the failed build that should have blocked it now blocks properly.
+
+## v3.0.256 - 31st Aug 2026
+
+- Board only. Documentation sweeps now fire themselves: when enough changes have banked, or always before a production release, without waiting to be asked.
+- Board only. The documentation sweep is called: thirty-three banked changes are owed to the physics page and the user guides before the next production release.
+
+## v3.0.255 - 31st Aug 2026
+
+## v3.0.254 - 1st Sep 2026
+
+- The space elevator's ribbon is finally visible. It was being drawn as a one-pixel line - which graphics hardware renders one pixel wide no matter what, and one pixel against a lit planet is nothing - so the beanstalk is now a slim solid ribbon whose drawn width scales with its world, the same honest readability device the counterweight rock already used. And elevators saved before the mast glyph existed now pick it up on load: the old cross was the template's stamp, not your choice, so it follows the template - any icon you chose yourself is left exactly as you set it.
+
+## v3.0.254 - 31st Aug 2026
+
+- The repository gains a front door: a short CLAUDE.md that any fresh session loads automatically, pointing at the board's standing rules, the engine trap map and the playbook - so knowing the house rules no longer depends on being handed a brief.
+
+## v3.0.253 - 31st Aug 2026
+
+- Board only. Two streams briefed: the calendar work (a report that reads the wrong epoch, and grounding the big-bang clock to real dates with eclipses as the proof), and the UI batch (star hover summaries, supermassive black holes, the mobile audit).
+
+## v3.0.252 - 1st Sep 2026
+
+- The space elevator finally looks like one on the flat map: a new mast glyph - a full-height stem with its knob at the geostationary dock and the ribbon running honestly past it to the counterweight - replaces the generic cross on new elevators everywhere glyphs are drawn (orrery, starmap, holo, info block). Existing saved elevators keep the icon they were authored with; edit or recreate to adopt the mast.
+## v3.0.251 - 31st Aug 2026
+
+- Board only. Five owner reports captured and probed: star hover summaries, supermassive black holes, mobile menus missed in the upgrade, the report window and its calendar-blind epoch, and grounding the big-bang clock to a real date.
+
+## v3.0.250 - 31st Aug 2026
+
+- A megastructure's shadow now reads as what it is: an eclipse. A world that crosses a ring's shadow shows a Structure Shadow line in its technical block - how often and how long the star goes out (a tilted world behind the default ring: twice an orbit, about three and a half days each) - and a world trapped coplanar behind a solid ring says the honest word: permanent. Local eclipses keep their own Next Eclipse row untouched. The same fact lands as an Eclipsed tag beside Shadowed-by, and the physics trace speaks the cadence in its dimming note - one geometry, one wording, three surfaces.
+
+## v3.0.249 - 1st Sep 2026
+
+- One link now opens a shared map. A link to a map on the Explorer hub - pasted into a Discord, an email, anywhere - starts the app with that map ready to go, instead of a download followed by an import. There is also a box on the load screen for anyone already inside the app: paste the link, the map's page, or just its code, and it works out which you meant, including when the link has tracking rubbish on the end.
+- It asks first, and it always says what will happen. This browser holds one campaign at a time, so opening somebody else's map replaces yours - which is not something a link you clicked out of curiosity should do quietly. You get the map's name, a plain statement that yours will be replaced, and a button to save yours first. A copy of the replaced campaign is kept as a single step back in Settings, the same one the bundled-map upgrade has always used.
+- A shared map is treated as a stranger's file, because it is. It comes in through exactly the same door as a file you dragged in - same checks, same repairs, same refusal to open something that is not a save - and a map code that could point anywhere is refused before the app so much as asks the network for it.
+- A map made by an older build now says so, quietly, once. It is a note about what that build could do, never a reason not to open it.
+- Settings gains a switch for whether the save screen offers to publish to the map library. Publishing itself is built but switched off: it needs two things from the hub first, and one of them is the exact wording of the "I have the right to share this art" confirmation, which cannot be approximated - the whole point of it is that a real person read the real words.
+
+## v3.0.248 - 1st Sep 2026
+
+- A tilted ringworld now treats the drawn zones the way it treats the worlds: barely. A ring shadows only what lines up with its plane, so tilting one is the honest way to keep planets out of its permanent shadow - but the habitable-zone rings were still collapsing at the ring's radius as if it lay flat. The zones now count a band by how aligned with the system plane it actually is: an untilted ring still ends them, a tilted one costs a whisker.
+
+## v3.0.247 - 31st Aug 2026
+
+- A save now counts itself. Every time you save a campaign it writes a revision number, one higher than the last, so two files of the same map can finally be told apart. This exists to stop a specific and entirely realistic way of losing work: you upload your campaign to the sharing site, weeks later you find an older export in your Downloads folder, you upload that as an update, and the newer one is gone. Nothing in a save said which was newer - two real exports of one map nine months apart were checked and neither had anything to go on. Now the site can ask before it overwrites. The number lives with the campaign, so it survives closing the app, and it starts at 1 for every map that has ever existed.
+- Two saves that are deliberately not counted, because neither is new work: the safe-mode "download the stored map" rescue writes out exactly what is in storage, and a single system save is a slice of a campaign rather than a thing with its own history.
+- A saved file now records whether it is the GM copy or the player copy. It is a label and never a lock - anything reading a save still has to look at what is actually inside it, because a file can say anything - but it lets the sharing site print "this is the player version" honestly instead of "no GM-only content found". Single system saves take it from the choice you already made in the save box; campaign saves are always the full GM file and say so.
+
+## v3.0.246 - 31st Aug 2026
+
+- A shadowed world now says so in its tags. Any world losing starlight to a megastructure carries a "Shadowed by" tag naming the structure - the same fact the physics trace explains, now visible in pills and filters, and it leaves with the structure. Set the tag anonymous and players learn only that something stands between this world and its sun.
+
+## v3.0.245 - 31st Aug 2026
+
+- Megastructures grew their knobs. A new Structure tab on the construct panel renders every dial a structure's own definition declares - a ringworld's radius, band width and spin, a swarm's density and efficiency, a shell's coverage - as sliders with honest ranges, warnings in plain sentences when a value leaves the plausible band, and a reset back to the sensible default. The dials are real physics controls: widen a ringworld and its shadow widens; thicken a swarm and every world beyond it cools. Only the dials a GM actually moves are saved, so existing structures quietly inherit improved defaults.
+- For pack authors and future sessions: declare a parameter on a structure's record and the slider now exists - no interface code. The authoring guide says so.
+## v3.0.244 - 31st Aug 2026
+
+- Every save now says what format it is, not just the zipped ones. A campaign with no pictures or models saves as a plain .json file, and those carried no format marker at all - which made them the one kind of save another program could not safely read, and the only kind the sharing site would accept if it ever had to lock itself down to text. All four places the app writes a plain save now stamp it: the ordinary campaign save, a single system, the red-zone crash file, and the "download the stored map" escape hatch in safe mode. That last one had never been on anybody's list.
+- A model file is now checked against its own contents before it is written. Ship models are filed under a fingerprint taken from the file itself, which is what lets twenty ships share one hull and cost one download. If the name and the contents ever disagreed the save would be describing art it does not contain, so an export that would write such a file now stops and says which model to re-upload, instead of writing it quietly.
+- The sample bundle the sharing site tests against was not a real save, and now is. It had been hand-built: its model was a six-character placeholder where a real fingerprint belongs, the "model" itself was a line of text rather than a model, and the campaign inside was missing a field that would have stopped this very app from opening it had it arrived as plain JSON. There are now two samples, a campaign and a single system, both genuine saves - with one hull flown by two ships, one picture fully credited and one with nothing recorded, so both sides of the sharing site's credit check are exercised.
+
+## v3.0.243 - 31st Aug 2026
+
+- Board only. Two future notes banked: a speced-but-held design language for editing panels, and a standing note that belts and rings - the original odd-ones-out - should migrate onto the new non-standard-object system whenever their code is touched anyway.
+
+## v3.0.242 - 31st Aug 2026
+
+- Board only. One stream is briefed to do everything the sharing site expects of the engine: honest saves, a real test bundle, a revision counter, and opening a shared map in one click.
+
+## v3.0.241 - 31st Aug 2026
+
+- Megastructure names come back down to earth. A label clears the thing it names so it never sits inside it - right for planets and ships, and absurd for a structure the size of an orbit: "Ringworld" floated a full ring-radius up into empty sky, and "Space Elevator" hung near the counterweight instead of the anchor. An exotic's label now clears its clickable marker instead of its whole span, so the name sits on the hoop point or the anchor where you would reach to click. The Death Star keeps ordinary ship labelling - its hull IS its marker.
+
+## v3.0.239 - 31st Aug 2026
+
+- Board only. Two owner asks captured where the next session will trip over them: custom sliders (a ringworld's width on an edit tab) land as the exotics knob editor - the slider contract already exists on every record, only the storage and the tab are missing - and the bigger idea, a declarative design language for the whole UI, is banked as its own future item with its shipped precedents named.
+- The SSE3 mark gets its bold colour back - making it clickable had accidentally flattened its styling.
+
+## v3.0.237 - 31st Aug 2026
+
+- First exotics seam flip, invisible by design: the 3D scene and the click-framing now read each megastructure's declared capabilities instead of two private renderer flags, and the flags are gone. Nothing looks different - the parity gates are the proof - but the next object type gets this behaviour by declaration rather than by editing the renderer.
+- A star inside a Dyson sphere no longer looks like a black hole. It is drawn with the thing around it: a ring whose GAPS ARE THE LIGHT STILL GETTING OUT, so a swarm covering 30% of the sky draws a ring 30% closed and a complete sphere draws a closed one. The star inside keeps an ember of its own colour rather than going fully black - a black dot on a black map is not a dim star, it is an absence, and it read as the wrong object entirely. The honest figure is untouched everywhere it is a figure: the panel still says the light is gone and the Dimmed tag still says so in magnitudes.
+- Every anomalous star now carries a tag you can pin: **Anomalous star**, which says which story the numbers tell - *dimmed, not reddened: something solid* or *dimmed and reddened: dust*. Drag it into the highlight tray from Find by tag and every star worth a second look badges itself, on your maps and the players'. It sits beside the Dimmed and Infrared excess readings, and it is the one to pin if you only pin one.
+- Adding a megastructure now re-derives its system on the spot. It was the only way of adding anything that did not, which was harmless while a construct changed no physics and a silent lie the day one did: the map was right and the tags and the worlds' temperatures still described the system as it was a moment before. This is why a freshly built Dyson sphere showed no sign of its own infrared.
+- A conservation fix worth stating plainly: a swarm inside a shell was reporting an infrared excess of 130% of its star's output. Structures are now walked outward from the star and each one only receives what the ones inside it let past, so a complete shell outside a 30% swarm re-radiates the 70% that reached it and the pair returns exactly the star's output. A ringworld is honest about the other half of this too - it blacks its star out for anyone in its plane while intercepting about half a per cent of the star's sky, so it is nearly invisible in the infrared.
+
+## v3.0.236 - 31st Aug 2026
+
+- The exotics system exists (its name is the owner's call, along with three more decisions recorded on the design). Every megastructure type now carries a declaration of what it IS - how it treats starlight, where its gravity figure comes from, how it draws in 2D and 3D, and how a click frames it - pinned by thirty-six parity gates to behave exactly as before. Nothing looks or computes differently today; what changed is that the next Soletta, Shkadov thruster or black-hole star becomes a record to review instead of a dozen hand-wired special cases.
+
+## v3.0.235 - 31st Aug 2026
+
+- Board only. The owner called a stop/think on how exotic objects are wired in, and the design answers it: one capability record per non-standard object type - a matrix declaring which physics engines apply, how it draws in 2D and 3D, how a click frames it, which edit panels it gets, and what tags it stamps on the worlds it affects - so a soletta, a Shkadov thruster or a black-hole star becomes a record to review rather than a dozen hand-wired special cases. Design only; four questions await the owner before anything is built.
+
+## v3.0.234 - 31st Aug 2026
+
+- A ringworld no longer claims twelve million gravities. The crew panel converted a rotation period to revolutions per minute with the minutes and hours crossed - out by a factor of 3,600 - so the bundled ring's honest 1.00 g displayed as 12,967,908 g. The stored data was never wrong (the two bad conversions were mirror images, so saves round-tripped cleanly); only the displayed RPM and gravity figure lied. Both now go through one tested conversion pair, anchored on the Niven ring: 215.5 hours at 1 AU reads exactly 1.00 g.
+## v3.0.233 - 30th Aug 2026
+
+- Three fixes the browser found, on the real Sun with a real Dyson swarm around it. The star's panel called it "a G" where the line beneath it called it G2V - it now uses the designation the star actually holds, so the panel agrees with itself. Behind dust it read "colour alone would call it a M star"; it reads "an M star" now, which is the one sentence in the feature a reader is guaranteed to notice.
+- And the info panel was printing tag values raw. "Dimmed: 0.39" told you nothing about 0.39 of what; it now reads "Dimmed: 0.39 mag fainter" and "Infrared excess: 30.0% of output". That panel was the only surface not routing values through the one function that decides how a tag value is shown, so every numeric tag on it was affected - a self-luminous world's temperature and an aurora's renderer figure among them - and all of them are right now.
+
+## v3.0.232 - 30th Aug 2026
+
+- Clicking a ringworld, Dyson sphere, swarm or torus now frames it the way a belt is framed: the whole structure AND the world or star it encloses, in one shot. The old first click flew the camera to a point on the hoop with the star out of frame - technically where the object 'is', but never the picture anyone wanted.
+## v3.0.231 - 30th Aug 2026
+
+- A star with something in front of it now reads out all three measurements, in the star's own panel, and the point is that they disagree. The spectrum says what it always said - G2V, and the absorption lines are untouched, because blocking light evenly does not move them. The brightness says four magnitudes too faint for a G2V at that distance. The infrared says forty per cent of the star's output is arriving as heat at 394 K. No G2V does that, and a crew that spots the contradiction has found something rather than been told something.
+- The designation itself never changes, and that is deliberate. Behind dust the engine works out the temperature photometry ALONE would assign - by finding the blackbody whose colour matches what actually arrives - and says "colour alone would call it a K star" beside a designation that still reads G2V. Point a spectrometer at it and the lines settle the argument. For a Dyson swarm that same calculation gives the star's own temperature exactly, so the sentence about colour never appears where nothing changed the colour.
+- The panel is honest about what it cannot answer. A ringworld only dims observers near its own plane and a body panel has no viewpoint, so it says so and points at the starmap, which answers it per system.
+- The physics page gains the whole story: the three readings side by side, the compact form a card shows, and why both readings are always worked out while only the CAUSE is ever withheld.
+- Changelog repair: the v3.0.227 release notes had been left duplicated under v3.0.228 by an earlier rebase. The stray copy is removed; nothing else moved.
+
+## v3.0.230 - 30th Aug 2026
+
+- Changelog repair, no app change. Landing the save-shape fix took four rebases against a fast-moving beta, and the automation written to keep up mislabelled one commit and moved another release's notes onto the wrong version number. Both are put back where they belong.
+
+## v3.0.229 - 30th Aug 2026
+
+- Board only. Restored a release note that a rebase had dropped.
+
+## v3.0.228 - 30th Aug 2026
+
+- A saved campaign now describes what YOU made, not what the app happens to ship with. Every save ever written carried the four built-in calendars, the nine built-in tag categories and the on/off state of all of them, exactly as the app ships them, as though a GM had sat down and authored the lot. Nothing reading a save could tell a campaign with its own invented reckoning from one that had simply been saved. Now a file carries the calendars, categories and switches you added or changed, and nothing else.
+- Your maps open exactly as before, and older files open exactly as before: the app puts its own library back on load, which is where it belongs. A built-in calendar you have EDITED counts as yours and is saved in full.
+- This is a correctness fix and not a size one, and it is worth saying so plainly: the built-in data was under 4% of a typical save. The 45% that is indentation stays exactly as it is, because that is what makes a save readable and diffable by hand, which was a deliberate choice and a good one.
+
+## v3.0.227 - 30th Aug 2026
+
+- Stars now look like what an observer would actually see. Build a Dyson swarm and the star dims on both starmaps by exactly the share of light the swarm takes - and it does NOT change colour, which is the interesting part: even blocking cuts the brightness and leaves the spectrum alone, so a swarmed G2V star still reads G2V to a spectrometer. What you get instead is three measurements that disagree - too faint for its class, a large infrared excess, and a spectrum insisting nothing is wrong. That contradiction is the real technosignature, and a crew that spots it has found something rather than been told something.
+- A ringworld is directional and honest about it. A shell or an all-sky swarm dims everyone; a ring only stands in front of its star for observers near its own plane, which is about a third of a degree of sky. The map answers it per viewer, from whichever system you have set as the map's centre (right-click a system to set it) - so two crews in different systems can disagree about what that star looks like and both be right. With no centre chosen the map says so rather than guessing.
+- Dust is the case that really does redden, and you can now author it: a "Line-of-sight dust" slider on a star's Overrides tab, as an optical depth. Blue scatters out of the beam first, so the star goes fainter AND redder, and a G star behind enough of it can honestly be mistaken for a cooler one until someone takes a spectrum. It dims the star for observers only - the dust is between here and there, not around the star's own worlds.
+- A dimmed star carries two new tags, Dimmed and Infrared excess, which say how much and where the missing light went. Like every tag they have the shown / anon / hidden setting, so you choose whether players get both sides of the story, just the anomaly, or a star that is simply too faint for what its spectrum says.
+- The physics page has a new section explaining all of it, including where the blocked light goes: a shell at 1 AU settles near 394 K and glows at 7,400 nm, deep in the infrared, which is what makes such a thing findable at all.
+
+## v3.0.226 - 30th Aug 2026
+
+- Board only. Signing the app into the hub is decided: pair with a short code approved in your own browser - no password ever enters the app, and the token can be revoked from your account page.
+
+## v3.0.225 - 30th Aug 2026
+
+- Board only. The owner confirmed the 2D megastructure rings by eye, and two new notes joined the visual-pass list in his own words: on the GM view a Dyson sphere should read as a band with a clickable handle rather than the occluding shell it really is, and a spinning band should let you sense its rotation speed.
+
+## v3.0.224 - 30th Aug 2026
+
+- Board only. The sharing hub's thirteen requirements for the engine are banked and triaged - two of its blockers turn out to be half-done here (a format stamp that misses plain saves, and a test bundle whose model is not really named by its own bytes), and a revision counter is flagged as the one that prevents real data loss.
+- Megastructures finally draw as themselves. Every ringworld, shell, swarm and torus has been falling back to the old textured blob since the shape generator shipped, because the code that attaches the real geometry tripped over a variable that did not exist where it looked and the safety net quietly swallowed the error - on the GM view and player view alike. The diagnostic line added last session named it from a single console paste. The shapes now attach; how they LOOK close up is the visual-pass session, deliberately still to come.
+
+## v3.0.223 - 30th Aug 2026
+
+- Board only. The hub terms close with the owner's last word: this runs for the love of it, and abuse simply gets it shut down.
+
+## v3.0.222 - 30th Aug 2026
+
+- Clicking the SSE3 mark in the corner now copies the app version, ready to paste into a bug report. A brief green tick confirms it; hovering still names the build.
+
+## v3.0.221 - 30th Aug 2026
+
+- Board only. The hub's terms are signed off with the takedown route and a seven-day deletion hold; and a finding is banked - saves carry the app's own calendars and categories as if the GM had made them, so a save cannot honestly say what its GM actually built.
+## v3.0.220 - 30th Aug 2026
+
+- Tags now have three settings for who sees them, not two. **shown** is the tag as you wrote it. **hidden** is what "secret" always did - players see nothing, and no sign that anything was hidden. The new middle one, **anon**, tells players that *something* is here without telling them what: the tag reaches them as a neutral grey "Undisclosed" marker carrying no name, no value, and not even its category's colour. It is the setting for a station with an owner the crew have not identified, or a star with something obviously going on that they have not worked out. The button beside each of your own tags cycles through the three.
+- Two things worth knowing about the middle setting. Several anonymous tags on one world show as one marker on purpose - three markers would tell players you are hiding three things, which is a fact you did not choose to give them. And a category you have hidden from players stays hidden: the category switch is the stronger statement, and a tag inside it shows nothing even on **anon**.
+
+## v3.0.219 - 30th Aug 2026
+
+- A collector's harvest is finally spoken in watts. The picker footer for a Dyson swarm or energy collector now says what the array actually gathers - the intercepted share multiplied by THIS star's real output, so a K-dwarf's harvest never reads as if the star were the Sun. The default swarm on Sol collects about 3e25 W, and the line says so beside the share it takes.
+
+## v3.0.218 - 30th Aug 2026
+
+- The gap from the last entry is closed: the drawn zones now follow the dimming. Put a swarm around a star and the habitable zone, frost lines and kill zone all move to where the light actually reaches; put a solid ringworld there and the zones simply END at the ring - beyond it, in its plane, there is nothing left to mark. One honest surprise fell out of the physics: a collector swarm orbiting INSIDE the kill zone shields what lies beyond it, and the kill zone shrinks to say so.
+
+## v3.0.217 - 30th Aug 2026
+
+- Megastructures now shade the worlds behind them. Build a Dyson swarm and every planet outside it cools by exactly the share of starlight the swarm intercepts; a full shell can put the lights out. A ringworld is stricter still, and directional: a world sharing its plane beyond it sits in its shadow and honestly freezes, while a tilted orbit only clips the shadow for the small part of its year the geometry says it must. Nothing shades itself - a collector's sunward face takes the raw star, because that interception is the harvest - and nothing inside a structure's radius is touched.
+- The working is shown, not just the answer: a shaded world's physics trace names what stands between it and its star and how much light still arrives, and the physics reference page explains the three rules. The temperature range is honest about the extremes - coldest is aphelion in full shadow, warmest is perihelion in clear sky.
+- Known gap, next slice: the drawn habitable-zone rings do not yet move when a structure dims the star - worlds cool, the green band stays put. The zones follow the same dimming next.
+
+## v3.0.216 - 28th Aug 2026
+
+- Board only. A plain-English terms draft for the sharing hub: your uploads are yours and your responsibility, we know almost nothing about you on purpose, and we can show the door to anyone who makes the place worse.
+
+## v3.0.215 - 28th Aug 2026
+
+- Board only. The construct panels' unit work is signed off, and the next stream is briefed: stars that are not what they look like, and a way to show players that something is there without saying what.
+
+## v3.0.214 - 28th Aug 2026
+
+- Board only. The megaconstruct work is written up for whoever picks it up next: a full brief for the session that continues it, and a routing note saying it is really two jobs - the starlight-dimming physics, and the visual pass the owner deferred until the shapes are settled.
+
+## v3.0.213 - 30th Aug 2026
+
+- A long reading no longer runs off its own tile and takes the unit button with it. A megastructure showing "160,000 x 160,000 x 160,000 km" was too wide for the box, so the unit label - the only way to change the unit - was pushed off the edge and could not be clicked, exactly when you would most want to change it. The reading now wraps onto a second line inside its tile, and a number is still never separated from its unit.
+- The same fault was waiting one panel over: the three dimension boxes in the editor sat in a row that could not wrap, so on a narrower window the last box's unit went off the side. That row wraps now too.
+
+## v3.0.212 - 28th Aug 2026
+
+- Board only. The megaconstruct session hands over: what is built, what is deliberately left for the visual pass, and the two traps it paid for - that a structure surrounding its star is placed and sized by its own orbit rather than as an object beside it, and that a lookup the renderer rebuilds after its own build loop answers every question inside that loop with nothing.
+
+## v3.0.211 - 28th Aug 2026
+
+- On the flat map a ringworld or Dyson shell now draws as its own orbit path in its own colour, which is the honest picture rather than a shortcut: those structures really do sit on that circle, all the way round. The clickable marker stays on top, because grabbing a whole ring is awkward.
+- Only a Death Star can be replaced with your own uploaded model. A ring or a shell is effectively a world - its size, its living area and how much starlight it blocks are all figures the engine publishes - so a hand-made stand-in would quietly contradict them.
+- When a megaconstruct falls back to the plain blob shape it now says so once, with the reason. Chasing that by screenshot was costing more than it was worth.
+
+## v3.0.210 - 28th Aug 2026
+
+- The space elevator is now an actual elevator: a ribbon from the ground up to geostationary with a captured asteroid on the end as its counterweight, standing on its anchor point and sweeping round with the planet as it turns. The height is the real geostationary altitude the engine already works out for that world - on Earth, six and a half planet radii up.
+- The placement box is gone for megaconstructs entirely. Either you clicked somewhere, or the structure knows where it belongs - a ringworld wants an AU out, a collector half that - and either way you can drag it afterwards. It also fixes a lurking absurdity: with no click, the old default would have put a ringworld 0.005 AU from its star, inside the fire.
+
+## v3.0.209 - 28th Aug 2026
+
+- Placing a megaconstruct by clicking no longer asks you where you want it. You already said - you clicked there. The extra placement step now only appears on the route that has no click behind it, matching how every other construct has always worked, and the advice that step used to carry ("0.891 AU sits outside Sol's goldilocks zone...") now appears in the picker while you are still choosing, which is where a warning is actually useful.
+
+## v3.0.208 - 28th Aug 2026
+
+- Board only. Four notes taken from the GM screen for when the megaconstruct render work continues: draw a shell as a thick orbital ring in the plan view, give it a named circle to click that is easier to grab than a belt, frame the ring together with its star rather than flying to a point on it - and the big one, that a ringworld's inner surface can never be a painted texture. An eight-thousand-pixel map of a one-AU ring puts nine Earth diameters in a single pixel, so the surface has to be generated as you approach it: the physics decides where the seas and ice are, and the detail fills in at whatever scale you are looking from, so the size of the thing lands on you by making you travel it.
+
+## v3.0.207 - 30th Aug 2026
+
+- Board only. The construct unit work is written up: what was converted, what was deliberately left alone and why, what was checked in the running app, and the four things worth a human eye.
+
+## v3.0.206 - 30th Aug 2026
+
+- Units for the construct panels, part three - the corrections that came from actually using it. Two of the rules written yesterday passed every test and looked wrong on screen within a minute of a ship being opened.
+- A hull is one measurement, so its three axes share a unit - but WHICH unit is now chosen from the middle of the three rather than the longest. A 3 km tether 20 m thick used to read "3 x 0.02 x 0.02 km", technically shared and mostly unreadable; it now reads "3,000 x 20 x 20 m". The same fix makes a small cargo load in a big hold read "5 / 5,000 t" instead of "0.005 / 5 kt".
+- Editing is the opposite case and now behaves that way: each dimension box takes the unit that suits ITS OWN axis, so a two-AU spine and its seventy-metre thickness are both typeable. Sharing one unit there had turned the short axes into 0.0000000005 AU.
+- The unit tooltip reads properly again - "every construct hull size follows" rather than "every construct dimensions follows".
+
+## v3.0.205 - 30th Aug 2026
+
+- Units for the construct panels, part two: the panels themselves. Every ship and megastructure readout now goes through the unit system instead of formatting its own numbers - dry, cargo, fuel and total mass, hull dimensions, fuel volume, power surplus, the cargo and fuel gauges, and the landing and takeoff sentences. Click any unit and every reading of that kind moves with it, on the card, in the catalogue and in a printed report alike.
+- The Dyson Sphere that started this now reads its mass as a fraction of an Earth and its size in AU, and a 46 m corvette still reads 46 x 12 x 9 m. A hull is treated as ONE measurement with three axes, so its length, width and height always share a unit - a 3 km tether 20 m thick can no longer print its thickness as 20 km.
+- Editing improved with it: dry mass and the three dimensions are now unit-cycling fields, so a megastructure can be typed in AU rather than in eleven digits of metres, and the hand-written kilogramme-to-tonne juggling behind those boxes is gone.
+- Three places outside the panels were quietly doing the same thing their own way - the catalogue block, the printed report and the text handed to the writing assistant. The catalogue had its own private rule about when metres become kilometres, at its own threshold. There is now one answer to that question instead of four.
+
+## v3.0.204 - 28th Aug 2026
+
+- A Dyson sphere now goes AROUND its star instead of sitting beside it like a purple moon (G53). Rings, shells and swarms surround the thing they orbit - that is what they are - so they are drawn centred on their host at the drawn radius of their own orbit, which means the shell and its orbit line can never disagree at any zoom or scale setting. Reported from a screenshot; the shape was right and the placement was not.
+
+## v3.0.203 - 30th Aug 2026
+
+- Units for the construct panels, part one: the vocabulary and the honest digits. The unit system the body cards already have - click a unit, every reading of that kind follows, and the choice travels with the campaign - now knows how to talk about ships and megastructures. Masses climb a ladder from tonnes through kilo-, mega- and gigatonnes and out to Earth masses when a thing is genuinely planet-sized; hull dimensions run from metres to AU; fuel volumes and reactor power get ladders of their own, the power one reaching all the way to a fraction of the Sun. The system picks the rung that reads at a glance, and you can still click to pin whichever unit you prefer.
+- The second half of that is the digits themselves. A dry mass of 1e20 tonnes was being printed as twenty-one digits ending in "...010", and those last digits were not measurements - they were the leftovers of dividing kilogrammes by a thousand, faithfully rendered as if somebody had weighed them. Rounding now lives in the one place that formats a unit, so no tile can invent precision it does not have.
+- Nothing on a body card changes. That is now pinned by a test rather than trusted, and the pin earned its keep immediately: the first version of the rounding turned every planetary orbit from "1.000 AU" into "1 AU", and the test said so before anyone saw it.
+
+## v3.0.202 - 28th Aug 2026
+
+- Megaconstructs get their real shapes (G53 phase 3). A ringworld draws as a ring, a Dyson sphere as a closed shell, a half-built shell as exactly the arc it has finished, and a swarm as its collectors - evenly spread, never bunched at the poles - all from one generator, because a ring really is just an unfinished sphere. They keep the size, zoom behaviour and framing they already had; only the shape changes, so nothing else on screen moves. The Death Star keeps its ellipsoid until it earns a better one. Note for the eye: a ring band is genuinely a sliver of its own width - about half a percent - so it may need a minimum drawn thickness to be visible at all, and that is a judgement to make by looking.
+
+## v3.0.201 - 28th Aug 2026
+
+- Megaconstructs, the scale work (G53 phase 2) - which measurement turned into a correction rather than a build. The plan said to give a ringworld a real size so the camera could see it; measured, that would have made every system holding one draw at half size, because a ring is centred on its star and its orbit already IS its reach. The engine was right and the plan was wrong, so the plan changed and a test now guards the tempting mistake. One genuine fault did turn up alongside: three places asked "how big is this thing on screen" and one got the answer zero for every construct - now they all ask once.
+
+## v3.0.200 - 28th Aug 2026
+
+- Board only. The unit-system work is written up ready to hand to an agent.
+
+## v3.0.199 - 28th Aug 2026
+
+- Board only. The first mega-structure card in the wild showed its mass as a twenty-digit number and its size in raw metres; captured as its own item - one unit system across the construct panels, scale-aware and click-to-change like the bodies.
+
+## v3.0.198 - 28th Aug 2026
+
+- Board only. Who a megastructure shadows is now written down properly: a full shell dims everyone outside it, but a band - a ringworld, a torus - dims only what lines up with its plane, in-system and on the starmap alike. The alignment test is one angle comparison using geometry the engine already holds, and the anomaly badge on the starmap follows the viewer's bearing for bands: two crews in different systems can honestly disagree about what that star looks like, and both are right.
+
+## v3.0.197 - 28th Aug 2026
+
+- Board only. Two occlusion sentences in the megaconstruct design had the geometry backwards and are corrected: an occluder never dims itself - its sunward face takes the raw star, and that interception is the harvest - and only a body with the occluder between it and the star sees less light. The observable half (a star whose apparent profile differs from its true classification, with the anomaly symbol on the starmap) is G54's system, driven by the same occlusion number.
+
+## v3.0.196 - 28th Aug 2026
+
+- Board only. The megaconstruct plan gains phase 5c - the interior surface breathes - and an honesty gate at the flip: when a ringworld first becomes a body, its atmosphere lines will say "not yet derived for a built world" rather than printing the microgravity nonsense a naive reading would produce; 5c then swaps the gate for the real spin-gravity provider in the same commit. With 5c in the plan, ring and torus interiors hold correct atmospheres by the end of the megaconstruct work.
+
+## v3.0.195 - 28th Aug 2026
+
+- Board only. A pre-V4 requirement is written: megastructure interiors roll into the planet-segmentation system rather than growing their own. An inside-out world's floor becomes an ordinary surface region facing inward; its gravity is the calculated spin, never a faked figure; the same atmosphere model then holds air against rim walls - and the physics says a spun sphere pools its air into an equatorial band, which is why worlds without magic build many rings rather than spheres.
+
+## v3.0.194 - 28th Aug 2026
+
+- A new pair is named after what its two bodies have in common rather than by gluing both names together: "Jupiter L4 Trojan Pair", not "Jupiter L4 Trojan-Jupiter L4 Trojan I Barycentre". Two bodies with genuinely different names still read the old way, because there it tells you something - Pluto-Charon stays Pluto-Charon.
+- The barycentre's own row in the body list now says what it is instead of just looking faded: "the point Pluto + Charon orbit - select either to edit". It is a point in space with nothing to edit, which is why it is not selectable; the pair is edited from either body.
+
+## v3.0.193 - 28th Aug 2026
+
+- Megaconstructs move to the proper picker (G53, owner correction). Create New Construct is now Create New Construct/Megaconstruct: the faceted browser gains a Megaconstructs tab beside Constructs, appearing only when the chosen host can take something. Each row carries a small drawn preview generated from the type's own numbers - a swarm's dots follow its density, a part-built shell shows exactly its coverage as a growing arc, the Death Star gets its dish - and a type this host cannot take greys out with its reason under the name. Selecting one shows its honest figures in the footer ("spin gravity ~1.00 g - 2.9 million Earths of floor"); Create then opens the placement step with the choice locked, placements narrowed to what fits, the distance seeded from where you clicked, and the amber advice still speaking. Verified live: a ringworld placed at 3 AU around Sol arrives carrying its own explanation of the cold.
+
+## v3.0.192 - 28th Aug 2026
+
+- A thin memory line now sits at the bottom of the rail: green normally, orange as the tab passes 2 GB, red past 3 GB - the zone where sessions have actually died. On beta, entering the red zone also downloads a crash-recovery copy of the campaign automatically, once, so a session that dies at 3.5 GB no longer takes its evidence with it.
+## v3.0.191 - 28th Aug 2026
+
+- The body list stopped letting a long caption squeeze out a body's name - captions now trim with an ellipsis and the name always keeps its room. Found the moment a binary trojan existed: its members' captions named the whole pair back at you and left no space for the bodies themselves.
+- A member of a pair now reads "pairs with <its partner> - at Jupiter L4" instead of reciting the pair's full auto-generated name.
+
+## v3.0.190 - 28th Aug 2026
+
+- Binary trojans can now be built the way you would expect. Adding a body at a Lagrange point that already holds a trojan used to drop it invisibly on top of the existing one, where the two could never pair up; it now arrives as that trojan's companion - a moon if it is small, and if the two are comparable they promote into a proper pair orbiting each other while riding the point together, like the real Patroclus and Menoetius at Jupiter's L4.
+- The body list now tells the whole truth about a trojan: "orbits Sol - with Jupiter (L4)" rather than just "orbits Sol". Members of a pair riding a point say it too.
+
+## v3.0.189 - 28th Aug 2026
+
+- Board only. The three parallel work streams are verified and recorded: the paired-star fix, the first slice of mega-structures, and the sharing hub underway - plus what the early Cloudflare test deploy actually tripped over, and how analytics survives running on two hosts at once.
+
+## v3.0.188 - 28th Aug 2026
+
+- When a large moon stops being a moon and becomes half of a double planet is now a setting rather than a number buried in the engine. It still happens at the same place - a companion 8% of its host's mass - and nothing on any existing map moves; but a rule pack can now put the line somewhere else, and say where it lets a pair break up again.
+
+## v3.0.187 - 28th Aug 2026
+
+- Groundwork with no visible change today, and a deliberate one: the engine worked out how bright a star is in eight different places, and now does it in one. Nothing you can see moves - the habitable zone, the frost lines and every world's temperature are all held to twelve figures of exactly what they were.
+- Why it matters for what comes next: the moment anything can dim a star - a swarm of collectors around it, a dust lane, a companion passing in front - it has to dim it for everything at once. Eight separate sums could not do that; one can.
+
+## v3.0.186 - 28th Aug 2026
+
+- Board only. The mega-constructs design document had multiplied a ringworld wrong - it called the ring's circumference its area. Corrected with the working shown: a 1 AU ring 1,000 km wide is about 1,800 Earths of floor; the fabled three million needs a band 1.6 million km wide, which is what the shipped template uses.
+
+## v3.0.185 - 28th Aug 2026
+
+- Mega-constructs arrive on the picker (G53 phase 1). Seven templates ship in the rule pack - space elevator, planetary torus, ringworld, Dyson sphere and swarm, energy collector, Death Star - under their own Mega type in the add-construct dialog. The tab only appears when this host can take something; an option the host cannot take greys out and says why in a sentence ("A ringworld circles a star. Earth is not a star."); a placement the physics finds demanding - a ringworld out in the cold, a tether reaching near the edge of its world's gravity well - explains itself in amber, goes ahead anyway, and leaves its explanation as a tag on the construct. A mega type also narrows where it can sit: an elevator is Surface only, a Death Star is anywhere but a surface. Everything still renders as today's constructs do; the shapes come later.
+
+## v3.0.184 - 28th Aug 2026
+
+- Mega-constructs, where they may go (G53): placement rules are now data with two strengths. A rule about relevance greys the option and says why in a sentence ("Sol has no surface to anchor to"); a rule about plausibility tags and explains - a ringworld at 3 AU is allowed, cold, and told so - and can never refuse. The goldilocks zone is always the second kind, even if a rule pack tries to make it a wall.
+
+## v3.0.183 - 28th Aug 2026
+
+- Paired stars orbit each other again. Two bodies sharing a barycentre were sitting at the wrong points on their paths - turning in step rather than around one another - because each half of the pair kept its own idea of when its orbit started. They now share one, and stay exactly opposite across a whole revolution.
+- Editing one half of a pair no longer knocks it out of step with the other. That was why the fault came and went: it took an edit to create it.
+- A barycentre whose member has since paired up with something else now knows it. Loading such a campaign will move the outer star to where it truly belongs - it had been left orbiting a body that was no longer its partner, and its mass was short by a whole star.
+
+## v3.0.182 - 28th Aug 2026
+
+- Mega-constructs, the numbers pinned (G53): Earth demands about 48.5 GPa cm3/g of a space-elevator ribbon (the literature figure), a default ringworld gives Earth gravity at 1 AU and about three million Earths of floor, a 40% Dyson shell dims its star by exactly 40%, and a world with no real geostationary gets an honest "no tether", never a substitute figure. All held by headless tests, seen red first with the physics deliberately broken.
+
+## v3.0.181 - 28th Aug 2026
+
+- Mega-constructs, the catalogue itself (G53): seven types - space elevator, planetary torus, ringworld, Dyson sphere, Dyson swarm, energy collector, Death Star - each described once in a registry with its knobs, its placement rules, and honest derived numbers (a ringworld's living area, the tether strength a world demands, what a swarm dims and harvests). Nothing on screen reads it yet; every figure is pinned by tests.
+
+## v3.0.180 - 28th Aug 2026
+
+- Mega-constructs, first groundwork (G53): a node can now say it is artificial, or that it should be presented as a construct, without either changing any physics - and one small module is the only place that reads those switches. Nothing visible changes yet; existing maps load and behave exactly as before.
+
+## v3.0.179 - 28th Aug 2026
+
+- The "a new version is available" prompt works again. It had been pinned to a build from months ago, so the app never noticed its own updates and kept serving an old copy of itself from the device.
+- Save files now carry a format number, and the project ships a sample save that pins what that format looks like. This is what lets a second application read your saves without guessing.
+
+## v3.0.178 - 28th Aug 2026
+
+- Board only. Three pieces of work written up ready to hand out: the paired-star fix, the first slice of mega-structures, and the sharing hub as its own application.
+
+## v3.0.177 - 28th Aug 2026
+
+- Board only. A user's paired stars were chasing each other round instead of orbiting each other, and the cause is now measured: editing one of a pair silently moves it out of step with the other.
+
+## v3.0.176 - 28th Aug 2026
+
+- Board only. The Creator Hub gets its moderation half: reporting, hearts, upload limits you can tighten or relax, a switch that turns off file uploads entirely, and a review tool where checking a picture once means never seeing it again.
+
+## v3.0.175 - 28th Aug 2026
+
+- Board only. A design for the Creator Hub, where finished star systems can be shared and opened in one click - and a warning that the planned move between hosts would strand returning visitors on a stale copy of the app unless one line changes first.
+
+## v3.0.174 - 28th Aug 2026
+
+- Board only. Mega-structures get a proper structure rather than a pile of special cases, and six render paths collapse into one: a sphere you can leave unfinished is a ring, and one drawn as dots is a swarm. The inside of a ring or sphere is a living world with real weather.
+
+## v3.0.173 - 28th Aug 2026
+
+- Board only. Three assumptions in the mega-structure design were measured instead of trusted, and two of them were wrong.
+
+## v3.0.172 - 28th Aug 2026
+
+- Four bundled small bodies had masses that made them denser than any real material, and one comet was spinning fast enough to fly apart. Their sizes are unchanged; their masses and spins are now those of real asteroids and comets, and a new check keeps it that way.
+
+## v3.0.171 - 28th Aug 2026
+
+- Board only. A mega-structure on the move simply takes its moons and fleet with it - the orbits were always measured from the host, so nothing has to be rebuilt. Existing asteroids will be brought in as real bodies, and three of the bundled ones turn out to be denser than any real material.
+
+## v3.0.170 - 28th Aug 2026
+
+- Board only. A design for stars that are not what they look like: a swarm or a dust cloud changes what an observer measures, and the GM chooses how much of the reason the table is told.
+
+## v3.0.169 - 28th Aug 2026
+
+- Board only. A mega-structure on the move now carries its docked craft and sets them down again on arrival, and small bodies like asteroids go through the same door - a rock you can land on is the same idea as a battle station with real gravity, approached from the other side.
+
+## v3.0.168 - 28th Aug 2026
+
+- Board only. The mega-construct design takes its owner corrections: these are built objects the engine treats as real worlds, and an option that makes no sense in a place is simply not offered there.
+
+## v3.0.167 - 28th Aug 2026
+
+- Board only. A design for mega-constructs - space elevators, orbital rings, ringworlds, Dyson swarms and the like - written up ready to be built.
+
+## v3.0.166 - 28th Aug 2026
+
+- Ships and stations have their own size slider, under Body size. Constructs are microscopic beside worlds, so a map honest about both can be hard to read; this slides them alone, leaving Body size in charge of everything. The centre is the true relationship, and the read-out always says where constructs actually land, so a departure from truth is one you choose and can see.
+
+## v3.0.165 - 28th Aug 2026
+
+- Board only. Production takes the scale law and the supergiant framing fix, and the release routine now asks what is still sitting on a branch before it goes.
 
 ## v3.0.164 - 28th Aug 2026
 

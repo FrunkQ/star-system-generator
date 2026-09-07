@@ -1,0 +1,2 @@
+# The Creator Hub contract fixture is a zip. Never let CRLF conversion near it.
+*.sse.zip binary

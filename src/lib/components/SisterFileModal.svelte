@@ -15,6 +15,9 @@
   /** Which loader it was dropped on: 'starmap' = Load Starmap, 'system' = Load System. */
   export let context: 'starmap' | 'system';
   export let fileName = '';
+  /** WHAT THE THING IS, in the reader's words. A save reached by LINK is not a "file" to the person
+   *  who clicked it, and calling it one makes the sentence describe something they never saw. */
+  export let subject: string = 'file';
 
   const dispatch = createEventDispatcher<{ confirm: void; close: void }>();
 
@@ -25,7 +28,7 @@
 <div class="scrim" role="presentation" on:click|self={() => dispatch('close')} use:foreground>
   <div class="modal" role="dialog" aria-modal="true" aria-label="This file is a different kind of save">
     {#if fileKind === 'starmap'}
-      <h2>That file is a whole campaign</h2>
+      <h2>That {subject} is a whole campaign</h2>
       <p class="lede">
         <strong class="fname">{fileName}</strong> is a saved <strong>campaign</strong> (a starmap) —
         every system on the map and the routes between them, not a single system.
@@ -40,7 +43,7 @@
         <p>To open it, use File &gt; Load Starmap.</p>
       {/if}
     {:else}
-      <h2>That file is a single system</h2>
+      <h2>That {subject} is a single system</h2>
       <p class="lede">
         <strong class="fname">{fileName}</strong> is a saved <strong>system</strong> — one star
         system, not a whole campaign (starmap).

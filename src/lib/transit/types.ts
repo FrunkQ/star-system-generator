@@ -127,6 +127,10 @@ export interface TransitPlan {
   brakeRatio: number;
   interceptSpeed_ms: number; // 0 for dock
   arrivalPlacement?: string; // 'l4', 'l5', 'lo', 'mo', 'ho', 'geo', 'surface'
+  /** G53 PHASE 5: the journey ends ATTACHED to this structure - a level up a ladder, or the
+   *  nearest point of a rim/shell (constructs/docking.ts). The flight is solved to the HOST at
+   *  that radius (targetId + parkingOrbitRadius); the arrival hands the ship to the structure. */
+  arrivalDock?: { structureId: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight' };
   tags?: string[];
   planType?: 'Efficiency' | 'Speed' | 'Assist' | 'Complex';
   name?: string;

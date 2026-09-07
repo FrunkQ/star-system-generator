@@ -33,17 +33,26 @@ beforeEach(() => {
 });
 
 describe('UndoPill', () => {
-  it('shows nothing on an untouched system - the top of the view stays clear', () => {
+  it('is up on an untouched system, greyed - owner, 2026-09-07', () => {
+    // It used to arrive only once there was something to wind back. Owner: *"the undo/redo does not
+    // appear unless there is something in the buffer - instead have it always visible - less
+    // confusing - the shading indicates no history"*. The control a GM goes looking for has to be
+    // WHERE they look, and the disabled buttons are the answer to "can I undo?".
     const { container } = mount();
-    expect(container.querySelector('.undo-pill')).toBeNull();
+    const pill = container.querySelector('.undo-pill');
+    expect(pill, 'the pill is always up').toBeTruthy();
+    const buttons = [...container.querySelectorAll('.up-btn')] as HTMLButtonElement[];
+    expect(buttons.length).toBe(2);
+    expect(buttons.every((b) => b.disabled), 'both greyed, which is what says "nothing yet"').toBe(true);
   });
 
-  it('appears once there is something to wind back, and marks itself as CHROME (UI-C6)', async () => {
+  it('marks itself as CHROME (UI-C6), and its buttons come alive with a history', async () => {
     const { container } = mount();
     state.set({ ...EMPTY, canUndo: true, undoDepth: 1 });
     await tick();
     const pill = container.querySelector('.undo-pill')!;
     expect(pill).toBeTruthy();
+    expect((container.querySelector('.up-btn') as HTMLButtonElement).disabled).toBe(false);
     // `use:chrome` is what hides it under a dialog on a phone. Registering as `foreground` instead
     // would make the chrome hide itself whenever it was visible.
     expect(pill.classList.contains('sse-chrome')).toBe(true);

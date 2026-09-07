@@ -7,7 +7,9 @@
 // So on import we STRIP everything the processor will re-derive, keeping only the authored INPUTS
 // (mass, radius, orbit, atmosphere/hydrosphere composition, makeup, biosphere, rotation, names,
 // descriptions, GM notes, and any genuinely-authored namespaced tags). Then the caller re-processes.
-import type { System, CelestialBody, Barycenter, Tag, RulePack } from '$lib/types';
+import { megaTypeDef } from '$lib/constructs/megaTypes';
+import type { System, CelestialBody, Barycenter, Tag, RulePack, TemporalState } from '$lib/types';
+import { temporalForExport } from '$lib/temporal/defaults';
 import { giantComposition, GIANT_ANCHOR_BAR } from '$lib/physics/giantTraces';
 import { makeupFractions } from '$lib/physics/makeup';
 import { survivesRederive } from '$lib/tags/tagLifecycle';
@@ -54,7 +56,11 @@ const DERIVED_FIELDS = [
   'orbitalRadiation', 'irradiationDose', 'volatiles', 'surfaceSpectrum', 'vegetation',
   'beltInnerEdgeRadii', 'auroraEmitters', 'flareActivity',
   'resonanceNote', 'resonanceProtective', 'resonanceTidal', 'starTidallyLocked',
-  'orbitalStability', 'orbitalStabilityDetails'
+  'orbitalStability', 'orbitalStabilityDetails',
+  // G82: the field/wind boundary and a star's astrosphere. Both are re-derived on every pass from
+  // the committed field and the star's activity, and NEITHER is authorable — a GM who wants a
+  // bigger bubble pins the FIELD, on the Overrides tab, and the boundary follows.
+  'magnetosphere', 'astrosphereAu'
 ];
 
 // FIELDS THE PROCESSOR WRITES THAT ARE DELIBERATELY *NOT* STRIPPED, each with the reason. The drift
@@ -398,6 +404,24 @@ export function fixUpImportedSystem(system: System, pack?: RulePack): System {
   delete (system as { isManuallyEdited?: boolean }).isManuallyEdited;
   migrateLagrangePlacements(system);
   for (const node of system.nodes) {
+    // G53 (2026-09-01): the elevator's TEMPLATE default was a generic cross until the mast glyph
+    // existed; a saved instance still wearing exactly that stamped default follows the template
+    // forward. A GM who CHOSE a different shape chose it - any other icon_type survives untouched
+    // (the authored-data rule, read at the right grain: the cross was the template's choice).
+    const cn = node as { megaType?: string; icon_type?: string; placement?: string; parentId?: string | null; orbit?: { elements?: { a_AU?: number } } };
+    if (cn.megaType === 'space-elevator' && cn.icon_type === 'cross') cn.icon_type = 'mast';
+    // G53 (2026-09-01, found live): the rich-picker create path stamped surface-only megas with a
+    // generic mid-orbit and no 'Surface' placement, so their ribbons stood at the system origin.
+    // Heal a saved one: a surface-only mega type (registry allowedPlacements exactly ['Surface'])
+    // becomes Surface at its host's radius. A GM cannot have chosen the broken state - the dialog
+    // never offered it - so this is the template's stamp following the template, not an override.
+    const mdef = megaTypeDef(cn.megaType);
+    if (mdef && mdef.allowedPlacements && mdef.allowedPlacements.length === 1
+        && mdef.allowedPlacements[0] === 'Surface' && cn.placement !== 'Surface') {
+      cn.placement = 'Surface';
+      const hostNode = system.nodes.find((h) => h.id === cn.parentId) as { radiusKm?: number } | undefined;
+      if (cn.orbit?.elements && hostNode?.radiusKm) cn.orbit.elements.a_AU = hostNode.radiusKm / 149597870.7;
+    }
     if (node.kind === 'barycenter') { stripBarycenter(node as Barycenter); continue; }
     if (node.kind !== 'body') continue;
     stripBody(node as CelestialBody, classNames);
@@ -447,5 +471,9 @@ export function stripStarmapForExport<T extends { systems?: Array<{ system?: Sys
       else if ((body as Barycenter).kind === 'barycenter') stripBarycenter(body as Barycenter);
     }
   }
+  // B112: the calendars the GM added or altered, not the app's own library. Here rather than at the
+  // call sites because BOTH save paths already come through this function and neither can forget it.
+  const withTemporal = clone as T & { temporal?: TemporalState };
+  if (withTemporal.temporal) withTemporal.temporal = temporalForExport(withTemporal.temporal);
   return clone;
 }

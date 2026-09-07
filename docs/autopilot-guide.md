@@ -213,9 +213,30 @@ yellow (continuous burn); a thrifty one is mostly yellow with short green/red ca
 
 **Orange** is different: an orange line is an *uncontrolled* coast — a ship abandoned or adrift,
 falling under gravity alone. Its path bends (or is captured) at planets; switch on **Hill
-spheres** in the View options to see each planet's gravitational grab radius as a light-yellow
-bubble — the orange line kinks exactly at that boundary, because the overlay and the physics share
-one definition.
+spheres** in the View options to see each body's gravitational grab radius as a light-yellow
+bubble, and an adrift ship's orange line kinks at a *planet's* boundary.
+
+**The overlay draws more bubbles than the coast obeys, and that is deliberate rather than a bug.**
+The overlay answers "what does this body hold on to?", so it draws one for every body with room
+outside itself — moons included, because a moon's bubble is where a submoon could live, and that is
+the whole reason to show it. The drifting-ship model answers a different question, "where does the
+path hand over from one body to another?", and it hands over at planets and companion stars only.
+So a moon's bubble on screen is a real boundary for placing something, and not a boundary an adrift
+ship's line will kink at.
+
+## Docking, and what it costs
+
+A leg to a **megastructure** offers its docking points as destinations rather than one arrival: a
+space elevator's anchor, its low and medium levels, its geostationary dock and its counterweight; a
+ring or a shell takes the ship at the nearest point of its rim. Once docked the ship RIDES the
+structure — it moves at the structure's own rate, not at an orbital one — and its next leg departs
+from wherever the structure has carried it rather than from the orbit it held before.
+
+The planner prices that approach and shows the figure rather than hiding it: **nothing** at the
+geostationary dock, where the ribbon already moves at orbital speed; **several km/s** at the low
+levels, where a docked ship rides the planet's spin instead of orbiting; **over a thousand km/s** on
+a Niven ring's rim. A ship that arrives against the planet's spin is turned round, and the cost of
+turning appears in the plan. As everywhere else, it states the number and lets you decide.
 
 ## Known simplifications
 
@@ -225,5 +246,8 @@ one definition.
   for parked/coasting/adrift charges, off for a target mid-burn (once caught, formation tracks it
   through anything).
 - Life-support supplies are not yet modelled.
-- Moons inside a planet's Hill sphere don't get a nested sphere of their own (either for the
-  overlay or for adrift ships).
+- An adrift ship hands over between planets and companion stars only: a moon inside a planet's Hill
+  sphere gets no handover of its own, so a coast past one is bent by the planet rather than captured
+  by the moon. (The Hill-sphere OVERLAY does draw moons — see above.)
+- A ship docked below geostationary on a tether is attached rather than orbiting: let go and it
+  would fall. Nothing models letting go.

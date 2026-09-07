@@ -4,7 +4,7 @@ import type { CelestialBody, RulePack } from '$lib/types';
 import { meanSurfaceTempK } from '$lib/physics/surfaceTemperature';
 import { G, AU_KM } from '$lib/constants';
 import { calculateFullConstructSpecs } from '$lib/construct-logic';
-import { formatSpeedAuto, formatPref, speedFlavour as speedFlavourFor, unitBodyTypeFor, type UnitPrefs } from '$lib/units';
+import { formatSpeedAuto, formatPref, formatPrefValues, dimensionsKmFromM, KG_PER_TONNE, speedFlavour as speedFlavourFor, unitBodyTypeFor, type UnitPrefs } from '$lib/units';
 import { tagContextLabel } from '$lib/tags/tagPresentation';
 import { radiationHazardBucket, lethalDoseTime, LETHAL_MARK } from '$lib/physics/radiation';
 import { ascentBudgetApplies } from '$lib/physics/orbits';
@@ -12,12 +12,6 @@ import { nextEclipseCached, describeEclipse } from '$lib/system/eclipses';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
-
-export function fmtNum(n: number | undefined | null, d = 0): string {
-  if (n === undefined || n === null || !Number.isFinite(n)) return '';
-  if (Math.abs(n) > 1e15) return n.toExponential(2);
-  return n.toLocaleString(undefined, { maximumFractionDigits: d });
-}
 
 // G34: these formatters take the campaign's unit PREFS and pick the bucket from the body's own
 // roleHint, so the catalogue, documents and info panels follow the same per-quantity × body-type
@@ -129,7 +123,10 @@ function constructFacts(b: CelestialBody, prefs: UnitPrefs, ctx: FactContext): F
   const engines = ctx.rulePack?.engineDefinitions?.entries ?? [];
   const fuels = ctx.rulePack?.fuelDefinitions?.entries ?? [];
   const specs = calculateFullConstructSpecs(b, engines, fuels, ctx.host ?? null);
-  const tonnes = (t: number | undefined) => (typeof t === 'number' && t > 0 ? `${Math.round(t).toLocaleString()} t` : '');
+  // One tonnage formatter for the block, and it goes through the ladder — a mega-construct read as
+  // a twenty-digit number here for exactly the reason it did on the card.
+  const tonnes = (t: number | undefined) =>
+    (typeof t === 'number' && t > 0 ? formatPref(prefs, 'mass', 'construct', t * KG_PER_TONNE) : '');
   // Which of the derived figures we are entitled to PRINT. A tank whose fuel is not in the pack has no
   // density, so its mass is silently zero — and a "Total mass" that quietly leaves out the fuel is a
   // wrong number, not a partial one. Same for an unresolved engine: its power draw is missing, so what
@@ -175,12 +172,12 @@ function constructFacts(b: CelestialBody, prefs: UnitPrefs, ctx: FactContext): F
   if (specs.simulatedG > 0.005) add('Spin gravity', `${specs.simulatedG.toFixed(2)} g`);
 
   // --- Hull ---
-  const d = pp.dimensionsM;
-  // Ring gates and colony drums run to hundreds of kilometres, so this needs separators (and reads in
-  // km once metres stop being meaningful) — the same courtesy every other figure in the block gets.
-  if (Array.isArray(d) && d.length === 3 && d.some((x) => x > 0)) {
-    const big = Math.max(...d) >= 10000;
-    add('Dimensions', `${d.map((x) => (big ? (x / 1000) : x)).map((x) => fmtNum(x, big ? 1 : 0)).join(' × ')} ${big ? 'km' : 'm'}`);
+  // A80: this block carried its OWN metres-or-km rule at its OWN 10,000 m threshold — a THIRD
+  // answer to "what unit is this hull", beside the panel's and the report's. All three now ask
+  // the one ladder, so a GM who pins a unit sees it here too.
+  const dimsKm = dimensionsKmFromM(pp.dimensionsM);
+  if (dimsKm && dimsKm.length === 3 && dimsKm.some((x) => x > 0)) {
+    add('Dimensions', formatPrefValues(prefs, 'dimensions', 'construct', dimsKm));
   }
   add('Dry mass', tonnes(specs.dryMass_tonnes));
   const cargoCap = typeof pp.cargoCapacity_tonnes === 'number' && pp.cargoCapacity_tonnes > 0 ? pp.cargoCapacity_tonnes : 0;

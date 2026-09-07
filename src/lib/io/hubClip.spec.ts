@@ -1,0 +1,484 @@
+// R-14: the paste target for hub clips.
+//
+// THE OWNER'S ONE HARD REQUIREMENT: "it must be spec'd to receive hierarchies rather than one
+// object." So the first gate below is the one that matters - a three-deep clip goes in whole, with
+// every parent link intact - and it is written so that an implementation taking `nodes[0]` and
+// dropping the rest goes red rather than looking like it worked.
+//
+// GATE DISCIPLINE (PHY-34): absolute anchors. Literal node counts, literal parent ids, the literal
+// integer 1 for the clip format - not "the same length as the input", which a broken insert that
+// happened to push the right number of wrong things would still satisfy.
+import { describe, it, expect } from 'vitest';
+import { parseHubClip, insertClip, buildClip, describeClipRoot, looksLikeHubClip, CLIP_FORMAT } from './hubClip';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import type { System } from '$lib/types';
+
+const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+/** Sol-ish: a star with a planet, the planet with a moon. Three deep, which is the whole point. */
+function clipText(over: Record<string, unknown> = {}): string {
+	return JSON.stringify({
+		sseClip: 1,
+		source: { site: 'StarSystemX Explorers', url: 'https://hub.test/s/local-neighbourhood', title: 'Local Neighbourhood' },
+		root: 'src-star',
+		nodes: [
+			{ id: 'src-star', parentId: null, kind: 'body', roleHint: 'star', name: 'Sol', massKg: 1.989e30 },
+			{
+				id: 'src-planet', parentId: 'src-star', kind: 'body', roleHint: 'planet', name: 'Earth', massKg: 5.97e24,
+				orbit: { hostId: 'src-star', hostMu: 1.327e20, t0: 0, elements: { a_AU: 1, e: 0.016, i_deg: 0, raan_deg: 0, argp_deg: 0, M0_deg: 0 } }
+			},
+			{
+				id: 'src-moon', parentId: 'src-planet', kind: 'body', roleHint: 'moon', name: 'Luna', massKg: 7.34e22,
+				orbit: { hostId: 'src-planet', hostMu: 3.986e14, t0: 0, elements: { a_AU: 0.00257, e: 0.055, i_deg: 5.1, raan_deg: 0, argp_deg: 0, M0_deg: 0 } }
+			}
+		],
+		...over
+	});
+}
+
+/** A receiving campaign with a star to paste under. */
+function hostSystem(): System {
+	return {
+		id: 'sys-target',
+		name: 'Target',
+		nodes: [
+			{ id: 'target-star', parentId: null, kind: 'body', roleHint: 'star', name: 'Alpha', massKg: 1.9e30 } as any
+		]
+	} as unknown as System;
+}
+
+describe('R-14: a clip is read, or refused with a reason', () => {
+	it('reads the hub format', () => {
+		const p = parseHubClip(clipText());
+		expect(p.ok).toBe(true);
+		if (!p.ok) return;
+		expect(p.clip.sseClip).toBe(1); // ABSOLUTE: the number the hub pins
+		expect(CLIP_FORMAT).toBe(1);
+		expect(p.clip.root).toBe('src-star');
+		expect(p.clip.nodes.length).toBe(3);
+	});
+
+	it('says a NEWER hub made it, rather than "invalid"', () => {
+		// The useful answer is "update the app", not "the copy button is broken".
+		const p = parseHubClip(clipText({ sseClip: 2 }));
+		expect(p.ok).toBe(false);
+		if (p.ok) return;
+		expect(p.problem).toMatch(/newer version of the map library/i);
+		expect(p.problem).toContain('2');
+	});
+
+	it('refuses what is not a clip, without pretending to know what it is', () => {
+		for (const [text, pattern] of [
+			['not json at all', /not JSON/i],
+			['{"hello":"world"}', /no clip marker/i],
+			['[1,2,3]', /not a copied object/i],
+			[JSON.stringify({ sseClip: 1, root: 'a', nodes: [] }), /empty/i]
+		] as [string, RegExp][]) {
+			const p = parseHubClip(text);
+			expect(p.ok, text).toBe(false);
+			if (!p.ok) expect(p.problem).toMatch(pattern);
+		}
+	});
+
+	it('refuses a branch with a piece missing, naming the piece', () => {
+		const p = parseHubClip(clipText({
+			nodes: [
+				{ id: 'src-star', parentId: null, kind: 'body', name: 'Sol' },
+				{ id: 'src-moon', parentId: 'src-planet', kind: 'body', name: 'Luna' } // parent not copied
+			]
+		}));
+		expect(p.ok).toBe(false);
+		if (!p.ok) expect(p.problem).toContain('Luna');
+	});
+
+	it('refuses a loop', () => {
+		const p = parseHubClip(clipText({
+			root: 'a',
+			nodes: [
+				{ id: 'a', parentId: 'b', kind: 'body', name: 'A' },
+				{ id: 'b', parentId: 'a', kind: 'body', name: 'B' }
+			]
+		}));
+		expect(p.ok).toBe(false);
+		if (!p.ok) expect(p.problem).toMatch(/loop/i);
+	});
+
+	it('ignores ordinary text quietly, so a paste handler need not shout at every paste', () => {
+		expect(looksLikeHubClip('some notes a GM copied')).toBe(false);
+		expect(looksLikeHubClip(clipText())).toBe(true);
+	});
+});
+
+describe('R-14: the paste handler stays out of the way of ordinary typing', () => {
+	// A paste INTO A FIELD is somebody filling that field in, not a request to import a star system.
+	// The rule lives in a Svelte route, so it is pinned here at the source - a unit test of
+	// `looksLikeHubClip` would pass with the editable-target guard deleted, which is the blind-gate
+	// shape this stream has now hit five times.
+	it('bails on an editable target, and on text that is not a clip', () => {
+		const src = readFileSync(join(SRC, 'routes/+page.svelte'), 'utf-8');
+		const start = src.indexOf('function onWindowPaste(');
+		expect(start, 'the paste handler is gone - did the entry point move?').toBeGreaterThan(-1);
+		const body = src.slice(start, start + 1200);
+		expect(body.includes('isContentEditable'), 'a paste into a contenteditable must be left alone').toBe(true);
+		expect(/INPUT\|TEXTAREA\|SELECT/.test(body), 'a paste into a form field must be left alone').toBe(true);
+		expect(body.includes('looksLikeHubClip'), 'ordinary text must be ignored silently').toBe(true);
+	});
+});
+
+describe('a paste control says WHAT it is about to paste', () => {
+	// Owner, 2026-09-05, after a Paste button that was always present threw the moment it was
+	// pressed: "it should probably say what - Paste - Planet x, system x, star x".
+	const clipOf = (root: any, extra: any[] = []) => ({
+		sseClip: 1, root: 'r', nodes: [{ id: 'r', parentId: null, ...root }, ...extra]
+	});
+
+	it('names a body by what it IS, not by its kind field', () => {
+		expect(describeClipRoot(clipOf({ kind: 'body', roleHint: 'planet', name: 'Earth' }))).toBe('Planet Earth');
+		expect(describeClipRoot(clipOf({ kind: 'body', roleHint: 'moon', name: 'Luna' }))).toBe('Moon Luna');
+		expect(describeClipRoot(clipOf({ kind: 'body', roleHint: 'belt', name: 'The Belt' }))).toBe('Belt The Belt');
+	});
+
+	it('calls a star with things under it a SYSTEM', () => {
+		// It is what the GM copied and what they will get. "Star Sol" would describe one node of the
+		// forty they are about to drop onto something.
+		const lone = clipOf({ kind: 'body', roleHint: 'star', name: 'Sol' });
+		expect(describeClipRoot(lone)).toBe('Star Sol');
+		const withPlanets = clipOf({ kind: 'body', roleHint: 'star', name: 'Sol' },
+			[{ id: 'p', parentId: 'r', kind: 'body', roleHint: 'planet', name: 'Earth' }]);
+		expect(describeClipRoot(withPlanets)).toBe('System Sol');
+	});
+
+	it('names constructs by what they are', () => {
+		expect(describeClipRoot(clipOf({ kind: 'construct', roleHint: 'ship', name: 'Tender' }))).toBe('Ship Tender');
+		expect(describeClipRoot(clipOf({ kind: 'construct', roleHint: 'ring', name: 'Hab' }))).toBe('Ring Hab');
+		expect(describeClipRoot(clipOf({ kind: 'construct', roleHint: 'construct', name: 'High Yard' }))).toBe('Structure High Yard');
+		expect(describeClipRoot(clipOf({ kind: 'barycenter', name: 'A-B' }))).toBe('Pair A-B');
+	});
+
+	it('never returns an empty label, whatever the clip carries', () => {
+		// The label goes on a button. "Paste " with nothing after it is worse than "Paste Object".
+		expect(describeClipRoot(clipOf({ kind: 'body' }))).toBe('Object object');
+		expect(describeClipRoot({ sseClip: 1, root: 'gone', nodes: [{ id: 'x', name: 'Odd' }] } as any)).toContain('Odd');
+	});
+});
+
+describe('COPY INSIDE THE CAMPAIGN: buildClip produces what parseHubClip reads', () => {
+	// The owner, 2026-09-05: right-click Copy, then paste across their own systems. One format
+	// serves both directions - a clip this app made and one the hub made must be indistinguishable
+	// to the reader, or there are two formats to keep in step.
+	function sourceSystem(): any {
+		return {
+			id: 'sys-src', name: 'Source',
+			nodes: [
+				{ id: 'star', parentId: null, kind: 'body', roleHint: 'star', name: 'Home Star' },
+				{ id: 'planet', parentId: 'star', kind: 'body', roleHint: 'planet', name: 'Verdant',
+				  image: { url: 'data:image/png;base64,AAA', custom: true }, gmNotes: 'the secret',
+				  orbit: { hostId: 'star', hostMu: 1e20, t0: 0, elements: { a_AU: 1, e: 0, i_deg: 0, raan_deg: 0, argp_deg: 0, M0_deg: 0 } } },
+				{ id: 'moon', parentId: 'planet', kind: 'body', roleHint: 'moon', name: 'Verdant Minor' },
+				{ id: 'other', parentId: 'star', kind: 'body', roleHint: 'planet', name: 'Not Copied' }
+			]
+		};
+	}
+
+	it('takes the BRANCH, and only the branch', () => {
+		const clip = buildClip(sourceSystem(), 'planet')!;
+		expect(clip.nodes.map((n: any) => n.name)).toEqual(['Verdant', 'Verdant Minor']);
+		expect(clip.root).toBe('planet');
+		expect(clip.nodes[0].parentId, 'the root is pasted ONTO something, so it has no parent').toBe(null);
+		expect(clip.sseClip).toBe(1); // ABSOLUTE: the same format the hub pins
+	});
+
+	it('KEEPS what a hub clip strips - it is the GM copying their own work', () => {
+		// The hub drops image, model and gmNotes because it publishes to strangers. Losing a
+		// planet's photograph on an internal copy would be a bug, not a safeguard.
+		const clip = buildClip(sourceSystem(), 'planet')!;
+		const planet = clip.nodes[0];
+		expect(planet.image.url).toBe('data:image/png;base64,AAA');
+		expect(planet.gmNotes).toBe('the secret');
+	});
+
+	it('round-trips through the reader that reads hub clips', () => {
+		const clip = buildClip(sourceSystem(), 'star')!;
+		const p = parseHubClip(JSON.stringify(clip));
+		expect(p.ok, p.ok ? '' : (p as any).problem).toBe(true);
+		if (!p.ok) return;
+		expect(p.clip.nodes.length).toBe(4);
+		const sys = hostSystem();
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(r.count).toBe(4);
+		expect(sys.nodes.find((n: any) => n.name === 'Verdant Minor')!.parentId)
+			.toBe(sys.nodes.find((n: any) => n.name === 'Verdant')!.id);
+	});
+
+	it('adds NO hub credit, because there is no other cartographer', () => {
+		const clip = buildClip(sourceSystem(), 'planet')!;
+		expect(clip.source).toBeUndefined();
+		const p = parseHubClip(JSON.stringify(clip));
+		if (!p.ok) return;
+		const r = insertClip(hostSystem(), p.clip, 'target-star', 0);
+		expect(r.ok && r.credit).toBeUndefined();
+		// ...and no origin/hub breadcrumb either: it did not come from the hub.
+		const sys2 = hostSystem();
+		insertClip(sys2, p.clip, 'target-star', 0);
+		const root = sys2.nodes.find((n: any) => n.name === 'Verdant') as any;
+		expect((root.tags ?? []).some((t: any) => t?.ns === 'origin' && t?.key === 'hub')).toBe(false);
+	});
+
+	it('CARRIES a credit that covers the copied branch, so it survives the second hop', () => {
+		// This is where attribution would quietly evaporate: a body pasted in from somebody's map,
+		// then copied on to another system, must still say whose work it is.
+		const credits = [
+			{ title: 'Alpha', creator: 'alice', url: 'https://hub.test/s/alpha', pastedAt: '2026-09-05T00:00:00.000Z', nodeIds: ['planet', 'moon'] },
+			{ title: 'Beta', creator: 'bob', url: 'https://hub.test/s/beta', pastedAt: '2026-09-05T00:00:00.000Z', nodeIds: ['other'] }
+		];
+		const clip = buildClip(sourceSystem(), 'planet', { credits })!;
+		// Only the one that actually covers the branch, and only the ids inside it.
+		expect(clip.credits!.length).toBe(1);
+		expect(clip.credits![0].creator).toBe('alice');
+		expect(clip.credits![0].nodeIds).toEqual(['planet', 'moon']);
+
+		const p = parseHubClip(JSON.stringify(clip));
+		expect(p.ok).toBe(true);
+		if (!p.ok) return;
+		const sys = hostSystem();
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(r.carried!.length).toBe(1);
+		expect(r.carried![0].creator).toBe('alice');
+		// The ids are the NEW ones, so the credit still points at bodies that exist.
+		expect(r.carried![0].nodeIds.length).toBe(2);
+		expect(r.carried![0].nodeIds.some((i) => i === 'planet' || i === 'moon')).toBe(false);
+		for (const id of r.carried![0].nodeIds) expect(sys.nodes.some((n) => n.id === id)).toBe(true);
+	});
+
+	it('carries nothing when nothing covered the branch', () => {
+		const clip = buildClip(sourceSystem(), 'planet', { credits: [
+			{ title: 'Beta', creator: 'bob', pastedAt: '2026-09-05T00:00:00.000Z', nodeIds: ['other'] }
+		] })!;
+		expect('credits' in clip).toBe(false);
+	});
+
+	it('returns null for a node the system does not have', () => {
+		expect(buildClip(sourceSystem(), 'no-such-node')).toBe(null);
+	});
+});
+
+describe('R-14: EVERY object type, not just bodies', () => {
+	// A construct is a CelestialBody with `kind: 'construct'` - ships, stations, belts, rings and
+	// the megastructures all live there - so the insert must be kind-agnostic. It is; what differs
+	// is the ROOT's re-home, because G64's reparentBody takes bodies only.
+	function mixedClip(): string {
+		return JSON.stringify({
+			sseClip: 1,
+			source: { url: 'https://hub.test/s/yard' },
+			root: 'src-station',
+			nodes: [
+				{ id: 'src-station', parentId: null, kind: 'construct', roleHint: 'construct', name: 'High Yard', constructChrome: true,
+				  orbit: { hostId: 'src-old', hostMu: 3.9e14, t0: 0, elements: { a_AU: 0.001, e: 0, i_deg: 0, raan_deg: 0, argp_deg: 0, M0_deg: 0 } } },
+				{ id: 'src-ring', parentId: 'src-station', kind: 'construct', roleHint: 'ring', name: 'Hab Ring' },
+				{ id: 'src-mega', parentId: 'src-station', kind: 'construct', roleHint: 'construct', name: 'Ringworld', artificial: true, mega: { type: 'ringworld' } },
+				{ id: 'src-ship', parentId: 'src-station', kind: 'construct', roleHint: 'ship', name: 'Tender',
+				  autopilot: { enabled: true, traversal: 'in-order', repeat: true, planning: 2, drive: 0.5, ignoreFuel: false, ignoreSupplies: false,
+				               legs: [{ targetId: 'src-station' }, { targetId: 'src-never-copied' }], avoidPlaceIds: ['src-ring', 'src-also-never-copied'] } },
+				{ id: 'src-belt', parentId: 'src-station', kind: 'body', roleHint: 'belt', name: 'Scrap Belt' }
+			]
+		});
+	}
+
+	it('inserts constructs, megastructures, rings, belts and ships alike', () => {
+		const sys = hostSystem();
+		const p = parseHubClip(mixedClip());
+		expect(p.ok).toBe(true);
+		if (!p.ok) return;
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(r.count).toBe(5); // ABSOLUTE: nothing was skipped for being the wrong kind
+		const byName = (n: string) => sys.nodes.find((x: any) => x.name === n) as any;
+		for (const n of ['High Yard', 'Hab Ring', 'Ringworld', 'Tender', 'Scrap Belt']) {
+			expect(byName(n), `${n} did not arrive`).toBeTruthy();
+		}
+		// The kind-specific payload survives: a megastructure is still one, a ring still a ring.
+		expect(byName('Ringworld').mega.type).toBe('ringworld');
+		expect(byName('Hab Ring').roleHint).toBe('ring');
+		expect(byName('High Yard').parentId).toBe('target-star');
+	});
+
+	it('remaps references that are NOT parentId or orbit.hostId', () => {
+		// An autopilot leg and an avoid-list hold node ids. Remapping only the obvious two would
+		// leave a pasted ship pointing at the source map.
+		const sys = hostSystem();
+		const p = parseHubClip(mixedClip());
+		if (!p.ok) return;
+		insertClip(sys, p.clip, 'target-star', 0);
+		const ship = sys.nodes.find((n: any) => n.name === 'Tender') as any;
+		const station = sys.nodes.find((n: any) => n.name === 'High Yard') as any;
+		const ring = sys.nodes.find((n: any) => n.name === 'Hab Ring') as any;
+		expect(ship.autopilot.legs[0].targetId).toBe(station.id);
+		expect(ship.autopilot.avoidPlaceIds[0]).toBe(ring.id);
+		// A reference to something that was NOT copied is left exactly as it was, not guessed at -
+		// in an OBJECT property and in an ARRAY element, which are separate branches of the walk.
+		expect(ship.autopilot.legs[1].targetId).toBe('src-never-copied');
+		expect(ship.autopilot.avoidPlaceIds[1]).toBe('src-also-never-copied');
+	});
+
+	it('stands a pasted route down, and says so, rather than chasing ids that are not here', () => {
+		const sys = hostSystem();
+		const p = parseHubClip(mixedClip());
+		if (!p.ok) return;
+		insertClip(sys, p.clip, 'target-star', 0);
+		const ship = sys.nodes.find((n: any) => n.name === 'Tender') as any;
+		expect(ship.autopilot.enabled).toBe(false);
+		// The SHIP is untouched - the route is what did not survive, and it is tagged, not silent.
+		expect(ship.autopilot.legs.length).toBe(2);
+		expect((ship.tags ?? []).some((t: any) => t.ns === 'origin' && t.key === 'hub-route-stood-down')).toBe(true);
+	});
+
+	it('leaves a construct root attached even though G64 re-homes bodies only', () => {
+		// reparentBody takes `kind === 'body'`. A construct root therefore gets the plain attach:
+		// parent set, host and hostMu restamped, elements kept. Pinned so the asymmetry is a
+		// recorded decision rather than something nobody noticed.
+		const sys = hostSystem();
+		const p = parseHubClip(mixedClip());
+		if (!p.ok) return;
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok && r.mode).toBe('attached');
+		const station = sys.nodes.find((n: any) => n.name === 'High Yard') as any;
+		expect(station.orbit.hostId).toBe('target-star');
+		expect(station.orbit.hostMu).toBeGreaterThan(0);
+		expect(station.orbit.elements.a_AU).toBe(0.001); // its own shape, kept
+	});
+});
+
+describe('R-14: THE WHOLE HIERARCHY goes in, or none of it', () => {
+	it('inserts every level and keeps every parent link', () => {
+		const sys = hostSystem();
+		const p = parseHubClip(clipText());
+		expect(p.ok).toBe(true);
+		if (!p.ok) return;
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+
+		// ABSOLUTE: three arrived, on top of the one that was there.
+		expect(r.count).toBe(3);
+		expect(sys.nodes.length).toBe(4);
+
+		const byName = (n: string) => sys.nodes.find((x: any) => x.name === n) as any;
+		const star = byName('Sol'), planet = byName('Earth'), moon = byName('Luna');
+		expect(star && planet && moon).toBeTruthy();
+
+		// The shape is the thing. An implementation that took nodes[0] and stopped fails here.
+		expect(star.parentId).toBe('target-star');
+		expect(planet.parentId).toBe(star.id);
+		expect(moon.parentId).toBe(planet.id);
+		expect(r.rootId).toBe(star.id);
+	});
+
+	it('re-mints every id, so one clip can be pasted twice', () => {
+		const sys = hostSystem();
+		const p = parseHubClip(clipText());
+		if (!p.ok) return;
+		insertClip(sys, p.clip, 'target-star', 0);
+		insertClip(sys, p.clip, 'target-star', 0);
+		expect(sys.nodes.length).toBe(7); // 1 + 3 + 3
+		const ids = sys.nodes.map((n) => n.id);
+		expect(new Set(ids).size, 'every id must still be unique').toBe(ids.length);
+		// And no source id survived: they were only ever carried so parentId resolved inside the clip.
+		expect(ids.some((i) => i.startsWith('src-'))).toBe(false);
+	});
+
+	it('remaps the orbit host too, not just parentId', () => {
+		// A descendant whose `orbit.hostId` still named the SOURCE map's id would be an orbit round
+		// nothing - drawn from a host the receiving campaign has never heard of.
+		const sys = hostSystem();
+		const p = parseHubClip(clipText());
+		if (!p.ok) return;
+		insertClip(sys, p.clip, 'target-star', 0);
+		const planet = sys.nodes.find((n: any) => n.name === 'Earth') as any;
+		const moon = sys.nodes.find((n: any) => n.name === 'Luna') as any;
+		expect(moon.orbit.hostId).toBe(planet.id);
+		expect(moon.orbit.hostId.startsWith('src-')).toBe(false);
+	});
+
+	it('leaves the orbits INSIDE the clip alone', () => {
+		// Requirement 3: a moon's orbit about its planet came from a real save and is internally
+		// consistent. Only the root's host changed.
+		const sys = hostSystem();
+		const p = parseHubClip(clipText());
+		if (!p.ok) return;
+		insertClip(sys, p.clip, 'target-star', 0);
+		const moon = sys.nodes.find((n: any) => n.name === 'Luna') as any;
+		expect(moon.orbit.elements.a_AU).toBe(0.00257);
+		expect(moon.orbit.elements.e).toBe(0.055);
+		expect(moon.orbit.elements.i_deg).toBe(5.1);
+		expect(moon.orbit.hostMu).toBe(3.986e14); // its host's mass did not change, so nor did this
+	});
+
+	it('carries the credit onto the pasted root', () => {
+		const sys = hostSystem();
+		const p = parseHubClip(clipText());
+		if (!p.ok) return;
+		insertClip(sys, p.clip, 'target-star', 0);
+		const star = sys.nodes.find((n: any) => n.name === 'Sol') as any;
+		const tag = (star.tags ?? []).find((t: any) => t.ns === 'origin' && t.key === 'hub');
+		expect(tag, 'the pasted root must say whose map it came from').toBeTruthy();
+		expect(tag.value).toBe('https://hub.test/s/local-neighbourhood');
+		// And only the ROOT is credited - tagging every moon would be noise.
+		const moon = sys.nodes.find((n: any) => n.name === 'Luna') as any;
+		expect((moon.tags ?? []).some((t: any) => t?.ns === 'origin' && t?.key === 'hub')).toBe(false);
+	});
+
+	it('pastes without a source url rather than refusing', () => {
+		const sys = hostSystem();
+		const p = parseHubClip(clipText({ source: undefined }));
+		if (!p.ok) return;
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		expect(sys.nodes.length).toBe(4);
+	});
+
+	it('refuses only when the host is gone, and touches nothing when it does', () => {
+		const sys = hostSystem();
+		const before = sys.nodes.length;
+		const p = parseHubClip(clipText());
+		if (!p.ok) return;
+		const r = insertClip(sys, p.clip, 'no-such-host', 0);
+		expect(r.ok).toBe(false);
+		expect(sys.nodes.length, 'a refused paste must leave the campaign alone').toBe(before);
+	});
+
+	it('does not rely on the documented parents-first order', () => {
+		// The hub documents depth-first, parents first, and this reads that happily - but a producer
+		// bug about ordering must not silently mis-parent somebody's moons.
+		const forward = JSON.parse(clipText());
+		const reversed = { ...forward, nodes: [...forward.nodes].reverse() };
+		const p = parseHubClip(JSON.stringify(reversed));
+		expect(p.ok).toBe(true);
+		if (!p.ok) return;
+		const sys = hostSystem();
+		const r = insertClip(sys, p.clip, 'target-star', 0);
+		expect(r.ok).toBe(true);
+		const byName = (n: string) => sys.nodes.find((x: any) => x.name === n) as any;
+		expect(byName('Luna').parentId).toBe(byName('Earth').id);
+		expect(byName('Earth').parentId).toBe(byName('Sol').id);
+		expect(byName('Sol').parentId).toBe('target-star');
+	});
+
+	it('STEERS rather than stopping on a physically silly paste', () => {
+		// Requirement 4: a heavy star pasted under a small world is allowed. The passes tag what
+		// would happen; nothing here refuses it.
+		const sys = hostSystem();
+		sys.nodes.push({ id: 'tiny', parentId: 'target-star', kind: 'body', roleHint: 'planet', name: 'Pebble', massKg: 1e20 } as any);
+		const p = parseHubClip(clipText());
+		if (!p.ok) return;
+		const r = insertClip(sys, p.clip, 'tiny', 0);
+		expect(r.ok, 'a silly paste is allowed - it is tagged, not refused').toBe(true);
+		expect(sys.nodes.find((n: any) => n.name === 'Sol')!.parentId).toBe('tiny');
+	});
+});

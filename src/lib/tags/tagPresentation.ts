@@ -69,7 +69,12 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   resource:     { group: 'Resources',    color: '#d4a843', poi: true },
   science:      { group: 'Science',       color: '#5a9fd0', poi: true },
   frontier:     { group: 'Frontier',      color: '#6fae8f', poi: true },
-  intrigue:     { group: 'Intrigue',      color: '#b07ad0', poi: true }
+  intrigue:     { group: 'Intrigue',      color: '#b07ad0', poi: true },
+  // G54 — THE ANONYMOUS RUNG'S OWN NAMESPACE, and its colour is load-bearing. A neutral grey that
+  // matches NO category is the whole point: a placeholder wearing Faction purple or Resource gold
+  // would hand back the identity the rung exists to destroy. It carries exactly one reserved key
+  // (`tagLifecycle.ANONYMOUS_TAG_KEY`) and nothing may emit another.
+  unknown:      { group: 'Unknown',      color: '#7d7d86' }
 };
 
 // Namespace-level fallback description. Every derived tag should justify its existence in the physics
@@ -98,11 +103,20 @@ const NAMESPACE_DESC: Record<string, string> = {
   habitability: 'The body\'s habitability tier under the current model.',
   biodiversity: 'A property of the body\'s biosphere.',
   shape:        'The body\'s rotational shape — how far its spin has deformed it from a sphere.',
-  spin:         'The body\'s spin AXIS — which way it leans, and where that lean came from.'
+  spin:         'The body\'s spin AXIS — which way it leans, and where that lean came from.',
+  unknown:      'Something is recorded here that has not been disclosed.'
 };
 
 // Friendly label + physics description, keyed by exact tag.
 const TAG_INFO: Record<string, { label: string; description: string }> = {
+  // --- G54: the anonymous rung ---
+  // THE ONE PLACEHOLDER. Its wording says only that a record exists and volunteers NOTHING about
+  // what kind of record it is — not the category, not the namespace, not whether it is physics or
+  // a plot hook. Read it as the sentence a player is actually being told.
+  'unknown/undisclosed': {
+    label: 'Undisclosed',
+    description: 'Something is here. What it is has not been disclosed.'
+  },
   // --- Resonances & predicted fates ---
   'resonance/laplace': {
     label: 'Laplace resonance',
@@ -226,6 +240,18 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'origin/generated': {
     label: 'Generated',
     description: 'INVENTED, NOT OBSERVED. A real-sky import filled this world in around a confirmed star to make the system playable; no telescope has seen it. Seeded from the star\'s catalogue id, so the same import always produces the same worlds. The confirmed detections in the same system carry no such tag — that is how you tell them apart.'
+  },
+  // R-16: the two tags a PASTE leaves behind. They are provenance rather than formation, so the
+  // namespace description ("how and where this body formed") is wrong for them and they need their
+  // own words - without these they fell through to the title-cased key and a GM read "Hub", which is
+  // our word for the Explorers site and not one that appears anywhere a GM looks.
+  'origin/hub': {
+    label: 'From a shared map',
+    description: 'Pasted in from a map published on the Explorers site; the value is a link back to it. This is the breadcrumb on the body, not the credit — the credit is recorded on the campaign and printed in the attributions file inside your saves, so it survives this body being renamed, moved or deleted.'
+  },
+  'origin/hub-route-stood-down': {
+    label: 'Route not carried over',
+    description: 'This ship was pasted in from somebody else\'s campaign and its autopilot has been switched off. A route is a plan made somewhere else and most of its stops — the depot two systems over, the yard it returns to — were never copied with the ship, so leaving it running would send the planner chasing places that do not exist here. The ship itself arrived whole: hull, crew, cargo and tags. Give it a new route when you are ready.'
   },
 
   // --- Spin (the axis, as opposed to shape/ which is what the spin does to the body) ---
@@ -359,7 +385,16 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'exotic-biology':             { label: 'Exotic biology',  description: 'The biosignature gas here is one that points AWAY from water-carbon life as we know it — chemistry that would need a different biochemistry to explain.' },
   'volatiles/ices':             { label: 'Retained ice',      description: 'A volatile that survives ON THE SURFACE as frost or bright ice, rather than being lost to space. It needs both traps: cold enough for the species to stay solid, and gravity enough to hold the vapour it sublimates (the Jeans parameter above the retention floor). A body emits one of these per species it keeps.' },
   'surface/oxidised':           { label: 'Oxidised surface', description: 'Iron at the surface has RUSTED — this is why Mars is red. It takes iron, an oxidiser to react with (free oxygen, or the carbon dioxide and water that did the job on early Mars) and long exposure: the Moon has the iron and the age but no atmosphere, so it stays grey.' },
-  'stellar/activity':           { label: 'Magnetic activity', description: 'How tangled this star\'s magnetic field is — the one thing behind its starspots, its bright faculae and its flares. Young, fast-spinning and low-mass stars run active or flare constantly; an old sun-like star shows a handful of small spots.' },
+  'stellar/activity':           { label: 'Flare activity', description: 'How much this star flares: how tangled its field is by a convective dynamo — the one thing behind its starspots, its bright faculae and its flares. Its jets are a different engine (the well, the field and the spin), so a pulsar can jet hard and never flare. Young, fast-spinning and low-mass stars run active or flare constantly; an old sun-like star shows a handful of small spots.' },
+  // G54: THE TWO MEASUREMENTS THAT DISAGREE WITH THE SPECTRUM. Derived in physics/observedStar from
+  // what stands between this star and whoever is looking. The spectrum is the third measurement and
+  // it never disagrees with itself - the absorption lines are the tell, and grey attenuation does not
+  // touch them, which is why a Dyson swarm makes a star FAINT rather than RED.
+  'stellar/anomalous':          { label: 'Anomalous star',   description: 'This star\'s readings do not agree with each other, which is the thing worth investigating rather than any one of them alone. Its spectrum says one class, its brightness says another, and something is pouring out infrared that a star of that class has no way to produce. The value says which story the numbers tell: dimming with NO change of colour cannot be dust - dust scatters blue out of the beam first and would redden it - so it is something solid standing between you and the star, which is the real technosignature astronomers look for. Reddened dimming is the other case and dust is the ordinary explanation for it.' },
+  'stellar/dimmed':             { label: 'Dimmed',           description: 'This star reads fainter than a star of its class and distance should, because something is intercepting its light. The value is how many magnitudes fainter, as measured by an observer the obstruction actually covers - for a shell or a whole-sky swarm that is everyone, for a ringworld only observers near its plane. Crucially it is NOT redder: flat attenuation cuts the flux and leaves the colour and the absorption lines exactly where they were, so a spectrum still reads the star it always was. Dust is the case that reddens as well, because extinction goes as 1/wavelength.' },
+  'mega/eclipsed':              { label: 'Eclipsed',         description: "The shadow a megastructure casts on this world, as an eclipse: a band it crosses twice an orbit for the stated hours, or - for a world sharing a solid ring's plane beyond it - permanently. The same time-free geometry that sets its temperature; the technical block's Structure Shadow row says the same thing in the same words." },
+  'mega/shadowed-by':           { label: 'Shadowed by',      description: 'A megastructure stands between this world and its star, and the temperature above already says so - the value names what. Emitted by the engine every pass from the same derivation the trace shows, and it leaves with the structure. Set it anonymous (G54) and players learn that SOMETHING dims this world without learning what.' },
+  'stellar/ir-excess':          { label: 'Infrared excess',  description: 'Far-infrared output no star of this class should produce: the light an intervening structure took out of the beam has to go somewhere, and it comes back out as waste heat at the structure\'s own equilibrium temperature - about 400 K for a shell at 1 AU, peaking near 7,400 nm. The value is the excess as a fraction of the star\'s own bolometric output. Taken with the dimming and an unchanged spectrum, this is the real technosignature: three measurements that cannot all be describing an ordinary star.' },
   // G26: the two outflow decorations, derived in physics/stellarOutflows and DRAWN by both starmaps
   // and the system view. Remove the tag and the mark goes — there is no renderer-side switch.
   'stellar/jets':               { label: 'Jets',             description: 'Collimated beams launched along the magnetic axis. A jet needs a relativistic well to launch from (compactness — Schwarzschild radius over the body\'s own radius), an ordered field to collimate along, and energy to tap: infall (the Eddington fraction of a fed black hole) or the magnetosphere of a neutron star or magnetar. A quiescent hole, a white dwarf and every ordinary star fall below the gate. The value is the beam strength: moderate or strong.' },
@@ -478,6 +513,23 @@ const FLAT_ATMOSPHERE_TAGS = new Set([
   'prebiotic-precursor', 'technosignature'
 ]);
 
+/**
+ * Whether `key` has its OWN write-up, as opposed to falling through to its namespace's description.
+ *
+ * `tagConsistency.spec.ts` gates on this, and the gate is the point: a tag with no entry renders as
+ * a TITLE-CASED KEY beside a namespace-level sentence, which looks deliberate and explains nothing.
+ * That is B29's fault applied to the LABEL rather than to the figure, and it shipped: `origin/hub`
+ * read as "Hub" - our word for the Explorers site, which appears nowhere a GM looks - under
+ * "How and where this body formed", a sentence that is simply false about a provenance tag.
+ *
+ * TWO FAMILIES ANSWER FALSE LEGITIMATELY, and the gate excludes them rather than this function
+ * pretending otherwise: the flat atmosphere tags, which carry no namespace at all, and the dynamic
+ * `resonance/N-M` keys, for which `describeTag` builds an exact sentence from the ratio itself.
+ */
+export function hasOwnTagWriteUp(key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(TAG_INFO, key)
+    || Object.prototype.hasOwnProperty.call(POI_TAG_META, key);
+}
 export function describeTag(key: string): TagPresentation {
   const ns = key.split('/')[0];
   // A registered PoI category wins (user/pack-chosen colour + heading), then flat atmosphere, then
@@ -533,6 +585,24 @@ export function formatTagValue(key: string, value?: string): string | null {
   if (key === 'thermal/self-luminous') {
     const k = Number(value);
     return Number.isFinite(k) ? `${k.toLocaleString()} K` : value;     // it is an effective temperature
+  }
+  // G54: both are bare numbers and both therefore need a unit, or the chip says "Dimmed: 0.55" and
+  // a reader has no idea whether that is a lot. A magnitude is a magnitude; the infrared excess is a
+  // share of the star's own output, which reads best as a percentage.
+  // The VERDICT reads as a sentence, not a token: "structure" alone in a chip is a word a GM has
+  // to decode, and the whole point of the tag is that it is legible at map size.
+  if (key === 'stellar/anomalous') {
+    if (value === 'structure') return 'dimmed, not reddened — something solid';
+    if (value === 'dust') return 'dimmed and reddened — dust';
+    return value;
+  }
+  if (key === 'stellar/dimmed') {
+    const m = Number(value);
+    return Number.isFinite(m) ? `${m.toFixed(2)} mag fainter` : value;
+  }
+  if (key === 'stellar/ir-excess') {
+    const f = Number(value);
+    return Number.isFinite(f) ? `${(f * 100).toFixed(1)}% of output` : value;
   }
   if (key === 'feature/polar-vortex') {
     const n = Number(value);

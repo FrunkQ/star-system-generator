@@ -1,10 +1,69 @@
 import type {
   BucketDrainCalendarDefinition,
+  TemporalAnchor,
   TemporalCalendarDefinition,
   TemporalState
 } from '$lib/types';
 
+/**
+ * The built-in stake in the sand, and the ONLY reason it is still a constant: something has to
+ * answer before `calendars.json` has been fetched (server-side render, a unit test, the fallback
+ * registry). `static/temporal/calendars.json` carries the real one as `temporal_anchor` and it wins
+ * wherever it has been loaded - see `anchorMasterSeconds` and G62.
+ */
 export const BIG_BANG_TO_UNIX_EPOCH_T = 435084631200000000n;
+
+export const DEFAULT_TEMPORAL_ANCHOR: TemporalAnchor = {
+  master_t: BIG_BANG_TO_UNIX_EPOCH_T.toString(),
+  utc: '1970-01-01T00:00:00Z'
+};
+
+/**
+ * G62 - the anchor read as a single number: master-clock seconds at the UNIX epoch. Everything that
+ * converts between wall time and the master clock goes through this one value, so an anchor that
+ * moves takes every calendar with it.
+ *
+ * Returns null for an anchor that does not parse, so a malformed one falls back to the built-in
+ * rather than silently placing every campaign somewhere arbitrary.
+ */
+export function anchorUnixEpochMasterSeconds(anchor: TemporalAnchor | null | undefined): bigint | null {
+  if (!anchor?.master_t || !anchor?.utc) return null;
+  const utcMs = Date.parse(anchor.utc);
+  if (!Number.isFinite(utcMs)) return null;
+  let masterAtUtc: bigint;
+  try {
+    masterAtUtc = BigInt(anchor.master_t);
+  } catch {
+    return null;
+  }
+  // master at the unix epoch = master at the anchor instant, less that instant's unix seconds.
+  return masterAtUtc - BigInt(Math.floor(utcMs / 1000));
+}
+
+/**
+ * G62 - a calendar's zero on the master clock, DERIVED from the anchor whenever the calendar states
+ * its zero as a real instant (`epoch_utc`).
+ *
+ * This is the whole mechanism. Four shipped calendars used to carry four independent absolute
+ * `epoch_offset_t` values with nothing tying them to each other or to the anchor, and three of the
+ * four were wrong by three DIFFERENT amounts (Gregorian 297 years early, Mayan 294 early, Chinese
+ * 144 late) precisely because nothing could have noticed. A calendar that states `epoch_utc` cannot
+ * drift from the anchor because it no longer holds an opinion of its own.
+ *
+ * A calendar with no `epoch_utc` - a GM's own, or one from a save written before this - keeps its
+ * stored `epoch_offset_t` untouched. That is deliberate: the GM's reckoning is the GM's.
+ */
+export function calendarEpochOffset(
+  calendar: TemporalCalendarDefinition,
+  anchor: TemporalAnchor | null | undefined = runtimeAnchor
+): bigint {
+  const stored = parseClockSeconds(calendar.epoch_offset_t, 0n);
+  if (!calendar.epoch_utc) return stored;
+  const zeroMs = Date.parse(calendar.epoch_utc);
+  if (!Number.isFinite(zeroMs)) return stored;
+  const unixEpochMaster = anchorUnixEpochMasterSeconds(anchor) ?? BIG_BANG_TO_UNIX_EPOCH_T;
+  return unixEpochMaster + BigInt(Math.floor(zeroMs / 1000));
+}
 
 const FALLBACK_DISPLAY_FORMAT = 't={master_t}s';
 
@@ -26,8 +85,71 @@ export function parseClockSeconds(value: string | number | bigint | undefined, f
   return fallback;
 }
 
+/**
+ * G62 - the anchor this build is actually running on. `applyTemporalRegistryConfig` sets it from
+ * `calendars.json`; until then (SSR, a unit test, a failed fetch) it is the built-in default. It is
+ * module state for the same reason the shipped registry is: the resolver is called from dozens of
+ * places that have no business knowing where the anchor came from.
+ */
+let runtimeAnchor: TemporalAnchor = DEFAULT_TEMPORAL_ANCHOR;
+
+export function setRuntimeTemporalAnchor(anchor: TemporalAnchor | null | undefined): void {
+  runtimeAnchor = anchorUnixEpochMasterSeconds(anchor) === null
+    ? DEFAULT_TEMPORAL_ANCHOR
+    : (anchor as TemporalAnchor);
+}
+
+export function getRuntimeTemporalAnchor(): TemporalAnchor {
+  return runtimeAnchor;
+}
+
+/** Master-clock seconds at the unix epoch, on the anchor this build is running. */
+export function anchorMasterSeconds(): bigint {
+  return anchorUnixEpochMasterSeconds(runtimeAnchor) ?? BIG_BANG_TO_UNIX_EPOCH_T;
+}
+
 export function unixMsToMasterSeconds(unixMs: number): bigint {
-  return BIG_BANG_TO_UNIX_EPOCH_T + BigInt(Math.floor(unixMs / 1000));
+  return anchorMasterSeconds() + BigInt(Math.floor(unixMs / 1000));
+}
+
+/** The inverse, for surfaces that need to hand a master tick back to wall time. */
+export function masterSecondsToUnixMs(masterSeconds: bigint): number {
+  return Number(masterSeconds - anchorMasterSeconds()) * 1000;
+}
+
+/**
+ * THE one way to put a wall-clock instant on the campaign's calendar.
+ *
+ * Every surface that shows a date for a unix-epoch millisecond value goes through here: the ship
+ * log, the companion app's clock readout, and — since B113(a) — the printed report. It existed as a
+ * two-line idiom spelled out at each call site (`resolveCalendar(unixMsToMasterSeconds(ms), cal)`),
+ * which is how the report came to render `new Date(epochT0).getFullYear()` instead: there was
+ * nothing to reuse, so it invented Gregorian.
+ *
+ * Returns null rather than a string when there is no calendar or the instant is not a number, so a
+ * caller keeps its OWN no-calendar fallback — a ship log wants an ISO stamp, a clock strip wants a
+ * human sentence, and unifying those would change two shipped surfaces for no reason. What must not
+ * differ, and now cannot, is the calendar path itself.
+ */
+export function formatInstantMs(
+  unixMs: number,
+  calendar: TemporalCalendarDefinition | undefined | null
+): string | null {
+  if (!calendar) return null;
+  if (!Number.isFinite(unixMs)) return null;
+  try {
+    return resolveCalendar(unixMsToMasterSeconds(unixMs), calendar).formatted;
+  } catch {
+    return null;
+  }
+}
+
+/** The active calendar of a temporal state, or undefined when the state cannot name one. */
+export function activeCalendarOf(
+  temporal: TemporalState | null | undefined
+): TemporalCalendarDefinition | undefined {
+  if (!temporal) return undefined;
+  return temporal.temporal_registry?.[temporal.activeCalendarKey];
 }
 
 export function resolveCalendar(masterSeconds: bigint, calendar: TemporalCalendarDefinition): ResolvedTemporal {
@@ -50,7 +172,7 @@ export function resolveTemporalDisplay(state: TemporalState): ResolvedTemporal {
 }
 
 function resolveRatioLinear(masterSeconds: bigint, calendar: Extract<TemporalCalendarDefinition, { math_type: 'RATIO_LINEAR' }>): ResolvedTemporal {
-  const epochOffset = parseClockSeconds(calendar.epoch_offset_t, 0n);
+  const epochOffset = calendarEpochOffset(calendar);
   const local = Number(masterSeconds - epochOffset);
   const unitsPerYear = calendar.parameters.units_per_earth_year;
   const secPerYear = calendar.parameters.seconds_per_earth_year;
@@ -64,7 +186,7 @@ function resolveRatioLinear(masterSeconds: bigint, calendar: Extract<TemporalCal
 }
 
 function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendarDefinition): ResolvedTemporal {
-  const epochOffset = parseClockSeconds(calendar.epoch_offset_t, 0n);
+  const epochOffset = calendarEpochOffset(calendar);
   const localRaw = masterSeconds - epochOffset;
   const local = localRaw;
 
@@ -76,33 +198,83 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
   const secUnit = hierarchy.find((u) => u.unit === 'sec');
 
   const fields: Record<string, string | number> = {};
-  let working = local;
 
-  if (yearUnit && calendar.leap_logic) {
-    const rawYears = floorDiv(local, BigInt(yearUnit.multiplier));
-    const totalDrift = rawYears * BigInt(calendar.leap_logic.drift_per_year_t);
-    working = local - totalDrift;
-  }
+  // A89: THE BUCKET AND THE DRAIN. `drift_per_year_t` surplus seconds accumulate; when the bucket
+  // reaches `threshold_t` a whole unit of `apply_to` is inserted into that year and the threshold
+  // drains. So a year is a plain `yearUnit.multiplier` long, sometimes plus one leap unit - and the
+  // CLOCK TIME never moves, which is the point. The previous model spread the surplus evenly across
+  // every second of the year, which kept the mean right and made noon render as 06:33.
+  const yearLen = BigInt(yearUnit?.multiplier ?? 31536000);
+  const leap = calendar.leap_logic;
+  const driftPerYear = BigInt(leap?.drift_per_year_t ?? 0);
+  const thresholdT = BigInt(leap?.threshold_t ?? 0);
+  const leapUnit = hierarchy.find((u) => u.unit === (leap?.apply_to ?? 'day'));
+  const leapUnitLen = BigInt(leapUnit?.multiplier ?? 86400);
+  const leapsRun = driftPerYear > 0n && thresholdT > 0n;
+
+  // TWO WAYS TO SAY "SOMETIMES A YEAR IS LONGER", and a calendar picks the one it can state.
+  // A CYCLE is exact and is what a real calendar has: [4, 100, 400] reads "every 4th year, except
+  // every 100th, except every 400th". A BUCKET approximates a fractional year by accumulating a
+  // surplus - the right answer for an invented reckoning, and the only thing available before this.
+  // The bucket CANNOT reproduce a cycle: measured over 1600-2400, a single accumulator lands a day
+  // out in 224 of 801 years whatever starting fill it is given, because it is a straight line
+  // through a staircase.
+  const leapCycle = (leap?.leap_cycle ?? []).filter((d) => Number.isFinite(d) && d > 0);
+  const cycleRuns = leapCycle.length > 0;
+
+  /** Leap units inserted across the years BEFORE year n (n may be negative). */
+  const leapsBefore = (n: bigint): bigint => {
+    if (cycleRuns) {
+      let total = 0n;
+      for (let i = 0; i < leapCycle.length; i++) {
+        const term = floorDiv(n, BigInt(Math.trunc(leapCycle[i])));
+        total += i % 2 === 0 ? term : -term;
+      }
+      return total;
+    }
+    return leapsRun ? floorDiv(n * driftPerYear, thresholdT) : 0n;
+  };
+  /** Seconds consumed by every year before year n. */
+  const secondsBefore = (n: bigint): bigint => n * yearLen + leapsBefore(n) * leapUnitLen;
+
+  // A first guess only - the search below is what settles it, so an approximate mean is fine.
+  const meanYear = cycleRuns
+    ? yearLen + (leapUnitLen * 97n) / 400n
+    : yearLen + (leapsRun ? (driftPerYear * leapUnitLen) / thresholdT : 0n);
+  let yearIndex = floorDiv(local, meanYear > 0n ? meanYear : yearLen);
+  // `meanYear` is exact, so this settles in a step or two; the bound is a guard against absurd
+  // authored data rather than an expected cost.
+  for (let guard = 0; guard < 8 && secondsBefore(yearIndex) > local; guard++) yearIndex -= 1n;
+  for (let guard = 0; guard < 8 && secondsBefore(yearIndex + 1n) <= local; guard++) yearIndex += 1n;
+
+  const isLeapYear = leapsBefore(yearIndex + 1n) > leapsBefore(yearIndex);
+  let working = local - secondsBefore(yearIndex);
+  fields.year = Number(yearIndex);
 
   for (const unit of hierarchy) {
+    if (unit.unit === 'year') continue;
     const divisor = BigInt(unit.multiplier);
-    const value = floorDiv(working, divisor);
+    fields[unit.unit] = Number(floorDiv(working, divisor));
     working = floorMod(working, divisor);
-    fields[unit.unit] = Number(value);
   }
 
   const dayOfYear = typeof fields.day === 'number' ? fields.day : 0;
   const months = calendar.lookup_tables?.months ?? [];
+  // The inserted unit lands in a NAMED month - February, for Earth - so every date after it keeps
+  // its number. Appending it to the year instead would push 1 March to the 2nd and leave the extra
+  // day hanging off the end of the month table with no name at all.
+  const leapMonthName = leap?.leap_month ?? months[months.length - 1]?.name;
   let remaining = dayOfYear;
   let monthName = '';
   let dayInMonth = dayOfYear + 1;
   for (const month of months) {
-    if (remaining < month.days) {
+    const days = month.days + (isLeapYear && month.name === leapMonthName ? Number(leapUnitLen / BigInt(dayUnit?.multiplier ?? 86400)) : 0);
+    if (remaining < days) {
       monthName = month.name;
       dayInMonth = remaining + 1;
       break;
     }
-    remaining -= month.days;
+    remaining -= days;
   }
 
   const dayMultiplier = BigInt(dayUnit?.multiplier ?? 86400);
@@ -141,6 +313,7 @@ function resolveBucketDrain(masterSeconds: bigint, calendar: BucketDrainCalendar
       min,
       sec,
       master_t: masterSeconds.toString(),
+      leap_year: isLeapYear ? 1 : 0,
       hour_unit: hourUnit?.multiplier ?? 3600,
       min_unit: minUnit?.multiplier ?? 60,
       sec_unit: secUnit?.multiplier ?? 1

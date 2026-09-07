@@ -44,7 +44,7 @@
   h3 { margin: 0; font-size: 1.05rem; }
   .sub { margin: 0 0 4px; font-size: 0.84rem; color: var(--text-muted, #cfcfcf); }
   .opt { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; background: #14161c; border: 1px solid #2a2d36; border-left-width: 4px; color: var(--text, #e8e8e8); cursor: pointer; transition: background 0.12s; }
-  .opt:hover { background: #1c1f27; }
+  .opt:hover { background: var(--bg-control-hover, #1c1f27); }
   .opt strong { font-size: 0.95rem; }
   .opt small { font-size: 0.77rem; color: var(--text-faint, #9a9a9a); }
   .opt.green { border-left-color: #4a9e5c; }

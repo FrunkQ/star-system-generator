@@ -5,10 +5,11 @@
 import { derived, get } from 'svelte/store';
 import type { CelestialBody, Tag } from '../types';
 import {
-  tagCategories, seedTagCategories, normalizeTagCategories, setCategoryEnabled,
+  tagCategories, seedTagCategories, normalizeTagCategories, setCategoryEnabled, pristineTagCategories,
   addTagToCategory, removeTagFromCategory, type TagCategory, type TagRole
 } from '../tags/tagCategories';
 import { DEFAULT_POI_PACK } from '../tags/tagDefaults';
+import { canonicalJson } from '../io/shippedDefaults';
 
 export interface CoITag {
   key: string;       // namespaced, e.g. 'owner/military', 'purpose/patrol'
@@ -224,9 +225,27 @@ export function constructTardiness(construct: CelestialBody): number | undefined
 }
 
 // --- Starmap embedding: CoI category lists travel inside the .json so a shared map carries its tags. ---
+
+// B112: A SAVE CARRIES WHAT THE GM MADE, NOT WHAT THE APP SHIPS. This used to return the whole
+// store, so every save on record contains the nine shipped categories as though the GM had written
+// them, and nothing reading the file could tell "this campaign has custom tags" from "this campaign
+// was saved by Star System Explorer". The Creator Hub tripped over it first — a facet counting
+// custom categories fired on every map ever made — but the fault is in the file, not the facet.
+//
+// The delta is the whole set MINUS anything identical to what an untouched app would have written.
+// Everything present in a save is therefore, by definition, the GM's; `mergeStarmapCoIs` folds it
+// into a store already seeded with the shipped set, so the load path needs no change at all.
+//
+// COMPARE THROUGH THE SAME PIPELINE, NOT AGAINST THE DEFAULTS LITERAL — see pristineTagCategories.
 export function coiForStarmap(): CoICategory[] {
-  return get(coiCategories);
+  const shipped = new Map(
+    pristineTagCategories()
+      .filter((c) => c.appliesTo.includes('construct'))
+      .map((c) => [c.id, canonicalJson(toCoI(c))])
+  );
+  return get(coiCategories).filter((c) => shipped.get(c.id) !== canonicalJson(c));
 }
+
 /** Merge a starmap's embedded CoI categories. Still accepts the OLD shape, because saved starmaps in
  *  the wild carry it — the unified store is the destination, not the file format. */
 export function mergeStarmapCoIs(cats: CoICategory[] | undefined): void {

@@ -7,7 +7,10 @@
 // The three view modules a layer can use. `holo3d` for the starmap (galaxy view) is not built yet —
 // the editor offers it disabled until it exists. `document` (WS2) renders the system as the interactive
 // Guide document through the block-model engine — additive, does NOT replace the diagram2d→holo path.
-export type ViewModule = 'list' | 'diagram2d' | 'holo3d' | 'document';
+// `sizecompare` (G68) is the size-comparison strip as a player SYSTEM view: every object in the
+// system at true relative size, side by side. It is a system module only — there is a starmap strip
+// too, but on the starmap the cast is one star per system and that is a different feature to offer.
+export type ViewModule = 'list' | 'diagram2d' | 'holo3d' | 'document' | 'sizecompare';
 
 // WS2 document look (see catalogue/document/blocks.ts — the engine owns these). Re-exported here so a
 // preset can carry them; type-only, so no runtime coupling between presets and the renderer.
@@ -43,6 +46,15 @@ export interface PlayerAsset {
   // PROVENANCE (DATA-M4). A GM's uploaded sector map is precisely the case ATTRIBUTIONS.md exists
   // for, and a CC-BY image with no credit is a licence breach rather than an untidy field. Carried
   // here so the bundle can write it out and the About box can credit what is actually on screen.
+  // R-07: this picture was CAPTURED from the campaign by this app, rather than uploaded from
+  // somewhere else. It is the creator's own view of their own file, so it has no third-party
+  // provenance to record and must NOT count as an asset with none - see attributions.ts.
+  //
+  // OWNER'S RULE, 2026-09-01, and it is the right one: "a screenshot represents the FILE and the
+  // FILE has the attributions - so anything that COULD be credited is, even if accidentally caught
+  // in shot." The bundle is the unit of distribution and ATTRIBUTIONS.md travels inside it, so a
+  // shot of the map is covered by the credits sitting beside it.
+  capturedInApp?: boolean;
   credit?: string;
   license?: string;
   sourceUrl?: string;
@@ -93,6 +105,31 @@ export interface PlayerPreset {
   starmapView: ViewModule;
   systemEnabled: boolean;
   systemView: ViewModule;
+  /**
+   * G68: which order the size-comparison system view opens in. Preset data rather than a per-viewer
+   * choice, because at the player tier the GM is the one arranging the page — the same reason the
+   * order pills are not offered there. Absent means the poster order.
+   */
+  sizeCompareOrder?: 'size' | 'name' | 'mass' | 'orbit';
+  /**
+   * Whether the size comparison draws its RULER — the reference circles (Ceres, Luna, Mars, Earth,
+   * Neptune, Jupiter, the Sun, Betelgeuse) concentric with whatever is in the middle.
+   *
+   * A preset field on the owner's word, 2026-09-06: *"turning the ruler on off should be a player
+   * view option"*. It is a genuine choice rather than a tidiness one — a GM putting a picture on a
+   * screen at the table may want the worlds and not the measuring marks, and the same GM's own
+   * working view may want them. Absent means ON, because the ruler is what makes the view a
+   * comparison rather than a poster.
+   */
+  sizeCompareRuler?: boolean;
+  /**
+   * The same two, for the STARMAP stage's own size comparison — every star on the map side by side.
+   * Separate fields rather than shared ones because the two stages are separately chosen and a GM
+   * may want the ruler on one and not the other; `orbit` is not offered here, since there is no
+   * "what orbits what" between two different systems.
+   */
+  starmapSizeCompareOrder?: 'size' | 'name' | 'mass';
+  starmapSizeCompareRuler?: boolean;
   // WS5 lock-down: with the starmap stage disabled the player is dropped straight into ONE system and
   // can never reach the map. This pins WHICH one (chosen by the GM when authoring, so a shared link is
   // deterministic); unset falls back to the first charted system.
@@ -173,7 +210,32 @@ export interface PlayerPreset {
   // keep their OWN switch — they were already separate, and one control that silently swallowed
   // another's job would make the second one look broken.
   atmospheres?: boolean;
+  /**
+   * LOW POWER, as a decision the GM makes ABOUT A PLAYER'S DEVICE. Owner, 2026-09-07: *"same control
+   * in player view settings"*.
+   *
+   * The twin of `lowPowerStore`, and the two are not redundant. The store is set by the person AT
+   * the machine and describes that machine; this is set by the GM who knows the tablet at the end of
+   * the table is elderly and cannot tick a box on it. They compose the only way that is safe - if
+   * EITHER says low power, it is low power - so a player on a fast machine is not forced by the
+   * preset's caution, and a player on a slow one is not undone by the GM's optimism.
+   *
+   * It is the MASTER of this section: it drops the atmospheric shells, the auroras and the animated
+   * extras, halves the frame rate and renders at one device pixel per CSS pixel. The switches beside
+   * it stay meaningful on their own, for a device that only needs one of them.
+   */
+  lowPower?: boolean;
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
+  /**
+   * G82: the field bubbles - the magnetopause and the region inside it that actually shields.
+   *
+   * DEFAULT OFF, and it is OPTIONAL for that reason: an absent field reads as FALSE here, which is the
+   * opposite of what `atmospheres` next door does deliberately (an old campaign that predates a field
+   * must not silently LOSE its clouds). The difference is which way silence should fail. Clouds are
+   * part of what a world looks like, so a save that never mentioned them wants them; a magnetosphere
+   * is an analytical overlay a GM asks for, so a save that never mentioned it did not ask.
+   */
+  magnetospheres?: boolean;
   // A construct's CURRENT levels — fuel, cargo, crew aboard — as against its permanent capacity. A star
   // catalogue would hold what a ship CAN carry; only a live instrument knows what is in the tanks right
   // now. Off = capacity alone, on = current-of-capacity. Presentation only, and deliberately so: the
@@ -233,7 +295,13 @@ export interface PlayerPreset {
   orbitOpacity?: number; // G5: orbit-line strength 0..1, multiplying each line's designed opacity. 1 = unchanged
   starmapMono: boolean; // 2D/3D starmap: monochrome palette (white/grey) for tinting filters
   compression: number; // toytown spread 0..1
-  bodySize: number;    // 1 readable .. 0 true scale
+  bodySize: number;    // 1 readable .. 0 true scale — the MASTER dial, moving bodies AND constructs
+  // S2c (owner, 2026-08-27): ships and stations slid RELATIVE to the master. Optional and defaulted
+  // 0 because 0 IS the single-dial law, so every preset authored before this reads identically.
+  // It rides the PRESET rather than the campaign, deliberately: an offset whose master lives
+  // somewhere else is unreadable — the same slider position would mean a different thing in every
+  // view, which is the "two numbers you cannot see together" fault the scattered-constants rule names.
+  constructOffset?: number;
   beltDetail: number;  // 0..1
   orbitSpeed: number;  // auto view-orbit 0..1 (3D only — a 2D map never turntables)
   lockRotation: boolean; // 2D views: pin the flat top-down view (no tilt, no rotate, no turntable)

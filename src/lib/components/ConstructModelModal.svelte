@@ -10,6 +10,8 @@
   import { convertParsedModel, MODEL_WARN_BYTES, MODEL_SEVERE_BYTES, type ConvertResult } from '$lib/constructs/modelConvert';
   import { putModel, getModel } from '$lib/constructs/modelStore';
   import { createModelViewer, type ModelViewer } from '$lib/constructs/modelViewer';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let construct: CelestialBody;
   // Optional: only used to preview the ship's real exhaust colour while placing drives.
@@ -298,7 +300,7 @@
   const kb = (n: number) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`;
 </script>
 
-<div class="modal-background" role="presentation" on:click={() => dispatch('close')} on:keydown={(e) => { if (e.key === 'Escape') dispatch('close'); }}>
+<div class="modal-background" role="presentation" on:click={() => dispatch('close')} on:keydown={(e) => { if (e.key === 'Escape') dispatch('close'); }} use:foreground>
   <div class="modal" role="dialog" aria-modal="true" aria-label="3D model" tabindex="-1" on:click|stopPropagation on:keydown|stopPropagation>
     <h3>{construct.model ? 'Edit 3D Model' : 'Add 3D Model'}</h3>
 

@@ -274,3 +274,224 @@ describe('BodyStarTab — the star says its designation is a readout', () => {
 		expect(container.querySelector('.designation-line')).toBeNull();
 	});
 });
+
+// A83, COMMIT 1: THE BOUND MOVED TO DATA AND THE BEHAVIOUR DID NOT.
+//
+// `const massMax = 300` was a component constant — the scattered-constant fault — and it is now
+// `STAR_BOUNDS.mass.soft` in `physics/starBounds.ts`. `starBounds.spec.ts` pins the ARITHMETIC
+// against the old inline expressions; this pins the SHIPPED RESULT end to end, through the real
+// component, so the extraction cannot have moved what a GM sees. The supermassive switch arrives
+// in the next commit and these figures must survive it untouched with the switch off.
+describe('A83 — the mass slider spans exactly what it always spanned', () => {
+	const sliders = (container: HTMLElement) =>
+		Array.from(container.querySelectorAll<HTMLInputElement>('input.full-width-slider.overlay'));
+
+	/** Drive the mass slider (the first overlay slider on a non-remnant star) to `pos`. */
+	const dragMassTo = (container: HTMLElement, pos: number) => {
+		const mass = sliders(container)[0];
+		mass.value = String(pos);
+		mass.dispatchEvent(new Event('input', { bubbles: true }));
+	};
+
+	it('tops out at 300 M☉ and bottoms out at 0.01 M☉', () => {
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		dragMassTo(container, 1);
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(300, 6);
+		dragMassTo(container, 0);
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(0.01, 9);
+	});
+
+	it('is LOG-scaled, so half travel is the geometric mean rather than 150 M☉', () => {
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		dragMassTo(container, 0.5);
+		// exp((ln 0.01 + ln 300) / 2) = 1.732…, rounded to the editor's three significant figures.
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(1.73, 2);
+	});
+
+	it('a black hole\'s event horizon still follows the mass it is dragged to', () => {
+		// r_s = 2GM/c^2: one solar mass is 2.95 km, so 300 are about 886 km.
+		const body: any = { ...makeStar(['star/BH']), massKg: 10 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		dragMassTo(container, 1);
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(300, 6);
+		expect(body.radiusKm).toBeGreaterThan(870);
+		expect(body.radiusKm).toBeLessThan(900);
+	});
+});
+
+// A83, COMMIT 2: THE SUPERMASSIVE SWITCH.
+//
+// Owner, 2026-08-31: *"a switch that can offer 'supermassive black holes' - the scale will change
+// from 300 to 270 Billion SM - which is the theoretical limit (log slider!)"*.
+//
+// Three things this has to get right and each has its own case below: the switch must not MOVE
+// the mass (a control that edits what it describes is a trap); the top of the track must be the
+// stated limit on a log scale; and 270 billion is an AMBER EDGE, so a heavier figure is kept and
+// merely explained. Run against the previous commit all of these go red - there is no switch.
+describe('A83 — the supermassive switch', () => {
+	const sliders = (c: HTMLElement) =>
+		Array.from(c.querySelectorAll<HTMLInputElement>('input.full-width-slider.overlay'));
+	const massSlider = (c: HTMLElement) => sliders(c)[0];
+	const toggle = (c: HTMLElement) =>
+		c.querySelector<HTMLInputElement>('.sm-toggle input[type="checkbox"]');
+	const dragMassTo = (c: HTMLElement, pos: number) => {
+		const m = massSlider(c);
+		m.value = String(pos);
+		m.dispatchEvent(new Event('input', { bubbles: true }));
+	};
+	const flip = (c: HTMLElement) => {
+		const t = toggle(c)!;
+		t.checked = !t.checked;
+		t.dispatchEvent(new Event('change', { bubbles: true }));
+	};
+
+	it('is offered on a black hole and on nothing else', () => {
+		const bh = render(BodyStarTab, { props: { body: makeStar(['star/BH']), rulePack } });
+		expect(toggle(bh.container), 'a black hole should offer it').toBeTruthy();
+		const g = render(BodyStarTab, { props: { body: makeStar(['star/G']), rulePack } });
+		expect(toggle(g.container), 'a G star must not').toBeNull();
+	});
+
+	it('reaches 2.7e11 M☉ at the top of the track', () => {
+		const body: any = { ...makeStar(['star/BH']), massKg: 10 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		flip(container);
+		dragMassTo(container, 1);
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(2.7e11, -9);
+	});
+
+	it('is LOG-scaled across the decades, so Sgr A* is reachable in the middle of the track', () => {
+		const body: any = { ...makeStar(['star/BH']), massKg: 10 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		flip(container);
+		// A linear 0.01..2.7e11 track would put everything below 1e9 in its first 0.4% of travel.
+		// Log puts Sgr A* (4.3e6 M☉) most of the way along, where a GM can actually land on it.
+		dragMassTo(container, 0.7);
+		const m = body.massKg / SOLAR_MASS_KG;
+		expect(m).toBeGreaterThan(1e5);
+		expect(m).toBeLessThan(1e9);
+	});
+
+	it('throwing the switch moves the TRACK, never the mass', async () => {
+		const body: any = { ...makeStar(['star/BH']), massKg: 12 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		const before = body.massKg;
+		const posBefore = Number(massSlider(container).value);
+		flip(container);
+		await tick(); // the DOM lags the state by a flush - reading it straight back races Svelte
+		expect(body.massKg, 'the hole must not gain or lose mass').toBe(before);
+		// The thumb re-seats onto the wider track, so it moves DOWN while the number stands still.
+		expect(Number(massSlider(container).value)).toBeLessThan(posBefore);
+		flip(container);
+		await tick();
+		expect(body.massKg).toBe(before);
+		expect(Number(massSlider(container).value)).toBeCloseTo(posBefore, 9);
+	});
+
+	it('opens already on the supermassive scale for a hole that is one', () => {
+		// Derived from the mass rather than remembered, so an imported or undone body is right too.
+		const body: any = { ...makeStar(['star/BH']), massKg: 4.3e6 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		expect(toggle(container)!.checked).toBe(true);
+		// ...and the thumb is genuinely somewhere usable rather than pinned to the end.
+		const pos = Number(massSlider(container).value);
+		expect(pos).toBeGreaterThan(0.05);
+		expect(pos).toBeLessThan(0.95);
+	});
+
+	it('a 12 M☉ hole still opens on the stellar scale — the switch is off by default', () => {
+		const body: any = { ...makeStar(['star/BH']), massKg: 12 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		expect(toggle(container)!.checked).toBe(false);
+		dragMassTo(container, 1);
+		expect(body.massKg / SOLAR_MASS_KG).toBeCloseTo(300, 6);
+	});
+
+	it('270 billion is an AMBER EDGE — a heavier hole is kept and explained, never clamped', async () => {
+		const body: any = { ...makeStar(['star/BH']), massKg: 5e11 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		await tick();
+		expect(body.massKg / SOLAR_MASS_KG, 'the typed figure must survive').toBeCloseTo(5e11, -9);
+		const warn = container.querySelector('.mass-amber');
+		expect(warn, 'past the limit the editor must say so').toBeTruthy();
+		expect(warn!.textContent).toMatch(/270 billion/i);
+		// And the thumb pins to the end rather than dragging the value back down with it.
+		expect(Number(massSlider(container).value)).toBe(1);
+	});
+
+	it('says nothing about an ordinary supermassive hole — M87* is inside the limit', async () => {
+		const body: any = { ...makeStar(['star/BH']), massKg: 6.5e9 * SOLAR_MASS_KG };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		await tick();
+		expect(container.querySelector('.mass-amber')).toBeNull();
+	});
+});
+
+// A85: THE ROTATION BAND AND THE ROTATION THUMB WERE MEASURING DIFFERENT AXES.
+//
+// Found by the A83 extraction, which is the whole argument for putting scattered constants in one
+// table: `getRangePct('rot')` placed the green typical-for-class band on a LOG axis over
+// 0.1..10,000 h, while the slider under it was `min="0.1" max="10000"` — LINEAR. Same two numbers,
+// two different meanings, 770 lines apart, and nothing could report it.
+//
+// A G star's band is 24..1,000 h. Logged, 24 h paints at 48% of the track; linearly, the thumb for
+// 24 h sits at 0.24%. The GM was being shown a green stripe in the middle of a slider whose
+// matching value is jammed against the left stop.
+//
+// The fix is the slider, not the band: five decades on a linear track make everything under 100 h
+// unreachable, which is why every other slider in this editor is already log.
+describe('A85 — the rotation band and the rotation thumb measure ONE axis', () => {
+	const rotBlock = (c: HTMLElement) => {
+		const label = Array.from(c.querySelectorAll('label'))
+			.find((l) => /^Rotation Period/.test(l.textContent?.trim() ?? ''))!;
+		const group = label.closest('.form-group')!;
+		return {
+			rect: group.querySelector('rect')!,
+			range: group.querySelector<HTMLInputElement>('input[type="range"]')!,
+			number: group.querySelector<HTMLInputElement>('input[type="number"]')!
+		};
+	};
+
+	it('puts the thumb for the band\'s own start exactly where the band starts', async () => {
+		// star/G's presentation band is rot [24, 1000] — a real pack band, not a contrived one.
+		const body: any = { ...makeStar(['star/G']), rotation_period_hours: 24 };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		await tick();
+		const { rect, range } = rotBlock(container);
+		const bandStart = parseFloat(rect.getAttribute('x')!); // a percentage of the track
+		// The slider is a 0..1 position, like every other slider in this editor.
+		expect(Number(range.min)).toBe(0);
+		expect(Number(range.max)).toBe(1);
+		expect(Number(range.value) * 100).toBeCloseTo(bandStart, 6);
+	});
+
+	it('reaches the short periods a pulsar needs — 0.1 h is the bottom of the track', async () => {
+		const body: any = { ...makeStar(['star/NS']), rotation_period_hours: 0.1 };
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		await tick();
+		expect(Number(rotBlock(container).range.value)).toBeCloseTo(0, 6);
+	});
+
+	it('is log-scaled: half travel is 31.6 h, not 5,000', async () => {
+		const body: any = makeStar(['star/G']);
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		const { range, number } = rotBlock(container);
+		range.value = '0.5';
+		range.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		// sqrt(0.1 * 10000) = 31.62…
+		expect(body.rotation_period_hours).toBeCloseTo(31.6, 1);
+		expect(Number(number.value)).toBeCloseTo(31.6, 1);
+	});
+
+	it('an unset rotation stays unset — the empty box is a gap, not a still star (B9a)', async () => {
+		const body: any = makeStar(['star/G']);
+		delete body.rotation_period_hours;
+		const { container } = render(BodyStarTab, { props: { body, rulePack } });
+		await tick();
+		expect(body.rotation_period_hours).toBeUndefined();
+		expect(rotBlock(container).number.value).toBe('');
+	});
+});

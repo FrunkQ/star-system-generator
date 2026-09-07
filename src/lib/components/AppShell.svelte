@@ -283,10 +283,10 @@
     flex: 0 0 auto;
     width: 44px;
     height: 44px;
-    border: 1px solid #2a2d36;
+    border: 1px solid var(--border, #2a2d36);
     border-radius: 8px;
-    background: #14161c;
-    color: #e8e8e8;
+    background: var(--bg-panel, #14161c);
+    color: var(--text, #e8e8e8);
     font-size: 1.2rem;
     cursor: pointer;
   }

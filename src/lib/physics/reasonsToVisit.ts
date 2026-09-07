@@ -10,7 +10,7 @@ import { makeupFractions, hasSolidSurface } from './makeup';
 import { stellarContextFor, calculateAllStellarZones, calculateRocheLimit } from './zones';
 import { EARTH_MASS_KG, AU_KM } from '../constants';
 import { stripRuleTags } from '../tags/tagLifecycle';
-import { tagCategories, tagRulesEnabled, normalizeTagCategories } from '../tags/tagCategories';
+import { tagCategories, tagRulesEnabled, normalizeTagCategories, pristineTagCategories } from '../tags/tagCategories';
 
 // ---------------------------------------------------------------------------------------------
 // Declarative condition schema. `true` = always. Numeric ops take [field, value]; eq compares a
@@ -173,6 +173,31 @@ export function importPack(json: string): PoIPack {
 // to write packs out. These two remain to READ what older starmaps carry.
 export function packsForStarmap(): PoIPack[] {
   return [];
+}
+
+// B112: the same rule the line above already follows — "the built-in default pack is never embedded
+// (it's always present); only the user's stacked packs" — applied to the config that sits beside it.
+//
+// `reasonsConfig` is a switchboard: the master rules toggle plus one on/off per category. Written
+// whole, it says nothing — every real save on record carries all fourteen categories at exactly the
+// state this app ships them in, so a reader cannot tell a GM who turned Intrigue off from a GM who
+// never opened the page. Only the switches the GM actually MOVED are campaign data.
+//
+// `applyStarmapReasonsConfig` already reads a partial map (it skips any id the file does not carry),
+// so nothing on the load side changes. Undefined when the GM has moved nothing at all, so the
+// exporter can omit the key rather than write an empty object.
+export function reasonsConfigForStarmap(): ReasonsConfig | undefined {
+  const live = get(reasonsConfig);
+  const shipped = new Map(pristineTagCategories().map((c) => [c.id, c.enabled !== false]));
+  const categories: Record<string, boolean> = {};
+  for (const [id, on] of Object.entries(live.categories ?? {})) {
+    // A category the shipped set does not have is the GM's own, so its switch is theirs too.
+    if (shipped.get(id) !== on) categories[id] = on;
+  }
+  const masterMoved = live.enabled !== true; // the shipped default: rules on
+  const movedAny = Object.keys(categories).length > 0;
+  if (!masterMoved && !movedAny) return undefined;
+  return { enabled: live.enabled, ...(movedAny ? { categories } : {}) } as ReasonsConfig;
 }
 
 /** Merge packs from an older starmap: fold each pack's categories and rules into the unified store. */

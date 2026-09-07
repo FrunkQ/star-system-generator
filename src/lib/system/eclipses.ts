@@ -30,6 +30,7 @@
 // wrapper for that, which no longer exists.
 import { AU_KM } from '$lib/constants';
 import { computeWorldPositions3D, type Vec3 } from '$lib/physics/worldPositions';
+import { starOccluders, bandAlignmentShare, relativeInclinationRad } from '$lib/physics/starlightOcclusion';
 import type { System } from '$lib/types';
 
 /**
@@ -66,6 +67,11 @@ export interface EclipsePrediction {
   starName: string;
   /** Always true: elements are held fixed, so this is an alignment, not an ephemeris. */
   approximate: true;
+  /** MEGASTRUCTURE entries only (G58): the star is covered AT ALL TIMES from here - the bad-ring
+   *  case, said honestly. Stronger than `everyOrbit`; `timeMs` is null and no date ever comes. */
+  permanent?: true;
+  /** MEGASTRUCTURE entries only: how long each shadow crossing lasts. */
+  durationMs?: number;
 }
 
 export interface EclipseCandidate {
@@ -79,6 +85,10 @@ export interface EclipseCandidate {
 
 export interface EclipseOutlook {
   next: EclipsePrediction | null;
+  /** G58: shadow crossings CAUSED BY MEGASTRUCTURES - a special entry BESIDE the local eclipses,
+   *  never competing with them for the `next` slot ("still need local eclipses" - owner). Pure
+   *  arithmetic on the band geometry, no propagation, so it costs nothing to always answer. */
+  megastructure?: EclipsePrediction[];
   /** Occulters considered, including the ones dismissed — so the panel can say why there is nothing. */
   candidates: EclipseCandidate[];
   /** How far the search actually reached when it found nothing. */
@@ -429,6 +439,47 @@ export function nextEclipse(
   const star = starFor(system, bodyId);
   if (!star || star.id === bodyId) return empty;
 
+  // G58: THE SHADOW A MEGASTRUCTURE CASTS is not a search problem - a band's crossings are pure
+  // arithmetic on the same time-free share the temperature chain uses (starlightOcclusion.ts
+  // header), so these entries are computed unconditionally and ride every return below. Isotropic
+  // occluders (a swarm, a shell) are STEADY dimming, not an event, and make no entry.
+  const megastructure: EclipsePrediction[] = [];
+  {
+    const helioNode0 = (body.parentId ? byId.get(body.parentId) : null);
+    const helio0 = helioNode0 && helioNode0.roleHint !== 'star' && helioNode0.kind === 'body' ? helioNode0 : body;
+    const bodyAu = aKmOf(helio0) / AU_KM;
+    // Stored periods are the processor's; a hand-authored or half-imported node may lack them,
+    // and Kepler answers from a + hostMu regardless - a local fallback, not a periodMsOf change,
+    // because the forward-search half deliberately trusts only stored values.
+    const mu0 = Number(helio0?.orbit?.hostMu ?? 0);
+    const aM0 = aKmOf(helio0) * 1000;
+    const helioPeriod0 = periodMsOf(helio0) || (mu0 > 0 && aM0 > 0 ? 2 * Math.PI * Math.sqrt(Math.pow(aM0, 3) / mu0) * 1000 : 0);
+    for (const occ of starOccluders(star as any, system.nodes as any[])) {
+      if (occ.id === bodyId || occ.bandHalfAngleRad === undefined) continue;
+      if (!(bodyAu > occ.radiusAu)) continue; // inside the band's radius: never in its shadow
+      const share = bandAlignmentShare(occ.bandHalfAngleRad, relativeInclinationRad(helio0.orbit?.elements, occ.elements));
+      if (!(share > 0)) continue;
+      const kind: EclipseKind = occ.fraction >= 0.995 ? 'total' : 'partial';
+      const base = {
+        obscuration: occ.fraction, kind, ratio: 1,
+        occulterId: occ.id, occulterName: occ.name,
+        starId: star.id, starName: String((star as any).name ?? ''), approximate: true as const
+      };
+      if (share >= 1 - 1e-12) {
+        megastructure.push({ timeMs: null, everyOrbit: false, periodMs: 0, permanent: true, ...base });
+      } else if (helioPeriod0 > 0) {
+        // Two crossings per orbit (the latitude passes through the band going up and coming down),
+        // so the recurrence is half the orbital period and each crossing lasts share x T / 2.
+        megastructure.push({
+          timeMs: null, everyOrbit: true, periodMs: helioPeriod0 / 2,
+          durationMs: (share * helioPeriod0) / 2, ...base
+        });
+      }
+    }
+  }
+  const withMega = <T extends EclipseOutlook>(o: T): T =>
+    megastructure.length ? { ...o, megastructure } : o;
+
   // How far the star can ever be: the body's own apoapsis about it, plus its parent's if it is a moon.
   const parent = body.parentId ? byId.get(body.parentId) : null;
   const helio = parent && parent.roleHint !== 'star' ? parent : body;
@@ -463,7 +514,7 @@ export function nextEclipse(
     candidates.push(c);
     viable.push({ node: occ, max: c.maxObscuration, pair });
   }
-  if (!viable.length) return { ...empty, candidates };
+  if (!viable.length) return withMega({ ...empty, candidates });
   // Shortest period first. Whatever recurs most often is likeliest to give a near date, and the
   // first date found caps every later search — so ordering is worth real time on a moon-rich planet.
   viable.sort((a, b) => a.pair.periodMs - b.pair.periodMs);
@@ -482,7 +533,7 @@ export function nextEclipse(
     if (!eclipsesEveryOrbit(sub3, bodyId, v.node.id, star.id, helio.id, fromMs, v.pair, helioPeriodMs)) continue;
     const s = makeSampler(sub3, bodyId, v.node.id, star.id).at(fromMs);
     const ratio = s && s.starRad > 0 ? s.occRad / s.starRad : 0;
-    return {
+    return withMega({
       next: {
         timeMs: null, everyOrbit: true, periodMs: v.pair.periodMs,
         obscuration: Math.min(1, ratio * ratio), kind: ratio >= 1 ? 'total' : 'annular', ratio,
@@ -490,7 +541,7 @@ export function nextEclipse(
         starId: star.id, starName: String(star.name ?? ''), approximate: true
       },
       candidates, searchedToMs: fromMs, budgetExhausted: false
-    };
+    });
   }
 
   for (const v of viable) {
@@ -543,7 +594,7 @@ export function nextEclipse(
     if (found && (!best || found.timeMs! < best.timeMs!)) best = found;
   }
 
-  return { next: best, candidates, searchedToMs, budgetExhausted };
+  return withMega({ next: best, candidates, searchedToMs, budgetExhausted });
 }
 
 // --- Caching: compute when a reader asks, and again only once the answer has expired -------------
@@ -606,7 +657,12 @@ export function describeEclipse(
   p: EclipsePrediction, nowMs: number, formatDate?: (ms: number) => string
 ): string {
   const depth = p.obscuration >= 0.995 ? 'total' : `${Math.round(p.obscuration * 100)}% ${p.kind}`;
-  if (p.everyOrbit) return `every ${saySpan(p.periodMs)} - ${depth} (${p.occulterName})`;
+  // G58: a megastructure's standing shadow has no date and never will - say the standing thing.
+  if (p.permanent) return `permanent - ${depth} (${p.occulterName})`;
+  if (p.everyOrbit) {
+    const each = p.durationMs ? ` for ~${saySpan(p.durationMs)}` : '';
+    return `every ${saySpan(p.periodMs)}${each} - ${depth} (${p.occulterName})`;
+  }
   const when = formatDate ? formatDate(p.timeMs!) : `in ${saySpan(Math.max(0, p.timeMs! - nowMs))}`;
   return `${when} - ${depth} (${p.occulterName})`;
 }

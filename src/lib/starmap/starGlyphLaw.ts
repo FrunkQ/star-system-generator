@@ -207,3 +207,104 @@ export function clusterHalfExtent(slots: readonly GlyphSlot[]): { w: number; h: 
 	for (const s of slots) { w = Math.max(w, Math.abs(s.dx) + s.scale); h = Math.max(h, Math.abs(s.dy) + s.scale); }
 	return { w, h };
 }
+
+// ── THE OCCLUSION RING (G54) ─────────────────────────────────────────────────────────────────────
+//
+// A STAR WITH SOMETHING AROUND IT IS DRAWN WITH THE THING AROUND IT, and the ring is not decoration:
+// its GAPS ARE THE LIGHT STILL GETTING OUT. A 30% swarm draws a ring 30% closed; a complete Dyson
+// sphere draws a closed one. So the mark is the occlusion, read directly, rather than a symbol a
+// reader has to learn.
+//
+// WHY IT EXISTS AT ALL, and it was a real report from the owner: a fully enclosed star reaches the
+// map at transmission ZERO, which is honest photometry and a black disc on a black background. It
+// read as A BLACK HOLE. Two things fix that and both are here - the ring says something surrounds
+// it, and `GLYPH_DIM_FLOOR` keeps the star itself visible inside its own shell.
+//
+// SHARED, because a marker added in one renderer and not the others is this file's whole reason for
+// existing (TAG-20 records it costing four places). The 2D maps draw these arcs as SVG paths; the
+// 3D map bakes the same list into a canvas texture. One definition, three surfaces.
+
+/**
+ * THE LEGIBILITY FLOOR ON A DIMMED GLYPH, as a fraction of the star's own linear brightness.
+ *
+ * A GLYPH IS A MARK, NOT A PHOTOMETRIC READING - the same argument `megaPreview`'s honesty floors
+ * make about stroke widths. At transmission 0 the honest colour is black, and a black mark on a
+ * black map is not a reading a GM can see; it is an absence, and it reads as the wrong object.
+ * So the mark keeps an ember and the TRUE figure stays where figures belong: in the reading, in the
+ * `stellar/dimmed` tag, and in the star panel's three sentences.
+ *
+ * 0.18 of the linear brightness is about 46% of the sRGB value - obviously dimmed, never invisible.
+ */
+export const GLYPH_DIM_FLOOR = 0.18;
+
+/**
+ * A dimmed glyph's colour gain, lifted to the floor WITHOUT MOVING ITS HUE.
+ *
+ * The whole triple is scaled by one factor so the brightest channel reaches the floor, which keeps
+ * the ratio between the channels exactly. Flooring each channel on its own would be the obvious
+ * thing and it is wrong: a reddened star's blue channel would hit the floor first and the star would
+ * lose the reddening that is the entire point of drawing it dimmed - the colour would go grey at
+ * precisely the depths where the reddening is strongest.
+ */
+export function floorGlyphGain(gain: readonly [number, number, number]): [number, number, number] {
+	const m = Math.max(gain[0], gain[1], gain[2]);
+	if (!(m > 0)) return [GLYPH_DIM_FLOOR, GLYPH_DIM_FLOOR, GLYPH_DIM_FLOOR];
+	if (m >= GLYPH_DIM_FLOOR) return [gain[0], gain[1], gain[2]];
+	const k = GLYPH_DIM_FLOOR / m;
+	return [gain[0] * k, gain[1] * k, gain[2] * k];
+}
+
+/** Ring geometry, in units of the member's own glyph radius. Both renderers scale by their own r. */
+export const OCCLUSION_RING = {
+	/** Sits outside the disc and inside the shed-wind shell's 2.0, so the two never sit on top of
+	 *  each other on a star that has both. */
+	radiusMul: 1.55,
+	/** Stroke width. Thin enough not to swallow a compact glyph at the smallest scaler position. */
+	widthMul: 0.30,
+	/** How many arcs a PARTIAL ring is broken into. Six reads as "a ring with gaps" at glyph size;
+	 *  more becomes a dotted blur, fewer reads as three unrelated ticks. */
+	segments: 6
+} as const;
+
+/** One arc of the ring, in radians, measured the way both `arc()` and an SVG sweep want it. */
+export interface RingArc { startRad: number; sweepRad: number; }
+
+/**
+ * The arcs that draw an occlusion of `blockedFrac`, or null when there is nothing to draw.
+ *
+ * THE CLOSED CASE IS ONE ARC, NOT SIX TOUCHING ONES: a complete shell must draw an unbroken circle,
+ * and six arcs meeting end to end leave hairline seams at exactly the moment the picture is meant to
+ * say "sealed". Anything short of complete is `segments` equal arcs sharing the closed fraction, so
+ * the gaps between them are, literally, the light that still escapes.
+ */
+export function occlusionRingArcs(blockedFrac: number): RingArc[] | null {
+	const f = Number.isFinite(blockedFrac) ? Math.min(1, Math.max(0, blockedFrac)) : 0;
+	if (!(f > 0)) return null;
+	if (f >= 1) return [{ startRad: 0, sweepRad: 2 * Math.PI }];
+	const n = OCCLUSION_RING.segments;
+	const step = (2 * Math.PI) / n;
+	const sweep = step * f;
+	// A HALF-GAP LEAD so the pattern is symmetric about the top of the glyph rather than starting
+	// hard at 3 o'clock - at six segments an asymmetric start is visible as a lean.
+	const lead = (step - sweep) / 2;
+	return Array.from({ length: n }, (_, i) => ({ startRad: i * step + lead, sweepRad: sweep }));
+}
+
+/**
+ * One ring arc as an SVG path `d`, for the two 2D maps. Kept here beside the arc list so the two
+ * SVG surfaces cannot write the sweep flags differently - the large-arc flag is the classic place
+ * for that to go wrong, and it only shows up past a half turn, which is exactly the heavily-occluded
+ * case this exists to draw.
+ */
+export function ringArcPath(cx: number, cy: number, r: number, arc: RingArc): string {
+	// A full turn cannot be expressed as one SVG arc (start and end coincide, so it draws nothing) -
+	// two half turns, which is what a closed ring needs.
+	if (arc.sweepRad >= 2 * Math.PI - 1e-9) {
+		return `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy}`;
+	}
+	const x0 = cx + r * Math.cos(arc.startRad), y0 = cy + r * Math.sin(arc.startRad);
+	const e = arc.startRad + arc.sweepRad;
+	const x1 = cx + r * Math.cos(e), y1 = cy + r * Math.sin(e);
+	const large = arc.sweepRad > Math.PI ? 1 : 0;
+	return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+}

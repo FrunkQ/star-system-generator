@@ -1,7 +1,7 @@
 import type { ISystemProcessor } from './interfaces';
 import type { System, RulePack, CelestialBody, Barycenter, SurfaceSpectrumCurves, Tag } from '../types';
 import { G, AU_KM, EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '../constants';
-import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, composeModelledSurfaceTemperature, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
+import { calculateEquilibriumTemperature, calculateDistanceToStar, calculateEquilibriumTemperatureRange, composeBodySurfaceTemperature, composeModelledSurfaceTemperature, deriveStarlightDimming, estimateInternalHeatK, solveThermalState } from '../physics/temperature';
 import { calculateSurfaceRadiation, calculateTotalStellarRadiation, deriveIrradiationDose, radiationHazardBucket, radiationPlace } from '../physics/radiation';
 // The annual-dose hazard tag. Its key is serialised, so it lives beside the other tag constants.
 const RADIATION_HAZARD_TAG = 'hazard/radiation';
@@ -33,6 +33,7 @@ import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, deriveOxidation, C
   LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG, OXIDISED_TAG } from '../physics/cloudDecks';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
 import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
+import { deriveMagnetosphere, insideHostMagnetosphere, astrosphereAu, magnetosphereConstants } from '../physics/magnetosphere';
 import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
 import { deriveGeoActivity } from '../physics/geoActivity';
@@ -46,11 +47,12 @@ import { calculateMolarMass, recalculateAtmosphereDerivedProperties, applyAtmosp
 import { flareActivity, photosphereTempK } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
 import { STELLAR_JETS_TAG, STELLAR_SHEDDING_TAG, starJetBucket, starSheddingBucket } from '../physics/stellarOutflows';
+import { STAR_DIMMED_TAG, STAR_IR_EXCESS_TAG, STAR_ANOMALOUS_TAG, observedStarTags } from '../physics/observedStar';
 import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlausibility';
 import { applyActivityScatter, activityFromFieldExcess } from '../physics/ionisingOutput';
 import { starStatTemplate } from '../generation/star';
 import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
-import { brownDwarfThermal } from '../physics/substellar';
+import { brownDwarfThermal, isLuminousSource } from '../physics/substellar';
 import { HYDROGEN_BURNING_LIMIT_SOLAR } from '../physics/starPlausibility';
 /** The coolest a fusing star gets. The M/L overlap sits here — see the ignition note below. */
 const STELLAR_FLOOR_K = 1900;
@@ -165,6 +167,20 @@ export class SystemProcessor implements ISystemProcessor {
             const shed = starSheddingBucket(s as any);
             if (shed) emit(s.tags, { key: STELLAR_SHEDDING_TAG, value: shed });
 
+            // WHAT AN OBSERVER MEASURES RATHER THAN WHAT THE STAR IS (G54). A megastructure or an
+            // authored dust lane takes light out of the beam, and the star reads faint and pours out
+            // far infrared while its SPECTRUM still says exactly what it always said. Both keys are
+            // owned by this pass and cleared first (TAG-6), so a demolished swarm takes its anomaly
+            // with it.
+            //
+            // EVERY INPUT IS AUTHORED at this point — the occluders' megaType and orbits, the star's
+            // radius and temperature, the GM's extinction pin — so the answer is the same on every
+            // run and nothing here reads a value a later pass writes (idempotence.test.ts's rule).
+            // The per-OBSERVER half of this is not a tag and cannot be: it belongs where the audience
+            // is known, which is the starmap (TAG-21).
+            s.tags = stripForReprocess(s.tags, [STAR_ANOMALOUS_TAG, STAR_DIMMED_TAG, STAR_IR_EXCESS_TAG]);
+            for (const t of observedStarTags(s, allNodes)) emit(s.tags, t);
+
             // WHY THIS STAR IS NOT A VALID STAR (owner, 2026-08-15). REFUSE TO PRODUCE, NEVER REFUSE
             // TO ACCEPT: the engine will not GENERATE an impossible star, but a GM may author one and
             // gets it, with a tag naming WHICH LAW it breaks rather than the word "invalid". This pass
@@ -176,7 +192,7 @@ export class SystemProcessor implements ISystemProcessor {
         }
 
         // 0. Pass 0a: Auto reconcile barycenters from mass hierarchy changes.
-        reconcileBarycenters(processedSystem);
+        reconcileBarycenters(processedSystem, rulePack);
 
         // 0. Pass 0b: Orbital Dynamics & existing barycenters (Ensure mass/orbits are correct first)
         this.processBarycenters(processedSystem);
@@ -256,9 +272,34 @@ export class SystemProcessor implements ISystemProcessor {
         //     host's magnetosphere, and the belt term in 2c asks the host for its field and spin.
         //     Iterating in node order made both answers depend on the order bodies happen to appear
         //     in the file.
-        for (const node of this.parentFirstOrder(allNodes)) {
-            if (node.kind === 'body') {
+        //     AND LUMINOUS BODIES GO FIRST WITHIN IT ([[G82]]). A magnetopause is solved against the
+        //     WIND, the wind is summed over every luminous source, and a self-luminous body's field
+        //     is DERIVED BY THIS VERY PASS — so a body processed before its system's brown dwarf
+        //     read that dwarf's field as absent on the first run and as 0.42 G on the second, and
+        //     every pressure in the system moved between them. Parent-before-child does not order
+        //     SIBLINGS, and a wind source is a sibling. The luminous set is small and cannot depend
+        //     on the rest (nothing orbiting a star is inside a host's magnetosphere — a star has no
+        //     magnetopause), so running it first makes the wind fully determined for everybody else.
+        const byDepth = this.parentFirstOrder(allNodes);
+        for (const node of byDepth) {
+            if (node.kind === 'body' && isLuminousSource(node as any)) {
                 this.processInterior(node as CelestialBody, allNodes, rulePack);
+            }
+        }
+        for (const node of byDepth) {
+            if (node.kind === 'body' && !isLuminousSource(node as any)) {
+                this.processInterior(node as CelestialBody, allNodes, rulePack);
+            }
+        }
+
+        // 2b2. THE MAGNETOSPHERE — its own sub-pass, after EVERY field in the system is committed
+        //      ([[G82]]). It cannot ride inside 2b for the reason above: what it publishes is solved
+        //      against the wind, and the wind reads fields 2b is still writing. Parent before child
+        //      again, because a moon's nose faces its host's field rather than the star's wind and
+        //      that question needs the host's boundary first.
+        for (const node of byDepth) {
+            if (node.kind === 'body') {
+                this.processMagnetosphere(node as CelestialBody, allNodes, rulePack);
             }
         }
 
@@ -557,6 +598,20 @@ export class SystemProcessor implements ISystemProcessor {
                     m0.orbit.elements.omega_deg = refIsM0 ? coupledArgPeri : oppositeArgPeri;
                     m1.orbit.elements.omega_deg = refIsM0 ? oppositeArgPeri : coupledArgPeri;
 
+                    // THE EPOCH TRAVELS WITH THE PHASE, and forgetting that is the whole of B111.
+                    // `M(t) = M0 + n*(t - t0)`: this pass has always given both members the SAME mean
+                    // anomaly and left each with its OWN `t0`, which is not "opposite" but a fixed
+                    // `n*dt` apart - constant rather than drifting, because n is shared, which is
+                    // exactly why the reported symptom was two stars "rotating at the same time and
+                    // not AROUND each other". A user's pair sat 240.7 degrees out. Every other element
+                    // of the relative orbit already has this single owner; `t0` was the one field that
+                    // did not, and the reference's is the pair's.
+                    //
+                    // This CHOOSES the phase rather than preserving it (which is what a pair's one
+                    // owner is for), so it does NOT go through `rephasedM0` - the point is to put the
+                    // members opposite each other, not to leave them where they were.
+                    m0.orbit.t0 = reference.t0;
+                    m1.orbit.t0 = reference.t0;
                     m0.orbit.elements.M0_rad = refM0;
                     m1.orbit.elements.M0_rad = refM0;
 
@@ -600,12 +655,20 @@ export class SystemProcessor implements ISystemProcessor {
         if (body.orbit && body.parentId) {
             const host = allNodes.find(n => n.id === body.parentId);
             const hostMass = (host?.kind === 'barycenter' ? host.effectiveMassKg : (host as CelestialBody)?.massKg) || 0;
-            const isBaryMember = host?.kind === 'barycenter' && (host as Barycenter).memberIds?.includes(body.id);
 
-            if (isBaryMember && (body.orbit.n_rad_per_s || 0) > 0) {
-                // A binary member orbits the barycentre; BOTH members share one period — the relative
-                // orbit's — which the binary pass carries on n_rad_per_s. Deriving from a_member³/M_total
-                // would give each member a different, physically-wrong period (Rigil 25 yr, Toliman 60 yr).
+            if ((body.orbit.n_rad_per_s || 0) > 0) {
+                // A STORED n IS THE AUTHORITY ON RATE, so the published period is derived from it and
+                // never re-derived from a³/M. Two cases need this and they are not exceptions:
+                //  - a binary member orbits the barycentre and BOTH members share ONE period, the
+                //    relative orbit's, which the binary pass carries here. Deriving from a_member³
+                //    would give each member a different, physically-wrong period (Rigil 25 yr,
+                //    Toliman 60 yr).
+                //  - a body carrying a real ephemeris (the calibrated Sol, DATA-R37) has an n set by
+                //    the TOTAL mass, which a³/M_primary cannot reproduce: Luna's real sidereal month
+                //    is 27.32 d and a³/M_earth gives 27.45.
+                // Before this the guard read `isBaryMember && n > 0`, so a calibrated Luna MOVED at
+                // 27.32 d and REPORTED 27.45 - one quantity with two answers, which is the fault the
+                // duplication rule exists to catch.
                 body.orbital_period_days = (2 * Math.PI / body.orbit.n_rad_per_s!) / (60 * 60 * 24);
             } else if (hostMass > 0) {
                 body.orbital_period_days = Math.sqrt(4 * Math.PI**2 * (body.orbit.elements.a_AU * AU_KM * 1000)**3 / (G * hostMass)) / (60 * 60 * 24);
@@ -842,6 +905,35 @@ export class SystemProcessor implements ISystemProcessor {
             const eqRange = calculateEquilibriumTemperatureRange(body, allNodes, solved.albedoInfo.albedo);
             (body as any).equilibriumTempMinK = eqRange.minK;
             (body as any).equilibriumTempMaxK = eqRange.maxK;
+            // G53 phase 4: the trace's dimming summary rides the same commit as the temperature it
+            // explains. COMMIT OR DELETE, never leave stale: a removed megastructure must take its
+            // shadow with it on the next pass, or idempotence would catch the ghost.
+            const dimming = deriveStarlightDimming(body, allNodes);
+            if (dimming) body.starlightDimming = dimming;
+            else delete body.starlightDimming;
+            // G58 flux outputs — the shadow speaks TAG (owner: "occluded by ring"), from the SAME
+            // derivation, in the same commit-or-delete. EXPLICIT physics origin, deliberately: the
+            // mega/ namespace defaults to authored provenance (creation steers survive re-derive),
+            // and this tag is the opposite kind - the engine's own, re-earned every pass, stripped
+            // when the structure goes. G54's rungs apply as to any tag: a GM can set it anonymous
+            // and players see that SOMETHING dims this world without learning what.
+            body.tags = stripForReprocess(body.tags ?? [], ['mega/shadowed-by', 'mega/eclipsed']);
+            if (body.starlightDimming?.length) {
+                const names = [...new Set(body.starlightDimming.flatMap((d) => d.occluders.map((o) => o.name)))];
+                emit(body.tags, { key: 'mega/shadowed-by', value: names.join(', '), origin: 'physics' } as Tag);
+                // G58, the owner's eclipse framing: a band's shadow is an ECLIPSE with a cadence -
+                // permanent for the coplanar bad-ring case, else twice an orbit for so many hours.
+                // Same standard pattern: one derivation, strip-then-emit, physics origin.
+                const withEcl = body.starlightDimming.flatMap((d) => d.occluders.filter((o) => o.eclipse));
+                const perm = withEcl.find((o) => (o.eclipse as { permanent?: true }).permanent);
+                const periodic = withEcl.find((o) => !(o.eclipse as { permanent?: true }).permanent);
+                if (perm) {
+                    emit(body.tags, { key: 'mega/eclipsed', value: `permanent - ${perm.name}`, origin: 'physics' } as Tag);
+                } else if (periodic) {
+                    const e = periodic.eclipse as { hoursEach: number };
+                    emit(body.tags, { key: 'mega/eclipsed', value: `2 per orbit, ~${Math.round(e.hoursEach)} h each - ${periodic.name}`, origin: 'physics' } as Tag);
+                }
+            }
         };
         if (allStars.length > 0) commitThermal();
         body.equilibriumTempK = equilibriumTempK;
@@ -1011,6 +1103,14 @@ export class SystemProcessor implements ISystemProcessor {
     // temperature the layers are judged at, so moving it up would be a circular read, not an
     // ordering tweak. See the entry for the one edge that remains (atmospheric escape).
     private processInterior(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack) {
+        // A STAR'S BUBBLE IS ITS ASTROSPHERE, and it is the only thing it takes from this pass
+        // ([[G82]]). Wind against the interstellar medium, so it needs no interior model at all —
+        // only the star's own field, size and luminosity, every one of them an input by now.
+        if (body.roleHint === 'star') {
+            body.astrosphereAu = +astrosphereAu(body, magnetosphereConstants(pack)).toFixed(2);
+            return;
+        }
+        delete (body as any).astrosphereAu;
         if (body.roleHint !== 'planet' && body.roleHint !== 'moon') return;
 
         // Fluid layers (surface/subsurface oceans, interior conductive) — feed classification
@@ -1022,16 +1122,14 @@ export class SystemProcessor implements ISystemProcessor {
         // Magnetism profile (§2d) — descriptive read of the dynamo from interior conductive layers
         // + rotation. A salty subsurface ocean only induces a field when the moon sits inside a
         // giant host's magnetosphere, so this asks the host — hence the parent-first iteration.
-        let insideHostMagnetosphere = false;
-        if (body.roleHint === 'moon' && body.parentId) {
-            const host = allNodes.find((n) => n.id === body.parentId) as CelestialBody | undefined;
-            if (host && host.kind === 'body') {
-                const hostMassMe = (host.massKg ?? 0) / EARTH_MASS_KG;
-                insideHostMagnetosphere =
-                    hostMassMe > 50 || makeupFractions(host).gas > 0.5 || (host.magneticField?.strengthGauss ?? 0) >= 1;
-            }
-        }
-        body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere });
+        //
+        // IT IS A DISTANCE NOW, NOT A MASS THRESHOLD ([[G82]]). It used to read "host over 50 Earth
+        // masses, or gassy, or at least 1 gauss", which stood in for the question while the engine
+        // had no standoff to compare against; it now asks whether the moon's orbit falls inside the
+        // host's published magnetopause. Same parent-first ordering, a real boundary instead of a
+        // proxy — and Titan, at 21 Saturn radii against a standoff near 18, is correctly outside.
+        const inHost = body.roleHint === 'moon' && insideHostMagnetosphere(body, allNodes, magnetosphereConstants(pack));
+        body.magnetism = deriveMagnetism(body, { insideHostMagnetosphere: inHost });
         // The field STRENGTH derives from the model (rotation + composition + core size) unless the GM
         // has pinned one (F-OVR: `overrides.magneticFieldGauss`). So spinning a world up or making it
         // metal-rich changes its field, and a small iron-cored world like Mercury gets a tenuous field
@@ -1063,9 +1161,25 @@ export class SystemProcessor implements ISystemProcessor {
             && Number.isFinite(magBand.min) && Number.isFinite(magBand.max)
             && (pinnedGauss < magBand.min || pinnedGauss > magBand.max);
         const shieldTag = magneticShieldingTag(body.magnetism, body.magneticField, typeof pinnedGauss === 'number');
-        emit(body.tags, {
-            key: outOfClass && shieldTag === 'magnetic/dynamo' ? 'magnetic/anomalous' : shieldTag
-        });
+        const shieldKey = outOfClass && shieldTag === 'magnetic/dynamo' ? 'magnetic/anomalous' : shieldTag;
+        emit(body.tags, { key: shieldKey });
+    }
+
+    // PASS 2b2 — THE SHAPE THAT FIELD CUTS OUT OF THE WIND ([[G82]]).
+    //
+    // SEPARATE FROM 2b, and the separation is the whole point rather than tidiness: what this
+    // publishes is solved against the stellar WIND, the wind is summed over every luminous source in
+    // the system, and a self-luminous body's field is derived by 2b itself. Reading it from inside
+    // 2b therefore read a sibling's field before it existed — caught by `idempotence.test.ts`, which
+    // saw every pressure in the Testion system move between pass one and pass two.
+    //
+    // It reads nothing pass 2c or later writes either: not `totalIncidentFlux`, not
+    // `surfaceRadiation`, and NOT the `beltInnerEdgeRadii` field radiation stamps on the body — the
+    // belt geometry comes from the belt model's own pure functions instead.
+    private processMagnetosphere(body: CelestialBody, allNodes: (CelestialBody | Barycenter)[], pack: RulePack) {
+        if (body.roleHint !== 'planet' && body.roleHint !== 'moon') { delete (body as any).magnetosphere; return; }
+        const shieldingTag = (body.tags ?? []).find((t) => t.key.startsWith('magnetic/'))?.key ?? 'magnetic/unshielded';
+        body.magnetosphere = deriveMagnetosphere(body, allNodes, pack, { shieldingTag });
     }
 
     // THE RADIATION HAZARD TAGS, for every body whose dose describes a place you could actually be

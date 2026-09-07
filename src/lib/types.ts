@@ -19,12 +19,70 @@ export interface Visibility {
 // `origin` states where a tag came from and therefore what may delete it — see tags/tagLifecycle.ts,
 // which is the only place that interprets it. It is OPTIONAL and inferred from the flags below when
 // absent, so the existing writers did not have to change; set it explicitly on new ones.
+/** G54: the disclosure ladder — see `Tag.disclosure` and `tagLifecycle.redactTagsForPlayers`. */
+export type TagDisclosure = 'hidden' | 'anonymous' | 'open';
+
 export interface Tag {
   key: string; value?: string; ns?: string;
   origin?: 'physics' | 'rule' | 'authored' | 'manual' | 'inherited' | 'derived';
   override?: true;   // manual, inside a namespace the engine derives — it wins that key
-  secret?: true;     // never reaches a player surface (see tags/tagLifecycle redactTagsForPlayers)
+  secret?: true;     // LEGACY SPELLING of `disclosure: 'hidden'`. Read it ONLY through
+                     // `tagLifecycle.tagDisclosure()`, never directly (G54, engine-map TAG-24).
+  /**
+   * G54 — THE DISCLOSURE LADDER, and the rung in the middle is the whole point.
+   *
+   *   `hidden`     stripped entirely. The player sees the consequence and no cause.
+   *   `anonymous`  the tag's PRESENCE survives; its IDENTITY does not — "something is here and I am
+   *                not telling you what". It reaches a player as one neutral placeholder tag.
+   *   `open`       the full tag.
+   *
+   * Absent means `open`, so nothing that exists today moves. Applied at exactly ONE point
+   * (`tagLifecycle.redactTagsForPlayers`, engine-map TAG-9); nothing else may act on it, because a
+   * second site is how a leak happens.
+   */
+  disclosure?: TagDisclosure;
   manual?: boolean; coi?: boolean; inherited?: boolean; source?: string;
+}
+
+// G53 §3.5/§4.2: A MEGA-CONSTRUCT'S PLACEMENT PREDICATE, SPLIT BY CLAUSE KIND — the owner's own
+// correction, and the split is the rule. `hard` is RELEVANCE: the option has no referent without it
+// (a space elevator with no surface to anchor to is meaningless, not implausible), so it greys and
+// that is final. `steer` is PLAUSIBILITY: the placement is meaningful and the numbers are bad, so
+// it TAGS AND EXPLAINS and never refuses — alien tech, unobtanium and PlotDevice live here.
+// The test an implementer can apply: is there a HOST FEATURE the object attaches to or depends on?
+// Absent = relevance = hard. Present but the numbers are bad = plausibility = steer.
+// `inHabitableZone` is a steer clause and MUST NEVER be hard (a ring at 3 AU is legitimate and
+// cold; the engine owes it a temperature, not a refusal) — the evaluator demotes it if a pack
+// author promotes it. Lives in types.ts because it is PACK DATA (rule-pack templates author it);
+// the registry (`constructs/megaTypes.ts`) carries per-type defaults in the same shape.
+
+/** RELEVANCE — greys the option, final. Each clause names a host feature the object depends on. */
+export interface MegaHardClauses {
+  /** The host's roleHint ('planet' | 'moon' | 'star') or kind 'barycenter'. */
+  hostKind?: readonly string[];
+  /** The host must have a surface to anchor to — not a gas giant, not a star. */
+  hasSurface?: true;
+  /** The object circles a star; anything else has nothing to circle. */
+  hostIsStar?: true;
+  /** A REAL geostationary altitude — not OrbitalBoundaries' fallback. */
+  needsGeostationary?: true;
+}
+
+/** PLAUSIBILITY — tags and explains, never refuses. Published numbers, not walls. */
+export interface MegaSteerClauses {
+  /** Geostationary should sit well inside the Hill sphere; above this fraction the tether is marginal. */
+  geoBelowHillFraction?: number;
+  /** The goldilocks-zone RECOMMENDATION (the owner's word). NEVER a hard clause — see above. */
+  inHabitableZone?: true;
+  /** Beyond this many AU the collector intercepts almost nothing. */
+  maxPlacementAU?: number;
+  minHostMassKg?: number;
+  maxHostMassKg?: number;
+}
+
+export interface MegaRequires {
+  hard?: MegaHardClauses;
+  steer?: MegaSteerClauses;
 }
 
 export interface NodeBase {
@@ -170,6 +228,48 @@ export interface Magnetism {
   intrinsic: boolean;                              // self-generated (vs induced by a host field)
   estimatedRangeGauss: { min: number; max: number };
   nominalGauss: number;                            // a single representative strength (rotation + composition + size scaled); the field derives from this unless the GM overrides it
+  notes: string[];
+}
+
+/** THE SHAPE THAT FIELD CUTS OUT OF THE WIND ([[G82]]) — see `physics/magnetosphere.ts` for the law.
+ *
+ *  EVERY DISTANCE HERE IS IN THIS BODY'S OWN RADII, MEASURED FROM ITS CENTRE, except
+ *  `confiningPressureNPa`. The units are in the field names and in this comment because a bubble
+ *  quoted against the wrong radius is exactly the fault A33/B27/B28 all were. */
+export interface Magnetosphere {
+  /** none = the wind reaches the ground; tenuous = a nose but no room for a real cavity (Mercury);
+   *  bubble = a full magnetosphere; induced = a current loop driven by the host's field (Europa). */
+  shape: 'none' | 'tenuous' | 'bubble' | 'induced';
+  /** Subsolar magnetopause distance, body radii from the centre. 0 when there is no bubble. */
+  standoffRadii: number;
+  /** The USEFUL extent: the last CLOSED field line's equatorial crossing, body radii. Inside it the
+   *  wind is turned away; outside it the lines are open and what comes down them lands on the polar
+   *  cap. The aurora oval is this boundary's footprint at the surface, so the two share one number. */
+  closedFieldRadii: number;
+  /** How far downstream the DRAWN tail runs, body radii. A CONVENTION (20 standoffs), not a
+   *  measurement: a real magnetotail has no sharp end. The width is about two standoffs. */
+  tailRadii: number;
+  /** Magnetic axis away from the SPIN axis, degrees. From the pack table, keyed by the geometry word. */
+  dipoleTiltDeg: number;
+  /** Magnetic centre away from the body's centre, body radii (the ice giants' offset dynamo). */
+  dipoleOffsetRadii: number;
+  /** Which way the tilt leans, degrees of longitude. SEEDED FROM THE BODY ID AND UNOBSERVABLE —
+   *  nothing this engine holds fixes it, so it is a stable arbitrary choice, and it is labelled one. */
+  dipoleLongitudeDeg: number;
+  /** False for a multipolar field: no single magnetic axis, so no clean poles and no single oval. */
+  ordered: boolean;
+  /** Aurora oval, degrees of colatitude from the MAGNETIC pole (not the spin pole). 90 = no oval. */
+  ovalColatDeg: number;
+  /** Where the trapped belt's dose peaks, body radii — the belt's inner edge, from the BELT model's
+   *  own constants (`beltInnerEdgeRadii`), never re-derived here. Absent when there is no belt. */
+  beltPeakRadii?: number;
+  /** The belt's exponential scale length, body radii (`beltScaleLengthRadii`). */
+  beltScaleRadii?: number;
+  /** What the nose faces: the star's wind, or the host's field for a body inside its host's bubble. */
+  upstream: 'star' | 'host';
+  upstreamId?: string;
+  /** The pressure the standoff was solved against AT THIS BODY'S ORBIT, in nanopascals. */
+  confiningPressureNPa: number;
   notes: string[];
 }
 
@@ -491,11 +591,84 @@ export interface StellarType {
    *  that is deliberately a separate job. Kept so the designation can be rebuilt exactly and so the
    *  information is not silently thrown away a second time. */
   companion?: string;
+  /** B116: MK sub-division of the luminosity class - the `a` of `Va`, the `b` of `Vb`. Kept; never a key. */
+  luminositySub?: string;
+  /** B116: annotation codes read off the catalogue string - `m` metallic-line (Am), `e` emission,
+   *  `n`/`nn` broad lines, `p` peculiar, `s` sharp, `var`, `:` uncertain. KEPT AND USED (the
+   *  explainer names an Am star), never part of a class key. */
+  peculiarity?: string;
+  /** B116: an Am/Ap star's component types - K line, hydrogen, metallic - as written (`A0`, `A1`).
+   *  The temperature type follows the hydrogen lines when stated, else the K/metal midpoint. */
+  kLineType?: string;
+  hydrogenType?: string;
+  metallicType?: string;
+}
+
+/**
+ * R-16: a credit for CONTENT that came from somebody else's map, as opposed to art (which
+ * `ATTRIBUTIONS.md` already covers through the node and asset fields).
+ *
+ * The owner's framing: "on cut and paste are we pushing through attributions with it to store on
+ * the map they create? If not we need to engineer that in." The `origin/hub` tag on the pasted root
+ * is a BREADCRUMB - it says which body came from where - and a breadcrumb is not a credit. This is.
+ *
+ * `nodeIds` are the ids as minted on the way in, so a reader can still say which bodies the entry
+ * covers. They are a convenience and not a key: deleting every one of them does NOT retire the
+ * credit, because the campaign was still built with that person's work.
+ */
+/** One hop in a credit's lineage: where the content was before it reached the map it came from. */
+export interface ContentCreditLink {
+  url?: string;
+  title?: string;
+  creator?: string;
+}
+
+export interface ContentCredit {
+  title?: string;
+  /** The cartographer. Absent on a clip from a hub older than 0.11.0 - say so rather than guess. */
+  creator?: string;
+  url?: string;
+  site?: string;
+  /** ISO 8601. A timestamp a person reads in a hand-edited save, not a simulation instant. */
+  pastedAt: string;
+  nodeIds: string[];
+  /**
+   * WHERE IT WAS BEFORE, deepest first (hub 0.12.0). Content copied from a map that had itself
+   * copied it carries its whole lineage, so every cartographer in the chain stays named however
+   * many hands it passes through. Recorded exactly as received: this app does not shorten it,
+   * reorder it or de-duplicate it - it is somebody else's history and its shape is theirs.
+   */
+  chain?: ContentCreditLink[];
 }
 
 export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
   roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
+  // G53 THE HYBRID'S TWO FLAGS, AND THEY ARE ORTHOGONAL (mega-constructs-design.md §3.3):
+  // `constructChrome` governs the VIEW (present and handle as a PLACE — glyph, dock, construct
+  // lists); `artificial` governs the PHYSICS chain (BUILT, not formed — composition is DECLARED,
+  // never derived). A Death Star is both; an asteroid-as-place is chrome without artificial, because
+  // it is a real rock and deriving it is correct. Both absent = an ordinary node, unchanged
+  // everywhere. Read them ONLY through `src/lib/constructs/chrome.ts` — never test the raw flags in
+  // view or physics code, so the convention cannot fork (the G43 lesson, five rival conventions).
+  constructChrome?: true;
+  artificial?: true;
+  /** G58 knob editor: the knobs a GM actually moved, as a SPARSE overlay on the registry seeds —
+   *  resolved ONLY through `instanceMegaParams` (megaTypes.ts). Absent = pure seeds, so old
+   *  instances keep drinking seed improvements. Values are plain numbers; unknown keys are ignored
+   *  on read. */
+  megaParams?: Record<string, number>;
+  /** G53: names this node's record in the mega-construct registry
+   *  (`src/lib/constructs/megaTypes.ts`). A pack may name a type this build does not know; an
+   *  unknown key degrades to an ordinary construct rather than erroring. */
+  megaType?: string;
+  /** G53 §4.2: the placement predicate, as PACK DATA on a mega template — evaluated by ONE function
+   *  (`src/lib/constructs/megaPlacement.ts`), never by switches in the UI. When absent the registry
+   *  record's default applies. Copied inert onto instances (a later phase re-evaluates on move). */
+  requires?: MegaRequires;
+  /** G53 §4.2: the GM-facing sentence shown when the hard clauses grey this template, with `{host}`
+   *  interpolated — prose in data, so a pack author can write their own. */
+  explain?: string;
   classes?: string[];
   /** A star's MK classification as structured data. See `StellarType`. */
   stellarType?: StellarType;
@@ -600,6 +773,8 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   biosphere?: Biosphere;
   magnetic_field?: MagneticField;
   magnetism?: Magnetism;       // derived dynamo profile (descriptive; see deriveMagnetism)
+  magnetosphere?: Magnetosphere; // derived field/wind boundary (descriptive; see deriveMagnetosphere)
+  astrosphereAu?: number;      // STARS ONLY: where this star's wind gives way to the interstellar medium, AU
   geoActivity?: GeoActivity;   // derived tectonics/volcanism by mechanism (see deriveGeoActivity)
   volatiles?: VolatileRetention; // derived surface-ice retention per species (see deriveVolatileRetention)
   irradiationDose?: number;    // derived cumulative space-weathering dose (relative) — drives tholins
@@ -644,6 +819,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   vector_position_au?: { x: number; y: number; z?: number };
   vector_epoch_ms?: number;
   flight_state?: 'Orbiting' | 'Transit' | 'Deep Space' | 'Landed' | 'Docked';
+  /** G53 PHASE 5 - DOCKED. Which structure this construct is attached to and where on it, in the
+   *  structure's own rotating frame (constructs/docking.ts `Attachment`). The propagator turns it
+   *  into a world position that every view reads; `orbit` is ignored while this is set. */
+  attachedTo?: { id: string; level?: 'anchor' | 'lo' | 'mo' | 'geo' | 'counterweight'; angleRad?: number; latRad?: number };
+  /** A surface structure's authored landing site, degrees. Absent = a stable hash of the id
+   *  (the same hash the renderer has always used), so nothing moves for existing saves. */
+  surface_anchor?: { latDeg: number; lonDeg: number };
   
   // HOW OFTEN THIS SHIP HAS BEEN FOUND CARRYING A PLACEMENT ITS OWN JOURNEYS DISAGREE WITH, and
   // repaired on the spot by `reconcileConstructArrival`. The repair is idempotent, so a healthy ship
@@ -684,6 +866,20 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   radiationShieldingAtmo?: number; // 0-1 effectiveness
   radiationShieldingMag?: number;  // 0-1 effectiveness
   equilibriumTempK?: number;
+  /** G53 phase 4: what a megastructure took out of this body's starlight, one entry per shaded
+   *  star — DERIVED every pass by `physics/temperature.ts deriveStarlightDimming` and deliberately
+   *  ABSENT (deleted, not zeroed) when nothing shades the body, so systems without megastructures
+   *  never carry the field. The trace reads it; nothing else may re-derive who shadows whom. */
+  starlightDimming?: {
+    starName: string;
+    /** Time-averaged share of that star's light this body receives, 0..1. */
+    receivedFrac: number;
+    occluders: { name: string; fraction: number; band: boolean; alignedShare: number;
+      /** G58: the eclipse a BAND causes - permanent (coplanar behind a solid ring) or a cadence
+       *  (twice per orbit, this long each). Absent for isotropic occluders: steady dimming is
+       *  not an event. */
+      eclipse?: { permanent: true } | { crossingsPerOrbit: 2; hoursEach: number } }[];
+  }[];
   internalHeatK?: number;
   apparentColorHex?: string;  // derived true colour (makeup + atmosphere/clouds + temperature)
   apparentColor?: ApparentColor;  // un-mixed palette behind apparentColorHex (for richer rendering)
@@ -1182,9 +1378,25 @@ export interface TemporalHierarchyUnit {
 }
 
 export interface TemporalLeapLogic {
+  /**
+   * G62/A89 - THE BUCKET AND THE DRAIN, and the reason this shape is called BUCKET_DRAIN.
+   * `drift_per_year_t` surplus seconds accumulate each year; when the bucket reaches
+   * `threshold_t`, one whole unit of `apply_to` is inserted into that year and the threshold
+   * drains away. Mean year = plain year + drift * (unit length / threshold).
+   * `leap_month` names which month absorbs the inserted unit - February, for Earth.
+   */
   drift_per_year_t: number;
   threshold_t: number;
   apply_to: string;
+  /** Which month absorbs an inserted leap unit. Omitted: the LAST month takes it. */
+  leap_month?: string;
+  /**
+   * An EXACT leap rule, for a calendar that has one, given as alternating divisors: [4, 100, 400]
+   * is "every 4th year, except every 100th, except every 400th" - the real Gregorian rule. When
+   * present it REPLACES the drift bucket, which can only ever approximate a staircase like that.
+   * Omitted, the bucket runs, which is what an invented calendar with a fractional year wants.
+   */
+  leap_cycle?: number[];
 }
 
 export interface TemporalMonthDefinition {
@@ -1201,6 +1413,11 @@ export interface BucketDrainCalendarDefinition {
   id: string;
   math_type: 'BUCKET_DRAIN';
   epoch_offset_t: string;
+  /** G62: this calendar's zero as a REAL instant. When present, `epoch_offset_t` is DERIVED
+   *  from the registry anchor on load and whatever is stored in it is ignored. */
+  epoch_utc?: string;
+  /** G62: the GM typed this calendar's zero themselves. The app never overwrites it again. */
+  epoch_gm_authored?: boolean;
   year_offset?: number;
   format: string;
   hierarchy: TemporalHierarchyUnit[];
@@ -1212,6 +1429,11 @@ export interface RatioLinearCalendarDefinition {
   id: string;
   math_type: 'RATIO_LINEAR';
   epoch_offset_t: string;
+  /** G62: this calendar's zero as a REAL instant. When present, `epoch_offset_t` is DERIVED
+   *  from the registry anchor on load and whatever is stored in it is ignored. */
+  epoch_utc?: string;
+  /** G62: the GM typed this calendar's zero themselves. The app never overwrites it again. */
+  epoch_gm_authored?: boolean;
   format: string;
   parameters: {
     units_per_earth_year: number;
@@ -1223,6 +1445,22 @@ export interface RatioLinearCalendarDefinition {
 export type TemporalCalendarDefinition =
   | BucketDrainCalendarDefinition
   | RatioLinearCalendarDefinition;
+
+/**
+ * G62 - THE STAKE IN THE SAND. The master clock counts seconds since the big bang, which is a
+ * number with no meaning until something says which real instant one of its ticks is. This is that
+ * statement, and it is DATA (`static/temporal/calendars.json`) rather than a constant in code so
+ * that moving it moves every calendar surface together.
+ */
+export interface TemporalAnchor {
+  /** Master-clock seconds at `utc`, as a decimal string (it exceeds Number.MAX_SAFE_INTEGER). */
+  master_t: string;
+  /** The real instant `master_t` names, ISO-8601 UTC. */
+  utc: string;
+  /** The date the shipped Gregorian calendar is calibrated to render exactly. */
+  stake_utc?: string;
+  note?: string;
+}
 
 export interface TemporalState {
   masterTimeSec: string;
@@ -1296,6 +1534,9 @@ export interface Starmap {
   baseMapVersion?: number;
   baseMapUpgradeDeclined?: number;
   baseMapUpgradeDismissed?: boolean;
+  // G72: the version the GM kept a copy of this campaign for, before a rehosting (lib/map/keepACopy.ts).
+  // Rides the file, like the base-map answers, so a re-import does not ask again.
+  keptCopyForVersion?: string;
   /**
    * DEAD (G35). The experimental "evolutionary" (accrete) generator was removed; it lives on as its
    * own project at https://system-lab.starsystemx.com/. Kept in the type ONLY so a starmap saved by
@@ -1329,6 +1570,21 @@ export interface Starmap {
   // See $lib/player and docs/dev/unified-player-view-design.md. Optional: absent on old maps.
   playerPresets?: import('./player/presetTypes').PlayerPreset[];
   playerAssets?: import('./player/presetTypes').PlayerAsset[];
+
+  // R-16: WHOSE WORK CAME IN WITH A PASTE. One entry per paste of a hub clip, on the CAMPAIGN
+  // rather than on the nodes - because nodes get renamed, re-homed and deleted, and a credit that
+  // dies with the body it arrived on is not a credit. See `io/hubClip.ts` and `io/attributions.ts`.
+  contentCredits?: ContentCredit[];
+
+  // R-07: WHICH of the campaign's graphics represents it - the picture a sharing site puts on the
+  // map's page and into a link preview. The id of a `playerAssets` entry, chosen by the GM.
+  //
+  // WHY A POINTER RATHER THAN A NEW PICTURE: the graphics already exist, already travel in the
+  // bundle as real files, already carry credit/licence/source, and already appear in
+  // ATTRIBUTIONS.md. A separate cover image would duplicate all four. Absent means the creator has
+  // not chosen, and a reader should fall back to guessing (map background, then any player graphic,
+  // then the first body picture) exactly as before - never refuse, never invent.
+  coverAssetId?: string;
 
   // G16: the picture behind the stars. CAMPAIGN CONTENT, not chrome - see MapBackground.
   mapBackground?: MapBackground;

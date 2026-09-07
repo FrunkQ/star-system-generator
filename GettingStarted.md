@@ -60,7 +60,15 @@ The starmap is a pan-and-zoom map of many star systems and the routes between th
 * **The floating panel** holds the map's **Description** and your **GM Notes**, both editable in
   place. Drag its header to move it, or the corner grip to make it bigger.
 * **The left rail** carries **Find body**, **Find construct**, **Find by tag**, **Routes**,
-  **Player Views**, **Report** and **Measure**, with File, Settings, Help and About beneath.
+  **Player Views**, **Report** and **Measure**, with File, Settings, Help and About beneath. Turn
+  **Measure** on and a second button appears beneath it, **Size comparison** — measuring and
+  comparing are the same question asked two ways, so the second tool lives inside the first rather
+  than taking a permanent row.
+* **Hover a star and it tells you what is in there** without your having to open it: its
+  designation in plain English, how many stars, planets, moons and minor bodies it holds, how many
+  constructs there are, a line about any life it holds, and a note of anything remarkable — a ringworld,
+  a Dyson swarm. It is a GM-side summary and counts everything you own, so it never appears on a
+  player's starmap.
 
 ### Adding systems
 
@@ -123,13 +131,18 @@ The choice is saved with your campaign and travels to player views.
 
 ### Stars that show what they are
 
-Three things a star does are drawn on the map rather than badged onto it, on the GM starmap, the
-player starmaps and the system view alike, and all three are derived from the star's own numbers:
+Three things a star does are drawn on the map rather than badged onto it, and all three are derived
+from the star's own numbers:
 
 * **Flares** licking off the limb of an *active* or *flare-star* star. A quiet one has none.
 * **Jets** — a pair of collimated beams along the magnetic axis, from a fed black hole, a neutron
   star or a magnetar.
 * **A shed shell** of wind around an evolved star: a halo on a giant, a shell on a supergiant.
+
+**Where you see each of them, honestly.** All three are on the GM starmap and the player starmaps.
+Inside a system, the 3D views — the holo, the reference gallery and the size comparison — show all
+three as well. The flat 2D system map draws flares but **not yet** the jets or the shed shell, so a
+pulsar there is a plain star for now; that one is still being built.
 
 You cannot switch these on from the map. The way to remove one is to remove the tag on the star's
 Tags tab; the way to earn one is to change the numbers that derive it — feed the hole, or swell the
@@ -160,9 +173,18 @@ did not draw yourself. The About box credits whichever image is actually on scre
 **Settings > System > Appearance** picks an **interface skin** for this device: **Modern** (the
 default — compact type, light-blue highlights), **Classic** (the original warm orange on
 near-black), **Clarity** (colour-blind-friendly chrome on the Okabe–Ito palette, with contrast
-turned up) and **Nebula** (indigo rail, deep-blue panels, orchid accent). **Make your own** opens a
+turned up), **Nebula** (indigo rail, deep-blue panels, orchid accent), **Daylight** (the light one:
+paper surfaces and dark type, for a bright room) and **Terminal** (amber phosphor on black, a console
+look). **Make your own** opens a
 skin editor: pick a base, name it, and repaint twelve chrome colours with the app itself as the live
 preview. Your skins live on your device and sit in the same picker.
+
+**Floating controls on the map**, just below the skin, gives the controls that float over the
+starmap - the body picker, the clock, the time transport, the undo pill - a palette of their own:
+follow the skin, light over the map, or dark over the map. The light and the dark are each tinted
+with the skin's own colour, so Nebula floats lilac or deep purple and Classic peach or warm charcoal.
+The map is black whatever the skin does, so a dark interface can still float light controls over it,
+or a light one dark ones.
 
 A skin repaints the interface. The **colour palette** page below it goes finer, one colour at a
 time — including the ones that carry meaning, like body types and zone bands — and its changes sit
@@ -244,6 +266,13 @@ A **binary** can sit at a Lagrange point too, and it is judged on two questions 
 never asked: whether the point can hold the pair, and whether the pair holds together while it is
 there.
 
+**And that is how you build one.** Put a second body at a point that already has a trojan on it and
+the app does not stack the two invisibly on top of each other — it reads what you meant, and makes
+the newcomer a **companion of the trojan already there**, orbiting inside its Hill sphere. What
+happens next is the ordinary pairing rule doing its job: a small companion settles as the trojan's
+moon, while one of comparable mass promotes into a pair, and it is then the pair's shared centre that
+rides the point. That is (617) Patroclus–Menoetius, a real binary Jupiter trojan, in two clicks.
+
 Ships can fly to any of the five, and arrive matching the point's motion rather than merely reaching
 its position.
 
@@ -258,6 +287,18 @@ the selected body's neighbourhood — itself, its parent, its siblings and one l
 than for everything at once, so picking Earth shows you Luna's without filling the screen with the
 rest of the system.
 
+**When two bodies pair up, and what a pair promises.** A companion heavier than about 8% of what it
+orbits stops being a satellite and becomes half of a shared centre — a double planet, or a binary.
+Once paired, the two sit on opposite sides of that centre at every instant, share one period, and are
+split by mass so the heavier one sits closer in. The figure is a judgement rather than a law (Pluto
+and Charon are called a double at 12%, the Earth and Moon are not at 1.2%), so it is a rule-pack
+setting you can move.
+
+**One thing to expect if you have an old campaign.** A map saved before that promise was enforced can
+have bodies *move* when it loads — on one reported file an outer star went from 0.06 AU to 90.9 AU
+from the system centre, because its "partner" had since become half of an inner pair and its real
+partner was 617 AU out. That is a correction rather than a regression: it is the engine putting a
+member where its own mass says it belongs. The physics reference has the full account.
 **A pair of stars, or any two bodies sharing a barycentre, clears a surprisingly large hole around
 itself and holds a stable ring beyond it.** Both edges are worked out and drawn, in their own pink
 shade alongside the Hill spheres. The inner edge is real physics rather than a stylistic margin: a
@@ -273,6 +314,52 @@ Hierarchical triples get theirs too: Alpha Centauri, Polaris and Algol are each 
 third star further out, and the ring is drawn for the inner pair.
 
 Generated systems respect the same boundary — the generator no longer seeds planets into the hole.
+
+### Size comparison — the whole system, side by side
+
+Turn **Measure** on in the rail and a second button appears beneath it: **Size comparison**. It lays
+every object on the map out in a strip at their true relative sizes, the way the old planets-and-moons
+posters did — inside a system, the star, the giants, the planets, the moons and the small bodies; on
+the starmap, every star in the campaign.
+
+* **It zooms as you travel.** Whatever is passing through the middle of the screen is drawn at a
+  comfortable size and everything beside it is scaled to match, so one screenful of scrolling moves
+  you about one object along whether that object is a moon or a giant. Pinch, or hold Shift and
+  scroll, to change how big the middle is.
+* **Click anything to bring it to the middle**, with everything around it re-packed to match. It does
+  not change your zoom while it does that, so if you have pulled back to survey the whole system,
+  clicking about keeps that view. Scroll all the way down to a moon and the moon becomes the subject,
+  with its planet filling the sky behind it.
+* **Four orders**, from the row of buttons at the top: **Size**, **Name**, **Mass** and **Orbit**.
+  Mass answers a different question from size and the difference is real — Ganymede is wider than
+  Mercury, and Mercury is more than twice its weight. Orbit lays the system out as it actually is,
+  each planet's moons tucked underneath it. A body you have given no mass sorts to the end rather
+  than to the light end: not weighed is not the same as weightless. Your choice is remembered for
+  that map.
+* **A ruler of circles** is drawn around whatever is in the middle — Ceres, Luna, Mars, Earth,
+  Neptune, Jupiter, the Sun and Betelgeuse — and only the ones you could actually see at your current
+  zoom appear, so a screen of moons gets the small marks and a screen of stars the big ones. It reads
+  in whichever unit you have chosen.
+* **Nothing is puffed up to be visible.** Anything too small to draw honestly at the current zoom
+  shows as a dot with its name and how small it really is, which is the entire point of the view. A
+  ring too small to draw is left out rather than exaggerated.
+* **Rings are drawn to their real extent** and lie the way the planet does — Saturn's tipped a
+  little, Uranus's almost face-on because Uranus lies on its side. They never count towards the
+  planet's size, so Saturn still sits below Jupiter where it belongs. How brightly a set of rings
+  draws comes from its own mass spread over its own area, so Saturn's look magnificent and Jupiter's
+  read as the dust they are.
+* **Black holes behave like black holes.** A hole shows its event horizon at true size with a thin
+  ring of light at the edge, its accretion disc if it is feeding, and it bends what is behind it —
+  scroll one up against a giant and watch the giant's face curve round the shadow.
+* **Hide what you are not interested in** — including everything bigger or everything smaller in one
+  click. What you hide stays hidden next time, and a badge says how many with one click to bring them
+  back. Clicking an object here selects it on the map too, so the details panel follows you.
+
+On a phone the strip runs down the screen instead of across it; drag with a finger, pinch to zoom, or
+use the buttons at each end. On the starmap a tap compares rather than enters, so you can carry on
+comparing without falling out of the view.
+
+It is a player view as well — see section 12.
 
 ### Five ways to look at a world
 
@@ -362,6 +449,18 @@ Imported worlds are truth: they are never moved, re-typed or re-aged, and a gene
 would crowd one is dropped rather than the import. The imported star is truth too — only the worlds
 generated into the system are born into the era you chose.
 
+**A Universe Sandbox save with two stars arrives as a binary** — both stars, orbiting their shared
+centre, each keeping its own planets and moons under it. Moons of moons stay with their moon rather
+than being pulled up to the planet, and a double planet arrives as a pair straight away, exactly
+where the save had it.
+
+**And you can move a body to a new host afterwards.** Under the orbit editor's **Advanced** section,
+choose a new host for a planet or a moon and it goes there *without jumping*: it stays exactly where
+it is on the map at that instant, and its new orbit is worked out from there. If the new host cannot
+really hold it, it still goes — it gets a circle at its current distance and the stability tags say
+what would happen. Put Saturn in orbit around Jupiter if that is your setting; its moons travel with
+it, and a pair forms if the masses say one should.
+
 ### Or build by hand
 
 1. **Right-click** a body or clear space and choose **Add Planet Here** (or **Add Moon Here**). New
@@ -425,7 +524,7 @@ its picture changes with them.
   have kept.
 * **Magnetosphere** — a field far beyond what the interior could generate is kept and drives the
   shielding, and is called anomalous rather than reported as an ordinary dynamo.
-* **Radiogenic heat**, **thermal inflation**, and on a star its **magnetic activity** — the flare
+* **Radiogenic heat**, **thermal inflation**, and on a star its **flare activity** — the flare
   and X-ray output, which is set by the dynamo rather than by brightness.
 
 **Nothing is refused.** Each row shows the range it expects, lets you type well past either end, and
@@ -594,6 +693,63 @@ Populate your system with infrastructure.
   of the size dial to true 1:1 at the other, with the icon standing in when the hull falls below about
   ten pixels; and a hull adopts the map's render style, including the occluding wireframe.
 
+### How big things draw, and why the order is now guaranteed
+
+The **Body size** dial lives on each player view's **System** step, and it runs from *readable* at one
+end, where everything is drawn chunky enough to see, to *actual* at the other, where everything is at
+its true size and the planets become specks. The GM's own 3D view is drawn by the same law. Two
+things about it are worth knowing, because both used to be otherwise.
+
+**Readable size now depends only on how big a thing physically is, and on nothing else about it.** A
+940 km station and a 940 km rock draw identically. That fixed an ordering fault you could not dial
+your way out of: ships and bodies used to run on separate scales that overlapped, so a 1 km cruiser
+out-drew Luna and a 22 km station out-drew *Earth*. Now whatever is genuinely bigger draws bigger at
+every position of the dial, not just at the true-size end.
+
+**A star's drawn size follows its own size too.** Stars used to draw at one flat size whatever they
+were, so a red dwarf and a red supergiant were the same circle. They go through the same map as
+everything else now, which is a visible change to every system you already had — it is the map being
+honest, not a fault. Constructs keep their own small dial beside the main one, because ships and
+stations are microscopic beside worlds and a map that is honest about both shows you nothing.
+
+### Megastructures
+
+**Right-click a body, choose Add Construct Here, and a Megastructures tab appears** whenever
+something in the library can actually stand at that host. Seven types ship: a **Space Elevator**, a
+**Planetary Torus / Orbital Ring**, a **Ringworld**, a **Dyson Sphere**, a **Dyson Swarm**, a
+**Massive Energy Collector** and a **Death Star**. Each has its own dials — coverage, density, how
+far up the tether the counterweight rides — and moving them moves the physics, not just the picture.
+
+Two kinds of message, and the difference matters:
+
+* **A greyed row with a reason** is a hard requirement of the type. A space elevator needs a surface
+  to stand on, so it is not offered around a gas giant, and the row says so rather than vanishing.
+* **An amber note is advice and never a veto.** Put a ringworld outside the goldilocks zone and it
+  goes exactly where you put it, carrying a tag that records the number that made it interesting.
+  That is the same bargain as everywhere else: author freely, and be told honestly.
+
+A structure that intercepts starlight **dims what is behind it**, and the whole model follows —
+a swarm at 30% density cools every world beyond it, and the habitable zone and the frost lines move
+with the light. The physics reference has the working. On the flat map a ring draws as its own orbit
+rather than as an icon, and the elevator draws as a line from the planet's edge out past its
+geostationary dock to the counterweight, standing on the equator and turning with the world.
+
+**Ships dock to them, and stay docked.** Plan a trip to a space elevator and the destinations are its
+levels — the anchor, the low and medium levels, the geostationary dock and the counterweight. The
+ship flies to that height, parks, orbits until it catches up with the ribbon, and docks as it passes:
+you can watch it happen. A ring or a shell takes a ship at the nearest point of its rim and carries
+it round at the rim's own speed; a hull docks as a station always has. From then on the ship rides
+with the structure, and it departs from where it actually is rather than from the orbit it had
+before.
+
+**The planner says what that costs, and lets you decide.** Nothing at the geostationary dock, where
+the ribbon already moves at orbital speed; several kilometres per second at the low levels, where a
+docked ship is riding the planet's spin rather than orbiting; over a thousand on a Niven ring's rim.
+Arriving the wrong way round is turned about — the cost of turning appears in the plan rather than
+being hidden.
+
+Every screen agrees on where a docked ship is, because it is worked out once in the engine from where
+the structure is and how it turns, rather than by each view separately.
 ### Autopilot
 
 Give NPC ships standing orders so they run their own lives — **Mine, Transport, Patrol, Explore** or
@@ -657,6 +813,47 @@ clock. And one thing is worth expecting — an undo restores the values you **au
 engine re-derive the rest, so a class or a tag can come back as what the physics now implies rather
 than exactly what was on screen before the edit.
 
+### Cut, copy and paste
+
+**Right-click any world, moon, station or ship** and you get **Copy**, **Cut**, and — once something
+is in hand — **Paste it here**. It moves the whole branch: copy a planet and its moons come, copy a
+station and its docked ships come, and the menu tells you how many objects that is before you commit.
+Paste it anywhere in the same campaign, in that system or another one.
+
+* **What you are holding shows as a small tag under the undo and redo buttons** — a paste icon and,
+  for example, "System+38" or "Moon". It is on the starmap as well as inside a system.
+* **Right-click empty space** and you can paste there too: inside a system the copy goes round
+  whatever that patch of sky belongs to, and on the starmap a copied system drops in as a new system
+  of its own, right where you clicked. If what you are holding cannot stand alone as a system, the
+  option is shown greyed and hovering it says why.
+* **The host it offers first suits what you are pasting** — planets to stars, moons to planets,
+  anything else to the star. Every other host is still on the list, so you can still hang Saturn off
+  Jupiter if that is your setting.
+* **Undo and redo behave as you would expect.** A paste is one step and undoing it takes the whole
+  branch away; a cut is one step and undoing it puts the branch back where it was. Cut and paste stay
+  two separate steps, because they are two things you did.
+
+**And you can copy out of somebody else's map.** Copy a star, a system, a planet or a ship on the
+Explorers site at <https://explorers.starsystemx.com/> and paste it straight into your campaign. The
+tag under undo/redo notices when you come back with something in hand and gives one gold flash to say
+so; your own copies stay quiet, because you just made them. Everything arrives whole — a ringworld
+arrives a ringworld, a station's tender still knows which station — and the moons keep the orbits they
+already had, because those came from a real save and are right. Only the top object changes what it
+goes round, and it is placed rather than teleported.
+
+A pasted **ship** arrives whole but with its route stood down, and says so in a tag: a route is a plan
+made in another campaign and most of its stops were never copied with it.
+
+**The credit comes with it.** Your campaign records whose map it came from, who made it and a link
+back, and that credit is printed in the attributions file inside your saves. If the thing you pasted
+had itself been copied from somewhere else, the whole trail comes along and reads as one line, so
+everyone in the chain stays named however many hands it passes through. See section 13.
+
+**On the clipboard itself.** Chrome asks your permission the first time you right-click, and once you
+say yes a system copied on the site simply appears, ready to paste. Firefox does not let a page read
+the clipboard at all, so there the menus tell you to press **Ctrl+V** — which works everywhere,
+in every browser, regardless of any of this.
+
 ---
 
 ## 12. At the table
@@ -694,6 +891,37 @@ orbit lines.
 Or open a second browser window and drag it to a player-facing screen, which is the shared-screen
 case.
 
+#### Giving your players the size comparison
+
+**Size comparison** is one of the views you can hand them, under **System** in the preset editor — and
+under **Starmap**, where it lays out every star on your map instead. You choose the order they get
+(Size, Name, Mass, and Orbit inside a system), and whether the ruler is drawn at all: turn it off for
+a picture rather than a measurement. There is a live preview while you set it up.
+
+Your players can move along the strip, zoom it and tap things; the arranging is yours. Tapping
+anything opens the same information block they get from the 2D and 3D maps, dressed by the same
+preset — it is the same panel, not a copy of it. On the starmap version a tap compares rather than
+enters, so a player reading the view cannot fall out of it.
+
+It takes the preset's visual filter and its overlay graphic like every other view, so a table set up
+as a CRT terminal gets the planets tinted and scanlined along with everything else. Everything the
+view says — the names, the sizes, the dots for things too small to draw, and the ruler — is drawn
+*into* the picture rather than laid over it as web text, so under a curved screen the words curve
+with the worlds they name. On a machine with no working 3D it still draws the whole strip; only the
+round planet pictures are missing.
+
+#### When a player joins
+
+A joining player is told a map is on its way rather than being left with a frozen screen: the join
+screen shows **"Incoming Transmission…"** — a rule-pack string, so you can give it your own setting's
+words — with a spinner and a line saying how much is coming, *"27 systems, ~5.0 MB"*. The size is
+absent for the very first person to join, because it is measured from the last map actually sent.
+
+**Read it as a holding message, not as progress, and it is a spinner rather than a bar for an honest
+reason:** nothing at that moment knows how far along the transfer is, and the unpacking that follows
+blocks the browser in one go, so a bar would sit frozen and lie. A real one needs the map sent in
+numbered pieces, which is a later release. If the map never arrives the message clears itself rather
+than saying "still working" forever, and there is a **Retry** to ask the GM's window again.
 #### Whose clock is it
 
 A player view either steers the clock or tells you whose clock it is on — never neither, and never
@@ -746,6 +974,21 @@ and descriptions, which makes it a safe "sensor scan" handout.
   **that one system only**, and says so: your other systems and the map they sit on are not in that
   file. Both screens show the filename they will write (`-Starmap` or `-System`), so the two are
   told apart at a glance later.
+* **Opening something: three doors, one screen.** **Load Starmap** and **Load System** both ask where
+  the map is coming from. **Browse shared maps** opens the Explorers library in a new tab — maps other
+  cartographers have published, each with an "Open in Star System Explorer" button that brings it
+  straight back here. **Load from a file** offers exactly the file types that door can open: a
+  campaign takes this app's own saves, while a system additionally takes `.ubox`, `.sc` and `.pak`
+  from other simulators. And there is a small field to **paste a link somebody sent you**, which is
+  the fallback for a code out of a chat rather than a front door. (That field used to sit on the
+  opening screen and no longer does: if somebody sends you a link to a map, you click the link and it
+  opens.)
+* **A link opens a map in one click.** A map page on the Explorers site can hand you the map directly,
+  with no download and no import step — the same door a downloaded file goes through, so anything the
+  map credits, carries or refuses behaves exactly as it always did. It never quietly takes over the
+  campaign you have open: with nothing loaded it just opens, and with a campaign here it asks first
+  and keeps your old one a single step back in Settings. A link pointing anywhere other than the map
+  library is refused with a plain message and nothing is fetched from it at all.
 * **Give a loader the wrong file and it says what the file is.** Drop a campaign on **Load System**
   and it is named as a campaign, with an offer to open it as one — stating plainly that doing so
   replaces the campaign you have open. Drop a single system on **Load Starmap** and it is named as a
@@ -759,6 +1002,9 @@ and descriptions, which makes it a safe "sensor scan" handout.
   **A save carries what you authored, not what the engine derived from it** — the derived figures are
   recomputed when the file is loaded, which is why saves are a third to a half smaller than they were
   and why a file can never carry stale physics.
+* **The first line of a save is a `bundleFormat` number.** It says which layout the file uses, so
+  another program can read it or refuse politely rather than guessing. It is **not** the app version,
+  and it does not change when the app does — it changes only when the shape of the file does.
 * **Player-Safe export.** Share a spoiler-free copy that hides GM notes and hidden objects.
 * **Credit your work.** Save your name, contact and a version number into a system file, under the
   main star's details, so you are credited when you share it.
@@ -766,6 +1012,16 @@ and descriptions, which makes it a safe "sensor scan" handout.
   its credit, licence and source — and it names anything whose provenance is missing, so a
   share-alike image cannot travel without its credit by accident. Uploaded models, body photos and
   construct pictures each have their own credit, licence and source fields.
+* **And content from other people's maps is credited too**, under its own heading, **Content from
+  other cartographers**. Paste a system in from the Explorers site and your campaign records which
+  map it came from, who made it and a link back — so when you share your own map onward, the people
+  whose work is in it are still named. The credit lives with the **campaign** rather than with the
+  pasted object, because objects get renamed, moved and deleted and a credit that dies with the body
+  it arrived on is not a credit; deleting every body it covers does not retire it. Six systems pasted
+  from one map owe one entry naming six objects, not six identical entries. If the copy came from a
+  version of the site that did not record who made the map, the file says *cartographer not recorded*
+  rather than quietly leaving it blank. And the trail survives: something copied from a map that had
+  itself copied it reads as one line — "from Alpha by alice, via Beta by bob, via Gamma by carol".
 
 **What leaves your machine.** Your campaign never does: it is stored in this browser and goes
 nowhere unless you export it. Two things do go out, and both are worth stating plainly. Searching

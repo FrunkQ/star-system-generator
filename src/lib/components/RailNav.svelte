@@ -1,10 +1,12 @@
 <script lang="ts">
+  import PixelText from './PixelText.svelte';
   // Phase 03 — persistent app-nav rail. Lives in AppShell's `rail` slot (left on desktop,
   // slide-in on phone). Presentational: dispatches events; +page wires them. Two widths:
   // icon-only (minimal) ⇄ icon+text, toggled by the control at the top and remembered.
   import { createEventDispatcher } from 'svelte';
   import { railCollapsed } from '$lib/railStore';
-  import { APP_BUILD_STAMP } from '$lib/constants';
+  import MemoryStrip from './MemoryStrip.svelte';
+  import { APP_BUILD_STAMP, APP_VERSION } from '$lib/constants';
   const dispatch = createEventDispatcher();
 
   // Which top-level view is showing. The Starmap entry is a live indicator when 'starmap'
@@ -13,6 +15,7 @@
 
   export let rulerOn = false;
   export let rulerAvailable = false;   // starmap: only when scaled (system view always has it)
+  export let sizeCompareOn = false;    // the sub-tool under Measure — lit while its view is open
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → Routes notification dot
   // Owner, 2026-08-21: how many player windows are watching, at a glance, so the GM can see whether
   // anyone has joined without opening anything. Local first in green, remote second in orange —
@@ -34,12 +37,47 @@ ${playerConnSummary}`
     : "Design, open and manage the players' views (guides, tables, projections)";
 
   let fileOpen = false; // File group (New / Open / Save) inline accordion
+
+  // Owner, 2026-08-30: clicking the brand mark copies "SSE v3.0.220"-style text for pasting into a
+  // bug report or chat. The tick in the title is the only feedback — a toast for a copy would be
+  // louder than the act. Clipboard access can be refused (permissions, non-secure context); the
+  // title then says so instead of lying about having copied.
+  let brandCopied: 'ok' | 'fail' | null = null;
+  let brandCopyTimer: ReturnType<typeof setTimeout> | null = null;
+  async function copyVersion() {
+    try {
+      await navigator.clipboard.writeText(`SSE v${APP_VERSION}`);
+      brandCopied = 'ok';
+    } catch {
+      brandCopied = 'fail';
+    }
+    if (brandCopyTimer) clearTimeout(brandCopyTimer);
+    brandCopyTimer = setTimeout(() => (brandCopied = null), 1500);
+  }
+  $: brandTitle = brandCopied === 'ok' ? 'Copied: SSE v' + APP_VERSION
+    : brandCopied === 'fail' ? 'Could not copy — clipboard blocked'
+    : APP_BUILD_STAMP + ' — click to copy';
   $: collapsed = $railCollapsed;
   function toggleCollapsed() { railCollapsed.update((v) => !v); }
 
   // Terminal actions (open a modal / change view): also emit `navigate` so the host can
   // close the phone slide-in rail — otherwise the result is hidden behind the open menu.
   function go(name: string) { dispatch(name); dispatch('navigate'); }
+
+  /**
+   * Measure's button, and it puts the SUB-TOOL away with itself. Owner, 2026-09-06: *"unclicking the
+   * measure on the rail should also come out of comparison view"*. The size comparison lives inside
+   * Measure by his own placement, so closing the parent has to close the child - otherwise the strip
+   * stays up with its own button no longer on the rail, and the only way out is the view's own X.
+   *
+   * HERE rather than at the two mounts, because THIS is the file that owns the nesting: the sub-button
+   * is rendered inside Measure's `{#if}` here, and a rule about that relationship kept in the callers
+   * would be the same rule written twice.
+   */
+  function closeMeasure() {
+    if (rulerOn && sizeCompareOn) dispatch('sizecompare');
+    dispatch('ruler');
+  }
 
   // Flat Lucide-style monochrome icons (inline SVG).
   const I = {
@@ -58,6 +96,7 @@ ${playerConnSummary}`
     about: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
     help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/>',
     playerviews: '<rect x="2" y="4" width="13" height="10" rx="1.5"/><rect x="9" y="10" width="13" height="10" rx="1.5"/><line x1="5" y1="7.5" x2="12" y2="7.5"/><circle cx="15.5" cy="15" r="2"/>',
+    sizecompare: '<circle cx="7" cy="12" r="5"/><circle cx="16" cy="12" r="2.6"/><circle cx="21" cy="12" r="1.2"/>',
     ruler: '<rect x="2.5" y="7" width="19" height="10" rx="1" transform="rotate(0 12 12)"/><line x1="6.5" y1="7" x2="6.5" y2="10.5"/><line x1="10.5" y1="7" x2="10.5" y2="11.5"/><line x1="14.5" y1="7" x2="14.5" y2="10.5"/><line x1="18.5" y1="7" x2="18.5" y2="11.5"/>',
     interstellar: '<circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M6.6 16.4 17.4 7.6" stroke-dasharray="3 2.5"/>'
   };
@@ -67,7 +106,23 @@ ${playerConnSummary}`
   <div class="rail-header">
     <!-- The brand mark doubles as the version read-out: hovering it names the build, so a version
          can be checked from any screen without opening About. Same stamp the footer prints. -->
-    <span class="brand rail-label" title={APP_BUILD_STAMP}>SSE3</span>
+    <button class="brand rail-label brand-copy" title={brandTitle} on:click={copyVersion}
+      aria-label="Copy app version to clipboard"
+    ><!--
+      SSE 3.1, SET IN THE HUB'S OWN LETTERFORMS (its ROUND alphabet, at scale 3). The two
+      products share a face now, which is the point: a map card on the hub and the app it opens
+      in should not be lettered differently by accident.
+
+      THE REAL TEXT STAYS IN THE DOM and the pixels are its picture. A wordmark made of
+      rectangles is invisible to Ctrl-F and to a screen reader, and this one is also a BUTTON -
+      its accessible name comes from aria-label, but the string "SSE3.1" itself would vanish from
+      the page entirely. So the span carries it, hidden to the eye only, and the SVG is marked
+      decorative.
+
+      The colour is deliberately not set here: fill="currentColor" means the glyphs take the
+      .brand rule's var(--accent), so the wordmark follows the theme like every other accent.
+    --><span class="brand-text">SSE3.1</span
+      ><PixelText text="SSE3.1" scale={3} decorative />{#if brandCopied === 'ok'}<span class="brand-tick" aria-hidden="true"> ✓</span>{/if}</button>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
       {#if collapsed}
         <!-- panel-left-open: expand the rail -->
@@ -131,9 +186,17 @@ ${playerConnSummary}`
   <div class="spacer"></div>
 
   {#if activeView === 'system' || rulerAvailable}
-    <button class="rail-btn" class:active={rulerOn} title={activeView === 'system' ? 'Measure: tap two bodies for the distance between them in AU' : 'Measure: tap two stars or ships for the distance between them'} on:click={() => dispatch('ruler')}>
+    <button class="rail-btn" class:active={rulerOn} title={activeView === 'system' ? 'Measure: tap two bodies for the distance between them in AU' : 'Measure: tap two stars or ships for the distance between them'} on:click={() => closeMeasure()}>
       <span class="ic" class:accent={rulerOn}>{@html svg(I.ruler)}</span><span class="rail-label">Measure</span>
     </button>
+    <!-- The owner's placement: a second button UNDER Measure, and only while Measure is on. Measuring
+         and comparing are one question asked two ways ("how big is that, really?"), so the second
+         tool lives inside the first rather than adding a permanent row to the rail. -->
+    {#if rulerOn}
+      <button class="rail-btn sub" class:active={sizeCompareOn} title={activeView === 'system' ? 'Size comparison: every object in this system at true relative size, side by side' : 'Size comparison: the stars of every system at true relative size, side by side'} on:click={() => go('sizecompare')}>
+        <span class="ic" class:accent={sizeCompareOn}>{@html svg(I.sizecompare)}</span><span class="rail-label">Size comparison</span>
+      </button>
+    {/if}
   {/if}
   <button class="rail-btn" class:active={fileOpen} title="File — new / load / save" on:click={() => (fileOpen = !fileOpen)}>
     <span class="ic">{@html svg(I.file)}</span><span class="rail-label">File</span>
@@ -174,6 +237,7 @@ ${playerConnSummary}`
   <button class="rail-btn" title="About, attributions & debug tools" on:click={() => go('about')}>
     <span class="ic">{@html svg(I.about)}</span><span class="rail-label">About</span>
   </button>
+  <MemoryStrip />
 </nav>
 
 <script context="module" lang="ts">
@@ -273,6 +337,21 @@ ${playerConnSummary}`
   .rail-btn.danger { color: var(--status-bad, #ef4444); }
   .rail-btn.danger .ic { color: var(--status-bad, #ef4444); }
   .spacer { flex: 1 1 auto; }
+  .brand-copy { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; display: flex; align-items: center; gap: 6px; }
+  /* Present to a screen reader and to Ctrl-F, absent to the eye. Deliberately not display:none,
+     which would take it out of the accessibility tree too and defeat the whole point. */
+  .brand-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .brand-tick { color: #35c96b; }
 
   /* Collapsed (icon-only): hide labels + section titles everywhere in the rail (incl. the
      slotted view content), centre the icons. :global so it reaches slotted buttons. */

@@ -34,6 +34,7 @@
     ['ionising-output', 'Ionising output & the corona'],
     ['stellar-outflows', 'Jets and shed winds'],
     ['star-designations', 'Reading a star designation'],
+    ['observed-vs-intrinsic', 'What a star looks like from here'],
     ['belts', 'Trapped belts & the giants'],
     ['fluids', 'Fluid layers'],
     ['clouds', 'Clouds & weather'],
@@ -174,6 +175,24 @@
         the cover is marginal. Against measured Bond albedos: Venus 0.76 (model 0.757), Earth 0.306 (0.308),
         Saturn 0.342 (0.343), Neptune 0.290 (0.288), Jupiter 0.503 (0.490). A manually-pinned albedo still wins,
         but is no longer needed — tweak the makeup/atmosphere and the albedo follows.</p>
+
+      <h3>A megastructure shades the worlds behind it</h3>
+      <p>The luminosity above is what the star <strong>emits</strong>; what a world <strong>receives</strong> can
+        be less, because something was built in the way. A Dyson swarm or shell orbiting the star intercepts its
+        published share of the light (the same number driving its harvested power), and every body outside it
+        receives the rest — build a swarm at 30% density and every world beyond it cools by <code>0.7^¼</code>,
+        about 9%. Three rules keep it honest: a structure <strong>never shades itself</strong> (interception is
+        the harvest, its sunward face takes the raw star); a body <strong>inside its radius is untouched</strong>
+        (the light gets there first); and a <strong>band shades only what aligns with its plane</strong> — a
+        ringworld blacks out a world sharing its plane beyond it, while an inclined orbit only crosses the shadow
+        briefly, so it is dimmed by the share of its year it spends behind the band (from its inclination, not
+        the clock — the same time-free convention as every distance here). The temperature range takes the
+        envelope: coldest is aphelion in full shadow, warmest is perihelion in clear sky. The body's trace names
+        who took what. The <strong>drawn zones follow the same dimming</strong> — habitable zone, frost lines
+        and kill zone are all flux thresholds, so they move to where the light actually reaches, and a zone
+        edge that a structure's shadow steps right over is pinned at the structure itself: beyond a solid
+        ringworld, in its plane, there is no more habitable zone to draw. (For zones a band counts in full —
+        the zone circles live in the system plane, which is exactly where a band's shadow falls.)</p>
     </section>
 
     <section id="albedo">
@@ -461,9 +480,158 @@
         an ordinary pulsar's 10<sup>12</sup>. The engine does not generate magnetars as a separate kind
         of thing &mdash; it generates neutron stars, draws a field, and reads the label back off it,
         which is what they are in reality.</p>
+      <p>A <strong>black hole</strong> is outside it too, and it is the one object whose mass you can
+        dial across eleven orders of magnitude: an ordinary stellar-mass hole with an event horizon a few
+        hundred kilometres across, or &mdash; with the <em>supermassive</em> switch on the star editor
+        &mdash; something up to <strong>270 billion solar masses</strong>, whose horizon is measured in AU
+        rather than in solar radii. That figure is the theoretical ceiling on growth <em>by accretion</em>:
+        past it the accretion disc's own self-gravity wins, and the disc fragments into stars faster than
+        the hole can swallow it, so luminous feeding shuts off. It is a limit on a mechanism and not a law
+        of nature &mdash; nothing forbids a heavier hole, there is simply no known way to grow one. So the
+        editor shows the warning in amber and <strong>keeps whatever you typed</strong>: alien engineering,
+        a reality breakdown and a plot device are all legitimate reasons, and the engine cannot tell one of
+        those from a typo.</p>
+      <p>Finally, a catalogue designation sometimes carries <strong>annotations after the class</strong>
+        &mdash; <code>m</code> for metallic-line, <code>e</code> for emission, <code>n</code> for broad
+        lines, <code>p</code> for peculiar, and so on. These are read and kept rather than treated as part
+        of the class, which is what stops a string like Sirius's <code>A0mA1Va</code> turning up as a
+        spectral class of its own. An <strong>Am star</strong> is the case worth knowing: it quotes more
+        than one reading, because its calcium, hydrogen and metal lines disagree about how hot it is. The
+        engine follows the <em>hydrogen</em> lines for temperature when they are stated &mdash; they are
+        the honest thermometer &mdash; falls back to the midpoint between the other two when they are not,
+        and the star's explainer names it as a metallic-line Am star and prints both readings, so you can
+        see what the disagreement was.</p>
       <p class="note">Brightness is never stored: it is computed from radius and temperature by
         <code>L = 4&pi;R&sup2;&sigma;T&#8308;</code>, which is exact. A figure that is derived cannot
         drift away from the numbers it came from.</p>
+    </section>
+
+
+    <!-- G54. Deliberately AFTER the designation section: everything below is about the difference
+         between the designation a star HAS and the readings an observer GETS, which only means
+         something once a reader knows what a designation is. -->
+    <section id="observed-vs-intrinsic">
+      <h2>What a star is, and what it looks like from here</h2>
+      <p>Put something between a star and an observer &mdash; a Dyson swarm, a ringworld, a lane of
+        dust &mdash; and the two stop being the same question. The engine computes <strong>both</strong>
+        readings for every star and publishes them side by side: what it <em>is</em>, and what it
+        <em>measures as</em> from where you are looking.</p>
+
+      <h3>A Dyson swarm does not turn a G star red</h3>
+      <p>This is the part that is worth getting right, because the obvious guess is wrong and the
+        truth is better. A swarm of collectors blocks light <strong>evenly at every wavelength</strong>.
+        Even blocking cuts the <em>flux</em> and leaves the <em>colour</em> exactly where it was, and it
+        leaves the absorption lines exactly where they were too &mdash; so a spectrometer pointed at a
+        heavily swarmed G2V star still reads, unambiguously, <code>G2V</code>.</p>
+      <p>What you get instead is <strong>three measurements that disagree</strong>, and that is a far
+        better thing to hand a crew than a relabelled star:</p>
+      <table class="mini">
+        <thead><tr><th>Cause</th><th>Brightness</th><th>Colour</th><th>Infrared</th><th>Spectral lines</th></tr></thead>
+        <tbody>
+          <tr><td>Partial swarm</td><td>much fainter</td><td><strong>unchanged</strong></td><td>strong excess</td><td>unchanged &mdash; still G</td></tr>
+          <tr><td>Complete shell</td><td>gone from the visible</td><td>&mdash;</td><td>the object <em>is</em> the infrared source</td><td>none visible</td></tr>
+          <tr><td>Dust or nebula</td><td>fainter</td><td><strong>reddened</strong></td><td>modest excess</td><td>unchanged &mdash; still G</td></tr>
+          <tr><td>Genuinely an M star</td><td>fainter</td><td>red</td><td>normal for its type</td><td><strong>M lines</strong></td></tr>
+        </tbody>
+      </table>
+      <p><strong>The last row is the punchline: the lines are the tell, and they never lie.</strong> A
+        crew that notices a G-type spectrum attached to a star four magnitudes too faint, pouring out
+        far infrared, has <em>found something</em>. A crew told "it is an M star" has merely been told a
+        fact.</p>
+      <p><strong>Dust is the case that really does redden</strong>, and there the old story is exactly
+        right. Interstellar extinction runs roughly as 1/&lambda;, so blue is scattered out of the beam
+        first and what survives is both fainter and redder. A G star behind enough dust genuinely can be
+        mistaken for a cooler one &mdash; right up until someone takes a spectrum. You author it as an
+        <em>optical depth at 550 nm</em> on the star's Overrides tab; 1 leaves about 37% of the visible
+        light, 3 leaves 5%. It dims the star <em>for observers</em> and does not touch the star's own
+        worlds, because the dust is between here and there rather than around them.</p>
+
+      <h3>Where the blocked light goes</h3>
+      <p>It does not vanish. A structure that intercepts starlight heats up and radiates the same power
+        back out as waste heat, at its own equilibrium temperature &mdash; and that is what makes a
+        Dyson structure <em>findable</em>. A shell at 1 AU around a Sun-like star settles near
+        <strong>394 K</strong> and peaks near <strong>7,400 nm</strong>, deep in the infrared. The
+        covering fraction cancels out: a tenth of a shell absorbs a tenth as much over a tenth of the
+        area, so a sparse swarm sits at the same temperature as a complete one at the same radius.</p>
+      <p class="note">That peak is far outside the 280&ndash;1400 nm grid the rest of the engine works
+        on, which is chosen for the wavelengths that can drive chemistry rather than for the ones we can
+        see. So the re-emission is carried as a <em>total power and a temperature</em> rather than as a
+        curve &mdash; everything a reading needs, without sampling tens of thousands of wavelengths on
+        every body on every pass to serve one feature.</p>
+
+      <h3>A ring dims almost nobody; a shell dims everybody</h3>
+      <p>A shell or an all-sky swarm surrounds its star, so it dims every observer equally. <strong>A
+        ringworld does not.</strong> It is a band, and it only stands between the star and observers
+        near its own plane &mdash; a default ringworld covers about a third of a degree of sky, so a
+        system even one degree out of its plane sees the star completely unobstructed.</p>
+      <p>The starmap knows where every system is in three dimensions, so it answers this per viewer:
+        the star is dimmed for whoever is actually in the shadow and left alone for everyone else.
+        <strong>Two crews in different systems can honestly disagree about what that star looks like,
+        and both are right.</strong> The viewpoint is the map's own centre system (right-click a system
+        and set it); with no centre chosen the map gives the direction-independent answer and treats
+        rings as unresolved rather than guessing.</p>
+
+      <h3>Two designations, and only one of them moves</h3>
+      <p>A star's designation is what its <em>spectrum</em> says, and the engine never overwrites it.
+        Beside it the star publishes what an observer <em>measures</em>, as the three readings laid out
+        separately:</p>
+      <table class="mini">
+        <thead><tr><th>Measurement</th><th>A G2V star behind a 40% Dyson swarm</th></tr></thead>
+        <tbody>
+          <tr><td>Spectroscopy</td><td><code>G2V</code> &mdash; main-sequence dwarf. The absorption lines are untouched, and they are the measurement that never lies.</td></tr>
+          <tr><td>Photometry</td><td>0.6 magnitudes too faint for a G2V at this distance, with no change of colour at all &mdash; which is the tell for something that blocks light evenly.</td></tr>
+          <tr><td>Infrared</td><td>40% of the star's output arriving as far infrared, at about 394 K peaking near 7,351 nm. No G2V produces that.</td></tr>
+        </tbody>
+      </table>
+      <p>The compact form a card or a tooltip shows is the designation with the disagreement appended
+        &mdash; <code>G2V (0.6 mag faint, IR excess)</code> &mdash; and the designation stays at the
+        front, because it is still true.</p>
+      <p><strong>Behind dust the colour genuinely does move, and the engine says so without relabelling
+        the star.</strong> It works out the temperature <em>photometry alone</em> would assign, by
+        finding the blackbody whose colour matches what actually arrives, and reports the letter that
+        goes with it: <em>colour alone would call it a K star</em>. Point a spectrometer at it and the
+        lines still say G. For a swarm that same calculation returns the star's own temperature
+        <em>exactly</em>, because blocking light evenly cancels out of a colour measurement &mdash; so
+        the sentence about colour never appears where nothing changed the colour.</p>
+      <p class="note">Both readings are always computed, and only the <em>cause</em> is ever withheld.
+        That is what makes "both sides of the story" one thing rather than two, and it is why a player
+        surface never has to work anything out for itself &mdash; which is where a leak would come
+        from.</p>
+
+      <h3>What the map draws, and why a shelled star is not a hole</h3>
+      <p>A star with something around it is drawn <em>with the thing around it</em>: a ring whose
+        <strong>gaps are the light still getting out</strong>. A swarm covering 30% of the sky draws a
+        ring 30% closed; a complete Dyson sphere draws a closed one. It is not a symbol to learn, it is
+        the occlusion itself.</p>
+      <p>The star inside keeps an ember of its own colour even when nothing at all is escaping. That is
+        a deliberate floor on the <em>mark</em> and not on the reading: at total occlusion the honest
+        colour is black, and a black dot on a black map is not a dim star, it is an absence &mdash; and
+        it reads as a black hole. The true figure is untouched everywhere it is a figure: the star
+        panel still says the light is gone, and the <strong>Dimmed</strong> tag still says so in
+        magnitudes. The brightness is floored as one factor across all three colour channels, so a
+        star reddened by dust stays red rather than fading to grey.</p>
+      <p><strong>Where the intercepted light goes is a conservation law, and the engine keeps it.</strong>
+        Structures are walked outward from the star and each one only receives what the ones inside it
+        let past &mdash; so a complete shell outside a 30% swarm re-radiates the 70% that reached it,
+        and the pair returns exactly the star's output rather than more than it. A <em>band</em> is the
+        case where the two questions come apart hardest: a ringworld blocks <em>everything</em> for an
+        observer in its plane, and intercepts about half a per cent of its star's sky &mdash; so it
+        blacks the star out for you and is nearly invisible in the infrared.</p>
+      <p>Three tags say all of it, and you can pin any of them onto every map from Find by tag:
+        <strong>Anomalous star</strong> (the verdict &mdash; <em>dimmed, not reddened: something
+        solid</em>, or <em>dimmed and reddened: dust</em>), <strong>Dimmed</strong> (how many
+        magnitudes) and <strong>Infrared excess</strong> (what share of the output came back as heat).
+        The first is the one to pin if you only pin one: it badges every star whose readings do not add
+        up, on your map and on the players'.</p>
+
+      <h3>What players are told is a separate question</h3>
+      <p>A dimmed star carries two tags &mdash; <strong>Dimmed</strong> (how many magnitudes) and
+        <strong>Infrared excess</strong> (what share of the star's output comes back out as heat)
+        &mdash; and like every tag they have a <em>shown / anon / hidden</em> setting. Leave them shown
+        and your players get both sides of the story: a G2V star with a Dyson swarm. Set them to
+        <em>anon</em> and they get the anomaly with no cause: something is here, and the readings do not
+        add up. Hide them and they simply have a star that is far too faint for what its spectrum
+        says.</p>
     </section>
 
     <!-- Placed HERE, beside the other radiation sections, rather than in the star-designation
@@ -738,6 +906,40 @@
       </ul>
       <p>Intrinsic vs induced and the field geometry are explicit; the estimated range is a grounded plausibility
         band, tagged <code>magnetic/dynamo</code>, <code>magnetic/induced</code> or <code>magnetic/unshielded</code>.</p>
+
+      <h3>The magnetosphere: how far that field reaches</h3>
+      <p>A field does not stop at the surface — it carves a cavity out of whatever is blowing on it, and that cavity
+        is a real place with a real size. It ends where the pressure inside balances the pressure outside. A dipole
+        weakens as the cube of distance, so the boundary sits at</p>
+      <p class="formula">R<sub>mp</sub> / R = ( (2B)² / 2μ₀P )<sup>1/6</sup></p>
+      <p>where <strong>B</strong> is the surface field and <strong>P</strong> is what is pushing back. The 2 is real:
+        the current sheet at the boundary roughly doubles the field just inside it. Because it is a sixth root, this
+        is a remarkably stubborn number — you need <em>sixty-four times</em> the wind to halve a magnetosphere, which
+        is why Earth's boundary sits around ten radii out whether the Sun is quiet or raging.</p>
+      <p><strong>What pushes back is not the same thing everywhere.</strong> Out in the open it is the star's wind: a
+        reference pressure at 1 AU, scaled by how active the star is and by the inverse square of distance, summed over
+        every star in the system. But a moon inside its host's magnetosphere never meets that wind at all — the host's
+        field stopped it further out — so its cavity is squeezed by the <em>host's</em> field instead, and the nose of
+        its bubble points at the planet rather than at the star. That is why Europa's little induced bubble stands at
+        about 1.3 of its own radii, close to what Galileo measured, and why it faces Jupiter.</p>
+      <p><strong>The shielded region is smaller than the bubble.</strong> Inside the last <em>closed</em> field line,
+        lines leave the body and come back, so an incoming ion is turned around and sent away — that is the part that
+        actually protects an atmosphere. Outside it the lines are open to the wind, and what travels down them lands
+        on the polar cap. Which is exactly why the <strong>aurora oval</strong> sits where it does: the oval is the
+        footprint of that same boundary, at colatitude θ with sin²θ = 1/L. One number, seen twice. Earth's comes out
+        near 66° of magnetic latitude and Jupiter's near 78°, hugging the pole because its bubble is so much larger.</p>
+      <p>A star's own bubble is its <strong>astrosphere</strong>: its wind against the pressure of interstellar space,
+        which for the Sun puts the heliopause near 120 AU — about where the Voyagers crossed it.</p>
+      <p><strong>What is estimated here, plainly.</strong> The reference wind pressure is an average, and a real one
+        is nothing of the sort: the Sun's swings between about a half and ten times it over the cycle and with every
+        coronal mass ejection, so a magnetosphere breathes. The <em>direction</em> the magnetic axis leans is not
+        derived at all — nothing we hold fixes it, only how far it leans — so it is seeded from the body and kept
+        stable, which is a choice rather than a measurement. The tail's drawn length is a convention too; a real
+        magnetotail has no sharp end, and Earth's has been crossed a thousand radii downstream. And the model is a
+        <em>dipole</em> against a wind: Jupiter's real magnetosphere is inflated well beyond that by plasma from Io's
+        volcanoes, which needs a plasma density this engine does not carry, so its bubble here is the honest
+        pressure-balance answer and not the observed one. As ever, a field you pin yourself is obeyed: a seventy-tesla
+        world gets its enormous bubble and a note, never an argument.</p>
     </section>
 
     <section id="aurora">
@@ -756,10 +958,17 @@
         <li><strong>Hydrogen / helium</strong> → red-pink (the giant-planet palette).</li>
       </ul>
       <p>The renderer reads the dominant auroral gas and paints the oval in that colour. <strong>Shape</strong> is a
-        pole-hugging ring (an auroral oval), exaggerated for legibility à la Hubble's Jupiter — stronger auroras reach
-        further toward the equator, glow slightly past the limb, and follow the body's <strong>axial tilt</strong>
+        pole-hugging ring (an auroral oval), exaggerated in width for legibility à la Hubble's Jupiter — stronger
+        auroras glow slightly past the limb, and the whole thing follows the body's <strong>axial tilt</strong>
         along with everything else in its frame (see the visualisation notes below). The Newton panel's
         <em>Aurora</em> layer names the gas and the colour for any world that has one.</p>
+      <p><strong>How far from the pole it sits is not a style choice — it is the magnetosphere's own answer.</strong>
+        The oval traces where the last <em>closed</em> field line comes back to the surface, which is exactly the
+        boundary described under <a href="#magnetism">Magnetism</a> above: inside it the wind is turned away, outside
+        it the lines are open and what travels down them lands on the cap. So a world with a bigger bubble has an oval
+        closer to its pole, and one number produces both pictures. Earth's lands near 66° of magnetic latitude and
+        Jupiter's near 78°, hugging the pole because its magnetosphere is so much larger — and a body whose field is
+        too weak to close a line above the ground gets no oval at all, which is Mercury's real situation.</p>
     </section>
 
     <section id="spin">
@@ -987,6 +1196,24 @@
         for nothing; <em>station-keeping</em> at L1/L2/L3, the periodic trim burns real halo-orbit missions
         budget for; and <em>holding</em> when the trojan regime is breached, because then there is no
         equilibrium left to keep and the ship is simply thrusting to stay put.</p>
+
+      <h3>Hill spheres &mdash; the room a body has of its own</h3>
+      <p>Switch the Hill-sphere overlay on and every body that has one draws its bubble: the region within
+        which <em>it</em>, rather than the thing it orbits, is what holds on to something. That is where a
+        moon can sit around a planet, and where a <strong>submoon</strong> could sit around a moon &mdash;
+        which is why moons draw bubbles here at all.</p>
+      <p>Two things about what gets drawn are worth knowing, because both look like bugs until you know
+        them. <strong>The test is geometric, not a mass bar.</strong> A bubble appears when the Hill radius
+        clears the body's own surface &mdash; when there is genuinely room <em>outside</em> the body for
+        anything to orbit in &mdash; so Deimos gets its correctly tiny bubble and a body whose Hill sphere
+        lies inside itself gets none. The flight propagator asks a different question with a different floor
+        (roughly Mercury's mass, the bar for bending a heliocentric coast), and applying <em>that</em> to the
+        display would draw no moon bubble anywhere: Ganymede, Titan, Luna and Io all sit under it. The two
+        questions are deliberately kept apart. And <strong>a member of a pair is bounded by its partner,
+        not by the shared centre</strong>: its bubble is the largest orbit that survives the companion,
+        because a Hill radius measured about the barycentre is really a measure of the member's own wobble
+        &mdash; which would hand the body closest to the centre the smallest bubble, and did exactly that to
+        Pluto against Charon before it was corrected.</p>
     </section>
 
     <section id="ejection">
@@ -1432,10 +1659,13 @@
     <section id="habitability">
       <h2>Habitability score</h2>
       <p>A 0–100 weighted score, rebalanced toward current astrobiology thinking — a liquid <strong>solvent</strong>
-        is the master variable: solvent (20, +5 for water = 25), temperature against that solvent's band (25),
+        is the master variable: solvent (25), temperature against that solvent's band (25),
         atmospheric pressure (18), radiation (17), and surface gravity (15, a weak constraint with a wide 0.5–1.5 g
         tolerance) — the instantaneous <em>surface</em> conditions. The solvent must be genuinely <em>liquid</em>
-        (a frozen ice cap scores 0 — its life potential is the subsurface ocean below).</p>
+        (a frozen ice cap scores 0 — its life potential is the subsurface ocean below). <strong>Those 25 marks
+        are scaled by the solvent's own quality</strong>, not handed out for any liquid: water is ideal and takes
+        the lot, a hydrocarbon or ammonia sea is a plausible alternative and takes 0.6 of them — 15 points, not 20
+        — and anything else scores nothing at all. The coverage ramp below scales what is left.</p>
       <p><strong>Which temperature, and it matters more than it sounds.</strong> The score reads the
         <em>mean surface</em> temperature — the average of the day and night sides worked out under
         <a href="#temp-range">temperature range</a> — and never the radiating temperature. The two diverge by 56 K
@@ -1455,7 +1685,8 @@
       <ul>
         <li><strong>Plate tectonics</strong> +8 (carbonate–silicate climate regulation); <strong>stagnant-lid</strong>
           −25 (runaway-greenhouse risk); <strong>tidal-volcanic</strong> −20 (resurfaced too fast); <strong>inactive</strong>
-          −10 (no outgassing / nutrient recycling).</li>
+          −10 (no outgassing / nutrient recycling); <strong>plutonic</strong> −10 (intrusive only, so the same
+          loss with a different cause).</li>
         <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).</li>
         <li>A <strong>subsurface ocean</strong> (cryovolcanic or under-ice) floors the score at 35 with a
           <code>habitability/subsurface</code> tier — sub-ice life is a separate axis from the surface Goldilocks zone.</li>
@@ -1556,7 +1787,7 @@
           shielding as a real one would, and is labelled <code>magnetic/anomalous</code> rather than reported as
           an ordinary dynamo.</li>
         <li><strong>Radiogenic heat</strong>, <strong>thermal inflation</strong>, and a star’s
-          <strong>magnetic activity</strong> — the flare and X-ray output, which is set by the dynamo rather
+          <strong>flare activity</strong> — the flare and X-ray output, which is set by the dynamo rather
           than by brightness.</li>
       </ul>
       <p><strong>Nothing is refused, and nothing is quietly corrected.</strong> This is the same rule the star
@@ -1568,8 +1799,9 @@
         Precursor Engineering, Exotic Matter, Nanite Ecology, Magic and the rest, or one you write yourself. The
         tag that reaches the world names the quantities it is accounting for, so a player reading
         <em>Alien Technology: Anomalous magnetosphere, surface temperature</em> learns what is odd about the place rather
-        than only that something is. A reason can be kept secret, and a pin with no reason given shows players
-        nothing at all. Reset the override and its reason goes with it.</p>
+        than only that something is. A reason can be hidden from players, or shown to them as an unnamed
+        <em>something</em> (the tag's own shown / anon / hidden setting), and a pin with no reason given shows
+        players nothing at all. Reset the override and its reason goes with it.</p>
       <p>The Newton trace (the “show the working” panel on a body) puts every pinned figure at the head of the
         panel and marks it again inside each layer whose number it sets — the trace is a record of how an answer
         was reached, so a hand-set answer has to say so.</p>
@@ -1772,6 +2004,25 @@
         star (bounded by ~0.37× its tightest pairing) and P-type circumbinary planets around tight pairs (beyond
         ~2.3× the separation). Tight pairs push their planets circumbinary; well-separated stars each keep their
         own little system.</p>
+
+      <p><strong>What a barycentre guarantees, once a pair has formed.</strong> The two members sit on
+        <strong>opposite sides of the centre at every instant</strong>, go round it in <strong>one shared
+        period</strong>, and are split by mass so the <strong>heavier one sits closer in</strong> — its distance
+        from the centre is the separation times the <em>other</em> body's share of the pair's mass. That is not a
+        drawing convention; it is what being a pair means, and the three facts are enforced together, because
+        enforcing any one of them alone is how a pair ends up chasing its partner round instead of orbiting it.
+        A campaign saved before this was pinned can therefore <strong>move bodies when it loads</strong>:
+        the correction is the engine putting a member where its own mass says it belongs.</p>
+      <p><strong>And what makes a pair in the first place is a mass ratio you can change.</strong> A companion
+        heavier than <strong>8%</strong> of what it orbits stops being a satellite and becomes half of a
+        barycentre; below <strong>5%</strong> an automatic pair is dissolved again. There is no physical
+        discontinuity at either figure — Pluto and Charon are called a double at 0.12 and the Earth and Moon are
+        not at 0.0123, and where between them the line falls is a matter of what you want on your map — so both
+        are rule-pack data (<code>generation_parameters.barycentre_promote_ratio</code> and
+        <code>barycentre_demote_ratio</code>). The gap between them is deliberate: the lower figure has to stay
+        <em>below</em> the upper one or a pair would form and dissolve on alternate passes, so a pack that asks
+        for them the wrong way round is honoured on the promote figure and has the other pulled just under it.
+        Nothing you authored by hand is touched either way.</p>
 
       <h3>Which one is drawn &mdash; the four dials</h3>
       <p>Among the types that survive the gates, the draw is a product of independent weights, each answering a
@@ -1991,13 +2242,14 @@
           computed.
           The same estimate is used on the GM's own 3D view, so both see the identical line; the GM's flat map
           still draws the full path point for point. The line is also pinned to the ship itself, so it passes
+          through the vessel exactly even where the estimate and the true path differ. While a player view is
           <strong>following the GM's clock</strong>, ships in transit are also <em>positioned</em> along this
           same curve, so a moving ship sits exactly on its drawn line. And a player scrubbing their
           <strong>own</strong> clock now sees traffic move too — the ship where it would be at
           <em>their</em> time, not where the GM last left it. That is the same rule the planets have
           always followed: if the view can work a thing out from the time alone, the time is the
           viewer's to choose. A view that is following the GM is unchanged, its clock already being
-          his. The one thing a scrubbing view cannot show you is what happens <em>after</em> a ship's
+          theirs. The one thing a scrubbing view cannot show you is what happens <em>after</em> a ship's
           current plan ends, because where it parks and what it ends up orbiting is the GM's to
           decide and has not happened yet.</li>
         <li>Coasting/adrift transit trajectories drop moons <em>while the clock is moving</em>: the gravity field used to integrate a drifting ship live (and its forecast line) includes only stars and planets, because re-integrating the full satellite census on every clock-slider frame is impractical in a browser. A moon's pull on a heliocentric coast is negligible anyway, and the star and any planet the ship passes still bend the path. Once the clock settles, the forecast upgrades to a one-shot, moon-inclusive plot — fast estimates while you scrub, the accurate path when you stop.</li>

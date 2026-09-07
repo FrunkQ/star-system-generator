@@ -30,8 +30,17 @@ export interface StateVectorResult { elements: Kepler | null; unbound: boolean; 
 /** Convert relative state vectors (SI, US frame) to SSG Keplerian elements. Returns
  *  { elements: null, unbound: true } for a hyperbolic/parabolic/degenerate state (never clamped). */
 export function stateVectorsToElements(rRelUs: V3, vRelUs: V3, mu: number): StateVectorResult {
-  const r = toWork(rRelUs);
-  const v = toWork(vRelUs);
+  return elementsFromState(toWork(rRelUs), toWork(vRelUs), mu);
+}
+
+/**
+ * THE ONE STATE-TO-ELEMENTS CONVERSION, in the engine's own frame (z up, the reference plane z = 0,
+ * metres and m/s). `stateVectorsToElements` above is the Universe Sandbox wrapper that swaps Y and Z
+ * first; `system/reparent.ts` calls this directly with the propagator's world state (G64), because a
+ * re-homed body's new orbit is exactly an import of its current state about a different host. One
+ * implementation, two entry points - a second copy is how five Lagrange conventions once shipped.
+ */
+export function elementsFromState(r: V3, v: V3, mu: number): StateVectorResult {
   const rMag = norm(r);
   const vMag = norm(v);
   if (!(rMag > 0) || !(vMag >= 0) || !(mu > 0)) return { elements: null, unbound: true };

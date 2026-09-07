@@ -2,6 +2,7 @@
 // the size clause is DERIVED from the pack band, so it cannot drift from the physics.
 import { describe, it, expect } from 'vitest';
 import { explainStarClass, sizeInWords, pickerLabel, luminosityClassOfKey, exemplarFor } from './starClassExplain';
+import { SOLAR_RADIUS_KM } from '$lib/constants';
 import { loadStarterPack } from '$lib/import/realsky/testPack';
 
 const pack = loadStarterPack() as any;
@@ -87,7 +88,9 @@ describe('the size clause is DERIVED, which is the point of it', () => {
 		expect(sizeInWords(750)).toBe('hundreds of times wider than the Sun');
 		expect(sizeInWords(10)).toBe('roughly 10 times wider than the Sun');
 		expect(sizeInWords(1)).toBe('about the size of the Sun');
-		expect(sizeInWords(0.2)).toMatch(/narrower than the Sun/);
+		// A88 changed this rung from a reciprocal to a fraction: "3.3 times narrower" is clumsy and not
+		// really English, and the owner said what he wanted instead - "0.3 the size of Sol".
+		expect(sizeInWords(0.2)).toBe('about 0.2 times the width of the Sun');
 	});
 
 	it('says nothing rather than something wrong when there is no radius', () => {
@@ -146,15 +149,15 @@ describe('the famous few', () => {
 // Owner, 2026-08-15: "this should also change M-type to Flaring M-Type."
 describe('a flare star is described as one', () => {
 	it('says Flaring when the activity bucket is flare-star', () => {
-		expect(explainStarClass(pack, 'star/M', 'flare-star')!.kind).toBe('Flaring main-sequence dwarf');
-		expect(explainStarClass(pack, 'star/M', 'flare-star')!.text).toMatch(/^M \(Flaring main-sequence dwarf/);
+		expect(explainStarClass(pack, 'star/M', { activity: 'flare-star' })!.kind).toBe('Flaring main-sequence dwarf');
+		expect(explainStarClass(pack, 'star/M', { activity: 'flare-star' })!.text).toMatch(/^M \(Flaring main-sequence dwarf/);
 	});
 
 	it('does NOT say it for a quiet star, which is the same class', () => {
 		// The designation is unchanged — flaring is a property of THIS star, not of M dwarfs as a
 		// class, and it comes from class AND age. An old M dwarf is not a flare star.
 		for (const bucket of ['quiet', 'moderate', 'active', undefined]) {
-			expect(explainStarClass(pack, 'star/M', bucket)!.kind, String(bucket)).toBe('Main-sequence dwarf');
+			expect(explainStarClass(pack, 'star/M', { activity: bucket })!.kind, String(bucket)).toBe('Main-sequence dwarf');
 		}
 	});
 });
@@ -163,3 +166,66 @@ describe('a flare star is described as one', () => {
 //  ladder they pinned divided each letter into ten equal temperature steps and was accurate to about
 //  a subclass and a half; the anchors that replaced it are exact for ten of twelve published stars,
 //  so the assertions changed with the numbers. The giant REFUSAL moved unchanged.)
+
+/**
+ * A88 — THE SIZE CLAUSE MUST DESCRIBE THIS STAR, NOT ITS CLASS.
+ *
+ * Owner, 2026-09-03, looking at the starmap hover card on a supermassive black hole he had
+ * built: *"the tip still says 300km in mouse-over. you have access to the real data so red
+ * dwarfs can say they are 0.3 the size of Sol"*.
+ *
+ * MEASURED: a 9.87e9 M☉ hole whose event horizon is 29,176,646,000 km — 195 AU — was described
+ * as "a ball about 300 km across", out by a factor of about 10^8. The clause was taking the
+ * midpoint of the PACK BAND for `star/BH`, which is right for the stellar-mass holes that were
+ * the only ones reachable before A83 opened the slider to 2.7e11 M☉.
+ *
+ * B57 BUILT IT FROM THE BAND ON PURPOSE and that reasoning still holds where it applies: a band
+ * is an anchor the pack already states, so the sentence cannot drift and retuning a band updates
+ * every explanation for free. It holds for a CLASS — the picker's tooltip, the physics page —
+ * where there is no particular star to measure. It does not hold for a BODY, whose radius is a
+ * measurement we already have; and for a remnant it never held at all, because a black hole's
+ * radius IS its mass and no band can stand in for it.
+ *
+ * So: the body's own radius when there is one, the band when there is not.
+ */
+describe('A88 — the size clause describes THIS star when we have it', () => {
+	it('takes the body\u2019s own radius over the band', () => {
+		// The G band would say "about the size of the Sun"; this particular star is a giant.
+		expect(explainStarClass(pack, 'star/G2V', { radiusSolar: 12 })!.size)
+			.toBe('roughly 12 times wider than the Sun');
+	});
+
+	it('THE REPORTED CASE: a supermassive hole is not "a ball about 300 km across"', () => {
+		// 9.87e9 M☉ -> a 195 AU event horizon, so the disc is about 390 AU across.
+		const size = explainStarClass(pack, 'star/BH', { radiusSolar: 42385 })!.size!;
+		expect(size).not.toMatch(/km across/);
+		expect(size).toMatch(/AU across/);
+		expect(size).toMatch(/39\d|40\d/); // ~390 AU, to one or two significant figures
+	});
+
+	it('a stellar-mass hole still reads in kilometres — the old case must not regress', () => {
+		// 10 M☉ -> r_s 29.5 km, so about 59 km across.
+		expect(explainStarClass(pack, 'star/BH', { radiusSolar: 29.5 / SOLAR_RADIUS_KM })!.size)
+			.toMatch(/^a ball about \d+ km across$/);
+	});
+
+	it('Sagittarius A* lands in solar radii, where it belongs', () => {
+		// 4.3e6 M☉ -> r_s 0.085 AU = 18.3 R☉. Not a ball of kilometres and not an AU-scale disc.
+		const size = explainStarClass(pack, 'star/BH', { radiusSolar: 18.3 })!.size!;
+		expect(size).toMatch(/times wider than the Sun/);
+	});
+
+	it('a red dwarf says what fraction of the Sun it is — the owner\u2019s own example', () => {
+		expect(explainStarClass(pack, 'star/M', { radiusSolar: 0.3 })!.size)
+			.toBe('about 0.3 times the width of the Sun');
+	});
+
+	it('falls back to the band when there is no body to measure — B57 still stands', () => {
+		// The picker tooltip and the physics page explain a CLASS, not a star.
+		expect(explainStarClass(pack, 'star/G')!.size).toBe(explainStarClass(pack, 'star/G', {})!.size);
+		expect(explainStarClass(pack, 'star/G')!.size).toBeDefined();
+		// A zero or absent radius is not a measurement: fall back rather than print nonsense.
+		expect(explainStarClass(pack, 'star/G', { radiusSolar: 0 })!.size)
+			.toBe(explainStarClass(pack, 'star/G')!.size);
+	});
+});

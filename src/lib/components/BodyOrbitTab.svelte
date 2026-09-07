@@ -7,11 +7,15 @@
   import { formatPref, unitBodyTypeFor } from '$lib/units';
   import OrbitalSlider from './OrbitalSlider.svelte';
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
+  import { hostCandidates, reparentBody } from '$lib/system/reparent';
 
   export let body: CelestialBody;
   export let parentBody: CelestialBody | null = null;
   export let system: any = null;
   export let rulePack: RulePack | null = null;
+  // The display instant. A re-home keeps the body exactly where the map shows it NOW, so the new
+  // orbit's epoch is this moment, not the wall clock.
+  export let nowMs: number | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -286,6 +290,30 @@ function updateOrbit() {
       ? `${body.name} orbits the centre at ${a_AU.toFixed(3)} AU, ${partnerName} at ${partnerA_AU.toFixed(3)} AU on the opposite side — heavier bodies sit closer in.`
       : '';
 
+  // G64: RE-HOME. The owner's words: "an advanced edit button next to the standard orbit - to
+  // reparent - it does not deserve 1st level appearance" - so it lives behind the one Advanced
+  // disclosure, never at first level. The list is the construct picker's (one rule, system/reparent),
+  // minus this body and everything beneath it, so a cycle cannot be asked for. Position-preserving:
+  // the body's world state at `nowMs` is re-expressed about the new host (the importer's own
+  // state-to-elements conversion), and the processor's passes then settle masses, pairs and the
+  // stability tags that say whether the new home can hold it. Steer, do not stop.
+  let rehomeHostId: string | null = null;
+  let rehomeNote = '';
+  $: rehomeCandidates = (system?.nodes && body?.id && body.kind === 'body' && !body.coOrbital)
+      ? hostCandidates(system, { forBodyId: body.id })
+      : [];
+  $: canRehome = !!rehomeHostId && rehomeHostId !== body?.parentId;
+  function rehome() {
+      if (!system || !rehomeHostId || rehomeHostId === body.parentId) return;
+      const res = reparentBody(system, body.id, rehomeHostId, nowMs ?? Date.now());
+      if (!res) { rehomeNote = 'That body cannot host this one.'; return; }
+      rehomeNote = res.mode === 'kepler'
+          ? `${body.name} now orbits ${res.hostName}, from exactly where it was.`
+          : `${body.name} now orbits ${res.hostName} on a circle at its current distance - it was moving too fast for ${res.hostName} to hold on any ellipse. It has not moved; the stability tags say what happens next.`;
+      rehomeHostId = null;
+      dispatch('update');
+  }
+
   $: peri = dist_AU * (1 - e);
   $: aph = dist_AU * (1 + e);
   $: minSafePeriapsisAU = calculateMinSafePeriapsisAU();
@@ -424,6 +452,25 @@ function updateOrbit() {
                 </div>
                 <input type="range" min="0" max="360" step="0.01" bind:value={Omega_deg} on:input={updateOrbit} class="full-width-slider" />
             </div>
+
+            <hr />
+
+            <div class="form-group rehome-group">
+                <div class="label-row">
+                    <label for="rehome-host" title="Move this body to orbit a different host. It stays exactly where it is on the map at this instant; its orbit is re-expressed about the new host.">Re-home to</label>
+                    <select id="rehome-host" bind:value={rehomeHostId} disabled={!rehomeCandidates.length}>
+                        <option value={null}>{rehomeCandidates.length ? 'Choose a host…' : 'Nothing can host this body'}</option>
+                        {#each rehomeCandidates as h (h.id)}
+                            <option value={h.id} disabled={h.id === body.parentId}>{hostLabel(h, system)}{h.id === body.parentId ? ' (current)' : ''}</option>
+                        {/each}
+                    </select>
+                </div>
+                <div class="info-row" style="font-size: 0.78em; color: var(--text-faint);">
+                    Keeps {body.name} exactly where it is at this instant and re-expresses its orbit about the new host — a tidy ellipse if it is bound there, a circle at its current distance if not. Nothing is refused; the stability tags say what would happen.
+                </div>
+                <button class="rehome-btn" on:click={rehome} disabled={!canRehome}>Re-home {body.name}</button>
+                {#if rehomeNote}<div class="info-row" style="font-size: 0.78em;">{rehomeNote}</div>{/if}
+            </div>
         {/if}
     {/if}
 </div>
@@ -478,4 +525,14 @@ function updateOrbit() {
   .checkbox-row label { margin: 0; }
 
   hr { border: 0; border-top: 1px solid var(--border); margin: 5px 0; width: 100%; }
+
+  .rehome-group select {
+      padding: 4px;
+      background: var(--bg-control);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 3px;
+      max-width: 60%;
+  }
+  .rehome-btn { align-self: flex-start; margin-top: 4px; }
 </style>

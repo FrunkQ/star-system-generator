@@ -5,7 +5,7 @@
 // the body's narrative-ish tags — so the seed text + selected tags can drive imaginative writing.
 import type { CelestialBody } from '../types';
 import { G, AU_KM } from '../constants';
-import { formatOrbitRadiusAu, formatTempK } from '../units';
+import { formatOrbitRadiusAu, formatTempK, formatPref, formatPrefValues, dimensionsKmFromM, KG_PER_TONNE } from '../units';
 
 const EARTH_G = 9.80665;
 const EARTH_MASS_KG = 5.972e24;
@@ -79,10 +79,17 @@ export function summarizeBodyForLLM(body: CelestialBody): Record<string, any> {
 export function summarizeConstructForLLM(c: CelestialBody): Record<string, any> {
   const out: Record<string, any> = { name: c.name, type: 'construct' };
   const pp: any = c.physical_parameters ?? {};
-  if (Array.isArray(pp.dimensionsM) && pp.dimensionsM.length) out.dimensions = `${pp.dimensionsM.join(' x ')} m`;
-  if (pp.massKg) out.hullMass = `${Math.round(pp.massKg).toLocaleString()} kg`;
+  // A80: prompt text, so it takes the DEFAULT ladder rather than the GM's prefs — what the model
+  // reads should not change because a GM cycled a unit. It does need the honest digits: a
+  // mega-construct's hull mass in bare kg was a twenty-four digit number ending in float dust.
+  const dimsKm = dimensionsKmFromM(pp.dimensionsM);
+  if (dimsKm) out.dimensions = formatPrefValues(undefined, 'dimensions', 'construct', dimsKm);
+  if (pp.massKg) out.hullMass = formatPref(undefined, 'mass', 'construct', pp.massKg);
   if (c.crew) out.crew = `${c.crew.current ?? 0} / ${c.crew.max ?? 0}`;
-  if (pp.cargoCapacity_tonnes) out.cargo = `${Math.round(c.current_cargo_tonnes ?? 0).toLocaleString()} / ${pp.cargoCapacity_tonnes.toLocaleString()} t`;
+  if (pp.cargoCapacity_tonnes) {
+    out.cargo = formatPrefValues(undefined, 'mass', 'construct',
+      [(c.current_cargo_tonnes ?? 0) * KG_PER_TONNE, pp.cargoCapacity_tonnes * KG_PER_TONNE], ' / ');
+  }
   if (Array.isArray(c.engines) && c.engines.length) {
     out.engines = c.engines.map((e: any) => `${e.quantity}x ${String(e.engine_id).replace('engine-', '').replace(/-/g, ' ')}`).join(', ');
   }

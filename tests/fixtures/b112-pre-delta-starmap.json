@@ -1,0 +1,1114 @@
+{
+  "id": "b112-pre-delta",
+  "name": "B112 Pre-Delta Save",
+  "distanceUnit": "ly",
+  "scale": {
+    "unit": "ly",
+    "pixelsPerUnit": 10,
+    "showScaleBar": true
+  },
+  "systems": [
+    {
+      "id": "sys-1",
+      "name": "Test Star",
+      "x": 0,
+      "y": 0,
+      "system": {
+        "id": "sys-1",
+        "name": "Test Star",
+        "seed": "b112",
+        "nodes": [
+          {
+            "id": "star-1",
+            "kind": "body",
+            "name": "Test Star",
+            "parentId": null,
+            "roleHint": "star",
+            "massKg": 1.989e+30,
+            "radiusKm": 696340,
+            "temperatureK": 5778,
+            "radiationOutput": 1,
+            "classes": [
+              "star/G2V"
+            ],
+            "tags": [],
+            "axial_tilt_deg": 0,
+            "rotation_period_hours": 600
+          }
+        ]
+      }
+    }
+  ],
+  "temporal": {
+    "masterTimeSec": "435084632967250575",
+    "displayTimeSec": "435084632967250575",
+    "activeCalendarKey": "Thousand Suns Reckoning",
+    "temporal_registry": {
+      "Earth Gregorian": {
+        "id": "EARTH_GREG",
+        "math_type": "BUCKET_DRAIN",
+        "epoch_offset_t": "435084559692049800",
+        "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, {year} AD",
+        "hierarchy": [
+          {
+            "unit": "year",
+            "multiplier": 31536000
+          },
+          {
+            "unit": "day",
+            "multiplier": 86400
+          },
+          {
+            "unit": "hour",
+            "multiplier": 3600
+          },
+          {
+            "unit": "min",
+            "multiplier": 60
+          },
+          {
+            "unit": "sec",
+            "multiplier": 1
+          }
+        ],
+        "leap_logic": {
+          "drift_per_year_t": 20925,
+          "threshold_t": 86400,
+          "apply_to": "day"
+        },
+        "lookup_tables": {
+          "weekdays": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+          ],
+          "months": [
+            {
+              "name": "January",
+              "days": 31
+            },
+            {
+              "name": "February",
+              "days": 28
+            },
+            {
+              "name": "March",
+              "days": 31
+            },
+            {
+              "name": "April",
+              "days": 30
+            },
+            {
+              "name": "May",
+              "days": 31
+            },
+            {
+              "name": "June",
+              "days": 30
+            },
+            {
+              "name": "July",
+              "days": 31
+            },
+            {
+              "name": "August",
+              "days": 31
+            },
+            {
+              "name": "September",
+              "days": 30
+            },
+            {
+              "name": "October",
+              "days": 31
+            },
+            {
+              "name": "November",
+              "days": 30
+            },
+            {
+              "name": "December",
+              "days": 31
+            }
+          ]
+        }
+      },
+      "Star Trek Stardate": {
+        "id": "TNG_SD",
+        "math_type": "RATIO_LINEAR",
+        "epoch_offset_t": "435084632967250575",
+        "format": "Stardate {val}",
+        "parameters": {
+          "units_per_earth_year": 1000,
+          "seconds_per_earth_year": 31557600,
+          "precision_digits": 1
+        }
+      },
+      "Mayan Haab (Simplified)": {
+        "id": "MAYAN_HAAB_SIMPL",
+        "math_type": "BUCKET_DRAIN",
+        "epoch_offset_t": "435084461534290575",
+        "format": "{weekday} {mday}{suffix} {month}, Haab Year {year}",
+        "hierarchy": [
+          {
+            "unit": "year",
+            "multiplier": 31536000
+          },
+          {
+            "unit": "day",
+            "multiplier": 86400
+          },
+          {
+            "unit": "hour",
+            "multiplier": 3600
+          },
+          {
+            "unit": "min",
+            "multiplier": 60
+          },
+          {
+            "unit": "sec",
+            "multiplier": 1
+          }
+        ],
+        "leap_logic": {
+          "drift_per_year_t": 0,
+          "threshold_t": 86400,
+          "apply_to": "day"
+        },
+        "lookup_tables": {
+          "weekdays": [
+            "Imix",
+            "Ik",
+            "Akbal",
+            "K'an",
+            "Chikchan",
+            "Kimi",
+            "Manik",
+            "Lamat",
+            "Muluk",
+            "Ok",
+            "Chuwen",
+            "Eb",
+            "Ben",
+            "Ix",
+            "Men",
+            "Kib",
+            "Kaban",
+            "Etznab",
+            "Kawak",
+            "Ajaw"
+          ],
+          "months": [
+            {
+              "name": "Pop",
+              "days": 20
+            },
+            {
+              "name": "Wo",
+              "days": 20
+            },
+            {
+              "name": "Sip",
+              "days": 20
+            },
+            {
+              "name": "Sotz",
+              "days": 20
+            },
+            {
+              "name": "Sek",
+              "days": 20
+            },
+            {
+              "name": "Xul",
+              "days": 20
+            },
+            {
+              "name": "Yaxkin",
+              "days": 20
+            },
+            {
+              "name": "Mol",
+              "days": 20
+            },
+            {
+              "name": "Chen",
+              "days": 20
+            },
+            {
+              "name": "Yax",
+              "days": 20
+            },
+            {
+              "name": "Sak",
+              "days": 20
+            },
+            {
+              "name": "Keh",
+              "days": 20
+            },
+            {
+              "name": "Mak",
+              "days": 20
+            },
+            {
+              "name": "Kankin",
+              "days": 20
+            },
+            {
+              "name": "Muwan",
+              "days": 20
+            },
+            {
+              "name": "Pax",
+              "days": 20
+            },
+            {
+              "name": "Kayab",
+              "days": 20
+            },
+            {
+              "name": "Kumku",
+              "days": 20
+            },
+            {
+              "name": "Wayeb",
+              "days": 5
+            }
+          ]
+        }
+      },
+      "Chinese Lunisolar (Simplified)": {
+        "id": "CHINESE_LUNISOLAR_SIMPL",
+        "math_type": "BUCKET_DRAIN",
+        "epoch_offset_t": "435084488515324800",
+        "format": "{hour:02}:{min:02}:{sec:02}, {weekday} {mday}{suffix} {month}, Year {year}",
+        "hierarchy": [
+          {
+            "unit": "year",
+            "multiplier": 30585600
+          },
+          {
+            "unit": "day",
+            "multiplier": 86400
+          },
+          {
+            "unit": "hour",
+            "multiplier": 3600
+          },
+          {
+            "unit": "min",
+            "multiplier": 60
+          },
+          {
+            "unit": "sec",
+            "multiplier": 1
+          }
+        ],
+        "leap_logic": {
+          "drift_per_year_t": 0,
+          "threshold_t": 86400,
+          "apply_to": "day"
+        },
+        "lookup_tables": {
+          "weekdays": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+          ],
+          "months": [
+            {
+              "name": "First Moon",
+              "days": 30
+            },
+            {
+              "name": "Second Moon",
+              "days": 29
+            },
+            {
+              "name": "Third Moon",
+              "days": 30
+            },
+            {
+              "name": "Fourth Moon",
+              "days": 29
+            },
+            {
+              "name": "Fifth Moon",
+              "days": 30
+            },
+            {
+              "name": "Sixth Moon",
+              "days": 29
+            },
+            {
+              "name": "Seventh Moon",
+              "days": 30
+            },
+            {
+              "name": "Eighth Moon",
+              "days": 29
+            },
+            {
+              "name": "Ninth Moon",
+              "days": 30
+            },
+            {
+              "name": "Tenth Moon",
+              "days": 29
+            },
+            {
+              "name": "Eleventh Moon",
+              "days": 30
+            },
+            {
+              "name": "Twelfth Moon",
+              "days": 29
+            }
+          ]
+        }
+      },
+      "Thousand Suns Reckoning": {
+        "id": "THOUSAND_SUNS",
+        "math_type": "RATIO_LINEAR",
+        "epoch_offset_t": "435084632967250575",
+        "format": "TS {val}",
+        "parameters": {
+          "units_per_earth_year": 1000,
+          "seconds_per_earth_year": 31557600,
+          "precision_digits": 2
+        }
+      }
+    },
+    "playbackRunning": false,
+    "playbackRateSecPerSec": 1
+  },
+  "poiPacks": [],
+  "reasonsConfig": {
+    "enabled": true,
+    "categories": {
+      "status": true,
+      "owner": true,
+      "purpose": true,
+      "resource": true,
+      "class": true,
+      "drive": true,
+      "frontier": true,
+      "anomaly": true,
+      "universe": true,
+      "disposition": true,
+      "tech": true,
+      "science": true,
+      "intrigue": true
+    }
+  },
+  "coiCategories": [
+    {
+      "id": "status",
+      "label": "Status",
+      "color": "#5a7d8c",
+      "textColor": "#ffffff",
+      "enabled": true,
+      "required": true,
+      "tags": [
+        {
+          "key": "status/in-transit-interstellar",
+          "label": "In transit (interstellar)",
+          "derived": true
+        },
+        {
+          "key": "status/in-transit-system",
+          "label": "In transit (in-system)",
+          "derived": true
+        },
+        {
+          "key": "status/adrift",
+          "label": "Adrift",
+          "readiness": 0,
+          "derived": true
+        },
+        {
+          "key": "status/damaged",
+          "label": "Damaged",
+          "readiness": 0.5
+        },
+        {
+          "key": "status/distress",
+          "label": "Distress",
+          "readiness": 0
+        },
+        {
+          "key": "status/refit",
+          "label": "Refit",
+          "readiness": 0
+        },
+        {
+          "key": "status/dormant",
+          "label": "Dormant",
+          "readiness": 0
+        },
+        {
+          "key": "status/captured",
+          "label": "Captured"
+        },
+        {
+          "key": "status/derelict",
+          "label": "Derelict",
+          "readiness": 0
+        },
+        {
+          "key": "status/mothballed",
+          "label": "Mothballed",
+          "readiness": 0
+        },
+        {
+          "key": "status/construction",
+          "label": "Under construction",
+          "readiness": 0.5
+        },
+        {
+          "key": "status/impounded",
+          "label": "Impounded",
+          "readiness": 0
+        },
+        {
+          "key": "status/quarantined",
+          "label": "Quarantined",
+          "readiness": 0
+        },
+        {
+          "key": "status/lost",
+          "label": "Lost",
+          "readiness": 0
+        },
+        {
+          "key": "status/decommissioned",
+          "label": "Decommissioned",
+          "readiness": 0
+        }
+      ]
+    },
+    {
+      "id": "owner",
+      "label": "Owner",
+      "color": "#3f6fb0",
+      "textColor": "#ffffff",
+      "single": true,
+      "enabled": true,
+      "required": true,
+      "tags": [
+        {
+          "key": "owner/military",
+          "label": "Military",
+          "tardiness": 0
+        },
+        {
+          "key": "owner/government",
+          "label": "Government",
+          "tardiness": 0.1
+        },
+        {
+          "key": "owner/corporation",
+          "label": "Corporation",
+          "tardiness": 0.25
+        },
+        {
+          "key": "owner/consortium",
+          "label": "Consortium",
+          "tardiness": 0.5
+        },
+        {
+          "key": "owner/independent",
+          "label": "Independent",
+          "tardiness": 0.6
+        },
+        {
+          "key": "owner/pirate",
+          "label": "Pirate",
+          "tardiness": 0.75
+        },
+        {
+          "key": "owner/owner-operator",
+          "label": "Owner-operator",
+          "tardiness": 1
+        }
+      ]
+    },
+    {
+      "id": "purpose",
+      "label": "Purpose",
+      "color": "#2f9e8f",
+      "textColor": "#ffffff",
+      "enabled": true,
+      "required": true,
+      "tags": [
+        {
+          "key": "purpose/patrol",
+          "label": "Patrol"
+        },
+        {
+          "key": "purpose/ship-repair",
+          "label": "Ship Repair"
+        },
+        {
+          "key": "purpose/refuel",
+          "label": "Refuel"
+        },
+        {
+          "key": "purpose/resupply",
+          "label": "Resupply"
+        },
+        {
+          "key": "purpose/leisure",
+          "label": "Leisure"
+        },
+        {
+          "key": "purpose/people-transport",
+          "label": "People Transport"
+        },
+        {
+          "key": "purpose/cargo-transport",
+          "label": "Cargo Transport"
+        },
+        {
+          "key": "purpose/bulk-carrier",
+          "label": "Bulk Carrier"
+        },
+        {
+          "key": "purpose/courier",
+          "label": "Courier"
+        },
+        {
+          "key": "purpose/mining",
+          "label": "Mining"
+        },
+        {
+          "key": "purpose/refining",
+          "label": "Refining"
+        },
+        {
+          "key": "purpose/survey-prospecting",
+          "label": "Survey Prospecting"
+        },
+        {
+          "key": "purpose/survey-science",
+          "label": "Survey Science"
+        },
+        {
+          "key": "purpose/prison",
+          "label": "Prison"
+        },
+        {
+          "key": "purpose/colony",
+          "label": "Colony"
+        },
+        {
+          "key": "purpose/agriculture",
+          "label": "Agriculture"
+        },
+        {
+          "key": "purpose/research",
+          "label": "Research"
+        },
+        {
+          "key": "purpose/intelligence",
+          "label": "Intelligence"
+        },
+        {
+          "key": "purpose/manufacturing",
+          "label": "Manufacturing"
+        },
+        {
+          "key": "purpose/power-generation",
+          "label": "Power Generation"
+        },
+        {
+          "key": "purpose/trade-hub",
+          "label": "Trade Hub"
+        },
+        {
+          "key": "purpose/hq",
+          "label": "HQ"
+        },
+        {
+          "key": "purpose/government",
+          "label": "Government"
+        },
+        {
+          "key": "purpose/forward-base",
+          "label": "Forward Base"
+        },
+        {
+          "key": "purpose/customs",
+          "label": "Customs"
+        },
+        {
+          "key": "purpose/salvage",
+          "label": "Salvage"
+        },
+        {
+          "key": "purpose/rescue-tender",
+          "label": "Rescue Tender"
+        },
+        {
+          "key": "purpose/medical",
+          "label": "Medical"
+        },
+        {
+          "key": "purpose/diplomatic",
+          "label": "Diplomatic"
+        },
+        {
+          "key": "purpose/tanker",
+          "label": "Tanker"
+        },
+        {
+          "key": "purpose/factory-ship",
+          "label": "Factory Ship"
+        },
+        {
+          "key": "purpose/farm-ship",
+          "label": "Farm Ship"
+        },
+        {
+          "key": "purpose/comms-relay",
+          "label": "Comms Relay"
+        },
+        {
+          "key": "purpose/beacon",
+          "label": "Beacon"
+        },
+        {
+          "key": "purpose/defence-platform",
+          "label": "Defence Platform"
+        },
+        {
+          "key": "purpose/refined-fuel",
+          "label": "Refined fuel"
+        },
+        {
+          "key": "purpose/unrefined-fuel",
+          "label": "Unrefined fuel"
+        },
+        {
+          "key": "purpose/shipyard",
+          "label": "Shipyard"
+        },
+        {
+          "key": "purpose/shipyard-jump",
+          "label": "Shipyard (jump-capable)"
+        },
+        {
+          "key": "purpose/shipyard-craft",
+          "label": "Shipyard (small craft)"
+        },
+        {
+          "key": "purpose/drydock",
+          "label": "Drydock"
+        },
+        {
+          "key": "purpose/brokerage",
+          "label": "Brokerage"
+        },
+        {
+          "key": "purpose/lodging",
+          "label": "Lodging"
+        },
+        {
+          "key": "purpose/bonded-warehouse",
+          "label": "Bonded warehouse"
+        },
+        {
+          "key": "purpose/extraterritorial",
+          "label": "Extraterritorial"
+        }
+      ]
+    },
+    {
+      "id": "resource",
+      "label": "Resources",
+      "color": "#d4a843",
+      "textColor": "#000000",
+      "enabled": true,
+      "required": true,
+      "tags": [
+        {
+          "key": "resource/water-ice",
+          "label": "Water ice"
+        },
+        {
+          "key": "resource/volatiles",
+          "label": "Volatiles"
+        },
+        {
+          "key": "resource/organics",
+          "label": "Organics"
+        },
+        {
+          "key": "resource/heavy-metals",
+          "label": "Heavy metals"
+        },
+        {
+          "key": "resource/platinum-group",
+          "label": "Platinum-group"
+        },
+        {
+          "key": "resource/rare-metals",
+          "label": "Rare metals"
+        },
+        {
+          "key": "resource/rare-earths",
+          "label": "Rare earths"
+        },
+        {
+          "key": "resource/fissiles",
+          "label": "Fissiles"
+        },
+        {
+          "key": "resource/helium-3",
+          "label": "Helium-3"
+        },
+        {
+          "key": "resource/deuterium",
+          "label": "Deuterium"
+        },
+        {
+          "key": "resource/hydrocarbons",
+          "label": "Hydrocarbons"
+        },
+        {
+          "key": "resource/noble-gases",
+          "label": "Noble gases"
+        },
+        {
+          "key": "resource/exotic-crystals",
+          "label": "Exotic crystals"
+        },
+        {
+          "key": "resource/diamonds",
+          "label": "Diamonds"
+        },
+        {
+          "key": "resource/oxidizer",
+          "label": "Oxidizer"
+        },
+        {
+          "key": "resource/ore-belt",
+          "label": "Asteroid ore"
+        },
+        {
+          "key": "resource/provisions",
+          "label": "Provisions"
+        },
+        {
+          "key": "resource/technology",
+          "label": "Technology"
+        },
+        {
+          "key": "resource/alien-technology",
+          "label": "Alien technology"
+        },
+        {
+          "key": "resource/exotic-matter",
+          "label": "Exotic matter"
+        },
+        {
+          "key": "resource/antimatter",
+          "label": "Antimatter"
+        },
+        {
+          "key": "resource/luxuries",
+          "label": "Luxuries"
+        },
+        {
+          "key": "resource/pharmaceuticals",
+          "label": "Pharmaceuticals"
+        }
+      ]
+    },
+    {
+      "id": "class",
+      "label": "Hull class",
+      "color": "#8a6fc0",
+      "textColor": "#ffffff",
+      "single": true,
+      "enabled": true,
+      "required": true,
+      "tags": [
+        {
+          "key": "class/shuttle",
+          "label": "Shuttle"
+        },
+        {
+          "key": "class/dropship",
+          "label": "Dropship"
+        },
+        {
+          "key": "class/pinnace",
+          "label": "Pinnace"
+        },
+        {
+          "key": "class/yacht",
+          "label": "Yacht"
+        },
+        {
+          "key": "class/racer",
+          "label": "Racer"
+        },
+        {
+          "key": "class/fighter",
+          "label": "Fighter"
+        },
+        {
+          "key": "class/gunship",
+          "label": "Gunship"
+        },
+        {
+          "key": "class/scout",
+          "label": "Scout"
+        },
+        {
+          "key": "class/corvette",
+          "label": "Corvette"
+        },
+        {
+          "key": "class/frigate",
+          "label": "Frigate"
+        },
+        {
+          "key": "class/destroyer",
+          "label": "Destroyer"
+        },
+        {
+          "key": "class/cruiser",
+          "label": "Cruiser"
+        },
+        {
+          "key": "class/battleship",
+          "label": "Battleship"
+        },
+        {
+          "key": "class/capital",
+          "label": "Capital ship"
+        },
+        {
+          "key": "class/carrier",
+          "label": "Carrier"
+        },
+        {
+          "key": "class/dreadnought",
+          "label": "Dreadnought"
+        },
+        {
+          "key": "class/freighter",
+          "label": "Freighter"
+        },
+        {
+          "key": "class/liner",
+          "label": "Liner"
+        },
+        {
+          "key": "class/colony-ship",
+          "label": "Colony ship"
+        },
+        {
+          "key": "class/generation-ship",
+          "label": "Generation ship"
+        },
+        {
+          "key": "class/tug",
+          "label": "Tug"
+        },
+        {
+          "key": "class/platform",
+          "label": "Platform"
+        },
+        {
+          "key": "class/station",
+          "label": "Station"
+        },
+        {
+          "key": "class/habitat",
+          "label": "Habitat"
+        },
+        {
+          "key": "class/orbital-elevator",
+          "label": "Orbital Elevator"
+        }
+      ]
+    },
+    {
+      "id": "drive",
+      "label": "FTL drive",
+      "color": "#c07f3f",
+      "textColor": "#ffffff",
+      "single": true,
+      "enabled": true,
+      "required": true,
+      "tags": [
+        {
+          "key": "drive/jump-drive",
+          "label": "Jump Drive"
+        },
+        {
+          "key": "drive/warp",
+          "label": "Warp"
+        },
+        {
+          "key": "drive/hyperdrive",
+          "label": "Hyperdrive"
+        },
+        {
+          "key": "drive/gate",
+          "label": "Wormhole / gate"
+        },
+        {
+          "key": "drive/ftl-unknown",
+          "label": "Exotic / unknown"
+        }
+      ]
+    },
+    {
+      "id": "universe",
+      "label": "Universe",
+      "color": "#7a6a9a",
+      "textColor": "#ffffff",
+      "single": true,
+      "enabled": true,
+      "tags": [
+        {
+          "key": "universe/contemporary",
+          "label": "Contemporary"
+        },
+        {
+          "key": "universe/hard-scifi",
+          "label": "Hard sci-fi"
+        },
+        {
+          "key": "universe/high-scifi",
+          "label": "High sci-fi"
+        },
+        {
+          "key": "universe/expanse",
+          "label": "Expanse"
+        },
+        {
+          "key": "universe/aliens",
+          "label": "Aliens"
+        },
+        {
+          "key": "universe/traveller",
+          "label": "Traveller"
+        },
+        {
+          "key": "universe/mothership",
+          "label": "Mothership"
+        },
+        {
+          "key": "universe/natural",
+          "label": "Natural"
+        }
+      ]
+    },
+    {
+      "id": "disposition",
+      "label": "Disposition",
+      "color": "#b05050",
+      "textColor": "#ffffff",
+      "single": true,
+      "enabled": false,
+      "tags": [
+        {
+          "key": "disposition/allied",
+          "label": "Allied"
+        },
+        {
+          "key": "disposition/friendly",
+          "label": "Friendly"
+        },
+        {
+          "key": "disposition/neutral",
+          "label": "Neutral"
+        },
+        {
+          "key": "disposition/wary",
+          "label": "Wary"
+        },
+        {
+          "key": "disposition/hostile",
+          "label": "Hostile"
+        },
+        {
+          "key": "disposition/unknown",
+          "label": "Unknown"
+        }
+      ]
+    },
+    {
+      "id": "tech",
+      "label": "Tech & origin",
+      "color": "#6a6f7a",
+      "textColor": "#ffffff",
+      "single": true,
+      "enabled": true,
+      "tags": [
+        {
+          "key": "tech/primitive",
+          "label": "Primitive"
+        },
+        {
+          "key": "tech/industrial",
+          "label": "Industrial"
+        },
+        {
+          "key": "tech/standard",
+          "label": "Standard"
+        },
+        {
+          "key": "tech/advanced",
+          "label": "Advanced"
+        },
+        {
+          "key": "tech/experimental",
+          "label": "Experimental"
+        },
+        {
+          "key": "tech/alien",
+          "label": "Alien"
+        },
+        {
+          "key": "tech/precursor",
+          "label": "Precursor / ancient"
+        }
+      ]
+    },
+    {
+      "id": "allegiance",
+      "label": "Allegiance",
+      "color": "#8844cc",
+      "textColor": "#ffffff",
+      "enabled": true,
+      "tags": [
+        {
+          "key": "allegiance/hegemony",
+          "label": "The Hegemony"
+        },
+        {
+          "key": "allegiance/free-worlds",
+          "label": "Free Worlds"
+        }
+      ]
+    }
+  ],
+  "appVersion": "3.0.180"
+}

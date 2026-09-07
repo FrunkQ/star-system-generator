@@ -44,6 +44,16 @@
      info on the right"). They default to the app ground, so classic is pixel-identical. */
   --bg-rail: var(--bg-app);
   --bg-side: var(--bg-app);
+  /* THE SKIN'S OWN VALUES UNDER A SECOND NAME. A scope that re-defines the chrome tokens (the
+     floating controls' palettes, skins.css) cannot read the skin's `--accent` through `var(--accent)`
+     - inside the scope that is itself. These aliases compute HERE, on the root, after the skin and
+     any /palette override have had their say, and inherit down as plain values, so a derived palette
+     can tint itself with the skin it is worn over. Add an alias when a derived palette needs one. */
+  --skin-panel: var(--bg-panel);
+  --skin-control: var(--bg-control);
+  --skin-text: var(--text);
+  --skin-accent: var(--accent);
+  --skin-link: var(--link);
 
   /* ---------- CHROME: text ---------- */
   --text: #e8e8e8;
@@ -141,6 +151,17 @@
   --star-magnetar: #800080; /* purple */
   --star-bh: #000000; /* black hole */
   --star-red-giant: #8b0000;
+
+  /* MAGNETIC FIELDS ([[G82]]) — mauve / purple / lilac, the owner's palette, taken from the magnetar
+     purple above so a field and the most magnetic object in the app read as one family. Three tiers
+     because a field has three things to say and a renderer must not invent a fourth: the CAGE is
+     the bubble itself, the BELT is the trapped plasma inside it, and ANOMALOUS is a field the
+     interior model cannot account for. `--field-faint` is the MAX EXTENT wash, drawn pale on
+     purpose — the shading that means something is inside the last closed field line. */
+  --field-cage: #b48ad6;      /* mauve — the magnetopause and the dipole shells */
+  --field-belt: #d9b8f0;      /* lilac — the trapped-particle torus */
+  --field-anomalous: var(--star-magnetar); /* a field with no interior source: the magnetar purple */
+  --field-faint: #6f5a86;     /* the pale wash out to the magnetopause */
 
   /* Zone bands (SystemVisualizer orrery overlays) */
   --zone-habitable: #00ff00; /* goldilocks / habitable zone (green) */

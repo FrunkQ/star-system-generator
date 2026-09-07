@@ -7,6 +7,8 @@
   import type { RulePack, System, CelestialBody, Starmap } from '$lib/types';
   import { deleteNode, renameNode, generateSystem, computePlayerSnapshot } from '$lib/api';
   import SystemVisualizer from '$lib/components/SystemVisualizer.svelte';
+  import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
+  import { itemsForSystem } from '$lib/comparison/items';
   import TimeControls from '$lib/components/TimeControls.svelte';
   import { drainFuelMassKg } from '$lib/construct-logic';
   import SystemSummaryContextMenu from './SystemSummaryContextMenu.svelte'; 
@@ -15,22 +17,30 @@
   import ConstructPortrait from './ConstructPortrait.svelte';
   import DescriptionEditor from './DescriptionEditor.svelte';
   import BodyPicker from './BodyPicker.svelte';
-  import TimeDisplay from './TimeDisplay.svelte';
+  import TimeDisplayOverlay from './TimeDisplayOverlay.svelte';
   import FullscreenButton from './FullscreenButton.svelte';
   import { railCollapsed } from '$lib/railStore';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
+  import { lowPower } from '$lib/lowPowerStore';
   import GmNotesEditor from './GmNotesEditor.svelte';
   import UndoPill from './UndoPill.svelte';
   import { attachSystemUndo, detachSystemUndo, silentSystemWrite, setUndoFocus, undoStatus, undo as undoSystem, redo as redoSystem } from '$lib/undo/systemUndo';
   import ZoneKey from './ZoneKey.svelte';
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
+  import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
+  import { effectiveMegaRequires, megaSteerNotes } from '$lib/constructs/megaPlacement';
+  import { calculateGoldilocksZone } from '$lib/physics/zones';
   import ConstructDetailsPane from './ConstructDetailsPane.svelte';
   import LoadConstructTemplateModal from './LoadConstructTemplateModal.svelte';
   import ReportConfigModal from './ReportConfigModal.svelte';
+  import { openSystemReport } from '$lib/reports/openReport';
   import SaveSystemModal from './SaveSystemModal.svelte';
   import SisterFileModal from './SisterFileModal.svelte';
+  import LoadSourceModal, { FILE_ACCEPT } from './LoadSourceModal.svelte';
+  import { fetchHubMap } from '$lib/hub/hubClient';
   import PlannerPane from './PlannerPane.svelte';
+  import { nextSnap } from '$lib/ui/sheetSnap';
   import type { TransitPlan } from '$lib/transit/types';
   import { sampleJourneyKinematicsAtTime, getJourneyBounds, countFutureJourneys, clearFutureJourneys, cancelActiveJourney, resolveConstructCurrentHostId, reconcileConstructArrival, trimFlownAutopilotPast, needsStampedPosition } from '$lib/transit/scheduler';
 
@@ -47,7 +57,13 @@
   import { panStore, zoomStore } from '$lib/viewport/stores';
   import { get } from 'svelte/store';
   import { systemProcessor } from '$lib/core/SystemProcessor';
-  import { packBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { buildClip } from '$lib/io/hubClip';
+  import { putClip } from '$lib/io/clipBuffer';
+  import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture, clipboardHint } from '$lib/io/clipDetect';
+  import { hostCandidates, preferredHost } from '$lib/system/reparent';
+  import { endUndoAction } from '$lib/undo/systemUndo';
+  import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
+  import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
   import { classifySaveFile } from '$lib/io/classify';
   import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
@@ -62,7 +78,7 @@
   import PhysicsTraceModal from './PhysicsTraceModal.svelte';
   import AddBodyTypeModal from './AddBodyTypeModal.svelte';
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
-  import { deriveCoOrbitalOrbit, maxTrojanMassKg } from '$lib/physics/lagrange';
+  import { deriveCoOrbitalOrbit, maxTrojanMassKg, placeBodyAtCoOrbitalPoint } from '$lib/physics/lagrange';
   import { maxCircumbinaryMassKg } from '$lib/physics/circumbinary';
   import { laplaceRadiusAU } from '$lib/generation/planet';
   import { spinProvenanceTags } from '$lib/generation/spinProvenance';
@@ -84,6 +100,15 @@
   // phone). `dispatch('new'|'open'|'save'|'settings'|'llmsettings')` forwards the rail's app
   // nav up to +page. Phone FAB actions:
   let mode: 'desktop' | 'phone' = 'desktop';
+  // A84: THE PHONE SHEET'S HEIGHT FOLLOWS WHAT IS IN IT.
+  //
+  // `BottomSheet` says in its own header that `snap` is bindable "so the host can promote it (e.g.
+  // to 'half' when a body is selected)". This host never did: `sheetSnap` was declared, bound to
+  // AppShell and never assigned, so every detail pane on a phone opened into an 86-pixel peek and
+  // stayed there. Measured at 375x812: "Plan Transit" put a 663 px planner inside an 87 px sheet.
+  //
+  // The rule is in `ui/sheetSnap.ts` so it can be gated, and it only ever PROMOTES — a GM who has
+  // dragged the sheet full does not want the next selection to shrink it back.
   let sheetSnap: 'peek' | 'half' | 'full' = 'peek';
   let railOpen = false; // phone slide-in rail; closed before opening a modal
   let railUploadInput: HTMLInputElement; // hidden file input for the rail's Upload JSON
@@ -238,6 +263,9 @@
   let showNames = true;
   let showZones = false;
   let showHillSpheres = false;
+  // G82: the field bubbles. Beside Hill spheres because it is the same kind of switch - a boundary
+  // the GM can put on the map - and OFF by default, like the rest of the popover.
+  let showMagnetospheres = false;
   // WS3: the 2D system view's spatial overlay (shared vocabulary — see lib/map/mapOverlay.ts).
   let systemOverlay: MapOverlay = 'off';
   // The lattice cell in AU. 0 = the automatic 1/2/5 ladder that sizes cells by zoom. Pinning it is what
@@ -250,6 +278,10 @@
   let showSensors = false;
   let showVectors = false;
   let rulerActive = false; // measuring-tape tool: tap two bodies for their AU separation
+  // G66: the size-comparison view, reached from the sub-button under Measure. It is a VIEW over the
+  // same system, not a second selection store — a click in it goes through `updateFocus`, which is
+  // the map's shared selection (TAG-14), so the info panel follows.
+  let sizeCompareOn = false;
   let throttleTimeout: ReturnType<typeof setTimeout> | null = null;
   let lastToytownFactor: number | undefined = undefined;
   let timeSyncInterval: ReturnType<typeof setInterval> | undefined;
@@ -279,6 +311,102 @@
 
   // Context Menu State
   let showSummaryContextMenu = false;
+
+  // --- Copy / cut / paste inside the campaign (owner, 2026-09-05) --------------------------------
+  //
+  // The same clip the map library sends, produced and consumed here, so one format serves both and
+  // there is no second thing to keep in step. A COPY takes the branch - a planet brings its moons -
+  // because that is what the hub's Copy does and because half a family is never what anyone meant.
+  //
+  // UNDO. Every one of these goes through `systemStore.set`, which is the only thing `systemUndo`
+  // watches, so they are undoable for free; what they add is `endUndoAction()` so a cut or a paste
+  // is exactly ONE step rather than being coalesced with whatever was edited in the 250 ms before
+  // it. Cut and paste stay TWO steps on purpose: they are two things a GM did, and undoing a paste
+  // to find the branch back where it started would be a lie about which of them was reversed.
+  function subtreeOf(sys: any, nodeId: string): string[] {
+    if (!sys) return [];
+    const out = [nodeId];
+    for (let i = 0; i < out.length; i++) {
+      for (const n of sys.nodes) if (n.parentId === out[i] && !out.includes(n.id)) out.push(n.id);
+    }
+    return out;
+  }
+
+  function handleCopyNode(e: CustomEvent<any>) {
+    const node = e.detail;
+    if (!$systemStore || !node?.id) return;
+    // Credits ride along, so a body pasted in from somebody's map keeps its attribution when it is
+    // copied on again. This is where a credit would otherwise quietly evaporate.
+    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [] });
+    if (!clip) return;
+    putClip(clip, String(node.name ?? 'object'));
+    showSummaryContextMenu = false;
+    clipNotice = `Copied ${clip.nodes.length} object${clip.nodes.length === 1 ? '' : 's'}.`;
+  }
+
+  function handleCutNode(e: CustomEvent<any>) {
+    const node = e.detail;
+    if (!$systemStore || !node?.id) return;
+    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [] });
+    if (!clip) return;
+    putClip(clip, String(node.name ?? 'object'), true);
+    // The SAME delete the delete action uses - `deleteNode` already takes the whole subtree, so a
+    // cut and a delete cannot disagree about what "this object" means.
+    systemStore.set(systemProcessor.process(deleteNode($systemStore, node.id), rulePack));
+    endUndoAction();
+    showSummaryContextMenu = false;
+    clipNotice = `Cut ${clip.nodes.length} object${clip.nodes.length === 1 ? '' : 's'}. Right-click where it should go.`;
+  }
+
+  /** Paste straight onto the right-clicked node: the host is unambiguous, so nothing is asked.
+   *  Reads `detectedClip`, the same source the menu offered from, so a clip from the map library
+   *  pastes here exactly as one copied in the app does. */
+  function handlePasteHere(e: CustomEvent<any>) {
+    const host = e.detail;
+    const entry = $detectedClip;
+    if (!$systemStore || !host?.id || !entry) return;
+    showSummaryContextMenu = false;
+    dispatch('pasteClip', { clip: entry.clip, systemId: $systemStore.id, hostId: host.id });
+  }
+
+  /**
+   * PASTE INTO THE EMPTY SPACE THAT WAS RIGHT-CLICKED, inside a system.
+   *
+   * THE GAP THIS CLOSES, reported by the owner 2026-09-06 with Jupiter and its moons in hand:
+   * *"still not being offered the paste ... this is on the IN system view"*. The paste lived only on
+   * the right-click of an existing BODY; right-clicking empty space opened a different menu that
+   * offered to ADD a planet, a belt, a construct - and never to put down the thing already in hand.
+   * A GM wanting to place a copied planet naturally right-clicks where they want it, and got
+   * nothing at all.
+   *
+   * The host is the one this menu ALREADY works out for "Add Planet Here": `dominantBody`, the body
+   * whose neighbourhood that point belongs to. So a paste lands where an add would have, and the two
+   * cannot disagree about what "here" means. With no dominant body it falls back to the same bias
+   * the paste screen uses - planets on stars, moons on planets.
+   */
+  function handlePasteAtBackground() {
+    const entry = $detectedClip;
+    if (!$systemStore || !entry) return;
+    showBackgroundContextMenu = false;
+    const root = entry.clip.nodes.find((n: any) => n.id === entry.clip.root) ?? entry.clip.nodes[0];
+    const host = backgroundClickHost ?? preferredHost($systemStore, hostCandidates($systemStore) as any, root);
+    if (!host) return;
+    dispatch('pasteClip', { clip: entry.clip, systemId: $systemStore.id, hostId: host.id });
+  }
+
+  // THE GOLD PULSE. Fires when the thing on offer CHANGES, not on every reactive tick - otherwise
+  // The flash and the clipboard watch moved into `clipDetect` when the STARMAP needed both too - a
+  // second copy of "look on focus, flash once for something from outside" is two answers to one
+  // question waiting to drift apart.
+  onMount(() => watchClipboard());
+
+  let clipNotice: string | null = null;
+  let clipNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  $: if (clipNotice) {
+    if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+    clipNoticeTimer = setTimeout(() => (clipNotice = null), 6000);
+  }
+
   let contextMenuX = 0;
   let contextMenuY = 0;
   let contextMenuItems: CelestialBody[] = [];
@@ -324,6 +452,10 @@
   }
 
   function handleShowBodyContextMenu(event: CustomEvent<{ node: CelestialBody, x: number, y: number }>) {
+    // OPENING A MENU IS ASKING WHAT THE OPTIONS ARE, so this is where the clipboard is looked at.
+    // The menu opens now and the paste item joins it when the read resolves - the store is reactive,
+    // so nothing here waits on the network-speed part of a browser permission.
+    void readClipboardOnGesture();
     contextMenuNode = event.detail.node;
     contextMenuX = event.detail.x;
     contextMenuY = event.detail.y;
@@ -355,8 +487,11 @@
   let backgroundLagrangeHit: { secondaryId: string; secondaryName: string; point: string } | null = null; // G43: click landed inside an L-zone
   let backgroundCircumbinaryHit: { baryId: string; baryName: string } | null = null; // G45: click landed inside a pair's circumbinary ring
   let constructInitialPlacement: string | undefined = undefined;   // G43: preselect an L-point in the add-construct modal
+  /** G53: how far from the host the GM clicked, AU - known before a template is even chosen. */
+  let constructClickAU: number | undefined = undefined;
   let showBackgroundContextMenu = false;
   let contextMenuActionLabel = 'Add Planet Here';
+  let backgroundClipHint: string | null = null;
   let showAddBeltOption = false;
   let showAddRingOption = false;
 
@@ -369,6 +504,9 @@
 
   function handleBackgroundContextMenu(event: CustomEvent<{ x: number, y: number, dominantBody: CelestialBody | Barycenter | null, screenX: number, screenY: number, lagrangeHit?: { secondaryId: string; secondaryName: string; point: string } | null, circumbinaryHit?: { baryId: string; baryName: string } | null }>) {
       backgroundClickHost = event.detail.dominantBody;
+      // A menu is a question, so this is a place to look at the clipboard (see clipDetect).
+      void readClipboardOnGesture().then(() => (backgroundClipHint = clipboardHint()));
+      backgroundClipHint = clipboardHint();
       backgroundClickPosition = { x: event.detail.x, y: event.detail.y };
       backgroundLagrangeHit = event.detail.lagrangeHit ?? null;
       backgroundCircumbinaryHit = event.detail.circumbinaryHit ?? null;
@@ -692,27 +830,66 @@
       // G43: a trojan placement — the body is a sibling of its secondary (both orbit the star),
       // carries the coOrbital marker, and gets its orbit from the one convention module. The
       // process() below re-derives it every pass thereafter.
+      //
+      // UNLESS THE POINT IS ALREADY TAKEN (B111's third part). A second marker at an occupied point
+      // derives a second rider exactly on top of the first - same ellipse, same phase, invisibly
+      // stacked - and both being children of the star, no mass ratio ever compares them and no pair
+      // can form however the GM fiddles. What a GM adding a body onto an existing trojan MEANS is a
+      // COMPANION: parented to the rider, orbiting inside its Hill sphere, no marker of its own.
+      // The reconciler then does what it already knows how to do - a comparable mass promotes into
+      // a pair whose barycentre rides the point (B98/PHY-32); a small one stays the trojan's moon.
       if (ctx.trojan) {
           const secondary = $systemStore.nodes.find(n => n.id === ctx.trojan!.secondaryId) as CelestialBody | undefined;
           if (!secondary) return;
           const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
           const starMassKg = ((host as any).kind === 'barycenter' ? (host as any).effectiveMassKg : (host as any).massKg) || 0;
-          const trojanBody: CelestialBody = {
-              id: generateId(),
-              name: `${secondary.name} ${ctx.trojan.point.toUpperCase()} Trojan`,
-              kind: 'body',
-              parentId: host.id,
-              ui_parentId: secondary.id,
-              roleHint: 'moon',
-              atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
-              hydrosphere: { coverage: 0, composition: 'water' },
-              biosphere: null,
-              classes: [],
-              ...gen,
-              tags: [...(gen.tags || [])],
-              coOrbital: { hostId: secondary.id, point: ctx.trojan.point },
-              orbit: deriveCoOrbitalOrbit(secondary, starMassKg, ctx.trojan.point) ?? undefined
-          } as CelestialBody;
+          const placement = placeBodyAtCoOrbitalPoint($systemStore, secondary.id, ctx.trojan.point, starMassKg);
+
+          let trojanBody: CelestialBody;
+          if (placement.kind === 'companion' && placement.rider) {
+              const rider = placement.rider;
+              const riderMassKg = ((rider as any).kind === 'barycenter' ? (rider as any).effectiveMassKg : (rider as any).massKg) || 0;
+              // Never inside contact: the suggestion is a quarter Hill radius, floored well clear
+              // of the two surfaces for a rider small enough that the Hill fraction dips inside.
+              const contactAU = (((rider as any).radiusKm || 0) + ((gen as any).radiusKm || 0)) * 4 / AU_KM;
+              const aAU = Math.max(placement.suggestedAAU ?? contactAU, contactAU, 1e-9);
+              trojanBody = {
+                  id: generateId(),
+                  name: `${(rider as any).name} Companion`,
+                  kind: 'body',
+                  parentId: rider.id,
+                  roleHint: 'moon',
+                  atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
+                  hydrosphere: { coverage: 0, composition: 'water' },
+                  biosphere: null,
+                  classes: [],
+                  ...gen,
+                  tags: [...(gen.tags || [])],
+                  orbit: {
+                      hostId: rider.id,
+                      hostMu: riderMassKg * G,
+                      t0: currentTime,
+                      elements: { a_AU: aAU, e: 0.02, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: Math.random() * 2 * Math.PI }
+                  }
+              } as CelestialBody;
+          } else {
+              trojanBody = {
+                  id: generateId(),
+                  name: `${secondary.name} ${ctx.trojan.point.toUpperCase()} Trojan`,
+                  kind: 'body',
+                  parentId: host.id,
+                  ui_parentId: secondary.id,
+                  roleHint: 'moon',
+                  atmosphere: { name: 'None', composition: {}, pressure_bar: 0 },
+                  hydrosphere: { coverage: 0, composition: 'water' },
+                  biosphere: null,
+                  classes: [],
+                  ...gen,
+                  tags: [...(gen.tags || [])],
+                  coOrbital: { hostId: secondary.id, point: ctx.trojan.point },
+                  orbit: deriveCoOrbitalOrbit(secondary, starMassKg, ctx.trojan.point) ?? undefined
+              } as CelestialBody;
+          }
           systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, trojanBody] }, rulePack) });
           updateFocus(trojanBody.id);
           isEditing = true;
@@ -758,6 +935,14 @@
       showCreateConstructModal = true;
       showBackgroundContextMenu = false;
       constructHostBody = null;
+      // G53: THE CLICK ALREADY SAID WHERE. Measure it once here so the picker can show a
+      // megaconstruct's placement advice while the GM is still choosing - the warning belongs
+      // BEFORE the commit, which is the whole point of steering rather than stopping.
+      constructClickAU = undefined;
+      if (backgroundClickHost && backgroundClickPosition) {
+          const hp = backgroundClickHost.parentId ? absolutePositionOf(backgroundClickHost.id) : { x: 0, y: 0 };
+          constructClickAU = Math.hypot(backgroundClickPosition.x - hp.x, backgroundClickPosition.y - hp.y);
+      }
   }
 
   async function handleCreateConstructLoad(event: CustomEvent<CelestialBody>) {
@@ -813,6 +998,39 @@
           const maxKm = host.orbitalBoundaries?.heoUpperBoundaryKm || (host.radiusKm ? (host.radiusKm + 100000) : 100000); // Upper HEO or a default large value
           const middleKm = (minKm + maxKm) / 2;
           distAU = middleKm / AU_KM;
+          startAngle = Math.random() * 2 * Math.PI;
+      }
+
+      // G53: a megaconstruct is placement-SENSITIVE, so it never takes the default-orbit stamp.
+      // The rich picker chose WHAT; AddConstructModal chooses WHERE, with the hard/steer machinery
+      // attached - and the AU field starts at the clicked distance when there is one.
+      // G53: NO PLACEMENT DIALOG FOR A MEGA, EVER (owner, 2026-08-28: "it's either one choice or
+      // where the mouse was clicked - easy to edit visually afterwards - no need for that clutter").
+      // The step is gone rather than conditional, because both of his cases are already answered
+      // here: a click says where, and with no click the TYPE ITSELF says where - its registry seed
+      // is a real default distance (a ringworld wants 1 AU, a collector 0.5) rather than the
+      // mid-orbit guess the ordinary path would make, which around a STAR would have put a
+      // ringworld at 0.005 AU, inside the photosphere.
+      const clickPlaced = !!(backgroundClickPosition && backgroundClickHost);
+      const megaDef = megaTypeDef((template as CelestialBody).megaType);
+      if (megaDef && !clickPlaced) {
+          const spec = megaDef.shape(defaultMegaParams(megaDef, host as any), host as any);
+          if (spec.family === 'sphere-section' && spec.radiusKm > 0) {
+              distAU = spec.radiusKm / AU_KM;
+              startAngle = Math.random() * 2 * Math.PI;
+          }
+      }
+      // THE TETHER'S OWN ANSWER, the half this block was missing (found live, 2026-09-01): a
+      // surface-only mega (allowedPlacements exactly ['Surface']) is Surface WHEREVER the mouse
+      // was - a click cannot put a beanstalk in orbit - so it anchors at the host's radius and the
+      // placement string below is overridden. Without this, an elevator took the generic mid-orbit
+      // stamp (~735,000 km on Earth, the measured off 0.00498 AU), never carried
+      // placement 'Surface', never surface-locked, and its ribbon stood at the SYSTEM ORIGIN -
+      // which is why nobody ever saw a stick: it was at the Sun.
+      const megaSurfaceOnly = !!(megaDef && megaDef.allowedPlacements
+          && megaDef.allowedPlacements.length === 1 && megaDef.allowedPlacements[0] === 'Surface');
+      if (megaSurfaceOnly) {
+          distAU = ((host as CelestialBody).radiusKm || 0) / AU_KM;
           startAngle = Math.random() * 2 * Math.PI;
       }
 
@@ -873,22 +1091,47 @@
           }
       }
 
+      if (megaSurfaceOnly) placement = 'Surface'; // the registry's word outranks the altitude guesser
       newConstruct.placement = placement;
+
+      // G53: the placement went ahead - record WHY it is interesting. Same evaluator and same tags
+      // the dialog route stamps, so a mega placed by clicking and one placed through the dialog
+      // carry identical provenance; only the number of questions asked differs.
+      if ((newConstruct as any).megaType) {
+          const mDef = megaTypeDef((newConstruct as any).megaType);
+          const notes = megaSteerNotes(
+              effectiveMegaRequires(newConstruct as any, mDef),
+              host as any,
+              {
+                  placementAU: distAU > 0 ? distAU : undefined,
+                  goldilocks: (host as any).roleHint === 'star'
+                      ? calculateGoldilocksZone(host as any, $systemStore.nodes as any)
+                      : null
+              }
+          );
+          if (notes.length) newConstruct.tags = [...(newConstruct.tags ?? []), ...notes.map((n) => n.tag)];
+      }
       console.log('Creating New Construct:', newConstruct);
 
-      // Add to System
-      systemStore.update(s => {
-          if (!s) return s;
-          return {
-              ...s,
-              nodes: [...s.nodes, newConstruct]
-          };
-      });
+      // ADD TO THE SYSTEM AND RE-DERIVE IT, and the re-derive is the part that was missing.
+      //
+      // This was the only add path that did NOT process — a planet does, a delete does, this did
+      // not — and while a construct changed nothing the physics derives that was harmless. G53
+      // phase 4 and G54 ended that: a megastructure now dims every world behind it and re-stamps
+      // its star's own `stellar/*` tags. Without this the map was RIGHT (it computes its colours
+      // live from the nodes) while the tags and the worlds' temperatures still described the system
+      // as it was a moment earlier. The owner reported exactly that shape: a Dyson sphere with "no
+      // sign of the IR anomaly".
+      const processedWithNew = systemProcessor.process(
+          { ...$systemStore, nodes: [...$systemStore.nodes, newConstruct] }, rulePack);
+      systemStore.set({ ...processedWithNew });
 
       // Open Editor
       showCreateConstructModal = false;
       await tick();
-      constructToEdit = newConstruct;
+      // PROCESS RETURNS NEW OBJECTS. The editor has to open on the node that is IN the store, not on
+      // the detached one that went in, or every edit writes into a copy nothing else can see.
+      constructToEdit = (processedWithNew.nodes.find((n) => n.id === newConstruct.id) as CelestialBody) ?? newConstruct;
       constructHostBodyForEditor = backgroundClickHost as CelestialBody;
       showConstructEditorModal = true;
       console.log('Editor should be open');
@@ -1086,17 +1329,17 @@
   let showReportConfigModal = false;
 
   function handleGenerateReport(event: CustomEvent<{mode: 'GM' | 'Player', theme: string, includeConstructs: boolean}>) {
-      if (!$systemStore) return;
-      const reportData = {
-          system: $systemStore,
-          mode: event.detail.mode,
-          theme: event.detail.theme,
-          includeConstructs: event.detail.includeConstructs,
-          unitPrefs: get(unitPrefs) // carry the campaign's unit choices into the (separate-route) report
-      };
-      sessionStorage.setItem('reportData', JSON.stringify(reportData));
-      window.open('/report', '_blank');
       showReportConfigModal = false;
+      // B113(b): the stash-then-open pair now lives in ONE module with the starmap rail's copy, and
+      // it reports what happened. A blocked popup used to be swallowed here — `window.open` returns
+      // null and nothing looked at it — which is indistinguishable from a crashed report.
+      const result = openSystemReport({
+          system: $systemStore,
+          options: event.detail,
+          unitPrefs: get(unitPrefs), // carry the campaign's unit choices into the (separate-route) report
+          temporal: get(starmapStore)?.temporal ?? null
+      });
+      if (!result.ok) alert(result.message);
   }
 
   function handleContextMenuSelect(event: CustomEvent<string>) {
@@ -1508,7 +1751,7 @@
   // G42: a whole campaign (starmap) was dropped on Load System. The classified payload waits here
   // while the sister-file modal offers open-as-campaign; the actual load runs in the root page
   // (the campaign pipeline lives there), so confirm just hands the payload up.
-  let sisterStarmap: { doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null; name: string } | null = null;
+  let sisterStarmap: { doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null; name: string; subject: string } | null = null;
 
   async function handleSaveSystem(event: CustomEvent<{mode: 'GM' | 'Player', includeConstructs: boolean}>) {
     if (!$systemStore) return;
@@ -1533,11 +1776,22 @@
     // 3. Download. A system carrying assets (body photos, ship models) saves as a BUNDLE - a zip
     // with a readable system.json beside the assets as real files; without them it stays plain
     // JSON. Same container the campaign save uses, so one reader opens either.
-    const models = await collectModelsForExport({ systems: [{ system: systemToSave }] }).catch(() => undefined);
-    const bundle = packBundle('system', systemToSave, { models });
+    //
+    // R-10: this is the ONLY save with a GM/Player choice, so it is the only one whose exportMode
+    // is not a foregone conclusion - and it records the choice the GM already made at step 1
+    // rather than asking anyone to restate it. A LABEL, never a gate: a reader must still detect.
+    // The stamp also gives a system.json the `appVersion` a starmap.json has always carried.
+    // R-12 deliberately does NOT apply here: a system is a slice of a campaign rather than a
+    // separately versioned document, and bumping a counter through `systemStore` would fire the
+    // campaign write-back and broadcast rebuild that P3 exists to avoid.
+    const stamped = stampForSave(systemToSave, { exportMode: exportModeFromChoice(mode) });
+    const models = await collectModelsForExport({ systems: [{ system: stamped }] }).catch(() => undefined);
+    const bundle = await packBundle('system', stamped, { models });
+    // R-01: same stamp, same function, on the plain-JSON branch too - a single system saved without
+    // assets is a `.json` file, and the hub reads `system.json` as readily as `starmap.json`.
     const blob = bundle
       ? new Blob([bundle], { type: 'application/zip' })
-      : new Blob([JSON.stringify(systemToSave, null, 2)], { type: 'application/json' });
+      : new Blob([plainSaveJson(stamped)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1553,6 +1807,8 @@
     if (!input.files || input.files.length === 0) return;
     const file = input.files[0];
     // An external simulator file (.ubox / .sc / .pak) goes through the converter modal, not the JSON path.
+    // Only a FILE can be one of these: the map library serves this app's own saves and nothing else,
+    // which is why the hub path below goes straight to `openSystemBytes`.
     const adapter = adapterForFile(file.name);
     if (adapter) {
       importSource = adapter;
@@ -1563,51 +1819,94 @@
     }
     const reader = new FileReader();
     reader.onload = async (e) => {
-      try {
-        // G42: classify FIRST (bundle kind from the zip, JSON kind from shape — classify.ts), so a
-        // campaign dropped here is named in plain words instead of failing isLoadableSystem with a
-        // message about missing fields. A real system still goes through isLoadableSystem below.
-        const raw = new Uint8Array(e.target?.result as ArrayBuffer);
-        const classified = classifySaveFile(raw);
-        if (classified.kind === 'starmap') {
-          // Sister file: hold the already-classified payload and OFFER open-as-campaign. Nothing
-          // is loaded unless the GM confirms; closing the modal drops the payload untouched.
-          sisterStarmap = { doc: classified.doc, models: classified.models ?? null, name: file.name };
-          return;
-        }
-        if (classified.kind === 'unknown') {
-          alert('This file is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
-          return;
-        }
-        if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
-        let newSystem: any = classified.doc;
-        if (isLoadableSystem(newSystem)) {
-          // Keep the old ID to preserve starmap link
-          const oldId = $systemStore?.id;
-          if (oldId) {
-              newSystem.id = oldId;
-          }
-
-          // One-way fix-up: strip baked-in derived data / legacy tags so the new engine re-derives
-          // cleanly (v1 imports otherwise carry stale physics that shadows the model).
-          newSystem = fixUpImportedSystem(newSystem, rulePack);
-          systemStore.set(systemProcessor.process(newSystem, rulePack));
-          currentTime = newSystem?.epochT0 || Date.now();
-          focusedBodyId = null;
-        } else {
-          // classify said 'system' (it has a nodes array), so what is missing is the id or name.
-          alert('This system file is missing its "id" or "name", so it cannot be loaded.');
-        }
-      } catch (err) {
-        // Unreadable files never reach here (classifySaveFile answers 'unknown' for them and the
-        // guard above already spoke) - this catch is the load pipeline itself failing.
-        alert(`The file loaded but could not be opened: ${(err as Error)?.message ?? err}`);
-        console.error(err);
-      }
+      await openSystemBytes(new Uint8Array(e.target?.result as ArrayBuffer), { kind: 'file', name: file.name });
     };
     reader.readAsArrayBuffer(file);
     // Clear the picker so cancelling a sister-file modal and choosing the SAME file again re-fires.
     input.value = '';
+  }
+
+  /**
+   * OPEN A SYSTEM FROM BYTES - the one door, whether they came off the disk or off the network.
+   *
+   * The file picker and the shared-map link differ in exactly one step, which is how the bytes were
+   * obtained; everything after that - classification, the sister-file offer for a campaign, the
+   * fix-up and the store write - is identical and is therefore written once. Two doors into the
+   * open system would be two answers to "is this loadable?", which is the duplication this codebase
+   * keeps paying for.
+   */
+  async function openSystemBytes(raw: Uint8Array, source: { kind: string; name?: string }) {
+    try {
+      // G42: classify FIRST (bundle kind from the zip, JSON kind from shape — classify.ts), so a
+      // campaign dropped here is named in plain words instead of failing isLoadableSystem with a
+      // message about missing fields. A real system still goes through isLoadableSystem below.
+      const classified = classifySaveFile(raw);
+      if (classified.kind === 'starmap') {
+        // Sister file: hold the already-classified payload and OFFER open-as-campaign. Nothing
+        // is loaded unless the GM confirms; closing the modal drops the payload untouched.
+        // A campaign reached by LINK lands here too, which is the right answer: the offer is the
+        // same one, and it is the only place that asks before replacing a campaign.
+        //
+        // A NAME AND A KIND ARE DIFFERENT THINGS, and conflating them shipped a sentence that read
+        // "shared map is a saved campaign". A file names itself; a link does not, so the campaign's
+        // OWN name is used - which is the better sentence in both cases and the only one available
+        // in the second.
+        sisterStarmap = {
+          doc: classified.doc,
+          models: classified.models ?? null,
+          name: source.name || String(classified.doc?.name ?? 'That map'),
+          subject: source.kind
+        };
+        return;
+      }
+      if (classified.kind === 'unknown') {
+        alert('This is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
+        return;
+      }
+      if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
+      let newSystem: any = classified.doc;
+      if (isLoadableSystem(newSystem)) {
+        // Keep the old ID to preserve starmap link
+        const oldId = $systemStore?.id;
+        if (oldId) {
+            newSystem.id = oldId;
+        }
+
+        // One-way fix-up: strip baked-in derived data / legacy tags so the new engine re-derives
+        // cleanly (v1 imports otherwise carry stale physics that shadows the model).
+        newSystem = fixUpImportedSystem(newSystem, rulePack);
+        systemStore.set(systemProcessor.process(newSystem, rulePack));
+        currentTime = newSystem?.epochT0 || Date.now();
+        focusedBodyId = null;
+      } else {
+        // classify said 'system' (it has a nodes array), so what is missing is the id or name.
+        alert('This system is missing its "id" or "name", so it cannot be loaded.');
+      }
+    } catch (err) {
+      // Unreadable input never reaches here (classifySaveFile answers 'unknown' for it and the
+      // guard above already spoke) - this catch is the load pipeline itself failing.
+      alert(`The ${source.kind} loaded but could not be opened: ${(err as Error)?.message ?? err}`);
+      console.error(err);
+    }
+  }
+
+  // WHERE FROM? - the rail's Load System, 2026-09-06. Browse the library, pick a file, or paste a
+  // link somebody sent.
+  let showLoadSystemSource = false;
+
+  /**
+   * A SYSTEM NAMED BY A LINK. The other way to get bytes; `openSystemBytes` is what happens to them.
+   *
+   * This closes a loop the app already pointed at: opening a SYSTEM link from the campaign door
+   * refuses with "download it from the hub and open it with Load System", and until now Load System
+   * had no way to take a link. Failures speak through `alert`, which is what every other failure on
+   * this path already does - a second error surface here would be a second thing to keep in step.
+   */
+  async function openSystemFromHub(slug: string) {
+    showLoadSystemSource = false;
+    const result = await fetchHubMap(slug);
+    if (!result.ok) { alert(result.problem); return; }
+    await openSystemBytes(result.bytes, { kind: 'shared map' });
   }
 
   let unsubscribePanStore: () => void;
@@ -1651,7 +1950,7 @@
                 broadcastService.sendMessage({ type: 'SYNC_RULEPACK', payload: rulePack });
                 broadcastService.sendMessage({ type: 'SYNC_FOCUS', payload: focusedBodyId });
                 broadcastService.sendMessage({ type: 'SYNC_CAMERA', payload: { pan: get(panStore), zoom: get(zoomStore), isManual: cameraMode === 'MANUAL' || userZoomOverride, viewMin: Math.min(window.innerWidth, window.innerHeight) } });
-                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones } });
+                broadcastService.sendMessage({ type: 'SYNC_VIEW_SETTINGS', payload: { showNames, showZones, showHillSpheres, showMagnetospheres, showLPoints, showTravellerZones } });
                 broadcastService.sendMessage({ type: 'SYNC_TIME', payload: { currentTime, isPlaying, timeScale } });
             }
         };
@@ -1686,7 +1985,7 @@
   $: if (browser && $systemStore) {
       broadcastService.sendIfChanged({
           type: 'SYNC_VIEW_SETTINGS',
-          payload: { showNames, showZones, showHillSpheres, showLPoints, showTravellerZones }
+          payload: { showNames, showZones, showHillSpheres, showMagnetospheres, showLPoints, showTravellerZones }
       });
   }
 
@@ -2005,6 +2304,26 @@
     if (contextMenu && !contextMenu.contains(event.target as Node)) {
       showSummaryContextMenu = false;
     }
+  }
+
+  // A FULL-PANEL FLOW is one that REPLACES the detail pane with a workflow of its own, rather than
+  // adding to it — the transit planner and the ship log. Half a transit planner is not usable, and
+  // both are reached from a phone by tapping a button on a panel that is 86 px tall.
+  //
+  // ON THE EDGE ONLY (A92). `sheetSnap` is one of this block's own dependencies, so evaluating it
+  // on every pass meant the rule undid the GM: Collapse set peek, this ran again, and it went
+  // straight back to half. The key makes it fire when the CONTENT changes and never otherwise,
+  // so a sheet the GM has collapsed stays collapsed — while tapping a DIFFERENT body is a fresh
+  // request and does open for it.
+  let lastSheetKey: string | null = null;
+  $: if (mode === 'phone') {
+      const next = nextSnap(sheetSnap, {
+          focused: !!focusedBody,
+          focusId: focusedBody?.id ?? null,
+          fullPanel: isPlanning || isShipLogOpen
+      }, lastSheetKey);
+      sheetSnap = next.snap;
+      lastSheetKey = next.key;
   }
 
   function handleStartPlanning() {
@@ -2361,6 +2680,7 @@
       <RailNav
         activeView="system"
         rulerOn={rulerActive}
+        {sizeCompareOn}
         {routesAttention}
         playerConns={{ local: $playerConnections.local, remote: $playerConnections.remote }}
         playerConnSummary={$playerConnections.summary}
@@ -2368,8 +2688,9 @@
         on:report={() => { railOpen = false; showReportConfigModal = true; }}
         on:playerviews={() => { railOpen = false; dispatch('playerviews'); }}
         on:ruler={() => { railOpen = false; rulerActive = !rulerActive; }}
+        on:sizecompare={() => { railOpen = false; sizeCompareOn = !sizeCompareOn; }}
         on:downloadsystem={() => { railOpen = false; handleDownloadJson(); }}
-        on:uploadsystem={() => { railOpen = false; railUploadInput?.click(); }}
+        on:uploadsystem={() => { railOpen = false; showLoadSystemSource = true; }}
         on:new={() => dispatch('new')}
         on:open={() => dispatch('open')}
         on:save={() => dispatch('save')}
@@ -2388,7 +2709,7 @@
            Starmap nav and Report moved up into the icon rail proper. -->
       <!-- System-JSON download/upload moved into the File group. Hidden input kept here
            for the File group's Upload action. -->
-      <input type="file" accept="application/json,.json,.zip,.ubox,.sc,.pak" bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
+      <input type="file" accept={FILE_ACCEPT.system} bind:this={railUploadInput} on:change={handleUploadJson} style="display:none" />
       </RailNav>
     </svelte:fragment>
     <svelte:fragment slot="canvas">
@@ -2399,13 +2720,11 @@
 
         <div class="main-view">
             {#if ensuredTemporal}
-              <div class="time-display-overlay">
-                <TimeDisplay
-                  temporal={ensuredTemporal}
-                  displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
-                  masterOverrideSec={isAligningTime ? alignTargetSec : null}
-                />
-              </div>
+              <TimeDisplayOverlay
+                temporal={ensuredTemporal}
+                displayOverrideSec={isAligningTime ? alignActualSecondsOverride : null}
+                masterOverrideSec={isAligningTime ? alignTargetSec : null}
+              />
             {/if}
             <BodyPicker
                 floating
@@ -2417,13 +2736,23 @@
 
             <!-- G28: the floating undo/redo. Shows itself once there is something to wind back;
                  marks itself `use:chrome` so a dialog on a phone hides it (UI-C6). -->
-            <UndoPill {mode} status={undoStatus} undo={undoSystem} redo={redoSystem} />
+            <UndoPill {mode} status={undoStatus} undo={undoSystem} redo={redoSystem}
+              clip={$detectedClip} clipPulse={$clipPulse} />
 
             <!-- On-canvas orrery controls: faded Reset + a "View" popover of the
                  frequently-used display toggles (per the wireframe). -->
             <div class="orrery-controls" class:phone={mode === 'phone'}>
               {#if mode === 'phone'}<FullscreenButton />{/if}
               <button class="ov-btn faded" title="Reset view" aria-label="Reset view" on:click={() => visualizer?.resetView()}>⟲{#if !$railCollapsed} Reset View{/if}</button>
+              <!-- R-14: the way in that does NOT need a paste event. Firefox will not hand a page
+                   the clipboard, so a feature reachable only by Ctrl+V is one that looks broken in
+                   a browser plenty of people use.
+                   THE PASTE BUTTON THAT WAS HERE IS GONE (owner, 2026-09-06): *"The paste at the top
+                   button should not be needed should it? what is being pasted is on the long right
+                   click."* He is right - the right-click knows WHERE it is going and this did not,
+                   so it had to open a screen to ask. What is in hand is now shown on the undo pill
+                   instead, compact and out of the way. Ctrl+V still opens the screen from anywhere,
+                   which is the route that works in every browser including Firefox. -->
               <div class="ov-view">
                 <button class="ov-btn ov-eye" class:active={viewOpen} on:click={toggleViewPopover} title="View options" aria-label="View options">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>
@@ -2433,6 +2762,7 @@
                     <label><input type="checkbox" bind:checked={showNames} /> Names</label>
                     <label><input type="checkbox" bind:checked={showZones} on:change={() => showZoneKeyPanel = showZones} /> Zones</label>
                     <label title="Each planet-mass body's gravitational bubble — where an adrift ship gets grabbed"><input type="checkbox" bind:checked={showHillSpheres} /> Hill spheres</label>
+                    <label title="Where each magnetic field turns the stellar wind away. The shaded part is the region that actually shields an atmosphere; the pale wash is the full extent, tail and all."><input type="checkbox" bind:checked={showMagnetospheres} /> Magnetospheres</label>
                     <label><input type="checkbox" bind:checked={showLPoints} /> Lagrange points</label>
                     <label class="ov-select" title="Spatial overlay — the same set every map view offers">Overlay
                       <select bind:value={systemOverlay}>
@@ -2459,6 +2789,11 @@
                       <input type="range" min="0" max="1" step="0.05" bind:value={$systemUiStore.orbitOpacity} />
                     </label>
                     <label title="Show each body's derived true colour vs broad per-class colours"><input type="checkbox" bind:checked={$trueColorMode} /> True colour</label>
+                    <!-- LOW POWER: this MACHINE, not this campaign and not this view. Per browser,
+                         so it follows the weak laptop rather than travelling to everyone else's
+                         screen - see `lowPowerStore` for why that is allowed to reach a player view
+                         where the GM's orbit-line strength above is not. -->
+                    <label title="For a machine that struggles: drops the see-through shells around bodies - cloud decks, limb glow, haze and auroras. They cost more than anything else on screen because each one repaints the same pixels again. Remembered on this computer only, and never saved into the campaign or sent to your players."><input type="checkbox" bind:checked={$lowPower} /> Low power</label>
                     <div class="ov-seg" role="group" aria-label="Orbit scale">
                       <button class:active={toytownOn} on:click={() => setScaleMode(true)} title="Compressed spacing so the whole system fits one screen">Toytown</button>
                       <button class:active={!toytownOn} on:click={() => setScaleMode(false)} title="True linear AU spacing">Real</button>
@@ -2491,6 +2826,7 @@
                 {showNames}
                 {showZones}
                 {showHillSpheres}
+                {showMagnetospheres}
                 overlay={systemOverlay}
                 gridScaleAu={systemGridScaleAu}
                 {showLPoints}
@@ -2510,6 +2846,18 @@
                 on:showBodyContextMenu={handleShowBodyContextMenu}
                 on:backgroundContextMenu={handleBackgroundContextMenu}
             />
+
+            {#if sizeCompareOn}
+              <SizeComparisonView
+                items={itemsForSystem(displaySystem)}
+                scope="system"
+                mapId={$systemStore?.id ?? null}
+                {mode}
+                selectedId={focusedBodyId}
+                on:select={(e) => updateFocus(e.detail.id)}
+                on:close={() => (sizeCompareOn = false)}
+              />
+            {/if}
 
             {#if ensuredTemporal}
               <div class="time-overlay" class:phone={mode === 'phone'} use:chrome>
@@ -2661,8 +3009,12 @@
       {#if contextMenuType === 'generic'}
         <ContextMenu 
           selectedNode={contextMenuNode} 
+          subtreeCount={contextMenuNode ? subtreeOf($systemStore, contextMenuNode.id).length : 1}
           x={contextMenuX} 
           y={contextMenuY} 
+          on:copyNode={handleCopyNode}
+          on:cutNode={handleCutNode}
+          on:pasteHere={handlePasteHere}
           on:addConstruct={handleAddConstruct}
           on:link={handleLinkStartOrFinish}
           {isLinking}
@@ -2687,6 +3039,16 @@
                         <li on:click={handleAddTrojanFromBackground}>Add Trojan at {lagName} {lagPt}</li>
                     {/if}
                 {/if}
+                <!-- WHAT IS IN HAND COMES FIRST, because if a GM has just copied something the odds
+                     are that is what this right-click is for. It lands on the same host "Add Planet
+                     Here" would have used, so the two agree about what "here" means. -->
+                {#if $detectedClip}
+                    <li on:click={handlePasteAtBackground}>
+                        Paste {$detectedClip.label} here{$detectedClip.count > 1 ? ` (${$detectedClip.count} objects)` : ''}
+                    </li>
+                {:else if backgroundClipHint}
+                    <li class="disabled" title="This browser will not let a page read the clipboard, so the app cannot see what you copied until you paste it.">{backgroundClipHint}</li>
+                {/if}
                 <li on:click={handleCreateConstructFromBackground}>Add Construct Here</li>
                 <li on:click={() => handleCreateBodyFromBackground()}>{contextMenuActionLabel}</li>
                 {#if showAddBeltOption}
@@ -2704,7 +3066,7 @@
     {/if}
 
     {#if showCreateConstructModal}
-        <LoadConstructTemplateModal {rulePack} mode="create" on:load={handleCreateConstructLoad} on:close={() => showCreateConstructModal = false} />
+        <LoadConstructTemplateModal {rulePack} mode="create" hostBody={backgroundClickHost || constructHostBody} placementAU={constructClickAU} on:load={handleCreateConstructLoad} on:close={() => showCreateConstructModal = false} />
     {/if}
 
     {#if showReportConfigModal}
@@ -2713,8 +3075,15 @@
 
 
 
+    {#if showLoadSystemSource}
+        <LoadSourceModal
+            kind="system"
+            on:file={() => { showLoadSystemSource = false; railUploadInput?.click(); }}
+            on:openHub={(e) => openSystemFromHub(e.detail)}
+            on:close={() => (showLoadSystemSource = false)} />
+    {/if}
     {#if sisterStarmap}
-        <SisterFileModal fileKind="starmap" context="system" fileName={sisterStarmap.name}
+        <SisterFileModal fileKind="starmap" context="system" fileName={sisterStarmap.name} subject={sisterStarmap.subject}
             on:close={() => (sisterStarmap = null)}
             on:confirm={() => { const p = sisterStarmap; sisterStarmap = null; if (p) dispatch('openstarmap', { doc: p.doc, models: p.models }); }} />
     {/if}
@@ -2854,7 +3223,7 @@
     padding: 0;
     line-height: 1;
     font-size: 0.9rem;
-    background: #1f1f1f;
+    background: var(--bg-control, #1f1f1f);
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: 4px;
@@ -2994,12 +3363,6 @@
     min-width: 0;
     overflow: hidden; /* the orrery fills this exactly; clip any sub-pixel overshoot */
   }
-  .time-display-overlay {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 57;
-  }
   /* On-canvas orrery controls (top-right): faded Reset + a View popover. */
   .orrery-controls {
     position: absolute;
@@ -3119,10 +3482,17 @@
     border-radius: 4px;
   }
   .name-input:hover, .name-input:focus {
-      background-color: #252525;
+      background-color: var(--bg-card, #252525);
       border-color: var(--border);
   }
 
+  .context-menu li.disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .context-menu li.disabled:hover {
+    background: none;
+  }
   .context-menu {
     position: fixed; /* Fixed positioning for clientX/clientY */
     background-color: var(--bg-panel);

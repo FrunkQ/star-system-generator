@@ -12,6 +12,9 @@
 
   const FAMILIES: LiquidFamily[] = ['water', 'hydrocarbon', 'cryo', 'acid', 'molten', 'exotic', 'internal'];
   const familyHelp = "Groups a solvent. 'internal' = a derived cloud/interior fluid, NEVER a surface ocean (excluded from the ocean picker and from procedural generation). Any other family CAN appear as an ocean where it is liquid.";
+  // Field help lives in `packs/fieldHelp.ts` - one table, four editors (G86).
+  import FieldHelp from './FieldHelp.svelte';
+  import { LIQUID_FIELD_HELP } from '$lib/packs/fieldHelp';
   const biosolventHelp = 'Suitability as a solvent for life: ideal (water), alternative (ammonia, hydrocarbons…), or none.';
 
   // The base default = the pack's liquids if it ships any, else the built-in engine list.
@@ -90,35 +93,35 @@
                     </div>
                     <div class="item-body">
                         <div class="field">
-                            <label>Melting Point (K)</label>
+                            <label>Melting Point (K)<FieldHelp help={LIQUID_FIELD_HELP.meltK} /></label>
                             <input type="number" bind:value={liq.meltK} />
                         </div>
                         <div class="field">
-                            <label>Boiling Point (K, 1 bar)</label>
+                            <label>Boiling Point (K, 1 bar)<FieldHelp help={LIQUID_FIELD_HELP.boilK} /></label>
                             <input type="number" bind:value={liq.boilK} />
                         </div>
                         <div class="field">
-                            <label title="Below this pressure the substance sublimates — no liquid phase (optional).">Triple Pressure (bar)</label>
+                            <label title="Below this pressure the substance sublimates — no liquid phase (optional).">Triple Pressure (bar)<FieldHelp help={LIQUID_FIELD_HELP.tripleBar} /></label>
                             <input type="number" step="0.001" bind:value={liq.tripleBar} />
                         </div>
                         <div class="field">
-                            <label title="Above this temperature it is supercritical at any pressure (optional).">Critical Temp (K)</label>
+                            <label title="Above this temperature it is supercritical at any pressure (optional).">Critical Temp (K)<FieldHelp help={LIQUID_FIELD_HELP.criticalK} /></label>
                             <input type="number" bind:value={liq.criticalK} />
                         </div>
                         <div class="field">
-                            <label title="Pressure at the critical point (optional).">Critical Pressure (bar)</label>
+                            <label title="Pressure at the critical point (optional).">Critical Pressure (bar)<FieldHelp help={LIQUID_FIELD_HELP.criticalBar} /></label>
                             <input type="number" bind:value={liq.criticalBar} />
                         </div>
                         <div class="field">
-                            <label>Density (g/cc)</label>
+                            <label>Density (g/cc)<FieldHelp help={LIQUID_FIELD_HELP.density_gcc} /></label>
                             <input type="number" step="0.01" bind:value={liq.density_gcc} />
                         </div>
                         <div class="field">
-                            <label title="Refractive index — sets the specular starlight share of the apparent colour.">Refractive Index</label>
+                            <label title="Refractive index — sets the specular starlight share of the apparent colour.">Refractive Index<FieldHelp help={LIQUID_FIELD_HELP.refractiveIndex} /></label>
                             <input type="number" step="0.001" bind:value={liq.refractiveIndex} />
                         </div>
                         <div class="field">
-                            <label>Colour</label>
+                            <label>Colour<FieldHelp help={LIQUID_FIELD_HELP.colorHex} /></label>
                             <div class="colour-row">
                                 <input type="checkbox" checked={liq.colorHex !== null && liq.colorHex !== undefined} on:change={(e) => toggleColour(liq, e.currentTarget.checked)} />
                                 {#if liq.colorHex !== null && liq.colorHex !== undefined}
@@ -129,25 +132,25 @@
                             </div>
                         </div>
                         <div class="field">
-                            <label title="How opaquely a CLOUD DECK of this substance veils the ground beneath it. Water clouds are patchy and let the surface through; a sulphuric-acid deck hides Venus completely. The deck's colour comes from the Colour above, paled — clouds are scattering droplets, so they read far lighter than the bulk liquid.">Cloud Opacity</label>
+                            <label title="How opaquely a CLOUD DECK of this substance veils the ground beneath it. Water clouds are patchy and let the surface through; a sulphuric-acid deck hides Venus completely. The deck's colour comes from the Colour above, paled — clouds are scattering droplets, so they read far lighter than the bulk liquid.">Cloud Opacity<FieldHelp help={LIQUID_FIELD_HELP.cloudOpacity} /></label>
                             <input type="number" step="0.05" min="0" max="1"
                                    value={liq.cloudOpacity ?? 0.5}
                                    on:input={(e) => { liq.cloudOpacity = Math.max(0, Math.min(1, +e.currentTarget.value)); liquids = [...liquids]; }} />
                         </div>
                         <div class="field">
-                            <label title="How much starlight a CLOUD DECK of this substance sends back out — its reflectivity, which is not the same thing as its opacity. This is what makes a cloudy world COLD: it feeds the body's Bond albedo and through that its equilibrium temperature. Venus's sulphuric acid returns three quarters of the light that reaches it; a methane haze returns barely a quarter.">Cloud Albedo</label>
+                            <label title="How much starlight a CLOUD DECK of this substance sends back out — its reflectivity, which is not the same thing as its opacity. This is what makes a cloudy world COLD: it feeds the body's Bond albedo and through that its equilibrium temperature. Venus's sulphuric acid returns three quarters of the light that reaches it; a methane haze returns barely a quarter.">Cloud Albedo<FieldHelp help={LIQUID_FIELD_HELP.cloudAlbedo} /></label>
                             <input type="number" step="0.05" min="0" max="1"
                                    value={liq.cloudAlbedo ?? 0.45}
                                    on:input={(e) => { liq.cloudAlbedo = Math.max(0, Math.min(1, +e.currentTarget.value)); liquids = [...liquids]; }} />
                         </div>
                         <div class="field">
-                            <label title="How far from WHITE a cloud deck of this substance stays, in 0-255 colour terms. Droplets that only scatter light go white however dark the bulk liquid is -- that is water, and 60 is its number. A suspension whose particles absorb keeps its colour however finely divided it is: Jupiter's belts are genuinely brown and a martian dust storm genuinely ochre. Raise it for a pigmented condensate; leave it for a clean one.">Cloud Tint Distance</label>
+                            <label title="How far from WHITE a cloud deck of this substance stays, in 0-255 colour terms. Droplets that only scatter light go white however dark the bulk liquid is -- that is water, and 60 is its number. A suspension whose particles absorb keeps its colour however finely divided it is: Jupiter's belts are genuinely brown and a martian dust storm genuinely ochre. Raise it for a pigmented condensate; leave it for a clean one.">Cloud Tint Distance<FieldHelp help={LIQUID_FIELD_HELP.cloudTintDistance} /></label>
                             <input type="number" step="10" min="0" max="255"
                                    value={liq.cloudTintDistance ?? 60}
                                    on:input={(e) => { liq.cloudTintDistance = Math.max(0, Math.min(255, +e.currentTarget.value)); liquids = [...liquids]; }} />
                         </div>
                         <div class="field">
-                            <label title={biosolventHelp}>Biosolvent</label>
+                            <label title={biosolventHelp}>Biosolvent<FieldHelp help={LIQUID_FIELD_HELP.biosolvent} /></label>
                             <select bind:value={liq.biosolvent}>
                                 <option value="ideal">ideal</option>
                                 <option value="alternative">alternative</option>
@@ -155,21 +158,21 @@
                             </select>
                         </div>
                         <div class="field">
-                            <label>Electrically Conductive</label>
+                            <label>Electrically Conductive<FieldHelp help={LIQUID_FIELD_HELP.conductive} /></label>
                             <div class="colour-row">
                                 <input type="checkbox" bind:checked={liq.conductive} />
                                 <span class="muted">drives a dynamo</span>
                             </div>
                         </div>
                         <div class="field">
-                            <label title="Self-luminous when molten (magma, molten metals). Adds a temperature-scaled thermal glow so the ocean lights up on its own — brighter and whiter the hotter it is — even under a dim star.">Incandescent</label>
+                            <label title="Self-luminous when molten (magma, molten metals). Adds a temperature-scaled thermal glow so the ocean lights up on its own — brighter and whiter the hotter it is — even under a dim star.">Incandescent<FieldHelp help={LIQUID_FIELD_HELP.incandescent} /></label>
                             <div class="colour-row">
                                 <input type="checkbox" bind:checked={liq.incandescent} />
                                 <span class="muted">self-glowing molten</span>
                             </div>
                         </div>
                         <div class="field">
-                            <label title={familyHelp}>Family</label>
+                            <label title={familyHelp}>Family<FieldHelp help={LIQUID_FIELD_HELP.family} /></label>
                             <select bind:value={liq.family}>
                                 {#each FAMILIES as f}
                                     <option value={f}>{f}</option>

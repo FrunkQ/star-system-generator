@@ -14,12 +14,13 @@
   import type { PlayerPreset, ViewModule } from '$lib/player/presetTypes';
   import { holoStyleOf, systemStageStyle, FONT_STACKS, isRainbow, RAINBOW, RAINBOW_GRADIENT, accentSolid } from '$lib/player/presets';
   import { RATE_STEPS } from '$lib/player/timeRates';
-  import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset, updateAssetProvenance, ASSET_MAX_PX, BACKGROUND_MAX_PX } from '$lib/player/presetStore';
+  import { updatePreset, playerAssetList, addAssetFromFile, deleteAsset, updateAssetProvenance, setCoverAsset, coverAssetId, ASSET_MAX_PX, BACKGROUND_MAX_PX } from '$lib/player/presetStore';
   import { systemStore } from '$lib/stores';
   import { starmapStore } from '$lib/starmapStore';
   import { starmapUiStore } from '$lib/starmapUiStore';
   import { liveOverrides } from '$lib/player/liveOverrides';
   import { tagCategories } from '$lib/tags/tagCategories';
+  import { tagDisclosure } from '$lib/tags/tagLifecycle';
   // The GM's live snap-grid, so the preview shows the same grid the players will see.
   $: previewMapGrid = { type: toLegacyMapGridType($starmapUiStore.travellerMode ? 'traveller-hex' : $starmapUiStore.gridType), size: 50 };
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
@@ -30,6 +31,8 @@
   import GraphicLayer from './GraphicLayer.svelte';
   import GraphicPlacementControls from './GraphicPlacementControls.svelte';
   import Starmap3DView from '$lib/starmap/Starmap3DView.svelte';
+  import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
+  import { itemsForSystem, itemsForStarmap } from '$lib/comparison/items';
   import FilteredDocumentView from './FilteredDocumentView.svelte';
   import { DOCUMENT_STYLES, documentStyleBase } from '$lib/catalogue/document/documentStyles';
   import TransitionParamControls from './TransitionParamControls.svelte';
@@ -66,7 +69,10 @@
     // FIRST CHOICE: a tag the previewed system genuinely carries. That is the case a GM is really
     // tuning for — a real world, a real badge — and it needs nothing fabricated at all.
     for (const n of ((previewSystem?.nodes ?? []) as any[])) {
-      for (const t of (n.tags ?? [])) if (t?.key && !t.secret && usable(t.key)) return t.key as string;
+      // G54: EVERY RUNG BELOW `open` IS SKIPPED, not just the top one. This preview is a GM control
+      // showing what players will get, so a tag that reaches them anonymised (or not at all) is the
+      // wrong sample — it would advertise a key the player never sees under that name.
+      for (const t of (n.tags ?? [])) if (t?.key && tagDisclosure(t) === 'open' && usable(t.key)) return t.key as string;
     }
     // ELSE the first tag of the first enabled category that describes a PLACE. `status` is skipped
     // deliberately: it is runtime state (in transit, adrift), it is the first category in the list,
@@ -183,6 +189,15 @@
   function zDepthLabel(z: number): string {
     if (Math.abs(z - 1) < 0.01) return 'true depth';
     return z > 1 ? `${z}× stretched` : `${Math.round((1 / z) * 10) / 10}× flatter`;
+  }
+
+  // S2c: the construct dial's read-out. It names BOTH numbers on purpose — the departure the GM
+  // chose, and where constructs actually land on the same 0..100% axis the Body size dial reads on.
+  // An offset shown alone is unreadable, because its meaning depends entirely on the master beside it.
+  function constructLabel(bodySize: number, offset: number): string {
+    if (offset === 0) return 'as bodies';
+    const dial = Math.max(0, Math.min(1, bodySize + offset));
+    return `${offset > 0 ? '+' : ''}${Math.round(offset * 100)}% · drawn at ${Math.round(dial * 100)}%`;
   }
 
   // ── A48: collapsible sections, per GM ───────────────────────────────────────
@@ -558,6 +573,14 @@
                   <img src={a.dataUrl} alt={a.name} />
                   <span class="a-name">{a.name}</span>
                   {#if !a.id.startsWith('builtin-')}
+                    <!-- R-07: which picture represents this campaign when it is shared. A pointer at
+                         a graphic that already exists, so it needs no separate image and inherits
+                         the credit already recorded beside it. Built-ins cannot be chosen: they are
+                         app artwork on a static path and never travel inside the save. -->
+                    <button class="a-cover" class:is-cover={$coverAssetId === a.id}
+                      title={$coverAssetId === a.id ? 'This is the cover picture — click to unset' : 'Use as the cover picture when this map is shared'}
+                      aria-pressed={$coverAssetId === a.id}
+                      on:click={() => setCoverAsset(a.id)}>★</button>
                     <button class="a-cred" class:has={!!a.credit} title={a.credit ? `Credit: ${a.credit}` : 'No credit recorded — add one'}
                       on:click={() => openCredits(a)}>&copy;</button>
                     <button class="a-del" title="Remove" on:click={() => deleteAsset(a.id)}>×</button>
@@ -623,8 +646,26 @@
                   <option value="list">Document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D map</option>
+                  <option value="sizecompare">Size comparison</option>
                 </select>
               </label>
+              {#if draft.starmapView === 'sizecompare'}
+                <label>Order
+                  <select bind:value={draft.starmapSizeCompareOrder}>
+                    <option value="size">Size — largest first</option>
+                    <option value="name">Name</option>
+                    <option value="mass">Mass — heaviest first</option>
+                  </select>
+                </label>
+                <label class="chk">
+                  <input type="checkbox" checked={draft.starmapSizeCompareRuler !== false}
+                    on:change={(e) => (draft.starmapSizeCompareRuler = (e.currentTarget as HTMLInputElement).checked)} />
+                  Show the size ruler
+                </label>
+                <p class="hint">Every star on the map at true relative size, side by side. A tap centres
+                  a star and rescales the rest against it; it does not enter that system, because on
+                  this map a tap is a comparison rather than a door.</p>
+              {/if}
             {/if}
           </CollapsibleSection>
 
@@ -782,8 +823,29 @@
                   <option value="document">Document</option>
                   <option value="diagram2d">2D map</option>
                   <option value="holo3d">3D holo</option>
+                  <option value="sizecompare">Size comparison</option>
                 </select>
               </label>
+              {#if draft.systemView === 'sizecompare'}
+                <label>Order
+                  <select bind:value={draft.sizeCompareOrder}>
+                    <option value="size">Size — largest first</option>
+                    <option value="name">Name</option>
+                    <option value="mass">Mass — heaviest first</option>
+                    <option value="orbit">Orbit — moons under their planet</option>
+                  </select>
+                </label>
+                <label class="chk">
+                  <input type="checkbox" checked={draft.sizeCompareRuler !== false}
+                    on:change={(e) => (draft.sizeCompareRuler = (e.currentTarget as HTMLInputElement).checked)} />
+                  Show the size ruler
+                </label>
+                <p class="hint">Every object in the system at true relative size. Players can move
+                  along the strip and tap anything to read its file; the order is yours to set. The
+                  ruler draws Luna, Earth, Jupiter and the rest as circles around whatever is in the
+                  middle, so you can see how many of them would fit across it — turn it off for a
+                  picture rather than a measurement.</p>
+              {/if}
             {:else}
               <p class="hint">Disabled: systems aren't openable; the starmap (or cover) is the whole guide.</p>
             {/if}
@@ -842,6 +904,7 @@
                     </select>
                   </label>
                   <label class="chk"><input type="checkbox" bind:checked={draft.auroras} /> Auroras</label>
+                  <label class="chk" title="The bubble each magnetic field cuts out of the stellar wind: a glowing shell with the bright part being the region that actually shields an atmosphere. Off by default, and hidden in Low Power."><input type="checkbox" bind:checked={draft.magnetospheres} /> Magnetospheres</label>
                 </CollapsibleSection>
 
                 <!-- PERFORMANCE, gathered. These three were scattered across Look & Feel and Scaling,
@@ -852,6 +915,14 @@
                      called "Belt detail" under Scaling. -->
                 <CollapsibleSection label="Performance tweaks (for lower end devices)" open={openSections['system-perf']}
                   on:toggle={(e) => setSection('system-perf', e.detail)}>
+                  <!-- THE MASTER OF THIS SECTION, and first because it is the one a GM reaches for
+                       when a player says "it's laggy" without knowing which thing is expensive. The
+                       player's OWN machine can say the same thing for itself (`lowPowerStore`); if
+                       either says low power, it is low power. -->
+                  <label class="chk" title="Everything in this section at once, plus half the frame rate and a coarser picture. For a player on an old tablet or a weak laptop. A player can also turn this on for themselves on their own machine; whichever of you asks for it, they get it.">
+                    <input type="checkbox" checked={draft.lowPower === true} on:change={(e) => (draft = { ...draft, lowPower: e.currentTarget.checked })} />
+                    Low power mode
+                  </label>
                   <label class="chk" title="Cloud decks, the atmospheric limb glow and high haze. Each is a translucent shell blended over the body, so a cloudy world repaints the same pixels several times — the cost is fill rate, which is what a weak GPU has least of.">
                     <input type="checkbox" checked={draft.atmospheres !== false} on:change={(e) => (draft = { ...draft, atmospheres: e.currentTarget.checked })} />
                     Atmospheres &amp; clouds
@@ -958,6 +1029,19 @@
                   <label>Body size <span class:actual-on={draft.bodySize === 0}>{draft.bodySize === 0 ? 'actual size' : draft.bodySize >= 1 ? 'readable' : Math.round(draft.bodySize * 100) + '%'}</span>
                     <div class="range-actual" title="Left end = actual (true) body sizes"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.bodySize} /></div>
                   </label>
+                  <!-- S2c, owner 2026-08-27: ships and stations slid RELATIVE to Body size, which stays the
+                       master. The centre pip is the honest zero — constructs on exactly the same dial as
+                       bodies, which is what this view has always drawn — so sliding off it is a departure
+                       a GM makes deliberately and can see, in either direction. Range matches
+                       /scale-reference's own dial (±0.5); two controls for one quantity must not disagree. -->
+                  <label>Constructs <span class:actual-on={(draft.constructOffset ?? 0) === 0}>{constructLabel(draft.bodySize, draft.constructOffset ?? 0)}</span>
+                    <div class="range-actual range-mid" title="Centre = ships and stations on the same dial as bodies; left draws them nearer true scale, right nearer readable">
+                      <span class="actual-pip mid" aria-hidden="true"></span>
+                      <input type="range" min="-0.5" max="0.5" step="0.05" value={draft.constructOffset ?? 0}
+                        on:input={(e) => (draft = { ...draft, constructOffset: Number((e.currentTarget as HTMLInputElement).value) })} />
+                    </div>
+                  </label>
+                  <p class="hint">Ships and stations are microscopic beside worlds, so a map that is honest about both can be hard to read. This slides constructs alone, leaving Body size in charge of everything. Centre is the true relationship &mdash; anywhere else is a display choice you have made, not the physics.</p>
                   <label>Spread <span class:actual-on={draft.compression === 0}>{draft.compression === 0 ? 'actual distances' : Math.round(draft.compression * 100) + '%'}</span>
                     <div class="range-actual" title="Left end = actual (true) distances"><span class="actual-pip" aria-hidden="true"></span><input type="range" min="0" max="1" step="0.05" bind:value={draft.compression} /></div>
                   </label>
@@ -1131,7 +1215,7 @@
                 <FilterParamControls filterId={draft.filter} values={draft.filterParams}
                   on:change={(e) => (draft = { ...draft, filterParams: e.detail })} />
               </div>
-              <p class="hint">The 3D view uses the exact shader; text and 2D screens use a lighter matched version so their content stays readable.</p>
+              <p class="hint">The 3D view and the size comparison use the exact shader, text and all; other text screens use a lighter matched version so their content stays readable.</p>
             {/if}
           </CollapsibleSection>
         {/if}
@@ -1179,6 +1263,23 @@
               <div class="ph">Starmap stage is disabled — players go straight to systems.</div>
             {:else if !($starmapStore?.systems?.length)}
               <div class="ph">No starmap loaded — open or create a campaign map to preview this stage.</div>
+            {:else if draft.starmapView === 'sizecompare'}
+              <!-- The starmap's own size comparison: every star on the map, the SAME component the
+                   system stage mounts, so this preview cannot describe a view that does not exist. -->
+              <div class="sizecmp-wrap">
+                <SizeComparisonView items={itemsForStarmap($starmapStore)} scope="starmap"
+                  mapId={$starmapStore?.id ?? null} mode="desktop" playerChrome
+                  forcedOrder={draft.starmapSizeCompareOrder ?? 'size'}
+                  showRuler={draft.starmapSizeCompareRuler !== false}
+                  filterId={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams ?? {}} />
+                {#if draft.starmapOverlay}
+                  <div class="ovl-wrap">
+                    <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                      <GraphicLayer placement={draft.starmapOverlay} assets={$playerAssetList} />
+                    </FilterFrame>
+                  </div>
+                {/if}
+              </div>
             {:else if draft.starmapView === 'holo3d' || draft.starmapView === 'diagram2d'}
               <!-- BOTH map views are the same engine (2D = it locked flat) and run the real shader
                    themselves — mirroring the live player view exactly, so this preview can't drift. -->
@@ -1254,6 +1355,29 @@
                 } : null}
                 selectable={true}
                 on:select={(e) => (previewFocusId = e.detail)} />
+            {:else if draft.systemView === 'sizecompare' && previewSystem}
+              <!-- G68: the SAME component the players get, with the same player chrome, so this
+                   preview cannot show a view that does not exist.
+                   NO `FilterFrame` HERE ANY MORE (B126): the view draws its own chrome into the
+                   rendered surface and runs the REAL shader over the lot, so wrapping it in the CSS
+                   approximation as well would tint the picture twice and still not warp the text.
+                   The overlay graphic keeps its own frame, exactly as the holo branch does. -->
+              <div class="sizecmp-wrap">
+                <SizeComparisonView items={itemsForSystem(previewSystem)} scope="system"
+                  mapId={previewSystem.id ?? null} mode="desktop"
+                  selectedId={previewFocusId} playerChrome
+                  forcedOrder={draft.sizeCompareOrder ?? 'size'}
+                  showRuler={draft.sizeCompareRuler !== false}
+                  filterId={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams ?? {}}
+                  on:select={(e) => (previewFocusId = e.detail.id)} />
+                {#if draft.systemOverlay}
+                  <div class="ovl-wrap">
+                    <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                      <GraphicLayer placement={draft.systemOverlay} assets={$playerAssetList} />
+                    </FilterFrame>
+                  </div>
+                {/if}
+              </div>
             {:else if draft.systemView === 'list' && previewSystem}
               <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 <div class="sm-preview" style="font-family:{draft.font}; --accent:{accentCss}">
@@ -1337,13 +1461,16 @@
   .overlay-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
   .assets { display: flex; flex-direction: column; gap: 6px; }
   .asset { display: flex; align-items: center; gap: 8px; background: var(--bg-control); border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; }
-  .asset img { width: 44px; height: 28px; object-fit: contain; background: repeating-conic-gradient(#2a2d36 0 25%, #1b1e26 0 50%) 0 0/12px 12px; border-radius: 3px; }
+  .asset img { width: 44px; height: 28px; object-fit: contain; background: repeating-conic-gradient(var(--border, #2a2d36) 0 25%, var(--bg-control, #1b1e26) 0 50%) 0 0/12px 12px; border-radius: 3px; }
   .a-name { flex: 1; font-size: 0.72rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .a-del { background: none; border: none; color: #ff8080; cursor: pointer; font-size: 1rem; }
   /* G16/DATA-M4: the credit handle. Dim when nothing is recorded, so an unattributed upload is
      visible at a glance rather than needing to be opened one at a time. */
   .a-cred { background: none; border: none; color: #8899aa; cursor: pointer; font-size: 0.95rem; opacity: 0.55; }
   .a-cred.has { color: #7fd18a; opacity: 1; }
+  /* The cover star reads the same way the credit mark does: quiet until it means something. */
+  .a-cover { background: none; border: none; color: #8899aa; cursor: pointer; font-size: 0.95rem; opacity: 0.55; }
+  .a-cover.is-cover { color: #e8c46a; opacity: 1; }
   .a-credits { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
   .a-credit-btns { display: flex; gap: 6px; }
   .wiz-nav { display: flex; justify-content: space-between; margin-top: auto; padding-top: 0.4rem; }
@@ -1369,4 +1496,7 @@
   .sm-list li { padding: 4px 0; border-bottom: 1px solid rgba(140,170,210,0.15); font-size: 0.9rem; }
   button { padding: 7px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); font: inherit; }
   button.primary { background: var(--accent); border-color: var(--accent); }
+  /* The strip needs a real box to measure; the preview pane is otherwise content-sized. */
+  .sizecmp-wrap { position: relative; width: 100%; height: 100%; min-height: 320px; }
+  .ovl-wrap { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 </style>

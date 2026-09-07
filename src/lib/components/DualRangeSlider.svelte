@@ -77,7 +77,7 @@
     position: relative;
     width: 100%;
     height: 20px;
-    background: #333;
+    background: var(--border, #333);
     border-radius: 10px;
     margin: 10px 0;
     user-select: none;

@@ -59,6 +59,23 @@ export function calculateArtificialGravity(radiusM: number, rpm: number): number
 }
 
 /**
+ * Rotation period in HOURS -> revolutions per MINUTE, and back. ONE pair, here, because the crew
+ * tab wrote its own inline conversion as `1/(hours/60)` — which is 60/hours, revolutions per
+ * minute for a period measured in MINUTES, i.e. 3600x too fast. Its inverse made the same mistake
+ * backwards, so stored data round-tripped unharmed while the RPM display and the g figure fed from
+ * it were both wrong by hours-vs-seconds: the bundled ringworld's honest 1.00 g at 215.5 h read
+ * 12,967,908 g (owner's console, 2026-08-30). A period of h hours is h*60 minutes; RPM is simply
+ * its reciprocal.
+ */
+export function rpmFromPeriodHours(hours: number): number {
+  return hours > 0 ? 1 / (hours * 60) : 0;
+}
+
+export function periodHoursFromRpm(rpm: number): number {
+  return rpm > 0 ? 1 / (rpm * 60) : 0;
+}
+
+/**
  * Calculates the required RPM to achieve a target g-force at a given radius.
  * @param targetG - The desired g-force.
  * @param radiusM - The radius of the spinning section in meters.

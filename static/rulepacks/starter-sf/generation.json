@@ -74,6 +74,8 @@
     "uv_damage_edge_nm": 280,
     "kill_zone_sol_au": 0.1,
     "danger_zone_multiplier": 5,
+    "barycentre_promote_ratio": 0.08,
+    "barycentre_demote_ratio": 0.05,
     "atmosphere_retention_factor": 100,
     "radiation_ld50_sv": 5,
     "binary_placement_rules": [
@@ -112,7 +114,27 @@
     "belt_peak_dose_sv_per_day": 1451.1,
     "belt_scale_length_host_radii": 1.6324,
     "belt_min_host_field_gauss": 0.01,
-    "belt_inner_edge_scale_heights": 150
+    "belt_inner_edge_scale_heights": 150,
+    "wind_ref_pressure_npa_at_1au": 2.0,
+    "wind_activity_exponent": 1.0,
+    "wind_scale_min": 0.05,
+    "wind_scale_max": 100,
+    "ism_pressure_pa": 1.4e-13,
+    "magnetopause_compression_factor": 2.0,
+    "magnetotail_standoffs": 20,
+    "aurora_oval_l_fraction": 0.55,
+    "magnetopause_flaring_alpha": 0.58,
+    "closed_field_tail_standoffs": 4,
+    "magnetosphere_view_log_gain": 0.8,
+    "magnetosphere_view_tail_standoffs": 2,
+    "magnet_geometry_table": {
+      "none": { "tilt_deg": 0, "offset_radii": 0, "ordered": false },
+      "dipolar": { "tilt_deg": 10, "offset_radii": 0, "ordered": true },
+      "tilted": { "tilt_deg": 45, "offset_radii": 0.1, "ordered": true },
+      "off-centre": { "tilt_deg": 53, "offset_radii": 0.42, "ordered": true },
+      "multipolar": { "tilt_deg": 0, "offset_radii": 0, "ordered": false },
+      "induced": { "tilt_deg": 0, "offset_radii": 0, "ordered": true }
+    }
   },
   "distributions": {
     "star_types": {

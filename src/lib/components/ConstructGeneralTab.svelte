@@ -6,6 +6,7 @@
   import UnitInput from './UnitInput.svelte';
   import { getPlanetColor } from '$lib/rendering/colors';
   import { deriveCoOrbitalOrbit, lagrangePlacementId, LAGRANGE_PLACEMENTS } from '$lib/physics/lagrange';
+  import { hostCandidates } from '$lib/system/reparent';
 
   export let system: System;
   export let construct: CelestialBody;
@@ -50,7 +51,8 @@
   let sliderEl: SVGSVGElement;
 
   onMount(() => {
-    availableParents = system.nodes.filter(n => (n.kind === 'body' && (n.roleHint === 'planet' || n.roleHint === 'moon' || n.roleHint === 'star')) || n.kind === 'barycenter');
+    // ONE list rule for "what may this orbit", shared with a body's re-home control (G64).
+    availableParents = hostCandidates(system) as CelestialBody[];
     selectedParentId = construct.parentId || undefined; // Use physical parent for editor
     selectedPlacement = construct.placement;
     if (construct.orbit) {

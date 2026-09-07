@@ -3,6 +3,8 @@
   import type { RulePack } from '$lib/types';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { loadBaseMapManifest } from '$lib/map/baseMapManifest';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let rulepacks: RulePack[];
   export let hasSavedStarmap: boolean;
@@ -55,7 +57,7 @@
   }
 </script>
 
-<div class="modal-background">
+<div class="modal-background" use:foreground>
   <div class="modal">
     <div class="left-pane">
         <img src="/images/ui/SSE-Logo.png" alt="Star System Explorer" class="main-logo" />
@@ -93,6 +95,12 @@
               <strong>Upload a starmap file</strong>
               <small>Load a starmap saved from this app — a .json file, or a .sse.zip bundle if it carries pictures or ship models.</small>
             </button>
+            <!-- THE SHARED-MAP PASTE FIELD IS NOT HERE ANY MORE, and that is deliberate. Owner,
+                 2026-09-06: "This is not the place for the site import - its ugly and people are
+                 not joining from here." Nobody arrives at the app already holding a map code; they
+                 arrive by clicking a link, which the `?hub=` / `?open=` funnel handles without
+                 any screen at all. It now lives in `LoadSourceModal`, behind Load Starmap and
+                 Load System, where somebody has already decided they want to open something. -->
         </section>
 
         <section class="option-group new-starmap-form">
@@ -268,6 +276,8 @@
     border-color: var(--accent);
   }
 
+  /* The paste-a-link card is a DIV, not a button: it holds a field, so the whole card cannot be
+     one click target. It borrows the option card's look so the group still reads evenly. */
   .new-starmap-form {
     padding-top: 0;
   }

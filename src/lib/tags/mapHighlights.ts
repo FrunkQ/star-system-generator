@@ -11,7 +11,7 @@
 // Formal and informal use the same path. The selection decides WHAT SHOWS and WHAT SHAPE; the colour
 // always comes from the tag or its category, which is why a per-tag colour override is the whole
 // mechanism behind one Faction category flying a different colour per faction.
-import { canonicalTagKey } from './tagLifecycle';
+import { canonicalTagKey, ANONYMOUS_TAG_KEY } from './tagLifecycle';
 import { describeTag } from './tagPresentation';
 import type { TagCategory } from './tagCategories';
 import type { Tag } from '../types';
@@ -74,11 +74,23 @@ export function markersFor(
     if (!key || seen.has(key)) continue;
     const ns = key.split('/')[0];
 
+    // G54 — THE ANONYMOUS PLACEHOLDER IS NOT A SELECTION AND CANNOT BE ONE.
+    //
+    // Highlighting names a category or a key, and the placeholder has neither of the ones the GM
+    // chose: `faction/hidden-hand` at rung `anonymous` reaches a player as `unknown/undisclosed`,
+    // which matches no selection, so a selection-only rule would delete exactly the presence the
+    // rung exists to preserve. It therefore always matches.
+    //
+    // THIS BRANCH CAN ONLY EVER FIRE ON REDACTED DATA. Nothing emits this key; the only writer is
+    // `redactTagsForPlayers`, so the GM side never sees it and never gets an extra badge.
+    // It still respects the empty-selection early return above: with no highlights at all the
+    // surface is drawing no badges, and this must not be the one thing that puts one back.
+    const anon = key === ANONYMOUS_TAG_KEY;
     // The most specific selection wins its style: naming a tag outright beats naming its category.
     const byTag = highlights.find((h) => canonicalTagKey(h.ref) === key);
     const byCat = highlights.find((h) => isCategoryRef(h.ref) && canonicalTagKey(h.ref) === ns);
     const hit = byTag ?? byCat;
-    if (!hit) continue;
+    if (!hit && !anon) continue;
 
     const cat = categories.find((c) => c.id === ns);
     const def = cat?.tags.find((x) => canonicalTagKey(x.key) === key);
@@ -102,8 +114,10 @@ export function markersFor(
       label,
       color: def?.color || cat?.color || pres.color,
       textColor: def?.textColor || cat?.textColor || pres.textColor || '#ffffff',
-      style: hit.style ?? defaultStyle,
-      monogram: monogramOf(label)
+      style: hit?.style ?? defaultStyle,
+      // A QUESTION MARK, not initials. `monogramOf('Undisclosed')` gives "UN", which reads as an
+      // abbreviation of something and invites a guess; "?" says what this actually is.
+      monogram: anon ? '?' : monogramOf(label)
     });
   }
 

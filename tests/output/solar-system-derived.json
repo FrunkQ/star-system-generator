@@ -2,7 +2,7 @@
   "id": "solar-system",
   "name": "Sol",
   "seed": "solar-system-real-data",
-  "epochT0": 1762339146908,
+  "epochT0": 1788264000000,
   "age_Gyr": 4.603,
   "nodes": [
     {
@@ -40,6 +40,7 @@
       "flareActivity": 0.05175165467708495,
       "calculatedGravity_ms2": 274.2814900104337,
       "isSelfLuminous": false,
+      "astrosphereAu": 119.4,
       "oblateness": 0,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -58,15 +59,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 0.387098,
-          "e": 0.20563,
-          "i_deg": 7.005,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 5.020466586134799
+          "a_AU": 0.387099369,
+          "e": 0.20564101,
+          "i_deg": 7.003393,
+          "omega_deg": 29.20325,
+          "Omega_deg": 48.29734,
+          "M0_rad": 1.293803787
         },
+        "n_rad_per_s": 8.266757627356099e-7,
         "resonance": null
       },
       "massKg": 3.285e+23,
@@ -123,7 +125,7 @@
         },
         "main": "Na",
         "pressure_bar": 1e-11,
-        "scaleHeightKm": 33.7802565719989,
+        "scaleHeightKm": 33.78021680319884,
         "molarMassKg": 0.029400000000000003
       },
       "axial_tilt_deg": 0.034,
@@ -135,12 +137,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 1.6199996899501912e-10,
       "radiationShieldingMag": 0.03798111743561224,
-      "photonRadiation": 3068.6843504424196,
-      "particleRadiation": 412.89121598421315,
-      "surfaceRadiationMin": 2346.046236052519,
-      "surfaceRadiationMax": 5401.438481303582,
-      "equilibriumTempMinK": 398.55848387020393,
-      "equilibriumTempMaxK": 491.0069777971033,
+      "photonRadiation": 3068.6698996724995,
+      "particleRadiation": 412.8892716343607,
+      "surfaceRadiationMin": 2345.9868448655498,
+      "surfaceRadiationMax": 5401.5499654189225,
+      "equilibriumTempMinK": 398.55595927342137,
+      "equilibriumTempMaxK": 491.0095122761471,
       "tidallyLocked": true,
       "magneticField": {
         "strengthGauss": 0.003
@@ -148,12 +150,12 @@
       "internalHeatK": 0,
       "calculatedGravity_ms2": 3.683564214339057,
       "calculatedRotationPeriod_s": 5067360,
-      "orbital_period_days": 87.9559820091742,
+      "orbital_period_days": 87.96925644194627,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 439.9916869168111,
+      "equilibriumTempK": 439.99116892366357,
       "albedoBreakdown": {
         "albedo": 0.088,
         "surfaceAlbedo": 0.088,
@@ -163,7 +165,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 4.326640157213818e-9,
-      "temperatureK": 439.9916869211377,
+      "temperatureK": 439.9911689279902,
       "temperatureProfile": {
         "meanK": 310,
         "totalMinK": 70,
@@ -209,12 +211,30 @@
           "A large iron core keeps a weak, disordered field despite very slow rotation (Mercury-like)."
         ]
       },
-      "totalIncidentFlux": 6.99575354969099,
-      "totalIncidentFluxMin": 4.710042756111976,
-      "totalIncidentFluxMax": 10.84943876737011,
-      "starlightFlux": 6.819298557643436,
-      "surfaceRadiation": 3483.575566426633,
-      "orbitalRadiation": 3481.575566990648,
+      "magnetosphere": {
+        "shape": "tenuous",
+        "standoffRadii": 1.48,
+        "closedFieldRadii": 0.814,
+        "tailRadii": 29.61,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 174.4,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 13.61,
+        "notes": [
+          "A disordered, multipolar field: there is no single magnetic axis, so the bubble has no clean pole and the aurora is a scatter of patches rather than one oval.",
+          "The magnetopause stands 1.5 body radii out, where the field's pressure balances 13.6 nPa of stellar wind."
+        ]
+      },
+      "totalIncidentFlux": 6.995720605923101,
+      "totalIncidentFluxMin": 4.709923417582872,
+      "totalIncidentFluxMax": 10.849662779568252,
+      "starlightFlux": 6.819266444821387,
+      "surfaceRadiation": 3483.55917130686,
+      "orbitalRadiation": 3481.559171870873,
       "beltInnerEdgeRadii": 3.0769,
       "oblateness": 0.000001272841752605334,
       "geoActivity": {
@@ -254,10 +274,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 0.3829394838534645,
-        "totalTopWm2": 7782.967704151766,
-        "totalSurfaceWm2": 7782.96768379078,
-        "photonFlux": 2.767256577887386e+22,
+        "distanceAU": 0.3829403855085855,
+        "totalTopWm2": 7782.931053306404,
+        "totalSurfaceWm2": 7782.931032945517,
+        "photonFlux": 2.767243546573785e+22,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -439,10 +459,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "3483.58 mSv",
+            "value": "3483.56 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 3483.58,
+              "value": 3483.56,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -480,7 +500,7 @@
         "minLeoKm": 30,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
-        "heoUpperBoundaryKm": 217856.04974201214,
+        "heoUpperBoundaryKm": 217856.828833822,
         "geoStationaryKm": null,
         "isGeoFallback": true
       },
@@ -500,15 +520,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 0.723332,
-          "e": 0.006772,
-          "i_deg": 3.39458,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 1.3661033419802402
+          "a_AU": 0.7233367,
+          "e": 0.00676577,
+          "i_deg": 3.394466,
+          "omega_deg": 54.99739,
+          "Omega_deg": 76.60579,
+          "M0_rad": 3.0565372914
         },
+        "n_rad_per_s": 3.2363948766142267e-7,
         "resonance": null
       },
       "massKg": 4.867e+24,
@@ -591,7 +612,7 @@
         },
         "main": "CO2",
         "pressure_bar": 92,
-        "scaleHeightKm": 16.25918976315535,
+        "scaleHeightKm": 16.259173588764842,
         "molarMassKg": 0.043449959999999996
       },
       "axial_tilt_deg": 177.36,
@@ -603,22 +624,22 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 1,
       "radiationShieldingMag": 0,
-      "photonRadiation": 2.44337695e-316,
-      "particleRadiation": 3.417452e-317,
+      "photonRadiation": 2.44335224e-316,
+      "particleRadiation": 3.417205e-317,
       "surfaceRadiationMin": 2,
       "surfaceRadiationMax": 2,
-      "equilibriumTempMinK": 229.23345500841322,
-      "equilibriumTempMaxK": 230.7911160648498,
+      "equilibriumTempMinK": 229.23341952613194,
+      "equilibriumTempMaxK": 230.7896424516309,
       "tidallyLocked": false,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 8.869475448060673,
       "calculatedRotationPeriod_s": -20997000,
-      "orbital_period_days": 224.6676322970732,
+      "orbital_period_days": 224.70080116586078,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 230.0096483937865,
+      "equilibriumTempK": 230.0088987046927,
       "albedoBreakdown": {
         "albedo": 0.757,
         "surfaceAlbedo": 0.178,
@@ -630,7 +651,7 @@
         "note": "Sulphuric Acid cloud deck over a surface under light oxide dust."
       },
       "greenhouseTempK": 523.6099227125275,
-      "temperatureK": 753.619571106314,
+      "temperatureK": 753.6188214172201,
       "temperatureProfile": {
         "meanK": 754,
         "totalMinK": 738,
@@ -673,12 +694,27 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 1.9607823913016813,
-      "totalIncidentFluxMin": 1.9344485451863138,
-      "totalIncidentFluxMax": 1.9875658724996725,
-      "starlightFlux": 1.9113252686619904,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 96,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 3.815,
+        "notes": []
+      },
+      "totalIncidentFlux": 1.9607568276786325,
+      "totalIncidentFluxMin": 1.9344473474792612,
+      "totalIncidentFluxMax": 1.9875151101420667,
+      "starlightFlux": 1.9113003498342263,
       "surfaceRadiation": 2,
-      "orbitalRadiation": 980.3911956508407,
+      "orbitalRadiation": 980.3784138393162,
       "beltInnerEdgeRadii": 1.403,
       "oblateness": 7.637335768889923e-8,
       "geoActivity": {
@@ -725,10 +761,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 0.7233237068588907,
-        "totalTopWm2": 2181.4241908285253,
-        "totalSurfaceWm2": 68.5193048685059,
-        "photonFlux": 254079165945559800000,
+        "distanceAU": 0.7233284220571383,
+        "totalTopWm2": 2181.3957505967246,
+        "totalSurfaceWm2": 68.51841155077267,
+        "photonFlux": 254075853398460470000,
         "peakTopNm": 500,
         "peakSurfaceNm": 880,
         "surfaceLightHex": "#ffbd7c",
@@ -757,7 +793,7 @@
           {
             "hex": "#b26123",
             "role": "surface",
-            "weight": 0.000986610304147715,
+            "weight": 0.0009866103041477135,
             "label": "oxidised rock surface",
             "rawHex": "#986c4e"
           },
@@ -932,7 +968,7 @@
         "minLeoKm": 410.6486130208151,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
-        "heoUpperBoundaryKm": 1004980.1034093457,
+        "heoUpperBoundaryKm": 1004986.6727992608,
         "geoStationaryKm": null,
         "isGeoFallback": true
       },
@@ -953,15 +989,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 1,
-          "e": 0.0167086,
-          "i_deg": 0,
-          "omega_deg": 0,
+          "a_AU": 1.000004109,
+          "e": 0.01669952,
+          "i_deg": -0.003468,
+          "omega_deg": 103.02389,
           "Omega_deg": 0,
-          "M0_rad": 3.9329429420805933
+          "M0_rad": 4.1412009528
         },
+        "n_rad_per_s": 1.990986570274424e-7,
         "resonance": null
       },
       "massKg": 5.972e+24,
@@ -1081,7 +1118,7 @@
         },
         "pressure_bar": 1.013,
         "main": "N2",
-        "scaleHeightKm": 8.41451134574206,
+        "scaleHeightKm": 8.41449574858654,
         "molarMassKg": 0.028917575576472936
       },
       "hydrosphere": {
@@ -1121,22 +1158,22 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.9993734232934868,
       "radiationShieldingMag": 0.5695869078967722,
-      "photonRadiation": 0.2819988845242642,
-      "particleRadiation": 0.016975895457385527,
+      "photonRadiation": 0.2819965242885533,
+      "particleRadiation": 0.016975753374856548,
       "tidallyLocked": false,
-      "surfaceRadiationMin": 2.2891884407656002,
-      "surfaceRadiationMax": 2.3091786114197395,
-      "equilibriumTempMinK": 252.4763954775228,
-      "equilibriumTempMaxK": 256.73076178278905,
+      "surfaceRadiationMin": 2.289191229612603,
+      "surfaceRadiationMax": 2.3091703606403744,
+      "equilibriumTempMinK": 252.47700417707057,
+      "equilibriumTempMaxK": 256.7290489782874,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 9.819973426224687,
       "calculatedRotationPeriod_s": 86162.40000000001,
-      "orbital_period_days": 365.202709145985,
+      "orbital_period_days": 365.2563671306275,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 254.58580657357115,
+      "equilibriumTempK": 254.5852738725295,
       "albedoBreakdown": {
         "albedo": 0.303,
         "surfaceAlbedo": 0.072,
@@ -1147,7 +1184,7 @@
         "note": "Water cloud deck over a dark surface."
       },
       "greenhouseTempK": 32.80114380821948,
-      "temperatureK": 287.3869503817906,
+      "temperatureK": 287.386417680749,
       "temperatureProfile": {
         "meanK": 287,
         "totalMinK": 261,
@@ -1190,12 +1227,31 @@
           "Molten iron core → Earth-like dipolar field; shields the atmosphere from stellar wind."
         ]
       },
-      "totalIncidentFlux": 1.0260190579582613,
-      "totalIncidentFluxMin": 0.9924343838799752,
-      "totalIncidentFluxMax": 1.0610364782246675,
-      "starlightFlux": 1.000139617891271,
-      "surfaceRadiation": 2.29897477998165,
-      "orbitalRadiation": 657593.4514475134,
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 11.229,
+        "closedFieldRadii": 6.176,
+        "tailRadii": 224.58,
+        "dipoleTiltDeg": 10,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 140.9,
+        "ordered": true,
+        "ovalColatDeg": 23.73,
+        "beltPeakRadii": 1.198,
+        "beltScaleRadii": 0.796,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 1.996,
+        "notes": [
+          "The magnetopause stands 11.2 body radii out, where the field's pressure balances 2.00 nPa of stellar wind."
+        ]
+      },
+      "totalIncidentFlux": 1.02601047052422,
+      "totalIncidentFluxMin": 0.9924439546209409,
+      "totalIncidentFluxMax": 1.0610081632715729,
+      "starlightFlux": 1.0001312470594288,
+      "surfaceRadiation": 2.29897227766341,
+      "orbitalRadiation": 657593.7505017802,
       "beltInnerEdgeRadii": 1.1981,
       "oblateness": 0.004312523427243434,
       "geoActivity": {
@@ -1249,10 +1305,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 0.9999301983634474,
-        "totalTopWm2": 1141.4743437161387,
-        "totalSurfaceWm2": 716.8507457245479,
-        "photonFlux": 2.5124125912912767e+21,
+        "distanceAU": 0.9999343829292506,
+        "totalTopWm2": 1141.4647899602303,
+        "totalSurfaceWm2": 716.8447459251788,
+        "photonFlux": 2.512391563243848e+21,
         "peakTopNm": 500,
         "peakSurfaceNm": 530,
         "surfaceLightHex": "#ffedde",
@@ -1282,13 +1338,13 @@
           {
             "key": "carotenes",
             "label": "Carotenes",
-            "captured": 0.1426602062337931,
-            "sufficiency": 0.6972166244670888,
-            "protection": 0.3764622248078775,
-            "steadiness": 0.5260171747532781,
-            "score": 0.4506580110748553,
+            "captured": 0.14266020623379294,
+            "sufficiency": 0.6972135967538594,
+            "protection": 0.3764641894996512,
+            "steadiness": 0.5260171747532771,
+            "score": 0.45065723000688507,
             "viable": true,
-            "drawWeight": 0.3094057285853824,
+            "drawWeight": 0.30940329657282295,
             "reflectedHex": "#f6d000",
             "reflectedUnderStarHex": "#fbcf00"
           },
@@ -1296,77 +1352,77 @@
             "key": "pheophytin",
             "label": "Pheophytin",
             "captured": 0.21170426534402345,
-            "sufficiency": 0.8301707128320521,
-            "protection": 0.30669550284730634,
-            "steadiness": 0.4695505576257359,
-            "score": 0.43255396139757374,
+            "sufficiency": 0.8301681927010889,
+            "protection": 0.30669728252735545,
+            "steadiness": 0.4695505576257378,
+            "score": 0.4325539033005716,
             "viable": true,
-            "drawWeight": 0.2419287817937974,
+            "drawWeight": 0.2419292010258476,
             "reflectedHex": "#d0aea4",
             "reflectedUnderStarHex": "#d9ac97"
           },
           {
             "key": "chlorophyll",
             "label": "Chlorophyll",
-            "captured": 0.22743954952340434,
-            "sufficiency": 0.8511386524958664,
-            "protection": 0.29739253407635924,
-            "steadiness": 0.43393268686291653,
-            "score": 0.40638950899457765,
+            "captured": 0.22743954952340428,
+            "sufficiency": 0.8511362793245671,
+            "protection": 0.2973942829295849,
+            "steadiness": 0.4339326868629198,
+            "score": 0.4063895707932502,
             "viable": true,
-            "drawWeight": 0.16637984087716595,
+            "drawWeight": 0.16638041507948734,
             "reflectedHex": "#8fdd4f",
             "reflectedUnderStarHex": "#98dc41"
           },
           {
             "key": "phycoerythrin",
             "label": "Phycoerythrin",
-            "captured": 0.1941518327748256,
-            "sufficiency": 0.8032782589963553,
-            "protection": 0.3270840181448252,
-            "steadiness": 0.40850471618426554,
-            "score": 0.3817847432309612,
+            "captured": 0.19415183277482553,
+            "sufficiency": 0.8032755818352784,
+            "protection": 0.32708586031861925,
+            "steadiness": 0.4085047161842646,
+            "score": 0.38178454594310696,
             "viable": true,
-            "drawWeight": 0.11438186985436354,
+            "drawWeight": 0.11438180559827826,
             "reflectedHex": "#de00cc",
             "reflectedUnderStarHex": "#e700c1"
           },
           {
             "key": "bacteriorhodopsin",
             "label": "Bacteriorhodopsin",
-            "captured": 0.23704355740785532,
-            "sufficiency": 0.8626428385599855,
-            "protection": 0.29383985777490396,
-            "steadiness": 0.3728189728049711,
-            "score": 0.36052793459715254,
+            "captured": 0.2370435574078554,
+            "sufficiency": 0.8626405563228665,
+            "protection": 0.2938415944735257,
+            "steadiness": 0.3728189728049717,
+            "score": 0.360528046192342,
             "viable": true,
-            "drawWeight": 0.08111091483796488,
+            "drawWeight": 0.08111127139728333,
             "reflectedHex": "#4b21cd",
             "reflectedUnderStarHex": "#6217bf"
           },
           {
             "key": "melanin",
             "label": "Melanin",
-            "captured": 0.8321143073900217,
-            "sufficiency": 0.9990591387488978,
-            "protection": 0.10844786518237616,
-            "steadiness": 0.5053475911627392,
-            "score": 0.33254217748717574,
+            "captured": 0.8321143073900221,
+            "sufficiency": 0.9990590838708151,
+            "protection": 0.10844867442542729,
+            "steadiness": 0.505347591162739,
+            "score": 0.3325433999409841,
             "viable": true,
-            "drawWeight": 0.049948930507195156,
+            "drawWeight": 0.049950159027249114,
             "reflectedHex": "#000000",
             "reflectedUnderStarHex": "#000000"
           },
           {
             "key": "phycocyanin",
             "label": "Phycocyanin",
-            "captured": 0.18618022215407246,
-            "sufficiency": 0.7896968283066679,
-            "protection": 0.35954658659469696,
-            "steadiness": 0.30825500625170654,
-            "score": 0.31609675368587425,
+            "captured": 0.1861802221540724,
+            "sufficiency": 0.7896940838277836,
+            "protection": 0.35954851391115206,
+            "steadiness": 0.3082550062517107,
+            "score": 0.31609650233634645,
             "viable": true,
-            "drawWeight": 0.03684393354413078,
+            "drawWeight": 0.03684385129903143,
             "reflectedHex": "#00defb",
             "reflectedUnderStarHex": "#00d3e4"
           }
@@ -1709,7 +1765,7 @@
         "minLeoKm": 174.2402647689005,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 35792.2216003442,
-        "heoUpperBoundaryKm": 1490025.4381473116,
+        "heoUpperBoundaryKm": 1490031.586840276,
         "geoStationaryKm": 35792.2216003442,
         "isGeoFallback": false
       },
@@ -1731,15 +1787,16 @@
         "frame": "ecliptic",
         "hostId": "solar-system-earth",
         "hostMu": 398600441800000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 0.00257,
-          "e": 0.0549,
-          "i_deg": 5.145,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 4.367738497485062
+          "a_AU": 0.002569549,
+          "e": 0.0549006,
+          "i_deg": 5.145396,
+          "omega_deg": 119.14763,
+          "Omega_deg": 329.27502,
+          "M0_rad": 5.3755329874
         },
+        "n_rad_per_s": 0.0000026617071994175714,
         "resonance": null
       },
       "massKg": 7.342e+22,
@@ -1787,7 +1844,7 @@
       ],
       "areas": [],
       "axial_tilt_deg": 6.68,
-      "rotation_period_hours": 659.0257883336021,
+      "rotation_period_hours": 655.7179739290026,
       "description": "Earth's only natural satellite and the largest relative to its host planet in the Solar System. It is tidally locked, always showing the same face to Earth. Its cratered, airless surface is composed of dark volcanic 'maria' and bright, ancient highlands.",
       "image": {
         "url": "/images/planet_types/web20dwarf20planet.jpg"
@@ -1795,22 +1852,22 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 447.7591272996649,
-      "particleRadiation": 62.62450066358785,
-      "surfaceRadiationMin": 495.5813745243718,
-      "surfaceRadiationMax": 529.9069672021834,
-      "equilibriumTempMinK": 268.02902559330516,
-      "equilibriumTempMaxK": 272.57215336377726,
+      "photonRadiation": 447.7557916339972,
+      "particleRadiation": 62.624034130614916,
+      "surfaceRadiationMin": 495.58658103657496,
+      "surfaceRadiationMax": 529.8933723062981,
+      "equilibriumTempMinK": 268.029732412355,
+      "equilibriumTempMaxK": 272.57039849688664,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 1.623381040294872,
-      "calculatedRotationPeriod_s": 2372492.8380009676,
-      "orbital_period_days": 27.45940784723342,
+      "calculatedRotationPeriod_s": 2360584.7061444093,
+      "orbital_period_days": 27.321582247041775,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 270.2814999478993,
+      "equilibriumTempK": 270.2809965683009,
       "albedoBreakdown": {
         "albedo": 0.11,
         "surfaceAlbedo": 0.11,
@@ -1820,10 +1877,10 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 270.2814999478993,
+      "temperatureK": 270.2809965683009,
       "temperatureProfile": {
         "meanK": 214,
-        "totalMinK": 91,
+        "totalMinK": 92,
         "totalMaxK": 394,
         "components": [
           {
@@ -1847,7 +1904,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 91,
+        "min": 92,
         "max": 394
       },
       "hydrosphere": {
@@ -1869,14 +1926,29 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 1.0207672559265055,
-      "totalIncidentFluxMin": 0.9871627490487437,
-      "totalIncidentFluxMax": 1.0558139344043669,
-      "starlightFlux": 0.9950202828881441,
-      "surfaceRadiation": 512.3836279632528,
-      "orbitalRadiation": 510.38362796325276,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 296.5,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 1.986,
+        "notes": []
+      },
+      "totalIncidentFlux": 1.0207596515292243,
+      "totalIncidentFluxMin": 0.9871731620731499,
+      "totalIncidentFluxMax": 1.0557867446125964,
+      "starlightFlux": 0.9950128702977715,
+      "surfaceRadiation": 512.3798257646122,
+      "orbitalRadiation": 510.3798257646122,
       "beltInnerEdgeRadii": 1,
-      "oblateness": 0.000009382947304466435,
+      "oblateness": 0.000009477851924288975,
       "geoActivity": {
         "regime": "inactive",
         "volcanism": "none",
@@ -1905,10 +1977,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 1.0024991964073156,
-        "totalTopWm2": 1135.631569908939,
-        "totalSurfaceWm2": 1135.631569908939,
-        "photonFlux": 4.037770756600194e+21,
+        "distanceAU": 1.0025029305811508,
+        "totalTopWm2": 1135.6231098083904,
+        "totalSurfaceWm2": 1135.6231098083904,
+        "photonFlux": 4.0377406764690136e+21,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -2128,7 +2200,7 @@
         "minLeoKm": 30,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 50000,
-        "heoUpperBoundaryKm": 59787.31975595439,
+        "heoUpperBoundaryKm": 59776.52300552252,
         "geoStationaryKm": null,
         "isGeoFallback": true
       },
@@ -2149,15 +2221,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 1.52368,
-          "e": 0.0934,
-          "i_deg": 1.85,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 0.3838857522616697
+          "a_AU": 1.523715265,
+          "e": 0.09341512,
+          "i_deg": 1.847523,
+          "omega_deg": 286.69336,
+          "Omega_deg": 49.48152,
+          "M0_rad": 1.4547738887
         },
+        "n_rad_per_s": 1.0585763862948596e-7,
         "resonance": null
       },
       "massKg": 6.39e+23,
@@ -2226,7 +2299,7 @@
         },
         "main": "CO2",
         "pressure_bar": 0.006,
-        "scaleHeightKm": 11.228890880571482,
+        "scaleHeightKm": 11.228768341753991,
         "molarMassKg": 0.043007779999999995
       },
       "axial_tilt_deg": 25.19,
@@ -2238,12 +2311,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.046051150726582946,
       "radiationShieldingMag": 0,
-      "photonRadiation": 185.71743468567706,
-      "particleRadiation": 25.974817491390358,
-      "surfaceRadiationMin": 178.29671353189838,
-      "surfaceRadiationMax": 258.4312362307212,
-      "equilibriumTempMinK": 200.4784292430642,
-      "equilibriumTempMaxK": 220.1655316706071,
+      "photonRadiation": 185.70910285335472,
+      "particleRadiation": 25.973652184405005,
+      "surfaceRadiationMin": 178.28367768809395,
+      "surfaceRadiationMax": 258.42791981686133,
+      "equilibriumTempMinK": 200.47472316439388,
+      "equilibriumTempMaxK": 220.16481981937883,
       "tidallyLocked": false,
       "magneticField": {
         "strengthGauss": 0
@@ -2251,12 +2324,12 @@
       "internalHeatK": 0,
       "calculatedGravity_ms2": 3.7122336687009745,
       "calculatedRotationPeriod_s": 88560,
-      "orbital_period_days": 686.8701465472571,
+      "orbital_period_days": 686.9797315332721,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 209.79097785184237,
+      "equilibriumTempK": 209.78862485162372,
       "albedoBreakdown": {
         "albedo": 0.256,
         "surfaceAlbedo": 0.252,
@@ -2268,7 +2341,7 @@
         "note": "Water cloud deck over a surface under moderate oxide dust."
       },
       "greenhouseTempK": 5.827087004296242,
-      "temperatureK": 215.6180648561386,
+      "temperatureK": 215.61571185591995,
       "temperatureProfile": {
         "meanK": 209,
         "totalMinK": 142,
@@ -2314,12 +2387,27 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
-      "totalIncidentFlux": 0.44382306732337806,
-      "totalIncidentFluxMin": 0.3696146049469554,
-      "totalIncidentFluxMax": 0.5376205158715462,
-      "starlightFlux": 0.43262844829359154,
-      "surfaceRadiation": 213.69225217706742,
-      "orbitalRadiation": 221.91153366168902,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 325.8,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.8634,
+        "notes": []
+      },
+      "totalIncidentFlux": 0.4438031561104972,
+      "totalIncidentFluxMin": 0.36958727466857755,
+      "totalIncidentFluxMax": 0.5376135628491439,
+      "starlightFlux": 0.43260903930436473,
+      "surfaceRadiation": 213.68275503775973,
+      "orbitalRadiation": 221.9015780552486,
       "beltInnerEdgeRadii": 1.4969,
       "oblateness": 0.005745063944604033,
       "geoActivity": {
@@ -2366,10 +2454,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 1.5203460952974899,
-        "totalTopWm2": 493.7653356139176,
-        "totalSurfaceWm2": 475.96718202901366,
-        "photonFlux": 1.6584511868093792e+21,
+        "distanceAU": 1.520380200051827,
+        "totalTopWm2": 493.7431838434611,
+        "totalSurfaceWm2": 475.9458287362639,
+        "photonFlux": 1.6583767837937094e+21,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -2517,10 +2605,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "213.69 mSv",
+            "value": "213.68 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 213.69,
+              "value": 213.68,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -2562,7 +2650,7 @@
         "minLeoKm": 169.86383301580688,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 16996.90684070823,
-        "heoUpperBoundaryKm": 1079042.9061374362,
+        "heoUpperBoundaryKm": 1079067.958627987,
         "geoStationaryKm": 16996.90684070823,
         "isGeoFallback": false
       },
@@ -2661,12 +2749,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 194.66674673127469,
-      "particleRadiation": 27.226486444557455,
-      "surfaceRadiationMin": 186.79320521700714,
-      "surfaceRadiationMax": 270.7862638754093,
-      "equilibriumTempMinK": 198.69971569918994,
-      "equilibriumTempMaxK": 218.211439264534,
+      "photonRadiation": 194.65801375682275,
+      "particleRadiation": 27.22526503301938,
+      "surfaceRadiationMin": 186.77954164134198,
+      "surfaceRadiationMax": 270.78278782966737,
+      "equilibriumTempMinK": 198.69604264221968,
+      "equilibriumTempMaxK": 218.21073376287268,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.005639953762755102,
       "calculatedRotationPeriod_s": 27572.50317059334,
@@ -2676,7 +2764,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 207.99924602873938,
+      "equilibriumTempK": 207.99691321806299,
       "albedoBreakdown": {
         "albedo": 0.282,
         "surfaceAlbedo": 0.282,
@@ -2686,7 +2774,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 208.2433681861595,
+      "temperatureK": 208.2410353754831,
       "temperatureProfile": {
         "meanK": 198,
         "totalMinK": 137,
@@ -2742,12 +2830,27 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.4437864663516643,
-      "totalIncidentFluxMin": 0.3695864104340143,
-      "totalIncidentFluxMax": 0.5375725277508187,
-      "starlightFlux": 0.43259277051394374,
-      "surfaceRadiation": 223.89323317583214,
-      "orbitalRadiation": 221.89323317583214,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 299.2,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.8634,
+        "notes": []
+      },
+      "totalIncidentFlux": 0.4437665575796843,
+      "totalIncidentFluxMin": 0.36955908328268394,
+      "totalIncidentFluxMax": 0.5375655756593347,
+      "starlightFlux": 0.43257336390405055,
+      "surfaceRadiation": 223.88327878984217,
+      "orbitalRadiation": 221.88327878984217,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.12890205412926253,
       "geoActivity": {
@@ -2778,10 +2881,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 1.520408788733806,
-        "totalTopWm2": 493.7246160289915,
-        "totalSurfaceWm2": 493.7246160289915,
-        "photonFlux": 1.7554520931250403e+21,
+        "distanceAU": 1.5204428935259382,
+        "totalTopWm2": 493.70246697410414,
+        "totalSurfaceWm2": 493.70246697410414,
+        "photonFlux": 1.7553733415224253e+21,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -2938,10 +3041,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "223.89 mSv",
+            "value": "223.88 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 223.89,
+              "value": 223.88,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -3078,12 +3181,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 194.64276843272756,
-      "particleRadiation": 27.22313279103769,
-      "surfaceRadiationMin": 186.772685972894,
-      "surfaceRadiationMax": 270.7495739539073,
-      "equilibriumTempMinK": 192.60891844470785,
-      "equilibriumTempMaxK": 211.52119708353817,
+      "photonRadiation": 194.63403705276633,
+      "particleRadiation": 27.221911602508325,
+      "surfaceRadiationMin": 186.7590246729073,
+      "surfaceRadiationMax": 270.7460986198707,
+      "equilibriumTempMinK": 192.60535817664243,
+      "equilibriumTempMaxK": 211.52051325884437,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.0025523467741935483,
       "calculatedRotationPeriod_s": 108467.99016198053,
@@ -3093,7 +3196,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 201.62277584716608,
+      "equilibriumTempK": 201.62051468599657,
       "albedoBreakdown": {
         "albedo": 0.366,
         "surfaceAlbedo": 0.366,
@@ -3103,7 +3206,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 201.62277584716608,
+      "temperatureK": 201.62051468599657,
       "temperatureProfile": {
         "meanK": 186,
         "totalMinK": 120,
@@ -3152,12 +3255,27 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.4437318024475305,
-      "totalIncidentFluxMin": 0.369545371945788,
-      "totalIncidentFluxMax": 0.5374991479078146,
-      "starlightFlux": 0.43253948540606124,
-      "surfaceRadiation": 223.86590122376526,
-      "orbitalRadiation": 221.86590122376526,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 331.2,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.8632,
+        "notes": []
+      },
+      "totalIncidentFlux": 0.44371189731054933,
+      "totalIncidentFluxMin": 0.36951804934581456,
+      "totalIncidentFluxMax": 0.5374921972397414,
+      "starlightFlux": 0.43252008233948075,
+      "surfaceRadiation": 223.85594865527466,
+      "orbitalRadiation": 221.85594865527466,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.010188695280187085,
       "geoActivity": {
@@ -3188,10 +3306,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 1.5205024364285595,
-        "totalTopWm2": 493.6638009363162,
-        "totalSurfaceWm2": 493.6638009363162,
-        "photonFlux": 1.7552358633113654e+21,
+        "distanceAU": 1.5205365412948406,
+        "totalTopWm2": 493.64165592546493,
+        "totalSurfaceWm2": 493.64165592546493,
+        "photonFlux": 1.7551571260874364e+21,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -3378,10 +3496,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "223.87 mSv",
+            "value": "223.86 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 223.87,
+              "value": 223.86,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -3548,23 +3666,21 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 5.2044,
-          "e": 0.0489,
-          "i_deg": 1.303,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 5.006958509868666
+          "a_AU": 5.202856048,
+          "e": 0.0483509,
+          "i_deg": 1.303907,
+          "omega_deg": 274.25666,
+          "Omega_deg": 100.52849,
+          "M0_rad": 1.9002607503
         },
+        "n_rad_per_s": 1.678401142399484e-8,
         "resonance": null
       },
       "massKg": 1.898e+27,
       "radiusKm": 69911,
       "tags": [
-        {
-          "key": "resonance/5-2"
-        },
         {
           "key": "lifting-gas"
         },
@@ -3579,7 +3695,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "ammonium-hydrosulfide broken 0.477"
+          "value": "ammonium-hydrosulfide broken 0.478"
         },
         {
           "key": "structure/cloud-deck",
@@ -3649,7 +3765,7 @@
         },
         "main": "H2",
         "pressure_bar": 1,
-        "scaleHeightKm": 22.257789152523955,
+        "scaleHeightKm": 22.260164562129994,
         "molarMassKg": 0.0022951399999999998
       },
       "axial_tilt_deg": 3.13,
@@ -3661,23 +3777,22 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.4405314223603839,
       "radiationShieldingMag": 0.8788292987844551,
-      "photonRadiation": 9.306079180367396,
-      "particleRadiation": 0.1577118017009398,
-      "surfaceRadiationMin": 10.591660402415906,
-      "surfaceRadiationMax": 12.449437435991708,
-      "equilibriumTempMinK": 100.77458133207016,
-      "equilibriumTempMaxK": 105.82906384746603,
+      "photonRadiation": 9.311353965929904,
+      "particleRadiation": 0.15780119444288035,
+      "surfaceRadiationMin": 10.605768219046748,
+      "surfaceRadiationMax": 12.443577821153351,
+      "equilibriumTempMinK": 100.81592475839192,
+      "equilibriumTempMaxK": 105.81422457979059,
       "tidallyLocked": false,
       "internalHeatK": 51.98372959092766,
       "calculatedGravity_ms2": 25.918562037153677,
       "calculatedRotationPeriod_s": 35730,
-      "orbital_period_days": 4336.00718171218,
-      "resonanceNote": "5:2 mean-motion resonance with Saturn — pumps eccentricity.",
+      "orbital_period_days": 4332.81712752323,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 103.18302282139474,
+      "equilibriumTempK": 103.19764102580558,
       "albedoBreakdown": {
         "albedo": 0.49,
         "surfaceAlbedo": 0.3,
@@ -3687,8 +3802,8 @@
         "cloudSpecies": "ammonia",
         "note": "Ammonia cloud deck over a deep atmosphere (2 decks)."
       },
-      "greenhouseTempK": 12.120628381859543,
-      "temperatureK": 159.24582711886114,
+      "greenhouseTempK": 12.12563117819852,
+      "temperatureK": 159.26282225098626,
       "temperatureProfile": {
         "meanK": 159,
         "totalMinK": 147,
@@ -3740,12 +3855,31 @@
           "Liquid metallic-hydrogen envelope drives a strong dipolar field (Jupiter-class)."
         ]
       },
-      "totalIncidentFlux": 0.03792043640459048,
-      "totalIncidentFluxMin": 0.03442589893595116,
-      "totalIncidentFluxMax": 0.041869820297813644,
-      "starlightFlux": 0.03696396327318531,
-      "surfaceRadiation": 11.463790982068335,
-      "orbitalRadiation": 278765040.6455722,
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 39.882,
+        "closedFieldRadii": 21.935,
+        "tailRadii": 797.63,
+        "dipoleTiltDeg": 10,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 322,
+        "ordered": true,
+        "ovalColatDeg": 12.33,
+        "beltPeakRadii": 1.048,
+        "beltScaleRadii": 1.632,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.07382,
+        "notes": [
+          "The magnetopause stands 39.9 body radii out, where the field's pressure balances 0.0738 nPa of stellar wind."
+        ]
+      },
+      "totalIncidentFlux": 0.03794193011494842,
+      "totalIncidentFluxMin": 0.03448242750514411,
+      "totalIncidentFluxMax": 0.04184634142425712,
+      "starlightFlux": 0.03698491484430645,
+      "surfaceRadiation": 11.469155160372784,
+      "orbitalRadiation": 278764170.3024788,
       "beltInnerEdgeRadii": 1.0478,
       "oblateness": 0.10426494738447482,
       "auroraEmitters": [
@@ -3760,10 +3894,10 @@
       "surfaceSpectrum": {
         "level": "1 bar",
         "starTempK": 5780.657086335943,
-        "distanceAU": 5.201286002943443,
-        "totalTopWm2": 42.1875255850465,
-        "totalSurfaceWm2": 15.908793027080112,
-        "photonFlux": 57709957972734090000,
+        "distanceAU": 5.199812556921436,
+        "totalTopWm2": 42.211437927351035,
+        "totalSurfaceWm2": 15.90528893423674,
+        "photonFlux": 57697246697253920000,
         "peakTopNm": 500,
         "peakSurfaceNm": 530,
         "surfaceLightHex": "#ffeedf",
@@ -3774,7 +3908,7 @@
           },
           {
             "label": "ammonium-hydrosulfide cloud deck",
-            "strength": 0.272844
+            "strength": 0.273416
           },
           {
             "label": "CH4 absorption",
@@ -3806,7 +3940,7 @@
           {
             "hex": "#bb8156",
             "role": "cloud",
-            "weight": 0.5901891890154052,
+            "weight": 0.591426482912712,
             "label": "ammonium-hydrosulfide band",
             "rawHex": "#b8845a"
           }
@@ -3826,7 +3960,7 @@
           },
           {
             "feature": "Teq_K",
-            "value": 103.18302282139474,
+            "value": 103.19764102580558,
             "band": "80 – 160",
             "fit": 1
           }
@@ -3848,7 +3982,7 @@
               },
               {
                 "feature": "Teq_K",
-                "value": 103.18302282139474,
+                "value": 103.19764102580558,
                 "band": "80 – 160",
                 "fit": 1
               }
@@ -3899,7 +4033,7 @@
         "minLeoKm": 460.5165659222014,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 90094.92904786355,
-        "heoUpperBoundaryKm": 53076768.64063506,
+        "heoUpperBoundaryKm": 53061001.99657917,
         "geoStationaryKm": 90094.92904786355,
         "isGeoFallback": false
       },
@@ -3907,7 +4041,7 @@
       "propulsiveLandBudget_ms": 48952.63221769922,
       "aerobrakeLandBudget_ms": 806.5306597126335,
       "orbitalStability": "Marginal",
-      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
+      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.89)."
     },
     {
       "id": "solar-system-jupiter-rings",
@@ -3945,12 +4079,12 @@
       },
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 16.62698347115784,
-      "particleRadiation": 131496756.00810495,
-      "surfaceRadiationMin": 131496770.88886997,
-      "surfaceRadiationMax": 131496774.60854399,
-      "equilibriumTempMinK": 116.58769949812252,
-      "equilibriumTempMaxK": 122.43408452154061,
+      "photonRadiation": 16.636405987705388,
+      "particleRadiation": 131496756.0094228,
+      "surfaceRadiationMin": 131496770.91711777,
+      "surfaceRadiationMax": 131496774.59681211,
+      "equilibriumTempMinK": 116.63552104223984,
+      "equilibriumTempMaxK": 122.41692059567556,
       "internalHeatK": 0,
       "massKg": 150000000000000000000,
       "orbital_period_days": 0.40964800718269356,
@@ -3958,7 +4092,7 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 119.43940248271821,
+      "equilibriumTempK": 119.45632047420798,
       "albedoBreakdown": {
         "albedo": 0.086,
         "surfaceAlbedo": 0.086,
@@ -3968,7 +4102,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 119.43940248271821,
+      "temperatureK": 119.45632047420798,
       "temperatureProfile": {
         "meanK": 118,
         "totalMinK": 85,
@@ -3998,12 +4132,12 @@
         "min": 85,
         "max": 159
       },
-      "totalIncidentFlux": 262993.54527017684,
-      "totalIncidentFluxMin": 262993.54177773994,
-      "totalIncidentFluxMax": 262993.54921708803,
-      "starlightFlux": 0.036948852158128535,
-      "surfaceRadiation": 131496772.63508841,
-      "orbitalRadiation": 131496772.63508841,
+      "totalIncidentFlux": 262993.54529165756,
+      "totalIncidentFluxMin": 262993.54183423554,
+      "totalIncidentFluxMax": 262993.54919362423,
+      "starlightFlux": 0.03696979108378975,
+      "surfaceRadiation": 131496772.64582878,
+      "orbitalRadiation": 131496772.64582878,
       "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -4101,7 +4235,7 @@
         },
         "main": "SO2",
         "pressure_bar": 1e-8,
-        "scaleHeightKm": 7.846913746178111,
+        "scaleHeightKm": 7.847980580036217,
         "molarMassKg": 0.06080000000000001
       },
       "axial_tilt_deg": 0,
@@ -4113,12 +4247,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 1.1099999386310344e-7,
       "radiationShieldingMag": 0,
-      "photonRadiation": 16.615750509169487,
-      "particleRadiation": 13139456.402828947,
-      "surfaceRadiationMin": 12941832.44883301,
-      "surfaceRadiationMax": 13340136.085978972,
-      "equilibriumTempMinK": 96.5973405034848,
-      "equilibriumTempMaxK": 101.43984094699441,
+      "photonRadiation": 16.625163608143097,
+      "particleRadiation": 13139456.404145481,
+      "surfaceRadiationMin": 12941832.477053339,
+      "surfaceRadiationMax": 13340136.074259493,
+      "equilibriumTempMinK": 96.63694963149393,
+      "equilibriumTempMaxK": 101.4256251966085,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 1.796185339436256,
       "calculatedRotationPeriod_s": 152964.51112278507,
@@ -4131,7 +4265,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 98.9593939946847,
+      "equilibriumTempK": 98.97340655373917,
       "albedoBreakdown": {
         "albedo": 0.569,
         "surfaceAlbedo": 0.569,
@@ -4141,8 +4275,8 @@
         "cloudCover": 0,
         "note": "Cloud-free SO2 frost over bare ground."
       },
-      "greenhouseTempK": 0.000001059650893179513,
-      "temperatureK": 103.06698149812759,
+      "greenhouseTempK": 0.0000010601010775114408,
+      "temperatureK": 103.08099405759641,
       "temperatureProfile": {
         "meanK": 102,
         "totalMinK": 79,
@@ -4198,12 +4332,29 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 26278.948954122083,
-      "totalIncidentFluxMin": 25883.663770752537,
-      "totalIncidentFluxMax": 26680.271133467875,
-      "starlightFlux": 0.03692389411892866,
-      "surfaceRadiation": 13139475.018579457,
-      "orbitalRadiation": 13139474.47706104,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 68.7,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-jupiter",
+        "confiningPressureNPa": 1538,
+        "notes": [
+          "Inside Jupiter's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 26278.948975581356,
+      "totalIncidentFluxMin": 25883.6638271932,
+      "totalIncidentFluxMax": 26680.271110028916,
+      "starlightFlux": 0.03694481211896968,
+      "surfaceRadiation": 13139475.029309088,
+      "orbitalRadiation": 13139474.487790678,
       "beltInnerEdgeRadii": 1.6462,
       "oblateness": 0.002138898884302571,
       "geoActivity": {
@@ -4239,16 +4390,16 @@
           "methane": 31.8,
           "carbon-dioxide": 87.5,
           "water": 35.8,
-          "sulfur-dioxide": 127.3
+          "sulfur-dioxide": 127.2
         }
       },
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 5.204107409322697,
-        "totalTopWm2": 42.14179405842745,
-        "totalSurfaceWm2": 42.141791148449165,
-        "photonFlux": 149836357530700350000,
+        "distanceAU": 5.202633928662308,
+        "totalTopWm2": 42.16566808555483,
+        "totalSurfaceWm2": 42.165665173927984,
+        "photonFlux": 149921242318932020000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -4418,10 +4569,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "13139475.02 mSv",
+            "value": "13139475.03 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 13139475.02,
+              "value": 13139475.03,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -4603,7 +4754,7 @@
         },
         "main": "O2",
         "pressure_bar": 1e-11,
-        "scaleHeightKm": 17.769814586218626,
+        "scaleHeightKm": 17.77222955296364,
         "molarMassKg": 0.032
       },
       "axial_tilt_deg": 0,
@@ -4615,12 +4766,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 7.500000620552782e-11,
       "radiationShieldingMag": 0.05869708635189371,
-      "photonRadiation": 16.60515542688316,
-      "particleRadiation": 1403709.3651803131,
-      "surfaceRadiationMin": 1331461.9609174249,
-      "surfaceRadiationMax": 1479916.3557250812,
-      "equilibriumTempMinK": 84.28760681913646,
-      "equilibriumTempMaxK": 88.51211852618582,
+      "photonRadiation": 16.61455961348437,
+      "particleRadiation": 1403709.3664183982,
+      "surfaceRadiationMin": 1331461.9879802603,
+      "surfaceRadiationMax": 1479916.3452863349,
+      "equilibriumTempMinK": 84.32215772910627,
+      "equilibriumTempMaxK": 88.49971854637359,
       "internalHeatK": 0,
       "hydrosphere": {
         "composition": "water",
@@ -4645,7 +4796,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 86.34823112606128,
+      "equilibriumTempK": 86.36045417450494,
       "albedoBreakdown": {
         "albedo": 0.75,
         "surfaceAlbedo": 0.75,
@@ -4655,7 +4806,7 @@
         "note": "Cloud-free ice, darkened by the lag of an old surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 89.93966685899696,
+      "temperatureK": 89.95188990744062,
       "temperatureProfile": {
         "meanK": 89,
         "totalMinK": 69,
@@ -4708,13 +4859,31 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
-      "totalIncidentFlux": 2982.514927796222,
-      "totalIncidentFluxMin": 2828.970392454444,
-      "totalIncidentFluxMax": 3144.3933866624147,
-      "starlightFlux": 0.036900345395841215,
-      "surfaceRadiation": 1403727.9703357401,
-      "orbitalRadiation": 1491257.3275781923,
-      "beltInnerEdgeRadii": 2.7078,
+      "magnetosphere": {
+        "shape": "induced",
+        "standoffRadii": 1.268,
+        "closedFieldRadii": 0.697,
+        "tailRadii": 25.36,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 202.9,
+        "ordered": true,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-jupiter",
+        "confiningPressureNPa": 95.67,
+        "notes": [
+          "Inside Jupiter's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star.",
+          "The magnetopause stands 1.3 body radii out, where the field's pressure balances 95.7 nPa of host field."
+        ]
+      },
+      "totalIncidentFlux": 2982.5149492351725,
+      "totalIncidentFluxMin": 2828.97044884276,
+      "totalIncidentFluxMax": 3144.393363246595,
+      "starlightFlux": 0.03692124358828992,
+      "surfaceRadiation": 1403727.9809780119,
+      "orbitalRadiation": 1491257.338220464,
+      "beltInnerEdgeRadii": 2.708,
       "oblateness": 0.00062430451352026,
       "geoActivity": {
         "regime": "cryovolcanic",
@@ -4764,10 +4933,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 5.20576769918245,
-        "totalTopWm2": 42.11491754763761,
-        "totalSurfaceWm2": 42.11491754732376,
-        "photonFlux": 149740802383033100000,
+        "distanceAU": 5.2042942042034595,
+        "totalTopWm2": 42.13876896806285,
+        "totalSurfaceWm2": 42.1387689677488,
+        "photonFlux": 149825606795351030000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -4937,10 +5106,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "1403727.97 mSv",
+            "value": "1403727.98 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 1403727.97,
+              "value": 1403727.98,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -5110,12 +5279,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 16.58812019011385,
-      "particleRadiation": 45035.081696147856,
-      "surfaceRadiationMin": 44506.56339348598,
-      "surfaceRadiationMax": 45607.68801499803,
-      "equilibriumTempMinK": 115.19335287777808,
-      "equilibriumTempMaxK": 120.9631093072471,
+      "photonRadiation": 16.597510189243373,
+      "particleRadiation": 45035.0830094522,
+      "surfaceRadiationMin": 44506.59154681111,
+      "surfaceRadiationMax": 45607.676326213674,
+      "equilibriumTempMinK": 115.24054976233482,
+      "equilibriumTempMaxK": 120.94617238365305,
       "internalHeatK": 0,
       "hydrosphere": {
         "composition": "water",
@@ -5132,7 +5301,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 118.00775848286789,
+      "equilibriumTempK": 118.02445503427869,
       "albedoBreakdown": {
         "albedo": 0.127,
         "surfaceAlbedo": 0.127,
@@ -5142,7 +5311,7 @@
         "note": "Cloud-free ice, darkened by the lag of an old surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 118.00775848286789,
+      "temperatureK": 118.02445503427869,
       "temperatureProfile": {
         "meanK": 113,
         "totalMinK": 80,
@@ -5185,12 +5354,29 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
-      "totalIncidentFlux": 90.10333963267594,
-      "totalIncidentFluxMin": 89.00912678697196,
-      "totalIncidentFluxMax": 91.21137602999606,
-      "starlightFlux": 0.03686248931136412,
-      "surfaceRadiation": 45053.66981633797,
-      "orbitalRadiation": 45051.66981633797,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 100.3,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-jupiter",
+        "confiningPressureNPa": 5.789,
+        "notes": [
+          "Inside Jupiter's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 90.10336103928289,
+      "totalIncidentFluxMin": 89.00918309362223,
+      "totalIncidentFluxMax": 91.21135265242735,
+      "starlightFlux": 0.036883355976096384,
+      "surfaceRadiation": 45053.68051964144,
+      "orbitalRadiation": 45051.68051964144,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.00023941255374490794,
       "geoActivity": {
@@ -5224,10 +5410,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 5.208440055498797,
-        "totalTopWm2": 42.07171183074454,
-        "totalSurfaceWm2": 42.07171183074454,
-        "photonFlux": 149587183212872760000,
+        "distanceAU": 5.206966516206617,
+        "totalTopWm2": 42.09552726811422,
+        "totalSurfaceWm2": 42.09552726811422,
+        "photonFlux": 149671859686400720000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -5391,10 +5577,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "45053.67 mSv",
+            "value": "45053.68 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 45053.67,
+              "value": 45053.68,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -5540,12 +5726,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 16.55357910430938,
-      "particleRadiation": 38.81202888859553,
-      "surfaceRadiationMin": 51.437438232854475,
-      "surfaceRadiationMax": 64.06333416495718,
-      "equilibriumTempMinK": 115.13529704911737,
-      "equilibriumTempMaxK": 120.89793230768697,
+      "photonRadiation": 16.56294010047597,
+      "particleRadiation": 38.81333813652573,
+      "surfaceRadiationMin": 51.4655064971276,
+      "surfaceRadiationMax": 64.05168311316899,
+      "equilibriumTempMinK": 115.18242258074578,
+      "equilibriumTempMaxK": 120.88102274323346,
       "internalHeatK": 0,
       "hydrosphere": {
         "composition": "water",
@@ -5560,7 +5746,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 117.94627920146698,
+      "equilibriumTempK": 117.96295022774419,
       "albedoBreakdown": {
         "albedo": 0.127,
         "surfaceAlbedo": 0.127,
@@ -5570,7 +5756,7 @@
         "note": "Cloud-free ice, darkened by the lag of an old surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 117.94627920146698,
+      "temperatureK": 117.96295022774419,
       "temperatureProfile": {
         "meanK": 111,
         "totalMinK": 75,
@@ -5580,7 +5766,7 @@
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 85,
-            "highK": 136
+            "highK": 137
           },
           {
             "source": "seasonal",
@@ -5616,12 +5802,29 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.11073121598580982,
-      "totalIncidentFluxMin": 0.09887487646570894,
-      "totalIncidentFluxMax": 0.12412666832991437,
-      "starlightFlux": 0.03678573134290974,
-      "surfaceRadiation": 57.365607992904906,
-      "orbitalRadiation": 55.365607992904906,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 248.6,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-jupiter",
+        "confiningPressureNPa": 0.1951,
+        "notes": [
+          "Inside Jupiter's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 0.1107525564740034,
+      "totalIncidentFluxMin": 0.0989310129942552,
+      "totalIncidentFluxMax": 0.12410336622633798,
+      "starlightFlux": 0.036806533556613265,
+      "surfaceRadiation": 57.3762782370017,
+      "orbitalRadiation": 55.3762782370017,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.00004658194156446283,
       "geoActivity": {
@@ -5655,10 +5858,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 5.213871250255215,
-        "totalTopWm2": 41.98410681030631,
-        "totalSurfaceWm2": 41.98410681030631,
-        "photonFlux": 149275701039402320000,
+        "distanceAU": 5.21239766142995,
+        "totalTopWm2": 42.00784868875041,
+        "totalSurfaceWm2": 42.00784868875041,
+        "photonFlux": 149360115972051600000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -5822,10 +6025,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "57.37 mSv",
+            "value": "57.38 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 57.37,
+              "value": 57.38,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -5888,26 +6091,21 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 9.5826,
-          "e": 0.0565,
-          "i_deg": 2.485,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 0.5439917998244483
+          "a_AU": 9.536342447,
+          "e": 0.05372581,
+          "i_deg": 2.486508,
+          "omega_deg": 338.90171,
+          "Omega_deg": 113.58544,
+          "M0_rad": 4.947404389
         },
-        "resonance": {
-          "numerator": 5,
-          "denominator": 2
-        }
+        "n_rad_per_s": 6.761141147839354e-9,
+        "resonance": null
       },
       "massKg": 5.683e+26,
       "radiusKm": 58232,
       "tags": [
-        {
-          "key": "resonance/5-2"
-        },
         {
           "key": "lifting-gas"
         },
@@ -5983,7 +6181,7 @@
       ],
       "areas": [],
       "magneticField": {
-        "strengthGauss": 0.2163
+        "strengthGauss": 0.2177
       },
       "atmosphere": {
         "name": "Hydrogen–Helium (Jupiter-like)",
@@ -5996,7 +6194,7 @@
         },
         "main": "H2",
         "pressure_bar": 1,
-        "scaleHeightKm": 46.17867412235318,
+        "scaleHeightKm": 46.24567675651562,
         "molarMassKg": 0.0021154000000000004
       },
       "axial_tilt_deg": 26.73,
@@ -6007,24 +6205,23 @@
       },
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.4150703222086807,
-      "radiationShieldingMag": 0.4515615179849095,
-      "photonRadiation": 2.871069777572149,
-      "particleRadiation": 0.22022747339962673,
-      "surfaceRadiationMin": 4.76507851593824,
-      "surfaceRadiationMax": 5.467070411062064,
-      "equilibriumTempMinK": 75.98540268012009,
-      "equilibriumTempMaxK": 80.40702017349417,
+      "radiationShieldingMag": 0.45245434353838093,
+      "photonRadiation": 2.898545941752327,
+      "particleRadiation": 0.22197310397293082,
+      "surfaceRadiationMin": 4.806363403133577,
+      "surfaceRadiationMax": 5.479887102701881,
+      "equilibriumTempMinK": 76.269670846146,
+      "equilibriumTempMaxK": 80.48356102908828,
       "tidallyLocked": false,
       "internalHeatK": 51.98372959092766,
       "calculatedGravity_ms2": 11.185617569939861,
       "calculatedRotationPeriod_s": 38361.6,
-      "orbital_period_days": 10833.256613658901,
-      "resonanceNote": "5:2 mean-motion resonance with Jupiter — pumps eccentricity.",
+      "orbital_period_days": 10755.884336133118,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 78.09924533605735,
+      "equilibriumTempK": 78.27678508623094,
       "albedoBreakdown": {
         "albedo": 0.433,
         "surfaceAlbedo": 0.3,
@@ -6034,12 +6231,12 @@
         "cloudSpecies": "ammonia",
         "note": "Ammonia cloud deck over a deep atmosphere (2 decks)."
       },
-      "greenhouseTempK": 5.632623601144658,
-      "temperatureK": 131.4195204169284,
+      "greenhouseTempK": 5.670596582442459,
+      "temperatureK": 131.61020267915555,
       "temperatureProfile": {
-        "meanK": 131,
+        "meanK": 132,
         "totalMinK": 120,
-        "totalMaxK": 143,
+        "totalMaxK": 144,
         "components": [
           {
             "source": "latitude",
@@ -6050,8 +6247,8 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 124,
-            "highK": 138
+            "lowK": 125,
+            "highK": 139
           },
           {
             "source": "diurnal",
@@ -6063,7 +6260,7 @@
       },
       "temperatureRangeK": {
         "min": 120,
-        "max": 143
+        "max": 144
       },
       "hydrosphere": {
         "layers": [
@@ -6079,21 +6276,40 @@
         "geometry": "dipolar",
         "intrinsic": true,
         "estimatedRangeGauss": {
-          "min": 0.2403,
-          "max": 1.2816
+          "min": 0.2419,
+          "max": 1.2899
         },
-        "nominalGauss": 0.21627657330663935,
+        "nominalGauss": 0.2176710673443665,
         "notes": [
           "A cool interior lets helium rain out and throttle the metallic-hydrogen dynamo → a weak, axisymmetric field (Saturn-like)."
         ]
       },
-      "totalIncidentFlux": 0.011189801271060016,
-      "totalIncidentFluxMin": 0.010008962768785818,
-      "totalIncidentFluxMax": 0.012550015654547959,
-      "starlightFlux": 0.010907559153713584,
-      "surfaceRadiation": 5.091297250971776,
-      "orbitalRadiation": 192572.2538043534,
-      "beltInnerEdgeRadii": 1.119,
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 18.027,
+        "closedFieldRadii": 9.915,
+        "tailRadii": 360.54,
+        "dipoleTiltDeg": 10,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 202,
+        "ordered": true,
+        "ovalColatDeg": 18.52,
+        "beltPeakRadii": 1.119,
+        "beltScaleRadii": 0.603,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.02198,
+        "notes": [
+          "The magnetopause stands 18.0 body radii out, where the field's pressure balances 0.0220 nPa of stellar wind."
+        ]
+      },
+      "totalIncidentFlux": 0.01129688777215063,
+      "totalIncidentFluxMin": 0.010159583052857931,
+      "totalIncidentFluxMax": 0.012597870252652426,
+      "starlightFlux": 0.011011944595145061,
+      "surfaceRadiation": 5.120519045725258,
+      "orbitalRadiation": 195797.9951677603,
+      "beltInnerEdgeRadii": 1.1191,
       "oblateness": 0.17457339743332512,
       "auroraEmitters": [
         {
@@ -6107,10 +6323,10 @@
       "surfaceSpectrum": {
         "level": "1 bar",
         "starTempK": 5780.657086335943,
-        "distanceAU": 9.574943314411572,
-        "totalTopWm2": 12.448960828870732,
-        "totalSurfaceWm2": 5.029188957716307,
-        "photonFlux": 18374824191358765000,
+        "distanceAU": 9.529453411558595,
+        "totalTopWm2": 12.56809749851165,
+        "totalSurfaceWm2": 5.077318342301381,
+        "photonFlux": 18550671427886250000,
         "peakTopNm": 500,
         "peakSurfaceNm": 570,
         "surfaceLightHex": "#ffead1",
@@ -6221,7 +6437,7 @@
           },
           {
             "class": "planet/ammonia-clouds-gas-giant",
-            "score": 1.1,
+            "score": 1.11,
             "bands": [
               {
                 "feature": "mass_Me",
@@ -6231,9 +6447,9 @@
               },
               {
                 "feature": "Teq_K",
-                "value": 78.09924533605735,
+                "value": 78.27678508623094,
                 "band": "80 – 160",
-                "fit": 0.84
+                "fit": 0.86
               }
             ]
           }
@@ -6261,10 +6477,10 @@
         "tier": "habitability/none"
       },
       "orbitalBoundaries": {
-        "minLeoKm": 953.8652929935134,
+        "minLeoKm": 961.1467074438457,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 54005.76829774813,
-        "heoUpperBoundaryKm": 65407793.930461206,
+        "heoUpperBoundaryKm": 65091773.417846926,
         "geoStationaryKm": 54005.76829774813,
         "isGeoFallback": false
       },
@@ -6272,7 +6488,7 @@
       "propulsiveLandBudget_ms": 29350.038618118477,
       "aerobrakeLandBudget_ms": 806.5306597126335,
       "orbitalStability": "Marginal",
-      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.95)."
+      "orbitalStabilityDetails": "Metastable; generally long-lived (>100 Myr to Gyr), but dynamically packed and perturbation-sensitive. Drivers: Marginal Hill spacing (Delta=7.89)."
     },
     {
       "id": "solar-system-saturn-rings",
@@ -6310,12 +6526,12 @@
       },
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 4.907691522990484,
-      "particleRadiation": 64390.80067564835,
-      "surfaceRadiationMin": 64395.118073145495,
-      "surfaceRadiationMax": 64396.388323154184,
-      "equilibriumTempMinK": 85.56935719839717,
-      "equilibriumTempMaxK": 90.54829773060284,
+      "photonRadiation": 4.95465480960789,
+      "particleRadiation": 65642.44626060186,
+      "surfaceRadiationMin": 65646.83238435899,
+      "surfaceRadiationMax": 65648.05126152668,
+      "equilibriumTempMinK": 85.88945778631488,
+      "equilibriumTempMaxK": 90.63448563923362,
       "internalHeatK": 0,
       "massKg": 5e+23,
       "orbital_period_days": 0.39340210282772653,
@@ -6323,7 +6539,7 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 87.98846285615262,
+      "equilibriumTempK": 88.19820918657636,
       "albedoBreakdown": {
         "albedo": 0.088,
         "surfaceAlbedo": 0.088,
@@ -6333,7 +6549,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 87.98846285615262,
+      "temperatureK": 88.19820918657636,
       "temperatureProfile": {
         "meanK": 88,
         "totalMinK": 64,
@@ -6342,7 +6558,7 @@
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 68,
+            "lowK": 69,
             "highK": 107
           },
           {
@@ -6363,12 +6579,12 @@
         "min": 64,
         "max": 114
       },
-      "totalIncidentFlux": 128.79141673434268,
-      "totalIncidentFluxMin": 128.790236146291,
-      "totalIncidentFluxMax": 128.79277664630837,
-      "starlightFlux": 0.010905981162201074,
-      "surfaceRadiation": 64395.70836717134,
-      "orbitalRadiation": 64395.70836717134,
+      "totalIncidentFlux": 131.29480183082293,
+      "totalIncidentFluxMin": 131.29366476871797,
+      "totalIncidentFluxMax": 131.29610252305335,
+      "starlightFlux": 0.011010344021350866,
+      "surfaceRadiation": 65647.40091541146,
+      "orbitalRadiation": 65647.40091541146,
       "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -6499,7 +6715,7 @@
         },
         "main": "N2",
         "pressure_bar": 1.45,
-        "scaleHeightKm": 21.858936006040636,
+        "scaleHeightKm": 21.92551335878571,
         "molarMassKg": 0.0274000336
       },
       "axial_tilt_deg": 0,
@@ -6511,12 +6727,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.9999657044984797,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.00016804954554273108,
-      "particleRadiation": 0.00002350375067471713,
-      "surfaceRadiationMin": 2.0001713469135365,
-      "surfaceRadiationMax": 2.000214827763666,
-      "equilibriumTempMinK": 80.68424071658066,
-      "equilibriumTempMaxK": 85.37726665002573,
+      "photonRadiation": 0.00016965641270367765,
+      "particleRadiation": 0.00002372849038126448,
+      "surfaceRadiationMin": 2.000173923274134,
+      "surfaceRadiationMax": 2.0002156462062515,
+      "equilibriumTempMinK": 80.98583616137911,
+      "equilibriumTempMaxK": 85.45846749283977,
       "internalHeatK": 0,
       "magneticField": {
         "strengthGauss": 0
@@ -6541,7 +6757,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 82.96445265216603,
+      "equilibriumTempK": 83.16206919895835,
       "albedoBreakdown": {
         "albedo": 0.278,
         "surfaceAlbedo": 0.274,
@@ -6551,17 +6767,17 @@
         "cloudSpecies": "methane",
         "note": "Methane cloud deck over a mid-tone surface."
       },
-      "greenhouseTempK": 14.221460967998754,
-      "temperatureK": 97.18591362016478,
+      "greenhouseTempK": 14.319850633546979,
+      "temperatureK": 97.48191983250533,
       "temperatureProfile": {
         "meanK": 97,
-        "totalMinK": 88,
+        "totalMinK": 89,
         "totalMaxK": 108,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
-            "lowK": 88,
+            "lowK": 89,
             "highK": 106
           },
           {
@@ -6573,7 +6789,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 88,
+        "min": 89,
         "max": 108
       },
       "magnetism": {
@@ -6589,13 +6805,28 @@
           "No convecting conductive layer (or far too slow rotation) → no magnetic shielding."
         ]
       },
-      "totalIncidentFlux": 0.0111707534647905,
-      "totalIncidentFluxMin": 0.009992384186878076,
-      "totalIncidentFluxMax": 0.012528043279302868,
-      "starlightFlux": 0.010888991791476954,
-      "surfaceRadiation": 2.0001915532962173,
-      "orbitalRadiation": 5.58537673239525,
-      "beltInnerEdgeRadii": 2.2735,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 233.1,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.02194,
+        "notes": []
+      },
+      "totalIncidentFlux": 0.011277566707711496,
+      "totalIncidentFluxMin": 0.010142628999351323,
+      "totalIncidentFluxMax": 0.012575772138736441,
+      "starlightFlux": 0.010993110867009305,
+      "surfaceRadiation": 2.000193384903085,
+      "orbitalRadiation": 5.638783353855749,
+      "beltInnerEdgeRadii": 2.2774,
       "oblateness": 0.0000497411769757759,
       "geoActivity": {
         "regime": "inactive",
@@ -6634,20 +6865,20 @@
           "water"
         ],
         "lambda": {
-          "nitrogen": 70.5,
-          "methane": 40.3,
-          "carbon-dioxide": 110.8,
-          "water": 45.3,
-          "sulfur-dioxide": 161.1
+          "nitrogen": 70.3,
+          "methane": 40.2,
+          "carbon-dioxide": 110.5,
+          "water": 45.2,
+          "sulfur-dioxide": 160.8
         }
       },
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 9.583103193804634,
-        "totalTopWm2": 12.427769619919049,
-        "totalSurfaceWm2": 3.8625193974538825,
-        "photonFlux": 13115346854791418000,
+        "distanceAU": 9.537612991327888,
+        "totalTopWm2": 12.546602282164942,
+        "totalSurfaceWm2": 3.899452288633347,
+        "photonFlux": 13240754038115396000,
         "peakTopNm": 500,
         "peakSurfaceNm": 660,
         "surfaceLightHex": "#ffe7b5",
@@ -6948,7 +7179,7 @@
         },
         "main": "H2O",
         "pressure_bar": 1e-9,
-        "scaleHeightKm": 274.99049193536723,
+        "scaleHeightKm": 275.6161520489299,
         "molarMassKg": 0.017779999999999997
       },
       "axial_tilt_deg": 0,
@@ -6960,12 +7191,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 8.045454524818751e-9,
       "radiationShieldingMag": 0.05869708635189371,
-      "photonRadiation": 4.906770734810531,
-      "particleRadiation": 1311.48046397696,
-      "surfaceRadiationMin": 1276.6559800812138,
-      "surfaceRadiationMax": 1361.537921007761,
-      "equilibriumTempMinK": 61.91347008157447,
-      "equilibriumTempMaxK": 65.51567201733117,
+      "photonRadiation": 4.953720834673646,
+      "particleRadiation": 1348.0183539967572,
+      "surfaceRadiationMin": 1312.2034258264616,
+      "surfaceRadiationMax": 1399.1840809381135,
+      "equilibriumTempMinK": 62.14505714560353,
+      "equilibriumTempMaxK": 65.57802660706254,
       "internalHeatK": 0,
       "hydrosphere": {
         "composition": "water",
@@ -6989,7 +7220,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 63.663667196512826,
+      "equilibriumTempK": 63.81541414445303,
       "albedoBreakdown": {
         "albedo": 0.75,
         "surfaceAlbedo": 0.75,
@@ -6998,11 +7229,11 @@
         "cloudCover": 0,
         "note": "Cloud-free ice, darkened by the lag of an old surface."
       },
-      "greenhouseTempK": 1.8162092939894387e-8,
-      "temperatureK": 66.69590563909745,
+      "greenhouseTempK": 1.8292277691750356e-8,
+      "temperatureK": 66.84765258715603,
       "temperatureProfile": {
         "meanK": 67,
-        "totalMinK": 52,
+        "totalMinK": 53,
         "totalMaxK": 82,
         "components": [
           {
@@ -7014,7 +7245,7 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 64,
+            "lowK": 65,
             "highK": 69
           },
           {
@@ -7026,7 +7257,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 52,
+        "min": 53,
         "max": 82
       },
       "magnetism": {
@@ -7045,13 +7276,31 @@
       "magneticField": {
         "strengthGauss": 0.005
       },
-      "totalIncidentFlux": 2.796335192577261,
-      "totalIncidentFluxMin": 2.707687587315896,
-      "totalIncidentFluxMax": 2.887998025132576,
-      "starlightFlux": 0.010903935053972738,
-      "surfaceRadiation": 1318.3872347117704,
-      "orbitalRadiation": 1398.1273141849974,
-      "beltInnerEdgeRadii": 164.6199,
+      "magnetosphere": {
+        "shape": "induced",
+        "standoffRadii": 1.463,
+        "closedFieldRadii": 0.805,
+        "tailRadii": 29.26,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 324.1,
+        "ordered": true,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 40.6,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star.",
+          "The magnetopause stands 1.5 body radii out, where the field's pressure balances 40.6 nPa of host field."
+        ]
+      },
+      "totalIncidentFlux": 2.874061680086232,
+      "totalIncidentFluxMin": 2.783210037616409,
+      "totalIncidentFluxMax": 2.967979385347656,
+      "starlightFlux": 0.011008268610063517,
+      "surfaceRadiation": 1354.972074831431,
+      "orbitalRadiation": 1436.9901725029322,
+      "beltInnerEdgeRadii": 164.9922,
       "oblateness": 0.007830957040493275,
       "geoActivity": {
         "regime": "cryovolcanic",
@@ -7097,10 +7346,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 9.576534376104851,
-        "totalTopWm2": 12.444824589490514,
-        "totalSurfaceWm2": 12.444785217557374,
-        "photonFlux": 44247693148992420000,
+        "distanceAU": 9.531044361321323,
+        "totalTopWm2": 12.563902041614028,
+        "totalSurfaceWm2": 12.56386229295326,
+        "photonFlux": 44671074171733000000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -7276,10 +7525,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "1318.39 mSv",
+            "value": "1354.97 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 1318.39,
+              "value": 1354.97,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -7419,7 +7668,7 @@
       "internalHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 71.82271048722752,
+      "equilibriumTempK": 71.99389843705438,
       "albedoBreakdown": {
         "albedo": 0.595,
         "surfaceAlbedo": 0.595,
@@ -7429,19 +7678,19 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 71.82271048722752,
-      "equilibriumTempMinK": 69.84831262855388,
-      "equilibriumTempMaxK": 73.91195137328228,
+      "temperatureK": 71.99389843705438,
+      "equilibriumTempMinK": 70.10957028090397,
+      "equilibriumTempMaxK": 73.98229411589766,
       "temperatureProfile": {
         "meanK": 72,
-        "totalMinK": 55,
-        "totalMaxK": 90,
+        "totalMinK": 56,
+        "totalMaxK": 91,
         "components": [
           {
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 56,
-            "highK": 87
+            "highK": 88
           },
           {
             "source": "seasonal",
@@ -7458,8 +7707,8 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 55,
-        "max": 90
+        "min": 56,
+        "max": 91
       },
       "hydrosphere": {
         "layers": []
@@ -7480,18 +7729,35 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.5623575040903265,
-      "totalIncidentFluxMin": 0.5607140875652397,
-      "totalIncidentFluxMax": 0.5641805385544609,
-      "starlightFlux": 0.010903069953015217,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 225.6,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 11.24,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 0.579800231966524,
+      "totalIncidentFluxMin": 0.5781867814534714,
+      "totalIncidentFluxMax": 0.5815776251481362,
+      "starlightFlux": 0.011007391154107034,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 4.906381478856848,
-      "particleRadiation": 276.2723705663064,
-      "surfaceRadiation": 283.17875204516326,
-      "surfaceRadiationMin": 282.3570437826198,
-      "surfaceRadiationMax": 284.09026927723045,
-      "orbitalRadiation": 281.17875204516326,
+      "photonRadiation": 4.953326019348165,
+      "particleRadiation": 284.94678996391383,
+      "surfaceRadiation": 291.90011598326197,
+      "surfaceRadiationMin": 291.09339072673566,
+      "surfaceRadiationMax": 292.78881257406806,
+      "orbitalRadiation": 289.90011598326197,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.006740121027054645,
       "geoActivity": {
@@ -7516,16 +7782,16 @@
           "methane": 1,
           "carbon-dioxide": 2.9,
           "water": 1.2,
-          "sulfur-dioxide": 4.2
+          "sulfur-dioxide": 4.1
         }
       },
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 9.576914292255282,
-        "totalTopWm2": 12.443837236794867,
-        "totalSurfaceWm2": 12.443837236794867,
-        "photonFlux": 44244421717381325000,
+        "distanceAU": 9.531424238118195,
+        "totalTopWm2": 12.562900587972814,
+        "totalSurfaceWm2": 12.562900587972814,
+        "photonFlux": 44667754891896430000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -7706,10 +7972,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "283.18 mSv",
+            "value": "291.90 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 283.18,
+              "value": 291.9,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -7857,7 +8123,7 @@
       "internalHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 80.39883604481513,
+      "equilibriumTempK": 80.59045404481815,
       "albedoBreakdown": {
         "albedo": 0.364,
         "surfaceAlbedo": 0.364,
@@ -7867,12 +8133,12 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 80.39883604481513,
-      "equilibriumTempMinK": 78.18878450048557,
-      "equilibriumTempMaxK": 82.73743133639664,
+      "temperatureK": 80.59045404481815,
+      "equilibriumTempMinK": 78.48122227307454,
+      "equilibriumTempMaxK": 82.8161685985128,
       "temperatureProfile": {
         "meanK": 80,
-        "totalMinK": 61,
+        "totalMinK": 62,
         "totalMaxK": 103,
         "components": [
           {
@@ -7884,7 +8150,7 @@
           {
             "source": "seasonal",
             "label": "Seasonal (tilt + orbit)",
-            "lowK": 77,
+            "lowK": 78,
             "highK": 83
           },
           {
@@ -7896,7 +8162,7 @@
         ]
       },
       "temperatureRangeK": {
-        "min": 61,
+        "min": 62,
         "max": 103
       },
       "hydrosphere": {
@@ -7918,18 +8184,35 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.06308862452421926,
-      "totalIncidentFluxMin": 0.060693121212359945,
-      "totalIncidentFluxMax": 0.06569246832011946,
-      "starlightFlux": 0.010901809494723221,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 114,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 2.545,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 0.0651005751553091,
+      "totalIncidentFluxMin": 0.06270663978105692,
+      "totalIncidentFluxMax": 0.06768810867301152,
+      "starlightFlux": 0.011006112643984961,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 4.90581427262545,
-      "particleRadiation": 26.63849798948418,
-      "surfaceRadiation": 33.54431226210963,
-      "surfaceRadiationMin": 32.34656060617998,
-      "surfaceRadiationMax": 34.84623416005973,
-      "orbitalRadiation": 31.54431226210963,
+      "photonRadiation": 4.952750689793232,
+      "particleRadiation": 27.59753688786132,
+      "surfaceRadiation": 34.55028757765455,
+      "surfaceRadiationMin": 33.35331989052846,
+      "surfaceRadiationMax": 35.84405433650576,
+      "orbitalRadiation": 32.55028757765455,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.0021345219919025886,
       "geoActivity": {
@@ -7953,17 +8236,17 @@
           "nitrogen": 2.7,
           "methane": 1.6,
           "carbon-dioxide": 4.3,
-          "water": 1.8,
+          "water": 1.7,
           "sulfur-dioxide": 6.2
         }
       },
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 9.577467913749903,
-        "totalTopWm2": 12.442398656844734,
-        "totalSurfaceWm2": 12.442398656844734,
-        "photonFlux": 44239306804932940000,
+        "distanceAU": 9.531977824515488,
+        "totalTopWm2": 12.561441405198314,
+        "totalSurfaceWm2": 12.561441405198314,
+        "photonFlux": 44662566725512585000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -8083,10 +8366,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "80 K (-193 °C)",
+            "value": "81 K (-193 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 80,
+              "value": 81,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -8120,10 +8403,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "33.54 mSv",
+            "value": "34.55 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 33.54,
+              "value": 34.55,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -8275,12 +8558,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 4.907130231648317,
-      "particleRadiation": 6207.220081486953,
-      "surfaceRadiationMin": 5601.7499803623305,
-      "surfaceRadiationMax": 6893.49316135092,
-      "equilibriumTempMinK": 73.77596905333446,
-      "equilibriumTempMaxK": 78.0686449049394,
+      "photonRadiation": 4.95408545103703,
+      "particleRadiation": 6359.748756775359,
+      "surfaceRadiationMin": 5740.591085932792,
+      "surfaceRadiationMax": 7061.145038971828,
+      "equilibriumTempMinK": 74.05193687422174,
+      "equilibriumTempMaxK": 78.14294981455917,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.06371324004842778,
       "calculatedRotationPeriod_s": 81509.61171733285,
@@ -8292,7 +8575,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 75.86164171520846,
+      "equilibriumTempK": 76.04246986186956,
       "albedoBreakdown": {
         "albedo": 0.496,
         "surfaceAlbedo": 0.496,
@@ -8302,7 +8585,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 79.89781712583955,
+      "temperatureK": 80.07864527250065,
       "temperatureProfile": {
         "meanK": 80,
         "totalMinK": 63,
@@ -8312,7 +8595,7 @@
             "source": "latitude",
             "label": "Latitude (equator ↔ pole)",
             "lowK": 63,
-            "highK": 96
+            "highK": 97
           },
           {
             "source": "seasonal",
@@ -8358,12 +8641,29 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 12.424254423437201,
-      "totalIncidentFluxMin": 11.19949996072466,
-      "totalIncidentFluxMax": 13.78298632270184,
-      "starlightFlux": 0.01090473384810737,
-      "surfaceRadiation": 6214.127211718601,
-      "orbitalRadiation": 6212.127211718601,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 132,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 180.5,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 12.729405684452791,
+      "totalIncidentFluxMin": 11.477182171865584,
+      "totalIncidentFluxMax": 14.118290077943655,
+      "starlightFlux": 0.011009078780082289,
+      "surfaceRadiation": 6366.702842226396,
+      "orbitalRadiation": 6364.702842226396,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.0231060686934541,
       "geoActivity": {
@@ -8380,7 +8680,7 @@
           "Radiogenic heat has decayed below the convection threshold (vigor 0.00 < 0.35); small/old worlds cool to a dead, single-plate lid (Mars/Moon-like)."
         ]
       },
-      "irradiationDose": 0.161,
+      "irradiationDose": 0.162,
       "volatiles": {
         "retained": [],
         "lambda": {
@@ -8394,10 +8694,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 9.576183619282626,
-        "totalTopWm2": 12.445736265214858,
-        "totalSurfaceWm2": 12.445736265214858,
-        "photonFlux": 44251173767626610000,
+        "distanceAU": 9.530693654935625,
+        "totalTopWm2": 12.564826700805549,
+        "totalSurfaceWm2": 12.564826700805549,
+        "photonFlux": 44674603241551356000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -8584,10 +8884,10 @@
             "label": "Radiation",
             "points": 0,
             "max": 17,
-            "value": "6214.13 mSv",
+            "value": "6366.70 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 6214.13,
+              "value": 6366.7,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -8717,12 +9017,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 4.904791910031834,
-      "particleRadiation": 1.0531732289271947,
-      "surfaceRadiationMin": 7.362701406691944,
-      "surfaceRadiationMax": 8.642868879671532,
-      "equilibriumTempMinK": 75.18973733346263,
-      "equilibriumTempMaxK": 79.56342811096228,
+      "photonRadiation": 4.951713703382558,
+      "particleRadiation": 1.07670963002994,
+      "surfaceRadiationMin": 7.4546655123456524,
+      "surfaceRadiationMax": 8.683986529129966,
+      "equilibriumTempMinK": 75.47093042936403,
+      "equilibriumTempMaxK": 79.63913644836842,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.2631323543800272,
       "calculatedRotationPeriod_s": 389843.4949037229,
@@ -8732,7 +9032,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 77.31478962705638,
+      "equilibriumTempK": 77.49903833987673,
       "albedoBreakdown": {
         "albedo": 0.456,
         "surfaceAlbedo": 0.456,
@@ -8742,7 +9042,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 77.31478962705638,
+      "temperatureK": 77.49903833987673,
       "temperatureProfile": {
         "meanK": 77,
         "totalMinK": 59,
@@ -8763,7 +9063,7 @@
           {
             "source": "diurnal",
             "label": "Day ↔ night",
-            "lowK": 71,
+            "lowK": 72,
             "highK": 92
           }
         ]
@@ -8791,12 +9091,29 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.011915930277918058,
-      "totalIncidentFluxMin": 0.010725402813383886,
-      "totalIncidentFluxMax": 0.013285737759343063,
-      "starlightFlux": 0.01089953757784852,
-      "surfaceRadiation": 7.957965138959029,
-      "orbitalRadiation": 5.957965138959029,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 171.5,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-saturn",
+        "confiningPressureNPa": 0.3449,
+        "notes": [
+          "Inside Saturn's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 0.012056846666824996,
+      "totalIncidentFluxMin": 0.010909331024691304,
+      "totalIncidentFluxMax": 0.013367973058259932,
+      "starlightFlux": 0.011003808229739018,
+      "surfaceRadiation": 8.028423333412498,
+      "orbitalRadiation": 6.028423333412498,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.0009425286679432292,
       "geoActivity": {
@@ -8827,10 +9144,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 9.578466033030276,
-        "totalTopWm2": 12.439805684046602,
-        "totalSurfaceWm2": 12.439805684046602,
-        "photonFlux": 44230087415463350000,
+        "distanceAU": 9.532975864246096,
+        "totalTopWm2": 12.558811342663061,
+        "totalSurfaceWm2": 12.558811342663061,
+        "photonFlux": 44653215462414320000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -8979,12 +9296,12 @@
           },
           {
             "label": "Radiation",
-            "points": 14.5,
+            "points": 14.4,
             "max": 17,
-            "value": "7.96 mSv",
+            "value": "8.03 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 7.96,
+              "value": 8.03,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -9114,12 +9431,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 4.8840911408311944,
-      "particleRadiation": 0.683098903498858,
-      "surfaceRadiationMin": 6.980373425436709,
-      "surfaceRadiationMax": 8.243028868398797,
-      "equilibriumTempMinK": 72.37745742379697,
-      "equilibriumTempMaxK": 76.58375940787616,
+      "photonRadiation": 4.930716134022044,
+      "particleRadiation": 0.6896199697128048,
+      "surfaceRadiationMin": 7.055138009118213,
+      "surfaceRadiationMax": 8.2667733185826,
+      "equilibriumTempMinK": 72.64757130976245,
+      "equilibriumTempMaxK": 76.6564745704329,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.22268687895657055,
       "calculatedRotationPeriod_s": 6853962.629565984,
@@ -9129,7 +9446,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 74.42123238276507,
+      "equilibriumTempK": 74.59821190411677,
       "albedoBreakdown": {
         "albedo": 0.531,
         "surfaceAlbedo": 0.531,
@@ -9139,7 +9456,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 74.42123238276507,
+      "temperatureK": 74.59821190411677,
       "temperatureProfile": {
         "meanK": 72,
         "totalMinK": 51,
@@ -9188,12 +9505,27 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.011134380088660105,
-      "totalIncidentFluxMin": 0.009960746850873418,
-      "totalIncidentFluxMax": 0.012486057736797593,
-      "starlightFlux": 0.010853535868513764,
-      "surfaceRadiation": 7.567190044330053,
-      "orbitalRadiation": 5.567190044330053,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 49.8,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.02187,
+        "notes": []
+      },
+      "totalIncidentFlux": 0.011240672207469696,
+      "totalIncidentFluxMin": 0.010110276018236426,
+      "totalIncidentFluxMax": 0.012533546637165197,
+      "starlightFlux": 0.010957146964493429,
+      "surfaceRadiation": 7.620336103734848,
+      "orbitalRadiation": 5.620336103734848,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.000003464842174340908,
       "geoActivity": {
@@ -9218,16 +9550,16 @@
           "methane": 2.1,
           "carbon-dioxide": 5.8,
           "water": 2.4,
-          "sulfur-dioxide": 8.5
+          "sulfur-dioxide": 8.4
         }
       },
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 9.598743291728457,
-        "totalTopWm2": 12.38730324335394,
-        "totalSurfaceWm2": 12.38730324335394,
-        "photonFlux": 44043413475343890000,
+        "distanceAU": 9.553252499790844,
+        "totalTopWm2": 12.505556140918843,
+        "totalSurfaceWm2": 12.505556140918843,
+        "photonFlux": 44463865058694190000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -9341,10 +9673,10 @@
             "label": "Temperature",
             "points": 0,
             "max": 25,
-            "value": "74 K (-199 °C)",
+            "value": "75 K (-199 °C)",
             "ideal": "10–25 °C",
             "range": {
-              "value": 74,
+              "value": 75,
               "lo": 243,
               "idealLo": 283,
               "idealHi": 298,
@@ -9378,10 +9710,10 @@
             "label": "Radiation",
             "points": 14.8,
             "max": 17,
-            "value": "7.57 mSv",
+            "value": "7.62 mSv",
             "ideal": "< 5 mSv",
             "range": {
-              "value": 7.57,
+              "value": 7.62,
               "lo": 0,
               "idealLo": 0,
               "idealHi": 5,
@@ -9444,15 +9776,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 19.2184,
-          "e": 0.046381,
-          "i_deg": 0.773,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 4.108892419074092
+          "a_AU": 19.188641504,
+          "e": 0.04724571,
+          "i_deg": 0.77199,
+          "omega_deg": 97.03486,
+          "Omega_deg": 74.02823,
+          "M0_rad": 4.475668023
         },
+        "n_rad_per_s": 2.3697689848418572e-9,
         "resonance": null
       },
       "massKg": 8.681e+25,
@@ -9472,7 +9805,7 @@
         },
         {
           "key": "structure/cloud-deck",
-          "value": "methane overcast 0.743"
+          "value": "methane overcast 0.744"
         },
         {
           "key": "weather/precipitation",
@@ -9534,7 +9867,7 @@
         },
         "main": "H2",
         "pressure_bar": 1,
-        "scaleHeightKm": 29.442137816319974,
+        "scaleHeightKm": 29.458552194388773,
         "molarMassKg": 0.0026415999999999996
       },
       "axial_tilt_deg": 97.77,
@@ -9546,22 +9879,22 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.49373025999865516,
       "radiationShieldingMag": 0.4466824392204644,
-      "photonRadiation": 0.6174867700529375,
-      "particleRadiation": 0.04778613871148249,
-      "surfaceRadiationMin": 2.6069494446185764,
-      "surfaceRadiationMax": 2.730772873701473,
-      "equilibriumTempMinK": 57.132576396865964,
-      "equilibriumTempMaxK": 59.846848263832655,
+      "photonRadiation": 0.6194286294782169,
+      "particleRadiation": 0.047936415556841694,
+      "surfaceRadiationMin": 2.607828454699047,
+      "surfaceRadiationMax": 2.734372458846221,
+      "equilibriumTempMinK": 57.15325063091855,
+      "equilibriumTempMaxK": 59.920409781329845,
       "internalHeatK": 23.99249058042815,
       "calculatedGravity_ms2": 9.007587373223858,
       "calculatedRotationPeriod_s": -62063.99999999999,
-      "orbital_period_days": 30768.7485731925,
+      "orbital_period_days": 30687.40144359826,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "tidallyLocked": false,
       "starTidallyLocked": false,
-      "equilibriumTempK": 58.45822696132984,
+      "equilibriumTempK": 58.504132411890616,
       "albedoBreakdown": {
         "albedo": 0.285,
         "surfaceAlbedo": 0.3,
@@ -9572,11 +9905,11 @@
         "note": "Methane cloud deck over a deep atmosphere."
       },
       "greenhouseTempK": 4.653907828228229,
-      "temperatureK": 84.25793910013844,
+      "temperatureK": 84.30491400652315,
       "temperatureProfile": {
         "meanK": 84,
         "totalMinK": 72,
-        "totalMaxK": 96,
+        "totalMaxK": 97,
         "components": [
           {
             "source": "latitude",
@@ -9594,7 +9927,7 @@
       },
       "temperatureRangeK": {
         "min": 72,
-        "max": 96
+        "max": 97
       },
       "hydrosphere": {
         "layers": [
@@ -9618,13 +9951,32 @@
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
       },
-      "totalIncidentFlux": 0.00278053246256072,
-      "totalIncidentFluxMin": 0.0025367674102790855,
-      "totalIncidentFluxMax": 0.0030542919624662783,
-      "starlightFlux": 0.002710398654946701,
-      "surfaceRadiation": 2.66527290876442,
-      "orbitalRadiation": 98885.79746889538,
-      "beltInnerEdgeRadii": 1.1741,
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 22.445,
+        "closedFieldRadii": 12.345,
+        "tailRadii": 448.91,
+        "dipoleTiltDeg": 53,
+        "dipoleOffsetRadii": 0.42,
+        "dipoleLongitudeDeg": 12.3,
+        "ordered": true,
+        "ovalColatDeg": 16.54,
+        "beltPeakRadii": 1.174,
+        "beltScaleRadii": 0.595,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.005427,
+        "notes": [
+          "The magnetopause stands 22.4 body radii out, where the field's pressure balances 0.00543 nPa of stellar wind."
+        ]
+      },
+      "totalIncidentFlux": 0.0027892766226489687,
+      "totalIncidentFluxMin": 0.0025404412650708065,
+      "totalIncidentFluxMax": 0.0030693365602769925,
+      "starlightFlux": 0.0027189222597097983,
+      "surfaceRadiation": 2.6673650450350586,
+      "orbitalRadiation": 98869.65865803872,
+      "beltInnerEdgeRadii": 1.1742,
       "oblateness": 0.036071586176023455,
       "auroraEmitters": [
         {
@@ -9645,10 +9997,10 @@
       "surfaceSpectrum": {
         "level": "1 bar",
         "starTempK": 5780.657086335943,
-        "distanceAU": 19.208056009890708,
-        "totalTopWm2": 3.0934186292785513,
-        "totalSurfaceWm2": 1.5621228384177361,
-        "photonFlux": 5235294145638400000,
+        "distanceAU": 19.177924513413675,
+        "totalTopWm2": 3.1031467472122904,
+        "totalSurfaceWm2": 1.566409494987257,
+        "photonFlux": 5249660434569623000,
         "peakTopNm": 500,
         "peakSurfaceNm": 570,
         "surfaceLightHex": "#fff1d6",
@@ -9659,7 +10011,7 @@
           },
           {
             "label": "methane cloud deck",
-            "strength": 0.228844
+            "strength": 0.22915199999999997
           },
           {
             "label": "H2S absorption",
@@ -9710,7 +10062,7 @@
           },
           {
             "feature": "Teq_K",
-            "value": 58.45822696132984,
+            "value": 58.504132411890616,
             "band": "0 – 200",
             "fit": 1
           },
@@ -9740,7 +10092,7 @@
               },
               {
                 "feature": "Teq_K",
-                "value": 58.45822696132984,
+                "value": 58.504132411890616,
                 "band": "0 – 200",
                 "fit": 1
               },
@@ -9779,7 +10131,7 @@
         "minLeoKm": 608.2357809629538,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 57323.95674102323,
-        "heoUpperBoundaryKm": 70160108.0952793,
+        "heoUpperBoundaryKm": 70051430.26408169,
         "geoStationaryKm": 57323.95674102323,
         "isGeoFallback": false
       },
@@ -9823,12 +10175,12 @@
       },
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 1.2196216390852301,
-      "particleRadiation": 7842.219764396755,
-      "surfaceRadiationMin": 7843.3175120051865,
-      "surfaceRadiationMax": 7843.576255868709,
-      "equilibriumTempMinK": 60.74897285615808,
-      "equilibriumTempMaxK": 63.63498363283357,
+      "photonRadiation": 1.2234569873950962,
+      "particleRadiation": 7842.220300816357,
+      "surfaceRadiationMin": 7843.319348807979,
+      "surfaceRadiationMax": 7843.583777607243,
+      "equilibriumTempMinK": 60.77095523747302,
+      "equilibriumTempMaxK": 63.7131994417681,
       "internalHeatK": 0,
       "massKg": 400000000000000000000,
       "orbital_period_days": 0.5357248044609155,
@@ -9836,7 +10188,7 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 62.15850150823491,
+      "equilibriumTempK": 62.207311498723016,
       "albedoBreakdown": {
         "albedo": 0.086,
         "surfaceAlbedo": 0.086,
@@ -9846,7 +10198,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 62.15850150823491,
+      "temperatureK": 62.207311498723016,
       "temperatureProfile": {
         "meanK": 62,
         "totalMinK": 45,
@@ -9876,12 +10228,12 @@
         "min": 45,
         "max": 79
       },
-      "totalIncidentFlux": 15.68687877207168,
-      "totalIncidentFluxMin": 15.686635024010373,
-      "totalIncidentFluxMax": 15.687152511737418,
-      "starlightFlux": 0.0027102703090782893,
-      "surfaceRadiation": 7843.43938603584,
-      "orbitalRadiation": 7843.43938603584,
+      "totalIncidentFlux": 15.686887515607504,
+      "totalIncidentFluxMin": 15.686638697615958,
+      "totalIncidentFluxMax": 15.687167555214485,
+      "starlightFlux": 0.002718793305322436,
+      "surfaceRadiation": 7843.443757803752,
+      "orbitalRadiation": 7843.443757803752,
       "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -9963,12 +10315,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 1.2193097287623902,
-      "particleRadiation": 0.17053534141041876,
-      "surfaceRadiationMin": 3.2680164968629626,
-      "surfaceRadiationMax": 3.526661877556055,
-      "equilibriumTempMinK": 56.51952284032839,
-      "equilibriumTempMaxK": 59.20426283312463,
+      "photonRadiation": 1.2231435985211734,
+      "particleRadiation": 0.17107155421907996,
+      "surfaceRadiationMin": 3.2698526258819727,
+      "surfaceRadiationMax": 3.5341805939231525,
+      "equilibriumTempMinK": 56.539972268232276,
+      "equilibriumTempMaxK": 59.277022946973545,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.3650828309318193,
       "calculatedRotationPeriod_s": 749755.6202559684,
@@ -9978,7 +10330,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 57.830754642185106,
+      "equilibriumTempK": 57.876160380238844,
       "albedoBreakdown": {
         "albedo": 0.315,
         "surfaceAlbedo": 0.315,
@@ -9988,7 +10340,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 57.830754642185106,
+      "temperatureK": 57.876160380238844,
       "temperatureProfile": {
         "meanK": 58,
         "totalMinK": 45,
@@ -10031,12 +10383,29 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.0027796901403456175,
-      "totalIncidentFluxMin": 0.002536032993725925,
-      "totalIncidentFluxMax": 0.00305332375511211,
-      "starlightFlux": 0.0027095771750275336,
-      "surfaceRadiation": 3.3898450701728087,
-      "orbitalRadiation": 1.389845070172809,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 83.7,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-uranus",
+        "confiningPressureNPa": 0.006783,
+        "notes": [
+          "Inside Uranus's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 0.002788430305480507,
+      "totalIncidentFluxMin": 0.0025397052517639454,
+      "totalIncidentFluxMax": 0.003068361187846305,
+      "starlightFlux": 0.0027180968856026074,
+      "surfaceRadiation": 3.3942151527402533,
+      "orbitalRadiation": 1.3942151527402535,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.00018957693430868684,
       "geoActivity": {
@@ -10061,16 +10430,16 @@
           "methane": 4.8,
           "carbon-dioxide": 13.2,
           "water": 5.4,
-          "sulfur-dioxide": 19.2
+          "sulfur-dioxide": 19.1
         }
       },
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 19.210967504102314,
-        "totalTopWm2": 3.0924810619281202,
-        "totalSurfaceWm2": 3.0924810619281202,
-        "photonFlux": 10995405488942623000,
+        "distanceAU": 19.18083606541505,
+        "totalTopWm2": 3.1022047353666724,
+        "totalSurfaceWm2": 3.1022047353666724,
+        "photonFlux": 11029978289926017000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -10360,12 +10729,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 1.2191840078891627,
-      "particleRadiation": 0.17051755075677053,
-      "surfaceRadiationMin": 3.2678911903677834,
-      "surfaceRadiationMax": 3.5264971433920635,
-      "equilibriumTempMinK": 56.352384599558576,
-      "equilibriumTempMaxK": 59.029051004108695,
+      "photonRadiation": 1.2230172818003933,
+      "particleRadiation": 0.1710536802289832,
+      "surfaceRadiationMin": 3.269727047559038,
+      "surfaceRadiationMax": 3.5340146429173376,
+      "equilibriumTempMinK": 56.37277254849653,
+      "equilibriumTempMaxK": 59.101591872115776,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.3453832194561757,
       "calculatedRotationPeriod_s": 1163260.970636789,
@@ -10375,7 +10744,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 57.65967476794705,
+      "equilibriumTempK": 57.70494381733213,
       "albedoBreakdown": {
         "albedo": 0.323,
         "surfaceAlbedo": 0.323,
@@ -10385,7 +10754,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 57.65967476794705,
+      "temperatureK": 57.70494381733213,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 44,
@@ -10428,12 +10797,27 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.0027794031172918665,
-      "totalIncidentFluxMin": 0.002535782380735567,
-      "totalIncidentFluxMax": 0.0030529942867841267,
-      "starlightFlux": 0.0027092977953092506,
-      "surfaceRadiation": 3.389701558645933,
-      "orbitalRadiation": 1.3897015586459334,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 50,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.005424,
+        "notes": []
+      },
+      "totalIncidentFlux": 0.0027881419240587527,
+      "totalIncidentFluxMin": 0.0025394540951180766,
+      "totalIncidentFluxMax": 0.0030680292858346753,
+      "starlightFlux": 0.0027178161817786517,
+      "surfaceRadiation": 3.3940709620293763,
+      "orbitalRadiation": 1.3940709620293765,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.0000803946362810514,
       "geoActivity": {
@@ -10458,16 +10842,16 @@
           "methane": 4.4,
           "carbon-dioxide": 12.1,
           "water": 4.9,
-          "sulfur-dioxide": 17.6
+          "sulfur-dioxide": 17.5
         }
       },
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 19.211957985167544,
-        "totalTopWm2": 3.092162201666143,
-        "totalSurfaceWm2": 3.092162201666143,
-        "photonFlux": 10994271772096980000,
+        "distanceAU": 19.181826565628295,
+        "totalTopWm2": 3.101884363883037,
+        "totalSurfaceWm2": 3.101884363883037,
+        "photonFlux": 11028839199888237000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -10761,12 +11145,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 1.2195180425411463,
-      "particleRadiation": 2.5772069414856884,
-      "surfaceRadiationMin": 5.638756808361764,
-      "surfaceRadiationMax": 5.9702364972245885,
-      "equilibriumTempMinK": 56.146802339928485,
-      "equilibriumTempMaxK": 58.81406578552215,
+      "photonRadiation": 1.2233528997755816,
+      "particleRadiation": 2.577743292404699,
+      "surfaceRadiationMin": 5.640593387233398,
+      "surfaceRadiationMax": 5.977757232493374,
+      "equilibriumTempMinK": 56.16711857236468,
+      "equilibriumTempMaxK": 58.88635283279234,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.25691433360086513,
       "calculatedRotationPeriod_s": 216165.22432460703,
@@ -10776,7 +11160,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 57.44949598137212,
+      "equilibriumTempK": 57.49460628109543,
       "albedoBreakdown": {
         "albedo": 0.333,
         "surfaceAlbedo": 0.333,
@@ -10786,7 +11170,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 57.44949598137212,
+      "temperatureK": 57.49460628109543,
       "temperatureProfile": {
         "meanK": 57,
         "totalMinK": 45,
@@ -10829,12 +11213,29 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.007593449968053669,
-      "totalIncidentFluxMin": 0.0072775136167235275,
-      "totalIncidentFluxMax": 0.007940472994449178,
-      "starlightFlux": 0.002710040094535881,
-      "surfaceRadiation": 5.7967249840268344,
-      "orbitalRadiation": 3.7967249840268344,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 264.2,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-uranus",
+        "confiningPressureNPa": 0.9816,
+        "notes": [
+          "Inside Uranus's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 0.007602192384360561,
+      "totalIncidentFluxMin": 0.0072811867744667965,
+      "totalIncidentFluxMax": 0.007955514464986747,
+      "starlightFlux": 0.002718561999501292,
+      "surfaceRadiation": 5.801096192180281,
+      "orbitalRadiation": 3.801096192180281,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.0023796512224479416,
       "geoActivity": {
@@ -10857,7 +11258,7 @@
         "lambda": {
           "nitrogen": 4.4,
           "methane": 2.5,
-          "carbon-dioxide": 6.9,
+          "carbon-dioxide": 6.8,
           "water": 2.8,
           "sulfur-dioxide": 10
         }
@@ -10865,10 +11266,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 19.209326659109724,
-        "totalTopWm2": 3.0930093989048095,
-        "totalSurfaceWm2": 3.0930093989048095,
-        "photonFlux": 10997284006281026000,
+        "distanceAU": 19.179195187800733,
+        "totalTopWm2": 3.1027355768339615,
+        "totalSurfaceWm2": 3.1027355768339615,
+        "photonFlux": 11031865712052877000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -10981,7 +11382,7 @@
         "modifiers": [],
         "fallback": false
       },
-      "habitabilityScore": 1.4775093843744997,
+      "habitabilityScore": 1.4737938574440719,
       "habitabilityBreakdown": {
         "factors": [
           {
@@ -11091,15 +11492,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132712440018000000000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 30.11,
-          "e": 0.0113,
-          "i_deg": 1.77,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 1.94099564119865
+          "a_AU": 30.069992869,
+          "e": 0.00860409,
+          "i_deg": 1.770138,
+          "omega_deg": 273.09592,
+          "Omega_deg": 131.78287,
+          "M0_rad": 5.5546332065
         },
+        "n_rad_per_s": 1.2082150547947647e-9,
         "resonance": null
       },
       "massKg": 1.024e+26,
@@ -11180,7 +11582,7 @@
         },
         "main": "H2",
         "pressure_bar": 1,
-        "scaleHeightKm": 20.32226400021751,
+        "scaleHeightKm": 20.33115179947875,
         "molarMassKg": 0.0026102000000000005
       },
       "axial_tilt_deg": 28.32,
@@ -11192,24 +11594,24 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.4850740727461397,
       "radiationShieldingMag": 0.4560956283007103,
-      "photonRadiation": 0.2556015550992416,
-      "particleRadiation": 0.019444011528558725,
-      "surfaceRadiationMin": 2.2689161626033565,
-      "surfaceRadiationMax": 2.2813506037695923,
-      "equilibriumTempMinK": 46.38050279508887,
-      "equilibriumTempMaxK": 46.90759738783671,
+      "photonRadiation": 0.25627526977674703,
+      "particleRadiation": 0.019495262061644453,
+      "surfaceRadiationMin": 2.271075539455339,
+      "surfaceRadiationMax": 2.280567611389293,
+      "equilibriumTempMinK": 46.473331732147194,
+      "equilibriumTempMaxK": 46.87492757707641,
       "tidallyLocked": false,
       "internalHeatK": 23.99249058042815,
       "calculatedGravity_ms2": 11.27350667591506,
       "calculatedRotationPeriod_s": 57996,
-      "orbital_period_days": 60339.28002582727,
+      "orbital_period_days": 60189.65901627789,
       "resonanceNote": "3:2 mean-motion resonance with Pluto-Charon Barycenter — protects against close approaches.",
       "resonanceProtective": true,
       "isSelfLuminous": false,
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 46.64256101358554,
+      "equilibriumTempK": 46.67326580092229,
       "albedoBreakdown": {
         "albedo": 0.288,
         "surfaceAlbedo": 0.3,
@@ -11220,7 +11622,7 @@
         "note": "Methane cloud deck over a deep atmosphere."
       },
       "greenhouseTempK": 4.042315311579525,
-      "temperatureK": 71.92350645773193,
+      "temperatureK": 71.95496169753957,
       "temperatureProfile": {
         "meanK": 72,
         "totalMinK": 65,
@@ -11266,13 +11668,32 @@
           "Superionic-water mantle dynamo → tilted, off-centre, multipolar field (Uranus/Neptune-like)."
         ]
       },
-      "totalIncidentFlux": 0.0011316210435023915,
-      "totalIncidentFluxMin": 0.0011064028127080179,
-      "totalIncidentFluxMax": 0.0011575618823139158,
-      "starlightFlux": 0.0011030779879453703,
-      "surfaceRadiation": 2.2750455666278,
-      "orbitalRadiation": 137665.992482148,
-      "beltInnerEdgeRadii": 1.1238,
+      "magnetosphere": {
+        "shape": "bubble",
+        "standoffRadii": 26.674,
+        "closedFieldRadii": 14.671,
+        "tailRadii": 533.47,
+        "dipoleTiltDeg": 53,
+        "dipoleOffsetRadii": 0.42,
+        "dipoleLongitudeDeg": 100,
+        "ordered": true,
+        "ovalColatDeg": 15.13,
+        "beltPeakRadii": 1.124,
+        "beltScaleRadii": 0.608,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.002207,
+        "notes": [
+          "The magnetopause stands 26.7 body radii out, where the field's pressure balances 0.00221 nPa of stellar wind."
+        ]
+      },
+      "totalIncidentFlux": 0.0011346037706852744,
+      "totalIncidentFluxMin": 0.0011152871452806716,
+      "totalIncidentFluxMax": 0.0011543404137212302,
+      "starlightFlux": 0.001105985481331408,
+      "surfaceRadiation": 2.2757705318383916,
+      "orbitalRadiation": 137653.73992478332,
+      "beltInnerEdgeRadii": 1.1239,
       "oblateness": 0.0320433540207409,
       "auroraEmitters": [
         {
@@ -11286,10 +11707,10 @@
       "surfaceSpectrum": {
         "level": "1 bar",
         "starTempK": 5780.657086335943,
-        "distanceAU": 30.109038767496358,
-        "totalTopWm2": 1.2589594490941822,
-        "totalSurfaceWm2": 0.7635137929571054,
-        "photonFlux": 2644691218822635000,
+        "distanceAU": 30.069436330414614,
+        "totalTopWm2": 1.2622778148956322,
+        "totalSurfaceWm2": 0.7655262629070372,
+        "photonFlux": 2651662096957156000,
         "peakTopNm": 500,
         "peakSurfaceNm": 560,
         "surfaceLightHex": "#ffefd8",
@@ -11351,7 +11772,7 @@
           },
           {
             "feature": "Teq_K",
-            "value": 46.64256101358554,
+            "value": 46.67326580092229,
             "band": "0 – 200",
             "fit": 1
           },
@@ -11385,7 +11806,7 @@
               },
               {
                 "feature": "Teq_K",
-                "value": 46.64256101358554,
+                "value": 46.67326580092229,
                 "band": "0 – 200",
                 "fit": 1
               },
@@ -11442,7 +11863,7 @@
         "minLeoKm": 421.56825784760355,
         "leoMoeBoundaryKm": 2000,
         "meoHeoBoundaryKm": 58883.29385587132,
-        "heoUpperBoundaryKm": 116160577.26195094,
+        "heoUpperBoundaryKm": 116006202.08801758,
         "geoStationaryKm": 58883.29385587132,
         "isGeoFallback": false
       },
@@ -11486,12 +11907,12 @@
       },
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.4963735417476327,
-      "particleRadiation": 26380.16813249784,
-      "surfaceRadiationMin": 26380.65189736233,
-      "surfaceRadiationMax": 26380.67747600404,
-      "equilibriumTempMinK": 49.368451391854684,
-      "equilibriumTempMaxK": 49.92949617738311,
+      "photonRadiation": 0.4976818682207285,
+      "particleRadiation": 26380.16831548304,
+      "surfaceRadiationMin": 26380.65633937497,
+      "surfaceRadiationMax": 26380.675865326575,
+      "equilibriumTempMinK": 49.4672594620819,
+      "equilibriumTempMaxK": 49.894722108693486,
       "internalHeatK": 0,
       "massKg": 200000000000000000000,
       "orbital_period_days": 0.33380794636185507,
@@ -11499,7 +11920,7 @@
       "tidalHeatK": 0,
       "radiogenicHeatK": 0,
       "starTidallyLocked": false,
-      "equilibriumTempK": 49.647388813594915,
+      "equilibriumTempK": 49.68007130156744,
       "albedoBreakdown": {
         "albedo": 0.086,
         "surfaceAlbedo": 0.086,
@@ -11509,7 +11930,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 49.647388813594915,
+      "temperatureK": 49.68007130156744,
       "temperatureProfile": {
         "meanK": 50,
         "totalMinK": 37,
@@ -11533,12 +11954,12 @@
         "min": 37,
         "max": 62
       },
-      "totalIncidentFlux": 52.76132901207918,
-      "totalIncidentFluxMin": 52.76130379472466,
-      "totalIncidentFluxMax": 52.76135495200808,
-      "starlightFlux": 0.0011030523149947393,
-      "surfaceRadiation": 26380.66450603959,
-      "orbitalRadiation": 26380.66450603959,
+      "totalIncidentFlux": 52.76133199470252,
+      "totalIncidentFluxMin": 52.761312678749945,
+      "totalIncidentFluxMax": 52.76135173065315,
+      "starlightFlux": 0.0011059597071571745,
+      "surfaceRadiation": 26380.66599735126,
+      "orbitalRadiation": 26380.66599735126,
       "beltInnerEdgeRadii": 1,
       "loDeltaVBudget_ms": -1,
       "propulsiveLandBudget_ms": -1,
@@ -11663,7 +12084,7 @@
         },
         "main": "N2",
         "pressure_bar": 0.000014,
-        "scaleHeightKm": 13.678093776398608,
+        "scaleHeightKm": 13.687097355118635,
         "molarMassKg": 0.027988
       },
       "axial_tilt_deg": 0,
@@ -11675,12 +12096,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.0001007641229546774,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.49625694655394714,
-      "particleRadiation": 0.0694532102974744,
-      "surfaceRadiationMin": 2.5531052749689556,
-      "surfaceRadiationMax": 2.578676192601427,
-      "equilibriumTempMinK": 35.70126097976222,
-      "equilibriumTempMaxK": 36.1069584367251,
+      "photonRadiation": 0.49756487869822574,
+      "particleRadiation": 0.06963614034276744,
+      "surfaceRadiationMin": 2.5575459546050423,
+      "surfaceRadiationMax": 2.577066004938133,
+      "equilibriumTempMinK": 35.77271021404193,
+      "equilibriumTempMaxK": 36.08181296433343,
       "internalHeatK": 0,
       "hydrosphere": {
         "composition": "water",
@@ -11695,7 +12116,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 35.902963675696455,
+      "equilibriumTempK": 35.92659674538942,
       "albedoBreakdown": {
         "albedo": 0.75,
         "surfaceAlbedo": 0.75,
@@ -11705,7 +12126,7 @@
         "note": "Cloud-free ice, darkened by the lag of an old surface."
       },
       "greenhouseTempK": 0.000020408335639210383,
-      "temperatureK": 35.90298408403209,
+      "temperatureK": 35.926617153725054,
       "temperatureProfile": {
         "meanK": 36,
         "totalMinK": 28,
@@ -11739,13 +12160,30 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.0011315343317673766,
-      "totalIncidentFluxMin": 0.001106322027506718,
-      "totalIncidentFluxMax": 0.0011574690165531544,
-      "starlightFlux": 0.0011029043477536313,
-      "surfaceRadiation": 2.5657101568514213,
-      "orbitalRadiation": 0.5657671658836884,
-      "beltInnerEdgeRadii": 2.516,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 106.9,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "host",
+        "upstreamId": "solar-system-neptune",
+        "confiningPressureNPa": 0.0223,
+        "notes": [
+          "Inside Neptune's magnetosphere, so the boundary is set by the host's field at this orbit and the nose faces the host rather than the star."
+        ]
+      },
+      "totalIncidentFlux": 0.0011345163566276399,
+      "totalIncidentFluxMin": 0.0011152042817914546,
+      "totalIncidentFluxMax": 0.0011542483166955696,
+      "starlightFlux": 0.0011058111565318432,
+      "surfaceRadiation": 2.567201019040993,
+      "orbitalRadiation": 0.56725817831382,
+      "beltInnerEdgeRadii": 2.517,
       "oblateness": 0.0003327004885269573,
       "geoActivity": {
         "regime": "cryovolcanic",
@@ -11781,7 +12219,7 @@
         "lambda": {
           "nitrogen": 49.5,
           "methane": 28.3,
-          "carbon-dioxide": 77.8,
+          "carbon-dioxide": 77.7,
           "water": 31.8,
           "sulfur-dioxide": 113.1
         }
@@ -11789,10 +12227,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 30.111408843157594,
-        "totalTopWm2": 1.2587612709394902,
-        "totalSurfaceWm2": 1.2587366919360514,
-        "photonFlux": 4475508938682824700,
+        "distanceAU": 30.0718063742778,
+        "totalTopWm2": 1.2620788553877624,
+        "totalSurfaceWm2": 1.262054211604035,
+        "photonFlux": 4487304566015718400,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -12230,7 +12668,7 @@
         },
         "main": "N2",
         "pressure_bar": 0.00001,
-        "scaleHeightKm": 17.444689246330537,
+        "scaleHeightKm": 17.444287754441977,
         "molarMassKg": 0.02788
       },
       "axial_tilt_deg": 119.5,
@@ -12242,12 +12680,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0.00007177742387742825,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.2980591770125611,
-      "particleRadiation": 0.041687161669223566,
-      "surfaceRadiationMin": 2.2110052745120745,
-      "surfaceRadiationMax": 2.5831332013557944,
-      "equilibriumTempMinK": 31.962907674846367,
-      "equilibriumTempMaxK": 41.21116528100963,
+      "photonRadiation": 0.2980317384282367,
+      "particleRadiation": 0.04168332405310931,
+      "surfaceRadiationMin": 2.210969666870764,
+      "surfaceRadiationMax": 2.5831369571617677,
+      "equilibriumTempMinK": 31.961559135355646,
+      "equilibriumTempMaxK": 41.211231638390124,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.615882615041098,
       "calculatedRotationPeriod_s": 545701.3712524395,
@@ -12259,7 +12697,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 36.02626485737959,
+      "equilibriumTempK": 36.02543570673673,
       "albedoBreakdown": {
         "albedo": 0.579,
         "surfaceAlbedo": 0.579,
@@ -12270,7 +12708,7 @@
         "note": "Cloud-free N2 frost over bare ground."
       },
       "greenhouseTempK": 0.00005526266059632093,
-      "temperatureK": 36.02632012004018,
+      "temperatureK": 36.025490969397325,
       "temperatureProfile": {
         "meanK": 36,
         "totalMinK": 19,
@@ -12319,13 +12757,28 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.0006795414530984908,
-      "totalIncidentFluxMin": 0.00042204084202856053,
-      "totalIncidentFluxMax": 0.0011663501203185642,
-      "starlightFlux": 0.0006624012721514684,
-      "surfaceRadiation": 2.3397463386817847,
-      "orbitalRadiation": 0.3397707265492454,
-      "beltInnerEdgeRadii": 3.2021,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 251.1,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.001322,
+        "notes": []
+      },
+      "totalIncidentFlux": 0.0006794788962074409,
+      "totalIncidentFluxMin": 0.0004219696216339233,
+      "totalIncidentFluxMax": 0.001166357632469714,
+      "starlightFlux": 0.0006623402931427203,
+      "surfaceRadiation": 2.339715062481346,
+      "orbitalRadiation": 0.3397394481037205,
+      "beltInnerEdgeRadii": 3.202,
       "oblateness": 0.0003197332568945029,
       "geoActivity": {
         "regime": "inactive",
@@ -12369,10 +12822,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 38.85432969980108,
-        "totalTopWm2": 0.7560085050925683,
-        "totalSurfaceWm2": 0.7559936598989204,
-        "photonFlux": 2687973214715567600,
+        "distanceAU": 38.85611823962325,
+        "totalTopWm2": 0.7559389088354593,
+        "totalSurfaceWm2": 0.7559240650084234,
+        "photonFlux": 2687725766606594000,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -12667,12 +13120,12 @@
       "isNameUserDefined": true,
       "radiationShieldingAtmo": 0,
       "radiationShieldingMag": 0,
-      "photonRadiation": 0.2980789833014159,
-      "particleRadiation": 0.04168993181699701,
-      "surfaceRadiationMin": 2.2110195487091038,
-      "surfaceRadiationMax": 2.583171054209254,
-      "equilibriumTempMinK": 36.23026484032921,
-      "equilibriumTempMaxK": 46.713222295689135,
+      "photonRadiation": 0.2980515429577112,
+      "particleRadiation": 0.04168609395481225,
+      "surfaceRadiationMin": 2.210983938732581,
+      "surfaceRadiationMax": 2.5831748102461267,
+      "equilibriumTempMinK": 36.22873626093911,
+      "equilibriumTempMaxK": 46.71329751211165,
       "internalHeatK": 0,
       "calculatedGravity_ms2": 0.28715577993442903,
       "calculatedRotationPeriod_s": 545701.3712524395,
@@ -12684,7 +13137,7 @@
       "radiogenicHeatK": 0,
       "tidallyLocked": true,
       "starTidallyLocked": false,
-      "equilibriumTempK": 40.81189372758757,
+      "equilibriumTempK": 40.81095443706703,
       "albedoBreakdown": {
         "albedo": 0.305,
         "surfaceAlbedo": 0.305,
@@ -12694,7 +13147,7 @@
         "note": "Cloud-free surface."
       },
       "greenhouseTempK": 0,
-      "temperatureK": 40.81189372758757,
+      "temperatureK": 40.81095443706703,
       "temperatureProfile": {
         "meanK": 41,
         "totalMinK": 30,
@@ -12743,12 +13196,27 @@
       "magneticField": {
         "strengthGauss": 0
       },
-      "totalIncidentFlux": 0.0006795378302368258,
-      "totalIncidentFluxMin": 0.0004220390974182073,
-      "totalIncidentFluxMax": 0.001166342108418508,
-      "starlightFlux": 0.000662397740669813,
-      "surfaceRadiation": 2.339768915118413,
-      "orbitalRadiation": 0.3397689151184129,
+      "magnetosphere": {
+        "shape": "none",
+        "standoffRadii": 0,
+        "closedFieldRadii": 0,
+        "tailRadii": 0,
+        "dipoleTiltDeg": 0,
+        "dipoleOffsetRadii": 0,
+        "dipoleLongitudeDeg": 357.8,
+        "ordered": false,
+        "ovalColatDeg": 90,
+        "upstream": "star",
+        "upstreamId": "solar-system-sun",
+        "confiningPressureNPa": 0.001322,
+        "notes": []
+      },
+      "totalIncidentFlux": 0.000679475273825047,
+      "totalIncidentFluxMin": 0.00042196787746516187,
+      "totalIncidentFluxMax": 0.0011663496204922536,
+      "starlightFlux": 0.0006623367621282471,
+      "surfaceRadiation": 2.3397376369125236,
+      "orbitalRadiation": 0.3397376369125235,
       "beltInnerEdgeRadii": 1,
       "oblateness": 0.00034971537116461603,
       "geoActivity": {
@@ -12779,10 +13247,10 @@
       "surfaceSpectrum": {
         "level": "surface",
         "starTempK": 5780.657086335943,
-        "distanceAU": 38.85443327289717,
-        "totalTopWm2": 0.7560044745595986,
-        "totalSurfaceWm2": 0.7560044745595986,
-        "photonFlux": 2687995684621916000,
+        "distanceAU": 38.85622181331934,
+        "totalTopWm2": 0.755934878835692,
+        "totalSurfaceWm2": 0.755934878835692,
+        "photonFlux": 2687748235020990500,
         "peakTopNm": 500,
         "peakSurfaceNm": 500,
         "surfaceLightHex": "#fff1ea",
@@ -13330,16 +13798,16 @@
       "orbit": {
         "hostId": "solar-system-sun",
         "hostMu": 132751826999999990000,
-        "t0": 1762339146908,
+        "t0": 1788264000000,
         "elements": {
-          "a_AU": 39.48,
-          "e": 0.2488,
-          "i_deg": 17.16,
-          "omega_deg": 0,
-          "Omega_deg": 0,
-          "M0_rad": 1.4884242784532824
+          "a_AU": 39.482032494,
+          "e": 0.24884109,
+          "i_deg": 17.140025,
+          "omega_deg": 113.7573,
+          "Omega_deg": 110.30078,
+          "M0_rad": 0.9353749679
         },
-        "n_rad_per_s": 8.027243170523019e-10
+        "n_rad_per_s": 8.026623327296583e-10
       },
       "tags": [],
       "circumbinary": {
@@ -13349,8 +13817,8 @@
         "criticalRatio": 1.9869559927185136,
         "innerAU": 0.00025830427905340674,
         "fitExtrapolated": false,
-        "hillRadiusAU": 0.03997275815152541,
-        "outerAU": 0.019986379075762704
+        "hillRadiusAU": 0.039972629425130274,
+        "outerAU": 0.019986314712565137
       }
     }
   ],

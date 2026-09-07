@@ -11,6 +11,7 @@
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem, renameNode, computePlayerSnapshot } from '$lib/api';
   import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
+  import { openSystemReport } from '$lib/reports/openReport';
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { mintBroadcastId } from '$lib/broadcastId';
@@ -29,7 +30,7 @@
   import { starmapStore } from '$lib/starmapStore';
   import { perfStage, perfEnabled } from '$lib/perfTrace';
   import { APP_VERSION } from '$lib/constants';
-  import { memoryReading, formatMB, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
+  import { memoryReading, formatMB, memoryLevel, MEMORY_WARN_FRAC, MEMORY_CRITICAL_FRAC, MEMORY_REARM_FRAC } from '$lib/memoryWatch';
   import { systemStore, viewportStore } from '$lib/stores';
   import { syncUnitPrefsFromStarmap, unitPrefs } from '$lib/unitPrefsStore';
   import { migrateUnitPrefs } from '$lib/units';
@@ -37,6 +38,7 @@
   import { setUndoPersist } from '$lib/undo/campaignHistory';
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
+  import { createPersistQueue } from '$lib/persistQueue';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
@@ -68,7 +70,7 @@
   import AboutModal from '$lib/components/AboutModal.svelte';
   import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
   import WelcomeModal from '$lib/components/WelcomeModal.svelte';
-  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, STARTDATE_EPOCH_OFFSET_T } from '$lib/temporal/defaults';
+  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, defaultCampaignStartSeconds } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { BIG_BANG_TO_UNIX_EPOCH_T } from '$lib/temporal/utre';
   import { buildFlightUpdate } from '$lib/constructs/flightState';
@@ -76,17 +78,28 @@
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
+  import { registriesForStarmap } from '$lib/io/saveRegistries';
   import { collectModelsForExport, importEmbeddedModels, bytesToBase64 } from '$lib/constructs/modelTransfer';
-  import { packBundle, BUNDLE_EXT } from '$lib/io/bundle';
+  import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { classifySaveFile } from '$lib/io/classify';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
-  import { stampForSave } from '$lib/map/provenance';
+  import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
+  import { fetchHubMap, fetchHubMapFromUrl, type HubFetch } from '$lib/hub/hubClient';
+  import LoadSourceModal, { FILE_ACCEPT } from '$lib/components/LoadSourceModal.svelte';
+  import { looksLikeHubClip, insertClip, addContentCredit, systemNodesFromClip, type HubClip } from '$lib/io/hubClip';
+  import { detectedClip, noteClipText } from '$lib/io/clipDetect';
+  import { guessSystemAge } from '$lib/physics/systemAge';
+  import { endUndoAction } from '$lib/undo/systemUndo';
+  import HubClipPasteModal from '$lib/components/HubClipPasteModal.svelte';
+  import { HUB } from '$lib/hub/hubConfig';
   import { systemSeparation, zCounts } from '$lib/map/systemDistance';
   import { unitKind, campaignUnit, normaliseCampaignUnit, applyUnitChange, type UnitChangeMode } from '$lib/map/distanceUnits';
   import { rescaleMapBackgroundForRuler } from '$lib/map/mapBackground';
   import { perfCount } from '$lib/perfTrace';
   import { shouldOfferUpgrade, dismissUpgrade, recordUpgradeAnswer, type UpgradeOffer } from '$lib/map/upgradeOffer';
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
+  import KeepACopyModal from '$lib/components/KeepACopyModal.svelte';
+  import { shouldAskToKeepACopy, recordKeptCopy } from '$lib/map/keepACopy';
   import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
@@ -109,13 +122,17 @@
   function handleStarmapReport(event: CustomEvent<{ mode: 'GM' | 'Player'; theme: string; includeConstructs: boolean }>) {
     const sys = get(systemStore);
     showReportConfigModal = false;
-    if (!sys) return;
-    sessionStorage.setItem('reportData', JSON.stringify({
-      system: sys, mode: event.detail.mode, theme: event.detail.theme,
-      includeConstructs: event.detail.includeConstructs,
-      unitPrefs: get(unitPrefs)
-    }));
-    window.open('/report', '_blank');
+    // B113(b): this used to be `if (!sys) return;` followed by a bare window.open, so a GM who had
+    // not opened a system yet — or whose browser blocked the popup — got absolute silence. The rail
+    // entry is reachable straight from the starmap, so the no-system case is the ORDINARY path here,
+    // not an edge case.
+    const result = openSystemReport({
+      system: sys,
+      options: event.detail,
+      unitPrefs: get(unitPrefs),
+      temporal: get(starmapStore)?.temporal ?? null
+    });
+    if (!result.ok) alert(result.message);
   }
   let showInterstellarModal = false;
   let interstellarShipId = '';
@@ -560,7 +577,13 @@
   let fileInput: HTMLInputElement;
   let starmapComponent: Starmap;
   let hasSavedStarmap = false;
-  let persistQueue: Promise<void> = Promise.resolve();
+  // G72: the one-version "keep a copy" notice before a rehosting - the law is lib/map/keepACopy.ts.
+  $: keepACopyDue = !!$starmapStore && shouldAskToKeepACopy($starmapStore, APP_VERSION);
+  // B131: ONE pending snapshot, cloned when the write happens - never a promise chain holding a clone per
+  // store emission. A ship in transit emits once per frame; the chain held a full campaign per frame.
+  const starmapPersist = createPersistQueue<StarmapType>((snapshot) => persistStarmap(snapshot), {
+    onError: (e) => console.error('Failed to persist starmap:', e)
+  });
 
   $: currentSystemId = $page.state.systemId || null;
 
@@ -715,10 +738,424 @@
       } else {
         await handleLoadStarmap();
       }
-    } else {
+    } else if (!hubOpenRequest()) {
+      // R-05/R-17: a `?hub=` or `?open=` link is a request to open THAT map. Putting the
+      // new-campaign modal up in front of it would make the link's first act be a dialogue about
+      // something else.
       showNewStarmapModal = true;
     }
+    // R-05/R-17 runs LAST, deliberately: it has to know whether there is already a campaign in
+    // this browser before it can decide whether it is allowed to open anything.
+    await maybeOpenHubMap();
   });
+
+  // --- R-14: pasting a hub clip into this campaign -----------------------------------------------
+  //
+  // TWO WAYS IN, ONE INSERT. A paste event anywhere in the app, and a screen with a text box for
+  // Firefox (which will not hand a page the clipboard) and for anyone who would rather point at
+  // where it goes. Both end in `applyHubClip`, so there is one implementation of "put this branch
+  // into that campaign" rather than one per entry point.
+  let clipPasteText: string | null = null; // non-null = the screen is up, with this text in it
+  // A clip the app already holds, handed straight to the screen instead of through the text box.
+  let clipPasteClip: HubClip | null = null;
+  // Which system the screen should paste into, when the starmap already decided that by being
+  // right-clicked on a star. NULL with `clipPasteFromMap` set means the opposite: the starmap is
+  // asking, so the screen must show its system chooser.
+  let clipPasteSystemId: string | null = null;
+  let clipPasteFromMap = false;
+  // WHICH BODY THE GM WAS LOOKING AT, sent by the view that actually knows. `focusedBodyId` lives
+  // in SystemView; naming it here compiled, shipped, and threw `focusedBodyId is not defined` the
+  // moment the screen opened - see the engine map on why `npm run build` did not catch it.
+  let clipPasteFocus: string | null = null;
+  let clipNotice: string | null = null;
+
+  /**
+   * A paste anywhere. It stays out of the way of ordinary typing: a paste into a field is the
+   * user filling that field in, not a request to import somebody's star system - so an editable
+   * target is left entirely alone, and so is any text that is not a clip.
+   */
+  function onWindowPaste(e: ClipboardEvent) {
+    if (!browser || clipPasteText !== null) return;
+    const el = e.target as HTMLElement | null;
+    if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+    let text = '';
+    try { text = e.clipboardData?.getData('text') ?? ''; } catch { return; }
+    if (!looksLikeHubClip(text)) return; // ordinary text: say nothing at all
+    e.preventDefault();
+    // THE CLIP IS NOW IN HAND, AND EVERYTHING THAT SHOWS WHAT IS IN HAND SHOULD SAY SO. This call
+    // was missing entirely - `noteClipText` was exported and never used - so a branch the app had
+    // just been HANDED did not reach the indicator or the right-click menus, and a GM who pressed
+    // Ctrl+V and then closed the screen was back to the app claiming to hold nothing. It is the
+    // one source of a clip that needs no clipboard permission at all, which makes it the one that
+    // works in every browser.
+    noteClipText(text);
+    clipPasteFocus = null; // a paste from anywhere has no selection behind it
+    clipPasteText = text;
+  }
+
+  /**
+   * THE ONE INSERT. Puts the branch in, records the credit on the CAMPAIGN, and re-processes the
+   * system it landed in - which is what settles host masses, promotes a pair where one is due, and
+   * writes the stability tags that say whether the new home can hold what was just dropped in.
+   */
+  function applyHubClip(e: CustomEvent<{ clip: any; systemId: string; hostId: string }>) {
+    pasteClipInto(e.detail);
+  }
+
+  /** One place to put the paste screen away, so no route into it can leave state behind it. */
+  function closeClipPaste() {
+    clipPasteText = null;
+    clipPasteClip = null;
+    clipPasteSystemId = null;
+    clipPasteFromMap = false;
+  }
+
+  /**
+   * RIGHT-CLICK A STAR ON THE STARMAP: paste into THAT system. The system is settled by the
+   * gesture; the body inside it is not, so the screen opens with the system already chosen and asks
+   * only the remaining question - which is the shape the owner picked for the starmap on 2026-09-03.
+   */
+  function pasteIntoSystemFromMap(systemId: string | null) {
+    const d = $detectedClip;
+    if (!d) return;
+    clipPasteClip = d.clip;
+    clipPasteSystemId = systemId;
+    clipPasteFromMap = true;
+    clipPasteFocus = null;
+    clipPasteText = '';
+  }
+
+  /**
+   * RIGHT-CLICK EMPTY SPACE ON THE STARMAP: the copied system becomes a system of its own, there.
+   * Owner, 2026-09-06: *"We also need to be able to paste a star system into the starmap level in
+   * the same way. eg - copy from source - paste in empty space on starmap"* - and it is the common
+   * case, because *"people will generally only be copying systems from the explorers site"*.
+   *
+   * It lands through the SAME door the generation wizard uses (`placeGeneratedSystem`): a processed
+   * system and a position, pushed onto the map. What the clip cannot carry - a seed, an epoch, an
+   * age, the rule pack - belongs to the campaign receiving it and is supplied here, which is why
+   * `systemNodesFromClip` returns nodes rather than pretending to know them.
+   */
+  function pasteClipAsNewSystem(at: { x: number; y: number; z?: number }) {
+    const map = $starmapStore;
+    const d = $detectedClip;
+    if (!map || !d || !selectedRulepack) return;
+
+    const built = systemNodesFromClip(d.clip);
+    if (!built.ok) { clipNotice = built.problem; return; }
+
+    const id = generateId();
+    // The star's own type decides the age, exactly as an import does - not a constant, and not the
+    // age of whatever system the GM happened to be looking at. `starId` rather than `rootId`,
+    // because a BINARY's root is a barycentre and a barycentre has no spectral type to date.
+    const rootStar = built.nodes.find((n: any) => n.id === built.starId);
+    const age = guessSystemAge(rootStar as any);
+    const system: any = {
+      id,
+      name: uniqueSystemName(map, built.name),
+      seed: id,
+      epochT0: playerClockMs(),
+      age_Gyr: age.ageGyr,
+      ageEstimated: age.estimated,
+      ageBandGyr: age.bandGyr,
+      nodes: built.nodes,
+      rulePackId: selectedRulepack.id,
+      rulePackVersion: (selectedRulepack as any).version ?? '',
+      tags: []
+    };
+    const processed = systemProcessor.process(system, selectedRulepack);
+    const displayTimeSec = parseClockSeconds(map.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
+    const node: any = { id, name: system.name, position: at, system: processed, time: { displayTimeSec } };
+
+    starmapStore.update((m) => {
+      if (!m) return m;
+      // R-16 again: the credit goes on the CAMPAIGN. A system pasted from somebody's map earns its
+      // attribution exactly as a branch pasted into one does - this was the easiest place in the
+      // whole feature for a credit to quietly evaporate.
+      let next: any = { ...m, systems: [...m.systems, node] };
+      next = addContentCredit(next, built.credit);
+      for (const c of built.carried) next = addContentCredit(next, c);
+      return next;
+    });
+
+    const who = built.credit?.creator ? ` (credited to ${built.credit.creator})` : '';
+    clipNotice = `Pasted ${built.count} object${built.count === 1 ? '' : 's'} as a new system, ${system.name}${who}.`;
+    if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+    clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
+  }
+
+  /** Two systems called "Sol" on one map is a map nobody can read. */
+  function uniqueSystemName(map: any, wanted: string): string {
+    const taken = new Set((map?.systems ?? []).map((s: any) => String(s.name ?? s.system?.name ?? '')));
+    if (!taken.has(wanted)) return wanted;
+    for (let n = 2; n < 500; n++) {
+      const candidate = `${wanted} (${n})`;
+      if (!taken.has(candidate)) return candidate;
+    }
+    return `${wanted} (${Date.now()})`;
+  }
+
+  /** The paste itself, reached from the screen AND from a right-click "Paste here". */
+  function pasteClipInto({ clip, systemId, hostId }: { clip: any; systemId: string; hostId: string }) {
+    const map = $starmapStore;
+    if (!map) return;
+    const entry = map.systems.find((s: any) => (s.system?.id ?? s.id) === systemId);
+    if (!entry?.system) { closeClipPaste(); return; }
+
+    // A deep clone first: nothing is written into the live campaign until the insert has succeeded,
+    // so a refusal leaves the map exactly as it was.
+    const working = JSON.parse(JSON.stringify(entry.system));
+    const result = insertClip(working, clip, hostId, playerClockMs());
+    if (!result.ok) {
+      clipNotice = result.problem;
+      closeClipPaste();
+      return;
+    }
+
+    const processed = systemProcessor.process(working, selectedRulepack!);
+    starmapStore.update((m) => {
+      if (!m) return m;
+      const systems = m.systems.map((s: any) =>
+        (s.system?.id ?? s.id) === systemId ? { ...s, system: processed } : s
+      );
+      // R-16: the credit goes on the CAMPAIGN, not the node - nodes get renamed and deleted.
+      // `carried` is an INTERNAL copy's baggage: a body pasted in from somebody's map keeps its
+      // attribution when it is copied on, so the campaign's credits stay true to what is in it.
+      let next: any = addContentCredit({ ...m, systems }, result.credit);
+      for (const c of result.carried ?? []) next = addContentCredit(next, c);
+      return next;
+    });
+    // The open system is the same object the campaign holds; keep the view in step with it.
+    if ($systemStore && $systemStore.id === systemId) systemStore.set(processed);
+
+    // UNDO: one step per paste. Every write above went through `systemStore.set`, which is what
+    // `systemUndo` watches, so the branch is undoable for free - this only stops it being coalesced
+    // with whatever was edited in the 250 ms before it.
+    endUndoAction();
+
+    const who = result.credit?.creator ? ` (credited to ${result.credit.creator})` : '';
+    clipNotice = `Pasted ${result.count} object${result.count === 1 ? '' : 's'} into ${result.hostName}${who}.`;
+    closeClipPaste();
+    if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+    clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
+  }
+  let clipNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** The display instant, so a pasted root is placed against the system as it stands right now. */
+  function playerClockMs(): number {
+    const t = ($systemStore as any)?.currentTimeMs ?? ($starmapStore as any)?.currentTimeMs;
+    return typeof t === 'number' && Number.isFinite(t) ? t : 0;
+  }
+
+  // --- R-05 / R-17: open a shared map from the hub, in one click --------------------------------
+  //
+  // TWO LINKS, ONE DOOR. `?hub=<slug>` is the funnel a Discord link uses: a map's CODE, which this
+  // app turns into an address on the hub's own origin. `?open=<url>` is R-17, the hub's "Open in
+  // Star System Explorer" button beside a map's download: the ADDRESS, supplied whole.
+  //
+  // THEY DIFFER IN EXACTLY ONE STEP - how the bytes are obtained - so that is the only step that is
+  // written twice. `runHubOpen` and `runHubOpenFromUrl` are two ways of getting bytes; both then
+  // hand them to `openHubBytes`, which classifies, asks and opens. A second fetch-and-open path
+  // would be a second set of answers to "may this replace the campaign?", and two doors into one
+  // campaign store is the duplication this codebase keeps paying for.
+  //
+  // Two cautions govern everything below, and both come from the hub's own requirements.
+  //
+  // 1. THE MAP IS UNTRUSTED INPUT, and so is the link. A stranger can craft either parameter, so
+  //    the bytes go through `classifySaveFile` and then `openStarmapPayload` - the same door, the
+  //    same fix-up and the same `validateStarmap` an imported file gets. There is no shortcut for
+  //    hub content. `?open=` has a second guard before that one, because it names the ADDRESS: the
+  //    host must be on the allow-list in `hubConfig.ts` or nothing is fetched at all.
+  //
+  // 2. IT NEVER TOUCHES AN OPEN CAMPAIGN WITHOUT BEING TOLD TO. Browser storage holds exactly ONE
+  //    campaign, so opening a shared map REPLACES what is in this browser - "open it as its own
+  //    thing" is not a thing this app can currently do, and pretending otherwise would lose
+  //    somebody's campaign to a link they clicked out of curiosity. So: with no campaign here it
+  //    opens straight away, and with one it ASKS, says plainly what will happen, and keeps a copy
+  //    of the replaced campaign under the same one-step-back mechanism the base-map upgrade uses.
+  let hubOffer: { name: string; doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null } | null = null;
+  let hubBusy = false;
+  let hubProblem: string | null = null;
+
+  /** The two query parameters that ask this app to open somebody else's map. */
+  type HubOpenParam = 'hub' | 'open';
+
+  function hubParamFromUrl(name: HubOpenParam): string | null {
+    if (!browser) return null;
+    try { return new URLSearchParams(window.location.search).get(name); } catch { return null; }
+  }
+  const hubSlugFromUrl = () => hubParamFromUrl('hub');
+  const hubUrlFromUrl = () => hubParamFromUrl('open');
+
+  /**
+   * Is this page load a request to open a shared map at all? `?hub=` is checked first because it
+   * is the older link and a URL carrying both is not a thing the hub produces; if one ever appears,
+   * the code wins, which is the narrower of the two.
+   */
+  function hubOpenRequest(): { param: HubOpenParam; value: string } | null {
+    const slug = hubSlugFromUrl();
+    if (slug) return { param: 'hub', value: slug };
+    const url = hubUrlFromUrl();
+    if (url) return { param: 'open', value: url };
+    return null;
+  }
+
+  /**
+   * WHICH PARAMETER STARTED THE OPEN IN FLIGHT, so the one taken off the address bar is the one
+   * that put the offer up. Defaults to `hub` for the load-screen path, which has no parameter at
+   * all and where deleting an absent one is a no-op.
+   */
+  let hubOpenParam: HubOpenParam = 'hub';
+
+  /** Take the link's parameter off the address bar once acted on, so a refresh does not re-offer. */
+  function clearHubParam(param: HubOpenParam = hubOpenParam) {
+    if (!browser) return;
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete(param);
+      window.history.replaceState({}, '', url.pathname + (url.search || '') + url.hash);
+    } catch { /* older engines: the offer simply reappears on a refresh, which is harmless */ }
+  }
+
+  /**
+   * OPEN A MAP BY ITS CODE, from wherever the code came from - the `?hub=` link on startup, or the
+   * field in the load screen for somebody already inside the app. One function, so a link pasted
+   * into the app behaves identically to the same link clicked in a Discord.
+   */
+  // Where the GM was when they asked, so declining puts them back rather than somewhere else.
+  //
+  // FALSE SINCE 2026-09-06, and the reason is the move: the paste field left the welcome screen for
+  // `LoadSourceModal`, which is only reachable from the rail - and the rail is only reachable with
+  // a campaign already open. So declining leaves the GM exactly where they were standing. The
+  // no-campaign case is still covered, by `declineHubMap`'s own `!$starmapStore` test.
+  let hubCameFromLoadScreen = false;
+  async function openHubBySlug(slug: string) {
+    hubCameFromLoadScreen = false;
+    showLoadStarmapSource = false;
+    showNewStarmapModal = false;
+    await runHubOpen(slug);
+  }
+
+  async function maybeOpenHubMap() {
+    const request = hubOpenRequest();
+    if (!request) return;
+    if (request.param === 'hub') await runHubOpen(request.value);
+    else await runHubOpenFromUrl(request.value);
+  }
+
+  /** BY CODE. One of two ways to get the bytes; `openHubBytes` is what happens to them. */
+  async function runHubOpen(slug: string) {
+    hubOpenParam = 'hub';
+    await openHubBytes(() => fetchHubMap(slug));
+  }
+
+  /**
+   * BY ADDRESS - R-17. The other way to get the bytes, and the only thing it adds is that the
+   * address is refused unless `isTrustedOpenUrl` (inside `fetchHubMapFromUrl`) recognises the
+   * host. It reaches `openHubBytes` exactly as the code path does, so a link and a code get the
+   * same classification, the same question and the same one-step-back.
+   */
+  async function runHubOpenFromUrl(url: string) {
+    hubOpenParam = 'open';
+    await openHubBytes(() => fetchHubMapFromUrl(url));
+  }
+
+  /**
+   * THE ONE DOOR: classify, ask, open. Everything from here down is identical whether the map was
+   * named by a code or by an address, which is the point of the split above.
+   */
+  async function openHubBytes(getBytes: () => Promise<HubFetch>) {
+    hubBusy = true;
+    hubProblem = null;
+    try {
+      const result = await getBytes();
+      if (!result.ok) { hubProblem = result.problem; return; }
+
+      // The SAME door an imported file uses. A hub map that is not a save says so in the words the
+      // importer already uses, rather than failing somewhere deeper with a message about fields.
+      const classified = classifySaveFile(result.bytes);
+      if (classified.kind === 'unknown') {
+        hubProblem = classified.problem ?? 'That shared map is not a file this app can open.';
+        return;
+      }
+      if (classified.kind !== 'starmap') {
+        hubProblem = 'That link points at a single system rather than a campaign. Download it from the hub and open it with Load System.';
+        return;
+      }
+      const name = String(classified.doc?.name ?? 'a shared map');
+      // R-07: a map made by an older build is opened, never refused - the marker is a capability
+      // note, not a verdict. Said quietly, and only when there is something to say.
+      noteCreatedWith(classified.doc);
+
+      if ($starmapStore || hasSavedStarmap) {
+        hubOffer = { name, doc: classified.doc, models: classified.models ?? null };
+      } else {
+        await openHubMap({ name, doc: classified.doc, models: classified.models ?? null });
+      }
+    } catch (e) {
+      hubProblem = `That shared map could not be opened: ${(e as Error)?.message ?? e}`;
+    } finally {
+      hubBusy = false;
+    }
+  }
+
+  /** The GM said yes (or there was nothing to lose). Keep a way back, then open it. */
+  async function openHubMap(offer: { name: string; doc: any; models: Record<string, { b64: string; meta: Record<string, unknown> }> | null }) {
+    hubOffer = null;
+    const replaced = $starmapStore ?? (await loadSavedStarmap());
+    if (replaced) {
+      // The same single-step undo the base-map upgrade keeps, for the same reason: browser storage
+      // holds one campaign, and the next autosave overwrites it. One mechanism, not two.
+      const stored = await savePreUpgradeStarmap(replaced);
+      if (!stored) {
+        alert(
+          'The shared map is ready, but a copy of your current campaign could not be kept in this browser.\n\n' +
+          'Save your campaign to a file first if you have not already — otherwise there will be no way back to it.'
+        );
+      }
+    }
+    try {
+      if (await openStarmapPayload(offer.doc, offer.models)) {
+        preUpgradeSnapshotName = replaced?.name ?? preUpgradeSnapshotName;
+        hubCameFromLoadScreen = false;
+        showNewStarmapModal = false;
+        clearHubParam();
+        remoteNotice = `Opened "${offer.name}" from the shared map library.` +
+          (replaced ? ` Your previous campaign is one step back, in Settings.` : '');
+        if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+        remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 10000);
+      }
+    } catch (e) {
+      hubProblem = `That shared map loaded but could not be opened: ${(e as Error)?.message ?? e}`;
+    }
+  }
+
+  /** Acknowledge a failed hub open. Clears the param so a refresh is a fresh start, not a replay. */
+  function dismissHubProblem() {
+    hubProblem = null;
+    clearHubParam();
+    if (hubCameFromLoadScreen || (!$starmapStore && !hasSavedStarmap)) showNewStarmapModal = true;
+    hubCameFromLoadScreen = false;
+  }
+
+  /** The GM said no. Nothing has been touched; leave them where they were. */
+  function declineHubMap() {
+    hubOffer = null;
+    clearHubParam();
+    if (hubCameFromLoadScreen || (!$starmapStore && !hasSavedStarmap)) showNewStarmapModal = true;
+    hubCameFromLoadScreen = false;
+  }
+
+  // R-07 (3): `created_with` is a CAPABILITY MARKER and never a refusal. A map made by an older
+  // build opens exactly as it always did; this only mentions it, once, and only when the build that
+  // wrote it is actually older than this one.
+  let createdWithNotice: string | null = null;
+  function noteCreatedWith(doc: any) {
+    const wrote = typeof doc?.appVersion === 'string' ? doc.appVersion : null;
+    if (!wrote || wrote === APP_VERSION) return;
+    if (compareBuildVersions(wrote, APP_VERSION) >= 0) return; // same or newer: nothing to say
+    createdWithNotice = `This map was made with Star System Explorer ${wrote}. It opens normally — some things it did not have yet may simply be absent.`;
+  }
 
   // --- WS8: offer to move a campaign onto the updated bundled base map ---
   // Checked once per campaign id, whichever way it arrived (browser storage on startup, a loaded file, the
@@ -899,6 +1336,13 @@
     if (!browser) return false;
     const h = window.location.hostname;
     return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h.endsWith('.local');
+  }
+  // The crash-save watcher below is BETA-ONLY (owner, 2026-08-28): a red-zone excursion is likely a
+  // memory bug, so the state that produced it is evidence — but an unasked-for download on PROD
+  // would read as the app misbehaving. Dev origins are included so the path can be exercised at all.
+  function isBetaOrigin(): boolean {
+    if (!browser) return false;
+    return window.location.hostname.startsWith('beta.') || isDevOrigin();
   }
   onMount(() => {
     if (!browser) return;
@@ -1181,10 +1625,7 @@
   }
 
   function enqueueStarmapPersist(starmap: StarmapType) {
-    const snapshot = JSON.parse(JSON.stringify(starmap)) as StarmapType;
-    persistQueue = persistQueue
-      .then(() => persistStarmap(snapshot))
-      .catch((e) => console.error('Failed to persist starmap:', e));
+    starmapPersist.enqueue(starmap);
   }
 
   async function persistStarmap(starmap: StarmapType) {
@@ -1198,7 +1639,7 @@
 
     const seed = `seed-${Date.now()}`;
     const newSystem = generateSystem(seed, rulepack, {}, 'Random', false);
-    const anchoredTimeSec = STARTDATE_EPOCH_OFFSET_T.toString();
+    const anchoredTimeSec = defaultCampaignStartSeconds().toString();
     const newStarmap: StarmapType = {
       id: `starmap-${Date.now()}`,
       name,
@@ -1321,7 +1762,10 @@
   async function downloadStoredStarmap() {
     const saved = await loadSavedStarmap();
     if (!saved) { alert('No starmap found in browser storage.'); return; }
-    const blob = new Blob([JSON.stringify(saved, null, 2)], { type: 'application/json' });
+    // R-01: this writes a REAL save document (it is what the ordinary .json load path reads back),
+    // so it carries the format stamp like any other. stampBundleFormat is an object spread - no
+    // machinery, nothing that could be the hang this path exists to escape.
+    const blob = new Blob([plainSaveJson(saved)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${(saved.name || 'starmap').replace(/[^\w\- ]+/g, '').trim() || 'starmap'}-recovered.json`;
@@ -1423,11 +1867,21 @@
   // gauge itself (with the limit) lives in Settings → System → Memory.
   let memWarnLevel: 0 | 1 | 2 = 0;   // highest warning already shown this excursion
   let memBanner: { critical: boolean; text: string } | null = null;
+  // ONE crash file per red excursion (owner, 2026-08-28): entering the red band on beta writes the
+  // campaign to disk automatically, because live sessions have died at ~3.5 GB and the autosave
+  // queue may never flush once the tab is dying. Re-arms with the same ladder as the warnings, so
+  // a session hovering at the line gets one file, not one per poll.
+  let crashSavedThisExcursion = false;
   $: {
     const m = $memoryReading;
     if (m.supported) {
+      if (memoryLevel(m) === 'red' && !crashSavedThisExcursion && isBetaOrigin()) {
+        crashSavedThisExcursion = true;
+        writeCrashSave(m.usedMB);
+      }
       if (m.frac < MEMORY_REARM_FRAC) {
         memWarnLevel = 0;
+        crashSavedThisExcursion = false;
       } else if (m.frac >= MEMORY_CRITICAL_FRAC && memWarnLevel < 2) {
         memWarnLevel = 2;
         memBanner = { critical: true, text: `Memory is nearly exhausted — using ${formatMB(m.usedMB)} of the ${formatMB(m.limitMB)} this browser allows (${Math.round(m.frac * 100)}%). Save your campaign to a file NOW; the tab may be closed by the browser without warning. Reloading the tab after saving frees the memory.` };
@@ -1615,7 +2069,7 @@
     const pos = pendingWizardPosition; pendingWizardPosition = null;
     if (!$starmapStore || !pos) return;
     const newSystem = event.detail.system;
-    const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, STARTDATE_EPOCH_OFFSET_T).toString();
+    const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
     const newSystemNode: StarSystemNode = { id: newSystem.id, name: newSystem.name, position: pos, system: newSystem, time: { displayTimeSec } };
     starmapStore.update(starmap => { if (starmap) starmap.systems = [...starmap.systems, newSystemNode]; return starmap; });
   }
@@ -1799,26 +2253,83 @@
   // on it would break that flow.
   let showStarmapSaveModal = false;
 
+  // R-12: THE MOMENT A GM WRITES A FILE, the campaign's revision advances - and it advances on the
+  // LIVE campaign, not on the way out, so the file and the autosave can never disagree about which
+  // revision this is. Exporting a bumped copy while the store kept the old number would write the
+  // same revision twice and quietly undo the whole point.
+  //
+  // WHO DOES NOT CALL THIS, and both are deliberate: `downloadStoredStarmap` (the safe-mode escape
+  // hatch) writes out the STORED campaign unchanged - it is a dump of existing work, not new work,
+  // and claiming a newer revision for it would be a lie. And a single-system save has no revision
+  // at all: a system is a slice of a campaign rather than a separately versioned document, and
+  // there is nowhere for its own counter to live that survives a reload.
+  function advanceRevision(map: StarmapType): StarmapType {
+    return { ...map, revision: nextRevision(map) };
+  }
+
+  // The red-zone crash file. DELIBERATELY LEANER THAN A NORMAL SAVE: no model binaries and no zip.
+  // handleDownloadStarmap base64-embeds every model, and at 3 GB of heap that allocation could
+  // itself be the push over the cliff — a crash save must never cause the crash it is recording.
+  // Models are content-addressed and reloadable; the campaign STATE is what dies with the tab.
+  // The IDB autosave is enqueued first because it is cheapest and survives tab death on its own.
+  function writeCrashSave(usedMB: number) {
+    const map = $starmapStore;
+    if (!map) return;
+    try {
+      // The bump is persisted straight to storage rather than through the store: setting
+      // `starmapStore` here would fire the write-back and broadcast rebuild that P3 exists to
+      // avoid, and a crash save must never cause the crash it is recording.
+      const advanced = advanceRevision(map);
+      enqueueStarmapPersist(advanced);
+      const lean = stripStarmapForExport(advanced, selectedRulepack ?? undefined);
+      // R-01: a crash file is ALWAYS plain JSON (no zip, by design above), so it is the one save
+      // that could never pick up the stamp from the bundle path. It gets it here like any other.
+      const exportObj = stampForSave({ ...lean, ...registriesForStarmap() }, { exportMode: 'gm' });
+      // R-01: a crash file is ALWAYS plain JSON (no zip, by design above), so it is the one save
+      // that could never pick up the stamp from the bundle path. Unindented: see plainSaveJson.
+      const blob = new Blob([plainSaveJson(exportObj, { pretty: false })], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(map.name || 'starmap').replace(/\s/g, '_')}-CRASH-${(usedMB / 1024).toFixed(1)}GB.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      remoteNotice = `Memory is in the red zone — a crash-recovery save of the campaign has been downloaded.`;
+      if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+      remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 8000);
+    } catch (e) {
+      console.warn('[memory] crash save failed', e);
+    }
+  }
+
   async function handleDownloadStarmap() {
     if (!$starmapStore) return;
 
+    // R-12: advance the revision on the live campaign FIRST. The reactive autosave above persists
+    // it, so a reload continues from the number the file just claimed.
+    const advanced = advanceRevision($starmapStore);
+    starmapStore.set(advanced);
     // Strip derived physics from a CLONE before writing — the load path re-derives everything, so the
     // file needs only authored inputs. Keeps saved files small and free of stale baked-in data.
-    const lean = stripStarmapForExport($starmapStore, selectedRulepack ?? undefined);
+    const lean = stripStarmapForExport(advanced, selectedRulepack ?? undefined);
     // G3: embed construct model binaries (base64 by hash) so the file is self-contained — a
     // ModelRef without its binary would land on another machine as the icon-glyph fallback.
     const models = await collectModelsForExport(lean).catch(() => undefined);
     // Embed the user's PoI packs + reasons config so they travel inside the .json starmap file.
     // M1: stamp the build that wrote the file. See lib/map/provenance.ts for why explicit saves only.
-    const exportObj = stampForSave({ ...lean, poiPacks: packsForStarmap(), reasonsConfig: get(reasonsConfig), coiCategories: coiForStarmap(), ...(models ? { models } : {}) });
+    // R-10: the campaign save has only ever written the full GM file - there is no Player radio on
+    // this modal - so the label says so rather than leaning on the default.
+    const exportObj = stampForSave({ ...lean, ...registriesForStarmap(), ...(models ? { models } : {}) }, { exportMode: 'gm' });
     // A campaign carrying assets saves as a BUNDLE: a zip holding a small, readable starmap.json
     // beside the models and pictures as real files. One with no assets stays a plain .json, which
     // is the file GMs hand-edit and diff. Both load; the loader sniffs, it does not trust names.
     const base = `${$starmapStore.name.replace(/\s/g, '_') || 'starmap'}-Starmap`;
-    const bundle = packBundle('starmap', exportObj, { models });
+    const bundle = await packBundle('starmap', exportObj, { models });
+    // R-01: the plain-JSON branch stamps through the SAME function the zip path uses. An asset-free
+    // campaign is not a lesser save, and it is exactly what a JSON-only consumer would be reading.
     const blob = bundle
       ? new Blob([bundle], { type: 'application/zip' })
-      : new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      : new Blob([plainSaveJson(exportObj)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1827,9 +2338,16 @@
     URL.revokeObjectURL(url);
   }
 
+  /** The welcome screen's plain file route. It stays a file picker: the owner took the sharing
+   *  route OFF that screen, so putting it back behind this button would undo the change. */
   function handleUploadStarmap() {
     fileInput.click();
   }
+
+  // WHERE FROM? - the rail's Load Starmap, 2026-09-06. Browse the library, pick a file, or paste a
+  // link somebody sent. Three ways in, asked at the moment a GM has decided they want to open
+  // something, rather than on the first screen they ever see.
+  let showLoadStarmapSource = false;
 
   // G42: a system save dropped on Load Starmap - the sister-file modal names it and guides.
   let sisterSystemFileName: string | null = null;
@@ -1979,15 +2497,29 @@
   <title>Star System Explorer</title>
 </svelte:head>
 
+<svelte:window on:paste={onWindowPaste} />
+
 <main>
 
 
-  <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept=".json,.zip" />
+  <input type="file" bind:this={fileInput} on:change={handleFileSelected} style="display: none;" accept={FILE_ACCEPT.campaign} />
 
   {#if remoteNotice}
     <div class="mem-banner" role="status">
       <span>{remoteNotice}</span>
       <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (remoteNotice = null)}>×</button>
+    </div>
+  {/if}
+  {#if clipNotice}
+    <div class="mem-banner" role="status">
+      <span>{clipNotice}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (clipNotice = null)}>×</button>
+    </div>
+  {/if}
+  {#if createdWithNotice}
+    <div class="mem-banner" role="status">
+      <span>{createdWithNotice}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (createdWithNotice = null)}>×</button>
     </div>
   {/if}
   {#if memBanner}
@@ -2064,6 +2596,74 @@
     </div>
   {/if}
 
+  <!-- R-05: a shared map arrived by link. Fetching, refusing, and the one question worth asking. -->
+  {#if hubBusy}
+    <div class="physics-overlay" role="status" aria-label="Fetching a shared map">
+      <div class="physics-card">
+        <h2>Fetching a shared map…</h2>
+        <p class="physics-guard-detail">Getting it from the map library. Nothing in this browser has changed.</p>
+      </div>
+    </div>
+  {/if}
+
+  {#if hubProblem}
+    <div class="physics-overlay" role="alertdialog" aria-modal="true" aria-label="That shared map could not be opened">
+      <div class="physics-card">
+        <h2>That shared map could not be opened</h2>
+        <p class="physics-guard-detail">{hubProblem}</p>
+        <p class="physics-guard-detail">Your own campaign has not been touched.</p>
+        <div class="physics-guard-actions">
+          <button type="button" class="physics-guard-btn primary" on:click={dismissHubProblem}>Carry on</button>
+          <a class="physics-guard-btn" href={HUB.browseUrl} target="_blank" rel="noopener noreferrer">Open the map library</a>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- WHERE FROM? The rail's Load Starmap. At the root because both rails raise it and the file
+       input it drives lives here. -->
+  {#if showLoadStarmapSource}
+    <LoadSourceModal
+      kind="campaign"
+      on:file={() => { showLoadStarmapSource = false; handleUploadStarmap(); }}
+      on:openHub={(e) => openHubBySlug(e.detail)}
+      on:close={() => (showLoadStarmapSource = false)} />
+  {/if}
+
+  <!-- R-14: the paste screen. Mounted here, at the root, because this is where the campaign, the
+       open system and the rule pack all are - so there is ONE place that inserts a clip. -->
+  {#if clipPasteText !== null && $starmapStore}
+    <HubClipPasteModal
+      initialText={clipPasteText}
+      initialClip={clipPasteClip}
+      starmap={$starmapStore}
+      openSystemId={clipPasteFromMap ? clipPasteSystemId : (currentSystemId ?? null)}
+      focusedBodyId={clipPasteFocus}
+      on:paste={applyHubClip}
+      on:close={closeClipPaste} />
+  {/if}
+
+  {#if hubOffer}
+    <div class="physics-overlay" role="alertdialog" aria-modal="true" aria-label="Open a shared map">
+      <div class="physics-card">
+        <h2>Open "{hubOffer.name}"?</h2>
+        <p class="physics-guard-detail">
+          Somebody shared this campaign with you. <strong>This browser holds one campaign at a time</strong>,
+          so opening it replaces the one you have open now.
+        </p>
+        <p class="physics-guard-detail">
+          A copy of your current campaign is kept as a single step back, in Settings — but the only real
+          backup is a file, so save yours first if you are not sure.
+        </p>
+        <div class="physics-guard-actions">
+          <button type="button" class="physics-guard-btn" on:click={handleDownloadStarmap}>Save my campaign first</button>
+          <button type="button" class="physics-guard-btn primary" on:click={() => hubOffer && openHubMap(hubOffer)}>Open the shared map</button>
+          <button type="button" class="physics-guard-btn" on:click={declineHubMap}>Keep what I have</button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
   {#if isLoading}
     <p>Loading rule pack...</p>
   {:else if error}
@@ -2085,11 +2685,12 @@
     <!-- SystemView owns its own AppShell (rail/strip/canvas/bar/detail/fab); forward app nav. -->
     {#if $systemStore && effectiveRulePack}
       <SystemView
+        on:pasteClip={(e) => pasteClipInto(e.detail)}
         system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
         {broadcastSessionId}
         routesAttention={routesData.worstAttention}
         on:new={handleRequestNewStarmap}
-        on:open={handleUploadStarmap}
+        on:open={() => (showLoadStarmapSource = true)}
         on:save={() => (showStarmapSaveModal = true)}
         on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
         on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
@@ -2122,12 +2723,14 @@
       on:openship={(e) => shipPanelJourneyId = e.detail.journeyId}
       on:systemzoom={handleSystemZoom}
       on:addsystemat={handleAddSystemAt}
+      on:pasteintosystem={(e) => pasteIntoSystemFromMap(e.detail)}
+      on:pasteasnewsystem={(e) => pasteClipAsNewSystem(e.detail)}
       on:selectsystemforlink={handleSelectSystemForLink}
       on:editroute={handleEditRoute}
       on:deletesystem={handleDeleteSystem}
       on:renamesystem={handleRenameSystem}
       on:download={() => (showStarmapSaveModal = true)}
-      on:upload={handleUploadStarmap}
+      on:upload={() => (showLoadStarmapSource = true)}
       on:clear={handleClearStarmap}
       on:settings={() => { settingsReturnSection = null; showSettingsModal = true; }}
       on:llmsettings={() => { settingsReturnSection = null; showLlmSettingsModal = true; }}
@@ -2195,7 +2798,7 @@
     <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showFuelModal = false; returnToSettings(); }} />
   {/if}
   {#if showAtmosphereModal && $starmapStore && selectedRulepack}
-    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
+    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
   {/if}
   {#if showBiospheresModal && $starmapStore && selectedRulepack}
     <EditBiospheresModal showModal={showBiospheresModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />
@@ -2239,6 +2842,14 @@
       on:dismiss={() => { if ($starmapStore) { dismissUpgrade($starmapStore.id); recordBaseMapAnswer('never'); } baseMapOffer = null; }}
       on:later={() => { recordBaseMapAnswer('later'); baseMapOffer = null; }}
       on:close={() => (baseMapOffer = null)}
+    />
+  {/if}
+  <!-- G72: shown ONCE per campaign from KEEP_A_COPY_FROM, behind the base-map offer and the welcome screen so
+       nobody meets two modals at once. Both answers stamp the campaign; there is no third way out. -->
+  {#if keepACopyDue && $starmapStore && !baseMapOffer && !showWelcome}
+    <KeepACopyModal
+      on:download={async () => { await handleDownloadStarmap(); starmapStore.update((m) => (m ? recordKeptCopy(m) : m)); }}
+      on:kept={() => starmapStore.update((m) => (m ? recordKeptCopy(m) : m))}
     />
   {/if}
   {#if showAbout}

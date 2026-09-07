@@ -11,12 +11,12 @@ import { contextPeerIds, pairContextIds, isBarycentre } from '../system/barycent
 
 type WorldPositions = Map<string, { x: number; y: number }>;
 
-// A91 (user report, 2026-09-02): the 2D orrery's zoom is PIXELS PER AU, so this floor sets the
-// widest view as a multiple of the canvas width - at 0.05 that was 20x the width in AU (a 2000 px
-// desktop saw 40,000 AU, a 500 px phone 10,000), which could not take in a far binary companion.
-// 0.001 is 1000x the width: ~2,000,000 AU on a desktop, ~500,000 on a phone - beyond any bound
-// system, and the scale bar keeps its meaning all the way. Still width-relative by construction;
-// a viewport-independent extent cap is the follow-up if the device difference ever matters.
+// A91 (user report, 2026-09-02; prod v3.0.279): the 2D orrery's zoom is PIXELS PER AU, so this
+// floor sets the widest view as a multiple of the canvas width - at 0.05 that was 20x the width in
+// AU (a 2000 px desktop saw 40,000 AU, a 500 px phone 10,000), which could not take in a far binary
+// companion. 0.001 is 1000x the width: ~2,000,000 AU on a desktop, ~500,000 on a phone - beyond any
+// bound system, and the scale bar keeps its meaning all the way. Still width-relative by
+// construction; a viewport-independent extent cap is the follow-up if the device gap ever matters.
 export const MIN_CAMERA_ZOOM = 0.001;
 // In AU render space, very close binaries/constructs (e.g. ~100 km separation)
 // require very high zoom to be visually distinguishable — and the smallest editable

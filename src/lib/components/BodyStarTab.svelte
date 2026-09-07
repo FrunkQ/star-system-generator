@@ -9,10 +9,14 @@
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
   import CustomImageBlock from './CustomImageBlock.svelte';
   import { resolveStarImage } from '$lib/system/starImage';
-  import { explainStarClass, pickerLabel } from '$lib/system/starClassExplain';
+  import { explainStarClass, explainObservedStarClass, pickerLabel } from '$lib/system/starClassExplain';
+  import { observedStarOf, apparentColourTempK } from '$lib/physics/observedStar';
   import { STELLAR_ACTIVITY_TAG } from '$lib/physics/stellarActivity';
   import { ionisingBands, activityForFraction, IONISING_FRACTION_QUIET, hasHotCorona, ionisingFromField, saturationFieldGauss } from '$lib/physics/ionisingOutput';
   import { starStatsFromPack } from '$lib/generation/star';
+  // A83: the slider bounds are DATA, not seven const pairs buried in this script block.
+  import { STAR_BOUNDS, SUPERMASSIVE_MASS, SUPERMASSIVE_AMBER_ABOVE, SUPERMASSIVE_AMBER_NOTE,
+      massSoftRange, boundPos, boundValue, bandPct } from '$lib/physics/starBounds';
   import { stellarTypeForBand, spectralSubclass, starClassParts, starClassKeyFor, isBandKey, bandKeyOf } from '$lib/physics/starDesignation';
 
   // A key a BODY holds rather than a range it was drawn from — used to drop the previous designation
@@ -20,7 +24,11 @@
   const isDesignationKey = (c: string) => c.startsWith('star/') && !isBandKey(c);
   import { SeededRNG } from '$lib/rng';
 
-  let { body, rulePack } = $props();
+  // `nodes` is the star's own system. It is what lets this panel say what an OBSERVER measures as
+  // well as what the star IS — a megastructure in front of it is a fact about the system, not about
+  // the star's record. Defaulted so every existing mount keeps working and simply shows the
+  // intrinsic half, which is the honest answer when there is no system in hand.
+  let { body, rulePack, nodes = [] } = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -32,8 +40,37 @@
       (body?.tags ?? []).find((t: any) => t.key === STELLAR_ACTIVITY_TAG)?.value as string | undefined
   );
   const classExplanation = $derived(
-      explainStarClass(rulePack, currentClass, activityBucket)
+      // A88: the star's OWN radius, not its class band. The editor is looking at one particular
+      // star, and for a black hole the band cannot stand in - its radius IS its mass.
+      explainStarClass(rulePack, currentClass, { ...{
+          activity: activityBucket,
+          radiusSolar: body?.radiusKm ? body.radiusKm / SOLAR_RADIUS_KM : undefined
+      }, stellarType: body?.stellarType })
   );
+  // G54: WHAT AN OBSERVER MEASURES, beside what the star IS. Built by the ONE designation builder,
+  // never a second one. No viewpoint exists in a body panel, so this is the isotropic answer and it
+  // NAMES any band it could not test rather than quietly counting or quietly ignoring it.
+  //
+  // THE GM SEES THE CAUSE. This is the GM's own editor; the disclosure ladder governs what reaches a
+  // PLAYER, and it does that at the snapshot (TAG-9), not here.
+  const observed = $derived.by(() => {
+      if (!body || body.roleHint !== 'star' || !nodes?.length) return null;
+      const { reading, los } = observedStarOf(body, nodes);
+      if (!los.sources.length && !los.bandsUnresolved.length) return null;
+      // THE HELD DESIGNATION, NOT THE PICKER'S BAND. `currentClass` is the BAND key the selector
+      // sits on (`star/G`), which is right for the picker and wrong in a sentence: the panel says
+      // "Currently G2V" two lines below, and "too faint for a G" beside it reads as a second opinion.
+      // The body's own first class is the designation the engine wrote; fall back to the band when
+      // it has none, which is what a freshly-picked star looks like.
+      const held = (body.classes ?? []).find((c: string) => c.startsWith('star/')) ?? currentClass;
+      const explanation = explainObservedStarClass(rulePack, held, reading, {
+          activity: activityBucket,
+          apparentTempK: reading.reddened ? apparentColourTempK(body.temperatureK ?? 0, los) : undefined,
+          cause: los.sources.map((s) => s.name).join(', ') || undefined
+      });
+      return explanation ? { explanation, unresolved: los.bandsUnresolved.map((b) => b.name) } : null;
+  });
+
   // The designation the body actually holds, shown so a GM can see it follow the sliders. Remnants
   // and anything with no letter show nothing rather than a made-up string.
   const designationNow = $derived.by(() => {
@@ -53,14 +90,28 @@
   // rotation model yet, so a freshly-made one genuinely does not have a spin — and "0 h" reads as a
   // measurement rather than the gap it is. The boxes stay empty until something fills them in.
   let rotationHours: number | undefined = $state(undefined);
+  // A85: rotation is a 0..1 POSITION on a log track now, like every other slider in this editor.
+  // `rotationHours` stays the authored figure and stays legitimately undefined; this is only
+  // where the thumb is. 0.5 is the track midpoint, which is where the browser put an empty
+  // range input before, so an unset rotation looks exactly as it did.
+  let rotSliderPos = $state(0.5);
   let axialTilt: number | undefined = $state(undefined);
   let magGauss = $state(0);
 
-  // --- Mass Slider Config ---
-  const massMin = 0.01; // ~10 Jupiter masses (Brown Dwarf range)
-  const massMax = 300;
-  const massLogMin = Math.log(massMin);
-  const massLogMax = Math.log(massMax);
+  // --- Slider travel: DATA (A83), pinned bit-for-bit by `physics/starBounds.spec.ts`. ---
+  // `soft` is TRAVEL, never a wall: a typed figure outside it pins the thumb and is kept as
+  // typed, which is what every writer below already did and what steer-don't-stop requires.
+  // A83 THE SUPERMASSIVE SWITCH. Owner: *"a switch that can offer 'supermassive black holes' -
+  // the scale will change from 300 to 270 Billion SM - which is the theoretical limit (log
+  // slider!)"*. It moves the slider's TRAVEL and nothing else: the mass under the thumb does not
+  // change when it is thrown, because a control that edits the thing it is describing is a trap.
+  //
+  // IT IS NOT STORED, IT IS DERIVED - from whether this hole is ALREADY heavier than any star.
+  // A stored flag would be a second answer to a question the mass already answers, and the two
+  // would drift the first time a mass arrived from an import, a preset or an undo. So a 4e6 M☉
+  // hole always opens with the fine scale it needs, and nothing has to remember that it did.
+  let supermassive = $state(false);
+  const massSoft = $derived(massSoftRange(supermassive));
   let massSliderPos = $state(0.5);
   // Which body the editable fields below were last synced from. The sync effect re-runs on every render
   // (the body proxy re-resolves as the clock ticks), so we only pull values FROM the body when a different
@@ -68,32 +119,16 @@
   let lastSyncedBodyId: string | null = null;
   let lastSyncedUndoEpoch = -1;
 
-  // --- Radius Slider Config ---
-  const radiusMin = 0.01;
-  const radiusMax = 2000;
-  const radiusLogMin = Math.log(radiusMin);
-  const radiusLogMax = Math.log(radiusMax);
+  const radiusSoft = STAR_BOUNDS.radius.soft;
   let radiusSliderPos = $state(0.5);
 
-  // --- Temp Slider Config ---
-  const tempMin = 500; // Brown Dwarf / Y-dwarf range
-  const tempMax = 50000;
-  const tempLogMin = Math.log(tempMin);
-  const tempLogMax = Math.log(tempMax);
+  const tempSoft = STAR_BOUNDS.temp.soft;
   let tempSliderPos = $state(0.5);
 
-  // --- Radiation Slider Config ---
-  const radMin = 0.01;
-  const radMax = 50000;
-  const radLogMin = Math.log(radMin);
-  const radLogMax = Math.log(radMax);
+  const radSoft = STAR_BOUNDS.radiation.soft;
   let radSliderPos = $state(0.25);
 
-  // --- Magnetic Field Slider Config ---
-  const magMin = 0.01;
-  const magMax = 1e15; // 1 Quadrillion Gauss (Magnetar range)
-  const magLogMin = Math.log(magMin);
-  const magLogMax = Math.log(magMax);
+  const magSoft = STAR_BOUNDS.mag.soft;
   let magSliderPos = $state(0.5);
 
   const radZones = [
@@ -220,11 +255,11 @@
   }
 
   function getLogPos(val: number) {
-      return (Math.log(Math.max(radMin, val)) - radLogMin) / (radLogMax - radLogMin) * 100;
+      return boundPos(radSoft, val) * 100;
   }
 
   function getTempLogPos(val: number) {
-      return (Math.log(Math.max(tempMin, val)) - tempLogMin) / (tempLogMax - tempLogMin) * 100;
+      return boundPos(tempSoft, val) * 100;
   }
 
   // --- Derived Ranges ---
@@ -244,21 +279,18 @@
       const range = data?.ranges[prop];
       // A band the pack states as zero is a real statement, not a gap — a quiescent black hole has
       // no temperature and no field — and log(0) would poison the bar's geometry. Draw nothing.
-      if (!range || !(range[0] > 0) || !(range[1] > 0)) return 0;
-
-      let minL = 0, maxL = 0, startL = 0, endL = 0;
-      if (prop === 'mass') { minL = massLogMin; maxL = massLogMax; startL = Math.log(Math.max(massMin, range[0])); endL = Math.log(Math.min(massMax, range[1])); }
-      if (prop === 'radius') { minL = radiusLogMin; maxL = radiusLogMax; startL = Math.log(Math.max(radiusMin, range[0])); endL = Math.log(Math.min(radiusMax, range[1])); }
-      if (prop === 'temp') { minL = tempLogMin; maxL = tempLogMax; startL = Math.log(Math.max(tempMin, range[0])); endL = Math.log(Math.min(tempMax, range[1])); }
-      if (prop === 'rad') { minL = radLogMin; maxL = radLogMax; startL = Math.log(Math.max(radMin, range[0])); endL = Math.log(Math.min(radMax, range[1])); }
-      if (prop === 'mag') { minL = magLogMin; maxL = magLogMax; startL = Math.log(Math.max(magMin, range[0])); endL = Math.log(Math.min(magMax, range[1])); }
-      if (prop === 'rot') { minL = Math.log(0.1); maxL = Math.log(10000); startL = Math.log(Math.max(0.1, range[0])); endL = Math.log(Math.min(10000, range[1])); }
-
-      const startPct = (startL - minL) / (maxL - minL) * 100;
-      const endPct = (endL - minL) / (maxL - minL) * 100;
-      
-      if (type === 'start') return Math.max(0, startPct);
-      return Math.max(2, endPct - startPct);
+      const soft = prop === 'mass' ? massSoft
+          : prop === 'radius' ? radiusSoft
+          : prop === 'temp' ? tempSoft
+          : prop === 'rad' ? radSoft
+          : prop === 'mag' ? magSoft
+          : STAR_BOUNDS.rot.soft;
+      // ONE AXIS FOR BOTH HALVES (A85): the band reads the same `log` flag the slider is built
+      // from, so a future retune cannot part them again the way it had for rotation.
+      const pct = bandPct(soft, range, STAR_BOUNDS[prop === 'rad' ? 'radiation' : prop === 'rot' ? 'rot' : prop].log);
+      if (!pct) return 0;
+      if (type === 'start') return pct.start;
+      return pct.width;
   }
 
   // --- Derived Values (Runes) ---
@@ -283,8 +315,10 @@
       return `background-color: ${bg}; border: 2px solid ${border}; box-shadow: 0 0 10px ${shadow};`;
   });
 
-  // Bolometric luminosity from Stefan-Boltzmann: L/L☉ = (R/R☉)²·(T/T☉)⁴.
-  let luminosity = $derived((radiusSuns ** 2) * ((tempK / 5778) ** 4));
+  // Bolometric luminosity, through the ONE Stefan-Boltzmann ([[B110]]). This was written out here
+  // with a bare 5778 while `syncRadiationFromSB` below already called the shared function - the same
+  // quantity computed twice in one component.
+  let luminosity = $derived(luminositySolarFromRT(radiusSuns * SOLAR_RADIUS_KM, tempK));
 
   // The four classes whose output is NOT their own surface: an accretion disc or a magnetosphere.
   // Same list `syncRadiationFromSB` returns early on — one spelling, checked in one place.
@@ -306,7 +340,7 @@
   /** The saturation field as a position on the magnetic slider's own log axis. */
   let satFieldPct = $derived.by(() => {
       if (!(satField! > 0)) return null;
-      const p = (Math.log(Math.max(magMin, Math.min(magMax, satField!))) - magLogMin) / (magLogMax - magLogMin);
+      const p = boundPos(magSoft, satField!);
       return p > 0.02 && p < 0.98 ? p * 100 : null;
   });
   function fmtField(g: number | undefined): string {
@@ -351,7 +385,7 @@
       const L = luminositySolarFromRT(radiusSuns * SOLAR_RADIUS_KM, tempK);
       radiation = parseFloat(L.toPrecision(3));
       body.radiationOutput = radiation;
-      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, L))) - radLogMin) / (radLogMax - radLogMin);
+      radSliderPos = boundPos(radSoft, L);
   }
 
   // --- Initialization & Sync ---
@@ -377,26 +411,32 @@
       if (body.massKg) {
           const m = body.massKg / SOLAR_MASS_KG;
           massSuns = m;
-          massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, m))) - massLogMin) / (massLogMax - massLogMin);
+          // Seeded from the DATA, not from a remembered switch (see the note beside `massSoft`).
+          // Read off the body's own class rather than `currentClass`, which a separate effect
+          // writes - this must not depend on which effect ran first.
+          supermassive = String(body.classes?.[0] ?? '').startsWith('star/BH')
+              && m > STAR_BOUNDS.mass.soft[1];
+          massSliderPos = boundPos(massSoftRange(supermassive), m);
       }
       if (body.radiusKm) {
           const r = body.radiusKm / SOLAR_RADIUS_KM;
           radiusSuns = r;
-          radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, r))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+          radiusSliderPos = boundPos(radiusSoft, r);
       }
       if (body.temperatureK !== undefined) {
           tempK = body.temperatureK;
-          tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, body.temperatureK))) - tempLogMin) / (tempLogMax - tempLogMin);
+          tempSliderPos = boundPos(tempSoft, body.temperatureK);
       }
       if (body.radiationOutput !== undefined) {
           radiation = body.radiationOutput;
-          radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, body.radiationOutput))) - radLogMin) / (radLogMax - radLogMin);
+          radSliderPos = boundPos(radSoft, body.radiationOutput);
       }
       rotationHours = body.rotation_period_hours ?? undefined;
+      rotSliderPos = rotationHours === undefined ? 0.5 : boundPos(STAR_BOUNDS.rot.soft, rotationHours);
       axialTilt = body.axial_tilt_deg ?? undefined;
       if (body.magneticField?.strengthGauss !== undefined) {
           magGauss = body.magneticField.strengthGauss;
-          magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
+          magSliderPos = boundPos(magSoft, magGauss);
       }
       // Black-hole accretion slider — seed from the stored Eddington fraction (active class ⇒ a default).
       accF = (body as any).accretionEddington ?? ((body.classes?.[0] === 'star/BH_active') ? 0.5 : 0);
@@ -407,8 +447,14 @@
   });
 
   // --- Updates ---
+  /** Flip the travel. Re-seats the THUMB from the mass; never the mass from the thumb. */
+  function toggleSupermassive() {
+      supermassive = !supermassive;
+      massSliderPos = boundPos(massSoftRange(supermassive), massSuns);
+  }
+
   function updateMass() {
-      const val = Math.exp(massLogMin + (massLogMax - massLogMin) * massSliderPos);
+      const val = boundValue(massSoft, massSliderPos);
       massSuns = parseFloat(val.toPrecision(3));
       body.massKg = massSuns * SOLAR_MASS_KG;
       if (isBH) applySchwarzschild(); // event horizon is mass-driven
@@ -417,13 +463,18 @@
 
   function handleMassNumberInput() {
       body.massKg = massSuns * SOLAR_MASS_KG;
-      massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, massSuns))) - massLogMin) / (massLogMax - massLogMin);
+      // THE SWITCH FOLLOWS THE NUMBER, exactly as it does on load. Type 4e6 M☉ into a hole and
+      // the scale it needs is already there; without this the thumb pins to the top of a stellar
+      // track and the slider is dead until the GM finds the switch themselves. It steers - the
+      // typed value is never touched, in either direction.
+      if (isBH && massSuns > STAR_BOUNDS.mass.soft[1]) supermassive = true;
+      massSliderPos = boundPos(massSoftRange(supermassive), massSuns);
       if (isBH) applySchwarzschild();
       dispatch('update');
   }
 
   function updateRadius() {
-      const val = Math.exp(radiusLogMin + (radiusLogMax - radiusLogMin) * radiusSliderPos);
+      const val = boundValue(radiusSoft, radiusSliderPos);
       radiusSuns = parseFloat(val.toPrecision(3));
       body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
       syncRadiationFromSB();
@@ -432,13 +483,13 @@
 
   function handleRadiusInput() {
       body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
-      radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, radiusSuns))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+      radiusSliderPos = boundPos(radiusSoft, radiusSuns);
       syncRadiationFromSB();
       dispatch('update');
   }
 
   function updateTemp() {
-      const val = Math.exp(tempLogMin + (tempLogMax - tempLogMin) * tempSliderPos);
+      const val = boundValue(tempSoft, tempSliderPos);
       tempK = Math.round(val);
       body.temperatureK = tempK;
       updateClassFromTemp(tempK);
@@ -457,7 +508,7 @@
 
   function handleTempInput() {
       body.temperatureK = tempK;
-      tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
+      tempSliderPos = boundPos(tempSoft, tempK);
       updateClassFromTemp(tempK);
       syncRadiationFromSB();
       dispatch('update');
@@ -514,7 +565,7 @@
   }
 
   function updateRadiation() {
-      const val = Math.exp(radLogMin + (radLogMax - radLogMin) * radSliderPos);
+      const val = boundValue(radSoft, radSliderPos);
       radiation = parseFloat(val.toPrecision(3));
       body.radiationOutput = radiation;
       dispatch('update');
@@ -522,16 +573,26 @@
 
   function handleRadiationInput() {
       body.radiationOutput = radiation;
-      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, radiation))) - radLogMin) / (radLogMax - radLogMin);
+      radSliderPos = boundPos(radSoft, radiation);
       dispatch('update');
   }
 
   // Clearing the box removes the field rather than writing 0 — an empty box means "we do not know",
   // and that has to survive the round trip or the honest state is unreachable once you leave it.
   function updateRotation() {
-      if (typeof rotationHours === 'number' && Number.isFinite(rotationHours)) body.rotation_period_hours = rotationHours;
-      else delete body.rotation_period_hours;
+      if (typeof rotationHours === 'number' && Number.isFinite(rotationHours)) {
+          body.rotation_period_hours = rotationHours;
+          rotSliderPos = boundPos(STAR_BOUNDS.rot.soft, rotationHours);
+      } else {
+          delete body.rotation_period_hours;
+      }
       dispatch('update');
+  }
+
+  /** The thumb, on the same log track the green band is painted on (A85). */
+  function updateRotationSlider() {
+      rotationHours = parseFloat(boundValue(STAR_BOUNDS.rot.soft, rotSliderPos).toPrecision(3));
+      updateRotation();
   }
 
   function updateTilt() {
@@ -554,7 +615,7 @@
   }
 
   function updateMagSlider() {
-      const val = Math.exp(magLogMin + (magLogMax - magLogMin) * magSliderPos);
+      const val = boundValue(magSoft, magSliderPos);
       magGauss = parseFloat(val.toPrecision(3));
       body.magneticField = { strengthGauss: magGauss };
       reclassifyForMagnetism();
@@ -563,7 +624,7 @@
 
   function handleMagInput() {
       body.magneticField = { strengthGauss: magGauss };
-      magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, magGauss))) - magLogMin) / (magLogMax - magLogMin);
+      magSliderPos = boundPos(magSoft, magGauss);
       reclassifyForMagnetism();
       dispatch('update');
   }
@@ -579,7 +640,7 @@
   function applySchwarzschild() {
       radiusSuns = parseFloat(schwarzschildRadiusSuns(massSuns).toPrecision(3));
       body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
-      radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, radiusSuns))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+      radiusSliderPos = boundPos(radiusSoft, radiusSuns);
   }
 
   // Sensible "middle ground" presets per BH state, validated against real objects:
@@ -633,9 +694,9 @@
       body.classes = [cls, ...others];
       updateImage(cls);
       accSliderPos = posFromF(f);
-      tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, Math.max(tempMin, tempK)))) - tempLogMin) / (tempLogMax - tempLogMin);
-      magSliderPos = (Math.log(Math.max(magMin, Math.min(magMax, Math.max(magMin, magGauss)))) - magLogMin) / (magLogMax - magLogMin);
-      radSliderPos = (Math.log(Math.max(radMin, Math.min(radMax, Math.max(radMin, radiation)))) - radLogMin) / (radLogMax - radLogMin);
+      tempSliderPos = boundPos(tempSoft, tempK);
+      magSliderPos = boundPos(magSoft, magGauss);
+      radSliderPos = boundPos(radSoft, radiation);
       dispatch('update');
   }
   // Picking a BH from the dropdown seeds a state: keep its current infall, else default quiescent.
@@ -705,15 +766,15 @@
           const newTemp = drawn.tempK;
 
           massSuns = newMass;
-          massSliderPos = (Math.log(Math.max(massMin, Math.min(massMax, newMass))) - massLogMin) / (massLogMax - massLogMin);
+          massSliderPos = boundPos(massSoft, newMass);
           body.massKg = massSuns * SOLAR_MASS_KG;
 
           radiusSuns = newRadius;
-          radiusSliderPos = (Math.log(Math.max(radiusMin, Math.min(radiusMax, newRadius))) - radiusLogMin) / (radiusLogMax - radiusLogMin);
+          radiusSliderPos = boundPos(radiusSoft, newRadius);
           body.radiusKm = radiusSuns * SOLAR_RADIUS_KM;
 
           tempK = Math.round(newTemp);
-          tempSliderPos = (Math.log(Math.max(tempMin, Math.min(tempMax, tempK))) - tempLogMin) / (tempLogMax - tempLogMin);
+          tempSliderPos = boundPos(tempSoft, tempK);
           body.temperatureK = tempK;
       }
       // PICKING IS THE FORWARD DIRECTION and it must leave the same structured classification an
@@ -777,6 +838,29 @@
         {#if classExplanation}
             <div class="class-explain">
                 <strong>{classExplanation.kind}</strong>{#if classExplanation.colour}, {classExplanation.colour} to human eyes{/if}{#if classExplanation.size}, {classExplanation.size}{/if}
+            </div>
+        {/if}
+        <!-- G54: what an OBSERVER measures. Shown only when the three readings actually disagree —
+             an ordinary star has nothing to say here and a row saying "nothing in the way" on every
+             star in the map would be noise. -->
+        {#if observed?.explanation.disagrees}
+            <div class="observed-explain">
+                <div class="obs-head" title="A star's designation is what its SPECTRUM says. These are what the other measurements say, and the three disagreeing is the point.">Measured from outside</div>
+                <div class="obs-row"><span class="obs-what">Spectroscopy</span><span>{observed.explanation.spectroscopy}</span></div>
+                <div class="obs-row"><span class="obs-what">Photometry</span><span>{observed.explanation.photometry}</span></div>
+                {#if observed.explanation.infrared}
+                    <div class="obs-row"><span class="obs-what">Infrared</span><span>{observed.explanation.infrared}</span></div>
+                {/if}
+                {#if observed.explanation.cause}
+                    <div class="obs-cause">Because of: {observed.explanation.cause}</div>
+                {/if}
+                {#if observed.unresolved.length}
+                    <div class="obs-cause">Not counted here: {observed.unresolved.join(', ')} — a ring only dims observers near its own plane, and this panel has no viewpoint. The starmap answers it per system.</div>
+                {/if}
+            </div>
+        {:else if observed?.unresolved.length}
+            <div class="observed-explain">
+                <div class="obs-cause">{observed.unresolved.join(', ')} stands around this star, but a ring only dims observers near its own plane — and this panel has no viewpoint. The starmap answers it per system.</div>
             </div>
         {/if}
         <!-- WHY A STAR HAS NO "auto-classify" CHECKBOX WHERE A PLANET DOES, said out loud (owner,
@@ -845,6 +929,19 @@
             </svg>
             <input type="range" min="0" max="1" step="0.001" bind:value={massSliderPos} on:input={updateMass} class="full-width-slider overlay" />
         </div>
+        {#if isBH}
+            <label class="sm-toggle">
+                <input type="checkbox" checked={supermassive} on:change={toggleSupermassive} />
+                Supermassive scale
+                <span class="sub-label">— up to {SUPERMASSIVE_MASS[1].toExponential(1)} M☉, the theoretical limit</span>
+            </label>
+        {/if}
+        {#if massSuns > SUPERMASSIVE_AMBER_ABOVE}
+            <!-- AN EDGE, NOT A WALL. The figure is kept exactly as typed; this only says what is
+                 remarkable about it. Steer, do not stop - alien engineering and plot devices are
+                 legitimate reasons and the engine cannot tell one from a typo. -->
+            <p class="mass-amber" role="status">{SUPERMASSIVE_AMBER_NOTE}</p>
+        {/if}
         {#if massSuns <= 0.015}
             <button class="action-btn douse-btn" on:click={douseStar}>❄️ Douse into Planet</button>
         {/if}
@@ -987,7 +1084,7 @@
             <svg class="slider-svg" width="100%" height="30">
                 <rect x="{getRangePct('rot', 'start')}%" y="0" width="{getRangePct('rot', 'width')}%" height="8" fill="#22aa44" />
             </svg>
-            <input type="range" min="0.1" max="10000" step="0.1" bind:value={rotationHours} on:input={updateRotation} class="full-width-slider overlay" />
+            <input type="range" min="0" max="1" step="0.001" bind:value={rotSliderPos} on:input={updateRotationSlider} class="full-width-slider overlay" />
         </div>
         {#if rotationHours === undefined}
             <div class="sub-label">Not set &mdash; nothing derives a star's spin yet, so this is a gap rather than a still star. Set it if you need one.</div>
@@ -1044,6 +1141,11 @@
   /* Read-only: no pointer affordance, because there is nothing to grab. */
   .gauge { pointer-events: none; }
   .derived-readout { width: 100px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.95em; }
+  .observed-explain { margin-top: 6px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.78em; line-height: 1.45; }
+  .obs-head { font-weight: 600; opacity: 0.85; margin-bottom: 3px; }
+  .obs-row { display: flex; gap: 6px; }
+  .obs-what { flex: 0 0 5.6em; opacity: 0.7; }
+  .obs-cause { margin-top: 3px; opacity: 0.75; font-style: italic; }
   .class-explain { font-size: 0.78em; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
   
   .color-preview {
@@ -1073,6 +1175,29 @@
       fill: #fff;
       font-weight: bold;
   }
+  /* A83: the supermassive switch and the amber edge beneath the mass slider. */
+  .sm-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .sm-toggle input { margin: 0; }
+  .sm-toggle .sub-label { margin: 0; }
+  .mass-amber {
+    margin: 6px 0 0;
+    padding: 5px 8px;
+    border-left: 3px solid var(--warning, #ffcc00);
+    background: var(--bg-control, #1b1e26);
+    color: var(--warning, #ffcc00);
+    font-size: 0.8em;
+    line-height: 1.35;
+    border-radius: 0 var(--radius-sm, 4px) var(--radius-sm, 4px) 0;
+  }
+
   input[type="range"].overlay {
       position: absolute;
       top: 0;

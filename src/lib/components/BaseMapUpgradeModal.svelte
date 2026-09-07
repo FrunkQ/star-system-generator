@@ -13,6 +13,8 @@
   import { loadBundledMap } from '$lib/map/baseMapManifest';
   import { planRebase, applyRebase, type RebasePlan } from '$lib/map/rebase';
   import type { UpgradeOffer } from '$lib/map/upgradeOffer';
+  // UI-C6: this dialog now yields the phone screen like every other one (A84).
+  import { foreground } from '$lib/ui/foreground';
 
   export let campaign: Starmap;
   export let offer: UpgradeOffer;
@@ -79,7 +81,7 @@
   $: lossy = replaced.filter((s) => (s.losses?.length ?? 0) > 0);
 </script>
 
-<div class="scrim" role="presentation">
+<div class="scrim" role="presentation" use:foreground>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Update the bundled map">
     {#if stage === 'offer'}
       <h2>This campaign uses an earlier edition of {offer.base?.name ?? 'the bundled map'}</h2>

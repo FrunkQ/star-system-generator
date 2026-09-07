@@ -1182,16 +1182,35 @@ WHY: what the GM approves in the dialog must be what every surface shows. Three 
 the first time a finish was added — the same fault A46 fixed for the body portrait.
 BLAST: adding a finish, changing normalisation, or adding a fourth surface that draws a hull.
 
-### RENDER-S2 A construct contributes NO radius, model or not
+### RENDER-S2 A construct contributes NO radius, model or not - AND A MEGA DOES NOT EITHER
 BUCKET: ARCHITECTURE - a marker with real geometry is not a body. Its visual extent must never reach
-the physical model.
-WHERE: `src/lib/holo/scene.ts` (`frameDistance`, the clearance branch in `updatePositions`)
+the physical model. G53 was expected to FALSIFY this entry; measurement kept the rule and replaced
+its reason, which at mega scale is the more interesting half.
+WHERE: `src/lib/holo/scene.ts` (`frameDistance`, the clearance branch in `updatePositions`),
+`physicalRadiusAu` in `rendering/scaleLaw.ts`. Gated by `holo/systemExtent.spec.ts`.
 RULE: a ship model is a MARKER with real geometry, not a body. It must never feed ring clearance or
 the whole-system bounding sphere (F5). `frameDistance` may read its hull length to frame it; nothing
-else may.
+else may. A MEGA-CONSTRUCT IS NOT AN EXCEPTION.
 WHY: real extent in the clearance maths makes camera framing depend on zoom — F4's bug class — and
 would push moons off their orbits around a station.
-BLAST: any new use of `shipLen`. Any "make constructs act like bodies" change.
+AND THE MEGA REASON, MEASURED 2026-08-28 (G53 phase 2), because `physicalRadiusAu`'s own comment
+gives a reason a ringworld falsifies - it says a construct is zero because "its true size (tens of
+metres) is below anything a system-scale extent can carry", and a ringworld is 2 AU across. The rule
+survives for a BETTER reason: a body's radius reaches BEYOND its orbital position, but a ring, shell
+or swarm is CENTRED ON ITS HOST - its orbit IS its radius - so the position term already carries its
+whole reach and adding the radius DOUBLE COUNTS. Measured, lone star + 1 AU ringworld: rMax is 1 AU
+and correct; "give it a real extent" yields 2.005 AU, and since `trueScaleFactor` is
+`gridRadius / rMax`, EVERY object in that system would then draw at 0.499x. The design's phase 2
+asked for exactly that change; it is wrong, and `systemExtent.spec.ts` now guards it.
+ALSO MEASURED so phase 2 is not re-attempted: the span map ALREADY carries mega scale (a 1 AU
+ringworld draws 1.315 scene units against Sol's 0.424 - ordered, R9 intact); and `frameDistance`
+passing a construct's FULL length where the solver documents a HALF-extent is DELIBERATE and
+reasoned at the code (a half-length close-up "read as zoomed in too much"), not a bug to tidy.
+BLAST: any new use of `shipLen`. Any "make constructs act like bodies" change. PHASE 5'S HYBRID FLIP
+CHANGES THIS: a mega that becomes `kind: 'body'` starts answering `physicalRadiusAu` on the BODY
+branch and so contributes its radius - which for a centred ring is the double count above. Decide
+what a CENTRED body's extent means before the kind changes, or every system holding a ringworld
+silently reframes.
 
 ### RENDER-S3 Nozzles live in the model's own space, orientation applies at view time
 BUCKET: ARCHITECTURE - store an authored placement in the frame that CANNOT be edited, and apply the
@@ -2006,6 +2025,26 @@ was destroyed by the workaround, not by the bug. A rescue that ran the same pipe
 same way. This is why it is offered on the safe-mode screen, BEFORE any retry.
 BLAST: adding assets/bundling to this path would reintroduce the dependency. Keep it dumb.
 
+### UI-L8 IN A HIDDEN BROWSER PANE A CSS TRANSITION NEVER ADVANCES, SO ANIMATED GEOMETRY READS FROZEN
+BUCKET: PLATFORM (the agent browser pane) - it is E7 in a new costume, and it lies in the one
+direction that matters: the DOM and the cascade are correct and the MEASUREMENT is wrong.
+WHERE: any `transition:` on a measured property. Found on `components/BottomSheet.svelte`
+(`transition: height 0.22s`), measuring the phone sheet during A84.
+RULE: before believing ANY geometry read out of a hidden pane, kill animation:
+`*,*::before,*::after{transition:none !important;animation:none !important;}` injected as a style
+element. Without it a transitioned property reports its START value for ever, because the
+transition clock is the frame clock and the frame clock is stopped (E7).
+WHY: A84. The sheet's inline style said `height: 406px` - Svelte had computed the promotion
+correctly - and `getComputedStyle().height` said `86px`, the pre-transition value. Setting
+`height: 500px !important` inline changed nothing, which reads exactly like a cascade fight and is
+not one: a control element with the same rules and NO transition measured 500 px immediately. The
+wrong conclusion available at every step was "my change did not work", and acting on it would have
+meant rewriting a fix that was already correct.
+BLAST: also affects `scroll-behavior: smooth`, view transitions, and anything measured after a
+class change that animates. **NEVER `await requestAnimationFrame` in a hidden pane** - it never
+resolves and the tool call times out at 45 s; use `setTimeout`. Screenshots still need the pane
+DISPLAYED; this only makes DOM geometry trustworthy while it is not.
+
 ### UI-L7 A loop sized in MAP units is unbounded, because zoom is fitted to the map's own extent
 BUCKET: ARCHITECTURE - durable and general: a loop that steps in WORLD units under a FITTED zoom is
 bounded by the DATA's extent, not by anything on screen. And a GATE and a CAP are two different
@@ -2071,12 +2110,22 @@ Also: a missing map must degrade to a SMALLER bundle, never to no bundle — sto
 diagnostic matters most.
 
 ### RENDER-S49 THE SCENE FRAME IS A MIRROR OF THE MAP'S EQUATORIAL FRAME, AND THE SKY MUST NOT INHERIT IT
-BUCKET: PLATFORM + ARCHITECTURE - see the beta entry of the same id for the full text; the rule: a sky
-direction reaches the scene ONLY through `map/skyStars.ts` skyDirToScene, a proper rotation
-((x, y, z) -> (x, z, -y)); bodies keep positionToScene's historic (x, z, y) swap on purpose.
-WHERE: `holo/scene.ts` rebuildSkyStars; `map/skyStars.ts`; `import/realsky/positions.mjs`.
-WHY: A93 (2026-09-02) - Orion rendered mirrored; `skyChirality.spec.ts` went red at -0.175 before the fix.
-BLAST: any new sky consumer (constellation lines, a compass rose, anomaly badges) must use the helper.
+BUCKET: PLATFORM + ARCHITECTURE - platform: THREE is Y-up and right-handed; the map is Z-up and
+right-handed, so any (x, y, z) -> (x, z, y) carry-across is an improper rotation. Architecture: one
+conversion per frame pair, named, gated - never an inline swap.
+WHERE: `holo/scene.ts` positionToScene (bodies, deliberately left as the swap) and `rebuildSkyStars`;
+`map/skyStars.ts` skyDirToScene; `import/realsky/positions.mjs` radecToXyzLy (the frame's definition).
+RULE: a sky direction reaches the scene ONLY through `skyDirToScene`, which is a proper rotation
+((x, y, z) -> (x, z, -y)). Bodies keep the historic (x, z, y) swap: it mirrors the whole system
+consistently, which is invisible for fiction, and changing it would flip every orbit's on-screen sense.
+WHY: A93 (2026-09-02). A user entered Orion's real RA/Dec and the sky showed it reversed - Betelgeuse
+right of Rigel. The sky was reusing the body swap; measured by `skyChirality.spec.ts`, which asks the
+one absolute question a photograph answers (from Sol, north up, east is LEFT) and went red at -0.175
+before the fix.
+BLAST: any NEW consumer that places sky-frame directions in the scene (constellation lines, a compass
+rose, the anomaly badges of G54) must go through skyDirToScene, or it will be mirrored against the
+stars it sits beside. And do NOT "fix" positionToScene to match - it is the 2D canvas's convention too
+(map-y drawn downward), so 2D and 3D agree with each other today; flipping one alone breaks that.
 
 ### DATA-*  (starmaps, import, rulepacks)
 _Partly written. STILL UNWRITTEN: `tests/fixtures/*` and `tests/output/*` are GENERATED, never
@@ -3409,6 +3458,127 @@ so a Mars arrival was drawn parked for the 615 days it was still aerobraking. Re
 one dip because the loops coincide, and the drawn count is CAPPED at 24 with the real count in the
 label rather than silently truncated.
 
+### UI-C17 A FLOATING CONTROL IS BOUNDED BY THE BOX THAT CLIPS IT, AND REMEMBERS ITS EDGE, NOT ITS OFFSET
+BUCKET: ARCHITECTURE - the shape (one behaviour module; a host owns only its anchor) carries; the pixel numbers are implementation.
+WHERE: `src/lib/ui/floatingControl.ts` (`nearestClippingAncestor`, `bounds`, `settle`; pinned by `floatingControl.spec.ts`), its hosts `BodyPicker.svelte`, `TimeControls.svelte`, `UndoPill.svelte`, and the handle components `FloatGrip.svelte` / `FloatPin.svelte`; `ui/widthGrip.ts` for the pill's width.
+RULE: the stored `dx/dy` is what the DOM renders and is RELATIVE TO THE HOST'S ANCHOR, which moves (a 50% anchor moves when its column narrows). What survives a change of shape is `ex/gx/ey/gy`: the nearest edge of the clipping box and the gap from it. `settle(true)` (mount, stage resize, window resize, open/lock) re-places the control FROM THE EDGE; `settle(false)` (drag release) takes the current place as truth and re-reads the edge from it. The bound is the nearest ancestor with any overflow but `visible`, intersected with the viewport, inset 4 px; a host may pass `stage` to override. Everything is per-browser localStorage and never rides the campaign file.
+WHY: A98. The picker was clamped to the WINDOW, so a control clipped by `.main-view` (`overflow: hidden`) at `left: 100` looked fine to the clamp and vanished under the rail; and it was placed from an offset against a 50% anchor, so opening the detail pane moved it. "Keep the screen place" was the first design and was replaced before it shipped: it needs an absolute anchor no host has, and a right-hand control covered by a pane would be pushed to the pane's edge with its gap lost. Edge + gap answers both and is what a GM means by "pin it to the right".
+BLAST: a drag release MUST settle with `fromEdge = false`, or the control snaps back to its old gap the moment it is let go (the spec's "never snaps back" case). `set()` re-settles only on open/lock changes, never on a plain move, or the per-frame drag fights itself. `ResizeObserver` is absent in jsdom and guarded. The lock is a drag handle (`use:ctl.grip` on `FloatPin`) and its click goes through `didDrag()` exactly as the puck's does - a lock that toggled on the click ending a drag would unpin the control you had just moved. A host whose visual box IS the transformed element (the undo pill) carries both the anchor transform and the drag translate INLINE; its CSS must not also set `transform`, or the two fight. **A HOST-LEVEL GATE NEEDS `await tick()` AFTER `vi.runAllTimers()`:** `settle` is scheduled as a MACROTASK (the timers) but the offset reaches the DOM as a Svelte MICROTASK, so a rect mocked off the element's own `style.transform` is one settle stale without the tick and the assertion reads the anchor rather than the settled place. `TimeDisplayOverlay.spec.ts` is the worked example. The hosts are FOUR now: the time READ-OUT joined at v3.0.361 and it has no lock, because `pinned` means only "suppress auto-close" and a control with no puck has nothing to close to.
+
+### UI-C18 A DOCKED GROUP IS ONE BOX, AND EVERY MEMBER PLACES ITSELF IN IT
+BUCKET: ARCHITECTURE - the shape carries (a registry, a group id and an OFFSET per member, one shared edge, each member placing itself); the 12/24 px are implementation.
+WHERE: `src/lib/ui/floatingControl.ts` (`members`, `apart`, `groupMembers`, `redock`, `shareEdge`, and `settle`'s group box), pinned by `floatingControl.spec.ts` "two controls dock, move as one".
+RULE: controls stay INDEPENDENT - a host knows nothing of any other host - and docking is the one thing they share: each registers itself in a module-level set while its root action is mounted, and a group is every registered control with the same `dock` id ON THE SAME STAGE. Each member also stores `ox`/`oy`, its place inside the group, recorded once when the group forms. **The group's box is built from those offsets and the members' live SIZES, never from where the members happen to be** - positions drift, sizes do not lie. One member settles, computes the group's origin and edge, and hands the EDGE to the others (`shareEdge`); each of them then re-settles and places ITSELF at that origin plus its own offset. An undocked control is a group of one, its offsets are zero, and the identical code runs - there is no second path, which is why the A97 gates still pin the old behaviour exactly.
+WHY: G81, the owner's *"allow them to be pinned together"*. **THE MEMBERS DO NOT SHARE AN ANCHOR, and that is the whole difficulty.** The clock read-out hangs off its stage's top-left, the undo pill off its CENTRE, the picker off a 50% of its own: narrowing the canvas by 260 px moved the pill 130 px and the clock not at all. Two designs were built and measured before this one. (1) **Nudge every member by the settling member's delta** - preserves nothing, because the anchors moved by different amounts before the settle even ran, and the settling member, seeing itself exactly where it wanted to be, moved nobody. (2) **Place every member absolutely from the settling member** - correct in principle and wrong in practice: a member's offset can only be turned into a position through ITS OWN anchor, and that anchor is read as `rect.left - dx` from a DOM box that this pass may already have written to. Two settles in one task each applied the same correction, and a docked pill ended 120 px past where both had put it. Handing over the EDGE and letting each member do its own arithmetic is the form that survives, because the edge is a number, not a measurement.
+RULE ADDENDUM - WHO MOVES WHEN A ROW IS DRAGGED (owner, 2026-09-07): **an END of the row comes away in your hand; a MIDDLE one carries the row.** A member touching exactly ONE other leaves the group the moment its press becomes a drag; one touching two or more drags everybody. Neighbours are counted in GROUP space - the offsets and the live sizes - because this is asked mid-drag, when positions are the one thing that cannot be trusted. It answers the question the design had left open (with one grip moving all, nothing could take a control OUT) and it costs one thing, which is stated on the G81 row and in the tests: **in a PAIR both members are ends, so a pair cannot be moved by one grip.**
+BLAST: **A CONTROL'S PLACE IN A GROUP IS RECORDED ONCE, WHEN IT JOINS, AND FROM THE MEMBER IT LANDED ON.** Re-deriving every member's offset from where the members happen to BE looks equivalent and is not: on release they are mid-correction, because each places itself in its own settle. Measured in the browser - dragging the middle of a row of three re-recorded its offset as 512 instead of 382, so the group measured 600 px wide instead of 512, so two members that were touching read 130 px apart, so the drift check threw one out. One stale read, four wrong answers, and the row came apart. A joiner takes its place from the anchor member's place plus the difference between their two boxes; landing at the left end shifts the whole row's origin rather than recomputing it.
+BLAST: **ONE settle per member per move, and never a settle per member per FRAME.** A group drag calls `nudge` on the others - `set(..., false)`, no re-settle - because a settle per member per frame is exactly the fight UI-C17 warns about; the anchors do not move during a drag, so a shared delta is right THERE and only there. **`redock` runs on RELEASE and in a LATER MACROTASK**, never per frame and never inside `pointerup`: not per frame or a control dragged past a neighbour snaps to it in passing, and not in `pointerup` because the offset that drag just wrote reaches the DOM as a Svelte microtask - a pill dropped 5.75 px from the clock measured itself 120.75 px away, its own starting distance, and nothing ever docked. **THE 24 px IS A QUESTION ABOUT THE GROUP'S LAYOUT, NOT ABOUT POSITIONS.** Asked of positions it undocks a perfectly good pair mid-correction, because during a re-layout "where the members are" is exactly what is wrong; asked of the offsets and the live sizes it answers the thing it is for, which is a member that has grown or shrunk away from its neighbours. **A control leaving a group must re-read its own edge and gap** (`settle(false)`) or it keeps the group's, which for the member that was not at the group's edge means inheriting its neighbour's distance from the wall - and the two then settle on top of each other. A group of ONE is dissolved when a pair separates. **Undocking is a drag on an END, and the menu item is what a MIDDLE one has instead** (the first design had only the menu item, because with one grip moving all nothing could be dragged clear; the owner's end/middle rule replaced it).
+**AND NONE OF THIS IS VISIBLE HEADLESSLY.** Four faults survived a green suite of twenty gates and were found in ten minutes of driving the real app. In jsdom the mocked rect follows the store synchronously, so every "the DOM is one flush behind" fault is invisible by construction, and no mocked box has a fractional width. **`ResizeObserver` never fires in the browser pane either** - not even its initial callback - because delivery is part of the same rendering steps that suspend `requestAnimationFrame` ([[E7]]), so the detail-pane path has to be driven through the window `resize` listener there.
+
+### UI-C16 A POINTER CAPTURE ON A CONTAINER SILENTLY KILLS EVERY BUTTON INSIDE IT
+BUCKET: IMPLEMENTATION - a browser rule nobody remembers, whose symptom is "nothing happens" with a
+clean console, no error, no warning and a hit test that measures perfectly.
+WHERE: `components/SizeComparisonView.svelte` (`capture`, `onPointerDown`, `onPointerMove`); the
+same shape is available to any component that pans a surface with controls inside it.
+RULE: `setPointerCapture` RETARGETS the compatibility events, and `click` is one of them. While a
+container holds the capture, a click anywhere inside it is delivered to THE CONTAINER, not to the
+button under the finger. So capturing on `pointerdown` - the obvious place, and the place every
+example puts it - disables every control the container contains, for pointers, while leaving them
+perfectly visible, hoverable, focusable and keyboard-operable.
+CAPTURE AT THE SLOP THRESHOLD INSTEAD. Take the capture the moment the gesture is known to be a
+DRAG (travel past `TAP_SLOP_PX`), and for a two-finger gesture at once, since that is never a tap.
+Nothing is lost: the capture exists so a finger that slides OFF the surface keeps driving the pan,
+and until the slop threshold the pointer is still over it anyway.
+WHAT IT COST, and the shape is worth remembering. v3.0.304 fixed a reported fault - the size
+comparison could not be scrolled on a phone - by adding pointer events, a drag, a pinch AND the two
+stepper buttons the reporter had asked for by name. The capture it added on `pointerdown` killed
+those same steppers, the body hit areas and the hide menu in the same commit. Every unit gate stayed
+green, because the laws were right and it is the DELIVERY of the event that broke; the session had
+driven the view in a browser and read the layout back, but had not pressed anything. Recorded as
+[[B128]]. **The lesson under it is [[B124]]'s, one turn further on: a layout check is not an
+interaction check, and an interaction check is not a check of the OTHER interactions in reach.**
+THE TELL, if you ever meet the symptom again: put a capturing `click` listener on `document` and
+read `event.target`. If it is the container rather than the control, this is what you have.
+AND WHILE YOU ARE THERE, PICK AGAINST THE DATA. A surface that draws through a renderer should hit
+test the LAYOUT (`comparison/layout.ts` `slotAt`), not a stack of invisible DOM boxes: the boxes
+overlap, they decide by document order, and they cannot follow a filter's warp at all.
+
+### UI-C15 A RULE THAT WRITES A CONTROL'S STATE MUST EDGE ON THE CONTENT, NEVER RUN ON THE LEVEL
+BUCKET: PLATFORM (Svelte reactivity) + ARCHITECTURE - durable and general: a rule that both
+READS and WRITES a piece of UI state will undo the user, because their change is one of its own
+inputs. "Never move it against them" is two promises, not one.
+WHERE: `ui/sheetSnap.ts` (`contentKey`, `nextSnap`; pinned by `sheetSnap.spec.ts`), wired in
+`components/SystemView.svelte` via `lastSheetKey`. Same shape as `wasOpen` in
+`SettingsModal.svelte` and `lastSyncedBodyId` in `BodyStarTab.svelte`, and all three exist for
+this reason.
+RULE: hold the last CONTENT KEY and act only when it changes. Do not compare the wanted VALUE:
+two different bodies both want the same sheet height, so a value comparison reads a fresh
+request as "nothing changed" and leaves the user looking at a stale control. Compare what the
+thing IS, not what size it wants to be.
+WHY: A92, reported by the owner within a day of A84 shipping - *"Collapse does not collapse it
+all the way back to name tab"*. The phone sheet's promotion was guarded by a monotonic
+`promoteSnap` so it could never shrink under a GM. It also ran on every reactive pass, and
+`sheetSnap` was one of its own dependencies: the instant Collapse set `peek`, the rule ran
+again, saw a body still selected, and put it back to `half`. Measured at 375x812: Collapse
+left the sheet at 407 px and the tap cycle could not move it either - the control was inert.
+BLAST: any host-driven control state - a drawer, a rail, a zoom, a selected tab. The tell is a
+reactive statement whose assignment target also appears in its own dependency list. A guard
+that only limits DIRECTION (monotonic, clamped, min/max) does not fix it; only a guard on
+WHEN it fires does.
+
+### UI-C14 A DIALOG DECLARED INSIDE CHROME IS HIDDEN BY THE RULE THAT HIDES CHROME
+BUCKET: ARCHITECTURE - durable: a rule that hides a whole SUBTREE is unsafe the moment the thing
+it is protecting can be IN that subtree. The general form: any "hide X while Y" rule must be able
+to state that Y is never a descendant of X, or move Y where it cannot be.
+WHERE: `ui/foreground.ts` (`foreground` now re-parents its node to <body>; pinned by
+`foreground.spec.ts`) and `ui/foregroundContract.spec.ts`, which enforces registration across the
+tree. Joined by the one rule at the foot of `styles/tokens.css` (UI-C6).
+RULE: `use:foreground` PORTALS its element to `<body>`, and only ever when the element computes
+`position: fixed` - for a fixed box the move cannot change layout, because its geometry never
+depended on its parent. A dialog is a document-level thing wherever it is declared. Do not
+"fix" a case like this by gating the chrome rule on which modal is open: that is the list UI-C6
+rejected, wearing a new hat.
+WHY: A84. UI-C6 was built on the assumption - stated in `foreground.ts`'s own header - that
+modals are rendered OUTSIDE `<AppShell>` as siblings. True of the ones declared in `+page.svelte`;
+FALSE of any modal a panel opens for ITSELF. `AIExpansionModal` is rendered by `DescriptionEditor`,
+which on a phone lives inside the bottom sheet, so opening it set `data-foreground`, the rule put
+`display: none` on `.sse-chrome`, and the sheet took the modal down with it. MEASURED at 375x812:
+the backdrop computed `width: 100%; height: 100%` and its box was 0 x 0, with `.bottom-sheet`
+`display: none` three levels up. The owner reported it as "the LLM description screen is broken on
+mobile"; the transit planner's blocked-journey dialog had the identical fault.
+BLAST: **a portalled node is no longer where Svelte left it**, so the action removes it on destroy
+rather than trusting the framework to find it. A backdrop that relied on DOM event BUBBLING to an
+ancestor outside itself would stop working - none does; component events (`createEventDispatcher`)
+are unaffected. Scoped styles ride on the element's own hash class and travel with it. THIRTEEN
+backdrops were found never registering at all, which is why the contract is now a GATE and not a
+convention: a new full-viewport fixed layer is RED until it registers or is listed as not-a-dialog
+with a reason.
+
+### UI-C13 A SLIDER AND THE BAND PAINTED BEHIND IT ARE ONE AXIS, AND THE AXIS IS DATA
+BUCKET: IMPLEMENTATION - durable: two halves of one control must not each decide their own scale.
+The general form is the standing rule about a quantity correct for its purpose being published
+against a neighbour measured differently (A33, B27, B28) - here the neighbour is one pixel away.
+WHERE: `physics/starBounds.ts` (`STAR_BOUNDS[k].log`, `boundPos`, `boundValue`, `bandPct`; pinned
+by `starBounds.spec.ts`), consumed by `components/BodyStarTab.svelte` - the slider input and
+`getRangePct` now read the SAME `log` flag off the same record.
+RULE: where a control draws a typical-for-class band behind its track, the band and the thumb take
+their mapping from ONE declaration. Never a `Math.log` in the band code beside a `min=`/`max=` on
+the input: those are two independent decisions about one axis, and nothing in a build, a type or a
+test can notice when they disagree.
+WHY: A85, found by the A83 extraction rather than by anybody looking. The star editor drew the
+rotation band on a LOG axis over 0.1..10,000 h while the slider under it was `min="0.1"
+max="10000"` - LINEAR. A G star states 24..1,000 h: the band start painted at 48% of the track
+while the thumb for 24 h sat at 0.24%. The GM saw a green stripe in the middle of a slider whose
+matching value was jammed against the left stop, on every star, for as long as the control has
+existed. **This is the argument for the scattered-constant rule stated as a measurement:** the two
+numbers were 770 lines apart and identical (`0.1` and `10000` both times), so reading either one
+told you nothing was wrong. Putting them in one table made it a one-line question.
+BLAST: the fix moved the SLIDER, not the band - five decades cannot go on a linear track, and on
+one every period under a hundred hours (most stars, every pulsar) is unreachable. The rotation
+input is a 0..1 position now like its five neighbours, with `rotationHours` still legitimately
+`undefined` for an unset spin (B9a) and the thumb parked at the track midpoint when it is. Any new
+slider in this editor gets a `STAR_BOUNDS` record rather than a fresh pair of consts.
+
 ### UI-C12 A PLAYER EITHER STEERS THE CLOCK OR IS TOLD WHOSE CLOCK IT IS — NEVER NEITHER, NEVER BOTH
 BUCKET: ARCHITECTURE (product contract) + DOMAIN - the domain enables the product: a body's position
 is CLOSED-FORM IN TIME, so a scrubbing reader draws every world correctly and a free clock is
@@ -3836,6 +4006,63 @@ WHY: G34. Built against the A43 scar (DATA-R19): convert-vs-relabel must be expl
 choice that touched stored numbers would silently corrupt every campaign it loaded. The migration
 takes two conscious losses, recorded on the G34 row: an explicitly-`C` map now shows stars in K,
 and an imperial map's sub-threshold PLANET orbit reads km via 'auto' rather than miles.
+RULE (amended A80, v3.0.203 - THE 'auto' STOP IS A RULE, NOT A UNIT, AND WHICH RULE IS THE
+QUANTITY'S OWN DATA): `UNIT_QUANTITIES[q].autoRule` names it, `resolveAutoUnit(unit, si, q)` takes
+the quantity because of that, and there are exactly TWO rules which must never be folded together.
+`orbit-threshold` is the pinned ORBIT_KM_BELOW_AU choice; `ladder` walks the quantity's own metric
+stops for the one nearest a human-scale reading (1 to 1,000), preferring the SMALLER stop on a tie
+so an authored figure stays in the unit it was typed in until it actually overflows.
+FOUR THINGS THAT ARE NOT OBVIOUS AND EACH COST SOMETHING TO FIND:
+ 1. IAPETUS, NOT LUNA, IS WHERE THE TWO RULES DISAGREE. At 0.0238 AU the ladder walk prefers AU
+    while the threshold holds it in km - and "keeps every one of Sol's major moons in km" is a
+    promise the threshold makes out loud. Luna (0.00257 AU) lands on km under BOTH, by half a
+    percent, so a fold checked against Luna alone looks harmless. The gate uses Iapetus.
+ 2. THE WALK IS NEAREST-WINDOW, NOT "the largest stop still at or above 1". The tonnage ladder tops
+    out at Gt (1e12 kg) and the next stop is M-Earth (5.97e24 kg), TWELVE DECADES on. A Dyson shell
+    at 1e23 kg is over every tonnage stop, so "largest stop still >= 1" prints 1e11 Gt. Nearest-
+    window reaches across the gap and reads 0.01674 M-Earth, which is the comparison A80 asked for.
+    Any ladder with a gap wider than three decades has this property; do not add stops to close it.
+ 3. AN AUTO STOP CHOOSES DECIMALS; IT NEVER ROUNDS INTEGER DIGITS. Rounding to significant figures
+    instead turned every planetary orbit from "1.000 AU" into "1 AU" and a barycentre member from
+    "7,465,000 km" into "7,400,000 km". Show enough decimals to reach SIG_FIGS, never fewer than the
+    stop's own DEFAULT_DECIMALS asks (AU keeps its three), and let unneeded trailing zeros simply
+    not appear. Integer digits are real digits; FIXED_NOTATION_MAX handles the fake ones.
+ 5. A GROUP SHARES A RUNG AND THE MIDDLE OF IT PICKS THAT RUNG - but only on a READOUT. Several
+    readings of one quantity (a hull's three axes, a current/max pair) go through `groupRefValue`,
+    which takes the GEOMETRIC MEAN of the non-zero magnitudes: the middle on a LOG scale, which is
+    the scale a ladder works on. Taking the LARGEST instead keeps the headline figure clean and
+    pushes everything smaller off scale with it - a 3 km tether 20 m thick then reads
+    "3 x 0.02 x 0.02 km" rather than "3,000 x 20 x 20 m", and a 5 t load in a 5,000 t hold reads
+    "0.005 / 5 kt". A group is only worth sharing a unit if EVERY member of it stays readable.
+    THE EDIT SIDE IS THE OPPOSITE AND MUST STAY SO: `UnitInput` resolves auto from ITS OWN value,
+    never from the group, because a 3e11 m spine 73 m thick would otherwise put its short axes at
+    "4.879e-10 AU", which is not a number anyone can type into a box. Two jobs, two answers.
+    BOTH of these were found by USING the thing, not by reasoning about it: the shared-rung editor
+    and the largest-picks-it readout each passed every unit test and each looked wrong on screen
+    within a minute. `ConstructBasicsTab.spec.ts` and `ConstructDerivedSpecs.spec.ts` now pin the
+    difference so a tidy-up cannot quietly unify them.
+ 4. AN AUTO WALK STAYS METRIC. km and mi are the SAME magnitude in two systems, so a walk allowed to
+    choose between them hands a metric GM miles for a 6,371 km radius purely because 3,959 sits
+    nearer 1,000. `IMPERIAL_STOPS` excludes them; an imperial GM pins the stop, which is the shape
+    the orbit rule always had.
+SIGNIFICANT FIGURES LIVE IN `formatUnitNum` AND NOWHERE ELSE. A per-tile `Math.round(t)
+.toLocaleString()` is the A80 fault verbatim: a kg->t division leaves float dust in the low digits
+and toLocaleString prints every spurious one as if it had been measured
+("100,000,000,000,000,010,000 t"). Three rules, one function: SIG_FIG_STOPS (relative and prefixed
+stops) print significant figures, an auto-chosen stop prints SIG_FIGS of them, and NOTHING is
+printed in fixed notation above FIXED_NOTATION_MAX (1e15) because a double cannot carry those
+digits. SIG_FIGS is 4 because that is what the shipped relative-mass rule already used
+(`toPrecision(4)`, pinned as "317.8" and "1.000"), not a fresh choice.
+WHERE (A80 additions): quantities `dimensions` (a construct hull, m/km/AU - kept OFF `radius` so a
+body radius never cycles into metres or AU and so the construct ORBIT-radius edit field keeps a
+concrete stop), `volume` (m3/km3) and `power` (MW/GW/TW/L-Sol); `mass` gained the tonnage rungs
+kt/Mt/Gt and an auto stop, and `mass:construct` now DEFAULTS to auto rather than 't'. Body defaults
+are untouched and `units.spec.ts` pins their rendered strings so drift is caught rather than
+eyeballed - that pin is what caught fault 3 above, one commit after it was written.
+NOTE FOR G53 BEFORE ANYTHING IS WIRED TO THE POWER LADDER: `megaTypes.ts` publishes
+`powerHarvestedLstarFrac`, a fraction of the HOST STAR's output. It is not watts and it is not a
+fraction of L-Sol. It must be multiplied by that host's luminosity (`luminosityWattsFromRT`, the one
+B110 unified) before it can be shown, or a K-dwarf's harvest reads as the Sun's.
 BLAST: the interstellar MAP unit (DATA-R19, `map/distanceUnits.ts`) is a different concept - never
 fold these ladders into it. A new quantity key goes in `UNIT_QUANTITIES`, never as cycle logic in a
 component. Anything that builds a snapshot or bundle must keep carrying `unitPrefs` - it rides the
@@ -4233,8 +4460,9 @@ copies, and the one that must not be recomputed is the one a drawn boundary and 
 `physics/stability.ts:hillRadiusAU` uses `a*(1-e)*cbrt(m/3M)` — PERIAPSIS, the host's weakest grip,
 which is what a "is this orbit safely inside" verdict should be judged at. `physics/twoBodyCoast.ts`
 (`hillCandidates`, both wrappers) uses `a*cbrt(mu/3hostMu)` — SEMI-MAJOR AXIS, no eccentricity term.
-Three further copies exist (`orbits.ts:425` SOI, `import/ubox/hierarchy.ts:79`, and the mutual-Hill
-pair form in `infill.ts:70` / `placement-strategy.ts:151`, which is a different quantity).
+Two further copies exist (`orbits.ts:425` SOI, and the mutual-Hill pair form in `infill.ts:70` /
+`placement-strategy.ts:151`, which is a different quantity); the ubox importer's copy was deleted at
+v3.0.288 (B114) - `import/ubox/hierarchy.ts` now reads `hillRadiusAU`, against the ACTUAL host's mass.
 HOLDS because the two never had to agree: the periapsis form only ever produced verdicts and the
 semi-major form only ever produced drawings, and on the circular orbits most bundled pairs have they
 are the same number. Pluto-Charon at e=0.249 is where they part — 4.0e-2 AU judged, 5.3e-2 AU drawn.
@@ -4346,6 +4574,33 @@ gravity-assist family is EXCLUDED from those assertions and is a separate known 
 it publishes `arrivalVelocity_ms = 0` with no Flyby warning while arriving km/s fast, on ordinary
 destinations too.
 
+### LGR-4 AN ADD AT AN OCCUPIED L-POINT IS A COMPANION OF THE RIDER, NEVER A SECOND RIDER
+BUCKET: ARCHITECTURE + DOMAIN - architecture: when a position is fully DERIVED, a second record
+with the same derivation inputs is not a second object at a place, it is the same place twice - the
+degeneracy is invisible precisely because the derivation is correct. Domain: two bodies sharing one
+L-point are a BINARY AT the point, which is a pair riding it (PHY-32), not two riders.
+WHERE: `physics/lagrange.placeBodyAtCoOrbitalPoint` (the decision), consumed by
+`SystemView.placeBodyOfType` (the trojan branch); the gate is `coOrbitalCompanion.spec.ts`.
+RULE: before stamping a `coOrbital` marker for a new BODY, ask the decision. An empty point takes a
+rider; an occupied one takes a companion OF the rider - parented to it, orbiting at a quarter of
+its Hill radius, carrying NO marker - and the reconciler does the rest (comparable mass promotes
+into a pair whose barycentre rides the point; a small body stays the trojan's moon). A pair already
+at the point IS the rider (its barycentre carries the marker), so a third body joins the pair.
+Constructs at the point are not riders: massless chrome binds nothing, and a body parented to one
+inherits the massless-stationary trap (DATA-R29 BLAST).
+WHY: [[B111]] third part, root-caused by the owner: he placed a second trojan inside an existing
+trojan's Hill sphere and got a second marker instead - which LGR-1 derives onto the SAME ellipse at
+the SAME phase and epoch, exactly on top of the first (measured under 1e-12 AU apart at every
+sample), while both stayed children of the STAR so no mass ratio ever compared them and the
+barycentre he was building could not form by any amount of fiddling. His clicked position also
+never existed in the data flow (the L-zone hit carries only `{secondaryId, point}`), and a rider's
+own position is derived (LGR-2), so a rider has nowhere for an offset to live - the companion's
+separation is where the GM's intent goes, and the pair-distance control makes it theirs afterwards.
+BLAST: old saves can hold several riders on one point; the decision picks the HEAVIEST as the
+companion's host rather than healing the stack - repairing authored data is the steer-do-not-stop
+line and nothing here crosses it. The picker caption reads the marker for its "with X (L4)" clause
+and falls back to the PARENT's marker for a pair member, because PHY-32 strips markers off members.
+
 ### PHY-29 Hill spheres are asked TWO questions, and the answers must stay different
 BUCKET: DOMAIN + ARCHITECTURE - domain: 'what bounds this body's gravity' and 'where does the
 propagator switch frames' are different questions with different floors. Architecture: two answers
@@ -4409,6 +4664,12 @@ was missing: a node that is a MEMBER of a barycentre never carries `coOrbital` -
 `deriveCoOrbitalOrbits` strips the marker off any member it finds one on. On promotion the marker
 moves UP from the primary to the new barycentre, because the barycentre has already taken the
 primary's orbit and host. The members then simply orbit the barycentre and nothing touches them.
+**AMENDED at v3.0.183 (B111): MEMBERSHIP MOVES UP TOO, and it is the same sentence.** If the primary
+was itself a MEMBER of an outer barycentre, that barycentre's `memberIds` must now name the new pair,
+for the identical reason the marker does - the pair has taken the primary's place. This was the one
+item missing from the list and it cost the second half of B111: an outer pair went on naming a star
+that had become half of an inner one, so its `effectiveMassKg` was short by a whole star and it was
+1811x out of balance. `resyncStaleMembership` is the heal for files already saved that way.
 WHY: [[B98]]. With the marker on a member, `reconcileBarycenters` (SystemProcessor:179) promoted the
 pair and re-homed both members; `deriveCoOrbitalOrbits` (:189) then rewrote the member's `parentId`
 back to the secondary's host, tearing the pair apart; and the next pass rebuilt it from the wreckage.
@@ -4425,6 +4686,114 @@ so a trio one body would survive can fail once doubled), plus the criterion only
 separation against the Hill radius it has at the point, on the same 0.3/0.4/0.5 sep/Hill bands the
 binary-tightness test uses. That fate is deliberately NOT directional (contrast B19): when a point
 stops holding a pair, BOTH members leave, and there is no lighter one being thrown by a heavier one.
+
+### PHY-35 A PROMOTE/DEMOTE PAIR IS A HYSTERESIS BAND, AND INVERTING IT FAILS SILENTLY
+BUCKET: ARCHITECTURE - a threshold PAIR has an ordering invariant, and the moment the numbers become
+data a human can invert them. Guarantee the ordering AT THE READ, where it cannot be skipped, never
+by documenting it at the write.
+WHERE: `physics/barycenterReconcile.pairThresholds` (the reader and the clamp),
+`generation_parameters.barycentre_promote_ratio` / `barycentre_demote_ratio` in the pack.
+RULE: whatever reads a promote/demote pair returns them already ordered, with demote STRICTLY below
+promote, and falls back to the defaults for anything absent, non-finite or outside (0, 1]. A pack
+that inverts them is honoured on the promote figure and has its demote pulled one double under it.
+WHY: [[B111]]'s third part made the 8%/5% double-planet thresholds tunable, which is right - there
+is no physical discontinuity at any mass ratio, and where the line sits is a GM's judgement. But a
+tunable pair can be inverted, and THE FAILURE MODE IS NOT THE OBVIOUS ONE. It does not oscillate
+visibly: promotion and demotion both fire on the same pair in the same pass, the reconciler burns
+its whole eight-iteration budget flipping it, and because that budget is EVEN the state that
+survives is always the demoted one. Measured with a probe, not assumed. So an inverted pack makes
+the promote threshold do NOTHING - no pair forms however massive the companion - and every
+structural assertion still passes. A guard at the read is one line; finding this on a GM's map is
+not.
+BLAST: the same shape wherever a pair of thresholds is extracted to data next. The general form is
+that the ORDERING is part of the contract, so it belongs in the reader's return type rather than in
+a comment above the numbers. `pairThresholds.spec.ts` pins the defaults unchanged (a companion
+crossing 8% still promotes, crossing back below 5% still demotes) beside the proof that a pack can
+genuinely move them - the two halves of a move-it-without-changing-it commit.
+
+### PHY-34 HOW BRIGHT A STAR IS HAS ONE ANSWER, AND THE GATE THAT PROVES IT NEEDS AN ABSOLUTE ANCHOR
+BUCKET: DOMAIN + ARCHITECTURE - domain: a star's output is one quantity that reaches the engine in
+two unit conventions, and INTRINSIC output is not what a body RECEIVES. Architecture: two correct
+implementations of one law are still a fault, and an equivalence gate that compares two things
+through the SAME function cannot see a factor applied to that function.
+WHERE: `physics/luminosity.ts` (`luminositySolarFromRT` is the primitive, `luminosityWattsFromRT` is
+derived from it, `SOLAR_TEFF_K` and `SOLAR_LUMINOSITY_W` are the only definitions); its callers in
+`physics/zones.ts`, `physics/temperature.ts`, `physics/starPlausibility.ts`, `generation/star.ts`,
+`BodyStarTab.svelte`, `BodyTechnicalDetails.svelte`, `physics/substellar.ts`,
+`physics/stellarOutflows.ts`. The gate is `physics/luminosityUnification.spec.ts`.
+RULE: nothing computes `R^2 T^4` for a star anywhere else. The WATTS form is DERIVED from the solar
+form by one multiplication, not computed again, so a factor applied to the primitive - occlusion by a
+Dyson swarm, a dust lane, an eclipse - reaches every consumer or none. When occlusion arrives it is a
+SECOND quantity beside this one (what a body RECEIVES) derived FROM it, never a second R^2 T^4 with a
+coefficient bolted on.
+WHY: [[B110]]. The sweep found EIGHT sites in three unit conventions, two of them with a bare 5778
+rather than a named constant, where the row that raised it had named two. They all agreed, which was
+never the question - the standing rule asks whether they COULD answer the same question differently,
+and the answer became yes the moment anything dims a star: a world dimmed for its habitable zone and
+not for its temperature, silently and incoherently.
+BLAST: THE FIRST VERSION OF THE GATE PASSED WITH THE BUG FULLY PRESENT, and this is the reusable
+lesson. Dimming `zones.getLuminosity` alone - precisely the reported hazard - left every equivalence
+assertion GREEN, because each compared one star against another THROUGH THE SAME FUNCTION and a
+common factor cancels. Catching it needed an ABSOLUTE anchor the two subsystems reach from opposite
+directions: the runaway-greenhouse edge is a TEMPERATURE (285.904693697 K for a Sun-like star,
+273.413778070 K at 3200 K, 296.124004421 K at 7000 K), identical whatever the star's SIZE, because
+the luminosity cancels between the zone's distance and the flux at it - and it only cancels while
+both sides use one luminosity. Any ratio test between two stars is blind to a constant divergence.
+BLAST: BIT-FOR-BIT WAS NOT ACHIEVABLE AND THAT IS A FACT ABOUT THE INPUTS, not a shortcut. The two
+conventions were `(R/Rs)^2 (T/Ts)^4` and `4 pi R^2 sigma T^4` over the same for the Sun - the same
+algebra, different roundings, so no single implementation can be bit-equal to both. The ratio form
+won (no constants, no 1e26 intermediate, exactly 1.0 for the Sun by construction) and the cost is
+MEASURED at 5.9e-16 relative worst case over a sweep from an O5 to a Y dwarf, under three units in
+the last place, against the 1e-12 `SystemProcessor.settled` already calls "not a change". Every
+PUBLISHED figure is pinned unchanged to twelve significant figures.
+BLAST: THE ENGINE STILL HOLDS FOUR OPINIONS ABOUT HOW BRIGHT THE SUN IS, and they differ by 0.6%,
+which is a VALUE change and deliberately not in that commit: `luminosity.SOLAR_LUMINOSITY_W` derives
+3.851e26 W from this engine's own R and 5778 K; `stellar-evolution.ts` carried `3.828e26` (the IAU
+nominal, which corresponds to 5769.35 K - it was DEAD and is deleted); `BodyStarTab.svelte:595` has
+`3.828e26` live, for the black-hole accretion disc; `import/ubox/convert.ts:16` has `3.846e26`. The
+same file also keeps `SB_SIGMA = 5.670374e-8`, a truncated copy of the exact SI constant. Unifying
+those MOVES NUMBERS, so it wants its own commit and its own gate.
+
+### PHY-33 A STORED PHASE IS MEANINGLESS WITHOUT ITS EPOCH, AND A PAIR HAS ONE OF EACH
+BUCKET: DOMAIN + ARCHITECTURE - domain: `M(t) = M0 + n*(t - t0)`, so `M0` and `t0` are ONE FACT and
+moving either alone moves the body. Architecture: when a derived relationship has a single owner,
+that owner must write EVERY field the relationship is made of - a field left out is not "kept", it is
+owned by nobody. Read beside DATA-R29, which states the same rule for ships.
+WHERE: `physics/orbits.rephasedM0` + `orbitMeanMotion` (the helper and the one authority on `n`);
+`SystemProcessor.processBarycenters` (the pair's single owner); `physics/barycenterReconcile`
+`promoteMassiveCompanion` and `swapDominantChild` (both re-stamp an epoch).
+RULE: anything that changes an EXISTING orbit's `t0` must recompute `M0` through `rephasedM0`, or it
+teleports the body by `n*dt` while every element still reads correctly. The one exception is a
+relationship's single owner CHOOSING a phase rather than keeping one: the barycentre coupling pass
+writes `t0` and `M0_rad` together onto both members from the reference, because putting them opposite
+each other is the whole job. A pair therefore has ONE epoch, ONE mean anomaly, ONE mean motion and
+opposed arguments of periapsis - and a promotion must hand out all four, not leave three to a later
+pass.
+WHY: [[B111]], reported as *"they are not at the right point on their orbital paths... they rotate at
+the same time and not AROUND each other"*. The coupling pass had owned every element of the relative
+orbit for a year EXCEPT `t0`, and `promoteMassiveCompanion` gave the heavy member the HOST-TRACK
+epoch while the light one kept its own. Same `M0`, different `t0`, identical `n`: a FIXED 240.7-degree
+error, constant rather than drifting, which is exactly why it looked like two stars turning in step
+instead of around each other. Measured on the reporter's file at 49.9 / 30.6 / 132.1 / 121.9 degrees
+across one period where 180 is the only correct answer; 180.000 at every sample after.
+BLAST: `n` has ONE reader-facing authority, `orbitMeanMotion`, and it RESPECTS a stored
+`n_rad_per_s` rather than recomputing `sqrt(mu/a^3)` - LGR-1's l1/l2 points scale `hostMu` on
+purpose, so recomputing would silently be the wrong number there, and a binary member's `n` is the
+pair's relative motion rather than anything derivable from its own semi-major axis. A `t0` that is
+not a wall clock is normal: these are campaign-clock milliseconds (the reporter's file sits at
+2.75e13, about 873 years in), so never sanity-check an epoch against `Date.now()`.
+BLAST: the fix is INVISIBLE through `process()` for the promotion half - the coupling pass repairs
+the epoch later in the same call - so a gate on the promotion must call `reconcileBarycenters`
+directly. `pairPhase.spec.ts` does, and every gate in it was run with its fix removed and seen red.
+BLAST: STILL TWO CONVENTIONS FOR ONE GEOMETRY, reported rather than fixed. `promoteMassiveCompanion`
+offsets the second member's `M0` by pi; `processBarycenters` gives both the SAME `M0` and flips
+`omega` by 180, and its own comment explains why the pi offset only lines up a CIRCULAR pair. The
+coupling pass overwrites the promotion within the same `process()`, so nothing is wrong today - this
+is the [[B110]] test, not the duplication test: could these two answer the same question differently.
+They already do, for e > 0, and anyone reading `reconcileBarycenters` alone gets the wrong answer.
+Unifying them means deciding where a promoted pair's SHAPE comes from, which today is the primary's
+orbit around the STAR (`hostTrackOrbit.elements`) rather than the pair's own relative orbit - a
+separate and larger question, because changing it moves bodies in existing maps.
 
 ### PHY-30 A barycentre PUBLISHES its circumbinary annulus; nothing may re-derive either edge
 BUCKET: DOMAIN + ARCHITECTURE - domain: a P-type body lives in an ANNULUS with two real edges, and
@@ -5000,3 +5369,1633 @@ much weaker than it sounds. **Nobody has yet LOOKED at a 4.4 px hull**; if it do
 BLAST: `pixelFloor.spec.ts` pins the BODY clamp bit-for-bit against the old closure arithmetic - the
 extraction had to be behaviour-identical there - while asserting the construct floors as the thing
 that deliberately moved.
+
+### DATA-R32 A SAVE CARRIES WHAT THE GM MADE, NEVER WHAT THE APP SHIPS
+BUCKET: ARCHITECTURE (file format) - a file must be able to describe itself to a reader who does not
+have this repo. Serialising the app's own library as though the GM authored it is a CORRECTNESS bug,
+not a size one.
+WHERE: `io/shippedDefaults.ts` (`canonicalJson`, `sameAsShipped`, `shippedDelta` - the one test for
+"did we ship this?"), `io/saveRegistries.ts` (`registriesForStarmap`, what a save carries beside the
+campaign, called by BOTH export paths), `constructs/coi.ts` (`coiForStarmap`),
+`physics/reasonsToVisit.ts` (`reasonsConfigForStarmap`), `temporal/defaults.ts`
+(`temporalForExport`, `applyTemporalRegistryConfig`), `system/importFixup.ts`
+(`stripStarmapForExport` applies the temporal strip so neither save path can forget it). Gated by
+`io/saveShape.spec.ts` against `tests/fixtures/b112-pre-delta-starmap.json`.
+RULE: an entry identical to what this build ships is NOT the GM's and does not go in the file; an
+entry that is new, or that DIFFERS in any way, is written in full. An empty container is not a
+statement - omit the key and let absence mean absence. The load path already merges the shipped set
+back in (`ensureTemporalState`, `mergeStarmapCoIs`, `applyStarmapReasonsConfig` all fold into an
+already-seeded store), which is what makes this a SERIALISATION change and not a data-model one.
+APPLY IT FROM DAY ONE to the registries that do not exist yet - gases, liquids, fuels, engines,
+reactions, atmosphere mixes (hub R-11). Getting it right at the start costs nothing; retrofitting it
+means every consumer needs a baseline list of this repo's static files.
+WHY: [[B112]], found by the Creator Hub 2026-08-28 while deriving facets from real saves. Every real
+starmap carried the four shipped calendars, the nine shipped tag categories and the enabled-state of
+all of them, so a facet counting CUSTOM calendars fired on every map ever made. Nothing reading a
+save could tell "this campaign uses a custom reckoning" from "this campaign was saved by Star System
+Explorer". NOT a size item and the hub measured it so nobody re-argues: shipped defaults are under 4%
+of a 327 KB save, while 45% is the pretty-printing that buys the hand-editable, diffable file
+`io/bundle.ts` deliberately set out to produce. Never sell this as a size win; it is not one.
+THREE THINGS THAT ARE NOT OBVIOUS, each measured rather than reasoned:
+ 1. THE BASELINE IS "WHAT AN UNTOUCHED APP WOULD SERIALISE", NOT THE DEFAULTS CONSTANT. Three of the
+    nine shipped CoI categories fail a naive deep-equal against their own definitions - the store
+    drops `single: false` and re-orders keys inside a tag on the way through. Comparing against
+    `DEFAULT_COI_CATEGORIES` would have marked those three as GM-authored and written them to every
+    save, leaving the fix two-thirds effective and silently so. `pristineTagCategories()` runs the
+    defaults through the SAME pipeline the live store came through. It is deliberately NOT the live
+    store: `loadCategories` reads localStorage first, so on a GM's machine the store starts from
+    THEIR edits and every edit would be its own baseline.
+ 2. COMPARE VALUES, NOT TEXT. The plain .json save is the file "GMs hand-edit, diff and swap art in",
+    so a save that has been through an editor or a formatter is an ORDINARY input and its keys may
+    be in any order. Compared as text, a shipped calendar with reordered keys is a calendar the GM
+    wrote, and the app writes its whole library back on the next save.
+ 3. A DELTA CANNOT KNOW WHAT AN OLDER BUILD SHIPPED. Re-saving a pre-B112 file may carry forward a
+    switch nobody moved, because this build ships `intrigue` disabled and the old file has it on.
+    That errs towards KEEPING the GM's data rather than dropping it, which is the right way to be
+    wrong, and it affects only the first re-save of an old file.
+THE CONSCIOUS COST, stated because it is the real trade: an unmodified shipped entry is no longer in
+the file, so if a later version CHANGES one, campaigns follow the new definition, and if a later
+version REMOVES one, a campaign using it unmodified loses it (`resolveActiveCalendarKey` already
+falls back rather than dangling). Same bargain `unitPrefs` takes in DATA-R20 - sparse, validated on
+read, defaults filled in - and the case that matters, an entry the GM EDITED, is written in full.
+BLAST: `BUNDLE_FORMAT` IS DELIBERATELY NOT BUMPED, and the reasoning is the point. The contract says
+bump on a breaking LAYOUT change, and instructs a reader meeting a higher number to REFUSE. This
+changes no layout: same keys, same shapes, fewer entries, and a format-1 parser reads a delta file
+correctly - the hub's own baseline subtraction still yields the right answer, it simply becomes a
+no-op it can delete at leisure. Bumping would strand every new bundle against a hub pinned at 1 for
+no reader benefit. A plain .json carries no `bundleFormat` at all (only `packBundle` stamps it), so
+a reader wanting to know whether a JSON save is delta-shaped keys on `appVersion` - a one-time
+constant, unlike a list of calendar names that must track this repo forever. **THAT LAST SENTENCE IS
+NOW ANSWERED BY DATA-R41:** the list a reader would otherwise have to track is PUBLISHED, generated
+and pinned, at `/shipped-content.json`.
+
+### DATA-R31 ONE MODULE DECIDES WHETHER A NODE WEARS CONSTRUCT CHROME
+BUCKET: ARCHITECTURE - a convention that will exist at 150+ sites gets ONE predicate BEFORE the
+first divergent copy, not after the fifth (the G43 lesson, five rival L-point conventions).
+WHERE: `src/lib/constructs/chrome.ts` (`showsAsConstruct`, `isArtificial`); the flags
+`constructChrome` / `artificial` on `CelestialBody` (types.ts, beside `kind`).
+RULE: the two flags are ORTHOGONAL and neither may be inferred from the other: `constructChrome`
+governs the VIEW (present as a place - glyph, dock, construct lists), `artificial` governs the
+PHYSICS chain (composition DECLARED, never derived). New view code calls `showsAsConstruct()`;
+never test `kind === 'construct'` or the raw flags in new code. Existing sites migrate AS TOUCHED,
+deliberately - a chrome site not yet migrated shows a hybrid as a sphere in a body list, which is
+visibly wrong and gets fixed; re-pointing all 154 in one sweep is the risky move.
+WHY: G53's hybrid (mega-constructs, later asteroids-as-places) is `kind: 'body'` so the 209 physics
+gates work unedited; the chrome is what gets taught. An asteroid-as-place is natural AND wants
+chrome, which is why one flag cannot serve both facts - conflating them was a real error in an
+earlier design draft.
+BLAST: any new `kind === 'construct'` test in view code forks the convention. Phase 5 (the kind
+flip) relies on every site touched between now and then having migrated.
+
+### UI-B2 MEGA PLACEMENT: HARD GREYS ON RELEVANCE, STEER EXPLAINS AND CANNOT REFUSE
+BUCKET: ARCHITECTURE (product contract) - the owner's own correction to a draft that misapplied
+steer-do-not-stop: not offering a NONSENSE option is not refusing a creative choice.
+WHERE: `constructs/megaPlacement.ts` (`megaHardCheck` / `megaSteerNotes`); `requires` on pack mega
+templates and registry records (`constructs/megaTypes.ts`); clause interfaces in types.ts.
+RULE: the test for which side a clause goes: does the placement have a HOST FEATURE the object
+attaches to or depends on - a surface, a star to circle, a real geostationary? Feature ABSENT =
+relevance = `hard` = greyed, final, with a sentence naming the host. Feature present but the
+numbers are bad = plausibility = `steer` = a tag plus a sentence with the numbers in it, and the
+placement proceeds. `megaSteerNotes` returns notes; its type cannot say no. `inHabitableZone` is
+ALWAYS steer - the evaluator DEMOTES it if a pack promotes it to hard, because the goldilocks zone
+is a recommendation and no pack file may turn it into a wall. An unknown clause PASSES with a
+warning: greying on a rule this build cannot state refuses for a reason nobody can read.
+WHY: "i cant have a space elevator as an option in deep space - only relevant on a planet. You cant
+put a death star on a planet. That simple." (owner, 2026-08-28) - versus the standing rule that a
+physics criterion tags and explains and never refuses an authored choice. Both are true; the split
+is where they meet.
+BLAST: adding a placement rule as a modal branch instead of a `requires` clause; putting any
+numbers-are-bad test in `hard`; any code path that blocks creation off the back of a steer note.
+
+### RENDER-S44 A MEGA IS CENTRED ON ITS HOST, AND ITS DRAWN RADIUS IS ITS OWN ORBIT
+BUCKET: ARCHITECTURE - a structure that SURROUNDS its host is positioned and sized differently from
+one that orbits it, and getting that wrong draws a ringworld as a lump beside its star.
+WHERE: `holo/scene.ts` - `attachMegaVolume` (sets `megaCentred`), the `megaCentred` branches in
+`updateConstructs`; `constructs/megaGeometry.ts`.
+RULE: a sphere-section mega (ring, torus, shell, swarm) is drawn AT ITS HOST'S POSITION, and its
+drawn radius is `b.mesh.position.distanceTo(hostV.mesh.position)` - the distance between its own
+projected position and its host's, which IS its orbit's drawn radius. Take it from there rather
+than re-projecting `a_AU`: the ring and its own orbit line then cannot disagree at any compression
+or dial position, because there is only one projection. Geometry is built at radius 0.5, so the
+scale is twice that distance.
+WHY: the first cut drew the geometry at the NODE's position (as every construct is drawn) and sized
+it by `shipLenScene`, which put a Dyson sphere out at 14 AU as a purple ball beside Sol instead of
+around it. The centring was identified while measuring phase 2's extent question and not carried
+into phase 3 - the two halves of one fact, landed a version apart.
+BLAST: a TETHER is the opposite case and must NOT be centred - it is stood up on its anchor by
+`updateSurfaceConstructs` and is exempt from the surface-construct model suppression, because a
+beanstalk's whole point is that it leaves the ground. Inclined orbits are NOT yet oriented: a ring
+currently lies in the ground plane whatever its inclination.
+
+### RENDER-S45 `bodyById` IS EMPTY WHILE THE BODIES ARE BEING BUILT
+BUCKET: IMPLEMENTATION - a lookup map rebuilt AFTER the loop that fills it answers every question
+asked during that loop with `undefined`, silently and plausibly.
+WHERE: `holo/scene.ts` `setSystemBuild` - `bodyById = new Map(bodies.map(...))` runs after the node
+loop; `nodesById` by contrast is built BEFORE it and is safe.
+RULE: inside the build loop, ask `nodesById` (nodes) or call the scale law directly. Never ask
+`bodyById` for a peer's visual - the map you get is the previous build's, cleared to empty.
+WHY: the space elevator asked `bodyById` for its host's `radiusScene` to place geostationary and
+always got `undefined`, so every tether was built against a host radius of ZERO - a zero-length
+ribbon at the planet's centre. It looked like a missing feature rather than a lookup that was
+merely early, which is what makes this worth an entry.
+BLAST: anything new in the attach loop that needs a peer's RENDERED size. The host's own radius is
+available as `bodyRadiusScene(node, systemLevel)`, which is the same answer its visual will get a
+moment later.
+CORRECTION (2026-08-30): "ask `nodesById`" holds only for code textually INSIDE the build - the
+map is a LOCAL of setSystem, not module state. A helper function defined beside the loop cannot
+see it at all, and following this entry's advice from one was the drawn-as-a-blob fault
+(RENDER-S46): thread what a helper needs as a PARAMETER.
+
+### PHY-36 A STAR'S LIGHT IS DIMMED IN ONE PLACE, FROM AUTHORED DATA, TIME-FREE
+BUCKET: ARCHITECTURE (the transmission convention) + DOMAIN (the band time-share result).
+WHERE: `physics/starlightOcclusion.ts` (the ONE place who-shades-whom is computed);
+`physics/luminosity.ts` `receivedLuminosityWatts` (the received form, derived from the intrinsic
+primitive); wired in `physics/temperature.ts` (both equilibrium functions and
+`deriveStarlightDimming`, which stamps `body.starlightDimming` for the trace). Gated by
+`starlightOcclusion.spec.ts` (absolute 233 K anchor per PHY-34, seen red first).
+RULE: anything asking "how much light lands HERE" multiplies the intrinsic luminosity by
+`starlightTransmission`, never its own factor - B110's fork warning, now with the received side
+built. The factor derives FRESH each pass from authored data alone (megaType + the instance's real
+orbit + registry defaults), never accumulated, so no pass ordering exists to get wrong. The three
+§6 rules: an occluder never dims itself; radially inside is undimmed; outside is dimmed by the
+fraction - isotropically for a shell/whole-sky swarm (longitude coverage time-averages because the
+strip orbits), but a BAND dims only what aligns with its plane. The alignment test is TIME-FREE to
+match the a_AU distance convention: an orbit inclined i to a band reaching latitude +/-w is
+shadowed for (2/pi)*asin(sin w / sin i) of its period (1 when i <= w), and the temperature RANGE
+takes the envelope - aphelion in deepest shadow, perihelion in clearest sky, each end running its
+own inside/outside test so an eccentric orbit dipping inside a ring is honestly undimmed there. A
+moon's plane is its PLANET's heliocentric edge (the GEN-4 lesson applied to inclination). The
+occluder's radius is its ORBIT, not its param seed (RENDER-S44's argument carried into physics).
+WHY: a solid ringworld at 1 AU honestly BLACKS OUT a coplanar world beyond it - transmission 0,
+equilibrium 0 K - and a 30-degree-inclined one loses under 1%: direction is most of the story, and
+an instantaneous-position test would have made temperatures tick with the clock while the orbits
+did not (PHY-11's non-settling fault, pre-empted).
+BLAST: `deriveStarlightDimming` COMMITS OR DELETES - a removed structure must take its shadow with
+it or idempotence catches the ghost. megaPreview says "shadows worlds in its own plane" for bands
+because "dims the star 100%" would be the A33/B27 lie.
+CORRECTION (same day): the zones gap this entry originally named is PAID - `zones.ts` runs every
+line through `occludedZoneDistance` (solve clear; while the edge lands beyond an occluder,
+re-solve with its light removed; if the re-solve falls back inside it, the flux jump at its radius
+IS the edge - beyond a solid ringworld, in-plane, there is no more zone).
+SECOND CORRECTION (2026-08-31, found by the owner's own question): a BAND counts toward zones by
+its ALIGNED SHARE against the reference plane, not always in full - the first correction's "bands
+included, full fraction" was true only of an UNTILTED band (which IS the plane, share 1, zones end
+at it). A ring tilted 30 degrees crosses the plane at two longitudes (share <1%), so the zones
+shrink by a whisker exactly as a coplanar world's temperature does; treating it as flat would have
+collapsed the drawn HZ while the worlds stayed warm - the two halves of one fact disagreeing.
+Isotropic occluders still apply in full regardless of tilt.
+Companion flux stays undimmed through the solver. A swarm inside the kill zone is honestly a
+radiation shield (both hazard halves are linear in L, so the radius scales as sqrt f).
+
+### TAG-25 THE DISCLOSURE LADDER HAS THREE RUNGS AND EXACTLY ONE WRITER
+BUCKET: ARCHITECTURE - durable: a redaction that REPLACES rather than removes must build its
+replacement from a CONSTANT, never by copying and blanking. The three rung names are this code's.
+WHERE: `tags/tagLifecycle.ts` - `tagDisclosure`, `anonymousTag`, `ANONYMOUS_TAG_KEY`,
+`redactTagsForPlayers`; the neutral presentation in `tags/tagPresentation.ts` (`unknown` namespace);
+the always-match branch in `tags/mapHighlights.markersFor`. Gate: `tags/tagDisclosure.spec.ts`.
+RULE: `Tag.disclosure` is `hidden` | `anonymous` | `open`, absent means `open`, and `secret: true` is
+the LEGACY spelling of `hidden`. Read either ONLY through `tagDisclosure()` - two spellings of one
+idea is the duplication fault, and one reader is what stops them becoming two answers. The
+`anonymous` rung is computed inside `redactTagsForPlayers` and NOWHERE ELSE (TAG-9): it replaces the
+tag with `anonymousTag()`, a constant, so a field added to `Tag` later cannot leak through a
+blanking function that forgot it. Several anonymous tags on one node collapse to ONE - a COUNT is
+information the GM did not choose to disclose.
+WHY: G54. Redaction was binary - a player saw a tag or had no idea it existed - and the ask needed
+"something is here and I am not telling you what". The three leaks a naive implementation has are
+the ones worth naming: the tag's VALUE (copied through with the key blanked), its CATEGORY COLOUR (a
+placeholder in Faction purple among neutral pills says which category it came from without ever
+naming it), and its MONOGRAM (`monogramOf('Undisclosed')` is "UN", which reads as an abbreviation of
+something and invites a guess).
+BLAST: THE PLACEHOLDER MATCHES NO HIGHLIGHT SELECTION, and a selection-only marker rule therefore
+deletes exactly the presence the rung exists to preserve - `markersFor` gives it an always-match
+branch, which can only ever fire on redacted data because nothing else emits that key. It still
+respects the empty-selection early return: with no highlights at all the surface draws no badges,
+and this must not be the one thing that puts one back.
+BLAST: `TagDef.secretDefault` is DECLARED AND NEVER READ (`tags/tagCategories.ts`) - "new instances
+start redacted" is a comment, not a behaviour. Do not add a `disclosureDefault` beside it until
+something consumes one; a second unconsumed field is a second thing that looks implemented.
+
+### RENDER-S46 THE GREEN BUILD DOES NOT TYPECHECK - A FREE VARIABLE SHIPS AS A RUNTIME THROW
+BUCKET: PLATFORM (vite/esbuild strips types without checking them) + IMPLEMENTATION (the fault).
+WHERE: `holo/scene.ts` `attachMegaVolume` - the drawn-as-a-blob fault, diagnosed by the owner's
+console line 2026-08-30 and fixed the same hour: it read `nodesById`, a LOCAL of setSystem's build,
+from a sibling scope. At runtime that is a free variable, so EVERY mega attach threw
+ReferenceError, the try/catch ate it, and every mega fell back to the textured ellipsoid on every
+path (setSystem, setCompression, setBodySize) - GM holo and player view alike.
+RULE: `npm run build` green means the BUNDLE built, not that the TypeScript is sound - esbuild
+does not typecheck, and svelte-check is not in the gate set (it carries ~1300 legacy errors, which
+is why). So a scope mistake in canvas-adjacent code has NO gate at all: E7 keeps the attach out of
+headless tests, and the build cannot see it. When a fault lands in that shadow, `npx svelte-check
+--threshold error` FILTERED TO THE TOUCHED FILE is the cheap detector - it named this fault in one
+line (`Cannot find name 'nodesById'`), observed red before the fix and green after.
+WHY: three sessions believed the attach was verified because the BUILDER was (headless geometry
+gates, dynamic-import bundle checks) - but the builder was never reached: the throw was one line
+above it. The one-shot fallback warn (RENDER-S7) is what converted a screenshot into this
+diagnosis; keep that pattern on every render-or-not decision path.
+BLAST: any helper beside a build loop that quietly reads the loop's locals; any belief that a
+green build cleared a TS error. The fix pattern is RENDER-S45's correction: thread the dependency
+as a parameter.
+
+### PHY-37 WHAT A WORLD RECEIVES AND WHAT AN OBSERVER MEASURES ARE TWO QUESTIONS OVER ONE GEOMETRY
+BUCKET: DOMAIN + ARCHITECTURE - domain: grey attenuation cuts FLUX without touching COLOUR, so a
+Dyson swarm makes a star FAINT and never RED, and the absorption lines are the tell that never
+lies. Architecture: two consumers of one occluder list, and the difference is the band test.
+WHERE: `physics/observedStar.ts` (the observer's side); `physics/starlightOcclusion.ts` (the
+world's side, PHY-36) which it CONSUMES rather than re-walks; the colour reaches both starmaps
+through `starmap/systemStars.visualStarOf`; the tags are emitted in the SystemProcessor star pass.
+Gates: `observedStar.spec.ts`, `starmap/observedStarGlyph.spec.ts`.
+RULE: `starOccluders` is the ONE place that decides who shades whom - a second walk keyed on
+`megaType` is the duplication that ends with two answers. What differs is the geometry, and only
+the geometry: a world is dimmed for the SHARE OF ITS ORBIT it spends inside a band
+(`bandAlignmentShare`, a time average for a power balance); an observer on a fixed bearing either
+is or is not inside it (`bandCoversBearing`, one dot product against the plane normal). DO NOT
+CONFUSE THE TWO - they take the same arguments and answer different questions. The observer's side
+also drops rule 2 (nothing radially inside is undimmed): an observer outside the system is outside
+every occluder by definition.
+RULE: OUT-OF-BAND RE-EMISSION IS A SCALAR PLUS A TEMPERATURE, NEVER A WIDENED GRID. The shared grid
+is 280-1400 nm (photochemistry, not vision); a shell at 1 AU re-radiates at 394 K peaking at 7,351
+nm, 5.25x outside it. Reaching that would be tens of thousands of samples per spectrum per body per
+pass for one feature. `wienPeakNm` gives the peak from the temperature and nothing is sampled where
+nothing else in the engine looks.
+RULE: THE MAP COLOUR IS SCALED, NOT RECOMPUTED. `getPlanetColor` stays the one authority on what
+colour a star is; `observedStarHex` applies a per-channel LINEAR gain derived spectrally. A gain of
+(1,1,1) returns the input byte-identical, which is what makes "nothing in the way changes nothing"
+true by construction. A second spectral colour derivation would have moved every star on every map
+the day this shipped.
+WHY: G54. The design's own illustrative figure was CHECKED rather than copied and is wrong - it says
+a 1 AU shell sits near 150 K peaking at 19,000 nm; Stefan-Boltzmann from this engine's constants
+gives 394.208 K and 7,351 nm (150 K is a shell about seven times further out). The conclusion is
+unchanged and stronger, and the anchor rule is why anybody looked.
+BLAST: THE ABSOLUTE ANCHOR IS NOT DECORATION AND IT WAS DEMONSTRATED, not assumed. A 100x constant
+factor injected into `blackbodySpectrum` fails EXACTLY ONE assertion in the suite - the absolute
+in-band radiant power - and all 32 ratio assertions stay green, because `observed/intrinsic` divides
+the factor out. That is PHY-34's lesson reproduced deliberately in this territory. The shell
+temperature is anchored twice for the same reason: absolutely, and as exactly sqrt(2) times the
+equilibrium temperature the temperature chain gives a zero-albedo world at the same distance - two
+subsystems reaching one number from opposite directions.
+BLAST: `lineOfSightExtinction` IS THE ONLY OVERRIDE THAT CHANGES NOTHING ABOUT THE SYSTEM IT NAMES.
+It is dust between the star and an observer, so it has no trace layer and does not touch insolation:
+the star's own worlds are not dimmed by it. If interstellar ray-through-volume geometry is ever
+built, it COMPUTES this number instead of the GM authoring it and every reader downstream is already
+correct - that is the data shape the design asked for.
+BLAST: a tag cannot carry a bearing. `stellar/dimmed` states what an observer THE OCCLUDER COVERS
+measures (everyone for a shell, the plane only for a ring) because a tag is a property of the star
+and travels into every surface; the per-viewer answer belongs where the audience is known (TAG-21),
+which is the starmap. Both are true and they are different sentences.
+
+### PHY-38 THE OBSERVED DESIGNATION NEVER OVERWRITES THE SPECTRUM
+BUCKET: DOMAIN + ARCHITECTURE - domain: grey attenuation leaves the absorption LINES where they were,
+so a swarmed G2V reads G2V from any depth and the designation is the measurement that does not move.
+Architecture: one designation builder, and the observed reading is a SECOND FIELD on it rather than
+a second builder.
+WHERE: `system/starClassExplain.ts` - `explainObservedStarClass` beside `explainStarClass`;
+`physics/observedStar.apparentColourTempK`; `physics/starDesignation.spectralLetterForTempK` (the
+inverse of `spectralSubclass`, reading the same pack anchors). Gate:
+`system/observedStarClass.spec.ts`.
+RULE: the designation is what the SPECTRUM says and nothing rewrites it. What changes is what the
+other two measurements say, and the three disagreeing is the feature. `apparentColourTempK` is the
+temperature PHOTOMETRY ALONE would assign - a bisection on a monotonic short-over-long power ratio -
+and its use is to say "colour alone would call it a K star", NEVER to relabel. For a grey occluder it
+returns the star's own temperature EXACTLY, because a flat factor cancels out of a ratio, so the
+colour sentence cannot appear where nothing moved the colour.
+RULE: `cause` is present on the explanation ONLY when the caller passes it, and it never appears
+inside the three measurement sentences. Design §6: both readings are always computed and only the
+cause is redacted, which is what stops a player surface re-deriving anything.
+WHY: G54. The design's whole §2 correction is that "a G star that looks M" is a NEBULA story rather
+than a swarm one, and the obvious implementation - take the apparent colour, look up the letter, use
+it as the designation - is the exact error it corrects.
+BLAST: A FALSIFICATION RUN FOUND A HOLE IN THIS FILE'S OWN GATE AND IT IS THE REUSABLE LESSON. The
+"designation does not move" assertion originally tested a SWARM with no apparent temperature passed,
+so a deliberately relabelling implementation walked straight through it green - the assertion was
+true for a reason unrelated to what it claimed to check. It now tests the case a naive
+implementation would actually relabel: dust, reddening the star, with an apparent temperature in
+hand whose letter is provably not the star's. Write the negative assertion against the input that
+would TRIGGER the bug, not against a convenient one.
+BLAST: `apparentColourTempK` runs 60 bisections, each building a blackbody - affordable only because
+it runs where a designation is EXPLAINED and never on the map's per-star path. Do not move it into
+`observedStarReading`.
+
+### DATA-R33 AN EXOTIC IS WHAT ITS RECORD DECLARES - CONSUMERS DO NOT GUESS
+BUCKET: ARCHITECTURE - the G58 rule; the thirteen-seam probe in nonstandard-objects-design.md §2
+is the measured case for it.
+WHERE: `constructs/exotics.ts` (the capability vocabulary - apparentG, flux, render3d, render2d,
+framing); `capabilities` on every `constructs/megaTypes.ts` record; gated by
+`exoticsParity.spec.ts`, which pins every declaration to the legacy behaviour it replaces (seen
+red on a flipped declaration before first commit).
+RULE: a consumer decides how to draw, frame, panel or physically treat a non-standard object by
+reading its record's DECLARED capability - never by testing a type key, `kind`, or a scattered
+flag. During N2 each seam flips one commit at a time and DELETES the flag or key-test it replaces
+in that commit (megaCentred, megaTether, isMegaRing are all scheduled deaths). An axis exists only
+when two types disagree on it (menu, panel groups, LOD, disclosure and tag outputs are deliberately
+ABSENT until their second value arrives with N2/N3/N5 - a field nothing consumes is a claim, the
+`secretDefault` lesson). Packs INSTANTIATE registered types with params; they never remix
+capabilities (owner's call, 2026-08-31). Placement gating is already record-owned (`requires` /
+`allowedPlacements` / `explain`, UI-B2) and counts as part of this vocabulary.
+WHY: the owner's stop/think - "we have all the elements but we are combining them haphazardly...
+an if/then/else rat's nest" - plus two shipped assumptions the queue falsifies (the soletta vs the
+dims-only clamp; the station-shaped apparent-g that read 12,967,908 g). Declaring first makes G53
+phase 5 a data edit instead of thirteen hand-wired seams.
+BLAST: any new per-type `if` in a consumer after its seam has flipped forks the convention this
+exists to end. `spin-section` apparentG is declared by NO registry type on purpose - the first
+station record must flip the crew-tab seam knowingly (the parity gate throws on it).
+
+### DATA-R34 A SAVE SAYS WHAT FORMAT IT IS, IN EVERY CONTAINER, AND AN ASSET NAME IS ITS BYTES
+BUCKET: ARCHITECTURE (file format) - a second codebase now reads these files, so what a file CLAIMS
+about itself has to be true in every container it can be written in, and a name that is a content
+address has to be one.
+WHERE: `io/bundle.ts` - `BUNDLE_FORMAT`, `stampBundleFormat` (the stamp, one decision in one place),
+`plainSaveJson` (the text of every non-zip save), `takeBundleFormat` (the stamp comes back OFF on the
+way in), and the hash assertion inside `packBundle`'s model loop. `io/classify.ts` reports `format`
+for BOTH containers. The four call sites that write a save as plain JSON: `routes/+page.svelte`
+(`handleDownloadStarmap` no-assets branch, `writeCrashSave`, `downloadStoredStarmap`) and
+`components/SystemView.svelte` (`handleSaveSystem` no-assets branch). Gated by
+`io/formatStamp.spec.ts` and `io/hubFixture.spec.ts` against `tests/fixtures/creator-hub-bundle.sse.zip`
+and `tests/fixtures/creator-hub-system.sse.zip`.
+RULE ONE: **every save carries `bundleFormat`, whatever container it is written in.** The stamp is
+written by `stampBundleFormat` and by nothing else, it goes FIRST in the document, and an inherited
+stamp is dropped before the current one goes on - THIS writer decides what it just wrote. On the way
+in the stamp comes straight back off the document (`takeBundleFormat`): it describes the CONTAINER,
+not the campaign, and a stamp left on the campaign lands in the autosave and comes back out of every
+later export as an inherited claim. Absent means 0, which means "written before there was a format",
+which is legacy and never an error.
+RULE TWO: **`assets/models/<sha256>.glb` is named after the hash of the bytes written into it, and
+`packBundle` refuses to write it otherwise.** The hash has ONE implementation in this repo
+(`constructs/modelStore.ts` `hashModelBytes`); the bundle writer is a consumer of it, never a second
+copy, because two answers to "what is this file's hash" is the fault rather than the fix.
+WHY: hub R-01 and R-03 ([[G57]]). `bundleFormat` shipped at v3.0.179 stamped inside `packBundle`, so
+it reached the zip and NOTHING ELSE - and a campaign with no assets does not produce a zip. Those
+plain `.json` files are not an edge case: the hub's JSON-only kill switch makes them its only
+accepted uploads, so the stamp was absent from exactly the files that would need it most. R-03 is the
+same idea from the writing end: a bundle can name a file after ANY hash, and a consumer that keys an
+approval or a cache entry on the path-supplied hash lets a crafted bundle inherit that approval while
+carrying different bytes.
+THREE THINGS THAT ARE NOT OBVIOUS:
+ 1. **THERE WERE FOUR PLAIN-JSON EXPORT PATHS, NOT THREE, AND THE FOURTH IS THE ONE NOBODY LISTS.**
+    `downloadStoredStarmap` - the safe-mode "download the stored map" escape hatch for a campaign
+    that will not load - writes a real save document straight from IndexedDB and was carrying no
+    stamp at all. It is also the export a distressed GM is most likely to hand to somebody else. The
+    fix is not to stamp four call sites: it is `plainSaveJson`, so there is one place to forget.
+ 2. **THE ASSERTION FORCED THE WRITER ASYNC, AND THAT WAS THE CHEAPER OF THE TWO PRICES.** The
+    content address is a SHA-256 and the platform's digest is async, so `packBundle` returns a
+    promise now and every caller awaits it. The alternative was a second, synchronous sha256 in this
+    repo - which is precisely the duplication the standing rule exists to stop, and it would have
+    been a second answer to the one question this rule says must have one.
+ 3. **A GATE THAT HASHES THE BYTES AND COMPARES THE RESULT TO A PATH BUILT FROM THAT SAME HASH CANNOT
+    FAIL** (PHY-34's lesson, in a new subsystem). The fixture gates pin the real SHA-256 of the
+    fixture models as STRING LITERALS, and the format gates pin the literal integer 1 rather than
+    reading `BUNDLE_FORMAT`, so a change to the digest, the GLB padding or the constant goes red
+    against an outside reference instead of agreeing with itself.
+RULE THREE (R-12, the revision counter): **the revision in the FILE is the revision the CAMPAIGN
+now holds.** It is advanced on the LIVE campaign and the file is written from that - never
+incremented on the way out, because a file claiming a number the campaign never held writes the same
+number again on the next save, which is the exact loss the counter exists to prevent. Absent,
+negative or non-numeric reads as "never saved", so the first explicit save of any campaign - every
+campaign in existence on the day this shipped included - writes 1. WHO DOES NOT ADVANCE IT, both
+deliberate and both gated: `downloadStoredStarmap` dumps the STORED campaign unchanged (existing
+work, not new work), and a single-system save has no revision at all - a system is a slice of a
+campaign rather than a separately versioned document, and bumping a counter through `systemStore`
+would fire the campaign write-back and broadcast rebuild that P3 exists to avoid. The crash file
+advances but persists STRAIGHT to storage, never through the store, for the same reason.
+RULE FOUR (R-10, `exportMode`): **a LABEL, never a gate.** It arrives inside a file a stranger sent,
+so it is a claim exactly like `ATTRIBUTIONS.md`; detection stays the control and a stamp saying
+`player` on a file full of GM notes must lose to the detector, loudly. Nothing in this app reads it,
+and `revision.spec.ts` fails if anything starts to. It DEFAULTS TO `'gm'`, which is the safe
+direction: a player export mislabelled `gm` is over-cautious, a GM export mislabelled `player` leaks
+a campaign. The Save modal speaks `'GM' | 'Player'` and the file speaks `'gm' | 'player'`;
+`exportModeFromChoice` is the ONE translation between the two vocabularies.
+BLAST: **TWO GATES IN THIS BATCH WERE WRITTEN, PASSED, AND WERE BLIND** - both caught only by running
+the mutation, and both the same shape: a unit test of a correct FUNCTION that nothing tied to the
+CALL SITE. Hard-coding `'gm'` at the system save left every player export mislabelled with the
+translator perfect and the suite green; removing the store write-back from the campaign save left the
+revision arithmetic perfect and the counter permanently stuck at 1. The lesson generalises past this
+file: when the rule is "the app does X at the moment Y", a test of X is not a test of the rule.
+BLAST: the canonical fixture was SYNTHETIC and would have failed R-03 on the day R-03 landed - its
+model was `c0ffee.glb`, six hex characters that were never the digest of anything, its GLB was the
+ASCII string `RUNNER-GLB`, and it carried no `routes`, so the canonical campaign was a shape this app
+would have refused had it arrived as plain JSON. Both fixtures are now real saves: real `glTF`
+containers, real content addresses, one hull flown by two ships, one asset fully credited and one
+with none, and they classify through this app's own door. `appVersion` in them is a PINNED LITERAL,
+not `APP_VERSION` - a byte-pinned fixture cannot carry a field that changes every release, or the
+gate becomes noise that gets regenerated unread.
+
+### DATA-R36-CLIP A HUB CLIP IS A BRANCH, AND IT GOES IN WHOLE OR NOT AT ALL
+BUCKET: ARCHITECTURE (the funnel) - a second codebase's copy-to-clipboard lands in this engine's
+node tree, so what arrives is a HIERARCHY and every reference in it is somebody else's.
+WHERE: `io/hubClip.ts` (`parseHubClip`, `insertClip`, `looksLikeHubClip`, `CLIP_FORMAT`), built on
+`system/reparent.ts` (G64). Gated by `io/hubClip.spec.ts`.
+RULE: the clip is `{ sseClip, source, root, nodes[] }` and `nodes` is the WHOLE subtree. **A target
+that takes `nodes[0]` and drops the rest is not this feature** (the owner's words, and the first
+gate in the spec is written so that implementation goes red rather than looking like it worked).
+Insert every node or none: a refusal must leave the campaign untouched.
+IDS ARE RE-MINTED, ALWAYS. They arrive only so `parentId` resolves INSIDE the clip; carrying them
+through means one clip pasted twice collides with itself, and a clip pasted into the map it came
+from collides immediately. `orbit.hostId` is a reference too and is remapped with the rest - miss it
+and a moon orbits a host this campaign has never heard of.
+ONLY THE ROOT CHANGES HOST. A moon's orbit about its planet came from a real save and is internally
+consistent, so its elements and its `hostMu` are untouched; the root goes through G64's
+`reparentBody` rather than beside it, which is what brings the tilt handling, the pair promotion and
+the stability tags along. STEER, DO NOT STOP: a 2 Msun star pasted under a pebble is allowed and
+tagged, never refused.
+WHY: hub R-14 ([[G57]]). Every row of a hub map page has a Copy control and it has led nowhere since
+it shipped - both `main` and this branch were grepped, and the gas-giant recipe and the hub link were
+the only clipboard readers in the engine.
+A PASTE CONTROL APPEARS ONLY WHEN THERE IS SOMETHING TO PASTE, AND IT SAYS WHAT (owner,
+2026-09-05, after the first version threw the moment it was pressed). `detectedClip` in
+`io/clipDetect.ts` is the one answer to "is there anything in hand": the app's own buffer first,
+then the SYSTEM clipboard - and the system clipboard is read ONLY where the browser has ALREADY
+granted `clipboard-read`, checked through the Permissions API and abandoned in silence otherwise.
+Calling `readText()` unprompted raises a permission dialogue in Chrome and does nothing at all in
+Firefox, and a browser prompt appearing because somebody moved the mouse would be worse than a
+missing button. Ctrl+V needs none of this: that path is handed the text by the event.
+`describeClipRoot` names it the way a GM would - and **a star with things under it is a SYSTEM, not
+a star**, because that is what was copied and what will arrive; "Star Sol" would describe one node
+of the forty about to land on a moon.
+THE CRASH THAT PRODUCED ALL OF THIS, and the process lesson is the durable half. `+page.svelte`
+referenced `focusedBodyId`, a name that lives in `SystemView.svelte` and was NEVER DECLARED in the
+route. `npm run build` was green - the Svelte compiler does not typecheck (RENDER-S46) - and the app
+threw `focusedBodyId is not defined` the instant the paste screen opened, on beta, in front of the
+owner. **`svelte-check` had the answer the whole time** ("+page.svelte:2438 Cannot find name") and
+nobody ran it, because its output is 1,366 errors long. `scripts/check-touched.mjs` now narrows that
+to the files in your own diff. It is a REPORT and not an exit code, and that is measured rather than
+lazy: whole-FILE scope fails because a 3,000-line route carries a dozen pre-existing errors; LINE
+scope fails because svelte-check's line numbers do not line up with git's hunks in a .svelte file
+(an error at 2443 against a hunk at 2491); and the crash's own error CLASS fails because there are
+already 147 "Cannot find name" errors repo-wide, 12 in `SystemView.svelte` alone. **Run it and read
+it whenever you touch a .svelte file.** Making the baseline clean enough to gate on is a real and
+separate job.
+COPY AND CUT INSIDE THE CAMPAIGN (owner, 2026-09-05), AND THE CLIP FORMAT SERVES BOTH DIRECTIONS.
+`buildClip` produces exactly what `parseHubClip` reads, so a clip this app made and one the hub made
+are indistinguishable to the reader - a second internal format would be a second thing to keep in
+step. Two differences, both deliberate: **nothing is stripped** (the hub drops `image`, `model` and
+`gmNotes` because it publishes to strangers; a GM copying their own work would just be losing a
+planet's photograph), and **`source` is absent** because there is no other cartographer. What DOES
+travel is `credits` - any `contentCredits` row covering a copied node, ids remapped on insert - so a
+body pasted in from somebody's map keeps its attribution when it is copied on. That is the exact
+point at which a credit would otherwise quietly evaporate.
+UNDO: every one of copy, cut and paste goes through `systemStore.set`, which is the only thing
+`systemUndo` watches, so they are undoable WITHOUT knowing anything about undo. What they add is
+`endUndoAction()`. **Cut and paste stay TWO steps on purpose** - they are two things a GM did, and
+undoing a paste to find the branch back in its old home would be a lie about which was reversed.
+TWO THINGS A TEST GETS WRONG HERE, both learned the hard way. (1) **`endUndoAction()` closes the
+action in a MICROTASK**, so a test performing two gestures SYNCHRONOUSLY never lets the boundary land
+and the two collapse into one step; in the app many event-loop turns separate two gestures, so
+`clipUndo.spec.ts` awaits a microtask between them as the app effectively does. (2) **A PASTE CAN ADD
+A NODE THE CLIP NEVER CONTAINED**: pasting Earth under Mars promotes the comparable-mass pair and a
+barycentre appears between them. That is the engine steering rather than stopping, and undo removes
+it with the paste that caused it, because the pair was never in the authored state.
+THE WAY IN (owner, 2026-09-03): a paste event ANYWHERE, and a screen with a text box. TWO ENTRY
+POINTS, ONE INSERT - `applyHubClip` in `routes/+page.svelte` is the only place that puts a branch
+into a campaign, so there is no second copy of that decision. The text box is not a nicety:
+**Firefox will not hand a page the clipboard**, so a feature reachable only by Ctrl+V is one that
+looks broken in a browser plenty of people use. The paste handler STAYS OUT OF THE WAY of ordinary
+typing - an editable target is left entirely alone, and text that is not a clip is ignored in
+silence rather than answered - and `hubClip.spec.ts` pins both at the source, because a unit test of
+`looksLikeHubClip` passes with the editable guard deleted.
+A REFUSED PASTE TOUCHES NOTHING: the system is deep-cloned, the insert runs on the clone, and the
+campaign is only written when it succeeded.
+R-16, THE CREDIT: **a breadcrumb is not a credit, and they are different objects.** `origin/hub` on
+the pasted root says WHICH BODY came from where; a `ContentCredit` on the CAMPAIGN says WHOSE WORK
+it is. Both are kept. The credit lives on the campaign and not the nodes because nodes get renamed,
+re-homed and deleted, and a credit that dies with the body it arrived on is not a credit - `nodeIds`
+is a convenience for saying which bodies it covers, never a key, so deleting all of them does not
+retire it. Pastes from ONE source MERGE into one row with the ids accumulated (six systems from one
+map owes one credit six bodies wide, not six identical rows), and a clip naming nobody and nothing
+produces NO row at all rather than an empty one. `pastedAt` is ISO 8601 - a date a person reads in a
+save they are hand-editing, not an instant anything computes with. A missing `creator` (a clip from
+a hub older than 0.11.0) is STATED - "cartographer not recorded" - never papered over. It prints in
+`ATTRIBUTIONS.md` under `## Content from other cartographers`, and that file is now written when
+there are credits OR assets: the old "no assets, no file" rule would have swallowed the credit for a
+campaign that pasted content but uploaded no art.
+R-16 ADDENDUM (hub 0.12.0), AND IT CHANGED THE MERGE RULE. `source.url` is now a DEEP LINK to the
+object (`.../s/<slug>#node=<id>`) and is stored WHOLE - the fragment is what opens the hub's page on
+the right row. But two bodies from one map then arrive with DIFFERENT urls, so the merge compares
+the url with its fragment dropped: **merge on the MAP, not the deep link**, or six pastes from one
+map file as six near-identical rows, which is the thing the merge exists to prevent. **The LINEAGE
+is part of a credit's identity too** (`chain`, deepest first, recorded exactly as received - not
+shortened, reordered or de-duplicated, because it is somebody else's history): one object native to
+a map and another that passed through two maps before it have different histories, and merging those
+would claim a lineage for content that has none. It prints as one sentence - "from Alpha by alice,
+via Beta by bob, via Gamma by carol" - with the map the credit names as the LAST hop, and a hop with
+no cartographer is named without one rather than left out.
+EVERY KIND, AND TWO ASYMMETRIES THAT ARE DECISIONS RATHER THAN OVERSIGHTS. A construct is a
+`CelestialBody` with `kind: 'construct'` - ships, stations, rings, belts and the megastructures all
+live there - and the insert is kind-agnostic, so all of them arrive with their own payload intact.
+But (1) **G64's `reparentBody` takes `kind === 'body'` only**, so a CONSTRUCT root gets the plain
+attach (parent set, `hostId`/`hostMu` restamped, elements kept) rather than the state-based
+re-expression; and (2) **a pasted construct's autopilot is stood down and tagged**
+(`origin/hub-route-stood-down`). A route is a plan made in another campaign and most of its stops
+were never copied, so leaving it enabled sets the planner chasing ids that do not exist here. The
+SHIP comes whole; the ROUTE is what did not survive, and it says so.
+EVERY REFERENCE MOVES WITH THE IDS, not just `parentId` and `orbit.hostId`. An autopilot leg, an
+avoid-list, a docking target and a flight log all hold node ids, so the clone is walked and any
+string that IS one of this clip's ids is rewritten wherever it sits. A reference to something that
+was NOT copied is left exactly as it was rather than guessed at.
+NOT OBVIOUS: **the ordering guarantee is documented and deliberately not relied on.** The hub emits
+depth-first, parents first; this reads that happily but builds the tree itself, so a producer bug
+about ordering cannot silently mis-parent somebody's moons.
+BLAST: the cycle check skipped the ROOT, and `a -> b -> a` with `a` named as the root walked one step
+to the root and looked fine - the insert would have hung a node off itself. A root's parent is the
+thing being pasted ONTO and is by definition outside the clip; the spec caught it, not the reasoning.
+
+### DATA-R35 A SHARED MAP IS AN IMPORT THAT ARRIVED BY LINK - TWO LINKS, ONE DOOR, AND IT NEVER REPLACES A CAMPAIGN UNASKED
+BUCKET: ARCHITECTURE (the funnel) - a URL a stranger can craft reaches straight into the one thing
+this app stores, so the whole path is written as untrusted input with one deliberate question in the
+middle of it.
+WHERE: `hub/hubConfig.ts` (the ONE place a hub URL exists, the flags, and R-17's
+`TRUSTED_OPEN_HOSTS` / `isTrustedOpenUrl`), `hub/hubClient.ts` (`isValidHubSlug`,
+`parseHubReference`, `fetchHubMap`, `fetchHubMapFromUrl`, and the shared `fetchBundleBytes`),
+`hub/hubSaves.ts` (the GM's preference), `hub/hubUpload.ts` (R-04, built and parked), and in
+`routes/+page.svelte` `hubOpenRequest` / `runHubOpen` / `runHubOpenFromUrl` / `openHubBytes` /
+`openHubMap` / `declineHubMap`. Gated by `hub/hubClient.spec.ts`, `hub/hubOpenUrl.spec.ts`,
+`routes/hubOneDoor.spec.ts` and `hub/hubUpload.spec.ts`.
+RULE ONE: **the slug is validated BEFORE a URL is built from it, never after.** Encoding is a second
+line of defence, not the first: `../../admin`, `//evil.example.com/x` and `a/b` are refused before
+`encodeURIComponent` is reached, and a refused slug never touches the network at all.
+RULE ONE-B (R-17): **`?hub=` names a map, `?open=` names an ADDRESS, and that one difference is the
+whole of the extra risk.** A slug is a name this app turns into a URL on the hub's own origin, so a
+link could never choose the destination; `?open=<url>` hands the destination over, which is an
+SSRF-shaped thing. **The allow-list is the entire defence and it is DATA** - `TRUSTED_OPEN_HOSTS` +
+`TRUSTED_OPEN_HOST_SUFFIXES` in `hubConfig.ts`, beside every other hub address for the reason that
+file already gives - and **the refusal happens BEFORE the fetch**, same ordering as the slug check
+and for the same reason: an address you have already contacted has not been validated. `https:`
+only, no userinfo (`https://explorers.starsystemx.com@evil.example/` reads as the hub and fetches
+`evil.example`), the default port only, and exact hosts or a genuine subdomain of a suffix, so
+`explorers.starsystemx.com.evil.example` and `notpages.dev` both lose. The gate pins the list's
+CONTENTS literally, so widening what the app will fetch costs a test edit - deliberately. **The
+widest entry is `*.pages.dev`**, which trusts every Cloudflare Pages site rather than the hub's;
+it is there because the hub asked for it by name and it is the first thing to remove.
+RULE ONE-B-CUTOVER (2026-09-06): **THE DNS MOVED, AND NOTHING BROKE BECAUSE THE LIST HAD BOTH NAMES
+IN IT BEFORE IT HAPPENED.** `explorers.starsystemx.com` now serves the hub; the workers.dev name
+still answers. The hub began publishing `explorers` download URLs and the engine accepted them with
+NO release - verified by opening one on beta the same day - which is exactly what listing the future
+name early bought. **What DID need a release is the other direction:** `HUB.origin` still addressed
+the hub by the old name, so every link the app HANDED OUT (`hubMapUrl`, `browseUrl`,
+`shareableAppLink`, the Browse control on the load doors) carried a hostname the hub had moved off.
+Reachability and address are two different things and only the first was free.
+**AND ONE TRAP THE MOVE EXPOSED:** `parseHubReference` compared a pasted URL's host against
+`HUB.origin` ALONE, so the day the origin moved, a `.../s/<slug>` link on the old name - sitting in
+people's chat logs, still working - would have quietly stopped being recognised. `isHubHost` is now
+the ONE answer to "is this host the hub?", used by both the parser and `isTrustedOpenUrl`; widening
+RECOGNITION is safe because the result is a slug and the fetch is still built on `HUB.origin`.
+RULE ONE-C (R-17): **TWO WAYS TO GET BYTES, ONE FUNCTION THAT OPENS THEM.** `runHubOpen` (by code)
+and `runHubOpenFromUrl` (by address) differ in exactly one step and share everything after it via
+`openHubBytes`. A second fetch-and-open path would be a second set of answers to "may this replace
+the campaign?", and the shape is gated in the SOURCE (`routes/hubOneDoor.spec.ts`) precisely because
+the fault it guards against is a NEW path that passes every behavioural test the old one does.
+RULE TWO: **the response is capped while it arrives.** `content-length` is a claim, so it is only an
+early exit; the real cap is applied to the bytes as they stream, because `arrayBuffer()` has already
+made the allocation by the time anything could measure it.
+RULE THREE: **the bytes go through `classifySaveFile` and `openStarmapPayload` - the same door, the
+same fix-up, the same `validateStarmap` an imported file gets.** There is no shortcut for hub
+content, and this module never parses anything itself.
+RULE FOUR, AND IT IS THE PRODUCT ONE: **opening a shared map REPLACES the campaign in this browser,
+so with one open it ASKS.** "Open it as its own thing" is not available - storage holds exactly ONE
+campaign (WS7's rule) - and pretending otherwise would lose somebody's campaign to a link they
+clicked out of curiosity. With nothing to lose it opens straight away. Either way the replaced
+campaign goes to `savePreUpgradeStarmap`, the SAME single-step-back the base-map upgrade uses,
+because two mechanisms for "the campaign that was replaced" would be two answers to one question.
+RULE FIVE (R-07, the cover): **`coverAssetId` is a POINTER at a graphic the campaign already
+carries, never a new picture.** The graphics ride in the bundle as real files, carry
+credit/licence/source and are listed in `ATTRIBUTIONS.md` - a separate cover image would duplicate
+all four and hand the sharing gate a second thing to check. Choosing nothing REMOVES the key rather
+than emptying it, because "absent, so guess" and "present but meaningless" are different statements
+to a reader; deleting the picture clears the pointer, because a pointer to nothing is worse than no
+pointer (a reader follows it, finds nothing, and has to guess anyway having been told not to); and a
+built-in starter is refused, because those are app artwork on a static path that never enters the
+archive. WHY A CHOSEN PICTURE RATHER THAN A RENDERED ONE (owner, 2026-09-01): the GM already has
+shots they like, and the pieces to carry one all exist. Rendering a cover was considered and banked
+- and `?hub=` has made it cheap if it is ever wanted, since a headless browser pointed at that URL
+renders the real app with no new rendering code.
+RULE FIVE-B (R-07, a captured view): **PROVENANCE BELONGS TO THE FILE, AND A SCREENSHOT IS A VIEW OF
+THE FILE.** A picture captured from the campaign carries `capturedInApp` and does NOT count toward
+`ATTRIBUTIONS.md`'s missing-provenance total. Owner's rule, 2026-09-01: *"a screenshot represents the
+FILE and the FILE has the attributions - so anything that COULD be credited is, even if accidentally
+caught in shot."* The bundle is the unit of distribution and `ATTRIBUTIONS.md` travels inside it, so
+whatever art a shot happens to show is credited on the page beside it.
+THIS STREAM FIRST GOT IT BACKWARDS, which is why it is written down. The worry was LAUNDERING - a
+shot of a map using CC-BY art arriving cleaner than the art inside it. That does not hold, for the
+reason above. **The real consequence runs the other way and would have bitten a GM:** the public
+sharing gate is `missing.length === 0`, and a blank asset counts toward `missing`, so a creator who
+captured a beauty shot of their OWN map would have been refused permission to publish it, blocked by
+their own screenshot. The exemption is for an ABSENCE of provenance only: a capture that CLAIMS
+CC-BY without naming an author is still called out, because a licence that states an obligation and
+then fails it is wrong whoever made the picture.
+RULE ONE-D ([[A95]], 2026-09-06): **THE SYSTEM VIEW HAS THE SAME SPLIT, one level down.**
+`SystemView.openSystemBytes` classifies, offers and opens; `handleUploadJson` (a file) and
+`openSystemFromHub` (a link) are two ways of getting bytes to it. And the ENTRY is one component:
+`LoadSourceModal`, parameterised by `kind`, serves Load Starmap and Load System both, with
+`FILE_ACCEPT` in its module context so a filter and the sentence describing it cannot drift apart.
+**The paste field is NOT on the welcome screen** - owner, 2026-09-06, and the reasoning is worth
+keeping: nobody arrives already holding a map code, they arrive by clicking a link, so a paste field
+there answered a question nobody had. It lives behind the load doors, where somebody has already
+decided they want to open something. Putting it back is pinned against in `loadSource.spec.ts`.
+**A NAME AND A KIND ARE DIFFERENT THINGS** - passing the kind into `SisterFileModal`'s name slot
+shipped the sentence "shared map is a saved campaign", so the offer takes both and falls back to the
+campaign's own name when the caller has no filename.
+RULE SIX: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
+exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything
+worth mentioning, and an unparseable stamp compares EQUAL so a garbled version produces silence
+rather than a wrong claim.
+WHY: hub R-05/R-06/R-07 ([[G57]]). The hub is a FUNNEL, not a destination - "it is one click to
+download, we want peeps using SSE" - so a Discord link has to become a running campaign without a
+download-then-import. The cautions are the hub's own: treat it as untrusted, and never auto-merge.
+THREE THINGS THAT ARE NOT OBVIOUS:
+ 1. **A PATH ONLY NAMES A MAP WHEN IT IS THE HUB'S PATH.** `parseHubReference` accepts the app's own
+    `?hub=` link from ANY host (the app runs on starsystemx.com, beta., pages.dev and localhost, and
+    all of them name the same map) but reads a PATH only on the hub's own host. Taking the last
+    segment of any URL turned `https://example.com/a/b/../c` into the map code `c` - not dangerous,
+    since the request is still built on the hub's origin, but a confident wrong answer where "that
+    is not a shared-map link" is the honest one. The spec caught it, not the reasoning.
+ 2. **TWO GATES ON PUBLISHING, ANSWERING DIFFERENT QUESTIONS.** `HUB.uploadEnabled` is "does this
+    exist yet" (a build fact); `hubSavesEnabled` is "does this person want it" (a preference). The
+    UI asks `hubSavesOffered()` and never either one alone. Neither gate touches OPENING: a `?hub=`
+    link must work for anyone who is sent one, and a local preference about publishing has no
+    business breaking somebody else's link.
+ 3. **THE ATTESTATION CANNOT BE STUBBED, EVEN TEMPORARILY.** Its entire purpose is that a person
+    read those words and took responsibility, so approximate words plus `attest=on` would be worse
+    than not shipping. That is why R-04 is built and PARKED rather than shipped with a placeholder.
+    `publishBody` throws on anything other than an explicit `true`, and omits `publishGmTree`
+    entirely unless explicitly chosen - absent means the PLAYER tree, and sending `off` is a
+    different statement a hub could read as "present, therefore chosen".
+BLAST: **THE FUNNEL IS BLOCKED ON THE HUB, AND IT IS MEASURED RATHER THAN GUESSED.** Against the live
+deploy on 2026-09-01, `GET /api/download/<slug>` sends NO `Access-Control-Allow-Origin`, so the
+browser refuses the fetch before the answer is read and no `?hub=` link can open anything yet. The
+request is written up in `docs/dev/hub-pairing-and-upload-request.md`. A CORS refusal is
+indistinguishable from being offline, which is why the failure message names the hub's own page as
+the way through instead of attempting a diagnosis it cannot make.
+
+### RENDER-S56 A PIXEL FLOOR MULTIPLIED IS NO LONGER A FLOOR, AND A DRAWN TAIL NEEDS NO EDGE
+BUCKET: ARCHITECTURE + DOMAIN - a legibility clamp that is correct where it is applied and a lie
+twenty-three times further out, and a shape whose far end is a fact about the renderer rather than
+about the world. Both were found by LOOKING, after the unit tests were green.
+WHERE: `components/SystemVisualizer.svelte`, the `showMagnetospheres` block; the shape is
+`physics/magnetosphere.magnetopauseOutlineRadii` / `magnetopauseOutlineOriented`; pinned by
+`physics/magnetosphereOverlay.spec.ts` (which reproduces the transform - [[E7]], a canvas cannot be
+checked headlessly) and by `magnetosphere.spec.ts`.
+RULE: a bubble is drawn in the body's DRAWN disc radii, so it inherits the size lie the disc already
+carries instead of adding a second one - BUT the inflation is capped so the whole shape, tail
+included, stays inside that body's HILL SPHERE, and never shrinks below true scale. And the open
+magnetotail is drawn WITHOUT AN EDGE: constant width, paint faded to nothing along it. The
+closed-field region, which really does end, eases to a blunt point instead.
+WHY: `drawnDiscRadiusWorld` floors Earth's 0.17 px disc at 2 px, which is honest for a disc. The tail
+is TWENTY STANDOFFS, so the same clamp arrives as a 470 px streak; at system zoom Jupiter's bubble
+reached 1.5 AU sunward against a true 0.019 AU, and RENDER-S52's rule applies exactly - a shape drawn
+around a body is read as SIZE, however it got there. The Hill sphere is the cap because it is already
+on this map and already means "the space this body controls"; a bubble outside it is showing
+something that cannot be. That it FITS is the check that it is the right cap rather than a chosen
+number: Earth's twenty-standoff tail is 1.431e6 km and its Hill radius is 1.497e6 km.
+WHY THE EDGE: owner, 2026-09-07, on the first cut - "is that hard edge away from the star real? I
+thought it would tail off like a teardrop". It was not real. The Shue form diverges as the angle
+approaches 180 degrees, so the drawn tail has to stop somewhere, and stopping it drew a wall that
+said "the magnetosphere ends here" when the truth is "the drawing ends here". A fade says the second
+thing. NEITHER SHAPE NARROWS ON THE DAYSIDE: a magnetosphere is blunt at the nose and widest behind
+it, so a literal teardrop would put the fat end at the star.
+BLAST: THE COST IS THAT IT IS A ZOOMED-IN OVERLAY, and that is the same property the Hill bubble has.
+Earth's is legible from about a three-million-kilometre view and sub-pixel at system scale - because
+at system scale it IS sub-pixel. Anything that makes it visible out there is a dial away from the
+truth and belongs to the owner, not to a renderer.
+AND IT HAPPENED A THIRD TIME, IN 3D, IN TWO DIFFERENT PLACES ([[G82]] job 4). A holo globe's scale is
+`baseScale` x `screenK`, and those are NOT the same kind of number: `baseScale` is the readable-size
+DECISION, which a bubble must ride so its ratio to its own planet stays true, while `screenK` is the
+screen-space legibility FLOOR from RENDER-S41. Riding both froze the bubble at the zoom where the floor
+took hold - the owner's words, "as I zoom out it gets so small then stops shrinking" - so `screenK` is
+divided back out in `updateFieldAim` and only the readable size is inherited. The rule generalises: a
+floor may be multiplied by 1, and by nothing else.
+AND "INSIDE IT" IS ONE QUESTION PER SURFACE, NOT PER BODY. A magnetosphere is drawn as TWO nested
+surfaces and their proportions differ wildly - Mercury's magnetopause is 1.48 radii at the nose and 29.6
+down the tail - so a camera-to-NOSE distance says "outside" while the camera sits deep inside the tail
+tube, and the far wall paints the whole screen. The test is the boundary's own equation evaluated at the
+camera in that surface's local frame, per surface, one point each.
+AND A 3D VIEW NEEDS ITS OWN SIZE MAP, WHICH IS THE SAME ANSWER THE GLOBES ALREADY GOT. A magnetotail is
+twenty standoffs on the map and that convention is ruinous in a volume: Jupiter's drawn bubble was 838
+radii long, so one of them engulfed the camera and eight of them washed the system out. The 3D draws
+`readableStandoffRadii` - `1 + 0.8 ln(standoff)`, order intact, small bubbles near true - with a
+two-standoff tail, exactly as it draws readable body SIZES rather than true ones (RENDER-S11). The
+published number is untouched and the 2D map still draws it. THE GAIN WAS MEASURED: a holo frames a body
+at about twenty of its radii, and at a gain of 1.4 Jupiter's bubble subtended 79 degrees from the camera.
+AND AN OPEN TAIL IS A TUBE. A camera that has drifted past the far end of an open surface is "outside" by
+any axial test while looking straight up the inside of it - measured at axial -1.33 against a tail ending
+at -1.27, and the result is a full-screen wash. The 3D tapers its tail closed so the volume is well
+defined; the 2D keeps its open one, because there is no inside to be on a plane. The closure is free to
+look at: the colour has faded to black by then and black adds nothing under additive blending.
+AND A TORUS RADIUS IS A CENTRELINE WHERE `beltPeakRadii` IS AN EDGE. Seating a symmetric tube ON that
+radius instead of AROUND it buried half of every belt in the app inside its own planet - Jupiter's reached
+0.48 R_J against a 1.05 R_J edge - and the depth test hid the evidence, so the belt merely looked like it
+grew out of the globe. The centre goes one tube-radius out. Found by reading the numbers, not the picture.
+BLAST: ONE SHAPE FUNCTION, AND THE GATE CALLS IT. The rotation and scaling live in the physics module
+rather than in the component precisely so that the spec which reproduces the transform is checking
+the real one. A gate carrying its own copy of the transform it checks is checking only itself.
+
+### PHY-40 PARENT-BEFORE-CHILD DOES NOT ORDER SIBLINGS, AND A WIND SOURCE IS A SIBLING
+BUCKET: ARCHITECTURE - an ordering rule that is written down, obeyed, and STILL not enough, because
+the dependency it was written for runs up the tree and this one runs across it.
+WHERE: `core/SystemProcessor.process` passes 2b and 2b2 (`processInterior`, `processMagnetosphere`);
+`physics/magnetosphere.ts` (`windPressurePa`, `confiningPressurePaOf`, `standoffRadiiOf`,
+`insideHostMagnetosphere`). Gate: `system/idempotence.test.ts`, and it is the ONLY thing that can see
+this class of fault.
+RULE: pass 2b commits every body's magnetic FIELD; pass 2b2 publishes the magnetosphere that field
+cuts out of the wind. They cannot be one pass. A magnetopause is solved against the WIND, the wind is
+summed over every LUMINOUS body in the system, and a luminous body's field is derived by 2b itself -
+so a body processed before its system's brown dwarf read that dwarf's field as ABSENT on the first
+run and as 0.42 G on the second. Within 2b the luminous bodies go FIRST for the same reason, which
+makes the wind fully determined for everybody else; the luminous set cannot depend on the rest,
+because nothing orbiting a star is inside a host's magnetosphere.
+WHY: the standing rule says "when one quantity depends on another body, iterate PARENT BEFORE CHILD",
+and that IS the rule that orders the induced-field question (a moon asks its host). It says nothing
+about a body that depends on an ARBITRARY OTHER BODY, and a wind source is exactly that: not an
+ancestor, not a descendant, just somewhere else in the system. Measured 2026-09-07 on
+`Testion-System.json`: 165 fields moved between pass one and pass two, every pressure in the system,
+and the four stars' inputs were IDENTICAL at the end of both passes - which is what made it look
+impossible until the sub-pass split was tried. A final-state comparison cannot see this; only
+re-processing can.
+BLAST: A STAR HAS NO MAGNETOPAUSE, AND THAT IS LOAD-BEARING RATHER THAN A DETAIL. `standoffRadiiOf`
+returns 0 for `roleHint === 'star'` because a star's boundary is its ASTROSPHERE, a different balance
+against a different pressure - and that single line is what stops `insideHostMagnetosphere` recursing
+up the parent chain into the wind that called it. A planet in the solar wind is not "inside the Sun's
+magnetosphere"; it is in the wind. Remove that early return and the recursion has no base case.
+BLAST: THE BOUNDARY IS SOLVED ON DEMAND, NOT READ BACK FROM A PUBLISHED BLOCK, and that is why the
+dynamo pass may ask for it one whole sub-pass before any magnetosphere exists. `confiningPressurePaOf`
++ `magnetopauseStandoffRadii` are the ONE answer; `deriveMagnetosphere` publishes what they return
+rather than computing its own, so the induced-field question and the drawn bubble can never disagree
+about where a magnetopause is.
+BLAST: NOTHING HERE MAY READ `beltInnerEdgeRadii` OFF A BODY. Radiation stamps that field in pass 2c,
+one pass LATER, so the belt torus's geometry comes from `beltInnerEdgeRadii(body, pack)` and
+`beltScaleLengthRadii(field, pack)` - the belt model's own pure functions - and never from the
+stamped value. Same reason `totalIncidentFlux` and `surfaceRadiation` are forbidden here.
+
+### PHY-39 AN OCCLUDER CAN ONLY RE-RADIATE WHAT REACHED IT, AND ITS SKY SHARE IS NOT ITS BEARING SHARE
+BUCKET: DOMAIN + ARCHITECTURE - domain: two conservation faults with one shape, both of which
+publish energy from nowhere. Architecture: TWO COPIES OF ONE WALK, which is how they came to
+disagree by 30% of a star while 85 tests stayed green.
+WHERE: `physics/observedStar.ts` - `starObservation` (the ONE walk), `occluderEffect`,
+`occluderSkyShare`; `observedStarTags` consumes the walk with `bandsAsCovered` rather than keeping
+its own. Gate: `observedStar.spec.ts`, "nothing re-radiates light that never reached it" and "the
+tag and the reading are ONE answer, not two".
+RULE: walk the occluders OUTWARD and hand each one only the power that got past the ones inside it.
+Two chains run down that walk and they answer different questions: the BEARING chain is what this
+observer sees (a band the bearing misses blocks nothing), the BOLOMETRIC chain is what each occluder
+intercepts over the whole sky (a band the bearing misses still intercepts, and still glows). A band
+therefore contributes infrared to a viewer it does not dim, which is correct - waste heat goes
+everywhere.
+RULE: `fraction` IS THE BEARING ANSWER AND `occluderSkyShare` IS THE SKY ANSWER. A ringworld's
+fraction is 1 (a covered observer sees nothing) and its sky share is sin(w), about half a per cent.
+Read the sky share off the fraction and a ringworld claims to re-radiate its star's entire output.
+WHY: G54, found in the browser on the owner's own arrangement - a 0.3 swarm at 1 AU inside a
+complete shell at 4.9 AU read an INFRARED EXCESS OF 130% OF THE STAR'S OUTPUT, because both were
+handed the star's full luminosity. The shell only ever receives the 0.7 the swarm let past.
+BLAST: THE GATE THAT CATCHES THIS IS A LAW, NOT A FIGURE - total re-emission over any stack of any
+depth cannot exceed the star - because it has to hold for arrangements nobody has thought of. A
+pinned number for one arrangement would have passed the others.
+BLAST: THE SECOND COPY IS THE REAL LESSON AND IT SURVIVED THE FIRST FIX. `observedStarTags` had its
+own occluder loop; the conservation fix landed in `starObservation` alone, so the MAP said 100% and
+the TAG beside it said 130% - one question, two answers, and every existing test green because each
+compared a surface against a number rather than against the other surface. The gate now compares the
+two SURFACES across six arrangements. When one function grows a second caller with a slightly
+different question, give the caller a FLAG, never a copy.
+
+### RENDER-S47 A STAR DIMMED TO NOTHING IS AN ABSENCE ON THE MAP, AND READS AS THE WRONG OBJECT
+BUCKET: IMPLEMENTATION - durable: a MARK is not a READING, and a derived quantity that reaches zero
+needs a legibility floor at the drawing layer and nowhere else. The ring is this code's.
+WHERE: `starmap/starGlyphLaw.ts` - `GLYPH_DIM_FLOOR`, `floorGlyphGain`, `occlusionRingArcs`,
+`ringArcPath`, `OCCLUSION_RING`; applied in `starmap/systemStars.visualStarOf`; drawn by
+`components/Starmap.svelte`, `starmap/Starmap2DView.svelte` and `starmap/starmapScene.ts`.
+RULE: the floor is the MAP'S and never the physics'. `observedStarReading` still returns
+transmission 0 and the `stellar/dimmed` tag still says 99 magnitudes; only the GLYPH is lifted, and
+lifted as ONE factor over the whole gain so the hue cannot move - per channel would floor the blue
+first and turn a reddened star grey at exactly the depths where the reddening matters most.
+RULE: the ring's GAPS ARE THE LIGHT STILL GETTING OUT - a 30% swarm draws a ring 30% closed, a
+complete shell draws a closed one, and the closed case is ONE arc rather than six meeting end to end
+(touching arcs leave hairline seams at the moment the picture must say "sealed"). Its colour is a
+fixed amber and NOT the star's, because it is the thing standing in front of the star and has to
+stay visible on a star the same occlusion has dimmed to an ember.
+WHY: owner, 2026-08-30, on putting a Dyson sphere around a star: *"it looks like a black hole! No
+sign of the IR anomaly - suspected megastructure warning on starmap level."* Coverage 100% means
+transmission 0 means #000000, which is honest photometry and, on a black map, an absence.
+BLAST: THE TWO HALVES ARE COUPLED BY CONSTRUCTION, and the gate says so: anything dark enough to be
+mistaken for a hole is far past the anomaly threshold, so it always carries a ring. Do not floor the
+glyph without the ring or the map merely lies more quietly.
+BLAST: one arc list, three surfaces - the two SVG maps share `ringArcPath` (the large-arc flag only
+shows up past a half turn, which is exactly the heavily-occluded case) and the 3D map bakes the same
+list into a canvas texture cached per 5% bucket. TAG-20 is the entry recording what a marker added
+to one renderer and not the others costs.
+
+### UI-C13 A HAND-OFF TO A NEW WINDOW HAS THREE WAYS TO FAIL AND ALL THREE WERE SILENT
+BUCKET: ARCHITECTURE (product contract) - a user-triggered action that produces NOTHING VISIBLE is
+indistinguishable from a crash, and the browser gives exactly one signal that nobody was reading.
+WHERE: `reports/openReport.ts` (`openSystemReport` - the ONE stash-then-open, and the failure
+sentences); its two callers `routes/+page.svelte` (`handleStarmapReport`) and
+`components/SystemView.svelte` (`handleGenerateReport`). Gated by `reports/openReport.spec.ts`.
+RULE: the module that opens an auxiliary window RETURNS what happened and the caller shows it.
+`window.open` returning `null` is a BLOCKED POPUP and is the only notice the browser gives - it must
+never be discarded. A precondition failure (no system open) must not be an early `return` either:
+the starmap rail reaches the report with no system loaded as an ORDINARY path, not an edge case.
+WHY: [[B113]](b), owner: *"The Reports appears to not work at all for me - the window no longer opens
+with the paper report."* Measured on BOTH channels before anything was changed - prod v3.0.164 and
+beta v3.0.258 behaved identically: with no system open `window.open` was never called at all (0
+calls, no stash written); with a system open it was called once and returned `null`. Neither logged,
+alerted, nor marked the UI. The three-way split matters because the two faults look the same from
+the outside and have different fixes.
+BLAST: THE REPORT DOCUMENT WAS NEVER AT FAULT and the measurement is what proved it. v3.0.205 (the
+A80 unit sweep) was the leading suspect - the only commit to touch reports since prod - but /report
+renders the complete paper report on beta with an empty console when reached directly. A render that
+throws and a window that never opens are the same user report and opposite bugs; reproduce on the
+REPORTING channel before believing a commit did it.
+BLAST: the stash is `sessionStorage`, which a new tab inherits as a COPY at creation. It is written
+BEFORE the open and is not a size risk - the largest system in the real-user corpus serialises to
+60 KB against a ~5 MB quota - but a throw there is now caught rather than taking the open down with
+it, because a quota failure would otherwise present as this same silence.
+
+### UI-C14 A DATE ON ANY SURFACE IS THE CAMPAIGN'S DATE, AND ONE FUNCTION SAYS SO
+BUCKET: ARCHITECTURE - a two-line idiom repeated at call sites is a rule nothing enforces, and the
+surface that had not yet copied it invented Gregorian instead.
+WHERE: `temporal/utre.ts` - `formatInstantMs` (unix ms -> the campaign calendar) and
+`activeCalendarOf`. Readers: `reports/ReportDocument.svelte` (`epochLabel`),
+`components/ShipLogPane.svelte` (`formatLogTime`), `routes/catalogue/+page.svelte`
+(`followClockLabel`). Gated by `temporal/calendarFormat.spec.ts`.
+RULE: nothing outside `utre.ts` writes `resolveCalendar(unixMsToMasterSeconds(ms), cal)` again, and
+nothing renders a campaign instant through `new Date()`. `formatInstantMs` returns NULL rather than
+a Gregorian guess when there is no calendar, so each surface keeps its own documented fallback (a
+ship log wants ISO, a clock strip wants a sentence) while the calendar path itself cannot differ.
+WHY: [[B113]](a), user: *"The Epoch in the 'Generate Reports' is not updating to the Epoch I have
+set in the settings calendar."* `ReportDocument` rendered `new Date(system.epochT0).getFullYear()`
+unconditionally. Measured live on beta: the clock strip read "00:00:00, Monday 1st January, 2323 AD"
+while the report's Epoch cell read "2025" for the same campaign at the same instant.
+BLAST: the report is a SEPARATE ROUTE fed by a one-shot sessionStorage payload, so it can only
+render what the payload carries - the calendar had to be added to the stash (`temporal`) before the
+formatter was reachable at all. Any future report field that shows a date needs nothing more, but a
+NEW report-like route does: give it the payload, not a second resolver.
+BLAST: the report's "DATE:" header line is deliberately left as a real-world ISO date. It is when
+the paper was PRINTED, not an in-world instant, and putting it on the campaign calendar would claim
+a fiction the field does not mean.
+
+### DATA-R36 ONE ANCHOR SAYS WHICH REAL INSTANT A TICK IS, AND EVERY CALENDAR DERIVES FROM IT
+BUCKET: ARCHITECTURE (scattered constants) + DOMAIN - a clock counting seconds since the big bang
+is a number with no meaning until something states which of its ticks is a real date. That
+statement is DATA, it exists once, and nothing may hold a private opinion of it.
+WHERE: `static/temporal/calendars.json` - `temporal_anchor` (`master_t`, `utc`, `stake_utc`) and
+each calendar's `epoch_utc`. Code: `temporal/utre.ts` - `anchorUnixEpochMasterSeconds`,
+`calendarEpochOffset`, `setRuntimeTemporalAnchor`, `anchorMasterSeconds`, `unixMsToMasterSeconds`,
+`masterSecondsToUnixMs`; `temporal/defaults.ts` - `applyTemporalRegistryConfig` (adopts the anchor
+BEFORE the registry), `adoptShippedCalendarEpochs`, `defaultCampaignStartSeconds`. Gated by
+`temporal/anchor.spec.ts` and `temporal/eclipseAnchor.spec.ts`.
+RULE: a shipped calendar states its zero as `epoch_utc`, a real instant, and its `epoch_offset_t`
+is DERIVED from the anchor on load - whatever is stored in that field is ignored. A calendar with
+no `epoch_utc` (a GM's own, or an old save) keeps its stored offset untouched. `epoch_offset_t` is
+therefore a CACHE for our calendars and DATA for theirs, and the discriminator is `epoch_utc`.
+THE CACHE MUST BE KEPT IN SYNC, and this is not tidiness: the calendar editor's Epoch Offset field
+binds straight to `epoch_offset_t`, so a stored value that disagrees with the derivation is shown
+to a GM as a number that is both WRONG and INERT. That shipped in the first cut of G62 - the editor
+displayed 435084559692049800, 297 years stale, while the engine used the derived value.
+`anchor.spec.ts` now asserts stored == derived for every shipped calendar.
+A GM WHO TYPES THEIR OWN ZERO OWNS IT: the editor sets `epoch_gm_authored` and drops `epoch_utc`,
+and `adoptShippedCalendarEpochs` skips any calendar carrying that flag. Without it, adoption - which
+exists to carry OUR correction into saves holding OUR calendar unmodified - would silently overwrite
+a reckoning somebody chose, which is the steer-do-not-stop rule broken by a repair pass.
+Move `temporal_anchor.master_t` and every shipped calendar moves with it, together, by the same
+amount - that is the property the gate asserts and the reason the mechanism exists.
+WHY: [[G62]], owner: *"The main clock is 'seconds from big bang' but we need a genuine stake in the
+sand to the gregorian calendar... I put in a correction number to try and do this but I am not sure
+it works entirely as planned."* It did not. MEASURED before anything was changed: four calendars
+each carried an independent absolute offset, and three of the four disagreed with the code anchor
+by three DIFFERENT amounts - Earth Gregorian zero at 297 BC (should be 1 AD), Mayan Haab at 3408 BC
+(should be 3114 BC), Chinese Lunisolar at 2553 BC (should be 2697 BC); only the RATIO_LINEAR
+Stardate was right. So the shipped app rendered a clock seeded at 1 January 2026 as "00:00:00,
+Monday 1st January, 2323 AD", and that string was read off both prod and beta.
+BLAST: THE DRIFT IS NOT `Y + D`. `resolveBucketDrain` computes `working = local - floor(local/Y)*D`,
+so one displayed year consumes `Y*Y/(Y-D)` seconds of local time. The shipped `drift_per_year_t`
+of 20925 therefore ran 13.1 s/yr SLOW, and the obvious-looking "correction" to 20952 (which assumes
+365 d + D = a mean year) runs 13.9 s/yr FAST - two wrong answers either side, from one misreading.
+The value that lands is 20938, at 0.089 s/yr. Anyone retuning this must invert the ACTUAL
+expression, not the intuitive one.
+BLAST: SUPERSEDED BY A92 - THIS CALENDAR NOW HAS A REAL LEAP DAY AND IS EXACT. It is recorded
+rather than deleted because the shape of the error is the lesson. Until A92 wired them,
+`leap_logic.threshold_t` and `apply_to` were declared in the data and read by nothing; the surplus
+was smeared evenly instead of inserting 29 February, so the model was exact only at `stake_utc` and
+wandered up to 11.6 h either side - the DATE stayed right and the CLOCK TIME did not. The residual
+was never a mistuned rate: half a leap day is 12.0 h and the measured worst case was 11.63 h, which
+is the same number. See A92 for the mechanism that replaced it and why a bucket cannot state the
+Gregorian rule at all.
+THE WOBBLE IS THE MISSING LEAP DAY, NOT A MISTUNED RATE, and the arithmetic says so: a constant
+seconds-per-year correction is a straight line through a staircase that inserts a WHOLE DAY every
+four years, so the best possible fit leaves a sawtooth of half a leap day - 12.0 h - and the
+measured worst case across 1900-2100 is 11.63 h. No value of `drift_per_year_t` improves on that.
+Anyone asked to make this calendar eclipse-accurate must add a real leap RULE (or navigate by
+instant instead), not retune the rate.
+BLAST: A SHIPPED CALENDAR'S EPOCH IS THE APP'S, NOT THE SAVE'S. Every real starmap carries a copy
+of all four calendars, so without `adoptShippedCalendarEpochs` an existing campaign would render
+297 years out for ever AND - its copy no longer matching shipped - B112's delta would write the
+whole app library back into the file. Adoption is keyed on `id` and touches only the epoch fields
+and `leap_logic`; the key, format and lookup tables stay the GM's. This is the cost DATA-R32
+already states ("if a later version CHANGES one, campaigns follow the new definition"), paid on
+purpose for the first time.
+BLAST: ECLIPSE TIMINGS WERE THE ACCEPTANCE TEST AND ONLY HALF OF IT IS REACHABLE. The anchor half
+is gated exactly. The other half is not the anchor's: Luna in the bundled Sol carries
+`Omega_deg: 0` and `omega_deg: 0` - the node that sets where eclipse SEASONS fall is a placeholder
+- and `eclipses.ts` holds elements FIXED by documented decision (PHY-6, `approximate: true` on
+every prediction). Measured on this build: the first Earth eclipse after 2026-06-01 is 2028-09-22,
+a 0.597 partial, 771.7 days from the real total of 2026-08-12. A correct anchor does not move that
+by one second. Closing it needs real elements for Earth and Luna plus nodal precession - a physics
+item, filed on the board, and `temporal/eclipseAnchor.spec.ts` records the gap with its numbers.
+### RENDER-S48 A MODEL DRAWN IN ITS HOST'S CURRENCY MUST BE SCALED BY THE HOST'S LIVE RADIUS
+BUCKET: ARCHITECTURE - a build-time snapshot of another object's drawn size is stale by the next
+frame, and the units silently square if the caller also scales by length.
+WHERE: `holo/scene.ts` - `attachMegaVolume` (tether built with `hostRadiusScene: 1`), the
+`surface-stand` branch in `updateConstructs`; the precedent is `updateRings`
+(`rv.pivot.scale.setScalar(parent.screenK)`) and the same pair in `updateLabels`.
+RULE: geometry expressed in multiples of a HOST's radius is built in UNIT host-radius currency and
+multiplied every frame by that host's live drawn radius - `radiusScene * (screenK ?? 1)`. Never
+bake `bodyRadiusScene(host, ...)` at attach: the host's drawn size moves with the body-size dial,
+with the zoom-dependent screen floor (`screenK`), and with whether the scene was built at system or
+body level - all three change after the attach runs. Keep the unit span as its own field
+(`megaUnitSpan`) and derive `shipLen` from it per frame, because framing and the pixel LOD read
+scene units.
+WHY: the space elevator's ribbon. Its `surface-stand` branch set `scale.setScalar(1)` and was then
+overwritten by the trailing `setScalar(drawnLen)`, so the ribbon was scaled by its own length -
+currency squared - and a 5.6-Earth-radii beanstalk drew as a tick a fraction of the globe. The
+build-time host radius was wrong independently (hardcoded `systemLevel: true`, no `screenK`), which
+is why the same instance drew different lengths on different rebuilds. THREE sightings before it
+was named, and DEAD CODE hid it: the comment said the scale was 1 and the next statement disagreed.
+BLAST: any new host-relative geometry (a phase-5c interior floor, a soletta aimed at a world). A
+`setScalar` in a branch that a later unconditional `setScalar` overwrites is the shape to grep for.
+CORRECTION (v3.0.291, see RENDER-S50): the live-radius multiply is right for the BASE and the WIDTH of a
+host-relative structure and WRONG for its REACH. A length in multiples of the globe's radius follows
+the globe's readable law - a readable Earth is drawn hundreds of times its true proportion - while
+the Moon's orbit is spread by a different, gentler law, so an 8-radii ribbon reached past the Moon.
+Reach belongs to the satellite law. `megaUnitSpan` is gone; the tether is unit parts laid out per
+frame by `tetherLayout`.
+
+### DATA-R37 A BUNDLED EPHEMERIS IS ELEMENTS *AND* A MEAN MOTION, AT A NAMED INSTANT
+BUCKET: DOMAIN + ARCHITECTURE - domain: a real orbit's rate is set by the TOTAL mass, so `n` is not
+derivable from the primary's `mu` alone. Architecture: four files ship the same Sol and nothing was
+keeping them equal.
+WHERE: `scripts/ephemeris/solElements.cjs` (the source tables) and `calibrateSol.cjs` (the writer);
+the four bundled files it maintains - `static/example-starmaps/Local_Neighbourhood-Starmap.json`,
+`Local_Neighbourhood_SciFi-Starmap.json`, `static/examples/Sol_2030-System.json`,
+`Sol_Expanse-System.json`. Gated by `system/solCalibration.spec.ts`.
+RULE: the bundled Sol is calibrated to ONE datum - the anchor's `stake_utc`, 2026-09-01T12:00:00Z -
+and every calibrated body carries `t0` = that datum, real elements for it, AND an explicit
+`n_rad_per_s`. Re-run the script rather than hand-editing a planet; it is idempotent and it writes
+all four files, which is the only thing stopping them drifting apart.
+WHY: [[G62]] part 2, owner: *"before there was no point in aligning the planets to reality as time
+was arbitrary - not now."* Every planet shipped with `Omega_deg: 0` and `omega_deg: 0` - placeholders,
+because until the anchor existed there was no instant for them to be right AT.
+BLAST: THE MEAN MOTION WAS THE WHOLE FAULT ON LUNA, and it is invisible in the elements. The engine
+derives `n = sqrt(mu/a^3)` from the PRIMARY's mu, which for the Earth-Moon pair ignores the Moon's
+own 1/81 share: 27.45179 d against the real sidereal 27.32166, so 0.13 d of phase EVERY lunation and
+3.1 days over two years. Correct elements with that `n` still put the eclipses in the wrong months -
+the first predicted one moved only from 771 to 742 days out. Storing `n_rad_per_s` from the same
+table as the elements fixed it (`orbitMeanMotion` respects it - PHY-33 - and `SystemProcessor`
+prefers it for the displayed period, so motion and readout cannot disagree). ANY future bundled
+ephemeris needs the same treatment; a satellite of a non-negligible secondary is the general case.
+BLAST: WHAT THE CALIBRATION BUYS, MEASURED, so nobody oversells it. The Sun's longitude lands within
+0.5 deg (dates and seasons are right). The Moon lands within about a DAY of phase, because Meeus's
+MEAN elements omit the periodic terms - evection 1.27 deg, variation 0.66 deg - that a fixed-element
+Kepler orbit cannot carry. At the real 2026-08-12 total eclipse the engine now puts the Moon 1.29 deg
+from the Sun at 0.75 deg ecliptic latitude - a new moon near the node, which is the GEOMETRY of an
+eclipse - where before it was 771 days from any alignment at all. That makes eclipse SEASONS right
+and eclipse TIMINGS still approximate: totality needs about a tenth of a degree.
+BLAST: LUNA'S NODE IS RIGHT ONLY AT THE DATUM. It regresses 19.3 deg/yr in reality and the engine
+holds elements FIXED by documented decision (PHY-6), so the eclipse seasons stop moving. Expect the
+calibration to hold for months either side of the datum and to decay over years. Closing that means
+nodal precession in the propagator - a separate item, and one that touches every system.
+BLAST: THE FILES HAVE DIFFERENT INDENTS - the starmaps are 1, the system files 2 - and
+`JSON.stringify` at the wrong one reflows everything. Doing exactly that turned this ten-body change
+into a 15,596-line diff on one map and 20,840 on another; the diff stat caught it and it was
+reverted. `detectIndent` exists for that reason. DATA-R14 with a bigger blast radius.
+
+### DATA-R38 A HIERARCHY INFERRED FROM STATE VECTORS IS NESTED HILL SPHERES CHOSEN BY SIZE, WITH PAIRS AS HOSTS
+BUCKET: DOMAIN + ARCHITECTURE - domain: Hill spheres NEST, so a body's host is the SMALLEST sphere that
+both contains and binds it, never the one it sits "deepest" in by ratio; a Hill radius is judged against
+the mass its owner ACTUALLY orbits; and a pair is a host in its own right, because a circumbinary body is
+unbound relative to either member alone. Architecture: pairs must exist WHILE lighter bodies are being
+placed, not be discovered afterwards, and every orbit is derived ONCE, at the end, from world states.
+WHERE: `import/ubox/hierarchy.ts` (`inferHierarchy`: placement, pairing, elements), `import/ubox/convert.ts`
+(a pair becomes a `barycenter/auto` node, parents before members), gates `multiRoot.spec.ts` (every one
+seen red against the v3.0.287 code) and `hierarchyPins.spec.ts` (every single-star fixture pinned
+field-for-field). The SpaceEngine importer reads `ParentBody` from its file and has no inference at all.
+RULE: (1) the host is the smallest Hill sphere that contains and binds the body; the root's is infinite,
+so it is the fallback without a special case. (2) A Hill radius is `hillRadiusAU(a, e, m, hostMass)` with
+the mass the owner orbits - a moon's against its planet, a pair member's against its partner on their
+relative orbit (the formula overshoots for the heavier member, harmlessly: the smaller sphere still wins
+near the lighter one). (3) A satellite at or above the promote ratio of its host (`pairThresholds`)
+becomes half of a pair AT THE MOMENT IT IS PLACED - bodies are placed heaviest first, so every lighter
+body sees the pair as a host - and the host's satellites outside the pair's separation move up to the
+pair. (4) Pair members are emitted in the coupling pass's OWN convention: one relative orbit, both members
+with its e, i, Omega, M0 and epoch, a split as a * m_other / M, the heavier member's omega opposed, one
+mean motion - so `processBarycenters` finds every number settled and moves nothing.
+WHY: [[B114]], measured on two users' files. The single-root code let a non-root STAR compete on a depth
+SCORE (distance / Hill radius): 16 AU into Acher's 1,700 AU sphere scored 0.0097 against 0.09 for Bonae's
+0.039 AU into Onae's 0.43 AU sphere, so the star took the moon - the root had been EXCLUDED from that
+score for exactly this reason, which hid the fault until a second star existed. It judged every Hill
+radius against the ROOT's mass: Uitaminus's sphere came out 1,181 km against the star where it is 120,000
+km against Lajerra, so Aycrum at 29,920 km became a planet, and Plunxiapus at 66,050 km from Maei (a
+moon, sphere 11,060 km instead of 337,000) was thrown to the star and DROPPED as unbound. And a
+circumbinary planet 400 AU from a 40 AU pair was dropped too, until pairs became hosts during placement:
+relative to either star alone it is hyperbolic.
+BLAST: the emitted convention and the coupling pass's tie-break are ONE decision. `processBarycenters`
+takes the HEAVIER member as its reference when neither has been edited and both carry a shape; change
+that tie-break and every imported pair's members swap sides on the first process(). The
+"process() finds nothing to change" gate in `multiRoot.spec.ts` is what catches it.
+BLAST: the RECONCILER's promotion is still the M0-plus-pi convention (PHY-33's recorded seam), so a pair
+the IMPORTER emits stays put through process() (gated to under 1 km on the reporter's file) while a pair
+the reconciler forms later from a re-homed or edited body may step an eccentric member round its orbit.
+BLAST: `hierarchyPins.spec.ts` will go red on ANY placement change that moves a one-star file. Read the
+diff before regenerating; the pin's header records the eleven Hystrine nodes that moved at v3.0.288 and
+why each was the fix showing.
+
+### DATA-R39 A RE-HOME IS AN IMPORT OF THE BODY'S OWN STATE, AT THE DISPLAY INSTANT, IN THE NEW PARENT'S FRAME
+BUCKET: DOMAIN + ARCHITECTURE - domain: "orbit a different host without moving" is a state-vector problem -
+position AND velocity at one instant become the elements about the new host, and that instant is the
+epoch; when the state is unbound the only honest orbit is a circle at the current distance. Architecture:
+one conversion (`elementsFromState`, the importer's own core), one state walk (`computeWorldStates3D`, the
+position walk with velocity as a second operand), one host-list rule (`hostCandidates`, shared with the
+construct picker).
+WHERE: `system/reparent.ts` (`reparentBody`, `hostCandidates`, `roleHintUnderHost`),
+`physics/worldPositions.computeWorldStates3D`, `import/ubox/kepler.elementsFromState`; the control is in
+`BodyOrbitTab.svelte` behind the one Advanced disclosure and `BodySidePanel` hands it `nowMs`. Gate:
+`system/reparent.spec.ts`, each case seen red with its half of the fix removed.
+RULE: derive every element from the world state at `nowMs` and stamp `t0 = nowMs`. Never keep an old
+mean anomaly on a new host - a circle is not an orbit without its phase (DATA-R29, B111): with the
+elements kept, Luna handed to Jupiter landed 8,750,351 km from where it was. Derive IN THE FRAME THE WALK
+READS the orbit in: a satellite's elements are quoted in its parent's equator, so undo that rotation
+before converting - with the rotation dropped, a moon handed to Uranus was 3.68 BILLION km out. Use
+mu = G * hostMass, the propagator's own, so the stored orbit reproduces the state exactly (velocity to a
+part in a million in 'kepler' mode). Refuse only a cycle (a host beneath the body); everything else is
+allowed and left to the stability tags.
+WHY: [[G64]], the owner's ask, with the trap already paid for by B111.
+BLAST: the 'circular' fallback preserves position and orbital plane, NOT speed - Luna handed to Jupiter
+arrives at 30 km/s against a 0.6 km/s escape speed, so no ellipse exists and the circle is 279 years
+round; it stays where it is while Earth leaves. The processor writes `hostMu` only on barycentres and
+pair members, so a plain body's is the re-home's to set. A retrograde result follows the importer's
+convention (i > 90 AND `isRetrogradeOrbit`) for consistency with imported bodies - and that convention is
+itself a recorded seam ([[B115]]): the 3D propagator honours both signals, so such a body runs prograde
+in the holo view.
+
+### RENDER-S50 A STRUCTURE HUNG ON A PLANET IS PLACED BY THE SATELLITE LAW, NOT BY THE GLOBE
+BUCKET: ARCHITECTURE - two scale laws coexist around a planet (the globe's readable radius and the
+satellites' spread), and anything sized by the wrong one detaches from its neighbours.
+WHERE: `rendering/scaleLaw.ts` `satelliteDrawDistance` + `moonSpread` (moved out of scene.ts, where
+the formula lived twice); callers `holo/scene.ts` updatePositions (satellite branch),
+`buildMoonOrbitRing`, `updateSurfaceConstructs` (the tether layout); `constructs/megaGeometry.ts`
+`tetherLayout` / `tetherAltitudesKm` / `equatorialAnchor`; the 2D twin is
+`SystemVisualizer.svelte` `drawTetherRadial`, through the same `scaleBoxCox` the moons use.
+RULE: a moon, its orbit ring, a station, and any structure reaching a stated radius from its planet
+(a beanstalk's geostationary dock, its counterweight) all ask ONE function for their drawn distance
+from the planet's centre: `satelliteDrawDistance(offAu, kHelio, localScale, parentRadiusScene,
+moonRadiusScene, compression)`. It is monotonic in `offAu` at every dial position, so geostationary
+is always drawn inside the Moon's orbit, and a dock coincides with a station at the same radius by
+construction. The BASE of a surface-stand structure is the host's DRAWN surface (`radiusScene x
+screenK`); widths and knobs are host fractions FLOORED IN SCREEN PIXELS (`TETHER_MIN_WIDTH_PX`),
+the same instrument as RENDER-S43; when the whole structure falls inside the floored globe it is
+hidden and the glyph carries it. A tether's geometry is UNIT parts (a 1x1x1 box, a unit ball, a
+unit rock) laid out every frame - nothing about its size is decided at build. A geostationary
+tether's anchor is on the EQUATOR: the shape declares `anchorLatitudeDeg: 0` and the stand-up drops
+the id-hashed landing site onto the host's LOCAL equator (`equatorialAnchor`; local +Y is the spin
+axis because mesh.quaternion = tilt x spin). The 2D structure seam reads the record
+(`render2d.structure`: 'orbit-line' / 'radial' / 'glyph') - the last family test is gone.
+WHY: the owner's 2026-09-02 sightings after S48's fix: the ribbon, scaled by the globe's readable
+radius, reached PAST the Moon at readable body sizes; at true size it vanished (1%% of a floored
+globe is a fraction of a pixel); and the beanstalk circled the pole, because `surfacePointFromId`
+draws latitude uniformly. The GM's 2D map never drew it at all: `render2d.structure` was 'glyph'.
+BLAST: any host-relative structure (a phase-5c interior floor, an orbital ring around a world, a
+soletta aimed at a world): its drawn radius is the satellite law's answer, never a multiple of the
+globe. Grep for `radiusScene *` near a `parentId` to find the next violation. And the 2D map has
+its OWN twin of the law (`scaleBoxCox` on distances AND radii); a structure drawn in 2D goes
+through it or it will not meet the disc edge.
+
+### RENDER-S51 AN ATTACHED CONSTRUCT IS PLACED BY THE PROPAGATOR, IN ITS STRUCTURE'S FRAME - NEVER BY A RENDERER
+BUCKET: ARCHITECTURE - three views, one answer. A renderer that applies a spin of its own to a
+docked thing draws it somewhere the other views do not.
+WHERE: `constructs/docking.ts` (pure: `ladderPorts`, `anchorLocalDir`, `hostFrameDir`,
+`attachedOffsetAu`, `nearestAttachment`, `dockSpeedMs`, `dockMatchSpeedMs`, `effectiveAttachment`);
+`physics/worldPositions.ts` (the attachment pass in `walkPositions`, before the orbit; the `attach`
+op on all three walks); `transit/scheduler.ts` (the sampler's Docked branch; the reconciler stamps
+`attachedTo`); `TransitPlannerPanel.svelte` (dock levels as destinations, `arrivalDock`); the
+record's `capabilities.docking` ('ladder' | 'anywhere' | 'point'); `holo/scene.ts`
+`updateSurfaceConstructs` (the tether reads its ray from its PROPAGATED position and never locks).
+RULE: a construct with `attachedTo` - or a ladder structure, which is attached to ITSELF at the
+anchor - gets its world position from ONE function, `attachedOffsetAu`, added to its structure's
+HOST position, in every walk (2D, 3D, states). It outranks `orbit` (the create path leaves a
+placeholder orbit at the host's radius). The frame point is stored in the STRUCTURE's rotating
+frame: a level radius on the anchor ray for a ladder (the anchor's longitude is authored
+`surface_anchor` or the id hash the renderer always used; the shape's `anchorLatitudeDeg` forces the
+equator), a bearing at the structure's epoch plus a latitude for a rim or shell, nothing for a hull.
+The host's spin in the propagator MIRRORS the renderer's: -(t/P)*2pi about the scene pole IS a
+prograde +(t/P)*2pi about physics +z, then the tilt turns the physics (x, z) pair - `hostFrameDir`,
+pinned by the gate at a quarter turn and at a 90-degree tilt. A journey docks by flying to the
+HOST at the level's radius (`parkingOrbitRadius_au`) and carrying `arrivalDock`; the sampler hands
+the ship to the structure at arrival (ladder: the level; anywhere: the nearest point of the rim it
+reached, held at the structure's epoch so it rides the rim), and the reconciler stamps
+`attachedTo` + `placement: 'Docked: <structure> - <level>'` + `flight_state: 'Docked'`,
+idempotently. CO-ROTATION IS NOT ORBIT: `dockMatchSpeedMs` is the gap between a circular orbit at
+the docked radius and the structure's own speed there (~0 at GEO, ~7.4 km/s at the anchor, a
+Niven rim over 1,000 km/s) - the planner STATES it and never refuses.
+WHY: the owner's 2026-09-03 requirement (design 7c). The only attached placement before this was
+the renderer's surface lock, which captured a bearing once in scene space and spun it itself - so
+the GM's plan view and the holo could not agree on where an anchor was, and no ship could be told
+to sit on the ribbon at all.
+BLAST: any new "sits on / rides with" relationship (a ship on a ring floor, a habitat on a shell, a
+tug clamped to an asteroid): declare `docking` on the record, express the point in the structure's
+frame, and let `attachedOffsetAu` place it. A renderer that computes such a position itself is the
+fault this entry names.
+ADDENDUM (v3.0.324, the owner's first flight to a dock, 2026-09-06): the ship "did an orbital transfer,
+was orbiting the wrong way, went the wrong direction and then magically snapped on to the
+beanstalk". Two rules came out of it. (1) THE PARKING SENSE: `resolveDesiredArrivalRelative` took
+the sense of the APPROACH; it now takes `progradeSense`, and the planner passes the host's spin
+sign whenever the host carries a ladder structure ("ALWAYS orbit IN the direction of planet spin
+IF there is a beanstalk") - a retrograde approach is turned prograde and the reversal is priced in
+dv2. (2) THE HAND-OVER: a rim's nearest point IS where the ship arrived, a hull is a rendezvous
+and the anchor is a landing - those dock at arrival; a ladder level ABOVE the surface parks at the
+level's radius and docks when its prograde orbit CATCHES the ribbon's bearing (`tCatch =
+gap / (n - omega)`), orbiting visibly until then. At or above geo the two co-move, so the hand-over
+is at arrival - a PHASING GAP the app does not model yet (open on the board). (3) `getGlobalState`
+is attachment-aware: a docked construct's state is host + `attachedOffsetAu`, velocity a CENTRAL
+difference of the offset (a forward one leaves half omega^2 R dt pointing inward, 0.11 m/s at
+geo) - the origin of a departure from a dock and the moving target of an arrival at one.
+CORRECTION (v3.0.327): the owner's flight was an ORBIT CHANGE, and the wrong-way orbit he saw was not
+the approach sense at all - it was TRANSIT-8, the far-side velocity sign in `buildOrbitChangePlan`,
+which parked EVERY Hohmann retrograde. The approach-sense rule above still stands for the
+interplanetary paths; the orbit-change path now conserves the sense and applies the same prograde
+rule at a beanstalk host, with a reversal priced when the origin runs against the spin.
+
+### DATA-R40 A FILE CONTRACT IS ONE MODULE, PINNED OVER EVERY TEMPLATE THE PACK SHIPS
+WHERE: `src/lib/constructs/constructFile.ts` (`SITUATION_FIELDS`, `stripSituation`, `constructFileProblem`), bound by `src/lib/components/ConstructSidePanel.svelte`; pinned by `src/lib/constructs/constructFile.spec.ts`, which builds every starter-sf construct template the way `AddConstructModal` does, exports it, and asserts the importer accepts it back, and pins the panel to the module.
+RULE: what Export writes and what Import accepts are two halves of one contract, and they live in one module with one test over real data. The halves were two literals inside the panel from 2025-11, and drifted on 2026-06-17 (v2.0.159-beta) when the templates dropped their class-path string: the importer went on demanding a `class` field that no template carries (0 of 59) and no editor sets, so from that day every construct a GM built, exported and re-imported was refused as "Invalid construct file" (B117), and nothing said so because no test held both halves. A refusal names the missing thing; an optional field is never grounds for one.
+
+### DATA-R41 WHAT THIS BUILD SHIPS IS PUBLISHED, GENERATED AND PINNED - NEVER HAND-WRITTEN
+BUCKET: ARCHITECTURE (file format) - the mirror of DATA-R32. That entry says a SAVE must not carry
+what the app ships; this one says the app must therefore PUBLISH what it ships, or every reader is
+left maintaining its own copy of a list that tracks this repo forever.
+WHERE: `scripts/shipped-manifest/build-shipped-manifest.mjs` (the generator, `npm run manifest`),
+`static/shipped-content.json` (the output, served at `/shipped-content.json`), pinned by
+`scripts/shipped-manifest/shippedManifest.spec.mjs`. Same generate-and-pin shape as the starmap kit
+(`build-starmaps.mjs` emitting `generated/bundledArchiveHosts.mjs`, pinned by `buildKit.spec.mjs`).
+RULE: **a hand-written manifest is the consumer's hardcoded list moved one repository over.** It
+drifts identically and it drifts more quietly, because nothing in this repo renders it and no GM
+would ever notice. So every value is read from the thing that actually ships - the files under
+`static/images/star_types` and `static/images/planet_types`, `static/models/nasa/manifest.json`,
+the `temporal_registry` keys, the starter pack's `gasPhysics` and `fuel-definitions`,
+`pristineTagCategories()` and `LIQUIDS` - and the pin regenerates in memory and deep-equals the
+checked-in file. Add a star image and the suite goes red until it is rebuilt.
+WHY IT EXISTS: hub R-13, [[G57]]. The hub told app-shipped content from GM-authored content by
+hardcoding lists copied out of this repo, and the first such list "drifted within an hour of being
+written" - the calendar baseline had one name where it needed four, and a facet lied on every map
+until it was corrected. A standing promise to notice a change in another repository becomes a fetch.
+THE TRAP, and it is the one that will actually bite: **`appVersion` IS STAMPED INTO THE FILE, so the
+rebuild must follow the VERSION BUMP, not precede it.** Bump, `npm run manifest`, then build. The
+pin says so in its own failure message, because an assertion that does not name its remedy gets
+argued with rather than run.
+TWO ROUTES TO ONE TRUTH, DELIBERATELY: two sources are TypeScript and a plain node script cannot
+import `.ts`, so the CLI loads them through vite's `ssrLoadModule` while the spec imports the same
+modules directly. Duplicating either value would be the exact fault the file exists to prevent; a
+disagreement between the two loaders surfaces in the pin instead.
+WHAT IS DELIBERATELY ABSENT: `planet_types/thumbs/` (derived by `thumbUrl()` at display time, never
+stored on a node, so it cannot appear in a save the hub is reading) and `images/ui` + `images/logo`
+(chrome, never on a body - listing them would invite a reader to treat chrome as content).
+MEASURED, so the hub is not left guessing: production and beta both serve static JSON with
+`Access-Control-Allow-Origin: *` (checked 2026-09-06 against `/temporal/calendars.json` on both), so
+a browser on another origin can fetch this with no work on either side.
+BLAST: adding a shipped registry means adding it to the GENERATOR, not to the JSON, and the spec's
+absolute assertions (a literal calendar list, a literal model path, `bundleFormat` 1) are what stop
+a builder that is wrong from deep-equalling itself into green.
+
+### RENDER-S52 TRUE SCALE IS A VIEW, NOT A DIAL, AND THE SPAN MAP HAS NO SAY IN IT
+BUCKET: ARCHITECTURE - one law owns readable size and a DIFFERENT view deliberately declines it.
+The exception has to be written down, because the next reader's first instinct on seeing a renderer
+that does not call `scaleLaw` is to "fix" it.
+WHERE: `src/lib/comparison/layout.ts` (the pure laws), `src/lib/comparison/items.ts` (the true
+radii), `src/lib/holo/comparisonScene.ts` (the scene); pinned by `comparison/layout.spec.ts`.
+RULE: the size-comparison view draws every object at its TRUE size and binds NONE of the readable-
+size law. A body's drawn diameter is `radiusKm * 2` and a star's is `starRadiusKmOf() * 2`; the
+`bodySize` dial, `trueScaleFactor`, `rMax` and the screen-space pixel floors of RENDER-S11/S41/S43
+are all absent by design. They exist to compress a range no screen can hold, and removing that
+compression is the entire feature - a size comparison drawn through the span map is a comparison of
+the span map.
+TRUE RELATIVE SIZE IS A PER-FRAME PROPERTY, NOT A PER-STRIP ONE, AND THAT IS RENDER-S55. One
+pixels-per-km for the WHOLE strip is what the first cut shipped and it does not work on a real set:
+the owner reported it on 2026-09-06 as "stupid massive and hard to scroll past". The scale now
+follows the scroll so that whatever is at the centre of the window draws at a fixed share of it.
+Everything in a FRAME is still at true proportion to everything else in that frame - the honesty is
+untouched - but the strip has no single scale and nothing may assume one.
+THE ONE FLOOR IT KEEPS IS A MARKER, NOT A SIZE. Under `DOT_THRESHOLD_PX` an object draws as a DOT
+in the DOM with its label and the words "below 1 px at this scale" - it is never enlarged, and its
+true `diameterPx` is reported beside the dot's `spanPx` so the two can never be confused. That is
+RENDER-S43's distinction (a floor is a screen-space legibility clamp UNDERNEATH the size decision)
+applied to a view that has no size dial above it at all.
+AND THE SCENE IS ORTHOGRAPHIC, MEASURED IN PIXELS. Perspective makes the nearer body larger, which
+is exactly the lie the view exists to remove; and a frustum whose world unit IS a CSS pixel means
+the overlay's labels, ruler ticks and hit areas sit over the globes by construction rather than
+through a projection nobody can check. The strip's layout is computed by a pure function in pixels,
+and the scene and the chrome both read it - recomputed whenever the scale moves, which is now every
+frame you are scrolling (RENDER-S55).
+AND THE STRIP COMES AWAY WITH THE TOOL THAT HOLDS IT ([[G75]]). The comparison's rail button is a
+SUB-ROW inside Measure, so Measure going off has to take the view with it - otherwise the strip
+stays up with its own button no longer on the rail. `closeMeasure` in `RailNav.svelte` is the one
+place that knows this, and it is the right place BECAUSE the sub-button is rendered there: the same
+rule kept in `SystemView` and `Starmap` would be one rule written twice.
+AND A STEP OF THE ZOOM IS FLOWN AT A CONSTANT APPARENT SPEED ([[B136]]). The scale follows the focus
+GEOMETRICALLY, so the screen distance between two neighbours multiplies by their diameter RATIO
+across one step: Sol to Mercury is 285:1, and 93 px becomes 25,750 px. Blending their positions
+linearly across that is not a monotone approach - measured, Mercury flew from a seventh of a screen
+out to nearly four screens away before coming back, and the middle of the step was empty black.
+`focusBlend` is the fix and it is the standard one: require `dx/dt * scale(t)` to be constant and the
+path is `(r^t - 1) / (r - 1)`. It is time-symmetric (a drag has to retrace), it collapses to the
+straight blend as `r` goes to 1 (so equal neighbours are untouched), and BOTH AXES take the same
+weight or a moon slides across while it dives in.
+`focusStepPx` IS THE APPARENT LENGTH OF THE STEP, not the separation at the moment you grabbed it -
+the same fault wearing a different hat, since measuring the gap at one end prices the whole journey
+there. The two ends agree to within the 3% the sub-pixel DOT FLOOR adds, which is a real effect and
+not slop: seen from Sol, Mercury reserves the dot's 6 px instead of its own width.
+AND A BARYCENTRE IS A DOOR, NOT A DESTINATION ([[B135]]). It has no body, so it is not on the strip -
+but the bodies that orbit it name it as their parent, and THEIR `a_AU` is the little one they make
+about each other. Pluto's is 0.000014, which sorted it between the Sun and Mercury. `barycentreHomes`
+resolves the chain to the first real host and hands the member that host AND that host's orbit
+together; taking one without the other puts a pair at the right distance under a parent that is not
+on the strip.
+AND NOTHING IS EVER PLACED AT ITS ABSOLUTE STRIP COORDINATE ([[B134]], the third trap and the worst).
+A slot's `centrePx` is measured from the START of the strip and is UNBOUNDED: the strip is sorted by
+size, so ONE enormous object puts everything behind it at a coordinate of its own diameter and
+upwards. A GM with a 10,700 AU black hole on his starmap had every other star sitting at 10^7 and
+beyond - measured live at 2.2e7 px, with the hole itself 22 million pixels wide.
+A FLOAT32 VERTEX PIPELINE CARRIES ABOUT SEVEN SIGNIFICANT DIGITS, so at 10^7 it quantises in steps
+that approach the size of the object being drawn: a 150 px star built there has its vertices snapped
+to a grid coarser than the star, and draws as a faceted lump and then as a CUBOID, worse the further
+along the strip it sits. That progression - round near the start, blocks at the far end - is the
+signature, and it is what the two screenshots showed.
+SO `slotOffset` (in `comparison/layout.ts`) IS THE ONLY WAY A POSITION IS PRODUCED, for the scene and
+for the chrome alike: everything is relative to the scroll, and the frustum is a fixed window on the
+origin rather than a pan. The CHROME always did this, which is why its labels were in exactly the
+right places in those screenshots while the globes beside them were blocks - a very good clue that
+was there to be read. Same law the holo has carried since the floating-origin work.
+IT WAS REPORTED TWICE AND CALLED FIXED ONCE, WRONGLY: the first report was blamed on a stale build,
+which was plausible (before the rolling zoom a sphere many screens wide really did show only a few
+facets) and wrong. It was pinned when the owner deleted the black hole and the whole strip came
+right. **A symptom that varies with position along a strip is a precision symptom until proved
+otherwise.**
+TWO OTHER TRAPS THAT COME WITH THAT ARRANGEMENT, both paid for on the first live run and each
+invisible to every test in the suite. **The frustum carries the pan, so the camera must NOT also be aimed** - a
+`lookAt` at the scrolled centre ROTATES an ortho camera and tilts the strip out of view ([[B123]]);
+it sits at the origin looking down -Z and never turns. **And the canvas has exactly one owner of its
+size** - the renderer, whose `setSize` multiplies by the device pixel ratio; a Svelte-bound
+`width={vw}` overwrites that with the CSS count and the scene draws into a corner of its own buffer
+([[B122]]), which is invisible at ratio 1 and obvious at 2. In BOTH faults the DOM overlay was
+pixel-exact throughout, because it does its own arithmetic - so a broken canvas beside a correct
+overlay reads as a DATA fault and sends you looking in the wrong module.
+LABELS THIN THEMSELVES WHERE THEY WOULD COLLIDE, MEASURED (`CHROME.labelPaddingPx`). The far end of
+a real system is dozens of moons inside a hundred pixels, and the layout's alternating sides run
+out; a name you cannot read is worse than none, because it hides the one beside it too. The rule
+reads the drawn WIDTH rather than a flat distance, because "Io" and "Kruger 60 B (DO Cephei)" want
+very different room and a fixed gap either lets the long ones collide or throws away the short ones.
+The SELECTED object always keeps its name, whatever the crowd - it is the one the reader asked about
+- and every dropped object is still drawn, still tappable, and names itself as soon as you scroll to
+it.
+THE RULER'S ARCS ARE SOLID AND ITS NAMES SIT ON THE TOP EDGE. Both are the owner's, 2026-09-06, and
+both have a reason under them. SOLID because a dash pattern costs the rasteriser per SEGMENT over
+the whole path and these paths are circles whose radius is whatever the zoom makes it - the same
+lesson RENDER-S31 already carries for the starmap's orbit lines ("dashed lines billions of km across
+kill the renderer"). THE TOP EDGE because the bodies run along the CENTRELINE with their own names
+directly under them, so a ruler label on the side of an arc lands on a world or on that world's
+name; the top of a circle is empty by construction. `ARC_LABEL_ANGLES` walks outward from the top
+and only reaches the sides for an arc whose top is off the window.
+THE RULER IS CIRCLES, NOT A BAR (`referenceArcs`, drawn by `stripChrome`). Owner, 2026-09-06:
+*"perhaps more as arcs to show size ... perhaps have the ruler centred rather than to one side - so
+it aligns to the planet on screen."* A bar answers "how many pixels is an Earth" and leaves the
+reader to carry that number across the screen and compare two lengths by eye; a circle of the
+reference's TRUE diameter drawn concentric with whatever is in the middle makes "three Earths across"
+a picture instead of a calculation. THE LADDER PICKS ITSELF: eight rungs from Ceres to Betelgeuse,
+and a rung is drawn only where it is legible - bigger than `MIN_ARC_RADIUS_PX` and small enough that
+its circle still crosses the window. On a strip of moons that selects Ceres, Luna and Mars; on a
+strip of stars, Jupiter and the Sun; and no code knows which map it is on. Switched off by
+`sizeCompareRuler` in the preset, because a GM putting a picture on a screen may want the worlds
+without the marks.
+A RING'S BRIGHTNESS IS ITS SURFACE DENSITY, AND ITS OPENNESS IS ITS HOST'S OBLIQUITY. Owner,
+2026-09-06: *"most planets look as spectacular as saturn - and that aint right - and get inclination
+right too."* Both were the same shape of fault - a real number used for every body alike.
+ - `ringProminence(inner, outer, mass)` reads the ring node's own mass over its annulus. The bundled
+   Sol spans four decades (Saturn 1.0e7 kg/m2, Neptune 2.9e4, Uranus 1.6e4, Jupiter 1.1e3), which is
+   the difference between the finest sight in the sky and something no eye has seen. Read
+   logarithmically and then squared, because a linear read zeroes everything but Saturn and an
+   unsquared one still gives Uranus half a Saturn. **The RADII were right all along and that was the
+   trap**: Jupiter's rings reach 3.23 planet radii against Saturn's 2.41, because Jupiter's include
+   the gossamer ring - so at one brightness the faintest rings in the system read as the grandest.
+   A ring with NO mass authored draws in FULL: a GM who drew a ring wants to see it.
+ - `ringOpenness(axialTiltDeg)` is `sin(obliquity)`, under a stated CONVENTION: the strip views every
+   body from its own orbital plane and presents each ring at its most open azimuth. Saturn 0.45,
+   Neptune 0.47, Uranus 0.99 (a circle, on its side - the one thing everybody knows about Uranus),
+   Jupiter 0.05. Every figure is checkable against a photograph, which one shared tilt was not. No
+   obliquity authored falls back to the poster angle rather than to an invisible edge-on line.
+ONLY THE RING AT THE FOCUS IS DRAWN AT FULL STRENGTH (`ringOpacityAt`). Owner, 2026-09-06: *"rings
+on unselected planets need to disappear each side - fade in/out as it moves so only 1 ring is only
+fully visible - 2 on a move - saves a lot of nasty alpha."* Three ringed worlds drawn at true extent
+at once is a grey wash across the whole strip, and every one of them is transparent, which is
+expensive as well as ugly. It is a legibility device and changes no measurement: a ring that is
+drawn at all is drawn at its TRUE extent. A FADE rather than a cut, because a ring that vanished at
+a boundary would pop on a view you scroll continuously.
+AND A BLACK HOLE BENDS ITS NEIGHBOURS. The strip runs the same stylised lensing pass the holo and
+the gallery use (`lensingShader.ts`), fed from the built holes each frame, and takes the cheap
+`renderer.render` path on every frame with no hole on screen. Owner, 2026-09-06: *"be fun to see the
+world next being bent in spacetime"*. It is not decoration on a measuring instrument: the one thing
+a size comparison cannot otherwise say about a black hole is that it is not an object of that size
+sitting there, and the bent world behind it says that in a way no label can.
+WHAT IS NOT DRAWN, and it is a scope line rather than an omission: belts (their radius is an ORBIT,
+so putting one beside a planet compares two different kinds of thing), constructs and megastructures
+(a MODEL or a generated volume - RENDER-S9/RENDER-S44 - a different assembly from the globe, and one
+nobody has extracted yet), and barycentres.
+BLAST: anything that "unifies" this view onto the scale law breaks the feature outright. If the
+readable law changes, this view does not move, and that is correct.
+
+### RENDER-S53 ONE ASSEMBLY DRESSES A BODY, AND A REVIEW SURFACE THAT COPIES IT STOPS BEING ONE
+BUCKET: ARCHITECTURE - the second copy of a look had already drifted, and the surface that drifted
+was the one whose whole job is to show what the other one draws.
+WHERE: `src/lib/holo/bodyLook.ts` (`buildBodyLook`, and `RenderStyle`, which lives here because the
+assembly branches on it and `scene.ts` imports this module); called by `holo/scene.ts`, by
+`holo/galleryScene.ts` and by `holo/comparisonScene.ts`; pinned by `holo/bodyLook.spec.ts`.
+RULE: how a body LOOKS at a given radius is decided in one function, and a caller passes its
+differences in as options (render style, unlit, atmospheres, aurora source, posture, textures). The
+radius is the CALLER's and this function never questions it - RENDER-S52 is why. What stays with the
+caller is what is genuinely not shared: the wireframe render family, the black-hole horizon and its
+accretion ring node, a star's point light, orbit rings, labels, per-frame spin, and the lo-poly
+LINES overlay (whose vertex-dot size is a binding of the scale law against the live dial, and
+RENDER-S11 forbids restating that outside the law's bindings).
+WHY: there were TWO assemblies over the same twelve `bodyFeatures` builders - the holo's, inside
+`createHoloScene`, and the gallery's `buildBody` - and the gallery's file header claims "what you
+see here is what the system view draws". It had already stopped being true: the gallery inlined a
+corona at `R * (3.2 + activity * 3)` where `buildStarLook` (which the holo calls) uses
+`radius * (5 + activity * 4)`, and ran a rival pulse beside `updateStarLook`. Nothing could see it,
+because no test had ever built one node twice.
+THE GATE IS A FEATURE INVENTORY, not a pixel comparison: `bodyLook.spec.ts` builds one node through
+every caller's option set and compares the child type names and the material count. A caller that
+grows a feature the others lack goes red. Seen red against five deliberate re-introductions of the
+original drift.
+A BLACK HOLE IS NOT A STAR, AND THE ROLE HINT SAYS IT IS. Every black hole in this app carries
+`roleHint: 'star'`, so the assembly's star branch caught them and drew Sagittarius A* as a glowing
+orange ball with a granulation texture - on the size comparison, for a day ([[B129]]). The horizon
+is now the FIRST test in the assembly, and `buildHorizonLook` + `isBlackHoleNode` +
+`isFeedingBlackHole` + `accretionDiscExtentKm` live in `bodyFeatures` beside the other shared
+builders, because THREE surfaces draw a horizon and each had its own copy of the mesh.
+THE LENS SHRINK IS THE TRAP IN THAT EXTRACTION. A lensed surface draws the horizon mesh at
+`BH_LENS_SHRINK` (0.55) of its radius, because the pass magnifies whatever black it finds; a surface
+with NO lensing pass that copied the number would state that a black hole is 45% smaller than it is.
+So the factor is a named export with its reason attached and the builder never applies it itself -
+the caller does. Same shape as A33/B27/B28: a quantity correct for its own purpose, published
+against a neighbour measured differently.
+WHAT STAYS WITH THE SCENE rather than joining the look: the gravitational-lensing PASS and the
+temperature-graded accretion DISC NODE. Those are scene effects, not a body's appearance. The size
+comparison draws its own disc as a flat ring from the SHARED extent (`accretionDiscExtentKm`), which
+is the same expression the holo's graded disc is built from.
+NOT UNIFIED, deliberately: `starmap/systemStars.ts` `blackHoleState` is a STRICTER predicate (exact
+class matches) answering a different question - which glyph the starmap draws. The two have
+disagreed since before this extraction and unifying them would change what appears on the map, so it
+is a finding rather than a change.
+BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
+fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
+holo - the holo reaches it through `buildStarLook`, one level down.
+A RING AND A DISC ARE NOT VISIBLE UNDER THE SAME CONDITIONS ([[G85]], `rendering/circleCull.ts`).
+A bounding-box test is right for a FILL - a circle enclosing the viewport covers every pixel - and
+wrong for a STROKE, because that circle's boundary is out past the corners where nothing can see it,
+and at AU scale its circumference runs to millions of pixels to stroke and clip for nothing. Use
+`discVisible` for a fill and `ringVisible` for an outline; anything drawing an astronomical circle
+wants the second one. The zones had the first test and the Hill bubbles had neither.
+LOW POWER DROPS A WASH AND KEEPS A LINE. A translucent band is the expensive half by fill rate and
+the outline is the half that carries the answer, so a boundary overlay stays readable on a weak
+machine with its shading gone. Do not gate the line as well.
+THE HOLO DOES NOT DRAW A FRAME NOTHING COULD HAVE CHANGED ([[G84]]), and the danger is the whole
+design: being wrong means a map that silently stopped updating. `rendering/renderIdle.ts` holds the
+three principles - every doubt DRAWS (every clause of `shouldRender` says yes, none says no), a
+once-a-second HEARTBEAT bounds any bookkeeping mistake to a stale second, and ANIMATION is not an
+opinion (a pulsing corona changes every frame and cannot be skipped).
+THE CONTROLLER'S PUBLIC SURFACE IS WRAPPED so every call marks the scene dirty. Do not replace that
+with a list of the setters that matter: there are forty-odd, and the next person to add one has no
+way of knowing the list exists. Camera motion rides OrbitControls' `change` event plus the three
+motions the scene causes itself (turntable, focus ease, view inset). The clock is COMPARED, because
+a host calls `setTime` every frame with the same number while paused - which is the case this
+feature exists for.
+THE TWO RENDERER LEVERS THAT COST FIDELITY LIVE IN `rendering/lowPowerRender.ts` ([[G83]]), because
+three surfaces pull them and "how hard are we trying" must not be written down three times. PIXEL
+RATIO is the biggest lever there is - a retina 2 is four times the fragments of 1 - and a
+`setPixelRatio` without a `setSize` after it does NOTHING, since the drawing buffer keeps its old
+dimensions. The FRAME CAP is the cheapest, and its one-tick slack is load-bearing: a naive 33 ms gate
+passes one frame in every other on a 60 Hz panel and hits 30 fps by luck.
+`dynamics` GATES THE BUILD, NOT THE ANIMATION, for lightning, magma and plumes: a frozen bolt leaves
+a permanent strike painted on the cloud tops. Auroras keep their own switch - one control swallowing
+another's job makes the second look broken.
+A DISCRETE INPUT CHOOSES A TARGET; THE PICTURE TRAVELS TO IT ([[B141]]). Landing on whole objects
+([[B139]]) and gliding are only in tension while the focus is ASSIGNED - separate `focusTarget` from
+`focus` and both are free. `easeFocus` arrives EXACTLY, because `focusDiameterKm` is exact at the
+stops and a focus stuck at 4.9997 breaks the promise quietly. The DRAG never eases: a finger is
+already saying where the picture should be.
+A POSTURE HAS TWO HALVES AND BOTH LIVE IN THE SAME FRAME ([[B140]]). A body's obliquity shows up
+twice on the strip - as the globe's LEAN (`applyTilt`, a roll about the view axis) and as its ring's
+FORESHORTENING (`ringTiltRad`) - and for one release only the second existed, so a ring ran level
+across a leaning planet. A ring lies in its planet's equatorial plane, so `ringRollRad` returns the
+same angle from the same field as the globe's roll; the mesh keeps the foreshortening and a PARENT
+carries the lean, because both on one mesh makes the result depend on three.js's Euler order.
+A SWITCH ABOUT THE MACHINE MAY REACH A PLAYER VIEW; A SWITCH ABOUT THE PICTURE MAY NOT ([[G80]]).
+[[A10]]/[[A3]] record the fault of wiring a player view to a GM-local store, and the reason is
+PRESENTATION INTENT: a GM's orbit-line strength is not a player's, two audiences with two answers.
+`lowPower` carries no intent - it says this hardware is short of fill rate, which is true whoever is
+looking at it - so it is per browser, applies to every view rendered on that device, and cannot
+travel in a campaign file. Before adding a second store of this kind, ask which of the two it is.
+IT COMPOSES WITH THE PRESET THROUGH `drawsHeavy`, AND OFF WINS. Neither switch may turn the other
+back on; an ABSENT preset field reads as WANTED, or every campaign saved before the field existed
+loses its clouds.
+ON A MEASURING VIEW A DIRECTIONAL FEATURE IS FREE AND A SYMMETRIC ONE IS NOT ([[G79]]). That is the
+rule behind turning the corona off and keeping the JETS: a bipolar beam, however long, says "this
+thing is doing something" and nobody reads it as the star's width, while anything drawn as a sphere
+around a sphere is read as SIZE. The shed shell is 11-16 radii of sphere - wider than the corona
+this view already refuses - so it stays off by an explicit `starShedding: 0`.
+`starDecorations` USED TO CONFLATE THREE UNLIKE THINGS - corona, flares, outflows - and that is why
+the owner's jets could not be had without nine radii of halo. The halo and the flares answer to it
+now; the outflows answer only to the star's tags.
+DISCRETE INPUTS COUNT OBJECTS, CONTINUOUS ONES COUNT PIXELS ([[B139]]). The focus is an INDEX, so a
+wheel notch and an arrow key are naturally worth one OBJECT; pricing them through the drag's pixel
+rate made a notch worth 1.88 objects at Jupiter (measured) and a dozen among a giant's moons, which
+is why the wheel flew over a moon family and a moon could only be reached by clicking it. `stepFocus`
+also SNAPS - it starts from the whole object on the side you are leaving - so a move begun mid-slide
+ends somewhere readable. The DRAG stays on `focusStepPx` because a finger follows the picture.
+AND A STAR HAS NO `apparentColorHex`, WHICH IS CORRECT AND WAS A TRAP ([[B138]]). That field is
+derived from makeup, atmosphere and temperature - a REFLECTED-light answer - so every planet has one
+and a star has `null`. Read straight, the Sun reached `buildBodyLook` with no colour and fell to its
+last-resort `#8a8f99`: a grey disc beside a correctly-coloured Jupiter, which reads as "dim" and is
+really "wrong paint". A star's colour is its spectral class (`getClassColor` treats `roleHint:
+'star'` as an override), which is why the STARMAP half of the same view was fine - it goes through
+that law via `systemVisualStars`. `stripColorOf` is now the one answer for both builders: the
+derived colour where there is one, the class swatch where there is not. Deliberately NOT
+`getPlanetColor`, which would hand a PLANET its swatch whenever the orrery is out of true-colour
+mode - the swatch is the fallback here and never the preference.
+AND A PHOTOSPHERE IS NOT PAINTED FLAT AT ITS CHROMATICITY ([[G76]]). That was the rest of the same
+problem and it took the owner's eye to see it: *"why do stars look so DULL on this?"* - Vega and
+Sirius pastel lavender on the strip while the M dwarfs beside them looked vivid. A hot star's
+chromaticity IS pale (`#cad8ff` for an A), so a big circle filled with it is paint; an M dwarf's
+`#ffc46f` is saturated and survives. Chromaticity is the colour of the light and not its INTENSITY -
+surface brightness goes as T^4, the middle of a real disc saturates to white, and the colour belongs
+at the LIMB where the gas is cooler. `starCoreWhiteFor` + `uCore` in `applyLimbDarkening` do it, over
+`mu^2` so the white keeps to the middle third.
+IT READS THE TEMPERATURE WHERE THERE IS ONE AND THE COLOUR WHERE THERE IS NOT, and both halves are
+load-bearing: the per-letter swatch is a LEGEND (a K1V is painted `#ffd2a1` when Toliman at 5,231 K
+is nearly the Sun's colour), while the bundled Sol's star node carries NO temperature field at all.
+Either source alone silently does nothing on half the data - which is worse than doing nothing
+everywhere, because it looks fixed.
+AND A STAR STILL HAS TO LOOK LIKE A LIGHT SOURCE. Turning the corona off leaves a photosphere that
+reads as a painted disc, so `starRim` adds ONE additive billboard at `STAR_RIM_SCALE` (1.22) of the
+radius - a fifth, against the corona's nine. The number is the whole point: the bloom sits ON the
+limb rather than around the star, so nothing on a true-scale view claims to be bigger than its label
+says. `STAR_RIM_OPACITY` is the other knob. Owner, 2026-09-06.
+A LOOK OPTION CAN BE A CORRECTNESS DECISION, not a taste one, and `starDecorations` is the example:
+the corona is `radius * (5 + activity * 4)` across, so on a TRUE-SCALE strip a star's halo reaches
+five times its own width and reads as part of the object. The size-comparison view turns it off, and
+that is not a style choice - a view whose whole claim is "this is how big these things really are"
+cannot draw a glow that makes a star look nine times its diameter. Seen live before it was believed.
+
+### RENDER-S55 THE SIZE COMPARISON'S SCALE FOLLOWS THE SCROLL, AND THE FOCUS IS THE ONLY STATE
+BUCKET: ARCHITECTURE - a view whose zoom is derived rather than held, which is the opposite of every
+other map in this app, and the reason a reader's first instinct ("just store the scale") is wrong.
+WHERE: `src/lib/comparison/layout.ts` (`focusItems`, `focusIndexOf`, `clampFocus`,
+`focusDiameterKm`, `scaleForFocus`, `focusCentrePx`, `focusStepPx`, `clampCentreShare`);
+`components/SizeComparisonView.svelte` holds the two values everything else is derived from; pinned
+by `comparison/layout.spec.ts` ("the scale follows what is in the middle", 9 gates, 9 mutations).
+WHY IT EXISTS. One fixed pixels-per-km cannot serve a set spanning five orders of magnitude. Choose
+a scale that shows Earth and the star is 26,232 px across - thirty-three screenfuls you drag past
+with nothing on them; choose one that shows the star and every moon is under the pixel floor. The
+owner reported exactly this on 2026-09-06, on the shipped view: *"they are stupid massive and hard
+to scroll past ... as they move through the centre of the screen they are mid sized to the viewport
+- as you scroll it zooms in and out to maintain that"*. Recorded as [[B127]].
+THE LAW: whatever is at the CENTRE of the window draws at `centreShare` of the shorter side, and the
+scale is whatever makes that true. Everything else in that frame draws at ONE scale with it, so a
+frame is still an honest comparison; what changes as you travel is how much of the screen a
+kilometre buys.
+THE STATE IS TWO NUMBERS AND THE ORDER OF DERIVATION IS THE INVARIANT: `focus` (a FRACTIONAL INDEX
+into the strip's own sequence) and `centreShare`. From those, in this order and no other: the
+sequence -> the focused diameter -> the scale -> the laid-out strip -> the pixel scroll. Storing the
+scale or the pixel scroll as well is what would let them disagree about what is in the middle, and
+the disagreement is invisible until you scroll.
+WHY AN INDEX AND NOT A PIXEL OFFSET. A pixel offset means nothing while the scale under it moves -
+the same 4,000 px is half a star or four hundred moons. An index is stable across the zoom, so the
+ends are exactly 0 and n-1, a drag is reversible, and every object costs about one screenful of drag
+whatever its true size, which is the reported fault stated as a law.
+THE OPENING VIEW RE-ARMS ON THE CAST, NEVER ON THE WINDOW. The arming signature is
+`mapId | visibleCount | order` and must not carry the viewport: the focus is an INDEX and the scale
+is derived from it, so both survive a resize by construction. Carrying `shorterSide` was a leftover
+from when the opening view SET an absolute scale, and it meant every resize threw away where you
+were - including on a CLICK, because selecting a body with a longer name reflows the header by a
+pixel ([[B130]]).
+FOUR THINGS THAT LOOK LIKE BUGS AND ARE THE LAW:
+ - **The along scroll goes NEGATIVE at the start** and past `lengthPx - span` at the end, and must
+   not be clamped. "The focused object is in the middle of the window" applies to the first and last
+   objects as much as any other; clamping pins them to an edge and silently breaks the whole rule.
+   `clampScroll` survives for the CROSS axis only.
+ - **The focused size interpolates GEOMETRICALLY.** Size is a ratio quantity: halfway between Earth
+   and Jupiter is 3.3 Earths, not 6. The arithmetic mean makes the zoom hold still while you cross
+   the big object and then rush.
+ - **The drag's exchange rate is taken ONCE per gesture** (`focusStepPx` at pointerdown). The rate
+   itself changes as you travel - that IS the zoom - so re-reading it mid-drag means dragging back
+   the same distance does not put you back where you started.
+ - **A pinch holds the CENTRE, not the point between the fingers.** The centre is what the scale is
+   derived from, so it is anchored by construction; anchoring anywhere else would have to move the
+   focus, i.e. change what you are looking at because you zoomed. `scrollForZoom` was deleted rather
+   than kept beside its replacement.
+THE SEQUENCE IS THE STRIP ITSELF, MOONS INCLUDED, and the focus carries BOTH axes. A first cut
+travelled the orbit layout by its COLUMNS only, so a moon could be clicked but never became the
+subject; the owner corrected it the same day - *"Same for moons if you zoom down to them - their
+frame of reference is themselves so you will see the vast size of your host"*. So `sortItems` is the
+sequence for every order (`orbit` gives the tree's reading order, and `layoutOrbit` lays its slots
+out in exactly that sequence), and `focusCrossPx` derives the cross scroll the way `focusCentrePx`
+derives the along one. TWO CONSEQUENCES. The free cross-drag is GONE - two owners of where the
+picture is disagree the moment either moves. And `focusStepPx` must measure BOTH axes: in the orbit
+tree a planet and its first moon share a `centrePx` exactly, so an along-only rate is zero there and
+the drag divides by nothing.
+THE FRAMING IS THREE NUMBERS AND THE OWNER EXPECTS TO COME BACK TO THEM. `OPENING_SHARE` (0.22) is
+the zoom; `GAP_FRACTION` (0.06) is how close two worlds sit; `RING_ROOM_FRACTION` (0) is how much
+of its true reach a ring reserves as ROOM. The brief they serve
+is his: *"the left/right planets of the current one must be seen in full - have them very close as
+this is to let 4-6 bodies appear on screen at once (rings can overlap)"*. What the window fits is
+roughly `windowAlong / (share x shorterSide x (1 + GAP_FRACTION))`. A ring is ALWAYS drawn at its
+true extent whatever the room rule says - the knob moves spacing, never the drawing.
+A CLICK IS NAVIGATION AND NOT A ZOOM, and there is exactly ONE share because of it. Owner,
+2026-09-06: *"rather than be forced to scroll - or mousewheel this means clicking centres and
+everything else around scales and packs accordingly"*. A click sets the FOCUS and nothing else; the
+share applies to whatever is at the focus, so clicking a speck at the edge of the strip already
+brings you all the way in to it, and clicking a neighbour re-frames without undoing a zoom the
+reader set for themselves. The second share (`SELECTED_SHARE`, 0.5 then 0.28) is deleted.
+BLAST: any code that reads a pixel position off this view has to say WHICH FRAME it means. A cached
+layout, a stored scroll, a hit test computed against a stale scale: all of them are the same fault.
+
+### RENDER-S54 EVERY PLAYER STAGE CARRIES THE FILTER AND THE OVERLAY, AND THERE ARE TWO WAYS TO DO IT
+BUCKET: ARCHITECTURE - a player-facing view that ignores the preset's visual filter does not look
+like a bug from the inside; it looks like a view. The tell is that its PREVIEW disagrees with it,
+which is the one thing the preview exists to prevent.
+WHERE: `routes/catalogue/+page.svelte` - one branch per stage, each of which must either run the
+filter itself (the holo) or wrap in `FilterFrame` (everything else); `components/FilterFrame.svelte`
++ `player/cssFilterApprox.ts` (the approximation); `holo/filteredCanvas.ts` (the real chain over a
+static canvas); mirrored in `PlayerPresetEditor.svelte`'s preview branches.
+RULE, AND IT IS A DECISION ALREADY TAKEN RATHER THAN A CHOICE PER STAGE. Owner, 2026-07-18, in
+`docs/dev/v2.2-player-view-visual-overhaul.md` section 7: *"a player 'info screen' ... is drawn ONE
+way - canvas region -> shader - regardless of whether the underlying view is the 2D document, the 2D
+orrery, or the 3D holo. Retire the DOM `.inspector` + `cssFilterApprox` chrome for player views; keep
+DOM only where a preset is explicitly un-filtered."* So a player stage draws its CONTENT into a
+rendered surface and takes the REAL shader. `createFilteredCanvas` is that chain over a static
+canvas and hands back `warpPoint`; the holo runs the same chain as a pass inside its own scene and
+composites its info card as a HUD quad so the card warps WITH the picture.
+`FilterFrame` / `cssFilterApprox` IS THE INTERIM, NOT A TIER. It exists because DOM cannot go
+through GLSL without a capture step, it is one source of truth rendered two ways rather than a rival
+implementation ([[A39]]), and the surfaces still on it are tracked as unfinished, not as finished.
+Reach for it only where a preset is explicitly un-filtered, or as a stop-gap you have written down.
+WHY THE DECISION EXISTS, and it is not tidiness: DOM chrome is positioned in SCREEN space and does
+not follow the warped, inset projection. Under a barrel-warped CRT preset the picture bends and the
+DOM sitting over it does not, so labels drift off the things they name - which is the exact fault
+that produced the decision (the info panel over the 3D holo, WS4, beta v2.1.147).
+WHAT WENT WRONG HERE, twice, and the second is the worse one. The size comparison shipped as a
+player view (v3.0.308) with NO filter and NO overlay at all - a GM choosing the CRT preset got no
+CRT - while the editor's preview DID wrap it, so the preview described a view that did not exist.
+That was fixed in v3.0.309 by reaching for `FilterFrame`, and THAT is the second mistake: it made a
+new player stage out of DOM chrome under the CSS approximation, which is the thing the 2026-07-18
+decision retires. Recorded as [[B126]]. The first cut of this entry wrote that choice down as a
+legitimate tier, which would have taught the next reader the wrong rule.
+**[[B126]] IS DONE (v3.0.322) AND THE SIZE COMPARISON IS NOW THE WORKED EXAMPLE of this rule rather
+than the counter-example.** Its labels, dots, rings and ruler are drawn by `comparison/stripChrome.ts`
+into a 2D canvas; `holo/comparisonScene.ts` composites that canvas as a screen-space quad in front of
+the globes and runs the preset's real GLSL pass over the lot; picking goes through `warpPoint`.
+`FilterFrame` is gone from both of its mounts. SEEN LIVE under the CRT preset: the labels take the
+phosphor and the scanlines, and at full barrel warp they bend with the worlds they name.
+WHAT FORCED IT, and it is worth knowing because it is the shape of argument that usually wins: not
+tidiness, a FEATURE. The ruler became reference circles concentric with the subject, and a circle is
+not something DOM can draw. A rule nobody could find time for became the cheapest way to build the
+next thing asked for.
+THE FOUR PLACES ARE NOW FIVE for a stage with chrome: the catalogue branch, the preview branch, the
+overlay inside both, the `ViewModule` union - and the CHROME RENDERER, which must be one function for
+both tiers. A second renderer to preserve a DOM-only interaction (the strip's unit-cycling was the
+temptation) is two implementations of one set of labels.
+THE SIZE COMPARISON IS A STAGE ON BOTH MAPS (v3.0.330). It was a `systemView` only, so the starmap
+could show it to a GM and never to a player - the owner: *"we have not enabled that under starmap as
+an option - we really should!"* The starmap mount takes its own preset fields
+(`starmapSizeCompareOrder`, `starmapSizeCompareRuler`), because the two stages are chosen separately
+and a GM may want the ruler on one and not the other; `orbit` is not offered there, since there is
+no "what orbits what" between two different systems.
+AND THE STARMAP MOUNT DISPATCHES NOTHING, which is [[B125]]'s lesson rather than an omission:
+`handleSystemClick` ENTERS a system, so wiring the view's `select` outward would throw a player out
+of the view they are reading the moment they touched anything. The view centres and rings the star
+in place instead, exactly as the GM's own starmap strip does.
+BLAST: adding a stage means touching FOUR places that must agree - the catalogue branch, the preview
+branch, the overlay inside both, and the `ViewModule` union. And if the stage has chrome, that
+chrome belongs in the rendered surface from the start: retrofitting it means moving every label into
+a canvas, routing picking through `warpPoint`, and deciding what happens to any DOM-only interaction
+the labels carried (the size comparison's unit-cycling is exactly that, and it is why [[B126]] needs
+a decision rather than just a refactor).
+
+### TRANSIT-8 A HOHMANN ARRIVES HALF AN ORBIT AWAY, AND THE ALONG-TRACK DIRECTION THERE IS -w
+BUCKET: PHYSICS - a sign that only shows after the plan completes, as a ship going the wrong way.
+WHERE: `transit/calculator.ts buildOrbitChangePlan` - `w` is the origin's along-track unit vector;
+the end velocity, the burn-2 thrust direction and the `endState` of the coast and brake segments.
+RULE: the transfer ends at position -u, where the tangent is -w. The end velocity that CONSERVES
+the sense is `-w * vCirc2`; burn 2 for a raising transfer thrusts along -w. Writing `w` there
+flips the angular momentum: a prograde parking orbit became retrograde after every orbit change,
+whatever it left in. Gate: `orbitChangeSense.spec.ts` measures r x v at the plan's end against the
+origin's sense (legacy keeps it; the prograde rule at a beanstalk host reverses it deliberately and
+prices the reversal as vTransfer + vCirc, tagged 'REVERSED TO PROGRADE').
+WHY: the owner's first flight to a space-elevator dock (2026-09-06, an orbit change LEO -> GEO):
+"orbiting the wrong way... went the wrong direction and then magically snapped on to the
+beanstalk". The first diagnosis blamed the approach sense (a real fault in the interplanetary
+paths, also fixed); the spec written to pin the fix exposed this sign underneath it.
+BLAST: anything that reads a completed orbit change's end state - the sampler's parking orbit
+(sense from `u x w` of the arrival), the reconciler's circular elements, and now the dock catch,
+which assumes a prograde park to compute when the ship meets the ribbon.

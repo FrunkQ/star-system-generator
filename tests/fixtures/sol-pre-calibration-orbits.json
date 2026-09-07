@@ -1,0 +1,15 @@
+{
+  "_why": "The Sol the bundled maps carried BEFORE G62 part 2 calibrated them to real ephemeris at the 2026-09-01T12:00:00Z datum. Every planet sat on Omega_deg 0 / omega_deg 0 - placeholders - because until the anchor existed there was no instant for them to be right at. Several transit specs carry journeys RECORDED against these positions, with start and end states baked in; they test the SCHEDULER and the PLANNER, not the map, so they pin this fixture rather than reading a bundled file that is now free to move. Without it, calibrating the maps moved Earth and those journeys stopped arriving anywhere near it - one by 300,000,000 km.",
+  "_datum": 1762339146908,
+  "orbits": {
+    "Mercury": { "a_AU": 0.387098, "e": 0.20563, "i_deg": 7.005, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 5.020466586134799 },
+    "Venus": { "a_AU": 0.723332, "e": 0.006772, "i_deg": 3.39458, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 1.3661033419802402 },
+    "Earth": { "a_AU": 1, "e": 0.0167086, "i_deg": 0, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 3.9329429420805933 },
+    "Luna": { "a_AU": 0.00257, "e": 0.0549, "i_deg": 5.145, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 4.367738497485062 },
+    "Mars": { "a_AU": 1.52368, "e": 0.0934, "i_deg": 1.85, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0.3838857522616697 },
+    "Jupiter": { "a_AU": 5.2044, "e": 0.0489, "i_deg": 1.303, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 5.006958509868666 },
+    "Saturn": { "a_AU": 9.5826, "e": 0.0565, "i_deg": 2.485, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 0.5439917998244483 },
+    "Uranus": { "a_AU": 19.2184, "e": 0.046381, "i_deg": 0.773, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 4.108892419074092 },
+    "Neptune": { "a_AU": 30.11, "e": 0.0113, "i_deg": 1.77, "omega_deg": 0, "Omega_deg": 0, "M0_rad": 1.94099564119865 }
+  }
+}

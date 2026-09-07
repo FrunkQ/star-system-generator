@@ -122,6 +122,33 @@ let silentDepth = 0;
  *  `describeChange.ts`). Naming only, never used to decide what is recorded. */
 let focusId: string | null = null;
 
+/** B131: THE FOUR FIELDS THE CLOCK WRITES INTO A SHIP IN FLIGHT, once per animation frame. A machine
+ *  write that changes nothing else cannot have changed the authored projection, so it needs no shadow
+ *  rebuild - and a rebuild is the strip-and-deep-clone of the whole system, which this recorder paid
+ *  per frame for the length of every transit until this check existed. */
+const FLIGHT_FIELDS = new Set(['vector_position_au', 'vector_velocity_ms', 'vector_epoch_ms', 'flight_state']);
+
+/** True when `next` differs from `prev` in nothing but flight fields on some nodes: same top-level
+ *  values by reference, same node count and ids, and every changed node identical by reference on
+ *  every key outside FLIGHT_FIELDS. Reference checks only - cheap enough to run per frame. */
+function onlyFlightFieldsChanged(prev: System | null | undefined, next: System): boolean {
+  if (!prev || prev.id !== next.id) return false;
+  for (const k of Object.keys(next)) if (k !== 'nodes' && (next as any)[k] !== (prev as any)[k]) return false;
+  for (const k of Object.keys(prev)) if (!(k in next)) return false;
+  const a = prev.nodes ?? [], c = next.nodes ?? [];
+  if (a.length !== c.length) return false;
+  for (let i = 0; i < c.length; i++) {
+    const p: any = a[i], n: any = c[i];
+    if (p === n) continue;
+    if (!p || !n || p.id !== n.id) return false;
+    for (const k of new Set([...Object.keys(p), ...Object.keys(n)])) {
+      if (FLIGHT_FIELDS.has(k)) continue;
+      if (p[k] !== n[k]) return false;
+    }
+  }
+  return true;
+}
+
 /** The authored slice, as a fresh deep clone: `stripSystemForExport` clones and then deletes
  *  everything `process()` re-derives. ONE definition of "authored" in this app, not two. */
 function authored(sys: System): System {
@@ -188,6 +215,7 @@ function onSystem(sys: System | null): void {
   // nothing. A write that really changed something returns a fresh object at every site in the
   // app - the one exception, AddConstructModal, was made to do the same.
   if (sys === lastSeen) return;
+  const prev = lastSeen;
   lastSeen = sys;
 
   // An undo/redo is applying: adopt the state we just put back, and record nothing. Without this
@@ -201,7 +229,9 @@ function onSystem(sys: System | null): void {
   // A machine write (the clock advancing journeys). Adopt it silently: it is not an edit, and
   // winding it back is the clock's business, not undo's.
   if (silentDepth > 0) {
-    if (sys && sys.id === shadowSystemId) shadow = authored(sys);
+    // B131: a frame's flight stamp changes nothing authored - skip the rebuild. A machine write that
+    // changes anything else (a journey completing, an autopilot standing down) refreshes as before.
+    if (sys && sys.id === shadowSystemId && !onlyFlightFieldsChanged(prev, sys)) shadow = authored(sys);
     return;
   }
 

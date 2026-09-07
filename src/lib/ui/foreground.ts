@@ -12,6 +12,12 @@
 // can move"). It also UNMOUNTED the bar, throwing away whatever state it held, when all that was ever
 // wanted was for it to stop being drawn. Hiding is what "take over" means; destroying is not.
 //
+// A84 AMENDED THE ASSUMPTION BELOW. "Modals are rendered outside <AppShell> as siblings" was true of
+// the app-level ones and false of any modal a PANEL opens for itself, which on a phone sits inside
+// the bottom sheet — so the yield rule hid the dialog along with the chrome. `foreground` now
+// re-parents its node to <body>, which makes the sentence below true for every dialog rather than
+// most of them. See the action.
+//
 // WHY THIS CANNOT BE "HIDE THE APP SHELL" — measured, because it is the obvious idea: the reported bar
 // is rendered OUTSIDE `<AppShell>` (a sibling, not a child), exactly like the modals are, so hiding the
 // shell misses the one thing that was reported while risking the canvas-resize trap (RENDER-B1).
@@ -58,14 +64,55 @@ export const foregroundOpen: Readable<boolean> = derived(count, (n) => n > 0);
 /**
  * Svelte action marking an element as a foreground UI — a modal, dialog, or full-screen editor.
  * Put it on the backdrop (the element that already covers the screen), not on the inner panel.
+ *
+ * IT ALSO RE-PARENTS THE NODE TO `<body>`, and that half is A84 rather than A52.
+ *
+ * The rule above hides `.sse-chrome` while anything is foreground. That is correct as long as no
+ * dialog is a DESCENDANT of chrome — which is the assumption the header above states, and it held
+ * only for the modals declared at the top of `+page.svelte`. A panel that opens a modal for itself
+ * breaks it: `AIExpansionModal` is rendered by `DescriptionEditor`, which on a phone lives inside
+ * the bottom sheet, so opening it hid the sheet AND the modal with it. MEASURED at 375x812: the
+ * backdrop computed `width: 100%; height: 100%` and its box was 0 x 0, with `.bottom-sheet`
+ * `display: none` three levels up. The GM saw nothing happen. Same for the transit planner’s
+ * blocked-journey dialog, which lives in the same panel.
+ *
+ * IT IS STILL NOT A LIST, which was the whole point of A52 and stays the point here. Every dialog
+ * escapes because it registered, not because anyone enumerated it — including next month’s.
+ *
+ * THE GUARD IS A PROPERTY, NOT A ROSTER: only a `position: fixed` node is moved. For a fixed node
+ * the move cannot change its layout, because its box never depended on its parent in the first
+ * place — the only thing a parent could contribute is a containing block from a transform, filter
+ * or `contain`, which is a second version of this same bug. All 25 sites in the tree today are
+ * fixed; the guard exists so that a 26th which is not cannot be silently relocated.
  */
-export function foreground(_node: HTMLElement) {
+export function foreground(node: HTMLElement) {
   count.update((n) => n + 1);
+
+  // Measured at mount, from the element itself. `getComputedStyle` is absent in some SSR-ish
+  // environments, so the absence of an answer means LEAVE IT ALONE rather than guess.
+  let portalled = false;
+  if (typeof document !== "undefined" && typeof getComputedStyle === "function" && node.parentNode !== document.body) {
+    let fixed = false;
+    try {
+      fixed = getComputedStyle(node).position === "fixed";
+    } catch {
+      fixed = false;
+    }
+    if (fixed) {
+      document.body.appendChild(node);
+      portalled = true;
+    }
+  }
+
   return {
     destroy() {
       // Clamped at zero so a double-destroy (HMR, or a component torn down twice during a route change)
       // cannot drive the count negative and leave the chrome permanently hidden.
       count.update((n) => Math.max(0, n - 1));
+      // A portalled node is no longer where Svelte left it, so take it off the document here rather
+      // than trusting the framework to find it. Svelte removing an already-removed node is a no-op,
+      // so doing both is safe; leaving it attached would be a dialog that outlived its component.
+      if (portalled) node.remove();
     }
   };
 }

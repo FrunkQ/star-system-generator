@@ -36,6 +36,10 @@
   import { drawCover } from '$lib/catalogue/coverCard';
   import FilteredCanvas from '$lib/components/FilteredCanvas.svelte';
   import HoloView from '$lib/holo/HoloView.svelte';
+  // G68: the size comparison as a player system view. It takes plain data and carries no GM chrome,
+  // so it mounts here unchanged — the same component the GM reaches from the rail.
+  import SizeComparisonView from '$lib/components/SizeComparisonView.svelte';
+  import { itemsForSystem, itemsForStarmap } from '$lib/comparison/items';
   import BodyPicker from '$lib/components/BodyPicker.svelte';
   import { AU_KM } from '$lib/constants';
   import { migrateUnitPrefs, type UnitPrefs } from '$lib/units';
@@ -76,7 +80,7 @@
   import type { ListModel } from '$lib/catalogue/listCanvas';
   import { getClassColor } from '$lib/rendering/colors';
   import { RATE_STEPS, DEFAULT_RATE_INDEX } from '$lib/player/timeRates';
-  import { unixMsToMasterSeconds, resolveCalendar } from '$lib/temporal/utre';
+  import { formatInstantMs, activeCalendarOf } from '$lib/temporal/utre';
   import { inverseBoxCox } from '$lib/physics/scaling';
   import { perfCount } from '$lib/perfTrace';
   import { resolveClockOwnership, gmClockTouched } from '$lib/player/clockOwnership';
@@ -215,11 +219,8 @@
   // per-frame time: a readout is only ever read to the second, and the calendar maths is bigint.
   $: followClockLabel = (() => {
     if (!onGmClock) return null;
-    const t = (starmap as any)?.temporal;
-    const calendar = t?.temporal_registry?.[t?.activeCalendarKey];
-    if (calendar) {
-      try { return resolveCalendar(unixMsToMasterSeconds(docNowMs), calendar).formatted; } catch { /* fall through */ }
-    }
+    const label = formatInstantMs(docNowMs, activeCalendarOf((starmap as any)?.temporal));
+    if (label) return label;
     return new Date(docNowMs).toUTCString().replace(/ GMT$/, '');
   })();
   $: if (selectedSystemNode && selectedSystemNode.id !== clockAnchoredFor) {
@@ -871,6 +872,20 @@
   // WS2 Guide document: the interactive canvas document (schematic + in-page info block + navigator),
   // drawn by the block-model engine through the real filter. Falls under the 'static' tier (no 3D scene).
   $: systemDoc = !!activePreset && activePreset.systemView === 'document';
+  // G68. Its own tier: it has its own canvas and its own laws, and it is neither the holo (which the
+  // 2D and 3D tiers share) nor the document. It falls under 'static' for `effectiveSystemTier`, which
+  // is the tier that means "no holo scene" — the marker rules TAG-20 records are the holo's and the
+  // document's, and this view draws no markers at all.
+  $: systemSizeCompare = !!activePreset && activePreset.systemView === 'sizecompare';
+  /**
+   * The cast, from the SAME builder the GM's view uses. `displaySystem` is already the redacted,
+   * player-facing system, so nothing here has to think about what a player may see — it inherits
+   * that for free, which is the whole reason this component takes plain data.
+   */
+  $: sizeCompareItems = systemSizeCompare && displaySystem ? itemsForSystem(displaySystem) : [];
+  /** The STARMAP's own size comparison: every star on the map, side by side. */
+  $: starmapSizeCompare = !!activePreset && activePreset.starmapView === 'sizecompare';
+  $: starmapCompareItems = starmapSizeCompare && starmap ? itemsForStarmap(starmap) : [];
   // Pass the body-graphics mode straight through (sphere / disc / flat / photo / none) so the document
   // can render each distinctly.
   $: docImagery = activePreset ? activePreset.bodyGfx : 'none';
@@ -1284,7 +1299,31 @@
   {:else if !selectedSystemId && activePreset && activePreset.starmapEnabled}
     <!-- Starmap level, PRESET-DRIVEN: the chosen module (text list / 2D / 3D), tap a system to enter. -->
     <div class="preset-stage" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
-      {#if activePreset.starmapView === 'holo3d' || activePreset.starmapView === 'diagram2d'}
+      {#if starmapSizeCompare}
+        <!-- EVERY STAR ON THE MAP AT TRUE RELATIVE SIZE. The same component the system stage mounts,
+             fed by `itemsForStarmap`, and with the same real GLSL filter over its own chrome.
+             NO `on:select`, and that is [[B125]]'s lesson rather than an omission: on the starmap a
+             tap is a COMPARISON, not a door. `handleSystemClick` ENTERS a system, so wiring the
+             view's select to it would throw a player out of the view they are reading the moment
+             they touched anything. The view centres and rings the star in place instead. -->
+        <SizeComparisonView
+          items={starmapCompareItems}
+          scope="starmap"
+          mapId={starmap?.id ?? null}
+          mode={isPhone ? 'phone' : 'desktop'}
+          forcedOrder={activePreset.starmapSizeCompareOrder ?? 'size'}
+          showRuler={activePreset.starmapSizeCompareRuler !== false}
+          filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
+          playerChrome
+        />
+        {#if starmapOverlayHud}
+          <div class="overlay-wrap">
+            <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+              <GraphicLayer placement={starmapOverlayHud} assets={presetAssets} />
+            </FilterFrame>
+          </div>
+        {/if}
+      {:else if activePreset.starmapView === 'holo3d' || activePreset.starmapView === 'diagram2d'}
         <!-- 3D (or 2D = the same renderer LOCKED OVERHEAD): real GLSL filter + raycast selection. -->
         <Starmap3DView {starmap} accentColor={presetAccent} font={presetFont} grid={activePreset.starmapGrid ?? activePreset.grid}
           gridDepth={typeof activePreset.starmapGridDepth === 'number' ? activePreset.starmapGridDepth : (activePreset.starmapGridDepth ? 1 : 0)} gridFalloff={activePreset.starmapGridFalloff ?? 0.5}
@@ -1395,6 +1434,46 @@
       {#if selectedBody && !activePreset?.hideInfoPanel}
         {@render inspectorAside()}
       {/if}
+    </div>
+  {:else if systemSizeCompare}
+    <!-- The size-comparison strip, with the ORDINARY inspector beside it: a tap selects through the
+         same `selectBodyById` the document and the holo use, so the info block that opens is the
+         same one, with the same preset config, on all three. Owner, 2026-09-05: "clicking on a
+         planet/body/anything will show its data like on a 2d or 3d view - uses same info block and
+         inherits its config". -->
+    <div class="console-stage" class:frozen={!presetInteractive} bind:clientWidth={hudW} bind:clientHeight={hudH}
+      style={activePreset ? `font-family:${presetFont}` : ''}>
+      <!-- THE REAL SHADER, NOT THE APPROXIMATION. This view draws its own chrome — the labels, the
+           dots, the rings and the ruler's arcs — INTO the rendered surface (`comparison/stripChrome.ts`,
+           composited by `holo/comparisonScene.ts`), so one GPU pass covers the worlds and the words
+           alike and a label bends with a warped CRT instead of floating straight over a bent picture.
+           That is the owner's decision of 2026-07-18, finished here: [[B126]], engine map RENDER-S54.
+           It shipped without any filter at all (v3.0.308), then under the CSS approximation
+           (v3.0.309) which was the wrong tier, and `FilterFrame` is now gone from this branch. The
+           overlay graphic keeps its own frame, exactly as the holo branch above does — it is a
+           GraphicLayer over the top rather than part of the picture. -->
+      {#if displaySystem}
+        <SizeComparisonView
+          items={sizeCompareItems}
+          scope="system"
+          mapId={displaySystem.id ?? null}
+          mode={isPhone ? 'phone' : 'desktop'}
+          selectedId={selectedBody?.id ?? null}
+          forcedOrder={activePreset?.sizeCompareOrder ?? 'size'}
+          showRuler={activePreset?.sizeCompareRuler !== false}
+          filterId={presetFilterId} filterParams={presetFilterParams ?? {}}
+          playerChrome
+          on:select={(e) => { if (presetInteractive) { pushNavStep(); selectBodyById(e.detail.id); } }}
+        />
+        {#if activePreset?.systemOverlay}
+          <div class="overlay-wrap">
+            <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+              <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
+            </FilterFrame>
+          </div>
+        {/if}
+      {/if}
+      {#if !activePreset?.hideInfoPanel}{@render inspectorAside()}{/if}
     </div>
   {:else if systemDoc}
     <!-- WS2 Guide document: the interactive canvas document (schematic + in-page body file + navigator),

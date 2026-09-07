@@ -3,6 +3,9 @@ import { render, fireEvent } from '@testing-library/svelte';
 import Starmap from './Starmap.svelte';
 import type { Starmap as StarmapType, RulePack } from '$lib/types';
 import { vi } from 'vitest';
+import { tick } from 'svelte';
+import { get } from 'svelte/store';
+import { clipBuffer, clearClip } from '$lib/io/clipBuffer';
 
 // Starmap uses createEventDispatcher (Svelte legacy). Under Svelte 5 the
 // instance `$on` API is gone; listen via @testing-library/svelte's `events`
@@ -16,6 +19,14 @@ const mockStarmap: StarmapType = {
   systems: [
     { id: 'sys1', name: 'System 1', position: { x: 100, y: 100 }, system: { id: 'sys1', name: 'System 1', nodes: [{ id: 'star1', parentId: null, kind: 'body', roleHint: 'star', classes: ['star/G2V'] }] } as any },
     { id: 'sys2', name: 'System 2', position: { x: 200, y: 200 }, system: { id: 'sys2', name: 'System 2', nodes: [{ id: 'star2', parentId: null, kind: 'body', roleHint: 'star', classes: ['star/M5V'] }] } as any },
+    // A BINARY, and named on the MAP differently from its root node - both halves of what Copy
+    // System has to get right, in one fixture. The GM renamed this system; the pair container is
+    // still called what the importer called it.
+    { id: 'sys3', name: 'Altair', position: { x: 300, y: 300 }, system: { id: 'sys3', name: 'Altair', nodes: [
+      { id: 'bary3', parentId: null, kind: 'barycenter', name: 'Pair Barycentre', memberIds: ['star3a', 'star3b'], effectiveMassKg: 4e30 },
+      { id: 'star3a', parentId: 'bary3', kind: 'body', roleHint: 'star', name: 'Altair A', massKg: 2.2e30, classes: ['star/A7V'] },
+      { id: 'star3b', parentId: 'bary3', kind: 'body', roleHint: 'star', name: 'Altair B', massKg: 1.8e30, classes: ['star/K0V'] }
+    ] } as any },
   ],
   routes: [
     { id: 'route1', sourceSystemId: 'sys1', targetSystemId: 'sys2', distance: 5, unit: 'J' },
@@ -128,5 +139,118 @@ describe('Starmap.svelte — measure tool depth (A17)', () => {
 
   it('reports the planar separation when the campaign ignores depth', async () => {
     expect(await measureBoth(true)).toBe('40 ly');
+  });
+});
+
+// A82 — THE HOVER SUMMARY, and the two rules that are easy to lose in a refactor: the card is
+// MOUSE-ONLY (there is no hover on a touch screen, and a card that appeared on tap would cover
+// the star the tap was aimed at), and it goes away again. The counts themselves are gated in
+// `starmap/systemSummary.spec.ts`; this is only about the pointer.
+describe('A82 — the hover summary', () => {
+  // The shell decides desktop-vs-phone from a `(min-width: 900px) and (pointer: fine)` query,
+  // and the suite's jsdom stub answers `false` to everything - so every other test in this file
+  // runs in PHONE mode, where the card is deliberately not offered. Say desktop for these three.
+  const realMM = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((q: string) => ({
+      matches: true, media: q, onchange: null,
+      addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {},
+      dispatchEvent: () => false
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => { window.matchMedia = realMM; });
+
+  const enter = (el: Element, pointerType: string) =>
+    el.dispatchEvent(new PointerEvent('pointerenter', { bubbles: true, pointerType, clientX: 40, clientY: 40 }));
+
+  it('shows the system’s summary when a MOUSE hovers a star', async () => {
+    const { container } = renderStarmap();
+    expect(container.querySelector('.star-summary')).toBeNull();
+    enter(starGroup(container, 0), 'mouse');
+    await tick();
+    const card = container.querySelector('.star-summary');
+    expect(card).toBeTruthy();
+    expect(card!.textContent).toContain('System 1');
+    expect(card!.textContent).toMatch(/G2V/);
+  });
+
+  it('shows NOTHING on a touch pointer', async () => {
+    const { container } = renderStarmap();
+    enter(starGroup(container, 0), 'touch');
+    await tick();
+    expect(container.querySelector('.star-summary')).toBeNull();
+  });
+
+  it('goes away on leave, and on a press — a tooltip over a context menu is noise', async () => {
+    const { container } = renderStarmap();
+    const g = starGroup(container, 0);
+    enter(g, 'mouse');
+    await tick();
+    expect(container.querySelector('.star-summary')).toBeTruthy();
+    g.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true, pointerType: 'mouse' }));
+    await tick();
+    expect(container.querySelector('.star-summary')).toBeNull();
+
+    enter(g, 'mouse');
+    await tick();
+    g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }));
+    await tick();
+    expect(container.querySelector('.star-summary')).toBeNull();
+  });
+});
+
+// COPY SYSTEM, off the starmap right-click. Owner, 2026-09-07: *"why am I not offered to copy
+// starsystem here? So it will appear on the paste tab and let me duplicate here - or another map"*.
+//
+// The round trip itself is gated in `io/clipAsSystem.spec.ts`; what is asserted HERE is the half
+// only the component knows - that the item is on the menu, and that it roots at the top of the
+// system rather than at a star.
+describe('Starmap: Copy System', () => {
+  beforeEach(() => clearClip());
+
+  const menuItem = (container: HTMLElement, label: string) =>
+    [...container.querySelectorAll('.context-menu li')].find((li) => li.textContent?.trim() === label) as HTMLLIElement | undefined;
+
+  const openStarMenu = async (container: HTMLElement, index: number) => {
+    await fireEvent.contextMenu(starGroup(container, index));
+    await tick();
+  };
+
+  it('offers Copy System on a right-clicked star', async () => {
+    const { container } = renderStarmap();
+    await openStarMenu(container, 0);
+    expect(menuItem(container, 'Copy System'), 'the item the owner could not find').toBeTruthy();
+  });
+
+  it('puts the system in the paste buffer, under the name the MAP gives it', async () => {
+    const { container } = renderStarmap();
+    await openStarMenu(container, 2); // the binary, named Altair on the map
+    await fireEvent.click(menuItem(container, 'Copy System')!);
+
+    const held = get(clipBuffer);
+    expect(held, 'nothing reached the buffer').toBeTruthy();
+    expect(held!.label, 'the pill and the paste menu read this').toBe('Altair');
+    expect(held!.clip.systemName, 'and the name travels with the clip').toBe('Altair');
+  });
+
+  it('copies BOTH stars of a binary, by rooting at the pair container', async () => {
+    // ABSOLUTE. Rooting at a star instead would put one star and no partner in the buffer, and the
+    // GM would paste half a double star onto their map without being told anything was missing.
+    const { container } = renderStarmap();
+    await openStarMenu(container, 2);
+    await fireEvent.click(menuItem(container, 'Copy System')!);
+
+    const held = get(clipBuffer)!;
+    expect(held.count).toBe(3);
+    expect(held.clip.root).toBe('bary3');
+    expect(held.clip.nodes.map((n: any) => n.name).sort()).toEqual(['Altair A', 'Altair B', 'Pair Barycentre']);
+  });
+
+  it('closes the menu behind it', async () => {
+    const { container } = renderStarmap();
+    await openStarMenu(container, 0);
+    await fireEvent.click(menuItem(container, 'Copy System')!);
+    await tick();
+    expect(container.querySelector('.context-menu')).toBeNull();
   });
 });
