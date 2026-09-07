@@ -100,70 +100,71 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-<!-- The clip alone is enough to show the pill: a GM who has just copied on the map library's site
-     and come back has nothing to undo yet, and that is exactly the moment the indicator is for. -->
-{#if $status.canUndo || $status.canRedo || clip}
-  <div
-    class="undo-pill"
-    class:phone={mode === 'phone'}
-    class:has-clip={!!clip}
-    class:wide={width > 0}
-    use:chrome
-    use:float.root
-    bind:this={pillEl}
-    style="transform: {mode === 'phone' ? '' : 'translateX(-50%) '}translate({$float.dx}px, {$float.dy}px);{width > 0 ? ` width:${width}px;` : ''}"
+<!-- ALWAYS UP. Owner, 2026-09-07: *"the undo/redo does not appear unless there is something in the
+     buffer - instead have it always visible - less confusing - the shading indicates no history"*.
+     It used to arrive only once there was something to wind back, which meant the control a GM was
+     looking for was missing exactly when they went to check whether they could undo. The greyed
+     buttons already say "nothing yet", and they say it in the place the answer belongs. -->
+<div
+  class="undo-pill"
+  class:phone={mode === 'phone'}
+  class:has-clip={!!clip}
+  class:wide={width > 0}
+  use:chrome
+  use:float.root
+  bind:this={pillEl}
+  style="transform: {mode === 'phone' ? '' : 'translateX(-50%) '}translate({$float.dx}px, {$float.dy}px);{width > 0 ? ` width:${width}px;` : ''}"
+>
+ <div class="up-row">
+  <FloatGrip ctl={float} always label="Drag to move" />
+  <button
+    class="up-btn"
+    title="{undoTitle} (Ctrl+Z)"
+    aria-label={undoTitle}
+    aria-keyshortcuts="Control+Z"
+    disabled={!$status.canUndo}
+    on:click={undo}
   >
-   <div class="up-row">
-    <FloatGrip ctl={float} always label="Drag to move" />
-    <button
-      class="up-btn"
-      title="{undoTitle} (Ctrl+Z)"
-      aria-label={undoTitle}
-      aria-keyshortcuts="Control+Z"
-      disabled={!$status.canUndo}
-      on:click={undo}
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5A5.5 5.5 0 0 1 20 14.5 5.5 5.5 0 0 1 14.5 20H11" />
+    </svg>
+  </button>
+  <span class="up-sep" aria-hidden="true"></span>
+  <button
+    class="up-btn"
+    title="{redoTitle} (Ctrl+Shift+Z)"
+    aria-label={redoTitle}
+    aria-keyshortcuts="Control+Shift+Z"
+    disabled={!$status.canRedo}
+    on:click={redo}
+  >
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m15 14 5-5-5-5" />
+      <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
+    </svg>
+  </button>
+ </div>
+  {#if clip}
+    <div
+      class="up-clip"
+      class:pulse={clipPulse}
+      title="{clip.label} is ready to paste{clip.from === 'clipboard' ? ', from the map library' : ''} — right-click where it should go"
     >
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 14 4 9l5-5" />
-        <path d="M4 9h10.5A5.5 5.5 0 0 1 20 14.5 5.5 5.5 0 0 1 14.5 20H11" />
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="8" y="8" width="12" height="12" rx="2" />
+        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
       </svg>
-    </button>
-    <span class="up-sep" aria-hidden="true"></span>
-    <button
-      class="up-btn"
-      title="{redoTitle} (Ctrl+Shift+Z)"
-      aria-label={redoTitle}
-      aria-keyshortcuts="Control+Shift+Z"
-      disabled={!$status.canRedo}
-      on:click={redo}
-    >
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="m15 14 5-5-5-5" />
-        <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
-      </svg>
-    </button>
-   </div>
-    {#if clip}
-      <div
-        class="up-clip"
-        class:pulse={clipPulse}
-        title="{clip.label} is ready to paste{clip.from === 'clipboard' ? ', from the map library' : ''} — right-click where it should go"
-      >
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="8" y="8" width="12" height="12" rx="2" />
-          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-        </svg>
-        <span class="up-clip-text">{clipText}</span>
-      </div>
-    {/if}
-    <span
-      class="up-resize"
-      role="presentation"
-      title="Drag to widen and see more of what is in hand; double-click to put it back"
-      use:widthGrip={{ get: () => width, natural: () => pillEl?.getBoundingClientRect().width || WIDTH_MIN, set: setWidth, min: WIDTH_MIN, max: WIDTH_MAX }}
-    ></span>
-  </div>
-{/if}
+      <span class="up-clip-text">{clipText}</span>
+    </div>
+  {/if}
+  <span
+    class="up-resize"
+    role="presentation"
+    title="Drag to widen and see more of what is in hand; double-click to put it back"
+    use:widthGrip={{ get: () => width, natural: () => pillEl?.getBoundingClientRect().width || WIDTH_MIN, set: setWidth, min: WIDTH_MIN, max: WIDTH_MAX }}
+  ></span>
+</div>
 
 <FloatEdgeMenu ctl={float} what="the undo pill" />
 

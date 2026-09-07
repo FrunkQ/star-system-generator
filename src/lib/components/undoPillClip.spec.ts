@@ -33,9 +33,12 @@ describe('the pill says what is in hand', () => {
 		expect(getByText('Planet+7')).toBeTruthy();
 	});
 
-	it('stays away when there is neither a history nor a clip', () => {
+	it('is still up with neither a history nor a clip, and shows no clip row', () => {
+		// It used to stay away entirely (owner, 2026-09-07: *"instead have it always visible"*). What
+		// is conditional is the CLIP ROW, not the pill: no clip, no second row.
 		const { container } = render(UndoPill, { props: { ...base, status: nothingToUndo, clip: null } });
-		expect(container.querySelector('.undo-pill')).toBeNull();
+		expect(container.querySelector('.undo-pill'), 'always up').toBeTruthy();
+		expect(container.querySelector('.up-clip'), 'but nothing in hand, so no clip row').toBeNull();
 	});
 
 	it('shows the undo buttons without a clip, and adds the row when one arrives', () => {
