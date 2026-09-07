@@ -3,6 +3,10 @@
   // button used to be. Unlocked = the control puts itself away as soon as you touch anything else.
   // Locked = it stays. Clicking it while locked unlocks AND puts it away, so the button still means
   // "I'm done with this" the way minimise did.
+  // It is ALSO a drag handle (A97, owner's ask): the grip stands down once the control is locked,
+  // and a locked control still has to be movable, so the lock stands in for it. The control itself
+  // tells a drag from a tap (`didDrag`), the same way the collapsed puck does - a drag moves, a tap
+  // toggles the lock, and a drag never toggles it.
   import type { FloatingControl } from '$lib/ui/floatingControl';
 
   export let ctl: FloatingControl;
@@ -15,8 +19,9 @@
   class="float-pin"
   class:pinned
   type="button"
-  on:click|stopPropagation={() => ctl.togglePin()}
-  title={pinned ? `Unlock and put ${what} away` : `Lock ${what} open (otherwise it closes when you select something else)`}
+  use:ctl.grip
+  on:click|stopPropagation={() => { if (!ctl.didDrag()) ctl.togglePin(); }}
+  title={pinned ? `Unlock and put ${what} away; drag to move` : `Lock ${what} open (otherwise it closes when you select something else); drag to move`}
   aria-label={pinned ? 'Unlock and close' : 'Lock open'}
   aria-pressed={pinned}
 >
@@ -45,6 +50,8 @@
     background: var(--bg-control, #1b1e26);
     color: var(--text-faint, #8a8f9a);
     cursor: pointer;
+    touch-action: none; /* it drags as well as taps */
+    user-select: none;
   }
   .float-pin:hover { color: var(--accent, #ff5a1f); border-color: var(--accent, #ff5a1f); }
   .float-pin.pinned {

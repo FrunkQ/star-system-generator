@@ -1489,3 +1489,59 @@ non-holo stages (`inspFx`, `:792`), and the preset editor's previews of the cove
 overlay set: the overlay bends with the picture on every one, and the preview in the editor matches the live view.
 
 **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM S — floating chrome as a system: the time display floats, a GM chooses an edge, controls dock (G81)
+
+> You are giving the GM "total flex" over the floating chrome on the canvas — [[G81]], on top of [[A98]], which
+> shipped v3.0.360. Repo `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the
+> tip; several streams push daily, renumber on collision). Work in your OWN worktree (`git worktree add
+> ../sse2-floating-chrome -b wt/floating-chrome origin/beta`); the main checkout is shared. Commit as
+> **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md`; the [[A98]] and
+> [[G81]] rows; engine map **UI-C17** (the edge-gap model and its BLAST list - read it before touching `settle`),
+> **UI-C6** (a floating control marks itself `use:chrome`, never `use:foreground`) and **UI-C16** (pointer capture
+> on a container kills the buttons inside it); `src/lib/ui/floatingControl.ts` with its spec.
+>
+> **THE OWNER'S WORDS (2026-09-06/07):** *"Maybe even give the time display the same treatment - to give gm total
+> flex. To help with different types of screens - pin them to a screen edge which it moves with... and allow them
+> to be pinned together. This allow user display customisation - saved locally with PC."*
+>
+> **WHAT IS ALREADY TRUE, so you do not rebuild it:** one behaviour module serves three hosts (the body picker, the
+> time transport, the undo pill). Every control is bounded by the box that clips it, remembers its gap from its
+> NEAREST edge and moves with that edge when the box changes shape; the lock is a drag handle; the undo pill has a
+> width handle. All of it lives in localStorage per control, never in the campaign file - that IS the owner's
+> "saved locally with PC", and it stays that way.
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **The time DISPLAY floats.** `.time-display-overlay` (`SystemView.svelte` ~2719 and `Starmap.svelte` ~1340,
+>    fixed top-left) becomes the fourth host: grip on the left, lock on the right. The module's puck/strip
+>    semantics are NOT wanted here (it is a read-out, always shown) - mirror the undo pill: `open: true, pinned:
+>    true`, `FloatGrip always`. One storage key shared by both mounts, as the picker does.
+> 2. **An explicit edge.** The nearest-edge guess is right at the sides and wrong in the middle of a wide screen.
+>    Offer the choice on the lock (right-click or long-press): Left / Right / Top / Bottom / Nearest. It writes
+>    `ex`/`ey` and marks them chosen so `settle` stops re-reading that axis. DATA, not branches: the menu is one
+>    list, the pinned axis one flag per axis.
+> 3. **Docking.** Two controls "pinned together" move as one and settle as one box. Design it as a GROUP stored
+>    per control (`dock: <groupId>`), not as parent/child; the group's box is the union of its members' rects and
+>    settles against the stage as ONE; one grip moves all. Gesture: drop a control's grip within 12 px of
+>    another's edge and it snaps and docks; drag it more than 24 px away and it undocks; say so in the tooltip.
+>    Measure the existing `set`/`settle` flow before adding a group layer - the per-frame drag must not fight
+>    itself (UI-C17 BLAST).
+>
+> **GATES, red-first, every one absolute in pixels:** the time display clamps inside `.main-view` and keeps its
+> edge gap (a host gains no module logic - extend `floatingControl.spec.ts` only if the module changes); the
+> explicit edge overrides the nearest-edge re-read; a docked pair moves together by exactly the drag delta and
+> settles as one box against a narrowed stage; undocking restores independent settling.
+>
+> **TRAPS:** CRLF everywhere (measure each file's own ending; Python bytes, never `sed -i` on MSYS, which rewrites
+> CRLF as LF); `npm run manifest` after every version bump; the two `tests/` fixtures are a baseline - commit them
+> if a run changes them; the stash stack is shared - WIP commits, never bare stash/pop; claim ids in both forms;
+> B99's rarity-dial test is a known statistical flake, green alone is the accepted form.
+>
+> **EYEBALL FOR THE OWNER (a canvas cannot be verified headlessly - hand back the list):** on a phone-width window
+> the time display, transport, picker and undo pill all stay reachable and none sits under the rail or the bottom
+> bar; dock the transport to the time display and drag the pair; open the detail pane and watch a right-pinned
+> pair move with the edge.
+>
+> **Housekeeping:** as Stream Q's, word for word.

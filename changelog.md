@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.360 - 7th Sep 2026
+
+- The floating controls stay where you put them. The body picker no longer slides under the menu rail when the details pane opens: every floating control now keeps its distance from the nearest edge of its screen area and moves with that edge, on the starmap and in the system view alike. A locked picker or time transport can still be moved by dragging its padlock, and a tap still unlocks it. The undo pill can be dragged about too, and dragging its right edge wider shows the name of what is in hand.
+
 ## v3.0.359 - 7th Sep 2026
 
 - Board only: the documentation sweep is retired. All nine reader-facing surfaces are done, the debt list is down to one line that says why it cannot be written yet, and the nine claims that turned out to be wrong rather than merely old are written up with what replaced them - along with a short list of the four things worth a human glance.

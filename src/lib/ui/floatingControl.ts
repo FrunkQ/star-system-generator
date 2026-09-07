@@ -2,8 +2,10 @@
 // whatever comes next). Two lookalikes drift; a shared module cannot.
 //
 // The contract, identical for all of them:
-//   - a small GRIP moves the control, and the position is remembered (clamped to the screen it
-//     opens on, so a desktop drag cannot strand it off a phone);
+//   - a small GRIP moves the control (the lock doubles as one while the control is locked), and
+//     the position is remembered as a GAP FROM THE NEAREST EDGE of the box that would clip it, so
+//     it moves with that edge when the box changes shape (a detail pane, a bar, a phone), is never
+//     stranded off screen or under the rail, and a desktop drag cannot strand it off a phone;
 //   - it is PUT AWAY to a puck by default, and opens on demand;
 //   - it CLOSES ITSELF as soon as something else is touched -- that is what keeps the canvas clear;
 //   - unless it is PINNED, in which case it stays open until you unpin it. Pinning is the opt-out
@@ -22,6 +24,17 @@ export interface FloatingState {
   open: boolean;
   /** Pinned open: suppresses auto-close. */
   pinned: boolean;
+  /**
+   * Which edge of its stage the control was nearest when last settled, and its gap from it (px).
+   * The offset above is what the DOM renders; this is what SURVIVES a change of shape: a
+   * right-hand control keeps its distance from the right edge when a detail pane narrows the
+   * canvas, a left-hand one stays put, and the same saved control lands in the same place on a
+   * different host. Absent until the control has been laid out once. (A97)
+   */
+  ex?: 'left' | 'right';
+  gx?: number;
+  ey?: 'top' | 'bottom';
+  gy?: number;
 }
 
 export interface FloatingControl extends Readable<FloatingState> {
@@ -40,13 +53,34 @@ export interface FloatingControl extends Readable<FloatingState> {
   didDrag(): boolean;
 }
 
-const EDGE = 4; // keep this much of the control on screen
+const EDGE = 4; // keep this much of the control inside its bounds
 const TAP_SLOP = 4; // px of movement below which a grip gesture is still a tap
+const SETTLED = 0.5; // px below which a gap or offset has not moved (sub-pixel layout noise)
+
+/**
+ * The box a control must stay inside: the nearest ancestor that CLIPS (any overflow but visible),
+ * or null for the viewport alone. The orrery and starmap wrappers clip, so a control pushed past
+ * their edge does not sit over the rail - it VANISHES under it. The clip box is the honest bound.
+ */
+export function nearestClippingAncestor(node: Element): Element | null {
+  if (typeof getComputedStyle === 'undefined') return null;
+  for (let el = node.parentElement; el && el !== document.body; el = el.parentElement) {
+    const overflow = getComputedStyle(el).overflow || 'visible';
+    if (overflow !== 'visible') return el;
+  }
+  return null;
+}
+
+export interface FloatingOptions {
+  enabled?: boolean;
+  /** The box to clamp inside; defaults to the nearest clipping ancestor of the root element. */
+  stage?: (root: HTMLElement) => Element | null;
+}
 
 export function createFloatingControl(
   storageKey: string,
   defaults: Partial<FloatingState> = {},
-  options: { enabled?: boolean } = {}
+  options: FloatingOptions = {}
 ): FloatingControl {
   const enabled = options.enabled ?? true;
   let s: FloatingState = { dx: 0, dy: 0, open: false, pinned: false, ...defaults };
@@ -73,22 +107,40 @@ export function createFloatingControl(
     if (persist && enabled && typeof localStorage !== 'undefined') {
       try { localStorage.setItem(storageKey, JSON.stringify(s)); } catch { /* private mode */ }
     }
-    if (resized) scheduleClamp();
+    if (resized) scheduleClamp(true);
   }
 
   let clampTimer: ReturnType<typeof setTimeout> | null = null;
   /**
-   * Re-clamp once the DOM has caught up. A macrotask, NOT requestAnimationFrame: rAF is suspended
+   * Re-settle once the DOM has caught up. A macrotask, NOT requestAnimationFrame: rAF is suspended
    * while the page is not painting (background tab, minimised window), and a control that opened
    * off-screen while hidden would then still be off-screen when you came back to it.
+   * `fromEdge` says whether the remembered edge gap drives the place (the box changed shape, or the
+   * control has just mounted) or the current place is the truth (the user has just dragged it).
    */
-  function scheduleClamp() {
+  function scheduleClamp(fromEdge: boolean) {
     if (clampTimer !== null) clearTimeout(clampTimer);
-    clampTimer = setTimeout(() => { clampTimer = null; clampIntoView(); }, 0);
+    clampTimer = setTimeout(() => { clampTimer = null; settle(fromEdge); }, 0);
   }
 
   let rootEl: HTMLElement | null = null;
+  let stageEl: Element | null = null;
   let dragged = false;
+
+  /** The stage intersected with the viewport, inset by EDGE: nothing may leave either. */
+  function bounds() {
+    let left = 0, top = 0, right = window.innerWidth, bottom = window.innerHeight;
+    if (stageEl) {
+      const b = stageEl.getBoundingClientRect();
+      if (b.width || b.height) {
+        left = Math.max(left, b.left);
+        top = Math.max(top, b.top);
+        right = Math.min(right, b.right);
+        bottom = Math.min(bottom, b.bottom);
+      }
+    }
+    return { left: left + EDGE, top: top + EDGE, right: right - EDGE, bottom: bottom - EDGE };
+  }
 
   function onOutside(e: Event) {
     if (!rootEl || rootEl.contains(e.target as Node)) return;
@@ -99,38 +151,63 @@ export function createFloatingControl(
   const noop = { destroy() { /* disabled */ } };
 
   /**
-   * Pull the control back on screen. The stored offset is shared across devices, so one dragged to
-   * the far edge of a desktop would otherwise open off a phone entirely — with no puck left to grab.
-   * Right/bottom are corrected first so top/left wins for anything larger than the viewport.
+   * Settle the control inside its bounds. With `fromEdge`, its place is its remembered gap from
+   * its nearest edge (so it MOVES WITH that edge); otherwise its place is where it is now. Either
+   * way it is then held inside the bounds - right/bottom corrected first so top/left wins for
+   * anything larger than the box - and the nearest edge and gap are re-read from where it settled.
+   * The stored state is shared across devices, so a control dragged to the far edge of a desktop
+   * would otherwise open off a phone entirely - with no puck left to grab.
    */
-  function clampIntoView() {
+  function settle(fromEdge: boolean) {
     if (!rootEl || typeof window === 'undefined') return;
     const r = rootEl.getBoundingClientRect();
     if (!r.width && !r.height) return; // not laid out yet
-    let dx = s.dx, dy = s.dy;
-    if (r.right > window.innerWidth - EDGE) dx -= r.right - (window.innerWidth - EDGE);
-    if (r.bottom > window.innerHeight - EDGE) dy -= r.bottom - (window.innerHeight - EDGE);
-    const left = r.left + (dx - s.dx);
-    const top = r.top + (dy - s.dy);
-    if (left < EDGE) dx += EDGE - left;
-    if (top < EDGE) dy += EDGE - top;
-    if (dx !== s.dx || dy !== s.dy) set({ dx, dy });
+    const ax = r.left - s.dx, ay = r.top - s.dy; // where the host's anchor is now
+    const b = bounds();
+    let left = r.left, top = r.top;
+    if (fromEdge && s.ex && s.gx !== undefined) left = s.ex === 'right' ? b.right - s.gx - r.width : b.left + s.gx;
+    if (fromEdge && s.ey && s.gy !== undefined) top = s.ey === 'bottom' ? b.bottom - s.gy - r.height : b.top + s.gy;
+    if (left + r.width > b.right) left = b.right - r.width;
+    if (top + r.height > b.bottom) top = b.bottom - r.height;
+    if (left < b.left) left = b.left;
+    if (top < b.top) top = b.top;
+    const dx = left - ax, dy = top - ay;
+    const gl = left - b.left, gr = b.right - (left + r.width);
+    const gt = top - b.top, gb = b.bottom - (top + r.height);
+    const ex: 'left' | 'right' = gr < gl ? 'right' : 'left';
+    const ey: 'top' | 'bottom' = gb < gt ? 'bottom' : 'top';
+    const gx = Math.max(0, Math.min(gl, gr)), gy = Math.max(0, Math.min(gt, gb));
+    const moved = Math.abs(dx - s.dx) >= SETTLED || Math.abs(dy - s.dy) >= SETTLED;
+    const rehomed =
+      ex !== s.ex || ey !== s.ey || s.gx === undefined || s.gy === undefined ||
+      Math.abs(gx - s.gx) >= SETTLED || Math.abs(gy - s.gy) >= SETTLED;
+    if (moved || rehomed) set({ dx, dy, ex, gx, ey, gy });
   }
 
   const root = (node: HTMLElement) => {
     if (!enabled) return noop;
     rootEl = node;
+    stageEl = options.stage ? options.stage(node) : nearestClippingAncestor(node);
+    // The box changes shape without the window doing so - a detail pane opening narrows the canvas
+    // and would drag a centre-anchored control with it. Re-settle from the remembered edge then.
+    const onResize = () => settle(true);
+    let ro: ResizeObserver | null = null;
+    if (stageEl && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => scheduleClamp(true));
+      ro.observe(stageEl);
+    }
     // Capture phase: the control must put itself away even when the thing being touched stops
     // propagation for its own reasons (canvas gestures do exactly that).
     document.addEventListener('pointerdown', onOutside, true);
-    window.addEventListener('resize', clampIntoView);
-    scheduleClamp();
+    window.addEventListener('resize', onResize);
+    scheduleClamp(true);
     return {
       destroy() {
         if (clampTimer !== null) { clearTimeout(clampTimer); clampTimer = null; }
         document.removeEventListener('pointerdown', onOutside, true);
-        window.removeEventListener('resize', clampIntoView);
-        if (rootEl === node) rootEl = null;
+        window.removeEventListener('resize', onResize);
+        ro?.disconnect();
+        if (rootEl === node) { rootEl = null; stageEl = null; }
       }
     };
   };
@@ -156,10 +233,11 @@ export function createFloatingControl(
       // rather than snapping. Same approach the time pill has always used.
       if (rootEl && typeof window !== 'undefined') {
         const r = rootEl.getBoundingClientRect();
-        if (r.left < EDGE) dx += EDGE - r.left;
-        if (r.top < EDGE) dy += EDGE - r.top;
-        if (r.right > window.innerWidth - EDGE) dx -= r.right - (window.innerWidth - EDGE);
-        if (r.bottom > window.innerHeight - EDGE) dy -= r.bottom - (window.innerHeight - EDGE);
+        const b = bounds();
+        if (r.left < b.left) dx += b.left - r.left;
+        if (r.top < b.top) dy += b.top - r.top;
+        if (r.right > b.right) dx -= r.right - b.right;
+        if (r.bottom > b.bottom) dy -= r.bottom - b.bottom;
       }
       set({ dx, dy }, false); // persist on release, not on every frame
     };
@@ -169,8 +247,9 @@ export function createFloatingControl(
       set({}, true);
       // The in-drag clamp works off a rect that is one frame behind, so it converges during a slow
       // drag but a flick that ENDS at the edge can stop just past it. One authoritative correction
-      // on release, against a settled rect (and it persists again if it moves anything).
-      scheduleClamp();
+      // on release, against a settled rect (and it persists again if it moves anything) - and the
+      // nearest edge is re-read from where the control was LEFT, never from where it was.
+      scheduleClamp(false);
     };
 
     node.addEventListener('pointerdown', down);

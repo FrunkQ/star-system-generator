@@ -101,3 +101,22 @@ describe('the compact label is the shape the owner asked for', () => {
 		expect(describeClipCompact(clipOf({ id: 'r', name: 'Sol', kind: 'body', roleHint: 'star' }, 0))).toBe('Star');
 	});
 });
+
+describe('widened, the row shows more (A98)', () => {
+	const rich = { compact: 'Planet+7', label: 'Planet Earth', count: 8, from: 'app' as const };
+	it('shows the NAME and the count once the pill has been dragged wider, and the compact form at its natural width', () => {
+		localStorage.setItem('sse-undo-pill-width', '220');
+		try {
+			const { container } = render(UndoPill, { props: { ...base, status: nothingToUndo, clip: rich } });
+			const pill = container.querySelector('.undo-pill') as HTMLElement;
+			expect(pill.classList.contains('wide')).toBe(true);
+			expect(pill.style.width).toBe('220px');
+			expect(container.querySelector('.up-clip-text')?.textContent).toBe('Planet Earth +7');
+		} finally {
+			localStorage.removeItem('sse-undo-pill-width');
+		}
+		const { container: natural } = render(UndoPill, { props: { ...base, status: nothingToUndo, clip: rich } });
+		expect(natural.querySelector('.undo-pill')?.classList.contains('wide')).toBe(false);
+		expect(natural.querySelector('.up-clip-text')?.textContent).toBe('Planet+7');
+	});
+});

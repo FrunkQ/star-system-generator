@@ -16,6 +16,9 @@
   // passed in: inside a system Ctrl+Z winds back the body edits, on the starmap it winds back the
   // map's layout. The component knows nothing about either.
   import { chrome } from '$lib/ui/foreground';
+  import { createFloatingControl } from '$lib/ui/floatingControl';
+  import { widthGrip } from '$lib/ui/widthGrip';
+  import FloatGrip from './FloatGrip.svelte';
   import type { Readable } from 'svelte/store';
   import type { UndoStatus } from '$lib/undo/systemUndo';
 
@@ -33,9 +36,31 @@
   // SO THIS IS AN INDICATOR AND NOT A BUTTON. Pasting is the right-click, which knows where it is
   // going; a second control that has to ask would be the thing he took out. It says what is in hand
   // and, in its tooltip, what to do with it.
-  export let clip: { compact: string; label: string; from: 'app' | 'clipboard' } | null = null;
+  export let clip: { compact: string; label: string; count?: number; from: 'app' | 'clipboard' } | null = null;
   /** One gold flash when something NEW arrives from outside the app. The caller owns the timing. */
   export let clipPulse = false;
+
+  // MOVABLE AND WIDENABLE (A98, owner's ask). The pill is the third host of the shared floating
+  // control - grip on the left, always shown because the pill has no lock (it is only ever up while
+  // there is something to show) - and its RIGHT EDGE is a width handle. At its natural width the
+  // clip row keeps the compact form the owner chose ("Planet+7": a name would push the chrome
+  // about); drag it wider and the row shows the NAME too, cut with an ellipsis to the width chosen.
+  // Both are per-browser customisation, saved locally and never in the campaign file.
+  const float = createFloatingControl('sse-undo-pill-float', { open: true, pinned: true });
+  const WIDTH_KEY = 'sse-undo-pill-width';
+  const WIDTH_MIN = 90, WIDTH_MAX = 420;
+  let width = 0; // 0 = natural
+  try { width = Math.max(0, Number(localStorage.getItem(WIDTH_KEY)) || 0); } catch { /* private mode */ }
+  let pillEl: HTMLElement;
+  function setWidth(w: number, final: boolean) {
+    width = w;
+    if (final) { try { localStorage.setItem(WIDTH_KEY, String(w)); } catch { /* private mode */ } }
+  }
+  $: clipText = !clip
+    ? ''
+    : width > 0
+      ? `${clip.label}${clip.count && clip.count > 1 ? ` +${clip.count - 1}` : ''}`
+      : clip.compact;
 
 
   // The step is NAMED where it can be: "Undo: Mass of Earth". A step the differ could not name
@@ -77,8 +102,18 @@
 <!-- The clip alone is enough to show the pill: a GM who has just copied on the map library's site
      and come back has nothing to undo yet, and that is exactly the moment the indicator is for. -->
 {#if $status.canUndo || $status.canRedo || clip}
-  <div class="undo-pill" class:phone={mode === 'phone'} class:has-clip={!!clip} use:chrome>
+  <div
+    class="undo-pill"
+    class:phone={mode === 'phone'}
+    class:has-clip={!!clip}
+    class:wide={width > 0}
+    use:chrome
+    use:float.root
+    bind:this={pillEl}
+    style="transform: {mode === 'phone' ? '' : 'translateX(-50%) '}translate({$float.dx}px, {$float.dy}px);{width > 0 ? ` width:${width}px;` : ''}"
+  >
    <div class="up-row">
+    <FloatGrip ctl={float} always label="Drag to move" />
     <button
       class="up-btn"
       title="{undoTitle} (Ctrl+Z)"
@@ -117,9 +152,15 @@
           <rect x="8" y="8" width="12" height="12" rx="2" />
           <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
         </svg>
-        <span>{clip.compact}</span>
+        <span class="up-clip-text">{clipText}</span>
       </div>
     {/if}
+    <span
+      class="up-resize"
+      role="presentation"
+      title="Drag to widen and see more of what is in hand; double-click to put it back"
+      use:widthGrip={{ get: () => width, natural: () => pillEl?.getBoundingClientRect().width || WIDTH_MIN, set: setWidth, min: WIDTH_MIN, max: WIDTH_MAX }}
+    ></span>
   </div>
 {/if}
 
@@ -128,7 +169,7 @@
     position: absolute;
     top: 8px;
     left: 50%;
-    transform: translateX(-50%);
+    /* transform: the centring AND the drag offset, both inline (A98) */
     z-index: var(--z-chrome, 1000);
     display: flex;
     flex-direction: column;
@@ -145,7 +186,6 @@
   .undo-pill.phone {
     left: auto;
     right: 8px;
-    transform: none;
   }
   .up-btn {
     display: flex;
@@ -197,7 +237,21 @@
     white-space: nowrap;
     cursor: default;
     user-select: none;
+    min-width: 0;
   }
+  .up-clip-text { overflow: hidden; text-overflow: ellipsis; }
+  /* The right edge is the width handle: a thin strip the cursor announces, tinted on hover. */
+  .up-resize {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+    touch-action: none;
+    border-radius: 0 16px 16px 0;
+  }
+  .up-resize:hover { background: color-mix(in srgb, var(--accent, #ff5a1f) 25%, transparent); }
   /* ONE flash, when something new arrives from OUTSIDE the app - a copy made here needs no
      announcement, because the GM just made it. `prefers-reduced-motion` keeps the colour and drops
      the movement, which is the part that carries the meaning anyway. */
