@@ -50,6 +50,7 @@ import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
+import { shouldRender, IDLE_HEARTBEAT_MS } from '$lib/rendering/renderIdle';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { lightningStrength } from '$lib/physics/cloudDecks'; // shared feature model (WS1)
@@ -535,6 +536,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
+  // RENDER ON DEMAND: any doubt draws. `change` is OrbitControls' own announcement that it moved the
+  // camera - a drag, a wheel, or damping still bleeding off after the hand has gone - so subscribing
+  // here catches every camera motion the user causes without this file having to know how.
+  controls.addEventListener('change', markDirty);
   controls.dampingFactor = 0.08;
   controls.enablePan = false;
   const DEFAULT_MIN_DIST = 0.05;
@@ -991,6 +996,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const keepFocus = focusedId;
     if (currentSystem) setSystem(currentSystem, `style:${reason}`);
     if (keepFocus) focusBody(keepFocus);
+    markDirty();
   }
 
   // Fill light so the night side of a lit body isn't pure black; the star's own light does the
@@ -1403,6 +1409,38 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   /** This machine is short of fill rate: fewer pixels, fewer frames, no animated extras. */
   let lowPowerOn = false;
   let lastFrameAt = 0;
+  /**
+   * SOMETHING MAY HAVE CHANGED SINCE THE LAST FRAME. Starts true (nothing has been drawn yet) and is
+   * set by anything that could possibly matter - see `renderIdle.ts` for why the bar is "possibly".
+   */
+  let dirty = true;
+  function markDirty() { dirty = true; }
+  /** The clock and the wall time at the last frame actually DRAWN, not the last one considered. */
+  let lastDrawnTimeMs = Number.NaN;
+  let lastDrawnAt = 0;
+  /**
+   * Does this scene hold anything that moves on its OWN clock rather than the simulation's? Counted
+   * once per build rather than asked per frame, because it only changes when the content does.
+   *
+   * The simulation's own motion - orbits, spins, belts - is NOT in here: all of it is a function of
+   * `timeMs`, so a paused clock freezes it and the loop's `clockAdvancing` test already covers it.
+   * What is in here is the decoration that would keep moving with the clock stopped dead.
+   */
+  let selfAnimating = false;
+  function recomputeSelfAnimating() {
+    // The scene keeps each kind in its own array, which is exactly the list to ask. An empty one is
+    // a promise that nothing of that kind is on screen - `setSystem` clears them all before a build.
+    selfAnimating =
+      auroraVisuals.length > 0 ||
+      magmaVisuals.length > 0 ||
+      lightningVisuals.length > 0 ||
+      plumeVisuals.length > 0 ||
+      cloudVisuals.length > 0 ||
+      // A corona only pulses above the activity floor `updateStarLook` itself uses, so a QUIET star
+      // is a still picture and does not hold the loop awake. Jets and shed shells flicker whatever
+      // the activity, and a flare star has flares to run.
+      (!lowPowerOn && starVisuals.some((s) => s.activity > 0.01 || !!s.jet || !!s.shell || s.flares.length > 0));
+  }
   const perfGuard: PerfGuardState = newPerfGuard();
   /** When the current content was built — the guard's warm-up is measured from here, not from load. */
   let contentBuiltAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -4899,6 +4937,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   }
 
   function setTime(ms: number) {
+    // A HOST MAY CALL THIS EVERY FRAME WITH THE SAME NUMBER while the clock is paused, which is the
+    // whole case this feature exists for - so the comparison, not the call, is what counts as motion.
+    if (ms !== timeMs) markDirty();
     timeMs = ms;
     updatePositions();
   }
@@ -5236,6 +5277,25 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     const nowMs = performance.now();
     if (skipFrame(lowPowerOn, nowMs, lastFrameAt)) { raf = requestAnimationFrame(loop); return; }
     lastFrameAt = nowMs;
+    // RENDER ON DEMAND. Asked here, before a single update pass runs, because the saving is the WORK
+    // and not just the draw call - twenty passes over every body is most of the cost of a frame.
+    // `selfAnimating` is recomputed rather than cached: it is a handful of array lengths, and a
+    // cached answer that went stale would freeze the picture, which is the one failure this whole
+    // feature must not have.
+    recomputeSelfAnimating();
+    const idleDraw = shouldRender({
+      dirty,
+      // `controls.autoRotate` is the turntable, `reframing` a focus ease flying the camera itself,
+      // and the view inset a panel opening. None of the three announce themselves through `change`.
+      cameraMoving: controls.autoRotate || reframing || viewInsetCur !== viewInsetTarget,
+      animated: selfAnimating || !!filterPass || lensingPass.enabled,
+      clockAdvancing: timeMs !== lastDrawnTimeMs,
+      sinceLastFrameMs: nowMs - lastDrawnAt
+    });
+    if (!idleDraw) { raf = requestAnimationFrame(loop); return; }
+    dirty = false;
+    lastDrawnTimeMs = timeMs;
+    lastDrawnAt = nowMs;
     perfFrame(nowMs); // slow-spell tracker (logs only when a 5s window dips below 45fps)
     const nowSec = filterClock.getElapsedTime();
     // Gentle horizontal reframe while the info panel is open: ease a camera VIEW OFFSET that shifts the
@@ -5256,7 +5316,10 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     controls.autoRotate = !lockRotate && orbitSpeed > 0 && !reframing;
     updateSpin();
     updateSurfaceConstructs();
-    updateStarFx(nowSec);
+    // The corona's pulse is decoration and freezing it leaves no artefact (unlike a bolt), so low
+    // power stops driving it. It is also what lets a quiet system reach IDLE at all: an active star
+    // would otherwise hold the loop awake for ever on its own.
+    if (!lowPowerOn) updateStarFx(nowSec);
     updateAuroras(nowSec);
     updateMagma(magmaVisuals, nowSec);
     updateLightning(lightningVisuals, nowSec);
@@ -5361,7 +5424,21 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
   };
 
-  return { setLowPower, setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setPerfShedReporter, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  // EVERY PUBLIC CALL IS A CHANGE UNTIL PROVED OTHERWISE, and this is why render-on-demand is
+  // safe to have at all. There are forty-odd setters here and a list of "the ones that matter"
+  // would rot within a month - the next person to add one would have no way of knowing they had
+  // joined it. Wrapping the surface once costs a closure per method and a wasted frame per call,
+  // and in exchange no setter can ever be forgotten. See `renderIdle.ts`, principle 1.
+  const api: HoloController = { setLowPower, setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setPerfShedReporter, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  for (const key of Object.keys(api) as (keyof HoloController)[]) {
+    const fn = api[key];
+    if (typeof fn !== 'function') continue;
+    (api as Record<string, unknown>)[key] = (...args: unknown[]) => {
+      markDirty();
+      return (fn as (...a: unknown[]) => unknown).apply(api, args);
+    };
+  }
+  return api;
 }
 
 // ---- helpers ----

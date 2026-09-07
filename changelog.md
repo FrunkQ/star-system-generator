@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.0.374 - 7th Sep 2026
+
+- The 3D system view stops drawing when there is nothing to draw. With the clock paused, the camera still and low power on, it now sits idle instead of redrawing the same picture sixty times a second - which is most of what was flattening a laptop battery on a map nobody was touching. It still checks once a second regardless, so nothing can quietly go stale, and anything at all that moves - a running clock, a nudge of the camera, a glowing aurora, a drifting cloud - brings it straight back to full speed.
+- Low power also stops the slow pulse of a star's corona, which is both a saving in itself and what lets a quiet system go idle at all.
+
 ## v3.0.373 - 7th Sep 2026
 
 - A neutron star's card makes sense again: its field prints as 2.21e14 G rather than fifteen digits, the note under it says the field is within its class's normal range rather than 'typical', and the magnetic activity cell says that 'quiet' is the flare verdict (a remnant has no dynamo to flare from) and is not a statement about its radiation. The ionising figure for remnants still comes from a model built for ordinary stars, and says so until the physics follows.
@@ -9,6 +14,7 @@ All notable changes are listed here:
 ## v3.0.372 - 7th Sep 2026
 
 - The light and dark palettes for the floating controls now take their tint from the skin you are wearing: Nebula floats lilac or deep purple, Classic peach or warm charcoal, Modern blue-white or slate. Text stays dark on light and light on dark, so everything reads on every skin.
+
 
 ## v3.0.371 - 7th Sep 2026
 

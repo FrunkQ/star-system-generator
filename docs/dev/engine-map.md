@@ -6685,6 +6685,17 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+THE HOLO DOES NOT DRAW A FRAME NOTHING COULD HAVE CHANGED ([[G84]]), and the danger is the whole
+design: being wrong means a map that silently stopped updating. `rendering/renderIdle.ts` holds the
+three principles - every doubt DRAWS (every clause of `shouldRender` says yes, none says no), a
+once-a-second HEARTBEAT bounds any bookkeeping mistake to a stale second, and ANIMATION is not an
+opinion (a pulsing corona changes every frame and cannot be skipped).
+THE CONTROLLER'S PUBLIC SURFACE IS WRAPPED so every call marks the scene dirty. Do not replace that
+with a list of the setters that matter: there are forty-odd, and the next person to add one has no
+way of knowing the list exists. Camera motion rides OrbitControls' `change` event plus the three
+motions the scene causes itself (turntable, focus ease, view inset). The clock is COMPARED, because
+a host calls `setTime` every frame with the same number while paused - which is the case this
+feature exists for.
 THE TWO RENDERER LEVERS THAT COST FIDELITY LIVE IN `rendering/lowPowerRender.ts` ([[G83]]), because
 three surfaces pull them and "how hard are we trying" must not be written down three times. PIXEL
 RATIO is the biggest lever there is - a retina 2 is four times the fragments of 1 - and a
