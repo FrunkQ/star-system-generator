@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.0.378 - 7th Sep 2026
+
+- The system map stops drawing zone rings and Hill-sphere outlines that cannot be seen. A circle bigger than the screen was still being drawn all the way round even though its edge was far outside the view - at deep zoom that is a line millions of pixels long, every frame, for nothing. The shading of those zones still draws, because that genuinely does cover the screen.
+- Hill spheres were never skipped when off screen at all; now they are.
+- Low power drops the translucent shading on zones and Hill spheres but keeps their outlines, so you can still see where every boundary is on a machine that cannot afford to tint half the screen.
+
 ## v3.0.377 - 7th Sep 2026
 
 - Magnetospheres can now be drawn on the system map. A new Magnetospheres box in the GM View menu, beside Hill
@@ -14,6 +20,7 @@ All notable changes are listed here:
   trust rather than a smear across the map. Like Hill spheres, it is a close-in overlay: zoom in on a planet
   to see it properly.
 
+
 ## v3.0.376 - 7th Sep 2026
 
 - Board only: the floating chrome work is closed and written up, with a short list of what a human still needs to look at and one question for the owner about how a docked pair should be taken apart.
@@ -23,6 +30,7 @@ All notable changes are listed here:
 - The undo/redo buttons are always on screen now, greyed out when there is nothing to wind back, instead of appearing only once you have made an edit. The shading says "nothing yet" in the place you were looking for the answer.
 
 - Four fixes to the floating chrome, all found by driving the real app rather than the tests. A docked pair no longer comes apart when the canvas changes width - the controls do not all hang off the same corner, so keeping them together needed more than moving them by the same amount. Dropping one control against another now actually docks them (the check was reading where the control had been, not where it was let go). The clock read-out starts in its old top-left corner and stays there instead of jumping to the far edge on a wide screen. And a control is bounded by whatever is clipping it NOW, which is not always the same thing it was when the window was a different shape.
+
 
 ## v3.0.374 - 7th Sep 2026
 

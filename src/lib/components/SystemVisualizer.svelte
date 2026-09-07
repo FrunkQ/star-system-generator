@@ -12,6 +12,8 @@
   import { getVisibleNodeIds } from "$lib/system/visibleNodes";
   import { AU_KM, EARTH_MASS_KG } from '../constants';
   import { debrisDensityFrac } from '$lib/rendering/debris';
+  import { discVisible, ringVisible } from '$lib/rendering/circleCull';
+  import { lowPower } from '$lib/lowPowerStore';
   import * as zones from "$lib/physics/zones";
   import { calculateLagrangePoints, tadpoleRegion, isTriangularPoint, tadpoleOutline,
            hillFactor, coOrbitalScale, COLLINEAR_ENVELOPE_HILL } from "$lib/physics/lagrange";
@@ -1710,17 +1712,32 @@
               if (!pos) continue;
               const r = drawnRadiusAu(h.id, h.rAu);
               if (!(r > 0)) continue;
-              ctx.beginPath();
-              ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
+              // CULLED, WHICH THESE NEVER WERE. The zone overlay next door has skipped an off-screen
+              // circle since it was written and these did not, so every bubble in a fifty-body system
+              // was handed to the canvas whether or not any part of it could be seen. This context is
+              // world-transformed (`translate(w/2, h/2); scale(zoom)`), so the test has to be done in
+              // the screen space it lands in.
+              const sx = width / 2 + (pos.x - renderPan.x) * zoom;
+              const sy = height / 2 + (pos.y - renderPan.y) * zoom;
+              const sr = r * zoom;
               // Planets: shaded bubble. Stars: an unshaded line only (the "[Star] Hill Limit" — labelled in
               // screen space below), so a huge star limit doesn't wash the whole canvas in fill.
-              if (!h.isStar) {
+              // A bubble is drawn only where its DISC shows; the outline only where its RING does -
+              // a circle that swallows the viewport has its boundary out past the corners.
+              const showFill = !h.isStar && !$lowPower && discVisible(sx, sy, sr, width, height, margin);
+              const showLine = ringVisible(sx, sy, sr, width, height, margin);
+              if (!showFill && !showLine) continue;
+              ctx.beginPath();
+              ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
+              if (showFill) {
                   ctx.fillStyle = 'rgba(255, 232, 130, 0.06)';
                   ctx.fill();
               }
-              ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
-              ctx.lineWidth = 1 / zoom;
-              ctx.stroke();
+              if (showLine) {
+                  ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
+                  ctx.lineWidth = 1 / zoom;
+                  ctx.stroke();
+              }
           }
       }
       // THE CIRCUMBINARY ANNULUS (G45) — the ring a P-type body can live in around a pair.
@@ -2169,7 +2186,7 @@
     const margin = 24;
     const hugeRadiusSolidThresholdPx = Math.max(width, height) * 1.25;
     const isCircleVisible = (cx: number, cy: number, r: number) =>
-      cx + r >= -margin && cx - r <= width + margin && cy + r >= -margin && cy - r <= height + margin;
+      discVisible(cx, cy, r, width, height, margin);
 
     const toScreenRadius = (radiusAu: number): number => {
       if (radiusAu <= 0) return 0;
@@ -2180,6 +2197,12 @@
 
     const drawZoneBand = (cx: number, cy: number, outerRadiusPx: number, innerRadiusPx: number, color: string) => {
       if (outerRadiusPx <= 0 || outerRadiusPx <= innerRadiusPx) return;
+      // LOW POWER DROPS THE WASH AND KEEPS THE LINE. Owner, 2026-09-07: the zones are "full of
+      // transparencies... this is not gated for low power devices". A band is a translucent fill
+      // across most of the canvas and it is the expensive half by fill rate; the LINES below carry
+      // the information - where the boundary is - and cost a stroke each. So the reading survives on
+      // a weak machine and the shading does not.
+      if ($lowPower) return;
       if (!isCircleVisible(cx, cy, outerRadiusPx)) return;
       ctx.beginPath();
       ctx.arc(cx, cy, outerRadiusPx, 0, 2 * Math.PI);
@@ -2193,7 +2216,11 @@
 
     const drawZoneLine = (cx: number, cy: number, radiusPx: number, color: string) => {
       if (radiusPx <= 0) return;
-      if (!isCircleVisible(cx, cy, radiusPx)) return;
+      // A RING, NOT A DISC: a circle that swallows the viewport has its boundary somewhere out past
+      // the corners, so there is nothing to see and the canvas would still be handed a path whose
+      // circumference runs to millions of pixels at deep zoom. The bounding-box test alone calls that
+      // visible; `ringVisible` is the one that does not.
+      if (!ringVisible(cx, cy, radiusPx, width, height, margin)) return;
       ctx.beginPath();
       ctx.arc(cx, cy, radiusPx, 0, 2 * Math.PI);
       ctx.strokeStyle = color;

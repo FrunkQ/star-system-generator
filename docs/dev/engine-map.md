@@ -6720,6 +6720,15 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+A RING AND A DISC ARE NOT VISIBLE UNDER THE SAME CONDITIONS ([[G85]], `rendering/circleCull.ts`).
+A bounding-box test is right for a FILL - a circle enclosing the viewport covers every pixel - and
+wrong for a STROKE, because that circle's boundary is out past the corners where nothing can see it,
+and at AU scale its circumference runs to millions of pixels to stroke and clip for nothing. Use
+`discVisible` for a fill and `ringVisible` for an outline; anything drawing an astronomical circle
+wants the second one. The zones had the first test and the Hill bubbles had neither.
+LOW POWER DROPS A WASH AND KEEPS A LINE. A translucent band is the expensive half by fill rate and
+the outline is the half that carries the answer, so a boundary overlay stays readable on a weak
+machine with its shading gone. Do not gate the line as well.
 THE HOLO DOES NOT DRAW A FRAME NOTHING COULD HAVE CHANGED ([[G84]]), and the danger is the whole
 design: being wrong means a map that silently stopped updating. `rendering/renderIdle.ts` holds the
 three principles - every doubt DRAWS (every clause of `shouldRender` says yes, none says no), a
