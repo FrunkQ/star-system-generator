@@ -914,6 +914,14 @@
                      called "Belt detail" under Scaling. -->
                 <CollapsibleSection label="Performance tweaks (for lower end devices)" open={openSections['system-perf']}
                   on:toggle={(e) => setSection('system-perf', e.detail)}>
+                  <!-- THE MASTER OF THIS SECTION, and first because it is the one a GM reaches for
+                       when a player says "it's laggy" without knowing which thing is expensive. The
+                       player's OWN machine can say the same thing for itself (`lowPowerStore`); if
+                       either says low power, it is low power. -->
+                  <label class="chk" title="Everything in this section at once, plus half the frame rate and a coarser picture. For a player on an old tablet or a weak laptop. A player can also turn this on for themselves on their own machine; whichever of you asks for it, they get it.">
+                    <input type="checkbox" checked={draft.lowPower === true} on:change={(e) => (draft = { ...draft, lowPower: e.currentTarget.checked })} />
+                    Low power mode
+                  </label>
                   <label class="chk" title="Cloud decks, the atmospheric limb glow and high haze. Each is a translucent shell blended over the body, so a cloudy world repaints the same pixels several times — the cost is fill rate, which is what a weak GPU has least of.">
                     <input type="checkbox" checked={draft.atmospheres !== false} on:change={(e) => (draft = { ...draft, atmospheres: e.currentTarget.checked })} />
                     Atmospheres &amp; clouds

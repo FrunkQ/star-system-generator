@@ -298,6 +298,39 @@ export function stepFocus(focus: number, objects: number, count: number): number
 }
 
 /**
+ * HOW FAR THE PICTURE MOVES TOWARD ITS TARGET IN ONE FRAME, as a fraction of what is left.
+ *
+ * [[B141]]. Making a notch land ON an object ([[B139]]) fixed the moons and cost the GLIDE - the
+ * owner, 2026-09-07: *"It does tend to jump between bodies now rather than glide between them"*. It
+ * was neither frame rate nor sensitivity; it was that the focus was assigned rather than travelled
+ * to. The two are not in tension once the target is separated from the position: the wheel and the
+ * keys choose a WHOLE OBJECT, and the picture then flies there under the constant-apparent-speed
+ * law that already governs a step (`focusBlend`), so you both land on things and see yourself
+ * arrive.
+ *
+ * An exponential approach rather than a timed tween, matching the eases already in the holo's frame
+ * loop: it needs no start time, no duration and no cancellation, a target that moves mid-flight is
+ * simply followed, and it cannot overshoot. 0.18 crosses about nine tenths of a step in a fifth of a
+ * second at 60 fps - fast enough not to feel like waiting, slow enough to read.
+ */
+export const FOCUS_EASE = 0.18;
+/** Below this the picture is there: stop easing and sit exactly on the object, so the scale settles. */
+export const FOCUS_SETTLE = 0.001;
+
+/**
+ * One frame of the glide. Returns the new focus, and it is EXACT at the end rather than merely close:
+ * an eased value that only approaches an integer would leave the scale law reading a focus of
+ * 4.9997 for ever, and "the thing you clicked fills half the screen" is a promise this view makes to
+ * the digit (see `focusDiameterKm`).
+ */
+export function easeFocus(focus: number, target: number, ease = FOCUS_EASE): number {
+  if (!Number.isFinite(focus)) return target;
+  if (!Number.isFinite(target)) return focus;
+  if (Math.abs(target - focus) < FOCUS_SETTLE) return target;
+  return focus + (target - focus) * Math.min(1, Math.max(0, ease));
+}
+
+/**
  * One wheel notch, in pixels. A mouse sends about this in `deltaY`; the accumulator in the view
  * turns whatever a trackpad sends into the same currency.
  */

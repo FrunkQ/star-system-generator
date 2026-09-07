@@ -210,6 +210,21 @@ export interface PlayerPreset {
   // keep their OWN switch — they were already separate, and one control that silently swallowed
   // another's job would make the second one look broken.
   atmospheres?: boolean;
+  /**
+   * LOW POWER, as a decision the GM makes ABOUT A PLAYER'S DEVICE. Owner, 2026-09-07: *"same control
+   * in player view settings"*.
+   *
+   * The twin of `lowPowerStore`, and the two are not redundant. The store is set by the person AT
+   * the machine and describes that machine; this is set by the GM who knows the tablet at the end of
+   * the table is elderly and cannot tick a box on it. They compose the only way that is safe - if
+   * EITHER says low power, it is low power - so a player on a fast machine is not forced by the
+   * preset's caution, and a player on a slow one is not undone by the GM's optimism.
+   *
+   * It is the MASTER of this section: it drops the atmospheric shells, the auroras and the animated
+   * extras, halves the frame rate and renders at one device pixel per CSS pixel. The switches beside
+   * it stay meaningful on their own, for a device that only needs one of them.
+   */
+  lowPower?: boolean;
   auroras: boolean; // show the emissive polar aurora shells on bodies that have them
   // A construct's CURRENT levels — fuel, cargo, crew aboard — as against its permanent capacity. A star
   // catalogue would hold what a ship CAN carry; only a live instrument knows what is in the tanks right

@@ -67,6 +67,21 @@ export interface BodyLookOptions {
    */
   aurora?: 'physics' | 'model' | 'off';
   /**
+   * THE ANIMATED EXTRAS THAT HAVE NO SWITCH OF THEIR OWN: storm lightning, magma glow and cryo
+   * plumes. Default ON, so nothing changes for a caller that has not asked.
+   *
+   * Why these three and not the auroras: an aurora already has its own control on a preset, and one
+   * switch that silently swallowed another's job would make the second look broken - the same rule
+   * `presetTypes.ts` states where `atmospheres` deliberately leaves `auroras` alone. These three had
+   * NO control anywhere, which is why the owner could turn low power on and still watch a planet
+   * flashing at him: *"low power mode does not yet turn off auroras and lightning flashes on the
+   * size comparison"*.
+   *
+   * It gates the BUILD rather than the animation, and it has to: a frozen bolt is worse than a
+   * flashing one - it leaves a permanent lightning strike painted on the cloud tops.
+   */
+  dynamics?: boolean;
+  /**
    * 'none' = the caller owns the orientation and applies it per frame (the holo composes tilt with
    * sidereal spin). 'axial' stamps the axial tilt once. 'showcase' is the gallery's review posture:
    * a cryovolcanic body is tipped south-pole-toward-camera so its jets spray at the viewer, a polar
@@ -180,6 +195,7 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
   const segH = opts.segments?.height ?? (isLopoly ? 10 : 24);
   const atmospheres = opts.atmospheres ?? true;
   const auroraSource = opts.aurora ?? 'physics';
+  const dynamics = opts.dynamics !== false;
   const tiltMode = opts.tilt ?? 'none';
   const tex = opts.textures;
   const disposables: { dispose(): void }[] = [];
@@ -329,17 +345,17 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
   // Volcanism: additive hot-spot vents that flicker like heat (a lava world reads white-hot, a
   // hotspot world a few orange). Cryovolcanism: icy plume jets from a pole, thrown far on a
   // low-gravity world. Both parented to the sphere, so they turn with the surface.
-  if (appear.magma) {
+  if (appear.magma && dynamics) {
     const built = buildMagmaVents(radius, appear.magma, String(node.id), tex.hotspot);
     sphere.add(built.group); look.magma.push(...built.visuals);
   }
-  if (appear.cryoPlumes) {
+  if (appear.cryoPlumes && dynamics) {
     const built = buildCryoPlumes(radius, appear.cryoPlumes, String(node.id), tex.plume);
     sphere.add(built.group); look.plumes.push(...built.visuals);
   }
   // Storms firing INSIDE the cloud deck — the tag says a world has the convection for lightning,
   // the clouds are what it lights up, so a deck is a precondition.
-  const storms = lightningStrength(node.tags);
+  const storms = dynamics ? lightningStrength(node.tags) : 0;
   if (storms > 0 && (appear.clouds || appear.cloudDecks.length)) {
     const deckHex = appear.cloudDecks.at(-1)?.colorHex ?? appear.clouds?.colorHex ?? '#e8eef8';
     let lseed = 5; for (const ch of String(node.id)) lseed = (lseed * 31 + ch.charCodeAt(0)) & 0xffffff;

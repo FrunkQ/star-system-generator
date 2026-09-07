@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   sortBySize, medianPlanet, pxPerKm, layoutStrip, belowFloorNote,
   idsAtLeast, idsAtMost, visibleItems, referenceArcs, REFERENCE_TICKS, MIN_ARC_RADIUS_PX,
-  TAP_SLOP_PX, stepFocus, wheelPx, WHEEL_NOTCH_PX, sortItems, orbitOrder, orbitTree, measureSlot,
+  TAP_SLOP_PX, stepFocus, wheelPx, WHEEL_NOTCH_PX, easeFocus, FOCUS_EASE, sortItems, orbitOrder, orbitTree, measureSlot,
   SORT_ORDERS, GAP_FRACTION as GAPF,
   OPENING_SHARE, GAP_FRACTION, DOT_THRESHOLD_PX, DOT_PX, RING_ROOM_FRACTION,
   focusIndexOf, clampFocus, focusDiameterKm, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
@@ -895,6 +895,45 @@ describe('size comparison — moving along the strip', () => {
     expect(stepFocus(iJup, 1, seq.length)).toBe(iJup + 1);
     expect(stepFocus(iJup, -1, seq.length)).toBe(iJup - 1);
     expect(seq[iJup + 1].parentId).toBe('jupiter');   // and the next object IS a moon of it
+  });
+
+  it('GLIDES to the object it lands on rather than jumping to it', () => {
+    // [[B141]]. Landing on whole objects ([[B139]]) fixed the moons and cost the glide - the owner:
+    // "It does tend to jump between bodies now rather than glide between them". Neither frame rate
+    // nor sensitivity: the focus was assigned rather than travelled to.
+    let f = 4;
+    const seen: number[] = [];
+    for (let i = 0; i < 40; i++) { f = easeFocus(f, 5); seen.push(f); }
+    // It moves every frame, always toward the target, and never past it.
+    expect(seen[0]).toBeGreaterThan(4);
+    expect(seen[0]).toBeLessThan(5);
+    for (let i = 1; i < seen.length; i++) expect(seen[i]).toBeGreaterThanOrEqual(seen[i - 1]);
+    expect(Math.max(...seen)).toBeLessThanOrEqual(5);
+    // It takes a readable number of frames, not one and not a hundred: about a fifth of a second at
+    // 60 fps, which is the difference between a jump and a move you can follow.
+    expect(seen.findIndex((v) => v >= 4.9)).toBeGreaterThan(6);
+    expect(seen.findIndex((v) => v >= 4.9)).toBeLessThan(24);
+    expect(seen[0]).toBeCloseTo(4 + FOCUS_EASE, 9);
+  });
+
+  it('arrives EXACTLY, because the scale law reads the focus to the digit', () => {
+    // An eased value that only approaches would leave the focus at 4.9997 for ever, and
+    // `focusDiameterKm` is exact at the stops on purpose - "the thing you clicked fills half the
+    // screen" is a promise this view makes to the digit.
+    let f = 4.9999999;
+    f = easeFocus(f, 5);
+    expect(f).toBe(5);
+    expect(easeFocus(5, 5)).toBe(5);
+    // Backwards settles the same way.
+    expect(easeFocus(5.0000001, 5)).toBe(5);
+  });
+
+  it('survives a NaN and a silly ease rather than freezing the view', () => {
+    expect(easeFocus(NaN, 7)).toBe(7);
+    expect(easeFocus(3, NaN)).toBe(3);
+    expect(easeFocus(0, 10, 1)).toBe(10);       // an ease of 1 is a jump, and is allowed to be
+    expect(easeFocus(0, 10, 5)).toBe(10);       // ...but never overshoots
+    expect(easeFocus(0, 10, -2)).toBe(0);       // nor runs backwards
   });
 
   it('lands ON an object from a half-way position - the snap the owner asked for', () => {

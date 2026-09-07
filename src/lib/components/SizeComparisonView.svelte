@@ -20,7 +20,7 @@
     idsAtLeast, idsAtMost, referenceArcs, clampCentreShare, slotAt,
     focusIndexOf, clampFocus, scaleForFocus, focusCentrePx, focusCrossPx, focusStepPx,
     ringOpacityAt, ringProminence, ringTiltRad, ringRollRad,
-    OPENING_SHARE, TAP_SLOP_PX, stepFocus, wheelPx, WHEEL_NOTCH_PX, SORT_ORDERS,
+    OPENING_SHARE, TAP_SLOP_PX, stepFocus, wheelPx, WHEEL_NOTCH_PX, easeFocus, SORT_ORDERS,
     type StripLayout, type SortOrder
   } from '$lib/comparison/layout';
   import { drawStripChrome } from '$lib/comparison/stripChrome';
@@ -72,7 +72,7 @@
   let stage: HTMLDivElement;
   let handle: {
     setSlots: (s: any[]) => void;
-    setAtmospheres: (on: boolean) => void;
+    setLowPower: (on: boolean) => void;
     setView: (a: 'x' | 'y', s: number, w: number, h: number, cross?: number) => void;
     setSelected: (id: string | null) => void;
     setChrome: (c: HTMLCanvasElement | null) => void;
@@ -88,6 +88,28 @@
    * is no way for them to disagree about what is in the middle of the window.
    */
   let focus = 0;
+  /**
+   * WHERE THE PICTURE IS HEADING, as against where it is ([[B141]]).
+   *
+   * A discrete input picks a WHOLE OBJECT and the picture then flies there, which is what makes the
+   * two things the owner asked for compatible: land on objects (so a planet's moons can be walked)
+   * AND glide (so you can see yourself arrive). The DRAG sets both at once and so does not ease - a
+   * finger is already telling the picture where to be, and easing under it would feel like drag.
+   */
+  let focusTarget = 0;
+  let glideRaf = 0;
+  function glide(): void {
+    glideRaf = 0;
+    const next = easeFocus(focus, focusTarget);
+    if (next === focus) return;
+    focus = next;
+    if (focus !== focusTarget) glideRaf = requestAnimationFrame(glide);
+  }
+  /** Aim the picture at a whole object and let it fly. */
+  function aim(next: number): void {
+    focusTarget = next;
+    if (!glideRaf && focus !== focusTarget) glideRaf = requestAnimationFrame(glide);
+  }
   /** How much of the shorter side the object at the focus fills. The hand zoom moves this and only this. */
   let centreShare = OPENING_SHARE;
   let hidden: Set<string> = new Set();
@@ -185,7 +207,7 @@
       // A set with no planets at all falls back to the middle of the strip, which is the same answer
       // `medianPlanet` gives for that case, expressed as a position.
       const i = focusIndexOf(seq, opener?.id ?? null);
-      focus = clampFocus(i >= 0 ? i : Math.floor((seq.length - 1) / 2), seq.length);
+      focus = focusTarget = clampFocus(i >= 0 ? i : Math.floor((seq.length - 1) / 2), seq.length);
       centreShare = OPENING_SHARE;
     }
   }
@@ -193,10 +215,11 @@
   // The scene only ever hears about globes it can actually draw: anything under the floor is a DOT,
   // and a dot is drawn by the CHROME. That is the performance rule (no texture for a body you cannot
   // see) and the honesty rule (RENDER-S43: a floor is a legibility device, never a size) in one place.
-  // LOW POWER: this machine is short of fill rate, so the atmospheric shells come off. Per browser
-  // and never campaign data - see `lowPowerStore` for why a statement about the HARDWARE is allowed
-  // to reach a player view where a statement about the PICTURE would not be.
-  $: handle?.setAtmospheres(!$lowPower);
+  // LOW POWER: this machine is short of fill rate, so every alpha-blended extra comes off - shells,
+  // auroras and the animated dynamics alike. Per browser and never campaign data - see
+  // `lowPowerStore` for why a statement about the HARDWARE is allowed to reach a player view where
+  // a statement about the PICTURE would not be.
+  $: handle?.setLowPower($lowPower);
   $: if (handle) handle.setSlots(layout.slots.filter((s) => !s.belowFloor).map((s) => ({
     id: s.id, node: byId.get(s.id)?.node, centrePx: s.centrePx, crossPx: s.crossPx,
     diameterPx: s.diameterPx, colorHex: byId.get(s.id)?.colorHex,
@@ -255,7 +278,7 @@
    * objects rather than pixels - in short, it used to count pixels and flew over a planet's moons.
    */
   function step(dir: -1 | 1): void {
-    focus = stepFocus(focus, dir, seq.length);
+    aim(stepFocus(focusTarget, dir, seq.length));
   }
 
   /**
@@ -280,7 +303,7 @@
   function pick(id: string): void {
     if (!byId.has(id)) return;
     const i = focusIndexOf(seq, id);
-    if (i >= 0) focus = i;
+    if (i >= 0) aim(i);
     dispatch('select', { id });
     menuFor = null;
   }
@@ -314,7 +337,7 @@
       const notches = Math.trunc(wheelAcc / WHEEL_NOTCH_PX);
       if (notches) {
         wheelAcc -= notches * WHEEL_NOTCH_PX;
-        focus = stepFocus(focus, notches, seq.length);
+        aim(stepFocus(focusTarget, notches, seq.length));
       }
     }
   }
@@ -383,7 +406,10 @@
     if (dragTravel > TAP_SLOP_PX) { dragged = true; capture(e); }
     // The strip follows the finger: dragging towards the start moves the content that way, so the
     // focus goes the OTHER way. Anything else feels like the map is fighting you.
-    focus = clampFocus(dragFrom - moved / dragStepPx, seq.length);
+    // The drag is DIRECT, and the target comes with it: a finger is already saying where the
+    // picture should be, so easing under it would feel like the view resisting the hand. It also
+    // means letting go leaves nothing in flight.
+    focus = focusTarget = clampFocus(dragFrom - moved / dragStepPx, seq.length);
   }
 
   function onPointerUp(e: PointerEvent): void {
@@ -481,7 +507,7 @@
       }
       measure();
     })();
-    return () => { cancelled = true; ro?.disconnect(); handle?.dispose(); handle = null; };
+    return () => { cancelled = true; ro?.disconnect(); cancelAnimationFrame(glideRaf); handle?.dispose(); handle = null; };
   });
 </script>
 

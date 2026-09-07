@@ -103,11 +103,17 @@
     controller?.setPortrait(s.portrait ?? null, s.portraitFixed ?? false); // isolated-body portrait key light
     controller?.setFlatOverhead(s.lockOverhead ?? false); // 2D map: tilt pinned top-down
     controller?.setLockRotation(s.lockRotation ?? false); // fixed heading: follow by panning
-    // LOW POWER AND THE PRESET COMPOSE, AND OFF WINS (`drawsHeavy`). The preset's answer is about
-    // the PICTURE and this machine's is about the HARDWARE; either is enough on its own to drop a
-    // shell, and neither may overrule the other in the direction of more work.
-    controller?.setAuroras(drawsHeavy(s.auroras, $lowPower));
-    controller?.setAtmospheres(drawsHeavy(s.atmospheres, $lowPower));
+    // LOW POWER HAS TWO SOURCES AND EITHER IS ENOUGH: this machine's own switch (`lowPowerStore`,
+    // set by whoever is sitting at it) and the PRESET's (set by a GM who knows the tablet at the end
+    // of the table is elderly and cannot tick a box on it). A player on a fast machine is not forced
+    // by the GM's caution and a player on a slow one is not undone by the GM's optimism.
+    const low = $lowPower || s.lowPower === true;
+    controller?.setLowPower(low);
+    // ...and the shells compose with the preset's own switches on top of that, OFF WINNING
+    // (`drawsHeavy`): the preset's answer is about the PICTURE and low power's is about the
+    // HARDWARE, either is enough on its own, and neither may overrule the other toward more work.
+    controller?.setAuroras(drawsHeavy(s.auroras, low));
+    controller?.setAtmospheres(drawsHeavy(s.atmospheres, low));
     // The frame-rate guard reports HERE rather than to each host, so every surface that mounts this
     // view gets the notice: the GM's holo, the player's system view at both tiers, and the preset
     // preview. One renderer, one place to say it — the alternative is the same message written into

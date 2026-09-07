@@ -201,10 +201,23 @@ describe('the size comparison steps in objects, not pixels', () => {
   const view = readFileSync('src/lib/components/SizeComparisonView.svelte', 'utf8');
 
   it('takes a key press and a wheel notch through stepFocus', () => {
-    expect(view).toContain('focus = stepFocus(focus, dir, seq.length);');
-    expect(view).toContain('focus = stepFocus(focus, notches, seq.length);');
+    // Through `aim`, which is the glide's doing ([[B141]]) - the OBJECT is still what is chosen.
+    expect(view).toContain('stepFocus(focusTarget, dir, seq.length)');
+    expect(view).toContain('stepFocus(focusTarget, notches, seq.length)');
     // The DRAG is the one that stays in pixels, and it must: a finger follows the picture.
     expect(view).toContain('dragStepPx = focusStepPx(');
+  });
+
+  it('AIMS the discrete inputs and drags DIRECTLY', () => {
+    // [[B141]]: the wheel, the keys and a click choose a whole object and the picture flies there;
+    // the drag sets both at once, because a finger is already saying where the picture should be and
+    // easing under it would feel like the view resisting the hand.
+    expect(view).toContain('aim(stepFocus(focusTarget, dir, seq.length))');
+    expect(view).toContain('aim(stepFocus(focusTarget, notches, seq.length))');
+    expect(view).toContain('if (i >= 0) aim(i);');
+    expect(view).toContain('focus = focusTarget = clampFocus(dragFrom - moved / dragStepPx, seq.length);');
+    // ...and the glide is stopped when the view goes away, or it keeps a dead component alive.
+    expect(view).toContain('cancelAnimationFrame(glideRaf)');
   });
 
   it('SPENDS the wheel travel it uses rather than throwing the rest away', () => {

@@ -2,6 +2,15 @@
 
 All notable changes are listed here:
 
+## v3.0.369 - 7th Sep 2026
+
+- Low power mode now does considerably more: it draws at one screen pixel per point instead of up to four, halves the frame rate to 30, and switches off the animated extras - storm lightning, glowing magma and ice plumes - alongside the cloud shells and auroras it already dropped. The picture is softer and the motion less smooth, which is the trade, and it is why none of it happens unless you ask.
+- The Size comparison was only dropping the cloud shells, so auroras and lightning kept flashing with the switch on. It now drops everything.
+- "Low power mode" is also a player view setting now, under Performance tweaks, for a player on an old tablet who cannot reach the tick-box themselves. Either of you can turn it on and the other cannot turn it off - whoever asks for it, they get it.
+- The Size comparison glides between objects again instead of jumping. It still lands squarely on whatever you steer to, so you can still walk down a planet's moons - it just travels there now rather than arriving instantly. Dragging is unchanged and still follows your finger exactly.
+
+## v3.0.364 - 7th Sep 2026
+
 ## v3.0.368 - 7th Sep 2026
 
 - The controls that float over the map (the body picker, the clock, the time transport, the undo pill) can now take a palette of their own, chosen under Settings > System > Appearance: follow the skin, light over the map, or dark over the map. The map is black whatever the skin does, so a dark interface can still float light controls over it.
@@ -19,6 +28,7 @@ All notable changes are listed here:
 - Two more interface skins under Settings > System > Appearance: Daylight, the first light skin (paper surfaces, dark type and a teal accent, for a bright room or a projector that washes out a dark interface), and Terminal (amber phosphor on black, a console look with compact type). Every skin is now checked for readable contrast.
 
 ## v3.0.364 - 6th Sep 2026
+
 
 - Fixed: on the Size comparison, a ringed planet leaned over but its rings did not - they ran flat across the planet instead of following its equator, which is not how any ringed world looks. The rings now sit in the planet's own equatorial plane, so Saturn leans and its rings lean with it, and Uranus lies on its side with its rings round it. How far open the rings are was already right and has not changed.
 

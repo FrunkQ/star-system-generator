@@ -49,6 +49,7 @@ import { computeWorldPositions3D } from '$lib/physics/worldPositions';
 import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
+import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { lightningStrength } from '$lib/physics/cloudDecks'; // shared feature model (WS1)
@@ -173,6 +174,8 @@ export interface HoloController {
    * down), and never at all if the user turns the atmospheres back on.
    */
   setPerfShedReporter(fn: ((message: string) => void) | null): void;
+  /** This machine is short of fill rate: fewer pixels, fewer frames, no animated extras. */
+  setLowPower(on: boolean): void;
   /** Shift the projection centre sideways so a framed body clears an open info panel. */
   setViewInset(px: number): void;
   /** Per-ship acceleration and exhaust colour, keyed by construct id. */
@@ -459,7 +462,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // document's filter pass rather than being composited, unfiltered, on top of it (inbox A38).
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setClearColor(0x05070c, 1);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(pixelRatioFor(false));
   // GPU-side resource gauge for the perf trace: geometries/textures three still holds alive. If these
   // climb across setSystem cycles while the scene shows the same thing, something survives clearContent
   // — the leak detector for the rebuild-per-snapshot path. Read only when a [sse-perf] line prints.
@@ -851,6 +854,28 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     if (on && atmospheresShed) { atmospheresShed = false; perfGuardStandDown(perfGuard); }
     atmospheresRequested = on;
     applyAtmospheres();
+  }
+
+  /**
+   * LOW POWER: this machine is short of fill rate. Three things at once, because they are three
+   * halves of one answer and a caller should not have to know that.
+   *
+   * The PIXEL RATIO is the biggest lever in the file (a retina 2 is four times the fragments of 1)
+   * and `setSize` has to follow it or the drawing buffer keeps its old dimensions. The FRAME CAP is
+   * the cheapest (half the frames is half of everything). The DYNAMICS need a rebuild, because
+   * lightning, magma and plumes are built objects: freezing them would leave a permanent strike
+   * painted on the cloud tops, which is worse than the flash it replaced.
+   *
+   * The atmospheres and auroras are NOT touched here. They already answer to the preset through
+   * `setAtmospheres`/`setAuroras`, and `HoloView` composes the two switches before it calls those -
+   * one control silently swallowing another's job is the fault `presetTypes.ts` warns about.
+   */
+  function setLowPower(on: boolean) {
+    if (on === lowPowerOn) return;
+    lowPowerOn = on;
+    renderer.setPixelRatio(pixelRatioFor(on));
+    resize(viewW, viewH);
+    rebuildContent('lowPower');
   }
 
   /** The AND of the two facts, rebuilt only when the drawn answer actually moves. */
@@ -1375,6 +1400,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   let atmospheresRequested = true;
   let atmospheresShed = false;
   let atmospheresOn = true;
+  /** This machine is short of fill rate: fewer pixels, fewer frames, no animated extras. */
+  let lowPowerOn = false;
+  let lastFrameAt = 0;
   const perfGuard: PerfGuardState = newPerfGuard();
   /** When the current content was built — the guard's warm-up is measured from here, not from load. */
   let contentBuiltAt = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -4378,6 +4406,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // their own options, so the three surfaces cannot grow different features.
           const look = buildBodyLook(node, radius, {
             textures: bodyLookTextures, renderStyle, bodyStyle, unlit, atmospheres: atmospheresOn,
+            dynamics: !lowPowerOn,
             colorHex, flatColorHex: selHex, anisotropy: renderer.capabilities.getMaxAnisotropy(),
             // The holo derives auroras from live physics; the gallery reads the published tag. Both
             // spellings are kept until [[B117]] decides which is the one — not folded silently here.
@@ -5201,7 +5230,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
 
   function loop() {
     if (disposed) return;
-    perfFrame(performance.now()); // slow-spell tracker (logs only when a 5s window dips below 45fps)
+    // THE LOW-POWER FRAME CAP, asked before any work is done so a skipped frame costs nothing but
+    // the callback. Deliberately ahead of `perfFrame` too: the slow-spell tracker should see the
+    // frames we CHOSE not to take as the cadence we chose, not as a machine in trouble.
+    const nowMs = performance.now();
+    if (skipFrame(lowPowerOn, nowMs, lastFrameAt)) { raf = requestAnimationFrame(loop); return; }
+    lastFrameAt = nowMs;
+    perfFrame(nowMs); // slow-spell tracker (logs only when a 5s window dips below 45fps)
     const nowSec = filterClock.getElapsedTime();
     // Gentle horizontal reframe while the info panel is open: ease a camera VIEW OFFSET that shifts the
     // projection centre left, so the framed body sits in the middle of the VISIBLE strip instead of
@@ -5326,7 +5361,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     return { originY: sceneOrigin.y, gridFirstVertexWorldY: gy, starWorldY: star ? star.mesh.getWorldPosition(new THREE.Vector3()).y : null, gridChildren: gridGroup.children.length, gridMode };
   };
 
-  return { setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setPerfShedReporter, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
+  return { setLowPower, setSystem, setTime, focusBody, stepFocusUp, setFocusLevel, setViewportAU, setViewInset, setFraming, setSkybox, setSkyStars, setBackground, setCompression, setBeltDetail, setBodyStyle, setRender, setUnlit, setAuroras, setAtmospheres, setPerfShedReporter, setFlatOverhead, setLockRotation, setBeltStyle, setBodySize, setConstructOffset, setGrid, setGridFalloff, setGridDepth, setGridScale, setGridCellReporter, setOrbitSpeed, setLabelColor, setLabelSize, setLabelFont, setLabelsVisible, setOrbitOpacity, setOrbitLinesVisible, setHighlights, setHud, setFilter, setLensing, setPortrait, setUserSpin, setShipCapability, setTransitMotion, setGmClock, resetView, resize, dispose };
 }
 
 // ---- helpers ----

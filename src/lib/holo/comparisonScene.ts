@@ -52,6 +52,7 @@ import { buildShaderObject, updateUniforms } from './filters/shaderMaterial';
 import { warpUv, warpParamsOfUniforms } from './filters/warpPick';
 import type { FilterParamValues } from './filters/schema';
 import { slotOffset } from '$lib/comparison/layout';
+import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes,
@@ -148,7 +149,7 @@ const DISC_FLARE_DEPTH = 0.35;
 
 export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonSceneHandle {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setPixelRatio(pixelRatioFor(false));
   renderer.setClearColor(0x000000, 1);            // black backdrop; no starfield (decision 4)
   const scene = new THREE.Scene();
   // Orthographic (decision 2). The frustum is set from the viewport in px by `setView`.
@@ -181,18 +182,29 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
   const filterRes = new THREE.Vector2(1, 1);
   const filterClock = new THREE.Clock();
   let filterPass: ShaderPass | null = null;
-  /** Atmospheric shells on the bodies. Off on a low-power machine; see `lowPowerStore`. */
-  let atmospheres = true;
+  /** This machine is short of fill rate: drop every alpha-blended extra. See `lowPowerStore`. */
+  let lowPower = false;
   let filterId = 'none';
   let filterParams: FilterParamValues = {};
   /**
-   * Atmospheric shells on or off. REBUILDS every body, because the shells are children of the look
-   * and there is no way to add one that was never made - the same reason the holo's own switch
-   * rebuilds rather than hiding.
+   * LOW POWER on or off, which on this view means every alpha-blended extra at once: the atmospheric
+   * shells, the auroras, and the animated dynamics (storm lightning, magma, cryo plumes).
+   *
+   * REBUILDS every body, because all of them are children of the look and there is no way to reveal
+   * one that was never made - the same reason the holo's own switch rebuilds rather than hiding. And
+   * a rebuild rather than a freeze is required for the LIGHTNING in particular: a frozen bolt leaves
+   * a permanent strike painted on the cloud tops, which is worse than the flash it replaced.
    */
-  function setAtmospheres(on: boolean): void {
-    if (on === atmospheres) return;
-    atmospheres = on;
+  function setLowPower(on: boolean): void {
+    if (on === lowPower) return;
+    lowPower = on;
+    // THE PIXEL RATIO IS THE BIGGEST SINGLE LEVER THERE IS on a view like this, and it costs nothing
+    // to move: on a retina panel a ratio of 2 is FOUR TIMES the fragments of 1, and fill rate is
+    // exactly what an alpha-heavy strip is short of. `setSize` has to follow it or the drawing
+    // buffer keeps its old dimensions and nothing changes.
+    renderer.setPixelRatio(pixelRatioFor(on));
+    renderer.setSize(vw, vh, false);
+    composer.setSize(vw, vh);
     for (const id of [...built.keys()]) destroy(id);
   }
 
@@ -280,14 +292,16 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       const radius = slot.diameterPx / 2;
       const look = buildBodyLook(slot.node, radius, {
         textures,
-        // LOW POWER. The strip never passed this and so drew every cloud deck, limb glow and haze on
-        // objects that routinely fill the screen - the most expensive thing here by fill rate, and
-        // the owner's own example of what a weak machine should be able to drop.
-        atmospheres,
+        // LOW POWER. The strip never passed any of these and so drew every cloud deck, limb glow,
+        // haze, aurora and lightning flash on objects that routinely fill the screen - the most
+        // expensive thing here by fill rate, and the owner's own example of what a weak machine
+        // should be able to drop.
+        atmospheres: !lowPower,
+        dynamics: !lowPower,
         anisotropy: renderer.capabilities.getMaxAnisotropy(),
         // The published TAG, in line with physics-drives-tags-drives-visuals. The live holo still
         // reads physics directly; the two spellings are recorded on the board as [[B117]].
-        aurora: 'model',
+        aurora: lowPower ? 'off' : 'model',
         // The body's real axial tilt, stamped once. Not the gallery's showcase posture: this view is
         // a measurement, and tipping a world to show off its jets would tilt its silhouette too.
         tilt: 'axial',
@@ -480,8 +494,15 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
   }
   let raf = 0;
   const clock = { t: 0 };
+  let lastFrameAt = 0;
   function frame(): void {
     if (disposed) return;
+    // A FRAME CAP IS THE OTHER HALF OF LOW POWER, and it is the cheapest saving in the file: half the
+    // frames is half of everything, and on a strip that is barely moving nobody can tell. Asked for
+    // BEFORE any work is done, so a skipped frame really does cost nothing but the callback.
+    const nowMs = performance.now();
+    if (skipFrame(lowPower, nowMs, lastFrameAt)) { raf = requestAnimationFrame(frame); return; }
+    lastFrameAt = nowMs;
     clock.t += 0.016;
     reconcile();
     applyRingFade();
@@ -517,7 +538,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
 
   return {
     setSlots(next) { slots = next; },
-    setAtmospheres,
+    setLowPower,
     setChrome(canvas) {
       if (!canvas) {
         chromeMesh.visible = false;

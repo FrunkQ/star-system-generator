@@ -6648,6 +6648,20 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+THE TWO RENDERER LEVERS THAT COST FIDELITY LIVE IN `rendering/lowPowerRender.ts` ([[G83]]), because
+three surfaces pull them and "how hard are we trying" must not be written down three times. PIXEL
+RATIO is the biggest lever there is - a retina 2 is four times the fragments of 1 - and a
+`setPixelRatio` without a `setSize` after it does NOTHING, since the drawing buffer keeps its old
+dimensions. The FRAME CAP is the cheapest, and its one-tick slack is load-bearing: a naive 33 ms gate
+passes one frame in every other on a 60 Hz panel and hits 30 fps by luck.
+`dynamics` GATES THE BUILD, NOT THE ANIMATION, for lightning, magma and plumes: a frozen bolt leaves
+a permanent strike painted on the cloud tops. Auroras keep their own switch - one control swallowing
+another's job makes the second look broken.
+A DISCRETE INPUT CHOOSES A TARGET; THE PICTURE TRAVELS TO IT ([[B141]]). Landing on whole objects
+([[B139]]) and gliding are only in tension while the focus is ASSIGNED - separate `focusTarget` from
+`focus` and both are free. `easeFocus` arrives EXACTLY, because `focusDiameterKm` is exact at the
+stops and a focus stuck at 4.9997 breaks the promise quietly. The DRAG never eases: a finger is
+already saying where the picture should be.
 A POSTURE HAS TWO HALVES AND BOTH LIVE IN THE SAME FRAME ([[B140]]). A body's obliquity shows up
 twice on the strip - as the globe's LEAN (`applyTilt`, a roll about the view axis) and as its ring's
 FORESHORTENING (`ringTiltRad`) - and for one release only the second existed, so a ring ran level
