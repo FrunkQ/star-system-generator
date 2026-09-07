@@ -422,8 +422,8 @@
             // surface, an unexplained "quiet (0.00)" reads as a contradiction, and the ionising figure
             // beneath it still comes from the main-sequence coronal fraction ([[B145]]).
             const remnant = /^star\/(NS|magnetar|BH|WD)\b/.test(body.classes?.[0] ?? '');
-            starRemnantNote = remnant ? 'the FLARE verdict: a remnant has no dynamo to flare from' : null;
-            starIonisingNote = remnant ? 'coronal model, not the surface - see B145' : null;
+            starRemnantNote = remnant ? 'no dynamo to flare from; its jets are the field and the spin' : null;
+            starIonisingNote = remnant ? 'coronal model - reads low for a remnant' : null;
 
             const starActivity = (body as any).flareActivity as number | undefined;
             const ionisingSolar = bodyIonisingOutputSolar(body);
@@ -453,7 +453,7 @@
                           + ' reaches the ceiling. It sets the jets and the shed wind either way.')
                 + (satGauss ? '\n' + `Past about ${formatGauss(satGauss)} G the dynamo saturates and more field buys nothing.` : '');
             radiationTooltip =
-                "MAGNETIC ACTIVITY - the ionising half of this star's output: flares, X-rays and the"
+                "FLARE ACTIVITY - the ionising half of this star's output: flares, X-rays and the"
                 + ' particle wind. It is set by the dynamo, NOT by brightness, and the two genuinely'
                 + " decouple - a flare moves a star's total output by a hundredth of a percent while its"
                 + ' X-ray output jumps a thousandfold. This is what reaches a planet as a particle dose.'
@@ -467,8 +467,10 @@
                       + ' has no convective dynamo and nothing falling in, so it does not flare (a magnetar does,'
                       + ' and so does a fed hole). It says nothing about its RADIATION - a surface at hundreds of'
                       + ' thousands of kelvin shines mostly in X-rays and extreme ultraviolet - and the ionising'
-                      + ' output below is still the main-sequence coronal fraction of its brightness, which is'
-                      + ' wrong for it by decades. On the board as B145.'
+                      + ' output below is still the main-sequence coronal fraction of its brightness, which'
+                      + ' reads low for it by decades; deriving it from the surface temperature is on the list.'
+                      + ' Its JETS are a different engine altogether - the gravitational well, the field and the'
+                      + ' spin - which is how a pulsar can beam hard and never flare.'
                     : '');
             
             if (body.radiusKm && body.temperatureK) {
@@ -880,7 +882,7 @@
 
       {#if body.roleHint === 'star' && radiationLevel}
           <div class="detail-item g-hazard" title={radiationTooltip}>
-              <span class="label">Magnetic activity (ionising)</span>
+              <span class="label">Flare activity (ionising)</span>
               <span class="value">{radiationLevel}</span>
               {#if isPinned('flareActivity')}<span class="ovr-flag">OVERRIDDEN</span>{/if}
               {#if starRemnantNote}<span class="role-note">{starRemnantNote}</span>{/if}

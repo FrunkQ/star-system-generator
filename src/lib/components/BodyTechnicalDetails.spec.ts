@@ -68,7 +68,7 @@ describe('the panel renders at all — the check that was missing', () => {
     const { star: s } = processed();
     const { container } = render(BodyTechnicalDetails, { props: { body: s, rulePack } });
     const labels = cardLabels(container);
-    for (const l of ['Magnetic activity (ionising)', 'Ionising output', 'Habitable zone',
+    for (const l of ['Flare activity (ionising)', 'Ionising output', 'Habitable zone',
       'Frost line', 'UV kill zone', 'Magnetic Field', 'Luminosity']) {
       expect(labels, l).toContain(l);
     }
@@ -79,7 +79,7 @@ describe('the panel renders at all — the check that was missing', () => {
     const { container } = render(BodyTechnicalDetails, { props: { body: p, rulePack } });
     const labels = cardLabels(container);
     expect(labels).toContain('Mass');
-    expect(labels).not.toContain('Magnetic activity (ionising)');
+    expect(labels).not.toContain('Flare activity (ionising)');
     expect(labels).not.toContain('Habitable zone');
   });
 
@@ -93,7 +93,7 @@ describe('the figures a pin drives reach the card', () => {
   it('a star card carries its activity, its field and a role note for the field', () => {
     const { star: s } = processed();
     const { container } = render(BodyTechnicalDetails, { props: { body: s, rulePack } });
-    expect(cardFor(container, 'Magnetic activity (ionising)')?.textContent).toMatch(/\(\d/);
+    expect(cardFor(container, 'Flare activity (ionising)')?.textContent).toMatch(/\(\d/);
     const field = cardFor(container, 'Magnetic Field')!;
     expect(field.textContent).toMatch(/G/);
     // The role note is the whole point of that card now: it must say which of the three states it
@@ -108,7 +108,7 @@ describe('the figures a pin drives reach the card', () => {
   it('a PINNED activity says so on the card and changes the field’s role note', () => {
     const { star: s } = processed((st) => setOverride(st, 'flareActivity', 0.6));
     const { container } = render(BodyTechnicalDetails, { props: { body: s, rulePack } });
-    expect(cardFor(container, 'Magnetic activity (ionising)')?.querySelector('.ovr-flag')?.textContent)
+    expect(cardFor(container, 'Flare activity (ionising)')?.querySelector('.ovr-flag')?.textContent)
       .toBe('OVERRIDDEN');
     expect(cardFor(container, 'Magnetic Field')?.querySelector('.role-note')?.textContent)
       .toMatch(/that is pinned/);

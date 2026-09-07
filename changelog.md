@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.379 - 7th Sep 2026
+
+- A star's 'Magnetic activity' is now called what it is, 'Flare activity', on the card, the tag, the override and the guides: it is how much the star flares, which is its dynamo, while its jets are a different engine (the gravitational well, the field and the spin). That is why a neutron star can carry strong jets and be quiet at once. The remnant notes on the card are plain words now.
+
 ## v3.0.378 - 7th Sep 2026
 
 - The system map stops drawing zone rings and Hill-sphere outlines that cannot be seen. A circle bigger than the screen was still being drawn all the way round even though its edge was far outside the view - at deep zoom that is a line millions of pixels long, every frame, for nothing. The shading of those zones still draws, because that genuinely does cover the screen.

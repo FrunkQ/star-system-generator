@@ -273,7 +273,7 @@ leaving a faction highlighted is safe.
 A few physics tags on a STAR are not badges but part of the star's own picture, on the GM starmap, the
 player starmaps and the system view alike:
 
-- `stellar/activity` — the magnetic-activity bucket. An *active* or *flare-star* star shows flares
+- `stellar/activity` — the flare-activity bucket. An *active* or *flare-star* star shows flares
   licking off its limb; a *quiet* one does not.
 - `stellar/jets` — a pair of collimated beams along the magnetic axis: a fed black hole, a neutron star
   or a magnetar. *moderate* or *strong*.

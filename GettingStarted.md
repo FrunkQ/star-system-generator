@@ -524,7 +524,7 @@ its picture changes with them.
   have kept.
 * **Magnetosphere** — a field far beyond what the interior could generate is kept and drives the
   shielding, and is called anomalous rather than reported as an ordinary dynamo.
-* **Radiogenic heat**, **thermal inflation**, and on a star its **magnetic activity** — the flare
+* **Radiogenic heat**, **thermal inflation**, and on a star its **flare activity** — the flare
   and X-ray output, which is set by the dynamo rather than by brightness.
 
 **Nothing is refused.** Each row shows the range it expects, lets you type well past either end, and

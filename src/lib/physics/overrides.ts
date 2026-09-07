@@ -254,7 +254,7 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
   {
     key: 'flareActivity',
     traceLayers: ['radiation'],
-    label: 'Magnetic activity',
+    label: 'Flare activity',
     unit: '',
     hint: 'The ionising half of a star’s output — flares and X-rays — which is set by the dynamo, not by '
       + 'brightness. Pinning it makes a quiet giant flare without pretending it got brighter.',

@@ -1780,7 +1780,7 @@
           shielding as a real one would, and is labelled <code>magnetic/anomalous</code> rather than reported as
           an ordinary dynamo.</li>
         <li><strong>Radiogenic heat</strong>, <strong>thermal inflation</strong>, and a star’s
-          <strong>magnetic activity</strong> — the flare and X-ray output, which is set by the dynamo rather
+          <strong>flare activity</strong> — the flare and X-ray output, which is set by the dynamo rather
           than by brightness.</li>
       </ul>
       <p><strong>Nothing is refused, and nothing is quietly corrected.</strong> This is the same rule the star
