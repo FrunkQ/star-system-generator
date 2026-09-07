@@ -17,6 +17,7 @@
   import { chrome } from '$lib/ui/foreground';
   import { createFloatingControl } from '$lib/ui/floatingControl';
   import FloatGrip from './FloatGrip.svelte';
+  import FloatEdgeMenu from './FloatEdgeMenu.svelte';
   import TimeDisplay from './TimeDisplay.svelte';
   import type { Starmap } from '$lib/types';
 
@@ -38,6 +39,8 @@
   <FloatGrip ctl={float} always label="Drag to move the clock" />
   <TimeDisplay {temporal} {displayOverrideSec} {masterOverrideSec} />
 </div>
+
+<FloatEdgeMenu ctl={float} what="the clock" />
 
 <style>
   .time-display-overlay {

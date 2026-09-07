@@ -19,6 +19,7 @@
   import { createFloatingControl } from '$lib/ui/floatingControl';
   import { widthGrip } from '$lib/ui/widthGrip';
   import FloatGrip from './FloatGrip.svelte';
+  import FloatEdgeMenu from './FloatEdgeMenu.svelte';
   import type { Readable } from 'svelte/store';
   import type { UndoStatus } from '$lib/undo/systemUndo';
 
@@ -163,6 +164,8 @@
     ></span>
   </div>
 {/if}
+
+<FloatEdgeMenu ctl={float} what="the undo pill" />
 
 <style>
   .undo-pill {

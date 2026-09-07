@@ -11,6 +11,7 @@
   import { createFloatingControl } from '$lib/ui/floatingControl';
   import FloatGrip from './FloatGrip.svelte';
   import FloatPin from './FloatPin.svelte';
+  import FloatEdgeMenu from './FloatEdgeMenu.svelte';
   import { updateDisplayBySeconds } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, resolveTemporalDisplay } from '$lib/temporal/utre';
 
@@ -366,6 +367,8 @@
 </div>
 {/if}
 </div>
+
+<FloatEdgeMenu ctl={float} what="the time controls" />
 
 <style>
   /* Draggable root: the parent overlay anchors it; the persisted translate moves it anywhere. */

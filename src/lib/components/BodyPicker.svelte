@@ -15,6 +15,7 @@
   import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import type { SystemNode } from '$lib/types';
   import { createFloatingControl } from '$lib/ui/floatingControl';
+  import FloatEdgeMenu from './FloatEdgeMenu.svelte';
   import FloatGrip from './FloatGrip.svelte';
   import FloatPin from './FloatPin.svelte';
   import { getNodeColor } from '$lib/rendering/colors';
@@ -420,6 +421,8 @@
   {/if}
   </div>
 </div>
+
+{#if floating}<FloatEdgeMenu ctl={float} what="the picker" />{/if}
 
 <style>
   /* TYPE TOGGLES - a wrapping row of chips above the list. Pressed chips read as pressed at a

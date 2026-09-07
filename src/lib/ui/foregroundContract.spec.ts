@@ -51,7 +51,13 @@ const NOT_A_DIALOG: Record<string, string> = {
 		'A composite editor with its own live preview canvases; moving its root is a bigger change ' +
 		'than an attribute and is filed as A87 rather than done blind.',
 	'src/lib/components/PlayerViewModal.svelte:modal-bg':
-		'Same family as the preset editor and filed with it (A87).'
+		'Same family as the preset editor and filed with it (A87).',
+	'src/lib/components/FloatEdgeMenu.svelte:fem-scrim':
+		'A popover ABOUT a piece of chrome (G81: which edge a floating control travels with), not a ' +
+		'dialog over the app. Registering it would hide every piece of chrome on a phone - including ' +
+		'the control the menu is about and the handle it was opened from - so the menu would be a list ' +
+		'of choices with nothing visible to apply them to. The panel itself carries `use:chrome`, ' +
+		'which is the correct half of the contract for it; the scrim exists only to dismiss.'
 };
 
 function svelteFiles(dir: string, out: string[] = []): string[] {

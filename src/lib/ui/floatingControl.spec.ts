@@ -143,3 +143,154 @@ describe('floating control: bounded by its stage, anchored to its nearest edge (
     action.destroy();
   });
 });
+
+/**
+ * G81 job 2. THE NEAREST EDGE IS A GUESS, AND IT IS WRONG IN THE MIDDLE. A control just left of
+ * centre on a wide screen is nearest the LEFT edge, so it sits still while the right-hand pane
+ * opens and shoves the canvas about under it - and a GM who wanted it to travel with that pane had
+ * no way to say so. Choosing an edge writes `ex`/`fx` (or `ey`/`fy`) and stops `settle` re-reading
+ * that axis. It must NOT move the control: only what it measures from changes.
+ */
+describe('an explicit edge overrides the nearest-edge guess (G81)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+    localStorage.removeItem(KEY);
+  });
+
+  // The stage is 154..896 inside its 4px inset and the control is 200 wide, so a control at 420 is
+  // 266 from the left and 276 from the right: JUST left of centre, and the guess says "left".
+  const MIDDLE = { x: 420, y: 60 };
+  const NARROWED: R = { left: 150, top: 0, width: 550, height: 700 }; // right 700 -> bounds 154..696
+
+  it('choosing the right edge does not move the control, and then it travels with that edge', () => {
+    const { ctl, action, setStage } = mount({ anchor: MIDDLE, stage: STAGE });
+    vi.runAllTimers();
+    expect(at(ctl, MIDDLE).left).toBe(420);
+    expect(get(ctl).ex, 'the guess: 266 from the left against 276 from the right').toBe('left');
+
+    ctl.chooseEdge('right');
+    vi.runAllTimers();
+    expect(at(ctl, MIDDLE).left, 'choosing an edge NEVER moves the control').toBe(420);
+    expect(get(ctl).ex).toBe('right');
+    expect(get(ctl).fx).toBe(true);
+    expect(get(ctl).gx, 'the gap is re-measured from the chosen edge').toBe(276); // 896 - (420 + 200)
+
+    // The detail pane opens and takes 200px off the canvas. The control goes with the right edge.
+    setStage(NARROWED);
+    window.dispatchEvent(new Event('resize'));
+    expect(at(ctl, MIDDLE).left).toBe(220); // 696 - 276 - 200
+    action.destroy();
+  });
+
+  it('WITHOUT the choice the same control stays put, which is the fault being fixed', () => {
+    const { ctl, action, setStage } = mount({ anchor: MIDDLE, stage: STAGE });
+    vi.runAllTimers();
+    expect(get(ctl).ex).toBe('left');
+    expect(get(ctl).gx).toBe(266); // 420 - 154
+    setStage(NARROWED);
+    window.dispatchEvent(new Event('resize'));
+    expect(at(ctl, MIDDLE).left, 'a left-anchored control ignores the right edge moving').toBe(420);
+    action.destroy();
+  });
+
+  it('a drag re-measures the gap but does NOT re-read a chosen edge', () => {
+    const anchor = { x: 400, y: 60 };
+    const saved = { dx: 0, dy: 0, open: true, pinned: true, ex: 'right', gx: 100, ey: 'top', gy: 8, fx: true };
+    const { ctl, action, node } = mount({ anchor, stage: STAGE, saved });
+    vi.runAllTimers();
+    expect(at(ctl, anchor).left).toBe(596); // 896 - 100 - 200
+    const grip = ctl.grip(node);
+    node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 700, clientY: 100, button: 0 }));
+    node.dispatchEvent(new MouseEvent('pointermove', { clientX: 300, clientY: 100 })); // 400px left
+    node.dispatchEvent(new MouseEvent('pointerup', { clientX: 300, clientY: 100 }));
+    vi.runAllTimers();
+    expect(at(ctl, anchor).left).toBe(196);
+    // It is now far nearer the LEFT edge (42 vs 500) and it stays a right-hand control anyway.
+    expect(get(ctl).ex).toBe('right');
+    expect(get(ctl).gx).toBe(500); // 896 - (196 + 200)
+    grip.destroy();
+    action.destroy();
+  });
+
+  it('"nearest" hands the axis back to the guess', () => {
+    const anchor = { x: 200, y: 60 };
+    const saved = { dx: 0, dy: 0, open: true, pinned: true, ex: 'right', gx: 496, ey: 'top', gy: 56, fx: true };
+    const { ctl, action } = mount({ anchor, stage: STAGE, saved });
+    vi.runAllTimers();
+    expect(at(ctl, anchor).left).toBe(200); // 896 - 496 - 200
+    ctl.chooseEdge('nearest');
+    vi.runAllTimers();
+    expect(at(ctl, anchor).left, 'still no jump').toBe(200);
+    expect(get(ctl).fx).toBe(false);
+    expect(get(ctl).ex, 'nearer the left now: 46 against 496').toBe('left');
+    expect(get(ctl).gx).toBe(46); // 200 - 154
+    action.destroy();
+  });
+
+  it('a right-click on a handle opens the menu and never starts a drag', () => {
+    const anchor = { x: 300, y: 60 };
+    const { ctl, action, node } = mount({ anchor, stage: STAGE });
+    vi.runAllTimers();
+    const grip = ctl.grip(node);
+    let seen: { x: number; y: number } | null = null;
+    const stop = ctl.edgeMenu.subscribe((v) => { seen = v; });
+    expect(seen).toBeNull();
+    // THE SECONDARY BUTTON MUST NOT BEGIN A MOVE, and this is asserted BEFORE the contextmenu
+    // event rather than after it: the contextmenu handler ends any drag, so a check made after it
+    // passes with the guard fully absent. The gate has to catch the press on its own.
+    node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 640, clientY: 220, button: 2 }));
+    node.dispatchEvent(new MouseEvent('pointermove', { clientX: 200, clientY: 220 }));
+    expect(at(ctl, anchor).left, 'a right-button press is not a drag').toBe(300);
+    node.dispatchEvent(new MouseEvent('contextmenu', { clientX: 640, clientY: 220, bubbles: true }));
+    expect(seen).toEqual({ x: 640, y: 220 });
+    expect(at(ctl, anchor).left).toBe(300);
+    stop();
+    grip.destroy();
+    action.destroy();
+  });
+
+  it('a long press is the touch form of the same thing, and it swallows the click that follows', () => {
+    // Without this a long press on the LOCK would open the menu and unlock the control underneath.
+    const anchor = { x: 300, y: 60 };
+    const { ctl, action, node } = mount({ anchor, stage: STAGE });
+    vi.runAllTimers();
+    const grip = ctl.grip(node);
+    let seen: { x: number; y: number } | null = null;
+    const stop = ctl.edgeMenu.subscribe((v) => { seen = v; });
+    node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
+    vi.advanceTimersByTime(499);
+    expect(seen, 'not yet - a brief press is still a tap').toBeNull();
+    vi.advanceTimersByTime(2);
+    expect(seen).toEqual({ x: 500, y: 300 });
+    node.dispatchEvent(new MouseEvent('pointerup', { clientX: 500, clientY: 300 }));
+    expect(ctl.didDrag(), 'the tap is spent, so the lock does not toggle').toBe(true);
+    stop();
+    grip.destroy();
+    action.destroy();
+  });
+
+  it('a press that MOVES is a drag, not a menu', () => {
+    const anchor = { x: 300, y: 60 };
+    const { ctl, action, node } = mount({ anchor, stage: STAGE });
+    vi.runAllTimers();
+    const grip = ctl.grip(node);
+    let seen: { x: number; y: number } | null = null;
+    const stop = ctl.edgeMenu.subscribe((v) => { seen = v; });
+    node.dispatchEvent(new MouseEvent('pointerdown', { clientX: 500, clientY: 300, button: 0 }));
+    node.dispatchEvent(new MouseEvent('pointermove', { clientX: 460, clientY: 300 }));
+    vi.advanceTimersByTime(800);
+    expect(seen, 'the press timer was cancelled by the movement').toBeNull();
+    node.dispatchEvent(new MouseEvent('pointerup', { clientX: 460, clientY: 300 }));
+    vi.runAllTimers();
+    expect(at(ctl, anchor).left).toBe(260);
+    stop();
+    grip.destroy();
+    action.destroy();
+  });
+});

@@ -35,7 +35,27 @@ export interface FloatingState {
   gx?: number;
   ey?: 'top' | 'bottom';
   gy?: number;
+  /**
+   * The GM CHOSE that axis's edge, so `settle` stops re-reading the nearest one (G81). The guess is
+   * right at the sides and wrong in the middle of a wide screen: a control sitting just left of
+   * centre is nearest the LEFT edge, and a GM who wants it to travel with the right-hand pane has
+   * no way to say so. One flag per axis, and the choice is the whole difference - the gap is still
+   * measured from wherever the control actually is, so choosing an edge never makes it jump.
+   */
+  fx?: boolean;
+  fy?: boolean;
 }
+
+/** The five things the edge menu can say. One list, not five branches. (G81) */
+export type EdgeChoice = 'left' | 'right' | 'top' | 'bottom' | 'nearest';
+
+export const EDGE_CHOICES: { choice: EdgeChoice; label: string }[] = [
+  { choice: 'left', label: 'Pin to the left edge' },
+  { choice: 'right', label: 'Pin to the right edge' },
+  { choice: 'top', label: 'Pin to the top edge' },
+  { choice: 'bottom', label: 'Pin to the bottom edge' },
+  { choice: 'nearest', label: 'Nearest edge (automatic)' }
+];
 
 export interface FloatingControl extends Readable<FloatingState> {
   /** Action for the outermost element: anchors the drag clamp and the outside-click dismissal. */
@@ -45,6 +65,16 @@ export interface FloatingControl extends Readable<FloatingState> {
   setOpen(v: boolean): void;
   toggleOpen(): void;
   togglePin(): void;
+  /**
+   * Where the edge menu should be drawn, or null while it is shut. A right-click or a long-press on
+   * ANY handle opens it - which is why it lives on the `grip` action rather than in a host: the grip
+   * and the lock both carry that action, so all four hosts gain the gesture without one of them
+   * knowing about it.
+   */
+  edgeMenu: Readable<{ x: number; y: number } | null>;
+  closeEdgeMenu(): void;
+  /** Take one of the five choices. The control does NOT move; only what it measures from changes. */
+  chooseEdge(choice: EdgeChoice): void;
   /**
    * True when the gesture just finished on the grip was a DRAG, so a puck that doubles as its own
    * handle can ignore the click that follows. CONSUMES the flag: a click with no pointer gesture
@@ -56,6 +86,7 @@ export interface FloatingControl extends Readable<FloatingState> {
 const EDGE = 4; // keep this much of the control inside its bounds
 const TAP_SLOP = 4; // px of movement below which a grip gesture is still a tap
 const SETTLED = 0.5; // px below which a gap or offset has not moved (sub-pixel layout noise)
+const LONG_PRESS = 500; // ms of a still finger before the edge menu opens instead of a drag
 
 /**
  * The box a control must stay inside: the nearest ancestor that CLIPS (any overflow but visible),
@@ -142,8 +173,15 @@ export function createFloatingControl(
     return { left: left + EDGE, top: top + EDGE, right: right - EDGE, bottom: bottom - EDGE };
   }
 
+  const edgeMenu = writable<{ x: number; y: number } | null>(null);
+  let menuOpen = false;
+  edgeMenu.subscribe((v) => { menuOpen = v !== null; });
+
   function onOutside(e: Event) {
     if (!rootEl || rootEl.contains(e.target as Node)) return;
+    // The edge menu is drawn OUTSIDE the control (it would be clipped by the stage otherwise), so
+    // without this a tap on one of its items would put the control away underneath it.
+    if (menuOpen) return;
     if (s.pinned || !s.open) return;
     set({ open: false });
   }
@@ -174,9 +212,12 @@ export function createFloatingControl(
     const dx = left - ax, dy = top - ay;
     const gl = left - b.left, gr = b.right - (left + r.width);
     const gt = top - b.top, gb = b.bottom - (top + r.height);
-    const ex: 'left' | 'right' = gr < gl ? 'right' : 'left';
-    const ey: 'top' | 'bottom' = gb < gt ? 'bottom' : 'top';
-    const gx = Math.max(0, Math.min(gl, gr)), gy = Math.max(0, Math.min(gt, gb));
+    // A CHOSEN edge is kept; otherwise the nearest one is re-read from where the control now is.
+    // The gap is measured from whichever edge that turns out to be, which is the same expression
+    // for both cases - for an unchosen axis the nearest edge IS the smaller of the two gaps.
+    const ex: 'left' | 'right' = s.fx && s.ex ? s.ex : gr < gl ? 'right' : 'left';
+    const ey: 'top' | 'bottom' = s.fy && s.ey ? s.ey : gb < gt ? 'bottom' : 'top';
+    const gx = Math.max(0, ex === 'right' ? gr : gl), gy = Math.max(0, ey === 'bottom' ? gb : gt);
     const moved = Math.abs(dx - s.dx) >= SETTLED || Math.abs(dy - s.dy) >= SETTLED;
     const rehomed =
       ex !== s.ex || ey !== s.ey || s.gx === undefined || s.gy === undefined ||
@@ -217,17 +258,36 @@ export function createFloatingControl(
     let dragging = false;
     let startX = 0, startY = 0, baseX = 0, baseY = 0;
 
+    let pressTimer: ReturnType<typeof setTimeout> | null = null;
+    const cancelPress = () => { if (pressTimer !== null) { clearTimeout(pressTimer); pressTimer = null; } };
+
     const down = (e: PointerEvent) => {
+      // A right-click is the edge menu, never a drag - and without this guard the secondary button
+      // would start one and leave the control mid-move under an open menu. `button` is the test
+      // rather than `pointerType`: a touch or pen contact reports button 0, so this reads "the
+      // primary contact" for every kind of pointer and needs no branch per device.
+      if (e.button > 0) return;
       dragging = true;
       dragged = false;
       startX = e.clientX; startY = e.clientY;
       baseX = s.dx; baseY = s.dy;
       try { node.setPointerCapture(e.pointerId); } catch { /* not capturable — pointermove still fires */ }
+      // A STILL FINGER IS THE TOUCH FORM OF A RIGHT-CLICK. It abandons the drag and marks the
+      // gesture as "not a tap", so the click that follows does not also toggle the lock it is on.
+      cancelPress();
+      pressTimer = setTimeout(() => {
+        pressTimer = null;
+        if (!dragging) return;
+        dragging = false;
+        dragged = true;
+        try { node.releasePointerCapture(e.pointerId); } catch { /* already gone */ }
+        edgeMenu.set({ x: startX, y: startY });
+      }, LONG_PRESS);
     };
     const move = (e: PointerEvent) => {
       if (!dragging) return;
       const mx = e.clientX - startX, my = e.clientY - startY;
-      if (Math.abs(mx) + Math.abs(my) > TAP_SLOP) dragged = true;
+      if (Math.abs(mx) + Math.abs(my) > TAP_SLOP) { dragged = true; cancelPress(); }
       let dx = baseX + mx, dy = baseY + my;
       // Clamp against the rect as last painted: one frame stale, so it converges over the drag
       // rather than snapping. Same approach the time pill has always used.
@@ -241,7 +301,15 @@ export function createFloatingControl(
       }
       set({ dx, dy }, false); // persist on release, not on every frame
     };
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelPress();
+      dragging = false;
+      edgeMenu.set({ x: e.clientX, y: e.clientY });
+    };
     const up = () => {
+      cancelPress();
       if (!dragging) return;
       dragging = false;
       set({}, true);
@@ -256,12 +324,15 @@ export function createFloatingControl(
     node.addEventListener('pointermove', move);
     node.addEventListener('pointerup', up);
     node.addEventListener('pointercancel', up);
+    node.addEventListener('contextmenu', onContextMenu);
     return {
       destroy() {
+        cancelPress();
         node.removeEventListener('pointerdown', down);
         node.removeEventListener('pointermove', move);
         node.removeEventListener('pointerup', up);
         node.removeEventListener('pointercancel', up);
+        node.removeEventListener('contextmenu', onContextMenu);
       }
     };
   };
@@ -275,6 +346,19 @@ export function createFloatingControl(
     // Unpinning also puts the control away: the pin took over the minimise button's place, so it
     // has to keep meaning "I'm done with this" as well as "keep this".
     togglePin: () => (s.pinned ? set({ pinned: false, open: false }) : set({ pinned: true, open: true })),
+    edgeMenu: { subscribe: edgeMenu.subscribe },
+    closeEdgeMenu: () => edgeMenu.set(null),
+    // CHOOSING AN EDGE NEVER MOVES THE CONTROL. It stays exactly where the GM left it and only the
+    // edge it is measured FROM changes, so it now travels with that edge. `settle(false)` re-reads
+    // the gap from where the control actually is - which is why the choice is a flag rather than a
+    // second placement path.
+    chooseEdge: (choice: EdgeChoice) => {
+      edgeMenu.set(null);
+      if (choice === 'nearest') set({ fx: false, fy: false });
+      else if (choice === 'left' || choice === 'right') set({ ex: choice, fx: true });
+      else set({ ey: choice, fy: true });
+      scheduleClamp(false);
+    },
     didDrag: () => { const v = dragged; dragged = false; return v; }
   };
 }

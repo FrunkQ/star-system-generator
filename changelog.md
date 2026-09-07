@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.0.363 - 7th Sep 2026
+
+- You can now tell a floating control WHICH screen edge to travel with. Right-click its grip or padlock (press and hold on a touchscreen) and pick Left, Right, Top, Bottom, or Nearest to go back to the automatic guess. It works on the clock, the time controls, the body picker and the undo pill. Nothing jumps when you choose: the control stays exactly where you put it and only changes which edge it keeps its distance from - so a control sitting in the middle of a wide screen can be told to follow the details pane in and out instead of standing still.
+
 ## v3.0.362 - 7th Sep 2026
 
 - Board only. Magnetospheres, drawn from the physics the engine already holds, are designed and briefed as a stream: a standoff from field against wind, a teardrop overlay beside Hill spheres in the GM view, a dipole cage on every 3D surface behind a player-view switch that is off by default and hidden in Low Power.
