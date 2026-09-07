@@ -1011,23 +1011,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
    * the same neighbourhood the orrery's Hill overlay draws, and the frame in which everything on
    * screen shares one inflation. Nothing at system level, where there is no such frame.
    */
-  function fieldVisibleFor(id: string): boolean {
-    if (!focusedId) return false;
-    if (id === focusedId) return true;
-    const self = bodyById.get(id);
-    const focus = bodyById.get(focusedId);
-    if (!self || !focus) return false;
-    if (self.parentId === focusedId) return true;   // a moon of the focused planet
-    // SIBLINGS ONLY WHERE SIBLINGS ARE A NEIGHBOURHOOD. Focusing a MOON should light its planet and
-    // the other moons - one frame, one host. Focusing a PLANET must not light the other planets,
-    // because a planet's siblings are the whole system: measured 2026-09-07, it lit all eight at
-    // once and each one's tail is hundreds of radii long, so the camera sat inside several and the
-    // view went uniformly purple. The star is the test - a body whose host is a star has no
-    // neighbourhood in this sense.
-    const host = focus.parentId ? bodyById.get(focus.parentId) : undefined;
-    if (!host || host.isStar) return false;
-    return self.id === host.id || self.parentId === host.id;
-  }
+  // EVERY MAGNETISED BODY, NOT JUST THE SELECTED ONE. Owner, 2026-09-07: *"we should see all
+  // magnetospheres if selected - not just the one planet - so we can see at a glance what is
+  // shielded"* - which is the right reading of what the overlay is FOR. An earlier cut showed only
+  // the focused body, and that was a workaround for a fault rather than a design: every bubble was
+  // being drawn hundreds of inflated radii long, so eight at once washed the system out. With the
+  // readable-standoff map (`readableStandoffRadii`) a bubble is a handful of drawn radii and they
+  // all coexist, which is what makes "at a glance" possible at all.
 
   // Rendered star radius: readable STAR_RADIUS at the top of the dial, blending toward its true
   // physical size (a star is still far larger than any planet, so it stays clearly visible).
@@ -4530,7 +4520,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
           // `updateFieldAim` undoes the globe's rotation each frame and points the nose upstream.
           if (look.field) {
             sphere.add(look.field.group);
-            fieldVisuals.push({ id: node.id, group: look.field.group, upstreamId: node.magnetosphere?.upstreamId ?? null, noseScene: (node.magnetosphere?.standoffRadii ?? 0) * radius });
+            fieldVisuals.push({ id: node.id, group: look.field.group, upstreamId: node.magnetosphere?.upstreamId ?? null, noseScene: look.field.noseScene * radius });
           }
           // Lo-poly LINES: the glowing edge/vertex overlay. Kept here rather than in the assembly
           // because the dot size is a binding of the size law against the live dial (RENDER-S11).
@@ -5164,9 +5154,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   function updateFieldAim() {
     if (!fieldVisuals.length) return;
     for (const f of fieldVisuals) {
-      // Shown only where the frame makes the ratio readable - see `fieldVisibleFor`.
-      f.group.visible = fieldVisibleFor(f.id);
-      if (!f.group.visible || !f.upstreamId) continue;
+      if (!f.upstreamId) continue;
       const src = bodyById.get(f.upstreamId);
       const self = bodyById.get(f.id);
       if (!src || !self) continue;
@@ -5197,7 +5185,9 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       // screen 2026-09-07. Fading it out as the camera enters is both the fix and the truth: it is
       // the same reason you cannot see the shape of a cloud you are standing in. Pull back and it
       // resolves into the shell, which is what the owner's reference images are.
-      const noseWorld = f.noseScene * Math.max(_fieldScale.x, 1e-9);
+      // The parent's world scale INCLUDES the pixel floor and the group divides that back out, so the
+      // nose's true world size is the parent scale over the floor - the readable size, and nothing else.
+      const noseWorld = f.noseScene * Math.max(_fieldScale.x / Math.max(floorK, 1e-9), 1e-9);
       const camD = camera.position.distanceTo(_fieldFrom);
       // The window is generous on purpose: nothing at all while the shot is FRAMED ON THE PLANET
       // (a body framing sits around a third of the nose distance, where a bubble would be fog), then

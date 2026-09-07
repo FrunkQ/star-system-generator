@@ -21,7 +21,7 @@ import { getPlanetTextureEquirect, getEmissiveEquirect } from '$lib/rendering/pl
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { lightningStrength } from '$lib/physics/cloudDecks';
 import { deriveAurora, auroraEmitters } from '$lib/physics/aurora';
-import { magnetopauseOutlineRadii, magnetosphereConstants } from '$lib/physics/magnetosphere';
+import { magnetopauseOutlineRadii, magnetosphereConstants, readableStandoffRadii, readableTailRadii } from '$lib/physics/magnetosphere';
 import { tokenColor } from '$lib/rendering/colors';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { jetStrength, sheddingStrength } from '$lib/physics/stellarOutflows';
@@ -194,7 +194,7 @@ export interface BodyLook {
    * direction of whatever is blowing on it (the star, or the host for a moon inside its host's field).
    * Absent when the body has no bubble, or when the option is off.
    */
-  field?: { group: THREE.Group; aim: (dir: THREE.Vector3) => void };
+  field?: { group: THREE.Group; aim: (dir: THREE.Vector3) => void; /** the READABLE nose actually drawn, in body radii */ noseScene: number };
   /**
    * The child names and material count this look actually built — the drift detector. A spec runs
    * one node through both callers' option sets and compares these, so the gallery and the holo
@@ -430,19 +430,34 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
       // See `magnetosphereUnit`: the bubble is NOT drawn in the globe's floored radius unless the
       // caller says so, because a floor multiplied by 224 is not a floor.
       const fieldUnit = opts.magnetosphereUnit ?? radius;
-      const innerTail = ms.closedFieldRadii * mc.CLOSED_TAIL_STANDOFFS;
+      // THE 3D DRAWS THE READABLE STANDOFF, NOT THE PUBLISHED ONE, and that is the same choice this
+      // view already makes about every globe in it (RENDER-S11). A bubble in inflated radii is bigger
+      // than the system: Jupiter's is 838 radii long. The log map keeps the ORDER - which is what a
+      // GM reads at a glance - and the true figure stays on the card and on the 2D map.
+      const outerR0 = readableStandoffRadii(ms.standoffRadii, mc);
+      const outerTail = readableTailRadii(outerR0, mc);
+      const innerR0 = readableStandoffRadii(ms.closedFieldRadii, mc);
+      const innerTail = innerR0 * mc.VIEW_TAIL_STANDOFFS;
       const bubble = buildMagnetosphereBubble(
         fieldUnit,
-        magnetopauseOutlineRadii(ms.standoffRadii, ms.tailRadii, mc, 20, false),
-        ms.closedFieldRadii > 0
-          ? magnetopauseOutlineRadii(ms.closedFieldRadii, innerTail, mc, 20, true)
+        // TAPERED, WHERE THE MAP LEAVES IT OPEN - and the reason is the third dimension rather than
+        // taste. An open tail is a TUBE, and a camera that has drifted past its far end is "outside"
+        // by any axial test while looking straight up the inside of it, which fills the screen:
+        // measured 2026-09-07 with the camera at axial -1.33 against a tail ending at -1.27. Closing
+        // it makes the volume well defined, so "am I inside?" has an answer - and it costs nothing to
+        // look at, because the colour has already faded to black by then and black adds nothing under
+        // additive blending. The 2D map keeps its open tail: there is no inside to be on a plane.
+        magnetopauseOutlineRadii(outerR0, outerTail, mc, 32, true),
+        innerR0 > 0
+          ? magnetopauseOutlineRadii(innerR0, innerTail, mc, 32, true)
           : [],
         cageHex, beltHex,
-        ms.standoffRadii, ms.tailRadii, ms.closedFieldRadii, innerTail, mc.FLARING_ALPHA
+        outerR0, outerTail, innerR0, innerTail, mc.FLARING_ALPHA, 32
       );
       disposables.push(bubble);
       look.field = {
         group: bubble.group,
+        noseScene: outerR0,
         // The lathe puts the nose at +Y, so aiming is one rotation and the caller never needs to know
         // how the profile was built.
         aim: (dir: THREE.Vector3) => {

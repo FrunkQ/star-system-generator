@@ -431,8 +431,12 @@ describe('the one body-look assembly', () => {
         const box = new THREE.Box3().setFromObject(l.field!.group);
         return box.max.y;   // the nose, since the lathe puts it at +Y
       };
-      // ABSOLUTE: Earth's standoff is 11.229 body radii, so at radius 1 the nose is 11.229 units out.
-      expect(reach(small)).toBeCloseTo(11.229, 2);
+      // ABSOLUTE: Earth's PUBLISHED standoff is 11.229 body radii and the 3D draws the READABLE one -
+      // 1 + 0.8 ln(11.229) = 2.935 - because a bubble in this view's inflated radii is bigger than the
+      // system it sits in, and the whole shape has to fit inside a body framing or it is a wash rather
+      // than an object. Same choice this view makes about every globe in it (RENDER-S11); the true
+      // figure is on the card and on the 2D map, which draws the real number.
+      expect(reach(small)).toBeCloseTo(2.935, 2);
       expect(reach(big) / reach(small)).toBeCloseTo(100, 4);
       small.dispose(); big.dispose();
     });
@@ -447,14 +451,42 @@ describe('the one body-look assembly', () => {
       look.field!.group.traverse((o) => { if ((o as any).userData?.fieldR0 !== undefined) surfaces.push(o); });
       expect(surfaces.length).toBeGreaterThanOrEqual(2);
       const r0s = surfaces.map((s) => s.userData.fieldR0).sort((a, b) => a - b);
-      // ABSOLUTE: Mercury's magnetopause is 1.48 radii and its shielded region 0.55 of that = 0.814.
-      expect(r0s[1]).toBeCloseTo(1.48, 2);
+      // ABSOLUTE, in DRAWN radii: Mercury's magnetopause is 1.48 published, which the readable map
+      // leaves almost alone at 1.549 - small bubbles are near enough true, and that is the point of a
+      // log map. Its shielded region is 0.814 published and passes through untouched, because the map
+      // never inflates anything already under one radius.
+      expect(r0s[1]).toBeCloseTo(1.314, 2);
       expect(r0s[0]).toBeCloseTo(0.814, 2);
-      // The tails differ by an order of magnitude, which is the whole reason one distance cannot serve.
+      // The two surfaces still differ enough that one camera distance cannot answer for both.
       const tails = surfaces.map((s) => s.userData.fieldTail).sort((a, b) => a - b);
-      expect(tails[1] / tails[0]).toBeGreaterThan(5);
+      expect(tails[1] / tails[0]).toBeGreaterThan(1.4);
       for (const s of surfaces) expect(s.userData.fieldAlpha).toBeCloseTo(0.58, 6);
       look.dispose();
+    });
+
+    it("NO PART OF A BELT LIES INSIDE THE BELT'S OWN INNER EDGE", () => {
+      // A torus radius is a CENTRELINE and `beltPeakRadii` is an EDGE - the altitude below which the
+      // atmosphere absorbs trapped particles into the loss cone ([[B22]]). Seating the tube AROUND
+      // that radius instead of ON it buried half of every belt in the app inside its planet: Jupiter's
+      // reached 0.48 R_J against a 1.05 R_J edge, and the depth test hid the rest, so the belt looked
+      // like it grew out of the globe. All five magnetised worlds did it. Found by another session
+      // reading the numbers, 2026-09-07.
+      for (const name of ['Earth', 'Jupiter', 'Saturn', 'Uranus', 'Neptune']) {
+        const n = node(name);
+        const peak = n.magnetosphere.beltPeakRadii as number;
+        expect(peak, name).toBeGreaterThan(1);
+        const look = buildBodyLook(n, 1, { ...HOLO, magnetospheres: true });
+        let torus: any = null;
+        look.mesh.traverse((o: any) => { if (o.geometry?.type === 'TorusGeometry') torus = o; });
+        expect(torus, `${name} has no belt torus`).toBeTruthy();
+        const p = torus.geometry.parameters;
+        // ABSOLUTE: the innermost point of a torus is centreline minus tube, and it must reach the
+        // edge exactly - not past it, and not short of it either, or the belt floats detached.
+        expect(p.radius - p.tube, name).toBeCloseTo(peak, 6);
+        // ...and it must not swallow the globe it rings.
+        expect(p.radius + p.tube, name).toBeLessThan(peak + 2);
+        look.dispose();
+      }
     });
 
     it('draws nothing for a world that has no bubble', () => {

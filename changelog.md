@@ -2,6 +2,20 @@
 
 All notable changes are listed here:
 
+## v3.0.388 - 7th Sep 2026
+
+- Every magnetised world now shows its magnetosphere at once in the 3D views, not just the one you have
+  selected, so a glance tells you which worlds are shielded and which are bare. Getting there meant sizing them
+  for a three-dimensional view rather than for a map: a magnetotail is enormously longer than the bubble at its
+  nose, and drawn at full length it swallowed the whole solar system in purple. The 3D now compresses the
+  distance the same way it already compresses body sizes - so Mercury's stays about true, Jupiter's is clearly
+  the largest, and the order you read off them is honest even though the sizes are squeezed. The true figures
+  are unchanged on the body card and on the system map.
+- Fixed: trapped radiation belts were half-buried in their own planets. A belt begins at a definite altitude
+  and the ring was being centred on it rather than seated on it, so half the doughnut sat below the cloud tops
+  and the belt looked like it was growing out of the world instead of floating above it. All five magnetised
+  planets did it; Jupiter's was the worst.
+
 ## v3.0.387 - 7th Sep 2026
 
 - Fixed, both spotted on screen: a magnetosphere no longer paints a purple wash across the view, and it no

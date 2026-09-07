@@ -6066,6 +6066,22 @@ surfaces and their proportions differ wildly - Mercury's magnetopause is 1.48 ra
 down the tail - so a camera-to-NOSE distance says "outside" while the camera sits deep inside the tail
 tube, and the far wall paints the whole screen. The test is the boundary's own equation evaluated at the
 camera in that surface's local frame, per surface, one point each.
+AND A 3D VIEW NEEDS ITS OWN SIZE MAP, WHICH IS THE SAME ANSWER THE GLOBES ALREADY GOT. A magnetotail is
+twenty standoffs on the map and that convention is ruinous in a volume: Jupiter's drawn bubble was 838
+radii long, so one of them engulfed the camera and eight of them washed the system out. The 3D draws
+`readableStandoffRadii` - `1 + 0.8 ln(standoff)`, order intact, small bubbles near true - with a
+two-standoff tail, exactly as it draws readable body SIZES rather than true ones (RENDER-S11). The
+published number is untouched and the 2D map still draws it. THE GAIN WAS MEASURED: a holo frames a body
+at about twenty of its radii, and at a gain of 1.4 Jupiter's bubble subtended 79 degrees from the camera.
+AND AN OPEN TAIL IS A TUBE. A camera that has drifted past the far end of an open surface is "outside" by
+any axial test while looking straight up the inside of it - measured at axial -1.33 against a tail ending
+at -1.27, and the result is a full-screen wash. The 3D tapers its tail closed so the volume is well
+defined; the 2D keeps its open one, because there is no inside to be on a plane. The closure is free to
+look at: the colour has faded to black by then and black adds nothing under additive blending.
+AND A TORUS RADIUS IS A CENTRELINE WHERE `beltPeakRadii` IS AN EDGE. Seating a symmetric tube ON that
+radius instead of AROUND it buried half of every belt in the app inside its own planet - Jupiter's reached
+0.48 R_J against a 1.05 R_J edge - and the depth test hid the evidence, so the belt merely looked like it
+grew out of the globe. The centre goes one tube-radius out. Found by reading the numbers, not the picture.
 BLAST: ONE SHAPE FUNCTION, AND THE GATE CALLS IT. The rotation and scaling live in the physics module
 rather than in the component precisely so that the spec which reproduces the transform is checking
 the real one. A gate carrying its own copy of the transform it checks is checking only itself.

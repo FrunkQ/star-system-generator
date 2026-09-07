@@ -30,7 +30,8 @@ import path from 'path';
 import { systemProcessor } from '../core/SystemProcessor';
 import {
   magnetosphereConstants, magnetopauseStandoffRadii, auroraOvalColatDeg,
-  hostFieldPressurePa, windScaleOf, astrosphereAu, dipoleLongitudeDeg, magnetopauseOutlineRadii
+  hostFieldPressurePa, windScaleOf, astrosphereAu, dipoleLongitudeDeg, magnetopauseOutlineRadii,
+  readableStandoffRadii, readableTailRadii
 } from './magnetosphere';
 import type { System, RulePack, CelestialBody } from '../types';
 
@@ -330,6 +331,69 @@ describe('the belt geometry is READ from the belt model, never re-derived', () =
 
   it('a body with no field has no belt to draw', () => {
     expect(by('Venus').magnetosphere!.beltPeakRadii).toBeUndefined();
+  });
+});
+
+describe('the READABLE standoff, for a view that draws bodies at readable size', () => {
+  // The 2D map draws the published number and caps it at the Hill sphere. A 3D holo cannot: it
+  // already inflates a globe hundreds of times so a planet is visible beside its own orbit, and a
+  // bubble in those radii comes out bigger than the system - Jupiter's is 838 radii long. So the
+  // holo takes the same treatment its GLOBES take (RENDER-S11), and these are the numbers.
+  it('leaves a small bubble nearly true and compresses a large one', () => {
+    // ABSOLUTE: 1 + 0.8 ln(s). Mercury barely moves, which is what "nearly true" has to mean.
+    expect(readableStandoffRadii(1.48, C)).toBeCloseTo(1.31, 2);
+    expect(readableStandoffRadii(11.229, C)).toBeCloseTo(2.93, 2);
+    expect(readableStandoffRadii(18.03, C)).toBeCloseTo(3.31, 2);
+    expect(readableStandoffRadii(39.88, C)).toBeCloseTo(3.95, 2);
+  });
+
+  it('AND THE WHOLE SHAPE FITS INSIDE A BODY FRAMING, which is what makes it a shape at all', () => {
+    // MEASURED IN THE SCENE, 2026-09-07: a holo frames a body at about twenty of its radii, and at the
+    // first gain (1.4, three standoffs) Jupiter's bubble subtended 79 degrees from the camera - the
+    // whole frame, corner to corner, which reads as a wash rather than as an object. Every bubble's
+    // total extent now sits inside that framing distance with room to spare.
+    const FRAMING_RADII = 20;
+    for (const s of [1.48, 11.229, 18.03, 22.45, 26.67, 39.88]) {
+      const r0 = readableStandoffRadii(s, C);
+      expect(r0 + readableTailRadii(r0, C), `standoff ${s}`).toBeLessThan(FRAMING_RADII * 0.65);
+    }
+  });
+
+  it('KEEPS THE ORDER, which is the whole thing a GM reads off it', () => {
+    const rows = [1.48, 11.229, 18.03, 22.45, 26.67, 39.88];
+    for (let i = 1; i < rows.length; i++) {
+      expect(readableStandoffRadii(rows[i], C)).toBeGreaterThan(readableStandoffRadii(rows[i - 1], C));
+    }
+  });
+
+  it('never inflates a bubble that is already small, and never zeroes one', () => {
+    expect(readableStandoffRadii(1, C)).toBe(1);
+    expect(readableStandoffRadii(0.8, C)).toBe(0.8);
+    expect(readableStandoffRadii(0, C)).toBe(0);
+    // ...and it is bounded: even the owner's 70-tesla world stays in single figures of drawn radii.
+    expect(readableStandoffRadii(1e6, C)).toBeLessThan(21);
+  });
+
+  it("the drawn tail is THREE standoffs, not the map's twenty", () => {
+    // Twenty reads fine across an orrery and makes every bubble a corridor in a volume. The colour is
+    // faded to nothing down the tail anyway, so what is dropped is geometry nobody could see.
+    expect(readableTailRadii(2.93, C)).toBeCloseTo(5.86, 2);
+    expect(C.VIEW_TAIL_STANDOFFS).toBe(2);
+    // The shape that results reads as a BUBBLE rather than a corridor. Measured both ways, because
+    // "shorter" is the claim and a bare number would not say against what.
+    const aspect = (r0: number, tail: number) => {
+      const pts = magnetopauseOutlineRadii(r0, tail, C, 32, false);
+      const len = Math.max(...pts.map((p) => p.x)) - Math.min(...pts.map((p) => p.x));
+      const wid = 2 * Math.max(...pts.map((p) => Math.abs(p.y)));
+      return len / wid;
+    };
+    const r0 = readableStandoffRadii(39.88, C);
+    // ABSOLUTE: the published Jupiter is 837 radii long and 232 across - 3.6 times longer than wide,
+    // and 838 DRAWN radii is the whole solar system. The readable one is under twice as long as wide.
+    expect(aspect(39.88, 797.63)).toBeCloseTo(3.64, 1);
+    expect(aspect(r0, readableTailRadii(r0, C))).toBeLessThan(2);
+    // ...and the drawn extent falls from 837 radii to under 13, which is the number that matters.
+    expect(r0 + readableTailRadii(r0, C)).toBeLessThan(13);
   });
 });
 

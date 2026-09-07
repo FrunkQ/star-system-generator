@@ -1221,10 +1221,19 @@ export function buildBeltTorus(
 	colorHex: string,
 	opacity: number
 ): { mesh: THREE.Mesh; dispose(): void } {
-	// The belt's own scale length is its thickness - read from the belt model, never invented here.
-	const r = Math.max(1e-4, peakRadii * oneRadius);
-	const tube = Math.max(1e-5, Math.min(r * 0.6, scaleRadii * oneRadius * 0.35));
-	const geo = new THREE.TorusGeometry(r, tube, 8, 36);
+	// THE INNER EDGE IS AN EDGE, AND A TORUS RADIUS IS A CENTRELINE. `beltPeakRadii` is where the belt
+	// BEGINS - `beltInnerEdgeRadii`, the altitude below which the atmosphere absorbs trapped particles
+	// into the loss cone ([[B22]]) - so nothing of the belt may lie inside it. Seating the tube ON that
+	// radius instead of AROUND it buried half of every belt in the app inside its own planet: Jupiter's
+	// tube is 0.57 R_J against a 1.05 R_J edge, so it reached 0.48 R_J and the depth test hid the rest,
+	// leaving a belt that appeared to grow out of the globe rather than float above it. All five
+	// magnetised worlds did it. The centre goes one tube-radius OUT, so the inner surface sits on the
+	// edge and the belt occupies [edge, edge + 2 tube] - which is what a belt is.
+	const inner = Math.max(1e-4, peakRadii * oneRadius);
+	// The belt's own scale length is its thickness - read from the belt model, never invented here -
+	// and capped so a fat belt cannot swallow the body it rings.
+	const tube = Math.max(1e-5, Math.min(inner * 0.5, scaleRadii * oneRadius * 0.35));
+	const geo = new THREE.TorusGeometry(inner + tube, tube, 8, 36);
 	const mat = new THREE.MeshBasicMaterial({
 		color: new THREE.Color(colorHex), transparent: true, opacity,
 		blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide

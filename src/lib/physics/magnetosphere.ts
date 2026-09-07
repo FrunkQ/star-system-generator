@@ -104,6 +104,15 @@ export function magnetosphereConstants(rulePack: RulePack | null | undefined) {
     // closed line is stretched down the tail. Calibrated ONCE against both oval anchors together
     // (Earth 65-72 deg, Jupiter 72-78 deg) rather than against either one alone.
     OVAL_L_FRACTION: gp.aurora_oval_l_fraction ?? 0.55,
+    // The 3D view's readable-size map for a bubble - see `readableStandoffRadii`. Chosen so Mercury
+    // stays about true (1.55 against 1.48) and Jupiter lands near six drawn radii instead of forty.
+    // MEASURED, not chosen. A holo frames a body at about twenty of its radii, so a bubble has to fit
+    // inside that or it stops being a shape and becomes a wash - at a gain of 1.4 and a three-standoff
+    // tail, Jupiter's subtended 79 degrees from the camera and covered the frame corner to corner
+    // (2026-09-07, measured in the scene). 0.8 and two standoffs put it near 37 degrees: an object in
+    // the view rather than the view itself, which is what the owner's reference images are.
+    VIEW_LOG_GAIN: gp.magnetosphere_view_log_gain ?? 0.8,
+    VIEW_TAIL_STANDOFFS: gp.magnetosphere_view_tail_standoffs ?? 2,
     // How fast the boundary FLARES away from the nose, in Shue's form r = r0 (2/(1+cos t))^alpha.
     // 0.58 is the observed value for Earth. It is the shape of a real magnetopause rather than a
     // drawn teardrop, which matters because it settles the WIDTH for free: at right angles to the
@@ -312,6 +321,39 @@ export function auroraOvalColatDeg(standoffRadii: number, c: ReturnType<typeof m
   const L = closedFieldRadii(standoffRadii, c);
   if (!(L > 1)) return 90;   // the last closed line never leaves the surface: no oval, the cap is all open
   return (Math.asin(Math.sqrt(1 / L)) * 180) / Math.PI;
+}
+
+/**
+ * THE READABLE STANDOFF, for a view that draws bodies at readable size rather than true size.
+ *
+ * The published `standoffRadii` is the physics and the 2D map draws it. A 3D holo cannot: it already
+ * inflates a globe hundreds of times so a planet is visible beside its own orbit, and a bubble
+ * measured in those inflated radii comes out bigger than the system - Jupiter's is 838 radii long,
+ * which at readable body size is the whole solar system in purple. Owner, 2026-09-07, on exactly
+ * that: *"what is the other purple stripe across the screen?"*
+ *
+ * So the 3D takes the same treatment the GLOBES take (RENDER-S11: readable size is a view, and this
+ * is the view that chooses it): a log map that leaves small bubbles nearly true and compresses large
+ * ones, keeping the ORDER intact. Mercury 1.48 -> 1.55 (near enough true), Earth 11.23 -> 4.4,
+ * Saturn 18.0 -> 5.0, Jupiter 39.9 -> 6.2. A GM can still see at a glance which worlds are shielded
+ * and which are not, which is the whole job, and the true figure is on the card and on the map.
+ *
+ * NOT USED BY THE 2D OVERLAY, which draws the real number and is capped by the Hill sphere instead.
+ */
+export function readableStandoffRadii(standoffRadii: number, c: ReturnType<typeof magnetosphereConstants>): number {
+  const s = standoffRadii || 0;
+  if (!(s > 1)) return s;
+  return 1 + c.VIEW_LOG_GAIN * Math.log(s);
+}
+
+/**
+ * The tail a 3D view draws, in the same readable radii. THREE standoffs, not twenty: the twenty is a
+ * MAP convention that reads fine across an orrery and, in a volume, makes every bubble a corridor the
+ * camera lives inside. The colour is faded to nothing down the tail anyway, so what is dropped is
+ * geometry nobody could see - and what is kept is a shape that reads as a bubble.
+ */
+export function readableTailRadii(readableStandoff: number, c: ReturnType<typeof magnetosphereConstants>): number {
+  return readableStandoff * c.VIEW_TAIL_STANDOFFS;
 }
 
 /**
