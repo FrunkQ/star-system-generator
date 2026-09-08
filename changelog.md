@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.28 - 8th Sep 2026
+
+- Board only. The 3D lockup item's status now says all five pieces of work are on the test version rather than only the first, so nobody reads it as unfinished.
+
 ## v3.1.27 - 8th Sep 2026
 
 - Board only. The 3D lockup work is written up for whoever picks it up next, including the short list of things to look at on the machine that actually locks up, and the one change that is recommended but deliberately not made because it trades a visual effect for memory.
