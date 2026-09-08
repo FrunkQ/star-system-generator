@@ -1433,8 +1433,11 @@ base/offset rig at all so nothing second-guesses its dolly, and `holo/scene.ts` 
 casualty precisely BECAUSE it is the only surface that reconciles the camera against intent.
 ALSO: nothing listened for `webglcontextlost` until this entry's commit. It was investigated here
 as a cause and refuted, but the blindness was real — a dropped context freezes the last frame,
-throws nothing, and reaches no instrument. It is now counted into `[sse-perf]` (`holo.glContextLost`
-/ `holo.glContextRestored`) and the `gl` provider. RECOVERY IS NOT BUILT: rebuild on restore when a
+throws nothing, and reaches no instrument. It is now counted into `[sse-perf]` and the `gl`
+provider. CORRECTED 2026-09-08 (C20 job 3): the listener was on the HOLO ONLY, so the other five
+surfaces stayed exactly as blind as this entry describes - it now lives in `createGlRenderer`, every
+surface has it, and the counters are `gl.<surface>.contextLost` / `.contextRestored` (they were
+`holo.glContextLost` / `holo.glContextRestored`). RECOVERY IS NOT BUILT: rebuild on restore when a
 counter proves it happens, not before.
 
 ### RENDER-S22 The scene-rebuild path is INSTRUMENTED — switch the meters on before theorising about it

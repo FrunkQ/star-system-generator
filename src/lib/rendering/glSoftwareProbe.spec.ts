@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
+import { fakeCanvas } from './glTestCanvas';
 
 /**
  * C20 job 2: NOTICE WHEN THE BROWSER SAYS NO, AND KEEP RUNNING.
@@ -45,8 +46,9 @@ async function fresh() {
 	const probe = await import('./glSoftwareProbe');
 	const store = await import('$lib/lowPowerStore');
 	const factory = await import('./glRenderer');
+	const notice = await import('./renderNotice');
 	probe.resetRenderPathForTests();
-	return { probe, store, factory };
+	return { probe, store, factory, notice };
 }
 
 beforeEach(() => {
@@ -120,30 +122,30 @@ describe('what this machine draws with (C20)', () => {
 });
 
 describe('a refusal steers, it does not stop (C20)', () => {
-	const canvas = {} as HTMLCanvasElement;
+	const canvas = fakeCanvas();   // the factory now attaches context-loss listeners to it
 
 	it('on software: low power comes on, the sentence is published, and the view is STILL BUILT', async () => {
 		browserThatWill('refuse-strict');
-		const { probe, store, factory } = await fresh();
+		const { probe, store, factory, notice } = await fresh();
 		const renderer = factory.createGlRenderer({ canvas, surface: 'holo' });
 		expect(renderer).toBeTruthy(); // steer, don't stop: a slow holo beats no holo
 		expect(get(store.lowPower)).toBe(true);
-		expect(get(probe.renderPathMessage)).toMatch(/processor/i);
+		expect(get(notice.renderNotice)).toMatch(/processor/i);
 	});
 
 	it('on a good machine: nothing is turned on and nothing is said', async () => {
 		browserThatWill('grant');
-		const { probe, store, factory } = await fresh();
+		const { probe, store, factory, notice } = await fresh();
 		factory.createGlRenderer({ canvas, surface: 'holo' });
 		expect(get(store.lowPower)).toBe(false);
-		expect(get(probe.renderPathMessage)).toBeNull();
+		expect(get(notice.renderNotice)).toBeNull();
 	});
 
 	it('with no WebGL at all it says so, but does not pretend low power is the answer', async () => {
 		browserThatWill('refuse-all');
-		const { probe, store, factory } = await fresh();
+		const { probe, store, factory, notice } = await fresh();
 		factory.createGlRenderer({ canvas, surface: 'holo' });
-		expect(get(probe.renderPathMessage)).toMatch(/cannot draw 3D/i);
+		expect(get(notice.renderNotice)).toMatch(/cannot draw 3D/i);
 		expect(get(store.lowPower)).toBe(false); // fewer clouds does not conjure a GPU
 	});
 
@@ -159,15 +161,15 @@ describe('a refusal steers, it does not stop (C20)', () => {
 });
 
 describe('the machine never overrules a person (C20, G69 two facts)', () => {
-	const canvas = {} as HTMLCanvasElement;
+	const canvas = fakeCanvas();   // the factory now attaches context-loss listeners to it
 
 	it('a GM who turned low power OFF keeps it off on a software rasteriser', async () => {
 		localStorage.setItem('sse-low-power', '0'); // an explicit no, not an absence
 		browserThatWill('refuse-strict');
-		const { probe, store, factory } = await fresh();
+		const { probe, store, factory, notice } = await fresh();
 		factory.createGlRenderer({ canvas, surface: 'holo' });
 		expect(get(store.lowPower)).toBe(false); // their answer stands
-		expect(get(probe.renderPathMessage)).toMatch(/processor/i); // and they are still told why
+		expect(get(notice.renderNotice)).toMatch(/processor/i); // and they are still told why
 	});
 
 	it('a GM who turned it ON keeps it on when the machine has no complaint', async () => {

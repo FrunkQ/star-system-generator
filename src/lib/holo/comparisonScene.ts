@@ -53,7 +53,7 @@ import { warpUv, warpParamsOfUniforms } from './filters/warpPick';
 import type { FilterParamValues } from './filters/schema';
 import { slotOffset } from '$lib/comparison/layout';
 import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
-import { createGlRenderer } from '$lib/rendering/glRenderer';
+import { createGlRenderer, releaseGlRenderer } from '$lib/rendering/glRenderer';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes,
@@ -603,7 +603,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       (lensingPass.material as THREE.Material).dispose();
       if (filterPass) (filterPass.material as THREE.Material).dispose();
       composer.dispose();
-      renderer.dispose();
+      releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
     }
   };
 }

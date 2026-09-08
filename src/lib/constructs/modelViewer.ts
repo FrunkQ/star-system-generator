@@ -10,7 +10,7 @@
 // path, computed once at load. A model that ARRIVED with materials (a GLB) keeps them untouched;
 // the tint exists because a printing STL arrives colourless, not to repaint authored work.
 import * as THREE from 'three';
-import { createGlRenderer } from '$lib/rendering/glRenderer';
+import { createGlRenderer, releaseGlRenderer } from '$lib/rendering/glRenderer';
 import { shade } from '$lib/rendering/planetAppearance';
 
 export interface ModelViewerOptions {
@@ -730,7 +730,7 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
       canvas.removeEventListener('pointercancel', onUp);
       canvas.removeEventListener('wheel', onWheel);
       clearFrame();
-      renderer.dispose();
+      releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
     }
   };
 }

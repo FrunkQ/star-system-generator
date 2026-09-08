@@ -28,7 +28,7 @@
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { lowPower } from '$lib/lowPowerStore';
   import RenderNotice from '$lib/components/RenderNotice.svelte';
-  import { renderPathMessage, dismissRenderPathMessage } from '$lib/rendering/glSoftwareProbe';
+  import { renderNotice, dismissRenderNotice } from '$lib/rendering/renderNotice';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
 
   /** Everything on the map that has a true size, from `itemsForSystem` / `itemsForStarmap`. */
@@ -636,7 +636,7 @@
 
     <!-- C20: this view and the holo are the two the owner named as locking up, so this is where the
          software-rasteriser sentence has to appear. Same box as the holo's, from one component. -->
-    <RenderNotice message={$renderPathMessage} onDismiss={dismissRenderPathMessage} />
+    <RenderNotice message={$renderNotice} onDismiss={dismissRenderNotice} />
   </div>
 </div>
 

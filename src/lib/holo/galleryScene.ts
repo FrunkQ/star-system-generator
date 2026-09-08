@@ -4,7 +4,7 @@
 // black-hole accretion discs — are reviewable at a glance. Reuses the SAME feature builders as the live
 // holo (bodyFeatures) so what you see here is what the system view draws.
 import * as THREE from 'three';
-import { createGlRenderer } from '$lib/rendering/glRenderer';
+import { createGlRenderer, releaseGlRenderer } from '$lib/rendering/glRenderer';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -317,7 +317,7 @@ export function createGalleryScene(
 			for (const d of disposables) d.dispose();
 			(lensingPass.material as THREE.Material)?.dispose();
 			composer.dispose();
-			renderer.dispose();
+			releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
 			scene.traverse((o) => {
 				const m = (o as any).material; const geo = (o as any).geometry;
 				if (geo) geo.dispose();

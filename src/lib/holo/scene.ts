@@ -50,7 +50,7 @@ import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
-import { createGlRenderer } from '$lib/rendering/glRenderer';
+import { createGlRenderer, releaseGlRenderer, glContextEvents } from '$lib/rendering/glRenderer';
 import { shouldRender, IDLE_HEARTBEAT_MS } from '$lib/rendering/renderIdle';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
@@ -473,33 +473,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     geometries: renderer.info.memory.geometries,
     textures: renderer.info.memory.textures,
     programs: renderer.info.programs?.length ?? 0,
-    ...(glContextLost ? { contextLost: glContextLost } : {}),
-    ...(glContextRestored ? { contextRestored: glContextRestored } : {})
+    // WEBGL CONTEXT LOSS, AS AN INSTRUMENT (C10). The listener and the counters used to live here,
+    // and were the ONLY ones in the app - five other surfaces went dead and silent when a context
+    // was reaped. They moved into `createGlRenderer` so every surface gets them (C20 job 3); this
+    // still reads them, so [sse-perf] reports exactly what it always did.
+    ...(glContextEvents(renderer).lost ? { contextLost: glContextEvents(renderer).lost } : {}),
+    ...(glContextEvents(renderer).restored ? { contextRestored: glContextEvents(renderer).restored } : {})
   }));
-
-  // WEBGL CONTEXT LOSS, AS AN INSTRUMENT. Nothing in this app listened for it before (C10, where it
-  // was investigated as a cause and refuted). The blindness is the point rather than the fault: a
-  // mobile GPU CAN drop a context under memory pressure, and if it ever does, the app currently
-  // cannot tell - the canvas holds its last image, no exception is thrown, nothing reaches
-  // [sse-perf] or the diagnostic bundle, and the user has an unreportable freeze that a refresh
-  // "fixes". Counting it makes the next report answerable in one line instead of a session.
-  //
-  // preventDefault on the loss event is what PERMITS a restore; without it the browser may never
-  // fire `webglcontextrestored`. The actual recovery (rebuilding the scene on restore) is
-  // deliberately NOT built here - build it when a counter says it happens, not before.
-  let glContextLost = 0;
-  let glContextRestored = 0;
-  canvas.addEventListener('webglcontextlost', (e) => {
-    e.preventDefault();
-    glContextLost++;
-    perfCount('holo.glContextLost');
-    console.warn('[holo] WebGL context LOST - the scene is frozen from here; a reload restores it.');
-  });
-  canvas.addEventListener('webglcontextrestored', () => {
-    glContextRestored++;
-    perfCount('holo.glContextRestored');
-    console.warn('[holo] WebGL context restored - the scene is NOT rebuilt automatically yet (C10).');
-  });
 
   const scene = new THREE.Scene();
   // Background as scene.background (a colour-managed Color), NOT renderer.setClearColor: a bare clear
@@ -5554,7 +5534,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     glowTexture.dispose();
     hotspotTexture.dispose();
     plumeTexture.dispose();
-    renderer.dispose();
+    releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
     pointer.abort();
   }
 

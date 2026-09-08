@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.20 - 8th Sep 2026
+
+- **Closing a 3D view now gives its graphics back to the browser, which is the real cause of the lockup.** A browser will only keep a small number of 3D views alive at once - around sixteen in Chrome and Edge - and when it runs out it silently kills the oldest one. SSE was tidying up its own objects when you closed the Holoview, the size comparison, the gallery, the starmap or a model viewer, but it was never handing the graphics context itself back, so they piled up invisibly. Open and close a few 3D views in one session and the browser would start killing views you were still using. All six now hand it back properly.
+- **And if the browser does take a view's graphics away, it says so instead of just stopping.** Only the Holoview noticed this before; the other five went quietly blank and left you looking at a frozen picture with no explanation. All six now tell you what happened and that closing some views or reloading will bring it back.
+
 ## v3.1.19 - 8th Sep 2026
 
 - Documentation only: the Creator Hub's half of the contract records that a campaign saved from now on lists only the calendars its GM actually made, so the hub can stop guessing which of them came with the app.
@@ -16,6 +21,7 @@ All notable changes are listed here:
 - Two things worth knowing about how it will work, because they are built in rather than promised. A relay is the **last** route a browser tries: everyone who can connect directly still does, straight from their device to yours, and never touches it. And when it is used it cannot read anything it carries - the connection is encrypted between the two browsers - while hiding your address and your players' from each other, which a direct connection does not.
 - Settings will carry a switch to turn it off entirely, appearing only once there is something to switch.
 - **Fixed: the waiting screen blamed the GM.** "Reaching the host - this will fill in automatically once the GM is broadcasting" is what a blocked player sat on, and it is what one group reported back to their GM as "it showed you were offline" when the GM was working perfectly well. It now says the connection is being made, without pointing at anybody.
+
 
 ## v3.1.16 - 8th Sep 2026
 

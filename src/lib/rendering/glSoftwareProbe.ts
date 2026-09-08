@@ -21,8 +21,6 @@
 // view. Steer, don't stop - so the question is asked once, on a 1x1 canvas that is thrown away
 // immediately, and the answer is remembered for the session.
 
-import { writable } from 'svelte/store';
-
 /** What this machine is actually going to draw with. */
 export type RenderPath =
 	/** A real GPU, or at least a context the browser is not embarrassed by. */
@@ -121,19 +119,4 @@ export function renderPath(): RenderPath {
 /** Tests only: forget the measurement so the next call re-measures. */
 export function resetRenderPathForTests(): void {
 	cached = null;
-}
-
-/**
- * The sentence to put in front of whoever is looking, or null. Session-only, dismissible, said once.
- *
- * It is a STORE rather than a return value because the measurement happens where the renderer is
- * built and the sentence has to appear on whichever 3D view the GM happens to have open - the holo
- * and the size comparison are both named in the owner's report, and a message written into each
- * host separately is two messages that drift.
- */
-export const renderPathMessage = writable<string | null>(null);
-
-/** Dismiss it. It does not come back: the measurement is not repeated, so nor is the sentence. */
-export function dismissRenderPathMessage(): void {
-	renderPathMessage.set(null);
 }

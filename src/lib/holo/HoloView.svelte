@@ -11,7 +11,7 @@
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { lowPower, drawsHeavy } from '$lib/lowPowerStore';
   import RenderNotice from '$lib/components/RenderNotice.svelte';
-  import { renderPathMessage, dismissRenderPathMessage } from '$lib/rendering/glSoftwareProbe';
+  import { renderNotice, dismissRenderNotice } from '$lib/rendering/renderNotice';
   import { distanceFlavour } from '$lib/units';
   import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
   import { liveOverrides } from '$lib/player/liveOverrides';
@@ -254,7 +254,7 @@
   <!-- C20: the machine told us, before a frame was drawn, that it is rendering in software. That is
        a different fact from the frame-rate guard's - it is about the HARDWARE rather than this
        scene - so it is said separately, and it is said on the size comparison too. -->
-  <RenderNotice message={$renderPathMessage} onDismiss={dismissRenderPathMessage} />
+  <RenderNotice message={$renderNotice} onDismiss={dismissRenderNotice} />
   {#if legend}
     <!-- A grid is only a measure if the reader is told what one cell is worth. `pointer-events: none`
          because this sits over a canvas that owns drag, pinch and click-to-select. -->

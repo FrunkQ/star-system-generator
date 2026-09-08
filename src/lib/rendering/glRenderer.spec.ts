@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { fakeCanvas } from './glTestCanvas';
 
 /**
  * C20: WHAT WE ACTUALLY ASK THE BROWSER FOR.
@@ -27,7 +28,7 @@ vi.mock('three', () => ({
 	}
 }));
 
-const canvas = {} as HTMLCanvasElement;
+const canvas = fakeCanvas();   // the factory now attaches context-loss listeners to it
 
 // Imported ONCE at module scope rather than inside each test. Resolving and transforming this module
 // (and the store and probe it now pulls in) costs seconds on a cold worker, which was enough to blow

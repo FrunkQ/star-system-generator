@@ -9,7 +9,7 @@
 // since G26, the STAR LOOK builder in holo/bodyFeatures (corona + flares + tag decorations), sized here
 // to a screen radius rather than copied.
 import * as THREE from 'three';
-import { createGlRenderer } from '$lib/rendering/glRenderer';
+import { createGlRenderer, releaseGlRenderer } from '$lib/rendering/glRenderer';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -1350,7 +1350,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     (starfield.geometry as any)?.dispose?.(); (starfield.material as any)?.dispose?.();
     glowTexShared?.dispose(); glowTexShared = null;
     if (filterPass) (filterPass.material as THREE.Material).dispose();
-    composer.dispose(); renderer.dispose();
+    composer.dispose(); releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
   }
 
   rebuildGrid();

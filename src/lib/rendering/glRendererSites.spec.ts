@@ -20,6 +20,8 @@ import { join, relative } from 'node:path';
  * that is a conversation to have on the board, not a line to add to `ALLOWED`.
  */
 const CONSTRUCTOR = /new\s+(?:THREE\s*\.\s*)?WebGLRenderer\s*\(/;
+/** C20 job 3: a teardown that only disposes keeps the CONTEXT. `releaseGlRenderer` gives it back. */
+const BARE_DISPOSE = /\brenderer\s*\.\s*dispose\s*\(/;
 const ROOT = 'src';
 /** The factory itself, and nothing else. A second name here means the fault has come back. */
 const ALLOWED = ['src/lib/rendering/glRenderer.ts'];
@@ -35,6 +37,9 @@ function* sourceFiles(dir: string): Generator<string> {
 describe('one renderer factory (C20)', () => {
 	it('no source file outside the factory constructs a WebGLRenderer', () => {
 		const hits: string[] = [];
+		const disposals: string[] = [];
+		// ONE pass over src/ for BOTH pins. Reading every file twice is the difference between
+		// this finishing inside its budget and timing out under a full parallel run.
 		for (const file of sourceFiles(ROOT)) {
 			const rel = relative(process.cwd(), file).replace(/\\/g, '/');
 			if (ALLOWED.includes(rel)) continue;
@@ -44,8 +49,13 @@ describe('one renderer factory (C20)', () => {
 					// A mention inside a comment is documentation, not a second decision.
 					const code = line.replace(/\/\/.*$/, '').replace(/^\s*\*.*$/, '');
 					if (CONSTRUCTOR.test(code)) hits.push(`${rel}:${i + 1}: ${line.trim().slice(0, 100)}`);
+					if (BARE_DISPOSE.test(code)) disposals.push(`${rel}:${i + 1}: ${line.trim().slice(0, 100)}`);
 				});
 		}
+		expect(
+			disposals,
+			`these free three's objects but keep the WebGL CONTEXT - call releaseGlRenderer instead:\n${disposals.join('\n')}`
+		).toEqual([]);
 		expect(
 			hits,
 			`these build a renderer without going through createGlRenderer, so they ask the browser for nothing:\n${hits.join('\n')}`

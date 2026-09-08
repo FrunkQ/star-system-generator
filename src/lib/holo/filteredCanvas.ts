@@ -3,7 +3,7 @@
 // (the cover) warps / picture-rolls / tints for real instead of a CSS approximation. Plain module so
 // three code-splits into its own chunk (loaded only when a filtered cover is shown). See HoloView/scene.
 import * as THREE from 'three';
-import { createGlRenderer } from '$lib/rendering/glRenderer';
+import { createGlRenderer, releaseGlRenderer } from '$lib/rendering/glRenderer';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
@@ -95,7 +95,7 @@ export function createFilteredCanvas(canvas: HTMLCanvasElement): FilteredCanvasC
     srcTex?.dispose();
     quad.geometry.dispose(); mat.dispose();
     if (filterPass) (filterPass.material as THREE.Material).dispose();
-    composer.dispose(); renderer.dispose();
+    composer.dispose(); releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
   }
 
   return { setSource, setFilter, warpPoint, resize, dispose };
