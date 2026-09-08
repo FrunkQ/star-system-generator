@@ -2,10 +2,18 @@
 
 All notable changes are listed here:
 
+## v3.1.25 - 8th Sep 2026
+
+- **A small device now turns Low power on for itself.** Browsers report roughly how much memory the machine has, and SSE has been collecting that number for its diagnostic reports without ever acting on it. A device reporting 2 GB or less now starts in Low power the first time a 3D view opens - the machines most likely to need that setting being the least likely to go looking for it. It is the same tickbox you already have, not a hidden mode, so you can see it is on and turn it straight off.
+- **And whatever you have chosen yourself always wins.** If you have ticked or unticked Low power, nothing automatic changes it, in either direction, for as long as that browser remembers. A 4 GB machine is deliberately left alone: that is an ordinary working laptop and stripping its clouds by default would be a change nobody asked for.
+- **The preset preview stops holding a spare copy of its picture in memory.** A 3D view has to keep its last frame when something is going to photograph it - which is how a world's picture gets inside a filtered document, and how a view-entry transition works. The preview in Player View setup is photographed by nothing, so it no longer pays for that. The views that ARE photographed are unchanged, and now say so in their own code.
+- If you send a diagnostic file, it now records whether Low power was on and why - your own choice, a small device, or a browser that had fallen back to drawing on the processor.
+
 ## v3.1.24 - 8th Sep 2026
 
 - The relay now lives at `turn.starsystemx.com` rather than a `workers.dev` address. That is not cosmetic: `workers.dev` is a hostname routinely blocked by corporate and school firewalls, and those are exactly the restrictive networks a relay exists to rescue - a blocked endpoint would have meant no relay for precisely the people who need one.
 - The old address still answers, so any build already out there keeps working.
+
 
 ## v3.1.23 - 8th Sep 2026
 
@@ -21,6 +29,7 @@ All notable changes are listed here:
 - **Remote players now have a relay, and nobody has to set it up.** When a player's network will not carry a direct connection to you, the connection falls back to a relay automatically. Until today there was nothing to fall back to - the free one this app inherited had quietly stopped existing - which is why some players could join and others never could, with nothing on either end to point at.
 - It is the LAST route tried, and that is measured rather than claimed: a relay route ranks about thirty times below a direct one, so every player who can reach you directly still does, straight from their device to yours, and never touches it. When it is used it cannot read anything it carries - the connection is encrypted between the two browsers - and it hides your address and theirs from each other, which a direct connection does not.
 - Settings > Remote players carries a switch to turn it off, and your own relay still takes precedence over ours if you have one.
+
 
 ## v3.1.20 - 8th Sep 2026
 

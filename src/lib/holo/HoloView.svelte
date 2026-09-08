@@ -26,7 +26,10 @@
 
   const dispatch = createEventDispatcher<{ focus: string }>();
 
-  export let system: System | null = null;
+  // C20 job 5: does anything copy this canvas's pixels? Default TRUE - see `HoloOptions.capture`
+  // for why the safe default is the expensive one here. Set false only for a surface nobody copies.
+  export let capture: boolean = true;
+  export let system: System | null = null;
   export let currentTime: number = 0;
   // Accepted for prop-parity with SystemVisualizer; wired to camera focus in a later increment.
   export let focusedBodyId: string | null = null;
@@ -188,7 +191,7 @@
     (async () => {
       const { createHoloScene } = await importOrReload(() => import('$lib/holo/scene'));
       if (cancelled || !canvas) return;
-      controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id) });
+      controller = createHoloScene(canvas, { onSelect: (id) => dispatch('focus', id), capture });
       controller.setSystem(system, 'mount');
       controller.setTime(currentTime);
       controller.focusBody(focusedBodyId);

@@ -7167,6 +7167,20 @@ a person could set the value). Anything that automatically proposes low power mu
 `proposeLowPower`, and precedence over a person's choice is settled in ONE expression
 (`lowPowerStore.ts:effective`) - a second copy of that rule was written and proved DEAD by mutation
 before it could drift.
+
+ADDENDUM, jobs 3-5. THE CONTEXT IS A RESOURCE WITH AN OWNER, AND `dispose()` IS NOT GIVING IT BACK.
+`renderer.dispose()` frees THREE's objects; the WebGL CONTEXT survives until collection.
+`forceContextLoss()` is the hand-back and must come AFTER dispose - three cannot free GPU objects
+through a context that no longer exists. Browsers cap live contexts (Chromium ~16) and silently kill
+the OLDEST at the cap, which is why five surfaces with no `webglcontextlost` handler simply went
+dead. Both now live in `createGlRenderer` / `releaseGlRenderer`; `glRendererSites.spec.ts` fails on a
+bare `renderer.dispose()` as well as a bare constructor.
+AND `preserveDrawingBuffer` IS PER USE, NOT PER MODULE. One module (`createHoloScene`) serves a small
+body graphic that IS copied ([[A38]]) and a full-screen view that is not, so the expensive one paid
+for a capture that never happened. Its default is TRUE, the opposite of the factory's, and that is
+deliberate: both failure modes here are SILENT (a blank body graphic, a black transition snapshot),
+so the default protects the working case and a saving must be claimed explicitly. Trace `drawImage`,
+`toDataURL`, `createImageBitmap` and `getCanvas()` before passing false.
 BLAST: adding a seventh 3D surface means calling the factory, not the constructor - the source pin
 fails the suite otherwise. And BEWARE ASSERTING THE PIXEL RATIO UNDER VITEST: jsdom reports a
 `devicePixelRatio` of 1, where low power and full power return the SAME number, so an assertion

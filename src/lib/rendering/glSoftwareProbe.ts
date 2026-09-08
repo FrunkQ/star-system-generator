@@ -116,6 +116,18 @@ export function renderPath(): RenderPath {
 	return cached;
 }
 
+/**
+ * What we already know, WITHOUT asking. Null if nothing has opened a 3D view yet.
+ *
+ * For readers that must not have side effects - the diagnostic bundle above all. Calling
+ * `renderPath()` there would CREATE AND DESTROY A WebGL CONTEXT on a session that had never drawn
+ * anything, purely to fill in a report field, which is both a lie about what the session did and a
+ * cost paid by the machine least able to afford it.
+ */
+export function knownRenderPath(): RenderPath | null {
+	return cached;
+}
+
 /** Tests only: forget the measurement so the next call re-measures. */
 export function resetRenderPathForTests(): void {
 	cached = null;

@@ -43,7 +43,13 @@ describe('one renderer factory (C20)', () => {
 		for (const file of sourceFiles(ROOT)) {
 			const rel = relative(process.cwd(), file).replace(/\\/g, '/');
 			if (ALLOWED.includes(rel)) continue;
-			readFileSync(file, 'utf8')
+			const text = readFileSync(file, 'utf8');
+			// CHEAP REJECT FIRST. Splitting and running two regexes over every line of every file in src/
+			// is real CPU under a parallel run, and it made neighbouring source-scanning specs time out on
+			// their default budgets. Almost no file contains either word, so one substring test skips the
+			// per-line work entirely without narrowing what is scanned - the pin stays complete.
+			if (!text.includes('WebGLRenderer') && !text.includes('dispose(')) continue;
+			text
 				.split(/\r?\n/)
 				.forEach((line, i) => {
 					// A mention inside a comment is documentation, not a second decision.

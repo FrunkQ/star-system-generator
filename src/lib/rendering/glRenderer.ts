@@ -29,6 +29,7 @@ import { pixelRatioFor } from './lowPowerRender';
 import { renderPath, renderPathNotice } from './glSoftwareProbe';
 import { setRenderNotice } from './renderNotice';
 import { perfCount } from '$lib/perfTrace';
+import { proposeLowPowerForSmallDevice } from './deviceClass';
 import { proposeLowPower } from '$lib/lowPowerStore';
 
 /** What a surface is allowed to differ about. Everything absent from here is the factory's call. */
@@ -126,6 +127,11 @@ let asked = false;
 function askOnce(): void {
 	if (asked) return;
 	asked = true;
+	// A SMALL DEVICE GETS THE SAME ANSWER AS A SLOW ONE, through the same switch (job 4). Asked first
+	// because it costs nothing - a property read, no context creation - and because the two compose
+	// harmlessly: a small device that is ALSO software-rendering proposes low power twice and gets it
+	// once, and a person who has already chosen beats both.
+	proposeLowPowerForSmallDevice();
 	const path = renderPath();
 	if (path === 'gpu') return;
 	// Low power cannot rescue a machine with no WebGL at all, so it is only proposed for the software

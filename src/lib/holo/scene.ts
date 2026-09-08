@@ -230,6 +230,21 @@ export interface HoloController {
 export interface HoloOptions {
   onSelect?: (id: string) => void; // fired when the viewer taps a body
   skybox?: boolean; // background starfield (default true); a GM-selectable skybox slot later
+  /**
+   * Something will copy this canvas's pixels, so the last frame must stay readable after it is
+   * presented. C20 job 5.
+   *
+   * DEFAULTS TO TRUE, WHICH IS THE OPPOSITE OF THE FACTORY'S DEFAULT, AND DELIBERATELY SO. Two of
+   * the three places that mount a holo genuinely capture it, and BOTH failure modes are SILENT: a
+   * body graphic that should be inside the document's filter comes out blank ([[A38]]), and a
+   * view-entry transition snapshots a black rectangle. A default that fails loudly can be false; a
+   * default that fails silently should protect the working case and make the saving explicit.
+   *
+   * Pass FALSE only for a surface you have checked nobody copies. The cost is a whole extra drawing
+   * buffer kept alive after every present - about 59 MB on a full-screen retina holo - which is
+   * exactly the memory C20 is short of, so it is worth checking.
+   */
+  capture?: boolean;
 }
 
 // An in-scene text label: a canvas-textured sprite living in the 3D scene (NOT a DOM overlay) so the
@@ -464,7 +479,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // caller drawImage() this canvas into another one. Without it a WebGL canvas captured outside its
   // own render callback comes back BLANK — and that capture is how the body graphic gets INSIDE the
   // document's filter pass rather than being composited, unfiltered, on top of it (inbox A38).
-  const renderer = createGlRenderer({ canvas, surface: 'holo', antialias: true, alpha: true, preserveDrawingBuffer: true });
+  const renderer = createGlRenderer({ canvas, surface: 'holo', antialias: true, alpha: true, preserveDrawingBuffer: opts.capture !== false });
   renderer.setClearColor(0x05070c, 1);
   // GPU-side resource gauge for the perf trace: geometries/textures three still holds alive. If these
   // climb across setSystem cycles while the scene shows the same thing, something survives clearContent

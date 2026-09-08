@@ -24,7 +24,10 @@
 // loader anywhere" — test-load it elsewhere. The live copy answers "how far did it get, and what had
 // it produced". A mid-load failure wants both; on demand they differ only by unsaved edits.
 import { zipSync, strToU8 } from 'fflate';
+import { get } from 'svelte/store';
 import { readMemory } from '$lib/memoryWatch';
+import { lowPower, lowPowerChoice, lowPowerAuto } from '$lib/lowPowerStore';
+import { knownRenderPath } from '$lib/rendering/glSoftwareProbe';
 import { campaignUnit } from '$lib/map/distanceUnits';
 
 export interface DiagnosticInput {
@@ -158,6 +161,20 @@ export function buildDiagnosticReport(input: DiagnosticInput, appVersion: string
     memory: mem.supported
       ? { usedMB: Math.round(mem.usedMB), limitMB: Math.round(mem.limitMB), percentOfLimit: Math.round(mem.frac * 100) }
       : { supported: false, note: 'this browser does not report memory usage' },
+    // WHAT THE MACHINE'S NUMBERS ACTUALLY DECIDED (C20). `deviceMemoryGB` below has been collected
+    // since the memory investigation and decided nothing - it was a number a human read afterwards.
+    // Now it can turn low power on, and so can a browser that has fallen back to software
+    // rendering, so a report has to say WHICH of those happened or the next lockup report costs a
+    // session to answer instead of a line. `choice` is the person's own answer ('auto' = they have
+    // not given one) and `auto` is what the machine worked out; `effective` is what was drawn.
+    graphics: {
+      effectiveLowPower: get(lowPower),
+      gmChoice: get(lowPowerChoice),
+      automatic: get(lowPowerAuto),
+      // The REMEMBERED answer, never a fresh measurement: null means this session never opened a 3D
+      // view, and asking here would create a context purely to fill in a report field.
+      renderPath: knownRenderPath()
+    },
     device: {
       userAgent: (nav as any).userAgent ?? null,
       platform: (nav as any).platform ?? null,
