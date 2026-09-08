@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.54 - 8th Sep 2026
+
+- Board only, no behaviour change: the contact-binary work is written up, with the short list of things worth a look in a real window - all of them 3D, because the browser used for checking cannot draw a 3D view. The type ships without a picture, as the rubble pile does, because the obvious one is somebody else's artwork and its licence has not been checked.
+
 ## v3.1.53 - 8th Sep 2026
 
 - **The generator now makes the occasional contact binary.** About one small moon in eight comes out as two lobes joined at a neck, which is roughly the fraction radar surveys find among real near-Earth asteroids. It changes nothing else: a seed you have generated before produces exactly the same system it always did, apart from those bodies now having a shape. You can turn it off, or change how often it happens, in the rule pack.
