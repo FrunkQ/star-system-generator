@@ -110,3 +110,72 @@ describe('the build yields, and never starves (C21)', () => {
 		expect(src).toMatch(/deferred: deferredThisPass/);
 	});
 });
+
+/**
+ * C21c: A DIFFERENT SIZE IS A SCALE, AND WHAT IS BUILT STAYS BUILT.
+ *
+ * The owner, still on it after the texture fix, 2026-09-08: *"I am still getting textures
+ * disappearing as I switch between moons/planets - we need to keep EVERY texture currently being
+ * displayed in the scene. Having it retexture and eventually hang as I move between planets is
+ * wrong."*
+ *
+ * He had the cause. The strip's scale FOLLOWS THE FOCUS (`scaleForFocus`), so choosing a different
+ * moon changes `diameterPx` for EVERY object at once - and the reuse test compared that number for
+ * equality, so every focus change destroyed and rebuilt the whole visible strip. Nothing about any
+ * body had changed; only how big it was being drawn.
+ *
+ * Scaling is not an approximation of the rebuild, it is the SAME PICTURE: tessellation in `bodyLook`
+ * is a fixed 16/10 or 32/24 and is never derived from the radius, so a globe built at one radius and
+ * scaled to another is identical to one built at the second.
+ */
+describe('a different size is a scale, not a rebuild (C21c)', () => {
+	const reuse = src.slice(src.indexOf('if (existing && sameShape(existing, slot))'), src.indexOf('if (existing) { destroy(slot.id); }'));
+
+	it('re-uses the existing body and scales it', () => {
+		expect(reuse).toMatch(/group\.scale\.setScalar\(radiusNow \/ existing\.builtRadius\)/);
+		expect(reuse).not.toMatch(/destroy\(/);
+	});
+
+	it('remembers the radius it was built at, or there is nothing to scale against', () => {
+		expect(src).toMatch(/builtRadius: radius/);
+		expect(src).toMatch(/builtRadius: number/);
+	});
+
+	it('tells the lensing pass the new radius - it is fed in pixels and is not a child of the group', () => {
+		expect(reuse).toMatch(/existing\.lens\.radiusPx = radiusNow/);
+	});
+
+	it('rebuilds ONLY when the ring changes width relative to its planet', () => {
+		// The one thing a uniform scale cannot express. Everything else in a look is a multiple of the
+		// radius and a child of the group, so one scale keeps every proportion as built.
+		expect(src).toMatch(/function sameShape/);
+		expect(src).toMatch(/ringRatioOf\(slot\) - existing\.builtRingRatio/);
+		expect(src).toMatch(/function ringRatioOf/);
+	});
+
+	it('compares that ratio with a tolerance, because both figures are re-derived floats', () => {
+		expect(src).toMatch(/< 1e-4/);
+	});
+});
+
+describe('what is built stays built (C21c)', () => {
+	it('a body that scrolls out is HIDDEN, not destroyed', () => {
+		expect(src).toMatch(/for \(const \[id, b\] of built\) if \(!wanted\.has\(id\)\) b\.group\.visible = false;/);
+	});
+
+	it('and is shown again when it comes back', () => {
+		expect(src).toMatch(/existing\.group\.visible = true/);
+	});
+
+	it('but the kept set is capped, furthest from the window evicted first', () => {
+		expect(src).toMatch(/const KEEP_MAX = \d+/);
+		expect(src).toMatch(/built\.size > KEEP_MAX/);
+		expect(src).toMatch(/evictable\.slice\(0, built\.size - KEEP_MAX\)/);
+	});
+
+	it('a hidden body is neither animated nor fed to the lensing pass', () => {
+		// Kept for a fast return is not the same as kept working: it must cost nothing while unseen.
+		expect(src).toMatch(/if \(!b\.group\.visible\) continue;/);
+		expect(src).toMatch(/if \(!b\.lens \|\| !b\.group\.visible/);
+	});
+});

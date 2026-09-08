@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.42 - 8th Sep 2026
+
+- **Fixed: moving between worlds in Size comparison rebuilt every world on screen.** This is the rest of the slow-machine problem, and again the owner had the cause: *"we need to keep EVERY texture currently being displayed in the scene"*. The strip sizes itself around whichever world you have picked, so choosing a different moon changes how big EVERYTHING is drawn - and the view treated a change of size as a reason to throw a world away and make it again. It never was one: a world is now simply drawn larger or smaller, which is the identical picture, and moving between worlds costs nothing.
+- **And a world you scroll past is now kept rather than discarded**, so coming back to it is instant instead of rebuilding it. They stop drawing while out of sight, so they cost nothing to keep, and a very long strip still has a limit.
+
 ## v3.1.41 - 8th Sep 2026
 
 - **A planet copied from the map library now brings the custom rules it needs.** Copy a world whose ocean is a liquid the map's owner invented, paste it into your campaign, and the liquid comes with it - so the world freezes, boils and looks the way its author meant, instead of quietly falling back to defaults while the paste told you it had worked.

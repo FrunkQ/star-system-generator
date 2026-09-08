@@ -237,6 +237,12 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     lens?: { radiusPx: number };
     /** True for a FEEDING hole's accretion disc, which flares rather than sitting still. */
     flares?: boolean;
+    /**
+     * The radius this look's geometry was actually built at, and the ring proportion it was built
+     * with. A later size is applied as a SCALE on the group against these - see `reconcile`.
+     */
+    builtRadius: number;
+    builtRingRatio: number;
   }
   const built = new Map<string, Built>();
   let slots: ComparisonSlot[] = [];
@@ -246,6 +252,25 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
   let vw = 1, vh = 1;
   let selected: string | null = null;
   let disposed = false;
+
+  /**
+   * A ring's width as a fraction of the body, which is the one thing a uniform scale cannot fix.
+   * Zero when there is no ring, so a body that gains or loses one is correctly a rebuild.
+   */
+  function ringRatioOf(slot: ComparisonSlot): number {
+    return slot.ringOuterPx && slot.diameterPx ? slot.ringOuterPx / slot.diameterPx : 0;
+  }
+
+  /**
+   * Can this existing body be re-used at the new slot, or must it be built again?
+   *
+   * Only the PROPORTIONS matter. The absolute size is a scale (see `reconcile`); what a scale cannot
+   * express is a ring that has changed its width RELATIVE to its planet, so that is the test - with
+   * a tolerance, because both figures are floating point and arrive re-derived every layout.
+   */
+  function sameShape(existing: Built, slot: ComparisonSlot): boolean {
+    return Math.abs(ringRatioOf(slot) - existing.builtRingRatio) < 1e-4;
+  }
 
   function positionOf(slot: ComparisonSlot): [number, number, number] {
     // The strip runs left to right on a desktop and top to bottom on a phone. Either way the objects
@@ -299,6 +324,15 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
    * the physics has not produced yet. One neutral wire reads as "not ready", which is true.
    */
   const BUILD_BUDGET_MS = 8; // about half a 60 Hz frame: enough to make progress, small enough to yield
+  /**
+   * How many built bodies to keep alive, including those scrolled out of sight.
+   *
+   * Generous on purpose. Since the surfaces are shared textures, a kept body costs geometry and
+   * materials - kilobytes, not the megabytes a texture would be - and the thing it buys is that
+   * moving up and down a strip of moons never rebuilds anything. The cap exists only so a very long
+   * strip cannot grow without limit.
+   */
+  const KEEP_MAX = 48;
   const PLACEHOLDER_GEO = new THREE.SphereGeometry(1, 16, 12); // ONE unit sphere, scaled per slot
   const PLACEHOLDER_MAT = new THREE.MeshBasicMaterial({
     color: 0x5f7a9e,
@@ -379,9 +413,27 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       if (!inWindow(slot)) continue;
       wanted.add(slot.id);
       const existing = built.get(slot.id);
-      if (existing && existing.slot.diameterPx === slot.diameterPx && existing.slot.ringOuterPx === slot.ringOuterPx) {
+      if (existing && sameShape(existing, slot)) {
+        // A DIFFERENT SIZE IS A SCALE, NEVER A REBUILD. This is the whole of the owner's report on
+        // 2026-09-08: *"I am still getting textures disappearing as I switch between moons/planets -
+        // we need to keep EVERY texture currently being displayed in the scene."* He was describing
+        // the cause exactly. The strip's scale FOLLOWS THE FOCUS (`scaleForFocus`), so picking a
+        // different moon changes `diameterPx` for EVERY object at once - and the old test compared
+        // that number for equality, so every focus change destroyed and rebuilt the entire visible
+        // strip. Nothing about the body had changed; only how big it was being drawn.
+        //
+        // Scaling is not an approximation of the rebuild, it is the SAME PICTURE: tessellation is a
+        // fixed 16/10 or 32/24 in `bodyLook` and never derived from the radius, so a globe built at
+        // one radius and scaled to another is identical to one built at the second. Everything else
+        // in the look - corona, shells, rings, plumes - is built as a multiple of the radius and is
+        // a child of this group, so one uniform scale keeps every proportion exactly as built.
         existing.slot = slot;   // the cross offset and the scroll both move without a rebuild
         existing.group.position.set(...positionOf(slot));
+        const radiusNow = slot.diameterPx / 2;
+        existing.group.scale.setScalar(radiusNow / existing.builtRadius);
+        // The lens is fed in PIXELS and is not a child of the group, so it is told separately.
+        if (existing.lens) existing.lens.radiusPx = radiusNow;
+        existing.group.visible = true;
         continue;
       }
       if (existing) { destroy(slot.id); }
@@ -500,13 +552,28 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       builtThisPass++;
       built.set(slot.id, {
         look, group, slot, ring,
+        builtRadius: radius,
+        builtRingRatio: ringRatioOf(slot),
         // A black hole is a lensing centre. Its Einstein radius is taken from its OWN drawn radius,
         // which on this view is its true one — so the bend is as big as the hole really is.
         lens: isBlackHoleNode(slot.node) ? { radiusPx: radius } : undefined,
         flares
       });
     }
-    for (const id of [...built.keys()]) if (!wanted.has(id)) destroy(id);
+    // OUT OF THE WINDOW IS HIDDEN, NOT DESTROYED - the second half of the owner's instruction, and
+    // the reason scrolling back used to cost anything at all. A body that has left the window keeps
+    // its geometry and its materials and simply stops drawing, so returning to it is free. Textures
+    // were already shared (`sharedTexture`), so what this saves is the rebuild, not the upload.
+    for (const [id, b] of built) if (!wanted.has(id)) b.group.visible = false;
+    // ...but not without end. Past the cap the ones FURTHEST from the window go first, because they
+    // are the least likely to be wanted next and the strip is scrolled through in order.
+    if (built.size > KEEP_MAX) {
+      const centre = scrollPx + (axis === 'x' ? vw : vh) / 2;
+      const evictable = [...built.entries()]
+        .filter(([id]) => !wanted.has(id))
+        .sort((a, b) => Math.abs(b[1].slot.centrePx - centre) - Math.abs(a[1].slot.centrePx - centre));
+      for (const [id] of evictable.slice(0, built.size - KEEP_MAX)) destroy(id);
+    }
     for (const id of [...placeholders.keys()]) if (!wanted.has(id)) clearPlaceholder(id);
     if (deferredThisPass) perfCount('comparison.bodiesDeferred', deferredThisPass);
     if (!builtThisPass) return; // a settled strip reconciles to nothing and must cost nothing to watch
@@ -622,7 +689,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     const aspect = vw / Math.max(1, vh);
     let n = 0;
     for (const b of built.values()) {
-      if (!b.lens || n >= MAX_LENSES) continue;
+      if (!b.lens || !b.group.visible || n >= MAX_LENSES) continue;
       _lc.copy(b.group.position).project(camera);
       if (_lc.x < -1.6 || _lc.x > 1.6 || _lc.y < -1.6 || _lc.y > 1.6) continue;   // off screen: no lens
       _le.copy(b.group.position).addScaledVector(_right, b.lens.radiusPx).project(camera);
@@ -656,6 +723,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     reconcile();
     applyRingFade();
     for (const b of built.values()) {
+      if (!b.group.visible) continue;   // kept for a fast return, but out of sight and not drawn
       // A slow turn, so a globe reads as a globe rather than as a printed circle. Slow on purpose:
       // this is a measuring instrument and a spinning one is harder to compare against its neighbour.
       _q.setFromAxisAngle(_y, 0.016 * 0.12);
