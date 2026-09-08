@@ -72,7 +72,7 @@ export function regionBounds(region) {
 // Shared WHERE clause for a region against a table exposing ra/dec (deg) and
 // a distance in PARSECS via `distExprPc` (archive: sy_dist; Gaia/SIMBAD:
 // 1000/parallax). ADQL's CONTAINS/CIRCLE does the sky cone.
-function regionWhere(region, distExprPc) {
+function regionWhere(region, distExprPc, prefix = '') {
   const b = regionBounds(region);
   const clauses = [
     `${distExprPc} >= ${b.shellMinPc.toFixed(6)}`,
@@ -81,7 +81,7 @@ function regionWhere(region, distExprPc) {
   if (b.coneHalfAngleDeg != null) {
     const { centre } = region;
     clauses.push(
-      `CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${centre.raDeg.toFixed(6)}, ${centre.decDeg.toFixed(6)}, ${b.coneHalfAngleDeg.toFixed(6)})) = 1`
+      `CONTAINS(POINT('ICRS', ${prefix}ra, ${prefix}dec), CIRCLE('ICRS', ${centre.raDeg.toFixed(6)}, ${centre.decDeg.toFixed(6)}, ${b.coneHalfAngleDeg.toFixed(6)})) = 1`
     );
   }
   return clauses.join(' AND ');
@@ -186,6 +186,61 @@ export function simbadStarsAdql(region, { count = false } = {}) {
   ];
   const cols = count ? 'count(*) as systems' : SIMBAD_STAR_COLUMNS.join(', ');
   return `select ${cols} from basic where ${clauses.join(' AND ')}${count ? '' : ' order by plx_value desc'}`;
+}
+
+// ---------------------------------------------------- SIMBAD: what a star's SIZE is measured to be
+//
+// D29. THE CENSUS QUERY ABOVE CANNOT CARRY A SIZE, and the reason is not that somebody forgot the
+// column: `basic` HAS no mass, radius or temperature column, measured against TAP_SCHEMA on
+// 2026-09-08. SIMBAD keeps measurements in separate `mes*` tables, and there is no mass table at all.
+// So these two queries fetch what the catalogue DOES measure and `starSize.mjs` turns it into a size.
+//
+// TWO QUERIES RATHER THAN ONE, AND THAT IS DELIBERATE. `mesFe_h` holds one row per PUBLICATION - 43
+// for Sirius, 117 for Arcturus - so joining it beside `allfluxes` and `mesDiameter` in a single
+// select multiplies the row count by that. They are kept apart and reduced caller-side.
+//
+// BOTH ARE ENRICHMENT AND NEITHER MAY BREAK AN IMPORT. A star with no measured size still imports on
+// its class band, exactly as it did before this existed - see `loadStarSizes`.
+
+// One row per object: the magnitudes, and a direct diameter where SIMBAD has one.
+// `allfluxes` is one row per object; `mesDiameter` is rare enough (10 of 74 locally) that its
+// multiplicity costs nothing. THE `unit` COLUMN IS FETCHED BECAUSE IT VARIES PER ROW - SIMBAD writes
+// 'mas' for an interferometric diameter and 'km' for a derived one, and HD 95735 carries one of each.
+export function simbadStarFluxAdql(region) {
+  const distPc = '(1000.0/b.plx_value)';
+  const clauses = [
+    'b.plx_value > 0',
+    'b.ra is not null',
+    "b.otype not in ('Pl', 'Pl?')",
+    regionWhere(region, distPc, 'b.')
+  ];
+  return (
+    `select b.main_id as main_id, x.V as mag_v, x.K as mag_k, ` +
+    `d.diameter as diameter, d.unit as diameter_unit ` +
+    `from basic b left join allfluxes x on x.oidref = b.oid ` +
+    `left join mesDiameter d on d.oidref = b.oid ` +
+    `where ${clauses.join(' AND ')}`
+  );
+}
+
+// The effective temperature and surface gravity, newest measurement first.
+// `teff is not null` IS LOAD-BEARING: the lowest `mespos` for a star is often a metallicity-only
+// row with no temperature in it, so ordering without this filter hands back a null for a star that
+// has sixty published temperatures. Barnard's star is the local example.
+export function simbadStarTeffAdql(region) {
+  const distPc = '(1000.0/b.plx_value)';
+  const clauses = [
+    'b.plx_value > 0',
+    'b.ra is not null',
+    "b.otype not in ('Pl', 'Pl?')",
+    'f.teff is not null',
+    regionWhere(region, distPc, 'b.')
+  ];
+  return (
+    `select b.main_id as main_id, f.teff as teff, f.log_g as log_g, f.mespos as mespos ` +
+    `from mesFe_h f join basic b on b.oid = f.oidref ` +
+    `where ${clauses.join(' AND ')} order by main_id, mespos`
+  );
 }
 
 // ---------------------------------------------------------------- Gaia

@@ -1,6 +1,8 @@
 // Real-sky import — star classification helpers shared by the build kit and
 // the in-app importer. Spectral-type string → SSE star classes + type image.
 
+import { SOLAR_TEMPERATURE_K } from './constants.mjs';
+
 // The class for a star the catalogue gives no usable spectral type for. Mirrors `planet/unknown`
 // (system/typeRanges.ts) — a real class that says "not known", rather than a plausible guess.
 export const UNKNOWN_STAR_CLASS = 'star/unknown';
@@ -85,6 +87,10 @@ export function starParamsFromType(type, statTemplates, { otype } = {}) {
       ? mid(band.radiation_output)
       : luminositySolarFrom(mid(band.radius_solar), mid(band.temp_k)),
     ...(lum ? { luminosityClass: lum } : {}),
+    // D29: whether that luminosity is a DECLARED non-thermal output or was computed from the
+    // band's own radius and temperature. A caller that replaces those two with measured figures
+    // must recompute a thermal luminosity and must NOT touch a declared one.
+    luminosityDeclared: !!band.radiation_output,
     typicalForClass: true
   };
 }
@@ -114,7 +120,6 @@ export const LUMINOSITY_BAND = {
 
 // L/Lsun = (R/Rsun)^2 * (T/Tsun)^4 - Stefan-Boltzmann with the solar constants cancelled out. The
 // ONE spelling of it on the import side; the generator computes the same quantity the same way.
-const SOLAR_TEMPERATURE_K = 5778;
 export function luminositySolarFrom(radiusRsun, temperatureK) {
   if (!(radiusRsun > 0) || !(temperatureK > 0)) return undefined;
   return Math.pow(radiusRsun, 2) * Math.pow(temperatureK / SOLAR_TEMPERATURE_K, 4);

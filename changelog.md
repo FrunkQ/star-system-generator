@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.1.6 - 8th Sep 2026
+
+- **Imported real stars now come in at their real sizes.** Until now every star brought in from the sky catalogues was given the average mass, radius and temperature for its type, so Proxima Centauri arrived at nearly three times its true size and every red dwarf on the map was the same red dwarf. Each star's own measurements are now fetched and used: a measured temperature where one has been published, a radius worked out from that temperature together with the star's brightness and distance, and a mass from its luminosity. Proxima now imports at its true size to three decimal places, and only seven of the sixty-nine stars in a local-neighbourhood import still fall back to a class average.
+- **And each star says where its numbers came from.** A star's description now states, figure by figure, which of its mass, radius and temperature was measured, which was worked out from other measurements of that same star, and which is still a typical value for its class - so a class average can never again be read as an observation.
+- Stars the physics cannot honestly size this way - white dwarfs, brown dwarfs, neutron stars - deliberately keep their class figures and say so, because for those objects the class figure is the right answer rather than a fallback.
+- If the size lookup is slow or unreachable, the import still happens exactly as before with class figures throughout, and says so.
+
 ## v3.1.5 - 8th Sep 2026
 
 - Board only. A user's request through the owner is captured and briefed: a Traveller main world should be placed where people could actually live. The cause is found and named - the importer decides the main world's orbit from a fixed table of Sol-spaced slots per spectral letter, and never asks the engine where that star's habitable zone actually is, which is why main worlds arrive far too hot or far too cold. Worlds Traveller marks as hostile will keep their hostile orbits.

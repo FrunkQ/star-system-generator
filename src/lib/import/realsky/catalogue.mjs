@@ -9,7 +9,7 @@
 // that rather than pretending the snapshot is live.
 
 import { LY_PER_PC } from './constants.mjs';
-import { archivePlanetsAdql, simbadStarsAdql, runTap } from './query.mjs';
+import { archivePlanetsAdql, simbadStarsAdql, simbadStarFluxAdql, simbadStarTeffAdql, runTap } from './query.mjs';
 import { inSphere, radecToXyzLy } from './positions.mjs';
 
 export const BUNDLED_CACHE_URL = '/realsky/pscomppars.json';
@@ -50,6 +50,58 @@ export async function loadStarRows(region, { fetchImpl = fetch, signal } = {}) {
       ? `Live star catalogue unreachable — using the bundled snapshot, which only covers ${Math.round(BUNDLED_CACHE_MAX_LY)} light years from Sol. This region reaches ${Math.round(reachLy)} ly, so distant stars will be missing.`
       : 'Live star catalogue unreachable — using the bundled snapshot (complete for this region, but only as fresh as this build).';
     return { rows, source: 'bundled', warning };
+  }
+}
+
+// WHAT THE CATALOGUE MEASURES ABOUT EACH STAR'S SIZE (D29).
+//
+// PURE ENRICHMENT, AND IT MUST NEVER BREAK AN IMPORT. SIMBAD's `basic` carries no mass, radius or
+// temperature, so these two extra queries fetch what it DOES measure - a temperature, a surface
+// gravity, two magnitudes and, for about one star in seven, a direct diameter. If either fails, or
+// the service is slow, or the GM is offline, the import proceeds exactly as it did before and every
+// star falls back to its class band. That is why this returns a Map and swallows its own errors
+// rather than throwing: a missing size is a less good star, not a failed import.
+//
+// THE TWO REDUCTIONS THAT MATTER, both measured against the live service:
+//  1. `mesFe_h` is one row per PUBLICATION - 43 for Sirius, 117 for Arcturus, 1,661 rows for a
+//     16.5 ly census. The rows arrive ordered by `mespos`, so the FIRST one seen per star wins and
+//     the rest are dropped. Proxima's second measurement says 5554 K, which is not Proxima.
+//  2. `mesDiameter.unit` arrives PADDED ('km  '), and it varies per row rather than per table, so
+//     it is trimmed and read every time rather than assumed.
+export async function loadStarSizes(region, { fetchImpl = fetch, signal } = {}) {
+  const sizes = new Map();
+  const get = (id) => {
+    if (!sizes.has(id)) sizes.set(id, { main_id: id });
+    return sizes.get(id);
+  };
+  try {
+    const [flux, teff] = await Promise.all([
+      runTap('simbad', simbadStarFluxAdql(region), { fetchImpl, signal }),
+      runTap('simbad', simbadStarTeffAdql(region), { fetchImpl, signal })
+    ]);
+    for (const r of flux) {
+      const e = get(r.main_id);
+      if (Number.isFinite(r.mag_v) && e.magV == null) e.magV = r.mag_v;
+      if (Number.isFinite(r.mag_k) && e.magK == null) e.magK = r.mag_k;
+      const unit = String(r.diameter_unit ?? '').trim();
+      if (r.diameter > 0 && (unit === 'mas' || unit === 'km') && e.diameter == null) {
+        e.diameter = { value: r.diameter, unit };
+      }
+    }
+    // Ordered by mespos, so the first row for a star is its preferred measurement.
+    for (const r of teff) {
+      const e = get(r.main_id);
+      if (e.teffK == null && r.teff > 0) e.teffK = r.teff;
+      if (e.logG == null && Number.isFinite(r.log_g)) e.logG = r.log_g;
+    }
+    return { sizes, source: 'live', warning: null };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    return {
+      sizes,
+      source: 'none',
+      warning: `Star sizes could not be fetched (${error?.message ?? error}); every star will use its class band instead.`
+    };
   }
 }
 

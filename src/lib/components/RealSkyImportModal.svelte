@@ -9,7 +9,7 @@
   // refuses to invent or overwrite, and this dialogue is where that shows.
   import { createEventDispatcher } from 'svelte';
   import { REGION_PRESETS } from '$lib/import/realsky/presets.mjs';
-  import { loadArchiveRows, loadStarRows } from '$lib/import/realsky/catalogue.mjs';
+  import { loadArchiveRows, loadStarRows, loadStarSizes } from '$lib/import/realsky/catalogue.mjs';
   import { convertRegion } from '$lib/import/realsky/convert.mjs';
   import { runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT } from '$lib/import/realsky/query.mjs';
   import { toAsciiQuery, displayStarName, designationFor, toCatalogueTerm } from '$lib/import/realsky/starNames.mjs';
@@ -47,6 +47,9 @@
   // confirmed planet arrives like any other. `rows` is still the archive; `starRows` is the census.
   export let rulePack: any = null;
   let starRows: any[] | null = null;
+  // D29: what the catalogue measures about each star's SIZE, keyed by SIMBAD identifier. Pure
+  // enrichment - a failed or slow size fetch leaves every star on its class band, exactly as before.
+  let starSizes: Map<string, any> | null = null;
   let solPreset: any = null;
 
   let rows: any[] | null = null;
@@ -92,7 +95,8 @@
         region: region(),
         mapCentrePx: mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX,
         existingSystemIds: existingSystems.map((s) => s.id),
-        generated: new Date().toISOString().slice(0, 10)
+        generated: new Date().toISOString().slice(0, 10),
+        starSizes
       }
     );
     announceRadius();
@@ -115,8 +119,15 @@
       const wide = { centre: c, radiusLy: Math.max(r, 41) };
       // The STAR census is the primary query now; the archive is the enrichment join. Both are
       // fetched at the max slider radius so a slider move never refetches.
-      const [starResult, result] = await Promise.all([loadStarRows(wide), loadArchiveRows(wide)]);
+      // D29: the sizes ride along with the census in the same round of requests, at the same wide
+      // radius, so a slider move never refetches them either. `loadStarSizes` swallows its own
+      // failures and returns an empty map, because a missing size is a less good star rather than a
+      // failed import - it must never be the reason an import does not happen.
+      const [starResult, result, sizeResult] = await Promise.all([
+        loadStarRows(wide), loadArchiveRows(wide), loadStarSizes(wide)
+      ]);
       starRows = starResult.rows;
+      starSizes = sizeResult.sizes;
       rows = result.rows;
       // Sol is not in an exoplanet archive - our planets are not exoplanets - and must never be
       // handed an invented system, so it comes from the shipped preset when the region reaches it.
@@ -124,7 +135,7 @@
         try { solPreset = await (await fetch('/examples/Sol_2030-System.json')).json(); } catch { solPreset = null; }
       }
       source = result.source;
-      sourceWarning = starResult.warning ?? result.warning;
+      sourceWarning = starResult.warning ?? sizeResult.warning ?? result.warning;
       rowsCentreKey = centreKey(c);
       refreshPreview();
     } catch (e) {
@@ -302,7 +313,7 @@
       { starRows: starRows ?? [], planetRows: rows, solPreset, statTemplates: rulePack?.statTemplates ?? null },
       {
         region: { centre, radiusLy: r }, mapCentrePx,
-        existingSystemIds: existingSystems.map((s) => s.id), generated: 'count'
+        existingSystemIds: existingSystems.map((s) => s.id), generated: 'count', starSizes
       }
     );
     return out.systems.length;

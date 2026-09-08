@@ -2414,6 +2414,37 @@ BLAST: any new consumer of `convertArchiveRows` — passing no `existingSystemId
 which is right for a new map and wrong for an append. The host→bundled-id map is generated from the
 roster, so it is only as current as the last kit run (D15).
 
+### DATA-R42 A REAL STAR'S SIZE IS DERIVED, WITHIN A DECLARED DOMAIN, OR IT IS NOT CLAIMED
+BUCKET: DOMAIN + ARCHITECTURE - domain: the catalogue that names a star does not measure its size,
+and the relation that recovers one is calibrated over a RANGE that must be enforced rather than
+assumed. Architecture: a substituted figure carries its provenance PER FIGURE, because the three
+numbers can come from three different places on the same star.
+WHERE: `import/realsky/starSize.mjs` (the relations, their domains and the precedence),
+`query.mjs` (`simbadStarFluxAdql`, `simbadStarTeffAdql`), `catalogue.mjs` (`loadStarSizes`),
+`convert.mjs` (`starNodeFromCensus`, `figureSourceSentence`), `types.ts` (`FigureSource`);
+gated by `starSize.spec.ts` against twelve stars with independently determined radii.
+RULE: SIMBAD's `basic` HAS NO MASS, RADIUS OR TEMPERATURE COLUMN and SIMBAD publishes no stellar
+mass anywhere - so there is nothing to "just add to the SELECT", and anyone told otherwise should
+re-read TAP_SCHEMA before believing it. A size is DERIVED from what is measured (a temperature from
+`mesFe_h`, magnitudes from `allfluxes`, the parallax from the census row, a direct diameter from
+`mesDiameter` for about one star in seven) and every relation states the range it is allowed to
+answer in. OUTSIDE ALL OF THEM THE CLASS BAND STAYS, flagged `typical`. Degenerate and substellar
+objects are excluded from every relation - their bands are the honest answer (DATA-R24).
+WHY: D29, the owner's report off the live 3.1.0 - "the importer still not adding the radii or masses
+for real stars". Every imported star carried its band midpoint: Proxima at 0.400 Rsun against a true
+0.154. AND THE DOMAIN IS THE WHOLE LESSON, not a detail of it: Flower's bolometric correction
+recovers Sirius A to 1.740 Rsun against 1.711, and hands that same Proxima 0.887 - 476% out, and
+confidently. One relation applied everywhere is worse than the band it replaced, because a band
+midpoint at least says it is one.
+BLAST: `figureSources` is per figure and `typicalForClass` is COMPUTED FROM IT in one place
+(`starNodeFromCensus`), so the two cannot disagree - do not set the boolean directly. A star whose
+radius or temperature is replaced must have its THERMAL luminosity recomputed (PHY-34), while a band
+that DECLARES a non-thermal output keeps it: `luminosityDeclared` is what tells them apart. The
+parallax comes from the CENSUS row and not from the size query, which is why `deriveStarSize` looks
+like it silently does nothing if you hand it only a size record. `loadStarSizes` must keep swallowing
+its own errors - a missing size is a less good star, never a failed import.
+NOT A LICENCE TO WIDEN A DOMAIN TO COVER A STAR YOU WANT ANSWERED. The bands exist for that.
+
 ### DATA-R5 The shared real-sky core must stay plain, dependency-free ESM
 BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: code shared by two runtimes must be written for the
 POORER one, and a violation type-checks, bundles and passes every test on the richer one while
@@ -4717,7 +4748,9 @@ two unit conventions, and INTRINSIC output is not what a body RECEIVES. Architec
 implementations of one law are still a fault, and an equivalence gate that compares two things
 through the SAME function cannot see a factor applied to that function.
 WHERE: `physics/luminosity.ts` (`luminositySolarFromRT` is the primitive, `luminosityWattsFromRT` is
-derived from it, `SOLAR_TEFF_K` and `SOLAR_LUMINOSITY_W` are the only definitions); its callers in
+derived from it; `SOLAR_LUMINOSITY_W` is defined there and `SOLAR_TEFF_K` is RE-EXPORTED from
+`import/realsky/constants.mjs` since D29, because the import core cannot import this module and a
+third 5778 over there was the alternative); its callers in
 `physics/zones.ts`, `physics/temperature.ts`, `physics/starPlausibility.ts`, `generation/star.ts`,
 `BodyStarTab.svelte`, `BodyTechnicalDetails.svelte`, `physics/substellar.ts`,
 `physics/stellarOutflows.ts`. The gate is `physics/luminosityUnification.spec.ts`.
