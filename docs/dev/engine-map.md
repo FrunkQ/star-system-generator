@@ -2417,6 +2417,28 @@ BLAST: any new consumer of `convertArchiveRows` — passing no `existingSystemId
 which is right for a new map and wrong for an append. The host→bundled-id map is generated from the
 roster, so it is only as current as the last kit run (D15).
 
+### DATA-R45 A TRAVELLER MAIN WORLD BECOMES A MOON BY TWO DIFFERENT ROUTES, AND THEY ARE NOT THE SAME
+BUCKET: DOMAIN - a designation and a consequence can produce the same shape and must not be merged.
+WHERE: `worlds/mainWorldPlacement.ts` (`giantOccupyingBand`, and the host in `MainWorldPlacement`),
+`traveller/importer.ts` (`applySatelliteTradeCodeIfNeeded`); gated by `mainWorldPlacement.spec.ts`.
+RULE: trade code `Sa` is TRAVELLER DECLARING the main world a satellite. It is data, it is the
+authority, and it holds whatever the habitable zone looks like. A GIANT OCCUPYING THE BAND is a
+different thing entirely: Traveller's own generation says that when the habitable orbit is already
+taken by a gas giant the UWP does not break - the main world becomes a moon OF THAT GIANT and still
+sits inside the star's habitable zone, which is what preserves every environmental figure the UWP
+states (atmosphere 4-9 needs those temperatures or the profile invalidates itself). One is stated,
+one is derived. Both end at the same answer shape - a host that is not the star - which is exactly
+why the placement model returns a HOST rather than an orbit, and exactly why they are easy to merge
+by accident.
+WHY: G87, and the owner asked for the second one by name because it is the trickier half. Merging
+them loses information in both directions: an `Sa` world whose band happens to be empty would stop
+being a satellite, and a world displaced by a giant would start claiming Traveller said so.
+BLAST: `W` is a HARD world count and NEVER includes moons (G32), so a world moved onto a giant must
+have that giant counted as one of `W` - `applySatelliteTradeCodeIfNeeded` already runs BEFORE infill
+for exactly this reason, and the derived route has to land on the same side of that ordering.
+The giant is chosen by MASS then by id, never by array order, because the answer must be identical
+for two GMs importing the same sector.
+
 ### DATA-R43 A CATALOGUE ROW IS A CONTAINER OR A STAR, AND THE OTYPE ALONE NEVER SAYS WHICH
 BUCKET: DOMAIN - a catalogue's type codes describe an OBJECT, not a record, and the same code means
 different things depending on what else the row says. Move verbatim; any importer reading SIMBAD

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.22 - 8th Sep 2026
+
+- Groundwork for Traveller main worlds that sit somewhere liveable. The rule for deciding where a main world belongs, and what kind of world it is, now exists as its own model: it asks the engine where that particular star's habitable zone actually is rather than looking the answer up by the star's letter, it picks the most comfortable world type the sector data will honestly support and says whether you could breathe outside, and if a gas giant already occupies the habitable zone it makes the main world a moon of that giant so the world still sits in the right place. Worlds Traveller marks hostile are left exactly where they are. Nothing uses it yet - the importer is wired to it next - so no import changes behaviour with this release.
+
 ## v3.1.21 - 8th Sep 2026
 
 - **Remote players now have a relay, and nobody has to set it up.** When a player's network will not carry a direct connection to you, the connection falls back to a relay automatically. Until today there was nothing to fall back to - the free one this app inherited had quietly stopped existing - which is why some players could join and others never could, with nothing on either end to point at.
