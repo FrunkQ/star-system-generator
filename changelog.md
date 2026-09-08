@@ -2,11 +2,17 @@
 
 All notable changes are listed here:
 
+## v3.1.2 - 8th Sep 2026
+
+- Fixed: turning on Hill spheres broke the whole system map - the display froze and the orbit lines stopped drawing for good. A change in 3.0.378 meant to save some drawing work referred to something that did not exist, so the map gave up part way through every frame and everything after that point vanished with it. That change has been taken out completely and Hill spheres are back to exactly how they drew before.
+- The same work on the zone rings is unaffected and stays.
+
 ## v3.1.1 - 8th Sep 2026
 
 - The Getting Started guide now covers magnetic fields. On the flat system map they are a GM view option beside Hill spheres; in 3D they are a player-view setting beside Auroras, off by default and among the things Low Power switches off. The guide explains the two shades - the bright part is the region that actually shields an atmosphere, the pale wash is the whole bubble including its downwind tail - and two things that look like faults and are not: every magnetised world shows its bubble at once rather than only the one you picked, and you cannot see a shell you are standing inside, so pull back. It also says that the 3D squeezes the tail's length the way it squeezes body sizes, and that the true figures are on the body's card and the flat map.
 - The physics reference explains why a dead star is dangerous without a corona. Everything it said about ionising output was about coronas - a thin outer shell heated to millions of degrees above a much cooler surface - which is the right picture for an ordinary star and the wrong one for a remnant. A neutron star's surface is already 600,000 K, so nearly all its light is above the energy that strips an electron off hydrogen: it does not need a corona to be an ionising source, it is one. Asked the coronal question it came out seven orders of magnitude too quiet, so a remnant now takes whichever figure is larger - which is also what stops a feeding black hole losing the output of its disc to a surface temperature that means nothing for a hole.
 - The README's V3.1 list gains the magnetic fields, and says plainly what the sky fixes were: the constellation sky is no longer mirror-imaged, and the 2D system map zooms out fifty times further than it did.
+
 ## v3.1.0 - 7th Sep 2026
 
 Version 3.1. Everything below has been on beta and is now the version at starsystemx.com; the last

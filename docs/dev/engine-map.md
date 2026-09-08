@@ -6750,6 +6750,15 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+AND THE HILL-SPHERE HALF OF THAT WAS REVERTED THE NEXT DAY ([[B145]]): it passed a `margin` that
+does not exist in `drawSystem`, so every frame of the whole 2D view threw and the build said nothing.
+RENDER-S46 for the second time, and its own named detector - `svelte-check` on the touched file -
+would have caught it in one line. RUN IT after any edit to a `.svelte` script block; a green
+`npm run build` is not evidence there.
+A SOURCE-READING GATE PROVES THE TEXT IS THERE, NOT THAT IT RUNS. `circleCull.spec` asserted the
+wiring and passed while the code threw on every frame. Where a component cannot be rendered in a
+test, that idiom is a check on WIRING only - pair it with `svelte-check`, which is the part that
+looks at whether the wiring can execute.
 A RING AND A DISC ARE NOT VISIBLE UNDER THE SAME CONDITIONS ([[G85]], `rendering/circleCull.ts`).
 A bounding-box test is right for a FILL - a circle enclosing the viewport covers every pixel - and
 wrong for a STROKE, because that circle's boundary is out past the corners where nothing can see it,
