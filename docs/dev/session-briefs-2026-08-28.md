@@ -1127,7 +1127,7 @@ R-number ends its report with this block, and the hub agent pastes it unchanged 
 a hub change to the contract goes the other way in the same shape, and the coordinator pastes it into the G57 row:
 
 ```
-SEAM REPORT | R-17 | engine | beta v3.0.314 (21779f3e) | prod: NOT RELEASED
+SEAM REPORT | R-17 | engine | beta v3.0.314 (21779f3e) | prod: RELEASED in v3.1.0, 2026-09-07
 sets:      open_in_sse_url = https://beta.starsystemx.com/?open=
 must know: the parameter is `open` on the query string, not the hash; explorers.starsystemx.com answers 404 from
            Vercel (DEPLOYMENT_NOT_FOUND) so download URLs must use the workers.dev origin until DNS moves; both
@@ -1687,3 +1687,77 @@ temperature - the Planck fraction above 13.6 eV, one function, anchored (Sun unc
 source) - keep the flare verdict as the flare verdict, and let the wind for a remnant read the thermal figure.
 Red-first, absolute (PHY-34). Then take the 'coronal model, not the surface' note off the card's ionising cell
 (`BodyTechnicalDetails.svelte`, `starIonisingNote`) in the same push.
+
+## STREAM U — the real-sky importer: the masses and radii it drops, and the companions it loses (D29)
+
+> You are fixing the REAL-SKY IMPORTER for Star System Explorer — [[D29]], the owner's own report off the live
+> 3.1.0 release. Repo `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the
+> tip; several streams push daily, renumber on collision). Work in your OWN worktree (`git worktree add
+> ../sse2-realsky -b wt/realsky origin/beta`); the main checkout is shared. Commit as **FrunkQ
+> <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` — especially
+> NEVER ASSUME AN EARTH/SOL BASELINE, STEER DON'T STOP (an authored map is never silently corrected), and
+> DUPLICATED FUNCTIONALITY; the [[D29]] row (the owner's words and the coordinator's probe); the rows folded in
+> with it — [[D18]], [[D25]], [[D28]]; engine map **PHY-34** (every gate absolute, seen red first) and the
+> `import/realsky` entries you find by grepping the traps file for your territory.
+>
+> **THE OWNER'S WORDS (2026-09-08):** *"the importer still not adding the radii or masses for real stars, also
+> its still adding binaries as single or 2 stars (examples: sirius (only adds b) completely forgets luhman 16
+> and eps indi Ab's partner)"*.
+>
+> **WHAT THE COORDINATOR ALREADY MEASURED — do not re-derive it, do verify it:**
+> - `SIMBAD_STAR_COLUMNS` at `src/lib/import/realsky/query.mjs:177` is
+>   `['main_id', 'ra', 'dec', 'plx_value', 'sp_type', 'otype']`. **There is no mass, radius or temperature
+>   column in any of the three SELECTs (`:105`, `:137`, `:158`).** The importer cannot be carrying measured
+>   sizes, because it never asks for them.
+> - `src/lib/import/realsky/stardefaults.ts` opens with *"The catalogues give a star's mass, radius,
+>   temperature and luminosity; they do NOT give its magnetic field or spin-axis tilt"* and fills only the
+>   field and the tilt. **The gap-filler believes the gaps are filled.** That sentence is the bug's
+>   documentation, and it must end up either true or rewritten.
+> - Every star query carries `plx_value > 0` (`:137`, `:160`, `:184`). A SIMBAD companion often has no
+>   parallax row of its own. That one clause would drop precisely the member the owner is missing —
+>   SUSPECTED, NOT PROVEN, and proving it is job 1.
+> - `convert.mjs` ~325-370 holds the multiples logic already: the [[D28]] one-object-two-catalogues merge,
+>   `WIDE_COMPANION_MIN_AU = 50`, and "the heaviest star is the root; companions orbit it".
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **Measure the three named systems before changing anything.** Sirius (A lost, B kept), Luhman 16 (absent
+>    entirely), Epsilon Indi (the B/C brown-dwarf pair absent). Capture the actual catalogue rows each query
+>    returns — the raw response, not your reading of it — and say for each system WHICH clause dropped WHICH
+>    row. The coordinator's `plx_value` suspicion is a hypothesis; record it as confirmed or as a dead end,
+>    loudly either way. Sirius keeping the FAINTER member is the sharpest clue you have: whatever orders or
+>    de-duplicates rows prefers B over A, and that is not a parallax story.
+> 2. **Fetch the sizes.** Add the mass/radius/temperature columns SIMBAD actually exposes to the query and
+>    carry them through `convert.mjs` into `massKg`/`radiusKm`/`temperatureK`, measured values winning over
+>    the class-band fill-in (`stardefaults.ts` already states that precedence — honour it). Where a catalogue
+>    has no value the band fill-in stays, and the body should be able to SAY which it is: a GM reading Sirius
+>    should get Sirius's real radius, and a GM reading an obscure dwarf should not be told a band value is a
+>    measurement (the "a quantity correct for its purpose can still be published as a lie" rule). Correct
+>    `stardefaults.ts`'s opening paragraph in the same commit.
+> 3. **Multiples arrive whole.** Every member of a system the query reaches comes in, orbiting its shared
+>    barycentre by the engine's existing pair machinery (a pair has ONE epoch — engine map DATA-R29 and the
+>    [[B111]] history; do not invent a second convention). A brown-dwarf pair is a pair. Then re-run job 1's
+>    three systems as the gate.
+> 4. **[[D18]] while you are here:** the produced "local neighbourhood" has no Sol and no Alpha Centauri.
+>    Both omissions are almost certainly the same selection logic; fix them with jobs 1-3 or say why not.
+> 5. **[[D25]] and [[D28]]:** fictional substances (ASTROPHAGE) leaking into REAL systems, and one companion
+>    imported twice. D25 needs an owner decision on the rule — recommend, then ask, do not choose for him.
+>
+> **GATES, red-first, absolute:** Sirius imports as TWO stars with A the primary and a real radius near
+> 1.71 solar; Luhman 16 imports as a pair; Epsilon Indi arrives with its B/C companions; the bundled-starmap
+> pin (`scripts/starmap-build/buildKit.spec.mjs`) still passes, and if classification moves you must re-run
+> `node scripts/starmap-build/build-starmaps.mjs` and commit the three `static/example-starmaps/` files AFTER
+> the version bump, because the build stamps `appVersion`. Network calls do not belong in the suite: pin the
+> catalogue rows as fixtures and gate the TRANSFORM.
+>
+> **TRAPS:** real user files live in `../user-test-files/` and never in the repo; the two `tests/` fixtures are
+> a baseline — commit them if a run changes them; CRLF everywhere (measure each file's own ending, Python
+> bytes, never `sed -i` on MSYS); `npm run manifest` after every version bump; the stash stack is shared — WIP
+> commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial test is a known statistical flake.
+>
+> **EYEBALL FOR THE OWNER:** import the local neighbourhood and open Sirius, Luhman 16 and Epsilon Indi; each
+> should show both members, and each star's radius and mass should read as the real measured figures rather
+> than a class average.
+>
+> **Housekeeping:** as Stream Q's, word for word.

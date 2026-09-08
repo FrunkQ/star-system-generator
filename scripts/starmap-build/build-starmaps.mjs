@@ -422,6 +422,11 @@ const manifest = {
     id: m.id, file: m.file, name: m.name, description: m.description,
     systemIds: (i === 0 ? mapA : mapB).systems.map((s) => s.id)
   })),
+  // WHICH EDITIONS A CAMPAIGN MUST MOVE TO (owner, 2026-09-08: only a backwards-compatibility
+  // problem earns the upgrade dialogue; "you are missing new content" is obvious and stays quiet).
+  // Empty = no edition so far has broken anything, so nobody is asked unprompted. Add an edition
+  // number here ONLY when staying behind actually breaks a campaign.
+  compatibilityEditions: [],
   // The pre-v2 hand-placed map's ids, for WS8 old-map detection.
   legacyBaseSystemIds: [
     'sys-sol', 'sys-alphacen', 'sys-barnard', 'sys-wolf359', 'sys-lalande', 'sys-sirius',

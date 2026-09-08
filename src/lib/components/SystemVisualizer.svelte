@@ -31,6 +31,7 @@
            visibleTailRadii, magnetosphereReachRadii } from '$lib/physics/magnetosphere';
   import { regionOfInterest, inRegionOfInterest } from '$lib/system/regionOfInterest';
   import { scaleBoxCox } from '../physics/scaling';
+  import { drawEccentricity } from '$lib/rendering/orbitDraw';
   import { findContainingHost, orbitPathProjected } from '$lib/physics/orbits';
   import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
@@ -1973,7 +1974,11 @@
               if (node.roleHint === 'belt' && node.orbit && node.parentId) {
                   const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
                   if (!parentPos) continue;
-                  let a = node.orbit.elements.a_AU; const e = node.orbit.elements.e;
+                  let a = node.orbit.elements.a_AU;
+                  // C19: an authored e >= 1 has no apoapsis, so `a * (1 + e)` threw the label out
+                  // past the belt it names. The DRAWING borrows a closable eccentricity; the belt's
+                  // own data is untouched and the physics still says what it says.
+                  const e = drawEccentricity(node.orbit.elements.e);
                   if (toytownFactor > 0) a = scaleBoxCox(a, toytownFactor, x0_distance);
                   const apoapsisX = parentPos.x - (a * (1 + e)); const apoapsisY = parentPos.y;
                   const screenPos = worldToScreen(apoapsisX, apoapsisY);

@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.1.3 - 8th Sep 2026
+
+- **The V3.1 welcome.** The first-run panel now carries the release notes for 3.1 in the owner's own words, and everybody sees it once - including GMs who dismissed the V3 one, because the panel and its "seen" marker move together.
+- **No more upgrade nagging.** A campaign built on an older bundled map is no longer asked to upgrade just because a newer one exists. "It may not have the new features" is obvious and does not need a dialogue; the offer now appears only for an edition that genuinely breaks something, and Settings still offers it whenever you want it.
+- **Fixed: a belt with an eccentricity above 1 threw its name a long way out past the belt.** Such an orbit is not a closed loop and has no far point to hang a label on, so the drawing now borrows the last eccentricity that still closes. The belt's own numbers are untouched and the physics still says what it says.
+
 ## v3.1.2 - 8th Sep 2026
 
 - Fixed: turning on Hill spheres broke the whole system map - the display froze and the orbit lines stopped drawing for good. A change in 3.0.378 meant to save some drawing work referred to something that did not exist, so the map gave up part way through every frame and everything after that point vanished with it. That change has been taken out completely and Hill spheres are back to exactly how they drew before.

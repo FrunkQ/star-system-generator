@@ -97,6 +97,16 @@ export async function shouldOfferUpgrade(
     return { offer: false, reason: `declined the upgrade to base edition ${CURRENT_BASE_MAP_VERSION}` };
   }
 
+  // THE OWNER'S BAR, 2026-09-08: a newer bundled map is not by itself a reason to interrupt anybody.
+  // "It may not have the new features" is obvious and does not need saying; only a BACKWARDS
+  // COMPATIBILITY problem earns the dialogue. The manifest names those editions, so the decision is
+  // data rather than a version comparison, and a content-only edition is silent by default.
+  const compat = manifest.compatibilityEditions ?? [];
+  const needed = compat.some((e) => e <= CURRENT_BASE_MAP_VERSION && !(stamped && campaign.baseMapVersion! >= e));
+  if (!needed) {
+    return { offer: false, reason: `base edition ${CURRENT_BASE_MAP_VERSION} is content-only — nothing to fix by upgrading` };
+  }
+
   const match = matchBundledMap(campaign, manifest);
   if (!match) return { offer: false, reason: 'no bundled base map recognised in this campaign' };
 

@@ -687,3 +687,10 @@ Recorded so nobody builds them by mistake:
 - **No provenance parsing from `ATTRIBUTIONS.md`.** It is a human document and the hub treats it as a
   claim. The gate is computed from the node fields. Do not add machine-readable structure to it on
   the hub's behalf.
+
+**SSE-SIDE STATUS ADDENDUM, 2026-09-08 (coordinator 8): RELEASED TO PRODUCTION as v3.1.0** (pushed by the owner
+2026-09-07, `c0a3889a`; prod and beta were byte-identical at the release commit). Production now carries R-14
+(paste from the hub), R-16 (credit on paste), R-17 (open from a link, parameter `open`), R-13
+(`/shipped-content.json`) and the address change to `explorers.starsystemx.com`. **The hub MAY NOW set
+`open_in_sse_url` to `https://starsystemx.com/?open=`**; the beta prefix stays valid. The hub records what it
+sets, in its own half, when it sets it.
