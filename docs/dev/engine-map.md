@@ -7312,3 +7312,41 @@ REDONE, spreading it only distributes the thrash - which is exactly what C21's b
 only reason it helped was that it made the repetition visible. Ask "how many times is this being
 computed" BEFORE "how do I spread this out". Anything new that builds per-object visuals from a
 shared cache inherits all of this.
+
+### DATA-R48 A CLIP NEVER OVERWRITES A DEFINITION, AND A RENAME HAS TO REACH THE DEFINITIONS TOO
+BUCKET: ARCHITECTURE (file format) - R-19 job 3, the merge.
+WHERE: `src/lib/io/clipRules.ts` (`mergeClipOverrides`, `writeBack`, `SECTIONS[].namedBy/repoint`);
+driven from `src/routes/+page.svelte` through the single `mergeClipRules` door. Pinned by
+`clipRulesMerge.spec.ts` (against the HUB'S OWN seven fixtures) and `clipRulesPhase.spec.ts`.
+RULE: three outcomes per definition - add / discard silently / **never overwrite**. The third is the
+one that must not be got wrong: somebody else's "Liquid Unobtainium" is not this GM's, and replacing
+theirs silently changes bodies they ALREADY HAD, which turns a quiet wrong answer on one pasted
+planet into a quiet wrong answer across a whole campaign. A clash renames the INCOMING definition and
+repoints the pasted nodes; the destination's own is never touched.
+THREE THINGS THAT ARE NOT OBVIOUS AND EACH COST A GATE:
+- **A RENAME MUST REACH THE INCOMING DEFINITIONS, NOT ONLY THE NODES.** An engine definition names its
+  fuel by id. Rename a clashing fuel, repoint the ships, and the engine still points at the old name -
+  an engine with no fuel. The hub's own clip 1 is exactly this shape (`q-drive` burns `dt-slush`).
+- **A RENAME LOOKS FOR ITS OWN PREVIOUS RESULT BEFORE MINTING ANOTHER**, or pasting a conflicting clip
+  twice gives "x (from Map) " and "x (from Map) 2". Reuse when the earlier rename is identical.
+- **THE MERGE RUNS BEFORE `process()`, NEVER AFTER.** Every derived quantity reads the effective pack,
+  so a body whose hydrosphere names a custom liquid must be processed against a pack that already
+  knows it. Merging afterwards leaves the first pass wrong, and pass 1 is what a GM sees.
+AND `applyStarmapOverrides` IS NOT THE DOOR: it is a shallow section-level spread, so an incoming
+`liquids` would replace the GM's entire liquids override rather than joining it. The merge is per
+DEFINITION and goes nowhere near it.
+BLAST: silent corruption of a campaign's existing rules, which is the failure this whole requirement
+exists to prevent.
+
+### DATA-R49 THE SCALAR OVERRIDE SECTION CAN ONLY EVER BE DISCARDED OR DECLINED
+BUCKET: ARCHITECTURE - a consequence of DATA-R48, written down so it is not read as an oversight.
+WHERE: `src/lib/io/clipRules.ts`, the `scalars` arm of `mergeClipOverrides`; `pigmentModel()` in
+`src/lib/physics/pigments.ts`.
+RULE: `pigmentModel` is a bag of scalars and `pigmentModel(pack)` always answers with a COMPLETE
+config (it falls back to the built-in one). So every field already has an effective value in the
+destination and **no field is ever ABSENT** - it is identical, or it differs. A field that differs
+cannot be renamed, because `captureWeight` IS the name, so under never-overwrite the only honest move
+is to keep the GM's and SAY SO. The section therefore never travels; what it does is REPORT, which is
+still the whole difference from the bug, because silence is what made R-19 invisible.
+BLAST: none to data. It is a product decision - a paste cannot carry a pigment weighting - and the
+owner can reverse it; if he does, the change is one arm of this function, not a new mechanism.

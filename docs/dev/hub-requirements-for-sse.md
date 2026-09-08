@@ -739,7 +739,7 @@ sets, in its own half, when it sets it.
 
 **The hub's half is SHIPPED AND LIVE.** Its brief for this side is
 `C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-08-clip-rules.md`, quoted here rather than
-paraphrased where it matters. **SSE-SIDE STATUS: JOBS 1 AND 2 OF 5 SHIPPED, beta v3.1.40 - the envelope parses, and
+paraphrased where it matters. **SSE-SIDE STATUS: JOBS 1 AND 2 OF 5 SHIPPED, beta v3.1.41 - the envelope parses, and
 the comparison answers ABSENT / IDENTICAL / DIFFERENT per definition. The MERGE (jobs 3-5) is not built, so a clip's
 rules still do nothing on arrival.** Board row [[G92]].
 
@@ -756,6 +756,32 @@ merge, it was unreachable from anywhere but that component, and writing a second
 still USING water, so a clip carrying the shipped water unchanged must compare IDENTICAL against it. Asking the
 overrides alone would call it absent and store a redundant override that freezes that definition against every later
 improvement to the pack - `rulepackDelta` cost #2, introduced by a paste.
+
+**JOBS 3 AND 5 SHIPPED THE MERGE AND THE REPORT.** Add / discard silently / NEVER overwrite, per definition. A clash
+renames the incoming definition, repoints the pasted nodes, and repoints any incoming definition that named it -
+an engine names its fuel by id, so a renamed fuel would otherwise hand the GM an engine with no fuel, which is the
+hub's own clip 1 exactly. A second paste of a conflicting clip finds its earlier rename and reuses it. The three
+delta sections are written back AS DELTAS. The merge runs BEFORE `process()`, because every derived quantity reads
+the effective pack and pass 1 is what a GM sees. Engine map DATA-R48.
+
+**ONE CONSEQUENCE WORTH THE HUB KNOWING, though it asks nothing of them (DATA-R49): `pigmentModel` cannot travel.**
+It is a bag of scalars, and `pigmentModel(pack)` always answers with a complete config - so no field is ever ABSENT
+in the destination, and a field that differs cannot be renamed because the field IS the name. It is REPORTED
+instead ("kept your own captureWeight"). Reporting rather than silence is still the whole difference from the bug.
+
+**GATED AGAINST THE HUB'S OWN SEVEN FIXTURES.** `docs/clips/` in the hub repo, produced by its `buildClip`/
+`buildRulesClip` and asserted by its own test. They are READ WHERE THEY LIVE and never copied into this repo - one
+copy, on the side that generates them - and the spec skips gracefully when the hub repo is not on the machine. All
+seven behave as the README says.
+
+**ONE THING IS WRONG ON THAT SIDE, and it is a fixture shape rather than a contract change. THE HUB'S CLIPS PUT THE
+LIQUID IN `hydrosphere.liquid`; THIS ENGINE READS `hydrosphere.composition`** (`types.ts:111`), and nothing anywhere
+in the engine reads `.liquid` - grepped. So clip 1's stated expectation, "Bellwether's hydrosphere resolves", cannot
+come true however well the merge works: the rules arrive, the body looks up a name under a field nothing reads,
+`liquidDef` returns undefined, and it falls back. That is R-19's own bug arriving by another door. **The fix is one
+word in the hub's generator** (`liquid` -> `composition`, clips 1, 2, 3, 4 and 6); the hub has offered to move it.
+Reported to the owner 2026-09-08. The clip-4 repoint gate sets `composition` by hand meanwhile, so it tests the
+repoint rather than the mismatch, and that line goes when the fixtures move.
 
 **WHAT JOB 1 SHIPPED.** `rulePackOverrides` is an optional key on `HubClip`, shape-checked and carried whole
 (`parseHubClip`); a RULES-ONLY clip - `nodes: []` and no `root`, which is the pair the hub uses to tell its two

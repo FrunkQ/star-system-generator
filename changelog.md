@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.1.41 - 8th Sep 2026
+
+- **A planet copied from the map library now brings the custom rules it needs.** Copy a world whose ocean is a liquid the map's owner invented, paste it into your campaign, and the liquid comes with it - so the world freezes, boils and looks the way its author meant, instead of quietly falling back to defaults while the paste told you it had worked.
+- **It will never overwrite a rule you already have.** If a copied world brings a different liquid that happens to share a name with one of yours, yours is left exactly as it is, theirs arrives under a name that says where it came from, and the pasted world is pointed at it. Your other worlds do not change.
+- **Pasting related objects does not pile up duplicates.** Paste a star and then one of its planets and the second paste brings the same rules as the first; nothing is added twice, and nothing is renamed just because the rules were written down in a different order.
+- The rules pages on the map library can be copied and pasted on their own now: the rules arrive, and no objects are created.
+- After a paste the app says what came with it - "added 2 liquids and an engine definition", and if anything was renamed or kept back, which and why.
+
 ## v3.1.40 - 8th Sep 2026
 
 - Groundwork, part two, for a planet copied from the map library bringing its custom rules with it: the app can now tell, definition by definition, whether a rule arriving with a copied object is one you already have, one you have under the same name but defined differently, or one that is new to you. Comparing ignores the order the fields happen to be written in, so a rule that is genuinely the same is not mistaken for a clash. Nothing is merged yet - that is the next piece.
