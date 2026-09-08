@@ -84,12 +84,208 @@ export function saveStoredIce(servers: IceServerEntry[] | null): void {
   else localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 }
 
-/** Build the PeerJS `config` option: custom servers first, then the library defaults
- *  (returned as undefined when nothing custom, so PeerJS uses its own defaults untouched). */
+/** Build the PeerJS `config` option: the GM's own servers first, then the managed
+ *  relay if one has arrived, then the library defaults. Undefined when there is
+ *  nothing to add at all, so PeerJS uses its own defaults untouched. */
 export function peerConfigFor(custom: IceServerEntry[] | null | undefined): { iceServers: IceServerEntry[] } | undefined {
-  const s = sanitise(custom);
-  if (!s || s.length === 0) return undefined;
-  return { iceServers: [...s, ...DEFAULT_ICE] };
+  const s = sanitise(custom) ?? [];
+  const m = managedIce() ?? [];
+  if (s.length === 0 && m.length === 0) return undefined;
+  return { iceServers: [...s, ...m, ...DEFAULT_ICE] };
+}
+
+// ─── The managed relay (v3.1.17) ───────────────────────────────────────────
+//
+// A relay nobody has to configure. The app asks an endpoint of ours for
+// short-lived TURN credentials at startup, and adds them to the list it was
+// going to use anyway.
+//
+// WHAT THIS IS NOT: a pipe everyone's game flows through. ICE ranks candidates
+// by type and RELAY IS LAST — priority zero, below the LAN address and below
+// the direct internet path STUN finds. The browser tries pairs in that order
+// and keeps the best one that works, so a relay is only ever used by the
+// players who could not connect without it. Everyone else connects machine to
+// machine exactly as they do today and never touches it. (Same-browser windows
+// skip PeerJS altogether and ride LocalChannel, so they do not even gather.)
+//
+// WHAT THE ENDPOINT LEARNS: an IP address and a timestamp. The request carries
+// no room code, no session id, no cookies and no body — see fetchManagedIce.
+// Keep it that way: this must never become a way to know who is playing.
+//
+// It is OPTIONAL in every direction. No URL configured, endpoint down, request
+// slow, GM switched it off — all of them mean "carry on exactly as before",
+// silently. Nothing here may ever be able to stop a game connecting.
+
+/**
+ * Where short-lived credentials come from. EMPTY = no managed relay, which is
+ * the shipped state until the Worker exists; the machinery below is inert and
+ * costs one `if`. Flip this to the endpoint and everything switches on.
+ *
+ * Overridable per-device for testing without a deploy: set
+ * `localStorage['sse-managed-relay-url']`.
+ */
+export const MANAGED_ICE_URL = '';
+
+const MANAGED_URL_KEY   = 'sse-managed-relay-url';
+const MANAGED_OFF_KEY   = 'sse-managed-relay-off';
+const MANAGED_CACHE_KEY = 'sse-managed-ice';
+
+/** How long to let the request run before giving up on it entirely. */
+const MANAGED_FETCH_MS = 4000;
+/** How long a dial will wait for it. Shorter: joining beats relaying. */
+const MANAGED_WAIT_MS  = 2500;
+/** Used when the endpoint does not say how long its credentials last. */
+const MANAGED_DEFAULT_TTL_MS = 3600_000;
+
+export function managedIceUrl(): string {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const override = localStorage.getItem(MANAGED_URL_KEY);
+      if (override) return override;
+    } catch { /* storage blocked */ }
+  }
+  return MANAGED_ICE_URL;
+}
+
+/** The GM's own switch. On by default; off means we never ask at all. */
+export function managedRelayEnabled(): boolean {
+  if (typeof localStorage === 'undefined') return true;
+  try { return localStorage.getItem(MANAGED_OFF_KEY) !== '1'; } catch { return true; }
+}
+export function setManagedRelayEnabled(on: boolean): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    if (on) localStorage.removeItem(MANAGED_OFF_KEY);
+    else { localStorage.setItem(MANAGED_OFF_KEY, '1'); _managed = null; _managedPromise = null; forgetManagedIce(); }
+  } catch { /* storage blocked */ }
+}
+
+/**
+ * Read an endpoint's answer. PURE, so the shapes are pinned by tests rather
+ * than by a live server.
+ *
+ * Accepts our own `{ iceServers: [...], ttl }` and Cloudflare's shape, which
+ * returns `iceServers` as a SINGLE OBJECT rather than a list — proxying their
+ * body through unchanged should work, and this is what makes that safe.
+ */
+export function parseManagedIce(body: unknown): { servers: IceServerEntry[]; ttlMs: number } | null {
+  if (!body || typeof body !== 'object') return null;
+  const raw = (body as { iceServers?: unknown }).iceServers ?? body;
+  const list = Array.isArray(raw) ? raw : [raw];
+  const servers = sanitise(list);
+  if (!servers || servers.length === 0) return null;
+  const ttl = (body as { ttl?: unknown }).ttl;
+  const ttlMs = typeof ttl === 'number' && ttl > 0
+    ? Math.min(ttl * 1000, 48 * 3600_000)
+    : MANAGED_DEFAULT_TTL_MS;
+  return { servers, ttlMs };
+}
+
+let _managed: IceServerEntry[] | null = null;
+let _managedPromise: Promise<IceServerEntry[] | null> | null = null;
+
+/** What has arrived, if anything. Synchronous, for the dialling code. */
+export function managedIce(): IceServerEntry[] | null {
+  return _managed && _managed.length > 0 ? _managed : null;
+}
+
+function readCache(): IceServerEntry[] | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(MANAGED_CACHE_KEY) || 'null');
+    if (!raw || typeof raw.notAfter !== 'number' || Date.now() >= raw.notAfter) return null;
+    return sanitise(raw.servers);
+  } catch { return null; }
+}
+function writeCache(servers: IceServerEntry[], ttlMs: number): void {
+  if (typeof sessionStorage === 'undefined') return;
+  // Expire a minute early: a credential that dies mid-dial is worse than a
+  // fetch we did not need.
+  try {
+    sessionStorage.setItem(MANAGED_CACHE_KEY, JSON.stringify({
+      servers, notAfter: Date.now() + Math.max(60_000, ttlMs - 60_000),
+    }));
+  } catch { /* storage blocked or full */ }
+}
+function forgetManagedIce(): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try { sessionStorage.removeItem(MANAGED_CACHE_KEY); } catch { /* storage blocked */ }
+}
+
+/**
+ * Ask for credentials, once. Call it as early in startup as possible: by the
+ * time anything dials, the answer is usually already here.
+ *
+ * Memoised, so every later caller shares the one request. Never throws and
+ * never rejects — a failure is just "no managed relay", which is where we
+ * started.
+ */
+export function primeManagedIce(): Promise<IceServerEntry[] | null> {
+  if (_managedPromise) return _managedPromise;
+  _managedPromise = (async () => {
+    const url = managedIceUrl();
+    // `typeof window` rather than `typeof fetch`: server-side rendering has a
+    // perfectly good fetch, and a build step quietly asking for TURN
+    // credentials would be a genuinely surprising thing to ship.
+    if (!url || typeof window === 'undefined' || !managedRelayEnabled()) return null;
+    const cached = readCache();
+    if (cached) { _managed = cached; return cached; }
+    const got = await fetchManagedIce(url);
+    if (got) { _managed = got.servers; writeCache(got.servers, got.ttlMs); return got.servers; }
+    return null;
+  })();
+  return _managedPromise;
+}
+
+/**
+ * One request, told nothing about the game.
+ *
+ * `credentials: 'omit'` so no cookie ever rides along, `cache: 'no-store'` so
+ * a credential is not held by the HTTP cache past its life, and a plain GET
+ * with no query string so there is nothing to correlate a player with. The
+ * endpoint sees an IP and a time, which is what any web request gives it.
+ */
+export async function fetchManagedIce(
+  url: string,
+  timeoutMs = MANAGED_FETCH_MS,
+): Promise<{ servers: IceServerEntry[]; ttlMs: number } | null> {
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = setTimeout(() => ctl?.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'omit',
+      cache: 'no-store',
+      ...(ctl ? { signal: ctl.signal } : {}),
+    });
+    if (!res.ok) return null;
+    return parseManagedIce(await res.json());
+  } catch {
+    return null;      // offline, blocked, slow, garbled: all the same answer
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Wait for the relay before dialling — but not for long, and never forever.
+ * Resolves the moment the answer is in, or after MANAGED_WAIT_MS regardless.
+ * A player who joins a fraction of a second sooner without a relay they did
+ * not need beats a player staring at a spinner.
+ */
+export async function managedIceReady(maxWaitMs = MANAGED_WAIT_MS): Promise<void> {
+  if (_managed || !managedIceUrl() || !managedRelayEnabled()) return;
+  await Promise.race([
+    primeManagedIce(),
+    new Promise((resolve) => setTimeout(resolve, maxWaitMs)),
+  ]);
+}
+
+/** Tests only: forget everything fetched or cached. */
+export function resetManagedIce(): void {
+  _managed = null;
+  _managedPromise = null;
+  forgetManagedIce();
 }
 
 /**

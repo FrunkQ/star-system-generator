@@ -1279,7 +1279,7 @@
         ? incomingMessage
         : linkBlocked
           ? 'SENSOR LINK BLOCKED — this network will not carry the connection to your GM. Try switching between wi-fi and mobile data; that often fixes it on the spot. If not, ask your GM for a new link — they have been told, and adding a relay on their side fixes it.'
-          : 'Reaching the host — this will fill in automatically once the GM is broadcasting.'}
+          : 'Reaching the host — this fills in automatically as soon as the connection is made.'}
       sessionId={receiving ? '' : (sessionId ?? '')}>
       {#if receiving}
         <!-- A SPINNER, NOT A BAR, and the distinction is honest rather than cosmetic: nothing here

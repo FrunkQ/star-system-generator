@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.1.17 - 8th Sep 2026
+
+- **Groundwork for a relay nobody has to configure.** The app can now fetch short-lived relay credentials from an endpoint of ours at startup and add them to the list it already uses. It is switched OFF in this build - the endpoint is not live yet - so nothing changes until it is.
+- Two things worth knowing about how it will work, because they are built in rather than promised. A relay is the **last** route a browser tries: everyone who can connect directly still does, straight from their device to yours, and never touches it. And when it is used it cannot read anything it carries - the connection is encrypted between the two browsers - while hiding your address and your players' from each other, which a direct connection does not.
+- Settings will carry a switch to turn it off entirely, appearing only once there is something to switch.
+- **Fixed: the waiting screen blamed the GM.** "Reaching the host - this will fill in automatically once the GM is broadcasting" is what a blocked player sat on, and it is what one group reported back to their GM as "it showed you were offline" when the GM was working perfectly well. It now says the connection is being made, without pointing at anybody.
+
 ## v3.1.16 - 8th Sep 2026
 
 - **SSE now notices when your browser is drawing 3D on the processor, and says so.** A browser that is short of memory - an old window with a lot of tabs, and Edge especially - does not refuse to draw 3D. It quietly stops using the graphics chip and draws every pixel on the processor instead, which is perhaps a hundred times slower and is what a total lockup actually is: it was never broken, it was going to finish eventually. SSE now asks the question that tells the two apart, once, when the first 3D view opens. If the answer is bad it does not refuse to run - it turns Low power on for that session and puts a line on screen telling you what happened and that a fresh browser window will be much faster.

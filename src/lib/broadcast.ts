@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { importOrReload } from '$lib/util/importOrReload';
-import { peerConfigFor, loadStoredIce, iceVerdict, type IceServerEntry } from '$lib/iceConfig';
+import { peerConfigFor, loadStoredIce, iceVerdict, primeManagedIce, managedIceReady, type IceServerEntry } from '$lib/iceConfig';
 import { perfCount, perfEvent } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
 import type { FlightUpdate } from '$lib/constructs/flightState';
@@ -337,6 +337,10 @@ class BroadcastService {
     perfEvent('peer', { phase: 'host-attempt', id: sessionId, caller, attempt });
     try {
       const Peer = await this.loadPeer();
+      // v3.1.17 - ICE config is fixed when the peer is built and cannot be added
+      // to afterwards, so the managed relay has to be in hand first. It was asked
+      // for at startup; this waits only for what is left, and gives up quickly.
+      await managedIceReady();
       // The host registers under the session id, so a guest dials that id directly.
       // BYO ICE (docs/dev/vtt-integration-design.md 11): custom STUN/TURN prepended to
       // the PeerJS defaults, so a turns:443 relay can carry a locked-down network.
@@ -409,6 +413,7 @@ class BroadcastService {
     if (typeof window === 'undefined' || !sessionId) return;
     try {
       const Peer = await this.loadPeer();
+      await managedIceReady();
       const cfg = peerConfigFor(this.iceServers ?? loadStoredIce());
       this.peer = new Peer(undefined, cfg ? { config: cfg } : undefined);
       this.peer.on('open', () => {
@@ -1131,3 +1136,9 @@ class BroadcastService {
 }
 
 export const broadcastService = new BroadcastService();
+
+// v3.1.17 - ask for the managed relay's credentials as early as anything runs,
+// so the answer is already here by the time a GM hosts or a player dials. Inert
+// until an endpoint is configured, guarded against SSR, and silent on failure:
+// no relay simply means the behaviour this app has always had.
+void primeManagedIce();

@@ -20,13 +20,25 @@
   import { APP_VERSION } from '$lib/constants';
   import { broadcastService, type PeerLink } from '$lib/broadcast';
   import { transferReportText, linkSummary } from '$lib/transferReport';
-  import { loadStoredIce, saveStoredIce, parseIceText, iceToText, testIceServers } from '$lib/iceConfig';
+  import { loadStoredIce, saveStoredIce, parseIceText, iceToText, testIceServers,
+    managedIceUrl, managedRelayEnabled, setManagedRelayEnabled } from '$lib/iceConfig';
   import { foreground } from '$lib/ui/foreground';
   // G16: the picture behind the stars. Campaign content, so it saves with the rest of this dialog.
   import MapBackgroundControls from './MapBackgroundControls.svelte';
   import type { MapBackground } from '../types';
   import { normaliseMapBackground } from '$lib/map/mapBackground';
   import { BUILTIN_ASSETS } from '$lib/player/presets';
+
+  // v3.1.17 - the managed relay. `hasManagedRelay` is false until an endpoint
+  // is configured, and a switch for something that is not there is worse than
+  // no switch, so the whole row stays hidden until then.
+  let hasManagedRelay = false;
+  let useManagedRelay = true;
+  onMount(() => { hasManagedRelay = !!managedIceUrl(); useManagedRelay = managedRelayEnabled(); });
+  function toggleManagedRelay(e: Event) {
+    useManagedRelay = (e.currentTarget as HTMLInputElement).checked;
+    setManagedRelayEnabled(useManagedRelay);
+  }
 
   // BYO STUN/TURN for remote players (docs/dev/vtt-integration-design.md 11).
   let iceText = '';
@@ -595,6 +607,19 @@
           <p class="section-hint">A reference for how worlds are drawn from their physics and tags — polar ice, gas-giant banding, rotational shape and more.</p>
 
           <h4 class="advanced-head">Remote players — network relay</h4>
+          {#if hasManagedRelay}
+            <div class="form-group">
+              <label class="managed-relay">
+                <input type="checkbox" checked={useManagedRelay} on:change={toggleManagedRelay} />
+                <span>Use the Star System Explorer relay when a direct connection fails</span>
+              </label>
+              <p class="section-hint">On by default. Players connect straight to you whenever they can -
+                the relay is the LAST route tried, so it only carries the players who could not connect
+                without it. It cannot read anything it carries (the connection is encrypted between the
+                two browsers), and it hides your address and theirs from each other. Switch it off to use
+                only a direct path, or your own relay below.</p>
+            </div>
+          {/if}
           <div class="form-group">
             <p class="section-hint">Player views on other devices connect peer-to-peer. That works whenever
               both networks allow a direct path — but there is no longer any fallback behind it: the free
@@ -915,6 +940,8 @@
   .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
   .danger-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--status-bad, #d04545) 16%, transparent) !important; }
   .danger-btn:disabled { opacity: 0.6; cursor: default; }
+  .managed-relay { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+  .managed-relay input { margin-top: 2px; flex: 0 0 auto; }
   .ice-input { width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace; background: rgba(255,255,255,0.05); color: inherit; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; resize: vertical; }
   .section-btn {
     display: block;
