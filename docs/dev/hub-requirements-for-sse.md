@@ -739,9 +739,9 @@ sets, in its own half, when it sets it.
 
 **The hub's half is SHIPPED AND LIVE.** Its brief for this side is
 `C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-08-clip-rules.md`, quoted here rather than
-paraphrased where it matters. **SSE-SIDE STATUS: JOBS 1 AND 2 OF 5 SHIPPED, beta v3.1.41 - the envelope parses, and
-the comparison answers ABSENT / IDENTICAL / DIFFERENT per definition. The MERGE (jobs 3-5) is not built, so a clip's
-rules still do nothing on arrival.** Board row [[G92]].
+paraphrased where it matters. **SSE-SIDE STATUS: COMPLETE, beta v3.1.45 - all five jobs answered, four built and one decided against with its
+reasoning (engine map DATA-R50). A clip's rules are read, compared, merged and reported. NOT IN PRODUCTION:
+production is v3.1.0 and this is not in it.** Board row [[G92]].
 
 **JOB 2 SHIPPED THE COMPARISON, and it needed something extracted first.** `compareClipOverrides` answers one of three
 per DEFINITION - never per section, because `applyStarmapOverrides` is a shallow section-level spread that would
@@ -768,6 +768,16 @@ the effective pack and pass 1 is what a GM sees. Engine map DATA-R48.
 It is a bag of scalars, and `pigmentModel(pack)` always answers with a complete config - so no field is ever ABSENT
 in the destination, and a field that differs cannot be renamed because the field IS the name. It is REPORTED
 instead ("kept your own captureWeight"). Reporting rather than silence is still the whole difference from the bug.
+
+**SEEN WORKING IN A BROWSER, not only in tests (2026-09-08).** The hub's own rules-only clip pasted into the
+bundled Local Neighbourhood campaign: the dialog says "Rules only - a liquid. From Contract Reach by FrunkQ", the
+paste reports **"Added a liquid."**, and the campaign's autosave - read out of IndexedDB rather than off the screen
+- holds `liquids` as a DELTA whose `entries` names ONLY `unobtainium`, so the other twenty-two keep tracking the
+shipped pack. Pasted again, it says **"That clip carries rules this campaign already has - nothing to add."**
+**THE BROWSER PASS PAID FOR ITSELF TWICE:** it found a FOURTH door into the paste that the wiring had missed -
+`HubClipPasteModal` disabled its button until a host system was chosen, so a rules-only clip was stuck with nothing
+on screen saying why - and a Svelte whitespace trim that ran the summary into "Rules only- a liquid", which is the
+exact trap that file's own comment already warns about one line below.
 
 **GATED AGAINST THE HUB'S OWN SEVEN FIXTURES.** `docs/clips/` in the hub repo, produced by its `buildClip`/
 `buildRulesClip` and asserted by its own test. They are READ WHERE THEY LIVE and never copied into this repo - one

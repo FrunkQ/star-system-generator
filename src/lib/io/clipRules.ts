@@ -128,11 +128,21 @@ export const SECTIONS: readonly SectionDef[] = [
     fromPack: (p) => byId((p as any)?.distributions?.['atmosphere_composition']?.entries, (r) => r?.value?.name) },
   { key: 'liquids', shape: 'delta', idOf: (r) => r?.name, one: 'liquid', many: 'liquids',
     fromPack: (p) => byId(allLiquids(p), (r) => r?.name),
-    // `hydrosphere.composition` - the field `liquidDef()` is actually asked for, via
-    // `SystemProcessor` and `fluidLayers`. NOTE for anyone comparing against the hub's test clips:
-    // those name it `hydrosphere.liquid`, which nothing in this engine reads. Reported on the seam.
-    namedBy: (n) => nonEmpty(n?.hydrosphere?.composition),
-    repoint: (n, from, to) => { if (n?.hydrosphere?.composition === from) n.hydrosphere.composition = to; } },
+    // TWO PLACES, NOT ONE, and the second is easy to miss - which is the whole argument in DATA-R50.
+    // `hydrosphere.composition` is the surface volatile `liquidDef()` is asked for (`SystemProcessor`,
+    // `fluidLayers`); `hydrosphere.layers[].liquid` is a FluidLayer naming its own substance, and a
+    // subsurface ocean or a cloud deck can name a liquid the surface never mentions. A rename that
+    // repointed only the first would leave those layers pointing at a definition this campaign has
+    // under a different meaning - silently.
+    //
+    // NOTE for anyone comparing against the hub's test clips: those put the surface liquid in
+    // `hydrosphere.liquid`, which is neither of these and which nothing in this engine reads.
+    // Reported on the seam 2026-09-08; the hub has offered to move it.
+    namedBy: (n) => nonEmpty(n?.hydrosphere?.composition, ...(n?.hydrosphere?.layers ?? []).map((l: any) => l?.liquid)),
+    repoint: (n, from, to) => {
+      if (n?.hydrosphere?.composition === from) n.hydrosphere.composition = to;
+      for (const l of n?.hydrosphere?.layers ?? []) if (l?.liquid === from) l.liquid = to;
+    } },
   { key: 'morphologies', shape: 'delta', idOf: (r) => r?.key, one: 'morphology', many: 'morphologies',
     fromPack: (p) => byId(allMorphologies(p), (r) => r?.key),
     // Either form a save may carry: a bare string, or a layer record (G19 widened this).

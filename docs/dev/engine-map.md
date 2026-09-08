@@ -7350,3 +7350,30 @@ is to keep the GM's and SAY SO. The section therefore never travels; what it doe
 still the whole difference from the bug, because silence is what made R-19 invisible.
 BLAST: none to data. It is a product decision - a paste cannot carry a pigment weighting - and the
 owner can reverse it; if he does, the change is one arm of this function, not a new mechanism.
+
+### DATA-R50 THE CLIP MERGE TAKES THE WHOLE OVERRIDE BAG - NARROWING IT IS THE ORIGINAL BUG WITH EXTRA STEPS
+BUCKET: ARCHITECTURE (file format) - R-19 job 4, DECIDED NOT TO BUILD, 2026-09-08.
+WHERE: `src/lib/io/clipRules.ts`. The machinery narrowing would use EXISTS (`SECTIONS[].namedBy`),
+because the RENAME needs it anyway to repoint pasted nodes - so this is a decision, not a gap.
+RULE: **a clip's rules are merged whole, not filtered to what the pasted nodes reference.** The hub
+carries the lot deliberately and the owner allowed merging the lot as version one; this entry records
+why it should stay that way rather than being "finished" later by someone reading the brief.
+THE ARGUMENT, and the third point is the one that decided it:
+- **THE COST OF MERGING THE LOT IS CLUTTER. THE COST OF NARROWING WRONG IS A SILENT WRONG ANSWER** -
+  a definition the pasted body needed, dropped, with the paste reporting success. That is R-19's own
+  bug, reintroduced by the code that closes it. The two failure modes are not comparable.
+- **THREE SECTIONS CANNOT BE NARROWED AT ALL.** Nothing names a pigment: pigments are SCORED across
+  the whole pack, so a pigment override reaches a pasted world through the SET. Same for
+  `pigmentModel`, and for an atmosphere preset, which is a template a body was made from rather than
+  a link it keeps. Narrowing by node reference would drop exactly the definitions that decide a
+  pasted world's vegetation colour.
+- **THE REFERENCE GRAPH HAS MORE EDGES THAN IT LOOKS.** A liquid is named in TWO independent node
+  places - `hydrosphere.composition` AND `hydrosphere.layers[].liquid` (a subsurface ocean or cloud
+  deck can name a liquid the surface never mentions) - and definitions name each other, an engine
+  naming its fuel by id. The second liquid edge was missed on the first pass of the RENAME and only
+  found by grepping every `liquidDef` caller. A narrowing pass gets no such second chance: a missed
+  edge is silent by construction.
+- **A RULES-ONLY CLIP HAS NO NODES**, so narrowing has to be skipped for it anyway.
+BLAST: if narrowing is ever built, it must be additive-only over a measured reference map, and the
+three set-scored sections must be exempt by name. Do not derive the reference list from the fields
+that happen to appear in one fixture.

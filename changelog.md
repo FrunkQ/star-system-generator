@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.45 - 8th Sep 2026
+
+- **The rules pages from the map library can now actually be pasted.** The paste window would not let you press its button for a rules-only copy, because it was still waiting for you to choose which system to put it in - and there is no object to put anywhere. It now says what the rules are, that nothing will be added to your map, and lets you paste them.
+- Renaming a clashing liquid now also repoints a world's underground oceans and cloud decks, not just its surface, so nothing is left pointing at the wrong definition.
+
 ## v3.1.44 - 8th Sep 2026
 
 - **The tag categories the engine relies on can no longer be switched off, and the switch now behaves.** Six of them - Status, Owner, Purpose, Resources, Hull class and FTL drive - are matched by name by the parts of the app that move ships, mine, refuel and pick templates, so offering to hide them was offering something the app would ignore. Worse, it did not stick: switching one off lasted until you reloaded and then quietly came back. They now stay on, their tickbox says why, and their tags are still entirely yours to edit.

@@ -224,6 +224,23 @@ describe('R-19 the merge rules', () => {
 		expect(m.discarded.map((d) => d.id)).toEqual(['captureWeight']);
 	});
 
+	// The second place a node names a liquid, and the one a narrowing pass would have missed.
+	it('a rename repoints a FLUID LAYER as well as the surface composition', () => {
+		const destination = mergeClipOverrides({ liquids: [UNOB] } as any, undefined, PACK, { sourceLabel: 'Home' }).overrides;
+		const nodes = [{
+			id: 'b', kind: 'body',
+			hydrosphere: {
+				composition: 'unobtainium',
+				layers: [{ liquid: 'unobtainium', location: 'subsurface' }, { liquid: 'water', location: 'cloud' }]
+			}
+		}];
+		const m = mergeClipOverrides({ liquids: [{ ...UNOB, boilK: 1 }] } as any, destination, PACK, { sourceLabel: 'Elsewhere', nodes });
+		const to = m.renamed[0].to;
+		expect(nodes[0].hydrosphere.composition).toBe(to);
+		expect(nodes[0].hydrosphere.layers[0].liquid).toBe(to);
+		expect(nodes[0].hydrosphere.layers[1].liquid).toBe('water');   // untouched
+	});
+
 	it('the destination overrides are never mutated in place', () => {
 		const destination: any = { liquids: [UNOB] };
 		const before = JSON.stringify(destination);
