@@ -2178,3 +2178,77 @@ the right order is to get eyes on what has already shipped first.
 > pile and confirm the modifier reads sensibly on both.
 >
 > **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM Z - every object carries its own age (G94, and the fix for B150)
+
+> You are giving every body an age of its own. [[G94]], decided by the owner 2026-09-08; it is the groundwork V4
+> needs and the fix [[B150]] needs, built once. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams
+> push daily). Work in your OWN worktree (`git worktree add ../sse2-bodyage -b wt/bodyage origin/beta`); the main
+> checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` - PHYSICS
+> DRIVES TAGS DRIVES VISUALS and NOTHING READS A VALUE A LATER PASS WRITES both bite here; the [[G94]] row (the
+> owner's decision and the whole measurement) and [[B150]] (the bug it fixes); engine map [[G62]] on the
+> absolute clock and the stake in the sand; `src/lib/system/idempotence.test.ts` before you touch the processor.
+>
+> **THE OWNER'S DECISION:** *"EVERY object should have an independent age anyway as V4 will track formation
+> times, captured bodies and rebuilding planets smashed in system."*
+>
+> **WHAT IS MEASURED - verify it, do not re-derive it.** One age exists: `System.age_Gyr` (`types.ts:990`), read
+> into `SystemProcessor.systemAgeGyr` (`:93,:98`) and consumed at 21 sites. The per-body consumers that matter:
+> `brownDwarfThermal` (`:155,:689`), `flareActivity` (`:127`), `estimateInternalHeatK` (`:782`), atmospheric
+> escape (`:956`, which already computes `planetAgeGyr = systemAgeGyr - FORMATION_DELAY_GYR`). The clock is
+> already absolute ([[G62]]), so a formation time has an axis to live on.
+>
+> **THE THREE DECISIONS ALREADY TAKEN, so do not reopen them:**
+> 1. **An age is a PROPERTY, not an override.** It does not fire the anomaly engine. A body older than its
+>    system is a history, not a cheat.
+> 2. **Store a FORMATION TIME on the absolute clock**, and derive age from it. A duration would have to be
+>    migrated the moment V4 tracks formation properly.
+> 3. **ABSENT MEANS INHERIT.** No age of its own means the system's age, and the system's age is NEVER stamped
+>    onto bodies when saving - that would freeze it and stop a later change reaching anything.
+>
+> **THE ONE DECISION LEFT, AND IT IS YOURS TO MEASURE AND THE OWNER'S TO CONFIRM:** age is `now - formationTime`,
+> so WHICH "now"? If it is the live scrub position, a brown dwarf cools while a GM drags the clock and the
+> physics starts depending on the display clock - which the transit work deliberately separated. **Recommended:
+> the campaign's own reference date, not the scrub**, leaving live evolution as the V4 door this opens rather
+> than something switched on now. Measure what the alternative would actually do before you accept the
+> recommendation, and say so either way.
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **The field and `ageOf(body)`**, with absent-means-inherit proven both ways: a body without one follows the
+>    system when the system's age changes; a body with one does not. Nothing else changes yet.
+> 2. **Switch the per-body consumers** from `this.systemAgeGyr` to `ageOf(body)` - the substellar cooling track
+>    first, since that is B150 - then radiogenic heat, then escape and flare activity. **Not all 21**: the
+>    system's own age control and the map summary stay system-wide. One commit per consumer, each with its own
+>    gate, because each is a physics change.
+> 3. **The control**, on the body's own panel and labelled **Age** - not "time", which in this app means the
+>    campaign date and already has a clock, a calendar and transit times attached to it. Say underneath what it
+>    drives, the way the other derived readings on that panel already do.
+> 4. **The inversion, which is what answers the user who started this.** `worlds/orbitSolver.ts` (Stream V,
+>    same day) already does *"ask where a star would keep a body at a given temperature"*. Do the same here: the
+>    GM types a temperature into the field B150 is about, and the app answers *"that is a 9.2 Gyr dwarf - set
+>    its age to that?"* Physics stays the single source and the GM still gets to type what he wanted.
+> 5. **[[B150]]'s interface half**, last: the temperature field stops pretending, says a brown dwarf's
+>    temperature follows its mass, age and radius, and offers the age.
+> 6. **A tag when an age differs markedly from its system's** - a published fact, not a refusal and not an
+>    anomaly, so a reader can see why this dwarf is cold instead of wondering.
+>
+> **GATES, red-first and absolute.** A dwarf at a given mass and radius reports a specific temperature at 1 Gyr
+> and a specific LOWER one at 9 Gyr, in kelvin, not "cooler"; the same value survives a reprocess (it is an
+> input, and `idempotence.test.ts` is the gate that proves nothing reads it out of order); a body with no age
+> tracks the system's when that changes, and one with an age does not; and the two `tests/` fixtures WILL move -
+> commit them and read the diff as the record of what shifted.
+>
+> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
+> manifest` after every version bump; the stash stack is shared - WIP commits, never bare stash/pop; claim ids
+> in both forms and expect a race (one was lost to another stream while this row was being written); B99's
+> rarity-dial spec is a known statistical flake that passes alone. **THE MACHINE IS BUSY** - several streams are
+> live and the owner has asked for lighter runs, so prefer targeted gates while you work.
+>
+> **EYEBALL FOR THE OWNER:** open the brown dwarf from the user's report, set its age older, and watch the
+> temperature fall by the same law rather than snapping back; then type a temperature and be offered the age
+> that produces it.
+>
+> **Housekeeping:** as Stream Q's, word for word.

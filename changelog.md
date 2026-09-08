@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.58 - 8th Sep 2026
+
+- Board only. Every object will carry its own age, decided today. A campaign has exactly one age at the moment, on the system, and a body cannot be told it is older or younger - which is why a brown dwarf refuses to keep a temperature you type, since its temperature is nothing but its age. Giving a body its own age fixes that by driving the physics rather than overruling it, and it is the groundwork for tracking when things formed, which bodies were captured, and which were smashed and rebuilt.
+
 ## v3.1.57 - 8th Sep 2026
 
 - Board only. The brown-dwarf temperature question is answered: the object in the report sits in the middle of the brown-dwarf mass range, not at the edge where one would start fusing, so nothing about that boundary is involved. Its temperature comes from a cooling track, which means the lever that actually moves it is the system's age rather than the temperature box.
