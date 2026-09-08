@@ -2075,9 +2075,18 @@ the right order is to get eyes on what has already shipped first.
 
 ### TWO FINDINGS FOR THE COORDINATOR, unrelated to C20
 
-- **`src/lib/generation/axialTilt.spec.ts` is a SECOND statistical flake beside [[B99]]'s rarity
-  dial.** It failed once in a full run and passed alone and in every later run. Worth a row: the
-  known-flake list currently names only B99, so the next session to see this one will chase it.
+- **NOT A FLAKE - HEAVY SPECS TIME OUT WHEN SEVERAL AGENTS TEST AT ONCE, and that is worth knowing
+  in a repo that runs parallel sessions by default.** I first wrote this up as "a second statistical
+  flake beside [[B99]]'s rarity dial", which was WRONG and is corrected here rather than left to
+  mislead. `axialTilt.spec.ts`, `generateFromConfig.spec.ts` and `tagPresentation.spec.ts` all failed
+  together, then all passed alone - and the failures were `Test timed out in 5000ms`, never an
+  assertion. The owner's explanation was the whole of it: *"we just had 4 agents testing at once"*.
+  **THE TELL IS THE ERROR TEXT.** A timeout names a budget; a flake names a value. Read it before
+  concluding anything is non-deterministic, because the two are indistinguishable from a red tick in
+  a summary line and only one of them is a bug. Several heavy specs sit on vitest's default 5 s, and
+  the source-scanning pins are the same shape (`glRendererSites.spec.ts` needed 60 s, and it cheap-
+  rejects a file before doing per-line work for exactly this reason). If this keeps costing sessions,
+  the fix is a budget on the heavy specs, not a hunt for a seed.
 - **`player/presetStore.ts:addAssetFromCanvas` has no callers anywhere in the repo**, yet its
   documentation states a live dependency on `holo/scene.ts` and `filteredCanvas.ts` keeping
   `preserveDrawingBuffer`. It was traced during job 5 and deliberately left alone; if it is dead it

@@ -2,10 +2,15 @@
 
 All notable changes are listed here:
 
+## v3.1.36 - 8th Sep 2026
+
+- Board only. A note I left for the next developer was wrong and is corrected: three tests that looked unreliable were not - they simply ran out of time because four agents were testing on the machine at once. Nothing in the app was at fault, and the correction says how to tell the two apart so the next person does not go looking for a problem that is not there.
+
 ## v3.1.35 - 8th Sep 2026
 
 - A new developer guide, "adding a classification", written at the owner's request so that adding a body type is a checklist rather than an afternoon of research. It names every place a new type has to reach and the trap that catches people first: the app re-derives every type on every pass, so a type it cannot work out for itself is quietly lost the next time a system is processed.
 - Board only. Small bodies are a convincing lumpy potato on their info card and a smooth ball in every 3D view, because nothing has ever displaced the sphere the 3D views build. Captured on the owner's word and folded into the contact-binary stream, since both need the same seeded shape and the card and the 3D view should show the same rock.
+
 
 ## v3.1.34 - 8th Sep 2026
 
