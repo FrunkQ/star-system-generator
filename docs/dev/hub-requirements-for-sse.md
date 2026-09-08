@@ -739,9 +739,23 @@ sets, in its own half, when it sets it.
 
 **The hub's half is SHIPPED AND LIVE.** Its brief for this side is
 `C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-08-clip-rules.md`, quoted here rather than
-paraphrased where it matters. **SSE-SIDE STATUS: JOB 1 OF 5 SHIPPED, beta v3.1.37 - the envelope parses and both
-producers are read. The MERGE (jobs 2-5) is not built, so a clip's rules still do nothing on arrival.** Board row
-[[G92]].
+paraphrased where it matters. **SSE-SIDE STATUS: JOBS 1 AND 2 OF 5 SHIPPED, beta v3.1.40 - the envelope parses, and
+the comparison answers ABSENT / IDENTICAL / DIFFERENT per definition. The MERGE (jobs 3-5) is not built, so a clip's
+rules still do nothing on arrival.** Board row [[G92]].
+
+**JOB 2 SHIPPED THE COMPARISON, and it needed something extracted first.** `compareClipOverrides` answers one of three
+per DEFINITION - never per section, because `applyStarmapOverrides` is a shallow section-level spread that would
+replace a GM's whole liquids override with the incoming one. `canonicalJson` is REUSED, not rewritten, exactly as the
+triage asked. The extraction: **`effectiveRulePack` moved out of `src/routes/+page.svelte` into
+`src/lib/rulepack/effectivePack.ts`**, unchanged, pinned bit-for-bit against the old expression over twenty cases by
+`effectivePack.spec.ts`. It had to: "does this campaign already have that definition?" cannot be answered without that
+merge, it was unreachable from anywhere but that component, and writing a second copy is precisely the fault
+[[B147]] was - twice.
+
+**AND THE DESTINATION IS ASKED OF ITS EFFECTIVE PACK, NOT ITS OVERRIDES.** A campaign with no `water` override is
+still USING water, so a clip carrying the shipped water unchanged must compare IDENTICAL against it. Asking the
+overrides alone would call it absent and store a redundant override that freezes that definition against every later
+improvement to the pack - `rulepackDelta` cost #2, introduced by a paste.
 
 **WHAT JOB 1 SHIPPED.** `rulePackOverrides` is an optional key on `HubClip`, shape-checked and carried whole
 (`parseHubClip`); a RULES-ONLY clip - `nodes: []` and no `root`, which is the pair the hub uses to tell its two

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.40 - 8th Sep 2026
+
+- Groundwork, part two, for a planet copied from the map library bringing its custom rules with it: the app can now tell, definition by definition, whether a rule arriving with a copied object is one you already have, one you have under the same name but defined differently, or one that is new to you. Comparing ignores the order the fields happen to be written in, so a rule that is genuinely the same is not mistaken for a clash. Nothing is merged yet - that is the next piece.
+
 ## v3.1.39 - 8th Sep 2026
 
 - **Fixed: worlds were being re-made from scratch every time you scrolled them off the edge and back.** This is what was really behind the size comparison crawling on an older machine, and it was the owner who spotted it: *"everything is being retextured on the fly. Rather than cached"*. The expensive part - painting a world's surface - was already cached. Handing that painted surface to the graphics card was not, and that step was being redone for every world, every time it came back into view. On a machine whose browser has fallen back to drawing with the processor, that copy is done by hand, half a megapixel at a time, and it is the whole bill. A world's surface is now handed over once and shared by everything that draws it.

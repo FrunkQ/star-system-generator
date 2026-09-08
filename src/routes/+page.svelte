@@ -64,6 +64,7 @@
   import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditBiospheresModal from '$lib/components/EditBiospheresModal.svelte';
   import { applyListDelta } from '$lib/rulepackDelta';
+  import { buildEffectiveRulePack } from '$lib/rulepack/effectivePack';
   import { allLiquids } from '$lib/physics/liquids';
   import { allMorphologies } from '$lib/physics/vegetation';
   import { allPigments, pigmentModel } from '$lib/physics/pigments';
@@ -649,70 +650,11 @@
     return globalDisplaySec;
   }
 
-  $: effectiveRulePack = (() => {
-      if (!selectedRulepack) return undefined;
-      // Deep clone to avoid mutating the original rulepack which might be cached
-      const pack = JSON.parse(JSON.stringify(selectedRulepack));
-
-      if ($starmapStore?.rulePackOverrides) {
-          const overrides = $starmapStore.rulePackOverrides;
-
-          if (overrides.fuelDefinitions && pack.fuelDefinitions) {
-              overrides.fuelDefinitions.forEach((f: any) => {
-                  const idx = pack.fuelDefinitions.entries.findIndex((d: any) => d.id === f.id);
-                  if (idx !== -1) pack.fuelDefinitions.entries[idx] = f;
-                  else pack.fuelDefinitions.entries.push(f);
-              });
-          }
-
-          if (overrides.engineDefinitions && pack.engineDefinitions) {
-              overrides.engineDefinitions.forEach((e: any) => {
-                  const idx = pack.engineDefinitions.entries.findIndex((d: any) => d.id === e.id);
-                  if (idx !== -1) pack.engineDefinitions.entries[idx] = e;
-                  else pack.engineDefinitions.entries.push(e);
-              });
-          }
-
-          if (overrides.sensorDefinitions && pack.sensorDefinitions) {
-              overrides.sensorDefinitions.forEach((s: any) => {
-                  const idx = pack.sensorDefinitions.entries.findIndex((d: any) => d.id === s.id);
-                  if (idx !== -1) pack.sensorDefinitions.entries[idx] = s;
-                  else pack.sensorDefinitions.entries.push(s);
-              });
-          }
-
-          if (overrides.gasPhysics) {
-              pack.gasPhysics = { ...pack.gasPhysics, ...overrides.gasPhysics };
-          }
-
-          if (overrides.atmosphereCompositions && pack.distributions?.['atmosphere_composition']) {
-              pack.distributions['atmosphere_composition'].entries = overrides.atmosphereCompositions;
-          }
-
-          // D25: A DELTA, like the two below it, and it used to be a WHOLE-LIST REPLACE. That was the
-          // odd one out of three list overrides, and it made shipping a definition WITH a starmap
-          // impossible without either dropping every liquid the map did not name or freezing all of
-          // them against later improvements (`rulepackDelta.ts` cost #2). `applyListDelta` takes a
-          // plain array as it stands, so every campaign saved before this is unaffected.
-          if (overrides.liquids) {
-              pack.liquids = applyListDelta(allLiquids(pack), overrides.liquids, (l: any) => l.name);
-          }
-
-          // DELTAS laid over the pack's own lists, so anything the GM never touched keeps tracking
-          // the shipped defaults. applyListDelta also accepts a whole list, which is what campaigns
-          // saved before this carry.
-          if (overrides.morphologies) {
-              pack.morphologies = applyListDelta(allMorphologies(pack), overrides.morphologies, (m) => m.key);
-          }
-          if (overrides.pigments) {
-              pack.pigments = applyListDelta(allPigments(pack), overrides.pigments, (p) => p.key);
-          }
-          if (overrides.pigmentModel) {
-              pack.pigmentModel = { ...pigmentModel(pack), ...overrides.pigmentModel };
-          }
-      }
-      return pack;
-  })();
+  // R-19: THE MERGE ITSELF NOW LIVES IN `$lib/rulepack/effectivePack`, unchanged and pinned.
+  // It moved because "does this campaign already have that definition?" cannot be answered without
+  // it, and it was unreachable from anywhere but this component - so the next caller would have
+  // written a second copy of it. See the note at the head of that module.
+  $: effectiveRulePack = buildEffectiveRulePack(selectedRulepack, $starmapStore?.rulePackOverrides);
 
   onMount(async () => {
     // v3.1.21 - ask for the managed relay's credentials as early as this page

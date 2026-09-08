@@ -21,7 +21,9 @@ import type { RulePack, RulePackOverrides } from '$lib/types';
 import { applyListDelta, type PackListDelta } from '$lib/rulepackDelta';
 import { allLiquids } from '$lib/physics/liquids';
 import { allMorphologies } from '$lib/physics/vegetation';
-import { allPigments } from '$lib/physics/pigments';
+import { allPigments, pigmentModel } from '$lib/physics/pigments';
+import { canonicalJson } from './shippedDefaults';
+import { buildEffectiveRulePack } from '$lib/rulepack/effectivePack';
 
 /**
  * How a section stores its definitions. The five are not a taxonomy anybody designed - they are what
@@ -44,8 +46,18 @@ export interface SectionDef {
   readonly shape: SectionShape;
   /** What identifies one definition within the section. Absent for `scalars`, which has none. */
   readonly idOf?: (record: any) => string | undefined;
-  /** The pack's own list, for the three `delta` sections - what an incoming delta is laid against. */
-  readonly base?: (pack: RulePack | null | undefined) => any[];
+  /**
+   * What THE PACK holds for this section, keyed by identity and in pack order.
+   *
+   * Two jobs, and they are why this exists for every shape rather than only the delta ones: it is
+   * the base an incoming delta is laid against, AND - asked of the destination's EFFECTIVE pack -
+   * it is the answer to "what does this campaign use for that definition today?". The second is
+   * what makes IDENTICAL mean the right thing: a clip carrying the shipped `water` unchanged must
+   * compare identical against a campaign that has no water override at all, because that campaign
+   * IS using the shipped water. Comparing against the destination's overrides alone would call it
+   * absent and add a redundant override that freezes the definition for good.
+   */
+  readonly fromPack: (pack: RulePack | null | undefined) => Map<string, any>;
   /** For the report, in the app's voice: "2 liquids", "an engine definition". */
   readonly one: string;
   readonly many: string;
@@ -58,16 +70,33 @@ export interface SectionDef {
  * both said EIGHT, because it is the one key that is not a collection. Left out, a campaign's
  * pigment weightings would be the one customisation that silently did not travel.
  */
+const byId = (rows: any[] | undefined, idOf: (r: any) => string | undefined): Map<string, any> => {
+  const out = new Map<string, any>();
+  for (const r of rows ?? []) { const id = idOf(r); if (id) out.set(id, r); }
+  return out;
+};
+const asMap = (record: Record<string, any> | undefined): Map<string, any> =>
+  new Map(Object.entries(record ?? {}));
+
 export const SECTIONS: readonly SectionDef[] = [
-  { key: 'fuelDefinitions',   shape: 'list',   idOf: (r) => r?.id,          one: 'fuel definition',      many: 'fuel definitions' },
-  { key: 'engineDefinitions', shape: 'list',   idOf: (r) => r?.id,          one: 'engine definition',    many: 'engine definitions' },
-  { key: 'sensorDefinitions', shape: 'list',   idOf: (r) => r?.id,          one: 'sensor definition',    many: 'sensor definitions' },
-  { key: 'gasPhysics',        shape: 'record', idOf: (r) => r?.__key,       one: 'gas',                  many: 'gases' },
-  { key: 'atmosphereCompositions', shape: 'weighted', idOf: (r) => r?.value?.name, one: 'atmosphere preset', many: 'atmosphere presets' },
-  { key: 'liquids',     shape: 'delta', idOf: (r) => r?.name, base: (p) => allLiquids(p),      one: 'liquid',     many: 'liquids' },
-  { key: 'morphologies', shape: 'delta', idOf: (r) => r?.key, base: (p) => allMorphologies(p), one: 'morphology', many: 'morphologies' },
-  { key: 'pigments',    shape: 'delta', idOf: (r) => r?.key, base: (p) => allPigments(p),      one: 'pigment',    many: 'pigments' },
-  { key: 'pigmentModel', shape: 'scalars', one: 'pigment model setting', many: 'pigment model settings' }
+  { key: 'fuelDefinitions', shape: 'list', idOf: (r) => r?.id, one: 'fuel definition', many: 'fuel definitions',
+    fromPack: (p) => byId((p as any)?.fuelDefinitions?.entries, (r) => r?.id) },
+  { key: 'engineDefinitions', shape: 'list', idOf: (r) => r?.id, one: 'engine definition', many: 'engine definitions',
+    fromPack: (p) => byId((p as any)?.engineDefinitions?.entries, (r) => r?.id) },
+  { key: 'sensorDefinitions', shape: 'list', idOf: (r) => r?.id, one: 'sensor definition', many: 'sensor definitions',
+    fromPack: (p) => byId((p as any)?.sensorDefinitions?.entries, (r) => r?.id) },
+  { key: 'gasPhysics', shape: 'record', idOf: (r) => r?.__key, one: 'gas', many: 'gases',
+    fromPack: (p) => asMap((p as any)?.gasPhysics) },
+  { key: 'atmosphereCompositions', shape: 'weighted', idOf: (r) => r?.value?.name, one: 'atmosphere preset', many: 'atmosphere presets',
+    fromPack: (p) => byId((p as any)?.distributions?.['atmosphere_composition']?.entries, (r) => r?.value?.name) },
+  { key: 'liquids', shape: 'delta', idOf: (r) => r?.name, one: 'liquid', many: 'liquids',
+    fromPack: (p) => byId(allLiquids(p), (r) => r?.name) },
+  { key: 'morphologies', shape: 'delta', idOf: (r) => r?.key, one: 'morphology', many: 'morphologies',
+    fromPack: (p) => byId(allMorphologies(p), (r) => r?.key) },
+  { key: 'pigments', shape: 'delta', idOf: (r) => r?.key, one: 'pigment', many: 'pigments',
+    fromPack: (p) => byId(allPigments(p), (r) => r?.key) },
+  { key: 'pigmentModel', shape: 'scalars', one: 'pigment model setting', many: 'pigment model settings',
+    fromPack: (p) => asMap(pigmentModel(p) as any) }
 ] as const;
 
 const isPlainObject = (v: unknown): v is Record<string, any> =>
@@ -178,7 +207,7 @@ export function effectiveDefinitions(
     case 'delta': {
       // The whole point: base + delta, through the ONE function that already knows how a delta is
       // laid over a list, including a deleted field and a reordered hierarchy.
-      const base = section.base?.(pack) ?? [];
+      const base = [...section.fromPack(pack).values()];
       const keyOf = (r: any) => String(section.idOf?.(r) ?? '');
       // A delta names only what it CHANGES, so the applied list also carries every untouched base
       // record. Those are not this override's definitions - they are the pack's - and reporting them
@@ -243,4 +272,66 @@ export function describeOverrides(
   pack?: RulePack | null
 ): string {
   return phraseCounts(countOverrides(overrides, pack));
+}
+
+/**
+ * THE THREE ANSWERS, and only one of them is interesting.
+ *
+ * The owner asked for the middle one by name: *"the receiving end needs to identify duplicates to
+ * what it had and discard (i.e. a related object pasted before)."* It is not an edge case - paste a
+ * star, then paste one of its planets, and every rule the second clip carries is one the first
+ * already brought.
+ */
+export type Verdict = 'absent' | 'identical' | 'different';
+
+export interface ClipDefinition {
+  readonly section: SectionDef;
+  readonly id: string;
+  readonly verdict: Verdict;
+  /** The definition as the clip would have it HERE - the incoming edits applied to this pack. */
+  readonly incoming: any;
+  /** What this campaign uses today. Absent only when the verdict is `absent`. */
+  readonly existing?: any;
+}
+
+/**
+ * What an incoming clip's rules amount to, definition by definition, against a destination campaign.
+ *
+ * PER DEFINITION, NEVER PER SECTION. `applyStarmapOverrides` is a shallow section-level spread, right
+ * for an editor handing back a whole section and catastrophic here: an incoming `liquids` would
+ * replace the GM's entire liquids override rather than joining it. Nothing in this feature goes
+ * through that function.
+ *
+ * THE COMPARISON IGNORES KEY ORDER, and it has to. `{a:1,b:2}` and `{b:2,a:1}` are one definition and
+ * two strings, and the order is decided by whatever built the object - a different engine version, a
+ * hand-edited save, a round trip through a database. `canonicalJson` is REUSED rather than rewritten:
+ * it already sorts keys at every depth and leaves array order alone (a pigment's bands are a
+ * sequence; the fields of a band are a set), and it has a measurement behind it. A second
+ * canonicaliser is the most obvious way to make this test start disagreeing with itself.
+ */
+export function compareClipOverrides(
+  incoming: RulePackOverrides | undefined | null,
+  destination: RulePackOverrides | undefined | null,
+  shippedPack: RulePack | null | undefined
+): ClipDefinition[] {
+  // THE DESTINATION'S EFFECTIVE PACK, through the one function that knows how overrides are applied
+  // (`buildEffectiveRulePack`). Asking its overrides alone would be wrong: a campaign with no water
+  // override is still USING water, and a clip carrying the shipped water unchanged must compare
+  // identical against it rather than adding a redundant override that freezes it for good.
+  const destPack = buildEffectiveRulePack(shippedPack, destination) ?? shippedPack;
+  const out: ClipDefinition[] = [];
+  for (const section of SECTIONS) {
+    // The incoming edits are applied against the DESTINATION'S pack, deliberately: the question is
+    // not what they meant on the map they came from, it is what they would mean here.
+    const arriving = effectiveDefinitions(section, incoming, shippedPack);
+    if (!arriving.size) continue;
+    const here = section.fromPack(destPack);
+    for (const [id, def] of arriving) {
+      const existing = here.get(id);
+      if (existing === undefined) { out.push({ section, id, verdict: 'absent', incoming: def }); continue; }
+      const verdict: Verdict = canonicalJson(def) === canonicalJson(existing) ? 'identical' : 'different';
+      out.push({ section, id, verdict, incoming: def, existing });
+    }
+  }
+  return out;
 }
