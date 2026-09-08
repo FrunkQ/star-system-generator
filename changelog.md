@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.48 - 8th Sep 2026
+
+- Housekeeping before the production release: the entry describing the What's New panel and the SSE3.1 mark that reopens it had been lost while two sessions replayed past each other, leaving one release note recorded twice and another not at all. The code shipped correctly; only the record was wrong.
+
 ## v3.1.47 - 8th Sep 2026
 
 - Developer note only, no behaviour change: the Anomaly tag category is written up alongside the ones that are now locked, explaining why it is safe to switch off when they are not. An anomaly tag is the reason a GM gave for pinning a value - the pin itself does the work, so turning the category off loses a description rather than a mechanic.
@@ -183,7 +187,8 @@ All notable changes are listed here:
 
 ## v3.1.13 - 8th Sep 2026
 
-- Board only. The networking work is recorded as shipped rather than missing: it had been finished and committed but never pushed, so every check against the shared copy said it did not exist. The branch sweep this project runs before a release gains a step that would have caught it.
+- **The V3.1 welcome gains the improvements of the 3.1.x line** - the real-sky importer keeping its stars, liveable Traveller main worlds, 3D on a busy browser and the networking work - while the smaller post-launch fixes are gathered onto its closing line.
+- **Click the SSE3.1 mark in the top corner to read the What's New notes again** whenever you like: the version and the notes that explain it now sit behind the same thing. Copying the version for a bug report moved onto the version itself, inside that panel, so reading the notes no longer overwrites your clipboard.
 
 
 ## v3.1.12 - 8th Sep 2026
