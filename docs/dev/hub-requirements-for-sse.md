@@ -380,6 +380,44 @@ which is also the only context where it means anything.
 
 ---
 
+### R-11, THE CALENDAR HALF: DELIVERED (stream U, 2026-09-08)
+
+The section above asks for two things and names the second *"Do not write the whole shipped library into every
+save"*, with the calendars as its worked example: *"A save carrying the shipped calendar registry is claiming to
+define four calendars the GM never defined."* That is now true of the calendars, and of nothing else yet.
+
+**The container is UNCHANGED - still `temporal.temporal_registry`, the keyed object the hub already reads - so the
+hub needs no config edit and no deploy.** What changed is what goes IN it: only the calendars the GM added or
+altered. `activeCalendarKey` is still written whichever calendar it names, shipped or not, because WHICH reckoning
+a campaign runs on is the GM's decision even when the calendar itself is ours.
+
+**WHAT THIS MEANS FOR THE HUB'S BASELINE, and it is the whole point:** the four-name subtraction can go. A calendar
+present in `temporal.temporal_registry` is now, by construction, a calendar the GM made or edited - so the count is
+the key count, with no baseline to keep in step. **Keeping the subtraction is harmless** (it subtracts names that
+are no longer there), which is why this is safe to ship before the hub changes anything. The trap the section warns
+about - *"reported 3 custom calendars for every real starmap"* - is gone at the source rather than compensated for.
+
+**OLD SAVES STILL CARRY ALL FOUR.** A campaign saved before this keeps its copies until it is next written, so the
+baseline subtraction should not be removed until the hub is content to under-count a stale file by up to four. That
+is the only reason to keep it.
+
+```
+SEAM REPORT | R-11 (calendars) | engine | beta v3.1.18 (da16b866) | prod: NOT RELEASED
+sets:      nothing - the container and its key are unchanged
+must know: a save written by v3.1.18+ carries ONLY GM-made or GM-edited calendars in
+           `temporal.temporal_registry`; `activeCalendarKey` may still name a SHIPPED calendar and is not
+           evidence of a custom one. Older saves still carry all four shipped calendars, so the hub's
+           four-name baseline subtraction stays correct and should not be removed yet. Gases, liquids,
+           fuels, engines and reactions are NOT delivered - R-11's main ask is still open.
+verified:  full suite green (4630); three tests in `io/saveShape.spec.ts` pin a default campaign persisting an
+           EMPTY registry, a GM-altered calendar still being persisted, and idempotence under a repeated autosave
+not done:  the custom gases/liquids/fuels/engines/reactions containers R-11 actually asks for; and the
+           calendar registry still uses its OWN merge rather than `rulePackOverrides`+`applyListDelta` like every
+           other customisation (recorded as a duplication finding on G89, recommended and not done)
+ready for: STREAM N - confirm the hub's calendar facet reads zero custom calendars on a freshly-saved
+           default campaign, and still reads the right number on a campaign with a GM-made calendar
+```
+
 ## R-12. A monotonic revision counter — this one prevents real data loss
 
 **What:** an integer on the document that increments on every explicit save. `revision: 47`.
