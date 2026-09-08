@@ -172,7 +172,14 @@ applies (ping is a corner button; keyboard focus belongs to the iframe).
   two GM-side `{@html}` sinks (F4: `DescriptionEditor.renderMarkdown`, `AIExpansionModal`). Not this
   territory; spawn-task chips were raised; unchanged as far as I can see.
 - Both apps — the real WAN test (cellular vs broadband) has never been run; `?ice=` BYO relay shipped
-  untested against a UDP-blocking network.
+  untested against a UDP-blocking network. **2026-09-08: this is now the load-bearing path, not a
+  nicety — the peerjs community TURN relays no longer resolve (design 11.5), so the default is STUN
+  only.** A GM with no relay configured has no fallback at all.
+- Both apps — nobody has reproduced the original Firefox-Android failure. What is verified is the
+  logic (`iceConfig.spec.ts`, "reads the verdict from EITHER state machine"); what is NOT verified is
+  that a real Firefox client now shows this app's explanation instead of PeerJS's raw error, or that
+  the GM's blocked-joiner notice appears in front of a human. Check: a phone on mobile data opening a
+  share link from a GM with no relay configured.
 - Inbox A57 acceptance list — owner confirmed "it has stopped" on v2.1.817; the five-point list
   (reload x3, second browser prompts once, OK notice, Cancel + three systems, localhost does not
   steal) has not been walked end to end by a human.

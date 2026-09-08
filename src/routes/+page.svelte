@@ -15,6 +15,7 @@
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { mintBroadcastId } from '$lib/broadcastId';
+  import { blockedJoinerAdvice, loadStoredIce } from '$lib/iceConfig';
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -1297,6 +1298,8 @@
 
   let remoteNotice: string | null = null;
   let remoteNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  // One notice per joiner, not one per retry: a blocked player's client redials.
+  const blockedJoiners = new Set<string>();
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   onDestroy(() => {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -1371,6 +1374,20 @@
         if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
         remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 8000);
       }
+    };
+    // A player reached the broker and then their network refused to carry the
+    // connection. THEY cannot fix it — the relay travels in the link they opened — so
+    // the one person who can act has to be told, and told which of the two fixes
+    // applies. This notice does NOT time out: it is the answer to "I can't get in",
+    // and it should still be on screen when the GM comes looking for it.
+    broadcastService.onPeerBlocked = (peerId) => {
+      if (blockedJoiners.has(peerId)) return;
+      blockedJoiners.add(peerId);
+      const advice = blockedJoinerAdvice((loadStoredIce() ?? []).length > 0);
+      remoteNotice = advice === 'add-relay'
+        ? 'A player could not connect — their network would not carry it. Add a relay under Settings > Remote players, then re-share the link or QR from Player Views.'
+        : 'A player could not connect — you have a relay set up, so their link probably pre-dates it. Re-share the link or QR from Player Views.';
+      if (remoteNoticeTimer) { clearTimeout(remoteNoticeTimer); remoteNoticeTimer = null; }
     };
     broadcastService.onRequestStarmap = (requestingId) => {
       if (requestingId && requestingId !== broadcastSessionId) return;

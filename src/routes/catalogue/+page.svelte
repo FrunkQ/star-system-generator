@@ -1278,7 +1278,7 @@
       statusText={receiving
         ? incomingMessage
         : linkBlocked
-          ? 'SENSOR LINK BLOCKED — this network will not carry a direct or relayed connection to the host (UDP blocked, no relay). Ask the GM for a link with a relay, or try another network.'
+          ? 'SENSOR LINK BLOCKED — this network will not carry the connection to your GM. Try switching between wi-fi and mobile data; that often fixes it on the spot. If not, ask your GM for a new link — they have been told, and adding a relay on their side fixes it.'
           : 'Reaching the host — this will fill in automatically once the GM is broadcasting.'}
       sessionId={receiving ? '' : (sessionId ?? '')}>
       {#if receiving}

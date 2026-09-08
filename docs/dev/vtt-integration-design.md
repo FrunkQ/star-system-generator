@@ -784,6 +784,10 @@ The correction to the earlier draft: the default is NOT STUN-only; a relay
 fallback already exists. The true weakness is that both the `0.peerjs.com`
 broker and the community TURN are best-effort infrastructure with no SLA.
 
+**SUPERSEDED 2026-09-08 — see 11.5.** The community TURN relays no longer
+resolve. "Best-effort infrastructure with no SLA" turned out to mean exactly
+what it says: the default IS now STUN-only, in practice.
+
 ### 11.3 Plan
 
 - **Phase 0 (do before any Phase 1 code): a real WAN test.** One device on
@@ -820,6 +824,69 @@ Do not give up the VTT idea. The transport was internet-grade from day one;
 the workload is state-sync, not streaming; a relay fallback already exists by
 default. Remaining work is one afternoon of hardening (config surface +
 failure UI) plus a half-hour test that should have happened years ago.
+
+(The "relay fallback already exists" clause is no longer true — 11.5. The rest
+of the verdict stands, and the workload argument is what makes a GM-supplied
+relay cheap enough to be the answer.)
+
+### 11.5 The fallback is gone, and the failure was mis-reported (2026-09-08)
+
+Prompted by a real user report: "it works fine on Chrome (Android); tried
+Firefox (Android) and got a P2P negotiation error there."
+
+Two separate faults, found in that order. The full write-up, including the
+exact patches and the measurement method, is in the Mappadux repo at
+`docs/p2p-ice-verdict-crossrepo.md` — the same code runs in both apps.
+
+**1. The reporting fault (a bug in our code).** An `RTCPeerConnection` has two
+state machines: `connectionState` (ICE + DTLS aggregate) and
+`iceConnectionState` (ICE alone). Chrome drives them together; Firefox does
+not, and can sit on `iceConnectionState: 'failed'` while `connectionState`
+still says `'disconnected'`. Both apps watched only `connectionState`, so on
+Firefox the failure never reached our own handler — while PeerJS, which
+watches `iceConnectionState`, raised its raw `negotiation-failed` at the
+player instead. Despite the name that error is never an SDP fault: peerjs@1.5.5
+emits it from `iceConnectionState === 'failed'` and nowhere else. `iceVerdict`
+in `iceConfig.ts` now reads BOTH, both events are listened for, and PeerJS's
+error is treated as the ICE verdict it actually is. SSE was worse than
+Mappadux here: its guest-side `conn.on('error')` swallowed everything, so an
+SSE player on Firefox saw no message at all.
+
+**2. The real fault (infrastructure).** Measured with FQDN queries against two
+public resolvers: `eu-0.turn.peerjs.com.` and `us-0.turn.peerjs.com.` return
+NOERROR with no address, while `stun.l.google.com.` resolves normally from the
+same machine. The community TURN relays are gone. So out of the box BOTH APPS
+HAVE NO RELAY — STUN only, a direct path when the NATs cooperate and nothing
+when they do not. That explains every "works for some players, not others"
+report, and the Firefox case was never really about Firefox: Chrome found a
+direct route, Firefox did not, and there was nothing underneath either.
+
+(Use trailing dots when checking this. A machine with a DNS search suffix and a
+wildcard record on that domain will silently answer for
+`eu-0.turn.peerjs.com.<suffix>`, which looks like a working answer and is not.)
+
+**What shipped as a result.** The entries stay in `DEFAULT_ICE` — peerjs still
+ships them and removing them changes nothing, they are inert either way. What
+changed is everything that used to claim they worked, plus three new pieces of
+machinery, all in the twinned `iceConfig.ts`:
+
+- `iceVerdict(pc)` — the verdict, read from both machines. `failed` on either
+  is final; `completed` is ICE's own success terminal and never appears on the
+  aggregate; `disconnected` is a wobble, not a verdict.
+- `testIceServers(servers)` — a local gathering pass that proves a relay is
+  reachable AND its credentials work, in about five seconds. Wired to a "Test
+  these servers" button in Settings > Remote players.
+- `blockedJoinerAdvice(hasCustomRelay)` — which of the two fixes applies. The
+  host now watches an incoming connection's ICE (a blocked joiner NEVER fires
+  `open`, so nothing told the GM before) and raises `onPeerBlocked`; the GM
+  route turns that into a notice that does not time out, because it is the
+  answer to "I can't get in" and should still be there when the GM looks.
+
+**The standing conclusion:** a GM-supplied `turns:host:443` relay is no longer
+the fix for locked-down workplaces only. It is the fix for remote play in
+general. The pre-connection delivery designed in 11.3 (share URL/QR) is what
+makes that workable, and it now matters far more than it did when it was
+built.
 
 ## 12. VTT data crossover — beyond the embedded view (analysed 2026-07-22)
 

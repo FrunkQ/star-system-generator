@@ -20,7 +20,7 @@
   import { APP_VERSION } from '$lib/constants';
   import { broadcastService, type PeerLink } from '$lib/broadcast';
   import { transferReportText, linkSummary } from '$lib/transferReport';
-  import { loadStoredIce, saveStoredIce, parseIceText, iceToText } from '$lib/iceConfig';
+  import { loadStoredIce, saveStoredIce, parseIceText, iceToText, testIceServers } from '$lib/iceConfig';
   import { foreground } from '$lib/ui/foreground';
   // G16: the picture behind the stars. Campaign content, so it saves with the rest of this dialog.
   import MapBackgroundControls from './MapBackgroundControls.svelte';
@@ -38,9 +38,31 @@
     iceText = iceToText(servers);
     iceStatus = summariseIce();
   }
+  // Five seconds now, instead of a player who cannot join mid-session. A relay
+  // candidate is proof the TURN server is reachable AND its credentials work,
+  // which is the only thing that actually rescues a locked-down network.
+  let iceTesting = false;
+  let iceTestResult = '';
+  async function testIce() {
+    iceTesting = true;
+    iceTestResult = '';
+    try {
+      const r = await testIceServers(parseIceText(iceText));
+      iceTestResult = r.error
+        ? `Could not test: ${r.error}`
+        : r.relay
+          ? 'Relay working - a player on a locked-down network can get through. Re-share your link or QR so it carries this.'
+          : r.srflx
+            ? 'No relay. The servers answered, but none handed back a relay candidate - check the TURN username and password, and that the address is a turn: or turns: URL. Players on restrictive networks will still fail.'
+            : 'Nothing came back at all. Check the addresses, and that this machine can reach them.';
+    } finally { iceTesting = false; }
+  }
   function summariseIce(): string {
     const s = loadStoredIce();
-    if (!s || s.length === 0) return 'Using the built-in relay only. New player links will not carry a custom relay.';
+    // This used to say "using the built-in relay only", which is no longer true:
+    // the relays PeerJS ships stopped resolving, so the default really is
+    // direct-only. Measured, not assumed - see iceConfig.
+    if (!s || s.length === 0) return 'No relay configured - remote players can only connect when their network allows a direct path. There is no working fallback behind that, so add a relay here if anyone reports trouble joining.';
     const n = s.length;
     const tls = s.some((e) => (Array.isArray(e.urls) ? e.urls : [e.urls]).some((u) => /^turns:/i.test(u)));
     return `${n} custom server${n === 1 ? '' : 's'} saved${tls ? ' (includes a TLS relay - good for locked-down networks)' : ' (no turns: entry - a UDP-blocking network may still fail)'}. Re-share player links so they carry it.`;
@@ -574,14 +596,21 @@
 
           <h4 class="advanced-head">Remote players — network relay</h4>
           <div class="form-group">
-            <p class="section-hint">Player views on other devices connect peer-to-peer. That works on home and
-              mobile networks by itself (a public relay is built in). A workplace network that blocks UDP can
-              stop it — then a relay that speaks TLS on port 443 is needed. Paste your own STUN/TURN servers
-              here, one per line as <code>turns:host:443|username|credential</code>; they are added ahead of
-              the built-in ones and ride in every player link and QR you share from now on.</p>
+            <p class="section-hint">Player views on other devices connect peer-to-peer. That works whenever
+              both networks allow a direct path — but there is no longer any fallback behind it: the free
+              public relay this used to rely on has stopped working. A network that blocks UDP, or an awkward
+              mobile carrier, then has nothing to fall back on. The cure is a relay that speaks TLS on port
+              443. Paste your own STUN/TURN servers here, one per line as
+              <code>turns:host:443|username|credential</code>; they are added ahead of the built-in ones and
+              ride in every player link and QR you share from now on.</p>
             <textarea class="ice-input" rows="3" bind:value={iceText} on:change={saveIce}
               placeholder="turns:relay.example.com:443|user|secret"></textarea>
             <p class="section-hint">{iceStatus}</p>
+            <button class="section-btn" on:click={testIce} disabled={iceTesting}
+              title="Check the relay is reachable and its credentials work">
+              {iceTesting ? 'Testing…' : 'Test these servers'}
+            </button>
+            {#if iceTestResult}<p class="section-hint">{iceTestResult}</p>{/if}
           </div>
 
           <h4 class="advanced-head">Your data</h4>

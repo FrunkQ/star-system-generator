@@ -2,6 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.1.12 - 8th Sep 2026
+
+- **Fixed: a player whose connection failed on Firefox saw nothing at all.** A peer connection has two state machines, and Firefox is the browser where they disagree - this app watched only one of them, so the failure never reached its own handler and the guest-side error was discarded. Both are watched now, and PeerJS's "negotiation failed" is treated as what it actually is: no network path was found, not a protocol fault.
+- **The GM is now told when a player cannot get in.** Until now a blocked player simply never appeared: they saw an error they could do nothing about, and nobody who could act was told. A notice now names which fix applies - add a relay, or re-share a link that pre-dates the one you have.
+- **Settings > Remote players gained "Test these servers"** - proves in about five seconds that a relay is reachable and its credentials work, before a game rather than during one.
+- **And it found something.** The free relay that ships with the underlying networking library no longer exists - its addresses have stopped resolving. So "no relay configured" quietly meant no relay at all, for anybody, and remote players could only connect when their network happened to allow a direct route. The Settings text said otherwise; it now tells the truth. If players have ever had trouble joining, adding a relay is very likely the answer.
+- The player's own message now leads with the thing they can act on: switching between wi-fi and mobile data, which often fixes it on the spot.
+
 ## v3.1.11 - 8th Sep 2026
 
 - **Fixed, and only visible in the real app: Luhman 16 still imported as a single object.** Yesterday's fix asks the catalogue for the members of every system it cannot resolve, and it asked for a fixed number of them. An import reaches further out than the radius you pick, so it asks about far more systems than the tests did - and the answer was being cut off before Luhman 16's members were reached. The request now scales with how many systems are being asked about, so nothing is silently dropped.
