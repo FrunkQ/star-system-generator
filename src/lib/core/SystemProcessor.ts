@@ -27,6 +27,7 @@ const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
 const ASCENT_TAG = 'flight/ascent';
 import { classifyBody, explainClassification } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup, hasSolidSurface } from '../physics/makeup';
+import { lobeCount } from '../catalogue/smallBodyShape';
 import { surfaceTempProfile, meanSurfaceTempK } from '../physics/surfaceTemperature';
 import { deriveFluidLayers } from '../physics/fluidLayers';
 import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, deriveOxidation, CLOUD_DECK_TAG, PRECIPITATION_TAG,
@@ -1380,6 +1381,15 @@ export class SystemProcessor implements ISystemProcessor {
         // Macroporosity (derived from massKg + radiusKm vs the mix's compacted density) — lets
         // the rubble-pile modifier key on actual void fraction, not a proxy density band.
         features['porosity'] = derivedPorosity(body);
+        // LOBE COUNT — the one fact in this map that is about SHAPE AND HISTORY rather than about
+        // anything the physics computes, and it has to be here or the class it carries cannot exist.
+        // A contact binary is two bodies that met gently once and stayed; nothing derivable from a
+        // mass, a radius or a mix knows that happened. The classifier re-derives every class from
+        // this map on every pass, so without a feature to band on, `asteroid/contact-binary` could be
+        // assigned but never RE-assigned, and would vanish on the next reprocess.
+        // READ, NEVER WRITTEN: it is the GM's (or the generator's) statement about the body, and no
+        // pass below may set it — `idempotence.test.ts` is what holds that.
+        features['lobes'] = lobeCount(body);
 
         // Fluid layers (surface/subsurface oceans, interior conductive) — derived and committed in
         // pass 2b, because the radiation pass needs the magnetism they drive. Read, not re-derived:

@@ -712,6 +712,21 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   tidallyLocked?: boolean;      // one face permanently toward its primary (planet or star)
   starTidallyLocked?: boolean;  // locked specifically to its STAR → a permanent substellar face (eyeball)
   oblateness?: number;          // DERIVED equatorial flattening f=(a−c)/a from spin vs the breakup limit; renderers draw the squashed shape
+  /** HOW MANY LOBES THIS BODY IS MADE OF — an AUTHORED FACT, and the counterpart to the derived
+   *  `oblateness` beside it. 1 (or absent) is an ordinary single body; 2 is a contact binary such as
+   *  Arrokoth or comet 67P; more is allowed and costs no new code.
+   *
+   *  IT HAS TO BE A STORED FACT RATHER THAN A DERIVATION, and that is the whole reason it exists.
+   *  The classifier re-derives every class on every pass from the feature map in `SystemProcessor`,
+   *  so a class it cannot express as a band over a feature is LOST on the next reprocess. Being two
+   *  lobes is shape and HISTORY — a gentle low-velocity merger that happened once — and no derived
+   *  quantity carries it. So the GM (or the generator) states it, the feature map publishes it, and
+   *  `asteroid/contact-binary` follows from it. Nothing in the physics chain writes this field, and
+   *  nothing may: `idempotence.test.ts` is what enforces that.
+   *
+   *  The SHAPE follows the count in one place — `catalogue/smallBodyShape.ts`, which both the 2D
+   *  silhouette and the 3D mesh read (engine map RENDER-S57). */
+  lobes?: number;
   /** Axial tilt in degrees — the angle between the spin axis and the orbit normal. Drives the
    *  seasonal temperature swing, the moon-orbit reference plane (`satelliteFrame`) and how the
    *  renderers tip the body. THIS IS THE ONLY NAME FOR IT.

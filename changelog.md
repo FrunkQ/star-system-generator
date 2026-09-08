@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.50 - 8th Sep 2026
+
+- Groundwork for contact binaries - the two-lobed rocks like Arrokoth and comet 67P. A body can now be told how many lobes it is made of, and that fact travels with the map and survives every recalculation, which is what a shape has to do before anything can be made of it. Nothing looks different yet; the type and the two-lobed drawing follow.
+
 ## v3.1.49 - 8th Sep 2026
 
 - Board only. Version 3.1.48 is live on production: the bug-fix release, taking beta exactly. The record of what it carries, and of the sweep that ran before it, is on the board.

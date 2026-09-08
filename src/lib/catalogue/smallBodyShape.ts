@@ -12,6 +12,24 @@ export function isSmallBodyShape(body: CelestialBody): boolean {
     && (((body.classes ?? []).some((c) => c.startsWith('asteroid/'))) || (body.radiusKm ?? 0) < 300);
 }
 
+/**
+ * HOW MANY LOBES THIS BODY IS, read in ONE place because four surfaces ask it: the feature map that
+ * feeds the classifier, this module's own outline and radial field, and the 3D mesh. Two spellings
+ * of one question is this codebase's most recurring fault, so there is exactly one.
+ *
+ * 1 (or absent, or nonsense) is an ordinary single body and the shape below is unchanged by it.
+ *
+ * THE CEILING IS A MESH COST, NOT A PHYSICS JUDGEMENT, and it is deliberately not a refusal: the
+ * radial field takes a max over every lobe at every vertex it is asked for, so an authored 1e9 would
+ * hang a render rather than draw an interesting rock. Past a handful the lobes are already finer
+ * than a 32x24 sphere can show. Nothing is written back to the body — the GM's number stays theirs.
+ */
+export const MAX_LOBES = 8;
+export function lobeCount(body: CelestialBody): number {
+  const n = Math.round(body.lobes ?? 1);
+  return Number.isFinite(n) ? Math.max(1, Math.min(MAX_LOBES, n)) : 1;
+}
+
 // Smooth closed outline in the 100×100 viewBox (centre 50,50, nominal r=30): quadratics through
 // successive midpoints with the vertices as controls. Lumpier when smaller and when porous.
 export function smallBodyOutline(body: CelestialBody): string {
