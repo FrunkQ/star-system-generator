@@ -50,5 +50,8 @@ describe('one renderer factory (C20)', () => {
 			hits,
 			`these build a renderer without going through createGlRenderer, so they ask the browser for nothing:\n${hits.join('\n')}`
 		).toEqual([]);
-	});
+		// 60 s, not 5: this reads EVERY .ts and .svelte file under src/, and it timed out in a
+		// full parallel run while passing on its own - a completeness pin should not be traded
+		// for speed by scanning a subset, so it is given a budget instead.
+	}, 60_000);
 });

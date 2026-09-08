@@ -2,10 +2,17 @@
 
 All notable changes are listed here:
 
+## v3.1.16 - 8th Sep 2026
+
+- **SSE now notices when your browser is drawing 3D on the processor, and says so.** A browser that is short of memory - an old window with a lot of tabs, and Edge especially - does not refuse to draw 3D. It quietly stops using the graphics chip and draws every pixel on the processor instead, which is perhaps a hundred times slower and is what a total lockup actually is: it was never broken, it was going to finish eventually. SSE now asks the question that tells the two apart, once, when the first 3D view opens. If the answer is bad it does not refuse to run - it turns Low power on for that session and puts a line on screen telling you what happened and that a fresh browser window will be much faster.
+- **And an answer you have given yourself is never overridden.** If you have ticked or unticked Low power, that is your decision and nothing automatic will undo it in either direction. The box now remembers a deliberate 'off' as well as a deliberate 'on', where before an unticked box could not be told apart from a box nobody had touched.
+- If a browser cannot draw 3D at all, it now says that plainly too, instead of leaving a blank space.
+
 ## v3.1.15 - 8th Sep 2026
 
 - **Fixed: a real star could be given a substance invented for a novel.** Astrophage and Taumoeba are from Project Hail Mary, and they were sitting in the default rule pack - the one every campaign receives - so a world imported from the real sky could be handed one as an atmosphere or an ocean. They now travel with the science-fiction starmap that actually uses them, along with the Astrophage spin drive and its fuel, exactly the way your own invented gases and engines already travel with your campaign. The science-fiction map is unchanged to look at; a real-sky import can no longer see any of them.
 - Liquids defined by a campaign are now laid over the shipped list rather than replacing it, which is how biospheres and pigments already worked. A campaign that adds one liquid keeps getting improvements to all the others, instead of quietly freezing the whole list at the moment it was saved.
+
 
 ## v3.1.14 - 8th Sep 2026
 
@@ -32,6 +39,7 @@ All notable changes are listed here:
 ## v3.1.10 - 8th Sep 2026
 
 - An import that cannot load Sol now says so. Sol is not in any star catalogue - it is the point every other star's distance is measured from - so it comes from a file shipped with the app rather than from the sky. If that file could not be read, a "Local Neighbourhood" import quietly had no Sol in it and said nothing; it now tells you.
+
 
 ## v3.1.9 - 8th Sep 2026
 

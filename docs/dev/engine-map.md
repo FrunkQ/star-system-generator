@@ -7126,6 +7126,22 @@ graphics laptop the app took whatever chip the browser felt like giving it and n
 the fast one. Six copies of one decision is this codebase's most recurring recorded fault, and these
 had already drifted: the pixel-ratio cap was written six times in four orderings and only one of them
 guarded `typeof window`, so the same question genuinely had two answers under SSR.
+
+ADDENDUM, job 2 (the probe as built). TWO MORE RULES THE MEASUREMENT ITSELF COST:
+(a) A FRESH CANVAS PER ATTEMPT. Once a canvas holds a context of a given type, every later
+`getContext` for that type returns THAT context and SILENTLY IGNORES the attributes - so asking the
+second question (without the caveat flag) on the first canvas is asking nothing at all, and would
+report every machine as software-rendering. `glSoftwareProbe.ts:attempt` makes a new one each time.
+(b) A REFUSAL IS TWO DIFFERENT FACTS. `failIfMajorPerformanceCaveat` returning null means either "it
+would be software-rendered" or "there is no WebGL here", and those are different sentences to a GM
+and different actions for us - low power helps the first and cannot touch the second. Ask again
+without the flag to tell them apart.
+(c) AND THE STORED SWITCH CHANGED MEANING. `sse-low-power` absent used to mean OFF; it now means
+NOBODY HAS SAID, with `'0'` for an explicit no ([[G80]]'s reasoning was sound only while nothing but
+a person could set the value). Anything that automatically proposes low power must go through
+`proposeLowPower`, and precedence over a person's choice is settled in ONE expression
+(`lowPowerStore.ts:effective`) - a second copy of that rule was written and proved DEAD by mutation
+before it could drift.
 BLAST: adding a seventh 3D surface means calling the factory, not the constructor - the source pin
 fails the suite otherwise. And BEWARE ASSERTING THE PIXEL RATIO UNDER VITEST: jsdom reports a
 `devicePixelRatio` of 1, where low power and full power return the SAME number, so an assertion

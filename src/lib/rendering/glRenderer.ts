@@ -26,6 +26,8 @@
 
 import * as THREE from 'three';
 import { pixelRatioFor } from './lowPowerRender';
+import { renderPath, renderPathNotice, renderPathMessage } from './glSoftwareProbe';
+import { proposeLowPower } from '$lib/lowPowerStore';
 
 /** What a surface is allowed to differ about. Everything absent from here is the factory's call. */
 export interface GlRendererOptions {
@@ -83,6 +85,32 @@ export interface GlRendererOptions {
 const POWER_PREFERENCE: WebGLPowerPreference = 'high-performance';
 
 /**
+ * ASK ONCE, THE FIRST TIME ANYTHING 3D IS BUILT, and act on a no.
+ *
+ * Here rather than at start-up because it is only a question worth asking of a session that actually
+ * draws something: a GM who never opens a 3D view should not pay for a context creation, and should
+ * certainly not be told his graphics are slow.
+ *
+ * ON A REFUSAL WE DO NOT REFUSE. The context is built anyway, exactly as before - a software-drawn
+ * holo is slow, but it is a holo, and taking it away would be answering a performance problem with
+ * an outage. What changes is that low power comes on for the session and the GM is handed a sentence
+ * saying what happened and what to do, which is the difference between a slow view and a hang
+ * nobody can explain.
+ */
+let asked = false;
+function askOnce(): void {
+	if (asked) return;
+	asked = true;
+	const path = renderPath();
+	if (path === 'gpu') return;
+	// Low power cannot rescue a machine with no WebGL at all, so it is only proposed for the software
+	// path. `proposeLowPower` is the SAME switch the GM controls and it stands down if they have
+	// already answered - there is deliberately no way from here to overrule a person.
+	if (path === 'software') proposeLowPower(true, 'this browser is rendering 3D in software');
+	renderPathMessage.set(renderPathNotice(path));
+}
+
+/**
  * Build the one kind of renderer this app makes.
  *
  * `failIfMajorPerformanceCaveat` is NOT passed here, and that is a decision rather than an omission:
@@ -90,6 +118,7 @@ const POWER_PREFERENCE: WebGLPowerPreference = 'high-performance';
  * than throwing (steer, don't stop). See `glSoftwareProbe.ts`.
  */
 export function createGlRenderer(opts: GlRendererOptions): THREE.WebGLRenderer {
+	askOnce();
 	const renderer = new THREE.WebGLRenderer({
 		canvas: opts.canvas,
 		antialias: opts.antialias ?? false,

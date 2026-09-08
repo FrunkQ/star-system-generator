@@ -52,12 +52,20 @@ describe('low power is remembered on this machine and nowhere else', () => {
     expect(get(lowPower)).toBe(true);
   });
 
-  it('stores the OFF state as an absence rather than a "0" nobody would recognise', async () => {
-    const { lowPower } = await import('./lowPowerStore');
+  // THIS TEST USED TO ASSERT THE OPPOSITE, and the reason it changed is worth keeping (C20).
+  // G80 stored OFF as an ABSENCE, on the sound reasoning that the absent key IS the default - true
+  // while nothing but a person could set the value. Something can now: the software-rasteriser probe
+  // proposes low power for a machine that is drawing on its processor. So absence had to stop
+  // meaning "off" and start meaning "nobody has said", or the first automatic proposal would
+  // silently overrule a GM who had deliberately turned it off, with no way for them to win.
+  it('stores an explicit OFF, because an absence now means nobody has said', async () => {
+    const { lowPower, lowPowerChoice } = await import('./lowPowerStore');
+    expect(get(lowPowerChoice)).toBe('auto');            // untouched: the machine may answer
     lowPower.set(true);
     expect(localStorage.getItem('sse-low-power')).toBe('1');
     lowPower.set(false);
-    expect(localStorage.getItem('sse-low-power')).toBeNull();
+    expect(localStorage.getItem('sse-low-power')).toBe('0');   // a person said no, and it sticks
+    expect(get(lowPowerChoice)).toBe('off');
   });
 
   it('survives a browser that refuses site data', async () => {

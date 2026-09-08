@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 /**
  * C20: WHAT WE ACTUALLY ASK THE BROWSER FOR.
@@ -29,26 +29,36 @@ vi.mock('three', () => ({
 
 const canvas = {} as HTMLCanvasElement;
 
-async function make(opts: any) {
-	const { createGlRenderer } = await import('./glRenderer');
-	return createGlRenderer({ canvas, ...opts });
-}
+// Imported ONCE at module scope rather than inside each test. Resolving and transforming this module
+// (and the store and probe it now pulls in) costs seconds on a cold worker, which was enough to blow
+// the first test's 5 s budget and then leak its renderer into the next test's count.
+const { createGlRenderer } = await import('./glRenderer');
+const make = (opts: any) => createGlRenderer({ canvas, ...opts });
 
 beforeEach(() => {
 	constructed.length = 0;
 	pixelRatios.length = 0;
+	// THE FACTORY NOW PROBES THE RENDER PATH before it builds anything (C20 job 2), and jsdom's own
+	// `getContext` is both slow enough to blow a 5 s test budget and undefined in its answer. Stub it
+	// to a plain grant so THIS file tests the construction arguments and nothing else; the probe's own
+	// decisions are pinned in `glSoftwareProbe.spec.ts`, where the answers are varied on purpose.
+	vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((kind: string) =>
+		kind === 'webgl2' || kind === 'webgl' ? ({ getExtension: () => null } as any) : null
+	);
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 describe('the renderer factory asks for what we need (C20)', () => {
 	it("asks for the high-performance GPU - the request none of the six sites ever made", async () => {
-		await make({ surface: 'holo' });
+		make({ surface: 'holo' });
 		expect(constructed).toHaveLength(1);
 		expect(constructed[0].powerPreference).toBe('high-performance');
 	});
 
 	it('asks for it on EVERY surface, not just the holo', async () => {
 		for (const surface of ['holo', 'comparison', 'gallery', 'filtered', 'starmap', 'model']) {
-			await make({ surface });
+			make({ surface });
 		}
 		expect(constructed).toHaveLength(6);
 		expect(constructed.map((c) => c.powerPreference)).toEqual(Array(6).fill('high-performance'));
@@ -58,27 +68,27 @@ describe('the renderer factory asks for what we need (C20)', () => {
 		// Reads backwards until you see it: low power means "this machine is short of fill rate", and
 		// the answer to that is the BEST chip it has. Low power saves by doing less work, not by
 		// asking for a worse GPU - and the flag cannot be changed after the context exists anyway.
-		await make({ surface: 'holo', lowPower: true });
+		make({ surface: 'holo', lowPower: true });
 		expect(constructed[0].powerPreference).toBe('high-performance');
 	});
 
 	it('does not set failIfMajorPerformanceCaveat on a real surface', async () => {
 		// A refused context here would THROW and take the view with it. The refusal has to be learned
 		// on a throwaway probe instead, so that we can say so and carry on (steer, don't stop).
-		await make({ surface: 'holo' });
+		make({ surface: 'holo' });
 		expect(constructed[0].failIfMajorPerformanceCaveat).toBeUndefined();
 	});
 
 	it("carries each surface's own genuine differences through", async () => {
-		await make({ surface: 'comparison', antialias: true, alpha: false });
+		make({ surface: 'comparison', antialias: true, alpha: false });
 		expect(constructed[0]).toMatchObject({ antialias: true, alpha: false, preserveDrawingBuffer: false });
 		constructed.length = 0;
-		await make({ surface: 'holo', antialias: true, alpha: true, preserveDrawingBuffer: true });
+		make({ surface: 'holo', antialias: true, alpha: true, preserveDrawingBuffer: true });
 		expect(constructed[0]).toMatchObject({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 	});
 
 	it('never turns preserveDrawingBuffer on by default - it costs memory on every surface that has it', async () => {
-		await make({ surface: 'starmap' });
+		make({ surface: 'starmap' });
 		expect(constructed[0].preserveDrawingBuffer).toBe(false);
 	});
 
@@ -92,10 +102,10 @@ describe('the renderer factory asks for what we need (C20)', () => {
 		const prev = window.devicePixelRatio;
 		Object.defineProperty(window, 'devicePixelRatio', { value: 2, configurable: true });
 		try {
-			await make({ surface: 'holo' });
+			make({ surface: 'holo' });
 			expect(pixelRatios).toEqual([2]);
 			pixelRatios.length = 0;
-			await make({ surface: 'holo', lowPower: true });
+			make({ surface: 'holo', lowPower: true });
 			expect(pixelRatios).toEqual([1]);
 		} finally {
 			Object.defineProperty(window, 'devicePixelRatio', { value: prev, configurable: true });

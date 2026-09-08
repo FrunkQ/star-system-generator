@@ -10,6 +10,8 @@
   import { gridLegend } from '$lib/map/gridLegend';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { lowPower, drawsHeavy } from '$lib/lowPowerStore';
+  import RenderNotice from '$lib/components/RenderNotice.svelte';
+  import { renderPathMessage, dismissRenderPathMessage } from '$lib/rendering/glSoftwareProbe';
   import { distanceFlavour } from '$lib/units';
   import { DEFAULT_STYLE, type HoloStyle } from '$lib/holo/holoStyle';
   import { liveOverrides } from '$lib/player/liveOverrides';
@@ -247,12 +249,12 @@
 
   <!-- Said once, and only when the guard has actually had to act. Dismissible, and it does not come
        back: `perfGuard` fires once per scene and then stands down, so a GM is never nagged. -->
-  {#if perfNotice}
-    <div class="perf-notice" role="status">
-      <span>{perfNotice}</span>
-      <button type="button" title="Dismiss" aria-label="Dismiss" on:click={() => (perfNotice = null)}>x</button>
-    </div>
-  {/if}
+  <RenderNotice message={perfNotice} onDismiss={() => (perfNotice = null)} />
+
+  <!-- C20: the machine told us, before a frame was drawn, that it is rendering in software. That is
+       a different fact from the frame-rate guard's - it is about the HARDWARE rather than this
+       scene - so it is said separately, and it is said on the size comparison too. -->
+  <RenderNotice message={$renderPathMessage} onDismiss={dismissRenderPathMessage} />
   {#if legend}
     <!-- A grid is only a measure if the reader is told what one cell is worth. `pointer-events: none`
          because this sits over a canvas that owns drag, pinch and click-to-select. -->
@@ -290,17 +292,5 @@
     user-select: none;
   }
 
-  /* Over the canvas, out of the way of the middle of the map, and readable on any backdrop. */
-  .perf-notice {
-    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
-    display: flex; align-items: center; gap: 10px; max-width: min(560px, 92%);
-    padding: 8px 10px 8px 14px; border-radius: 8px;
-    background: rgba(16, 26, 40, 0.94); border: 1px solid #3a4d68; color: #e7eefa;
-    font-size: 12px; line-height: 1.35; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
-    z-index: 30;
-  }
-  .perf-notice button {
-    background: none; border: none; color: #8fa6c4; font-size: 14px; cursor: pointer; padding: 2px 6px;
-  }
-  .perf-notice button:hover { color: #e7eefa; }
+  /* The notice box lives in `RenderNotice.svelte` now - two surfaces show it. */
 </style>
