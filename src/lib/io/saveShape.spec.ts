@@ -202,3 +202,42 @@ function loadRegistries(doc: any) {
   const map = ensureTemporalState({ ...doc } as Starmap);
   return { cois: get(coiCategories), reasons: get(reasonsConfig), temporal: map.temporal };
 }
+
+// G89 - THE AUTOSAVE IS A SAVE TOO, and it was the one path B112 did not reach.
+//
+// B112 pruned the shipped calendars out of an EXPORTED file by doing it inside
+// `stripStarmapForExport`. The browser's own autosave never calls that function - it persists the
+// live campaign as it stands - so every browser copy still carried all four shipped calendars as
+// though the GM had written each one. Owner, 2026-09-08: "the default pack is what everyone gets...
+// but if the user defines or tweaks the existing calendar settings it is saved in their file and
+// reused on load." Same rule as D25's gases and engines, applied to the clock.
+//
+// The gate is on `temporalForExport` itself rather than on the component, because the component is
+// where it is easy to forget and the function is where the meaning lives.
+describe('G89 - a persisted campaign stores the calendars the GM owns, and no others', () => {
+  it('a default campaign persists NO calendar registry at all', () => {
+    const out = temporalForExport(createDefaultTemporalState())!;
+    expect(Object.keys(out.temporal_registry ?? {})).toEqual([]);
+    // ...but it still remembers WHICH reckoning it runs on, because that is the GM's choice even
+    // when the calendar itself is ours.
+    expect(out.activeCalendarKey).toBeTruthy();
+  });
+
+  it('a GM-altered shipped calendar IS persisted, because it is now theirs', () => {
+    const base = createDefaultTemporalState();
+    const key = Object.keys(base.temporal_registry)[0];
+    const edited = {
+      ...base.temporal_registry,
+      [key]: { ...base.temporal_registry[key], name: 'The Reckoning of Somebody Else' }
+    };
+    const out = temporalForExport({ ...base, temporal_registry: edited })!;
+    expect(Object.keys(out.temporal_registry)).toEqual([key]);
+  });
+
+  it('is a no-op it can be called on twice', () => {
+    // The autosave fires constantly; pruning an already-pruned state must not lose anything.
+    const once = temporalForExport(createDefaultTemporalState())!;
+    const twice = temporalForExport(once)!;
+    expect(twice).toEqual(once);
+  });
+});

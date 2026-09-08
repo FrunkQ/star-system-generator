@@ -72,7 +72,7 @@
   import AboutModal from '$lib/components/AboutModal.svelte';
   import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
   import WelcomeModal from '$lib/components/WelcomeModal.svelte';
-  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, defaultCampaignStartSeconds } from '$lib/temporal/defaults';
+  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, defaultCampaignStartSeconds, temporalForExport } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { BIG_BANG_TO_UNIX_EPOCH_T } from '$lib/temporal/utre';
   import { buildFlightUpdate } from '$lib/constructs/flightState';
@@ -1647,8 +1647,22 @@
     };
   }
 
+  // G89: THE BROWSER'S OWN COPY GETS THE SAME TREATMENT AS THE FILE. B112 made an exported save carry
+  // only the calendars the GM added or altered, but it did that inside `stripStarmapForExport`, and
+  // THE AUTOSAVE DOES NOT COME THROUGH THAT FUNCTION - it persists the live campaign as it stands, so
+  // every browser copy still carried all four shipped calendars as though the GM had written them.
+  //
+  // Owner, 2026-09-08: "the default pack is what everyone gets... but if the user defines or tweaks
+  // the existing calendar settings it is saved in their file and reused on load." That is the same
+  // rule D25 applies to gases and engines, and the clock is the third instance of it.
+  //
+  // ONLY the temporal registry is pruned here, NOT the derived physics `stripStarmapForExport` also
+  // removes: this copy is the live campaign being restored, not a document being handed to somebody.
+  // Safe because `ensureTemporalState` merges the shipped set back on load, and `onMount` loads the
+  // calendar library BEFORE it restores a campaign - so the defaults are always there to merge.
   function enqueueStarmapPersist(starmap: StarmapType) {
-    starmapPersist.enqueue(starmap);
+    const temporal = temporalForExport(starmap.temporal);
+    starmapPersist.enqueue(temporal === starmap.temporal ? starmap : { ...starmap, temporal });
   }
 
   async function persistStarmap(starmap: StarmapType) {

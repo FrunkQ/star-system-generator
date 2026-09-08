@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.18 - 8th Sep 2026
+
+- **Your campaign no longer stores a copy of the four calendars it came with.** Saved files stopped doing this a while ago, but the copy the browser keeps never did, so every campaign carried all four as though you had written them yourself - which meant a later correction to one of them could not reach you. The shipped calendars now come from the app, and only a calendar you added or changed is stored with your campaign. Nothing you have altered is touched, and which calendar your campaign runs on is still yours.
+
 ## v3.1.17 - 8th Sep 2026
 
 - **Groundwork for a relay nobody has to configure.** The app can now fetch short-lived relay credentials from an endpoint of ours at startup and add them to the list it already uses. It is switched OFF in this build - the endpoint is not live yet - so nothing changes until it is.
