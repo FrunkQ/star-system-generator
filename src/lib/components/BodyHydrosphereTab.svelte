@@ -37,10 +37,17 @@
   // silently omits its rejects teaches nobody anything; one that says "ammonia — frozen, melts at
   // 195 K" teaches the physics on the way past.
   //
-  // THEY STAY SELECTABLE, and that is the steer-don't-stop rule rather than an oversight: a criterion
-  // TAGS AND EXPLAINS, it never refuses a GM's edit (alien tech, unobtanium, plot device). The tab
-  // already tolerates an out-of-range selection and warns about it, so disabling these would be the
-  // one place that argued back.
+  // THEY ARE SHOWN BUT NOT SELECTABLE, and the reason is the DATA MODEL rather than the physics -
+  // owner, 2026-09-08, overruling an earlier version of this that left them pickable: *"they can't be
+  // selected there as it would break other stuff like atmospheres as they are connected now. An option
+  // under Overrides can allow it - but adding one there should fire the anomaly engine."*
+  //
+  // That is NOT a breach of steer-don't-stop, and the distinction is worth keeping straight: the rule
+  // forbids a PHYSICS CRITERION refusing an author's choice, and the escape hatch it demands may live
+  // in ONE place rather than in every control. Here the hydrosphere and the atmosphere are coupled, so
+  // an impossible solvent chosen in this menu corrupts a neighbour rather than merely being wrong -
+  // and the honest escape is an override, which announces itself as an anomaly. See [[A103]]: that
+  // override does not exist yet, so this menu explains and does not yet point anywhere.
   // The CURRENT selection is excluded even when it is rejected: it already has its own group below,
   // with its own wording, and the same value in a <select> twice is a duplicate option a GM can see.
   $: rejectedLiquids = allLiquids(rulePack)
@@ -133,7 +140,7 @@
             {#if rejectedLiquids.length > 0}
                 <optgroup label="Not liquid here — and why">
                     {#each rejectedLiquids as r}
-                        <option value={r.def.name}>{r.def.label}{r.why ? ` (${r.why})` : ''}</option>
+                        <option value={r.def.name} disabled>{r.def.label}{r.why ? ` (${r.why})` : ''}</option>
                     {/each}
                 </optgroup>
             {/if}

@@ -12,6 +12,10 @@ import type { CelestialBody } from '$lib/types';
  *
  * The counts here are absolute: EVERY liquid the pack carries appears exactly once, which is the whole
  * claim. A ratio would pass with half the list missing.
+ *
+ * The rejects are DISABLED (owner, same day): the hydrosphere and the atmosphere are coupled, so an
+ * impossible solvent chosen here corrupts a neighbour rather than merely being wrong. The escape hatch
+ * belongs in Overrides, where it can fire the anomaly engine - see [[A103]].
  */
 const body = (over: Partial<CelestialBody> = {}): CelestialBody => ({
   id: 'b1',
@@ -59,13 +63,13 @@ describe('the solvent menu lists every liquid (A102)', () => {
     for (const s of texts) expect(s, `"${s}" should carry a reason`).toMatch(/\(.+\)/);
   });
 
-  it('a rejected liquid stays SELECTABLE - a criterion explains, it never refuses (steer, do not stop)', () => {
+  it('a rejected liquid is shown but NOT selectable - it would corrupt the coupled atmosphere', () => {
     const { container } = render(BodyHydrosphereTab, { props: { body: body(), rulePack: null } as any });
     const group = Array.from(container.querySelectorAll('optgroup')).find(
       (g) => /Not liquid here/i.test((g as HTMLOptGroupElement).label)
     ) as HTMLOptGroupElement;
     for (const o of Array.from(group.querySelectorAll('option'))) {
-      expect((o as HTMLOptionElement).disabled, 'a reject must not be disabled').toBe(false);
+      expect((o as HTMLOptionElement).disabled, 'a reject must be disabled').toBe(true);
     }
   });
 

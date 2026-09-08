@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.56 - 8th Sep 2026
+
+- **The solvents a world cannot have are now shown but cannot be picked.** They still list the reason each is ruled out, so you can see what the physics decided, but choosing one would have corrupted the atmosphere alongside it, since the two are connected. A way to set one deliberately, and have it flagged as the anomaly it is, belongs in Overrides and is recorded as the next step.
+- Board only. The temperature that would not stick is confirmed as a brown-dwarf issue only, so there is no second problem hiding behind it. What a brown dwarf's temperature should do when you type one is the owner's decision, and it is recorded waiting for him.
+
 ## v3.1.55 - 8th Sep 2026
 
 - **The solvent list on a world now shows every liquid, not just the ones that work there.** The ones that can be liquid somewhere on the world come first, and below them every other solvent with the reason it is ruled out - frozen and what it melts at, boiling here, or below its triple point and never liquid at this pressure. They stay pickable: the app tells you what the physics says and then lets you decide, as it does everywhere else.
