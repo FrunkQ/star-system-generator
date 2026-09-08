@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.4 - 8th Sep 2026
+
+- Groundwork for the real-sky importer's missing stars: the catalogue's own answers for the local neighbourhood are now recorded in the project, so the importer's handling of them can be checked without going back to the network. No change to what an import produces yet.
+
 ## v3.1.3 - 8th Sep 2026
 
 - **The V3.1 welcome.** The first-run panel now carries the release notes for 3.1 in the owner's own words, and everybody sees it once - including GMs who dismissed the V3 one, because the panel and its "seen" marker move together.
