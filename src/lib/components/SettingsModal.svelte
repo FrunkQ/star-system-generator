@@ -13,7 +13,7 @@
   // A45: the one list, filtered to what the 2D snap grid can draw — never a hand-written copy.
   import { SNAP_GRID_OPTIONS } from '$lib/map/mapOverlay';
   import { unitKind, campaignUnit, unitChangeOutcomes, UNIT_SHORT, type UnitChangeMode } from '$lib/map/distanceUnits';
-  import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
+  import { tagCategories, tagRulesEnabled, setCategoryEnabled, isLockedCategory } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
   import { browser } from '$app/environment';
@@ -512,17 +512,31 @@
 
           <p class="section-hint">
             Categories — tick to make one available. <strong>System</strong> categories can't be deleted because the
-            engine matches their tags by name (refuelling, mining, drives, readiness), but you can switch them off
-            and edit their tags freely.
+            engine matches their tags by name (refuelling, mining, drives, readiness). Six of them stay switched on
+            for that reason — the engine is acting on them whether or not you can see them — and their tags are still
+            yours to edit. Frontier logistics and Anomaly you can switch off.
           </p>
           <div class="form-group reason-cats">
             {#each $tagCategories as cat (cat.id)}
               <label class="cat-line" title={cat.description || ''}>
-                <input type="checkbox" checked={cat.enabled} on:change={(e) => setCategoryEnabled(cat.id, e.currentTarget.checked)} />
+                <input
+                  type="checkbox"
+                  checked={cat.enabled}
+                  disabled={isLockedCategory(cat.id)}
+                  title={isLockedCategory(cat.id)
+                    ? 'The engine acts on this category by name, so it stays available. You can still edit its tags.'
+                    : ''}
+                  on:change={(e) => setCategoryEnabled(cat.id, e.currentTarget.checked)}
+                />
                 <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
                 <span class="cat-name">
                   {cat.longName}
-                  {#if cat.system}<span class="cat-req" title="Needed by the engine — can be switched off, but not deleted">system</span>{/if}
+                  {#if cat.system}<span
+                    class="cat-req"
+                    title={isLockedCategory(cat.id)
+                      ? 'Needed by the engine — always available, and cannot be deleted. Its tags are yours to edit.'
+                      : 'Needed by the engine and cannot be deleted, but you can switch it off.'}
+                  >system</span>{/if}
                   {#if cat.playerHidden}<span class="cat-hidden" title="Hidden from players">hidden</span>{/if}
                 </span>
                 <span class="cat-count">

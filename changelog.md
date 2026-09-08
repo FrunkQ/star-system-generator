@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.1.44 - 8th Sep 2026
+
+- **The tag categories the engine relies on can no longer be switched off, and the switch now behaves.** Six of them - Status, Owner, Purpose, Resources, Hull class and FTL drive - are matched by name by the parts of the app that move ships, mine, refuel and pick templates, so offering to hide them was offering something the app would ignore. Worse, it did not stick: switching one off lasted until you reloaded and then quietly came back. They now stay on, their tickbox says why, and their tags are still entirely yours to edit.
+- Frontier logistics and Anomaly stay switchable, because those are your setting's own vocabulary rather than general machinery - another campaign will have a different list, or none.
+- Nothing about your ships changes: a damaged ship was always still damaged whatever this screen said, because the readiness calculation reads the ship's own tags rather than this list.
+
 ## v3.1.43 - 8th Sep 2026
 
 - Board only. The size-comparison slowdown is written up in full: three separate causes, and the owner named two of them from the symptoms alone.
