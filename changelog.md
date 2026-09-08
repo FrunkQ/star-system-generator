@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.23 - 8th Sep 2026
+
+- Board only. The map library can now send the custom rules a copied object needs - a GM's own liquid, gas or engine definition travelling with the planet that uses it. Until the app's half is built, a pasted body that references one still falls back to a default without saying so. The work is briefed, with three findings the site could not make from its side.
+
+
 ## v3.1.22 - 8th Sep 2026
 
 - Groundwork for Traveller main worlds that sit somewhere liveable. The rule for deciding where a main world belongs, and what kind of world it is, now exists as its own model: it asks the engine where that particular star's habitable zone actually is rather than looking the answer up by the star's letter, it picks the most comfortable world type the sector data will honestly support and says whether you could breathe outside, and if a gas giant already occupies the habitable zone it makes the main world a moon of that giant so the world still sits in the right place. Worlds Traveller marks hostile are left exactly where they are. Nothing uses it yet - the importer is wired to it next - so no import changes behaviour with this release.

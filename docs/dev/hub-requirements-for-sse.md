@@ -732,3 +732,57 @@ Recorded so nobody builds them by mistake:
 (`/shipped-content.json`) and the address change to `explorers.starsystemx.com`. **The hub MAY NOW set
 `open_in_sse_url` to `https://starsystemx.com/?open=`**; the beta prefix stays valid. The hub records what it
 sets, in its own half, when it sets it.
+
+---
+
+## R-19 — a hub clip carries the custom rules its objects need (hub v0.49.0, 2026-09-08)
+
+**The hub's half is SHIPPED AND LIVE.** Its brief for this side is
+`C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-08-clip-rules.md`, quoted here rather than
+paraphrased where it matters. **SSE-SIDE STATUS: BRIEFED as STREAM X, not started.**
+
+**WHAT IT CLOSES, and it is a wrong answer rather than a missing feature.** Custom definitions live on the
+STARMAP, in `rulePackOverrides` (`types.ts:1608`), not on the node; a hub clip carries nodes only. So a pasted
+planet whose hydrosphere names a GM's custom liquid looks up a definition that is not there, `liquidDef` returns
+`undefined`, and phase, appearance and climate all fall back to defaults. **The paste reports success.** Silent
+for every override kind: liquids, gases, atmosphere mixes, pigments, morphologies, fuels, engines, sensors.
+
+**WHAT ARRIVES.** One new optional key on the envelope, `rulePackOverrides`, carrying the source map's
+`RulePackOverrides` whole and unmodified. Nothing else changed, and an engine that ignores the key behaves
+exactly as today. A RULES-ONLY clip (from the hub's `/rules` browser) has `nodes: []` and no `root`; that pair
+is how a reader tells the two producers apart, deliberately not a second marker.
+
+**THE COORDINATOR'S TRIAGE, 2026-09-08 — three things measured on this side that the hub could not know:**
+
+1. **`canonicalJson` ALREADY EXISTS and is already justified** — `src/lib/io/shippedDefaults.ts:31`, keys sorted
+   recursively, arrays left alone: exactly the comparison the hub asks for, with a measurement behind it (three
+   of nine shipped categories fail a naive deep-equal purely on key order after a store round trip). **The
+   stream reuses it. It does not write a second one** — that is the duplication rule, and a second canonicaliser
+   is the most obvious way to make the identical-definition test disagree with itself.
+2. **TWO OF THE EIGHT SECTIONS ARE DELTAS, NOT LISTS**, and the hub's brief treats the bag as flat because from
+   its side it is: `morphologies?: PackListDelta<MorphologyDef> | MorphologyDef[]` and `pigments?: ... `
+   (`types.ts:1384-1385`, machinery in `lib/rulepackDelta.ts`). A delta is a set of edits AGAINST THE SHIPPED
+   PACK, so "does the destination already have this one, identical?" is a different question for those two, and
+   merging two deltas is not merging two lists. **This is the stream's real work and its first job.**
+3. **THE EXISTING MERGE WOULD DESTROY THE GM'S OWN RULES.** `applyStarmapOverrides` (`routes/+page.svelte:200`)
+   is a SHALLOW spread, `{ ...existing, ...incoming }` — section-level, so an incoming `liquids` array replaces
+   the GM's entire liquids override rather than joining it. It is right for an editor handing back a whole
+   section and catastrophic for a paste. **The paste merge is PER DEFINITION and must not go through that
+   function.**
+
+**THE ASK, in the hub's own words where it is a rule:** narrow the overrides to what the pasted nodes reference
+then merge (*"merging the lot is an acceptable version one"* — the owner); three outcomes per definition, **add /
+discard silently when identical / NEVER OVERWRITE when different** (*"the receiving end needs to identify
+duplicates to what it had and discard"*); rename an incoming clash and repoint the pasted nodes at the new name,
+or ask; compare canonical form; say what came with it; and let a rules-only clip merge rather than be refused
+(`hubClip.ts:116` currently rejects `nodes.length === 0`).
+
+**NOT ASKED FOR:** any change to `?open=`, `?hub=`, `isTrustedOpenUrl`, the replace-or-add question, the storage
+shape, or any further envelope key.
+
+**FLAGGED BY THE HUB, no action asked:** `tagVocab` is on `RulePack` but NOT on `RulePackOverrides`, so a custom
+tag's definition cannot travel even though the tag on the node does. Recorded here so it is not rediscovered.
+
+**READY FOR STREAM N** once both halves are in, with the hub's own check: copy a body with a custom liquid,
+paste into a fresh campaign, confirm the liquid arrived and the body's phase is right; paste the same clip again
+and confirm nothing is duplicated or renamed.

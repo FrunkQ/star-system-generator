@@ -1907,3 +1907,70 @@ behaviour so nothing moves for an existing user, and carry the chosen value in t
 re-import reproduces the same map. Decide it BEFORE job 3 brings multiples in, because it defines what a multiple
 is. Gate it absolutely: one named wide pair imports as two systems below the threshold and as one binary above it,
 with the same input and the same seed.
+
+## STREAM X — a pasted body brings the rules it needs (R-19)
+
+> You are building the engine's half of **R-19**: a hub clip now carries the custom rule definitions its objects
+> reference, and this side has to narrow, merge and report them. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams
+> push daily). Work in your OWN worktree (`git worktree add ../sse2-cliprules -b wt/cliprules origin/beta`); the
+> main checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST, and in this order.** (1) `CLAUDE.md`. (2) The STANDING RULES at the foot of
+> `docs/dev/observations-inbox.md` — DUPLICATED FUNCTIONALITY and STEER DON'T STOP are the two that decide this
+> design. (3) **The hub's brief, whole:**
+> `C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-08-clip-rules.md` — it is unusually good,
+> it explains WHY each rule is a rule, and it is the authority on what arrives. (4) The **R-19 section at the
+> foot of `docs/dev/hub-requirements-for-sse.md`** — the engine's half, carrying the coordinator's triage and
+> three measurements the hub could not make. (5) The **SEAM PROTOCOL** section of this briefs file: you will owe
+> a SEAM REPORT block, and you never edit the hub's repository.
+>
+> **WHAT IS ALREADY MEASURED — verify it, do not re-derive it.**
+> - `canonicalJson` (`src/lib/io/shippedDefaults.ts:31`) is ALREADY the comparison the hub asks for: keys sorted
+>   recursively, array order untouched. **Reuse it.** A second canonicaliser is how the identical-definition
+>   test starts disagreeing with itself.
+> - `RulePackOverrides` (`types.ts:1373-1390`) has eight sections and **two of them are DELTAS against the
+>   shipped pack**, not lists: `morphologies` and `pigments` are `PackListDelta<T> | T[]` (`types.ts:1384-1385`,
+>   `lib/rulepackDelta.ts` with `makeListDelta`/`applyListDelta`). "Do I already have this one, identical?" is a
+>   different question for a delta, and merging two deltas is not merging two lists.
+> - `applyStarmapOverrides` (`routes/+page.svelte:200`) is a SHALLOW section-level spread. Sending a paste
+>   through it would replace the GM's whole liquids override with the incoming one. **Do not use it for this.**
+> - `hubClip.ts`: the envelope at `:56`, the `nodes.length === 0` refusal at `:116`, `insertClip` at `:454`,
+>   and `addContentCredit` at `:542` — which is the shape to copy for "say what came with it", because R-16
+>   already solved the same reporting problem for credits.
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **The envelope and the two producers.** `rulePackOverrides` becomes an optional key on `HubClip`; a clip
+>    with `nodes: []` and no `root` parses as a RULES-ONLY clip instead of being refused. Parsing only — no
+>    merging yet, and a rules-only clip that reaches the paste path in this job says plainly that it is not
+>    handled yet rather than half-doing it.
+> 2. **The comparison, on its own, with its own gates.** Given an incoming definition and the destination's
+>    overrides, answer one of three: ABSENT / IDENTICAL / DIFFERENT, using `canonicalJson`. Handle the two delta
+>    sections honestly — decide and WRITE DOWN whether a delta is compared as a delta or as its applied result,
+>    and say why in the module and in an engine-map entry. This is the job that earns the stream.
+> 3. **The merge.** Per DEFINITION, never per section. Absent: add. Identical: discard silently — the ordinary
+>    case, because pasting a star then one of its planets brings every rule twice. Different: **NEVER
+>    OVERWRITE.** Rename the incoming one and repoint the pasted nodes at the new name. Somebody else's "Liquid
+>    Unobtainium" is not this GM's, and overwriting turns one quietly wrong planet into a quietly wrong campaign.
+> 4. **Narrowing** — take only what the pasted nodes actually reference. The hub deliberately sends the lot
+>    because narrowing is engine knowledge. **The owner has said merging the lot is an acceptable version one**,
+>    so if narrowing looks expensive, ship job 3 without it and say so; do not let it hold the fix back.
+> 5. **Say what came with it**, in the app's own voice: "added 2 liquids and an engine definition; renamed
+>    Unobtainium to Unobtainium (from Local Neighbourhood) because you already had one." A GM who is told
+>    nothing cannot tell this feature from the bug it fixes.
+>
+> **GATES, red-first and absolute.** A body with a custom liquid pastes into a fresh campaign and its PHASE is
+> right, not merely its name — that is the difference between the fix and the bug; the same clip pasted twice
+> adds nothing the second time and renames nothing; a DIFFERENT definition of the same name is never
+> overwritten, and the pasted nodes point at the renamed one; key order alone never causes a rename (pin it with
+> an object built in a different order); a delta section round-trips; and a rules-only clip merges and reports.
+>
+> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
+> manifest` after every version bump; the two `tests/` fixtures are a baseline; the stash stack is shared — WIP
+> commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial test is a known statistical flake.
+>
+> **WHEN IT SHIPS:** the hub asks to be told so it can note R-19. Write the SEAM REPORT block in the protocol's
+> fixed shape, quoted not retyped, and hand it to the coordinator — you do not push to the hub's repository, and
+> you never tell it production carries something the owner has not released.
+>
+> **Housekeeping:** as Stream Q's, word for word.
