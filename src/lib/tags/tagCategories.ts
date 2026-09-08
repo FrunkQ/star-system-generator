@@ -109,6 +109,20 @@ export const isSystemCategory = (id: string): boolean => (SYSTEM_CATEGORY_IDS as
 // been user-toggleable, and forcing it on during the CoI/PoI migration would have silently
 // re-seeded tags across the starmaps of everyone who had turned it off.
 //
+// `anomaly` IS USED, AND IS STILL SAFE TO SWITCH OFF, which sounds like a contradiction and is not.
+// Owner, 2026-09-08: "anomaly IS used but it is just a GM description of an event - I guess losing
+// this does not break anything as these are just descriptive reasons." Checked, and that is exactly
+// the shape: `SystemProcessor.publishAnomalyTags` derives `anomaly/*` every pass from
+// `body.overrides.anomalies` - the GM's stated REASON for a pin. THE OVERRIDE IS WHAT MOVES THE
+// PHYSICS; the anomaly tag is the label on it. Pin an albedo and say "exotic matter", and the albedo
+// is pinned by the override whether or not this category exists.
+//
+// AND THE EMISSION NEVER CONSULTS THIS LIST, so switching the category off does not even stop the
+// tags appearing: a body still says why its albedo was pinned. What is lost is the offered
+// vocabulary and the category's part in map markers - a description, not a mechanic. That is the
+// test to apply to any future candidate for this list: does the ENGINE read the tag, or does a
+// PERSON read it?
+//
 // KEYED ON ITS OWN LIST, NOT ON `required`. That field is CoI's legacy word for `system` (see the
 // note where it is read below) and carries only six of the eight, so it happens to hold the right
 // answer today by coincidence rather than by meaning. A separate list says what it means.

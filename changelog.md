@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.47 - 8th Sep 2026
+
+- Developer note only, no behaviour change: the Anomaly tag category is written up alongside the ones that are now locked, explaining why it is safe to switch off when they are not. An anomaly tag is the reason a GM gave for pinning a value - the pin itself does the work, so turning the category off loses a description rather than a mechanic.
+
 ## v3.1.46 - 8th Sep 2026
 
 - Board only. The copied-rules work is written up for the sharing site's side of the contract, together with the short list of things worth looking at in a real window and the one thing the site needs to change: it labels a world's ocean with a field name the app does not read, so a copied world would still not find its liquid.
