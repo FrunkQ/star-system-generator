@@ -123,8 +123,16 @@ export function peerConfigFor(custom: IceServerEntry[] | null | undefined): { ic
  *
  * Overridable per-device for testing without a deploy: set
  * `localStorage['sse-managed-relay-url']`.
+ *
+ * A first-party hostname deliberately, NOT the workers.dev address it was
+ * first deployed on: *.workers.dev is routinely blocked by corporate and
+ * school firewalls, and those are exactly the restrictive networks a relay
+ * exists to rescue. A blocked credential endpoint means no relay for precisely
+ * the people who need one. The Worker's source is in the MAPPADUX repo at
+ * `worker/relay`; the old address still answers, so an older build keeps
+ * working.
  */
-export const MANAGED_ICE_URL = 'https://relay-ice.orange-tree-847c.workers.dev/ice';
+export const MANAGED_ICE_URL = 'https://turn.starsystemx.com/ice';
 
 const MANAGED_URL_KEY   = 'sse-managed-relay-url';
 const MANAGED_OFF_KEY   = 'sse-managed-relay-off';

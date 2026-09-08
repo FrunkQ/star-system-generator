@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.24 - 8th Sep 2026
+
+- The relay now lives at `turn.starsystemx.com` rather than a `workers.dev` address. That is not cosmetic: `workers.dev` is a hostname routinely blocked by corporate and school firewalls, and those are exactly the restrictive networks a relay exists to rescue - a blocked endpoint would have meant no relay for precisely the people who need one.
+- The old address still answers, so any build already out there keeps working.
+
 ## v3.1.23 - 8th Sep 2026
 
 - Board only. The map library can now send the custom rules a copied object needs - a GM's own liquid, gas or engine definition travelling with the planet that uses it. Until the app's half is built, a pasted body that references one still falls back to a default without saying so. The work is briefed, with three findings the site could not make from its side.
