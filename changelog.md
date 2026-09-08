@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.1.5 - 8th Sep 2026
+
+- Board only. A user's request through the owner is captured and briefed: a Traveller main world should be placed where people could actually live. The cause is found and named - the importer decides the main world's orbit from a fixed table of Sol-spaced slots per spectral letter, and never asks the engine where that star's habitable zone actually is, which is why main worlds arrive far too hot or far too cold. Worlds Traveller marks as hostile will keep their hostile orbits.
+- Board only. The 3D lockup on a tired browser is measured and briefed. The app has never asked the browser for the high-performance graphics chip, never noticed when the browser quietly fell back to drawing on the processor instead, and never handed a graphics context back when a 3D view was closed. That combination is what a locked-up tab looks like, and until it is fixed the answer really is to open the app in a fresh window.
+- The V3.1 welcome no longer fades the megastructures line: it is finished enough to stand as shipped work, and it now names a soletta, to warm a world you are terraforming, as an example of what is still to come.
+
 ## v3.1.4 - 8th Sep 2026
 
 - Groundwork for the real-sky importer's missing stars: the catalogue's own answers for the local neighbourhood are now recorded in the project, so the importer's handling of them can be checked without going back to the network. No change to what an import produces yet.

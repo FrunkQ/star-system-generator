@@ -39,8 +39,11 @@
   // his word. `pending` still means NOT FULLY LANDED and dims the line with a tag - megastructures
   // carry his own "(Not 100% complete)".
   const features: { title: string; blurb: string; pending?: string }[] = [
-    { title: 'Megastructures', pending: 'not 100% complete',
-      blurb: 'Space elevators, planetary rings and toruses, ringworlds, Dyson spheres and swarms, energy collectors and a battle station: placed like any other object, drawn to scale in 2D and 3D, and obeying the physics. A swarm dims its star and every world’s temperature follows.' },
+    // NOT `pending` - owner, 2026-09-08: "no need for Megastructures to be faded - its finished
+    // enough - the not 100% means we wanna add things like a Soletta." So the line stands as shipped
+    // work and names what is still coming instead of dimming what is not.
+    { title: 'Megastructures',
+      blurb: 'Space elevators, planetary rings and toruses, ringworlds, Dyson spheres and swarms, energy collectors and a battle station: placed like any other object, drawn to scale in 2D and 3D, and obeying the physics. A swarm dims its star and every world’s temperature follows. More are on their way — a soletta to warm a world you are terraforming, among others.' },
     { title: 'Docking',
       blurb: 'Ships dock at an elevator’s stations at low, middle and geostationary height, on a ring’s rim or a hull, and ride with the structure. The planner prices the approach, and turns a wrong-way arrival around and charges for it.' },
     { title: 'The Explorers site',

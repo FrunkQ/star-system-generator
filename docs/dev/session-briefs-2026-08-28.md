@@ -1761,3 +1761,138 @@ Red-first, absolute (PHY-34). Then take the 'coronal model, not the surface' not
 > than a class average.
 >
 > **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM V — a Traveller main world where people could actually live (G87)
+
+> You are building the MAIN-WORLD PLACEMENT MODEL for Star System Explorer — [[G87]], a user request relayed by
+> the owner with his own design on top. Repo `C:\Development\star-system-explorer-v2\star-system-generator`,
+> branch `beta` (fetch the tip; several streams push daily, renumber on collision). Work in your OWN worktree
+> (`git worktree add ../sse2-mainworld -b wt/mainworld origin/beta`); the main checkout is shared. Commit as
+> **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` — four of them
+> are load-bearing here and you should be able to quote them back: FLEXIBLE SYSTEMS OVER POINT SOLUTIONS, NEVER
+> ASSUME AN EARTH/SOL BASELINE (this bug IS that rule broken), SCATTERED CONSTANTS ARE DATA IN THE WRONG PLACE,
+> and STEER DON'T STOP (an authored hostile world is never quietly moved somewhere nicer); the [[G87]] row, which
+> carries the user's words, the owner's design and the coordinator's measurement; [[G32]] and [[G11]] (the
+> importer's own history); engine map **PHY-34** (every gate absolute and red-first).
+>
+> **WHAT IS WRONG, MEASURED — verify it, do not re-derive it.** `src/lib/traveller/importer.ts:222-246` decides
+> the main world's orbit from a hardcoded `HZ_ANCHORS` per spectral LETTER indexing a hardcoded `BODE_TABLE` of
+> AU slots, jittered ±10%. It never consults `physics/zones.ts calculateGoldilocksZone`, which derives the real
+> band from the star's own luminosity, nor `physics/habitability.ts findViableHabitableOrbit`, which already
+> finds a free orbit inside a band. Every G star lands at 0.85 AU and every M star at 0.17 AU whatever their
+> luminosity — a frozen world round a late M dwarf, a hot one round a bright G0 V. `if (uwpSizeDigit >= 10)
+> orbitIndex += 3` then pushes a large world three slots out for a non-thermal reason. The main world's TYPE is
+> hardcoded `'planet/terrestrial'` at the `_generatePlanetaryBody` call (`:290-302`).
+>
+> **WHAT ALREADY WORKS AND MUST STILL WORK AFTERWARDS.** The MOON case is built: trade code `Sa` puts the main
+> world on a moon orbit round a larger host (`:367-381`, `:473-482`, tag `traveller/satellite-main-world`), and
+> `W` is a hard world count that never counts moons. Treat it as a regression to avoid, and make your module
+> return a HOST as well as an orbit so the satellite path flows through it rather than round it. Determinism is
+> available: `traveller/rng.ts` is a `cyrb128`-seeded SFC32 hashed from a string.
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **The module, on its own, with no importer changes yet.** `src/lib/worlds/mainWorldPlacement.ts` — the
+>    owner's *"its own model we can tweak later - even the new Traveller creation system will require the same
+>    functionality"*. A PURE function: given the star (or host), the system as it stands, the requested world's
+>    facts (UWP size, atmosphere, hydrographics, population, trade codes) and a seed string, it answers WHERE
+>    (host + a_AU) and WHAT TYPE, plus a REASON in plain words and the tolerance grade it settled for. It reads
+>    the engine's own zone derivation; it contains no spectral-class table and no AU table of its own. Nothing
+>    imports it yet — this job is the module and its gates alone.
+> 2. **The candidate types are PACK DATA.** A ranked list of main-world types with a human-tolerance grade —
+>    breathable / mask / sealed-or-underground — in the rule pack beside the other distributions, NOT an array
+>    in the module. The vocabulary already exists (`planet/earth-like`, `earth-analogue`, `super-earth`, `ocean`,
+>    `jungle`, `swamp`, `forest`, `desert`, `superhabitable`, `hycean`, and the hostile ones). The owner's rule:
+>    *"we don't want them all entirely earth like; some will require breathing masks"* — so the list spans the
+>    ladder, and the module picks the best grade the star, the orbit and the UWP will actually support, working
+>    DOWN the ladder rather than giving up. **At least one human-compatible option must be reachable** when the
+>    UWP's own atmosphere and hydrographics allow it, which is the user's whole request.
+> 3. **Always try to place somebody.** *"On the whole they will always TRY and pop a main world down unless it
+>    could[n't] have a decent population, even if they have to live underground occasionally."* So the module
+>    declines only when no population could live there at all, and when it declines it SAYS SO in its reason
+>    rather than silently falling back to the old table.
+> 4. **The trade codes win.** A world Traveller declares hostile — hellworld and its neighbours — is NOT moved
+>    into the habitable zone: that is the user's own bypass request and the steer-don't-stop rule agreeing with
+>    each other. The bypass list is pack data too, keyed on the codes the decoder already expands
+>    (`traveller/decoder.ts:27`), so a GM can add one without a release. A bypassed world keeps today's
+>    behaviour exactly.
+> 5. **Wire the importer to the module and delete the tables.** `HZ_ANCHORS`, `BODE_TABLE` and the `+= 3` size
+>    nudge come out; the `Sa` satellite path routes through the module's host answer; the import gains the
+>    option the user asked for (default ON is the owner's call — RECOMMEND, then ask him before shipping a
+>    default that changes what an existing import produces).
+>
+> **GATES, red-first and absolute — in AU and kelvin, never ratios (PHY-34):** a G2 V main world lands inside
+> the band `calculateGoldilocksZone` derives for that star, and its derived surface temperature sits in a
+> liveable range; an M5 V main world lands near ITS band (~0.03-0.08 AU) and NOT at the old 0.17 AU — assert the
+> old value is gone, or the gate passes on the bug; a hellworld-coded world is placed exactly where today's code
+> puts it, unmoved; an `Sa` world is still a moon of a larger host, with its tag; **the same sector imported
+> twice is byte-identical, and imported by two different "users" (different sessions, same input) is also
+> byte-identical** — that is the owner's determinism requirement and it deserves its own test; and the existing
+> `importer.spec.ts` W-count and hierarchy gates stay green.
+>
+> **TRAPS:** real user files live in `../user-test-files/` and never in the repo — there are Traveller sector
+> files there to reproduce against; the two `tests/` fixtures are a baseline, commit them if a run changes them;
+> CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run manifest`
+> after every version bump; the stash stack is shared — WIP commits, never bare stash/pop; claim ids in both
+> forms; B99's rarity-dial test is a known statistical flake.
+>
+> **EYEBALL FOR THE OWNER:** import a Traveller sector and open half a dozen main worlds — each should sit in
+> its star's own habitable band with a temperature a GM would not blink at, the hostile-coded ones should be
+> exactly as hostile as before, and a satellite main world should still be a moon.
+>
+> **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM W - ask the browser for what we need, and notice when it says no (C20)
+
+> You are fixing the 3D LOCKUP on a tired browser - [[C20]], the owner's own report and his question: *is this a
+> need to ask for more resources in the browser that we are NOT doing?* The answer is yes, three times over, and
+> the row names all three with the measurement already done. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams
+> push daily). Work in your OWN worktree (`git worktree add ../sse2-webgl -b wt/webgl origin/beta`); the main
+> checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` - DUPLICATED
+> FUNCTIONALITY and STEER DON'T STOP both bite here; the [[C20]] row (verify the measurement, do not repeat it);
+> [[G69]] (the frame-rate guard, and its rule that the state is TWO facts - what the settings REQUEST and what
+> the guard SHED - because the host re-asserts every setting on every change); [[G80]] and [[G83]] (low power);
+> [[A38]] (why `preserveDrawingBuffer` exists, and what breaks if it goes without a replacement); engine map
+> **E7** (a canvas cannot be verified headlessly - reproduce the numbers and hand back an eyeball list).
+>
+> **THE SYMPTOM, in the owner's words to his users:** an old browser with many tabs opens Size Comparison or a
+> Holoview and locks up solid, worst on MS Edge; a fresh browser purrs. His workaround is correct and stays in
+> the help text until this ships.
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **Ask.** ONE shared renderer factory. Six sites each write their own `new THREE.WebGLRenderer` today, which
+>    is six copies of one decision - the duplication fault this codebase keeps paying for. The factory passes
+>    `powerPreference: 'high-performance'` and takes each site's genuine differences (alpha,
+>    `preserveDrawingBuffer` where [[A38]] needs it) as arguments.
+> 2. **Notice a no.** Probe once with `failIfMajorPerformanceCaveat: true`. If that context is refused we are on
+>    a software rasteriser. **Do not refuse to run** - steer, don't stop - but say so plainly and let it turn
+>    low power on for that session. A GM told "your browser is drawing this on the processor; Low power is on,
+>    and a fresh window will be much faster" has an actionable sentence instead of a hang.
+> 3. **Give the context back.** `forceContextLoss()` after `dispose()` at all six teardowns, and a
+>    `webglcontextlost` handler on the five that have none, so a reaped context shows a plain message and can
+>    rebuild rather than leaving a dead canvas. Then prove it: open and close each 3D surface twenty times and
+>    assert the live context count does not climb.
+> 4. **Read the machine.** `navigator.deviceMemory` is already collected for diagnostics and decides nothing.
+>    Let a small device default to low power through the SAME switch the GM controls, never a second hidden one,
+>    and never let the default overrule a GM who has chosen ([[G69]]'s two-facts rule).
+> 5. **Only then weigh `preserveDrawingBuffer`.** Which of the six genuinely need it? [[A38]] is the reason it
+>    exists; a surface that is never captured does not need it and pays for it every frame.
+>
+> **GATES, red-first:** a source-level pin refusing a bare `new THREE.WebGLRenderer` outside the factory (the
+> shape `skinLiterals.spec.ts` already uses); the software-fallback path sets low power and emits its message;
+> twenty open/close cycles leave the context count flat; low power still honours an explicit GM choice. A real
+> GPU cannot be asserted under vitest - pin the DECISIONS, drive a browser for the rest, and say plainly what
+> stays eyes-only.
+>
+> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
+> manifest` after every version bump; the two `tests/` fixtures are a baseline; the stash stack is shared - WIP
+> commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial test is a known statistical flake.
+>
+> **EYEBALL FOR THE OWNER:** on the machine that locks up, open Size Comparison and the holo. You should get
+> either a usable view or a plain sentence saying what happened and what to do about it - never a hang.
+>
+> **Housekeeping:** as Stream Q's, word for word.
