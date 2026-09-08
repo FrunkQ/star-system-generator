@@ -4,6 +4,7 @@
 // black-hole accretion discs — are reviewable at a glance. Reuses the SAME feature builders as the live
 // holo (bodyFeatures) so what you see here is what the system view draws.
 import * as THREE from 'three';
+import { createGlRenderer } from '$lib/rendering/glRenderer';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -50,8 +51,7 @@ export function createGalleryScene(
 	canvas: HTMLCanvasElement,
 	extraRows: { title: string; bodies: any[]; nightSide?: boolean }[] = []
 ) {
-	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-	renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+	const renderer = createGlRenderer({ canvas, surface: 'gallery', antialias: true, alpha: true });
 	const scene = new THREE.Scene();
 	const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 500);
 	const controls = new OrbitControls(camera, canvas);

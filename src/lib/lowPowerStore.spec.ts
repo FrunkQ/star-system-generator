@@ -191,7 +191,12 @@ describe('the two renderer levers that cost fidelity', () => {
   it('pulls both levers on both renderers', () => {
     for (const p of ['src/lib/holo/scene.ts', 'src/lib/holo/comparisonScene.ts']) {
       const src = read(p);
-      expect(src, p).toContain('pixelRatioFor(false)');       // the build-time ratio
+      // THE BUILD-TIME RATIO MOVED, THE GUARANTEE DID NOT (C20). It used to be `pixelRatioFor(false)`
+      // written out here; it is now inside `createGlRenderer`, which is the only thing allowed to
+      // build a renderer at all. So this asserts the site still gets its renderer from the factory,
+      // and `glRenderer.spec.ts` asserts the factory still caps the ratio. Between them the cover is
+      // the same as before, and `glRendererSites.spec.ts` stops anyone slipping back out of it.
+      expect(src, p).toContain('createGlRenderer(');           // the build-time ratio, via the factory
       expect(src, p).toContain('pixelRatioFor(on)');          // ...and the switch moving it
       expect(src, p).toContain('skipFrame(');
       // setPixelRatio does nothing until a setSize follows it: the drawing buffer keeps its old size.

@@ -9,6 +9,7 @@
 // since G26, the STAR LOOK builder in holo/bodyFeatures (corona + flares + tag decorations), sized here
 // to a screen radius rather than copied.
 import * as THREE from 'three';
+import { createGlRenderer } from '$lib/rendering/glRenderer';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -280,9 +281,8 @@ function routeGlow(): THREE.Texture {
 const ROUTE_QUAD = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 
 export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapSceneOptions = {}): StarmapController {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  const renderer = createGlRenderer({ canvas, surface: 'starmap', antialias: true, alpha: true });
   renderer.setClearColor(0x05070c, 1);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 3000);

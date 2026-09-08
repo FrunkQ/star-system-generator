@@ -7070,3 +7070,30 @@ paths, also fixed); the spec written to pin the fix exposed this sign underneath
 BLAST: anything that reads a completed orbit change's end state - the sampler's parking orbit
 (sense from `u x w` of the arrival), the reconciler's circular elements, and now the dock catch,
 which assumes a prograde park to compute when the ship meets the ribbon.
+
+### RENDER-S57 A CONTEXT'S POWER FLAGS ARE FROZEN AT CREATION, SO ASKING IS A ONE-SHOT AND REFUSING IS FATAL
+BUCKET: PLATFORM (the browser's WebGL context creation). The duplication half - one factory rather
+than six sites - is ARCHITECTURE and carries forward; the flag semantics below are the browser's.
+WHERE: `rendering/glRenderer.ts:createGlRenderer` - the only place in the app allowed to build a
+renderer, pinned by `rendering/glRendererSites.spec.ts`.
+RULE: `powerPreference` and `failIfMajorPerformanceCaveat` are arguments to
+`canvas.getContext('webgl2', ...)` and are read ONCE, when the context is created. Neither can be
+changed on a live context, and three.js gives no way to re-ask without throwing the renderer away.
+Two consequences that are invisible in the code and shaped this whole design: (1) `powerPreference`
+CANNOT follow the low-power switch - by the time a GM flicks it the chip is already chosen - which is
+why low power buys its savings by doing less work (fewer fragments, fewer frames, fewer shells) and
+never by asking for a worse GPU; (2) `failIfMajorPerformanceCaveat: true` may NOT be passed on a real
+surface, because a refusal is how it reports and a refusal there takes the view down with it. It has
+to be learned on a throwaway probe context and remembered.
+WHY: C20 - the owner's tired browser locking up on Size Comparison and the holo. Six sites each wrote
+their own `new THREE.WebGLRenderer` and not one passed `powerPreference`, so on every switchable-
+graphics laptop the app took whatever chip the browser felt like giving it and never once asked for
+the fast one. Six copies of one decision is this codebase's most recurring recorded fault, and these
+had already drifted: the pixel-ratio cap was written six times in four orderings and only one of them
+guarded `typeof window`, so the same question genuinely had two answers under SSR.
+BLAST: adding a seventh 3D surface means calling the factory, not the constructor - the source pin
+fails the suite otherwise. And BEWARE ASSERTING THE PIXEL RATIO UNDER VITEST: jsdom reports a
+`devicePixelRatio` of 1, where low power and full power return the SAME number, so an assertion
+written the obvious way passes with the lever removed - it was seen to do exactly that here before a
+retina stub (`devicePixelRatio: 2`) was put in front of it. Any low-power-versus-normal claim needs a
+panel that costs something before it can fail.

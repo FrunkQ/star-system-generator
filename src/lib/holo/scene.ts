@@ -50,6 +50,7 @@ import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
+import { createGlRenderer } from '$lib/rendering/glRenderer';
 import { shouldRender, IDLE_HEARTBEAT_MS } from '$lib/rendering/renderIdle';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
@@ -463,9 +464,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // caller drawImage() this canvas into another one. Without it a WebGL canvas captured outside its
   // own render callback comes back BLANK — and that capture is how the body graphic gets INSIDE the
   // document's filter pass rather than being composited, unfiltered, on top of it (inbox A38).
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+  const renderer = createGlRenderer({ canvas, surface: 'holo', antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setClearColor(0x05070c, 1);
-  renderer.setPixelRatio(pixelRatioFor(false));
   // GPU-side resource gauge for the perf trace: geometries/textures three still holds alive. If these
   // climb across setSystem cycles while the scene shows the same thing, something survives clearContent
   // — the leak detector for the rebuild-per-snapshot path. Read only when a [sse-perf] line prints.

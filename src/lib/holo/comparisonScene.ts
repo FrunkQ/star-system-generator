@@ -53,6 +53,7 @@ import { warpUv, warpParamsOfUniforms } from './filters/warpPick';
 import type { FilterParamValues } from './filters/schema';
 import { slotOffset } from '$lib/comparison/layout';
 import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
+import { createGlRenderer } from '$lib/rendering/glRenderer';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
 import {
   makeGlowTexture, makeHotspotTexture, makePlumeTexture, updateStarLook, updateMagma, updatePlumes,
@@ -148,8 +149,7 @@ const RING_TILT_FALLBACK_RAD = 1.15;
 const DISC_FLARE_DEPTH = 0.35;
 
 export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonSceneHandle {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(pixelRatioFor(false));
+  const renderer = createGlRenderer({ canvas, surface: 'comparison', antialias: true, alpha: false });
   renderer.setClearColor(0x000000, 1);            // black backdrop; no starfield (decision 4)
   const scene = new THREE.Scene();
   // Orthographic (decision 2). The frustum is set from the viewport in px by `setView`.

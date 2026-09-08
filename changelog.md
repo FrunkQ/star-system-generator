@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.9 - 8th Sep 2026
+
+- **The app now asks your browser for the fast graphics chip.** On any machine with two of them - which is most laptops - the browser picks one when a 3D view opens, and with nothing asked of it the browser is entitled to hand over the small power-saving chip. The Holoview, the size comparison, the body gallery, the starmap, the model viewer and the filtered document view had each been built separately and not one of them had ever asked. All six now go through one place that does, so a seventh view cannot forget. This is the first of three changes aimed at the lockup on a tired browser; on the live version the answer is still to open the app in a fresh window.
+- The same change gathers up the drawing-resolution cap that had been written out six times in four different ways. It behaves as it always did, with one fewer way to get it wrong.
+
 ## v3.1.8 - 8th Sep 2026
 
 - **Fixed: Luhman 16 imported as a single object. It is a pair of brown dwarfs, and now arrives as one.** The catalogue records the system under one entry and files its two members separately - without distances of their own, because they are measured as a pair. Every query the importer made asked for a distance, so the two members could never come back and the system arrived as a single body. The importer now fetches the members of any such system and gives them the distance of the pair they belong to, which is the same distance by definition. Luhman 16 A and B now orbit each other at their real separation of about two astronomical units.
