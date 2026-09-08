@@ -2057,64 +2057,77 @@ the right order is to get eyes on what has already shipped first.
   should go, and if it is owed to a future feature the dependency is now recorded in
   `HoloOptions.capture` where a change would be noticed.
 
-## STREAM Y — a contact binary you can author, and the flag that keeps it out of the generator (G90)
+## STREAM Y — a contact binary: one body fact, one modifier, one silhouette (G90)
 
-> You are adding a FOURTH small-body type - a contact binary, two lobes touching, like Arrokoth - that a GM can
-> author but the engine never generates. [[G90]], the owner's ask of 2026-09-08. Repo
+> You are adding CONTACT BINARIES - two lobes touching, like Arrokoth and like comet 67P - as a small-body type
+> a GM can author and the generator can also produce. [[G90]], the owner's ask of 2026-09-08 **as corrected by
+> him the same day: an earlier version of this brief invented an "authored but never generated" mechanism from a
+> misreading, and it is dropped. This is an ordinary type.** Repo
 > `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams
 > push daily). Work in your OWN worktree (`git worktree add ../sse2-contactbinary -b wt/contactbinary
 > origin/beta`); the main checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
 >
 > **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` - FLEXIBLE
-> SYSTEMS OVER POINT SOLUTIONS decides the design here, and PHYSICS DRIVES TAGS DRIVES VISUALS decides the
-> shape; the [[G90]] row, which carries the owner's words and the whole measurement; `docs/dev/engine-map.md`
-> for your territory.
+> SYSTEMS OVER POINT SOLUTIONS and PHYSICS DRIVES TAGS DRIVES VISUALS are the two that shape this; the [[G90]]
+> row, including the owner's correction, which is the authority on scope; `docs/dev/engine-map.md` grepped for
+> your territory, and `classifierSeam.spec.ts` before you touch a fingerprint.
 >
-> **THE OWNER'S ASK:** *"a contact binary may make an interesting 4th type... We are not creating them
-> dynamically! Just letting users author them and they are offered as options alongside other asteroids."*
+> **THE OWNER, corrected:** *"Authored means put there by a user rather than generated. BOTH are fine! Both are
+> needed. I thought this would simply be adding a new type of small thing alongside the other 5? They are likely
+> to be rubbly to join together like this - but maybe we can have a couple of types if that reflects reality."*
 >
-> **WHAT IS ALREADY MEASURED - verify it, do not re-derive it.**
-> - `AddBodyTypeModal.svelte:50` offers `rulePack.classifier.fingerprints`; `system/classification.ts:152-175`
->   scores THE SAME fingerprints to decide what a body is. **"Offered but never generated" does not exist.**
-> - `type_draw[cls].rarity` (`generation/typeDraw.ts:62-74`) is the exotic-slider filter, NOT a never - rarity 1
->   still appears with the dial up. Do not reach for it.
-> - The class vocabulary (`classification.json` lines 16-20) and the fingerprints (~268 onward) are separate
->   lists, and `classification.audit.spec.ts` audits only fingerprint overlap.
-> - `catalogue/smallBodyShape.ts:17 smallBodyOutline` is the seeded potato, shared by `PlanetDisc.svelte:53` and
->   `CompositionCrossSection.svelte:39` - and the cross-section MUST clip to the same outline.
-> - `holo/bodyLook.ts:268,340` gives every body a plain `SphereGeometry`; there is no irregular 3D geometry
->   anywhere. Asteroids are already round in the holo. **3D lobes are NOT this stream.**
+> **THE ONE REAL CONSTRAINT, measured.** Fingerprints match a FEATURE MAP built in
+> `core/SystemProcessor.ts:1375-1382` - `makeup.*`, `porosity`, `mass_Me` and friends. **Being two lobes is a
+> fact about shape and history that no derived quantity carries**, so there is nothing there to match on today,
+> and a type the classifier cannot re-derive is LOST on the next reprocess. So the type needs a body fact
+> underneath it. That is the whole job and it is small.
+>
+> **THE SHAPE OF THE ANSWER, and take it as a strong recommendation rather than an instruction - if measuring
+> says otherwise, say so and do the better thing:**
+> - **A body property** a GM can author and the generator can set (name it as the codebase would).
+> - **One line in the feature map** beside `porosity`, so a fingerprint can match it.
+> - **A MODIFIER fingerprint**, not a base - because `asteroid/rubble-pile` is already a modifier that stacks,
+>   and stacking answers the owner's "a couple of types" without a second type: **comet + contact-binary is
+>   67P**, the bilobate nucleus Rosetta photographed; **rubble-pile + contact-binary is Arrokoth**. Match it on
+>   the new fact plus the population it really comes from - small, porous, rubbly - because these form by gentle
+>   low-velocity mergers, which is the owner's own instinct and it is correct.
+> - **A bilobate branch in `catalogue/smallBodyShape.ts:17 smallBodyOutline`.**
 >
 > **THE JOBS, in order, each its own commit and push:**
-> 1. **`authoredOnly` as a fingerprint field, and three readers that honour it.** One optional boolean on the
->    fingerprint: the picker INCLUDES it, the classifier SKIPS it when scoring, the type draw SKIPS it. A flag
->    on the definition, never a name-check in three modules - the next authored-only type must then cost
->    nothing. Ship this with NO new type, so the mechanism is provable on its own.
-> 2. **The type.** `asteroid/contact-binary` in the vocabulary and as a fingerprint carrying `authoredOnly`,
->    with an honest `note`. Whether it is a base or a modifier is your call from how it behaves beside
->    `rubble-pile` (a modifier that stacks) - decide, and say why in the commit.
-> 3. **The silhouette, which is the part worth doing well.** A bilobate branch in `smallBodyOutline`: two lobe
->    centres and a neck, still seeded from the body id so a given rock keeps its shape everywhere it appears,
->    still one closed path so the cross-section can clip to it. Vary the lobe ratio and neck width from the
->    seed - a contact binary is not one silhouette, and Arrokoth's lobes are famously unequal.
-> 4. **The image, ONLY if the owner has supplied a file and a credit line.** Drop it in
->    `static/images/planet_types/` and map it beside the others in `classification.json` (~2140). **If he has
->    not, ship without one** - `asteroid/rubble-pile` has no image entry and that is the precedent. Do NOT
->    download one yourself: the reworked Arrokoth composite is a derivative whose licence is his to check, and
->    `io/attributions.ts` writes a credit into every save and bundle.
+> 1. **The body fact and its feature line**, with the classifier seam proven: a body carrying it keeps its class
+>    across a reprocess, and one without it never gains the class. Nothing visual yet.
+> 2. **The modifier fingerprint**, stacking correctly on both a comet and a rubble pile, and never on something
+>    absurd. Check `classification.audit.spec.ts` still passes - it audits fingerprint overlap.
+> 3. **The silhouette, the part worth doing well.** Two lobe centres and a neck in `smallBodyOutline`, still
+>    seeded from the body id so a rock keeps its shape everywhere it appears, still ONE closed path - because
+>    `PlanetDisc.svelte:53` and `CompositionCrossSection.svelte:39` share it and the cutaway must clip to the
+>    same outline. Vary the lobe ratio and neck width from the seed: Arrokoth's lobes are famously unequal, and
+>    one silhouette for every contact binary would look like a decal.
+> 4. **The generator**, last and modestly: a small chance for a body already in the right population. The owner
+>    asked for authoring first, so this must not distort what systems normally contain - measure the before and
+>    after counts and say what moved.
+> 5. **The image, ONLY if the owner has supplied a file and a credit line.** Do NOT download one: the reworked
+>    Arrokoth composite is a derivative whose licence is his to check, and `io/attributions.ts` writes a credit
+>    into every save and bundle. Without it, ship with no image - `asteroid/rubble-pile` has none and that is
+>    the precedent.
 >
-> **GATES, red-first:** an `authoredOnly` type is offered by the picker and is NEVER returned by the classifier
-> for any body, and never drawn by the type draw at any rarity dial including maximum - assert all three, and
-> see each red with the flag ignored; the bilobate outline is a single closed path whose bounding box and lobe
-> count are asserted numerically (not "looks lobed"); the same body id yields the same path twice; and
+> **GATES, red-first:** the class survives a reprocess (the seam) and is never assigned without the fact; the
+> modifier stacks on comet AND on rubble-pile; the outline is one closed path with its lobe count and bounding
+> box asserted NUMERICALLY, not "looks lobed"; the same id gives the same path twice; and
 > `CompositionCrossSection` clips to the identical path, which is the regression that matters.
 >
-> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
-> manifest` after every version bump; the two `tests/` fixtures are a baseline; the stash stack is shared - WIP
-> commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial spec is a known statistical flake.
+> **WHAT IS NOT IN THIS STREAM:** 3D lobes. `holo/bodyLook.ts:268,340` gives every body a plain `SphereGeometry`
+> and nothing displaces it, so asteroids are ALREADY round in the holo and lumpy only in 2D. A bilobate 2D
+> silhouette is consistent with today. If the owner wants lumpy 3D, that is its own row - raise it, do not
+> quietly start it.
 >
-> **EYEBALL FOR THE OWNER:** author a contact binary, and look at it on the 2D orrery, on its info card and in a
-> composition cross-section - the outline should read as two lobes joined, and the cutaway should meet its edge.
-> Then generate a few systems with the rarity dial at maximum and confirm not one contact binary appears.
+> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
+> manifest` after every version bump; the two `tests/` fixtures are a baseline and a new body fact may well move
+> them - commit them with the change and read the diff as the record; the stash stack is shared - WIP commits,
+> never bare stash/pop; claim ids in both forms; B99's rarity-dial spec is a known statistical flake.
+>
+> **EYEBALL FOR THE OWNER:** author a contact binary and look at it on the 2D orrery, on its info card and in a
+> composition cross-section - two lobes joined, and the cutaway meeting its edge. Then open a comet and a rubble
+> pile and confirm the modifier reads sensibly on both.
 >
 > **Housekeeping:** as Stream Q's, word for word.
