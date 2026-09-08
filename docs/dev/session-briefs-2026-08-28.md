@@ -1995,28 +1995,55 @@ resources in the browser that we are NOT doing?"* Yes, and there were three, all
 Plus: a device reporting <= 2 GB defaults to Low power through the GM's own switch, and
 `preserveDrawingBuffer` is now per USE rather than per module.
 
-### THE THIRTY-SECOND EYEBALL LIST - and it is the whole of what is unverified
+### WHAT WAS VERIFIED IN A REAL BROWSER, AND WHAT IS LEFT FOR THE OWNER
 
-**NOTHING IN THIS STREAM HAS BEEN SEEN IN A BROWSER.** Every decision is pinned headlessly and
-mutation-checked (53 gates, 25 mutations seen red), but the pane could not reach this worktree: the
-launch registry is cached per session and its one usable entry points at the SHARED MAIN CHECKOUT,
-which is hundreds of commits behind and does not contain this code. Two dev servers were started and
-neither was reachable. That is a tooling limit, not a judgement that looking was unnecessary - the
-notice is DOM and is exactly the kind of thing [[E7]] says IS verifiable when the pane works.
+**Verified on beta.starsystemx.com, v3.1.31 (commit 6d0e978), Chrome, 2026-09-08.** An earlier note
+in this handover said nothing had been seen; that was true of the LOCAL dev server only. The fix was
+to stop trying to run one - the pane's launch registry is cached per session and its one usable entry
+points at the shared main checkout - and drive the DEPLOYED beta instead, which is where these pushes
+land. If you are verifying this stream again, start there.
 
-**On the machine that locks up (the tired Edge with many tabs):**
+Observed by patching `getContext` before any 3D view existed, then opening one:
 
-1. Open **Size Comparison**, then a **Holoview**. You should get either a usable view or a plain
-   sentence at the bottom of the view - never a hang. The sentence to expect: *"This browser is
-   drawing 3D with the processor instead of the graphics chip... Low power is on to keep it usable.
-   Closing some tabs, or opening SSE in a fresh browser window, will be much faster."*
-2. If that sentence appears, **the Low power box should now be ticked** (GM view, next to belt
-   density). Untick it: it must STAY unticked for the rest of the session, and after a reload.
-3. **On a fresh browser, that sentence must NOT appear** and nothing should be ticked for you.
-4. **Open and close the holo, the size comparison and the gallery half a dozen times each.** Nothing
-   should go blank or freeze. If a view ever does go dark, it should now SAY so rather than sitting
-   there frozen.
-5. **On a phone or a small tablet**, opening a 3D view should start with Low power already on.
+1. **Every context asks for the high-performance GPU** - on the probe AND the real surface (job 1).
+2. **The probe runs first and once**, on a throwaway canvas, with `failIfMajorPerformanceCaveat`.
+   Refused, it retries `webgl` strict, then plain, and concludes software - the exact four-call
+   sequence the design predicts (job 2).
+3. **On a refusal the view is STILL BUILT** and the notice appears with its shipped wording, word for
+   word (job 2, steer-don't-stop).
+4. **The probe hands its throwaway context straight back** - `loseContext` observed.
+5. **Low power comes on for the session and NOTHING is persisted** - the GM's own checkbox reads
+   ticked, storage stays empty. That is the two-facts split working (jobs 2 and 4).
+6. **An explicit choice beats the machine both ways, and survives a reload** while the machine still
+   says software: the box stayed unticked and the GM was still told why. This is the guarantee the
+   whole two-facts design exists for.
+7. **Closing a 3D view calls `forceContextLoss` exactly once** (job 3). Before this stream: zero.
+8. `deviceMemory` was 32 on that machine, so job 4 correctly said nothing.
+9. The captured holo surface carries `preserveDrawingBuffer`; the probe context does not (job 5).
+
+**STILL UNSEEN, and unseeable from a page:** that a discrete GPU is really handed over, and the
+browser's own live-context count. Neither is observable from JavaScript, which is why the gates pin
+OUR count and our decisions instead.
+
+**C21's build budget and wireframes are unseen for a DIFFERENT and structural reason - [[E7]].** The
+view was opened on the deployed beta and the `comparison` perf provider is registered and reporting,
+so the code is live; but it reported `buildsTotal: 0`, because the pane runs `document.hidden ===
+true` and `requestAnimationFrame` never fires (measured again the same day: 0 frames in 1500 ms).
+`reconcile()` lives inside the frame loop. **Everything in C20 was verifiable because it happens at
+context CREATION and TEARDOWN, which are synchronous on mount and unmount; everything in C21 happens
+inside rAF and is eyes-only by construction.**
+
+### THE OWNER'S OWN THIRTY SECONDS, on the PC that locks up
+
+1. Open **Size comparison** (rail: Measure, then Size comparison). It should come up straight away
+   with spinning **wireframe globes** that fill in over the next second or two, and the strip should
+   scroll and answer clicks the whole time - never the "page isn't responding" dialog.
+2. If anything still stalls, run `window.__ssePerf.events(60, 'comparison.build')` in the console:
+   it gives bodies built, bodies deferred and milliseconds blocked, per pass, whether or not tracing
+   was on.
+3. Open a **Holoview**. On a tired browser you should get a plain sentence about the processor and
+   Low power ticking itself on - never a hang. Untick it and it must STAY unticked, including after
+   a reload.
 
 ### THE DRAWING BUFFER - asked, answered, and then improved on by the owner
 

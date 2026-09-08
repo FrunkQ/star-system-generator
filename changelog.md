@@ -2,13 +2,19 @@
 
 All notable changes are listed here:
 
+## v3.1.34 - 8th Sep 2026
+
+- Board only. The 3D lockup work has now been checked in a real browser against the live test site, and the write-up says what was actually watched happening rather than what was only reasoned about: the app asking for the fast graphics chip, noticing a browser that had fallen back to the processor, saying so on screen, turning Low power on by itself, honouring a choice you made instead, and handing a graphics context back when a 3D view closes.
+
 ## v3.1.33 - 8th Sep 2026
 
 - Board only, and a correction to yesterday's entry: contact binaries are an ordinary new small-body type after all, authored or generated like any other. The coordinator had read "not creating them dynamically" as a permanent exclusion and designed a mechanism for it; the owner meant no such thing. What is actually needed is smaller - a body fact for being two-lobed, so the classifier can keep the type across a reprocess, and one modifier that stacks to give both real cases: a bilobate comet like 67P and a rubbly Kuiper belt pair like Arrokoth.
 
+
 ## v3.1.32 - 8th Sep 2026
 
 - Board only. A contact binary - two lobes touching, like Arrokoth - is captured as a fourth small-body type you could author but the engine would never generate for you. The measurement found why that is not simply a new entry: the list the type picker offers you is the same list the classifier uses to decide what a body is, so being offerable and being generated are currently the same thing. The fix is one field on a type definition, and it is briefed.
+
 
 ## v3.1.31 - 8th Sep 2026
 
