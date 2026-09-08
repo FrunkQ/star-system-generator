@@ -2018,15 +2018,33 @@ notice is DOM and is exactly the kind of thing [[E7]] says IS verifiable when th
    there frozen.
 5. **On a phone or a small tablet**, opening a 3D view should start with Low power already on.
 
-### WHAT IS RECOMMENDED AND NOT DONE - the owner's call
+### THE DRAWING BUFFER - asked, answered, and then improved on by the owner
 
-The biggest remaining saving is the catalogue's **full-screen player holo**, which keeps a whole
-spare copy of its picture in memory (~59 MB on a retina panel) for as long as it is open. It is kept
-because the **view-entry transition** photographs the outgoing 3D screen. Turning it off would make
-that transition fall back to a dark ground - the code already does this and calls it "a clean entry
-effect", so it degrades rather than breaks. **That trades a preset feature for memory on exactly the
-machines C20 is about, so it is a product decision and it is being asked, not taken.** One line, at
-`routes/catalogue/+page.svelte`'s `<HoloView>`: `capture={false}`.
+The catalogue's full-screen player holo holds ~59 MB of drawing buffer for as long as it is open,
+solely so the view-entry transition can photograph the outgoing 3D screen. Offered as keep / drop /
+follow-low-power. **The owner chose KEEP**, so nothing changed and
+`preserveDrawingBuffer.spec.ts` still pins that this site does not opt out.
+
+**Then he named the thing all three options missed:** *"You can drop the 3d data once the image is
+taken ... it needed to exist to copy FROM."* He is right - the buffer only has to exist at the moment
+of the copy - **but not by toggling the flag**, which is fixed at context creation (RENDER-S57) and
+cannot be changed on a live context. What the flag actually buys is reading the canvas OUTSIDE the
+frame that drew it. So the way to stop paying for it is to **do the copy INSIDE that frame**: a
+`captureFrame()` on the holo controller (render, then copy, in one call stack) hands back a canvas
+that never needed the flag at all, and the cost comes off EVERY surface rather than one.
+
+**Where it applies and where it does not - checked, not assumed:**
+
+- **The D8 view-entry transition is the clean case.** One photograph, taken at `beforeUpdate`,
+  outside any frame. It is exactly what `captureFrame()` is for.
+- **A38's body graphic is NOT.** `FilteredDocumentView.gfxLoop` re-photographs it on EVERY rAF, and
+  deliberately - *"because a 3D body SPINS and a static texture would freeze it mid-turn"*. The 3D
+  cannot be dropped there after one image. It would still stop needing the flag if the copy moved
+  inside the holo's own frame, but the scene has to stay live.
+
+**NOT BUILT.** It is a real refactor across the holo scene and two consumers, its failure mode is a
+SILENT blank capture, and nothing in this stream has been seen in a browser. Briefed, not attempted -
+the right order is to get eyes on what has already shipped first.
 
 ### TWO FINDINGS FOR THE COORDINATOR, unrelated to C20
 

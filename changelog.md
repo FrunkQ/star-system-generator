@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.30 - 8th Sep 2026
+
+- Board only. A memory saving offered as part of the 3D lockup work was put to the owner and not taken: the full-screen player view keeps its spare copy of the picture, so the transition when you step between views still fades from the real outgoing screen rather than from black. His reply pointed at a better answer than any of the options offered - the spare copy only has to exist at the instant the picture is taken - and that is now written up for whoever builds it, together with the one place it does not apply.
+
 ## v3.1.29 - 8th Sep 2026
 
 - Board only. Two counts in the 3D lockup write-up were understated and are corrected - the work is described by its numbers, so the numbers have to be right.
