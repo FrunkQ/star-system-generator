@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.35 - 8th Sep 2026
+
+- A new developer guide, "adding a classification", written at the owner's request so that adding a body type is a checklist rather than an afternoon of research. It names every place a new type has to reach and the trap that catches people first: the app re-derives every type on every pass, so a type it cannot work out for itself is quietly lost the next time a system is processed.
+- Board only. Small bodies are a convincing lumpy potato on their info card and a smooth ball in every 3D view, because nothing has ever displaced the sphere the 3D views build. Captured on the owner's word and folded into the contact-binary stream, since both need the same seeded shape and the card and the 3D view should show the same rock.
+
 ## v3.1.34 - 8th Sep 2026
 
 - Board only. The 3D lockup work has now been checked in a real browser against the live test site, and the write-up says what was actually watched happening rather than what was only reasoned about: the app asking for the fast graphics chip, noticing a browser that had fallen back to the processor, saying so on screen, turning Low power on by itself, honouring a choice you made instead, and handing a graphics context back when a 3D view closes.

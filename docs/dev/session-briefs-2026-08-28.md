@@ -2143,10 +2143,21 @@ the right order is to get eyes on what has already shipped first.
 > box asserted NUMERICALLY, not "looks lobed"; the same id gives the same path twice; and
 > `CompositionCrossSection` clips to the identical path, which is the regression that matters.
 >
-> **WHAT IS NOT IN THIS STREAM:** 3D lobes. `holo/bodyLook.ts:268,340` gives every body a plain `SphereGeometry`
-> and nothing displaces it, so asteroids are ALREADY round in the holo and lumpy only in 2D. A bilobate 2D
-> silhouette is consistent with today. If the owner wants lumpy 3D, that is its own row - raise it, do not
-> quietly start it.
+> **THE 3D HALF IS IN SCOPE, AND IT IS [[G91]].** It was raised and the owner answered the same day: *"'lumpy'
+> 3d/2d models are the best - the 2d on GM screen was quite good - I just think we miss the 3d render path."*
+> He is right, and it is measured: `holo/bodyLook.ts:340` builds a plain `SphereGeometry` for every body and
+> nothing displaces it, so the same asteroid is a convincing potato on its card and a billiard ball in the holo.
+>
+> **Job 3b, and take it with job 3 because they are one design:** displace that sphere for small bodies.
+> `buildBodyLook` is the single assembly for the holo, the gallery AND the size comparison (engine map
+> RENDER-S53), so one change reaches all three. **Both views must sample ONE seeded shape source** - the 2D
+> outline is already a seeded radial function of one angle, the 3D lump is the same idea over two - so that a
+> body's silhouette and its solid are the same rock seen twice. Build the shared source first, then let
+> `smallBodyOutline` and the mesh both read it; shipping them apart gives a GM a card and a holo showing
+> plainly different objects, which is the fault this codebase keeps recording.
+> **Watch the cost:** the sphere is 32x24 segments (16x10 low-poly, `bodyLook.ts:224-225`), small bodies are the
+> most numerous things in a system, and the frame-rate guard ([[G69]]) will shed what you overspend. Measure a
+> busy map before and after, honour Low Power ([[G80]]/[[G83]]), and say what it cost.
 >
 > **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
 > manifest` after every version bump; the two `tests/` fixtures are a baseline and a new body fact may well move
