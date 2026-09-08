@@ -64,6 +64,7 @@
   import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditBiospheresModal from '$lib/components/EditBiospheresModal.svelte';
   import { applyListDelta } from '$lib/rulepackDelta';
+  import { allLiquids } from '$lib/physics/liquids';
   import { allMorphologies } from '$lib/physics/vegetation';
   import { allPigments, pigmentModel } from '$lib/physics/pigments';
   import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
@@ -688,8 +689,13 @@
               pack.distributions['atmosphere_composition'].entries = overrides.atmosphereCompositions;
           }
 
-          if (overrides.liquids && overrides.liquids.length) {
-              pack.liquids = overrides.liquids;  // whole-list replace; allLiquids(pack) prefers pack.liquids
+          // D25: A DELTA, like the two below it, and it used to be a WHOLE-LIST REPLACE. That was the
+          // odd one out of three list overrides, and it made shipping a definition WITH a starmap
+          // impossible without either dropping every liquid the map did not name or freezing all of
+          // them against later improvements (`rulepackDelta.ts` cost #2). `applyListDelta` takes a
+          // plain array as it stands, so every campaign saved before this is unaffected.
+          if (overrides.liquids) {
+              pack.liquids = applyListDelta(allLiquids(pack), overrides.liquids as any, (l: any) => l.name);
           }
 
           // DELTAS laid over the pack's own lists, so anything the GM never touched keeps tracking

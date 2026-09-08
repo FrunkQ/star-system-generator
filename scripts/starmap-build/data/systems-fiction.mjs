@@ -214,3 +214,140 @@ export const fiction = {
     }
   }
 };
+
+// ---------------------------------------------------------------- the fiction's OWN definitions
+//
+// D25 - FICTION TRAVELS WITH THE MAP THAT USES IT, NEVER IN THE DEFAULT PACK. Owner, 2026-08-14:
+// "additional atmospheres and liquids are like additional engines and fuels - the DEFAULT list is
+// what everyone gets; otherwise it is stored IN THE STARMAP FILE to be integrated on load", and
+// again on 2026-09-08: "those SHOULD be sci-fi map defined rather than default defined".
+//
+// THE FAULT THIS FIXES ran the other way from [[D4d]]. Astrophage and Taumoeba are inventions of
+// Project Hail Mary, and they were sitting in `starter-sf` - the pack EVERY campaign receives - so
+// a REAL-SKY import of a real star could be handed a fictional gas for a real world's atmosphere.
+// The owner reported exactly that. Their presence on THIS map is correct and always was; their
+// presence in the default pack was the bug, and the fix is a move rather than a flag because the
+// engine already has the extension point.
+//
+// FIVE OF THE SIX MERGE ADDITIVELY and one does not, which is why the liquids are shaped as a
+// DELTA: `+page.svelte` lays `engineDefinitions`, `fuelDefinitions` and `gasPhysics` over the pack
+// by id, but `liquids` was a WHOLE-LIST REPLACE - so shipping two liquids here would have silently
+// dropped the other twenty-two, and shipping all twenty-four would have FROZEN them against every
+// later improvement (`rulepackDelta.ts` cost #2). Liquids now go through `applyListDelta` like
+// pigments and morphologies, so these two are ADDED and nothing else is pinned.
+export const fictionDefinitions = {
+  gasPhysics: {
+    "Astrophage": {
+      "molarMass": 0.03,
+      "shielding": 1,
+      "greenhouse": 0,
+      "specificHeat": 1,
+      "radiativeCooling": 0.5,
+      "colorHex": "#7a1f1a",
+      "meltK": 150,
+      "boilK": 380,
+      "tags": [
+        {
+          "name": "biosignature",
+          "trigger": "percent > 0.0001"
+        },
+        {
+          "name": "exotic-biology",
+          "trigger": "percent > 0.0001"
+        }
+      ],
+      "cloud": {
+        "condensesTo": "astrophage-bloom"
+      }
+    },
+    "Taumoeba": {
+      "molarMass": 0.03,
+      "shielding": 1,
+      "greenhouse": 0,
+      "specificHeat": 1,
+      "radiativeCooling": 0.5,
+      "colorHex": "#5FD35F",
+      "meltK": 180,
+      "boilK": 400,
+      "tags": [
+        {
+          "name": "biosignature",
+          "trigger": "percent > 0.0001"
+        },
+        {
+          "name": "exotic-biology",
+          "trigger": "percent > 0.0001"
+        }
+      ],
+      "cloud": {
+        "condensesTo": "taumoeba-bloom"
+      }
+    }
+  },
+  liquids: { entries: {
+      "astrophage-bloom": {
+        "name": "astrophage-bloom",
+        "label": "Astrophage bloom",
+        "meltK": 150,
+        "boilK": 380,
+        "tripleBar": 2e-07,
+        "criticalK": 620,
+        "criticalBar": 200,
+        "colorHex": "#8C1C13",
+        "density_gcc": 1,
+        "conductive": false,
+        "biosolvent": "none",
+        "family": "exotic",
+        "refractiveIndex": 1.4,
+        "cloudOpacity": 0.8,
+        "cloudAlbedo": 0.04,
+        "cloudTintDistance": 210
+      },
+      "taumoeba-bloom": {
+        "name": "taumoeba-bloom",
+        "label": "Taumoeba bloom",
+        "meltK": 200,
+        "boilK": 450,
+        "tripleBar": 2.05e-06,
+        "criticalK": 640,
+        "criticalBar": 200,
+        "colorHex": "#6FBF3A",
+        "density_gcc": 1,
+        "conductive": false,
+        "biosolvent": "poor",
+        "family": "water",
+        "refractiveIndex": 1.34,
+        "cloudOpacity": 0.72,
+        "cloudAlbedo": 0.18,
+        "cloudTintDistance": 120
+      }
+    } },
+  engineDefinitions: [
+    {
+      "id": "engine-astrophage-spin",
+      "name": "Astrophage Spin Drive",
+      "type": "Photonic (Astrophage)",
+      "fuel_type_id": "fuel-astrophage",
+      "thrust_kN": 31000,
+      "efficiency_isp": 30570000,
+      "atmo_efficiency": 0,
+      "powerDraw_MW": 40,
+      "description": "Astrophage converts its own mass to light and emits it in one direction. The exhaust is a beam of 25.984 micron infrared, so the exhaust velocity is c and the specific impulse is c/g0 -- about 30.6 million seconds, within a rounding error of the best any reaction drive can ever do. Thrust here is what holds 1.5 g at full load. The beam is 9.3 petawatts: never fire it at anything you like.",
+      "drive_tags": [],
+      "exhaust_color_hex": "#ff5a4a"
+    }
+  ],
+  fuelDefinitions: [
+    {
+      "id": "fuel-astrophage",
+      "name": "Astrophage",
+      "density_kg_per_m3": 1000,
+      "description": "A living microbe that stores energy as mass and releases it as light. Energy density is c-squared, 9.0e16 J/kg -- a million times a fusion fuel and about the same as antimatter, but it breeds, it is stable at room temperature, and it migrates to a star of its own accord. One cubic metre is a tonne of fuel and roughly ten days of thrust.",
+      "refuel_tags": [
+        "resource/astrophage",
+        "frontier/petrova-line"
+      ],
+      "availability": "exotic"
+    }
+  ]
+};

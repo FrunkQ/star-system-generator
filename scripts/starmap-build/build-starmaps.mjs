@@ -34,7 +34,7 @@ import { hash01, round, mapPositionFromAstrometry } from '../../src/lib/import/r
 import { starClasses } from '../../src/lib/import/realsky/stars.mjs';
 import { estimateRadiusRe, defaultMakeup, planetDescription } from '../../src/lib/import/realsky/planets.mjs';
 import { EPOCH, MAP_CENTRE, systems, MAP_A } from './data/systems-real.mjs';
-import { MAP_B, fiction } from './data/systems-fiction.mjs';
+import { MAP_B, fiction, fictionDefinitions } from './data/systems-fiction.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..', '..');
@@ -351,6 +351,10 @@ const mapBSystems = JSON.parse(JSON.stringify(mapASystems)).map((sys) => {
 
 const mapB = makeStarmap(MAP_B, mapBSystems);
 mapB.id = MAP_B.id;
+// D25: the fiction's own gases, liquids, engine and fuel ride WITH this map rather than sitting in
+// the default pack, where a real-sky import of a real star could be handed Astrophage. Same
+// extension point a GM's own inventions use - `starmap.rulePackOverrides`, merged on load.
+mapB.rulePackOverrides = fictionDefinitions;
 
 // ---------------------------------------------------------------- write
 // A node id is a STABLE REFERENCE, not a label: parents, barycentre members, orbits, routes,

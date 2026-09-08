@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.15 - 8th Sep 2026
+
+- **Fixed: a real star could be given a substance invented for a novel.** Astrophage and Taumoeba are from Project Hail Mary, and they were sitting in the default rule pack - the one every campaign receives - so a world imported from the real sky could be handed one as an atmosphere or an ocean. They now travel with the science-fiction starmap that actually uses them, along with the Astrophage spin drive and its fuel, exactly the way your own invented gases and engines already travel with your campaign. The science-fiction map is unchanged to look at; a real-sky import can no longer see any of them.
+- Liquids defined by a campaign are now laid over the shipped list rather than replacing it, which is how biospheres and pigments already worked. A campaign that adds one liquid keeps getting improvements to all the others, instead of quietly freezing the whole list at the moment it was saved.
+
 ## v3.1.14 - 8th Sep 2026
 
 - Board only. The networking work is recorded as shipped rather than missing: it had been finished and committed but never pushed, so every check against the shared copy said it did not exist. The branch sweep this project runs before a release gains a step that would have caught it.

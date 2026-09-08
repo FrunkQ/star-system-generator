@@ -144,17 +144,6 @@
         "resource/exotic-matter"
       ],
       "availability": "exotic"
-    },
-    {
-      "id": "fuel-astrophage",
-      "name": "Astrophage",
-      "density_kg_per_m3": 1000,
-      "description": "A living microbe that stores energy as mass and releases it as light. Energy density is c-squared, 9.0e16 J/kg -- a million times a fusion fuel and about the same as antimatter, but it breeds, it is stable at room temperature, and it migrates to a star of its own accord. One cubic metre is a tonne of fuel and roughly ten days of thrust.",
-      "refuel_tags": [
-        "resource/astrophage",
-        "frontier/petrova-line"
-      ],
-      "availability": "exotic"
     }
   ]
 }
