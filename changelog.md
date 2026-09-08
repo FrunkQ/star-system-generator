@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.26 - 8th Sep 2026
+
+- The shortlist of main-world kinds, and the trade codes that exempt a world from being moved, are now rule-pack data rather than a list buried in code - so a GM can add a world profile or exempt another code without waiting for a release. Nine profiles ship, spanning the ladder from a world you can breathe on to one where people live sealed in or underground, and every Traveller atmosphere code from 0 to F can be placed. Still not wired to the importer, so no import changes with this release.
+
 ## v3.1.25 - 8th Sep 2026
 
 - **A small device now turns Low power on for itself.** Browsers report roughly how much memory the machine has, and SSE has been collecting that number for its diagnostic reports without ever acting on it. A device reporting 2 GB or less now starts in Low power the first time a 3D view opens - the machines most likely to need that setting being the least likely to go looking for it. It is the same tickbox you already have, not a hidden mode, so you can see it is on and turn it straight off.

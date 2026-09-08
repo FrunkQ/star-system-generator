@@ -7,6 +7,33 @@
         "ring/planetary": { "radius_inner_multiple": [1.5, 2.0], "radius_outer_multiple": [2.5, 4.0] }
     },
     "distributions": {
+        "_main_world_doc": "G87. WHERE A TRAVELLER MAIN WORLD GOES AND WHAT IT IS, as data a GM can tweak without a release. Read by worlds/mainWorldPlacement.ts. The engine used to decide this from a table of Sol's orbital spacing indexed by the star's spectral LETTER, so every G star put its main world at 0.85 AU and every M star at 0.17 AU whatever their real luminosity. It now asks physics/zones.ts where THAT star's habitable zone is and places the world inside it. THE PROFILES BELOW ARE MATCHED IN ORDER OF TOLERANCE, best first: the engine takes the most comfortable grade the UWP's own atmosphere and hydrographics can honestly support, and works DOWN rather than giving up - the owner's rule is that somebody is placed unless nobody could live there at all, even if they live underground. `template` is a GENERATION template and must be a real statTemplates key. `readsAs` is what the classifier is EXPECTED to call the finished world; it is DERIVED from the world's physics and must never be fed back in as an input.",
+        "main_world_profiles": {
+            "name": "Main World Profiles",
+            "entries": [
+                { "weight": 1, "value": { "id": "shirt-sleeve", "grade": "breathable", "atmosphere": [5, 6], "hydrographics": [3, 10], "template": "planet/terrestrial", "readsAs": "planet/earth-like" } },
+                { "weight": 1, "value": { "id": "shirt-sleeve-dry", "grade": "breathable", "atmosphere": [5, 6], "hydrographics": [0, 2], "template": "planet/terrestrial", "readsAs": "planet/desert" } },
+                { "weight": 1, "value": { "id": "shirt-sleeve-dense", "grade": "breathable", "atmosphere": [8, 8], "template": "planet/terrestrial", "readsAs": "planet/earth-analogue" } },
+                { "weight": 1, "value": { "id": "tainted", "grade": "mask", "atmosphere": [4, 4], "template": "planet/terrestrial", "readsAs": "planet/earth-analogue" } },
+                { "weight": 1, "value": { "id": "tainted-standard", "grade": "mask", "atmosphere": [7, 7], "template": "planet/terrestrial", "readsAs": "planet/earth-analogue" } },
+                { "weight": 1, "value": { "id": "tainted-dense", "grade": "mask", "atmosphere": [9, 9], "template": "planet/terrestrial", "readsAs": "planet/earth-analogue" } },
+                { "weight": 1, "value": { "id": "very-thin", "grade": "mask", "atmosphere": [2, 3], "template": "planet/terrestrial", "readsAs": "planet/barren" } },
+                { "weight": 1, "value": { "id": "thin-low", "grade": "mask", "atmosphere": [14, 14], "template": "planet/terrestrial", "readsAs": "planet/barren" } },
+                { "weight": 1, "value": { "id": "sealed", "grade": "sealed", "atmosphere": [0, 15], "template": "planet/terrestrial", "readsAs": null } }
+            ]
+        },
+        "_main_world_bypass_doc": "G87. TRAVELLER'S OWN DATA IS THE AUTHORITY, and a world its codes declare hostile is never quietly moved somewhere kinder - which is the user's own bypass request and the steer-don't-stop rule agreeing with each other. A world carrying any of these keeps exactly the orbit today's code gives it. Keyed on the codes traveller/decoder.ts already expands, so a GM can add one without a release.",
+        "main_world_bypass_codes": {
+            "name": "Main World Placement Bypass",
+            "entries": [
+                { "weight": 1, "value": "He" },
+                { "weight": 1, "value": "Da" },
+                { "weight": 1, "value": "Fo" },
+                { "weight": 1, "value": "Px" },
+                { "weight": 1, "value": "Pe" },
+                { "weight": 1, "value": "Re" }
+            ]
+        },
         "planet_type": {
             "name": "Planet Type",
             "entries": [

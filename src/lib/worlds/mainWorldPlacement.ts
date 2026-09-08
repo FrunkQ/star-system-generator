@@ -35,9 +35,36 @@
 // AND TRAVELLER'S OWN DATA IS THE AUTHORITY, WHICH IS THE STEER-DON'T-STOP RULE ARRIVING FROM THE
 // OTHER SIDE. A world the UWP declares hostile is not quietly moved somewhere pleasant: the user
 // asked for that bypass in the same breath as the request, and the two agree.
-import type { Barycenter, CelestialBody } from '$lib/types';
+import type { Barycenter, CelestialBody, RulePack } from '$lib/types';
 import { calculateGoldilocksZone } from '$lib/physics/zones';
 import { SeededRNG } from '$lib/traveller/rng';
+
+// ---------------------------------------------------------------- reading the shortlist from the pack
+//
+// The profiles and the bypass codes are `planets.json distributions.main_world_profiles` and
+// `.main_world_bypass_codes` (G87 job 2). They are DATA because the owner asked for a shortlist he
+// can tweak, and because a list of world types living in a placement module is the same fault as a
+// table of AU slots living in an importer.
+//
+// A PACK THAT DECLARES NEITHER STILL WORKS. The fallbacks below are the minimum honest answer - one
+// sealed profile that accepts any atmosphere, and no bypass codes - so an older or third-party pack
+// degrades to "place it in the band and say people need suits" rather than to an exception.
+
+/** The shortlist, in the order the pack declares it. */
+export function mainWorldProfilesFromPack(pack: RulePack | null | undefined): MainWorldCandidate[] {
+  const entries = (pack?.distributions as any)?.['main_world_profiles']?.entries;
+  if (!Array.isArray(entries) || !entries.length) {
+    return [{ template: 'planet/terrestrial', grade: 'sealed', atmosphere: [0, 15] }];
+  }
+  return entries.map((e: any) => e.value as MainWorldCandidate);
+}
+
+/** The trade codes that forbid moving a world. */
+export function mainWorldBypassCodesFromPack(pack: RulePack | null | undefined): string[] {
+  const entries = (pack?.distributions as any)?.['main_world_bypass_codes']?.entries;
+  if (!Array.isArray(entries)) return [];
+  return entries.map((e: any) => String(e.value));
+}
 
 /** How much a human needs to survive outside. The owner's ladder, in order. */
 export type ToleranceGrade = 'breathable' | 'mask' | 'sealed';
@@ -46,16 +73,29 @@ export const TOLERANCE_ORDER: ToleranceGrade[] = ['breathable', 'mask', 'sealed'
 
 /**
  * One entry from the shortlist. THE LIST IS PASSED IN, NOT DEFINED HERE - it is rule-pack data
- * (G87 job 2), because the owner asked for a shortlist he can tweak and because a list of world
- * types in a placement module is the same fault as a table of AU slots in an importer.
+ * (`planets.json distributions.main_world_profiles`), because the owner asked for a shortlist he can
+ * tweak and because a list of world types in a placement module is the same fault as a table of AU
+ * slots in an importer.
+ *
+ * `template` AND `readsAs` ARE NOT THE SAME KIND OF THING, and conflating them would break a
+ * standing rule. `template` is a GENERATION template - a real `statTemplates` key, of which the pack
+ * has exactly three - and it is an INPUT. `readsAs` is what the CLASSIFIER is expected to make of
+ * the finished world (`planet/earth-like`, `planet/ocean`, and the sixty-odd others) and it is
+ * DERIVED: those names are classifier fingerprints matched from the world's own physics, so handing
+ * one to the generator would be a derived class used as a physics input, which is PHY-1's corollary
+ * and what `system/idempotence.test.ts` exists to catch. `readsAs` is documentation for the GM and
+ * for the reason text. Nothing may pass it to generation, and `mainWorldPlacement.spec.ts` asserts
+ * that `template` is always one of the pack's real keys.
  */
 export interface MainWorldCandidate {
-  /** The engine class this world is built as, e.g. `planet/earth-like`. */
-  type: string;
+  /** A GENERATION template: a real `statTemplates` key. An input. */
+  template: string;
+  /** What the classifier is EXPECTED to call the result. Derived, documentation only, never an input. */
+  readsAs?: string;
   grade: ToleranceGrade;
-  /** Inclusive UWP atmosphere digits this type can honestly express. */
+  /** Inclusive UWP atmosphere digits this profile can honestly express. */
   atmosphere: [number, number];
-  /** Inclusive UWP hydrographics digits, when the type demands them. */
+  /** Inclusive UWP hydrographics digits, when the profile demands them. */
   hydrographics?: [number, number];
 }
 
@@ -86,7 +126,10 @@ export interface MainWorldPlacement {
   host: { id: string; kind: 'star' | 'giant' };
   /** Semi-major axis about THAT host, in AU. */
   a_AU: number;
-  type: string | null;
+  /** The GENERATION template to build with. Never a derived class. */
+  template: string | null;
+  /** What the classifier is expected to make of it - for the GM, never fed back in. */
+  readsAs: string | null;
   grade: ToleranceGrade | null;
   /** True when this module chose the orbit; false when it declined or was bypassed. */
   placed: boolean;
@@ -171,7 +214,8 @@ export function placeMainWorld(facts: MainWorldFacts, context: MainWorldContext)
   const base = {
     host: { id: star.id, kind: 'star' as const },
     zone,
-    type: null as string | null,
+    template: null as string | null,
+    readsAs: null as string | null,
     grade: null as ToleranceGrade | null,
     placed: false,
     bypassed: false
@@ -229,7 +273,8 @@ export function placeMainWorld(facts: MainWorldFacts, context: MainWorldContext)
       ...base,
       host: { id: giant.id, kind: 'giant' },
       a_AU: moonAU,
-      type: chosen.type,
+      template: chosen.template,
+      readsAs: chosen.readsAs ?? null,
       grade: chosen.grade,
       placed: true,
       reason: `The habitable zone (${zone.inner.toFixed(3)}-${zone.outer.toFixed(3)} AU) is already held by ${giant.name ?? 'a giant'}, so the main world is a moon of it and stays inside the band - which keeps every environmental figure the UWP states. Life outside needs ${describeGrade(chosen.grade)}.`
@@ -239,7 +284,8 @@ export function placeMainWorld(facts: MainWorldFacts, context: MainWorldContext)
   return {
     ...base,
     a_AU: starOrbitAU,
-    type: chosen.type,
+    template: chosen.template,
+    readsAs: chosen.readsAs ?? null,
     grade: chosen.grade,
     placed: true,
     reason: `Placed at ${starOrbitAU.toFixed(3)} AU, inside this star's own habitable zone of ${zone.inner.toFixed(3)}-${zone.outer.toFixed(3)} AU, derived from its luminosity rather than assumed from its spectral class. Life outside needs ${describeGrade(chosen.grade)}.`

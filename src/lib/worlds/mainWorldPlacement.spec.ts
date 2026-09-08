@@ -11,11 +11,14 @@ import {
   atmosphereFamily,
   BAND_FRACTION_BY_ATMOSPHERE,
   TOLERANCE_ORDER,
+  mainWorldProfilesFromPack,
+  mainWorldBypassCodesFromPack,
   type MainWorldCandidate,
   type MainWorldFacts
 } from './mainWorldPlacement';
 import { calculateGoldilocksZone } from '$lib/physics/zones';
 import type { CelestialBody } from '$lib/types';
+import { loadStarterPack } from '$lib/import/realsky/testPack';
 
 const SOLAR_RADIUS_KM = 696340;
 
@@ -34,13 +37,11 @@ const M5V = star({
 });
 
 // The shortlist, as job 2 will ship it from the pack. Passed in, never defined in the module.
-const CANDIDATES: MainWorldCandidate[] = [
-  { type: 'planet/earth-like', grade: 'breathable', atmosphere: [5, 6], hydrographics: [3, 9] },
-  { type: 'planet/desert', grade: 'breathable', atmosphere: [5, 6], hydrographics: [0, 2] },
-  { type: 'planet/super-earth', grade: 'mask', atmosphere: [4, 9] },
-  { type: 'planet/terrestrial', grade: 'sealed', atmosphere: [0, 15] }
-];
-const BYPASS = ['He', 'Da', 'Fo'];
+// THE REAL PACK, not a hand-written copy of it. If the shipped shortlist stops being able to place
+// an ordinary breathable world, that is exactly the thing these gates should notice.
+const pack = loadStarterPack();
+const CANDIDATES: MainWorldCandidate[] = mainWorldProfilesFromPack(pack);
+const BYPASS = mainWorldBypassCodesFromPack(pack);
 
 const facts = (over: Partial<MainWorldFacts> = {}): MainWorldFacts => ({
   sizeDigit: 8, atmosphereDigit: 6, hydrographicsDigit: 7, populationDigit: 8, tradeCodes: [], ...over
@@ -109,7 +110,8 @@ describe('G87 - always TRY to put somebody down', () => {
   it('a breathable UWP gets the breathable type', () => {
     const out = place({ atmosphereDigit: 6, hydrographicsDigit: 7 });
     expect(out.grade).toBe('breathable');
-    expect(out.type).toBe('planet/earth-like');
+    expect(out.template).toBe('planet/terrestrial');
+    expect(out.readsAs).toBe('planet/earth-like');
     expect(out.reason).toMatch(/the air is breathable/);
   });
 
@@ -130,12 +132,12 @@ describe('G87 - always TRY to put somebody down', () => {
     // Atmosphere 5 with dry hydrographics fits the desert entry, which is ALSO breathable.
     const out = place({ atmosphereDigit: 5, hydrographicsDigit: 1 });
     expect(out.grade).toBe('breathable');
-    expect(out.type).toBe('planet/desert');
+    expect(out.readsAs).toBe('planet/desert');
     expect(TOLERANCE_ORDER[0]).toBe('breathable');
   });
 
   it('declines only when NOTHING in the shortlist can express the UWP - and names the reason', () => {
-    const out = place({ atmosphereDigit: 6 }, { candidates: [{ type: 'planet/ocean', grade: 'breathable', atmosphere: [1, 2] }] });
+    const out = place({ atmosphereDigit: 6 }, { candidates: [{ template: 'planet/terrestrial', grade: 'breathable', atmosphere: [1, 2] }] });
     expect(out.placed).toBe(false);
     expect(out.bypassed).toBe(false);
     expect(out.reason).toMatch(/No main-world type in the shortlist/);
@@ -173,7 +175,8 @@ describe('G87 - the main world as a gas giant\'s moon', () => {
   it('the UWP still decides what the moon IS - being a moon changes nothing about its air', () => {
     const out = place({ atmosphereDigit: 6, hydrographicsDigit: 7 }, { nodes: [G2V, giant] });
     expect(out.grade).toBe('breathable');
-    expect(out.type).toBe('planet/earth-like');
+    expect(out.template).toBe('planet/terrestrial');
+    expect(out.readsAs).toBe('planet/earth-like');
   });
 
   it('picks the heaviest giant deterministically when the band holds two', () => {
@@ -242,5 +245,59 @@ describe('G87 - thicker air sits further out, and the module holds no AU table',
     expect(code).not.toMatch(/HZ_ANCHORS|BODE_TABLE/);
     // No object literal keyed by spectral letter.
     expect(code).not.toMatch(/["']?O["']?\s*:\s*\d+\s*,\s*["']?B["']?\s*:/);
+  });
+});
+
+describe('G87 - the shortlist is PACK DATA, and a derived class is never an input', () => {
+  it("every profile's `template` is a REAL statTemplates key", () => {
+    // THE RULE THIS GUARDS: a derived CLASS is never a physics input (PHY-1's corollary, enforced by
+    // system/idempotence.test.ts). `planet/earth-like`, `planet/ocean` and the sixty-odd others are
+    // CLASSIFIER FINGERPRINTS, matched from a world's own physics - handing one to the generator
+    // would be the fault. Only three planet templates actually exist, and a profile must name one.
+    const real = Object.keys(pack.statTemplates ?? {}).filter((k) => k.startsWith('planet/'));
+    expect(real.length).toBeGreaterThan(0);
+    for (const c of CANDIDATES) expect(real, `${c.template} is not a generation template`).toContain(c.template);
+  });
+
+  it('`readsAs` names a CLASSIFIER class, and is never mistaken for the template', () => {
+    const fingerprints = (pack as any).classifier.fingerprints.map((f: any) => f.class ?? f.key);
+    for (const c of CANDIDATES) {
+      if (!c.readsAs) continue;
+      expect(fingerprints, `${c.readsAs} is not a class the classifier can produce`).toContain(c.readsAs);
+    }
+    // And the placement never returns a fingerprint as the thing to build with.
+    const out = place();
+    expect(out.template).not.toBe(out.readsAs);
+  });
+
+  it("AT LEAST ONE HUMAN-COMPATIBLE OPTION IS REACHABLE - the user's whole request", () => {
+    // A standard atmosphere with oceans is the ordinary habitable case. If the shipped shortlist
+    // cannot place a person on that without a suit, the feature has not been delivered.
+    const out = place({ atmosphereDigit: 6, hydrographicsDigit: 7 });
+    expect(out.placed).toBe(true);
+    expect(out.grade).toBe('breathable');
+  });
+
+  it("the bypass codes come from the pack and include the user's own example", () => {
+    expect(BYPASS.length).toBeGreaterThan(0);
+    expect(BYPASS).toContain('He'); // hellworld, the code the user named
+  });
+
+  it('a pack declaring NEITHER still places somebody, sealed, rather than throwing', () => {
+    expect(mainWorldBypassCodesFromPack(null)).toEqual([]);
+    const fallback = mainWorldProfilesFromPack(null);
+    expect(fallback.length).toBe(1);
+    const out = place({ atmosphereDigit: 6 }, { candidates: fallback, bypassTradeCodes: [] });
+    expect(out.placed).toBe(true);
+    expect(out.grade).toBe('sealed');
+  });
+
+  it('every UWP atmosphere digit 0-15 is placeable by the shipped shortlist', () => {
+    // "They will always TRY and pop a main world down." A digit the list cannot express is a hole.
+    for (let d = 0; d <= 15; d++) {
+      const out = place({ atmosphereDigit: d, hydrographicsDigit: 5 });
+      expect(out.placed, `atmosphere ${d} could not be placed`).toBe(true);
+      expect(out.template, `atmosphere ${d}`).toBeTruthy();
+    }
   });
 });
