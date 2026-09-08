@@ -9,6 +9,7 @@
   import { generateBodyOfType } from '$lib/generation/generateBodyOfType';
   import { makeupFractions, normalizeMakeup, gasThermalInflationFactor, derivedPorosity, maxPorosity } from '$lib/physics/makeup';
   import { breakupPeriodHours, rotationalDeform, type RotationalShape } from '$lib/physics/rotation';
+  import { isSmallBodyShape, lobeCount, MAX_LOBES } from '$lib/catalogue/smallBodyShape';
   import CustomImageBlock from './CustomImageBlock.svelte';
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
@@ -509,6 +510,21 @@
   }
   function onTiltInput() { clearSpinProvenance('axis'); handleUpdate(); }
 
+  // LOBES — the one shape fact the engine does not derive, so the GM states it ([[G90]]).
+  //
+  // It is only OFFERED on a body small enough to be drawn irregular, because on anything rounder it
+  // would do nothing and a control that does nothing is a lie. That is a question of relevance and
+  // not a refusal: the field itself is unrestricted, so an imported or scripted body keeps whatever
+  // it says, and the number a GM types here is never written back to or corrected.
+  $: canBeLobed = isSmallBodyShape(body);
+  $: lobes = lobeCount(body);
+  function setLobes(n: number) {
+    const v = Math.max(1, Math.min(MAX_LOBES, Math.round(n)));
+    if (v <= 1) delete (body as { lobes?: number }).lobes; else body.lobes = v;
+    body = body;
+    handleUpdate();
+  }
+
   // Rotational deformation (E4): the bulk density sets a hard BREAK-UP spin — spin any faster and the
   // equator sheds mass into a ring. Derived live from density + the day length, so it tracks composition
   // edits too. We surface the shape and hard-clamp the day length at the break-up period.
@@ -894,6 +910,23 @@
         </div>
     </div>
 
+    {#if canBeLobed}
+      <div class="form-group lobe-editor">
+        <label for="lobes">Lobes</label>
+        <div class="lobe-row">
+          <input type="number" id="lobes" min="1" max={MAX_LOBES} step="1" value={lobes}
+                 on:input={(e) => setLobes(+e.currentTarget.value)} />
+          <span class="sub-label">
+            {#if lobes >= 2}
+              Two or more bodies that met gently and stayed joined &mdash; a <strong>contact binary</strong>, like Arrokoth or comet 67P. Drawn with a neck on the map, the card and in 3D.
+            {:else}
+              One body. Set this to 2 for a contact binary &mdash; two lobes joined at a neck, like Arrokoth or comet 67P.
+            {/if}
+          </span>
+        </div>
+      </div>
+    {/if}
+
     <div class="form-group">
         <label for="tilt">Axial Tilt: {(body.axial_tilt_deg ?? 0).toFixed(0)}°</label>
         <div class="tilt-row">
@@ -985,6 +1018,9 @@
   .rot-flags { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
   .inline-check { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); font-size: 0.85em; }
   .inline-check input { width: auto; }
+  .lobe-row { display: flex; align-items: flex-start; gap: 8px; }
+  .lobe-row input { width: 70px; flex: none; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }
+  .lobe-row .sub-label { flex: 1; }
   .tilt-row { display: flex; align-items: center; gap: 8px; }
   .tilt-slider { flex: 1; }
   .tilt-num { width: 70px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-control); color: var(--text); }

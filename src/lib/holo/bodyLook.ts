@@ -25,6 +25,7 @@ import { magnetopauseOutlineRadii, magnetosphereConstants, readableStandoffRadii
 import { tokenColor } from '$lib/rendering/colors';
 import { activityStrength, flaresVisibly } from '$lib/physics/stellarActivity';
 import { jetStrength, sheddingStrength } from '$lib/physics/stellarOutflows';
+import { smallBodyShape } from '$lib/catalogue/smallBodyShape';
 import {
   buildMagmaVents, buildCryoPlumes, buildSelfLumGlow, buildAtmoGlow, buildCloudDeck, buildTholinHaze,
   buildDeckStack, buildLightning, buildAuroraShell, applyLimbDarkening, buildStarLook,
@@ -204,6 +205,48 @@ export interface BodyLook {
   dispose(): void;
 }
 
+/**
+ * A SMALL BODY IS A ROCK, NOT A BALL ([[G91]]).
+ *
+ * Every body in every 3D view was a plain `SphereGeometry` and nothing displaced it, while the same
+ * asteroid had been a convincing potato on its info card since the composition redesign. The owner,
+ * 2026-09-08: *"'lumpy' 3d/2d models are the best - the 2d on GM screen was quite good - I just
+ * think we miss the 3d render path."*
+ *
+ * IT READS THE SAME SEEDED FIELD THE SILHOUETTE DOES, which is the whole point and not a detail:
+ * `catalogue/smallBodyShape.ts` is a radial function of TWO angles, and the 2D outline is its
+ * equatorial slice. Build them apart and a GM gets a card and a holo showing plainly different
+ * rocks. Because this is the single assembly for the holo, the gallery AND the size comparison
+ * (RENDER-S53), one displacement reaches all three.
+ *
+ * IT COSTS NO EXTRA VERTICES, and that was worth checking before writing it. The sphere is 32
+ * segments around (16 lo-poly) and the field's own grid is 16 longitudes, so the mesh already
+ * samples it at or above its resolution: a finer sphere would draw the same rock with more
+ * triangles. Nothing here is a per-FRAME cost either — the mesh is displaced once, when it is built.
+ *
+ * THE POLES AND THE SEAM ARE WHY THIS CANNOT JUST BE NOISE. Every vertex of a sphere's top row is
+ * the SAME POINT, and the two sides of the u seam are the same meridian; the field is single-valued
+ * at both (`smallBodyShape.spec.ts` pins it), so the mesh does not tear open at either.
+ */
+function displaceToShape(geo: THREE.BufferGeometry, node: any): void {
+  const shape = smallBodyShape(node as any);
+  const pos = geo.attributes.position as THREE.BufferAttribute;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const len = v.length();
+    if (len <= 0) continue;
+    // The mesh's own frame: colatitude from +Y, longitude about it. The field wraps in longitude,
+    // so a negative value off `atan2` needs no correction.
+    const colat = Math.acos(Math.max(-1, Math.min(1, v.y / len)));
+    v.multiplyScalar(shape.radiusAt(Math.atan2(v.z, v.x), colat));
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();     // or the lumps would be lit as though they were still a sphere
+  geo.computeBoundingSphere();
+}
+
 /** A stable per-node seed. The two old assemblies each rolled these inline, identically. */
 function seedSum(id: unknown, mul = 1, mod = 997): number {
   let s = 0;
@@ -371,7 +414,13 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
   }
   if (!useUnlit && opts.onLitMaterial) opts.onLitMaterial(mat as THREE.MeshStandardMaterial);
 
-  const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, segW, segH), mat);
+  const geo = new THREE.SphereGeometry(radius, segW, segH);
+  // Too small to have pulled itself round, so it is not round. `appear.isSmallBody` is the SAME
+  // predicate the 2D disc uses (`isSmallBodyShape`), read off the appearance model rather than
+  // asked again here, so the two surfaces cannot come to different answers about which bodies are
+  // rocks.
+  if (appear.isSmallBody) displaceToShape(geo, node);
+  const sphere = new THREE.Mesh(geo, mat);
   disposables.push(sphere.geometry);
   const polF = appear.oblatePolarFactor;   // spin-axis flattening (E4)
   if (polF < 0.999) sphere.scale.set(1, polF, 1);

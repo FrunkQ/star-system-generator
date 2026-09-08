@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.52 - 8th Sep 2026
+
+- **Asteroids are rocks in 3D at last.** Every body in the holo, the reference gallery and the size comparison was drawn as a perfectly smooth ball, while the same asteroid had been a convincing lumpy rock on its info card all along. It is now the same rock in both, because both are drawn from one shape: a card and a 3D view of the same body can no longer disagree about what it looks like. Round worlds are unchanged, and so is every asteroid silhouette you have already seen.
+- **A contact binary now looks like one.** Set a small body's lobes to 2 in its Basics tab and it draws as two lobes joined at a neck, on the map, on its card, through a composition cutaway and in 3D - with the lobe sizes, the neck and the angle all varying from body to body, so no two look like the same sticker. More than two is allowed and draws as a chain.
+
 ## v3.1.51 - 8th Sep 2026
 
 - **Contact binaries are a thing the app knows about.** Tell a small body it is made of two lobes and it is now recognised as a contact binary - the shape of Arrokoth, and of comet 67P that Rosetta photographed. It sits alongside what the rock is made of rather than replacing it, so a bilobate comet is still a comet and a bilobate rubble pile is still a rubble pile; both are true of real ones. Nothing is drawn differently yet - that is next.

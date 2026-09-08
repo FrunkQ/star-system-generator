@@ -725,7 +725,7 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
    *  nothing may: `idempotence.test.ts` is what enforces that.
    *
    *  The SHAPE follows the count in one place — `catalogue/smallBodyShape.ts`, which both the 2D
-   *  silhouette and the 3D mesh read (engine map RENDER-S57). */
+   *  silhouette and the 3D mesh read (engine map RENDER-S60). */
   lobes?: number;
   /** Axial tilt in degrees — the angle between the spin axis and the orbit normal. Drives the
    *  seasonal temperature swing, the moon-orbit reference plane (`satelliteFrame`) and how the

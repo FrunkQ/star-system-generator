@@ -7167,6 +7167,57 @@ BLAST: anything that reads a completed orbit change's end state - the sampler's 
 (sense from `u x w` of the arrival), the reconciler's circular elements, and now the dock catch,
 which assumes a prograde park to compute when the ship meets the ribbon.
 
+### RENDER-S60 A BODY'S SHAPE IS ONE SEEDED FIELD, AND THE CARD AND THE MESH BOTH SAMPLE IT
+BUCKET: ARCHITECTURE - the same fault RENDER-S53 records one level up, caught before it happened
+rather than after: two surfaces drawing one object from two descriptions of it.
+WHERE: `src/lib/catalogue/smallBodyShape.ts` - `smallBodyShape` (the field), `smallBodyOutline` (the
+2D slice) and `lobeCount` (the fact). Read by `PlanetDisc.svelte`, `CompositionCrossSection.svelte`,
+`rendering/planetAppearance.ts`, `holo/bodyLook.ts` `displaceToShape`, and by
+`core/SystemProcessor.ts` for the `lobes` FEATURE. Pinned by `catalogue/smallBodyShape.spec.ts`,
+`components/bodySilhouette.spec.ts` and `holo/bodyLookShape.spec.ts`.
+RULE: there is ONE radial field per body, `r(lon, colat)`, seeded from the body id and normalised so
+1 is the body's volume-equivalent radius. The 2D silhouette is that field's EQUATORIAL SLICE and the
+3D mesh is the same field over both angles. Neither surface may compute a shape of its own, and a
+new surface samples the field rather than re-deriving it. Sampling DENSITY is each surface's own
+choice (the outline takes 16 points for a plain rock and up to 96 for a lobed one; the mesh takes
+whatever the sphere's segmentation gives it) - what must never differ is the field underneath.
+WHY: the 2D potato existed from the composition redesign and 3D drew a plain `SphereGeometry` for
+every body until [[G91]], so the same asteroid was a convincing rock on its card and a billiard ball
+in the holo. Building the 3D lump separately would have replaced one mismatch with a subtler one -
+two rocks that are both lumpy and plainly not the same rock - which is this codebase's most recurring
+recorded fault. It also makes the contact binary ([[G90]]) one piece of work instead of two.
+THREE THINGS THAT ARE NOT OBVIOUS AND EACH COST SOMETHING:
+(1) THE EQUATORIAL ROW IS DRAWN FIRST OFF THE LCG, and that ordering is load-bearing. It is the same
+sixteen draws in the same sequence the old one-dimensional function made, which is the only reason
+every asteroid in every existing campaign kept its exact silhouette. `smallBodyShape.spec.ts` holds
+the old expression verbatim and compares path strings CHARACTER FOR CHARACTER. Reorder the draws and
+every rock in the product changes shape silently.
+(2) THE GRID IS SAMPLED WITH SMOOTHSTEP, NOT LINEAR INTERPOLATION, and that is arithmetic rather than
+taste. A longitude round-trips through pi, so a sample lands up to 2e-16 either side of its own grid
+index; linear weights carry that straight into the answer, while smoothstep is flat to second order
+at both ends so the epsilon underflows to exactly 0 or 1. That is what makes (1) bit-identical
+instead of merely close.
+(3) A POLE IS ONE RADIUS AND THE SEAM IS ONE MERIDIAN. Every vertex of a sphere's top row is the SAME
+POINT and the two sides of the u seam are the same longitude, so the field must be single-valued at
+both or the mesh tears open. The pole rows are therefore a single draw filled across, and the
+longitude wraps.
+LOBES ARE A UNION OF SPHERES ON A CHAIN, IN THE EQUATORIAL PLANE. A ring would leave a hole at the
+centre of volume - the origin every radius is measured from - and a ray from inside that hole misses
+every sphere. The equatorial plane is where the 2D card slices, so a GM sees the lobes rather than
+one of them end-on. A CHAIN OF THREE HAS TWO RADIAL MAXIMA, NOT THREE: the middle lobe sits at the
+centre of volume, so it reads as a thickened waist. That is geometry, not a fault, and the gate
+measures elongation for n > 2 rather than a lobe count.
+COST, MEASURED (`bodyLookShape.spec.ts` prints it): about +0.2 ms per small body at 32x24, against
+~1.0 ms to build the body's look at all - roughly half sampling the field and half
+`computeVertexNormals`. It is a BUILD cost and there is NO per-frame cost: same vertex count, same
+draw call, static geometry. IT NEEDS NO EXTRA SEGMENTS EITHER - the sphere is 32 longitudes (16
+lo-poly) against the field's own 16, so the mesh already samples at or above the field's resolution
+and a finer sphere would only draw the same rock with more triangles. Nothing here is shed under Low
+Power because Low Power buys fill rate ([[G80]]) and this costs none.
+BLAST: a fourth surface that wants a body's outline or its solid samples this field. Changing the
+draw ORDER, the grid dimensions or the interpolation reshapes every small body ever authored;
+changing the LOBE parameters reshapes only bodies a GM has given a lobe count.
+
 ### RENDER-S57 A CONTEXT'S POWER FLAGS ARE FROZEN AT CREATION, SO ASKING IS A ONE-SHOT AND REFUSING IS FATAL
 BUCKET: PLATFORM (the browser's WebGL context creation). The duplication half - one factory rather
 than six sites - is ARCHITECTURE and carries forward; the flag semantics below are the browser's.
