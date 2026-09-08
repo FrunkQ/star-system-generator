@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.1.8 - 8th Sep 2026
+
+- **Fixed: Luhman 16 imported as a single object. It is a pair of brown dwarfs, and now arrives as one.** The catalogue records the system under one entry and files its two members separately - without distances of their own, because they are measured as a pair. Every query the importer made asked for a distance, so the two members could never come back and the system arrived as a single body. The importer now fetches the members of any such system and gives them the distance of the pair they belong to, which is the same distance by definition. Luhman 16 A and B now orbit each other at their real separation of about two astronomical units.
+- **Fixed: a system named after one of its stars instead of itself.** A system whose catalogue entry is replaced by its own members took the first member's name, so Luhman 16 would have appeared as "Luhman 16A". Kruger 60 and G 272-61 had the same fault already and are fixed with it.
+- A member is only ever recovered this way when the catalogue actually says what it is. Ross 614's records include two anonymous detections with no stellar type at all, and importing those would have invented two stars out of nothing.
+
 ## v3.1.7 - 8th Sep 2026
 
 - **Fixed: importing Sirius gave you only Sirius B.** The catalogue marks Sirius A as a spectroscopic binary, and the importer read that as "this row is a container for a system" rather than "this star has a close companion" - so it threw the bright star away, kept the white dwarf, and called the result Sirius. Sirius now imports as both stars, with A leading at its real size and B orbiting it. Alpha Centauri, Kruger 60 and the other genuine multiples are unaffected, because what actually separates the two cases is whether the catalogue's spectral type names a second star.

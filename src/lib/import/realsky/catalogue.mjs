@@ -9,7 +9,8 @@
 // that rather than pretending the snapshot is live.
 
 import { LY_PER_PC } from './constants.mjs';
-import { archivePlanetsAdql, simbadStarsAdql, simbadStarFluxAdql, simbadStarTeffAdql, runTap } from './query.mjs';
+import { archivePlanetsAdql, simbadStarsAdql, simbadStarFluxAdql, simbadStarTeffAdql, simbadComponentsOfAdql, runTap } from './query.mjs';
+import { isContainerRow } from './census.mjs';
 import { inSphere, radecToXyzLy } from './positions.mjs';
 
 export const BUNDLED_CACHE_URL = '/realsky/pscomppars.json';
@@ -102,6 +103,54 @@ export async function loadStarSizes(region, { fetchImpl = fetch, signal } = {}) 
       source: 'none',
       warning: `Star sizes could not be fetched (${error?.message ?? error}); every star will use its class band instead.`
     };
+  }
+}
+
+// THE MEMBERS A CONTAINER DOES NOT RESOLVE (D29 - "completely forgets luhman 16").
+//
+// A multiple-star container whose components are absent from the census is kept as the only record
+// of its system and imports as ONE body. Luhman 16 is the owner's example: `NAME Luhman 16`, a
+// single row typed `L7.5+T0.5`, so a famous binary brown dwarf arrived as one object.
+//
+// ITS COMPONENTS EXIST, IN `h_link`, WITH NO PARALLAX OF THEIR OWN - which is exactly why no query
+// the importer could make ever returned them, because every star query carries `plx_value > 0`.
+// Fetching them and giving them the PARENT'S parallax is not a fudge: two members of one system are
+// at the same distance, which is the same reasoning `projectedSeparationAu` already rests on.
+// Once they are in the row set the census does the rest by itself - the container is dropped
+// because its components are now present, and they group into one system on their real separation.
+//
+// THREE GUARDS, AND EVERY ONE OF THEM IS SOMETHING THE LIVE SERVICE ACTUALLY RETURNED:
+//  1. A COMPONENT MUST CARRY A SPECTRAL TYPE. Ross 614's children are two untyped `Gaia DR3 ...`
+//     rows 17 arcsec away - field detections, not the 1.2 arcsec companion. Importing them would
+//     invent two stars out of the rule pack's default band, which is the one thing DATA-R4 forbids.
+//     The point of recovering a member is that the catalogue SAYS what it is.
+//  2. NOT ALREADY IN THE CENSUS. Alpha Centauri's children are A and B, which are already rows.
+//  3. NOT TWICE. `h_link` returned one of Ross 614's children twice in a single answer.
+export async function loadContainerComponents(rows, { fetchImpl = fetch, signal } = {}) {
+  const present = new Set((rows ?? []).map((r) => r.main_id));
+  const containers = (rows ?? []).filter((r) => isContainerRow({ otype: r.otype, sp: r.sp_type }));
+  if (!containers.length) return { rows: [], source: 'live', warning: null };
+  try {
+    const children = await runTap('simbad', simbadComponentsOfAdql(containers.map((c) => c.main_id)), { fetchImpl, signal });
+    const parentPlx = new Map(containers.map((c) => [c.main_id, c.plx_value]));
+    const seen = new Set();
+    const recovered = [];
+    for (const child of children) {
+      if (!child.main_id || present.has(child.main_id) || seen.has(child.main_id)) continue;
+      if (!String(child.sp_type ?? '').trim()) continue;
+      const plx = child.plx_value > 0 ? child.plx_value : parentPlx.get(child.parent_id);
+      if (!(plx > 0) || !Number.isFinite(child.ra) || !Number.isFinite(child.dec)) continue;
+      seen.add(child.main_id);
+      recovered.push({
+        main_id: child.main_id, ra: child.ra, dec: child.dec,
+        plx_value: plx, sp_type: child.sp_type, otype: child.otype
+      });
+    }
+    return { rows: recovered, source: 'live', warning: null };
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    // Enrichment again: without it a container simply imports as one body, as it did before.
+    return { rows: [], source: 'none', warning: null };
   }
 }
 

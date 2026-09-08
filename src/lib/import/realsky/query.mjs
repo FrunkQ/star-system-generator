@@ -243,6 +243,33 @@ export function simbadStarTeffAdql(region) {
   );
 }
 
+// -------------------------------------------- SIMBAD: the members a container does not resolve
+//
+// D29. A multiple-star container that the census keeps - because none of its components came back -
+// is the ONLY record of its system, and it imports as one body. Luhman 16 is the owner's example.
+//
+// ITS COMPONENTS DO EXIST. `NAME Luhman 16A` (L7.5) and `NAME Luhman 16B` (T0.5) are in SIMBAD's
+// `h_link` hierarchy with their own positions and their own K magnitudes - and with NO PARALLAX,
+// which is precisely why no query the importer could make ever returned them: every star query
+// carries `plx_value > 0`. That clause is right for a whole-sky census (a row with no parallax
+// cannot be placed) and wrong here, where the parent's parallax is the answer: two members of one
+// system are at the same distance, which is the same reasoning `census.projectedSeparationAu`
+// already relies on.
+//
+// SO THIS QUERY DELIBERATELY OMITS `plx_value > 0`, and the caller supplies the distance. It is the
+// one place in the importer that does, and the reason is the whole point of the query.
+export function simbadComponentsOfAdql(mainIds, { limit = 40 } = {}) {
+  const list = (Array.isArray(mainIds) ? mainIds : [mainIds])
+    .map((id) => `'${String(id).replace(/'/g, "''")}'`)
+    .join(',');
+  return (
+    `select top ${limit} p.main_id as parent_id, c.main_id as main_id, c.ra as ra, c.dec as dec, ` +
+    `c.plx_value as plx_value, c.sp_type as sp_type, c.otype as otype ` +
+    `from h_link h join basic c on c.oid = h.child join basic p on p.oid = h.parent ` +
+    `where p.main_id in (${list}) and c.otype not in ('Pl', 'Pl?')`
+  );
+}
+
 // ---------------------------------------------------------------- Gaia
 // The bulk population. parallax_over_error guards the distance shell against
 // junk parallaxes; the magnitude cut is the "Bright stars" preset's lever.

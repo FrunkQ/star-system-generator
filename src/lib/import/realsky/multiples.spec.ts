@@ -19,7 +19,7 @@ import { describe, it, expect } from 'vitest';
 import { convertRegion } from './convert.mjs';
 import { normaliseStarRows } from './census.mjs';
 import { SOL_CENTRE } from './query.mjs';
-import { LOCAL_NEIGHBOURHOOD_ROWS, skyRow, sizeMap } from './skyFixtures';
+import { LOCAL_NEIGHBOURHOOD_ROWS, skyRow, sizeMap, H_LINK_CHILDREN } from './skyFixtures';
 import { loadStarterPack } from './testPack';
 
 const pack = loadStarterPack();
@@ -121,5 +121,60 @@ describe('D29 - an unresolved pair is named, never invented', () => {
     const out = runCensus([skyRow('* eps Eri')] as any[]);
     const star = out.systems[0].system.nodes.find((n: any) => n.roleHint === 'star');
     expect(star.description).not.toMatch(/UNRESOLVED PAIR/);
+  });
+});
+
+describe('D29 - a container whose members have no parallax of their own', () => {
+  // "completely forgets luhman 16". It was never forgotten - it arrived as ONE body, because
+  // `NAME Luhman 16` is a single row typed `L7.5+T0.5` and its components are not in the census.
+  // They ARE in SIMBAD's h_link, with positions, spectral types and NO PARALLAX - which is exactly
+  // why every star query, all of which carry `plx_value > 0`, could never return them.
+  // `loadContainerComponents` fetches them and gives them the PARENT'S parallax; from there the
+  // census needs no help at all, because the container is now a container with components present.
+  const withComponents = () => [
+    ...LOCAL_NEIGHBOURHOOD_ROWS,
+    ...H_LINK_CHILDREN['NAME Luhman 16'].map((c) => ({ ...c, plx_value: skyRow('NAME Luhman 16').plx_value }))
+  ];
+
+  it('LUHMAN 16 imports as a PAIR once its members are recovered', () => {
+    const stars = starsOf(runCensus(withComponents() as any[]), 'sys-luhman-16');
+    expect(stars.length).toBe(2);
+    expect(stars.map((s: any) => s.name)).toEqual(['Luhman 16A', 'Luhman 16B']);
+    expect(stars[0].classes[0]).toBe('star/L7.5');
+    expect(stars[1].classes[0]).toBe('star/T0.5');
+  });
+
+  it('...orbiting each other on their REAL projected separation, not an invented one', () => {
+    const [, b] = starsOf(runCensus(withComponents() as any[]), 'sys-luhman-16');
+    // 0.92 arcsec at 6.5 ly. The true pair is a 27-year eccentric orbit of about 3.5 AU, so a
+    // projected separation of a couple of AU is the honest present-day figure.
+    expect(b.orbit.elements.a_AU).toBeGreaterThan(1);
+    expect(b.orbit.elements.a_AU).toBeLessThan(4);
+  });
+
+  it('THE SYSTEM IS CALLED LUHMAN 16, not Luhman 16A', () => {
+    const out = runCensus(withComponents() as any[]);
+    const sys = systemNamed(out, 'sys-luhman-16');
+    expect(sys).toBeTruthy();
+    expect(sys.name).toBe('Luhman 16');
+    // The container row itself must be gone - it is the same object as its two members.
+    expect(out.systems.some((x: any) => x.id === 'sys-luhman-16a')).toBe(false);
+  });
+
+  it('the container row is dropped with a reason naming the members that replaced it', () => {
+    const out = runCensus(withComponents() as any[]);
+    const reason = out.skipped.find((s: any) => s.hostname === 'NAME Luhman 16')?.reason ?? '';
+    expect(reason).toMatch(/components present/);
+    expect(reason).toMatch(/Luhman 16A/);
+  });
+
+  it('both members keep their class-band size, because degeneracy is the honest answer', () => {
+    // DATA-R24: an L and a T dwarf really do share a radius. What was wrong was the silence.
+    const stars = starsOf(runCensus(withComponents() as any[]), 'sys-luhman-16');
+    expect(stars[0].radiusKm).toBe(stars[1].radiusKm);
+    expect(stars[0].typicalForClass).toBe(true);
+    expect(stars[0].description).toMatch(/TYPICAL FOR ITS/);
+    // ...and neither is still described as an unresolved pair, because they are now resolved.
+    for (const s of stars) expect(s.description).not.toMatch(/UNRESOLVED PAIR/);
   });
 });

@@ -9,7 +9,7 @@
   // refuses to invent or overwrite, and this dialogue is where that shows.
   import { createEventDispatcher } from 'svelte';
   import { REGION_PRESETS } from '$lib/import/realsky/presets.mjs';
-  import { loadArchiveRows, loadStarRows, loadStarSizes } from '$lib/import/realsky/catalogue.mjs';
+  import { loadArchiveRows, loadStarRows, loadStarSizes, loadContainerComponents } from '$lib/import/realsky/catalogue.mjs';
   import { convertRegion } from '$lib/import/realsky/convert.mjs';
   import { runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT } from '$lib/import/realsky/query.mjs';
   import { toAsciiQuery, displayStarName, designationFor, toCatalogueTerm } from '$lib/import/realsky/starNames.mjs';
@@ -126,9 +126,14 @@
       const [starResult, result, sizeResult] = await Promise.all([
         loadStarRows(wide), loadArchiveRows(wide), loadStarSizes(wide)
       ]);
-      starRows = starResult.rows;
       starSizes = sizeResult.sizes;
       rows = result.rows;
+      // D29: a multiple-star container whose members the census could not return - because they have
+      // no parallax of their own - gets them fetched from SIMBAD's hierarchy and appended here. The
+      // census then drops the container by itself, because its components are now present. Luhman 16
+      // is the case: one row typed L7.5+T0.5 becomes the pair it has always been.
+      const componentResult = await loadContainerComponents(starResult.rows);
+      starRows = [...starResult.rows, ...componentResult.rows];
       // Sol is not in an exoplanet archive - our planets are not exoplanets - and must never be
       // handed an invented system, so it comes from the shipped preset when the region reaches it.
       if (!solPreset) {
