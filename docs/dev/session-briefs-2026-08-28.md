@@ -1998,7 +1998,7 @@ Plus: a device reporting <= 2 GB defaults to Low power through the GM's own swit
 ### THE THIRTY-SECOND EYEBALL LIST - and it is the whole of what is unverified
 
 **NOTHING IN THIS STREAM HAS BEEN SEEN IN A BROWSER.** Every decision is pinned headlessly and
-mutation-checked (52 gates, 22 mutations seen red), but the pane could not reach this worktree: the
+mutation-checked (53 gates, 25 mutations seen red), but the pane could not reach this worktree: the
 launch registry is cached per session and its one usable entry points at the SHARED MAIN CHECKOUT,
 which is hundreds of commits behind and does not contain this code. Two dev servers were started and
 neither was reachable. That is a tooling limit, not a judgement that looking was unnecessary - the

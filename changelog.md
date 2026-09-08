@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.29 - 8th Sep 2026
+
+- Board only. Two counts in the 3D lockup write-up were understated and are corrected - the work is described by its numbers, so the numbers have to be right.
+
 ## v3.1.28 - 8th Sep 2026
 
 - Board only. The 3D lockup item's status now says all five pieces of work are on the test version rather than only the first, so nobody reads it as unfinished.
