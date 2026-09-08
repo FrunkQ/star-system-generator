@@ -1,6 +1,24 @@
 <script lang="ts">
   // First-run welcome — shown once (localStorage flag set by the parent on close).
   //
+  // STATE OF THESE FOUR, 2026-09-08 (measured, not assumed - re-measure before any production
+  // release that carries this panel). The importer's stars LANDED across v3.1.6-3.1.8 (real sizes
+  // with provenance, Sirius, Lalande, Luhman 16, the heaviest-member rule); 3D on a busy browser is
+  // IN FLIGHT (C20/Stream W, job 1 of 5 - it asks for the GPU already); Traveller main worlds are
+  // BRIEFED and not started (G87/Stream V); and the NETWORKING line has nothing behind it in this
+  // repository at all - no relay test, no Firefox join detection (see [[G88]]). **THE PANEL MUST NOT
+  // REACH PRODUCTION BEFORE ITS LINES ARE TRUE**, which is this file's own rule and the reason the
+  // list is checked rather than trusted.
+  //
+  // STATE OF THESE FOUR, 2026-09-08 (measured, not assumed - re-measure before any production
+  // release that carries this panel). The importer's stars LANDED across v3.1.6-3.1.8 (real sizes
+  // with provenance, Sirius, Lalande, Luhman 16, the heaviest-member rule); 3D on a busy browser is
+  // IN FLIGHT (C20/Stream W, job 1 of 5 - it asks for the GPU already); Traveller main worlds are
+  // BRIEFED and not started (G87/Stream V); and the NETWORKING line has nothing behind it in this
+  // repository at all - no relay test, no Firefox join detection (see [[G88]]). **THE PANEL MUST NOT
+  // REACH PRODUCTION BEFORE ITS LINES ARE TRUE**, which is this file's own rule and the reason the
+  // list is checked rather than trusted.
+  //
   // V3.1 welcome — RELEASE VOICE. The list below is the OWNER'S OWN release notes for 3.1, pasted
   // whole; earlier releases had the coordinator draft and him trim, and this is the other way round.
   // An inaccurate welcome is worse than a plain one, so nothing here claims more than the feature
@@ -13,6 +31,24 @@
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
   const openHelp = () => dispatch('help');
+
+  // The version copy that used to sit on the rail's brand mark. It moved here when the mark became
+  // the way to reopen this panel: copying on every click would overwrite a GM's clipboard just for
+  // reading the notes, and this app watches the clipboard for pasteable content. Beside the version
+  // it already prints is where somebody writing a bug report is looking anyway. A refusal
+  // (permissions, non-secure context) says so rather than claiming a copy that did not happen.
+  let copied: 'ok' | 'fail' | null = null;
+  let copyTimer: ReturnType<typeof setTimeout> | null = null;
+  async function copyVersion() {
+    try {
+      await navigator.clipboard.writeText(`SSE v${APP_VERSION}`);
+      copied = 'ok';
+    } catch {
+      copied = 'fail';
+    }
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => (copied = null), 1500);
+  }
 
   const GH = 'https://github.com/FrunkQ/star-system-generator/blob/beta';
 
@@ -64,8 +100,18 @@
       blurb: 'Orion no longer appears mirrored, the GM view zooms out a thousand times further, and a hover on any star summarises it.' },
     { title: 'Magnetic field visualisation',
       blurb: 'See what makes magnetic fields and how far they extend — a GM view option and a player view setting.' },
+    { title: 'The real-sky importer keeps its stars',
+      blurb: 'Real masses and radii come through, and binary companions no longer go missing: Sirius arrives whole, Luhman 16 turns up, Epsilon Indi brings its partner. There is a control for the edge of a binary\u2019s extent too, so you decide whether a wide pair reads as two separate stars or as one binary.' },
+    { title: 'Traveller main worlds are liveable',
+      blurb: 'A main world now sits in its star\u2019s actual habitable zone rather than a fixed slot, so no more baked or frozen capitals. Worlds Traveller marks as hostile stay hostile.' },
+    { title: '3D on a busy browser',
+      blurb: 'The app asks your browser for the proper graphics chip, spots when it has quietly switched to the slow path and says so, and gives memory back when you close a 3D view.' },
+    { title: 'Better networking, here and in Mappadux',
+      blurb: 'A failed join is now caught on every browser \u2014 Firefox was missing them silently \u2014 and you are told, with the fix that applies. Settings gained a five-second relay test, so you can check your relay before a game rather than during one.' },
+    { title: 'See this message again',
+      blurb: 'Click the SSE3.1 mark in the top corner to bring this back whenever you like.' },
     { title: 'Quieter machinery',
-      blurb: 'A memory gauge in the rail with an automatic crash save, a transit left running no longer fills memory, undo survives the clock, render-loop throttling, mild GM display customisation, a construct you export imports back, a low-power mode if this is too much for your browser, a liquid you invent reaches the gas editor, and the phone layout got its audit.' }
+      blurb: 'A memory gauge in the rail with an automatic crash save, a transit left running no longer fills memory, undo survives the clock, render-loop throttling, mild GM display customisation, a construct you export imports back, a low-power mode if this is too much for your browser, a liquid you invent reaches the gas editor, and the phone layout got its audit. Since launch: Hill spheres no longer freeze the system map, an older campaign is not nagged to upgrade unless it matters, and a belt\u2019s name stays on its belt.' }
   ];
 </script>
 
@@ -74,7 +120,12 @@
     <header class="w-head">
       <div>
         <h2>V3.1 is here</h2>
-        <p class="ver">{APP_VERSION}</p>
+        <button
+          class="ver"
+          type="button"
+          on:click={copyVersion}
+          title={copied === 'ok' ? 'Copied: SSE v' + APP_VERSION : copied === 'fail' ? 'Could not copy — clipboard blocked' : 'Click to copy the version, for a bug report'}
+        >{APP_VERSION}{#if copied === 'ok'}<span class="tick" aria-hidden="true"> ✓</span>{/if}</button>
       </div>
       <button class="w-close" aria-label="Close" on:click={close}>×</button>
     </header>
@@ -153,6 +204,17 @@
   }
   .w-close:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 30%, var(--bg-control)); }
   .placeholder { color: var(--text-faint); font-style: italic; }
+  /* The version is a BUTTON now (it copies), so it must stop looking like one: the rule above
+     keeps its size and colour, and this only strips the chrome a button brings with it. */
+  .ver {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+  .ver:hover { color: var(--accent); }
   .w-body { overflow-y: auto; padding: 14px 18px; }
   .lede { margin: 0 0 12px; color: var(--text, #e8e8e8); font-size: 0.94rem; line-height: 1.55; }
   .feat { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }

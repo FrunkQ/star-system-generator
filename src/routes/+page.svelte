@@ -2716,6 +2716,7 @@
         on:allships={() => showAllShips = true}
         on:routes={() => showRoutes = true}
         on:about={() => showAbout = true}
+        on:whatsnew={() => (showWelcome = true)}
         on:help={() => showHelpMenu = true}
         on:playerviews={() => showPlayerPresets = true}
         on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
@@ -2756,6 +2757,7 @@
       on:allships={() => showAllShips = true}
       on:routes={() => showRoutes = true}
       on:about={() => showAbout = true}
+      on:whatsnew={() => (showWelcome = true)}
       on:help={() => showHelpMenu = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
@@ -2801,6 +2803,7 @@
       on:llm={() => { settingsReturnSection = 'system'; showLlmSettingsModal = true; }}
       on:diagnostics={buildDiagnosticsOnDemand}
       on:about={() => showAbout = true}
+      on:whatsnew={() => (showWelcome = true)}
     />
   {/if}
   {#if showTagEditor}

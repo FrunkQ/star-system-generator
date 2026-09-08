@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.13 - 8th Sep 2026
+
+- Board only. The networking work is recorded as shipped rather than missing: it had been finished and committed but never pushed, so every check against the shared copy said it did not exist. The branch sweep this project runs before a release gains a step that would have caught it.
+
+
 ## v3.1.12 - 8th Sep 2026
 
 - **Fixed: a player whose connection failed on Firefox saw nothing at all.** A peer connection has two state machines, and Firefox is the browser where they disagree - this app watched only one of them, so the failure never reached its own handler and the guest-side error was discarded. Both are watched now, and PeerJS's "negotiation failed" is treated as what it actually is: no network path was found, not a protocol fault.

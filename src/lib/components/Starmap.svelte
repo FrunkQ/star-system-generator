@@ -1357,6 +1357,7 @@
         on:settings={() => dispatch('settings')}
         on:llmsettings={() => dispatch('llmsettings')}
         on:about={() => dispatch('about')}
+        on:whatsnew={() => dispatch('whatsnew')}
         on:help={() => dispatch('help')}
         on:navigate={() => (railOpen = false)}
         on:allbodies={() => { railOpen = false; dispatch('allbodies'); }}

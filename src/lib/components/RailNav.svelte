@@ -38,25 +38,18 @@ ${playerConnSummary}`
 
   let fileOpen = false; // File group (New / Open / Save) inline accordion
 
-  // Owner, 2026-08-30: clicking the brand mark copies "SSE v3.0.220"-style text for pasting into a
-  // bug report or chat. The tick in the title is the only feedback — a toast for a copy would be
-  // louder than the act. Clipboard access can be refused (permissions, non-secure context); the
-  // title then says so instead of lying about having copied.
-  let brandCopied: 'ok' | 'fail' | null = null;
-  let brandCopyTimer: ReturnType<typeof setTimeout> | null = null;
-  async function copyVersion() {
-    try {
-      await navigator.clipboard.writeText(`SSE v${APP_VERSION}`);
-      brandCopied = 'ok';
-    } catch {
-      brandCopied = 'fail';
-    }
-    if (brandCopyTimer) clearTimeout(brandCopyTimer);
-    brandCopyTimer = setTimeout(() => (brandCopied = null), 1500);
-  }
-  $: brandTitle = brandCopied === 'ok' ? 'Copied: SSE v' + APP_VERSION
-    : brandCopied === 'fail' ? 'Could not copy — clipboard blocked'
-    : APP_BUILD_STAMP + ' — click to copy';
+  // THE BRAND MARK OPENS "WHAT'S NEW" — owner, 2026-09-08: *"Have clicking on the SSE3.1 logo in the
+  // corner have the 'What's New' pop up again - just to easily see it again and that version ties
+  // stuff together."* The mark already NAMES the version on hover, so the panel that explains that
+  // version is the right thing behind it.
+  //
+  // IT NO LONGER COPIES, AND THAT IS A DELIBERATE CHANGE TO A80's BEHAVIOUR (owner, 2026-08-30:
+  // clicking copied "SSE v3.0.220" for a bug report). Copying on every click would overwrite the
+  // GM's clipboard each time they opened the notes to read them — and this app now WATCHES the
+  // clipboard for pasteable content (the undo pill's clip indicator), so a silent stomp is not a
+  // harmless side effect any more. The copy moves INTO the panel, beside the version it already
+  // prints, which is where somebody writing a bug report is looking anyway.
+  $: brandTitle = APP_BUILD_STAMP + ' — click for what’s new in this version';
   $: collapsed = $railCollapsed;
   function toggleCollapsed() { railCollapsed.update((v) => !v); }
 
@@ -106,8 +99,8 @@ ${playerConnSummary}`
   <div class="rail-header">
     <!-- The brand mark doubles as the version read-out: hovering it names the build, so a version
          can be checked from any screen without opening About. Same stamp the footer prints. -->
-    <button class="brand rail-label brand-copy" title={brandTitle} on:click={copyVersion}
-      aria-label="Copy app version to clipboard"
+    <button class="brand rail-label brand-copy" title={brandTitle} on:click={() => dispatch('whatsnew')}
+      aria-label="What’s new in this version"
     ><!--
       SSE 3.1, SET IN THE HUB'S OWN LETTERFORMS (its ROUND alphabet, at scale 3). The two
       products share a face now, which is the point: a map card on the hub and the app it opens
@@ -122,7 +115,7 @@ ${playerConnSummary}`
       The colour is deliberately not set here: fill="currentColor" means the glyphs take the
       .brand rule's var(--accent), so the wordmark follows the theme like every other accent.
     --><span class="brand-text">SSE3.1</span
-      ><PixelText text="SSE3.1" scale={3} decorative />{#if brandCopied === 'ok'}<span class="brand-tick" aria-hidden="true"> ✓</span>{/if}</button>
+      ><PixelText text="SSE3.1" scale={3} decorative /></button>
     <button class="rail-collapse" on:click={toggleCollapsed} title={collapsed ? 'Expand menu' : 'Collapse menu'} aria-label="Toggle menu width">
       {#if collapsed}
         <!-- panel-left-open: expand the rail -->
@@ -351,7 +344,6 @@ ${playerConnSummary}`
     white-space: nowrap;
     border: 0;
   }
-  .brand-tick { color: #35c96b; }
 
   /* Collapsed (icon-only): hide labels + section titles everywhere in the rail (incl. the
      slotted view content), centre the icons. :global so it reaches slotted buttons. */

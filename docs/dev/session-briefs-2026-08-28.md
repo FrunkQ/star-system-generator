@@ -1896,3 +1896,14 @@ Red-first, absolute (PHY-34). Then take the 'coronal model, not the surface' not
 > either a usable view or a plain sentence saying what happened and what to do about it - never a hang.
 >
 > **Housekeeping:** as Stream Q's, word for word.
+
+**STREAM U AMENDED 2026-09-08, AFTER THE STREAM STARTED (job 1 landed at v3.1.4) - so the running session must be
+TOLD, not expected to re-read.** The owner has added scope to [[D29]], and it belongs with job 3: **a control for
+the edge of a binary's extent.** His words: *"Additional control to define the edge of your binary extent; so you
+can control whether its separate stars or a binary."* A wide pair is a judgement, not a fact - the same two stars
+are one binary system or two neighbouring ones depending where the line is drawn, and the importer draws it today
+without telling anybody. Make the separation threshold a SETTING on the import, defaulting to exactly today's
+behaviour so nothing moves for an existing user, and carry the chosen value in the import's own record so a
+re-import reproduces the same map. Decide it BEFORE job 3 brings multiples in, because it defines what a multiple
+is. Gate it absolutely: one named wide pair imports as two systems below the threshold and as one binary above it,
+with the same input and the same seed.
