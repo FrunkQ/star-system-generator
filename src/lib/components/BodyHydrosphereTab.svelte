@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack } from '$lib/types';
   import { LIQUIDS as FALLBACK_LIQUIDS } from '$lib/constants';
-  import { liquidsLiquidInRange, phaseAtP, phaseReason } from '$lib/physics/liquids';
+  import { allLiquids, liquidsLiquidInRange, phaseAtP, phaseReason } from '$lib/physics/liquids';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { formatPref, unitBodyTypeFor } from '$lib/units';
 
@@ -31,6 +31,22 @@
   $: validLiquids = liquidsLiquidInRange(surfaceMinK, surfaceMaxK, rulePack);
   // Live phase of every liquid at THIS temperature & pressure — drives the per-option phase hints.
   $: phaseOf = (name: string) => phaseAtP(name, currentTemp, surfPbar, rulePack);
+
+  // EVERY OTHER SOLVENT, WITH THE REASON IT IS NOT ONE HERE. Owner, 2026-09-08: the list was
+  // truncated to the viable ones, so a GM could not see what had been ruled out or why. A menu that
+  // silently omits its rejects teaches nobody anything; one that says "ammonia — frozen, melts at
+  // 195 K" teaches the physics on the way past.
+  //
+  // THEY STAY SELECTABLE, and that is the steer-don't-stop rule rather than an oversight: a criterion
+  // TAGS AND EXPLAINS, it never refuses a GM's edit (alien tech, unobtanium, plot device). The tab
+  // already tolerates an out-of-range selection and warns about it, so disabling these would be the
+  // one place that argued back.
+  // The CURRENT selection is excluded even when it is rejected: it already has its own group below,
+  // with its own wording, and the same value in a <select> twice is a duplicate option a GM can see.
+  $: rejectedLiquids = allLiquids(rulePack)
+    .filter((l) => !validLiquids.some((v) => v.name === l.name))
+    .filter((l) => l.name !== body.hydrosphere?.composition)
+    .map((l) => ({ def: l, why: phaseReason(l.name, currentTemp, surfPbar, rulePack) }));
 
   // Check if the current selection is actually liquid here (pressure-aware, not a ±20 K fudge).
   $: currentLiquidDef = body.hydrosphere ? liquids.find(l => l.name === body.hydrosphere!.composition) : null;
@@ -110,6 +126,14 @@
                     {#each validLiquids as comp}
                         {@const ph = phaseOf(comp.name)}
                         <option value={comp.name}>{comp.label}{ph === 'liquid' ? '' : ` — ${PHASE_LABEL[ph] ?? ph} at the mean`}</option>
+                    {/each}
+                </optgroup>
+            {/if}
+
+            {#if rejectedLiquids.length > 0}
+                <optgroup label="Not liquid here — and why">
+                    {#each rejectedLiquids as r}
+                        <option value={r.def.name}>{r.def.label}{r.why ? ` (${r.why})` : ''}</option>
                     {/each}
                 </optgroup>
             {/if}

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.55 - 8th Sep 2026
+
+- **The solvent list on a world now shows every liquid, not just the ones that work there.** The ones that can be liquid somewhere on the world come first, and below them every other solvent with the reason it is ruled out - frozen and what it melts at, boiling here, or below its triple point and never liquid at this pressure. They stay pickable: the app tells you what the physics says and then lets you decide, as it does everywhere else.
+- Board only. A brown dwarf refusing to keep a temperature you type is diagnosed. Its temperature is worked out from its mass, age and radius on every pass, which is right for an object that does not fuse, but the editor offers a box, takes your number and quietly discards it - and there is no way to pin one. The fix needs a decision about what that box should be, so it is recorded rather than guessed at.
+
 ## v3.1.54 - 8th Sep 2026
 
 - Board only, no behaviour change: the contact-binary work is written up, with the short list of things worth a look in a real window - all of them 3D, because the browser used for checking cannot draw a 3D view. The type ships without a picture, as the rubble pile does, because the obvious one is somebody else's artwork and its licence has not been checked.
