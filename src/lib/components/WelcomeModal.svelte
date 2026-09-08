@@ -3,21 +3,12 @@
   //
   // STATE OF THESE FOUR, 2026-09-08 (measured, not assumed - re-measure before any production
   // release that carries this panel). The importer's stars LANDED across v3.1.6-3.1.8 (real sizes
-  // with provenance, Sirius, Lalande, Luhman 16, the heaviest-member rule); 3D on a busy browser is
-  // IN FLIGHT (C20/Stream W, job 1 of 5 - it asks for the GPU already); Traveller main worlds are
-  // BRIEFED and not started (G87/Stream V); and the NETWORKING line has nothing behind it in this
-  // repository at all - no relay test, no Firefox join detection (see [[G88]]). **THE PANEL MUST NOT
-  // REACH PRODUCTION BEFORE ITS LINES ARE TRUE**, which is this file's own rule and the reason the
-  // list is checked rather than trusted.
-  //
-  // STATE OF THESE FOUR, 2026-09-08 (measured, not assumed - re-measure before any production
-  // release that carries this panel). The importer's stars LANDED across v3.1.6-3.1.8 (real sizes
-  // with provenance, Sirius, Lalande, Luhman 16, the heaviest-member rule); 3D on a busy browser is
-  // IN FLIGHT (C20/Stream W, job 1 of 5 - it asks for the GPU already); Traveller main worlds are
-  // BRIEFED and not started (G87/Stream V); and the NETWORKING line has nothing behind it in this
-  // repository at all - no relay test, no Firefox join detection (see [[G88]]). **THE PANEL MUST NOT
-  // REACH PRODUCTION BEFORE ITS LINES ARE TRUE**, which is this file's own rule and the reason the
-  // list is checked rather than trusted.
+  // with provenance, Sirius, Lalande, Luhman 16, the heaviest-member rule); NETWORKING landed at
+  // v3.1.12 ([[G88]] - it had been finished but sat unpushed, which is why an earlier note here
+  // called it absent); 3D on a busy browser is IN FLIGHT (C20/Stream W); and Traveller main worlds
+  // are BRIEFED and not started (G87/Stream V). **THE PANEL MUST NOT REACH PRODUCTION BEFORE ITS
+  // LINES ARE TRUE**, which is this file's own rule and the reason the list is checked rather than
+  // trusted.
   //
   // V3.1 welcome — RELEASE VOICE. The list below is the OWNER'S OWN release notes for 3.1, pasted
   // whole; earlier releases had the coordinator draft and him trim, and this is the other way round.

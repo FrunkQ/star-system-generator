@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.14 - 8th Sep 2026
+
+- Board only. The networking work is recorded as shipped rather than missing: it had been finished and committed but never pushed, so every check against the shared copy said it did not exist. The branch sweep this project runs before a release gains a step that would have caught it.
+
+
 ## v3.1.13 - 8th Sep 2026
 
 - Board only. The networking work is recorded as shipped rather than missing: it had been finished and committed but never pushed, so every check against the shared copy said it did not exist. The branch sweep this project runs before a release gains a step that would have caught it.
