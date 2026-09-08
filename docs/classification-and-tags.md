@@ -154,10 +154,24 @@ specific type is shadowed by a catch‑all. Verify real systems with `physics-ba
 `mass_Me, radius_Re, density (g/cc), Teq_K, SurfaceTemp_K, a_AU, eccentricity, age_Gyr,
 stellarType, stellarIrradiation, escapeVelocity_kms, orbital_period_days, rotation_period_hours,
 tidalHeating, tidallyLocked, starTidallyLocked, radiation_flux, has_ring_child, hasSubsurfaceOcean,
-parentId, orbitsStar, makeup.metal, makeup.rock, makeup.carbon, makeup.ice, makeup.gas, atm.main,
-atm.pressure_bar, atm.composition.<gas>, hydrosphere.coverage, hydrosphere.composition`. The
-`makeup.*` interior fractions are how iron / silicate / coreless / carbon types classify. Missing
-atmosphere / hydrosphere default to `None` / `0` so airless/dry bodies match (e.g. `barren`).
+parentId, orbitsStar, porosity, lobes, makeup.metal, makeup.rock, makeup.carbon, makeup.ice,
+makeup.gas, atm.main, atm.pressure_bar, atm.composition.<gas>, hydrosphere.coverage,
+hydrosphere.composition`. The `makeup.*` interior fractions are how iron / silicate / coreless /
+carbon types classify. Missing atmosphere / hydrosphere default to `None` / `0` so airless/dry bodies
+match (e.g. `barren`).
+
+**`lobes` IS THE ONE FEATURE THE ENGINE DOES NOT DERIVE, and that is why it exists** (2026-09-08,
+[[G90]]). Every other name above is computed from the body; this one is STATED — by the GM in the
+body editor, or by the generator when it makes one. It is how many lobes the body is: 1 (or absent)
+for the ordinary single body, 2 for a contact binary like Arrokoth or comet 67P.
+
+Being two lobes is shape and HISTORY — a gentle low-velocity merger that happened once — and no
+mass, radius, density or mix carries it. Since the classifier re-derives every class on every pass
+from this map, a class with nothing here to band on could be assigned but never RE-assigned, and
+would disappear the next time the system was processed. So an authored fact is the ONLY way a
+shape-or-history class can exist at all. `asteroid/contact-binary` bands on it, as a MODIFIER, so it
+says how a rock is shaped without overruling what it is made of: comet + contact-binary is 67P,
+rubble-pile + contact-binary is Arrokoth.
 
 **Two of those features are easy to read as something they are not:**
 

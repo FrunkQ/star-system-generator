@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.51 - 8th Sep 2026
+
+- **Contact binaries are a thing the app knows about.** Tell a small body it is made of two lobes and it is now recognised as a contact binary - the shape of Arrokoth, and of comet 67P that Rosetta photographed. It sits alongside what the rock is made of rather than replacing it, so a bilobate comet is still a comet and a bilobate rubble pile is still a rubble pile; both are true of real ones. Nothing is drawn differently yet - that is next.
+
 ## v3.1.50 - 8th Sep 2026
 
 - Groundwork for contact binaries - the two-lobed rocks like Arrokoth and comet 67P. A body can now be told how many lobes it is made of, and that fact travels with the map and survives every recalculation, which is what a shape has to do before anything can be made of it. Nothing looks different yet; the type and the two-lobed drawing follow.

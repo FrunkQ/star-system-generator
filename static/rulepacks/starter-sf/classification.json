@@ -18,6 +18,7 @@
     "asteroid/m-type",
     "asteroid/comet",
     "asteroid/rubble-pile",
+    "asteroid/contact-binary",
     "hydrosphere/ocean",
     "hydrosphere/frozen",
     "hydrosphere/boiled-off",
@@ -416,6 +417,21 @@
           "porosity": [
             0.2,
             1
+          ]
+        }
+      },
+      {
+        "class": "asteroid/contact-binary",
+        "kind": "modifier",
+        "note": "Two lobes joined at a neck — two bodies that met gently and stayed. A MODIFIER, so it says how this rock is SHAPED without overruling what it is made of: comet + contact-binary is 67P/Churyumov-Gerasimenko, and rubble-pile + contact-binary is Arrokoth. It bands on `lobes`, an authored fact, because being two lobes is history and no derived quantity carries it.",
+        "match": {
+          "mass_Me": [
+            0,
+            0.0001
+          ],
+          "lobes": [
+            2,
+            8
           ]
         }
       },
