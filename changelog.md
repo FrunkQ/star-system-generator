@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.49 - 8th Sep 2026
+
+- Board only. Version 3.1.48 is live on production: the bug-fix release, taking beta exactly. The record of what it carries, and of the sweep that ran before it, is on the board.
+
 ## v3.1.48 - 8th Sep 2026
 
 - Housekeeping before the production release: the entry describing the What's New panel and the SSE3.1 mark that reopens it had been lost while two sessions replayed past each other, leaving one release note recorded twice and another not at all. The code shipped correctly; only the record was wrong.
