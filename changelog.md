@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.10 - 8th Sep 2026
+
+- An import that cannot load Sol now says so. Sol is not in any star catalogue - it is the point every other star's distance is measured from - so it comes from a file shipped with the app rather than from the sky. If that file could not be read, a "Local Neighbourhood" import quietly had no Sol in it and said nothing; it now tells you.
+
 ## v3.1.9 - 8th Sep 2026
 
 - **The app now asks your browser for the fast graphics chip.** On any machine with two of them - which is most laptops - the browser picks one when a 3D view opens, and with nothing asked of it the browser is entitled to hand over the small power-saving chip. The Holoview, the size comparison, the body gallery, the starmap, the model viewer and the filtered document view had each been built separately and not one of them had ever asked. All six now go through one place that does, so a seventh view cannot forget. This is the first of three changes aimed at the lockup on a tired browser; on the live version the answer is still to open the app in a fresh window.

@@ -50,6 +50,9 @@
   // D29: what the catalogue measures about each star's SIZE, keyed by SIMBAD identifier. Pure
   // enrichment - a failed or slow size fetch leaves every star on its class band, exactly as before.
   let starSizes: Map<string, any> | null = null;
+  // Said out loud rather than swallowed: an import of our own neighbourhood without Sol in it is a
+  // thing the GM must be told about (D18).
+  let solWarning: string | null = null;
   let solPreset: any = null;
 
   let rows: any[] | null = null;
@@ -137,10 +140,21 @@
       // Sol is not in an exoplanet archive - our planets are not exoplanets - and must never be
       // handed an invented system, so it comes from the shipped preset when the region reaches it.
       if (!solPreset) {
-        try { solPreset = await (await fetch('/examples/Sol_2030-System.json')).json(); } catch { solPreset = null; }
+        // D18/D29: Sol is not in a STAR catalogue either - it has no parallax, because it is what
+        // parallax is measured FROM - so no census query can ever return it and it comes from the
+        // shipped preset instead. THE FAILURE USED TO BE SILENT: if this fetch failed, a
+        // "Local Neighbourhood" import simply had no Sol in it and said nothing, which is DATA-R4's
+        // own habit (a silently short import reads as a complete survey).
+        try {
+          solPreset = await (await fetch('/examples/Sol_2030-System.json')).json();
+          solWarning = null;
+        } catch {
+          solPreset = null;
+          solWarning = 'Sol could not be loaded, so this import will not contain it. Sol is not in any star catalogue - it is the point the others are measured from - so it comes from a shipped file rather than the sky.';
+        }
       }
       source = result.source;
-      sourceWarning = starResult.warning ?? sizeResult.warning ?? result.warning;
+      sourceWarning = starResult.warning ?? solWarning ?? sizeResult.warning ?? result.warning;
       rowsCentreKey = centreKey(c);
       refreshPreview();
     } catch (e) {
