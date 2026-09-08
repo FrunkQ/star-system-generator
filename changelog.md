@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.32 - 8th Sep 2026
+
+- Board only. A contact binary - two lobes touching, like Arrokoth - is captured as a fourth small-body type you could author but the engine would never generate for you. The measurement found why that is not simply a new entry: the list the type picker offers you is the same list the classifier uses to decide what a body is, so being offerable and being generated are currently the same thing. The fix is one field on a type definition, and it is briefed.
+
 ## v3.1.31 - 8th Sep 2026
 
 - **Fixed: opening Size comparison could lock the whole page up until the browser offered to kill it.** This was a different fault from the 3D lockup and needed a different fix: every world coming into view was being built in one unbroken burst, and building a world means drawing its textures, so a strip of ten arrived as one long piece of work the browser could not interrupt. It now builds only as much as fits in a fraction of a frame, shows the rest as spinning wireframe globes, and fills them in over the following frames. The strip scrolls and answers clicks the whole time.
