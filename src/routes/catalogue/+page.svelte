@@ -22,7 +22,7 @@
   import { transferReportText } from '$lib/transferReport';
   import { APP_VERSION } from '$lib/constants';
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
-  import { parseIceParam } from '$lib/iceConfig';
+  import { parseIceParam, primeManagedIce } from '$lib/iceConfig';
   import { setModelFetcher, modelArrived } from '$lib/constructs/modelFetch';
   import { applyFlightUpdate, type FlightUpdate } from '$lib/constructs/flightState';
   import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
@@ -1002,6 +1002,11 @@
   let prefs: UnitPrefs = {};
 
   onMount(async () => {
+    // v3.1.21 - ask for the managed relay's credentials as early as this page
+    // runs, so the answer is already here by the time anything dials. Nothing
+    // else starts this request: the dialling path only ever waits for one that
+    // is already in flight.
+    void primeManagedIce();
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
     activePresetId = params.get('preset') || FALLBACK_PRESET_ID;

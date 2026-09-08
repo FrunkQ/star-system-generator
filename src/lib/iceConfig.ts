@@ -94,7 +94,7 @@ export function peerConfigFor(custom: IceServerEntry[] | null | undefined): { ic
   return { iceServers: [...s, ...m, ...DEFAULT_ICE] };
 }
 
-// ─── The managed relay (v3.1.17) ───────────────────────────────────────────
+// ─── The managed relay (v3.1.21) ───────────────────────────────────────────
 //
 // A relay nobody has to configure. The app asks an endpoint of ours for
 // short-lived TURN credentials at startup, and adds them to the list it was
@@ -124,7 +124,7 @@ export function peerConfigFor(custom: IceServerEntry[] | null | undefined): { ic
  * Overridable per-device for testing without a deploy: set
  * `localStorage['sse-managed-relay-url']`.
  */
-export const MANAGED_ICE_URL = '';
+export const MANAGED_ICE_URL = 'https://relay-ice.orange-tree-847c.workers.dev/ice';
 
 const MANAGED_URL_KEY   = 'sse-managed-relay-url';
 const MANAGED_OFF_KEY   = 'sse-managed-relay-off';
@@ -268,15 +268,21 @@ export async function fetchManagedIce(
 }
 
 /**
- * Wait for the relay before dialling — but not for long, and never forever.
- * Resolves the moment the answer is in, or after MANAGED_WAIT_MS regardless.
- * A player who joins a fraction of a second sooner without a relay they did
- * not need beats a player staring at a spinner.
+ * Wait for a request that is ALREADY IN FLIGHT — but not for long, and never
+ * forever. Resolves the moment the answer is in, or after MANAGED_WAIT_MS
+ * regardless: a player who joins a fraction of a second sooner without a relay
+ * they did not need beats a player staring at a spinner.
+ *
+ * It deliberately does NOT start the request. Only `primeManagedIce`, called
+ * from the app's own startup, does that — so nothing on the dialling path can
+ * reach the network on its own. Two things fall out of that, and both matter:
+ * an app that never primed simply dials as it always did, and a test that
+ * constructs a transport makes no network call by accident.
  */
 export async function managedIceReady(maxWaitMs = MANAGED_WAIT_MS): Promise<void> {
-  if (_managed || !managedIceUrl() || !managedRelayEnabled()) return;
+  if (_managed || !_managedPromise) return;
   await Promise.race([
-    primeManagedIce(),
+    _managedPromise,
     new Promise((resolve) => setTimeout(resolve, maxWaitMs)),
   ]);
 }

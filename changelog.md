@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.1.21 - 8th Sep 2026
+
+- **Remote players now have a relay, and nobody has to set it up.** When a player's network will not carry a direct connection to you, the connection falls back to a relay automatically. Until today there was nothing to fall back to - the free one this app inherited had quietly stopped existing - which is why some players could join and others never could, with nothing on either end to point at.
+- It is the LAST route tried, and that is measured rather than claimed: a relay route ranks about thirty times below a direct one, so every player who can reach you directly still does, straight from their device to yours, and never touches it. When it is used it cannot read anything it carries - the connection is encrypted between the two browsers - and it hides your address and theirs from each other, which a direct connection does not.
+- Settings > Remote players carries a switch to turn it off, and your own relay still takes precedence over ours if you have one.
+
 ## v3.1.20 - 8th Sep 2026
 
 - **Closing a 3D view now gives its graphics back to the browser, which is the real cause of the lockup.** A browser will only keep a small number of 3D views alive at once - around sixteen in Chrome and Edge - and when it runs out it silently kills the oldest one. SSE was tidying up its own objects when you closed the Holoview, the size comparison, the gallery, the starmap or a model viewer, but it was never handing the graphics context itself back, so they piled up invisibly. Open and close a few 3D views in one session and the browser would start killing views you were still using. All six now hand it back properly.

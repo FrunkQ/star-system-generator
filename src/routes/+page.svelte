@@ -15,7 +15,7 @@
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { mintBroadcastId } from '$lib/broadcastId';
-  import { blockedJoinerAdvice, loadStoredIce } from '$lib/iceConfig';
+  import { blockedJoinerAdvice, loadStoredIce, primeManagedIce } from '$lib/iceConfig';
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -715,6 +715,11 @@
   })();
 
   onMount(async () => {
+    // v3.1.21 - ask for the managed relay's credentials as early as this page
+    // runs, so the answer is already here by the time anything dials. Nothing
+    // else starts this request: the dialling path only ever waits for one that
+    // is already in flight.
+    void primeManagedIce();
     try {
       const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
       rulePacks = [starterRulepack];

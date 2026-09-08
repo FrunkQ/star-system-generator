@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { importOrReload } from '$lib/util/importOrReload';
-import { peerConfigFor, loadStoredIce, iceVerdict, primeManagedIce, managedIceReady, type IceServerEntry } from '$lib/iceConfig';
+import { peerConfigFor, loadStoredIce, iceVerdict, managedIceReady, type IceServerEntry } from '$lib/iceConfig';
 import { perfCount, perfEvent } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
 import type { FlightUpdate } from '$lib/constructs/flightState';
@@ -1136,9 +1136,3 @@ class BroadcastService {
 }
 
 export const broadcastService = new BroadcastService();
-
-// v3.1.17 - ask for the managed relay's credentials as early as anything runs,
-// so the answer is already here by the time a GM hosts or a player dials. Inert
-// until an endpoint is configured, guarded against SSR, and silent on failure:
-// no relay simply means the behaviour this app has always had.
-void primeManagedIce();
