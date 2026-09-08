@@ -59,6 +59,12 @@ sits on top of a model that goes on disagreeing with it. An age *drives* it: an 
 cooler, by the same law, and the value survives a reprocess because it is an INPUT rather than a derivation.
 **Give the GM the cause, not the consequence.**
 
+**A FUSING STAR IS NOT PART OF THIS.** Its temperature is authored and stays authored — the owner: *"the
+physics just uses the actual values, even if they don't make a huge amount of sense."* The substellar pass only
+fires between 8 and 80 Jupiter masses, so above the hydrogen-burning limit nothing overwrites it. Only the
+SUBSTELLAR temperature control is replaced by the age slider. (One exception, well argued and left alone: a
+fusing star below about 1900–2100 K is raised to that floor, and only ever raised.)
+
 **ABSENT MEANS INHERIT.** A body with no age of its own uses the system's, and the system's age is *never*
 stamped onto bodies when saving — do that and a GM who later ages the system finds it no longer reaches
 anything, which is exactly the fault the rule-pack deltas exist to avoid.

@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.62 - 8th Sep 2026
+
+- Board only. The temperature box disappearing applies to brown dwarfs only: a real fusing star keeps its editable temperature, and the physics uses whatever you set even where it is unlikely. Recorded as a guard, because removing it from stars too would be an easy mistake to make.
+
 ## v3.1.61 - 8th Sep 2026
 
 - Board only. The age slider gains its shape and its limit: the host star's formation in red, its accretion phase in orange, its lifetime in green to the present day, and beyond that a limit set by what the body is made of. A gas body reaches back to the first stars, an icy one nearly as far, a rocky one only as far as there was enough rock in the universe to build it, and a black hole all the way, which is what a primordial black hole is. Pushing past the limit is allowed and flagged rather than forbidden.

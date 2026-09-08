@@ -2232,8 +2232,21 @@ the right order is to get eyes on what has already shipped first.
 >    same day) already does *"ask where a star would keep a body at a given temperature"*. Do the same here: the
 >    GM types a temperature into the field B150 is about, and the app answers *"that is a 9.2 Gyr dwarf - set
 >    its age to that?"* Physics stays the single source and the GM still gets to type what he wanted.
-> 5. **[[B150]]'s interface half**, last: the temperature field stops pretending, says a brown dwarf's
->    temperature follows its mass, age and radius, and offers the age.
+> 5. **[[B150]]'s interface half**, last, and it is a REMOVAL rather than an explanation - the owner has told
+>    the user *"that temp slider WILL disappear, but you can mess with its age instead"*. For a SUBSTELLAR body
+>    the temperature control goes and the age slider takes its place.
+>
+>    **GUARD, AND A REAL REGRESSION RISK: A FUSING STAR KEEPS ITS TEMPERATURE CONTROL.** The owner: *"probably
+>    still look to have a stellar temp override on stars available, to do a manual tweak if they want. The
+>    physics just uses the actual values - even if they don't make a huge amount of sense."* It already works
+>    that way - `applySubstellarSelfLuminosity` only fires inside the 8-80 M_Jup window, so above the
+>    hydrogen-burning limit nothing overwrites `temperatureK` and an authored temperature already sticks, with
+>    luminosity deriving from it and the radius. **Scope the removal to substellar, and gate it BOTH ways: the
+>    control is gone on a brown dwarf and STILL THERE on a star.**
+>
+>    (One existing exception, flagged not changed: `SystemProcessor.ts:721-725` raises a fusing star below about
+>    1900-2100 K to that floor, on the argument that an object at the hydrogen-burning limit sits there whether
+>    or not it has just started fusing. It only ever raises. Leave it, and mention it in your report.)
 > 6. **THE AGE SCALE AND ITS TAG FAMILY** - the owner's extension, and the part with the most product in it.
 >    *"The basis of EVERY body should have an age slider from now until end of universe - pinned to an orange
 >    point based on the stellar age... We need a new set of AGE tags now to highlight young, old and ancient
