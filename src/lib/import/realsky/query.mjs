@@ -258,12 +258,21 @@ export function simbadStarTeffAdql(region) {
 //
 // SO THIS QUERY DELIBERATELY OMITS `plx_value > 0`, and the caller supplies the distance. It is the
 // one place in the importer that does, and the reason is the whole point of the query.
-export function simbadComponentsOfAdql(mainIds, { limit = 40 } = {}) {
-  const list = (Array.isArray(mainIds) ? mainIds : [mainIds])
+// THE ROW LIMIT SCALES WITH THE NUMBER OF CONTAINERS ASKED ABOUT, and a fixed one is a bug I shipped
+// and caught in the browser rather than in the suite. A flat `top 40` is ample for the 16.5 ly census
+// (9 containers) and SILENTLY TRUNCATES the 41 ly fetch the import dialogue actually makes, where
+// there are 67 - it returned exactly 40 children and Luhman 16's were not among them, so the fix
+// looked like it worked in every unit test and did nothing in the app. Six per container is well
+// clear of any real multiple, and the ceiling only exists so a pathological region cannot ask for
+// everything.
+export function simbadComponentsOfAdql(mainIds, { limit = null } = {}) {
+  const ids = Array.isArray(mainIds) ? mainIds : [mainIds];
+  const rowLimit = limit ?? Math.min(600, Math.max(40, ids.length * 6));
+  const list = ids
     .map((id) => `'${String(id).replace(/'/g, "''")}'`)
     .join(',');
   return (
-    `select top ${limit} p.main_id as parent_id, c.main_id as main_id, c.ra as ra, c.dec as dec, ` +
+    `select top ${rowLimit} p.main_id as parent_id, c.main_id as main_id, c.ra as ra, c.dec as dec, ` +
     `c.plx_value as plx_value, c.sp_type as sp_type, c.otype as otype ` +
     `from h_link h join basic c on c.oid = h.child join basic p on p.oid = h.parent ` +
     `where p.main_id in (${list}) and c.otype not in ('Pl', 'Pl?')`

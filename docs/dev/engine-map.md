@@ -2443,6 +2443,41 @@ body and SAYS so; splitting it needs a separation the row does not carry (DATA-R
 Procyon is the case nobody reported: `* alf CMi` is `SB*` with `F5IV-V+DQZ` and Procyon B is not in
 the census, so it correctly imports as one body that names its missing companion.
 
+### DATA-R44 THE REAL-SKY SUITE BEGINS AFTER THE FETCH, SO EVERY FAULT IN THE FETCH IS INVISIBLE TO IT
+BUCKET: ARCHITECTURE (test coverage) - a suite that starts downstream of a boundary cannot see
+anything wrong at it, and a green suite over a blind spot reads exactly like a green suite over
+working code.
+WHERE: every `*Adql` builder in `import/realsky/query.mjs` and the loaders in `catalogue.mjs`;
+the fixtures they are NOT tested through are `skyFixtures.ts`.
+RULE: the realsky specs feed `convertRegion` rows DIRECTLY. Nothing in the suite runs a query, and
+nothing asserts what a query ASKS FOR - so a wrong SELECT, a wrong WHERE, or a row limit that does
+not scale is green. When you change a query, the gate is on the QUERY (what it names, what it omits,
+how its bounds move with the region), because no transform test will ever reach it.
+WHY: D29 was FOUR faults and THREE of them were in the fetch, which is why it survived a 4,500-test
+suite and a year of use.
+  (1) THE SELECT. `SIMBAD_STAR_COLUMNS` never asked for a size, so every real star imported at its
+      class-band midpoint - and `stardefaults.ts` opened by DOCUMENTING that the catalogues supply
+      those figures. The assumption was prose in a header, so nothing could go red.
+  (2) THE WHERE. `plx_value > 0` is correct for "which stars are in this volume" - a star with no
+      distance cannot be placed - and WRONG for "who are the members of this system", where the
+      distance is the parent's and already known. One clause, copied into three queries, right in one.
+  (3) THE LIMIT, and this one was shipped by the session fixing the other two. `top 40` is ample for
+      the 16.5 ly census the fixtures are cut from (NINE containers) and silently truncates the 41 ly
+      fetch the dialogue actually makes (SIXTY-SEVEN). It returned exactly 40 rows, Luhman 16's
+      members were not among them, and all seventeen tests still passed. **A LIMIT SIZED FOR THE
+      FIXTURE IS INVISIBLE TO THE FIXTURE.** It was caught by importing in a browser, not by the suite.
+  Only the fourth - the container rule - lived in the transform, and that one the fixtures DID catch
+  the moment they held real catalogue rows instead of synthesised ones.
+THE TWO RULES THAT FALL OUT: a row limit is bounded by the same thing its result must COVER (per
+object, or per set - `simbadComponentsAdql`'s 8 is per-star and correct; `simbadComponentsOfAdql`
+must scale with the number of parents). And THE DIALOGUE FETCHES AT A WIDER RADIUS THAN THE ONE
+IMPORTED - `Math.max(r, 41)` in `RealSkyImportModal`, so a slider move never refetches - so the
+region a query actually sees is never the region under test.
+BLAST: swept 2026-09-08, and there are exactly three row limits in the query layer; the other two
+are bounded per-object and are correct. Any NEW query that answers about a SET must state what
+bounds it. And the standing verify-in-the-browser rule is not decoration here: it is the only thing
+that exercises this layer at all.
+
 ### DATA-R42 A REAL STAR'S SIZE IS DERIVED, WITHIN A DECLARED DOMAIN, OR IT IS NOT CLAIMED
 BUCKET: DOMAIN + ARCHITECTURE - domain: the catalogue that names a star does not measure its size,
 and the relation that recovers one is calibrated over a RANGE that must be enforced rather than

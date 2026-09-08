@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.11 - 8th Sep 2026
+
+- **Fixed, and only visible in the real app: Luhman 16 still imported as a single object.** Yesterday's fix asks the catalogue for the members of every system it cannot resolve, and it asked for a fixed number of them. An import reaches further out than the radius you pick, so it asks about far more systems than the tests did - and the answer was being cut off before Luhman 16's members were reached. The request now scales with how many systems are being asked about, so nothing is silently dropped.
+
 ## v3.1.10 - 8th Sep 2026
 
 - An import that cannot load Sol now says so. Sol is not in any star catalogue - it is the point every other star's distance is measured from - so it comes from a file shipped with the app rather than from the sky. If that file could not be read, a "Local Neighbourhood" import quietly had no Sol in it and said nothing; it now tells you.

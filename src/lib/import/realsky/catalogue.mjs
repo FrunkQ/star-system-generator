@@ -131,7 +131,8 @@ export async function loadContainerComponents(rows, { fetchImpl = fetch, signal 
   const containers = (rows ?? []).filter((r) => isContainerRow({ otype: r.otype, sp: r.sp_type }));
   if (!containers.length) return { rows: [], source: 'live', warning: null };
   try {
-    const children = await runTap('simbad', simbadComponentsOfAdql(containers.map((c) => c.main_id)), { fetchImpl, signal });
+    const parents = containers.map((c) => c.main_id);
+    const children = await runTap('simbad', simbadComponentsOfAdql(parents), { fetchImpl, signal });
     const parentPlx = new Map(containers.map((c) => [c.main_id, c.plx_value]));
     const seen = new Set();
     const recovered = [];

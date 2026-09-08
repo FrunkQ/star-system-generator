@@ -18,7 +18,7 @@
 import { describe, it, expect } from 'vitest';
 import { convertRegion } from './convert.mjs';
 import { normaliseStarRows } from './census.mjs';
-import { SOL_CENTRE } from './query.mjs';
+import { SOL_CENTRE, simbadComponentsOfAdql } from './query.mjs';
 import { LOCAL_NEIGHBOURHOOD_ROWS, skyRow, sizeMap, H_LINK_CHILDREN } from './skyFixtures';
 import { loadStarterPack } from './testPack';
 
@@ -176,5 +176,38 @@ describe('D29 - a container whose members have no parallax of their own', () => 
     expect(stars[0].description).toMatch(/TYPICAL FOR ITS/);
     // ...and neither is still described as an unresolved pair, because they are now resolved.
     for (const s of stars) expect(s.description).not.toMatch(/UNRESOLVED PAIR/);
+  });
+});
+
+describe('D29 - the component fetch must not silently truncate', () => {
+  // A BUG I SHIPPED AND THE BROWSER CAUGHT, WHICH IS WHY THIS TEST EXISTS. The row limit was a flat
+  // `top 40`, which is ample for the 16.5 ly census this file's fixtures come from - NINE containers
+  // - and the import dialogue fetches at 41 ly, where there are SIXTY-SEVEN. It came back with
+  // exactly 40 children, Luhman 16's were not among them, and every test here still passed because
+  // they feed the transform directly. A limit that is fine for the fixture and wrong for the app is
+  // invisible to a fixture-driven suite, so the limit itself is now the thing under test.
+  const limitOf = (n: number) => Number(/top (\d+)/.exec(simbadComponentsOfAdql(Array(n).fill('x')))![1]);
+
+  it('asks for enough rows to cover every container it names', () => {
+    for (const n of [1, 9, 67, 100]) {
+      // Six per container is well clear of any real multiple; the point is that it SCALES.
+      expect(limitOf(n), `${n} containers`).toBeGreaterThanOrEqual(n * 6);
+    }
+  });
+
+  it('the 41 ly case that actually broke asks for more than 40', () => {
+    expect(limitOf(67)).toBeGreaterThan(40);
+  });
+
+  it('is still bounded, so a pathological region cannot ask for the whole table', () => {
+    expect(limitOf(10000)).toBeLessThanOrEqual(600);
+  });
+
+  it('names every parent it was given', () => {
+    const adql = simbadComponentsOfAdql(['NAME Luhman 16', "G 272-61"]);
+    expect(adql).toContain("'NAME Luhman 16'");
+    expect(adql).toContain("'G 272-61'");
+    // ...and the plx_value > 0 clause must NOT be here - it is the whole reason this query exists.
+    expect(adql).not.toMatch(/plx_value\s*>/);
   });
 });
