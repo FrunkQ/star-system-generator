@@ -3,9 +3,11 @@
 // recipe: pick a value inside each defining band (mass, radius/makeup, hydrosphere, atmosphere,
 // biosphere…). The orbit sets temperature, so a type is only offered where its T_eq band fits —
 // which is why a biome/life world can be dropped into the Goldilocks zone and a lava world can't.
-import type { CelestialBody, Fingerprint, FingerprintBand, Makeup } from '$lib/types';
+import type { CelestialBody, Fingerprint, FingerprintBand, Makeup, RulePack } from '$lib/types';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, LIQUIDS } from '$lib/constants';
 import { radiusReFromMassMakeup, gasThermalInflationFactor } from '$lib/physics/makeup';
+import { bandFit } from '$lib/system/classification';
+import { SeededRNG } from '$lib/rng';
 
 type RNG = () => number;
 
@@ -300,6 +302,58 @@ export function viableTypesAt(
 export function requiresTidalLock(fp: Fingerprint): boolean {
   const v = fp.match?.['starTidallyLocked'];
   return Array.isArray(v) ? Number(v[0]) >= 1 : Number(v) >= 1;
+}
+
+/**
+ * A SMALL CHANCE THAT A GENERATED SMALL BODY IS A CONTACT BINARY ([[G90]], job 4).
+ *
+ * `lobes` is the one fact in the feature map the engine does not derive — a GM states it, or this
+ * does. Everything else about a contact binary follows: the classifier picks the modifier up from
+ * the fact, and the shape source draws the lobes from it.
+ *
+ * IT DRAWS FROM ITS OWN STREAM, KEYED ON THE BODY ID, AND THAT IS THE POINT. Taking a number from
+ * the system's shared RNG would shift every draw after it, so a saved seed would stop producing the
+ * system it always has — the generator would have been changed for every user to add a fact that
+ * touches almost nothing. A side stream costs one object and leaves the whole existing mapping from
+ * seed to system exactly as it was: the ONLY difference a seed shows is that some small bodies now
+ * carry a lobe count. `generation.spec.ts` asserts that, body by body.
+ *
+ * THE POPULATION IS READ FROM THE FINGERPRINT, NOT NAMED HERE. It finds the type by the FEATURE it
+ * bands on — any pack whose classifier bands something on `lobes` gets generation for free — and
+ * then requires the body to sit inside that type's OTHER bands before rolling. It can only evaluate
+ * bands over quantities a body carries before the processor has run (mass, radius, density), and it
+ * declines to roll rather than guess if a pack bands on anything else: a fact set for a population
+ * the generator could not actually check would be a body drawn lobed and then classified as
+ * something that is not a contact binary.
+ */
+export function drawLobes(body: Partial<CelestialBody>, pack: RulePack): number | undefined {
+  const chance = pack.generation_parameters?.contact_binary?.chance;
+  if (typeof chance !== 'number' || chance <= 0) return undefined;
+  const fp = (pack.classifier?.fingerprints ?? []).find((f) => 'lobes' in (f.match ?? {}));
+  if (!fp) return undefined;
+
+  const massMe = (body.massKg ?? 0) / EARTH_MASS_KG;
+  const radiusRe = (body.radiusKm ?? 0) / EARTH_RADIUS_KM;
+  const known: Record<string, number> = {
+    mass_Me: massMe,
+    radius_Re: radiusRe,
+    density: radiusRe > 0 ? (5.513 * massMe) / (radiusRe * radiusRe * radiusRe) : 0
+  };
+  for (const [feat, band] of Object.entries(fp.match)) {
+    if (feat === 'lobes') continue;
+    if (!(feat in known)) return undefined;                 // cannot check it: do not guess
+    if (bandFit(known[feat], band) < 1) return undefined;    // fully inside, not on a soft edge
+  }
+
+  const roll = new SeededRNG(`${body.id ?? ''}-lobes`);
+  if (roll.nextFloat() >= chance) return undefined;
+  // The count comes from the type's OWN band, weighted hard to its bottom: every contact binary
+  // anyone has photographed has exactly two lobes, and a chain of five is a curiosity rather than a
+  // population. A pack that widens the band widens what can be drawn.
+  const b = fp.match['lobes'];
+  const lo = Array.isArray(b) && typeof b[0] === 'number' ? Math.max(2, Math.round(b[0] as number)) : 2;
+  const hi = Array.isArray(b) && typeof b[1] === 'number' ? Math.max(lo, Math.round(b[1] as number)) : lo;
+  return roll.nextFloat() < 0.9 ? lo : Math.min(hi, lo + 1);
 }
 
 // Build a body of the given type at an orbit. Returns the physical fields to merge onto a new body;

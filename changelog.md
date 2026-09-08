@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.53 - 8th Sep 2026
+
+- **The generator now makes the occasional contact binary.** About one small moon in eight comes out as two lobes joined at a neck, which is roughly the fraction radar surveys find among real near-Earth asteroids. It changes nothing else: a seed you have generated before produces exactly the same system it always did, apart from those bodies now having a shape. You can turn it off, or change how often it happens, in the rule pack.
+
 ## v3.1.52 - 8th Sep 2026
 
 - **Asteroids are rocks in 3D at last.** Every body in the holo, the reference gallery and the size comparison was drawn as a perfectly smooth ball, while the same asteroid had been a convincing lumpy rock on its info card all along. It is now the same rock in both, because both are drawn from one shape: a card and a 3D view of the same body can no longer disagree about what it looks like. Round worlds are unchanged, and so is every asteroid silhouette you have already seen.
