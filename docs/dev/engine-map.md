@@ -2414,6 +2414,35 @@ BLAST: any new consumer of `convertArchiveRows` — passing no `existingSystemId
 which is right for a new map and wrong for an append. The host→bundled-id map is generated from the
 roster, so it is only as current as the last kit run (D15).
 
+### DATA-R43 A CATALOGUE ROW IS A CONTAINER OR A STAR, AND THE OTYPE ALONE NEVER SAYS WHICH
+BUCKET: DOMAIN - a catalogue's type codes describe an OBJECT, not a record, and the same code means
+different things depending on what else the row says. Move verbatim; any importer reading SIMBAD
+meets this.
+WHERE: `import/realsky/census.mjs` (`isContainerRow`, and the components-present filter in
+`normaliseStarRows`), `stars.mjs` (`companionSpectralType`), `convert.mjs` (the unresolved-pair
+sentence); gated by `multiples.spec.ts` against the real 16.5 ly census in `skyFixtures.ts`.
+RULE: `**` is SIMBAD's multiple-star SYSTEM entry and is always a container. `SB*` is NOT - it means
+"this star IS a spectroscopic binary", which is a statement about a STAR - so an `SB*` row is a
+container only when its spectral type names a SECOND OBJECT. And that question has ONE answer,
+`companionSpectralType`, because `parseStellarType(...).companion` returns whatever followed the
+'+' and that is not always a companion.
+WHY: D29, the owner's own report. `CONTAINER_OTYPES = /^(\*\*|SB\*)$/` matched Sirius A
+(`* alf CMa`, SB*, spectral type `A0mA1Va` - a single star's type), so the PRIMARY was dropped as a
+container because its component B was present. B then inherited the primary slot and a system called
+Sirius contained one white dwarf. In the same census `* alf Cen` is ALSO `SB*` and IS a true
+container, because its type reads `G2V+K1V` - so the otype cannot separate them and the spectral
+type must. `HD 239960` is the other direction: `**` with the single type `M3`, and still a container.
+THE SECOND HALF COST A SHIPPED BUG OF ITS OWN: SIMBAD writes `M2+V` for Lalande 21185 to mean "M2 or
+later, luminosity class V". Read as a companion, it told GMs that a single red dwarf was an
+unresolved pair with a companion called "V". A real companion starts with a spectral letter
+(OBAFGKMLTY) or D for a white dwarf; a bare Roman numeral is a luminosity class.
+BLAST: the components-present filter still drops a container only when component rows are actually
+in the result, which is what keeps Ross 614 and three others on the map at all - they come back as a
+container with no components. A container whose companion the census does NOT resolve stays one
+body and SAYS so; splitting it needs a separation the row does not carry (DATA-R24, DATA-R4).
+Procyon is the case nobody reported: `* alf CMi` is `SB*` with `F5IV-V+DQZ` and Procyon B is not in
+the census, so it correctly imports as one body that names its missing companion.
+
 ### DATA-R42 A REAL STAR'S SIZE IS DERIVED, WITHIN A DECLARED DOMAIN, OR IT IS NOT CLAIMED
 BUCKET: DOMAIN + ARCHITECTURE - domain: the catalogue that names a star does not measure its size,
 and the relation that recovers one is calibrated over a RANGE that must be enforced rather than

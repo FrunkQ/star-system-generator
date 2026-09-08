@@ -125,6 +125,25 @@ export function luminositySolarFrom(radiusRsun, temperatureK) {
   return Math.pow(radiusRsun, 2) * Math.pow(temperatureK / SOLAR_TEMPERATURE_K, 4);
 }
 
+/**
+ * THE SECOND OBJECT IN A COMPOSITE SPECTRAL TYPE, or null when there is not one (D29).
+ *
+ * `parseStellarType(...).companion` returns whatever followed the '+', and THAT IS NOT ALWAYS A
+ * COMPANION: SIMBAD writes `M2+V` for Lalande 21185 to mean "M2 or later, luminosity class V", and
+ * reading it as a second star told a GM that a single red dwarf was an unresolved pair. A real
+ * companion begins with a spectral LETTER (OBAFGKMLTY) or with D for a white dwarf - `K1V`, `DQZ`,
+ * `T0.5`. A bare Roman numeral is a luminosity class and nothing else.
+ *
+ * ONE DEFINITION, because two things ask this question and they must not answer it differently: the
+ * census decides whether a row is a multiple-star CONTAINER or a star, and the importer decides
+ * whether to tell the GM about a companion it has not represented.
+ */
+export function companionSpectralType(type) {
+  const companion = parseStellarType(type ?? '')?.companion;
+  if (!companion) return null;
+  return /^[OBAFGKMLTYD]/.test(companion.trim()) ? companion : null;
+}
+
 export function luminosityClassOf(type) {
   return parseStellarType(type)?.band;
 }

@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.1.7 - 8th Sep 2026
+
+- **Fixed: importing Sirius gave you only Sirius B.** The catalogue marks Sirius A as a spectroscopic binary, and the importer read that as "this row is a container for a system" rather than "this star has a close companion" - so it threw the bright star away, kept the white dwarf, and called the result Sirius. Sirius now imports as both stars, with A leading at its real size and B orbiting it. Alpha Centauri, Kruger 60 and the other genuine multiples are unaffected, because what actually separates the two cases is whether the catalogue's spectral type names a second star.
+- **Fixed: Lalande 21185 was described as a double star. It is not one.** The catalogue writes its type as "M2+V", meaning "M2 or later, main sequence" - and the importer read the part after the plus as a companion, telling you this single red dwarf had a partner called "V". Only a genuine second spectral type now counts as a companion.
+- The heaviest star in an imported multiple is now chosen using each star's own measured mass rather than the average for its type, so the star the others orbit is the one that really is the heaviest.
+- Procyon, Luhman 16 and Epsilon Indi B are each a close pair the catalogue records as a single entry with no separation, so they still import as one body - and each now says plainly, on its own description, which companion is not represented.
+
 ## v3.1.6 - 8th Sep 2026
 
 - **Imported real stars now come in at their real sizes.** Until now every star brought in from the sky catalogues was given the average mass, radius and temperature for its type, so Proxima Centauri arrived at nearly three times its true size and every red dwarf on the map was the same red dwarf. Each star's own measurements are now fetched and used: a measured temperature where one has been published, a radius worked out from that temperature together with the star's brightness and distance, and a mass from its luminosity. Proxima now imports at its true size to three decimal places, and only seven of the sixty-nine stars in a local-neighbourhood import still fall back to a class average.

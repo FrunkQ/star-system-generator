@@ -163,3 +163,23 @@ export const SIZE_ROWS: SkySize[] = [
   { main_id: 'NAME Luhman 16B', teff: null, log_g: null, V: null, K: 9.73 },
   { main_id: '* eps Eri', teff: 5039, log_g: 4.52, V: 3.73, K: 1.776, diameter: { value: 960000, unit: 'km' } }
 ];
+
+/**
+ * The size rows in the shape `catalogue.loadStarSizes` produces, so a spec and the live path agree
+ * about the keys as well as the values. Anything not in SIZE_ROWS is simply absent, which is the
+ * normal case - most stars have some measurements and no star has all of them.
+ */
+export const sizeMap = (): Map<string, Record<string, unknown>> =>
+  new Map(
+    SIZE_ROWS.map((r) => [
+      r.main_id,
+      {
+        main_id: r.main_id,
+        ...(r.teff != null ? { teffK: r.teff } : {}),
+        ...(r.log_g != null ? { logG: r.log_g } : {}),
+        ...(r.V != null ? { magV: r.V } : {}),
+        ...(r.K != null ? { magK: r.K } : {}),
+        ...(r.diameter ? { diameter: r.diameter } : {})
+      }
+    ])
+  );

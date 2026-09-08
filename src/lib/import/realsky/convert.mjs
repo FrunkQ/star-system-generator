@@ -19,7 +19,7 @@
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, EPOCH, G, LY_PER_PC, SOLAR_MASS_KG, SOLAR_RADIUS_KM, AU_KM, DEFAULT_MAP_CENTRE_PX } from './constants.mjs';
 import { hash01, radecToXyzLy, round, xyzToMapPx, inSphere } from './positions.mjs';
 import { starClasses, starParamsFromType, parseStellarType, UNKNOWN_STAR_CLASS } from './stars.mjs';
-import { luminositySolarFrom } from './stars.mjs';
+import { luminositySolarFrom, companionSpectralType } from './stars.mjs';
 import { deriveStarSize, FIGURE_SOURCE } from './starSize.mjs';
 import { displayStarName, systemStarName } from './starNames.mjs';
 import { defaultMakeup, estimateRadiusRe, planetDescription } from './planets.mjs';
@@ -309,9 +309,13 @@ function starNodeFromCensus(star, id, statTemplates, sizes = null) {
         // only the PRIMARY, and used to say nothing - so a binary brown dwarf arrived as a single
         // body wearing the pair's joint class. Naming the absence is the honest half; splitting the
         // pair would need a mass ratio and a separation this row does not carry, so it is not done.
-        + (stellarType?.companion
+        // D29: `stellarType.companion` is whatever followed the '+', and SIMBAD's `M2+V` for
+        // Lalande 21185 means "M2 or later, class V" - so a single red dwarf was being described to
+        // the GM as an unresolved pair with a companion called "V". `companionSpectralType` is the
+        // one place that question is answered, and the census container test asks it too.
+        + (companionSpectralType(star.sp ?? '')
           ? ` The catalogue reports this as an UNRESOLVED PAIR (${typeText}): only the primary is `
-            + `represented here, and the ${stellarType.companion} companion is NOT a separate body on `
+            + `represented here, and the ${companionSpectralType(star.sp ?? '')} companion is NOT a separate body on `
             + `this map. Its mass is not included in the figure above.`
           : '')
     }
@@ -365,10 +369,20 @@ export function convertRegion(
 
   // Typical mass per star, so the grouping can weigh a pair. Class bands again — a companion's mass
   // is not in the catalogue any more than a primary's is.
-  const stars = normalised.stars.map((s) => ({
-    ...s,
-    massMsun: starParamsFromType(s.sp ?? '', statTemplates, { otype: s.otype })?.massMsun ?? 0.4
-  }));
+  // WHICH STAR IS THE HEAVIEST DECIDES WHICH ONE THE SYSTEM ORBITS, so it must be asked of the best
+  // mass available rather than of the class band (D29). Sirius is the case: the band calls an A0
+  // dwarf 1.75 Msun and a white dwarf 1.00, which happens to order them correctly - but a derived
+  // mass is what makes that a fact about these two stars rather than a lucky pair of midpoints.
+  const stars = normalised.stars.map((s) => {
+    const params = starParamsFromType(s.sp ?? '', statTemplates, { otype: s.otype });
+    const classes = starClasses(s.sp ?? '', { otype: s.otype }).classes;
+    const derived = deriveStarSize({ ...(starSizes?.get?.(s.id) ?? {}), plxMas: s.plxMas }, {
+      luminosityClass: params?.luminosityClass ?? null,
+      degenerate: classes.some((c) => DEGENERATE_CLASS.test(c)),
+      substellar: classes.some((c) => SUBSTELLAR_CLASS.test(c))
+    });
+    return { ...s, massMsun: derived.massMsun ?? params?.massMsun ?? 0.4 };
+  });
 
   // 2. Group by the engine's existing period tier (clusterGate), NOT by a bare distance.
   const groups = groupIntoSystems(stars);
