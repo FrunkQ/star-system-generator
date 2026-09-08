@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { importOrReload } from '$lib/util/importOrReload';
-import { peerConfigFor, loadStoredIce, type IceServerEntry } from '$lib/iceConfig';
+import { peerConfigFor, loadStoredIce, iceVerdict, managedIceReady, type IceServerEntry } from '$lib/iceConfig';
 import { perfCount, perfEvent } from '$lib/perfTrace';
 import type { System, RulePack, Starmap } from '$lib/types';
 import type { FlightUpdate } from '$lib/constructs/flightState';
@@ -337,6 +337,10 @@ class BroadcastService {
     perfEvent('peer', { phase: 'host-attempt', id: sessionId, caller, attempt });
     try {
       const Peer = await this.loadPeer();
+      // v3.1.17 - ICE config is fixed when the peer is built and cannot be added
+      // to afterwards, so the managed relay has to be in hand first. It was asked
+      // for at startup; this waits only for what is left, and gives up quickly.
+      await managedIceReady();
       // The host registers under the session id, so a guest dials that id directly.
       // BYO ICE (docs/dev/vtt-integration-design.md 11): custom STUN/TURN prepended to
       // the PeerJS defaults, so a turns:443 relay can carry a locked-down network.
@@ -351,10 +355,15 @@ class BroadcastService {
       peer.on('disconnected', () => perfEvent('peer', { phase: 'host-disconnected', id: sessionId }));
       peer.on('close', () => perfEvent('peer', { phase: 'host-closed', id: sessionId }));
       peer.on('connection', (conn: any) => {
+        // A joiner whose ICE fails never fires 'open', so without this watch the GM
+        // simply never learns that someone tried and could not get in. Signalling
+        // already worked — that is how the connection got this far — so the failure
+        // is the media path: exactly what a turns:443 relay exists to fix, and only
+        // the GM can supply one.
+        this.watchJoinerIce(conn);
         conn.on('open', () => { if (!this.peerConns.includes(conn)) this.peerConns.push(conn); });
         conn.on('data', (data: any) => this.handlePeerData(data));
         conn.on('close', () => { this.peerConns = this.peerConns.filter((c) => c !== conn); });
-        conn.on('error', () => { /* per-connection; ignore */ });
       });
       peer.on('error', (e: any) => {
         const errType = e?.type || String(e);
@@ -404,6 +413,7 @@ class BroadcastService {
     if (typeof window === 'undefined' || !sessionId) return;
     try {
       const Peer = await this.loadPeer();
+      await managedIceReady();
       const cfg = peerConfigFor(this.iceServers ?? loadStoredIce());
       this.peer = new Peer(undefined, cfg ? { config: cfg } : undefined);
       this.peer.on('open', () => {
@@ -413,13 +423,23 @@ class BroadcastService {
         // starts. `failed` means STUN and every TURN candidate were tried and none got
         // through — typically UDP blocked with no turns:443 relay. Report it so the view
         // can say so instead of waiting forever; the redial loop keeps trying regardless.
+        //
+        // BOTH state machines are read and BOTH events listened for. Chrome moves them
+        // together; Firefox does not, and can sit on iceConnectionState 'failed' while
+        // connectionState still says 'disconnected'. Watching only connectionState lost
+        // the verdict there — which is how a Firefox player got PeerJS's raw "negotiation
+        // error" instead of this app's explanation (see iceVerdict).
         const watchIce = () => {
           const pc: RTCPeerConnection | undefined = conn.peerConnection;
           if (!pc) { setTimeout(watchIce, 250); return; }
-          pc.addEventListener('connectionstatechange', () => {
-            if (pc.connectionState === 'failed') this.onPeerFailed?.('ice-failed');
-            if (pc.connectionState === 'connected') this.onPeerFailed?.(null);
-          });
+          const report = () => {
+            const verdict = iceVerdict(pc);
+            if (verdict === 'ice-failed') this.onPeerFailed?.('ice-failed');
+            else if (verdict === 'connected') this.onPeerFailed?.(null);
+          };
+          pc.addEventListener('connectionstatechange', report);
+          pc.addEventListener('iceconnectionstatechange', report);
+          report();   // it may have settled before we got the handle
         };
         watchIce();
         conn.on('open', () => {
@@ -431,7 +451,15 @@ class BroadcastService {
           conn.send({ sessionId: null, message: { type: 'REQUEST_STARMAP', payload: sessionId } });
         });
         conn.on('data', (data: any) => this.handlePeerData(data));
-        conn.on('error', () => { /* ignore; local channel may still serve */ });
+        conn.on('error', (err: any) => {
+          // PeerJS raises 'negotiation-failed' from ONE place: iceConnectionState
+          // === 'failed'. It is an ICE verdict wearing a misleading name, so treat it
+          // as one — a backstop for any browser where neither state event reached us.
+          // Without this an SSE player saw nothing at all: no message, no raw error,
+          // just a viewer that never loaded.
+          if (err?.type === 'negotiation-failed') this.onPeerFailed?.('ice-failed');
+          /* otherwise ignore; local channel may still serve */
+        });
         // Host went away (GM tab closed, network blip): forget the dead pipe and try again
         // shortly. Before this, a guest that outlived the host never reconnected — the
         // long-banked "GM started hosting AFTER the player opened" gap.
@@ -571,6 +599,40 @@ class BroadcastService {
   // negotiated; null when a connection later succeeds. Receivers turn this into an honest
   // "blocked — relay needed" state rather than an endless waiting screen.
   public onPeerFailed: ((reason: 'ice-failed' | null) => void) | null = null;
+  // Host-side counterpart: a player reached our broker and then their network refused to
+  // carry the connection. They cannot fix it — the relay travels in the link they opened
+  // — so the one person who can act has to be told. Fired once per blocked joiner.
+  public onPeerBlocked: ((peerId: string) => void) | null = null;
+
+  /** Watch an incoming connection's ICE until it opens or gives up. */
+  private watchJoinerIce(conn: any) {
+    let settled = false;
+    conn.on('open', () => { settled = true; });
+    // PeerJS raises this from iceConnectionState === 'failed' and nothing else.
+    conn.on('error', (err: any) => {
+      if (settled) return;
+      if (err?.type === 'negotiation-failed') {
+        settled = true;
+        this.onPeerBlocked?.(conn.peer);
+      }
+    });
+    const watch = () => {
+      if (settled) return;
+      const pc: RTCPeerConnection | undefined = conn.peerConnection;
+      if (!pc) { setTimeout(watch, 250); return; }
+      const report = () => {
+        if (settled) return;
+        if (iceVerdict(pc) === 'ice-failed') {
+          settled = true;
+          this.onPeerBlocked?.(conn.peer);
+        }
+      };
+      pc.addEventListener('connectionstatechange', report);
+      pc.addEventListener('iceconnectionstatechange', report);
+      report();
+    };
+    watch();
+  }
 
   // Setup for Player Mode (Receiver)
   public initReceiver(

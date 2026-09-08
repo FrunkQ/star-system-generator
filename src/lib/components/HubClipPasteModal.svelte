@@ -13,7 +13,8 @@
   // A84 / UI-C6: a full-screen dialog joins the chrome-yield contract, so a phone GM gets the
   // screen. The gate that caught this looks at the SHAPE of the layer, not its class name.
   import { foreground } from '$lib/ui/foreground';
-  import { parseHubClip, type HubClip } from '$lib/io/hubClip';
+  import { parseHubClip, isRulesOnlyClip, type HubClip } from '$lib/io/hubClip';
+  import { describeOverrides } from '$lib/io/clipRules';
   import { hostCandidates, preferredHost } from '$lib/system/reparent';
   import type { Starmap, System } from '$lib/types';
 
@@ -58,7 +59,17 @@
       : (preferredHost(chosenSystem!, hosts as any, rootNode) ?? hosts[0]).id;
   }
 
-  $: ready = !!clip && !!chosenSystem && !!hostId;
+  /**
+   * R-19: A RULES-ONLY CLIP HAS NOWHERE TO GO, and this screen used to insist on somewhere.
+   *
+   * `ready` demanded a system AND a host, so a clip from the hub's `/rules` library left the paste
+   * button disabled with nothing on screen saying why - the fourth door into the paste, and the one
+   * the wiring missed. It carries no object, so it needs no host: the rules go on the CAMPAIGN.
+   */
+  $: rulesOnly = !!clip && isRulesOnlyClip(clip);
+  $: rulesCarried = clip ? describeOverrides(clip.rulePackOverrides) : '';
+
+  $: ready = !!clip && (rulesOnly || (!!chosenSystem && !!hostId));
 
   function confirm() {
     if (!ready || !clip) return;
@@ -84,6 +95,20 @@
 
     {#if parsed && !parsed.ok}
       <p class="problem">{parsed.problem}</p>
+    {:else if clip && rulesOnly}
+      <p class="summary">
+        <!-- The space before the dash is written explicitly for the same reason the credit line
+             below does it: Svelte trims whitespace between an element and a following block, which
+             ran this into "Rules only— a liquid". Seen in the browser, 2026-09-08. -->
+        <strong>Rules only</strong>{#if rulesCarried}{' '}— {rulesCarried}{/if}.
+        {#if clip.source?.title}
+          From <em>{clip.source.title}</em>{#if clip.source.creator}{' '}by {clip.source.creator}{/if}.
+        {/if}
+      </p>
+      <p class="note">
+        Nothing will be added to your map. Any of these your campaign does not already have are added
+        to its rules; anything it has under the same name is left exactly as it is.
+      </p>
     {:else if clip}
       <p class="summary">
         <strong>{rootNode?.name ?? 'An object'}</strong>
@@ -98,7 +123,7 @@
         <p class="note">The credit is recorded on your campaign and travels with your saves.</p>
       {/if}
 
-      {#if !openSystemId}
+      {#if !openSystemId && !rulesOnly}
         <label class="field">
           <span>Into which system</span>
           <select bind:value={systemId}>
@@ -108,7 +133,7 @@
         </label>
       {/if}
 
-      {#if chosenSystem}
+      {#if chosenSystem && !rulesOnly}
         <label class="field">
           <span>Going round</span>
           <select bind:value={hostId}>

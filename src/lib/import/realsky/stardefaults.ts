@@ -1,10 +1,24 @@
 // Real-sky import — complete the star parameters the catalogues do not carry.
 //
-// The catalogues give a star's mass, radius, temperature and luminosity;
-// they do NOT give its magnetic field or spin-axis tilt, and the physics
-// reads both (the field drives shielding tags and the radiation model, the
-// tilt drives satellite frames and seasons — inbox B9a and B10 are the
-// record of what silently-absent values did to the OTHER creation routes).
+// THIS PARAGRAPH USED TO SAY "the catalogues give a star's mass, radius,
+// temperature and luminosity", AND THAT WAS NEVER TRUE. It was the bug's own
+// documentation: the gap-filler believed the gaps were already filled, so
+// nothing here looked for the sizes and nothing upstream fetched them, and
+// every real star imported at its class-band midpoint for a year (D29).
+//
+// WHAT THE CATALOGUES ACTUALLY GIVE, measured against TAP_SCHEMA 2026-09-08:
+// SIMBAD's `basic` has NO mass, radius or temperature column, and SIMBAD
+// publishes no stellar mass anywhere at all. A temperature, a surface gravity,
+// magnitudes and - for about one star in seven - a direct diameter live in
+// separate `mes*` tables, and `starSize.mjs` turns those into a size before
+// this module ever runs. The NASA archive DOES carry st_mass/st_rad/st_teff,
+// but only for stars with a confirmed planet, which is a small minority.
+//
+// SO THE GAPS THIS FILLS ARE THE MAGNETIC FIELD AND THE SPIN-AXIS TILT, which
+// no catalogue gives, and the physics reads both (the field drives shielding
+// tags and the radiation model, the tilt drives satellite frames and seasons -
+// inbox B9a and B10 are the record of what silently-absent values did to the
+// OTHER creation routes).
 //
 // So imported stars are completed exactly the way the generator completes
 // its own: the same pack-band functions, seeded from the star's id with the

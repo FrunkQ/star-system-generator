@@ -10,6 +10,7 @@
 // path, computed once at load. A model that ARRIVED with materials (a GLB) keeps them untouched;
 // the tint exists because a printing STL arrives colourless, not to repaint authored work.
 import * as THREE from 'three';
+import { createGlRenderer, releaseGlRenderer } from '$lib/rendering/glRenderer';
 import { shade } from '$lib/rendering/planetAppearance';
 
 export interface ModelViewerOptions {
@@ -377,8 +378,7 @@ export function buildDisplayModel(
 }
 
 export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOptions = {}): ModelViewer {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: !!opts.capture });
-  renderer.setPixelRatio(Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
+  const renderer = createGlRenderer({ canvas, surface: 'model', antialias: true, alpha: true, preserveDrawingBuffer: !!opts.capture });
   const scene = new THREE.Scene();
   if (opts.background) scene.background = new THREE.Color(opts.background);
   const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100);
@@ -730,7 +730,7 @@ export function createModelViewer(canvas: HTMLCanvasElement, opts: ModelViewerOp
       canvas.removeEventListener('pointercancel', onUp);
       canvas.removeEventListener('wheel', onWheel);
       clearFrame();
-      renderer.dispose();
+      releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
     }
   };
 }

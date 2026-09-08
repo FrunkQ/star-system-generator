@@ -58,15 +58,30 @@ describe('the system map uses it for zones AND Hill spheres', () => {
 		expect(src).toContain('if (!ringVisible(cx, cy, radiusPx, width, height, margin)) return;');
 	});
 
-	it('culls the Hill bubbles, which were never culled at all', () => {
-		// The zone overlay next door has skipped an off-screen circle since it was written and these
-		// did not, so every bubble in a fifty-body system reached the canvas regardless.
-		expect(src).toContain('const showFill = !h.isStar && !$lowPower && discVisible(sx, sy, sr, width, height, margin);');
-		expect(src).toContain('const showLine = ringVisible(sx, sy, sr, width, height, margin);');
-		expect(src).toContain('if (!showFill && !showLine) continue;');
-		// The context is world-transformed, so the test has to be done in the screen space it lands in.
-		expect(src).toContain('const sx = width / 2 + (pos.x - renderPan.x) * zoom;');
-		expect(src).toContain('const sr = r * zoom;');
+	it('does NOT reach into drawSystem for a `margin` that is not there', () => {
+		// [[B145]]. The Hill-sphere cull shipped in v3.0.378 and was reverted the next day: it passed a
+		// `margin` that exists only as a local of two OTHER functions, so `drawSystem` threw on the
+		// first bubble of every frame and the whole 2D view - orbit lines and all - died with it. The
+		// build was green, because esbuild strips types without checking them (RENDER-S46).
+		//
+		// The cull is sound and is welcome back. It must bring a margin of ITS OWN, and it must be
+		// checked with `npx svelte-check --threshold error` on this file, which named the fault in one
+		// line. This gate holds the shape of the mistake rather than the absence of the feature.
+		const NEXT_FN = '  function ';
+		const bodyOf = (name: string) => {
+			const at = src.indexOf('function ' + name + '(');
+			expect(at, name).toBeGreaterThan(-1);
+			const next = src.indexOf(NEXT_FN, at + 10);
+			return src.slice(at, next > at ? next : undefined);
+		};
+		expect(bodyOf('drawSystem')).not.toContain(', margin)');
+		// And the two functions that DO own a margin still declare it above their own uses.
+		for (const fn of ['drawStellarZonesOverlay', 'drawScaleBar']) {
+			const scope = bodyOf(fn);
+			if (!scope.includes(', margin)')) continue;
+			expect(scope.indexOf('margin = '), fn).toBeGreaterThan(-1);
+			expect(scope.indexOf('margin = '), fn).toBeLessThan(scope.indexOf(', margin)'));
+		}
 	});
 
 	it('drops the translucent WASH on low power and keeps the LINE', () => {

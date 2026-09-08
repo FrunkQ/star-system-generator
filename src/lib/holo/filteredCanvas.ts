@@ -3,6 +3,7 @@
 // (the cover) warps / picture-rolls / tints for real instead of a CSS approximation. Plain module so
 // three code-splits into its own chunk (loaded only when a filtered cover is shown). See HoloView/scene.
 import * as THREE from 'three';
+import { createGlRenderer, releaseGlRenderer } from '$lib/rendering/glRenderer';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
@@ -25,9 +26,8 @@ export function createFilteredCanvas(canvas: HTMLCanvasElement): FilteredCanvasC
   // preserveDrawingBuffer keeps the last frame readable so a transition can snapshot this canvas
   // (createImageBitmap) for its "before" state — see TransitionEngine. Cheap here: these are static,
   // low-fps surfaces (cover / list / document), not a hot render loop.
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+  const renderer = createGlRenderer({ canvas, surface: 'filtered', alpha: true, antialias: true, preserveDrawingBuffer: true });
   renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0, 1); // fills the view with a 1×1 quad
@@ -95,7 +95,7 @@ export function createFilteredCanvas(canvas: HTMLCanvasElement): FilteredCanvasC
     srcTex?.dispose();
     quad.geometry.dispose(); mat.dispose();
     if (filterPass) (filterPass.material as THREE.Material).dispose();
-    composer.dispose(); renderer.dispose();
+    composer.dispose(); releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
   }
 
   return { setSource, setFilter, warpPoint, resize, dispose };

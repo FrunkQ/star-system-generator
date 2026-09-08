@@ -34,6 +34,12 @@
   // called it with the defaults and importer.ts's own comment already promised otherwise.
   let infillKnobs: GenerationKnobs = { ...DEFAULT_KNOBS };
   let infillAgeGyr: number | undefined = undefined;
+  // G87: a user's request, relayed by the owner - "always place the system's main world inside the
+  // habitable area", because the old placement gave main worlds "unreasonable surface temperatures,
+  // either way too high or way too low". Defaults ON (the owner's call, 2026-09-08): the old
+  // behaviour was a table of Sol's spacing read off the star's LETTER, which is a fault rather than
+  // a style, and an existing campaign is already generated so nothing it holds moves.
+  let placeMainWorldInHabitableZone = true;
 
   // Validation & Defaults
   $: isValid = name.trim().length > 0 && /^[A-HXYZ][0-9A-Z]{6}-[0-9A-Z]$/i.test(uwp.trim());
@@ -81,7 +87,7 @@
           raw: `Manual UWP: ${uwp} ${name}`
       };
 
-      dispatch('generate', { ...data, infillKnobs, infillAgeGyr });
+      dispatch('generate', { ...data, infillKnobs, infillAgeGyr, placeMainWorldInHabitableZone });
       close();
   }
 
@@ -165,6 +171,21 @@
               <label>Nobility</label>
               <input type="text" bind:value={nobility} placeholder="B" />
           </div>
+      </div>
+
+      <div class="infill-block">
+        <h3>Where the main world goes</h3>
+        <label class="mw-option">
+          <input type="checkbox" bind:checked={placeMainWorldInHabitableZone} />
+          <span>Place the main world in its star's habitable zone</span>
+        </label>
+        <p class="subtitle">
+          The main world is placed inside the band this particular star can actually keep liquid
+          water in, worked out from its own brightness rather than from its spectral letter - so a
+          dim red dwarf's world sits close in and a bright star's sits further out. Worlds Traveller
+          marks hostile, such as a hellworld, are never moved. Turn this off to place worlds the way
+          earlier versions did, from a fixed table of orbits.
+        </p>
       </div>
 
       {#if willInfill}
@@ -288,4 +309,12 @@
 
   button.secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
   button.secondary:hover { background: var(--bg-panel); color: var(--text); }
+  .mw-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    margin-bottom: 0.35rem;
+  }
+  .mw-option input { cursor: pointer; }
 </style>

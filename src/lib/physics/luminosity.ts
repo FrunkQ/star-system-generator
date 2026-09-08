@@ -35,9 +35,19 @@
 // (`Tsun * L^0.25 / sqrt(R)`). They are not duplicates of this - they answer "how big" and "how hot"
 // rather than "how bright" - but they share the constant, which is why there is now only one of it.
 import { SOLAR_RADIUS_KM, STEFAN_BOLTZMANN_CONSTANT } from '$lib/constants';
+import { SOLAR_TEMPERATURE_K } from '$lib/import/realsky/constants.mjs';
 
-/** The Sun's effective temperature — the reference the solar-unit form is written against. */
-export const SOLAR_TEFF_K = 5778;
+/**
+ * The Sun's effective temperature - the reference the solar-unit form is written against.
+ *
+ * DEFINED IN `import/realsky/constants.mjs` AND RE-EXPORTED HERE, which looks backwards and is not:
+ * that file is plain dependency-free ESM because the build kit runs it under bare node (DATA-R5), so
+ * it can be read from BOTH sides of that boundary while this module cannot. The import side writes
+ * the same law forwards (`stars.mjs luminositySolarFrom`) and backwards (`starSize.mjs
+ * radiusRsunFromLT`); sharing the constant is what stops a third 5778 appearing over there. The
+ * exported name here is unchanged, so every existing caller is untouched.
+ */
+export const SOLAR_TEFF_K = SOLAR_TEMPERATURE_K;
 
 /**
  * Solar luminosities from a radius in km and an effective temperature in K. THE PRIMITIVE: every

@@ -1,6 +1,8 @@
 // Real-sky import — star classification helpers shared by the build kit and
 // the in-app importer. Spectral-type string → SSE star classes + type image.
 
+import { SOLAR_TEMPERATURE_K } from './constants.mjs';
+
 // The class for a star the catalogue gives no usable spectral type for. Mirrors `planet/unknown`
 // (system/typeRanges.ts) — a real class that says "not known", rather than a plausible guess.
 export const UNKNOWN_STAR_CLASS = 'star/unknown';
@@ -85,6 +87,10 @@ export function starParamsFromType(type, statTemplates, { otype } = {}) {
       ? mid(band.radiation_output)
       : luminositySolarFrom(mid(band.radius_solar), mid(band.temp_k)),
     ...(lum ? { luminosityClass: lum } : {}),
+    // D29: whether that luminosity is a DECLARED non-thermal output or was computed from the
+    // band's own radius and temperature. A caller that replaces those two with measured figures
+    // must recompute a thermal luminosity and must NOT touch a declared one.
+    luminosityDeclared: !!band.radiation_output,
     typicalForClass: true
   };
 }
@@ -114,10 +120,28 @@ export const LUMINOSITY_BAND = {
 
 // L/Lsun = (R/Rsun)^2 * (T/Tsun)^4 - Stefan-Boltzmann with the solar constants cancelled out. The
 // ONE spelling of it on the import side; the generator computes the same quantity the same way.
-const SOLAR_TEMPERATURE_K = 5778;
 export function luminositySolarFrom(radiusRsun, temperatureK) {
   if (!(radiusRsun > 0) || !(temperatureK > 0)) return undefined;
   return Math.pow(radiusRsun, 2) * Math.pow(temperatureK / SOLAR_TEMPERATURE_K, 4);
+}
+
+/**
+ * THE SECOND OBJECT IN A COMPOSITE SPECTRAL TYPE, or null when there is not one (D29).
+ *
+ * `parseStellarType(...).companion` returns whatever followed the '+', and THAT IS NOT ALWAYS A
+ * COMPANION: SIMBAD writes `M2+V` for Lalande 21185 to mean "M2 or later, luminosity class V", and
+ * reading it as a second star told a GM that a single red dwarf was an unresolved pair. A real
+ * companion begins with a spectral LETTER (OBAFGKMLTY) or with D for a white dwarf - `K1V`, `DQZ`,
+ * `T0.5`. A bare Roman numeral is a luminosity class and nothing else.
+ *
+ * ONE DEFINITION, because two things ask this question and they must not answer it differently: the
+ * census decides whether a row is a multiple-star CONTAINER or a star, and the importer decides
+ * whether to tell the GM about a companion it has not represented.
+ */
+export function companionSpectralType(type) {
+  const companion = parseStellarType(type ?? '')?.companion;
+  if (!companion) return null;
+  return /^[OBAFGKMLTYD]/.test(companion.trim()) ? companion : null;
 }
 
 export function luminosityClassOf(type) {

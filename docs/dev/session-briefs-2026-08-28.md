@@ -1127,7 +1127,7 @@ R-number ends its report with this block, and the hub agent pastes it unchanged 
 a hub change to the contract goes the other way in the same shape, and the coordinator pastes it into the G57 row:
 
 ```
-SEAM REPORT | R-17 | engine | beta v3.0.314 (21779f3e) | prod: NOT RELEASED
+SEAM REPORT | R-17 | engine | beta v3.0.314 (21779f3e) | prod: RELEASED in v3.1.0, 2026-09-07
 sets:      open_in_sse_url = https://beta.starsystemx.com/?open=
 must know: the parameter is `open` on the query string, not the hash; explorers.starsystemx.com answers 404 from
            Vercel (DEPLOYMENT_NOT_FOUND) so download URLs must use the workers.dev origin until DNS moves; both
@@ -1687,3 +1687,494 @@ temperature - the Planck fraction above 13.6 eV, one function, anchored (Sun unc
 source) - keep the flare verdict as the flare verdict, and let the wind for a remnant read the thermal figure.
 Red-first, absolute (PHY-34). Then take the 'coronal model, not the surface' note off the card's ionising cell
 (`BodyTechnicalDetails.svelte`, `starIonisingNote`) in the same push.
+
+## STREAM U — the real-sky importer: the masses and radii it drops, and the companions it loses (D29)
+
+> You are fixing the REAL-SKY IMPORTER for Star System Explorer — [[D29]], the owner's own report off the live
+> 3.1.0 release. Repo `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the
+> tip; several streams push daily, renumber on collision). Work in your OWN worktree (`git worktree add
+> ../sse2-realsky -b wt/realsky origin/beta`); the main checkout is shared. Commit as **FrunkQ
+> <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` — especially
+> NEVER ASSUME AN EARTH/SOL BASELINE, STEER DON'T STOP (an authored map is never silently corrected), and
+> DUPLICATED FUNCTIONALITY; the [[D29]] row (the owner's words and the coordinator's probe); the rows folded in
+> with it — [[D18]], [[D25]], [[D28]]; engine map **PHY-34** (every gate absolute, seen red first) and the
+> `import/realsky` entries you find by grepping the traps file for your territory.
+>
+> **THE OWNER'S WORDS (2026-09-08):** *"the importer still not adding the radii or masses for real stars, also
+> its still adding binaries as single or 2 stars (examples: sirius (only adds b) completely forgets luhman 16
+> and eps indi Ab's partner)"*.
+>
+> **WHAT THE COORDINATOR ALREADY MEASURED — do not re-derive it, do verify it:**
+> - `SIMBAD_STAR_COLUMNS` at `src/lib/import/realsky/query.mjs:177` is
+>   `['main_id', 'ra', 'dec', 'plx_value', 'sp_type', 'otype']`. **There is no mass, radius or temperature
+>   column in any of the three SELECTs (`:105`, `:137`, `:158`).** The importer cannot be carrying measured
+>   sizes, because it never asks for them.
+> - `src/lib/import/realsky/stardefaults.ts` opens with *"The catalogues give a star's mass, radius,
+>   temperature and luminosity; they do NOT give its magnetic field or spin-axis tilt"* and fills only the
+>   field and the tilt. **The gap-filler believes the gaps are filled.** That sentence is the bug's
+>   documentation, and it must end up either true or rewritten.
+> - Every star query carries `plx_value > 0` (`:137`, `:160`, `:184`). A SIMBAD companion often has no
+>   parallax row of its own. That one clause would drop precisely the member the owner is missing —
+>   SUSPECTED, NOT PROVEN, and proving it is job 1.
+> - `convert.mjs` ~325-370 holds the multiples logic already: the [[D28]] one-object-two-catalogues merge,
+>   `WIDE_COMPANION_MIN_AU = 50`, and "the heaviest star is the root; companions orbit it".
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **Measure the three named systems before changing anything.** Sirius (A lost, B kept), Luhman 16 (absent
+>    entirely), Epsilon Indi (the B/C brown-dwarf pair absent). Capture the actual catalogue rows each query
+>    returns — the raw response, not your reading of it — and say for each system WHICH clause dropped WHICH
+>    row. The coordinator's `plx_value` suspicion is a hypothesis; record it as confirmed or as a dead end,
+>    loudly either way. Sirius keeping the FAINTER member is the sharpest clue you have: whatever orders or
+>    de-duplicates rows prefers B over A, and that is not a parallax story.
+> 2. **Fetch the sizes.** Add the mass/radius/temperature columns SIMBAD actually exposes to the query and
+>    carry them through `convert.mjs` into `massKg`/`radiusKm`/`temperatureK`, measured values winning over
+>    the class-band fill-in (`stardefaults.ts` already states that precedence — honour it). Where a catalogue
+>    has no value the band fill-in stays, and the body should be able to SAY which it is: a GM reading Sirius
+>    should get Sirius's real radius, and a GM reading an obscure dwarf should not be told a band value is a
+>    measurement (the "a quantity correct for its purpose can still be published as a lie" rule). Correct
+>    `stardefaults.ts`'s opening paragraph in the same commit.
+> 3. **Multiples arrive whole.** Every member of a system the query reaches comes in, orbiting its shared
+>    barycentre by the engine's existing pair machinery (a pair has ONE epoch — engine map DATA-R29 and the
+>    [[B111]] history; do not invent a second convention). A brown-dwarf pair is a pair. Then re-run job 1's
+>    three systems as the gate.
+> 4. **[[D18]] while you are here:** the produced "local neighbourhood" has no Sol and no Alpha Centauri.
+>    Both omissions are almost certainly the same selection logic; fix them with jobs 1-3 or say why not.
+> 5. **[[D25]] and [[D28]]:** fictional substances (ASTROPHAGE) leaking into REAL systems, and one companion
+>    imported twice. D25 needs an owner decision on the rule — recommend, then ask, do not choose for him.
+>
+> **GATES, red-first, absolute:** Sirius imports as TWO stars with A the primary and a real radius near
+> 1.71 solar; Luhman 16 imports as a pair; Epsilon Indi arrives with its B/C companions; the bundled-starmap
+> pin (`scripts/starmap-build/buildKit.spec.mjs`) still passes, and if classification moves you must re-run
+> `node scripts/starmap-build/build-starmaps.mjs` and commit the three `static/example-starmaps/` files AFTER
+> the version bump, because the build stamps `appVersion`. Network calls do not belong in the suite: pin the
+> catalogue rows as fixtures and gate the TRANSFORM.
+>
+> **TRAPS:** real user files live in `../user-test-files/` and never in the repo; the two `tests/` fixtures are
+> a baseline — commit them if a run changes them; CRLF everywhere (measure each file's own ending, Python
+> bytes, never `sed -i` on MSYS); `npm run manifest` after every version bump; the stash stack is shared — WIP
+> commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial test is a known statistical flake.
+>
+> **EYEBALL FOR THE OWNER:** import the local neighbourhood and open Sirius, Luhman 16 and Epsilon Indi; each
+> should show both members, and each star's radius and mass should read as the real measured figures rather
+> than a class average.
+>
+> **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM V — a Traveller main world where people could actually live (G87)
+
+> You are building the MAIN-WORLD PLACEMENT MODEL for Star System Explorer — [[G87]], a user request relayed by
+> the owner with his own design on top. Repo `C:\Development\star-system-explorer-v2\star-system-generator`,
+> branch `beta` (fetch the tip; several streams push daily, renumber on collision). Work in your OWN worktree
+> (`git worktree add ../sse2-mainworld -b wt/mainworld origin/beta`); the main checkout is shared. Commit as
+> **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` — four of them
+> are load-bearing here and you should be able to quote them back: FLEXIBLE SYSTEMS OVER POINT SOLUTIONS, NEVER
+> ASSUME AN EARTH/SOL BASELINE (this bug IS that rule broken), SCATTERED CONSTANTS ARE DATA IN THE WRONG PLACE,
+> and STEER DON'T STOP (an authored hostile world is never quietly moved somewhere nicer); the [[G87]] row, which
+> carries the user's words, the owner's design and the coordinator's measurement; [[G32]] and [[G11]] (the
+> importer's own history); engine map **PHY-34** (every gate absolute and red-first).
+>
+> **WHAT IS WRONG, MEASURED — verify it, do not re-derive it.** `src/lib/traveller/importer.ts:222-246` decides
+> the main world's orbit from a hardcoded `HZ_ANCHORS` per spectral LETTER indexing a hardcoded `BODE_TABLE` of
+> AU slots, jittered ±10%. It never consults `physics/zones.ts calculateGoldilocksZone`, which derives the real
+> band from the star's own luminosity, nor `physics/habitability.ts findViableHabitableOrbit`, which already
+> finds a free orbit inside a band. Every G star lands at 0.85 AU and every M star at 0.17 AU whatever their
+> luminosity — a frozen world round a late M dwarf, a hot one round a bright G0 V. `if (uwpSizeDigit >= 10)
+> orbitIndex += 3` then pushes a large world three slots out for a non-thermal reason. The main world's TYPE is
+> hardcoded `'planet/terrestrial'` at the `_generatePlanetaryBody` call (`:290-302`).
+>
+> **WHAT ALREADY WORKS AND MUST STILL WORK AFTERWARDS.** The MOON case is built: trade code `Sa` puts the main
+> world on a moon orbit round a larger host (`:367-381`, `:473-482`, tag `traveller/satellite-main-world`), and
+> `W` is a hard world count that never counts moons. Treat it as a regression to avoid, and make your module
+> return a HOST as well as an orbit so the satellite path flows through it rather than round it. Determinism is
+> available: `traveller/rng.ts` is a `cyrb128`-seeded SFC32 hashed from a string.
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **The module, on its own, with no importer changes yet.** `src/lib/worlds/mainWorldPlacement.ts` — the
+>    owner's *"its own model we can tweak later - even the new Traveller creation system will require the same
+>    functionality"*. A PURE function: given the star (or host), the system as it stands, the requested world's
+>    facts (UWP size, atmosphere, hydrographics, population, trade codes) and a seed string, it answers WHERE
+>    (host + a_AU) and WHAT TYPE, plus a REASON in plain words and the tolerance grade it settled for. It reads
+>    the engine's own zone derivation; it contains no spectral-class table and no AU table of its own. Nothing
+>    imports it yet — this job is the module and its gates alone.
+> 2. **The candidate types are PACK DATA.** A ranked list of main-world types with a human-tolerance grade —
+>    breathable / mask / sealed-or-underground — in the rule pack beside the other distributions, NOT an array
+>    in the module. The vocabulary already exists (`planet/earth-like`, `earth-analogue`, `super-earth`, `ocean`,
+>    `jungle`, `swamp`, `forest`, `desert`, `superhabitable`, `hycean`, and the hostile ones). The owner's rule:
+>    *"we don't want them all entirely earth like; some will require breathing masks"* — so the list spans the
+>    ladder, and the module picks the best grade the star, the orbit and the UWP will actually support, working
+>    DOWN the ladder rather than giving up. **At least one human-compatible option must be reachable** when the
+>    UWP's own atmosphere and hydrographics allow it, which is the user's whole request.
+> 3. **Always try to place somebody.** *"On the whole they will always TRY and pop a main world down unless it
+>    could[n't] have a decent population, even if they have to live underground occasionally."* So the module
+>    declines only when no population could live there at all, and when it declines it SAYS SO in its reason
+>    rather than silently falling back to the old table.
+> 4. **The trade codes win.** A world Traveller declares hostile — hellworld and its neighbours — is NOT moved
+>    into the habitable zone: that is the user's own bypass request and the steer-don't-stop rule agreeing with
+>    each other. The bypass list is pack data too, keyed on the codes the decoder already expands
+>    (`traveller/decoder.ts:27`), so a GM can add one without a release. A bypassed world keeps today's
+>    behaviour exactly.
+> 5. **Wire the importer to the module and delete the tables.** `HZ_ANCHORS`, `BODE_TABLE` and the `+= 3` size
+>    nudge come out; the `Sa` satellite path routes through the module's host answer; the import gains the
+>    option the user asked for (default ON is the owner's call — RECOMMEND, then ask him before shipping a
+>    default that changes what an existing import produces).
+>
+> **GATES, red-first and absolute — in AU and kelvin, never ratios (PHY-34):** a G2 V main world lands inside
+> the band `calculateGoldilocksZone` derives for that star, and its derived surface temperature sits in a
+> liveable range; an M5 V main world lands near ITS band (~0.03-0.08 AU) and NOT at the old 0.17 AU — assert the
+> old value is gone, or the gate passes on the bug; a hellworld-coded world is placed exactly where today's code
+> puts it, unmoved; an `Sa` world is still a moon of a larger host, with its tag; **the same sector imported
+> twice is byte-identical, and imported by two different "users" (different sessions, same input) is also
+> byte-identical** — that is the owner's determinism requirement and it deserves its own test; and the existing
+> `importer.spec.ts` W-count and hierarchy gates stay green.
+>
+> **TRAPS:** real user files live in `../user-test-files/` and never in the repo — there are Traveller sector
+> files there to reproduce against; the two `tests/` fixtures are a baseline, commit them if a run changes them;
+> CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run manifest`
+> after every version bump; the stash stack is shared — WIP commits, never bare stash/pop; claim ids in both
+> forms; B99's rarity-dial test is a known statistical flake.
+>
+> **EYEBALL FOR THE OWNER:** import a Traveller sector and open half a dozen main worlds — each should sit in
+> its star's own habitable band with a temperature a GM would not blink at, the hostile-coded ones should be
+> exactly as hostile as before, and a satellite main world should still be a moon.
+>
+> **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM W - ask the browser for what we need, and notice when it says no (C20)
+
+> You are fixing the 3D LOCKUP on a tired browser - [[C20]], the owner's own report and his question: *is this a
+> need to ask for more resources in the browser that we are NOT doing?* The answer is yes, three times over, and
+> the row names all three with the measurement already done. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams
+> push daily). Work in your OWN worktree (`git worktree add ../sse2-webgl -b wt/webgl origin/beta`); the main
+> checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` - DUPLICATED
+> FUNCTIONALITY and STEER DON'T STOP both bite here; the [[C20]] row (verify the measurement, do not repeat it);
+> [[G69]] (the frame-rate guard, and its rule that the state is TWO facts - what the settings REQUEST and what
+> the guard SHED - because the host re-asserts every setting on every change); [[G80]] and [[G83]] (low power);
+> [[A38]] (why `preserveDrawingBuffer` exists, and what breaks if it goes without a replacement); engine map
+> **E7** (a canvas cannot be verified headlessly - reproduce the numbers and hand back an eyeball list).
+>
+> **THE SYMPTOM, in the owner's words to his users:** an old browser with many tabs opens Size Comparison or a
+> Holoview and locks up solid, worst on MS Edge; a fresh browser purrs. His workaround is correct and stays in
+> the help text until this ships.
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **Ask.** ONE shared renderer factory. Six sites each write their own `new THREE.WebGLRenderer` today, which
+>    is six copies of one decision - the duplication fault this codebase keeps paying for. The factory passes
+>    `powerPreference: 'high-performance'` and takes each site's genuine differences (alpha,
+>    `preserveDrawingBuffer` where [[A38]] needs it) as arguments.
+> 2. **Notice a no.** Probe once with `failIfMajorPerformanceCaveat: true`. If that context is refused we are on
+>    a software rasteriser. **Do not refuse to run** - steer, don't stop - but say so plainly and let it turn
+>    low power on for that session. A GM told "your browser is drawing this on the processor; Low power is on,
+>    and a fresh window will be much faster" has an actionable sentence instead of a hang.
+> 3. **Give the context back.** `forceContextLoss()` after `dispose()` at all six teardowns, and a
+>    `webglcontextlost` handler on the five that have none, so a reaped context shows a plain message and can
+>    rebuild rather than leaving a dead canvas. Then prove it: open and close each 3D surface twenty times and
+>    assert the live context count does not climb.
+> 4. **Read the machine.** `navigator.deviceMemory` is already collected for diagnostics and decides nothing.
+>    Let a small device default to low power through the SAME switch the GM controls, never a second hidden one,
+>    and never let the default overrule a GM who has chosen ([[G69]]'s two-facts rule).
+> 5. **Only then weigh `preserveDrawingBuffer`.** Which of the six genuinely need it? [[A38]] is the reason it
+>    exists; a surface that is never captured does not need it and pays for it every frame.
+>
+> **GATES, red-first:** a source-level pin refusing a bare `new THREE.WebGLRenderer` outside the factory (the
+> shape `skinLiterals.spec.ts` already uses); the software-fallback path sets low power and emits its message;
+> twenty open/close cycles leave the context count flat; low power still honours an explicit GM choice. A real
+> GPU cannot be asserted under vitest - pin the DECISIONS, drive a browser for the rest, and say plainly what
+> stays eyes-only.
+>
+> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
+> manifest` after every version bump; the two `tests/` fixtures are a baseline; the stash stack is shared - WIP
+> commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial test is a known statistical flake.
+>
+> **EYEBALL FOR THE OWNER:** on the machine that locks up, open Size Comparison and the holo. You should get
+> either a usable view or a plain sentence saying what happened and what to do about it - never a hang.
+>
+> **Housekeeping:** as Stream Q's, word for word.
+
+**STREAM U AMENDED 2026-09-08, AFTER THE STREAM STARTED (job 1 landed at v3.1.4) - so the running session must be
+TOLD, not expected to re-read.** The owner has added scope to [[D29]], and it belongs with job 3: **a control for
+the edge of a binary's extent.** His words: *"Additional control to define the edge of your binary extent; so you
+can control whether its separate stars or a binary."* A wide pair is a judgement, not a fact - the same two stars
+are one binary system or two neighbouring ones depending where the line is drawn, and the importer draws it today
+without telling anybody. Make the separation threshold a SETTING on the import, defaulting to exactly today's
+behaviour so nothing moves for an existing user, and carry the chosen value in the import's own record so a
+re-import reproduces the same map. Decide it BEFORE job 3 brings multiples in, because it defines what a multiple
+is. Gate it absolutely: one named wide pair imports as two systems below the threshold and as one binary above it,
+with the same input and the same seed.
+
+## STREAM X — a pasted body brings the rules it needs (R-19)
+
+> You are building the engine's half of **R-19**: a hub clip now carries the custom rule definitions its objects
+> reference, and this side has to narrow, merge and report them. Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams
+> push daily). Work in your OWN worktree (`git worktree add ../sse2-cliprules -b wt/cliprules origin/beta`); the
+> main checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST, and in this order.** (1) `CLAUDE.md`. (2) The STANDING RULES at the foot of
+> `docs/dev/observations-inbox.md` — DUPLICATED FUNCTIONALITY and STEER DON'T STOP are the two that decide this
+> design. (3) **The hub's brief, whole:**
+> `C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-08-clip-rules.md` — it is unusually good,
+> it explains WHY each rule is a rule, and it is the authority on what arrives. (4) The **R-19 section at the
+> foot of `docs/dev/hub-requirements-for-sse.md`** — the engine's half, carrying the coordinator's triage and
+> three measurements the hub could not make. (5) The **SEAM PROTOCOL** section of this briefs file: you will owe
+> a SEAM REPORT block, and you never edit the hub's repository.
+>
+> **WHAT IS ALREADY MEASURED — verify it, do not re-derive it.**
+> - `canonicalJson` (`src/lib/io/shippedDefaults.ts:31`) is ALREADY the comparison the hub asks for: keys sorted
+>   recursively, array order untouched. **Reuse it.** A second canonicaliser is how the identical-definition
+>   test starts disagreeing with itself.
+> - `RulePackOverrides` (`types.ts:1373-1390`) has eight sections and **two of them are DELTAS against the
+>   shipped pack**, not lists: `morphologies` and `pigments` are `PackListDelta<T> | T[]` (`types.ts:1384-1385`,
+>   `lib/rulepackDelta.ts` with `makeListDelta`/`applyListDelta`). "Do I already have this one, identical?" is a
+>   different question for a delta, and merging two deltas is not merging two lists.
+> - `applyStarmapOverrides` (`routes/+page.svelte:200`) is a SHALLOW section-level spread. Sending a paste
+>   through it would replace the GM's whole liquids override with the incoming one. **Do not use it for this.**
+> - `hubClip.ts`: the envelope at `:56`, the `nodes.length === 0` refusal at `:116`, `insertClip` at `:454`,
+>   and `addContentCredit` at `:542` — which is the shape to copy for "say what came with it", because R-16
+>   already solved the same reporting problem for credits.
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **The envelope and the two producers.** `rulePackOverrides` becomes an optional key on `HubClip`; a clip
+>    with `nodes: []` and no `root` parses as a RULES-ONLY clip instead of being refused. Parsing only — no
+>    merging yet, and a rules-only clip that reaches the paste path in this job says plainly that it is not
+>    handled yet rather than half-doing it.
+> 2. **The comparison, on its own, with its own gates.** Given an incoming definition and the destination's
+>    overrides, answer one of three: ABSENT / IDENTICAL / DIFFERENT, using `canonicalJson`. Handle the two delta
+>    sections honestly — decide and WRITE DOWN whether a delta is compared as a delta or as its applied result,
+>    and say why in the module and in an engine-map entry. This is the job that earns the stream.
+> 3. **The merge.** Per DEFINITION, never per section. Absent: add. Identical: discard silently — the ordinary
+>    case, because pasting a star then one of its planets brings every rule twice. Different: **NEVER
+>    OVERWRITE.** Rename the incoming one and repoint the pasted nodes at the new name. Somebody else's "Liquid
+>    Unobtainium" is not this GM's, and overwriting turns one quietly wrong planet into a quietly wrong campaign.
+> 4. **Narrowing** — take only what the pasted nodes actually reference. The hub deliberately sends the lot
+>    because narrowing is engine knowledge. **The owner has said merging the lot is an acceptable version one**,
+>    so if narrowing looks expensive, ship job 3 without it and say so; do not let it hold the fix back.
+> 5. **Say what came with it**, in the app's own voice: "added 2 liquids and an engine definition; renamed
+>    Unobtainium to Unobtainium (from Local Neighbourhood) because you already had one." A GM who is told
+>    nothing cannot tell this feature from the bug it fixes.
+>
+> **GATES, red-first and absolute.** A body with a custom liquid pastes into a fresh campaign and its PHASE is
+> right, not merely its name — that is the difference between the fix and the bug; the same clip pasted twice
+> adds nothing the second time and renames nothing; a DIFFERENT definition of the same name is never
+> overwritten, and the pasted nodes point at the renamed one; key order alone never causes a rename (pin it with
+> an object built in a different order); a delta section round-trips; and a rules-only clip merges and reports.
+>
+> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
+> manifest` after every version bump; the two `tests/` fixtures are a baseline; the stash stack is shared — WIP
+> commits, never bare stash/pop; claim ids in both forms; B99's rarity-dial test is a known statistical flake.
+>
+> **WHEN IT SHIPS:** the hub asks to be told so it can note R-19. Write the SEAM REPORT block in the protocol's
+> fixed shape, quoted not retyped, and hand it to the coordinator — you do not push to the hub's repository, and
+> you never tell it production carries something the owner has not released.
+>
+> **Housekeeping:** as Stream Q's, word for word.
+
+
+## STREAM W - HANDOVER (C20 complete as briefed, 2026-09-08)
+
+**All five jobs are on beta: v3.1.9, v3.1.16, v3.1.20 and v3.1.25.** Production is v3.1.0 and has
+none of it, so a GM there still gets the hang and the fresh-browser workaround is still the right
+answer in the help text.
+
+**WHAT THE OWNER ASKED, ANSWERED.** *"Is this a formal memory request or a need to ask for more
+resources in the browser that we are NOT doing?"* Yes, and there were three, all now made:
+
+1. We never asked for the discrete GPU. `powerPreference: 'high-performance'` now goes with every
+   context, from ONE factory (`rendering/glRenderer.ts`) instead of six copies of the decision.
+2. We never noticed the browser dropping to software rendering. It is probed once, on a throwaway
+   context, and a refusal turns Low power on and puts a sentence on screen instead of hanging.
+3. We never handed a context back. `releaseGlRenderer` (dispose THEN forceContextLoss) at all six
+   teardowns, and all six now hear `webglcontextlost` where only the holo did.
+
+Plus: a device reporting <= 2 GB defaults to Low power through the GM's own switch, and
+`preserveDrawingBuffer` is now per USE rather than per module.
+
+### WHAT WAS VERIFIED IN A REAL BROWSER, AND WHAT IS LEFT FOR THE OWNER
+
+**Verified on beta.starsystemx.com, v3.1.31 (commit 6d0e978), Chrome, 2026-09-08.** An earlier note
+in this handover said nothing had been seen; that was true of the LOCAL dev server only. The fix was
+to stop trying to run one - the pane's launch registry is cached per session and its one usable entry
+points at the shared main checkout - and drive the DEPLOYED beta instead, which is where these pushes
+land. If you are verifying this stream again, start there.
+
+Observed by patching `getContext` before any 3D view existed, then opening one:
+
+1. **Every context asks for the high-performance GPU** - on the probe AND the real surface (job 1).
+2. **The probe runs first and once**, on a throwaway canvas, with `failIfMajorPerformanceCaveat`.
+   Refused, it retries `webgl` strict, then plain, and concludes software - the exact four-call
+   sequence the design predicts (job 2).
+3. **On a refusal the view is STILL BUILT** and the notice appears with its shipped wording, word for
+   word (job 2, steer-don't-stop).
+4. **The probe hands its throwaway context straight back** - `loseContext` observed.
+5. **Low power comes on for the session and NOTHING is persisted** - the GM's own checkbox reads
+   ticked, storage stays empty. That is the two-facts split working (jobs 2 and 4).
+6. **An explicit choice beats the machine both ways, and survives a reload** while the machine still
+   says software: the box stayed unticked and the GM was still told why. This is the guarantee the
+   whole two-facts design exists for.
+7. **Closing a 3D view calls `forceContextLoss` exactly once** (job 3). Before this stream: zero.
+8. `deviceMemory` was 32 on that machine, so job 4 correctly said nothing.
+9. The captured holo surface carries `preserveDrawingBuffer`; the probe context does not (job 5).
+
+**STILL UNSEEN, and unseeable from a page:** that a discrete GPU is really handed over, and the
+browser's own live-context count. Neither is observable from JavaScript, which is why the gates pin
+OUR count and our decisions instead.
+
+**C21's build budget and wireframes are unseen for a DIFFERENT and structural reason - [[E7]].** The
+view was opened on the deployed beta and the `comparison` perf provider is registered and reporting,
+so the code is live; but it reported `buildsTotal: 0`, because the pane runs `document.hidden ===
+true` and `requestAnimationFrame` never fires (measured again the same day: 0 frames in 1500 ms).
+`reconcile()` lives inside the frame loop. **Everything in C20 was verifiable because it happens at
+context CREATION and TEARDOWN, which are synchronous on mount and unmount; everything in C21 happens
+inside rAF and is eyes-only by construction.**
+
+### THE OWNER'S OWN THIRTY SECONDS, on the PC that locks up
+
+1. Open **Size comparison** (rail: Measure, then Size comparison). It should come up straight away
+   with spinning **wireframe globes** that fill in over the next second or two, and the strip should
+   scroll and answer clicks the whole time - never the "page isn't responding" dialog.
+2. If anything still stalls, run `window.__ssePerf.events(60, 'comparison.build')` in the console:
+   it gives bodies built, bodies deferred and milliseconds blocked, per pass, whether or not tracing
+   was on.
+3. Open a **Holoview**. On a tired browser you should get a plain sentence about the processor and
+   Low power ticking itself on - never a hang. Untick it and it must STAY unticked, including after
+   a reload.
+
+### THE DRAWING BUFFER - asked, answered, and then improved on by the owner
+
+The catalogue's full-screen player holo holds ~59 MB of drawing buffer for as long as it is open,
+solely so the view-entry transition can photograph the outgoing 3D screen. Offered as keep / drop /
+follow-low-power. **The owner chose KEEP**, so nothing changed and
+`preserveDrawingBuffer.spec.ts` still pins that this site does not opt out.
+
+**Then he named the thing all three options missed:** *"You can drop the 3d data once the image is
+taken ... it needed to exist to copy FROM."* He is right - the buffer only has to exist at the moment
+of the copy - **but not by toggling the flag**, which is fixed at context creation (RENDER-S57) and
+cannot be changed on a live context. What the flag actually buys is reading the canvas OUTSIDE the
+frame that drew it. So the way to stop paying for it is to **do the copy INSIDE that frame**: a
+`captureFrame()` on the holo controller (render, then copy, in one call stack) hands back a canvas
+that never needed the flag at all, and the cost comes off EVERY surface rather than one.
+
+**Where it applies and where it does not - checked, not assumed:**
+
+- **The D8 view-entry transition is the clean case.** One photograph, taken at `beforeUpdate`,
+  outside any frame. It is exactly what `captureFrame()` is for.
+- **A38's body graphic is NOT.** `FilteredDocumentView.gfxLoop` re-photographs it on EVERY rAF, and
+  deliberately - *"because a 3D body SPINS and a static texture would freeze it mid-turn"*. The 3D
+  cannot be dropped there after one image. It would still stop needing the flag if the copy moved
+  inside the holo's own frame, but the scene has to stay live.
+
+**NOT BUILT.** It is a real refactor across the holo scene and two consumers, its failure mode is a
+SILENT blank capture, and nothing in this stream has been seen in a browser. Briefed, not attempted -
+the right order is to get eyes on what has already shipped first.
+
+### TWO FINDINGS FOR THE COORDINATOR, unrelated to C20
+
+- **NOT A FLAKE - HEAVY SPECS TIME OUT WHEN SEVERAL AGENTS TEST AT ONCE, and that is worth knowing
+  in a repo that runs parallel sessions by default.** I first wrote this up as "a second statistical
+  flake beside [[B99]]'s rarity dial", which was WRONG and is corrected here rather than left to
+  mislead. `axialTilt.spec.ts`, `generateFromConfig.spec.ts` and `tagPresentation.spec.ts` all failed
+  together, then all passed alone - and the failures were `Test timed out in 5000ms`, never an
+  assertion. The owner's explanation was the whole of it: *"we just had 4 agents testing at once"*.
+  **THE TELL IS THE ERROR TEXT.** A timeout names a budget; a flake names a value. Read it before
+  concluding anything is non-deterministic, because the two are indistinguishable from a red tick in
+  a summary line and only one of them is a bug. Several heavy specs sit on vitest's default 5 s, and
+  the source-scanning pins are the same shape (`glRendererSites.spec.ts` needed 60 s, and it cheap-
+  rejects a file before doing per-line work for exactly this reason). If this keeps costing sessions,
+  the fix is a budget on the heavy specs, not a hunt for a seed.
+- **`player/presetStore.ts:addAssetFromCanvas` has no callers anywhere in the repo**, yet its
+  documentation states a live dependency on `holo/scene.ts` and `filteredCanvas.ts` keeping
+  `preserveDrawingBuffer`. It was traced during job 5 and deliberately left alone; if it is dead it
+  should go, and if it is owed to a future feature the dependency is now recorded in
+  `HoloOptions.capture` where a change would be noticed.
+
+## STREAM Y — a contact binary: one body fact, one modifier, one silhouette (G90)
+
+> You are adding CONTACT BINARIES - two lobes touching, like Arrokoth and like comet 67P - as a small-body type
+> a GM can author and the generator can also produce. [[G90]], the owner's ask of 2026-09-08 **as corrected by
+> him the same day: an earlier version of this brief invented an "authored but never generated" mechanism from a
+> misreading, and it is dropped. This is an ordinary type.** Repo
+> `C:\Development\star-system-explorer-v2\star-system-generator`, branch `beta` (fetch the tip; several streams
+> push daily). Work in your OWN worktree (`git worktree add ../sse2-contactbinary -b wt/contactbinary
+> origin/beta`); the main checkout is shared. Commit as **FrunkQ <frunk@frunk.net>**, never ac@epsis.com.
+>
+> **READ FIRST.** `CLAUDE.md`; the STANDING RULES at the foot of `docs/dev/observations-inbox.md` - FLEXIBLE
+> SYSTEMS OVER POINT SOLUTIONS and PHYSICS DRIVES TAGS DRIVES VISUALS are the two that shape this; the [[G90]]
+> row, including the owner's correction, which is the authority on scope; `docs/dev/engine-map.md` grepped for
+> your territory, and `classifierSeam.spec.ts` before you touch a fingerprint.
+>
+> **THE OWNER, corrected:** *"Authored means put there by a user rather than generated. BOTH are fine! Both are
+> needed. I thought this would simply be adding a new type of small thing alongside the other 5? They are likely
+> to be rubbly to join together like this - but maybe we can have a couple of types if that reflects reality."*
+>
+> **THE ONE REAL CONSTRAINT, measured.** Fingerprints match a FEATURE MAP built in
+> `core/SystemProcessor.ts:1375-1382` - `makeup.*`, `porosity`, `mass_Me` and friends. **Being two lobes is a
+> fact about shape and history that no derived quantity carries**, so there is nothing there to match on today,
+> and a type the classifier cannot re-derive is LOST on the next reprocess. So the type needs a body fact
+> underneath it. That is the whole job and it is small.
+>
+> **THE SHAPE OF THE ANSWER, and take it as a strong recommendation rather than an instruction - if measuring
+> says otherwise, say so and do the better thing:**
+> - **A body property** a GM can author and the generator can set (name it as the codebase would).
+> - **One line in the feature map** beside `porosity`, so a fingerprint can match it.
+> - **A MODIFIER fingerprint**, not a base - because `asteroid/rubble-pile` is already a modifier that stacks,
+>   and stacking answers the owner's "a couple of types" without a second type: **comet + contact-binary is
+>   67P**, the bilobate nucleus Rosetta photographed; **rubble-pile + contact-binary is Arrokoth**. Match it on
+>   the new fact plus the population it really comes from - small, porous, rubbly - because these form by gentle
+>   low-velocity mergers, which is the owner's own instinct and it is correct.
+> - **A bilobate branch in `catalogue/smallBodyShape.ts:17 smallBodyOutline`.**
+>
+> **THE JOBS, in order, each its own commit and push:**
+> 1. **The body fact and its feature line**, with the classifier seam proven: a body carrying it keeps its class
+>    across a reprocess, and one without it never gains the class. Nothing visual yet.
+> 2. **The modifier fingerprint**, stacking correctly on both a comet and a rubble pile, and never on something
+>    absurd. Check `classification.audit.spec.ts` still passes - it audits fingerprint overlap.
+> 3. **The silhouette, the part worth doing well.** Two lobe centres and a neck in `smallBodyOutline`, still
+>    seeded from the body id so a rock keeps its shape everywhere it appears, still ONE closed path - because
+>    `PlanetDisc.svelte:53` and `CompositionCrossSection.svelte:39` share it and the cutaway must clip to the
+>    same outline. Vary the lobe ratio and neck width from the seed: Arrokoth's lobes are famously unequal, and
+>    one silhouette for every contact binary would look like a decal.
+> 4. **The generator**, last and modestly: a small chance for a body already in the right population. The owner
+>    asked for authoring first, so this must not distort what systems normally contain - measure the before and
+>    after counts and say what moved.
+> 5. **The image, ONLY if the owner has supplied a file and a credit line.** Do NOT download one: the reworked
+>    Arrokoth composite is a derivative whose licence is his to check, and `io/attributions.ts` writes a credit
+>    into every save and bundle. Without it, ship with no image - `asteroid/rubble-pile` has none and that is
+>    the precedent.
+>
+> **GATES, red-first:** the class survives a reprocess (the seam) and is never assigned without the fact; the
+> modifier stacks on comet AND on rubble-pile; the outline is one closed path with its lobe count and bounding
+> box asserted NUMERICALLY, not "looks lobed"; the same id gives the same path twice; and
+> `CompositionCrossSection` clips to the identical path, which is the regression that matters.
+>
+> **THE 3D HALF IS IN SCOPE, AND IT IS [[G91]].** It was raised and the owner answered the same day: *"'lumpy'
+> 3d/2d models are the best - the 2d on GM screen was quite good - I just think we miss the 3d render path."*
+> He is right, and it is measured: `holo/bodyLook.ts:340` builds a plain `SphereGeometry` for every body and
+> nothing displaces it, so the same asteroid is a convincing potato on its card and a billiard ball in the holo.
+>
+> **Job 3b, and take it with job 3 because they are one design:** displace that sphere for small bodies.
+> `buildBodyLook` is the single assembly for the holo, the gallery AND the size comparison (engine map
+> RENDER-S53), so one change reaches all three. **Both views must sample ONE seeded shape source** - the 2D
+> outline is already a seeded radial function of one angle, the 3D lump is the same idea over two - so that a
+> body's silhouette and its solid are the same rock seen twice. Build the shared source first, then let
+> `smallBodyOutline` and the mesh both read it; shipping them apart gives a GM a card and a holo showing
+> plainly different objects, which is the fault this codebase keeps recording.
+> **Watch the cost:** the sphere is 32x24 segments (16x10 low-poly, `bodyLook.ts:224-225`), small bodies are the
+> most numerous things in a system, and the frame-rate guard ([[G69]]) will shed what you overspend. Measure a
+> busy map before and after, honour Low Power ([[G80]]/[[G83]]), and say what it cost.
+>
+> **TRAPS:** CRLF everywhere (measure each file's own ending, Python bytes, never `sed -i` on MSYS); `npm run
+> manifest` after every version bump; the two `tests/` fixtures are a baseline and a new body fact may well move
+> them - commit them with the change and read the diff as the record; the stash stack is shared - WIP commits,
+> never bare stash/pop; claim ids in both forms; B99's rarity-dial spec is a known statistical flake.
+>
+> **EYEBALL FOR THE OWNER:** author a contact binary and look at it on the 2D orrery, on its info card and in a
+> composition cross-section - two lobes joined, and the cutaway meeting its edge. Then open a comet and a rubble
+> pile and confirm the modifier reads sensibly on both.
+>
+> **Housekeeping:** as Stream Q's, word for word.

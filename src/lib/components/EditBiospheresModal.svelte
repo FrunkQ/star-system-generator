@@ -22,6 +22,15 @@
 
   const dispatch = createEventDispatcher();
 
+  // THE SHIPPED PACK, NEVER THE EFFECTIVE ONE, and this is load-bearing in both directions.
+  //
+  // `rulePack` is what a delta is laid OVER on the way in and diffed AGAINST on the way out, so it
+  // has to be the pack WITHOUT this campaign's overrides. It used to be handed
+  // `effectiveRulePack ?? selectedRulepack`, which had them already applied - so the base and the
+  // edited list were the same list, `makeListDelta` found no difference, it returned `undefined`,
+  // and `applyStarmapOverrides` took that for "no override at all" and DELETED the key. Opening this
+  // dialog and pressing Save with no edits wiped every morphology, pigment and pigment-model
+  // customisation the campaign had. Pinned by `EditBiospheresModal.base.spec.ts`.
   const baseList: MorphologyDef[] = allMorphologies(rulePack);
   const baseByKey: Record<string, MorphologyDef> = {};
   let morphs: MorphologyDef[] = [];

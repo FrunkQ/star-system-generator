@@ -5,11 +5,31 @@ import {
   parseCloudDeckValue, condensateTint, DEFAULT_CONDENSATE_DISTANCE, cloudDeckTags, CLOUD_DECK_TAG, PRECIPITATION_TAG, LIGHTNING_TAG
 } from './cloudDecks';
 import type { CelestialBody, RulePack, Tag } from '$lib/types';
+import { applyListDelta } from '$lib/rulepackDelta';
+import { allLiquids } from '$lib/physics/liquids';
 
 // The REAL default data — these fixtures pin the shipped behaviour of the shipped numbers, per
 // docs/dev/cloud-decks-design.md. If a data edit breaks an archetype, that is the signal.
 const gasPhysics = JSON.parse(readFileSync('static/rulepacks/starter-sf/atmospheres.json', 'utf8')).gasPhysics;
 const pack = { gasPhysics } as unknown as RulePack;
+
+// THE SCIENCE-FICTION MAP'S OWN DEFINITIONS, merged the way the app merges them (D25).
+//
+// Astrophage and Taumoeba are inventions of Project Hail Mary. They used to sit in the DEFAULT rule
+// pack, which is why a bare `{ gasPhysics }` was enough to derive Adrian's air - and which is also
+// why a real-sky import of a real star could be handed a fictional gas. They now ride on the
+// bundled science-fiction starmap as `rulePackOverrides`, exactly as a GM's own invented gas rides
+// on their campaign, so THIS is what a pack looks like with that map loaded.
+//
+// The test is better for it: it no longer assumes the fiction is everywhere, it PROVES the carrier
+// works. If the override path ever breaks, Adrian loses his clouds here first.
+const sciFiOverrides = JSON.parse(
+  readFileSync('static/example-starmaps/Local_Neighbourhood_SciFi-Starmap.json', 'utf8')
+).rulePackOverrides;
+const fictionPack = {
+  gasPhysics: { ...gasPhysics, ...sciFiOverrides.gasPhysics },
+  liquids: applyListDelta(allLiquids(null), sciFiOverrides.liquids, (l: any) => l.name)
+} as unknown as RulePack;
 
 const world = (over: Partial<CelestialBody>) => ({
   id: 'w', roleHint: 'planet', tags: [], ...over
@@ -404,24 +424,24 @@ describe('ADRIAN: two living blooms, layered', () => {
   });
 
   it('both blooms condense, and nothing else does', () => {
-    expect(species(deriveCloudDecks(adrian(), pack)).sort())
+    expect(species(deriveCloudDecks(adrian(), fictionPack)).sort())
       .toEqual(['astrophage-bloom', 'taumoeba-bloom']);
   });
 
   it('the green is the BASE and the red sits above it', () => {
-    const decks = deriveCloudDecks(adrian(), pack);   // deepest first
+    const decks = deriveCloudDecks(adrian(), fictionPack);   // deepest first
     const tau = decks.find((d) => d.species === 'taumoeba-bloom')!;
     const ast = decks.find((d) => d.species === 'astrophage-bloom')!;
     expect(tau.baseBar!).toBeGreaterThan(ast.baseBar!);   // taumoeba condenses deeper
     expect(decks[0].species).toBe('taumoeba-bloom');      // …so it is painted first
     // The RENDERER re-derives the same order from boilK alone (it only has the tags), so the two
     // must agree or the picture contradicts the physics.
-    const rendered = decksFromTags(cloudDeckTags(decks), pack).map((d) => d.species);
+    const rendered = decksFromTags(cloudDeckTags(decks), fictionPack).map((d) => d.species);
     expect(rendered).toEqual(['taumoeba-bloom', 'astrophage-bloom']);
   });
 
   it('lots of green, a little red — you can still see the ground', () => {
-    const decks = deriveCloudDecks(adrian(), pack);
+    const decks = deriveCloudDecks(adrian(), fictionPack);
     const tau = decks.find((d) => d.species === 'taumoeba-bloom')!;
     const ast = decks.find((d) => d.species === 'astrophage-bloom')!;
     expect(tau.bucket).toBe('overcast');            // substantial, but not a veil
@@ -431,7 +451,7 @@ describe('ADRIAN: two living blooms, layered', () => {
   });
 
   it('neither reaches the ground — both are virga over a supercritical surface', () => {
-    for (const d of deriveCloudDecks(adrian(), pack)) {
+    for (const d of deriveCloudDecks(adrian(), fictionPack)) {
       expect(d.precip).toBe('virga');
       expect(d.baseBar!).toBeLessThan(1);           // high above the 8 bar surface
     }
@@ -442,7 +462,7 @@ describe('ADRIAN: two living blooms, layered', () => {
       massKg: 2.347e25, radiusKm: 9219, equilibriumTempK: 304.4, temperatureK: 641.2,
       atmosphere: { main: 'CO2', pressure_bar: 8, composition: { CO2: 0.91, N2: 0.08, Ar: 0.01 } } as any
     });
-    expect(deriveCloudDecks(bare, pack)).toEqual([]);
+    expect(deriveCloudDecks(bare, fictionPack)).toEqual([]);
   });
 });
 

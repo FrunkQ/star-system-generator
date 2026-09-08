@@ -217,6 +217,46 @@ function seedSum(id: unknown, mul = 1, mod = 997): number {
  * `radius` is the RENDERED radius and this function never questions it: true scale, readable scale
  * and the gallery's one-size-fits-all tile are all legitimate answers arrived at elsewhere.
  */
+/**
+ * ONE GPU TEXTURE PER CACHED CANVAS, shared by every body and every surface, and NEVER disposed by a
+ * body teardown.
+ *
+ * THE FAULT THIS FIXES, reported by the owner on a tired browser, 2026-09-08: *"the wireframe keeps
+ * appearing as I scroll - it never appears replaced or everything is being retextured on the fly.
+ * Rather than cached"*. He was right, and the caching was only half done. `planetTexture` caches the
+ * expensive part - the PIXELS, drawn into a canvas - but every rebuild then wrapped that canvas in a
+ * NEW `THREE.CanvasTexture` and the teardown disposed it. The size comparison builds a body when it
+ * enters the window and destroys it when it leaves, so SCROLLING alone was re-uploading a 1024x512
+ * texture per body, over and over.
+ *
+ * WHY IT IS SO EXPENSIVE ON THE MACHINE THAT REPORTED IT, and why this is the same story as [[C20]]:
+ * that browser has fallen back to SOFTWARE rendering, so a texture upload is not a DMA to a graphics
+ * card - it is the CPU converting and copying half a megapixel, on the main thread, per texture per
+ * rebuild. The pixels were cached; the upload was not, and the upload was the bill.
+ *
+ * A canvas is only ever used one way (an equirect surface, or an emissive), so one map keyed on the
+ * canvas is enough and the sampler settings below are always the right ones for it. ANISOTROPY takes
+ * the highest anyone has asked for rather than the last, because a shared texture must not get worse
+ * because a cheaper surface was built after an expensive one.
+ *
+ * A WeakMap, so a canvas the texture cache has evicted takes its GPU texture with it.
+ */
+const sharedTextures = new WeakMap<HTMLCanvasElement, THREE.CanvasTexture>();
+
+/** A texture marked `sharedTexture` must never be disposed by whoever happens to be tearing down. */
+function sharedTexture(canvas: HTMLCanvasElement, wrap: boolean, anisotropy?: number): THREE.CanvasTexture {
+	let t = sharedTextures.get(canvas);
+	if (!t) {
+		t = new THREE.CanvasTexture(canvas);
+		t.colorSpace = THREE.SRGBColorSpace;
+		if (wrap) t.wrapS = THREE.RepeatWrapping;   // wrap the longitude seam so u=0/u=1 blend
+		(t as any).sharedTexture = true;
+		sharedTextures.set(canvas, t);
+	}
+	if (anisotropy && anisotropy > t.anisotropy) t.anisotropy = anisotropy;
+	return t;
+}
+
 export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions): BodyLook {
   const style: RenderStyle = opts.renderStyle ?? 'filled';
   const bodyStyle = opts.bodyStyle ?? 'textured';
@@ -312,12 +352,9 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
   } else {
     const texCanvas = getPlanetTextureEquirect(node); // true-colour procedural surface
     if (texCanvas) {
-      const t = new THREE.CanvasTexture(texCanvas);
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.wrapS = THREE.RepeatWrapping;   // wrap the longitude seam so u=0/u=1 blend
-      if (opts.anisotropy) t.anisotropy = opts.anisotropy;
-      mat.map = t;
-      disposables.push(t);
+      // NOT a disposable: it is shared with every other body drawn from this canvas. See
+      // `sharedTexture` for why re-uploading it per rebuild was the bill on a software rasteriser.
+      mat.map = sharedTexture(texCanvas, true, opts.anisotropy);
     } else {
       mat.color.set(colorHex);
     }
@@ -326,12 +363,9 @@ export function buildBodyLook(node: any, radius: number, opts: BodyLookOptions):
     if (!useUnlit) {
       const emCanvas = getEmissiveEquirect(node);
       if (emCanvas) {
-        const et = new THREE.CanvasTexture(emCanvas);
-        et.colorSpace = THREE.SRGBColorSpace;
-        if (opts.anisotropy) et.anisotropy = opts.anisotropy;
         const sm = mat as THREE.MeshStandardMaterial;
-        sm.emissiveMap = et; sm.emissive = new THREE.Color(0xffffff); sm.emissiveIntensity = 1.15;
-        disposables.push(et);
+        sm.emissiveMap = sharedTexture(emCanvas, false, opts.anisotropy);   // shared; never disposed here
+        sm.emissive = new THREE.Color(0xffffff); sm.emissiveIntensity = 1.15;
       }
     }
   }

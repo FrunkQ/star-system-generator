@@ -9,7 +9,7 @@
   // refuses to invent or overwrite, and this dialogue is where that shows.
   import { createEventDispatcher } from 'svelte';
   import { REGION_PRESETS } from '$lib/import/realsky/presets.mjs';
-  import { loadArchiveRows, loadStarRows } from '$lib/import/realsky/catalogue.mjs';
+  import { loadArchiveRows, loadStarRows, loadStarSizes, loadContainerComponents } from '$lib/import/realsky/catalogue.mjs';
   import { convertRegion } from '$lib/import/realsky/convert.mjs';
   import { runTap, simbadResolveAdql, simbadSearchAdql, simbadComponentsAdql, SUGGEST_LIMIT } from '$lib/import/realsky/query.mjs';
   import { toAsciiQuery, displayStarName, designationFor, toCatalogueTerm } from '$lib/import/realsky/starNames.mjs';
@@ -47,6 +47,12 @@
   // confirmed planet arrives like any other. `rows` is still the archive; `starRows` is the census.
   export let rulePack: any = null;
   let starRows: any[] | null = null;
+  // D29: what the catalogue measures about each star's SIZE, keyed by SIMBAD identifier. Pure
+  // enrichment - a failed or slow size fetch leaves every star on its class band, exactly as before.
+  let starSizes: Map<string, any> | null = null;
+  // Said out loud rather than swallowed: an import of our own neighbourhood without Sol in it is a
+  // thing the GM must be told about (D18).
+  let solWarning: string | null = null;
   let solPreset: any = null;
 
   let rows: any[] | null = null;
@@ -92,7 +98,8 @@
         region: region(),
         mapCentrePx: mode === 'append' ? anchorPx : DEFAULT_MAP_CENTRE_PX,
         existingSystemIds: existingSystems.map((s) => s.id),
-        generated: new Date().toISOString().slice(0, 10)
+        generated: new Date().toISOString().slice(0, 10),
+        starSizes
       }
     );
     announceRadius();
@@ -115,16 +122,39 @@
       const wide = { centre: c, radiusLy: Math.max(r, 41) };
       // The STAR census is the primary query now; the archive is the enrichment join. Both are
       // fetched at the max slider radius so a slider move never refetches.
-      const [starResult, result] = await Promise.all([loadStarRows(wide), loadArchiveRows(wide)]);
-      starRows = starResult.rows;
+      // D29: the sizes ride along with the census in the same round of requests, at the same wide
+      // radius, so a slider move never refetches them either. `loadStarSizes` swallows its own
+      // failures and returns an empty map, because a missing size is a less good star rather than a
+      // failed import - it must never be the reason an import does not happen.
+      const [starResult, result, sizeResult] = await Promise.all([
+        loadStarRows(wide), loadArchiveRows(wide), loadStarSizes(wide)
+      ]);
+      starSizes = sizeResult.sizes;
       rows = result.rows;
+      // D29: a multiple-star container whose members the census could not return - because they have
+      // no parallax of their own - gets them fetched from SIMBAD's hierarchy and appended here. The
+      // census then drops the container by itself, because its components are now present. Luhman 16
+      // is the case: one row typed L7.5+T0.5 becomes the pair it has always been.
+      const componentResult = await loadContainerComponents(starResult.rows);
+      starRows = [...starResult.rows, ...componentResult.rows];
       // Sol is not in an exoplanet archive - our planets are not exoplanets - and must never be
       // handed an invented system, so it comes from the shipped preset when the region reaches it.
       if (!solPreset) {
-        try { solPreset = await (await fetch('/examples/Sol_2030-System.json')).json(); } catch { solPreset = null; }
+        // D18/D29: Sol is not in a STAR catalogue either - it has no parallax, because it is what
+        // parallax is measured FROM - so no census query can ever return it and it comes from the
+        // shipped preset instead. THE FAILURE USED TO BE SILENT: if this fetch failed, a
+        // "Local Neighbourhood" import simply had no Sol in it and said nothing, which is DATA-R4's
+        // own habit (a silently short import reads as a complete survey).
+        try {
+          solPreset = await (await fetch('/examples/Sol_2030-System.json')).json();
+          solWarning = null;
+        } catch {
+          solPreset = null;
+          solWarning = 'Sol could not be loaded, so this import will not contain it. Sol is not in any star catalogue - it is the point the others are measured from - so it comes from a shipped file rather than the sky.';
+        }
       }
       source = result.source;
-      sourceWarning = starResult.warning ?? result.warning;
+      sourceWarning = starResult.warning ?? solWarning ?? sizeResult.warning ?? result.warning;
       rowsCentreKey = centreKey(c);
       refreshPreview();
     } catch (e) {
@@ -302,7 +332,7 @@
       { starRows: starRows ?? [], planetRows: rows, solPreset, statTemplates: rulePack?.statTemplates ?? null },
       {
         region: { centre, radiusLy: r }, mapCentrePx,
-        existingSystemIds: existingSystems.map((s) => s.id), generated: 'count'
+        existingSystemIds: existingSystems.map((s) => s.id), generated: 'count', starSizes
       }
     );
     return out.systems.length;

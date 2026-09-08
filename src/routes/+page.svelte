@@ -15,6 +15,7 @@
   import { validateStarmap, generateId } from '$lib/utils';
   import { broadcastService } from '$lib/broadcast';
   import { mintBroadcastId } from '$lib/broadcastId';
+  import { blockedJoinerAdvice, loadStoredIce, primeManagedIce } from '$lib/iceConfig';
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
   import { computePlayerStarmapSnapshot } from '$lib/system/utils';
   import { starmapUiStore } from '$lib/starmapUiStore';
@@ -63,6 +64,8 @@
   import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditBiospheresModal from '$lib/components/EditBiospheresModal.svelte';
   import { applyListDelta } from '$lib/rulepackDelta';
+  import { buildEffectiveRulePack } from '$lib/rulepack/effectivePack';
+  import { allLiquids } from '$lib/physics/liquids';
   import { allMorphologies } from '$lib/physics/vegetation';
   import { allPigments, pigmentModel } from '$lib/physics/pigments';
   import EditSensorsModal from '$lib/components/EditSensorsModal.svelte';
@@ -70,7 +73,7 @@
   import AboutModal from '$lib/components/AboutModal.svelte';
   import HelpMenuModal from '$lib/components/HelpMenuModal.svelte';
   import WelcomeModal from '$lib/components/WelcomeModal.svelte';
-  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, defaultCampaignStartSeconds } from '$lib/temporal/defaults';
+  import { createAnchoredTemporalState, ensureTemporalState, loadTemporalRegistryConfig, defaultCampaignStartSeconds, temporalForExport } from '$lib/temporal/defaults';
   import { parseClockSeconds, resolveCalendar, unixMsToMasterSeconds } from '$lib/temporal/utre';
   import { BIG_BANG_TO_UNIX_EPOCH_T } from '$lib/temporal/utre';
   import { buildFlightUpdate } from '$lib/constructs/flightState';
@@ -86,7 +89,8 @@
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
   import { fetchHubMap, fetchHubMapFromUrl, type HubFetch } from '$lib/hub/hubClient';
   import LoadSourceModal, { FILE_ACCEPT } from '$lib/components/LoadSourceModal.svelte';
-  import { looksLikeHubClip, insertClip, addContentCredit, systemNodesFromClip, type HubClip } from '$lib/io/hubClip';
+  import { looksLikeHubClip, insertClip, addContentCredit, systemNodesFromClip, isRulesOnlyClip, type HubClip } from '$lib/io/hubClip';
+  import { mergeClipOverrides, describeMerge } from '$lib/io/clipRules';
   import { detectedClip, noteClipText } from '$lib/io/clipDetect';
   import { guessSystemAge } from '$lib/physics/systemAge';
   import { endUndoAction } from '$lib/undo/systemUndo';
@@ -163,7 +167,7 @@
   // First-run V2 welcome (shown once — returning V1 users need to know what changed).
   // Bumped with the welcome itself: anyone who dismissed the V2 one has this flag
   // already set, so a new welcome needs a new key or nobody ever sees it.
-  const WELCOME_KEY = 'sse_welcome_v3_seen';
+  const WELCOME_KEY = 'sse_welcome_v3_1_seen';
   let showWelcome = false;
   function dismissWelcome() {
     showWelcome = false;
@@ -647,67 +651,18 @@
     return globalDisplaySec;
   }
 
-  $: effectiveRulePack = (() => {
-      if (!selectedRulepack) return undefined;
-      // Deep clone to avoid mutating the original rulepack which might be cached
-      const pack = JSON.parse(JSON.stringify(selectedRulepack));
-
-      if ($starmapStore?.rulePackOverrides) {
-          const overrides = $starmapStore.rulePackOverrides;
-
-          if (overrides.fuelDefinitions && pack.fuelDefinitions) {
-              overrides.fuelDefinitions.forEach((f: any) => {
-                  const idx = pack.fuelDefinitions.entries.findIndex((d: any) => d.id === f.id);
-                  if (idx !== -1) pack.fuelDefinitions.entries[idx] = f;
-                  else pack.fuelDefinitions.entries.push(f);
-              });
-          }
-
-          if (overrides.engineDefinitions && pack.engineDefinitions) {
-              overrides.engineDefinitions.forEach((e: any) => {
-                  const idx = pack.engineDefinitions.entries.findIndex((d: any) => d.id === e.id);
-                  if (idx !== -1) pack.engineDefinitions.entries[idx] = e;
-                  else pack.engineDefinitions.entries.push(e);
-              });
-          }
-
-          if (overrides.sensorDefinitions && pack.sensorDefinitions) {
-              overrides.sensorDefinitions.forEach((s: any) => {
-                  const idx = pack.sensorDefinitions.entries.findIndex((d: any) => d.id === s.id);
-                  if (idx !== -1) pack.sensorDefinitions.entries[idx] = s;
-                  else pack.sensorDefinitions.entries.push(s);
-              });
-          }
-
-          if (overrides.gasPhysics) {
-              pack.gasPhysics = { ...pack.gasPhysics, ...overrides.gasPhysics };
-          }
-
-          if (overrides.atmosphereCompositions && pack.distributions?.['atmosphere_composition']) {
-              pack.distributions['atmosphere_composition'].entries = overrides.atmosphereCompositions;
-          }
-
-          if (overrides.liquids && overrides.liquids.length) {
-              pack.liquids = overrides.liquids;  // whole-list replace; allLiquids(pack) prefers pack.liquids
-          }
-
-          // DELTAS laid over the pack's own lists, so anything the GM never touched keeps tracking
-          // the shipped defaults. applyListDelta also accepts a whole list, which is what campaigns
-          // saved before this carry.
-          if (overrides.morphologies) {
-              pack.morphologies = applyListDelta(allMorphologies(pack), overrides.morphologies, (m) => m.key);
-          }
-          if (overrides.pigments) {
-              pack.pigments = applyListDelta(allPigments(pack), overrides.pigments, (p) => p.key);
-          }
-          if (overrides.pigmentModel) {
-              pack.pigmentModel = { ...pigmentModel(pack), ...overrides.pigmentModel };
-          }
-      }
-      return pack;
-  })();
+  // R-19: THE MERGE ITSELF NOW LIVES IN `$lib/rulepack/effectivePack`, unchanged and pinned.
+  // It moved because "does this campaign already have that definition?" cannot be answered without
+  // it, and it was unreachable from anywhere but this component - so the next caller would have
+  // written a second copy of it. See the note at the head of that module.
+  $: effectiveRulePack = buildEffectiveRulePack(selectedRulepack, $starmapStore?.rulePackOverrides);
 
   onMount(async () => {
+    // v3.1.21 - ask for the managed relay's credentials as early as this page
+    // runs, so the answer is already here by the time anything dials. Nothing
+    // else starts this request: the dialling path only ever waits for one that
+    // is already in flight.
+    void primeManagedIce();
     try {
       const starterRulepack = await fetchAndLoadRulePack('/rulepacks/starter-sf/main.json');
       rulePacks = [starterRulepack];
@@ -841,6 +796,9 @@
     const d = $detectedClip;
     if (!map || !d || !selectedRulepack) return;
 
+    // R-19: rules and nothing else - there is no system in it to place, so it merges and reports.
+    if (isRulesOnlyClip(d.clip)) { pasteRulesOnlyClip(d.clip); return; }
+
     const built = systemNodesFromClip(d.clip);
     if (!built.ok) { clipNotice = built.problem; return; }
 
@@ -863,7 +821,11 @@
       rulePackVersion: (selectedRulepack as any).version ?? '',
       tags: []
     };
-    const processed = systemProcessor.process(system, selectedRulepack);
+    // R-19, and BEFORE `process`: the classifier and every derived quantity read the effective pack,
+    // so a body whose hydrosphere names a custom liquid has to be processed against a pack that
+    // already knows it. Merging afterwards would leave the first pass wrong.
+    const rules = mergeClipRules(d.clip, map, built.nodes);
+    const processed = systemProcessor.process(system, buildEffectiveRulePack(selectedRulepack, rules.overrides) ?? selectedRulepack);
     const displayTimeSec = parseClockSeconds(map.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
     const node: any = { id, name: system.name, position: at, system: processed, time: { displayTimeSec } };
 
@@ -872,14 +834,51 @@
       // R-16 again: the credit goes on the CAMPAIGN. A system pasted from somebody's map earns its
       // attribution exactly as a branch pasted into one does - this was the easiest place in the
       // whole feature for a credit to quietly evaporate.
-      let next: any = { ...m, systems: [...m.systems, node] };
+      let next: any = { ...m, systems: [...m.systems, node], rulePackOverrides: rules.overrides };
       next = addContentCredit(next, built.credit);
       for (const c of built.carried) next = addContentCredit(next, c);
       return next;
     });
 
     const who = built.credit?.creator ? ` (credited to ${built.credit.creator})` : '';
-    clipNotice = `Pasted ${built.count} object${built.count === 1 ? '' : 's'} as a new system, ${system.name}${who}.`;
+    clipNotice = `Pasted ${built.count} object${built.count === 1 ? '' : 's'} as a new system, ${system.name}${who}.${rules.note ? ' ' + rules.note : ''}`;
+    if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+    clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
+  }
+
+  /**
+   * R-19: THE RULES A CLIP BRINGS, FOLDED INTO THIS CAMPAIGN - one door for all three paste paths.
+   *
+   * It returns the SENTENCE and mutates nothing but the pasted nodes, which are already private
+   * copies by this point. The campaign write happens in the caller's own `starmapStore.update`, so a
+   * paste is still one store transaction and a refusal still leaves the map exactly as it was.
+   *
+   * NOT through `applyStarmapOverrides`: that is a shallow section-level spread, and an incoming
+   * `liquids` would replace the GM's entire liquids override rather than joining it. The merge is
+   * per DEFINITION.
+   */
+  function mergeClipRules(clip: any, map: any, nodes: any[] | undefined): { overrides: any; note: string } {
+    const merged = mergeClipOverrides(
+      clip?.rulePackOverrides,
+      map?.rulePackOverrides,
+      selectedRulepack,
+      { sourceLabel: clip?.source?.title, nodes }
+    );
+    return { overrides: merged.overrides, note: describeMerge(merged) };
+  }
+
+  /**
+   * R-19: A CLIP THAT IS RULES AND NOTHING ELSE - what the hub's `/rules` library puts on the
+   * clipboard. There is no body to place and no host to place it on, so it does not reach either of
+   * the node paste paths; it merges into the campaign and reports.
+   */
+  function pasteRulesOnlyClip(clip: any): void {
+    const map = $starmapStore;
+    if (!map) return;
+    const { overrides, note } = mergeClipRules(clip, map, undefined);
+    starmapStore.update((m) => (m ? ({ ...m, rulePackOverrides: overrides }) : m));
+    clipNotice = note || 'That clip carries rules this campaign already has — nothing to add.';
+    closeClipPaste();
     if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
     clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
   }
@@ -899,12 +898,17 @@
   function pasteClipInto({ clip, systemId, hostId }: { clip: any; systemId: string; hostId: string }) {
     const map = $starmapStore;
     if (!map) return;
+    // R-19: rules go on the CAMPAIGN, not into a system - there is no object here to place.
+    if (isRulesOnlyClip(clip)) { pasteRulesOnlyClip(clip); return; }
     const entry = map.systems.find((s: any) => (s.system?.id ?? s.id) === systemId);
     if (!entry?.system) { closeClipPaste(); return; }
 
     // A deep clone first: nothing is written into the live campaign until the insert has succeeded,
     // so a refusal leaves the map exactly as it was.
     const working = JSON.parse(JSON.stringify(entry.system));
+    // The ids present BEFORE the insert, so the nodes that arrived can be named exactly. Matching on
+    // the minted `hub-` prefix would also catch everything pasted in earlier sessions.
+    const idsBefore = new Set(working.nodes.map((n: any) => n.id));
     const result = insertClip(working, clip, hostId, playerClockMs());
     if (!result.ok) {
       clipNotice = result.problem;
@@ -912,7 +916,15 @@
       return;
     }
 
-    const processed = systemProcessor.process(working, selectedRulepack!);
+    // R-19: the rules the pasted branch needs, folded in BEFORE the system is processed - the
+    // classifier and every derived quantity read the effective pack, so merging afterwards would
+    // process the branch against a pack that does not yet know its liquid. The nodes are the
+    // freshly-inserted copies, so a rename repoints THOSE and never the clip or anything else.
+    const insertedNodes = working.nodes.filter((n: any) => !idsBefore.has(n.id));
+    const rules = mergeClipRules(clip, $starmapStore, insertedNodes);
+
+    // Processed against the pack the campaign will HAVE once the clip's rules are in it.
+    const processed = systemProcessor.process(working, buildEffectiveRulePack(selectedRulepack, rules.overrides) ?? selectedRulepack!);
     starmapStore.update((m) => {
       if (!m) return m;
       const systems = m.systems.map((s: any) =>
@@ -921,7 +933,7 @@
       // R-16: the credit goes on the CAMPAIGN, not the node - nodes get renamed and deleted.
       // `carried` is an INTERNAL copy's baggage: a body pasted in from somebody's map keeps its
       // attribution when it is copied on, so the campaign's credits stay true to what is in it.
-      let next: any = addContentCredit({ ...m, systems }, result.credit);
+      let next: any = addContentCredit({ ...m, systems, rulePackOverrides: rules.overrides }, result.credit);
       for (const c of result.carried ?? []) next = addContentCredit(next, c);
       return next;
     });
@@ -934,7 +946,7 @@
     endUndoAction();
 
     const who = result.credit?.creator ? ` (credited to ${result.credit.creator})` : '';
-    clipNotice = `Pasted ${result.count} object${result.count === 1 ? '' : 's'} into ${result.hostName}${who}.`;
+    clipNotice = `Pasted ${result.count} object${result.count === 1 ? '' : 's'} into ${result.hostName}${who}.${rules.note ? ' ' + rules.note : ''}`;
     closeClipPaste();
     if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
     clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
@@ -1297,6 +1309,8 @@
 
   let remoteNotice: string | null = null;
   let remoteNoticeTimer: ReturnType<typeof setTimeout> | null = null;
+  // One notice per joiner, not one per retry: a blocked player's client redials.
+  const blockedJoiners = new Set<string>();
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   onDestroy(() => {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -1371,6 +1385,20 @@
         if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
         remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 8000);
       }
+    };
+    // A player reached the broker and then their network refused to carry the
+    // connection. THEY cannot fix it — the relay travels in the link they opened — so
+    // the one person who can act has to be told, and told which of the two fixes
+    // applies. This notice does NOT time out: it is the answer to "I can't get in",
+    // and it should still be on screen when the GM comes looking for it.
+    broadcastService.onPeerBlocked = (peerId) => {
+      if (blockedJoiners.has(peerId)) return;
+      blockedJoiners.add(peerId);
+      const advice = blockedJoinerAdvice((loadStoredIce() ?? []).length > 0);
+      remoteNotice = advice === 'add-relay'
+        ? 'A player could not connect — their network would not carry it. Add a relay under Settings > Remote players, then re-share the link or QR from Player Views.'
+        : 'A player could not connect — you have a relay set up, so their link probably pre-dates it. Re-share the link or QR from Player Views.';
+      if (remoteNoticeTimer) { clearTimeout(remoteNoticeTimer); remoteNoticeTimer = null; }
     };
     broadcastService.onRequestStarmap = (requestingId) => {
       if (requestingId && requestingId !== broadcastSessionId) return;
@@ -1624,8 +1652,22 @@
     };
   }
 
+  // G89: THE BROWSER'S OWN COPY GETS THE SAME TREATMENT AS THE FILE. B112 made an exported save carry
+  // only the calendars the GM added or altered, but it did that inside `stripStarmapForExport`, and
+  // THE AUTOSAVE DOES NOT COME THROUGH THAT FUNCTION - it persists the live campaign as it stands, so
+  // every browser copy still carried all four shipped calendars as though the GM had written them.
+  //
+  // Owner, 2026-09-08: "the default pack is what everyone gets... but if the user defines or tweaks
+  // the existing calendar settings it is saved in their file and reused on load." That is the same
+  // rule D25 applies to gases and engines, and the clock is the third instance of it.
+  //
+  // ONLY the temporal registry is pruned here, NOT the derived physics `stripStarmapForExport` also
+  // removes: this copy is the live campaign being restored, not a document being handed to somebody.
+  // Safe because `ensureTemporalState` merges the shipped set back on load, and `onMount` loads the
+  // calendar library BEFORE it restores a campaign - so the defaults are always there to merge.
   function enqueueStarmapPersist(starmap: StarmapType) {
-    starmapPersist.enqueue(starmap);
+    const temporal = temporalForExport(starmap.temporal);
+    starmapPersist.enqueue(temporal === starmap.temporal ? starmap : { ...starmap, temporal });
   }
 
   async function persistStarmap(starmap: StarmapType) {
@@ -2699,6 +2741,7 @@
         on:allships={() => showAllShips = true}
         on:routes={() => showRoutes = true}
         on:about={() => showAbout = true}
+        on:whatsnew={() => (showWelcome = true)}
         on:help={() => showHelpMenu = true}
         on:playerviews={() => showPlayerPresets = true}
         on:interstellar={(e) => { interstellarShipId = e.detail?.shipId || ''; showInterstellarModal = true; }}
@@ -2739,6 +2782,7 @@
       on:allships={() => showAllShips = true}
       on:routes={() => showRoutes = true}
       on:about={() => showAbout = true}
+      on:whatsnew={() => (showWelcome = true)}
       on:help={() => showHelpMenu = true}
       on:updatestarmap={(e) => starmapStore.set(e.detail)}
       {selectedSystemForLink}
@@ -2784,6 +2828,7 @@
       on:llm={() => { settingsReturnSection = 'system'; showLlmSettingsModal = true; }}
       on:diagnostics={buildDiagnosticsOnDemand}
       on:about={() => showAbout = true}
+      on:whatsnew={() => (showWelcome = true)}
     />
   {/if}
   {#if showTagEditor}
@@ -2801,7 +2846,7 @@
     <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
   {/if}
   {#if showBiospheresModal && $starmapStore && selectedRulepack}
-    <EditBiospheresModal showModal={showBiospheresModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />
+    <EditBiospheresModal showModal={showBiospheresModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />
   {/if}
   {#if showLiquidsModal && $starmapStore && selectedRulepack}
     <EditLiquidsModal showModal={showLiquidsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showLiquidsModal = false; returnToSettings(); }} />

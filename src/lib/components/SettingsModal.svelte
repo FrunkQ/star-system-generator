@@ -13,20 +13,32 @@
   // A45: the one list, filtered to what the 2D snap grid can draw — never a hand-written copy.
   import { SNAP_GRID_OPTIONS } from '$lib/map/mapOverlay';
   import { unitKind, campaignUnit, unitChangeOutcomes, UNIT_SHORT, type UnitChangeMode } from '$lib/map/distanceUnits';
-  import { tagCategories, tagRulesEnabled, setCategoryEnabled } from '$lib/tags/tagCategories';
+  import { tagCategories, tagRulesEnabled, setCategoryEnabled, isLockedCategory } from '$lib/tags/tagCategories';
   import { clearAllData } from '$lib/starmapStorage';
   import { memoryReading, formatMB, MEMORY_WARN_FRAC } from '$lib/memoryWatch';
   import { browser } from '$app/environment';
   import { APP_VERSION } from '$lib/constants';
   import { broadcastService, type PeerLink } from '$lib/broadcast';
   import { transferReportText, linkSummary } from '$lib/transferReport';
-  import { loadStoredIce, saveStoredIce, parseIceText, iceToText } from '$lib/iceConfig';
+  import { loadStoredIce, saveStoredIce, parseIceText, iceToText, testIceServers,
+    managedIceUrl, managedRelayEnabled, setManagedRelayEnabled } from '$lib/iceConfig';
   import { foreground } from '$lib/ui/foreground';
   // G16: the picture behind the stars. Campaign content, so it saves with the rest of this dialog.
   import MapBackgroundControls from './MapBackgroundControls.svelte';
   import type { MapBackground } from '../types';
   import { normaliseMapBackground } from '$lib/map/mapBackground';
   import { BUILTIN_ASSETS } from '$lib/player/presets';
+
+  // v3.1.17 - the managed relay. `hasManagedRelay` is false until an endpoint
+  // is configured, and a switch for something that is not there is worse than
+  // no switch, so the whole row stays hidden until then.
+  let hasManagedRelay = false;
+  let useManagedRelay = true;
+  onMount(() => { hasManagedRelay = !!managedIceUrl(); useManagedRelay = managedRelayEnabled(); });
+  function toggleManagedRelay(e: Event) {
+    useManagedRelay = (e.currentTarget as HTMLInputElement).checked;
+    setManagedRelayEnabled(useManagedRelay);
+  }
 
   // BYO STUN/TURN for remote players (docs/dev/vtt-integration-design.md 11).
   let iceText = '';
@@ -38,9 +50,31 @@
     iceText = iceToText(servers);
     iceStatus = summariseIce();
   }
+  // Five seconds now, instead of a player who cannot join mid-session. A relay
+  // candidate is proof the TURN server is reachable AND its credentials work,
+  // which is the only thing that actually rescues a locked-down network.
+  let iceTesting = false;
+  let iceTestResult = '';
+  async function testIce() {
+    iceTesting = true;
+    iceTestResult = '';
+    try {
+      const r = await testIceServers(parseIceText(iceText));
+      iceTestResult = r.error
+        ? `Could not test: ${r.error}`
+        : r.relay
+          ? 'Relay working - a player on a locked-down network can get through. Re-share your link or QR so it carries this.'
+          : r.srflx
+            ? 'No relay. The servers answered, but none handed back a relay candidate - check the TURN username and password, and that the address is a turn: or turns: URL. Players on restrictive networks will still fail.'
+            : 'Nothing came back at all. Check the addresses, and that this machine can reach them.';
+    } finally { iceTesting = false; }
+  }
   function summariseIce(): string {
     const s = loadStoredIce();
-    if (!s || s.length === 0) return 'Using the built-in relay only. New player links will not carry a custom relay.';
+    // This used to say "using the built-in relay only", which is no longer true:
+    // the relays PeerJS ships stopped resolving, so the default really is
+    // direct-only. Measured, not assumed - see iceConfig.
+    if (!s || s.length === 0) return 'No relay configured - remote players can only connect when their network allows a direct path. There is no working fallback behind that, so add a relay here if anyone reports trouble joining.';
     const n = s.length;
     const tls = s.some((e) => (Array.isArray(e.urls) ? e.urls : [e.urls]).some((u) => /^turns:/i.test(u)));
     return `${n} custom server${n === 1 ? '' : 's'} saved${tls ? ' (includes a TLS relay - good for locked-down networks)' : ' (no turns: entry - a UDP-blocking network may still fail)'}. Re-share player links so they carry it.`;
@@ -478,17 +512,31 @@
 
           <p class="section-hint">
             Categories — tick to make one available. <strong>System</strong> categories can't be deleted because the
-            engine matches their tags by name (refuelling, mining, drives, readiness), but you can switch them off
-            and edit their tags freely.
+            engine matches their tags by name (refuelling, mining, drives, readiness). Six of them stay switched on
+            for that reason — the engine is acting on them whether or not you can see them — and their tags are still
+            yours to edit. Frontier logistics and Anomaly you can switch off.
           </p>
           <div class="form-group reason-cats">
             {#each $tagCategories as cat (cat.id)}
               <label class="cat-line" title={cat.description || ''}>
-                <input type="checkbox" checked={cat.enabled} on:change={(e) => setCategoryEnabled(cat.id, e.currentTarget.checked)} />
+                <input
+                  type="checkbox"
+                  checked={cat.enabled}
+                  disabled={isLockedCategory(cat.id)}
+                  title={isLockedCategory(cat.id)
+                    ? 'The engine acts on this category by name, so it stays available. You can still edit its tags.'
+                    : ''}
+                  on:change={(e) => setCategoryEnabled(cat.id, e.currentTarget.checked)}
+                />
                 <span class="cat-swatch" style="background:{cat.color || '#888'}"></span>
                 <span class="cat-name">
                   {cat.longName}
-                  {#if cat.system}<span class="cat-req" title="Needed by the engine — can be switched off, but not deleted">system</span>{/if}
+                  {#if cat.system}<span
+                    class="cat-req"
+                    title={isLockedCategory(cat.id)
+                      ? 'Needed by the engine — always available, and cannot be deleted. Its tags are yours to edit.'
+                      : 'Needed by the engine and cannot be deleted, but you can switch it off.'}
+                  >system</span>{/if}
                   {#if cat.playerHidden}<span class="cat-hidden" title="Hidden from players">hidden</span>{/if}
                 </span>
                 <span class="cat-count">
@@ -573,15 +621,35 @@
           <p class="section-hint">A reference for how worlds are drawn from their physics and tags — polar ice, gas-giant banding, rotational shape and more.</p>
 
           <h4 class="advanced-head">Remote players — network relay</h4>
+          {#if hasManagedRelay}
+            <div class="form-group">
+              <label class="managed-relay">
+                <input type="checkbox" checked={useManagedRelay} on:change={toggleManagedRelay} />
+                <span>Use the Star System Explorer relay when a direct connection fails</span>
+              </label>
+              <p class="section-hint">On by default. Players connect straight to you whenever they can -
+                the relay is the LAST route tried, so it only carries the players who could not connect
+                without it. It cannot read anything it carries (the connection is encrypted between the
+                two browsers), and it hides your address and theirs from each other. Switch it off to use
+                only a direct path, or your own relay below.</p>
+            </div>
+          {/if}
           <div class="form-group">
-            <p class="section-hint">Player views on other devices connect peer-to-peer. That works on home and
-              mobile networks by itself (a public relay is built in). A workplace network that blocks UDP can
-              stop it — then a relay that speaks TLS on port 443 is needed. Paste your own STUN/TURN servers
-              here, one per line as <code>turns:host:443|username|credential</code>; they are added ahead of
-              the built-in ones and ride in every player link and QR you share from now on.</p>
+            <p class="section-hint">Player views on other devices connect peer-to-peer. That works whenever
+              both networks allow a direct path — but there is no longer any fallback behind it: the free
+              public relay this used to rely on has stopped working. A network that blocks UDP, or an awkward
+              mobile carrier, then has nothing to fall back on. The cure is a relay that speaks TLS on port
+              443. Paste your own STUN/TURN servers here, one per line as
+              <code>turns:host:443|username|credential</code>; they are added ahead of the built-in ones and
+              ride in every player link and QR you share from now on.</p>
             <textarea class="ice-input" rows="3" bind:value={iceText} on:change={saveIce}
               placeholder="turns:relay.example.com:443|user|secret"></textarea>
             <p class="section-hint">{iceStatus}</p>
+            <button class="section-btn" on:click={testIce} disabled={iceTesting}
+              title="Check the relay is reachable and its credentials work">
+              {iceTesting ? 'Testing…' : 'Test these servers'}
+            </button>
+            {#if iceTestResult}<p class="section-hint">{iceTestResult}</p>{/if}
           </div>
 
           <h4 class="advanced-head">Your data</h4>
@@ -886,6 +954,8 @@
   .danger-btn { border: 1px solid var(--status-bad, #d04545) !important; color: var(--status-bad, #d04545) !important; }
   .danger-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--status-bad, #d04545) 16%, transparent) !important; }
   .danger-btn:disabled { opacity: 0.6; cursor: default; }
+  .managed-relay { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+  .managed-relay input { margin-top: 2px; flex: 0 0 auto; }
   .ice-input { width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace; background: rgba(255,255,255,0.05); color: inherit; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; padding: 6px 8px; resize: vertical; }
   .section-btn {
     display: block;

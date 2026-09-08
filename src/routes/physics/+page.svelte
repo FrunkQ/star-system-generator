@@ -658,6 +658,22 @@
         genuinely irradiates its planets far harder than a red giant does. The engine tests this by a
         star's own surface gravity and temperature rather than by its type, so it applies wherever it
         is true and nowhere else.</p>
+      <h3>A remnant does not need a corona to be dangerous &mdash; its surface already is one</h3>
+      <p>Everything above is about a <strong>corona</strong>: a magnetic dynamo heating a thin outer shell to
+        millions of kelvin above a surface that is merely thousands. That is the right model for a
+        main-sequence star and the wrong one for a compact remnant, and the difference is not a detail.
+        <strong>A neutron star's surface sits at about 600,000 K.</strong> Run that through Planck and nearly
+        all of its light is already above the hydrogen edge &mdash; 13.6&nbsp;eV, the energy it takes to strip
+        an electron off a hydrogen atom. It does not need a corona to be an ionising source. It <em>is</em>
+        one.</p>
+      <p>Asked the coronal question instead, a 600,000&nbsp;K neutron star came out at one ten-thousandth of the
+        Sun's ionising output &mdash; too low by as much as seven orders of magnitude, which is the difference
+        between a sterilising object and a harmless one. So a remnant is given <strong>the greater of the two
+        figures</strong>, the coronal one and the thermal one. That is deliberately a maximum rather than a
+        swap: it lets a hot neutron star keep its surface (a thermal fraction of 0.9992 against a coronal
+        0.0000001), while a <em>fed black hole</em> keeps the output of its accretion disc rather than having it
+        erased by a surface temperature that means nothing for a hole. A quiescent hole keeps its quiet coronal
+        figure and nothing is invented for it.</p>
       <h3>A flare has four possible sources, and only one of them is a star</h3>
       <p>Flare activity is a single 0&ndash;1 figure, and what drives it depends on what the body is.
         Treating them all alike got a quiescent black hole a B star's flare rate, and treating remnants

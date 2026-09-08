@@ -74,7 +74,10 @@ describe('R-14: a clip is read, or refused with a reason', () => {
 			['not json at all', /not JSON/i],
 			['{"hello":"world"}', /no clip marker/i],
 			['[1,2,3]', /not a copied object/i],
-			[JSON.stringify({ sseClip: 1, root: 'a', nodes: [] }), /empty/i]
+			// R-19 SHARPENED THIS ONE. `nodes: []` alone is now a legal RULES-ONLY clip, so the refusal
+			// that matters here is the contradiction: a clip that NAMES a top object and carries none.
+			[JSON.stringify({ sseClip: 1, root: 'a', nodes: [] }), /carries none of them/i],
+			[JSON.stringify({ sseClip: 1, nodes: [] }), /no objects and no rules/i]
 		] as [string, RegExp][]) {
 			const p = parseHubClip(text);
 			expect(p.ok, text).toBe(false);

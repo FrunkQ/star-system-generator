@@ -1,16 +1,45 @@
 <script lang="ts">
   // First-run welcome — shown once (localStorage flag set by the parent on close).
   //
-  // V3 welcome — RELEASE VOICE since v3.0.0. Every line was verified against the shipped build
-  // for the release and the wording is owner-trimmed; do not add lines without his word. An
-  // inaccurate welcome is worse than a plain one, so nothing here claims more than the feature
-  // currently does.
+  // STATE OF THESE FOUR, 2026-09-08 (measured, not assumed - re-measure before any production
+  // release that carries this panel). The importer's stars LANDED across v3.1.6-3.1.8 (real sizes
+  // with provenance, Sirius, Lalande, Luhman 16, the heaviest-member rule); NETWORKING landed at
+  // v3.1.12 ([[G88]] - it had been finished but sat unpushed, which is why an earlier note here
+  // called it absent); 3D on a busy browser is IN FLIGHT (C20/Stream W); and Traveller main worlds
+  // are BRIEFED and not started (G87/Stream V). **THE PANEL MUST NOT REACH PRODUCTION BEFORE ITS
+  // LINES ARE TRUE**, which is this file's own rule and the reason the list is checked rather than
+  // trusted.
+  //
+  // V3.1 welcome — RELEASE VOICE. The list below is the OWNER'S OWN release notes for 3.1, pasted
+  // whole; earlier releases had the coordinator draft and him trim, and this is the other way round.
+  // An inaccurate welcome is worse than a plain one, so nothing here claims more than the feature
+  // currently does. THE SEEN-KEY IS BUMPED WITH THE PANEL (`WELCOME_KEY` in `routes/+page.svelte`):
+  // everyone who dismissed the V3 one already has that flag set, so a new welcome that keeps the old
+  // key is a welcome nobody sees.
   import { createEventDispatcher } from 'svelte';
   import { APP_VERSION } from '$lib/constants';
   import { foreground } from '$lib/ui/foreground';
   const dispatch = createEventDispatcher();
   const close = () => dispatch('close');
   const openHelp = () => dispatch('help');
+
+  // The version copy that used to sit on the rail's brand mark. It moved here when the mark became
+  // the way to reopen this panel: copying on every click would overwrite a GM's clipboard just for
+  // reading the notes, and this app watches the clipboard for pasteable content. Beside the version
+  // it already prints is where somebody writing a bug report is looking anyway. A refusal
+  // (permissions, non-secure context) says so rather than claiming a copy that did not happen.
+  let copied: 'ok' | 'fail' | null = null;
+  let copyTimer: ReturnType<typeof setTimeout> | null = null;
+  async function copyVersion() {
+    try {
+      await navigator.clipboard.writeText(`SSE v${APP_VERSION}`);
+      copied = 'ok';
+    } catch {
+      copied = 'fail';
+    }
+    if (copyTimer) clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => (copied = null), 1500);
+  }
 
   const GH = 'https://github.com/FrunkQ/star-system-generator/blob/beta';
 
@@ -32,73 +61,71 @@
   // VISIBLE BIOSPHERES SHIPPED (v2.1.652-665): vegetation is drawn on the planet, coloured by the
   // surface spectrum. It did NOT ride with the V4 generation engine after all, so its line is BACK
   // and its `pending` flag is gone. The clusters-and-galaxies removal still stands — that is V3.1.
+  // V3.1 — THE OWNER'S OWN RELEASE NOTES, 2026-09-08, pasted into the panel's shape and trimmed only
+  // for typos. His voice, his order, his jokes: do not rewrite these lines, and do not add one without
+  // his word. `pending` still means NOT FULLY LANDED and dims the line with a tag - megastructures
+  // carry his own "(Not 100% complete)".
   const features: { title: string; blurb: string; pending?: string }[] = [
-    // PLAYER VIEWS LEADS — owner, 2026-08-16: "this is the feature's BIGGEST drop and replaces 2
-    // older tools. The 3D was done to SUPPORT this — so this is the reason it exists." It had been
-    // fifth, and briefly retitled "Player views in 3D", which UNDERSOLD it: 3D is one of three
-    // presentations, not the point. The point is that you choose how your table sees the universe.
-    // It supersedes the Field Guide and the Projector (see inbox A42/A47).
-    { title: 'Player views', blurb: "The headline. Design exactly what your table sees and serve it live to their own phones, tablets and screens — as text, as a 2D map, or as the real three-dimensional system, whichever suits the moment. Redacted to what they should know, updating as you play, and dressed with filters and transitions so it reads as YOUR universe rather than as a tool. It replaces the old Field Guide and Projector outright, and everything else here exists to feed it." },
-    { title: 'A rewritten physics engine', blurb: 'What a world is made of decides everything else: density, temperature, atmosphere and cloud decks, oceans and ice, magnetism, geology, the radiation it throws out and the colour you actually see. The Newton panel shows the working.' },
-    { title: 'The light that reaches the ground', blurb: 'A star’s spectrum is filtered by the air and the cloud decks above it, so what lands on the surface is not what left the star. That light sets the colour of the land, the sea and the sky, and decides what colour the plants would be to grow under it — and the physics pages draw the curve rather than describing it.' },
-    { title: 'Life is a tag too', blurb: 'What lives on a world — microbes, fungi, plants, animals, or something that builds cities — is described the same way everything else is, and it shows on the planet: vegetation spreads inland from the coast, in a colour worked out from the light that actually reaches it. Searchable, editable, and yours to invent from.' },
-    // Reworded to sit UNDER Player views rather than beside it: the 3D view was built to serve the
-    // player view (owner, 2026-08-16), and TAG-20 records that a player's system view is the same
-    // renderer at both tiers. Saying so makes both lines honest instead of two rival headlines.
-    { title: 'The system in 3D', blurb: 'The view behind all of that: a real three-dimensional system — orbits, tilts and moons where the physics puts them, each world lit by its own star. It is the same renderer whether you are running the table or sitting at it.' },
-    // The sight-line clause is verified, not assumed: v2.1.667 derives visibility from the SAME
-    // optical depth as the surface spectrum, and lands Earth on 343 km (the clean-air Rayleigh
-    // limit) and Venus on 4 km. The owner called it "how far the players' torches reach".
-    { title: 'Stars properly classified', blurb: 'Stars carry their real classification — spectral type and luminosity class — read from size and temperature rather than from how bright they look, so a supergiant is a supergiant rather than a dwarf that shares its colour. Antares arrives as the giant it is, every type is named in plain words with a famous example, and a star whose numbers break physics is kept and labelled rather than refused.' },
-    { title: 'Weather, auroras and flares', blurb: 'Storms and lightning, aurorae where the magnetosphere allows them, stellar flares and the dose they deliver — consequences of the physics rather than decoration. The gases and liquids behind them are yours to edit.' },
-    { title: 'Your own stars in the sky', blurb: 'Your starmap becomes the night sky behind the 3D view — every system at its true direction, brightness and colour — so the constellations your players see are made of places they can fly to.' },
-    { title: 'Import the real sky', blurb: 'Build starmaps straight from the astronomy catalogues — the real stars near you at their true positions, with their confirmed planets, and plausible worlds filled in around the rest if you want them.' },
-    { title: 'Starmaps have depth', blurb: 'Systems carry a z-axis, so distances are true in three dimensions. If you prefer a flat map, everything still works exactly as it did in 2D.' },
-    { title: 'Everything is a tag', blurb: 'One tagging system throughout: the physics emits tags, you add your own, override the ones you disagree with, and choose which reach your players.' },
-    { title: '3D ships', blurb: 'Bring your own models: constructs can be shown as real 3D craft.' },
-    { title: 'Eclipse times', blurb: 'Know when a moon crosses its sun, and how long the shadow lasts.' },
-    // FLAG REVERTED 2026-08-16, owner correcting the coordinator: "every physics improvement we have
-    // tweaked the generation system to include the new stuff, so it is being background evolved."
-    // He is right and I read the claim too strictly. The line says generation has been RETUNED TO SIT
-    // BETTER INSIDE THE NEW PHYSICS, which is exactly what has been happening continuously — it does
-    // not claim the spacing is finished. B58/B59/G24 are named remaining faults, not evidence the
-    // sentence is false, and a pending tag would have understated real work. Left unflagged.
-    // UPDATE v2.1.751: B58 has LANDED — planet spacing is now mutual-Hill-radius packing scaled by
-    // the star instead of Sol's Titius-Bode sequence in absolute AU, so a red dwarf's planets sit
-    // where a red dwarf's planets belong. B59's mass half is already done. Of the three named
-    // faults only G24 remains, and only in part: the disk-mass dial was freed by B58 and measures
-    // strongly now, while METALLICITY measures inert (it reaches about one body in seventy-four)
-    // and rarity saturates above the midpoint. The wording of the line itself is the owner's call
-    // once he has eyeballed a few generated systems.
-    { title: 'Sharper generation', blurb: 'Procedural systems are retuned alongside the physics as it grows, so a generated system reflects what the engine currently knows rather than what it knew when the generator was written.' },
-    { title: 'New default starmaps', blurb: 'The bundled maps are rebuilt from real astronomy, with true 3D positions, more systems, and a science-fiction companion map.' },
-    // FLAG CLEARED 2026-08-19: G16 shipped v2.1.811-813 and the owner has seen it ("1 looks good for me").
-    { title: 'Your own map behind the stars', blurb: 'Drop in a sector map, or your empire’s borders, and pin it to the starmap so it holds its place against the stars as you pan and zoom.' },
-    // FLAG CLEARED 2026-08-18: shipped v2.1.774-783 (G28) and the owner has seen it work — every step
-    // is named ("Undo: Mass of Earth"), the campaign has its own history, the last twenty survive a
-    // reload, and nothing rides an export or a share.
-    { title: 'Undo and redo', blurb: 'Hallelujah.' },
-    { title: 'A fresh face for the GM view', blurb: 'New star types viewable. Skinnable colours, and click any unit to swap it.' },
-    // 2026-08-18, owner: "VTT integration is Mappadux working. Looking for testers for OR and Foundry."
-    // The line no longer carries a pending flag: the Mappadux half is a claim the build can make.
-    { title: 'Virtual tabletop integration', blurb: 'Mappadux — free, and built alongside this — works today: your starmap and systems on the table, live. Owlbear Rodeo and Foundry are next, and we are looking for testers: if you run either, come and tell us what breaks and what you need.' },
-    { title: 'Many improvements and fixes', blurb: 'Hundreds of smaller changes throughout — the changelog has every one, build by build.' }
+    // NOT `pending` - owner, 2026-09-08: "no need for Megastructures to be faded - its finished
+    // enough - the not 100% means we wanna add things like a Soletta." So the line stands as shipped
+    // work and names what is still coming instead of dimming what is not.
+    { title: 'Megastructures',
+      blurb: 'Space elevators, planetary rings and toruses, ringworlds, Dyson spheres and swarms, energy collectors and a battle station: placed like any other object, drawn to scale in 2D and 3D, and obeying the physics. A swarm dims its star and every world’s temperature follows. More are on their way — a soletta to warm a world you are terraforming, among others.' },
+    { title: 'Docking',
+      blurb: 'Ships dock at an elevator’s stations at low, middle and geostationary height, on a ring’s rim or a hull, and ride with the structure. The planner prices the approach, and turns a wrong-way arrival around and charges for it.' },
+    { title: 'The Explorers site',
+      blurb: 'Share a map at explorers.starsystemx.com, browse other people’s, copy any star or system from a page and paste it into your campaign with the cartographer credited automatically, and open a shared map in the app in one click. Maps you upload there show on the sharing chat here.' },
+    { title: 'Cut, copy and paste anything to anywhere',
+      blurb: 'You can even copy a system, ship or planet from the Explorers site.' },
+    { title: 'Size comparison',
+      blurb: 'Every object on your system map at true scale, side by side, ordered by size, mass, name or orbit, rings drawn to their real extent. Click anything to centre it. It is a player view option too. (Ooo-er missus!)' },
+    { title: 'Binaries that behave',
+      blurb: 'A pair orbits its shared centre properly, a binary imported from a file arrives as two stars, a body can be moved to a new host by hand, and the Lagrange points are real places ships can hold and leave from.' },
+    { title: 'Stars named properly',
+      blurb: 'Sirius reads as the A1V it is, a metallic-line star’s notation is read and kept, and a star that jets or sheds a shell now shows it inside its own system, not only on the map. A photosphere burns white at its centre and keeps its colour at the limb, as a real one does.' },
+    { title: 'Break physics on purpose',
+      blurb: 'An Overrides tab lets you set what physics would not, and labels it as an anomaly rather than pretending.' },
+    { title: 'Time on a real footing',
+      blurb: 'The calendar is grounded to a real date, and reports say honestly which moment they describe.' },
+    { title: 'A sky that is right',
+      blurb: 'Orion no longer appears mirrored, the GM view zooms out a thousand times further, and a hover on any star summarises it.' },
+    { title: 'Magnetic field visualisation',
+      blurb: 'See what makes magnetic fields and how far they extend — a GM view option and a player view setting.' },
+    { title: 'The real-sky importer keeps its stars',
+      blurb: 'Real masses and radii come through, and binary companions no longer go missing: Sirius arrives whole, Luhman 16 turns up, Epsilon Indi brings its partner. There is a control for the edge of a binary\u2019s extent too, so you decide whether a wide pair reads as two separate stars or as one binary.' },
+    { title: 'Traveller main worlds are liveable',
+      blurb: 'A main world now sits in its star\u2019s actual habitable zone rather than a fixed slot, so no more baked or frozen capitals. Worlds Traveller marks as hostile stay hostile.' },
+    { title: '3D on a busy browser',
+      blurb: 'The app asks your browser for the proper graphics chip, spots when it has quietly switched to the slow path and says so, and gives memory back when you close a 3D view.' },
+    { title: 'Better networking, here and in Mappadux',
+      blurb: 'A failed join is now caught on every browser \u2014 Firefox was missing them silently \u2014 and you are told, with the fix that applies. Settings gained a five-second relay test, so you can check your relay before a game rather than during one.' },
+    { title: 'See this message again',
+      blurb: 'Click the SSE3.1 mark in the top corner to bring this back whenever you like.' },
+    { title: 'Quieter machinery',
+      blurb: 'A memory gauge in the rail with an automatic crash save, a transit left running no longer fills memory, undo survives the clock, render-loop throttling, mild GM display customisation, a construct you export imports back, a low-power mode if this is too much for your browser, a liquid you invent reaches the gas editor, and the phone layout got its audit. Since launch: Hill spheres no longer freeze the system map, an older campaign is not nagged to upgrade unless it matters, and a belt\u2019s name stays on its belt.' }
   ];
 </script>
 
 <div class="modal-overlay" role="presentation" on:click={close} use:foreground>
-  <div class="modal-card welcome-card" role="dialog" aria-label="Welcome to Star System Explorer 3" on:click|stopPropagation>
+  <div class="modal-card welcome-card" role="dialog" aria-label="Star System Explorer 3.1 is here" on:click|stopPropagation>
     <header class="w-head">
       <div>
-        <h2>Welcome to Star System Explorer&nbsp;3</h2>
-        <p class="ver">{APP_VERSION}</p>
+        <h2>V3.1 is here</h2>
+        <button
+          class="ver"
+          type="button"
+          on:click={copyVersion}
+          title={copied === 'ok' ? 'Copied: SSE v' + APP_VERSION : copied === 'fail' ? 'Could not copy — clipboard blocked' : 'Click to copy the version, for a bug report'}
+        >{APP_VERSION}{#if copied === 'ok'}<span class="tick" aria-hidden="true"> ✓</span>{/if}</button>
       </div>
       <button class="w-close" aria-label="Close" on:click={close}>×</button>
     </header>
 
     <div class="w-body">
-      <p class="lede">V3 has arrived. Everything you already do still works and your saved starmaps
-        still load — but a great deal is new. The short version:</p>
+      <p class="lede">Welcome to
+        <a href="https://explorers.starsystemx.com/" target="_blank" rel="noopener noreferrer">explorers.starsystemx.com</a>.
+        Everything you already do still works and your saved starmaps still load, and this release is
+        about scale: bigger structures, bigger views, and a place to share it all. The short version:</p>
 
       {#if features.length}
         <ul class="feat">
@@ -113,7 +140,7 @@
           {/each}
         </ul>
       {:else}
-        <p class="placeholder">Highlights land here as V3 takes shape.</p>
+        <p class="placeholder">Highlights land here as V3.1 takes shape.</p>
       {/if}
 
       <p class="guides-line">
@@ -124,12 +151,10 @@
       </p>
 
       <div class="heads-up">
-        <p><strong>This project is community driven.</strong> V3 ships some features while they are
-        still a little raw rather than holding them back for another year — we would rather you had
-        them now, and told us what needs work. If something misbehaves, say so on
+        <p><strong>As usual this has come in pretty hot, as I use you all as my testers.</strong>
+        Have fun, and let me know about any weirdness on
         <a href="https://discord.gg/UAEq4zzjD8" target="_blank" rel="noopener noreferrer">our Discord</a> —
-        anything serious gets fixed quickly, and your reports decide what gets attention first.
-        Thank you for the enthusiasm and support that carried V3 here.</p>
+        anything serious gets fixed quickly, and your reports decide what gets attention first.</p>
         <p><strong>Keep a backup.</strong> Export anything precious before you re-save it.</p>
       </div>
     </div>
@@ -170,6 +195,17 @@
   }
   .w-close:hover { background: color-mix(in srgb, var(--status-bad, #e0484d) 30%, var(--bg-control)); }
   .placeholder { color: var(--text-faint); font-style: italic; }
+  /* The version is a BUTTON now (it copies), so it must stop looking like one: the rule above
+     keeps its size and colour, and this only strips the chrome a button brings with it. */
+  .ver {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+  .ver:hover { color: var(--accent); }
   .w-body { overflow-y: auto; padding: 14px 18px; }
   .lede { margin: 0 0 12px; color: var(--text, #e8e8e8); font-size: 0.94rem; line-height: 1.55; }
   .feat { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }

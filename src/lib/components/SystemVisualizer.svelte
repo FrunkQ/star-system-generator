@@ -31,6 +31,7 @@
            visibleTailRadii, magnetosphereReachRadii } from '$lib/physics/magnetosphere';
   import { regionOfInterest, inRegionOfInterest } from '$lib/system/regionOfInterest';
   import { scaleBoxCox } from '../physics/scaling';
+  import { drawEccentricity } from '$lib/rendering/orbitDraw';
   import { findContainingHost, orbitPathProjected } from '$lib/physics/orbits';
   import { getNodeColor, STAR_COLOR_MAP, tokenRgba } from '$lib/rendering/colors';
   import { trueColorMode } from '$lib/rendering/colorModeStore';
@@ -1712,32 +1713,22 @@
               if (!pos) continue;
               const r = drawnRadiusAu(h.id, h.rAu);
               if (!(r > 0)) continue;
-              // CULLED, WHICH THESE NEVER WERE. The zone overlay next door has skipped an off-screen
-              // circle since it was written and these did not, so every bubble in a fifty-body system
-              // was handed to the canvas whether or not any part of it could be seen. This context is
-              // world-transformed (`translate(w/2, h/2); scale(zoom)`), so the test has to be done in
-              // the screen space it lands in.
-              const sx = width / 2 + (pos.x - renderPan.x) * zoom;
-              const sy = height / 2 + (pos.y - renderPan.y) * zoom;
-              const sr = r * zoom;
-              // Planets: shaded bubble. Stars: an unshaded line only (the "[Star] Hill Limit" — labelled in
-              // screen space below), so a huge star limit doesn't wash the whole canvas in fill.
-              // A bubble is drawn only where its DISC shows; the outline only where its RING does -
-              // a circle that swallows the viewport has its boundary out past the corners.
-              const showFill = !h.isStar && !$lowPower && discVisible(sx, sy, sr, width, height, margin);
-              const showLine = ringVisible(sx, sy, sr, width, height, margin);
-              if (!showFill && !showLine) continue;
               ctx.beginPath();
               ctx.arc(pos.x - renderPan.x, pos.y - renderPan.y, r, 0, 2 * Math.PI);
-              if (showFill) {
+              // Planets: shaded bubble. Stars: an unshaded line only (the "[Star] Hill Limit" — labelled in
+              // screen space below), so a huge star limit doesn't wash the whole canvas in fill.
+              // NOT CULLED, AND THAT IS DELIBERATE FOR NOW ([[B145]]): a cull was tried in v3.0.378
+              // and reverted the same day, because it read a `margin` that does not exist in this
+              // function and every frame of the whole 2D system view threw. The cull itself is sound
+              // and is welcome back - with a margin of its own, and checked by `svelte-check` on this
+              // file before it is believed.
+              if (!h.isStar) {
                   ctx.fillStyle = 'rgba(255, 232, 130, 0.06)';
                   ctx.fill();
               }
-              if (showLine) {
-                  ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
-                  ctx.lineWidth = 1 / zoom;
-                  ctx.stroke();
-              }
+              ctx.strokeStyle = 'rgba(255, 232, 130, 0.38)';
+              ctx.lineWidth = 1 / zoom;
+              ctx.stroke();
           }
       }
       // THE CIRCUMBINARY ANNULUS (G45) — the ring a P-type body can live in around a pair.
@@ -1983,7 +1974,11 @@
               if (node.roleHint === 'belt' && node.orbit && node.parentId) {
                   const parentPos = toytownFactor > 0 ? scaledWorldPositions.get(node.parentId) : worldPositions.get(node.parentId);
                   if (!parentPos) continue;
-                  let a = node.orbit.elements.a_AU; const e = node.orbit.elements.e;
+                  let a = node.orbit.elements.a_AU;
+                  // C19: an authored e >= 1 has no apoapsis, so `a * (1 + e)` threw the label out
+                  // past the belt it names. The DRAWING borrows a closable eccentricity; the belt's
+                  // own data is untouched and the physics still says what it says.
+                  const e = drawEccentricity(node.orbit.elements.e);
                   if (toytownFactor > 0) a = scaleBoxCox(a, toytownFactor, x0_distance);
                   const apoapsisX = parentPos.x - (a * (1 + e)); const apoapsisY = parentPos.y;
                   const screenPos = worldToScreen(apoapsisX, apoapsisY);

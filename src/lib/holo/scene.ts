@@ -50,6 +50,7 @@ import { satelliteTiltRad, toParentEquator } from '$lib/system/satelliteFrame';
 import { propagateState3D } from '$lib/physics/orbits';
 import { getNodeColor, getClassColor } from '$lib/rendering/colors';
 import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
+import { createGlRenderer, releaseGlRenderer, glContextEvents } from '$lib/rendering/glRenderer';
 import { shouldRender, IDLE_HEARTBEAT_MS } from '$lib/rendering/renderIdle';
 import { getPlanetTextureEquirect, getPlanetTexture, getEmissiveEquirect } from '$lib/rendering/planetTexture';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
@@ -229,6 +230,21 @@ export interface HoloController {
 export interface HoloOptions {
   onSelect?: (id: string) => void; // fired when the viewer taps a body
   skybox?: boolean; // background starfield (default true); a GM-selectable skybox slot later
+  /**
+   * Something will copy this canvas's pixels, so the last frame must stay readable after it is
+   * presented. C20 job 5.
+   *
+   * DEFAULTS TO TRUE, WHICH IS THE OPPOSITE OF THE FACTORY'S DEFAULT, AND DELIBERATELY SO. Two of
+   * the three places that mount a holo genuinely capture it, and BOTH failure modes are SILENT: a
+   * body graphic that should be inside the document's filter comes out blank ([[A38]]), and a
+   * view-entry transition snapshots a black rectangle. A default that fails loudly can be false; a
+   * default that fails silently should protect the working case and make the saving explicit.
+   *
+   * Pass FALSE only for a surface you have checked nobody copies. The cost is a whole extra drawing
+   * buffer kept alive after every present - about 59 MB on a full-screen retina holo - which is
+   * exactly the memory C20 is short of, so it is worth checking.
+   */
+  capture?: boolean;
 }
 
 // An in-scene text label: a canvas-textured sprite living in the 3D scene (NOT a DOM overlay) so the
@@ -463,9 +479,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
   // caller drawImage() this canvas into another one. Without it a WebGL canvas captured outside its
   // own render callback comes back BLANK — and that capture is how the body graphic gets INSIDE the
   // document's filter pass rather than being composited, unfiltered, on top of it (inbox A38).
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+  const renderer = createGlRenderer({ canvas, surface: 'holo', antialias: true, alpha: true, preserveDrawingBuffer: opts.capture !== false });
   renderer.setClearColor(0x05070c, 1);
-  renderer.setPixelRatio(pixelRatioFor(false));
   // GPU-side resource gauge for the perf trace: geometries/textures three still holds alive. If these
   // climb across setSystem cycles while the scene shows the same thing, something survives clearContent
   // — the leak detector for the rebuild-per-snapshot path. Read only when a [sse-perf] line prints.
@@ -473,33 +488,13 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     geometries: renderer.info.memory.geometries,
     textures: renderer.info.memory.textures,
     programs: renderer.info.programs?.length ?? 0,
-    ...(glContextLost ? { contextLost: glContextLost } : {}),
-    ...(glContextRestored ? { contextRestored: glContextRestored } : {})
+    // WEBGL CONTEXT LOSS, AS AN INSTRUMENT (C10). The listener and the counters used to live here,
+    // and were the ONLY ones in the app - five other surfaces went dead and silent when a context
+    // was reaped. They moved into `createGlRenderer` so every surface gets them (C20 job 3); this
+    // still reads them, so [sse-perf] reports exactly what it always did.
+    ...(glContextEvents(renderer).lost ? { contextLost: glContextEvents(renderer).lost } : {}),
+    ...(glContextEvents(renderer).restored ? { contextRestored: glContextEvents(renderer).restored } : {})
   }));
-
-  // WEBGL CONTEXT LOSS, AS AN INSTRUMENT. Nothing in this app listened for it before (C10, where it
-  // was investigated as a cause and refuted). The blindness is the point rather than the fault: a
-  // mobile GPU CAN drop a context under memory pressure, and if it ever does, the app currently
-  // cannot tell - the canvas holds its last image, no exception is thrown, nothing reaches
-  // [sse-perf] or the diagnostic bundle, and the user has an unreportable freeze that a refresh
-  // "fixes". Counting it makes the next report answerable in one line instead of a session.
-  //
-  // preventDefault on the loss event is what PERMITS a restore; without it the browser may never
-  // fire `webglcontextrestored`. The actual recovery (rebuilding the scene on restore) is
-  // deliberately NOT built here - build it when a counter says it happens, not before.
-  let glContextLost = 0;
-  let glContextRestored = 0;
-  canvas.addEventListener('webglcontextlost', (e) => {
-    e.preventDefault();
-    glContextLost++;
-    perfCount('holo.glContextLost');
-    console.warn('[holo] WebGL context LOST - the scene is frozen from here; a reload restores it.');
-  });
-  canvas.addEventListener('webglcontextrestored', () => {
-    glContextRestored++;
-    perfCount('holo.glContextRestored');
-    console.warn('[holo] WebGL context restored - the scene is NOT rebuilt automatically yet (C10).');
-  });
 
   const scene = new THREE.Scene();
   // Background as scene.background (a colour-managed Color), NOT renderer.setClearColor: a bare clear
@@ -1369,7 +1364,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // needs a fresh texture or its update silently never lands.
     const smat = ls.sprite.material as THREE.SpriteMaterial;
     if (resized || !smat.map) {
-      smat.map?.dispose();
+      smat.map?.dispose();   // owns its texture: a label's own canvas, never a shared body surface
       smat.map = new THREE.CanvasTexture(ls.canvas);
       smat.needsUpdate = true;
     } else {
@@ -3975,7 +3970,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const any = o as any;
       any.geometry?.dispose?.();
       const m = any.material;
-      const disposeMat = (mat: any) => { mat?.map?.dispose?.(); mat?.dispose?.(); };
+      // Shared textures are not ours to dispose - see `sharedTexture` in bodyLook.
+      const disposeMat = (mat: any) => { if (!mat?.map?.sharedTexture) mat?.map?.dispose?.(); if (!mat?.emissiveMap?.sharedTexture) mat?.emissiveMap?.dispose?.(); mat?.dispose?.(); };
       if (Array.isArray(m)) m.forEach(disposeMat);
       else disposeMat(m);
     });
@@ -4025,7 +4021,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const any = o as any;
       any.geometry?.dispose?.();
       const m = any.material;
-      const disposeMat = (mat: any) => { mat?.map?.dispose?.(); mat?.dispose?.(); };
+      // Shared textures are not ours to dispose - see `sharedTexture` in bodyLook.
+      const disposeMat = (mat: any) => { if (!mat?.map?.sharedTexture) mat?.map?.dispose?.(); if (!mat?.emissiveMap?.sharedTexture) mat?.emissiveMap?.dispose?.(); mat?.dispose?.(); };
       if (Array.isArray(m)) m.forEach(disposeMat);
       else disposeMat(m);
     });
@@ -4034,7 +4031,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!b.label) continue;
       scene.remove(b.label.sprite);
       const mat = b.label.sprite.material as THREE.SpriteMaterial;
-      mat.map?.dispose();
+      mat.map?.dispose();   // owns its texture: this label's own canvas
       mat.dispose();
     }
     bodies = [];
@@ -5554,7 +5551,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     glowTexture.dispose();
     hotspotTexture.dispose();
     plumeTexture.dispose();
-    renderer.dispose();
+    releaseGlRenderer(renderer);   // dispose + hand the CONTEXT back (C20)
     pointer.abort();
   }
 

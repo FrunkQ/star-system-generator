@@ -215,9 +215,23 @@ export function designationFor(mainId) {
   return expanded === displayStarName(mainId) ? null : expanded;
 }
 
+// A COMPONENT LETTER IS NOT ALWAYS SEPARATED BY A SPACE (D29). The Bayer and Flamsteed forms write
+// it detached - `* alf Cen A` - and a survey or proper-name designation writes it ATTACHED:
+// `NAME Luhman 16A`, `HD 239960A`, `G 272-61A`. Only the first was recognised, so a system whose
+// container row had been dropped took its PRIMARY's name and Luhman 16 arrived as "Luhman 16A".
+//
+// THE GUARD IS THE DIGIT. Stripping a trailing capital is only safe where a number precedes it,
+// which is what every catalogue designation looks like and what no ordinary name does - so
+// `Luhman 16A` loses its letter and `Ross 128`, `Wolf 359` and `WISE J0855-0714` are untouched.
+// A-E only: component letters do not run past the members a system has.
+const ATTACHED_COMPONENT = /(?<=\d)[A-E]$/;
+
 export function systemStarName(mainId, options) {
   const stripped = stripCatalogueFurniture(mainId);
   const parts = splitDesignation(stripped);
-  if (!parts?.component) return displayStarName(mainId, options);
-  return displayStarName(stripped.replace(/\s+[A-Za-z]{1,3}$/, ''), options);
+  if (parts?.component) return displayStarName(stripped.replace(/\s+[A-Za-z]{1,3}$/, ''), options);
+  if (ATTACHED_COMPONENT.test(stripped)) {
+    return displayStarName(stripped.replace(ATTACHED_COMPONENT, ''), options);
+  }
+  return displayStarName(mainId, options);
 }

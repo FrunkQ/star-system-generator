@@ -90,6 +90,45 @@ export interface TagCategory {
 export const SYSTEM_CATEGORY_IDS = ['status', 'owner', 'purpose', 'resource', 'class', 'drive', 'frontier', 'anomaly'] as const;
 export const isSystemCategory = (id: string): boolean => (SYSTEM_CATEGORY_IDS as readonly string[]).includes(id);
 
+// THE SIX THAT CANNOT BE SWITCHED OFF, AND WHY IT IS NOT ALL EIGHT (G93, the owner's call 2026-09-08:
+// "Lock the six, leave frontier and anomaly toggleable").
+//
+// SYSTEM MEANS "THE ENGINE MATCHES THIS BY SLUG". For these six, switching the category off leaves a
+// GM unable to reach tags the engine is still acting on - status gates movement, drive confers FTL,
+// resource feeds mining and refuelling, owner sets tardiness, purpose drives leg inference, class is
+// read by the template picker. The tags they have already applied keep computing either way (the
+// lookups find a category by id, not by whether it is enabled), so this is not a physics hazard - it
+// is a control that offers to hide the thing the engine is using, which is its own kind of trap.
+//
+// `frontier` AND `anomaly` STAY TOGGLEABLE, DELIBERATELY, and the reason is what they ARE rather than
+// how they are wired. Owner, 2026-09-08: "Frontier is setting specific and other users will have
+// different ones. The rest are USED and are general and can be reused." Refuelling posts and supply
+// dumps are one campaign's logistics vocabulary; another GM's frontier is a different list, or no
+// list. The six are general mechanics the engine reuses on every map, which is why they stay.
+// There is a second reason not to lock all eight, and it is the older one: `frontier` has always
+// been user-toggleable, and forcing it on during the CoI/PoI migration would have silently
+// re-seeded tags across the starmaps of everyone who had turned it off.
+//
+// `anomaly` IS USED, AND IS STILL SAFE TO SWITCH OFF, which sounds like a contradiction and is not.
+// Owner, 2026-09-08: "anomaly IS used but it is just a GM description of an event - I guess losing
+// this does not break anything as these are just descriptive reasons." Checked, and that is exactly
+// the shape: `SystemProcessor.publishAnomalyTags` derives `anomaly/*` every pass from
+// `body.overrides.anomalies` - the GM's stated REASON for a pin. THE OVERRIDE IS WHAT MOVES THE
+// PHYSICS; the anomaly tag is the label on it. Pin an albedo and say "exotic matter", and the albedo
+// is pinned by the override whether or not this category exists.
+//
+// AND THE EMISSION NEVER CONSULTS THIS LIST, so switching the category off does not even stop the
+// tags appearing: a body still says why its albedo was pinned. What is lost is the offered
+// vocabulary and the category's part in map markers - a description, not a mechanic. That is the
+// test to apply to any future candidate for this list: does the ENGINE read the tag, or does a
+// PERSON read it?
+//
+// KEYED ON ITS OWN LIST, NOT ON `required`. That field is CoI's legacy word for `system` (see the
+// note where it is read below) and carries only six of the eight, so it happens to hold the right
+// answer today by coincidence rather than by meaning. A separate list says what it means.
+export const LOCKED_CATEGORY_IDS = ['status', 'owner', 'purpose', 'resource', 'class', 'drive'] as const;
+export const isLockedCategory = (id: string): boolean => (LOCKED_CATEGORY_IDS as readonly string[]).includes(id);
+
 const STORE_KEY = 'tag-categories';
 const RULES_ENABLED_KEY = 'tag-rules-enabled';
 
@@ -364,6 +403,13 @@ export function deleteCategory(id: string): boolean {
 }
 
 export function setCategoryEnabled(id: string, on: boolean): void {
+  // A LOCKED CATEGORY CANNOT BE SWITCHED OFF, and refusing here rather than only in the UI is the
+  // point: the loader already forces these back on (`enabled: src.enabled === true || src.required
+  // === true`), so a setter that let one through produced a control that appeared to work, held for
+  // the session, and silently reverted on reload. A setting that does not stay set is worse than
+  // either answer. Turning one back ON is always allowed, so a campaign saved while one was off can
+  // still be repaired.
+  if (!on && isLockedCategory(id)) return;
   tagCategories.update((cs) => cs.map((c) => (c.id === id ? { ...c, enabled: on } : c)));
 }
 

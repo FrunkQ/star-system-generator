@@ -2,6 +2,7 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import type { Starmap, RulePack, LiquidDef, LiquidFamily } from '$lib/types';
   import { LIQUIDS } from '$lib/constants';
+  import { applyListDelta, makeListDelta } from '$lib/rulepackDelta';
   import { foreground } from '$lib/ui/foreground';
 
   export let showModal: boolean;
@@ -18,7 +19,30 @@
   const biosolventHelp = 'Suitability as a solvent for life: ideal (water), alternative (ammonia, hydrocarbons…), or none.';
 
   // The base default = the pack's liquids if it ships any, else the built-in engine list.
-  const baseList: LiquidDef[] = (rulePack.liquids && rulePack.liquids.length ? rulePack.liquids : LIQUIDS) as LiquidDef[];
+  const packList: LiquidDef[] = (rulePack.liquids && rulePack.liquids.length ? rulePack.liquids : LIQUIDS) as LiquidDef[];
+
+  /**
+   * THE EDITOR'S OWN DEFAULTS, APPLIED TO BOTH SIDES OF THE COMPARISON.
+   *
+   * A `bind:checked` on an ABSENT boolean writes `false` into the record the moment the dialog
+   * renders, and `bind:value` on an absent select writes its first option. So every row comes back
+   * from the form carrying fields the pack never declared - and the saved delta then said the GM had
+   * changed `incandescent` on nineteen of the twenty-two shipped liquids, when all they had done was
+   * open the dialog and press Save. An override that says nothing is worse than no override: it
+   * reads as if it said something, and it is what `rulepackDelta` exists to avoid storing.
+   *
+   * The fix is to compare like with like rather than to special-case the fields, because the list of
+   * fields a binding materialises grows every time somebody adds a control.
+   */
+  const withEditorDefaults = (l: LiquidDef): LiquidDef => ({
+    conductive: false,
+    incandescent: false,
+    biosolvent: 'ideal',
+    family: FAMILIES[0],
+    ...JSON.parse(JSON.stringify(l))
+  }) as LiquidDef;
+
+  const baseList: LiquidDef[] = packList.map(withEditorDefaults);
   const baseByName: Record<string, LiquidDef> = {};
   const defaultNames = new Set<string>();
 
@@ -26,19 +50,25 @@
 
   onMount(() => {
     baseList.forEach((l) => { baseByName[l.name] = l; defaultNames.add(l.name); });
-    // Start from a clone of the base, then apply any saved starmap override wholesale.
-    const source = starmap.rulePackOverrides?.liquids && starmap.rulePackOverrides.liquids.length
-      ? starmap.rulePackOverrides.liquids
-      : baseList;
-    liquids = JSON.parse(JSON.stringify(source));
+    // Open on the EFFECTIVE list - the pack's, with this campaign's override laid over it, through
+    // the SAME function `effectiveRulePack` uses, so the editor and the engine cannot disagree
+    // about what this campaign's liquids are.
+    //
+    // IT USED TO TEST `.length` AND THAT WAS A DATA-LOSING BUG, live since D25 made this section
+    // delta-capable: a delta is an OBJECT and has no `.length`, so the test read `undefined`, the
+    // editor fell back to the shipped list, and the next Save wrote that list over the GM's delta.
+    // A starmap that shipped with a custom liquid lost it the first time anybody opened this dialog.
+    liquids = JSON.parse(JSON.stringify(
+      applyListDelta(baseList, starmap.rulePackOverrides?.liquids, (l) => l.name)));
   });
 
   function handleSave() {
-    const overrides: any = {};
-    // Whole-list replace (like atmosphere mixes): only record an override if it differs from the base.
-    if (JSON.stringify(baseList) !== JSON.stringify(liquids)) {
-      overrides.liquids = liquids;
-    }
+    // Save the DIFFERENCE, not the list - the same discipline the biosphere editors already follow,
+    // and the reason `rulepackDelta` exists: a whole-list override freezes the shipped defaults at
+    // the moment of the edit, so every later improvement to the pack silently stops reaching this
+    // campaign. `undefined` means "no override at all", which is what a GM who changed nothing back
+    // should end up storing.
+    const overrides: any = { liquids: makeListDelta(baseList, liquids.map(withEditorDefaults), (l) => l.name) };
     dispatch('save', overrides);
     dispatch('close');
   }

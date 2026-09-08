@@ -27,6 +27,8 @@
   import { hiddenKey, loadHidden, saveHidden, loadOrder, saveOrder, type ComparisonEntry } from '$lib/comparison/items';
   import { unitPrefs } from '$lib/unitPrefsStore';
   import { lowPower } from '$lib/lowPowerStore';
+  import RenderNotice from '$lib/components/RenderNotice.svelte';
+  import { renderNotice, dismissRenderNotice } from '$lib/rendering/renderNotice';
   import type { FilterParamValues } from '$lib/holo/filters/schema';
 
   /** Everything on the map that has a true size, from `itemsForSystem` / `itemsForStarmap`. */
@@ -631,6 +633,10 @@
     {#if !sorted.length}
       <p class="empty">Nothing on this map has a size to compare.</p>
     {/if}
+
+    <!-- C20: this view and the holo are the two the owner named as locking up, so this is where the
+         software-rasteriser sentence has to appear. Same box as the holo's, from one component. -->
+    <RenderNotice message={$renderNotice} onDismiss={dismissRenderNotice} />
   </div>
 </div>
 

@@ -224,6 +224,13 @@ Click a system to drop into the **system visualiser** — a real-time orbital vi
   the Sun's band and is a desert of ice.
 * **Hill spheres** shows each body's gravitational grab boundary, which is what you want when
   placing moons. **Lagrange points** marks the five of the body you have focused, against its host.
+* **Magnetospheres** draws the bubble each magnetic field carves out of the stellar wind, in the
+  mauve the app uses for magnetism everywhere. It is drawn in **two shades and they mean different
+  things**: the shaded part is the region that actually shields an atmosphere — inside the last
+  closed field line, where an incoming particle is turned around and sent away — and the pale wash
+  is the full extent, the long tail downwind included. A world with no field draws nothing, which is
+  the point: a glance tells you which worlds are protected and which are bare. The physics page has
+  the working, including what is estimated.
 * **Overlay** puts a grid over the system: square, hex, subsector hex, Traveller hex, polar, or
   polar with scale rings. The rings land on round numbers.
 * **Orbit lines** can be dimmed or switched off entirely with the dial beside it — worth having on
@@ -880,6 +887,22 @@ is the point of it. Both steps have a **Grid falloff**, which fades a grid towar
 cutting it off, and the System step has its own orbit-line dial and the highlighted-tag marker shape,
 size and text. The **Starmap** step has the star-size-by-class dial and its own label size. Under
 **Transitions**, *Terminal Clear* and its siblings dress a change of scene.
+
+**Magnetospheres are a player-view setting too**, beside **Auroras** under *Belts & rings*, and they
+are **off by default** — it is a striking thing to show a table and it should be your choice to show
+it. What your players then see in 3D is what the GM view draws on the flat map: a glowing shell
+around each magnetised world, the bright part being the region that actually shields an atmosphere.
+It is one of the things **Low Power** switches off, so a player on a weak machine loses it rather
+than losing frames.
+
+Two things about the 3D drawing are worth knowing, because both look like faults and are not. **Every
+magnetised world shows its bubble at once**, not only the one you have selected — that is what makes
+a glance tell you which worlds are shielded. And **you cannot see a shell you are inside**: a
+magnetotail is enormously longer than the bubble at its nose, so a camera comfortably outside the
+front of one is deep inside the back of it, and each surface hides itself rather than washing the
+view purple. Pull back and it appears. In 3D the tail's *distance* is squeezed the same way body
+sizes are — otherwise a single magnetotail swallows the system — so read the order rather than the
+lengths there. The true figures are on the body's own card and on the flat system map.
 
 Everything is redacted against your visibility settings, and it updates live as you play, so moving
 the clock or focusing a world moves it on their screens too. **Open player view** starts one;

@@ -36,10 +36,34 @@
 // Centauri at 0.977 Myr**, just inside the tier, exactly as a human placed it. Nothing was tuned to
 // make that happen.
 import { periodYr, ORBIT_AUTHOR_MAX_PERIOD_YR } from './clusterGate.mjs';
+import { companionSpectralType } from './stars.mjs';
 import { AU_PER_LY, LY_PER_PC, SOLAR_MASS_KG } from './constants.mjs';
 
-// SIMBAD object types that are a MULTIPLE-STAR CONTAINER rather than a star.
-const CONTAINER_OTYPES = /^(\*\*|SB\*)$/;
+// IS THIS ROW A MULTIPLE-STAR CONTAINER, OR A STAR? (D29 - the fault the owner reported as
+// "sirius (only adds b)".)
+//
+// NEITHER THE OTYPE NOR THE SPECTRAL TYPE DECIDES IT ALONE, and assuming the otype did is what lost
+// Sirius A. SIMBAD sends, in the same 16.5 ly census:
+//   '* alf CMa'   SB*  'A0mA1Va'      Sirius A - A REAL STAR whose companion is unresolved
+//   '* alf Cen'   SB*  'G2V+K1V'      a TRUE container - same otype, COMPOSITE type
+//   'HD 239960'   **   'M3'           Kruger 60 - a true container with a SINGLE type
+//
+// `SB*` means "this star IS a spectroscopic binary", which is a statement about a star, not a
+// container record - so Sirius A was classified as a container, found its component B present, and
+// was dropped. B then inherited the primary slot and the system called Sirius held one white dwarf.
+//
+// THE RULE: '**' is SIMBAD's multiple-star SYSTEM entry and is always a container. 'SB*' is a
+// container only when its spectral type names a SECOND OBJECT - and `companionSpectralType` is what
+// answers that, because a bare '+V' is a luminosity class rather than a companion.
+const SYSTEM_OTYPE = /^\*\*$/;
+const SPECTROSCOPIC_BINARY_OTYPE = /^SB\*$/;
+
+export function isContainerRow(row) {
+  const otype = row?.otype ?? '';
+  if (SYSTEM_OTYPE.test(otype)) return true;
+  if (!SPECTROSCOPIC_BINARY_OTYPE.test(otype)) return false;
+  return companionSpectralType(row?.sp ?? '') != null;
+}
 
 // Object types that are not stellar at all. SIMBAD's `otype` occasionally mislabels — 40 Eridani b,
 // a planet, comes back as 'err' — so the planet exclusion is belt-and-braces: the ADQL excludes
@@ -108,8 +132,8 @@ export function normaliseStarRows(rows, { resolutionFloorAu = 20000 } = {}) {
   // was dropped as a duplicate of "* alf Cen", leaving a system called "alf Cen B" with A missing —
   // the exact absence D18 exists to fix, reintroduced by the fix.
   const withoutContainers = notPlanets.filter((r) => {
-    if (!CONTAINER_OTYPES.test(r.otype ?? '')) return true;
-    const comps = notPlanets.filter((o) => o !== r && !CONTAINER_OTYPES.test(o.otype ?? '')
+    if (!isContainerRow(r)) return true;
+    const comps = notPlanets.filter((o) => o !== r && !isContainerRow(o)
       && projectedSeparationAu(o, r) < resolutionFloorAu);
     if (comps.length) {
       dropped.push({ id: r.id, reason: `multiple-star container; components present (${comps.map((c) => c.id).join(', ')})` });

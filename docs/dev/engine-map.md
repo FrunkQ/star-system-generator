@@ -1433,8 +1433,11 @@ base/offset rig at all so nothing second-guesses its dolly, and `holo/scene.ts` 
 casualty precisely BECAUSE it is the only surface that reconciles the camera against intent.
 ALSO: nothing listened for `webglcontextlost` until this entry's commit. It was investigated here
 as a cause and refuted, but the blindness was real — a dropped context freezes the last frame,
-throws nothing, and reaches no instrument. It is now counted into `[sse-perf]` (`holo.glContextLost`
-/ `holo.glContextRestored`) and the `gl` provider. RECOVERY IS NOT BUILT: rebuild on restore when a
+throws nothing, and reaches no instrument. It is now counted into `[sse-perf]` and the `gl`
+provider. CORRECTED 2026-09-08 (C20 job 3): the listener was on the HOLO ONLY, so the other five
+surfaces stayed exactly as blind as this entry describes - it now lives in `createGlRenderer`, every
+surface has it, and the counters are `gl.<surface>.contextLost` / `.contextRestored` (they were
+`holo.glContextLost` / `holo.glContextRestored`). RECOVERY IS NOT BUILT: rebuild on restore when a
 counter proves it happens, not before.
 
 ### RENDER-S22 The scene-rebuild path is INSTRUMENTED — switch the meters on before theorising about it
@@ -2413,6 +2416,159 @@ imported exactly one. Curation elsewhere is not a reason to withhold a star from
 BLAST: any new consumer of `convertArchiveRows` — passing no `existingSystemIds` means "empty target",
 which is right for a new map and wrong for an append. The host→bundled-id map is generated from the
 roster, so it is only as current as the last kit run (D15).
+
+### DATA-R46 AN EQUILIBRIUM TEMPERATURE IS A FLOOR ON A SURFACE TEMPERATURE, NEVER A CEILING
+BUCKET: DOMAIN - the two temperatures are different quantities and the gap between them is set
+entirely by the air, which the thing being placed does not have yet.
+WHERE: `worlds/orbitSolver.ts` (the whole module), `worlds/mainWorldPlacement.ts` (which aims at the
+LOW end of a declared range for exactly this reason); gated by `orbitSolver.spec.ts`.
+RULE: solving "where does this star heat a body to T" gives the EQUILIBRIUM temperature. An
+atmosphere in this engine can only warm a world, never cool it - so that figure is a FLOOR on what
+the surface will read, and a caller fitting to a range of SURFACE temperatures aims at the range's
+BOTTOM and lets the greenhouse carry the world up into it. Aiming at the middle guarantees
+overshooting whenever the air is thick.
+WHY: G87, and both extremes were measured on real imports rather than reasoned about. A dense
+nitrogen-oxygen world gained 0.35 K from its greenhouse - nothing - so placing it by the conservative
+habitable zone's OUTER half left it at 204 K with no surface liquid and a habitability temperature
+score of zero, which is the user's original complaint arriving by a new route. A corrosive Venusian
+world gained about 650 K, so aiming at its template's stated 700-750 K put its surface past 1300 K.
+THE SAME MODEL, OPPOSITE ERRORS, BECAUSE THE ONLY VARIABLE IS THE AIR.
+BLAST: a THICK atmosphere cannot be landed inside a narrow surface range in one pass. The honest fix
+is two passes - place, build the atmosphere, re-fit against the greenhouse the body then actually
+has - and that is the ordering behind the owner's note, 2026-09-08: "you need an atmo before the
+goldilocks zone works". Not built; the overshoot is confined to hostile atmospheres nobody lives on.
+AND A BREATHABLE WORLD IS THEREFORE PLACED BY THE BAND, NOT BY ITS TEMPLATE: a standard atmosphere
+declares 280-310 K, which is a SURFACE range it reaches only with a greenhouse, so solving it as an
+equilibrium lands it too close. The habitable zone is the right authority for atmospheres 4-9 and the
+template is the right authority for everything else, which is the split the code makes.
+
+### DATA-R45 A TRAVELLER MAIN WORLD BECOMES A MOON BY TWO DIFFERENT ROUTES, AND THEY ARE NOT THE SAME
+BUCKET: DOMAIN - a designation and a consequence can produce the same shape and must not be merged.
+WHERE: `worlds/mainWorldPlacement.ts` (`giantOccupyingBand`, and the host in `MainWorldPlacement`),
+`traveller/importer.ts` (`applySatelliteTradeCodeIfNeeded`); gated by `mainWorldPlacement.spec.ts`.
+RULE: trade code `Sa` is TRAVELLER DECLARING the main world a satellite. It is data, it is the
+authority, and it holds whatever the habitable zone looks like. A GIANT OCCUPYING THE BAND is a
+different thing entirely: Traveller's own generation says that when the habitable orbit is already
+taken by a gas giant the UWP does not break - the main world becomes a moon OF THAT GIANT and still
+sits inside the star's habitable zone, which is what preserves every environmental figure the UWP
+states (atmosphere 4-9 needs those temperatures or the profile invalidates itself). One is stated,
+one is derived. Both end at the same answer shape - a host that is not the star - which is exactly
+why the placement model returns a HOST rather than an orbit, and exactly why they are easy to merge
+by accident.
+WHY: G87, and the owner asked for the second one by name because it is the trickier half. Merging
+them loses information in both directions: an `Sa` world whose band happens to be empty would stop
+being a satellite, and a world displaced by a giant would start claiming Traveller said so.
+AND `Sa` DID NOTHING AT ALL UNTIL v3.1.27, measured rather than assumed: the method runs BEFORE
+infill - deliberately, so its host counts toward `W` - which means the system holds the stars and
+the main world and nothing else, so its search for a sibling to orbit always came up empty and it
+returned. Every satellite main world ever imported came out as an ordinary planet round its star,
+untagged. It now CREATES the giant, at the orbit the placement model chose for the world, so the
+world becomes its moon and stays in the band.
+BLAST: `W` is a HARD world count and NEVER includes moons (G32) - WITH EXACTLY ONE EXCEPTION, and it
+is the owner's own ruling, 2026-09-08: "that is the one edge case allowed... it is a moon!", and
+"For a satellite homeworld we can count that as 2 worlds". So the satellite main world AND its giant
+both count. Every other moon stays uncounted. `isPlanet` in `generation/infill.ts` reads `roleHint`
+and therefore counts a planet-sized moon, which is WHY that arithmetic comes out right - do not
+"fix" it to count primaries only, which is what I nearly did before he ruled. The observable form,
+gated in `mainWorldImport.spec.ts`: a satellite system ends with exactly ONE FEWER primary planet
+than the identical non-satellite one.
+The giant is chosen by MASS then by id, never by array order, because the answer must be identical
+for two GMs importing the same sector.
+
+### DATA-R43 A CATALOGUE ROW IS A CONTAINER OR A STAR, AND THE OTYPE ALONE NEVER SAYS WHICH
+BUCKET: DOMAIN - a catalogue's type codes describe an OBJECT, not a record, and the same code means
+different things depending on what else the row says. Move verbatim; any importer reading SIMBAD
+meets this.
+WHERE: `import/realsky/census.mjs` (`isContainerRow`, and the components-present filter in
+`normaliseStarRows`), `stars.mjs` (`companionSpectralType`), `convert.mjs` (the unresolved-pair
+sentence); gated by `multiples.spec.ts` against the real 16.5 ly census in `skyFixtures.ts`.
+RULE: `**` is SIMBAD's multiple-star SYSTEM entry and is always a container. `SB*` is NOT - it means
+"this star IS a spectroscopic binary", which is a statement about a STAR - so an `SB*` row is a
+container only when its spectral type names a SECOND OBJECT. And that question has ONE answer,
+`companionSpectralType`, because `parseStellarType(...).companion` returns whatever followed the
+'+' and that is not always a companion.
+WHY: D29, the owner's own report. `CONTAINER_OTYPES = /^(\*\*|SB\*)$/` matched Sirius A
+(`* alf CMa`, SB*, spectral type `A0mA1Va` - a single star's type), so the PRIMARY was dropped as a
+container because its component B was present. B then inherited the primary slot and a system called
+Sirius contained one white dwarf. In the same census `* alf Cen` is ALSO `SB*` and IS a true
+container, because its type reads `G2V+K1V` - so the otype cannot separate them and the spectral
+type must. `HD 239960` is the other direction: `**` with the single type `M3`, and still a container.
+THE SECOND HALF COST A SHIPPED BUG OF ITS OWN: SIMBAD writes `M2+V` for Lalande 21185 to mean "M2 or
+later, luminosity class V". Read as a companion, it told GMs that a single red dwarf was an
+unresolved pair with a companion called "V". A real companion starts with a spectral letter
+(OBAFGKMLTY) or D for a white dwarf; a bare Roman numeral is a luminosity class.
+BLAST: the components-present filter still drops a container only when component rows are actually
+in the result, which is what keeps Ross 614 and three others on the map at all - they come back as a
+container with no components. A container whose companion the census does NOT resolve stays one
+body and SAYS so; splitting it needs a separation the row does not carry (DATA-R24, DATA-R4).
+Procyon is the case nobody reported: `* alf CMi` is `SB*` with `F5IV-V+DQZ` and Procyon B is not in
+the census, so it correctly imports as one body that names its missing companion.
+
+### DATA-R44 THE REAL-SKY SUITE BEGINS AFTER THE FETCH, SO EVERY FAULT IN THE FETCH IS INVISIBLE TO IT
+BUCKET: ARCHITECTURE (test coverage) - a suite that starts downstream of a boundary cannot see
+anything wrong at it, and a green suite over a blind spot reads exactly like a green suite over
+working code.
+WHERE: every `*Adql` builder in `import/realsky/query.mjs` and the loaders in `catalogue.mjs`;
+the fixtures they are NOT tested through are `skyFixtures.ts`.
+RULE: the realsky specs feed `convertRegion` rows DIRECTLY. Nothing in the suite runs a query, and
+nothing asserts what a query ASKS FOR - so a wrong SELECT, a wrong WHERE, or a row limit that does
+not scale is green. When you change a query, the gate is on the QUERY (what it names, what it omits,
+how its bounds move with the region), because no transform test will ever reach it.
+WHY: D29 was FOUR faults and THREE of them were in the fetch, which is why it survived a 4,500-test
+suite and a year of use.
+  (1) THE SELECT. `SIMBAD_STAR_COLUMNS` never asked for a size, so every real star imported at its
+      class-band midpoint - and `stardefaults.ts` opened by DOCUMENTING that the catalogues supply
+      those figures. The assumption was prose in a header, so nothing could go red.
+  (2) THE WHERE. `plx_value > 0` is correct for "which stars are in this volume" - a star with no
+      distance cannot be placed - and WRONG for "who are the members of this system", where the
+      distance is the parent's and already known. One clause, copied into three queries, right in one.
+  (3) THE LIMIT, and this one was shipped by the session fixing the other two. `top 40` is ample for
+      the 16.5 ly census the fixtures are cut from (NINE containers) and silently truncates the 41 ly
+      fetch the dialogue actually makes (SIXTY-SEVEN). It returned exactly 40 rows, Luhman 16's
+      members were not among them, and all seventeen tests still passed. **A LIMIT SIZED FOR THE
+      FIXTURE IS INVISIBLE TO THE FIXTURE.** It was caught by importing in a browser, not by the suite.
+  Only the fourth - the container rule - lived in the transform, and that one the fixtures DID catch
+  the moment they held real catalogue rows instead of synthesised ones.
+THE TWO RULES THAT FALL OUT: a row limit is bounded by the same thing its result must COVER (per
+object, or per set - `simbadComponentsAdql`'s 8 is per-star and correct; `simbadComponentsOfAdql`
+must scale with the number of parents). And THE DIALOGUE FETCHES AT A WIDER RADIUS THAN THE ONE
+IMPORTED - `Math.max(r, 41)` in `RealSkyImportModal`, so a slider move never refetches - so the
+region a query actually sees is never the region under test.
+BLAST: swept 2026-09-08, and there are exactly three row limits in the query layer; the other two
+are bounded per-object and are correct. Any NEW query that answers about a SET must state what
+bounds it. And the standing verify-in-the-browser rule is not decoration here: it is the only thing
+that exercises this layer at all.
+
+### DATA-R42 A REAL STAR'S SIZE IS DERIVED, WITHIN A DECLARED DOMAIN, OR IT IS NOT CLAIMED
+BUCKET: DOMAIN + ARCHITECTURE - domain: the catalogue that names a star does not measure its size,
+and the relation that recovers one is calibrated over a RANGE that must be enforced rather than
+assumed. Architecture: a substituted figure carries its provenance PER FIGURE, because the three
+numbers can come from three different places on the same star.
+WHERE: `import/realsky/starSize.mjs` (the relations, their domains and the precedence),
+`query.mjs` (`simbadStarFluxAdql`, `simbadStarTeffAdql`), `catalogue.mjs` (`loadStarSizes`),
+`convert.mjs` (`starNodeFromCensus`, `figureSourceSentence`), `types.ts` (`FigureSource`);
+gated by `starSize.spec.ts` against twelve stars with independently determined radii.
+RULE: SIMBAD's `basic` HAS NO MASS, RADIUS OR TEMPERATURE COLUMN and SIMBAD publishes no stellar
+mass anywhere - so there is nothing to "just add to the SELECT", and anyone told otherwise should
+re-read TAP_SCHEMA before believing it. A size is DERIVED from what is measured (a temperature from
+`mesFe_h`, magnitudes from `allfluxes`, the parallax from the census row, a direct diameter from
+`mesDiameter` for about one star in seven) and every relation states the range it is allowed to
+answer in. OUTSIDE ALL OF THEM THE CLASS BAND STAYS, flagged `typical`. Degenerate and substellar
+objects are excluded from every relation - their bands are the honest answer (DATA-R24).
+WHY: D29, the owner's report off the live 3.1.0 - "the importer still not adding the radii or masses
+for real stars". Every imported star carried its band midpoint: Proxima at 0.400 Rsun against a true
+0.154. AND THE DOMAIN IS THE WHOLE LESSON, not a detail of it: Flower's bolometric correction
+recovers Sirius A to 1.740 Rsun against 1.711, and hands that same Proxima 0.887 - 476% out, and
+confidently. One relation applied everywhere is worse than the band it replaced, because a band
+midpoint at least says it is one.
+BLAST: `figureSources` is per figure and `typicalForClass` is COMPUTED FROM IT in one place
+(`starNodeFromCensus`), so the two cannot disagree - do not set the boolean directly. A star whose
+radius or temperature is replaced must have its THERMAL luminosity recomputed (PHY-34), while a band
+that DECLARES a non-thermal output keeps it: `luminosityDeclared` is what tells them apart. The
+parallax comes from the CENSUS row and not from the size query, which is why `deriveStarSize` looks
+like it silently does nothing if you hand it only a size record. `loadStarSizes` must keep swallowing
+its own errors - a missing size is a less good star, never a failed import.
+NOT A LICENCE TO WIDEN A DOMAIN TO COVER A STAR YOU WANT ANSWERED. The bands exist for that.
 
 ### DATA-R5 The shared real-sky core must stay plain, dependency-free ESM
 BUCKET: IMPLEMENTATION + ARCHITECTURE - durable: code shared by two runtimes must be written for the
@@ -4717,7 +4873,9 @@ two unit conventions, and INTRINSIC output is not what a body RECEIVES. Architec
 implementations of one law are still a fault, and an equivalence gate that compares two things
 through the SAME function cannot see a factor applied to that function.
 WHERE: `physics/luminosity.ts` (`luminositySolarFromRT` is the primitive, `luminosityWattsFromRT` is
-derived from it, `SOLAR_TEFF_K` and `SOLAR_LUMINOSITY_W` are the only definitions); its callers in
+derived from it; `SOLAR_LUMINOSITY_W` is defined there and `SOLAR_TEFF_K` is RE-EXPORTED from
+`import/realsky/constants.mjs` since D29, because the import core cannot import this module and a
+third 5778 over there was the alternative); its callers in
 `physics/zones.ts`, `physics/temperature.ts`, `physics/starPlausibility.ts`, `generation/star.ts`,
 `BodyStarTab.svelte`, `BodyTechnicalDetails.svelte`, `physics/substellar.ts`,
 `physics/stellarOutflows.ts`. The gate is `physics/luminosityUnification.spec.ts`.
@@ -6750,6 +6908,15 @@ is a finding rather than a change.
 BLAST: a fourth surface that needs a body's look calls this and adds an option; it does not inline a
 fourth copy. Note `buildStellarFlares` reads as gallery-only in a grep and is NOT missing from the
 holo - the holo reaches it through `buildStarLook`, one level down.
+AND THE HILL-SPHERE HALF OF THAT WAS REVERTED THE NEXT DAY ([[B145]]): it passed a `margin` that
+does not exist in `drawSystem`, so every frame of the whole 2D view threw and the build said nothing.
+RENDER-S46 for the second time, and its own named detector - `svelte-check` on the touched file -
+would have caught it in one line. RUN IT after any edit to a `.svelte` script block; a green
+`npm run build` is not evidence there.
+A SOURCE-READING GATE PROVES THE TEXT IS THERE, NOT THAT IT RUNS. `circleCull.spec` asserted the
+wiring and passed while the code threw on every frame. Where a component cannot be rendered in a
+test, that idiom is a check on WIRING only - pair it with `svelte-check`, which is the part that
+looks at whether the wiring can execute.
 A RING AND A DISC ARE NOT VISIBLE UNDER THE SAME CONDITIONS ([[G85]], `rendering/circleCull.ts`).
 A bounding-box test is right for a FILL - a circle enclosing the viewport covers every pixel - and
 wrong for a STROKE, because that circle's boundary is out past the corners where nothing can see it,
@@ -6999,3 +7166,214 @@ paths, also fixed); the spec written to pin the fix exposed this sign underneath
 BLAST: anything that reads a completed orbit change's end state - the sampler's parking orbit
 (sense from `u x w` of the arrival), the reconciler's circular elements, and now the dock catch,
 which assumes a prograde park to compute when the ship meets the ribbon.
+
+### RENDER-S57 A CONTEXT'S POWER FLAGS ARE FROZEN AT CREATION, SO ASKING IS A ONE-SHOT AND REFUSING IS FATAL
+BUCKET: PLATFORM (the browser's WebGL context creation). The duplication half - one factory rather
+than six sites - is ARCHITECTURE and carries forward; the flag semantics below are the browser's.
+WHERE: `rendering/glRenderer.ts:createGlRenderer` - the only place in the app allowed to build a
+renderer, pinned by `rendering/glRendererSites.spec.ts`.
+RULE: `powerPreference` and `failIfMajorPerformanceCaveat` are arguments to
+`canvas.getContext('webgl2', ...)` and are read ONCE, when the context is created. Neither can be
+changed on a live context, and three.js gives no way to re-ask without throwing the renderer away.
+Two consequences that are invisible in the code and shaped this whole design: (1) `powerPreference`
+CANNOT follow the low-power switch - by the time a GM flicks it the chip is already chosen - which is
+why low power buys its savings by doing less work (fewer fragments, fewer frames, fewer shells) and
+never by asking for a worse GPU; (2) `failIfMajorPerformanceCaveat: true` may NOT be passed on a real
+surface, because a refusal is how it reports and a refusal there takes the view down with it. It has
+to be learned on a throwaway probe context and remembered.
+WHY: C20 - the owner's tired browser locking up on Size Comparison and the holo. Six sites each wrote
+their own `new THREE.WebGLRenderer` and not one passed `powerPreference`, so on every switchable-
+graphics laptop the app took whatever chip the browser felt like giving it and never once asked for
+the fast one. Six copies of one decision is this codebase's most recurring recorded fault, and these
+had already drifted: the pixel-ratio cap was written six times in four orderings and only one of them
+guarded `typeof window`, so the same question genuinely had two answers under SSR.
+
+ADDENDUM, job 2 (the probe as built). TWO MORE RULES THE MEASUREMENT ITSELF COST:
+(a) A FRESH CANVAS PER ATTEMPT. Once a canvas holds a context of a given type, every later
+`getContext` for that type returns THAT context and SILENTLY IGNORES the attributes - so asking the
+second question (without the caveat flag) on the first canvas is asking nothing at all, and would
+report every machine as software-rendering. `glSoftwareProbe.ts:attempt` makes a new one each time.
+(b) A REFUSAL IS TWO DIFFERENT FACTS. `failIfMajorPerformanceCaveat` returning null means either "it
+would be software-rendered" or "there is no WebGL here", and those are different sentences to a GM
+and different actions for us - low power helps the first and cannot touch the second. Ask again
+without the flag to tell them apart.
+(c) AND THE STORED SWITCH CHANGED MEANING. `sse-low-power` absent used to mean OFF; it now means
+NOBODY HAS SAID, with `'0'` for an explicit no ([[G80]]'s reasoning was sound only while nothing but
+a person could set the value). Anything that automatically proposes low power must go through
+`proposeLowPower`, and precedence over a person's choice is settled in ONE expression
+(`lowPowerStore.ts:effective`) - a second copy of that rule was written and proved DEAD by mutation
+before it could drift.
+
+ADDENDUM, jobs 3-5. THE CONTEXT IS A RESOURCE WITH AN OWNER, AND `dispose()` IS NOT GIVING IT BACK.
+`renderer.dispose()` frees THREE's objects; the WebGL CONTEXT survives until collection.
+`forceContextLoss()` is the hand-back and must come AFTER dispose - three cannot free GPU objects
+through a context that no longer exists. Browsers cap live contexts (Chromium ~16) and silently kill
+the OLDEST at the cap, which is why five surfaces with no `webglcontextlost` handler simply went
+dead. Both now live in `createGlRenderer` / `releaseGlRenderer`; `glRendererSites.spec.ts` fails on a
+bare `renderer.dispose()` as well as a bare constructor.
+AND `preserveDrawingBuffer` IS PER USE, NOT PER MODULE. One module (`createHoloScene`) serves a small
+body graphic that IS copied ([[A38]]) and a full-screen view that is not, so the expensive one paid
+for a capture that never happened. Its default is TRUE, the opposite of the factory's, and that is
+deliberate: both failure modes here are SILENT (a blank body graphic, a black transition snapshot),
+so the default protects the working case and a saving must be claimed explicitly. Trace `drawImage`,
+`toDataURL`, `createImageBitmap` and `getCanvas()` before passing false.
+BLAST: adding a seventh 3D surface means calling the factory, not the constructor - the source pin
+fails the suite otherwise. And BEWARE ASSERTING THE PIXEL RATIO UNDER VITEST: jsdom reports a
+`devicePixelRatio` of 1, where low power and full power return the SAME number, so an assertion
+written the obvious way passes with the lever removed - it was seen to do exactly that here before a
+retina stub (`devicePixelRatio: 2`) was put in front of it. Any low-power-versus-normal claim needs a
+panel that costs something before it can fail.
+
+### RENDER-S58 "THIS PAGE ISN'T RESPONDING" IS A BLOCKED MAIN THREAD, NOT A SHORTAGE - AND BUILDING A BODY IS THE BURST
+BUCKET: PLATFORM (the browser's own watchdog) for the symptom; IMPLEMENTATION for the burst.
+WHERE: `holo/comparisonScene.ts:reconcile` (budgeted, with wireframe placeholders); the same shape
+is UNFIXED in `holo/scene.ts:setSystem`.
+RULE: the browser's unresponsive-page dialog means ONE JavaScript task ran for seconds without
+yielding. It is not memory pressure and not a slow GPU - both of those make frames LATE, and a late
+frame still yields between frames. So no request for memory or for a better GPU can fix it, and
+neither can [[C20]]'s three. The cure is always the same: cap the work per pass and finish later.
+Building a body is the burst here, because `buildBodyLook` generates 1024x512 textures ON THE CPU,
+so N bodies arriving together is N lots of that between one frame and the next.
+WHY: [[C21]] - four unresponsive-page dialogs opening the size comparison on one PC while a 40-star
+starmap loaded instantly beside it. The starmap is fast because a star is a glyph sharing one glow
+texture; the comparison builds textured globes. Diagnosing it as C20's memory fault would have
+aimed a correct fix at the wrong target.
+BLAST: two traps if you spread a build across frames. **STARVATION** - always do at least one item
+per pass, or a machine slow enough to blow the budget on its first item never finishes one. And in
+`scene.ts` specifically, **[[RENDER-S45]]**: `bodyById` is filled AFTER the node loop, so deferring
+that loop makes its "everything answers undefined" window last many frames instead of one. That is
+why the holo's equivalent pause is briefed rather than fixed by copying this.
+
+### DATA-R46 AN OVERRIDE SECTION IS COMPARED BY ITS APPLIED RESULT, NEVER BY ITS DELTA
+BUCKET: ARCHITECTURE (file format) - R-19, the rules a pasted body brings with it.
+WHERE: `src/lib/io/clipRules.ts` (`SECTIONS`, `effectiveDefinitions`), used by the clip merge and by
+`describeOverrides`; the shapes it encodes are what `effectiveRulePack` (`src/routes/+page.svelte`)
+actually reads. Pinned by `src/lib/io/clipRules.spec.ts`.
+RULE: **a delta is a set of edits AGAINST A BASE, so its meaning is not in the delta.** When a clip
+asks "does this campaign already have this definition, and is it the same one?", the only sound
+comparison is between the two APPLIED records - base plus delta on each side - and never between the
+two deltas. Comparing deltas gets the load-bearing case exactly backwards: an incoming entry
+`{ boilK: 400 }` for `water`, against a destination with no water override, is NOT an absent
+definition to be added, it is a DIFFERENT water from the one that campaign already has, and adding it
+would silently change a definition every body in the map reads. It is unsound in the other direction
+too, because the two sides' deltas were made against two bases - two rule packs, or two app versions
+- so equal deltas can mean different definitions and different deltas the same one.
+TWO THINGS THAT ARE EASY TO GET WRONG HERE AND COST A MEASUREMENT EACH:
+- **THREE SECTIONS ARE DELTA-CAPABLE, NOT TWO.** `liquids` joined `morphologies` and `pigments` at
+  D25; its declared type said `LiquidDef[]` until R-19 and the reader was casting. Anything that
+  enumerates "the delta sections" from the type alone is wrong.
+- **AN APPLIED DELTA CARRIES THE WHOLE BASE.** `applyListDelta` returns every untouched pack record
+  as well, so the applied list must be narrowed to the keys the override actually SPEAKS about
+  (`entries` plus `order`) before it is called "what this clip brings" - otherwise a paste is
+  reported as delivering every liquid in the game.
+BLAST: the identical/different verdict, and therefore whether a paste silently discards, adds, or
+renames a GM's definition. Get it wrong in the "different" direction and one quietly wrong planet
+becomes a quietly wrong campaign.
+
+### DATA-R47 AN EDITOR THAT STORES A DELTA MUST BE HANDED THE SHIPPED PACK, NEVER THE EFFECTIVE ONE
+BUCKET: ARCHITECTURE - the companion to DATA-R46, and it cost two data-losing bugs (B147).
+WHERE: `src/routes/+page.svelte` where the pack editors are mounted; `EditBiospheresModal.svelte`
+(shipped pack - stores a delta), `EditAtmospheresModal.svelte` (effective pack - needs the merged
+liquid list for a dropdown, B132). Pinned by `EditBiospheresModal.base.spec.ts` and the corrected
+gate in `customLiquidsForGases.spec.ts`.
+RULE: **the pack prop is doing two different jobs and only one of them tolerates the effective pack.**
+An editor that stores a DELTA uses its pack twice - as the base a saved delta is laid OVER on the way
+in, and as the base the edited list is diffed AGAINST on the way out - and both of those must be the
+pack WITHOUT this campaign's overrides. Hand it the effective pack and base and edited list become
+one list: `makeListDelta` correctly finds no difference, returns `undefined`, and
+`applyStarmapOverrides` reads `undefined` as "no override at all" and DELETES the key. Opening the
+biosphere editor and pressing Save with no edits wiped morphologies, pigments and pigmentModel
+together, in silence. An editor that only POPULATES CONTROLS from the pack wants the effective one,
+which is why the two mounts differ and why "as the other editor does" is not a reason.
+BLAST: silent loss of every customisation in the affected sections, on a gesture a GM has no reason
+to think is destructive. The tell is a save handler that diffs against the same prop its loader
+applied an override to.
+
+### RENDER-S59 A CACHED CANVAS IS NOT A CACHED TEXTURE - THE UPLOAD IS THE BILL, AND IT IS PAID PER BUILD
+BUCKET: PLATFORM (what a GPU upload costs, and what it costs when there is no GPU) plus
+IMPLEMENTATION (who owns a shared texture).
+WHERE: `holo/bodyLook.ts:sharedTexture` - the only place a body-surface canvas becomes a
+`THREE.CanvasTexture`. Pinned by `rendering/sharedTextures.spec.ts`.
+RULE: caching the PIXELS is only half of caching. `planetTexture` memoises the 1024x512 canvas, but
+wrapping that canvas in a NEW `CanvasTexture` per build re-uploads it, and a per-object teardown
+that calls `map.dispose()` throws the upload away again. A texture shared between objects must be
+built ONCE, MARKED, and freed by nobody - and a teardown must therefore ask before disposing. The
+corollary is the trap that bites the other way: a LABEL SPRITE owns its own canvas and MUST still
+free it, so a blanket guard leaks. Guarded or declared, one or the other, at every disposal.
+WHY: [[C21]]b. The size comparison builds a body when it enters the build window and destroys it
+when it leaves, so SCROLLING alone re-uploaded every surface, forever - "everything is being
+retextured on the fly. Rather than cached", which is how the owner described it before anyone had
+found it. On a browser that has fallen back to software rendering ([[C20]]) an upload is not a
+transfer to a card, it is the CPU converting and copying half a megapixel on the main thread, which
+is why one body took ten to twenty seconds there and was instant elsewhere.
+BLAST: **A BUDGET CANNOT FIX REPEATED WORK, and reaching for one first makes the fault look worse.**
+Spreading a build across frames is right for work that must happen once; if the work is being
+REDONE, spreading it only distributes the thrash - which is exactly what C21's budget did, and the
+only reason it helped was that it made the repetition visible. Ask "how many times is this being
+computed" BEFORE "how do I spread this out". Anything new that builds per-object visuals from a
+shared cache inherits all of this.
+
+### DATA-R48 A CLIP NEVER OVERWRITES A DEFINITION, AND A RENAME HAS TO REACH THE DEFINITIONS TOO
+BUCKET: ARCHITECTURE (file format) - R-19 job 3, the merge.
+WHERE: `src/lib/io/clipRules.ts` (`mergeClipOverrides`, `writeBack`, `SECTIONS[].namedBy/repoint`);
+driven from `src/routes/+page.svelte` through the single `mergeClipRules` door. Pinned by
+`clipRulesMerge.spec.ts` (against the HUB'S OWN seven fixtures) and `clipRulesPhase.spec.ts`.
+RULE: three outcomes per definition - add / discard silently / **never overwrite**. The third is the
+one that must not be got wrong: somebody else's "Liquid Unobtainium" is not this GM's, and replacing
+theirs silently changes bodies they ALREADY HAD, which turns a quiet wrong answer on one pasted
+planet into a quiet wrong answer across a whole campaign. A clash renames the INCOMING definition and
+repoints the pasted nodes; the destination's own is never touched.
+THREE THINGS THAT ARE NOT OBVIOUS AND EACH COST A GATE:
+- **A RENAME MUST REACH THE INCOMING DEFINITIONS, NOT ONLY THE NODES.** An engine definition names its
+  fuel by id. Rename a clashing fuel, repoint the ships, and the engine still points at the old name -
+  an engine with no fuel. The hub's own clip 1 is exactly this shape (`q-drive` burns `dt-slush`).
+- **A RENAME LOOKS FOR ITS OWN PREVIOUS RESULT BEFORE MINTING ANOTHER**, or pasting a conflicting clip
+  twice gives "x (from Map) " and "x (from Map) 2". Reuse when the earlier rename is identical.
+- **THE MERGE RUNS BEFORE `process()`, NEVER AFTER.** Every derived quantity reads the effective pack,
+  so a body whose hydrosphere names a custom liquid must be processed against a pack that already
+  knows it. Merging afterwards leaves the first pass wrong, and pass 1 is what a GM sees.
+AND `applyStarmapOverrides` IS NOT THE DOOR: it is a shallow section-level spread, so an incoming
+`liquids` would replace the GM's entire liquids override rather than joining it. The merge is per
+DEFINITION and goes nowhere near it.
+BLAST: silent corruption of a campaign's existing rules, which is the failure this whole requirement
+exists to prevent.
+
+### DATA-R49 THE SCALAR OVERRIDE SECTION CAN ONLY EVER BE DISCARDED OR DECLINED
+BUCKET: ARCHITECTURE - a consequence of DATA-R48, written down so it is not read as an oversight.
+WHERE: `src/lib/io/clipRules.ts`, the `scalars` arm of `mergeClipOverrides`; `pigmentModel()` in
+`src/lib/physics/pigments.ts`.
+RULE: `pigmentModel` is a bag of scalars and `pigmentModel(pack)` always answers with a COMPLETE
+config (it falls back to the built-in one). So every field already has an effective value in the
+destination and **no field is ever ABSENT** - it is identical, or it differs. A field that differs
+cannot be renamed, because `captureWeight` IS the name, so under never-overwrite the only honest move
+is to keep the GM's and SAY SO. The section therefore never travels; what it does is REPORT, which is
+still the whole difference from the bug, because silence is what made R-19 invisible.
+BLAST: none to data. It is a product decision - a paste cannot carry a pigment weighting - and the
+owner can reverse it; if he does, the change is one arm of this function, not a new mechanism.
+
+### DATA-R50 THE CLIP MERGE TAKES THE WHOLE OVERRIDE BAG - NARROWING IT IS THE ORIGINAL BUG WITH EXTRA STEPS
+BUCKET: ARCHITECTURE (file format) - R-19 job 4, DECIDED NOT TO BUILD, 2026-09-08.
+WHERE: `src/lib/io/clipRules.ts`. The machinery narrowing would use EXISTS (`SECTIONS[].namedBy`),
+because the RENAME needs it anyway to repoint pasted nodes - so this is a decision, not a gap.
+RULE: **a clip's rules are merged whole, not filtered to what the pasted nodes reference.** The hub
+carries the lot deliberately and the owner allowed merging the lot as version one; this entry records
+why it should stay that way rather than being "finished" later by someone reading the brief.
+THE ARGUMENT, and the third point is the one that decided it:
+- **THE COST OF MERGING THE LOT IS CLUTTER. THE COST OF NARROWING WRONG IS A SILENT WRONG ANSWER** -
+  a definition the pasted body needed, dropped, with the paste reporting success. That is R-19's own
+  bug, reintroduced by the code that closes it. The two failure modes are not comparable.
+- **THREE SECTIONS CANNOT BE NARROWED AT ALL.** Nothing names a pigment: pigments are SCORED across
+  the whole pack, so a pigment override reaches a pasted world through the SET. Same for
+  `pigmentModel`, and for an atmosphere preset, which is a template a body was made from rather than
+  a link it keeps. Narrowing by node reference would drop exactly the definitions that decide a
+  pasted world's vegetation colour.
+- **THE REFERENCE GRAPH HAS MORE EDGES THAN IT LOOKS.** A liquid is named in TWO independent node
+  places - `hydrosphere.composition` AND `hydrosphere.layers[].liquid` (a subsurface ocean or cloud
+  deck can name a liquid the surface never mentions) - and definitions name each other, an engine
+  naming its fuel by id. The second liquid edge was missed on the first pass of the RENAME and only
+  found by grepping every `liquidDef` caller. A narrowing pass gets no such second chance: a missed
+  edge is silent by construction.
+- **A RULES-ONLY CLIP HAS NO NODES**, so narrowing has to be skipped for it anyway.
+BLAST: if narrowing is ever built, it must be additive-only over a measured reference map, and the
+three set-scored sections must be exempt by name. Do not derive the reference list from the fields
+that happen to appear in one fixture.

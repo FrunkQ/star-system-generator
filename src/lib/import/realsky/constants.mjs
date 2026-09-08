@@ -13,6 +13,11 @@
 export const G = 6.6743e-11;
 export const SOLAR_MASS_KG = 1.989e30;
 export const SOLAR_RADIUS_KM = 695700;
+// The Sun's effective temperature. ONE definition, shared across the DATA-R5 boundary: the
+// import core writes the luminosity law forwards (`stars.mjs luminositySolarFrom`) and the size
+// derivation writes it backwards (`starSize.mjs radiusRsunFromLT`), while the engine's own copy
+// is `physics/luminosity.ts` (PHY-34), which re-exports this rather than declaring a second 5778.
+export const SOLAR_TEMPERATURE_K = 5778;
 export const EARTH_MASS_KG = 5.972e24;
 export const EARTH_RADIUS_KM = 6371;
 export const JUPITER_MASS_KG = 1.898e27;

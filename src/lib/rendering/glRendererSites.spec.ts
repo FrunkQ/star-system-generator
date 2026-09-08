@@ -1,0 +1,73 @@
+import { describe, it, expect } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+/**
+ * C20: NOBODY BUILDS A WebGL RENDERER EXCEPT THE FACTORY.
+ *
+ * Six sites each wrote their own `new THREE.WebGLRenderer`, and not one of the six asked the browser
+ * for the high-performance GPU - the formal request the owner asked about when his tired browser
+ * locked up. A seventh site added next month would silently not ask either, because there is nothing
+ * about writing that constructor that reminds you what the other six decided.
+ *
+ * So this is a SOURCE-LEVEL PIN in the shape `skinLiterals.spec.ts` already uses: it reads the code
+ * as text and fails on the constructor appearing anywhere but its one legitimate home. It cannot be
+ * a runtime test - a real GPU cannot be asserted under vitest, and the whole point is the argument
+ * we pass at construction, which nothing observable in jsdom depends on.
+ *
+ * If you are here because this test failed: call `createGlRenderer` from `$lib/rendering/glRenderer`
+ * and pass your surface's genuine differences as options. If your surface genuinely cannot use it,
+ * that is a conversation to have on the board, not a line to add to `ALLOWED`.
+ */
+const CONSTRUCTOR = /new\s+(?:THREE\s*\.\s*)?WebGLRenderer\s*\(/;
+/** C20 job 3: a teardown that only disposes keeps the CONTEXT. `releaseGlRenderer` gives it back. */
+const BARE_DISPOSE = /\brenderer\s*\.\s*dispose\s*\(/;
+const ROOT = 'src';
+/** The factory itself, and nothing else. A second name here means the fault has come back. */
+const ALLOWED = ['src/lib/rendering/glRenderer.ts'];
+
+function* sourceFiles(dir: string): Generator<string> {
+	for (const name of readdirSync(dir)) {
+		const p = join(dir, name);
+		if (statSync(p).isDirectory()) yield* sourceFiles(p);
+		else if (name.endsWith('.ts') || name.endsWith('.svelte')) yield p;
+	}
+}
+
+describe('one renderer factory (C20)', () => {
+	it('no source file outside the factory constructs a WebGLRenderer', () => {
+		const hits: string[] = [];
+		const disposals: string[] = [];
+		// ONE pass over src/ for BOTH pins. Reading every file twice is the difference between
+		// this finishing inside its budget and timing out under a full parallel run.
+		for (const file of sourceFiles(ROOT)) {
+			const rel = relative(process.cwd(), file).replace(/\\/g, '/');
+			if (ALLOWED.includes(rel)) continue;
+			const text = readFileSync(file, 'utf8');
+			// CHEAP REJECT FIRST. Splitting and running two regexes over every line of every file in src/
+			// is real CPU under a parallel run, and it made neighbouring source-scanning specs time out on
+			// their default budgets. Almost no file contains either word, so one substring test skips the
+			// per-line work entirely without narrowing what is scanned - the pin stays complete.
+			if (!text.includes('WebGLRenderer') && !text.includes('dispose(')) continue;
+			text
+				.split(/\r?\n/)
+				.forEach((line, i) => {
+					// A mention inside a comment is documentation, not a second decision.
+					const code = line.replace(/\/\/.*$/, '').replace(/^\s*\*.*$/, '');
+					if (CONSTRUCTOR.test(code)) hits.push(`${rel}:${i + 1}: ${line.trim().slice(0, 100)}`);
+					if (BARE_DISPOSE.test(code)) disposals.push(`${rel}:${i + 1}: ${line.trim().slice(0, 100)}`);
+				});
+		}
+		expect(
+			disposals,
+			`these free three's objects but keep the WebGL CONTEXT - call releaseGlRenderer instead:\n${disposals.join('\n')}`
+		).toEqual([]);
+		expect(
+			hits,
+			`these build a renderer without going through createGlRenderer, so they ask the browser for nothing:\n${hits.join('\n')}`
+		).toEqual([]);
+		// 60 s, not 5: this reads EVERY .ts and .svelte file under src/, and it timed out in a
+		// full parallel run while passing on its own - a completeness pin should not be traded
+		// for speed by scanning a subset, so it is given a budget instead.
+	}, 60_000);
+});

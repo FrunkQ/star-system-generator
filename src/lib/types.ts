@@ -641,6 +641,14 @@ export interface ContentCredit {
   chain?: ContentCreditLink[];
 }
 
+/**
+ * Where a published figure came from (D29). `measured` - the catalogue states this quantity for
+ * this object; `derived` - computed from other measured quantities of this object; `typical` - the
+ * rule pack's band for its class, which says nothing about THIS object. The importer's
+ * `starSize.mjs` is the only thing that sets these today.
+ */
+export type FigureSource = 'measured' | 'derived' | 'typical';
+
 export interface CelestialBody extends NodeBase, PhysicalParameters {
   kind: 'body' | 'construct';
   roleHint: 'star' | 'planet' | 'moon' | 'barycenter' | 'construct' | 'belt' | 'ring' | 'ship';
@@ -679,6 +687,13 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // prose while every numeric surface showed a band midpoint as if it were observed. Same idea as
   // `ageEstimated` on the system: a guess must never wear a measurement's clothes.
   typicalForClass?: boolean;
+  // PER-FIGURE PROVENANCE (D29). `typicalForClass` is one boolean over three numbers, and once the
+  // importer began deriving sizes that stopped being expressible: Sirius arrives with a MEASURED
+  // temperature, a radius DERIVED from that temperature and its parallax, and a mass estimated from
+  // its luminosity, because no catalogue publishes a stellar mass at all. This says which is which,
+  // per number. `typicalForClass` is unchanged and is COMPUTED FROM THIS in one place, so the two
+  // cannot disagree: it is true exactly when all three are 'typical'.
+  figureSources?: { massKg?: FigureSource; radiusKm?: FigureSource; temperatureK?: FigureSource };
   auroraEmitters?: AuroraEmitter[];  // resolved at process time from atmosphere × gas AuroraBand data
   orbit?: Orbit;
   /** G43: authored Lagrange-point relationship. When present, `orbit` is DERIVED from the
@@ -1361,11 +1376,16 @@ export interface RulePackOverrides {
   sensorDefinitions?: SensorDefinition[];
   gasPhysics?: Record<string, GasPhysics>;
   atmosphereCompositions?: any[];
-  liquids?: LiquidDef[];
   // DELTAS, not copies — only the keys and fields a GM actually changed. See lib/rulepackDelta.ts
   // for why: a whole-list override freezes the shipped defaults at the moment of the edit, and
-  // every later improvement to the pack silently stops reaching that campaign. Both fields still
-  // accept a whole list, because campaigns saved before this carry one.
+  // every later improvement to the pack silently stops reaching that campaign. All THREE fields
+  // still accept a whole list, because campaigns saved before this carry one.
+  //
+  // `liquids` JOINED THE OTHER TWO AT D25 and this declaration did not follow it until R-19 - the
+  // reader (`effectiveRulePack`) had been casting to `any` to say what the type would not, and the
+  // editor was still testing `.length` on a value that might have none. Three answers to one
+  // question about one field is how the third of them ends up wiping the first.
+  liquids?: PackListDelta<LiquidDef> | LiquidDef[];
   morphologies?: PackListDelta<MorphologyDef> | MorphologyDef[];
   pigments?: PackListDelta<PigmentDef> | PigmentDef[];
   /** A handful of scalars — stored whole, but only the ones that differ from the pack. */

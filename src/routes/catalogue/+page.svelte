@@ -22,7 +22,7 @@
   import { transferReportText } from '$lib/transferReport';
   import { APP_VERSION } from '$lib/constants';
   import { isAllowedEmbedOrigin } from '$lib/embedOrigins';
-  import { parseIceParam } from '$lib/iceConfig';
+  import { parseIceParam, primeManagedIce } from '$lib/iceConfig';
   import { setModelFetcher, modelArrived } from '$lib/constructs/modelFetch';
   import { applyFlightUpdate, type FlightUpdate } from '$lib/constructs/flightState';
   import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
@@ -1002,6 +1002,11 @@
   let prefs: UnitPrefs = {};
 
   onMount(async () => {
+    // v3.1.21 - ask for the managed relay's credentials as early as this page
+    // runs, so the answer is already here by the time anything dials. Nothing
+    // else starts this request: the dialling path only ever waits for one that
+    // is already in flight.
+    void primeManagedIce();
     const params = new URLSearchParams(window.location.search);
     sessionId = params.get('sid');
     activePresetId = params.get('preset') || FALLBACK_PRESET_ID;
@@ -1278,8 +1283,8 @@
       statusText={receiving
         ? incomingMessage
         : linkBlocked
-          ? 'SENSOR LINK BLOCKED — this network will not carry a direct or relayed connection to the host (UDP blocked, no relay). Ask the GM for a link with a relay, or try another network.'
-          : 'Reaching the host — this will fill in automatically once the GM is broadcasting.'}
+          ? 'SENSOR LINK BLOCKED — this network will not carry the connection to your GM. Try switching between wi-fi and mobile data; that often fixes it on the spot. If not, ask your GM for a new link — they have been told, and adding a relay on their side fixes it.'
+          : 'Reaching the host — this fills in automatically as soon as the connection is made.'}
       sessionId={receiving ? '' : (sessionId ?? '')}>
       {#if receiving}
         <!-- A SPINNER, NOT A BAR, and the distinction is honest rather than cosmetic: nothing here

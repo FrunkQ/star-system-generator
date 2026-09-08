@@ -1315,7 +1315,10 @@
                      will read it, so the preview cannot show a different set of badges. (It really
                      does now — `highlights` was missing until v2.1.710, which made this comment a
                      description of an intention rather than of the code.) -->
-                <HoloView system={stageSystem} {currentTime} showGridLegend={true} style={systemPreviewStyle} skyStars={previewSkyStars}
+                <!-- capture=false (C20 job 5): nothing copies this preview's pixels - it is not in the
+                     catalogue stage the entry transition snapshots, and no getCanvas() reaches it - so it
+                     need not keep a whole drawing buffer alive after every frame. -->
+                <HoloView capture={false} system={stageSystem} {currentTime} showGridLegend={true} style={systemPreviewStyle} skyStars={previewSkyStars}
                   markerStyle={draft.markerStyle} markerSize={draft.markerSize} flagStaff={draft.flagStaff} pinText={draft.pinText} highlights={stageHighlights}
                   focusedBodyId={previewFocusId} on:focus={(e) => (previewFocusId = e.detail)} />
                 {#if infoPreview && !draft.hideInfoPanel}

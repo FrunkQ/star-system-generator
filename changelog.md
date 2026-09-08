@@ -2,6 +2,264 @@
 
 All notable changes are listed here:
 
+## v3.1.48 - 8th Sep 2026
+
+- Housekeeping before the production release: the entry describing the What's New panel and the SSE3.1 mark that reopens it had been lost while two sessions replayed past each other, leaving one release note recorded twice and another not at all. The code shipped correctly; only the record was wrong.
+
+## v3.1.47 - 8th Sep 2026
+
+- Developer note only, no behaviour change: the Anomaly tag category is written up alongside the ones that are now locked, explaining why it is safe to switch off when they are not. An anomaly tag is the reason a GM gave for pinning a value - the pin itself does the work, so turning the category off loses a description rather than a mechanic.
+
+## v3.1.46 - 8th Sep 2026
+
+- Board only. The copied-rules work is written up for the sharing site's side of the contract, together with the short list of things worth looking at in a real window and the one thing the site needs to change: it labels a world's ocean with a field name the app does not read, so a copied world would still not find its liquid.
+
+## v3.1.45 - 8th Sep 2026
+
+- **The rules pages from the map library can now actually be pasted.** The paste window would not let you press its button for a rules-only copy, because it was still waiting for you to choose which system to put it in - and there is no object to put anywhere. It now says what the rules are, that nothing will be added to your map, and lets you paste them.
+- Renaming a clashing liquid now also repoints a world's underground oceans and cloud decks, not just its surface, so nothing is left pointing at the wrong definition.
+
+## v3.1.44 - 8th Sep 2026
+
+- **The tag categories the engine relies on can no longer be switched off, and the switch now behaves.** Six of them - Status, Owner, Purpose, Resources, Hull class and FTL drive - are matched by name by the parts of the app that move ships, mine, refuel and pick templates, so offering to hide them was offering something the app would ignore. Worse, it did not stick: switching one off lasted until you reloaded and then quietly came back. They now stay on, their tickbox says why, and their tags are still entirely yours to edit.
+- Frontier logistics and Anomaly stay switchable, because those are your setting's own vocabulary rather than general machinery - another campaign will have a different list, or none.
+- Nothing about your ships changes: a damaged ship was always still damaged whatever this screen said, because the readiness calculation reads the ship's own tags rather than this list.
+
+## v3.1.43 - 8th Sep 2026
+
+- Board only. The size-comparison slowdown is written up in full: three separate causes, and the owner named two of them from the symptoms alone.
+
+## v3.1.42 - 8th Sep 2026
+
+- **Fixed: moving between worlds in Size comparison rebuilt every world on screen.** This is the rest of the slow-machine problem, and again the owner had the cause: *"we need to keep EVERY texture currently being displayed in the scene"*. The strip sizes itself around whichever world you have picked, so choosing a different moon changes how big EVERYTHING is drawn - and the view treated a change of size as a reason to throw a world away and make it again. It never was one: a world is now simply drawn larger or smaller, which is the identical picture, and moving between worlds costs nothing.
+- **And a world you scroll past is now kept rather than discarded**, so coming back to it is instant instead of rebuilding it. They stop drawing while out of sight, so they cost nothing to keep, and a very long strip still has a limit.
+
+## v3.1.41 - 8th Sep 2026
+
+- **A planet copied from the map library now brings the custom rules it needs.** Copy a world whose ocean is a liquid the map's owner invented, paste it into your campaign, and the liquid comes with it - so the world freezes, boils and looks the way its author meant, instead of quietly falling back to defaults while the paste told you it had worked.
+- **It will never overwrite a rule you already have.** If a copied world brings a different liquid that happens to share a name with one of yours, yours is left exactly as it is, theirs arrives under a name that says where it came from, and the pasted world is pointed at it. Your other worlds do not change.
+- **Pasting related objects does not pile up duplicates.** Paste a star and then one of its planets and the second paste brings the same rules as the first; nothing is added twice, and nothing is renamed just because the rules were written down in a different order.
+- The rules pages on the map library can be copied and pasted on their own now: the rules arrive, and no objects are created.
+- After a paste the app says what came with it - "added 2 liquids and an engine definition", and if anything was renamed or kept back, which and why.
+
+## v3.1.40 - 8th Sep 2026
+
+- Groundwork, part two, for a planet copied from the map library bringing its custom rules with it: the app can now tell, definition by definition, whether a rule arriving with a copied object is one you already have, one you have under the same name but defined differently, or one that is new to you. Comparing ignores the order the fields happen to be written in, so a rule that is genuinely the same is not mistaken for a clash. Nothing is merged yet - that is the next piece.
+
+## v3.1.39 - 8th Sep 2026
+
+- **Fixed: worlds were being re-made from scratch every time you scrolled them off the edge and back.** This is what was really behind the size comparison crawling on an older machine, and it was the owner who spotted it: *"everything is being retextured on the fly. Rather than cached"*. The expensive part - painting a world's surface - was already cached. Handing that painted surface to the graphics card was not, and that step was being redone for every world, every time it came back into view. On a machine whose browser has fallen back to drawing with the processor, that copy is done by hand, half a megapixel at a time, and it is the whole bill. A world's surface is now handed over once and shared by everything that draws it.
+- **And the strip now builds what you are looking at first**, rather than whatever comes first in the list - so on a slow machine the worlds under your eyes fill in before ones still off the edge of the screen. The wireframe also stays put until the finished world is ready to replace it, instead of vanishing while it is being made.
+
+## v3.1.38 - 8th Sep 2026
+
+- **Traveller main worlds are now placed where they can actually be lived on.** The importer used to read a world's orbit off a fixed table indexed by its star's spectral letter, so every G star's main world sat at 0.85 AU and every M star's at 0.17 AU no matter how bright the star really was - which is why so many arrived far too hot or far too cold. A world is now placed using the temperature its own atmosphere asks for, against the habitable band worked out from that particular star's brightness. A red dwarf's world comes in close, a bright star's sits further out, and a world with a methane atmosphere goes out where methane is liquid.
+- **A world you can breathe on is kept in the habitable band, but not pinned to its warmest edge.** Some are shirtsleeve weather and some want a heavy coat, and both are places people live - so a sector's main worlds vary instead of all sitting at the same distance.
+- **Worlds Traveller marks hostile are left exactly where they were.** A hellworld stays a hellworld, at the orbit earlier versions gave it. The trade codes that do this are rule-pack data, so a GM can add their own.
+- **Fixed: a main world marked as a satellite was never actually made one.** Traveller's `Sa` code says the main world is a moon of a bigger world, and the importer looked for a host before any had been created - so it quietly gave up every time and the world came out orbiting its star like any other. It now creates the gas giant the world orbits, in the habitable band, so the world is a moon and still sits somewhere liveable. That pair counts as two of the system's worlds.
+- **New, and useful well beyond Traveller: a world can be fitted to a condition.** Ask where a star would keep a body at a given temperature, or inside a temperature range, or where a particular liquid - water, ammonia, methane, molten sulfur - would stay liquid, and get the orbit and the band back. Nothing is hardcoded to water or to Earth.
+- There is a switch for all of this in the Traveller import dialogue, on by default; turning it off restores the old fixed table exactly.
+- Traveller is now a tag category of its own, so a world that Traveller says something about - that its main world is a moon, say - shows it as a Traveller fact rather than as an unlabelled one, and says what the game meant by it.
+
+## v3.1.37 - 8th Sep 2026
+- **Two ways of losing your own custom rules, both fixed.** Opening the Edit Biospheres dialog and pressing Save without changing anything deleted every morphology, pigment and pigment-model setting the campaign had - silently, with no warning and nothing to undo. And the Edit Liquids dialog could not see a custom liquid that had arrived with a shared starmap at all: it opened on the standard list instead, so saving wrote that list over the liquid and every world that used it quietly fell back to water. Both dialogs now read and write the same way the rest of the app does, and each has a test that fails if it ever stops.
+- The Edit Liquids dialog also no longer records changes you did not make: simply opening it used to mark nineteen of the twenty-two standard liquids as edited.
+- Developer-facing only: the test suite was failing two or three different tests on every run, always with a timeout and always passing on their own, because several sessions build on this machine at once. The time budget is now set once, generously, and the slowest check does half the disk work it used to.
+- **Groundwork so that a planet copied from the map library brings its custom rules with it.** A copied object can now carry the custom liquids, gases, engines and the rest that its map defined, and the library's rules pages can be copied as well. Nothing is merged into your campaign yet - that is the next piece of work - but the app now reads what arrives instead of ignoring it, and a copy made in the app itself carries your own rules too, so moving a body between campaigns will keep them.
+
+
+## v3.1.36 - 8th Sep 2026
+
+- Board only. A note I left for the next developer was wrong and is corrected: three tests that looked unreliable were not - they simply ran out of time because four agents were testing on the machine at once. Nothing in the app was at fault, and the correction says how to tell the two apart so the next person does not go looking for a problem that is not there.
+
+## v3.1.35 - 8th Sep 2026
+
+- A new developer guide, "adding a classification", written at the owner's request so that adding a body type is a checklist rather than an afternoon of research. It names every place a new type has to reach and the trap that catches people first: the app re-derives every type on every pass, so a type it cannot work out for itself is quietly lost the next time a system is processed.
+- Board only. Small bodies are a convincing lumpy potato on their info card and a smooth ball in every 3D view, because nothing has ever displaced the sphere the 3D views build. Captured on the owner's word and folded into the contact-binary stream, since both need the same seeded shape and the card and the 3D view should show the same rock.
+
+
+## v3.1.34 - 8th Sep 2026
+
+- Board only. The 3D lockup work has now been checked in a real browser against the live test site, and the write-up says what was actually watched happening rather than what was only reasoned about: the app asking for the fast graphics chip, noticing a browser that had fallen back to the processor, saying so on screen, turning Low power on by itself, honouring a choice you made instead, and handing a graphics context back when a 3D view closes.
+
+## v3.1.33 - 8th Sep 2026
+
+- Board only, and a correction to yesterday's entry: contact binaries are an ordinary new small-body type after all, authored or generated like any other. The coordinator had read "not creating them dynamically" as a permanent exclusion and designed a mechanism for it; the owner meant no such thing. What is actually needed is smaller - a body fact for being two-lobed, so the classifier can keep the type across a reprocess, and one modifier that stacks to give both real cases: a bilobate comet like 67P and a rubbly Kuiper belt pair like Arrokoth.
+
+
+## v3.1.32 - 8th Sep 2026
+
+- Board only. A contact binary - two lobes touching, like Arrokoth - is captured as a fourth small-body type you could author but the engine would never generate for you. The measurement found why that is not simply a new entry: the list the type picker offers you is the same list the classifier uses to decide what a body is, so being offerable and being generated are currently the same thing. The fix is one field on a type definition, and it is briefed.
+
+## v3.1.31 - 8th Sep 2026
+
+- **Fixed: opening Size comparison could lock the whole page up until the browser offered to kill it.** This was a different fault from the 3D lockup and needed a different fix: every world coming into view was being built in one unbroken burst, and building a world means drawing its textures, so a strip of ten arrived as one long piece of work the browser could not interrupt. It now builds only as much as fits in a fraction of a frame, shows the rest as spinning wireframe globes, and fills them in over the following frames. The strip scrolls and answers clicks the whole time.
+- **And the app now records what that build cost, whether or not you have tracing switched on.** Nobody can turn tracing on before a freeze they did not expect, so the numbers are kept regardless and can be read afterwards: how many worlds were built, how many were put off, and how long the page was blocked for.
+- Note for the curious: the pause when a 3D system view first loads has the same cause, and is NOT fixed by this. It is written up with the reason it needs more care than a copy of this change.
+
+## v3.1.30 - 8th Sep 2026
+
+- Board only. A memory saving offered as part of the 3D lockup work was put to the owner and not taken: the full-screen player view keeps its spare copy of the picture, so the transition when you step between views still fades from the real outgoing screen rather than from black. His reply pointed at a better answer than any of the options offered - the spare copy only has to exist at the instant the picture is taken - and that is now written up for whoever builds it, together with the one place it does not apply.
+
+## v3.1.29 - 8th Sep 2026
+
+- Board only. Two counts in the 3D lockup write-up were understated and are corrected - the work is described by its numbers, so the numbers have to be right.
+
+## v3.1.28 - 8th Sep 2026
+
+- Board only. The 3D lockup item's status now says all five pieces of work are on the test version rather than only the first, so nobody reads it as unfinished.
+
+## v3.1.27 - 8th Sep 2026
+
+- Board only. The 3D lockup work is written up for whoever picks it up next, including the short list of things to look at on the machine that actually locks up, and the one change that is recommended but deliberately not made because it trades a visual effect for memory.
+
+## v3.1.26 - 8th Sep 2026
+
+- The shortlist of main-world kinds, and the trade codes that exempt a world from being moved, are now rule-pack data rather than a list buried in code - so a GM can add a world profile or exempt another code without waiting for a release. Nine profiles ship, spanning the ladder from a world you can breathe on to one where people live sealed in or underground, and every Traveller atmosphere code from 0 to F can be placed. Still not wired to the importer, so no import changes with this release.
+
+
+## v3.1.25 - 8th Sep 2026
+
+- **A small device now turns Low power on for itself.** Browsers report roughly how much memory the machine has, and SSE has been collecting that number for its diagnostic reports without ever acting on it. A device reporting 2 GB or less now starts in Low power the first time a 3D view opens - the machines most likely to need that setting being the least likely to go looking for it. It is the same tickbox you already have, not a hidden mode, so you can see it is on and turn it straight off.
+- **And whatever you have chosen yourself always wins.** If you have ticked or unticked Low power, nothing automatic changes it, in either direction, for as long as that browser remembers. A 4 GB machine is deliberately left alone: that is an ordinary working laptop and stripping its clouds by default would be a change nobody asked for.
+- **The preset preview stops holding a spare copy of its picture in memory.** A 3D view has to keep its last frame when something is going to photograph it - which is how a world's picture gets inside a filtered document, and how a view-entry transition works. The preview in Player View setup is photographed by nothing, so it no longer pays for that. The views that ARE photographed are unchanged, and now say so in their own code.
+- If you send a diagnostic file, it now records whether Low power was on and why - your own choice, a small device, or a browser that had fallen back to drawing on the processor.
+
+## v3.1.24 - 8th Sep 2026
+
+- The relay now lives at `turn.starsystemx.com` rather than a `workers.dev` address. That is not cosmetic: `workers.dev` is a hostname routinely blocked by corporate and school firewalls, and those are exactly the restrictive networks a relay exists to rescue - a blocked endpoint would have meant no relay for precisely the people who need one.
+- The old address still answers, so any build already out there keeps working.
+
+
+## v3.1.23 - 8th Sep 2026
+
+- Board only. The map library can now send the custom rules a copied object needs - a GM's own liquid, gas or engine definition travelling with the planet that uses it. Until the app's half is built, a pasted body that references one still falls back to a default without saying so. The work is briefed, with three findings the site could not make from its side.
+
+
+## v3.1.22 - 8th Sep 2026
+
+- Groundwork for Traveller main worlds that sit somewhere liveable. The rule for deciding where a main world belongs, and what kind of world it is, now exists as its own model: it asks the engine where that particular star's habitable zone actually is rather than looking the answer up by the star's letter, it picks the most comfortable world type the sector data will honestly support and says whether you could breathe outside, and if a gas giant already occupies the habitable zone it makes the main world a moon of that giant so the world still sits in the right place. Worlds Traveller marks hostile are left exactly where they are. Nothing uses it yet - the importer is wired to it next - so no import changes behaviour with this release.
+
+## v3.1.21 - 8th Sep 2026
+
+- **Remote players now have a relay, and nobody has to set it up.** When a player's network will not carry a direct connection to you, the connection falls back to a relay automatically. Until today there was nothing to fall back to - the free one this app inherited had quietly stopped existing - which is why some players could join and others never could, with nothing on either end to point at.
+- It is the LAST route tried, and that is measured rather than claimed: a relay route ranks about thirty times below a direct one, so every player who can reach you directly still does, straight from their device to yours, and never touches it. When it is used it cannot read anything it carries - the connection is encrypted between the two browsers - and it hides your address and theirs from each other, which a direct connection does not.
+- Settings > Remote players carries a switch to turn it off, and your own relay still takes precedence over ours if you have one.
+
+
+## v3.1.20 - 8th Sep 2026
+
+- **Closing a 3D view now gives its graphics back to the browser, which is the real cause of the lockup.** A browser will only keep a small number of 3D views alive at once - around sixteen in Chrome and Edge - and when it runs out it silently kills the oldest one. SSE was tidying up its own objects when you closed the Holoview, the size comparison, the gallery, the starmap or a model viewer, but it was never handing the graphics context itself back, so they piled up invisibly. Open and close a few 3D views in one session and the browser would start killing views you were still using. All six now hand it back properly.
+- **And if the browser does take a view's graphics away, it says so instead of just stopping.** Only the Holoview noticed this before; the other five went quietly blank and left you looking at a frozen picture with no explanation. All six now tell you what happened and that closing some views or reloading will bring it back.
+
+## v3.1.19 - 8th Sep 2026
+
+- Documentation only: the Creator Hub's half of the contract records that a campaign saved from now on lists only the calendars its GM actually made, so the hub can stop guessing which of them came with the app.
+
+## v3.1.18 - 8th Sep 2026
+
+- **Your campaign no longer stores a copy of the four calendars it came with.** Saved files stopped doing this a while ago, but the copy the browser keeps never did, so every campaign carried all four as though you had written them yourself - which meant a later correction to one of them could not reach you. The shipped calendars now come from the app, and only a calendar you added or changed is stored with your campaign. Nothing you have altered is touched, and which calendar your campaign runs on is still yours.
+
+## v3.1.17 - 8th Sep 2026
+
+- **Groundwork for a relay nobody has to configure.** The app can now fetch short-lived relay credentials from an endpoint of ours at startup and add them to the list it already uses. It is switched OFF in this build - the endpoint is not live yet - so nothing changes until it is.
+- Two things worth knowing about how it will work, because they are built in rather than promised. A relay is the **last** route a browser tries: everyone who can connect directly still does, straight from their device to yours, and never touches it. And when it is used it cannot read anything it carries - the connection is encrypted between the two browsers - while hiding your address and your players' from each other, which a direct connection does not.
+- Settings will carry a switch to turn it off entirely, appearing only once there is something to switch.
+- **Fixed: the waiting screen blamed the GM.** "Reaching the host - this will fill in automatically once the GM is broadcasting" is what a blocked player sat on, and it is what one group reported back to their GM as "it showed you were offline" when the GM was working perfectly well. It now says the connection is being made, without pointing at anybody.
+
+
+## v3.1.16 - 8th Sep 2026
+
+- **SSE now notices when your browser is drawing 3D on the processor, and says so.** A browser that is short of memory - an old window with a lot of tabs, and Edge especially - does not refuse to draw 3D. It quietly stops using the graphics chip and draws every pixel on the processor instead, which is perhaps a hundred times slower and is what a total lockup actually is: it was never broken, it was going to finish eventually. SSE now asks the question that tells the two apart, once, when the first 3D view opens. If the answer is bad it does not refuse to run - it turns Low power on for that session and puts a line on screen telling you what happened and that a fresh browser window will be much faster.
+- **And an answer you have given yourself is never overridden.** If you have ticked or unticked Low power, that is your decision and nothing automatic will undo it in either direction. The box now remembers a deliberate 'off' as well as a deliberate 'on', where before an unticked box could not be told apart from a box nobody had touched.
+- If a browser cannot draw 3D at all, it now says that plainly too, instead of leaving a blank space.
+
+## v3.1.15 - 8th Sep 2026
+
+- **Fixed: a real star could be given a substance invented for a novel.** Astrophage and Taumoeba are from Project Hail Mary, and they were sitting in the default rule pack - the one every campaign receives - so a world imported from the real sky could be handed one as an atmosphere or an ocean. They now travel with the science-fiction starmap that actually uses them, along with the Astrophage spin drive and its fuel, exactly the way your own invented gases and engines already travel with your campaign. The science-fiction map is unchanged to look at; a real-sky import can no longer see any of them.
+- Liquids defined by a campaign are now laid over the shipped list rather than replacing it, which is how biospheres and pigments already worked. A campaign that adds one liquid keeps getting improvements to all the others, instead of quietly freezing the whole list at the moment it was saved.
+
+
+## v3.1.14 - 8th Sep 2026
+
+- Board only. The networking work is recorded as shipped rather than missing: it had been finished and committed but never pushed, so every check against the shared copy said it did not exist. The branch sweep this project runs before a release gains a step that would have caught it.
+
+
+## v3.1.13 - 8th Sep 2026
+
+- **The V3.1 welcome gains the improvements of the 3.1.x line** - the real-sky importer keeping its stars, liveable Traveller main worlds, 3D on a busy browser and the networking work - while the smaller post-launch fixes are gathered onto its closing line.
+- **Click the SSE3.1 mark in the top corner to read the What's New notes again** whenever you like: the version and the notes that explain it now sit behind the same thing. Copying the version for a bug report moved onto the version itself, inside that panel, so reading the notes no longer overwrites your clipboard.
+
+
+## v3.1.12 - 8th Sep 2026
+
+- **Fixed: a player whose connection failed on Firefox saw nothing at all.** A peer connection has two state machines, and Firefox is the browser where they disagree - this app watched only one of them, so the failure never reached its own handler and the guest-side error was discarded. Both are watched now, and PeerJS's "negotiation failed" is treated as what it actually is: no network path was found, not a protocol fault.
+- **The GM is now told when a player cannot get in.** Until now a blocked player simply never appeared: they saw an error they could do nothing about, and nobody who could act was told. A notice now names which fix applies - add a relay, or re-share a link that pre-dates the one you have.
+- **Settings > Remote players gained "Test these servers"** - proves in about five seconds that a relay is reachable and its credentials work, before a game rather than during one.
+- **And it found something.** The free relay that ships with the underlying networking library no longer exists - its addresses have stopped resolving. So "no relay configured" quietly meant no relay at all, for anybody, and remote players could only connect when their network happened to allow a direct route. The Settings text said otherwise; it now tells the truth. If players have ever had trouble joining, adding a relay is very likely the answer.
+- The player's own message now leads with the thing they can act on: switching between wi-fi and mobile data, which often fixes it on the spot.
+
+## v3.1.11 - 8th Sep 2026
+
+- **Fixed, and only visible in the real app: Luhman 16 still imported as a single object.** Yesterday's fix asks the catalogue for the members of every system it cannot resolve, and it asked for a fixed number of them. An import reaches further out than the radius you pick, so it asks about far more systems than the tests did - and the answer was being cut off before Luhman 16's members were reached. The request now scales with how many systems are being asked about, so nothing is silently dropped.
+
+## v3.1.10 - 8th Sep 2026
+
+- An import that cannot load Sol now says so. Sol is not in any star catalogue - it is the point every other star's distance is measured from - so it comes from a file shipped with the app rather than from the sky. If that file could not be read, a "Local Neighbourhood" import quietly had no Sol in it and said nothing; it now tells you.
+
+
+## v3.1.9 - 8th Sep 2026
+
+- **The app now asks your browser for the fast graphics chip.** On any machine with two of them - which is most laptops - the browser picks one when a 3D view opens, and with nothing asked of it the browser is entitled to hand over the small power-saving chip. The Holoview, the size comparison, the body gallery, the starmap, the model viewer and the filtered document view had each been built separately and not one of them had ever asked. All six now go through one place that does, so a seventh view cannot forget. This is the first of three changes aimed at the lockup on a tired browser; on the live version the answer is still to open the app in a fresh window.
+- The same change gathers up the drawing-resolution cap that had been written out six times in four different ways. It behaves as it always did, with one fewer way to get it wrong.
+
+## v3.1.8 - 8th Sep 2026
+
+- **Fixed: Luhman 16 imported as a single object. It is a pair of brown dwarfs, and now arrives as one.** The catalogue records the system under one entry and files its two members separately - without distances of their own, because they are measured as a pair. Every query the importer made asked for a distance, so the two members could never come back and the system arrived as a single body. The importer now fetches the members of any such system and gives them the distance of the pair they belong to, which is the same distance by definition. Luhman 16 A and B now orbit each other at their real separation of about two astronomical units.
+- **Fixed: a system named after one of its stars instead of itself.** A system whose catalogue entry is replaced by its own members took the first member's name, so Luhman 16 would have appeared as "Luhman 16A". Kruger 60 and G 272-61 had the same fault already and are fixed with it.
+- A member is only ever recovered this way when the catalogue actually says what it is. Ross 614's records include two anonymous detections with no stellar type at all, and importing those would have invented two stars out of nothing.
+
+## v3.1.7 - 8th Sep 2026
+
+- **Fixed: importing Sirius gave you only Sirius B.** The catalogue marks Sirius A as a spectroscopic binary, and the importer read that as "this row is a container for a system" rather than "this star has a close companion" - so it threw the bright star away, kept the white dwarf, and called the result Sirius. Sirius now imports as both stars, with A leading at its real size and B orbiting it. Alpha Centauri, Kruger 60 and the other genuine multiples are unaffected, because what actually separates the two cases is whether the catalogue's spectral type names a second star.
+- **Fixed: Lalande 21185 was described as a double star. It is not one.** The catalogue writes its type as "M2+V", meaning "M2 or later, main sequence" - and the importer read the part after the plus as a companion, telling you this single red dwarf had a partner called "V". Only a genuine second spectral type now counts as a companion.
+- The heaviest star in an imported multiple is now chosen using each star's own measured mass rather than the average for its type, so the star the others orbit is the one that really is the heaviest.
+- Procyon, Luhman 16 and Epsilon Indi B are each a close pair the catalogue records as a single entry with no separation, so they still import as one body - and each now says plainly, on its own description, which companion is not represented.
+
+## v3.1.6 - 8th Sep 2026
+
+- **Imported real stars now come in at their real sizes.** Until now every star brought in from the sky catalogues was given the average mass, radius and temperature for its type, so Proxima Centauri arrived at nearly three times its true size and every red dwarf on the map was the same red dwarf. Each star's own measurements are now fetched and used: a measured temperature where one has been published, a radius worked out from that temperature together with the star's brightness and distance, and a mass from its luminosity. Proxima now imports at its true size to three decimal places, and only seven of the sixty-nine stars in a local-neighbourhood import still fall back to a class average.
+- **And each star says where its numbers came from.** A star's description now states, figure by figure, which of its mass, radius and temperature was measured, which was worked out from other measurements of that same star, and which is still a typical value for its class - so a class average can never again be read as an observation.
+- Stars the physics cannot honestly size this way - white dwarfs, brown dwarfs, neutron stars - deliberately keep their class figures and say so, because for those objects the class figure is the right answer rather than a fallback.
+- If the size lookup is slow or unreachable, the import still happens exactly as before with class figures throughout, and says so.
+
+## v3.1.5 - 8th Sep 2026
+
+- Board only. A user's request through the owner is captured and briefed: a Traveller main world should be placed where people could actually live. The cause is found and named - the importer decides the main world's orbit from a fixed table of Sol-spaced slots per spectral letter, and never asks the engine where that star's habitable zone actually is, which is why main worlds arrive far too hot or far too cold. Worlds Traveller marks as hostile will keep their hostile orbits.
+- Board only. The 3D lockup on a tired browser is measured and briefed. The app has never asked the browser for the high-performance graphics chip, never noticed when the browser quietly fell back to drawing on the processor instead, and never handed a graphics context back when a 3D view was closed. That combination is what a locked-up tab looks like, and until it is fixed the answer really is to open the app in a fresh window.
+- The V3.1 welcome no longer fades the megastructures line: it is finished enough to stand as shipped work, and it now names a soletta, to warm a world you are terraforming, as an example of what is still to come.
+
+## v3.1.4 - 8th Sep 2026
+
+- Groundwork for the real-sky importer's missing stars: the catalogue's own answers for the local neighbourhood are now recorded in the project, so the importer's handling of them can be checked without going back to the network. No change to what an import produces yet.
+
+## v3.1.3 - 8th Sep 2026
+
+- **The V3.1 welcome.** The first-run panel now carries the release notes for 3.1 in the owner's own words, and everybody sees it once - including GMs who dismissed the V3 one, because the panel and its "seen" marker move together.
+- **No more upgrade nagging.** A campaign built on an older bundled map is no longer asked to upgrade just because a newer one exists. "It may not have the new features" is obvious and does not need a dialogue; the offer now appears only for an edition that genuinely breaks something, and Settings still offers it whenever you want it.
+- **Fixed: a belt with an eccentricity above 1 threw its name a long way out past the belt.** Such an orbit is not a closed loop and has no far point to hang a label on, so the drawing now borrows the last eccentricity that still closes. The belt's own numbers are untouched and the physics still says what it says.
+
+## v3.1.2 - 8th Sep 2026
+
+- Fixed: turning on Hill spheres broke the whole system map - the display froze and the orbit lines stopped drawing for good. A change in 3.0.378 meant to save some drawing work referred to something that did not exist, so the map gave up part way through every frame and everything after that point vanished with it. That change has been taken out completely and Hill spheres are back to exactly how they drew before.
+- The same work on the zone rings is unaffected and stays.
+
+## v3.1.1 - 8th Sep 2026
+
+- The Getting Started guide now covers magnetic fields. On the flat system map they are a GM view option beside Hill spheres; in 3D they are a player-view setting beside Auroras, off by default and among the things Low Power switches off. The guide explains the two shades - the bright part is the region that actually shields an atmosphere, the pale wash is the whole bubble including its downwind tail - and two things that look like faults and are not: every magnetised world shows its bubble at once rather than only the one you picked, and you cannot see a shell you are standing inside, so pull back. It also says that the 3D squeezes the tail's length the way it squeezes body sizes, and that the true figures are on the body's card and the flat map.
+- The physics reference explains why a dead star is dangerous without a corona. Everything it said about ionising output was about coronas - a thin outer shell heated to millions of degrees above a much cooler surface - which is the right picture for an ordinary star and the wrong one for a remnant. A neutron star's surface is already 600,000 K, so nearly all its light is above the energy that strips an electron off hydrogen: it does not need a corona to be an ionising source, it is one. Asked the coronal question it came out seven orders of magnitude too quiet, so a remnant now takes whichever figure is larger - which is also what stops a feeding black hole losing the output of its disc to a surface temperature that means nothing for a hole.
+- The README's V3.1 list gains the magnetic fields, and says plainly what the sky fixes were: the constellation sky is no longer mirror-imaged, and the 2D system map zooms out fifty times further than it did.
+
 ## v3.1.0 - 7th Sep 2026
 
 Version 3.1. Everything below has been on beta and is now the version at starsystemx.com; the last

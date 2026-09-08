@@ -72,7 +72,7 @@ export function regionBounds(region) {
 // Shared WHERE clause for a region against a table exposing ra/dec (deg) and
 // a distance in PARSECS via `distExprPc` (archive: sy_dist; Gaia/SIMBAD:
 // 1000/parallax). ADQL's CONTAINS/CIRCLE does the sky cone.
-function regionWhere(region, distExprPc) {
+function regionWhere(region, distExprPc, prefix = '') {
   const b = regionBounds(region);
   const clauses = [
     `${distExprPc} >= ${b.shellMinPc.toFixed(6)}`,
@@ -81,7 +81,7 @@ function regionWhere(region, distExprPc) {
   if (b.coneHalfAngleDeg != null) {
     const { centre } = region;
     clauses.push(
-      `CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${centre.raDeg.toFixed(6)}, ${centre.decDeg.toFixed(6)}, ${b.coneHalfAngleDeg.toFixed(6)})) = 1`
+      `CONTAINS(POINT('ICRS', ${prefix}ra, ${prefix}dec), CIRCLE('ICRS', ${centre.raDeg.toFixed(6)}, ${centre.decDeg.toFixed(6)}, ${b.coneHalfAngleDeg.toFixed(6)})) = 1`
     );
   }
   return clauses.join(' AND ');
@@ -186,6 +186,97 @@ export function simbadStarsAdql(region, { count = false } = {}) {
   ];
   const cols = count ? 'count(*) as systems' : SIMBAD_STAR_COLUMNS.join(', ');
   return `select ${cols} from basic where ${clauses.join(' AND ')}${count ? '' : ' order by plx_value desc'}`;
+}
+
+// ---------------------------------------------------- SIMBAD: what a star's SIZE is measured to be
+//
+// D29. THE CENSUS QUERY ABOVE CANNOT CARRY A SIZE, and the reason is not that somebody forgot the
+// column: `basic` HAS no mass, radius or temperature column, measured against TAP_SCHEMA on
+// 2026-09-08. SIMBAD keeps measurements in separate `mes*` tables, and there is no mass table at all.
+// So these two queries fetch what the catalogue DOES measure and `starSize.mjs` turns it into a size.
+//
+// TWO QUERIES RATHER THAN ONE, AND THAT IS DELIBERATE. `mesFe_h` holds one row per PUBLICATION - 43
+// for Sirius, 117 for Arcturus - so joining it beside `allfluxes` and `mesDiameter` in a single
+// select multiplies the row count by that. They are kept apart and reduced caller-side.
+//
+// BOTH ARE ENRICHMENT AND NEITHER MAY BREAK AN IMPORT. A star with no measured size still imports on
+// its class band, exactly as it did before this existed - see `loadStarSizes`.
+
+// One row per object: the magnitudes, and a direct diameter where SIMBAD has one.
+// `allfluxes` is one row per object; `mesDiameter` is rare enough (10 of 74 locally) that its
+// multiplicity costs nothing. THE `unit` COLUMN IS FETCHED BECAUSE IT VARIES PER ROW - SIMBAD writes
+// 'mas' for an interferometric diameter and 'km' for a derived one, and HD 95735 carries one of each.
+export function simbadStarFluxAdql(region) {
+  const distPc = '(1000.0/b.plx_value)';
+  const clauses = [
+    'b.plx_value > 0',
+    'b.ra is not null',
+    "b.otype not in ('Pl', 'Pl?')",
+    regionWhere(region, distPc, 'b.')
+  ];
+  return (
+    `select b.main_id as main_id, x.V as mag_v, x.K as mag_k, ` +
+    `d.diameter as diameter, d.unit as diameter_unit ` +
+    `from basic b left join allfluxes x on x.oidref = b.oid ` +
+    `left join mesDiameter d on d.oidref = b.oid ` +
+    `where ${clauses.join(' AND ')}`
+  );
+}
+
+// The effective temperature and surface gravity, newest measurement first.
+// `teff is not null` IS LOAD-BEARING: the lowest `mespos` for a star is often a metallicity-only
+// row with no temperature in it, so ordering without this filter hands back a null for a star that
+// has sixty published temperatures. Barnard's star is the local example.
+export function simbadStarTeffAdql(region) {
+  const distPc = '(1000.0/b.plx_value)';
+  const clauses = [
+    'b.plx_value > 0',
+    'b.ra is not null',
+    "b.otype not in ('Pl', 'Pl?')",
+    'f.teff is not null',
+    regionWhere(region, distPc, 'b.')
+  ];
+  return (
+    `select b.main_id as main_id, f.teff as teff, f.log_g as log_g, f.mespos as mespos ` +
+    `from mesFe_h f join basic b on b.oid = f.oidref ` +
+    `where ${clauses.join(' AND ')} order by main_id, mespos`
+  );
+}
+
+// -------------------------------------------- SIMBAD: the members a container does not resolve
+//
+// D29. A multiple-star container that the census keeps - because none of its components came back -
+// is the ONLY record of its system, and it imports as one body. Luhman 16 is the owner's example.
+//
+// ITS COMPONENTS DO EXIST. `NAME Luhman 16A` (L7.5) and `NAME Luhman 16B` (T0.5) are in SIMBAD's
+// `h_link` hierarchy with their own positions and their own K magnitudes - and with NO PARALLAX,
+// which is precisely why no query the importer could make ever returned them: every star query
+// carries `plx_value > 0`. That clause is right for a whole-sky census (a row with no parallax
+// cannot be placed) and wrong here, where the parent's parallax is the answer: two members of one
+// system are at the same distance, which is the same reasoning `census.projectedSeparationAu`
+// already relies on.
+//
+// SO THIS QUERY DELIBERATELY OMITS `plx_value > 0`, and the caller supplies the distance. It is the
+// one place in the importer that does, and the reason is the whole point of the query.
+// THE ROW LIMIT SCALES WITH THE NUMBER OF CONTAINERS ASKED ABOUT, and a fixed one is a bug I shipped
+// and caught in the browser rather than in the suite. A flat `top 40` is ample for the 16.5 ly census
+// (9 containers) and SILENTLY TRUNCATES the 41 ly fetch the import dialogue actually makes, where
+// there are 67 - it returned exactly 40 children and Luhman 16's were not among them, so the fix
+// looked like it worked in every unit test and did nothing in the app. Six per container is well
+// clear of any real multiple, and the ceiling only exists so a pathological region cannot ask for
+// everything.
+export function simbadComponentsOfAdql(mainIds, { limit = null } = {}) {
+  const ids = Array.isArray(mainIds) ? mainIds : [mainIds];
+  const rowLimit = limit ?? Math.min(600, Math.max(40, ids.length * 6));
+  const list = ids
+    .map((id) => `'${String(id).replace(/'/g, "''")}'`)
+    .join(',');
+  return (
+    `select top ${rowLimit} p.main_id as parent_id, c.main_id as main_id, c.ra as ra, c.dec as dec, ` +
+    `c.plx_value as plx_value, c.sp_type as sp_type, c.otype as otype ` +
+    `from h_link h join basic c on c.oid = h.child join basic p on p.oid = h.parent ` +
+    `where p.main_id in (${list}) and c.otype not in ('Pl', 'Pl?')`
+  );
 }
 
 // ---------------------------------------------------------------- Gaia

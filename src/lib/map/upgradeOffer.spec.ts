@@ -4,8 +4,12 @@ import { matchBundledMap, looksLikeEdition1, EDITION_1_SYSTEM_IDS, type BaseMapM
 import { CURRENT_BASE_MAP_VERSION } from './provenance';
 import type { Starmap } from '$lib/types';
 
+// Edition 2 is declared a COMPATIBILITY edition here so every test below still exercises the path it
+// was written for. Without that the offer is silent by default (A101) and each negative would pass
+// for the wrong reason - which is exactly the failure this project keeps finding in its own gates.
 const MANIFEST: BaseMapManifest = {
   baseMapVersion: 2,
+  compatibilityEditions: [2],
   maps: [
     { id: 'starmap-local-neighbourhood', file: 'LN.json', name: 'Local Neighbourhood', systemIds: EDITION_1_SYSTEM_IDS.slice(0, 10) },
     { id: 'starmap-local-neighbourhood-scifi', file: 'LN-SF.json', name: 'Local Neighbourhood (SF)', systemIds: EDITION_1_SYSTEM_IDS.slice(0, 10) }
@@ -156,5 +160,30 @@ describe('upgrade offer - a decline recorded ON THE MAP', () => {
     const r = await shouldOfferUpgrade(campaign(EDITION_1_SYSTEM_IDS.slice(0, 8)), MANIFEST);
     expect(r.offer).toBe(true);
     expect(r.fromEdition).toBe(1);
+  });
+});
+
+describe('a content-only edition says nothing (A101)', () => {
+  // Owner, 2026-09-08: "The continual pester that an old map version may not have features of the
+  // new version - we can skip that - its obvious. Only needed if there is a backwards compat issue."
+  const CONTENT_ONLY: BaseMapManifest = { ...MANIFEST, compatibilityEditions: [] };
+
+  it('does NOT offer to the very campaign that WOULD be offered a compatibility edition', async () => {
+    const c = campaign(EDITION_1_SYSTEM_IDS.slice(0, 6));
+    expect((await shouldOfferUpgrade(c, MANIFEST)).offer, 'the compatibility case still offers').toBe(true);
+    const quiet = await shouldOfferUpgrade(c, CONTENT_ONLY);
+    expect(quiet.offer).toBe(false);
+    expect(quiet.reason).toMatch(/content-only/);
+  });
+
+  it('is silent when the manifest declares no compatibility editions at all', async () => {
+    const { compatibilityEditions, ...noField } = CONTENT_ONLY;
+    const quiet = await shouldOfferUpgrade(campaign(EDITION_1_SYSTEM_IDS.slice(0, 6)), noField as BaseMapManifest);
+    expect(quiet.offer).toBe(false);
+  });
+
+  it('a campaign ALREADY past the compatibility edition is not asked again', async () => {
+    const c = campaign(EDITION_1_SYSTEM_IDS.slice(0, 6), { baseMapVersion: 2 } as any);
+    expect((await shouldOfferUpgrade(c, MANIFEST)).offer).toBe(false);
   });
 });

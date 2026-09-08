@@ -100,8 +100,25 @@ as an anomaly rather than pretending.
 **Time on a real footing.** The calendars are tied to one anchor — a genuine stake in the sand — so
 they agree with each other and with a real date, instead of each carrying its own correction.
 
+**Magnetic fields you can see.** A world's magnetosphere is drawn from its own physics — on the flat
+system map as a **GM view option**, and in 3D as a **player-view setting** (off by default, and among
+the things Low Power turns off). Two shades, and they mean different things: the shaded part is the
+region that actually shields an atmosphere, the pale wash is the full extent with its downwind tail.
+The size is a real pressure balance of the field against the stellar wind, so Mercury's stands a
+couple of radii off and Jupiter's dwarfs everything — and the aurora oval follows from the same
+number, sitting near a world's pole exactly when its bubble is large. A world with no field draws
+nothing, which is the point of looking.
+
+**A sky that is right.** The constellation sky is no longer drawn mirror-imaged: a star entered at its
+real right ascension and declination now sits where a photograph puts it. The 2D system map zooms out
+fifty times further than it did, so a distant binary companion fits on screen. And hovering a star on
+the starmap summarises what is in the system without your opening it.
+
 **Quieter machinery.** A memory gauge in the rail with an automatic crash save, a transit left running
-no longer filling memory, a construct you export importing back, a liquid you invent reaching the gas
+no longer filling memory, a **low-power switch** that turns down the two things that actually cost
+frames, a view that stops redrawing frames nothing could have changed, interface skins including a
+light one and an amber-phosphor terminal, floating controls that remember where you put them and can
+be docked together, a construct you export importing back, a liquid you invent reaching the gas
 editor, and the phone layout given a proper audit.
 
 ## What's new in V3

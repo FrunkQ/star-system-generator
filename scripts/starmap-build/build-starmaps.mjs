@@ -34,7 +34,7 @@ import { hash01, round, mapPositionFromAstrometry } from '../../src/lib/import/r
 import { starClasses } from '../../src/lib/import/realsky/stars.mjs';
 import { estimateRadiusRe, defaultMakeup, planetDescription } from '../../src/lib/import/realsky/planets.mjs';
 import { EPOCH, MAP_CENTRE, systems, MAP_A } from './data/systems-real.mjs';
-import { MAP_B, fiction } from './data/systems-fiction.mjs';
+import { MAP_B, fiction, fictionDefinitions } from './data/systems-fiction.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..', '..');
@@ -351,6 +351,10 @@ const mapBSystems = JSON.parse(JSON.stringify(mapASystems)).map((sys) => {
 
 const mapB = makeStarmap(MAP_B, mapBSystems);
 mapB.id = MAP_B.id;
+// D25: the fiction's own gases, liquids, engine and fuel ride WITH this map rather than sitting in
+// the default pack, where a real-sky import of a real star could be handed Astrophage. Same
+// extension point a GM's own inventions use - `starmap.rulePackOverrides`, merged on load.
+mapB.rulePackOverrides = fictionDefinitions;
 
 // ---------------------------------------------------------------- write
 // A node id is a STABLE REFERENCE, not a label: parents, barycentre members, orbits, routes,
@@ -422,6 +426,11 @@ const manifest = {
     id: m.id, file: m.file, name: m.name, description: m.description,
     systemIds: (i === 0 ? mapA : mapB).systems.map((s) => s.id)
   })),
+  // WHICH EDITIONS A CAMPAIGN MUST MOVE TO (owner, 2026-09-08: only a backwards-compatibility
+  // problem earns the upgrade dialogue; "you are missing new content" is obvious and stays quiet).
+  // Empty = no edition so far has broken anything, so nobody is asked unprompted. Add an edition
+  // number here ONLY when staying behind actually breaks a campaign.
+  compatibilityEditions: [],
   // The pre-v2 hand-placed map's ids, for WS8 old-map detection.
   legacyBaseSystemIds: [
     'sys-sol', 'sys-alphacen', 'sys-barnard', 'sys-wolf359', 'sys-lalande', 'sys-sirius',

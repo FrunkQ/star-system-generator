@@ -19,6 +19,8 @@
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, EPOCH, G, LY_PER_PC, SOLAR_MASS_KG, SOLAR_RADIUS_KM, AU_KM, DEFAULT_MAP_CENTRE_PX } from './constants.mjs';
 import { hash01, radecToXyzLy, round, xyzToMapPx, inSphere } from './positions.mjs';
 import { starClasses, starParamsFromType, parseStellarType, UNKNOWN_STAR_CLASS } from './stars.mjs';
+import { luminositySolarFrom, companionSpectralType } from './stars.mjs';
+import { deriveStarSize, FIGURE_SOURCE } from './starSize.mjs';
 import { displayStarName, systemStarName } from './starNames.mjs';
 import { defaultMakeup, estimateRadiusRe, planetDescription } from './planets.mjs';
 import { normaliseStarRows, groupIntoSystems, projectedSeparationAu, angularSepRad, distanceLyFromParallax } from './census.mjs';
@@ -187,7 +189,40 @@ function matchHostToStar(hostRow, stars) {
 // temperature and nothing else — and the description should say which statement it is making.
 const LUMINOSITY_WORD = { I: 'TYPE AND LUMINOSITY CLASS (a SUPERGIANT)', III: 'TYPE AND LUMINOSITY CLASS (a GIANT)', V: 'CLASS' };
 
-function starNodeFromCensus(star, id, statTemplates) {
+// WHICH OBJECTS NO SIZE RELATION MAY SPEAK FOR (D29). Degeneracy pressure sets the radius of a
+// white dwarf and of a brown dwarf alike, so neither sits on any main-sequence relation - Sirius B
+// comes out 99% wrong through the bolometric route - and their class bands are the honest answer
+// (DATA-R24). Neutron stars and black holes are degenerate in the same sense and far more extreme.
+const DEGENERATE_CLASS = /^star\/(WD|NS|BH|magnetar)/;
+const SUBSTELLAR_CLASS = /^star\/[LTY]/;
+
+// D29 - SAY WHERE EACH FIGURE CAME FROM, in a GM's words rather than a field name.
+//
+// Three provenances and they mix freely: Sirius arrives with a MEASURED temperature, a radius
+// DERIVED from that temperature and its parallax, and - because no catalogue publishes a stellar
+// mass - a mass estimated from its luminosity. A single sentence claiming all three are typical for
+// the class, or all three measured, is wrong in both directions. This is the honesty rule applied
+// to a star's own card: state what the number is, not just what it says.
+function figureSourceSentence(sources, derived, luminosityClass) {
+  const WORD = { massKg: 'mass', radiusKm: 'radius', temperatureK: 'temperature' };
+  const bucket = { measured: [], derived: [], typical: [] };
+  for (const [key, word] of Object.entries(WORD)) bucket[sources[key]]?.push(word);
+  const list = (a) => (a.length > 1 ? `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}` : a[0]);
+  const parts = [];
+  if (bucket.measured.length) parts.push(`Its ${list(bucket.measured)} ${bucket.measured.length > 1 ? 'are' : 'is'} MEASURED, from the catalogue's own published figures.`);
+  if (bucket.derived.length) {
+    parts.push(`Its ${list(bucket.derived)} ${bucket.derived.length > 1 ? 'are' : 'is'} DERIVED from measurements of this star `
+      + `(${derived.relations.filter((r) => !r.startsWith('temperature')).join('; ') || 'its own astrometry and photometry'}).`);
+  }
+  if (bucket.typical.length) {
+    parts.push(`Its ${list(bucket.typical)} ${bucket.typical.length > 1 ? 'are' : 'is'} TYPICAL FOR ITS `
+      + `${LUMINOSITY_WORD[luminosityClass] ?? 'CLASS'} rather than observed, because no catalogue publishes `
+      + `${bucket.typical.length > 1 ? 'those figures' : 'that figure'} for it.`);
+  }
+  return parts.join(' ');
+}
+
+function starNodeFromCensus(star, id, statTemplates, sizes = null) {
   // `otype` is the catalogue's own statement about WHAT THE OBJECT IS, and it was already being
   // fetched and used only as a filter. A pulsar has no spectral type at all, so without this it
   // classified `star/M` and imported as a red dwarf (B44).
@@ -206,19 +241,53 @@ function starNodeFromCensus(star, id, statTemplates) {
   const typeText = (star.sp ?? '').trim();
   // Parsed ONCE, here, at import. Every consumer downstream reads the structured form.
   const stellarType = parseStellarType(star.sp ?? '');
+
+  // D29 - WHAT THE CATALOGUE ACTUALLY MEASURED ABOUT THIS STAR, WHERE IT MEASURED ANYTHING.
+  // `deriveStarSize` returns only the figures it can stand behind; everything it leaves out keeps
+  // the class band below, and `figureSources` records which is which for every published number.
+  // The owner's report was that Sirius arrived as an A-band midpoint rather than as Sirius.
+  // THE PARALLAX COMES FROM THE CENSUS ROW, NOT THE SIZE QUERY. Every relation in `starSize.mjs`
+  // turns an apparent magnitude into an absolute one, which needs the distance, and the distance is
+  // the star's own astrometry - the one measurement that is never missing here.
+  const derived = deriveStarSize({ ...(sizes ?? {}), plxMas: star.plxMas }, {
+    luminosityClass: params.luminosityClass ?? null,
+    degenerate: classes.some((c) => DEGENERATE_CLASS.test(c)),
+    substellar: classes.some((c) => SUBSTELLAR_CLASS.test(c))
+  });
+  const radiusRsun = derived.radiusRsun ?? params.radiusRsun;
+  const massMsun = derived.massMsun ?? params.massMsun;
+  const temperatureK = derived.temperatureK ?? params.temperatureK;
+  const figureSources = {
+    massKg: derived.provenance.massKg ?? FIGURE_SOURCE.TYPICAL,
+    radiusKm: derived.provenance.radiusKm ?? FIGURE_SOURCE.TYPICAL,
+    temperatureK: derived.provenance.temperatureK ?? FIGURE_SOURCE.TYPICAL
+  };
+  // DATA-R24 keeps `typicalForClass` as the summary every existing surface reads, and it now has
+  // ONE definition: it is true exactly when nothing about this star was measured or derived. The
+  // two cannot disagree because the second is computed from the first.
+  const allTypical = Object.values(figureSources).every((v) => v === FIGURE_SOURCE.TYPICAL);
+  // PHY-34: one luminosity law. A star whose radius or temperature moved must have its THERMAL
+  // output recomputed from the figures it actually ended up with - but a band that DECLARES a
+  // non-thermal output (an accretion disc, a spin-down) is stating something the photosphere does
+  // not, and that figure is never overwritten.
+  const luminosity = params.luminosityDeclared
+    ? params.luminosity
+    : (luminositySolarFrom(radiusRsun, temperatureK) ?? params.luminosity);
+
   return {
     node: {
       id, parentId: null, name: cleanStarName(star.id), kind: 'body', roleHint: 'star',
       classes,
       ...(stellarType ? { stellarType } : {}),
-      massKg: params.massMsun * SOLAR_MASS_KG,
-      radiusKm: Math.round(params.radiusRsun * SOLAR_RADIUS_KM),
-      temperatureK: params.temperatureK,
+      massKg: massMsun * SOLAR_MASS_KG,
+      radiusKm: Math.round(radiusRsun * SOLAR_RADIUS_KM),
+      temperatureK,
+      figureSources,
       // B89: the flag `starParamsFromType` has always returned, finally KEPT. Without it the only
       // record that these three figures are class-typical rather than observed was the description
       // prose, so every numeric surface presented a band midpoint as a measurement.
-      ...(params.typicalForClass ? { typicalForClass: true } : {}),
-      ...(params.luminosity != null ? { radiationOutput: params.luminosity } : {}),
+      ...(allTypical ? { typicalForClass: true } : {}),
+      ...(luminosity != null ? { radiationOutput: luminosity } : {}),
       image: { url: image },
       tags: [],
       description: `${cleanStarName(star.id)}: a real star imported from SIMBAD${typeText ? ` (spectral type ${typeText})` : ''}. `
@@ -230,16 +299,23 @@ function starNodeFromCensus(star, id, statTemplates) {
           ? `The catalogue gives it NO SPECTRAL TYPE, so its type is UNKNOWN and its mass, radius and `
             + `temperature are placeholders from the rule pack's default band rather than anything `
             + `measured or inferred.`
-          : `No mass, radius or temperature has been measured for it, so those figures are TYPICAL FOR ITS `
-            + `${LUMINOSITY_WORD[params.luminosityClass] ?? 'CLASS'} rather than observed.`)
+          // D29: THE SENTENCE NOW HAS TO BE EARNED FIGURE BY FIGURE. It used to say flatly that
+          // nothing had been measured, which was true while the query asked for nothing. Now a star
+          // can arrive with a measured temperature, a derived radius and a band mass all at once,
+          // and saying "typical for its class" over the top of that is the published-as-a-lie rule.
+          : figureSourceSentence(figureSources, derived, params.luminosityClass))
         // B89: an UNRESOLVED PAIR is one catalogue row with a composite type (Luhman 16 is
         // `L7.5+T0.5`). `parseStellarType` already reads the companion out; the import represents
         // only the PRIMARY, and used to say nothing - so a binary brown dwarf arrived as a single
         // body wearing the pair's joint class. Naming the absence is the honest half; splitting the
         // pair would need a mass ratio and a separation this row does not carry, so it is not done.
-        + (stellarType?.companion
+        // D29: `stellarType.companion` is whatever followed the '+', and SIMBAD's `M2+V` for
+        // Lalande 21185 means "M2 or later, class V" - so a single red dwarf was being described to
+        // the GM as an unresolved pair with a companion called "V". `companionSpectralType` is the
+        // one place that question is answered, and the census container test asks it too.
+        + (companionSpectralType(star.sp ?? '')
           ? ` The catalogue reports this as an UNRESOLVED PAIR (${typeText}): only the primary is `
-            + `represented here, and the ${stellarType.companion} companion is NOT a separate body on `
+            + `represented here, and the ${companionSpectralType(star.sp ?? '')} companion is NOT a separate body on `
             + `this map. Its mass is not included in the figure above.`
           : '')
     }
@@ -272,7 +348,7 @@ export function cleanStarName(mainId) {
  */
 export function convertRegion(
   { starRows = [], planetRows = [], solPreset = null, statTemplates = null },
-  { region, mapCentrePx = DEFAULT_MAP_CENTRE_PX, mutualIncMax = 1.2, generated = 'real-sky import', existingSystemIds = [] } = {}
+  { region, mapCentrePx = DEFAULT_MAP_CENTRE_PX, mutualIncMax = 1.2, generated = 'real-sky import', existingSystemIds = [], starSizes = null } = {}
 ) {
   if (!region) throw new Error('convertRegion: a region {centre, radiusLy} is required');
   const centreXyz = (region.centre?.distLy ?? 0) > 0
@@ -293,10 +369,20 @@ export function convertRegion(
 
   // Typical mass per star, so the grouping can weigh a pair. Class bands again — a companion's mass
   // is not in the catalogue any more than a primary's is.
-  const stars = normalised.stars.map((s) => ({
-    ...s,
-    massMsun: starParamsFromType(s.sp ?? '', statTemplates, { otype: s.otype })?.massMsun ?? 0.4
-  }));
+  // WHICH STAR IS THE HEAVIEST DECIDES WHICH ONE THE SYSTEM ORBITS, so it must be asked of the best
+  // mass available rather than of the class band (D29). Sirius is the case: the band calls an A0
+  // dwarf 1.75 Msun and a white dwarf 1.00, which happens to order them correctly - but a derived
+  // mass is what makes that a fact about these two stars rather than a lucky pair of midpoints.
+  const stars = normalised.stars.map((s) => {
+    const params = starParamsFromType(s.sp ?? '', statTemplates, { otype: s.otype });
+    const classes = starClasses(s.sp ?? '', { otype: s.otype }).classes;
+    const derived = deriveStarSize({ ...(starSizes?.get?.(s.id) ?? {}), plxMas: s.plxMas }, {
+      luminosityClass: params?.luminosityClass ?? null,
+      degenerate: classes.some((c) => DEGENERATE_CLASS.test(c)),
+      substellar: classes.some((c) => SUBSTELLAR_CLASS.test(c))
+    });
+    return { ...s, massMsun: derived.massMsun ?? params?.massMsun ?? 0.4 };
+  });
 
   // 2. Group by the engine's existing period tier (clusterGate), NOT by a bare distance.
   const groups = groupIntoSystems(stars);
@@ -393,7 +479,7 @@ export function convertRegion(
       const archiveHost = hostsHere.find((h) => h.star === s);
       const built = archiveHost
         ? starNodeFromRow(archiveHost.hostRows[0], slug)
-        : starNodeFromCensus(s, starId, statTemplates);
+        : starNodeFromCensus(s, starId, statTemplates, starSizes?.get?.(s.id) ?? null);
       if (built.missing) { skipped.push({ hostname: cleanStarName(s.id), reason: `missing ${built.missing.join(', ')} — not invented` }); return; }
       built.node.id = starId;
       built.node.name = cleanStarName(s.id);

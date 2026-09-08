@@ -380,6 +380,44 @@ which is also the only context where it means anything.
 
 ---
 
+### R-11, THE CALENDAR HALF: DELIVERED (stream U, 2026-09-08)
+
+The section above asks for two things and names the second *"Do not write the whole shipped library into every
+save"*, with the calendars as its worked example: *"A save carrying the shipped calendar registry is claiming to
+define four calendars the GM never defined."* That is now true of the calendars, and of nothing else yet.
+
+**The container is UNCHANGED - still `temporal.temporal_registry`, the keyed object the hub already reads - so the
+hub needs no config edit and no deploy.** What changed is what goes IN it: only the calendars the GM added or
+altered. `activeCalendarKey` is still written whichever calendar it names, shipped or not, because WHICH reckoning
+a campaign runs on is the GM's decision even when the calendar itself is ours.
+
+**WHAT THIS MEANS FOR THE HUB'S BASELINE, and it is the whole point:** the four-name subtraction can go. A calendar
+present in `temporal.temporal_registry` is now, by construction, a calendar the GM made or edited - so the count is
+the key count, with no baseline to keep in step. **Keeping the subtraction is harmless** (it subtracts names that
+are no longer there), which is why this is safe to ship before the hub changes anything. The trap the section warns
+about - *"reported 3 custom calendars for every real starmap"* - is gone at the source rather than compensated for.
+
+**OLD SAVES STILL CARRY ALL FOUR.** A campaign saved before this keeps its copies until it is next written, so the
+baseline subtraction should not be removed until the hub is content to under-count a stale file by up to four. That
+is the only reason to keep it.
+
+```
+SEAM REPORT | R-11 (calendars) | engine | beta v3.1.18 (da16b866) | prod: NOT RELEASED
+sets:      nothing - the container and its key are unchanged
+must know: a save written by v3.1.18+ carries ONLY GM-made or GM-edited calendars in
+           `temporal.temporal_registry`; `activeCalendarKey` may still name a SHIPPED calendar and is not
+           evidence of a custom one. Older saves still carry all four shipped calendars, so the hub's
+           four-name baseline subtraction stays correct and should not be removed yet. Gases, liquids,
+           fuels, engines and reactions are NOT delivered - R-11's main ask is still open.
+verified:  full suite green (4630); three tests in `io/saveShape.spec.ts` pin a default campaign persisting an
+           EMPTY registry, a GM-altered calendar still being persisted, and idempotence under a repeated autosave
+not done:  the custom gases/liquids/fuels/engines/reactions containers R-11 actually asks for; and the
+           calendar registry still uses its OWN merge rather than `rulePackOverrides`+`applyListDelta` like every
+           other customisation (recorded as a duplication finding on G89, recommended and not done)
+ready for: STREAM N - confirm the hub's calendar facet reads zero custom calendars on a freshly-saved
+           default campaign, and still reads the right number on a campaign with a GM-made calendar
+```
+
 ## R-12. A monotonic revision counter — this one prevents real data loss
 
 **What:** an integer on the document that increments on every explicit save. `revision: 47`.
@@ -687,3 +725,197 @@ Recorded so nobody builds them by mistake:
 - **No provenance parsing from `ATTRIBUTIONS.md`.** It is a human document and the hub treats it as a
   claim. The gate is computed from the node fields. Do not add machine-readable structure to it on
   the hub's behalf.
+
+**SSE-SIDE STATUS ADDENDUM, 2026-09-08 (coordinator 8): RELEASED TO PRODUCTION as v3.1.0** (pushed by the owner
+2026-09-07, `c0a3889a`; prod and beta were byte-identical at the release commit). Production now carries R-14
+(paste from the hub), R-16 (credit on paste), R-17 (open from a link, parameter `open`), R-13
+(`/shipped-content.json`) and the address change to `explorers.starsystemx.com`. **The hub MAY NOW set
+`open_in_sse_url` to `https://starsystemx.com/?open=`**; the beta prefix stays valid. The hub records what it
+sets, in its own half, when it sets it.
+
+---
+
+## R-19 — a hub clip carries the custom rules its objects need (hub v0.49.0, 2026-09-08)
+
+**The hub's half is SHIPPED AND LIVE.** Its brief for this side is
+`C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-08-clip-rules.md`, quoted here rather than
+paraphrased where it matters. **SSE-SIDE STATUS: COMPLETE, beta v3.1.45 - all five jobs answered, four built and one decided against with its
+reasoning (engine map DATA-R50). A clip's rules are read, compared, merged and reported. NOT IN PRODUCTION:
+production is v3.1.0 and this is not in it.** Board row [[G92]].
+
+**JOB 2 SHIPPED THE COMPARISON, and it needed something extracted first.** `compareClipOverrides` answers one of three
+per DEFINITION - never per section, because `applyStarmapOverrides` is a shallow section-level spread that would
+replace a GM's whole liquids override with the incoming one. `canonicalJson` is REUSED, not rewritten, exactly as the
+triage asked. The extraction: **`effectiveRulePack` moved out of `src/routes/+page.svelte` into
+`src/lib/rulepack/effectivePack.ts`**, unchanged, pinned bit-for-bit against the old expression over twenty cases by
+`effectivePack.spec.ts`. It had to: "does this campaign already have that definition?" cannot be answered without that
+merge, it was unreachable from anywhere but that component, and writing a second copy is precisely the fault
+[[B147]] was - twice.
+
+**AND THE DESTINATION IS ASKED OF ITS EFFECTIVE PACK, NOT ITS OVERRIDES.** A campaign with no `water` override is
+still USING water, so a clip carrying the shipped water unchanged must compare IDENTICAL against it. Asking the
+overrides alone would call it absent and store a redundant override that freezes that definition against every later
+improvement to the pack - `rulepackDelta` cost #2, introduced by a paste.
+
+**JOBS 3 AND 5 SHIPPED THE MERGE AND THE REPORT.** Add / discard silently / NEVER overwrite, per definition. A clash
+renames the incoming definition, repoints the pasted nodes, and repoints any incoming definition that named it -
+an engine names its fuel by id, so a renamed fuel would otherwise hand the GM an engine with no fuel, which is the
+hub's own clip 1 exactly. A second paste of a conflicting clip finds its earlier rename and reuses it. The three
+delta sections are written back AS DELTAS. The merge runs BEFORE `process()`, because every derived quantity reads
+the effective pack and pass 1 is what a GM sees. Engine map DATA-R48.
+
+**ONE CONSEQUENCE WORTH THE HUB KNOWING, though it asks nothing of them (DATA-R49): `pigmentModel` cannot travel.**
+It is a bag of scalars, and `pigmentModel(pack)` always answers with a complete config - so no field is ever ABSENT
+in the destination, and a field that differs cannot be renamed because the field IS the name. It is REPORTED
+instead ("kept your own captureWeight"). Reporting rather than silence is still the whole difference from the bug.
+
+**SEEN WORKING IN A BROWSER, not only in tests (2026-09-08).** The hub's own rules-only clip pasted into the
+bundled Local Neighbourhood campaign: the dialog says "Rules only - a liquid. From Contract Reach by FrunkQ", the
+paste reports **"Added a liquid."**, and the campaign's autosave - read out of IndexedDB rather than off the screen
+- holds `liquids` as a DELTA whose `entries` names ONLY `unobtainium`, so the other twenty-two keep tracking the
+shipped pack. Pasted again, it says **"That clip carries rules this campaign already has - nothing to add."**
+**THE BROWSER PASS PAID FOR ITSELF TWICE:** it found a FOURTH door into the paste that the wiring had missed -
+`HubClipPasteModal` disabled its button until a host system was chosen, so a rules-only clip was stuck with nothing
+on screen saying why - and a Svelte whitespace trim that ran the summary into "Rules only- a liquid", which is the
+exact trap that file's own comment already warns about one line below.
+
+**GATED AGAINST THE HUB'S OWN SEVEN FIXTURES.** `docs/clips/` in the hub repo, produced by its `buildClip`/
+`buildRulesClip` and asserted by its own test. They are READ WHERE THEY LIVE and never copied into this repo - one
+copy, on the side that generates them - and the spec skips gracefully when the hub repo is not on the machine. All
+seven behave as the README says.
+
+**ONE THING IS WRONG ON THAT SIDE, and it is a fixture shape rather than a contract change. THE HUB'S CLIPS PUT THE
+LIQUID IN `hydrosphere.liquid`; THIS ENGINE READS `hydrosphere.composition`** (`types.ts:111`), and nothing anywhere
+in the engine reads `.liquid` - grepped. So clip 1's stated expectation, "Bellwether's hydrosphere resolves", cannot
+come true however well the merge works: the rules arrive, the body looks up a name under a field nothing reads,
+`liquidDef` returns undefined, and it falls back. That is R-19's own bug arriving by another door. **The fix is one
+word in the hub's generator** (`liquid` -> `composition`, clips 1, 2, 3, 4 and 6); the hub has offered to move it.
+Reported to the owner 2026-09-08. The clip-4 repoint gate sets `composition` by hand meanwhile, so it tests the
+repoint rather than the mismatch, and that line goes when the fixtures move.
+
+**WHAT JOB 1 SHIPPED.** `rulePackOverrides` is an optional key on `HubClip`, shape-checked and carried whole
+(`parseHubClip`); a RULES-ONLY clip - `nodes: []` and no `root`, which is the pair the hub uses to tell its two
+producers apart - parses instead of being refused, describes itself as `Rules (2 liquids)` and is turned away by both
+node paste paths in plain words rather than half-handled. `readClipOverrides` keeps only the sections this engine can
+merge and DROPS the rest, deliberately: carrying a section nothing can compare would be a promise the merge cannot
+keep, and the envelope's version gate already covers a clip from a newer producer. `src/lib/io/clipRules.ts` carries
+the whole argument; `src/lib/io/clipRules.spec.ts` the gates.
+
+**AND THIS APP IS THE THIRD PRODUCER, which the contract had not noticed.** `buildClip` - the GM's own Copy, added
+2026-09-05 - had R-19's bug in full: copy a body out of one campaign, load another, paste, and its custom liquid did
+not come with it. It now carries the campaign's overrides on the same key. Within ONE campaign every definition will
+compare IDENTICAL and be discarded in silence, so a same-campaign copy costs nothing. **This is an SSE-side extension
+of the hub's envelope, on the same footing as `credits` and `systemName`: the hub neither sends nor reads it, and
+both readers leave fields they do not know alone.** The owner approved it, 2026-09-08.
+
+**THREE CORRECTIONS TO THE TRIAGE ABOVE, measured on this side while building job 1.** They do not change what the hub
+sends; they change what this side had to build.
+
+1. **THERE ARE THREE DELTA SECTIONS, NOT TWO.** `liquids` joined `morphologies` and `pigments` at D25 -
+   `effectiveRulePack` reads it through `applyListDelta` - but its declared type still said `LiquidDef[]` and the
+   reader was casting to `any` to say what the type would not. The type is now
+   `PackListDelta<LiquidDef> | LiquidDef[]` and the cast is gone. Anything that enumerates the delta sections from the
+   type alone was wrong.
+2. **THERE IS A NINTH KEY.** `pigmentModel` is a `Partial<PigmentModelConfig>` - a bag of scalars, neither a list nor
+   a delta. Both the hub's brief and this file's own triage said EIGHT sections. Left out, a campaign's pigment
+   weightings would have been the one customisation that silently did not travel, which is R-19's own bug in
+   miniature. It is compared and merged per FIELD, because one changed weight is one setting.
+3. **THE NINE KEYS ARE STORED IN FIVE SHAPES, not one**, and `effectiveRulePack` has a hand-written arm for each:
+   upsert-by-id (`fuelDefinitions`, `engineDefinitions`, `sensorDefinitions`), record spread (`gasPhysics`),
+   whole-list replace of a distribution's entries keyed at `value.name` (`atmosphereCompositions`), delta-or-list
+   (the three above), and scalar spread (`pigmentModel`). The merge drives off ONE TABLE (`SECTIONS`) rather than a
+   nine-way branch repeated per question.
+
+**AND THE DECISION THE HUB ASKED THIS SIDE TO MAKE AND WRITE DOWN** - whether a delta section is compared as a delta
+or as its applied result - **is ANSWERED: by its APPLIED RESULT**, engine map `DATA-R46`. A delta is a set of edits
+against a base, so its meaning is not in the delta at all: an incoming `{ boilK: 400 }` for `water`, against a
+destination with no water override, is not an absent definition to be added but a DIFFERENT water from the one that
+campaign already has. Comparing deltas would add it and silently change a definition every body in the map reads.
+
+**NOT TOLD TO THE HUB, because it is not the hub's business and nothing on that side changes:** two rule-pack editors
+on this side were found to disagree with the engine about what a delta is, and both lost data in silence. Fixed in the
+same push, board row [[B147]].
+
+**WHAT IT CLOSES, and it is a wrong answer rather than a missing feature.** Custom definitions live on the
+STARMAP, in `rulePackOverrides` (`types.ts:1608`), not on the node; a hub clip carries nodes only. So a pasted
+planet whose hydrosphere names a GM's custom liquid looks up a definition that is not there, `liquidDef` returns
+`undefined`, and phase, appearance and climate all fall back to defaults. **The paste reports success.** Silent
+for every override kind: liquids, gases, atmosphere mixes, pigments, morphologies, fuels, engines, sensors.
+
+**WHAT ARRIVES.** One new optional key on the envelope, `rulePackOverrides`, carrying the source map's
+`RulePackOverrides` whole and unmodified. Nothing else changed, and an engine that ignores the key behaves
+exactly as today. A RULES-ONLY clip (from the hub's `/rules` browser) has `nodes: []` and no `root`; that pair
+is how a reader tells the two producers apart, deliberately not a second marker.
+
+**THE COORDINATOR'S TRIAGE, 2026-09-08 — three things measured on this side that the hub could not know:**
+
+1. **`canonicalJson` ALREADY EXISTS and is already justified** — `src/lib/io/shippedDefaults.ts:31`, keys sorted
+   recursively, arrays left alone: exactly the comparison the hub asks for, with a measurement behind it (three
+   of nine shipped categories fail a naive deep-equal purely on key order after a store round trip). **The
+   stream reuses it. It does not write a second one** — that is the duplication rule, and a second canonicaliser
+   is the most obvious way to make the identical-definition test disagree with itself.
+2. **TWO OF THE EIGHT SECTIONS ARE DELTAS, NOT LISTS**, and the hub's brief treats the bag as flat because from
+   its side it is: `morphologies?: PackListDelta<MorphologyDef> | MorphologyDef[]` and `pigments?: ... `
+   (`types.ts:1384-1385`, machinery in `lib/rulepackDelta.ts`). A delta is a set of edits AGAINST THE SHIPPED
+   PACK, so "does the destination already have this one, identical?" is a different question for those two, and
+   merging two deltas is not merging two lists. **This is the stream's real work and its first job.**
+3. **THE EXISTING MERGE WOULD DESTROY THE GM'S OWN RULES.** `applyStarmapOverrides` (`routes/+page.svelte:200`)
+   is a SHALLOW spread, `{ ...existing, ...incoming }` — section-level, so an incoming `liquids` array replaces
+   the GM's entire liquids override rather than joining it. It is right for an editor handing back a whole
+   section and catastrophic for a paste. **The paste merge is PER DEFINITION and must not go through that
+   function.**
+
+**THE ASK, in the hub's own words where it is a rule:** narrow the overrides to what the pasted nodes reference
+then merge (*"merging the lot is an acceptable version one"* — the owner); three outcomes per definition, **add /
+discard silently when identical / NEVER OVERWRITE when different** (*"the receiving end needs to identify
+duplicates to what it had and discard"*); rename an incoming clash and repoint the pasted nodes at the new name,
+or ask; compare canonical form; say what came with it; and let a rules-only clip merge rather than be refused
+(`hubClip.ts:116` currently rejects `nodes.length === 0`).
+
+**NOT ASKED FOR:** any change to `?open=`, `?hub=`, `isTrustedOpenUrl`, the replace-or-add question, the storage
+shape, or any further envelope key.
+
+**FLAGGED BY THE HUB, no action asked:** `tagVocab` is on `RulePack` but NOT on `RulePackOverrides`, so a custom
+tag's definition cannot travel even though the tag on the node does. Recorded here so it is not rediscovered.
+
+**READY FOR STREAM N** once both halves are in, with the hub's own check: copy a body with a custom liquid,
+paste into a fresh campaign, confirm the liquid arrived and the body's phase is right; paste the same clip again
+and confirm nothing is duplicated or renamed.
+
+### R-19 SEAM REPORT (engine half) - hand this to the coordinator; the hub pastes it under R-19
+
+```
+SEAM REPORT | R-19 | engine | beta v3.1.45 (0a0c7983) | prod: NOT RELEASED (production is v3.1.0)
+sets:      nothing - the envelope key is the hub's own `rulePackOverrides`, read exactly as sent
+must know: THE ENGINE READS `hydrosphere.composition`, NOT `hydrosphere.liquid`. The seven clips in
+           `docs/clips/` put the surface liquid in `hydrosphere.liquid`, which nothing in this engine
+           reads (grepped) - so clip 1's stated expectation, "Bellwether's hydrosphere resolves",
+           cannot come true however well the merge works: the rules arrive, the body looks up a name
+           under a field nothing reads, `liquidDef` returns undefined and it falls back. That is
+           R-19's own bug arriving by another door. ONE WORD IN THE GENERATOR fixes it, in clips 1,
+           2, 3, 4 and 6. There is also a SECOND legal place a node names a liquid -
+           `hydrosphere.layers[].liquid`, a FluidLayer naming its own substance - which is probably
+           where the field name came from; that one is on the LAYER, not on the hydrosphere.
+           A SECTION THIS BUILD DOES NOT KNOW IS DROPPED at the door rather than carried, so clip 7
+           behaves as its README says. `pigmentModel` CANNOT TRAVEL and is reported instead of
+           merged: it is a bag of scalars, the destination always has a complete config, so no field
+           is ever absent and a differing field cannot be renamed because the field IS the name.
+           NARROWING WAS DECIDED AGAINST, not skipped - the whole bag is merged (engine map
+           DATA-R50). Nothing NAMES a pigment, so narrowing would drop what decides a pasted world's
+           vegetation colour, and a missed reference edge is silent by construction.
+verified:  ALL SEVEN of the hub's fixtures, read where they live in the hub repo and never copied
+           into this one, skipping when that repo is absent. Clip 3 (shuffled keys) is a duplicate,
+           clip 4 never overwrites and repoints the pasted body, clip 4 twice reuses its own earlier
+           rename. AND IN A BROWSER against the bundled Local Neighbourhood campaign: the rules-only
+           clip reports "Added a liquid."; the autosave read out of IndexedDB holds `liquids` as a
+           DELTA whose `entries` names ONLY `unobtainium`, so the other 22 keep tracking the pack;
+           pasted again it says "That clip carries rules this campaign already has - nothing to add."
+           The phase gate is absolute: an ocean boiling at 90 K on a body at 150 K reads GAS, where
+           the bug read LIQUID.
+not done:  narrowing (decided against, DATA-R50); `pigmentModel` cannot travel (DATA-R49); and the
+           hub-side field name above, which is the only thing standing between this and clip 1's
+           stated outcome
+ready for: STREAM N - the hub's own check, once the field name moves: copy a body with a custom
+           liquid, paste into a fresh campaign, confirm the liquid arrived AND the body's phase is
+           right; then paste the same clip again and confirm nothing is duplicated or renamed
+```

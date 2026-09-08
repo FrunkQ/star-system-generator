@@ -11,6 +11,14 @@ import type { BaseMapManifestEntry } from './rebase';
 
 export interface BaseMapManifest {
   baseMapVersion: number;
+  /**
+   * The editions a campaign genuinely must move to, because staying behind BREAKS something.
+   * Owner, 2026-09-08: *"The continual pester that an old map version may not have features of the
+   * new version - we can skip that - its obvious. Only needed if there is a backwards compat
+   * issue."* So a new edition is CONTENT by default and says nothing; only an edition listed here
+   * asks. Absent or empty = never offer unprompted (Settings still offers it on demand).
+   */
+  compatibilityEditions?: number[];
   appVersion?: string;
   generated?: string;
   maps: (BaseMapManifestEntry & { file: string; description?: string })[];

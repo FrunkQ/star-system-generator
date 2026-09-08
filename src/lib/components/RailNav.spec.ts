@@ -70,3 +70,21 @@ describe('the rail — the size comparison is a sub-tool of Measure', () => {
     expect(fired).toEqual(['ruler']);
   });
 });
+
+// THE BRAND MARK IS THE WAY BACK TO "WHAT'S NEW" - owner, 2026-09-08: *"Have clicking on the SSE3.1
+// logo in the corner have the 'What's New' pop up again... that version ties stuff together."* It
+// USED to copy the version to the clipboard (owner, 2026-08-30). That is a deliberate change rather
+// than a regression, and this pins it both ways: the panel opens, and the clipboard is left alone -
+// which matters because the app now watches the clipboard for pasteable content, so a silent stomp
+// on every click would put a phantom clip in the GM's hands.
+describe('the brand mark', () => {
+  it('asks for What’s New, and does not touch the clipboard', async () => {
+    const fired: string[] = [];
+    const write = vi.fn();
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: write }, configurable: true });
+    const { getByLabelText } = rail({}, { whatsnew: () => fired.push('whatsnew') });
+    await fireEvent.click(getByLabelText(/what’s new/i));
+    expect(fired).toEqual(['whatsnew']);
+    expect(write, 'the clipboard is not written on a plain logo click').not.toHaveBeenCalled();
+  });
+});

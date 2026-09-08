@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describeTag } from './tagPresentation';
 
@@ -15,17 +15,24 @@ import { describeTag } from './tagPresentation';
 
 const NAMESPACES = [
   'geology', 'tidal', 'structure', 'climate', 'weather', 'surface', 'hazard', 'magnetic',
-  'shape', 'stability', 'fate', 'origin', 'aurora', 'biodiversity', 'thermal', 'stellar'
+  'shape', 'stability', 'fate', 'origin', 'aurora', 'biodiversity', 'thermal', 'stellar',
+  // G87: a game's own assertions are held to the same standard as the physics ones - a GM
+  // reading "Main world is a moon" deserves to know what Traveller meant by it.
+  'traveller'
 ];
 
 function emittedTagKeys(): string[] {
   const found = new Set<string>();
   const re = new RegExp(`'((?:${NAMESPACES.join('|')})\\/[a-z0-9-]+)'`, 'g');
+  // `withFileTypes` rather than a `statSync` per entry: the directory read already knows what each
+  // entry is, and asking again is a second syscall per file across a tree of well over a thousand.
+  // This walk is the whole cost of the gate and it competes with every other test worker for the
+  // disk, so it was the first thing in the suite to fall over its time budget under load.
   const walk = (dir: string) => {
-    for (const entry of readdirSync(dir)) {
-      const p = join(dir, entry);
-      if (statSync(p).isDirectory()) { walk(p); continue; }
-      if (!/\.(ts|svelte)$/.test(entry) || /\.spec\.ts$|\.test\.ts$/.test(entry)) continue;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, entry.name);
+      if (entry.isDirectory()) { walk(p); continue; }
+      if (!/\.(ts|svelte)$/.test(entry.name) || /\.spec\.ts$|\.test\.ts$/.test(entry.name)) continue;
       if (p.includes('tagPresentation')) continue;          // the dictionary itself
       const src = readFileSync(p, 'utf8');
       for (const m of src.matchAll(re)) found.add(m[1]);
@@ -36,6 +43,10 @@ function emittedTagKeys(): string[] {
 }
 
 describe('tag presentation', () => {
+  // NOTE: this gate's cost is a SYNCHRONOUS WALK OF THE WHOLE `src/lib` TREE - a `statSync` and a
+  // `readFileSync` per file - so it grows every time anybody adds a source file. It was the first
+  // test to fall over the old 5 s default under parallel load; the budget now lives once in
+  // `vite.config.ts` rather than as an override here.
   it('every tag the code emits explains ITSELF, not just its namespace', () => {
     const generic = new Map<string, string>();
     for (const ns of NAMESPACES) generic.set(ns, describeTag(`${ns}/__nonexistent__`).description);
