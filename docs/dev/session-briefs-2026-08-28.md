@@ -2268,6 +2268,33 @@ the right order is to get eyes on what has already shipped first.
 >    metal-poor - so word the tag descriptions to say the age is what was measured, and leave metallicity as the
 >    cross-check it will one day be.
 >
+> 7. **THE SLIDER AND ITS COMPOSITION FLOOR.** The scale: a RED point at the host star's formation, an ORANGE
+>    band across accretion, a GREEN line to the campaign's reference date at the right-hand end, and **a FOURTH
+>    ZONE from the composition floor up to stellar formation** - the region where captured, ancient and
+>    primordial bodies live, which must be drawn rather than left as the blank part of the scale.
+>
+>    **The floor is a function of what the body is MADE OF** - `physics/makeup.ts makeupFractions` already gives
+>    `metal / rock / carbon / ice / gas`. Gas reaches cosmic dawn (the first stars, ~100-250 Myr after the big
+>    bang, NOT the big bang); ice about one generation, because C, N and O come from the first massive stars;
+>    rock three to four, because a substantial rocky body needs enough Si, Mg and Fe to have ACCUMULATED - a
+>    threshold on abundance, not a switch on availability. **A BLACK HOLE's floor is the big bang itself**, since
+>    a primordial one forms in the first second before any star - so the floor reads KIND as well as makeup, and
+>    is a curve over the fractions rather than a two-way test. Every number in it is PACK DATA.
+>
+>    **The floor RESISTS, it does not refuse** - passing it corrupts nothing and is merely implausible, which is
+>    the case steer-don't-stop was written for. Detent, take a deliberate push, then tag the body beyond it
+>    ([[G45]] is the precedent). Contrast [[A102]], where the solvents ARE disabled because choosing one would
+>    corrupt the coupled atmosphere: refuse only when a choice would break a neighbour.
+>
+>    **Rogue planets and primordial black holes fall out for free** - a rogue has no host so no red pin, only the
+>    cosmic axis; a primordial black hole sits at the far left with a floor nothing else has. That is a fair test
+>    of the design, and the owner's own observation.
+>
+> **THE FULL MODEL LIVES IN `docs/dev/deep-time-design.md`** - written 2026-09-08 at the owner's word (*"feel
+> free to start a NEW system to store and work with this stuff"*), because this is the groundwork for 3.2 and V4
+> stellar and galactic evolution and had outgrown a board row. **Read it before job 1, keep it true as you go,
+> and correct it in the same commit as anything that proves it wrong.**
+>
 > **GATES, red-first and absolute.** A dwarf at a given mass and radius reports a specific temperature at 1 Gyr
 > and a specific LOWER one at 9 Gyr, in kelvin, not "cooler"; the same value survives a reprocess (it is an
 > input, and `idempotence.test.ts` is the gate that proves nothing reads it out of order); a body with no age

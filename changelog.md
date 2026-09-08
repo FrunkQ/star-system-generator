@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.1.61 - 8th Sep 2026
+
+- Board only. The age slider gains its shape and its limit: the host star's formation in red, its accretion phase in orange, its lifetime in green to the present day, and beyond that a limit set by what the body is made of. A gas body reaches back to the first stars, an icy one nearly as far, a rocky one only as far as there was enough rock in the universe to build it, and a black hole all the way, which is what a primordial black hole is. Pushing past the limit is allowed and flagged rather than forbidden.
+- Board only. On a brown dwarf the temperature box will be removed rather than explained, and the age slider takes its place, because the age is what actually moves the temperature.
+- A new developer document, deep-time-design, is the home for this: how old a thing is and where it came from, kept as two separate facts, which is what will let galactic mergers and stellar collisions be added later without reopening any of it.
+
+
 ## v3.1.60 - 8th Sep 2026
 
 - **Rubble piles and contact binaries are in the Add-body list now**, alongside the asteroid types, marked with a dashed border because they are a property rather than a type: pick one and you get a real asteroid — carbonaceous, stony, metallic or icy, chosen for you — that happens to be rubbly, or happens to be two lobes joined at a neck. Types the app could not honestly build this way (a ringed world, a body flung into a ring by its own spin) stay out of the list rather than handing you an ordinary planet.
