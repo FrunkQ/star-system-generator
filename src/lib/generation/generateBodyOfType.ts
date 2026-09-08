@@ -5,7 +5,7 @@
 // which is why a biome/life world can be dropped into the Goldilocks zone and a lava world can't.
 import type { CelestialBody, Fingerprint, FingerprintBand, Makeup, RulePack } from '$lib/types';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, LIQUIDS } from '$lib/constants';
-import { radiusReFromMassMakeup, gasThermalInflationFactor, maxMassForPorosity } from '$lib/physics/makeup';
+import { radiusReFromMassMakeup, massMeFromRadiusMakeup, gasThermalInflationFactor, maxMassForPorosity } from '$lib/physics/makeup';
 import { bandFit } from '$lib/system/classification';
 import { SeededRNG } from '$lib/rng';
 
@@ -546,6 +546,41 @@ export function generateBodyOfType(
     out.radiusKm = Math.cbrt((5.513 * massMe) / d) * EARTH_RADIUS_KM;
   } else {
     out.radiusKm = Math.cbrt(massMe) * EARTH_RADIUS_KM; // Earth-like default
+  }
+
+  /**
+   * A MODIFIER'S OWN SIZE BAND IS A CONSTRAINT ON THE FINISHED BODY, and none of the branches above
+   * was checking it. Applied HERE, after all four of them, because each reaches a radius its own way
+   * and any of them can miss.
+   *
+   * THE OWNER FOUND THIS BY OPENING ONE MOON. He picked "contact binary" for a moon of Jupiter and
+   * got a 451 km body: the mass was drawn linearly from [0, 0.0001] M(earth), the comet makeup
+   * turned that into a 451 km ball, and nothing compared it with the type's own size. Past about
+   * 300 km a body's gravity has pulled it round and it cannot be two lobes at all - so the class was
+   * then refused and the pick silently did not give him what the card said. Arrokoth is 9.65 km.
+   *
+   * LOG-UNIFORM, because a linear draw over a band whose top is a thousand times its bottom puts
+   * almost everything at the top - which is precisely how every contact binary this built came out
+   * the size of Ceres.
+   *
+   * THE MASS FOLLOWS AT CONSTANT DENSITY, which is what makes this safe to do last: the composition,
+   * the derived porosity and therefore every other class the body earns are all untouched. Only its
+   * SIZE moves.
+   *
+   * ONLY FOR A MODIFIER, and deliberately: no BASE in the shipped pack declares both a `radius_Re`
+   * band and a makeup, so this cannot disturb what the generator produces. There IS a wider version
+   * of the same fault - `planet/earth-analogue` and every giant declare a radius band that is
+   * silently ignored because a default makeup drives their radius instead - but fixing that would
+   * move generation for everyone, so it is reported rather than smuggled in here.
+   */
+  const modRadius = isModifier ? fp.match['radius_Re'] : undefined;
+  if (Array.isArray(modRadius) && typeof modRadius[1] === 'number' && (out.radiusKm ?? 0) > 0) {
+    const hiRe = modRadius[1] as number;
+    const loRe = Math.max((modRadius[0] as number) || 0, hiRe / 1000);
+    const target = Math.exp(Math.log(loRe) + rng() * (Math.log(hiRe) - Math.log(loRe))) * EARTH_RADIUS_KM;
+    const k = target / (out.radiusKm as number);
+    out.radiusKm = target;
+    out.massKg = (out.massKg ?? 0) * k * k * k;
   }
 
   // --- Hydrosphere ---

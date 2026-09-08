@@ -95,6 +95,16 @@
   $: massGated = role === 'moon' && hostMassKg > 0;
 
   const pretty = (cls: string) => cls.replace('planet/', '').replace(/-/g, ' ');
+  // The placeholder when a type ships no picture. It used to be the first two characters of the
+  // pretty name, which spells "AS" for EVERY asteroid — the same two letters on every card that has
+  // no image, which is no help at all. Initials of the type's own words instead: rubble-pile is RP,
+  // contact-binary CB, c-type CT.
+  //
+  // A MODIFIER WITHOUT A PICTURE DELIBERATELY DOES NOT BORROW ITS BASE'S. It would sit next to that
+  // base in this very grid wearing the same photograph, which reads as a duplicate rather than as a
+  // property — worse than admitting there is no picture yet.
+  const initials = (cls: string) =>
+    (cls.split('/').pop() ?? cls).split(/[\s-]+/).filter(Boolean).slice(0, 3).map((w) => w[0]).join('').toUpperCase();
   const tierOf = (cls: string) => rarityTier(rarityOf(cls, rulePack));
   const LEGEND = [
     { label: 'Common', color: '#b8c0cc' }, { label: 'Uncommon', color: '#4caf50' },
@@ -144,7 +154,7 @@
           {#if images[fp.class]}
             <img src={thumbUrl(images[fp.class])} alt={pretty(fp.class)} loading="lazy" width="80" height="80" />
           {:else}
-            <div class="noimg">{pretty(fp.class).slice(0, 2)}</div>
+            <div class="noimg">{initials(fp.class)}</div>
           {/if}
           <span class="name">{pretty(fp.class)}</span>
           {#if fp.kind === 'modifier'}<span class="modtag">a property, not a type</span>{/if}

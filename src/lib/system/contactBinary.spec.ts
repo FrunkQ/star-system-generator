@@ -47,7 +47,13 @@ const BODIES: Record<string, Partial<CelestialBody>> = {
   // carries this class".
   solid: { massKg: 1.6e14, radiusKm: 2.0, makeup: { rock: 0.6, metal: 0.4 } },
   // And a world, to prove the small-body window holds.
-  Earth: { massKg: 5.972e24, radiusKm: 6371, makeup: { metal: 0.32, rock: 0.68 } }
+  Earth: { massKg: 5.972e24, radiusKm: 6371, makeup: { metal: 0.32, rock: 0.68 } },
+  // JUPITER VI, THE ONE THE OWNER SPOTTED. A 451 km icy moon at 0.95 g/cc weighs 6.1e-5 M(earth),
+  // which sits inside the small-body MASS window - so on mass alone it was being called a contact
+  // binary. It cannot be one: past about 300 km a body's own gravity has pulled it round, which is
+  // the same threshold the silhouette uses to decide a body is drawn irregular at all. Arrokoth is
+  // 9.65 km. He found this by opening one moon and asking how it could be both.
+  round: { massKg: 3.655e20, radiusKm: 451, makeup: { ice: 0.6, rock: 0.4 } }
 };
 
 function classesOf(which: keyof typeof BODIES, lobes: number | undefined, passes = 1): string[] {
@@ -102,6 +108,13 @@ describe('and never turns up where it should not', () => {
       expect(classesOf(which, undefined), which).not.toContain(CB);
       expect(classesOf(which, 1), `${which} (1 lobe)`).not.toContain(CB);
     }
+  });
+
+  it('not on a body big enough to have pulled itself round', () => {
+    const c = classesOf('round', 2);
+    expect(c, c.join(', ')).not.toContain(CB);
+    // It is still whatever its composition makes it - the class is refused, not the body.
+    expect(c.filter((x) => x.startsWith('asteroid/') || x.startsWith('planet/')), c.join(', ')).not.toEqual([]);
   });
 
   it('not on a planet, however many lobes it is told it has', () => {

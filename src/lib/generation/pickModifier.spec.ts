@@ -111,6 +111,24 @@ describe('picking a modifier builds a body that really is one', () => {
     }
   });
 
+  // AND IT COMES OUT THE SIZE OF A CONTACT BINARY, which is the fault the owner found by opening one
+  // moon: he picked this for a moon of Jupiter and got a 451 km body. Past about 300 km a body's own
+  // gravity has pulled it round, so the class was refused and the card silently did not deliver what
+  // it said. Arrokoth is 9.65 km, 67P is 1.65 km, and the largest real candidates are near 100 km.
+  it('a contact binary comes out SMALL, and spread across the range rather than piled at the top', () => {
+    const radii: number[] = [];
+    for (let s = 1; s <= 60; s++) {
+      const b = built('asteroid/contact-binary', s) as CelestialBody;
+      expect(b.radiusKm, `seed ${s}: ${b.radiusKm?.toFixed(0)} km`).toBeLessThanOrEqual(300);
+      radii.push(b.radiusKm ?? 0);
+    }
+    // A LINEAR draw over this band would put nearly everything against the ceiling, which is exactly
+    // what went wrong. Log-uniform should leave the median an order of magnitude below it.
+    const median = radii.slice().sort((a, b) => a - b)[Math.floor(radii.length / 2)];
+    expect(median, `median ${median.toFixed(1)} km`).toBeLessThan(30);
+    expect(Math.min(...radii)).toBeLessThan(5);
+  });
+
   it('leaves the class list empty so the classifier names it', () => {
     expect(built('asteroid/rubble-pile', 3).classes).toEqual([]);
     // A BASE pick is unchanged: it still pins the type the GM chose.

@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.64 - 8th Sep 2026
+
+- **A contact binary you pick is now the size of one.** Picking it could hand you a 451 km moon, which is far too big to be two lobes — anything past about 300 km has been pulled round by its own gravity. Sizes now run from under a kilometre to about 130 km, where the real ones are, and the type will no longer attach itself to a body big enough to be round.
+- The placeholder on a type with no picture used to read "AS" for every asteroid. It now shows the type's own initials.
+
 ## v3.1.63 - 8th Sep 2026
 
 - **Five pictures that ship with the app had never once been shown.** A world's photo was chosen from what it fundamentally IS and ignored everything else true about it — so a ringed planet showed the picture for whatever it was underneath, and the ringed picture in the box was never used. Nor were the ones for a world spun into an ellipsoid, one spun apart into a ring, one that has been smashed, or one hugging its star. All five now appear, which is what the other two views of a body have always done. One to look at: the ringed picture is of a gas giant, so a small ringed world now shows a giant — tell me if you would rather have a better picture there or none at all.

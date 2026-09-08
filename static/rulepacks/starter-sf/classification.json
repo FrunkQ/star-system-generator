@@ -423,11 +423,15 @@
       {
         "class": "asteroid/contact-binary",
         "kind": "modifier",
-        "note": "Two lobes joined at a neck — two bodies that met gently and stayed. A MODIFIER, so it says how this rock is SHAPED without overruling what it is made of: comet + contact-binary is 67P/Churyumov-Gerasimenko, and rubble-pile + contact-binary is Arrokoth. It bands on `lobes`, an authored fact, because being two lobes is history and no derived quantity carries it.",
+        "note": "Two lobes joined at a neck — two bodies that met gently and stayed. A MODIFIER, so it says how this rock is SHAPED without overruling what it is made of: comet + contact-binary is 67P/Churyumov-Gerasimenko, and rubble-pile + contact-binary is Arrokoth. It bands on `lobes`, an authored fact, because being two lobes is history and no derived quantity carries it. THE RADIUS BAND IS THE ONE THAT MATTERS: past about 300 km a body's own gravity has pulled it round, so it cannot be two lobes — the same threshold the silhouette uses to decide a body is drawn irregular at all, so the class and the shape can never disagree. Arrokoth is 9.65 km and 67P 1.65 km; the largest real candidates are around 100 km.",
         "match": {
           "mass_Me": [
             0,
             0.0001
+          ],
+          "radius_Re": [
+            0,
+            0.047
           ],
           "lobes": [
             2,
