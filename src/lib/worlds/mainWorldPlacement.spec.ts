@@ -8,8 +8,7 @@ import { describe, it, expect } from 'vitest';
 import {
   placeMainWorld,
   giantOccupyingBand,
-  atmosphereFamily,
-  BAND_FRACTION_BY_ATMOSPHERE,
+  usableTempRange,
   TOLERANCE_ORDER,
   mainWorldProfilesFromPack,
   mainWorldBypassCodesFromPack,
@@ -220,33 +219,74 @@ describe('G87 - the same sector twice is the same sky (the owner\'s determinism 
   });
 });
 
-describe('G87 - thicker air sits further out, and the module holds no AU table', () => {
-  it('a dense atmosphere is placed further out in the band than a thin one', () => {
-    // Both use the same seed, so only the atmosphere family differs.
-    const thin = place({ atmosphereDigit: 3 }).a_AU;
-    const dense = place({ atmosphereDigit: 8 }).a_AU;
-    expect(dense).toBeGreaterThan(thin);
+describe('G87 - the orbit comes from the temperature the atmosphere asks for', () => {
+  // THIS REPLACED A TABLE OF BAND FRACTIONS I GUESSED AT ("thicker air traps more heat, so it sits
+  // further out"). The browser proved that premise wrong: a dense N2/O2 world placed in the outer
+  // half of the band came out at 204 K with no surface liquid, because the conservative band's outer
+  // edge assumes a CO2 greenhouse this engine does not give a nitrogen atmosphere.
+  const range = (lo: number, hi: number) => ({ atmosphereTempRangeK: [lo, hi] as [number, number] });
+
+  it('a HOT template lands closer in than a COLD one, round the same star', () => {
+    const hot = place({ atmosphereDigit: 11, ...range(700, 750) }).a_AU;   // Venusian
+    const cold = place({ atmosphereDigit: 15, ...range(80, 120) }).a_AU;   // methane
+    expect(hot).toBeLessThan(cold);
   });
 
-  it('every UWP atmosphere digit maps to a family with a band fraction inside [0, 1]', () => {
-    for (let d = 0; d <= 15; d++) {
-      const [lo, hi] = BAND_FRACTION_BY_ATMOSPHERE[atmosphereFamily(d)];
-      expect(lo, `digit ${d}`).toBeGreaterThanOrEqual(0);
-      expect(hi, `digit ${d}`).toBeLessThanOrEqual(1);
-      expect(hi, `digit ${d}`).toBeGreaterThan(lo);
-    }
+  it('A BREATHABLE TEMPLATE IS GOVERNED BY THE BAND, not by its own stated temperature', () => {
+    // AND THIS IS THE DESIGN, not a compromise. A Standard/Earth-like template says 280-310 K, which
+    // is a SURFACE temperature; solving it as an EQUILIBRIUM one lands about 0.70 AU round a Sun-like
+    // star, too close. The habitable-zone clamp pushes it back to the band's inner edge - which is
+    // where Earth actually sits (1.0 AU against a conservative inner edge of 0.95), and which is
+    // exactly the owner's rule that atmosphere 4-9 belongs in that band.
+    //
+    // So the two halves divide cleanly: A BREATHABLE WORLD IS PLACED BY THE BAND, because a
+    // greenhouse it will have but does not yet is what closes the gap; EVERYTHING ELSE is placed by
+    // the temperature its template declares, because nothing else can speak for a Venusian or a
+    // methane world.
+    const out = place({ atmosphereDigit: 6, ...range(280, 310) });
+    expect(out.placed).toBe(true);
+    expect(out.a_AU).toBeGreaterThanOrEqual(out.zone.inner);
+    expect(out.a_AU).toBeLessThanOrEqual(out.zone.outer);
+    expect(out.reason).toMatch(/a breathable atmosphere belongs in that band/);
+  });
+
+  it('a template with no range at all is centred in the band and SAYS so', () => {
+    const out = place({ atmosphereDigit: 6, atmosphereTempRangeK: null });
+    expect(out.placed).toBe(true);
+    expect(out.reason).toMatch(/states no temperature of its own/);
+  });
+
+  it('a shrug of a range (vacuum, 10-1000 K) is treated as unstated, not as 505 K', () => {
+    expect(usableTempRange([10, 1000])).toBeNull();
+    expect(usableTempRange([280, 310])).toEqual([280, 310]);
+    const out = place({ atmosphereDigit: 0, ...range(10, 1000) });
+    expect(out.reason).toMatch(/states no temperature of its own/);
+  });
+
+  it('A BREATHABLE WORLD IS HELD IN THE BAND even if its template asks for something else', () => {
+    // Atmosphere 4-9 must be in the habitable zone or the UWP invalidates itself (the owner's rule).
+    const out = place({ atmosphereDigit: 6, ...range(700, 750) });
+    const zone = out.zone;
+    expect(out.a_AU).toBeGreaterThanOrEqual(zone.inner);
+    expect(out.a_AU).toBeLessThanOrEqual(zone.outer);
+    expect(out.reason).toMatch(/a breathable atmosphere belongs in that band/);
+  });
+
+  it('a NON-breathable world is free to leave the band, because Traveller says it is hostile', () => {
+    const out = place({ atmosphereDigit: 11, ...range(700, 750) });
+    expect(out.a_AU).toBeLessThan(out.zone.inner);
   });
 
   it('THE MODULE CONTAINS NO SPECTRAL-CLASS TABLE AND NO AU TABLE', async () => {
-    // The bug was a table of Sol's spacing standing in for a derivation. If one grows back here,
-    // this is the thing that should notice. Fractions of a derived band are fine; AU figures are not.
     const src = (await import('node:fs')).readFileSync('src/lib/worlds/mainWorldPlacement.ts', 'utf8');
-    const code = src.split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n');
+    // Strip comment lines, then look for the tables in the CODE. Written without splitting on a
+    // newline literal, because getting one into this file through a generator is its own trap.
+    const code = src.replace(/^\s*(\/\/|\*).*$/gm, '');
     expect(code).not.toMatch(/HZ_ANCHORS|BODE_TABLE/);
-    // No object literal keyed by spectral letter.
     expect(code).not.toMatch(/["']?O["']?\s*:\s*\d+\s*,\s*["']?B["']?\s*:/);
   });
 });
+
 
 describe('G87 - the shortlist is PACK DATA, and a derived class is never an input', () => {
   it("every profile's `template` is a REAL statTemplates key", () => {
@@ -254,7 +294,7 @@ describe('G87 - the shortlist is PACK DATA, and a derived class is never an inpu
     // system/idempotence.test.ts). `planet/earth-like`, `planet/ocean` and the sixty-odd others are
     // CLASSIFIER FINGERPRINTS, matched from a world's own physics - handing one to the generator
     // would be the fault. Only three planet templates actually exist, and a profile must name one.
-    const real = Object.keys(pack.statTemplates ?? {}).filter((k) => k.startsWith('planet/'));
+    const real = Object.keys((pack as any).statTemplates ?? {}).filter((k) => k.startsWith('planet/'));
     expect(real.length).toBeGreaterThan(0);
     for (const c of CANDIDATES) expect(real, `${c.template} is not a generation template`).toContain(c.template);
   });
@@ -299,5 +339,43 @@ describe('G87 - the shortlist is PACK DATA, and a derived class is never an inpu
       expect(out.placed, `atmosphere ${d} could not be placed`).toBe(true);
       expect(out.template, `atmosphere ${d}`).toBeTruthy();
     }
+  });
+});
+
+describe('G87 - some discomfort allowed', () => {
+  // Owner, 2026-09-08: "some discomfort allowed... shirtsleeve can mean 'big coat' and a breather
+  // mask". A breathable world is not pinned to the band's warm edge - a sector's worlds vary, and a
+  // cold one is still somewhere people live.
+  const breathable = (seed: string) =>
+    placeMainWorld(facts({ atmosphereDigit: 6, atmosphereTempRangeK: [280, 310] }), {
+      star: G2V, nodes: [G2V], candidates: CANDIDATES, bypassTradeCodes: BYPASS, seed
+    });
+
+  it('twenty worlds across a sector are NOT all at the same orbit', () => {
+    const orbits = new Set<number>();
+    for (let i = 0; i < 20; i++) orbits.add(+breathable(`Sector world ${i}`).a_AU.toFixed(4));
+    expect(orbits.size).toBeGreaterThan(10);
+  });
+
+  it('...but every one of them is still inside the band', () => {
+    for (let i = 0; i < 20; i++) {
+      const out = breathable(`Sector world ${i}`);
+      expect(out.a_AU, `world ${i}`).toBeGreaterThanOrEqual(out.zone.inner);
+      expect(out.a_AU, `world ${i}`).toBeLessThanOrEqual(out.zone.outer);
+    }
+  });
+
+  it('the spread stays in the INNER half, where a breathable atmosphere can still hold liquid', () => {
+    // The outer half of a conservative band needs a thick CO2 greenhouse a nitrogen-oxygen world
+    // does not have - measured, a world placed out there came back at 204 K and frozen.
+    for (let i = 0; i < 20; i++) {
+      const out = breathable(`Sector world ${i}`);
+      const fraction = (out.a_AU - out.zone.inner) / (out.zone.outer - out.zone.inner);
+      expect(fraction, `world ${i}`).toBeLessThanOrEqual(0.55);
+    }
+  });
+
+  it('and it is still deterministic - the same world twice is the same orbit', () => {
+    expect(breathable('Regina').a_AU).toBe(breathable('Regina').a_AU);
   });
 });

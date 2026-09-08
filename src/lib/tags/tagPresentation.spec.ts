@@ -15,7 +15,10 @@ import { describeTag } from './tagPresentation';
 
 const NAMESPACES = [
   'geology', 'tidal', 'structure', 'climate', 'weather', 'surface', 'hazard', 'magnetic',
-  'shape', 'stability', 'fate', 'origin', 'aurora', 'biodiversity', 'thermal', 'stellar'
+  'shape', 'stability', 'fate', 'origin', 'aurora', 'biodiversity', 'thermal', 'stellar',
+  // G87: a game's own assertions are held to the same standard as the physics ones - a GM
+  // reading "Main world is a moon" deserves to know what Traveller meant by it.
+  'traveller'
 ];
 
 function emittedTagKeys(): string[] {

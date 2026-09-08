@@ -2,8 +2,17 @@
 
 All notable changes are listed here:
 
-## v3.1.37 - 8th Sep 2026
+## v3.1.38 - 8th Sep 2026
 
+- **Traveller main worlds are now placed where they can actually be lived on.** The importer used to read a world's orbit off a fixed table indexed by its star's spectral letter, so every G star's main world sat at 0.85 AU and every M star's at 0.17 AU no matter how bright the star really was - which is why so many arrived far too hot or far too cold. A world is now placed using the temperature its own atmosphere asks for, against the habitable band worked out from that particular star's brightness. A red dwarf's world comes in close, a bright star's sits further out, and a world with a methane atmosphere goes out where methane is liquid.
+- **A world you can breathe on is kept in the habitable band, but not pinned to its warmest edge.** Some are shirtsleeve weather and some want a heavy coat, and both are places people live - so a sector's main worlds vary instead of all sitting at the same distance.
+- **Worlds Traveller marks hostile are left exactly where they were.** A hellworld stays a hellworld, at the orbit earlier versions gave it. The trade codes that do this are rule-pack data, so a GM can add their own.
+- **Fixed: a main world marked as a satellite was never actually made one.** Traveller's `Sa` code says the main world is a moon of a bigger world, and the importer looked for a host before any had been created - so it quietly gave up every time and the world came out orbiting its star like any other. It now creates the gas giant the world orbits, in the habitable band, so the world is a moon and still sits somewhere liveable. That pair counts as two of the system's worlds.
+- **New, and useful well beyond Traveller: a world can be fitted to a condition.** Ask where a star would keep a body at a given temperature, or inside a temperature range, or where a particular liquid - water, ammonia, methane, molten sulfur - would stay liquid, and get the orbit and the band back. Nothing is hardcoded to water or to Earth.
+- There is a switch for all of this in the Traveller import dialogue, on by default; turning it off restores the old fixed table exactly.
+- Traveller is now a tag category of its own, so a world that Traveller says something about - that its main world is a moon, say - shows it as a Traveller fact rather than as an unlabelled one, and says what the game meant by it.
+
+## v3.1.37 - 8th Sep 2026
 - **Two ways of losing your own custom rules, both fixed.** Opening the Edit Biospheres dialog and pressing Save without changing anything deleted every morphology, pigment and pigment-model setting the campaign had - silently, with no warning and nothing to undo. And the Edit Liquids dialog could not see a custom liquid that had arrived with a shared starmap at all: it opened on the standard list instead, so saving wrote that list over the liquid and every world that used it quietly fell back to water. Both dialogs now read and write the same way the rest of the app does, and each has a test that fails if it ever stops.
 - The Edit Liquids dialog also no longer records changes you did not make: simply opening it used to mark nineteen of the twenty-two standard liquids as edited.
 - Developer-facing only: the test suite was failing two or three different tests on every run, always with a timeout and always passing on their own, because several sessions build on this machine at once. The time budget is now set once, generously, and the slowest check does half the disk work it used to.
@@ -31,7 +40,6 @@ All notable changes are listed here:
 ## v3.1.32 - 8th Sep 2026
 
 - Board only. A contact binary - two lobes touching, like Arrokoth - is captured as a fourth small-body type you could author but the engine would never generate for you. The measurement found why that is not simply a new entry: the list the type picker offers you is the same list the classifier uses to decide what a body is, so being offerable and being generated are currently the same thing. The fix is one field on a type definition, and it is briefed.
-
 
 ## v3.1.31 - 8th Sep 2026
 

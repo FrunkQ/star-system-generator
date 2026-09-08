@@ -13,6 +13,38 @@ import { G, AU_KM, EARTH_MASS_KG, SOLAR_MASS_KG } from '$lib/constants';
 import { calculateOrbitalBoundaries, type PlanetData } from '$lib/physics/orbits';
 import type { System, StarSystemNode, RulePack, CelestialBody, Barycenter, Orbit, TableSpec } from '$lib/types';
 import { generateId, weightedChoice, randomFromRange, toRoman } from '$lib/utils';
+import {
+    placeMainWorld,
+    mainWorldProfilesFromPack,
+    mainWorldBypassCodesFromPack
+} from '$lib/worlds/mainWorldPlacement';
+
+// TODAY'S BEHAVIOUR, KEPT DELIBERATELY AND REACHABLE FROM EXACTLY TWO PLACES (G87).
+//
+// This is the `HZ_ANCHORS` + `BODE_TABLE` pair the main-world placement replaced: a table of Sol's
+// own orbital spacing indexed by the star's spectral LETTER, so every G star lands at 0.85 AU and
+// every M star at 0.17 AU whatever their luminosity. It is WRONG - that is the whole of G87 - and it
+// survives for the two cases that are defined as "unchanged":
+//
+//   1. The GM turns the habitable-zone option OFF.
+//   2. A trade code declares the world hostile, so Traveller's data wins and we do not move it.
+//
+// "A bypassed world keeps today's behaviour exactly" is only a promise anybody can check if today's
+// behaviour still exists. NOTHING ELSE MAY CALL THIS. If you find yourself reaching for it from a
+// third place, the placement model is what you want.
+const LEGACY_BODE_AU: Record<number, number> = {
+    0: 0.17, 1: 0.34, 2: 0.595, 3: 0.85, 4: 1.36, 5: 2.38, 6: 4.42, 7: 8.5, 8: 16.66, 9: 32.98, 10: 65.62
+};
+const LEGACY_HZ_ANCHOR: Record<string, number> = { O: 11, B: 9, A: 7, F: 5, G: 3, K: 2, M: 0 };
+
+export function legacyMainWorldOrbitAU(specClass: string, subtype: number, uwpSizeDigit: number): number {
+    let orbitIndex = LEGACY_HZ_ANCHOR[specClass] ?? 3;
+    if (specClass === 'M' && subtype > 5) orbitIndex = 0;
+    else if (specClass === 'K' && subtype > 5) orbitIndex = 1;
+    if (uwpSizeDigit >= 10) orbitIndex += 3;
+    if (orbitIndex <= 10) return LEGACY_BODE_AU[orbitIndex];
+    return 0.4 + 0.3 * Math.pow(2, orbitIndex - 2);
+}
 
 export class TravellerImporter {
     private decoder = new TravellerDecoder();
@@ -113,12 +145,20 @@ export class TravellerImporter {
      * the batch importer and the specs keep the defaults they always had — but the comment below that
      * once promised "the panel lets them adjust" is now true on this path as well.
      */
-    public generateTravellerSystem(data: any, rulePack: RulePack, opts: { knobs?: GenerationKnobs; ageGyr?: number } = {}): System {
+    public generateTravellerSystem(
+        data: any,
+        rulePack: RulePack,
+        opts: { knobs?: GenerationKnobs; ageGyr?: number; placeMainWorldInHabitableZone?: boolean } = {}
+    ): System {
         const seed = `${data.uwp}-${data.name}`;
         this.rng = new SeededRNG(seed);
         const systemId = generateId();
         
         // Ensure trade codes are expanded (handle manual entry vs import)
+        // G87: KEEP THE RAW CODES. The line below rewrites `data.tradeCodes` to the EXPANDED names for
+        // the UI ('Sa' becomes 'Satellite'), and the placement model's bypass list is pack data keyed
+        // on the RAW codes the decoder expands FROM - so it must be handed these, not those.
+        const rawTradeCodes: string[] = [...(data.tradeCodes ?? [])];
         const expandedTradeCodes = data.tradeCodes.map((c: string) => this.decoder.tradeCodes[c] || c);
         data.tradeCodes = expandedTradeCodes; // Update the data object itself for the UI
         
@@ -221,29 +261,57 @@ export class TravellerImporter {
         // 2. Main World Generation
         const uwpSizeDigit = this.decoder.hexVal(uwp.size);
         
-        // --- Calculate Traveller Orbit (Bode's Law & HZ Anchors) ---
-        // Adjusted 15% closer
-        const BODE_TABLE: Record<number, number> = {
-            0: 0.17, 1: 0.34, 2: 0.595, 3: 0.85, 4: 1.36, 5: 2.38, 6: 4.42, 7: 8.5, 8: 16.66, 9: 32.98, 10: 65.62
-        };
-        const HZ_ANCHORS: Record<string, number> = {
-            "O": 11, "B": 9, "A": 7, "F": 5, "G": 3, "K": 2, "M": 0
-        };
-
         const starClassStr = primaryStar.classes[0]?.split('/')[1] || "G2V";
         const specClass = starClassStr[0]; // e.g. "G"
-        const subtype = this.decoder.hexVal(starClassStr[1] || '2');
 
-        let orbitIndex = HZ_ANCHORS[specClass] ?? 3;
-        if (specClass === 'M' && subtype > 5) orbitIndex = 0;
-        else if (specClass === 'K' && subtype > 5) orbitIndex = 1;
-        if (uwpSizeDigit >= 10) orbitIndex += 3;
+        // --- WHERE THE MAIN WORLD GOES (G87) ---
+        //
+        // THIS USED TO BE TWO HARDCODED TABLES: `HZ_ANCHORS` per spectral LETTER indexing a
+        // `BODE_TABLE` of Sol's own orbital spacing, so every G star put its main world at 0.85 AU
+        // and every M star at 0.17 AU whatever their real luminosity - a frozen world round a late M
+        // dwarf, a hot one round a bright G0 V. A user reported exactly that. There was also a
+        // `if (uwpSizeDigit >= 10) orbitIndex += 3` that moved a large world three slots outward for
+        // a reason with nothing to do with temperature; it is gone with the tables.
+        //
+        // `worlds/mainWorldPlacement` asks `physics/zones.ts` where THIS star's band actually is.
+        // It is deterministic from the system's own seed, it answers a HOST as well as an orbit (so
+        // the satellite case flows through it rather than round it), and it declines rather than
+        // guessing - see `placement.reason`, which is written for a GM.
+        const placement = placeMainWorld(
+            {
+                sizeDigit: uwpSizeDigit,
+                atmosphereDigit: this.decoder.hexVal(uwp.atmosphere),
+                hydrographicsDigit: this.decoder.hexVal(uwp.hydrographics),
+                populationDigit: this.decoder.hexVal(uwp.population),
+                tradeCodes: rawTradeCodes,
+                // THE TEMPERATURE THIS WORLD'S OWN ATMOSPHERE ASKS FOR. Every one of the seventeen
+                // Traveller atmosphere templates carries a `temp_range_K` - Standard/Earth-like is
+                // 280-310, the Venusian Corrosive is 700-750, Thin/Low Methane is 80-120 - and that
+                // is what decides the orbit. THE TEMPLATE, NOT THE BODY: the atmosphere is applied
+                // further down, after the world is generated, so at this point the world has none.
+                // (Owner, 2026-09-08: "you need an atmo before the goldilocks zone works".)
+                atmosphereTempRangeK: this.mainWorldTempRange(rulePack, uwp.atmosphere)
+            },
+            {
+                star: primaryStar,
+                nodes,
+                candidates: mainWorldProfilesFromPack(rulePack),
+                bypassTradeCodes: mainWorldBypassCodesFromPack(rulePack),
+                seed
+            }
+        );
 
-        let orbitAU = 1.0;
-        if (orbitIndex <= 10) orbitAU = BODE_TABLE[orbitIndex];
-        else orbitAU = 0.4 + (0.3 * Math.pow(2, orbitIndex - 2));
-        
-        orbitAU *= (1.0 + this.rng.range(-0.1, 0.1));
+        // THE OPTION THE USER ASKED FOR, defaulting ON (the owner's call, 2026-09-08). Off, or
+        // bypassed by a hostile trade code, and the world keeps the orbit the old tables gave it -
+        // which is why that expression survives here rather than being deleted outright.
+        const useHabitableZone = opts.placeMainWorldInHabitableZone !== false;
+        let orbitAU: number;
+        if (useHabitableZone && placement.placed && placement.host.kind === 'star') {
+            orbitAU = placement.a_AU;
+        } else {
+            orbitAU = legacyMainWorldOrbitAU(specClass, this.decoder.hexVal(starClassStr[1] || '2'), uwpSizeDigit)
+                * (1.0 + this.rng.range(-0.1, 0.1));
+        }
 
         // THE COMPANIONS MOVE, NOT THE MAIN WORLD (inbox D27).
         //
@@ -443,6 +511,64 @@ export class TravellerImporter {
         return system;
     }
 
+    /**
+     * The gas giant a satellite main world orbits, built at the world's own orbit (G87).
+     *
+     * The world has already been placed - in the habitable zone when the option is on - so the giant
+     * INHERITS that orbit and the world becomes its moon. That is what keeps the moon inside the band:
+     * the giant goes where the world was going, rather than the world being dragged to a giant.
+     *
+     * Deterministic: every figure comes from `this.rng`, which is seeded from the system's own UWP and
+     * name, so two GMs importing the same sector get the same giant.
+     */
+    private createSatelliteHost(
+        nodes: (CelestialBody | Barycenter)[],
+        mainWorld: CelestialBody,
+        systemRootId: string
+    ): CelestialBody | null {
+        const orbit = mainWorld.orbit;
+        if (!orbit) return null;
+        // A Jupiter-ish host, varied but never so light the moon would not be bound.
+        const massKg = 1.898e27 * this.rng.range(0.4, 3.0);
+        const radiusKm = 69911 * this.rng.range(0.85, 1.15);
+        const giant: CelestialBody = {
+            id: generateId(),
+            parentId: systemRootId,
+            name: `${mainWorld.name.replace(' (Main World)', '')} Primary`,
+            kind: 'body',
+            roleHint: 'planet',
+            classes: ['planet/gas-giant'],
+            massKg,
+            radiusKm,
+            temperatureK: 0,
+            tags: [{ key: 'traveller/satellite-main-world-host' }],
+            description:
+                `The gas giant the main world orbits. Traveller's data marks this world a satellite, and a ` +
+                `satellite needs something to go round: this giant holds the orbit the main world was placed ` +
+                `in, so the world itself keeps that position while circling a planet rather than the star.`,
+            orbit: { ...orbit, elements: { ...orbit.elements } }
+        } as unknown as CelestialBody;
+        nodes.push(giant);
+        return giant;
+    }
+
+    /**
+     * The temperature range the pack's own atmosphere template declares for this UWP code (G87).
+     *
+     * Read from the same table the atmosphere itself is built from a few lines later, by the same
+     * name lookup, so the world is placed for the air it is about to be given rather than for air in
+     * general. Returns null when the pack has no template or no range, and the placement then centres
+     * the world in the habitable zone instead.
+     */
+    private mainWorldTempRange(rulePack: RulePack, atmosphereCode: string): [number, number] | null {
+        const name = this.getTravellerAtmosphereName(atmosphereCode);
+        const table = rulePack.distributions?.['atmosphere_composition'];
+        if (!name || !table) return null;
+        const entry = table.entries.find((e: any) => String((e.value as any)?.name ?? '').startsWith(name));
+        const range = (entry?.value as any)?.temp_range_K;
+        return Array.isArray(range) && range.length === 2 ? [range[0], range[1]] : null;
+    }
+
     private applySatelliteTradeCodeIfNeeded(
         nodes: (CelestialBody | Barycenter)[],
         mainWorld: CelestialBody,
@@ -454,7 +580,29 @@ export class TravellerImporter {
 
         const bodies = nodes.filter((n): n is CelestialBody => n.kind === 'body');
         const siblings = bodies.filter((b) => b.parentId === systemRootId && b.id !== mainWorld.id);
-        if (siblings.length === 0) return;
+
+        // G87: IF THERE IS NOTHING TO ORBIT, MAKE THE THING TO ORBIT.
+        //
+        // THIS METHOD USED TO RETURN HERE, AND MEASURED 2026-09-08 IT ALWAYS DID. It runs BEFORE
+        // infill - deliberately, so the host counts toward W - which means the system holds the stars
+        // and the main world and NOTHING ELSE. `siblings` was therefore always empty and the `Sa`
+        // trade code silently did nothing on every import ever made: a satellite main world came out
+        // as an ordinary planet round its star, untagged. The comment at the call site claimed "the
+        // giant it creates is an anchor", and it created nothing.
+        //
+        // The owner's own rule is what it should have been doing: when the habitable orbit is held by
+        // a gas giant the UWP does not break - the main world becomes a SATELLITE of that giant and
+        // STAYS IN THE BAND, which preserves every environmental figure the profile states. So when
+        // Traveller declares a satellite and there is no host, the giant is created at the orbit the
+        // placement model chose for the world, and the world is hung off it. The giant is a primary
+        // planet created before infill, so it counts toward W exactly as the comment always promised
+        // - which is also what keeps the count right, because the main world has just stopped being
+        // one (DATA-R45).
+        if (siblings.length === 0) {
+            const created = this.createSatelliteHost(nodes, mainWorld, systemRootId);
+            if (!created) return;
+            siblings.push(created);
+        }
 
         const giantCandidates = siblings.filter((b) =>
             (b.roleHint === 'planet' || b.roleHint === 'dwarf-planet') &&

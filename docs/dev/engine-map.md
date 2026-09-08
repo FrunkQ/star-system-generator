@@ -2417,6 +2417,31 @@ BLAST: any new consumer of `convertArchiveRows` — passing no `existingSystemId
 which is right for a new map and wrong for an append. The host→bundled-id map is generated from the
 roster, so it is only as current as the last kit run (D15).
 
+### DATA-R46 AN EQUILIBRIUM TEMPERATURE IS A FLOOR ON A SURFACE TEMPERATURE, NEVER A CEILING
+BUCKET: DOMAIN - the two temperatures are different quantities and the gap between them is set
+entirely by the air, which the thing being placed does not have yet.
+WHERE: `worlds/orbitSolver.ts` (the whole module), `worlds/mainWorldPlacement.ts` (which aims at the
+LOW end of a declared range for exactly this reason); gated by `orbitSolver.spec.ts`.
+RULE: solving "where does this star heat a body to T" gives the EQUILIBRIUM temperature. An
+atmosphere in this engine can only warm a world, never cool it - so that figure is a FLOOR on what
+the surface will read, and a caller fitting to a range of SURFACE temperatures aims at the range's
+BOTTOM and lets the greenhouse carry the world up into it. Aiming at the middle guarantees
+overshooting whenever the air is thick.
+WHY: G87, and both extremes were measured on real imports rather than reasoned about. A dense
+nitrogen-oxygen world gained 0.35 K from its greenhouse - nothing - so placing it by the conservative
+habitable zone's OUTER half left it at 204 K with no surface liquid and a habitability temperature
+score of zero, which is the user's original complaint arriving by a new route. A corrosive Venusian
+world gained about 650 K, so aiming at its template's stated 700-750 K put its surface past 1300 K.
+THE SAME MODEL, OPPOSITE ERRORS, BECAUSE THE ONLY VARIABLE IS THE AIR.
+BLAST: a THICK atmosphere cannot be landed inside a narrow surface range in one pass. The honest fix
+is two passes - place, build the atmosphere, re-fit against the greenhouse the body then actually
+has - and that is the ordering behind the owner's note, 2026-09-08: "you need an atmo before the
+goldilocks zone works". Not built; the overshoot is confined to hostile atmospheres nobody lives on.
+AND A BREATHABLE WORLD IS THEREFORE PLACED BY THE BAND, NOT BY ITS TEMPLATE: a standard atmosphere
+declares 280-310 K, which is a SURFACE range it reaches only with a greenhouse, so solving it as an
+equilibrium lands it too close. The habitable zone is the right authority for atmospheres 4-9 and the
+template is the right authority for everything else, which is the split the code makes.
+
 ### DATA-R45 A TRAVELLER MAIN WORLD BECOMES A MOON BY TWO DIFFERENT ROUTES, AND THEY ARE NOT THE SAME
 BUCKET: DOMAIN - a designation and a consequence can produce the same shape and must not be merged.
 WHERE: `worlds/mainWorldPlacement.ts` (`giantOccupyingBand`, and the host in `MainWorldPlacement`),
@@ -2433,9 +2458,20 @@ by accident.
 WHY: G87, and the owner asked for the second one by name because it is the trickier half. Merging
 them loses information in both directions: an `Sa` world whose band happens to be empty would stop
 being a satellite, and a world displaced by a giant would start claiming Traveller said so.
-BLAST: `W` is a HARD world count and NEVER includes moons (G32), so a world moved onto a giant must
-have that giant counted as one of `W` - `applySatelliteTradeCodeIfNeeded` already runs BEFORE infill
-for exactly this reason, and the derived route has to land on the same side of that ordering.
+AND `Sa` DID NOTHING AT ALL UNTIL v3.1.27, measured rather than assumed: the method runs BEFORE
+infill - deliberately, so its host counts toward `W` - which means the system holds the stars and
+the main world and nothing else, so its search for a sibling to orbit always came up empty and it
+returned. Every satellite main world ever imported came out as an ordinary planet round its star,
+untagged. It now CREATES the giant, at the orbit the placement model chose for the world, so the
+world becomes its moon and stays in the band.
+BLAST: `W` is a HARD world count and NEVER includes moons (G32) - WITH EXACTLY ONE EXCEPTION, and it
+is the owner's own ruling, 2026-09-08: "that is the one edge case allowed... it is a moon!", and
+"For a satellite homeworld we can count that as 2 worlds". So the satellite main world AND its giant
+both count. Every other moon stays uncounted. `isPlanet` in `generation/infill.ts` reads `roleHint`
+and therefore counts a planet-sized moon, which is WHY that arithmetic comes out right - do not
+"fix" it to count primaries only, which is what I nearly did before he ruled. The observable form,
+gated in `mainWorldImport.spec.ts`: a satellite system ends with exactly ONE FEWER primary planet
+than the identical non-satellite one.
 The giant is chosen by MASS then by id, never by array order, because the answer must be identical
 for two GMs importing the same sector.
 

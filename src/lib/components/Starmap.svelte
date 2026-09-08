@@ -1312,12 +1312,12 @@
   }
 
   function handleAddTravellerSystem(event: CustomEvent<any>) {
-      const { infillKnobs, infillAgeGyr, ...data } = event.detail;
+      const { infillKnobs, infillAgeGyr, placeMainWorldInHabitableZone, ...data } = event.detail;
       const importer = new TravellerImporter();
 
       // G33: the dials the GM set in the modal reach the infill step, which is what
       // importer.ts's own comment always promised.
-      const system = importer.generateTravellerSystem(data, rulePack, { knobs: infillKnobs, ageGyr: infillAgeGyr });
+      const system = importer.generateTravellerSystem(data, rulePack, { knobs: infillKnobs, ageGyr: infillAgeGyr, placeMainWorldInHabitableZone });
       
       const newSystemNode = {
           id: system.id,

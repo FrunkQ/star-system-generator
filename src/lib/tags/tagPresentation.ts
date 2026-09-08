@@ -74,6 +74,11 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
   // matches NO category is the whole point: a placeholder wearing Faction purple or Resource gold
   // would hand back the identity the rung exists to destroy. It carries exactly one reserved key
   // (`tagLifecycle.ANONYMOUS_TAG_KEY`) and nothing may emit another.
+  // TRAVELLER IS A GAME, not a physical property, and it is the first namespace here that says so.
+  // Owner, 2026-09-08: "Traveller SHOULD be a defined game tag". Everything else in this map is
+  // something the universe did; these are things a RULESET asserted, and a GM should be able to see
+  // which of a world's facts came from Mongoose rather than from the physics.
+  traveller:    { group: 'Traveller',    color: '#c08a4a' },
   unknown:      { group: 'Unknown',      color: '#7d7d86' }
 };
 
@@ -109,6 +114,23 @@ const NAMESPACE_DESC: Record<string, string> = {
 
 // Friendly label + physics description, keyed by exact tag.
 const TAG_INFO: Record<string, { label: string; description: string }> = {
+  // --- G87: the Traveller ruleset's own assertions about a world ---
+  'traveller/satellite-main-world': {
+    label: 'Main world is a moon',
+    description:
+      'Traveller\'s sector data marks this as the system\'s main world AND as a satellite (trade code ' +
+      'Sa), so it circles a larger planet rather than the star directly. It is still the world the ' +
+      'starport, population and law level describe - the sky above it simply has a giant in it. The ' +
+      'pair counts as two of the system\'s worlds: the moon everybody lives on, and the planet it goes round.'
+  },
+  'traveller/satellite-main-world-host': {
+    label: 'Holds the main world',
+    description:
+      'The planet the system\'s main world orbits. Traveller names the main world and says it is a ' +
+      'satellite, but never says what of - so this giant was placed to carry it, at the orbit the main ' +
+      'world itself was fitted to, which is what keeps the inhabited moon at a liveable distance from ' +
+      'the star.'
+  },
   // --- G54: the anonymous rung ---
   // THE ONE PLACEHOLDER. Its wording says only that a record exists and volunteers NOTHING about
   // what kind of record it is — not the category, not the namespace, not whether it is physics or

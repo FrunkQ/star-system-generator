@@ -38,6 +38,23 @@
 import type { Barycenter, CelestialBody, RulePack } from '$lib/types';
 import { calculateGoldilocksZone } from '$lib/physics/zones';
 import { SeededRNG } from '$lib/traveller/rng';
+// THE ORBIT SOLVER IS SHARED, NOT COPIED. `worlds/orbitSolver` answers "where does this star produce
+// THAT?" for anything - a temperature, a range, a solvent's liquid band - and the owner asked for it
+// as a reusable authoring feature in its own right. This module is its first caller, not its owner.
+import { fitOrbit, minimumOrbitAU, temperatureAtOrbit } from './orbitSolver';
+
+/** Kilometres in an astronomical unit, for the moon orbit below. */
+const AU_KM = 149597870.7;
+
+/**
+ * How far into the habitable zone a breathable world may be spread, as a fraction of the band.
+ *
+ * The INNER half only. The outer half of a conservative band needs a thick CO2 greenhouse to stay
+ * liquid at all, which a breathable nitrogen-oxygen atmosphere does not provide - measured, a world
+ * placed out there came back at 204 K with no surface liquid. Half is the honest reach of "cold, but
+ * people live here".
+ */
+const BREATHABLE_BAND_SPREAD = 0.5;
 
 // ---------------------------------------------------------------- reading the shortlist from the pack
 //
@@ -106,6 +123,12 @@ export interface MainWorldFacts {
   hydrographicsDigit: number;
   populationDigit: number;
   tradeCodes: string[];
+  /**
+   * The temperature range the world's own atmosphere template declares, when the pack has one -
+   * `atmospheres.json distributions.atmosphere_composition`, where all seventeen Traveller templates
+   * carry a `temp_range_K`. THIS IS WHAT DECIDES THE ORBIT. Absent, the world is centred in the band.
+   */
+  atmosphereTempRangeK?: [number, number] | null;
 }
 
 export interface MainWorldContext {
@@ -141,33 +164,43 @@ export interface MainWorldPlacement {
   zone: { inner: number; outer: number };
 }
 
-// WHERE IN THE BAND, BY WHAT THE WORLD IS WEARING. A fraction of the way from the band's inner edge
-// to its outer, because the band is derived per star and a fraction of it travels; an AU figure
-// would not. Thicker air traps more heat and can therefore sit FURTHER OUT and stay liveable; thin
-// air needs more light and sits nearer in. Airless rock has no preference worth stating, so it takes
-// the middle. Exotic and corrosive atmospheres are the Venus and Titan cases and genuinely go
-// anywhere, so their range is the whole band.
+// THE ORBIT COMES FROM THE TEMPERATURE THE ATMOSPHERE ITSELF DECLARES, and this replaced a table of
+// band FRACTIONS I had guessed at - "thicker air traps more heat, so it can sit further out". That
+// premise is wrong in this engine and the browser proved it: an M5 V main world with a dense N2/O2
+// atmosphere, placed in the outer half of the conservative habitable zone, came out at 204 K
+// (-69 C) with "no surface liquid (frozen?)" and a habitability temperature score of ZERO. Its
+// `greenhouseTempK` was 0.35 K - because the conservative band's OUTER edge is defined by a
+// CO2-dominated maximum greenhouse, and a nitrogen-oxygen atmosphere gets almost none of it.
 //
-// UWP atmosphere digits: 0 none, 1 trace, 2-3 very thin, 4-5 thin, 6 standard, 7 standard tainted,
-// 8-9 dense, A exotic, B corrosive, C insidious, D dense high, E thin low, F unusual.
-export const BAND_FRACTION_BY_ATMOSPHERE: Record<string, [number, number]> = {
-  vacuum: [0.3, 0.7],   // 0, 1
-  thin: [0.15, 0.45],   // 2, 3, 4, 5, E
-  standard: [0.3, 0.65], // 6, 7
-  dense: [0.5, 0.85],   // 8, 9, D
-  exotic: [0.1, 0.9]    // A, B, C, F
-};
-
-/** Which band-fraction family a UWP atmosphere digit belongs to. */
-export function atmosphereFamily(digit: number): keyof typeof BAND_FRACTION_BY_ATMOSPHERE {
-  if (digit <= 1) return 'vacuum';
-  if (digit <= 5 || digit === 14) return 'thin'; // 14 = 'E', thin low
-  if (digit <= 7) return 'standard';
-  if (digit === 8 || digit === 9 || digit === 13) return 'dense'; // 13 = 'D', dense high
-  return 'exotic'; // A, B, C, F
-}
+// A GUESSED RULE OF THUMB PUT THE WORLD IN THE BAND AND STILL FROZE IT, WHICH IS THE USER'S ACTUAL
+// COMPLAINT ("unreasonable surface temperatures, either way too high or way too low") ARRIVING BY A
+// NEW ROUTE. Being inside the habitable zone was never the goal; being at a liveable temperature is,
+// and the two are not the same thing.
+//
+// AND THE PACK ALREADY SAYS WHAT EACH ATMOSPHERE WANTS. Every one of the seventeen Traveller
+// atmosphere templates in `atmospheres.json distributions.atmosphere_composition` carries its own
+// `temp_range_K`: Traveller-6 (Standard, Earth-like) 280-310, Traveller-B (Corrosive, Venusian)
+// 700-750, Traveller-F (Thin/Low, Methane) 80-120. So the world is placed at the orbit that gives it
+// the temperature ITS OWN atmosphere declares - which needs no fractions, no spectral classes and no
+// Sol baseline, and which puts a Venusian world in close and a methane world far out, both correctly.
 
 const inRange = (v: number, range?: [number, number]) => !range || (v >= range[0] && v <= range[1]);
+
+/**
+ * The temperature range an atmosphere template usefully declares, or null when it does not.
+ *
+ * A VERY WIDE RANGE IS NOT A TEMPERATURE, IT IS A SHRUG. Traveller-0 (Vacuum/Trace) says 10-1000 K,
+ * which is the template declining to constrain anything; fitting to the middle of it would place an
+ * airless rock at 505 K for a reason nobody stated. Anything spanning more than eight-fold is
+ * treated as unstated, and the world is centred in the habitable zone instead.
+ */
+export function usableTempRange(tempRangeK: [number, number] | null | undefined): [number, number] | null {
+  if (!Array.isArray(tempRangeK) || tempRangeK.length !== 2) return null;
+  const [lo, hi] = tempRangeK;
+  if (!(lo > 0) || !(hi > 0) || hi < lo) return null;
+  if (hi / lo > 8) return null;
+  return [lo, hi];
+}
 
 /**
  * A GIANT ALREADY HOLDING THE BAND, if there is one.
@@ -253,19 +286,69 @@ export function placeMainWorld(facts: MainWorldFacts, context: MainWorldContext)
     };
   }
 
-  // 4. WHERE IN THE BAND. Deterministic from the system's own identity, so two GMs importing the
-  //    same sector get the same sky.
+  // 4. WHERE. The orbit at which this star heats the world to the temperature its own atmosphere
+  //    declares - not a fraction of the band, which is what froze a dense-atmosphere world at 204 K.
+  //    Deterministic from the system's own identity, so two GMs importing the same sector agree.
   const rng = new SeededRNG(`${seed}|main-world-placement`);
-  const [lo, hi] = BAND_FRACTION_BY_ATMOSPHERE[atmosphereFamily(facts.atmosphereDigit)];
-  const fraction = lo + (hi - lo) * rng.next();
-  const starOrbitAU = zone.inner + (zone.outer - zone.inner) * fraction;
+  const starFigures = { temperatureK: star.temperatureK ?? 0, radiusKm: star.radiusKm ?? 0 };
+  const range = usableTempRange(facts.atmosphereTempRangeK);
+  // AIM AT THE LOW END OF THE DECLARED RANGE, NOT ITS MIDDLE. The template states a SURFACE
+  // temperature and this solves an EQUILIBRIUM one, and an atmosphere can only warm a world - so the
+  // equilibrium figure is a FLOOR. Aiming at the bottom of the range leaves the greenhouse somewhere
+  // to put the world; aiming at the middle guarantees overshooting whenever the air is thick.
+  const fit = range
+    ? fitOrbit(starFigures, { kind: 'temperature', targetK: range[0], label: `${range[0]}-${range[1]} K, the range its own atmosphere declares` })
+    : null;
+  const solved = fit?.orbitAU ?? null;
+  const targetK = fit ? Math.round(fit.temperatureK) : null;
+
+  // A SHIRT-SLEEVE WORLD IS HELD INSIDE THE BAND WHATEVER ITS TEMPLATE ASKS FOR. The owner's rule:
+  // atmosphere 4-9 must be in the habitable zone, or the UWP invalidates itself - liquid water at a
+  // standard pressure is what those digits MEAN.
+  //
+  // BUT "SHIRT-SLEEVE" IS THE ATMOSPHERE, NOT THE WEATHER, and the band is not a comfort rating.
+  // Owner, 2026-09-08: "some discomfort allowed... shirtsleeve can mean 'big coat' and a breather
+  // mask". So a breathable world is not pinned to the band's warm inner edge, which would make every
+  // main world in a sector sit at the same relative spot and read as generated; it is SPREAD across
+  // the inner part of the band, seeded from the system's own identity. The warm end is somewhere you
+  // would take a jacket, the cold end is somewhere you would take a coat, and both are places people
+  // live. The outer half is left to worlds whose own template asks for it.
+  const shirtSleeve = facts.atmosphereDigit >= 4 && facts.atmosphereDigit <= 9;
+  const jitter = 1 + (rng.next() - 0.5) * 0.06;   // +-3%, so two worlds do not stack exactly
+  let starOrbitAU: number;
+  let where: string;
+  // A PHYSICAL FLOOR, not a taste one. A template asking for 700-750 K (Traveller-B, the Venusian
+  // case) solves to a very close orbit, because this engine reaches those temperatures by proximity
+  // rather than by the runaway greenhouse that actually does it on Venus. Twenty stellar radii is
+  // where a rocky body stops surviving as one; nothing is placed inside it whatever its template says.
+  const floorAU = minimumOrbitAU(starFigures);
+  if (solved != null) {
+    // THE JITTER IS APPLIED BEFORE THE CLAMP, NOT AFTER, and the order is the whole point: clamping
+    // a shirt-sleeve world to the band's edge and THEN multiplying by 0.97 puts it back outside the
+    // band by three per cent, which is exactly what the importer gate caught.
+    const withFloor = Math.max(solved * jitter, floorAU);
+    if (!shirtSleeve || (withFloor >= zone.inner && withFloor <= zone.outer)) {
+      starOrbitAU = withFloor;
+      where = `where this star heats it to about ${Math.round(temperatureAtOrbit(starFigures, withFloor) ?? targetK!)} K, which is what its own atmosphere asks for`;
+    } else {
+      // Inside the band, spread across its inner half - jacket weather at one end, coat weather at
+      // the other, and both liveable. Seeded, so a sector's worlds vary and two GMs still agree.
+      const spread = zone.inner + (zone.outer - zone.inner) * BREATHABLE_BAND_SPREAD * rng.next();
+      starOrbitAU = spread;
+      const reachedK = Math.round(temperatureAtOrbit(starFigures, spread) ?? 0);
+      where = `inside the habitable zone at about ${reachedK} K, because a breathable atmosphere belongs in that band - warm enough to live in, though you would want a coat`;
+    }
+  } else {
+    // No declared range: centre it in the band, which is the least-committed honest answer.
+    starOrbitAU = Math.min(zone.outer, Math.max(zone.inner, (zone.inner + (zone.outer - zone.inner) * 0.35) * jitter));
+    where = 'in the middle of the habitable zone, because its atmosphere states no temperature of its own';
+  }
 
   // 5. IS THE BAND ALREADY TAKEN BY A GIANT? Then the world is that giant's moon, and it is still in
   //    the habitable zone - which is the point, and why the UWP survives intact.
   const giant = giantOccupyingBand(nodes, star.id, zone);
   if (giant) {
     const hostRadiusKm = Math.max(1000, giant.radiusKm ?? 1000);
-    const AU_KM = 149597870.7;
     // 20-80 host radii: far enough to be a world rather than a ring, close enough to be bound.
     // The same span the importer's own satellite path already uses, so the two agree.
     const moonAU = (hostRadiusKm * (20 + 60 * rng.next())) / AU_KM;
@@ -288,7 +371,7 @@ export function placeMainWorld(facts: MainWorldFacts, context: MainWorldContext)
     readsAs: chosen.readsAs ?? null,
     grade: chosen.grade,
     placed: true,
-    reason: `Placed at ${starOrbitAU.toFixed(3)} AU, inside this star's own habitable zone of ${zone.inner.toFixed(3)}-${zone.outer.toFixed(3)} AU, derived from its luminosity rather than assumed from its spectral class. Life outside needs ${describeGrade(chosen.grade)}.`
+    reason: `Placed at ${starOrbitAU.toFixed(3)} AU - ${where}. This star's habitable zone is ${zone.inner.toFixed(3)}-${zone.outer.toFixed(3)} AU, worked out from its own luminosity rather than assumed from its spectral class. Life outside needs ${describeGrade(chosen.grade)}.`
   };
 }
 
