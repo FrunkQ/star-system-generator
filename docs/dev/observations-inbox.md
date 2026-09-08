@@ -2543,3 +2543,34 @@ covering the viewport, used on an element — rather than at any of the twelve n
 - UK English in UI, docs and new code. No emoji in docs. No personal names in shipped files.
 - **THE SEAM WITH THE CREATOR HUB HAS A PROTOCOL (2026-09-06).** Two repositories, two halves of one contract, neither paraphrases the other: the engine's half is `docs/dev/hub-requirements-for-sse.md`, the hub's is its `docs/sse-requirements.md`; every shipped R-number is reported in the fixed SEAM REPORT block and pasted whole; the checks that need both products open at once are STREAM N, fired by the owner only, never by a stream. Read `session-briefs-2026-08-28.md` under SEAM PROTOCOL before touching anything hub-facing.
 - **THE TWO `tests/` FIXTURES ARE A BASELINE, NOT CHURN (2026-09-06, [[B137]]).** `physics-baseline.test.ts` regenerates `tests/fixtures/solar-system-input.json` and `tests/output/solar-system-derived.json` deterministically on every run. If a run leaves them modified, the physics changed since the baseline was committed: COMMIT the regenerated files with your change and read the diff as the record of what moved. Restoring them keeps a stale baseline that turns every correct new gate red on a clean checkout - which is what ten days of "do not commit them" did.
+
+## STREAM X - R-19 THIRTY-SECOND EYEBALL LIST, and what was and was not seen (2026-09-08, v3.1.45)
+
+**WHAT WAS SEEN IN A BROWSER, so do not re-check it:** the hub's rules-only clip pasted into the bundled Local
+Neighbourhood campaign - the dialog reads "Rules only - a liquid. From Contract Reach by FrunkQ", the paste says
+"Added a liquid.", pasting again says "That clip carries rules this campaign already has - nothing to add", and the
+autosave (read out of IndexedDB, not off the screen) holds `liquids` as a DELTA naming only `unobtainium`.
+
+**WHAT NEEDS A HUMAN EYE, in about thirty seconds each. The pane runs `document.hidden` so the CANVAS never draws
+([[E7]]) - everything below needs a real window.**
+
+1. **The paste indicator for a rules clip.** Copy a rule from the hub's `/rules` library. The pill beside the undo
+   buttons should read **"Rules"** and nothing else - no "+0", no stray number. The right-click menu should offer
+   "Paste Rules (a liquid) here".
+2. **A real body from a real map.** Copy a planet from a map page on explorers.starsystemx.com and paste it into a
+   campaign. The notice should end with a sentence naming what came with it. **If the map has no custom rules the
+   sentence must be ABSENT entirely** - not "added nothing".
+3. **The conflict, which is the one worth staging.** Make a liquid called `unobtainium` in your campaign, then paste
+   the hub's clip 4. Your own liquid must be untouched in Edit Liquids, and a second entry should appear named
+   `unobtainium (from Contract Reach)`. The pasted body should be using the SECOND one.
+4. **Edit Liquids after a paste.** Open it. The pasted liquid should be listed with its own values. Press Save and
+   reopen: it must still be there. (This is [[B147]]b's territory and the delta the paste writes is exactly the
+   shape that used to be wiped.)
+5. **Edit Biospheres, open and Save with no edits.** Any morphology or pigment customisation must survive it. That
+   was deleting all three sections before [[B147]]a.
+6. **The notice is not too long.** After a paste that adds several rules AND renames one, the sentence gets long.
+   Worth one look at whether it wraps sensibly in the notice strip on a narrow window.
+
+**NOT SEEN AND NOT CLAIMED:** anything involving the 2D or 3D canvas - a pasted body's appearance, its ocean colour
+under the merged liquid, or the size comparison. The merge is verified by NUMBERS (the phase gate) rather than by
+looking at a planet.

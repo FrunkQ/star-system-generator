@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.46 - 8th Sep 2026
+
+- Board only. The copied-rules work is written up for the sharing site's side of the contract, together with the short list of things worth looking at in a real window and the one thing the site needs to change: it labels a world's ocean with a field name the app does not read, so a copied world would still not find its liquid.
+
 ## v3.1.45 - 8th Sep 2026
 
 - **The rules pages from the map library can now actually be pasted.** The paste window would not let you press its button for a rules-only copy, because it was still waiting for you to choose which system to put it in - and there is no object to put anywhere. It now says what the rules are, that nothing will be added to your map, and lets you paste them.

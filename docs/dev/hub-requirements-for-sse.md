@@ -881,3 +881,41 @@ tag's definition cannot travel even though the tag on the node does. Recorded he
 **READY FOR STREAM N** once both halves are in, with the hub's own check: copy a body with a custom liquid,
 paste into a fresh campaign, confirm the liquid arrived and the body's phase is right; paste the same clip again
 and confirm nothing is duplicated or renamed.
+
+### R-19 SEAM REPORT (engine half) - hand this to the coordinator; the hub pastes it under R-19
+
+```
+SEAM REPORT | R-19 | engine | beta v3.1.45 (0a0c7983) | prod: NOT RELEASED (production is v3.1.0)
+sets:      nothing - the envelope key is the hub's own `rulePackOverrides`, read exactly as sent
+must know: THE ENGINE READS `hydrosphere.composition`, NOT `hydrosphere.liquid`. The seven clips in
+           `docs/clips/` put the surface liquid in `hydrosphere.liquid`, which nothing in this engine
+           reads (grepped) - so clip 1's stated expectation, "Bellwether's hydrosphere resolves",
+           cannot come true however well the merge works: the rules arrive, the body looks up a name
+           under a field nothing reads, `liquidDef` returns undefined and it falls back. That is
+           R-19's own bug arriving by another door. ONE WORD IN THE GENERATOR fixes it, in clips 1,
+           2, 3, 4 and 6. There is also a SECOND legal place a node names a liquid -
+           `hydrosphere.layers[].liquid`, a FluidLayer naming its own substance - which is probably
+           where the field name came from; that one is on the LAYER, not on the hydrosphere.
+           A SECTION THIS BUILD DOES NOT KNOW IS DROPPED at the door rather than carried, so clip 7
+           behaves as its README says. `pigmentModel` CANNOT TRAVEL and is reported instead of
+           merged: it is a bag of scalars, the destination always has a complete config, so no field
+           is ever absent and a differing field cannot be renamed because the field IS the name.
+           NARROWING WAS DECIDED AGAINST, not skipped - the whole bag is merged (engine map
+           DATA-R50). Nothing NAMES a pigment, so narrowing would drop what decides a pasted world's
+           vegetation colour, and a missed reference edge is silent by construction.
+verified:  ALL SEVEN of the hub's fixtures, read where they live in the hub repo and never copied
+           into this one, skipping when that repo is absent. Clip 3 (shuffled keys) is a duplicate,
+           clip 4 never overwrites and repoints the pasted body, clip 4 twice reuses its own earlier
+           rename. AND IN A BROWSER against the bundled Local Neighbourhood campaign: the rules-only
+           clip reports "Added a liquid."; the autosave read out of IndexedDB holds `liquids` as a
+           DELTA whose `entries` names ONLY `unobtainium`, so the other 22 keep tracking the pack;
+           pasted again it says "That clip carries rules this campaign already has - nothing to add."
+           The phase gate is absolute: an ocean boiling at 90 K on a body at 150 K reads GAS, where
+           the bug read LIQUID.
+not done:  narrowing (decided against, DATA-R50); `pigmentModel` cannot travel (DATA-R49); and the
+           hub-side field name above, which is the only thing standing between this and clip 1's
+           stated outcome
+ready for: STREAM N - the hub's own check, once the field name moves: copy a body with a custom
+           liquid, paste into a fresh campaign, confirm the liquid arrived AND the body's phase is
+           right; then paste the same clip again and confirm nothing is duplicated or renamed
+```
