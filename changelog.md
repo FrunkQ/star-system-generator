@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.57 - 8th Sep 2026
+
+- Board only. The brown-dwarf temperature question is answered: the object in the report sits in the middle of the brown-dwarf mass range, not at the edge where one would start fusing, so nothing about that boundary is involved. Its temperature comes from a cooling track, which means the lever that actually moves it is the system's age rather than the temperature box.
+
 ## v3.1.56 - 8th Sep 2026
 
 - **The solvents a world cannot have are now shown but cannot be picked.** They still list the reason each is ruled out, so you can see what the physics decided, but choosing one would have corrupted the atmosphere alongside it, since the two are connected. A way to set one deliberately, and have it flagged as the anomaly it is, belongs in Overrides and is recorded as the next step.
