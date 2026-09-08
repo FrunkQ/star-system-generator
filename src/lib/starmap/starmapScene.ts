@@ -361,7 +361,8 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
   const fadeWindow = () => gridFadeWindow(gridFalloff, GRID_RADIUS);
 
   function clearGroup(g: THREE.Object3D) {
-    g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { x?.map?.dispose?.(); x?.dispose?.(); }); });
+    // Shared textures are not this scene's to dispose - see `sharedTexture` in bodyLook.
+    g.traverse((o) => { const a = o as any; a.geometry?.dispose?.(); const m = a.material; (Array.isArray(m) ? m : [m]).forEach((x: any) => { if (!x?.map?.sharedTexture) x?.map?.dispose?.(); x?.dispose?.(); }); });
     g.clear();
   }
   function makeGridLabel(text: string): THREE.Sprite | null {
@@ -935,7 +936,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
     // of the pair that had never been fixed — latent only because a label's size never used to change.
     const smat = ls.sprite.material as THREE.SpriteMaterial;
     if (resized || !smat.map) {
-      smat.map?.dispose();
+      smat.map?.dispose();   // owns its texture: a label's own canvas, never a shared body surface
       smat.map = new THREE.CanvasTexture(ls.canvas);
       smat.needsUpdate = true;
     } else {
@@ -950,7 +951,7 @@ export function createStarmapScene(canvas: HTMLCanvasElement, opts: StarmapScene
       if (!p.label) continue;
       content.remove(p.label.sprite);
       const mat = p.label.sprite.material as THREE.SpriteMaterial;
-      mat.map?.dispose(); mat.dispose();
+      mat.map?.dispose(); mat.dispose();   // owns its texture: this label's own canvas
     }
     placed = [];
   }

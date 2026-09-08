@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.39 - 8th Sep 2026
+
+- **Fixed: worlds were being re-made from scratch every time you scrolled them off the edge and back.** This is what was really behind the size comparison crawling on an older machine, and it was the owner who spotted it: *"everything is being retextured on the fly. Rather than cached"*. The expensive part - painting a world's surface - was already cached. Handing that painted surface to the graphics card was not, and that step was being redone for every world, every time it came back into view. On a machine whose browser has fallen back to drawing with the processor, that copy is done by hand, half a megapixel at a time, and it is the whole bill. A world's surface is now handed over once and shared by everything that draws it.
+- **And the strip now builds what you are looking at first**, rather than whatever comes first in the list - so on a slow machine the worlds under your eyes fill in before ones still off the edge of the screen. The wireframe also stays put until the finished world is ready to replace it, instead of vanishing while it is being made.
+
 ## v3.1.38 - 8th Sep 2026
 
 - **Traveller main worlds are now placed where they can actually be lived on.** The importer used to read a world's orbit off a fixed table indexed by its star's spectral letter, so every G star's main world sat at 0.85 AU and every M star's at 0.17 AU no matter how bright the star really was - which is why so many arrived far too hot or far too cold. A world is now placed using the temperature its own atmosphere asks for, against the habitable band worked out from that particular star's brightness. A red dwarf's world comes in close, a bright star's sits further out, and a world with a methane atmosphere goes out where methane is liquid.
@@ -17,6 +22,7 @@ All notable changes are listed here:
 - The Edit Liquids dialog also no longer records changes you did not make: simply opening it used to mark nineteen of the twenty-two standard liquids as edited.
 - Developer-facing only: the test suite was failing two or three different tests on every run, always with a timeout and always passing on their own, because several sessions build on this machine at once. The time budget is now set once, generously, and the slowest check does half the disk work it used to.
 - **Groundwork so that a planet copied from the map library brings its custom rules with it.** A copied object can now carry the custom liquids, gases, engines and the rest that its map defined, and the library's rules pages can be copied as well. Nothing is merged into your campaign yet - that is the next piece of work - but the app now reads what arrives instead of ignoring it, and a copy made in the app itself carries your own rules too, so moving a body between campaigns will keep them.
+
 
 ## v3.1.36 - 8th Sep 2026
 

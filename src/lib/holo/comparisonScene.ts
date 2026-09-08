@@ -374,6 +374,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     let builtThisPass = 0;
     let deferredThisPass = 0;
     const wanted = new Set<string>();
+    const toBuild: ComparisonSlot[] = [];
     for (const slot of slots) {
       if (!inWindow(slot)) continue;
       wanted.add(slot.id);
@@ -384,6 +385,19 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         continue;
       }
       if (existing) { destroy(slot.id); }
+      toBuild.push(slot);
+    }
+    // NEAREST WHAT YOU ARE ACTUALLY LOOKING AT, FIRST - the owner's own steer, 2026-09-08: *"Makes
+    // sense to start with the ones in the player view"*. The build window is deliberately wider than
+    // the screen, so strip order spends the budget on whatever happens to come first in the sequence
+    // - which on a slow machine can be an object that is off-screen while the one under your eyes
+    // stays a wireframe. Distance from the middle of the window is the order that matches where a
+    // person is looking, and it costs one sort of a handful of slots.
+    if (toBuild.length > 1) {
+      const centre = scrollPx + (axis === 'x' ? vw : vh) / 2;
+      toBuild.sort((a, b) => Math.abs(a.centrePx - centre) - Math.abs(b.centrePx - centre));
+    }
+    for (const slot of toBuild) {
       // THE BUDGET. Build until this frame's share is gone, then leave a wireframe and come back
       // next frame. ALWAYS AT LEAST ONE, or a machine slow enough to blow the budget on its first
       // body would never finish one and the strip would stay wireframe for ever.
@@ -393,7 +407,6 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         deferredThisPass++;
         continue;
       }
-      clearPlaceholder(slot.id);   // the real thing is about to take its place
       const group = new THREE.Group();
       group.position.set(...positionOf(slot));
       // The radius is the caller's true-scale figure, straight through (decision 1). The only clamp
@@ -483,6 +496,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       }
 
       scene.add(group);
+      clearPlaceholder(slot.id);   // only now: the wireframe stands until the real thing is in
       builtThisPass++;
       built.set(slot.id, {
         look, group, slot, ring,
@@ -542,7 +556,14 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     b.group.traverse((o) => {
       const g = (o as any).geometry; const m = (o as any).material;
       if (g) g.dispose?.();
-      if (m) (Array.isArray(m) ? m : [m]).forEach((mm: any) => { mm.map?.dispose?.(); mm.dispose?.(); });
+      // A SHARED texture is not ours to dispose: one GPU upload serves every body drawn from that
+      // canvas, and this teardown runs every time a body scrolls out of the window. Disposing it
+      // here is what made scrolling re-upload every surface (see `sharedTexture` in bodyLook).
+      if (m) (Array.isArray(m) ? m : [m]).forEach((mm: any) => {
+        if (!mm.map?.sharedTexture) mm.map?.dispose?.();
+        if (!mm.emissiveMap?.sharedTexture) mm.emissiveMap?.dispose?.();
+        mm.dispose?.();
+      });
     });
     built.delete(id);
   }

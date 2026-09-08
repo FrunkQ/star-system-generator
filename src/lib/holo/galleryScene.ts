@@ -321,7 +321,12 @@ export function createGalleryScene(
 			scene.traverse((o) => {
 				const m = (o as any).material; const geo = (o as any).geometry;
 				if (geo) geo.dispose();
-				if (m) { (Array.isArray(m) ? m : [m]).forEach((mm) => { mm.map?.dispose?.(); mm.dispose?.(); }); }
+				// Shared textures are not this scene's to dispose - see `sharedTexture` in bodyLook.
+				if (m) { (Array.isArray(m) ? m : [m]).forEach((mm: any) => {
+					if (!mm.map?.sharedTexture) mm.map?.dispose?.();
+					if (!mm.emissiveMap?.sharedTexture) mm.emissiveMap?.dispose?.();
+					mm.dispose?.();
+				}); }
 			});
 		}
 	};

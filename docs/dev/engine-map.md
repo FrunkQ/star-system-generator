@@ -7288,3 +7288,27 @@ which is why the two mounts differ and why "as the other editor does" is not a r
 BLAST: silent loss of every customisation in the affected sections, on a gesture a GM has no reason
 to think is destructive. The tell is a save handler that diffs against the same prop its loader
 applied an override to.
+
+### RENDER-S59 A CACHED CANVAS IS NOT A CACHED TEXTURE - THE UPLOAD IS THE BILL, AND IT IS PAID PER BUILD
+BUCKET: PLATFORM (what a GPU upload costs, and what it costs when there is no GPU) plus
+IMPLEMENTATION (who owns a shared texture).
+WHERE: `holo/bodyLook.ts:sharedTexture` - the only place a body-surface canvas becomes a
+`THREE.CanvasTexture`. Pinned by `rendering/sharedTextures.spec.ts`.
+RULE: caching the PIXELS is only half of caching. `planetTexture` memoises the 1024x512 canvas, but
+wrapping that canvas in a NEW `CanvasTexture` per build re-uploads it, and a per-object teardown
+that calls `map.dispose()` throws the upload away again. A texture shared between objects must be
+built ONCE, MARKED, and freed by nobody - and a teardown must therefore ask before disposing. The
+corollary is the trap that bites the other way: a LABEL SPRITE owns its own canvas and MUST still
+free it, so a blanket guard leaks. Guarded or declared, one or the other, at every disposal.
+WHY: [[C21]]b. The size comparison builds a body when it enters the build window and destroys it
+when it leaves, so SCROLLING alone re-uploaded every surface, forever - "everything is being
+retextured on the fly. Rather than cached", which is how the owner described it before anyone had
+found it. On a browser that has fallen back to software rendering ([[C20]]) an upload is not a
+transfer to a card, it is the CPU converting and copying half a megapixel on the main thread, which
+is why one body took ten to twenty seconds there and was instant elsewhere.
+BLAST: **A BUDGET CANNOT FIX REPEATED WORK, and reaching for one first makes the fault look worse.**
+Spreading a build across frames is right for work that must happen once; if the work is being
+REDONE, spreading it only distributes the thrash - which is exactly what C21's budget did, and the
+only reason it helped was that it made the repetition visible. Ask "how many times is this being
+computed" BEFORE "how do I spread this out". Anything new that builds per-object visuals from a
+shared cache inherits all of this.

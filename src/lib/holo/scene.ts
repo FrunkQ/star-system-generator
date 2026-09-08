@@ -1364,7 +1364,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
     // needs a fresh texture or its update silently never lands.
     const smat = ls.sprite.material as THREE.SpriteMaterial;
     if (resized || !smat.map) {
-      smat.map?.dispose();
+      smat.map?.dispose();   // owns its texture: a label's own canvas, never a shared body surface
       smat.map = new THREE.CanvasTexture(ls.canvas);
       smat.needsUpdate = true;
     } else {
@@ -3970,7 +3970,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const any = o as any;
       any.geometry?.dispose?.();
       const m = any.material;
-      const disposeMat = (mat: any) => { mat?.map?.dispose?.(); mat?.dispose?.(); };
+      // Shared textures are not ours to dispose - see `sharedTexture` in bodyLook.
+      const disposeMat = (mat: any) => { if (!mat?.map?.sharedTexture) mat?.map?.dispose?.(); if (!mat?.emissiveMap?.sharedTexture) mat?.emissiveMap?.dispose?.(); mat?.dispose?.(); };
       if (Array.isArray(m)) m.forEach(disposeMat);
       else disposeMat(m);
     });
@@ -4020,7 +4021,8 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       const any = o as any;
       any.geometry?.dispose?.();
       const m = any.material;
-      const disposeMat = (mat: any) => { mat?.map?.dispose?.(); mat?.dispose?.(); };
+      // Shared textures are not ours to dispose - see `sharedTexture` in bodyLook.
+      const disposeMat = (mat: any) => { if (!mat?.map?.sharedTexture) mat?.map?.dispose?.(); if (!mat?.emissiveMap?.sharedTexture) mat?.emissiveMap?.dispose?.(); mat?.dispose?.(); };
       if (Array.isArray(m)) m.forEach(disposeMat);
       else disposeMat(m);
     });
@@ -4029,7 +4031,7 @@ export function createHoloScene(canvas: HTMLCanvasElement, opts: HoloOptions = {
       if (!b.label) continue;
       scene.remove(b.label.sprite);
       const mat = b.label.sprite.material as THREE.SpriteMaterial;
-      mat.map?.dispose();
+      mat.map?.dispose();   // owns its texture: this label's own canvas
       mat.dispose();
     }
     bodies = [];
