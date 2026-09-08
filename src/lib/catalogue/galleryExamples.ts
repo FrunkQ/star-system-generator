@@ -97,6 +97,45 @@ const shapes = [
 	mk({ name: 'Toroid (flew apart)', apparentColorHex: '#c2a888', oblateness: 0.92 }),
 ];
 
+/**
+ * SMALL BODIES. THIS ROW EXISTED IN THE 2D GALLERY AND NOWHERE ELSE, and that is the whole reason
+ * [[G91]] went unnoticed for the life of the project: `/discgallery` kept its own copy of it in the
+ * page, so 2D had a shelf of convincing potatoes to look at while the 3D gallery had never drawn an
+ * asteroid at all. Nobody could compare them because they were never both on screen.
+ *
+ * MOVED HERE VERBATIM (the same six bodies, the same figures) so both galleries read ONE array,
+ * which is what this file's own header has always claimed. The copy is removed rather than synced -
+ * syncing preserves the fault, and this file records that as its most recurring one.
+ */
+export const GALLERY_SMALL_BODIES = [
+	mk({ name: 'S-type asteroid · 8 km', apparentColorHex: '#a09078', radiusKm: 8, massKg: 5e14, makeup: { rock: 0.85, metal: 0.15 } as any, classes: ['asteroid/s-type'], atmosphere: { pressure_bar: 0 } as any } as any),
+	mk({ name: 'C-type · 30 km', apparentColorHex: '#4a4640', radiusKm: 30, massKg: 3e16, makeup: { carbon: 0.5, rock: 0.5 } as any, classes: ['asteroid/c-type'], atmosphere: { pressure_bar: 0 } as any } as any),
+	mk({ name: 'M-type · 100 km', apparentColorHex: '#8d8d96', radiusKm: 100, massKg: 2e19, makeup: { metal: 0.7, rock: 0.3 } as any, classes: ['asteroid/m-type'], atmosphere: { pressure_bar: 0 } as any } as any),
+	mk({ name: 'Comet nucleus · 3 km (porous)', apparentColorHex: '#cfe0ea', radiusKm: 3, massKg: 1e13, makeup: { ice: 0.55, carbon: 0.25, rock: 0.2 } as any, classes: ['asteroid/comet'], atmosphere: { pressure_bar: 0 } as any } as any),
+	mk({ name: 'Rubble pile · 0.5 km', apparentColorHex: '#93867a', radiusKm: 0.5, massKg: 7e10, makeup: { rock: 0.75, carbon: 0.15, metal: 0.1 } as any, classes: ['asteroid/s-type', 'asteroid/rubble-pile'], atmosphere: { pressure_bar: 0 } as any } as any),
+	mk({ name: 'Round dwarf · 500 km (for contrast)', apparentColorHex: '#9a9088', radiusKm: 500, massKg: 5e20, atmosphere: { pressure_bar: 0 } as any, tags: [{ key: 'geology/inactive' }] } as any),
+];
+
+/**
+ * CONTACT BINARIES ([[G90]]): two bodies that met gently and stayed. The lobe count is the only thing
+ * that differs from the row above - the lobe RATIO, the neck width and which way the pair lies all
+ * come off the body's own seed, which is why four of them look like four objects rather than four
+ * copies of one sticker. The last one is three lobes, which draws as a chain.
+ *
+ * Real figures for the two real ones, so a band retuned past reality shows up here as a shape that
+ * stops looking like the photograph.
+ */
+export const GALLERY_CONTACT_BINARIES = [
+	mk({ name: '67P-like · 2 lobes', apparentColorHex: '#6f6a66', radiusKm: 1.65, massKg: 9.982e12, lobes: 2,
+		makeup: { ice: 0.5, rock: 0.3, carbon: 0.2 } as any, classes: ['asteroid/comet', 'asteroid/contact-binary'], atmosphere: { pressure_bar: 0 } as any } as any),
+	mk({ name: 'Arrokoth-like · 2 lobes', apparentColorHex: '#a8705a', radiusKm: 9.65, massKg: 7.485e14, lobes: 2,
+		makeup: { ice: 0.55, rock: 0.25, carbon: 0.2 } as any, classes: ['asteroid/comet', 'asteroid/contact-binary'], atmosphere: { pressure_bar: 0 } as any } as any),
+	mk({ name: 'Stony · 2 lobes · 18 km', apparentColorHex: '#a89880', radiusKm: 18, massKg: 4.6e16, lobes: 2,
+		makeup: { rock: 0.9, metal: 0.1 } as any, classes: ['asteroid/s-type', 'asteroid/contact-binary'], atmosphere: { pressure_bar: 0 } as any } as any),
+	mk({ name: 'Three lobes · a chain', apparentColorHex: '#9a8c78', radiusKm: 12, massKg: 1.4e16, lobes: 3,
+		makeup: { rock: 0.8, carbon: 0.2 } as any, classes: ['asteroid/c-type', 'asteroid/contact-binary'], atmosphere: { pressure_bar: 0 } as any } as any),
+];
+
 const giants = [
 	mk({ name: 'Jupiter-like · 3° tilt', apparentColorHex: '#d8b888', axial_tilt_deg: 3, radiusKm: 69911, makeup: { gas: 0.9, ice: 0.1 } as any,
 		apparentColor: { hex: '#d8b888', banding: 8, palette: ammonia('#e8d3ab', '#c89868', '#9c6b3e') } as any }),
@@ -359,6 +398,10 @@ export const GALLERY_ROWS: GalleryRow[] = [
 	  blurb: 'A settlement spreads exactly as plant cover does, from the coasts inland. It reads as what it EMITS: a grey-brown urban haze by day and a network of light by night. At full coverage the world is one city.' },
 	{ title: 'Oceans of different liquids', bodies: oceanWorlds },
 	{ title: 'Rotational shape — flattening to break-up', bodies: shapes },
+	{ title: 'Small bodies — irregular below ~300 km, repeatable per body, coloured by composition', bodies: GALLERY_SMALL_BODIES,
+		blurb: 'Below about 300 km a solid body has not the self-gravity to pull itself round. The silhouette is a seeded function of the body’s own id — lumpier the smaller and the more porous it is — and since G91 the 3D mesh reads the SAME function, so the card and the globe are one rock seen twice rather than two guesses at it.' },
+	{ title: 'Contact binaries — two bodies that met gently and stayed', bodies: GALLERY_CONTACT_BINARIES,
+		blurb: 'Arrokoth and comet 67P are the real ones. The lobe count is a fact a GM sets in the Basics tab (or the generator draws); the lobe ratio, the neck width and the angle all come off the body’s own seed, so no two look alike.' },
 	{ title: 'Gas & ice giants (+ ring, tilt)', bodies: giants },
 	{ title: 'Polar vortices — geometric polar jets', bodies: polarVortices },
 	{ title: 'Auroras — gas-coloured', bodies: auroras },

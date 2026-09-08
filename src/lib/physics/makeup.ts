@@ -54,6 +54,21 @@ export function maxPorosity(mass_Me: number): number {
   return POROSITY_MAX * t;
 }
 
+/**
+ * The same ramp read the other way: the HEAVIEST body that can still hold a given void fraction.
+ *
+ * The generator needs it because a fingerprint's mass band and its porosity band are written
+ * independently - `asteroid/rubble-pile` says 0 to 1e-4 M(earth) and 20% or more void - and drawing
+ * a mass from the full width of the first would produce a body whose stated porosity the physics
+ * then refuses. Inverting the ceiling here rather than guessing a lower band keeps ONE definition of
+ * where voids survive; `maxPorosity(maxMassForPorosity(p))` is p, and a spec pins that.
+ */
+export function maxMassForPorosity(porosity: number): number {
+  const p = Math.max(0, Math.min(POROSITY_MAX, porosity));
+  if (p <= 0) return Infinity;
+  return Math.pow(10, POROSITY_X1 - (p / POROSITY_MAX) * (POROSITY_X1 - POROSITY_X0));
+}
+
 // The porosity a body's MEASURED size implies for its makeup: 1 − ρ_geom/ρ_solid, where ρ_solid is
 // the fully-compacted (compressed) density of its mix. Zero for gas-dominated bodies (their "trim"
 // is thermal inflation, not voids) and never negative (an overdense body just reads as compacted).

@@ -820,7 +820,11 @@
 
   // §4c: the GM picked a type from the location-aware picker — generate a matching body, drop it at
   // the clicked orbit, and let the full processor derive the rest.
-  function placeBodyOfType(event: CustomEvent<{ fp: any }>) {
+  // `stackOn` is set only when the GM picked a MODIFIER (a rubble pile, a contact binary): the
+  // menu chooses a base for it from the types viable HERE, and `generateBodyOfType` lays that
+  // base's bands down first. The body then arrives with an EMPTY class list on purpose, so the
+  // processor names it from the composition actually drawn rather than from the card clicked.
+  function placeBodyOfType(event: CustomEvent<{ fp: any; stackOn?: any }>) {
       showAddTypeModal = false;
       const ctx = pendingAdd; pendingAdd = null;
       if (!ctx || !$systemStore) return;
@@ -841,7 +845,7 @@
       if (ctx.trojan) {
           const secondary = $systemStore.nodes.find(n => n.id === ctx.trojan!.secondaryId) as CelestialBody | undefined;
           if (!secondary) return;
-          const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
+          const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK, stackOn: event.detail.stackOn });
           const starMassKg = ((host as any).kind === 'barycenter' ? (host as any).effectiveMassKg : (host as any).massKg) || 0;
           const placement = placeBodyAtCoOrbitalPoint($systemStore, secondary.id, ctx.trojan.point, starMassKg);
 
@@ -897,7 +901,7 @@
       }
 
       const siblings = $systemStore.nodes.filter(n => n.parentId === ctx.hostId);
-      const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK });
+      const gen = generateBodyOfType(event.detail.fp, { distAU: ctx.distAU, hostMassKg: ctx.hostMassKg, role: ctx.role, teqK: ctx.teqK, stackOn: event.detail.stackOn });
       // Some moons are CAPTURED rogues (irregular satellites): eccentric, inclined, often retrograde —
       // a Triton/irregular-moon flavour, distinct from the flat regular satellites that formed in place.
       const captured = ctx.role === 'moon' && Math.random() < 0.18;

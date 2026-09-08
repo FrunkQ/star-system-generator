@@ -2,6 +2,11 @@
 
 All notable changes are listed here:
 
+## v3.1.60 - 8th Sep 2026
+
+- **Rubble piles and contact binaries are in the Add-body list now**, alongside the asteroid types, marked with a dashed border because they are a property rather than a type: pick one and you get a real asteroid — carbonaceous, stony, metallic or icy, chosen for you — that happens to be rubbly, or happens to be two lobes joined at a neck. Types the app could not honestly build this way (a ringed world, a body flung into a ring by its own spin) stay out of the list rather than handing you an ordinary planet.
+- **Both reference galleries now have a shelf of small bodies and a shelf of contact binaries**, so you can see the lumpy rocks in 2D and in 3D side by side without making one first. The 2D gallery had a row of asteroids that the 3D gallery never had — which is why nobody noticed for so long that the 3D views drew every one of them as a smooth ball. Both pages now draw from one list and cannot drift apart again.
+
 ## v3.1.59 - 8th Sep 2026
 
 - Board only. The age work grows a scale and a set of tags: every body will get an age slider running back to the big bang, marked with its host star's age, and four new tags saying whether it is younger than its star, older, ancient enough to predate two stellar generations, or primordial - early-universe material this system happened to pick up. Where a body came from and when it formed stay separate facts, which is what will let galactic mergers and stellar collisions be added later without reopening any of it.

@@ -12,7 +12,8 @@
   import { GALLERY_STAR_TYPES, GALLERY_CRATERING, GALLERY_ICE_VS_ROCK, GALLERY_THOLIN_FROST,
     GALLERY_VOLCANISM, GALLERY_CRYO_PLUMES, GALLERY_HOT_EYEBALL, buildGiantLab,
     giantRecipeJson,
-    GALLERY_COVERAGE, GALLERY_PIGMENTS, GALLERY_STACK, GALLERY_TECHNO } from '$lib/catalogue/galleryExamples';
+    GALLERY_COVERAGE, GALLERY_PIGMENTS, GALLERY_STACK, GALLERY_TECHNO,
+    GALLERY_SMALL_BODIES, GALLERY_CONTACT_BINARIES } from '$lib/catalogue/galleryExamples';
 
   const mk = (over: Partial<CelestialBody> & { name: string }) => ({
     id: over.name, roleHint: 'planet', apparentColorHex: '#3a6ea5',
@@ -127,17 +128,11 @@
     mk({ name: 'Toroid (flew apart)', apparentColorHex: '#c2a888', oblateness: 0.92 }),
   ];
 
-  // Small bodies (composition redesign): sub-300km solids render as seeded irregular outlines —
-  // lumpier when smaller/more porous — coloured by composition (C-type dark, S stony, M metallic,
-  // comet icy). Same body id → same shape, every time.
-  const smallBodies = [
-    mk({ name: 'S-type asteroid · 8 km', apparentColorHex: '#a09078', radiusKm: 8, massKg: 5e14, makeup: { rock: 0.85, metal: 0.15 } as any, classes: ['asteroid/s-type'], atmosphere: { pressure_bar: 0 } as any }),
-    mk({ name: 'C-type · 30 km', apparentColorHex: '#4a4640', radiusKm: 30, massKg: 3e16, makeup: { carbon: 0.5, rock: 0.5 } as any, classes: ['asteroid/c-type'], atmosphere: { pressure_bar: 0 } as any }),
-    mk({ name: 'M-type · 100 km', apparentColorHex: '#8d8d96', radiusKm: 100, massKg: 2e19, makeup: { metal: 0.7, rock: 0.3 } as any, classes: ['asteroid/m-type'], atmosphere: { pressure_bar: 0 } as any }),
-    mk({ name: 'Comet nucleus · 3 km (porous)', apparentColorHex: '#cfe0ea', radiusKm: 3, massKg: 1e13, makeup: { ice: 0.55, carbon: 0.25, rock: 0.2 } as any, classes: ['asteroid/comet'], atmosphere: { pressure_bar: 0 } as any }),
-    mk({ name: 'Rubble pile · 0.5 km', apparentColorHex: '#93867a', radiusKm: 0.5, massKg: 7e10, makeup: { rock: 0.75, carbon: 0.15, metal: 0.1 } as any, classes: ['asteroid/s-type', 'asteroid/rubble-pile'], atmosphere: { pressure_bar: 0 } as any }),
-    mk({ name: 'Round dwarf · 500 km (for contrast)', apparentColorHex: '#9a9088', radiusKm: 500, massKg: 5e20, atmosphere: { pressure_bar: 0 } as any, tags: [{ key: 'geology/inactive' }] }),
-  ];
+  // Small bodies and contact binaries now come from `galleryExamples.ts`, which is where this file's
+  // import list already went for four other rows and where that module's header always said the
+  // examples lived. THE COPY THAT WAS HERE IS WHY [[G91]] SURVIVED SO LONG: this page had a shelf of
+  // convincing potatoes and the 3D gallery had no asteroid at all, so nobody could see that one of
+  // them was drawing every body as a ball. One array, both galleries, and they cannot drift again.
 
   const auroras = [
     mk({ name: 'O₂ + N₂ · green/purple (Earth)', apparentColorHex: '#2f6ea5', atmosphere: { pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } } as any, tags: [{ key: 'aurora/strong', value: '0.45' }, { key: 'climate/polar-ice', value: 'water' }] }),
@@ -417,7 +412,15 @@
 
   <h2>Small bodies — irregular below ~300 km, repeatable per body, coloured by composition</h2>
   <div class="gallery">
-    {#each smallBodies as b}
+    {#each GALLERY_SMALL_BODIES as b}
+      <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
+    {/each}
+  </div>
+
+  <h2>Contact binaries — two lobes joined at a neck</h2>
+  <p class="lead">Arrokoth and comet 67P are the real ones. The lobe count is a fact set on the body; the lobe ratio, the neck width and the angle all come off the body’s own seed, so no two look alike. The last is three lobes, which draws as a chain.</p>
+  <div class="gallery">
+    {#each GALLERY_CONTACT_BINARIES as b}
       <figure><PlanetDisc body={b} size={168} /><figcaption>{b.name}</figcaption></figure>
     {/each}
   </div>

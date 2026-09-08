@@ -13,6 +13,8 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import AddBodyTypeModal from './AddBodyTypeModal.svelte';
 import type { RulePack } from '$lib/types';
+import fs from 'fs';
+import path from 'path';
 
 const pack = {
   id: 'test', version: '1',
@@ -71,5 +73,64 @@ describe('AddBodyTypeModal mounts in every placement mode', () => {
     const cb = gateChips({ circumbinary: { pairName: 'Alpha Centauri AB', maxMassKg: 4e27 } });
     expect(cb).not.toContain('Host');
     expect(cb).toContain('Test-particle mass');
+  });
+});
+
+// THE MENU ITSELF, against the SHIPPED pack (owner, 2026-09-08: *"We really SHOULD have rubble piles
+// and binaries in the pick list alongside other asteroids - why not?"*). The thin pack above cannot
+// answer this - it has two planet types and no small bodies - so this block loads the real one.
+describe('rubble piles and contact binaries are in the list', () => {
+  const shipped = (): RulePack => {
+    const dir = path.resolve('static/rulepacks/starter-sf');
+    const merge = (t: any, s: any): any => {
+      const o = { ...t };
+      const obj = (x: any) => x && typeof x === 'object' && !Array.isArray(x);
+      if (obj(t) && obj(s)) Object.keys(s).forEach((k) => { o[k] = obj(s[k]) && k in t ? merge(t[k], s[k]) : s[k]; });
+      return o;
+    };
+    let p: any = JSON.parse(fs.readFileSync(path.join(dir, 'main.json'), 'utf-8'));
+    for (const f of ['planets.json', 'generation.json', 'classification.json']) {
+      p = merge(p, JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')));
+    }
+    return p as RulePack;
+  };
+  // A small icy moon slot around a giant — where a rubble pile actually belongs.
+  const props = { rulePack: shipped(), teqK: 120, role: 'moon' as const, hostMassKg: 1.9e27, ageGyr: 4.6 };
+  const cards = () => {
+    const { container } = render(AddBodyTypeModal, { props });
+    return [...container.querySelectorAll('button.card')];
+  };
+
+  // The card's title starts with the type's PRETTY name (hyphens become spaces), which is what a GM
+  // reads, so that is what is asserted.
+  const labels = () => cards().map((c) => (c.getAttribute('title') ?? '').split(' — ')[0]);
+
+  it('offers them alongside the asteroid types', () => {
+    expect(labels()).toContain('asteroid/rubble pile');
+    expect(labels()).toContain('asteroid/contact binary');
+    // ...and they are IN the list with the bases rather than instead of them.
+    expect(labels()).toContain('asteroid/c type');
+  });
+
+  // A MODIFIER THE BUILDER CANNOT PRODUCE IS NOT OFFERED. `planet/ringed` needs a ring child,
+  // `planet/toroidal` and `planet/ellipsoid` an oblateness the spin derives, and
+  // `planet/ultra-short-period` an orbit the GM has already chosen by clicking - a card for any of
+  // them would hand back an ordinary planet.
+  it('does not offer a modifier it cannot build', () => {
+    for (const cls of ['planet/ringed', 'planet/toroidal', 'planet/ellipsoid', 'planet/disrupted', 'planet/ultra short period']) {
+      expect(labels(), cls).not.toContain(cls);
+    }
+  });
+
+  it('marks a modifier as a property rather than a type, so the card does not lie', () => {
+    const marked = cards().filter((c) => c.classList.contains('modifier'));
+    expect(marked.length).toBe(2);
+    for (const c of marked) {
+      expect(c.getAttribute('title')).toMatch(/a property, not a type/);
+    }
+    // A base is not marked.
+    const cType = cards().find((c) => (c.getAttribute('title') ?? '').startsWith('asteroid/c type'));
+    expect(cType, 'no c-type card at all').toBeTruthy();
+    expect(cType!.classList.contains('modifier')).toBe(false);
   });
 });

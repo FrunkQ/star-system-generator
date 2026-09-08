@@ -5,7 +5,7 @@
 // which is why a biome/life world can be dropped into the Goldilocks zone and a lava world can't.
 import type { CelestialBody, Fingerprint, FingerprintBand, Makeup, RulePack } from '$lib/types';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM, LIQUIDS } from '$lib/constants';
-import { radiusReFromMassMakeup, gasThermalInflationFactor } from '$lib/physics/makeup';
+import { radiusReFromMassMakeup, gasThermalInflationFactor, maxMassForPorosity } from '$lib/physics/makeup';
 import { bandFit } from '$lib/system/classification';
 import { SeededRNG } from '$lib/rng';
 
@@ -171,7 +171,8 @@ export interface GateVerdict { fp: Fingerprint; ok: boolean; failed: Array<keyof
  */
 export function judgeTypesAt(
   ctx: SlotContext, fingerprints: Fingerprint[], gates: ViabilityGates = ALL_GATES,
-  massBandMe: [number, number] = ctx.planetMassBandMe ?? PLANET_MASS_BAND_ME
+  massBandMe: [number, number] = ctx.planetMassBandMe ?? PLANET_MASS_BAND_ME,
+  includeModifiers = false
 ): GateVerdict[] {
   const SLACK = 0.12; // 12% — matches the classifier's soft edge
   const g = { ...ALL_GATES, ...gates };
@@ -182,7 +183,19 @@ export function judgeTypesAt(
 
   const out: GateVerdict[] = [];
   for (const fp of fingerprints) {
-    if (fp.kind !== 'base') continue;
+    // MODIFIERS ARE FOR THE PICKER, NOT FOR THE DRAW, and the two callers want different answers.
+    //
+    // Owner, 2026-09-08: *"We really SHOULD have rubble piles and binaries in the pick list
+    // alongside other asteroids - why not?"* - and he is right, there was no reason. A GM saying
+    // "make me a rubble pile" is asking for a body with that PROPERTY, which is a perfectly good
+    // thing to author and the picker can build one.
+    //
+    // The GENERATOR is the other case and it must not change: it draws an IDENTITY for a slot, and
+    // a modifier is not an identity - a body is a c-type that happens to be rubbly, not a rubble
+    // pile that happens to be carbonaceous. Letting modifiers into the draw would also have shifted
+    // every existing seed, which is a change to what the generator produces for everyone. So this is
+    // OFF by default and the picker turns it on.
+    if (fp.kind !== 'base' && !(includeModifiers && fp.kind === 'modifier')) continue;
     // A rogue planet is by definition UNBOUND — placing one in an orbit makes it not-rogue, so it is
     // never offered/drawn for a bound slot. Not a gate: there is no setting under which it makes sense.
     if (/rogue/.test(fp.class)) continue;
@@ -275,10 +288,66 @@ export function viableTypesAt(
   teqK: number, role: 'planet' | 'moon', fingerprints: Fingerprint[], hostMassKg = 0,
   opts?: { canTidallyLock?: boolean; ageGyr?: number; gates?: ViabilityGates; planetMassBandMe?: [number, number] }
 ): Fingerprint[] {
+  // No `includeModifiers` here, deliberately: this is the GENERATOR's entry point and it draws
+  // identities. See the note at the top of the loop in `judgeTypesAt`.
   return judgeTypesAt(
     { role, teqK, hostMassKg, ageGyr: opts?.ageGyr, canTidallyLock: opts?.canTidallyLock, planetMassBandMe: opts?.planetMassBandMe },
     fingerprints, opts?.gates ?? ALL_GATES
   ).filter((v) => v.ok).map((v) => v.fp);
+}
+
+/**
+ * THE FEATURES `generateBodyOfType` ACTUALLY WRITES — and therefore the only ones a fingerprint may
+ * band on if the picker is to build a body that honestly comes out as that type.
+ *
+ * IT MATTERS FOR MODIFIERS AND ALMOST NOWHERE ELSE. Bases are offered on their temperature band and
+ * built from their composition, which this function has always handled. Modifiers are the ones that
+ * band on things a BODY does not carry: `planet/ringed` wants a ring CHILD, `planet/toroidal` and
+ * `planet/ellipsoid` want an oblateness the spin derives, `planet/ultra-short-period` wants an orbit
+ * the GM has already chosen by clicking. Offering those in the picker would be a straight lie - pick
+ * "toroidal", get an ordinary planet - so the menu asks this first.
+ *
+ * KEEPING IT IN STEP WITH THE BUILDER is the obvious risk of a list like this, so it is not trusted:
+ * `pickModifier.spec.ts` round-trips EVERY modifier the picker offers through the real processor and
+ * requires the class to come back. A feature added here without the code to build it goes red.
+ */
+const BUILDABLE_FEATURES: readonly string[] = [
+  'mass_Me', 'radius_Re', 'density', 'porosity', 'lobes',
+  'makeup.metal', 'makeup.rock', 'makeup.carbon', 'makeup.ice', 'makeup.gas',
+  'hydrosphere.coverage', 'hydrosphere.liquidCoverage', 'hydrosphere.composition',
+  'atm.main', 'atm.pressure_bar'
+];
+export function canBuildTo(fp: Fingerprint): boolean {
+  return Object.keys(fp.match ?? {}).every(
+    (f) => BUILDABLE_FEATURES.includes(f) || f.startsWith('atm.composition.'));
+}
+
+/**
+ * WHICH BASES A MODIFIER CAN SENSIBLY BE STACKED ON, judged on the one thing that actually decides
+ * it: whether the two mass windows overlap at all. A rubble pile is a small-body property, so the
+ * bases it can stack on are the small-body ones, and that falls out of the bands rather than out of
+ * a list of class names anyone has to maintain.
+ *
+ * A modifier the picker cannot find a base for is a modifier the picker must not offer: building a
+ * body from a modifier ALONE gives it a property and no identity.
+ */
+export function basesFor(modifier: Fingerprint, bases: Fingerprint[]): Fingerprint[] {
+  const band = (fp: Fingerprint): [number, number] | null => {
+    const b = fp.match?.['mass_Me'];
+    return Array.isArray(b) && typeof b[0] === 'number' ? (b as [number, number]) : null;
+  };
+  const mb = band(modifier);
+  // A modifier that declares no mass window makes no claim about size, so nothing rules a base out.
+  if (!mb) return bases.filter((b) => b.kind === 'base');
+  return bases.filter((b) => {
+    if (b.kind !== 'base') return false;
+    const bb = band(b);
+    // A base that declares no mass window is EXCLUDED rather than assumed compatible: `rubble-pile`
+    // is a small-body property and `planet/ecumenopolis` declares no mass at all, so "no band" would
+    // have offered to build a rubble-pile city world. Declining to guess is the same rule
+    // `drawLobes` follows for a band it cannot evaluate.
+    return !!bb && bb[0] <= mb[1] && mb[0] <= bb[1];
+  });
 }
 
 /**
@@ -360,11 +429,27 @@ export function drawLobes(body: Partial<CelestialBody>, pack: RulePack): number 
 // temperature/geology/colour/etc. are left for the processor to derive.
 export function generateBodyOfType(
   fp: Fingerprint,
-  ctx: { distAU: number; hostMassKg: number; role: 'planet' | 'moon'; rng?: RNG; teqK?: number }
+  ctx: {
+    distAU: number; hostMassKg: number; role: 'planet' | 'moon'; rng?: RNG; teqK?: number;
+    /**
+     * BUILDING A MODIFIER: the base to stack it on. A modifier says how a body IS, not what it is,
+     * so on its own it has no composition to build from - `asteroid/rubble-pile` declares a mass
+     * window and a void fraction and nothing about what the rock is made of. The caller supplies a
+     * base from the pack (see `basesFor`) and its bands are laid down FIRST, with the modifier's
+     * winning wherever the two name the same feature.
+     */
+    stackOn?: Fingerprint;
+  }
 ): Partial<CelestialBody> {
   const rng = ctx.rng ?? Math.random;
-  const m = fp.match;
-  const out: Partial<CelestialBody> = { classes: [fp.class], tags: [] };
+  const isModifier = fp.kind === 'modifier';
+  const m = ctx.stackOn ? { ...ctx.stackOn.match, ...fp.match } : fp.match;
+  // A MODIFIER PICK LEAVES THE CLASS LIST EMPTY, and that is the mechanism rather than a new flag:
+  // `SystemProcessor` classifies a body whose classes are empty, so the base falls out of the
+  // composition just drawn and the modifier falls out of the property just set. Pinning
+  // `['asteroid/rubble-pile']` would have given the body a modifier and no identity, and pinning
+  // base + modifier would have frozen an answer the physics is perfectly able to reach on its own.
+  const out: Partial<CelestialBody> = { classes: isModifier ? [] : [fp.class], tags: [] };
 
   // --- Mass ---
   const isGiant = /giant|jupiter|neptune|helium|puff|brown/.test(fp.class);
@@ -410,10 +495,43 @@ export function generateBodyOfType(
   if (isGiant && !hasMakeup) {
     mk.gas = 0.92; mk.ice = 0.08; hasMakeup = true;
   }
+  // A VOID FRACTION IS A DERIVED FEATURE, so it is built by choosing a RADIUS, not by setting a
+  // field. `derivedPorosity` reads mass and radius against the compacted density the mix implies, so
+  // a body is rubbly exactly when it is bigger than its own material accounts for: swelling the
+  // solid radius by 1/cbrt(1-p) puts the void in.
+  //
+  // AND THE MASS HAS TO COME DOWN TO MEET IT. `maxPorosity` is a real physical ceiling - self-gravity
+  // crushes voids out, completely by about Ceres - so a 1e-4 M(earth) rubble pile is not a thing,
+  // and drawing the mass from the band's full width would have produced bodies whose stated porosity
+  // the physics then refuses. The mass is capped at the heaviest that can actually hold the target.
+  const porosityBand = m['porosity'];
+  let porosity = 0;
+  if (Array.isArray(porosityBand) && typeof porosityBand[0] === 'number') {
+    const [plo, phi] = porosityBand as [number, number];
+    porosity = Math.min(0.65, plo + rng() * Math.min(0.35, Math.max(0, phi - plo)));
+    const capMe = maxMassForPorosity(porosity);
+    if (massMe > capMe) { massMe = capMe * (0.15 + 0.8 * rng()); out.massKg = massMe * EARTH_MASS_KG; }
+    // A modifier declares no composition of its own, so if the base did not either, give it a
+    // small-body mix rather than the Earth-like default the fall-through below would reach for.
+    if (!hasMakeup) { mk.rock = 0.6; mk.carbon = 0.25; mk.ice = 0.15; hasMakeup = true; }
+  }
+
+  // AN AUTHORED FACT IS SET DIRECTLY, because that is what it is: `lobes` is the one feature in the
+  // map the engine does not derive, so building a body to a band over it means writing the number.
+  const lobesBand = m['lobes'];
+  if (Array.isArray(lobesBand) && typeof lobesBand[0] === 'number') {
+    const lo = Math.max(1, Math.round(lobesBand[0] as number));
+    const hi = Math.max(lo, Math.round((lobesBand[1] as number) ?? lo));
+    // Bottom-weighted for the same reason `drawLobes` is: every contact binary anyone has
+    // photographed has exactly two lobes.
+    if (lo > 1) out.lobes = rng() < 0.9 ? lo : Math.min(hi, lo + 1);
+  }
+
   if (hasMakeup) {
     out.makeup = mk;
     const inflation = isGiant ? gasThermalInflationFactor(ctx.teqK ?? 0) : 1;
-    out.radiusKm = radiusReFromMassMakeup(massMe, mk, inflation) * EARTH_RADIUS_KM;
+    const solid = radiusReFromMassMakeup(massMe, mk, inflation);
+    out.radiusKm = (porosity > 0 ? solid / Math.cbrt(1 - porosity) : solid) * EARTH_RADIUS_KM;
   } else if (m['radius_Re']) {
     // The fingerprint's radius band is often just an upper bound (a planetesimal is "< 0.1 R⊕"); drawing
     // a radius straight from it INDEPENDENTLY of the mass crushed tiny bodies into impossible densities

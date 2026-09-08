@@ -4,7 +4,7 @@
   // and a hot orbit offers lava. Pick one → a body with matching randomised params is dropped in.
   import { createEventDispatcher } from 'svelte';
   import type { Fingerprint, RulePack } from '$lib/types';
-  import { judgeTypesAt, ALL_GATES, type ViabilityGates } from '$lib/generation/generateBodyOfType';
+  import { judgeTypesAt, basesFor, canBuildTo, ALL_GATES, type ViabilityGates } from '$lib/generation/generateBodyOfType';
   import { rarityOf, rarityTier } from '$lib/generation/typeDraw';
   import { thumbUrl } from '$lib/util/thumbs';
   import { unitPrefs } from '$lib/unitPrefsStore';
@@ -52,15 +52,40 @@
   // Trojan mode: the mass question belongs to the trojan gate ALONE — the moon-cap and host-fit
   // rules are about sitting in a host's gravity well, which a co-orbital body does not. A trojan
   // heavier than a "moon" is honest physics while Gascheau holds.
+  // MODIFIERS ARE OFFERED HERE AND NOWHERE ELSE (owner, 2026-09-08: *"We really SHOULD have rubble
+  // piles and binaries in the pick list alongside other asteroids - why not?"*). A modifier is a
+  // PROPERTY rather than an identity, so it is a perfectly good thing to author and a bad thing to
+  // draw for a slot - the generator's entry point does not pass this flag. See `judgeTypesAt`.
   $: verdicts = judgeTypesAt(
     { role, teqK, hostMassKg: (trojan || circumbinary) ? 0 : hostMassKg, ageGyr, canTidallyLock,
       placementMassLimitKg: trojan?.maxTrojanMassKg ?? circumbinary?.maxMassKg },
     fingerprints,
-    (trojan || circumbinary) ? { ...gates, hostFit: false } : gates);
-  $: viable = verdicts.filter((v) => v.ok).map((v) => v.fp)
+    (trojan || circumbinary) ? { ...gates, hostFit: false } : gates,
+    undefined,
+    true);
+  $: passed = verdicts.filter((v) => v.ok).map((v) => v.fp);
+  $: viableBases = passed.filter((fp) => fp.kind === 'base');
+  // TWO THINGS A MODIFIER HAS TO CLEAR before it is offered, and a card that failed either would be
+  // a lie rather than a limitation. It needs something to BE - building from a modifier alone gives
+  // a body a property and no identity - and it has to be a modifier this pack's bands let the
+  // builder actually PRODUCE: `planet/ringed` wants a ring child, `planet/toroidal` an oblateness
+  // the spin derives, `planet/ultra-short-period` an orbit the GM has already chosen by clicking.
+  // Pick one of those and you would get an ordinary planet.
+  $: viable = passed
+    .filter((fp) => fp.kind !== 'modifier' || (canBuildTo(fp) && basesFor(fp, viableBases).length > 0))
     .slice()
     .sort((a, b) => a.class.localeCompare(b.class));
   $: hiddenCount = verdicts.length - viable.length;
+
+  // The base a picked modifier is built on: drawn from the ones that are viable HERE and whose mass
+  // window overlaps it, so "rubble pile" gives a carbonaceous, stony, metallic or icy one rather
+  // than always the same rock. The classifier then names it from the composition actually drawn.
+  function pick(fp: Fingerprint) {
+    if (fp.kind !== 'modifier') return dispatch('select', { fp });
+    const options = basesFor(fp, viableBases);
+    const base = options[Math.floor(Math.random() * options.length)];
+    dispatch('select', { fp, stackOn: base });
+  }
 
   // Moons are ALSO gated by the host's mass (a terrestrial can only hold small airless/icy moons; a
   // giant can hold larger, icy, atmosphered ones). Surface that second gate in the header.
@@ -114,14 +139,15 @@
     <div class="grid">
       {#each viable as fp}
         {@const tier = tierOf(fp.class)}
-        <button class="card" style="--tier:{tier.color}" on:click={() => dispatch('select', { fp })}
-          title="{pretty(fp.class)} — {tier.label}{fp.note ? `: ${fp.note}` : ''}">
+        <button class="card" class:modifier={fp.kind === 'modifier'} style="--tier:{tier.color}" on:click={() => pick(fp)}
+          title="{pretty(fp.class)} — {tier.label}{fp.kind === 'modifier' ? ' · a property, not a type: the body is still whatever its composition makes it' : ''}{fp.note ? `: ${fp.note}` : ''}">
           {#if images[fp.class]}
             <img src={thumbUrl(images[fp.class])} alt={pretty(fp.class)} loading="lazy" width="80" height="80" />
           {:else}
             <div class="noimg">{pretty(fp.class).slice(0, 2)}</div>
           {/if}
           <span class="name">{pretty(fp.class)}</span>
+          {#if fp.kind === 'modifier'}<span class="modtag">a property, not a type</span>{/if}
         </button>
       {/each}
       {#if viable.length === 0}
@@ -156,6 +182,11 @@
   .card img { width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 2px solid var(--tier); box-shadow: 0 0 8px color-mix(in srgb, var(--tier) 45%, transparent); }
   .noimg { width: 80px; height: 80px; border-radius: 50%; background: var(--bg-control, #232733); border: 2px solid var(--tier); display: flex; align-items: center; justify-content: center; text-transform: uppercase; color: var(--text-faint, #8a8a8a); font-weight: 700; }
   .name { font-size: 0.78rem; text-transform: capitalize; text-align: center; color: var(--text, #e8e8e8); line-height: 1.2; }
+  /* A MODIFIER LOOKS DIFFERENT BECAUSE IT IS DIFFERENT. Picking one does not decide what the body
+     is - the composition still does that - so a card that looked identical to a type would promise
+     something the classifier is not going to honour. Dashed, and it says so under the name. */
+  .card.modifier { border-style: dashed; }
+  .modtag { font-size: 0.62rem; letter-spacing: 0.02em; text-align: center; color: var(--text-faint, #8a8a8a); line-height: 1.1; }
   .empty { grid-column: 1 / -1; color: var(--text-faint, #8a8a8a); text-align: center; padding: 24px; }
   /* Phone: take the whole screen and shrink the thumbnails so the grid fits + scrolls. */
   @media (max-width: 600px), (pointer: coarse) and (max-height: 700px) {

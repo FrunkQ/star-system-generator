@@ -26,6 +26,9 @@ answers "what KIND of object is this", and a body has exactly one base class plu
 | `base` | competes — the best-scoring base wins and becomes the body's identity | `asteroid/c-type`, `planet/hycean` |
 | `modifier` | stacks — every modifier scoring **≥ 0.6** is added alongside the base | `asteroid/rubble-pile` |
 
+Both kinds are offered in the author's picker, but a modifier has to clear three extra hurdles to get there —
+see section 3e, and settle them before you choose `kind`.
+
 A base that overlaps an existing base steals bodies from it. A modifier that matches loosely appears on
 everything. `classification.audit.spec.ts` audits base overlap and will tell you about the first case; nothing
 tells you about the second, so check the second yourself against a generated system.
@@ -94,22 +97,36 @@ scorer iterates `Object.entries(fp.match)` and an absent one throws.
   whose gates always reject it at every slot is a type nobody will ever see. Check yours can actually pass
   somewhere.
 
-**e. The author's picker — BASES ONLY, and this is the correction the first user of this document had to make.**
+**e. The author's picker — and a modifier gets in only if it can be BUILT.**
 `AddBodyTypeModal.svelte` builds its offer from `rulePack.classifier.fingerprints`, so a BASE fingerprint is
-automatically offered and there is no separate list to update. **A MODIFIER IS NOT OFFERED AT ALL**:
-`judgeTypesAt` in `src/lib/generation/generateBodyOfType.ts` opens `if (fp.kind !== 'base') continue;`, and both
-the picker and the generator go through it. `asteroid/rubble-pile` has never been in that menu.
+automatically offered and there is no separate list to update.
 
-That is correct behaviour rather than a bug — the menu picks what a body IS, and a modifier is not an identity —
-but it decides where your class is AUTHORED, so settle it before you choose `kind`:
+**A MODIFIER IS OFFERED TOO, but it has three hurdles a base does not** (owner, 2026-09-08: *"We really SHOULD
+have rubble piles and binaries in the pick list alongside other asteroids - why not?"* — there was no reason, and
+until then `judgeTypesAt` skipped every modifier for both callers):
 
-| your class is a… | how a GM gets one |
-|---|---|
-| `base` | pick it in the Add-body menu; `generateBodyOfType` builds a body to its bands |
-| `modifier` | make the body match — so the FACT your fingerprint bands on needs a control somewhere a GM can reach it |
+1. **`judgeTypesAt` must be asked.** Its `includeModifiers` argument is OFF by default and only the picker turns
+   it on. The GENERATOR must never see modifiers: it draws an IDENTITY for a slot, and letting a property into
+   that draw would also shift every seed anyone has ever generated.
+2. **`canBuildTo(fp)` must be true** — every feature the fingerprint bands on has to be one `generateBodyOfType`
+   actually writes. This is the hurdle most modifiers fail: `planet/ringed` wants a ring CHILD,
+   `planet/toroidal` and `planet/ellipsoid` an oblateness the SPIN derives, `planet/ultra-short-period` an orbit
+   the GM has already chosen by clicking. A card for any of those would hand back an ordinary planet.
+3. **`basesFor(fp, viable)` must find something** — a modifier is a property, so it needs a base to be. The
+   picker draws one whose mass window overlaps, and `generateBodyOfType(fp, { stackOn })` lays the base's bands
+   down first.
 
-A modifier whose fact has no editor is a class no GM can author on purpose. Find the surface that already edits
-that fact's neighbours (`BodyBasicsTab.svelte` for physical parameters) and put the control there.
+**A PICKED MODIFIER LEAVES `classes` EMPTY, deliberately**, so the processor names the body from the composition
+actually drawn rather than from the card that was clicked — a rubble pile comes back as `asteroid/c-type,
+asteroid/rubble-pile` and not as a modifier with no identity. A picked BASE still pins its class, unchanged.
+
+**SO: A DERIVED-FEATURE MODIFIER IS BUILT BY CHOOSING VALUES, NOT BY SETTING A FIELD.** `porosity` is the worked
+example: the builder swells the solid radius by `1/cbrt(1 - p)` AND caps the mass at
+`maxMassForPorosity(p)`, because `maxPorosity` is a real ceiling that self-gravity imposes and a body over it
+would carry a void fraction the engine then refuses. An AUTHORED-fact modifier (`lobes`) is simply written.
+
+`pickModifier.spec.ts` round-trips every modifier the picker offers through the real processor and requires the
+class to come back, so hurdle 2's feature list cannot quietly drift out of step with the builder.
 
 **f. The visuals.** Only if the class changes how it draws:
 - 2D silhouette for small bodies — `src/lib/catalogue/smallBodyShape.ts`, shared by `PlanetDisc.svelte` and
