@@ -1974,3 +1974,67 @@ with the same input and the same seed.
 > you never tell it production carries something the owner has not released.
 >
 > **Housekeeping:** as Stream Q's, word for word.
+
+
+## STREAM W - HANDOVER (C20 complete as briefed, 2026-09-08)
+
+**All five jobs are on beta: v3.1.9, v3.1.16, v3.1.20 and v3.1.25.** Production is v3.1.0 and has
+none of it, so a GM there still gets the hang and the fresh-browser workaround is still the right
+answer in the help text.
+
+**WHAT THE OWNER ASKED, ANSWERED.** *"Is this a formal memory request or a need to ask for more
+resources in the browser that we are NOT doing?"* Yes, and there were three, all now made:
+
+1. We never asked for the discrete GPU. `powerPreference: 'high-performance'` now goes with every
+   context, from ONE factory (`rendering/glRenderer.ts`) instead of six copies of the decision.
+2. We never noticed the browser dropping to software rendering. It is probed once, on a throwaway
+   context, and a refusal turns Low power on and puts a sentence on screen instead of hanging.
+3. We never handed a context back. `releaseGlRenderer` (dispose THEN forceContextLoss) at all six
+   teardowns, and all six now hear `webglcontextlost` where only the holo did.
+
+Plus: a device reporting <= 2 GB defaults to Low power through the GM's own switch, and
+`preserveDrawingBuffer` is now per USE rather than per module.
+
+### THE THIRTY-SECOND EYEBALL LIST - and it is the whole of what is unverified
+
+**NOTHING IN THIS STREAM HAS BEEN SEEN IN A BROWSER.** Every decision is pinned headlessly and
+mutation-checked (52 gates, 22 mutations seen red), but the pane could not reach this worktree: the
+launch registry is cached per session and its one usable entry points at the SHARED MAIN CHECKOUT,
+which is hundreds of commits behind and does not contain this code. Two dev servers were started and
+neither was reachable. That is a tooling limit, not a judgement that looking was unnecessary - the
+notice is DOM and is exactly the kind of thing [[E7]] says IS verifiable when the pane works.
+
+**On the machine that locks up (the tired Edge with many tabs):**
+
+1. Open **Size Comparison**, then a **Holoview**. You should get either a usable view or a plain
+   sentence at the bottom of the view - never a hang. The sentence to expect: *"This browser is
+   drawing 3D with the processor instead of the graphics chip... Low power is on to keep it usable.
+   Closing some tabs, or opening SSE in a fresh browser window, will be much faster."*
+2. If that sentence appears, **the Low power box should now be ticked** (GM view, next to belt
+   density). Untick it: it must STAY unticked for the rest of the session, and after a reload.
+3. **On a fresh browser, that sentence must NOT appear** and nothing should be ticked for you.
+4. **Open and close the holo, the size comparison and the gallery half a dozen times each.** Nothing
+   should go blank or freeze. If a view ever does go dark, it should now SAY so rather than sitting
+   there frozen.
+5. **On a phone or a small tablet**, opening a 3D view should start with Low power already on.
+
+### WHAT IS RECOMMENDED AND NOT DONE - the owner's call
+
+The biggest remaining saving is the catalogue's **full-screen player holo**, which keeps a whole
+spare copy of its picture in memory (~59 MB on a retina panel) for as long as it is open. It is kept
+because the **view-entry transition** photographs the outgoing 3D screen. Turning it off would make
+that transition fall back to a dark ground - the code already does this and calls it "a clean entry
+effect", so it degrades rather than breaks. **That trades a preset feature for memory on exactly the
+machines C20 is about, so it is a product decision and it is being asked, not taken.** One line, at
+`routes/catalogue/+page.svelte`'s `<HoloView>`: `capture={false}`.
+
+### TWO FINDINGS FOR THE COORDINATOR, unrelated to C20
+
+- **`src/lib/generation/axialTilt.spec.ts` is a SECOND statistical flake beside [[B99]]'s rarity
+  dial.** It failed once in a full run and passed alone and in every later run. Worth a row: the
+  known-flake list currently names only B99, so the next session to see this one will chase it.
+- **`player/presetStore.ts:addAssetFromCanvas` has no callers anywhere in the repo**, yet its
+  documentation states a live dependency on `holo/scene.ts` and `filteredCanvas.ts` keeping
+  `preserveDrawingBuffer`. It was traced during job 5 and deliberately left alone; if it is dead it
+  should go, and if it is owed to a future feature the dependency is now recorded in
+  `HoloOptions.capture` where a change would be noticed.

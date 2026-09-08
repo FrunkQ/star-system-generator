@@ -2,9 +2,14 @@
 
 All notable changes are listed here:
 
+## v3.1.27 - 8th Sep 2026
+
+- Board only. The 3D lockup work is written up for whoever picks it up next, including the short list of things to look at on the machine that actually locks up, and the one change that is recommended but deliberately not made because it trades a visual effect for memory.
+
 ## v3.1.26 - 8th Sep 2026
 
 - The shortlist of main-world kinds, and the trade codes that exempt a world from being moved, are now rule-pack data rather than a list buried in code - so a GM can add a world profile or exempt another code without waiting for a release. Nine profiles ship, spanning the ladder from a world you can breathe on to one where people live sealed in or underground, and every Traveller atmosphere code from 0 to F can be placed. Still not wired to the importer, so no import changes with this release.
+
 
 ## v3.1.25 - 8th Sep 2026
 
