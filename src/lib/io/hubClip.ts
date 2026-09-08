@@ -34,9 +34,10 @@
 //     that already do that; nothing here refuses a paste on physical grounds.
 //  5. THE CREDIT COMES WITH IT. `source.url` lands on the pasted root as `origin/hub`, so a body
 //     lifted out of somebody's map still says whose map it came from.
-import type { System, CelestialBody, Barycenter, Tag, Starmap, ContentCredit, ContentCreditLink } from '$lib/types';
+import type { System, CelestialBody, Barycenter, Tag, Starmap, ContentCredit, ContentCreditLink, RulePackOverrides } from '$lib/types';
 import { G } from '$lib/constants';
 import { hostMassKg, reparentBody, hostRole } from '$lib/system/reparent';
+import { readClipOverrides, describeOverrides } from './clipRules';
 
 type Node = CelestialBody | Barycenter;
 
@@ -56,8 +57,21 @@ export interface HubClipSource {
 export interface HubClip {
   sseClip: number;
   source?: HubClipSource;
-  root: string;
+  /**
+   * ABSENT ON A RULES-ONLY CLIP, which is the only reason this is optional. Use `isRulesOnlyClip`
+   * rather than testing it directly - the two producers are told apart by the PAIR (no root, no
+   * nodes) and one predicate is what stops that becoming two different tests in two files.
+   */
+  root?: string;
   nodes: any[];
+  /**
+   * R-19: THE CUSTOM RULES THE NODES NEED, carried whole from the source map's `rulePackOverrides`.
+   *
+   * Custom definitions live on the STARMAP, never on the node, so without this a pasted planet whose
+   * hydrosphere names a GM's custom liquid looks up a definition that is not there and falls back to
+   * a default - with the paste reporting success. See `clipRules.ts` for the whole argument.
+   */
+  rulePackOverrides?: RulePackOverrides;
   /**
    * Credits that came WITH the copied content, when this clip was produced by SSE itself
    * (`buildClip`). An SSE extension the hub neither sends nor reads - and safe precisely because
@@ -78,6 +92,18 @@ export interface HubClip {
 }
 
 export type ClipParse = { ok: true; clip: HubClip } | { ok: false; problem: string };
+
+/**
+ * R-19: IS THIS CLIP RULES AND NOTHING ELSE? The hub's `/rules` browser produces one; its map pages
+ * produce the other, and no node in it changes hands.
+ *
+ * THE TEST IS THE PAIR - no nodes AND no root - and it is asked HERE, once, so that every reader
+ * agrees. The hub chose not to send a marker for exactly this reason ("a second marker is a second
+ * thing to keep in step"), and a second COPY of the test on this side would give that away again.
+ */
+export function isRulesOnlyClip(clip: HubClip): boolean {
+  return (clip.nodes?.length ?? 0) === 0 && !clip.root;
+}
 
 /** True for text that is even worth trying - so a paste handler can ignore ordinary text quietly. */
 export function looksLikeHubClip(text: string): boolean {
@@ -113,8 +139,24 @@ export function parseHubClip(text: string): ClipParse {
   if (raw.sseClip < 1) {
     return { ok: false, problem: `That clip declares an impossible format (${raw.sseClip}).` };
   }
-  if (!Array.isArray(raw.nodes) || raw.nodes.length === 0) {
+  if (!Array.isArray(raw.nodes)) {
     return { ok: false, problem: 'That clip is empty — it carries no objects.' };
+  }
+  // R-19: the overrides ride through on both producers, shape-checked and no more - the content is
+  // not this reader's to edit, exactly as `credits` below.
+  const overrides = readClipOverrides(raw.rulePackOverrides);
+  // A RULES-ONLY CLIP: no root and no nodes, which is how the hub's `/rules` browser is told from
+  // its map pages. Deliberately NOT a second marker - a marker would be a second thing to keep in
+  // step with the pair that already says it. A clip that names a root but carries nothing to hang
+  // off it is not that; it is a malformed map clip, and saying so is more use than merging silently.
+  if (raw.nodes.length === 0) {
+    if (typeof raw.root === 'string' && raw.root) {
+      return { ok: false, problem: 'That clip names a top object but carries none of them.' };
+    }
+    if (!overrides) {
+      return { ok: false, problem: 'That clip is empty — it carries no objects and no rules.' };
+    }
+    return { ok: true, clip: { sseClip: raw.sseClip, source: raw.source, nodes: [], rulePackOverrides: overrides } };
   }
   const byId = new Map<string, any>();
   for (const n of raw.nodes) {
@@ -165,7 +207,8 @@ export function parseHubClip(text: string): ClipParse {
     ok: true,
     clip: {
       sseClip: raw.sseClip, source: raw.source, root: rootId, nodes: raw.nodes,
-      ...(credits && credits.length ? { credits } : {})
+      ...(credits && credits.length ? { credits } : {}),
+      ...(overrides ? { rulePackOverrides: overrides } : {})
     }
   };
 }
@@ -187,11 +230,19 @@ export function parseHubClip(text: string): ClipParse {
  *    DOES travel is `credits` - any `contentCredits` row on the campaign that covers a copied node,
  *    so a body pasted in from somebody's map keeps its credit when it is copied on again. Losing
  *    that is precisely how attribution quietly evaporates.
+ *
+ * AND `rulePackOverrides` TRAVELS TOO, for the same reason and by the owner's word (2026-09-08).
+ * This app is the THIRD producer of a clip and it had R-19's bug in full: copy a body out of one
+ * campaign, load another, paste, and its custom liquid did not come with it. Within ONE campaign
+ * every definition compares IDENTICAL and is discarded in silence, so this costs a same-campaign
+ * copy nothing at all; across two it is the whole fix. Carrying the campaign's overrides rather
+ * than the branch's is deliberate - narrowing is the READER's job (see `clipRules.ts`), and a
+ * producer that guessed would be a second answer to a question the reader has to ask anyway.
  */
 export function buildClip(
   system: System,
   rootId: string,
-  opts: { credits?: ContentCredit[]; systemName?: string } = {}
+  opts: { credits?: ContentCredit[]; systemName?: string; rulePackOverrides?: RulePackOverrides } = {}
 ): HubClip | null {
   const byId = new Map(system.nodes.map((n) => [n.id, n]));
   if (!byId.has(rootId)) return null;
@@ -213,12 +264,14 @@ export function buildClip(
     .filter((c) => (c.nodeIds ?? []).some((i) => ids.has(i)))
     .map((c) => ({ ...c, nodeIds: (c.nodeIds ?? []).filter((i) => ids.has(i)) }));
 
+  const overrides = readClipOverrides(opts.rulePackOverrides);
   return {
     sseClip: CLIP_FORMAT,
     root: rootId,
     nodes: out,
     ...(credits.length ? { credits } : {}),
-    ...(opts.systemName ? { systemName: opts.systemName } : {})
+    ...(opts.systemName ? { systemName: opts.systemName } : {}),
+    ...(overrides ? { rulePackOverrides: overrides } : {})
   };
 }
 
@@ -238,6 +291,12 @@ export function describeClipRoot(clip: HubClip): string {
   // implementation detail the GM never named: without it, copying Alpha Centauri offers "Paste Pair
   // Alpha Centauri System Barycentre here", which asks somebody to recognise their own system by
   // its barycentre. A clip from the hub has no `systemName` and is described by its root as before.
+  // R-19: a rules clip has no root to describe, so it is described by what it carries. It reads as
+  // "Paste Rules (2 liquids) here", which says both that nothing will land on the map and what will.
+  if (isRulesOnlyClip(clip)) {
+    const what = describeOverrides(clip.rulePackOverrides);
+    return what ? `Rules (${what})` : 'Rules';
+  }
   if (clip.systemName) return `System ${clip.systemName}`;
   const root = clip.nodes.find((n: any) => n.id === clip.root) ?? clip.nodes[0];
   const name = String(root?.name ?? 'object');
@@ -272,6 +331,9 @@ export function describeClipRoot(clip: HubClip): string {
  */
 export function describeClipCompact(clip: HubClip): string {
   const kind = describeClipRoot(clip).split(' ')[0];
+  // "+7" counts the objects BESIDE the root. A rules clip has none and no root either, so the
+  // subtraction would read "+-1" without this - the pill says "Rules" and stops.
+  if (isRulesOnlyClip(clip)) return kind;
   const extra = Math.max(0, (clip.nodes?.length ?? 1) - 1);
   return extra ? `${kind}+${extra}` : kind;
 }
@@ -379,7 +441,7 @@ function cloneClipNodes(
     }
   }
 
-  creditRoot(inserted.find((n) => n.id === remap.get(clip.root)), clip.source);
+  creditRoot(inserted.find((n) => n.id === remap.get(clip.root!)), clip.source);
   return { inserted, remap };
 }
 
@@ -421,6 +483,9 @@ export type ClipAsSystem =
  * and the menu greys the option out with the reason, rather than hiding it.
  */
 export function systemNodesFromClip(clip: HubClip): ClipAsSystem {
+  if (isRulesOnlyClip(clip)) {
+    return { ok: false, problem: 'That clip carries rules, not objects — there is no system in it to place.' };
+  }
   const root = clip.nodes.find((n: any) => n.id === clip.root) ?? clip.nodes[0];
   if (!root) return { ok: false, problem: 'That clip has nothing in it.' };
   // `hostRole` reads only `system.nodes`, so the clip's own node list stands in for a system here -
@@ -430,7 +495,7 @@ export function systemNodesFromClip(clip: HubClip): ClipAsSystem {
   }
 
   const { inserted, remap } = cloneClipNodes(clip, new Set<string>(), { rootParentId: null, tMs: 0 });
-  const rootId = remap.get(clip.root)!;
+  const rootId = remap.get(clip.root!)!;
   // The heaviest star among what arrived - the root when it is a star, a member when it is a pair.
   const heaviestStar = inserted
     .filter((n: any) => n.kind === 'body' && n.roleHint === 'star')
@@ -452,6 +517,9 @@ export function systemNodesFromClip(clip: HubClip): ClipAsSystem {
 }
 
 export function insertClip(system: System, clip: HubClip, hostId: string, tMs: number): ClipInsert {
+  if (isRulesOnlyClip(clip)) {
+    return { ok: false, problem: 'That clip carries rules, not objects — there is nothing in it to paste here.' };
+  }
   const host = system.nodes.find((n) => n.id === hostId) as Node | undefined;
   if (!host) return { ok: false, problem: 'The place to paste it into is no longer there.' };
 
@@ -461,7 +529,7 @@ export function insertClip(system: System, clip: HubClip, hostId: string, tMs: n
     tMs,
     hostMu: G * hostMassKg(system, host)
   });
-  const newRootId = remap.get(clip.root)!;
+  const newRootId = remap.get(clip.root!)!;
   const rootCopy = inserted.find((n) => n.id === newRootId);
 
   system.nodes.push(...inserted);

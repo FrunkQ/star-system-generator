@@ -7207,3 +7207,48 @@ per pass, or a machine slow enough to blow the budget on its first item never fi
 `scene.ts` specifically, **[[RENDER-S45]]**: `bodyById` is filled AFTER the node loop, so deferring
 that loop makes its "everything answers undefined" window last many frames instead of one. That is
 why the holo's equivalent pause is briefed rather than fixed by copying this.
+
+### DATA-R46 AN OVERRIDE SECTION IS COMPARED BY ITS APPLIED RESULT, NEVER BY ITS DELTA
+BUCKET: ARCHITECTURE (file format) - R-19, the rules a pasted body brings with it.
+WHERE: `src/lib/io/clipRules.ts` (`SECTIONS`, `effectiveDefinitions`), used by the clip merge and by
+`describeOverrides`; the shapes it encodes are what `effectiveRulePack` (`src/routes/+page.svelte`)
+actually reads. Pinned by `src/lib/io/clipRules.spec.ts`.
+RULE: **a delta is a set of edits AGAINST A BASE, so its meaning is not in the delta.** When a clip
+asks "does this campaign already have this definition, and is it the same one?", the only sound
+comparison is between the two APPLIED records - base plus delta on each side - and never between the
+two deltas. Comparing deltas gets the load-bearing case exactly backwards: an incoming entry
+`{ boilK: 400 }` for `water`, against a destination with no water override, is NOT an absent
+definition to be added, it is a DIFFERENT water from the one that campaign already has, and adding it
+would silently change a definition every body in the map reads. It is unsound in the other direction
+too, because the two sides' deltas were made against two bases - two rule packs, or two app versions
+- so equal deltas can mean different definitions and different deltas the same one.
+TWO THINGS THAT ARE EASY TO GET WRONG HERE AND COST A MEASUREMENT EACH:
+- **THREE SECTIONS ARE DELTA-CAPABLE, NOT TWO.** `liquids` joined `morphologies` and `pigments` at
+  D25; its declared type said `LiquidDef[]` until R-19 and the reader was casting. Anything that
+  enumerates "the delta sections" from the type alone is wrong.
+- **AN APPLIED DELTA CARRIES THE WHOLE BASE.** `applyListDelta` returns every untouched pack record
+  as well, so the applied list must be narrowed to the keys the override actually SPEAKS about
+  (`entries` plus `order`) before it is called "what this clip brings" - otherwise a paste is
+  reported as delivering every liquid in the game.
+BLAST: the identical/different verdict, and therefore whether a paste silently discards, adds, or
+renames a GM's definition. Get it wrong in the "different" direction and one quietly wrong planet
+becomes a quietly wrong campaign.
+
+### DATA-R47 AN EDITOR THAT STORES A DELTA MUST BE HANDED THE SHIPPED PACK, NEVER THE EFFECTIVE ONE
+BUCKET: ARCHITECTURE - the companion to DATA-R46, and it cost two data-losing bugs (B147).
+WHERE: `src/routes/+page.svelte` where the pack editors are mounted; `EditBiospheresModal.svelte`
+(shipped pack - stores a delta), `EditAtmospheresModal.svelte` (effective pack - needs the merged
+liquid list for a dropdown, B132). Pinned by `EditBiospheresModal.base.spec.ts` and the corrected
+gate in `customLiquidsForGases.spec.ts`.
+RULE: **the pack prop is doing two different jobs and only one of them tolerates the effective pack.**
+An editor that stores a DELTA uses its pack twice - as the base a saved delta is laid OVER on the way
+in, and as the base the edited list is diffed AGAINST on the way out - and both of those must be the
+pack WITHOUT this campaign's overrides. Hand it the effective pack and base and edited list become
+one list: `makeListDelta` correctly finds no difference, returns `undefined`, and
+`applyStarmapOverrides` reads `undefined` as "no override at all" and DELETES the key. Opening the
+biosphere editor and pressing Save with no edits wiped morphologies, pigments and pigmentModel
+together, in silence. An editor that only POPULATES CONTROLS from the pack wants the effective one,
+which is why the two mounts differ and why "as the other editor does" is not a reason.
+BLAST: silent loss of every customisation in the affected sections, on a gesture a GM has no reason
+to think is destructive. The tell is a save handler that diffs against the same prop its loader
+applied an override to.

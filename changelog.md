@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.1.37 - 8th Sep 2026
+
+- **Two ways of losing your own custom rules, both fixed.** Opening the Edit Biospheres dialog and pressing Save without changing anything deleted every morphology, pigment and pigment-model setting the campaign had - silently, with no warning and nothing to undo. And the Edit Liquids dialog could not see a custom liquid that had arrived with a shared starmap at all: it opened on the standard list instead, so saving wrote that list over the liquid and every world that used it quietly fell back to water. Both dialogs now read and write the same way the rest of the app does, and each has a test that fails if it ever stops.
+- The Edit Liquids dialog also no longer records changes you did not make: simply opening it used to mark nineteen of the twenty-two standard liquids as edited.
+- Developer-facing only: the test suite was failing two or three different tests on every run, always with a timeout and always passing on their own, because several sessions build on this machine at once. The time budget is now set once, generously, and the slowest check does half the disk work it used to.
+- **Groundwork so that a planet copied from the map library brings its custom rules with it.** A copied object can now carry the custom liquids, gases, engines and the rest that its map defined, and the library's rules pages can be copied as well. Nothing is merged into your campaign yet - that is the next piece of work - but the app now reads what arrives instead of ignoring it, and a copy made in the app itself carries your own rules too, so moving a body between campaigns will keep them.
+
 ## v3.1.36 - 8th Sep 2026
 
 - Board only. A note I left for the next developer was wrong and is corrected: three tests that looked unreliable were not - they simply ran out of time because four agents were testing on the machine at once. Nothing in the app was at fault, and the correction says how to tell the two apart so the next person does not go looking for a problem that is not there.

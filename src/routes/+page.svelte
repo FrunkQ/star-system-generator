@@ -695,7 +695,7 @@
           // them against later improvements (`rulepackDelta.ts` cost #2). `applyListDelta` takes a
           // plain array as it stands, so every campaign saved before this is unaffected.
           if (overrides.liquids) {
-              pack.liquids = applyListDelta(allLiquids(pack), overrides.liquids as any, (l: any) => l.name);
+              pack.liquids = applyListDelta(allLiquids(pack), overrides.liquids, (l: any) => l.name);
           }
 
           // DELTAS laid over the pack's own lists, so anything the GM never touched keeps tracking
@@ -2846,7 +2846,7 @@
     <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
   {/if}
   {#if showBiospheresModal && $starmapStore && selectedRulepack}
-    <EditBiospheresModal showModal={showBiospheresModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />
+    <EditBiospheresModal showModal={showBiospheresModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />
   {/if}
   {#if showLiquidsModal && $starmapStore && selectedRulepack}
     <EditLiquidsModal showModal={showLiquidsModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showLiquidsModal = false; returnToSettings(); }} />

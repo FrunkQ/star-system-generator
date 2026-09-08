@@ -739,7 +739,52 @@ sets, in its own half, when it sets it.
 
 **The hub's half is SHIPPED AND LIVE.** Its brief for this side is
 `C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-08-clip-rules.md`, quoted here rather than
-paraphrased where it matters. **SSE-SIDE STATUS: BRIEFED as STREAM X, not started.**
+paraphrased where it matters. **SSE-SIDE STATUS: JOB 1 OF 5 SHIPPED, beta v3.1.37 - the envelope parses and both
+producers are read. The MERGE (jobs 2-5) is not built, so a clip's rules still do nothing on arrival.** Board row
+[[G92]].
+
+**WHAT JOB 1 SHIPPED.** `rulePackOverrides` is an optional key on `HubClip`, shape-checked and carried whole
+(`parseHubClip`); a RULES-ONLY clip - `nodes: []` and no `root`, which is the pair the hub uses to tell its two
+producers apart - parses instead of being refused, describes itself as `Rules (2 liquids)` and is turned away by both
+node paste paths in plain words rather than half-handled. `readClipOverrides` keeps only the sections this engine can
+merge and DROPS the rest, deliberately: carrying a section nothing can compare would be a promise the merge cannot
+keep, and the envelope's version gate already covers a clip from a newer producer. `src/lib/io/clipRules.ts` carries
+the whole argument; `src/lib/io/clipRules.spec.ts` the gates.
+
+**AND THIS APP IS THE THIRD PRODUCER, which the contract had not noticed.** `buildClip` - the GM's own Copy, added
+2026-09-05 - had R-19's bug in full: copy a body out of one campaign, load another, paste, and its custom liquid did
+not come with it. It now carries the campaign's overrides on the same key. Within ONE campaign every definition will
+compare IDENTICAL and be discarded in silence, so a same-campaign copy costs nothing. **This is an SSE-side extension
+of the hub's envelope, on the same footing as `credits` and `systemName`: the hub neither sends nor reads it, and
+both readers leave fields they do not know alone.** The owner approved it, 2026-09-08.
+
+**THREE CORRECTIONS TO THE TRIAGE ABOVE, measured on this side while building job 1.** They do not change what the hub
+sends; they change what this side had to build.
+
+1. **THERE ARE THREE DELTA SECTIONS, NOT TWO.** `liquids` joined `morphologies` and `pigments` at D25 -
+   `effectiveRulePack` reads it through `applyListDelta` - but its declared type still said `LiquidDef[]` and the
+   reader was casting to `any` to say what the type would not. The type is now
+   `PackListDelta<LiquidDef> | LiquidDef[]` and the cast is gone. Anything that enumerates the delta sections from the
+   type alone was wrong.
+2. **THERE IS A NINTH KEY.** `pigmentModel` is a `Partial<PigmentModelConfig>` - a bag of scalars, neither a list nor
+   a delta. Both the hub's brief and this file's own triage said EIGHT sections. Left out, a campaign's pigment
+   weightings would have been the one customisation that silently did not travel, which is R-19's own bug in
+   miniature. It is compared and merged per FIELD, because one changed weight is one setting.
+3. **THE NINE KEYS ARE STORED IN FIVE SHAPES, not one**, and `effectiveRulePack` has a hand-written arm for each:
+   upsert-by-id (`fuelDefinitions`, `engineDefinitions`, `sensorDefinitions`), record spread (`gasPhysics`),
+   whole-list replace of a distribution's entries keyed at `value.name` (`atmosphereCompositions`), delta-or-list
+   (the three above), and scalar spread (`pigmentModel`). The merge drives off ONE TABLE (`SECTIONS`) rather than a
+   nine-way branch repeated per question.
+
+**AND THE DECISION THE HUB ASKED THIS SIDE TO MAKE AND WRITE DOWN** - whether a delta section is compared as a delta
+or as its applied result - **is ANSWERED: by its APPLIED RESULT**, engine map `DATA-R46`. A delta is a set of edits
+against a base, so its meaning is not in the delta at all: an incoming `{ boilK: 400 }` for `water`, against a
+destination with no water override, is not an absent definition to be added but a DIFFERENT water from the one that
+campaign already has. Comparing deltas would add it and silently change a definition every body in the map reads.
+
+**NOT TOLD TO THE HUB, because it is not the hub's business and nothing on that side changes:** two rule-pack editors
+on this side were found to disagree with the engine about what a delta is, and both lost data in silence. Fixed in the
+same push, board row [[B147]].
 
 **WHAT IT CLOSES, and it is a wrong answer rather than a missing feature.** Custom definitions live on the
 STARMAP, in `rulePackOverrides` (`types.ts:1608`), not on the node; a hub clip carries nodes only. So a pasted
