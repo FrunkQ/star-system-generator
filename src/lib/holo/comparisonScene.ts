@@ -53,6 +53,7 @@ import { warpUv, warpParamsOfUniforms } from './filters/warpPick';
 import type { FilterParamValues } from './filters/schema';
 import { slotOffset } from '$lib/comparison/layout';
 import { pixelRatioFor, skipFrame } from '$lib/rendering/lowPowerRender';
+import { perfCount, perfEvent, perfProvider } from '$lib/perfTrace';
 import { createGlRenderer, releaseGlRenderer } from '$lib/rendering/glRenderer';
 import { buildBodyLook, type BodyLook, type BodyLookTextures } from './bodyLook';
 import {
@@ -206,6 +207,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     renderer.setSize(vw, vh, false);
     composer.setSize(vw, vh);
     for (const id of [...built.keys()]) destroy(id);
+    clearAllPlaceholders();
   }
 
   function rebuildFilter(): void {
@@ -271,8 +273,106 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
     return slot.centrePx > scrollPx - margin && slot.centrePx < scrollPx + span + margin;
   }
 
+  /**
+   * A SPINNING WIREFRAME WHILE THE REAL THING IS BEING MADE, and a BUDGET so the browser can breathe.
+   *
+   * The owner, 2026-09-08, on four "This page isn't responding" dialogs opening this view: *"if its
+   * textures you can have a default spinning wireframe globe and add textures as they are
+   * generated"*, and *"keep the UI usable meanwhile"*. That is exactly the right shape, because the
+   * fault is not a shortage of anything - it is ONE synchronous task. Every body entering the window
+   * used to be built in a single `reconcile()` call, and `buildBodyLook` generates 1024x512 textures
+   * on the CPU, so ten arriving together was ten lots of that between one frame and the next with no
+   * yield. The browser cannot paint, cannot scroll and cannot answer a click, so it offers to kill
+   * the page - which is what the dialog is.
+   *
+   * SO THE WORK IS SPREAD AND THE VIEW NEVER WAITS FOR IT. Each pass builds until its budget is gone
+   * and leaves the rest as wireframes, which cost nothing to make; the next frame carries on. The
+   * strip is scrollable and clickable throughout, and a globe simply firms up a few frames later.
+   *
+   * ALWAYS AT LEAST ONE PER PASS, or a machine slow enough to blow the budget on its first body
+   * would never finish a single one and the strip would stay wireframe for ever - a starvation bug
+   * hiding inside a fairness rule.
+   *
+   * THE PLACEHOLDER IS DELIBERATELY NOT COLOURED BY BODY TYPE. A body's colour comes from
+   * `deriveAppearance`, which is part of the work being deferred - so tinting the wireframe would
+   * mean doing early exactly what we are trying to put off, and guessing it would be inventing data
+   * the physics has not produced yet. One neutral wire reads as "not ready", which is true.
+   */
+  const BUILD_BUDGET_MS = 8; // about half a 60 Hz frame: enough to make progress, small enough to yield
+  const PLACEHOLDER_GEO = new THREE.SphereGeometry(1, 16, 12); // ONE unit sphere, scaled per slot
+  const PLACEHOLDER_MAT = new THREE.MeshBasicMaterial({
+    color: 0x5f7a9e,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.5
+  });
+  const placeholders = new Map<string, THREE.Mesh>();
+
+  function ensurePlaceholder(slot: ComparisonSlot): void {
+    let mesh = placeholders.get(slot.id);
+    if (!mesh) {
+      mesh = new THREE.Mesh(PLACEHOLDER_GEO, PLACEHOLDER_MAT);
+      placeholders.set(slot.id, mesh);
+      scene.add(mesh);
+    }
+    mesh.scale.setScalar(slot.diameterPx / 2);
+    mesh.position.set(...positionOf(slot));
+  }
+
+  /** The real body has arrived, or the slot has left the window. The shared geometry and material
+   *  are NOT disposed here - they belong to the scene and outlive every placeholder. */
+  function clearPlaceholder(id: string): void {
+    const mesh = placeholders.get(id);
+    if (!mesh) return;
+    scene.remove(mesh);
+    placeholders.delete(id);
+  }
+
+  function clearAllPlaceholders(): void {
+    for (const id of [...placeholders.keys()]) clearPlaceholder(id);
+  }
+
+  /**
+   * WHAT A SINGLE RECONCILE COST, MEASURED - and always collected, never behind the perf switch.
+   *
+   * Asked for by the owner, 2026-09-08, after four "This page isn't responding" dialogs on ONE PC
+   * opening the size comparison while a 40-star starmap loaded instantly beside it: *"Do we need to
+   * make memory demands. Any metering I can put in place to check"*.
+   *
+   * THE ANSWER TO THE FIRST HALF IS NO, AND THE DIALOG ITSELF SAYS SO. "This page isn't responding"
+   * is the browser reporting a BLOCKED MAIN THREAD - one JavaScript task that ran for seconds
+   * without yielding. A shortage of memory or a slow GPU does not produce it: those make frames
+   * late, and a late frame still yields between frames. So more memory cannot fix it, and neither
+   * can anything in [[C20]]'s three requests - this is a different fault that happens to share a
+   * surface, and saying so is worth more than a fix aimed at the wrong thing.
+   *
+   * WHAT IS ACTUALLY SYNCHRONOUS HERE: every body that enters the window is built in THIS call, and
+   * `buildBodyLook` generates its textures on the CPU (1024x512 canvases). Ten bodies arriving in
+   * one pass is ten lots of that work between one frame and the next, on the main thread, with no
+   * yield - which is exactly the shape of the dialog. The starmap is fast because a star there is a
+   * glyph sharing one glow texture, not a textured globe.
+   *
+   * IT IS ALWAYS ON, and that is the point rather than an oversight: nobody can switch tracing on
+   * BEFORE a freeze they did not expect. `perfEvent` writes to a bounded ring that is always
+   * collected, so the numbers are there to be read AFTERWARDS - `window.__ssePerf.events(60,
+   * 'comparison.build')` names the pass, how many bodies it built and how long it blocked for.
+   */
+  let worstBuildMs = 0;
+  let worstBuildBodies = 0;
+  let buildsTotal = 0;
+  const SLOW_BUILD_MS = 100; // ~6 frames at 60Hz: past this it is visible as a stall, not a hitch
+  perfProvider('comparison', () => ({
+    builtNow: built.size,
+    buildsTotal,
+    worstBuildMs: Math.round(worstBuildMs),
+    worstBuildBodies
+  }));
+
   /** Build what has come into view, dispose what has left it. Called every frame; cheap when settled. */
   function reconcile(): void {
+    const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+    let builtThisPass = 0;
+    let deferredThisPass = 0;
     const wanted = new Set<string>();
     for (const slot of slots) {
       if (!inWindow(slot)) continue;
@@ -284,6 +384,16 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
         continue;
       }
       if (existing) { destroy(slot.id); }
+      // THE BUDGET. Build until this frame's share is gone, then leave a wireframe and come back
+      // next frame. ALWAYS AT LEAST ONE, or a machine slow enough to blow the budget on its first
+      // body would never finish one and the strip would stay wireframe for ever.
+      const spentMs = (typeof performance !== 'undefined' ? performance.now() : 0) - t0;
+      if (builtThisPass > 0 && spentMs >= BUILD_BUDGET_MS) {
+        ensurePlaceholder(slot);
+        deferredThisPass++;
+        continue;
+      }
+      clearPlaceholder(slot.id);   // the real thing is about to take its place
       const group = new THREE.Group();
       group.position.set(...positionOf(slot));
       // The radius is the caller's true-scale figure, straight through (decision 1). The only clamp
@@ -373,6 +483,7 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       }
 
       scene.add(group);
+      builtThisPass++;
       built.set(slot.id, {
         look, group, slot, ring,
         // A black hole is a lensing centre. Its Einstein radius is taken from its OWN drawn radius,
@@ -382,6 +493,23 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       });
     }
     for (const id of [...built.keys()]) if (!wanted.has(id)) destroy(id);
+    for (const id of [...placeholders.keys()]) if (!wanted.has(id)) clearPlaceholder(id);
+    if (deferredThisPass) perfCount('comparison.bodiesDeferred', deferredThisPass);
+    if (!builtThisPass) return; // a settled strip reconciles to nothing and must cost nothing to watch
+    const ms = (typeof performance !== 'undefined' ? performance.now() : 0) - t0;
+    buildsTotal += builtThisPass;
+    if (ms > worstBuildMs) { worstBuildMs = ms; worstBuildBodies = builtThisPass; }
+    perfCount('comparison.bodiesBuilt', builtThisPass);
+    if (ms >= SLOW_BUILD_MS) {
+      perfCount('comparison.slowBuild');
+      // The ONE line that answers "why did it stop responding": how many bodies, and for how long.
+      perfEvent('comparison.build', {
+        bodies: builtThisPass,
+        deferred: deferredThisPass,
+        ms: Math.round(ms),
+        onScreen: built.size
+      });
+    }
   }
 
   /**
@@ -525,6 +653,9 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       // it in the DOM instead.
       void selected;
     }
+    // The placeholders turn on the same slow axis, so a body firming up does not visibly jump from
+    // a still wire to a spinning globe.
+    for (const mesh of placeholders.values()) mesh.rotation.y += 0.016 * 0.12;
     // A COMPOSED FRAME COSTS A FULL-SCREEN PASS, so it is only taken when something needs one — a
     // black hole to lens, or a preset filter to run. An ordinary strip on a GM's map pays nothing.
     const lensed = feedLenses() > 0;
@@ -597,6 +728,8 @@ export function createComparisonScene(canvas: HTMLCanvasElement): ComparisonScen
       disposed = true;
       cancelAnimationFrame(raf);
       for (const id of [...built.keys()]) destroy(id);
+      clearAllPlaceholders();
+      PLACEHOLDER_GEO.dispose(); PLACEHOLDER_MAT.dispose();
       textures.glow.dispose(); textures.hotspot.dispose(); textures.plume.dispose();
       chromeTex?.dispose();
       chromeMesh.geometry.dispose(); chromeMat.dispose();

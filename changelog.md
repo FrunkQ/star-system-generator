@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.1.31 - 8th Sep 2026
+
+- **Fixed: opening Size comparison could lock the whole page up until the browser offered to kill it.** This was a different fault from the 3D lockup and needed a different fix: every world coming into view was being built in one unbroken burst, and building a world means drawing its textures, so a strip of ten arrived as one long piece of work the browser could not interrupt. It now builds only as much as fits in a fraction of a frame, shows the rest as spinning wireframe globes, and fills them in over the following frames. The strip scrolls and answers clicks the whole time.
+- **And the app now records what that build cost, whether or not you have tracing switched on.** Nobody can turn tracing on before a freeze they did not expect, so the numbers are kept regardless and can be read afterwards: how many worlds were built, how many were put off, and how long the page was blocked for.
+- Note for the curious: the pause when a 3D system view first loads has the same cause, and is NOT fixed by this. It is written up with the reason it needs more care than a copy of this change.
+
 ## v3.1.30 - 8th Sep 2026
 
 - Board only. A memory saving offered as part of the 3D lockup work was put to the owner and not taken: the full-screen player view keeps its spare copy of the picture, so the transition when you step between views still fades from the real outgoing screen rather than from black. His reply pointed at a better answer than any of the options offered - the spare copy only has to exist at the instant the picture is taken - and that is now written up for whoever builds it, together with the one place it does not apply.

@@ -7187,3 +7187,23 @@ fails the suite otherwise. And BEWARE ASSERTING THE PIXEL RATIO UNDER VITEST: js
 written the obvious way passes with the lever removed - it was seen to do exactly that here before a
 retina stub (`devicePixelRatio: 2`) was put in front of it. Any low-power-versus-normal claim needs a
 panel that costs something before it can fail.
+
+### RENDER-S58 "THIS PAGE ISN'T RESPONDING" IS A BLOCKED MAIN THREAD, NOT A SHORTAGE - AND BUILDING A BODY IS THE BURST
+BUCKET: PLATFORM (the browser's own watchdog) for the symptom; IMPLEMENTATION for the burst.
+WHERE: `holo/comparisonScene.ts:reconcile` (budgeted, with wireframe placeholders); the same shape
+is UNFIXED in `holo/scene.ts:setSystem`.
+RULE: the browser's unresponsive-page dialog means ONE JavaScript task ran for seconds without
+yielding. It is not memory pressure and not a slow GPU - both of those make frames LATE, and a late
+frame still yields between frames. So no request for memory or for a better GPU can fix it, and
+neither can [[C20]]'s three. The cure is always the same: cap the work per pass and finish later.
+Building a body is the burst here, because `buildBodyLook` generates 1024x512 textures ON THE CPU,
+so N bodies arriving together is N lots of that between one frame and the next.
+WHY: [[C21]] - four unresponsive-page dialogs opening the size comparison on one PC while a 40-star
+starmap loaded instantly beside it. The starmap is fast because a star is a glyph sharing one glow
+texture; the comparison builds textured globes. Diagnosing it as C20's memory fault would have
+aimed a correct fix at the wrong target.
+BLAST: two traps if you spread a build across frames. **STARVATION** - always do at least one item
+per pass, or a machine slow enough to blow the budget on its first item never finishes one. And in
+`scene.ts` specifically, **[[RENDER-S45]]**: `bodyById` is filled AFTER the node loop, so deferring
+that loop makes its "everything answers undefined" window last many frames instead of one. That is
+why the holo's equivalent pause is briefed rather than fixed by copying this.
