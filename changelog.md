@@ -2,6 +2,9 @@
 
 All notable changes are listed here:
 
+## v3.1.63 - 8th Sep 2026
+
+- **Five pictures that ship with the app had never once been shown.** A world's photo was chosen from what it fundamentally IS and ignored everything else true about it — so a ringed planet showed the picture for whatever it was underneath, and the ringed picture in the box was never used. Nor were the ones for a world spun into an ellipsoid, one spun apart into a ring, one that has been smashed, or one hugging its star. All five now appear, which is what the other two views of a body have always done. One to look at: the ringed picture is of a gas giant, so a small ringed world now shows a giant — tell me if you would rather have a better picture there or none at all.
 ## v3.1.62 - 8th Sep 2026
 
 - Board only. The temperature box disappearing applies to brown dwarfs only: a real fusing star keeps its editable temperature, and the physics uses whatever you set even where it is unlikely. Recorded as a guard, because removing it from stars too would be an easy mistake to make.

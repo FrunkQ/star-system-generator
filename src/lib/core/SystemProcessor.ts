@@ -25,7 +25,7 @@ export function effectiveOrbitEccentricity(body: any): number | undefined {
 }
 const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
 const ASCENT_TAG = 'flight/ascent';
-import { classifyBody, explainClassification } from '../system/classification';
+import { classifyBody, explainClassification, imageClassFor } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup, hasSolidSurface } from '../physics/makeup';
 import { lobeCount } from '../catalogue/smallBodyShape';
 import { surfaceTempProfile, meanSurfaceTempK } from '../physics/surfaceTemperature';
@@ -1846,7 +1846,10 @@ export class SystemProcessor implements ISystemProcessor {
         // and an imported body's stale generation-time image is corrected. (Stars use a different
         // image map and are untouched here.)
         // …but NOT if the GM has uploaded a CUSTOM image (F2) — that's authored, so leave it alone.
-        const primaryClass = body.classes?.[0];
+        // NOT `classes[0]` — see `imageClassFor`. A modifier is never first, so reading the base
+        // alone meant the five modifier images this pack ships had never been shown to anyone, and
+        // the photo was the only one of a body's three views that ignored what the modifiers say.
+        const primaryClass = imageClassFor(body.classes, pack.classifier?.fingerprints, pack.classifier?.planetImages);
         if (body.roleHint !== 'star' && primaryClass && pack.classifier?.planetImages && !(body.image as any)?.custom) {
             const img = pack.classifier.planetImages[primaryClass]
                 ?? pack.classifier.planetImages[`planet/${primaryClass.split('/')[1]}`];

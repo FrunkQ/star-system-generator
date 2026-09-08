@@ -215,6 +215,43 @@ export function classifyByFingerprint(
   return out;
 }
 
+/**
+ * WHICH OF A BODY'S CLASSES PROVIDES ITS PICTURE — and the answer is not "the first one".
+ *
+ * Owner, 2026-09-08, on being told a modifier's image was a special case: *"why are these different -
+ * everything has a 2d 3d and photo view, dont they?"* They do, and that is exactly the point: the 2D
+ * disc and the 3D mesh both already answer to a body's MODIFIERS (a toroid is drawn as a torus, an
+ * ellipsoid is squashed, a contact binary has two lobes), while the photo was looked up on
+ * `classes[0]` alone. A modifier is NEVER first — `classifyByFingerprint` pushes the base and then
+ * stacks modifiers after it — so a modifier's image could never be reached.
+ *
+ * MEASURED, AND IT WAS NOT HYPOTHETICAL: `starter-sf` ships images for FIVE modifiers —
+ * `planet/ringed`, `planet/toroidal`, `planet/ellipsoid`, `planet/disrupted` and
+ * `planet/ultra-short-period` — and not one of them had ever been shown to anybody. A ringed giant
+ * classified `planet/water-clouds-gas-giant, planet/ringed` and displayed the water-clouds picture.
+ * Somebody put those five files in the pack expecting them to appear.
+ *
+ * THE RULE: the FIRST modifier that has a picture wins, else the base. "First" is the classifier's
+ * own ordering, which is by score, so the strongest-matching modifier speaks. A modifier only earns
+ * an image when it changes how the body LOOKS, which is why `asteroid/rubble-pile` deliberately has
+ * none and correctly falls through to its base.
+ *
+ * THE ONE WEAKNESS, stated rather than hidden: `planet/ringed`'s stock illustration is a GAS GIANT,
+ * so a ringed terrestrial now shows a giant. That is a limitation of that one file rather than of
+ * the rule — the honest fix is a better picture, or dropping that entry, and both are pack DATA.
+ */
+export function imageClassFor(
+  classes: string[] | undefined,
+  fingerprints: Fingerprint[] | undefined,
+  images: Record<string, string> | undefined
+): string | undefined {
+  if (!classes?.length) return undefined;
+  if (!images) return classes[0];
+  const kind = new Map((fingerprints ?? []).map((f) => [f.class, f.kind]));
+  const has = (c: string) => !!(images[c] ?? images[`planet/${c.split('/')[1]}`]);
+  return classes.find((c) => kind.get(c) === 'modifier' && has(c)) ?? classes[0];
+}
+
 export function classifyBody(planet: CelestialBody, features: Record<string, number | string>, pack: RulePack, allNodes: (CelestialBody | Barycenter)[]): string[] {
   if (!pack.classifier) return [];
 
