@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.59 - 8th Sep 2026
+
+- Board only. The age work grows a scale and a set of tags: every body will get an age slider running back to the big bang, marked with its host star's age, and four new tags saying whether it is younger than its star, older, ancient enough to predate two stellar generations, or primordial - early-universe material this system happened to pick up. Where a body came from and when it formed stay separate facts, which is what will let galactic mergers and stellar collisions be added later without reopening any of it.
+
 ## v3.1.58 - 8th Sep 2026
 
 - Board only. Every object will carry its own age, decided today. A campaign has exactly one age at the moment, on the system, and a body cannot be told it is older or younger - which is why a brown dwarf refuses to keep a temperature you type, since its temperature is nothing but its age. Giving a body its own age fixes that by driving the physics rather than overruling it, and it is the groundwork for tracking when things formed, which bodies were captured, and which were smashed and rebuilt.

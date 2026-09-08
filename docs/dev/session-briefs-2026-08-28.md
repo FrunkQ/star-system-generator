@@ -2209,12 +2209,14 @@ the right order is to get eyes on what has already shipped first.
 > 3. **ABSENT MEANS INHERIT.** No age of its own means the system's age, and the system's age is NEVER stamped
 >    onto bodies when saving - that would freeze it and stop a later change reaching anything.
 >
-> **THE ONE DECISION LEFT, AND IT IS YOURS TO MEASURE AND THE OWNER'S TO CONFIRM:** age is `now - formationTime`,
-> so WHICH "now"? If it is the live scrub position, a brown dwarf cools while a GM drags the clock and the
-> physics starts depending on the display clock - which the transit work deliberately separated. **Recommended:
-> the campaign's own reference date, not the scrub**, leaving live evolution as the V4 door this opens rather
-> than something switched on now. Measure what the alternative would actually do before you accept the
-> recommendation, and say so either way.
+> **THE QUESTION THIS BRIEF ONCE LEFT OPEN IS SETTLED - the owner, same day:** *"No clock is changed as you can
+> slide the age of a body independently - t=0 is big bang, t for comparison = star formation, and that is fine."*
+> **A body's age is STORED AND INDEPENDENTLY EDITABLE, and the campaign clock is not involved in deriving it.**
+> Sliding an age does not move the clock; scrubbing the clock does not change an age. The trap this brief warned
+> about - physics depending on the display clock - is not guarded against, it simply is not created. Storing a
+> formation time on the absolute axis is still the better representation for V4, because a body rebuilt after a
+> collision moves its own forward; but with nothing re-deriving against a moving "now", that is a representation
+> choice with no behavioural risk. **DO NOT introduce a dependency on the scrub position.**
 >
 > **THE JOBS, in order, each its own commit and push:**
 > 1. **The field and `ageOf(body)`**, with absent-means-inherit proven both ways: a body without one follows the
@@ -2232,8 +2234,39 @@ the right order is to get eyes on what has already shipped first.
 >    its age to that?"* Physics stays the single source and the GM still gets to type what he wanted.
 > 5. **[[B150]]'s interface half**, last: the temperature field stops pretending, says a brown dwarf's
 >    temperature follows its mass, age and radius, and offers the age.
-> 6. **A tag when an age differs markedly from its system's** - a published fact, not a refusal and not an
->    anomaly, so a reader can see why this dwarf is cold instead of wondering.
+> 6. **THE AGE SCALE AND ITS TAG FAMILY** - the owner's extension, and the part with the most product in it.
+>    *"The basis of EVERY body should have an age slider from now until end of universe - pinned to an orange
+>    point based on the stellar age... We need a new set of AGE tags now to highlight young, old and ancient
+>    objects. young - is younger than host star, old is older and ancient is 2-3 stars ago - primordial is early
+>    universe stuff."* And: *"It fires the tag engine rather than anomaly."*
+>
+>    **The slider's bound is DERIVED, not typed.** `temporal/utre.ts:14` already holds
+>    `BIG_BANG_TO_UNIX_EPOCH_T` = 13.787 Gyr, and [[G62]] made the axis absolute - so the range runs 0 to the
+>    CAMPAIGN'S OWN cosmic time (a far-future campaign has more room), and nothing may be older than the
+>    universe was on the day the campaign is set. The orange pin is the host star's age on the same scale.
+>
+>    **A NEW `age/` FAMILY, not an extension of `origin/`.** `origin/` already carries `captured`, `migrated`,
+>    `generated` and the hub pair (`tagPresentation.ts:254-274`, emitted at `generation/planet.ts:239,304`) and
+>    it answers WHERE a body came from; `age/` answers WHEN it formed. They compose, and the composition is the
+>    owner's own example: `origin/captured` + `age/primordial` is the primordial rock this system picked up.
+>
+>    **Four bands, two relative and two absolute - do not blur them.** `age/young` younger than the host star;
+>    `age/old` older than it; `age/ancient` older by at least two stellar generations (his "2-3 stars ago"),
+>    with **the generation length as PACK DATA** because it is exactly the number a human will want to tune;
+>    `age/primordial` an ABSOLUTE band at the big-bang end, Population III territory. The relative pair keeps
+>    working for a young host; the absolute pair keeps meaning something whatever it orbits.
+>
+>    **THE TEST THIS DESIGN MUST PASS**, because the owner named the destination: *"as we move on to galactic
+>    mergers and stellar collisions we need a robust system."* Since origin and age are separate axes, a merger
+>    or a collision must be a NEW MEMBER OF `origin/` and touch the age model not at all - a star flung in by a
+>    merger keeps its formation time and gains an origin; a body rebuilt after a collision moves its formation
+>    time forward and its age tags follow by themselves. **If you find yourself needing to change the age model
+>    to describe a merger, the split is wrong - stop and say so.**
+>
+>    **AND SAY WHAT WAS MEASURED.** There is NO metallicity in this engine (grepped: nothing), so `ancient` and
+>    `primordial` come from age alone. That is honest but incomplete - a primordial rock should also be
+>    metal-poor - so word the tag descriptions to say the age is what was measured, and leave metallicity as the
+>    cross-check it will one day be.
 >
 > **GATES, red-first and absolute.** A dwarf at a given mass and radius reports a specific temperature at 1 Gyr
 > and a specific LOWER one at 9 Gyr, in kelvin, not "cooler"; the same value survives a reprocess (it is an
