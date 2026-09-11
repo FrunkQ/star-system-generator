@@ -599,6 +599,23 @@ function creditFor(source: HubClipSource | undefined, nodeIds: string[]): Conten
 }
 
 /**
+ * R-18 (Stream AA job 3): A WHOLE SYSTEM THAT ARRIVED BY DOWNLOAD earns what a pasted one earns.
+ *
+ * The generation wizard lists single systems from Explorers and places one at the clicked spot. That
+ * system arrives as a SAVE FILE, not a clip, so nothing in it names its cartographer - the list entry
+ * does (`title`, `creator`, `url`). This is the paste path's two credits applied to it, ONE function
+ * and the same two private helpers rather than a third copy: the `origin/hub` tag on every top node
+ * (a system's top is its star, or the barycentre of a pair), and the campaign credit covering every
+ * node. Mutates the system's nodes, which the caller has just fetched and owns; returns the credit
+ * for the caller to put on the campaign with `addContentCredit`, as a paste's is.
+ */
+export function creditDownloadedSystem(system: { nodes: any[] }, source: HubClipSource): ContentCredit | undefined {
+  const nodes = Array.isArray(system?.nodes) ? system.nodes : [];
+  for (const top of nodes.filter((n) => n && !n.parentId)) creditRoot(top, source);
+  return creditFor(source, nodes.map((n) => String(n.id)));
+}
+
+/**
  * R-16: put a paste's credit on the CAMPAIGN.
  *
  * On the campaign and not the nodes, because nodes get renamed, re-homed and deleted, and a credit

@@ -117,6 +117,57 @@ describe('R-20: a map picked from the Explorers list comes in by the same door',
 	});
 });
 
+describe('R-18: one function puts a system on the map, whichever door it came through', () => {
+	// `pasteClipAsNewSystem` said it landed "through the SAME door the generation wizard uses" while
+	// building its own node beside it. Now both call `placeSystemOnMap`, and the wizard's door carries
+	// a credit for a system picked from Explorers. What this pins is the thing that would go wrong
+	// later: a door that builds its own node again, or the credit being dropped on the way to the map.
+	it('is called by the landing function and the paste door, and no door builds its own node', () => {
+		for (const sig of ['function landSystem(', 'function pasteClipAsNewSystem(']) {
+			expect(bodyOf(sig), `${sig} must place through placeSystemOnMap`).toContain('placeSystemOnMap(');
+		}
+		for (const sig of ['function landSystem(', 'function pasteClipAsNewSystem(', 'function placeGeneratedSystem(', 'async function placePendingHubSystem(']) {
+			const body = bodyOf(sig);
+			expect(body, `${sig} must not build its own node`).not.toContain('systems: [...');
+			expect(body, `${sig} must not stamp its own clock`).not.toContain('displayTimeSec');
+		}
+	});
+
+	it('lands the wizard\'s system and a link\'s system the same way, credit and all', () => {
+		expect(bodyOf('function landSystem(')).toContain('placeSystemOnMap(m, system, pos, [credit])');
+		expect(bodyOf('function placeGeneratedSystem(')).toContain('landSystem(event.detail.system, pos, event.detail.credit)');
+		expect(bodyOf('async function placePendingHubSystem(')).toContain('landSystem(system, at, credit)');
+	});
+});
+
+describe('R-18: a single system from a link is added where the GM chooses, not opened and not refused', () => {
+	it('no longer refuses a system in the one door, and hands it to the offer instead', () => {
+		const body = bodyOf('async function openHubBytes(');
+		expect(body, 'the old refusal must be gone').not.toContain('points at a single system rather than a campaign');
+		expect(body).toContain("classified.kind === 'system'");
+		expect(body).toContain('offerHubSystem(classified, slug)');
+	});
+
+	it('places nothing when the link arrives - only when the GM picks the spot', () => {
+		const offer = bodyOf('function offerHubSystem(');
+		for (const forbidden of ['placeSystemOnMap', 'landSystem', 'starmapStore.update', 'starmapStore.set']) {
+			expect(offer, `offerHubSystem must not ${forbidden} - the owner's rule is "you pick the spot"`).not.toContain(forbidden);
+		}
+	});
+
+	it('places through the wizard\'s own answers, and classifies nothing a second time', () => {
+		const place = bodyOf('async function placePendingHubSystem(');
+		expect(place).toContain('systemFromSave(');
+		expect(place).toContain('creditDownloadedSystem(');
+		expect(place, 'the bytes were classified once, in openHubBytes').not.toContain('classifySaveFile');
+	});
+
+	it('is offered on the starmap as "Add <name> here"', () => {
+		expect(src).toContain('pendingSystemName={pendingHubSystem?.name ?? null}');
+		expect(src).toContain('on:placependingsystem={(e) => placePendingHubSystem(e.detail)}');
+	});
+});
+
 describe('R-17: the link is taken off the address bar, whichever one it was', () => {
 	it('clears by parameter name rather than by a hardcoded `hub`', () => {
 		const body = bodyOf('function clearHubParam(');

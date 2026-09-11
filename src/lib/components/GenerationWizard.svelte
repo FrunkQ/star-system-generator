@@ -14,7 +14,11 @@
   import ImportModal from './ImportModal.svelte';
   import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
   import { classifySaveFile } from '$lib/io/classify';
-  import { importEmbeddedModels } from '$lib/constructs/modelTransfer';
+  import { systemFromSave } from '$lib/io/systemFromSave';
+  import { fetchHubMapFromUrl } from '$lib/hub/hubClient';
+  import { creditDownloadedSystem } from '$lib/io/hubClip';
+  import type { HubMapSummary } from '$lib/hub/hubMapList';
+  import HubMapPanel from './HubMapPanel.svelte';
 
   export let rulePack: RulePack;
   export let exampleSystems: string[] = [];
@@ -212,6 +216,17 @@
     } finally { busy = false; }
   }
 
+  /**
+   * SAVED BYTES TO A SYSTEM READY TO PROCESS, for both of the wizard's own ways of getting bytes (a
+   * file from disk, a system from Explorers). The answer is `systemFromSave`, which the "Add System to
+   * SSE" link's placement uses too (R-18); this only classifies and says what went wrong.
+   */
+  async function systemFromBytes(raw: Uint8Array): Promise<System | null> {
+    const got = await systemFromSave(classifySaveFile(raw), rulePack);
+    if (!got.ok) { alert(got.problem); return null; }
+    return got.system;
+  }
+
   // Load a previously-SAVED system file (what the in-system "Load System" does) and drop it in at the
   // clicked position, same as loading an example. Accepts a single-system JSON or a starmap (first system).
   let fileInput: HTMLInputElement;
@@ -230,26 +245,46 @@
     }
     busy = true;
     try {
-      // G42: the shared sniffer (classify.ts) names the file by shape, so this loader now takes a
-      // system OR a starmap (first system, as before) in EITHER container - plain JSON or an
-      // .sse.zip bundle, which used to die here as "could not load" despite being our own save.
-      const classified = classifySaveFile(new Uint8Array(await file.arrayBuffer()));
-      if (classified.kind === 'unknown') {
-        alert('This file is not a Star System Explorer save.\n\n' + (classified.problem ?? ''));
-        return;
-      }
-      if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
-      const rawSystem = classified.kind === 'system' ? classified.doc : classified.doc?.systems?.[0]?.system;
-      if (!rawSystem || !Array.isArray(rawSystem.nodes)) {
-        alert('This campaign (starmap) file has no loadable system in it.');
-        return;
-      }
-      const system = systemProcessor.process(fixUpImportedSystem(rawSystem as System, rulePack), rulePack);
+      const fixed = await systemFromBytes(new Uint8Array(await file.arrayBuffer()));
+      if (!fixed) return;
+      const system = systemProcessor.process(fixed, rulePack);
       dispatch('generate', { system });
     } catch (err) {
       console.error('Failed to load system file', err);
       alert(`The file loaded but could not be opened: ${(err as Error)?.message ?? err}`);
     } finally { busy = false; input.value = ''; }
+  }
+
+  /**
+   * R-18 (Stream AA job 3): A SINGLE SYSTEM FROM EXPLORERS, placed where the GM clicked.
+   *
+   * The hub cannot hand out a link that opens a single system (`?open=` refuses one), and a link has
+   * no position anyway - so the door a system needs is this one, which already places a system at a
+   * clicked spot. The bytes come through `fetchHubMapFromUrl`: the allow-list, the size cap, the
+   * timeout and `credentials: 'omit'` that every hub fetch gets. What happens to them is
+   * `systemFromBytes`, as for a file.
+   *
+   * AND IT IS SOMEBODY'S. A saved system names nobody, so the credit comes from the list entry - the
+   * map's title, its creator and its page - through `creditDownloadedSystem`, the paste path's own two
+   * credits (R-16): the `origin/hub` tag on the top node, and a campaign credit the route puts on the
+   * map with the system. Applied BEFORE processing, as a paste's is.
+   */
+  async function loadHubSystem(event: CustomEvent<HubMapSummary>) {
+    if (busy) return;
+    const map = event.detail;
+    busy = true;
+    try {
+      const fetched = await fetchHubMapFromUrl(map.downloadUrl);
+      if (!fetched.ok) { alert(fetched.problem); return; }
+      const fixed = await systemFromBytes(fetched.bytes);
+      if (!fixed) return;
+      const credit = creditDownloadedSystem(fixed, { url: map.url ?? undefined, title: map.title, creator: map.creator?.name });
+      const system = systemProcessor.process(fixed, rulePack);
+      dispatch('generate', { system, credit });
+    } catch (err) {
+      console.error('Failed to load a system from Explorers', err);
+      alert(`That system arrived but could not be opened: ${(err as Error)?.message ?? err}`);
+    } finally { busy = false; }
   }
 
   const pretty = (n: string) => n.replace(/-System\.json$/, '').replace(/_/g, ' ').replace(/-/g, ' ');
@@ -284,6 +319,10 @@
             <input type="file" accept="application/json,.json,.zip,.ubox,.sc,.pak" bind:this={fileInput} on:change={loadSystemFile} style="display:none" />
           </div>
           <p class="muted accepts">Accepts a saved system (.json or .sse.zip), a Universe Sandbox save (.ubox), or a SpaceEngine export (.sc).</p>
+          <!-- R-18: single systems shared on Explorers, placed where you clicked. The list is the
+               load screens' own component, asked for systems rather than campaigns. -->
+          <h4 class="explorers-heading">Or one shared on Explorers</h4>
+          <HubMapPanel kind="system" startWithStarters on:open={loadHubSystem} />
         </section>
 
         <section class="block">
@@ -444,6 +483,7 @@
   .row { display: flex; gap: 8px; }
   .row.load-saved { margin-top: 8px; align-items: center; }
   .accepts { margin: 4px 0 0; font-size: 0.78em; }
+  .explorers-heading { margin: 12px 0 6px; font-size: 0.8rem; font-weight: 400; color: var(--text-faint, #8a8a8a); }
   .row.load-saved .muted { font-size: 0.8em; color: var(--text-muted, #cfcfcf); }
   .ghost { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--link); cursor: pointer; font-size: 0.85em; }
   .ghost:hover:not(:disabled) { background: var(--bg-control); border-color: var(--accent); }

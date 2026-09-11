@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.69 - 11th Sep 2026
+
+- **Single star systems shared on Explorers can now come into your campaign.** When you add a system to the starmap, the wizard lists the systems people have shared; pick one and it lands where you clicked. And a link to a shared system no longer says it cannot be opened: the app tells you it is ready, and you right-click an empty spot on your map and choose where it goes. Either way the system's creator is credited in your campaign, just as when you paste something from Explorers.
+
 ## v3.1.68 - 11th Sep 2026
 
 - Each map in the Explorers list now says who made it. A map Explorers has found a problem in still appears, at the end of the list, with a line saying it may not open, so you know before you click.

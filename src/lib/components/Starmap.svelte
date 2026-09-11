@@ -105,6 +105,12 @@
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
   export let linkingMode: boolean = false;
   export let selectedSystemForLink: string | null = null;
+  /**
+   * R-18: a single system that arrived by an "Add System to SSE" link and is waiting for the GM to
+   * choose where it goes. The owner, 2026-09-11, asked for exactly that - "you pick the spot" - so
+   * the empty-space menu offers it beside "Add System Here", the gesture that already picks a spot.
+   */
+  export let pendingSystemName: string | null = null;
 
   const dispatch = createEventDispatcher();
 
@@ -987,6 +993,13 @@
     const at = contextMenuClickCoords;
     showContextMenu = false;
     dispatch('pasteasnewsystem', at);
+  }
+
+  /** R-18: put the system a link delivered here. Same coordinates as a paste or "Add System Here". */
+  function handleContextMenuPlacePending() {
+    const at = contextMenuClickCoords;
+    showContextMenu = false;
+    dispatch('placependingsystem', at);
   }
 
   let contextMenuClickCoords = { x: 0, y: 0 };
@@ -1894,6 +1907,9 @@
             </li>
             <li on:click={handleContextMenuDelete}>Delete System</li>
         {:else}
+                    {#if pendingSystemName}
+                      <li class="pending-place" on:click={handleContextMenuPlacePending}>Add {pendingSystemName} here</li>
+                    {/if}
                     <li on:click={handleContextMenuAddSystem}>Add System Here</li>
                     <!-- SHOWN, AND GREYED WHEN IT DOES NOT APPLY (owner, 2026-09-06: "show but grey
                          out if not applicable"). Only a star and what orbits it can become a system
@@ -2089,6 +2105,11 @@
     box-shadow: 0 0 15px rgba(229, 62, 62, 0.5);
   }
 
+  /* The system a link is waiting to place is the one thing the GM came to this menu for. */
+  .context-menu li.pending-place {
+    color: var(--accent, #7aa2f7);
+    font-weight: 600;
+  }
   .context-menu li.disabled {
     opacity: 0.45;
     cursor: default;

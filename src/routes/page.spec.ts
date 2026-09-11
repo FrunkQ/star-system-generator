@@ -189,4 +189,30 @@ describe('+page.svelte', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  // R-18 (Stream AA job 3): AN "ADD SYSTEM TO SSE" LINK. The owner, 2026-09-11: a link may bring a
+  // single system "but you pick the spot". So the link must NOT refuse it (the old R-17 answer) and
+  // must NOT place it: the campaign is untouched and a banner says how to choose where it goes.
+  it('holds a single system from a link for the GM to place, and changes nothing yet', async () => {
+    const { listFetch } = await import('$lib/hub/hubMapListFixtures');
+    const link = 'https://explorers.starsystemx.com/api/download/tau-ceti';
+    const tau = { id: 'tau-ceti', name: 'Tau Ceti', nodes: [{ id: 'tau-a', name: 'Tau Ceti', kind: 'body', roleHint: 'star', parentId: null }] };
+    const double = listFetch((url) => (url === link ? { json: tau } : { status: 404 }));
+    vi.stubGlobal('fetch', double.impl);
+    const mockStarmap = { id: 'mine', name: 'My Own Campaign', distanceUnit: 'ly', systems: [], routes: [] } as unknown as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    window.history.replaceState({}, '', '/?open=' + encodeURIComponent(link));
+    try {
+      const { findByText, queryByText } = renderPage();
+      expect(await findByText(/Tau Ceti from Explorers is ready to add\./, {}, { timeout: 8000 })).toBeInTheDocument();
+      expect(queryByText(/points at a single system rather than a campaign/)).toBeNull();
+      expect(get(starmapStore)?.id).toBe('mine');
+      expect(get(starmapStore)?.systems).toHaveLength(0);
+      expect(window.location.search, 'the link is taken off the address bar').toBe('');
+    } finally {
+      vi.unstubAllGlobals();
+      window.history.replaceState({}, '', '/');
+    }
+  });
 });

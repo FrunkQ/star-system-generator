@@ -8,6 +8,7 @@
 // measured on 2026-09-11 (`hubMapListFixtures.ts`).
 import { describe, it, expect } from 'vitest';
 import {
+	fetchHubMapCredit,
 	fetchHubMapList,
 	hubMapListUrl,
 	parseHubMapList,
@@ -165,6 +166,26 @@ describe('R-20: the answer is untrusted, like a map', () => {
 		const page = hubListPage(0, { maps: [hubListEntry(1, { body_count: -4, hearts_count: 'lots', system_count: 2.7 })] });
 		const result = parseHubMapList(page, 'starmap', 1);
 		expect(result.ok && [result.maps[0].body_count, result.maps[0].hearts_count, result.maps[0].system_count]).toEqual([0, 0, 2]);
+	});
+});
+
+describe('R-18: who made a map named only by its code', () => {
+	it('asks the one-map endpoint and reads the title and the creator', async () => {
+		const { impl, calls } = listFetch(() => ({ json: { slug: 'tau-ceti', title: ' Tau Ceti ', by: 'Frunk', kind: 'system', description: 'x' } }));
+		expect(await fetchHubMapCredit('tau-ceti', impl)).toEqual({ title: 'Tau Ceti', creator: 'Frunk' });
+		expect(calls.map((c) => c.url)).toEqual(['https://explorers.starsystemx.com/api/maps/tau-ceti']);
+		expect(calls[0].init?.credentials).toBe('omit');
+	});
+
+	it('names nobody rather than guessing when it cannot find out', async () => {
+		const none = { title: null, creator: null };
+		const { impl, calls } = listFetch(() => ({ json: {} }));
+		expect(await fetchHubMapCredit('../../admin', impl), 'a bad code is never an address').toEqual(none);
+		expect(calls).toHaveLength(0);
+		expect(await fetchHubMapCredit('gone', listFetch(() => ({ status: 404 })).impl)).toEqual(none);
+		expect(await fetchHubMapCredit('offline', listFetch(() => ({ throws: true })).impl)).toEqual(none);
+		expect(await fetchHubMapCredit('garbled', listFetch(() => ({ body: new TextEncoder().encode('<html>') })).impl)).toEqual(none);
+		expect(await fetchHubMapCredit('nobody', listFetch(() => ({ json: { title: 'Untitled', by: null } })).impl)).toEqual({ title: 'Untitled', creator: null });
 	});
 });
 

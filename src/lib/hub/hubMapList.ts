@@ -197,6 +197,35 @@ export function parseHubMapList(json: unknown, expectedKind: HubMapQuery['kind']
   };
 }
 
+/** A map's details are a few kilobytes; generous for the same reason the list's cap is. */
+const MAX_HUB_MAP_BYTES = 2 * 1024 * 1024;
+
+/**
+ * WHO MADE A MAP NAMED ONLY BY ITS CODE - for a single system that arrived by an "Add System to SSE"
+ * link (R-18, Stream AA job 3). The list hands a card its creator; a link hands the app a download
+ * address and nothing else, and a placed system earns its cartographer a credit. So this asks the
+ * hub's one-map endpoint, reading `title` and `by` only.
+ *
+ * NEVER THROWS AND NEVER GUESSES. Anything that fails - a bad code, no network, a shape it does not
+ * know - comes back as nulls, and the credit then says only what is known (R-16: absent is said, not
+ * invented). A slug is validated before it becomes an address, as everywhere else.
+ */
+export async function fetchHubMapCredit(
+  slug: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<{ title: string | null; creator: string | null }> {
+  const none = { title: null, creator: null };
+  if (!isValidHubSlug(slug)) return none;
+  const got = await fetchHubBytes(`${HUB.origin}${HUB.mapPath(slug)}`, fetchImpl, MAX_HUB_MAP_BYTES);
+  if (!got.ok) return none;
+  try {
+    const json = JSON.parse(new TextDecoder().decode(got.bytes)) as { title?: unknown; by?: unknown };
+    return { title: text(json?.title), creator: text(json?.by) };
+  } catch {
+    return none;
+  }
+}
+
 /**
  * FETCH ONE PAGE OF THE LIST. Never throws; every failure is a sentence for the panel, because a
  * blank list and a list that could not be fetched look identical to a GM unless somebody says which.

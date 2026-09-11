@@ -77,6 +77,21 @@ describe('the list renders what the hub sent', () => {
 	});
 });
 
+describe('the list asked for single systems (R-18, the wizard)', () => {
+	it('asks for systems, and does not print a system count that is always zero for one', async () => {
+		// MEASURED on the live hub: a single system's `system_count` is 0. "0 systems" on a system is
+		// a true number published as a lie.
+		const { calls } = serve(() => ({
+			json: hubListPage(0, { maps: [hubListEntry(4, { kind: 'system', system_count: 0, body_count: 17, construct_count: 0 })] })
+		}));
+		const { findByRole, getByText, queryByText } = render(HubMapPanel, { props: { kind: 'system' } });
+		await findByRole('button', { name: /Synthetic Map 4/ });
+		expect(calls[0].url).toBe('https://explorers.starsystemx.com/api/maps?kind=system&sort=detailed&limit=10&page=1');
+		expect(getByText('17 bodies')).toBeTruthy();
+		expect(queryByText(/0 systems/)).toBeNull();
+	});
+});
+
 describe('a list that could not be fetched says so', () => {
 	it('shows the offline line, and a way to try again, when fetch rejects', async () => {
 		const { calls } = serve(() => ({ throws: true }));

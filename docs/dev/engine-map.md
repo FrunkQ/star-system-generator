@@ -6181,6 +6181,31 @@ hub has profiles, and the row has no room for a second link) and the `needs-a-fi
 (D-88/D-89): such a map is SHOWN, last as the hub sorts it, with a line saying it may not open -
 the hub's own rule is "last, not hidden", and the app repairs one of those faults on open ([[A107]]). WHAT STILL WORKS OFFLINE: the file picker, the paste field, and the bundled examples on
 the New Starmap screen (Stream AA job 2 retires all but Local Neighbourhood, owner's decision).
+RULE ONE-F (R-18, Stream AA job 3, 2026-09-11): **A SINGLE SYSTEM FROM THE HUB IS ADDED WHERE THE GM
+CHOOSES - NEVER OPENED, NEVER REFUSED, NEVER PLACED UNASKED.** Two doors. (a) The generation wizard lists
+`kind=system` maps (the same `HubMapPanel`) and places the picked one at the spot already clicked. (b) A
+link (`?open=` or `?hub=`) whose bytes classify as a SYSTEM used to be refused in `openHubBytes`; it now
+goes to `offerHubSystem`, which places NOTHING - it holds the classified save, shows a banner, and the
+starmap's empty-space menu offers "Add <name> here" (`Starmap.svelte` `pendingSystemName`), because a
+link carries no position and the owner's word was "you pick the spot". The source gate pins that the
+offer never writes the store. **ONE ANSWER PER STEP, SHARED BY BOTH DOORS:** `io/systemFromSave.ts`
+turns a classified save into a fixed-up system (a system, or a campaign's first) - classification stays
+the caller's, so link bytes are classified once, in `openHubBytes`; `io/hubClip.ts creditDownloadedSystem`
+gives it the paste path's two credits (the `origin/hub` tag on every top node, a campaign credit over every
+node) through the paste path's own private helpers; `starmap/placeSystem.ts placeSystemOnMap` puts any
+processed system on the map - unique id ([[A107]]), display-clock stamp, credits merged by
+`addContentCredit` - and is called by `landSystem` (the wizard and the link) AND by
+`pasteClipAsNewSystem`, which had claimed to use "the SAME door the generation wizard uses" while
+building its own node. **WHERE THE CREDIT COMES FROM:** a saved system names nobody, so the wizard takes
+title/creator/page from the list entry and the link asks `GET /api/maps/<slug>` for `title` and `by`
+(`fetchHubMapCredit`; nulls on any failure - absent is said, never guessed). **THREE THINGS FOUND AND
+NOT CHANGED, reported on [[G98]]:** a SINGLE-SYSTEM SAVE carries neither `rulePackOverrides` nor
+`contentCredits` (both live on the campaign), so a system uploaded to the hub cannot bring its custom
+liquids or its own lineage by any door - R-19's fault for system files; the Traveller add door
+(`Starmap.svelte handleAddTravellerSystem`) still builds its own node, without a clock stamp and named
+from its form, so folding it in would change what it does; and the wizard (and so both R-18 doors)
+processes a placed system against `selectedRulepack`, not the campaign's effective pack that
+`pasteClipAsNewSystem` uses.
 RULE SIX: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
 exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything
 worth mentioning, and an unparseable stamp compares EQUAL so a garbled version produces silence

@@ -969,3 +969,47 @@ measurement the reply did not state:** a tag outside `[a-z0-9-]` is not refused,
 tag was dropped is unfiltered - `tag=Bad%20Tag&kind=starmap` returned every map. The starter tag is pinned to that shape
 on this side so a misspelling cannot turn "Starter maps" into "all maps" in silence. Seen in a browser against 0.61.2:
 "by Frunk", "by SONION", and My Starmap's warning line.
+
+## R-18 - a single system from the hub: ADDED where the GM chooses (engine half, 2026-09-11)
+
+The hub's ask (its `sse-requirements.md` R-18): *"`?open=` should take a single system too, not only a campaign"* -
+the refusal *"That link points at a single system rather than a campaign"* was being shown after a click on a
+promise, so the hub hid the button on every system. **THE OWNER'S DECISION, 2026-09-11:** a link may bring a system,
+*"but you pick the spot - BUT instead of it saying 'Open Map in SSE' - it would be 'Add System to SSE'"*.
+
+**SSE-SIDE STATUS: SHIPPED on beta at v3.1.69. NOT IN PRODUCTION** (production is v3.1.48 and still refuses).
+`?open=` (and `?hub=`) classify the bytes in the one door as before; a SYSTEM is now held, a banner says it is ready,
+and the starmap's right-click menu on empty space offers "Add <name> here". Nothing is placed until the GM chooses
+the spot. With no campaign open, the New Starmap screen stays up and the banner says to start or load one first. The
+generation wizard also lists `kind=system` maps from R-20 and places the picked one where the GM clicked. Either way
+the system is credited to its cartographer on the campaign (R-16) and its top node carries the `origin/hub` tag, as a
+pasted system does. The replace-or-keep question, `TRUSTED_OPEN_HOSTS` and `?hub=` are unchanged, as the ask said.
+
+**ONE NEW READ OF THE HUB, which the hub should treat as contract:** a link names a download and nothing else, so for
+the credit the app asks `GET /api/maps/<slug>` and reads `title` and `by`, and nothing else on that object. A failure
+credits the map's page and the system's own name and names nobody.
+
+**FOUND, NOT ASKED OF THE HUB:** a single-system save carries no `rulePackOverrides` - custom definitions live on the
+campaign - so a system uploaded to the hub cannot bring a custom liquid by any door. It is this engine's save format,
+on the board under [[G98]].
+
+### R-18 SEAM REPORT (engine half)
+
+```
+SEAM REPORT | R-18 | engine | beta v3.1.69 (the commit titled v3.1.69) | prod: NOT RELEASED (production is v3.1.48)
+sets:      nothing new - the parameter is still `open`, the prefix still the hub's open_in_sse_url row
+must know: a SYSTEM through ?open= is now ADDED, not refused: banner, then right-click empty space on the
+           starmap and "Add <name> here"; nothing is placed until the GM picks the spot (owner's word). The
+           button for a system should read "Add System to SSE" (owner's word). For the credit the app reads
+           `title` and `by` from GET /api/maps/<slug> - please hold those two as contract. PRODUCTION STILL
+           REFUSES A SYSTEM: the live openUrl prefix is https://starsystemx.com/?open= (measured), so filling
+           openUrl for systems today would hand every visitor the old refusal. Wait for the owner's release,
+           or point systems at the beta prefix meanwhile - the hub's call.
+verified:  in a browser against the live hub (0.61.2): ?open= with hip065-system-2 showed the banner and left a
+           42-system campaign at 42; the menu item placed it; the autosave held the campaign credit (SONION,
+           /s/hip065-system-2, 31 nodes) and the origin tag; the wizard listed seven systems and placed a
+           second copy as <id>-2, merged into the same credit row
+not done:  the kind gate in the hub's openInSse.ts and its label - the hub's; production release - the owner's
+ready for: STREAM N - on beta: an "Add System to SSE" link opens the app, the banner shows, right-click places it,
+           the credit is on the campaign
+```

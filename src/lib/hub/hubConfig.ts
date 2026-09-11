@@ -27,6 +27,12 @@ export interface HubConfig {
    */
   listPath: string;
   /**
+   * R-18: ONE map's details, as JSON. Read for a single system that arrived by an "Add System to SSE"
+   * link, because a link names a download and nothing else - and a system placed in somebody's
+   * campaign is credited to its cartographer. Only `title` and `by` are read.
+   */
+  mapPath: (slug: string) => string;
+  /**
    * The tag the owner puts on the maps that stand in for the ones this app used to ship (G98,
    * 2026-09-11). The New Starmap screen asks the list for it first. The hub's to spell, so it is
    * spelt once, here.
@@ -76,6 +82,7 @@ export const HUB: HubConfig = {
   pagePath: (slug) => `/s/${encodeURIComponent(slug)}`,
   browseUrl: HUB_ORIGIN,
   listPath: '/api/maps',
+  mapPath: (slug) => `/api/maps/${encodeURIComponent(slug)}`,
   starterTag: 'default',
   needsFixTag: 'needs-a-fix',
   uploadEnabled: false

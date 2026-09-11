@@ -7,7 +7,7 @@
   import { pushState, replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import { get } from 'svelte/store';
-  import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route } from '$lib/types';
+  import type { RulePack, System, Starmap as StarmapType, StarSystemNode, Route, ContentCredit } from '$lib/types';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { generateSystem, renameNode, computePlayerSnapshot } from '$lib/api';
   import ReportConfigModal from '$lib/components/ReportConfigModal.svelte';
@@ -79,18 +79,21 @@
   import { buildFlightUpdate } from '$lib/constructs/flightState';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
-  import { uniqueSystemId, dedupeSystemIds } from '$lib/starmap/systemIds';
+  import { dedupeSystemIds } from '$lib/starmap/systemIds';
+  import { placeSystemOnMap } from '$lib/starmap/placeSystem';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { registriesForStarmap } from '$lib/io/saveRegistries';
   import { collectModelsForExport, importEmbeddedModels, bytesToBase64 } from '$lib/constructs/modelTransfer';
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
-  import { classifySaveFile } from '$lib/io/classify';
+  import { classifySaveFile, type ClassifiedSaveFile } from '$lib/io/classify';
+  import { systemFromSave } from '$lib/io/systemFromSave';
+  import { fetchHubMapCredit } from '$lib/hub/hubMapList';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
-  import { fetchHubMap, fetchHubMapFromUrl, type HubFetch } from '$lib/hub/hubClient';
+  import { fetchHubMap, fetchHubMapFromUrl, parseHubReference, hubMapUrl, type HubFetch } from '$lib/hub/hubClient';
   import LoadSourceModal, { FILE_ACCEPT } from '$lib/components/LoadSourceModal.svelte';
-  import { looksLikeHubClip, insertClip, addContentCredit, systemNodesFromClip, isRulesOnlyClip, type HubClip } from '$lib/io/hubClip';
+  import { looksLikeHubClip, insertClip, addContentCredit, systemNodesFromClip, isRulesOnlyClip, creditDownloadedSystem, type HubClip } from '$lib/io/hubClip';
   import { mergeClipOverrides, describeMerge } from '$lib/io/clipRules';
   import { detectedClip, noteClipText } from '$lib/io/clipDetect';
   import { guessSystemAge } from '$lib/physics/systemAge';
@@ -827,18 +830,14 @@
     // already knows it. Merging afterwards would leave the first pass wrong.
     const rules = mergeClipRules(d.clip, map, built.nodes);
     const processed = systemProcessor.process(system, buildEffectiveRulePack(selectedRulepack, rules.overrides) ?? selectedRulepack);
-    const displayTimeSec = parseClockSeconds(map.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
-    const node: any = { id, name: system.name, position: at, system: processed, time: { displayTimeSec } };
 
     starmapStore.update((m) => {
       if (!m) return m;
       // R-16 again: the credit goes on the CAMPAIGN. A system pasted from somebody's map earns its
       // attribution exactly as a branch pasted into one does - this was the easiest place in the
-      // whole feature for a credit to quietly evaporate.
-      let next: any = { ...m, systems: [...m.systems, node], rulePackOverrides: rules.overrides };
-      next = addContentCredit(next, built.credit);
-      for (const c of built.carried) next = addContentCredit(next, c);
-      return next;
+      // whole feature for a credit to quietly evaporate. Placed by `placeSystemOnMap`, the one
+      // function the wizard's door uses too (R-18).
+      return placeSystemOnMap({ ...m, rulePackOverrides: rules.overrides }, processed, at, [built.credit, ...built.carried]).map;
     });
 
     const who = built.credit?.creator ? ` (credited to ${built.credit.creator})` : '';
@@ -1078,7 +1077,7 @@
   /** BY CODE. One of two ways to get the bytes; `openHubBytes` is what happens to them. */
   async function runHubOpen(slug: string) {
     hubOpenParam = 'hub';
-    await openHubBytes(() => fetchHubMap(slug));
+    await openHubBytes(() => fetchHubMap(slug), slug);
   }
 
   /**
@@ -1089,14 +1088,16 @@
    */
   async function runHubOpenFromUrl(url: string) {
     hubOpenParam = 'open';
-    await openHubBytes(() => fetchHubMapFromUrl(url));
+    await openHubBytes(() => fetchHubMapFromUrl(url), parseHubReference(url));
   }
 
   /**
    * THE ONE DOOR: classify, ask, open. Everything from here down is identical whether the map was
-   * named by a code or by an address, which is the point of the split above.
+   * named by a code or by an address, which is the point of the split above. `slug` is the map's code
+   * when it can be read off the link (null otherwise); only a single system needs it, to credit its
+   * cartographer when it is placed.
    */
-  async function openHubBytes(getBytes: () => Promise<HubFetch>) {
+  async function openHubBytes(getBytes: () => Promise<HubFetch>, slug: string | null) {
     hubBusy = true;
     hubProblem = null;
     try {
@@ -1110,8 +1111,12 @@
         hubProblem = classified.problem ?? 'That shared map is not a file this app can open.';
         return;
       }
-      if (classified.kind !== 'starmap') {
-        hubProblem = 'That link points at a single system rather than a campaign. Download it from the hub and open it with Load System.';
+      // R-18: A SINGLE SYSTEM IS ADDED, NOT OPENED. This used to refuse ("That link points at a single
+      // system rather than a campaign"), which is why the hub hid its button on every system. The
+      // owner, 2026-09-11: yes, a link may bring a system - "but you pick the spot", and the hub's
+      // button reads "Add System to SSE". So it waits for the GM to choose where it goes.
+      if (classified.kind === 'system') {
+        offerHubSystem(classified, slug);
         return;
       }
       const name = String(classified.doc?.name ?? 'a shared map');
@@ -1160,6 +1165,45 @@
     } catch (e) {
       hubProblem = `That shared map loaded but could not be opened: ${(e as Error)?.message ?? e}`;
     }
+  }
+
+  // --- R-18: a single system from a link, placed where the GM chooses ------------------------------
+  //
+  // The owner, 2026-09-11: a link may bring a single system, "but you pick the spot" - and the hub's
+  // button for one reads "Add System to SSE". A link carries no position, so the system WAITS: a
+  // banner says what to do, and the starmap's empty-space menu offers "Add <name> here" beside "Add
+  // System Here", which is the gesture that already chooses a spot. Nothing is placed, and nothing in
+  // the campaign changes, until the GM does that. With no campaign open the New Starmap screen stays
+  // up and the banner says to start or load one first.
+  //
+  // Placing it is the wizard's Explorers door exactly: `systemFromSave` for the bytes, the
+  // cartographer's credit through `creditDownloadedSystem`, processed against the same pack the
+  // wizard uses, and onto the map through `landSystem` -> `placeSystemOnMap`.
+  let pendingHubSystem: { classified: ClassifiedSaveFile; name: string; slug: string | null } | null = null;
+
+  function offerHubSystem(classified: ClassifiedSaveFile, slug: string | null) {
+    pendingHubSystem = { classified, name: String(classified.doc?.name ?? 'The shared system'), slug };
+    clearHubParam();
+    if (!$starmapStore) showNewStarmapModal = true;
+    else if (currentSystemId) exitToStarmap();
+  }
+
+  async function placePendingHubSystem(at: { x: number; y: number; z?: number }) {
+    const pending = pendingHubSystem;
+    if (!pending || !$starmapStore || !selectedRulepack) return;
+    const got = await systemFromSave(pending.classified, selectedRulepack);
+    if (!got.ok) { pendingHubSystem = null; hubProblem = got.problem; return; }
+    // Who made it: the link named a download and nothing else, so the hub is asked. A failure there
+    // credits the map's page and the system's own name, and names nobody rather than guessing.
+    const meta = pending.slug ? await fetchHubMapCredit(pending.slug) : { title: null, creator: null };
+    const credit = creditDownloadedSystem(got.system, {
+      url: pending.slug ? hubMapUrl(pending.slug) : undefined,
+      title: meta.title ?? pending.name,
+      creator: meta.creator ?? undefined
+    });
+    const system = systemProcessor.process(got.system, selectedRulepack);
+    pendingHubSystem = null;
+    landSystem(system, at, credit);
   }
 
   /** Acknowledge a failed hub open. Clears the param so a refresh is a fresh start, not a replay. */
@@ -2126,17 +2170,30 @@
   }
 
   // The wizard produced a fully-processed system — drop it at the remembered position.
-  function placeGeneratedSystem(event: CustomEvent<{ system: System }>) {
+  // A107: the bundled examples carry STABLE ids (both Sols are `solar-system`), so the same example
+  // placed twice, or two variants of it, must not share one - `placeSystemOnMap` takes the first free
+  // spelling at the door. R-18 (Stream AA job 3): a system picked from the wizard's Explorers list
+  // arrives with a `credit` naming its cartographer, and it lands on the campaign exactly as a pasted
+  // system's does, through the same function.
+  function placeGeneratedSystem(event: CustomEvent<{ system: System; credit?: ContentCredit }>) {
     showGenerationWizard = false;
     const pos = pendingWizardPosition; pendingWizardPosition = null;
     if (!$starmapStore || !pos) return;
-    // A107: the bundled examples carry STABLE ids (both Sols are `solar-system`), so the same example
-    // placed twice, or two variants of it, must not share one - the first free spelling at the door.
-    const id = uniqueSystemId(event.detail.system.id, $starmapStore.systems.map((s) => s.id));
-    const newSystem = id === event.detail.system.id ? event.detail.system : { ...event.detail.system, id };
-    const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
-    const newSystemNode: StarSystemNode = { id, name: newSystem.name, position: pos, system: newSystem, time: { displayTimeSec } };
-    starmapStore.update(starmap => { if (starmap) starmap.systems = [...starmap.systems, newSystemNode]; return starmap; });
+    landSystem(event.detail.system, pos, event.detail.credit);
+  }
+
+  /**
+   * A PROCESSED SYSTEM ONTO THE MAP, and when it came from Explorers, a sentence saying whose it is.
+   * The wizard's door and the "Add System to SSE" link's placement both end here (R-18).
+   */
+  function landSystem(system: System, pos: { x: number; y: number; z?: number }, credit?: ContentCredit) {
+    starmapStore.update((m) => (m ? placeSystemOnMap(m, system, pos, [credit]).map : m));
+    if (credit) {
+      const who = credit.creator ? ` (credited to ${credit.creator})` : '';
+      clipNotice = `Added ${system.name} from Explorers${who}.`;
+      if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+      clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
+    }
   }
 
 
@@ -2594,6 +2651,17 @@
       <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (clipNotice = null)}>×</button>
     </div>
   {/if}
+  <!-- R-18: a system from an "Add System to SSE" link, waiting for the GM to choose its spot. It
+       stays until placed or cancelled, because the instruction is the only way to find the menu item. -->
+  {#if pendingHubSystem}
+    <div class="mem-banner" role="status">
+      <span>
+        {pendingHubSystem.name} from Explorers is ready to add.
+        {#if $starmapStore && !showNewStarmapModal}Right-click (or press and hold) an empty spot on your map and choose "Add {pendingHubSystem.name} here".{:else}Start or load a campaign first, then right-click where it should go.{/if}
+      </span>
+      <button type="button" class="mem-banner-close" aria-label="Cancel adding it" title="Cancel adding it" on:click={() => (pendingHubSystem = null)}>×</button>
+    </div>
+  {/if}
   {#if createdWithNotice}
     <div class="mem-banner" role="status">
       <span>{createdWithNotice}</span>
@@ -2806,6 +2874,8 @@
       on:addsystemat={handleAddSystemAt}
       on:pasteintosystem={(e) => pasteIntoSystemFromMap(e.detail)}
       on:pasteasnewsystem={(e) => pasteClipAsNewSystem(e.detail)}
+      pendingSystemName={pendingHubSystem?.name ?? null}
+      on:placependingsystem={(e) => placePendingHubSystem(e.detail)}
       on:selectsystemforlink={handleSelectSystemForLink}
       on:editroute={handleEditRoute}
       on:deletesystem={handleDeleteSystem}

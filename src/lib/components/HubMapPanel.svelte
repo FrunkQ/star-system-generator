@@ -3,16 +3,18 @@
   //
   // The owner, 2026-09-11: *"the load/new map modals are going to link to those available on the
   // Explorers site RATHER than default ones shipped"*, as *"a list INSIDE SSE to single click and
-  // load"*. This is that list, and it is ONE component in both screens: Load Starmap shows everything
-  // shared, New Starmap starts on the owner's starter maps (`HUB.starterTag`). The two differ in
-  // where they start and in nothing else, so they are one list parameterised rather than two to keep
-  // in step.
+  // load"*. This is that list, and it is ONE component in three places: Load Starmap shows every
+  // shared campaign, New Starmap starts on the owner's starter maps (`HUB.starterTag`), and the
+  // generation wizard lists single SYSTEMS (R-18, job 3). They differ in where they start and what
+  // kind they ask for, and in nothing else, so they are one list parameterised rather than three to
+  // keep in step.
   //
   // WHAT IT DOES NOT DO, and each one is a rule rather than an omission:
-  //  - IT OPENS NOTHING. A click hands the chosen map up as an `open` event; the route gives its
-  //    `downloadUrl` to `runHubOpenFromUrl`, the same function `?open=` uses, so a map picked here is
-  //    fetched, classified, asked about and opened by the one door (engine map DATA-R35). A second
-  //    loader is exactly the fault that door exists to prevent.
+  //  - IT OPENS NOTHING. A click hands the chosen map up as an `open` event. For a campaign the route
+  //    gives its `downloadUrl` to `runHubOpenFromUrl`, the same function `?open=` uses, so a map
+  //    picked here is fetched, classified, asked about and opened by the one door (engine map
+  //    DATA-R35). For a system the wizard fetches it through the same allow-listed fetch and places
+  //    it through its own existing door. A second loader is exactly the fault those doors prevent.
   //  - IT NEVER SHOWS A BLANK LIST. Fetching, failed and empty are three different things a GM
   //    needs told apart, and an empty box says none of them.
   //  - IT IS NOT A COPY OF THE HUB'S CARD. The hub's cards are its own design; this is the app's
@@ -23,6 +25,13 @@
 
   /** Start on the owner's starter maps (the New Starmap screen) rather than on everything shared. */
   export let startWithStarters = false;
+  /**
+   * CAMPAIGNS OR SINGLE SYSTEMS (R-18, Stream AA job 3). The load screens list campaigns, because a
+   * click there replaces the campaign; the generation wizard lists systems, because a click there
+   * places one at the spot the GM clicked. Same list, same untrusted-answer rules - only the door the
+   * chosen map goes through differs, and that is the parent's business.
+   */
+  export let kind: 'starmap' | 'system' = 'starmap';
 
   const dispatch = createEventDispatcher<{ open: HubMapSummary }>();
 
@@ -43,7 +52,7 @@
   async function load() {
     const mine = ++latest;
     view = { phase: 'loading' };
-    const result = await fetchHubMapList({ kind: 'starmap', sort, page, tag: starters ? HUB.starterTag : null });
+    const result = await fetchHubMapList({ kind, sort, page, tag: starters ? HUB.starterTag : null });
     if (mine !== latest) return;
     if (!result.ok) {
       view = { phase: 'problem', problem: result.problem };
@@ -77,9 +86,14 @@
     return `${n.toLocaleString('en-GB')} ${n === 1 ? one : many}`;
   }
 
-  /** What is IN the map. Always shown: a campaign with no bodies is worth knowing before opening it. */
+  /**
+   * What is IN the map. Always shown: a campaign with no bodies is worth knowing before opening it.
+   * A single system's `system_count` is 0 (measured on the live hub), so it is not printed for one -
+   * "0 systems" on a system would be a true number published as a lie.
+   */
   function contents(m: HubMapSummary): string {
-    const parts = [counted(m.system_count, 'system'), counted(m.body_count, 'body', 'bodies')];
+    const parts = m.kind === 'starmap' ? [counted(m.system_count, 'system')] : [];
+    parts.push(counted(m.body_count, 'body', 'bodies'));
     if (m.construct_count) parts.push(counted(m.construct_count, 'construct'));
     return parts.join(' · ');
   }
@@ -129,7 +143,7 @@
         <p>No starter maps on Explorers yet.</p>
         <button type="button" on:click={() => chooseScope(false)}>Show all shared maps</button>
       {:else}
-        <p>Nobody has shared a campaign on Explorers yet.</p>
+        <p>Nobody has shared {kind === 'system' ? 'a single system' : 'a campaign'} on Explorers yet.</p>
       {/if}
     </div>
   {:else}
