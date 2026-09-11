@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.68 - 11th Sep 2026
+
+- Each map in the Explorers list now says who made it. A map Explorers has found a problem in still appears, at the end of the list, with a line saying it may not open, so you know before you click.
+
 ## v3.1.67 - 11th Sep 2026
 
 - **Load Starmap and the New Starmap screen now list maps shared on Explorers.** Ten at a time, best written-up first, or newest, most starred or most discussed; each shows its cover, what is in it and how many people have taken it. Click one and it opens, asking first if you already have a campaign open, exactly as an "Open in Star System Explorer" link does. If the app cannot reach Explorers it says so and offers to try again. The New Starmap screen starts on the starter maps, and says there are none yet until they are published there.

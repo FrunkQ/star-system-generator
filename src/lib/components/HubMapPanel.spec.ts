@@ -44,6 +44,28 @@ describe('the list renders what the hub sent', () => {
 		expect((getByText('Next') as HTMLButtonElement).disabled).toBe(false);
 	});
 
+	it('names who made each map, and says before the click when Explorers found a problem', async () => {
+		// Hub 0.61.2: `creator` on every map, and the `needs-a-fix` pill (D-88/D-89). The hub's rule is
+		// "last, not hidden", so the card SHOWS such a map and says it may not open.
+		serve(() => ({
+			json: hubListPage(0, {
+				maps: [
+					hubListEntry(1),
+					hubListEntry(2, { creator: null, auto_tags: ['needs-a-fix', 'campaign'] })
+				]
+			})
+		}));
+		const { findByRole, getByText, queryAllByText } = render(HubMapPanel);
+		const healthy = await findByRole('button', { name: /Synthetic Map 1/ });
+		const broken = await findByRole('button', { name: /Synthetic Map 2/ });
+		expect(getByText('by Synthetic Cartographer 1')).toBeTruthy();
+		expect(broken.textContent).not.toContain('by ');
+		const warnings = queryAllByText('Explorers found a problem in this file, so it may not open.');
+		expect(warnings).toHaveLength(1);
+		expect(broken.contains(warnings[0])).toBe(true);
+		expect(healthy.textContent).not.toContain('may not open');
+	});
+
 	it('hands up the map that was clicked, and fetches nothing itself', async () => {
 		const { calls } = serve(() => ({ json: hubListPage(10) }));
 		const opened: HubMapSummary[] = [];

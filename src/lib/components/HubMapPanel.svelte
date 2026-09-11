@@ -144,6 +144,10 @@
             {/if}
             <span class="hub-map-text">
               <strong>{m.title}</strong>
+              {#if m.creator}<small class="hub-map-creator">by {m.creator.name}</small>{/if}
+              <!-- SAID, NOT HIDDEN (hub D-89: "last, not hidden"). The hub already sorts these after
+                   every map that opens; the card tells a GM before they click rather than after. -->
+              {#if m.needsAFix}<small class="hub-map-fix">Explorers found a problem in this file, so it may not open.</small>{/if}
               {#if m.blurb}<small class="hub-map-blurb">{m.blurb}</small>{/if}
               <small class="hub-map-counts">{contents(m)}</small>
               <small class="hub-map-counts">{reception(m)}</small>
@@ -315,6 +319,16 @@
     font-size: 0.9rem;
     line-height: 1.25;
     overflow-wrap: anywhere;
+  }
+  .hub-map-creator {
+    color: var(--text-faint);
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+  .hub-map-fix {
+    color: var(--warning, #e8a33d);
+    font-size: 0.75rem;
+    line-height: 1.3;
   }
   .hub-map-blurb {
     display: -webkit-box;

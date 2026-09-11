@@ -18,6 +18,11 @@
 //    all: a click opens `downloadUrl` through the same door `?open=` uses, so the one field that
 //    would have made a system look openable is simply not consulted.
 //
+// THE HUB'S REPLY OF 2026-09-11 (hub 0.61.2, D-90) added two things this reads: `creator` on every
+// map - only its `name`, because `url` is null until the hub has public profiles and a card row has
+// no room for a second link beside its About - and the `needs-a-fix` pill in `auto_tags` (D-88/D-89),
+// which becomes `needsAFix` so a card can say a map may not open instead of letting a GM find out.
+//
 // AND THE RESPONSE IS UNTRUSTED, exactly as a map is (engine map DATA-R35). Every address in it is
 // put through `isTrustedOpenUrl` before it becomes a link, an image or a fetch: a list that named a
 // download somewhere other than the hub would otherwise hand the one-click open an address the
@@ -75,6 +80,13 @@ export interface HubMapSummary {
   /** Optional in the contract (`comments_count?`), so absent stays absent rather than becoming 0. */
   comments_count: number | null;
   download_count: number;
+  /** Who made it, as the map's own page names them. Null when the hub sends none. */
+  creator: { name: string } | null;
+  /**
+   * DERIVED, not a contract field: `auto_tags` carries `HUB.needsFixTag`. The hub read something
+   * wrong in the file, often something that stops this app opening it.
+   */
+  needsAFix: boolean;
 }
 
 export interface HubMapQuery {
@@ -128,6 +140,12 @@ function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+/** `creator: { name, url } | null` from the contract, kept only when it names somebody. */
+function creatorOf(value: unknown): { name: string } | null {
+  const name = value && typeof value === 'object' ? text((value as { name?: unknown }).name) : null;
+  return name ? { name } : null;
+}
+
 /**
  * READ ONE PAGE OF THE HUB'S ANSWER. Pure, so the whole of "what does the panel believe" is testable
  * without a network. `expectedKind` is what was asked for: the hub honours `kind`, but the answer is
@@ -161,7 +179,9 @@ export function parseHubMapList(json: unknown, expectedKind: HubMapQuery['kind']
       construct_count: count(m.construct_count),
       hearts_count: count(m.hearts_count),
       comments_count: m.comments_count === undefined || m.comments_count === null ? null : count(m.comments_count),
-      download_count: count(m.download_count)
+      download_count: count(m.download_count),
+      creator: creatorOf(m.creator),
+      needsAFix: Array.isArray(m.auto_tags) && m.auto_tags.includes(HUB.needsFixTag)
     });
   }
   // The hub clamps the page it serves; when it says which page it served, believe it.

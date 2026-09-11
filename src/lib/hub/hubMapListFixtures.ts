@@ -25,6 +25,8 @@ export function hubListEntry(i: number, overrides: Record<string, unknown> = {})
     coverUrl: `${LIVE_ORIGIN}/asset/${'ab'.repeat(32)}`,
     cover_sha256: 'ab'.repeat(32),
     created_with: '3.1.64',
+    // Hub 0.61.2 (D-90): `creator` on every map, `url` null until the hub has public profiles.
+    creator: { name: `Synthetic Cartographer ${i}`, url: null },
     downloadUrl: `${LIVE_ORIGIN}/api/download/${slug}`,
     download_count: 3 * i,
     fan_setting: null,

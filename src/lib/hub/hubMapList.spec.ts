@@ -16,6 +16,7 @@ import {
 	HUB_MAP_SORTS
 } from './hubMapList';
 import { hubListEntry, hubListPage, listFetch } from './hubMapListFixtures';
+import { HUB } from './hubConfig';
 
 describe('R-20: the list is asked for at the hub, ten at a time', () => {
 	it('builds the address the hub documents, and nothing else', () => {
@@ -58,8 +59,8 @@ describe('R-20: only the contract’s fields reach the app', () => {
 		// ABSOLUTE: the keys a card may use, spelt out. `info_density`, `cover_sha256`, `openUrl` and
 		// the rest are on every object the hub sends and must not be here.
 		expect(Object.keys(result.maps[0]).sort()).toEqual([
-			'blurb', 'body_count', 'comments_count', 'construct_count', 'coverUrl', 'downloadUrl',
-			'download_count', 'hearts_count', 'kind', 'slug', 'system_count', 'title', 'url'
+			'blurb', 'body_count', 'comments_count', 'construct_count', 'coverUrl', 'creator', 'downloadUrl',
+			'download_count', 'hearts_count', 'kind', 'needsAFix', 'slug', 'system_count', 'title', 'url'
 		]);
 		expect(result.maps[1]).toEqual({
 			slug: 'synthetic-map-2',
@@ -74,7 +75,9 @@ describe('R-20: only the contract’s fields reach the app', () => {
 			construct_count: 0,
 			hearts_count: 2,
 			comments_count: 2,
-			download_count: 6
+			download_count: 6,
+			creator: { name: 'Synthetic Cartographer 2' },
+			needsAFix: false
 		});
 		expect(result.hasMore, 'a full page may have another behind it').toBe(true);
 		expect(result.skipped).toBe(0);
@@ -86,6 +89,42 @@ describe('R-20: only the contract’s fields reach the app', () => {
 		const page = hubListPage(0, { maps: [hubListEntry(1, { comments_count: undefined })] });
 		const result = parseHubMapList(JSON.parse(JSON.stringify(page)), 'starmap', 1);
 		expect(result.ok && result.maps[0].comments_count).toBeNull();
+	});
+
+	it('names the creator when the hub does, and nobody when it does not', () => {
+		// Hub 0.61.2 (D-90): `creator: { name, url } | null`. Only the name is read; `url` is null
+		// until the hub has profile pages. A creator with no name is not a creator.
+		const page = hubListPage(0, {
+			maps: [
+				hubListEntry(1, { creator: { name: '  Frunk  ', url: null } }),
+				hubListEntry(2, { creator: null }),
+				hubListEntry(3, { creator: { name: '', url: null } }),
+				hubListEntry(4, { creator: 'Frunk' })
+			]
+		});
+		const result = parseHubMapList(page, 'starmap', 1);
+		expect(result.ok && result.maps.map((m) => m.creator)).toEqual([{ name: 'Frunk' }, null, null, null]);
+	});
+
+	it('marks a map the hub says needs a fix, and only that one', () => {
+		// Hub D-88/D-89: the `needs-a-fix` pill in `auto_tags`. ABSOLUTE spelling, not read from HUB.
+		const page = hubListPage(0, {
+			maps: [
+				hubListEntry(1, { auto_tags: ['needs-a-fix', 'campaign'] }),
+				hubListEntry(2, { auto_tags: ['campaign', 'needs-a-fixture'] }),
+				hubListEntry(3, { auto_tags: 'needs-a-fix' })
+			]
+		});
+		const result = parseHubMapList(page, 'starmap', 1);
+		expect(result.ok && result.maps.map((m) => m.needsAFix)).toEqual([true, false, false]);
+	});
+
+	it('asks for a starter tag the hub will not silently drop', () => {
+		// MEASURED on hub 0.61.2: a tag outside lowercase letters, digits and hyphens is DROPPED, and a
+		// dropped tag is no filter at all - `tag=Bad%20Tag` returned every map. A misspelt starter tag
+		// would put every shared map under "Starter maps" and nothing would say so.
+		expect(HUB.starterTag).toBe('default');
+		expect(HUB.starterTag).toMatch(/^[a-z0-9-]+$/);
 	});
 
 	it('says there is no next page when the hub sent fewer than ten, or this is page fifty', () => {

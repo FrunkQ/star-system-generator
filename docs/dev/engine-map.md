@@ -6171,12 +6171,15 @@ is a SENTENCE, never an empty box** - loading, failed and empty are three states
 guard (`latest`) stops a slow page for the previous order overwriting the current one. (4) **`src/setup.ts`
 REJECTS every hub host in tests**, so any spec that renders a load screen without stubbing `fetch`
 sees the offline line instead of reaching the live hub; a spec wanting a list stubs `fetch` itself.
-**HUB-SIDE TRAP for the starter list:** the hub's `tag=` filter matches `auto_tags` (derived from the
-file), NOT the cartographer's `tags` - measured 2026-09-11, `tag=real-astronomy` found nothing though
-Local Neighbourhood carries it. A starter tag added as a cartographer tag is invisible to
-`HUB.starterTag` until the hub changes that; asked in
-`starsystemx-creator-hub/docs/note-from-sse-2026-09-11-map-list-creator-and-default-tag.md`, with a
-creator field. WHAT STILL WORKS OFFLINE: the file picker, the paste field, and the bundled examples on
+**THE STARTER TAG'S TRAP, and it moved (hub 0.61.2, D-90, same day):** `tag=` used to match only
+`auto_tags`, so a hand-added tag was invisible; it now matches `auto_tags` OR the cartographer's
+`tags`. **But a tag outside lowercase letters, digits and hyphens is DROPPED, and a dropped tag is no
+filter at all** - measured, `tag=Bad%20Tag` returned EVERY map. A misspelt `HUB.starterTag` would put
+every shared map under "Starter maps" in silence, so its spelling and its shape are pinned absolutely
+in `hubMapList.spec.ts`. The same reply added `creator` (only `name` is read - `url` is null until the
+hub has profiles, and the row has no room for a second link) and the `needs-a-fix` pill in `auto_tags`
+(D-88/D-89): such a map is SHOWN, last as the hub sorts it, with a line saying it may not open -
+the hub's own rule is "last, not hidden", and the app repairs one of those faults on open ([[A107]]). WHAT STILL WORKS OFFLINE: the file picker, the paste field, and the bundled examples on
 the New Starmap screen (Stream AA job 2 retires all but Local Neighbourhood, owner's decision).
 RULE SIX: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
 exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything

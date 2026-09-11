@@ -33,6 +33,13 @@ export interface HubConfig {
    */
   starterTag: string;
   /**
+   * The pill the hub puts in a map's `auto_tags` when it read something wrong in the file - often
+   * something that stops this app opening it (hub D-88/D-89, R-20 reply of 2026-09-11). The hub
+   * sorts those maps last; the list shows them and SAYS so rather than hiding them, which is the
+   * hub's own rule ("last, not hidden").
+   */
+  needsFixTag: string;
+  /**
    * UPLOAD IS OFF UNTIL THE HUB SIDE EXISTS. Two things are owed and neither may be invented: the
    * device-code pairing endpoint, and the exact attestation wording (it must be shown verbatim and
    * must never be pre-ticked, so a placeholder would defeat its entire purpose). The request for
@@ -70,6 +77,7 @@ export const HUB: HubConfig = {
   browseUrl: HUB_ORIGIN,
   listPath: '/api/maps',
   starterTag: 'default',
+  needsFixTag: 'needs-a-fix',
   uploadEnabled: false
 };
 

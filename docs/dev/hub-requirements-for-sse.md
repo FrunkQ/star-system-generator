@@ -946,3 +946,26 @@ measured, the filter matches `auto_tags` and not the cartographer's `tags`, so `
 though Local Neighbourhood carries it. The New Starmap screen asks for `tag=default` first and says "No starter maps on
 Explorers yet" until that answers. **R-18 IS STILL OPEN**: Load System keeps its plain link to the library, and
 `openUrl` stays null for systems until job 3 gives a single system the wizard's door.
+
+**THE HUB'S REPLY, quoted whole as the seam protocol asks (relayed by the owner, 2026-09-11):**
+
+```
+SEAM REPLY | R-20 | hub | 0.61.2 (653cbc5) | live
+changed:   tag= matches auto_tags OR tags (same clause as /browse); tags must be [a-z0-9-], else dropped
+added:     creator: { name: string; url: string | null } | null on every map (url null - no public profiles yet)
+also:      maps with problems sort LAST in every sort and carry `needs-a-fix` in auto_tags (hub D-88/D-89);
+           a panel that only wants maps that open can leave those out
+verified:  live - tag=real-astronomy&kind=starmap returns local-neighbourhood [Frunk];
+           kind=starmap&sort=detailed&limit=10 returns local-neighbourhood, my-starmap (last, needs-a-fix)
+not done:  `default` - who may set it is the owner's decision, pending; tag=default returns [] until a map has it
+doc:       docs/prompt-for-sse-2026-09-11-map-list-api.md (interface updated)
+```
+
+**SSE-SIDE STATUS, v3.1.68: CONSUMED.** Each card reads `creator.name` (not `url`, which is null and has nowhere to
+go in a row that already carries an About link). A map whose `auto_tags` carry `needs-a-fix` is SHOWN, not left out,
+with the line "Explorers found a problem in this file, so it may not open." - the hub's own D-89 is "last, not
+hidden", and one of the faults it flags (two systems sharing an id) this engine repairs on open since v3.1.66. **One
+measurement the reply did not state:** a tag outside `[a-z0-9-]` is not refused, it is DROPPED, and a request whose only
+tag was dropped is unfiltered - `tag=Bad%20Tag&kind=starmap` returned every map. The starter tag is pinned to that shape
+on this side so a misspelling cannot turn "Starter maps" into "all maps" in silence. Seen in a browser against 0.61.2:
+"by Frunk", "by SONION", and My Starmap's warning line.
