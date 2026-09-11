@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.1.66 - 11th Sep 2026
+
+- Fixed: placing the same bundled example system twice, or both Sol examples, gave two systems one id; the save went out and the next load refused the whole map with "Duplicate System ID". A new system now takes the first free id at the door, and a map already carrying the clash is repaired on load, both systems kept, with a banner saying what was renamed.
+- Board only. The Explorers hub becomes where maps and presets come from: the Load and New map lists will show the hub's maps in place of the ones shipped with the app, and custom liquids, gases, drives and tech settings will get a Copy that travels the same road a pasted body does. Briefed as a stream.
+- Board only. The contact binary ships without an image of its own; the Arrokoth picture is dropped.
+
 ## v3.1.65 - 11th Sep 2026
 
 - Fixed: opening the Tags tab on a body that carried the same tag twice crashed the whole app. It now shows the tag once and stays up.

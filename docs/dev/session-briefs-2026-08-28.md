@@ -2342,3 +2342,73 @@ the right order is to get eyes on what has already shipped first.
 > that produces it.
 >
 > **Housekeeping:** as Stream Q's, word for word.
+
+## STREAM AA — the Explorers hub becomes where maps and presets come from (G98, G99, R-18; briefed 2026-09-11)
+
+> **THE OWNER'S DECISIONS, 2026-09-11, verbatim:** *"the load/new map modals are going to link to those available on
+> the Explorers site RATHER than default ones shipped - reduce hosting costs on Vercel."* And on presets: *"we should
+> be able to add copy options on the various worlds/tech settings in (not default ones) as the paster knows how to
+> deal with them. A quick easy way of getting new drive/atmo/liquid presets"* - *"that extra copy option is part of
+> the new copy paste scope from explorers site."* The board rows are [[G98]] (the list and the hosting move) and
+> [[G99]] (copy); [[A107]] is the bug the owner's own hub map hit today and is FIXED - read it for the shape of a
+> hub round-trip gone wrong. The hub's contract is `docs/dev/hub-requirements-for-sse.md` R-13, R-17, R-18, R-19,
+> R-20, and its interface note is `C:\Development\starsystemx-creator-hub\docs\prompt-for-sse-2026-09-11-map-list-api.md`
+> - read where it lives, never copied here.
+>
+> **WHAT IS MEASURED (re-verify the lines; the tree moves daily):**
+> - The list: `GET https://explorers.starsystemx.com/api/maps` - no credentials, CORS `*`, OPTIONS answered, 60 s
+>   edge cache. `sort=new|loved|discussed|detailed` (default loved; the hub suggests `detailed` for a panel),
+>   `limit` 1-50 (pass 10), `page` 1-based, `kind=starmap|system`, `tag` x8, `q`. Read ONLY: `slug title blurb kind
+>   url downloadUrl coverUrl openUrl system_count body_count construct_count hearts_count comments_count
+>   download_count information auto_tags tags updated_at`. `openUrl` is NULL for a single system - R-18.
+> - The one loader: `openStarmapPayload(data, models)` in `src/routes/+page.svelte` - `?open=` (R-17) already
+>   fetches a hub `downloadUrl` and hands it here; the panel's click is the same call. Validation failures speak
+>   for themselves and leave the current campaign untouched; [[A107]] added the duplicate-id repair before it.
+> - The wizard's single-system door: `GenerationWizard.svelte loadExample` fetches `/examples/<name>` and
+>   dispatches `generate`; `placeGeneratedSystem` puts it at the clicked position (now with `uniqueSystemId`).
+>   That is the door R-18 needs: a `kind=system` hub map goes through it, not through `?open=`.
+> - What READS the shipped maps, all of which must be re-pointed at the hub or retired WITH the maps, in the same
+>   commit: `src/lib/map/baseMapManifest.ts` + `upgradeOffer.ts` + `static/example-starmaps/manifest.json` (the
+>   base-map EDITION offer, [[A101]] - an edition is a property of a shipped map; decide with the owner what an
+>   edition means once maps are hub-hosted); `GenerationWizard.svelte` + `+page.svelte` `exampleSystems` (from the
+>   route's `data`); `static/shipped-content.json` (R-13 - the hub uses it to know what is the app's, not a GM's);
+>   `static/sw.js` precache; the first-run / welcome path. `git grep -n "example-starmaps\|/examples/"` is the list.
+> - The paste half of copy: `src/lib/io/clipRules.ts` and friends (R-19, Stream X, v3.1.37-46): `compareClipOverrides`
+>   per definition against the EFFECTIVE pack (`src/lib/rulepack/effectivePack.ts`), merge as DELTAS, rename a clash,
+>   report. The hub's fixtures live in its `docs/clips/` and are read where they live. `HubClipPasteModal` is the
+>   fourth door and already accepts a rules-only clip.
+>
+> **THE JOBS, in order, each its own commit and push:**
+>
+> 1. **THE PANEL** in the Load Starmap and New Starmap modals: ten Explorers maps at a time (`kind=starmap`,
+>    `sort=detailed` first, the other sorts a click away, page through), cover thumbnail scaled hard (the hub uses
+>    it at ~240 px), title, blurb, the three counts, the creator, and a click that calls `openStarmapPayload` via
+>    `downloadUrl` - never a second loader. `credentials: 'omit'`. Offline or a failed fetch is an honest line in
+>    the panel, never a blank list. The card design is the app's, not a copy of the hub's.
+> 2. **THE SHIPPED MAPS LEAVE THE BUNDLE.** This is the point (Vercel hosting). Coordinate the order with the
+>    owner: the maps must be ON the hub (his account, a tag to filter on) before they leave here. Then every reader
+>    in the measured list above moves or retires in the same commit, and the engine map gets an entry for what now
+>    depends on the network. **RECOMMEND, THEN ASK:** keep ONE small map bundled (Local Neighbourhood) for offline
+>    and first run. If he says no, first run shows the panel.
+> 3. **R-18 - A SINGLE SYSTEM THROUGH THE WIZARD'S DOOR.** `kind=system` maps listed in the wizard's Quick-start
+>    in place of `/examples/<name>`, fetched by `downloadUrl`, placed at the clicked position through the existing
+>    `generate` dispatch. When it works, write the hub a note so it fills `openUrl` for systems - and say in it
+>    whether `?open=` should ALSO take a system (it need not; the wizard is the right door).
+> 4. **COPY ([[G99]]).** In Settings, every NON-DEFAULT definition (liquids, gases, fuels and drives, tech
+>    settings - exactly the sections R-19 merges as deltas) gets a Copy that writes a RULES-ONLY clip in the hub's
+>    format to the clipboard, with the campaign's credit. The shipped definitions get no button - every campaign
+>    already has them. Gate: round trip copy -> paste into a fresh campaign -> arrives as a delta -> second paste
+>    says nothing to add; and the hub's own fixtures still paste. Red-first, as always.
+> 5. **TELL THE HUB** about the silent loss [[A107]] found (bodies dropped on a `unique (system_id, node_id)` clash
+>    behind `tolerantWriteMany`, counts still listing them): the note is already at
+>    `starsystemx-creator-hub/docs/note-from-sse-2026-09-11-duplicate-node-ids.md`; keep it true if your work
+>    changes what the app can produce.
+>
+> **GATES:** the panel renders ten cards from a recorded response and the click reaches `openStarmapPayload` with
+> the map's bytes (mock the fetch; never hit the live hub in a test); the offline line appears when fetch rejects;
+> removing a shipped map removes every reader of it (grep-gate: no reference to `example-starmaps/` or
+> `/examples/` survives outside the engine map and the changelog); the copy round trip above.
+>
+> **HAND BACK:** [[G98]], [[G99]] and the R-18/R-20 lines in `hub-requirements-for-sse.md` updated in the same push
+> as each job; a changelog line a GM would understand per push; a thirty-second eyeball list. Anything that changes
+> what the product IS - and job 2 does - recommend, then ask him.

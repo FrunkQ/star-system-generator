@@ -79,6 +79,7 @@
   import { buildFlightUpdate } from '$lib/constructs/flightState';
   import { getJourneyBounds } from '$lib/transit/scheduler';
   import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
+  import { uniqueSystemId, dedupeSystemIds } from '$lib/starmap/systemIds';
   import { systemProcessor } from '$lib/core/SystemProcessor';
   import { fixUpImportedSystem, stripStarmapForExport } from '$lib/system/importFixup';
   import { registriesForStarmap } from '$lib/io/saveRegistries';
@@ -2110,9 +2111,12 @@
     showGenerationWizard = false;
     const pos = pendingWizardPosition; pendingWizardPosition = null;
     if (!$starmapStore || !pos) return;
-    const newSystem = event.detail.system;
+    // A107: the bundled examples carry STABLE ids (both Sols are `solar-system`), so the same example
+    // placed twice, or two variants of it, must not share one - the first free spelling at the door.
+    const id = uniqueSystemId(event.detail.system.id, $starmapStore.systems.map((s) => s.id));
+    const newSystem = id === event.detail.system.id ? event.detail.system : { ...event.detail.system, id };
     const displayTimeSec = parseClockSeconds($starmapStore.temporal?.displayTimeSec, defaultCampaignStartSeconds()).toString();
-    const newSystemNode: StarSystemNode = { id: newSystem.id, name: newSystem.name, position: pos, system: newSystem, time: { displayTimeSec } };
+    const newSystemNode: StarSystemNode = { id, name: newSystem.name, position: pos, system: newSystem, time: { displayTimeSec } };
     starmapStore.update(starmap => { if (starmap) starmap.systems = [...starmap.systems, newSystemNode]; return starmap; });
   }
 
@@ -2422,6 +2426,19 @@
           try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack); }
           catch (e) { console.warn('Fix-up failed for system', node.name, e); }
         }
+      }
+    }
+
+    // A107: two systems sharing an id (the two bundled Sols, placed by the wizard with their stable id
+    // verbatim) used to fail the validation below and lose the GM the WHOLE campaign. Repair it here
+    // instead - the second keeps its bodies and gains a suffix - and say so; the next save writes it.
+    if (Array.isArray(sanitized.systems)) {
+      const fixed = dedupeSystemIds(sanitized.systems);
+      if (fixed.renamed.length) {
+        sanitized.systems = fixed.systems;
+        clipNotice = fixed.renamed.map((r) => `Two systems shared the id "${r.from}" - ${r.name} is now "${r.to}".`).join(' ') + ' Both are kept; save to make it permanent.';
+        if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
+        clipNoticeTimer = setTimeout(() => (clipNotice = null), 15000);
       }
     }
 

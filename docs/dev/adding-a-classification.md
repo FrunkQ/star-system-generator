@@ -181,7 +181,9 @@ strength of `git status` alone puts a pure line-ending churn in the history.
   entry: **comet + contact-binary is 67P/Churyumov-Gerasimenko**, and **rubble-pile + contact-binary is
   Arrokoth**. That answers "maybe a couple of types if that reflects reality" without a second type.
 - **Visual?** A bilobate branch in `smallBodyOutline`, seeded from the body id, one closed path.
-- **Image?** Held: the reworked Arrokoth composite is a derivative whose licence is the owner's to check.
+- **Image?** None. The reworked Arrokoth composite was held for a licence check and then ditched by the owner
+  (2026-09-11: *"we have another comet image"*), so the type ships with no image of its own, as `rubble-pile`
+  does - the supported state. A licence question ended by not needing the file is the cheapest kind.
 
 ---
 

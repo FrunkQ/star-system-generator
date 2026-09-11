@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { playerConnections } from '$lib/playerConnections';
+  import { uniqueSystemId } from '$lib/starmap/systemIds';
   import { constructIconPath, constructIconShape } from '$lib/constructs/constructIcon';
   import { gestures } from '$lib/input/gestures';
   // G26/C17: the glyph is a SCREEN quantity — its size, its members' spread and its band scale come
@@ -1317,10 +1318,13 @@
 
       // G33: the dials the GM set in the modal reach the infill step, which is what
       // importer.ts's own comment always promised.
-      const system = importer.generateTravellerSystem(data, rulePack, { knobs: infillKnobs, ageGyr: infillAgeGyr, placeMainWorldInHabitableZone });
-      
+      const generated = importer.generateTravellerSystem(data, rulePack, { knobs: infillKnobs, ageGyr: infillAgeGyr, placeMainWorldInHabitableZone });
+      // A107: the first free spelling of the id at the door, the same rule as the wizard's.
+      const id = uniqueSystemId(generated.id, starmap.systems.map((s) => s.id));
+      const system = id === generated.id ? generated : { ...generated, id };
+
       const newSystemNode = {
-          id: system.id,
+          id,
           name: data.name,
           position: { x: travellerImportCoords.x, y: travellerImportCoords.y },
           system: system,

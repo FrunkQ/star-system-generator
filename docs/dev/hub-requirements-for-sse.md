@@ -925,6 +925,9 @@ ready for: STREAM N - the hub's own check, once the field name moves: copy a bod
 The hub side wrote the interface and it is live: `GET https://explorers.starsystemx.com/api/maps`, no
 credentials, CORS open, ten at a time by `sort=new|loved|discussed|detailed`. The full contract, the fields to
 read, and the one trap (`openUrl` is null for a single system because R-18 is still open) are on the board as
-[[G98]]; the source is `starsystemx-creator-hub/docs/prompt-for-sse-2026-09-11-map-list-api.md`. Not started —
-the owner said he would work out the SSE side. His larger point, hosting the default files through the hub, is
-deliberately NOT answered by R-20 and is his call.
+[[G98]]; the source is `starsystemx-creator-hub/docs/prompt-for-sse-2026-09-11-map-list-api.md`. **BRIEFED AS STREAM AA, 2026-09-11**, the same day, on the owner's larger decision: *"the load/new map modals are
+going to link to those available on the Explorers site RATHER than default ones shipped - reduce hosting costs on
+Vercel."* So the hub DOES host the defaults, by its own suggested route (hub maps under a hub account, a tag to
+filter on), and the shipped example maps leave this bundle. The stream also carries R-18 (a single system through
+the wizard's door, so the hub can fill `openUrl`) and [[G99]] (Copy on non-default definitions, the other half of
+R-19). Prompt: `../stream-aa-prompt.md`.
