@@ -10,6 +10,13 @@
   import FieldHelp from './FieldHelp.svelte';
   import { FUEL_FIELD_HELP, ENGINE_FIELD_HELP } from '$lib/packs/fieldHelp';
   import { foreground } from '$lib/ui/foreground';
+  import CopyDefinitionButton from './CopyDefinitionButton.svelte';
+  import type { RulePackOverrides } from '$lib/types';
+
+  // G99: an engine copied out of here carries the custom fuel it burns, and that fuel may exist only
+  // in this dialog so far - so the copy looks here first, then in the campaign.
+  const fuelDraft = (section: keyof RulePackOverrides, id: string) =>
+    section === 'fuelDefinitions' ? fuels.find((f) => f.id === id) : undefined;
 
   // Tag options, sourced entirely from the data (CoI Resources + drive categories, PoI frontier rules) —
   // nothing hard-coded. Fuels source from resources OR frontier-refuelling; engines confer an FTL drive.
@@ -183,6 +190,8 @@
                     <div class="item-card">
                         <div class="item-header">
                             <input type="text" class="name-input" bind:value={fuel.name} placeholder="Fuel Name" />
+                            <CopyDefinitionButton section="fuelDefinitions" id={fuel.id} definition={fuel} pack={rulePack}
+                                overrides={starmap.rulePackOverrides} campaignName={starmap.name} />
                             <button class="delete-btn" on:click={() => deleteItem('fuel', fuel.id)}>✕</button>
                         </div>
                         <div class="item-body">
@@ -218,6 +227,8 @@
                     <div class="item-card">
                         <div class="item-header">
                             <input type="text" class="name-input" bind:value={engine.name} placeholder="Engine Name" />
+                            <CopyDefinitionButton section="engineDefinitions" id={engine.id} definition={engine} pack={rulePack}
+                                overrides={starmap.rulePackOverrides} draft={fuelDraft} campaignName={starmap.name} />
                             <button class="delete-btn" on:click={() => deleteItem('engine', engine.id)}>✕</button>
                         </div>
                         <div class="item-body">

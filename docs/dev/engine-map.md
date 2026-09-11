@@ -7484,3 +7484,39 @@ THE ARGUMENT, and the third point is the one that decided it:
 BLAST: if narrowing is ever built, it must be additive-only over a measured reference map, and the
 three set-scored sections must be exempt by name. Do not derive the reference list from the fields
 that happen to appear in one fixture.
+
+### DATA-R51 A COPIED DEFINITION CARRIES WHAT IT NAMES, AND THE MERGE REPOINTS EVERY REFERENCE A COPY CAN CARRY
+BUCKET: ARCHITECTURE (file format) - G99, Stream AA job 4, 2026-09-11. The copy half of R-19.
+WHERE: `src/lib/io/clipRules.ts` (`DEFINITION_REFERENCES`, `isShippedDefinition`, `rulesForDefinition`,
+`repointDefinition`), `src/lib/io/hubClip.ts buildRulesClip`, `src/lib/components/CopyDefinitionButton.svelte`
+in the five Settings editors (Liquids; Atmospheres: gases and mixes; Fuel & Drives: fuels and engines; Sensors;
+Biospheres: morphologies and pigments). Gated by `io/definitionCopy.spec.ts` and `CopyDefinitionButton.spec.ts`.
+RULE ONE: **"not a default one" is asked of the SHIPPED PACK by identity, never of the editor's form.**
+`isShippedDefinition` is the section's own `fromPack(...).has(id)` - the lookup the paste uses. Several editors
+decide default-ness with `JSON.stringify` against a record their own bindings have already filled in (a
+`bind:value` select writes its first option into a field the pack never declared), so a form-based test would put
+Copy on shipped fuels the moment the dialog rendered. A MODIFIED shipped definition gets no Copy either: every
+campaign has one under that name, and a paste would only rename it.
+RULE TWO: **a copy carries every custom definition the copied one names, transitively, and never a shipped one.**
+`DEFINITION_REFERENCES` is ONE table with both halves: `names` (what the copy follows) and `repoint` (what the
+merge moves when the named definition is renamed on a clash). Three references, each a field the engine reads by
+name: an engine's `fuel_type_id`, a gas's `cloud.condensesTo`, a mix's composition keys. Before G99 the merge
+repointed only the first, so a copied gas whose liquid clashed would have pasted pointing at the DESTINATION's
+liquid in silence. A reference known to the copy and not to the merge travels whole and still pastes broken.
+`repointDefinition` now receives the section of the definition it edits - the loop used to throw it away.
+RULE THREE: **one envelope.** `buildRulesClip` is the hub's own: `nodes: []`, no `root`, definitions on
+`rulePackOverrides`, through `readClipOverrides` so a copy cannot produce what a paste would drop; `putClip` puts it
+in the one copy buffer and on the system clipboard. `source.title` is the campaign's name.
+THREE THINGS FOUND ON THE WAY, TWO FIXED IN THE SAME PUSH: (a) **the app's own body Copy never carried the
+campaign's custom rules.** `buildClip` accepted `rulePackOverrides` from v3.1.45 and the R-19 record said Copy
+"now carries" them, but no call site passed them - Copy and Cut in the system view and Copy System on the starmap
+do now, pinned in the source. (b) **the starmap greyed "Paste Rules (...) here"** because its menu asked
+`systemNodesFromClip`, while `pasteClipAsNewSystem` behind it has merged a rules clip since R-19; enabled. (c) NOT
+FIXED, reported on [[G99]]: a delta section records an explicit `order` whenever a key is added (by an editor or by
+a paste), and `applyListDelta` walks that order only - so a definition added to the SHIPPED pack later would never
+reach that campaign. Read in the code, not measured against a pack change.
+WHY: owner, 2026-09-11 - "a quick easy way of getting new drive/atmo/liquid presets" - and "that extra copy option is
+part of the new copy paste scope from explorers site".
+BLAST: a NEW field by which one definition names another must be added to `DEFINITION_REFERENCES` (both halves) or
+a copy of it pastes half-attached. A new override section with an identity needs a `<CopyDefinitionButton section>`
+in its editor - the spec compares the editors' sections against `SECTIONS` absolutely.

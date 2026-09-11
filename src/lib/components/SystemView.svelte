@@ -337,7 +337,11 @@
     if (!$systemStore || !node?.id) return;
     // Credits ride along, so a body pasted in from somebody's map keeps its attribution when it is
     // copied on again. This is where a credit would otherwise quietly evaporate.
-    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [] });
+    // AND SO DO THE CAMPAIGN'S CUSTOM RULES (R-19 / G99). `buildClip` has accepted them since
+    // v3.1.45, and the record said "it now carries the campaign's overrides" - but no Copy ever
+    // passed them, so a planet copied into another campaign still arrived without its custom liquid.
+    // Within one campaign every definition compares identical and is discarded, so this costs nothing.
+    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [], rulePackOverrides: $starmapStore?.rulePackOverrides });
     if (!clip) return;
     putClip(clip, String(node.name ?? 'object'));
     showSummaryContextMenu = false;
@@ -347,7 +351,7 @@
   function handleCutNode(e: CustomEvent<any>) {
     const node = e.detail;
     if (!$systemStore || !node?.id) return;
-    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [] });
+    const clip = buildClip($systemStore, node.id, { credits: $starmapStore?.contentCredits ?? [], rulePackOverrides: $starmapStore?.rulePackOverrides });
     if (!clip) return;
     putClip(clip, String(node.name ?? 'object'), true);
     // The SAME delete the delete action uses - `deleteNode` already takes the whole subtree, so a

@@ -882,6 +882,14 @@ tag's definition cannot travel even though the tag on the node does. Recorded he
 paste into a fresh campaign, confirm the liquid arrived and the body's phase is right; paste the same clip again
 and confirm nothing is duplicated or renamed.
 
+**SSE-SIDE ADDENDUM, 2026-09-11 (stream AA job 4, [[G99]], beta v3.1.70): THE APP NOW PRODUCES RULES-ONLY CLIPS.**
+Settings' definition editors offer Copy on every definition a GM made; the clip is the hub's `buildRulesClip` envelope
+exactly (`nodes: []`, no `root`, `source.title` = the campaign). A copy carries the custom definitions the copied one
+names, and the merge now repoints a gas's condensate liquid and a mix's gases on a clash as well as an engine's fuel.
+**Two corrections to this section's own claims:** the app's body Copy did NOT carry the campaign's overrides until
+this push (`buildClip` took them; no call site passed them); and the starmap's "Paste Rules (...) here" was greyed for
+a rules clip until this push. **Nothing is asked of the hub**: a clip this app writes is one it could already read.
+
 ### R-19 SEAM REPORT (engine half) - hand this to the coordinator; the hub pastes it under R-19
 
 ```

@@ -276,6 +276,25 @@ export function buildClip(
 }
 
 /**
+ * G99: A RULES-ONLY CLIP BUILT IN THIS APP - the hub's `buildRulesClip` envelope exactly: `nodes: []`
+ * and no `root`, which is the pair every reader uses to tell a rules clip from a branch, and the
+ * definitions on `rulePackOverrides`. One envelope and one paste path for a rule copied from the hub's
+ * `/rules` library and one copied out of a campaign's Settings, so the two cannot come to be read
+ * differently.
+ *
+ * `source` is what the paste screen names ("From <title> by <creator>"). A campaign copy names the
+ * campaign; it has no page to link to. Null when there is nothing to carry.
+ */
+export function buildRulesClip(
+  rulePackOverrides: RulePackOverrides | undefined,
+  source?: HubClipSource
+): HubClip | null {
+  const overrides = readClipOverrides(rulePackOverrides);
+  if (!overrides) return null;
+  return { sseClip: CLIP_FORMAT, ...(source ? { source } : {}), nodes: [], rulePackOverrides: overrides };
+}
+
+/**
  * WHAT THIS CLIP IS, in the words a GM uses — "System Sol", "Planet Earth", "Ship Tender".
  *
  * The owner, 2026-09-05: a paste control should "say what - Paste - Planet x, system x, star x".

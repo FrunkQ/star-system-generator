@@ -6,6 +6,13 @@
   import AbsorptionBandsEditor from './AbsorptionBandsEditor.svelte';
   import { blackbodySpectrum, gridShare, GRID_NM } from '$lib/physics/spectrum';
   import { bandAbsorbance } from '$lib/physics/surfaceSpectrum';
+  import CopyDefinitionButton from './CopyDefinitionButton.svelte';
+  import type { RulePackOverrides } from '$lib/types';
+
+  // G99: a mix copied out of here carries the custom gases it is made of, and a gas may exist only in
+  // this dialog so far - so the copy looks here first, then in the campaign.
+  const gasDraft = (section: keyof RulePackOverrides, id: string) =>
+    section === 'gasPhysics' ? gases[id] : undefined;
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -305,6 +312,8 @@
                     <div class="item-card">
                         <div class="item-header">
                             <span class="formula">{key}</span>
+                            <CopyDefinitionButton section="gasPhysics" id={key} definition={gas} pack={rulePack}
+                                overrides={starmap.rulePackOverrides} campaignName={starmap.name} />
                             {#if defaultGasKeys.has(key)}
                                 <button class="delete-btn" on:click={() => removeGas(key)} title="Revert to Default">↺</button>
                             {:else}
@@ -522,6 +531,8 @@
                                 <input type="text" class="name-input" bind:value={entry.value.name} />
                                 <span class="header-summary">{getCompositionSummary(entry.value)}</span>
                             </div>
+                            <CopyDefinitionButton section="atmosphereCompositions" id={entry.value.name} definition={entry} pack={rulePack}
+                                overrides={starmap.rulePackOverrides} draft={gasDraft} campaignName={starmap.name} />
                             {#if !defaultCompositions.has(entry.value.name)}
                                 <button class="delete-btn" on:click={() => removeComposition(idx)}>✕</button>
                             {/if}

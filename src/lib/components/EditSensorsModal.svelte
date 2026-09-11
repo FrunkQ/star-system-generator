@@ -8,6 +8,7 @@
   import FieldHelp from './FieldHelp.svelte';
   import { SENSOR_FIELD_HELP } from '$lib/packs/fieldHelp';
   import { foreground } from '$lib/ui/foreground';
+  import CopyDefinitionButton from './CopyDefinitionButton.svelte';
 
   export let showModal: boolean;
   export let rulePack: RulePack;
@@ -127,6 +128,8 @@
                 <div class="item-card">
                     <div class="item-header">
                         <input type="text" class="name-input" bind:value={sensor.name} placeholder="Sensor Name" />
+                        <CopyDefinitionButton section="sensorDefinitions" id={sensor.id} definition={sensor} pack={rulePack}
+                            overrides={starmap.rulePackOverrides} campaignName={starmap.name} />
                         <button class="delete-btn" on:click={() => deleteItem(sensor.id)}>✕</button>
                     </div>
                     <div class="item-body">

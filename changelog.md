@@ -2,6 +2,12 @@
 
 All notable changes are listed here:
 
+## v3.1.70 - 11th Sep 2026
+
+- **Copy your own liquids, gases, atmosphere mixes, fuels, engines, sensors, life forms and pigments.** In Settings, every one you made (not the ones the app ships) has a Copy button. Paste it into another campaign and it is added there, bringing anything it needs with it: an engine brings its fuel, a gas the liquid it condenses into. If that campaign already has one by the same name it is kept, and the pasted one arrives renamed.
+- Fixed: copying a planet or a whole system and pasting it into a different campaign did not bring that campaign's custom liquids and other rules with it, so the pasted world quietly fell back to the defaults. It does now.
+- Fixed: right-clicking empty space on the starmap showed "Paste Rules here" greyed out when you had copied a rule. It works now.
+
 ## v3.1.69 - 11th Sep 2026
 
 - **Single star systems shared on Explorers can now come into your campaign.** When you add a system to the starmap, the wizard lists the systems people have shared; pick one and it lands where you clicked. And a link to a shared system no longer says it cannot be opened: the app tells you it is ready, and you right-click an empty spot on your map and choose where it goes. Either way the system's creator is credited in your campaign, just as when you paste something from Explorers.

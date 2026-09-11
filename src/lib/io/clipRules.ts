@@ -443,12 +443,106 @@ function withId(section: SectionDef, def: any, id: string): any {
   }
 }
 
+/**
+ * WHICH OTHER DEFINITIONS A DEFINITION NAMES, and how to point it somewhere else - keyed by the
+ * section that does the naming. The definition-to-definition half of `namedBy`/`repoint`, which
+ * answer the same question for NODES.
+ *
+ * TWO CALLERS, ONE TABLE, and they must agree. The MERGE repoints an incoming definition when the one
+ * it names was renamed on a clash (an engine names its fuel by id: rename a clashing fuel and leave
+ * the engine on the old name, and the GM gets an engine with no fuel - the hub's own clip 1, where
+ * `q-drive` burns `dt-slush` and both arrive together). The COPY (G99, `rulesForDefinition`) carries
+ * every custom definition a copied one names, because a clip with the engine and not its fuel pastes
+ * that same engine with no fuel. A reference known to one and not the other is how a copy would
+ * travel whole and still paste broken.
+ *
+ * Three references, each a field the engine reads by name: an engine's `fuel_type_id` (the planner),
+ * a gas's `cloud.condensesTo` (the cloud deck's liquid), and an atmosphere mix's composition keys
+ * (the gases it is made of). Until G99 the merge knew only the first.
+ */
+const DEFINITION_REFERENCES: Partial<Record<keyof RulePackOverrides, {
+  names: (def: any) => { section: keyof RulePackOverrides; id: string }[];
+  repoint: (def: any, section: keyof RulePackOverrides, from: string, to: string) => void;
+}>> = {
+  engineDefinitions: {
+    names: (d) => nonEmpty(d?.fuel_type_id).map((id) => ({ section: 'fuelDefinitions', id })),
+    repoint: (d, section, from, to) => { if (section === 'fuelDefinitions' && d?.fuel_type_id === from) d.fuel_type_id = to; }
+  },
+  gasPhysics: {
+    names: (d) => nonEmpty(d?.cloud?.condensesTo).map((id) => ({ section: 'liquids', id })),
+    repoint: (d, section, from, to) => { if (section === 'liquids' && d?.cloud?.condensesTo === from) d.cloud.condensesTo = to; }
+  },
+  atmosphereCompositions: {
+    names: (d) => Object.keys(d?.value?.composition ?? {}).map((id) => ({ section: 'gasPhysics', id })),
+    repoint: (d, section, from, to) => {
+      const c = d?.value?.composition;
+      if (section === 'gasPhysics' && c && from in c) { c[to] = c[from]; delete c[from]; }
+    }
+  }
+};
+
 /** A definition that points at ANOTHER definition follows it when that one is renamed. */
-function repointDefinition(renamedSection: SectionDef, def: any, from: string, to: string): void {
-  // An engine names its fuel by id. Rename a clashing fuel and leave the engine pointing at the old
-  // name, and the GM gets an engine with no fuel - which is the hub's own clip 1 exactly: `q-drive`
-  // burns `dt-slush`, and both arrive together.
-  if (renamedSection.key === 'fuelDefinitions' && def?.fuel_type_id === from) def.fuel_type_id = to;
+function repointDefinition(renamedSection: SectionDef, defSection: SectionDef, def: any, from: string, to: string): void {
+  DEFINITION_REFERENCES[defSection.key]?.repoint(def, renamedSection.key, from, to);
+}
+
+/** Is this a definition every campaign already has - shipped in the pack under this identity? */
+export function isShippedDefinition(
+  sectionKey: keyof RulePackOverrides,
+  id: string,
+  shippedPack: RulePack | null | undefined
+): boolean {
+  const section = SECTIONS.find((s) => s.key === sectionKey);
+  return !!section && !!id && section.fromPack(shippedPack).has(id);
+}
+
+/**
+ * G99: ONE DEFINITION A GM MADE, AS THE RULES A CLIP CARRIES - the copy half of R-19.
+ *
+ * The owner, 2026-09-11: *"we should be able to add copy options on the various worlds/tech settings
+ * in (not default ones) as the paster knows how to deal with them. A quick easy way of getting new
+ * drive/atmo/liquid presets"*. So this builds exactly what the paste already reads: the definition in
+ * its section's stored shape (a whole record in a list, or keyed in a record section), put through
+ * `readClipOverrides` - the reader's own shape check - so a copy can never produce something a paste
+ * would silently drop.
+ *
+ * AND EVERYTHING IT NAMES THAT A CAMPAIGN WOULD NOT ALREADY HAVE, found through
+ * `DEFINITION_REFERENCES` and followed transitively (a mix names a gas, the gas names a liquid). A
+ * SHIPPED definition is never carried - every campaign already has it. `lookup` answers "what is this
+ * definition here?"; the caller decides whether that is the editor's unsaved draft or the campaign.
+ *
+ * Returns undefined for a shipped definition, a scalar setting (`pigmentModel` has no identity to
+ * copy - DATA-R49), or anything that fails the reader's shape check.
+ */
+export function rulesForDefinition(
+  sectionKey: keyof RulePackOverrides,
+  id: string,
+  definition: unknown,
+  shippedPack: RulePack | null | undefined,
+  lookup: (section: keyof RulePackOverrides, id: string) => unknown = () => undefined
+): RulePackOverrides | undefined {
+  const root = SECTIONS.find((s) => s.key === sectionKey);
+  if (!root || root.shape === 'scalars' || !id || !isPlainObject(definition)) return undefined;
+  if (isShippedDefinition(sectionKey, id, shippedPack)) return undefined;
+
+  const bag: Record<string, any> = {};
+  const seen = new Set<string>();
+  const queue: { section: keyof RulePackOverrides; id: string; def: unknown }[] = [{ section: sectionKey, id, def: definition }];
+  while (queue.length) {
+    const { section: key, id: defId, def } = queue.shift()!;
+    const tag = JSON.stringify([key, defId]);
+    const section = SECTIONS.find((s) => s.key === key);
+    if (seen.has(tag) || !section || !isPlainObject(def)) continue;
+    seen.add(tag);
+    const copy = JSON.parse(JSON.stringify(def));
+    if (section.shape === 'record') bag[key] = { ...(bag[key] ?? {}), [defId]: copy };
+    else bag[key] = [...(bag[key] ?? []), copy];
+    for (const ref of DEFINITION_REFERENCES[key]?.names(copy) ?? []) {
+      if (isShippedDefinition(ref.section, ref.id, shippedPack)) continue;
+      queue.push({ ...ref, def: lookup(ref.section, ref.id) });
+    }
+  }
+  return readClipOverrides(bag);
 }
 
 /**
@@ -529,7 +623,7 @@ export function mergeClipOverrides(
   // DEFINITIONS as well as the nodes, because a definition can name another one.
   for (const r of renamed) {
     for (const node of opts.nodes ?? []) r.section.repoint?.(node, r.from, r.to);
-    for (const [, defs] of takeUp) for (const [, d] of defs) repointDefinition(r.section, d, r.from, r.to);
+    for (const [section, defs] of takeUp) for (const [, d] of defs) repointDefinition(r.section, section, d, r.from, r.to);
   }
 
   return {

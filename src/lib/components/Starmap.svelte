@@ -68,7 +68,7 @@
   // The starmap had no idea anything was in hand: every paste affordance lived in the system view,
   // which is not where a GM lands when they come back from the map library (owner, 2026-09-06).
   import { detectedClip, clipPulse, watchClipboard, readClipboardOnGesture, clipboardHint } from '$lib/io/clipDetect';
-  import { systemNodesFromClip } from '$lib/io/hubClip';  import { systemRootNode } from '$lib/system/barycentres';
+  import { systemNodesFromClip, isRulesOnlyClip } from '$lib/io/hubClip';  import { systemRootNode } from '$lib/system/barycentres';
   import { buildClip } from '$lib/io/hubClip';
   import { putClip } from '$lib/io/clipBuffer';
   import { starmapUndoStatus, undoStarmap, redoStarmap } from '$lib/undo/starmapUndo';
@@ -939,8 +939,13 @@
   // Re-asked each time a menu opens, because a gesture read may have just settled the answer.
   let clipHint: string | null = null;
 
+  // A RULES CLIP IS PASTEABLE HERE TOO (G99). It is not a system, so `systemNodesFromClip` rightly
+  // says no - and the menu used to grey "Paste Rules (a liquid) here" on that answer, although the
+  // route's `pasteClipAsNewSystem` has merged a rules clip at this exact door since R-19. With Copy on
+  // the Settings editors a rules clip is the thing most often in hand here, so the item is enabled
+  // and the route does what it already did.
   $: pasteAsSystem = $detectedClip
-    ? systemNodesFromClip($detectedClip.clip)
+    ? (isRulesOnlyClip($detectedClip.clip) ? ({ ok: true } as const) : systemNodesFromClip($detectedClip.clip))
     : ({ ok: false, problem: 'Nothing is copied.' } as const);
 
   /**
@@ -969,7 +974,8 @@
     if (!sysNode || !root) return;
     const clip = buildClip(sysNode.system, String((root as any).id), {
       credits: starmap.contentCredits ?? [],
-      systemName: sysNode.name
+      systemName: sysNode.name,
+      rulePackOverrides: starmap.rulePackOverrides
     });
     if (!clip) return;
     putClip(clip, String(sysNode.name ?? 'system'));
