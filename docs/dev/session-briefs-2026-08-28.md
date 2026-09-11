@@ -2228,6 +2228,12 @@ the right order is to get eyes on what has already shipped first.
 > 3. **The control**, on the body's own panel and labelled **Age** - not "time", which in this app means the
 >    campaign date and already has a clock, a calendar and transit times attached to it. Say underneath what it
 >    drives, the way the other derived readings on that panel already do.
+>
+>    **WHERE, decided by the owner 2026-09-11 ([[G96]]):** on a PLANET or MOON the slider lives on the
+>    **Temperature tab** (`BodyTemperatureTab.svelte`, which already receives `systemAgeGyr` from
+>    `BodySidePanel.svelte:103` - the inherited age is in its hands today). On a STAR it **REPLACES the
+>    Effective Temperature block** on the Star tab (`BodyStarTab.svelte:970-988`; a star has no Temperature
+>    tab) and shows the resulting temperature beneath it. On a BROWN DWARF likewise, which is job 5.
 > 4. **The inversion, which is what answers the user who started this.** `worlds/orbitSolver.ts` (Stream V,
 >    same day) already does *"ask where a star would keep a body at a given temperature"*. Do the same here: the
 >    GM types a temperature into the field B150 is about, and the app answers *"that is a 9.2 Gyr dwarf - set
@@ -2235,6 +2241,17 @@ the right order is to get eyes on what has already shipped first.
 > 5. **[[B150]]'s interface half**, last, and it is a REMOVAL rather than an explanation - the owner has told
 >    the user *"that temp slider WILL disappear, but you can mess with its age instead"*. For a SUBSTELLAR body
 >    the temperature control goes and the age slider takes its place.
+>
+>    **SUPERSEDED 2026-09-11 - READ [[G96]] FIRST.** The owner moved the fusing-star case: *"On stars it
+>    REPLACES the temp control which also shows temp... direct temp control is now in overrides."* So the
+>    removal is NOT scoped to substellar any more: the temperature control goes on a star too, the age
+>    slider takes its place, and the star's direct temperature becomes a NEW OVERRIDE KEY in
+>    `physics/overrides.ts` - effective temperature, `appliesTo: ['star']`, its own band (not
+>    `surfaceTempK`, which is a planet's mean-surface pin banded on equilibrium). The physics uses whatever
+>    the override says. What a star's AGE then drives is [[G97]], which needs his word on seed-versus-
+>    current-state before you switch a stellar consumer. The paragraph below is kept as the record of
+>    what was true for three days; its "gate it BOTH ways" becomes: control gone on a star AND on a brown
+>    dwarf, override present on the star only.
 >
 >    **GUARD, AND A REAL REGRESSION RISK: A FUSING STAR KEEPS ITS TEMPERATURE CONTROL.** The owner: *"probably
 >    still look to have a stellar temp override on stars available, to do a manual tweak if they want. The

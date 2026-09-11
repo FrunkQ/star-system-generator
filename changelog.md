@@ -2,6 +2,13 @@
 
 All notable changes are listed here:
 
+## v3.1.65 - 11th Sep 2026
+
+- Fixed: opening the Tags tab on a body that carried the same tag twice crashed the whole app. It now shows the tag once and stays up.
+- Board only. Where the new age controls will live: on a planet's Temperature tab; on a star in place of its temperature control, with a direct temperature pin moving to Overrides. Day Length, Retrograde, Lobes and Axial Tilt move to the Orbit tab, and the advanced orbital elements come out from behind their toggle.
+- Board only. Whether a star can be aged live through its life, into a giant and then a remnant: the engine already does this when a system is created, and the plan to do it from the editor is written down for the owner's decision.
+- Board only. The Explorers hub now publishes a list of its maps that the app can read, ten at a time; captured for a panel inside the app.
+
 ## v3.1.64 - 8th Sep 2026
 
 - **A contact binary you pick is now the size of one.** Picking it could hand you a 451 km moon, which is far too big to be two lobes — anything past about 300 km has been pulled round by its own gravity. Sizes now run from under a kilometre to about 130 km, where the real ones are, and the type will no longer attach itself to a body big enough to be round.

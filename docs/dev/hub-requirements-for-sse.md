@@ -919,3 +919,12 @@ ready for: STREAM N - the hub's own check, once the field name moves: copy a bod
            liquid, paste into a fresh campaign, confirm the liquid arrived AND the body's phase is
            right; then paste the same clip again and confirm nothing is duplicated or renamed
 ```
+
+## R-20 — the hub's map list, for a panel inside the app (received 2026-09-11)
+
+The hub side wrote the interface and it is live: `GET https://explorers.starsystemx.com/api/maps`, no
+credentials, CORS open, ten at a time by `sort=new|loved|discussed|detailed`. The full contract, the fields to
+read, and the one trap (`openUrl` is null for a single system because R-18 is still open) are on the board as
+[[G98]]; the source is `starsystemx-creator-hub/docs/prompt-for-sse-2026-09-11-map-list-api.md`. Not started —
+the owner said he would work out the SSE side. His larger point, hosting the default files through the hub, is
+deliberately NOT answered by R-20 and is his call.

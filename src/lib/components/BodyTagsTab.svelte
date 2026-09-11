@@ -119,7 +119,17 @@
         default: (physics[info.group] ||= []).push(item); break;   // physics | inherited | derived
       }
     }
-    return { manual, overrides, authored, poi, physics };
+    // ONE CHIP PER KEY PER GROUP, or the tab does not open at all (A104). Every list below is a
+    // keyed `{#each ... (t.key)}`, and Svelte's keyed reconciler throws on a duplicate key - in
+    // production it surfaces as "Cannot read properties of undefined (reading 'prev')" with no hint
+    // of the cause. A body CAN carry the same key twice: a map assembled by hand or by an older
+    // engine, or two passes that both wrote it. The tab is a reader, not the place to repair the
+    // data, so it shows the first and stays up. The same key in DIFFERENT groups is legitimate
+    // (a manual override beside the physics copy it overrides) and is deliberately kept.
+    const uniq = (items: TagItem[]) => { const seen = new Set<string>(); return items.filter((i) => !seen.has(i.key) && !!seen.add(i.key)); };
+    for (const g of Object.keys(poi)) poi[g] = uniq(poi[g]);
+    for (const g of Object.keys(physics)) physics[g] = uniq(physics[g]);
+    return { manual: uniq(manual), overrides: uniq(overrides), authored: uniq(authored), poi, physics };
   })();
   const isPhysicsNs = (key: string) => isPhysicsNamespace(key);
 

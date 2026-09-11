@@ -59,11 +59,14 @@ sits on top of a model that goes on disagreeing with it. An age *drives* it: an 
 cooler, by the same law, and the value survives a reprocess because it is an INPUT rather than a derivation.
 **Give the GM the cause, not the consequence.**
 
-**A FUSING STAR IS NOT PART OF THIS.** Its temperature is authored and stays authored — the owner: *"the
-physics just uses the actual values, even if they don't make a huge amount of sense."* The substellar pass only
-fires between 8 and 80 Jupiter masses, so above the hydrogen-burning limit nothing overwrites it. Only the
-SUBSTELLAR temperature control is replaced by the age slider. (One exception, well argued and left alone: a
-fusing star below about 1900–2100 K is raised to that floor, and only ever raised.)
+**A FUSING STAR IS PART OF THIS TOO — decided 2026-09-11, reversing the 2026-09-08 guard.** The owner: *"On
+stars it REPLACES the temp control which also shows temp... direct temp control is now in overrides."* So a
+star's panel gets the age slider in place of its Effective Temperature block, and a GM who wants to pin a
+temperature does it as an **override** — a stellar effective-temperature key of its own in
+`physics/overrides.ts`, which the physics then uses regardless (*"the physics just uses the actual values, even
+if they don't make a huge amount of sense"*). The three-day-old version of this paragraph said the star kept
+its control; [[G96]] is the decision and the board row. (The one exception stands: a fusing star below about
+1900–2100 K is raised to that floor, and only ever raised.)
 
 **ABSENT MEANS INHERIT.** A body with no age of its own uses the system's, and the system's age is *never*
 stamped onto bodies when saving — do that and a GM who later ages the system finds it no longer reaches
@@ -155,6 +158,11 @@ Each of these should be an addition, not a redesign. If one is not, this documen
 - **Primordial black holes** — the one floor that is the big bang. Falls out for free.
 - **Galactic mergers** — a new `origin/` member. A star keeps its own age and gains a provenance.
 - **Stellar collisions** — a new `origin/` member, and a formation time that moves.
+- **A star ageing live through its life** — the owner's question of 2026-09-11, answered on [[G97]]: the
+  machinery exists (`physics/stellar-evolution.ts ageStar`: pre-main-sequence, main sequence, giant, remnant)
+  and runs at CREATION only. Driving it from the star's own age slider makes editing and creation one path.
+  The design question is seed versus current state — a generated star stores its zero-age seed, an imported
+  one stores its current state — and it is his to settle before a stellar consumer switches.
 
 ---
 
@@ -164,8 +172,10 @@ Each of these should be an addition, not a redesign. If one is not, this documen
 - Whether a STAR carries its own age too. It should: `flareActivity` reads age, and a captured companion is a
   real case.
 - Metallicity, whenever it arrives, and the cross-check against `age/ancient` and `age/primordial`.
-- Where the control lives on the body's panel, and its label — **Age**, not "time", which in this app means the
-  campaign date and already has a clock, a calendar and transit times attached to it.
+- ~~Where the control lives on the body's panel~~ — settled 2026-09-11 ([[G96]]): the Temperature tab on a
+  planet or moon; in place of the Effective Temperature block on a star. The label stays **Age**, not "time",
+  which in this app means the campaign date and already has a clock, a calendar and transit times attached.
+- Seed versus current state for a star that ages live ([[G97]]) — the owner's call.
 
 ---
 
