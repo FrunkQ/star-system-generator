@@ -139,6 +139,56 @@ export async function fetchHubMapFromUrl(url: string, fetchImpl: typeof fetch = 
  * happen at all — the map's own page when a slug named it, the library's front door otherwise.
  */
 async function fetchBundleBytes(target: string, fetchImpl: typeof fetch, wayThrough: string): Promise<HubFetch> {
+  const got = await fetchHubBytes(target, fetchImpl, MAX_HUB_BYTES);
+  if (got.ok) return got;
+  switch (got.failure.reason) {
+    case 'unreachable':
+      return {
+        ok: false,
+        problem: `Could not reach the map library. Check your connection, or open ${wayThrough} in a browser tab and download the map from there.`
+      };
+    case 'not-found':
+      return { ok: false, problem: 'That shared map no longer exists, or its link has changed. Ask whoever sent it for a fresh one.' };
+    case 'status':
+      return { ok: false, problem: `The map library could not send that map (error ${got.failure.status}). It may be a temporary problem — try again shortly.` };
+    case 'too-large':
+      return got.failure.declaredBytes !== undefined
+        ? { ok: false, problem: `That map is larger than this app will open from a link (${Math.round(got.failure.declaredBytes / 1e6)} MB). Download it from the hub and open it as a file.` }
+        : { ok: false, problem: 'That map is larger than this app will open from a link. Download it from the hub and open it as a file.' };
+    case 'empty':
+      return { ok: false, problem: 'The map library returned an empty file.' };
+    case 'cut-short':
+      return { ok: false, problem: 'The download stopped part way through. Try again, or download the map from the hub and open it as a file.' };
+  }
+}
+
+/**
+ * WHY A FETCH FROM THE HUB PRODUCED NO BYTES - the network's facts, before anybody words them.
+ *
+ * Two things read the hub now: a MAP (the funnel above) and the LIST of maps (R-20,
+ * `hubMapList.ts`). They say different sentences to a GM, because "that map no longer exists" is
+ * wrong about a list. They must not differ in the size cap, the timeout, the credential rule or the
+ * redirect rule, which are properties of fetching from the hub rather than of what is fetched. So the
+ * network half returns a REASON, and each caller turns the reason into its own words.
+ */
+export type HubFetchFailure =
+  | { reason: 'unreachable' }
+  | { reason: 'not-found' }
+  | { reason: 'status'; status: number }
+  | { reason: 'too-large'; declaredBytes?: number }
+  | { reason: 'empty' }
+  | { reason: 'cut-short' };
+
+/**
+ * FETCH BYTES FROM THE HUB, capped while they arrive. Never throws. The address must already have
+ * been decided safe by the caller - a validated slug on `HUB.origin`, an allow-listed URL, or the
+ * list endpoint built from `HUB` itself - because this function fetches whatever it is given.
+ */
+export async function fetchHubBytes(
+  target: string,
+  fetchImpl: typeof fetch,
+  maxBytes: number
+): Promise<{ ok: true; bytes: Uint8Array } | { ok: false; failure: HubFetchFailure }> {
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS) : null;
   let response: Response;
@@ -151,39 +201,28 @@ async function fetchBundleBytes(target: string, fetchImpl: typeof fetch, wayThro
       redirect: 'follow'
     });
   } catch {
-    return {
-      ok: false,
-      problem: `Could not reach the map library. Check your connection, or open ${wayThrough} in a browser tab and download the map from there.`
-    };
+    return { ok: false, failure: { reason: 'unreachable' } };
   } finally {
     if (timer) clearTimeout(timer);
   }
 
-  if (response.status === 404) {
-    return { ok: false, problem: 'That shared map no longer exists, or its link has changed. Ask whoever sent it for a fresh one.' };
-  }
-  if (!response.ok) {
-    return { ok: false, problem: `The map library could not send that map (error ${response.status}). It may be a temporary problem — try again shortly.` };
-  }
+  if (response.status === 404) return { ok: false, failure: { reason: 'not-found' } };
+  if (!response.ok) return { ok: false, failure: { reason: 'status', status: response.status } };
 
   // The declared length is a CLAIM, so it is used only as an early exit; the real cap is applied to
   // the bytes as they arrive, below.
   const declared = Number(response.headers.get('content-length') ?? '');
-  if (Number.isFinite(declared) && declared > MAX_HUB_BYTES) {
-    return { ok: false, problem: `That map is larger than this app will open from a link (${Math.round(declared / 1e6)} MB). Download it from the hub and open it as a file.` };
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    return { ok: false, failure: { reason: 'too-large', declaredBytes: declared } };
   }
 
   try {
-    const bytes = await readCapped(response, MAX_HUB_BYTES);
-    if (!bytes) {
-      return { ok: false, problem: 'That map is larger than this app will open from a link. Download it from the hub and open it as a file.' };
-    }
-    if (!bytes.length) {
-      return { ok: false, problem: 'The map library returned an empty file.' };
-    }
+    const bytes = await readCapped(response, maxBytes);
+    if (!bytes) return { ok: false, failure: { reason: 'too-large' } };
+    if (!bytes.length) return { ok: false, failure: { reason: 'empty' } };
     return { ok: true, bytes };
   } catch {
-    return { ok: false, problem: 'The download stopped part way through. Try again, or download the map from the hub and open it as a file.' };
+    return { ok: false, failure: { reason: 'cut-short' } };
   }
 }
 

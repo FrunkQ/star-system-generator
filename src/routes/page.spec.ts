@@ -158,4 +158,35 @@ describe('+page.svelte', () => {
     await waitFor(() => expect(get(systemStore)?.id).toBe('sys1'));
     expect(queryByText('Test Starmap')).not.toBeInTheDocument();
   });
+
+  // R-20 / G98 (Stream AA job 1): A MAP PICKED FROM THE EXPLORERS LIST OPENS THROUGH THE ONE DOOR.
+  // The panel only hands up an address; what matters is that the ROUTE then fetches exactly that
+  // address, classifies the bytes, validates them and puts THAT campaign in the store - which is
+  // `openStarmapPayload`, reached the way `?open=` reaches it. The fetch is a double answering with a
+  // synthesised list and a minimal campaign; the live hub is never reached (`src/setup.ts`).
+  it('opens a map picked from the Explorers list on the New Starmap screen', async () => {
+    const { listFetch, hubListPage } = await import('$lib/hub/hubMapListFixtures');
+    const campaign = { id: 'hub-picked', name: 'Picked From Explorers', distanceUnit: 'ly', systems: [], routes: [] };
+    const double = listFetch((url) =>
+      url.includes('/api/maps?')
+        ? { json: hubListPage(3) }
+        : url === 'https://explorers.starsystemx.com/api/download/synthetic-map-2'
+          ? { json: campaign }
+          : { status: 404 }
+    );
+    vi.stubGlobal('fetch', double.impl);
+    try {
+      const { findByRole, findByText } = renderPage();
+      await fireEvent.click(await findByRole('button', { name: /Synthetic Map 2/ }, { timeout: 8000 }));
+      await waitFor(() => expect(get(starmapStore)?.id).toBe('hub-picked'), { timeout: 8000 });
+      expect(get(starmapStore)?.name).toBe('Picked From Explorers');
+      expect(await findByText(/Opened "Picked From Explorers" from the shared map library/)).toBeInTheDocument();
+      // The address fetched is the one the list named, with no credentials - the `?open=` path's own rules.
+      const download = double.calls.find((c) => c.url.includes('/api/download/'));
+      expect(download?.url).toBe('https://explorers.starsystemx.com/api/download/synthetic-map-2');
+      expect(download?.init?.credentials).toBe('omit');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

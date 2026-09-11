@@ -21,6 +21,18 @@ export interface HubConfig {
   /** Where a GM goes to browse. The funnel's other direction. */
   browseUrl: string;
   /**
+   * R-20: the map LIST, as JSON, for the panel inside the load screens. No account, CORS open,
+   * cached 60 s at the hub's edge. The contract is the hub's
+   * `docs/prompt-for-sse-2026-09-11-map-list-api.md`, read where it lives.
+   */
+  listPath: string;
+  /**
+   * The tag the owner puts on the maps that stand in for the ones this app used to ship (G98,
+   * 2026-09-11). The New Starmap screen asks the list for it first. The hub's to spell, so it is
+   * spelt once, here.
+   */
+  starterTag: string;
+  /**
    * UPLOAD IS OFF UNTIL THE HUB SIDE EXISTS. Two things are owed and neither may be invented: the
    * device-code pairing endpoint, and the exact attestation wording (it must be shown verbatim and
    * must never be pre-ticked, so a placeholder would defeat its entire purpose). The request for
@@ -56,6 +68,8 @@ export const HUB: HubConfig = {
   // GM should be the real one rather than a redirect (hub note, 2026-09-03).
   pagePath: (slug) => `/s/${encodeURIComponent(slug)}`,
   browseUrl: HUB_ORIGIN,
+  listPath: '/api/maps',
+  starterTag: 'default',
   uploadEnabled: false
 };
 

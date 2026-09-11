@@ -1037,16 +1037,35 @@
    */
   // Where the GM was when they asked, so declining puts them back rather than somewhere else.
   //
-  // FALSE SINCE 2026-09-06, and the reason is the move: the paste field left the welcome screen for
-  // `LoadSourceModal`, which is only reachable from the rail - and the rail is only reachable with
-  // a campaign already open. So declining leaves the GM exactly where they were standing. The
-  // no-campaign case is still covered, by `declineHubMap`'s own `!$starmapStore` test.
+  // FALSE FOR A PASTED CODE SINCE 2026-09-06, and the reason is the move: the paste field left the
+  // welcome screen for `LoadSourceModal`, which is only reachable from the rail - and the rail is only
+  // reachable with a campaign already open. So declining leaves the GM exactly where they were
+  // standing. The no-campaign case is still covered, by `declineHubMap`'s own `!$starmapStore` test.
+  // TRUE AGAIN FOR ONE CASE SINCE 2026-09-11 (R-20): a map picked from the Explorers list on the New
+  // Starmap screen, which may be up over an open campaign (File > New Starmap) - `openHubFromList`
+  // sets it, so a decline returns to that screen rather than dropping the GM behind it.
   let hubCameFromLoadScreen = false;
   async function openHubBySlug(slug: string) {
     hubCameFromLoadScreen = false;
     showLoadStarmapSource = false;
     showNewStarmapModal = false;
     await runHubOpen(slug);
+  }
+
+  /**
+   * A MAP PICKED FROM THE EXPLORERS LIST (R-20 / G98) - in Load Starmap or on the New Starmap screen.
+   * It arrives as the map's `downloadUrl`, so it is opened BY ADDRESS, through `runHubOpenFromUrl`:
+   * the allow-list, the classification, the replace-or-keep question and the one-step-back are all
+   * the ones a `?open=` link gets. There is deliberately no fetch here.
+   *
+   * Picked on the New Starmap screen, a decline or a failure puts the GM back on that screen rather
+   * than on whatever was behind it; picked in Load Starmap, the campaign behind it is where they were.
+   */
+  async function openHubFromList(url: string) {
+    hubCameFromLoadScreen = showNewStarmapModal;
+    showLoadStarmapSource = false;
+    showNewStarmapModal = false;
+    await runHubOpenFromUrl(url);
   }
 
   async function maybeOpenHubMap() {
@@ -2686,6 +2705,7 @@
       kind="campaign"
       on:file={() => { showLoadStarmapSource = false; handleUploadStarmap(); }}
       on:openHub={(e) => openHubBySlug(e.detail)}
+      on:openFromExplorers={(e) => openHubFromList(e.detail)}
       on:close={() => (showLoadStarmapSource = false)} />
   {/if}
 
@@ -2735,6 +2755,7 @@
         on:load={handleLoadStarmap} 
         on:upload={handleUploadStarmap} 
         on:loadExampleStarmap={handleLoadExampleStarmap}
+        on:openFromExplorers={(e) => openHubFromList(e.detail)}
         on:realSkyImport={() => (showRealSkyImportModal = true)}
     />
     {#if showRealSkyImportModal}

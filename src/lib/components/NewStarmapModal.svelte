@@ -3,8 +3,16 @@
   import type { RulePack } from '$lib/types';
   import { APP_VERSION, APP_DATE } from '$lib/constants';
   import { loadBaseMapManifest } from '$lib/map/baseMapManifest';
+  import type { HubMapSummary } from '$lib/hub/hubMapList';
   // UI-C6: this dialog now yields the phone screen like every other one (A84).
   import { foreground } from '$lib/ui/foreground';
+  // R-20 / G98, 2026-09-11: the examples come from Explorers now. The owner: *"the load/new map
+  // modals are going to link to those available on the Explorers site RATHER than default ones
+  // shipped"*. The list starts on the maps he tags as starters; a click sends the map's ADDRESS up,
+  // and the route opens it through the one door `?open=` uses. This screen still carries no paste
+  // field and no parser - that decision (2026-09-06) is unchanged, because nobody arrives here
+  // holding a code.
+  import HubMapPanel from './HubMapPanel.svelte';
 
   export let rulepacks: RulePack[];
   export let hasSavedStarmap: boolean;
@@ -35,6 +43,11 @@
     const stored = Number(localStorage.getItem('splash-blurb-index'));
     blurbIndex = Number.isFinite(stored) ? ((stored % SPLASH_BLURBS.length) + SPLASH_BLURBS.length) % SPLASH_BLURBS.length : 0;
     localStorage.setItem('splash-blurb-index', String((blurbIndex + 1) % SPLASH_BLURBS.length));
+  }
+
+  /** A map picked from the Explorers list: its ADDRESS goes up, and the route's one door does the rest. */
+  function openListed(event: CustomEvent<HubMapSummary>) {
+    dispatch('openFromExplorers', event.detail.downloadUrl);
   }
 
   let starmapName = 'My Starmap';
@@ -83,6 +96,8 @@
                 {#if m.description}<small>{m.description}</small>{/if}
               </button>
             {/each}
+            <h4 class="explorers-heading">Or one shared on Explorers</h4>
+            <HubMapPanel startWithStarters on:open={openListed} />
         </section>
 
         <section class="option-group">
@@ -226,6 +241,12 @@
     margin-bottom: 6px;
   }
   .option:last-child { margin-bottom: 0; }
+  .explorers-heading {
+    margin: 10px 0 6px;
+    font-size: 0.8em;
+    font-weight: normal;
+    color: var(--text-faint);
+  }
   .option strong { display: block; }
   .option small {
     display: -webkit-box;

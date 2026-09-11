@@ -97,6 +97,26 @@ describe('R-17: one door into the campaign store', () => {
 	});
 });
 
+describe('R-20: a map picked from the Explorers list comes in by the same door', () => {
+	// The list inside Load Starmap and New Starmap (G98) is a THIRD way somebody asks for a hub map.
+	// It is not a third way of getting bytes: it hands over an ADDRESS, and an address already has
+	// a function. What this pins is the thing that would go wrong later - a list handler that grew
+	// its own fetch, or its own classify, because it was "just the panel".
+	it('opens by address, through runHubOpenFromUrl, and does nothing else on its own', () => {
+		const body = bodyOf('async function openHubFromList(url: string)');
+		expect(body).toContain('runHubOpenFromUrl(url)');
+		for (const forbidden of ['fetch(', 'fetchHubMapFromUrl', 'classifySaveFile', 'hubOffer =', 'openStarmapPayload', 'openHubBytes']) {
+			expect(body, `openHubFromList must not ${forbidden} - runHubOpenFromUrl already does`).not.toContain(forbidden);
+		}
+	});
+
+	it('is what BOTH load screens call when a listed map is picked', () => {
+		const wired = src.split('\n').filter((l) => l.includes('on:openFromExplorers='));
+		expect(wired, 'Load Starmap and New Starmap, and nothing else').toHaveLength(2);
+		for (const line of wired) expect(line).toContain('openHubFromList(e.detail)');
+	});
+});
+
 describe('R-17: the link is taken off the address bar, whichever one it was', () => {
 	it('clears by parameter name rather than by a hardcoded `hub`', () => {
 		const body = bodyOf('function clearHubParam(');

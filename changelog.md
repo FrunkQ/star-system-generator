@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.67 - 11th Sep 2026
+
+- **Load Starmap and the New Starmap screen now list maps shared on Explorers.** Ten at a time, best written-up first, or newest, most starred or most discussed; each shows its cover, what is in it and how many people have taken it. Click one and it opens, asking first if you already have a campaign open, exactly as an "Open in Star System Explorer" link does. If the app cannot reach Explorers it says so and offers to try again. The New Starmap screen starts on the starter maps, and says there are none yet until they are published there.
+
 ## v3.1.66 - 11th Sep 2026
 
 - Fixed: placing the same bundled example system twice, or both Sol examples, gave two systems one id; the save went out and the next load refused the whole map with "Duplicate System ID". A new system now takes the first free id at the door, and a map already carrying the clash is repaired on load, both systems kept, with a banner saying what was renamed.

@@ -931,3 +931,18 @@ Vercel."* So the hub DOES host the defaults, by its own suggested route (hub map
 filter on), and the shipped example maps leave this bundle. The stream also carries R-18 (a single system through
 the wizard's door, so the hub can fill `openUrl`) and [[G99]] (Copy on non-default definitions, the other half of
 R-19). Prompt: `../stream-aa-prompt.md`.
+
+**SSE-SIDE STATUS, 2026-09-11 (stream AA job 1): THE PANEL SHIPPED on beta at v3.1.67.** Load Starmap and the New
+Starmap screen list Explorers maps from `GET /api/maps` - `kind=starmap`, `sort=detailed` first with the other three a
+click away, `limit=10`, `page` through, `credentials: 'omit'`. It reads ONLY `slug title blurb kind url downloadUrl
+coverUrl system_count body_count construct_count hearts_count comments_count download_count`, builds each card from
+those names, and never spreads the object; `openUrl` is not read at all, because a click opens `downloadUrl` through
+the same function `?open=` uses. Every address in the answer passes the R-17 allow-list before it becomes a fetch, a
+link or an image. SEEN against the live hub (0.59.2): both campaigns listed with covers, one click opened Local
+Neighbourhood. **Two things this side needs from the hub, written in
+`starsystemx-creator-hub/docs/note-from-sse-2026-09-11-map-list-creator-and-default-tag.md`:** (1) a creator on each map
+- the owner asked for it on the card and the list sends none; (2) the owner's `default` tag must be findable by `tag=` -
+measured, the filter matches `auto_tags` and not the cartographer's `tags`, so `tag=real-astronomy` returns nothing
+though Local Neighbourhood carries it. The New Starmap screen asks for `tag=default` first and says "No starter maps on
+Explorers yet" until that answers. **R-18 IS STILL OPEN**: Load System keeps its plain link to the library, and
+`openUrl` stays null for systems until job 3 gives a single system the wizard's door.

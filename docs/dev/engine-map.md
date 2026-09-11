@@ -6064,8 +6064,10 @@ WHERE: `hub/hubConfig.ts` (the ONE place a hub URL exists, the flags, and R-17's
 `parseHubReference`, `fetchHubMap`, `fetchHubMapFromUrl`, and the shared `fetchBundleBytes`),
 `hub/hubSaves.ts` (the GM's preference), `hub/hubUpload.ts` (R-04, built and parked), and in
 `routes/+page.svelte` `hubOpenRequest` / `runHubOpen` / `runHubOpenFromUrl` / `openHubBytes` /
-`openHubMap` / `declineHubMap`. Gated by `hub/hubClient.spec.ts`, `hub/hubOpenUrl.spec.ts`,
-`routes/hubOneDoor.spec.ts` and `hub/hubUpload.spec.ts`.
+`openHubMap` / `declineHubMap` / `openHubFromList`; R-20's list is `hub/hubMapList.ts` and
+`components/HubMapPanel.svelte`. Gated by `hub/hubClient.spec.ts`, `hub/hubOpenUrl.spec.ts`,
+`routes/hubOneDoor.spec.ts`, `hub/hubUpload.spec.ts`, `hub/hubMapList.spec.ts`,
+`components/HubMapPanel.spec.ts` and the Explorers case in `routes/page.spec.ts`.
 RULE ONE: **the slug is validated BEFORE a URL is built from it, never after.** Encoding is a second
 line of defence, not the first: `../../admin`, `//evil.example.com/x` and `a/b` are refused before
 `encodeURIComponent` is reached, and a refused slug never touches the network at all.
@@ -6150,6 +6152,32 @@ decided they want to open something. Putting it back is pinned against in `loadS
 **A NAME AND A KIND ARE DIFFERENT THINGS** - passing the kind into `SisterFileModal`'s name slot
 shipped the sentence "shared map is a saved campaign", so the offer takes both and falls back to the
 campaign's own name when the caller has no filename.
+RULE ONE-E (R-20 / [[G98]], Stream AA, 2026-09-11): **THE EXPLORERS LIST IS A THIRD WAY TO ASK FOR
+A MAP, NOT A THIRD WAY TO GET ONE, AND THE LOAD SCREENS NOW DEPEND ON THE NETWORK.** Load Starmap and
+New Starmap mount `HubMapPanel`, which fetches `GET /api/maps` on open. A click hands up the map's
+`downloadUrl` and the route's `openHubFromList` gives it to `runHubOpenFromUrl` - so a listed map gets
+the allow-list, the classify, the question and the one-step-back a `?open=` link gets, and the source
+gate pins that `openHubFromList` fetches, classifies and opens NOTHING itself. Four things that are not
+visible from the code: (1) **the list RESPONSE is untrusted input too** - every address in it goes
+through `isTrustedOpenUrl` before it becomes a fetch, a link or an `<img>`; an entry whose download is
+off the hub is DROPPED, and a cover off the hub is blanked, because that image is a request made on
+the GM's behalf to a host nobody chose. The parser builds each summary from NAMED fields and never
+spreads the object: the hub says its other columns "may change without a version bump". (2) **the
+network half is SHARED, not copied** - `fetchHubBytes` returns a REASON (`unreachable`, `not-found`,
+`status`, `too-large`, `empty`, `cut-short`) and each caller words it, because "that map no longer
+exists" is wrong about a list, while the cap, timeout, `credentials: 'omit'` and redirect rule must
+not differ. Extracted with the eight map messages compared old against new, identical. (3) **offline
+is a SENTENCE, never an empty box** - loading, failed and empty are three states, and the stale-answer
+guard (`latest`) stops a slow page for the previous order overwriting the current one. (4) **`src/setup.ts`
+REJECTS every hub host in tests**, so any spec that renders a load screen without stubbing `fetch`
+sees the offline line instead of reaching the live hub; a spec wanting a list stubs `fetch` itself.
+**HUB-SIDE TRAP for the starter list:** the hub's `tag=` filter matches `auto_tags` (derived from the
+file), NOT the cartographer's `tags` - measured 2026-09-11, `tag=real-astronomy` found nothing though
+Local Neighbourhood carries it. A starter tag added as a cartographer tag is invisible to
+`HUB.starterTag` until the hub changes that; asked in
+`starsystemx-creator-hub/docs/note-from-sse-2026-09-11-map-list-creator-and-default-tag.md`, with a
+creator field. WHAT STILL WORKS OFFLINE: the file picker, the paste field, and the bundled examples on
+the New Starmap screen (Stream AA job 2 retires all but Local Neighbourhood, owner's decision).
 RULE SIX: **`created_with` is a capability marker and NEVER a refusal.** An older build's map opens
 exactly as it always did; `compareBuildVersions` exists only to decide whether there is anything
 worth mentioning, and an unparseable stamp compares EQUAL so a garbled version produces silence
