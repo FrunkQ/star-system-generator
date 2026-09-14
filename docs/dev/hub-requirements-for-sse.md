@@ -978,6 +978,11 @@ tag was dropped is unfiltered - `tag=Bad%20Tag&kind=starmap` returned every map.
 on this side so a misspelling cannot turn "Starter maps" into "all maps" in silence. Seen in a browser against 0.61.2:
 "by Frunk", "by SONION", and My Starmap's warning line.
 
+**THE `default` TAG IS ADMIN-ONLY (hub D-91, 0.62.0; reply quoted under R-18):** `tag=default` returns exactly the
+admin's picks and nothing a cartographer can add. **Measured 2026-09-14: none are set yet**, so the New Starmap screen
+and the wizard say "No starter maps on Explorers yet", and Stream AA job 2 - the bundled examples leaving the app - is
+built and held until the hub carries them under that tag.
+
 ## R-18 - a single system from the hub: ADDED where the GM chooses (engine half, 2026-09-11)
 
 The hub's ask (its `sse-requirements.md` R-18): *"`?open=` should take a single system too, not only a campaign"* -
@@ -1021,3 +1026,28 @@ not done:  the kind gate in the hub's openInSse.ts and its label - the hub's; pr
 ready for: STREAM N - on beta: an "Add System to SSE" link opens the app, the banner shows, right-click places it,
            the credit is on the campaign
 ```
+
+### R-18 SEAM REPLY (hub half) - quoted whole, relayed by the owner 2026-09-14
+
+```
+SEAM REPLY | R-18 + R-20 default | hub | 0.62.0 (22ee32a) | live
+R-18:      openUrl filled for kind=system on its own row add_system_in_sse_url (default https://beta.starsystemx.com/?open=);
+           campaigns unchanged on open_in_sse_url (production). Hub button label: "Add System to SSE". Copy kept.
+           Owner moves the system row to production at the R-18 release. "off" = null openUrl for systems - still handle null.
+contract:  GET /api/maps/<slug> `title` and `by` pinned by a test
+default:   admin-only (hub D-91): one admin switch on the map page; upload meta.tags, creator tag boxes,
+           tag proposals and tag review can neither add nor remove it. tag=default = exactly the admin's picks.
+verified:  live - 7 systems openUrl beta, 2 starmaps openUrl production; /s/sol shows Add System to SSE;
+           /api/maps/sol {"title":"Sol","by":"keizer"}
+doc:       docs/prompt-for-sse-2026-09-11-map-list-api.md updated
+```
+
+**SSE-SIDE, MEASURED 2026-09-14 against hub 0.62.0 and the deployed beta (v3.1.70):** every `kind=system` map's
+`openUrl` is `https://beta.starsystemx.com/?open=<download>` and every campaign's is `https://starsystemx.com/?open=...`;
+`/api/maps/sol` and `/api/maps/hip065-system-2` both carry `title` and `by`. **Nothing changes on this side.** The app
+never reads `openUrl` - the list opens `downloadUrl` - so a null one when the hub sets its system row to "off" costs
+nothing here; the link the hub builds is the exact shape v3.1.69 takes. **The R-18 release is two steps and neither is a
+stream's:** the owner releases beta to production, then moves the hub's `add_system_in_sse_url` row to the production
+prefix - in that order, or every visitor meets the old refusal. **READY FOR STREAM N** (owner-fired): open a system's
+page on Explorers, press "Add System to SSE", see the banner on beta, right-click empty space, "Add <name> here", and
+find the cartographer's credit on the campaign.

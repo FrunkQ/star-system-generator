@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.71 - 14th Sep 2026
+
+- Board only. Explorers now shows "Add System to SSE" on shared single systems, pointing at the beta for now, and only the site's admin can mark a map as one of the starter maps the app lists first. Nothing in the app needed changing for either.
+
 ## v3.1.70 - 11th Sep 2026
 
 - **Copy your own liquids, gases, atmosphere mixes, fuels, engines, sensors, life forms and pigments.** In Settings, every one you made (not the ones the app ships) has a Copy button. Paste it into another campaign and it is added there, bringing anything it needs with it: an engine brings its fuel, a gas the liquid it condenses into. If that campaign already has one by the same name it is kept, and the pasted one arrives renamed.
