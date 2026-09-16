@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.72 - 16th Sep 2026
+
+- Board only. The project pauses with its state written down: where each piece of work stopped, the one change built but held until the starter maps are on Explorers, the decisions waiting on the owner, and how to pick it all up again.
+
 ## v3.1.71 - 14th Sep 2026
 
 - Board only. Explorers now shows "Add System to SSE" on shared single systems, pointing at the beta for now, and only the site's admin can mark a map as one of the starter maps the app lists first. Nothing in the app needed changing for either.

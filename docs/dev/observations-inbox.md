@@ -926,6 +926,60 @@ human-habitability becomes the DEFAULT rather than the whole model.
 
 **WHAT IS STILL OPEN IS DATA, NOT CALCULATION — the two things this handover already names:** **[[B74]]** the L/T/Y mass bands (still `[0.06,0.08]`, `[0.03,0.06]`, `[0.01,0.03]`, so the implausible tags still fire on Luhman 16, WISE 0855, SCR 1845) and **[[B73]]** the classifier's `undefined > 10 → terrestrial` fallback plus the missing planet-side class. **HANDED TO THE BIOSPHERE/COLOUR SESSION per the owner ("hand the BD fixes to the Biosphere toolkit to finish") — it holds the substellar chain already, and the acceptance test is in B74.**
 
+## SESSION STATE AT PAUSE - 2026-09-16 (Coordinator 8) - READ THIS FIRST ON RETURN
+
+The owner paused the project on 2026-09-16: *"going to take a break from this project - get all your memory and co
+files totally up to date - so we can come back to this later."* This section is the state. The restart door is
+`C:\Development\star-system-explorer-v2\coordinator-9-prompt.md`; the memory file
+`project_sse_v3_rc_state.md` holds the recipe and every trap. Verify with git before trusting any line of this.
+
+**CHANNELS.** production = `origin/main` = v3.1.48 (2026-09-08, the 3.1 bug-fix release, prod == beta then).
+beta = `origin/beta` = v3.1.72 (this push). Everything since v3.1.48 is BETA-ONLY: [[C20]] and [[C21]] (the 3D
+lockups), [[G92]] R-19, [[A104]], [[A107]], [[G98]]/[[G99]] the Explorers list and copy, R-18. A release is his
+call, by the read-tree recipe, with the new step of checking his release notes line by line against the changelog.
+**R-18's release is two steps in order:** production, then the hub flips its "Add System to SSE" row to the
+production prefix (hub D-92).
+
+**THE ONE HELD COMMIT - deliberately unpushed, and the only held work the sweep found.** Worktree `../sse2-hubmaps`,
+branch `wt/hubmaps`, commit `2e2eeca6`: Stream AA job 2, the bundled example maps leaving the app (Local
+Neighbourhood and Sol 2030 still ship; the science-fiction map and ten example systems move to `hub-content/`;
+Testion becomes a test fixture; the wizard's example dropdown retires). **Trigger:** the owner tags his copies
+`default` on the hub - admin-only, hub D-91; measured 2026-09-14, none set yet. **Then:** rebase that commit on
+beta, bump, `npm run manifest`, build, push. Not before the maps are on the hub - the brief's order.
+
+**THE STREAMS.**
+| stream | rows | state at pause | where |
+|---|---|---|---|
+| S, T | floating chrome, skins | shipped 3.1.x | prompt files only, historic |
+| U | [[D29]] real-sky importer | job 1 done (2026-09-08: the ADQL measured, two roots, the K-band relations); jobs 2 (sizes) and 3 (multiples) next | `../stream-u-prompt.md`; worktree `sse2-realsky` clean |
+| V | [[G87]] Traveller main worlds | job 1 done v3.1.22 (`worlds/mainWorldPlacement.ts`, nothing imports it yet); wiring is job 5; his "Traveller mode from the campaign's tags" idea wants a row | `../stream-v-prompt.md`; worktree `sse2-mainworld` clean |
+| W | [[C20]] | complete, handover written | - |
+| X | [[G92]] R-19 | complete v3.1.46 | - |
+| Y | [[G90]] [[G91]] [[G95]] | complete through v3.1.64; image closed (no Arrokoth) | - |
+| Z | [[G94]] [[G96]] [[G97]] [[B150]] | NOT STARTED; prompt current as of 2026-09-11 (placement per G96, fusing-star guard superseded); [[G97]] needs his word before job 2 reaches stars | `../stream-z-prompt.md` |
+| AA | [[G98]] [[G99]] R-18 [[A107]] | jobs 1, 3, 4, 5 shipped v3.1.67-71; job 2 BUILT AND HELD (above) | `../stream-aa-prompt.md`; worktree `sse2-hubmaps` |
+| UI (unnamed) | [[A105]] [[A106]] + G96's placement | briefed on the rows, no prompt file yet | write one when he says go |
+
+**THE OWNER'S OPEN DECISIONS** (ask, do not assume): [[A103]] categorical override; [[B150]] STELLAR_FLOOR_K (a
+500 K fusing star?); [[G97]] seed versus current state for a star that ages live; [[A106]] whether G64 re-home keeps
+its own small disclosure; [[G87]]'s second thought as a row; tagging his hub maps `default`; when to release.
+
+**EYEBALLS NOBODY HAS SEEN** (each thirty seconds, on beta): [[A104]] open the map that crashed, click Tags;
+[[A107]] load the file that refused, both Sols present, the banner names the rename; Stream AA's lists in Load
+Starmap and New Starmap and the wizard's Explorers systems; Copy on a custom liquid then paste into a fresh
+campaign. The real file for A104/A107 is `../user-test-files/a104-my-starmap-hub-download-2026-09-11.json`.
+
+**THE SWEEP, 2026-09-16.** ~45 worktrees. Ahead of `origin/beta`: `wt/hubmaps` +1 (held, above);
+`bugfix/parallel-session` +1 (the other account's old debug-dump port, known since V2 - not ours); the prod-side
+trees (`sse-prod-310`, `sse-prod-hotfix`, `sse2-uibatch-prod`, `sse-main-debug` on `main`) by production history
+only. Nothing else. Most `sse2-*` worktrees are finished streams and safe to prune when he wants the disk back.
+
+**NEXT FREE IDS at the pause:** A108, B151, C22, D30, G100 - re-check both forms at write time.
+
+**IF THE HUB MOVED WHILE WE WERE AWAY:** its own memory is `project_creator_hub.md`; its replies to this side land in
+`C:\Development\starsystemx-creator-hub\docs\` as `prompt-for-sse-*` and are quoted, never copied, into
+`docs/dev/hub-requirements-for-sse.md`.
+
 ## SESSION STATE at handover, 2026-08-17 (outgoing coordinator) — READ THIS FIRST
 
 **Everything else in this file is durable. This is not: it is who exists, what is live, and what to pick up. It is the only thing a successor cannot reconstruct from the repo.**
