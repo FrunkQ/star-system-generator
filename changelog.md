@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.75 - 23rd Sep 2026
+
+- On-demand static content moves from a one-hour cache to 30 days: `examples`, `example-starmaps` (the starmap files), `realsky`, `space-quotes.txt`. Two carve-outs stay short because they are INDEXES that grow when content is added, and pinning them would hide the very thing that was added: `example-starmaps/manifest.json` and `shipped-content.json`. `temporal/calendars.json` also stays at an hour - it is fetched on every load and carries the temporal anchor, so a month of staleness buys one request per hour. `rulepacks` unchanged pending a decision: it is 11 files fetched on EVERY app load and is now the largest repeat cost.
+
 ## v3.1.74 - 23rd Sep 2026
 
 - Docs only. `docs/dev/cloudflare-migration.md`: why the edge-request bill was what it was, measured; the cache-header fix that v3.1.73 shipped; and a phased Cloudflare Workers runbook with the parallel-run traps (test hostnames are a different origin so saved campaigns do not appear; the hub and `relay-ice` origin allow-lists both need the test hostname) and a rollback.
