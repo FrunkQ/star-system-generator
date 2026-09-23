@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.76 - 23rd Sep 2026
+
+- Fix: `example-starmaps/manifest.json` was getting the 30-day rule instead of the one-hour one, so a newly added starmap would have stayed invisible for up to a month. MEASURED on beta: where two rules in `vercel.json` match the same path, the LAST one wins, not the most specific. The carve-out now sits after the directory wildcard.
+
 ## v3.1.75 - 23rd Sep 2026
 
 - On-demand static content moves from a one-hour cache to 30 days: `examples`, `example-starmaps` (the starmap files), `realsky`, `space-quotes.txt`. Two carve-outs stay short because they are INDEXES that grow when content is added, and pinning them would hide the very thing that was added: `example-starmaps/manifest.json` and `shipped-content.json`. `temporal/calendars.json` also stays at an hour - it is fetched on every load and carries the temporal anchor, so a month of staleness buys one request per hour. `rulepacks` unchanged pending a decision: it is 11 files fetched on EVERY app load and is now the largest repeat cost.
