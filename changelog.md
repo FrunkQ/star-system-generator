@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.73 - 23rd Sep 2026
+
+- Everything under `static/` was served with `max-age=0, must-revalidate`, so every browser revalidated all 245 of those files - 62 MB, 50 MB of it planet images - on every page load. Each revalidation is a billable edge request returning a 304 and almost no bytes, which is why request count sat at 91% of the monthly cap while data transfer sat at 25%. `vercel.json` now sets real cache lifetimes: 30 days for images, models, draco and PWA icons; one hour for rule packs, examples, starmaps and shipped content. `sw.js` deliberately keeps `max-age=0` - the in-app update prompt only fires when its bytes change.
+
 ## v3.1.72 - 16th Sep 2026
 
 - Board only. The project pauses with its state written down: where each piece of work stopped, the one change built but held until the starter maps are on Explorers, the decisions waiting on the owner, and how to pick it all up again.
