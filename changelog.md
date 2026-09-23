@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.49 - 23rd Sep 2026
+
+- Production hotfix, config only, no engine change. Everything under `static/` was served with `max-age=0, must-revalidate`, so every browser revalidated all 245 of those files on every page load - each one a billable edge request returning a 304 and almost no bytes. `vercel.json` now sets real cache lifetimes: 30 days for images, models, draco and PWA icons; one hour for rule packs, examples, starmaps and shipped content. `sw.js` keeps `max-age=0` so the in-app update prompt still fires.
+
 ## v3.1.48 - 8th Sep 2026
 
 - Housekeeping before the production release: the entry describing the What's New panel and the SSE3.1 mark that reopens it had been lost while two sessions replayed past each other, leaving one release note recorded twice and another not at all. The code shipped correctly; only the record was wrong.
