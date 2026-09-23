@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.74 - 23rd Sep 2026
+
+- Docs only. `docs/dev/cloudflare-migration.md`: why the edge-request bill was what it was, measured; the cache-header fix that v3.1.73 shipped; and a phased Cloudflare Workers runbook with the parallel-run traps (test hostnames are a different origin so saved campaigns do not appear; the hub and `relay-ice` origin allow-lists both need the test hostname) and a rollback.
+
 ## v3.1.73 - 23rd Sep 2026
 
 - Everything under `static/` was served with `max-age=0, must-revalidate`, so every browser revalidated all 245 of those files - 62 MB, 50 MB of it planet images - on every page load. Each revalidation is a billable edge request returning a 304 and almost no bytes, which is why request count sat at 91% of the monthly cap while data transfer sat at 25%. `vercel.json` now sets real cache lifetimes: 30 days for images, models, draco and PWA icons; one hour for rule packs, examples, starmaps and shipped content. `sw.js` deliberately keeps `max-age=0` - the in-app update prompt only fires when its bytes change.
