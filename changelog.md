@@ -2,6 +2,10 @@
 
 All notable changes are listed here:
 
+## v3.1.77 - 23rd Sep 2026
+
+- Rule packs are now fetched with the build version as a cache key (`?v=3.1.77`), which lets them be cached as `immutable` instead of revalidated every load - they were 11 of the ~15 repeat requests per page load. Nothing can go stale: the URL changes the instant the version does, and on beta the patch bumps on every push, so testers always get the latest. Also fixes four tests that v3.1.73-76 had broken by bumping the version without running `npm run manifest` - beta's service worker still said v3.1.72, so those four pushes never fired the update prompt.
+
 ## v3.1.76 - 23rd Sep 2026
 
 - Fix: `example-starmaps/manifest.json` was getting the 30-day rule instead of the one-hour one, so a newly added starmap would have stayed invisible for up to a month. MEASURED on beta: where two rules in `vercel.json` match the same path, the LAST one wins, not the most specific. The carve-out now sits after the directory wildcard.
