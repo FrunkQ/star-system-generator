@@ -2,6 +2,17 @@
 
 All notable changes are listed here:
 
+## v3.1.80 - 13th Nov 2026
+
+Five things that were waiting on a yes, and got one.
+
+- **Reloading the page puts you back in the star system you were working in**, not on the starmap. If a system did not finish opening last time, the app stays on the starmap and says so, so a system that crashes your browser cannot trap you in a loop. Each browser tab remembers its own place.
+- **A player view can show worlds as observed from a distance only.** A new tick box on a player view ("Observed from a distance only", in the Info block settings under Live readings). When ticked, a world's file shows only what a ship could measure from far off - its orbit, its day, its size and mass - and a plain type such as Planet, Moon or Gas giant. Atmosphere, climate, hazards, life, the engine's own tags and the type picture are hidden; your description and the tags you added by hand still show. Off unless ticked, so existing views are unchanged. The maps still draw the world as it looks.
+- **A Neptune- or Uranus-sized world on a warm orbit now reads as an ice giant** instead of a gas giant. Generated systems still only form ice giants out in the cold. Four bundled worlds change label with it: GJ 674 b, GJ 687 b, and Conquestor and Mors in the e Eridani example.
+- **The density box makes room for brown dwarfs.** Its ceiling now follows the mass: still 30 g/cc up to about six Jupiter masses, then about 72 at thirteen, 116 at twenty and 400 at sixty. A body saved above the limit opens unchanged.
+- **In the report's system chart a binary's second world is drawn above the line** (Charon beside Pluto); moons stay below. Long names that the printed report used to cut off now fit, because the chart grows taller instead.
+- The Shkadov thruster's notes explain why the thrust it shows is half the figure usually quoted for the Sun.
+
 ## v3.1.79 - 13th Nov 2026
 
 Finishing what was half-built before the pause: the age model, the editor tabs, and more megastructures.
