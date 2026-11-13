@@ -22,7 +22,7 @@ import { starClasses, starParamsFromType, parseStellarType, UNKNOWN_STAR_CLASS }
 import { luminositySolarFrom, companionSpectralType } from './stars.mjs';
 import { deriveStarSize, FIGURE_SOURCE } from './starSize.mjs';
 import { displayStarName, systemStarName } from './starNames.mjs';
-import { defaultMakeup, estimateRadiusRe, planetDescription } from './planets.mjs';
+import { defaultMakeup, estimateRadiusRe, planetDescription, planetMassFromRow } from './planets.mjs';
 import { normaliseStarRows, groupIntoSystems, projectedSeparationAu, angularSepRad, distanceLyFromParallax } from './census.mjs';
 
 // Archive hostnames already curated into the bundled Local Neighbourhood.
@@ -105,7 +105,9 @@ function starNodeFromRow(row, slug) {
 function planetNodeFromRow(row, slug, hostNode, mutualIncMax) {
   const letter = row.pl_name.trim().split(/\s+/).pop();
   const id = `${slug}-${letter.toLowerCase()}`;
-  const massMe = row.pl_bmasse;
+  // An UPPER LIMIT is not a mass (`planetMassFromRow`), and the density the archive computed from
+  // one is not evidence about what the planet is made of.
+  const { massMe, densityGcc } = planetMassFromRow(row);
   if (massMe == null) return { skip: `${row.pl_name}: no mass in the archive` };
   let aAU = row.pl_orbsmax;
   if (aAU == null && row.pl_orbper != null) {
@@ -118,7 +120,7 @@ function planetNodeFromRow(row, slug, hostNode, mutualIncMax) {
       id, parentId: hostNode.id, name: row.pl_name, kind: 'body', roleHint: 'planet',
       massKg: massMe * EARTH_MASS_KG,
       radiusKm: Math.round((row.pl_rade ?? estimateRadiusRe(massMe)) * EARTH_RADIUS_KM),
-      makeup: defaultMakeup(massMe, row.pl_dens, id, row.pl_rade),
+      makeup: defaultMakeup(massMe, densityGcc, id, row.pl_rade),
       autoClassify: true,
       orbit: {
         hostId: hostNode.id, hostMu: G * hostNode.massKg, t0: EPOCH,
