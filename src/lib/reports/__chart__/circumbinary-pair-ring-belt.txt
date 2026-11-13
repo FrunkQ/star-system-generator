@@ -51,36 +51,36 @@
   <text class="orbit-label" transform="rotate(-45 129.89912299801114 190.10087700198886)" x="129.89912299801114" y="190.10087700198886">Adonis
   <text class="au-label" text-anchor="end" x="118" y="188.10087700198886">0.1924 AU
 # chart 2
-<svg aria-label="Circumbinary diagram" class="overview-svg" role="img" viewBox="0 0 760 148">
-  <circle class="binary-star" cx="54" cy="68" r="10">
-  <circle class="binary-star" cx="94" cy="68" r="10">
-  <text class="orbit-label" transform="rotate(-45 66 56)" x="66" y="56">Uggi A
-  <text class="orbit-label" transform="rotate(-45 106 56)" x="106" y="56">Uggi B
-  <circle cx="74" cy="68" fill="#111" r="2.4">
-  <text class="label" text-anchor="middle" x="74" y="92">Barycentre
-  <ellipse cx="152" cy="68" fill="#111" rx="7.892268876189296" ry="7.892268876189296">
-  <text class="orbit-label" transform="rotate(-45 161.8922688761893 60.1077311238107)" x="161.8922688761893" y="60.1077311238107">Castor
-  <text class="au-label" text-anchor="end" x="152" y="58.1077311238107">2.500 AU
-  <ellipse cx="152" cy="82" fill="#333" rx="2.335512285214176" ry="2.335512285214176">
-  <text class="orbit-label" transform="rotate(-45 156.33551228521418 79.66448771478582)" x="156.33551228521418" y="79.66448771478582">Castor I
-  <ellipse cx="152" cy="96" fill="#333" rx="2.9359834785940486" ry="2.9359834785940486">
-  <text class="orbit-label" transform="rotate(-45 156.93598347859404 93.06401652140595)" x="156.93598347859404" y="93.06401652140595">Castor II
-  <line stroke="#ccc" stroke-dasharray="2,1" stroke-width="0.5" x1="144" x2="160" y1="106" y2="106">
-  <ellipse cx="152" cy="124" fill="#111" rx="7.346385973116683" ry="7.346385973116683">
-  <text class="orbit-label" transform="rotate(-45 161.3463859731167 116.65361402688332)" x="161.3463859731167" y="116.65361402688332">Pollux the Lesser Twin
-  <ellipse cx="152" cy="138" fill="#333" rx="2.2" ry="2.2">
-  <text class="orbit-label" transform="rotate(-45 156.2 135.8)" x="156.2" y="135.8">Pollux I
-  <ellipse cx="286.5621675202167" cy="68" fill="#111" rx="10.946626780045104" ry="9.961430369841045">
-  <ellipse cx="286.5621675202167" cy="66" fill="none" rx="16.967271509069914" ry="6.0206447290248075" stroke="#666" stroke-width="1">
-  <text class="orbit-label" transform="rotate(-45 299.5087943002618 57.05337321995489)" x="299.5087943002618" y="57.05337321995489">Hoop
-  <text class="au-label" text-anchor="end" x="286.5621675202167" y="55.05337321995489">5.200 AU
-  <ellipse cx="286.5621675202167" cy="82" fill="#333" rx="3.692487714785824" ry="3.692487714785824">
-  <text class="orbit-label" transform="rotate(-45 292.25465523500253 78.30751228521417)" x="292.25465523500253" y="78.30751228521417">Hoop I
-  <ellipse cx="286.5621675202167" cy="96" fill="#333" rx="2.749892158224308" ry="2.749892158224308">
-  <text class="orbit-label" transform="rotate(-45 291.312059678441 93.25010784177569)" x="291.312059678441" y="93.25010784177569">Hoop II
-  <ellipse cx="387.3534832021876" cy="68" fill="#9a9a9a" fill-opacity="0.30" rx="28" ry="6.311289887029121" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9">
-  <text class="orbit-label" transform="rotate(-45 391.5534832021876 65.8)" x="391.5534832021876" y="65.8">The Rubble
-  <ellipse cx="567.5672695090984" cy="68" fill="#111" rx="8.681867289451644" ry="8.681867289451644">
-  <text class="orbit-label" transform="rotate(-45 578.24913679855 59.318132710548355)" x="578.24913679855" y="59.318132710548355">Barry
-  <ellipse cx="652" cy="68" fill="#111" rx="8.101725855696642" ry="8.101725855696642">
-  <text class="orbit-label" transform="rotate(-45 662.1017258556966 59.89827414430336)" x="662.1017258556966" y="59.89827414430336">Philonius
+<svg aria-label="Circumbinary diagram" class="overview-svg" role="img" viewBox="0 0 760 181">
+  <circle class="binary-star" cx="54" cy="115" r="10">
+  <circle class="binary-star" cx="94" cy="115" r="10">
+  <text class="orbit-label" transform="rotate(-45 66 103)" x="66" y="103">Uggi A
+  <text class="orbit-label" transform="rotate(-45 106 103)" x="106" y="103">Uggi B
+  <circle cx="74" cy="115" fill="#111" r="2.4">
+  <text class="label" text-anchor="middle" x="74" y="139">Barycentre
+  <ellipse cx="152" cy="115" fill="#111" rx="7.892268876189296" ry="7.892268876189296">
+  <text class="orbit-label" transform="rotate(-45 161.8922688761893 107.10773112381071)" x="161.8922688761893" y="107.10773112381071">Castor
+  <text class="au-label" text-anchor="end" x="152" y="105.10773112381071">2.500 AU
+  <ellipse cx="152" cy="129" fill="#333" rx="2.335512285214176" ry="2.335512285214176">
+  <text class="orbit-label" transform="rotate(-45 156.33551228521418 126.66448771478582)" x="156.33551228521418" y="126.66448771478582">Castor I
+  <ellipse cx="152" cy="143" fill="#333" rx="2.9359834785940486" ry="2.9359834785940486">
+  <text class="orbit-label" transform="rotate(-45 156.93598347859404 140.06401652140596)" x="156.93598347859404" y="140.06401652140596">Castor II
+  <ellipse cx="152" cy="87.76134515069401" fill="#111" rx="7.346385973116683" ry="7.346385973116683">
+  <text class="orbit-label" transform="rotate(-45 161.3463859731167 80.41495917757733)" x="161.3463859731167" y="80.41495917757733">Pollux the Lesser Twin
+  <line stroke="#ccc" stroke-dasharray="2,1" stroke-width="0.5" x1="144" x2="160" y1="153" y2="153">
+  <ellipse cx="152" cy="171" fill="#333" rx="2.2" ry="2.2">
+  <text class="orbit-label" transform="rotate(-45 156.2 168.8)" x="156.2" y="168.8">Pollux I
+  <ellipse cx="286.5621675202167" cy="115" fill="#111" rx="10.946626780045104" ry="9.961430369841045">
+  <ellipse cx="286.5621675202167" cy="113" fill="none" rx="16.967271509069914" ry="6.0206447290248075" stroke="#666" stroke-width="1">
+  <text class="orbit-label" transform="rotate(-45 299.5087943002618 104.05337321995489)" x="299.5087943002618" y="104.05337321995489">Hoop
+  <text class="au-label" text-anchor="end" x="286.5621675202167" y="102.05337321995489">5.200 AU
+  <ellipse cx="286.5621675202167" cy="129" fill="#333" rx="3.692487714785824" ry="3.692487714785824">
+  <text class="orbit-label" transform="rotate(-45 292.25465523500253 125.30751228521417)" x="292.25465523500253" y="125.30751228521417">Hoop I
+  <ellipse cx="286.5621675202167" cy="143" fill="#333" rx="2.749892158224308" ry="2.749892158224308">
+  <text class="orbit-label" transform="rotate(-45 291.312059678441 140.2501078417757)" x="291.312059678441" y="140.2501078417757">Hoop II
+  <ellipse cx="387.3534832021876" cy="115" fill="#9a9a9a" fill-opacity="0.30" rx="28" ry="6.311289887029121" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9">
+  <text class="orbit-label" transform="rotate(-45 391.5534832021876 112.8)" x="391.5534832021876" y="112.8">The Rubble
+  <ellipse cx="567.5672695090984" cy="115" fill="#111" rx="8.681867289451644" ry="8.681867289451644">
+  <text class="orbit-label" transform="rotate(-45 578.24913679855 106.31813271054835)" x="578.24913679855" y="106.31813271054835">Barry
+  <ellipse cx="652" cy="115" fill="#111" rx="8.101725855696642" ry="8.101725855696642">
+  <text class="orbit-label" transform="rotate(-45 662.1017258556966 106.89827414430336)" x="662.1017258556966" y="106.89827414430336">Philonius

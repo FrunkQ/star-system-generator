@@ -71,8 +71,7 @@
   <ellipse cx="666.4543601756621" cy="76" fill="#111" rx="5.71227090108426" ry="5.71227090108426">
   <text class="orbit-label" transform="rotate(-45 674.1666310767464 70.28772909891575)" x="674.1666310767464" y="70.28772909891575">Pluto
   <text class="au-label" text-anchor="end" x="666.4543601756621" y="68.28772909891575">39.482 AU
-  <line stroke="#ccc" stroke-dasharray="2,1" stroke-width="0.5" x1="658.4543601756621" x2="674.4543601756621" y1="86" y2="86">
-  <ellipse cx="666.4543601756621" cy="104" fill="#111" rx="4.805665134915486" ry="4.805665134915486">
-  <text class="orbit-label" transform="rotate(-45 673.2600253105776 99.19433486508451)" x="673.2600253105776" y="99.19433486508451">Charon
+  <ellipse cx="666.4543601756621" cy="53.482063964000254" fill="#111" rx="4.805665134915486" ry="4.805665134915486">
+  <text class="orbit-label" transform="rotate(-45 673.2600253105776 48.67639882908477)" x="673.2600253105776" y="48.67639882908477">Charon
   <ellipse cx="668" cy="76" fill="#9a9a9a" fill-opacity="0.30" rx="28" ry="10" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9">
   <text class="orbit-label" transform="rotate(-45 672.2 73.8)" x="672.2" y="73.8">Kuiper Belt

@@ -8500,3 +8500,34 @@ highlighted - the renderers read tags to draw, so they cannot be handed the copy
 per-body "scanned" state is one line in `bodyDisclosureFor` (a scanned body returns `full`); if it
 ever moves into `computePlayerSnapshot` to take data off the wire, it should call this same
 `observedBody`.
+
+### UI-C26 THE REPORT CHART'S ROW IS ONE SNIPPET, AND A STACK ITEM CARRIES ITS OWN HEIGHT
+BUCKET: IMPLEMENTATION - durable: when a stack can grow both ways from a line, position belongs
+to the ITEM, and every height helper must ask the items rather than count them.
+WHERE: `reports/ReportDocument.svelte` - the `chartRow` snippet, `getBodyStackItems` (`StackItem.dy`),
+`getStackMarkerRadius`, `getOverviewMaxMoonDepth`, `getRowHeadroomExtra`, `getOverviewLineY` and the
+`CHART` table of numbers. Gate and recordings: `reports/reportChart.spec.ts`, `reports/__chart__/`.
+RULE: the row markup exists ONCE (it was three copies: main star, each further star, circumbinary
+strip) and takes `baseY`, the clash list and a `nameLift` (the 2 units a further star's names have
+always had). An item sits at `baseY + item.dy`: moons BELOW (positive), a planetary pair's second
+member ABOVE (negative, by both radii plus `CHART.companionGap`), its moons below again after a
+dashed divider. A row's extra room above its line is `getRowHeadroomExtra` - the tallest of
+"rise + radius + name length" over every labelled item, less what the row always had - and it is
+added at the row's TOP, so the line moves down and everything after it follows.
+WHY: the owner asked for binaries above the line ("I save below for moons - above for binaries").
+It was not a one-liner because position was `stackIdx * 14` in three places and every height helper
+measured the stack as `items.length - 1`, i.e. assumed it only grows downward.
+BLAST: (1) `getRowHeadroomExtra` IS ZERO FOR A ROW WHOSE NAMES FIT, and that is load-bearing: it is
+why a chart with no pair and no long name is drawn exactly where it was (the `uggi` and
+`trappist-1` recordings did not change by a character). Do not "tidy" the bases to one number -
+76, 84 and 68 are what the three kinds of row have always had. (2) The same sum is what stopped
+the printed report cutting names off at about eighteen characters; it estimates a name's climb at
+3.4 units a character (8px, 0.6em, 45 degrees), which is generous for a proportional font. A
+bigger chart font needs that number moved with it. (3) THE SNIPPET IS DECLARED OUTSIDE THE <svg>,
+so its elements are SVG only because Svelte infers the namespace from the snippet's content. In
+the HTML namespace an <ellipse> has the same tag and attributes and paints nothing - the spec
+checks `namespaceURI`, and an element-list comparison alone would not notice. (4) The recordings
+are `toMatchFileSnapshot` files: a deliberate change is re-recorded with `vitest -u` and then READ
+in `git diff`, which is the review. (5) Not done: names still run off the RIGHT edge on the
+outermost orbit (about 27 characters), and only planetary pairs are lifted - a star pair is the
+circumbinary strip's own drawing.

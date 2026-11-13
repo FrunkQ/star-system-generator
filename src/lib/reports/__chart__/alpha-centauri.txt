@@ -76,13 +76,13 @@
   <circle cx="74" cy="68" fill="#111" r="2.4">
   <text class="label" text-anchor="middle" x="74" y="92">Barycentre
 # chart 3
-<svg aria-label="Circumbinary diagram" class="overview-svg" role="img" viewBox="0 0 760 126">
-  <circle class="binary-star" cx="54" cy="68" r="10">
-  <circle class="binary-star" cx="94" cy="68" r="10">
-  <text class="orbit-label" transform="rotate(-45 66 56)" x="66" y="56">Proxima Centauri (Alpha Centauri C)
-  <text class="orbit-label" transform="rotate(-45 106 56)" x="106" y="56">Star B
-  <circle cx="74" cy="68" fill="#111" r="2.4">
-  <text class="label" text-anchor="middle" x="74" y="92">Barycentre
-  <ellipse cx="152" cy="68" fill="#111" rx="5.4799999999999995" ry="5.4799999999999995">
-  <text class="orbit-label" transform="rotate(-45 159.48 62.52)" x="159.48" y="62.52">Alpha Centauri Barycenter
-  <text class="au-label" text-anchor="end" x="152" y="60.52">874.206 AU
+<svg aria-label="Circumbinary diagram" class="overview-svg" role="img" viewBox="0 0 760 194">
+  <circle class="binary-star" cx="54" cy="136" r="10">
+  <circle class="binary-star" cx="94" cy="136" r="10">
+  <text class="orbit-label" transform="rotate(-45 66 124)" x="66" y="124">Proxima Centauri (Alpha Centauri C)
+  <text class="orbit-label" transform="rotate(-45 106 124)" x="106" y="124">Star B
+  <circle cx="74" cy="136" fill="#111" r="2.4">
+  <text class="label" text-anchor="middle" x="74" y="160">Barycentre
+  <ellipse cx="152" cy="136" fill="#111" rx="5.4799999999999995" ry="5.4799999999999995">
+  <text class="orbit-label" transform="rotate(-45 159.48 130.52)" x="159.48" y="130.52">Alpha Centauri Barycenter
+  <text class="au-label" text-anchor="end" x="152" y="128.52">874.206 AU

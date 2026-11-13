@@ -50,6 +50,7 @@
       moonLines: string[];
       maxMoonDepth: number;
       rowHeight: number;
+      headroom: number;
   }> = [];
 
   // Constants for Physics
@@ -576,37 +577,106 @@
           .filter((line) => line.length > 0);
   }
 
+  // THE CHART'S OWN NUMBERS, in one place. A row is a LINE with a stack on it: moons hang BELOW
+  // the line, a pair's second member sits ABOVE it (owner: "I save below for moons - above for
+  // binaries"), and the slanted names climb from wherever their body is. Everything a row's height
+  // is worked out from is here, so the space above the line and the space below it are sized by
+  // the same step and cannot be tuned apart.
+  const CHART = {
+      step: 14,           // one slot down the stack: a moon under its world
+      companionGap: 12,   // clear space between a world and the pair-mate above it: the AU figure sits in it (7px tall, 2 off the disc, and 2 higher again on a further star's row)
+      labelCharRise: 3.4, // how far one character of a slanted 8px name climbs (0.6em across, at 45 degrees)
+      labelMargin: 5,     // the glyphs' own height above that slanted baseline
+      rowHeadroom: 76,    // what the main star's row has always had above its line...
+      furtherRowHeadroom: 84, // ...a further star's row: its line is never less than 84 below the deepest moon above it...
+      stripHeadroom: 68,  // ...and the circumbinary strip, whose star names start 12 above the line
+      stripStarNameLift: 12
+  };
+
   interface StackItem {
       type: 'body' | 'moon' | 'divider';
       body?: CelestialBody;
       label?: string;
+      /** Where it sits relative to the row's line, in chart units: positive is BELOW, negative ABOVE. */
+      dy: number;
   }
 
   function getBodyStackItems(body: CelestialBody | Barycenter): StackItem[] {
       if (body.kind !== 'barycenter' || !isPlanetaryBarycenterBody(body)) {
-          const items: StackItem[] = [{ type: 'body', body: body as CelestialBody }];
-          getMoonBodies(body).forEach(moon => {
-              items.push({ type: 'moon', body: moon });
+          const items: StackItem[] = [{ type: 'body', body: body as CelestialBody, dy: 0 }];
+          getMoonBodies(body).forEach((moon, i) => {
+              items.push({ type: 'moon', body: moon, dy: (i + 1) * CHART.step });
           });
           return items;
       }
 
+      // A PLANETARY PAIR. The heavier member is on the line; each further member is ABOVE it, far
+      // enough up that the two discs clear each other with room for the AU figure between them.
+      // Every moon stays BELOW: the first member's directly under the line, and each further
+      // member's after a dashed divider, so "the moons under the dashes are the upper world's".
       const members = getBarycenterMembersSorted(body);
       const items: StackItem[] = [];
+      let rise = 0;
+      let slot = 1;
       members.forEach((member, i) => {
           if (i > 0) {
-              items.push({ type: 'divider', label: '---' });
+              rise += Math.max(CHART.step,
+                  getScaledMarkerRadius(members[i - 1]) + getScaledMarkerRadius(member) + CHART.companionGap);
           }
-          items.push({ type: 'body', body: member });
-          getMoonBodies(member).forEach(moon => {
-              items.push({ type: 'moon', body: moon });
+          items.push({ type: 'body', body: member, dy: i === 0 ? 0 : -rise });
+          const moons = getMoonBodies(member);
+          if (i > 0 && moons.length > 0) {
+              items.push({ type: 'divider', label: '---', dy: slot * CHART.step });
+              slot += 1;
+          }
+          moons.forEach(moon => {
+              items.push({ type: 'moon', body: moon, dy: slot * CHART.step });
+              slot += 1;
           });
       });
       return items;
   }
 
+  /** The disc a stack item is drawn with: a moon is a little over half its world's scale. */
+  function getStackMarkerRadius(item: StackItem) {
+      const full = getScaledMarkerRadius(item.body!);
+      return item.type === 'moon' ? Math.max(2.2, full * 0.55) : full;
+  }
+
+  /** How many slots the deepest stack reaches BELOW the line - what a row's height is built on. */
   function getOverviewMaxMoonDepth(entries: Array<{ body: CelestialBody | Barycenter }>) {
-      return entries.reduce((max, entry) => Math.max(max, getBodyStackItems(entry.body).length - 1), 0);
+      return entries.reduce((max, entry) =>
+          Math.max(max, getBodyStackItems(entry.body).reduce((deep, item) => Math.max(deep, item.dy), 0) / CHART.step), 0);
+  }
+
+  /**
+   * How much MORE room a row needs above its line than it has always had (`base`). Zero for every
+   * row whose names fit, which is why a chart with no pair and no long name is drawn exactly where
+   * it was. A slanted name climbs from its own body, so a pair-mate above the line needs its rise
+   * plus its name, and a long name needs its length - the same sum for both, which is how the
+   * names the printed report used to cut off at about eighteen characters came to fit as well.
+   */
+  function getRowHeadroomExtra(
+      entries: Array<{ body: CelestialBody | Barycenter; aAU: number }>, nameLift: number, base: number
+  ) {
+      let need = 0;
+      for (const entry of entries) {
+          getBodyStackItems(entry.body).forEach((item, i) => {
+              if (item.type === 'divider' || !item.body) return;
+              const primary = item.type === 'body' && i === 0;
+              const name = primary
+                  ? (shouldSuppressDiagramBodyLabel(entry, entries) ? '' : getDiagramBodyLabel(entry.body))
+                  : item.body.name;
+              need = Math.max(need, -item.dy + getStackMarkerRadius(item) + (primary ? nameLift : 0)
+                  + (name || '').length * CHART.labelCharRise + CHART.labelMargin);
+          });
+      }
+      return Math.max(0, Math.ceil(need - base));
+  }
+
+  /** Where the main star's line is drawn: 76, plus whatever its names and pair-mates need. */
+  function getOverviewLineY(entries: Array<{ body: CelestialBody | Barycenter; aAU: number }>) {
+      return CHART.rowHeadroom + getRowHeadroomExtra(entries, 0, CHART.rowHeadroom);
   }
 
   function getScaledMarkerRadius(body: CelestialBody | Barycenter) {
@@ -669,13 +739,16 @@
               const entries = buildOverviewDiagramEntries(bodies);
               const moonLines = getOverviewMoonLines(entries);
               const maxMoonDepth = getOverviewMaxMoonDepth(entries);
-              const rowHeight = Math.max(126, 84 + moonLines.length * 12 + maxMoonDepth * 14);
+              // The lift is the 2 units a further star's names have always sat above the main row's.
+              const headroom = getRowHeadroomExtra(entries, 2, CHART.furtherRowHeadroom);
+              const rowHeight = Math.max(126, 84 + moonLines.length * 12 + maxMoonDepth * CHART.step) + headroom;
               return {
                   star,
                   entries,
                   moonLines,
                   maxMoonDepth,
-                  rowHeight
+                  rowHeight,
+                  headroom
               };
           });
   }
@@ -684,18 +757,21 @@
       return Math.max(124, sets.reduce((sum, set) => sum + set.rowHeight, 26));
   }
 
-  function getOverviewRowHeight(entries: Array<{ body: CelestialBody | Barycenter }>) {
-      return Math.max(124, 82 + getOverviewMaxMoonDepth(entries) * 14);
+  function getOverviewRowHeight(entries: Array<{ body: CelestialBody | Barycenter; aAU: number }>) {
+      return Math.max(124, 82 + getOverviewMaxMoonDepth(entries) * CHART.step)
+          + getRowHeadroomExtra(entries, 0, CHART.rowHeadroom);
   }
 
-  function getUnifiedSystemDiagramHeight(entries: Array<{ body: CelestialBody | Barycenter }>, sets: Array<{ rowHeight: number }>) {
+  function getUnifiedSystemDiagramHeight(entries: Array<{ body: CelestialBody | Barycenter; aAU: number }>, sets: Array<{ rowHeight: number }>) {
       return Math.max(150, getOverviewRowHeight(entries) + sets.reduce((sum, set) => sum + set.rowHeight, 0) + 32);
   }
 
-  function getAdditionalRowYAfterOverview(entries: Array<{ body: CelestialBody | Barycenter }>, sets: Array<{ rowHeight: number }>, row: number) {
+  // A row's height INCLUDES its extra headroom, and that extra is at the row's TOP - so the line
+  // sits `headroom` below where the row begins.
+  function getAdditionalRowYAfterOverview(entries: Array<{ body: CelestialBody | Barycenter; aAU: number }>, sets: Array<{ rowHeight: number; headroom: number }>, row: number) {
       let y = 68 + getOverviewRowHeight(entries) + 10;
       for (let i = 0; i < row; i += 1) y += sets[i].rowHeight;
-      return y;
+      return y + sets[row].headroom;
   }
 
   function getAdditionalStarRowY(sets: Array<{ rowHeight: number }>, row: number) {
@@ -727,8 +803,14 @@
               const orbiters = getCompactOrbitBodies(bary.id).filter((b) => !isStarNode(b));
               const orbitEntries = buildOverviewDiagramEntries(orbiters);
               const maxMoonDepth = getOverviewMaxMoonDepth(orbitEntries);
-              const rowHeight = Math.max(126, 78 + maxMoonDepth * 14);
-              return { bary, starMembers, orbiters, orbitEntries, rowHeight };
+              // The two star names slant up from 12 above the line and want the same room a body's does.
+              const starNames = Math.max(0, ...starMembers.slice(0, 2).map((s) => (s.name || '').length));
+              const headroom = Math.max(
+                  getRowHeadroomExtra(orbitEntries, 0, CHART.stripHeadroom),
+                  Math.ceil(CHART.stripStarNameLift + starNames * CHART.labelCharRise + CHART.labelMargin - CHART.stripHeadroom),
+                  0);
+              const rowHeight = Math.max(126, 78 + maxMoonDepth * CHART.step) + headroom;
+              return { bary, starMembers, orbiters, orbitEntries, rowHeight, headroom, lineY: CHART.stripHeadroom + headroom };
           })
           .filter((set) => set.starMembers.length > 0);
   }
@@ -742,17 +824,18 @@
      and the AU figure. It was written out three times - the main star's row, each further star's
      row and the circumbinary strip - differing only in where the line sits (`baseY`), which list
      the label-clash test reads (`entries`), and a 2-unit lift on the name and AU figure that the
-     further-star rows have always had (`nameLift`). Pinned element for element against the
+     further-star rows have always had (`nameLift`). WHERE each item sits is the stack's own answer
+     (`item.dy`: moons below the line, a pair's second member above it), never its index. Pinned element for element against the
      three-copy version by reportChart.spec.ts. Declared at the top level, so its elements rely on
      Svelte inferring the SVG namespace from the snippet's own content; the spec asserts that too. -->
 {#snippet chartRow(entry: { body: CelestialBody | Barycenter; idx: number; orbitRadius: number; aAU: number }, entries: Array<{ body: CelestialBody | Barycenter; aAU: number }>, markerX: number, baseY: number, nameLift: number)}
     {#each getBodyStackItems(entry.body) as item, stackIdx}
-        {@const itemY = baseY + stackIdx * 14}
+        {@const itemY = baseY + item.dy}
         {#if item.type === 'divider'}
             <line x1={markerX - 8} y1={itemY - 4} x2={markerX + 8} y2={itemY - 4} stroke="#ccc" stroke-width="0.5" stroke-dasharray="2,1" />
         {:else if item.type === 'body' || item.type === 'moon'}
             {@const body = item.body!}
-            {@const bodyRadius = item.type === 'moon' ? Math.max(2.2, getScaledMarkerRadius(body) * 0.55) : getScaledMarkerRadius(body)}
+            {@const bodyRadius = getStackMarkerRadius(item)}
             {#if body.roleHint === 'belt'}
                 {@const beltSize = getBeltDisplaySize(body, bodyRadius)}
                 <ellipse cx={markerX} cy={itemY} rx={beltSize.rx} ry={beltSize.ry} fill="#9a9a9a" fill-opacity="0.30" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9" />
@@ -847,11 +930,11 @@
                 role="img"
                 aria-label="System diagram"
             >
-                <circle cx="-26" cy="76" r="38" fill="none" stroke="#111" stroke-width="2" />
-                <text x="28" y="80" class="label">{overviewHostLabel}</text>
+                <circle cx="-26" cy={getOverviewLineY(overviewDiagramEntries)} r="38" fill="none" stroke="#111" stroke-width="2" />
+                <text x="28" y={getOverviewLineY(overviewDiagramEntries) + 4} class="label">{overviewHostLabel}</text>
                 {#each overviewDiagramEntries as entry}
                     {@const markerX = 118 + ((entry.orbitRadius - 28) / (185 - 28)) * 550}
-                    {@render chartRow(entry, overviewDiagramEntries, markerX, 76, 0)}
+                    {@render chartRow(entry, overviewDiagramEntries, markerX, getOverviewLineY(overviewDiagramEntries), 0)}
                 {/each}
                 {#each additionalStarSets as set, row}
                     {@const rowY = getAdditionalRowYAfterOverview(overviewDiagramEntries, additionalStarSets, row)}
@@ -876,15 +959,15 @@
             <div class="data-box overview-diagram-box">
                 <div class="data-header">Circumbinary Bodies: {set.starMembers.map((s) => s.name).join(' + ')}</div>
                 <svg class="overview-svg" viewBox={`0 0 760 ${set.rowHeight}`} role="img" aria-label="Circumbinary diagram">
-                    <circle cx="54" cy="68" r="10" class="binary-star" />
-                    <circle cx="94" cy="68" r="10" class="binary-star" />
-                    <text x="66" y="56" class="orbit-label" transform="rotate(-45 66 56)">{set.starMembers[0]?.name || 'Star A'}</text>
-                    <text x="106" y="56" class="orbit-label" transform="rotate(-45 106 56)">{set.starMembers[1]?.name || 'Star B'}</text>
-                    <circle cx="74" cy="68" r="2.4" fill="#111" />
-                    <text x="74" y="92" text-anchor="middle" class="label">Barycentre</text>
+                    <circle cx="54" cy={set.lineY} r="10" class="binary-star" />
+                    <circle cx="94" cy={set.lineY} r="10" class="binary-star" />
+                    <text x="66" y={set.lineY - CHART.stripStarNameLift} class="orbit-label" transform={`rotate(-45 66 ${set.lineY - CHART.stripStarNameLift})`}>{set.starMembers[0]?.name || 'Star A'}</text>
+                    <text x="106" y={set.lineY - CHART.stripStarNameLift} class="orbit-label" transform={`rotate(-45 106 ${set.lineY - CHART.stripStarNameLift})`}>{set.starMembers[1]?.name || 'Star B'}</text>
+                    <circle cx="74" cy={set.lineY} r="2.4" fill="#111" />
+                    <text x="74" y={set.lineY + 24} text-anchor="middle" class="label">Barycentre</text>
                     {#each set.orbitEntries as entry}
                         {@const markerX = 152 + ((entry.orbitRadius - 28) / (185 - 28)) * 500}
-                        {@render chartRow(entry, set.orbitEntries, markerX, 68, 0)}
+                        {@render chartRow(entry, set.orbitEntries, markerX, set.lineY, 0)}
                     {/each}
                 </svg>
             </div>

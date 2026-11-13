@@ -75,10 +75,10 @@
   <text class="orbit-label" transform="rotate(-45 670.6543601756622 87.8)" x="670.6543601756622" y="87.8">Nix
   <ellipse cx="666.4543601756621" cy="104" fill="#333" rx="2.2" ry="2.2">
   <text class="orbit-label" transform="rotate(-45 670.6543601756622 101.8)" x="670.6543601756622" y="101.8">Hydra
+  <ellipse cx="666.4543601756621" cy="53.482063964000254" fill="#111" rx="4.805665134915486" ry="4.805665134915486">
+  <text class="orbit-label" transform="rotate(-45 673.2600253105776 48.67639882908477)" x="673.2600253105776" y="48.67639882908477">Charon
   <line stroke="#ccc" stroke-dasharray="2,1" stroke-width="0.5" x1="658.4543601756621" x2="674.4543601756621" y1="114" y2="114">
-  <ellipse cx="666.4543601756621" cy="132" fill="#111" rx="4.805665134915486" ry="4.805665134915486">
-  <text class="orbit-label" transform="rotate(-45 673.2600253105776 127.19433486508451)" x="673.2600253105776" y="127.19433486508451">Charon
-  <ellipse cx="666.4543601756621" cy="146" fill="#333" rx="2.2" ry="2.2">
-  <text class="orbit-label" transform="rotate(-45 670.6543601756622 143.8)" x="670.6543601756622" y="143.8">A Very Long Moon Name Indeed
+  <ellipse cx="666.4543601756621" cy="132" fill="#333" rx="2.2" ry="2.2">
+  <text class="orbit-label" transform="rotate(-45 670.6543601756622 129.8)" x="670.6543601756622" y="129.8">A Very Long Moon Name Indeed
   <ellipse cx="668" cy="76" fill="#9a9a9a" fill-opacity="0.30" rx="28" ry="10" stroke="#787878" stroke-opacity="0.55" stroke-width="0.9">
   <text class="orbit-label" transform="rotate(-45 672.2 73.8)" x="672.2" y="73.8">Kuiper Belt
