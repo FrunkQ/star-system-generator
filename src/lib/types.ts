@@ -819,6 +819,11 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // makes resetting the pin return the star exactly as it was.
   temperature0K?: number;
   radiationOutput0?: number;
+  /** A luminous body's output in solar luminosities - what the radiation and temperature models
+   *  read for a source. Written by the star editor (Stefan-Boltzmann over radius and temperature),
+   *  by the substellar pass, and by the stellar temperature pin. It was read and written across the
+   *  engine for years without being declared here; this is only the declaration. */
+  radiationOutput?: number;
   evolveAtmosphere?: boolean;  // erode the atmosphere over the system age (from the atmosphere0 baseline)
   atmosphere0?: Atmosphere;    // primordial baseline escape derives from — keeps re-processing idempotent
   autoClassify?: boolean;      // let the classifier overwrite `classes` (and the type image)
