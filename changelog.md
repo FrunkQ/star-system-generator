@@ -2,6 +2,34 @@
 
 All notable changes are listed here:
 
+## v3.1.79 - 13th Nov 2026
+
+Finishing what was half-built before the pause: the age model, the editor tabs, and more megastructures.
+
+**Every body has an age of its own**
+- Every planet, moon and brown dwarf can be given an age of its own. On a planet or moon it is the new **Age** control on the Temp tab; leave it alone and the body is as old as its system.
+- A brown dwarf's temperature no longer snaps back, because it no longer has a temperature box: it has an Age control in its place - age is what sets how far a brown dwarf has cooled. Type a temperature there and you are offered the age that gives it.
+- A system's age can be changed after it is made, on any star's System Info tab.
+- A star's temperature can be pinned on the Overrides tab, like any other figure. (A fusing star still has its temperature box; ageing a star through its life is next.)
+- Bodies given their own age are tagged Young, Old, Ancient or Primordial, and a giant's internal heat, a world's lost air and a star's flaring now follow that body's own age.
+
+**The body editor**
+- A world's spin controls - day length, retrograde spin, lobes and axial tilt - have moved from the Composition tab to the Orbit tab, where there is room for them.
+- Inclination and the longitude of the ascending node are always shown now; the "Show Advanced Orbital Elements" tick box is gone. Re-homing a body is behind a "Re-home..." button at the foot of the tab.
+- The Orbit tab says which plane an inclination is measured from: the parent's equator for a moon, the system plane for everything else.
+- Fixed: two worlds given identical orbital elements at different times ended up in different places. The mean anomaly is now shown and typed at the system's reference epoch, and says so.
+
+**Megastructures**
+- Megastructures can be tilted. A ringworld, Dyson sphere, swarm, orbital ring or battle station now has Inclination and Ascending Node on its Orbit tab, and the 3D view draws it in that plane.
+- **New: the Soletta**, an orbital mirror that adds starlight to the world it is stationed at. The world warms, and its weather and habitability follow.
+- **New: the Birch Planet** (a shell round a black hole), **the Shkadov Thruster** and **the Caplan Thruster**. The two stellar engines state the push on their star; they do not move it yet.
+- A station created at the middle orbit band no longer shows a blank Zone on its Orbit tab, a construct with no stated zone is described as Low, Medium or High Orbit from its altitude instead of always "Far Orbit", and selecting a hand-written construct with no dimensions no longer crashes its Basics tab.
+
+**Map and clock**
+- The starmap now says when a tag highlight is fading systems - what is highlighted and how many systems have faded - with a Clear. It used to fade the whole map without a word.
+- The time transport can step by an exact amount: so many of the calendar's own seconds, minutes, hours, days, months or years, forwards or back. One month from the 31st lands on the month's last day.
+- A highlighted tag is named and coloured the same way in Find by tag, Player Views and on the map.
+
 ## v3.1.78 - 13th Nov 2026
 
 The bug-squash run: everything reported on Discord since 3.1 went live, worked through in one pass. No new systems - fixes, and a few small things that were asked for and agreed.
