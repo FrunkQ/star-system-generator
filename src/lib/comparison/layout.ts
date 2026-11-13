@@ -768,8 +768,14 @@ export interface LayoutSlot {
   depth: number;
   /** True when the object is drawn as a dot marker rather than as a body. */
   belowFloor: boolean;
-  /** Which side of the axis the label sits on: labels alternate once the bodies get small. */
-  labelSide: 'start' | 'end';
+  /**
+   * Which side of the axis the label sits on: labels alternate once the bodies get small.
+   *
+   * `before` is the orbit layout's own, and it is ALONG the strip rather than across it: beside the
+   * body, on the side its row does not grow into. A moon has its planet on one side across the
+   * strip and the next moon on the other, so neither `start` nor `end` is free ground for its name.
+   */
+  labelSide: 'start' | 'end' | 'before';
 }
 
 export interface StripLayout {
@@ -873,9 +879,15 @@ function layoutOrbit(
     const right = Math.max(rootSpan / 2, ...kids.map(rowReach), 0);
     const centre = cursor + left;
 
+    // WHERE THE NAMES GO IS PART OF THIS LAW, because only the layout knows which ground is taken.
+    // A root's moons hang off its `start` side, so a root WITH moons is named on the other one; a
+    // moon is named BESIDE itself (`before`), since across the strip it has its planet one way and
+    // its next sibling the other, and its own moons run off along the strip after it. Both used to
+    // point into the planet-to-first-moon gap - the planet's name hung down onto the moon and the
+    // moon's name stood up onto the planet - and a reader could not tell whose name was whose.
     slots.push({
       id: root.id, name: root.name, ...measure(root),
-      centrePx: centre, crossPx: 0, depth: 0, labelSide: 'start'
+      centrePx: centre, crossPx: 0, depth: 0, labelSide: kids.length ? 'end' : 'start'
     });
 
     // Children stack away from the centreline, and each one's children run off to its right.
@@ -894,7 +906,7 @@ function layoutOrbit(
       cross += (prevSpan ? gap(prevSpan, kSpan) : opts.gapFraction * kSpan) + kSpan / 2;
       slots.push({
         id: kid.id, name: kid.name, ...measure(kid),
-        centrePx: centre, crossPx: cross, depth: 1, labelSide: 'end'
+        centrePx: centre, crossPx: cross, depth: 1, labelSide: 'before'
       });
       let along = centre + kSpan / 2;
       for (const gc of childrenOf(kid.id)) {
