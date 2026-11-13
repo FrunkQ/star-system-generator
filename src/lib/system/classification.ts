@@ -252,6 +252,29 @@ export function imageClassFor(
   return classes.find((c) => kind.get(c) === 'modifier' && has(c)) ?? classes[0];
 }
 
+/**
+ * WHICH PICTURE ILLUSTRATES A CLASS ON THIS BODY — the class's own, unless the pack says this body's
+ * state calls for another one (`classifier.planetImageVariants`, where the reasoning lives).
+ *
+ * Returns a key of `planetImages`. Bands are tested HARD: `bandFit` gives a soft shoulder outside a
+ * band so that a near-miss can still classify, but a picture is not a score - a body is inside the
+ * condition or it is not. A variant pointing at a class with no picture is skipped rather than
+ * leaving the body with none.
+ */
+export function imageVariantFor(
+  cls: string,
+  features: Record<string, number | string>,
+  variants: Record<string, Array<{ match: Record<string, FingerprintBand>; use: string }>> | undefined,
+  images: Record<string, string> | undefined
+): string {
+  for (const v of variants?.[cls] ?? []) {
+    const bands = Object.entries(v.match ?? {});
+    if (!bands.length || !images?.[v.use]) continue;
+    if (bands.every(([feat, band]) => bandFit(features[feat], band) >= 1)) return v.use;
+  }
+  return cls;
+}
+
 export function classifyBody(planet: CelestialBody, features: Record<string, number | string>, pack: RulePack, allNodes: (CelestialBody | Barycenter)[]): string[] {
   if (!pack.classifier) return [];
 

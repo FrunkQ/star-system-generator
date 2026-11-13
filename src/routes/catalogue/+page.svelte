@@ -1323,8 +1323,11 @@
         />
         {#if starmapOverlayHud}
           <div class="overlay-wrap">
-            <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-              <GraphicLayer placement={starmapOverlayHud} assets={presetAssets} />
+            <FilterFrame graphic filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+              <!-- The PLACEMENT, not the {img, placement} pair the canvas surfaces take: handed the
+                   pair, GraphicLayer found no `assetId` on it and drew nothing at all, so this stage
+                   never showed its overlay - only the filter frame's sheets over an empty layer. -->
+              <GraphicLayer placement={starmapOverlayHud.placement} assets={presetAssets} />
             </FilterFrame>
           </div>
         {/if}
@@ -1368,7 +1371,7 @@
         <HoloView bind:this={holoView} system={displaySystem} showGridLegend={true} {currentTime} {focusedBodyId} style={systemHoloStyle} {skyStars} labelsVisible={holoLabelsOn} orbitLinesVisible={holoOrbitLinesOn} filterBypass={holoFilterBypass} orbitPaused={holoOrbitPaused} {hudCanvas} viewInsetRight={holoPanelInset} shipAccel={shipAccelMap} transitMotion={followGMActive} gmClockMs={gmTime?.currentTime ?? null} highlights={mapHighlights} markerStyle={activePreset?.markerStyle} markerSize={activePreset?.markerSize} flagStaff={activePreset?.flagStaff} pinText={activePreset?.pinText} tagStyles={hostTagCategories} on:focus={handleFocus} />
       {/if}
       {#if activePreset?.systemOverlay && !hudOverlayOn}
-        <div class="overlay-wrap"><FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+        <div class="overlay-wrap"><FilterFrame graphic filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
           <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
         </FilterFrame></div>
       {/if}
@@ -1472,7 +1475,7 @@
         />
         {#if activePreset?.systemOverlay}
           <div class="overlay-wrap">
-            <FilterFrame filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
+            <FilterFrame graphic filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
               <GraphicLayer placement={activePreset.systemOverlay} assets={presetAssets} />
             </FilterFrame>
           </div>

@@ -1044,6 +1044,19 @@ export interface ClassifierSpec {
   fingerprints?: Fingerprint[];          // per-type fingerprints — the only classifier
   maxClasses: number;
   planetImages?: Record<string, string>;
+  /**
+   * WHEN A CLASS'S STOCK PICTURE SAYS MORE THAN THE CLASS DOES. A type is defined by its fingerprint
+   * bands, and its one illustration is drawn in a particular STATE: `planet/super-earth` is three
+   * bands of mass, radius and density, and its picture is a world wrapped in cloud. An airless body
+   * that is a super-earth by every band was therefore pictured with weather it does not have.
+   *
+   * Each entry lists, per class, the conditions under which that class borrows ANOTHER class's
+   * picture: the first variant whose every band the body sits inside wins (hard edges - a picture
+   * is a yes or a no), else the class's own. `use` names a key of `planetImages`. Same band language
+   * and the same feature map as the fingerprints, so nothing here is a second classifier - the
+   * class does not change, only which of the pack's existing files illustrates it.
+   */
+  planetImageVariants?: Record<string, Array<{ match: Record<string, FingerprintBand>; use: string; note?: string }>>;
   starImages?: Record<string, string>;
 }
 

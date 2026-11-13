@@ -8,7 +8,7 @@
 // time uniforms. See blocks.ts for the model and docs/dev/v2.2-player-view-visual-overhaul.md §WS2.
 import { wrap, ellipsise } from '../textLayout';
 import { resolveDocColors, type DocBlock, type DocTheme, type ListBlock, type ListStyle, type TagsBlock, type TagStyle, type TagItem, type ImageFocus } from './blocks';
-import { drawSystemSchematic, schematicHeight } from './systemSchematic';
+import { drawSystemSchematic, schematicHeight, schematicLabelMeasure } from './systemSchematic';
 import { traceConstructIcon } from '$lib/constructs/constructIcon';
 import { deriveAppearance } from '$lib/rendering/planetAppearance';
 import { getPlanetTexture } from '$lib/rendering/planetTexture';
@@ -389,7 +389,7 @@ export function renderDocument(
         const cap = b.height !== undefined
           ? px(b.height, s)
           : (maxY === Infinity ? 300 : maxY - layout.y) * (b.heightFrac ?? 0.55);
-        const natural = schematicHeight(b.system as System, w);
+        const natural = schematicHeight(b.system as System, w, { labels: b.labels, measure: schematicLabelMeasure(ctx, theme) });
         const h = b.height !== undefined ? cap : (natural > 0 ? Math.min(natural, cap) : cap);
         if (visible(top, h)) {
           // A repeated strip is a long list too. The schematic's own rainbow is per BODY rather than

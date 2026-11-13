@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { imageClassFor } from './classification';
+import { imageClassFor, imageVariantFor } from './classification';
 import { systemProcessor } from '../core/SystemProcessor';
 import type { RulePack, Fingerprint, System, CelestialBody } from '$lib/types';
 
@@ -109,5 +109,88 @@ describe('imageClassFor, on its own', () => {
   it('degrades to the base when the pack has no images at all', () => {
     expect(imageClassFor(['planet/terrestrial', 'planet/ringed'], FPS, undefined)).toBe('planet/terrestrial');
     expect(imageClassFor(['planet/terrestrial', 'planet/ringed'], FPS, {})).toBe('planet/terrestrial');
+  });
+});
+
+// "ALL SUPER-EARTHS, REGARDLESS OF WHETHER THEY HAVE AN ATMOSPHERE OR NOT, ARE SHOWN AS HAVING ONE IN
+// THE ARTIST'S VIEW ... SUBSURFACE OCEANS THAT HAVE A THICK NEPTUNE-LIKE ATMOSPHERE SHOW AS BARREN"
+// (Discord, 10-22, of the "standard picture").
+//
+// G95 above made the photo answer to a body's MODIFIERS. It did not touch this: a class has ONE
+// picture, and that picture is drawn in a particular state. `planet/super-earth` is three bands -
+// mass, radius, density - and says nothing about air, while its illustration is a world wrapped in
+// cloud; `planet/subsurface-ocean` is "an ocean under ice, and cold", and its illustration is a
+// bare cracked ice shell. So the picture claimed an atmosphere state the class never tested.
+//
+// The lever is pack DATA (`classifier.planetImageVariants`): under stated conditions a class
+// borrows another class's existing picture. The class itself does not change.
+describe('the picture follows the atmosphere the body actually has', () => {
+  const VARIANTS = (PACK.classifier as any)?.planetImageVariants as Record<string, any[]> | undefined;
+  // A rocky world of five Earth masses, authored as a super-earth so the test is about the PICTURE
+  // and not about which class the scoring happens to prefer.
+  const superEarth = (atmosphere?: Record<string, unknown>) => imageOf({
+    massKg: 5 * 5.972e24, radiusKm: 1.5 * 6371, makeup: { metal: 0.3, rock: 0.7 },
+    autoClassify: false, classes: ['planet/super-earth'], ...(atmosphere ? { atmosphere } : {})
+  });
+  const AIR = { name: 'Nitrogen-Oxygen', main: 'N2', pressure_bar: 1, composition: { N2: 0.78, O2: 0.21 } };
+
+  it('an AIRLESS super-earth is not pictured under a deck of cloud', () => {
+    const got = superEarth();
+    expect(got.classes).toBe('planet/super-earth');           // the class is untouched
+    // ABSOLUTE: it is not the stock super-earth picture, and it is the airless one.
+    expect(got.image).not.toBe(IMAGES['planet/super-earth']);
+    expect(got.image).toBe(IMAGES['planet/barren']);
+  });
+
+  it('a super-earth WITH air keeps the picture it always had', () => {
+    expect(superEarth(AIR).image).toBe(IMAGES['planet/super-earth']);
+  });
+
+  it('a subsurface-ocean world under a deep atmosphere is not pictured as a bare ice shell', () => {
+    const shell = (pressure_bar?: number) => imageOf({
+      massKg: 1.5e23, radiusKm: 2600, makeup: { rock: 0.4, ice: 0.6 },
+      autoClassify: false, classes: ['planet/subsurface-ocean'],
+      orbit: { hostId: 'star', elements: { a_AU: 9, e: 0.01, i_deg: 0, omega_deg: 0, Omega_deg: 0, M0_rad: 0 } },
+      ...(pressure_bar ? { atmosphere: { name: 'Hydrogen-Helium', main: 'H2', pressure_bar, composition: { H2: 0.85, He: 0.15 } } } : {})
+    });
+    expect(shell().image).toBe(IMAGES['planet/subsurface-ocean']);       // Europa stays Europa
+    const deep = shell(200);
+    expect(deep.classes).toBe('planet/subsurface-ocean');
+    expect(deep.image).not.toBe(IMAGES['planet/subsurface-ocean']);
+    expect(deep.image).toBe(IMAGES['planet/sub-neptune']);
+  });
+
+  it('every variant in the pack points at a class that has a picture, and at a different one', () => {
+    expect(Object.keys(VARIANTS ?? {}).length, 'the pack ships no image variants').toBeGreaterThan(0);
+    for (const [cls, list] of Object.entries(VARIANTS ?? {})) {
+      expect(IMAGES[cls], `${cls} has a picture of its own`).toBeTruthy();
+      for (const v of list) {
+        expect(IMAGES[v.use], `${cls} borrows ${v.use}, which has no picture`).toBeTruthy();
+        expect(IMAGES[v.use]).not.toBe(IMAGES[cls]);
+        expect(Object.keys(v.match ?? {}).length, `${cls} -> ${v.use} has no condition`).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+describe('imageVariantFor, on its own', () => {
+  const images = { 'planet/a': '/a.jpg', 'planet/b': '/b.jpg' };
+  const variants = { 'planet/a': [{ match: { 'atm.pressure_bar': [0, 0.01] as [number, number] }, use: 'planet/b' }] };
+
+  it('borrows the other picture only INSIDE the band - no soft shoulder', () => {
+    expect(imageVariantFor('planet/a', { 'atm.pressure_bar': 0 }, variants, images)).toBe('planet/b');
+    expect(imageVariantFor('planet/a', { 'atm.pressure_bar': 0.01 }, variants, images)).toBe('planet/b');
+    // 0.0105 is within `bandFit`'s 15% shoulder and would still SCORE; a picture is a yes or a no.
+    expect(imageVariantFor('planet/a', { 'atm.pressure_bar': 0.0105 }, variants, images)).toBe('planet/a');
+    expect(imageVariantFor('planet/a', { 'atm.pressure_bar': 1 }, variants, images)).toBe('planet/a');
+  });
+
+  it('is the class itself when the pack says nothing, or says something it cannot back with a file', () => {
+    expect(imageVariantFor('planet/a', { 'atm.pressure_bar': 0 }, undefined, images)).toBe('planet/a');
+    expect(imageVariantFor('planet/b', { 'atm.pressure_bar': 0 }, variants, images)).toBe('planet/b');
+    const dangling = { 'planet/a': [{ match: { 'atm.pressure_bar': [0, 1] as [number, number] }, use: 'planet/missing' }] };
+    expect(imageVariantFor('planet/a', { 'atm.pressure_bar': 0 }, dangling, images)).toBe('planet/a');
+    // A variant with no condition would swap the picture for every body of the class: ignored.
+    expect(imageVariantFor('planet/a', {}, { 'planet/a': [{ match: {}, use: 'planet/b' }] }, images)).toBe('planet/a');
   });
 });

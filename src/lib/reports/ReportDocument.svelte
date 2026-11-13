@@ -56,7 +56,6 @@
   const G_CONST = G;
   const EARTH_GRAVITY = 9.80665;
   const EARTH_DENSITY = 5514;
-  const EARTH_MASS_KG = 5.972e24;
 
   $: if (system) {
       rootStars = getRootStars();
@@ -153,8 +152,11 @@
       const radiusKm = body.kind === 'body' ? body.radiusKm : undefined;
 
       if (massKg) {
-          const mRel = massKg / EARTH_MASS_KG;
-          massRel = mRel < 1000 ? `${mRel.toFixed(3)} M⊕` : `${mRel.toExponential(2)} M⊕`;
+          // THROUGH THE UNIT SYSTEM, like the radius and temperature beside it. This was
+          // `mRel.toFixed(3) + ' M⊕'`, which printed every belt, small moon and asteroid as
+          // "0.000 M⊕"; the ladder's own formatter goes exponential below a thousandth and follows
+          // the campaign's mass unit (tonnes, lunar masses...), so there is one way a mass is written.
+          massRel = formatPref(prefs, 'mass', unitBodyTypeFor(body as any), massKg);
 
           if (radiusKm) {
               const radiusM = radiusKm * 1000;

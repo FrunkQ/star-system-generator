@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, Makeup } from '$lib/types';
   import { unitPrefs, cycleUnitPref } from '$lib/unitPrefsStore';
-  import { resolveUnitPref, unitFromSI, unitToSI, unitIdLabel, unitBodyTypeFor } from '$lib/units';
+  import { resolveUnitPref, resolveAutoUnit, unitFromSI, unitToSI, unitIdLabel, unitIdName, unitBodyTypeFor, RADIUS_RATIO_STOPS, type RadiusRatioId } from '$lib/units';
   import UnitValue from './UnitValue.svelte';
   import { endUndoAction } from '$lib/undo/systemUndo';
   import { EARTH_MASS_KG, EARTH_RADIUS_KM, SOLAR_MASS_KG, SOLAR_RADIUS_KM, JUPITER_MASS_KG, G } from '$lib/constants';
@@ -191,28 +191,35 @@
   // units and only the number field's display unit changes (G28's two edit-finished boundaries are
   // untouched). G34: the MASS cycle is the campaign-wide mass pref for this body type (units.ts owns
   // the ladder), so this field, the technical panel and the catalogue flip together. RADIUS keeps its
-  // local R⊕/R♃ stops (ratio units, deliberately not on the global ladder); its third stop follows
+  // local R☾/R⊕/R♃ stops (ratio units, deliberately not on the global ladder); its last stop follows
   // the campaign's radius pref (km or mi).
   const M_JUP_ME = JUPITER_MASS_KG / EARTH_MASS_KG;  // Jupiter mass in Earth masses — one source
-  const M_SOL_ME = SOLAR_MASS_KG / EARTH_MASS_KG;    // Sun mass in Earth masses
-  const R_JUP_RE = 11.209;   // Jupiter radius in Earth radii
   $: ubt = unitBodyTypeFor(body);
-  $: massUnit = ({ 'M-Earth': 'earth', 'M-Jup': 'jupiter', 't': 'tonnes', 'M-Sol': 'sol' } as Record<string, 'earth' | 'jupiter' | 'tonnes' | 'sol'>)[resolveUnitPref($unitPrefs, 'mass', ubt)] ?? 'earth';
-  let radUnit: 'earth' | 'jupiter' | 'dist' = 'earth';
+  // THE MASS FIELD READS THROUGH THE LADDER, not through a table of its own. It used to map four of
+  // the ladder's stops by hand (M⊕, M♃, M☉, t) and fall back to M⊕ for the rest - so with the
+  // campaign on kt, Mt, Gt or auto this field said "M⊕" while every other panel said the real unit,
+  // and a new stop (the lunar mass) would have needed a fifth branch in four expressions. `massStop`
+  // is the concrete unit the pref resolves to for THIS body's mass, exactly as <UnitValue> resolves it.
+  $: massStop = resolveAutoUnit(resolveUnitPref($unitPrefs, 'mass', ubt), body.massKg ?? 0, 'mass');
+  // Radius: the ratio stops (R☾, R⊕, R♃ - data in units.ts), then the campaign's own km or mi.
+  const RAD_CYCLE: Array<RadiusRatioId | 'dist'> = [...RADIUS_RATIO_STOPS.map((s) => s.id), 'dist'];
+  let radUnit: RadiusRatioId | 'dist' = 'earth';
+  const radRatioOf = (u: RadiusRatioId | 'dist') => RADIUS_RATIO_STOPS.find((s) => s.id === u) ?? null;
   const cycleMassUnit = () => cycleUnitPref('mass', ubt);
-  const cycleRadUnit = () => { radUnit = radUnit === 'earth' ? 'jupiter' : radUnit === 'jupiter' ? 'dist' : 'earth'; };
+  const cycleRadUnit = () => { radUnit = RAD_CYCLE[(RAD_CYCLE.indexOf(radUnit) + 1) % RAD_CYCLE.length]; };
   $: distRadUnit = resolveUnitPref($unitPrefs, 'radius', ubt); // 'km' | 'mi'
-  $: massUnitSym = massUnit === 'earth' ? 'M⊕' : massUnit === 'jupiter' ? 'M♃' : massUnit === 'sol' ? 'M☉' : 't';
-  $: radUnitSym = radUnit === 'earth' ? 'R⊕' : radUnit === 'jupiter' ? 'R♃' : unitIdLabel(distRadUnit);
+  $: radRatio = radRatioOf(radUnit);
+  $: massUnitSym = unitIdLabel(massStop);
+  $: radUnitSym = radRatio ? radRatio.symbol : unitIdLabel(distRadUnit);
   // Tooltip: what the CURRENT unit means, then a "click to change" line below it.
-  $: massUnitName = massUnit === 'earth' ? 'Earth masses' : massUnit === 'jupiter' ? 'Jupiter masses' : massUnit === 'sol' ? 'solar masses' : 'tonnes';
-  $: radUnitName = radUnit === 'earth' ? 'Earth radii' : radUnit === 'jupiter' ? 'Jupiter radii' : (distRadUnit === 'mi' ? 'miles' : 'kilometres');
+  $: massUnitName = unitIdName(massStop);
+  $: radUnitName = radRatio ? radRatio.name : unitIdName(distRadUnit);
   $: massUnitTitle = `${massUnitName} (${massUnitSym})\nClick to change units`;
   $: radUnitTitle = `${radUnitName} (${radUnitSym})\nClick to change units`;
-  $: massDisp = massUnit === 'earth' ? pMassMe : massUnit === 'jupiter' ? pMassMe / M_JUP_ME : massUnit === 'sol' ? pMassMe / M_SOL_ME : (body.massKg ?? 0) / 1000;
-  $: radDisp = radUnit === 'earth' ? pRadiusRe : radUnit === 'jupiter' ? pRadiusRe / R_JUP_RE : unitFromSI(distRadUnit, body.radiusKm ?? 0);
-  const massMeFromDisp = (v: number) => massUnit === 'earth' ? v : massUnit === 'jupiter' ? v * M_JUP_ME : massUnit === 'sol' ? v * M_SOL_ME : (v * 1000) / EARTH_MASS_KG;
-  const radReFromDisp = (v: number) => radUnit === 'earth' ? v : radUnit === 'jupiter' ? v * R_JUP_RE : unitToSI(distRadUnit, v) / EARTH_RADIUS_KM;
+  $: massDisp = unitFromSI(massStop, body.massKg ?? 0);
+  $: radDisp = radRatio ? pRadiusRe / radRatio.re : unitFromSI(distRadUnit, body.radiusKm ?? 0);
+  const massMeFromDisp = (v: number) => unitToSI(massStop, v) / EARTH_MASS_KG;
+  const radReFromDisp = (v: number) => { const r = radRatioOf(radUnit); return r ? v * r.re : unitToSI(distRadUnit, v) / EARTH_RADIUS_KM; };
 
   // Read the live state straight from the body (NOT the reactive pMassMe/pMakeup vars, which are
   // stale within a synchronous edit batch — so consecutive edits chain off fresh values).

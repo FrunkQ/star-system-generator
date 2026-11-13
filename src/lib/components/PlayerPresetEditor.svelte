@@ -1274,7 +1274,7 @@
                   filterId={filterActive ? draft.filter : 'none'} filterParams={draft.filterParams ?? {}} />
                 {#if draft.starmapOverlay}
                   <div class="ovl-wrap">
-                    <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                    <FilterFrame graphic filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                       <GraphicLayer placement={draft.starmapOverlay} assets={$playerAssetList} />
                     </FilterFrame>
                   </div>
@@ -1375,7 +1375,7 @@
                   on:select={(e) => (previewFocusId = e.detail.id)} />
                 {#if draft.systemOverlay}
                   <div class="ovl-wrap">
-                    <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+                    <FilterFrame graphic filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                       <GraphicLayer placement={draft.systemOverlay} assets={$playerAssetList} />
                     </FilterFrame>
                   </div>
@@ -1396,7 +1396,7 @@
                cover's image is drawn by CoverView itself, so only starmap/system add a layer here. -->
           {#if currentOverlay}
             <div class="overlay-wrap">
-              <FilterFrame filterId={draft.filter} params={draft.filterParams} active={filterActive}>
+              <FilterFrame graphic filterId={draft.filter} params={draft.filterParams} active={filterActive}>
                 <GraphicLayer placement={currentOverlay} assets={$playerAssetList} />
               </FilterFrame>
             </div>
