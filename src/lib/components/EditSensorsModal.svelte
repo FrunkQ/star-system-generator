@@ -108,7 +108,9 @@
         const def = rulePack.sensorDefinitions?.entries.find(d => d.id === s.id);
         return JSON.stringify(def) !== JSON.stringify(s);
     });
-    if (sensorOverrides.length > 0) overrides.sensorDefinitions = sensorOverrides;
+    // `undefined` is "no override at all" and the page removes the key. Leaving the key OUT meant
+    // "keep whatever was stored", so deleting your LAST custom sensor saved nothing and it came back.
+    overrides.sensorDefinitions = sensorOverrides.length > 0 ? sensorOverrides : undefined;
 
     dispatch('save', overrides);
     dispatch('close');

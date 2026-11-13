@@ -131,13 +131,15 @@
         }
     });
     
-    if (hasGasOverrides) overrides.gasPhysics = gasOverrides;
+    // `undefined` is "no override at all" and the page removes the key. Leaving the key OUT instead
+    // meant "keep whatever was stored", so deleting your last custom gas, or putting the last
+    // changed mix back, saved nothing and it was all still there on reopening.
+    overrides.gasPhysics = hasGasOverrides ? gasOverrides : undefined;
 
     // Determine Composition Overrides
     const defaultComps = rulePack.distributions?.['atmosphere_composition']?.entries;
-    if (JSON.stringify(defaultComps) !== JSON.stringify(compositions)) {
-        overrides.atmosphereCompositions = compositions;
-    }
+    overrides.atmosphereCompositions =
+        JSON.stringify(defaultComps) !== JSON.stringify(compositions) ? compositions : undefined;
 
     dispatch('save', overrides);
     dispatch('close');

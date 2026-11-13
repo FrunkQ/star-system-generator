@@ -19,7 +19,8 @@
 //
 // RED-FIRST, 2026-11-13: with the page's mount put back to `rulePack={effectiveRulePack ?? selectedRulepack}`
 // the gas rows of "one per visit" and "a tweak to a shipped one" fail with 1 where 2 is expected, and
-// the mount row fails naming the expression.
+// the mount row fails naming the expression. With `handleSave` put back to leaving the key out, the
+// "deleting the last one sticks" rows fail with the deleted definition still stored.
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import { readFileSync } from 'node:fs';
@@ -173,6 +174,18 @@ describe('a second custom definition does not delete the first - every Settings 
       let stored = await visit(kind.Component, kind.name, undefined, [...a.steps, ...b.steps], [...(a.answers ?? []), ...(b.answers ?? [])]);
       stored = await visit(kind.Component, kind.name, stored, []);
       expect(count(stored, kind.section)).toBe(2);
+    });
+
+    it(`DELETING THE LAST ${kind.what.toUpperCase()} STICKS, and deleting one of two leaves the other`, async () => {
+      const a = kind.add(1), b = kind.add(2);
+      let stored = await visit(kind.Component, kind.name, undefined, a.steps, a.answers);
+      stored = await visit(kind.Component, kind.name, stored, b.steps, b.answers);
+      expect(count(stored, kind.section)).toBe(2);
+      stored = await visit(kind.Component, kind.name, stored, kind.remove);
+      expect(count(stored, kind.section), 'one of two deleted').toBe(1);
+      stored = await visit(kind.Component, kind.name, stored, kind.remove);
+      expect(count(stored, kind.section), 'the last one deleted').toBe(0);
+      expect(stored[kind.section], 'and the section is gone rather than stored empty').toBeUndefined();
     });
   }
 
