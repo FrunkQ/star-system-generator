@@ -8,7 +8,7 @@
   import { deriveCoOrbitalOrbit, lagrangePlacementId, LAGRANGE_PLACEMENTS } from '$lib/physics/lagrange';
   import { hostCandidates } from '$lib/system/reparent';
   import { megaTypeDef } from '$lib/constructs/megaTypes';
-  import { effectiveMegaRequires, megaHardCheck, filterMegaPlacements, megaPlacementAllowed, megaIsSurfaceOnly, type MegaHost } from '$lib/constructs/megaPlacement';
+  import { effectiveMegaRequires, megaHardCheck, filterMegaPlacements, megaPlacementAllowed, megaIsSurfaceOnly, megaOrbitPlaneAuthorable, type MegaHost } from '$lib/constructs/megaPlacement';
 
   export let system: System;
   export let construct: CelestialBody;
@@ -43,6 +43,15 @@
   let anomalyDeg: number = 0;
   let eccentricity = 0;
   let eccentricityAngle = 0;
+  // THE ORBIT'S PLANE, for a megastructure that orbits (a ring, shell or swarm; a battle station):
+  // inclination and the ascending node. Physics already honoured both; nothing authored them.
+  let inclinationDeg = 0;
+  let ascendingNodeDeg = 0;
+  $: planeAuthorable = megaOrbitPlaneAuthorable(megaDef, selectedPlacement);
+  $: planeHostIsStar = (() => {
+    const p = system.nodes.find(n => n.id === selectedParentId) as CelestialBody | undefined;
+    return !p || p.kind === 'barycenter' || p.roleHint === 'star';
+  })();
 
   // --- State for Planetary Orbital Slider ---
   type OrbitalZone = { name: string; startPos: number; endPos: number; color: string; };
@@ -78,6 +87,8 @@
         anomalyDeg = ((trueDeg + 90) % 360 + 360) % 360;
         eccentricity = construct.orbit.elements.e || 0;
         eccentricityAngle = construct.orbit.elements.omega_deg || 0;
+        inclinationDeg = construct.orbit.elements.i_deg || 0;
+        ascendingNodeDeg = construct.orbit.elements.Omega_deg || 0;
     }
     updateUIFromState();
   });
@@ -88,6 +99,8 @@
         anomalyDeg = ((trueDeg + 90) % 360 + 360) % 360;
         eccentricity = construct.orbit.elements.e || 0; 
         eccentricityAngle = construct.orbit.elements.omega_deg || 0;
+        inclinationDeg = construct.orbit.elements.i_deg || 0;
+        ascendingNodeDeg = construct.orbit.elements.Omega_deg || 0;
     }
   }
 
@@ -112,6 +125,15 @@
           construct.orbit.elements.omega_deg = eccentricityAngle;
           dispatch('update');
       }
+  }
+
+  // The gate is asked of the record at the moment of the edit (a `$:` mirror is one flush behind
+  // in a handler): a structure on its anchor or at a Lagrange point has no plane of its own to set.
+  function handlePlaneChange() {
+      if (!construct.orbit || !megaOrbitPlaneAuthorable(typeDef(), selectedPlacement)) return;
+      if (Number.isFinite(inclinationDeg)) construct.orbit.elements.i_deg = Math.min(180, Math.max(0, inclinationDeg));
+      if (Number.isFinite(ascendingNodeDeg)) construct.orbit.elements.Omega_deg = ((ascendingNodeDeg % 360) + 360) % 360;
+      dispatch('update');
   }
 
   // Planet-dot colour for the slider is the canonical getPlanetColor (token-driven),
@@ -372,7 +394,9 @@
 
         const mass = (parentBody.kind === 'barycenter' ? (parentBody as any).effectiveMassKg : parentBody.massKg) || 0;
 
-        // Create a perfect, circular, non-inclined orbit
+        // A fresh circular orbit at the new distance - IN THE PLANE THE GM ALREADY CHOSE. This
+        // used to write i 0 / node 0, so re-picking a zone flattened an authored tilt.
+        const keptPlane = { i_deg: construct.orbit?.elements.i_deg || 0, Omega_deg: construct.orbit?.elements.Omega_deg || 0 };
         construct.orbit = {
           hostId: parentBody.id,
           hostMu: mass * 6.67430e-11,
@@ -380,9 +404,9 @@
           elements: {
             a_AU: new_a_AU,
             e: 0, // Default to circular for these placements initially
-            i_deg: 0, // On the ecliptic plane
+            i_deg: keptPlane.i_deg,
             omega_deg: 0, // Not relevant for circular orbit
-            Omega_deg: 0, // Not relevant for non-inclined orbit
+            Omega_deg: keptPlane.Omega_deg,
             M0_rad: Math.random() * 2 * Math.PI // Random starting position on the circle
           }
         };
@@ -562,6 +586,29 @@
         />
       </div>
   </div>
+
+  {#if planeAuthorable}
+    <div class="form-row-split">
+      <div class="form-group">
+        <div class="label-row">
+            <label for="inclination">Inclination (°)</label>
+            <input type="number" id="inclination-value" step="any" min="0" max="180" bind:value={inclinationDeg} on:input={handlePlaneChange} disabled={!selectedParentId} />
+        </div>
+        <input type="range" id="inclination" min="0" max="180" step="0.1" bind:value={inclinationDeg} on:input={handlePlaneChange} disabled={!selectedParentId} class="full-width-slider" />
+      </div>
+      <div class="form-group">
+        <div class="label-row">
+            <label for="ascendingNode">Ascending Node (°)</label>
+            <input type="number" id="ascendingNode-value" step="any" min="0" max="360" bind:value={ascendingNodeDeg} on:input={handlePlaneChange} disabled={!selectedParentId || !inclinationDeg} />
+        </div>
+        <input type="range" id="ascendingNode" min="0" max="360" step="0.1" bind:value={ascendingNodeDeg} on:input={handlePlaneChange} disabled={!selectedParentId || !inclinationDeg} class="full-width-slider" />
+      </div>
+    </div>
+    <p class="anchor-note">
+      Tilts the whole structure with its orbit - {planeHostIsStar ? 'measured from the system plane' : "measured from its world's equator, as a moon's is"}.
+      Its shadow and its docking ports follow; the flat map draws every orbit untilted.
+    </p>
+  {/if}
 </div>
 
 <style>

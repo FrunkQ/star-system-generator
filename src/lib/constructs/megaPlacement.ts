@@ -104,6 +104,23 @@ export function megaIsSurfaceOnly(def: Pick<MegaTypeDef, 'allowedPlacements'> | 
   return !!allowed && allowed.length > 0 && allowed.every((p) => p === 'Surface');
 }
 
+/**
+ * MAY A GM TILT THIS STRUCTURE'S ORBIT? Yes for a megastructure whose placement IS an orbit - a
+ * ring, shell or swarm round its host, a battle station in an orbit band - because the propagator,
+ * the docking maths, the shadow chain and (RENDER-S61) the drawn structure all follow the plane.
+ * No for one that stands on a surface (its place is its anchor) and no at a Lagrange point (that
+ * orbit is DERIVED from the world it rides with, every pass). Ordinary constructs are not asked:
+ * this is the megastructure control the record owns, and it reads the record, never a type key.
+ */
+export function megaOrbitPlaneAuthorable(
+  def: Pick<MegaTypeDef, 'allowedPlacements'> | undefined,
+  placement: string | null | undefined
+): boolean {
+  if (!def || megaIsSurfaceOnly(def)) return false;
+  if (!placement || placement === 'Surface' || lagrangePlacementId(placement)) return false;
+  return true;
+}
+
 const warned = new Set<string>();
 function warnOnce(key: string, message: string): void {
   if (warned.has(key)) return;

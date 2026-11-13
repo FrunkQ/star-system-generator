@@ -5807,8 +5807,10 @@ around it. The centring was identified while measuring phase 2's extent question
 into phase 3 - the two halves of one fact, landed a version apart.
 BLAST: a TETHER is the opposite case and must NOT be centred - it is stood up on its anchor by
 `updateSurfaceConstructs` and is exempt from the surface-construct model suppression, because a
-beanstalk's whole point is that it leaves the ground. Inclined orbits are NOT yet oriented: a ring
-currently lies in the ground plane whatever its inclination.
+beanstalk's whole point is that it leaves the ground.
+CORRECTION (2026-11, RENDER-S61): this entry used to end "inclined orbits are NOT yet oriented: a
+ring lies in the ground plane whatever its inclination". They are now - the structure's axis is its
+orbit normal - and a control authors the tilt. See RENDER-S61.
 
 ### RENDER-S45 `bodyById` IS EMPTY WHILE THE BODIES ARE BEING BUILT
 BUCKET: IMPLEMENTATION - a lookup map rebuilt AFTER the loop that fills it answers every question
@@ -7945,3 +7947,34 @@ own estimate from the radius - and is still printed as plain "Mass"; relabelling
 shipped map (LHS 475 b). Past ~12 Earth radii the relation cannot be inverted and answers with the
 mass at which its plateau begins. THE FIXTURE ROW IS SYNTHESISED from published figures; the live
 composite row for Kepler-32 f has not been seen from a browser.
+### RENDER-S61 A STRUCTURE ROUND ITS HOST LIES IN ITS OWN ORBIT'S PLANE, AND lookAt CANNOT PUT IT THERE
+BUCKET: ARCHITECTURE - one orbit, one plane: the node, its orbit line, its shadow, its docking
+ports and the drawn structure must all be told the same tilt.
+WHERE: `constructs/megaGeometry.ts` (`hostCentredAxisScene`, `hostCentredQuaternion` - pure,
+THREE-free); `holo/scene.ts` `attachMegaVolume` (stamps `megaAxis` and the paused pose) and the
+orientation line at the foot of `updateConstructs`; the control is `ConstructGeneralTab.svelte`
+(inclination + ascending node), gated by `megaPlacement.megaOrbitPlaneAuthorable`. Gates:
+`megaGeometry.spec.ts` ("oriented to its orbit normal"), `ConstructGeneralTab.spec.ts`.
+RULE: a host-centred structure (record anchor 'host-centred') is built about its own +Y, and that
+axis is the NORMAL OF ITS ORBIT, taken through the pipeline its orbit line is drawn with: the
+elements' W vector (sin O sin i, -cos O sin i, cos i) -> `toParentEquator` with the caller's
+`satelliteTiltRad(node, host)` -> the scene swap (x, z, y). The per-frame heading may only turn
+it ABOUT that axis. The generic ship `lookAt` cannot do this: it keeps "up" on the scene's +Y, so
+it can yaw a ring and never tilt it. For an uninclined ring the new pose equals what lookAt gave
+(the gate pins the dot product at 1), so nothing flat moved.
+WHY: a user asked for inclined megastructures and the bug run measured the two missing halves.
+The propagator (`propagateState3D`), docking's `toPlane` and `starlightOcclusion` had honoured
+inclination since they were written; every construct create path wrote `i_deg: 0` and no control
+changed it, and the drawn ring would not have followed if one had. Both halves landed together
+on purpose - a control whose shadow moved and whose ring did not would have been a third fault.
+BLAST: (1) THE lookAt TARGET FOR A HOST-CENTRED STRUCTURE WAS NEVER ITS MOTION. `shipModel` sits
+at the HOST, and lookAt was handed `node position + motion`, so its +Z has always pointed from
+the host at the NODE (radial), not along the velocity. The new code keeps exactly that heading;
+"fixing" it to the velocity would turn every part-built shell a quarter turn. (2) A torus round a
+tilted world now lies in that world's EQUATOR at i 0 - the satellite frame, where its orbit line
+always was. It used to draw in the scene's ground plane whatever the host's tilt, so on a tilted
+host this is a visible correction, not a regression.
+(3) The Orbit tab's star branch used to rebuild the orbit with i 0 / node 0 on every zone
+re-pick; it now keeps the plane. (4) The 2D orrery draws every orbit untilted, megastructures
+included - deliberate, and the control's own note says so. (5) A Lagrange-point structure has a
+DERIVED orbit and is not offered the control; `megaOrbitPlaneAuthorable` is the one predicate.

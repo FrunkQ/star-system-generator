@@ -21,6 +21,7 @@
 // construction. It never imports it either.
 import * as THREE from 'three';
 import type { MegaShapeSpec } from './megaTypes';
+import { toParentEquator } from '$lib/system/satelliteFrame';
 
 /** How a built mega wants to be drawn. The caller picks the material; this names the mode. */
 export type MegaDrawMode = 'faces' | 'points' | 'ribbon';
@@ -244,4 +245,86 @@ export function equatorialAnchor(d: { x: number; y: number; z: number }): { x: n
   const n = Math.hypot(d.x, d.z);
   if (!(n > 1e-9)) return { x: 1, y: 0, z: 0 };
   return { x: d.x / n, y: 0, z: d.z / n };
+}
+
+// ── THE PLANE A HOST-CENTRED STRUCTURE LIES IN (RENDER-S61) ──────────────────────────────────────
+// A ring, shell or swarm is built about its own +Y axis (SphereGeometry's pole), so "which way is
+// it tilted" is one question: where does that axis point in the scene? The answer is the NORMAL OF
+// ITS OWN ORBIT, taken through exactly the pipeline its orbit line and its node are drawn through -
+// elements -> the parent's equatorial frame (a torus round a tilted world lies in that world's
+// equator, as its moons do) -> the scene's axis swap. Pure, THREE-free and gated against the
+// propagator in megaGeometry.spec.ts, because the canvas cannot be (E7).
+
+type Vec3Like = { x: number; y: number; z: number };
+
+/**
+ * The unit axis, in SCENE space, of a structure that surrounds its host: its orbit's normal.
+ * `parentEquatorTiltRad` is the caller's `satelliteTiltRad(node, host)` - the one spelling of
+ * whether a satellite's elements are quoted in its host's equator (0 round a star).
+ * An uninclined orbit round a star answers (0, 1, 0): the ground plane, as it always drew.
+ */
+export function hostCentredAxisScene(
+  elements: { i_deg?: number; Omega_deg?: number } | null | undefined,
+  parentEquatorTiltRad = 0
+): Vec3Like {
+  const i = ((elements?.i_deg || 0) * Math.PI) / 180;
+  const O = ((elements?.Omega_deg || 0) * Math.PI) / 180;
+  // The orbit normal in the physics frame: the third column of propagateState3D's PQW rotation.
+  const w = { x: Math.sin(O) * Math.sin(i), y: -Math.cos(O) * Math.sin(i), z: Math.cos(i) };
+  const f = toParentEquator(w.x, w.y, w.z, parentEquatorTiltRad, { x: 0, y: 0, z: 0 });
+  return { x: f.x, y: f.z, z: f.y };   // physics (x, y, z) -> scene (x, z, y), as toSceneAbsolute
+}
+
+/**
+ * The orientation that puts a host-centred structure's +Y on `axis`, as a unit quaternion
+ * [x, y, z, w]. With a `heading` (the node's motion this frame) its +Z follows the part of that
+ * heading lying IN the structure's plane, so a part-built shell still turns with its node exactly
+ * as it did when it could only lie flat; without one it is the shortest turn from +Y, which is
+ * the right pose for a paused clock. For axis = +Y and a heading in the ground plane this is
+ * precisely what `Object3D.lookAt(position + heading)` used to give - the gate pins that.
+ */
+export function hostCentredQuaternion(axis: Vec3Like, heading?: Vec3Like | null): [number, number, number, number] {
+  const al = Math.hypot(axis.x, axis.y, axis.z);
+  if (!(al > 0)) return [0, 0, 0, 1];
+  const yx = axis.x / al, yy = axis.y / al, yz = axis.z / al;
+  if (heading) {
+    const d = heading.x * yx + heading.y * yy + heading.z * yz;
+    let zx = heading.x - d * yx, zy = heading.y - d * yy, zz = heading.z - d * yz;
+    const zl = Math.hypot(zx, zy, zz);
+    if (zl > 1e-12 * Math.hypot(heading.x, heading.y, heading.z) && zl > 0) {
+      zx /= zl; zy /= zl; zz /= zl;
+      // X = Y x Z completes a right-handed basis; the matrix columns are (X, Y, Z).
+      const xx = yy * zz - yz * zy, xy = yz * zx - yx * zz, xz = yx * zy - yy * zx;
+      return quatFromBasis(xx, xy, xz, yx, yy, yz, zx, zy, zz);
+    }
+  }
+  // Shortest arc from +Y to the axis. Antiparallel (a retrograde orbit dead in the plane) has no
+  // shortest arc; a half turn about X is as good as any and the ring is symmetric about its axis.
+  if (yy < -1 + 1e-12) return [1, 0, 0, 0];
+  const s = Math.sqrt(2 * (1 + yy));
+  return [yz / s, 0, -yx / s, s / 2];
+}
+
+/** A rotation matrix with columns X, Y, Z -> unit quaternion [x, y, z, w] (the standard branch on
+ *  the trace, as THREE's own `setFromRotationMatrix`). */
+function quatFromBasis(
+  m11: number, m21: number, m31: number,
+  m12: number, m22: number, m32: number,
+  m13: number, m23: number, m33: number
+): [number, number, number, number] {
+  const trace = m11 + m22 + m33;
+  if (trace > 0) {
+    const s = 0.5 / Math.sqrt(trace + 1);
+    return [(m32 - m23) * s, (m13 - m31) * s, (m21 - m12) * s, 0.25 / s];
+  }
+  if (m11 > m22 && m11 > m33) {
+    const s = 2 * Math.sqrt(1 + m11 - m22 - m33);
+    return [0.25 * s, (m12 + m21) / s, (m13 + m31) / s, (m32 - m23) / s];
+  }
+  if (m22 > m33) {
+    const s = 2 * Math.sqrt(1 + m22 - m11 - m33);
+    return [(m12 + m21) / s, 0.25 * s, (m23 + m32) / s, (m13 - m31) / s];
+  }
+  const s = 2 * Math.sqrt(1 + m33 - m11 - m22);
+  return [(m13 + m31) / s, (m23 + m32) / s, 0.25 * s, (m21 - m12) / s];
 }
