@@ -159,6 +159,40 @@ describe('+page.svelte', () => {
     expect(queryByText('Test Starmap')).not.toBeInTheDocument();
   });
 
+  // B2: THE SAFE-MODE SCREEN MUST NOT APPEAR FOR A LOAD THAT WAS MERELY INTERRUPTED. The law and its
+  // corner cases are pinned in `lib/loadGuard.spec.ts`; these two prove the ROUTE obeys it, because a
+  // correct module the page does not use fixes nothing.
+  it('a reload part way through loading the saved campaign does not bring up safe mode next time (B2)', async () => {
+    const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockReturnValue(new Promise(() => {})); // this load is still running...
+    // Let the pages earlier tests mounted finish first: a load's "painted" clear is two animation
+    // frames behind it, and one landing here would remove the very stamp this test is watching.
+    await new Promise((r) => setTimeout(r, 120));
+    localStorage.clear();
+    const first = renderPage();
+    await waitFor(() => expect(localStorage.getItem('sse-load-guard')).toBe('reading browser storage'), { timeout: 8000 });
+    window.dispatchEvent(new Event('pagehide')); // ...when the page is reloaded
+    expect(localStorage.getItem('sse-load-guard')).toBeNull();
+    first.unmount();
+
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    const second = renderPage();
+    expect(await second.findByText('Test Starmap', {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(second.queryByText("The last load didn't finish")).toBeNull();
+  });
+
+  it('a load that stopped without the page going anywhere still brings up safe mode', async () => {
+    const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    localStorage.setItem('sse-load-guard', 'physics: Sol'); // left by a visit that hung or was killed
+    const { findByText, queryByText } = renderPage();
+    expect(await findByText("The last load didn't finish", {}, { timeout: 8000 })).toBeInTheDocument();
+    expect(await findByText('physics: Sol')).toBeInTheDocument();
+    expect(queryByText('Test Starmap'), 'it must not auto-load into the same hang').toBeNull();
+  });
+
   // R-20 / G98 (Stream AA job 1): A MAP PICKED FROM THE EXPLORERS LIST OPENS THROUGH THE ONE DOOR.
   // The panel only hands up an address; what matters is that the ROUTE then fetches exactly that
   // address, classifies the bytes, validates them and puts THAT campaign in the store - which is

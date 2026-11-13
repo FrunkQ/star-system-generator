@@ -40,6 +40,7 @@
   import { hasSavedStarmap as hasPersistedStarmap, loadSavedStarmap, migrateLegacyStarmapToIndexedDb, saveStarmap,
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import { createPersistQueue } from '$lib/persistQueue';
+  import { createLoadGuard } from '$lib/loadGuard';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
@@ -1855,13 +1856,29 @@
   // startup, the previous load never finished — so we do not auto-load, and instead offer: try
   // again, start without the map (data untouched), or download the stored map as a file.
   // The stamp doubles as the diagnosis: it names the last stage that started.
-  const LOAD_GUARD_KEY = 'sse-load-guard';
-  let loadGuardArmed = false;
+  //
+  // B2: THE STAMP ITSELF LIVES IN `$lib/loadGuard`, with the one rule that stopped it misfiring - a
+  // page that goes away or goes into the background mid-load is not a load that hung. Read the head
+  // of that module before changing when the stamp is written or removed.
+  const loadGuard = createLoadGuard({
+    // Reached through functions, never held: merely touching `localStorage` can throw in a locked-down
+    // browser, and the guard catches whatever its storage throws.
+    storage: browser
+      ? {
+          getItem: (key) => localStorage.getItem(key),
+          setItem: (key, value) => localStorage.setItem(key, value),
+          removeItem: (key) => localStorage.removeItem(key)
+        }
+      : null,
+    win: browser ? window : null,
+    doc: browser ? document : null
+  });
+  onDestroy(() => loadGuard.destroy());
   let loadGuardPrompt: string | null = null; // non-null = show the safe-mode screen (value = stalled stage)
-  function loadGuardArm(stage: string) { if (!browser) return; loadGuardArmed = true; loadGuardStage(stage); }
-  function loadGuardStage(stage: string) { if (browser && loadGuardArmed) { try { localStorage.setItem(LOAD_GUARD_KEY, stage); } catch { /* private mode */ } } }
-  function loadGuardClear() { loadGuardArmed = false; if (browser) { try { localStorage.removeItem(LOAD_GUARD_KEY); } catch { /* private mode */ } } }
-  function loadGuardTripped(): string | null { if (!browser) return null; try { return localStorage.getItem(LOAD_GUARD_KEY); } catch { return null; } }
+  function loadGuardArm(stage: string) { loadGuard.arm(stage); }
+  function loadGuardStage(stage: string) { loadGuard.stage(stage); }
+  function loadGuardClear() { loadGuard.clear(); }
+  function loadGuardTripped(): string | null { return loadGuard.tripped(); }
   // Emergency export: the stored map straight to a .json file WITHOUT rendering anything — the
   // escape hatch for a map that cannot load. Plain JSON on purpose: it is what the ordinary .json
   // load path reads back, and this path must not depend on any machinery that might be the hang.
