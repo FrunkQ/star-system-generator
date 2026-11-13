@@ -28,6 +28,7 @@
   import { BUILTIN_ASSETS } from '$lib/player/presets';
   import { isBary, dominantOf, isRinged, starsOf } from '$lib/catalogue/document/systemTopology';
   import { buildPortraitSystem } from '$lib/catalogue/document/portraitSystem';
+  import { discloseBody, discloseSystem, graphicModeFor, type BodyDisclosure } from '$lib/catalogue/bodyDisclosure';
   import { drawTipBanner, tipBannerHeight, drawOverlay, type HudOverlay } from '$lib/catalogue/infoCard';
   import BodyGraphic from './BodyGraphic.svelte';
   import ConstructModelGraphic from './ConstructModelGraphic.svelte';
@@ -73,6 +74,8 @@
   $: activeHighlights = $liveOverrides.highlightsMuted ? [] : (highlights ?? $liveOverrides.mapHighlights ?? []);
   // A29: show a construct's current fuel/cargo/crew, not just its capacity. Preset-driven.
   export let liveReadings = false;
+  // How much of a natural body this document may print (bodyDisclosure.ts). Preset-driven.
+  export let disclosure: BodyDisclosure = 'full';
   // G8: the campaign clock, so a printed report carries the same "Next eclipse" row the live panel does.
   export let nowMs: number | null = null;
   export let formatDate: ((ms: number) => string) | undefined = undefined;
@@ -104,6 +107,10 @@
     if (!n) return null;
     return isBary(n) ? (dominantOf(system, n) as any) : n;
   })();
+  // THE VEIL - see DocPanel: the picture is drawn from the same allow-listed copy the page prints
+  // from, in the mode the one shared rule gives.
+  $: shownBody = discloseBody(subjectBody, disclosure);
+  $: gfxImagery = graphicModeFor(imagery, shownBody !== subjectBody);
   $: subjectRinged = subjectBody ? isRinged(system, subjectBody.id) : false;
   $: gfxOn = imagery === 'sphere' || imagery === 'disc' || imagery === 'flat';
   // G3: a construct with a model takes the turntable in the reserved gap instead of BodyGraphic.
@@ -119,7 +126,7 @@
   // (coloured by the real star below) lights the day/night terminator instead.
   // A46: the ONE portrait-system builder - see catalogue/document/portraitSystem.ts for why the
   // synthetic root exists. DocPanel consumes the same builder, so the two cannot drift.
-  $: bodyGfxSystem = (subjectBody && imagery === 'sphere') ? buildPortraitSystem(subjectBody, system) : null;
+  $: bodyGfxSystem = (shownBody && gfxImagery === 'sphere') ? buildPortraitSystem(shownBody, system) : null;
   // Colour of the system's star — "the sun provides the right colour" for the portrait key light.
   $: starHex = (starsOf(system)[0] as any)?.apparentColorHex ?? null;
   $: docBg = resolveDocColors(theme).bg;
@@ -136,9 +143,10 @@
 
   // Key on subject AND mode, not the subject alone -- see DocPanel: switching Body graphics to 'photo'
   // without changing the selected body left imgForId already stamped, so the loader never ran.
-  $: photoKey = imagery === 'photo' && selectedId ? selectedId : null;
+  // The disclosure level rides the key as well (DocPanel has the reason).
+  $: photoKey = imagery === 'photo' && selectedId ? `${disclosure}:${selectedId}` : null;
   $: if (photoKey !== imgForId) {
-    if (photoKey) loadBodyImage(photoKey);
+    if (photoKey) loadBodyImage(photoKey, selectedId!);
     else { bodyImg = null; bodyImgFocus = null; imgForId = null; }
   }
 
@@ -174,11 +182,11 @@
     im.src = url;
   }
 
-  function loadBodyImage(id: string) {
-    imgForId = id; bodyImg = null; bodyImgFocus = null;
+  function loadBodyImage(key: string, id: string) {
+    imgForId = key; bodyImg = null; bodyImgFocus = null;
     // Shared loader (same-origin rule + auto-centre focus live in ONE place — bodyImage.ts).
-    loadBodyImageShared(system, id, (l) => {
-      if (imgForId !== id || !l) return;
+    loadBodyImageShared(discloseSystem(system, disclosure), id, (l) => {
+      if (imgForId !== key || !l) return;
       bodyImg = l.img; bodyImgAspect = l.aspect; bodyImgFocus = l.focus;
       render();
     });
@@ -218,7 +226,7 @@
           background: mapBgImg, backgroundAspect: mapBgAspect, backgroundCaption: mapBgCaption
         })
       : (system ? buildGuideDocument(system, selectedId, {
-          prefs, colorful, imagery, rulePack, liveReadings, nowMs: nowMs ?? undefined, formatDate,
+          prefs, colorful, imagery, rulePack, liveReadings, disclosure, nowMs: nowMs ?? undefined, formatDate,
           highlights: activeHighlights, tagCategories: (tagStyles ?? $tagCategories),
           image: bodyImg, imageAspect: bodyImgAspect, imageFocus: bodyImgFocus, hideInfo: hideInfoBlock, tagStyle, photoFrame,
           // The COLUMN's width, not the surface's — margins are not measure the facts can use, and
@@ -285,7 +293,7 @@
   let composite: HTMLCanvasElement | null = null;
   let gfxRaf = 0;
   // A construct model is a WebGL canvas like the sphere, so it is capturable under any imagery mode.
-  $: gfxCapturable = gfxOn && !!gfxRect && !!subjectBody && filterId !== 'none' && (imagery !== 'disc' || !!subjectModel);
+  $: gfxCapturable = gfxOn && !!gfxRect && !!subjectBody && filterId !== 'none' && (gfxImagery !== 'disc' || !!subjectModel);
 
   function compositeFrame(): HTMLCanvasElement {
     const src = mdlComp?.getCanvas() ?? gfxComp?.getCanvas() ?? null;
@@ -366,7 +374,7 @@
 
   // Redraw on data / theme / scroll change. Selection change is handled separately so it can play a
   // transition (which must snapshot the OLD frame BEFORE the re-render) — hence selectedId is NOT here.
-  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; starmapLayout; starmapFieldIcons; mapBgImg; mapBgCaption; imagery; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; nowMs; render(); }
+  $: if (ctrl) { stage; starmap; system; font; headingFont; accent; mono; colorful; listStyle; documentStyle; navStyle; tagStyle; themeColors; fontScale; starmapLayout; starmapFieldIcons; mapBgImg; mapBgCaption; imagery; disclosure; photoFrame; hideInfoBlock; tips; overlay; companyName; footerText; scrollY; nowMs; render(); }
   $: if (ctrl) handleSelection(selectedId);
   $: ctrl?.setFilter(filterId, filterParams);
 
@@ -429,16 +437,16 @@
          pointer-accepting (so a player can still spin the globe) but is not itself drawn — otherwise
          the same graphic would appear twice, once filtered and once not. Same trick the holo HUD card
          uses to keep the inspector's buttons while the shader draws the card. -->
-    <div class="fd-bodygfx" class:interactive={selectable && (imagery === 'sphere' || !!subjectModel)} class:captured={gfxCapturable}
+    <div class="fd-bodygfx" class:interactive={selectable && (gfxImagery === 'sphere' || !!subjectModel)} class:captured={gfxCapturable}
          style="left:{gfxRect.x}px; top:{gfxRect.y}px; width:{gfxRect.w}px; height:{gfxRect.h}px;">
       {#if subjectModel}
         <ConstructModelGraphic bind:this={mdlComp} model={subjectModel}
           tint={(subjectBody as any).icon_color || '#ffd24d'} iconType={(subjectBody as any).icon_type}
           seed={subjectBody.id} {mono} interactive={selectable} />
       {:else}
-        <BodyGraphic bind:this={gfxComp} body={subjectBody} system={bodyGfxSystem} mode={imagery === 'sphere' ? 'sphere' : imagery === 'flat' ? 'flat' : 'disc'}
+        <BodyGraphic bind:this={gfxComp} body={shownBody} system={bodyGfxSystem} mode={gfxImagery === 'sphere' ? 'sphere' : gfxImagery === 'flat' ? 'flat' : 'disc'}
           ringed={subjectRinged} {mono} render={bodyRender} {bodyStyle} bg={docBg} {starHex}
-          interactive={selectable && imagery === 'sphere'} />
+          interactive={selectable && gfxImagery === 'sphere'} />
       {/if}
     </div>
   {/if}

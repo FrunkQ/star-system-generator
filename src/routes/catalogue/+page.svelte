@@ -29,6 +29,7 @@
   import { calculateFullConstructSpecs } from '$lib/construct-logic';
   import { fetchAndLoadRulePack } from '$lib/rulepack-loader';
   import { bodyFacts } from '$lib/catalogue/bodyFacts';
+  import { bodyDisclosureFor, discloseBody, genericTypeLabel } from '$lib/catalogue/bodyDisclosure';
   import { buildGuideDocument } from '$lib/catalogue/document/guideDocument';
   import { skyStarsFor, magnitudeLimitFor } from '$lib/map/skyStars';
   import { makeDocTheme } from '$lib/catalogue/document/documentStyles';
@@ -656,6 +657,13 @@
   // "Players can click / focus / scrub" — false locks the surface: no picking, no camera, no clock,
   // no body picker, list rows not tappable. The view is a display driven by the GM (or its presets).
   $: presetInteractive = activePreset?.interactive !== false;
+  // HOW MUCH OF A WORLD'S FILE THIS WINDOW PRINTS (catalogue/bodyDisclosure.ts). One level, decided
+  // in one function, handed to every surface here that shows a body's facts: the docked panel, the
+  // HUD card, the document and the list. `shownSelectedBody` is the allow-listed copy for the two
+  // pieces of chrome this page draws itself (the panel's subtitle and the card's).
+  $: bodyLevel = bodyDisclosureFor(activePreset, selectedBody);
+  $: shownSelectedBody = selectedBody ? discloseBody(selectedBody, bodyLevel) : null;
+  $: bodyVeiled = !!selectedBody && shownSelectedBody !== selectedBody;
 
   // ── D8: VIEW-ENTRY transitions. Stepping between stages (starmap ↔ system, any view — document, 2D
   // map, 3D holo) plays the preset's transition over the whole stage: the outgoing screen is composited
@@ -756,6 +764,9 @@
     heading: displaySystem?.name || 'System',
     rows: ((displaySystem?.nodes ?? []) as any[])
       .filter((n) => (n.kind === 'body' || n.kind === 'construct') && n.roleHint !== 'ring' && n.roleHint !== 'barycenter')
+      // The list's swatch is the CLASS colour (habitable blue, biosphere green), so it is drawn from
+      // the veiled copy like every other fact surface - bodyDisclosure.ts.
+      .map((n) => discloseBody(n, bodyDisclosureFor(activePreset, n)))
       .map((n) => ({
         id: n.id,
         title: String(n.name ?? ''),
@@ -838,8 +849,8 @@
         card: hudCardOn && selectedBody ? {
           panelW: inspectorWidth,
           title: selectedBody.name,
-          sub: selectedBody.roleHint || 'body',
-          facts: bodyFacts(selectedBody, prefs, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, system: displaySystem, nowMs: currentTime }),
+          sub: bodyVeiled ? genericTypeLabel(shownSelectedBody) : (selectedBody.roleHint || 'body'),
+          facts: bodyFacts(selectedBody, prefs, { rulePack, host: hostOfSelected, liveReadings: !!activePreset?.liveReadings, disclosure: bodyLevel, system: displaySystem, nowMs: currentTime }),
           description: selectedBody.description || '',
           accent: presetAccent, font: presetFont, fontScale: infoFontScale,
           mono: activePreset?.bodyStyle === 'white',
@@ -848,7 +859,7 @@
           // filter-composited quad; the unfiltered aside shows it.
           blocks: displaySystem ? buildGuideDocument(displaySystem, docSelectedId ?? selectedBody.id, {
             nowMs: docNowMs,
-            panel: true, prefs, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack, liveReadings: !!activePreset?.liveReadings,
+            panel: true, prefs, imagery: 'none', tagStyle: activePreset?.tagStyle, rulePack, liveReadings: !!activePreset?.liveReadings, disclosure: bodyLevel,
             highlights: mapHighlights, tagCategories: hostTagCategories ?? $tagCategories
           }) : undefined,
           theme: activePreset ? makeDocTheme({
@@ -1196,7 +1207,7 @@
              left no way back to the data until another body was selected. Desktop closes as before. -->
         <button class="insp-close" on:click={() => { if (isPhone) bodyExpanded = false; else selectedBody = null; }} aria-label={isPhone ? 'Minimise' : 'Close'}>×</button>
       </div>
-      <div class="insp-sub">{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}</div>
+      <div class="insp-sub">{#if bodyVeiled}{genericTypeLabel(shownSelectedBody).toUpperCase()}{:else}{(selectedBody.roleHint || 'body').toUpperCase()}{selectedBody.kind !== 'construct' && selectedBody.class ? ' · ' + selectedBody.class : ''}{/if}</div>
       <div class="insp-detail">
         {#if activePreset && displaySystem}
           <!-- D6 unify: the SAME document engine renders the info block (facts + tags + description +
@@ -1204,7 +1215,7 @@
                close, resize). (A42: a hand-rolled <dl> fact list used to sit in the {:else} here, for
                the legacy skins. It was a SECOND rendering of the info block — the exact duplication
                D6 exists to prevent — and it went with them.) -->
-          <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg {rulePack} liveReadings={!!activePreset?.liveReadings} nowMs={docNowMs}
+          <DocPanel system={displaySystem} selectedId={docSelectedId ?? selectedBody.id} showHeading={false} transparentBg {rulePack} liveReadings={!!activePreset?.liveReadings} disclosure={bodyLevel} nowMs={docNowMs}
             font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
             fontScale={infoFontScale} listStyle={activePreset.listStyle} documentStyle={activePreset.documentStyle}
             tagStyle={activePreset.tagStyle} themeColors={activePreset.themeColors}
@@ -1491,7 +1502,7 @@
     <div class="preset-stage preset-doc" class:frozen={!presetInteractive} style="font-family:{presetFont}; --accent:{presetAccent}">
       {#if displaySystem}
         <FilteredDocumentView
-          system={displaySystem} selectedId={docSelectedId} {rulePack} liveReadings={!!activePreset?.liveReadings} nowMs={docNowMs}
+          system={displaySystem} selectedId={docSelectedId} {rulePack} liveReadings={!!activePreset?.liveReadings} disclosure={bodyLevel} nowMs={docNowMs}
           font={presetFont} headingFont={activePreset.headingFont} accent={presetAccentRaw} mono={activePreset.bodyStyle === 'white'}
           colorful={docColorful} imagery={docImagery} photoFrame={activePreset.photoFrame} hideInfoBlock={activePreset.hideInfoPanel}
           bodyRender={activePreset.render} bodyStyle={activePreset.bodyStyle}

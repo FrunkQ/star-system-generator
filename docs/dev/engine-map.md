@@ -8540,3 +8540,71 @@ still compared by name in about ten files (scene.ts, reports, derived specs, top
 word has one spelling and was left alone - it is the reason an in-atmosphere placement for an
 aerostat is not a small job. (5) The Traveller importer writes `${type} Orbit` from its own
 table; none of its words is the middle band.
+
+### UI-C25 "OBSERVED FROM A DISTANCE ONLY" IS AN ALLOW-LISTED COPY OF THE BODY, NOT A LIST OF ROWS TO HIDE
+BUCKET: ARCHITECTURE - durable: a veil that hides a derived fact must hide every FORM of it, and
+the only way to be sure is to hand the surface a node that never had it.
+WHERE: `catalogue/bodyDisclosure.ts` (`BodyDisclosure`, `bodyDisclosureFor`, `observedBody`,
+`genericTypeLabel`, `graphicModeFor`); read by `catalogue/bodyFacts.ts`, `document/guideDocument.ts`,
+`DocPanel`, `FilteredDocumentView` and `routes/catalogue/+page.svelte`. The preset field is
+`PlayerPreset.bodyDisclosure` (optional, absent = `full`, NOT in `DEFAULT_PRESET`). Gate:
+`catalogue/bodyDisclosure.spec.ts`.
+RULE: every info surface takes a LEVEL (`full` | `observed`), never the preset's field, and
+`bodyDisclosureFor(preset, body)` is the only reader of that field. At `observed` a natural body
+that is not a star is replaced by `observedBody()`: a NEW object built from `OBSERVABLE_FIELDS`
+(identity, orbit, period, rotation, tilt, mass, radius, the GM's description), plus hand-added tags
+(`tagOrigin === 'manual'`, and the anonymous placeholder), plus `image` only when `image.custom`.
+`bodyFacts` then STOPS after the bulk rows, so a row added below that line later is hidden without
+anyone remembering to. Stars, constructs and barycentres pass through untouched.
+WHY: the request was "hide atmosphere and air mix, keep orbit and rotation", and hiding those rows
+alone leaks the same answer five more ways - the Type row ("Earth Analogue"), the heading's
+subtitle, the derived tag pills, the class swatch (`getClassColor` is habitable BLUE and biosphere
+GREEN, which is TAG-25's category-colour leak again), and the stock type picture, which is chosen
+BY the class. A field the engine starts deriving next month would have been a sixth.
+BLAST: (1) IT IS A PRESENTATION VEIL, NOT A SNAPSHOT STRIP. The preset is resolved in the player's
+own window, so the full body still crosses the wire (the `liveReadings` trade-off, A29) and TAG-9
+still has one redaction point. Do not describe it to a GM as secure against developer tools.
+(2) THE ECLIPSE ROW NEEDS THE REAL SYSTEM: `nextEclipseCached` keys on the system OBJECT, so a
+veiled system rebuilt per render would run the forward search on every tick. `discloseSystem` is
+for id lookups (the photo loader) only. (3) ONE FACT IS READ BEFORE THE COPY IS MADE:
+`orbit/spin-orbit-resonance` is a rotation fact stored as a derived tag, and without it Mercury
+reads "tidally locked" beside a day length that contradicts it (B7). (4) THE PICTURE: the live
+globe and the gallery disc draw from the body's own data, so a veiled body takes the plain disc
+(`graphicModeFor`) - one function because the builder reserves the gap and two components fill it.
+(5) NOT VEILED, knowingly: the 2D/3D maps and the document's chart still DRAW the world as it
+looks (`apparentColorHex`, clouds, oceans), and map-highlight badges still badge whatever the GM
+highlighted - the renderers read tags to draw, so they cannot be handed the copy. (6) V4's
+per-body "scanned" state is one line in `bodyDisclosureFor` (a scanned body returns `full`); if it
+ever moves into `computePlayerSnapshot` to take data off the wire, it should call this same
+`observedBody`.
+
+### UI-C26 THE REPORT CHART'S ROW IS ONE SNIPPET, AND A STACK ITEM CARRIES ITS OWN HEIGHT
+BUCKET: IMPLEMENTATION - durable: when a stack can grow both ways from a line, position belongs
+to the ITEM, and every height helper must ask the items rather than count them.
+WHERE: `reports/ReportDocument.svelte` - the `chartRow` snippet, `getBodyStackItems` (`StackItem.dy`),
+`getStackMarkerRadius`, `getOverviewMaxMoonDepth`, `getRowHeadroomExtra`, `getOverviewLineY` and the
+`CHART` table of numbers. Gate and recordings: `reports/reportChart.spec.ts`, `reports/__chart__/`.
+RULE: the row markup exists ONCE (it was three copies: main star, each further star, circumbinary
+strip) and takes `baseY`, the clash list and a `nameLift` (the 2 units a further star's names have
+always had). An item sits at `baseY + item.dy`: moons BELOW (positive), a planetary pair's second
+member ABOVE (negative, by both radii plus `CHART.companionGap`), its moons below again after a
+dashed divider. A row's extra room above its line is `getRowHeadroomExtra` - the tallest of
+"rise + radius + name length" over every labelled item, less what the row always had - and it is
+added at the row's TOP, so the line moves down and everything after it follows.
+WHY: the owner asked for binaries above the line ("I save below for moons - above for binaries").
+It was not a one-liner because position was `stackIdx * 14` in three places and every height helper
+measured the stack as `items.length - 1`, i.e. assumed it only grows downward.
+BLAST: (1) `getRowHeadroomExtra` IS ZERO FOR A ROW WHOSE NAMES FIT, and that is load-bearing: it is
+why a chart with no pair and no long name is drawn exactly where it was (the `uggi` and
+`trappist-1` recordings did not change by a character). Do not "tidy" the bases to one number -
+76, 84 and 68 are what the three kinds of row have always had. (2) The same sum is what stopped
+the printed report cutting names off at about eighteen characters; it estimates a name's climb at
+3.4 units a character (8px, 0.6em, 45 degrees), which is generous for a proportional font. A
+bigger chart font needs that number moved with it. (3) THE SNIPPET IS DECLARED OUTSIDE THE <svg>,
+so its elements are SVG only because Svelte infers the namespace from the snippet's content. In
+the HTML namespace an <ellipse> has the same tag and attributes and paints nothing - the spec
+checks `namespaceURI`, and an element-list comparison alone would not notice. (4) The recordings
+are `toMatchFileSnapshot` files: a deliberate change is re-recorded with `vitest -u` and then READ
+in `git diff`, which is the review. (5) Not done: names still run off the RIGHT edge on the
+outermost orbit (about 27 characters), and only planetary pairs are lifted - a star pair is the
+circumbinary strip's own drawing.
