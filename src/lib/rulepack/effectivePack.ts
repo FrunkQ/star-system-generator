@@ -112,7 +112,15 @@ export function campaignRulePack<P extends RulePack | null | undefined>(
   campaign: { rulePackOverrides?: RulePackOverrides | null } | null | undefined
 ): RulePack | P {
   if (!shippedPack || !campaign?.rulePackOverrides) return shippedPack;
-  return buildEffectiveRulePack(shippedPack, campaign.rulePackOverrides) ?? shippedPack;
+  // A LOAD MUST NEVER FAIL BECAUSE OF THIS. A hand-edited or damaged file can carry a section in a
+  // shape the merge cannot walk; before 3.1.1 such a campaign still opened (derived against the
+  // shipped pack), and it still does.
+  try {
+    return buildEffectiveRulePack(shippedPack, campaign.rulePackOverrides) ?? shippedPack;
+  } catch (e) {
+    console.warn('[rules] this campaign\'s custom rules could not be applied while loading; using the shipped pack', e);
+    return shippedPack;
+  }
 }
 
 /**

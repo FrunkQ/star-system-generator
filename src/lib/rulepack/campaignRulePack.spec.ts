@@ -19,8 +19,9 @@
 //
 // RED-FIRST: with both `const pack = campaignRulePack(...)` lines put back to `selectedRulepack`,
 // the two load rows fail with the ocean colour null where '#7fd4c1' is expected, and the pin row
-// fails naming the function.
-import { describe, it, expect } from 'vitest';
+// fails naming the function. With the try/catch taken out of `campaignRulePack`, the "never fails a
+// load" row fails by throwing.
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { RulePack, Starmap, System } from '$lib/types';
@@ -50,6 +51,14 @@ describe('campaignRulePack', () => {
 		expect(campaignRulePack(PACK, freshCampaign())).toBe(PACK);
 		expect(campaignRulePack(PACK, null)).toBe(PACK);
 		expect(campaignRulePack(undefined, campaign(PACK))).toBeUndefined();
+	});
+
+	it('never fails a load: rules in a shape the merge cannot walk fall back to the shipped pack', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const damaged = { rulePackOverrides: { fuelDefinitions: 'not a list' } } as any;
+		expect(campaignRulePack(PACK, damaged)).toBe(PACK);
+		expect(warn).toHaveBeenCalledTimes(1);
+		warn.mockRestore();
 	});
 
 	it('is the effective pack for a campaign that has some, and never the shipped object mutated', () => {

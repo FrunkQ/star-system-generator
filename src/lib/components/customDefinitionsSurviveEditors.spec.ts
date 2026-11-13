@@ -232,7 +232,7 @@ describe('how the page mounts the Settings editors (DATA-R47)', () => {
     const stored = await visit(EditLiquidsModal, 'EditLiquidsModal', undefined, [click(/Add Custom Liquid/)], ['liquid-unobtainium']);
     expect(allLiquids(buildEffectiveRulePack(SHIPPED, stored)!).map((l) => l.name)).toContain('liquid-unobtainium');
     const r = render(EditAtmospheresModal, {
-      props: { showModal: true, starmap: { rulePackOverrides: stored } as any, ...packsAsThePageMounts('EditAtmospheresModal', stored) }
+      props: { showModal: true, starmap: { rulePackOverrides: stored } as any, ...packsAsThePageMounts('EditAtmospheresModal', stored) } as any
     });
     const offered = new Set([...r.container.querySelectorAll('select option')].map((o) => o.getAttribute('value')));
     // A cloud dropdown only renders for a gas that condenses; the shipped pack has several.
