@@ -114,4 +114,16 @@ describe('every overlay graphic is mounted as a graphic', () => {
       for (const m of mounts) expect(m[1], `${which}: ${m[0].slice(0, 60)}`).toMatch(/\bgraphic\b/);
     });
   }
+
+  // FOUND BY THE TYPE CHECKER, WHICH THE BUILD DOES NOT RUN (engine map RENDER-S46). The canvas
+  // surfaces take an overlay as `{ img, placement }`; `GraphicLayer` takes the placement alone and
+  // looks its asset up by `placement.assetId`. The starmap size comparison handed it the PAIR, on
+  // which there is no `assetId`, so that stage never drew its overlay image at all - it drew the
+  // filter frame's sheets over an empty layer, which is the reported wash in its purest form.
+  it('hands GraphicLayer a placement, never the {img, placement} pair the canvas surfaces take', () => {
+    const src = readFileSync(files['the player view'], 'utf8');
+    const given = [...src.matchAll(/<GraphicLayer\s+placement=\{([^}]+)\}/g)].map((m) => m[1].trim());
+    expect(given.length).toBeGreaterThanOrEqual(3);
+    for (const g of given) expect(g, g).not.toMatch(/OverlayHud$/);
+  });
 });

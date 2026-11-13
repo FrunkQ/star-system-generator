@@ -330,8 +330,10 @@ describe('the orbit order names a planet and its moons without one covering the 
   it('thins a column of specks box against box, and never starts a name above its own moon', () => {
     // Twelve dots under one planet, a few pixels apart: the names cannot all fit, and the ones that
     // are drawn must not climb back onto the planet the dots hang from.
-    const specks: ComparisonItem[] = [{ id: 'host', name: 'Hostworld', diameterKm: 12000, role: 'planet', parentId: null, orbitAu: 1 }]
-      .concat(Array.from({ length: 12 }, (_, i) => ({ id: `s${i}`, name: `Speck${i}`, diameterKm: 40, role: 'moon', parentId: 'host', orbitAu: 0.001 * (i + 1) })));
+    const specks: ComparisonItem[] = [
+      { id: 'host', name: 'Hostworld', diameterKm: 12000, role: 'planet', parentId: null, orbitAu: 1 },
+      ...Array.from({ length: 12 }, (_, i): ComparisonItem => ({ id: `s${i}`, name: `Speck${i}`, diameterKm: 40, role: 'moon', parentId: 'host', orbitAu: 0.001 * (i + 1) }))
+    ];
     const layout = layoutStrip(specks, SCALE, { axis: 'x', order: 'orbit' });
     const host = layout.slots.find((x) => x.id === 'host')!;
     const s: StripChromeSpec = {

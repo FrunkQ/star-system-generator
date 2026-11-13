@@ -1324,7 +1324,10 @@
         {#if starmapOverlayHud}
           <div class="overlay-wrap">
             <FilterFrame graphic filterId={presetFilterId} params={presetFilterParams} active={presetFilterActive}>
-              <GraphicLayer placement={starmapOverlayHud} assets={presetAssets} />
+              <!-- The PLACEMENT, not the {img, placement} pair the canvas surfaces take: handed the
+                   pair, GraphicLayer found no `assetId` on it and drew nothing at all, so this stage
+                   never showed its overlay - only the filter frame's sheets over an empty layer. -->
+              <GraphicLayer placement={starmapOverlayHud.placement} assets={presetAssets} />
             </FilterFrame>
           </div>
         {/if}
