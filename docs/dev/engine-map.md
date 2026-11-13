@@ -1989,19 +1989,36 @@ BLAST: any new load stage → add a `perfStage` call and a `loadGuardStage` labe
 another invisible place to hang. Anything that reads "the bar was at N%" as a diagnosis.
 
 ### UI-L2 A load guard must clear on a TIMER as well as on a painted frame
-BUCKET: PLATFORM (browser: a hidden or non-compositing tab paints no frames) + ARCHITECTURE - a
-guard needs TWO independent clears, and a timer cannot mask the fault it exists for, because a
-genuinely hung render blocks both paths.
-WHERE: `routes/+page.svelte:handleLoadStarmap` (double-rAF `clearOnce('painted')` + 15s `clearOnce('alive')`)
+BUCKET: PLATFORM (browser: a hidden or non-compositing tab paints no frames; a page can be unloaded,
+frozen or discarded in the middle of a load) + ARCHITECTURE - a guard needs TWO independent clears,
+and a timer cannot mask the fault it exists for, because a genuinely hung render blocks both paths.
+The same argument governs withdrawal: only an event handler may withdraw the stamp, and a hung
+thread runs none.
+WHERE: `lib/loadGuard.ts` (`createLoadGuard`: the stamp, `withdraw`, `reinstate`) +
+`routes/+page.svelte:handleLoadStarmap` (double-rAF `clearOnce('painted')` + 15s `clearOnce('alive')`);
+pinned by `lib/loadGuard.spec.ts` and two cases in `routes/page.spec.ts`.
 RULE: a guard that arms before an auto-load and blocks the next startup if unfinished MUST have two
 independent clears: a painted frame AND a wall-clock timer. Never the paint alone.
+**AMENDED 2026-11 (B2): THE STAMP STANDS ONLY WHILE THE PAGE IS WATCHED.** It is withdrawn on
+`pagehide`, on `visibilitychange` to hidden and on component teardown, and reinstated on `pageshow`
+or on becoming visible if the load is still running. Never withdraw it from anything but an event
+handler.
 WHY: a hidden or non-compositing tab paints NO frames, so a load that completed perfectly in a
 background tab left the guard armed and the safe-mode screen appeared on the next visit — the guard
 locking out the app it exists to protect. Found live within minutes of building it. A timer can only
 fire if the main thread is alive, so it cannot mask the real fault: a genuinely hung render blocks
 both paths, which is exactly the case the guard is for.
+B2: the two clears only ever fire on a load that FINISHED, so the stamp could not tell a load that
+hung from one whose page went away - a reload part way through (including the update prompt's forced
+reload, UI-L9, which landed inside the physics pass after every push), a closed tab, a phone
+discarding a backgrounded tab. Each brought up safe mode on a healthy map, and "Try loading again"
+always worked. A handler that ran proves the main thread was alive, so a real hang or an
+out-of-memory kill still leaves its stamp.
 BLAST: any other "did this finish?" flag keyed on rendering. Note the symmetric trap in UI-L3 — a
 hidden tab also changes TIMING, not just painting.
+A hang that begins AFTER the tab was hidden is caught one visit late. Do not fix that by stamping
+while hidden: it brings back the mobile false trips. `destroy()` withdraws AND makes the guard inert,
+because the tail of a load still running in a dead component must not remove a newer page's stamp.
 
 ### UI-L3 A per-item yield in a loop costs 1s per item in a hidden tab
 BUCKET: PLATFORM (browser: setTimeout clamped to ~1 Hz in a background tab) - a per-item repaint
@@ -2047,6 +2064,30 @@ BLAST: also affects `scroll-behavior: smooth`, view transitions, and anything me
 class change that animates. **NEVER `await requestAnimationFrame` in a hidden pane** - it never
 resolves and the tool call times out at 45 s; use `setTimeout`. Screenshots still need the pane
 DISPLAYED; this only makes DOM geometry trustworthy while it is not.
+
+### UI-L9 A CONTROLLER CHANGE IS NOT CONSENT
+BUCKET: PLATFORM (service workers: `skipWaiting()` plus `clients.claim()` fires `controllerchange`
+on every open page, and on a first visit) + ARCHITECTURE (product contract) - DATA-R23 again: a
+control that ends a conversation must record something.
+WHERE: `lib/util/swUpdate.ts` (`wireServiceWorkerUpdates`), the install handler in `static/sw.js`,
+`lib/util/beforeReload.ts` (`settleBeforeReload`); pinned by `lib/util/swUpdate.spec.ts`, which
+executes the shipped `sw.js`, and `lib/util/beforeReload.spec.ts`.
+RULE: the page reloads itself only for a yes given to the update prompt ON THAT PAGE. The worker
+never calls `skipWaiting()` of its own accord; it waits for the `SKIP_WAITING` message. A no is
+remembered for the tab, a page under 60 s old is not asked, and an "update" found within 60 s of an
+accepted one is not offered. Every app-initiated reload first awaits `settleBeforeReload`.
+WHY: B3 and B2. The worker skipped its wait at install and the layout reloaded on every
+`controllerchange`, so Cancel reloaded the page exactly as OK did, nothing recorded the answer, and
+a first-time visitor was reloaded when the first worker claimed the page. `npm run manifest`
+restamps `sw.js` on every version, so every beta push did this to every open tab - mid-edit, and
+mid-load, which tripped the load guard (UI-L2).
+BLAST: restoring `skipWaiting()` at install, or an unconditional reload on `controllerchange`,
+brings all of it back. A declined or unasked worker stays waiting until every tab has closed; that
+is intended, because the worker is a network-first cache and not the app. `importOrReload` (A68) is
+the other app-initiated reload: it takes the same wait, and does not reload at all when its
+sessionStorage guard cannot be stored. The comment at
+`scripts/shipped-manifest/build-shipped-manifest.mjs:157` ("prompt fires on every release") is now
+true only of tabs that were already open.
 
 ### UI-L7 A loop sized in MAP units is unbounded, because zoom is fitted to the map's own extent
 BUCKET: ARCHITECTURE - durable and general: a loop that steps in WORLD units under a FITTED zoom is
@@ -7520,3 +7561,25 @@ part of the new copy paste scope from explorers site".
 BLAST: a NEW field by which one definition names another must be added to `DEFINITION_REFERENCES` (both halves) or
 a copy of it pastes half-attached. A new override section with an identity needs a `<CopyDefinitionButton section>`
 in its editor - the spec compares the editors' sections against `SECTIONS` absolutely.
+
+### DATA-R54 THE NEWEST STORED COPY IS NOT ALWAYS THE ONE IN INDEXEDDB
+BUCKET: ARCHITECTURE (a fallback store written after a failure is newer than the primary by
+construction) + PLATFORM (browser: an IndexedDB connection can die under a running page, typically
+when a phone puts the browser in the background).
+WHERE: `src/lib/starmapStorage.ts` (`FALLBACK_NEWER_KEY`, `loadSavedStarmap`,
+`migrateLegacyStarmapToIndexedDb`, `saveStarmap`, `withFreshConnectionOnFailure`); the banner in
+`routes/+page.svelte` (`noteSaveFailed`). Pinned by `lib/starmapStorage.spec.ts` and a case in
+`routes/page.spec.ts`.
+RULE: a copy written to the localStorage fallback is marked newest, read first, moved back into
+IndexedDB when that takes writes again, and never deleted before then. A connection is never cached
+past its death, nor is a failed open; each read and write retries once on a fresh one. `saveStarmap`
+rejects when neither store took the campaign.
+WHY: B-1. A dead connection stayed cached for the visit, so every save went to the fallback; at the
+next start the migration saw "a copy already in IndexedDB", deleted the newer fallback as a
+leftover, and the older copy loaded. The GM came back from a reload to the campaign as it stood when
+writes began to fail, redid the work and lost it again. Reproduced on the old module against a
+stand-in IndexedDB; that it is what the reporter hit is inferred from the symptom, not observed.
+BLAST: any second store added later needs the same recency rule. A marker with no copy must not hide
+the IndexedDB copy (`loadSavedStarmap` falls through). `saveStarmap` must keep rejecting on a total
+failure: the route's "could not be saved" banner is its only reader. Two tabs still share one stored
+campaign and the last writer wins; that is not addressed here.
