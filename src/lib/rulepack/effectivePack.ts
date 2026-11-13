@@ -92,3 +92,58 @@ export function buildEffectiveRulePack(
   }
   return pack;
 }
+
+/**
+ * THE PACK A CAMPAIGN IS DERIVED AGAINST WHEN IT IS LOADED - its own rules, not just the shipped ones.
+ *
+ * Every campaign load (a file, the browser's autosave, a base-map upgrade) strips each system's
+ * derived data and re-derives it. Until 3.1.1 that re-derive ran against the SHIPPED pack, so a world
+ * breathing a custom gas over an ocean of a custom liquid came back coloured, heated and tagged as
+ * though neither existed - 49 derived fields different on the test world, the ocean and sky colours
+ * among them - and stayed that way on the starmap, in All Bodies and for players until the GM
+ * happened to open that system (the system view derives against the effective pack and converges).
+ * The definitions were never lost; the worlds just did not look like it. Same rule as DATA-R48's
+ * third point, at the campaign's own door: the rules are known BEFORE the first pass, never after.
+ *
+ * Falls back to the shipped pack, so a caller always has something to process against.
+ */
+export function campaignRulePack<P extends RulePack | null | undefined>(
+  shippedPack: P,
+  campaign: { rulePackOverrides?: RulePackOverrides | null } | null | undefined
+): RulePack | P {
+  if (!shippedPack || !campaign?.rulePackOverrides) return shippedPack;
+  // A LOAD MUST NEVER FAIL BECAUSE OF THIS. A hand-edited or damaged file can carry a section in a
+  // shape the merge cannot walk; before 3.1.1 such a campaign still opened (derived against the
+  // shipped pack), and it still does.
+  try {
+    return buildEffectiveRulePack(shippedPack, campaign.rulePackOverrides) ?? shippedPack;
+  } catch (e) {
+    console.warn('[rules] this campaign\'s custom rules could not be applied while loading; using the shipped pack', e);
+    return shippedPack;
+  }
+}
+
+/**
+ * WHAT A SETTINGS EDITOR HANDS BACK, FOLDED INTO THE CAMPAIGN'S OVERRIDES - section by section.
+ *
+ * Lifted verbatim out of `applyStarmapOverrides` in `src/routes/+page.svelte` (3.1.1), for the same
+ * reason the merge above moved: the question "does a second custom gas delete the first?" is only
+ * answered by the editor's save AND this fold together, and a gate cannot drive a function that
+ * lives inside the page component - it would have had to carry its own copy.
+ *
+ * IT IS A SHALLOW, SECTION-LEVEL SPREAD, and that is the contract every editor is written against:
+ * a section an editor names REPLACES what was stored, a section it does not name is left alone, and
+ * a section it names as `undefined` is REMOVED ("no override at all" - the GM changed nothing, or
+ * changed it back; storing an empty one would accumulate overrides that say nothing and read as if
+ * they said something). So an editor must hand back EVERYTHING it wants kept in a section it names -
+ * which is why each one is mounted on the SHIPPED pack (DATA-R47). Right for an editor; never the
+ * door for a paste or a loaded file, which join per DEFINITION (`io/clipRules.ts`).
+ */
+export function applyEditorOverrides(
+  stored: RulePackOverrides | null | undefined,
+  handedBack: Partial<Record<keyof RulePackOverrides, unknown>> | null | undefined
+): RulePackOverrides {
+  const next: any = { ...stored, ...handedBack };
+  for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+  return next;
+}

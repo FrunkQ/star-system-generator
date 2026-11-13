@@ -65,6 +65,7 @@
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
   import { classifySaveFile } from '$lib/io/classify';
+  import { landCarriedRules, takeCarriedRules, withCampaignRules } from '$lib/io/systemRules';
   import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
   import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
   import ImportModal from './ImportModal.svelte';
@@ -92,6 +93,13 @@
 
   export let system: System;
   export let rulePack: RulePack;
+  /**
+   * The pack WITHOUT this campaign's overrides. `rulePack` above is the effective one, which is what
+   * everything here derives with; this is needed for exactly one thing - folding the rules a loaded
+   * system file brings into the campaign (`io/systemRules.ts`), whose delta sections are written
+   * back against the shipped lists.
+   */
+  export let shippedRulePack: RulePack | undefined = undefined;
   export let exampleSystems: string[];
   export let routesAttention: 'stuck' | 'intervention' | 'done' | null = null; // worst fleet attention → rail Routes dot
 
@@ -1773,7 +1781,15 @@
     } else {
         // GM save: strip derived physics from a clone (the load path re-derives it), so the file is small
         // and carries only authored inputs — never stale baked-in data.
-        systemToSave = stripSystemForExport($systemStore, rulePack);
+        //
+        // 3.1.1: AND THE CAMPAIGN'S CUSTOM DEFINITIONS GO IN BESIDE THE NODES (`io/systemRules.ts`).
+        // They live on the starmap, so a system saved on its own used to leave every custom gas,
+        // liquid, drive and sensor behind - the worlds came back naming definitions that no longer
+        // existed anywhere. Owner: "it may be worth duplicating at save time." Not on a Player save.
+        systemToSave = withCampaignRules(
+            stripSystemForExport($systemStore, rulePack),
+            $starmapStore?.rulePackOverrides
+        );
     }
 
     // 2. Filter Constructs if requested
@@ -1872,6 +1888,8 @@
         return;
       }
       if (classified.container === 'bundle') await importEmbeddedModels(classified.models).catch(() => 0);
+      // Taken OFF the document here, loadable or not: the rules belong on the campaign, never on a system.
+      const carried = takeCarriedRules(classified);
       let newSystem: any = classified.doc;
       if (isLoadableSystem(newSystem)) {
         // Keep the old ID to preserve starmap link
@@ -1880,10 +1898,22 @@
             newSystem.id = oldId;
         }
 
+        // 3.1.1: THE RULES THE FILE BROUGHT, folded into this campaign BEFORE the system is derived -
+        // added where the campaign lacks them, dropped where it has them identically, renamed (and
+        // these nodes repointed) where it uses the name differently, never overwritten. Then the
+        // system is processed against the pack that knows them. See `io/systemRules.ts`.
+        let pack = rulePack;
+        if (carried && shippedRulePack) {
+          const landed = landCarriedRules(carried, $starmapStore?.rulePackOverrides, shippedRulePack, newSystem.nodes);
+          pack = landed.pack;
+          if (landed.merge.changed) starmapStore.update((m) => (m ? { ...m, rulePackOverrides: landed.overrides } : m));
+          if (landed.note) dispatch('notice', `Loaded ${newSystem.name}. ${landed.note}`);
+        }
+
         // One-way fix-up: strip baked-in derived data / legacy tags so the new engine re-derives
         // cleanly (v1 imports otherwise carry stale physics that shadows the model).
-        newSystem = fixUpImportedSystem(newSystem, rulePack);
-        systemStore.set(systemProcessor.process(newSystem, rulePack));
+        newSystem = fixUpImportedSystem(newSystem, pack);
+        systemStore.set(systemProcessor.process(newSystem, pack));
         currentTime = newSystem?.epochT0 || Date.now();
         focusedBodyId = null;
       } else {
@@ -2969,6 +2999,7 @@
                     system={$systemStore}
                     hostBody={parentBody}
                     {rulePack}
+                    {shippedRulePack}
                     {isShipLogOpen}
                     {isEditing}
                     {isPlanning}

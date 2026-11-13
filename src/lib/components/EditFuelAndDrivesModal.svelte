@@ -104,7 +104,9 @@
         const def = rulePack.fuelDefinitions?.entries.find(d => d.id === f.id);
         return JSON.stringify(def) !== JSON.stringify(f);
     });
-    if (fuelOverrides.length > 0) overrides.fuelDefinitions = fuelOverrides;
+    // `undefined` is "no override at all" and the page removes the key. Leaving the key OUT meant
+    // "keep whatever was stored", so deleting your LAST custom fuel saved nothing and it came back.
+    overrides.fuelDefinitions = fuelOverrides.length > 0 ? fuelOverrides : undefined;
 
     // Determine Engines to save
     const engineOverrides = engines.filter(e => {
@@ -112,7 +114,7 @@
         const def = rulePack.engineDefinitions?.entries.find(d => d.id === e.id);
         return JSON.stringify(def) !== JSON.stringify(e);
     });
-    if (engineOverrides.length > 0) overrides.engineDefinitions = engineOverrides;
+    overrides.engineDefinitions = engineOverrides.length > 0 ? engineOverrides : undefined;
 
     dispatch('save', overrides);
     dispatch('close');

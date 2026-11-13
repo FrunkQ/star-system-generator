@@ -134,9 +134,13 @@ describe('R-18: one function puts a system on the map, whichever door it came th
 	});
 
 	it('lands the wizard\'s system and a link\'s system the same way, credit and all', () => {
-		expect(bodyOf('function landSystem(')).toContain('placeSystemOnMap(m, system, pos, [credit])');
-		expect(bodyOf('function placeGeneratedSystem(')).toContain('landSystem(event.detail.system, pos, event.detail.credit)');
-		expect(bodyOf('async function placePendingHubSystem(')).toContain('landSystem(system, at, credit)');
+		// 3.1.1 respelled these three, and the requirement is unchanged: ONE function places the system,
+		// with the credit, for both doors. What both doors now ALSO hand over is the custom rules the
+		// saved file carried (`io/systemRules.ts`), so the system that reaches `placeSystemOnMap` is the
+		// one re-derived against them (`placed`) and the campaign it is placed on has them folded in.
+		expect(bodyOf('function landSystem(')).toMatch(/placeSystemOnMap\(landed \? \{ \.\.\.m, rulePackOverrides: landed\.overrides \} : m, placed, pos, \[credit\]\)/);
+		expect(bodyOf('function placeGeneratedSystem(')).toContain('landSystem(event.detail.system, pos, event.detail.credit, event.detail.rules)');
+		expect(bodyOf('async function placePendingHubSystem(')).toContain('landSystem(system, at, credit, got.rules)');
 	});
 });
 

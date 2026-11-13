@@ -64,7 +64,7 @@
   import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditBiospheresModal from '$lib/components/EditBiospheresModal.svelte';
   import { applyListDelta } from '$lib/rulepackDelta';
-  import { buildEffectiveRulePack } from '$lib/rulepack/effectivePack';
+  import { buildEffectiveRulePack, applyEditorOverrides, campaignRulePack } from '$lib/rulepack/effectivePack';
   import { allLiquids } from '$lib/physics/liquids';
   import { allMorphologies } from '$lib/physics/vegetation';
   import { allPigments, pigmentModel } from '$lib/physics/pigments';
@@ -88,6 +88,7 @@
   import { packBundle, BUNDLE_EXT, plainSaveJson } from '$lib/io/bundle';
   import { classifySaveFile, type ClassifiedSaveFile } from '$lib/io/classify';
   import { systemFromSave } from '$lib/io/systemFromSave';
+  import { landCarriedRules, type CarriedRules } from '$lib/io/systemRules';
   import { fetchHubMapCredit } from '$lib/hub/hubMapList';
   import { getModel as getStoredModel } from '$lib/constructs/modelStore';
   import { stampForSave, nextRevision, compareBuildVersions } from '$lib/map/provenance';
@@ -203,15 +204,10 @@
     returnToSettings();
   }
   function applyStarmapOverrides(overrides: any) {
-    starmapStore.update((s) => {
-      if (!s) return s;
-      const next: any = { ...s.rulePackOverrides, ...overrides };
-      // An editor that hands back `undefined` for a section is saying "no override at all" — the GM
-      // changed nothing, or changed it back. REMOVE the key rather than storing an empty one, or a
-      // campaign accumulates a set of overrides that say nothing and read as if they said something.
-      for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
-      return { ...s, rulePackOverrides: next };
-    });
+    // The fold itself lives in `$lib/rulepack/effectivePack` (`applyEditorOverrides`), moved there
+    // unchanged so the gates that prove a second custom gas does not delete the first can drive the
+    // SAME merge the page does rather than a copy of it.
+    starmapStore.update((s) => (s ? { ...s, rulePackOverrides: applyEditorOverrides(s.rulePackOverrides, overrides) } : s));
   }
 
   // Begin an interstellar journey from the transit planner: stamp it with the current game clock so
@@ -1203,7 +1199,7 @@
     });
     const system = systemProcessor.process(got.system, selectedRulepack);
     pendingHubSystem = null;
-    landSystem(system, at, credit);
+    landSystem(system, at, credit, got.rules);
   }
 
   /** Acknowledge a failed hub open. Clears the param so a refresh is a fresh start, not a replay. */
@@ -2020,6 +2016,9 @@
     const systems = starmap.systems ?? [];
     if (!selectedRulepack || systems.length === 0) return starmap;
     recalcCancelRequested = false;
+    // 3.1.1: against THIS CAMPAIGN'S rules, not the shipped pack alone - or every world using a custom
+    // gas or liquid is derived as though it did not exist until its system is opened. See the helper.
+    const pack = campaignRulePack(selectedRulepack, starmap);
     const nameOf = (i: number) => systems[i]?.name || `system ${i + 1}`;
     physicsProgress = { done: 0, total: systems.length, joke: PHYSICS_JOKES[0], current: nameOf(0) };
     perfStage('physics.start');
@@ -2042,7 +2041,7 @@
           // a stored body keeps its old class/tags — the processor's guard won't re-classify a body that
           // already has a (stale) non-empty class — so an engine fix (e.g. the moon-eyeball correction)
           // would never show on a refresh of an existing map. Authored inputs + GM-pinned types survive.
-          node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack);
+          node.system = systemProcessor.process(fixUpImportedSystem(node.system, pack), pack);
         }
       } catch (e) { console.warn('Recalc failed for system', node?.name, e); }
       loadProcessed.push(nameOf(i));
@@ -2175,22 +2174,36 @@
   // spelling at the door. R-18 (Stream AA job 3): a system picked from the wizard's Explorers list
   // arrives with a `credit` naming its cartographer, and it lands on the campaign exactly as a pasted
   // system's does, through the same function.
-  function placeGeneratedSystem(event: CustomEvent<{ system: System; credit?: ContentCredit }>) {
+  function placeGeneratedSystem(event: CustomEvent<{ system: System; credit?: ContentCredit; rules?: CarriedRules }>) {
     showGenerationWizard = false;
     const pos = pendingWizardPosition; pendingWizardPosition = null;
     if (!$starmapStore || !pos) return;
-    landSystem(event.detail.system, pos, event.detail.credit);
+    landSystem(event.detail.system, pos, event.detail.credit, event.detail.rules);
   }
 
   /**
    * A PROCESSED SYSTEM ONTO THE MAP, and when it came from Explorers, a sentence saying whose it is.
    * The wizard's door and the "Add System to SSE" link's placement both end here (R-18).
    */
-  function landSystem(system: System, pos: { x: number; y: number; z?: number }, credit?: ContentCredit) {
-    starmapStore.update((m) => (m ? placeSystemOnMap(m, system, pos, [credit]).map : m));
-    if (credit) {
-      const who = credit.creator ? ` (credited to ${credit.creator})` : '';
-      clipNotice = `Added ${system.name} from Explorers${who}.`;
+  function landSystem(system: System, pos: { x: number; y: number; z?: number }, credit?: ContentCredit, rules?: CarriedRules) {
+    // 3.1.1: A SAVED SYSTEM BRINGS THE RULES ITS CAMPAIGN MADE (`io/systemRules.ts`). They are folded
+    // into THIS campaign per definition - added, discarded when identical, renamed when this campaign
+    // already uses the name differently, never overwritten - and the system is then re-derived against
+    // the pack that knows them, by the same strip-then-process every reload uses (a processed body
+    // keeps its class, so processing again without the strip would keep the first pass's answer).
+    const map = $starmapStore;
+    const landed = map && rules && selectedRulepack
+      ? landCarriedRules(rules, map.rulePackOverrides, selectedRulepack, system.nodes)
+      : null;
+    const placed = landed ? systemProcessor.process(fixUpImportedSystem(system, landed.pack), landed.pack) : system;
+    const rulesNote = landed?.note ?? '';
+    starmapStore.update((m) => (m
+      ? placeSystemOnMap(landed ? { ...m, rulePackOverrides: landed.overrides } : m, placed, pos, [credit]).map
+      : m));
+    if (credit || rulesNote) {
+      const who = credit?.creator ? ` (credited to ${credit.creator})` : '';
+      const arrived = credit ? `Added ${system.name} from Explorers${who}.` : `Placed ${system.name}.`;
+      clipNotice = `${arrived}${rulesNote ? ' ' + rulesNote : ''}`;
       if (clipNoticeTimer) clearTimeout(clipNoticeTimer);
       clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000);
     }
@@ -2497,9 +2510,11 @@
     // One-way import fix-up: strip baked-in derived data / legacy tags from every embedded
     // system so the new engine re-derives cleanly (v1 starmaps otherwise carry stale physics).
     if (selectedRulepack && Array.isArray(sanitized.systems)) {
+      // 3.1.1: against the rules THIS FILE carries, not the shipped pack alone (`campaignRulePack`).
+      const pack = campaignRulePack(selectedRulepack, sanitized);
       for (const node of sanitized.systems) {
         if (node?.system?.nodes) {
-          try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, selectedRulepack), selectedRulepack); }
+          try { node.system = systemProcessor.process(fixUpImportedSystem(node.system, pack), pack); }
           catch (e) { console.warn('Fix-up failed for system', node.name, e); }
         }
       }
@@ -2834,7 +2849,8 @@
     {#if $systemStore && effectiveRulePack}
       <SystemView
         on:pasteClip={(e) => pasteClipInto(e.detail)}
-        system={$systemStore} rulePack={effectiveRulePack} {exampleSystems}
+        system={$systemStore} rulePack={effectiveRulePack} shippedRulePack={selectedRulepack} {exampleSystems}
+        on:notice={(e) => { clipNotice = e.detail; if (clipNoticeTimer) clearTimeout(clipNoticeTimer); clipNoticeTimer = setTimeout(() => (clipNotice = null), 9000); }}
         {broadcastSessionId}
         routesAttention={routesData.worstAttention}
         on:new={handleRequestNewStarmap}
@@ -2951,7 +2967,7 @@
     <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showFuelModal = false; returnToSettings(); }} />
   {/if}
   {#if showAtmosphereModal && $starmapStore && selectedRulepack}
-    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
+    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} effectivePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
   {/if}
   {#if showBiospheresModal && $starmapStore && selectedRulepack}
     <EditBiospheresModal showModal={showBiospheresModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />
@@ -3048,6 +3064,7 @@
       system={shipPanel.system}
       hostBody={shipPanel.host}
       rulePack={effectiveRulePack || selectedRulepack}
+      shippedRulePack={selectedRulepack}
       status={shipPanel.status}
       frac={shipPanel.frac}
       fromName={shipPanel.fromName}

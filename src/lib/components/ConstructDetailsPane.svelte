@@ -18,6 +18,8 @@
   export let focusedBody: CelestialBody;
   export let system: StarSystem;
   export let rulePack: any;
+  /** Passed straight through to the editor, which needs it to take in a construct file's rules. */
+  export let shippedRulePack: any = undefined;
   // The construct's *current* host, resolved by SystemView from its journeys (where it
   // has actually travelled to), not its authored parentId. Drives the orbit readout and
   // landing analysis, so a ship parked at a planet shows that planet rather than the star.
@@ -54,6 +56,7 @@
             construct={focusedBody}
             hostBody={hostBody}
             {rulePack}
+            {shippedRulePack}
             hideActions={isPlanning}
             on:update
             on:disengage
