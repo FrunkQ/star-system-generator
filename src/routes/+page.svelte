@@ -64,7 +64,7 @@
   import EditLiquidsModal from '$lib/components/EditLiquidsModal.svelte';
   import EditBiospheresModal from '$lib/components/EditBiospheresModal.svelte';
   import { applyListDelta } from '$lib/rulepackDelta';
-  import { buildEffectiveRulePack } from '$lib/rulepack/effectivePack';
+  import { buildEffectiveRulePack, applyEditorOverrides } from '$lib/rulepack/effectivePack';
   import { allLiquids } from '$lib/physics/liquids';
   import { allMorphologies } from '$lib/physics/vegetation';
   import { allPigments, pigmentModel } from '$lib/physics/pigments';
@@ -203,15 +203,10 @@
     returnToSettings();
   }
   function applyStarmapOverrides(overrides: any) {
-    starmapStore.update((s) => {
-      if (!s) return s;
-      const next: any = { ...s.rulePackOverrides, ...overrides };
-      // An editor that hands back `undefined` for a section is saying "no override at all" — the GM
-      // changed nothing, or changed it back. REMOVE the key rather than storing an empty one, or a
-      // campaign accumulates a set of overrides that say nothing and read as if they said something.
-      for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
-      return { ...s, rulePackOverrides: next };
-    });
+    // The fold itself lives in `$lib/rulepack/effectivePack` (`applyEditorOverrides`), moved there
+    // unchanged so the gates that prove a second custom gas does not delete the first can drive the
+    // SAME merge the page does rather than a copy of it.
+    starmapStore.update((s) => (s ? { ...s, rulePackOverrides: applyEditorOverrides(s.rulePackOverrides, overrides) } : s));
   }
 
   // Begin an interstellar journey from the transit planner: stamp it with the current game clock so
@@ -2951,7 +2946,7 @@
     <EditFuelAndDrivesModal showModal={showFuelModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showFuelModal = false; returnToSettings(); }} />
   {/if}
   {#if showAtmosphereModal && $starmapStore && selectedRulepack}
-    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
+    <EditAtmospheresModal showModal={showAtmosphereModal} rulePack={selectedRulepack} effectivePack={effectiveRulePack ?? selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showAtmosphereModal = false; returnToSettings(); }} />
   {/if}
   {#if showBiospheresModal && $starmapStore && selectedRulepack}
     <EditBiospheresModal showModal={showBiospheresModal} rulePack={selectedRulepack} starmap={$starmapStore} on:save={(e) => applyStarmapOverrides(e.detail)} on:close={() => { showBiospheresModal = false; returnToSettings(); }} />

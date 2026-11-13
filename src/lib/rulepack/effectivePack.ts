@@ -92,3 +92,28 @@ export function buildEffectiveRulePack(
   }
   return pack;
 }
+
+/**
+ * WHAT A SETTINGS EDITOR HANDS BACK, FOLDED INTO THE CAMPAIGN'S OVERRIDES - section by section.
+ *
+ * Lifted verbatim out of `applyStarmapOverrides` in `src/routes/+page.svelte` (3.1.1), for the same
+ * reason the merge above moved: the question "does a second custom gas delete the first?" is only
+ * answered by the editor's save AND this fold together, and a gate cannot drive a function that
+ * lives inside the page component - it would have had to carry its own copy.
+ *
+ * IT IS A SHALLOW, SECTION-LEVEL SPREAD, and that is the contract every editor is written against:
+ * a section an editor names REPLACES what was stored, a section it does not name is left alone, and
+ * a section it names as `undefined` is REMOVED ("no override at all" - the GM changed nothing, or
+ * changed it back; storing an empty one would accumulate overrides that say nothing and read as if
+ * they said something). So an editor must hand back EVERYTHING it wants kept in a section it names -
+ * which is why each one is mounted on the SHIPPED pack (DATA-R47). Right for an editor; never the
+ * door for a paste or a loaded file, which join per DEFINITION (`io/clipRules.ts`).
+ */
+export function applyEditorOverrides(
+  stored: RulePackOverrides | null | undefined,
+  handedBack: Partial<Record<keyof RulePackOverrides, unknown>> | null | undefined
+): RulePackOverrides {
+  const next: any = { ...stored, ...handedBack };
+  for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k];
+  return next;
+}

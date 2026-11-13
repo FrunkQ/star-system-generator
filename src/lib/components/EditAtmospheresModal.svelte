@@ -15,8 +15,24 @@
     section === 'gasPhysics' ? gases[id] : undefined;
 
   export let showModal: boolean;
+  /**
+   * THE SHIPPED PACK, NEVER THE EFFECTIVE ONE (DATA-R47, and this editor was the case it missed).
+   *
+   * This dialog stores a DIFFERENCE: `onMount` lays the campaign's overrides over this pack, and
+   * `handleSave` writes back only the gases that differ from it. From B132 until 3.1.1 it was handed
+   * the pack with the campaign's overrides ALREADY applied, so a custom gas saved last time compared
+   * equal to "the default" and was left out of the next save - and the page replaces the section
+   * whole. Add a second custom gas and the first one was gone, with every tweak to a shipped gas
+   * beside it. That is the "it only saves one" report.
+   */
   export let rulePack: RulePack;
   export let starmap: Starmap;
+  /**
+   * The campaign's EFFECTIVE pack, for the one thing here that only populates a control: the list of
+   * liquids a gas can condense into, which must offer the GM's own liquids (B132). Read-only - nothing
+   * is ever diffed against it.
+   */
+  export let effectivePack: RulePack | undefined = undefined;
 
   const dispatch = createEventDispatcher();
 
@@ -162,7 +178,7 @@
   // --- Cloud formation (per gas) ---------------------------------------------------------------
   // A gas condenses into a LIQUID, and that liquid carries the deck's look (colour, opacity) — so
   // this side only says "does it condense, into what, and above what concentration".
-  $: liquidNames = allLiquids(rulePack).map((l) => l.name).sort();
+  $: liquidNames = allLiquids(effectivePack ?? rulePack).map((l) => l.name).sort();
   function toggleGasCloud(gas: any, on: boolean) {
       if (on) gas.cloud = gas.cloud ?? { condensesTo: liquidNames[0] ?? 'water', minFraction: 0.001 };
       else delete gas.cloud;
