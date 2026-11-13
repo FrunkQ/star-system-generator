@@ -222,6 +222,10 @@ describe('the layout has one update path (B3)', () => {
     expect(layout).toContain('wireServiceWorkerUpdates(');
   });
 
+  it('lets the campaign autosave finish before an agreed reload (B-1)', () => {
+    expect(layout).toContain('beforeReload: () => settleBeforeReload()');
+  });
+
   it('keeps no reload-on-controllerchange, registration or prompt of its own', () => {
     expect(layout, 'an unconditional reload on controllerchange is the bug').not.toContain('controllerchange');
     expect(layout).not.toContain(".register('/sw.js')");

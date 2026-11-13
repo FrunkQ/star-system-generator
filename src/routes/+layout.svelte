@@ -8,6 +8,7 @@
 	import '$lib/styles/skinStore'; // applies the viewer's chosen skin (data-skin on <html>)
 	import '$lib/styles/touch-overrides.css';
 	import { wireServiceWorkerUpdates } from '$lib/util/swUpdate';
+	import { settleBeforeReload } from '$lib/util/beforeReload';
 
 	let { children } = $props();
 	let stopSwUpdates: (() => void) | undefined;
@@ -85,6 +86,8 @@
 			container: navigator.serviceWorker,
 			ask: (message) => window.confirm(message),
 			reload: () => window.location.reload(),
+			// B-1: the campaign autosave finishes before an agreed reload leaves.
+			beforeReload: () => settleBeforeReload(),
 			session: sessionOrNull()
 		});
 	});

@@ -41,6 +41,7 @@
            savePreUpgradeStarmap, loadPreUpgradeStarmap, clearPreUpgradeStarmap } from '$lib/starmapStorage';
   import { createPersistQueue } from '$lib/persistQueue';
   import { createLoadGuard } from '$lib/loadGuard';
+  import { onBeforeReload } from '$lib/util/beforeReload';
   import NewStarmapModal from '$lib/components/NewStarmapModal.svelte';
   import SisterFileModal from '$lib/components/SisterFileModal.svelte';
   import SaveSystemModal from '$lib/components/SaveSystemModal.svelte';
@@ -591,8 +592,26 @@
   // B131: ONE pending snapshot, cloned when the write happens - never a promise chain holding a clone per
   // store emission. A ship in transit emits once per frame; the chain held a full campaign per frame.
   const starmapPersist = createPersistQueue<StarmapType>((snapshot) => persistStarmap(snapshot), {
-    onError: (e) => console.error('Failed to persist starmap:', e)
+    onError: (e) => { console.error('Failed to persist starmap:', e); noteSaveFailed(); }
   });
+  // B-1: A RELOAD THE APP PERFORMS ITSELF WAITS FOR THE AUTOSAVE - `$lib/util/beforeReload`. Without
+  // this the deploy-skew recovery and the "new version" reload could leave with the last edit unwritten.
+  if (browser) onDestroy(onBeforeReload(() => starmapPersist.flush()));
+
+  // B-1: A SAVE THAT FAILED IS SAID OUT LOUD. `saveStarmap` rejects only when NEITHER store would take
+  // the campaign, and that used to reach the console and nobody else - so a GM worked on for an
+  // evening with nothing being kept, and found out at the next reload. One banner per run of
+  // failures, not one per edit; it is withdrawn by the next save that lands, because by then the
+  // campaign as it stands IS stored and the warning would no longer be true.
+  let saveFailing = false;
+  let saveProblem: string | null = null;
+  function noteSaveFailed() {
+    if (saveFailing) return;
+    saveFailing = true;
+    saveProblem = 'Your latest changes could not be saved in this browser, so a reload would lose them. ' +
+      'Save your campaign to a file now (Save Starmap) — a file is safe whatever the browser does. ' +
+      'This message goes away by itself if saving starts working again.';
+  }
 
   $: currentSystemId = $page.state.systemId || null;
 
@@ -1736,8 +1755,13 @@
   }
 
   async function persistStarmap(starmap: StarmapType) {
+    if (unloadedCampaignAtRisk) {
+      unloadedCampaignAtRisk = false;
+      await keepUnloadedCampaign(starmap);
+    }
     await saveStarmap(starmap);
     hasSavedStarmap = true;
+    if (saveFailing) { saveFailing = false; saveProblem = null; }
   }
 
   function handleCreateStarmap(event: CustomEvent<{ name: string; rulepack: RulePack; distanceUnit: string; unitIsPrefix: boolean; mapMode: 'diagrammatic' | 'scaled' }>) {
@@ -1894,6 +1918,38 @@
     a.download = `${(saved.name || 'starmap').replace(/[^\w\- ]+/g, '').trim() || 'starmap'}-recovered.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  // B-1: "START WITHOUT LOADING IT" MUST NOT BE THE STEP THAT DESTROYS THE CAMPAIGN. The screen says
+  // the starmap is still saved and nothing has been lost, which is true - until the GM starts a new
+  // map from here, and the first autosave of that overwrites the only stored copy with no question
+  // asked (the New Starmap confirm looks at the campaign that is OPEN, and none is). So this only
+  // raises a flag, and `persistStarmap` - the one place every way of starting a map ends up - copies
+  // the stored campaign to the one-step-back slot before it writes over it. That is the same single
+  // undo an upgrade or a map opened from Explorers keeps, and Settings offers the way back.
+  let unloadedCampaignAtRisk = false;
+  function startWithoutLoading() {
+    loadGuardPrompt = null;
+    loadGuardClear();
+    unloadedCampaignAtRisk = true;
+    showNewStarmapModal = true;
+  }
+  // Storage to storage: nothing rendered and nothing processed, for the reason `downloadStoredStarmap`
+  // gives (engine map UI-L4) - the campaign being kept may be the one that would not load.
+  async function keepUnloadedCampaign(aboutToWrite: StarmapType) {
+    try {
+      const stored = await loadSavedStarmap();
+      // The same campaign coming back in (its own recovered file, say) replaces nothing.
+      if (!stored || stored.id === aboutToWrite.id) return;
+      if (await savePreUpgradeStarmap(stored)) {
+        preUpgradeSnapshotName = stored.name ?? 'your previous campaign';
+        remoteNotice = `"${preUpgradeSnapshotName}" was not loaded and has been kept — it is one step back, in Settings.`;
+        if (remoteNoticeTimer) clearTimeout(remoteNoticeTimer);
+        remoteNoticeTimer = setTimeout(() => (remoteNotice = null), 12000);
+      }
+    } catch (e) {
+      console.warn('[sse-load] could not keep a copy of the campaign that was not loaded', e);
+    }
   }
 
   let physicsProgress: { done: number; total: number; joke: string; current: string } | null = null;
@@ -2685,6 +2741,12 @@
       <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (createdWithNotice = null)}>×</button>
     </div>
   {/if}
+  {#if saveProblem}
+    <div class="mem-banner critical" role="alert">
+      <span>{saveProblem}</span>
+      <button type="button" class="mem-banner-close" aria-label="Dismiss" on:click={() => (saveProblem = null)}>×</button>
+    </div>
+  {/if}
   {#if memBanner}
     <div class="mem-banner" class:critical={memBanner.critical} role="alert">
       <span>{memBanner.text}</span>
@@ -2746,7 +2808,7 @@
         </p>
         <div class="physics-guard-actions">
           <button type="button" class="physics-guard-btn primary" on:click={async () => { loadGuardPrompt = null; await handleLoadStarmap(); }}>Try loading again</button>
-          <button type="button" class="physics-guard-btn" on:click={() => { loadGuardPrompt = null; loadGuardClear(); showNewStarmapModal = true; }}>Start without loading it</button>
+          <button type="button" class="physics-guard-btn" on:click={startWithoutLoading}>Start without loading it</button>
           <button type="button" class="physics-guard-btn" on:click={downloadStoredStarmap}>Download a copy (.json)</button>
           <button type="button" class="physics-guard-btn" disabled={diagnosticBuilding} on:click={() => downloadDiagnosticBundle({
             reason: `the previous load never finished (safe mode; stopped at "${loadGuardPrompt}")`,

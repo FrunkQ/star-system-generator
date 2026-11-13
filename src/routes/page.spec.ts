@@ -4,7 +4,8 @@ import { get } from 'svelte/store';
 import Page from './+page.svelte';
 import { starmapStore } from '$lib/starmapStore';
 import { systemStore } from '$lib/stores';
-import { hasSavedStarmap, loadSavedStarmap } from '$lib/starmapStorage';
+import { hasSavedStarmap, loadSavedStarmap, saveStarmap, savePreUpgradeStarmap } from '$lib/starmapStorage';
+import { settleBeforeReload } from '$lib/util/beforeReload';
 import type { Starmap } from '$lib/types';
 import { vi, beforeEach, describe, it, expect } from 'vitest';
 
@@ -83,6 +84,7 @@ vi.mock('$lib/starmapStorage', async (importOriginal) => ({
   loadSavedStarmap: vi.fn(() => Promise.resolve(null)),
   migrateLegacyStarmapToIndexedDb: vi.fn(() => Promise.resolve()),
   saveStarmap: vi.fn(() => Promise.resolve()),
+  savePreUpgradeStarmap: vi.fn(() => Promise.resolve(true)),
 }));
 
 // +page.svelte destructures `exampleSystems` from its SvelteKit `data` prop.
@@ -97,6 +99,8 @@ describe('+page.svelte', () => {
     skit.reset();
     vi.mocked(hasSavedStarmap).mockResolvedValue(false);
     vi.mocked(loadSavedStarmap).mockResolvedValue(null);
+    vi.mocked(saveStarmap).mockReset().mockResolvedValue(undefined);
+    vi.mocked(savePreUpgradeStarmap).mockReset().mockResolvedValue(true);
   });
 
   // E3: these two used to look for a 'Create a New Starmap' heading. It has not existed since the
@@ -191,6 +195,74 @@ describe('+page.svelte', () => {
     expect(await findByText("The last load didn't finish", {}, { timeout: 8000 })).toBeInTheDocument();
     expect(await findByText('physics: Sol')).toBeInTheDocument();
     expect(queryByText('Test Starmap'), 'it must not auto-load into the same hang').toBeNull();
+  });
+
+  // B-1: THE THREE THINGS THE ROUTE OWES A GM WHOSE PAGE IS ABOUT TO RELOAD. The storage law itself is
+  // pinned in `lib/starmapStorage.spec.ts`; these are the route's half.
+  it('says so when the campaign could not be saved, and stops saying so once it can be (B-1)', async () => {
+    const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    vi.mocked(saveStarmap).mockRejectedValue(new Error('QuotaExceededError'));
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const { findByText, queryByText } = renderPage();
+      expect(await findByText(/could not be saved in this browser, so a reload would lose them/, {}, { timeout: 8000 })).toBeInTheDocument();
+
+      // Storage recovers; the next change is written; the warning is no longer true and goes.
+      vi.mocked(saveStarmap).mockResolvedValue(undefined);
+      starmapStore.update((m) => (m ? { ...m, name: 'Test Starmap, edited' } : m));
+      await waitFor(() => expect(queryByText(/could not be saved in this browser/)).toBeNull(), { timeout: 8000 });
+    } finally {
+      errors.mockRestore();
+    }
+  });
+
+  it('a reload the app performs waits for the campaign to be written (B-1)', async () => {
+    const mockStarmap = { id: 'test-starmap', name: 'Test Starmap', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(mockStarmap);
+    // A slow disk: the write is still going when the reload is decided on.
+    let finishWrite: () => void = () => {};
+    let written = false;
+    const { findByText } = renderPage();
+    await findByText('Test Starmap', {}, { timeout: 8000 });
+    await new Promise((r) => setTimeout(r, 50)); // let the load's own autosaves drain
+    vi.mocked(saveStarmap).mockImplementation(() => new Promise<void>((resolve) => { finishWrite = () => { written = true; resolve(); }; }));
+    starmapStore.update((m) => (m ? { ...m, name: 'Test Starmap, one more planet' } : m));
+    await findByText('Test Starmap, one more planet');
+
+    let mayReload = false;
+    const settled = settleBeforeReload().then(() => { mayReload = true; });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(mayReload, 'the reload must not go ahead with the write still in flight').toBe(false);
+    finishWrite();
+    await settled;
+    expect(written && mayReload).toBe(true);
+    const last = vi.mocked(saveStarmap).mock.calls.at(-1)?.[0] as Starmap;
+    expect(last.name).toBe('Test Starmap, one more planet');
+  });
+
+  it('"Start without loading it" keeps the campaign it did not load, one step back, before anything overwrites it (B-1)', async () => {
+    const stored = { id: 'the-campaign', name: 'Six Months Of Work', systems: [], routes: [] } as Starmap;
+    vi.mocked(hasSavedStarmap).mockResolvedValue(true);
+    vi.mocked(loadSavedStarmap).mockResolvedValue(stored);
+    localStorage.setItem('sse-load-guard', 'physics: Sol');
+    const order: string[] = [];
+    vi.mocked(savePreUpgradeStarmap).mockImplementation(async (m) => { order.push(`kept:${m.name}`); return true; });
+    vi.mocked(saveStarmap).mockImplementation(async (m) => { order.push(`wrote:${m.name}`); });
+
+    const { findByText, getByText } = renderPage();
+    await fireEvent.click(await findByText('Start without loading it', {}, { timeout: 8000 }));
+    expect(order, 'nothing is copied or written until something is about to replace it').toEqual([]);
+    await fireEvent.click(await findByText('Create Vast Nothingness'));
+    await findByText('My Starmap');
+
+    await waitFor(() => expect(order.some((o) => o.startsWith('wrote:'))).toBe(true), { timeout: 8000 });
+    expect(order[0]).toBe('kept:Six Months Of Work');
+    expect(order[1]).toBe('wrote:My Starmap');
+    expect(order.filter((o) => o.startsWith('kept:')), 'kept once, not on every autosave').toHaveLength(1);
+    expect(getByText(/"Six Months Of Work" was not loaded and has been kept/)).toBeInTheDocument();
   });
 
   // R-20 / G98 (Stream AA job 1): A MAP PICKED FROM THE EXPLORERS LIST OPENS THROUGH THE ONE DOOR.
