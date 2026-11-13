@@ -157,7 +157,7 @@ describe('allowed placements - the same narrowing wherever a placement is offere
     }
     expect(megaIsSurfaceOnly(def('space-elevator'))).toBe(true);
   });
-  it('the two vocabularies fold onto the record: Medium is Mid, and a named gap about a star is an AU distance', () => {
+  it("the vocabularies fold onto the record: an old save's Mid reads as Medium, and a named gap about a star is an AU distance", () => {
     const torus = def('planetary-torus');
     expect(megaPlacementAllowed(torus, 'Medium Orbit')).toBe(true);
     expect(megaPlacementAllowed(torus, 'Mid Orbit')).toBe(true);

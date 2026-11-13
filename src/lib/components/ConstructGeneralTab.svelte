@@ -8,6 +8,7 @@
   import { deriveCoOrbitalOrbit, lagrangePlacementId, LAGRANGE_PLACEMENTS } from '$lib/physics/lagrange';
   import { hostCandidates } from '$lib/system/reparent';
   import { megaTypeDef } from '$lib/constructs/megaTypes';
+  import { canonicalPlacement, hostOrbitBands, orbitBandAtAltitude, ORBIT_BAND_PLACEMENTS, PLACEMENT_SURFACE, PLACEMENT_MEDIUM_ORBIT } from '$lib/constructs/placements';
   import { effectiveMegaRequires, megaHardCheck, filterMegaPlacements, megaPlacementAllowed, megaIsSurfaceOnly, megaOrbitPlaneAuthorable, type MegaHost } from '$lib/constructs/megaPlacement';
 
   export let system: System;
@@ -80,7 +81,9 @@
     // ONE list rule for "what may this orbit", shared with a body's re-home control (G64).
     availableParents = hostCandidates(system) as CelestialBody[];
     selectedParentId = construct.parentId || undefined; // Use physical parent for editor
-    selectedPlacement = construct.placement;
+    // Read through the one vocabulary: a save written with the old middle-band spelling selects its zone here,
+    // where it used to select nothing at all.
+    selectedPlacement = canonicalPlacement(construct.placement);
     if (construct.orbit) {
         auDistance = construct.orbit.elements.a_AU;
         let trueDeg = (construct.orbit.elements.M0_rad || 0) * (180 / Math.PI);
@@ -169,20 +172,8 @@
     } else if (parentBody.kind === 'body' && (parentBody.roleHint === 'planet' || parentBody.roleHint === 'moon')) {
       const boundaries = parentBody.orbitalBoundaries;
       const isGasGiant = parentBody.classes?.some(c => c.includes('gas-giant')) ?? false;
-      if (!isGasGiant) placements.push('Surface');
-      placements.push('Low Orbit');
-      
-      if (boundaries) {
-          if (boundaries.leoMoeBoundaryKm < boundaries.meoHeoBoundaryKm) {
-              placements.push('Medium Orbit');
-          }
-          if (boundaries.meoHeoBoundaryKm < boundaries.heoUpperBoundaryKm) {
-              placements.push('High Orbit');
-          }
-          if (boundaries.geoStationaryKm && !boundaries.isGeoFallback) {
-              placements.push('Geostationary Orbit');
-          }
-      }
+      if (!isGasGiant) placements.push(PLACEMENT_SURFACE);
+      placements.push(...hostOrbitBands(boundaries));
     }
     
     if (parentBody.parentId && parentBody.roleHint !== 'star') {
@@ -203,7 +194,7 @@
     showOrbitalSlider = false;
     showInterplanetarySlider = false;
 
-    const isOrbital = ['Surface', 'Low Orbit', 'Medium Orbit', 'High Orbit', 'Geostationary Orbit'].includes(selectedPlacement || '');
+    const isOrbital = ([PLACEMENT_SURFACE, ...ORBIT_BAND_PLACEMENTS] as string[]).includes(selectedPlacement || '');
 
     if (parentBody.roleHint === 'star' || parentBody.kind === 'barycenter') {
       showInterplanetarySlider = true;
@@ -224,7 +215,9 @@
       const boundaries = parentBody.orbitalBoundaries;
       parentRadiusKm = parentBody.radiusKm || 0;
       
-      orbitalSliderMinKm = boundaries.hasSurface ? 0 : boundaries.minLeoKm;
+      // (`boundaries.hasSurface` and `.surface` were read here and are produced by nothing, so the
+      // slider has always started at the lowest orbit; a surface placement is the Zone select's.)
+      orbitalSliderMinKm = boundaries.minLeoKm;
       orbitalSliderMaxKm = boundaries.heoUpperBoundaryKm;
 
       const logTransform = (km: number) => Math.log(Math.max(1, km) / Math.max(1, orbitalSliderMinKm)) / Math.log(orbitalSliderMaxKm / Math.max(1, orbitalSliderMinKm));
@@ -233,12 +226,7 @@
       orbitalSliderValue = currentAltitudeKm > orbitalSliderMinKm ? logTransform(currentAltitudeKm) : 0;
 
       const zones: OrbitalZone[] = [];
-      let lastPos = 0;
-      if (boundaries.hasSurface) {
-        const endPos = logTransform(boundaries.surface.max) * 100;
-        zones.push({ name: 'Surface', startPos: 0, endPos, color: '#5a5a5a' });
-        lastPos = endPos;
-      }
+      const lastPos = 0;
       const loEnd = logTransform(boundaries.leoMoeBoundaryKm) * 100;
       zones.push({ name: 'Low Orbit', startPos: lastPos, endPos: loEnd, color: '#3b82f6' });
       
@@ -277,12 +265,7 @@
       let zone = selectedPlacement;
       const parentBody = system.nodes.find(n => n.id === selectedParentId);
       if (parentBody && parentBody.orbitalBoundaries) {
-          const boundaries = parentBody.orbitalBoundaries;
-          if (boundaries.hasSurface && newAltitudeKm <= boundaries.surface.max) zone = 'Surface';
-          else if (newAltitudeKm <= boundaries.leoMoeBoundaryKm) zone = 'Low Orbit';
-          else if (newAltitudeKm <= boundaries.meoHeoBoundaryKm) zone = 'Medium Orbit';
-          else if (boundaries.geosynchronousOrbit && newAltitudeKm <= boundaries.geoStationaryKm + 1000) zone = 'Geostationary Orbit';
-          else zone = 'High Orbit';
+          zone = orbitBandAtAltitude(parentBody.orbitalBoundaries, newAltitudeKm);
       }
       // Relevance again: a drag may not carry a mega into a zone its type cannot take.
       if (!megaPlacementAllowed(typeDef(), zone)) return;
@@ -415,7 +398,7 @@
         switch (selectedPlacement) {
           case 'Surface': altitudeKm = 0; break;
           case 'Low Orbit': altitudeKm = ((boundaries?.minLeoKm || 0) + (boundaries?.leoMoeBoundaryKm || 0)) / 2; break;
-          case 'Medium Orbit': altitudeKm = ((boundaries?.leoMoeBoundaryKm || 0) + (boundaries?.meoHeoBoundaryKm || 0)) / 2; break;
+          case PLACEMENT_MEDIUM_ORBIT: altitudeKm = ((boundaries?.leoMoeBoundaryKm || 0) + (boundaries?.meoHeoBoundaryKm || 0)) / 2; break;
           case 'Geostationary Orbit': altitudeKm = boundaries?.geoStationaryKm || 0; break;
           case 'High Orbit': altitudeKm = ((boundaries?.meoHeoBoundaryKm || 0) + (boundaries?.heoUpperBoundaryKm || 0)) / 2; break;
         }

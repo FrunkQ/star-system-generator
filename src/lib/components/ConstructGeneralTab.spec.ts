@@ -151,3 +151,22 @@ describe('a megastructure that orbits can be tilted, and only one that orbits', 
     expect(plane(container).inc).toBeNull();
   });
 });
+
+// THE EMPTY ZONE SELECT (found in the bug run). A station made through the create dialog was stored
+// as 'Mid Orbit'; this tab offers 'Medium Orbit'; nothing in the list matched, so the select showed
+// blank. One spelling now, and a save written with the old one is READ as the new - the stored
+// string is left alone until the GM actually changes the zone. Seen RED first: `zone.value` ''.
+describe("a station stored with the old 'Mid Orbit' spelling opens on its own zone", () => {
+  const MID = { placement: 'Mid Orbit', orbit: { hostId: 'earth', hostMu: 3.986e14, t0: 0, elements: { a_AU: (6371 + 26000) / AU_KM, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } } };
+  it('the Zone select shows Medium Orbit, with the altitude slider, and the file is not rewritten by looking', async () => {
+    const { zone, node, container } = await mount(MID);
+    expect(zone.value).toBe('Medium Orbit');
+    expect(container.querySelector('.slider-svg')).not.toBeNull();
+    expect(node.placement).toBe('Mid Orbit');
+  });
+  it('and a torus stored that way keeps its zone and its tilt control', async () => {
+    const { zone, container } = await mount({ ...MID, megaType: 'planetary-torus' });
+    expect(zone.value).toBe('Medium Orbit');
+    expect(container.querySelector('#inclination-value')).not.toBeNull();
+  });
+});

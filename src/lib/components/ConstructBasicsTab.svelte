@@ -41,21 +41,21 @@
     dispatch('update');
   }
 
-  // Initialize nested physical_parameters if it doesn't exist
-  if (!construct.physical_parameters) {
-    construct.physical_parameters = {};
+  // A CONSTRUCT MAY ARRIVE WITHOUT THESE - a hand-written file, an import - AND IT MAY ARRIVE LATER:
+  // the side panel keeps this tab mounted and swaps `construct` under it. So the shape is ensured
+  // for every construct the tab is handed, not once at creation (the fault was exactly that: the
+  // first construct was guarded and the next one selected crashed the dimensions line).
+  function ensureEditableShape(c: CelestialBody) {
+    if (!c) return;
+    if (!c.physical_parameters) c.physical_parameters = {};
+    if (c.physical_parameters.massKg === undefined) c.physical_parameters.massKg = 0;
+    if (!Array.isArray(c.physical_parameters.dimensionsM)) c.physical_parameters.dimensionsM = [0, 0, 0];
+    if (!c.icon_color) c.icon_color = '#f0f0f0';
   }
-  if (construct.physical_parameters.massKg === undefined) {
-    construct.physical_parameters.massKg = 0;
-  }
-  if (!Array.isArray(construct.physical_parameters.dimensionsM)) {
-    construct.physical_parameters.dimensionsM = [0, 0, 0];
-  }
-  
-  // Initialize icon color if missing
-  if (!construct.icon_color) {
-    construct.icon_color = '#f0f0f0';
-  }
+  ensureEditableShape(construct);
+  // BEFORE every `$:` below that reads the shape - reactive statements with the same dependency
+  // run in source order, so this one must stay first.
+  $: ensureEditableShape(construct);
 
   // Aerobraking UI states
   let _canAerobrake: boolean = construct.physical_parameters.can_aerobrake ?? false;
@@ -74,7 +74,7 @@
   // Each axis is edited at its OWN scale. The READOUT on the card shares one rung across the three
   // (they are one reading), but an editor must stay typeable: a 3e11 m spine 73 m thick would show
   // its short axes as "4.879e-10 AU" under a shared rung. Two jobs, two answers, on purpose.
-  $: dimsKm = dimensionsKmFromM(construct.physical_parameters.dimensionsM) ?? [0, 0, 0];
+  $: dimsKm = dimensionsKmFromM(construct.physical_parameters?.dimensionsM) ?? [0, 0, 0];
   function commitDim(i: number, km: number) {
     if (!construct.physical_parameters?.dimensionsM) return;
     construct.physical_parameters.dimensionsM[i] = km / KM_PER_METRE;
@@ -237,7 +237,7 @@
       <div class="form-group">
         <label for="dry-mass">Dry Mass:</label>
         <UnitInput quantity="mass" bodyType="construct" id="dry-mass" min={0}
-          value={construct.physical_parameters.massKg || 0}
+          value={construct.physical_parameters?.massKg || 0}
           on:commit={(e) => commitMass(e.detail)} />
       </div>
     </div>

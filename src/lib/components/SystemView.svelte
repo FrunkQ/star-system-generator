@@ -29,6 +29,7 @@
   import ContextMenu from './ContextMenu.svelte'; 
   import AddConstructModal from './AddConstructModal.svelte';
   import { megaTypeDef, defaultMegaParams } from '$lib/constructs/megaTypes';
+  import { orbitBandAtAltitude } from '$lib/constructs/placements';
   import { effectiveMegaRequires, megaSteerNotes } from '$lib/constructs/megaPlacement';
   import { calculateGoldilocksZone } from '$lib/physics/zones';
   import ConstructDetailsPane from './ConstructDetailsPane.svelte';
@@ -1108,12 +1109,10 @@
           // Planet/Moon Logic
           const boundaries = (host as CelestialBody).orbitalBoundaries;
           if (boundaries) {
-              // Robust checks for placement
-              if (altitudeKm <= (boundaries.minLeoKm || 100)) placement = 'Low Orbit';
-              else if (altitudeKm <= boundaries.leoMoeBoundaryKm) placement = 'Low Orbit';
-              else if (altitudeKm <= boundaries.meoHeoBoundaryKm) placement = 'Medium Orbit';
-              else if (boundaries.geosynchronousOrbit && boundaries.geoStationaryKm && Math.abs(altitudeKm - boundaries.geoStationaryKm) < 1000) placement = 'Geosynchronous Orbit';
-              else placement = 'High Orbit';
+              // The one band rule (constructs/placements.ts). A 'Geosynchronous Orbit' branch stood
+              // here on `boundaries.geosynchronousOrbit`, which nothing produces - it never ran, and
+              // its word was one no Zone select offers.
+              placement = orbitBandAtAltitude(boundaries, altitudeKm);
           }
       }
 

@@ -25,6 +25,7 @@ export type MegaHost = CelestialBody | Barycenter;
 import type { MegaTypeDef } from './megaTypes';
 import { lagrangePlacementId } from '$lib/physics/lagrange';
 import { isBlackHoleNode } from '$lib/holo/bodyFeatures';
+import { ORBIT_BAND_PLACEMENTS, PLACEMENT_SURFACE, canonicalPlacement } from './placements';
 
 export interface MegaHardResult {
   ok: boolean;
@@ -72,15 +73,16 @@ export function effectiveMegaRequires(
 // an elevator is Surface or nothing. The create dialog honoured it and the Orbit tab did not, so an
 // elevator already standing could be sent to L2 from the editor; these are the one answer both ask.
 //
-// TWO VOCABULARIES MEET HERE, which is why this is a function and not `includes`: the create dialog
-// says 'Mid Orbit' and offers one 'AU Distance' about a star; the Orbit tab says 'Medium Orbit' and
-// names the same about-a-star distance by its neighbours ('Inner System', 'Earth - Mars', 'Outer
-// System'). Each is folded onto the record's own word before it is compared.
-const BAND_WORDS: ReadonlySet<string> = new Set(['Surface', 'Low Orbit', 'Mid Orbit', 'High Orbit', 'Geostationary Orbit']);
+// TWO VOCABULARIES STILL MEET HERE, which is why this is a function and not `includes`: the create
+// dialog offers one 'AU Distance' about a star, and the Orbit tab names the same about-a-star
+// distance by its neighbours ('Inner System', 'Earth - Mars', 'Outer System'). The orbit BANDS
+// are one vocabulary now (`constructs/placements.ts`); an old save's spelling is read through
+// `canonicalPlacement` before it is compared.
+const BAND_WORDS: ReadonlySet<string> = new Set([PLACEMENT_SURFACE, ...ORBIT_BAND_PLACEMENTS]);
 
 /** The record's word for a placement either surface offers. */
 export function megaPlacementWord(placement: string): string {
-  if (placement === 'Medium Orbit') return 'Mid Orbit';
+  placement = canonicalPlacement(placement);
   if (BAND_WORDS.has(placement) || lagrangePlacementId(placement)) return placement;
   return 'AU Distance';   // every remaining option is a distance from a star or barycentre
 }

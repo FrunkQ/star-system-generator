@@ -5785,6 +5785,10 @@ host - PHY-42 is what that cost. Both surfaces now ask `megaPlacement.filterMega
 The function folds the two surfaces' vocabularies onto the record's words ('Medium Orbit' is 'Mid
 Orbit'; 'Inner System', 'A - B' and 'Outer System' are 'AU Distance'); the spellings themselves are
 NOT unified. Gated at the DOM by `ConstructGeneralTab.spec.ts`.
+CORRECTION (2026-11, RENDER-S62): the orbit-band spellings ARE unified now - one word each, from
+`constructs/placements.ts`, with 'Medium Orbit' the survivor and an old save's 'Mid Orbit' read
+through `canonicalPlacement`. The star-distance fold ('Inner System', 'A - B', 'Outer System'
+onto 'AU Distance') is unchanged and still lives in `megaPlacementWord`.
 BLAST: A HANDLER MUST READ THE PICK, NEVER A `$:` MIRROR OF IT. The Orbit tab read
 `selectedLagrangePoint` (a reactive statement) inside the select's change handler, where it still
 described the PREVIOUS pick: every L-point choice, for ANY construct, was applied one pick late and
@@ -8046,3 +8050,39 @@ traced: it is a third occlusion geometry beside 'isotropic' and 'band', with fou
 (temperature, zones, observedStar, eclipses). (3) The Caplan record's collector swarm DOES
 occlude (isotropic, its density knob) - that half is real physics on the existing chain.
 (4) The mirror also returns light to the star and would raise its temperature; unmodelled.
+### RENDER-S62 A PLACEMENT IS A STORED WORD WITH ONE SPELLING, AND THE BOUNDARIES HAVE SIX FIELDS - NO MORE
+BUCKET: IMPLEMENTATION - a stored string compared in a dozen files, and a derived record read
+for fields it never had.
+WHERE: `constructs/placements.ts` (the words; `canonicalPlacement`, `hostOrbitBands`,
+`orbitBandAtAltitude`, `hasRealGeostationary`); consumers `AddConstructModal.svelte`,
+`ConstructGeneralTab.svelte`, `SystemView.svelte` (the drop-on-the-map path),
+`construct-logic.ts` (the orbit string), `constructs/megaTypes.ts` + `megaPlacement.ts`,
+`transit/scheduler.ts` (the arrival stamp). The producer of the boundaries is
+`physics/orbits.ts calculateOrbitalBoundaries`. Gates: `placements.spec.ts` (including a source
+scan for a second literal), `construct-logic.spec.ts`, the two DOM specs.
+RULE: an orbit band's name is written in ONE file and imported everywhere else; a stored
+placement is read through `canonicalPlacement` wherever it is compared or shown, and never
+rewritten just by being looked at. `OrbitalBoundaries` is exactly `minLeoKm`,
+`leoMoeBoundaryKm`, `meoHeoBoundaryKm`, `heoUpperBoundaryKm`, `geoStationaryKm`,
+`isGeoFallback`. "Which band is this altitude in" has one answer (`orbitBandAtAltitude`) and it
+never says Surface or Geostationary: those are stated by the GM, not inferred.
+WHY: the create dialog and the mega registry wrote 'Mid Orbit'; the Orbit tab, the map-drop
+path, the planner and every bundled map said 'Medium Orbit' - so a station made in the dialog
+opened its Orbit tab on an EMPTY Zone select. Beside it, three files read `hasSurface`,
+`surface`, `geosynchronousOrbit`, `lowOrbit`, `mediumOrbit` and `highOrbit` off the boundaries.
+Nothing has ever produced any of the six, so: the Orbit tab's slider never had its Surface zone,
+a dragged or dropped construct was never called geostationary, and `construct-logic` called
+every construct with a generic placement "Far Orbit" on every real host.
+BLAST: (1) A FIXTURE THAT INVENTS THE SHAPE KEEPS DEAD CODE GREEN. `construct-logic.spec.ts`
+built its Earth with the six nonexistent fields, so the dead chain passed its own gate for
+months (the PHY-34 lesson in another coat). The fixture is now pinned to the producer's keys.
+(2) The dead geostationary branches each carried their own 1,000 km tolerance and their own
+spelling ('Geosynchronous', 'Geosynchronous Orbit' - a word no Zone select offers). They were
+removed, not revived: turning a radius into a band needs a tolerance somebody chooses. (3)
+`physics/orbits.ts` still names its planner option 'Medium Orbit' as a literal - it cannot import
+from `constructs/` without a cycle of intent, it is a label not a stored value, and the stored
+stamp goes through `scheduler.ts`, which does import the word. (4) `placement === 'Surface'` is
+still compared by name in about ten files (scene.ts, reports, derived specs, topology); that
+word has one spelling and was left alone - it is the reason an in-atmosphere placement for an
+aerostat is not a small job. (5) The Traveller importer writes `${type} Orbit` from its own
+table; none of its words is the middle band.

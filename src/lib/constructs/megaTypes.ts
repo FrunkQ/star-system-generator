@@ -37,6 +37,7 @@ import type { CelestialBody, MegaRequires } from '$lib/types';
 import type { ExoticCapabilities } from './exotics';
 import { G, AU_KM, EARTH_GRAVITY, EARTH_RADIUS_KM, C_MS } from '$lib/constants';
 import type { ConstructIconShape } from './constructIcon';
+import { ORBIT_BAND_PLACEMENTS } from './placements';
 
 // ── The placement vocabulary, as DATA (§4.2) ─────────────────────────────────────────────────────
 // The clause interfaces live in `$lib/types` because they are PACK DATA (templates author them);
@@ -298,7 +299,6 @@ function equatorialBand(radiusKm: number, widthKm: number): Extract<MegaShapeSpe
   };
 }
 
-const ORBIT_BAND_PLACEMENTS = ['Low Orbit', 'Mid Orbit', 'High Orbit', 'Geostationary Orbit'] as const;
 
 /** The distance, AU, at which this host's own pull is one Earth gravity - the Birch shell's SEED
  *  (a human-comfort default on the output side: move the knob and the figure follows). */
