@@ -6,6 +6,15 @@ const DB_NAME = 'stargen_storage';
 const STORE_NAME = 'kv';
 const IDB_STARMAP_KEY = 'saved_starmap';
 
+// B-1: THE NEWEST COPY IS NOT ALWAYS THE ONE IN INDEXEDDB. When an IndexedDB write fails the save
+// falls back to localStorage (`saveStarmap`), and from that moment the fallback copy is NEWER than
+// whatever IndexedDB still holds. This marker says so. Without it the next start-up read IndexedDB
+// first, found the older copy, loaded it - and `migrateLegacyStarmapToIndexedDb`, seeing "a copy
+// already in IndexedDB", DELETED the newer one as a leftover. The GM came back from a reload to the
+// campaign as it stood when writes began to fail, with everything since gone: the same lost work,
+// redone and lost again, on every reload.
+const FALLBACK_NEWER_KEY = 'stargen_saved_starmap_is_newer';
+
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 function hasIndexedDb(): boolean {
@@ -15,7 +24,7 @@ function hasIndexedDb(): boolean {
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
 
-  dbPromise = new Promise((resolve, reject) => {
+  const opening = new Promise<IDBDatabase>((resolve, reject) => {
     if (!hasIndexedDb()) {
       reject(new Error('IndexedDB is unavailable'));
       return;
@@ -30,28 +39,56 @@ function openDb(): Promise<IDBDatabase> {
       }
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      // A CONNECTION CAN DIE UNDER A RUNNING PAGE, and a cached dead one fails every write until a
+      // reload. Mobile browsers do this when the app is put in the background (WebKit reports it
+      // as "Connection to Indexed Database server lost"); a browser clearing site data does it
+      // too. Forget the connection the moment it goes, so the next save opens a new one.
+      const forget = () => { if (dbPromise === opening) dbPromise = null; };
+      db.onclose = forget;
+      db.onversionchange = () => { forget(); try { db.close(); } catch { /* already closed */ } };
+      resolve(db);
+    };
     request.onerror = () => reject(request.error ?? new Error('Failed to open IndexedDB'));
   });
+  // A FAILED open is not cached either: one bad moment must not disable saving for the whole visit.
+  opening.catch(() => { if (dbPromise === opening) dbPromise = null; });
 
-  return dbPromise;
+  dbPromise = opening;
+  return opening;
 }
 
-async function idbGet<T>(key: string): Promise<T | null> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
+/**
+ * Run one piece of IndexedDB work, and if it fails, try ONCE more on a brand-new connection. A dead
+ * connection fails in more than one way - `transaction()` throws, or the request errors - and all
+ * of them are cured by reopening, so they are all treated here rather than at each call site. A
+ * second failure is real (quota, storage refused) and is the caller's to handle.
+ */
+async function withFreshConnectionOnFailure<T>(work: (db: IDBDatabase) => Promise<T>): Promise<T> {
+  try {
+    return await work(await openDb());
+  } catch {
+    const stale = dbPromise;
+    dbPromise = null;
+    if (stale) { try { (await stale).close(); } catch { /* it never opened, or is already gone */ } }
+    return work(await openDb());
+  }
+}
+
+function idbGet<T>(key: string): Promise<T | null> {
+  return withFreshConnectionOnFailure((db) => new Promise<T | null>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
     const request = store.get(key);
 
     request.onsuccess = () => resolve((request.result as T | undefined) ?? null);
     request.onerror = () => reject(request.error ?? new Error('IndexedDB read failed'));
-  });
+  }));
 }
 
-async function idbSet<T>(key: string, value: T): Promise<void> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
+function idbSet<T>(key: string, value: T): Promise<void> {
+  return withFreshConnectionOnFailure((db) => new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     store.put(value, key);
@@ -59,7 +96,30 @@ async function idbSet<T>(key: string, value: T): Promise<void> {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error ?? new Error('IndexedDB write failed'));
     tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
-  });
+  }));
+}
+
+/** Is the localStorage copy the one written AFTER IndexedDB last failed? Never throws. */
+function fallbackIsNewer(): boolean {
+  try { return window.localStorage.getItem(FALLBACK_NEWER_KEY) === '1'; } catch { return false; }
+}
+
+/** The fallback copy, parsed, or null if there is none or it cannot be read. */
+function readFallback(): Starmap | null {
+  try {
+    const raw = window.localStorage.getItem(LEGACY_STARMAP_KEY);
+    return raw ? (JSON.parse(raw) as Starmap) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** IndexedDB holds the newest copy again: the fallback is now a leftover and can go. */
+function retireFallback(): void {
+  try {
+    window.localStorage.removeItem(LEGACY_STARMAP_KEY);
+    window.localStorage.removeItem(FALLBACK_NEWER_KEY);
+  } catch { /* private mode */ }
 }
 
 export async function migrateLegacyStarmapToIndexedDb(): Promise<void> {
@@ -69,6 +129,15 @@ export async function migrateLegacyStarmapToIndexedDb(): Promise<void> {
   if (!legacyRaw) return;
 
   try {
+    // B-1: a fallback copy written after IndexedDB failed is the NEWEST copy, not a leftover. Put
+    // it where it belongs if IndexedDB will take it now; if not, it stays exactly where it is and
+    // `loadSavedStarmap` reads it from there. It is never deleted before it is safely re-homed.
+    if (fallbackIsNewer()) {
+      await idbSet(IDB_STARMAP_KEY, JSON.parse(legacyRaw) as Starmap);
+      retireFallback();
+      return;
+    }
+
     const existing = await idbGet<Starmap>(IDB_STARMAP_KEY);
     if (existing) {
       window.localStorage.removeItem(LEGACY_STARMAP_KEY);
@@ -87,6 +156,12 @@ export async function migrateLegacyStarmapToIndexedDb(): Promise<void> {
 export async function loadSavedStarmap(): Promise<Starmap | null> {
   if (typeof window === 'undefined') return null;
 
+  // B-1: newest first. See FALLBACK_NEWER_KEY.
+  if (fallbackIsNewer()) {
+    const newer = readFallback();
+    if (newer) return newer;
+  }
+
   try {
     const fromIdb = await idbGet<Starmap>(IDB_STARMAP_KEY);
     if (fromIdb) return fromIdb;
@@ -94,21 +169,21 @@ export async function loadSavedStarmap(): Promise<Starmap | null> {
     console.warn('IndexedDB starmap load failed, attempting localStorage fallback.', error);
   }
 
-  const legacyRaw = window.localStorage.getItem(LEGACY_STARMAP_KEY);
-  if (!legacyRaw) return null;
-
-  try {
-    return JSON.parse(legacyRaw) as Starmap;
-  } catch {
-    return null;
-  }
+  return readFallback();
 }
 
+/**
+ * Persist the campaign. RESOLVES ONLY IF IT IS STORED SOMEWHERE A RELOAD WILL FIND IT, and rejects
+ * when neither IndexedDB nor the fallback would take it - the caller tells the GM (B-1), because a
+ * save that failed in silence is how an evening's work is lost to the next reload.
+ */
 export async function saveStarmap(starmap: Starmap): Promise<void> {
   if (typeof window === 'undefined') return;
 
   try {
     await idbSet(IDB_STARMAP_KEY, starmap);
+    // IndexedDB is current again, so an earlier fallback copy is now the OLDER one.
+    if (fallbackIsNewer()) retireFallback();
   } catch (error) {
     console.warn('IndexedDB starmap save failed, using localStorage fallback.', error);
     // THE FALLBACK HAS A ~5 MB CEILING AND THE UNDO HISTORY IS THE MOST EXPENDABLE THING IN THE
@@ -118,6 +193,8 @@ export async function saveStarmap(starmap: Starmap): Promise<void> {
     const lean = { ...starmap };
     stripUndoHistory(lean);
     window.localStorage.setItem(LEGACY_STARMAP_KEY, JSON.stringify(lean));
+    // Only once the copy is really there: a marker without a copy would hide the IndexedDB one.
+    window.localStorage.setItem(FALLBACK_NEWER_KEY, '1');
   }
 }
 
