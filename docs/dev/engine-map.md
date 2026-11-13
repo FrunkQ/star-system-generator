@@ -7945,3 +7945,216 @@ own estimate from the radius - and is still printed as plain "Mass"; relabelling
 shipped map (LHS 475 b). Past ~12 Earth radii the relation cannot be inverted and answers with the
 mass at which its plateau begins. THE FIXTURE ROW IS SYNTHESISED from published figures; the live
 composite row for Kepler-32 f has not been seen from a browser.
+### PHY-43 A BODY'S AGE HAS ONE ANSWER, AND ITS "NOW" IS THE SYSTEM'S REFERENCE EPOCH, NEVER THE SCRUB
+BUCKET: ARCHITECTURE + DOMAIN - architecture: one function answers "how old is this body" and
+nothing else may read the stored field or the system's age in its place. Domain: an age is a
+property with a history behind it, not an overruled derivation. Carries to V4 unchanged.
+WHERE: `physics/bodyAge.ts` (`ageOf`, `setBodyAge`, `clearBodyAge`, `hasOwnAge`, `cosmicNowGyr`);
+the field is `CelestialBody.formationTimeGyr` (`types.ts`). Design: `docs/dev/deep-time-design.md`.
+Gate: `physics/bodyAge.spec.ts`.
+RULE: a body's age is `ageOf(body, system)`. WHAT IS STORED IS A FORMATION TIME, in Gyr after the
+big bang on the master clock's axis (G62), and it is OPTIONAL: ABSENT MEANS INHERIT, the body is as
+old as its system, and NOTHING STAMPS THE SYSTEM'S AGE ONTO A BODY - not the processor, not a save,
+not an importer. It is NOT in `body.overrides` and raises no anomaly. "Now" is
+`cosmicNowGyr(system)`: the system's reference epoch `epochT0` (unix ms, written once at creation)
+placed on the master clock by `temporal/utre.ts unixMsToMasterSeconds`. IT IS NEVER THE CAMPAIGN
+CLOCK'S DISPLAY TIME: no code that reads `starmap.temporal`, `currentTime` or a scrub position may
+feed an age.
+WHY: [[G94]], the owner: "EVERY object should have an independent age anyway as V4 will track
+formation times, captured bodies and rebuilding planets smashed in system" and, settling the trap,
+"No clock is changed as you can slide the age of a body independently". Stamping on save is the
+fault rule-pack deltas exist to avoid: a GM who later ages the system would find it reaches
+nothing. Deriving against the scrub would make a brown dwarf cool while a GM drags the time bar.
+BLAST: `ageOf` reads the runtime temporal anchor through `unixMsToMasterSeconds`. The shipped
+anchor equals the built-in constant, so this is the same number in a test and in the app; a
+campaign whose anchor is moved moves "now" for every body that has its own formation time, by the
+same amount, and moves nothing for a body that inherits. A body pasted into another system keeps
+its formation time and therefore its place in history - its AGE there is that system's "now" less
+it, which differs only by the gap between the two reference epochs. `epochT0` of 0 (the Traveller
+importer) reads as 1970 and is 56 years in 13.787 Gyr. The float round trip is not exact
+(`now - (now - 9.2)` is 9.2 to about 1e-15): compare with a tolerance, display rounded.
+BLAST: THE `age/` TAG FAMILY IS DERIVED FROM THIS AND FROM NOTHING ELSE (`physics/ageTags.ts`,
+`ageBand`; emitted by pass 0d of `SystemProcessor.process`, which owns the namespace and clears it
+first, TAG-6; gates `physics/ageTags.spec.ts` and the last block of `system/bodyAge.test.ts`).
+ONLY A BODY WITH ITS OWN FORMATION TIME IS BANDED OR EVEN TOUCHED - an inheriting body formed with
+its system, carries no tag, and has its tag array left exactly as it arrived, which is what keeps
+old saves and the Sol baseline identical. ONE TAG, the most specific band, value = the body's age.
+PRIMORDIAL IS ABSOLUTE AND IS ASKED FIRST (cosmic formation time below `primordialBeforeGyr`);
+young, old and ancient are RELATIVE to the SYSTEM's formation - the system's, not the nearest
+star's, so a moon of a captured brown dwarf is compared with the system like everything else. The
+four numbers are PACK DATA (`deepTime` in the pack's `main.json`, read only through
+`deepTimeConfig`, which defaults each field separately); they are first values awaiting the
+owner's eye. `age/` and `origin/` never read each other. The namespace is `overridable: false`:
+forcing the tag by hand would describe an age the body does not have, and the Age control is the
+lever. A NEW ENGINE NAMESPACE IS DECLARED IN THREE PLACES and `age/` is in all three:
+`tagDefaults.ENGINE_NAMESPACES` (provenance), `tagPresentation` (`NAMESPACE_META`, `NAMESPACE_DESC`
+and the four `TAG_INFO` entries) and `importFixup.DERIVED_TAG_PREFIXES` - miss the last and the tag
+is written into every save as a fossil beside the field it was derived from.
+(This paragraph wants its own TAG- entry; no TAG id was reserved for the stream.)
+BLAST: WHAT A SAVE CARRIES. `formationTimeGyr` is AUTHORED and is not in
+`importFixup.DERIVED_FIELDS`; it must never be added there. The stellar pin's `temperature0K` and
+`radiationOutput0` (OVR-9) are written by the processor and are DECLARED in `NOT_STRIPPED`: strip
+them and a pin becomes irreversible across a save. `system/bodyAge.test.ts` ("a save keeps the ages
+it was given...") gates all three through `stripSystemForExport` and `fixUpImportedSystem`.
+### PHY-44 WHICH PHYSICS READS A BODY'S OWN AGE AND WHICH STILL READS THE SYSTEM'S - THE LIST IS THE RULE
+BUCKET: ARCHITECTURE (ordering + single source) - the processor holds two ages on purpose, and a
+consumer on the wrong one is invisible until a GM ages one body. First-order for V4's evolution
+engine, where the system-wide list should shrink to nothing.
+WHERE: `core/SystemProcessor.ts` - `this.ageOf(body)` (the body's own, PHY-43) and
+`this.systemAgeGyr` (the system's). Gate: `system/bodyAge.test.ts`, one describe per consumer.
+RULE: a consumer that answers a question ABOUT ONE BODY'S HISTORY asks `this.ageOf(body)`. Switched
+so far, each with its own gate:
+  - THE SUBSTELLAR COOLING TRACK (`applySubstellarSelfLuminosity`, and the substellar test in the
+    star pre-pass) - a brown dwarf's temperature and luminosity. This is [[B150]]'s fix.
+  - A GIANT'S INTERNAL HEAT (`estimateInternalHeatK` in `processEnvironment`) - the heat of its own
+    formation, still being shed. The Temperature tab's live preview is handed the same figure
+    (`BodySidePanel` passes `ageOf(body, system)`), so the tab and the card cannot disagree.
+  - ATMOSPHERIC ESCAPE (`applyAtmosphericEscape`, opted-in bodies only) - eroded over the body's
+    own age less `FORMATION_DELAY_GYR`. One expression for both cases, no branch on whether the
+    body has its own age.
+  - A STAR'S FLARE ACTIVITY (`flareActivity` in the star pre-pass) - the dynamo spins down on the
+    star's own age. THIS IS THE ONLY STELLAR CONSUMER SWITCHED, and it is not `ageStar`.
+STILL ON THE SYSTEM'S AGE, DELIBERATELY: tidal locking (`predictTidalLock`), the surface-age read
+inside the thermal solve (`solveThermalState` / `surfaceAgeOnProbe`), the geology model
+(`deriveGeoActivity`), the classifier's `age_Gyr` feature, the habitability bonus, and everything
+outside the processor (zones, reasons to visit, generation, the map summary). The first four are
+questions about one body and are the next candidates; they were not in the brief's list and each
+is a physics change wanting its own gate.
+A FUSING STAR'S TEMPERATURE, RADIUS AND LUMINOSITY DO NOT FOLLOW ANY AGE in the editor:
+`physics/stellar-evolution.ts ageStar` runs at creation only ([[G97]]). Do not wire it to `ageOf`
+without the owner's word on seed versus current state - on an imported star it double-ages.
+`ageOf` IS AN INPUT: it is read from authored data and the system record, never from anything a
+pass writes, so it may be asked anywhere in the pass and answers the same every time.
+WHY: [[G94]]. There was exactly one age, `System.age_Gyr`, consumed at 21 sites, so the only lever
+that moves a brown dwarf's temperature could not be reached for one dwarf without ageing every
+world around it - and the Star tab offered a temperature box that the cooling track overwrote on
+the next pass ([[B150]], three reporters).
+BLAST: A MOON IS LIT BY ITS HOST'S OWN AGE: an aged brown dwarf's luminosity is what its moons
+receive, so ageing the host cools the moons and that is correct. A BODY FILED EITHER WAY IS ONE
+OBJECT (DATA-R22): the star-filed and planet-filed dwarf must give the same photosphere for the
+same age, and the gate asserts it. `process()` works on the nodes it is handed, so a test that
+compares "before" and "after" must read the before figures BEFORE the second run - the first cut
+of this gate compared an object with itself and failed for that reason, not for the physics.
+### UI-C20 THE AGE CONTROL IS ONE COMPONENT, ITS AXIS IS FORMATION TIME, AND ITS SENTENCE IS MEASURED
+BUCKET: ARCHITECTURE (single source) + PLATFORM (the range-input trap again). The control is thin;
+the three things that are easy to get wrong are below.
+WHERE: `components/AgeControl.svelte`, mounted by `BodyTemperatureTab.svelte` (planet, moon) and by
+`BodyStarTab.svelte` (a brown dwarf filed as a star); `physics/ageDrives.ts` (`ageDriven`,
+`ageDrivesSentence`, `formatAgeGyr`). Gates: `components/AgeControl.spec.ts`, and the
+"what the Age control says it drives is what moves" block of `system/bodyAge.test.ts`.
+RULE: (1) THE SLIDER'S VALUE IS THE FORMATION TIME, NOT THE AGE - big bang at the left, the
+system's reference date at the right, so LEFT IS OLDER; the number box beside it is the age. Its
+maximum is `cosmicNowGyr(system)`, derived, never a typed 13.787. (2) THE RANGE IS BOUND ONE WAY
+and the body is written only from a handler (UI-C19): mounting the control on a body with no age
+of its own must leave `formationTimeGyr` ABSENT, and "Use the system's age" DELETES it rather than
+writing the system's age. (3) THE LINE SAYING WHAT AGE DRIVES IS NOT A LIST OF BODY KINDS: each
+clause asks the model it describes whether age changes its answer for this body, and the gate
+gives every body in a test system two ages and requires the set of figures that MOVED to equal the
+set the sentence CLAIMED. A body whose age drives nothing is told so.
+WHY: [[G94]] job 3 and [[G96]]. The label is "Age" and never "time", which here means the campaign
+date. It is not an override - no pin, no anomaly, no warning - because a body older than its
+system is a history.
+BLAST: SWITCHING ANOTHER CONSUMER TO `ageOf` (PHY-44's "still on the system's age" list) TURNS THE
+MEASURED GATE RED until `ageDriven` learns the new clause - that is the gate working, and the fix
+is a clause that asks the model, never a `roleHint` test. A star-filed brown dwarf's sentence
+includes "how hard it flares" because `flareActivity` gives an L, T or Y class an age-dependent
+figure; whether a brown dwarf should flare at all is a physics question the sentence only reports.
+The slider is linear in cosmic time, so the youngest 100 Myr is under 1% of its travel: young ages
+are typed, or reached through the temperature inversion on a brown dwarf. The composition floor,
+the four coloured zones and the detent of deep-time-design.md section 4 are NOT built; the only
+mark on the axis is the system's own formation.
+BLAST: ON THE STAR TAB THE CONTROL STANDS IN PLACE OF THE EFFECTIVE TEMPERATURE BLOCK FOR A
+SUBSTELLAR BODY ONLY (`tempIsCoolingTrack`, asked of the cooling model, never a mass literal). A
+FUSING star keeps `#temp`; removing it there is [[G97]]'s half and `BodyStarTab.spec.ts` gates both
+directions. A TEST TRAP PAID FOR HERE: two star tabs mounted in one jsdom document both carry
+`#temp`, and a container-scoped `querySelector('#temp')` is answered from the DOCUMENT's first
+match - so the second container reports "no temperature box" whatever it holds. `cleanup()` before
+each mount, or the "control is gone" assertion passes with the control present.
+### PHY-45 A BROWN DWARF'S TEMPERATURE IS ASKED FOR AS AN AGE: THE TRACK IS INVERTED, NEVER PINNED
+BUCKET: ARCHITECTURE (single source) + DOMAIN - domain: a brown dwarf does not fuse, so its
+temperature is a consequence of mass and age and has no independent existence to pin.
+Architecture: an inverse lives beside the law it inverts and is gated by the round trip.
+WHERE: `physics/substellar.ts` - `brownDwarfThermal` (the track) and `brownDwarfAgeForTeff` (the
+same track rearranged), sharing `trackFor`, `TEFF_FLOOR_K`, `TEFF_CAP_K` and `MIN_TRACK_AGE_GYR`.
+Caller: `components/AgeControl.svelte` ("Aim for a temperature"). Gates: `substellar.spec.ts`
+(every answer run back through the track), `AgeControl.spec.ts`.
+RULE: THERE IS NO TEMPERATURE OVERRIDE FOR A SUBSTELLAR BODY AND THERE MUST NOT BE ONE. A GM who
+has a temperature in mind types it and is OFFERED the age that gives it; accepting sets the AGE
+(PHY-43) and stores no temperature. The inverse returns the age the law implies even when that is
+30 Gyr - IT DOES NOT KNOW HOW OLD THE UNIVERSE IS, and the caller compares with
+`cosmicNowGyr(system)` and says so in words instead of offering it. Typing a temperature changes
+nothing until the offer is accepted.
+WHY: [[B150]] - a T dwarf whose typed 914 K and 988 K each returned to 1172.77 K, three reporters.
+The first proposed fix was a `temperatureK` override; the owner withdrew it for [[G94]] ("give the
+GM the cause, not the consequence"). MEASURED on the report's own dwarf (36.9 Jupiter masses): 988 K
+is a 9.1 Gyr dwarf, and 914 K needs 15.3 Gyr - so one of the two figures he typed is not reachable
+by ANY age at that mass, which is exactly what a pin would have hidden.
+BLAST: THE TRACK IS FLAT AT BOTH ENDS (the 2800 K ceiling for a young heavy dwarf, the 250 K
+floor), so the inverse is not unique there: at the ceiling it returns the OLDEST age that still
+gives it, below the floor it reports the age the floor is reached. A planet-filed dwarf's box
+reads in the campaign's PLANET temperature unit (Celsius by default), a star-filed one in kelvin:
+the unit is presentation, the SI value handed to the inverse is the same (DATA-R22). The 1900-2100
+K raise for a fusing star just above the limit (`STELLAR_FLOOR_K`) is untouched and is the one
+place an authored stellar temperature is still overruled.
+### OVR-9 A STAR'S TEMPERATURE PIN IS APPLIED TO THE STORED FIGURE, BY ONE FUNCTION, AND KEEPS WHAT IT DISPLACED
+BUCKET: ARCHITECTURE (ordering + single source) - the one override whose quantity nothing derives,
+so the F-OVR shape "feed the pin INTO the derivation" has no derivation to feed. Revisit when
+[[G97]] gives a star a temperature that IS derived; until then this is the honest form.
+WHERE: `physics/stellarTempPin.ts` (`applyEffectiveTempPin`, `effectiveTempPin`,
+`hasPinnablePhotosphere`, `STELLAR_FLOOR_K`, `NON_THERMAL_STAR_CLASSES`); the roster record
+`effectiveTempK` in `physics/overrides.ts` and the new optional `OverrideDef.offered`; the call at
+the top of the stellar pass in `core/SystemProcessor.ts`; the pinned state of the Effective
+Temperature block in `components/BodyStarTab.svelte`. Gate: `system/stellarTempPin.test.ts`.
+RULE: `overrides.effectiveTempK` on a star with a photosphere nothing else derives means the star's
+`temperatureK` IS that figure and its `radiationOutput` is Stefan-Boltzmann over the radius and it
+(PHY-34, three significant figures, as the star editor rounds). `applyEffectiveTempPin` is the only
+writer and is called from TWO places - the processor, first thing in the stellar pass, and the
+roster record's `commit` - so the Overrides tab shows the effect before any recalculation and a
+save that arrives with the key is honoured without the tab. THE FIGURE IT DISPLACED IS KEPT on the
+body as `temperature0K` / `radiationOutput0` (the `atmosphere0` pattern) for exactly as long as the
+pin exists; when the pin goes the same function restores both and deletes them. That is what makes
+reset exact and re-processing a no-op.
+WHO IS NOT OFFERED IT, via `OverrideDef.offered` (a finer test than `appliesTo`'s role): a BROWN
+DWARF, asked of the cooling model - its handle is its age (PHY-45) and a pin there would rebuild
+the control [[B150]] removed; and a BLACK HOLE, NEUTRON STAR or MAGNETAR, whose output is not a
+surface. A pin key found on one of those (a hand-edited save) is IGNORED, not applied.
+THE PIN OUTRANKS THE IGNITION FLOOR: the raise of a fusing star below `STELLAR_FLOOR_K` is skipped
+while a pin is set; an unpinned star is raised exactly as before.
+WHY: [[G96]], the owner: "direct temp control is now in overrides" and "the physics just uses the
+actual values - even if they don't make a huge amount of sense". `surfaceTempK` could not carry it:
+that is a planet's mean-surface pin, banded on equilibrium and fed through a thermal solve a star
+does not have.
+BLAST: THE STAR TAB STILL HAS ITS EFFECTIVE TEMPERATURE BLOCK ([[G97]] decides its removal), so
+while a pin is set that block is DISABLED and says "pinned" - two controls writing one figure is
+[[B150]] again. The class picker still draws a temperature for a newly chosen class; under a pin
+the processor puts the pinned figure back and the DISPLACED figure stays the pre-pin one, so a
+reset returns to the temperature from before the pin, not the new class's. The CLASS is not
+re-derived from a pinned temperature. THE PLAUSIBLE BAND IS THE FUSING RANGE (`STELLAR_FLOOR_K` to
+the star editor's own 50,000 K), not yet "the star's own mass-and-age track" as G96 specified:
+that track needs the zero-age seed G97 is about. A white dwarf is given no band. FOUND ON THE WAY:
+`formatOverrideValue` trimmed trailing zeros from ANY string, so the first record with
+`decimals: 0` printed 500 K as "5 K" and 1900 K as "19 K"; it now trims only after a decimal point.
+### UI-C21 THE SYSTEM'S AGE IS EDITED ON A STAR'S "SYSTEM INFO" TAB, AND AN EDIT MAKES IT CHOSEN
+BUCKET: ARCHITECTURE (where a system-level property is edited) - there is no system panel; the
+system's own properties ride a tab on its stars, and the edit reaches the processor by MUTATING the
+store's system object and announcing a body update.
+WHERE: `components/SystemInfoTab.svelte` (mounted by `BodySidePanel.svelte` for a star only);
+`SystemView.svelte handleBodyUpdate` (re-processes `{ ...system }` on every body update, which is
+how a changed `age_Gyr` is picked up). Gate: `components/SystemInfoTab.spec.ts`; the consequence is
+gated in `system/bodyAge.test.ts` ("ageing the SYSTEM afterwards...").
+RULE: `System.age_Gyr` is written here, by the generation wizard and by the import dialog, and
+nowhere else. An edit here DELETES `ageEstimated` (the import dialog's rule: an age a GM chose is
+not a guess) and leaves `ageBandGyr` alone - the band is what the star's own life makes likely,
+shown under the control, and an age outside it is KEPT and said, never clamped. The slider is
+log-scaled from 1 Myr to `cosmicNowGyr(system)` and bound ONE WAY (UI-C19).
+WHY: [[B150]]'s workaround was "the lever that works is the SYSTEM'S AGE" - and an existing
+system's age had no control at all, so the people it was said to could not act on it. [[G94]]
+makes it the age of every body that has not been given its own; the tab counts the ones that have,
+because those will not follow.
+BLAST: THE TAB EXISTS ON STARS ONLY, so a system with no star (a rogue planet on its own) has no
+way to reach this control; it would need the tab offered on the root body. CHANGING THE AGE DOES
+NOT AGE THE STARS: `ageStar` runs at creation only ([[G97]]), and the tab says so in words. The
+sentence listing what the age drives is PROSE, not measured (unlike the body Age control's,
+UI-C20); it names the system-wide consumers of PHY-44 and must be kept true by hand when one moves.
+The `system` prop here is the STORE'S OWN OBJECT (`BodyDetailsPane` is given `$systemStore`), which
+is the only reason mutating it works; a caller that hands this tab a copy would see edits vanish.

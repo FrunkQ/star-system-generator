@@ -76,7 +76,9 @@ export const NOT_STRIPPED: Record<string, string> = {
   tags: 'HANDLED SEPARATELY below by namespace. On a CONSTRUCT the processor only writes an empty [].',
   magneticField: 'CONDITIONAL below: AUTHORED for a star (never re-derived on load); derived and stripped for a planet or moon, whose GM pin lives in overrides.magneticFieldGauss (G37).',
   tidallyLocked: 'CONDITIONAL below: derived unless the GM pinned it with tidalLockManual.',
-  rotation_period_hours: 'AUTHORED: the engine rewrites it for a LOCKED body, but it is input for a spin-orbit resonance and stripping it made Mercury an eyeball world (B82).'
+  rotation_period_hours: 'AUTHORED: the engine rewrites it for a LOCKED body, but it is input for a spin-orbit resonance and stripping it made Mercury an eyeball world (B82).',
+  temperature0K: 'KEPT ON PURPOSE (G96): what a pinned stellar temperature displaced. Written when overrides.effectiveTempK is set, and it is the only record of the figure a reset must return, so stripping it would make the pin irreversible across a save.',
+  radiationOutput0: 'KEPT ON PURPOSE (G96): the brightness a pinned stellar temperature displaced. Same lifetime and same reason as temperature0K.'
 };
 
 // Tag namespaces the processor owns (re-derived every run).
@@ -89,7 +91,10 @@ const DERIVED_TAG_PREFIXES = [
   // saved — so the tag itself is a fossil in a file. The filter at the call site runs
   // `survivesRederive` first, which is what keeps a hand-added `anomaly/legend` with no override
   // behind it: that one is manual, and nothing re-creates it.
-  'anomaly/'
+  'anomaly/',
+  // G94: `age/*` is re-emitted every pass from the body's own `formationTimeGyr`, which IS authored
+  // and IS saved - so, like an anomaly tag, the tag in a file is a fossil and the field is the fact.
+  'age/'
 ];
 // Flat (non-namespaced) tags the processor manages or has retired.
 const DERIVED_FLAT_TAGS = new Set([

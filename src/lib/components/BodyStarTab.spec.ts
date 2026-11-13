@@ -3,7 +3,7 @@
 // are consumed by taking the MIDPOINT, so the same pick produced two different stars depending on
 // which door you came through. The pack is now the only copy. These tests assert that: the editor's
 // numbers must BE the pack's numbers, not merely resemble them.
-import { render } from '@testing-library/svelte';
+import { render, fireEvent, cleanup } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { describe, it, expect } from 'vitest';
 import BodyStarTab from './BodyStarTab.svelte';
@@ -496,29 +496,91 @@ describe('A85 — the rotation band and the rotation thumb measure ONE axis', ()
 	});
 });
 
-// ideas B20 / inbox B150 - "whenever you edit the temperature of a brown dwarf it goes to something
+// inbox B150 / G94 / G96 - "whenever you edit the temperature of a brown dwarf it goes to something
 // like 2372 ... when you try to increase or lower it it goes straight back". The physics is right
-// (a brown dwarf's temperature is its cooling track) and the box gave no hint of it. Until the age
-// control lands, the editor at least SAYS so - on a brown dwarf, and on nothing else.
-describe('BodyStarTab - a brown dwarf is told its temperature is derived', () => {
+// (a brown dwarf's temperature is its cooling track); the fault was a box that took a number and
+// threw it away. The owner, to the user: "That temp slider WILL disappear, but you can mess with its
+// age instead." So this is gated BOTH ways: gone on a brown dwarf, still there on a fusing star.
+describe('BodyStarTab - a brown dwarf has an Age control where its temperature control was', () => {
 	const MJ = 1.898e27;
-	const note = (body: any) => render(BodyStarTab, { props: { body, rulePack } }).container.querySelector('.cooling-note');
+	const system = { age_Gyr: 2.9, epochT0: Date.UTC(2026, 8, 1, 12) };
+	// ONE MOUNT AT A TIME. Two star tabs in one document both carry `#temp`, and jsdom answers a
+	// scoped `querySelector('#temp')` from the DOCUMENT's first match - so the second container reads
+	// "no temperature box" whatever it holds. Measured: a fusing M dwarf mounted after the Sun
+	// reported none. Unmounting first is what makes the "gone on a brown dwarf" assertions mean it.
+	const mount = (body: any) => { cleanup(); return render(BodyStarTab, { props: { body, rulePack, system } }).container; };
+	const dwarf = () => ({ id: 'bd', kind: 'body', roleHint: 'star', name: 'BD', classes: ['star/T'], massKg: 36.9 * MJ, radiusKm: 56000, temperatureK: 1172, tags: [] });
 
-	it('a 37 Jupiter-mass T dwarf carries the sentence, and it names the lever that works', () => {
-		const dwarf = { id: 'bd', kind: 'body', roleHint: 'star', name: 'BD', classes: ['star/T'], massKg: 36.9 * MJ, radiusKm: 56000, temperatureK: 1172 };
-		const el = note(dwarf);
-		expect(el).toBeTruthy();
-		expect(el!.textContent).toMatch(/replaced on the next recalculation/);
-		expect(el!.textContent).toMatch(/older system gives a cooler dwarf/);
+	it('the report\'s 37 Jupiter-mass T dwarf: no temperature box, no temperature slider, an Age control', () => {
+		const c = mount(dwarf());
+		expect(c.querySelector('#temp')).toBeNull();
+		expect(c.querySelector('label[for="temp"]')).toBeNull();
+		expect(c.querySelector('.age-control')).toBeTruthy();
+		expect(c.querySelector('.age-control label')!.textContent).toBe('Age');
+		// ...and it shows the temperature that age gives, where the box used to be.
+		expect(c.querySelector('.age-control .teff')!.textContent).toMatch(/1,?17\d/);
+		expect(c.querySelector('.cooling-note')).toBeNull();      // the stopgap sentence went with the box
 	});
 
 	it('both edges of the substellar window are covered: 8 and just under 80 Jupiter masses', () => {
-		expect(note({ id: 'lo', kind: 'body', roleHint: 'star', name: 'Lo', classes: ['star/Y'], massKg: 8 * MJ, radiusKm: 70000, temperatureK: 400 })).toBeTruthy();
-		expect(note({ id: 'hi', kind: 'body', roleHint: 'star', name: 'Hi', classes: ['star/L'], massKg: 79 * MJ, radiusKm: 60000, temperatureK: 2000 })).toBeTruthy();
+		for (const b of [
+			{ id: 'lo', kind: 'body', roleHint: 'star', name: 'Lo', classes: ['star/Y'], massKg: 8 * MJ, radiusKm: 70000, temperatureK: 400, tags: [] },
+			{ id: 'hi', kind: 'body', roleHint: 'star', name: 'Hi', classes: ['star/L'], massKg: 79 * MJ, radiusKm: 60000, temperatureK: 2000, tags: [] }
+		]) {
+			const c = mount(b);
+			expect(c.querySelector('#temp'), b.id).toBeNull();
+			expect(c.querySelector('.age-control'), b.id).toBeTruthy();
+		}
 	});
 
-	it('a FUSING star does not: its temperature is the GM\'s to set and it sticks', () => {
-		expect(note(makeStar())).toBeNull();                                                              // the Sun
-		expect(note({ ...makeStar(['star/M']), id: 'm', massKg: 0.1 * 1.989e30, radiusKm: 85000, temperatureK: 2900 })).toBeNull();  // 105 M_Jup
+	it('opening the tab gives the dwarf no age of its own, and moving the control does', async () => {
+		const body: any = dwarf();
+		let updates = 0;
+		cleanup();
+		const { container } = render(BodyStarTab, { props: { body, rulePack, system }, events: { update: () => updates++ } } as any);
+		await tick();
+		expect('formationTimeGyr' in body).toBe(false);
+		const before = updates;
+		await fireEvent.input(container.querySelector('.age-slider')!, { target: { value: '4' } });
+		expect(body.formationTimeGyr).toBeCloseTo(4, 9);
+		expect(updates).toBe(before + 1);
+	});
+
+	it('a FUSING star keeps its Effective Temperature control and gets no Age control', () => {
+		for (const b of [
+			makeStar(),                                                                                         // the Sun
+			{ ...makeStar(['star/M']), id: 'm', massKg: 0.1 * 1.989e30, radiusKm: 85000, temperatureK: 2900 }  // 105 M_Jup
+		]) {
+			const c = mount(b);
+			expect(c.querySelector('#temp'), b.id).toBeTruthy();
+			expect(c.querySelector('label[for="temp"]')!.textContent!.trim()).toBe('Effective Temperature');
+			expect((c.querySelector('input[id="temp"]') as HTMLInputElement).disabled, b.id).toBe(false);
+			expect(c.querySelector('.age-control'), b.id).toBeNull();
+		}
+	});
+});
+
+// G96 - "direct temp control is now in overrides". The star's Effective Temperature block stays
+// (removing it waits on G97), so while a pin is set it SHOWS the pinned figure and does not edit
+// it: two controls writing one number is how a box comes to snap back.
+describe('BodyStarTab - a star whose temperature is pinned on the Overrides tab', () => {
+	const system = { age_Gyr: 4.6, epochT0: Date.UTC(2026, 8, 1, 12) };
+	const mount = (body: any) => { cleanup(); return render(BodyStarTab, { props: { body, rulePack, system } }).container; };
+
+	it('shows the pin, says where it is set, and neither the box nor the slider will move it', () => {
+		const c = mount({ ...makeStar(), temperatureK: 4000, temperature0K: 5772, overrides: { effectiveTempK: 4000 } });
+		expect(c.querySelector('label[for="temp"] .override-pill')!.textContent).toBe('pinned');
+		expect(c.querySelector('label[for="temp"] .override-pill')!.getAttribute('title')).toMatch(/Overrides tab/);
+		const box = c.querySelector('input[id="temp"]') as HTMLInputElement;
+		expect(box.disabled).toBe(true);
+		expect(box.value).toBe('4000');
+		expect((c.querySelector('label[for="temp"]')!.closest('.form-group')!.querySelector('input[type="range"]') as HTMLInputElement).disabled).toBe(true);
+	});
+
+	it('an unpinned star has no pill and both controls work', () => {
+		const c = mount(makeStar());
+		expect(c.querySelector('label[for="temp"] .override-pill')).toBeNull();
+		expect((c.querySelector('input[id="temp"]') as HTMLInputElement).disabled).toBe(false);
+		expect((c.querySelector('label[for="temp"]')!.closest('.form-group')!.querySelector('input[type="range"]') as HTMLInputElement).disabled).toBe(false);
 	});
 });

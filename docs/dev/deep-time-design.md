@@ -75,9 +75,48 @@ anything, which is exactly the fault the rule-pack deltas exist to avoid.
 **Store a formation time on the absolute axis**, and derive the age. A duration would need migrating the moment
 V4 tracks formation properly, and a rebuilt planet simply moves its own formation time forward.
 
+### As built (2026-11, Stream Z)
+
+- **The field** is `CelestialBody.formationTimeGyr`: Gyr after the big bang. Optional; absent means inherit.
+- **The one answer** is `ageOf(body, system)` in `src/lib/physics/bodyAge.ts`. Nothing else reads the field or
+  substitutes the system's age for it (engine map PHY-43).
+- **"Now"** is `cosmicNowGyr(system)`: the system's own reference epoch (`System.epochT0`, written once when the
+  system is created) placed on the master clock. It is about 13.787 Gyr for a campaign set in our era and is
+  derived from the clock's anchor, never typed. It is not the campaign clock's display time and nothing a GM
+  scrubs can reach it.
+- **Writing** goes through `setBodyAge(body, ageGyr, system)` and `clearBodyAge(body)`. The GM thinks in ages;
+  the file stores the formation time that age implies.
+- **What reads it** (engine map PHY-44): the substellar cooling track, a giant's internal heat, atmospheric
+  escape and a star's flare activity. Each was switched in its own commit with its own gate. Still on the
+  system's age: tidal locking, the surface-age read in the thermal solve, geology, the classifier's age
+  feature and the habitability bonus - the next candidates, not yet switched.
+- **The control** is `components/AgeControl.svelte` (engine map UI-C20), on the Temperature tab for a planet or
+  moon. It says underneath what the age drives on that body, and says so plainly when it drives nothing.
+- **A brown dwarf** (anything in the 8-80 Jupiter-mass window, filed as a star or as a planet) has NO
+  temperature control. On the Star tab the Effective Temperature block is not rendered for it and the Age
+  control stands in its place, showing the temperature that age gives. "Aim for a temperature" asks the
+  cooling track which age gives a typed figure and offers that age (engine map PHY-45). The one-sentence
+  stopgap that explained the snapping box (c0f65f3) went with the box.
+- **A fusing star still has its Effective Temperature block**, and no Age control: what a star's age drives
+  is [[G97]] and waits on the owner. See section 7.
+- **The override half of [[G96]] IS built.** `overrides.effectiveTempK` is a roster record of its own
+  (`appliesTo: ['star']`, with a finer `offered` test that excludes brown dwarfs, black holes and neutron
+  stars), applied by `physics/stellarTempPin.ts` (engine map OVR-9). So when the block does go, a GM has
+  already got the pin, and nothing is lost by the removal. While a pin is set the block is read-only and
+  says where to change it. Two things differ from the paragraph above and both are deliberate: the plausible
+  band is the fusing range (1,900 K to 50,000 K), not yet the star's own mass-and-age track, because that
+  track needs the zero-age seed [[G97]] is about; and the pin OUTRANKS the 1,900 K raise, so the "one
+  exception" above now applies to an unpinned star only.
+- **A system-level age control exists** on a star's System Info tab (engine map UI-C21). Before it, an existing
+  system's age could not be changed at all.
+
 ---
 
 ## 4. The slider, and the floor
+
+**NOT BUILT YET, except the axis.** The Age control (2026-11) uses this axis - big bang on the left, the
+system's reference date on the right, the thumb at the body's formation - and marks the system's formation on
+it. The four zones, the composition floor and its detent below are still design.
 
 The owner's design, with the refinements agreed on the [[G94]] row:
 
@@ -137,6 +176,34 @@ matters: refuse only when a choice would corrupt a neighbour.)*
 Two are relative and two are absolute, and the difference is load-bearing: the relative pair keeps working for
 a young host, the absolute pair keeps meaning something whatever it orbits.
 
+### As built (2026-11, Stream Z)
+
+`src/lib/physics/ageTags.ts ageBand` decides the band; pass 0d of the processor owns the namespace, clears it
+and emits at most ONE tag per body, the most specific band, with the body's age as its value.
+
+- **Only a body with a formation time of its own is banded.** One that inherits formed with its system, which is
+  the ordinary case and carries no tag. This is also what leaves every existing save untouched.
+- **`age/primordial` is asked first and is absolute**: formed less than `primordialBeforeGyr` after the big bang,
+  whatever it orbits - including a system that is itself that old.
+- **The other three are relative to the SYSTEM's formation** (the age the system's star was dated at): `ancient`
+  when older by `ancientGenerations x generationGyr`, `old` when older at all, `young` when younger by more than
+  `accretionGyr`. Within the accretion window, or exactly the system's age, is "formed with it": no tag.
+- **The four numbers are pack data**, `deepTime` in the rule pack's `main.json`:
+
+  | key | first value | what it is |
+  |---|---|---|
+  | `accretionGyr` | 0.1 | how long after its star a body may form and still have formed with its system |
+  | `generationGyr` | 0.5 | one stellar generation |
+  | `ancientGenerations` | 2 | generations older than the host to be `ancient` (the owner's "2-3 stars ago") |
+  | `primordialBeforeGyr` | 1 | cosmic time before which a body is `primordial` |
+
+  **These are FIRST VALUES chosen by the stream, not decided by the owner.** The reasoning: worlds finish
+  assembling within about 100 Myr; rocky planets are known around stars 11 Gyr old, so if rock needs three to
+  four generations (section 4) a generation is about half a gigayear; the first gigayear is the era before
+  reionisation ended. Each is one number in one file.
+- **Not built:** the slider's four coloured zones, the composition floor and its detent (section 4), and any tag
+  for a body pushed beyond its floor. The Age control marks the system's formation on its axis and nothing else.
+
 **What is NOT here: metallicity.** The engine has none — no `metallicity`, no `[Fe/H]`, no population field.
 So `ancient` and `primordial` are derived from age alone today. That is honest but incomplete: a primordial rock
 should also be metal-poor. **Word the tag descriptions to say the age is what was measured**, and treat
@@ -168,9 +235,16 @@ Each of these should be an addition, not a redesign. If one is not, this documen
 
 ## 7. Open
 
-- The `age/` band edges, and the generation length, as pack data — first values want a human's eye.
-- Whether a STAR carries its own age too. It should: `flareActivity` reads age, and a captured companion is a
-  real case.
+- The `age/` band edges, and the generation length, as pack data — **first values are now in the pack
+  (section 5, "As built") and want a human's eye.**
+- ~~Whether a STAR carries its own age too.~~ It does: `ageOf` answers for any body and `flareActivity` reads the
+  star's own. A fusing star has no Age control yet, because what its age should do to its temperature, size and
+  brightness is [[G97]]; a brown dwarf filed as a star has one.
+- Whether a moon with no age of its own should inherit its PLANET's age rather than the system's. Today
+  everything inherits the system's, as [[G94]] decided; a captured brown dwarf's moons are therefore dated with
+  the system, not with their host.
+- The other per-body readers of age still on the system's (tidal locking, the surface-age read in the thermal
+  solve, geology, the classifier's age feature): engine map PHY-44.
 - Metallicity, whenever it arrives, and the cross-check against `age/ancient` and `age/primordial`.
 - ~~Where the control lives on the body's panel~~ — settled 2026-09-11 ([[G96]]): the Temperature tab on a
   planet or moon; in place of the Effective Temperature block on a star. The label stays **Age**, not "time",

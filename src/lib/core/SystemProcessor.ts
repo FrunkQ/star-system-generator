@@ -56,8 +56,9 @@ import { starStatTemplate } from '../generation/star';
 import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
 import { brownDwarfThermal, isLuminousSource } from '../physics/substellar';
 import { HYDROGEN_BURNING_LIMIT_SOLAR } from '../physics/starPlausibility';
-/** The coolest a fusing star gets. The M/L overlap sits here — see the ignition note below. */
-const STELLAR_FLOOR_K = 1900;
+// (The coolest a fusing star gets, `STELLAR_FLOOR_K`, now lives beside the stellar temperature pin
+//  that outranks it - one definition, read by this file's ignition note and by the pin's own band.)
+import { applyEffectiveTempPin, effectiveTempPin, STELLAR_FLOOR_K } from '../physics/stellarTempPin';
 
 // Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
 // processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
@@ -89,14 +90,23 @@ import { annotateResonances } from '../physics/resonance';
 import { annotateReasonsToVisit } from '../physics/reasonsToVisit';
 import { reconcileBarycenters } from '../physics/barycenterReconcile';
 import { isLegacyTag } from '../tags/tagPresentation';
+import { ageOf, systemAgeGyr, type AgeFrame } from '../physics/bodyAge';
+import { AGE_TAG_NAMESPACE, ageBand } from '../physics/ageTags';
+import { formatAgeGyr } from '../physics/ageDrives';
 
 export class SystemProcessor implements ISystemProcessor {
     private systemAgeGyr = 4.6;
+    // G94: what a body's OWN age is measured against. Held for the pass so every consumer asks the
+    // one function (physics/bodyAge.ts) and none of them restates absent-means-inherit. The system's
+    // age above stays for what is genuinely system-wide.
+    private ageFrame: AgeFrame = { age_Gyr: 4.6, epochT0: 0 };
+    private ageOf(body: CelestialBody): number { return ageOf(body, this.ageFrame); }
 
     process(system: System, rulePack: RulePack): System {
         const processedSystem = { ...system }; // Shallow copy
         const allNodes = processedSystem.nodes;
-        this.systemAgeGyr = system.age_Gyr ?? 4.6;
+        this.systemAgeGyr = systemAgeGyr(system);
+        this.ageFrame = { age_Gyr: this.systemAgeGyr, epochT0: system.epochT0 };
         const rng = new SeededRNG(system.seed); // Deterministic RNG for procedural aspects of processing
 
         // Strip only KNOWN legacy duplicate tags — old data carries friendly-label copies
@@ -117,6 +127,12 @@ export class SystemProcessor implements ISystemProcessor {
         for (const node of allNodes) {
             const s = node as CelestialBody;
             if (s.kind !== 'body' || s.roleHint !== 'star') continue;
+            // G96: A PINNED EFFECTIVE TEMPERATURE GOES IN FIRST, before anything in this pass or any
+            // later one reads the star. A fusing star's temperature is authored input with nothing
+            // deriving it, so the pin is applied to the stored figure (and its brightness with it),
+            // and what it displaced is kept so a reset returns it. Idempotent, and a no-op for every
+            // star with no pin - which is every star in every existing save.
+            applyEffectiveTempPin(s);
             // IONISING OUTPUT IS NOT BRIGHTNESS. Derived from class and age, but a GM may pin it:
             // stars flare with almost no change in luminosity and a great deal of ionising
             // radiation, so the lever for "make this one dangerous" must not be the lever for "make
@@ -125,7 +141,11 @@ export class SystemProcessor implements ISystemProcessor {
             // by about half a decade in X-ray output - rotation at birth varies and the dynamo follows
             // rotation. A model with no scatter is the unphysical one. Seeded from the star's id, so
             // it is stable across re-processing and identical for everyone.
-            const baseActivity = flareActivity(s.classes?.[0], this.systemAgeGyr, (s as any).accretionEddington);
+            // G94: the age that spins a star down is THE STAR'S OWN. A companion captured young into an
+            // old system is still a flare star; one that inherits reads the system's age as before.
+            // (This is the dynamo, not `ageStar`: what a star's age does to its temperature, size and
+            // brightness is G97 and is NOT switched here.)
+            const baseActivity = flareActivity(s.classes?.[0], this.ageOf(s), (s as any).accretionEddington);
             // THE FIELD IS ALSO THE FLARING LEVER, now that the separate activity slider is gone.
             // Flaring IS the dynamo and the field is the dynamo's output, so a star wound well above
             // its class's typical field is more active — and one sitting inside its own band is
@@ -153,7 +173,7 @@ export class SystemProcessor implements ISystemProcessor {
             // temperature gate read one value on the first pass and another on the second, and the tag
             // appeared then vanished. Mass and radius are INPUTS, so the same question gets the same
             // answer whenever it is asked.
-            if (!brownDwarfThermal(s.massKg || 0, this.systemAgeGyr, s.radiusKm || 0).isSubstellar) {
+            if (!brownDwarfThermal(s.massKg || 0, this.ageOf(s), s.radiusKm || 0).isSubstellar) {
                 emit(s.tags, { key: STELLAR_ACTIVITY_TAG, value: stellarActivityBucket(s.flareActivity) });
             }
             // WHAT THE STAR THROWS OFF (inbox G26): jets and a shed wind, derived in
@@ -229,6 +249,22 @@ export class SystemProcessor implements ISystemProcessor {
             if (!secondary || !primary) continue;
             const hold = coOrbitalHold(b.coOrbital.point, massOf(primary), massOf(secondary), b.massKg || 0);
             emit(b.tags, { key: 'flight/fuel-use', value: hold.fuelUse });
+        }
+
+        // 0d (G94): THE `age/` FAMILY - when a body formed, set against the system it is in now.
+        //     Physics decides, tags record: the band comes from the body's own formation time and
+        //     the pack's deep-time figures (physics/ageTags.ts), all INPUTS, so the answer is the
+        //     same on every pass. This pass OWNS the namespace and clears it first (TAG-6), so a
+        //     body handed back to its system's age loses its mark. ONLY A BODY WITH AN AGE OF ITS
+        //     OWN IS TOUCHED: one that inherits formed with its system, carries no tag, and - with
+        //     no `age/` tag to strip - is left exactly as it arrived.
+        for (const node of allNodes) {
+            if (node.kind !== 'body') continue;
+            const b = node as CelestialBody;
+            const band = ageBand(b, this.ageFrame, rulePack);
+            if (!band && !(b.tags ?? []).some((t) => t.key.startsWith(AGE_TAG_NAMESPACE))) continue;
+            b.tags = stripForReprocess(b.tags ?? [], [AGE_TAG_NAMESPACE]);
+            if (band) emit(b.tags, { key: `${AGE_TAG_NAMESPACE}${band}`, value: formatAgeGyr(this.ageOf(b)) });
         }
 
         // 1. First Pass: Physical Basics (Orbital Period, Gravity, etc.)
@@ -686,8 +722,14 @@ export class SystemProcessor implements ISystemProcessor {
     // + radiationOutput, so (a) its own surface reads ≈ its Teff and (b) it irradiates its moons. Runs
     // before the environment pass. Fully idempotent — clears the markers if the body is no longer in the
     // substellar mass window (e.g. the GM edited its mass down).
+    //
+    // THE AGE IS THE BODY'S OWN (G94, and the whole of B150's fix). A brown dwarf does not fuse, so
+    // its temperature IS its cooling track and deriving it is right - what was wrong is that the only
+    // age on offer was the system's, so the one lever that moves the temperature could not be reached
+    // for one dwarf without ageing everything around it. `ageOf` is an INPUT: the same answer on
+    // every pass, which is why a dwarf given an age keeps the temperature that age implies.
     private applySubstellarSelfLuminosity(body: CelestialBody) {
-        const bd = brownDwarfThermal(body.massKg || 0, this.systemAgeGyr, body.radiusKm || 0);
+        const bd = brownDwarfThermal(body.massKg || 0, this.ageOf(body), body.radiusKm || 0);
         body.tags = stripForReprocess(body.tags, ['thermal/self-luminous']);
         if (bd.isSubstellar) {
             (body as any).isSelfLuminous = true;
@@ -719,7 +761,11 @@ export class SystemProcessor implements ISystemProcessor {
             // the coolest M dwarfs and the hottest L dwarfs overlap. So a star is held at or above
             // the floor. Only ever raises, and only ever a star that is below it, so nothing that
             // already had a sane temperature moves.
+            // THE PIN OUTRANKS THE FLOOR (G96, the owner: "the physics just uses the actual values -
+            // even if they don't make a huge amount of sense"). The raise below protects a body that
+            // was NUDGED across the ignition line; a GM who pinned 500 K on a fusing star said so.
             if (body.roleHint === 'star' && (body.temperatureK ?? 0) > 0
+                && effectiveTempPin(body) === undefined
                 && (body.temperatureK as number) < STELLAR_FLOOR_K
                 && (body.massKg || 0) >= HYDROGEN_BURNING_LIMIT_SOLAR * SOLAR_MASS_KG) {
                 body.temperatureK = STELLAR_FLOOR_K;
@@ -780,7 +826,10 @@ export class SystemProcessor implements ISystemProcessor {
         // worlds). When the GM sets it, it adds surface heat AND boosts the geological vigor (see geology).
         const radiogenicHeatK = body.overrides?.radiogenicHeatK ?? 0;
         body.radiogenicHeatK = radiogenicHeatK;
-        body.internalHeatK = estimateInternalHeatK(body, pack, this.systemAgeGyr);
+        // G94: a giant is still shedding the heat of ITS OWN formation, so the age that matters is the
+        // body's - a captured giant older than its star has had longer to cool than anything that
+        // formed here. Same call as before for a body with no age of its own.
+        body.internalHeatK = estimateInternalHeatK(body, pack, this.ageOf(body));
 
         // Tidal locking — derived from the despinning timescale vs the system age (a moon locks to
         // its planet, a planet to its star/barycentre). DYNAMIC by default; the body editor's
@@ -954,7 +1003,11 @@ export class SystemProcessor implements ISystemProcessor {
             const magG = body.magneticField?.strengthGauss || 0;
             const magShield = magG > 0 ? Math.min(0.99, (Math.log10(magG + 0.01) + 2) / 3) : 0;
             const stellarFluxRel = calculateTotalStellarRadiation(body, allNodes);
-            const planetAgeGyr = Math.max(0, this.systemAgeGyr - FORMATION_DELAY_GYR);
+            // G94: the air has been leaking for as long as THIS BODY has existed, so it is the body's
+            // own age that is eroded over - a world captured late has lost less, an ancient one more.
+            // One expression for both cases: a body with no age of its own is as old as its system,
+            // which is the figure this line always used.
+            const planetAgeGyr = Math.max(0, this.ageOf(body) - FORMATION_DELAY_GYR);
             const pressureBefore = body.atmosphere?.pressure_bar ?? 0;
             applyAtmosphericEscape(body, equilibriumTempK, planetAgeGyr, stellarFluxRel, magShield, pack);
             // Escape changed the air the clouds condense out of, so the fixed point has to be solved

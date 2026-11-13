@@ -38,6 +38,7 @@ export function registerPoiTags(tags: { key: string; label?: string; description
 // Per-namespace grouping + chip colour.
 const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boolean }> = {
   origin:       { group: 'Origin',       color: '#8a8a9a' },
+  age:          { group: 'Age',          color: '#8a8a9a' },
   orbit:        { group: 'Orbit',        color: '#9a8ac0' },
   barycenter:   { group: 'Barycentre',   color: '#9a8ac0' },
   stability:    { group: 'Stability',    color: '#b0a060' },
@@ -88,6 +89,7 @@ const NAMESPACE_META: Record<string, { group: string; color: string; poi?: boole
 // Add a specific TAG_INFO entry to say more; add a line here when you introduce a whole new namespace.
 const NAMESPACE_DESC: Record<string, string> = {
   origin:       'How and where this body formed, versus where it ended up.',
+  age:          'When this body formed, set against the system it is in now. The value is its age.',
   orbit:        'A property of the body\'s orbit.',
   barycenter:   'A shared centre-of-mass balance point that two or more bodies orbit.',
   stability:    'How dynamically stable the orbit is over the long term.',
@@ -274,6 +276,26 @@ const TAG_INFO: Record<string, { label: string; description: string }> = {
   'origin/hub-route-stood-down': {
     label: 'Route not carried over',
     description: 'This ship was pasted in from somebody else\'s campaign and its autopilot has been switched off. A route is a plan made somewhere else and most of its stops — the depot two systems over, the yard it returns to — were never copied with the ship, so leaving it running would send the planner chasing places that do not exist here. The ship itself arrived whole: hull, crew, cargo and tags. Give it a new route when you are ready.'
+  },
+
+  // --- Age (WHEN the body formed; `origin/` above is WHERE it came from, and the two compose) ---
+  // G94. Only a body given an age of its own carries one of these. AGE IS WHAT WAS MEASURED: the
+  // engine tracks no metallicity, so the two oldest bands say so rather than implying a composition.
+  'age/young': {
+    label: 'Young',
+    description: 'Formed well after the system it is in: younger than its star by more than the time worlds take to assemble. A late capture, a second generation, or a world rebuilt after a collision. The value is its age.'
+  },
+  'age/old': {
+    label: 'Old',
+    description: 'Formed before the star it now orbits, so it did not form here. The value is its age.'
+  },
+  'age/ancient': {
+    label: 'Ancient',
+    description: 'Older than the star it now orbits by at least two stellar generations. Judged on its age alone: the engine does not track how poor in heavy elements a body is, which is what would confirm it. The value is its age.'
+  },
+  'age/primordial': {
+    label: 'Primordial',
+    description: 'Formed in the early universe, whatever it orbits now. Judged on its age alone: a body this old should also be poor in heavy elements, and the engine does not track that yet. The value is its age.'
   },
 
   // --- Spin (the axis, as opposed to shape/ which is what the spin does to the body) ---

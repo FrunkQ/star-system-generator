@@ -485,9 +485,43 @@ it, and a pair forms if the masses say one should.
    sliders — rotation snaps to tidal locking — and a world spun fast enough visibly flattens.
 4. If the physics will not give you the world you want, the **Overrides** tab (the last one) lets you
    pin the figure by hand and keep everything downstream honest. See below.
+5. Give it a history. The **Temp** tab has an **Age** control — see *How old a thing is*, below.
 
 Everything recomputes live: temperature, fluids, magnetosphere, geology, habitability and tags all
 update as you edit.
+
+### How old a thing is
+
+Every system has an age, and every body in it is that old unless you say otherwise.
+
+**The system's age** is on any star's **System Info** tab: a box and a slider running from a million
+years to the age of the universe on that system's own date. Change it and everything that has not
+been given an age of its own follows — stars flare more or less, brown dwarfs and giant planets cool,
+worlds lose air, and worlds have more or less time to lock to their star. It does **not** age the
+stars themselves: a star's temperature, size and brightness stay as you set them.
+
+**A body's own age** is the **Age** control on its **Temp** tab. The scale runs from the big bang on
+the left to the system's date on the right, with a mark where the system formed, and the thumb sits
+where *this* body formed — so left is older. Leave it alone and the body is as old as its system.
+Move it, or type an age, and the body has a history of its own: older than its star if you like,
+which is a captured or ancient object and is not flagged as an error. **Use the system's age** hands
+it back. Underneath, the control says what the age actually drives on that body — the heat a giant
+still carries from its formation, how much air a world has lost — and says so plainly when, as for an
+ordinary rock today, it drives nothing yet.
+
+A body with its own age is tagged for when it formed, set against its system: **Young**, **Old**,
+**Ancient** (older by two stellar generations) or **Primordial** (formed in the universe's first
+billion years, whatever it orbits now). The bands are figures in the rule pack.
+
+**Brown dwarfs are the case this was built for.** A brown dwarf does not fuse, so its temperature is
+simply where it has got to as it cools — which is why it has no temperature control at all, on the
+star editor or anywhere else, and an Age control where one would be. Slide the age and the
+temperature moves and stays put. If what you have is a temperature, type it into **Aim for a
+temperature**: you are told how old a dwarf of that mass is at that temperature and offered that age,
+or told why no age gets there (a 37-Jupiter-mass dwarf cannot have cooled to 914 K yet; a lighter one
+could have).
+
+Sliding an age never moves the campaign clock, and running the clock never changes an age.
 
 ### Editing an atmosphere
 
@@ -533,6 +567,11 @@ its picture changes with them.
   shielding, and is called anomalous rather than reported as an ordinary dynamo.
 * **Radiogenic heat**, **thermal inflation**, and on a star its **flare activity** — the flare
   and X-ray output, which is set by the dynamo rather than by brightness.
+* On a star, its **effective temperature** — the surface temperature, set outright. The star's
+  brightness follows from it and its radius, and every world it lights warms or cools to match.
+  While it is pinned, the temperature control on the star's own tab shows the pinned figure and
+  sends you here to change it. Not offered on a brown dwarf, whose temperature is set by its age, or
+  on a black hole or neutron star, which have no surface to take the temperature of.
 
 **Nothing is refused.** Each row shows the range it expects, lets you type well past either end, and
 says in plain words what is wrong with the figure once you do — the same "kept and labelled" rule the
@@ -604,7 +643,8 @@ under you. L, T and Y dwarfs have real figures of their own in the rule pack rat
 to something Sun-like.
 
 Because it is derived, **the type follows what you edit**: drag the temperature and the star walks
-along the spectral sequence; make it hugely larger and it becomes a giant. If your numbers describe a
+along the spectral sequence; make it hugely larger and it becomes a giant. (A brown dwarf has no
+temperature to drag: its star tab has an **Age** control instead — see *How old a thing is*.) If your numbers describe a
 star that could not exist — a B-type dragged down to a hundredth of the Sun's mass, say — you still
 get it, with a red **Physically implausible** tag naming the law it breaks. The engine will never
 GENERATE such a star; it simply does not stop you making one.

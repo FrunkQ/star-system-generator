@@ -75,7 +75,11 @@ export const ENGINE_NAMESPACES: { id: string; provenance: 'physics' | 'authored'
   // G37. Re-emitted every pass from `body.overrides.anomalies`, so it is engine-owned like any
   // physics namespace — but it is NOT offered in the Tags tab's "Physics (GM override)" list,
   // because an anomaly is assigned to an OVERRIDE on the Overrides tab, not forced onto a body.
-  { id: 'anomaly', provenance: 'physics', label: 'Anomaly', overridable: false }
+  { id: 'anomaly', provenance: 'physics', label: 'Anomaly', overridable: false },
+  // G94. Re-derived every pass from the body's own formation time (`physics/ageTags.ts`). NOT
+  // offered as a hand override: the lever is the Age control, which moves the physics the tag is
+  // read from, where forcing the tag would describe an age the body does not have.
+  { id: 'age', provenance: 'physics', label: 'Age', overridable: false }
 ];
 
 

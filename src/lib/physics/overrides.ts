@@ -33,6 +33,8 @@ import { gasThermalInflationFactor, makeupFractions, normalizeMakeup, massMeFrom
 import { meanSurfaceTempK } from './surfaceTemperature';
 import { editMass, densityGcc, radiusFromMassDensity, massFromRadiusDensity, trimEnvelope } from './bodyEdit';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
+import { STAR_BOUNDS } from './starBounds';
+import { applyEffectiveTempPin, effectiveTempPin, hasPinnablePhotosphere, STELLAR_FLOOR_K } from './stellarTempPin';
 
 export type OverrideKey =
   | 'albedo'
@@ -43,6 +45,7 @@ export type OverrideKey =
   | 'surfaceTempK'
   | 'pressureBar'
   | 'densityGcm3'
+  | 'effectiveTempK'
   | 'lineOfSightExtinction';
 
 export interface OverrideDef {
@@ -55,6 +58,14 @@ export interface OverrideDef {
   hint: string;
   /** Roles this override is offered on. A star's magnetic field is authored input, not an override. */
   appliesTo: readonly CelestialBody['roleHint'][];
+  /**
+   * A FINER TEST THAN ROLE, for a pin that some bodies of the right role must not be offered.
+   * A star's effective temperature has the only one: a brown dwarf is filed as a star as often as
+   * not, and its temperature is its cooling track, whose handle is its AGE (B150) - offering the pin
+   * there would rebuild the control that was taken away. Asked of the BODY, so the answer comes from
+   * its physics and not from a label. Absent means every body of an applicable role is offered it.
+   */
+  offered?(body: CelestialBody): boolean;
   /** Slider travel — the range a GM normally wants. */
   soft: readonly [number, number];
   /** How far a TYPED number may go. Absurd on purpose at both ends; nothing clamps below this. */
@@ -250,6 +261,38 @@ export const OVERRIDE_DEFS: readonly OverrideDef[] = [
     absurd: 'no ordinary decay inventory sustains this much heat over a system’s lifetime.',
     possible: () => [0, Number.MAX_VALUE],
     breaks: 'a negative heat source cools a world by decaying, which is not a thing decay does.'
+  },
+  {
+    // G96: "direct temp control is now in overrides". The star's OWN key - see
+    // `physics/stellarTempPin.ts` for why it is not `surfaceTempK` and how it is applied.
+    key: 'effectiveTempK',
+    label: 'Effective temperature',
+    unit: 'K',
+    hint: 'The temperature of the star’s visible surface, set outright. Its brightness follows from '
+      + 'this and its radius, and everything the star lights follows from that. The physics uses the '
+      + 'figure you give it, whether or not a star of this mass could have it.',
+    appliesTo: ['star'],
+    offered: (b) => hasPinnablePhotosphere(b),
+    // The star editor's own temperature travel, read from the one table that defines it.
+    soft: STAR_BOUNDS.temp.soft,
+    hard: [0, 1e9],
+    step: 1,
+    decimals: 0,
+    log: STAR_BOUNDS.temp.log,
+    // While pinned, the stored temperature IS the pin, so the star's own figure is the one the pin
+    // displaced; with nothing pinned it is simply the star's temperature.
+    derived: (b) => (effectiveTempPin(b) !== undefined ? b.temperature0K : b.temperatureK),
+    // THE FUSING RANGE, NOT YET THE STAR'S OWN TRACK. G96 asks for a band from the star's
+    // mass-and-age track; that track needs the zero-age seed G97 is about, and until the owner
+    // settles it the honest band is where hydrogen-burning stars are found at all. A white dwarf is
+    // not fusing and has no such band, so nothing is claimed for one.
+    plausible: (b) => (/^star\/WD/.test(b.classes?.[0] ?? '') ? null : [STELLAR_FLOOR_K, STAR_BOUNDS.temp.soft[1]]),
+    absurd: 'no hydrogen-burning star is found there: below about 1,900 K nothing sustains fusion, which '
+      + 'is a brown dwarf’s temperature, and above 50,000 K there are only stripped cores and remnants. '
+      + 'The engine uses the figure all the same.',
+    possible: () => [0, Number.MAX_VALUE],
+    breaks: 'nothing is colder than absolute zero.',
+    commit: (b) => applyEffectiveTempPin(b)
   },
   {
     key: 'flareActivity',
@@ -484,7 +527,7 @@ export const overrideDef = (key: OverrideKey): OverrideDef | undefined => BY_KEY
 /** The overrides offered for a body, in roster order. */
 export function overrideDefsFor(body: CelestialBody | null | undefined): OverrideDef[] {
   if (!body) return [];
-  return OVERRIDE_DEFS.filter((d) => d.appliesTo.includes(body.roleHint)) as OverrideDef[];
+  return OVERRIDE_DEFS.filter((d) => d.appliesTo.includes(body.roleHint) && (d.offered?.(body) ?? true)) as OverrideDef[];
 }
 
 /**
@@ -530,7 +573,10 @@ export function formatOverrideValue(def: OverrideDef, v: number | undefined): st
   const abs = Math.abs(v);
   const text = abs !== 0 && (abs >= 1e5 || abs < 1e-3)
     ? v.toExponential(2)
-    : v.toFixed(def.decimals).replace(/\.?0+$/, '') || '0';
+    // Trailing zeros are trimmed only AFTER a decimal point. The trim used to run on any string,
+    // which is harmless while every record shows at least one decimal and wrong the moment one
+    // shows none: a whole-kelvin figure of 500 was printed as "5" and 1900 as "19".
+    : (def.decimals > 0 ? v.toFixed(def.decimals).replace(/\.?0+$/, '') : v.toFixed(0)) || '0';
   return def.unit ? `${text} ${def.unit}`.trim() : text;
 }
 
