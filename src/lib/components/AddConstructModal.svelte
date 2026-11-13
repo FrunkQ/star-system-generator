@@ -6,7 +6,7 @@
   import { generateId } from '$lib/utils';
   import { deriveCoOrbitalOrbit, lagrangePlacementId, LAGRANGE_PLACEMENTS } from '$lib/physics/lagrange';
   import { megaTypeDef } from '$lib/constructs/megaTypes';
-  import { effectiveMegaRequires, megaHardCheck, megaSteerNotes, hostHasSurface } from '$lib/constructs/megaPlacement';
+  import { effectiveMegaRequires, megaHardCheck, megaSteerNotes, hostHasSurface, filterMegaPlacements } from '$lib/constructs/megaPlacement';
   import { calculateGoldilocksZone } from '$lib/physics/zones';
   // UI-C6: this dialog now yields the phone screen like every other one (A84).
   import { foreground } from '$lib/ui/foreground';
@@ -106,8 +106,8 @@
   // make sense for it at all — an elevator is Surface or nothing, a Death Star is anywhere BUT the
   // surface. Data on the registry record, intersected here; ordinary constructs are untouched.
   $: shownPlacements = (() => {
-    const allowed = selectedRoleHint === 'mega' ? megaTypeDef(selectedTemplate?.megaType)?.allowedPlacements : undefined;
-    return allowed ? availablePlacements.filter((p: string) => allowed.includes(p)) : availablePlacements;
+    const def = selectedRoleHint === 'mega' ? megaTypeDef(selectedTemplate?.megaType) : undefined;
+    return filterMegaPlacements(def, availablePlacements as string[]);
   })();
 
   function createConstruct() {

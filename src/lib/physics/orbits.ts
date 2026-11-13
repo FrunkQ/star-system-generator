@@ -170,8 +170,12 @@ export function rephasedM0(
 function solvePerifocal(node: CelestialBody | Barycenter | { orbit: any }, tMs: number): PerifocalState | null {
   if (!('orbit' in node) || !node.orbit) return null;
 
-  const { elements, hostMu, t0 } = node.orbit;
-  const { M0_rad } = elements;
+  const { elements, hostMu } = node.orbit;
+  // A phase or an epoch that is not a number (a hand-edited file, a field a control once blanked)
+  // must not NaN the whole position chain: every child of the body inherits the NaN, and one NaN in
+  // the system extent blanks the view. Zero is the honest reading of "no phase given".
+  const M0_rad = Number.isFinite(elements.M0_rad) ? elements.M0_rad : 0;
+  const t0 = Number.isFinite(node.orbit.t0) ? node.orbit.t0 : 0;
 
   // GUARD: this solver is ELLIPTICAL-ONLY — sqrt(1-e), n = sqrt(mu/a^3) and the [0,2pi) mean-anomaly
   // normalisation all silently NaN (or worse, produce finite garbage) for e >= 1 or a <= 0. Stored orbits

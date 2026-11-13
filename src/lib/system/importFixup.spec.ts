@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isInterferingTag, fixUpImportedSystem } from './importFixup';
-import type { System } from '$lib/types';
+import type { System, CelestialBody } from '$lib/types';
 import { EARTH_MASS_KG, EARTH_RADIUS_KM } from '$lib/constants';
 import { loadStarterPack } from '$lib/import/realsky/testPack';
 
@@ -300,5 +300,47 @@ describe('the stranded-elevator heal (G53, 2026-09-01)', () => {
 		const e = out.nodes[1] as { placement?: string; orbit?: { elements: { a_AU: number } } };
 		expect(e.placement).toBe('Surface');
 		expect(e.orbit!.elements.a_AU).toBeCloseTo(6371 / 149597870.7, 12);
+	});
+
+	// Found live 2026-09-26: the Orbit tab sent an elevator to L2, which re-homes it onto the STAR
+	// (a co-orbital node is its world's sibling). A ribbon hung from a star has no anchor at all.
+	const displaced = (over: Record<string, unknown>) => ({
+		id: 's', name: 's', nodes: [
+			{ id: 'sol', name: 'Sol', kind: 'body', roleHint: 'star', massKg: 1.989e30, radiusKm: 695700, tags: [], parentId: null },
+			{ id: 'earth', name: 'Earth', kind: 'body', roleHint: 'planet', massKg: 5.972e24, radiusKm: 6371, tags: [], parentId: 'sol',
+			  orbit: { hostId: 'sol', hostMu: 1.327e20, t0: 0, n_rad_per_s: 2e-7, elements: { a_AU: 1, e: 0.0167, i_deg: 3, Omega_deg: 10, omega_deg: 100, M0_rad: 1 } } },
+			{ id: 'e1', name: 'Elev', kind: 'construct', megaType: 'space-elevator', icon_type: 'mast', tags: [], parentId: 'sol', ui_parentId: 'earth',
+			  orbit: { hostId: 'sol', hostMu: 1.36e20, t0: 0, n_rad_per_s: 2e-7, elements: { a_AU: 1.01, e: 0.0167, i_deg: 3, Omega_deg: 10, omega_deg: 100, M0_rad: 1 } }, ...over }
+		]
+	}) as unknown as System;
+	const check = (sys: System) => {
+		const out = fixUpImportedSystem(sys);
+		const e = out.nodes[2] as CelestialBody;
+		expect(e.coOrbital).toBeUndefined();
+		expect(e.parentId).toBe('earth');
+		expect(e.ui_parentId ?? null).toBeNull();
+		expect(e.placement).toBe('Surface');
+		expect(e.orbit!.hostId).toBe('earth');
+		expect(e.orbit!.elements.a_AU).toBeCloseTo(6371 / 149597870.7, 12);
+		expect(e.orbit!.elements.e).toBe(0);
+		expect(e.orbit!.n_rad_per_s).toBeUndefined();   // the WORLD's pinned rate does not ride back down
+		// and a second load changes nothing
+		expect(JSON.stringify(fixUpImportedSystem(JSON.parse(JSON.stringify(out))).nodes[2])).toBe(JSON.stringify(e));
+	};
+	it('an elevator carrying a co-orbital marker goes back to the world it was standing on', () => {
+		check(displaced({ placement: 'L2', coOrbital: { hostId: 'earth', point: 'l2' } }));
+	});
+	it('...whatever its placement label says (the off-by-one pick wrote L2 state under the word Surface)', () => {
+		check(displaced({ placement: 'Surface', coOrbital: { hostId: 'earth', point: 'l2' } }));
+	});
+	it('...and from the legacy record too: an L-point label and a ui parent, no marker yet', () => {
+		check(displaced({ placement: 'L4' }));
+	});
+	it('an ordinary station at L2 is NOT touched - the heal is for a type that can only stand on a surface', () => {
+		const sys = displaced({ placement: 'L2', coOrbital: { hostId: 'earth', point: 'l2' }, megaType: undefined });
+		const e = fixUpImportedSystem(sys).nodes[2] as CelestialBody;
+		expect(e.coOrbital).toEqual({ hostId: 'earth', point: 'l2' });
+		expect(e.parentId).toBe('sol');
+		expect(e.placement).toBe('L2');
 	});
 });
