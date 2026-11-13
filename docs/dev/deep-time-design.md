@@ -99,10 +99,24 @@ V4 tracks formation properly, and a rebuilt planet simply moves its own formatio
   stopgap that explained the snapping box (c0f65f3) went with the box.
 - **A fusing star still has its Effective Temperature block**, and no Age control: what a star's age drives
   is [[G97]] and waits on the owner. See section 7.
+- **The override half of [[G96]] IS built.** `overrides.effectiveTempK` is a roster record of its own
+  (`appliesTo: ['star']`, with a finer `offered` test that excludes brown dwarfs, black holes and neutron
+  stars), applied by `physics/stellarTempPin.ts` (engine map OVR-9). So when the block does go, a GM has
+  already got the pin, and nothing is lost by the removal. While a pin is set the block is read-only and
+  says where to change it. Two things differ from the paragraph above and both are deliberate: the plausible
+  band is the fusing range (1,900 K to 50,000 K), not yet the star's own mass-and-age track, because that
+  track needs the zero-age seed [[G97]] is about; and the pin OUTRANKS the 1,900 K raise, so the "one
+  exception" above now applies to an unpinned star only.
+- **A system-level age control exists** on a star's System Info tab (engine map UI-C21). Before it, an existing
+  system's age could not be changed at all.
 
 ---
 
 ## 4. The slider, and the floor
+
+**NOT BUILT YET, except the axis.** The Age control (2026-11) uses this axis - big bang on the left, the
+system's reference date on the right, the thumb at the body's formation - and marks the system's formation on
+it. The four zones, the composition floor and its detent below are still design.
 
 The owner's design, with the refinements agreed on the [[G94]] row:
 

@@ -279,6 +279,9 @@
         and the lever is <strong>age</strong>. A young giant is genuinely hot. The planets we have photographed
         directly, like the HR 8799 family, sit at roughly 1000&ndash;1200 K at 30 million years old, glowing in
         the infrared entirely on their own account.</p>
+      <p>The age is the <em>giant's own</em>: a giant given an age of its own on its Temp tab &mdash; one
+        captured young into an old system, say &mdash; carries the heat that age implies, and one that has
+        none is as old as its system.</p>
       <p>We model that as a cooling curve in age, scaled up (never down) for giants heavier than Jupiter, and
         anchored on today's solar system: whatever the curve does when young, it must still reproduce Jupiter's
         real excess at 4.6 billion years. That anchoring is the guard rather than a decoration — it caught a
@@ -393,7 +396,11 @@
         temperature</strong>, added as an absolute σ·T⁴ term (not a delta) on top of the negligible starlight —
         typically hundreds to a couple of thousand K, far above the equilibrium temperature a distant star would
         give. It <strong>cools with age</strong> (L-dwarf → T → Y, floored near ~250 K — no brown dwarf is colder),
-        and — crucially — it becomes a genuine <strong>heat and radiation source for its own moons</strong>: a satellite
+        and the age is <strong>its own</strong>: every body can be given one, and a brown dwarf has an Age control
+        where a temperature control would be, because its temperature is a consequence and its age is the cause.
+        Type a temperature there and you are offered the age that gives it &mdash; the same cooling law, asked the
+        other way round &mdash; or told that no age does at that mass.
+        And — crucially — it becomes a genuine <strong>heat and radiation source for its own moons</strong>: a satellite
         of a young brown dwarf is warmed and (lacking a magnetosphere) heavily irradiated by it, just as a moon of a
         star would be. Tagged <code>thermal/self-luminous</code> (value = its Teff); the effective temperature and
         luminosity show in the Newton panel.</p>
@@ -699,7 +706,8 @@
         <tbody>
           <tr><td>Main-sequence star</td><td>Rotation-driven convective dynamo</td><td>Spectral class times an age
             factor. M&nbsp;0.85, K&nbsp;0.55, G&nbsp;0.35, F&nbsp;0.22, A&nbsp;0.16, B/O&nbsp;0.12, because deep
-            convection is what flares and low-mass dwarfs are convective throughout. Age spins the star down: a
+            convection is what flares and low-mass dwarfs are convective throughout. Age &mdash; the star's own,
+            where it has been given one &mdash; spins the star down: a
             young M dwarf runs to 0.85 and an old one to 0.07, which is the whole of the
             quiescent-versus-active distinction for a star.</td></tr>
           <tr><td>Giant or supergiant</td><td>None worth the name &mdash; <strong>0.05</strong></td><td>An evolved star
