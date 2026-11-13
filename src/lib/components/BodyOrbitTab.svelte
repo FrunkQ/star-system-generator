@@ -8,6 +8,8 @@
   import OrbitalSlider from './OrbitalSlider.svelte';
   import { barycentreLabel, isBarycentre } from '$lib/system/barycentres';
   import { hostCandidates, reparentBody } from '$lib/system/reparent';
+  import { placementLimitAu, PLACEMENT_FLOOR_AU } from '$lib/system/systemReach';
+  import { starmapStore } from '$lib/starmapStore';
 
   export let body: CelestialBody;
   export let parentBody: CelestialBody | null = null;
@@ -176,8 +178,8 @@ function updateOrbit() {
     // wreck the whole system's geometry. Typed values stay free within those bounds.
     if (!Number.isFinite(dist_AU) || dist_AU <= 0) {
         dist_AU = Math.max(minA, 1e-6);
-    } else if (dist_AU > PAIR_MAX_AU) {
-        dist_AU = PAIR_MAX_AU;
+    } else if (dist_AU > maxPlacementAU()) {
+        dist_AU = maxPlacementAU();
     }
     applyDistance();
     const boundedE = Math.max(0, Math.min(e, safeMaxE));
@@ -261,17 +263,22 @@ function updateOrbit() {
   // FIXED log range — deliberately NOT derived from the current value. A slider whose maximum is a
   // multiple of its own value is a runaway: drag to the end, the range re-scales around the new value,
   // and the next drag multiplies again. Two drags took Alpha Centauri's inner pair from 874 AU to
-  // 3e49 AU and destroyed the system's geometry. 1e6 AU is ~16 light years — past any bound pair — and
-  // a log slider spans the eight decades comfortably.
+  // 3e49 AU and destroyed the system's geometry. The ceiling is the system's own REACH (B23,
+  // system/systemReach.ts): the root's Hill limit against the galaxy or the GM's System edge, never
+  // under 1e6 AU - the one number the orrery's widest view is fitted to as well, so anything that can
+  // be typed can be seen. It depends on the system, not on the value being dragged, so it is still
+  // not a runaway.
   const PAIR_MIN_AU = 0.01;
-  const PAIR_MAX_AU = 1e6;
+  // A function for the handlers (a `$:` value is a flush behind inside one) and a mirror for markup.
+  const maxPlacementAU = () => (system ? placementLimitAu(system, $starmapStore?.systemEdgeAu) : PLACEMENT_FLOOR_AU);
+  $: PAIR_MAX_AU = system ? placementLimitAu(system, $starmapStore?.systemEdgeAu) : PLACEMENT_FLOOR_AU;
 
   function handlePairDistance() {
       const bary: any = parentBody;
       if (!isBinaryMember || isRootPair || !bary?.orbit) return;
       // Clamp on WRITE too, so a typed value can't do what the slider no longer can.
       const v = Number(pairA_AU);
-      const safe = Number.isFinite(v) ? clampAU(v, PAIR_MIN_AU, PAIR_MAX_AU) : PAIR_MIN_AU;
+      const safe = Number.isFinite(v) ? clampAU(v, PAIR_MIN_AU, maxPlacementAU()) : PAIR_MIN_AU;
       if (safe !== v) pairA_AU = safe;
       bary.orbit.elements.a_AU = safe;
       bary.orbit.lastEditedT0 = Date.now();
