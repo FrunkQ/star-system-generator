@@ -8,7 +8,7 @@
   // surface liquid films the outermost solid layer. Porosity renders as void speckles, seeded from
   // the body id so the picture is repeatable. Purely presentational — nothing here writes back.
   import type { CelestialBody, Makeup } from '$lib/types';
-  import { EARTH_MASS_KG } from '$lib/constants';
+  import { EARTH_MASS_KG, HYDROSTATIC_MIN_RADIUS_KM } from '$lib/constants';
   import PlanetDisc from '$lib/catalogue/PlanetDisc.svelte';
   import { isSmallBodyShape, smallBodyOutline } from '$lib/catalogue/smallBodyShape';
 
@@ -68,6 +68,44 @@
           }
       }
       return out;
+  })();
+
+  // TOO SMALL TO HAVE LAYERS (ideas B27: "should asteroids below a certain point not have
+  // differentiated layers on the cross section? ... they're rubble piles"; owner: "You are right").
+  //
+  // Concentric shells are a claim: that the body once melted, and its iron sank. That takes the
+  // self-gravity of a body that has pulled itself round, and the engine already has exactly one
+  // line for it - `HYDROSTATIC_MIN_RADIUS_KM`, "below this a body lacks the self-gravity to
+  // differentiate a shell-over-interior", the same line the geology and the subsurface-ocean models
+  // ask. Below it the cutaway drew a kilometre-wide rock with a metal core, a rock mantle and an ice
+  // shell, which nothing else in the engine believes. So below it the SAME makeup is drawn as what
+  // it is: one mixed mass, the commonest material as the body and the others scattered through it
+  // as fragments, in proportion to their volume. Nothing about the body changes - this is only how
+  // the mix is pictured - and a body a little over the line (Vesta, 263 km) keeps its layers.
+  $: undifferentiated = (makeup.gas ?? 0) <= 0.5 && (body.radiusKm ?? 0) > 0 && (body.radiusKm ?? 0) < HYDROSTATIC_MIN_RADIUS_KM;
+  const MIX_NAME: Record<string, string> = { metal: 'metal', rock: 'rock', carbon: 'carbon', ice: 'ice', gas: 'gas' };
+  const MIX_FRAGMENTS = 120;
+  $: mix = (() => {
+      const parts = ORDER.map((k) => ({ key: k as string, vol: (makeup[k] ?? 0) / GRAIN[k], mass: makeup[k] ?? 0 }))
+          .filter((p) => p.vol > 1e-6)
+          .sort((a, b) => b.vol - a.vol);
+      const total = parts.reduce((a, p) => a + p.vol, 0);
+      if (!parts.length || total <= 0) return null;
+      const base = parts[0].key;
+      // Same seeded LCG the void speckles use, so a body keeps its own repeatable picture.
+      let s = 29; for (let k = 0; k < seed.length; k++) s = (s * 31 + seed.charCodeAt(k)) & 0xffffff;
+      const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+      const fragments: { x: number; y: number; r: number; key: string }[] = [];
+      for (let i = 0; i < MIX_FRAGMENTS; i++) {
+          // Every draw is taken whether or not the fragment is kept, so the picture does not
+          // reshuffle when a slider moves one material's share.
+          const u = rnd() * total, a = Math.PI * (1 + rnd() / 2), rr = R_MAX * 1.15 * Math.sqrt(rnd()), r = 0.7 + rnd() * 1.5;
+          let cum = 0, key = base;
+          for (const p of parts) { cum += p.vol; if (u <= cum) { key = p.key; break; } }
+          if (key !== base) fragments.push({ x: CX + Math.cos(a) * rr, y: CY + Math.sin(a) * rr, r, key });
+      }
+      const recipe = [...parts].sort((a, b) => b.mass - a.mass).map((p) => `${MIX_NAME[p.key]} ${Math.round(p.mass * 100)}%`).join(', ');
+      return { base, fragments, title: `Mixed throughout, not layered: ${recipe} by mass. A body this small never melted and settled into a core and a mantle.` };
   })();
 
   // MOLTEN CORE glow: a metal-cored world keeps a liquid, convecting core while it still has the
@@ -172,7 +210,7 @@
 </script>
 
 <div class="xsec" style="width:{size}px">
-  <div class="stack" style="width:{size}px; height:{size}px" title={compNote ? compNote + '\n\nUpper-left: composition layers. Lower-left: internal heat (estimated). Right: surface.' : ''}>
+  <div class="stack" style="width:{size}px; height:{size}px" title={compNote ? compNote + `\n\nUpper-left: ${undifferentiated ? 'composition, mixed throughout (too small to have settled into layers)' : 'composition layers'}. Lower-left: internal heat (estimated). Right: surface.` : ''}>
     <PlanetDisc {body} {size} showStamp={false} />
     <svg viewBox="0 0 100 100" width={size} height={size} class="cut" role="img" aria-label="Half cutaway: surface on the right; composition (upper) and internal heat (lower) on the left">
       <defs>
@@ -211,10 +249,20 @@
         <!-- UPPER-LEFT quarter: composition layers, outermost first (a rect so it reaches the
              silhouette edge even on a lumpy outline), then inner circles on top. -->
         <g clip-path="url(#xsec-q-comp-{seed})">
-          <rect x="0" y="0" width="50" height="50" fill={[...layers].pop()?.fill ?? '#0a0c12'}><title>{[...layers].pop()?.label ?? ''}</title></rect>
-          {#each [...layers].reverse().slice(1) as l}
-            <circle cx={CX} cy={CY} r={l.r} fill={l.fill}><title>{l.label}</title></circle>
-          {/each}
+          {#if undifferentiated && mix}
+            <!-- B27: no shells on a body too small to have differentiated - one mixed mass. -->
+            <g class="xsec-mix">
+              <rect x="0" y="0" width="50" height="50" fill={COLOUR[mix.base]}><title>{mix.title}</title></rect>
+              {#each mix.fragments as f}
+                <circle cx={f.x} cy={f.y} r={f.r} fill={COLOUR[f.key]}><title>{mix.title}</title></circle>
+              {/each}
+            </g>
+          {:else}
+            <rect x="0" y="0" width="50" height="50" fill={[...layers].pop()?.fill ?? '#0a0c12'}><title>{[...layers].pop()?.label ?? ''}</title></rect>
+            {#each [...layers].reverse().slice(1) as l}
+              <circle cx={CX} cy={CY} r={l.r} fill={l.fill}><title>{l.label}</title></circle>
+            {/each}
+          {/if}
         </g>
 
         <!-- LOWER-LEFT quarter: the internal-heat gradient (rect: the gradient's rim colour IS the
@@ -225,7 +273,7 @@
 
         <!-- Molten-core emission + 3D shade across the whole cut half. -->
         <g clip-path="url(#xsec-half-{seed})">
-          {#if coreHeat > 0.02}
+          {#if coreHeat > 0.02 && !undifferentiated}
             <circle cx={CX} cy={CY} r={coreGlowR} fill="url(#xsec-core-{seed})" />
           {/if}
           <rect x="0" y="0" width="50" height="100" fill="url(#xsec-shade-{seed})" />

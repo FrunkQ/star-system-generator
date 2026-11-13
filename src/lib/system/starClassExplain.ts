@@ -16,6 +16,7 @@ import { starClassParts, spectralLetterForTempK } from '$lib/physics/starDesigna
 import type { ObservedStarReading } from '$lib/physics/observedStar';
 import { starStatTemplate } from '$lib/generation/star';
 import { SOLAR_RADIUS_KM, AU_KM } from '$lib/constants';
+import { SUPERMASSIVE_BH_FROM_SOLAR } from '$lib/physics/starBounds';
 
 export interface StarClassExplanation {
 	/** The designation itself, e.g. `G2V`. */
@@ -136,6 +137,28 @@ export interface StarClassContext {
 	 * because neither is one.
 	 */
 	radiusSolar?: number;
+	/**
+	 * THIS STAR'S OWN MASS, in solar masses (B22). Only a black hole reads it: a hole's mass is the
+	 * one thing that says WHICH KIND it is, and "Black hole" for everything from a collapsed star to
+	 * a galaxy's core left a 120,000 solar-mass one with no word of its own.
+	 */
+	massSolar?: number;
+}
+
+/**
+ * The word for a black hole of this mass: stellar (just "black hole"), intermediate-mass or
+ * supermassive. The lower edge is the top of the pack's own stellar-mass band, so a pack that
+ * redraws that band moves the word with it; the upper edge is `SUPERMASSIVE_BH_FROM_SOLAR`.
+ * Unknown mass, or no band to read, says plain "black hole" - absent is not typical.
+ */
+function blackHoleKind(kind: string, massSolar: number | undefined, stellarBand: [number, number] | undefined): string {
+	if (!(massSolar! > 0) || !stellarBand) return kind;
+	const size = massSolar! >= SUPERMASSIVE_BH_FROM_SOLAR ? 'supermassive'
+		: massSolar! > stellarBand[1] ? 'intermediate-mass' : undefined;
+	if (!size) return kind;
+	// "Black hole" -> "Intermediate-mass black hole"; "Feeding black hole" -> "Feeding supermassive black hole".
+	const named = kind.replace(/black hole/i, `${size} black hole`);
+	return named.charAt(0).toUpperCase() + named.slice(1);
 }
 
 /**
@@ -163,14 +186,16 @@ export function explainStarClass(
 	// A bare letter with no stated luminosity class means MAIN SEQUENCE (mk-lum 1.1), but only when
 	// there IS a letter: an unparseable key must be declined rather than defaulted, or `star/unknown`
 	// comes back confidently described as a yellow dwarf.
-	const kind = bare ? KIND_BY_KEY[bare] : letter ? (band ? KIND_BY_BAND[band] : 'Main-sequence dwarf') : undefined;
-	if (!kind) return undefined;
+	const baseKind = bare ? KIND_BY_KEY[bare] : letter ? (band ? KIND_BY_BAND[band] : 'Main-sequence dwarf') : undefined;
+	if (!baseKind) return undefined;
 	const designation = classKey.replace(/^star\//, '');
 	const colour = letter ? COLOUR_BY_LETTER[letter] : undefined;
 
 	// THIS STAR'S OWN RADIUS FIRST; the pack's band only when there is no star to measure. A zero
 	// or absent figure is not a measurement, so it falls back rather than printing nonsense.
 	const tpl = starStatTemplate(pack, classKey);
+	// B22: a black hole is named for its mass - see `blackHoleKind`. Everything else keeps its kind.
+	const kind = bare === 'BH' || bare === 'BH_active' ? blackHoleKind(baseKind, ctx.massSolar, tpl?.mass_solar) : baseKind;
 	const radiusBand: [number, number] | undefined = tpl?.radius_solar;
 	const bandRadius = radiusBand ? (radiusBand[0] + radiusBand[1]) / 2 : undefined;
 	const radiusSolar = measuredRadius && measuredRadius > 0 ? measuredRadius : bandRadius;

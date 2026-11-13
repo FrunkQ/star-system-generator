@@ -143,6 +143,14 @@
         (0.12 g/cc). Bulk density is volume-additive, <code>1⁄ρ = Σ fᵢ⁄ρᵢ</code>, and radius follows from mass +
         density — so <em>density and radius are derived, not dialled in</em>. A body with no explicit makeup gets one
         inferred from its density (mass-aware, so a low-density heavyweight reads as a gas giant, not "icy").</p>
+      <p><strong>Past about two Jupiter masses, mass decides and density stops being asked.</strong> Electron
+        degeneracy holds a hydrogen body near one Jupiter radius however much mass is piled on, so a heavy giant's
+        density simply climbs with its mass: a five-Jupiter-mass planet is around 8 g/cc and the brown dwarf CoRoT-3b
+        is a measured 26 g/cc at 22 Jupiter masses, denser than iron and not a rock. So above the mass where even
+        an ordinary gas body would be denser than the 2.5 g/cc "this is a giant" ceiling, a body with no stated
+        makeup is read as fluid whatever its density, and changing its density changes its <em>size</em>, never its
+        makeup. One squeezed past what hydrogen manages on its own is tagged <code>structure/overdense</code> and
+        left as you made it. A makeup you set yourself always stands.</p>
       <p>The composition classes (iron, silicate, coreless, carbon) key on these fractions, and makeup feeds the
         fluid layers, magnetism and geology below.</p>
     </section>
@@ -491,6 +499,14 @@
         editor shows the warning in amber and <strong>keeps whatever you typed</strong>: alien engineering,
         a reality breakdown and a plot device are all legitimate reasons, and the engine cannot tell one of
         those from a typo.</p>
+      <p>A hole is <strong>named for its mass</strong>, because that is the only thing that says which kind
+        it is: a plain <em>black hole</em> up to the top of the stellar-mass band (what a collapsing star
+        leaves, about 100 solar masses), an <em>intermediate-mass black hole</em> above that, and a
+        <em>supermassive black hole</em> from a million solar masses up. The upper line is a convention
+        with real spread &mdash; 100,000 is often quoted, and the few-hundred-thousand holes found in dwarf
+        galaxies are called intermediate by the people who find them &mdash; so the wider reading is used.
+        It is a word and not a class: the body is the same kind of object throughout, and a heavy hole is
+        never marked implausible for being heavier than the stellar band.</p>
       <p>Finally, a catalogue designation sometimes carries <strong>annotations after the class</strong>
         &mdash; <code>m</code> for metallic-line, <code>e</code> for emission, <code>n</code> for broad
         lines, <code>p</code> for peculiar, and so on. These are read and kept rather than treated as part
@@ -1703,7 +1719,9 @@
           −25 (runaway-greenhouse risk); <strong>tidal-volcanic</strong> −20 (resurfaced too fast); <strong>inactive</strong>
           −10 (no outgassing / nutrient recycling); <strong>plutonic</strong> −10 (intrusive only, so the same
           loss with a different cause).</li>
-        <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).</li>
+        <li><strong>Intrinsic magnetosphere</strong> +5 (shielded); <strong>none</strong> −8 (atmosphere stripping).
+          A field you pin with the magnetosphere override is the field: pinned above zero it counts as a
+          magnetosphere here even on a world with no dynamo, and pinned to zero it counts as none.</li>
         <li>A <strong>subsurface ocean</strong> (cryovolcanic or under-ice) floors the score at 35 with a
           <code>habitability/subsurface</code> tier — sub-ice life is a separate axis from the surface Goldilocks zone.</li>
       </ul>

@@ -304,7 +304,13 @@ function backfillGiantAtmosphere(body: CelestialBody): void {
 // asserts its obliquity just as firmly". What it replaces is worse on both counts: the seasonal term
 // silently substituted a flat 25 deg for any body with no tilt, which is an invented number with no
 // provenance at all, and it was the same 25 deg for every world.
-function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack): void {
+//
+// EXPORTED FOR THE FOURTH ROUTE (B21): a body the GM adds from the type picker is built inline in
+// SystemView and reached none of the three routes above, so it arrived with no tilt at all - and the
+// editor then opened on it (see BodyBasicsTab's one-way slider). It calls this, so there is still
+// one model. `despunHint` is for that caller alone: a brand-new body has no processed tags to read
+// the lock from, but its route does know its orbit, and can say whether tides will have despun it.
+export function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack | null, despunHint?: boolean): void {
   if (!bodyCanHaveTilt(body.roleHint)) return;      // belts, rings, stars, constructs have no spin axis
   if (body.axial_tilt_deg != null) return;          // authored or measured — never overwritten
   if (!body.id) return;
@@ -314,7 +320,7 @@ function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack): void {
   // holds. (A body first locked by a LATER process() keeps its formation roll — that residual case
   // is noted on the A70 row rather than solved by letting the processor rewrite authored fields.)
   const tags = body.tags ?? [];
-  const despun = body.tidallyLocked === true
+  const despun = despunHint === true || body.tidallyLocked === true
     || (body.tidallyLocked !== false && tags.some((t) =>
          t.key === 'orbit/tidally-locked' || t.key === 'orbit/spin-orbit-resonance'));
   const { tiltDeg, tipped } = inferAxialTilt(body.id, pack, despun);

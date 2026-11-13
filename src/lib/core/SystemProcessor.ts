@@ -27,13 +27,14 @@ const ORBITAL_RADIATION_TAG = 'hazard/orbital-radiation';
 const ASCENT_TAG = 'flight/ascent';
 import { classifyBody, explainClassification, imageClassFor } from '../system/classification';
 import { makeupFractions, derivedPorosity, reconcileGiantMakeup, hasSolidSurface } from '../physics/makeup';
+import { denserThanFluid } from '../physics/bodyEdit';
 import { lobeCount } from '../catalogue/smallBodyShape';
 import { surfaceTempProfile, meanSurfaceTempK } from '../physics/surfaceTemperature';
 import { deriveFluidLayers } from '../physics/fluidLayers';
 import { deriveCloudDecks, applyCloudDeckTags, deriveWeather, deriveOxidation, CLOUD_DECK_TAG, PRECIPITATION_TAG,
   LIGHTNING_TAG, DUST_STORM_TAG, MONSOON_TAG, OXIDISED_TAG } from '../physics/cloudDecks';
 import { phaseAtP, liquidDef, biosolventScore, solventCoverageWeight } from '../physics/liquids';
-import { deriveMagnetism, magneticShieldingTag } from '../physics/magnetism';
+import { deriveMagnetism, magneticShieldingTag, lacksMagnetosphere } from '../physics/magnetism';
 import { deriveMagnetosphere, insideHostMagnetosphere, astrosphereAu, magnetosphereConstants } from '../physics/magnetosphere';
 import { deriveAurora, resolveAuroraEmitters } from '../physics/aurora';
 import { rotationalDeform } from '../physics/rotation';
@@ -1433,6 +1434,12 @@ export class SystemProcessor implements ISystemProcessor {
                 && t.key !== 'activity/sublimating' && t.key !== 'activity/cryovolcanism'));
         if (icyShell) body.tags.push({ key: 'structure/icy-shell', value: iceLabel });
         if (fluidLayers.some((l) => l.location === 'subsurface')) body.tags.push({ key: 'structure/subsurface-ocean' });
+        // B18: a giant the engine has kept as a giant although it is denser than hydrogen packs on
+        // its own at that mass. It says "unusual", it does not correct anything - the radius and the
+        // density are the GM's. Stripped with the rest of `structure/` above, so it follows the body.
+        if (denserThanFluid((body.massKg ?? 0) / EARTH_MASS_KG, (body.radiusKm ?? 0) / EARTH_RADIUS_KM, mk)) {
+            body.tags.push({ key: 'structure/overdense' });
+        }
 
         // Hydrosphere PHASE tags: what the recorded surface volatile actually is at this T & P.
         if (hydroComp && hydroComp !== 'none' && hydroCov > 0.01) {
@@ -2092,7 +2099,10 @@ export class SystemProcessor implements ISystemProcessor {
         else if (regime === 'tidal-volcanic') geoMod -= 20;   // resurfaced too fast for surface life
         else if (regime === 'plutonic') geoMod -= 10;         // intrusive only → no surface outgassing/recycling
         else if (regime === 'inactive') geoMod -= 10;         // no outgassing / nutrient recycling
-        if (planet.magnetism && !planet.magnetism.intrinsic && planet.magnetism.source === 'none') {
+        // The RESOLVED field, a GM's pin included (B-3) - asked once here and reused for the
+        // breakdown line below, so the score and its explanation cannot disagree.
+        const noMagnetosphere = lacksMagnetosphere(planet);
+        if (noMagnetosphere) {
             geoMod -= 8;                                       // unshielded → atmosphere stripping
         }
         score = Math.max(0, score + geoMod);
@@ -2158,7 +2168,7 @@ export class SystemProcessor implements ISystemProcessor {
         else if (regime === 'tidal-volcanic') modifiers.push({ label: 'Tidal volcanism (resurfaced)', delta: -20 });
         else if (regime === 'plutonic') modifiers.push({ label: 'Plutonic (no surface outgassing)', delta: -10 });
         else if (regime === 'inactive') modifiers.push({ label: 'Geologically inactive (no recycling)', delta: -10 });
-        if (planet.magnetism && !planet.magnetism.intrinsic && planet.magnetism.source === 'none') modifiers.push({ label: 'No magnetosphere (atmosphere stripping)', delta: -8 });
+        if (noMagnetosphere) modifiers.push({ label: 'No magnetosphere (atmosphere stripping)', delta: -8 });
         if (superBonus > 0) modifiers.push({ label: 'Super-habitable bonus', delta: superBonus });
         if (subsurfaceHabitable) modifiers.push({ label: 'Subsurface-ocean niche (floor)', delta: SUBSURFACE_NICHE_SCORE - Math.round(surfaceScore + geoMod) });
         planet.habitabilityBreakdown = {
