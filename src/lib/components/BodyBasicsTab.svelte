@@ -508,7 +508,23 @@
     body.tags = body.tags.filter((t) => t.key !== key);
     body = body;
   }
-  function onTiltInput() { clearSpinProvenance('axis'); handleUpdate(); }
+  // B21: THE SLIDER IS ONE-WAY ON PURPOSE. A range input always HAS a value - with nothing to show
+  // it sits at its midpoint, 90 here - and a two-way binding on a field the body does not carry
+  // makes Svelte write that midpoint back at MOUNT. So merely opening this tab gave every tilt-less
+  // world a 90 degree axis nobody chose, and the next edit of anything saved it. The slider now only
+  // DISPLAYS the tilt, and writes one when the GM actually moves it.
+  function onTiltSlider(e: Event) {
+    body.axial_tilt_deg = +(e.currentTarget as HTMLInputElement).value;
+    onTiltInput();
+  }
+  // Clearing the number box deletes the field rather than leaving a null or a zero behind: "not set"
+  // has to stay reachable once you have left it (engine map PHY-9).
+  function onTiltInput() {
+    if (body.axial_tilt_deg == null) delete body.axial_tilt_deg;
+    body = body;
+    clearSpinProvenance('axis');
+    handleUpdate();
+  }
 
   // LOBES — the one shape fact the engine does not derive, so the GM states it ([[G90]]).
   //
@@ -928,10 +944,10 @@
     {/if}
 
     <div class="form-group">
-        <label for="tilt">Axial Tilt: {(body.axial_tilt_deg ?? 0).toFixed(0)}°</label>
+        <label for="tilt">Axial Tilt: {body.axial_tilt_deg == null ? 'not set' : `${body.axial_tilt_deg.toFixed(0)}°`}</label>
         <div class="tilt-row">
             <input class="tilt-slider" type="range" id="tilt" min="0" max="180" step="1"
-                   bind:value={body.axial_tilt_deg} on:input={onTiltInput} />
+                   value={body.axial_tilt_deg ?? 0} on:input={onTiltSlider} />
             <input class="tilt-num" type="number" step="0.1" min="0" max="180"
                    bind:value={body.axial_tilt_deg} on:input={onTiltInput} />
         </div>

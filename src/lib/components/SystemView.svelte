@@ -66,7 +66,7 @@
   import { stampForSave, exportModeFromChoice } from '$lib/map/provenance';
   import { classifySaveFile } from '$lib/io/classify';
   import { collectModelsForExport, importEmbeddedModels } from '$lib/constructs/modelTransfer';
-  import { fixUpImportedSystem, stripSystemForExport } from '$lib/system/importFixup';
+  import { fixUpImportedSystem, stripSystemForExport, inferMissingAxialTilt } from '$lib/system/importFixup';
   import ImportModal from './ImportModal.svelte';
   import { adapterForFile, type ImportAdapter } from '$lib/import/adapters';
   import { generateId, toRoman } from '$lib/utils';
@@ -835,6 +835,14 @@
       const host = $systemStore.nodes.find(n => n.id === ctx.hostId);
       if (!host) return;
 
+      // B21: EVERY BODY THIS ROUTE BUILDS GETS A SPIN AXIS BEFORE IT IS PROCESSED. It used to hand
+      // back a world with no tilt at all - this is the fourth body-creation route and the one-model
+      // rule (`physics/axialTilt.ts`) had not reached it - and the editor that opens next then showed
+      // 90 degrees, the resting midpoint of its slider. Same model, same provenance tag as the other
+      // three routes; a world this orbit will have despun draws the small tidally-eroded tilt (A70).
+      const seedSpinAxis = (b: CelestialBody, hostMassKg: number) => inferMissingAxialTilt(b, rulePack,
+          predictTidalLock(b.orbit?.elements.a_AU ?? 0, b.radiusKm ?? 0, b.massKg ?? 0, hostMassKg, ctx.ageGyr ?? 4.6));
+
       // G43: a trojan placement — the body is a sibling of its secondary (both orbit the star),
       // carries the coOrbital marker, and gets its orbit from the one convention module. The
       // process() below re-derives it every pass thereafter.
@@ -898,6 +906,7 @@
                   orbit: deriveCoOrbitalOrbit(secondary, starMassKg, ctx.trojan.point) ?? undefined
               } as CelestialBody;
           }
+          seedSpinAxis(trojanBody, trojanBody.orbit?.hostMu ? trojanBody.orbit.hostMu / G : starMassKg);
           systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, trojanBody] }, rulePack) });
           updateFocus(trojanBody.id);
           isEditing = true;
@@ -934,6 +943,7 @@
               }
           }
       } as CelestialBody;
+      seedSpinAxis(newBody, ctx.hostMassKg);
       systemStore.set({ ...systemProcessor.process({ ...$systemStore, nodes: [...$systemStore.nodes, newBody] }, rulePack) });
       updateFocus(newBody.id);
       isEditing = true;
