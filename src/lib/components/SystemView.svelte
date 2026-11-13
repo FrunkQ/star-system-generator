@@ -2999,6 +2999,7 @@
                     system={$systemStore}
                     hostBody={parentBody}
                     {rulePack}
+                    {shippedRulePack}
                     {isShipLogOpen}
                     {isEditing}
                     {isPlanning}

@@ -16,6 +16,8 @@
   export let system: System;
   export let hostBody: CelestialBody | null = null;
   export let rulePack: RulePack;
+  /** Passed straight through to the editor, which needs it to take in a construct file's rules. */
+  export let shippedRulePack: RulePack | undefined = undefined;
   export let status: 'before' | 'transit' | 'adrift' | 'arrived' = 'transit';
   export let frac = 0;
   export let fromName = '';
@@ -132,7 +134,7 @@
 
   {#if showEditor}
     <div class="editor">
-      <ConstructSidePanel {construct} {system} {hostBody} {rulePack} hideActions
+      <ConstructSidePanel {construct} {system} {hostBody} {rulePack} {shippedRulePack} hideActions
         on:update={(e) => dispatch('update', e.detail)} />
     </div>
   {/if}

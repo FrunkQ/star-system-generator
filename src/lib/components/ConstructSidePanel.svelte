@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, tick } from 'svelte';
+  import { starmapStore } from '$lib/starmapStore';
+  import { landCarriedRules, takeRulesOffDocument, withCampaignRules } from '$lib/io/systemRules';
   import type { CelestialBody, RulePack, System } from '$lib/types';
   import ConstructBasicsTab from './ConstructBasicsTab.svelte';
   import { SITUATION_FIELDS, stripSituation, constructFileProblem } from '$lib/constructs/constructFile';
@@ -21,6 +23,9 @@
   export let system: System;
   export let construct: CelestialBody;
   export let rulePack: RulePack;
+  /** The pack WITHOUT the campaign's overrides - needed only to fold in the rules an imported
+   *  construct file brings (`io/systemRules.ts`). `rulePack` above is the effective one. */
+  export let shippedRulePack: RulePack | undefined = undefined;
   export let hostBody: CelestialBody | null;
   export let hideActions: boolean = false; // New prop
 
@@ -90,7 +95,11 @@
   }
 
   async function handleExport() {
-    const exportConstruct = stripSituation(construct);
+    // 3.1.1: AND THE CAMPAIGN'S CUSTOM DEFINITIONS GO IN BESIDE THE SPEC. A ship's engines, tanks and
+    // sensors are IDS; the drive a GM built in Fuel & Drives lives on the starmap, so an exported
+    // construct used to arrive in any other campaign with a drive called `engine-custom-...`,
+    // "Unknown Fuel" and no thrust. Same key and same rule as a saved system (`io/systemRules.ts`).
+    const exportConstruct = withCampaignRules(stripSituation(construct), $starmapStore?.rulePackOverrides);
 
     // Carry the 3D model's BINARY, not just its hash - otherwise the file opens on another
     // machine as a ref pointing at nothing and silently falls back to the icon glyph. Same
@@ -131,6 +140,21 @@
           return;
         }
 
+        // 3.1.1: THE RULES THE FILE BROUGHT, taken off it and folded into this campaign - added where
+        // absent, dropped where identical, renamed (and this construct repointed) where the campaign
+        // uses the name differently, never overwritten. The campaign is written FIRST and a tick is
+        // allowed to pass, so the update below is derived against the pack that knows the new drive.
+        const carried = takeRulesOffDocument(importedConstruct);
+        let rulesNote = '';
+        if (carried && shippedRulePack) {
+          const landed = landCarriedRules(carried, $starmapStore?.rulePackOverrides, shippedRulePack, [importedConstruct]);
+          rulesNote = landed.note;
+          if (landed.merge.changed) {
+            starmapStore.update((m) => (m ? { ...m, rulePackOverrides: landed.overrides } : m));
+            await tick();
+          }
+        }
+
         // Preserve the target's situation (covers old exported files that still
         // carry the source ship's journeys/vectors).
         const preservedData = preserveSituation(construct);
@@ -143,7 +167,7 @@
         }
         construct = { ...importedConstruct, ...preserveAppearance(importedConstruct, construct), ...preservedData };
         handleUpdate();
-        alert(`Successfully imported '${importedConstruct.name}'.`);
+        alert(`Successfully imported '${importedConstruct.name}'.${rulesNote ? '\n\n' + rulesNote : ''}`);
 
       } catch (err) {
         alert('Failed to parse JSON file.');

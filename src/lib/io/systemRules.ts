@@ -30,6 +30,11 @@
 // wizard's "load a system from a file" takes a campaign's first system): the campaign's overrides
 // were sitting at the top of that file all along and were being left behind.
 //
+// A CONSTRUCT FILE IS THE THIRD SUCH DOCUMENT ("Export" on a ship or station) and it had the same
+// hole one size down: the ship named `engine-custom-...` and the file held no such engine, so in any
+// other campaign it showed a drive called by its id, burning "Unknown Fuel", with no thrust. It takes
+// the same key by the same two functions.
+//
 // NOT CARRIED: a PLAYER save. That file is what a GM hands to players, and the campaign's whole
 // rules bag would name every drive and sensor in it, hidden ships' included. It is written exactly
 // as before; whether it should carry the rules its VISIBLE objects name is the owner's call.
@@ -46,9 +51,9 @@ export interface CarriedRules {
 }
 
 /**
- * A system document ready to write, with the campaign's custom definitions beside its nodes.
- * Returns the document UNCHANGED when the campaign has none, so an ordinary system file does not
- * grow an empty key.
+ * A system (or construct) document ready to write, with the campaign's custom definitions beside
+ * its own content. Returns the document UNCHANGED when the campaign has none, so an ordinary file
+ * does not grow an empty key.
  */
 export function withCampaignRules<T extends object>(systemDoc: T, campaign: RulePackOverrides | null | undefined): T {
   const overrides = readClipOverrides(campaign);
@@ -65,8 +70,23 @@ export function withCampaignRules<T extends object>(systemDoc: T, campaign: Rule
 export function takeCarriedRules(classified: ClassifiedSaveFile): CarriedRules | undefined {
   const doc = classified.doc;
   if (!doc || typeof doc !== 'object' || classified.kind === 'unknown') return undefined;
+  return classified.kind === 'system' ? takeRulesOffDocument(doc) : rulesOn(doc);
+}
+
+/**
+ * The same, for a parsed document that is going to live INSIDE a campaign - a system, or a single
+ * construct. The key comes OFF the document whether or not anything in it was usable.
+ */
+export function takeRulesOffDocument(doc: any): CarriedRules | undefined {
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return undefined;
+  const carried = rulesOn(doc);
+  delete doc.rulePackOverrides;
+  return carried;
+}
+
+/** What a document carries, shape-checked, labelled with the document's own name. Never mutates. */
+function rulesOn(doc: any): CarriedRules | undefined {
   const overrides = readClipOverrides(doc.rulePackOverrides);
-  if (classified.kind === 'system') delete doc.rulePackOverrides;
   if (!overrides) return undefined;
   const label = typeof doc.name === 'string' && doc.name.trim() ? doc.name.trim() : undefined;
   return { overrides, ...(label ? { label } : {}) };

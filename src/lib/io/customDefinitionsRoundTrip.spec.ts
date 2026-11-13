@@ -13,6 +13,7 @@
 //   6. The same system file through the wizard's "place a saved system on the map" door.       <- THE HOLE
 //   7. A CAMPAIGN file through that same door (it takes the campaign's first system).          <- THE HOLE
 //   8. A campaign file in the shape production v3.1.48 writes, loaded here.
+//   9. Export a construct, and import it onto a ship in a campaign that has none of its rules. <- THE HOLE
 //
 // 1-4 and 8 KEPT THE DEFINITIONS ALREADY and are pinned here so they keep doing so (what 1 and 3 got
 // wrong was the worlds' derived look on load - `rulepack/campaignRulePack.spec.ts`). 5-7 are what was
@@ -25,6 +26,10 @@
 // the handler's OWN functions called in the handler's own order, and the last block pins, in the
 // components' source, that the handlers still call them. A road re-plumbed in a component without
 // these functions turns that block red.
+//
+// Road 9, red-first: with `takeRulesOffDocument` handing back nothing, the construct rows fail with no
+// definitions where two fuels, two engines and two sensors are expected (and the system roads fail
+// with them - it is the same function); with the panel's Export unwired, the source pin fails.
 //
 // RED-FIRST, 2026-11-13: with `withCampaignRules` returning the document untouched (the save half
 // removed), roads 5 and 6 fail with no definitions at all where two per section are expected; with
@@ -39,7 +44,8 @@ import { packBundle, plainSaveJson } from './bundle';
 import { buildClip, parseHubClip, insertClip } from './hubClip';
 import { mergeClipOverrides } from './clipRules';
 import { systemFromSave } from './systemFromSave';
-import { landCarriedRules, takeCarriedRules, withCampaignRules } from './systemRules';
+import { landCarriedRules, takeCarriedRules, takeRulesOffDocument, withCampaignRules } from './systemRules';
+import { constructFileProblem, stripSituation } from '$lib/constructs/constructFile';
 import { stampForSave } from '$lib/map/provenance';
 import { fixUpImportedSystem, stripStarmapForExport, stripSystemForExport } from '$lib/system/importFixup';
 import { sanitizeStarmapForRuntime } from '$lib/starmapSanitizer';
@@ -321,6 +327,55 @@ describe('8. a campaign saved by production v3.1.48, loaded here', () => {
 	});
 });
 
+describe('9. export a construct, import it in a campaign that has none of its rules', () => {
+	/** `ConstructSidePanel.handleExport`: the spec without its situation, and the campaign's rules. */
+	const exportConstruct = (ship: any, rules: RulePackOverrides | undefined) =>
+		JSON.stringify(withCampaignRules(stripSituation(ship), rules), null, 2);
+	/** `ConstructSidePanel.handleImport`: check it, take the rules off it and into the campaign. */
+	function importConstruct(json: string, into: Starmap) {
+		const imported = JSON.parse(json);
+		expect(constructFileProblem(imported)).toBeNull();
+		const landed = landCarriedRules(takeRulesOffDocument(imported), into.rulePackOverrides, PACK, [imported]);
+		return { ship: imported, map: { ...into, rulePackOverrides: landed.overrides } as Starmap, note: landed.note, pack: landed.pack };
+	}
+	const kestrel = () => homeSystem().nodes.find((n: any) => n.name === 'Kestrel') as any;
+
+	it('the ship arrives with both custom engines, the fuels they burn and both custom sensors DEFINED', () => {
+		const from = campaign(PACK);
+		const { ship, map, note, pack } = importConstruct(exportConstruct(kestrel(), from.rulePackOverrides), freshCampaign());
+		const counts = authoredCounts(map.rulePackOverrides, PACK);
+		expect(counts.fuelDefinitions).toBe(2);
+		expect(counts.engineDefinitions).toBe(2);
+		expect(counts.sensorDefinitions).toBe(2);
+		// Every id the ship names resolves in the pack it will now be derived against.
+		const ids = (rows: any[] | undefined) => new Set((rows ?? []).map((r: any) => r.id));
+		for (const e of ship.engines) expect(ids((pack as any).engineDefinitions.entries).has(e.engine_id), e.engine_id).toBe(true);
+		for (const t of ship.fuel_tanks) expect(ids((pack as any).fuelDefinitions.entries).has(t.fuel_type_id), t.fuel_type_id).toBe(true);
+		for (const x of ship.sensors) expect(ids((pack as any).sensorDefinitions.entries).has(x.definition_id), x.definition_id).toBe(true);
+		expect(note).toMatch(/^Added 2 fuel definitions, 2 engine definitions, 2 sensor definitions/);
+		expect(ship.rulePackOverrides, 'the rules live on the campaign, never on the construct').toBeUndefined();
+	});
+
+	it('back into its own campaign nothing is added; a construct file from before this imports as it did', () => {
+		const from = campaign(PACK);
+		const same = importConstruct(exportConstruct(kestrel(), from.rulePackOverrides), from);
+		expect(same.map.rulePackOverrides).toBe(from.rulePackOverrides);
+		expect(same.note).toBe('');
+		const old = importConstruct(JSON.stringify(stripSituation(kestrel())), freshCampaign());
+		expect(old.map.rulePackOverrides).toBeUndefined();
+		expect(old.ship.engines.map((e: any) => e.engine_id)).toEqual(['engine-custom-2001', 'engine-custom-2002']);
+	});
+
+	it('a campaign that already uses an engine id for a DIFFERENT drive keeps its own, and the ship follows the renamed one', () => {
+		const from = campaign(PACK);
+		const theirs = { id: 'engine-custom-2001', name: 'Somebody Else\'s Drive', type: 'Chemical', fuel_type_id: 'fuel-hydrazine', thrust_kN: 1, efficiency_isp: 1 };
+		const dest: Starmap = { ...freshCampaign(), rulePackOverrides: { engineDefinitions: [theirs] } as any };
+		const { ship, map } = importConstruct(exportConstruct(kestrel(), from.rulePackOverrides), dest);
+		expect(map.rulePackOverrides?.engineDefinitions?.find((e: any) => e.id === 'engine-custom-2001')).toEqual(theirs);
+		expect(ship.engines.map((e: any) => e.engine_id)).toEqual(['engine-custom-2001 (from Kestrel)', 'engine-custom-2002']);
+	});
+});
+
 describe('the components still take these roads', () => {
 	const view = VIEW, page = PAGE, wizard = WIZARD;
 	it('Save System (GM) writes the campaign\'s rules beside the nodes; a Player save does not', () => {
@@ -341,6 +396,22 @@ describe('the components still take these roads', () => {
 		expect(load).toMatch(/rulePackOverrides: landed\.overrides/);
 		expect(view).toMatch(/export let shippedRulePack/);
 		expect(page).toMatch(/shippedRulePack=\{selectedRulepack\}/);
+	});
+
+	it('a construct Export writes the rules and its Import folds them in before the update, on both routes to the editor', () => {
+		const panel = readFileSync(resolve(process.cwd(), 'src/lib/components/ConstructSidePanel.svelte'), 'utf-8');
+		expect(body(panel, 'async function handleExport', 900)).toMatch(/const exportConstruct = withCampaignRules\(stripSituation\(construct\), \$starmapStore\?\.rulePackOverrides\);/);
+		const imp = body(panel, 'function handleImport', 3200);
+		const take = imp.indexOf('takeRulesOffDocument(importedConstruct)');
+		const land = imp.indexOf('landCarriedRules(carried, $starmapStore?.rulePackOverrides, shippedRulePack, [importedConstruct])');
+		expect(take).toBeGreaterThan(-1);
+		expect(land).toBeGreaterThan(take);
+		expect(imp.indexOf('handleUpdate()'), 'the campaign has the rules before the construct is updated').toBeGreaterThan(land);
+		// The editor is reached two ways, and both must hand it the shipped pack or the import skips the fold.
+		expect(readFileSync(resolve(process.cwd(), 'src/lib/components/ConstructDetailsPane.svelte'), 'utf-8')).toMatch(/<ConstructSidePanel[\s\S]*?\{shippedRulePack\}/);
+		expect(readFileSync(resolve(process.cwd(), 'src/lib/components/ShipPanel.svelte'), 'utf-8')).toMatch(/<ConstructSidePanel[^>]*\{shippedRulePack\}/);
+		expect(view).toMatch(/<ConstructDetailsPane[\s\S]*?\{shippedRulePack\}/);
+		expect(page).toMatch(/<ShipPanel[\s\S]*?shippedRulePack=\{selectedRulepack\}/);
 	});
 
 	it('the wizard and the "Add System" link hand the file\'s rules to the page, which lands them with the system', () => {

@@ -3064,6 +3064,7 @@
       system={shipPanel.system}
       hostBody={shipPanel.host}
       rulePack={effectiveRulePack || selectedRulepack}
+      shippedRulePack={selectedRulepack}
       status={shipPanel.status}
       frac={shipPanel.frac}
       fromName={shipPanel.fromName}
