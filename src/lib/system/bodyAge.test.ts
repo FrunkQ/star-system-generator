@@ -53,6 +53,10 @@ function makeSystem(ageGyr: number): System {
       { id: 'star', name: 'Star', kind: 'body', parentId: null, roleHint: 'star', massKg: SOLAR_MASS_KG,
         radiusKm: SOLAR_RADIUS_KM, temperatureK: 5778, radiationOutput: 1, classes: ['star/G'], axial_tilt_deg: 0,
         rotation_period_hours: 600, tags: [] },
+      // A red dwarf companion: the kind of star whose flaring is all about how young it is.
+      { id: 'red', name: 'Red', kind: 'body', parentId: 'star', roleHint: 'star', classes: ['star/M'],
+        massKg: 0.3 * SOLAR_MASS_KG, radiusKm: 0.32 * SOLAR_RADIUS_KM, temperatureK: 3400, radiationOutput: 0.012,
+        tags: [], orbit: orbit('star', 900) },
       { id: 'dwarf', name: 'Dwarf', kind: 'body', parentId: 'star', roleHint: 'star', classes: ['star/T'],
         massKg: 0.0352 * SOLAR_MASS_KG, radiusKm: 0.0806 * SOLAR_RADIUS_KM, temperatureK: 914, tags: [],
         orbit: orbit('star', 400) },
@@ -186,5 +190,48 @@ describe('G94 - a world loses its air over ITS OWN lifetime', () => {
     const first = node(s, 'ares').atmosphere?.pressure_bar;
     for (let i = 0; i < 3; i++) s = systemProcessor.process(s, pack);
     expect(node(s, 'ares').atmosphere?.pressure_bar).toBe(first);
+  });
+});
+
+describe('G94 - a star spins down on ITS OWN age', () => {
+  const pack = loadRulePack();
+  const red = (s: System) => node(systemProcessor.process(s, pack), 'red');
+  const flaring = (b: CelestialBody) => (b.tags ?? []).some((t) => t.key === 'hazard/flaring');
+
+  it('a red dwarf with no age of its own is as quiet as its 4.6 Gyr system makes it', () => {
+    const b = red(makeSystem(4.6));
+    expect(b.flareActivity).toBeCloseTo(0.1258, 3);       // 0.85 x (0.3 / 4.6)^0.7
+    expect(flaring(b)).toBe(false);
+  });
+
+  it('given an age of 100 Myr it is a flare star, in a system of any age', () => {
+    for (const systemAge of [1, 4.6, 11]) {
+      const b = red(aged(makeSystem(systemAge), 'red', 0.1));
+      expect(b.flareActivity, `system ${systemAge} Gyr`).toBeCloseTo(0.85, 3);
+      expect(flaring(b)).toBe(true);
+    }
+  });
+
+  it('...and an old companion of a young star is quiet while the young primary is not', () => {
+    const s = systemProcessor.process(aged(makeSystem(0.2), 'red', 10), pack);
+    expect(node(s, 'red').flareActivity).toBeCloseTo(0.073, 2);    // 0.85 x (0.3 / 10)^0.7
+    expect(node(s, 'star').flareActivity).toBeCloseTo(0.35, 2);    // a 200 Myr G star, saturated
+  });
+});
+
+// The blunt one, in the shape of `idempotence.test.ts`: an age is an INPUT, so a system in which
+// EVERY body has been given its own must come out of a second and third pass byte for byte as it
+// came out of the first. Any consumer that read an age-derived value out of order shows up here.
+describe('G94 - a system full of aged bodies is still idempotent', () => {
+  const pack = loadRulePack();
+  it('pass 1, pass 2 and pass 3 are identical on every field of every node', () => {
+    const s0 = makeSystem(4.6);
+    const ages: Record<string, number> = { star: 4.6, red: 0.1, dwarf: 9, planemo: 12, moon: 3, jove: 0.05, ares: 9 };
+    for (const [id, a] of Object.entries(ages)) setBodyAge(node(s0, id), a, s0);
+    const p1 = JSON.stringify(systemProcessor.process(s0, pack).nodes);
+    const p2 = JSON.stringify(systemProcessor.process(JSON.parse(JSON.stringify({ ...s0, nodes: JSON.parse(p1) })), pack).nodes);
+    const p3 = JSON.stringify(systemProcessor.process(JSON.parse(JSON.stringify({ ...s0, nodes: JSON.parse(p2) })), pack).nodes);
+    expect(p2).toBe(p1);
+    expect(p3).toBe(p2);
   });
 });

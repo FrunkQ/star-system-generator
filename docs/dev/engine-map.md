@@ -7989,6 +7989,17 @@ so far, each with its own gate:
   - ATMOSPHERIC ESCAPE (`applyAtmosphericEscape`, opted-in bodies only) - eroded over the body's
     own age less `FORMATION_DELAY_GYR`. One expression for both cases, no branch on whether the
     body has its own age.
+  - A STAR'S FLARE ACTIVITY (`flareActivity` in the star pre-pass) - the dynamo spins down on the
+    star's own age. THIS IS THE ONLY STELLAR CONSUMER SWITCHED, and it is not `ageStar`.
+STILL ON THE SYSTEM'S AGE, DELIBERATELY: tidal locking (`predictTidalLock`), the surface-age read
+inside the thermal solve (`solveThermalState` / `surfaceAgeOnProbe`), the geology model
+(`deriveGeoActivity`), the classifier's `age_Gyr` feature, the habitability bonus, and everything
+outside the processor (zones, reasons to visit, generation, the map summary). The first four are
+questions about one body and are the next candidates; they were not in the brief's list and each
+is a physics change wanting its own gate.
+A FUSING STAR'S TEMPERATURE, RADIUS AND LUMINOSITY DO NOT FOLLOW ANY AGE in the editor:
+`physics/stellar-evolution.ts ageStar` runs at creation only ([[G97]]). Do not wire it to `ageOf`
+without the owner's word on seed versus current state - on an imported star it double-ages.
 `ageOf` IS AN INPUT: it is read from authored data and the system record, never from anything a
 pass writes, so it may be asked anywhere in the pass and answers the same every time.
 WHY: [[G94]]. There was exactly one age, `System.age_Gyr`, consumed at 21 sites, so the only lever

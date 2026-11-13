@@ -132,7 +132,11 @@ export class SystemProcessor implements ISystemProcessor {
             // by about half a decade in X-ray output - rotation at birth varies and the dynamo follows
             // rotation. A model with no scatter is the unphysical one. Seeded from the star's id, so
             // it is stable across re-processing and identical for everyone.
-            const baseActivity = flareActivity(s.classes?.[0], this.systemAgeGyr, (s as any).accretionEddington);
+            // G94: the age that spins a star down is THE STAR'S OWN. A companion captured young into an
+            // old system is still a flare star; one that inherits reads the system's age as before.
+            // (This is the dynamo, not `ageStar`: what a star's age does to its temperature, size and
+            // brightness is G97 and is NOT switched here.)
+            const baseActivity = flareActivity(s.classes?.[0], this.ageOf(s), (s as any).accretionEddington);
             // THE FIELD IS ALSO THE FLARING LEVER, now that the separate activity slider is gone.
             // Flaring IS the dynamo and the field is the dynamo's output, so a star wound well above
             // its class's typical field is more active — and one sitting inside its own band is
