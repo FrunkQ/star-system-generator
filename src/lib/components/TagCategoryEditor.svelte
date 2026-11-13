@@ -23,6 +23,11 @@
 
   let showHelp = false;
   export let existingTags: string[] = [];   // every tag key present across the systems (for has: rows)
+  // Rule-seeded tags on this starmap that the rules pass will never clear, because the rule that
+  // wrote them AND its category are both gone (`strandedRuleTags`). The page counts them and does
+  // the removing - this dialog knows categories, not the map - and it is offered here because this
+  // is where a GM deletes or renames the category that strands them.
+  export let stranded: { tags: number; bodies: number } = { tags: 0, bodies: 0 };
 
   const dispatch = createEventDispatcher();
   let selectedId = 'resource';
@@ -249,6 +254,17 @@
         <label class="imp">Import…<input type="file" accept=".json" on:change={onImportFile} hidden /></label>
       </div>
       {#if importError}<p class="err">{importError}</p>{/if}
+      {#if stranded.tags > 0}
+        <div class="stranded">
+          <p class="note">
+            <b>{stranded.tags}</b> tag{stranded.tags === 1 ? '' : 's'} on <b>{stranded.bodies}</b>
+            {stranded.bodies === 1 ? 'body' : 'bodies'} in this starmap {stranded.tags === 1 ? 'was' : 'were'} seeded by
+            rules that are no longer here — the rule and its category were deleted or renamed, or they belong
+            to whoever made the map. Nothing clears them automatically.
+          </p>
+          <button class="ghost" on:click={() => dispatch('cleanstranded')}>Remove them from the starmap</button>
+        </div>
+      {/if}
     </aside>
 
     <!-- category detail -->
@@ -543,5 +559,7 @@
   .addtag { display: flex; gap: 6px; align-items: center; }
   .addtag input { flex: 1; }
   .hide-row { margin: 6px 0; }
+  .stranded { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 6px; }
+  .stranded .ghost { font-size: 0.76rem; padding: 5px 8px; }
   .rolechk.ghosted { opacity: 0.4; }
 </style>

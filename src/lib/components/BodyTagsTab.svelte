@@ -2,7 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { CelestialBody, RulePack, TagDisclosure } from '$lib/types';
   import { describeTag, formatTagValue } from '$lib/tags/tagPresentation';
-  import { poiPacks } from '$lib/physics/reasonsToVisit';
+  import { poiPacks, strandedRuleTags } from '$lib/physics/reasonsToVisit';
   import { customTagVocabulary } from '$lib/tags/customTags';
   import { canonicalTagKey, tagSlugSegment, tagOrigin, overridableNamespaces, isPhysicsNamespace, tagDisclosure } from '$lib/tags/tagLifecycle';
   import { tagCategories, categoriesFor, addTagToCategory } from '$lib/tags/tagCategories';
@@ -66,6 +66,16 @@
       body.tags = body.tags.filter((t) => t.key !== key);
       dispatch('update');
   }
+  // Remove a STRANDED rule tag - and only that. A hand-added tag that happens to share the key is
+  // a different tag with a different owner and stays (every copy of the stranded one goes: a body
+  // can carry several, which is how they were noticed).
+  function removeStranded(key: string) {
+      if (!body.tags) return;
+      const gone = new Set(strandedRuleTags(body.tags, $poiPacks).filter((t) => t.key === key));
+      if (!gone.size) return;
+      body.tags = body.tags.filter((t) => !gone.has(t));
+      dispatch('update');
+  }
   function addCustomTag() {
       const key = newCat === 'custom' ? canonicalTagKey(newName) : `${newCat}/${tagSlugSegment(newName)}`;
       if (!key || (newCat !== 'custom' && !tagSlugSegment(newName))) return;
@@ -101,6 +111,14 @@
     const manual: TagItem[] = [];      // hand-added, including overrides
     const overrides: TagItem[] = [];   // hand-added INSIDE a physics namespace
     const authored: TagItem[] = [];    // the generator's own claims — nothing re-derives them
+    // STRANDED: seeded by a rule, and neither that rule nor its category exists here any more. The
+    // rules pass will never clear these (it cannot tell a category the GM deleted from one that
+    // belongs to whoever made the map), so they are the one rule-seeded kind a GM may remove by
+    // hand - until now the only way was to edit the starmap file. Asked of the same function the
+    // pass's own strip defines, and `$poiPacks` is read HERE so the block re-runs when rules change
+    // (TAG-17: a store read inside a helper is invisible to the compiler).
+    const strandedNow = new Set(strandedRuleTags(body.tags, $poiPacks));
+    const stranded: TagItem[] = [];
     const poi: Record<string, TagItem[]> = {};
     const physics: Record<string, TagItem[]> = {};
     for (const t of body.tags ?? []) {
@@ -115,7 +133,7 @@
           ((t as any).override || isPhysicsNs(t.key) ? overrides : manual).push(item);
           break;
         case 'authored': authored.push(item); break;
-        case 'rule': (poi[info.group] ||= []).push(item); break;
+        case 'rule': (strandedNow.has(t) ? stranded : (poi[info.group] ||= [])).push(item); break;
         default: (physics[info.group] ||= []).push(item); break;   // physics | inherited | derived
       }
     }
@@ -129,7 +147,7 @@
     const uniq = (items: TagItem[]) => { const seen = new Set<string>(); return items.filter((i) => !seen.has(i.key) && !!seen.add(i.key)); };
     for (const g of Object.keys(poi)) poi[g] = uniq(poi[g]);
     for (const g of Object.keys(physics)) physics[g] = uniq(physics[g]);
-    return { manual: uniq(manual), overrides: uniq(overrides), authored: uniq(authored), poi, physics };
+    return { manual: uniq(manual), overrides: uniq(overrides), authored: uniq(authored), stranded: uniq(stranded), poi, physics };
   })();
   const isPhysicsNs = (key: string) => isPhysicsNamespace(key);
 
@@ -246,6 +264,26 @@
         </div>
       </div>
     {/each}
+
+    <!-- Stranded rule tags: the rule and its category are both gone, so nothing will clear them. -->
+    {#if groups.stranded.length}
+      <div class="tag-group">
+        <h5 class="src-head poi-head">Left behind <span class="src-note">· seeded by a rule that is no longer here</span></h5>
+        <p class="grp-note">
+          A tagging rule wrote these, and neither that rule nor its category is in your settings now —
+          it was deleted or renamed, or it belongs to whoever made this map. Nothing re-creates them and
+          nothing clears them. Click one to remove it here, or clear them from the whole starmap in
+          Settings → Tagging → Edit tag categories.
+        </p>
+        <div class="tags-list">
+          {#each groups.stranded as t (t.key)}
+            <button class="tag-chip active" style="background-color:{t.color}; color:{t.textColor}" title={(t.desc ? t.desc + '\n\n' : '') + 'Seeded by a rule that is no longer here. Click to remove.'} on:click={() => removeStranded(t.key)}>
+              {t.label}{#if formatTagValue(t.key, t.value)}: {formatTagValue(t.key, t.value)}{/if} <span class="x">×</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
     <!-- Physics-derived tags: fixed (red lock). -->
     {#each sortedGroups(groups.physics) as g (g)}

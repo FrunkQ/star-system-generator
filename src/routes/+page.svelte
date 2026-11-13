@@ -108,7 +108,7 @@
   import BaseMapUpgradeModal from '$lib/components/BaseMapUpgradeModal.svelte';
   import KeepACopyModal from '$lib/components/KeepACopyModal.svelte';
   import { shouldAskToKeepACopy, recordKeptCopy } from '$lib/map/keepACopy';
-  import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig } from '$lib/physics/reasonsToVisit';
+  import { annotateReasonsToVisit, packsForStarmap, mergeStarmapPacks, applyStarmapReasonsConfig, reasonsConfig, poiPacks, countStrandedRuleTags, removeStrandedRuleTags } from '$lib/physics/reasonsToVisit';
   import ShipPanel from '$lib/components/ShipPanel.svelte';
   import { constructDisplayPlacement, interstellarConstructIds, endJourneyAtSource } from '$lib/transit/interstellar';
   import { foreground } from '$lib/ui/foreground';
@@ -2369,6 +2369,26 @@
     if (open) { annotateReasonsToVisit(open); systemStore.set({ ...open }); }
   }
 
+  // TAGS LEFT BEHIND BY A VANISHED RULE - counted only while the category editor is open, which is
+  // where a GM deletes or renames the category that strands them. The rules pass never clears these
+  // by itself (it cannot tell a deleted category from one belonging to whoever made the map), so
+  // the removal is the GM's explicit act, here.
+  $: strandedRuleTagCount = showTagEditor
+    ? countStrandedRuleTags([...($starmapStore?.systems ?? []).map((n) => n?.system), $systemStore], $poiPacks)
+    : { tags: 0, bodies: 0 };
+  function cleanStrandedRuleTags() {
+    const n = strandedRuleTagCount;
+    if (!n.tags) return;
+    if (!confirm(`Remove ${n.tags} tag${n.tags === 1 ? '' : 's'} from ${n.bodies} ${n.bodies === 1 ? 'body' : 'bodies'}?\n\nOnly tags seeded by rules that are no longer here are removed. Tags you added by hand, physics tags and tags from your current rules are not touched.`)) return;
+    starmapStore.update((map) => {
+      if (!map) return map;
+      for (const node of map.systems) if (node?.system) removeStrandedRuleTags(node.system);
+      return { ...map };
+    });
+    const open = get(systemStore);
+    if (open) { removeStrandedRuleTags(open); systemStore.set({ ...open }); }
+  }
+
   // G42 phase 3: the rail's Save Starmap now goes through the save screen, which states in plain
   // words that this file is the WHOLE campaign - the counterpart to the system save saying it is
   // not. The BASE-MAP BACKUP path deliberately keeps calling handleDownloadStarmap directly: it is
@@ -2941,7 +2961,7 @@
     />
   {/if}
   {#if showTagEditor}
-    <TagCategoryEditor existingTags={allTagKeys} on:close={() => { showTagEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
+    <TagCategoryEditor existingTags={allTagKeys} stranded={strandedRuleTagCount} on:cleanstranded={cleanStrandedRuleTags} on:close={() => { showTagEditor = false; reprocessAllReasons(); if (settingsReturnSection) showSettingsModal = true; }} />
   {/if}
 
   {#if showLlmSettingsModal}

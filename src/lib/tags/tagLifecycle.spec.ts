@@ -128,6 +128,25 @@ describe('stripRuleTags', () => {
     const tags = [t('frontier/refuelling')];
     expect(stripRuleTags(tags, ['frontier/'])).toHaveLength(1);
   });
+
+  // A category file whose `id` was renamed by hand keeps rules that write the OLD namespace. No
+  // category owns that prefix, so the namespace test alone never cleared them and each pass added
+  // another copy (the duplicated key behind A104).
+  it('clears a tag whose RULE is live even when no category owns its namespace', () => {
+    const tags = [t('oldns/reds', { source: 'rule:rz' }), t('oldns/reds', { source: 'rule:rz' })];
+    expect(stripRuleTags(tags, ['newns/'])).toHaveLength(2);                       // the old behaviour
+    expect(stripRuleTags(tags, ['newns/'], new Set(['rz']))).toHaveLength(0);
+  });
+
+  it('still spares a rule tag whose rule AND category are unknown - it may be another GM\'s', () => {
+    const tags = [t('theirs/ruin', { source: 'rule:r9k2x' })];
+    expect(stripRuleTags(tags, ['resource/'], new Set(['d1', 'rz']))).toHaveLength(1);
+  });
+
+  it('never takes a hand-added tag, whatever it shares with a rule', () => {
+    const tags = [t('oldns/reds', { manual: true }), t('resource/spice', { manual: true, source: 'rule:rz' })];
+    expect(stripRuleTags(tags, ['resource/'], new Set(['rz']))).toHaveLength(2);
+  });
 });
 
 describe('emit — the guard that stops an override being duplicated', () => {
