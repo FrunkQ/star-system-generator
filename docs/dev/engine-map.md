@@ -3837,6 +3837,45 @@ call the one function, and a tag entry resolves exactly as its MARKER does (`pre
 `markersFor` uses too) - so the two chips in those panels may have changed colour or wording for
 some tags. Not seen in a browser.
 
+### UI-C24 A MONTH IS A DATE, NOT A LENGTH - AND THE RESOLVER IS THE ONLY THING THAT KNOWS WHICH DATE
+BUCKET: DOMAIN + ARCHITECTURE - domain: a calendar's second, minute, hour and day are lengths it
+states; its month and year are not lengths at all. Architecture: calendar arithmetic that re-derives
+month lengths or leap placement is a second copy of the resolver, so ask the resolver instead.
+WHERE: `temporal/step.ts` (`clockStepUnits`, `stepClockSeconds`); the control is the step panel in
+`components/TimeControls.svelte` (`stepBy`, the `.tt-stepper` button). Gates: `temporal/step.spec.ts`
+(Gregorian checked against JavaScript's own `Date.UTC`, which shares no code with the resolver) and
+`components/TimeControls.step.spec.ts`.
+RULE: a FIXED step is `count x the calendar's own multiplier` - the CALENDAR'S day, never 86,400 by
+assumption, and a ratio calendar (a stardate) is offered its own counting unit and nothing else. A
+MONTH or YEAR step WALKS whole calendar days and asks `resolveCalendar` what date each instant is:
+same day of the month (or of the year, with no month table), same time of day, clamped to the last
+day of a shorter month, with the wanted day REMEMBERED across the walk (31 Jan + 2 months is 31
+March, not 28). Nothing in `step.ts` knows how long a month is or where a leap unit lands.
+A step SEEKS, as the jog does (A60): it moves the displayed time through `scrubDisplay` and leaves
+the play state and the campaign's "now" alone.
+WHY: a user: *"a forward ticker that moves the time forward by X amount then stops ... if I want to
+go forward exactly one month"*; the owner agreed to "turn the clock into a time selector". The
+temporal module exposed a resolver and no arithmetic - Settings' own year control shifts the clock
+by a MEAN year (`SettingsModal.applyBucketYearOverride`: the plain year plus `drift_per_year_t`),
+which is a length and so not the same date in general; read, not measured, and not touched.
+BLAST: THE WALK HAS TWO GUARDS AND NEEDS BOTH. `MAX_LOOKS` bounds new days resolved; `MAX_ASKS`
+bounds questions asked, remembered or not. With only the first, a year of a quadrillion one-second
+days put the day count past 2^53, where `k++` leaves `k` unchanged, and the loop asked for the same
+remembered day for ever - the gate's first run hung for ten minutes on exactly that. A calendar the
+walk cannot finish returns `null` (no step, and the panel says so); it never throws and never
+invents an instant (the resolver's own promise, `calendarSafety.spec.ts`).
+BLAST: A YEAR NEED NOT BE A WHOLE NUMBER OF DAYS (328.96 of them on the world in that spec), so the
+year turns over part-way through a day and whole-day walking lands at a shifted clock time. The
+result is shifted back by the difference in seconds-into-the-day and then nudged a second or two
+until hour, minute and second read the same - a calendar's own second need not be one clock second.
+BLAST: COST. About 14 microseconds a resolve (measured): a month is a few dozen, a year a few
+hundred WHATEVER the count (it jumps by the plain year first, then settles), and months are capped
+at `MAX_MONTH_STEPS` because each one is walked. Do not call this per frame.
+BLAST: NOT BUILT - TYPING A DATE. "A time selector" in the sense of entering a target date and time
+needs the inverse of the resolver (fields to instant) for every calendar a GM can author, which is
+the calendar work the owner has planned. This is the step half only. Not seen in a browser: the
+extra button widens the transport pill by one button, on the phone bar too.
+
 ### UI-C16 A POINTER CAPTURE ON A CONTAINER SILENTLY KILLS EVERY BUTTON INSIDE IT
 BUCKET: IMPLEMENTATION - a browser rule nobody remembers, whose symptom is "nothing happens" with a
 clean console, no error, no warning and a hit test that measures perfectly.
