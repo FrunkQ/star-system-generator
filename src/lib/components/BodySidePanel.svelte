@@ -98,7 +98,9 @@
     {:else if selectedTab === 'Basics'}
       <BodyBasicsTab {body} {rulePack} on:update={handleUpdate} />
     {:else if selectedTab === 'Orbit'}
-      <BodyOrbitTab {body} {parentBody} {system} {rulePack} {nowMs} on:update={handleUpdate} />
+      <!-- A105: the spin block rides the Orbit tab for exactly the bodies that have a Composition
+           tab - not a star (its tilt is on the Star tab), a belt, a ring or a barycentre. -->
+      <BodyOrbitTab {body} {parentBody} {system} {rulePack} {nowMs} showSpin={!isBeltOrRing && !isStar && !isBarycenter} on:update={handleUpdate} />
     {:else if selectedTab === 'Temp'}
       <BodyTemperatureTab {body} {rulePack} {rootStar} {parentBody} nodes={system.nodes} systemAgeGyr={(system as any).age_Gyr ?? 4.6} on:update={handleUpdate} />
     {:else if selectedTab === 'Atmosphere'}

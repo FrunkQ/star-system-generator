@@ -231,7 +231,7 @@ function stripBody(body: CelestialBody, classNames: Set<string>): void {
   if (!isStar) delete (body as { magneticField?: unknown }).magneticField;
 
   // (2) TIDAL LOCK is decided by the engine unless the GM pinned it (`tidalLockManual`, set by any
-  // hand-set rate or lock in BodyBasicsTab).
+  // hand-set rate or lock in BodySpinEditor, on the Orbit tab).
   const lockPinned = !!(body as any).tidalLockManual;
   const wasLocked = !!(body as any).tidallyLocked;
   if (!lockPinned) delete (body as any).tidallyLocked;
@@ -308,7 +308,7 @@ function backfillGiantAtmosphere(body: CelestialBody): void {
 //
 // EXPORTED FOR THE FOURTH ROUTE (B21): a body the GM adds from the type picker is built inline in
 // SystemView and reached none of the three routes above, so it arrived with no tilt at all - and the
-// editor then opened on it (see BodyBasicsTab's one-way slider). It calls this, so there is still
+// editor then opened on it (see BodySpinEditor's one-way slider). It calls this, so there is still
 // one model. `despunHint` is for that caller alone: a brand-new body has no processed tags to read
 // the lock from, but its route does know its orbit, and can say whether tides will have despun it.
 export function inferMissingAxialTilt(body: CelestialBody, pack?: RulePack | null, despunHint?: boolean): void {

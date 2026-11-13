@@ -10,6 +10,7 @@
   import { hostCandidates, reparentBody } from '$lib/system/reparent';
   import { placementLimitAu, PLACEMENT_FLOOR_AU } from '$lib/system/systemReach';
   import { starmapStore } from '$lib/starmapStore';
+  import BodySpinEditor from './BodySpinEditor.svelte';
 
   export let body: CelestialBody;
   export let parentBody: CelestialBody | null = null;
@@ -18,6 +19,10 @@
   // The display instant. A re-home keeps the body exactly where the map shows it NOW, so the new
   // orbit's epoch is this moment, not the wall clock.
   export let nowMs: number | null = null;
+  // A105: whether this body carries the SPIN block (day length, retrograde spin, lobes, axial
+  // tilt). `BodySidePanel` decides, with the same predicate that gives a body its Composition tab -
+  // a star's tilt is its own block on the Star tab, and a barycentre or a belt does not spin.
+  export let showSpin = false;
 
   const dispatch = createEventDispatcher();
 
@@ -43,7 +48,9 @@
   let maxA = 100;
   let stepA = 0.01;
 
-  let showAdvancedOrbit = false; 
+  // A106: the orbital elements are all in the open. What is left behind a disclosure is RE-HOME
+  // alone, at the foot of the tab (see the G64 note below).
+  let showRehome = false;
   let zones: any = null;
   let minSafePeriapsisAU = 0;
   let safeMaxE = 0.999;
@@ -298,12 +305,16 @@ function updateOrbit() {
       : '';
 
   // G64: RE-HOME. The owner's words: "an advanced edit button next to the standard orbit - to
-  // reparent - it does not deserve 1st level appearance" - so it lives behind the one Advanced
-  // disclosure, never at first level. The list is the construct picker's (one rule, system/reparent),
-  // minus this body and everything beneath it, so a cycle cannot be asked for. Position-preserving:
-  // the body's world state at `nowMs` is re-expressed about the new host (the importer's own
-  // state-to-elements conversion), and the processor's passes then settle masses, pairs and the
-  // stability tags that say whether the new home can hold it. Steer, do not stop.
+  // reparent - it does not deserve 1st level appearance". It used to share the Advanced Orbital
+  // Elements disclosure; A106 brought the ELEMENTS into the open ("we need those in the open
+  // now"), and his word there was about the elements, so re-home keeps a small disclosure of its
+  // own at the foot of the tab - a "Re-home..." button, still not first level.
+  //
+  // The list is the construct picker's (one rule, system/reparent), minus this body and everything
+  // beneath it, so a cycle cannot be asked for. Position-preserving: the body's world state at
+  // `nowMs` is re-expressed about the new host (the importer's own state-to-elements conversion),
+  // and the processor's passes then settle masses, pairs and the stability tags that say whether
+  // the new home can hold it. Steer, do not stop.
   let rehomeHostId: string | null = null;
   let rehomeNote = '';
   $: rehomeCandidates = (system?.nodes && body?.id && body.kind === 'body' && !body.coOrbital)
@@ -415,6 +426,24 @@ function updateOrbit() {
             <input type="range" min="0" max="360" step="0.01" bind:value={M0_deg} on:input={updateOrbit} class="full-width-slider" />
         </div>
 
+        <!-- A106: these two sat behind "Show Advanced Orbital Elements" until the 3D view made
+             them part of what a GM can see. They are first level now. -->
+        <div class="form-group">
+            <div class="label-row">
+                <label for="inclination">Inclination (°)</label>
+                <input id="inclination" type="number" step="any" min="0" max="180" bind:value={i_deg} on:input={updateOrbit} />
+            </div>
+            <input type="range" min="0" max="180" step="0.01" bind:value={i_deg} on:input={updateOrbit} class="full-width-slider" />
+        </div>
+
+        <div class="form-group">
+            <div class="label-row">
+                <label for="asc-node">Long. of Asc. Node (°)</label>
+                <input id="asc-node" type="number" step="any" min="0" max="360" bind:value={Omega_deg} on:input={updateOrbit} />
+            </div>
+            <input type="range" min="0" max="360" step="0.01" bind:value={Omega_deg} on:input={updateOrbit} class="full-width-slider" />
+        </div>
+
         <hr />
 
         <div class="form-group checkbox-row">
@@ -435,34 +464,25 @@ function updateOrbit() {
                     dispatch('update');
                 }} 
             />
-            <label for="retrograde">Retrograde Orbit</label>
+            <!-- Two retrogrades live on this tab since A105. This one is the PATH round the host;
+                 the other, under Spin and shape, is the world turning on its own axis. -->
+            <label for="retrograde" title="Orbit direction: the body goes round its host the opposite way to the host's spin and to its neighbours, as a captured body does. This is not the direction of its own spin, which is set under Spin and shape below.">Retrograde orbit (circles its host backwards)</label>
         </div>
+    {/if}
 
-        <div class="form-group checkbox-row">
-            <input type="checkbox" id="showAdv" bind:checked={showAdvancedOrbit} />
-            <label for="showAdv">Show Advanced Orbital Elements</label>
-        </div>
+    {#if showSpin}
+        <hr />
+        <BodySpinEditor {body} on:update />
+    {/if}
 
-        {#if showAdvancedOrbit}
-            <div class="form-group">
-                <div class="label-row">
-                    <label>Inclination (°)</label>
-                    <input type="number" step="any" min="0" max="180" bind:value={i_deg} on:input={updateOrbit} />
-                </div>
-                <input type="range" min="0" max="180" step="0.01" bind:value={i_deg} on:input={updateOrbit} class="full-width-slider" />
-            </div>
-
-            <div class="form-group">
-                <div class="label-row">
-                    <label>Long. of Asc. Node (°)</label>
-                    <input type="number" step="any" min="0" max="360" bind:value={Omega_deg} on:input={updateOrbit} />
-                </div>
-                <input type="range" min="0" max="360" step="0.01" bind:value={Omega_deg} on:input={updateOrbit} class="full-width-slider" />
-            </div>
-
-            <hr />
-
-            <div class="form-group rehome-group">
+    {#if body.orbit && !body.coOrbital && body.kind === 'body'}
+        <hr />
+        <div class="form-group rehome-group">
+            <button type="button" class="rehome-toggle" aria-expanded={showRehome} aria-controls="rehome-panel"
+                    title="Move this body to orbit a different host, from exactly where it is now."
+                    on:click={() => (showRehome = !showRehome)}>Re-home…</button>
+            {#if showRehome}
+            <div id="rehome-panel" class="rehome-panel">
                 <div class="label-row">
                     <label for="rehome-host" title="Move this body to orbit a different host. It stays exactly where it is on the map at this instant; its orbit is re-expressed about the new host.">Re-home to</label>
                     <select id="rehome-host" bind:value={rehomeHostId} disabled={!rehomeCandidates.length}>
@@ -476,9 +496,10 @@ function updateOrbit() {
                     Keeps {body.name} exactly where it is at this instant and re-expresses its orbit about the new host — a tidy ellipse if it is bound there, a circle at its current distance if not. Nothing is refused; the stability tags say what would happen.
                 </div>
                 <button class="rehome-btn" on:click={rehome} disabled={!canRehome}>Re-home {body.name}</button>
-                {#if rehomeNote}<div class="info-row" style="font-size: 0.78em;">{rehomeNote}</div>{/if}
             </div>
-        {/if}
+            {/if}
+            {#if rehomeNote}<div class="info-row" style="font-size: 0.78em;">{rehomeNote}</div>{/if}
+        </div>
     {/if}
 </div>
 
@@ -542,4 +563,6 @@ function updateOrbit() {
       max-width: 60%;
   }
   .rehome-btn { align-self: flex-start; margin-top: 4px; }
+  .rehome-toggle { align-self: flex-start; }
+  .rehome-panel { display: flex; flex-direction: column; gap: 5px; }
 </style>

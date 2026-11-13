@@ -286,7 +286,7 @@ WHY: they were shown under a red "derived from the physics, recomputed every run
 false in every clause (A44). `spin/axis-inferred` is a promise that an inferred value is
 distinguishable from a measured one (B10, C3c).
 BLAST: an edit that makes an inferred value real must RETIRE the claim — typing an obliquity clears
-`spin/axis-inferred` (`BodyBasicsTab.clearSpinProvenance`). Same applies to any future `*-inferred`.
+`spin/axis-inferred` (`BodySpinEditor.clearSpinProvenance`). Same applies to any future `*-inferred`.
 
 ### TAG-6 A namespace is cleared by the pass that owns it, ONCE
 BUCKET: ARCHITECTURE - one clear per namespace, at the top of the owning pass, never per branch.
@@ -3735,16 +3735,18 @@ BLAST: **ONE settle per member per move, and never a settle per member per FRAME
 ### UI-C19 A RANGE INPUT BOUND TO AN ABSENT FIELD WRITES ITS MIDPOINT INTO THE DATA AT MOUNT
 BUCKET: PLATFORM (Svelte 5 and the browser) - a range input always has a value and the framework's
 two-way binding writes it back. The fix shape carries: bind one-way, write in the handler.
-WHERE: `components/BodyBasicsTab.svelte` (the tilt slider, `onTiltSlider` / `onTiltInput`); Svelte's
+WHERE: `components/BodySpinEditor.svelte` (the tilt slider, `onTiltSlider` / `onTiltInput`; it was in
+`BodyBasicsTab` until A105 moved the spin block to the Orbit tab - UI-C22); Svelte's
 `bind_value` (`internal/client/dom/elements/bindings/input.js`, the branch that fires when the bound
-value is nullish and `input.value` is not). Gate: `components/BodyBasicsTab.tilt.spec.ts`.
+value is nullish and `input.value` is not). Gate: `components/BodyOrbitTab.tilt.spec.ts`.
 RULE: never `bind:value` a `type="range"` input to a field that may be undefined. Give it a one-way
 `value={field ?? resting}` and write the field in the `on:input` handler, so the data changes only
 when the thumb is moved. An unset field must READ as unset, and clearing its number box must delete
 it (PHY-9).
 WHY: B21, four reporters: "the axis tilt always sets to 90 degrees". A range with nothing to show
 rests at its midpoint - 90 on a 0..180 slider - and Svelte 5 writes the DOM value back at mount when
-the bound value is nullish and the input has one. So merely OPENING the Basics tab gave every
+the bound value is nullish and the input has one. So merely OPENING the tab that held the slider
+(Basics then, Orbit now) gave every
 tilt-less world a 90 degree axis, and the next edit of anything saved it. It read as a physics
 default and nothing in the engine ever chose 90. Every body from the type picker was tilt-less -
 `SystemView.placeBodyOfType` was a fourth creation route the tilt model had not reached, and now
@@ -3761,6 +3763,46 @@ field its own label defaults with `??`, which is the tell: `PlayerPresetEditor.s
 `ConstructFuelTab.svelte` (`tank.current_units`); `EditBiospheresModal.svelte` (`defaultCoverage`,
 `pigmentDriven`, `opacity`). Where the stated default is not the midpoint, opening the editor may be
 changing the value. Measure each before fixing it.
+
+### UI-C22 THE SPIN BLOCK RIDES THE ORBIT TAB, AND WHO GETS IT IS THE COMPOSITION TAB'S OWN PREDICATE
+BUCKET: ARCHITECTURE - a block moved between tabs keeps its audience only if the audience is stated
+once; and a control that leaves its host takes its script, its base styles and its gate with it.
+WHERE: `components/BodySpinEditor.svelte` (Day Length with the tidal-lock notch and the break-up
+note, Retrograde spin, Lobes, Axial Tilt); mounted by `components/BodyOrbitTab.svelte` under
+`showSpin`; `components/BodySidePanel.svelte` passes `showSpin={!isBeltOrRing && !isStar &&
+!isBarycenter}`. Gates: `BodyOrbitTab.tilt.spec.ts` (UI-C19's gate, moved with the slider, plus the
+arrival / departure / two-retrogrades cases) and `BodyOrbitTab.elements.spec.ts` (A106).
+RULE: the Orbit tab is opened by THREE kinds of node - an ordinary world, a star with a parent and a
+barycentre with a parent - and only the first has a spin block. `showSpin` defaults to OFF and the
+side panel turns it on with the SAME expression that guards the Composition button, so a star's
+Orbit tab cannot grow a second tilt beside the one on `BodyStarTab` (a different block, left alone).
+The block sits OUTSIDE the tab's co-orbital / no-orbit / orbit branches: a trojan and a rootless
+world still spin. The tab now carries TWO retrogrades, so each says which it is in its label
+("Retrograde orbit (circles its host backwards)", "Retrograde spin (turns backwards)") and has its
+own id (`#retrograde`, `#retrograde-spin`); the "Spin and shape" heading is the other half of that.
+WHY: A105, the owner with a screenshot: *"move the planet edit settings ... to orbit controls - more
+space than composition"*; A106, the same day: *"as we have 3d - we don't need advanced orbital
+controls - we need those in the open now."* Inclination and the ascending node are first level and
+the "Show Advanced Orbital Elements" checkbox is gone.
+BLAST: RE-HOME (G64, DATA-R39) shared that disclosure on the owner's EARLIER word that it "does not
+deserve 1st level appearance". His later word was about the elements, so re-home kept a disclosure
+of its own - a "Re-home..." button at the foot of the tab, below the spin block. Flattening it is
+his call, not a tidy-up.
+BLAST: THE BLOCK'S DENSITY IS READ OFF THE BODY, not off the Composition tab's state. It was
+`isPlanetMoon ? pDensity : densityValue` there; only planets and moons ever reached it, so the
+component uses `densityGcc` over the body's own mass and radius - the same expression `pDensity` is.
+The break-up floor still HARD-CLAMPS a typed day length, which predates "steer, do not stop" and
+moved unchanged; and the track's zone stops are still the literals 0.8 / 0.5 / 0.25 beside
+`physics/rotation.ts`'s `NEAR_BREAKUP_AT` / `ELLIPSOID_AT` / `OBLATE_AT` - two spellings of three
+numbers, reported rather than folded into a move.
+BLAST: THE STYLES CAME ACROSS WITH THEIR BASE RULES (UI-C8). The Orbit tab styles a bare
+`input[type="number"]` at 80px and the Composition tab at 100px with the same specificity as
+`.rot-num input`, so pasting the markup inline would have re-sized three boxes by source order.
+A component of its own keeps the Composition tab's resolved rules, including the `.link-btn` that
+tab declared twice. Not seen in a browser by the session that moved it.
+BLAST: OTHER CODE CITES "the Day Length control" AS THE HOUSE SLIDER IDIOM (gradient painted into
+the runnable track, a notch ON the track): `BodyOverridesTab.svelte` in three comments. They point
+at `BodySpinEditor` now; anything new that cites the idiom should too.
 
 ### UI-C16 A POINTER CAPTURE ON A CONTAINER SILENTLY KILLS EVERY BUTTON INSIDE IT
 BUCKET: IMPLEMENTATION - a browser rule nobody remembers, whose symptom is "nothing happens" with a
@@ -6904,7 +6946,8 @@ position walk with velocity as a second operand), one host-list rule (`hostCandi
 construct picker).
 WHERE: `system/reparent.ts` (`reparentBody`, `hostCandidates`, `roleHintUnderHost`),
 `physics/worldPositions.computeWorldStates3D`, `import/ubox/kepler.elementsFromState`; the control is in
-`BodyOrbitTab.svelte` behind the one Advanced disclosure and `BodySidePanel` hands it `nowMs`. Gate:
+`BodyOrbitTab.svelte` behind its OWN "Re-home..." disclosure at the foot of the tab (the shared
+Advanced disclosure went with A106 - UI-C22) and `BodySidePanel` hands it `nowMs`. Gate:
 `system/reparent.spec.ts`, each case seen red with its half of the fix removed.
 RULE: derive every element from the world state at `nowMs` and stamp `t0 = nowMs`. Never keep an old
 mean anomaly on a new host - a circle is not an orbit without its phase (DATA-R29, B111): with the
