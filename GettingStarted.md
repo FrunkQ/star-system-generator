@@ -206,7 +206,9 @@ Click a system to drop into the **system visualiser** — a real-time orbital vi
   to a stop. **Scrubbing while time is running does not stop the clock** — you seek to wherever you
   jog to, and playback carries on from there. **Display Time** (what you are looking at) and
   **Actual Time** (the committed "now") are independent, and the red button that commits one to the
-  other asks first.
+  other asks first. To arrive somewhere exact, press **⇥** on the transport: type an amount, pick a
+  unit — the campaign calendar's own seconds, minutes, hours, days, months or years — and step
+  forwards or back by exactly that much. A month or a year lands on the same date and time of day.
 * **The floating controls.** The time transport and the picker behave identically wherever you meet
   them. A slim handle on the left moves them, and the position is remembered; the padlock on the
   right locks one open. Unlocked, a control folds away to a puck as soon as you touch something
@@ -482,7 +484,10 @@ it, and a pair forms if the masses say one should.
    gas). Oceans are modelled separately, as surface or subsurface fluid layers, not as an
    interior-makeup slider. Density emerges from the composition, and dialling density toward
    ~1 g/cc turns a terrestrial into a gas giant. Rotation period and axial tilt have their own
-   sliders — rotation snaps to tidal locking — and a world spun fast enough visibly flattens.
+   sliders on the **Orbit** tab, under *Spin and shape* — rotation snaps to tidal locking — and a
+   world spun fast enough visibly flattens. The same tab holds every orbital element in the open,
+   says which plane an inclination is measured from, and counts the mean anomaly from the system's
+   reference epoch, so the same elements always describe the same orbit.
 4. If the physics will not give you the world you want, the **Overrides** tab (the last one) lets you
    pin the figure by hand and keep everything downstream honest. See below.
 5. Give it a history. The **Temp** tab has an **Age** control — see *How old a thing is*, below.
@@ -699,7 +704,9 @@ There is **one** tagging system throughout. (Earlier versions had separate "Poin
 * **Secret tags** are yours alone and never reach a player view, a shared catalogue or a printed
   report.
 * **Colour and highlights.** Give a tag its own colour and light up every body carrying it, right up
-  to a roll-up on the starmap showing which systems hold what.
+  to a roll-up on the starmap showing which systems hold what. While a highlight is on, systems
+  that carry none of it fade back; the key in the corner of the starmap says what is highlighted
+  and how many systems have faded, and its **Clear** turns the highlight off.
 * **Rule packs** seed tags across a whole starmap — prison colonies on ore-rich moons, a slim chance
   of alien ruins on any terrestrial — and you can author your own.
 

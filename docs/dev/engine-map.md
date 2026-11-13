@@ -286,7 +286,7 @@ WHY: they were shown under a red "derived from the physics, recomputed every run
 false in every clause (A44). `spin/axis-inferred` is a promise that an inferred value is
 distinguishable from a measured one (B10, C3c).
 BLAST: an edit that makes an inferred value real must RETIRE the claim — typing an obliquity clears
-`spin/axis-inferred` (`BodyBasicsTab.clearSpinProvenance`). Same applies to any future `*-inferred`.
+`spin/axis-inferred` (`BodySpinEditor.clearSpinProvenance`). Same applies to any future `*-inferred`.
 
 ### TAG-6 A namespace is cleared by the pass that owns it, ONCE
 BUCKET: ARCHITECTURE - one clear per namespace, at the top of the owning pass, never per branch.
@@ -933,7 +933,10 @@ RULE: a regular satellite's elements are quoted in its PARENT'S EQUATOR, and `co
 applies that rotation itself. So the difference of two world positions is already the framed offset —
 a consumer must NOT apply `toParentEquator` to it. `satelliteTiltRad(node, parent)` is the ONLY
 spelling of the gate (star parent → 0; `orbit.frame: 'ecliptic'` → 0, which is the real Laplace
-handover, not a data error). The flat `computeWorldPositions` deliberately does NOT frame: it
+handover, not a data error) - and the decision inside it has a NAME,
+`orbitReferencePlane(node, parent)` (`parent-equator` / `system-declared` / `system`), which is what
+a surface that has to SAY the plane asks: the Orbit tab's hint under Inclination reads it, and
+`BodyOrbitTab.plane.spec.ts` requires the words and `satelliteTiltRad` to agree case by case. The flat `computeWorldPositions` deliberately does NOT frame: it
 propagates ω-only in the reference plane, 2D is the plan view, and there is no out-of-plane axis to
 tilt into.
 WHY: C9. The rotation lived only in `holo/scene.ts`, so the propagator and the renderer answered
@@ -3735,16 +3738,18 @@ BLAST: **ONE settle per member per move, and never a settle per member per FRAME
 ### UI-C19 A RANGE INPUT BOUND TO AN ABSENT FIELD WRITES ITS MIDPOINT INTO THE DATA AT MOUNT
 BUCKET: PLATFORM (Svelte 5 and the browser) - a range input always has a value and the framework's
 two-way binding writes it back. The fix shape carries: bind one-way, write in the handler.
-WHERE: `components/BodyBasicsTab.svelte` (the tilt slider, `onTiltSlider` / `onTiltInput`); Svelte's
+WHERE: `components/BodySpinEditor.svelte` (the tilt slider, `onTiltSlider` / `onTiltInput`; it was in
+`BodyBasicsTab` until A105 moved the spin block to the Orbit tab - UI-C22); Svelte's
 `bind_value` (`internal/client/dom/elements/bindings/input.js`, the branch that fires when the bound
-value is nullish and `input.value` is not). Gate: `components/BodyBasicsTab.tilt.spec.ts`.
+value is nullish and `input.value` is not). Gate: `components/BodyOrbitTab.tilt.spec.ts`.
 RULE: never `bind:value` a `type="range"` input to a field that may be undefined. Give it a one-way
 `value={field ?? resting}` and write the field in the `on:input` handler, so the data changes only
 when the thumb is moved. An unset field must READ as unset, and clearing its number box must delete
 it (PHY-9).
 WHY: B21, four reporters: "the axis tilt always sets to 90 degrees". A range with nothing to show
 rests at its midpoint - 90 on a 0..180 slider - and Svelte 5 writes the DOM value back at mount when
-the bound value is nullish and the input has one. So merely OPENING the Basics tab gave every
+the bound value is nullish and the input has one. So merely OPENING the tab that held the slider
+(Basics then, Orbit now) gave every
 tilt-less world a 90 degree axis, and the next edit of anything saved it. It read as a physics
 default and nothing in the engine ever chose 90. Every body from the type picker was tilt-less -
 `SystemView.placeBodyOfType` was a fourth creation route the tilt model had not reached, and now
@@ -3761,6 +3766,115 @@ field its own label defaults with `??`, which is the tell: `PlayerPresetEditor.s
 `ConstructFuelTab.svelte` (`tank.current_units`); `EditBiospheresModal.svelte` (`defaultCoverage`,
 `pigmentDriven`, `opacity`). Where the stated default is not the midpoint, opening the editor may be
 changing the value. Measure each before fixing it.
+
+### UI-C22 THE SPIN BLOCK RIDES THE ORBIT TAB, AND WHO GETS IT IS THE COMPOSITION TAB'S OWN PREDICATE
+BUCKET: ARCHITECTURE - a block moved between tabs keeps its audience only if the audience is stated
+once; and a control that leaves its host takes its script, its base styles and its gate with it.
+WHERE: `components/BodySpinEditor.svelte` (Day Length with the tidal-lock notch and the break-up
+note, Retrograde spin, Lobes, Axial Tilt); mounted by `components/BodyOrbitTab.svelte` under
+`showSpin`; `components/BodySidePanel.svelte` passes `showSpin={!isBeltOrRing && !isStar &&
+!isBarycenter}`. Gates: `BodyOrbitTab.tilt.spec.ts` (UI-C19's gate, moved with the slider, plus the
+arrival / departure / two-retrogrades cases) and `BodyOrbitTab.elements.spec.ts` (A106).
+RULE: the Orbit tab is opened by THREE kinds of node - an ordinary world, a star with a parent and a
+barycentre with a parent - and only the first has a spin block. `showSpin` defaults to OFF and the
+side panel turns it on with the SAME expression that guards the Composition button, so a star's
+Orbit tab cannot grow a second tilt beside the one on `BodyStarTab` (a different block, left alone).
+The block sits OUTSIDE the tab's co-orbital / no-orbit / orbit branches: a trojan and a rootless
+world still spin. The tab now carries TWO retrogrades, so each says which it is in its label
+("Retrograde orbit (circles its host backwards)", "Retrograde spin (turns backwards)") and has its
+own id (`#retrograde`, `#retrograde-spin`); the "Spin and shape" heading is the other half of that.
+WHY: A105, the owner with a screenshot: *"move the planet edit settings ... to orbit controls - more
+space than composition"*; A106, the same day: *"as we have 3d - we don't need advanced orbital
+controls - we need those in the open now."* Inclination and the ascending node are first level and
+the "Show Advanced Orbital Elements" checkbox is gone.
+BLAST: RE-HOME (G64, DATA-R39) shared that disclosure on the owner's EARLIER word that it "does not
+deserve 1st level appearance". His later word was about the elements, so re-home kept a disclosure
+of its own - a "Re-home..." button at the foot of the tab, below the spin block. Flattening it is
+his call, not a tidy-up.
+BLAST: THE BLOCK'S DENSITY IS READ OFF THE BODY, not off the Composition tab's state. It was
+`isPlanetMoon ? pDensity : densityValue` there; only planets and moons ever reached it, so the
+component uses `densityGcc` over the body's own mass and radius - the same expression `pDensity` is.
+The break-up floor still HARD-CLAMPS a typed day length, which predates "steer, do not stop" and
+moved unchanged; and the track's zone stops are still the literals 0.8 / 0.5 / 0.25 beside
+`physics/rotation.ts`'s `NEAR_BREAKUP_AT` / `ELLIPSOID_AT` / `OBLATE_AT` - two spellings of three
+numbers, reported rather than folded into a move.
+BLAST: THE STYLES CAME ACROSS WITH THEIR BASE RULES (UI-C8). The Orbit tab styles a bare
+`input[type="number"]` at 80px and the Composition tab at 100px with the same specificity as
+`.rot-num input`, so pasting the markup inline would have re-sized three boxes by source order.
+A component of its own keeps the Composition tab's resolved rules, including the `.link-btn` that
+tab declared twice. Not seen in a browser by the session that moved it.
+BLAST: OTHER CODE CITES "the Day Length control" AS THE HOUSE SLIDER IDIOM (gradient painted into
+the runnable track, a notch ON the track): `BodyOverridesTab.svelte` in three comments. They point
+at `BodySpinEditor` now; anything new that cites the idiom should too.
+
+### UI-C23 A FILTER WITH NO CONTROL OF ITS OWN MUST SAY IT IS ON, AND MOST OF ALL WHEN IT MATCHES NOTHING
+BUCKET: ARCHITECTURE - an emphasis driven by state set somewhere else, and persisted, is invisible
+at exactly the moment it is most total.
+WHERE: `components/Starmap.svelte` (the `.hl-key` box in its `hl-note` form: `highlightNames`,
+`fadedSystemCount`, `clearHighlights`, `highlightNoteDismissedFor`); `tags/mapHighlights.ts`
+(`describeHighlightRef`, `presentTagKey`). Gates: `components/Starmap.highlightNote.spec.ts`,
+`tags/mapHighlights.spec.ts` (`describeHighlightRef`).
+RULE: while a tag highlight is fading systems the key says so: "Highlighting: <the selection>",
+how many systems that has faded, a Clear (which empties `liveOverrides.mapHighlights`, the one
+selection every map shares - the GM's and the players'), and an X that hides the NOTE and never the
+highlight. The count is taken with `systemMatches`, the same call `class:hl-dim` makes, so the
+number in the note and the number of dimmed systems cannot differ. GM starmap only: the players'
+starmap (`starmap/Starmap2DView`, `starmapScene`) draws the badges and does not fade.
+WHY: a user: *"why are stars faded in the starmap?"* The selection lives in `localStorage`
+(`liveOverrides`), is chosen in Find by tag or the Player Views panel, and survives a reload. The
+key used to render only when `highlightKey.length` - that is, when something MATCHED - so a
+selection nothing on the map carried dimmed EVERY system to 22% and drew nothing at all.
+BLAST: THE BOX IS `pointer-events: none` so it never eats a map drag; its two buttons opt back in.
+A new control inside it is dead until it does the same.
+BLAST: THE DISMISSAL IS KEYED TO THE SELECTION (`highlightSelectionKey`), in memory only. A
+different selection is a different question and brings the note back; so does a reload, on purpose -
+a persisted fade with a persisted "do not tell me" is the original fault again.
+BLAST: WHAT A SELECTION ENTRY IS CALLED HAS ONE ANSWER NOW, `describeHighlightRef`. It was spelled
+twice and the two disagreed: `PlayerViewModal.hlStyle` asked only the GM's categories (an engine tag
+such as `biodiversity/land-cover` was a grey chip named from its raw key) and `TagFinder.hlChip`
+asked only the presentation layer (a faction the GM had recoloured kept the category colour). Both
+call the one function, and a tag entry resolves exactly as its MARKER does (`presentTagKey`, which
+`markersFor` uses too) - so the two chips in those panels may have changed colour or wording for
+some tags. Not seen in a browser.
+
+### UI-C24 A MONTH IS A DATE, NOT A LENGTH - AND THE RESOLVER IS THE ONLY THING THAT KNOWS WHICH DATE
+BUCKET: DOMAIN + ARCHITECTURE - domain: a calendar's second, minute, hour and day are lengths it
+states; its month and year are not lengths at all. Architecture: calendar arithmetic that re-derives
+month lengths or leap placement is a second copy of the resolver, so ask the resolver instead.
+WHERE: `temporal/step.ts` (`clockStepUnits`, `stepClockSeconds`); the control is the step panel in
+`components/TimeControls.svelte` (`stepBy`, the `.tt-stepper` button). Gates: `temporal/step.spec.ts`
+(Gregorian checked against JavaScript's own `Date.UTC`, which shares no code with the resolver) and
+`components/TimeControls.step.spec.ts`.
+RULE: a FIXED step is `count x the calendar's own multiplier` - the CALENDAR'S day, never 86,400 by
+assumption, and a ratio calendar (a stardate) is offered its own counting unit and nothing else. A
+MONTH or YEAR step WALKS whole calendar days and asks `resolveCalendar` what date each instant is:
+same day of the month (or of the year, with no month table), same time of day, clamped to the last
+day of a shorter month, with the wanted day REMEMBERED across the walk (31 Jan + 2 months is 31
+March, not 28). Nothing in `step.ts` knows how long a month is or where a leap unit lands.
+A step SEEKS, as the jog does (A60): it moves the displayed time through `scrubDisplay` and leaves
+the play state and the campaign's "now" alone.
+WHY: a user: *"a forward ticker that moves the time forward by X amount then stops ... if I want to
+go forward exactly one month"*; the owner agreed to "turn the clock into a time selector". The
+temporal module exposed a resolver and no arithmetic - Settings' own year control shifts the clock
+by a MEAN year (`SettingsModal.applyBucketYearOverride`: the plain year plus `drift_per_year_t`),
+which is a length and so not the same date in general; read, not measured, and not touched.
+BLAST: THE WALK HAS TWO GUARDS AND NEEDS BOTH. `MAX_LOOKS` bounds new days resolved; `MAX_ASKS`
+bounds questions asked, remembered or not. With only the first, a year of a quadrillion one-second
+days put the day count past 2^53, where `k++` leaves `k` unchanged, and the loop asked for the same
+remembered day for ever - the gate's first run hung for ten minutes on exactly that. A calendar the
+walk cannot finish returns `null` (no step, and the panel says so); it never throws and never
+invents an instant (the resolver's own promise, `calendarSafety.spec.ts`).
+BLAST: A YEAR NEED NOT BE A WHOLE NUMBER OF DAYS (328.96 of them on the world in that spec), so the
+year turns over part-way through a day and whole-day walking lands at a shifted clock time. The
+result is shifted back by the difference in seconds-into-the-day and then nudged a second or two
+until hour, minute and second read the same - a calendar's own second need not be one clock second.
+BLAST: COST. About 14 microseconds a resolve (measured): a month is a few dozen, a year a few
+hundred WHATEVER the count (it jumps by the plain year first, then settles), and months are capped
+at `MAX_MONTH_STEPS` because each one is walked. Do not call this per frame.
+BLAST: NOT BUILT - TYPING A DATE. "A time selector" in the sense of entering a target date and time
+needs the inverse of the resolver (fields to instant) for every calendar a GM can author, which is
+the calendar work the owner has planned. This is the step half only. Not seen in a browser: the
+extra button widens the transport pill by one button, on the phone bar too.
 
 ### UI-C16 A POINTER CAPTURE ON A CONTAINER SILENTLY KILLS EVERY BUTTON INSIDE IT
 BUCKET: IMPLEMENTATION - a browser rule nobody remembers, whose symptom is "nothing happens" with a
@@ -6593,6 +6707,55 @@ compared a surface against a number rather than against the other surface. The g
 two SURFACES across six arrangements. When one function grows a second caller with a slightly
 different question, give the caller a FLAG, never a copy.
 
+### PHY-48 AN EDITOR SHOWS A PHASE AT ONE STATED EPOCH, OR IT IS SHOWING A DIFFERENT QUANTITY ON EVERY BODY
+BUCKET: DOMAIN + ARCHITECTURE - domain: `M(t) = M0 + n*(t - t0)`, so a mean anomaly is a number AND
+an instant, and a catalogue always states the instant. Architecture: a stored pair that is one fact
+(PHY-33) must be shown as one fact - displaying half of it publishes a number whose meaning depends
+on a field no surface shows.
+WHERE: `components/BodyOrbitTab.svelte` (`shownMeanAnomalyDeg`, `applyMeanAnomaly`, `writeOrbit`);
+`physics/orbits.setPhaseAtEpoch` (the write) and `rephasedM0` (the read); the epoch is
+`system.epochT0`, labelled through `temporal/utre.formatInstantMs` (UI-C14). Gate:
+`components/BodyOrbitTab.epoch.spec.ts`.
+RULE: the Mean Anomaly box shows `rephasedM0(orbit, system.epochT0)` - the stored phase re-expressed
+at the system's reference epoch - and typing in it writes `t0 = epochT0` and `M0_rad = typed`
+together. NOTHING STORED IS MIGRATED: opening the tab writes nothing, and an edit of any OTHER
+element leaves `t0` and `M0_rad` exactly as they were (`writeOrbit` no longer writes the phase at
+all; it used to re-write `M0_rad` from the box on every keystroke of every field, which was harmless
+only while the box held the raw stored value). With no system to name an epoch the box falls back
+to the stored phase and its label drops "at epoch".
+WHY: user report from the bug run: *"two objects with identical orbital elements placed at
+different times end up in different places."* `t0` is the instant a body was created or placed
+(`Date.now()` in the generators, the display clock in `SystemView`'s placement routes, 0 in three
+importers) and nothing showed it, so the same six numbers typed into two bodies were two orbits.
+Measured in the gate with the epoch handling switched off: twins on a 2.5 AU orbit, placed 311 and
+2,045 days into a campaign and given identical elements, sat 3.14 AU apart.
+BLAST: A NEW SEMI-MAJOR AXIS IS A NEW MEAN MOTION, so the same stored phase is a different mean
+anomaly at the epoch. The box is RE-READ after every non-phase edit rather than left stale, which
+means dragging the distance slider moves the Mean Anomaly box on a body whose `t0` is not the
+epoch. That is the honest reading of "the phase is held where it was stored", and it stops the
+moment the GM types a mean anomaly (the orbit is at the epoch from then on). THE ALTERNATIVE WAS
+WEIGHED AND NOT TAKEN: re-stamping `t0 = epochT0` on EVERY element edit makes the six boxes
+independent, but a world just placed at the display instant (`t0` = now) would then swing round its
+orbit by `dn * (now - epoch)` while its distance slider is dragged - years of phase in a long
+campaign - where today it holds still. That changes what dragging feels like; it is the owner's
+call, recorded in the handover.
+BLAST: A PAIR. `processBarycenters` copies `t0` and `M0_rad` from the member with the later
+`lastEditedT0` onto both (PHY-33), and `writeOrbit` stamps `lastEditedT0`, so typing a mean anomaly
+on one member puts BOTH at the epoch on the next pass - gated through `process()`. A PINNED
+`n_rad_per_s` (a pair member's, an l1/l2 point's) is respected because the read is `rephasedM0`,
+which asks `orbitMeanMotion`; never recompute `sqrt(mu/a^3)` in the tab. Between a keystroke and
+the processor's next pass a pair member's pinned `n` is one edit stale, so the box can lag one
+pass on a pair whose separation is being dragged.
+BLAST: `on:input={updateOrbit}` HANDS THE HANDLER AN EVENT. An optional `phaseTyped = false`
+argument on `updateOrbit` is switched ON by every input in the tab, silently - which is why the flag
+lives on `writeOrbit(phaseTyped)` and `updateOrbit()` takes nothing.
+BLAST: NOT REACHED. `ConstructGeneralTab` shows and writes a construct's `M0_rad` bare, against the
+construct's own `t0` (three sites) - the same shape on ships, owned by another stream and DATA-R29.
+The Retrograde orbit checkbox flips the sign of `n` without re-expressing the phase, so a body whose
+`t0` is not "now" jumps when it is ticked; that predates this entry and was left alone. The
+propagator answers in AU: a position gate written as "less than 1" is a one-AU tolerance and
+passes with the fault fully present (it did, once, in this gate's first draft).
+
 ### PHY-42 THE POSITION WALK MUST TERMINATE ON ANY DATA
 BUCKET: ARCHITECTURE - a recursive walk over AUTHORED references is bounded by the data, not by the
 code, and this one is called on every frame by every view.
@@ -6904,7 +7067,8 @@ position walk with velocity as a second operand), one host-list rule (`hostCandi
 construct picker).
 WHERE: `system/reparent.ts` (`reparentBody`, `hostCandidates`, `roleHintUnderHost`),
 `physics/worldPositions.computeWorldStates3D`, `import/ubox/kepler.elementsFromState`; the control is in
-`BodyOrbitTab.svelte` behind the one Advanced disclosure and `BodySidePanel` hands it `nowMs`. Gate:
+`BodyOrbitTab.svelte` behind its OWN "Re-home..." disclosure at the foot of the tab (the shared
+Advanced disclosure went with A106 - UI-C22) and `BodySidePanel` hands it `nowMs`. Gate:
 `system/reparent.spec.ts`, each case seen red with its half of the fix removed.
 RULE: derive every element from the world state at `nowMs` and stamp `t0 = nowMs`. Never keep an old
 mean anomaly on a new host - a circle is not an orbit without its phase (DATA-R29, B111): with the

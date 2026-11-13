@@ -48,7 +48,7 @@
   // MAP HIGHLIGHTS — a system badges the union of what everything INSIDE it carries, not just its
   // star. The interesting cases are never on the star: a faction holding one moon, a refuelling stop
   // at a gas giant. Several factions in one system is a real answer, so they all show.
-  import { rollUpMarkers, capMarkers, type MapHighlights } from '$lib/tags/mapHighlights';
+  import { rollUpMarkers, capMarkers, describeHighlightRef, type MapHighlights } from '$lib/tags/mapHighlights';
   import type { TagCategory } from '$lib/tags/tagCategories';
   // A system's badge IS the panel's tag chip, drawn small — see tags/tagPill.ts. The pill's width is
   // now MEASURED; it used to be guessed from the character count, so a wide label overflowed its own
@@ -99,6 +99,29 @@
     }
     return [...seen.values()];
   })();
+  // THE NOTE THAT SAYS WHY STARS HAVE FADED (UI-C23). The fade above is a filter with no control
+  // of its own, the selection that drives it is PERSISTED (it survives a reload and was probably
+  // made in another panel), and the key only ever appeared when something MATCHED - so a
+  // selection nothing on the map carries dimmed every system and said nothing at all. A user
+  // asked exactly that: "why are stars faded in the starmap?"
+  //
+  // The count is taken with `systemMatches`, the very call the fade's `class:hl-dim` makes, so the
+  // number in the note and the number of dimmed systems are one answer.
+  $: highlightNames = activeHighlights.map((h) => describeHighlightRef(h.ref, $tagCategories).label);
+  $: fadedSystemCount = highlightsActive
+    ? (starmap?.systems ?? []).filter((s) => !systemMatches(s, activeHighlights, $tagCategories)).length
+    : 0;
+  $: totalSystemCount = starmap?.systems?.length ?? 0;
+  // Dismissing hides the NOTE, not the highlight, and only for the selection it was dismissed on:
+  // a different selection is a different question and brings the note back.
+  $: highlightSelectionKey = activeHighlights.map((h) => h.ref).join('|');
+  let highlightNoteDismissedFor: string | null = null;
+  $: highlightNoteOpen = highlightsActive && highlightNoteDismissedFor !== highlightSelectionKey;
+  // The selection is one store shared by every map, the GM's and the players' - the same write
+  // Find by tag and the Player Views panel make. Clearing here clears it everywhere, as theirs does.
+  function clearHighlights() {
+    liveOverrides.update((o) => ({ ...o, mapHighlights: [] }));
+  }
 
   export let starmap: Starmap;
   export let rulePack: RulePack; // We need this prop to show defaults!
@@ -1813,13 +1836,35 @@
         on:close={() => (sizeCompareOn = false)}
       />
     {/if}
-    {#if highlightKey.length}
-      <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. -->
-      <div class="hl-key">
-        <span class="hl-key-head">Highlighted</span>
+    {#if highlightKey.length || highlightNoteOpen}
+      <!-- The key. Screen-fixed like the scale bar, not part of the panned/zoomed scene. While a
+           highlight is fading systems it is also the NOTE that says so: what is highlighted, how
+           many systems that has faded, and a Clear. -->
+      <div class="hl-key" class:hl-note={highlightNoteOpen} role={highlightNoteOpen ? 'status' : undefined}>
+        {#if highlightNoteOpen}
+          <span class="hl-key-top">
+            <span class="hl-key-head">Highlighting: <span class="hl-key-names">{highlightNames.join(', ')}</span></span>
+            <button type="button" class="hl-key-x" aria-label="Hide this note"
+              title="Hide this note. The highlight stays on."
+              on:click={() => (highlightNoteDismissedFor = highlightSelectionKey)}>×</button>
+          </span>
+        {:else}
+          <span class="hl-key-head">Highlighted</span>
+        {/if}
         {#each highlightKey as k (k.label)}
           <span class="hl-key-row"><span class="hl-key-dot" style="background:{k.color}"></span>{k.label}</span>
         {/each}
+        {#if highlightNoteOpen}
+          <span class="hl-key-foot">
+            <span class="hl-key-count">
+              {#if fadedSystemCount === 0}Every system carries it.
+              {:else if fadedSystemCount === totalSystemCount}Nothing on this map carries it, so all {totalSystemCount} {totalSystemCount === 1 ? 'system is' : 'systems are'} faded.
+              {:else}{fadedSystemCount} {fadedSystemCount === 1 ? 'system' : 'systems'} faded.{/if}
+            </span>
+            <button type="button" class="hl-key-clear" on:click={clearHighlights}
+              title="Stop highlighting. Clears the selection on your maps and the players'.">Clear</button>
+          </span>
+        {/if}
       </div>
     {/if}
     <StarmapScaleBar
@@ -2517,4 +2562,16 @@
   .hl-key-head { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
   .hl-key-row { display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hl-key-dot { width: 8px; height: 8px; border-radius: 2px; flex: 0 0 auto; }
+  /* The note form of the key. The box itself stays click-through so it never eats a map drag; only
+     its two buttons take the pointer. */
+  .hl-key.hl-note { max-width: 230px; }
+  .hl-key-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+  .hl-key-names { text-transform: none; letter-spacing: 0; font-size: 0.68rem; color: var(--text); }
+  .hl-key-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+  .hl-key-count { color: var(--text-muted); }
+  .hl-key-x, .hl-key-clear { pointer-events: auto; cursor: pointer; font: inherit; }
+  .hl-key-x { background: none; border: none; color: var(--text-faint); padding: 0 2px; line-height: 1; font-size: 0.9rem; }
+  .hl-key-x:hover { color: var(--text); }
+  .hl-key-clear { background: var(--bg-control); border: 1px solid var(--border); border-radius: 3px; color: var(--text); padding: 1px 7px; flex: 0 0 auto; }
+  .hl-key-clear:hover { border-color: var(--accent, #ff5a1f); }
 </style>

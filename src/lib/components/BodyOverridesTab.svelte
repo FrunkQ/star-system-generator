@@ -218,8 +218,8 @@
         <!-- THE ZONES ARE THE SLIDER'S OWN TRACK, which is the only way they can be guaranteed to
              line up with the thumb — a separate bar above it spans its container while the range
              input spans whatever is left beside the number box, and the two drift apart. Same
-             pattern as the Day Length and orbit controls: gradient into the runnable track, markers
-             absolutely positioned over the wrap. -->
+             pattern as the Day Length control (`BodySpinEditor`, on the Orbit tab) and the orbit
+             controls: gradient into the runnable track, markers absolutely positioned over the wrap. -->
         <div class="slider-wrap">
           <input class="ovr-slider" type="range"
                  min={r.def.log ? 0 : r.def.soft[0]} max={r.def.log ? 100 : r.def.soft[1]}
@@ -336,8 +336,9 @@
   /* Impossible reads louder than implausible, because it is a different claim. */
   .warn.breaks { color: #e05252; border-left-color: #e05252; }
 
-  /* THE HOUSE SLIDER, same shape as Day Length and the composition controls: the zone gradient IS
-     the runnable track, so it cannot drift out of scale with the thumb. */
+  /* THE HOUSE SLIDER, same shape as Day Length (`BodySpinEditor`, on the Orbit tab) and the
+     composition controls: the zone gradient IS the runnable track, so it cannot drift out of scale
+     with the thumb. */
   .ovr-row { --ovr-ok: #3c9a5f; --ovr-warn: #e07b39; --ovr-bad: #c0392b; }
   .slider-wrap { position: relative; padding: 2px 0; }
   .ovr-slider {
@@ -361,7 +362,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.4);
   }
   /* Where the engine's own answer sits — the figure Reset returns to. Same idea as the tidal-lock
-     notch on Day Length: a mark ON the track, at the value it stands for. */
+     notch on Day Length (`BodySpinEditor`): a mark ON the track, at the value it stands for. */
   .calc-notch {
     position: absolute; top: 0; bottom: 0; width: 3px; transform: translateX(-50%);
     border-radius: 2px; background: #eaf7ee; box-shadow: 0 0 0 1px rgba(0,0,0,0.45);

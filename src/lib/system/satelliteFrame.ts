@@ -41,15 +41,18 @@ export function toParentEquator(
 }
 
 /**
- * How far to rotate `node`'s orbit out of the system plane, in radians — the parent's axial tilt, or
- * zero when the orbit declares itself ecliptic-framed.
+ * WHICH PLANE `node`'s inclination and ascending node are measured from - the decision itself, as a
+ * word, so that a surface which has to SAY it (the Orbit tab's hint under Inclination) asks the
+ * same question the propagator does instead of spelling the gate again.
  *
- * The declaration wins because beyond roughly the Laplace radius the star's tide beats the parent's
- * bulge and the orbit follows the system plane instead: Luna at 60 Earth radii and Phoebe at 222
- * Saturn radii are both quoted to the ecliptic, and both say so in their data.
- *
- * SATELLITES ONLY. A planet's inclination is ecliptic-relative and must never be rotated, so callers
- * pass the parent they actually orbit and this returns 0 for a star parent.
+ *  - `parent-equator`: a satellite of a planet or moon. Its elements are quoted in the parent's
+ *    equatorial plane, so the parent's axial tilt carries its orbit out of the system plane.
+ *  - `system-declared`: a satellite whose orbit says `frame: 'ecliptic'`. The declaration wins
+ *    because beyond roughly the Laplace radius the star's tide beats the parent's bulge and the
+ *    orbit follows the system plane instead: Luna at 60 Earth radii and Phoebe at 222 Saturn radii
+ *    are both quoted to the ecliptic, and both say so in their data.
+ *  - `system`: everything else - the host is a star, a barycentre or the root of the system. A
+ *    planet's inclination is system-plane-relative and must never be rotated.
  *
  * THIS IS THE ONLY SPELLING OF THE DECISION. It used to be written three times in `holo/scene.ts` —
  * once at a ring's caller, once inside `buildMoonOrbitRing`, and once bare — and the three did not
@@ -58,10 +61,23 @@ export function toParentEquator(
  * planet orbiting a binary's SECONDARY star a satellite and rotates it by the star's tilt. It is
  * not one: its inclination is quoted in the system plane like every other planet's.
  */
-export function satelliteTiltRad(node: any, parent: any): number {
-  if (!node || !parent) return 0;
+export type OrbitReferencePlane = 'parent-equator' | 'system-declared' | 'system';
+export function orbitReferencePlane(node: any, parent: any): OrbitReferencePlane {
+  if (!node || !parent) return 'system';
   // A star is not a satellite's host in this sense — a planet's elements are already system-framed.
-  if (parent.kind !== 'body' || parent.roleHint === 'star' || parent.parentId == null) return 0;
-  if (String(node.orbit?.frame ?? '').toLowerCase() === 'ecliptic') return 0;
+  if (parent.kind !== 'body' || parent.roleHint === 'star' || parent.parentId == null) return 'system';
+  if (String(node.orbit?.frame ?? '').toLowerCase() === 'ecliptic') return 'system-declared';
+  return 'parent-equator';
+}
+
+/**
+ * How far to rotate `node`'s orbit out of the system plane, in radians — the parent's axial tilt, or
+ * zero whenever `orbitReferencePlane` says the orbit is not quoted in the parent's equator.
+ *
+ * SATELLITES ONLY: callers pass the parent the node actually orbits, and this returns 0 for a star
+ * parent.
+ */
+export function satelliteTiltRad(node: any, parent: any): number {
+  if (orbitReferencePlane(node, parent) !== 'parent-equator') return 0;
   return ((parent.axial_tilt_deg || 0) * Math.PI) / 180;
 }

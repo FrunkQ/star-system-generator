@@ -401,7 +401,7 @@ export const GALLERY_ROWS: GalleryRow[] = [
 	{ title: 'Small bodies — irregular below ~300 km, repeatable per body, coloured by composition', bodies: GALLERY_SMALL_BODIES,
 		blurb: 'Below about 300 km a solid body has not the self-gravity to pull itself round. The silhouette is a seeded function of the body’s own id — lumpier the smaller and the more porous it is — and since G91 the 3D mesh reads the SAME function, so the card and the globe are one rock seen twice rather than two guesses at it.' },
 	{ title: 'Contact binaries — two bodies that met gently and stayed', bodies: GALLERY_CONTACT_BINARIES,
-		blurb: 'Arrokoth and comet 67P are the real ones. The lobe count is a fact a GM sets in the Basics tab (or the generator draws); the lobe ratio, the neck width and the angle all come off the body’s own seed, so no two look alike.' },
+		blurb: 'Arrokoth and comet 67P are the real ones. The lobe count is a fact a GM sets on the Orbit tab, under Spin and shape (or the generator draws); the lobe ratio, the neck width and the angle all come off the body’s own seed, so no two look alike.' },
 	{ title: 'Gas & ice giants (+ ring, tilt)', bodies: giants },
 	{ title: 'Polar vortices — geometric polar jets', bodies: polarVortices },
 	{ title: 'Auroras — gas-coloured', bodies: auroras },

@@ -10,6 +10,10 @@
   import { hostCandidates, reparentBody } from '$lib/system/reparent';
   import { placementLimitAu, PLACEMENT_FLOOR_AU } from '$lib/system/systemReach';
   import { starmapStore } from '$lib/starmapStore';
+  import { rephasedM0, setPhaseAtEpoch } from '$lib/physics/orbits';
+  import { orbitReferencePlane } from '$lib/system/satelliteFrame';
+  import { formatInstantMs, activeCalendarOf } from '$lib/temporal/utre';
+  import BodySpinEditor from './BodySpinEditor.svelte';
 
   export let body: CelestialBody;
   export let parentBody: CelestialBody | null = null;
@@ -18,6 +22,10 @@
   // The display instant. A re-home keeps the body exactly where the map shows it NOW, so the new
   // orbit's epoch is this moment, not the wall clock.
   export let nowMs: number | null = null;
+  // A105: whether this body carries the SPIN block (day length, retrograde spin, lobes, axial
+  // tilt). `BodySidePanel` decides, with the same predicate that gives a body its Composition tab -
+  // a star's tilt is its own block on the Star tab, and a barycentre or a belt does not spin.
+  export let showSpin = false;
 
   const dispatch = createEventDispatcher();
 
@@ -43,7 +51,9 @@
   let maxA = 100;
   let stepA = 0.01;
 
-  let showAdvancedOrbit = false; 
+  // A106: the orbital elements are all in the open. What is left behind a disclosure is RE-HOME
+  // alone, at the foot of the tab (see the G64 note below).
+  let showRehome = false;
   let zones: any = null;
   let minSafePeriapsisAU = 0;
   let safeMaxE = 0.999;
@@ -85,11 +95,60 @@
           i_deg = body.orbit.elements.i_deg;
           omega_deg = body.orbit.elements.omega_deg || 0;
           Omega_deg = body.orbit.elements.Omega_deg || 0;
-          M0_deg = (body.orbit.elements.M0_rad || 0) * (180 / Math.PI);
+          M0_deg = shownMeanAnomalyDeg();
       }
 
       calculateZones();
   }
+
+  // PHY-48: THE MEAN ANOMALY THIS TAB SHOWS IS THE ONE AT THE SYSTEM'S REFERENCE EPOCH, not the
+  // stored `M0_rad`. The stored number is the phase at the orbit's own `t0` - the instant the body
+  // happened to be created or placed, which no surface shows - so the same six elements typed into
+  // two bodies made at different clock times were two different orbits (user report: "two objects
+  // with identical orbital elements placed at different times end up in different places").
+  // `M(t) = M0 + n*(t - t0)`: the phase and its epoch are one fact (PHY-33), so the field shows that
+  // fact re-expressed at `system.epochT0`, and typing in it writes BOTH halves (`setPhaseAtEpoch`).
+  // Nothing stored is migrated, and editing any OTHER element leaves the phase and its epoch alone.
+  //
+  // A function, not a `$:` mirror, because `init()` and the handlers need it in the same flush.
+  // With no system to name an epoch (a bare mount) the field falls back to the stored phase.
+  const epochOf = (sys: any): number | null =>
+      typeof sys?.epochT0 === 'number' && Number.isFinite(sys.epochT0) ? sys.epochT0 : null;
+  const referenceEpochMs = () => epochOf(system);
+  function shownMeanAnomalyDeg(): number {
+      if (!body.orbit) return 0;
+      const epoch = referenceEpochMs();
+      const rad = epoch == null ? (body.orbit.elements.M0_rad || 0) : rephasedM0(body.orbit, epoch);
+      // Four decimals of a degree is far below anything the map can show. Rounding the DISPLAY is
+      // safe because only a typed value is ever written back.
+      return parseFloat((rad * (180 / Math.PI)).toFixed(4));
+  }
+  function applyMeanAnomaly() {
+      if (!body.orbit) return;
+      const typed = Number(M0_deg);
+      if (M0_deg == null || !Number.isFinite(typed)) return; // a blanked box is not a phase of zero
+      const rad = typed * (Math.PI / 180);
+      const epoch = referenceEpochMs();
+      if (epoch == null) body.orbit.elements.M0_rad = rad;
+      else setPhaseAtEpoch(body.orbit, epoch, rad);
+      writeOrbit(true);
+  }
+  // The date the mean anomaly refers to, on the campaign's own calendar (UI-C14: one function puts
+  // an instant on the calendar, and with no calendar it answers null rather than guess Gregorian).
+  $: hasReferenceEpoch = epochOf(system) != null;
+  $: epochLabel = hasReferenceEpoch
+      ? formatInstantMs(epochOf(system) as number, activeCalendarOf(($starmapStore as any)?.temporal))
+      : null;
+
+  // WHICH PLANE THE INCLINATION AND THE NODE ARE MEASURED FROM, for THIS body. The decision is
+  // `satelliteFrame.orbitReferencePlane` - the propagator's own - and this only puts it into words.
+  $: referencePlane = orbitReferencePlane(body, parentBody);
+  $: parentTiltDeg = Number((parentBody as any)?.axial_tilt_deg) || 0;
+  $: planeHint = referencePlane === 'parent-equator'
+      ? `Inclination and the ascending node are measured from ${parentBody?.name ?? 'the parent'}'s equator${parentTiltDeg ? `, itself tilted ${+parentTiltDeg.toFixed(1)}° to the system plane` : ''}: 0° lies in the plane of its rings and inner moons.`
+      : referencePlane === 'system-declared'
+          ? `Inclination and the ascending node are measured from the system plane, not from ${parentBody?.name ?? 'the parent'}'s equator: this orbit is marked as following the system plane, as a distant moon's does.`
+          : 'Inclination and the ascending node are measured from the system plane.';
 
   function calculateZones() {
       zones = null;
@@ -170,7 +229,10 @@
       updateSliderFromReal();
       updateOrbit();
   }
-function updateOrbit() {
+// The handlers' form: markup calls this as `on:input={updateOrbit}`, which hands it the EVENT, so
+// the flag lives on `writeOrbit` rather than on an optional argument an event would switch on.
+function updateOrbit() { writeOrbit(false); }
+function writeOrbit(phaseTyped: boolean) {
     if (!body.orbit) return;
     // A negative/zero/NaN semi-major axis is unphysical and throws in ctx.ellipse
     // (it froze the orrery in a user file). Clamp to a tiny positive floor — and to a generous
@@ -191,7 +253,12 @@ function updateOrbit() {
     body.orbit.elements.i_deg = i_deg;
     body.orbit.elements.omega_deg = omega_deg;
     body.orbit.elements.Omega_deg = Omega_deg;
-    body.orbit.elements.M0_rad = M0_deg * (Math.PI / 180);
+    // The PHASE is not written here: it and its epoch are one fact, and only the Mean Anomaly field
+    // itself writes them (`applyMeanAnomaly`, PHY-48). Re-writing it on every edit of another
+    // element would stamp a mean anomaly meant for one epoch onto another. What such an edit CAN do
+    // is change the mean motion, and with it what the stored phase amounts to at the reference
+    // epoch - so the field is re-read, unless it is the one being typed in.
+    if (!phaseTyped) M0_deg = shownMeanAnomalyDeg();
     body.orbit.lastEditedT0 = Date.now();
 
     // Binary Coupling: If we are in a binary system (child of a barycenter with exactly 2 members)
@@ -298,12 +365,16 @@ function updateOrbit() {
       : '';
 
   // G64: RE-HOME. The owner's words: "an advanced edit button next to the standard orbit - to
-  // reparent - it does not deserve 1st level appearance" - so it lives behind the one Advanced
-  // disclosure, never at first level. The list is the construct picker's (one rule, system/reparent),
-  // minus this body and everything beneath it, so a cycle cannot be asked for. Position-preserving:
-  // the body's world state at `nowMs` is re-expressed about the new host (the importer's own
-  // state-to-elements conversion), and the processor's passes then settle masses, pairs and the
-  // stability tags that say whether the new home can hold it. Steer, do not stop.
+  // reparent - it does not deserve 1st level appearance". It used to share the Advanced Orbital
+  // Elements disclosure; A106 brought the ELEMENTS into the open ("we need those in the open
+  // now"), and his word there was about the elements, so re-home keeps a small disclosure of its
+  // own at the foot of the tab - a "Re-home..." button, still not first level.
+  //
+  // The list is the construct picker's (one rule, system/reparent), minus this body and everything
+  // beneath it, so a cycle cannot be asked for. Position-preserving: the body's world state at
+  // `nowMs` is re-expressed about the new host (the importer's own state-to-elements conversion),
+  // and the processor's passes then settle masses, pairs and the stability tags that say whether
+  // the new home can hold it. Steer, do not stop.
   let rehomeHostId: string | null = null;
   let rehomeNote = '';
   $: rehomeCandidates = (system?.nodes && body?.id && body.kind === 'body' && !body.coOrbital)
@@ -409,10 +480,35 @@ function updateOrbit() {
 
         <div class="form-group">
             <div class="label-row">
-                <label>Mean Anomaly (°)</label>
-                <input type="number" step="any" min="0" max="360" bind:value={M0_deg} on:input={updateOrbit} />
+                <label for="mean-anomaly" title="How far round its orbit the body is, counted evenly in time from its closest approach: 0° is periapsis, 180° is the far point.">{hasReferenceEpoch ? 'Mean Anomaly at epoch (°)' : 'Mean Anomaly (°)'}</label>
+                <input id="mean-anomaly" type="number" step="any" min="0" max="360" bind:value={M0_deg} on:input={applyMeanAnomaly} />
             </div>
-            <input type="range" min="0" max="360" step="0.01" bind:value={M0_deg} on:input={updateOrbit} class="full-width-slider" />
+            <input type="range" min="0" max="360" step="0.01" bind:value={M0_deg} on:input={applyMeanAnomaly} class="full-width-slider" aria-label="Mean anomaly at the reference epoch" />
+            {#if hasReferenceEpoch}
+            <div class="info-row epoch-hint">
+                Where {body.name} is on its orbit at this system's reference epoch{epochLabel ? ` (${epochLabel})` : ''}. The clock carries it on from there, so the same elements always describe the same orbit, whenever they are typed.
+            </div>
+            {/if}
+        </div>
+
+        <!-- A106: these two sat behind "Show Advanced Orbital Elements" until the 3D view made
+             them part of what a GM can see. They are first level now, with the plane they are
+             measured from said beside them. -->
+        <div class="form-group">
+            <div class="label-row">
+                <label for="inclination">Inclination (°)</label>
+                <input id="inclination" type="number" step="any" min="0" max="180" bind:value={i_deg} on:input={updateOrbit} />
+            </div>
+            <input type="range" min="0" max="180" step="0.01" bind:value={i_deg} on:input={updateOrbit} class="full-width-slider" />
+        </div>
+
+        <div class="form-group">
+            <div class="label-row">
+                <label for="asc-node">Long. of Asc. Node (°)</label>
+                <input id="asc-node" type="number" step="any" min="0" max="360" bind:value={Omega_deg} on:input={updateOrbit} />
+            </div>
+            <input type="range" min="0" max="360" step="0.01" bind:value={Omega_deg} on:input={updateOrbit} class="full-width-slider" />
+            <div class="info-row plane-hint">{planeHint}</div>
         </div>
 
         <hr />
@@ -435,34 +531,25 @@ function updateOrbit() {
                     dispatch('update');
                 }} 
             />
-            <label for="retrograde">Retrograde Orbit</label>
+            <!-- Two retrogrades live on this tab since A105. This one is the PATH round the host;
+                 the other, under Spin and shape, is the world turning on its own axis. -->
+            <label for="retrograde" title="Orbit direction: the body goes round its host the opposite way to the host's spin and to its neighbours, as a captured body does. This is not the direction of its own spin, which is set under Spin and shape below.">Retrograde orbit (circles its host backwards)</label>
         </div>
+    {/if}
 
-        <div class="form-group checkbox-row">
-            <input type="checkbox" id="showAdv" bind:checked={showAdvancedOrbit} />
-            <label for="showAdv">Show Advanced Orbital Elements</label>
-        </div>
+    {#if showSpin}
+        <hr />
+        <BodySpinEditor {body} on:update />
+    {/if}
 
-        {#if showAdvancedOrbit}
-            <div class="form-group">
-                <div class="label-row">
-                    <label>Inclination (°)</label>
-                    <input type="number" step="any" min="0" max="180" bind:value={i_deg} on:input={updateOrbit} />
-                </div>
-                <input type="range" min="0" max="180" step="0.01" bind:value={i_deg} on:input={updateOrbit} class="full-width-slider" />
-            </div>
-
-            <div class="form-group">
-                <div class="label-row">
-                    <label>Long. of Asc. Node (°)</label>
-                    <input type="number" step="any" min="0" max="360" bind:value={Omega_deg} on:input={updateOrbit} />
-                </div>
-                <input type="range" min="0" max="360" step="0.01" bind:value={Omega_deg} on:input={updateOrbit} class="full-width-slider" />
-            </div>
-
-            <hr />
-
-            <div class="form-group rehome-group">
+    {#if body.orbit && !body.coOrbital && body.kind === 'body'}
+        <hr />
+        <div class="form-group rehome-group">
+            <button type="button" class="rehome-toggle" aria-expanded={showRehome} aria-controls="rehome-panel"
+                    title="Move this body to orbit a different host, from exactly where it is now."
+                    on:click={() => (showRehome = !showRehome)}>Re-home…</button>
+            {#if showRehome}
+            <div id="rehome-panel" class="rehome-panel">
                 <div class="label-row">
                     <label for="rehome-host" title="Move this body to orbit a different host. It stays exactly where it is on the map at this instant; its orbit is re-expressed about the new host.">Re-home to</label>
                     <select id="rehome-host" bind:value={rehomeHostId} disabled={!rehomeCandidates.length}>
@@ -476,9 +563,10 @@ function updateOrbit() {
                     Keeps {body.name} exactly where it is at this instant and re-expresses its orbit about the new host — a tidy ellipse if it is bound there, a circle at its current distance if not. Nothing is refused; the stability tags say what would happen.
                 </div>
                 <button class="rehome-btn" on:click={rehome} disabled={!canRehome}>Re-home {body.name}</button>
-                {#if rehomeNote}<div class="info-row" style="font-size: 0.78em;">{rehomeNote}</div>{/if}
             </div>
-        {/if}
+            {/if}
+            {#if rehomeNote}<div class="info-row" style="font-size: 0.78em;">{rehomeNote}</div>{/if}
+        </div>
     {/if}
 </div>
 
@@ -542,4 +630,7 @@ function updateOrbit() {
       max-width: 60%;
   }
   .rehome-btn { align-self: flex-start; margin-top: 4px; }
+  .rehome-toggle { align-self: flex-start; }
+  .rehome-panel { display: flex; flex-direction: column; gap: 5px; }
+  .epoch-hint, .plane-hint { font-size: 0.78em; }
 </style>
