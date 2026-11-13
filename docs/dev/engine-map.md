@@ -8040,6 +8040,13 @@ The slider is linear in cosmic time, so the youngest 100 Myr is under 1% of its 
 are typed, or reached through the temperature inversion on a brown dwarf. The composition floor,
 the four coloured zones and the detent of deep-time-design.md section 4 are NOT built; the only
 mark on the axis is the system's own formation.
+BLAST: ON THE STAR TAB THE CONTROL STANDS IN PLACE OF THE EFFECTIVE TEMPERATURE BLOCK FOR A
+SUBSTELLAR BODY ONLY (`tempIsCoolingTrack`, asked of the cooling model, never a mass literal). A
+FUSING star keeps `#temp`; removing it there is [[G97]]'s half and `BodyStarTab.spec.ts` gates both
+directions. A TEST TRAP PAID FOR HERE: two star tabs mounted in one jsdom document both carry
+`#temp`, and a container-scoped `querySelector('#temp')` is answered from the DOCUMENT's first
+match - so the second container reports "no temperature box" whatever it holds. `cleanup()` before
+each mount, or the "control is gone" assertion passes with the control present.
 ### PHY-45 A BROWN DWARF'S TEMPERATURE IS ASKED FOR AS AN AGE: THE TRACK IS INVERTED, NEVER PINNED
 BUCKET: ARCHITECTURE (single source) + DOMAIN - domain: a brown dwarf does not fuse, so its
 temperature is a consequence of mass and age and has no independent existence to pin.

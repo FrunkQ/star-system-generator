@@ -5,6 +5,7 @@
   import type { CelestialBody, StellarType } from '$lib/types';
   import UnitValue from './UnitValue.svelte';
   import UnitInput from './UnitInput.svelte';
+  import AgeControl from './AgeControl.svelte';
   import { undoEpoch } from '$lib/undo/systemUndo';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
@@ -29,7 +30,10 @@
   // well as what the star IS — a megastructure in front of it is a fact about the system, not about
   // the star's record. Defaulted so every existing mount keeps working and simply shows the
   // intrinsic half, which is the honest answer when there is no system in hand.
-  let { body, rulePack, nodes = [] } = $props();
+  // `system` is what a body's AGE is measured against (G94): its own age, and the reference date
+  // the age scale ends at. Defaulted like `nodes`, so a mount without one still works and reads the
+  // default system age.
+  let { body, rulePack, nodes = [], system = null } = $props();
 
   const dispatch = createEventDispatcher();
 
@@ -632,14 +636,18 @@
       dispatch('update');
   }
 
-  // B20 / B150: A BROWN DWARF'S TEMPERATURE IS NOT A FREE FIGURE, AND THE BOX DID NOT SAY SO.
+  // B150 / G94 / G96: A BROWN DWARF HAS NO TEMPERATURE CONTROL - IT HAS AN AGE CONTROL IN ITS PLACE.
   // Inside the substellar mass window the processor writes the effective temperature from the
-  // cooling track on every pass (mass, the system's age, radius), so a value typed below is
-  // replaced a moment later - correct physics, and to a GM it read as the box snapping back for no
-  // reason (three reporters). The owner's decision is that the field should stop pretending and that
-  // age becomes the lever (G94/G96, Stream Z); this is only the sentence that says so until that
-  // lands. It asks the cooling model itself whether it applies, so there is no second copy of the
-  // 8-80 Jupiter-mass window, and it changes nothing about what the box does.
+  // cooling track on every pass (mass, the body's own age, radius), so a value typed into the box
+  // below was replaced a moment later: correct physics, and to a GM it read as the box snapping
+  // back for no reason (three reporters). The owner, to the user: "That temp slider WILL disappear,
+  // but you can mess with its age instead." So for a substellar body the Effective Temperature block
+  // is not rendered at all and `AgeControl` stands where it stood, showing the temperature the age
+  // gives and offering the age a typed temperature needs.
+  //
+  // It asks the cooling model itself whether it applies, so there is no second copy of the 8-80
+  // Jupiter-mass window. A FUSING star keeps its temperature block: what a star's age drives is
+  // G97 and waits on the owner's word; its direct temperature is also on the Overrides tab.
   const tempIsCoolingTrack = $derived(brownDwarfThermal(body?.massKg ?? 0, 1, body?.radiusKm ?? 0).isSubstellar);
 
   // --- Black holes ---
@@ -980,7 +988,12 @@
 
     <hr/>
 
-    <!-- TEMPERATURE -->
+    <!-- TEMPERATURE - or, for a brown dwarf, the AGE that sets it (B150, G96). -->
+    {#if tempIsCoolingTrack}
+    <div class="form-group">
+        <AgeControl {body} {system} {rulePack} idPrefix="star-age" on:update={() => dispatch('update')} />
+    </div>
+    {:else}
     <div class="form-group">
         <div class="label-row">
             <label for="temp">Effective Temperature</label>
@@ -998,14 +1011,8 @@
             </svg>
             <input type="range" min="0" max="1" step="0.001" bind:value={tempSliderPos} on:input={updateTemp} class="full-width-slider overlay" />
         </div>
-        {#if tempIsCoolingTrack}
-            <div class="sub-label cooling-note" role="note">
-                A brown dwarf does not fuse, so its temperature is not a free figure: it is read from its mass
-                and the system's age as it cools, and a value set here is replaced on the next recalculation.
-                An older system gives a cooler dwarf.
-            </div>
-        {/if}
     </div>
+    {/if}
 
     <!-- ONE BLOCK, THREE ROWS, READ TOP-DOWN AS CAUSE AND EFFECT (owner, 2026-08-16): "the mag field
          should be UP under the Ionising output - and tied into a threesome in the UI to infer their

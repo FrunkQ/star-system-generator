@@ -92,6 +92,13 @@ V4 tracks formation properly, and a rebuilt planet simply moves its own formatio
   feature and the habitability bonus - the next candidates, not yet switched.
 - **The control** is `components/AgeControl.svelte` (engine map UI-C20), on the Temperature tab for a planet or
   moon. It says underneath what the age drives on that body, and says so plainly when it drives nothing.
+- **A brown dwarf** (anything in the 8-80 Jupiter-mass window, filed as a star or as a planet) has NO
+  temperature control. On the Star tab the Effective Temperature block is not rendered for it and the Age
+  control stands in its place, showing the temperature that age gives. "Aim for a temperature" asks the
+  cooling track which age gives a typed figure and offers that age (engine map PHY-45). The one-sentence
+  stopgap that explained the snapping box (c0f65f3) went with the box.
+- **A fusing star still has its Effective Temperature block**, and no Age control: what a star's age drives
+  is [[G97]] and waits on the owner. See section 7.
 
 ---
 
