@@ -8073,3 +8073,41 @@ reads in the campaign's PLANET temperature unit (Celsius by default), a star-fil
 the unit is presentation, the SI value handed to the inverse is the same (DATA-R22). The 1900-2100
 K raise for a fusing star just above the limit (`STELLAR_FLOOR_K`) is untouched and is the one
 place an authored stellar temperature is still overruled.
+### OVR-9 A STAR'S TEMPERATURE PIN IS APPLIED TO THE STORED FIGURE, BY ONE FUNCTION, AND KEEPS WHAT IT DISPLACED
+BUCKET: ARCHITECTURE (ordering + single source) - the one override whose quantity nothing derives,
+so the F-OVR shape "feed the pin INTO the derivation" has no derivation to feed. Revisit when
+[[G97]] gives a star a temperature that IS derived; until then this is the honest form.
+WHERE: `physics/stellarTempPin.ts` (`applyEffectiveTempPin`, `effectiveTempPin`,
+`hasPinnablePhotosphere`, `STELLAR_FLOOR_K`, `NON_THERMAL_STAR_CLASSES`); the roster record
+`effectiveTempK` in `physics/overrides.ts` and the new optional `OverrideDef.offered`; the call at
+the top of the stellar pass in `core/SystemProcessor.ts`; the pinned state of the Effective
+Temperature block in `components/BodyStarTab.svelte`. Gate: `system/stellarTempPin.test.ts`.
+RULE: `overrides.effectiveTempK` on a star with a photosphere nothing else derives means the star's
+`temperatureK` IS that figure and its `radiationOutput` is Stefan-Boltzmann over the radius and it
+(PHY-34, three significant figures, as the star editor rounds). `applyEffectiveTempPin` is the only
+writer and is called from TWO places - the processor, first thing in the stellar pass, and the
+roster record's `commit` - so the Overrides tab shows the effect before any recalculation and a
+save that arrives with the key is honoured without the tab. THE FIGURE IT DISPLACED IS KEPT on the
+body as `temperature0K` / `radiationOutput0` (the `atmosphere0` pattern) for exactly as long as the
+pin exists; when the pin goes the same function restores both and deletes them. That is what makes
+reset exact and re-processing a no-op.
+WHO IS NOT OFFERED IT, via `OverrideDef.offered` (a finer test than `appliesTo`'s role): a BROWN
+DWARF, asked of the cooling model - its handle is its age (PHY-45) and a pin there would rebuild
+the control [[B150]] removed; and a BLACK HOLE, NEUTRON STAR or MAGNETAR, whose output is not a
+surface. A pin key found on one of those (a hand-edited save) is IGNORED, not applied.
+THE PIN OUTRANKS THE IGNITION FLOOR: the raise of a fusing star below `STELLAR_FLOOR_K` is skipped
+while a pin is set; an unpinned star is raised exactly as before.
+WHY: [[G96]], the owner: "direct temp control is now in overrides" and "the physics just uses the
+actual values - even if they don't make a huge amount of sense". `surfaceTempK` could not carry it:
+that is a planet's mean-surface pin, banded on equilibrium and fed through a thermal solve a star
+does not have.
+BLAST: THE STAR TAB STILL HAS ITS EFFECTIVE TEMPERATURE BLOCK ([[G97]] decides its removal), so
+while a pin is set that block is DISABLED and says "pinned" - two controls writing one figure is
+[[B150]] again. The class picker still draws a temperature for a newly chosen class; under a pin
+the processor puts the pinned figure back and the DISPLACED figure stays the pre-pin one, so a
+reset returns to the temperature from before the pin, not the new class's. The CLASS is not
+re-derived from a pinned temperature. THE PLAUSIBLE BAND IS THE FUSING RANGE (`STELLAR_FLOOR_K` to
+the star editor's own 50,000 K), not yet "the star's own mass-and-age track" as G96 specified:
+that track needs the zero-age seed G97 is about. A white dwarf is given no band. FOUND ON THE WAY:
+`formatOverrideValue` trimmed trailing zeros from ANY string, so the first record with
+`decimals: 0` printed 500 K as "5 K" and 1900 K as "19 K"; it now trims only after a decimal point.

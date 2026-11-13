@@ -792,6 +792,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
     // instead of being quietly turned into a gas ball. Gravity and escape velocity stay derived.
     densityGcm3?: number;
     densityHold?: 'radius' | 'mass';
+    // A STAR'S effective (photosphere) temperature in K, pinned (G96). Not `surfaceTempK`, which is a
+    // planet's mean-surface pin banded on equilibrium: a star's brightness follows from this and its
+    // radius, and everything it lights follows from that. Offered on a star with a photosphere that
+    // nothing else derives - not a brown dwarf (its age is its handle) and not a black hole or a
+    // neutron star. Applied by `physics/stellarTempPin.ts`.
+    effectiveTempK?: number;
     // THE STATED REASON for each pin, keyed by the override it explains — an `anomaly/*` tag from
     // the Anomaly category. Several overrides may share one reason. LIFECYCLE-BOUND: resetting an
     // override deletes its entry here too (see `clearOverride`), because a reason with nothing left
@@ -807,6 +813,12 @@ export interface CelestialBody extends NodeBase, PhysicalParameters {
   // Evolution opt-in. Hand-authored, imported and picker-placed bodies carry END-STATE values
   // the GM chose — absent flags mean the processor derives AROUND them but never rewrites them.
   // The generator opts its own creations in.
+  // What a pinned stellar temperature DISPLACED (G96, the `atmosphere0` pattern): the star's own
+  // temperature and brightness from before `overrides.effectiveTempK` was set. Present only while
+  // that pin is, written and removed by `physics/stellarTempPin.ts` and by nothing else. It is what
+  // makes resetting the pin return the star exactly as it was.
+  temperature0K?: number;
+  radiationOutput0?: number;
   evolveAtmosphere?: boolean;  // erode the atmosphere over the system age (from the atmosphere0 baseline)
   atmosphere0?: Atmosphere;    // primordial baseline escape derives from — keeps re-processing idempotent
   autoClassify?: boolean;      // let the classifier overwrite `classes` (and the type image)

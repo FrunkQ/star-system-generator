@@ -553,8 +553,34 @@ describe('BodyStarTab - a brown dwarf has an Age control where its temperature c
 		]) {
 			const c = mount(b);
 			expect(c.querySelector('#temp'), b.id).toBeTruthy();
-			expect(c.querySelector('label[for="temp"]')!.textContent).toBe('Effective Temperature');
+			expect(c.querySelector('label[for="temp"]')!.textContent!.trim()).toBe('Effective Temperature');
+			expect((c.querySelector('input[id="temp"]') as HTMLInputElement).disabled, b.id).toBe(false);
 			expect(c.querySelector('.age-control'), b.id).toBeNull();
 		}
+	});
+});
+
+// G96 - "direct temp control is now in overrides". The star's Effective Temperature block stays
+// (removing it waits on G97), so while a pin is set it SHOWS the pinned figure and does not edit
+// it: two controls writing one number is how a box comes to snap back.
+describe('BodyStarTab - a star whose temperature is pinned on the Overrides tab', () => {
+	const system = { age_Gyr: 4.6, epochT0: Date.UTC(2026, 8, 1, 12) };
+	const mount = (body: any) => { cleanup(); return render(BodyStarTab, { props: { body, rulePack, system } }).container; };
+
+	it('shows the pin, says where it is set, and neither the box nor the slider will move it', () => {
+		const c = mount({ ...makeStar(), temperatureK: 4000, temperature0K: 5772, overrides: { effectiveTempK: 4000 } });
+		expect(c.querySelector('label[for="temp"] .override-pill')!.textContent).toBe('pinned');
+		expect(c.querySelector('label[for="temp"] .override-pill')!.getAttribute('title')).toMatch(/Overrides tab/);
+		const box = c.querySelector('input[id="temp"]') as HTMLInputElement;
+		expect(box.disabled).toBe(true);
+		expect(box.value).toBe('4000');
+		expect((c.querySelector('label[for="temp"]')!.closest('.form-group')!.querySelector('input[type="range"]') as HTMLInputElement).disabled).toBe(true);
+	});
+
+	it('an unpinned star has no pill and both controls work', () => {
+		const c = mount(makeStar());
+		expect(c.querySelector('label[for="temp"] .override-pill')).toBeNull();
+		expect((c.querySelector('input[id="temp"]') as HTMLInputElement).disabled).toBe(false);
+		expect((c.querySelector('label[for="temp"]')!.closest('.form-group')!.querySelector('input[type="range"]') as HTMLInputElement).disabled).toBe(false);
 	});
 });

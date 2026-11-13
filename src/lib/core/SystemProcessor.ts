@@ -56,8 +56,9 @@ import { starStatTemplate } from '../generation/star';
 import { predictTidalLock, lockedSpin } from '../physics/tidalLock';
 import { brownDwarfThermal, isLuminousSource } from '../physics/substellar';
 import { HYDROGEN_BURNING_LIMIT_SOLAR } from '../physics/starPlausibility';
-/** The coolest a fusing star gets. The M/L overlap sits here — see the ignition note below. */
-const STELLAR_FLOOR_K = 1900;
+// (The coolest a fusing star gets, `STELLAR_FLOOR_K`, now lives beside the stellar temperature pin
+//  that outranks it - one definition, read by this file's ignition note and by the pin's own band.)
+import { applyEffectiveTempPin, effectiveTempPin, STELLAR_FLOOR_K } from '../physics/stellarTempPin';
 
 // Planets are assumed to coalesce a few Myr into the system's life — the baseline for age-integrated
 // processes (atmospheric escape, etc.). Negligible vs Gyr ages but makes the assumption explicit.
@@ -124,6 +125,12 @@ export class SystemProcessor implements ISystemProcessor {
         for (const node of allNodes) {
             const s = node as CelestialBody;
             if (s.kind !== 'body' || s.roleHint !== 'star') continue;
+            // G96: A PINNED EFFECTIVE TEMPERATURE GOES IN FIRST, before anything in this pass or any
+            // later one reads the star. A fusing star's temperature is authored input with nothing
+            // deriving it, so the pin is applied to the stored figure (and its brightness with it),
+            // and what it displaced is kept so a reset returns it. Idempotent, and a no-op for every
+            // star with no pin - which is every star in every existing save.
+            applyEffectiveTempPin(s);
             // IONISING OUTPUT IS NOT BRIGHTNESS. Derived from class and age, but a GM may pin it:
             // stars flare with almost no change in luminosity and a great deal of ionising
             // radiation, so the lever for "make this one dangerous" must not be the lever for "make
@@ -736,7 +743,11 @@ export class SystemProcessor implements ISystemProcessor {
             // the coolest M dwarfs and the hottest L dwarfs overlap. So a star is held at or above
             // the floor. Only ever raises, and only ever a star that is below it, so nothing that
             // already had a sane temperature moves.
+            // THE PIN OUTRANKS THE FLOOR (G96, the owner: "the physics just uses the actual values -
+            // even if they don't make a huge amount of sense"). The raise below protects a body that
+            // was NUDGED across the ignition line; a GM who pinned 500 K on a fusing star said so.
             if (body.roleHint === 'star' && (body.temperatureK ?? 0) > 0
+                && effectiveTempPin(body) === undefined
                 && (body.temperatureK as number) < STELLAR_FLOOR_K
                 && (body.massKg || 0) >= HYDROGEN_BURNING_LIMIT_SOLAR * SOLAR_MASS_KG) {
                 body.temperatureK = STELLAR_FLOOR_K;

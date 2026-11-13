@@ -6,6 +6,7 @@
   import UnitValue from './UnitValue.svelte';
   import UnitInput from './UnitInput.svelte';
   import AgeControl from './AgeControl.svelte';
+  import { NON_THERMAL_STAR_CLASSES, effectiveTempPin } from '$lib/physics/stellarTempPin';
   import { undoEpoch } from '$lib/undo/systemUndo';
   import { SOLAR_MASS_KG, SOLAR_RADIUS_KM, EARTH_MASS_KG, G, C_MS } from '$lib/constants';
   import { STAR_COLOR_MAP } from '$lib/rendering/colors';
@@ -330,7 +331,7 @@
   // The four classes whose output is NOT their own surface: an accretion disc or a magnetosphere.
   // Same list `syncRadiationFromSB` returns early on — one spelling, checked in one place.
 
-  let isNonThermal = $derived(['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass));
+  let isNonThermal = $derived(NON_THERMAL_STAR_CLASSES.includes(currentClass));
 
   // IONISING OUTPUT, AND THE GAUGE THAT SHOWS IT. All derived — there is no control here, only the
   // magnetic-field slider below, which is what actually moves any of it.
@@ -385,7 +386,7 @@
   // locked — fixing the old "change T, luminosity barely moves" behaviour. BH/NS/magnetar keep their
   // independent (accretion/magnetospheric) radiation slider.
   function syncRadiationFromSB() {
-      if (['star/BH', 'star/BH_active', 'star/NS', 'star/magnetar'].includes(currentClass)) return;
+      if (NON_THERMAL_STAR_CLASSES.includes(currentClass)) return;
       // The SHARED Stefan-Boltzmann, not a second copy of it. This and the brown-dwarf cooling track
       // hand over to each other at the fusion limit, so if they disagreed about how bright a given
       // radius and temperature are, igniting a body would change its brightness for no reason.
@@ -648,6 +649,9 @@
   // It asks the cooling model itself whether it applies, so there is no second copy of the 8-80
   // Jupiter-mass window. A FUSING star keeps its temperature block: what a star's age drives is
   // G97 and waits on the owner's word; its direct temperature is also on the Overrides tab.
+  // G96: while the star's temperature is pinned on the Overrides tab, this block SHOWS it and does
+  // not edit it - two controls writing one figure is how a box comes to snap back (B150 again).
+  const tempPinned = $derived(effectiveTempPin(body) !== undefined);
   const tempIsCoolingTrack = $derived(brownDwarfThermal(body?.massKg ?? 0, 1, body?.radiusKm ?? 0).isSubstellar);
 
   // --- Black holes ---
@@ -996,8 +1000,10 @@
     {:else}
     <div class="form-group">
         <div class="label-row">
-            <label for="temp">Effective Temperature</label>
-            <UnitInput quantity="temperature" bodyType="star" id="temp" value={tempK}
+            <label for="temp">Effective Temperature
+                {#if tempPinned}<span class="override-pill" title="Pinned on the Overrides tab. The physics uses that figure, so it is changed or reset there.">pinned</span>{/if}
+            </label>
+            <UnitInput quantity="temperature" bodyType="star" id="temp" value={tempPinned ? (body.temperatureK ?? tempK) : tempK} disabled={tempPinned}
                 on:commit={(e) => { tempK = e.detail; handleTempInput(); }} />
         </div>
         <div class="slider-container">
@@ -1009,7 +1015,7 @@
                 {/each}
                 <rect x="{getRangePct('temp', 'start')}%" y="0" width="{getRangePct('temp', 'width')}%" height="8" fill="#22aa44" />
             </svg>
-            <input type="range" min="0" max="1" step="0.001" bind:value={tempSliderPos} on:input={updateTemp} class="full-width-slider overlay" />
+            <input type="range" min="0" max="1" step="0.001" bind:value={tempSliderPos} on:input={updateTemp} disabled={tempPinned} class="full-width-slider overlay" />
         </div>
     </div>
     {/if}
@@ -1149,6 +1155,7 @@
 </div>
 
 <style>
+  .override-pill { font-size: 0.68em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent, #ff5a1f); border: 1px solid var(--accent, #ff5a1f); border-radius: 3px; padding: 0 4px; margin-left: 4px; cursor: help; }
   .tab-panel { padding: 10px; display: flex; flex-direction: column; gap: 15px; }
   .form-group { display: flex; flex-direction: column; gap: 5px; }
   .label-row { display: flex; justify-content: space-between; align-items: center; }
