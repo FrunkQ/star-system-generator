@@ -6722,8 +6722,46 @@ two bundled starmaps (M dwarfs and remnants) now infer `gas 0.8` where they infe
 no class or tag moved, but anything that newly asks a star for its makeup gets a different answer
 than it would have. `denserThanFluid` is scoped to this regime on purpose: below it an ice giant
 sits on the edge of its own envelope (Neptune 1.638 against 1.637 g/cc) and the tag would be noise.
-The editor's density box still stops at 30 g/cc (`bodyEdit.MAX_D`), below a 20 M_Jup dwarf's nominal
-36.
+The editor's density box no longer stops at a flat 30 g/cc in this regime (it sat below a 20 M_Jup
+dwarf's nominal 36): the ceiling is read off this same envelope - PHY-49.
+
+### PHY-49 THE DENSITY CEILING IS ONE FUNCTION OF MASS, AND WITH THE RADIUS HELD IT MUST BE ASKED OF THE RADIUS
+BUCKET: DOMAIN + ARCHITECTURE - domain: past the mass-decides line density climbs with mass, so
+no single figure can be both generous to a rock and enough for a brown dwarf. Architecture: a
+limit that exists twice (a clamp and a slider end) and a limit that depends on the thing the
+control is changing.
+WHERE: `physics/bodyEdit.ts` - `maxDensityGcc`, `densityCeiling`, `MAX_D`, `OVERDENSE_HEADROOM`;
+the only readers are `editDensity`, `editDensityAnchored` and `BodyBasicsTab`'s `denSpan`. Gate:
+`physics/densityCeiling.spec.ts` (pure and mounted).
+RULE: the top of the density slider and the clamp on the number box are the SAME call
+(`densityCeiling(state, lock)`); the component holds no figure of its own. Below `isFluidByMass`
+the ceiling is `MAX_D` (30). Above it, `OVERDENSE_HEADROOM` (2) times the dense edge of the body's
+own fluid envelope - the edge `denserThanFluid` and `structure/overdense` already use (PHY-41) -
+and never less than 30: 30 to ~6 M_Jup, 54 at 10, 72 at 13, 116 at 20, 421 at 63. Mass only,
+never makeup or role (DATA-R22). It is an EDITOR limit: nothing on load, import, generation or
+the processor reads it, and the Overrides density pin has no ceiling.
+WHY: users asked for room for brown dwarfs (a flat 80 for dwarfs, 30 for super-Jupiters); the
+owner chose mass-aware. The flat 30 sat BELOW the nominal density of anything past ~17 M_Jup, so
+the first touch of the control on an ordinary 20 M_Jup dwarf (nominal 36) could only make it LESS
+dense than it started, and CoRoT-3b (26.4) was within 4 g/cc of the stop.
+BLAST: THE HEADROOM IS NOT A NEW NUMBER. 30 is 2.1 times the dense edge of the densest solid the
+composition model builds (pure iron: 13.2 g/cc from a few Earth masses up, 14.2 at its trim
+edge - compression saturates, so no solid in this engine is denser). The fluid ceiling takes the
+same factor over ITS densest edge. The spec pins both halves; change `compressionFactor` or
+`GAS_TRIM_LO` and it says which half moved.
+BLAST: WITH THE RADIUS LOCKED, DENSITY IS MASS (M = rho R^3). Reading the ceiling off the current
+mass there makes it rise as the slider is dragged, the slider's own span is that ceiling, and a
+log slider whose top moves under the pointer runs away: each input event re-ranges the track and
+the same pointer position asks for more. So `densityCeiling(..., 'radius')` depends on the radius
+ONLY: 30 if a 30 g/cc body of that radius still has a 30 ceiling, else the mass limit read as a
+density. That two-valued answer is exact only because the ceiling climbs faster than the mass
+(~M^1.12); the spec asserts the property itself, every density on the way up, not one figure.
+BLAST: A CLAMPED VALUE THAT CHANGES NOTHING DOES NOT RE-RENDER. Type 500 into a box whose body is
+already at its ceiling: state is unchanged, Svelte leaves the input alone, and the field reads 500
+over a body of 72. `onDenNum` writes the real figure back by hand. Any other clamped number box
+bound one-way with `value={...}` has the same fault waiting (mass and radius clamp at `MAX_M` /
+`MAX_R`; not fixed here). A body already ABOVE the ceiling shows its true density with the slider
+parked at the end, and is not written until the author moves the control.
 
 ### PHY-39 AN OCCLUDER CAN ONLY RE-RADIATE WHAT REACHED IT, AND ITS SKY SHARE IS NOT ITS BEARING SHARE
 BUCKET: DOMAIN + ARCHITECTURE - domain: two conservation faults with one shape, both of which

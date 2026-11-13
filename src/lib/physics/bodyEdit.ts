@@ -21,7 +21,16 @@ const EARTH_RHO = 5.513;
 const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
 export const MIN_M = 1e-12, MAX_M = 1e5;  // small comet (~6e12 kg) → well past brown dwarf, in Earth masses
 export const MIN_R = 5e-5, MAX_R = 40;    // ~0.3 km → Earth radii
-const MIN_D = 0.05, MAX_D = 30;           // g/cc
+const MIN_D = 0.05;                       // g/cc
+/** The density ceiling of a body whose density still says what it is made of - anything below the
+ *  mass-decides line. 30 g/cc is about twice the dense edge of the densest solid this engine can
+ *  compose (pure iron: 13.2 g/cc from a few Earth masses up, 14.2 at the edge of its trim envelope).
+ *  Heavier bodies get more room: see `maxDensityGcc`. */
+export const MAX_D = 30;                  // g/cc
+/** How far past the dense edge of its own envelope the editor lets a degenerate body be squeezed:
+ *  the same factor of about two that `MAX_D` leaves above the densest solid. The edge is where
+ *  `structure/overdense` starts, so this is the room in which an author is TOLD rather than stopped. */
+export const OVERDENSE_HEADROOM = 2;
 
 export function densityGcc(massMe: number, radiusRe: number): number {
   return radiusRe > 0 ? (EARTH_RHO * massMe) / (radiusRe ** 3) : 0;
@@ -91,7 +100,7 @@ export function editRadius(s: BodyEditState, newRadiusRe: number, lock: EditLock
 // Edit DENSITY directly (infers composition to match). Default (and radius-lock): mass follows. mass-lock:
 // radius follows.
 export function editDensity(s: BodyEditState, newDensity: number, lock: EditLock): BodyEditState {
-  const density = clamp(newDensity, MIN_D, MAX_D);
+  const density = clamp(newDensity, MIN_D, densityCeiling(s, lock));
   const makeup = makeupForGeomDensity(density, s.massMe, s.makeup);
   if (lock === 'mass') {
     return { massMe: s.massMe, radiusRe: clamp(radiusFromMassDensity(s.massMe, density), MIN_R, MAX_R), makeup };
@@ -168,7 +177,7 @@ export function editRadiusAnchored(s: BodyEditState, newRadiusRe: number): Ancho
 // Edit DENSITY with composition anchored. Mass is held either way (density ↔ radius at fixed mass):
 // inside the envelope the trim moves; outside, makeup re-inferred, radius follows.
 export function editDensityAnchored(s: BodyEditState, newDensity: number): AnchoredResult {
-  const d = clamp(newDensity, MIN_D, MAX_D);
+  const d = clamp(newDensity, MIN_D, densityCeiling(s, null));
   const env = trimEnvelope(s.massMe, s.makeup);
   if (d >= env.denLo && d <= env.denHi) {
     return { massMe: s.massMe, radiusRe: clamp(radiusFromMassDensity(s.massMe, d), MIN_R, MAX_R), makeup: s.makeup, outOfBand: false };
@@ -195,6 +204,54 @@ export function editDensityAnchored(s: BodyEditState, newDensity: number): Ancho
 export function denserThanFluid(massMe: number, radiusRe: number, makeup: Required<Makeup>): boolean {
   if (!(makeup.gas > 0.5) || !isFluidByMass(massMe)) return false;
   return densityGcc(massMe, radiusRe) > trimEnvelope(massMe, makeup).denHi * 1.001;
+}
+
+// ——— THE DENSITY CEILING: one answer, and it depends on the mass (engine map PHY-49) ————————————————
+
+const FLUID_MIX = normalizeMakeup({ gas: 1 });
+
+/**
+ * HOW DENSE THE EDITOR LETS A BODY OF THIS MASS BE MADE, in g/cc - the top of the density slider
+ * and the clamp on the number box, which are one figure because both ask this.
+ *
+ * It was a flat 30. That is generous for anything solid (see `MAX_D`) and wrong for a brown dwarf:
+ * electron degeneracy holds a hydrogen body near one Jupiter radius, so past a couple of Jupiter
+ * masses density simply climbs with mass. By the engine's own giant relation an ordinary 13 M_Jup
+ * object is 22 g/cc and a 20 M_Jup one is 36 - the box stopped below a body's NOMINAL density -
+ * and CoRoT-3b is a measured 26.4.
+ *
+ * So above the mass-decides line (`isFluidByMass`, ~1.9 M_Jup) the ceiling is read off the body's
+ * own fluid envelope: `OVERDENSE_HEADROOM` times its dense edge, the same edge past which
+ * `denserThanFluid` speaks. It never drops below `MAX_D`, so it is 30 up to about 6 M_Jup, 54 at
+ * 10, 72 at 13 (the lightest brown dwarf), 116 at 20, 420 at 63. Below the line nothing moves.
+ *
+ * KEYED ON MASS ALONE, not on the makeup (DATA-R22): at these masses any matter is degenerate, and
+ * an authored solid giant gets the same room as a fluid one.
+ *
+ * A SOFT LIMIT OF THIS EDITOR, NOT A LAW. Nothing reads it but the two density edits below and the
+ * slider. A saved or imported body above it is not touched, the Overrides tab's density pin has no
+ * ceiling at all, and inside the headroom the author is steered - tagged and told - never refused.
+ */
+export function maxDensityGcc(massMe: number): number {
+  if (!isFluidByMass(massMe)) return MAX_D;
+  return Math.max(MAX_D, OVERDENSE_HEADROOM * trimEnvelope(massMe, FLUID_MIX).denHi);
+}
+
+/**
+ * The ceiling for ONE density edit, which depends on what that edit holds.
+ *
+ * Mass held (no lock, or mass locked): the mass is fixed for the whole drag, so it is that mass's
+ * ceiling. RADIUS held: density IS mass (M = rho R^3), so the mass's ceiling moves as the slider
+ * does, and reading it off the current mass would re-range the slider under the pointer on every
+ * frame. Asked of the RADIUS instead, which is what stays put: if 30 g/cc at this radius is still a
+ * body whose own ceiling is 30, that is the answer; if it is already a body allowed more, then so
+ * is every heavier one - the ceiling climbs faster than the mass does (about M^1.12), a property
+ * `densityCeiling.spec.ts` pins - and the only limit left is the mass limit read as a density.
+ */
+export function densityCeiling(s: Pick<BodyEditState, 'massMe' | 'radiusRe'>, lock: EditLock): number {
+  if (lock !== 'radius') return maxDensityGcc(s.massMe);
+  if (maxDensityGcc(Math.min(MAX_M, massFromRadiusDensity(s.radiusRe, MAX_D))) <= MAX_D) return MAX_D;
+  return Math.max(MAX_D, densityGcc(MAX_M, s.radiusRe));
 }
 
 // Edit MASS with composition anchored: radius follows the composition's mass–radius curve PRESERVING

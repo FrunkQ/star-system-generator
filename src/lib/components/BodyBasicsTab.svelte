@@ -12,6 +12,7 @@
   import {
     densityGcc, editMass, editRadius, editDensity, editMakeup, setMakeupComponent,
     trimEnvelope, editMassAnchored, editRadiusAnchored, editDensityAnchored, denserThanFluid,
+    densityCeiling,
     type EditLock, type BodyEditState
   } from '$lib/physics/bodyEdit';
   import { bandFit } from '$lib/system/classification';
@@ -170,7 +171,11 @@
   // asteroid/comet scale (log mapping keeps the bottom decades finely tunable).
   const pMassMin = 1e-12, pMassMax = 1e5;  // Earth masses (small comet -> past brown dwarf)
   const pRadMin = 5e-5,  pRadMax = 40;      // Earth radii (~0.3 km up)
-  const pDenMin = 0.1,   pDenMax = 30;      // g/cc
+  // Density has a floor here and NO top of its own: the top is `densityCeiling` (bodyEdit.ts), the
+  // same figure the number box is clamped to, so the two cannot disagree. It depends on the mass - a
+  // brown dwarf is allowed to be far denser than a rock (engine map PHY-49) - so it is read into
+  // `denSpan` below rather than written here.
+  const pDenMin = 0.1;                      // g/cc
   const logPos = (v: number, lo: number, hi: number) =>
       clamp((Math.log(clamp(v, lo, hi)) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)), 0, 1);
   const logVal = (pos: number, lo: number, hi: number) =>
@@ -307,10 +312,28 @@
 
   const onMassSlider = (e: Event)  => { const p = +(e.target as HTMLInputElement).value; applyMass(logVal(p, massSpan[0], massSpan[1])); checkEdge(p, 'mass'); };
   const onRadSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyRadius(logVal(p, radSpan[0], radSpan[1])); checkEdge(p, 'radius'); };
-  const onDenSlider = (e: Event)   => { const p = +(e.target as HTMLInputElement).value; applyDensity(logVal(p, denSpan[0], denSpan[1])); checkEdge(p, 'density'); };
+  const onDenSlider = (e: Event)   => {
+      const p = +(e.target as HTMLInputElement).value;
+      applyDensity(logVal(p, denSpan[0], denSpan[1]));
+      checkEdge(p, 'density');
+      if (p >= 0.995) edgeHint = densityCeilingHint(denSpan[1]) ?? edgeHint;
+  };
   const onMassNum = (e: Event)     => { applyMass(massMeFromDisp(parseFloat((e.target as HTMLInputElement).value))); reselectAfterTyped('mass_Me'); };
   const onRadNum = (e: Event)      => { applyRadius(radReFromDisp(parseFloat((e.target as HTMLInputElement).value))); reselectAfterTyped('radius_Re'); };
-  const onDenNum = (e: Event)      => { applyDensity(parseFloat((e.target as HTMLInputElement).value)); reselectAfterTyped('density'); };
+  const onDenNum = (e: Event)      => {
+      const el = e.target as HTMLInputElement;
+      const asked = parseFloat(el.value);
+      const cap = densityCeiling(pState(), lock);   // before the edit: it is this state's ceiling the value meets
+      applyDensity(asked);
+      reselectAfterTyped('density');
+      if (!Number.isFinite(asked)) return;
+      // THE BOX SHOWS WHAT THE BODY HAS. A value typed past the ceiling is limited to it, and when
+      // the body was already sitting there nothing changes, so Svelte leaves the typed text in the
+      // field: the box would read 500 over a body of 72. Write the real figure back, and say why.
+      const s = pState();
+      el.value = String(r4(densityGcc(s.massMe, s.radiusRe)));
+      if (asked > cap) edgeHint = densityCeilingHint(cap) ?? edgeHint;
+  };
   const onMkSlider = (k: keyof Makeup, e: Event) => applyMakeupComp(k, +(e.target as HTMLInputElement).value);
   const onMkNum = (k: keyof Makeup, e: Event)    => applyMakeupComp(k, parseFloat((e.target as HTMLInputElement).value) || 0);
 
@@ -432,7 +455,8 @@
   $: isUnknown = body.classes?.[0] === UNKNOWN_CLASS;
   // Per-slider full-range toggles (Alex): each of mass/radius can independently expand from the
   // pinned type's zoomed band to its full span (<-> to open, >-< to collapse). Density is ALWAYS
-  // full range — its span (0.1–30 g/cc) is small enough that zooming buys nothing.
+  // full range — its span (0.1 g/cc to the ceiling for this mass, 30 for most worlds) is small
+  // enough that zooming buys nothing.
   let massFull = false;
   let radFull = false;
   // Only offer the expand/collapse toggle (and the funnel) when the current type actually has a
@@ -444,7 +468,7 @@
   $: radZoom = radHasRange && !radFull;
   $: massSpan = massZoom ? sliderSpan(rangeOf(bandFp, 'mass_Me'), pMassMin, pMassMax) : [pMassMin, pMassMax];
   $: radSpan = radZoom ? sliderSpan(rangeOf(bandFp, 'radius_Re'), pRadMin, pRadMax) : [pRadMin, pRadMax];
-  $: denSpan = [pDenMin, pDenMax];
+  $: denSpan = [pDenMin, densityCeiling({ massMe: pMassMe, radiusRe: pRadiusRe }, lock)];
 
   // Overview strip under a zoomed mass/radius slider: the FULL log scale with the current window
   // shaded, so you always see where the zoomed slider sits in the whole range.
@@ -482,6 +506,14 @@
 
   // Edge hint: released at a span end → nudge toward the type list (never auto-switch).
   let edgeHint: string | null = null;
+  // The TOP of the density control is not a type's edge, it is the editor's ceiling for this mass, so
+  // it gets its own sentence: what the figure is, why it is there, and the way past it. Said only
+  // where the mass is what sets it; with the radius locked the density is the mass, and the limit
+  // met there is the mass limit.
+  function densityCeilingHint(cap: number): string | null {
+      if (lock === 'radius') return null;
+      return `Density stops at ${fmtEnd(cap)} g/cc for a body of this mass - at least twice as dense as one gets on its own. To go further, pin Bulk density on the Overrides tab, which has no ceiling.`;
+  }
   function checkEdge(pos: number, axis: string) {
       edgeHint = (!isUnknown && bandFp && (pos >= 0.995 || pos <= 0.005))
           ? `End of ${liveType}'s ${axis} range — pick another type below, or type a value`
