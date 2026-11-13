@@ -926,7 +926,78 @@ human-habitability becomes the DEFAULT rather than the whole model.
 
 **WHAT IS STILL OPEN IS DATA, NOT CALCULATION — the two things this handover already names:** **[[B74]]** the L/T/Y mass bands (still `[0.06,0.08]`, `[0.03,0.06]`, `[0.01,0.03]`, so the implausible tags still fire on Luhman 16, WISE 0855, SCR 1845) and **[[B73]]** the classifier's `undefined > 10 → terrestrial` fallback plus the missing planet-side class. **HANDED TO THE BIOSPHERE/COLOUR SESSION per the owner ("hand the BD fixes to the Biosphere toolkit to finish") — it holds the substellar chain already, and the acceptance test is in B74.**
 
-## SESSION STATE AT PAUSE - 2026-09-16 (Coordinator 8) - READ THIS FIRST ON RETURN
+## COORDINATOR 9 - THE DISCORD BUG-SQUASH RUN, 2026-11-13 (v3.1.78 on beta) - READ THIS FIRST
+
+**The owner came back on 2026-11-13:** *"make a version 3.1.1 that deals with all of the bugs that have been reported by users since I put out 3.1 ... it is just bug fixing ... small feature updates are fine ... any BIG features will be rolled into V4."* Then, the same night: *"3.1.xx for now on beta. Once we have it ready for release it will be 3.2"*, and *"i really would like the half finished features finished too if you can determine what they are - sure around some megaconstructs."* **So: beta keeps its 3.1.xx build numbers, the release that goes to production is 3.2, and production still moves only on his word.**
+
+**HOW IT WAS DONE.** Every SSE channel on his Discord was read from 2026-09-07 (the day 3.1.0 went live) to 2026-11-12 - about 1,500 messages across #sse-chat, #ideas-and-feedback, #using-sse, #sharing-zone, #v4-planning, #under-the-hood, the converter chat and #announcements - and triaged into bugs, small features, V4 asks and the owner's own stated plans. Six agents then took one territory each, each in its own worktree off `origin/beta` @ v3.1.77, one commit per bug, every new gate seen RED with its fix removed. The six branches merged without a textual conflict; `npm run build` green; full suite 439 of 440 files green (5,371 tests; +357 on v3.1.77). **THE ONE RED FILE IS NOT OURS AND WAS RED BEFORE: `scripts/starmap-build/buildKit.spec.mjs` differs in the LAST DIGIT of one float (`gj687-star.radiationOutput`) when run on Linux rather than on the owner's Windows machine. It is green there.** This run was coordinated from a cloud checkout, not from his PC - nothing in `C:\Development\star-system-explorer-v2` was touched, and the held `wt/hubmaps` commit is still only on that machine.
+
+**NOTHING BELOW WAS SEEN IN A BROWSER BY THE SESSIONS THAT WROTE IT.** Every fix is gated in code; every visual claim is on the eyeball list further down.
+
+### WHAT SHIPPED IN v3.1.78, by territory (ids are the Discord triage's, not board ids - none were claimed)
+
+- **Custom definitions lost on save or load (the owner's "emergency patch" promise of 2026-10-05) - FIVE separate defects, all on production too.** (1) A second custom gas deleted the first: since [[B132]] the atmospheres editor was mounted on the EFFECTIVE pack, so a gas saved last visit looked like a default and was dropped - engine map DATA-R47 said that mount was right, and it was the bug. (2) Save System never carried the campaign's definitions; it now writes `rulePackOverrides` beside the nodes and Load System merges them through R-19's `mergeClipOverrides` (new `io/systemRules.ts`, DATA-R52). (3) Every campaign load derived its worlds against the SHIPPED pack, so a custom liquid's colour was lost until the system was opened (DATA-R53). (4) A construct file never carried its drives, fuels and sensors. (5) Exporting a construct with a 3D model threw - two functions called and never imported. Save Starmap, the autosave and copy/paste never lost one, and are now pinned with two custom items in every section.
+- **Reloads and loads.** A dead IndexedDB connection stayed cached, saves fell back to localStorage, and the next start loaded the OLDER IndexedDB copy and deleted the newer one (DATA-R54). `sw.js` called `skipWaiting()` at install and the layout reloaded on every `controllerchange`, so Cancel on the update prompt reloaded like OK, and every beta push reloaded every open tab mid-load - which is what tripped "The last load didn't finish" (UI-L2 amended, UI-L9). The legacy random system on "Start empty" is gone. **NOT PROVEN:** what actually reloaded the reporter's phone four times on 2026-10-18 - beta had not been pushed for 25 days. Memory pressure is the best remaining candidate.
+- **Physics and classification.** Axial tilt of 90: a range input bound two-way to an absent field writes its midpoint into the data at mount (UI-C19 - the same pattern sits unverified at five other sites named there). The habitability magnetosphere term now asks the RESOLVED field (OVR-8). Past about 1.86 Jupiter masses density is not evidence of rock (PHY-41; new tag `structure/overdense`). Carbon survives a typed density. A black hole above its stellar band is not "implausible" and is named by mass. A body under `HYDROSTATIC_MIN_RADIUS_KM` draws an undifferentiated cutaway.
+- **Orbits, megas, time.** The space-elevator freeze was an INFINITE RECURSION in the position walk (PHY-42) reached because the Orbit tab ignored the type's `allowedPlacements` and applied an L-point pick one pick late. Placement limit, widest view and the System-edge setting are one number now (`system/systemReach.ts`). `utre.ts` converted authored calendar numbers with `BigInt(x)`, which throws on any non-integer - on every tick and every load.
+- **Tags and the real sky.** Category import asks before overwriting and can import as a copy; a rule writing outside its category piled a copy of its tag on every pass - **ONE ANSWERED ORIGIN OF [[A104]]'s DUPLICATED KEY**; a new rule is seated last so adding one no longer re-rolls the campaign (TAG-26, TAG-1 and TAG-8 amended). An upper-limit mass was imported as the mass (DATA-R55); a matched host with a gap in the archive was dropped with all its planets (DATA-R4 corrected).
+- **UI.** The CRT wash was the overlay's own full-stage tint sheet inside an isolated layer; `HelpModal` sat below three of its four openers (UI-C14); the document schematic reserves room for its 45-degree names; M☾ and R☾ are units (the automatic ladder never picks M☾, so [[A80]]'s pins hold).
+
+### CORRECTIONS TO WHAT THIS BOARD SAID AT THE PAUSE
+
+- **"Everything since v3.1.48 is beta-only: [[C20]] and [[C21]]" is WRONG for those two.** Their commits (v3.1.9 to v3.1.43) are ancestors of the production commit `bc703f60`. What IS beta-only is v3.1.49 onward: G90/G91/G95 small bodies, A102, the G94 decision, [[A104]], [[A107]], [[G98]]/[[G99]], R-18, and now this run.
+- **Production is v3.1.49, not v3.1.48** - the owner pushed the cache-lifetime hotfix `e9b58c70` on 2026-09-23, and beta carries the same work as v3.1.73 to v3.1.77.
+- **[[D29]]'s "NEXT: job 2 then job 3" is STALE** - both landed on 2026-09-08 (v3.1.6 to v3.1.11). Still open from that row: the binary-extent control, and `typicalForClass` / `figureSources` written on every star and read by nothing.
+- **[[G87]]'s "nothing imports it yet" is STALE** - `traveller/importer.ts` imports `mainWorldPlacement` (v3.1.38).
+- **Stream Z IS NOT STARTED IN CODE, as the pause said** - the v3.1.58 to v3.1.62 commits are the decision and the brief. There is no `ageOf`. A brown dwarf's typed temperature still snaps back on beta; v3.1.78 only adds the sentence that says why.
+- **`docs/dev/v4-scope.md` is stale against the owner's own later words** (2026-11-02: a blank-slate restart on the Ovid architecture). `docs/dev/v4-design-inputs.md` is the capture of what he has said since; it does not replace a design.
+
+### THE OWNER'S DECISIONS THIS RUN RAISED (ask, do not assume)
+
+1. **Ice giants at warm orbits.** Between about 230 K and 595 K a 14 to 17 Earth-mass world matches nothing and falls back to gas giant (`classification.json` `planet/ice-giant` `Teq_K [0, 200]`). The fix is ten lines but relabels two bundled worlds (GJ 674 b, GJ 687 b).
+2. **The density ceiling** still stops at 30 g/cc (`bodyEdit.ts:23`); users asked for 80 for brown dwarfs. Recommended: a mass-aware cap.
+3. **Mean anomaly has a hidden epoch.** `M = M0 + n(t - t0)` and `t0` is the CREATION instant, shown nowhere, so identical elements typed at different clock times give different orbits for ever. Recommended: show and edit mean anomaly at the system's `epochT0` in the editor only - about fifteen lines, no migration.
+4. **A moon's inclination is measured against its parent's EQUATOR, and the tilt has no azimuth** - every pole leans the same way, which is why another tool's elements cannot be matched. The UI names no plane.
+5. **A saved starmap carries no tagging RULES and no world-only tag categories**, and drops "hide from players", though `docs/tags-guide.md` says categories travel in the starmap. `categoriesForStarmap` and `mergeStarmapCategories` exist and have no callers. It is a save-format change and a hub seam.
+6. **Hiding derived body data from players** (asked for and agreed on Discord): hiding the rows alone leaks through the type, the tags and the picture. Options: rows only; rows plus a generic type and no derived tags (recommended, as a default-off preset flag beside `liveReadings`); or the per-planet scan state he described, which is V4.
+7. **Re-open the system the GM was in after a reload** - about thirty lines plus a one-shot guard so a memory crash cannot become a crash loop.
+8. **Construct files carry the WHOLE rule bag** (DATA-R50), so importing a ship can add another campaign's gases and pigments. Narrow it for construct files only?
+9. **Megastructures on inclined orbits** is both halves or neither: the two inputs AND orienting the geometry to the orbit normal (RENDER-S44's own blast line says inclined orbits are not oriented).
+10. Still open from the pause and untouched here: [[A103]], [[B150]]'s `STELLAR_FLOOR_K`, [[G97]], [[A106]]'s re-home disclosure, [[G87]]'s second thought, tagging the hub maps `default`, and when to release.
+
+### THE EYEBALL LIST - thirty seconds each, on beta, none of it seen by the session that built it
+
+1. Atmospheres: add gas "Aa", Save; reopen, add "Bb", Save; reopen. Both listed, each with a delete and a Copy.
+2. A custom-colour liquid on a world; refresh; look at the starmap WITHOUT opening the system. The colour is there.
+3. Save System (GM), new map, Load System: a banner names what arrived and Settings shows it. Load the same file into its own map: no banner, no duplicates.
+4. Export a construct that has a 3D model: a file downloads, and Import takes it back.
+5. Leave a tab open a minute, push a build, press Cancel on the prompt: the page stays and does not ask again. In another tab press OK: one reload, work intact.
+6. Reload twice quickly on the 44-system map: never "The last load didn't finish". On a phone, switch apps mid-load and return: the same.
+7. New Starmap, Start empty: no star and a note. Add a system: the note goes. Delete it: the note returns.
+8. iPhone: press and hold a star on the starmap. Does ANY menu appear? (`Starmap.svelte` binds the star menu to `contextmenu`, which iOS Safari may not fire - unverified, and if so Rename, Copy and Delete are unreachable there.)
+9. Add a planet from the picker: tilt is not 90. Open an old tilt-less world: "Axial Tilt: not set".
+10. A small rocky world showing "No magnetosphere -8": set the field override to 0.5 G; the line goes.
+11. A 5 Jupiter-mass giant, mass locked, density typed to 20: stays banded gas, the radius shrinks, a line under the box explains.
+12. A black hole at 120,000 solar masses reads "Intermediate-mass black hole" with no red tag.
+13. A small asteroid's Basics tab: the cutaway is a speckled mix, not rings.
+14. An elevator on Earth, Orbit tab: Zone lists only Surface, Sol and the giants are greyed, no altitude slider. An ordinary station set to L2 jumps at once.
+15. A star at 2,000,000 AU around a 10,000 solar-mass hole keeps its value and is visible when wheeled out. Pinned 1 AU hexes wheeled fully out: the grid goes and the page stays responsive.
+16. Calendars: Gregorian shows the built-in note; add a month, the list scrolls to it; Restore removes it.
+17. Edit tag categories: export "Science", import that file; a question appears naming `science-copy`.
+18. CRT Terminal preset with a small logo overlay on the size comparison: worlds unchanged, logo tinted, no film. CHECK SAFARI - the SVG filter reference is the untested part.
+19. Size comparison, Orbit order on Jupiter: planet name above, moon names beside each moon.
+20. Press "?" in Find by tag, in the tag category editor and on a ship's Autopilot tab: the guide opens in front.
+21. Document view with a planet called "Proxima Centauri b": the whole name shows.
+22. Luna, Composition tab: cycle mass to M☾ and radius to R☾; both read 1.
+23. Sky import centred on Kepler-32: planet f is about half an Earth mass and says "Mass NOT MEASURED". Centred on Chalawan: READ THE STATUS LINE - "bundled snapshot" would explain the user's missing planets (the bundle stops near 41 ly; Chalawan is at 45).
+
+### FINDINGS LEFT WHERE THEY LIE (each is a row for whoever is next)
+
+`handleSave` in the calendar editor re-stamps every calendar id, which writes all four built-ins into every save after any Save there - undoing [[B112]] and cutting that campaign off from [[G62]] adoption; left because the re-stamp is also what keeps a GM's leap edits. `Mid Orbit` and `Medium Orbit` are two spellings of one placement. `SystemVisualizer.svelte:2477` uses an undeclared `timeMs`; `api.ts:13` exports an undeclared `classifyBody`; `SystemView.svelte:407` sets `clipNotice` and never renders it. `ConstructBasicsTab.svelte:77` reads `dimensionsM` unguarded. The wizard is mounted on the shipped pack, so custom mix spawn weights never apply there. `physics/+page.svelte:1702-1706` still claims "Plate tectonics +8" and "Intrinsic magnetosphere +5". `geoActivity.ts:116` spells the 200 km hydrostatic limit a second time. The printed report clips names over about 18 characters. Two tabs share one stored campaign and the last writer wins. `svelte-check` reports about 1,490 errors on beta and is not a usable gate.
+
+**NEXT FREE IDS, unchanged by this run:** A108, B151, C22, D30, G100 - re-check both forms at write time. Engine map next free: DATA-R56, PHY-43, TAG-27, UI-C20, UI-L10, OVR-9.
+
+## SESSION STATE AT PAUSE - 2026-09-16 (Coordinator 8) - superseded at its head by the section above; still the record of the pause
 
 The owner paused the project on 2026-09-16: *"going to take a break from this project - get all your memory and co
 files totally up to date - so we can come back to this later."* This section is the state. The restart door is

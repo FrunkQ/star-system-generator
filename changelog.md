@@ -2,6 +2,46 @@
 
 All notable changes are listed here:
 
+## v3.1.78 - 13th Nov 2026
+
+The bug-squash run: everything reported on Discord since 3.1 went live, worked through in one pass. No new systems - fixes, and a few small things that were asked for and agreed.
+
+**Your work stays yours**
+- Custom gases no longer vanish. Making a second custom gas used to delete the first, along with any tweak to a built-in gas - the gas editor was comparing against the wrong rule pack. Saved custom gases and mixes can now be deleted and copied, and deleting your last custom gas, mix, fuel, drive or sensor stays deleted.
+- **Save System** now carries your campaign's custom gases, liquids, mixes, fuels, drives, sensors and biospheres, and loading it into another map brings them along without overwriting that map's own. An exported construct brings its custom drives, fuels and sensors too - and a construct with a 3D model can be exported at all, which it could not.
+- Worlds that use your own liquids and gases are drawn with them as soon as a map loads, not only once the system is opened - a custom liquid's colour now survives a refresh.
+- A reload, asked for or not, brings back your last edit. Fixed a case where the browser's storage had a bad moment (most often on a phone after switching apps) and the next reload returned an OLDER campaign and threw the newer one away. If the browser cannot save at all, a banner now says so.
+- **Cancel** on "A new version is available" now cancels. The app no longer reloads itself when you said no, no longer asks again in the same tab, and no longer asks a page that has only just loaded.
+- "The last load didn't finish" no longer appears just because you reloaded, closed the tab or switched apps while a map was loading. It still appears for a map that really hangs.
+- "Start empty" starts empty: the random star system that used to appear on every new map is gone, and a bare map tells you how to place your first one.
+- Opening a saved starmap no longer strips the colours, descriptions and hidden-by-default settings you gave individual tags.
+
+**Worlds and stars**
+- New planets and moons no longer arrive with a 90 degree axial tilt, and opening a world's editor no longer changes its tilt.
+- A magnetosphere override now counts towards habitability: giving a world with no dynamo a field removes the "no magnetosphere" deduction.
+- Super-Jupiters and brown dwarfs no longer turn into giant rocky planets when you raise their density or import them without a composition. Above about two Jupiter masses the body stays a giant and a density change resizes it; one squeezed past its own envelope is tagged "Overdense giant" rather than refused.
+- Typing a density no longer strips the carbon out of a carbon-rich world.
+- A black hole heavier than the stellar-mass range is no longer tagged "Physically implausible", and is named intermediate-mass or supermassive.
+- A small asteroid's interior cutaway shows a mixed mass rather than a metal core and a rock mantle.
+- The star editor now says why a brown dwarf's temperature goes back when you change it (it follows mass and age; the age control that replaces it is next).
+- An airless super-earth is no longer pictured under cloud, nor a deep-atmosphere ocean world as a bare ice ball.
+
+**Orbits, structures and time**
+- A space elevator can no longer be sent to a Lagrange point or onto a world it cannot stand on, and a system already holding one in that state loads instead of freezing. Choosing a Lagrange point for any station now takes effect on that pick rather than the next.
+- A companion can be placed as far out as its system really reaches - millions of AU around a massive black hole, or as far as the System edge you set - and the 2D map zooms out far enough to show it on any screen.
+- A custom calendar with a non-standard second, a fractional number of days in the year or a negative leap value no longer locks up the app, and a campaign saved with one loads again. The calendar editor says when the calendar you are editing is a built-in one and can restore it in one press, shows whether your months add up to your year, and scrolls to a month you have just added.
+
+**Tags and the sky**
+- Importing a tag category that shares a namespace with one of yours now asks first: replace yours, or keep both and bring the file in as a copy. Tags seeded by a tagging rule no longer pile up or linger after the rule changes, and ones left behind by a rule that is gone can be cleared. Adding a tagging rule no longer quietly re-rolls every other rule's tags across your starmap.
+- A planet whose mass is only known as an upper limit (Kepler-32 f) no longer imports from the sky AT that limit. GJ 667 C and its five planets, previously skipped, now import. Filling out a sky import: the generator's dials now apply on a new map, generated moons are named after the world they orbit, and the dialogue warns when the planet archive could not be reached.
+
+**On screen**
+- An overlay image under a CRT or night-vision preset no longer washes the whole player screen in the filter's colour, and the starmap size comparison shows its overlay image, which it never had.
+- In the size comparison's Orbit order a planet's and its moons' names no longer overlap, and every moon with room gets a name.
+- The Tags guide and the Autopilot guide open in front of the window you opened them from.
+- In the system document view, long planet names are no longer cut off by the top or right edge of the window. The system report no longer prints a belt's or a small moon's mass as "0.000 M⊕".
+- **New:** lunar masses (M☾) and lunar radii (R☾) are selectable units.
+
 ## v3.1.77 - 23rd Sep 2026
 
 - Rule packs are now fetched with the build version as a cache key (`?v=3.1.77`), which lets them be cached as `immutable` instead of revalidated every load - they were 11 of the ~15 repeat requests per page load. Nothing can go stale: the URL changes the instant the version does, and on beta the patch bumps on every push, so testers always get the latest. Also fixes four tests that v3.1.73-76 had broken by bumping the version without running `npm run manifest` - beta's service worker still said v3.1.72, so those four pushes never fired the update prompt.

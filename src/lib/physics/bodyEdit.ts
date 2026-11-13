@@ -189,7 +189,7 @@ export function editDensityAnchored(s: BodyEditState, newDensity: number): Ancho
  * Real objects stay inside it (CoRoT-3b, 26.4 g/cc at 22 M_Jup, against an edge near 64).
  *
  * Scoped to the mass-decides regime on purpose. Below it a dense "gas" body is something the
- * composition can explain - an ice giant sits right on this edge (Neptune: 1.638 against 1.640) -
+ * composition can explain - an ice giant sits right on this edge (Neptune: 1.638 against 1.637) -
  * so a mark there would be noise on ordinary worlds.
  */
 export function denserThanFluid(massMe: number, radiusRe: number, makeup: Required<Makeup>): boolean {
