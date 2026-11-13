@@ -536,6 +536,301 @@
           "Garrison Decks"
         ]
       }
+    },
+    {
+      "id": "template-mega-soletta",
+      "tags": [
+        {
+          "key": "purpose/terraforming",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/advanced",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Soletta",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "soletta",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostKind": [
+            "planet",
+            "moon"
+          ]
+        }
+      },
+      "explain": "A soletta lights the world it is stationed at. {host} is not a planet or moon.",
+      "description": "A mirror array stationed at a world, turning extra starlight onto it. At the default size it adds about a fifth to the world's light, and the world's temperature, weather and habitability follow.",
+      "gmNotes": "Terraforming a GM can watch work: widen the mirror on its Structure tab and re-read the world. Station it close - a low orbit out to the inner or outer Lagrange point. It lights its own world only, not that world's moons.",
+      "IsTemplate": true,
+      "icon_type": "diamond",
+      "icon_color": "#fff2b0",
+      "crew": {
+        "current": 40,
+        "max": 400
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          3200000,
+          3200000,
+          32000
+        ],
+        "massKg": 5000000000000.0,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Solar Array",
+            "output_MW": 2000
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 40000,
+          "consumables_current_person_days": 40000
+        },
+        "modules": [
+          "Mirror Slats",
+          "Station-keeping Sails",
+          "Control Hub"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-shkadov-thruster",
+      "tags": [
+        {
+          "key": "purpose/stellar-engine",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/precursor",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Shkadov Thruster",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "shkadov-thruster",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostIsStar": true
+        }
+      },
+      "explain": "A Shkadov thruster rides a star's light. {host} is not a star.",
+      "description": "A vast mirror cap held over a star on the pressure of its own light. The star's output leaves lopsided and the star, with everything bound to it, is slowly pushed.",
+      "gmNotes": "The push is published, not performed: the engine states the thrust and what a million years of it would do, and the star stays where it is on the map. Tilt it on its Orbit tab to aim it. Slow by design - about ten metres a second per million years on a sun-like star with half the sky covered.",
+      "IsTemplate": true,
+      "icon_type": "diamond",
+      "icon_color": "#ffe9a8",
+      "crew": {
+        "current": 0,
+        "max": 0
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          150000000000,
+          150000000000,
+          150000000000
+        ],
+        "massKg": 1e+19,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Mirror Statite",
+            "output_MW": 0
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 0,
+          "consumables_current_person_days": 0
+        },
+        "modules": [
+          "Mirror Cap",
+          "Light-pressure Trim"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-caplan-thruster",
+      "tags": [
+        {
+          "key": "purpose/stellar-engine",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/precursor",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Caplan Thruster",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "caplan-thruster",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostIsStar": true
+        }
+      },
+      "explain": "A Caplan thruster feeds on a star. {host} is not a star.",
+      "description": "A stellar engine. A collector swarm focuses starlight onto the star to lift its own material; the engine fuses it and fires one jet away from the star and a hydrogen jet back at it to hold station.",
+      "gmNotes": "Far more thrust than a mirror, and it is paid for in the star's mass - the Structure tab says how long the star lasts at the chosen flow. The collector swarm dims the star for every world outside it. The push and the mass loss are published, not performed: the star neither moves nor shrinks on the map.",
+      "IsTemplate": true,
+      "icon_type": "diamond",
+      "icon_color": "#9fd0ff",
+      "crew": {
+        "current": 500,
+        "max": 5000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          150000000000,
+          150000000000,
+          150000000000
+        ],
+        "massKg": 1e+21,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Collector Swarm",
+            "output_MW": 0
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 50000,
+          "consumables_current_person_days": 50000
+        },
+        "modules": [
+          "Collector Swarm",
+          "Fusion Ramjets",
+          "Return Jet"
+        ]
+      }
+    },
+    {
+      "id": "template-mega-birch-planet",
+      "tags": [
+        {
+          "key": "class/habitat",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "purpose/colony",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "tech/precursor",
+          "coi": true,
+          "manual": true
+        },
+        {
+          "key": "universe/high-scifi",
+          "coi": true,
+          "manual": true
+        }
+      ],
+      "name": "Birch Planet",
+      "kind": "construct",
+      "roleHint": "construct",
+      "megaType": "birch-planet",
+      "artificial": true,
+      "requires": {
+        "hard": {
+          "hostIsBlackHole": true
+        }
+      },
+      "explain": "A Birch planet is a shell built round a black hole. {host} is not one.",
+      "description": "A shell built round a black hole at the distance where the hole's own pull is a comfortable gravity. The ground is on the outside, and round a galactic-centre hole there is over a trillion Earths of it.",
+      "gmNotes": "Offered only round a black hole. The default radius is where that hole pulls at one gravity; move it and the gravity follows the inverse square. A closed shell: nothing the hole emits gets out. Air, weather and a biosphere on that ground are not derived yet.",
+      "IsTemplate": true,
+      "icon_type": "circle",
+      "icon_color": "#b8c7ff",
+      "crew": {
+        "current": 1000000000,
+        "max": 1000000000000
+      },
+      "physical_parameters": {
+        "dimensionsM": [
+          300000000000,
+          300000000000,
+          300000000000
+        ],
+        "massKg": 1e+28,
+        "cargoCapacity_tonnes": 0,
+        "rotation_period_hours": 0,
+        "spinRadiusM": 0,
+        "can_aerobrake": false,
+        "has_landing_gear": false
+      },
+      "engines": [],
+      "fuel_tanks": [],
+      "systems": {
+        "power_plants": [
+          {
+            "type": "Accretion Tap",
+            "output_MW": 0
+          }
+        ],
+        "life_support": {
+          "consumables_max_person_days": 0,
+          "consumables_current_person_days": 0
+        },
+        "modules": [
+          "Shell Sections",
+          "Support Rings",
+          "Surface Districts"
+        ]
+      }
     }
   ],
   "small_body": [

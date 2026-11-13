@@ -10,15 +10,27 @@ import { CONSTRUCT_ICON_SHAPES } from '$lib/constructs/constructIcon';
 const pack = JSON.parse(readFileSync('static/rulepacks/starter-sf/construct_templates.json', 'utf8'));
 const mega: any[] = pack.mega ?? [];
 
-const KNOWN_HARD = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary']);
+const KNOWN_HARD = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary', 'hostIsBlackHole']);
 const KNOWN_STEER = new Set(['geoBelowHillFraction', 'inHabitableZone', 'maxPlacementAU', 'minHostMassKg', 'maxHostMassKg']);
 
 describe('bundled mega templates', () => {
-  it('the category exists and carries the seven designed types', () => {
+  it('the category exists and carries the seven designed types plus phase 6\'s four', () => {
     expect(mega.map((t) => t.megaType).sort()).toEqual([
-      'death-star', 'dyson-sphere', 'dyson-swarm', 'energy-collector',
-      'planetary-torus', 'ringworld', 'space-elevator'
+      'birch-planet', 'caplan-thruster', 'death-star', 'dyson-sphere', 'dyson-swarm', 'energy-collector',
+      'planetary-torus', 'ringworld', 'shkadov-thruster', 'soletta', 'space-elevator'
     ]);
+  });
+
+  it('PACKS INSTANTIATE: a template\'s requires and explain are the registry record\'s own, word for word', () => {
+    // The owner's call (2026-08-31): a pack picks a registered type; it does not re-rule it. The
+    // template's copy WINS at placement time (megaPlacement.effectiveMegaRequires), so a copy that
+    // drifted from the record would quietly offer a type where its host feature is missing.
+    for (const t of mega) {
+      const def = megaTypeDef(t.megaType)!;
+      expect(t.requires, t.name).toEqual(JSON.parse(JSON.stringify(def.requires)));
+      expect(t.explain, t.name).toBe(def.explain);
+      expect(t.icon_type, t.name).toBe(def.icon);
+    }
   });
 
   it('every template names a registry record, is artificial, and does NOT propagate the B109 roleHint fault', () => {

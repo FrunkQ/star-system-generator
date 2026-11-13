@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import type { CelestialBody } from '$lib/types';
 import { MEGA_TYPE_DEFS, defaultMegaParams, type MegaTypeDef } from './megaTypes';
-import { starOccluders } from '$lib/physics/starlightOcclusion';
+import { starOccluders, starlightBoost } from '$lib/physics/starlightOcclusion';
 
 const sol = (): CelestialBody =>
 	({
@@ -26,8 +26,17 @@ const earth = (): CelestialBody =>
 		}
 	}) as CelestialBody;
 
-/** The host whose seeds make sense for this type — a star for star-circlers, a world otherwise. */
-const naturalHost = (d: MegaTypeDef): CelestialBody => (d.requires.hard?.hostIsStar ? sol() : earth());
+/** A quiescent black hole of Sagittarius A*'s mass - the Birch shell's natural host. */
+const hole = (): CelestialBody =>
+	({
+		id: 'bh', name: 'The Hole', parentId: null, tags: [], classes: ['star/BH'],
+		kind: 'body', roleHint: 'star', massKg: 4.3e6 * 1.989e30, radiusKm: 1.27e7, temperatureK: 0
+	}) as CelestialBody;
+
+/** The host whose seeds make sense for this type — a star for star-circlers, a hole for a shell
+ *  built round one, a world otherwise. */
+const naturalHost = (d: MegaTypeDef): CelestialBody =>
+	d.requires.hard?.hostIsBlackHole ? hole() : d.requires.hard?.hostIsStar ? sol() : earth();
 
 describe('every registry record declares capabilities, and they match the behaviour shipped today', () => {
 	for (const d of MEGA_TYPE_DEFS) {
@@ -67,7 +76,30 @@ describe('every registry record declares capabilities, and they match the behavi
 					if (occludes === 'band') expect(out.occlusionBandWidthKm!).toBeGreaterThan(0);
 					else expect(out.occlusionBandWidthKm).toBeUndefined();
 				}
-				expect(d.capabilities.flux?.amplifies).toBeUndefined(); // reserved for the soletta (N4)
+				// THE AMPLIFY CASE (phase 6): declared exactly when derive() publishes an added share -
+				// and a type that brightens its target shades nothing (no record does both).
+				if (d.capabilities.flux?.amplifies === 'target') {
+					expect(out.starAmplification!).toBeGreaterThan(0);
+					expect(occludes).toBeUndefined();
+				} else {
+					expect(d.capabilities.flux?.amplifies).toBeUndefined();
+					expect(out.starAmplification).toBeUndefined();
+				}
+			});
+
+			it('a figure about the STAR is published only by a type that circles one, and never without its units\' partner', () => {
+				// The stellar engines publish thrust (and the Caplan its mass loss). No capability axis
+				// declares it - nothing consumes it as motion (no event driver, board row G41) - so the
+				// gate holds the published side honest: only a star-circler speaks about its star.
+				const host = naturalHost(d);
+				const out = d.derive(defaultMegaParams(d, host), host);
+				const speaks = out.starThrustPhotonFrac !== undefined || out.starThrustN !== undefined || out.starMassLossKgPerS !== undefined;
+				if (speaks) expect(d.requires.hard?.hostIsStar, d.key).toBe(true);
+				if (out.starThrustPhotonFrac !== undefined) {
+					expect(out.starThrustPhotonFrac).toBeGreaterThan(0);
+					expect(out.starThrustPhotonFrac).toBeLessThanOrEqual(1);   // all the light out one way is L/c, no more
+				}
+				if (out.starMassLossKgPerS !== undefined) expect(out.starThrustN!).toBeGreaterThan(0);
 			});
 
 			it('apparentG names the figure derive() publishes, and none means NO number', () => {
@@ -92,6 +124,19 @@ describe('every registry record declares capabilities, and they match the behavi
 			});
 		});
 	}
+});
+
+describe('the amplify declaration and the who-lights-whom discovery agree across the module seam', () => {
+	it('an instance stationed at a world lights it exactly when its record declares flux.amplifies', () => {
+		for (const d of MEGA_TYPE_DEFS) {
+			const node = {
+				id: `m-${d.key}`, name: d.key, parentId: 'earth', tags: [], kind: 'construct', megaType: d.key,
+				orbit: { hostId: 'earth', hostMu: 3.986e14, t0: 0, elements: { a_AU: 1e-4, e: 0, i_deg: 0, Omega_deg: 0, omega_deg: 0, M0_rad: 0 } }
+			} as unknown as CelestialBody;
+			const lit = starlightBoost(earth(), [sol(), earth(), node]);
+			expect(lit.gain > 1, d.key).toBe(d.capabilities.flux?.amplifies === 'target');
+		}
+	});
 });
 
 describe('the flux declarations and the phase-4 occluder discovery agree across the module seam', () => {

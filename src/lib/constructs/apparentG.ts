@@ -64,7 +64,15 @@ export function apparentGravity(node: any, host: CelestialBody | null | undefine
     };
   }
   if (wiring === 'surface') {
-    return { ms2: derived.surfaceGravityMs2 ?? 0, wiring, hostPullMs2: 0, note: "The hull's own mass, at its own surface." };
+    // A shell built ROUND its host (the record's anchor says so) stands in the pull of what it
+    // encloses; a hull has only its own mass. One figure, two honest sentences - read off the record.
+    const encloses = def.capabilities.render3d.anchor === 'host-centred';
+    return {
+      ms2: derived.surfaceGravityMs2 ?? 0, wiring, hostPullMs2: 0,
+      note: encloses
+        ? `The pull of ${(host as any)?.name ?? 'what it encloses'} at the shell's outer face - the ground is on the outside.`
+        : "The hull's own mass, at its own surface."
+    };
   }
   return { ms2: 0, wiring: 'none', hostPullMs2: 0, note: 'No meaningful figure for this structure; nothing is shown rather than a number without meaning.' };
 }

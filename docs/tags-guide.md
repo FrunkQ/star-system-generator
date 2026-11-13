@@ -64,6 +64,12 @@ itself. They are advice, never vetoes: the placement went ahead, and the tag rec
 interesting. Written once at placement (nothing re-derives them yet), so like generated tags they
 stay deleted if you delete them.
 
+**What a megastructure does to a world's light (`mega/shadowed-by`, `mega/eclipsed`, `mega/lit-by`).**
+These three are the engine's own and are worked out afresh every time the system is processed: a
+world behind a swarm, shell or ring is *shadowed by* it; a ring's shadow is also an *eclipse* with a
+cadence; and a world with a soletta (an orbital mirror) stationed at it is *lit by* it, with the
+extra starlight stated. Remove the structure and the tag goes with it.
+
 ### One physics tag that is deliberately not deterministic
 
 `biodiversity/pigment` names the pigment most of a world's photosynthetic life uses, and it is

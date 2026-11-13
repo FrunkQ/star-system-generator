@@ -5871,6 +5871,9 @@ collapsed the drawn HZ while the worlds stayed warm - the two halves of one fact
 Isotropic occluders still apply in full regardless of tilt.
 Companion flux stays undimmed through the solver. A swarm inside the kill zone is honestly a
 radiation shield (both hazard halves are linear in L, so the radius scales as sqrt f).
+ADDENDUM (2026-11, PHY-46): the received form now takes a SECOND factor - a mirror's gain - and
+"multiplies by `starlightTransmission`, never its own factor" extends to it: the gain comes from
+`starlightBoost` in the same module and from nowhere else.
 
 ### TAG-25 THE DISCLOSURE LADDER HAS THREE RUNGS AND EXACTLY ONE WRITER
 BUCKET: ARCHITECTURE - durable: a redaction that REPLACES rather than removes must build its
@@ -7978,3 +7981,68 @@ host this is a visible correction, not a regression.
 re-pick; it now keeps the plane. (4) The 2D orrery draws every orbit untilted, megastructures
 included - deliberate, and the control's own note says so. (5) A Lagrange-point structure has a
 DERIVED orbit and is not offered the control; `megaOrbitPlaneAuthorable` is the one predicate.
+### PHY-46 A MIRROR'S GAIN IS A SECOND, TYPED ARGUMENT - NEVER A LOOSER CLAMP, AND NEVER A STAR-WIDE FACT
+BUCKET: ARCHITECTURE (the amplify convention) + DOMAIN (what a soletta's added share is).
+WHERE: `physics/starlightOcclusion.ts` (`starlightBoost` - the ONE who-lights-whom site;
+`deriveStarlightBoost`, `commitStarlightBoost`, `STARLIGHT_BOOST_TAG`); `physics/luminosity.ts`
+`receivedLuminosityWatts(radius, temp, transmission, mirrorGain = 1)`; `physics/temperature.ts`
+(both equilibrium functions ask once per body; `calculateSurfaceTemperature` stamps the field);
+`core/SystemProcessor.ts` (one call, beside the dimming commit); the record is `soletta` in
+`constructs/megaTypes.ts` (`flux.amplifies: 'target'`, `starAmplification`). Gates:
+`starlightOcclusion.spec.ts` ("a soletta lights its world", absolute 266.86 K anchor, seen red
+with the gain forced to 1), `exoticsParity.spec.ts`, `megaDerive.spec.ts`.
+RULE: light that arrives is `intrinsic x transmission x gain`. Transmission stays clamped to
+[0, 1] - a malformed shading factor can still only darken - and the gain is its own argument
+that can only brighten (below 1, or not a number, reads as 1; no ceiling). The gain belongs to
+ONE BODY: the world the mirror is stationed at, `coOrbital.hostId ?? parentId` (a mirror at L1 is
+gravitationally the star's child and still lights the planet). It is derived fresh every ask
+from authored data - megaType, the instance's knobs, where it is stationed, the target's radius
+- and the added share is reflectivity x mirror area / (pi x target radius squared), a FRACTION
+(no luminosity is computed in the registry, B110). Mirrors add; light and shadow multiply.
+WHY: the header of `luminosity.ts` said "nothing between a star and a world manufactures light"
+and clamped accordingly. True of every occluder and false of the first new catalogue member -
+the design named this in August (nonstandard-objects §3). Widening the clamp would have let a
+bad transmission amplify; a second argument keeps both guards.
+BLAST: (1) THE ZONES DO NOT MOVE, DELIBERATELY. `zones.ts` describes the STAR's light; a lit world
+outside the drawn habitable zone is warm and reads warm, and the physics page says so. Feeding
+the gain into `occludedZoneDistance` would brighten the star for everyone. (2) The target's
+MOONS are not lit, and `heliocentricEdgeElements`-style inheritance must not be added: a mirror
+is aimed. (3) Every reflected photon is ASSUMED to land - which is why the record's
+`allowedPlacements` stop at L1/L2. Offering L4/L5 without tracing the beam's spread would be the
+A33 lie. (4) `radiation.ts` does not take the gain: a soletta reflects the star's light, and
+whether it reflects its hard radiation is unmodelled, so the dose is left at the bare figure
+rather than guessed up. AND `surfaceSpectrum.ts` (ground light, vegetation, pigments) is handed
+the INTRINSIC luminosity by its caller - it sees neither this gain nor phase 4's shadow. That gap
+predates the mirror (PHY-36 wired temperature and zones only) and is reported, not fixed here. (5) `commitStarlightBoost` returns early when there is no mirror and no
+old tag, so a system without one never grows a `tags` array or the field - idempotence and the
+Sol baseline depend on that. (6) The gain multiplies EVERY luminous source's light at the body,
+a stated approximation that is right for a single star and a close binary.
+### PHY-47 A FIGURE ABOUT THE STAR'S MOTION OR MASS IS PUBLISHED, NEVER PERFORMED - AND A HEMISPHERE MIRROR IS L/2c
+BUCKET: ARCHITECTURE (what the stellar engines may and may not do) + DOMAIN (the thrust law).
+WHERE: `constructs/megaTypes.ts` records `shkadov-thruster` and `caplan-thruster`; `MegaDerived`
+`starThrustPhotonFrac`, `starThrustN`, `starMassLossKgPerS`; shown by
+`constructs/megaPreview.ts megaSummaryLine` (the multiply into newtons is THERE, through the
+one luminosity function). Gates: `megaDerive.spec.ts`, `megaPreview.spec.ts`, and the
+"a figure about the STAR" row of `exoticsParity.spec.ts`.
+RULE: a stellar engine's thrust and mass loss are numbers derive() publishes and a panel prints.
+Nothing may integrate them: no node's orbit, position or `massKg` is ever written from them, and
+no capability axis declares them, because an axis nothing consumes is a claim (DATA-R33). The
+consumer is the event driver board row G41 describes - V4 design, not in this tree - and the
+axis arrives with it. The Shkadov law is momentum conservation: all of L leaves through the
+open sky, so the push is (L / 2c)(1 - cos psi) for a cap of half-angle psi; published as the
+dimensionless (1 - cos psi) / 2 of L/c. The Caplan law is a rocket: jet mass flow x jet speed
+(relativistic momentum), in newtons directly, and that flow is the star's mass loss.
+WHY: the owner asked for both engines (2026-11) with the instruction to ship what can be shown
+truthfully and not fake motion. A star crawling across the map on a clock that drives nothing
+else would be the renderer inventing a fact - and would silently invalidate every orbit, zone
+and transit computed about it.
+BLAST: (1) THE COMMONLY QUOTED SHKADOV FIGURE FOR THE SUN, 1.28e18 N, IS L/c - it turns every
+photon of half the output straight back. Integrating the cosine over a hemispherical cap gives
+L/2c = 6.4e17 N, and the open-sky derivation agrees. Do not "correct" the engine to the larger
+number. (2) Untilted, the cap stands over the pole of the system plane (the structure's axis
+is its orbit normal, RENDER-S61) and shades nothing near that plane, so the record publishes
+NO occlusion. A TILTED cap does shadow worlds for part of their orbit and that cone is not
+traced: it is a third occlusion geometry beside 'isotropic' and 'band', with four consumers
+(temperature, zones, observedStar, eclipses). (3) The Caplan record's collector swarm DOES
+occlude (isotropic, its density knob) - that half is real physics on the existing chain.
+(4) The mirror also returns light to the star and would raise its temperature; unmodelled.

@@ -24,6 +24,7 @@ import type { Barycenter, CelestialBody, MegaRequires, MegaHardClauses, MegaStee
 export type MegaHost = CelestialBody | Barycenter;
 import type { MegaTypeDef } from './megaTypes';
 import { lagrangePlacementId } from '$lib/physics/lagrange';
+import { isBlackHoleNode } from '$lib/holo/bodyFeatures';
 
 export interface MegaHardResult {
   ok: boolean;
@@ -128,7 +129,7 @@ function warnOnce(key: string, message: string): void {
   console.warn(`[mega-placement] ${message}`);
 }
 
-const KNOWN_HARD: ReadonlySet<string> = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary']);
+const KNOWN_HARD: ReadonlySet<string> = new Set(['hostKind', 'hasSurface', 'hostIsStar', 'needsGeostationary', 'hostIsBlackHole']);
 
 /** What the host IS, for sentences: 'barycentre' for a barycentre node, else its roleHint. */
 function hostKindWord(host: MegaHost): string {
@@ -177,6 +178,10 @@ export function megaHardCheck(
   }
   if (hard.hostIsStar && (host as CelestialBody).roleHint !== 'star') {
     return say(`This circles a star, and {host} is a ${hostKindWord(host)} — there is nothing here to circle.`);
+  }
+  // The horizon predicate the renderers already share (holo/bodyFeatures) - not a third spelling.
+  if (hard.hostIsBlackHole && !isBlackHoleNode(host)) {
+    return say(`This is built round a black hole, and {host} is a ${hostKindWord(host)} - there is no hole here to enclose.`);
   }
   if (hard.hasSurface && !hostHasSurface(host)) {
     return say(`This anchors to a surface, and {host} has none to anchor to.`);

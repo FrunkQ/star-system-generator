@@ -50,6 +50,7 @@ import { flareActivity, photosphereTempK } from '../physics/stellar-evolution';
 import { STELLAR_ACTIVITY_TAG, stellarActivityBucket } from '../physics/stellarActivity';
 import { STELLAR_JETS_TAG, STELLAR_SHEDDING_TAG, starJetBucket, starSheddingBucket } from '../physics/stellarOutflows';
 import { STAR_DIMMED_TAG, STAR_IR_EXCESS_TAG, STAR_ANOMALOUS_TAG, observedStarTags } from '../physics/observedStar';
+import { commitStarlightBoost } from '../physics/starlightOcclusion';
 import { starImplausibilities, STAR_IMPLAUSIBLE_TAG } from '../physics/starPlausibility';
 import { applyActivityScatter, activityFromFieldExcess } from '../physics/ionisingOutput';
 import { starStatTemplate } from '../generation/star';
@@ -936,6 +937,9 @@ export class SystemProcessor implements ISystemProcessor {
                     emit(body.tags, { key: 'mega/eclipsed', value: `2 per orbit, ~${Math.round(e.hoursEach)} h each - ${periodic.name}`, origin: 'physics' } as Tag);
                 }
             }
+            // Phase 6 (the soletta): a mirror's ADDED light, stamp and `mega/lit-by` tag, in the
+            // same commit-or-delete as the shadow above. All of it lives in starlightOcclusion.ts.
+            commitStarlightBoost(body, allNodes);
         };
         if (allStars.length > 0) commitThermal();
         body.equilibriumTempK = equilibriumTempK;

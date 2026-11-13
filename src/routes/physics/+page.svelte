@@ -201,6 +201,36 @@
         edge that a structure's shadow steps right over is pinned at the structure itself: beyond a solid
         ringworld, in its plane, there is no more habitable zone to draw. (For zones a band counts in full —
         the zone circles live in the system plane, which is exactly where a band's shadow falls.)</p>
+
+      <h3>A mirror lights the world it is stationed at</h3>
+      <p>The opposite case, and the one thing in this engine that delivers <strong>more</strong> than the
+        inverse square: a soletta — an orbital mirror array — turns starlight that would have missed a world
+        back onto it. The added share is plain geometry: the mirror's reflectivity times its area, over the
+        area of the world's own disc. A mirror with a fifth of the disc's effective area gives the world
+        <code>1.2×</code> the light its distance alone would, and since equilibrium temperature goes as the
+        fourth root of the light, it warms by <code>1.2^¼</code>, about 4.7%. From there it is the ordinary
+        chain — albedo, greenhouse, weather, the habitability score — with nothing special-cased, so widening
+        the mirror is terraforming you can watch. Mirrors add; a mirror and a shadow multiply (a world behind
+        a 30% swarm under that mirror receives <code>0.7 × 1.2</code>). The limits are stated rather than
+        hidden: every reflected photon is assumed to land on the world, which holds for a mirror stationed
+        close (a low orbit out to the inner or outer Lagrange point, and nowhere further is offered); the
+        mirror's own shadow is not traced; it lights its one world and not that world's moons; and the
+        star's <strong>zones do not move</strong> — they describe the star's light, and one lit world is
+        not a brighter star.</p>
+
+      <h3>Stellar engines state their thrust, and do not move their star</h3>
+      <p>A <strong>Shkadov thruster</strong> is a mirror cap held over a star: the star's whole output then
+        leaves through the open part of its sky, and the net momentum of that lopsided light is a push of
+        <code>(L / 2c) × (1 − cos ψ)</code> for a cap of half-angle ψ — a hemisphere gives half the star's
+        light pressure, about 6.4×10¹⁷ N on the Sun, or ten metres a second after a million years. (A figure
+        twice that is often quoted; it turns every photon straight back, where a real cap meets most of its
+        light at an angle.) A <strong>Caplan thruster</strong> is a rocket instead: it lifts the star's own
+        material, fuses it, and throws a jet, so its push is simply the jet's mass flow times its speed —
+        thousands of times a mirror's at the top of its range — and the star is lighter by that flow every
+        second. Both figures are <strong>published, not performed</strong>: the structure's summary states
+        the push, what a million years of it would do, and how long the star lasts, and the star stays
+        exactly where it is on the map with its mass untouched. Nothing in the engine yet drives a slow
+        change through time, and a star drifting on a clock nobody wound would be an invented fact.</p>
     </section>
 
     <section id="albedo">

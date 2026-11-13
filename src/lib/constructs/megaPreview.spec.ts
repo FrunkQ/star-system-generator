@@ -143,3 +143,41 @@ describe('the footer summary line', () => {
     expect(megaSummaryLine(d.derive(defaultMegaParams(d, locked), locked))).toContain('no real geostationary here');
   });
 });
+
+// PHASE 6: the new records say their headline figure in a GM's terms, and the stellar engines say
+// "pushes" and never "moves" - the thrust is published, not performed.
+describe('the summary line for the widened catalogue', () => {
+  const sun = () => ({ ...sol(), temperatureK: 5778, massKg: 1.989e30 }) as CelestialBody;
+  it('a soletta says how much it adds, to the world by name', () => {
+    const d = def('soletta');
+    const host = earth();
+    expect(megaSummaryLine(d.derive(defaultMegaParams(d, host), host), host)).toBe("adds 20% to Earth's starlight");
+  });
+  it('a Shkadov thruster turns its fraction into a push through the one luminosity function, and frames it in a million years', () => {
+    const d = def('shkadov-thruster');
+    const line = megaSummaryLine(d.derive({ ...defaultMegaParams(d, sun()), halfAngleDeg: 90 }, sun()), sun());
+    // 0.5 x L / c / M: 3.2e-13 m/s^2, which is ~1,100 AU of drift in a million years.
+    expect(line).toMatch(/^pushes the star ~3\.2e-13 m\/s² \(1\.1 thousand AU in a million years\)/);
+    // Without a luminous host there is no force to state - the honest fraction instead.
+    expect(megaSummaryLine(d.derive({ ...defaultMegaParams(d, sun()), halfAngleDeg: 90 }, sun()))).toBe('pushes the star with 50% of its own light pressure');
+  });
+  it('a Caplan thruster leads with the push and what it costs the star', () => {
+    const d = def('caplan-thruster');
+    const line = megaSummaryLine(d.derive(defaultMegaParams(d, sun()), sun()), sun());
+    expect(line).toMatch(/^pushes the star ~1\.5e-12 m\/s² \(.* in a million years\) · eats the star in ~/);
+    expect(line.split('·').length).toBe(2);
+  });
+  it('a Birch planet leads with its ground and its gravity, not its shadow', () => {
+    const d = def('birch-planet');
+    const hole = { ...sol(), name: 'Sgr A*', classes: ['star/BH'], massKg: 4.3e6 * 1.989e30 } as CelestialBody;
+    const line = megaSummaryLine(d.derive(defaultMegaParams(d, hole), hole), hole);
+    expect(line).toMatch(/Earths of floor · surface pull ~1\.0 g/);
+  });
+  it('a polar cap draws as an arc on one side of its star, wider as the cap widens', () => {
+    const d = def('shkadov-thruster');
+    const arc = (deg: number) => megaPreviewPrimitives({ ...d, shape: (p, h) => d.shape({ ...p, halfAngleDeg: deg }, h) }, sun())
+      .find((p) => p.kind === 'arc') as { sweepRad: number };
+    expect(arc(30).sweepRad).toBeCloseTo(Math.PI / 3, 9);
+    expect(arc(90).sweepRad).toBeGreaterThan(arc(30).sweepRad);
+  });
+});
